@@ -119,3 +119,28 @@ Run from the repository root when visible Russian copy changes:
 ```powershell
 python -m pytest tests/test_frontend_text_integrity.py tests/test_public_copy_guardrails.py -q
 ```
+
+## Trust And Guide Routes
+
+The public selected-feature catalog owns these static/export-safe routes:
+
+- `/status/` for current and recent operator-owned incidents;
+- `/transparency/` for responsibility and field-level privacy facts;
+- `/fallback/` for official fallback-client guidance and the owner-approved
+  temporary Apple account best-effort boundary;
+- `/programs/` for switch, research, and team-pack intake explanations;
+- `/guides/` for 46 searchable instructions, category filters, failure
+  branches, proactive fallback setup, 18 real screens across seven fallback
+  clients, and a per-task visual target;
+- `/guides/pokrov-app/` for the separate 20-screen Android atlas captured from
+  the current local candidate, with non-obscuring numbered target outlines and
+  button-by-button legends.
+
+All routes consume `shared/trust-and-guides.json` through the typed shared
+module. `shared/guide-visuals.ts` must cover every guide ID. Fallback-client
+tasks use reviewed real screenshots where available and an explicitly labelled
+reconstruction only when no safe source exists. Each real screen records the
+exact action and its source. `shared/pokrov-screen-atlas.ts` owns the
+separate application-screen registry and every referenced screenshot must be a
+redacted current-candidate capture. Guide videos remain unpublished until a
+clean, redacted recording is attached to the matching guide ID.

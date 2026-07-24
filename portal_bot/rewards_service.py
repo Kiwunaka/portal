@@ -36,8 +36,22 @@ PAID_WEEKLY_V1: dict[str, object] = {
         {"days": 30, "weight": 10},
     ],
 }
+PAID_WEEKLY_DISCOUNTS_V2: dict[str, object] = {
+    "preset": "paid_weekly_discounts_v2",
+    "cooldown_hours": 168,
+    "weights": [
+        {"kind": "days", "value": 1, "weight": 8300},
+        {"kind": "discount", "value": 5, "weight": 500},
+        {"kind": "days", "value": 3, "weight": 790},
+        {"kind": "discount", "value": 7, "weight": 200},
+        {"kind": "days", "value": 7, "weight": 100},
+        {"kind": "discount", "value": 10, "weight": 100},
+        {"kind": "days", "value": 30, "weight": 10},
+    ],
+}
 PAID_GRANT_SOURCES = frozenset({"provider_payment", "compatibility_projection"})
 WHEEL_SECTORS = (1, 3, 7, 30)
+WHEEL_DISCOUNT_SECTORS = (5, 7, 10)
 CALENDAR_MILESTONES = frozenset({7, 14, 21, 28})
 _TERMINAL_MERGE_REVIEW_STATUSES = frozenset({"closed", "dismissed", "resolved"})
 _SAFE_PRESET_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
@@ -71,17 +85,30 @@ class RewardConflict(RewardDomainError):
         *,
         next_allowed_at: datetime,
         last_reward_days: int | None,
+        last_discount_pct: int | None = None,
     ) -> None:
         self.next_allowed_at = next_allowed_at
         self.last_reward_days = last_reward_days
+        self.last_discount_pct = last_discount_pct
         super().__init__(code)
+
+
+@dataclass(frozen=True, slots=True)
+class WheelOutcome:
+    kind: str
+    value: int
+    weight: int
+
+    @property
+    def key(self) -> str:
+        return f"{self.kind}:{self.value}"
 
 
 @dataclass(frozen=True, slots=True)
 class WheelConfig:
     preset: str
     cooldown_hours: int
-    outcomes: Sequence[tuple[int, int]]
+    outcomes: Sequence[WheelOutcome]
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,10 +126,12 @@ class WheelState:
     reason: str
     can_spin: bool
     sectors: Sequence[int]
+    discount_sectors: Sequence[int]
     cooldown_hours: int
     last_spin_at: datetime | None
     next_spin_at: datetime | None
     last_reward_days: int | None
+    last_discount_pct: int | None
     sync_state: str
 
 
@@ -126,6 +155,10 @@ class RewardMutation:
     grant_id: str | None
     reward_days: int
     sync_state: str
+    reward_kind: str = "days"
+    reward_value: int = 0
+    discount_pct: int = 0
+    sector_key: str = ""
     wheel_last_spin_at: datetime | None = None
     wheel_next_spin_at: datetime | None = None
     calendar_cycle_started_on: date | None = None
@@ -224,47 +257,88 @@ def parse_paid_weekly_config(
     *,
     explicit: bool,
 ) -> WheelConfig:
-    candidate = dict(PAID_WEEKLY_V1 if not explicit and not payload else payload)
-    if candidate.get("preset") != "paid_weekly_v1":
+    candidate = dict(
+        PAID_WEEKLY_DISCOUNTS_V2 if not explicit and not payload else payload
+    )
+    preset = str(candidate.get("preset") or "")
+    if preset not in {"paid_weekly_v1", "paid_weekly_discounts_v2"}:
         raise InvalidWheelConfig("wheel_preset_invalid")
     cooldown = candidate.get("cooldown_hours")
     if type(cooldown) is not int or cooldown != 168:
         raise InvalidWheelConfig("wheel_cooldown_invalid")
 
     raw = candidate.get("weights")
-    if (
-        not isinstance(raw, list)
-        or len(raw) != 4
-        or any(not isinstance(row, dict) for row in raw)
+    expected_count = 4 if preset == "paid_weekly_v1" else 7
+    if not isinstance(raw, list) or len(raw) != expected_count or any(
+        not isinstance(row, dict) for row in raw
     ):
         raise InvalidWheelConfig("wheel_outcome_order_invalid")
-    days = tuple(row.get("days") for row in raw)
-    if days != WHEEL_SECTORS or any(type(value) is not int for value in days):
-        raise InvalidWheelConfig("wheel_outcome_order_invalid")
-    weights = tuple(row.get("weight") for row in raw)
-    if (
-        weights != (9000, 890, 100, 10)
-        or any(type(value) is not int for value in weights)
-        or sum(weights) != 10000
-    ):
-        raise InvalidWheelConfig("wheel_weights_invalid")
-    outcomes = tuple(zip(days, weights, strict=True))
+
+    if preset == "paid_weekly_v1":
+        values = tuple(row.get("days") for row in raw)
+        if values != WHEEL_SECTORS or any(type(value) is not int for value in values):
+            raise InvalidWheelConfig("wheel_outcome_order_invalid")
+        weights = tuple(row.get("weight") for row in raw)
+        if (
+            weights != (9000, 890, 100, 10)
+            or any(type(value) is not int for value in weights)
+            or sum(weights) != 10000
+        ):
+            raise InvalidWheelConfig("wheel_weights_invalid")
+        outcomes = tuple(
+            WheelOutcome(kind="days", value=int(value), weight=int(weight))
+            for value, weight in zip(values, weights, strict=True)
+        )
+    else:
+        expected = tuple(
+            (str(row["kind"]), int(row["value"]), int(row["weight"]))
+            for row in PAID_WEEKLY_DISCOUNTS_V2["weights"]
+        )
+        try:
+            actual = tuple(
+                (row.get("kind"), row.get("value"), row.get("weight"))
+                for row in raw
+            )
+        except (TypeError, ValueError):
+            raise InvalidWheelConfig("wheel_outcome_order_invalid") from None
+        if tuple((kind, value) for kind, value, _ in actual) != tuple(
+            (kind, value) for kind, value, _ in expected
+        ) or any(
+            kind not in {"days", "discount"}
+            or type(value) is not int
+            or type(weight) is not int
+            for kind, value, weight in actual
+        ):
+            raise InvalidWheelConfig("wheel_outcome_order_invalid")
+        if actual != expected or sum(weight for _, _, weight in actual) != 10000:
+            raise InvalidWheelConfig("wheel_weights_invalid")
+        outcomes = tuple(
+            WheelOutcome(kind=kind, value=value, weight=weight)
+            for kind, value, weight in actual
+        )
     return WheelConfig(
-        preset="paid_weekly_v1",
+        preset=preset,
         cooldown_hours=168,
         outcomes=outcomes,
     )
 
 
-def _reward_days_for_draw(config: WheelConfig, draw: int) -> int:
+def _reward_outcome_for_draw(config: WheelConfig, draw: int) -> WheelOutcome:
     if type(draw) is not int or not 0 <= draw < 10000:
         raise RewardDomainError("wheel_draw_invalid")
     cursor = 0
-    for days, weight in config.outcomes:
-        cursor += int(weight)
+    for outcome in config.outcomes:
+        cursor += int(outcome.weight)
         if draw < cursor:
-            return int(days)
+            return outcome
     raise RewardDomainError("wheel_draw_invalid")
+
+
+def _reward_days_for_draw(config: WheelConfig, draw: int) -> int:
+    outcome = _reward_outcome_for_draw(config, draw)
+    if outcome.kind != "days":
+        raise RewardDomainError("wheel_outcome_not_days")
+    return int(outcome.value)
 
 
 def _last_wheel_reward_days(
@@ -277,6 +351,20 @@ def _last_wheel_reward_days(
     if grant is None or grant.source != "bonus_wheel":
         return None
     return int(grant.duration_days or 0) or None
+
+
+def _last_wheel_discount_pct(
+    session,
+    *,
+    legacy_tg_id: int | None,
+) -> int | None:
+    if legacy_tg_id is None:
+        return None
+    user = session.query(User).filter(User.tg_id == int(legacy_tg_id)).one_or_none()
+    if user is None or not str(user.pending_discount_code or "").startswith("WHEEL"):
+        return None
+    value = int(user.pending_discount_pct or 0)
+    return value if value in WHEEL_DISCOUNT_SECTORS else None
 
 
 def _reward_sync_job(
@@ -318,7 +406,7 @@ def _parse_wheel_config(
     config_payload: Mapping[str, object] | None,
 ) -> WheelConfig:
     return (
-        parse_paid_weekly_config(PAID_WEEKLY_V1, explicit=False)
+        parse_paid_weekly_config(PAID_WEEKLY_DISCOUNTS_V2, explicit=False)
         if config_payload is None
         else parse_paid_weekly_config(config_payload, explicit=True)
     )
@@ -404,10 +492,12 @@ def get_wheel_state(
             reason="bonus_feature_disabled",
             can_spin=False,
             sectors=(),
+            discount_sectors=(),
             cooldown_hours=168,
             last_spin_at=None,
             next_spin_at=None,
             last_reward_days=None,
+            last_discount_pct=None,
             sync_state="not_required",
         )
     try:
@@ -420,10 +510,12 @@ def get_wheel_state(
             reason="wheel_config_invalid",
             can_spin=False,
             sectors=(),
+            discount_sectors=(),
             cooldown_hours=0,
             last_spin_at=None,
             next_spin_at=None,
             last_reward_days=None,
+            last_discount_pct=None,
             sync_state="not_required",
         )
 
@@ -433,16 +525,24 @@ def get_wheel_state(
         now=current_now,
     )
     if not eligibility.eligible:
+        day_sectors = tuple(
+            outcome.value for outcome in config.outcomes if outcome.kind == "days"
+        )
+        discount_sectors = tuple(
+            outcome.value for outcome in config.outcomes if outcome.kind == "discount"
+        )
         return WheelState(
             enabled=True,
             eligible=False,
             reason=eligibility.reason,
             can_spin=False,
-            sectors=WHEEL_SECTORS,
+            sectors=day_sectors,
+            discount_sectors=discount_sectors,
             cooldown_hours=config.cooldown_hours,
             last_spin_at=None,
             next_spin_at=None,
             last_reward_days=None,
+            last_discount_pct=None,
             sync_state="not_required",
         )
 
@@ -471,11 +571,20 @@ def get_wheel_state(
         eligible=True,
         reason="eligible" if can_spin else "wheel_cooldown_active",
         can_spin=can_spin,
-        sectors=WHEEL_SECTORS,
+        sectors=tuple(
+            outcome.value for outcome in config.outcomes if outcome.kind == "days"
+        ),
+        discount_sectors=tuple(
+            outcome.value for outcome in config.outcomes if outcome.kind == "discount"
+        ),
         cooldown_hours=config.cooldown_hours,
         last_spin_at=last_spin_at,
         next_spin_at=next_spin_at,
         last_reward_days=_last_wheel_reward_days(session, state),
+        last_discount_pct=_last_wheel_discount_pct(
+            session,
+            legacy_tg_id=eligibility.legacy_tg_id,
+        ),
         sync_state=reward_sync_state(job),
     )
 
@@ -525,43 +634,99 @@ def spin_wheel(
             "wheel_cooldown_active",
             next_allowed_at=next_spin_at,
             last_reward_days=_last_wheel_reward_days(session, state),
+            last_discount_pct=_last_wheel_discount_pct(
+                session,
+                legacy_tg_id=eligibility.legacy_tg_id,
+            ),
         )
 
     draw = randbelow(10000)
-    reward_days = _reward_days_for_draw(config, draw)
+    outcome = _reward_outcome_for_draw(config, draw)
     event_id = str(uuid.uuid4())
-    grant = grant_internal_bonus_days(
-        session,
-        account_id=eligibility.account_id,
-        source="bonus_wheel",
-        plan_code="reward_wheel",
-        idempotency_key=f"reward-wheel:v1:{event_id}",
-        days=reward_days,
-        legacy_tg_id=eligibility.legacy_tg_id,
-        metadata={
-            "version": 1,
-            "preset": config.preset,
-            "reward_days": reward_days,
-            "committed_at": current_now.isoformat(),
-        },
-        now=current_now,
+    legacy_user = (
+        session.query(User)
+        .filter(User.tg_id == int(eligibility.legacy_tg_id))
+        .with_for_update()
+        .one_or_none()
+        if eligibility.legacy_tg_id is not None
+        else None
     )
-    job = enqueue_reward_entitlement_sync(
-        session,
-        account_id=eligibility.account_id,
-        entitlement_grant_id=grant.id,
-        now=current_now,
-    )
+    fallback_from_discount = False
+    if outcome.kind == "discount" and (
+        legacy_user is None or int(legacy_user.pending_discount_pct or 0) > 0
+    ):
+        # Discounts are one-use and never stack. If another discount is still
+        # waiting, convert this draw into the smallest day reward instead of
+        # silently overwriting or giving the user nothing.
+        outcome = WheelOutcome(kind="days", value=1, weight=outcome.weight)
+        fallback_from_discount = True
+
+    reward_days = outcome.value if outcome.kind == "days" else 0
+    discount_pct = outcome.value if outcome.kind == "discount" else 0
+    grant: EntitlementGrant | None = None
+    job: NodeProvisioningJob | None = None
+    if outcome.kind == "days":
+        grant = grant_internal_bonus_days(
+            session,
+            account_id=eligibility.account_id,
+            source="bonus_wheel",
+            plan_code="reward_wheel",
+            idempotency_key=f"reward-wheel:v2:{event_id}",
+            days=reward_days,
+            legacy_tg_id=eligibility.legacy_tg_id,
+            metadata={
+                "version": 2,
+                "preset": config.preset,
+                "reward_kind": "days",
+                "reward_days": reward_days,
+                "fallback_from_discount": fallback_from_discount,
+                "committed_at": current_now.isoformat(),
+            },
+            now=current_now,
+        )
+        job = enqueue_reward_entitlement_sync(
+            session,
+            account_id=eligibility.account_id,
+            entitlement_grant_id=grant.id,
+            now=current_now,
+        )
+    else:
+        assert legacy_user is not None
+        legacy_user.pending_discount_pct = discount_pct
+        legacy_user.pending_discount_code = f"WHEEL{discount_pct}"
+        legacy_user.pending_discount_set_at = current_now
+        session.add(
+            RewardClaim(
+                tg_id=int(legacy_user.tg_id),
+                reward_key=f"wheel_discount_{event_id.replace('-', '')}",
+                meta=json.dumps(
+                    {
+                        "version": 2,
+                        "feature": "wheel",
+                        "preset": config.preset,
+                        "reward_kind": "discount",
+                        "discount_pct": discount_pct,
+                        "committed_at": current_now.isoformat(),
+                    },
+                    ensure_ascii=False,
+                ),
+                claimed_at=current_now,
+            )
+        )
     state.wheel_last_spin_at = current_now
-    state.wheel_last_grant_id = grant.id
+    state.wheel_last_grant_id = grant.id if grant is not None else None
     state.updated_at = current_now
     validate_calendar_state(state)
     session.flush()
     return RewardMutation(
         feature="wheel",
         account_id=eligibility.account_id,
-        grant_id=grant.id,
+        grant_id=grant.id if grant is not None else None,
         reward_days=reward_days,
+        reward_kind=outcome.kind,
+        reward_value=outcome.value,
+        discount_pct=discount_pct,
+        sector_key=outcome.key,
         sync_state=reward_sync_state(job),
         wheel_last_spin_at=current_now,
         wheel_next_spin_at=current_now + timedelta(hours=config.cooldown_hours),
@@ -867,6 +1032,12 @@ def _legacy_history_metadata(claim: RewardClaim) -> tuple[int, dict[str, object]
     feature = raw.get("feature")
     if feature in {"wheel", "calendar"}:
         metadata["feature"] = feature
+    reward_kind = raw.get("reward_kind")
+    if reward_kind in {"days", "discount"}:
+        metadata["reward_kind"] = reward_kind
+    discount_pct = raw.get("discount_pct")
+    if type(discount_pct) is int and discount_pct in WHEEL_DISCOUNT_SECTORS:
+        metadata["discount_pct"] = discount_pct
     preset = raw.get("preset")
     if isinstance(preset, str) and _SAFE_PRESET_RE.fullmatch(preset):
         metadata["preset"] = preset

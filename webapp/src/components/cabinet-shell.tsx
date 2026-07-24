@@ -77,11 +77,18 @@ const NAV_ITEMS: NavItem[] = [
       pathname.startsWith("/dashboard/downloads/"),
   },
   {
+    href: "/protection",
+    icon: ShieldCheck,
+    label: "Защита",
+    description: "Проверки и восстановление",
+    match: (pathname) => pathname.startsWith("/protection"),
+  },
+  {
     href: "/support",
     icon: LifeBuoy,
     label: "Помощь",
-    description: "Вопросы и диалоги",
-    match: (pathname) => pathname.startsWith("/support"),
+    description: "Инструкции и диалоги",
+    match: (pathname) => pathname.startsWith("/support") || pathname.startsWith("/guides"),
   },
   {
     href: "/settings",
@@ -89,7 +96,7 @@ const NAV_ITEMS: NavItem[] = [
     label: "Аккаунт",
     description: "Вход и бонусы",
     match: (pathname) =>
-      pathname.startsWith("/settings") || pathname.startsWith("/profile") || pathname.startsWith("/rewards"),
+      pathname.startsWith("/settings") || pathname.startsWith("/profile") || pathname.startsWith("/rewards") || pathname.startsWith("/programs"),
   },
 ];
 
@@ -115,6 +122,10 @@ const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta 
     meta: { title: "Главная", subtitle: "Статус и следующее действие." },
   },
   {
+    match: (pathname) => pathname.startsWith("/protection"),
+    meta: { title: "Защита", subtitle: "Проверки, маршруты и восстановление." },
+  },
+  {
     match: (pathname) => pathname.startsWith("/subscription/checkout"),
     meta: { title: "Оплата", subtitle: "Срок, способ и итог." },
   },
@@ -135,12 +146,20 @@ const ROUTE_META: Array<{ match: (pathname: string) => boolean; meta: RouteMeta 
     meta: { title: "Статистика", subtitle: "Короткая сводка." },
   },
   {
+    match: (pathname) => pathname.startsWith("/guides"),
+    meta: { title: "Инструкции", subtitle: "Пошаговые задачи и ветки ошибок." },
+  },
+  {
     match: (pathname) => pathname.startsWith("/support"),
     meta: { title: "Помощь", subtitle: "Обращения и ответы." },
   },
   {
     match: (pathname) => pathname.startsWith("/rewards"),
     meta: { title: "Награды", subtitle: "Рулетка и календарь активности." },
+  },
+  {
+    match: (pathname) => pathname.startsWith("/programs"),
+    meta: { title: "Программы", subtitle: "Переход, исследования и команды." },
   },
   {
     match: (pathname) => pathname.startsWith("/settings") || pathname.startsWith("/profile"),

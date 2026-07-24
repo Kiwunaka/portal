@@ -58,6 +58,7 @@ from models import (
     AuthSession,
     AntiAbuseEvent,
     CampaignSend,
+    DevicePairingCode,
     Event,
     EntitlementGrant,
     ExternalOrder,
@@ -84,6 +85,7 @@ from models import (
     PlanCatalog,
     PromoCode,
     PromoUsage,
+    ProgramApplication,
     PayAttempt,
     PaymentEntitlementClaim,
     ProviderTrafficQuota,
@@ -93,6 +95,7 @@ from models import (
     RenderedSubscriptionSnapshot,
     Review,
     RewardClaim,
+    ServiceIncident,
     SecurityEvent,
     SecurityRateLimitBucket,
     StartLink,
@@ -220,6 +223,7 @@ from economy_service import (
     release_due_referrer_rewards,
 )
 from rewards_service import (
+    PAID_WEEKLY_DISCOUNTS_V2,
     PAID_WEEKLY_V1,
     CalendarState,
     InvalidWheelConfig,
@@ -254,6 +258,9 @@ import app_first_service
 import account_experience_service
 import auth_session_service
 import channel_bonus_service
+import device_pairing_service
+import incident_service
+import program_application_service
 from account_foundation_service import ensure_user_account_foundation
 from gift_cards_service import redeem_gift_card as redeem_gift_card_service
 from observer_service import (
@@ -691,7 +698,7 @@ def _default_live_updates() -> list[dict[str, Any]]:
     ]
 
 
-DEFAULT_WHEEL_CONFIG: dict[str, Any] = PAID_WEEKLY_V1
+DEFAULT_WHEEL_CONFIG: dict[str, Any] = PAID_WEEKLY_DISCOUNTS_V2
 
 
 def _normalize_channel_username(raw: str | None) -> str | None:
@@ -784,7 +791,7 @@ def _validate_wheel_weights(weights: list[dict[str, Any]]) -> list[dict[str, int
 def _normalized_wheel_config(payload: dict[str, Any] | None) -> dict[str, Any]:
     try:
         config = parse_paid_weekly_config(
-            payload or PAID_WEEKLY_V1,
+            payload or PAID_WEEKLY_DISCOUNTS_V2,
             explicit=payload is not None,
         )
     except InvalidWheelConfig as exc:
@@ -795,12 +802,21 @@ def _normalized_wheel_config(payload: dict[str, Any] | None) -> dict[str, Any]:
                 "validation_code": exc.code,
             },
         ) from None
+    weights = [
+        (
+            {"days": int(outcome.value), "weight": int(outcome.weight)}
+            if config.preset == "paid_weekly_v1"
+            else {
+                "kind": outcome.kind,
+                "value": int(outcome.value),
+                "weight": int(outcome.weight),
+            }
+        )
+        for outcome in config.outcomes
+    ]
     return {
         "preset": config.preset,
-        "weights": [
-            {"days": int(days), "weight": int(weight)}
-            for days, weight in config.outcomes
-        ],
+        "weights": weights,
         "cooldown_hours": config.cooldown_hours,
     }
 
@@ -1141,6 +1157,25 @@ class ClientSupportAssistantIn(BaseModel):
     safeDiagnostics: dict[str, Any] = Field(default_factory=dict)
 
 
+class ClientDevicePairingClaimIn(BaseModel):
+    code: str = Field(min_length=8, max_length=12)
+    install_id: str = Field(min_length=8, max_length=128)
+    device_name: str = Field(default="Новое устройство", min_length=1, max_length=120)
+    platform: str = Field(default="device", min_length=2, max_length=32)
+    os_version: str | None = Field(default=None, max_length=64)
+    app_version: str | None = Field(default=None, max_length=32)
+    locale: str | None = Field(default=None, max_length=32)
+    time_zone: str | None = Field(default=None, max_length=64)
+
+
+class ProgramApplicationCreateIn(BaseModel):
+    kind: str = Field(min_length=3, max_length=32)
+    source_name: str | None = Field(default=None, max_length=100)
+    seats: int | None = Field(default=None, ge=2, le=50)
+    summary: str = Field(min_length=20, max_length=2000)
+    contact: str | None = Field(default=None, max_length=160)
+
+
 class AdminWarpMaterialPutIn(BaseModel):
     tg_id: int = Field(gt=0)
     install_id: str | None = Field(default=None, max_length=128)
@@ -1451,21 +1486,21 @@ class AdminStartLinkUpdateIn(BaseModel):
 
 
 class AdminWheelWeightIn(BaseModel):
-    days: int = Field(ge=1, le=365)
+    days: int | None = Field(default=None, ge=1, le=365)
+    kind: str | None = Field(default=None, min_length=4, max_length=16)
+    value: int | None = Field(default=None, ge=1, le=365)
     weight: int = Field(ge=1, le=10000)
 
 
 class AdminWheelConfigIn(BaseModel):
-    preset: str = Field(default="paid_weekly_v1", min_length=2, max_length=32)
+    preset: str = Field(default="paid_weekly_discounts_v2", min_length=2, max_length=32)
     weights: list[AdminWheelWeightIn] = Field(
         default_factory=lambda: [
-            AdminWheelWeightIn(days=1, weight=9000),
-            AdminWheelWeightIn(days=3, weight=890),
-            AdminWheelWeightIn(days=7, weight=100),
-            AdminWheelWeightIn(days=30, weight=10),
+            AdminWheelWeightIn(**row)
+            for row in PAID_WEEKLY_DISCOUNTS_V2["weights"]
         ],
         min_length=4,
-        max_length=4,
+        max_length=7,
     )
     cooldown_hours: int = Field(default=168, ge=168, le=168)
 
@@ -1678,6 +1713,32 @@ class AdminUserPresetRunIn(BaseModel):
 
 class AdminLoyaltyGrantIn(BaseModel):
     tier_days: int = Field(ge=1, le=3650)
+
+
+class AdminServiceIncidentCreateIn(BaseModel):
+    incident_key: str = Field(min_length=3, max_length=80)
+    title: str = Field(min_length=3, max_length=160)
+    summary: str = Field(min_length=3, max_length=600)
+    severity: str = Field(default="degraded", min_length=3, max_length=24)
+    started_at: str = Field(min_length=10, max_length=64)
+    affected_node_codes: list[str] = Field(default_factory=list, max_length=100)
+    compensation_days: int = Field(default=0, ge=0, le=30)
+
+
+class AdminServiceIncidentResolveIn(BaseModel):
+    ended_at: str = Field(min_length=10, max_length=64)
+
+
+class AdminServiceIncidentCompensateIn(BaseModel):
+    dry_run: bool = True
+    confirm_incident_key: str = Field(default="", max_length=80)
+
+
+class AdminProgramApplicationReviewIn(BaseModel):
+    status: str = Field(min_length=3, max_length=24)
+    operator_note: str | None = Field(default=None, max_length=1000)
+    reward_days: int = Field(default=0, ge=0, le=7)
+    confirm_application_id: str = Field(default="", max_length=36)
 
 
 class AdminReferralQueueProcessIn(BaseModel):
@@ -3208,6 +3269,10 @@ _BETA_RATE_LIMIT_DEFAULTS_PER_MINUTE = {
     "recovery_exchange_install": 5,
     "recovery_rotate": 5,
     "access_reissue": 5,
+    "device_pairing_issue": 6,
+    "device_pairing_claim": 8,
+    "device_pairing_claim_ip": 30,
+    "program_application": 6,
     "ticket_create": 20,
     "ticket_upload": 30,
     "ticket_attachment_download": 120,
@@ -7982,6 +8047,7 @@ EVENT_WHITELIST = {
     "expired",
     "deep_link_opened",
     "copy_used",
+    "routing_lesson_completed",
 }
 
 FUNNEL_EVENT_WHITELIST = {
@@ -8326,6 +8392,18 @@ async def public_catalog(response: Response) -> dict:
         s.close()
 
 
+@app.get("/api/public/trust-catalog")
+async def public_trust_catalog(response: Response) -> dict[str, Any]:
+    path = Path(__file__).resolve().parents[1] / "shared" / "trust-and-guides.json"
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        logger.exception("public trust catalog unavailable")
+        raise HTTPException(status_code=503, detail="Trust catalog unavailable")
+    response.headers["Cache-Control"] = "public, max-age=300"
+    return payload
+
+
 @app.get("/api/public/live-updates")
 async def public_live_updates(response: Response, limit: int = Query(default=3, ge=1, le=10)) -> dict:
     s = SessionLocal()
@@ -8366,6 +8444,78 @@ async def public_live_updates(response: Response, limit: int = Query(default=3, 
         return {"updates": out}
     finally:
         s.close()
+
+
+@app.get("/api/public/service-status")
+async def public_service_status(response: Response) -> dict[str, Any]:
+    s = SessionLocal()
+    try:
+        current = (
+            s.query(ServiceIncident)
+            .filter(ServiceIncident.status == "confirmed")
+            .order_by(ServiceIncident.started_at.desc())
+            .limit(10)
+            .all()
+        )
+        recent = (
+            s.query(ServiceIncident)
+            .filter(ServiceIncident.status == "resolved")
+            .order_by(ServiceIncident.ended_at.desc(), ServiceIncident.started_at.desc())
+            .limit(10)
+            .all()
+        )
+        response.headers["Cache-Control"] = "public, max-age=30"
+        return {
+            "status": "degraded" if current else "operational",
+            "checkedAt": _safe_iso(_utcnow()),
+            "current": [incident_service.incident_payload(row) for row in current],
+            "recent": [incident_service.incident_payload(row) for row in recent],
+        }
+    finally:
+        s.close()
+
+
+def _public_program_capabilities() -> list[dict[str, Any]]:
+    return [
+            {
+                "kind": "competitor_switch",
+                "title": "Переход от другого VPN",
+                "enabled": True,
+                "review": "manual",
+                "reward": "Предложение определяется после проверки; автоматического бонуса нет.",
+            },
+            {
+                "kind": "research",
+                "title": "Исследования и качественные баг-репорты",
+                "enabled": True,
+                "review": "manual",
+                "reward": "За подтверждённый вклад оператор может начислить 1, 3 или 7 дней.",
+            },
+            {
+                "kind": "team_pack",
+                "title": "Набор для команды",
+                "enabled": True,
+                "review": "manual",
+                "reward": "Персональное предложение для 2–50 устройств без автосписаний.",
+            },
+            {
+                "kind": "affiliate",
+                "title": "Партнёрская программа",
+                "enabled": False,
+                "review": "not_accepting",
+                "reward": "Фундамент заложен, заявки и начисления пока выключены.",
+            },
+        ]
+
+
+@app.get("/api/public/programs")
+async def public_programs(response: Response) -> dict[str, Any]:
+    response.headers["Cache-Control"] = "public, max-age=300"
+    return {
+        "ok": True,
+        "programs": _public_program_capabilities(),
+        "review_policy": "Заявки не меняют срок доступа до явного решения оператора.",
+    }
 
 
 def _set_web_session_cookie(response: Response, token: str) -> None:
@@ -9954,8 +10104,70 @@ def _client_notification_read_ids(s, *, user: User) -> set[str]:
     return out
 
 
-def _client_notification_items(*, user: User, access_policy: dict[str, Any], read_ids: set[str]) -> list[dict[str, Any]]:
+def _client_notification_items(
+    *,
+    user: User,
+    access_policy: dict[str, Any],
+    read_ids: set[str],
+    incidents: list[ServiceIncident] | None = None,
+    live_updates: list[LiveUpdate] | None = None,
+    compensation_grants: list[EntitlementGrant] | None = None,
+    program_applications: list[ProgramApplication] | None = None,
+) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
+    for incident in list(incidents or [])[:10]:
+        notification_id = f"incident.{incident.id}"
+        items.append(
+            {
+                "id": notification_id,
+                "kind": "incident",
+                "title": str(incident.title or "Инцидент сервиса").strip(),
+                "body": str(incident.summary or "Проверяем состояние сервиса.").strip(),
+                "createdAt": _safe_iso(incident.started_at or incident.created_at or _utcnow()),
+                "ctaLabel": "Статус защиты",
+                "ctaHref": f"{_public_webapp_url().rstrip('/')}/protection/",
+                "read": notification_id in read_ids,
+            }
+        )
+    for grant in list(compensation_grants or [])[:10]:
+        try:
+            metadata = json.loads(str(grant.metadata_json or "{}"))
+        except Exception:
+            metadata = {}
+        notification_id = f"compensation.{grant.id}"
+        title = str((metadata or {}).get("incident_title") or "Компенсация за инцидент").strip()
+        days = max(0, int(grant.duration_days or 0))
+        items.append(
+            {
+                "id": notification_id,
+                "kind": "compensation",
+                "title": title,
+                "body": f"Начислили {days} дн. после подтверждённого инцидента.",
+                "createdAt": _safe_iso(grant.created_at or _utcnow()),
+                "ctaLabel": "Открыть кабинет",
+                "ctaHref": _public_webapp_url(),
+                "read": notification_id in read_ids,
+            }
+        )
+    for update in list(live_updates or [])[:10]:
+        notification_id = f"release.{update.id}"
+        update_href = _build_tg_post_link(
+            channel_username=getattr(update, "channel_username", None),
+            post_id=getattr(update, "post_id", None),
+            fallback_link=str(update.link or "").strip(),
+        )
+        items.append(
+            {
+                "id": notification_id,
+                "kind": "release",
+                "title": str(update.title or "Обновление POKROV").strip(),
+                "body": str(update.summary or "Доступно новое обновление.").strip(),
+                "createdAt": _safe_iso(update.published_at or update.created_at or _utcnow()),
+                "ctaLabel": "Подробнее",
+                "ctaHref": update_href or None,
+                "read": notification_id in read_ids,
+            }
+        )
     access_state = str(access_policy.get("access_state") or "").strip().lower()
     if access_state in {"trial_premium", "bonus_premium", "paid_unlimited"}:
         days_left = _client_days_left(getattr(user, "expiry_at", None))
@@ -9964,15 +10176,51 @@ def _client_notification_items(*, user: User, access_policy: dict[str, Any], rea
             {
                 "id": notification_id,
                 "kind": "access",
-                "title": "Access is active",
-                "body": f"{days_left} days left." if days_left else "Access is active now.",
+                "title": "Доступ активен",
+                "body": f"Осталось {days_left} дн." if days_left else "Доступ сейчас активен.",
                 "createdAt": _safe_iso(getattr(user, "app_last_seen_at", None) or getattr(user, "created_at", None) or _utcnow()),
-                "ctaLabel": "Open account",
+                "ctaLabel": "Открыть кабинет",
                 "ctaHref": _public_webapp_url(),
                 "read": notification_id in read_ids,
             }
         )
-    return items
+    program_titles = {
+        "competitor_switch": "Переход от другого VPN",
+        "research": "Исследование POKROV",
+        "team_pack": "Набор для команды",
+    }
+    status_bodies = {
+        "submitted": "Заявка принята и ждёт проверки.",
+        "under_review": "Оператор проверяет заявку.",
+        "approved": "Заявка одобрена. Детали доступны в кабинете.",
+        "rejected": "Проверка завершена без начисления.",
+        "rewarded": "Проверка завершена, подтверждённая награда начислена.",
+        "cancelled": "Заявка отменена.",
+    }
+    for application in list(program_applications or [])[:10]:
+        status = str(application.status or "submitted").strip().lower()
+        notification_id = f"program.{application.id}.{status}"
+        days = max(0, int(application.reward_days or 0))
+        body = status_bodies.get(status, "Статус заявки изменился.")
+        if status == "rewarded" and days:
+            body = f"Проверка завершена: начислено {days} дн."
+        items.append(
+            {
+                "id": notification_id,
+                "kind": "program",
+                "title": program_titles.get(str(application.kind or ""), "Заявка POKROV"),
+                "body": body,
+                "createdAt": _safe_iso(application.updated_at or application.created_at or _utcnow()),
+                "ctaLabel": "Открыть заявки",
+                "ctaHref": f"{_public_webapp_url().rstrip('/')}/programs/",
+                "read": notification_id in read_ids,
+            }
+        )
+    return sorted(
+        items,
+        key=lambda item: str(item.get("createdAt") or ""),
+        reverse=True,
+    )[:30]
 
 
 ASSISTANT_DIAGNOSTIC_KEYS = frozenset(
@@ -10069,6 +10317,7 @@ async def client_locations_catalog(
                 "latencyMs": _safe_ping(node),
                 "premium": not node_is_free(node),
                 "load": _node_load_ratio(node),
+                "measuredAt": _safe_iso(getattr(node, "last_health_at", None)),
             }
             bucket = grouped.setdefault(
                 country_code,
@@ -10132,6 +10381,256 @@ async def client_subscription(request: Request, x_telegram_init_data: str = Head
             "trafficPolicy": dict(access_policy.get("traffic_policy") or {}),
             "currentPlanCode": str(getattr(user, "current_plan_code", "") or "").strip() or None,
         }
+    finally:
+        s.close()
+
+
+def _device_pairing_http_error(exc: device_pairing_service.DevicePairingError) -> HTTPException:
+    status_by_code = {
+        "pairing_not_configured": 503,
+        "pairing_not_found": 404,
+        "pairing_code_invalid": 400,
+        "pairing_code_expired": 410,
+        "pairing_code_used": 409,
+        "device_invalid": 400,
+        "device_already_registered": 409,
+        "device_identity_conflict": 409,
+        "device_limit_reached": 409,
+        "account_not_found": 409,
+    }
+    message_by_code = {
+        "pairing_not_configured": "Привязка устройств пока не настроена.",
+        "pairing_not_found": "Код привязки не найден.",
+        "pairing_code_invalid": "Код не подошёл. Проверьте восемь символов.",
+        "pairing_code_expired": "Код истёк. Создайте новый на уже связанном устройстве.",
+        "pairing_code_used": "Этот код уже использован или отменён.",
+        "device_invalid": "Не удалось определить новое устройство.",
+        "device_already_registered": "Это устройство уже связано. Используйте восстановление доступа.",
+        "device_identity_conflict": "Это устройство связано с другим аккаунтом.",
+        "device_limit_reached": "Лимит устройств исчерпан. Сначала отвяжите старое устройство.",
+        "account_not_found": "Аккаунт для привязки недоступен.",
+    }
+    code = str(exc.code or "pairing_failed")
+    return HTTPException(
+        status_code=int(status_by_code.get(code, 400)),
+        detail={"code": code, "message": message_by_code.get(code, "Не удалось привязать устройство.")},
+    )
+
+
+@app.post("/api/client/device-pairing/codes")
+async def client_device_pairing_issue(
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    s, user, auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        _enforce_beta_rate_limit("device_pairing_issue", request, identity=f"account:{user.account_id}")
+        now = _utcnow()
+        issued = device_pairing_service.issue_pairing_code(
+            s,
+            account_id=str(user.account_id or ""),
+            issued_by_session_id=str(auth_user.get("session_id") or "") or None,
+            now=now,
+        )
+        _record_client_event(
+            s,
+            user=user,
+            event_name="device_pairing_code_issued",
+            meta={"pairing_id": str(issued.row.id), "expires_at": _safe_iso(issued.row.expires_at)},
+        )
+        s.commit()
+        manual_code = str(issued.code)
+        return {
+            "ok": True,
+            "pairing": {
+                **device_pairing_service.pairing_code_public_payload(issued.row),
+                "code": manual_code,
+                "pairing_uri": f"pokrov://pair?code={urlencode({'code': manual_code}).split('=', 1)[-1]}",
+                "ttl_seconds": int((issued.row.expires_at - now).total_seconds()),
+            },
+        }
+    except device_pairing_service.DevicePairingError as exc:
+        s.rollback()
+        raise _device_pairing_http_error(exc) from exc
+    finally:
+        s.close()
+
+
+@app.get("/api/client/device-pairing/codes")
+async def client_device_pairing_codes(
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+    limit: int = Query(default=10, ge=1, le=25),
+) -> dict[str, Any]:
+    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        rows = device_pairing_service.list_pairing_codes(
+            s,
+            account_id=str(user.account_id or ""),
+            now=_utcnow(),
+            limit=limit,
+        )
+        s.commit()
+        return {"ok": True, "items": [device_pairing_service.pairing_code_public_payload(row) for row in rows]}
+    except device_pairing_service.DevicePairingError as exc:
+        s.rollback()
+        raise _device_pairing_http_error(exc) from exc
+    finally:
+        s.close()
+
+
+@app.delete("/api/client/device-pairing/codes/{pairing_id}")
+async def client_device_pairing_cancel(
+    pairing_id: str,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        row = device_pairing_service.cancel_pairing_code(
+            s,
+            account_id=str(user.account_id or ""),
+            pairing_id=pairing_id,
+            now=_utcnow(),
+        )
+        s.commit()
+        return {"ok": True, "pairing": device_pairing_service.pairing_code_public_payload(row)}
+    except device_pairing_service.DevicePairingError as exc:
+        s.rollback()
+        raise _device_pairing_http_error(exc) from exc
+    finally:
+        s.close()
+
+
+@app.post("/api/client/device-pairing/claim")
+async def client_device_pairing_claim(payload: ClientDevicePairingClaimIn, request: Request) -> dict[str, Any]:
+    code_fp = hashlib.sha256(str(payload.code or "").strip().upper().encode("utf-8")).hexdigest()[:24]
+    install_fp = hashlib.sha256(str(payload.install_id or "").strip().encode("utf-8")).hexdigest()[:24]
+    _enforce_beta_rate_limit("device_pairing_claim_ip", request)
+    _enforce_beta_rate_limit("device_pairing_claim", request, identity=f"{code_fp}:{install_fp}")
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        claimed = device_pairing_service.claim_pairing_code(
+            s,
+            code=payload.code,
+            install_id=payload.install_id,
+            device_name=payload.device_name,
+            platform=payload.platform,
+            os_version=payload.os_version,
+            app_version=payload.app_version,
+            locale=payload.locale,
+            time_zone=payload.time_zone,
+            device_limit_resolver=_plan_device_limit,
+            now=now,
+        )
+        owner = (
+            s.query(User)
+            .filter(User.account_id == str(claimed.row.account_id))
+            .order_by(User.tg_id.asc())
+            .first()
+        )
+        if owner is not None:
+            _record_client_event(
+                s,
+                user=owner,
+                event_name="device_pairing_claimed",
+                session_id=str(payload.install_id),
+                meta={"pairing_id": str(claimed.row.id), "platform": str(payload.platform)},
+            )
+        session_payload = claimed.session.response_payload(now=now)
+        session_payload["scope"] = "client"
+        s.commit()
+        return {
+            "ok": True,
+            "token": claimed.session.access_token,
+            "session_token": claimed.session.access_token,
+            "access_token": claimed.session.access_token,
+            "refresh_token": claimed.session.refresh_token,
+            "token_type": "Bearer",
+            "expires_in": session_payload["expires_in"],
+            "refresh_expires_in": session_payload["refresh_expires_in"],
+            "canonical_account_id": claimed.session.account_id,
+            "session": session_payload,
+        }
+    except device_pairing_service.DevicePairingError as exc:
+        s.rollback()
+        raise _device_pairing_http_error(exc) from exc
+    finally:
+        s.close()
+
+
+@app.get("/api/client/programs")
+async def client_programs(request: Request, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
+    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        rows = program_application_service.list_account_applications(
+            s,
+            account_id=str(user.account_id or ""),
+        )
+        return {
+            "ok": True,
+            "capabilities": _public_program_capabilities(),
+            "applications": [program_application_service.application_payload(row) for row in rows],
+        }
+    finally:
+        s.close()
+
+
+@app.post("/api/client/programs/applications")
+async def client_program_application_create(
+    payload: ProgramApplicationCreateIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        _enforce_beta_rate_limit("program_application", request, identity=f"account:{user.account_id}")
+        row = program_application_service.submit_application(
+            s,
+            user=user,
+            kind=payload.kind,
+            source_name=payload.source_name,
+            seats=payload.seats,
+            summary=payload.summary,
+            contact=payload.contact,
+            now=_utcnow(),
+        )
+        _record_client_event(
+            s,
+            user=user,
+            event_name="program_application_submitted",
+            meta={"application_id": str(row.id), "kind": str(row.kind)},
+        )
+        s.commit()
+        return {"ok": True, "application": program_application_service.application_payload(row)}
+    except program_application_service.ProgramApplicationError as exc:
+        s.rollback()
+        status = 409 if exc.code == "program_application_pending" else 400
+        raise HTTPException(status_code=status, detail={"code": exc.code, "message": exc.message}) from exc
+    finally:
+        s.close()
+
+
+@app.delete("/api/client/programs/applications/{application_id}")
+async def client_program_application_cancel(
+    application_id: str,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        row = program_application_service.cancel_application(
+            s,
+            account_id=str(user.account_id or ""),
+            application_id=application_id,
+            now=_utcnow(),
+        )
+        s.commit()
+        return {"ok": True, "application": program_application_service.application_payload(row)}
+    except program_application_service.ProgramApplicationError as exc:
+        s.rollback()
+        raise HTTPException(status_code=404, detail={"code": exc.code, "message": exc.message}) from exc
     finally:
         s.close()
 
@@ -10265,7 +10764,52 @@ async def client_notifications(
             source="client_notifications_runtime",
         )
         read_ids = _client_notification_read_ids(s, user=user)
-        items = _client_notification_items(user=user, access_policy=access_policy, read_ids=read_ids)
+        incidents = (
+            s.query(ServiceIncident)
+            .filter(ServiceIncident.status == "confirmed")
+            .order_by(ServiceIncident.started_at.desc())
+            .limit(10)
+            .all()
+        )
+        live_updates = (
+            s.query(LiveUpdate)
+            .filter(LiveUpdate.is_active == True)
+            .order_by(LiveUpdate.sort_order.asc(), LiveUpdate.id.desc())
+            .limit(10)
+            .all()
+        )
+        account_id = str(getattr(user, "account_id", "") or "").strip()
+        compensation_grants = (
+            s.query(EntitlementGrant)
+            .filter(
+                EntitlementGrant.account_id == account_id,
+                EntitlementGrant.source == "incident_compensation",
+                EntitlementGrant.status == "active",
+            )
+            .order_by(EntitlementGrant.created_at.desc())
+            .limit(10)
+            .all()
+            if account_id
+            else []
+        )
+        program_applications = (
+            s.query(ProgramApplication)
+            .filter(ProgramApplication.account_id == account_id)
+            .order_by(ProgramApplication.updated_at.desc(), ProgramApplication.created_at.desc())
+            .limit(10)
+            .all()
+            if account_id
+            else []
+        )
+        items = _client_notification_items(
+            user=user,
+            access_policy=access_policy,
+            read_ids=read_ids,
+            incidents=incidents,
+            live_updates=live_updates,
+            compensation_grants=compensation_grants,
+            program_applications=program_applications,
+        )
         return {
             "items": items,
             "nextCursor": None,
@@ -13557,7 +14101,7 @@ async def bonuses(request: Request, x_telegram_init_data: str = Header(default="
         s.close()
 
 
-def _bonus_referral_summary_payload(*, user: User, tg_id: int) -> dict[str, Any]:
+def _bonus_referral_summary_payload(*, s, user: User, tg_id: int) -> dict[str, Any]:
     referral_code = str(user.referral_code or "").strip()
     referral_link = (
         f"https://t.me/{BOT_USERNAME}?start=ref_{referral_code}"
@@ -13565,6 +14109,42 @@ def _bonus_referral_summary_payload(*, user: User, tg_id: int) -> dict[str, Any]
         else ""
     )
     tier = referral_tier_snapshot(tg_id=tg_id)
+    account_id = str(user.account_id or "").strip()
+    relationships = (
+        s.query(ReferralRelationship)
+        .filter(ReferralRelationship.referrer_account_id == account_id)
+        .order_by(ReferralRelationship.created_at.desc())
+        .limit(50)
+        .all()
+        if account_id
+        else []
+    )
+    activated_count = sum(1 for row in relationships if row.friend_granted_at is not None)
+    paid_count = sum(1 for row in relationships if row.first_payment_at is not None)
+    rewarded_count = sum(1 for row in relationships if row.referrer_granted_at is not None)
+    invited_count = max(int(user.referral_count or 0), len(relationships))
+    history: list[dict[str, Any]] = []
+    for row in relationships[:20]:
+        status = "invited"
+        if str(row.review_status or "").strip().lower() not in {"", "clear"}:
+            status = "review"
+        if row.friend_granted_at is not None:
+            status = "activated"
+        if row.first_payment_at is not None:
+            status = "hold" if row.hold_until is not None and row.referrer_granted_at is None else "paid"
+        if row.referrer_granted_at is not None:
+            status = "rewarded"
+        history.append(
+            {
+                "id": str(row.id),
+                "status": status,
+                "created_at": _safe_iso(row.created_at),
+                "activated_at": _safe_iso(row.friend_granted_at),
+                "paid_at": _safe_iso(row.first_payment_at),
+                "hold_until": _safe_iso(row.hold_until),
+                "rewarded_at": _safe_iso(row.referrer_granted_at),
+            }
+        )
     return {
         "ok": True,
         "tg_id": tg_id,
@@ -13577,6 +14157,16 @@ def _bonus_referral_summary_payload(*, user: User, tg_id: int) -> dict[str, Any]
         "referral_code": referral_code,
         "referral_bonus_days": REFERRAL_BONUS_DAYS,
         "points_tier": tier,
+        "conversion": {
+            "invited": invited_count,
+            "activated": activated_count,
+            "paid": paid_count,
+            "rewarded": rewarded_count,
+            "activation_pct": round((activated_count / invited_count) * 100, 1) if invited_count else 0.0,
+            "paid_pct": round((paid_count / invited_count) * 100, 1) if invited_count else 0.0,
+        },
+        "history": history,
+        "privacy": "Имена и аккаунты приглашённых не показываются.",
     }
 
 
@@ -13612,6 +14202,7 @@ def _reward_http_error(exc: RewardDomainError) -> HTTPException:
                 "code": exc.code,
                 "next_spin_at": _safe_iso(exc.next_allowed_at),
                 "last_reward_days": exc.last_reward_days,
+                "last_discount_pct": exc.last_discount_pct,
             },
         )
     if isinstance(exc, RewardDisabled):
@@ -13653,27 +14244,111 @@ def _bonus_achievements_payload(
         .all()
     )
     custom_ids = {str(row.achievement_id or "") for row in custom_rows}
+    experience = account_experience_service.build_experience_snapshot(
+        s,
+        account_id=str(user.account_id or ""),
+        app_identity_known=bool(str(getattr(user, "app_install_id", "") or "").strip()),
+    )
+    first_tunnel = str((experience.get("first_connection") or {}).get("state") or "") == "verified"
+    active_device_count = int(
+        s.query(func.count(AccountDevice.id))
+        .filter(
+            AccountDevice.account_id == str(user.account_id or ""),
+            AccountDevice.state == "active",
+            AccountDevice.revoked_at.is_(None),
+        )
+        .scalar()
+        or 0
+    )
+    routing_lesson = (
+        s.query(Event.id)
+        .filter(
+            Event.tg_id == int(tg_id),
+            Event.event_name == "routing_lesson_completed",
+        )
+        .first()
+        is not None
+    )
+    quality_feedback = (
+        s.query(ProgramApplication.id)
+        .filter(
+            ProgramApplication.account_id == str(user.account_id or ""),
+            ProgramApplication.kind == "research",
+            ProgramApplication.status.in_(("approved", "rewarded")),
+        )
+        .first()
+        is not None
+    )
     items = [
-        {"id": "first_launch", "title": "Первый запуск", "unlocked": bool(getattr(user, "is_app_user", False))},
-        {"id": "telegram_bonus", "title": "Telegram-бонус", "unlocked": bool(getattr(user, "channel_bonus_claimed_at", None))},
-        {"id": "first_wheel", "title": "Первая рулетка", "unlocked": "first_wheel" in custom_ids},
+        {"id": "first_launch", "title": "Первый запуск", "description": "Приложение связано с аккаунтом.", "unlocked": bool(getattr(user, "is_app_user", False))},
+        {"id": "first_tunnel", "title": "Первый туннель", "description": "Сервер получил подтверждение успешного подключения.", "unlocked": first_tunnel},
+        {"id": "second_device", "title": "Два устройства", "description": "К аккаунту привязаны два активных устройства.", "unlocked": active_device_count >= 2},
+        {"id": "telegram_bonus", "title": "Telegram-бонус", "description": "Бонус канала подтверждён сервером.", "unlocked": bool(getattr(user, "channel_bonus_claimed_at", None))},
+        {"id": "first_wheel", "title": "Первая рулетка", "description": "Первый результат записан в reward ledger.", "unlocked": "first_wheel" in custom_ids},
         {
             "id": "first_checkin",
             "title": "Первая отметка",
+            "description": "Первая серверная отметка в календаре.",
             "unlocked": bool(calendar_state.achievements.get("first_checkin")),
         },
         {
             "id": "streak_7",
             "title": "7 отметок",
+            "description": "Семь серверных отметок в текущем цикле.",
             "unlocked": bool(calendar_state.achievements.get("streak_7")),
         },
-        {"id": "first_referral", "title": "Первый друг", "unlocked": bool(int(getattr(user, "referral_count", 0) or 0) > 0)},
+        {"id": "first_referral", "title": "Первый друг", "description": "Первое приглашение учтено реферальным ledger.", "unlocked": bool(int(getattr(user, "referral_count", 0) or 0) > 0)},
+    ]
+    quests = [
+        {
+            "id": "first_tunnel",
+            "title": "Подключиться первый раз",
+            "description": "Подключите VPN и дождитесь подтверждённого состояния.",
+            "progress": 1 if first_tunnel else 0,
+            "target": 1,
+            "completed": first_tunnel,
+            "verification": "connection_evidence",
+            "action_href": "/protection/",
+        },
+        {
+            "id": "second_device",
+            "title": "Добавить второе устройство",
+            "description": "Свяжите ещё одно своё устройство по одноразовому коду.",
+            "progress": min(active_device_count, 2),
+            "target": 2,
+            "completed": active_device_count >= 2,
+            "verification": "active_account_devices",
+            "action_href": "/devices/",
+        },
+        {
+            "id": "routing_lesson",
+            "title": "Разобраться в маршрутах",
+            "description": "Пройдите короткую инструкцию и проверьте решение для адреса.",
+            "progress": 1 if routing_lesson else 0,
+            "target": 1,
+            "completed": routing_lesson,
+            "verification": "routing_lesson_completed",
+            "action_href": "/guides/#route-smart",
+        },
+        {
+            "id": "quality_feedback",
+            "title": "Помочь исследованию",
+            "description": "Отправьте полезный отчёт; выполнение подтверждает оператор, оценка 5★ не требуется.",
+            "progress": 1 if quality_feedback else 0,
+            "target": 1,
+            "completed": quality_feedback,
+            "verification": "approved_research_application",
+            "action_href": "/programs/",
+        },
     ]
     return {
         "enabled": True,
         "ledger_ready": True,
         "unlocked_count": len([item for item in items if item["unlocked"]]),
         "items": items,
+        "quests": quests,
+        "quest_rewards_enabled": False,
+        "reward_policy": "Полезные действия учитываются без автоматической денежной награды.",
     }
 
 
@@ -13721,6 +14396,7 @@ def _bonus_history_payload(*, s, user: User, tg_id: int, limit: int = 20) -> dic
     for entry in reward_entries:
         reward_key = str(entry.metadata.get("reward_key") or "")
         feature = str(entry.metadata.get("feature") or "")
+        discount_pct = int(entry.metadata.get("discount_pct") or 0)
         is_wheel = entry.source == "bonus_wheel" or feature == "wheel" or reward_key.startswith("wheel_")
         is_calendar = (
             entry.source == "bonus_calendar"
@@ -13738,11 +14414,14 @@ def _bonus_history_payload(*, s, user: User, tg_id: int, limit: int = 20) -> dic
                 ),
                 "source": entry.source,
                 "title": (
-                    "Рулетка: бонус получен"
+                    "Рулетка: скидка получена"
+                    if is_wheel and discount_pct > 0
+                    else "Рулетка: бонус получен"
                     if is_wheel
                     else "Активность отмечена" if is_calendar else "Бонус получен"
                 ),
                 "days": int(entry.reward_days),
+                "discount_pct": discount_pct,
                 "durable_id": entry.durable_id,
             },
         )
@@ -13799,13 +14478,38 @@ def _bonus_wheel_state_payload(
 ) -> dict[str, Any]:
     current_now = now or _reward_now()
     rollout_flag_enabled = bool(BONUS_WHEEL_ENABLED)
+    config_payload = _bonus_wheel_config(s=s)
     state = wheel_state or get_wheel_state(
         s,
         account_id=str(user.account_id or ""),
         enabled=rollout_flag_enabled,
-        config_payload=_bonus_wheel_config(s=s),
+        config_payload=config_payload,
         now=current_now,
     )
+    display_sectors: list[dict[str, Any]] = []
+    config_preset: str | None = None
+    if state.reason != "wheel_config_invalid":
+        try:
+            parsed_config = parse_paid_weekly_config(
+                config_payload or {},
+                explicit=config_payload is not None,
+            )
+            config_preset = parsed_config.preset
+            display_sectors = [
+                {
+                    "key": outcome.key,
+                    "kind": outcome.kind,
+                    "value": int(outcome.value),
+                    "label": (
+                        f"+{int(outcome.value)} дн."
+                        if outcome.kind == "days"
+                        else f"−{int(outcome.value)}%"
+                    ),
+                }
+                for outcome in parsed_config.outcomes
+            ]
+        except RewardDomainError:
+            display_sectors = []
     if not rollout_flag_enabled:
         public_state = "disabled_until_feature_flag"
     elif state.reason == "wheel_config_invalid":
@@ -13830,10 +14534,18 @@ def _bonus_wheel_state_payload(
         "next_spin_at": _safe_iso(state.next_spin_at),
         "cooldown_hours": int(state.cooldown_hours),
         "last_reward_days": state.last_reward_days,
+        "last_discount_pct": state.last_discount_pct,
+        "last_reward_kind": (
+            "discount"
+            if state.last_discount_pct
+            else "days" if state.last_reward_days else None
+        ),
         "sync_state": str(state.sync_state),
         "sectors": [int(days) for days in state.sectors],
+        "discount_sectors": [int(value) for value in state.discount_sectors],
+        "display_sectors": display_sectors,
         "ledger_ready": True,
-        "config_preset": "paid_weekly_v1" if state.reason != "wheel_config_invalid" else None,
+        "config_preset": config_preset,
     }
 
 
@@ -13895,7 +14607,7 @@ def _bonus_calendar_state_payload(
 
 def _bonus_summary_payload(*, s, user: User, tg_id: int) -> dict[str, Any]:
     now = _reward_now()
-    referral = _bonus_referral_summary_payload(user=user, tg_id=tg_id)
+    referral = _bonus_referral_summary_payload(s=s, user=user, tg_id=tg_id)
     history = _bonus_history_payload(s=s, user=user, tg_id=tg_id, limit=20)
     wheel_state = get_wheel_state(
         s,
@@ -13994,7 +14706,7 @@ async def bonuses_referral_summary(request: Request, x_telegram_init_data: str =
         user = s.query(User).filter_by(tg_id=tg_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        return _bonus_referral_summary_payload(user=user, tg_id=tg_id)
+        return _bonus_referral_summary_payload(s=s, user=user, tg_id=tg_id)
     finally:
         s.close()
 
@@ -14066,6 +14778,9 @@ async def bonuses_wheel_spin(request: Request, x_telegram_init_data: str = Heade
         event_name="wheel_reward_claimed",
         meta={
             "reward_days": int(mutation.reward_days),
+            "reward_kind": mutation.reward_kind,
+            "reward_value": int(mutation.reward_value),
+            "discount_pct": int(mutation.discount_pct),
             "grant_id": mutation.grant_id,
             "sync_state": mutation.sync_state,
         },
@@ -14074,6 +14789,10 @@ async def bonuses_wheel_spin(request: Request, x_telegram_init_data: str = Heade
         "ok": True,
         "feature": "wheel",
         "reward_days": int(mutation.reward_days),
+        "reward_kind": mutation.reward_kind,
+        "reward_value": int(mutation.reward_value),
+        "discount_pct": int(mutation.discount_pct),
+        "sector_key": mutation.sector_key,
         "grant_id": mutation.grant_id,
         "sync_state": str(mutation.sync_state),
         "state": wheel_state,
@@ -17098,6 +17817,288 @@ async def admin_plans_delete(
     )
 
 
+@app.get("/api/admin/service-incidents")
+async def admin_service_incidents(
+    x_telegram_init_data: str = Header(default=""),
+    limit: int = Query(default=100, ge=1, le=300),
+) -> dict[str, Any]:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        rows = (
+            s.query(ServiceIncident)
+            .order_by(ServiceIncident.started_at.desc(), ServiceIncident.created_at.desc())
+            .limit(int(limit))
+            .all()
+        )
+        return {"incidents": [incident_service.incident_payload(row) for row in rows]}
+    finally:
+        s.close()
+
+
+@app.post("/api/admin/service-incidents")
+async def admin_service_incident_create(
+    payload: AdminServiceIncidentCreateIn,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    incident_key = str(payload.incident_key or "").strip().lower()
+    if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{2,79}", incident_key):
+        raise HTTPException(status_code=422, detail="Invalid incident key")
+    severity = str(payload.severity or "").strip().lower()
+    if severity not in {"minor", "degraded", "major", "critical"}:
+        raise HTTPException(status_code=422, detail="Invalid incident severity")
+    if int(payload.compensation_days) not in incident_service.ALLOWED_COMPENSATION_DAYS:
+        raise HTTPException(status_code=422, detail="Invalid compensation days")
+    started_at = _parse_admin_datetime(payload.started_at)
+    if started_at is None or started_at > _utcnow() + timedelta(minutes=5):
+        raise HTTPException(status_code=422, detail="Invalid incident start")
+    node_codes = incident_service.normalize_node_codes(payload.affected_node_codes)
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        if s.query(ServiceIncident.id).filter(ServiceIncident.incident_key == incident_key).first():
+            raise HTTPException(status_code=409, detail="Incident key already exists")
+        row = ServiceIncident(
+            id=str(uuid.uuid4()),
+            incident_key=incident_key,
+            title=str(payload.title).strip(),
+            summary=str(payload.summary).strip(),
+            severity=severity,
+            status="confirmed",
+            started_at=started_at,
+            affected_node_codes_json=json.dumps(list(node_codes), separators=(",", ":")),
+            compensation_days=int(payload.compensation_days),
+            confirmed_by=actor,
+            confirmed_at=now,
+            created_at=now,
+            updated_at=now,
+        )
+        s.add(row)
+        s.flush()
+        _add_admin_audit(
+            s,
+            actor_tg_id=actor,
+            action="service_incident.confirm",
+            meta={
+                "incident_id": str(row.id),
+                "incident_key": incident_key,
+                "affected_node_codes": list(node_codes),
+                "compensation_days": int(payload.compensation_days),
+            },
+        )
+        s.commit()
+        return {"incident": incident_service.incident_payload(row)}
+    except HTTPException:
+        s.rollback()
+        raise
+    except IntegrityError as exc:
+        s.rollback()
+        raise HTTPException(status_code=409, detail="Incident key already exists") from exc
+    finally:
+        s.close()
+
+
+@app.post("/api/admin/service-incidents/{incident_id}/resolve")
+async def admin_service_incident_resolve(
+    incident_id: str,
+    payload: AdminServiceIncidentResolveIn,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    ended_at = _parse_admin_datetime(payload.ended_at)
+    if ended_at is None or ended_at > _utcnow() + timedelta(minutes=5):
+        raise HTTPException(status_code=422, detail="Invalid incident end")
+    now = _utcnow()
+    s = SessionLocal()
+    try:
+        row = (
+            s.query(ServiceIncident)
+            .filter(ServiceIncident.id == str(incident_id))
+            .with_for_update()
+            .one_or_none()
+        )
+        if row is None:
+            raise HTTPException(status_code=404, detail="Incident not found")
+        if str(row.status) == "cancelled":
+            raise HTTPException(status_code=409, detail="Cancelled incident cannot be resolved")
+        if ended_at < row.started_at:
+            raise HTTPException(status_code=422, detail="Incident end precedes start")
+        if str(row.status) == "confirmed":
+            row.status = "resolved"
+            row.ended_at = ended_at
+            row.resolved_by = actor
+            row.resolved_at = now
+            row.updated_at = now
+        elif row.ended_at != ended_at:
+            raise HTTPException(status_code=409, detail="Resolved incident window is immutable")
+        _add_admin_audit(
+            s,
+            actor_tg_id=actor,
+            action="service_incident.resolve",
+            meta={
+                "incident_id": str(row.id),
+                "incident_key": str(row.incident_key),
+                "ended_at": _safe_iso(row.ended_at),
+            },
+        )
+        s.commit()
+        return {
+            "incident": incident_service.incident_payload(row),
+            "compensationQueued": int(row.compensation_days or 0) > 0
+                and row.compensation_completed_at is None,
+        }
+    except HTTPException:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+@app.post("/api/admin/service-incidents/{incident_id}/compensate")
+async def admin_service_incident_compensate(
+    incident_id: str,
+    payload: AdminServiceIncidentCompensateIn,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    s = SessionLocal()
+    try:
+        row = s.query(ServiceIncident).filter(ServiceIncident.id == str(incident_id)).one_or_none()
+        if row is None:
+            raise HTTPException(status_code=404, detail="Incident not found")
+        try:
+            preview = incident_service.preview_incident_compensation(s, incident=row)
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
+        preview_payload = {
+            "incidentId": preview.incident_id,
+            "incidentKey": preview.incident_key,
+            "impactedAccounts": preview.impacted_accounts,
+            "compensationDays": preview.compensation_days,
+        }
+        if payload.dry_run:
+            return {"applied": False, "dryRun": True, "preview": preview_payload}
+        if not secrets.compare_digest(
+            str(payload.confirm_incident_key or "").strip().lower(),
+            str(row.incident_key),
+        ):
+            raise HTTPException(status_code=409, detail="Incident confirmation key mismatch")
+        result = incident_service.apply_incident_compensation(
+            s,
+            incident_id=str(row.id),
+            now=_utcnow(),
+        )
+        _add_admin_audit(
+            s,
+            actor_tg_id=actor,
+            action="service_incident.compensate",
+            meta={
+                **preview_payload,
+                "granted_accounts": result.granted_accounts,
+                "existing_grants": result.existing_grants,
+            },
+        )
+        s.commit()
+        return {
+            "applied": True,
+            "dryRun": False,
+            "preview": preview_payload,
+            "grantedAccounts": result.granted_accounts,
+            "existingGrants": result.existing_grants,
+            "completedAt": _safe_iso(result.completed_at),
+        }
+    except HTTPException:
+        s.rollback()
+        raise
+    except ValueError as exc:
+        s.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    finally:
+        s.close()
+
+
+@app.get("/api/admin/program-applications")
+async def admin_program_applications(
+    x_telegram_init_data: str = Header(default=""),
+    status: str = Query(default="", max_length=24),
+    kind: str = Query(default="", max_length=32),
+    limit: int = Query(default=100, ge=1, le=300),
+) -> dict[str, Any]:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        query = s.query(ProgramApplication)
+        normalized_status = str(status or "").strip().lower()
+        normalized_kind = str(kind or "").strip().lower()
+        if normalized_status:
+            query = query.filter(ProgramApplication.status == normalized_status)
+        if normalized_kind:
+            query = query.filter(ProgramApplication.kind == normalized_kind)
+        rows = query.order_by(ProgramApplication.created_at.desc()).limit(int(limit)).all()
+        return {
+            "ok": True,
+            "applications": [
+                program_application_service.application_payload(row, include_operator_note=True)
+                for row in rows
+            ],
+        }
+    finally:
+        s.close()
+
+
+@app.post("/api/admin/program-applications/{application_id}/review")
+async def admin_program_application_review(
+    application_id: str,
+    payload: AdminProgramApplicationReviewIn,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    if int(payload.reward_days or 0) > 0 and not secrets.compare_digest(
+        str(payload.confirm_application_id or "").strip(),
+        str(application_id),
+    ):
+        raise HTTPException(status_code=409, detail="Application confirmation id mismatch")
+    s = SessionLocal()
+    try:
+        row = program_application_service.review_application(
+            s,
+            application_id=application_id,
+            status=payload.status,
+            operator_note=payload.operator_note,
+            reward_days=payload.reward_days,
+            reviewed_by=actor,
+            now=_utcnow(),
+        )
+        _add_admin_audit(
+            s,
+            actor_tg_id=actor,
+            action="program_application.review",
+            target_tg_id=int(row.legacy_tg_id) if row.legacy_tg_id is not None else None,
+            meta={
+                "application_id": str(row.id),
+                "kind": str(row.kind),
+                "status": str(row.status),
+                "reward_days": int(row.reward_days or 0),
+                "reward_grant_id": str(row.reward_grant_id or "") or None,
+            },
+        )
+        s.commit()
+        return {
+            "ok": True,
+            "application": program_application_service.application_payload(row, include_operator_note=True),
+        }
+    except program_application_service.ProgramApplicationError as exc:
+        s.rollback()
+        status_code = 404 if exc.code == "program_application_not_found" else 409
+        raise HTTPException(status_code=status_code, detail={"code": exc.code, "message": exc.message}) from exc
+    except ValueError as exc:
+        s.rollback()
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    finally:
+        s.close()
+
+
 @app.get("/api/admin/live-updates")
 async def admin_live_updates(x_telegram_init_data: str = Header(default=""), include_inactive: bool = True) -> dict:
     _require_admin(x_telegram_init_data)
@@ -19404,8 +20405,16 @@ def _execute_task20_admin_action_db(
         normalized = {
             "preset": config.preset,
             "weights": [
-                {"days": int(days), "weight": int(weight)}
-                for days, weight in config.outcomes
+                (
+                    {"days": int(outcome.value), "weight": int(outcome.weight)}
+                    if config.preset == "paid_weekly_v1"
+                    else {
+                        "kind": outcome.kind,
+                        "value": int(outcome.value),
+                        "weight": int(outcome.weight),
+                    }
+                )
+                for outcome in config.outcomes
             ],
             "cooldown_hours": int(config.cooldown_hours),
         }

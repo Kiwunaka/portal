@@ -128,6 +128,14 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
     match: (path) => path.startsWith("/admin/referrals"),
   },
   {
+    href: "/admin/programs",
+    label: "Заявки программ",
+    icon: "assignment",
+    summary: "Переход от конкурентов, исследования и команды с ручной проверкой.",
+    categoryId: "access",
+    match: (path) => path.startsWith("/admin/programs"),
+  },
+  {
     href: "/admin/promos",
     label: "Ключи и промо",
     icon: "sell",

@@ -6,6 +6,11 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { buildBreadcrumbJsonLd, buildMarketingMetadata, MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
 import { CANONICAL_PLATFORM_BRAND, getPokrovPublicConfig } from "../../lib/pokrov";
+import {
+  PRIVACY_FIELDS,
+  TRUST_CATALOG_LAST_VERIFIED,
+  TRUST_CATALOG_VERSION,
+} from "../../../../shared/trust-and-guides";
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 
@@ -42,6 +47,44 @@ export default function PrivacyPage() {
       </section>
 
       <section className="mx-auto flex max-w-3xl flex-col gap-4 px-4 pb-16 sm:px-6">
+        <Card className="flex flex-col gap-4">
+          <div>
+            <p className="text-xs font-semibold tracking-[0.08em] text-brand uppercase">
+              Поля · версия {TRUST_CATALOG_VERSION} · проверено {TRUST_CATALOG_LAST_VERIFIED}
+            </p>
+            <h2 className="mt-2 font-display text-[1.25rem] font-bold text-ink">Что именно, зачем и на какой срок</h2>
+          </div>
+          <div className="overflow-x-auto rounded-panel border border-line">
+            <table className="w-full min-w-[760px] border-collapse text-left text-sm">
+              <thead className="bg-canvas-alt text-ink">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">Поле</th>
+                  <th className="px-4 py-3 font-semibold">Собирается</th>
+                  <th className="px-4 py-3 font-semibold">Зачем</th>
+                  <th className="px-4 py-3 font-semibold">Хранение</th>
+                </tr>
+              </thead>
+              <tbody>
+                {PRIVACY_FIELDS.map((row) => (
+                  <tr key={row.field} className="border-t border-line align-top">
+                    <td className="px-4 py-3">
+                      <p className="font-semibold text-ink">{row.field}</p>
+                      <p className="mt-1 leading-relaxed text-ink-soft">{row.scope}</p>
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-ink">{row.collected ? "Да" : "Нет"}</td>
+                    <td className="px-4 py-3 leading-relaxed text-ink-soft">{row.purpose}</td>
+                    <td className="px-4 py-3 leading-relaxed text-ink-soft">{row.retention}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-sm leading-relaxed text-ink-soft">
+            Коротко: POKROV не хранит историю посещённых сайтов. Это не означает «вообще ничего не собираем» — поля,
+            нужные для аккаунта, оплаты, защиты от злоупотреблений и поддержки, перечислены выше.
+          </p>
+        </Card>
+
         <Card className="flex flex-col gap-3">
           <h2 className="font-display text-[1.25rem] font-bold text-ink">Какие данные используются</h2>
           <ul className={LIST_CLASS}>

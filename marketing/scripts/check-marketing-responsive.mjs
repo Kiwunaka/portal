@@ -30,6 +30,7 @@ const ROUTES = [
   "/trust/github-releases/",
   "/compare/free-vpn/",
   "/support/install/",
+  "/fallback/",
 ];
 const VIEWPORTS = [
   { name: "mobile", width: 390, height: 844 },

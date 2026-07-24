@@ -123,7 +123,10 @@ def test_cabinet_dashboard_download_ctas_point_to_install_route() -> None:
     dashboard = _read_webapp("app", "(dashboard)", "dashboard", "page.tsx")
 
     assert "https://pokrov.space/#download" not in dashboard
-    assert 'const primaryHref = isActive ? "/downloads/" : "/subscription/checkout/";' in dashboard
+    assert 'const primaryHref = !isActive' in dashboard
+    assert '? "/subscription/checkout/"' in dashboard
+    assert 'nextStep === "install"' in dashboard
+    assert '? "/downloads/"' in dashboard
     assert "href={primaryHref}" in dashboard
 
 

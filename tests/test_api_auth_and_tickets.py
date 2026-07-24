@@ -4701,12 +4701,15 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(
             cfg_get.json()["wheel_config"],
             {
-                "preset": "paid_weekly_v1",
+                "preset": "paid_weekly_discounts_v2",
                 "weights": [
-                    {"days": 1, "weight": 9000},
-                    {"days": 3, "weight": 890},
-                    {"days": 7, "weight": 100},
-                    {"days": 30, "weight": 10},
+                    {"kind": "days", "value": 1, "weight": 8300},
+                    {"kind": "discount", "value": 5, "weight": 500},
+                    {"kind": "days", "value": 3, "weight": 790},
+                    {"kind": "discount", "value": 7, "weight": 200},
+                    {"kind": "days", "value": 7, "weight": 100},
+                    {"kind": "discount", "value": 10, "weight": 100},
+                    {"kind": "days", "value": 30, "weight": 10},
                 ],
                 "cooldown_hours": 168,
             },

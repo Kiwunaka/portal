@@ -451,7 +451,47 @@ def test_paid_weekly_v1_exposes_exact_immutable_outcomes() -> None:
 
     assert parsed.preset == "paid_weekly_v1"
     assert parsed.cooldown_hours == 168
-    assert parsed.outcomes == ((1, 9000), (3, 890), (7, 100), (30, 10))
+    assert tuple(
+        (outcome.kind, outcome.value, outcome.weight)
+        for outcome in parsed.outcomes
+    ) == (
+        ("days", 1, 9000),
+        ("days", 3, 890),
+        ("days", 7, 100),
+        ("days", 30, 10),
+    )
+
+
+@pytest.mark.parametrize(
+    ("draw", "kind", "value"),
+    (
+        (0, "days", 1),
+        (8299, "days", 1),
+        (8300, "discount", 5),
+        (8799, "discount", 5),
+        (8800, "days", 3),
+        (9589, "days", 3),
+        (9590, "discount", 7),
+        (9789, "discount", 7),
+        (9790, "days", 7),
+        (9889, "days", 7),
+        (9890, "discount", 10),
+        (9989, "discount", 10),
+        (9990, "days", 30),
+        (9999, "days", 30),
+    ),
+)
+def test_discount_wheel_draw_boundaries(draw: int, kind: str, value: int) -> None:
+    from rewards_service import (
+        PAID_WEEKLY_DISCOUNTS_V2,
+        _reward_outcome_for_draw,
+        parse_paid_weekly_config,
+    )
+
+    config = parse_paid_weekly_config(PAID_WEEKLY_DISCOUNTS_V2, explicit=True)
+    outcome = _reward_outcome_for_draw(config, draw)
+
+    assert (outcome.kind, outcome.value) == (kind, value)
 
 
 @pytest.mark.parametrize(
@@ -593,6 +633,71 @@ def test_wheel_secure_draw_boundaries(paid_reward_session, now, draw: int, days:
 
     assert result.reward_days == days
     assert result.sync_state == "sync_pending"
+
+
+def test_discount_wheel_creates_one_use_non_stacking_discount(
+    paid_reward_session,
+    now,
+) -> None:
+    from rewards_service import PAID_WEEKLY_DISCOUNTS_V2, get_reward_history, spin_wheel
+
+    result = spin_wheel(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        enabled=True,
+        config_payload=PAID_WEEKLY_DISCOUNTS_V2,
+        now=now,
+        randbelow=lambda _upper: 8300,
+    )
+    user = paid_reward_session.query(User).filter_by(tg_id=PAID_TG_ID).one()
+    history = get_reward_history(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        limit=10,
+    )
+
+    assert result.reward_kind == "discount"
+    assert result.reward_value == 5
+    assert result.reward_days == 0
+    assert result.discount_pct == 5
+    assert result.grant_id is None
+    assert result.sync_state == "not_required"
+    assert int(user.pending_discount_pct or 0) == 5
+    assert user.pending_discount_code == "WHEEL5"
+    assert paid_reward_session.query(EntitlementGrant).filter_by(source="bonus_wheel").count() == 0
+    assert paid_reward_session.query(RewardClaim).filter_by(tg_id=PAID_TG_ID).count() == 1
+    assert history[0].metadata["reward_kind"] == "discount"
+    assert history[0].metadata["discount_pct"] == 5
+
+
+def test_discount_wheel_falls_back_to_one_day_when_discount_is_pending(
+    paid_reward_session,
+    now,
+) -> None:
+    from rewards_service import PAID_WEEKLY_DISCOUNTS_V2, spin_wheel
+
+    user = paid_reward_session.query(User).filter_by(tg_id=PAID_TG_ID).one()
+    user.pending_discount_pct = 10
+    user.pending_discount_code = "EXISTING10"
+    user.pending_discount_set_at = now - timedelta(days=1)
+    paid_reward_session.flush()
+
+    result = spin_wheel(
+        paid_reward_session,
+        account_id=PAID_ACCOUNT_ID,
+        enabled=True,
+        config_payload=PAID_WEEKLY_DISCOUNTS_V2,
+        now=now,
+        randbelow=lambda _upper: 8300,
+    )
+
+    assert result.reward_kind == "days"
+    assert result.reward_days == 1
+    assert result.discount_pct == 0
+    assert result.sector_key == "days:1"
+    assert int(user.pending_discount_pct or 0) == 10
+    assert user.pending_discount_code == "EXISTING10"
+    assert paid_reward_session.query(EntitlementGrant).filter_by(source="bonus_wheel").count() == 1
 
 
 def test_wheel_retry_returns_authoritative_cooldown_without_second_draw(

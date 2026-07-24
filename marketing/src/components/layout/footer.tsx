@@ -50,10 +50,14 @@ export function Footer() {
     { href: "/#features", label: getCopyText("marketing.footer.link.features", "Возможности") },
     { href: "/#pricing", label: getCopyText("marketing.footer.link.pricing", "Цены") },
     { href: MARKETING_CANONICAL_PATHS.install, label: getCopyText("marketing.footer.link.install", "Установка") },
+    { href: MARKETING_CANONICAL_PATHS.guides, label: "Инструкции" },
+    { href: MARKETING_CANONICAL_PATHS.fallback, label: "Запасные клиенты" },
+    { href: MARKETING_CANONICAL_PATHS.programs, label: "Программы" },
     { href: CANONICAL_WEBAPP_URL, label: getCopyText("marketing.footer.link.cabinet", "Кабинет"), external: true },
   ];
 
   const supportLinks: FooterLink[] = [
+    { href: MARKETING_CANONICAL_PATHS.status, label: "Статус сервиса" },
     { href: CANONICAL_SUPPORT_BOT_URL, label: getCopyText("marketing.footer.link.support", "Поддержка в Telegram"), external: true },
     { href: CANONICAL_NEWS_CHANNEL_URL, label: getCopyText("marketing.footer.link.channel", "Канал с новостями"), external: true },
     { href: CANONICAL_BOT_URL, label: getCopyText("marketing.footer.link.bot", "Бот POKROV"), external: true },
@@ -61,6 +65,7 @@ export function Footer() {
   ];
 
   const legalLinks: FooterLink[] = [
+    { href: MARKETING_CANONICAL_PATHS.transparency, label: "Кто за что отвечает" },
     { href: MARKETING_CANONICAL_PATHS.offer, label: getCopyText("marketing.footer.link.offer", "Публичная оферта") },
     { href: MARKETING_CANONICAL_PATHS.privacy, label: getCopyText("marketing.footer.link.privacy", "Конфиденциальность") },
   ];

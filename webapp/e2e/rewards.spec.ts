@@ -179,6 +179,39 @@ async function registerRewardMocks(
     if (path === "/api/bonuses/history") {
       return json({ ok: true, tg_id: 1001, items: historyItems, limit: 20, next_cursor: null });
     }
+    if (path === "/api/bonuses/summary") {
+      return json({
+        ok: true,
+        achievements: {
+          items: [],
+          quests: [
+            {
+              id: "second_device",
+              title: "Добавить второе устройство",
+              description: "Свяжите ещё одно устройство.",
+              progress: 1,
+              target: 2,
+              completed: false,
+              action_href: "/devices/",
+              verification: "active_account_devices",
+            },
+          ],
+        },
+      });
+    }
+    if (path === "/api/bonuses/referral/summary") {
+      return json({
+        ok: true,
+        code: "rewardqa",
+        link: "https://t.me/pokrov_vpnbot?start=ref_rewardqa",
+        bonus_days: 10,
+        conversion: { invited: 3, activated: 2, paid: 1, rewarded: 1, activation_pct: 66.7, paid_pct: 33.3 },
+        history: [
+          { id: "ref-1", status: "rewarded", created_at: "2030-01-01T00:00:00", activated_at: "2030-01-02T00:00:00", paid_at: "2030-01-03T00:00:00", hold_until: null, rewarded_at: "2030-01-04T00:00:00" },
+        ],
+        privacy: "Имена и аккаунты приглашённых не показываются.",
+      });
+    }
     if (path === "/api/bonuses/wheel/spin" && request.method() === "POST") {
       const rewardDays = options.spinRewardDays ?? 1;
       wheelCommitted = true;
@@ -232,6 +265,24 @@ async function registerRewardMocks(
 }
 
 test.describe("rewards fail-closed cabinet surface", () => {
+  test("shows anonymized referral conversion and history", async ({ page }) => {
+    await registerRewardMocks(page);
+    await page.goto("/rewards/");
+
+    await expect(page.getByTestId("referral-center")).toContainText("Приглашены");
+    await expect(page.getByTestId("referral-center")).toContainText("Оплатили 33.3%");
+    await expect(page.getByTestId("referral-center")).toContainText("Начислено");
+    await expect(page.getByTestId("referral-center")).not.toContainText("username");
+    await expect(page.getByTestId("reward-quest-second_device")).toContainText("Добавить второе устройство");
+    const questProgress = page.getByRole("progressbar", {
+      name: "Прогресс задачи «Добавить второе устройство»",
+    });
+    await expect(questProgress).toHaveAttribute("aria-valuemin", "0");
+    await expect(questProgress).toHaveAttribute("aria-valuemax", "2");
+    await expect(questProgress).toHaveAttribute("aria-valuenow", "1");
+    await expect(questProgress).toHaveAttribute("aria-valuetext", "1 из 2");
+  });
+
   test("keeps calendar usable when wheel state fails", async ({ page }) => {
     await registerRewardMocks(page, { wheelStatus: 503, calendarDay: 6 });
     await page.goto("/rewards/");

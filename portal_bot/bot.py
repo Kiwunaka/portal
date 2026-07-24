@@ -876,6 +876,7 @@ from account_foundation_service import (
     ensure_user_account_foundation,
 )
 from rewards_service import (
+    PAID_WEEKLY_DISCOUNTS_V2,
     PAID_WEEKLY_V1,
     InvalidWheelConfig,
     RewardConflict,
@@ -2465,7 +2466,7 @@ def _load_wheel_config() -> dict[str, Any]:
     raw = _load_wheel_config_payload()
     try:
         config = parse_paid_weekly_config(
-            PAID_WEEKLY_V1 if raw is None else raw,
+            {} if raw is None else raw,
             explicit=raw is not None,
         )
     except InvalidWheelConfig as exc:
@@ -2478,7 +2479,15 @@ def _load_wheel_config() -> dict[str, Any]:
         }
     return {
         "preset": config.preset,
-        "weights": [(int(days), int(weight)) for days, weight in config.outcomes],
+        "weights": [
+            (int(outcome.value), int(outcome.weight))
+            for outcome in config.outcomes
+            if outcome.kind == "days"
+        ],
+        "outcomes": [
+            (outcome.kind, int(outcome.value), int(outcome.weight))
+            for outcome in config.outcomes
+        ],
         "cooldown_hours": int(config.cooldown_hours),
         "cooldown_days": int(_cooldown_days_from_hours(config.cooldown_hours)),
     }
@@ -2491,25 +2500,43 @@ def _save_wheel_config(
     cooldown_hours: int | None = None,
     preset: str | None = None,
 ) -> dict:
-    candidate = {
-        "preset": str(preset or "paid_weekly_v1"),
-        "weights": [
-            {"days": int(days), "weight": int(weight)}
-            for days, weight in (weights or WHEEL_DEFAULT_PRIZES)
-        ],
-        "cooldown_hours": (
-            int(cooldown_hours)
-            if cooldown_hours is not None
-            else int(cooldown_days) * 24 if cooldown_days is not None else 168
-        ),
-    }
+    selected_preset = str(preset or "paid_weekly_discounts_v2")
+    selected_cooldown = (
+        int(cooldown_hours)
+        if cooldown_hours is not None
+        else int(cooldown_days) * 24 if cooldown_days is not None else 168
+    )
+    if selected_preset == "paid_weekly_discounts_v2":
+        candidate = {
+            "preset": selected_preset,
+            "weights": [dict(row) for row in PAID_WEEKLY_DISCOUNTS_V2["weights"]],
+            "cooldown_hours": selected_cooldown,
+        }
+    else:
+        candidate = {
+            "preset": selected_preset,
+            "weights": [
+                {"days": int(days), "weight": int(weight)}
+                for days, weight in (weights or WHEEL_DEFAULT_PRIZES)
+            ],
+            "cooldown_hours": selected_cooldown,
+        }
     config = parse_paid_weekly_config(candidate, explicit=True)
+    payload_weights = [
+        (
+            {"days": int(outcome.value), "weight": int(outcome.weight)}
+            if config.preset == "paid_weekly_v1"
+            else {
+                "kind": outcome.kind,
+                "value": int(outcome.value),
+                "weight": int(outcome.weight),
+            }
+        )
+        for outcome in config.outcomes
+    ]
     payload = {
         "preset": config.preset,
-        "weights": [
-            {"days": int(days), "weight": int(weight)}
-            for days, weight in config.outcomes
-        ],
+        "weights": payload_weights,
         "cooldown_hours": int(config.cooldown_hours),
     }
     s = Session()
@@ -5351,7 +5378,14 @@ async def do_wheel_spin(callback: CallbackQuery):
         session.close()
 
     prize = int(mutation.reward_days)
-    if prize >= 30:
+    # Keep the handler compatible with older ledger/test adapters while the
+    # richer wheel outcome is rolled out across every entrypoint.
+    discount_pct = int(getattr(mutation, "discount_pct", 0) or 0)
+    if discount_pct > 0:
+        emoji = "🎁"
+        title = "Скидка на продление"
+        achievement_id = ""
+    elif prize >= 30:
         emoji = "🎉🎉🎉"
         title = "ДЖЕКПОТ!!!"
         achievement_id = "jackpot"
@@ -5373,6 +5407,8 @@ async def do_wheel_spin(callback: CallbackQuery):
         source="bot",
         meta={
             "prize_days": int(prize),
+            "reward_kind": str(getattr(mutation, "reward_kind", "days") or "days"),
+            "discount_pct": discount_pct,
             "achievement_id": achievement_id or None,
             "cooldown_days": int(cooldown_days),
             "grant_id": mutation.grant_id,
@@ -5384,15 +5420,25 @@ async def do_wheel_spin(callback: CallbackQuery):
         [InlineKeyboardButton(text="◀️ В бонусы", callback_data="menu_bonuses")],
     ])
 
+    reward_copy = (
+        f"Тебе выпала скидка *−{discount_pct}%* на одно следующее продление.\n\n"
+        "Скидка применится автоматически, не складывается с другой скидкой."
+        if discount_pct > 0
+        else f"Тебе выпало: *+{prize} Дней*!\n\nПодписка продлена."
+    )
     await callback.message.edit_text(
         f"{emoji} *{title}*\n\n"
-        f"Тебе выпало: *+{prize} Дней*!\n\n"
-        f"Подписка продлена.\n"
+        f"{reward_copy}\n"
         f"Приходи через {cooldown_days} дней за новым призом!",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN,
     )
-    await callback.answer(f"🎉 +{prize} Дней!", show_alert=True)
+    await callback.answer(
+        f"🎁 −{discount_pct}% на продление!"
+        if discount_pct > 0
+        else f"🎉 +{prize} Дней!",
+        show_alert=True,
+    )
 
 @router.callback_query(F.data == "achievements")
 async def show_achievements(callback: CallbackQuery):
@@ -6476,11 +6522,11 @@ async def handle_text_input(message: Message):
             return
 
         if action == "wheel_cd":
-            await message.answer("Конфигурация PAID_WEEKLY_V1 фиксирована: кулдаун 7 дней.")
+            await message.answer("Конфигурация PAID_WEEKLY_DISCOUNTS_V2 фиксирована: кулдаун 7 дней.")
             return
 
         if action == "wheel_weights":
-            await message.answer("Ручные веса отключены: действует фиксированный PAID_WEEKLY_V1.")
+            await message.answer("Ручные веса отключены: действует фиксированный PAID_WEEKLY_DISCOUNTS_V2.")
             return
 
         if action == "manual_create":
@@ -8064,15 +8110,16 @@ async def admin_wheel_settings(callback: CallbackQuery):
         return
 
     cfg = _load_wheel_config()
-    weights = list(cfg.get("weights") or WHEEL_DEFAULT_PRIZES)
+    outcomes = list(cfg.get("outcomes") or [])
     cooldown_hours = int(cfg.get("cooldown_hours") or WHEEL_DEFAULT_COOLDOWN_HOURS)
     cooldown_days = _cooldown_days_from_hours(cooldown_hours)
     preset = str(cfg.get("preset") or "invalid")
-    total_weight = sum(w for _, w in weights) or 1
+    total_weight = sum(weight for _, _, weight in outcomes) or 1
     prizes_text = []
-    for days, weight in weights:
+    for kind, value, weight in outcomes:
         pct = (weight / total_weight) * 100
-        prizes_text.append(f"• {days} дней — {weight}/10000 ({pct:.2f}%)")
+        label = f"{value} дней" if kind == "days" else f"скидка {value}%"
+        prizes_text.append(f"• {label} — {weight}/10000 ({pct:.2f}%)")
     if preset == "invalid":
         prizes_text = ["⚠️ Сохранённая конфигурация не прошла валидацию."]
 
@@ -8089,7 +8136,7 @@ async def admin_wheel_settings(callback: CallbackQuery):
         + "\n".join(prizes_text)
         + "\n\n"
         + f"<b>Кулдаун:</b> {cooldown_days} дней ({cooldown_hours}ч)\n"
-        + "Конфигурация фиксирована контрактом PAID_WEEKLY_V1.",
+        + "Конфигурация фиксирована контрактом PAID_WEEKLY_DISCOUNTS_V2.",
         reply_markup=kb,
         parse_mode=ParseMode.HTML,
     )
@@ -8930,14 +8977,14 @@ async def show_admin_users(callback: CallbackQuery):
 async def admin_wheel_set_preset(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
-    await callback.answer("Preset фиксирован: PAID_WEEKLY_V1.", show_alert=True)
+    await callback.answer("Preset фиксирован: PAID_WEEKLY_DISCOUNTS_V2.", show_alert=True)
 
 
 @router.callback_query(F.data == "wheel_weights")
 async def admin_wheel_set_weights_prompt(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
-    await callback.answer("Ручные веса отключены контрактом PAID_WEEKLY_V1.", show_alert=True)
+    await callback.answer("Ручные веса отключены контрактом PAID_WEEKLY_DISCOUNTS_V2.", show_alert=True)
 
 
 @router.callback_query(F.data.startswith("mass_extend_run_"))

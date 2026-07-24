@@ -13,6 +13,14 @@ import { formatDays } from "@/lib/ru-plural";
 
 const MAX_SECTORS = 12;
 const MAX_REWARD_DAYS = 365;
+const DISCOUNT_VALUES = new Set([5, 7, 10]);
+
+type RewardSector = {
+  key: string;
+  kind: "days" | "discount";
+  value: number;
+  label: string;
+};
 
 export function validateRewardSectors(raw: unknown): number[] | null {
   if (!Array.isArray(raw) || raw.length === 0 || raw.length > MAX_SECTORS) return null;
@@ -20,6 +28,36 @@ export function validateRewardSectors(raw: unknown): number[] | null {
 
   const sectors = raw as number[];
   return new Set(sectors).size === sectors.length ? [...sectors] : null;
+}
+
+export function validateRewardDisplaySectors(raw: unknown, legacyRaw: unknown): RewardSector[] | null {
+  if (Array.isArray(raw) && raw.length > 0 && raw.length <= MAX_SECTORS) {
+    const sectors: RewardSector[] = [];
+    const keys = new Set<string>();
+    for (const item of raw) {
+      if (!item || typeof item !== "object") return null;
+      const candidate = item as Record<string, unknown>;
+      const kind = candidate.kind;
+      const value = candidate.value;
+      if (kind !== "days" && kind !== "discount") return null;
+      if (!Number.isInteger(value) || Number(value) <= 0) return null;
+      if (kind === "days" && Number(value) > MAX_REWARD_DAYS) return null;
+      if (kind === "discount" && !DISCOUNT_VALUES.has(Number(value))) return null;
+      const expectedKey = `${kind}:${Number(value)}`;
+      const key = typeof candidate.key === "string" ? candidate.key : expectedKey;
+      if (key !== expectedKey || keys.has(key)) return null;
+      keys.add(key);
+      sectors.push({
+        key,
+        kind,
+        value: Number(value),
+        label: kind === "days" ? `+${Number(value)} дн.` : `−${Number(value)}%`,
+      });
+    }
+    return sectors;
+  }
+  const legacy = validateRewardSectors(legacyRaw);
+  return legacy?.map((value) => ({ key: `days:${value}`, kind: "days", value, label: `+${value}` })) ?? null;
 }
 
 function pointOnCircle(angleDegrees: number, radius: number): { x: number; y: number } {
@@ -52,7 +90,7 @@ function formatNextSpin(value: string | null): string {
 }
 
 function WheelGraphic({ sectors, rotation, spinning, onAnimationComplete }: {
-  sectors: number[];
+  sectors: RewardSector[];
   rotation: number;
   spinning: boolean;
   onAnimationComplete: () => void;
@@ -82,10 +120,10 @@ function WheelGraphic({ sectors, rotation, spinning, onAnimationComplete }: {
         >
           <title>Секторы рулетки</title>
           <desc>Визуальные секторы равны по размеру и не показывают вероятность награды.</desc>
-          {sectors.map((days, index) => {
+          {sectors.map((sector, index) => {
             const label = pointOnCircle(-90 + (index + 0.5) * step, 59);
             return (
-              <g key={days}>
+              <g key={sector.key}>
                 <path
                   d={segmentPath(index, sectors.length)}
                   fill={index % 2 === 0 ? "var(--pokrov-accent-soft)" : "var(--pokrov-bg-alt)"}
@@ -101,7 +139,7 @@ function WheelGraphic({ sectors, rotation, spinning, onAnimationComplete }: {
                   fontSize={sectors.length > 8 ? 8 : 10}
                   fontWeight="700"
                 >
-                  +{days}
+                  {sector.label}
                 </text>
               </g>
             );
@@ -124,7 +162,10 @@ export function BonusWheel({
   onCommitted: () => Promise<void>;
 }) {
   const reducedMotion = useReducedMotion();
-  const sectors = useMemo(() => validateRewardSectors(state.sectors), [state.sectors]);
+  const sectors = useMemo(
+    () => validateRewardDisplaySectors(state.display_sectors, state.sectors),
+    [state.display_sectors, state.sectors],
+  );
   const [busy, setBusy] = useState(false);
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
@@ -145,13 +186,17 @@ export function BonusWheel({
       onStateChange(mutation.state);
 
       const rewardDays = mutation.reward_days;
-      if (Number.isInteger(rewardDays) && rewardDays > 0 && rewardDays <= MAX_REWARD_DAYS) {
+      const discountPct = mutation.discount_pct ?? 0;
+      if (mutation.reward_kind === "discount" && DISCOUNT_VALUES.has(discountPct)) {
+        setResultMessage(`Скидка −${discountPct}% сохранена для одного продления`);
+      } else if (Number.isInteger(rewardDays) && rewardDays > 0 && rewardDays <= MAX_REWARD_DAYS) {
         setResultMessage(`Начислено +${formatDays(rewardDays)}`);
       } else {
         setResultMessage("Бонус начислен");
       }
 
-      const targetIndex = currentSectors.indexOf(rewardDays);
+      const targetKey = mutation.sector_key || `${mutation.reward_kind ?? "days"}:${mutation.reward_value ?? rewardDays}`;
+      const targetIndex = currentSectors.findIndex((sector) => sector.key === targetKey);
       if (targetIndex < 0) {
         setSectorSyncError(true);
         setSpinning(false);
@@ -211,7 +256,9 @@ export function BonusWheel({
               <span className="grid size-14 place-items-center rounded-full bg-brand-soft text-brand">
                 <Gift size={25} strokeWidth={1.9} aria-hidden="true" />
               </span>
-              <p className="text-base font-bold text-ink">Гарантированная награда: +{formatDays(sectors[0])}</p>
+              <p className="text-base font-bold text-ink">
+                Гарантированная награда: {sectors[0].kind === "days" ? `+${formatDays(sectors[0].value)}` : `−${sectors[0].value}%`}
+              </p>
             </div>
           ) : (
             <>
@@ -222,6 +269,9 @@ export function BonusWheel({
                 onAnimationComplete={() => setSpinning(false)}
               />
               <p className="text-center text-xs leading-5 text-ink-muted">Размер сектора не означает вероятность</p>
+              {sectors.some((sector) => sector.kind === "discount") ? (
+                <p className="text-center text-xs leading-5 text-ink-muted">Скидка действует на одно продление и не складывается с другой скидкой</p>
+              ) : null}
             </>
           )}
 

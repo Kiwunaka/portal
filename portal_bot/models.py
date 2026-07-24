@@ -275,6 +275,108 @@ class EntitlementGrant(Base):
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
+class ServiceIncident(Base):
+    __tablename__ = "service_incidents"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('confirmed', 'resolved', 'cancelled')",
+            name="ck_service_incidents_status",
+        ),
+        CheckConstraint(
+            "compensation_days >= 0 AND compensation_days <= 30",
+            name="ck_service_incidents_compensation_days",
+        ),
+    )
+
+    id = Column(String(36), primary_key=True)
+    incident_key = Column(String(80), unique=True, index=True, nullable=False)
+    title = Column(String(160), nullable=False)
+    summary = Column(String(600), nullable=False)
+    severity = Column(String(24), default="degraded", nullable=False)
+    status = Column(String(24), default="confirmed", index=True, nullable=False)
+    started_at = Column(DateTime, index=True, nullable=False)
+    ended_at = Column(DateTime, index=True, nullable=True)
+    affected_node_codes_json = Column(Text, nullable=True)
+    compensation_days = Column(Integer, default=0, nullable=False)
+    confirmed_by = Column(BigInteger, nullable=False)
+    confirmed_at = Column(DateTime, nullable=False)
+    resolved_by = Column(BigInteger, nullable=True)
+    resolved_at = Column(DateTime, nullable=True)
+    compensation_started_at = Column(DateTime, nullable=True)
+    compensation_completed_at = Column(DateTime, nullable=True)
+    impacted_accounts_count = Column(Integer, default=0, nullable=False)
+    granted_accounts_count = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class DevicePairingCode(Base):
+    """Short-lived, one-time authority for adding a device to an account.
+
+    The human code is never stored. Only an HMAC and a non-secret suffix used
+    in account history are retained.
+    """
+
+    __tablename__ = "device_pairing_codes"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('active', 'claimed', 'cancelled', 'expired')",
+            name="ck_device_pairing_codes_status",
+        ),
+    )
+
+    id = Column(String(36), primary_key=True)
+    account_id = Column(String(36), index=True, nullable=False)
+    code_hmac = Column(String(64), unique=True, index=True, nullable=False)
+    code_hint = Column(String(12), nullable=False)
+    status = Column(String(24), default="active", index=True, nullable=False)
+    issued_by_session_id = Column(String(36), index=True, nullable=True)
+    claimed_device_id = Column(String(36), index=True, nullable=True)
+    claim_attempts = Column(Integer, default=0, nullable=False)
+    expires_at = Column(DateTime, index=True, nullable=False)
+    claimed_at = Column(DateTime, nullable=True)
+    cancelled_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class ProgramApplication(Base):
+    """Account-owned, operator-reviewed product-program application."""
+
+    __tablename__ = "program_applications"
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('competitor_switch', 'research', 'team_pack')",
+            name="ck_program_applications_kind",
+        ),
+        CheckConstraint(
+            "status IN ('submitted', 'under_review', 'approved', 'rejected', 'rewarded', 'cancelled')",
+            name="ck_program_applications_status",
+        ),
+        CheckConstraint(
+            "reward_days >= 0 AND reward_days <= 30",
+            name="ck_program_applications_reward_days",
+        ),
+    )
+
+    id = Column(String(36), primary_key=True)
+    account_id = Column(String(36), index=True, nullable=False)
+    legacy_tg_id = Column(BigInteger, index=True, nullable=True)
+    kind = Column(String(32), index=True, nullable=False)
+    status = Column(String(24), default="submitted", index=True, nullable=False)
+    source_name = Column(String(100), nullable=True)
+    seats = Column(Integer, nullable=True)
+    summary = Column(String(2000), nullable=False)
+    contact = Column(String(160), nullable=True)
+    operator_note = Column(String(1000), nullable=True)
+    reviewed_by = Column(BigInteger, nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    reward_days = Column(Integer, default=0, nullable=False)
+    reward_grant_id = Column(String(36), index=True, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
 class PaymentEntitlementClaim(Base):
     __tablename__ = "payment_entitlement_claims"
     __table_args__ = (

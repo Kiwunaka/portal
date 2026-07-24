@@ -905,6 +905,32 @@ For `iOS` and `macOS`, only readiness, signing prerequisites, and packaging note
 
 If a username is missing or unusable, the public display should fall back to a neutral label like `Пользователь`.
 
+## Selected Loyalty, Pairing And Incident Additions
+
+The app-first account now has three bounded continuation paths:
+
+- an authenticated device or cabinet can issue a short-lived one-time pairing
+  code; claiming it creates a separate revocable device session and enforces
+  the account device limit;
+- the referral summary exposes anonymized funnel counts and transition history,
+  never invited-user identity or contact data;
+- switch, research, and team-pack forms create manually reviewed applications.
+  Affiliate capability is returned as disabled and cannot accept applications.
+
+Useful achievements and quests are projections of server evidence: verified
+first tunnel, active device count, the routing-lesson event, and an approved or
+rewarded research application. They do not create an automatic entitlement.
+
+The weekly wheel uses the server-owned `paid_weekly_v2` table. Its maximum
+premium-day result remains 30 days. Percentage discounts are one-use and do not
+stack; a second pending discount is converted to one premium day. The activity
+calendar remains server-authoritative.
+
+Service incidents are operator-owned records with an affected account/window
+boundary. Compensation runs through an idempotent entitlement ledger and a
+supervised worker. A complaint, client event, or public status message alone
+cannot issue access days.
+
 ## Related Files
 
 - [portal_bot/api.py](C:/Users/kiwun/Documents/ai/VPN/portal_bot/api.py)

@@ -6,6 +6,7 @@ This registry classifies important platform documents and the active client poin
 | --- | --- | --- | --- |
 | `CANONICAL` | product | `docs/product/portal-vpn-product.md` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | market-ready wave | `docs/developer/work-orders/2026-07-09-growth-megapass/` | `PENDING_WAVE_3` |
+| `ACTIVE_EXECUTION` | selected cross-surface VPN feature wave | `docs/developer/work-orders/2026-07-23--selected-vpn-features/` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | open-source client rollout | `docs/launch/open-source-client-rollout-plan.md` | `RECONCILED` |
 | `EVIDENCE` | release evidence | `docs/audit-artifacts/` | `REVIEWED_NO_CHANGE` |
 | `EVIDENCE` | dated public beta narrative | `docs/launch/open-beta-release-notes.md` | `REVIEWED_NO_CHANGE` |

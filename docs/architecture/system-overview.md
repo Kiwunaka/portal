@@ -767,6 +767,10 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `GET /api/admin/promo-slots`
 - `PUT /api/admin/promo-slots`
 - `POST /api/client/telegram/link`
+- `POST|GET|DELETE /api/client/device-pairing/*`
+- `GET|POST|DELETE /api/client/programs*`
+- `GET /api/public/status`
+- `GET /api/public/programs`
 - `GET /api/bonuses/summary`
 - `GET /api/bonuses/referral/summary`
 - `GET /api/bonuses/history`
@@ -785,6 +789,14 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `POST /api/bonuses/promo/redeem`
 - `POST /api/bonuses/channel/claim`
 - tickets and admin APIs under `/api/tickets` and `/api/admin/*`
+
+Selected-feature services add three bounded state machines to the modular
+monolith: one-time device pairing, manually reviewed program applications, and
+operator-owned service incidents. The worker polls pending incident
+compensation records, writes idempotent account entitlement grants, and leaves
+panel synchronization to the existing durable grant pipeline. Public status is
+read-only; user complaints and client telemetry cannot create incidents or
+grants.
 
 App-facing wheel and calendar routes are intentionally disabled by default.
 The client may surface truthful unavailable/preview state while flags are off.

@@ -61,6 +61,7 @@ from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark
 from admin_ops_service import refresh_ops_alerts_for_current_state
 from antiabuse_privacy_service import drain_antiabuse_retention
 from support_attachment_cleanup_service import SupportAttachmentCleanupCursor, reconcile_support_attachments
+import incident_service
 
 logger = logging.getLogger(__name__)
 
@@ -117,6 +118,10 @@ SUPPORT_ATTACHMENT_CLEANUP_GRACE_SECONDS = max(
 SUPPORT_ATTACHMENT_CLEANUP_BATCH_SIZE = max(
     1,
     min(1000, int(os.getenv("SUPPORT_ATTACHMENT_CLEANUP_BATCH_SIZE", "100"))),
+)
+INCIDENT_COMPENSATION_INTERVAL_SECONDS = max(
+    30,
+    min(900, int(os.getenv("INCIDENT_COMPENSATION_INTERVAL_SECONDS", "60"))),
 )
 SUPPORT_ATTACHMENT_CLEANUP_SCAN_LIMIT = max(
     1,
@@ -1217,6 +1222,30 @@ async def antiabuse_retention_job() -> None:
         await asyncio.sleep(ANTIABUSE_RETENTION_INTERVAL_SECONDS)
 
 
+def run_incident_compensation_once(*, session, now: datetime) -> dict[str, int]:
+    return incident_service.process_pending_incident_compensations(
+        session,
+        now=now,
+        limit=20,
+    )
+
+
+async def incident_compensation_job() -> None:
+    while True:
+        session = SessionLocal()
+        try:
+            result = run_incident_compensation_once(session=session, now=_utcnow())
+            session.commit()
+            if int(result.get("processed", 0) or 0) > 0:
+                logger.info("incident_compensation result=%s", result)
+        except Exception:
+            session.rollback()
+            logger.exception("incident_compensation_job failed")
+        finally:
+            session.close()
+        await asyncio.sleep(INCIDENT_COMPENSATION_INTERVAL_SECONDS)
+
+
 def _delete_older_than(session, model, column, cutoff: datetime) -> int:
     return int(
         session.query(model)
@@ -1356,6 +1385,7 @@ async def main() -> None:
         asyncio.create_task(_supervise_job("support_attachment_cleanup", support_attachment_cleanup_job)),
         asyncio.create_task(_supervise_job("trial_reservation_expiry", trial_reservation_expiry_job)),
         asyncio.create_task(_supervise_job("antiabuse_retention", antiabuse_retention_job)),
+        asyncio.create_task(_supervise_job("incident_compensation", incident_compensation_job)),
         asyncio.create_task(_supervise_job("telemetry_retention", telemetry_retention_job)),
         asyncio.create_task(_supervise_job("referral_bonus_queue", referral_bonus_queue_job)),
         asyncio.create_task(_supervise_job("key_limits_watchdog", key_limits_watchdog_job)),

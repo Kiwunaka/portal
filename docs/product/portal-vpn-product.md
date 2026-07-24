@@ -533,3 +533,66 @@ Current major product risks are:
 - Android release being treated as ready before localhost listener and control-surface safety is proven in a release build
 - RU routing and DNS presets being described as finished before the real strategy layer and leak checks ship
 - public `VPN` / `ВПН` copy drifting from useful visible SEO/search-intent language into hidden text, cloaking, stuffing, fabricated rankings, unqualified superiority, or unsupported availability claims
+
+## Protection, Trust And Guide Surfaces
+
+The public site and cabinet now share one versioned trust/guide catalog. Public
+routes cover service status, transparency, privacy fields, responsibility,
+fallback clients, programs, and searchable step-by-step guides. The cabinet
+adds authenticated Protection, Guides, Devices/Pairing, Programs, Rewards, and
+incident/referral context without pretending to control the local tunnel.
+
+Public trust language is deliberately narrow:
+
+- POKROV does not claim to store visited-site history;
+- fields that are stored are listed with purpose, retention, and deletion path;
+- client, platform, provider, and user responsibilities are separated;
+- fallback software still uses official App Store client pages. A temporary
+  App Store Account source may be offered manually when available as a
+  voluntary best-effort workaround, never as part of the tariff or an SLA.
+  The preferred route is a user-owned Apple Account for the required region.
+  The verified external-source directory distinguishes free shared access
+  (a live temporary competitor-issued account at `vanyavpn.app/ios`,
+  `familypro.io`, and the free section at `izakstore.ru`), paid installation
+  help (`happplus.com`), paid app catalogs (`appstops.ru/catalog`,
+  `izakstore.ru`) and a paid private regional account (`wokerhome.com`). The free
+  `appstops.ru/accounts/` giveaway was inactive on 2026-07-23 and is a status
+  monitor, not an available source. Credentials remain on external pages and
+  must not be requested, parsed, proxied or copied into POKROV source, static
+  content, logs or cache. POKROV does not claim a control purchase, external
+  inventory or refund handling. The public guide embeds Apple’s current
+  short country/region-change flow and clearly labels the public Kazakhstan
+  field values copied from VanyaVPN as example placeholders that Apple may
+  reject or replace with a valid-payment requirement.
+  Availability, lifetime, recovery, updates and replacement are not
+  guaranteed. A shared account must be used only through the profile inside
+  the App Store application, never through system Apple Account/iCloud
+  settings, with no payment data or purchases and immediate sign-out after
+  installation;
+- status and compensation come from operator-owned incident records, not user
+  complaints or marketing copy.
+
+The guide catalog is task-based. The current registry contains 46 summaries and
+46 detail records. Every published card has prerequisites, numbered steps,
+expected result, a failure branch, supported platform/version, last-verified
+date, and a visual target naming the client, screen and exact control.
+Fallback-client records may additionally define immediate recommended setup,
+button-by-button behavior, explicit warnings, and a current official source.
+The matrix covers POKROV, Hiddify, Happ, v2rayN, v2rayNG, Streisand, V2Box,
+Shadowrocket, and the not-yet-published owned Apple lane; only Hiddify is
+labelled as the verified manual fallback, while every other third-party path
+keeps its best-effort or advanced qualifier.
+
+`/guides/pokrov-app/` is the separate Android application atlas. It currently
+contains 20 user-visible screens and panels captured by ADB from the exact
+`1.0.0-beta.4` local candidate. Each image has hollow numbered target outlines
+and a separate legend, so annotations never cover the control text. The atlas
+covers the four main surfaces plus protection/recovery, routing, DNS/LAN,
+trusted Wi-Fi, Always-on handoff, account, subscription, activation,
+notifications, theme, diagnostics, and rewards. System Android pages, cabinet,
+and payment remain labelled external handoffs rather than simulated POKROV
+ownership.
+
+Short emulator/device videos follow the same guide IDs and must be recorded
+from a clean profile with tokens, account data, raw configs, IPs, and
+notifications removed.

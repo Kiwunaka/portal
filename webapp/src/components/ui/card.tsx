@@ -18,6 +18,7 @@ export function Card({
   className,
   children,
   "aria-label": ariaLabel,
+  "data-testid": dataTestId,
 }: {
   padding?: CardPadding;
   hover?: boolean;
@@ -25,6 +26,7 @@ export function Card({
   className?: string;
   children: ReactNode;
   "aria-label"?: string;
+  "data-testid"?: string;
 }) {
   const classes = cn(
     "block rounded-card border border-line bg-surface shadow-soft",
@@ -42,7 +44,7 @@ export function Card({
     );
   }
   return (
-    <div className={classes} aria-label={ariaLabel}>
+    <div className={classes} aria-label={ariaLabel} data-testid={dataTestId}>
       {children}
     </div>
   );

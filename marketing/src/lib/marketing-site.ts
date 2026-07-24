@@ -47,6 +47,12 @@ export const MARKETING_CANONICAL_PATHS = {
   install: "/install/",
   offer: "/offer/",
   privacy: "/privacy/",
+  transparency: "/transparency/",
+  status: "/status/",
+  guides: "/guides/",
+  guidesPokrovApp: "/guides/pokrov-app/",
+  fallback: "/fallback/",
+  programs: "/programs/",
 } as const;
 
 export const MARKETING_MACHINE_READABLE_PATHS = {
@@ -115,6 +121,42 @@ export const MARKETING_SITEMAP_ROUTES: MarketingRouteConfig[] = [
     changeFrequency: "monthly",
     lastReviewed: SEO_LAST_REVIEWED_DATE,
     priority: 0.34,
+  },
+  {
+    path: MARKETING_CANONICAL_PATHS.transparency,
+    changeFrequency: "monthly",
+    lastReviewed: SEO_LAST_REVIEWED_DATE,
+    priority: 0.48,
+  },
+  {
+    path: MARKETING_CANONICAL_PATHS.status,
+    changeFrequency: "always",
+    lastReviewed: SEO_LAST_REVIEWED_DATE,
+    priority: 0.62,
+  },
+  {
+    path: MARKETING_CANONICAL_PATHS.guides,
+    changeFrequency: "weekly",
+    lastReviewed: SEO_LAST_REVIEWED_DATE,
+    priority: 0.68,
+  },
+  {
+    path: MARKETING_CANONICAL_PATHS.guidesPokrovApp,
+    changeFrequency: "weekly",
+    lastReviewed: SEO_LAST_REVIEWED_DATE,
+    priority: 0.66,
+  },
+  {
+    path: MARKETING_CANONICAL_PATHS.fallback,
+    changeFrequency: "monthly",
+    lastReviewed: SEO_LAST_REVIEWED_DATE,
+    priority: 0.46,
+  },
+  {
+    path: MARKETING_CANONICAL_PATHS.programs,
+    changeFrequency: "monthly",
+    lastReviewed: SEO_LAST_REVIEWED_DATE,
+    priority: 0.52,
   },
 ];
 

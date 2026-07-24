@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { CirclePlus, CreditCard, Download, Globe, LifeBuoy, MonitorSmartphone, Smartphone, Users, Wifi } from "lucide-react";
 
 import { StatusHero } from "@/components/cabinet/status-hero";
+import DevicePairingCard from "@/components/cabinet/device-pairing-card";
 import { Button } from "@/components/ui/button";
 import { GroupedSection, Row } from "@/components/ui/grouped";
 import { Meter } from "@/components/ui/meter";
@@ -87,6 +88,8 @@ export default function DevicesPage() {
           </div>
         ) : null}
       </StatusHero>
+
+      <DevicePairingCard />
 
       <section className="flex flex-col gap-2.5">
         <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Сводка</h2>

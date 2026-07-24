@@ -169,6 +169,23 @@ Current Next.js export expectations:
 - `assetPrefix` is not used
 - generated static files are emitted to `webapp/out`
 
+Authenticated task routes added in the selected-feature pass:
+
+- `/protection/` — read-only protection/status explanation and recovery path;
+- `/guides/` — the shared searchable 46-task catalog with category filters;
+  every task includes the client, platform, screen and highlighted click
+  target, while fallback guides additionally expose recommended setup,
+  button-by-button behavior, warnings and 18 real screens across seven clients;
+- `/guides/pokrov-app/` — the separate searchable 20-screen Android atlas with
+  real redacted screenshots and numbered, non-obscuring target outlines;
+- `/devices/` — device list plus one-time pairing-code controls;
+- `/programs/` — switch, research, and team-pack application state;
+- `/rewards/` — wheel discounts, anonymized referral conversion/history,
+  achievements, and useful quests.
+
+These cabinet pages explain or mutate account-owned server state. They do not
+claim direct control of an Android/Windows tunnel running on another device.
+
 ## Auth Continuation
 
 Current supported auth paths:
