@@ -202,7 +202,19 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 import json
 from control_panel import ControlPanel
 import html
-from telegram_rich_messages import RichMessageCopy, help_copy, payment_success_copy
+from telegram_emoji import button_label as emoji_button_label, custom_emoji_id
+from telegram_rich_messages import (
+    RichMessageCopy,
+    device_picker_copy,
+    help_copy,
+    help_triage_copy,
+    home_copy,
+    long_tariffs_copy,
+    payment_success_copy,
+    settings_copy,
+    support_hub_copy,
+    tariff_choice_copy,
+)
 
 # ==========================================
 #               CONFIGURATION
@@ -212,9 +224,6 @@ load_dotenv()
 
 try:
     from telegram_buttons import (
-        BTN_EMOJI_DANGER_ID,
-        BTN_EMOJI_PRIMARY_ID,
-        BTN_EMOJI_SUCCESS_ID,
         BTN_STYLE_DANGER,
         BTN_STYLE_PRIMARY,
         BTN_STYLE_SUCCESS,
@@ -227,9 +236,6 @@ except ModuleNotFoundError:
     BTN_STYLE_SUCCESS = "success"
     BTN_STYLE_DANGER = "danger"
     SUPPORTS_BTN_COPY_TEXT = False
-    BTN_EMOJI_PRIMARY_ID = (os.getenv("TG_BTN_EMOJI_PRIMARY_ID") or "").strip()
-    BTN_EMOJI_SUCCESS_ID = (os.getenv("TG_BTN_EMOJI_SUCCESS_ID") or "").strip()
-    BTN_EMOJI_DANGER_ID = (os.getenv("TG_BTN_EMOJI_DANGER_ID") or "").strip()
 else:
     # Route regular main-bot buttons through the shared current Bot API
     # style/custom-emoji helper, while keeping the raw class for capability probes.
@@ -363,8 +369,8 @@ CHANNEL_PREMIUM_DAYS = 5
 BONUS_WHEEL_ENABLED = _env_bool("BONUS_WHEEL_ENABLED", default=False)
 BOT_RUB_BUTTON_ENABLED = _env_bool("BOT_RUB_BUTTON_ENABLED", default=False)
 MAIN_CONNECT_CTA_LABELS = {
-    "a": "💳 Продлить или начать",
-    "b": "💳 Продлить или начать",
+    "a": "Продлить или начать",
+    "b": "Продлить или начать",
 }
 
 
@@ -571,8 +577,22 @@ def _btn_spec(
     web_app_url: str | None = None,
     style: str | None = None,
     icon_custom_emoji_id: str | None = None,
+    emoji_key: str | None = None,
 ) -> dict[str, str]:
-    spec: dict[str, str] = {"text": text}
+    resolved_icon = icon_custom_emoji_id
+    resolved_text = str(text or "").strip()
+    if emoji_key:
+        if resolved_icon is None and SUPPORTS_BTN_ICON:
+            resolved_icon = custom_emoji_id(emoji_key)
+        resolved_text = emoji_button_label(
+            emoji_key,
+            resolved_text,
+            icon_supported=bool(resolved_icon),
+        )
+
+    spec: dict[str, str] = {"text": resolved_text}
+    if emoji_key:
+        spec["emoji_key"] = str(emoji_key)
     if callback_data:
         spec["callback_data"] = callback_data
     if url:
@@ -581,8 +601,8 @@ def _btn_spec(
         spec["web_app_url"] = web_app_url
     if style:
         spec["style"] = style
-    if icon_custom_emoji_id:
-        spec["icon_custom_emoji_id"] = icon_custom_emoji_id
+    if resolved_icon:
+        spec["icon_custom_emoji_id"] = resolved_icon
     return spec
 
 
@@ -605,6 +625,28 @@ def _keyboard_from_specs(rows: list[list[dict[str, str]]]) -> InlineKeyboardMark
     return InlineKeyboardMarkup(
         inline_keyboard=[[ _button_from_spec(spec) for spec in row ] for row in rows]
     )
+
+
+def _rows_without_custom_icons(
+    rows: list[list[dict[str, str]]],
+) -> list[list[dict[str, str]]]:
+    fallback_rows: list[list[dict[str, str]]] = []
+    for row in rows:
+        fallback_row: list[dict[str, str]] = []
+        for spec in row:
+            item = dict(spec)
+            had_custom_icon = bool(item.get("icon_custom_emoji_id"))
+            item.pop("icon_custom_emoji_id", None)
+            emoji_key = item.pop("emoji_key", None)
+            if emoji_key and had_custom_icon:
+                item["text"] = emoji_button_label(
+                    emoji_key,
+                    str(item.get("text") or ""),
+                    icon_supported=False,
+                )
+            fallback_row.append(item)
+        fallback_rows.append(fallback_row)
+    return fallback_rows
 
 
 def _keyboard_payload(rows: list[list[dict[str, str]]]) -> dict[str, object]:
@@ -676,7 +718,13 @@ async def _send_text_with_specs(
             payload["parse_mode"] = pm
         body = await _bot_api_call("sendMessage", payload)
         if not body:
-            return False
+            fallback_rows = _rows_without_custom_icons(rows)
+            if fallback_rows == rows:
+                return False
+            payload["reply_markup"] = _keyboard_payload(fallback_rows)
+            body = await _bot_api_call("sendMessage", payload)
+            if not body:
+                return False
         result = (body or {}).get("result")
         if isinstance(result, dict):
             message_id = int(result.get("message_id") or 0)
@@ -706,7 +754,28 @@ async def _send_text_with_specs(
             )
         return True
     except Exception:
-        return False
+        fallback_rows = _rows_without_custom_icons(rows)
+        if fallback_rows == rows:
+            return False
+        try:
+            sent = await bot.send_message(
+                chat_id=int(chat_id),
+                text=text,
+                parse_mode=parse_mode,
+                disable_web_page_preview=True,
+                reply_markup=_keyboard_from_specs(fallback_rows),
+            )
+            message_id = int(getattr(sent, "message_id", 0) or 0)
+            if message_id:
+                await _track_context_message(
+                    bot=bot,
+                    chat_id=int(chat_id),
+                    tg_id=int(chat_id),
+                    message_id=message_id,
+                )
+            return True
+        except Exception:
+            return False
 
 
 async def _send_rich_copy(
@@ -728,7 +797,16 @@ async def _send_rich_copy(
                 reply_markup=_keyboard_from_specs(rows),
             )
         except Exception:
-            sent = None
+            fallback_rows = _rows_without_custom_icons(rows)
+            if fallback_rows != rows:
+                try:
+                    sent = await rich_sender(
+                        chat_id=int(chat_id),
+                        rich_message=TelegramInputRichMessage(html=copy.rich_html),
+                        reply_markup=_keyboard_from_specs(fallback_rows),
+                    )
+                except Exception:
+                    sent = None
     if sent is None:
         try:
             sent = await message.answer(
@@ -738,7 +816,18 @@ async def _send_rich_copy(
                 disable_web_page_preview=True,
             )
         except Exception:
-            return False
+            fallback_rows = _rows_without_custom_icons(rows)
+            if fallback_rows == rows:
+                return False
+            try:
+                sent = await message.answer(
+                    copy.fallback_html,
+                    parse_mode=ParseMode.HTML,
+                    reply_markup=_keyboard_from_specs(fallback_rows),
+                    disable_web_page_preview=True,
+                )
+            except Exception:
+                return False
 
     message_id = int(getattr(sent, "message_id", 0) or 0)
     if message_id:
@@ -750,6 +839,91 @@ async def _send_rich_copy(
         )
         if preserve:
             _preserve_outgoing_message(int(chat_id), message_id)
+    return True
+
+
+async def _edit_rich_copy(
+    *,
+    callback: CallbackQuery,
+    copy: RichMessageCopy,
+    rows: list[list[dict[str, str]]],
+) -> bool:
+    message = callback.message
+    bot = message.bot
+    chat_id = int(message.chat.id)
+    message_id = int(message.message_id)
+
+    if bool(getattr(message, "photo", None)):
+        return await _send_rich_copy(
+            message=message,
+            bot=bot,
+            chat_id=chat_id,
+            copy=copy,
+            rows=rows,
+        )
+
+    if TelegramInputRichMessage is not None:
+        try:
+            await bot.edit_message_text(
+                chat_id=chat_id,
+                message_id=message_id,
+                rich_message=TelegramInputRichMessage(html=copy.rich_html),
+                reply_markup=_keyboard_from_specs(rows),
+            )
+            await _track_context_message(
+                bot=bot,
+                chat_id=chat_id,
+                tg_id=int(callback.from_user.id),
+                message_id=message_id,
+            )
+            return True
+        except Exception:
+            fallback_rows = _rows_without_custom_icons(rows)
+            if fallback_rows != rows:
+                try:
+                    await bot.edit_message_text(
+                        chat_id=chat_id,
+                        message_id=message_id,
+                        rich_message=TelegramInputRichMessage(html=copy.rich_html),
+                        reply_markup=_keyboard_from_specs(fallback_rows),
+                    )
+                    await _track_context_message(
+                        bot=bot,
+                        chat_id=chat_id,
+                        tg_id=int(callback.from_user.id),
+                        message_id=message_id,
+                    )
+                    return True
+                except Exception:
+                    pass
+
+    try:
+        await message.edit_text(
+            copy.fallback_html,
+            parse_mode=ParseMode.HTML,
+            reply_markup=_keyboard_from_specs(rows),
+            disable_web_page_preview=True,
+        )
+    except Exception:
+        fallback_rows = _rows_without_custom_icons(rows)
+        if fallback_rows == rows:
+            return False
+        try:
+            await message.edit_text(
+                copy.fallback_html,
+                parse_mode=ParseMode.HTML,
+                reply_markup=_keyboard_from_specs(fallback_rows),
+                disable_web_page_preview=True,
+            )
+        except Exception:
+            return False
+
+    await _track_context_message(
+        bot=bot,
+        chat_id=chat_id,
+        tg_id=int(callback.from_user.id),
+        message_id=message_id,
+    )
     return True
 
 
@@ -775,7 +949,13 @@ async def _edit_text_with_specs(
             payload["parse_mode"] = pm
         body = await _bot_api_call("editMessageText", payload)
         if not body:
-            return False
+            fallback_rows = _rows_without_custom_icons(rows)
+            if fallback_rows == rows:
+                return False
+            payload["reply_markup"] = _keyboard_payload(fallback_rows)
+            body = await _bot_api_call("editMessageText", payload)
+            if not body:
+                return False
         await _track_context_message(
             bot=bot,
             chat_id=int(chat_id),
@@ -800,7 +980,27 @@ async def _edit_text_with_specs(
         )
         return True
     except Exception:
-        return False
+        fallback_rows = _rows_without_custom_icons(rows)
+        if fallback_rows == rows:
+            return False
+        try:
+            await bot.edit_message_text(
+                chat_id=int(chat_id),
+                message_id=int(message_id),
+                text=text,
+                parse_mode=parse_mode,
+                disable_web_page_preview=True,
+                reply_markup=_keyboard_from_specs(fallback_rows),
+            )
+            await _track_context_message(
+                bot=bot,
+                chat_id=int(chat_id),
+                tg_id=int(chat_id),
+                message_id=int(message_id),
+            )
+            return True
+        except Exception:
+            return False
 
 
 def _utcnow() -> datetime:
@@ -3540,7 +3740,7 @@ def _tariff_savings_pct(tariff_key: str) -> int | None:
     return pct if pct > 0 else None
 
 
-def build_choose_tariff_text(*, show_trial: bool = True) -> str:
+def _tariff_choice_context() -> dict[str, object]:
     nodes = _bot_enabled_nodes()
     paid_nodes = paid_pool_nodes(nodes)
     paid_count = len(paid_nodes) if paid_nodes else (len(nodes) if nodes else 1)
@@ -3570,6 +3770,34 @@ def build_choose_tariff_text(*, show_trial: bool = True) -> str:
         savings.append(f"9 мес: -{s9}%")
     if s12:
         savings.append(f"12 мес: -{s12}%")
+    return {
+        "paid_count": paid_count,
+        "paid_list": paid_list,
+        "free_label": free_label,
+        "savings": savings,
+    }
+
+
+def build_choose_tariff_rich_copy(*, show_trial: bool = True) -> RichMessageCopy:
+    context = _tariff_choice_context()
+    return tariff_choice_copy(
+        show_trial=show_trial,
+        paid_count=int(context["paid_count"]),
+        paid_list=str(context["paid_list"]),
+        free_label=str(context["free_label"]),
+        trial_limit_gb=TRIAL_LIMIT_GB,
+        trial_device_limit=FREE_LIMIT_IP,
+        paid_device_limit=PAID_LIMIT_IP,
+        savings=list(context["savings"]),
+    )
+
+
+def build_choose_tariff_text(*, show_trial: bool = True) -> str:
+    context = _tariff_choice_context()
+    paid_count = int(context["paid_count"])
+    paid_list = str(context["paid_list"])
+    free_label = str(context["free_label"])
+    savings = list(context["savings"])
     savings_line = (" (" + ", ".join(savings) + ")") if savings else ""
 
     payment_hint = "_Выберите вариант ниже, и я открою нужное действие._"
@@ -3912,42 +4140,49 @@ def _main_menu_cta_spec(tg_id: int) -> dict[str, str]:
         return _btn_spec(
             text=_main_connect_cta_text(tg_id),
             callback_data="charge",
-            style=BTN_STYLE_PRIMARY,
-            icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
+            style=BTN_STYLE_SUCCESS,
+            emoji_key="payment",
         )
 
     user = get_user(int(tg_id)) if int(tg_id or 0) > 0 else None
     if _trial_offer_available(user):
         return _btn_spec(
-            text="🎁 5 дней бесплатно",
+            text="5 дней бесплатно",
             callback_data="instruction",
-            style=BTN_STYLE_PRIMARY,
-            icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
+            style=BTN_STYLE_SUCCESS,
+            emoji_key="free",
         )
 
     return _btn_spec(
-        text="🔑 Активировать код",
+        text="Активировать код",
         callback_data="gift_redeem_prompt",
         style=BTN_STYLE_PRIMARY,
-        icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
+        emoji_key="key",
     )
 
 
 def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
     rows = [
-        [_btn_spec(text="📲 Подключить устройство", callback_data="instruction")],
+        [
+            _btn_spec(
+                text="Подключить устройство",
+                callback_data="instruction",
+                style=BTN_STYLE_PRIMARY,
+                emoji_key="device",
+            )
+        ],
         [_main_menu_cta_spec(tg_id)],
         [
-            _btn_spec(text="✅ Проверить доступ", callback_data="status"),
-            _btn_spec(text="🆘 Помощь", callback_data="confused_help"),
+            _btn_spec(text="Проверить доступ", callback_data="status", emoji_key="success"),
+            _btn_spec(text="Помощь", callback_data="confused_help", emoji_key="support"),
         ],
         [
-            _btn_spec(text="🌐 Кабинет", web_app_url=WEBAPP_URL),
-            _btn_spec(text="⚙️ Ещё", callback_data="settings"),
+            _btn_spec(text="Кабинет", web_app_url=WEBAPP_URL, emoji_key="cabinet"),
+            _btn_spec(text="Ещё", callback_data="settings", emoji_key="settings"),
         ],
     ]
     if tg_id == ADMIN_ID:
-        rows.append([_btn_spec(text="🔒 Админ-панель", callback_data="admin")])
+        rows.append([_btn_spec(text="Админ-панель", callback_data="admin", emoji_key="brand")])
     return rows
 
 
@@ -3955,61 +4190,92 @@ def main_keyboard(tg_id: int = 0) -> InlineKeyboardMarkup:
     """Main menu aligned to the single primary user path."""
     return _keyboard_from_specs(main_keyboard_specs(tg_id))
 
+
+def tariff_keyboard_specs(
+    tg_id: int = 0,
+    show_trial: bool = True,
+    show_gb_only: bool = False,
+    include_long_plans: bool = False,
+) -> list[list[dict[str, str]]]:
+    del show_gb_only
+    rows: list[list[dict[str, str]]] = []
+
+    if show_trial:
+        rows.append(
+            [
+                _btn_spec(
+                    text="5 дней бесплатно",
+                    callback_data="instruction",
+                    style=BTN_STYLE_SUCCESS,
+                    emoji_key="free",
+                )
+            ]
+        )
+
+    if include_long_plans:
+        plans = [
+            ("6_months", "target", "6 месяцев"),
+            ("9_months", "world", "9 месяцев"),
+            ("12_months", "crown", "12 месяцев"),
+        ]
+    else:
+        plans = [
+            ("start_99", "lightning", "30 дней"),
+            ("1_month", "rocket", "1 месяц"),
+            ("3_months", "diamond", "3 месяца"),
+        ]
+
+    for key, emoji_key, period in plans:
+        tariff = TARIFFS.get(key)
+        if not tariff:
+            continue
+        pricing = _tariff_pricing_for_user(tg_id, key)
+        btn_text = f"{period} — {int(pricing['base_price'])} ₽"
+        savings = _tariff_savings_pct(key)
+        if savings:
+            btn_text += f" · −{savings}%"
+        rows.append(
+            [
+                _btn_spec(
+                    text=btn_text,
+                    callback_data=f"buy_{key}",
+                    style=BTN_STYLE_PRIMARY if key in {"3_months", "12_months"} else None,
+                    emoji_key=emoji_key,
+                )
+            ]
+        )
+
+    if include_long_plans:
+        rows.append([_btn_spec(text="◀️ К основным тарифам", callback_data="charge")])
+    else:
+        rows.append(
+            [
+                _btn_spec(
+                    text="Долгие тарифы",
+                    callback_data="charge_long",
+                    emoji_key="crown",
+                )
+            ]
+        )
+
+    rows.append([_btn_spec(text="◀️ Назад", callback_data="back")])
+    return rows
+
+
 def tariff_keyboard(
     tg_id: int = 0,
     show_trial: bool = True,
     show_gb_only: bool = False,
     include_long_plans: bool = False,
 ) -> InlineKeyboardMarkup:
-    buttons = []
-
-    # Free is always visible. If user already has active paid access, pressing it shows an alert and does nothing.
-    if show_trial:
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    text="🎁 5 дней бесплатно",
-                    callback_data="instruction",
-                    style=BTN_STYLE_PRIMARY,
-                )
-            ]
+    return _keyboard_from_specs(
+        tariff_keyboard_specs(
+            tg_id=tg_id,
+            show_trial=show_trial,
+            show_gb_only=show_gb_only,
+            include_long_plans=include_long_plans,
         )
-    
-    # Plans order:
-    # - main screen: short horizons
-    # - long screen: 6/9/12 months only
-    if include_long_plans:
-        plans = [
-            ("6_months", "🎯", "6 месяцев"),
-            ("9_months", "🧭", "9 месяцев"),
-            ("12_months", "👑", "12 месяцев"),
-        ]
-    else:
-        plans = [
-            ("start_99", "⚡", "30 дней"),
-            ("1_month", "🚀", "1 месяц"),
-            ("3_months", "💠", "3 месяца"),
-        ]
-
-    for key, icon, period in plans:
-        tariff = TARIFFS.get(key)
-        if not tariff:
-            continue
-        pricing = _tariff_pricing_for_user(tg_id, key)
-        btn_text = f"{icon} {period} — {int(pricing['base_price'])} ₽"
-        savings = _tariff_savings_pct(key)
-        if savings:
-            btn_text += f" · −{savings}%"
-        buttons.append([InlineKeyboardButton(text=btn_text, callback_data=f"buy_{key}")])
-    
-    if include_long_plans:
-        buttons.append([InlineKeyboardButton(text="◀️ К основным тарифам", callback_data="charge")])
-    else:
-        buttons.append([InlineKeyboardButton(text="📚 Долгие тарифы", callback_data="charge_long")])
-
-    buttons.append([InlineKeyboardButton(text="◀️ Назад", callback_data="back")])
-    
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
+    )
 
 
 @router.message(CommandStart())
@@ -4213,16 +4479,30 @@ async def cmd_start(message: Message):
             return
 
         fresh_user = get_user(tg_id)
-        await message.answer(
-            build_choose_tariff_text(show_trial=_trial_offer_available(fresh_user)),
-            reply_markup=tariff_keyboard(
+        show_trial = _trial_offer_available(fresh_user)
+        ok = await _send_rich_copy(
+            message=message,
+            bot=message.bot,
+            chat_id=tg_id,
+            copy=build_choose_tariff_rich_copy(show_trial=show_trial),
+            rows=tariff_keyboard_specs(
                 tg_id,
-                show_trial=_trial_offer_available(fresh_user),
+                show_trial=show_trial,
                 show_gb_only=False,
                 include_long_plans=False,
             ),
-            parse_mode=ParseMode.MARKDOWN,
         )
+        if not ok:
+            await message.answer(
+                build_choose_tariff_text(show_trial=show_trial),
+                reply_markup=tariff_keyboard(
+                    tg_id,
+                    show_trial=show_trial,
+                    show_gb_only=False,
+                    include_long_plans=False,
+                ),
+                parse_mode=ParseMode.MARKDOWN,
+            )
         return
 
     promo_requested = bool(
@@ -4327,12 +4607,15 @@ async def cmd_start(message: Message):
 
     if not created_new:
         returning_text = bot_text("bot.menu.returning")
-        ok = await _send_text_with_specs(
+        ok = await _send_rich_copy(
+            message=message,
             bot=message.bot,
             chat_id=tg_id,
-            text=returning_text,
+            copy=home_copy(
+                returning=True,
+                show_trial=_trial_offer_available(get_user(tg_id)),
+            ),
             rows=main_keyboard_specs(tg_id),
-            parse_mode=ParseMode.MARKDOWN,
         )
         if not ok:
             await message.answer(
@@ -4343,13 +4626,32 @@ async def cmd_start(message: Message):
         return
 
     text = bot_text("bot.menu.new_user")
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📲 Начать: установить POKROV", callback_data="mode_simple")],
-        [InlineKeyboardButton(text="🌐 Кабинет: доступ и оплата", web_app=WebAppInfo(url=WEBAPP_URL))],
-        [InlineKeyboardButton(text="⚙️ Все действия", callback_data="mode_pro")],
-    ])
-    sent = await message.answer(text, reply_markup=kb, parse_mode=ParseMode.MARKDOWN)
-    last_bot_message[tg_id] = sent.message_id
+    rows = [
+        [
+            _btn_spec(
+                text="Начать: установить POKROV",
+                callback_data="mode_simple",
+                style=BTN_STYLE_PRIMARY,
+                emoji_key="device",
+            )
+        ],
+        [_btn_spec(text="Кабинет: доступ и оплата", web_app_url=WEBAPP_URL, emoji_key="cabinet")],
+        [_btn_spec(text="Все действия", callback_data="mode_pro", emoji_key="settings")],
+    ]
+    ok = await _send_rich_copy(
+        message=message,
+        bot=message.bot,
+        chat_id=tg_id,
+        copy=home_copy(new_user=True),
+        rows=rows,
+    )
+    if not ok:
+        sent = await message.answer(
+            text,
+            reply_markup=_keyboard_from_specs(rows),
+            parse_mode=ParseMode.MARKDOWN,
+        )
+        last_bot_message[tg_id] = sent.message_id
 
 @router.callback_query(F.data == "back")
 async def back_to_main(callback: CallbackQuery):
@@ -4360,13 +4662,10 @@ async def back_to_main(callback: CallbackQuery):
     pending_auto_friend_gift_referrals.pop(int(tg_id), None)
 
     home_text = bot_text("bot.menu.home")
-    ok = await _edit_text_with_specs(
-        bot=callback.message.bot,
-        chat_id=callback.message.chat.id,
-        message_id=callback.message.message_id,
-        text=home_text,
+    ok = await _edit_rich_copy(
+        callback=callback,
+        copy=home_copy(show_trial=_trial_offer_available(get_user(tg_id))),
         rows=main_keyboard_specs(tg_id),
-        parse_mode=ParseMode.MARKDOWN,
     )
     if not ok:
         await callback.message.edit_text(
@@ -4394,11 +4693,15 @@ async def show_tariffs(callback: CallbackQuery):
     # Do not advertise a second trial or a downgrade to an active paid user.
     show_trial = _trial_offer_available(user)
 
-    show_gb_only = False  # Kept for legacy UI compatibility.
-    await callback.message.edit_text(
-        build_choose_tariff_text(show_trial=show_trial),
-        reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only, include_long_plans=False),
-        parse_mode=ParseMode.MARKDOWN,
+    await _edit_rich_copy(
+        callback=callback,
+        copy=build_choose_tariff_rich_copy(show_trial=show_trial),
+        rows=tariff_keyboard_specs(
+            tg_id,
+            show_trial=show_trial,
+            show_gb_only=False,
+            include_long_plans=False,
+        ),
     )
     await callback.answer()
 
@@ -4408,10 +4711,15 @@ async def show_tariffs_stars(callback: CallbackQuery):
     tg_id = callback.from_user.id
     user = get_user(tg_id)
     show_trial = _trial_offer_available(user)
-    await callback.message.edit_text(
-        build_choose_tariff_text(show_trial=show_trial),
-        reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only=False, include_long_plans=False),
-        parse_mode=ParseMode.MARKDOWN,
+    await _edit_rich_copy(
+        callback=callback,
+        copy=build_choose_tariff_rich_copy(show_trial=show_trial),
+        rows=tariff_keyboard_specs(
+            tg_id,
+            show_trial=show_trial,
+            show_gb_only=False,
+            include_long_plans=False,
+        ),
     )
     await callback.answer()
 
@@ -4428,10 +4736,15 @@ async def show_long_tariffs(callback: CallbackQuery):
         await callback.answer()
         return
 
-    await callback.message.edit_text(
-        bot_text("bot.tariffs.long"),
-        reply_markup=tariff_keyboard(tg_id, show_trial=False, show_gb_only=False, include_long_plans=True),
-        parse_mode=ParseMode.MARKDOWN,
+    await _edit_rich_copy(
+        callback=callback,
+        copy=long_tariffs_copy(),
+        rows=tariff_keyboard_specs(
+            tg_id,
+            show_trial=False,
+            show_gb_only=False,
+            include_long_plans=True,
+        ),
     )
     await callback.answer()
 
@@ -4480,11 +4793,15 @@ async def accept_tos(callback: CallbackQuery):
     user = get_user(tg_id)
 
     show_trial = _trial_offer_available(user)
-    show_gb_only = False
-    await callback.message.edit_text(
-        build_choose_tariff_text(show_trial=show_trial),
-        reply_markup=tariff_keyboard(tg_id, show_trial, show_gb_only, include_long_plans=False),
-        parse_mode=ParseMode.MARKDOWN,
+    await _edit_rich_copy(
+        callback=callback,
+        copy=build_choose_tariff_rich_copy(show_trial=show_trial),
+        rows=tariff_keyboard_specs(
+            tg_id,
+            show_trial=show_trial,
+            show_gb_only=False,
+            include_long_plans=False,
+        ),
     )
     await callback.answer("✅ Условия приняты!")
 
@@ -4592,14 +4909,7 @@ async def show_key(callback: CallbackQuery):
     
     if not user:
         rows = [
-            [
-                _btn_spec(
-                    text=_main_connect_cta_text(tg_id),
-                    callback_data="charge",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
+            [_main_menu_cta_spec(tg_id)],
             [
                 _btn_spec(text="◀️ Назад", callback_data="back")
             ],
@@ -4628,14 +4938,7 @@ async def show_key(callback: CallbackQuery):
     expiry = _naive_utc(user.expiry_at)
     if not bool(user.is_active and expiry and expiry > _utcnow()):
         rows = [
-            [
-                _btn_spec(
-                    text=_main_connect_cta_text(tg_id),
-                    callback_data="charge",
-                    style=BTN_STYLE_PRIMARY,
-                    icon_custom_emoji_id=BTN_EMOJI_PRIMARY_ID or None,
-                )
-            ],
+            [_main_menu_cta_spec(tg_id)],
             [_btn_spec(text="◀️ Назад", callback_data="back")],
         ]
         await _edit_text_with_specs(
@@ -4827,10 +5130,10 @@ async def panic_menu(callback: CallbackQuery):
     rows = [
         [
             _btn_spec(
-                text="♻️ Выпустить новую ссылку",
+                text="Выпустить новую ссылку",
                 callback_data="panic_execute",
                 style=BTN_STYLE_DANGER,
-                icon_custom_emoji_id=BTN_EMOJI_DANGER_ID or None,
+                emoji_key="warning",
             )
         ],
         [
@@ -4917,29 +5220,32 @@ async def show_mtproto(callback: CallbackQuery):
     )
     await callback.answer()
 
+def _device_select_rows() -> list[list[dict[str, str]]]:
+    return [
+        [
+            _btn_spec(text="iOS (iPhone)", callback_data="instr_ios", emoji_key="phone"),
+            _btn_spec(text="Android", callback_data="instr_android", emoji_key="phone"),
+        ],
+        [
+            _btn_spec(text="Windows", callback_data="instr_win", emoji_key="device"),
+            _btn_spec(text="macOS", callback_data="instr_mac", emoji_key="device"),
+        ],
+        [_btn_spec(text="Открыть кабинет", web_app_url=WEBAPP_URL, emoji_key="cabinet")],
+        [_btn_spec(text="Помощь с выбором", callback_data="confused_help", emoji_key="support")],
+        [_btn_spec(text="◀️ Назад", callback_data="back")],
+    ]
+
+
 def _device_select_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="🍏 iOS (iPhone)", callback_data="instr_ios"),
-            InlineKeyboardButton(text="🤖 Android", callback_data="instr_android"),
-        ],
-        [
-            InlineKeyboardButton(text="💻 Windows", callback_data="instr_win"),
-            InlineKeyboardButton(text="🍎 macOS", callback_data="instr_mac"),
-        ],
-        [InlineKeyboardButton(text="🌐 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))],
-        [InlineKeyboardButton(text="🆘 Помощь с выбором", callback_data="confused_help")],
-        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
-    ])
+    return _keyboard_from_specs(_device_select_rows())
 
 
 async def _render_device_select(callback: CallbackQuery) -> None:
     """Single device-selection screen shared by instruction and mode_simple."""
-    await _edit_or_answer_callback_text(
-        callback,
-        bot_text("bot.instruction.pick_device"),
-        reply_markup=_device_select_keyboard(),
-        parse_mode=ParseMode.MARKDOWN,
+    await _edit_rich_copy(
+        callback=callback,
+        copy=device_picker_copy(),
+        rows=_device_select_rows(),
     )
     await callback.answer()
 
@@ -4951,19 +5257,26 @@ async def show_instruction(callback: CallbackQuery):
 
 @router.callback_query(F.data == "confused_help")
 async def confused_help(callback: CallbackQuery):
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="📲 Подключить это устройство", callback_data="instruction")],
-        [InlineKeyboardButton(text="🎫 Есть код оплаты или подарок", callback_data="menu_more")],
-        [InlineKeyboardButton(text="🔗 Есть личная ссылка", callback_data="show_key")],
-        [InlineKeyboardButton(text="⚠️ Подключение не работает", callback_data="support")],
-        [InlineKeyboardButton(text="❓ Частые вопросы", callback_data="faqmenu")],
-        [InlineKeyboardButton(text="🌐 Открыть кабинет", web_app=WebAppInfo(url=WEBAPP_URL))],
-        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
-    ])
-    await callback.message.edit_text(
-        bot_text("bot.help.triage"),
-        reply_markup=kb,
-        parse_mode=ParseMode.MARKDOWN,
+    rows = [
+        [
+            _btn_spec(
+                text="Подключить это устройство",
+                callback_data="instruction",
+                style=BTN_STYLE_PRIMARY,
+                emoji_key="device",
+            )
+        ],
+        [_btn_spec(text="Есть код оплаты или подарок", callback_data="menu_more", emoji_key="key")],
+        [_btn_spec(text="Есть личная ссылка", callback_data="show_key", emoji_key="link")],
+        [_btn_spec(text="Подключение не работает", callback_data="support", emoji_key="warning")],
+        [_btn_spec(text="Частые вопросы", callback_data="faqmenu", emoji_key="faq")],
+        [_btn_spec(text="Открыть кабинет", web_app_url=WEBAPP_URL, emoji_key="cabinet")],
+        [_btn_spec(text="◀️ Назад", callback_data="back")],
+    ]
+    await _edit_rich_copy(
+        callback=callback,
+        copy=help_triage_copy(),
+        rows=rows,
     )
     await callback.answer()
 
@@ -4971,48 +5284,73 @@ async def confused_help(callback: CallbackQuery):
 @router.callback_query(F.data == "settings")
 async def show_settings(callback: CallbackQuery):
     rows = [
-        [InlineKeyboardButton(text="🔗 Ручное подключение", callback_data="show_key")],
-        [InlineKeyboardButton(text="⚙️ Инструкции", callback_data="instruction")],
-        [InlineKeyboardButton(text="🎁 Бонусы", callback_data="menu_bonuses")],
-        [InlineKeyboardButton(text="🎫 Коды и подарки", callback_data="menu_more")],
-        [InlineKeyboardButton(text="🛡 Сбросить ссылку", callback_data="panic_menu")],
-        [InlineKeyboardButton(text="🆘 Помочь начать", callback_data="mode_simple")],
-        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
+        [_btn_spec(text="Ручное подключение", callback_data="show_key", emoji_key="link")],
+        [_btn_spec(text="Инструкции", callback_data="instruction", emoji_key="device")],
+        [_btn_spec(text="Бонусы", callback_data="menu_bonuses", emoji_key="diamond")],
+        [_btn_spec(text="Коды и подарки", callback_data="menu_more", emoji_key="key")],
+        [
+            _btn_spec(
+                text="Сбросить ссылку",
+                callback_data="panic_menu",
+                style=BTN_STYLE_DANGER,
+                emoji_key="warning",
+            )
+        ],
+        [_btn_spec(text="Помочь начать", callback_data="mode_simple", emoji_key="support")],
+        [_btn_spec(text="◀️ Назад", callback_data="back")],
     ]
     if _stars_checkout_creation_enabled():
-        rows.insert(3, [InlineKeyboardButton(text=f"👨‍👩‍👧‍👦 Family +1 слот", callback_data="buy_family_slot")])
-    kb = InlineKeyboardMarkup(inline_keyboard=rows)
-    await callback.message.edit_text(
-        bot_text("bot.settings.more"),
-        reply_markup=kb,
-        parse_mode=ParseMode.MARKDOWN,
+        rows.insert(
+            3,
+            [_btn_spec(text="Family +1 слот", callback_data="buy_family_slot", emoji_key="crown")],
+        )
+    await _edit_rich_copy(
+        callback=callback,
+        copy=settings_copy(),
+        rows=rows,
     )
     await callback.answer()
 
 
 _PLATFORM_SCREENS = {
-    "ios": ("bot.instruction.platform_ios", IOS_APP_LINK, "📥 Открыть страницу для iPhone"),
-    "android": ("bot.instruction.platform_android", ANDROID_APP_LINK, "📥 Скачать POKROV"),
-    "win": ("bot.instruction.platform_windows", WINDOWS_APP_LINK, "📥 Скачать POKROV"),
-    "mac": ("bot.instruction.platform_macos", MAC_APP_LINK, "📥 Открыть страницу для macOS"),
+    "ios": ("bot.instruction.platform_ios", IOS_APP_LINK, "Открыть страницу для iPhone"),
+    "android": ("bot.instruction.platform_android", ANDROID_APP_LINK, "Скачать POKROV"),
+    "win": ("bot.instruction.platform_windows", WINDOWS_APP_LINK, "Скачать POKROV"),
+    "mac": ("bot.instruction.platform_macos", MAC_APP_LINK, "Открыть страницу для macOS"),
 }
 
 
 async def _render_platform_screen(callback: CallbackQuery, platform: str) -> None:
     """Per-platform install screen: download, funnel to access check, manual fallback."""
     copy_key, url, btn = _PLATFORM_SCREENS.get(platform, _PLATFORM_SCREENS["android"])
-    kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text=btn, url=url)],
-        [_button_from_spec(_btn_spec(
-            text="✅ Приложение уже стоит",
-            callback_data="simple_step3",
-            style=BTN_STYLE_SUCCESS,
-            icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
-        ))],
-        [InlineKeyboardButton(text="🔗 Ручное подключение", callback_data="show_key")],
-        [InlineKeyboardButton(text="◀️ Устройства", callback_data="instruction")],
-    ])
-    await callback.message.edit_text(bot_text(copy_key), parse_mode=ParseMode.MARKDOWN, reply_markup=kb)
+    rows = [
+        [
+            _btn_spec(
+                text=btn,
+                url=url,
+                style=BTN_STYLE_PRIMARY,
+                emoji_key="download",
+            )
+        ],
+        [
+            _btn_spec(
+                text="Приложение уже стоит",
+                callback_data="simple_step3",
+                style=BTN_STYLE_SUCCESS,
+                emoji_key="success",
+            )
+        ],
+        [_btn_spec(text="Ручное подключение", callback_data="show_key", emoji_key="link")],
+        [_btn_spec(text="◀️ Устройства", callback_data="instruction")],
+    ]
+    await _edit_text_with_specs(
+        bot=callback.message.bot,
+        chat_id=callback.message.chat.id,
+        message_id=callback.message.message_id,
+        text=bot_text(copy_key),
+        rows=rows,
+        parse_mode=ParseMode.MARKDOWN,
+    )
     await callback.answer()
 
 
@@ -6721,13 +7059,20 @@ def _support_hub_rows() -> list[list[dict[str, str]]]:
     support_my_url = f"https://t.me/{SUPPORT_USERNAME}?start=ticket_my"
     feedback_url = f"https://t.me/{FEEDBACK_USERNAME}"
     return [
-        [_btn_spec(text="🎫 Создать обращение", url=support_new_url, style=BTN_STYLE_SUCCESS)],
-        [_btn_spec(text="📂 Мои обращения", url=support_my_url)],
-        [_btn_spec(text="❓ Частые вопросы", callback_data="faqmenu")],
-        [_btn_spec(text="🩺 Диагностика", callback_data="support_diagnose")],
-        [_btn_spec(text="💌 Идеи и фидбэк", url=feedback_url)],
-        [_btn_spec(text="🌐 Открыть кабинет", web_app_url=PUBLIC_BOT_WEBAPP_MENU_URL)],
-        [_btn_spec(text="◀️ Назад", callback_data="back", style="")],
+        [
+            _btn_spec(
+                text="Создать обращение",
+                url=support_new_url,
+                style=BTN_STYLE_SUCCESS,
+                emoji_key="message",
+            )
+        ],
+        [_btn_spec(text="Мои обращения", url=support_my_url, emoji_key="cabinet")],
+        [_btn_spec(text="Частые вопросы", callback_data="faqmenu", emoji_key="faq")],
+        [_btn_spec(text="Диагностика", callback_data="support_diagnose", emoji_key="target")],
+        [_btn_spec(text="Идеи и фидбэк", url=feedback_url, emoji_key="message")],
+        [_btn_spec(text="Открыть кабинет", web_app_url=PUBLIC_BOT_WEBAPP_MENU_URL, emoji_key="world")],
+        [_btn_spec(text="◀️ Назад", callback_data="back")],
     ]
 
 
@@ -6739,10 +7084,10 @@ def _support_hub_keyboard() -> InlineKeyboardMarkup:
 async def show_support(callback: CallbackQuery):
     """Show support menu"""
     _set_support_context(callback.from_user.id, enabled=True)
-    await callback.message.edit_text(
-        bot_text("bot.support.hub"),
-        reply_markup=_support_hub_keyboard(),
-        parse_mode=ParseMode.MARKDOWN
+    await _edit_rich_copy(
+        callback=callback,
+        copy=support_hub_copy(),
+        rows=_support_hub_rows(),
     )
     await callback.answer()
 
@@ -6769,10 +7114,12 @@ async def cabinet_command(message: Message):
 async def support_command(message: Message):
     _set_support_context(message.from_user.id, enabled=True)
     _track_bot_entry(tg_id=int(message.from_user.id), entrypoint="support", meta={"command": "support"})
-    await message.answer(
-        bot_text("bot.support.hub"),
-        reply_markup=_support_hub_keyboard(),
-        parse_mode=ParseMode.MARKDOWN,
+    await _send_rich_copy(
+        message=message,
+        bot=message.bot,
+        chat_id=int(message.from_user.id),
+        copy=support_hub_copy(),
+        rows=_support_hub_rows(),
     )
 
 
@@ -9269,10 +9616,10 @@ async def mode_pro_start(callback: CallbackQuery):
         await _show_channel_bonus_offer(callback, next_action="main")
         return
 
-    await callback.message.edit_text(
-        bot_text("bot.menu.all_actions"),
-        reply_markup=main_keyboard(tg_id),
-        parse_mode=ParseMode.MARKDOWN,
+    await _edit_rich_copy(
+        callback=callback,
+        copy=home_copy(show_trial=_trial_offer_available(user)),
+        rows=main_keyboard_specs(tg_id),
     )
     await callback.answer("Открываю действия", show_alert=False)
 
@@ -9960,14 +10307,14 @@ async def _send_payment_success_summary(
     rows = [
         [
             _btn_spec(
-                text="📲 Подключить устройство",
+                text="Подключить устройство",
                 callback_data="instruction",
                 style=BTN_STYLE_SUCCESS,
-                icon_custom_emoji_id=BTN_EMOJI_SUCCESS_ID or None,
+                emoji_key="device",
             )
         ],
-        [_btn_spec(text="🌐 Открыть кабинет", web_app_url=WEBAPP_URL)],
-        [_btn_spec(text="🔗 Ручная ссылка / QR", callback_data="show_key")],
+        [_btn_spec(text="Открыть кабинет", web_app_url=WEBAPP_URL, emoji_key="cabinet")],
+        [_btn_spec(text="Ручная ссылка / QR", callback_data="show_key", emoji_key="link")],
     ]
     return await _send_rich_copy(
         message=message,

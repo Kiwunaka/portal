@@ -41,20 +41,20 @@ def _emoji_for_style(style: str | None) -> str | None:
     return None
 
 
+# Red is a warning, not decoration. Blue is reserved for a small set of explicit
+# shared-bot navigation callbacks; the main bot passes its CTA styles directly.
+_DANGER_CALLBACK_TOKENS = ("panic", "delete", "ban", "revoke", "ticket_close", "adm_del_", "adm_regen_token_")
+_SUCCESS_CALLBACK_TOKENS = ("new", "reopen", "feature", "publish", "create", "claim", "confirm_pay")
+_PRIMARY_CALLBACK_TOKENS = ("admin_queue", "ticket_my", "ticket_reply")
+
+
 def infer_button_style(text: str, callback_data: str | None = None, url: str | None = None) -> str | None:
     del url
     label = (text or "").strip().lower()
     data = (callback_data or "").strip().lower()
 
-    if (
-        "delete" in data
-        or "panic" in data
-        or "ban" in data
-        or "revoke" in data
-        or "ticket_close" in data
-        or data.startswith("adm_del_")
-        or data.startswith("adm_regen_token_")
-        or any(token in label for token in ("удалить", "сбросить", "отозвать", "заблокировать"))
+    if any(token in data for token in _DANGER_CALLBACK_TOKENS) or any(
+        token in label for token in ("удалить", "сбросить", "отозвать", "заблокировать")
     ):
         return BTN_STYLE_DANGER
 
@@ -64,17 +64,13 @@ def infer_button_style(text: str, callback_data: str | None = None, url: str | N
     if "back" in data or "cancel" in data or data in {"close", "dismiss"}:
         return None
 
-    if (
-        "new" in data
-        or "reopen" in data
-        or "feature" in data
-        or "publish" in data
-        or "create" in data
-        or "claim" in data
-    ):
+    if any(token in data for token in _SUCCESS_CALLBACK_TOKENS):
         return BTN_STYLE_SUCCESS
 
-    return BTN_STYLE_PRIMARY
+    if any(token in data for token in _PRIMARY_CALLBACK_TOKENS):
+        return BTN_STYLE_PRIMARY
+
+    return None
 
 
 def modern_inline_button(

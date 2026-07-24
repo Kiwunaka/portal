@@ -51,12 +51,28 @@ Official references:
 The candidate runtime targets `aiogram >=3.30,<4` and the current Bot API rich
 message surface. Capability use remains progressive rather than mandatory:
 
-- `/help` and the durable Stars success receipt prefer `InputRichMessage` and
-  fall back to equivalent HTML when the installed Telegram runtime is older or
-  rejects a rich payload.
-- Primary, success, and danger button styles are used only when the runtime
-  exposes them. Custom button emoji require operator-provided
-  `TG_BTN_EMOJI_*_ID` values; the bot never invents an emoji ID.
+- The main menu, tariff picker, long plans, device picker, help triage,
+  settings, support hub, `/help`, and the durable Stars success receipt prefer
+  `InputRichMessage`. The same actions remain available in equivalent HTML when
+  the installed Telegram runtime is older or rejects a rich payload.
+- Rich layouts are native text: headings, lists, tables, collapsed details, and
+  custom emoji. The device picker may add a native slideshow when
+  `TG_RICH_ONBOARDING_MEDIA_URLS` contains between two and ten public HTTPS
+  image URLs; without those URLs it stays text-only.
+- Button color is semantic: blue is reserved for the primary next step, green
+  for activation or purchase, red for destructive actions, and ordinary
+  navigation stays neutral. The bot strips unsupported styles and icons without
+  changing callback behavior.
+- The curated button and rich-text emoji IDs in `portal_bot/telegram_emoji.py`
+  come from the public `FinanceEmoji`, `NewsEmoji`, `Decoration_Pack`, and
+  `TONEmoji` packs. `TG_CUSTOM_EMOJI_ENABLED=0` is the global kill switch;
+  `TG_EMOJI_<KEY>_ID` can replace one curated ID. Unicode is always retained as
+  the fallback. Legacy `TG_BTN_EMOJI_*_ID` settings remain available for shared
+  buttons outside this curated main-bot flow.
+- Telegram accepts custom button icons only for eligible bots: either a bot
+  with an additional Fragment username or direct bot messages while the bot
+  owner has Telegram Premium. An API rejection automatically retries the same
+  keyboard with Unicode icons.
 - `copy_text` is preferred for the real subscription link. Older runtimes keep
   the existing callback fallback, so a client update is not required to copy a
   link.
@@ -67,6 +83,10 @@ message surface. Capability use remains progressive rather than mandatory:
   source link or the surrounding instructions.
 - The main CTA is derived from current account/access state. Happ remains the
   recommended manual client path; stale Karing guidance must not reappear.
+
+Live rendering, animation, custom button icons, and slideshow layout remain a
+`MANUAL_OWNER_TEST` in a current Premium Telegram client. A local payload or
+unit-test pass is not production rendering proof.
 
 ## Check And Apply
 

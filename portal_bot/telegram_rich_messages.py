@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 import html
+import os
 from dataclasses import dataclass
+from urllib.parse import urlsplit
+
+from telegram_emoji import rich_emoji
 
 
 @dataclass(frozen=True)
@@ -10,10 +14,271 @@ class RichMessageCopy:
     fallback_html: str
 
 
+def _safe_media_urls(values: list[str] | tuple[str, ...] | None = None) -> list[str]:
+    raw_values = list(values or [])
+    if not raw_values:
+        raw_values = (os.getenv("TG_RICH_ONBOARDING_MEDIA_URLS") or "").split(",")
+
+    result: list[str] = []
+    for raw in raw_values:
+        value = str(raw or "").strip()
+        parsed = urlsplit(value)
+        if parsed.scheme != "https" or not parsed.netloc or value in result:
+            continue
+        result.append(value)
+        if len(result) == 10:
+            break
+    return result if len(result) >= 2 else []
+
+
+def _slideshow_html(media_urls: list[str] | tuple[str, ...] | None = None) -> str:
+    urls = _safe_media_urls(media_urls)
+    if not urls:
+        return ""
+    slides = "".join(f'<img src="{html.escape(url, quote=True)}"/>' for url in urls)
+    return (
+        f"<tg-slideshow>{slides}"
+        "<figcaption>Как выглядит подключение в POKROV</figcaption>"
+        "</tg-slideshow>"
+    )
+
+
+def home_copy(
+    *,
+    returning: bool = False,
+    new_user: bool = False,
+    show_trial: bool = True,
+) -> RichMessageCopy:
+    if new_user:
+        title = "Добро пожаловать в POKROV"
+        lead = "Настроим защищённое подключение за пару минут."
+    elif returning:
+        title = "С возвращением в POKROV"
+        lead = "Всё на месте — выберите следующий шаг."
+    else:
+        title = "POKROV"
+        lead = "Подключение, доступ и помощь — в одном меню."
+
+    access_rich = (
+        f"{rich_emoji('free')} Проверить сервис 5 дней без карты"
+        if show_trial
+        else f"{rich_emoji('success')} Проверить или продлить доступ"
+    )
+    access_fallback = (
+        "🆓 Проверить сервис 5 дней без карты"
+        if show_trial
+        else "✅ Проверить или продлить доступ"
+    )
+    return RichMessageCopy(
+        rich_html=(
+            f"<h2>{rich_emoji('brand')} {html.escape(title)}</h2>"
+            f"<p><b>{html.escape(lead)}</b></p>"
+            "<ul>"
+            f"<li>{rich_emoji('device')} Установить POKROV и подключить устройство</li>"
+            f"<li>{access_rich}</li>"
+            f"<li>{rich_emoji('world')} Управлять доступом через кабинет</li>"
+            "</ul>"
+            "<footer>Нажмите нужное действие ниже.</footer>"
+        ),
+        fallback_html=(
+            f"🛡 <b>{html.escape(title)}</b>\n\n"
+            f"{html.escape(lead)}\n\n"
+            "💻 Установить POKROV и подключить устройство\n"
+            f"{access_fallback}\n"
+            "🌐 Управлять доступом через кабинет\n\n"
+            "Нажмите нужное действие ниже."
+        ),
+    )
+
+
+def tariff_choice_copy(
+    *,
+    show_trial: bool,
+    paid_count: int,
+    paid_list: str,
+    free_label: str,
+    trial_limit_gb: int,
+    trial_device_limit: int,
+    paid_device_limit: int,
+    savings: list[str] | tuple[str, ...] = (),
+) -> RichMessageCopy:
+    paid_locations = max(1, int(paid_count or 0))
+    paid_list_safe = html.escape(str(paid_list or "доступные локации"))
+    free_label_safe = html.escape(str(free_label or "тестовая локация"))
+    savings_safe = ", ".join(html.escape(str(item)) for item in savings if str(item).strip())
+    trial_rich = ""
+    trial_fallback = ""
+    if show_trial:
+        trial_rich = (
+            f"<p><mark>{rich_emoji('free')} 5 дней бесплатно</mark><br/>"
+            f"До {int(trial_limit_gb)} ГБ · до {int(trial_device_limit)} устройства · "
+            f"{free_label_safe}</p>"
+        )
+        trial_fallback = (
+            f"🆓 <b>5 дней бесплатно</b>\n"
+            f"До {int(trial_limit_gb)} ГБ · до {int(trial_device_limit)} устройства · "
+            f"{free_label_safe}\n\n"
+        )
+
+    savings_rich = (
+        f"<p><b>Экономия на длинных сроках:</b> {savings_safe}</p>"
+        if savings_safe
+        else ""
+    )
+    savings_fallback = (
+        f"\n<b>Экономия на длинных сроках:</b> {savings_safe}\n"
+        if savings_safe
+        else ""
+    )
+    return RichMessageCopy(
+        rich_html=(
+            f"<h2>{rich_emoji('payment')} Выберите срок</h2>"
+            "<p><b>Цена сразу указана на кнопке.</b> Чем длиннее срок, тем выгоднее месяц.</p>"
+            f"{trial_rich}"
+            "<table bordered striped>"
+            "<tr><th>Доступ</th><th>Что входит</th></tr>"
+            f"<tr><td>Платный</td><td>{paid_locations} локаций · до {int(paid_device_limit)} устройств</td></tr>"
+            f"<tr><td>Локации</td><td>{paid_list_safe}</td></tr>"
+            "</table>"
+            f"{savings_rich}"
+            "<details><summary>Что произойдёт после выбора</summary>"
+            "<ol><li>Покажем доступный способ оплаты</li>"
+            "<li>Включим срок на этом аккаунте</li>"
+            "<li>Останется открыть POKROV и нажать «Подключить»</li></ol>"
+            "</details>"
+            "<footer>Выберите вариант ниже.</footer>"
+        ),
+        fallback_html=(
+            "💳 <b>Выберите срок</b>\n\n"
+            "<b>Цена сразу указана на кнопке.</b> Чем длиннее срок, тем выгоднее месяц.\n\n"
+            f"{trial_fallback}"
+            f"🌐 Платный доступ: {paid_locations} локаций · до {int(paid_device_limit)} устройств\n"
+            f"Локации: {paid_list_safe}\n"
+            f"{savings_fallback}\n"
+            "<blockquote expandable><b>Что произойдёт после выбора</b>\n"
+            "1. Покажем доступный способ оплаты\n"
+            "2. Включим срок на этом аккаунте\n"
+            "3. Останется открыть POKROV и нажать «Подключить»</blockquote>\n\n"
+            "Выберите вариант ниже."
+        ),
+    )
+
+
+def long_tariffs_copy() -> RichMessageCopy:
+    return RichMessageCopy(
+        rich_html=(
+            f"<h2>{rich_emoji('crown')} Доступ надолго</h2>"
+            "<p><b>Один платёж — и реже вспоминать о продлении.</b></p>"
+            "<ul><li>6 месяцев — уверенный выбор</li>"
+            "<li>9 месяцев — большой запас</li>"
+            "<li>12 месяцев — максимальная выгода</li></ul>"
+            "<footer>Точная цена и скидка указаны на кнопках.</footer>"
+        ),
+        fallback_html=(
+            "👑 <b>Доступ надолго</b>\n\n"
+            "<b>Один платёж — и реже вспоминать о продлении.</b>\n\n"
+            "• 6 месяцев — уверенный выбор\n"
+            "• 9 месяцев — большой запас\n"
+            "• 12 месяцев — максимальная выгода\n\n"
+            "Точная цена и скидка указаны на кнопках."
+        ),
+    )
+
+
+def device_picker_copy(
+    media_urls: list[str] | tuple[str, ...] | None = None,
+) -> RichMessageCopy:
+    return RichMessageCopy(
+        rich_html=(
+            f"<h2>{rich_emoji('device')} С какого устройства начинаем?</h2>"
+            "<p><b>Выберите платформу — покажем только нужные шаги.</b></p>"
+            "<ol><li>Установить POKROV</li>"
+            "<li>Войти через почту или Telegram</li>"
+            "<li>Нажать «Подключить»</li></ol>"
+            f"{_slideshow_html(media_urls)}"
+            "<footer>Ручная ссылка остаётся запасным вариантом.</footer>"
+        ),
+        fallback_html=(
+            "💻 <b>С какого устройства начинаем?</b>\n\n"
+            "Выберите платформу — покажем только нужные шаги.\n\n"
+            "1. Установить POKROV\n"
+            "2. Войти через почту или Telegram\n"
+            "3. Нажать «Подключить»\n\n"
+            "Ручная ссылка остаётся запасным вариантом."
+        ),
+    )
+
+
+def help_triage_copy() -> RichMessageCopy:
+    return RichMessageCopy(
+        rich_html=(
+            f"<h2>{rich_emoji('support')} Чем помочь?</h2>"
+            "<p><b>Выберите ситуацию — покажем один следующий шаг.</b></p>"
+            "<ul><li>Подключить устройство</li>"
+            "<li>Активировать код или открыть личную ссылку</li>"
+            "<li>Разобраться, почему подключение не работает</li></ul>"
+            "<footer>Без лишних сетевых терминов.</footer>"
+        ),
+        fallback_html=(
+            "🆘 <b>Чем помочь?</b>\n\n"
+            "Выберите ситуацию — покажем один следующий шаг.\n\n"
+            "• Подключить устройство\n"
+            "• Активировать код или открыть личную ссылку\n"
+            "• Разобраться, почему подключение не работает\n\n"
+            "Без лишних сетевых терминов."
+        ),
+    )
+
+
+def settings_copy() -> RichMessageCopy:
+    return RichMessageCopy(
+        rich_html=(
+            f"<h2>{rich_emoji('settings')} Ещё</h2>"
+            "<p>Здесь находятся запасные и редкие действия.</p>"
+            "<ul><li>Ручное подключение и инструкции</li>"
+            "<li>Бонусы, подарки и промокоды</li>"
+            "<li>Сброс личной ссылки при необходимости</li></ul>"
+            "<details><summary>Когда нужен сброс ссылки?</summary>"
+            "Только если ссылка попала к постороннему или перестала работать после обращения в поддержку."
+            "</details>"
+        ),
+        fallback_html=(
+            "⚙️ <b>Ещё</b>\n\n"
+            "Здесь находятся запасные и редкие действия.\n\n"
+            "• Ручное подключение и инструкции\n"
+            "• Бонусы, подарки и промокоды\n"
+            "• Сброс личной ссылки при необходимости\n\n"
+            "<blockquote expandable><b>Когда нужен сброс ссылки?</b>\n"
+            "Только если ссылка попала к постороннему или перестала работать после обращения в поддержку."
+            "</blockquote>"
+        ),
+    )
+
+
+def support_hub_copy() -> RichMessageCopy:
+    return RichMessageCopy(
+        rich_html=(
+            f"<h2>{rich_emoji('message')} Поддержка POKROV</h2>"
+            "<p><b>Опишите проблему одним сообщением.</b> "
+            "Если есть ошибка — приложите скриншот.</p>"
+            "<ul><li>Сначала можно открыть частые вопросы</li>"
+            "<li>Диагностика покажет статус доступа</li>"
+            "<li>Обращение продолжится в службе заботы</li></ul>"
+        ),
+        fallback_html=(
+            "💬 <b>Поддержка POKROV</b>\n\n"
+            "<b>Опишите проблему одним сообщением.</b> Если есть ошибка — приложите скриншот.\n\n"
+            "• Сначала можно открыть частые вопросы\n"
+            "• Диагностика покажет статус доступа\n"
+            "• Обращение продолжится в службе заботы"
+        ),
+    )
+
+
 def help_copy() -> RichMessageCopy:
     return RichMessageCopy(
         rich_html=(
-            "<h3>🧭 Помощь. Частые вопросы</h3>"
+            f"<h3>{rich_emoji('faq')} Помощь. Частые вопросы</h3>"
             "<p>Главное действие — открыть приложение POKROV и нажать «Подключить».</p>"
             "<ul>"
             "<li><b>/start</b> — главное меню, доступ и оплата</li>"
@@ -48,7 +313,7 @@ def payment_success_copy(
     transaction = html.escape(str(transaction_id or "—"))
     return RichMessageCopy(
         rich_html=(
-            "<h3>✅ Оплата прошла — доступ включён</h3>"
+            f"<h3>{rich_emoji('success')} Оплата прошла — доступ включён</h3>"
             f"<p>Тариф: <b>{tariff}</b><br/>Действует до: <b>{expires}</b></p>"
             "<p>Откройте приложение POKROV, войдите в свой аккаунт и нажмите «Подключить».</p>"
             "<details><summary>🧾 Квитанция</summary>"

@@ -2401,8 +2401,107 @@ class BotPaywallTests(unittest.TestCase):
             for button in row
         }
 
-        self.assertEqual(getattr(buttons["charge_long"], "style", None), self.bot_module.BTN_STYLE_PRIMARY)
+        self.assertEqual(
+            getattr(buttons["buy_3_months"], "style", None),
+            self.bot_module.BTN_STYLE_PRIMARY,
+        )
+        self.assertEqual(
+            getattr(buttons["instruction"], "style", None),
+            self.bot_module.BTN_STYLE_SUCCESS,
+        )
+        self.assertIsNone(getattr(buttons["charge_long"], "style", None))
         self.assertIsNone(getattr(buttons["back"], "style", None))
+
+        if self.bot_module.SUPPORTS_BTN_ICON:
+            self.assertTrue(getattr(buttons["instruction"], "icon_custom_emoji_id", None))
+            self.assertTrue(getattr(buttons["buy_3_months"], "icon_custom_emoji_id", None))
+
+    def test_main_keyboard_colors_only_primary_actions(self) -> None:
+        with patch.object(self.bot_module, "_bot_checkout_blocked_reasons", return_value=[]):
+            rows = self.bot_module.main_keyboard_specs(1001)
+
+        buttons = [button for row in rows for button in row]
+        styled = [
+            (button.get("callback_data"), button.get("style"))
+            for button in buttons
+            if button.get("style")
+        ]
+
+        self.assertEqual(
+            styled,
+            [
+                ("instruction", self.bot_module.BTN_STYLE_PRIMARY),
+                ("charge", self.bot_module.BTN_STYLE_SUCCESS),
+            ],
+        )
+
+    def test_custom_button_icon_has_unicode_retry_payload(self) -> None:
+        if not self.bot_module.SUPPORTS_BTN_ICON:
+            self.skipTest("aiogram InlineKeyboardButton has no custom emoji icon field")
+
+        rows = [
+            [
+                self.bot_module._btn_spec(
+                    text="Оплатить",
+                    callback_data="charge",
+                    style=self.bot_module.BTN_STYLE_SUCCESS,
+                    emoji_key="payment",
+                )
+            ]
+        ]
+        fallback_rows = self.bot_module._rows_without_custom_icons(rows)
+
+        self.assertTrue(rows[0][0].get("icon_custom_emoji_id"))
+        self.assertEqual(rows[0][0]["text"], "Оплатить")
+        self.assertEqual(fallback_rows[0][0]["text"], "💳 Оплатить")
+        self.assertNotIn("icon_custom_emoji_id", fallback_rows[0][0])
+        self.assertEqual(fallback_rows[0][0]["style"], self.bot_module.BTN_STYLE_SUCCESS)
+
+    def test_rich_send_retries_without_custom_button_icon_before_html_fallback(self) -> None:
+        if self.bot_module.TelegramInputRichMessage is None or not self.bot_module.SUPPORTS_BTN_ICON:
+            self.skipTest("installed aiogram has no rich messages or custom button icons")
+
+        class _RichBot:
+            def __init__(self):
+                self.attempts = []
+
+            async def send_rich_message(self, **kwargs):
+                self.attempts.append(kwargs)
+                if len(self.attempts) == 1:
+                    raise RuntimeError("bot owner has no custom button icon entitlement")
+                return types.SimpleNamespace(message_id=0)
+
+        class _RichMessage:
+            async def answer(self, *_args, **_kwargs):
+                raise AssertionError("HTML fallback must not run after a successful rich retry")
+
+        bot = _RichBot()
+        rows = [
+            [
+                self.bot_module._btn_spec(
+                    text="Оплатить",
+                    callback_data="charge",
+                    style=self.bot_module.BTN_STYLE_SUCCESS,
+                    emoji_key="payment",
+                )
+            ]
+        ]
+
+        ok = asyncio.run(
+            self.bot_module._send_rich_copy(
+                message=_RichMessage(),
+                bot=bot,
+                chat_id=1001,
+                copy=self.bot_module.home_copy(),
+                rows=rows,
+            )
+        )
+
+        self.assertTrue(ok)
+        self.assertEqual(len(bot.attempts), 2)
+        retry_button = bot.attempts[1]["reply_markup"].inline_keyboard[0][0]
+        self.assertEqual(retry_button.text, "💳 Оплатить")
+        self.assertIsNone(getattr(retry_button, "icon_custom_emoji_id", None))
 
     def test_twelve_month_tariff_savings_is_45_percent(self) -> None:
         self.assertEqual(self.bot_module._tariff_savings_pct("12_months"), 45)
@@ -2716,7 +2815,7 @@ class BotPaywallTests(unittest.TestCase):
                 asyncio.run(self.bot_module.cmd_start(tariff_message))
 
         self.assertEqual(bind_calls, [])
-        self.assertIn("с чего начнём", tariff_message.answers[-1][0].lower())
+        self.assertIn("выберите срок", tariff_message.answers[-1][0].lower())
         markup = tariff_message.answers[-1][1]["reply_markup"]
         callbacks = {
             str(getattr(button, "callback_data", "") or "")

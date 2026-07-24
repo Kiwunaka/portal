@@ -75,7 +75,7 @@ Reference-lane note:
   optional encrypted-at-rest per-user/per-install WARP material shaping for
   managed profile delivery when an operator explicitly provisions material.
 - `portal_bot/bot.py`
-  Main Telegram bot for billing, campaigns, referrals, review moderation, and operator actions.
+  Main Telegram bot for billing, campaigns, referrals, review moderation, and operator actions. Its user-facing presentation layer uses editable rich messages with equivalent HTML fallback, semantic button colors, and a curated custom-emoji registry; callback and payment behavior remain independent of those Telegram client capabilities.
 - `portal_bot/helpbot.py`
   Dedicated support bot.
 - `portal_bot/support_agent_service.py`
