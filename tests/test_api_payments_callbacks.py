@@ -23,7 +23,8 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             sys.path.insert(0, portal_dir)
 
         self._tmp = tempfile.TemporaryDirectory()
-        self.db_path = str((repo_root / f"portal_api_test_{uuid.uuid4().hex}.db").resolve())
+        self.addCleanup(self._tmp.cleanup)
+        self.db_path = str((Path(self._tmp.name) / f"portal_api_test_{uuid.uuid4().hex}.db").resolve())
         db_uri_path = Path(self.db_path).as_posix()
         self._saved_env: dict[str, str | None] = {}
         for k in (

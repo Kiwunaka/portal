@@ -137,7 +137,7 @@ function withDefaults(page: Omit<SeoPage, "lastReviewed"> & { lastReviewed?: str
 export const SEO_INDEXABLE_PAGES: SeoPage[] = [
   withDefaults({
     answer:
-      "POKROV VPN — интернет без ограничений на Android и Windows. YouTube, TikTok, ChatGPT и сайты одной кнопкой, 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽.",
+      "POKROV VPN для Android и Windows. Открывайте YouTube, TikTok, ChatGPT и сайты одной кнопкой: 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽.",
     breadcrumbName: "VPN для Android и Windows",
     cards: [
       {
@@ -159,7 +159,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
     changeFrequency: "weekly",
     cluster: "vpn",
     description:
-      "POKROV VPN для Android и Windows: интернет без ограничений, 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽.",
+      "POKROV VPN для Android и Windows: YouTube, TikTok, ChatGPT и сайты одной кнопкой, 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽.",
     faq: [
       {
         question: "Можно ли скачать VPN бесплатно?",
@@ -177,7 +177,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
           "Текущая публичная версия POKROV рассчитана на Android и Windows. Для обеих платформ доступны официальные файлы и отдельные инструкции.",
       },
     ],
-    h1: "Интернет без ограничений на Android и Windows",
+    h1: "VPN для Android и Windows",
     heroKicker: "POKROV VPN · 5 дней бесплатно · от 99 ₽",
     kind: "intent",
     path: "/vpn/",

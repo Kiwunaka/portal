@@ -73,7 +73,7 @@ def test_homepage_navigation_mobile_menu_and_core_sections_have_story_contracts(
             "HeroVisual",
             "getTariffPlans().find",
             "MARKETING_CANONICAL_PATHS.install",
-            'href="/#pricing"',
+            'href="/#how-it-works"',
         ),
         context="homepage hero",
     )

@@ -18,7 +18,7 @@ import {
 } from "../lib/marketing-site";
 
 export const metadata = buildMarketingMetadata(
-  "POKROV VPN — интернет без ограничений | Android и Windows",
+  "POKROV VPN для Android и Windows — 5 дней бесплатно",
   "Быстрый VPN для YouTube, TikTok, ChatGPT и сайтов. 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽.",
   {
     path: "/",

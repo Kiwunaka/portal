@@ -73,7 +73,7 @@ export const PAID_REWARDS_MARKETING_COPY =
   "Для активной платной подписки доступны еженедельное колесо бонусов и календарь активности. В колесе возможен редкий джекпот +30 дней.";
 
 export const MARKETING_FEATURE_LIST = [
-  "Интернет без ограничений на Android и Windows",
+  "Доступ к привычным сервисам на Android и Windows",
   "5 дней за 0 ₽ без банковской карты",
   "Безлимитный трафик на платных тарифах",
   "YouTube, TikTok, ChatGPT и другие сервисы одной кнопкой",
@@ -232,7 +232,7 @@ export type MarketingMetadataOptions = {
 };
 
 export function buildMarketingMetadata(
-  title = "POKROV VPN — интернет без ограничений | Android и Windows",
+  title = "POKROV VPN для Android и Windows — 5 дней бесплатно",
   description = "Быстрый VPN для YouTube, TikTok, ChatGPT и сайтов. 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽.",
   options: MarketingMetadataOptions = {},
 ): Metadata {

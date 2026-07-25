@@ -1,6 +1,6 @@
 # POKROV Low-Level Code Function Inventory
 
-Last updated: 2026-07-21
+Last updated: 2026-07-25
 
 ## Purpose
 
@@ -37,22 +37,22 @@ Excluded:
 
 | Metric | Count |
 | --- | ---: |
-| Total symbols | 6908 |
-| Root repo symbols | 5540 |
-| POKROV-app symbols | 1368 |
-| Symbols with token-level test references | 2378 |
+| Total symbols | 7428 |
+| Root repo symbols | 5786 |
+| POKROV-app symbols | 1642 |
+| Symbols with token-level test references | 2592 |
 | Parser errors | 0 |
 
 ### By Language
 
 | Language | Count |
 | --- | ---: |
-| Python | 4638 |
-| Dart | 1118 |
-| TSX | 596 |
-| TypeScript | 306 |
-| Kotlin | 130 |
-| Swift | 92 |
+| Python | 4785 |
+| Dart | 1372 |
+| TSX | 680 |
+| TypeScript | 321 |
+| Kotlin | 148 |
+| Swift | 94 |
 | C++ | 23 |
 | C header | 5 |
 
@@ -60,29 +60,29 @@ Excluded:
 
 | Subsystem | Count |
 | --- | ---: |
-| Backend and Telegram bots | 2985 |
-| Scripts and Ops | 1653 |
-| POKROV client app | 1327 |
-| WebApp and Admin | 725 |
-| Marketing site | 135 |
-| Shared constants | 83 |
+| Backend and Telegram bots | 3107 |
+| Scripts and Ops | 1678 |
+| POKROV client app | 1572 |
+| WebApp and Admin | 796 |
+| Marketing site | 159 |
+| Shared constants | 116 |
 
 ### By Symbol Kind
 
 | Symbol kind | Count |
 | --- | ---: |
-| Function | 4984 |
-| Method | 1209 |
-| Class | 715 |
+| Function | 5258 |
+| Method | 1391 |
+| Class | 779 |
 
 ### By Entrypoint Hint
 
 | Entrypoint hint | Count |
 | --- | ---: |
-| FastAPI route handler | 224 |
-| Telegram handler | 176 |
-| Script CLI main | 134 |
-| Framework override | 117 |
+| FastAPI route handler | 241 |
+| Telegram handler | 177 |
+| Script CLI main | 135 |
+| Framework override | 134 |
 | FastAPI middleware | 1 |
 | Next.js page component | 1 |
 
@@ -92,10 +92,10 @@ Excluded:
 - User-story completion is still tracked in `pokrov-canonical-feature-tracker.csv`.
 - Helper-level rows are `inventory_only` until a future task chooses to require dedicated private-helper assertions.
 - The generated symbol coverage audit guards that `private_inventory_only` is limited to private non-entrypoint symbols.
-- The generated private-helper coverage matrix currently has 193 private inventory-only rows: 185 low-risk and 8 medium-risk; Q-001 records that story/symbol tiers are sufficient for this audit.
+- The generated private-helper coverage matrix currently has 294 private inventory-only rows: 226 low-risk, 64 medium-risk, and 4 high-risk; Q-001 records that story/symbol tiers are sufficient for this audit.
 - For public behavior, prefer feature/user-story tests over one-test-per-helper churn.
 - Entrypoint hints are conservative labels; Aiogram `router.*` handlers are classified as Telegram handlers before HTTP route detection, and HTTP route detection requires route decorators such as `app.get`, `app.post`, or `app.api_route`.
-- Source-symbol coverage status lives in `pokrov-symbol-coverage-audit.csv`; it distinguishes entrypoint/story/dependency/module-test/test/client-platform/manual-gate/framework/tooling/private/public-API-review tiers for all 6908 symbols.
+- Source-symbol coverage status lives in `pokrov-symbol-coverage-audit.csv`; it distinguishes entrypoint/story/dependency/module-test/test/client-platform/manual-gate/framework/tooling/private/public-API-review tiers for all 7428 symbols.
 - Source-symbol coverage also includes `expected_behavior_from_code`, a generated behavior-preservation note for every symbol that keeps manual/review buckets honest instead of treating them as direct proof.
 
 ## Regeneration

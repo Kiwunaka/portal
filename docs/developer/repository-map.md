@@ -25,7 +25,7 @@ categories, and verification entrypoints. Start task-specific navigation at the
 
 | Path | Responsibility | Start here |
 | --- | --- | --- |
-| portal_bot/ | FastAPI backend, Telegram bots, workers, canonical accounts, device sessions and recovery, anti-abuse, economy, payments, entitlements, private support, and node/control integration | portal_bot/api.py, domain service/repository modules, focused tests |
+| portal_bot/ | FastAPI backend, Telegram bots, workers, canonical accounts, device sessions and recovery, anti-abuse, economy, payments, entitlements, private support, and node/control integration | [Backend module map](backend-module-map.md), portal_bot/api.py, portal_bot/bot.py, domain service/repository modules, focused tests |
 | adminapp/ | Primary operator surface for users, nodes, payments, alerts, release, and guarded actions | adminapp/README.md, adminapp/src/, adminapp/e2e/, tests/test_admin_ops_api.py |
 | webapp/ | User cabinet plus temporary admin parity fallback | webapp/README.md, webapp/src/app/(dashboard)/ for cabinet, webapp/src/app/(admin)/admin/ for fallback, webapp/src/lib/api.ts, webapp/e2e/ |
 | marketing/ | Public acquisition, checkout entry, install help, legal and SEO surfaces | marketing/src/, shared public facts and copy, marketing checks |
@@ -94,6 +94,7 @@ target it do not make it a normal delivery node or control-plane host.
 | --- | --- |
 | Account foundation | tests/test_account_foundation.py |
 | App-first/API/bots | portal_bot/tests/test_app_first_api.py, tests/test_portal_api.py, tests/test_api_auth_and_tickets.py |
+| Backend composition slices | tests/test_module_slices.py |
 | Payments and entitlements | tests/test_api_payments_callbacks.py, tests/test_lavatop_payment_providers.py |
 | Primary operator surface | tests/test_admin_ops_api.py, adminapp/e2e/ |
 | Cabinet and admin fallback | webapp/e2e/cabinet-flow.spec.ts, webapp/e2e/admin-gate.spec.ts |

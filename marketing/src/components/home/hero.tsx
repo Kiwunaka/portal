@@ -36,7 +36,7 @@ export function Hero() {
           {getCopyText("marketing.home.hero.kicker", "POKROV VPN · Android + Windows")}
         </Chip>
         <h1 className="font-display text-[2.5rem] leading-[1.08] font-extrabold tracking-[-0.01em] text-ink sm:text-[3.25rem] lg:text-[3.5rem]">
-          {getCopyText("marketing.home.hero.title", "Интернет без ограничений")}
+          {getCopyText("marketing.home.hero.title", "Открывайте привычные сервисы")}
         </h1>
         <p className="max-w-lg text-lg leading-relaxed text-ink-soft">
           {getCopyText(
@@ -48,8 +48,8 @@ export function Hero() {
           <Button href={MARKETING_CANONICAL_PATHS.install} size="lg">
             {getCopyText("marketing.home.hero.primary_cta", "Попробовать бесплатно")}
           </Button>
-          <Button href="/#pricing" size="lg" variant="secondary">
-            {getCopyText("marketing.home.hero.secondary_cta", "Тарифы от 99 ₽")}
+          <Button href="/#how-it-works" size="lg" variant="secondary">
+            {getCopyText("marketing.home.hero.secondary_cta", "Как это работает")}
           </Button>
         </div>
         <dl className="mt-2 grid w-full max-w-lg grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">

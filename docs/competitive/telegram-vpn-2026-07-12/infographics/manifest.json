@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-07-13T03:11:23.721Z",
+  "generated_at": "2026-07-25T00:23:20.951Z",
   "source": "../archive/infographic-data.json",
-  "source_sha256": "30aa2d5845f14bcf240e1fea8ad67c16521b7fba0dfb3f70fe69090702070a86",
+  "source_sha256": "883cc925ab0171cf42658c7dda232f5fb20de7a471e703439d6b971926cfdbd1",
   "dimensions": {
     "width": 1600,
     "height": 5000
@@ -12,24 +12,24 @@
       "png": "01-analytical-report.png",
       "width": 1600,
       "height": 5000,
-      "sha256": "b2ff0a1d1dc60679d44f6d095dace6f8050db156e1d7f92a65a5c0710c1e0629",
-      "source_sha256": "30aa2d5845f14bcf240e1fea8ad67c16521b7fba0dfb3f70fe69090702070a86"
+      "sha256": "1bbab65cf4be489e8aa6ab2761baeca3f72dba793ded3ce0d59814db843051cb",
+      "source_sha256": "883cc925ab0171cf42658c7dda232f5fb20de7a471e703439d6b971926cfdbd1"
     },
     {
       "html": "02-war-room.html",
       "png": "02-war-room.png",
       "width": 1600,
       "height": 5000,
-      "sha256": "d6bbb9fe106ca84ae107574446e6669e51b591784581572b0c0df1e4405437c0",
-      "source_sha256": "30aa2d5845f14bcf240e1fea8ad67c16521b7fba0dfb3f70fe69090702070a86"
+      "sha256": "658f2661a57be70549bd227cec478e021c7a0615203f3117bb512d142cc03d24",
+      "source_sha256": "883cc925ab0171cf42658c7dda232f5fb20de7a471e703439d6b971926cfdbd1"
     },
     {
       "html": "03-growth-funnel.html",
       "png": "03-growth-funnel.png",
       "width": 1600,
       "height": 5000,
-      "sha256": "e054503ba4d5d4f23d075b5211ceb96e8785636b6e06d1cb706081c996988820",
-      "source_sha256": "30aa2d5845f14bcf240e1fea8ad67c16521b7fba0dfb3f70fe69090702070a86"
+      "sha256": "1d6e1f2e5820dc747d711abcaa1be707ec9afd2420cd111c346a4d414b646e89",
+      "source_sha256": "883cc925ab0171cf42658c7dda232f5fb20de7a471e703439d6b971926cfdbd1"
     }
   ]
 }

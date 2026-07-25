@@ -1081,7 +1081,7 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("heading", { name: "Инструкции POKROV" })).toBeVisible();
     const guideSearch = page.getByRole("searchbox", { name: "Найти задачу, кнопку или клиент" });
     await guideSearch.fill("Happ");
-    await expect(page.getByText("Найдено:").locator("..")).toContainText("1");
+    await expect(page.getByText("Найдено:").locator("..")).toContainText("2");
 
     const happGuide = page.locator("#fallback-happ");
     await happGuide.getByText("Подключиться через Happ", { exact: true }).click();

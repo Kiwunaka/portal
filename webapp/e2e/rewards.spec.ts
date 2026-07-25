@@ -313,7 +313,7 @@ test.describe("rewards fail-closed cabinet surface", () => {
     await registerRewardMocks(page, { sectors: [1] });
     await page.goto("/rewards/");
 
-    await expect(page.getByText("Гарантированная награда: +1 день")).toBeVisible();
+    await expect(page.getByText("Награда в этом секторе: +1 день")).toBeVisible();
     await expect(page.locator("svg[data-wheel]")).toHaveCount(0);
   });
 

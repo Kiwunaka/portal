@@ -49,6 +49,7 @@ node_reality-inspected.json
 .tmp-*
 .tmp/bench/
 portal_api_test_*.db
+portal_api_test_*.db-*
 portal.db
 portal.db.*
 *.cluster.db

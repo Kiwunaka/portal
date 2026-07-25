@@ -23,7 +23,7 @@ const golosText = Golos_Text({
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_MARKETING_SITE_URL),
   title: {
-    default: "POKROV VPN — интернет без ограничений | Android и Windows",
+    default: "POKROV VPN для Android и Windows — 5 дней бесплатно",
     template: "%s",
   },
   description:
@@ -37,7 +37,7 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ru_RU",
     siteName: CANONICAL_PLATFORM_BRAND,
-    title: "POKROV VPN — интернет без ограничений",
+    title: "POKROV VPN для Android и Windows",
     description: "Android и Windows, 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽.",
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     images: [
@@ -51,7 +51,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "POKROV VPN — интернет без ограничений",
+    title: "POKROV VPN для Android и Windows",
     description: "YouTube, TikTok, ChatGPT и сайты одной кнопкой. 5 дней бесплатно без карты.",
     images: [
       {

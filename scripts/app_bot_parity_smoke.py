@@ -19,6 +19,15 @@ def _read_text(path: Path) -> str | None:
         return None
 
 
+def _read_module_surface(directory: Path, filenames: tuple[str, ...]) -> str | None:
+    parts = [
+        text
+        for filename in filenames
+        if (text := _read_text(directory / filename)) is not None
+    ]
+    return "\n".join(parts) if parts else None
+
+
 def _missing_needles(text: str | None, needles: tuple[str, ...]) -> list[str]:
     if text is None:
         return list(needles)
@@ -58,10 +67,29 @@ def build_report(root: str | Path, client_root: str | Path) -> dict[str, Any]:
     root_path = Path(root)
     client_path = Path(client_root)
 
-    api = _read_text(root_path / "portal_bot" / "api.py")
+    portal_bot_path = root_path / "portal_bot"
+    api = _read_module_surface(
+        portal_bot_path,
+        (
+            "api.py",
+            "api_public_routes.py",
+            "api_surface_routes.py",
+            "api_admin_routes.py",
+            "api_subscription_routes.py",
+        ),
+    )
     webapp_api = _read_text(root_path / "webapp" / "src" / "lib" / "api.ts")
-    bot = _read_text(root_path / "portal_bot" / "bot.py")
-    helpbot = _read_text(root_path / "portal_bot" / "helpbot.py")
+    bot = _read_module_surface(
+        portal_bot_path,
+        (
+            "bot.py",
+            "bot_user_handlers.py",
+            "bot_admin_handlers.py",
+            "bot_payment_handlers.py",
+            "bot_operator_handlers.py",
+        ),
+    )
+    helpbot = _read_text(portal_bot_path / "helpbot.py")
     runtime = _read_text(
         client_path
         / "packages"
@@ -107,7 +135,7 @@ def build_report(root: str | Path, client_root: str | Path) -> dict[str, Any]:
         _check(
             check_id="platform_app_first_endpoints",
             title="Platform exposes app-first account, cabinet, bonus, and ticket endpoints",
-            evidence="portal_bot/api.py",
+            evidence="portal_bot/api.py + api_*_routes.py",
             missing=_missing_needles(api, platform_endpoints),
         )
     )
@@ -171,7 +199,7 @@ def build_report(root: str | Path, client_root: str | Path) -> dict[str, Any]:
         _check(
             check_id="telegram_bonus_contract",
             title="Telegram link/check/claim stays available in platform and client",
-            evidence="portal_bot/api.py + POKROV-app runtime adapter",
+            evidence="portal_bot API slices + POKROV-app runtime adapter",
             missing=telegram_missing,
         )
     )
@@ -205,7 +233,7 @@ def build_report(root: str | Path, client_root: str | Path) -> dict[str, Any]:
         _check(
             check_id="support_ticket_contract",
             title="App, cabinet, and bots have real ticket-backed support parity",
-            evidence="portal_bot/api.py + webapp api + POKROV-app runtime adapter",
+            evidence="portal_bot API slices + webapp api + POKROV-app runtime adapter",
             missing=support_missing,
         )
     )
@@ -229,7 +257,7 @@ def build_report(root: str | Path, client_root: str | Path) -> dict[str, Any]:
         _check(
             check_id="safe_redeem_guard",
             title="Raw connection links are rejected before account restore/redeem",
-            evidence="portal_bot/api.py + POKROV-app app_shell.dart/seed_shell.dart",
+            evidence="portal_bot API slices + POKROV-app app_shell.dart/seed_shell.dart",
             missing=safe_redeem_missing,
         )
     )
@@ -255,7 +283,7 @@ def build_report(root: str | Path, client_root: str | Path) -> dict[str, Any]:
         _check(
             check_id="bot_entrypoints_present",
             title="Telegram bot entrypoints remain present for cabinet, support, and redeem fallback",
-            evidence="portal_bot/bot.py + portal_bot/helpbot.py",
+            evidence="portal_bot bot slices + portal_bot/helpbot.py",
             missing=bot_missing,
         )
     )

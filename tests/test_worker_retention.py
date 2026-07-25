@@ -40,7 +40,8 @@ class WorkerRetentionTests(unittest.TestCase):
             os.environ.pop(key, None)
 
         self._tmp = tempfile.TemporaryDirectory()
-        self.db_path = (repo_root / f"portal_api_test_{uuid.uuid4().hex}.db").resolve()
+        self.addCleanup(self._tmp.cleanup)
+        self.db_path = (Path(self._tmp.name) / f"portal_api_test_{uuid.uuid4().hex}.db").resolve()
         os.environ["DATABASE_URL"] = f"sqlite:///{self.db_path.as_posix()}"
         os.environ["BOT_TOKEN"] = "test_bot_token_123"
         os.environ["PUBLIC_CHANNEL"] = "pokrov_vpn"

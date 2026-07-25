@@ -4,7 +4,7 @@ from typing import Any
 
 
 BOT_PROFILE_NAME = "POKROV VPN"
-BOT_PROFILE_SHORT_DESCRIPTION = "Интернет без ограничений. 5 дней бесплатно. Android и Windows."
+BOT_PROFILE_SHORT_DESCRIPTION = "VPN для Android и Windows. 5 дней бесплатно."
 BOT_PROFILE_DESCRIPTION = (
     "POKROV VPN (ВПН) — быстрый VPN для Android и Windows.\n\n"
     "YouTube, TikTok, ChatGPT и сайты одной кнопкой. 5 дней бесплатно без карты. "

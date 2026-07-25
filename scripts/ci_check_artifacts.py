@@ -114,7 +114,9 @@ def _collect_artifact_violations(repo_root: Path) -> list[str]:
             rel = (Path(rel_root) / name).as_posix() if rel_root != "." else name
             if name.endswith(".pyc"):
                 violations.append(f"Forbidden artifact file exists: {rel}")
-            if fnmatch.fnmatch(name, "portal_api_test_*.db"):
+            if fnmatch.fnmatch(name, "portal_api_test_*.db") or fnmatch.fnmatch(
+                name, "portal_api_test_*.db-*"
+            ):
                 violations.append(f"Forbidden artifact file exists: {rel}")
 
     return sorted(set(violations))
@@ -122,8 +124,17 @@ def _collect_artifact_violations(repo_root: Path) -> list[str]:
 
 def _public_copy_files(repo_root: Path) -> list[Path]:
     files: list[Path] = []
-    fixed = [repo_root / "portal_bot" / "bot.py", repo_root / "portal_bot" / "helpbot.py"]
+    portal_bot = repo_root / "portal_bot"
+    fixed = [
+        repo_root / "copy" / "catalog.ru.json",
+        portal_bot / "bot.py",
+        portal_bot / "bot_texts.py",
+        portal_bot / "helpbot.py",
+        portal_bot / "telegram_profile.py",
+    ]
     files.extend([p for p in fixed if p.exists()])
+    if portal_bot.exists():
+        files.extend(portal_bot.glob("bot_*_handlers.py"))
 
     for base in (repo_root / "webapp" / "src", repo_root / "marketing" / "src"):
         if not base.exists():

@@ -2,7 +2,7 @@
 
 import { adminFunnelSummary, type AdminFunnelSummary } from "@/lib/api";
 import { ArrowDownRight, BarChart3, Loader2, MousePointerClick, RefreshCw, Route, Users } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 type RangePreset = "7" | "14" | "30";
 
@@ -60,7 +60,7 @@ export default function AdminFunnelPage() {
 
   const period = useMemo(() => buildRange(range), [range]);
 
-  const load = async (): Promise<void> => {
+  const load = useCallback(async (): Promise<void> => {
     setBusy(true);
     setError("");
     try {
@@ -70,11 +70,11 @@ export default function AdminFunnelPage() {
     } finally {
       setBusy(false);
     }
-  };
+  }, [period]);
 
   useEffect(() => {
     void load();
-  }, [period.from, period.to]);
+  }, [load]);
 
   const totals = data?.totals || { visitors: 0, app_opens: 0, checkouts: 0, paid: 0, connected: 0 };
 

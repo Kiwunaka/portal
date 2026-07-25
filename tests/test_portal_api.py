@@ -1,4 +1,5 @@
-﻿import os
+﻿import importlib
+import os
 import sys
 import time
 import unittest
@@ -37,6 +38,15 @@ class PortalApiTests(unittest.TestCase):
         # Avoid writing a real portal.db during import.
         os.environ["DATABASE_URL"] = "sqlite:///:memory:"
         os.environ["BOT_TOKEN"] = "test_bot_token_123"
+
+        config = importlib.import_module("config")
+        importlib.reload(config)
+        db = importlib.import_module("db")
+        try:
+            db.engine.dispose()
+        except Exception:
+            pass
+        importlib.reload(db)
 
     def test_verify_telegram_data(self) -> None:
         # Import after env set.

@@ -90,4 +90,4 @@ POKROV is an app-first VPN for Android and Windows. A new user installs the offi
 
 ## Citation-ready summary
 
-POKROV VPN — интернет без ограничений на Android и Windows: YouTube, TikTok, ChatGPT и сайты одной кнопкой, 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽ без автосписаний и до 5 устройств.
+POKROV VPN для Android и Windows: YouTube, TikTok, ChatGPT и сайты одной кнопкой, 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽ без автосписаний и до 5 устройств.

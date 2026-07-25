@@ -393,8 +393,8 @@ export default function AdminNodesPage() {
   };
 
   return (
-    <section className="space-y-5">
-      <div className="glass-card p-5">
+    <section className="min-w-0 space-y-5">
+      <div className="glass-card min-w-0 p-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className={`stat-icon ${status?.status === "fresh" ? "stat-icon-emerald" : "stat-icon-amber"}`}>
@@ -455,7 +455,7 @@ export default function AdminNodesPage() {
         ) : null}
       </div>
 
-      <div className="glass-card p-5">
+      <div className="glass-card min-w-0 p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="font-display text-xl font-bold">Capacity steering</h3>
@@ -514,8 +514,8 @@ export default function AdminNodesPage() {
         </div>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.85fr)]">
-        <div className="glass-card p-5">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.85fr)]">
+        <div className="glass-card min-w-0 p-5">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="stat-icon stat-icon-amber">
@@ -609,7 +609,7 @@ export default function AdminNodesPage() {
           </div>
         </div>
 
-        <div className="glass-card p-5">
+        <div className="glass-card min-w-0 p-5">
           <div className="mb-4 flex items-center gap-3">
             <div className="stat-icon stat-icon-blue">
               <KeyRound size={20} />
@@ -685,7 +685,7 @@ export default function AdminNodesPage() {
         </div>
       </div>
 
-      <div className="glass-card p-5">
+      <div className="glass-card min-w-0 p-5">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="font-display text-xl font-bold">Живой снимок панелей</h3>
@@ -760,7 +760,7 @@ export default function AdminNodesPage() {
       </div>
 
       {drift ? (
-        <div className="glass-card p-5">
+        <div className="glass-card min-w-0 p-5">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
               <h3 className="font-display text-xl font-bold">Сверка POKROV и панели</h3>
@@ -1064,7 +1064,7 @@ export default function AdminNodesPage() {
         ) : null}
       </div>
 
-      <div className="glass-card p-5">
+      <div className="glass-card min-w-0 p-5">
         <div className="mb-4 flex items-center gap-3">
           <div className="stat-icon stat-icon-blue">
             <Wifi size={20} />

@@ -605,6 +605,37 @@ def _active_node_metric_alert_kinds(
     return kinds
 
 
+def _point_in_time_node_metric_alert_kinds(source: object | None) -> list[str]:
+    """Return compatibility alerts for the latest known node state.
+
+    Durable operator alerts still use ``_active_node_metric_alert_kinds`` and
+    therefore require the configured sustained sample window.  These
+    point-in-time kinds are only used by status payloads that historically
+    exposed the current threshold crossings immediately.
+    """
+    if source is None:
+        return []
+    kinds: list[str] = []
+    if float(getattr(source, "cpu_percent", 0.0) or 0.0) >= NODE_METRICS_CPU_ALERT_PERCENT:
+        kinds.append("cpu_high")
+    if _sample_memory_percent(source) >= NODE_METRICS_MEMORY_ALERT_PERCENT:
+        kinds.append("memory_high")
+    if _sample_disk_percent(source) >= NODE_METRICS_DISK_ALERT_PERCENT:
+        kinds.append("disk_high")
+    if _sample_network_percent(source) >= NODE_METRICS_NETWORK_ALERT_PERCENT:
+        kinds.append("network_high")
+    if float(getattr(source, "panel_latency_ms", 0) or 0.0) >= NODE_METRICS_LATENCY_ALERT_MS:
+        kinds.append("latency_high")
+    if (
+        float(getattr(source, "panel_error_rate", 0.0) or 0.0) >= NODE_METRICS_ERROR_RATE_ALERT
+        and not bool(getattr(source, "is_healthy", True))
+    ):
+        kinds.append("error_rate_high")
+    if int(getattr(source, "active_clients", 0) or 0) >= NODE_METRICS_ACTIVE_CLIENTS_ALERT:
+        kinds.append("client_density_high")
+    return kinds
+
+
 def _legacy_node_alert_kind(kind: str) -> str:
     mapping = {
         "cpu_high": "high_cpu",
@@ -649,6 +680,9 @@ def build_admin_metrics_status_snapshot(*, s, now: datetime, stale_after_seconds
         )
         if _observer_is_stale(node, now=now):
             alert_kinds.append("observer_push_stale")
+        display_alert_kinds = sorted(
+            set(alert_kinds + _point_in_time_node_metric_alert_kinds(latest or node))
+        )
         if last_sample_at and (overall_last_sample is None or last_sample_at > overall_last_sample):
             overall_last_sample = last_sample_at
         if age_seconds is not None:
@@ -669,7 +703,8 @@ def build_admin_metrics_status_snapshot(*, s, now: datetime, stale_after_seconds
             "observer_last_push_at": safe_iso(getattr(node, "observer_last_push_at", None)),
             "observer_is_stale": bool(_observer_is_stale(node, now=now)),
             "alert_kinds": sorted(set(alert_kinds)),
-            "alerts": _legacy_node_alerts(alert_kinds),
+            "display_alert_kinds": display_alert_kinds,
+            "alerts": _legacy_node_alerts(display_alert_kinds),
         }
         rows.append(row)
         for kind in row["alert_kinds"]:

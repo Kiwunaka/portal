@@ -136,8 +136,8 @@ class BotPaywallTests(unittest.TestCase):
             sys.modules["qrcode"] = types.SimpleNamespace(QRCode=_DummyQR)
 
         self._tmp = tempfile.TemporaryDirectory()
-        db_path = (repo_root / f"portal_api_test_{uuid.uuid4().hex}.db").as_posix()
-        os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
+        self.db_path = (Path(self._tmp.name) / f"portal_api_test_{uuid.uuid4().hex}.db").resolve()
+        os.environ["DATABASE_URL"] = f"sqlite:///{self.db_path.as_posix()}"
         os.environ["BOT_TOKEN"] = "test_bot_token_123"
         os.environ["ADMIN_ID"] = "9999"
         os.environ["NEWS_CHANNEL_ID"] = "@portal_news_channel"
@@ -238,6 +238,12 @@ class BotPaywallTests(unittest.TestCase):
         self.assertNotIn("5 ГБ", trial_label)
 
     def tearDown(self) -> None:
+        try:
+            from db import engine
+
+            engine.dispose()
+        except Exception:
+            pass
         for k, v in self._saved_env.items():
             if v is None:
                 os.environ.pop(k, None)
@@ -247,6 +253,10 @@ class BotPaywallTests(unittest.TestCase):
             sys.modules.pop("qrcode", None)
         else:
             sys.modules["qrcode"] = self._saved_qrcode
+        try:
+            self.db_path.unlink(missing_ok=True)
+        except Exception:
+            pass
         self._tmp.cleanup()
 
     def test_app_link_rejects_admin_telegram_for_non_admin_account(self) -> None:

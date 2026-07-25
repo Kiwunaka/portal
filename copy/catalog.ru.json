@@ -373,7 +373,7 @@
     },
     "bot.menu.new_user": {
       "surface": "bot.main",
-      "ru": "🚀 *POKROV VPN — интернет без ограничений*\n\nYouTube, TikTok, ChatGPT, соцсети и сайты — на Android и Windows.\n\n✅ 5 дней бесплатно, без карты\n✅ Безлимитный трафик на платных тарифах\n✅ До 5 устройств\n✅ От 99 ₽, без автосписаний\n\nПопробуйте прямо сейчас:",
+      "ru": "🚀 *POKROV VPN — привычные сервисы снова доступны*\n\nYouTube, TikTok, ChatGPT, соцсети и сайты — на Android и Windows.\n\n✅ 5 дней бесплатно, без карты\n✅ Безлимитный трафик на платных тарифах\n✅ До 5 устройств\n✅ От 99 ₽, без автосписаний\n\nПопробуйте прямо сейчас:",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
@@ -892,7 +892,7 @@
     },
     "marketing.home.final.title": {
       "surface": "marketing.home.final",
-      "ru": "Включите интернет без ограничений",
+      "ru": "Подключите POKROV VPN за минуту",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -973,7 +973,7 @@
     },
     "marketing.home.hero.secondary_cta": {
       "surface": "marketing.home.hero",
-      "ru": "Тарифы от 99 ₽",
+      "ru": "Как это работает",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -991,7 +991,7 @@
     },
     "marketing.home.hero.title": {
       "surface": "marketing.home.hero",
-      "ru": "Интернет без ограничений",
+      "ru": "Открывайте привычные сервисы",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1270,7 +1270,7 @@
     },
     "marketing.home.services.youtube.title": {
       "surface": "marketing.home.services.youtube",
-      "ru": "YouTube без ограничений",
+      "ru": "YouTube через POKROV",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,

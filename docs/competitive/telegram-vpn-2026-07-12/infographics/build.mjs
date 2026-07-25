@@ -92,8 +92,9 @@ export async function buildAll(sourcePath = DEFAULT_SOURCE_PATH) {
     const htmlPath = path.join(OUTPUT_DIR, htmlFilename);
     const pngPath = path.join(OUTPUT_DIR, pngFilename);
     const html = output.render(data, sourceSha256);
+    const normalizedHtml = `${html.replace(/[ \t]+$/gm, "").trimEnd()}\n`;
 
-    await fs.writeFile(htmlPath, html, "utf8");
+    await fs.writeFile(htmlPath, normalizedHtml, "utf8");
     await renderPng(htmlPath, pngPath);
     const pngBytes = await fs.readFile(pngPath);
 

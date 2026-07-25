@@ -106,7 +106,7 @@ export default function VpnSeoPage() {
         <Reveal>
           <SectionHeading
             kicker="POKROV PREMIUM"
-            title="Интернет без ограничений на Android и Windows"
+            title="VPN для Android и Windows"
             sub="YouTube, TikTok, ChatGPT, соцсети и сайты одной кнопкой. 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽."
           />
         </Reveal>

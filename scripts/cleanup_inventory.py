@@ -101,7 +101,7 @@ FILE_RULES: tuple[FileRule, ...] = (
     FileRule(
         cleanup_class=CLASS_SAFE,
         reason="temporary local test database",
-        glob_patterns=("portal_api_test_*.db",),
+        glob_patterns=("portal_api_test_*.db", "portal_api_test_*.db-*"),
     ),
     FileRule(
         cleanup_class=CLASS_SAFE,

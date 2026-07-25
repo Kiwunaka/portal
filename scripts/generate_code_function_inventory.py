@@ -77,7 +77,16 @@ NON_PRODUCT_COVERAGE_TEST_NAMES = {
     "test_code_function_inventory.py",
 }
 GENERATED_FILE_STEMS = {"generatedpluginregistrant", "buildconfig"}
-TELEGRAM_BOT_FILE_NAMES = {"bot.py", "helpbot.py", "feedbackbot.py", "legacy_redirect_bot.py"}
+TELEGRAM_BOT_FILE_NAMES = {
+    "bot.py",
+    "bot_user_handlers.py",
+    "bot_admin_handlers.py",
+    "bot_payment_handlers.py",
+    "bot_operator_handlers.py",
+    "helpbot.py",
+    "feedbackbot.py",
+    "legacy_redirect_bot.py",
+}
 TELEGRAM_HANDLER_DECORATOR_MARKERS = (
     "router.callback_query(",
     "router.message(",

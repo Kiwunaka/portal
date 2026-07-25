@@ -1,4 +1,5 @@
 import asyncio
+import importlib
 import json
 import logging
 import sys
@@ -76,6 +77,18 @@ STORE_PLANS = frozenset(
     }
 )
 RETRIEVAL_PLANS = frozenset({"confident", "candidate", "none"})
+SUPPORT_AGENT_MODULE_ORDER = (
+    "support_agent_policy",
+    "support_agent_knowledge",
+    "support_agent_safety",
+    "support_agent_state",
+    "support_agent_sessions",
+    "support_agent_grounding",
+    "support_agent_context",
+    "support_agent_provider",
+    "support_agent_harness",
+    "support_agent_service",
+)
 
 MODEL_REPLY = (
     "Коротко\nПроверьте подключение.\n\n"
@@ -293,8 +306,13 @@ def _snapshots_and_decisions():
     }
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def harness_case_factory():
+    for module_name in reversed(SUPPORT_AGENT_MODULE_ORDER):
+        sys.modules.pop(module_name, None)
+    for module_name in SUPPORT_AGENT_MODULE_ORDER:
+        importlib.import_module(module_name)
+
     def factory(
         *,
         name: str,

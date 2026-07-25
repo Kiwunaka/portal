@@ -257,7 +257,7 @@ export function BonusWheel({
                 <Gift size={25} strokeWidth={1.9} aria-hidden="true" />
               </span>
               <p className="text-base font-bold text-ink">
-                Гарантированная награда: {sectors[0].kind === "days" ? `+${formatDays(sectors[0].value)}` : `−${sectors[0].value}%`}
+                Награда в этом секторе: {sectors[0].kind === "days" ? `+${formatDays(sectors[0].value)}` : `−${sectors[0].value}%`}
               </p>
             </div>
           ) : (

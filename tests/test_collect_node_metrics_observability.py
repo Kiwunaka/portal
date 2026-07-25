@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 import sys
+import tempfile
 import unittest
 import uuid
 from datetime import datetime
@@ -134,7 +135,9 @@ class CollectNodeMetricsObservabilityTests(unittest.TestCase):
         if self.scripts_dir not in sys.path:
             sys.path.insert(0, self.scripts_dir)
 
-        self.db_path = str((self.repo_root / f"portal_api_test_{uuid.uuid4().hex}.db").resolve())
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.db_path = str((Path(self._tmp.name) / f"portal_api_test_{uuid.uuid4().hex}.db").resolve())
         self._saved_env = os.environ.get("DATABASE_URL")
         os.environ["DATABASE_URL"] = f"sqlite:///{Path(self.db_path).as_posix()}"
 

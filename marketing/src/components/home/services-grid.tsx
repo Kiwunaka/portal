@@ -22,7 +22,7 @@ export function ServicesGrid() {
     {
       icon: <BrandIcon icon={siYoutube} />,
       href: MARKETING_CANONICAL_PATHS.youtube,
-      title: getCopyText("marketing.home.services.youtube.title", "YouTube без ограничений"),
+      title: getCopyText("marketing.home.services.youtube.title", "YouTube через POKROV"),
       text: getCopyText("marketing.home.services.youtube.text", "Смотрите ролики, стримы и длинные видео в нужном качестве"),
     },
     {
