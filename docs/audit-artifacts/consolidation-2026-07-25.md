@@ -3,10 +3,10 @@
 ## Scope
 
 This record covers the 2026-07-25 consolidation of the platform, active private
-client, POKROV Core, and public source-client lanes. The exact platform
-candidate is the commit that contains this document. No production status is
-inferred from a local build or a Git push; live origins are recorded separately
-after deployment.
+client, POKROV Core, and public source-client lanes. The exact deployed
+platform candidate is `7d47de353405e80135c0f51879001ad5c9c4bca1`. No production
+status is inferred from a local build or a Git push; live origins are recorded
+separately after deployment.
 
 The consolidation rule was:
 
@@ -127,6 +127,9 @@ caches were cleaned:
 | `pokrov-core-clean-build-20260725-sha256.csv` | seven deterministic clean-build/tool files, 191,200,152 bytes, recorded before cache cleanup | `bf35441c002dba07c8b8ca78bfcc21e9253d8d3b2275a52773f4aa81328a9c65` |
 | `pokrov-client-superpowers-20260725` | nine untracked public-client brainstorm files, 23,104 bytes | `e70e6fb73e358c235d0872d7bafd3d930b70cb8238196459e28380903d79c568` |
 | `pokrov-client-build-evidence-20260725` | 11,294 historical source-release evidence and generated fixture files moved out of the public checkout | `20ef51ff10984895041ba4d1e375799fd1f525ae962e7a3996faf54049c8a5d8` |
+| `portal-worktrees-20260725.bundle` | all consolidated platform refs and their complete reachable history before local branch/worktree cleanup; `git bundle verify` passed | `d9d0c09fdc2f80c6f00c1d0563ce868f59167e48fc673dd7eb29b5ded1c2108e` |
+| `platform-local-evidence-20260725` | four ignored integration evidence files: the SDD ignore rule, review diff, and two local SQLite states; 4,306,494 bytes | `e2b6a0a8f6b026418c60e2f1be4c5367cb3873d3fe69975cd17d73610fe02f85` |
+| `market-ready-cis-snapshot-20260725` | 1,397 source, design, documentation, and review files from a stale composite checkout, including its unmatched historical `portal_bot/api.py`; 82,431,695 bytes | `264d4a094cff0a37bba214ffdbd6ce68ad6d163105f86c1311f62c2f35cb544a` |
 
 The rejected Hiddify cache is reconstructable public cache material, not
 release evidence. The branch bundle is the recovery source for deleted local
@@ -150,14 +153,91 @@ branch refs.
 | Script manifest | PASS after registering `research_censorship_corpus.py` |
 | Generated-artifact/public-copy guard | PASS after generated frontend/test output cleanup |
 
-## Deployment and Manual Gates
+## Production Deployment Result
 
-Platform backend and static deployment may proceed only after the exact
-candidate is merged and rebuilt from the canonical checkout containing the
-preserved local secret locations. The staged backend/static deploy scripts own
-rollback and retain bounded backups.
+The merged platform candidate
+`7d47de353405e80135c0f51879001ad5c9c4bca1` was deployed to Brain
+`82.21.114.104` on 2026-07-25. The release orchestrator exited `0` with empty
+stderr, retained backend backup
+`/root/portal_bot.deploy-backups/20260725T060709Z-34468`, and published static
+release `20260725060800`.
 
-Production verification must keep `current`, `brain`, and RU-origin results
-separate. Android physical-device audit, trusted Android signing, trusted
-Windows signing, and a provenance-correct Core patch release remain manual
-release gates; a successful platform deployment does not clear them.
+Deployment evidence is stored outside Git with the other consolidation
+artifacts:
+
+| Evidence | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `portal-production-deploy-20260725.stdout.log` | 5,219 | `07c07e93da48e7df80ddfeb13dbfda978b990750fd0ccbe47f8096ac25ee39f2` |
+| `portal-production-deploy-20260725.stderr.log` | 0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
+| `portal-production-deploy-20260725.exit.txt` | 1 | `5feceb66ffc86f38d952786c6d696c79c2dbc239dd4e91b46729d73a27fb57e9` |
+
+Independent post-deploy verification repeated the Brain readiness probe five
+times. All runs passed:
+
+- `caddy`, `portal-api`, `portal-bot`, `portal-helpbot`, and
+  `portal-feedbackbot` remained active;
+- API health and the public marketing, install, offer, WebApp, and AdminApp
+  origins returned HTTP 200;
+- every subscription probe returned seven lines, seven hosts, one
+  `connect_json` payload, and 27 outbounds with `no-cache` semantics;
+- desktop and 390-by-844 browser checks found no broken images or horizontal
+  overflow on the marketing, WebApp login, or AdminApp login surfaces;
+- the marketing header CTA navigated to `/install/`, and the checked browser
+  consoles had no application errors.
+
+The RU-origin lane was not conflated with the Brain result and remains a
+separate deployment/verification target.
+
+## Cleanup and Recovery Result
+
+All registered platform worktrees were removed without `--force`. The eight
+temporary consolidation branches were deleted only after their exact tips were
+present in the verified platform bundle. The independent
+`design/cabinet-onboarding-uiux` branch was retained. The private client,
+public source client, and Core repositories now each have one registered
+worktree and a clean canonical branch synchronized with origin.
+
+Before deletion, the competitor raw corpus was checked twice: all 1,866 current
+untracked source files matched the archive, and all 1,985 archived entries
+matched their manifests. The canonical cleanup inventory then removed 597
+generated build, cache, bytecode, and test-database entries. A repeat dry run
+reported `safe=0`. Nine task-local temporary directories totaling
+1,857,800,641 bytes were removed after 1,333 reparse links were detached as
+links. The retained root development environments, local operational tooling,
+audit evidence, and secret locations were intentionally not classified as
+cleanup candidates.
+
+One removed worktree contained roughly 1.1 GB of ignored Next.js and Python
+build output behind long junction paths. Windows Recycle Bin handling could not
+represent that tree, so its exact generated remainder was deleted directly.
+Tracked content remains recoverable from
+`portal-worktrees-20260725.bundle`; the directly removed content was
+reproducible dependency/build/test output.
+
+Eleven ordinary test-created directories remain under `.worktrees` because
+their ACLs deny enumeration and the current token does not hold
+`SeTakeOwnershipPrivilege`. They are not registered Git worktrees and contain
+zero accessible files:
+
+- `market-ready-cis-integration`
+- `pytest-docs-finalization-important-full-81-green-20260714-k`
+- `pytest-docs-finalization-important-full-green-20260714-j`
+- `pytest-docs-finalization-task2-final-20260714-e`
+- `pytest-docs-finalization-task2-full-20260714-d`
+- `pytest-docs-probe-d4e27939d654424686a18fcfbc3ba336`
+- `pytest-docs-task1-aaf466dde8994aac89edf0d87600c327`
+- `pytest-docs-task1-final-aec5976a4118495d8f626d540d6bb46d`
+- `pytest-docs-task1-q001-0ef0c452617b4045a6d7a1372de6effa`
+- `pytest-docs-task1-rerun-99b3818ed7b341d8b1d9db1728681172`
+- `task1-rereview-c79c752`
+
+Removing those ACL shells requires an elevated owner/administrator token; no
+privilege bypass was attempted.
+
+## Remaining Manual Gates
+
+Android physical-device audit, trusted Android signing, trusted Windows
+signing, a provenance-correct Core patch release, and the separate RU-origin
+deployment/verification remain manual release gates. A successful platform
+deployment does not clear them, and the locally built debug/unsigned client
+artifacts must not be published as stable binaries.
