@@ -135,7 +135,7 @@ class ClientSecuritySmokeTests(unittest.TestCase):
         failures = self.module._runtime_artifact_failures(runtime_artifacts)
 
         self.assertIn("runtime artifacts must stay pinned to Kiwunaka/POKROV-core", failures)
-        self.assertIn("runtime artifacts must stay pinned to POKROV Core v1.0.0", failures)
+        self.assertIn("runtime artifacts must stay pinned to POKROV Core v1.0.1", failures)
         self.assertIn("runtime artifacts must not declare a Windows helper binary", failures)
         self.assertIn("runtime artifacts must pin the reviewed Android POKROV Core AAR", failures)
 
@@ -147,8 +147,22 @@ class ClientSecuritySmokeTests(unittest.TestCase):
                 "source_commit": self.module.POKROV_CORE_SOURCE_COMMIT,
                 "activation_state": "active",
                 "artifact_provenance": {
-                    "status": "pinned_dirty_build_not_reproducible_from_clean_tag",
-                    "promotion_rule": "retain_pinned_v1.0.0_candidate_until_new_patch_release",
+                    "status": "clean_reproducible_release",
+                    "vcs_stamp": "disabled_for_reproducible_release_artifacts",
+                    "source_identity": "annotated_release_tag_and_github_release_commit",
+                    "release_url": self.module.POKROV_CORE_RELEASE_URL,
+                    "reproducible_build": {
+                        "android": {
+                            "size": self.module.ANDROID_CORE_SIZE,
+                            "sha256": self.module.ANDROID_CORE_SHA256,
+                        },
+                        "windows": {
+                            "size": self.module.WINDOWS_CORE_SIZE,
+                            "sha256": self.module.WINDOWS_CORE_SHA256,
+                        },
+                        "libcronet_sha256": self.module.WINDOWS_CRONET_SHA256,
+                    },
+                    "promotion_rule": "accept_exact_v1.0.1_release_artifacts",
                 },
                 "desktop_abi": {
                     "name": "pokrov-core",
@@ -204,6 +218,11 @@ android {
   buildTypes {
     release {
       signingConfig = signingConfigs.debug
+    }
+  }
+  packaging {
+    jniLibs {
+      keepDebugSymbols += ["**/libpokrov-core.so"]
     }
   }
 }
