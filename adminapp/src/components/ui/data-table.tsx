@@ -26,9 +26,9 @@ export function DataTable<T>({ data, columns, empty = "Нет данных", cla
   });
 
   return (
-    <div className={cn("ops-scrollbar overflow-auto rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)]", className)}>
+    <div className={cn("ops-data-table ops-scrollbar overflow-auto rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)]", className)}>
       <table className="w-full min-w-[760px] border-collapse text-left text-xs">
-        <thead className="bg-[color:var(--pokrov-table-header-bg)] text-[11px] uppercase tracking-[0] text-[color:var(--atlas-text-soft)]">
+        <thead className="sticky top-0 z-10 bg-[color:var(--pokrov-table-header-bg)] text-[10px] uppercase tracking-[0.055em] text-[color:var(--atlas-text-muted)]">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => (
@@ -42,7 +42,7 @@ export function DataTable<T>({ data, columns, empty = "Нет данных", cla
         <tbody>
           {table.getRowModel().rows.length ? (
             table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="h-[var(--pokrov-table-row-height)] border-b border-[color:var(--pokrov-table-divider)] hover:bg-[color:var(--pokrov-table-row-hover-bg)]">
+              <tr key={row.id} className="h-[var(--pokrov-table-row-height)] border-b border-[color:var(--pokrov-table-divider)] transition-colors hover:bg-[color:var(--pokrov-table-row-hover-bg)]">
                 {row.getVisibleCells().map((cell) => (
                   <td key={cell.id} className="px-3 py-2 align-middle text-[color:var(--atlas-text)]">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}

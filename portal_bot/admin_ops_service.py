@@ -70,6 +70,7 @@ NODE_METRICS_LATENCY_ALERT_MS = _env_float("NODE_METRICS_LATENCY_ALERT_MS", 800.
 NODE_METRICS_ERROR_RATE_ALERT = _env_float("NODE_METRICS_ERROR_RATE_ALERT", 0.2)
 NODE_METRICS_ACTIVE_CLIENTS_ALERT = max(1, _env_int("NODE_METRICS_ACTIVE_CLIENTS_ALERT", 200))
 NODE_METRICS_SUSTAINED_SAMPLES = max(2, _env_int("NODE_METRICS_SUSTAINED_SAMPLES", 3))
+NODE_CAPACITY_ALERT_SUSTAINED_SAMPLES = max(2, _env_int("NODE_CAPACITY_ALERT_SUSTAINED_SAMPLES", 3))
 
 
 def utcnow() -> datetime:
@@ -594,48 +595,44 @@ def _active_node_metric_alert_kinds(
         kinds.append("network_high")
     if all(float(getattr(sample, "panel_latency_ms", 0) or 0.0) >= NODE_METRICS_LATENCY_ALERT_MS for sample in window):
         kinds.append("latency_high")
-    if all(float(getattr(sample, "panel_error_rate", 0.0) or 0.0) >= NODE_METRICS_ERROR_RATE_ALERT for sample in window):
+    if (
+        all(float(getattr(sample, "panel_error_rate", 0.0) or 0.0) >= NODE_METRICS_ERROR_RATE_ALERT for sample in window)
+        and any(not bool(getattr(sample, "is_healthy", True)) for sample in window)
+    ):
         kinds.append("error_rate_high")
     if all(int(getattr(sample, "active_clients", 0) or 0) >= NODE_METRICS_ACTIVE_CLIENTS_ALERT for sample in window):
         kinds.append("client_density_high")
     return kinds
 
 
-def _node_snapshot_alert_kinds(
-    *,
-    node: Node,
-    last_sample_at: datetime | None,
-    stale_after_seconds: int,
-    now: datetime,
-) -> list[str]:
-    age_seconds = int((now - last_sample_at).total_seconds()) if last_sample_at else None
+def _point_in_time_node_metric_alert_kinds(source: object | None) -> list[str]:
+    """Return compatibility alerts for the latest known node state.
+
+    Durable operator alerts still use ``_active_node_metric_alert_kinds`` and
+    therefore require the configured sustained sample window.  These
+    point-in-time kinds are only used by status payloads that historically
+    exposed the current threshold crossings immediately.
+    """
+    if source is None:
+        return []
     kinds: list[str] = []
-    if age_seconds is None or age_seconds > stale_after_seconds:
-        kinds.append("stale_metrics")
-    cpu_percent = float(getattr(node, "cpu_percent", 0.0) or 0.0)
-    memory_total = float(getattr(node, "memory_total_mb", 0.0) or 0.0)
-    memory_used = float(getattr(node, "memory_used_mb", 0.0) or 0.0)
-    disk_total = float(getattr(node, "disk_total_gb", 0.0) or 0.0)
-    disk_used = float(getattr(node, "disk_used_gb", 0.0) or 0.0)
-    network_total_mbps = float(getattr(node, "network_total_mbps", 0.0) or 0.0)
-    memory_percent = (memory_used / memory_total * 100.0) if memory_total > 0 else 0.0
-    disk_percent = (disk_used / disk_total * 100.0) if disk_total > 0 else 0.0
-    if cpu_percent >= NODE_METRICS_CPU_ALERT_PERCENT:
+    if float(getattr(source, "cpu_percent", 0.0) or 0.0) >= NODE_METRICS_CPU_ALERT_PERCENT:
         kinds.append("cpu_high")
-    if memory_percent >= NODE_METRICS_MEMORY_ALERT_PERCENT:
+    if _sample_memory_percent(source) >= NODE_METRICS_MEMORY_ALERT_PERCENT:
         kinds.append("memory_high")
-    if disk_percent >= NODE_METRICS_DISK_ALERT_PERCENT:
+    if _sample_disk_percent(source) >= NODE_METRICS_DISK_ALERT_PERCENT:
         kinds.append("disk_high")
-    if _network_utilization_percent(network_total_mbps) >= NODE_METRICS_NETWORK_ALERT_PERCENT:
+    if _sample_network_percent(source) >= NODE_METRICS_NETWORK_ALERT_PERCENT:
         kinds.append("network_high")
-    if float(getattr(node, "panel_latency_ms", 0.0) or 0.0) >= NODE_METRICS_LATENCY_ALERT_MS:
+    if float(getattr(source, "panel_latency_ms", 0) or 0.0) >= NODE_METRICS_LATENCY_ALERT_MS:
         kinds.append("latency_high")
-    if float(getattr(node, "panel_error_rate", 0.0) or 0.0) >= NODE_METRICS_ERROR_RATE_ALERT:
+    if (
+        float(getattr(source, "panel_error_rate", 0.0) or 0.0) >= NODE_METRICS_ERROR_RATE_ALERT
+        and not bool(getattr(source, "is_healthy", True))
+    ):
         kinds.append("error_rate_high")
-    if int(getattr(node, "active_clients", 0) or 0) >= NODE_METRICS_ACTIVE_CLIENTS_ALERT:
+    if int(getattr(source, "active_clients", 0) or 0) >= NODE_METRICS_ACTIVE_CLIENTS_ALERT:
         kinds.append("client_density_high")
-    if _observer_is_stale(node, now=now):
-        kinds.append("observer_push_stale")
     return kinds
 
 
@@ -675,9 +672,17 @@ def build_admin_metrics_status_snapshot(*, s, now: datetime, stale_after_seconds
         latest = samples[0] if samples else None
         last_sample_at = getattr(latest, "sampled_at", None) or getattr(node, "last_health_at", None)
         age_seconds = int((now - last_sample_at).total_seconds()) if last_sample_at else None
-        alert_kinds = _active_node_metric_alert_kinds(samples=samples, last_sample_at=last_sample_at, stale_after_seconds=stale_after_seconds, now=now)
-        if not alert_kinds:
-            alert_kinds = _node_snapshot_alert_kinds(node=node, last_sample_at=last_sample_at, stale_after_seconds=stale_after_seconds, now=now)
+        alert_kinds = _active_node_metric_alert_kinds(
+            samples=samples,
+            last_sample_at=last_sample_at,
+            stale_after_seconds=stale_after_seconds,
+            now=now,
+        )
+        if _observer_is_stale(node, now=now):
+            alert_kinds.append("observer_push_stale")
+        display_alert_kinds = sorted(
+            set(alert_kinds + _point_in_time_node_metric_alert_kinds(latest or node))
+        )
         if last_sample_at and (overall_last_sample is None or last_sample_at > overall_last_sample):
             overall_last_sample = last_sample_at
         if age_seconds is not None:
@@ -698,7 +703,8 @@ def build_admin_metrics_status_snapshot(*, s, now: datetime, stale_after_seconds
             "observer_last_push_at": safe_iso(getattr(node, "observer_last_push_at", None)),
             "observer_is_stale": bool(_observer_is_stale(node, now=now)),
             "alert_kinds": sorted(set(alert_kinds)),
-            "alerts": _legacy_node_alerts(alert_kinds),
+            "display_alert_kinds": display_alert_kinds,
+            "alerts": _legacy_node_alerts(display_alert_kinds),
         }
         rows.append(row)
         for kind in row["alert_kinds"]:
@@ -750,6 +756,39 @@ def _node_capacity_policy_by_code(s) -> dict[str, Any]:
     return {str(getattr(row, "node_code", "") or "").strip().lower(): row for row in rows if str(getattr(row, "node_code", "") or "").strip()}
 
 
+def _capacity_alert_evidence(*, s, node_code: str, state: str) -> dict[str, Any]:
+    normalized_state = str(state or "").strip().lower()
+    if normalized_state != "hard_reject":
+        return {
+            "confirmed": True,
+            "consecutive_samples": 0,
+            "required_samples": NODE_CAPACITY_ALERT_SUSTAINED_SAMPLES,
+        }
+    recent_states = [
+        str(row[0] or "").strip().lower()
+        for row in (
+            s.query(NodeRuntimeMetric.capacity_state)
+            .filter(func.lower(NodeRuntimeMetric.node_code) == str(node_code or "").strip().lower())
+            .order_by(NodeRuntimeMetric.sampled_at.desc(), NodeRuntimeMetric.id.desc())
+            .limit(NODE_CAPACITY_ALERT_SUSTAINED_SAMPLES)
+            .all()
+        )
+    ]
+    consecutive_samples = 0
+    for recent_state in recent_states:
+        if recent_state != "hard_reject":
+            break
+        consecutive_samples += 1
+    return {
+        "confirmed": bool(
+            len(recent_states) >= NODE_CAPACITY_ALERT_SUSTAINED_SAMPLES
+            and consecutive_samples >= NODE_CAPACITY_ALERT_SUSTAINED_SAMPLES
+        ),
+        "consecutive_samples": consecutive_samples,
+        "required_samples": NODE_CAPACITY_ALERT_SUSTAINED_SAMPLES,
+    }
+
+
 def admin_nodes_capacity_payload(*, s, now: datetime) -> dict[str, Any]:
     rows = s.query(Node).order_by(Node.enabled.desc(), Node.code.asc()).all()
     policy_by_code = _node_capacity_policy_by_code(s)
@@ -767,6 +806,11 @@ def admin_nodes_capacity_payload(*, s, now: datetime) -> dict[str, Any]:
         code = str(getattr(node, "code", "") or "").strip().lower()
         policy = policy_by_code.get(code)
         capacity = node_capacity_status(node, policy=policy, now=now)
+        alert_evidence = _capacity_alert_evidence(
+            s=s,
+            node_code=code,
+            state=str(capacity.get("state") or "unknown"),
+        )
         nodes_payload.append({
             "code": code,
             "name": str(getattr(node, "name", "") or ""),
@@ -776,6 +820,9 @@ def admin_nodes_capacity_payload(*, s, now: datetime) -> dict[str, Any]:
             "capacity_state": str(capacity.get("state") or "unknown"),
             "capacity_score": float(capacity.get("score") or 0.0),
             "reject_reason": str(capacity.get("reject_reason") or "") or None,
+            "alert_confirmed": bool(alert_evidence["confirmed"]),
+            "alert_consecutive_samples": int(alert_evidence["consecutive_samples"]),
+            "alert_required_samples": int(alert_evidence["required_samples"]),
             "tx_mbps": capacity.get("tx_mbps"),
             "tx_ratio": capacity.get("tx_ratio"),
             "capacity_mbps": capacity.get("capacity_mbps"),
@@ -1404,19 +1451,46 @@ def build_alert_candidates(
     ru_uploader_status: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     candidates: list[dict[str, Any]] = []
+    confirmed_capacity_nodes = {
+        str(row.get("code") or row.get("node_code") or "").strip().lower()
+        for row in capacity_rows
+        if str(row.get("capacity_state") or "").strip().lower() == "hard_reject"
+        and row.get("enabled") is not False
+        and row.get("alert_confirmed") is not False
+    }
     for alert in list(metrics_status.get("active_alerts") or []):
         node_code = str(alert.get("node_code") or "").strip().lower()
         kind = str(alert.get("kind") or "").strip()
         if not node_code or not kind:
             continue
+        if kind == "error_rate_high" and node_code in confirmed_capacity_nodes:
+            continue
         severity = "critical" if kind in {"stale_metrics", "error_rate_high", "network_high"} else "warning"
+        title_by_kind = {
+            "cpu_high": "CPU usage high",
+            "memory_high": "Memory usage high",
+            "disk_high": "Disk usage high",
+            "network_high": "Network utilization high",
+            "latency_high": "Panel API latency high",
+            "error_rate_high": "Health probe failure rate high",
+            "client_density_high": "Client density high",
+            "observer_push_stale": "Observer push is stale",
+            "stale_metrics": "Node metrics are stale",
+        }
+        title = title_by_kind.get(kind, f"Metric alert: {kind}")
+        if kind == "latency_high":
+            detail = "This measures the Brain-to-panel control-plane transaction, not VPN dataplane latency."
+        elif kind in {"stale_metrics", "observer_push_stale"}:
+            detail = "The configured freshness threshold was crossed."
+        else:
+            detail = f"Confirmed by {NODE_METRICS_SUSTAINED_SAMPLES} consecutive metric samples."
         candidates.append(
             {
                 "fingerprint": f"node_metrics:{node_code}:{kind}",
                 "source": "node_metrics",
                 "severity": severity,
-                "title": f"Node {node_code} metric alert: {kind}",
-                "body": f"Node {node_code} reports {kind}. Age seconds: {alert.get('age_seconds')}.",
+                "title": f"Node {node_code}: {title}",
+                "body": f"{detail} Age seconds: {alert.get('age_seconds')}.",
                 "node_code": node_code,
                 "metadata": alert,
             }
@@ -1428,14 +1502,26 @@ def build_alert_candidates(
             continue
         if not node_code or state in {"", "ok", "healthy", "normal", "unknown"}:
             continue
+        if state == "hard_reject" and row.get("alert_confirmed") is False:
+            continue
         severity = "critical" if state in {"hard_reject", "critical", "disabled"} else "warning"
+        reject_reason = str(row.get("reject_reason") or "none")
+        if state == "hard_reject":
+            title = f"Node {node_code}: sustained routing hard reject"
+            body = (
+                f"New routing is rejected after {int(row.get('alert_consecutive_samples') or NODE_CAPACITY_ALERT_SUSTAINED_SAMPLES)} "
+                f"consecutive runtime samples; reason: {reject_reason}."
+            )
+        else:
+            title = f"Node {node_code} capacity: {state}"
+            body = f"Capacity state is {state}; reason: {reject_reason}."
         candidates.append(
             {
                 "fingerprint": f"node_capacity:{node_code}",
                 "source": "node_capacity",
                 "severity": severity,
-                "title": f"Node {node_code} capacity: {state}",
-                "body": f"Capacity state is {state}; reason: {row.get('reject_reason') or 'none'}.",
+                "title": title,
+                "body": body,
                 "node_code": node_code,
                 "metadata": row,
             }
@@ -1671,7 +1757,7 @@ def refresh_ops_alerts(*, s, now: datetime, candidates: list[dict[str, Any]]) ->
             row.resolved_at = now
             row.last_seen_at = now
             row.updated_at = now
-            if str(row.severity or "") == "critical":
+            if str(row.severity or "") in {"warning", "critical"}:
                 notifications.append({"kind": "resolved", "fingerprint": fingerprint, "severity": row.severity, "title": row.title})
 
     s.flush()

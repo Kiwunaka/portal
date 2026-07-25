@@ -41,12 +41,32 @@ const SECTION_ICONS: Record<OpsSectionId, LucideIcon> = {
   broadcast: Radio
 };
 
+const DESKTOP_LABELS: Record<OpsSectionId, string> = {
+  dashboard: "Главная",
+  nodes: "Ноды",
+  traffic: "Трафик",
+  alerts: "Алерты",
+  "provider-caps": "Лимиты",
+  "free-tier": "Free",
+  users: "Пользователи",
+  online: "Онлайн",
+  tickets: "Тикеты",
+  payments: "Платежи",
+  funnel: "Воронка",
+  promos: "Промо",
+  referrals: "Рефералы",
+  release: "Релиз",
+  broadcast: "Рассылка"
+};
+
 export interface OpsNavigationProps {
   active: OpsSectionId;
   onNavigate: (href: string) => void;
   className?: string;
   label?: string;
 }
+
+export type OpsDesktopNavigationProps = Pick<OpsNavigationProps, "active" | "onNavigate">;
 
 function isPlainPrimaryClick(event: MouseEvent<HTMLAnchorElement>): boolean {
   return event.button === 0 && !event.metaKey && !event.altKey && !event.ctrlKey && !event.shiftKey;
@@ -93,6 +113,61 @@ export function OpsNavigation({ active, onNavigate, className, label = "Разд
           </div>
         </section>
       ))}
+    </nav>
+  );
+}
+
+export function OpsDesktopNavigation({ active, onNavigate }: OpsDesktopNavigationProps) {
+  return (
+    <nav
+      aria-label="Разделы центра управления"
+      className="ops-scrollbar hidden overflow-x-auto border-t border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] xl:block"
+    >
+      <div className="mx-auto flex min-w-max max-w-[1800px] items-stretch px-5">
+        {OPS_GROUPS.map((group) => (
+          <section
+            key={group.label}
+            aria-labelledby={`ops-desktop-group-${group.sections[0].id}`}
+            className="flex shrink-0 items-center border-r border-[color:var(--atlas-border)] px-2 first:pl-0 last:border-r-0"
+          >
+            <h2
+              id={`ops-desktop-group-${group.sections[0].id}`}
+              className="hidden"
+            >
+              {group.label}
+            </h2>
+            <div className="flex items-stretch">
+              {group.sections.map((item) => {
+                const Icon = SECTION_ICONS[item.id];
+                const selected = active === item.id;
+                return (
+                  <a
+                    key={item.id}
+                    href={item.href}
+                    aria-label={item.label}
+                    aria-current={selected ? "page" : undefined}
+                    onClick={(event) => {
+                      if (event.defaultPrevented || !isPlainPrimaryClick(event)) return;
+                      event.preventDefault();
+                      onNavigate(item.href);
+                    }}
+                    className={cn(
+                      "relative flex min-h-11 items-center gap-1.5 px-1.5 text-xs font-semibold transition-colors min-[1440px]:px-2.5",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--atlas-focus)]",
+                      selected
+                        ? "text-[color:var(--atlas-primary)] after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-[color:var(--atlas-primary)]"
+                        : "text-[color:var(--pokrov-nav-text)] hover:bg-[color:var(--pokrov-nav-hover-bg)] hover:text-[color:var(--atlas-text)]"
+                    )}
+                  >
+                    <Icon aria-hidden="true" size={15} strokeWidth={1.8} />
+                    <span className="whitespace-nowrap">{DESKTOP_LABELS[item.id]}</span>
+                  </a>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+      </div>
     </nav>
   );
 }

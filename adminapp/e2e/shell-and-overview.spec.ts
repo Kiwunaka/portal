@@ -93,7 +93,7 @@ test("оболочка группирует 15 разделов и открыв�
     const links = region.getByRole("link");
     await expect(links).toHaveCount(group.links.length);
     for (const [index, [label, href]] of group.links.entries()) {
-      await expect(links.nth(index)).toHaveText(label);
+      await expect(links.nth(index)).toHaveAccessibleName(label);
       await expect(links.nth(index)).toHaveAttribute("href", href);
     }
   }
@@ -132,7 +132,7 @@ test("главная не загружает данные скрытых раз�
 test("каждый раздел запрашивает только собственные источники", async ({ page }) => {
   const api = await installAdminApiMock(page);
   const routes: ReadonlyArray<{ href: string; label: string; paths: readonly RegExp[] }> = [
-    { href: "/", label: "Главная", paths: [/^\/api\/admin\/ops\/overview$/, /^\/api\/admin\/alerts\?status=active$/, /^\/api\/admin\/probes\/ru-origin\/latest$/] },
+    { href: "/", label: "Главная", paths: [/^\/api\/admin\/ops\/overview$/, /^\/api\/admin\/probes\/ru-origin\/latest$/] },
     { href: "/nodes", label: "Ноды", paths: [/^\/api\/admin\/nodes\/health$/, /^\/api\/admin\/probes\/ru-origin\/latest$/] },
     { href: "/traffic", label: "Трафик", paths: [/^\/api\/admin\/traffic\/summary\?from=.+&to=.+$/] },
     { href: "/alerts", label: "Алерты", paths: [/^\/api\/admin\/alerts\?status=active$/] },
@@ -368,22 +368,14 @@ test("сбой RU-origin не скрывает overview и имеет локал
 });
 
 test("очередь действий сортируется детерминированно и не подменяет пропуски нулём", async ({ page }) => {
-  await installAdminApiMock(page);
-  await page.route("**/api/admin/alerts?status=active", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      headers: apiCorsHeaders,
-      body: JSON.stringify({
-        alerts: [
-          { id: 30, fingerprint: "critical-late", source: "node", severity: "critical", status: "active", title: "Поздний критичный", affected_count: 5, last_seen_at: "2026-07-15T12:00:00Z" },
-          { id: 20, fingerprint: "critical-b", source: "node", severity: "critical", status: "active", title: "Критичный B", affected_count: 5, last_seen_at: "2026-07-15T10:00:00Z" },
-          { id: 10, fingerprint: "critical-a", source: "node", severity: "critical", status: "active", title: "Критичный A", affected_count: 5, last_seen_at: "2026-07-15T10:00:00Z" },
-          { id: 40, fingerprint: "critical-missing", source: "node", severity: "critical", status: "active", title: "Критичный без охвата", affected_count: null, last_seen_at: "2026-07-15T09:00:00Z" },
-          { id: 50, fingerprint: "warning-large", source: "quota", severity: "warning", status: "active", title: "Большое предупреждение", affected_count: 100, last_seen_at: "2026-07-15T08:00:00Z" }
-        ]
-      })
-    });
+  await installAdminApiMock(page, {
+    overviewAlerts: [
+      { id: 30, fingerprint: "critical-late", source: "node", severity: "critical", status: "active", title: "Поздний критичный", affected_count: 5, last_seen_at: "2026-07-15T12:00:00Z" },
+      { id: 20, fingerprint: "critical-b", source: "node", severity: "critical", status: "active", title: "Критичный B", affected_count: 5, last_seen_at: "2026-07-15T10:00:00Z" },
+      { id: 10, fingerprint: "critical-a", source: "node", severity: "critical", status: "active", title: "Критичный A", affected_count: 5, last_seen_at: "2026-07-15T10:00:00Z" },
+      { id: 40, fingerprint: "critical-missing", source: "node", severity: "critical", status: "active", title: "Критичный без охвата", affected_count: null, last_seen_at: "2026-07-15T09:00:00Z" },
+      { id: 50, fingerprint: "warning-large", source: "quota", severity: "warning", status: "active", title: "Большое предупреждение", affected_count: 100, last_seen_at: "2026-07-15T08:00:00Z" }
+    ]
   });
 
   await page.goto("/");
@@ -399,22 +391,57 @@ test("очередь действий сортируется детермини�
   await expect(page.locator('[data-action-id="critical-missing"]')).not.toContainText(/Охват:\s*0/);
 });
 
-test("сбой алертов оставляет обзор и даёт локальный повтор", async ({ page }) => {
-  await installAdminApiMock(page);
-  await page.route("**/api/admin/alerts?status=active", async (route) => {
-    await route.fulfill({
-      status: 503,
-      contentType: "application/json",
-      headers: apiCorsHeaders,
-      body: JSON.stringify({ detail: "Источник алертов временно недоступен", code: "alerts_unavailable" })
-    });
+test("выбор сигнала перестраивает triage локально без нового API-запроса", async ({ page }) => {
+  const api = await installAdminApiMock(page, {
+    overviewAlerts: [
+      {
+        id: 61,
+        fingerprint: "node_metrics:de:disk_high",
+        source: "node_metrics",
+        severity: "warning",
+        status: "active",
+        title: "DE: диск выше порога",
+        body: "Первый сигнал",
+        node_code: "de",
+        affected_count: 1,
+        first_seen_at: "2026-07-15T09:00:00Z",
+        last_seen_at: "2026-07-15T09:10:00Z"
+      },
+      {
+        id: 62,
+        fingerprint: "node_metrics:nl:latency_high",
+        source: "node_metrics",
+        severity: "warning",
+        status: "active",
+        title: "NL: Panel API отвечает медленно",
+        body: "Второй сигнал",
+        node_code: "nl",
+        affected_count: 1,
+        first_seen_at: "2026-07-15T10:00:00Z",
+        last_seen_at: "2026-07-15T10:10:00Z"
+      }
+    ]
   });
 
   await page.goto("/");
+  await expect(page.getByRole("button", { name: "Открыть сигнал: DE: диск выше порога" })).toHaveAttribute("aria-pressed", "true");
+  await expect.poll(() => api.calls.filter((call) => call.method === "GET").length).toBe(2);
+  const callsBeforeSelection = api.calls.length;
+
+  await page.getByRole("button", { name: "Открыть сигнал: NL: Panel API отвечает медленно" }).click();
+
+  await expect(page.getByRole("button", { name: "Открыть сигнал: NL: Panel API отвечает медленно" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "Открыть сигнал: DE: диск выше порога" })).toHaveAttribute("aria-pressed", "false");
+  await expect(page.getByRole("heading", { name: "NL: Panel API отвечает медленно", level: 2 })).toBeVisible();
+  expect(api.calls).toHaveLength(callsBeforeSelection);
+});
+
+test("главная использует алерты из overview без второго тяжёлого запроса", async ({ page }) => {
+  const api = await installAdminApiMock(page);
+  await page.goto("/");
   await expect(page.getByText("Активные пользователи", { exact: true })).toBeVisible();
-  const retry = page.getByRole("button", { name: "Повторить загрузку алертов" });
-  await expect(retry).toBeVisible();
-  await retry.click();
+  await expect(page.getByRole("heading", { name: "Требует реакции" })).toBeVisible();
+  expect(api.calls.some((call) => call.path === "/api/admin/alerts?status=active")).toBe(false);
 });
 
 test("обновление сохраняет последний успешный overview и показывает состояние", async ({ page }) => {

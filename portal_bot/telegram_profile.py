@@ -4,10 +4,11 @@ from typing import Any
 
 
 BOT_PROFILE_NAME = "POKROV VPN"
-BOT_PROFILE_SHORT_DESCRIPTION = "POKROV VPN для Android и Windows. 5 дней без карты."
+BOT_PROFILE_SHORT_DESCRIPTION = "VPN для Android и Windows. 5 дней бесплатно."
 BOT_PROFILE_DESCRIPTION = (
-    "POKROV VPN (ВПН) для Android и Windows.\n\n"
-    "5 дней бесплатно без карты. Установите приложение, войдите в аккаунт и нажмите «Подключить».\n\n"
+    "POKROV VPN (ВПН) — быстрый VPN для Android и Windows.\n\n"
+    "YouTube, TikTok, ChatGPT и сайты одной кнопкой. 5 дней бесплатно без карты. "
+    "Платные тарифы — безлимитный трафик от 99 ₽ и до 5 устройств.\n\n"
     "Поддержка: @pokrov_supportbot\n"
     "Отзывы: @pokrov_feedbackbot\n"
     "Новости: @pokrov_vpn"
@@ -38,12 +39,12 @@ def expected_profile_payload() -> dict[str, str]:
 
 def expected_public_command_payload() -> list[dict[str, str]]:
     return [
-        {"command": "start", "description": "Открыть главное меню"},
-        {"command": "cabinet", "description": "Открыть кабинет"},
-        {"command": "support", "description": "Написать в поддержку"},
-        {"command": "help", "description": "Открыть помощь и частые вопросы"},
-        {"command": "promo", "description": "Активировать промокод"},
-        {"command": "redeem", "description": "Активировать ключ доступа"},
+        {"command": "start", "description": "Попробовать VPN бесплатно"},
+        {"command": "cabinet", "description": "Доступ, устройства и тарифы"},
+        {"command": "support", "description": "VPN не работает? Получить помощь"},
+        {"command": "help", "description": "Инструкции и низкая скорость"},
+        {"command": "promo", "description": "Получить скидку по промокоду"},
+        {"command": "redeem", "description": "Включить оплаченный доступ"},
     ]
 
 

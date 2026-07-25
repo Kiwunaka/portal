@@ -4,6 +4,7 @@ import { CalendarCheck2, CircleCheck, Clock3, Gift, History, Sparkles, Trophy } 
 import { useCallback, useEffect, useState } from "react";
 
 import { BonusWheel } from "@/components/cabinet/bonus-wheel";
+import ReferralCenterCard from "@/components/cabinet/referral-center-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,7 +14,10 @@ import {
   checkinBonusCalendar,
   fetchBonusCalendarState,
   fetchBonusHistory,
+  fetchBonusSummary,
   fetchBonusWheelState,
+  type BonusPayload,
+  type BonusQuestItem,
   type BonusCalendarState,
   type BonusRewardHistory,
   type BonusRewardHistoryItem,
@@ -216,17 +220,79 @@ function RewardHistoryCard({ history, error }: { history: BonusRewardHistory | n
   );
 }
 
+function QuestRow({ quest }: { quest: BonusQuestItem }) {
+  const target = Math.max(1, Number(quest.target) || 1);
+  const progress = Math.max(0, Math.min(target, Number(quest.progress) || 0));
+  const ratio = `${Math.round((progress / target) * 100)}%`;
+  return (
+    <div className="rounded-control border border-line bg-canvas-alt p-3.5" data-testid={`reward-quest-${quest.id}`}>
+      <div className="flex items-start gap-3">
+        <span className={`grid size-9 shrink-0 place-items-center rounded-[10px] ${quest.completed ? "bg-ok-bg text-ok-text" : "bg-brand-soft text-brand"}`}>
+          {quest.completed ? <CircleCheck size={18} strokeWidth={2.2} aria-hidden="true" /> : <Trophy size={18} strokeWidth={2} aria-hidden="true" />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm font-bold text-ink">{quest.title}</p>
+            <span className="shrink-0 text-xs font-bold text-ink-muted">{progress}/{target}</span>
+          </div>
+          <p className="mt-1 text-xs leading-5 text-ink-muted">{quest.description}</p>
+          <div
+            className="mt-2 h-1.5 overflow-hidden rounded-full bg-line"
+            role="progressbar"
+            aria-label={`Прогресс задачи «${quest.title}»`}
+            aria-valuemin={0}
+            aria-valuemax={target}
+            aria-valuenow={progress}
+            aria-valuetext={`${progress} из ${target}`}
+          >
+            <div className={`h-full rounded-full ${quest.completed ? "bg-ok-text" : "bg-brand"}`} style={{ width: ratio }} />
+          </div>
+          {!quest.completed && quest.action_href ? (
+            <Button href={quest.action_href} variant="ghost" size="sm" className="mt-2">Перейти</Button>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function UsefulQuestsCard({ summary, error }: { summary: BonusPayload | null; error: string }) {
+  const quests = Array.isArray(summary?.achievements?.quests) ? summary.achievements.quests : [];
+  return (
+    <Card className="flex flex-col gap-4" data-testid="reward-quests">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="text-base font-bold text-ink">Полезные задачи</h2>
+          <p className="mt-0.5 text-sm leading-5 text-ink-muted">Только действия, подтверждённые сервером</p>
+        </div>
+        <Badge tone="neutral">{quests.filter((item) => item.completed).length}/{quests.length}</Badge>
+      </div>
+      {error ? <Note tone="warning">Прогресс временно недоступен</Note> : null}
+      {!error && quests.length ? (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {quests.map((quest) => <QuestRow key={quest.id} quest={quest} />)}
+        </div>
+      ) : null}
+      {!error && !quests.length ? <Note tone="neutral">Задачи появятся после синхронизации аккаунта.</Note> : null}
+      <p className="text-xs leading-5 text-ink-muted">За эти задачи нет автоматической денежной награды. Исследования проверяет оператор; оценка 5★ не требуется.</p>
+    </Card>
+  );
+}
+
 export default function RewardsPage() {
   const { refresh } = usePortalSession();
   const [wheelState, setWheelState] = useState<BonusWheelState | null>(null);
   const [calendarState, setCalendarState] = useState<BonusCalendarState | null>(null);
   const [history, setHistory] = useState<BonusRewardHistory | null>(null);
+  const [questSummary, setQuestSummary] = useState<BonusPayload | null>(null);
   const [wheelLoading, setWheelLoading] = useState(true);
   const [calendarLoading, setCalendarLoading] = useState(true);
   const [historyLoading, setHistoryLoading] = useState(true);
+  const [questsLoading, setQuestsLoading] = useState(true);
   const [wheelError, setWheelError] = useState("");
   const [calendarError, setCalendarError] = useState("");
   const [historyError, setHistoryError] = useState("");
+  const [questsError, setQuestsError] = useState("");
   const [calendarBusy, setCalendarBusy] = useState(false);
   const [calendarMessage, setCalendarMessage] = useState("");
   const [calendarActionError, setCalendarActionError] = useState("");
@@ -238,7 +304,8 @@ export default function RewardsPage() {
       fetchBonusWheelState(),
       fetchBonusCalendarState(),
       fetchBonusHistory(),
-    ]).then(([wheelResult, calendarResult, historyResult]) => {
+      fetchBonusSummary(),
+    ]).then(([wheelResult, calendarResult, historyResult, questsResult]) => {
       if (!active) return;
 
       if (wheelResult.status === "fulfilled") {
@@ -264,6 +331,14 @@ export default function RewardsPage() {
         setHistoryError("История временно недоступна");
       }
       setHistoryLoading(false);
+
+      if (questsResult.status === "fulfilled") {
+        setQuestSummary(questsResult.value);
+        setQuestsError("");
+      } else {
+        setQuestsError("Прогресс временно недоступен");
+      }
+      setQuestsLoading(false);
     });
 
     return () => {
@@ -369,6 +444,7 @@ export default function RewardsPage() {
               </p>
             </div>
           </div>
+          <Button href="/programs/" variant="secondary" className="w-full shrink-0 sm:w-auto">Программы и заявки</Button>
         </div>
       </section>
 
@@ -395,6 +471,17 @@ export default function RewardsPage() {
           />
         )}
       </div>
+
+      <ReferralCenterCard />
+
+      {questsLoading ? (
+        <SkeletonRegion label="Загружаем полезные задачи">
+          <SkeletonLine className="h-4 w-40" />
+          <SkeletonBlock className="h-52" />
+        </SkeletonRegion>
+      ) : (
+        <UsefulQuestsCard summary={questSummary} error={questsError} />
+      )}
 
       {historyLoading ? (
         <SkeletonRegion label="Загружаем историю наград">

@@ -593,6 +593,24 @@ export type AdminPromoSlotsPayload = {
   };
 };
 
+export type BonusAchievementItem = {
+  id: string;
+  title: string;
+  description?: string;
+  unlocked: boolean;
+};
+
+export type BonusQuestItem = {
+  id: string;
+  title: string;
+  description: string;
+  progress: number;
+  target: number;
+  completed: boolean;
+  verification: string;
+  action_href: string;
+};
+
 export type BonusPayload = {
   tg_id: number;
   referral_count: number;
@@ -610,6 +628,95 @@ export type BonusPayload = {
     claimed_at?: string | null;
     channel_username?: string;
   };
+  achievements?: {
+    enabled: boolean;
+    ledger_ready: boolean;
+    unlocked_count: number;
+    items: BonusAchievementItem[];
+    quests: BonusQuestItem[];
+    quest_rewards_enabled: boolean;
+    reward_policy: string;
+  };
+};
+
+export type ReferralHistoryStatus = "invited" | "review" | "activated" | "hold" | "paid" | "rewarded";
+
+export type ReferralSummary = {
+  ok: boolean;
+  code: string;
+  link: string;
+  bonus_days: number;
+  conversion: {
+    invited: number;
+    activated: number;
+    paid: number;
+    rewarded: number;
+    activation_pct: number;
+    paid_pct: number;
+  };
+  history: Array<{
+    id: string;
+    status: ReferralHistoryStatus;
+    created_at: string | null;
+    activated_at: string | null;
+    paid_at: string | null;
+    hold_until: string | null;
+    rewarded_at: string | null;
+  }>;
+  privacy: string;
+};
+
+export type DevicePairingCode = {
+  id: string;
+  status: "active" | "claimed" | "cancelled" | "expired";
+  code_hint: string;
+  expires_at: string | null;
+  claimed_at: string | null;
+  created_at: string | null;
+  code?: string;
+  pairing_uri?: string;
+  ttl_seconds?: number;
+};
+
+export type ProgramKind = "competitor_switch" | "research" | "team_pack" | "affiliate";
+export type ProgramApplicationStatus = "submitted" | "under_review" | "approved" | "rejected" | "rewarded" | "cancelled";
+
+export type ProgramCapability = {
+  kind: ProgramKind;
+  title: string;
+  enabled: boolean;
+  review: "manual" | "not_accepting";
+  reward: string;
+};
+
+export type ProgramApplication = {
+  id: string;
+  kind: Exclude<ProgramKind, "affiliate">;
+  status: ProgramApplicationStatus;
+  source_name: string | null;
+  seats: number | null;
+  summary: string;
+  contact: string | null;
+  reward_days: number;
+  rewarded: boolean;
+  decision_note: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  reviewed_at: string | null;
+};
+
+export type AdminProgramApplication = ProgramApplication & {
+  account_id: string;
+  legacy_tg_id: number | null;
+  operator_note: string | null;
+  reviewed_by: number | null;
+  reward_grant_id: string | null;
+};
+
+export type ClientProgramsPayload = {
+  ok: boolean;
+  capabilities: ProgramCapability[];
+  applications: ProgramApplication[];
 };
 
 export type RewardSyncState = "not_required" | "sync_pending" | "synced" | "manual_review";
@@ -628,8 +735,12 @@ export type BonusWheelState = {
   next_spin_at: string | null;
   cooldown_hours: number;
   last_reward_days: number | null;
+  last_discount_pct?: number | null;
+  last_reward_kind?: "days" | "discount" | null;
   sync_state: RewardSyncState;
   sectors: unknown;
+  discount_sectors?: unknown;
+  display_sectors?: unknown;
   ledger_ready?: boolean;
   config_preset?: string | null;
 };
@@ -688,7 +799,11 @@ export type BonusWheelMutation = {
   ok: boolean;
   feature: "wheel";
   reward_days: number;
-  grant_id: string;
+  reward_kind?: "days" | "discount";
+  reward_value?: number;
+  discount_pct?: number;
+  sector_key?: string;
+  grant_id: string | null;
   sync_state: RewardSyncState;
   state: BonusWheelState;
   expiry_at?: string | null;
@@ -2331,6 +2446,57 @@ export function fetchBonuses(): Promise<BonusPayload> {
   return apiFetch<BonusPayload>("/api/bonuses");
 }
 
+export function fetchBonusSummary(): Promise<BonusPayload> {
+  return apiFetch<BonusPayload>("/api/bonuses/summary");
+}
+
+export function fetchReferralSummary(): Promise<ReferralSummary> {
+  return apiFetch<ReferralSummary>("/api/bonuses/referral/summary");
+}
+
+export async function issueDevicePairingCode(): Promise<DevicePairingCode> {
+  const data = await apiFetch<{ ok: boolean; pairing: DevicePairingCode }>("/api/client/device-pairing/codes", {
+    method: "POST",
+  });
+  return data.pairing;
+}
+
+export async function fetchDevicePairingCodes(limit = 10): Promise<DevicePairingCode[]> {
+  const safeLimit = Math.max(1, Math.min(25, Math.trunc(limit)));
+  const data = await apiFetch<{ ok: boolean; items: DevicePairingCode[] }>(`/api/client/device-pairing/codes?limit=${safeLimit}`);
+  return data.items || [];
+}
+
+export async function cancelDevicePairingCode(pairingId: string): Promise<DevicePairingCode> {
+  const data = await apiFetch<{ ok: boolean; pairing: DevicePairingCode }>(
+    `/api/client/device-pairing/codes/${encodeURIComponent(pairingId)}`,
+    { method: "DELETE" },
+  );
+  return data.pairing;
+}
+
+export function fetchClientPrograms(): Promise<ClientProgramsPayload> {
+  return apiFetch<ClientProgramsPayload>("/api/client/programs");
+}
+
+export function submitProgramApplication(payload: {
+  kind: Exclude<ProgramKind, "affiliate">;
+  source_name?: string | null;
+  seats?: number | null;
+  summary: string;
+  contact?: string | null;
+}): Promise<{ ok: boolean; application: ProgramApplication }> {
+  return apiFetch("/api/client/programs/applications", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export function cancelProgramApplication(applicationId: string): Promise<{ ok: boolean; application: ProgramApplication }> {
+  return apiFetch(`/api/client/programs/applications/${encodeURIComponent(applicationId)}`, { method: "DELETE" });
+}
+
 export function fetchBonusWheelState(): Promise<BonusWheelState> {
   return apiFetch<BonusWheelState>("/api/bonuses/wheel/state");
 }
@@ -3942,6 +4108,35 @@ export async function adminWheelConfig(): Promise<AdminWheelConfig> {
 export function adminWheelConfigUpdate(payload: AdminWheelConfig): Promise<{ ok: boolean; wheel_config: AdminWheelConfig }> {
   return apiFetch("/api/admin/wheel-config", {
     method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function adminProgramApplications(params?: {
+  status?: string;
+  kind?: string;
+  limit?: number;
+}): Promise<AdminProgramApplication[]> {
+  const qs = new URLSearchParams();
+  if (params?.status) qs.set("status", params.status);
+  if (params?.kind) qs.set("kind", params.kind);
+  qs.set("limit", String(Math.max(1, Math.min(300, Math.trunc(params?.limit || 100)))));
+  const data = await apiFetch<{ ok: boolean; applications: AdminProgramApplication[] }>(`/api/admin/program-applications?${qs}`);
+  return data.applications || [];
+}
+
+export function adminReviewProgramApplication(
+  applicationId: string,
+  payload: {
+    status: "under_review" | "approved" | "rejected";
+    operator_note?: string | null;
+    reward_days?: 0 | 1 | 3 | 7;
+    confirm_application_id?: string;
+  },
+): Promise<{ ok: boolean; application: AdminProgramApplication }> {
+  return apiFetch(`/api/admin/program-applications/${encodeURIComponent(applicationId)}/review`, {
+    method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });

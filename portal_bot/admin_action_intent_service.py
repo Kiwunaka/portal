@@ -5118,23 +5118,46 @@ def _app_setting_state(
 
 def _normalize_wheel_config_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
     _reject_extra_payload_fields(payload, {"preset", "weights", "cooldown_hours"})
-    preset = _bounded_text(payload.get("preset", "balanced"), field="preset", minimum=2, maximum=32)
+    preset = _bounded_text(
+        payload.get("preset", "paid_weekly_discounts_v2"),
+        field="preset",
+        minimum=2,
+        maximum=32,
+    )
     cooldown = _normalize_promo_integer(payload.get("cooldown_hours", 168), field="cooldown_hours", minimum=1, maximum=2160)
     weights_value = payload.get("weights")
     if not isinstance(weights_value, list) or not 1 <= len(weights_value) <= 20:
         raise ActionIntentError("invalid_payload", status_code=422, message="weights должен содержать 1..20 элементов.")
-    weights: list[dict[str, int]] = []
-    seen: set[int] = set()
+    weights: list[dict[str, Any]] = []
+    seen: set[tuple[str, int]] = set()
     for value in weights_value:
         if not isinstance(value, Mapping):
             raise ActionIntentError("invalid_payload", status_code=422, message="Элемент weights должен быть объектом.")
-        _reject_extra_payload_fields(value, {"days", "weight"})
-        days = _normalize_promo_integer(value.get("days"), field="days", minimum=1, maximum=365)
+        _reject_extra_payload_fields(value, {"days", "kind", "value", "weight"})
         weight = _normalize_promo_integer(value.get("weight"), field="weight", minimum=1, maximum=10_000)
-        if days in seen:
-            raise ActionIntentError("invalid_payload", status_code=422, message="Дни wheel должны быть уникальны.")
-        seen.add(days)
-        weights.append({"days": days, "weight": weight})
+        has_legacy_days = value.get("days") is not None
+        has_typed_outcome = value.get("kind") is not None or value.get("value") is not None
+        if has_legacy_days == has_typed_outcome:
+            raise ActionIntentError(
+                "invalid_payload",
+                status_code=422,
+                message="Сектор wheel должен содержать либо days, либо kind/value.",
+            )
+        if has_legacy_days:
+            days = _normalize_promo_integer(value.get("days"), field="days", minimum=1, maximum=365)
+            outcome_key = ("days", days)
+            normalized = {"days": days, "weight": weight}
+        else:
+            kind = _bounded_text(value.get("kind"), field="kind", minimum=4, maximum=16).lower()
+            if kind not in {"days", "discount"}:
+                raise ActionIntentError("invalid_payload", status_code=422, message="kind wheel не поддерживается.")
+            outcome_value = _normalize_promo_integer(value.get("value"), field="value", minimum=1, maximum=365)
+            outcome_key = (kind, outcome_value)
+            normalized = {"kind": kind, "value": outcome_value, "weight": weight}
+        if outcome_key in seen:
+            raise ActionIntentError("invalid_payload", status_code=422, message="Секторы wheel должны быть уникальны.")
+        seen.add(outcome_key)
+        weights.append(normalized)
     return {"preset": preset, "weights": weights, "cooldown_hours": cooldown}
 
 

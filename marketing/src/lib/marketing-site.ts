@@ -35,6 +35,7 @@ export const MARKETING_CANONICAL_PATHS = {
   devices: "/devices/",
   telegram: "/telegram/",
   vpn: "/vpn/",
+  bestVpn: SEO_PAGE_PATHS.bestVpn,
   installAndroid: SEO_PAGE_PATHS.installAndroid,
   installWindows: SEO_PAGE_PATHS.installWindows,
   trialNoCard: SEO_PAGE_PATHS.trialNoCard,
@@ -46,6 +47,12 @@ export const MARKETING_CANONICAL_PATHS = {
   install: "/install/",
   offer: "/offer/",
   privacy: "/privacy/",
+  transparency: "/transparency/",
+  status: "/status/",
+  guides: "/guides/",
+  guidesPokrovApp: "/guides/pokrov-app/",
+  fallback: "/fallback/",
+  programs: "/programs/",
 } as const;
 
 export const MARKETING_MACHINE_READABLE_PATHS = {
@@ -66,11 +73,12 @@ export const PAID_REWARDS_MARKETING_COPY =
   "Для активной платной подписки доступны еженедельное колесо бонусов и календарь активности. В колесе возможен редкий джекпот +30 дней.";
 
 export const MARKETING_FEATURE_LIST = [
-  "Android и Windows, 5 дней бесплатно",
-  "5 дней бесплатно без карты",
-  "Одна кнопка подключения в приложении",
-  "Продление от 99 ₽ за 30 дней",
-  "До 5 устройств в платном доступе",
+  "Доступ к привычным сервисам на Android и Windows",
+  "5 дней за 0 ₽ без банковской карты",
+  "Безлимитный трафик на платных тарифах",
+  "YouTube, TikTok, ChatGPT и другие сервисы одной кнопкой",
+  "Первый полный месяц от 99 ₽",
+  "До 5 устройств в одном платном аккаунте",
   TELEGRAM_START_PROMISE,
   ...(PAID_REWARDS_MARKETING_ENABLED ? [PAID_REWARDS_MARKETING_COPY] : []),
 ] as const;
@@ -115,6 +123,42 @@ export const MARKETING_SITEMAP_ROUTES: MarketingRouteConfig[] = [
     lastReviewed: SEO_LAST_REVIEWED_DATE,
     priority: 0.34,
   },
+  {
+    path: MARKETING_CANONICAL_PATHS.transparency,
+    changeFrequency: "monthly",
+    lastReviewed: SEO_LAST_REVIEWED_DATE,
+    priority: 0.48,
+  },
+  {
+    path: MARKETING_CANONICAL_PATHS.status,
+    changeFrequency: "always",
+    lastReviewed: SEO_LAST_REVIEWED_DATE,
+    priority: 0.62,
+  },
+  {
+    path: MARKETING_CANONICAL_PATHS.guides,
+    changeFrequency: "weekly",
+    lastReviewed: SEO_LAST_REVIEWED_DATE,
+    priority: 0.68,
+  },
+  {
+    path: MARKETING_CANONICAL_PATHS.guidesPokrovApp,
+    changeFrequency: "weekly",
+    lastReviewed: SEO_LAST_REVIEWED_DATE,
+    priority: 0.66,
+  },
+  {
+    path: MARKETING_CANONICAL_PATHS.fallback,
+    changeFrequency: "monthly",
+    lastReviewed: SEO_LAST_REVIEWED_DATE,
+    priority: 0.46,
+  },
+  {
+    path: MARKETING_CANONICAL_PATHS.programs,
+    changeFrequency: "monthly",
+    lastReviewed: SEO_LAST_REVIEWED_DATE,
+    priority: 0.52,
+  },
 ];
 
 export type MarketingFaqItem = {
@@ -137,26 +181,31 @@ export const MARKETING_FAQ: MarketingFaqItem[] = [
   {
     question: "С чего начать?",
     answer:
-      "Скачайте приложение для Android или Windows, откройте его и активируйте 5 дней бесплатно без карты.",
+      "Заберите 5 дней бесплатно: скачайте POKROV для Android или Windows, войдите и нажмите «Подключить». Карта не нужна.",
   },
   {
     question: "Что будет после бесплатных 5 дней?",
     answer:
-      "Можно выбрать платный срок от 99 ₽ за 30 дней или остаться на базовом режиме. Цена, срок и лимит устройств видны до оплаты.",
+      "Если POKROV подходит, выберите полный месяц от 99 ₽ или более выгодный длинный срок. Можно также остаться на базовом режиме. Цена и лимит устройств видны заранее.",
   },
   {
     question: "Нужно ли настраивать профили вручную?",
     answer:
-      "Нет. Основной путь идет через приложение: установите его, войдите в аккаунт и нажмите подключение. Ручные режимы остаются только для восстановления и совместимости.",
+      "Нет. POKROV берёт настройку на себя: установите приложение, войдите и нажмите одну кнопку. Ручные режимы нужны только как запасной путь.",
   },
   {
     question: "Как устроено продление?",
     answer:
-      "Вы выбираете срок, переходите к оплате и продолжаете тот же аккаунт POKROV. Если получаете код активации, его можно применить в приложении или кабинете.",
+      "Выберите срок, оплатите один раз и продолжайте в том же аккаунте POKROV. Автосписаний нет; код активации применяется в приложении или кабинете.",
   },
   {
     question: "Нужен ли Telegram для старта?",
     answer: TELEGRAM_START_PROMISE,
+  },
+  {
+    question: "Что видит провайдер и что хранит POKROV?",
+    answer:
+      "Провайдер видит зашифрованное соединение, а не то, какие сайты и видео вы открываете. POKROV хранит только нужное для работы аккаунта: идентификатор, срок доступа, технические события и статусы платежей. Карточные данные на стороне POKROV не хранятся, персональные данные не продаются. Подробнее — в политике конфиденциальности.",
   },
   {
     question: "Если что-то не получается, куда идти?",
@@ -183,8 +232,8 @@ export type MarketingMetadataOptions = {
 };
 
 export function buildMarketingMetadata(
-  title = "POKROV | 5 дней бесплатно без карты",
-  description = "Скачайте приложение для Android или Windows, получите 5 дней бесплатно без карты и продолжайте через кабинет.",
+  title = "POKROV VPN для Android и Windows — 5 дней бесплатно",
+  description = "Быстрый VPN для YouTube, TikTok, ChatGPT и сайтов. 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽.",
   options: MarketingMetadataOptions = {},
 ): Metadata {
   const canonical = buildMarketingUrl(options.path || "/");
@@ -265,7 +314,7 @@ export function buildOrganizationJsonLd() {
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     logo: buildMarketingUrl("/pokrov-logo.svg"),
     description:
-      "POKROV помогает начать через приложение, получить 5 дней бесплатно без карты и дальше управлять сроком, устройствами и поддержкой.",
+      "POKROV — VPN для быстрого старта на Android и Windows: 5 дней за 0 ₽ без карты, одна кнопка подключения и тарифы от 99 ₽.",
     email: CANONICAL_CONTACT_EMAIL,
     contactPoint: [
       {
@@ -392,7 +441,7 @@ export function buildSoftwareApplicationJsonLd(options?: {
     mainEntityOfPage: canonicalUrl,
     url: canonicalUrl,
     description:
-      "POKROV помогает начать с приложения на Android или Windows, получить 5 дней бесплатно без карты и дальше управлять сроком и устройствами.",
+      "POKROV — лучший VPN для простого старта на Android и Windows: 5 дней бесплатно, одна кнопка подключения и до 5 устройств на основных тарифах.",
   };
 }
 

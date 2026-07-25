@@ -41,6 +41,7 @@ export type ButtonProps = {
   hardNavigate?: boolean;
   "aria-label"?: string;
   title?: string;
+  "data-testid"?: string;
 };
 
 export function Button({
@@ -72,6 +73,7 @@ export function Button({
         onClick={onClick as MouseEventHandler<HTMLAnchorElement>}
         aria-label={aria["aria-label"]}
         title={aria.title}
+        data-testid={aria["data-testid"]}
       >
         {children}
       </AppRouteLink>
@@ -87,6 +89,7 @@ export function Button({
       aria-busy={loading || undefined}
       aria-label={aria["aria-label"]}
       title={aria.title}
+      data-testid={aria["data-testid"]}
     >
       {loading ? <Loader2 size={16} strokeWidth={2.2} className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
       <span className="min-w-0">{children}</span>

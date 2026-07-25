@@ -1,6 +1,6 @@
 # WO-001 Canonical Feature Tracker
 
-Last updated: 2026-07-21
+Last updated: 2026-07-25
 
 ## Status
 
@@ -99,10 +99,10 @@ Client source is otherwise read as source evidence; this WO also adds focused PO
 - Backend route direct test-reference mappings: `165/165`; scenario gaps: `0`
 - Scripts/Ops workflow rows: `123`
 - Script workflow direct test-reference mappings: `123/123`; scenario gaps: `0`
-- Low-level code function inventory rows: `6908`; parser errors: `0`; token-level test-reference hints: `2378`
-- Low-level entrypoint hints: `224` FastAPI route handlers, `1` FastAPI middleware, `176` Telegram handlers, `134` script CLI mains, `117` framework overrides, `1` Next.js page component; `portal_bot/bot.py` FastAPI mislabels: `0`
-- Source symbol coverage audit rows: `6908`; expected-behavior notes: `6908`; entrypoint mapping gaps: `0`; story source refs: `3580`; story dependency refs: `1944`; module test refs: `116`; direct token test refs: `425`; private inventory-only rows: `193`; private inventory public/entrypoint leakage: `0`; client platform manual-gate rows: `77`; client desktop tray manual-gate rows: `4`; platform/tray manual-gate rows with `manual_gate_refs`: `81`; client package public-API review rows: `3`; script CLI manifest review rows: `0`; active script CLI workflow-mapping gaps: `9`; script CLI deprecated rows: `2`; public symbol review rows: `17`
-- Private helper coverage matrix rows: `193`; accepted-policy rows: `193`; Q-001 owner-decision rows: `0`; high risk rows: `0`; medium risk rows: `8`; low risk rows: `185`
+- Low-level code function inventory rows: `7431`; parser errors: `0`; token-level test-reference hints: `2592`
+- Low-level entrypoint hints: `241` FastAPI route handlers, `1` FastAPI middleware, `177` Telegram handlers, `135` script CLI mains, `134` framework overrides, `1` Next.js page component; `portal_bot/bot.py` FastAPI mislabels: `0`
+- Source symbol coverage audit rows: `7431`; expected-behavior notes: `7431`; entrypoint mapping gaps: `0`; story source refs: `3717`; story dependency refs: `2054`; module test refs: `124`; direct token test refs: `525`; private inventory-only rows: `294`; private inventory public/entrypoint leakage: `0`; client platform manual-gate rows: `86`; client desktop tray manual-gate rows: `4`; platform/tray manual-gate rows with `manual_gate_refs`: `90`; client package public-API review rows: `8`; script CLI manifest review rows: `0`; active script CLI workflow-mapping gaps: `10`; script CLI deprecated rows: `2`; public symbol review rows: `51`
+- Private helper coverage matrix rows: `294`; accepted-policy rows: `294`; Q-001 owner-decision rows: `0`; high risk rows: `4`; medium risk rows: `64`; low risk rows: `226`
 - Story evidence audit rows: `525`; direct file refs: `524`; imported-pass rows without direct file refs: `0`; manual owner gates: `1`; stale refs: `0`
 - Story retest proof rows: `524` `direct_test_ref_passed`; `1` `manual_owner_gate_open`; weak/stale/imported/textual proof buckets: `0`
 - Defect/fix/retest ledger rows: `18`; `closed_retested`: `16`; `closed_retested_no_product_change`: `2`; weak/open closure rows: `0`
@@ -112,7 +112,7 @@ Client source is otherwise read as source evidence; this WO also adds focused PO
 - Coverage policy decision guide and private-helper coverage matrix exist and are linked from Q-001, the canonical tracker, developer navigation, and the open-questions/private-helper guards; Q-001 is answered as `ACCEPT_STORY_AND_SYMBOL_TIERS` on 2026-06-28
 - Owner-gated execution guide exists and is linked from Q-004, the owner-gated summary, developer navigation, and the canonical tracker; every current owner gate ID and required result-ledger field is present in the guide
 - Entrypoint story coverage rows: `514`; direct route refs: `165`; direct script refs: `123`; direct story refs: `226`; review gaps: `0`
-- Canonical source-evidence file refs checked: `1089`; missing source refs: `0`
+- Canonical source-evidence file refs checked: `1204`; missing source refs: `0`
 - Canonical line-number source refs checked: `352`; out-of-bounds line refs: `0`
 - Canonical source-tracker refs checked: `525`; unresolved source-tracker refs: `0`; generated labels are backed by `portal_bot/api.py` and `scripts/manifest.yaml`
 - Developer navigation docs and work-orders README link the canonical tracker, evidence audit, entrypoint map, function inventory, symbol coverage audit, owner-gated matrix/result ledger, open-questions ledger, completion audit work-order artifacts, and the active feature-story audit wave; wave-local imported coverage counts match canonical tracker subsystem counts; missing navigation artifact refs: `0`
@@ -234,7 +234,7 @@ Client source is otherwise read as source evidence; this WO also adds focused PO
 - New backend routes must be added to the canonical CSV and either mapped to a direct scenario-test reference or left as `Needs scenario test` until a focused test is added.
 - Active script/operator workflow rows are generated from `scripts/manifest.yaml`; direct test mappings are taken from `tests/` and `portal_bot/tests/`.
 - Low-level source symbols are generated by `scripts/generate_code_function_inventory.py`; `test_ref_count` is a token-level triage hint, not dedicated private-helper behavior proof.
-- Source symbol coverage tiers are generated by `scripts/generate_code_function_inventory.py`; `entrypoint_needs_mapping_review` is `0`, `story_dependency_source_file` maps Python and TypeScript/TSX dependencies reachable from story-mapped source including symbol-free barrel/re-export modules, `module_test_ref` separates module-level automated evidence from direct symbol assertions, client platform/desktop tiers separate manual runtime verification scope and carry `manual_gate_refs`, and the current review/gap buckets remain explicit: `client_package_public_api_review = 3`, `public_symbol_review = 17`, `script_cli_manifest_review = 0`, and `script_cli_active_without_workflow_mapping = 9`.
+- Source symbol coverage tiers are generated by `scripts/generate_code_function_inventory.py`; `entrypoint_needs_mapping_review` is `0`, `story_dependency_source_file` maps Python and TypeScript/TSX dependencies reachable from story-mapped source including symbol-free barrel/re-export modules, `module_test_ref` separates module-level automated evidence from direct symbol assertions, client platform/desktop tiers separate manual runtime verification scope and carry `manual_gate_refs`, and the current review/gap buckets remain explicit: `client_package_public_api_review = 8`, `public_symbol_review = 51`, `script_cli_manifest_review = 0`, and `script_cli_active_without_workflow_mapping = 10`.
 - Story evidence strength is generated by `scripts/audit_story_test_evidence.py`; imported workbook pass evidence is kept distinct from direct automated test-file mappings.
 - Entrypoint story coverage is generated by `scripts/audit_story_test_evidence.py`; route/script/story evidence is kept distinct from token-level helper-name references.
 - Native client host source under Kotlin, Swift, and C/C++ is included in the low-level source inventory; generated/build/test trees remain excluded as source rows.
@@ -562,13 +562,13 @@ Client source is otherwise read as source evidence; this WO also adds focused PO
 
 ## Residual Risk
 
-- The literal helper/class-method inventory now has symbol coverage tiers, and the current private-helper matrix has `185` low-risk and `8` medium-risk private inventory-only rows: `193` accepted-policy rows and `0` owner-decision rows. Q-001 is answered as `ACCEPT_STORY_AND_SYMBOL_TIERS`; future stricter one-test-per-helper coverage requires a new owner decision.
+- The literal helper/class-method inventory now has symbol coverage tiers, and the current private-helper matrix has `226` low-risk, `64` medium-risk, and `4` high-risk private inventory-only rows: `294` accepted-policy rows and `0` owner-decision rows. Q-001 is answered as `ACCEPT_STORY_AND_SYMBOL_TIERS`; future stricter one-test-per-helper coverage requires a new owner decision.
 - `pokrov-coverage-policy-decision-guide.md` and `pokrov-private-helper-coverage.csv` now give Q-001 an owner-facing decision packet and current private-helper baseline under the accepted policy.
 - `private_inventory_only` is guarded as a private non-entrypoint tier; it is not a hidden public/entrypoint review bucket.
-- Current generated source-symbol review buckets are `public_symbol_review = 17`, `client_package_public_api_review = 3`, `script_cli_manifest_review = 0`, and `script_cli_active_without_workflow_mapping = 9`; the three nonzero buckets are open local review gaps, separate from manual-gate/platform/provider evidence.
-- The dated `SCRIPT-MANIFEST-REVIEW-001` closure remains a historical snapshot. The current generated audit has `script_cli_manifest_review = 0`, so every detected script CLI is manifest-classified; `script_cli_active_without_workflow_mapping = 9` remains a separate current workflow-mapping gap.
+- Current generated source-symbol review buckets are `public_symbol_review = 51`, `client_package_public_api_review = 8`, `script_cli_manifest_review = 0`, and `script_cli_active_without_workflow_mapping = 10`; the three nonzero buckets are open local review gaps, separate from manual-gate/platform/provider evidence.
+- The dated `SCRIPT-MANIFEST-REVIEW-001` closure remains a historical snapshot. The current generated audit has `script_cli_manifest_review = 0`, so every detected script CLI is manifest-classified; `script_cli_active_without_workflow_mapping = 10` remains a separate current workflow-mapping gap.
 - No non-manual imported story row remains without a direct test-file reference. The one remaining `manual_owner_gate` is an owner-controlled client/device/live verification gate, not a local evidence-mapping gap.
-- The dedicated entrypoint-story ledger currently reports `needs_story_mapping_review = 0`. Separately, the source-symbol audit reports `entrypoint_needs_mapping_review = 0`, `script_cli_manifest_review = 0`, and `script_cli_active_without_workflow_mapping = 9`; neither zero entrypoint count closes the active script workflow-mapping gaps or converts local tests into live Telegram/provider/device/RU-origin proof.
+- The dedicated entrypoint-story ledger currently reports `needs_story_mapping_review = 0`. Separately, the source-symbol audit reports `entrypoint_needs_mapping_review = 0`, `script_cli_manifest_review = 0`, and `script_cli_active_without_workflow_mapping = 10`; neither zero entrypoint count closes the active script workflow-mapping gaps or converts local tests into live Telegram/provider/device/RU-origin proof.
 - No canonical `source_tracker` value currently remains unresolved; generated backend/script labels are backed by current source files and guarded in pytest.
 - `CLIENT_APP-US-067` is now decomposed into 8 owner-gated scenarios with required evidence, allowed result labels, required-for-completion classification, and matching latest-result/fix/retest ledger rows. After the 2026-06-28 owner skips, 2 required scenarios remain open: real Telegram WebApp/session and live deployed app-session proof.
 - `pokrov-owner-gated-execution-guide.md` now gives Q-004 an owner-facing execution packet, but it does not replace actual device/provider/deploy/RU evidence.
@@ -579,4 +579,4 @@ Client source is otherwise read as source evidence; this WO also adds focused PO
 - Canonical source-evidence file refs and explicit `path:line` bounds are now guarded locally; semantic line freshness is still a lighter-weight aid than behavior proof and should be refreshed when touched.
 - Existing XLSX files are treated as source audit artifacts. The CSV/Markdown tracker is the ongoing status source unless the owner wants binary workbook status to be canonical.
 - Live/device/provider/RU checks are not inferred from this inventory and must be recorded separately when tested.
-- Current source-symbol coverage still has `script_cli_active_without_workflow_mapping = 9`; those local workflow-mapping review gaps remain separate from live SSH/provider/device/RU execution evidence, which is owner-gated and should be recorded separately when performed.
+- Current source-symbol coverage still has `script_cli_active_without_workflow_mapping = 10`; those local workflow-mapping review gaps remain separate from live SSH/provider/device/RU execution evidence, which is owner-gated and should be recorded separately when performed.

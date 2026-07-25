@@ -166,7 +166,8 @@ export default function TelegramWebAppInit() {
     if (inTelegramContext) {
       webApp.expand();
       webApp.disableVerticalSwipes?.();
-      webApp.enableClosingConfirmation?.();
+      // No enableClosingConfirmation(): the cabinet is read-only enough that
+      // an "are you sure?" on swipe-down only adds friction.
     }
 
     const savedTheme = readStoredThemePreference();

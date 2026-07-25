@@ -1,7 +1,7 @@
 "use client";
 
 import AppRouteLink from "@/components/app-route-link";
-import { AdminBadge, adminButtonClass, adminPanelClass } from "@/components/admin/admin-shell";
+import { AdminBadge, adminPanelClass } from "@/components/admin/admin-shell";
 import { ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
 

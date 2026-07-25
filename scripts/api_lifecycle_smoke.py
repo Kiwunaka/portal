@@ -12,6 +12,15 @@ TESTS_ROOT = REPO_ROOT / "tests"
 DEFAULT_TARGET = "test_api_lifecycle_smoke.ApiLifecycleSmokeTests.test_api_only_lifecycle_covers_trial_connect_support_bonuses_and_purchase"
 
 
+def _print_output(output: str) -> None:
+    try:
+        print(output)
+    except UnicodeEncodeError:
+        encoding = str(getattr(sys.stdout, "encoding", "") or "utf-8")
+        escaped = output.encode(encoding, errors="backslashreplace").decode(encoding)
+        print(escaped)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the API-only lifecycle smoke contour.")
     parser.add_argument(
@@ -41,7 +50,7 @@ def main() -> int:
     )
     output = (proc.stdout or "").strip()
     if output:
-        print(output)
+        _print_output(output)
     return int(proc.returncode)
 
 

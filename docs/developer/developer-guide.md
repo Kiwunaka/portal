@@ -89,6 +89,7 @@ $py = 'C:/Users/kiwun/Documents/ai/VPN/.venv/Scripts/python.exe'
 
 ~~~powershell
 & $py -B -m pytest -p no:cacheprovider tests/test_account_foundation.py -q
+& $py -B -m pytest -p no:cacheprovider tests/test_module_slices.py -q
 & $py -B -m pytest -p no:cacheprovider portal_bot/tests/test_app_first_api.py tests/test_portal_api.py -q
 & $py -B -m pytest -p no:cacheprovider tests/test_api_auth_and_tickets.py tests/test_worker_retention.py -q
 ~~~

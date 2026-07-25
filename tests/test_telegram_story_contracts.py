@@ -11,6 +11,19 @@ def _read(relative_path: str) -> str:
     return (ROOT / relative_path).read_text(encoding="utf-8", errors="replace")
 
 
+def _read_main_bot_surface() -> str:
+    return "\n".join(
+        _read(relative_path)
+        for relative_path in (
+            "portal_bot/bot.py",
+            "portal_bot/bot_user_handlers.py",
+            "portal_bot/bot_admin_handlers.py",
+            "portal_bot/bot_payment_handlers.py",
+            "portal_bot/bot_operator_handlers.py",
+        )
+    )
+
+
 def _assert_contains(text: str, snippets: tuple[str, ...], *, context: str) -> None:
     missing = [snippet for snippet in snippets if snippet not in text]
     assert not missing, f"{context} missing snippets: {missing}"
@@ -37,7 +50,7 @@ def test_all_telegram_story_rows_keep_live_source_references() -> None:
 
 
 def test_main_bot_public_and_admin_story_triggers_remain_present() -> None:
-    bot = _read("portal_bot/bot.py")
+    bot = _read_main_bot_surface()
 
     _assert_contains(
         bot,
@@ -151,7 +164,7 @@ def test_support_feedback_and_legacy_bot_story_triggers_remain_present() -> None
 
 
 def test_main_bot_profile_growth_contracts_remain_present() -> None:
-    bot = _read("portal_bot/bot.py")
+    bot = _read_main_bot_surface()
     profile = _read("portal_bot/telegram_profile.py")
     checker = _read("scripts/brain_telegram_bot_profile_check.py")
 

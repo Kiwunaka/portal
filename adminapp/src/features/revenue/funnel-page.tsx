@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { Cable, CreditCard, Percent, RefreshCw, UsersRound } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { MissingData } from "@/components/ops/missing-data";
 import { RouteBoundary } from "@/components/ops/route-boundary";
 import type { OpsShellStatus } from "@/components/ops/shell-status";
-import { Badge, Button, Card, DataTable, EmptyState, SectionTitle } from "@/components/ui";
+import { Badge, Button, Card, DataTable, EmptyState, MetricCell, MetricStrip, SectionTitle } from "@/components/ui";
 import { AdminApiError } from "@/lib/admin-api/client";
 import { fetchFunnel, type FunnelRange, type FunnelSource, type FunnelStage } from "@/lib/admin-api/revenue";
 import { useRouteResource } from "@/lib/use-route-resource";
@@ -78,10 +78,29 @@ export function FunnelPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
     { header: "Источник", cell: ({ row }) => <span className="font-semibold">{row.original.source || "— · Нет данных"}</span> },
     ...filteredMetrics.map((metric): ColumnDef<FunnelSource> => ({ header: metric.label, cell: ({ row }) => <NumberValue value={row.original[metric.key]} /> })),
   ], [filteredMetrics]);
+  const aggregate = (key: keyof FunnelSource): number | null => {
+    if (!filteredSources.length || filteredSources.some((row) => finite(row[key]) === null)) return null;
+    return filteredSources.reduce((sum, row) => sum + Number(row[key]), 0);
+  };
+  const visitors = aggregate("visitors");
+  const paid = aggregate("paid");
+  const connected = aggregate("connected");
+  const conversion = visitors !== null && connected !== null && visitors > 0
+    ? connected / visitors * 100
+    : null;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex flex-wrap gap-2 text-xs"><Badge tone={resource.error ? "warning" : resource.data ? "success" : "neutral"}>{resource.error ? "Источник воронки отвечает с ошибкой" : resource.data ? "Воронка рассчитана" : "Воронка ещё не получена"}</Badge><span className="text-[color:var(--atlas-text-soft)]">Агрегаты не являются бухгалтерской сверкой.</span></div><Button tone="secondary" disabled={resource.loading || resource.refreshing} onClick={resource.reload}><RefreshCw size={15} className={resource.refreshing ? "animate-spin" : ""} /> Обновить</Button></div>
+    <div className="ops-page space-y-3">
+      <div className="ops-route-toolbar"><div className="flex flex-wrap gap-2 text-xs"><Badge tone={resource.error ? "warning" : resource.data ? "success" : "neutral"}>{resource.error ? "Источник воронки отвечает с ошибкой" : resource.data ? "Воронка рассчитана" : "Воронка ещё не получена"}</Badge><span className="text-[color:var(--atlas-text-soft)]">Агрегаты не являются бухгалтерской сверкой.</span></div><Button tone="secondary" disabled={resource.loading || resource.refreshing} onClick={resource.reload}><RefreshCw size={15} className={resource.refreshing ? "animate-spin" : ""} /> Обновить</Button></div>
+
+      {resource.data ? (
+        <MetricStrip label="Сводка воронки">
+          <MetricCell icon={<UsersRound aria-hidden="true" size={17} />} label="Посетители" value={visitors === null ? <MissingData /> : valueText(visitors)} detail={urlState.source || "Все источники"} tone="info" />
+          <MetricCell icon={<CreditCard aria-hidden="true" size={17} />} label="Оплатили" value={paid === null ? <MissingData /> : valueText(paid)} detail={`Диапазон: ${urlState.range}`} tone="success" />
+          <MetricCell icon={<Cable aria-hidden="true" size={17} />} label="Подключились" value={connected === null ? <MissingData /> : valueText(connected)} detail="Подтверждённое подключение" tone="success" />
+          <MetricCell icon={<Percent aria-hidden="true" size={17} />} label="До подключения" value={conversion === null ? <MissingData /> : valueText(conversion, "%")} detail="Подключились / посетители" tone={conversion !== null && conversion < 20 ? "warning" : "neutral"} />
+        </MetricStrip>
+      ) : null}
 
       <Card>
         <div className="flex flex-wrap items-end justify-between gap-3"><SectionTitle title="Воронка денег и подключения" description="График и таблицы используют один диапазон, источник и выбранную стадию. Сырые события и JSON не выводятся." /><div className="grid gap-2 sm:grid-cols-3"><label className="text-xs font-semibold">Диапазон<select aria-label="Диапазон воронки" value={urlState.range} onChange={(event) => replaceUrlState<FunnelUrlState>({ range: event.target.value as FunnelRange }, FUNNEL_URL_CODECS)} className="mt-1 min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3"><option value="7d">7 дней</option><option value="30d">30 дней</option><option value="90d">90 дней</option></select></label><label className="text-xs font-semibold">Источник<select aria-label="Источник воронки" value={urlState.source} onChange={(event) => replaceUrlState<FunnelUrlState>({ source: event.target.value }, FUNNEL_URL_CODECS)} className="mt-1 min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3"><option value="">Все источники</option>{sources.map((row) => <option key={row.source} value={row.source}>{row.source}</option>)}</select></label><label className="text-xs font-semibold">Стадия<select aria-label="Стадия воронки" value={urlState.stage} onChange={(event) => replaceUrlState<FunnelUrlState>({ stage: event.target.value }, FUNNEL_URL_CODECS)} className="mt-1 min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3"><option value="">Все стадии</option>{urlState.source ? STAGE_METRICS.map((metric) => <option key={metric.value} value={metric.value}>{metric.label}</option>) : (resource.data?.stages || []).map((stage) => <option key={stage.key} value={stage.key}>{stage.label}</option>)}</select></label></div></div>
@@ -90,7 +109,7 @@ export function FunnelPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
         </RouteBoundary>
       </Card>
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
+      <section className="ops-workspace xl:grid-cols-[minmax(0,1.32fr)_minmax(20rem,0.68fr)]">
         <Card><SectionTitle title="Стадии" description="Переход, потери и конверсия рассчитаны сервером." />{filteredStages.length ? <DataTable data={filteredStages} columns={stageColumns} empty="Нет стадий" /> : resource.data ? <EmptyState description="Для выбранной стадии нет данных." /> : <MissingData />}</Card>
         <aside aria-label="Причины потерь"><Card><SectionTitle title="Причины потерь" />{resource.data?.drop_reasons.length ? <dl className="divide-y divide-[color:var(--atlas-border)]">{resource.data.drop_reasons.map((row) => <div key={row.reason} className="flex justify-between gap-3 py-2 text-xs"><dt>{row.reason}</dt><dd><NumberValue value={row.count} /></dd></div>)}</dl> : resource.data ? <EmptyState description="Причины не рассчитаны." className="min-h-0" /> : <MissingData />}</Card></aside>
       </section>

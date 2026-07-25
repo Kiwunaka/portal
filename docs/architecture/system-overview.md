@@ -45,7 +45,11 @@ Reference-lane note:
 ### Control Plane
 
 - `portal_bot/api.py`
-  FastAPI backend for health checks, app-first session bootstrap, payments, bonuses, tickets, public data, public reviews, and admin APIs.
+  FastAPI composition root for shared dependencies, middleware, compatibility
+  exports, and ordered route registration. HTTP implementations are grouped in
+  `api_public_routes.py`, `api_surface_routes.py`, `api_admin_routes.py`, and
+  `api_subscription_routes.py`; see the
+  [backend module map](../developer/backend-module-map.md).
 - `portal_bot/app_first_service.py`
   Bounded app-first/session helper used by the API for trial bootstrap, session payload shaping, and Telegram link start context.
 - `portal_bot/account_foundation_service.py`
@@ -75,7 +79,15 @@ Reference-lane note:
   optional encrypted-at-rest per-user/per-install WARP material shaping for
   managed profile delivery when an operator explicitly provisions material.
 - `portal_bot/bot.py`
-  Main Telegram bot for billing, campaigns, referrals, review moderation, and operator actions.
+  Telegram composition root for shared dependencies, presentation helpers,
+  compatibility exports, and ordered handler registration. Customer, admin,
+  payment, and operator implementations live in the four `bot_*_handlers.py`
+  slices documented in the
+  [backend module map](../developer/backend-module-map.md). The user-facing
+  presentation layer uses editable rich messages with equivalent HTML
+  fallback, semantic button colors, and a curated custom-emoji registry;
+  callback and payment behavior remain independent of those Telegram client
+  capabilities.
 - `portal_bot/helpbot.py`
   Dedicated support bot.
 - `portal_bot/support_agent_service.py`
@@ -767,6 +779,10 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `GET /api/admin/promo-slots`
 - `PUT /api/admin/promo-slots`
 - `POST /api/client/telegram/link`
+- `POST|GET|DELETE /api/client/device-pairing/*`
+- `GET|POST|DELETE /api/client/programs*`
+- `GET /api/public/status`
+- `GET /api/public/programs`
 - `GET /api/bonuses/summary`
 - `GET /api/bonuses/referral/summary`
 - `GET /api/bonuses/history`
@@ -785,6 +801,14 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `POST /api/bonuses/promo/redeem`
 - `POST /api/bonuses/channel/claim`
 - tickets and admin APIs under `/api/tickets` and `/api/admin/*`
+
+Selected-feature services add three bounded state machines to the modular
+monolith: one-time device pairing, manually reviewed program applications, and
+operator-owned service incidents. The worker polls pending incident
+compensation records, writes idempotent account entitlement grants, and leaves
+panel synchronization to the existing durable grant pipeline. Public status is
+read-only; user complaints and client telemetry cannot create incidents or
+grants.
 
 App-facing wheel and calendar routes are intentionally disabled by default.
 The client may surface truthful unavailable/preview state while flags are off.

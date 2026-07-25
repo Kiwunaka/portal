@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { CommandPalette } from "@/components/ops/command-palette";
 import { MobileNavigation } from "@/components/ops/mobile-navigation";
-import { OpsNavigation } from "@/components/ops/navigation";
 import { EMPTY_OPS_SHELL_STATUS, type OpsShellStatus } from "@/components/ops/shell-status";
 import { OpsTopbar } from "@/components/ops/topbar";
 import { OpsDashboard } from "@/components/ops-dashboard";
@@ -95,30 +94,19 @@ export function OpsShell({ section }: { section: string }) {
       >
         К основному содержанию
       </a>
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-[248px] border-r border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-4 lg:block">
-        <div className="mb-6 flex items-center gap-3 px-2">
-          <div className="grid h-9 w-9 place-items-center rounded-[var(--pokrov-radius-card)] bg-[color:var(--atlas-primary)] text-sm font-bold text-[color:var(--atlas-primary-text)]">
-            P
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm font-semibold leading-tight">POKROV</div>
-            <div className="text-[11px] text-[color:var(--atlas-text-muted)]">Центр управления</div>
-          </div>
-        </div>
-        <OpsNavigation active={active} onNavigate={navigate} className="max-h-[calc(100dvh-88px)] pr-1" />
-      </aside>
-
-      <div className="lg:pl-[248px]">
+      <div>
         <OpsTopbar
           sectionLabel={activeSection.label}
+          active={active}
           status={shellStatus}
+          onNavigate={navigate}
           onOpenCommands={() => changeCommandsOpen(true)}
           onOpenNavigation={() => changeMobileNavigationOpen(true)}
           onRefresh={refresh}
         />
-        <main id="ops-main-content" tabIndex={-1} className="px-4 py-4 outline-none lg:px-6 lg:py-5">
-          <div ref={routeContentRef}>
-            <OpsDashboard section={active} onShellStatus={setShellStatus} />
+        <main id="ops-main-content" tabIndex={-1} className="px-3 py-3 outline-none sm:px-4 lg:px-5 lg:py-4">
+          <div ref={routeContentRef} className="mx-auto max-w-[1800px]">
+            <OpsDashboard section={active} onShellStatus={setShellStatus} onNavigate={navigate} />
           </div>
         </main>
       </div>

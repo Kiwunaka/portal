@@ -43,6 +43,7 @@
     "scripts/pokrov_support_agent_eval.py",
     "scripts/pokrov_support_ai_kb_refresh.py",
     "scripts/predeploy_node_readiness.py",
+    "scripts/research_censorship_corpus.py",
     "scripts/reward_rollout.py",
     "scripts/release_gate_check.py",
     "scripts/render_ru_probe_report.py",

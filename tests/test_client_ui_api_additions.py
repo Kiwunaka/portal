@@ -51,6 +51,10 @@ def _load_api(monkeypatch, tmp_path: Path):
         "points_service",
         "free_cycle_service",
         "gift_cards_service",
+        "economy_service",
+        "incident_service",
+        "device_pairing_service",
+        "program_application_service",
         "payment_providers",
         "shared_surface_facts",
         "transport_catalog",
@@ -238,6 +242,7 @@ def test_client_locations_catalog_exposes_searchable_real_node_catalog(monkeypat
     assert amsterdam["healthScore"] == 0.94
     assert amsterdam["latencyMs"] == 38
     assert amsterdam["load"] == 0.31
+    assert amsterdam["measuredAt"] == now.isoformat()
     assert "old-node" not in {city["code"] for city in all_cities}
 
 
@@ -269,12 +274,80 @@ def test_client_account_devices_notifications_push_and_subscription_contract(mon
     revoke_current = client.delete("/api/client/devices/account-p1-device", headers=headers)
     assert revoke_current.status_code == 409
 
+    from models import EntitlementGrant, LiveUpdate, ServiceIncident, User
+
+    now = _utcnow()
+    s = api.SessionLocal()
+    try:
+        user = s.query(User).filter(User.app_install_id == "account-p1-device").one()
+        s.add(
+            ServiceIncident(
+                id="00000000-0000-4000-8000-000000009001",
+                incident_key="client-inbox-incident",
+                title="Проверяем маршрут",
+                summary="Один из маршрутов временно работает нестабильно.",
+                severity="degraded",
+                status="confirmed",
+                started_at=now - timedelta(minutes=5),
+                affected_node_codes_json="[]",
+                compensation_days=1,
+                confirmed_by=9999,
+                confirmed_at=now - timedelta(minutes=5),
+                created_at=now - timedelta(minutes=5),
+                updated_at=now,
+            )
+        )
+        s.add(
+            LiveUpdate(
+                title="Версия 1.0.1",
+                summary="Исправили подключение после сна.",
+                link="https://pokrov.space/updates/1-0-1",
+                published_at=now - timedelta(minutes=10),
+                is_active=True,
+                sort_order=1,
+                created_at=now - timedelta(minutes=10),
+                updated_at=now,
+            )
+        )
+        s.add(
+            EntitlementGrant(
+                id="00000000-0000-4000-8000-000000009002",
+                account_id=str(user.account_id),
+                legacy_tg_id=int(user.tg_id),
+                idempotency_key=f"incident-compensation:v1:test:{user.account_id}",
+                source="incident_compensation",
+                status="active",
+                grant_kind="premium_bonus",
+                plan_code="incident_compensation",
+                starts_at=now,
+                expires_at=now + timedelta(days=1),
+                activated_at=now,
+                duration_days=1,
+                provider="internal_economy",
+                metadata_json=json.dumps({"incident_title": "Компенсация за сбой"}),
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        s.commit()
+    finally:
+        s.close()
+
     notifications = client.get("/api/client/notifications", headers=headers)
     assert notifications.status_code == 200, notifications.text
     inbox = notifications.json()
     assert "items" in inbox
     assert "unreadCount" in inbox
     assert inbox["nextCursor"] is None
+    assert {item["kind"] for item in inbox["items"]} >= {
+        "incident",
+        "release",
+        "compensation",
+        "access",
+    }
+    assert next(item for item in inbox["items"] if item["kind"] == "incident")["id"] == (
+        "incident.00000000-0000-4000-8000-000000009001"
+    )
 
     mark_read = client.post(
         "/api/client/notifications/read",
@@ -294,6 +367,249 @@ def test_client_account_devices_notifications_push_and_subscription_contract(mon
     assert push_body["ok"] is True
     assert push_body["provider"] == "poll"
     assert push_body["tokenHash"] == hashlib.sha256(b"local-test-token").hexdigest()
+
+
+def test_confirmed_incident_admin_flow_previews_and_applies_exact_compensation(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    _seed_rollout(api)
+    _add_node(api, code="nl-ams-01")
+    api._require_admin = lambda _init_data, request=None: {"id": 9999}
+
+    start_body = _start_trial(client, install_id="incident-account-device")
+    headers = _auth_headers(start_body)
+    runtime = client.post(
+        "/api/client/runtime/stats",
+        headers=headers,
+        json={
+            "profile_revision": "rev-incident",
+            "selected_node_code": "nl-ams-01",
+            "runtime_phase": "running",
+            "connected": True,
+            "uptime_seconds": 120,
+        },
+    )
+    assert runtime.status_code == 200, runtime.text
+
+    now = _utcnow()
+    create = client.post(
+        "/api/admin/service-incidents",
+        json={
+            "incident_key": "inc-api-nl-20260723",
+            "title": "NL route outage",
+            "summary": "Confirmed outage on the NL route.",
+            "severity": "major",
+            "started_at": (now - timedelta(minutes=5)).isoformat(),
+            "affected_node_codes": ["nl-ams-01"],
+            "compensation_days": 1,
+        },
+    )
+    assert create.status_code == 200, create.text
+    incident_id = create.json()["incident"]["id"]
+
+    resolve = client.post(
+        f"/api/admin/service-incidents/{incident_id}/resolve",
+        json={"ended_at": (now + timedelta(seconds=1)).isoformat()},
+    )
+    assert resolve.status_code == 200, resolve.text
+    assert resolve.json()["compensationQueued"] is True
+
+    preview = client.post(
+        f"/api/admin/service-incidents/{incident_id}/compensate",
+        json={"dry_run": True},
+    )
+    assert preview.status_code == 200, preview.text
+    assert preview.json()["preview"]["impactedAccounts"] == 1
+
+    wrong_confirmation = client.post(
+        f"/api/admin/service-incidents/{incident_id}/compensate",
+        json={"dry_run": False, "confirm_incident_key": "wrong"},
+    )
+    assert wrong_confirmation.status_code == 409
+
+    applied = client.post(
+        f"/api/admin/service-incidents/{incident_id}/compensate",
+        json={
+            "dry_run": False,
+            "confirm_incident_key": "inc-api-nl-20260723",
+        },
+    )
+    assert applied.status_code == 200, applied.text
+    assert applied.json()["grantedAccounts"] == 1
+
+    repeated = client.post(
+        f"/api/admin/service-incidents/{incident_id}/compensate",
+        json={
+            "dry_run": False,
+            "confirm_incident_key": "inc-api-nl-20260723",
+        },
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["existingGrants"] == 1
+
+    inbox = client.get("/api/client/notifications", headers=headers)
+    assert inbox.status_code == 200, inbox.text
+    assert any(item["kind"] == "compensation" for item in inbox.json()["items"])
+
+    public_status = client.get("/api/public/service-status")
+    assert public_status.status_code == 200
+    assert public_status.json()["status"] == "operational"
+    assert public_status.json()["recent"][0]["key"] == "inc-api-nl-20260723"
+
+
+def test_device_pairing_api_uses_one_time_code_and_returns_real_client_session(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    api._plan_device_limit = lambda _user: 5
+    client = TestClient(api.app)
+    _seed_rollout(api)
+    _add_node(api, code="nl-ams-01")
+
+    owner_session = _start_trial(client, install_id="pairing-owner-device")
+    owner_headers = _auth_headers(owner_session)
+    issued = client.post("/api/client/device-pairing/codes", headers=owner_headers)
+    assert issued.status_code == 200, issued.text
+    pairing = issued.json()["pairing"]
+    assert pairing["status"] == "active"
+    assert len(str(pairing["code"]).replace("-", "")) == 8
+    assert str(pairing["pairing_uri"]).startswith("pokrov://pair?code=")
+    assert 590 <= int(pairing["ttl_seconds"]) <= 600
+
+    from models import DevicePairingCode
+
+    s = api.SessionLocal()
+    try:
+        stored = s.query(DevicePairingCode).filter(DevicePairingCode.id == pairing["id"]).one()
+        assert str(stored.code_hmac) != str(pairing["code"])
+        assert str(pairing["code"]).replace("-", "") not in str(stored.code_hmac)
+        assert stored.code_hint == str(pairing["code"])[-4:]
+    finally:
+        s.close()
+
+    claimed = client.post(
+        "/api/client/device-pairing/claim",
+        json={
+            "code": pairing["code"],
+            "install_id": "pairing-new-android-device",
+            "device_name": "Android TV",
+            "platform": "android_tv",
+            "os_version": "14",
+            "app_version": "1.0.0",
+            "locale": "ru-RU",
+            "time_zone": "Europe/Moscow",
+        },
+    )
+    assert claimed.status_code == 200, claimed.text
+    claim_body = claimed.json()
+    assert claim_body["access_token"]
+    assert claim_body["refresh_token"]
+    assert claim_body["canonical_account_id"] == owner_session["canonical_account_id"]
+
+    new_headers = {"Authorization": f"Bearer {claim_body['access_token']}"}
+    devices = client.get("/api/client/devices", headers=new_headers)
+    assert devices.status_code == 200, devices.text
+    assert {row["id"] for row in devices.json()["items"]} == {
+        "pairing-owner-device",
+        "pairing-new-android-device",
+    }
+
+    repeated = client.post(
+        "/api/client/device-pairing/claim",
+        json={
+            "code": pairing["code"],
+            "install_id": "pairing-third-device",
+            "device_name": "Third",
+            "platform": "android",
+        },
+    )
+    assert repeated.status_code == 409
+    assert repeated.json()["detail"]["code"] == "pairing_code_used"
+
+
+def test_program_application_api_requires_operator_review_and_idempotent_confirmation(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    _seed_rollout(api)
+    _add_node(api, code="nl-ams-01")
+    api._require_admin = lambda _init_data, request=None: {"id": 9999}
+
+    start = _start_trial(client, install_id="program-applicant-device")
+    headers = _auth_headers(start)
+    created = client.post(
+        "/api/client/programs/applications",
+        headers=headers,
+        json={
+            "kind": "research",
+            "summary": "Воспроизводимый отчёт: соединение не восстанавливается после смены сети.",
+            "contact": "@qa_user",
+        },
+    )
+    assert created.status_code == 200, created.text
+    application = created.json()["application"]
+    assert application["status"] == "submitted"
+    assert application["reward_days"] == 0
+    assert application["rewarded"] is False
+
+    duplicate = client.post(
+        "/api/client/programs/applications",
+        headers=headers,
+        json={
+            "kind": "research",
+            "summary": "Ещё один отчёт не должен обходить уже открытую заявку пользователя.",
+        },
+    )
+    assert duplicate.status_code == 409
+
+    wrong = client.post(
+        f"/api/admin/program-applications/{application['id']}/review",
+        json={
+            "status": "approved",
+            "operator_note": "Подтверждено на чистом стенде.",
+            "reward_days": 3,
+            "confirm_application_id": "wrong",
+        },
+    )
+    assert wrong.status_code == 409
+
+    approved = client.post(
+        f"/api/admin/program-applications/{application['id']}/review",
+        json={
+            "status": "approved",
+            "operator_note": "Подтверждено на чистом стенде.",
+            "reward_days": 3,
+            "confirm_application_id": application["id"],
+        },
+    )
+    assert approved.status_code == 200, approved.text
+    approved_body = approved.json()["application"]
+    assert approved_body["status"] == "rewarded"
+    assert approved_body["reward_days"] == 3
+    assert approved_body["reward_grant_id"]
+
+    repeated = client.post(
+        f"/api/admin/program-applications/{application['id']}/review",
+        json={
+            "status": "approved",
+            "operator_note": "Повторная отправка того же решения.",
+            "reward_days": 3,
+            "confirm_application_id": application["id"],
+        },
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["application"]["reward_grant_id"] == approved_body["reward_grant_id"]
+
+    programs = client.get("/api/client/programs", headers=headers)
+    assert programs.status_code == 200, programs.text
+    assert programs.json()["applications"][0]["status"] == "rewarded"
+    assert programs.json()["applications"][0]["decision_note"] == "Подтверждено на чистом стенде."
+    assert next(item for item in programs.json()["capabilities"] if item["kind"] == "affiliate")["enabled"] is False
+
+    inbox = client.get("/api/client/notifications", headers=headers)
+    assert inbox.status_code == 200, inbox.text
+    program_notice = next(item for item in inbox.json()["items"] if item["kind"] == "program")
+    assert program_notice["body"] == "Проверка завершена: начислено 3 дн."
 
 
 def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_path, caplog) -> None:

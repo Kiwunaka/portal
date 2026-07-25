@@ -1528,6 +1528,17 @@ def test_app_session_can_read_bonus_and_referral_summaries(monkeypatch, tmp_path
     finally:
         db.close()
 
+    lesson_response = client.post(
+        "/api/events",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "event_name": "routing_lesson_completed",
+            "source": "app",
+            "meta": {"surface": "route_explainer"},
+        },
+    )
+    assert lesson_response.status_code == 200, lesson_response.text
+
     summary_response = client.get(
         "/api/bonuses/summary",
         headers={"Authorization": f"Bearer {token}"},
@@ -1557,6 +1568,14 @@ def test_app_session_can_read_bonus_and_referral_summaries(monkeypatch, tmp_path
     assert summary["promo"]["pending_discount_pct"] == 20
     assert summary["wheel"]["enabled"] is False
     assert summary["calendar"]["enabled"] is False
+    quests = {item["id"]: item for item in summary["achievements"]["quests"]}
+    assert quests["first_tunnel"]["completed"] is False
+    assert quests["first_tunnel"]["verification"] == "connection_evidence"
+    assert quests["second_device"]["progress"] == 1
+    assert quests["second_device"]["target"] == 2
+    assert quests["routing_lesson"]["completed"] is True
+    assert quests["quality_feedback"]["completed"] is False
+    assert summary["achievements"]["quest_rewards_enabled"] is False
 
     assert referral_response.status_code == 200, referral_response.text
     referral = referral_response.json()

@@ -28,6 +28,7 @@ from models import (
     SupportTicketMessage,
     User,
 )
+from account_foundation_service import _move_account_owned_rows
 from support_account_service import (
     SUPPORT_ACCOUNT_OWNERSHIP_BACKFILL_KEY,
     backfill_support_account_ownership,
@@ -258,7 +259,25 @@ def test_startup_marker_ownership_and_reviews_rollback_together_on_commit_failur
 
 
 def test_account_merge_moves_support_owners_without_rewriting_history_or_other_authority(tmp_path) -> None:
-    from account_foundation_service import _move_account_owned_rows
+    runtime_models = _move_account_owned_rows.__globals__
+    for model_name in (
+        "Account",
+        "AccountIdentity",
+        "AccountMergeReview",
+        "AppSetting",
+        "EntitlementGrant",
+        "PaymentEntitlementClaim",
+        "SupportAttachment",
+        "SupportTicket",
+        "User",
+    ):
+        globals()[model_name] = runtime_models[model_name]
+    globals()["Base"] = runtime_models["Account"]
+    globals()["SupportTicketMessage"] = next(
+        mapper.class_
+        for mapper in runtime_models["Account"].registry.mappers
+        if mapper.class_.__name__ == "SupportTicketMessage"
+    )
 
     _engine, Session = _session_factory(tmp_path)
     with Session() as session:

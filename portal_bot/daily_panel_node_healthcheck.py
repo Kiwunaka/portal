@@ -61,6 +61,15 @@ def _panel_managed_identity(row: dict, expected_uuid_to_tg: dict[str, int]) -> i
     return expected_uuid_to_tg.get(client_uuid) if client_uuid else None
 
 
+def _panel_client_enabled(row: dict) -> bool:
+    raw = (row or {}).get("enable", True)
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, (int, float)):
+        return bool(raw)
+    return str(raw or "").strip().lower() not in {"0", "false", "no", "off", "disabled"}
+
+
 async def _panel_rows(expected_by_node: dict[str, set[int]], expected_uuid_by_node: dict[str, dict[str, int]]) -> list[dict]:
     panel = ControlPanel()
     rows: list[dict] = []
@@ -82,18 +91,38 @@ async def _panel_rows(expected_by_node: dict[str, set[int]], expected_uuid_by_no
                     for tg in (_panel_managed_identity(row, expected_uuid_to_tg) for row in panel_clients)
                     if tg is not None
                 }
+                enabled_clients = [row for row in panel_clients if _panel_client_enabled(row)]
+                disabled_clients = [row for row in panel_clients if not _panel_client_enabled(row)]
+                enabled_actual = {
+                    tg
+                    for tg in (_panel_managed_identity(row, expected_uuid_to_tg) for row in enabled_clients)
+                    if tg is not None
+                }
+                disabled_actual = {
+                    tg
+                    for tg in (_panel_managed_identity(row, expected_uuid_to_tg) for row in disabled_clients)
+                    if tg is not None
+                }
                 expected = set(expected_by_node.get(code, set()))
+                enabled_unexpected = enabled_actual - expected
+                disabled_unexpected = disabled_actual - expected
                 rows.append(
                     {
                         "node": code,
                         "panel_clients_total": len(panel_clients),
+                        "panel_clients_enabled": len(enabled_clients),
+                        "panel_clients_disabled": len(disabled_clients),
                         "managed_actual": len(actual),
+                        "managed_enabled": len(enabled_actual),
+                        "managed_disabled": len(disabled_actual),
                         "expected": len(expected),
-                        "missing": len(expected - actual),
-                        "managed_unexpected": len(actual - expected),
+                        "missing": len(expected - enabled_actual),
+                        "managed_unexpected": len(enabled_unexpected),
+                        "managed_unexpected_disabled": len(disabled_unexpected),
                         "unknown_rows": len(
                             [row for row in panel_clients if _panel_managed_identity(row, expected_uuid_to_tg) is None]
                         ),
+                        "_unexpected_enabled_identities": sorted(enabled_unexpected),
                     }
                 )
             except Exception as exc:
@@ -197,14 +226,28 @@ async def run() -> int:
             issues.append(f"node_{row['code']}_unhealthy")
 
     panel_rows = await _panel_rows(expected_by_node, expected_uuid_by_node)
+    unexpected_enabled_identities: set[int] = set()
+    unexpected_enabled_placements = 0
+    for row in panel_rows:
+        unexpected_enabled_placements += int(row.get("managed_unexpected") or 0)
+        unexpected_enabled_identities.update(
+            int(value)
+            for value in row.pop("_unexpected_enabled_identities", [])
+            if str(value).isdigit()
+        )
     report["checks"]["panels"] = panel_rows
     for row in panel_rows:
         if row.get("error"):
             issues.append(f"panel_{row.get('node')}_error")
         if int(row.get("missing") or 0) > 0:
             issues.append(f"panel_{row.get('node')}_missing_{row.get('missing')}")
-        if int(row.get("managed_unexpected") or 0) > 0:
-            issues.append(f"panel_{row.get('node')}_unexpected_{row.get('managed_unexpected')}")
+    if unexpected_enabled_placements > 0:
+        identity_count = len(unexpected_enabled_identities)
+        identity_label = str(identity_count) if identity_count > 0 else "unknown"
+        issues.append(
+            f"panel_access_drift_enabled_{identity_label}_identities_"
+            f"{unexpected_enabled_placements}_placements"
+        )
 
     report["status"] = "ok" if not issues else "warn"
     report["issues"] = sorted(set(issues))

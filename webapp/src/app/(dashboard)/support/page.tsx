@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
 import {
   Download,
+  BookOpenText,
   FileText,
   Hourglass,
   KeyRound,
@@ -279,6 +280,7 @@ export default function SupportPage() {
         </GroupedSection>
 
         <GroupedSection title="Быстрые действия">
+          <Row icon={BookOpenText} label="Все инструкции" hint="Пошаговые задачи с ветками ошибок" href="/guides/" />
           <Row
             icon={MessageSquarePlus}
             label="Новый вопрос"

@@ -182,9 +182,9 @@ def test_client_lane_docs_point_to_pokrov_app_as_development_truth() -> None:
         "Use history to answer why. Never let archive, completed plans, generated "
         "references, or old decisions determine what to implement now."
     ) in app_readme
-    assert "public cutover approval: `outside-store beta only`" in app_cutover
-    assert "public Android release approval: `outside-store beta with operator attestation`" in app_cutover
-    assert "public Windows release approval: `outside-store unsigned beta only`" in app_cutover
+    assert "public cutover approval: `blocked for a new candidate`" in app_cutover
+    assert "public Android release approval: `blocked pending production-signing PASS for the exact candidate`" in app_cutover
+    assert "public Windows release approval: `blocked pending trusted-signing PASS for the exact candidate`" in app_cutover
     assert "long-term repo truth: `yes`" in app_cutover
     assert "bootstrap source removed from active policy and active docs on `2026-04-23`" in app_next_summary
     assert "active client canon moved to `C:/Users/kiwun/Documents/ai/POKROV-app`" in bridge_summary

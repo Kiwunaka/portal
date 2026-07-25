@@ -32,6 +32,15 @@ class PlanPolicyTests(unittest.TestCase):
         os.environ["DATABASE_URL"] = "sqlite:///:memory:"
         os.environ["BOT_TOKEN"] = "test_bot_token_123"
 
+        config = importlib.import_module("config")
+        importlib.reload(config)
+        db = importlib.import_module("db")
+        try:
+            db.engine.dispose()
+        except Exception:
+            pass
+        importlib.reload(db)
+
     def tearDown(self) -> None:
         for k, v in self._saved.items():
             if v is None:

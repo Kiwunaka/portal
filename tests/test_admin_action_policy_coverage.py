@@ -7,8 +7,15 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-API_PATH = REPO_ROOT / "portal_bot" / "api.py"
 PORTAL_BOT_DIR = REPO_ROOT / "portal_bot"
+ADMIN_API_PATH = PORTAL_BOT_DIR / "api_admin_routes.py"
+API_ROUTE_PATHS = (
+    PORTAL_BOT_DIR / "api.py",
+    PORTAL_BOT_DIR / "api_public_routes.py",
+    PORTAL_BOT_DIR / "api_surface_routes.py",
+    ADMIN_API_PATH,
+    PORTAL_BOT_DIR / "api_subscription_routes.py",
+)
 if str(PORTAL_BOT_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_BOT_DIR))
 
@@ -33,21 +40,66 @@ def discover_admin_mutation_routes(source: str) -> set[tuple[str, str]]:
 def test_every_admin_mutation_is_guarded_or_explicitly_low_risk() -> None:
     from admin_action_intent_service import action_policy_route_keys
 
-    mutations = discover_admin_mutation_routes(API_PATH.read_text(encoding="utf-8"))
+    mutations = set().union(
+        *(
+            discover_admin_mutation_routes(path.read_text(encoding="utf-8"))
+            for path in API_ROUTE_PATHS
+        )
+    )
     exempt = {
         ("POST", "/api/admin/auth/session"),
         ("POST", "/api/admin/alerts/{alert_id}/ack"),
         ("POST", "/api/admin/alerts/{alert_id}/silence"),
         ("POST", "/api/admin/campaign-links/build"),
     }
+    # Incident declaration/resolution only changes operator-owned status metadata.
+    # Any account grant is isolated in the separately confirmed compensation route.
+    audited_l1 = {
+        ("POST", "/api/admin/service-incidents"),
+        ("POST", "/api/admin/service-incidents/{incident_id}/resolve"),
+    }
+    # These routes retain their original domain-specific exact confirmation,
+    # transaction, idempotency, and audit contracts instead of the generic intent UI.
+    domain_confirmed = {
+        ("POST", "/api/admin/service-incidents/{incident_id}/compensate"),
+        ("POST", "/api/admin/program-applications/{application_id}/review"),
+    }
     guarded = set(action_policy_route_keys())
 
     assert ("POST", "/api/admin/broadcast") in guarded
-    assert mutations == guarded | exempt
+    assert mutations == guarded | exempt | audited_l1 | domain_confirmed
+
+
+def test_domain_confirmed_mutations_keep_confirmation_and_audit() -> None:
+    source = ADMIN_API_PATH.read_text(encoding="utf-8")
+    tree = ast.parse(source)
+    handlers = {
+        node.name: ast.get_source_segment(source, node) or ""
+        for node in tree.body
+        if isinstance(node, (ast.AsyncFunctionDef, ast.FunctionDef))
+    }
+
+    for handler_name in (
+        "admin_service_incident_create",
+        "admin_service_incident_resolve",
+        "admin_service_incident_compensate",
+        "admin_program_application_review",
+    ):
+        assert "_add_admin_audit(" in handlers[handler_name]
+
+    compensation = handlers["admin_service_incident_compensate"]
+    assert "payload.dry_run" in compensation
+    assert "secrets.compare_digest(" in compensation
+    assert "payload.confirm_incident_key" in compensation
+
+    review = handlers["admin_program_application_review"]
+    assert "int(payload.reward_days or 0) > 0" in review
+    assert "secrets.compare_digest(" in review
+    assert "payload.confirm_application_id" in review
 
 
 def test_broadcast_non_dry_run_invokes_action_intent_guard() -> None:
-    tree = ast.parse(API_PATH.read_text(encoding="utf-8"))
+    tree = ast.parse(ADMIN_API_PATH.read_text(encoding="utf-8"))
     handler = next(
         node
         for node in tree.body

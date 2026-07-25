@@ -6,9 +6,10 @@ import { useEffect, useState } from "react";
 type Props = {
   value: string;
   active?: boolean;
+  alt?: string;
 };
 
-export default function SubscriptionQrCard({ value, active = true }: Props) {
+export default function SubscriptionQrCard({ value, active = true, alt = "QR-код ссылки подключения" }: Props) {
   const [src, setSrc] = useState("");
   const [error, setError] = useState("");
 
@@ -69,7 +70,7 @@ export default function SubscriptionQrCard({ value, active = true }: Props) {
   return (
     <Image
       src={src}
-      alt="QR-код ссылки подключения"
+      alt={alt}
       width={220}
       height={220}
       unoptimized

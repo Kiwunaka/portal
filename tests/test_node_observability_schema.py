@@ -2,8 +2,10 @@ import importlib
 import os
 import sqlite3
 import sys
+import tempfile
 import unittest
 import uuid
+from contextlib import closing
 from pathlib import Path
 
 
@@ -14,7 +16,9 @@ class NodeObservabilitySchemaTests(unittest.TestCase):
         if portal_dir not in sys.path:
             sys.path.insert(0, portal_dir)
 
-        self.db_path = str((repo_root / f"portal_api_test_{uuid.uuid4().hex}.db").resolve())
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.db_path = str((Path(self._tmp.name) / f"portal_api_test_{uuid.uuid4().hex}.db").resolve())
         self._saved_env = os.environ.get("DATABASE_URL")
         os.environ["DATABASE_URL"] = f"sqlite:///{Path(self.db_path).as_posix()}"
 
@@ -39,7 +43,7 @@ class NodeObservabilitySchemaTests(unittest.TestCase):
             pass
 
     def _columns(self, table_name: str) -> set[str]:
-        with sqlite3.connect(self.db_path) as conn:
+        with closing(sqlite3.connect(self.db_path)) as conn:
             rows = conn.execute(f"PRAGMA table_info({table_name});").fetchall()
         return {str(row[1]) for row in rows}
 

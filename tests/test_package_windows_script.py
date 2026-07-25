@@ -73,7 +73,7 @@ def test_package_windows_script_validates_runtime_and_metadata_contracts() -> No
     script = SCRIPT_PATH.read_text(encoding="utf-8")
 
     assert 'Join-Path $PSScriptRoot "validate-seed.ps1"' in script
-    assert 'Join-Path $PSScriptRoot "fetch-libcore-assets.ps1"' in script
+    assert 'Join-Path $PSScriptRoot "sync-pokrov-core-runtime.ps1"' in script
     assert "Missing expected Windows release outputs" in script
     assert "CompanyName must be" in script
 

@@ -102,7 +102,7 @@ export default function InstallPage() {
           title: getCopyText("marketing.install.windows.step2.title", "Пройдите SmartScreen"),
           text: getCopyText(
             "marketing.install.windows.step2.text",
-            "Если Windows покажет предупреждение, нажмите «Подробнее» → «Выполнить в любом случае». Это честно: подписи издателя пока нет.",
+            "Если Windows покажет предупреждение, нажмите «Подробнее» → «Выполнить в любом случае». Подписи издателя пока нет, поэтому скачивайте файл только через официальный кабинет.",
           ),
         },
         {
@@ -163,23 +163,23 @@ export default function InstallPage() {
       <section className="mx-auto flex max-w-3xl flex-col items-center gap-6 px-4 pt-12 pb-10 text-center sm:px-6 sm:pt-16">
         <Chip>
           <span className="size-1.5 rounded-full bg-status-green" />
-          {getCopyText("marketing.install.kicker", "Установка за минуту")}
+          {getCopyText("marketing.install.kicker", "Одна минута до первого подключения")}
         </Chip>
         <h1 className="font-display text-[2.25rem] leading-[1.1] font-extrabold tracking-[-0.01em] text-ink sm:text-[2.75rem]">
-          {getCopyText("marketing.install.title", "Скачайте, остальное уже настроено")}
+          {getCopyText("marketing.install.title", "Скачайте POKROV. Подключитесь одной кнопкой.")}
         </h1>
         <p className="max-w-xl text-lg leading-relaxed text-ink-soft">
           {getCopyText(
             "marketing.install.subtitle",
-            "Три шага для Android или Windows. Файлы выдаёт кабинет, так вы всегда получаете настоящую и свежую версию.",
+            "Выберите Android или Windows, скачайте официальный файл и нажмите «Подключить». После установки получите 5 дней бесплатно — карта не нужна.",
           )}
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
           <Button href={androidHref} size="lg" target="_blank" rel="noreferrer">
-            {getCopyText("marketing.install.cta.android", "Скачать для Android")}
+            {getCopyText("marketing.install.cta.android", "Скачать POKROV на Android")}
           </Button>
           <Button href={windowsHref} size="lg" variant="secondary" target="_blank" rel="noreferrer">
-            {getCopyText("marketing.install.cta.windows", "Скачать для Windows")}
+            {getCopyText("marketing.install.cta.windows", "Скачать POKROV на Windows")}
           </Button>
         </div>
         <div className="flex flex-col items-center gap-1">
@@ -206,7 +206,7 @@ export default function InstallPage() {
           <Reveal>
             <SectionHeading
               kicker={getCopyText("marketing.install.faq.kicker", "Частые вопросы")}
-              title={getCopyText("marketing.install.faq.title", "Про установку честно")}
+              title={getCopyText("marketing.install.faq.title", "Ответы перед установкой")}
             />
           </Reveal>
           <Reveal>
@@ -220,10 +220,10 @@ export default function InstallPage() {
               Windows-гайд
             </Button>
             <Button href={config.supportTelegramUrl} variant="secondary" target="_blank" rel="noreferrer">
-              {getCopyText("marketing.install.secondary_cta", "Написать в поддержку")}
+              {getCopyText("marketing.install.secondary_cta", "Помогите установить")}
             </Button>
             <Button href={config.webappUrl} variant="ghost" target="_blank" rel="noreferrer">
-              {getCopyText("marketing.install.primary_cta", "Открыть кабинет")}
+              {getCopyText("marketing.install.primary_cta", "Скачать актуальную версию")}
             </Button>
           </Reveal>
         </div>

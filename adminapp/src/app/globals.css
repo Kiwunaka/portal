@@ -41,42 +41,34 @@ a {
 }
 
 body {
-  color-scheme: dark;
-  --command-canvas: var(--pokrov-bg-dark, #0b100e);
-  --command-canvas-alt: var(--pokrov-bg-dark-alt, #0f1512);
-  --command-surface: var(--pokrov-surface-dark, #121a16);
-  --command-surface-raised: var(--pokrov-surface-dark-strong, #18231e);
-  --command-border: var(--pokrov-line-dark, rgba(189, 215, 201, 0.14));
-  --command-border-strong: var(--pokrov-line-dark-strong, rgba(95, 211, 164, 0.3));
-  --command-text: var(--pokrov-text-dark, #eef6f1);
-  --command-text-soft: var(--pokrov-text-dark-soft, #afc1b7);
-  --command-text-muted: var(--pokrov-text-dark-muted, #74877d);
-  --command-focus: var(--pokrov-focus-ring-dark, #63d9aa);
+  color-scheme: light;
+  --command-canvas: var(--pokrov-bg, #ffffff);
+  --command-canvas-alt: var(--pokrov-bg-alt, #f5f7f6);
+  --command-surface: var(--pokrov-surface, #ffffff);
+  --command-surface-raised: var(--pokrov-surface-subtle, #f7f9f8);
+  --command-border: var(--pokrov-line, rgba(17, 24, 20, 0.08));
+  --command-border-strong: var(--pokrov-line-strong, rgba(18, 128, 90, 0.18));
+  --command-text: var(--pokrov-text, #16181d);
+  --command-text-soft: var(--pokrov-text-soft, #5e6772);
+  --command-text-muted: var(--pokrov-text-muted, #9aa1a9);
+  --command-focus: var(--pokrov-focus-ring, #12805a);
   --command-control-min-height: 40px;
   --command-page-gutter: 0.75rem;
   --command-panel-gap: 0.75rem;
-  --command-sidebar-width: 15rem;
-  --command-detail-width: 20rem;
-  --command-status-success-bg: var(--pokrov-status-success-bg-dark, rgba(37, 123, 88, 0.2));
-  --command-status-success-text: var(--pokrov-status-success-text-dark, #7fe0b7);
-  --command-status-success-line: var(--pokrov-status-success-line-dark, rgba(127, 224, 183, 0.32));
-  --command-status-warning-bg: var(--pokrov-status-warning-bg-dark, rgba(151, 112, 30, 0.2));
-  --command-status-warning-text: var(--pokrov-status-warning-text-dark, #f0ca74);
-  --command-status-warning-line: var(--pokrov-status-warning-line-dark, rgba(240, 202, 116, 0.34));
-  --command-status-danger-bg: var(--pokrov-status-danger-bg-dark, rgba(151, 57, 49, 0.22));
-  --command-status-danger-text: var(--pokrov-status-danger-text-dark, #ff9e96);
-  --command-status-danger-line: var(--pokrov-status-danger-line-dark, rgba(255, 158, 150, 0.34));
-  --command-status-neutral-bg: var(--pokrov-status-neutral-bg-dark, rgba(157, 175, 166, 0.1));
-  --command-status-neutral-text: var(--pokrov-status-neutral-text-dark, #b8c5be);
-  --command-status-neutral-line: var(--pokrov-status-neutral-line-dark, rgba(184, 197, 190, 0.22));
-  --pokrov-bg: var(--pokrov-bg-dark, #0b100e);
-  --pokrov-text: var(--pokrov-text-dark, #eef6f1);
-  --pokrov-nav-active-bg: var(--pokrov-nav-active-bg-dark, rgba(95, 211, 164, 0.16));
-  --pokrov-nav-hover-bg: var(--pokrov-nav-hover-bg-dark, rgba(189, 215, 201, 0.08));
-  --pokrov-nav-text: var(--pokrov-nav-text-dark, #afc1b7);
-  --pokrov-table-header-bg: var(--pokrov-table-header-bg-dark, #17211d);
-  --pokrov-table-divider: var(--pokrov-table-divider-dark, rgba(189, 215, 201, 0.12));
-  --pokrov-table-row-hover-bg: var(--pokrov-table-row-hover-bg-dark, rgba(189, 215, 201, 0.06));
+  --command-sidebar-width: 18rem;
+  --command-detail-width: 19rem;
+  --command-status-success-bg: var(--pokrov-status-success-bg, #e6f4ed);
+  --command-status-success-text: var(--pokrov-status-success-text, #174f3d);
+  --command-status-success-line: var(--pokrov-status-success-line, rgba(32, 103, 79, 0.22));
+  --command-status-warning-bg: var(--pokrov-status-warning-bg, #f7efd9);
+  --command-status-warning-text: var(--pokrov-status-warning-text, #765d23);
+  --command-status-warning-line: var(--pokrov-status-warning-line, rgba(145, 111, 39, 0.22));
+  --command-status-danger-bg: var(--pokrov-status-danger-bg, #f8e7e3);
+  --command-status-danger-text: var(--pokrov-status-danger-text, #8d352e);
+  --command-status-danger-line: var(--pokrov-status-danger-line, rgba(141, 53, 46, 0.22));
+  --command-status-neutral-bg: var(--pokrov-status-neutral-bg, rgba(31, 38, 54, 0.055));
+  --command-status-neutral-text: var(--pokrov-status-neutral-text, #4f5868);
+  --command-status-neutral-line: var(--pokrov-status-neutral-line, rgba(31, 38, 54, 0.12));
   --atlas-canvas: var(--command-canvas);
   --atlas-canvas-alt: var(--command-canvas-alt);
   --atlas-surface: var(--command-surface);
@@ -86,9 +78,9 @@ body {
   --atlas-border: var(--command-border);
   --atlas-border-strong: var(--command-border-strong);
   --atlas-focus: var(--command-focus);
-  --atlas-primary: var(--pokrov-button-bg-dark, #1d9b6d);
-  --atlas-primary-hover: var(--pokrov-button-bg-dark-hover, #26ad7b);
-  --atlas-primary-text: var(--pokrov-button-text-dark, #f5fff9);
+  --atlas-primary: var(--pokrov-button-bg, #12805a);
+  --atlas-primary-hover: var(--pokrov-button-bg-hover, #0f6b47);
+  --atlas-primary-text: var(--pokrov-button-text, #ffffff);
   --atlas-status-success-bg: var(--command-status-success-bg);
   --atlas-status-success-text: var(--command-status-success-text);
   --atlas-status-success-line: var(--command-status-success-line);
@@ -98,15 +90,15 @@ body {
   --atlas-status-danger-bg: var(--command-status-danger-bg);
   --atlas-status-danger-text: var(--command-status-danger-text);
   --atlas-status-danger-line: var(--command-status-danger-line);
-  --atlas-status-info-bg: var(--pokrov-status-info-bg-dark, rgba(65, 123, 151, 0.2));
-  --atlas-status-info-text: var(--pokrov-status-info-text-dark, #89cce8);
-  --atlas-status-info-line: var(--pokrov-status-info-line-dark, rgba(137, 204, 232, 0.3));
+  --atlas-status-info-bg: var(--pokrov-status-info-bg, #e7eef2);
+  --atlas-status-info-text: var(--pokrov-status-info-text, #315c70);
+  --atlas-status-info-line: var(--pokrov-status-info-line, rgba(49, 92, 112, 0.2));
   --atlas-status-neutral-bg: var(--command-status-neutral-bg);
   --atlas-status-neutral-text: var(--command-status-neutral-text);
   --atlas-status-neutral-line: var(--command-status-neutral-line);
-  --atlas-shadow-soft: var(--pokrov-shadow-soft-dark, 0 4px 14px rgba(0, 0, 0, 0.22));
-  --atlas-shadow-medium: var(--pokrov-shadow-medium-dark, 0 18px 44px rgba(0, 0, 0, 0.38));
-  background: var(--atlas-canvas);
+  --atlas-shadow-soft: var(--pokrov-shadow-soft, 0 2px 8px rgba(17, 24, 20, 0.05));
+  --atlas-shadow-medium: var(--pokrov-shadow-medium, 0 8px 24px rgba(17, 24, 20, 0.07));
+  background: var(--atlas-canvas-alt);
   color: var(--atlas-text);
 }
 
@@ -121,18 +113,131 @@ body {
   background: var(--atlas-canvas);
 }
 
+.ops-route,
+.ops-page {
+  min-width: 0;
+}
+
+.ops-page {
+  animation: ops-page-enter 180ms var(--ease-ops) both;
+}
+
+.ops-route-toolbar {
+  display: flex;
+  min-height: 3.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--atlas-border);
+  border-radius: var(--pokrov-radius-card);
+  background: var(--atlas-surface);
+  padding: 0.625rem 0.75rem;
+  box-shadow: 0 1px 2px rgba(17, 24, 20, 0.025);
+}
+
+.ops-page > .flex:first-child {
+  min-height: 3.5rem;
+  overflow: hidden;
+  border: 1px solid var(--atlas-border);
+  border-radius: var(--pokrov-radius-card);
+  background: var(--atlas-surface);
+  padding: 0.625rem 0.75rem;
+  box-shadow: 0 1px 2px rgba(17, 24, 20, 0.025);
+}
+
+.ops-workspace {
+  display: grid;
+  min-width: 0;
+  align-items: start;
+  gap: 0.75rem;
+}
+
+.ops-workspace > * {
+  min-width: 0;
+}
+
+.ops-metric-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5rem), 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--atlas-border);
+  border-radius: var(--pokrov-radius-panel);
+  background: var(--atlas-border);
+  box-shadow: var(--atlas-shadow-soft);
+}
+
+.ops-metric-cell {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--atlas-surface);
+  padding: 0.75rem 0.875rem;
+}
+
+.ops-metric-icon {
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: var(--pokrov-radius-card);
+}
+
+.ops-route :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+  border-color: var(--atlas-border);
+  background-color: var(--atlas-surface);
+  box-shadow: inset 0 1px 1px rgba(17, 24, 20, 0.025);
+  transition: border-color 160ms var(--ease-ops), box-shadow 160ms var(--ease-ops), background-color 160ms var(--ease-ops);
+}
+
+.ops-route :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea):hover {
+  border-color: var(--atlas-border-strong);
+}
+
+.ops-route :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea):focus {
+  border-color: var(--atlas-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--atlas-primary) 12%, transparent);
+}
+
+.ops-route :where(input, textarea)::placeholder {
+  color: var(--atlas-text-muted);
+}
+
+.ops-data-table {
+  background: var(--atlas-surface);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+@keyframes ops-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .ops-command-layout {
   display: grid;
-  grid-template-columns: var(--command-sidebar-width) minmax(0, 1fr) var(--command-detail-width);
+  grid-template-columns: minmax(16rem, var(--command-sidebar-width)) minmax(0, 1fr) minmax(17rem, var(--command-detail-width));
   gap: var(--command-panel-gap);
+  align-items: start;
 }
 
 @media (min-width: 1280px) {
   body {
     --command-page-gutter: 0.875rem;
     --command-panel-gap: 0.875rem;
-    --command-sidebar-width: 15.5rem;
-    --command-detail-width: 21rem;
+    --command-sidebar-width: 19rem;
+    --command-detail-width: 20rem;
   }
 }
 
@@ -140,12 +245,12 @@ body {
   body {
     --command-page-gutter: 1rem;
     --command-panel-gap: 1rem;
-    --command-sidebar-width: 16rem;
-    --command-detail-width: 24rem;
+    --command-sidebar-width: 20rem;
+    --command-detail-width: 21rem;
   }
 }
 
-@media (max-width: 1023px) {
+@media (max-width: 1279px) {
   .ops-command-layout {
     grid-template-columns: minmax(0, 1fr);
   }

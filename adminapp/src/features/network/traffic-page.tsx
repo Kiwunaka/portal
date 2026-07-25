@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { Database, Network, RefreshCw, Server, Waypoints } from "lucide-react";
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { MISSING_DATA_TEXT, MissingData } from "@/components/ops/missing-data";
 import { adminApiErrorText, RouteBoundary } from "@/components/ops/route-boundary";
 import type { OpsShellStatus } from "@/components/ops/shell-status";
-import { Badge, Button, Card, DataTable, EmptyState, SectionTitle } from "@/components/ui";
+import { Badge, Button, Card, DataTable, EmptyState, MetricCell, MetricStrip, SectionTitle } from "@/components/ui";
 import { AdminApiError } from "@/lib/admin-api/client";
 import { fetchTrafficSummary, type TrafficRange, type TrafficRow } from "@/lib/admin-api/network";
 import { useRouteResource } from "@/lib/use-route-resource";
@@ -120,16 +120,31 @@ export function TrafficPage({ onShellStatus }: { onShellStatus?: (status: OpsShe
     { header: "Измерения", cell: ({ row }) => <MissingNumber value={row.original.samples} /> },
   ], []);
 
+  const trafficTotal = rows.length && rows.every((row) => finite(row.traffic_gb) !== null)
+    ? rows.reduce((sum, row) => sum + Number(row.traffic_gb), 0)
+    : null;
+  const sampleTotal = rows.length && rows.every((row) => finite(row.samples) !== null)
+    ? rows.reduce((sum, row) => sum + Number(row.samples), 0)
+    : null;
   const refreshing = resource.refreshing;
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="ops-page space-y-3">
+      <div className="ops-route-toolbar">
         <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]">
           <Badge tone={resource.error ? "warning" : resource.data ? "success" : "neutral"}>{resource.error ? "Источник отвечает с ошибкой" : resource.data ? "Сводка трафика получена" : "Сводка трафика ещё не получена"}</Badge>
           <span>{resource.updatedAt ? `Обновлено ${new Date(resource.updatedAt).toLocaleString("ru-RU")}` : "Данные ещё не получены"}</span>
         </div>
         <Button tone="secondary" disabled={resource.loading || refreshing} onClick={resource.reload}><RefreshCw size={15} className={refreshing ? "animate-spin" : ""} /> Обновить</Button>
       </div>
+
+      {resource.data ? (
+        <MetricStrip label="Сводка трафика">
+          <MetricCell icon={<Network aria-hidden="true" size={17} />} label="Трафик" value={trafficTotal === null ? <MissingData /> : `${numberText(trafficTotal)} ГиБ`} detail={`Диапазон: ${urlState.range}`} tone="success" />
+          <MetricCell icon={<Server aria-hidden="true" size={17} />} label="Ноды" value={rows.length ? new Set(rows.map((row) => row.node_code)).size : <MissingData />} detail={urlState.node ? `Фильтр: ${urlState.node.toUpperCase()}` : "Все ноды"} tone="info" />
+          <MetricCell icon={<Waypoints aria-hidden="true" size={17} />} label="Контуры" value={rows.length ? poolSeries.length : <MissingData />} detail="Раздельные серии" tone="info" />
+          <MetricCell icon={<Database aria-hidden="true" size={17} />} label="Измерения" value={sampleTotal === null ? <MissingData /> : numberText(sampleTotal, 0)} detail="Сумма серверных samples" tone="neutral" />
+        </MetricStrip>
+      ) : null}
 
       <Card>
         <div className="flex flex-wrap items-end justify-between gap-3">
@@ -166,7 +181,7 @@ export function TrafficPage({ onShellStatus }: { onShellStatus?: (status: OpsShe
         </RouteBoundary>
       </Card>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(260px,0.6fr)]">
+      <div className="ops-workspace lg:grid-cols-[minmax(0,1.45fr)_minmax(17rem,0.55fr)]">
         <Card>
           <SectionTitle title="Исходная таблица" description="Те же фильтры, что у графика. Бесплатный и платный пулы остаются отдельными строками." />
           <DataTable data={rows} columns={columns} empty="Нет данных для выбранных фильтров" />

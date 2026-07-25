@@ -6,34 +6,34 @@ export function Showcase() {
   const slides: ShowcaseSlide[] = [
     {
       variant: "connect",
-      title: getCopyText("marketing.home.showcase.connect.title", "Одна кнопка"),
+      title: getCopyText("marketing.home.showcase.connect.title", "Нажали — подключились"),
       text: getCopyText(
         "marketing.home.showcase.connect.text",
-        "Открыли приложение, нажали — подключено. Отключается так же просто.",
+        "Откройте POKROV и нажмите «Подключить». Никаких ключей, профилей и получасовых гайдов на старте.",
       ),
     },
     {
       variant: "locations",
-      title: getCopyText("marketing.home.showcase.locations.title", "Маршрут выбирается сам"),
+      title: getCopyText("marketing.home.showcase.locations.title", "Лучший маршрут — автоматически"),
       text: getCopyText(
         "marketing.home.showcase.locations.text",
-        "Режим «Авто» держит лучший маршрут. Хотите конкретный — выбирайте вручную.",
+        "Режим «Авто» выбирает подходящий маршрут сам. Нужна конкретная локация — переключите вручную.",
       ),
     },
     {
       variant: "account",
-      title: getCopyText("marketing.home.showcase.account.title", "Всё по-честному в аккаунте"),
+      title: getCopyText("marketing.home.showcase.account.title", "Весь доступ под контролем"),
       text: getCopyText(
         "marketing.home.showcase.account.text",
-        "Сколько дней осталось, какие устройства подключены, где продлить — видно сразу.",
+        "Срок, устройства, продление и поддержка собраны в одном аккаунте — без поисков по чатам.",
       ),
     },
     {
       variant: "windows",
-      title: getCopyText("marketing.home.showcase.windows.title", "На компьютере — так же"),
+      title: getCopyText("marketing.home.showcase.windows.title", "Телефон и компьютер вместе"),
       text: getCopyText(
         "marketing.home.showcase.windows.text",
-        "Windows-приложение выглядит и работает так же просто, как мобильное.",
+        "Тот же аккаунт и знакомое подключение на компьютере — без отдельной настройки с нуля.",
       ),
     },
   ];
@@ -42,11 +42,11 @@ export function Showcase() {
     <SectionHeading
       align="left"
       className="mb-0"
-      kicker={getCopyText("marketing.home.showcase.kicker", "Приложение")}
-      title={getCopyText("marketing.home.showcase.title", "Вот как это выглядит")}
+      kicker={getCopyText("marketing.home.showcase.kicker", "VPN без лишних действий")}
+      title={getCopyText("marketing.home.showcase.title", "Всё сложное уже спрятано под одной кнопкой")}
       sub={getCopyText(
         "marketing.home.showcase.sub",
-        "Никаких скрытых экранов и мелкого шрифта — всё приложение перед вами.",
+          "Подключение, маршрут, срок и устройства видны сразу. POKROV делает сложную сетевую часть за вас.",
       )}
     />
   );

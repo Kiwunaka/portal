@@ -1,4 +1,4 @@
-import { Fragment, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import type { OpsShellStatus } from "@/components/ops/shell-status";
 import { BroadcastPage } from "@/features/control/broadcast-page";
@@ -20,12 +20,13 @@ import type { OpsSectionId } from "@/lib/sections";
 
 type RouteProps = {
   onShellStatus?: (status: OpsShellStatus) => void;
+  onNavigate?: (href: string) => void;
 };
 
 type RouteRenderer = (props: RouteProps) => ReactNode;
 
 export const OPS_FEATURE_REGISTRY: Record<OpsSectionId, RouteRenderer> = {
-  dashboard: ({ onShellStatus }) => <OverviewPage onShellStatus={onShellStatus} />,
+  dashboard: ({ onShellStatus, onNavigate }) => <OverviewPage onShellStatus={onShellStatus} onNavigate={onNavigate} />,
   nodes: ({ onShellStatus }) => <NodesPage onShellStatus={onShellStatus} />,
   traffic: ({ onShellStatus }) => <TrafficPage onShellStatus={onShellStatus} />,
   alerts: ({ onShellStatus }) => <AlertsPage onShellStatus={onShellStatus} />,
@@ -42,6 +43,14 @@ export const OPS_FEATURE_REGISTRY: Record<OpsSectionId, RouteRenderer> = {
   broadcast: ({ onShellStatus }) => <BroadcastPage onShellStatus={onShellStatus} />
 };
 
-export function ActiveOpsRoute({ section, onShellStatus }: { section: OpsSectionId; onShellStatus?: (status: OpsShellStatus) => void }) {
-  return <Fragment key={section}>{OPS_FEATURE_REGISTRY[section]({ onShellStatus })}</Fragment>;
+export function ActiveOpsRoute({
+  section,
+  onShellStatus,
+  onNavigate
+}: {
+  section: OpsSectionId;
+  onShellStatus?: (status: OpsShellStatus) => void;
+  onNavigate?: (href: string) => void;
+}) {
+  return <div key={section} className="ops-route min-w-0">{OPS_FEATURE_REGISTRY[section]({ onShellStatus, onNavigate })}</div>;
 }

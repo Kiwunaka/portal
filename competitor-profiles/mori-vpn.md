@@ -1,12 +1,201 @@
-# MORI VPN - Competitor Profile
+# MORI VPN — Competitor Profile
 
-**URL**: https://morivpn.com/
-**Generated**: 2026-07-05
-**Depth**: deep passive OSINT + one purchased subscription endpoint, redacted
+**Main URL:** https://morivpn.com/
+**Current deep-pass snapshot:** 2026-07-22
+**Historical passive baseline:** 2026-07-05; purchased endpoint evidence remains redacted
+**Current status:** `DEEP PASS COMPLETE WITH BLOCKER`
+**Android package:** `com.morivpn.mori_vpn_mobile`
+**Installed version:** `2.0.5` (`versionCode 116`)
+**Install source:** Google Play
+
+## Current Verdict
+
+MORI is one of the strongest competitors in this set at distribution, visual packaging and narrative control, but the current product truth is badly fragmented.
+
+- The public machine is real: 88.7K Telegram subscribers, roughly 32K monthly bot users, 50K+ Play installs, polished store creatives, an active bot and frequent editorial posts.
+- The observed `x86_64` Play installation cannot reach its first screen because the delivered split has V2Ray libraries but no Flutter runtime. This blocks native UX and connection testing on LDPlayer; it does not prove the ARM phone build is broken.
+- Static resources reveal a much larger product vision than the live website: TOR, Multi-Hop, anti-block, adaptive mode, dedicated IP, 10 Gbps, post-quantum protection, QR device/TV login, three plan tiers, token payment and referral rewards.
+- The company and distribution routes are identifiable, but the offer, pricing, platform status, torrent policy, device limits and privacy language disagree across surfaces.
+- The biggest competitive lesson is not to copy MORI’s claims. Copy its content/distribution system, visual confidence, bot self-service and product storytelling while keeping POKROV’s release state and promises synchronized.
+
+## 2026-07-22 At A Glance
+
+| Metric | Current observation |
+| --- | --- |
+| Android | Google Play `2.0.5` (`116`), last updated 2026-06-12 |
+| Play scale | 50K+ downloads, ~1.44K reviews, 2.4/5 |
+| Telegram | 88.7K channel subscribers; bot landing shows 32,118 monthly users |
+| Current web prices | 270 RUB/month; 670 RUB/3 months; three-day free period |
+| Other current prices | Telegram says 299 RUB/month; bundled `v2` paywall says 399 RUB/month or 3,830 RUB/year |
+| Activation | `MORI-XXXX-XXXX-XXXX` code, primarily obtained/managed through Telegram bot |
+| Current Android result | Crashes before Flutter UI on observed `x86_64` Play split |
+| Live connection test | Blocked; no VPN permission prompt and no `tun0` |
+| Legal operator | QUARTETTO INTERNATIONAL LTD, UK company `07785225`, active |
+| Distribution | Play for Android; Telegram bot/Mini App for keys and current links; direct/mirrored Windows installers; Happ bridge for iOS |
+
+## Native Android Result
+
+The installed application launches `.MainActivity`, then immediately reaches Android’s crash dialog. Logcat’s decisive failure is a missing `libflutter.so`: the loader checks all advertised ABIs and finds none. The installed `x86_64` split contains `libv2jni.so`, `libtun2socks.so` and other helpers but not `libflutter.so` or `libapp.so`.
+
+Therefore the following are explicitly `BLOCKED_BY_BUILD` on this device:
+
+- onboarding and activation UX;
+- live server catalog;
+- paywall and purchase UX;
+- settings and advanced feature toggles;
+- connection establishment;
+- exit/DNS/leak/speed checks.
+
+Full evidence: [`runtime-failure-summary.md`](raw/mori-vpn/2026-07-22/runtime-failure-summary.md) and [`android-startup-crash.png`](raw/mori-vpn/2026-07-22/screenshots/android-startup-crash.png).
+
+## Product Architecture Found Inside The APK
+
+The resource corpus contains 1,020 Russian leaf strings and two overlapping generations of UI.
+
+The newer shell is simpler: welcome, access-code entry, Home/Servers/Devices/Profile/Settings, server search/favorites, QR pairing, TV login and one Premium tariff. It promises 100+ countries, three devices, VLESS, obfuscation, Kill Switch, TCP termination, unlimited speed and broad platform support.
+
+The older/full architecture is much more ambitious:
+
+- Basic, Premium and Maximum plans;
+- TOR, Multi-Hop with optional intermediate hop and “triple protection”;
+- adaptive connection and automatic anti-block routing;
+- Kill Switch and traffic blocking on disconnect;
+- dedicated IP for banking/corporate/streaming use;
+- 10 Gbps/8K and post-quantum claims;
+- 1/3/5-device packages and 1/3/6-month or 1/3-year periods;
+- bank card, crypto, Phantom/Solana and `$MORI` token paths;
+- referral links, point accrual, milestones, achievements and subscription redemption.
+
+Strings also state that TOR, Multi-Hop and Kill Switch may be temporarily unavailable. Country/city localization counts are not a live server inventory.
+
+Detailed maps: [`ui-copy-map.md`](raw/mori-vpn/2026-07-22/ui-copy-map.md) and [`static-summary.md`](raw/mori-vpn/2026-07-22/static-summary.md).
+
+## Current Public UX And Design
+
+### Store
+
+The Play creative system is excellent: white field, black device renders, chrome shield, oversized typography, one claim per frame and paired phone/tablet variants. It makes a small product feel like a premium hardware brand.
+
+The strongest frames are:
+
+- fast connection with visible locations/ping/favorites;
+- Zero Logs;
+- one account across devices with QR connection;
+- all-device protection;
+- clean product hero close-ups.
+
+The weakness is credibility: those polished frames sit above a 2.4 rating and an emulator build that cannot start. Visible reviews repeatedly complain about consumed device slots, connection failures after payment and slow support/refund handling.
+
+### Website
+
+The homepage combines a high-fashion monochrome hero, pricing, a one-sided comparison table, cautionary PureVPN/HMA stories, onboarding and a detailed FAQ. It is more assertive and better art-directed than most competitors in this set.
+
+Its conversion flow is simple:
+
+```text
+Website / content → Telegram bot → trial or payment → access code → app
+```
+
+Both pricing cards and “Получить ключ” lead to the bot. This keeps subscription management, key replacement, mirrors, support and upsell in one owned funnel.
+
+The implementation quality is weaker than the art direction: stale `XX.05.2026` platform placeholders, inert social links, a malformed translation JSON error, sticky-header errors, broken macOS routing and delayed/blank first renders on some routes.
+
+### Telegram
+
+MORI publishes frequent educational/editorial posts on DPI, white lists, VPN economics, privacy leaks and outages. Posts routinely reach tens of thousands of views. The channel does three jobs at once:
+
+- educate and manufacture expertise;
+- explain incidents before support is overwhelmed;
+- push every path back to `@MoriVpnRobot`.
+
+The separate `@MoriVpnGuide` channel has only two migration guides, but they are linked from the launch post. The Windows guide is unusually destructive/high-friction: it recommends Revo Uninstaller, full residual registry/file cleanup, emptying the recycle bin, rebooting and obtaining a new key.
+
+## Release And Distribution Machine
+
+MORI releases through announcements rather than a stable public changelog:
+
+1. Telegram announces a release, outage or forced migration.
+2. The bot/Mini App becomes the source of current keys, links and mirrors.
+3. Android moves through Google Play.
+4. Windows ships as a direct site EXE and through external redirect/mirror domains.
+5. Major versions invalidate old keys and often require full uninstall/re-authentication.
+6. Downtime is compensated with subscription days.
+
+Important chronology:
+
+- January launch was presented as free/no ads/no limits and explicitly as a growth engine for the MORI coin ecosystem.
+- Version 2.0 in late April converted the product to paid access, invalidated old keys and ran a five-star-review reward draw for 50 annual subscriptions.
+- May and June contained repeated key/server/provider incidents, support closure and forced refreshes.
+- Android received a Play fix on June 12; a new Windows installer followed June 15.
+- iOS promises slipped from February to “next week”, then “this week”, then “final moderation”; on June 30 and July 21 Happ was still the bridge.
+- July’s rewritten bot added self-service subscription management, changed the stated device model and banned torrents.
+
+The full dated table is in [`public-surface-summary.md`](raw/mori-vpn/2026-07-22/public-surface-summary.md).
+
+## Legal And Trust Layer
+
+Companies House verifies QUARTETTO INTERNATIONAL LTD as active, incorporated in 2011, company `07785225`, at the address printed in Play and MORI’s documents.
+
+The legal implementation still has serious product debt:
+
+- the public-offer PDF title literally contains “черновик под QUARTETTO (UK)”;
+- the Russian offer chooses Russian law/courts although the operator is a UK company;
+- the EULA uses vague governing-law wording;
+- the privacy policy says no browsing logs and RAM-only processing but allows third-party payment processors to handle limited email/payment data;
+- Play says no data is collected or shared;
+- marketing says no telemetry, while Telegram describes anonymized infrastructure telemetry used by an “AI”.
+
+This does not prove unlawful processing. It proves that the trust story is not managed as one canonical contract.
+
+## Current Contradiction Ledger
+
+| Topic | Conflicting public/internal statements |
+| --- | --- |
+| Price | 270/670 RUB site; 299 RUB Telegram; 399/3,830 RUB new app strings; 50/100/150 MORI old strings |
+| Devices | 3 on current site/new UI; 5 on downloads/June Telegram; Happ 1 |
+| Torrent | Website FAQ allows it; July Telegram bans it and threatens blocking without refund |
+| Platforms | Store/site creatives imply all platforms; iOS remains Happ; macOS/iOS download cards are stale/broken |
+| Free access | Hero says “Бесплатно” and site offers three days; initial product was fully free; current Telegram is subscription-first |
+| Referrals | Website says “later”; complete points/rewards UX is already bundled |
+| Telemetry | Site comparison claims none; Telegram describes anonymized operational telemetry |
+| Protocol | “Own protocol” marketing; APK contains multiple V2Ray/VLESS client stacks |
+| Infrastructure | Outside-RF claim; 2026-07-05 purchased-key sample used a Russian ASN endpoint |
+| Legal status | UK operator; Russian-law offer; PDF labelled as a draft |
+
+## What POKROV Should Copy
+
+- One memorable visual system across site, store and app.
+- Telegram content as an acquisition and incident-communication channel, not just support.
+- Bot self-service for key replacement, subscription management and current downloads.
+- QR pairing and cross-device continuation.
+- Separate store frames for one product promise each.
+- Transparent maintenance notices and automatic service-day compensation.
+- A visible “best for you/recent/favorites” server hierarchy.
+- A compact code-based activation path without forced profile creation.
+
+## What POKROV Should Not Copy
+
+- Shipping store bundles without ABI launch coverage.
+- Review incentives tied to five stars.
+- Forced full uninstall/key invalidation as a normal release mechanism.
+- Multiple download domains with a broken certificate and no clear provenance.
+- Claiming all platforms before the clients exist.
+- Contradictory prices, device limits and acceptable-use rules.
+- “Own protocol”, “post-quantum”, “zero knowledge” or “AI” wording without a narrow technical definition and evidence.
+- A public legal PDF still labelled as a draft.
+- One-sided competitor tables with no claim-level sourcing.
+
+## Current Evidence Index
+
+- [`public-surface-summary.md`](raw/mori-vpn/2026-07-22/public-surface-summary.md)
+- [`runtime-failure-summary.md`](raw/mori-vpn/2026-07-22/runtime-failure-summary.md)
+- [`static-summary.md`](raw/mori-vpn/2026-07-22/static-summary.md)
+- [`ui-copy-map.md`](raw/mori-vpn/2026-07-22/ui-copy-map.md)
+- [`screenshots/`](raw/mori-vpn/2026-07-22/screenshots/)
 
 ---
 
-## At A Glance
+## Historical 2026-07-05 At A Glance
 
 | Metric | Value |
 | --- | --- |
@@ -17,8 +206,8 @@
 | Telegram bot scale | `@morivpnrobot`: 44,594 monthly users observed |
 | Telegram channel scale | Telemetr: 92,019 subscribers, 19,984 views/post, 22.53% ER observed |
 | Paid subscription endpoint observed | 1 VLESS Reality endpoint in purchased subscription |
-| Observed paid endpoint host | `zucchiniservice.ru:443`, SNI `api.zucchiniservice.ru` |
-| Observed paid endpoint IP | `87.239.111.167` |
+| Observed paid endpoint host | `[endpoint host omitted]`, SNI `[endpoint host omitted]` |
+| Observed paid endpoint IP | `[endpoint address omitted]` |
 | Observed endpoint ASN/geo | AS47764 LLC VK, Moscow, RU, per ipinfo snapshot |
 | Public claim tension | MORI channel claims infrastructure outside Russian jurisdiction; purchased endpoint resolved to a Russian AS/IP in this sample |
 
@@ -69,7 +258,7 @@ CT-log-discovered names for `morivpn.com`:
 Live DNS at collection time:
 
 - `morivpn.com`, `www`, `api`, `tg`: Cloudflare IPs.
-- `ru.api.morivpn.com`, `ru.morivpn.com`: `176.125.241.102` observed, geolocated by ipinfo to Stockholm / AS200019 ALEXHOST SRL.
+- `ru.api.morivpn.com`, `ru.morivpn.com`: `[IPv4 address omitted]` observed, geolocated by ipinfo to Stockholm / AS200019 ALEXHOST SRL.
 - Some CT names were NXDOMAIN.
 
 ---
@@ -87,9 +276,9 @@ Parsed result:
 | Protocol | VLESS |
 | Transport | TCP |
 | Security | Reality |
-| Address | `zucchiniservice.ru` |
+| Address | `[endpoint host omitted]` |
 | Port | `443` |
-| SNI | `api.zucchiniservice.ru` |
+| SNI | `[endpoint host omitted]` |
 | Fingerprint | `random` |
 | Label | Contains `N/A` and `@mori`; unique user/config id redacted |
 
@@ -97,19 +286,19 @@ DNS and reachability:
 
 | Host | A record | Ping sample | TCP 443 |
 | --- | --- | --- | --- |
-| `zucchiniservice.ru` | `87.239.111.167` | 5/5, avg 15.6 ms | OK |
-| `api.zucchiniservice.ru` | `87.239.111.167` | 5/5, avg 10.6 ms | OK |
-| `www.zucchiniservice.ru` | `87.236.16.20` | not endpoint | not endpoint |
+| `[endpoint host omitted]` | `[endpoint address omitted]` | 5/5, avg 15.6 ms | OK |
+| `[endpoint host omitted]` | `[endpoint address omitted]` | 5/5, avg 10.6 ms | OK |
+| `[endpoint host omitted]` | `[IPv4 address omitted]` | not endpoint | not endpoint |
 
-CT names for `zucchiniservice.ru`:
+CT names for `[endpoint host omitted]`:
 
-- `zucchiniservice.ru`
-- `api.zucchiniservice.ru`
-- `www.zucchiniservice.ru`
+- `[endpoint host omitted]`
+- `[endpoint host omitted]`
+- `[endpoint host omitted]`
 
 HTTP/TLS note:
 
-- `zucchiniservice.ru` and `api.zucchiniservice.ru` return HTTP 200 with an old WebThemez/TIMES HTML template on normal HTTPS.
+- `[endpoint host omitted]` and `[endpoint host omitted]` return HTTP 200 with an old WebThemez/TIMES HTML template on normal HTTPS.
 - This looks like a plausible REALITY camouflage/fallback destination rather than a public MORI page.
 
 Interpretation:

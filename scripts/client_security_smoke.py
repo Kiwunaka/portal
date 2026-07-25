@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -49,6 +50,20 @@ RUNTIME_ARTIFACTS_PATH = CLIENT_ROOT / "config" / "runtime-artifacts.seed.json"
 WINDOWS_RELEASE_CONFIG_PATH = CLIENT_ROOT / "config" / "windows-release.seed.json"
 ANDROID_MANIFEST_PATH = CLIENT_ROOT / "apps" / "android_shell" / "android" / "app" / "src" / "main" / "AndroidManifest.xml"
 ANDROID_BUILD_GRADLE_PATH = CLIENT_ROOT / "apps" / "android_shell" / "android" / "app" / "build.gradle"
+ANDROID_CORE_PATH = CLIENT_ROOT / "apps" / "android_shell" / "android" / "app" / "libs" / "pokrov-core.aar"
+WINDOWS_RUNTIME_ROOT = CLIENT_ROOT / "apps" / "windows_shell" / "windows" / "runner" / "resources" / "runtime"
+WINDOWS_CORE_PATH = WINDOWS_RUNTIME_ROOT / "pokrov-core.dll"
+WINDOWS_CRONET_PATH = WINDOWS_RUNTIME_ROOT / "libcronet.dll"
+
+POKROV_CORE_REPOSITORY = "Kiwunaka/POKROV-core"
+POKROV_CORE_RELEASE_TAG = "v1.0.0"
+POKROV_CORE_SOURCE_COMMIT = "3720cb052e56ccd68f0120cc9efaf5804ec84e0b"
+ANDROID_CORE_SIZE = 106833028
+ANDROID_CORE_SHA256 = "ca3ee922ff10897545da86ea3aa6df942ecf36d7f687b2782b0bc285e9a15cb3"
+WINDOWS_CORE_SIZE = 55118848
+WINDOWS_CORE_SHA256 = "4587448c7eec4bf9ec70508f698764a71dfa7318baeebc9598a41b79f7dc4e2d"
+WINDOWS_CRONET_SIZE = 8596992
+WINDOWS_CRONET_SHA256 = "8ef1f8bbde77f954af1ae47bee1819ac8dc2354bb0e1d4baba3dad9e58d7a6f7"
 
 
 def _read_text(path: Path) -> str:
@@ -142,29 +157,113 @@ def _runtime_profile_failures(runtime_profile: dict[str, object]) -> list[str]:
 def _runtime_artifact_failures(runtime_artifacts: dict[str, object]) -> list[str]:
     failures: list[str] = []
 
-    libcore = dict(runtime_artifacts.get("libcore") or {})
-    if libcore.get("repository") != "hiddify/hiddify-core":
-        failures.append("runtime artifacts must stay pinned to hiddify/hiddify-core")
-    if libcore.get("release_tag") != "v3.1.8":
-        failures.append("runtime artifacts must stay pinned to libcore release v3.1.8")
+    core = dict(runtime_artifacts.get("core") or {})
+    if core.get("repository") != POKROV_CORE_REPOSITORY:
+        failures.append(f"runtime artifacts must stay pinned to {POKROV_CORE_REPOSITORY}")
+    if core.get("release_tag") != POKROV_CORE_RELEASE_TAG:
+        failures.append(f"runtime artifacts must stay pinned to POKROV Core {POKROV_CORE_RELEASE_TAG}")
+    if core.get("source_commit") != POKROV_CORE_SOURCE_COMMIT:
+        failures.append("runtime artifacts must pin the reviewed POKROV Core source commit")
+    if core.get("activation_state") != "active":
+        failures.append("runtime artifacts must keep POKROV Core active")
 
-    assets = dict(libcore.get("assets") or {})
+    provenance = dict(core.get("artifact_provenance") or {})
+    if (
+        provenance.get("status") != "pinned_dirty_build_not_reproducible_from_clean_tag"
+        or provenance.get("promotion_rule") != "retain_pinned_v1.0.0_candidate_until_new_patch_release"
+    ):
+        failures.append("runtime artifacts must retain the reviewed POKROV Core provenance exception")
+
+    desktop_abi = dict(core.get("desktop_abi") or {})
+    if (
+        desktop_abi.get("name") != "pokrov-core"
+        or int(desktop_abi.get("version") or 0) != 2
+        or desktop_abi.get("required_symbol") != "pokrovCoreAbiVersion"
+        or desktop_abi.get("secure_file_symbol") != "pokrovSecureFile"
+    ):
+        failures.append("runtime artifacts must keep the POKROV Core desktop ABI 2 contract")
+
+    assets = dict(core.get("assets") or {})
     windows = dict(assets.get("windows") or {})
-    if windows.get("entry") != "libcore.dll":
-        failures.append("runtime artifacts must keep the Windows libcore entry on libcore.dll")
+    if (
+        windows.get("entry") != "pokrov-core.dll"
+        or int(windows.get("size") or 0) != WINDOWS_CORE_SIZE
+        or windows.get("sha256") != WINDOWS_CORE_SHA256
+    ):
+        failures.append("runtime artifacts must pin the reviewed Windows POKROV Core DLL")
     if "helper" in windows:
         failures.append("runtime artifacts must not declare a Windows helper binary")
     if windows.get("sync_destination") != "apps/windows_shell/windows/runner/resources/runtime":
         failures.append(
-            "runtime artifacts must sync the Windows libcore payload into apps/windows_shell/windows/runner/resources/runtime"
+            "runtime artifacts must sync the Windows POKROV Core payload into apps/windows_shell/windows/runner/resources/runtime"
         )
+    if "libcronet.dll" not in list(windows.get("runtime_dependencies") or []):
+        failures.append("runtime artifacts must keep libcronet.dll as a Windows runtime dependency")
+    dependency_sizes = dict(windows.get("runtime_dependency_size") or {})
+    dependency_hashes = dict(windows.get("runtime_dependency_sha256") or {})
+    if (
+        int(dependency_sizes.get("libcronet.dll") or 0) != WINDOWS_CRONET_SIZE
+        or dependency_hashes.get("libcronet.dll") != WINDOWS_CRONET_SHA256
+    ):
+        failures.append("runtime artifacts must pin the reviewed libcronet.dll identity")
 
     android = dict(assets.get("android") or {})
-    if android.get("entry") != "libcore.aar":
-        failures.append("runtime artifacts must keep the Android libcore entry on libcore.aar")
+    if (
+        android.get("entry") != "pokrov-core.aar"
+        or int(android.get("size") or 0) != ANDROID_CORE_SIZE
+        or android.get("sha256") != ANDROID_CORE_SHA256
+    ):
+        failures.append("runtime artifacts must pin the reviewed Android POKROV Core AAR")
     if android.get("sync_destination") != "apps/android_shell/android/app/libs":
-        failures.append("runtime artifacts must sync the Android libcore payload into apps/android_shell/android/app/libs")
+        failures.append("runtime artifacts must sync the Android POKROV Core payload into apps/android_shell/android/app/libs")
 
+    return failures
+
+
+def _artifact_file_failures(
+    path: Path,
+    *,
+    label: str,
+    expected_size: int,
+    expected_sha256: str,
+) -> list[str]:
+    if not path.is_file():
+        return [f"{label} is missing: {path}"]
+    if path.stat().st_size != expected_size:
+        return [f"{label} size does not match the reviewed runtime artifact"]
+    with path.open("rb") as source:
+        actual_sha256 = hashlib.file_digest(source, "sha256").hexdigest()
+    if actual_sha256 != expected_sha256:
+        return [f"{label} SHA-256 does not match the reviewed runtime artifact"]
+    return []
+
+
+def _runtime_file_failures() -> list[str]:
+    failures: list[str] = []
+    failures.extend(
+        _artifact_file_failures(
+            ANDROID_CORE_PATH,
+            label="Android POKROV Core AAR",
+            expected_size=ANDROID_CORE_SIZE,
+            expected_sha256=ANDROID_CORE_SHA256,
+        )
+    )
+    failures.extend(
+        _artifact_file_failures(
+            WINDOWS_CORE_PATH,
+            label="Windows POKROV Core DLL",
+            expected_size=WINDOWS_CORE_SIZE,
+            expected_sha256=WINDOWS_CORE_SHA256,
+        )
+    )
+    failures.extend(
+        _artifact_file_failures(
+            WINDOWS_CRONET_PATH,
+            label="Windows libcronet.dll",
+            expected_size=WINDOWS_CRONET_SIZE,
+            expected_sha256=WINDOWS_CRONET_SHA256,
+        )
+    )
     return failures
 
 
@@ -210,7 +309,8 @@ def _windows_release_failures(windows_release: dict[str, object]) -> list[str]:
     for required_path in (
         "pokrov_windows_beta.exe",
         "flutter_windows.dll",
-        "libcore.dll",
+        "pokrov-core.dll",
+        "libcronet.dll",
         "data/app.so",
         "data/icudtl.dat",
     ):
@@ -232,8 +332,14 @@ def _windows_release_failures(windows_release: dict[str, object]) -> list[str]:
         failures.append(
             "Windows release seed must keep runtime.artifact_directory on apps/windows_shell/windows/runner/resources/runtime"
         )
-    if runtime.get("core_binary") != "libcore.dll":
-        failures.append("Windows release seed must keep runtime.core_binary as libcore.dll")
+    if runtime.get("core_binary") != "pokrov-core.dll":
+        failures.append("Windows release seed must keep runtime.core_binary as pokrov-core.dll")
+    if runtime.get("release_tag") != POKROV_CORE_RELEASE_TAG:
+        failures.append(f"Windows release seed must keep runtime.release_tag as {POKROV_CORE_RELEASE_TAG}")
+    if int(runtime.get("desktop_abi") or 0) != 2:
+        failures.append("Windows release seed must keep runtime.desktop_abi as 2")
+    if "libcronet.dll" not in list(runtime.get("runtime_dependencies") or []):
+        failures.append("Windows release seed must keep libcronet.dll as a runtime dependency")
     if "helper_binary" in runtime:
         failures.append("Windows release seed must not declare a Windows helper binary")
 
@@ -249,6 +355,9 @@ def _check_required_files() -> list[str]:
         WINDOWS_RELEASE_CONFIG_PATH,
         ANDROID_MANIFEST_PATH,
         ANDROID_BUILD_GRADLE_PATH,
+        ANDROID_CORE_PATH,
+        WINDOWS_CORE_PATH,
+        WINDOWS_CRONET_PATH,
     ):
         if not path.exists():
             missing.append(f"required client file is missing: {path}")
@@ -272,6 +381,7 @@ def main() -> int:
     failures.extend(_product_contract_failures(product_contract))
     failures.extend(_runtime_profile_failures(runtime_profile))
     failures.extend(_runtime_artifact_failures(runtime_artifacts))
+    failures.extend(_runtime_file_failures())
     failures.extend(
         _android_host_failures(
             manifest_text=manifest_text,

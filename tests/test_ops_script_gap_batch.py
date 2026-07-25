@@ -32,6 +32,7 @@ def test_ci_check_artifacts_reports_forbidden_generated_files(tmp_path: Path) ->
     (tmp_path / "pkg" / "__pycache__").mkdir(parents=True)
     (tmp_path / "pkg" / "__pycache__" / "module.pyc").write_bytes(b"cache")
     (tmp_path / "portal_api_test_sample.db").write_text("", encoding="utf-8")
+    (tmp_path / "portal_api_test_sample.db-journal").write_text("", encoding="utf-8")
     (tmp_path / "node_modules" / "__pycache__").mkdir(parents=True)
 
     violations = module._collect_artifact_violations(tmp_path)
@@ -40,7 +41,26 @@ def test_ci_check_artifacts_reports_forbidden_generated_files(tmp_path: Path) ->
     assert "Forbidden artifact directory exists: pkg/__pycache__/" in violations
     assert "Forbidden artifact file exists: pkg/__pycache__/module.pyc" in violations
     assert "Forbidden artifact file exists: portal_api_test_sample.db" in violations
+    assert "Forbidden artifact file exists: portal_api_test_sample.db-journal" in violations
     assert all("node_modules" not in item for item in violations)
+
+
+def test_ci_check_artifacts_scans_catalog_and_bot_handler_slices(tmp_path: Path) -> None:
+    module = _load_script("ci_check_artifacts.py")
+    (tmp_path / "copy").mkdir()
+    (tmp_path / "portal_bot").mkdir()
+    catalog = tmp_path / "copy" / "catalog.ru.json"
+    handler = tmp_path / "portal_bot" / "bot_user_handlers.py"
+    catalog.write_text('{"ru":"гарантированный результат"}', encoding="utf-8")
+    handler.write_text('MESSAGE = "интернет без ограничений"\n', encoding="utf-8")
+
+    scanned = module._public_copy_files(tmp_path)
+    violations = module._collect_copy_violations(tmp_path)
+
+    assert catalog in scanned
+    assert handler in scanned
+    assert f"Forbidden absolute claim found: {catalog.relative_to(tmp_path).as_posix()}:1" in violations
+    assert f"Forbidden absolute claim found: {handler.relative_to(tmp_path).as_posix()}:1" in violations
 
 
 def test_export_release_gate_snapshot_writes_dated_history_file(

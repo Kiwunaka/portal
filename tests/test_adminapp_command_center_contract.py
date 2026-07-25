@@ -21,7 +21,7 @@ def test_status_mapper_has_the_seven_approved_russian_labels() -> None:
 
 
 def test_ru_read_reasons_have_russian_operator_copy() -> None:
-    text = (ROOT / "adminapp/src/features/overview/overview-page.tsx").read_text(
+    text = (ROOT / "adminapp/src/features/overview/triage-workspace.tsx").read_text(
         encoding="utf-8"
     )
     assert (

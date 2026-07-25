@@ -89,5 +89,7 @@ def test_telegram_button_style_uses_label_and_real_destructive_callbacks() -> No
 
     assert infer_button_style("◀️ Назад", callback_data="show_key") is None
     assert infer_button_style("Отмена", callback_data="adm_user_42") is None
+    assert infer_button_style("Открыть кабинет", callback_data="cabinet") is None
+    assert infer_button_style("Обычное действие", callback_data="regular_action") is None
     assert infer_button_style("Удалить пользователя", callback_data="adm_del_42") == BTN_STYLE_DANGER
     assert infer_button_style("Обновить токен", callback_data="adm_regen_token_42") == BTN_STYLE_DANGER

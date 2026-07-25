@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
-import { Radio, RefreshCw, ShieldAlert } from "lucide-react";
+import { FileText, Gauge, Radio, RefreshCw, Send, ShieldAlert, UsersRound } from "lucide-react";
 
 import { ActionIntentDialog } from "@/components/ops/action-intent-dialog";
 import type { OpsShellStatus } from "@/components/ops/shell-status";
-import { Badge, Button, Card, SectionTitle } from "@/components/ui";
+import { Badge, Button, Card, MetricCell, MetricStrip, SectionTitle } from "@/components/ui";
 import type { ActionIntentRequest, AdminActionResult, PreparedActionIntent } from "@/lib/admin-api/actions";
 import { AdminApiError } from "@/lib/admin-api/client";
 import { fetchActionIntentStatus } from "@/lib/admin-api/control";
@@ -21,6 +21,13 @@ type BroadcastDraft = {
 const STORAGE_KEY = "pokrov_admin_broadcast_draft_v1";
 const EMPTY_DRAFT: BroadcastDraft = { segment: "all_active", limit: "500", customIds: "", text: "" };
 const SEGMENTS: BroadcastSegment[] = ["all_active", "paid", "free", "expired", "custom"];
+const SEGMENT_LABELS: Record<BroadcastSegment, string> = {
+  all_active: "Все активные",
+  paid: "Платные",
+  free: "Бесплатные",
+  expired: "Истёкшие",
+  custom: "Список ID",
+};
 
 function loadDraft(): BroadcastDraft {
   if (typeof window === "undefined") return EMPTY_DRAFT;
@@ -191,8 +198,8 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
   const failed = useMemo(() => resultCount(lastResult, "failed"), [lastResult]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="ops-page space-y-3">
+      <div className="ops-route-toolbar">
         <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]">
           <Badge tone="danger">L3 · внешняя отправка</Badge>
           <span>Получатели фиксируются сервером до подтверждения. Автоматического повтора нет.</span>
@@ -200,9 +207,28 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
         {statusIntentId ? <Button tone="secondary" disabled={checkingStatus} onClick={() => void checkStatus()}><RefreshCw size={15} className={checkingStatus ? "animate-spin" : ""} /> Проверить статус</Button> : null}
       </div>
 
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,0.72fr)_minmax(320px,0.28fr)]">
+      <MetricStrip label="Сводка рассылки">
+        <MetricCell icon={<UsersRound aria-hidden="true" size={17} />} label="Сегмент" value={SEGMENT_LABELS[draft.segment]} detail={draft.segment === "custom" ? parseCustomIds(draft.customIds) === null ? "Есть некорректные ID" : `${parseCustomIds(draft.customIds)?.length || 0} уникальных ID` : "Получатели определяются сервером"} tone="info" />
+        <MetricCell icon={<Gauge aria-hidden="true" size={17} />} label="Лимит" value={draft.limit.trim() || "—"} detail="Допустимо от 1 до 1000" tone="neutral" />
+        <MetricCell icon={<FileText aria-hidden="true" size={17} />} label="Черновик" value={`${draft.text.length} / 4000`} detail={draft.text.trim() ? "Готов к предпросмотру" : "Введите сообщение"} tone={draft.text.trim() ? "success" : "neutral"} />
+        <MetricCell icon={<Send aria-hidden="true" size={17} />} label="Последний результат" value={lastResult ? lastResult.status : "Не запускалась"} detail={sent === null ? "Подтверждённого итога нет" : `Отправлено: ${sent}`} tone={lastResult ? resultTone(lastResult) : "neutral"} />
+      </MetricStrip>
+
+      <div className="ops-workspace xl:grid-cols-[minmax(0,0.72fr)_minmax(320px,0.28fr)]">
         <Card>
           <SectionTitle title="Защищённая рассылка" description="Черновик → серверный предпросмотр → точная фраза «ОТПРАВИТЬ» → однократный внешний исполнитель. Изменение сообщения после предпросмотра блокируется." />
+          <ol aria-label="Этапы защищённой рассылки" className="mb-5 grid gap-2 sm:grid-cols-3">
+            {[
+              ["1", "Черновик", "Сегмент, лимит и текст"],
+              ["2", "Предпросмотр", "Сервер фиксирует получателей"],
+              ["3", "Подтверждение", "Фраза «ОТПРАВИТЬ»"],
+            ].map(([step, title, description]) => (
+              <li key={step} className="flex gap-2 rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas-alt)] p-2.5">
+                <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[color:var(--pokrov-status-success-bg)] text-[11px] font-bold text-[color:var(--atlas-primary)]">{step}</span>
+                <span><strong className="block text-xs">{title}</strong><span className="mt-0.5 block text-[10px] leading-4 text-[color:var(--atlas-text-muted)]">{description}</span></span>
+              </li>
+            ))}
+          </ol>
           <form className="space-y-4" onSubmit={openPreview}>
             {outcomeUncertain ? <div role="status" className="rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-status-warning-line)] bg-[color:var(--atlas-status-warning-bg)] p-3 text-xs leading-5 text-[color:var(--atlas-status-warning-text)]"><span className="font-semibold">Новая рассылка заблокирована.</span> Итог предыдущей отправки ещё не подтверждён сервером. Доступна только проверка статуса.</div> : null}
             {formError ? <div role="alert" className="rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-status-danger-line)] bg-[color:var(--atlas-status-danger-bg)] p-3 text-xs text-[color:var(--atlas-status-danger-text)]">{formError}</div> : null}
@@ -217,7 +243,7 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
           </form>
         </Card>
 
-        <aside className="space-y-4" aria-label="Состояние рассылки">
+        <aside className="space-y-4 xl:sticky xl:top-[7.75rem] xl:self-start" aria-label="Состояние рассылки">
           <Card>
             <SectionTitle title="Последний результат" description="Показываются только агрегаты backend, ID intent и ID аудита." />
             {lastResult ? <div className="space-y-3 text-xs">

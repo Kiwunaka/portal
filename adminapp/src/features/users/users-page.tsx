@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, Radio, RefreshCw, ShieldX, UserCheck, UsersRound } from "lucide-react";
 
 import { adminApiErrorText, RouteBoundary } from "@/components/ops/route-boundary";
 import type { OpsShellStatus } from "@/components/ops/shell-status";
-import { Badge, Button, Card, SectionTitle } from "@/components/ui";
+import { Badge, Button, Card, MetricCell, MetricStrip, SectionTitle } from "@/components/ui";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import type { AdminApiError } from "@/lib/admin-api/client";
 import { fetchOnlineUsers } from "@/lib/admin-api/support";
@@ -138,8 +138,8 @@ export function UsersPage({ onShellStatus }: { onShellStatus?: (status: OpsShell
   const hasError = Boolean(users.error || online.error || (selected !== null && detail.error) || (investigationActive && investigation.error) || embeddedSourceDegraded);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="ops-page space-y-3">
+      <div className="ops-route-toolbar">
         <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]">
           <Badge tone={hasError ? "warning" : users.data && online.data ? "success" : "neutral"}>{hasError ? "Есть сбой источника" : users.data && online.data ? "Источники отвечают" : "Ожидаем источники"}</Badge>
           <span>{users.data ? `${users.data.total} пользователей по текущему фильтру` : "Список ещё не получен"}</span>
@@ -159,7 +159,16 @@ export function UsersPage({ onShellStatus }: { onShellStatus?: (status: OpsShell
         <ErrorState title="Оперативный снимок пользователей недоступен" description={`${adminApiErrorText(online.error, "Повторите запрос оперативного снимка.")} Основной список пользователей остаётся доступен.`} action={<Button tone="secondary" onClick={online.reload}>Повторить снимок</Button>} className="min-h-0" />
       ) : null}
 
-      <div className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1.35fr)]">
+      {users.data ? (
+        <MetricStrip label="Сводка пользователей">
+          <MetricCell icon={<UsersRound aria-hidden="true" size={17} />} label="По фильтру" value={users.data.total} detail={`Страница ${users.data.page}`} tone="info" />
+          <MetricCell icon={<UserCheck aria-hidden="true" size={17} />} label="Активные на странице" value={users.data.users.filter((row) => row.status === "active").length} detail={`Из ${users.data.users.length} загруженных строк`} tone="success" />
+          <MetricCell icon={<Radio aria-hidden="true" size={17} />} label="Сейчас онлайн" value={online.data ? onlineByTgId.size : "Нет данных"} detail="Отдельный оперативный снимок" tone={online.data ? "success" : "neutral"} />
+          <MetricCell icon={<ShieldX aria-hidden="true" size={17} />} label="Ограничены на странице" value={users.data.users.filter((row) => ["blocked", "expired"].includes(row.status)).length} detail="Blocked или expired" tone={users.data.users.some((row) => ["blocked", "expired"].includes(row.status)) ? "warning" : "success"} />
+        </MetricStrip>
+      ) : null}
+
+      <div className="ops-workspace xl:grid-cols-[minmax(22rem,0.82fr)_minmax(0,1.38fr)]">
         <section aria-label="Список пользователей" className={`min-w-0 ${selected !== null ? "max-xl:hidden" : ""}`}>
           <Card className="min-h-[420px] p-3">
             <SectionTitle title="Пользователи" description="Доступ, срок, план и текущий сигнал присутствия в сети видны до открытия карточки." />

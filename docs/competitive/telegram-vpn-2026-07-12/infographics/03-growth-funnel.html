@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1600, initial-scale=1">
+  <meta name="source-sha256" content="883cc925ab0171cf42658c7dda232f5fb20de7a471e703439d6b971926cfdbd1">
+  <title>POKROV — от внимания к продукту</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 1600px; min-width: 1600px; background: #eef2ef; }
+    body { color: #16211c; font-family: "Golos Text", Arial, system-ui, sans-serif; }
+    .infographic { width: 1600px; height: 5000px; overflow: hidden; position: relative; }
+    svg { display: block; overflow: visible; }
+    .section-header { margin: 0 0 44px; }
+    .section-header__kicker { margin: 0 0 12px; font-size: 22px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .section-header__title { margin: 0; font-size: 54px; line-height: 1.05; }
+    .section-header__note { margin: 16px 0 0; max-width: 1180px; font-size: 24px; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <main class="infographic growth-funnel" data-source-sha256="883cc925ab0171cf42658c7dda232f5fb20de7a471e703439d6b971926cfdbd1"><style>
+    .growth-funnel { background:#f5efe3; --ink:#251d2c; --muted:#6e6571; --line:#d8cbd6; --violet:#7044a8; --magenta:#bd3f79; --emerald:#147A4B; --amber:#D88914; --risk:#D24A3A; --paper:#fffaf1; --body-size:28px; --note-size:22px; --label-size:24px; color:var(--ink); }
+    .growth-section { position:absolute; left:0; width:1600px; padding:28px 96px; overflow:hidden; border-bottom:1px solid var(--line); }
+    .growth-section[data-section="hero and measurement warning"] { padding-top:88px; }
+    .growth-section[data-section="north-star principle and sources"] { padding-top:10px; padding-bottom:88px; }
+    .growth-section:nth-of-type(even) { background:#fbf6ed; } .section-header { margin-bottom:22px; }
+    .section-header__kicker,.eyebrow,.evidence { color:var(--violet); font-size:var(--label-size); font-weight:800; letter-spacing:.07em; text-transform:uppercase; }
+    .section-header__title { font-size:44px; } .section-header__note,.source-note { color:var(--muted); font-size:var(--note-size); }
+    h1 { max-width:980px; margin:18px 0; font-size:84px; line-height:.94; letter-spacing:-.045em; } h3,p { margin-top:0; }
+    .hero-layout { display:grid; grid-template-columns:1.5fr .8fr; gap:52px; height:100%; align-items:center; }
+    .hero-copy,.warning-card p,.case-card p,.cadence-card p,.priority-card p,.hypothesis p { font-size:var(--body-size); line-height:1.34; }
+    .warning-card { padding:28px; border:2px solid var(--magenta); border-radius:28px; background:var(--paper); }
+    .warning-card b { color:var(--magenta); font-size:var(--label-size); } .warning-card p { margin:14px 0 0; }
+    .market-flow,.pokrov-main { display:flex; align-items:stretch; gap:12px; }
+    .flow-node { display:flex; flex:1; min-height:220px; padding:22px; align-items:center; justify-content:center; border:2px solid var(--violet); border-radius:26px; background:var(--paper); text-align:center; font-size:var(--body-size); font-weight:750; }
+    .route-arrow,.main-arrow { align-self:center; color:var(--magenta); font-size:44px; font-weight:900; }
+    .measurement-note { margin:30px 0 0; padding:22px 28px; border-left:8px solid var(--magenta); background:#f1dfdf; font-size:var(--body-size); font-weight:750; }
+    .engine-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+    .engine-card { min-height:344px; padding:22px; border:1px solid var(--line); border-radius:24px; background:var(--paper); }
+    .engine-card h3,.case-card h3,.cadence-card h3,.priority-card h3 { margin:15px 0; font-size:32px; }
+    .examples { display:flex; flex-wrap:wrap; gap:10px; } .example { padding:9px 13px; border-radius:999px; background:#eee2f0; font-size:var(--label-size); }
+    .case-grid,.cadence-grid,.priority-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; }
+    .case-card,.cadence-card,.priority-card { padding:22px; border:1px solid var(--line); border-radius:24px; background:var(--paper); }
+    .case-card { min-height:380px; } .case-card strong { display:block; min-height:72px; color:var(--magenta); font-size:var(--label-size); line-height:1.35; }
+    .hypothesis { display:grid; grid-template-columns:1fr 1.4fr; gap:24px; margin-top:20px; padding:18px 22px; border-left:8px solid var(--violet); background:#eee5f1; }
+    .hypothesis b { color:var(--violet); font-size:var(--label-size); } .hypothesis p { margin:0; }
+    .cadence-card { min-height:260px; padding:16px 20px; } .cadence-card div { display:flex; align-items:center; justify-content:space-between; }
+    .cadence-card h3 { margin:8px 0; } .cadence-card p { margin:8px 0 0; line-height:1.25; }
+    .cadence-card b { color:var(--risk); font-size:36px; } .pokrov-main { gap:8px; }
+    .pokrov-node { display:flex; flex:1; min-height:126px; padding:14px; align-items:center; justify-content:center; border:2px solid var(--emerald); border-radius:20px; background:#f2fbf5; text-align:center; font-size:var(--label-size); font-weight:800; }
+    .main-arrow { color:var(--emerald); } .optional-path { width:390px; margin:30px 0 0 900px; padding:18px 22px; border:2px dashed var(--emerald); border-radius:22px; background:#e3f3e8; }
+    .optional-path::before { content:"↓"; display:block; text-align:center; margin-top:-54px; color:var(--emerald); font-size:40px; }
+    .optional-path h3 { margin:8px 0; color:var(--emerald); font-size:30px; } .optional-path p { margin:5px 0; font-size:var(--body-size); line-height:1.25; }
+    .priority-card { min-height:220px; } .priority-card>span { color:var(--emerald); font-size:var(--label-size); font-weight:900; }
+    .north-star { display:grid; grid-template-columns:1.7fr 1fr; gap:32px; align-items:center; height:100%; }
+    .north-star blockquote { margin:0; color:var(--emerald); font-size:30px; line-height:1.18; font-weight:850; }
+    .source-note { line-height:1.1; } .source-note code { color:var(--ink); }
+  </style>
+
+<section class="growth-section" data-section="hero and measurement warning" style="top: 0px; height: 580px">
+  <div class="hero-layout"><div><span class="eyebrow">POKROV · GROWTH MAP · 2026-07-12</span><h1>От внимания к продукту</h1><p class="hero-copy">Какие механики ведут внешний трафик в канал, бот и продуктовые поверхности.</p></div><aside class="warning-card"><b>НЕ КОНВЕРСИОННАЯ ВОРОНКА</b><p>Рост канала не доказывает оплату, активацию или удержание. Здесь показаны наблюдаемые и предполагаемые механики.</p></aside></div>
+</section>
+
+<section class="growth-section" data-section="market mechanism map" style="top: 580px; height: 740px">
+  <header class="section-header">
+  <p class="section-header__kicker">01 · MARKET ROUTE</p>
+  <h2 class="section-header__title">Карта рыночной механики</h2>
+  <p class="section-header__note">Маршруты показывают механику, а не измеренную конверсию.</p>
+</header><div class="market-flow"><span class="flow-node">Внешний источник</span><span class="route-arrow" aria-hidden="true">→</span><span class="flow-node">Telegram gate / канал</span><span class="route-arrow" aria-hidden="true">→</span><span class="flow-node">Бот: trial / payment surface</span><span class="route-arrow" aria-hidden="true">→</span><span class="flow-node">App / client: activation surface</span><span class="route-arrow" aria-hidden="true">→</span><span class="flow-node">Lifecycle / referral surface</span></div><p class="measurement-note">Рост канала не доказывает оплату, активацию или удержание.</p>
+</section>
+
+<section class="growth-section" data-section="six inflow engines" style="top: 1320px; height: 1000px">
+  <header class="section-header">
+  <p class="section-header__kicker">02 · INFLOW ENGINES</p>
+  <h2 class="section-header__title">Шесть двигателей притока</h2>
+  <p class="section-header__note">Evidence label относится к блоку целиком; примеры не доказывают коммерческий результат.</p>
+</header><div class="engine-grid"><article class="engine-card" data-inflow-engine="prizes">
+    <span class="evidence" data-evidence-label="MIXED_DIRECT_AND_INFERRED">смешанные данные</span>
+    <h3>Призы</h3><div class="examples"><span class="example" data-example-id="hitvpn">HitVPN</span><span class="example" data-example-id="batya-vpn">Batya</span></div>
+  </article><article class="engine-card" data-inflow-engine="creators-affiliate">
+    <span class="evidence" data-evidence-label="DIRECT_OR_PUBLIC_EVIDENCE">подтверждено</span>
+    <h3>Creators / affiliate</h3><div class="examples"><span class="example" data-example-id="atlanta-vpn">Atlanta</span></div>
+  </article><article class="engine-card" data-inflow-engine="app-store">
+    <span class="evidence" data-evidence-label="INFERENCE">вывод по сигналам</span>
+    <h3>App / store</h3><div class="examples"><span class="example" data-example-id="hitvpn">HitVPN</span><span class="example" data-example-id="sota-vpn">Sota</span><span class="example" data-example-id="lagom-vpn">Lagom</span><span class="example" data-example-id="batya-vpn">Batya</span></div>
+  </article><article class="engine-card" data-inflow-engine="mandatory-gate">
+    <span class="evidence" data-evidence-label="MIXED_DIRECT_AND_INFERRED">смешанные данные</span>
+    <h3>Mandatory gate</h3><div class="examples"><span class="example" data-example-id="cats-vpn">Cats VPN</span><span class="example" data-example-id="nosok-vpn">Nosok VPN</span><span class="example" data-example-id="shuka-vpn">Shuka</span><span class="example" data-example-id="atlanta-vpn">Atlanta</span></div>
+  </article><article class="engine-card" data-inflow-engine="proxy-utility">
+    <span class="evidence" data-evidence-label="MIXED_DIRECT_AND_INFERRED">смешанные данные</span>
+    <h3>Proxy / utility</h3><div class="examples"><span class="example" data-example-id="luma-vpn">Luma VPN</span></div>
+  </article><article class="engine-card" data-inflow-engine="referral-reseller">
+    <span class="evidence" data-evidence-label="MIXED_DIRECT_AND_INFERRED">смешанные данные</span>
+    <h3>Referral / reseller</h3><div class="examples"><span class="example" data-example-id="platina-vpn">VPN Platina</span><span class="example" data-example-id="durev-vpn">Durev</span><span class="example" data-example-id="shuka-vpn">Shuka</span><span class="example" data-example-id="atlanta-vpn">Atlanta</span></div>
+  </article></div>
+</section>
+
+<section class="growth-section" data-section="three high-growth mechanism cases" style="top: 2320px; height: 780px">
+  <header class="section-header">
+  <p class="section-header__kicker">03 · CO-OCCURRING SIGNALS</p>
+  <h2 class="section-header__title">Три high-growth кейса</h2>
+  <p class="section-header__note">Интерпретация совместно наблюдаемых механик без причинных claims.</p>
+</header><div class="case-grid"><article class="case-card" data-growth-case="hitvpn">
+    <span class="evidence" data-evidence-label="MIXED_DIRECT_AND_INFERRED">смешанные данные</span>
+    <h3>HitVPN</h3><strong>app scale ↔ giveaway ↔ bot / channel</strong>
+    <p>Сочетание механик наблюдалось одновременно с ростом канала; аналитическая интерпретация не доказывает причинный цикл.</p>
+  </article><article class="case-card" data-growth-case="atlanta-vpn">
+    <span class="evidence" data-evidence-label="DIRECT_OR_PUBLIC_EVIDENCE">подтверждено</span>
+    <h3>Atlanta</h3><strong>creator payout → gated bot → referral / partner economics</strong>
+    <p>Сочетание механик наблюдалось одновременно с ростом канала; аналитическая интерпретация не доказывает причинный цикл.</p>
+  </article><article class="case-card" data-growth-case="cats-vpn">
+    <span class="evidence" data-evidence-label="MIXED_DIRECT_AND_INFERRED">смешанные данные</span>
+    <h3>Cats VPN</h3><strong>anonymous login → gate → web continuity</strong>
+    <p>Сочетание механик наблюдалось одновременно с ростом канала; аналитическая интерпретация не доказывает причинный цикл.</p>
+  </article></div><div class="hypothesis"><b>QUALITY × SPEED · стратегическая гипотеза</b><p>Быстрый приток: prizes / gates. Product continuation: app, cabinet, recovery, status, support. Конверсия и удержание не измерены.</p></div>
+</section>
+
+<section class="growth-section" data-section="three cadence-with-decline cases" style="top: 3100px; height: 520px">
+  <header class="section-header">
+  <p class="section-header__kicker">04 · CADENCE ≠ GROWTH</p>
+  <h2 class="section-header__title">Контент сосуществовал со спадом</h2>
+  <p class="section-header__note">Частота публикаций не объясняет знак динамики сама по себе.</p>
+</header><div class="cadence-grid"><article class="cadence-card" data-cadence-decline="genvpn">
+      <span class="evidence" data-evidence-label="DIRECT_OR_PUBLIC_EVIDENCE">подтверждено</span>
+      <div><h3>GenVPN</h3><b>−301</b></div>
+      <p>47 постов / 60 дней наблюдалось одновременно с отрицательной 30-дневной динамикой; не доказывает причинность.</p>
+    </article><article class="cadence-card" data-cadence-decline="nashvpn">
+      <span class="evidence" data-evidence-label="MIXED_DIRECT_AND_INFERRED">смешанные данные</span>
+      <div><h3>NashVPN</h3><b>−996</b></div>
+      <p>37 постов / 30 дней наблюдалось одновременно с отрицательной 30-дневной динамикой; не доказывает причинность.</p>
+    </article><article class="cadence-card" data-cadence-decline="mori-vpn">
+      <span class="evidence" data-evidence-label="MIXED_DIRECT_AND_INFERRED">смешанные данные</span>
+      <div><h3>MORI</h3><b>−2 940</b></div>
+      <p>22 постов / 30 дней наблюдалось одновременно с отрицательной 30-дневной динамикой; не доказывает причинность.</p>
+    </article></div>
+</section>
+
+<section class="growth-section" data-section="POKROV main path and optional Telegram branch" style="top: 3620px; height: 680px">
+  <header class="section-header">
+  <p class="section-header__kicker">05 · POKROV</p>
+  <h2 class="section-header__title">Основной путь без Telegram gate</h2>
+  <p class="section-header__note">Главная линия заканчивается paid key / renewal; боковая ветка не возвращается в обязательный путь.</p>
+</header><div class="pokrov-main" data-pokrov-path="main"><span class="pokrov-node" data-main-step="search">Search / creator / content</span><span class="main-arrow" aria-hidden="true">→</span><span class="pokrov-node" data-main-step="app">App</span><span class="main-arrow" aria-hidden="true">→</span><span class="pokrov-node" data-main-step="trial">5-day trial без карты</span><span class="main-arrow" aria-hidden="true">→</span><span class="pokrov-node" data-main-step="connection">Первое подключение</span><span class="main-arrow" aria-hidden="true">→</span><span class="pokrov-node" data-main-step="cabinet-account">Cabinet / support</span><span class="main-arrow" aria-hidden="true">→</span><span class="pokrov-node" data-main-step="paid-key">Paid key / renewal</span></div><aside class="optional-path" data-pokrov-path="optional-telegram" data-branches-from="cabinet-account" data-rejoins="none"><h3>Telegram — необязательная ветка</h3><p>Explicit link + membership → <b>+10 дней</b></p><p>Support / community; не возвращается в обязательный путь.</p></aside>
+</section>
+
+<section class="growth-section" data-section="priority build sequence" style="top: 4300px; height: 480px">
+  <header class="section-header">
+  <p class="section-header__kicker">06 · BUILD ORDER</p>
+  <h2 class="section-header__title">Сначала фундамент, затем масштаб</h2>
+  <p class="section-header__note">Без выдуманных сроков и целевых метрик.</p>
+</header><div class="priority-grid"><article class="priority-card" data-priority="foundation">
+    <span>01</span><h3>FOUNDATION</h3><p>recovery · diagnostics · status · signing</p>
+  </article><article class="priority-card" data-priority="acquisition">
+    <span>02</span><h3>ACQUISITION</h3><p>creators · referral · SEO / platform landings</p>
+  </article><article class="priority-card" data-priority="scale">
+    <span>03</span><h3>SCALE</h3><p>stores · app proof · lifecycle governance</p>
+  </article></div>
+</section>
+
+<section class="growth-section" data-section="north-star principle and sources" style="top: 4780px; height: 220px">
+  <div class="north-star"><blockquote>Не покупать рост любой ценой. Строить приток, который доходит до первого подключения и остаётся из-за продукта.</blockquote><footer class="source-note"><b>retained dataset</b> · EVIDENCE_ADVISORY<br>2026-07-12 · 2026-05-12 — 2026-07-12<br>POKROV: нет подтверждённой сопоставимой метрики.<br>SHA-256: <code>883cc925ab0171cf…</code></footer></div>
+</section> </main>
+</body>
+</html>

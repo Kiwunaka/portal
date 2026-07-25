@@ -13,6 +13,7 @@ const canonicalRoutes = [
   "/devices/",
   "/telegram/",
   "/vpn/",
+  "/best-vpn/",
   "/android/",
   "/windows/",
   "/install/android/",
@@ -64,6 +65,7 @@ const sourceFiles = [
   "src/app/devices/page.tsx",
   "src/app/telegram/page.tsx",
   "src/app/vpn/page.tsx",
+  "src/app/best-vpn/page.tsx",
   "src/components/home/services-grid.tsx",
   "src/components/intent/intent-landing.tsx",
   "src/components/layout/page-shell.tsx",
@@ -224,6 +226,14 @@ function checkSitemapSource() {
 function checkMachineReadableFiles() {
   const llms = readText("public/llms.txt");
   const pricing = readText("public/pricing.md");
+  const seoPages = readText("src/lib/seo-pages.ts");
+  const productFacts = JSON.parse(
+    fs.readFileSync(path.resolve(root, "..", "shared/product-facts.json"), "utf8"),
+  );
+  const machineFiles = [
+    ["llms.txt", llms],
+    ["pricing.md", pricing],
+  ];
 
   for (const route of seoRegistryRoutes) {
     const absoluteUrl = `https://pokrov.space${route}`;
@@ -231,9 +241,45 @@ function checkMachineReadableFiles() {
       pushError(`llms.txt is missing ${absoluteUrl}.`);
     }
   }
-  for (const snippet of ["5 days", "no card", "No automatic renewal", "99 RUB", "GitHub Releases", "+5 days", "up to 10 days"]) {
+  for (const snippet of ["no card", "No automatic renewal", "99 RUB", "GitHub Releases"]) {
     if (!pricing.includes(snippet) && !llms.includes(snippet)) {
       pushError(`Machine-readable files are missing SEO/pricing snippet: ${snippet}`);
+    }
+  }
+
+  const reviewedMatch = seoPages.match(/SEO_LAST_REVIEWED_DATE\s*=\s*"([^"]+)"/);
+  if (!reviewedMatch) {
+    pushError("Could not read SEO_LAST_REVIEWED_DATE from src/lib/seo-pages.ts.");
+  } else {
+    for (const [filename, content] of machineFiles) {
+      if (!content.includes(`Last updated: ${reviewedMatch[1]}`)) {
+        pushError(`${filename} must use SEO registry date ${reviewedMatch[1]}.`);
+      }
+    }
+  }
+
+  const trialDays = Number(productFacts?.trial?.days);
+  const telegramDays = Number(productFacts?.telegram_reward?.days);
+  const grandfatheredDays = Number(productFacts?.telegram_reward?.grandfathered_days);
+  const startingDays = trialDays + telegramDays;
+  const canonicalFactSnippets = [
+    `${trialDays} days free`,
+    `+${telegramDays} days`,
+    `up to ${startingDays} days (${trialDays} trial days + ${telegramDays} Telegram reward days)`,
+  ];
+
+  for (const [filename, content] of machineFiles) {
+    for (const snippet of canonicalFactSnippets) {
+      if (!content.includes(snippet)) {
+        pushError(`${filename} is missing canonical product fact: ${snippet}`);
+      }
+    }
+    if (
+      Number.isFinite(grandfatheredDays) &&
+      grandfatheredDays !== telegramDays &&
+      new RegExp(`\\+\\s*${grandfatheredDays}\\s*days`, "i").test(content)
+    ) {
+      pushError(`${filename} exposes grandfathered +${grandfatheredDays} days as a current reward.`);
     }
   }
 }

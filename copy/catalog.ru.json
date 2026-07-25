@@ -1,5 +1,5 @@
 {
-  "catalog_version": "2026-07-04-redesign-w01",
+  "catalog_version": "2026-07-23-competitor-style-v2",
   "locale": "ru",
   "items": {
     "admin.dashboard.subtitle": {
@@ -238,7 +238,7 @@
     },
     "bot.cabinet.intro": {
       "surface": "bot.main",
-      "ru": "🌐 *Кабинет POKROV*\n\nЗдесь аккаунт, оплата, загрузки и ссылки подключения. Подключаться удобнее из приложения: войдите в тот же аккаунт, и всё подтянется само.",
+      "ru": "🌐 *Весь POKROV в одном кабинете*\n\nДоступ, устройства, тарифы, загрузки и поддержка — в одном месте. Войдите в приложении в тот же аккаунт, и данные подтянутся автоматически.",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
@@ -247,7 +247,7 @@
     },
     "bot.choose_tariff": {
       "surface": "bot.main",
-      "ru": "Можно начать с 5 дней бесплатно или сразу выбрать полный доступ. Покажу сроки, цену и действие.",
+      "ru": "Заберите 5 дней бесплатно или сразу выберите полный доступ. Все сроки, цены и выгода — на одном экране.",
       "variables": [],
       "tone": "helpful",
       "allowed_public": false,
@@ -301,7 +301,7 @@
     },
     "bot.instruction.pick_device": {
       "surface": "bot.onboarding",
-      "ru": "📱 *С какого устройства начинаем?*\n\nВыберите своё — покажу короткий путь: установить, войти, нажать «Подключить».",
+      "ru": "🚀 *Выберите устройство — и переходите к подключению*\n\nAndroid или Windows: официальный файл, вход и одна кнопка. После установки заберите 5 дней бесплатно.",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
@@ -346,7 +346,7 @@
     },
     "bot.instruction.step_access": {
       "surface": "bot.onboarding",
-      "ru": "✅ *Приложение есть — включим доступ*\n\nНачните с 5 дней бесплатно, карту не просим. Хотите сразу надолго — выберите срок ниже, после оплаты всё включится само.\n\nОстанется войти и нажать «Подключить».",
+      "ru": "🔥 *Остался один шаг до подключения*\n\nЗаберите 5 дней бесплатно — без карты и обязательств. Или сразу выберите выгодный срок: после оплаты доступ обновится автоматически.\n\nВойдите в POKROV, нажмите «Подключить» и проверьте любимые сервисы.",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
@@ -364,7 +364,7 @@
     },
     "bot.menu.home": {
       "surface": "bot.main",
-      "ru": "🛡 *POKROV*\n\nЯ помогу подключить устройство, продлить доступ и ответить на вопросы.\n\nВыберите, что сделать:",
+      "ru": "🛡 *POKROV VPN*\n\nYouTube, TikTok, ChatGPT, соцсети и нужные сайты — на Android и Windows. Управляйте подключением, тарифом и устройствами прямо здесь.\n\nВыберите действие:",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
@@ -373,7 +373,7 @@
     },
     "bot.menu.new_user": {
       "surface": "bot.main",
-      "ru": "👋 *Добро пожаловать в POKROV*\n\nНастроим доступ за пару минут: установите приложение, войдите и нажмите «Подключить».\n\nС чего начнём?",
+      "ru": "🚀 *POKROV VPN — привычные сервисы снова доступны*\n\nYouTube, TikTok, ChatGPT, соцсети и сайты — на Android и Windows.\n\n✅ 5 дней бесплатно, без карты\n✅ Безлимитный трафик на платных тарифах\n✅ До 5 устройств\n✅ От 99 ₽, без автосписаний\n\nПопробуйте прямо сейчас:",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
@@ -382,7 +382,7 @@
     },
     "bot.menu.returning": {
       "surface": "bot.main",
-      "ru": "👋 *С возвращением в POKROV!*\n\nВсё на месте. Выберите, что сделать:",
+      "ru": "👋 *POKROV готов к работе*\n\nПодключайтесь, проверьте доступ или выберите выгодный срок продления:",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
@@ -391,7 +391,7 @@
     },
     "bot.payment.success": {
       "surface": "bot.paywall",
-      "ru": "✅ *Оплата прошла.* Доступ уже обновляется в этом аккаунте. Откройте POKROV и нажмите «Подключить» — на этом всё.",
+      "ru": "✅ *Готово — доступ оплачен.* Мы уже обновляем ваш аккаунт. Откройте POKROV, нажмите «Подключить» и пользуйтесь.",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
@@ -418,7 +418,7 @@
     },
     "bot.shared.continue_in_cabinet": {
       "surface": "bot.shared",
-      "ru": "Открыть кабинет",
+      "ru": "Управлять доступом в кабинете",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
@@ -427,7 +427,7 @@
     },
     "bot.shared.download_app": {
       "surface": "bot.shared",
-      "ru": "Скачать приложение",
+      "ru": "Скачать POKROV и забрать 5 дней",
       "variables": [],
       "tone": "calm",
       "allowed_public": false,
@@ -469,7 +469,7 @@
     },
     "bot.status.none": {
       "surface": "bot.main",
-      "ru": "⛔️ *Сейчас доступа нет*\n\nНачните с 5 дней бесплатно — карту не просим. Понравится — выберите срок, длинные выходят выгоднее.",
+      "ru": "🔥 *Включите POKROV бесплатно*\n\n5 дней за 0 ₽ — без карты. YouTube, TikTok, ChatGPT и другие сервисы уже ждут.\n\nПосле теста — безлимитный трафик от 99 ₽ и никаких автосписаний.",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
@@ -496,7 +496,7 @@
     },
     "bot.tariffs.long": {
       "surface": "bot.paywall",
-      "ru": "💎 *Долгие планы*\n\nЧем длиннее срок, тем дешевле выходит месяц. Оплатили один раз — и надолго забыли о продлении.",
+      "ru": "💎 *Максимум выгоды на длинном сроке*\n\nЧем дольше доступ, тем ниже цена месяца. Годовой план экономит 45% против помесячной оплаты: платите один раз и пользуетесь без постоянных продлений.",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
@@ -505,7 +505,7 @@
     },
     "bot.welcome": {
       "surface": "bot.main",
-      "ru": "Откройте кабинет, проверьте доступ или начните подключение. 5 дней бесплатно доступны на старте; ручная ссылка нужна только как запасной вариант.",
+      "ru": "Заберите 5 дней POKROV бесплатно, подключите устройство или выберите тариф от 99 ₽. Ручная ссылка остаётся запасным вариантом — основной путь занимает пару нажатий в приложении.",
       "variables": [],
       "tone": "helpful",
       "allowed_public": false,
@@ -694,7 +694,7 @@
     },
     "marketing.checkout.meta.description": {
       "surface": "marketing.checkout",
-      "ru": "Страница оплаты показывает доступные планы, сумму до оплаты, получение ключа доступа и помощь при спорных платежах.",
+      "ru": "Выберите выгодный срок POKROV от 99 ₽: цена, устройства и итоговая сумма видны до оплаты, автосписаний нет.",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -703,7 +703,7 @@
     },
     "marketing.checkout.meta.title": {
       "surface": "marketing.checkout",
-      "ru": "Оплата доступа | POKROV",
+      "ru": "Тарифы POKROV от 99 ₽ | Выберите срок доступа",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -712,7 +712,7 @@
     },
     "marketing.footer.beta_note": {
       "surface": "marketing.footer",
-      "ru": "Android и Windows, публичная бета",
+      "ru": "Android + Windows · 5 дней бесплатно · от 99 ₽",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -766,7 +766,7 @@
     },
     "marketing.footer.link.channel": {
       "surface": "marketing.footer.link",
-      "ru": "Канал с новостями",
+      "ru": "Бонус +5 дней и новости",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -775,7 +775,7 @@
     },
     "marketing.footer.link.features": {
       "surface": "marketing.footer.link",
-      "ru": "Возможности",
+      "ru": "Что откроется",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -784,7 +784,7 @@
     },
     "marketing.footer.link.install": {
       "surface": "marketing.footer.link",
-      "ru": "Установка",
+      "ru": "Скачать POKROV",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -802,7 +802,7 @@
     },
     "marketing.footer.link.pricing": {
       "surface": "marketing.footer.link",
-      "ru": "Цены",
+      "ru": "Тарифы от 99 ₽",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -829,7 +829,7 @@
     },
     "marketing.footer.link.support": {
       "surface": "marketing.footer.link",
-      "ru": "Поддержка в Telegram",
+      "ru": "Помощь с подключением",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -838,7 +838,7 @@
     },
     "marketing.footer.tagline": {
       "surface": "marketing.footer",
-      "ru": "Приложение для Android и Windows: одна кнопка — и любимые сервисы снова работают.",
+      "ru": "Быстрый VPN для Android и Windows: 5 дней бесплатно, затем безлимитный трафик от 99 ₽.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -847,7 +847,7 @@
     },
     "marketing.home.faq.kicker": {
       "surface": "marketing.home.faq",
-      "ru": "Вопросы",
+      "ru": "Перед стартом",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -856,7 +856,7 @@
     },
     "marketing.home.faq.title": {
       "surface": "marketing.home.faq",
-      "ru": "Коротко о главном",
+      "ru": "Ответы, после которых можно подключаться",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -865,7 +865,7 @@
     },
     "marketing.home.final.cta": {
       "surface": "marketing.home.final",
-      "ru": "Скачать бесплатно",
+      "ru": "Подключить VPN бесплатно",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -874,7 +874,7 @@
     },
     "marketing.home.final.sub": {
       "surface": "marketing.home.final",
-      "ru": "Установка занимает минуту, карта не нужна. Если что-то не заработает — поддержка рядом.",
+      "ru": "YouTube, TikTok, ChatGPT и нужные сайты — одной кнопкой. 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -883,11 +883,20 @@
     },
     "marketing.home.final.support": {
       "surface": "marketing.home.final",
-      "ru": "Задать вопрос поддержке",
+      "ru": "Помогите мне подключиться",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
       "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.final.title": {
+      "surface": "marketing.home.final",
+      "ru": "Подключите POKROV VPN за минуту",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "Aggressive conversion copy grounded in the current five-day trial.",
       "ab_variant": "control"
     },
     "marketing.home.hero.fact_devices.text": {
@@ -910,7 +919,7 @@
     },
     "marketing.home.hero.fact_platforms.text": {
       "surface": "marketing.home.hero.fact_platforms",
-      "ru": "одно приложение",
+      "ru": "телефон + компьютер",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -928,7 +937,7 @@
     },
     "marketing.home.hero.fact_price.text": {
       "surface": "marketing.home.hero.fact_price",
-      "ru": "за 30 дней после теста",
+      "ru": "за полный месяц",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -937,7 +946,7 @@
     },
     "marketing.home.hero.fact_trial.text": {
       "surface": "marketing.home.hero.fact_trial",
-      "ru": "бесплатно, без карты",
+      "ru": "за 0 ₽, без карты",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -946,7 +955,7 @@
     },
     "marketing.home.hero.kicker": {
       "surface": "marketing.home.hero",
-      "ru": "5 дней бесплатно · карта не нужна",
+      "ru": "POKROV VPN · Android + Windows",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -955,7 +964,7 @@
     },
     "marketing.home.hero.primary_cta": {
       "surface": "marketing.home.hero",
-      "ru": "Скачать бесплатно",
+      "ru": "Попробовать бесплатно",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -973,7 +982,7 @@
     },
     "marketing.home.hero.subtitle": {
       "surface": "marketing.home.hero",
-      "ru": "Приложение для Android и Windows: одна кнопка — и любимые сервисы снова быстрые.",
+      "ru": "Быстрый VPN для YouTube, TikTok, ChatGPT, соцсетей и сайтов. 5 дней бесплатно без карты. Затем — безлимитный трафик от 99 ₽ и до 5 устройств.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -982,7 +991,7 @@
     },
     "marketing.home.hero.title": {
       "surface": "marketing.home.hero",
-      "ru": "YouTube снова летает. И всё остальное тоже.",
+      "ru": "Открывайте привычные сервисы",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -991,7 +1000,7 @@
     },
     "marketing.home.honesty.no_autopay.text": {
       "surface": "marketing.home.honesty.no_autopay",
-      "ru": "Оплата разовым ключом: ничего не продлевается само",
+      "ru": "Оплачиваете только выбранный срок — ни одного неожиданного продления",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1000,7 +1009,7 @@
     },
     "marketing.home.honesty.no_autopay.title": {
       "surface": "marketing.home.honesty.no_autopay",
-      "ru": "Без автосписаний",
+      "ru": "0 автосписаний",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1009,7 +1018,7 @@
     },
     "marketing.home.honesty.releases.text": {
       "surface": "marketing.home.honesty.releases",
-      "ru": "Релизы приложения лежат на GitHub Releases — у всех на виду",
+      "ru": "APK, EXE и checksums опубликованы на GitHub Releases",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1018,7 +1027,7 @@
     },
     "marketing.home.honesty.releases.title": {
       "surface": "marketing.home.honesty.releases",
-      "ru": "Файлы на GitHub",
+      "ru": "Официальные релизы",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1027,7 +1036,7 @@
     },
     "marketing.home.honesty.support.text": {
       "surface": "marketing.home.honesty.support",
-      "ru": "Отвечаем в Telegram, без ботов-заглушек",
+      "ru": "Помогаем с установкой, подключением и оплатой по шагам",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1036,7 +1045,7 @@
     },
     "marketing.home.honesty.support.title": {
       "surface": "marketing.home.honesty.support",
-      "ru": "Живая поддержка",
+      "ru": "Поддержка по шагам",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1045,7 +1054,7 @@
     },
     "marketing.home.honesty.trial.text": {
       "surface": "marketing.home.honesty.trial",
-      "ru": "5 дней бесплатно — карту не спрашиваем вообще",
+      "ru": "Скачиваете, подключаетесь и проверяете свои сервисы до оплаты",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1054,7 +1063,7 @@
     },
     "marketing.home.honesty.trial.title": {
       "surface": "marketing.home.honesty.trial",
-      "ru": "Триал без карты",
+      "ru": "5 дней за 0 ₽",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1063,7 +1072,7 @@
     },
     "marketing.home.pricing.cta": {
       "surface": "marketing.home.pricing",
-      "ru": "Выбрать",
+      "ru": "Выбрать этот срок",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1072,7 +1081,7 @@
     },
     "marketing.home.pricing.featured_note": {
       "surface": "marketing.home.pricing",
-      "ru": "Выгоднее всего",
+      "ru": "Максимальная выгода",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1081,7 +1090,7 @@
     },
     "marketing.home.pricing.kicker": {
       "surface": "marketing.home.pricing",
-      "ru": "Цены",
+      "ru": "POKROV PREMIUM",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1090,7 +1099,7 @@
     },
     "marketing.home.pricing.note": {
       "surface": "marketing.home.pricing",
-      "ru": "Все цены в рублях. Код активации можно применить в приложении или кабинете.",
+      "ru": "Платные тарифы безлимитны по трафику. POKROV не ставит тарифный лимит скорости; фактическая скорость зависит от сети, устройства, локации и нагрузки.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1099,7 +1108,7 @@
     },
     "marketing.home.pricing.sub": {
       "surface": "marketing.home.pricing",
-      "ru": "Оплата разовым ключом: заплатили за срок — пользуетесь. Автосписаний нет, отменять нечего.",
+      "ru": "5 дней бесплатно без карты. На платных тарифах — безлимитный трафик, до 5 устройств и экономия до 45%. Автосписаний нет.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1108,7 +1117,7 @@
     },
     "marketing.home.pricing.title": {
       "surface": "marketing.home.pricing",
-      "ru": "Сначала бесплатно. Потом — честно",
+      "ru": "Безлимитный VPN от 99 ₽",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1117,7 +1126,7 @@
     },
     "marketing.home.pricing.trial.cta": {
       "surface": "marketing.home.pricing.trial",
-      "ru": "Начать бесплатно",
+      "ru": "Попробовать бесплатно",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1126,7 +1135,7 @@
     },
     "marketing.home.pricing.trial.text": {
       "surface": "marketing.home.pricing.trial",
-      "ru": "Скачайте приложение и проверьте всё на своих сервисах. Карта не нужна.",
+      "ru": "Проверьте YouTube, TikTok, мессенджеры и рабочие сервисы на своей сети. Карта не нужна.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1135,7 +1144,7 @@
     },
     "marketing.home.services.ai.text": {
       "surface": "marketing.home.services.ai",
-      "ru": "ChatGPT и другие инструменты открываются напрямую",
+      "ru": "Открывайте ChatGPT и другие AI-инструменты одной кнопкой",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1144,7 +1153,7 @@
     },
     "marketing.home.services.ai.title": {
       "surface": "marketing.home.services.ai",
-      "ru": "ИИ-сервисы",
+      "ru": "ChatGPT без лишних настроек",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1153,7 +1162,7 @@
     },
     "marketing.home.services.games.text": {
       "surface": "marketing.home.services.games",
-      "ru": "Голосовые каналы и магазины игр без обрывов",
+      "ru": "Возвращайтесь в голосовые каналы, игровые магазины и сообщества",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1162,7 +1171,7 @@
     },
     "marketing.home.services.games.title": {
       "surface": "marketing.home.services.games",
-      "ru": "Игры и Discord",
+      "ru": "Discord и игры",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1171,7 +1180,7 @@
     },
     "marketing.home.services.kicker": {
       "surface": "marketing.home.services",
-      "ru": "Что снова работает",
+      "ru": "Интернет без границ",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1180,7 +1189,7 @@
     },
     "marketing.home.services.rest.text": {
       "surface": "marketing.home.services.rest",
-      "ru": "Маршрут «всё, кроме РУ»: российские сайты идут напрямую",
+      "ru": "Режим «всё, кроме РУ» оставляет российские сайты на прямом маршруте",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1189,7 +1198,7 @@
     },
     "marketing.home.services.rest.title": {
       "surface": "marketing.home.services.rest",
-      "ru": "И всё остальное",
+      "ru": "Российские сайты — напрямую",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1198,7 +1207,7 @@
     },
     "marketing.home.services.social.text": {
       "surface": "marketing.home.services.social",
-      "ru": "Instagram, звонки и медиа в чатах — без танцев с бубном",
+      "ru": "Открывайте Instagram, соцсети, звонки и медиа без отдельных профилей",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1207,7 +1216,7 @@
     },
     "marketing.home.services.social.title": {
       "surface": "marketing.home.services.social",
-      "ru": "Соцсети и мессенджеры",
+      "ru": "Instagram и соцсети",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1216,7 +1225,7 @@
     },
     "marketing.home.services.sub": {
       "surface": "marketing.home.services",
-      "ru": "Подключение в приложении открывает то, что тормозит или не открывается, — а российские сайты продолжают работать напрямую.",
+      "ru": "Одна кнопка открывает YouTube, TikTok, ChatGPT, соцсети, мессенджеры и игры. Российские сайты идут напрямую в режиме «всё, кроме РУ».",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1225,7 +1234,7 @@
     },
     "marketing.home.services.tiktok.text": {
       "surface": "marketing.home.services.tiktok",
-      "ru": "Лента, лайки и загрузка роликов работают как раньше",
+      "ru": "Листайте ленту, ставьте лайки и загружайте ролики",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1234,7 +1243,7 @@
     },
     "marketing.home.services.tiktok.title": {
       "surface": "marketing.home.services.tiktok",
-      "ru": "TikTok снова открывается",
+      "ru": "TikTok без блокировок",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1243,7 +1252,7 @@
     },
     "marketing.home.services.title": {
       "surface": "marketing.home.services",
-      "ru": "Любимые сервисы — как раньше",
+      "ru": "YouTube, TikTok, ChatGPT — всё в одном VPN",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1252,7 +1261,7 @@
     },
     "marketing.home.services.youtube.text": {
       "surface": "marketing.home.services.youtube",
-      "ru": "Без замедлений, буферизации и «крутилки» на 480p",
+      "ru": "Смотрите ролики, стримы и длинные видео в нужном качестве",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1261,7 +1270,7 @@
     },
     "marketing.home.services.youtube.title": {
       "surface": "marketing.home.services.youtube",
-      "ru": "YouTube в полном качестве",
+      "ru": "YouTube через POKROV",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1270,7 +1279,7 @@
     },
     "marketing.home.showcase.account.text": {
       "surface": "marketing.home.showcase.account",
-      "ru": "Сколько дней осталось, какие устройства подключены, где продлить — видно сразу.",
+      "ru": "Срок, устройства, продление и поддержка собраны в одном аккаунте — без поисков по чатам.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1279,7 +1288,7 @@
     },
     "marketing.home.showcase.account.title": {
       "surface": "marketing.home.showcase.account",
-      "ru": "Всё по-честному в аккаунте",
+      "ru": "Весь доступ под контролем",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1288,7 +1297,7 @@
     },
     "marketing.home.showcase.connect.text": {
       "surface": "marketing.home.showcase.connect",
-      "ru": "Открыли приложение, нажали — подключено. Отключается так же просто.",
+      "ru": "Откройте POKROV и нажмите «Подключить». Никаких ключей, профилей и получасовых гайдов на старте.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1297,7 +1306,7 @@
     },
     "marketing.home.showcase.connect.title": {
       "surface": "marketing.home.showcase.connect",
-      "ru": "Одна кнопка",
+      "ru": "Нажали — подключились",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1306,7 +1315,7 @@
     },
     "marketing.home.showcase.kicker": {
       "surface": "marketing.home.showcase",
-      "ru": "Приложение",
+      "ru": "VPN без лишних действий",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1315,7 +1324,7 @@
     },
     "marketing.home.showcase.locations.text": {
       "surface": "marketing.home.showcase.locations",
-      "ru": "Режим «Авто» держит лучший маршрут. Хотите конкретный — выбирайте вручную.",
+      "ru": "Режим «Авто» выбирает подходящий маршрут сам. Нужна конкретная локация — переключите вручную.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1324,7 +1333,7 @@
     },
     "marketing.home.showcase.locations.title": {
       "surface": "marketing.home.showcase.locations",
-      "ru": "Маршрут выбирается сам",
+      "ru": "Лучший маршрут — автоматически",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1333,7 +1342,7 @@
     },
     "marketing.home.showcase.sub": {
       "surface": "marketing.home.showcase",
-      "ru": "Никаких скрытых экранов и мелкого шрифта — всё приложение перед вами.",
+      "ru": "Подключение, маршрут, срок и устройства видны сразу. POKROV делает сложную сетевую часть за вас.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1342,7 +1351,7 @@
     },
     "marketing.home.showcase.title": {
       "surface": "marketing.home.showcase",
-      "ru": "Вот как это выглядит",
+      "ru": "Всё сложное уже спрятано под одной кнопкой",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1351,7 +1360,7 @@
     },
     "marketing.home.showcase.windows.text": {
       "surface": "marketing.home.showcase.windows",
-      "ru": "Windows-приложение выглядит и работает так же просто, как мобильное.",
+      "ru": "Тот же аккаунт и знакомое подключение на компьютере — без отдельной настройки с нуля.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1360,7 +1369,7 @@
     },
     "marketing.home.showcase.windows.title": {
       "surface": "marketing.home.showcase.windows",
-      "ru": "На компьютере — так же",
+      "ru": "Телефон и компьютер вместе",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1369,7 +1378,7 @@
     },
     "marketing.home.steps.connect.text": {
       "surface": "marketing.home.steps.connect",
-      "ru": "Всё уже настроено: приложение само выберет лучший маршрут.",
+      "ru": "POKROV сам подберёт маршрут. Вам остаётся одна кнопка.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1387,7 +1396,7 @@
     },
     "marketing.home.steps.cta": {
       "surface": "marketing.home.steps",
-      "ru": "Начать бесплатно",
+      "ru": "Попробовать бесплатно",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1396,7 +1405,7 @@
     },
     "marketing.home.steps.done.title": {
       "surface": "marketing.home.steps.done",
-      "ru": "Готово",
+      "ru": "Проверьте любимые сервисы",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1405,7 +1414,7 @@
     },
     "marketing.home.steps.download.text": {
       "surface": "marketing.home.steps.download",
-      "ru": "Android или Windows — файл весит немного, установка занимает минуту.",
+      "ru": "Выберите Android или Windows и возьмите актуальный файл из официального кабинета.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1414,7 +1423,7 @@
     },
     "marketing.home.steps.download.title": {
       "surface": "marketing.home.steps.download",
-      "ru": "Скачайте приложение",
+      "ru": "Скачайте POKROV",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1423,7 +1432,7 @@
     },
     "marketing.home.steps.kicker": {
       "surface": "marketing.home.steps",
-      "ru": "Как это работает",
+      "ru": "Подключение за минуту",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1432,7 +1441,7 @@
     },
     "marketing.home.steps.sub": {
       "surface": "marketing.home.steps",
-      "ru": "Никаких профилей, ключей и настроек. Мы уже всё сделали за вас.",
+      "ru": "Никаких профилей и ключей. Установите, войдите и нажмите одну кнопку.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1441,7 +1450,7 @@
     },
     "marketing.home.steps.title": {
       "surface": "marketing.home.steps",
-      "ru": "Три шага — и всё открывается",
+      "ru": "Скачали. Вошли. Нажали «Подключить».",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1450,7 +1459,7 @@
     },
     "marketing.home.telegram.cta": {
       "surface": "marketing.home.telegram",
-      "ru": "Открыть канал",
+      "ru": "Забрать ещё 5 дней",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1459,11 +1468,29 @@
     },
     "marketing.home.telegram.text": {
       "surface": "marketing.home.telegram",
-      "ru": "Подпишитесь на наш Telegram-канал и заберите бонус в приложении — там же будут новости и статусы работы.",
+      "ru": "Привяжите Telegram, подпишитесь на официальный канал и заберите ещё 5 дней в приложении. Там же публикуем обновления и статусы работы.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
       "compliance_notes": "2026-07 redesign copy pass.",
+      "ab_variant": "control"
+    },
+    "marketing.home.pricing.trial.title": {
+      "surface": "marketing.home.pricing.trial",
+      "ru": "5 дней POKROV — 0 ₽",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "Aggressive conversion headline grounded in the five-day no-card trial.",
+      "ab_variant": "control"
+    },
+    "marketing.home.telegram.title": {
+      "surface": "marketing.home.telegram",
+      "ru": "Доведите бесплатный старт до 10 дней",
+      "variables": [],
+      "tone": "premium-warm",
+      "allowed_public": true,
+      "compliance_notes": "Five app trial days plus five claimed Telegram reward days.",
       "ab_variant": "control"
     },
     "marketing.install.android.note": {
@@ -1522,7 +1549,7 @@
     },
     "marketing.install.cta.android": {
       "surface": "marketing.install.cta",
-      "ru": "Скачать для Android",
+      "ru": "Скачать POKROV на Android",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1531,7 +1558,7 @@
     },
     "marketing.install.cta.windows": {
       "surface": "marketing.install.cta",
-      "ru": "Скачать для Windows",
+      "ru": "Скачать POKROV на Windows",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1621,7 +1648,7 @@
     },
     "marketing.install.faq.title": {
       "surface": "marketing.install.faq",
-      "ru": "Про установку — честно",
+      "ru": "Ответы перед установкой",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1630,7 +1657,7 @@
     },
     "marketing.install.kicker": {
       "surface": "marketing.install",
-      "ru": "Установка за минуту",
+      "ru": "Одна минута до первого подключения",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1639,7 +1666,7 @@
     },
     "marketing.install.meta.description": {
       "surface": "marketing.install",
-      "ru": "Пошаговая установка приложения POKROV: скачать файл, разрешить установку, нажать «Подключить». С картинками и честными ответами про SmartScreen.",
+      "ru": "Скачайте POKROV на Android или Windows, подключитесь одной кнопкой и получите 5 дней бесплатно без карты. APK, EXE и помощь со SmartScreen.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1648,7 +1675,7 @@
     },
     "marketing.install.meta.title": {
       "surface": "marketing.install",
-      "ru": "Как установить POKROV на Android и Windows | Инструкция",
+      "ru": "Скачать POKROV VPN на Android и Windows | 5 дней бесплатно",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1657,7 +1684,7 @@
     },
     "marketing.install.primary_cta": {
       "surface": "marketing.install",
-      "ru": "Открыть кабинет",
+      "ru": "Скачать актуальную версию",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1666,7 +1693,7 @@
     },
     "marketing.install.secondary_cta": {
       "surface": "marketing.install",
-      "ru": "Написать в поддержку",
+      "ru": "Помогите установить",
       "variables": [],
       "tone": "calm",
       "allowed_public": true,
@@ -1675,7 +1702,7 @@
     },
     "marketing.install.subtitle": {
       "surface": "marketing.install",
-      "ru": "Три шага для Android или Windows. Файлы выдаёт кабинет — так вы всегда получаете настоящую и свежую версию.",
+      "ru": "Выберите Android или Windows, скачайте официальный файл и нажмите «Подключить». После установки получите 5 дней бесплатно — карта не нужна.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1702,7 +1729,7 @@
     },
     "marketing.install.title": {
       "surface": "marketing.install",
-      "ru": "Скачайте — остальное уже настроено",
+      "ru": "Скачайте POKROV. Подключитесь одной кнопкой.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1738,7 +1765,7 @@
     },
     "marketing.install.windows.step2.text": {
       "surface": "marketing.install.windows.step2",
-      "ru": "Если Windows покажет предупреждение, нажмите «Подробнее» → «Выполнить в любом случае». Это честно: подписи издателя пока нет.",
+      "ru": "Если Windows покажет предупреждение, нажмите «Подробнее» → «Выполнить в любом случае». Подписи издателя пока нет, поэтому скачивайте файл только через официальный кабинет.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1765,7 +1792,7 @@
     },
     "marketing.intent.cta.primary": {
       "surface": "marketing.intent.cta",
-      "ru": "Скачать бесплатно",
+      "ru": "Попробовать бесплатно",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1774,7 +1801,7 @@
     },
     "marketing.intent.cta.secondary": {
       "surface": "marketing.intent.cta",
-      "ru": "Как это работает",
+      "ru": "Тарифы от 99 ₽",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1801,7 +1828,7 @@
     },
     "marketing.topbar.download": {
       "surface": "marketing.topbar",
-      "ru": "Скачать",
+      "ru": "Попробовать бесплатно",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1837,7 +1864,7 @@
     },
     "marketing.topbar.nav.features": {
       "surface": "marketing.topbar.nav",
-      "ru": "Возможности",
+      "ru": "Что откроется",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1846,7 +1873,7 @@
     },
     "marketing.topbar.nav.how": {
       "surface": "marketing.topbar.nav",
-      "ru": "Как это работает",
+      "ru": "3 шага",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1855,7 +1882,7 @@
     },
     "marketing.topbar.nav.pricing": {
       "surface": "marketing.topbar.nav",
-      "ru": "Цены",
+      "ru": "Тарифы от 99 ₽",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1864,7 +1891,7 @@
     },
     "retention.reactivation": {
       "surface": "bot.retention",
-      "ru": "Доступ можно восстановить. Откройте продление и продолжайте пользоваться POKROV без нового старта.",
+      "ru": "Верните POKROV за пару нажатий. Выберите срок продления — аккаунт и привычное подключение останутся с вами.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
@@ -1873,7 +1900,7 @@
     },
     "retention.start99_offer": {
       "surface": "bot.retention",
-      "ru": "Скидка {discount_pct}% сохранена для первого продления POKROV после бесплатного периода.",
+      "ru": "Ваша скидка {discount_pct}% уже ждёт. Примените её к первому продлению POKROV после бесплатного периода.",
       "variables": [
         "discount_pct"
       ],
@@ -1884,7 +1911,7 @@
     },
     "retention.t0": {
       "surface": "bot.retention",
-      "ru": "Доступ завершается сегодня. Продлите его, чтобы сохранить тот же профиль.",
+      "ru": "Доступ закончится сегодня. Продлите сейчас, чтобы завтра не возвращаться к установке и поиску рабочего подключения.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
@@ -1893,7 +1920,7 @@
     },
     "retention.t1": {
       "surface": "bot.retention",
-      "ru": "Срок вашей подписки подходит к концу. Продлите доступ, чтобы сохранить привычное подключение.",
+      "ru": "Остался 1 день. Выберите срок сейчас и сохраните привычное подключение без паузы.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
@@ -1902,7 +1929,7 @@
     },
     "retention.t3": {
       "surface": "bot.retention",
-      "ru": "Напоминаем: доступ завершается через три дня. Продлите его заранее, чтобы сохранить привычное подключение.",
+      "ru": "До окончания доступа 3 дня. Продлите заранее и не оставайтесь без POKROV в неподходящий момент.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,
@@ -1911,7 +1938,7 @@
     },
     "retention.welcome": {
       "surface": "bot.retention",
-      "ru": "Профиль готов. Установите приложение, подключитесь и пользуйтесь доступом без ручных настроек.",
+      "ru": "POKROV готов. Установите приложение, нажмите «Подключить» и проверьте YouTube, TikTok и другие нужные сервисы — без ручных профилей.",
       "variables": [],
       "tone": "premium",
       "allowed_public": false,

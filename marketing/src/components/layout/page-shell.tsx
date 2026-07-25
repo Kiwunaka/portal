@@ -11,14 +11,14 @@ export function PageShell({ children }: { children: ReactNode }) {
     brand: CANONICAL_PLATFORM_BRAND,
     cabinet: getCopyText("marketing.topbar.cabinet", "Кабинет"),
     cabinetHref: CANONICAL_WEBAPP_URL,
-    download: getCopyText("marketing.topbar.download", "Скачать"),
+    download: getCopyText("marketing.topbar.download", "Попробовать бесплатно"),
     downloadHref: MARKETING_CANONICAL_PATHS.install,
     menuClose: getCopyText("marketing.topbar.menu_close", "Закрыть меню"),
     menuOpen: getCopyText("marketing.topbar.menu_open", "Открыть меню"),
     nav: [
-      { href: "/#features", label: getCopyText("marketing.topbar.nav.features", "Возможности") },
-      { href: "/#how-it-works", label: getCopyText("marketing.topbar.nav.how", "Как это работает") },
-      { href: "/#pricing", label: getCopyText("marketing.topbar.nav.pricing", "Цены") },
+      { href: "/#features", label: getCopyText("marketing.topbar.nav.features", "Что откроется") },
+      { href: "/#how-it-works", label: getCopyText("marketing.topbar.nav.how", "3 шага") },
+      { href: "/#pricing", label: getCopyText("marketing.topbar.nav.pricing", "Тарифы от 99 ₽") },
       { href: "/#faq", label: getCopyText("marketing.topbar.nav.faq", "FAQ") },
     ],
   };

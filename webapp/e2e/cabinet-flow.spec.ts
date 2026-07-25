@@ -293,6 +293,7 @@ async function registerCabinetMocks(
     dashboard.is_active = options.isActive;
   }
   let tickets = [...mockTickets()];
+  let programApplications: Array<Record<string, unknown>> = [];
 
   await page.route("**/api/**", async (route) => {
     const request = route.request();
@@ -402,6 +403,64 @@ async function registerCabinetMocks(
         docs_url: "https://pokrov.space/news/",
         updated_at: "2030-01-01T00:00:00",
       });
+    }
+    if (path === "/api/client/device-pairing/codes" && request.method() === "POST") {
+      return json({
+        ok: true,
+        pairing: {
+          id: "pairing-e2e-1",
+          status: "active",
+          code_hint: "9XYZ",
+          code: "ABCD-9XYZ",
+          pairing_uri: "pokrov://pair?code=ABCD-9XYZ",
+          expires_at: "2035-01-01T00:10:00Z",
+          created_at: "2035-01-01T00:00:00Z",
+          claimed_at: null,
+          ttl_seconds: 600,
+        },
+      });
+    }
+    if (path === "/api/client/device-pairing/codes" && request.method() === "GET") {
+      return json({ ok: true, items: [] });
+    }
+    if (path === "/api/client/device-pairing/codes/pairing-e2e-1" && request.method() === "DELETE") {
+      return json({ ok: true, pairing: { id: "pairing-e2e-1", status: "cancelled", code_hint: "9XYZ" } });
+    }
+    if (path === "/api/client/programs" && request.method() === "GET") {
+      return json({
+        ok: true,
+        capabilities: [
+          { kind: "competitor_switch", title: "Переход от другого VPN", enabled: true, review: "manual", reward: "После проверки" },
+          { kind: "research", title: "Исследования и качественные баг-репорты", enabled: true, review: "manual", reward: "1, 3 или 7 дней" },
+          { kind: "team_pack", title: "Набор для команды", enabled: true, review: "manual", reward: "Персональное предложение" },
+          { kind: "affiliate", title: "Партнёрская программа", enabled: false, review: "not_accepting", reward: "Пока закрыта" },
+        ],
+        applications: programApplications,
+      });
+    }
+    if (path === "/api/client/programs/applications" && request.method() === "POST") {
+      const payload = JSON.parse(request.postData() || "{}");
+      const application = {
+        id: "program-e2e-1",
+        kind: payload.kind,
+        status: "submitted",
+        source_name: payload.source_name || null,
+        seats: payload.seats || null,
+        summary: payload.summary,
+        contact: payload.contact || null,
+        reward_days: 0,
+        rewarded: false,
+        decision_note: null,
+        created_at: "2030-01-01T00:00:00Z",
+        updated_at: "2030-01-01T00:00:00Z",
+        reviewed_at: null,
+      };
+      programApplications = [application];
+      return json({ ok: true, application });
+    }
+    if (path === "/api/client/programs/applications/program-e2e-1" && request.method() === "DELETE") {
+      programApplications = programApplications.map((row) => ({ ...row, status: "cancelled" }));
+      return json({ ok: true, application: programApplications[0] });
     }
     if (path === "/api/bonuses") {
       const channelBonus = sessionUser.bonuses.channel_bonus;
@@ -648,6 +707,7 @@ test.describe("Cabinet flow", () => {
     await expect(sidebar).toBeVisible();
     await expect(sidebar.locator("nav")).toContainText("Главная");
     await expect(sidebar.locator("nav")).toContainText("Доступ");
+    await expect(sidebar.locator("nav")).toContainText("Защита");
     await expect(sidebar.locator("nav")).toContainText("Помощь");
     await expect(sidebar.locator("nav")).toContainText("Аккаунт");
     await expect(sidebar.locator("nav")).not.toContainText("Статистика");
@@ -656,6 +716,17 @@ test.describe("Cabinet flow", () => {
     const siteLink = page.getByRole("link", { name: /^На сайт/i });
     await expect(siteLink).toBeVisible();
     await expect(siteLink).toHaveAttribute("href", /https:\/\/pokrov\.space\/?$/);
+  });
+
+  test("keeps server and device protection checks distinct", async ({ page }) => {
+    await page.goto("/protection/");
+
+    await expect(page.getByRole("heading", { name: "Сервер видит подключение" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("Туннель");
+    await expect(page.locator("main")).toContainText("DNS");
+    await expect(page.locator("main")).toContainText("Интернет / HTTPS");
+    await expect(page.locator("main")).toContainText("не выдаются за внешний leak-тест");
+    await expect(page.locator("main")).toContainText("Автоматических бесконечных повторов нет");
   });
 
   test("uses desktop navigation at 1280px without mobile navigation chrome", async ({ page }) => {
@@ -768,7 +839,7 @@ test.describe("Cabinet flow", () => {
     await page.goto("/dashboard/");
 
     await expect(page.getByRole("heading", { name: "Доступ активен" })).toBeVisible();
-    await expect(page.locator("main")).toContainText("Откройте приложение");
+    await expect(page.locator("main")).toContainText("Скачайте приложение POKROV");
     await expect(page.getByRole("link", { name: "Скачать приложение" })).toHaveCount(1);
     await expect(page.locator("main")).toContainText("Сводка");
     await expect(page.locator("main")).toContainText("Активировать код");
@@ -803,9 +874,10 @@ test.describe("Cabinet flow", () => {
     const drawer = page.getByTestId("mobile-cabinet-drawer");
     await expect(drawer).toBeVisible();
     const drawerNav = drawer.getByRole("navigation", { name: "Навигация кабинета" });
-    await expect(drawerNav.locator("a")).toHaveCount(4);
+    await expect(drawerNav.locator("a")).toHaveCount(5);
     await expect(drawerNav).toContainText("Главная");
     await expect(drawerNav).toContainText("Доступ");
+    await expect(drawerNav).toContainText("Защита");
     await expect(drawerNav).toContainText("Помощь");
     await expect(drawerNav).toContainText("Аккаунт");
     await expect(drawerNav).not.toContainText("Статистика");
@@ -981,7 +1053,7 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).toContainText("Подключений сейчас");
     await expect(page.locator("main")).toContainText("2 из 5");
     await expect(page.locator("main")).not.toContainText("Главное сейчас");
-    await expect(page.locator("main")).not.toContainText("Как добавить еще одно устройство");
+    await expect(page.locator("main")).toContainText("Добавить устройство");
 
     await page.goto("/statistics/");
     await expect(page).toHaveURL(/\/statistics\/?$/);
@@ -991,6 +1063,70 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).not.toContainText("Короткая картина");
     await expect(page.locator("main")).not.toContainText("pl.pokrov.space");
     await expect(page.locator("main")).not.toContainText("mock_token");
+  });
+
+  test("issues a one-time device code without exposing the subscription URL", async ({ page }) => {
+    await page.goto("/devices/");
+    await page.getByTestId("device-pairing-issue").click();
+
+    await expect(page.getByTestId("device-pairing-code")).toHaveText("ABCD-9XYZ");
+    await expect(page.locator("main")).toContainText("На новом устройстве откройте POKROV");
+    await expect(page.locator("main")).not.toContainText("mock_token");
+  });
+
+  test("searches fallback guides and the POKROV screen atlas on mobile", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/guides/");
+
+    await expect(page.getByRole("heading", { name: "Инструкции POKROV" })).toBeVisible();
+    const guideSearch = page.getByRole("searchbox", { name: "Найти задачу, кнопку или клиент" });
+    await guideSearch.fill("Happ");
+    await expect(page.getByText("Найдено:").locator("..")).toContainText("2");
+
+    const happGuide = page.locator("#fallback-happ");
+    await happGuide.getByText("Подключиться через Happ", { exact: true }).click();
+    await expect(happGuide).toContainText("Что делает каждая кнопка");
+    await expect(happGuide).toContainText("Provider ID");
+
+    await page.getByRole("button", { name: "Очистить поиск" }).click();
+    await page.getByRole("button", { name: "Fallback 7", exact: true }).click();
+    await expect(page.getByText("Найдено:").locator("..")).toContainText("7");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      await page.evaluate(() => document.documentElement.clientWidth),
+    );
+
+    await page.getByRole("link", { name: /Все экраны и кнопки POKROV/ }).click();
+    await expect(page).toHaveURL(/\/guides\/pokrov-app\/?$/);
+    await expect(page.getByRole("heading", { name: "Весь POKROV по экранам и кнопкам" })).toBeVisible();
+    await expect(page.getByText("Показано:").locator("..")).toContainText("20 из 20");
+
+    await page.getByRole("searchbox", { name: "Найти экран или кнопку" }).fill("DNS");
+    await expect(page.getByText("Показано:").locator("..")).toContainText("3 из 20");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+      await page.evaluate(() => document.documentElement.clientWidth),
+    );
+  });
+
+  test("submits a competitor-switch application without automatic reward", async ({ page }) => {
+    await page.goto("/programs/");
+    const competitorSelector = page.getByRole("button", { name: /Переход от другого VPN/ });
+    const researchSelector = page.getByRole("button", { name: /Исследования и качественные баг-репорты/ });
+    const affiliateSelector = page.getByRole("button", { name: /Партнёрская программа/ });
+    await expect(competitorSelector).toHaveAttribute("aria-pressed", "true");
+    await expect(researchSelector).toHaveAttribute("aria-pressed", "false");
+    await expect(affiliateSelector).toHaveAttribute("aria-pressed", "false");
+    await expect(affiliateSelector).toBeDisabled();
+    await researchSelector.click();
+    await expect(researchSelector).toHaveAttribute("aria-pressed", "true");
+    await competitorSelector.click();
+    const form = page.getByTestId("program-application-form");
+    await form.getByPlaceholder("Название сервиса").fill("Hiro VPN");
+    await form.getByPlaceholder("Кратко опишите задачу и ожидаемый результат").fill("Хочу перенести два устройства и сохранить быстрый видеомаршрут.");
+    await form.getByRole("button", { name: "Отправить на проверку" }).click();
+
+    await expect(page.locator("main")).toContainText("Заявка принята");
+    await expect(page.locator("main")).toContainText("Принята");
+    await expect(page.locator("main")).not.toContainText("+7 дн.");
   });
 
   test("keeps redeem as a compact activation task", async ({ page }) => {
@@ -1266,7 +1402,7 @@ test.describe("Cabinet flow", () => {
   test("stays inside a narrow mobile viewport for core cabinet pages", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
 
-    for (const route of ["/dashboard/", "/subscription/", "/devices/", "/support/"]) {
+    for (const route of ["/dashboard/", "/subscription/", "/devices/", "/protection/", "/support/"]) {
       await page.goto(route);
       await expect(page.locator("main")).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);

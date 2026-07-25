@@ -224,19 +224,19 @@ async function createPublicRubOrder(payload: {
 function describePromoContent(contentId: string): { title: string; body: string } {
   if (contentId === "redeem_key") {
     return {
-      title: "Уже есть код активации?",
-      body: "Проверьте его статус ниже и переходите к активации в приложении или кабинете.",
+      title: "Код уже на руках? Не платите второй раз",
+      body: "Проверьте его статус ниже и сразу активируйте в приложении или кабинете.",
     };
   }
   if (contentId === "telegram_bonus") {
     return {
-      title: "Telegram остается бонусом и способом восстановления",
+      title: "Доведите бесплатный старт до 10 дней",
       body: TELEGRAM_START_PROMISE,
     };
   }
   return {
-    title: "Поддержка при спорной оплате",
-    body: "Если оплата или активация кода не сработали, поддержка поможет проверить статус без лишних действий.",
+    title: "Платёж проверим",
+    body: "Если платёж или активация задержались, поддержка проверит статус и поможет продолжить с того же места.",
   };
 }
 
@@ -311,6 +311,8 @@ export default function CheckoutClient() {
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodChoice>("sbp");
   const [checkoutBusy, setCheckoutBusy] = useState(false);
 
+  // Fetch the catalog exactly once on mount: plan selection must not refetch.
+  // Selection is reconciled through a functional update instead of a dep.
   useEffect(() => {
     let cancelled = false;
 
@@ -444,48 +446,47 @@ export default function CheckoutClient() {
   return (
     <div className="pb-16">
       <section className="mx-auto flex max-w-3xl flex-col items-center gap-4 px-4 pt-12 pb-10 text-center sm:px-6 sm:pt-16">
-        <Chip tone="neutral">После 5 дней в приложении можно выбрать срок</Chip>
+        <Chip tone="neutral">POKROV PREMIUM · безлимитный трафик от 99 ₽</Chip>
         <Chip tone={checkoutReady ? "brand" : "neutral"}>
           <span className={cn("size-1.5 rounded-full", checkoutReady ? "bg-status-green" : "bg-ink-muted")} />
           {checkoutReady ? "Оплата доступна" : "Оплата временно недоступна"}
         </Chip>
         <h1 className="font-display text-[2rem] leading-[1.1] font-extrabold tracking-[-0.01em] text-ink sm:text-[2.5rem]">
-          Выберите срок доступа
+          Безлимитный VPN от 99 ₽
         </h1>
         <p className="max-w-lg text-base leading-relaxed text-ink-soft">
-          Сначала проверьте POKROV в приложении. Если всё нравится — выберите срок; цена, устройства и способ оплаты
-          видны заранее.
+          5 дней бесплатно без карты. Затем — безлимитный трафик, без тарифного ограничения скорости, до 5 устройств
+          и ни одного автосписания.
         </p>
       </section>
 
       <section className="mx-auto mb-10 grid max-w-6xl gap-4 px-4 sm:px-6 md:grid-cols-3">
         <Card className="flex flex-col gap-1.5">
-          <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-brand uppercase">Сначала попробовать</span>
-          <h3 className="text-[1.0625rem] font-semibold text-ink">5 дней без карты до оплаты</h3>
+          <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-brand uppercase">Без счётчика гигабайтов</span>
+          <h3 className="text-[1.0625rem] font-semibold text-ink">Безлимитный трафик</h3>
           <p className="text-[0.9375rem] leading-relaxed text-ink-soft">
-            Первый шаг остается за приложением: установите POKROV, нажмите «Подключить» и проверьте свои сервисы.
+            На платном сроке трафик не заканчивается и не требует покупки дополнительных пакетов.
           </p>
         </Card>
         <Card className="flex flex-col gap-1.5">
-          <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-brand uppercase">Потом продлить</span>
-          <h3 className="text-[1.0625rem] font-semibold text-ink">Сумма видна до оплаты</h3>
+          <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-brand uppercase">Без урезания по тарифу</span>
+          <h3 className="text-[1.0625rem] font-semibold text-ink">Без тарифного ограничения*</h3>
           <p className="text-[0.9375rem] leading-relaxed text-ink-soft">
-            Вы выбираете срок и видите итоговую сумму, лимит устройств и платформы до перехода к оплате. Код активируйте
-            в том профиле, который хотите продлить.
+            POKROV не режет скорость по тарифу. Фактическая скорость зависит от сети, устройства, локации и нагрузки.
           </p>
         </Card>
         <Card className="flex flex-col gap-1.5">
-          <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-brand uppercase">Если нужна помощь</span>
-          <h3 className="text-[1.0625rem] font-semibold text-ink">Поддержка рядом</h3>
+          <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-brand uppercase">Один аккаунт</span>
+          <h3 className="text-[1.0625rem] font-semibold text-ink">До 5 устройств</h3>
           <p className="text-[0.9375rem] leading-relaxed text-ink-soft">
-            Если оплата или активация не обновили статус, откройте поддержку: оператор продолжит один понятный кейс.
+            Android и Windows в одном аккаунте. Точный лимит каждого тарифа виден до оплаты.
           </p>
         </Card>
       </section>
 
       <section className="mx-auto grid max-w-6xl items-start gap-6 px-4 sm:px-6 lg:grid-cols-[1.5fr_1fr]">
         <Card className="flex flex-col gap-7">
-          <h2 className="font-display text-[1.375rem] font-bold text-ink">Выберите срок</h2>
+          <h2 className="font-display text-[1.375rem] font-bold text-ink">Выберите тариф</h2>
           <div className="flex flex-col gap-2.5">
             {plans.map((plan) => {
               const planPreviewDiscountPercent = planDiscountPercent(plan.code, promoCode);
@@ -526,13 +527,12 @@ export default function CheckoutClient() {
           </div>
 
           <div className="flex flex-col gap-2.5">
-            <strong className="text-[0.9375rem] font-semibold text-ink">Как это работает</strong>
+            <strong className="text-[0.9375rem] font-semibold text-ink">Что вы получаете</strong>
             <ul className="m-0 flex list-none flex-col gap-2 p-0 text-[0.875rem] leading-relaxed text-ink-soft">
-              <li>Первое валидное устройство получает 5 дней бесплатного доступа без карты.</li>
-              <li>
-                После бесплатного периода остается базовый режим: {catalog?.free_tier?.traffic_limit_gb || 5} ГБ на {catalog?.free_tier?.cycle_days || 30} дней.
-              </li>
-              <li>Перед оплатой видны срок, устройства, цена и платформы.</li>
+              <li>Безлимитный трафик на любом платном сроке.</li>
+              <li>Без тарифного ограничения скорости; фактическая скорость зависит от условий подключения.</li>
+              <li>До 5 устройств на основных тарифах; точный лимит выбранного плана виден до оплаты.</li>
+              <li>5 дней бесплатного доступа на первом подтверждённом устройстве — без карты.</li>
               <li>Код после оплаты продлевает тот профиль, где вы его активируете: в приложении или кабинете.</li>
               <li>{TELEGRAM_START_PROMISE}</li>
             </ul>
@@ -575,10 +575,10 @@ export default function CheckoutClient() {
         </Card>
 
         <Card className="flex flex-col gap-5 lg:sticky lg:top-24">
-          <h2 className="font-display text-[1.375rem] font-bold text-ink">Итог</h2>
+          <h2 className="font-display text-[1.375rem] font-bold text-ink">К оплате</h2>
           <p className="text-[0.875rem] leading-relaxed text-ink-soft">
-            После оплаты придет код активации. Он продлит тот профиль POKROV, где вы его введете: в приложении или
-            кабинете.
+            После разовой оплаты придёт код. Введите его в нужном профиле POKROV — в приложении или кабинете — и срок
+            обновится без автосписаний.
           </p>
 
           <dl className="m-0 flex flex-col gap-2 border-y border-line py-4 text-[0.9375rem]">
@@ -647,7 +647,7 @@ export default function CheckoutClient() {
 
           {checkoutReady ? (
             <Button onClick={startPublicCheckout} disabled={checkoutBusy} size="lg" className="w-full">
-              Перейти к оплате
+              Оплатить {formatPrice(activePlan.amount_rub, discountPercent)}
             </Button>
           ) : (
             <span
@@ -677,7 +677,7 @@ export default function CheckoutClient() {
               Продолжить в Telegram
             </Button>
             <Button href={MARKETING_CANONICAL_PATHS.install} variant="ghost" className="w-full">
-              Сначала установить приложение
+              Сначала забрать 5 дней бесплатно
             </Button>
           </div>
 
@@ -691,7 +691,7 @@ export default function CheckoutClient() {
           ) : null}
 
           <div className="flex flex-col gap-2">
-            <strong className="text-[0.9375rem] font-semibold text-ink">Подсказки рядом с оплатой</strong>
+            <strong className="text-[0.9375rem] font-semibold text-ink">Перед оплатой — самое важное</strong>
             <ul className="m-0 flex list-none flex-col gap-2 p-0 text-[0.875rem] leading-relaxed text-ink-soft">
               {marketingPromoIds.map((contentId) => {
                 const content = describePromoContent(contentId);

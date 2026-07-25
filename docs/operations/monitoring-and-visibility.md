@@ -423,6 +423,7 @@ Operator-facing rendering rule:
 
 - distinguish real `0` from missing telemetry; `RAM`, disk totals, and free space must show that metrics did not arrive when totals are absent
 - current node-card latency and dataplane probe in admin are collected from the control-plane host `brain`
+- `panel_latency_ms` measures the full `brain -> panel admin API` transaction; it is control-plane latency and must not be labeled or interpreted as user VPN/dataplane latency
 - do not confuse the `brain -> node` control-plane probe with the separate external RU probe result
 - node cards should show `provisioned_clients_count` separately from any `online_connections_hint`; provisioned count is configured key inventory, not online load
 - current Ethernet throughput in admin comes from the live panel/server metrics collected by `brain`
@@ -442,8 +443,13 @@ Operational rule:
 - `portal-daily-healthcheck.timer` runs on `brain` once per day at `06:30 UTC` / `09:30 MSK` and writes a JSON summary under `/root/portal_bot/health_reports/`
 - the daily summary checks API health, `portal-api-healthcheck.timer`, `portal-node-metrics.timer`, per-node metrics freshness, DB `user_nodes` expected counts, and real 3x-ui managed-client counts
 - daily panel counts must compare only managed identities (`tgId`, `User_<tg_id>`, or a panel UUID that maps to an expected POKROV user); legacy/manual 3x-ui rows without a POKROV managed identity are tracked as `unknown_rows` and require a separate cleanup decision before deletion
+- expected access is satisfied only by an enabled panel client; disabled retained entries stay in inventory counters but do not count as provisioned access
+- enabled managed identities outside their expected pool are reported as one deduplicated access-drift issue with unique-identity and placement counts; disabled unexpected entries do not page by themselves
 - retained `user_nodes` rows for inactive or retired access are reported in the JSON summary but must not page operators by themselves when panel managed identities match the current expected users
 - disabled nodes and control-plane rows must stay visible in capacity payloads when useful, but must not create `node_capacity:*` active alerts merely because their disabled state is intentional
+- CPU, RAM, disk, network, panel-API latency, error-rate, and client-density alerts require three consecutive samples by default (`NODE_METRICS_SUSTAINED_SAMPLES`); a single current snapshot must never bypass this window
+- a routing `hard_reject` still excludes the node immediately from smart-connect, but Telegram/durable `node_capacity:*` paging requires three consecutive runtime samples by default (`NODE_CAPACITY_ALERT_SUSTAINED_SAMPLES`)
+- `error_rate_high` is suppressed while the same node has a confirmed capacity hard-reject incident and clears after the recent health window is healthy, preventing a delayed duplicate incident after recovery
 - node metrics collection must parse both 3x-ui `settings` response shapes, JSON string and object/dict, before deriving `provisioned_clients_count`
 - `portal-node-observer.timer` must stay healthy on every rollout node where `observer_push_secret` is configured
 - `PORTAL_OBSERVER_SOURCE_TIMEZONE` is required on observer nodes whose Xray log timestamps are naive; use `UTC`, `Z`, or a strict fixed offset such as `+03:00` or `-04:00`. IANA names and missing, ambiguous, invalid, or out-of-bounds values are fail-closed: affected lines increment `parse_error_count` and create no connection evidence.
@@ -465,14 +471,15 @@ Runtime telemetry wave `2026-06-02`:
 - `/api/admin/funnel/summary` combines anonymous site events with known `events`, `pay_attempts`, and `external_orders` to show the operator path: site entry, cabinet/bot open, checkout start, paid confirmation, and connection confirmation
 - funnel counts are operational direction signals, not billing reconciliation; paid truth still comes from signed provider callbacks and fulfillment records
 
-Admin ops app wave `2026-07-06`, command-center redesign completed locally on
-`2026-07-17`:
+Admin ops app wave `2026-07-06`, command-center redesign updated locally on
+`2026-07-23`:
 
-- `adminapp/` is the dedicated operator UI for `https://admin.pokrov.space/`; it is desktop-first, Russian-language, action-first, and exposes 15 direct route modules while keeping mobile focused on triage/status
-- the first screen is "Требует действий": critical/warning nodes, stuck payments, provider/free-tier limits, suspicious key pressure, active alerts, and fresh tickets, followed by revenue, online, node health, and funnel summaries
+- `adminapp/` is the dedicated operator UI for `https://admin.pokrov.space/`; it is desktop-first, Russian-language, action-first, and exposes 15 direct route modules in a compact light top navigation while keeping mobile focused on triage/status
+- the active shell has no fixed desktop sidebar; the overview is a light triage ledger with an incident feed, selected evidence, factual next-step links, separate Brain/RU freshness, and a compact fleet strip
+- the first screen uses only its compact overview and RU-latest reads; selecting an incident does not fetch another payload, while charts, full alert actions, and heavy entity cards remain route-local
 - global admin search routes operators into user investigation by Telegram ID, username, display name, install ID, order ID, node code, key/email, or related operator identifiers
 - v1 does not require Grafana, Beszel, Netdata, VictoriaMetrics, or provider APIs; first-party Postgres tables, collected node samples, usage rollups, and admin API snapshots are the source of truth
-- `/api/admin/ops/overview` is the top-level ops snapshot combining `/api/admin/summary`, metrics freshness, node capacity, free-tier burn, provider cap status, and durable active alerts
+- `/api/admin/ops/overview` is the top-level ops snapshot combining a purpose-built compact user/ticket/node summary, one metrics-freshness snapshot, node capacity, free-tier burn, provider cap status, and already durable active alerts; it must not invoke the full `/api/admin/summary` or refresh the alert engine on a browser read
 - `/api/admin/online/users` is the bounded live online aggregate for the "Сейчас онлайн" screen; it includes user identity, subscription type, online node/count fields, pressure score, and risk flags, and must not expose raw IP addresses in shared lists
 - raw/recent IP details are allowed only inside the individual user card, using observer-backed investigation data already available to admins
 - `/api/admin/payments/summary?period=today|7d|30d` is the payments aggregate for revenue, paid count, pending/manual-review/failed counts, and abandoned buy-click/checkout counts
@@ -490,7 +497,8 @@ Admin ops app wave `2026-07-06`, command-center redesign completed locally on
 - `/api/admin/alerts`, `/api/admin/alerts/{id}/ack`, and `/api/admin/alerts/{id}/silence` own durable alert center behavior; alert rows store severity, source, status, first/last seen, resolved state, ack, silence window, and Telegram delivery status
 - durable alert sources in v1 are free cap, provider cap, node metrics freshness, node capacity, and selected security/admin error counters
 - `portal_bot/worker.py` runs `admin_ops_alert_refresh` on a short interval so durable alerts and Telegram admin notifications do not depend on an operator opening `adminapp/`
-- Telegram admin notifications for new warning/critical and resolved critical alerts must include only short titles and fingerprints; do not include raw config payloads, API tokens, provider secrets, panel passwords, or full metadata JSON
+- the overview reads its active-alert queue from the same durable snapshot and does not issue a second `/api/admin/alerts` request; the dedicated alerts route keeps its own read/ack/silence workflow
+- Telegram admin notifications for new and resolved warning/critical alerts must include only short titles and fingerprints; do not include raw config payloads, API tokens, provider secrets, panel passwords, or full metadata JSON
 
 Primary repository touchpoints:
 

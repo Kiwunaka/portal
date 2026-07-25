@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { RefreshCw, ShieldCheck } from "lucide-react";
+import { Banknote, CircleCheck, Clock3, RefreshCw, ShieldCheck, ShoppingCart } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { ActionIntentDialog } from "@/components/ops/action-intent-dialog";
 import { MissingData } from "@/components/ops/missing-data";
 import { RouteBoundary } from "@/components/ops/route-boundary";
 import type { OpsShellStatus } from "@/components/ops/shell-status";
-import { Badge, Button, Card, DataTable, EmptyState, SectionTitle, type Tone } from "@/components/ui";
+import { Badge, Button, Card, DataTable, EmptyState, MetricCell, MetricStrip, SectionTitle, type Tone } from "@/components/ui";
 import type { ActionIntentRequest } from "@/lib/admin-api/actions";
 import { AdminApiError } from "@/lib/admin-api/client";
 import { fetchPaymentOrder, fetchPaymentOrders, fetchPaymentSummary, type PaymentOrder, type PaymentPeriod } from "@/lib/admin-api/revenue";
@@ -122,27 +122,25 @@ export function PaymentsPage({ onShellStatus }: { onShellStatus?: (status: OpsSh
   const attention = summary.data?.attention;
   const revenue = summary.data?.revenue;
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="ops-page space-y-3">
+      <div className="ops-route-toolbar">
         <div className="flex flex-wrap gap-2 text-xs"><Badge tone={summary.error || orders.error ? "warning" : summary.data || orders.data ? "success" : "neutral"}>{summary.error || orders.error ? "Часть источников недоступна" : summary.data || orders.data ? "Платёжные данные получены" : "Платёжные данные ещё не получены"}</Badge><span className="text-[color:var(--atlas-text-soft)]">Callback и provider payload доступны только как безопасные статусы.</span></div>
         <Button tone="secondary" disabled={summary.refreshing || orders.refreshing} onClick={reloadAll}><RefreshCw size={15} className={summary.refreshing || orders.refreshing ? "animate-spin" : ""} /> Обновить</Button>
       </div>
 
-      <section aria-labelledby="payments-kpi">
+      <section aria-label="Финансовая сводка">
         <div className="flex flex-wrap items-end justify-between gap-3"><SectionTitle title="Деньги" description="Выручка, подтверждённые оплаты и диагностические потери. Нулевые значения показаны только когда источник действительно вернул 0." /><label className="text-xs font-semibold">Период<select aria-label="Период платежей" value={urlState.period} onChange={(event) => replaceUrlState<PaymentsUrlState>({ period: event.target.value as PaymentPeriod }, PAYMENT_URL_CODECS)} className="ml-2 min-h-10 rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3"><option value="today">Сегодня</option><option value="7d">7 дней</option><option value="30d">30 дней</option></select></label></div>
         <RouteBoundary loading={summary.loading} refreshing={summary.refreshing} error={summary.error} hasData={summary.data !== null} retryLabel="Повторить сводку" onRetry={summary.reload}>
-          <div id="payments-kpi" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              ["Выручка", revenue?.amount, revenue?.currency ? ` ${revenue.currency}` : ""],
-              ["Оплачено", revenue?.paid_count, ""],
-              ["Зависшие", attention?.problem_count, ""],
-              ["Checkout без оплаты", summary.data?.abandoned.checkout_not_paid, ""],
-            ].map(([label, value, suffix]) => <Card key={String(label)}><p className="text-xs text-[color:var(--atlas-text-soft)]">{label}</p>{finite(value) === null ? <div className="mt-2"><MissingData /></div> : <p className="mt-2 text-2xl font-semibold tabular-nums">{numberText(value, String(suffix))}</p>}</Card>)}
-          </div>
+          <MetricStrip label="Показатели платежей">
+            <MetricCell icon={<Banknote aria-hidden="true" size={17} />} label="Выручка" value={finite(revenue?.amount) === null ? <MissingData /> : numberText(revenue?.amount, revenue?.currency ? ` ${revenue.currency}` : "")} detail="Подтверждённые оплаты" tone="success" />
+            <MetricCell icon={<CircleCheck aria-hidden="true" size={17} />} label="Оплачено" value={finite(revenue?.paid_count) === null ? <MissingData /> : numberText(revenue?.paid_count)} detail="За выбранный период" tone="success" />
+            <MetricCell icon={<Clock3 aria-hidden="true" size={17} />} label="Зависшие" value={finite(attention?.problem_count) === null ? <MissingData /> : numberText(attention?.problem_count)} detail="Требуют ручной проверки" tone={Number(attention?.problem_count || 0) > 0 ? "warning" : "success"} />
+            <MetricCell icon={<ShoppingCart aria-hidden="true" size={17} />} label="Checkout без оплаты" value={finite(summary.data?.abandoned.checkout_not_paid) === null ? <MissingData /> : numberText(summary.data?.abandoned.checkout_not_paid)} detail="Диагностическая потеря" tone={Number(summary.data?.abandoned.checkout_not_paid || 0) > 0 ? "warning" : "neutral"} />
+          </MetricStrip>
         </RouteBoundary>
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.65fr)]">
+      <section className="ops-workspace xl:grid-cols-[minmax(0,1.38fr)_minmax(21rem,0.62fr)]">
         <div className="space-y-4">
           <Card><SectionTitle title="Требуют внимания" description="Зависший статус заказа и состояние provider callback показаны раздельно." />{summary.data?.problem_orders.length ? <DataTable data={summary.data.problem_orders} columns={columns} empty="Нет проблемных заказов" /> : summary.data ? <EmptyState title="Очередь пуста" description="Источник не вернул проблемных заказов за выбранный период." /> : <MissingData />}</Card>
           <Card>
@@ -152,7 +150,7 @@ export function PaymentsPage({ onShellStatus }: { onShellStatus?: (status: OpsSh
         </div>
 
         <aside aria-label="Карточка платёжного заказа">
-          <Card className="xl:sticky xl:top-4">
+          <Card className="xl:sticky xl:top-[7.75rem]">
             <SectionTitle title={selected ? `Заказ ${selected.order_id}` : "Карточка заказа"} description="Детали загружаются после выбора строки; callback evidence остаётся неизменяемым." />
             {!selectedHint ? <EmptyState title="Выберите заказ" description="Откройте строку из очереди или реестра." /> : (
               <RouteBoundary loading={detail.loading} refreshing={detail.refreshing} error={detail.error} hasData={selected !== null} retryLabel="Повторить карточку" onRetry={detail.reload}>

@@ -24,13 +24,13 @@ export function TelegramBonus() {
               <h3 className="font-display text-[1.25rem] font-bold text-ink">
                 {getCopyText(
                   "marketing.home.telegram.title",
-                  `Ещё +${facts.telegram_reward.days} дней — за подписку на канал`,
+                  `Доведите бесплатный старт до ${facts.trial.days + facts.telegram_reward.days} дней`,
                 )}
               </h3>
               <p className="max-w-lg text-[0.9375rem] leading-relaxed text-ink-soft">
                 {getCopyText(
                   "marketing.home.telegram.text",
-                  "Подпишитесь на наш Telegram-канал и заберите бонус в приложении — там же будут новости и статусы работы.",
+                  "Привяжите Telegram, подпишитесь на официальный канал и заберите ещё 5 дней в приложении. Там же публикуем обновления и статусы работы.",
                 )}
               </p>
             </div>
@@ -42,7 +42,7 @@ export function TelegramBonus() {
             rel="noopener noreferrer"
             className="shrink-0"
           >
-            {getCopyText("marketing.home.telegram.cta", "Открыть канал")}
+            {getCopyText("marketing.home.telegram.cta", "Забрать ещё 5 дней")}
           </Button>
         </div>
       </Reveal>

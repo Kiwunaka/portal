@@ -11,18 +11,18 @@ export function FinalCta() {
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-16 text-center sm:px-6 sm:py-24">
         <Reveal className="flex flex-col items-center gap-4">
           <h2 className="font-display max-w-2xl text-[2rem] leading-[1.12] font-extrabold tracking-[-0.01em] text-ink sm:text-[2.5rem]">
-            {getCopyText("marketing.home.final.title", `Проверьте сами — ${facts.trial.days} дней бесплатно`)}
+            {getCopyText("marketing.home.final.title", "Подключите POKROV VPN за минуту")}
           </h2>
           <p className="max-w-lg text-base leading-relaxed text-ink-soft">
             {getCopyText(
               "marketing.home.final.sub",
-              "Установка занимает минуту, карта не нужна. Если что-то не заработает — поддержка рядом.",
+              `YouTube, TikTok, ChatGPT и нужные сайты — одной кнопкой. ${facts.trial.days} дней бесплатно без карты, затем безлимитный трафик от 99 ₽.`,
             )}
           </p>
         </Reveal>
         <Reveal className="flex flex-wrap items-center justify-center gap-4">
           <Button href={MARKETING_CANONICAL_PATHS.install} size="lg">
-            {getCopyText("marketing.home.final.cta", "Скачать бесплатно")}
+            {getCopyText("marketing.home.final.cta", "Подключить VPN бесплатно")}
           </Button>
           <a
             href={CANONICAL_SUPPORT_BOT_URL}
@@ -30,7 +30,7 @@ export function FinalCta() {
             rel="noopener noreferrer"
             className="text-[0.9375rem] font-semibold text-brand no-underline hover:text-brand-strong"
           >
-            {getCopyText("marketing.home.final.support", "Задать вопрос поддержке")}
+            {getCopyText("marketing.home.final.support", "Помогите мне подключиться")}
           </a>
         </Reveal>
       </div>

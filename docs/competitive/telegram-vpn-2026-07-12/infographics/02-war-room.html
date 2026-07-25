@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1600, initial-scale=1">
+  <meta name="source-sha256" content="883cc925ab0171cf42658c7dda232f5fb20de7a471e703439d6b971926cfdbd1">
+  <title>POKROV — карта захвата внимания</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 1600px; min-width: 1600px; background: #eef2ef; }
+    body { color: #16211c; font-family: "Golos Text", Arial, system-ui, sans-serif; }
+    .infographic { width: 1600px; height: 5000px; overflow: hidden; position: relative; }
+    svg { display: block; overflow: visible; }
+    .section-header { margin: 0 0 44px; }
+    .section-header__kicker { margin: 0 0 12px; font-size: 22px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .section-header__title { margin: 0; font-size: 54px; line-height: 1.05; }
+    .section-header__note { margin: 16px 0 0; max-width: 1180px; font-size: 24px; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <main class="infographic war-room" data-source-sha256="883cc925ab0171cf42658c7dda232f5fb20de7a471e703439d6b971926cfdbd1"><style>
+    .war-room { background:#111820; --paper:#f2eee6; --muted:#aeb9bc; --line:#344149; --amber:#D88914; --risk:#D24A3A; --opportunity:#147A4B; --opportunity-text:#72d3a7; --body-size:28px; --note-size:22px; --label-size:24px; color:var(--paper); }
+    .war-section { position:absolute; left:0; width:1600px; padding:24px 96px; overflow:hidden; border-bottom:1px solid var(--line); }
+    .war-section[data-section="hero and threat summary"] { padding-top:88px; }
+    .war-section[data-section="aggression leaderboard"] { padding-top:16px; padding-bottom:16px; }
+    .war-section[data-section="POKROV moat and vulnerable flank"] { padding-top:12px; padding-bottom:12px; }
+    .war-section[data-section="POKROV moat and vulnerable flank"] .section-header { margin-bottom:10px; }
+    .war-section[data-section="attack window and evidence footer"] { padding-top:0; padding-bottom:88px; }
+    .war-section:nth-of-type(even) { background:#151e26; } .section-header { margin-bottom:18px; }
+    .section-header__kicker { color:var(--amber); font-size:var(--label-size); } .section-header__title { font-size:42px; }
+    .section-header__note { color:var(--muted); font-size:var(--note-size); margin-top:7px; }
+    .hero-grid { display:grid; grid-template-columns:1.45fr .8fr; gap:68px; align-items:end; height:100%; padding-bottom:38px; }
+    .eyebrow { color:var(--amber); font-size:var(--label-size); font-weight:800; letter-spacing:.13em; } h1 { margin:18px 0 24px; font-size:78px; line-height:.95; letter-spacing:-.045em; }
+    .hero-copy { margin:0; max-width:900px; color:#d8dfe0; font-size:var(--body-size); line-height:1.4; } .threat-summary { padding:28px; border:1px solid var(--line); border-radius:22px; background:#0c1217; }
+    .threat-summary b { display:block; color:var(--amber); font-size:var(--label-size); } .threat-summary strong { display:block; margin:12px 0; font-size:44px; } .threat-summary p { margin:0; color:var(--muted); font-size:var(--body-size); line-height:1.38; }
+    .threat-grid,.mechanics-grid,.risk-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:18px; }
+    .threat-card { min-height:280px; padding:24px; border:1px solid var(--line); border-radius:18px; background:#0e151b; }
+    .threat-card span { color:var(--amber); font-size:var(--label-size); font-weight:800; letter-spacing:.08em; } .threat-card h3 { margin:28px 0 16px; font-size:32px; line-height:1.15; }
+    .threat-card p,.mechanic-card p { color:var(--muted); font-size:var(--body-size); line-height:1.36; }
+    .score-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:7px 12px; }
+    .score-card { min-height:102px; padding:8px 12px; border:1px solid var(--line); border-radius:12px; background:#0d141a; }
+    .score-card div { display:flex; justify-content:space-between; font-size:var(--body-size); } .score-card b { color:var(--paper); font-size:30px; }
+    .score-card span { display:block; margin-top:2px; color:var(--muted); font-size:var(--label-size); line-height:1.08; }
+    .no-score-row { display:flex; gap:22px; align-items:center; margin-top:9px; padding:8px 14px; border:1px solid var(--line); font-size:var(--label-size); }
+    .no-score-row b { color:var(--amber); } .mechanics-grid { grid-template-columns:repeat(5,1fr); gap:14px; }
+    .mechanic-card { min-height:345px; padding:18px; border:1px solid var(--line); border-radius:18px; }
+    .mechanic-card>span { color:var(--amber); font-size:var(--label-size); } .mechanic-card h3 { margin:12px 0 18px; font-size:32px; }
+    .mechanic-card p { margin:0; } .mechanic-card p b { color:var(--paper); }
+    .cadence-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+    .cadence-card { min-height:390px; padding:18px; border:1px solid var(--line); border-radius:16px; }
+    .cadence-card div { display:flex; justify-content:space-between; gap:8px; font-size:var(--body-size); } .cadence-card p { margin:16px 0 12px; color:#d1d9da; font-size:var(--body-size); line-height:1.35; }
+    .cadence-card span { color:var(--muted); font-size:var(--label-size); line-height:1.3; } .risk-card { min-height:370px; padding:18px; border-top:4px solid var(--risk); border-radius:14px; background:#0c1318; }
+    .risk-card h3 { margin:0 0 16px; color:var(--risk); font-size:30px; } ul { margin:0; padding-left:26px; }
+    li { margin:0 0 8px; font-size:var(--body-size); line-height:1.25; } .risk-card li::marker { color:var(--risk); }
+    .position-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:22px; } .position-card { min-height:315px; padding:14px 20px; border:1px solid var(--line); border-radius:18px; }
+    .position-card h3 { margin:0 0 12px; font-size:30px; } .position-card[data-pokrov-side="moat"] { border-color:var(--opportunity); }
+    .position-card[data-pokrov-side="moat"] h3,.position-card[data-pokrov-side="moat"] li::marker { color:var(--opportunity); }
+    .footer-grid { display:grid; grid-template-columns:1.8fr 1fr; gap:24px; align-items:start; } .attack-window { display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+    .attack-label { display:block; margin-bottom:6px; color:var(--opportunity-text); font-size:var(--body-size); } .priority { padding:4px 6px; border:1px solid var(--opportunity); border-radius:14px; color:#bcebd7; font-size:var(--label-size); line-height:1.1; }
+    .source { color:var(--muted); font-size:var(--label-size); line-height:1.15; } .source code { color:var(--paper); word-break:break-all; }
+  </style>
+
+<section class="war-section" data-section="hero and threat summary" style="top: 0px; height: 600px">
+  <div class="hero-grid"><div><div class="eyebrow">POKROV · WAR ROOM · 2026-07-12 · ПОСТЫ 2026-05-12 — 2026-07-12</div><h1>Карта захвата внимания</h1><p class="hero-copy">Кто давит призами, кто покупает партнёров, кто вывозит продуктом. Канальные сигналы не доказывают оплату, удержание или VPN MAU.</p></div><aside class="threat-summary"><b>СИЛЬНЕЙШИЙ ВИДИМЫЙ СИГНАЛ</b><strong>HitVPN · 5,0</strong><p>аналитическая шкала 0–5 · смешанные данные. Все score — аналитический вывод, не коммерческая метрика.</p></aside></div>
+</section>
+
+<section class="war-section" data-section="market threat classes" style="top: 600px; height: 780px">
+  <header class="section-header">
+  <p class="section-header__kicker">01 · КЛАССЫ ДАВЛЕНИЯ</p>
+  <h2 class="section-header__title">Четыре видимых контура</h2>
+  <p class="section-header__note">Размещение основано на retained dataset; класс не доказывает источник оплаты или качество аудитории.</p>
+</header><div class="threat-grid"><article class="threat-card">
+    <span>SCALE + APP MOAT</span><h3>HitVPN · Sota · Lagom · Batya</h3><p>аналитический вывод: app-store footprint — видимый moat</p>
+  </article><article class="threat-card">
+    <span>PRIZE MACHINE</span><h3>HitVPN · Batya</h3><p>видимый источник: повторяющиеся призовые циклы</p>
+  </article><article class="threat-card">
+    <span>CREATOR / AFFILIATE</span><h3>Atlanta</h3><p>видимый источник: creators, bounty, referral и partner offer</p>
+  </article><article class="threat-card">
+    <span>UTILITY / PROXY</span><h3>Luma · Cats VPN · Nosok VPN</h3><p>аналитический вывод по proxy, gate и utility-сигналам</p>
+  </article></div>
+</section>
+
+<section class="war-section" data-section="aggression leaderboard" style="top: 1380px; height: 820px">
+  <header class="section-header">
+  <p class="section-header__kicker">02 · AGGRESSION</p>
+  <h2 class="section-header__title">Лидерборд давления</h2>
+  <p class="section-header__note">Все значения — аналитическая шкала 0–5; evidence class указывает основание, а не точность бизнес-эффекта.</p>
+</header><div class="score-grid"><article class="score-card" data-competitor-id="hitvpn">
+    <div><strong>HitVPN</strong><b>5,0</b></div>
+    <span>аналитическая шкала 0–5</span><span>смешанные данные</span>
+  </article><article class="score-card" data-competitor-id="atlanta-vpn">
+    <div><strong>Atlanta</strong><b>5,0</b></div>
+    <span>аналитическая шкала 0–5</span><span>подтверждено</span>
+  </article><article class="score-card" data-competitor-id="batya-vpn">
+    <div><strong>Batya</strong><b>5,0</b></div>
+    <span>аналитическая шкала 0–5</span><span>смешанные данные</span>
+  </article><article class="score-card" data-competitor-id="luma-vpn">
+    <div><strong>Luma VPN</strong><b>4,5</b></div>
+    <span>аналитическая шкала 0–5</span><span>смешанные данные</span>
+  </article><article class="score-card" data-competitor-id="platina-vpn">
+    <div><strong>VPN Platina</strong><b>4,5</b></div>
+    <span>аналитическая шкала 0–5</span><span>смешанные данные</span>
+  </article><article class="score-card" data-competitor-id="genvpn">
+    <div><strong>GenVPN</strong><b>4,0</b></div>
+    <span>аналитическая шкала 0–5</span><span>подтверждено</span>
+  </article><article class="score-card" data-competitor-id="groza-vpn">
+    <div><strong>GROZA</strong><b>4,0</b></div>
+    <span>аналитическая шкала 0–5</span><span>смешанные данные</span>
+  </article><article class="score-card" data-competitor-id="cats-vpn">
+    <div><strong>Cats VPN</strong><b>3,5</b></div>
+    <span>аналитическая шкала 0–5</span><span>смешанные данные</span>
+  </article><article class="score-card" data-competitor-id="nosok-vpn">
+    <div><strong>Nosok VPN</strong><b>3,5</b></div>
+    <span>аналитическая шкала 0–5</span><span>подтверждено</span>
+  </article><article class="score-card" data-competitor-id="shuka-vpn">
+    <div><strong>Shuka</strong><b>3,5</b></div>
+    <span>аналитическая шкала 0–5</span><span>подтверждено</span>
+  </article><article class="score-card" data-competitor-id="durev-vpn">
+    <div><strong>Durev</strong><b>3,5</b></div>
+    <span>аналитическая шкала 0–5</span><span>смешанные данные</span>
+  </article><article class="score-card" data-competitor-id="nashvpn">
+    <div><strong>NashVPN</strong><b>3,0</b></div>
+    <span>аналитическая шкала 0–5</span><span>смешанные данные</span>
+  </article><article class="score-card" data-competitor-id="quattro">
+    <div><strong>Quattro</strong><b>2,5</b></div>
+    <span>аналитическая шкала 0–5</span><span>вывод по сигналам</span>
+  </article><article class="score-card" data-competitor-id="mori-vpn">
+    <div><strong>MORI</strong><b>2,5</b></div>
+    <span>аналитическая шкала 0–5</span><span>смешанные данные</span>
+  </article><article class="score-card" data-competitor-id="blancvpn">
+    <div><strong>BlancVPN</strong><b>2,0</b></div>
+    <span>аналитическая шкала 0–5</span><span>смешанные данные</span>
+  </article><article class="score-card" data-competitor-id="opengate-vpn">
+    <div><strong>OpenGate</strong><b>1,5</b></div>
+    <span>аналитическая шкала 0–5</span><span>смешанные данные</span>
+  </article><article class="score-card" data-competitor-id="net4ebur">
+    <div><strong>4ebur</strong><b>1,5</b></div>
+    <span>аналитическая шкала 0–5</span><span>вывод по сигналам</span>
+  </article></div><div class="no-score-row"><b>НЕТ ОЦЕНКИ</b><span data-no-score="sota-vpn">Sota · вывод по сигналам</span><span data-no-score="lagom-vpn">Lagom · вывод по сигналам</span></div>
+</section>
+
+<section class="war-section" data-section="observed attack mechanics" style="top: 2200px; height: 800px">
+  <header class="section-header">
+  <p class="section-header__kicker">03 · МЕХАНИКИ</p>
+  <h2 class="section-header__title">Наблюдаемые ходы</h2>
+  <p class="section-header__note">Видимый источник и аналитический вывод разделены; причинность и продуктовая конверсия не измерены.</p>
+</header><div class="mechanics-grid"><article class="mechanic-card"><span>смешанные данные</span>
+    <h3>HitVPN</h3><p><b>Видимый источник:</b> iPhone loop + требование подписки на канал и подключения бота.</p>
+  </article><article class="mechanic-card"><span>подтверждено</span>
+    <h3>Atlanta</h3><p><b>Видимый источник:</b> creators + 50 RUB bounty + 30% referral + 50% partner offer.</p>
+  </article><article class="mechanic-card"><span>смешанные данные</span>
+    <h3>Batya</h3><p><b>Видимый источник:</b> непрерывные призы + review reward + fear sales.</p>
+  </article><article class="mechanic-card"><span>смешанные данные</span>
+    <h3>Luma VPN</h3><p><b>Видимый источник:</b> proxy-to-paid funnel; связь источника и результата — аналитический вывод.</p>
+  </article><article class="mechanic-card"><span>подтверждено</span>
+    <h3>Nosok VPN</h3><p><b>Видимый источник:</b> placement reach 568765 + mandatory gate.</p>
+  </article></div>
+</section>
+
+<section class="war-section" data-section="cadence coexisting with decline" style="top: 3000px; height: 660px">
+  <header class="section-header">
+  <p class="section-header__kicker">04 · CADENCE × ДИНАМИКА</p>
+  <h2 class="section-header__title">Давление сосуществует и со спадом</h2>
+  <p class="section-header__note">GenVPN, NashVPN и MORI снижались; BlancVPN показывает низкое давление и продуктовую коммуникацию.</p>
+</header><div class="cadence-grid"><article class="cadence-card" data-cadence-id="genvpn"><div><strong>GenVPN</strong><b>−301</b></div>
+      <p>47 постов / 60д; это наблюдалось одновременно с отрицательной 30-дневной динамикой.</p>
+      <span>подтверждено · Аналитический вывод: сосуществование сигналов не доказывает причинность.</span></article><article class="cadence-card" data-cadence-id="nashvpn"><div><strong>NashVPN</strong><b>−996</b></div>
+      <p>37 постов / 30д; это наблюдалось одновременно с отрицательной 30-дневной динамикой.</p>
+      <span>смешанные данные · Аналитический вывод: сосуществование сигналов не доказывает причинность.</span></article><article class="cadence-card" data-cadence-id="mori-vpn"><div><strong>MORI</strong><b>−2 940</b></div>
+      <p>22 постов / 30д; это наблюдалось одновременно с отрицательной 30-дневной динамикой.</p>
+      <span>смешанные данные · Аналитический вывод: сосуществование сигналов не доказывает причинность.</span></article><article class="cadence-card" data-cadence-id="blancvpn"><div><strong>BlancVPN</strong><b>+547</b></div>
+      <p>7 постов / 60д; это наблюдалось одновременно с положительной 30-дневной динамикой.</p>
+      <span>смешанные данные · Аналитический вывод: сосуществование сигналов не доказывает причинность.</span></article></div>
+</section>
+
+<section class="war-section" data-section="app and release risks" style="top: 3660px; height: 600px">
+  <header class="section-header">
+  <p class="section-header__kicker">05 · RELEASE SURFACE</p>
+  <h2 class="section-header__title">Риски из retained JSON</h2>
+  <p class="section-header__note">Только зафиксированные analyst-read формулировки; дополнительная severity не присваивается.</p>
+</header><div class="risk-grid"><article class="risk-card" data-app-card="ru.quattrocloud.vpnapp">
+    <h3>Quattro 0.18.1</h3><ul><li>Android debug signing</li><li>hardcoded local control token</li><li>surface complexity</li></ul>
+  </article><article class="risk-card" data-app-card="com.hiro.vpn">
+    <h3>HiroVPN 1.17.1</h3><ul><li>AdMob</li><li>Yandex Ads/AppMetrica</li><li>Firebase</li><li>AppsFlyer</li><li>Sentry</li><li>Pairip and wide SDK surface</li></ul>
+  </article><article class="risk-card" data-app-card="com.kubikvpn.app">
+    <h3>Kubik 1.2.4</h3><ul><li>Android Debug signing</li><li>extreme ad/attribution SDK stack</li><li>mutable latest.apk channel</li></ul>
+  </article><article class="risk-card" data-app-card="com.mantaray.vpn">
+    <h3>MantaRay 2.25.8</h3><ul><li>broad usage/package access</li><li>routing telemetry</li><li>provider ownership not proven</li></ul>
+  </article></div>
+</section>
+
+<section class="war-section" data-section="POKROV moat and vulnerable flank" style="top: 4260px; height: 520px">
+  <header class="section-header">
+  <p class="section-header__kicker">06 · POKROV</p>
+  <h2 class="section-header__title">Защитный moat и уязвимый flank</h2>
+  <p class="section-header__note">Позиция описана продуктовым контрактом; публичный рост не подменяется score.</p>
+</header><div class="position-grid"><article class="position-card" data-pokrov-side="moat"><h3>ЗАЩИТНЫЙ MOAT</h3><ul><li>app-first onboarding</li><li>real 5-day premium trial without card</li><li>Telegram optional for first launch, trial and daily use</li><li>one-time activation keys and no auto-renewal</li><li>honest beta limitations and official release-file guidance</li></ul></article><article class="position-card" data-pokrov-side="flank"><h3>УЯЗВИМЫЙ FLANK</h3><ul><li>no verified comparable audience-growth series</li><li>outside-store beta; Windows is unsigned</li><li>store distribution and public social proof are weaker</li><li>creator, referral and SEO acquisition machine is not yet proven</li><li>routing-builder and diagnostics depth trails MantaRay</li></ul></article></div>
+</section>
+
+<section class="war-section" data-section="attack window and evidence footer" style="top: 4780px; height: 220px">
+  <div class="footer-grid"><div><b class="attack-label">ОКНО АТАКИ</b><div class="attack-window"><span class="priority" title="creator engine with measurable attribution">creator attribution</span><span class="priority" title="simple two-sided referral">two-sided referral</span><span class="priority" title="store/signing and release provenance">store + signing</span><span class="priority" title="public status/roadmap">status / roadmap</span><span class="priority" title="recovery without Telegram">recovery without Telegram</span></div></div><footer class="source"><b>retained dataset</b> · EVIDENCE_ADVISORY · 2026-07-12<br>POKROV growth: нет подтверждённой сопоставимой метрики.<br>SHA-256: <code>883cc925ab0171cf…</code></footer></div>
+</section> </main>
+</body>
+</html>

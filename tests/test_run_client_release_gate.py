@@ -29,7 +29,7 @@ def _prepare_client_root(root: Path) -> None:
     _write(root / "scripts" / "validate-seed.ps1", "Write-Host validate")
     _write(root / "scripts" / "bootstrap-workspace.ps1", "Write-Host bootstrap")
     _write(root / "scripts" / "run-tests.ps1", "Write-Host tests")
-    _write(root / "scripts" / "fetch-libcore-assets.ps1", "Write-Host fetch")
+    _write(root / "scripts" / "sync-pokrov-core-runtime.ps1", "Write-Host sync")
     _write(root / "scripts" / "build-windows-release.ps1", "Write-Host build")
     _write(root / "config" / "product-contract.seed.json", "{}")
     _write(root / "config" / "runtime-profile.seed.json", "{}")
@@ -133,7 +133,7 @@ def test_windows_target_declares_expected_release_artifacts() -> None:
     assert len(command.steps) == 1
     assert command.steps[0].cwd == client_root
     assert "build-windows-release.ps1" in " ".join(command.steps[0].command)
-    assert "-SyncRuntime" in command.steps[0].command
+    assert "-SyncRuntime" not in command.steps[0].command
     assert "-SkipTests" in command.steps[0].command
     assert "-SkipAnalyze" in command.steps[0].command
     assert command.expected_artifacts == (
@@ -148,14 +148,14 @@ def test_android_apk_target_declares_android_shell_artifact() -> None:
         client_root = Path(tmp)
         _prepare_client_root(client_root)
 
-        command = MODULE._build_target_command(client_root, target="android-apk")
+    command = MODULE._build_target_command(client_root, target="android-apk")
 
     assert len(command.steps) == 3
-    assert "bootstrap-workspace.ps1" in " ".join(command.steps[0].command)
-    assert "fetch-libcore-assets.ps1" in " ".join(command.steps[1].command)
-    assert "-Platforms" in command.steps[1].command
-    assert "android" in command.steps[1].command
-    assert "-SyncToHosts" in command.steps[1].command
+    assert "validate-seed.ps1" in " ".join(command.steps[0].command)
+    assert "bootstrap-workspace.ps1" in " ".join(command.steps[1].command)
+    assert "sync-pokrov-core-runtime.ps1" not in " ".join(
+        part for step in command.steps for part in step.command
+    )
     assert command.steps[2].cwd == client_root / "apps" / "android_shell"
     assert _command_has_suffix(command.steps[2].command, ["build", "apk", "--release"])
     assert command.expected_artifacts == (
@@ -216,6 +216,7 @@ def test_preflight_report_lists_pokrov_app_context() -> None:
     assert f"[client-root] path: {client_root}" in report
     assert "[client-root] android shell:" in report
     assert "[client-root] windows shell:" in report
+    assert "[client-root] sync core runtime:" in report
     assert "[ok] POKROV-app gate root is present" in report
 
 

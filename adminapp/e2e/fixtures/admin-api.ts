@@ -685,6 +685,7 @@ type AdminApiMockOptions = {
   ruScenario?: RuScenario;
   includeUnsafeSearchResults?: boolean;
   overviewStatus?: number;
+  overviewAlerts?: Array<Record<string, unknown>>;
   ruLatestStatus?: number;
   ruHistoryStatus?: number;
   ruUploaderStatus?: number;
@@ -1579,6 +1580,7 @@ export async function installAdminApiMock(
         overviewResponses.push(overviewStatus);
         return;
       }
+      const overviewAlerts = options.overviewAlerts || [];
       await fulfillJson(route, {
         ok: true,
         generated_at: generatedAt,
@@ -1589,8 +1591,40 @@ export async function installAdminApiMock(
           errors: {},
           observer: { watch_users: 0, suspicious_users: 0 }
         },
-        metrics: { status: "fresh", age_seconds: 42, alerts: {}, nodes: [] },
-        capacity: { nodes: [] },
+        metrics: {
+          status: "fresh",
+          age_seconds: 42,
+          last_sample_at: "2026-07-15T09:59:18Z",
+          stale_after_seconds: 180,
+          alerts: {},
+          nodes: []
+        },
+        capacity: {
+          nodes: [
+            {
+              code: "de",
+              name: "Germany",
+              enabled: true,
+              accepting_new_clients: true,
+              capacity_state: "available",
+              capacity_score: 91,
+              cpu_percent: 42,
+              online_connections_hint: 118,
+              last_health_at: "2026-07-15T09:59:18Z"
+            },
+            {
+              code: "nl",
+              name: "Netherlands",
+              enabled: true,
+              accepting_new_clients: true,
+              capacity_state: "available",
+              capacity_score: 88,
+              cpu_percent: 31,
+              online_connections_hint: 96,
+              last_health_at: "2026-07-15T09:59:16Z"
+            }
+          ]
+        },
         free_tier: {
           free_users: 32,
           sampled_users: 28,
@@ -1606,7 +1640,12 @@ export async function installAdminApiMock(
           source: "mock"
         },
         provider_quotas: [],
-        alerts: { active: [], active_count: 0, critical_count: 0, warning_count: 0 }
+        alerts: {
+          active: overviewAlerts,
+          active_count: overviewAlerts.length,
+          critical_count: overviewAlerts.filter((alert) => alert.severity === "critical").length,
+          warning_count: overviewAlerts.filter((alert) => alert.severity === "warning").length
+        }
       });
       overviewResponses.push(200);
       return;

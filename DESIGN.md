@@ -57,22 +57,13 @@ Use:
 
 Text roles: `text` (`#16181d`, 17.8:1) for primary, `text_soft` (`#5e6772`, 5.7:1) for secondary. `text_muted` (`#9aa1a9`, ~2.6:1) is decorative-only — placeholders, disabled states, ornament; anything a user must read uses `text_soft` or stronger.
 
-Avoid:
-
-- legacy subtitle lockups as visible public branding;
-- decorative visual noise that competes with account, payment, or safety state: stacked gradients, grain/noise overlays, and glass blur on content planes are retired;
-- inflated or unverifiable claims (user counters, pseudo-tech superlatives); honest, checkable facts are a deliberate brand wedge in this market;
-- unsupported public safety claims for Android, Windows, paid checkout, or downloads.
-
 Deprecated (keep tokens for compatibility, no new usage): `sage`, `gold_soft`, legacy `-dark`-suffixed variables, card `inner_edge` / `inner_edge_dark` (both now `none`).
 
 ## Public Wording Boundary
 
 Visible `VPN` / `ВПН` wording is allowed on dedicated SEO/search-intent
 surfaces when it is useful to users and tied to the real POKROV app flow.
-Hidden text, cloaking, keyword stuffing, unsupported “best” claims, and
-unsupported release, payment, store, signing, device-audit, or RU-origin
-claims remain forbidden.
+
 
 ## Control Canon (iOS-style, 2026-07 redesign)
 

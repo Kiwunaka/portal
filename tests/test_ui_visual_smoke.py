@@ -85,6 +85,19 @@ class UiVisualSmokeTests(unittest.TestCase):
         self.assertIn("POKROV cabinet", webapp_entry.must_contain)
         self.assertIn("pokrovBranding.cabinetName", webapp_entry.must_contain)
 
+        dashboard_check = checks["webapp-dashboard-app-first"]
+        self.assertIn("const primaryHref = !isActive", dashboard_check.must_contain)
+        self.assertIn('? "/subscription/checkout/"', dashboard_check.must_contain)
+        self.assertIn('nextStep === "complete"', dashboard_check.must_contain)
+        self.assertIn('? "/devices/"', dashboard_check.must_contain)
+        self.assertIn('nextStep === "install"', dashboard_check.must_contain)
+        self.assertIn('? "/downloads/"', dashboard_check.must_contain)
+        self.assertIn("href={primaryHref}", dashboard_check.must_contain)
+        self.assertIn(
+            "onClick={primaryHref ? undefined : () => setTourOpen(true)}",
+            dashboard_check.must_contain,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

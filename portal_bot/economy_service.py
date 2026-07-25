@@ -611,7 +611,13 @@ def grant_internal_bonus_days(
     metadata: dict[str, Any],
     now: datetime,
 ) -> EntitlementGrant:
-    if source not in {"bonus_wheel", "bonus_calendar"}:
+    if source not in {
+        "bonus_wheel",
+        "bonus_calendar",
+        "incident_compensation",
+        "research_reward",
+        "competitor_switch",
+    }:
         raise ValueError("reward_source_invalid")
     try:
         reward_days = int(days)

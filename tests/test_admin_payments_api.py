@@ -20,7 +20,9 @@ class AdminPaymentsApiTests(unittest.TestCase):
         if portal_dir not in sys.path:
             sys.path.insert(0, portal_dir)
 
-        self.db_path = str((repo_root / f"portal_api_test_{uuid.uuid4().hex}.db").resolve())
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.db_path = str((Path(self._tmp.name) / f"portal_api_test_{uuid.uuid4().hex}.db").resolve())
         db_uri_path = Path(self.db_path).as_posix()
         self._saved_env: dict[str, str | None] = {}
         for key in ("DATABASE_URL", "BOT_TOKEN", "ADMIN_ID"):

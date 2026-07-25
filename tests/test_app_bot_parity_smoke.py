@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 from pathlib import Path
 import subprocess
 
@@ -9,6 +10,13 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def _resolve_client_root(platform_checkout: Path) -> Path:
+    override = os.environ.get("POKROV_CLIENT_ROOT", "").strip()
+    if override:
+        client_root = Path(override).expanduser().resolve()
+        if not client_root.is_dir():
+            raise FileNotFoundError(f"POKROV_CLIENT_ROOT does not exist: {client_root}")
+        return client_root
+
     completed = subprocess.run(
         ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
         cwd=platform_checkout,

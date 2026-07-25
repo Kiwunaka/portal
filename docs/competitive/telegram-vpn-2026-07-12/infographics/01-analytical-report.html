@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=1600, initial-scale=1">
+  <meta name="source-sha256" content="883cc925ab0171cf42658c7dda232f5fb20de7a471e703439d6b971926cfdbd1">
+  <title>POKROV — аналитический отчёт рынка Telegram VPN</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; width: 1600px; min-width: 1600px; background: #eef2ef; }
+    body { color: #16211c; font-family: "Golos Text", Arial, system-ui, sans-serif; }
+    .infographic { width: 1600px; height: 5000px; overflow: hidden; position: relative; }
+    svg { display: block; overflow: visible; }
+    .section-header { margin: 0 0 44px; }
+    .section-header__kicker { margin: 0 0 12px; font-size: 22px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .section-header__title { margin: 0; font-size: 54px; line-height: 1.05; }
+    .section-header__note { margin: 16px 0 0; max-width: 1180px; font-size: 24px; line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <main class="infographic analytical" data-source-sha256="883cc925ab0171cf42658c7dda232f5fb20de7a471e703439d6b971926cfdbd1"><style>
+    .analytical { background:#edf2ee; --ink:#14221b; --green:#147A4B; --amber:#D88914; --risk:#D24A3A; --body-size:28px; --note-size:22px; --label-size:24px; }
+    .report-section { position:absolute; left:0; width:1600px; padding:36px 96px; overflow:hidden; border-bottom:1px solid #c9d5cd; }
+    .report-section[data-section="hero and methodology"] { padding-top:88px; }
+    .report-section[data-section="decisions and source footer"] { padding-bottom:88px; }
+    .report-section:nth-of-type(even) { background:#f8faf7; } .hero-shell { display:grid; gap:22px; }
+    .hero { display:grid; grid-template-columns:1.55fr .85fr; gap:40px; align-items:start; }
+    .eyebrow { font-size:var(--label-size); font-weight:800; letter-spacing:.08em; color:var(--green); } h1 { margin:12px 0 18px; font-size:64px; line-height:1.02; letter-spacing:-.035em; }
+    .lead { margin:0; font-size:var(--body-size); line-height:1.34; } .method { padding:20px 24px; border-radius:22px; background:#14221b; color:white; font-size:var(--note-size); line-height:1.35; }
+    .method b { color:#83d4a7; } .method p { margin:0 0 10px; } .method p:last-child { margin-bottom:0; }
+    .kpi-strip { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; } .kpi-card { min-height:128px; padding:14px 18px; border-radius:18px; background:white; border-top:5px solid var(--green); }
+    .kpi-card span { display:block; color:#5e6d65; font-size:var(--note-size); } .kpi-card strong { display:block; margin-top:6px; font-size:30px; line-height:1.08; }
+    .section-header { margin-bottom:16px; } .section-header__kicker { color:var(--green); font-size:var(--label-size); } .section-header__title { font-size:44px; }
+    .section-header__note { font-size:var(--note-size); margin-top:10px; line-height:1.3; }
+    .leader-grid { display:grid; grid-template-columns:1000px 1fr; gap:28px; } .horizontal-bars text { font-size:var(--label-size); fill:var(--ink); } .horizontal-bars__value { font-weight:800; }
+    .decline { padding:20px; border-radius:22px; background:#fff0e8; } .decline h3 { margin:0 0 12px; font-size:30px; }
+    .decline-row { display:flex; justify-content:space-between; padding:12px 0; border-top:1px solid #e7c7b7; font-size:var(--label-size); } .decline-row b { color:var(--risk); } .decline p { font-size:var(--note-size); line-height:1.3; }
+    .tier-legend { margin:-4px 0 8px; font-size:var(--label-size); line-height:1.2; color:#5d6c64; }
+    .ownership-notes { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin:0 0 10px; } .ownership-note { padding:8px 12px; border-left:4px solid #8b948f; background:#e1e7e3; font-size:var(--note-size); line-height:1.25; }
+    .scale-grid { display:grid; grid-template-columns:1fr 230px 230px; gap:18px; } .plot { height:480px; border:1px solid #becdc4; border-radius:22px; background:white; padding:8px; }
+    .plot svg { width:100%; height:460px; overflow:hidden; } .grid line { stroke:#dae3dd; } .grid text { font-size:var(--label-size); fill:#63736a; } .zero { stroke:#82968a; stroke-width:2; }
+    .plot circle { fill:var(--green); stroke:white; stroke-width:2; } .plot g[data-app-tier="unknown"] circle { fill:none; stroke:#8b948f; stroke-width:3; } .plot g>text { font-size:var(--label-size); font-weight:700; fill:#203229; }
+    .outlier { height:480px; padding:18px; border-radius:22px; background:#17261e; color:white; } .scale-grid>.outlier { background:var(--amber); color:var(--ink); } .scale-grid>.outlier small { color:var(--ink); }
+    .outlier-tag { color:#ffd19f; font-size:var(--label-size); font-weight:800; letter-spacing:.05em; } .outlier strong { display:block; margin:10px 0 6px; font-size:32px; line-height:1.05; } .outlier>span { font-size:var(--label-size); } .outlier small { display:block; margin-top:10px; font-size:var(--note-size); line-height:1.25; color:#d5ded8; }
+    .cadence-table { display:grid; grid-template-columns:repeat(2,1fr); gap:10px 24px; } .cadence-row { display:grid; grid-template-columns:1.2fr .8fr .8fr; padding:12px 18px; border-radius:14px; background:white; font-size:var(--label-size); }
+    .cadence-row b:last-child { text-align:right; color:var(--green); } .cadence-row.negative b:last-child { color:var(--risk); }
+    .pressure { display:grid; grid-template-columns:repeat(4,1fr); gap:8px 10px; } .pressure-card { min-height:86px; padding:10px 14px; border-radius:14px; background:white; border-left:5px solid #66ad84; }
+    .pressure-card b { display:flex; justify-content:space-between; gap:8px; font-size:var(--label-size); } .pressure-card small { display:block; margin-top:6px; color:#66756d; font-size:var(--note-size); } .pressure-note { margin:10px 0 0; font-size:var(--note-size); }
+    .no-score { display:flex; gap:18px; align-items:center; margin-top:8px; padding:9px 14px; border-radius:12px; background:#e2e9e4; font-size:var(--note-size); } .no-score b { color:#536159; }
+    .matrix { border-radius:20px; overflow:hidden; background:white; } .matrix-head,.matrix-row { display:grid; grid-template-columns:1.25fr .55fr 1.8fr; align-items:center; }
+    .matrix-head { min-height:52px; padding:10px 20px; background:#17261e; color:white; font-size:var(--label-size); font-weight:800; } .matrix-row { min-height:62px; padding:8px 20px; border-bottom:1px solid #dce5df; font-size:var(--body-size); line-height:1.16; }
+    .matrix-row b { color:var(--green); } .matrix-row[data-assessment="слабее"] b { color:var(--risk); } .matrix-row[data-assessment="смешанно"] b { color:#9a6400; } .matrix-row[data-assessment="не доказано"] b { color:#6d7470; }
+    .decisions { display:grid; grid-template-columns:1.8fr 1fr; gap:30px; } .decision-columns { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+    .decision-panel { padding:14px 18px; border-radius:18px; background:white; } .decision-panel h3 { margin:0 0 6px; font-size:30px; } .decision-panel ul { margin:0; padding-left:26px; } .decision-panel li { margin:3px 0; font-size:var(--body-size); line-height:1.15; }
+    .decision-panel--avoid { background:#fff0e8; } .source { padding:20px; border-radius:18px; background:#17261e; color:white; font-size:var(--note-size); line-height:1.35; } .source code { color:#99d6b3; }
+  </style>
+
+<section class="report-section" data-section="hero and methodology" style="top: 0px; height: 700px">
+  <div class="hero-shell"><div class="hero"><div><div class="eyebrow">TELEGRAM VPN · СРЕЗ 2026-07-12 · ПОСТЫ 2026-05-12 — 2026-07-12</div><h1>Telegram VPN 2026: рост, дистрибуция, продукт</h1><p class="lead">Кто растёт, за счёт чего и где POKROV может выиграть без forced gate и призового спама</p></div><aside class="method"><p><b>ФАКТ:</b> subscribers, net growth, reach, cadence и public Android tiers.</p><p><b>ВЫВОД:</b> inflow evidence и аналитическая шкала 0–5 не измеряют продажи.</p><p><b>ОГРАНИЧЕНИЕ:</b> рост канала не доказывает оплату, удержание или VPN MAU.</p></aside></div><div class="kpi-strip"><article class="kpi-card" data-kpi="hitvpn-absolute-growth"><span>HitVPN · max absolute</span><strong>+386 200</strong></article><article class="kpi-card" data-kpi="sota-relative-growth"><span>Sota · fastest ordinary app-backed</span><strong>+15,3%</strong></article><article class="kpi-card" data-kpi="positive-declining"><span>19 каналов</span><strong>15 / 4</strong><span>positive / declining</span></article><article class="kpi-card" data-kpi="pokrov-public-growth"><span>POKROV · public growth</span><strong>нет подтверждённой метрики</strong></article></div></div>
+</section>
+
+<section class="report-section" data-section="absolute growth leaderboard" style="top: 700px; height: 780px">
+  <header class="section-header">
+  <p class="section-header__kicker">01 · АБСОЛЮТНЫЙ РОСТ</p>
+  <h2 class="section-header__title">Кто прибавил больше всего</h2>
+  <p class="section-header__note">Топ-11 по growth_30d; длина bars нормирована к HitVPN = 386 200.</p>
+</header><div class="leader-grid"><div><svg class="horizontal-bars" width="980" height="528" viewBox="0 0 980 528" role="img" aria-label="Абсолютный прирост за 30 дней" xmlns="http://www.w3.org/2000/svg">
+<g class="horizontal-bars__row" data-index="0">
+  <text class="horizontal-bars__label" x="0" y="24" dominant-baseline="middle">HitVPN</text>
+  <rect class="horizontal-bars__bar" x="320" y="10" width="525" height="28" rx="14" fill="#147A4B" />
+  <text class="horizontal-bars__value" x="869" y="24" dominant-baseline="middle">386 200</text>
+</g>
+<g class="horizontal-bars__row" data-index="1">
+  <text class="horizontal-bars__label" x="0" y="72" dominant-baseline="middle">Sota</text>
+  <rect class="horizontal-bars__bar" x="320" y="58" width="143.03735111341274" height="28" rx="14" fill="#66ad84" />
+  <text class="horizontal-bars__value" x="869" y="72" dominant-baseline="middle">105 221</text>
+</g>
+<g class="horizontal-bars__row" data-index="2">
+  <text class="horizontal-bars__label" x="0" y="120" dominant-baseline="middle">Shuka</text>
+  <rect class="horizontal-bars__bar" x="320" y="106" width="72.66668824443293" height="28" rx="14" fill="#66ad84" />
+  <text class="horizontal-bars__value" x="869" y="120" dominant-baseline="middle">53 455</text>
+</g>
+<g class="horizontal-bars__row" data-index="3">
+  <text class="horizontal-bars__label" x="0" y="168" dominant-baseline="middle">Quattro</text>
+  <rect class="horizontal-bars__bar" x="320" y="154" width="70.68740290005178" height="28" rx="14" fill="#66ad84" />
+  <text class="horizontal-bars__value" x="869" y="168" dominant-baseline="middle">51 999</text>
+</g>
+<g class="horizontal-bars__row" data-index="4">
+  <text class="horizontal-bars__label" x="0" y="216" dominant-baseline="middle">Atlanta</text>
+  <rect class="horizontal-bars__bar" x="320" y="202" width="55.611664940445365" height="28" rx="14" fill="#66ad84" />
+  <text class="horizontal-bars__value" x="869" y="216" dominant-baseline="middle">40 909</text>
+</g>
+<g class="horizontal-bars__row" data-index="5">
+  <text class="horizontal-bars__label" x="0" y="264" dominant-baseline="middle">Nosok VPN</text>
+  <rect class="horizontal-bars__bar" x="320" y="250" width="33.86671413775246" height="28" rx="14" fill="#66ad84" />
+  <text class="horizontal-bars__value" x="869" y="264" dominant-baseline="middle">24 913</text>
+</g>
+<g class="horizontal-bars__row" data-index="6">
+  <text class="horizontal-bars__label" x="0" y="312" dominant-baseline="middle">Lagom</text>
+  <rect class="horizontal-bars__bar" x="320" y="298" width="29.893190056965302" height="28" rx="14" fill="#66ad84" />
+  <text class="horizontal-bars__value" x="869" y="312" dominant-baseline="middle">21 990</text>
+</g>
+<g class="horizontal-bars__row" data-index="7">
+  <text class="horizontal-bars__label" x="0" y="360" dominant-baseline="middle">VPN Platina</text>
+  <rect class="horizontal-bars__bar" x="320" y="346" width="18.400828586224755" height="28" rx="14" fill="#66ad84" />
+  <text class="horizontal-bars__value" x="869" y="360" dominant-baseline="middle">13 536</text>
+</g>
+<g class="horizontal-bars__row" data-index="8">
+  <text class="horizontal-bars__label" x="0" y="408" dominant-baseline="middle">Luma VPN · АНОМАЛИЯ</text>
+  <rect class="horizontal-bars__bar" x="320" y="394" width="16.485435007767997" height="28" rx="14" fill="#D88914" />
+  <text class="horizontal-bars__value" x="869" y="408" dominant-baseline="middle">12 127</text>
+</g>
+<g class="horizontal-bars__row" data-index="9">
+  <text class="horizontal-bars__label" x="0" y="456" dominant-baseline="middle">Batya</text>
+  <rect class="horizontal-bars__bar" x="320" y="442" width="16.00828586224754" height="28" rx="14" fill="#66ad84" />
+  <text class="horizontal-bars__value" x="869" y="456" dominant-baseline="middle">11 776</text>
+</g>
+<g class="horizontal-bars__row" data-index="10">
+  <text class="horizontal-bars__label" x="0" y="504" dominant-baseline="middle">Cats VPN</text>
+  <rect class="horizontal-bars__bar" x="320" y="490" width="13.256861729673744" height="28" rx="14" fill="#66ad84" />
+  <text class="horizontal-bars__value" x="869" y="504" dominant-baseline="middle">9 752</text>
+</g>
+</svg></div><aside class="decline"><h3>Отрицательный хвост</h3><div class="decline-row"><span>MORI</span><b>−2 940</b></div><div class="decline-row"><span>NashVPN</span><b>−996</b></div><div class="decline-row"><span>GenVPN</span><b>−301</b></div><div class="decline-row"><span>4ebur</span><b>−41</b></div><p><b>ВЫВОД:</b> публикации у MORI, NashVPN, GenVPN и 4ebur сосуществовали со спадом; это не доказывает причинность.</p></aside></div>
+</section>
+
+<section class="report-section" data-section="scale versus growth with outlier inset" style="top: 1480px; height: 850px">
+  <header class="section-header">
+  <p class="section-header__kicker">02 · МАСШТАБ × ТЕМП</p>
+  <h2 class="section-header__title">Обычный рынок без сжатия</h2>
+  <p class="section-header__note">X — subscribers (log); Y — −4…16%. Маркер — только public Android tier.</p>
+</header><div class="tier-legend">app tiers: hollow unknown · 1K+ · 10K+ · 50K+ · 100K+ · 500K+ · 1M+ · 5M+ · 10M+</div><div class="ownership-notes" data-ownership-notes="app-footprint"><span class="ownership-note" data-ownership-id="hitvpn">official ecosystem includes HitRay 10M+ and HitVPN 1M+; attribution to Telegram growth is not proven</span><span class="ownership-note" data-ownership-id="shuka-vpn">generic MantaRay client; Shuka ownership not proven</span></div><div class="scale-grid"><div class="plot" data-chart="scale-growth-main" data-y-min="-4" data-y-max="16">
+    <svg viewBox="0 0 900 480" role="img" aria-label="Масштаб канала и рост за 30 дней">
+      <g class="grid">
+    <g><line x1="68" y1="432" x2="868" y2="432" />
+    <text x="54" y="437" text-anchor="end">-4%</text></g>
+    <g><line x1="68" y1="351.20000000000005" x2="868" y2="351.20000000000005" />
+    <text x="54" y="356.20000000000005" text-anchor="end">0%</text></g>
+    <g><line x1="68" y1="270.4" x2="868" y2="270.4" />
+    <text x="54" y="275.4" text-anchor="end">4%</text></g>
+    <g><line x1="68" y1="189.60000000000002" x2="868" y2="189.60000000000002" />
+    <text x="54" y="194.60000000000002" text-anchor="end">8%</text></g>
+    <g><line x1="68" y1="108.80000000000001" x2="868" y2="108.80000000000001" />
+    <text x="54" y="113.80000000000001" text-anchor="end">12%</text></g>
+    <g><line x1="68" y1="28" x2="868" y2="28" />
+    <text x="54" y="33" text-anchor="end">16%</text></g>
+    <g><line x1="107.50173694359867" y1="28" x2="107.50173694359867" y2="432" />
+    <text x="107.50173694359867" y="465" text-anchor="middle">10 тыс.</text></g>
+    <g><line x1="393.0300491896757" y1="28" x2="393.0300491896757" y2="432" />
+    <text x="393.0300491896757" y="465" text-anchor="middle">100 тыс.</text></g>
+    <g><line x1="678.5583614357527" y1="28" x2="678.5583614357527" y2="432" />
+    <text x="678.5583614357527" y="465" text-anchor="middle">1 млн</text></g></g><line class="zero" x1="68" y1="351.20000000000005" x2="868" y2="351.20000000000005" /><g data-channel-id="quattro" data-app-tier="unknown" data-growth-label="+5,2%" transform="translate(684.0224179593009 246.16000000000003)">
+      <title>Quattro · +5,2%</title><circle r="7" /><text x="18" y="12" text-anchor="start">Quattro</text>
+    </g>
+<g data-channel-id="nosok-vpn" data-app-tier="unknown" data-growth-label="+13,9%" transform="translate(481.4844170460977 70.41999999999999)">
+      <title>Nosok VPN · +13,9%</title><circle r="7" /><text x="26" y="34" text-anchor="start">Nosok VPN</text>
+    </g>
+<g data-channel-id="platina-vpn" data-app-tier="unknown" data-growth-label="+14,1%" transform="translate(404.4502547544038 66.38)">
+      <title>VPN Platina · +14,1%</title><circle r="7" /><text x="-44" y="38" text-anchor="end">VPN Platina</text>
+    </g>
+<g data-channel-id="net4ebur" data-app-tier="unknown" data-growth-label="-0,6%" transform="translate(68 363.32000000000005)">
+      <title>4ebur · -0,6%</title><circle r="7" /><text x="12" y="-13" text-anchor="start">4ebur</text>
+    </g>
+<g data-channel-id="mori-vpn" data-app-tier="unknown" data-growth-label="-3,1%" transform="translate(380.75882097920834 413.82000000000005)">
+      <title>MORI · -3,1%</title><circle r="7" /><text x="119" y="26" text-anchor="start">MORI</text>
+    </g>
+<g data-channel-id="nashvpn" data-app-tier="unknown" data-growth-label="-1,4%" transform="translate(349.39494620546725 379.47999999999996)">
+      <title>NashVPN · -1,4%</title><circle r="7" /><text x="16" y="36" text-anchor="start">NashVPN</text>
+    </g>
+<g data-channel-id="opengate-vpn" data-app-tier="unknown" data-growth-label="+2,6%" transform="translate(216.9842376598769 298.68)">
+      <title>OpenGate · +2,6%</title><circle r="7" /><text x="0" y="-14" text-anchor="middle">OpenGate</text>
+    </g>
+<g data-channel-id="groza-vpn" data-app-tier="unknown" data-growth-label="+2,5%" transform="translate(383.469755091295 300.70000000000005)">
+      <title>GROZA · +2,5%</title><circle r="7" /><text x="0" y="24" text-anchor="middle">GROZA</text>
+    </g>
+<g data-channel-id="hitvpn" data-app-tier="10m_plus" data-growth-label="+9,1%" transform="translate(868 167.38000000000002)">
+      <title>HitVPN · +9,1%</title><circle r="19" /><text x="-18" y="-17" text-anchor="end">HitVPN</text>
+    </g>
+<g data-channel-id="shuka-vpn" data-app-tier="10k_plus" data-growth-label="+4,3%" transform="translate(710.2343059547774 264.34)">
+      <title>Shuka · +4,3%</title><circle r="9" /><text x="10" y="31" text-anchor="start">Shuka</text>
+    </g>
+<g data-channel-id="atlanta-vpn" data-app-tier="1k_plus" data-growth-label="+5,4%" transform="translate(651.1711427520967 242.12)">
+      <title>Atlanta · +5,4%</title><circle r="8" /><text x="-31" y="-17" text-anchor="end">Atlanta</text>
+    </g>
+<g data-channel-id="sota-vpn" data-app-tier="500k_plus" data-growth-label="+15,3%" transform="translate(650.068858458194 42.139999999999986)">
+      <title>Sota · +15,3%</title><circle r="13" /><text x="0" y="-18" text-anchor="middle">Sota</text>
+    </g>
+<g data-channel-id="batya-vpn" data-app-tier="1m_plus" data-growth-label="+6,8%" transform="translate(469.63913787183157 213.83999999999997)">
+      <title>Batya · +6,8%</title><circle r="14" /><text x="0" y="-19" text-anchor="middle">Batya</text>
+    </g>
+<g data-channel-id="lagom-vpn" data-app-tier="5m_plus" data-growth-label="+15,1%" transform="translate(456.8133335450147 46.18000000000001)">
+      <title>Lagom · +15,1%</title><circle r="17" /><text x="0" y="-22" text-anchor="middle">Lagom</text>
+    </g>
+<g data-channel-id="blancvpn" data-app-tier="100k_plus" data-growth-label="+0,6%" transform="translate(389.30540752250306 339.08)">
+      <title>BlancVPN · +0,6%</title><circle r="11" /><text x="90" y="11" text-anchor="start">BlancVPN</text>
+    </g>
+<g data-channel-id="genvpn" data-app-tier="50k_plus" data-growth-label="-0,4%" transform="translate(348.111909061125 359.28)">
+      <title>GenVPN · -0,4%</title><circle r="10" /><text x="-18" y="26" text-anchor="end">GenVPN</text>
+    </g>
+<g data-channel-id="durev-vpn" data-app-tier="100k_plus" data-growth-label="+3,9%" transform="translate(325.71913346387146 272.41999999999996)">
+      <title>Durev · +3,9%</title><circle r="11" /><text x="0" y="-17" text-anchor="middle">Durev</text>
+    </g>
+    </svg>
+  </div><div data-chart="scale-growth-outliers"><article class="outlier"><span class="outlier-tag">OUTLIER · GATE</span><strong>Cats VPN +94,0%</strong><span>gate/cross-promo</span><small>смешанные данные; вне основной шкалы.</small></article></div><article class="outlier"><span class="outlier-tag">АНОМАЛИЯ</span><strong>Luma VPN +199,7%</strong><span>proxy/repost anomaly</span><small>смешанные данные; ERR/reach несопоставимы.</small></article></div>
+</section>
+
+<section class="report-section" data-section="cadence coexisting with growth or decline" style="top: 2330px; height: 560px">
+  <header class="section-header">
+  <p class="section-header__kicker">03 · CADENCE</p>
+  <h2 class="section-header__title">Частота сосуществует и с ростом, и со спадом</h2>
+  <p class="section-header__note">Публикации — наблюдаемый сигнал; корреляция не доказывает причинность.</p>
+</header><div class="cadence-table"><div class="cadence-row negative"><strong>NashVPN</strong><span>37 постов / 30д</span><b>−996</b></div><div class="cadence-row negative"><strong>GenVPN</strong><span>47 постов / 60д</span><b>−301</b></div><div class="cadence-row negative"><strong>MORI</strong><span>22 постов / 30д</span><b>−2 940</b></div><div class="cadence-row "><strong>VPN Platina</strong><span>12 постов / 30д</span><b>+13 536</b></div><div class="cadence-row "><strong>HitVPN</strong><span>16 постов / 60д</span><b>+386 200</b></div><div class="cadence-row "><strong>Luma VPN</strong><span>7 постов / 30д</span><b>+12 127</b></div><div class="cadence-row "><strong>Quattro</strong><span>6 постов / 30д</span><b>+51 999</b></div><div class="cadence-row "><strong>OpenGate</strong><span>4 постов / 30д</span><b>+608</b></div><div class="cadence-row "><strong>GROZA</strong><span>4 постов / 30д</span><b>+2 291</b></div><div class="cadence-row "><strong>BlancVPN</strong><span>7 постов / 60д</span><b>+547</b></div></div>
+</section>
+
+<section class="report-section" data-section="marketing pressure ladder" style="top: 2890px; height: 650px">
+  <header class="section-header">
+  <p class="section-header__kicker">04 · ДАВЛЕНИЕ</p>
+  <h2 class="section-header__title">От forced loops к product-led</h2>
+  <p class="section-header__note">аналитическая шкала 0–5; качественная классификация, не измерение продаж.</p>
+</header><div class="pressure"><article class="pressure-card"><b><span>HitVPN</span><span>5.0</span></b><small>смешанные данные</small></article><article class="pressure-card"><b><span>Atlanta</span><span>5.0</span></b><small>подтверждено</small></article><article class="pressure-card"><b><span>Batya</span><span>5.0</span></b><small>смешанные данные</small></article><article class="pressure-card"><b><span>Luma VPN</span><span>4.5</span></b><small>смешанные данные</small></article><article class="pressure-card"><b><span>VPN Platina</span><span>4.5</span></b><small>смешанные данные</small></article><article class="pressure-card"><b><span>GenVPN</span><span>4.0</span></b><small>подтверждено</small></article><article class="pressure-card"><b><span>GROZA</span><span>4.0</span></b><small>смешанные данные</small></article><article class="pressure-card"><b><span>Cats VPN</span><span>3.5</span></b><small>смешанные данные</small></article><article class="pressure-card"><b><span>Nosok VPN</span><span>3.5</span></b><small>подтверждено</small></article><article class="pressure-card"><b><span>Shuka</span><span>3.5</span></b><small>подтверждено</small></article><article class="pressure-card"><b><span>Durev</span><span>3.5</span></b><small>смешанные данные</small></article><article class="pressure-card"><b><span>NashVPN</span><span>3.0</span></b><small>смешанные данные</small></article></div><div class="no-score"><b>Без score — неполная инспекция:</b><span>Sota · вывод по сигналам</span><span>Lagom · вывод по сигналам</span></div><p class="pressure-note">Top-12 оценённых кейсов; остальные сохранены в source dataset.</p>
+</section>
+
+<section class="report-section" data-section="POKROV versus market matrix" style="top: 3540px; height: 900px">
+  <header class="section-header">
+  <p class="section-header__kicker">05 · ПОЗИЦИЯ</p>
+  <h2 class="section-header__title">POKROV против рынка</h2>
+  <p class="section-header__note">Качественная матрица; публичный рост POKROV не подменяется score.</p>
+</header><div class="matrix"><div class="matrix-head"><span>Критерий</span><span>POKROV</span><span>Основание</span></div>
+    <div class="matrix-row" data-assessment="сильнее"><strong>Вход</strong><b>сильнее</b><span>app-first, без обязательного gate</span></div>
+    <div class="matrix-row" data-assessment="сильнее"><strong>Пробный период</strong><b>сильнее</b><span>5 дней premium без карты</span></div>
+    <div class="matrix-row" data-assessment="сильнее"><strong>Зависимость от Telegram</strong><b>сильнее</b><span>Telegram — усилитель, не входной барьер</span></div>
+    <div class="matrix-row" data-assessment="слабее"><strong>Ширина платформ</strong><b>слабее</b><span>Android + Windows; рынок местами шире</span></div>
+    <div class="matrix-row" data-assessment="слабее"><strong>Охват магазинов</strong><b>слабее</b><span>outside-store beta</span></div>
+    <div class="matrix-row" data-assessment="смешанно"><strong>Восстановление</strong><b>смешанно</b><span>app → web cabinet → Telegram; публичная сопоставимость неполная</span></div>
+    <div class="matrix-row" data-assessment="слабее"><strong>Глубина маршрутизации</strong><b>слабее</b><span>уступает MantaRay</span></div>
+    <div class="matrix-row" data-assessment="сильнее"><strong>Доверие</strong><b>сильнее</b><span>без fake counters, prize spam и third-party ads</span></div>
+    <div class="matrix-row" data-assessment="слабее"><strong>Социальное доказательство</strong><b>слабее</b><span>меньше публичного масштаба</span></div>
+    <div class="matrix-row" data-assessment="не доказано"><strong>Двигатель роста</strong><b>не доказано</b><span>нет подтверждённой сопоставимой метрики</span></div></div>
+</section>
+
+<section class="report-section" data-section="decisions and source footer" style="top: 4440px; height: 560px">
+  <header class="section-header">
+  <p class="section-header__kicker">06 · РЕШЕНИЯ</p>
+  <h2 class="section-header__title">Копировать систему, не шум</h2>
+  <p class="section-header__note">Усиливать дистрибуцию без forced gate и недоказуемых обещаний.</p>
+</header><div class="decisions"><div class="decision-columns"><article class="decision-panel"><h3>КОПИРОВАТЬ</h3><ul><li>creators</li><li>simple referral</li><li>store + signing</li><li>status / roadmap</li><li>diagnostics</li></ul></article><article class="decision-panel decision-panel--avoid"><h3>НЕ КОПИРОВАТЬ</h3><ul><li>mandatory gate</li><li>prizes</li><li>incentivized reviews</li><li>ad-SDK overload</li><li>fake claims</li></ul></article></div><footer class="source"><b>ИСТОЧНИК:</b> infographic-data.json · <b>EVIDENCE / ADVISORY</b><br>Срез: 2026-07-12 · Посты: 2026-05-12 — 2026-07-12<br>SHA-256: <code>883cc925ab0171cf…</code><br>Канальные метрики не подтверждают paid users, revenue, churn или VPN MAU.</footer></div>
+</section> </main>
+</body>
+</html>

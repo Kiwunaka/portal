@@ -638,3 +638,31 @@ real target, delivery is skipped and logged without content or provider data.
 ## Admin
 
 Admin APIs must keep payment, download, node, ticket, and user states audit-friendly. Telegram admin remains fallback-only; `adminapp` is the primary operator surface, while webapp admin routes are a temporary parity fallback.
+
+## Selected Feature API Additions (2026-07-23)
+
+- `GET /api/public/status` returns current/recent operator-owned incidents and a
+  bounded checked timestamp; it is public read-only state, not a client-side
+  outage detector.
+- `POST|GET|DELETE /api/client/device-pairing/codes*` require a normal
+  authenticated client session. Only the creation response contains the full
+  eight-character code; storage uses a dedicated HMAC and list responses expose
+  only the last-four hint.
+- `POST /api/client/device-pairing/claim` is unauthenticated by design but
+  rate-limited by IP and code/install fingerprints. A valid unexpired one-time
+  code creates a normal device session, enforces the account device limit, and
+  cannot move an existing install between accounts.
+- `GET /api/client/programs` returns public capabilities and owned
+  applications. Application create/cancel is account-scoped; switch, research,
+  and team-pack submissions require manual review, while affiliate is disabled.
+- `GET /api/bonuses/summary` additionally returns anonymized referral
+  conversion/history, evidence-backed achievements, and useful quest progress.
+  `routing_lesson_completed` is an allowed bounded client event.
+- admin incident create/resolve/compensate and program review routes remain
+  admin-authenticated and audited. Incident compensation is idempotent per
+  incident/account ledger key.
+
+New tables are additive through the repository's `create_all` startup path:
+`service_incidents`, `incident_compensations`, `device_pairing_codes`, and
+`program_applications`. No endpoint returns stored code HMACs, operator notes to
+normal clients, or invited-user identity.

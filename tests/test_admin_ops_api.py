@@ -476,13 +476,234 @@ def test_capacity_alert_candidates_ignore_disabled_nodes(monkeypatch, tmp_path) 
                 "enabled": True,
                 "capacity_state": "hard_reject",
                 "reject_reason": "unhealthy",
+                "alert_confirmed": False,
+            },
+            {
+                "code": "de",
+                "enabled": True,
+                "capacity_state": "hard_reject",
+                "reject_reason": "unhealthy",
+                "alert_confirmed": True,
+                "alert_consecutive_samples": 3,
             },
         ],
     )
 
     fingerprints = {row["fingerprint"] for row in candidates}
     assert "node_capacity:brain" not in fingerprints
-    assert "node_capacity:us" in fingerprints
+    assert "node_capacity:us" not in fingerprints
+    assert "node_capacity:de" in fingerprints
+
+
+def test_node_metric_alerts_require_sustained_samples_without_snapshot_fallback(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from admin_ops_service import build_admin_metrics_status_snapshot
+    from models import Node, NodeHealthSample
+
+    now = _utcnow()
+    s = api.SessionLocal()
+    try:
+        s.add(
+            Node(
+                code="de",
+                name="DE",
+                host="de.example.test",
+                inbound_id=1,
+                enabled=True,
+                is_healthy=True,
+                last_health_at=now,
+                disk_used_gb=95,
+                disk_total_gb=100,
+            )
+        )
+        s.add(
+            NodeHealthSample(
+                node_code="de",
+                sampled_at=now,
+                disk_used_gb=95,
+                disk_total_gb=100,
+                is_healthy=True,
+            )
+        )
+        s.flush()
+
+        snapshot = build_admin_metrics_status_snapshot(s=s, now=now, stale_after_seconds=900)
+        assert "disk_high" not in snapshot["nodes"][0]["alert_kinds"]
+
+        s.add_all(
+            [
+                NodeHealthSample(
+                    node_code="de",
+                    sampled_at=now - timedelta(minutes=1),
+                    disk_used_gb=94,
+                    disk_total_gb=100,
+                    is_healthy=True,
+                ),
+                NodeHealthSample(
+                    node_code="de",
+                    sampled_at=now - timedelta(minutes=2),
+                    disk_used_gb=93,
+                    disk_total_gb=100,
+                    is_healthy=True,
+                ),
+            ]
+        )
+        s.flush()
+
+        snapshot = build_admin_metrics_status_snapshot(s=s, now=now, stale_after_seconds=900)
+        assert "disk_high" in snapshot["nodes"][0]["alert_kinds"]
+    finally:
+        s.close()
+
+
+def test_error_rate_alert_does_not_linger_after_healthy_samples(monkeypatch, tmp_path) -> None:
+    _load_api(monkeypatch, tmp_path)
+    from admin_ops_service import _active_node_metric_alert_kinds
+    from models import NodeHealthSample
+
+    now = _utcnow()
+    healthy_samples = [
+        NodeHealthSample(
+            node_code="it",
+            sampled_at=now - timedelta(minutes=index),
+            panel_error_rate=0.5,
+            is_healthy=True,
+        )
+        for index in range(3)
+    ]
+    assert "error_rate_high" not in _active_node_metric_alert_kinds(
+        samples=healthy_samples,
+        last_sample_at=now,
+        stale_after_seconds=900,
+        now=now,
+    )
+
+    healthy_samples[1].is_healthy = False
+    assert "error_rate_high" in _active_node_metric_alert_kinds(
+        samples=healthy_samples,
+        last_sample_at=now,
+        stale_after_seconds=900,
+        now=now,
+    )
+
+
+def test_capacity_hard_reject_alert_requires_three_runtime_samples(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from admin_ops_service import admin_nodes_capacity_payload, build_alert_candidates
+    from models import Node, NodeRuntimeMetric
+
+    now = _utcnow()
+    s = api.SessionLocal()
+    try:
+        s.add(
+            Node(
+                code="us",
+                name="US",
+                host="us.example.test",
+                inbound_id=1,
+                enabled=True,
+                accepting_new_clients=True,
+                is_healthy=False,
+                last_health_at=now,
+            )
+        )
+        s.add_all(
+            [
+                NodeRuntimeMetric(
+                    node_code="us",
+                    sampled_at=now - timedelta(minutes=1),
+                    capacity_state="healthy",
+                ),
+                NodeRuntimeMetric(
+                    node_code="us",
+                    sampled_at=now,
+                    capacity_state="hard_reject",
+                    reject_reason="unhealthy",
+                ),
+            ]
+        )
+        s.flush()
+
+        capacity = admin_nodes_capacity_payload(s=s, now=now)
+        row = capacity["nodes"][0]
+        assert row["capacity_state"] == "hard_reject"
+        assert row["alert_confirmed"] is False
+        assert row["alert_consecutive_samples"] == 1
+        assert not {
+            candidate["fingerprint"]
+            for candidate in build_alert_candidates(
+                metrics_status={},
+                provider_status=[],
+                free_summary={},
+                capacity_rows=capacity["nodes"],
+            )
+        }
+
+        s.add_all(
+            [
+                NodeRuntimeMetric(
+                    node_code="us",
+                    sampled_at=now + timedelta(minutes=1),
+                    capacity_state="hard_reject",
+                    reject_reason="unhealthy",
+                ),
+                NodeRuntimeMetric(
+                    node_code="us",
+                    sampled_at=now + timedelta(minutes=2),
+                    capacity_state="hard_reject",
+                    reject_reason="unhealthy",
+                ),
+            ]
+        )
+        s.flush()
+
+        capacity = admin_nodes_capacity_payload(s=s, now=now + timedelta(minutes=2))
+        row = capacity["nodes"][0]
+        assert row["alert_confirmed"] is True
+        assert row["alert_consecutive_samples"] == 3
+        candidates = build_alert_candidates(
+            metrics_status={},
+            provider_status=[],
+            free_summary={},
+            capacity_rows=capacity["nodes"],
+        )
+        assert {candidate["fingerprint"] for candidate in candidates} == {"node_capacity:us"}
+        assert "sustained routing hard reject" in candidates[0]["title"]
+    finally:
+        s.close()
+
+
+def test_confirmed_capacity_alert_suppresses_duplicate_error_rate_alert(monkeypatch, tmp_path) -> None:
+    _load_api(monkeypatch, tmp_path)
+    from admin_ops_service import build_alert_candidates
+
+    candidates = build_alert_candidates(
+        metrics_status={
+            "active_alerts": [
+                {"node_code": "it", "kind": "error_rate_high", "age_seconds": 10},
+                {"node_code": "it", "kind": "latency_high", "age_seconds": 10},
+            ]
+        },
+        provider_status=[],
+        free_summary={},
+        capacity_rows=[
+            {
+                "code": "it",
+                "enabled": True,
+                "capacity_state": "hard_reject",
+                "reject_reason": "unhealthy",
+                "alert_confirmed": True,
+                "alert_consecutive_samples": 3,
+            }
+        ],
+    )
+
+    fingerprints = {candidate["fingerprint"] for candidate in candidates}
+    assert "node_metrics:it:error_rate_high" not in fingerprints
+    assert "node_metrics:it:latency_high" in fingerprints
+    assert "node_capacity:it" in fingerprints
+    latency = next(candidate for candidate in candidates if candidate["fingerprint"] == "node_metrics:it:latency_high")
+    assert "Panel API latency" in latency["title"]
 
 
 def test_admin_ops_free_tier_provider_status_and_alerts(monkeypatch, tmp_path) -> None:
@@ -532,6 +753,9 @@ def test_admin_ops_free_tier_provider_status_and_alerts(monkeypatch, tmp_path) -
     assert traffic.status_code == 200, traffic.text
     assert {row["node_code"] for row in traffic.json()["rows"]} >= {"nl-free", "de"}
 
+    alerts_refresh = client.get("/api/admin/alerts", headers=headers)
+    assert alerts_refresh.status_code == 200, alerts_refresh.text
+
     overview = client.get("/api/admin/ops/overview", headers=headers)
     assert overview.status_code == 200, overview.text
     overview_body = overview.json()
@@ -569,6 +793,40 @@ def test_admin_short_lived_session_can_authorize_ops_endpoints(monkeypatch, tmp_
     overview = client.get("/api/admin/ops/overview", headers={"Authorization": f"Bearer {body['token']}"})
     assert overview.status_code == 200, overview.text
     assert overview.json()["ok"] is True
+
+
+def test_admin_ops_overview_uses_one_metrics_snapshot_without_full_summary_or_alert_refresh(
+    monkeypatch,
+    tmp_path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    now = _utcnow()
+    _seed_ops_fixture(api, now=now)
+    metric_calls = 0
+    original_metrics_snapshot = api._ops_build_admin_metrics_status_snapshot
+
+    def counted_metrics_snapshot(**kwargs):
+        nonlocal metric_calls
+        metric_calls += 1
+        return original_metrics_snapshot(**kwargs)
+
+    async def forbidden_slow_path(**_kwargs):
+        raise AssertionError("overview must not refresh durable alerts")
+
+    async def forbidden_full_summary(**_kwargs):
+        raise AssertionError("overview must not load the full admin summary")
+
+    monkeypatch.setattr(api, "_ops_build_admin_metrics_status_snapshot", counted_metrics_snapshot)
+    monkeypatch.setattr(api, "_refresh_ops_alerts_for_payload", forbidden_slow_path)
+    monkeypatch.setattr(api, "admin_summary", forbidden_full_summary)
+
+    response = TestClient(api.app).get("/api/admin/ops/overview", headers=_admin_headers())
+
+    assert response.status_code == 200, response.text
+    assert metric_calls == 1
+    body = response.json()
+    assert body["summary"]["users"]["active"] == 2
+    assert body["summary"]["nodes"] == {"total": 2, "healthy": 2}
 
 
 def test_admin_payments_summary_counts_revenue_attention_and_abandoned(monkeypatch, tmp_path) -> None:
@@ -1291,6 +1549,47 @@ def test_durable_alert_refresh_resolves_missing_candidates(monkeypatch, tmp_path
             }
         ]
         assert rows[0].status == "resolved"
+    finally:
+        s.close()
+
+
+def test_durable_alert_refresh_notifies_when_warning_resolves(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from admin_ops_service import refresh_ops_alerts
+
+    now = _utcnow()
+    s = api.SessionLocal()
+    try:
+        refresh_ops_alerts(
+            s=s,
+            now=now,
+            candidates=[
+                {
+                    "fingerprint": "node_metrics:de:disk_high",
+                    "source": "node_metrics",
+                    "severity": "warning",
+                    "title": "Node de: Disk usage high",
+                    "body": "test",
+                    "node_code": "de",
+                }
+            ],
+        )
+        s.flush()
+
+        _rows, notifications = refresh_ops_alerts(
+            s=s,
+            now=now + timedelta(minutes=5),
+            candidates=[],
+        )
+
+        assert notifications == [
+            {
+                "kind": "resolved",
+                "fingerprint": "node_metrics:de:disk_high",
+                "severity": "warning",
+                "title": "Node de: Disk usage high",
+            }
+        ]
     finally:
         s.close()
 

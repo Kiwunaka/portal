@@ -1,12 +1,14 @@
 # Pricing - POKROV
 
-Last updated: 2026-07-21
+Last updated: 2026-07-23
 
 Canonical checkout page: https://pokrov.space/checkout/
 
 POKROV starts with 5 days free in the Android or Windows app. The free start does not require a bank card. Paid access is continued through the same POKROV account for a selected duration. Prices are shown in RUB before payment.
 
 Public billing model: one-time paid access periods. No automatic renewal is promised or used in the public marketing flow.
+
+Paid access is unlimited by traffic. POKROV does not impose a tariff-level speed cap; actual speed depends on the user's network, device, selected location, and current load.
 
 ## Free start
 
@@ -30,7 +32,7 @@ Public billing model: one-time paid access periods. No automatic renewal is prom
 - Price: 99 RUB
 - Duration: 30 days
 - Device limit: 1
-- Notes: one-time starter plan after the free 5 days
+- Notes: aggressive one-time entry plan after the free 5 days; no automatic renewal
 
 ## 1 month
 
@@ -46,7 +48,7 @@ Public billing model: one-time paid access periods. No automatic renewal is prom
 - Price: 699 RUB
 - Duration: 91 days
 - Device limit: 5
-- Notes: quarterly option
+- Notes: saves about 6% compared with three monthly payments
 
 ## 6 months
 
@@ -54,7 +56,7 @@ Public billing model: one-time paid access periods. No automatic renewal is prom
 - Price: 1199 RUB
 - Duration: 182 days
 - Device limit: 5
-- Notes: longer access with fewer renewals
+- Notes: saves about 20% compared with six monthly payments
 
 ## 9 months
 
@@ -62,7 +64,7 @@ Public billing model: one-time paid access periods. No automatic renewal is prom
 - Price: 1399 RUB
 - Duration: 273 days
 - Device limit: 5
-- Notes: long duration for regular use
+- Notes: saves about 38% compared with nine monthly payments
 
 ## 12 months
 
@@ -70,7 +72,7 @@ Public billing model: one-time paid access periods. No automatic renewal is prom
 - Price: 1644 RUB
 - Duration: 365 days
 - Device limit: 5
-- Notes: longest available public plan
+- Notes: maximum 45% saving compared with twelve monthly payments
 
 ## Official download and trust paths
 

@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, HeartPulse, PauseCircle, RefreshCw, Server, TriangleAlert } from "lucide-react";
 
 import { adminApiErrorText, RouteBoundary } from "@/components/ops/route-boundary";
 import type { OpsShellStatus } from "@/components/ops/shell-status";
-import { Badge, Button, Card, SectionTitle } from "@/components/ui";
+import { Badge, Button, Card, MetricCell, MetricStrip, SectionTitle } from "@/components/ui";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { AdminApiError } from "@/lib/admin-api/client";
 import {
@@ -239,8 +239,8 @@ export function NodesPage({ onShellStatus }: { onShellStatus?: (status: OpsShell
   const anyError = Boolean(list.error || latest.error || detail.error || history.error || uploader.error);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="ops-page space-y-3">
+      <div className="ops-route-toolbar">
         <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]">
           <Badge tone={anyError ? "warning" : "success"}>{anyError ? "Есть сбой источника" : "Источники отвечают"}</Badge>
           <span>{list.data ? `${list.data.length} нод в текущем списке` : "Список ещё не получен"}</span>
@@ -273,7 +273,16 @@ export function NodesPage({ onShellStatus }: { onShellStatus?: (status: OpsShell
         />
       ) : null}
 
-      <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.25fr)]">
+      {list.data ? (
+        <MetricStrip label="Сводка флота нод">
+          <MetricCell icon={<Server aria-hidden="true" size={17} />} label="Всего нод" value={list.data.length} detail="В текущем серверном списке" tone="info" />
+          <MetricCell icon={<HeartPulse aria-hidden="true" size={17} />} label="Здоровые" value={list.data.filter((row) => row.enabled && row.is_healthy === true).length} detail="Enabled и health=true" tone="success" />
+          <MetricCell icon={<TriangleAlert aria-hidden="true" size={17} />} label="С сигналами" value={list.data.filter((row) => row.alert_kinds.length > 0).length} detail="Есть подтверждённые alert kinds" tone={list.data.some((row) => row.alert_kinds.length > 0) ? "warning" : "success"} />
+          <MetricCell icon={<PauseCircle aria-hidden="true" size={17} />} label="Не принимают новые" value={list.data.filter((row) => !row.accepting_new_clients || row.is_draining || !row.enabled).length} detail="Disabled, draining или reject" tone="neutral" />
+        </MetricStrip>
+      ) : null}
+
+      <div className="ops-workspace lg:grid-cols-[minmax(20rem,0.82fr)_minmax(0,1.38fr)]">
         <section aria-label="Ноды" className={`min-w-0 ${selected ? "max-lg:hidden" : ""}`}>
           <Card className="min-h-[420px] p-3">
             <SectionTitle title="Ноды" description="Плотный список, где сначала видно состояние. Выберите строку, чтобы открыть независимые источники и историю." />

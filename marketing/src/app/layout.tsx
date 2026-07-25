@@ -23,11 +23,11 @@ const golosText = Golos_Text({
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_MARKETING_SITE_URL),
   title: {
-    default: "POKROV открывает YouTube, TikTok и другие сервисы | Android и Windows",
+    default: "POKROV VPN для Android и Windows — 5 дней бесплатно",
     template: "%s",
   },
   description:
-    "Скачайте POKROV на Android или Windows, попробуйте 5 дней без карты и продлите доступ от 99 ₽ за 30 дней.",
+    "Быстрый VPN для YouTube, TikTok, ChatGPT и сайтов. 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽.",
   applicationName: CANONICAL_PLATFORM_BRAND,
   alternates: {
     canonical: `${CANONICAL_MARKETING_SITE_URL}/`,
@@ -37,8 +37,8 @@ export const metadata: Metadata = {
     type: "website",
     locale: "ru_RU",
     siteName: CANONICAL_PLATFORM_BRAND,
-    title: "POKROV открывает YouTube, TikTok и другие сервисы",
-    description: "Android и Windows, 5 дней бесплатно без карты, продление от 99 ₽ за 30 дней и поддержка рядом.",
+    title: "POKROV VPN для Android и Windows",
+    description: "Android и Windows, 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽.",
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     images: [
       {
@@ -51,8 +51,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "POKROV | Android и Windows",
-    description: "Скачайте приложение для Android или Windows, получите 5 дней бесплатно без карты и продолжайте через кабинет.",
+    title: "POKROV VPN для Android и Windows",
+    description: "YouTube, TikTok, ChatGPT и сайты одной кнопкой. 5 дней бесплатно без карты.",
     images: [
       {
         url: DEFAULT_MARKETING_TWITTER_IMAGE_PATH,
