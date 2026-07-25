@@ -56,12 +56,13 @@ WINDOWS_CORE_PATH = WINDOWS_RUNTIME_ROOT / "pokrov-core.dll"
 WINDOWS_CRONET_PATH = WINDOWS_RUNTIME_ROOT / "libcronet.dll"
 
 POKROV_CORE_REPOSITORY = "Kiwunaka/POKROV-core"
-POKROV_CORE_RELEASE_TAG = "v1.0.0"
-POKROV_CORE_SOURCE_COMMIT = "3720cb052e56ccd68f0120cc9efaf5804ec84e0b"
-ANDROID_CORE_SIZE = 106833028
-ANDROID_CORE_SHA256 = "ca3ee922ff10897545da86ea3aa6df942ecf36d7f687b2782b0bc285e9a15cb3"
-WINDOWS_CORE_SIZE = 55118848
-WINDOWS_CORE_SHA256 = "4587448c7eec4bf9ec70508f698764a71dfa7318baeebc9598a41b79f7dc4e2d"
+POKROV_CORE_RELEASE_TAG = "v1.0.1"
+POKROV_CORE_RELEASE_URL = "https://github.com/Kiwunaka/pokrov-core/releases/tag/v1.0.1"
+POKROV_CORE_SOURCE_COMMIT = "3c256e5560220f2b4233d72ed057d1b72e8d3ad5"
+ANDROID_CORE_SIZE = 106831626
+ANDROID_CORE_SHA256 = "25b96622f9ef6e648e1167847ef4205c63bad88c7c897e862bf36249830114e3"
+WINDOWS_CORE_SIZE = 55117824
+WINDOWS_CORE_SHA256 = "8f4aa233054b78ac2e6dbcef7634b6f4829a9f27f4cd65674de80f6f3b299f9e"
 WINDOWS_CRONET_SIZE = 8596992
 WINDOWS_CRONET_SHA256 = "8ef1f8bbde77f954af1ae47bee1819ac8dc2354bb0e1d4baba3dad9e58d7a6f7"
 
@@ -168,11 +169,22 @@ def _runtime_artifact_failures(runtime_artifacts: dict[str, object]) -> list[str
         failures.append("runtime artifacts must keep POKROV Core active")
 
     provenance = dict(core.get("artifact_provenance") or {})
+    reproducible_build = dict(provenance.get("reproducible_build") or {})
+    reproducible_android = dict(reproducible_build.get("android") or {})
+    reproducible_windows = dict(reproducible_build.get("windows") or {})
     if (
-        provenance.get("status") != "pinned_dirty_build_not_reproducible_from_clean_tag"
-        or provenance.get("promotion_rule") != "retain_pinned_v1.0.0_candidate_until_new_patch_release"
+        provenance.get("status") != "clean_reproducible_release"
+        or provenance.get("vcs_stamp") != "disabled_for_reproducible_release_artifacts"
+        or provenance.get("source_identity") != "annotated_release_tag_and_github_release_commit"
+        or provenance.get("release_url") != POKROV_CORE_RELEASE_URL
+        or int(reproducible_android.get("size") or 0) != ANDROID_CORE_SIZE
+        or reproducible_android.get("sha256") != ANDROID_CORE_SHA256
+        or int(reproducible_windows.get("size") or 0) != WINDOWS_CORE_SIZE
+        or reproducible_windows.get("sha256") != WINDOWS_CORE_SHA256
+        or reproducible_build.get("libcronet_sha256") != WINDOWS_CRONET_SHA256
+        or provenance.get("promotion_rule") != "accept_exact_v1.0.1_release_artifacts"
     ):
-        failures.append("runtime artifacts must retain the reviewed POKROV Core provenance exception")
+        failures.append("runtime artifacts must pin the clean reproducible POKROV Core release provenance")
 
     desktop_abi = dict(core.get("desktop_abi") or {})
     if (
@@ -289,6 +301,8 @@ def _android_host_failures(*, manifest_text: str, build_gradle_text: str) -> lis
         failures.append("Android build.gradle must keep namespace on space.pokrov.pokrov_android_shell")
     if 'signingConfig = signingConfigs.debug' not in build_gradle_text:
         failures.append("Android release build.gradle must still make the debug-signing alpha state explicit")
+    if 'keepDebugSymbols += ["**/libpokrov-core.so"]' not in build_gradle_text:
+        failures.append("Android packaging must preserve the exact published POKROV Core ELF identity")
 
     return failures
 
