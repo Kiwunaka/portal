@@ -37,8 +37,8 @@ Excluded:
 
 | Metric | Count |
 | --- | ---: |
-| Total symbols | 7428 |
-| Root repo symbols | 5786 |
+| Total symbols | 7431 |
+| Root repo symbols | 5789 |
 | POKROV-app symbols | 1642 |
 | Symbols with token-level test references | 2592 |
 | Parser errors | 0 |
@@ -47,7 +47,7 @@ Excluded:
 
 | Language | Count |
 | --- | ---: |
-| Python | 4785 |
+| Python | 4788 |
 | Dart | 1372 |
 | TSX | 680 |
 | TypeScript | 321 |
@@ -61,7 +61,7 @@ Excluded:
 | Subsystem | Count |
 | --- | ---: |
 | Backend and Telegram bots | 3107 |
-| Scripts and Ops | 1678 |
+| Scripts and Ops | 1681 |
 | POKROV client app | 1572 |
 | WebApp and Admin | 796 |
 | Marketing site | 159 |
@@ -71,7 +71,7 @@ Excluded:
 
 | Symbol kind | Count |
 | --- | ---: |
-| Function | 5258 |
+| Function | 5261 |
 | Method | 1391 |
 | Class | 779 |
 
@@ -95,7 +95,7 @@ Excluded:
 - The generated private-helper coverage matrix currently has 294 private inventory-only rows: 226 low-risk, 64 medium-risk, and 4 high-risk; Q-001 records that story/symbol tiers are sufficient for this audit.
 - For public behavior, prefer feature/user-story tests over one-test-per-helper churn.
 - Entrypoint hints are conservative labels; Aiogram `router.*` handlers are classified as Telegram handlers before HTTP route detection, and HTTP route detection requires route decorators such as `app.get`, `app.post`, or `app.api_route`.
-- Source-symbol coverage status lives in `pokrov-symbol-coverage-audit.csv`; it distinguishes entrypoint/story/dependency/module-test/test/client-platform/manual-gate/framework/tooling/private/public-API-review tiers for all 7428 symbols.
+- Source-symbol coverage status lives in `pokrov-symbol-coverage-audit.csv`; it distinguishes entrypoint/story/dependency/module-test/test/client-platform/manual-gate/framework/tooling/private/public-API-review tiers for all 7431 symbols.
 - Source-symbol coverage also includes `expected_behavior_from_code`, a generated behavior-preservation note for every symbol that keeps manual/review buckets honest instead of treating them as direct proof.
 
 ## Regeneration

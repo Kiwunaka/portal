@@ -21,7 +21,7 @@ It closes the literal "each function/class/method" tracking gap without pretendi
 
 | Coverage tier | Count |
 | --- | ---: |
-| Story source file | 3714 |
+| Story source file | 3717 |
 | Story dependency source file | 2054 |
 | Entrypoint mapped | 457 |
 | Direct token test ref | 525 |

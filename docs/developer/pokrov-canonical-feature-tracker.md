@@ -33,8 +33,8 @@ Interpretation rule: in this tracker, `function` means a product capability or e
 - `client-app`: `docs/audit-artifacts/source-trackers/2026-06-27/pokrov-client-user-story-tracker.xlsx` (67 story rows imported)
 - generated backend API rows use `source_tracker = generated from portal_bot/api.py route decorators` (165 route rows imported; all 165 now have direct test-reference mappings)
 - generated script/operator rows use `source_tracker = generated from scripts/manifest.yaml` (123 active script/operator workflow rows imported; all 123 now have direct test-reference mappings; 2 legacy FreeKassa CLIs are explicitly deprecated)
-- `generated-code-function-inventory`: root repo plus `POKROV-app` active source (7428 low-level source symbols inventoried; 0 parser errors)
-- `generated-symbol-coverage-audit`: every low-level source symbol classified into entrypoint/story/dependency/module-test/test/client-platform/manual-gate/framework/tooling/private/public-API-review/deprecated tiers with `expected_behavior_from_code` populated (7428 rows; 51 generic public-symbol review rows; 8 client-package public-API review rows; 0 entrypoint mapping gaps; 0 script-manifest review rows; 10 active script workflow-mapping gaps; 90 platform/tray manual-tier rows carry `manual_gate_refs`)
+- `generated-code-function-inventory`: root repo plus `POKROV-app` active source (7431 low-level source symbols inventoried; 0 parser errors)
+- `generated-symbol-coverage-audit`: every low-level source symbol classified into entrypoint/story/dependency/module-test/test/client-platform/manual-gate/framework/tooling/private/public-API-review/deprecated tiers with `expected_behavior_from_code` populated (7431 rows; 51 generic public-symbol review rows; 8 client-package public-API review rows; 0 entrypoint mapping gaps; 0 script-manifest review rows; 10 active script workflow-mapping gaps; 90 platform/tray manual-tier rows carry `manual_gate_refs`)
 - `generated-private-helper-coverage`: `private_inventory_only` expanded into a Q-001 policy matrix (294 current private helper rows; 4 high risk, 64 medium risk, 226 low risk; 294 `accepted_story_and_symbol_tiers_q001`, 0 `needs_owner_decision_q001`)
 - `generated-story-test-evidence-audit`: canonical tracker evidence, retest proof, and field-completeness classifier (525 rows audited; 524 direct file refs, 524 `direct_test_ref_passed` rows, 0 imported-pass rows without direct file refs, 1 manual owner gate / `manual_owner_gate_open`, 0 stale refs; 0 missing story contract fields; every row has at least one resolvable concrete `code_evidence` ref, with no wildcard source evidence; 0 unresolved `source_tracker` refs)
 - `generated-defect-fix-retest-ledger`: canonical rows with documented defects or discrepancies (18 rows; 16 `closed_retested`, 2 `closed_retested_no_product_change`, 0 weak/open closure rows; all 18 have `direct_test_ref_passed`)
@@ -93,8 +93,8 @@ No backend route scenario gaps remain in the current coverage map. If a new rout
 
 | Metric | Count |
 | --- | ---: |
-| Total source symbols | 7428 |
-| Root repo symbols | 5786 |
+| Total source symbols | 7431 |
+| Root repo symbols | 5789 |
 | POKROV-app symbols | 1642 |
 | Symbols with token-level test references | 2592 |
 | Parser errors | 0 |
@@ -105,7 +105,7 @@ This companion inventory is intentionally `inventory_only`: token-level test ref
 
 | Coverage tier | Count |
 | --- | ---: |
-| Story source file | 3714 |
+| Story source file | 3717 |
 | Story dependency source file | 2054 |
 | Entrypoint mapped | 457 |
 | Direct token test ref | 525 |

@@ -33,5 +33,5 @@
 | PASS | `marketing\src\app\offer\page.tsx` | Legal page avoids direct checkout CTA |
 | PASS | `marketing\src\app\privacy\page.tsx` | Legal page avoids direct checkout CTA |
 | PASS | `webapp\src\app\(dashboard)\support\legal\page.tsx` | Webapp legal links use absolute marketing URLs |
-| PASS | `portal_bot\api.py` | Admin campaign link builder marks public checkout as safe fallback |
+| PASS | `portal_bot\api_admin_routes.py` | Admin campaign link builder marks public checkout as safe fallback |
 | PASS | `portal_bot\api.py` | Numeric subscription fallback is explicit compatibility and defaults off |

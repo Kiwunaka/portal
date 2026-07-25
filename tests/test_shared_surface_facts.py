@@ -82,6 +82,7 @@ def test_numeric_subscription_compatibility_is_deny_by_default():
         'SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=False)'
         in check_links_source
     )
+    assert 'api_admin_file = REPO_ROOT / "portal_bot" / "api_admin_routes.py"' in check_links_source
 
 
 def test_telegram_login_hash_uses_constant_time_comparison():

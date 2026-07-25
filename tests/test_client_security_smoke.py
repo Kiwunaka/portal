@@ -107,16 +107,24 @@ class ClientSecuritySmokeTests(unittest.TestCase):
 
     def test_runtime_artifacts_fail_when_windows_helper_or_wrong_pin_is_declared(self) -> None:
         runtime_artifacts = {
-            "libcore": {
+            "core": {
                 "repository": "other/repo",
                 "release_tag": "v9.9.9",
+                "source_commit": "wrong",
+                "activation_state": "inactive",
+                "artifact_provenance": {},
+                "desktop_abi": {},
                 "assets": {
                     "android": {
                         "entry": "wrong.aar",
+                        "size": 1,
+                        "sha256": "wrong",
                         "sync_destination": "apps/android_shell/wrong",
                     },
                     "windows": {
                         "entry": "wrong.dll",
+                        "size": 1,
+                        "sha256": "wrong",
                         "helper": "HiddifyCli.exe",
                         "sync_destination": "apps/windows_shell/wrong",
                     },
@@ -126,10 +134,55 @@ class ClientSecuritySmokeTests(unittest.TestCase):
 
         failures = self.module._runtime_artifact_failures(runtime_artifacts)
 
-        self.assertIn("runtime artifacts must stay pinned to hiddify/hiddify-core", failures)
-        self.assertIn("runtime artifacts must stay pinned to libcore release v3.1.8", failures)
+        self.assertIn("runtime artifacts must stay pinned to Kiwunaka/POKROV-core", failures)
+        self.assertIn("runtime artifacts must stay pinned to POKROV Core v1.0.0", failures)
         self.assertIn("runtime artifacts must not declare a Windows helper binary", failures)
-        self.assertIn("runtime artifacts must keep the Android libcore entry on libcore.aar", failures)
+        self.assertIn("runtime artifacts must pin the reviewed Android POKROV Core AAR", failures)
+
+    def test_runtime_artifacts_accept_reviewed_pokrov_core_contract(self) -> None:
+        runtime_artifacts = {
+            "core": {
+                "repository": self.module.POKROV_CORE_REPOSITORY,
+                "release_tag": self.module.POKROV_CORE_RELEASE_TAG,
+                "source_commit": self.module.POKROV_CORE_SOURCE_COMMIT,
+                "activation_state": "active",
+                "artifact_provenance": {
+                    "status": "pinned_dirty_build_not_reproducible_from_clean_tag",
+                    "promotion_rule": "retain_pinned_v1.0.0_candidate_until_new_patch_release",
+                },
+                "desktop_abi": {
+                    "name": "pokrov-core",
+                    "version": 2,
+                    "required_symbol": "pokrovCoreAbiVersion",
+                    "secure_file_symbol": "pokrovSecureFile",
+                },
+                "assets": {
+                    "android": {
+                        "entry": "pokrov-core.aar",
+                        "size": self.module.ANDROID_CORE_SIZE,
+                        "sha256": self.module.ANDROID_CORE_SHA256,
+                        "sync_destination": "apps/android_shell/android/app/libs",
+                    },
+                    "windows": {
+                        "entry": "pokrov-core.dll",
+                        "size": self.module.WINDOWS_CORE_SIZE,
+                        "sha256": self.module.WINDOWS_CORE_SHA256,
+                        "sync_destination": "apps/windows_shell/windows/runner/resources/runtime",
+                        "runtime_dependencies": ["libcronet.dll"],
+                        "runtime_dependency_size": {
+                            "libcronet.dll": self.module.WINDOWS_CRONET_SIZE,
+                        },
+                        "runtime_dependency_sha256": {
+                            "libcronet.dll": self.module.WINDOWS_CRONET_SHA256,
+                        },
+                    },
+                },
+            }
+        }
+
+        failures = self.module._runtime_artifact_failures(runtime_artifacts)
+
+        self.assertEqual(failures, [])
 
     def test_android_host_accepts_non_exported_special_use_vpn_service(self) -> None:
         manifest_text = """

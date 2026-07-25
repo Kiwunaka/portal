@@ -56,6 +56,7 @@ def _collect_findings() -> list[Finding]:
     marketing_apple_icon = REPO_ROOT / "marketing" / "public" / "apple-icon.png"
     webapp_legal = REPO_ROOT / "webapp" / "src" / "app" / "(dashboard)" / "support" / "legal" / "page.tsx"
     api_file = REPO_ROOT / "portal_bot" / "api.py"
+    api_admin_file = REPO_ROOT / "portal_bot" / "api_admin_routes.py"
 
     for path in (
         marketing_robots,
@@ -145,12 +146,13 @@ def _collect_findings() -> list[Finding]:
     if not any(item.level == "FAIL" and item.file.endswith("support\\legal\\page.tsx") for item in findings):
         _add_pass(findings, webapp_legal, "Webapp legal links use absolute marketing URLs")
 
-    api_text = _read(api_file)
-    if 'checkout_mode": "bot_fallback"' not in api_text:
-        _add_fail(findings, api_file, "Admin campaign link builder is not marked as safe bot fallback")
+    api_admin_text = _read(api_admin_file)
+    if 'checkout_mode": "bot_fallback"' not in api_admin_text:
+        _add_fail(findings, api_admin_file, "Admin campaign link builder is not marked as safe bot fallback")
     else:
-        _add_pass(findings, api_file, "Admin campaign link builder marks public checkout as safe fallback")
+        _add_pass(findings, api_admin_file, "Admin campaign link builder marks public checkout as safe fallback")
 
+    api_text = _read(api_file)
     numeric_fallback_deny_default = (
         'SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=False)'
     )

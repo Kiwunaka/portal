@@ -65,7 +65,7 @@ class ClientGatePreflightStatus:
     validate_seed_script: Path
     bootstrap_script: Path
     run_tests_script: Path
-    fetch_libcore_script: Path
+    sync_core_script: Path
     build_windows_script: Path
     android_shell_root: Path
     windows_shell_root: Path
@@ -111,7 +111,7 @@ def _preflight_status(client_root: Path) -> ClientGatePreflightStatus:
     validate_seed_script = client_root / "scripts" / "validate-seed.ps1"
     bootstrap_script = client_root / "scripts" / "bootstrap-workspace.ps1"
     run_tests_script = client_root / "scripts" / "run-tests.ps1"
-    fetch_libcore_script = client_root / "scripts" / "fetch-libcore-assets.ps1"
+    sync_core_script = client_root / "scripts" / "sync-pokrov-core-runtime.ps1"
     build_windows_script = client_root / "scripts" / "build-windows-release.ps1"
     android_shell_root = client_root / "apps" / "android_shell"
     windows_shell_root = client_root / "apps" / "windows_shell"
@@ -124,7 +124,7 @@ def _preflight_status(client_root: Path) -> ClientGatePreflightStatus:
         validate_seed_script,
         bootstrap_script,
         run_tests_script,
-        fetch_libcore_script,
+        sync_core_script,
         build_windows_script,
         android_shell_root,
         windows_shell_root,
@@ -140,7 +140,7 @@ def _preflight_status(client_root: Path) -> ClientGatePreflightStatus:
         validate_seed_script=validate_seed_script,
         bootstrap_script=bootstrap_script,
         run_tests_script=run_tests_script,
-        fetch_libcore_script=fetch_libcore_script,
+        sync_core_script=sync_core_script,
         build_windows_script=build_windows_script,
         android_shell_root=android_shell_root,
         windows_shell_root=windows_shell_root,
@@ -172,6 +172,7 @@ def _render_preflight_report(
         f"[client-root] validate seed: {status.validate_seed_script}",
         f"[client-root] bootstrap workspace: {status.bootstrap_script}",
         f"[client-root] run tests: {status.run_tests_script}",
+        f"[client-root] sync core runtime: {status.sync_core_script}",
         f"[client-root] build windows release: {status.build_windows_script}",
     ]
     if status.missing_paths:
@@ -247,16 +248,11 @@ def _android_target_command(client_root: Path, *, target: str) -> ClientGateComm
     return ClientGateCommand(
         steps=(
             ClientGateStep(
-                command=_powershell_file_command(status.bootstrap_script),
+                command=_powershell_file_command(status.validate_seed_script),
                 cwd=client_root,
             ),
             ClientGateStep(
-                command=_powershell_file_command(
-                    status.fetch_libcore_script,
-                    "-Platforms",
-                    "android",
-                    "-SyncToHosts",
-                ),
+                command=_powershell_file_command(status.bootstrap_script),
                 cwd=client_root,
             ),
             ClientGateStep(
@@ -286,7 +282,6 @@ def _windows_target_command(client_root: Path) -> ClientGateCommand:
             ClientGateStep(
                 command=_powershell_file_command(
                     status.build_windows_script,
-                    "-SyncRuntime",
                     "-SkipTests",
                     "-SkipAnalyze",
                 ),

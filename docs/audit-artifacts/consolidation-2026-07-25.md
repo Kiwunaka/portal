@@ -53,6 +53,12 @@ build/package lane. Those local Android artifacts were debug-signed and the
 Windows artifact was unsigned, so neither is treated as a publishable stable
 binary.
 
+The platform-side release gate was reconciled with that decision as well. It
+now validates the exact POKROV Core `v1.0.0` repository, source commit, ABI,
+AAR/DLL identities, and `libcronet.dll` identity. Android and Windows gates use
+the retained reviewed client artifacts instead of forcing a sync from the
+known-different clean tag rebuild.
+
 ## Core Artifact Provenance Boundary
 
 `POKROV-core` remained clean at tag `v1.0.0`, commit
@@ -114,6 +120,7 @@ caches were cleaned:
 | Evidence | Contents | Manifest or bundle SHA-256 |
 | --- | --- | --- |
 | `competitor-audit-raw-20260725` | 1,966 raw research files, 180,623,362 bytes | `aead8f676a1cc9fff16fea7dadaa99940a99dd88cbd9eb833529f45b1a65399b` |
+| `competitor-audit-auxiliary-20260725` | 19 derived APK/OCR/PDF-analysis files, 19,412,191 bytes | `1a763aa6b90309a8e8fa19a927258e4f95d39d79ce8eb4b16bf88a63a10dffb8` |
 | `legacy-hiddify-cache-20260725-sha256.csv` | 77 rejected Hiddify 3.1.8 cache files, 663,526,285 bytes | `8c2198dd17171881f456b60e3ac6ceb04b662aeb916375e999bed616878dd212` |
 | `pokrov-app-worktrees-20260725.bundle` | all four removed private-client worktree refs and complete reachable history | `9fd429bc25d2c4d6767556797321096bf165cb846e3763474230c7e07afc16f9` |
 | `pokrov-app-local-evidence-20260725` | 70 ignored client files inventoried; 58 unique reviews, captures, manifests, and workbook files copied before generated/duplicate cleanup | `3c817851aa4b3d27573bb2ba6079d901cee55aeee6790aa7613e4f138ea25cb9` |
@@ -137,6 +144,7 @@ branch refs.
 | WebApp full E2E | PASS: 73/73 Playwright tests |
 | AdminApp lint/build/E2E | PASS: ESLint, 17-route production build, 60/60 Playwright tests |
 | Private client PR #8 CI and local platform builds | PASS within the signing/provenance limits above |
+| Cross-repository quick release gate | PASS: worker/API lifecycle, exact client runtime identity, client Flutter suites, three production builds, 73/73 WebApp E2E, public-link and UI smoke |
 | POKROV Core Go tests | PASS |
 | Public source-client design PR #207 CI | PASS: source/import, Flutter analyze/tests, and Android JVM jobs |
 | Script manifest | PASS after registering `research_censorship_corpus.py` |
