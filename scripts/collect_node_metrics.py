@@ -33,7 +33,7 @@ from node_observability_sanitizer import (  # noqa: E402
     safe_probe_classification as _shared_safe_probe_classification,
     safe_probe_stage as _shared_safe_probe_stage,
 )
-from node_policy import node_capacity_status  # noqa: E402
+from node_policy import AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED, node_capacity_status  # noqa: E402
 
 
 _NODE_CODE_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
@@ -308,6 +308,7 @@ def _build_transport_health_payload(
     dataplane_error_message: str,
     authenticated_egress_state: str,
     authenticated_egress_error_kind: str,
+    authenticated_egress_required: bool,
     metrics_complete: bool,
     probe: dict[str, object] | None,
 ) -> dict[str, object]:
@@ -340,7 +341,12 @@ def _build_transport_health_payload(
         dataplane_summary=dataplane_summary,
         dataplane_detail=dataplane_detail,
     )
-    if panel_state == "healthy" and dataplane_state == "healthy" and authenticated_egress_state != "healthy":
+    if (
+        authenticated_egress_required
+        and panel_state == "healthy"
+        and dataplane_state == "healthy"
+        and authenticated_egress_state != "healthy"
+    ):
         root_cause_summary = (
             "Authenticated egress failed while edge reachability passed."
             if authenticated_egress_state == "failed"
@@ -614,7 +620,7 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
     healthy = bool(
         panel_healthy
         and dataplane_state == "healthy"
-        and authenticated_egress_ok is True
+        and (not AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED or authenticated_egress_ok is True)
         and metrics_complete
     )
     if panel_state != "healthy":
@@ -625,20 +631,35 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
         probe_stage = dataplane_stage
         probe_error_kind = dataplane_error_kind
         probe_error_message = dataplane_error_message
-    else:
+    elif AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED:
         probe_stage = "authenticated_egress"
         probe_error_kind = authenticated_egress_error_kind
         probe_error_message = ""
-    selected_probe_at = authenticated_probe_at if panel_state == "healthy" and dataplane_state == "healthy" else probe_at
+    else:
+        probe_stage = dataplane_stage
+        probe_error_kind = ""
+        probe_error_message = ""
+    selected_probe_at = (
+        authenticated_probe_at
+        if AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED and panel_state == "healthy" and dataplane_state == "healthy"
+        else probe_at
+    )
 
     hoster_family = safe_hoster_family((probe or {}).get("hoster_family"))
     hoster_asn = safe_hoster_asn((probe or {}).get("hoster_asn"))
     hoster_subnet = None
+    authenticated_classification_active = bool(
+        AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED and panel_state == "healthy" and dataplane_state == "healthy"
+    )
     probe_classification = _safe_probe_classification(
-        (probe or {}).get("probe_classification")
-        if panel_state != "healthy" or dataplane_state != "healthy"
-        else authenticated_probe.get("probe_classification"),
-        "authenticated_egress_unavailable" if authenticated_egress_ok is not True else "authenticated_egress",
+        authenticated_probe.get("probe_classification")
+        if authenticated_classification_active
+        else (probe or {}).get("probe_classification"),
+        (
+            "authenticated_egress_unavailable"
+            if authenticated_classification_active and authenticated_egress_ok is not True
+            else "edge_reachability_healthy"
+        ),
     )
     ipv4_health = str((probe or {}).get("ipv4_health") or "unknown").strip().lower()
     ipv6_health = str((probe or {}).get("ipv6_health") or "unknown").strip().lower()
@@ -657,6 +678,7 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
         dataplane_error_message=dataplane_error_message,
         authenticated_egress_state=authenticated_egress_state,
         authenticated_egress_error_kind=authenticated_egress_error_kind,
+        authenticated_egress_required=AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED,
         metrics_complete=metrics_complete,
         probe=probe,
     )
@@ -877,6 +899,7 @@ def _persist_collector_failure(*, node: Node, error_window: int, source: str, de
             dataplane_error_message=detail_code,
             authenticated_egress_state="unavailable",
             authenticated_egress_error_kind=detail_code,
+            authenticated_egress_required=AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED,
             metrics_complete=False,
             probe=None,
         )

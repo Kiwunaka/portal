@@ -477,7 +477,7 @@ class CollectNodeMetricsObservabilityTests(unittest.TestCase):
         self.assertEqual(transport["dataplane_state"], "healthy")
         self.assertEqual(transport["metrics_state"], "missing")
 
-    def test_collect_one_fails_closed_when_authenticated_egress_material_is_unavailable(self) -> None:
+    def test_collect_one_keeps_primary_health_when_authenticated_egress_rollout_is_disabled(self) -> None:
         session = self.db.SessionLocal()
         try:
             node = session.query(self.models.Node).filter(self.models.Node.id == self.node_id).first()
@@ -510,19 +510,64 @@ class CollectNodeMetricsObservabilityTests(unittest.TestCase):
         ):
             result = asyncio.run(self.collector._collect_one(node=node, error_window=5, source="tests"))
 
-        self.assertFalse(result["healthy"])
+        self.assertTrue(result["healthy"])
         self.assertEqual(result["edge_reachability_state"], "healthy")
         self.assertEqual(result["authenticated_egress_state"], "unavailable")
         node_row, sample = self._load_node()
         self.assertTrue(node_row.edge_reachability_ok)
         self.assertTrue(node_row.dataplane_ok)
         self.assertIsNone(node_row.authenticated_egress_ok)
+        self.assertTrue(node_row.is_healthy)
+        self.assertEqual(node_row.last_probe_stage, "reality_target")
+        self.assertIsNone(node_row.last_probe_error_kind)
+        transport = self._decode_transport_health(sample.transport_health_json)
+        self.assertEqual(transport["edge_reachability_state"], "healthy")
+        self.assertEqual(transport["authenticated_egress_state"], "unavailable")
+        self.assertNotIn("authenticated egress is unavailable", transport["root_cause_summary"].lower())
+
+    def test_collect_one_fails_closed_when_authenticated_egress_enforcement_is_enabled(self) -> None:
+        session = self.db.SessionLocal()
+        try:
+            node = session.query(self.models.Node).filter(self.models.Node.id == self.node_id).first()
+        finally:
+            session.close()
+
+        with mock.patch.object(self.collector, "AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED", True), mock.patch.object(
+            self.collector,
+            "PanelClient",
+            _FakePanelClientOk,
+        ), mock.patch.object(
+            self.collector,
+            "probe_node_endpoint",
+            return_value={
+                "ok": True,
+                "edge_reachability_ok": True,
+                "stage": "reality_target",
+                "error_kind": "",
+                "error_message": "",
+                "probe_classification": "healthy",
+                "probed_at": datetime.utcnow(),
+            },
+        ), mock.patch.object(
+            self.collector,
+            "probe_authenticated_egress",
+            return_value={
+                "ok": None,
+                "state": "unavailable",
+                "stage": "authenticated_egress",
+                "error_kind": "probe_material_unavailable",
+                "probe_classification": "authenticated_egress_unavailable",
+                "probed_at": datetime.utcnow(),
+            },
+        ):
+            result = asyncio.run(self.collector._collect_one(node=node, error_window=5, source="tests"))
+
+        self.assertFalse(result["healthy"])
+        node_row, sample = self._load_node()
         self.assertFalse(node_row.is_healthy)
         self.assertEqual(node_row.last_probe_stage, "authenticated_egress")
         self.assertEqual(node_row.last_probe_error_kind, "probe_material_unavailable")
         transport = self._decode_transport_health(sample.transport_health_json)
-        self.assertEqual(transport["edge_reachability_state"], "healthy")
-        self.assertEqual(transport["authenticated_egress_state"], "unavailable")
         self.assertIn("authenticated egress is unavailable", transport["root_cause_summary"].lower())
 
     def test_collect_one_calculates_network_rates_from_cumulative_totals(self) -> None:
