@@ -1382,6 +1382,7 @@ class PanelClient:
         if target_inbound_id <= 0:
             return False
         paths = [
+            f"/panel/api/clients/resetTraffic/{encoded_email}",
             f"/panel/api/inbounds/{target_inbound_id}/resetClientTraffic/{encoded_email}",
             f"/panel/api/inbounds/resetClientTraffic/{encoded_email}",
         ]
@@ -1447,17 +1448,49 @@ class PanelClient:
                 cookies=self.cookies,
                 timeout=aiohttp.ClientTimeout(total=20),
             ) as resp:
-                if resp.status == 404:
-                    return await self._update_client_modern(
-                        updated=updated,
-                        inbound_id=target_inbound_id,
-                    )
                 if resp.status != 200:
                     return False
                 data = await resp.json(content_type=None)
                 return bool((data or {}).get("success"))
         except Exception:
             return False
+
+    async def _confirm_client_traffic_reset(self, *, email: str, inbound_id: int) -> bool:
+        """Require panel read-back instead of trusting a reset/update acknowledgement."""
+
+        target_email = str(email or "").strip()
+        target_inbound_id = int(inbound_id or 0)
+        if not target_email or target_inbound_id <= 0:
+            return False
+        for attempt in range(4):
+            try:
+                inbounds = await self._get_inbounds()
+            except Exception:
+                inbounds = []
+            for inbound in self._selected_inbounds(inbounds, include_disabled=True):
+                if int(inbound.get("id") or 0) != target_inbound_id:
+                    continue
+                settings = self._decode_settings(inbound.get("settings", "{}"))
+                client_exists = any(
+                    str((item or {}).get("email") or "").strip() == target_email
+                    for item in settings.get("clients", []) or []
+                )
+                if not client_exists:
+                    return False
+                stats = [
+                    item
+                    for item in inbound.get("clientStats", []) or []
+                    if str((item or {}).get("email") or "").strip() == target_email
+                ]
+                if not stats or all(
+                    int((item or {}).get("up", 0) or 0) + int((item or {}).get("down", 0) or 0) == 0
+                    for item in stats
+                ):
+                    return True
+                break
+            if attempt < 3:
+                await asyncio.sleep(0.25 * (attempt + 1))
+        return False
 
     async def reset_client_traffic_by_tgid(self, tg_id: int) -> bool:
         matches = await self.find_clients_by_tgid(int(tg_id))
@@ -1466,10 +1499,13 @@ class PanelClient:
         ok_all = True
         for inbound_id, client in matches:
             email = str(client.get("email") or "").strip()
-            if await self._reset_client_traffic_by_email(email=email, inbound_id=inbound_id):
+            reset_ack = await self._reset_client_traffic_by_email(email=email, inbound_id=inbound_id)
+            if reset_ack and await self._confirm_client_traffic_reset(email=email, inbound_id=inbound_id):
                 continue
             flow = self._managed_flow_for_inbound(inbound_id)
             ok = await self._update_client_with_reset_flag(client, inbound_id=inbound_id, flow=flow)
+            if ok:
+                ok = await self._confirm_client_traffic_reset(email=email, inbound_id=inbound_id)
             ok_all = ok_all and ok
         return ok_all
 

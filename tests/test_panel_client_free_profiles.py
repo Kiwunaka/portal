@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from types import SimpleNamespace
 
@@ -199,11 +200,11 @@ def test_uuid_rotation_addresses_old_client_but_sends_new_uuid() -> None:
     assert old_uuid not in payload["settings"]
 
 
-def test_reset_flag_falls_back_to_modern_client_api_on_legacy_404() -> None:
+def test_traffic_reset_prefers_modern_route_and_requires_zero_readback() -> None:
     from panel_client import PanelClient
 
     class Response:
-        status = 404
+        status = 200
 
         async def __aenter__(self):
             return self
@@ -211,14 +212,21 @@ def test_reset_flag_falls_back_to_modern_client_api_on_legacy_404() -> None:
         async def __aexit__(self, *_args):
             return None
 
+        async def json(self, **_kwargs):
+            return {"success": True}
+
     class Session:
-        def post(self, _url, **_kwargs):
+        def __init__(self) -> None:
+            self.urls: list[str] = []
+
+        def post(self, url, **_kwargs):
+            self.urls.append(url)
             return Response()
 
     client = PanelClient(_node("free_standard", inbound_id=41))
     client.cookies = {"session": "test"}
-    client.session = Session()
-    modern_calls: list[dict] = []
+    session = Session()
+    client.session = session
 
     async def ensure_session():
         return None
@@ -226,31 +234,40 @@ def test_reset_flag_falls_back_to_modern_client_api_on_legacy_404() -> None:
     async def csrf_headers():
         return {}
 
-    async def update_modern(**kwargs):
-        modern_calls.append(kwargs)
-        return True
-
     client.ensure_session = ensure_session
     client._csrf_headers = csrf_headers
-    client._update_client_modern = update_modern
 
     ok = asyncio.run(
-        client._update_client_with_reset_flag(
-            {
-                "id": "00000000-0000-4000-8000-000000004005",
-                "email": "user-4005@example.test",
-                "tgId": "4005",
-                "enable": True,
-                "subId": "sub-4005",
-            },
+        client._reset_client_traffic_by_email(
+            email="user-4005@example.test",
             inbound_id=41,
         )
     )
 
     assert ok is True
-    assert len(modern_calls) == 1
-    assert modern_calls[0]["inbound_id"] == 41
-    assert modern_calls[0]["updated"]["reset"] > 0
+    assert session.urls == [
+        "https://nl-free.test:8444/panel/panel/api/clients/resetTraffic/user-4005%40example.test"
+    ]
+
+    inbounds = [
+        {
+            "id": 41,
+            "enable": True,
+            "settings": json.dumps({"clients": [{"email": "user-4005@example.test"}]}),
+            "clientStats": [{"email": "user-4005@example.test", "up": 0, "down": 0}],
+        }
+    ]
+
+    async def get_inbounds():
+        return inbounds
+
+    client._get_inbounds = get_inbounds
+    assert asyncio.run(
+        client._confirm_client_traffic_reset(
+            email="user-4005@example.test",
+            inbound_id=41,
+        )
+    )
 
 
 @pytest.mark.parametrize(
