@@ -27,6 +27,7 @@ DEFAULT_REQUIRED_UNITS = (
     "portal-bot",
     "portal-helpbot",
     "portal-feedbackbot",
+    "portal-worker",
 )
 DEFAULT_REQUIRED_LISTENER_PORTS = (443, 8444)
 

@@ -39,6 +39,9 @@ class VerifyBrainReadyTests(unittest.TestCase):
     def test_required_units_include_feedbackbot(self) -> None:
         self.assertIn("portal-feedbackbot", self.module.DEFAULT_REQUIRED_UNITS)
 
+    def test_required_units_include_worker(self) -> None:
+        self.assertIn("portal-worker", self.module.DEFAULT_REQUIRED_UNITS)
+
     def test_listener_probe_uses_ere_compatible_grouping(self) -> None:
         cmd = self.module._listener_probe_cmd((443, 8444))
         self.assertIn("python3 -", cmd)
@@ -77,6 +80,7 @@ class VerifyBrainReadyTests(unittest.TestCase):
         ssh.open_sftp.return_value = sftp
 
         run_results = [
+            (0, "active\n", ""),
             (0, "active\n", ""),
             (0, "active\n", ""),
             (0, "active\n", ""),
