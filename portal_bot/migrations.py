@@ -86,6 +86,30 @@ def _postgres_column_is_not_null(conn, table: str, column: str) -> bool:
     return bool(value)
 
 
+def _postgres_column_default_matches(conn, table: str, column: str, expected: str) -> bool:
+    value = conn.execute(
+        text(
+            """
+            SELECT column_default
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = :table_name
+              AND column_name = :column_name;
+            """
+        ),
+        {"table_name": str(table), "column_name": str(column)},
+    ).scalar()
+
+    def normalize(raw: object) -> str:
+        normalized = str(raw or "").strip().lower()
+        normalized = re.sub(r"::[a-z0-9_ ]+$", "", normalized).strip()
+        while normalized.startswith("(") and normalized.endswith(")"):
+            normalized = normalized[1:-1].strip()
+        return normalized
+
+    return bool(value is not None and normalize(value) == normalize(expected))
+
+
 def _postgres_varchar_limit(conn, table: str, column: str) -> int | None:
     value = conn.execute(
         text(
@@ -643,7 +667,11 @@ def _ensure_free_profile_schema_postgres(conn) -> None:
             SET free_profile_state = COALESCE(NULLIF(btrim(free_profile_state), ''), 'standard'),
                 free_profile_active_role = COALESCE(NULLIF(btrim(free_profile_active_role), ''), 'free_standard'),
                 free_profile_source = COALESCE(NULLIF(btrim(free_profile_source), ''), 'legacy_backfill'),
-                free_profile_observed_bytes = COALESCE(free_profile_observed_bytes, 0);
+                free_profile_observed_bytes = COALESCE(free_profile_observed_bytes, 0)
+            WHERE free_profile_state IS NULL OR btrim(free_profile_state) = ''
+               OR free_profile_active_role IS NULL OR btrim(free_profile_active_role) = ''
+               OR free_profile_source IS NULL OR btrim(free_profile_source) = ''
+               OR free_profile_observed_bytes IS NULL;
             """
         )
     )
@@ -674,10 +702,14 @@ def _ensure_free_profile_schema_postgres(conn) -> None:
         ("free_profile_source", "'legacy_backfill'"),
         ("free_profile_observed_bytes", "0"),
     ):
-        conn.execute(text(f"ALTER TABLE users ALTER COLUMN {column} SET DEFAULT {default};"))
-        conn.execute(text(f"ALTER TABLE users ALTER COLUMN {column} SET NOT NULL;"))
-    conn.execute(text("ALTER TABLE nodes ALTER COLUMN access_role SET DEFAULT 'paid';"))
-    conn.execute(text("ALTER TABLE nodes ALTER COLUMN access_role SET NOT NULL;"))
+        if not _postgres_column_default_matches(conn, "users", column, default):
+            conn.execute(text(f"ALTER TABLE users ALTER COLUMN {column} SET DEFAULT {default};"))
+        if not _postgres_column_is_not_null(conn, "users", column):
+            conn.execute(text(f"ALTER TABLE users ALTER COLUMN {column} SET NOT NULL;"))
+    if not _postgres_column_default_matches(conn, "nodes", "access_role", "'paid'"):
+        conn.execute(text("ALTER TABLE nodes ALTER COLUMN access_role SET DEFAULT 'paid';"))
+    if not _postgres_column_is_not_null(conn, "nodes", "access_role"):
+        conn.execute(text("ALTER TABLE nodes ALTER COLUMN access_role SET NOT NULL;"))
     conn.execute(text("CREATE INDEX IF NOT EXISTS ix_users_free_profile_job_id ON users(free_profile_job_id);"))
     conn.execute(text("CREATE INDEX IF NOT EXISTS ix_nodes_access_role ON nodes(access_role);"))
     conn.execute(

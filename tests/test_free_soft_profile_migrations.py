@@ -152,8 +152,10 @@ class _ScalarResult:
 
 
 class _PostgresRecorder:
-    def __init__(self, existing_columns=()):
+    def __init__(self, existing_columns=(), *, column_defaults=None, not_null_columns=()):
         self.existing_columns = set(existing_columns)
+        self.column_defaults = dict(column_defaults or {})
+        self.not_null_columns = set(not_null_columns)
         self.executed: list[tuple[str, dict]] = []
 
     def execute(self, statement, params=None):
@@ -163,6 +165,12 @@ class _PostgresRecorder:
         if "information_schema.columns" in sql and "SELECT EXISTS" in sql:
             key = (values.get("table_name"), values.get("column_name"))
             return _ScalarResult(key in self.existing_columns)
+        if "SELECT column_default" in sql:
+            key = (values.get("table_name"), values.get("column_name"))
+            return _ScalarResult(self.column_defaults.get(key))
+        if "SELECT is_nullable = 'NO'" in sql:
+            key = (values.get("table_name"), values.get("column_name"))
+            return _ScalarResult(key in self.not_null_columns)
         return _ScalarResult(None)
 
 
@@ -209,3 +217,33 @@ def test_postgres_free_profile_migration_skips_existing_columns() -> None:
     assert " ADD COLUMN " not in sql
     assert "SET access_role_legacy = access_role" in sql
     assert "CREATE UNIQUE INDEX IF NOT EXISTS ix_node_provisioning_jobs_idempotency_key" in sql
+
+
+def test_postgres_free_profile_migration_skips_already_applied_constraints() -> None:
+    from migrations import _ensure_free_profile_schema_postgres
+
+    existing = (
+        {("users", column) for column in USER_COLUMNS}
+        | {("nodes", "access_role"), ("nodes", "access_role_legacy")}
+        | {("node_provisioning_jobs", column) for column in FREE_PROFILE_JOB_COLUMNS}
+    )
+    defaults = {
+        ("users", "free_profile_state"): "'standard'::character varying",
+        ("users", "free_profile_active_role"): "'free_standard'::character varying",
+        ("users", "free_profile_source"): "'legacy_backfill'::character varying",
+        ("users", "free_profile_observed_bytes"): "0",
+        ("nodes", "access_role"): "'paid'::character varying",
+    }
+    not_null = set(defaults)
+    connection = _PostgresRecorder(
+        existing,
+        column_defaults=defaults,
+        not_null_columns=not_null,
+    )
+
+    _ensure_free_profile_schema_postgres(connection)
+    sql = "\n".join(statement for statement, _params in connection.executed)
+
+    assert " SET DEFAULT " not in sql
+    assert " SET NOT NULL" not in sql
+    assert "WHERE free_profile_state IS NULL" in sql
