@@ -1,12 +1,14 @@
 import sys
 import unittest
 import base64
+import os
 import struct
 from pathlib import Path
 from unittest.mock import patch
 import tempfile
 
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import ed25519, rsa
 
 
 class NodeAccessTests(unittest.TestCase):
@@ -205,6 +207,41 @@ class NodeAccessTests(unittest.TestCase):
 
         self.assertIsNotNone(loaded)
 
+    def test_load_unencrypted_putty_ed25519_v2_key(self) -> None:
+        import node_access
+
+        def ssh_string(value: bytes) -> bytes:
+            return struct.pack(">I", len(value)) + value
+
+        key = ed25519.Ed25519PrivateKey.generate()
+        private_key = key.private_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PrivateFormat.Raw,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        public_key = key.public_key().public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+        public_blob = ssh_string(b"ssh-ed25519") + ssh_string(public_key)
+        private_blob = ssh_string(private_key)
+        ppk = "\n".join(
+            [
+                "PuTTY-User-Key-File-2: ssh-ed25519",
+                "Encryption: none",
+                'Comment: "test"',
+                "Public-Lines: 1",
+                base64.b64encode(public_blob).decode("ascii"),
+                "Private-Lines: 1",
+                base64.b64encode(private_blob).decode("ascii"),
+                "Private-MAC: unused",
+            ]
+        )
+
+        loaded = node_access._load_putty_ed25519_v2(ppk)
+
+        self.assertIsNotNone(loaded)
+
     def test_connect_node_uses_password_file_parent_as_default_key_dir(self) -> None:
         import node_access
 
@@ -249,6 +286,38 @@ class NodeAccessTests(unittest.TestCase):
 
         self.assertEqual(method, "key")
         self.assertEqual(seen_key_dirs, [passwords_path.parent])
+
+    def test_node_bind_source_overrides_global_source(self) -> None:
+        import node_access
+
+        with patch.dict(
+            os.environ,
+            {
+                "POKROV_SSH_BIND_SOURCE": "172.19.0.1",
+                "POKROV_SSH_BIND_SOURCE_FREE": "192.168.3.73",
+            },
+            clear=False,
+        ):
+            self.assertEqual(node_access._bind_source_for_node("free"), "192.168.3.73")
+            self.assertEqual(node_access._bind_source_for_node("it"), "172.19.0.1")
+
+    def test_resolve_ssh_host_returns_ipv4_for_dns_inventory_host(self) -> None:
+        import node_access
+
+        with patch.object(
+            node_access.socket,
+            "getaddrinfo",
+            return_value=[
+                (
+                    node_access.socket.AF_INET,
+                    node_access.socket.SOCK_STREAM,
+                    6,
+                    "",
+                    ("151.241.215.84", 0),
+                )
+            ],
+        ):
+            self.assertEqual(node_access._resolve_ssh_host("it.kiwunaka.space"), "151.241.215.84")
 
 
 if __name__ == "__main__":

@@ -194,6 +194,63 @@ class PredeployNodeReadinessTests(unittest.TestCase):
         self.assertEqual(inspected["port"], 443)
         self.assertEqual(inspected["protocol"], "vless")
 
+    def test_dns_report_prefers_current_runtime_inventory_override(self) -> None:
+        with patch.object(self.module, "_parse_inventory_ipv4", return_value={"us": "82.21.92.142"}), patch.object(
+            self.module,
+            "_resolve_with_nslookup",
+            return_value=(["80.209.240.179"], [], ""),
+        ):
+            report = self.module._collect_dns_report(
+                domain="pokrov.space",
+                inventory_path=Path("archived-inventory.md"),
+                include_brain=False,
+                inventory_override={"us": "80.209.240.179"},
+            )
+
+        us = next(item for item in report["hosts"] if item["code"] == "us")
+        self.assertEqual(us["expected_ipv4"], "80.209.240.179")
+        self.assertEqual(us["warnings"], [])
+
+    def test_verified_transport_front_satisfies_public_port_topology(self) -> None:
+        row = self.module.NodeReadinessRow(
+            code="ru",
+            host="ru.pokrov.space",
+            enabled=True,
+            accepting_new_clients=True,
+            is_draining=False,
+            is_healthy=True,
+            health_score=90.0,
+            last_health_at=None,
+            last_probe_at=None,
+            inbound_id=1,
+            vless_port=443,
+        )
+        inspected = {
+            "inspect_error": "",
+            "enable": True,
+            "port": 10443,
+            "protocol": "vless",
+            "network": "tcp",
+            "security": "reality",
+            "server_names": [],
+            "short_ids": [],
+            "public_key": "",
+            "transport_front_verified": True,
+            "transport_front_checks": {"service_active": True, "config_mapping": True},
+        }
+
+        with patch.object(self.module, "_inspect_runtime_inbound", return_value=inspected):
+            payload = self.module._collect_drift_payload(
+                [row],
+                ssh_user="root",
+                ssh_port=29374,
+                passwords=Path("dummy"),
+            )
+
+        self.assertEqual(payload["summary"], {"total": 1, "ok": 1, "drift": 0})
+        self.assertEqual(payload["results"][0]["port_topology"], "verified_front")
+        self.assertTrue(payload["results"][0]["checks"]["port_match"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -19,7 +19,7 @@ if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
 from audit_node_dns import _build_hosts, _parse_inventory_ipv4, _resolve_with_nslookup
-from node_access import DEFAULT_PASSWORDS, connect_node
+from node_access import DEFAULT_PASSWORDS, _resolve_ssh_host, connect_node
 from node_inventory import DEFAULT_INVENTORY
 
 
@@ -232,8 +232,27 @@ def _readiness_failures(
     return failures
 
 
-def _collect_dns_report(*, domain: str, inventory_path: Path, include_brain: bool) -> dict:
+def _current_node_ipv4(rows: list[NodeReadinessRow]) -> dict[str, str]:
+    current: dict[str, str] = {}
+    for row in rows:
+        resolved = _resolve_ssh_host(row.host)
+        try:
+            socket.inet_pton(socket.AF_INET, resolved)
+        except OSError:
+            continue
+        current[row.code] = resolved
+    return current
+
+
+def _collect_dns_report(
+    *,
+    domain: str,
+    inventory_path: Path,
+    include_brain: bool,
+    inventory_override: dict[str, str] | None = None,
+) -> dict:
     inventory = _parse_inventory_ipv4(inventory_path)
+    inventory.update(inventory_override or {})
     hosts = _build_hosts(domain=domain.strip().lower(), include_brain=include_brain, inventory=inventory)
     report = {"domain": domain, "hosts": [], "warnings": []}
     aaaa_map: dict[str, list[str]] = {}
@@ -369,6 +388,25 @@ def _probe_node_dataplane_with_retry(
     return last_result or _probe_node_dataplane(row, timeout=timeout)
 
 
+def _inspect_transport_front(ssh, *, runtime_port: int) -> dict[str, bool]:
+    port = int(runtime_port)
+    checks = {
+        "service_active": "systemctl is-active --quiet portal-transport-front.service",
+        "config_mapping": (
+            rf"grep -Eq '^ *server +legacy_reality_fallback +127[.]0[.]0[.]1:{port} +check$' "
+            "/etc/portal-transport-front.cfg"
+        ),
+        "exec_config": (
+            "systemctl show portal-transport-front.service -p ExecStart --value "
+            "| grep -Fq /etc/portal-transport-front.cfg"
+        ),
+        "config_valid": "haproxy -c -f /etc/portal-transport-front.cfg >/dev/null 2>&1",
+        "public_listener": "ss -H -ltnp '( sport = :443 )' | grep -q haproxy",
+        "runtime_listener": f"ss -H -ltnp '( sport = :{port} )' | grep -q xray",
+    }
+    return {name: _run(ssh, command, timeout=20)[0] == 0 for name, command in checks.items()}
+
+
 def _inspect_runtime_inbound(row: NodeReadinessRow, *, ssh_user: str, ssh_port: int, passwords: Path) -> dict:
     ssh, auth_method = connect_node(code=row.code, host=row.host, user=ssh_user, port=ssh_port, passwords_path=passwords)
     try:
@@ -377,35 +415,43 @@ def _inspect_runtime_inbound(row: NodeReadinessRow, *, ssh_user: str, ssh_port: 
             f"\"PRAGMA busy_timeout=5000; select id, port, protocol, stream_settings, remark, enable from inbounds where id={int(row.inbound_id)};\""
         )
         code, out, err = _run(ssh, sql, timeout=30)
+        rows = [line.strip() for line in str(out or "").splitlines() if "|" in str(line or "")]
+        if code != 0 and not rows:
+            return {"inspect_error": f"sqlite_query_error:{str(err or '').strip()[:120]}", "auth_method": auth_method}
+        if not rows:
+            return {"inspect_error": "inbound_not_found", "auth_method": auth_method}
+        parts = rows[-1].split("|", 5)
+        try:
+            stream = json.loads(parts[3])
+        except Exception:
+            stream = {}
+        reality = stream.get("realitySettings") or {}
+        private_key = str(reality.get("privateKey") or "")
+        runtime_port = int(parts[1])
+        front_checks = (
+            _inspect_transport_front(ssh, runtime_port=runtime_port)
+            if runtime_port != int(row.vless_port or 443) and int(row.vless_port or 443) == 443
+            else {}
+        )
+        return {
+            "inspect_error": "",
+            "auth_method": auth_method,
+            "inbound_id": int(parts[0]),
+            "port": runtime_port,
+            "protocol": parts[2],
+            "remark": parts[4],
+            "enable": bool(int(parts[5]) if len(parts) > 5 else 1),
+            "network": stream.get("network"),
+            "security": stream.get("security"),
+            "dest": reality.get("dest", ""),
+            "server_names": reality.get("serverNames") or [],
+            "short_ids": reality.get("shortIds") or [],
+            "public_key": _derive_public_from_private(private_key) if private_key else "",
+            "transport_front_checks": front_checks,
+            "transport_front_verified": bool(front_checks) and all(front_checks.values()),
+        }
     finally:
         ssh.close()
-    rows = [line.strip() for line in str(out or "").splitlines() if "|" in str(line or "")]
-    if code != 0 and not rows:
-        return {"inspect_error": f"sqlite_query_error:{str(err or '').strip()[:120]}", "auth_method": auth_method}
-    if not rows:
-        return {"inspect_error": "inbound_not_found", "auth_method": auth_method}
-    parts = rows[-1].split("|", 5)
-    try:
-        stream = json.loads(parts[3])
-    except Exception:
-        stream = {}
-    reality = stream.get("realitySettings") or {}
-    private_key = str(reality.get("privateKey") or "")
-    return {
-        "inspect_error": "",
-        "auth_method": auth_method,
-        "inbound_id": int(parts[0]),
-        "port": int(parts[1]),
-        "protocol": parts[2],
-        "remark": parts[4],
-        "enable": bool(int(parts[5]) if len(parts) > 5 else 1),
-        "network": stream.get("network"),
-        "security": stream.get("security"),
-        "dest": reality.get("dest", ""),
-        "server_names": reality.get("serverNames") or [],
-        "short_ids": reality.get("shortIds") or [],
-        "public_key": _derive_public_from_private(private_key) if private_key else "",
-    }
 
 
 def _collect_drift_payload(rows: list[NodeReadinessRow], *, ssh_user: str, ssh_port: int, passwords: Path) -> dict:
@@ -414,10 +460,12 @@ def _collect_drift_payload(rows: list[NodeReadinessRow], *, ssh_user: str, ssh_p
         inspected = _inspect_runtime_inbound(row, ssh_user=ssh_user, ssh_port=ssh_port, passwords=passwords)
         server_names = [str(item or "").strip() for item in inspected.get("server_names", [])]
         dest = str(inspected.get("dest") or "").strip()
+        direct_port_match = int(inspected.get("port") or 0) == int(row.vless_port or 443)
+        verified_front = bool(inspected.get("transport_front_verified"))
         checks = {
             "inbound_present": not bool(inspected.get("inspect_error")),
             "enabled_match": bool(inspected.get("enable")) is True,
-            "port_match": int(inspected.get("port") or 0) == int(row.vless_port or 443),
+            "port_match": direct_port_match or verified_front,
             "protocol_match": str(inspected.get("protocol") or "") == "vless",
             "network_match": str(inspected.get("network") or "") == "tcp",
             "security_match": str(inspected.get("security") or "") == "reality",
@@ -433,6 +481,8 @@ def _collect_drift_payload(rows: list[NodeReadinessRow], *, ssh_user: str, ssh_p
                 "status": "ok" if not mismatches else "drift",
                 "mismatches": mismatches,
                 "checks": checks,
+                "port_topology": "direct" if direct_port_match else ("verified_front" if verified_front else "unverified"),
+                "transport_front_checks": inspected.get("transport_front_checks") or {},
             }
         )
     return {
@@ -499,7 +549,12 @@ def main() -> int:
         observer_stale_after_seconds=int(args.observer_stale_after_seconds),
         now=_utcnow(),
     )
-    dns_report = _collect_dns_report(domain=args.web_domain, inventory_path=Path(args.inventory), include_brain=False)
+    dns_report = _collect_dns_report(
+        domain=args.web_domain,
+        inventory_path=Path(args.inventory),
+        include_brain=False,
+        inventory_override=_current_node_ipv4(rows),
+    )
     drift_payload = _collect_drift_payload(rows, ssh_user=args.ssh_user, ssh_port=int(args.ssh_port), passwords=passwords)
     probe_results = [_probe_node_dataplane_with_retry(row) for row in rows]
     failures = _aggregate_predeploy_failures(

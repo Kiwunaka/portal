@@ -83,6 +83,9 @@ Default behavior:
 - load `POKROV_SSH_KNOWN_HOSTS` when set
 - otherwise load `VPN NODE SSH KEYS/known_hosts`
 - reject unknown host keys
+- resolve DNS inventory hosts to their current IPv4 address before matching the pinned host key; DNS correctness remains a separate predeploy check
+- accept the retained unencrypted PuTTY v2 RSA and Ed25519 private-key formats without falling back to password authentication
+- when local routes differ by node, use `POKROV_SSH_BIND_SOURCE_<NODE_CODE>` for the exact node and keep `POKROV_SSH_BIND_SOURCE` as the optional global fallback
 
 First-bootstrap exception:
 
@@ -974,6 +977,7 @@ At minimum, verify:
 - when observer-lite is enabled on any node, `portal-node-observer.timer` freshness on that node plus `/api/admin/metrics/status` and `/api/admin/nodes/health` observer fields
 - observer-lite promotion requires a manual exact-candidate proof that a retained Xray log timestamp and its configured source zone produce the expected UTC `Z` observation, trial activation at that UTC instant, and expiry exactly `5 days` later; also prove that a naive fixture with the setting removed is skipped and increments batch `parse_error_count`
 - after any REALITY target rotation, verify the node inbound `dest/serverNames`, the `brain` `nodes.reality_sni` row, and `python scripts/predeploy_node_readiness.py --brain-ip 82.21.114.104` in the same handoff
+- predeploy DNS expectations come from the current `brain` node rows, with the retained archive inventory only as a fallback; a verified public `443` transport front may satisfy a different internal Xray listener port only when the service is active, its HAProxy config is valid, its exact loopback mapping is present, and HAProxy/Xray own the expected listeners
 
 Release gate rule:
 

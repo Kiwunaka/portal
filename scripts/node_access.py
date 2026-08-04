@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.asymmetric import ed25519, rsa
 
 try:
     import paramiko
@@ -174,6 +174,60 @@ def _load_putty_rsa_v2(raw: str) -> paramiko.PKey | None:
     return paramiko.RSAKey.from_private_key(io.StringIO(pem.decode("ascii")))
 
 
+def _load_putty_ed25519_v2(raw: str) -> paramiko.PKey | None:
+    if paramiko is None:
+        return None
+    lines = [line.strip() for line in str(raw or "").strip().splitlines()]
+    if not lines or not lines[0].startswith("PuTTY-User-Key-File-2: ssh-ed25519"):
+        return None
+
+    public_lines = private_lines = 0
+    public_start = private_start = -1
+    encryption = ""
+    for idx, line in enumerate(lines):
+        if line.startswith("Encryption:"):
+            encryption = line.split(":", 1)[1].strip().lower()
+        elif line.startswith("Public-Lines:"):
+            public_lines = int(line.split(":", 1)[1].strip())
+            public_start = idx + 1
+        elif line.startswith("Private-Lines:"):
+            private_lines = int(line.split(":", 1)[1].strip())
+            private_start = idx + 1
+
+    if encryption not in {"", "none"}:
+        return None
+    if public_start < 0 or private_start < 0 or public_lines <= 0 or private_lines <= 0:
+        return None
+
+    public_blob = base64.b64decode("".join(lines[public_start : public_start + public_lines]))
+    private_blob = base64.b64decode("".join(lines[private_start : private_start + private_lines]))
+    key_type, public_offset = _read_ppk_string(public_blob, 0)
+    public_key, public_offset = _read_ppk_string(public_blob, public_offset)
+    private_key, private_offset = _read_ppk_string(private_blob, 0)
+    if (
+        key_type != b"ssh-ed25519"
+        or len(public_key) != 32
+        or len(private_key) != 32
+        or public_offset != len(public_blob)
+        or private_offset != len(private_blob)
+    ):
+        return None
+
+    key = ed25519.Ed25519PrivateKey.from_private_bytes(private_key)
+    derived_public = key.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    if derived_public != public_key:
+        return None
+    pem = key.private_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PrivateFormat.OpenSSH,
+        encryption_algorithm=serialization.NoEncryption(),
+    )
+    return paramiko.Ed25519Key.from_private_key(io.StringIO(pem.decode("ascii")))
+
+
 def _load_putty_key_from_text(raw: str) -> paramiko.PKey | None:
     if ppkraw_to_openssh is not None:
         try:
@@ -183,7 +237,7 @@ def _load_putty_key_from_text(raw: str) -> paramiko.PKey | None:
         except Exception:
             pass
     try:
-        return _load_putty_rsa_v2(raw)
+        return _load_putty_rsa_v2(raw) or _load_putty_ed25519_v2(raw)
     except Exception:
         return None
 
@@ -213,6 +267,35 @@ def load_private_key(code: str, *, key_dir: Path | None = None) -> paramiko.PKey
         if key:
             return key
     return None
+
+
+def _bind_source_for_node(code: str) -> str:
+    code_key = str(code or "").strip().upper()
+    node_value = os.getenv(f"POKROV_SSH_BIND_SOURCE_{code_key}", "").strip() if code_key else ""
+    return node_value or os.getenv("POKROV_SSH_BIND_SOURCE", "").strip()
+
+
+def _resolve_ssh_host(host: str) -> str:
+    value = str(host or "").strip()
+    try:
+        socket.inet_pton(socket.AF_INET, value)
+        return value
+    except OSError:
+        pass
+    try:
+        for family, socktype, _proto, _canonname, sockaddr in socket.getaddrinfo(
+            value,
+            None,
+            family=socket.AF_INET,
+            type=socket.SOCK_STREAM,
+        ):
+            if family == socket.AF_INET and socktype == socket.SOCK_STREAM and sockaddr:
+                resolved = str(sockaddr[0] or "").strip()
+                if resolved:
+                    return resolved
+    except OSError:
+        pass
+    return value
 
 
 def connect_node(
@@ -278,7 +361,8 @@ def connect_node(
             users.append(candidate_user)
 
     last_error: Exception | None = None
-    bind_source = os.getenv("POKROV_SSH_BIND_SOURCE", "").strip()
+    bind_source = _bind_source_for_node(code)
+    connect_host = _resolve_ssh_host(host)
     for target_user in users:
         for target_port in ports:
             for method, auth in attempts:
@@ -291,10 +375,10 @@ def connect_node(
                         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                         sock.settimeout(30)
                         sock.bind((bind_source, 0))
-                        sock.connect((host, target_port))
+                        sock.connect((connect_host, target_port))
                         connect_kwargs["sock"] = sock
                     cli.connect(
-                        host,
+                        connect_host,
                         port=target_port,
                         username=target_user,
                         timeout=30,
