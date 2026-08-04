@@ -20,6 +20,7 @@ DEFAULT_BACKEND_RESTART_UNITS = (
     "portal-bot",
     "portal-helpbot",
     "portal-feedbackbot",
+    "portal-worker",
 )
 
 

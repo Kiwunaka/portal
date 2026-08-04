@@ -34,9 +34,10 @@ class RemoteDeployBrainPortalCodeTests(unittest.TestCase):
         self.assertIn("/root/portal_bot/authenticated_egress_probe.py", targets)
         self.assertIn("/root/portal_bot/singbox_authenticated_egress_adapter.py", targets)
 
-    def test_restart_default_includes_feedbackbot(self) -> None:
+    def test_restart_default_includes_long_running_services(self) -> None:
         module = _load_module()
         self.assertIn("portal-feedbackbot", module.DEFAULT_RESTART_UNITS)
+        self.assertIn("portal-worker", module.DEFAULT_RESTART_UNITS)
 
     def test_stage_targets_keep_sftp_uploads_out_of_live_paths(self) -> None:
         module = _load_module()

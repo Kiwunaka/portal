@@ -300,7 +300,7 @@ class ReleaseOrchestratorTests(unittest.TestCase):
         backend_step = next(step for step in steps if step[0] == "backend deploy")
 
         self.assertIn("--restart", backend_step[1])
-        self.assertIn("portal-api,portal-bot,portal-helpbot,portal-feedbackbot", backend_step[1])
+        self.assertIn("portal-api,portal-bot,portal-helpbot,portal-feedbackbot,portal-worker", backend_step[1])
 
     def test_qdisc_smoke_failure_triggers_disable_and_rollback_cleanup(self) -> None:
         args = Namespace(

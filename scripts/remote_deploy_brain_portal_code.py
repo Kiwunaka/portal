@@ -19,6 +19,7 @@ DEFAULT_RESTART_UNITS = (
     "portal-bot",
     "portal-helpbot",
     "portal-feedbackbot",
+    "portal-worker",
 )
 REMOTE_PORTAL_ROOT = "/root/portal_bot"
 REMOTE_SHARED_ROOT = "/root/shared"
