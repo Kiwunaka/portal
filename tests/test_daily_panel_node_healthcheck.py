@@ -324,7 +324,7 @@ def test_daily_health_does_not_warn_on_retained_user_node_mappings(monkeypatch, 
     assert "node_de_mapping_2_expected_1" not in report
 
 
-def test_daily_health_groups_enabled_access_drift_by_identity(monkeypatch, tmp_path) -> None:
+def test_daily_health_retains_enabled_access_drift_as_non_paging_observation(monkeypatch, tmp_path) -> None:
     report_dir = tmp_path / "reports"
     monkeypatch.setattr("daily_panel_node_healthcheck.REPORT_DIR", report_dir)
     monkeypatch.setattr("daily_panel_node_healthcheck._api_health", lambda: {"ok": True})
@@ -367,10 +367,11 @@ def test_daily_health_groups_enabled_access_drift_by_identity(monkeypatch, tmp_p
 
     monkeypatch.setattr("daily_panel_node_healthcheck._panel_rows", fake_panel_rows)
 
-    assert __import__("asyncio").run(run()) == 1
+    assert __import__("asyncio").run(run()) == 0
     report_path = next(report_dir.glob("panel_node_health_*.json"))
     report = __import__("json").loads(report_path.read_text(encoding="utf-8"))
-    assert report["issues"] == ["panel_access_drift_enabled_2_identities_3_placements"]
+    assert report["issues"] == []
+    assert report["observations"] == ["panel_access_drift_enabled_2_identities_3_placements"]
     assert "_unexpected_enabled_identities" not in report_path.read_text(encoding="utf-8")
 
 

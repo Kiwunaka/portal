@@ -58,7 +58,7 @@ from node_provisioning_service import process_node_provisioning_jobs
 from offers_service import create_offer, expire_stale_offers, get_active_offer
 from observer_service import cleanup_observer_retention
 from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark_abandoned_notified
-from admin_ops_service import refresh_ops_alerts_for_current_state
+from admin_ops_service import ops_alert_notification_batches, refresh_ops_alerts_for_current_state
 from antiabuse_privacy_service import drain_antiabuse_retention
 from support_attachment_cleanup_service import SupportAttachmentCleanupCursor, reconcile_support_attachments
 import incident_service
@@ -981,17 +981,13 @@ async def _deliver_ops_alert_notifications(notifications: list[dict]) -> None:
     if not notifications or not int(Settings.ADMIN_ID or 0):
         return
     delivered: dict[str, str] = {}
-    for item in notifications[:20]:
-        fingerprint = str(item.get("fingerprint") or "")
-        kind = str(item.get("kind") or "active")
-        severity = str(item.get("severity") or "warning").upper()
-        title = str(item.get("title") or fingerprint)
-        prefix = "RESOLVED" if kind == "resolved" else severity
+    for batch in ops_alert_notification_batches(notifications):
         ok = await _telegram_send_message(
             chat_id=int(Settings.ADMIN_ID),
-            text=f"POKROV ops alert: {prefix}\n{title}\n{fingerprint}",
+            text=str(batch.get("text") or ""),
         )
-        delivered[fingerprint] = "sent" if ok else "send_failed"
+        for fingerprint in batch.get("fingerprints") or []:
+            delivered[str(fingerprint)] = "sent" if ok else "send_failed"
     if not delivered:
         return
     s = SessionLocal()

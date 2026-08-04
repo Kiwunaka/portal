@@ -492,7 +492,8 @@ def test_capacity_alert_candidates_ignore_disabled_nodes(monkeypatch, tmp_path) 
     fingerprints = {row["fingerprint"] for row in candidates}
     assert "node_capacity:brain" not in fingerprints
     assert "node_capacity:us" not in fingerprints
-    assert "node_capacity:de" in fingerprints
+    assert fingerprints == {"node_capacity:pool"}
+    assert candidates[0]["metadata"]["nodes"] == ["de"]
 
 
 def test_node_metric_alerts_require_sustained_samples_without_snapshot_fallback(monkeypatch, tmp_path) -> None:
@@ -667,8 +668,8 @@ def test_capacity_hard_reject_alert_requires_three_runtime_samples(monkeypatch, 
             free_summary={},
             capacity_rows=capacity["nodes"],
         )
-        assert {candidate["fingerprint"] for candidate in candidates} == {"node_capacity:us"}
-        assert "sustained routing hard reject" in candidates[0]["title"]
+        assert {candidate["fingerprint"] for candidate in candidates} == {"node_capacity:pool"}
+        assert "Маршрутизация временно ограничена" in candidates[0]["title"]
     finally:
         s.close()
 
@@ -700,10 +701,38 @@ def test_confirmed_capacity_alert_suppresses_duplicate_error_rate_alert(monkeypa
 
     fingerprints = {candidate["fingerprint"] for candidate in candidates}
     assert "node_metrics:it:error_rate_high" not in fingerprints
-    assert "node_metrics:it:latency_high" in fingerprints
-    assert "node_capacity:it" in fingerprints
-    latency = next(candidate for candidate in candidates if candidate["fingerprint"] == "node_metrics:it:latency_high")
-    assert "Panel API latency" in latency["title"]
+    assert "node_metrics:it:latency_high" not in fingerprints
+    assert "node_capacity:pool" in fingerprints
+
+
+def test_ops_alert_notifications_are_batched_in_russian_without_fingerprints(monkeypatch, tmp_path) -> None:
+    _load_api(monkeypatch, tmp_path)
+    from admin_ops_service import ops_alert_notification_batches
+
+    batches = ops_alert_notification_batches(
+        [
+            {
+                "kind": "active",
+                "fingerprint": "node_metrics:nl:disk_high",
+                "severity": "warning",
+                "title": "Нода nl: заканчивается место на диске",
+                "body": "Действие: проверить диск.",
+            },
+            {
+                "kind": "active",
+                "fingerprint": "node_capacity:pool",
+                "severity": "warning",
+                "title": "Маршрутизация временно ограничена на 2 нодах",
+                "body": "Действие: проверить dataplane.",
+            },
+        ]
+    )
+
+    assert len(batches) == 1
+    assert "нужна проверка" in batches[0]["text"]
+    assert "Действие:" in batches[0]["text"]
+    assert "node_metrics:" not in batches[0]["text"]
+    assert "node_capacity:" not in batches[0]["text"]
 
 
 def test_admin_ops_free_tier_provider_status_and_alerts(monkeypatch, tmp_path) -> None:
@@ -1532,6 +1561,7 @@ def test_durable_alert_refresh_resolves_missing_candidates(monkeypatch, tmp_path
                 "fingerprint": "provider_quota:de",
                 "severity": "critical",
                 "title": "Provider cap de",
+                "body": "test",
             }
         ]
 
@@ -1546,6 +1576,7 @@ def test_durable_alert_refresh_resolves_missing_candidates(monkeypatch, tmp_path
                 "fingerprint": "provider_quota:de",
                 "severity": "critical",
                 "title": "Provider cap de",
+                "body": "test",
             }
         ]
         assert rows[0].status == "resolved"
@@ -1588,6 +1619,7 @@ def test_durable_alert_refresh_notifies_when_warning_resolves(monkeypatch, tmp_p
                 "fingerprint": "node_metrics:de:disk_high",
                 "severity": "warning",
                 "title": "Node de: Disk usage high",
+                "body": "test",
             }
         ]
     finally:

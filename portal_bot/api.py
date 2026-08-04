@@ -334,6 +334,7 @@ from admin_ops_service import (
     free_tier_user_rows as _ops_free_tier_user_rows,
     gb_to_bytes as _ops_gb_to_bytes,
     node_timeseries_rows as _ops_node_timeseries_rows,
+    ops_alert_notification_batches as _ops_alert_notification_batches,
     provider_quota_payload as _ops_provider_quota_payload,
     provider_quota_status_rows as _ops_provider_quota_status_rows,
     refresh_ops_alerts_for_current_state as _ops_refresh_alerts_for_current_state,

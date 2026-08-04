@@ -394,9 +394,53 @@ def _send_telegram_report(text: str) -> None:
         response.read()
 
 
+def _previous_issue_set() -> set[str]:
+    try:
+        candidates = sorted(REPORT_DIR.glob("panel_node_health_*.json"), reverse=True)
+    except OSError:
+        return set()
+    for path in candidates:
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        return {str(item) for item in (payload.get("issues") or []) if str(item).strip()}
+    return set()
+
+
+def _issue_message_ru(issue: str) -> str:
+    value = str(issue or "").strip()
+    if value == "api_health_failed":
+        return "API не прошёл health-check. Влияние: кабинет и новые подключения могут быть недоступны. Действие: проверить portal-api и его журнал."
+    match = re.fullmatch(r"timer_(.+)_(.+)", value)
+    if match:
+        return f"Таймер {match.group(1)} не активен ({match.group(2)}). Действие: проверить systemd unit и последний запуск."
+    match = re.fullmatch(r"node_(.+)_metrics_stale", value)
+    if match:
+        return f"Нода {match.group(1)}: метрики устарели. Пользовательский трафик не признан упавшим; проверьте metrics timer."
+    match = re.fullmatch(r"node_(.+)_unhealthy", value)
+    if match:
+        return f"Нода {match.group(1)} не прошла свежий health-check. Действие: сначала проверить dataplane, затем panel и ресурсы."
+    match = re.fullmatch(r"panel_(.+)_missing_(\d+)", value)
+    if match:
+        return (
+            f"Нода {match.group(1)}: отсутствуют ожидаемые активные профили — {match.group(2)}. "
+            "Влияние возможно только для этих пользователей. Действие: запустить точечную сверку и resync."
+        )
+    match = re.fullmatch(r"panel_(.+)_error", value)
+    if match:
+        return f"Нода {match.group(1)}: не удалось прочитать panel. Dataplane отдельно не признан упавшим; проверьте доступ к panel."
+    match = re.fullmatch(r"panel_policy_unresolved_(\d+)_users", value)
+    if match:
+        return f"Не удалось однозначно определить политику доступа для пользователей: {match.group(1)}. Действие: проверить entitlement и роль пула."
+    return f"Неизвестная проверка: {value}. Подробности сохранены в локальном отчёте."
+
+
 async def run() -> int:
     now = _utcnow()
     issues: list[str] = []
+    observations: list[str] = []
+    previous_issues = _previous_issue_set()
     report: dict = {"generated_at_utc": now.isoformat(), "checks": {}}
 
     report["checks"]["api"] = _api_health()
@@ -443,26 +487,30 @@ async def run() -> int:
     if unexpected_enabled_placements > 0:
         identity_count = len(unexpected_enabled_identities)
         identity_label = str(identity_count) if identity_count > 0 else "unknown"
-        issues.append(
+        observations.append(
             f"panel_access_drift_enabled_{identity_label}_identities_"
             f"{unexpected_enabled_placements}_placements"
         )
 
     report["status"] = "ok" if not issues else "warn"
     report["issues"] = sorted(set(issues))
+    report["observations"] = sorted(set(observations))
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
     report_path = REPORT_DIR / f"panel_node_health_{now.strftime('%Y%m%d_%H%M%S')}.json"
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True), encoding="utf-8")
 
-    summary = f"POKROV daily health: {report['status']} | issues={len(report['issues'])} | report={report_path}"
+    summary = f"Ежедневная проверка POKROV: {report['status']} | проблем={len(report['issues'])} | отчёт={report_path}"
     print(summary)
     if report["issues"]:
         print("issues=" + ",".join(report["issues"][:30]))
     try:
-        text = summary
-        if report["issues"]:
-            text += "\n" + "\n".join(f"- {issue}" for issue in report["issues"][:20])
-        _send_telegram_report(text)
+        current_issues = set(report["issues"])
+        if current_issues and current_issues != previous_issues:
+            text = f"⚠️ POKROV: ежедневная проверка нашла проблем — {len(current_issues)}"
+            text += "\n\n" + "\n\n".join(f"• {_issue_message_ru(issue)}" for issue in report["issues"][:10])
+            _send_telegram_report(text[:3900])
+        elif not current_issues and previous_issues:
+            _send_telegram_report("✅ POKROV: проблемы из предыдущей ежедневной проверки больше не подтверждаются.")
     except Exception as exc:
         print(f"telegram_report_failed={str(exc)[:200]}")
     return 0 if report["status"] == "ok" else 1

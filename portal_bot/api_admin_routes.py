@@ -2983,18 +2983,14 @@ async def _deliver_ops_alert_notifications(notifications: list[dict[str, Any]]) 
     if not notifications or not int(Settings.ADMIN_ID or 0):
         return
     delivered: dict[str, str] = {}
-    for item in notifications[:20]:
-        fingerprint = str(item.get("fingerprint") or "")
-        kind = str(item.get("kind") or "active")
-        severity = str(item.get("severity") or "warning").upper()
-        title = str(item.get("title") or fingerprint)
-        prefix = "RESOLVED" if kind == "resolved" else severity
+    for batch in _ops_alert_notification_batches(notifications):
         ok = await _telegram_send_message(
             int(Settings.ADMIN_ID),
-            f"POKROV ops alert: {prefix}\n{title}\n{fingerprint}",
+            str(batch.get("text") or ""),
             disable_web_page_preview=True,
         )
-        delivered[fingerprint] = "sent" if ok else "send_failed"
+        for fingerprint in batch.get("fingerprints") or []:
+            delivered[str(fingerprint)] = "sent" if ok else "send_failed"
     if not delivered:
         return
     s = SessionLocal()

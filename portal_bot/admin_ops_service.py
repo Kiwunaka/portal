@@ -1487,67 +1487,101 @@ def build_alert_candidates(
         kind = str(alert.get("kind") or "").strip()
         if not node_code or not kind:
             continue
+        # Panel API latency is control-plane telemetry. Keep it in the admin
+        # dashboard, but do not page while durable dataplane/error checks stay
+        # healthy.
+        if kind == "latency_high":
+            continue
         if kind == "error_rate_high" and node_code in confirmed_capacity_nodes:
             continue
-        severity = "critical" if kind in {"stale_metrics", "error_rate_high", "network_high"} else "warning"
+        severity = "warning"
         title_by_kind = {
-            "cpu_high": "CPU usage high",
-            "memory_high": "Memory usage high",
-            "disk_high": "Disk usage high",
-            "network_high": "Network utilization high",
-            "latency_high": "Panel API latency high",
-            "error_rate_high": "Health probe failure rate high",
-            "client_density_high": "Client density high",
-            "observer_push_stale": "Observer push is stale",
-            "stale_metrics": "Node metrics are stale",
+            "cpu_high": "стабильно высокая загрузка CPU",
+            "memory_high": "стабильно высокая загрузка памяти",
+            "disk_high": "заканчивается место на диске",
+            "network_high": "канал близок к насыщению",
+            "error_rate_high": "повторяются ошибки проверки доступности",
+            "client_density_high": "слишком много активных клиентов",
+            "observer_push_stale": "observer давно не присылал данные",
+            "stale_metrics": "метрики давно не обновлялись",
         }
-        title = title_by_kind.get(kind, f"Metric alert: {kind}")
-        if kind == "latency_high":
-            detail = "This measures the Brain-to-panel control-plane transaction, not VPN dataplane latency."
-        elif kind in {"stale_metrics", "observer_push_stale"}:
-            detail = "The configured freshness threshold was crossed."
+        title = title_by_kind.get(kind, f"неизвестное состояние мониторинга ({kind})")
+        if kind in {"stale_metrics", "observer_push_stale"}:
+            detail = "Пользовательский трафик не признан упавшим. Проверьте таймер и свежесть источника метрик."
+        elif kind == "error_rate_high":
+            detail = "Возможное влияние: новые подключения могут обходить ноду. Проверьте свежий dataplane-тест."
         else:
-            detail = f"Confirmed by {NODE_METRICS_SUSTAINED_SAMPLES} consecutive metric samples."
+            detail = (
+                f"Состояние подтверждено {NODE_METRICS_SUSTAINED_SAMPLES} последовательными замерами. "
+                "Проверьте график и саму ноду; массовый перезапуск не требуется."
+            )
         candidates.append(
             {
                 "fingerprint": f"node_metrics:{node_code}:{kind}",
                 "source": "node_metrics",
                 "severity": severity,
-                "title": f"Node {node_code}: {title}",
-                "body": f"{detail} Age seconds: {alert.get('age_seconds')}.",
+                "title": f"Нода {node_code}: {title}",
+                "body": detail,
                 "node_code": node_code,
                 "metadata": alert,
             }
         )
-    for row in capacity_rows:
-        node_code = str(row.get("code") or row.get("node_code") or "").strip().lower()
-        state = str(row.get("capacity_state") or "").strip().lower()
-        if row.get("enabled") is False:
-            continue
-        if not node_code or state in {"", "ok", "healthy", "normal", "unknown"}:
-            continue
-        if state == "hard_reject" and row.get("alert_confirmed") is False:
-            continue
-        severity = "critical" if state in {"hard_reject", "critical", "disabled"} else "warning"
-        reject_reason = str(row.get("reject_reason") or "none")
-        if state == "hard_reject":
-            title = f"Node {node_code}: sustained routing hard reject"
-            body = (
-                f"New routing is rejected after {int(row.get('alert_consecutive_samples') or NODE_CAPACITY_ALERT_SUSTAINED_SAMPLES)} "
-                f"consecutive runtime samples; reason: {reject_reason}."
-            )
+    enabled_capacity_rows = [row for row in capacity_rows if row.get("enabled") is not False]
+    hard_reject_rows = [
+        row
+        for row in enabled_capacity_rows
+        if str(row.get("capacity_state") or "").strip().lower() == "hard_reject"
+        and row.get("alert_confirmed") is not False
+    ]
+    if hard_reject_rows:
+        codes = sorted(
+            {
+                str(row.get("code") or row.get("node_code") or "").strip().lower()
+                for row in hard_reject_rows
+                if str(row.get("code") or row.get("node_code") or "").strip()
+            }
+        )
+        reason_labels = {
+            "unhealthy": "health-check считает ноду нездоровой",
+            "stale": "метрики устарели",
+            "cpu_hot": "перегружен CPU",
+            "disk_full": "критически мало места на диске",
+            "network_saturated": "насыщен канал",
+            "packet_loss": "высокая потеря пакетов",
+            "tcp_retrans": "много TCP-повторов",
+            "not_accepting_new_clients": "выключена выдача новым клиентам",
+            "draining": "нода в режиме вывода из пула",
+        }
+        reasons = sorted(
+            {
+                reason_labels.get(str(row.get("reject_reason") or "").strip().lower(), "неуточнённая причина")
+                for row in hard_reject_rows
+            }
+        )
+        pool_wide = bool(enabled_capacity_rows) and len(hard_reject_rows) == len(enabled_capacity_rows)
+        dataplane_down = bool(hard_reject_rows) and all(
+            row.get("edge_reachability_ok") is False or row.get("dataplane_ok") is False
+            for row in hard_reject_rows
+        )
+        severity = "critical" if pool_wide and dataplane_down else "warning"
+        if severity == "critical":
+            title = "Не подтверждён пользовательский dataplane на всём пуле"
+            impact = "Новые подключения могут не найти рабочую ноду."
         else:
-            title = f"Node {node_code} capacity: {state}"
-            body = f"Capacity state is {state}; reason: {reject_reason}."
+            title = f"Маршрутизация временно ограничена на {len(codes)} нодах"
+            impact = "Текущие соединения могут работать; ограничение касается выбора нод для новых подключений."
+        body = (
+            f"Ноды: {', '.join(codes)}. Причины: {', '.join(reasons)}. {impact} "
+            "Действие: проверьте свежий dataplane и metrics timer; не перезапускайте весь пул сразу."
+        )
         candidates.append(
             {
-                "fingerprint": f"node_capacity:{node_code}",
+                "fingerprint": "node_capacity:pool",
                 "source": "node_capacity",
                 "severity": severity,
                 "title": title,
                 "body": body,
-                "node_code": node_code,
-                "metadata": row,
+                "metadata": {"nodes": codes, "reasons": reasons, "pool_wide": pool_wide, "dataplane_down": dataplane_down},
             }
         )
     for row in provider_status:
@@ -1560,8 +1594,11 @@ def build_alert_candidates(
                 "fingerprint": f"provider_quota:{node_code}",
                 "source": "provider_quota",
                 "severity": "critical" if state == "critical" else "warning",
-                "title": f"Provider cap {node_code}: {row.get('used_pct')}%",
-                "body": f"{row.get('used_gb')} GB used from {row.get('included_gb')} GB in current provider cycle.",
+                "title": f"Лимит провайдера для {node_code}: использовано {row.get('used_pct')}%",
+                "body": (
+                    f"Использовано {row.get('used_gb')} из {row.get('included_gb')} ГБ в текущем цикле. "
+                    "Действие: проверить тариф или заранее вывести ноду из новой выдачи."
+                ),
                 "node_code": node_code,
                 "metadata": row,
             }
@@ -1572,8 +1609,8 @@ def build_alert_candidates(
                 "fingerprint": "free_tier:over_cap",
                 "source": "free_tier",
                 "severity": "warning",
-                "title": "Free tier users over cap",
-                "body": f"{int(free_summary.get('over_cap_users') or 0)} free users crossed the current traffic cap.",
+                "title": "У пользователей бесплатного тарифа превышен лимит",
+                "body": f"Пользователей сверх лимита: {int(free_summary.get('over_cap_users') or 0)}. Проверьте корректность сброса цикла и ограничения.",
                 "metadata": free_summary,
             }
         )
@@ -1583,8 +1620,8 @@ def build_alert_candidates(
                 "fingerprint": "free_tier:near_cap",
                 "source": "free_tier",
                 "severity": "warning",
-                "title": "Free tier users near cap",
-                "body": f"{int(free_summary.get('near_cap_users') or 0)} free users are above 80% of the cap.",
+                "title": "Пользователи бесплатного тарифа близки к лимиту",
+                "body": f"Выше 80% лимита: {int(free_summary.get('near_cap_users') or 0)}. Это предупреждение, вмешательство обычно не требуется.",
                 "metadata": free_summary,
             }
         )
@@ -1595,8 +1632,8 @@ def build_alert_candidates(
                 "fingerprint": "security:payment_callback_invalid_signature",
                 "source": "security",
                 "severity": "critical",
-                "title": "Invalid payment callback signatures",
-                "body": f"{int(security.get('payment_callback_invalid_signatures') or 0)} invalid payment signatures in 24h.",
+                "title": "Платёжные callback пришли с неверной подписью",
+                "body": f"За 24 часа: {int(security.get('payment_callback_invalid_signatures') or 0)}. Действие: проверить источник запросов и секрет провайдера.",
                 "metadata": security,
             }
         )
@@ -1770,7 +1807,15 @@ def refresh_ops_alerts(*, s, now: datetime, candidates: list[dict[str, Any]]) ->
             row.updated_at = now
         row.metadata_json = json.dumps(item.get("metadata") or {}, ensure_ascii=False, separators=(",", ":"))[:4000]
         if is_new and str(row.severity or "") in {"warning", "critical"}:
-            notifications.append({"kind": "active", "fingerprint": fingerprint, "severity": row.severity, "title": row.title})
+            notifications.append(
+                {
+                    "kind": "active",
+                    "fingerprint": fingerprint,
+                    "severity": row.severity,
+                    "title": row.title,
+                    "body": row.body,
+                }
+            )
 
     for row in existing_rows:
         fingerprint = str(row.fingerprint or "")
@@ -1782,7 +1827,15 @@ def refresh_ops_alerts(*, s, now: datetime, candidates: list[dict[str, Any]]) ->
             row.last_seen_at = now
             row.updated_at = now
             if str(row.severity or "") in {"warning", "critical"}:
-                notifications.append({"kind": "resolved", "fingerprint": fingerprint, "severity": row.severity, "title": row.title})
+                notifications.append(
+                    {
+                        "kind": "resolved",
+                        "fingerprint": fingerprint,
+                        "severity": row.severity,
+                        "title": row.title,
+                        "body": row.body,
+                    }
+                )
 
     s.flush()
     rows = (
@@ -1792,3 +1845,45 @@ def refresh_ops_alerts(*, s, now: datetime, candidates: list[dict[str, Any]]) ->
         .all()
     )
     return rows, notifications
+
+
+def ops_alert_notification_batches(notifications: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Render compact Russian Telegram batches without internal fingerprints."""
+
+    batches: list[dict[str, Any]] = []
+    active = [item for item in notifications if str(item.get("kind") or "active") != "resolved"]
+    resolved = [item for item in notifications if str(item.get("kind") or "") == "resolved"]
+
+    if active:
+        critical = any(str(item.get("severity") or "warning") == "critical" for item in active)
+        header = "🛑 POKROV: критическая проблема" if critical else "⚠️ POKROV: нужна проверка"
+        lines = [header]
+        for item in active[:6]:
+            title = str(item.get("title") or "Событие мониторинга").strip()
+            body = str(item.get("body") or "").strip()
+            lines.append(f"\n• {title}")
+            if body:
+                lines.append(body[:600])
+        if len(active) > 6:
+            lines.append(f"\nЕщё событий: {len(active) - 6}. Они сохранены в админ-панели.")
+        batches.append(
+            {
+                "fingerprints": [str(item.get("fingerprint") or "") for item in active],
+                "text": "\n".join(lines)[:3900],
+            }
+        )
+
+    if resolved:
+        lines = [f"✅ POKROV: восстановлено, закрыто событий — {len(resolved)}"]
+        for item in resolved[:8]:
+            lines.append(f"• {str(item.get('title') or 'Событие мониторинга').strip()}")
+        if len(resolved) > 8:
+            lines.append(f"Ещё закрыто: {len(resolved) - 8}.")
+        lines.append("Текущие проверки больше не подтверждают проблему.")
+        batches.append(
+            {
+                "fingerprints": [str(item.get("fingerprint") or "") for item in resolved],
+                "text": "\n".join(lines)[:3900],
+            }
+        )
+    return batches
