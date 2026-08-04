@@ -143,6 +143,8 @@ class FakePanel:
         self.reset_results: list[object] = []
         self.rotate_results: list[object] = []
         self.traffic_results: list[object] = []
+        self.restore_results: list[object] = []
+        self.profile_states: dict[tuple[str, str], str] = {}
 
     @staticmethod
     def _take(values: list[object], default: bool = True):
@@ -161,7 +163,10 @@ class FakePanel:
                 kwargs["limit_ip"],
             )
         )
-        return self._take(self.ensure_results)
+        result = self._take(self.ensure_results)
+        if result:
+            self.profile_states[(kwargs["node_code"], kwargs["expected_access_role"])] = "enabled"
+        return result
 
     async def confirm_user_profile_on_node(self, **kwargs):
         self.events.append(
@@ -177,7 +182,30 @@ class FakePanel:
 
     async def set_user_profile_enabled_on_node(self, **kwargs):
         self.events.append(("disable", kwargs["node_code"], kwargs["expected_access_role"], kwargs["enable"]))
-        return self._take(self.disable_results)
+        result = self._take(self.disable_results)
+        if result:
+            self.profile_states[(kwargs["node_code"], kwargs["expected_access_role"])] = (
+                "enabled" if kwargs["enable"] else "disabled"
+            )
+        return result
+
+    async def get_user_profile_state_on_node(self, **kwargs):
+        return self.profile_states.get(
+            (kwargs["node_code"], kwargs["expected_access_role"]),
+            "enabled",
+        )
+
+    async def restore_user_profile_state_on_node(self, **kwargs):
+        self.events.append(
+            (
+                "restore",
+                kwargs["node_code"],
+                kwargs["expected_access_role"],
+                kwargs["state"],
+            )
+        )
+        self.profile_states[(kwargs["node_code"], kwargs["expected_access_role"])] = kwargs["state"]
+        return self._take(self.restore_results)
 
     async def reset_user_profile_traffic_on_node(self, **kwargs):
         self.events.append(("reset", kwargs["node_code"], kwargs["expected_access_role"]))
@@ -186,6 +214,18 @@ class FakePanel:
     async def rotate_user_key_on_node(self, **kwargs):
         self.events.append(("rotate", kwargs["node_code"], kwargs["new_key_uuid"]))
         return self._take(self.rotate_results)
+
+    async def rotate_user_key_on_existing_nodes(self, **kwargs):
+        self.events.append(("rotate_existing", kwargs["old_key_uuid"], kwargs["new_key_uuid"]))
+        return self._take(self.rotate_results)
+
+    async def rollback_user_key_rotation_on_node(self, **kwargs):
+        self.events.append(("rollback_rotate", kwargs["node_code"]))
+        return True
+
+    async def rollback_user_key_rotation_on_existing_nodes(self, **kwargs):
+        self.events.append(("rollback_rotate_existing",))
+        return True
 
     async def update_client_traffic(self, tg_id: int, add_gb: int):
         self.events.append(("traffic", int(tg_id), int(add_gb)))
@@ -206,6 +246,16 @@ async def _run(database, panel: FakePanel, *, now: datetime | None = NOW, max_at
         max_attempts=max_attempts,
         stale_after_seconds=60,
     )
+
+
+def _queue_free_to_soft(database) -> None:
+    from free_cycle_service import reconcile_free_profile_usage
+
+    with database() as session:
+        _seed_nodes(session)
+        user, _key = _seed_user(session)
+        reconcile_free_profile_usage(session, user=user, used_bytes=5 * GIB, source="node_observer", now=NOW)
+        session.commit()
 
 
 def _seed_reward_job(
@@ -535,6 +585,393 @@ def test_free_to_soft_confirms_target_before_disabling_standard_and_replay_is_id
         assert job.completed_at == NOW
 
 
+def test_source_disable_failure_restores_preimage_before_retry(database) -> None:
+    from models import NodeProvisioningJob
+
+    _queue_free_to_soft(database)
+    panel = FakePanel()
+    panel.profile_states = {
+        ("nl-free-soft", "free_soft"): "absent",
+        ("nl-free-standard", "free_standard"): "enabled",
+    }
+    panel.disable_results = [False]
+
+    result = asyncio.run(_run(database, panel, max_attempts=3))
+
+    assert result["retried"] == 1
+    assert panel.profile_states == {
+        ("nl-free-soft", "free_soft"): "absent",
+        ("nl-free-standard", "free_standard"): "enabled",
+    }
+    assert [event[0] for event in panel.events] == [
+        "ensure",
+        "confirm",
+        "disable",
+        "restore",
+        "restore",
+        "close",
+    ]
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        assert job.status == "queued"
+        assert job.last_error_code == "source_disable_failed"
+        desired = json.loads(job.desired_state_json)
+        assert desired["panel_preimage"] == {
+            "version": 1,
+            "target": {
+                "node_code": "nl-free-soft",
+                "access_role": "free_soft",
+                "state": "absent",
+            },
+            "sources": [
+                {
+                    "node_code": "nl-free-standard",
+                    "access_role": "free_standard",
+                    "state": "enabled",
+                }
+            ],
+        }
+
+
+def test_typed_panel_read_failure_keeps_preimage_unknown_and_blocks_mutation(database) -> None:
+    from models import NodeProvisioningJob
+    from panel_client import PanelReadError
+
+    _queue_free_to_soft(database)
+
+    class _ReadFailurePanel(FakePanel):
+        async def get_user_profile_state_on_node(self, **_kwargs):
+            raise PanelReadError("panel_inbounds_network_error")
+
+    panel = _ReadFailurePanel()
+    result = asyncio.run(_run(database, panel, max_attempts=3))
+
+    assert result["retried"] == 1
+    assert panel.events == [("close",)]
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        desired = json.loads(job.desired_state_json or "{}")
+        assert job.status == "queued"
+        assert job.last_error_code == "free_panel_preimage_failed"
+        assert "panel_preimage" not in desired
+
+
+def test_typed_source_read_failure_runs_exact_compensation(database) -> None:
+    from models import NodeProvisioningJob
+    from panel_client import PanelReadError
+
+    _queue_free_to_soft(database)
+
+    class _SourceReadFailurePanel(FakePanel):
+        async def set_user_profile_enabled_on_node(self, **kwargs):
+            self.events.append(
+                ("disable", kwargs["node_code"], kwargs["expected_access_role"], kwargs["enable"])
+            )
+            raise PanelReadError("panel_inbounds_network_error")
+
+    panel = _SourceReadFailurePanel()
+    panel.profile_states = {
+        ("nl-free-soft", "free_soft"): "absent",
+        ("nl-free-standard", "free_standard"): "enabled",
+    }
+
+    result = asyncio.run(_run(database, panel, max_attempts=3))
+
+    assert result["retried"] == 1
+    assert panel.profile_states == {
+        ("nl-free-soft", "free_soft"): "absent",
+        ("nl-free-standard", "free_standard"): "enabled",
+    }
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        assert job.status == "queued"
+        assert job.last_error_code == "source_disable_failed"
+
+
+def test_source_disable_compensation_accepts_restore_ack_loss_after_readback(database) -> None:
+    from models import NodeProvisioningJob
+
+    _queue_free_to_soft(database)
+    panel = FakePanel()
+    panel.profile_states = {
+        ("nl-free-soft", "free_soft"): "absent",
+        ("nl-free-standard", "free_standard"): "enabled",
+    }
+    panel.disable_results = [False]
+    panel.restore_results = [RuntimeError("lost acknowledgement")]
+
+    result = asyncio.run(_run(database, panel, max_attempts=3))
+
+    assert result["retried"] == 1
+    assert panel.profile_states[("nl-free-soft", "free_soft")] == "absent"
+    assert panel.profile_states[("nl-free-standard", "free_standard")] == "enabled"
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        assert job.status == "queued"
+        assert job.last_error_code == "source_disable_failed"
+
+
+def test_source_disable_compensation_readback_failure_is_immediate_manual_review(database) -> None:
+    from models import NodeProvisioningJob, User
+
+    _queue_free_to_soft(database)
+
+    class _FailedRestorePanel(FakePanel):
+        async def restore_user_profile_state_on_node(self, **kwargs):
+            self.events.append(
+                ("restore", kwargs["node_code"], kwargs["expected_access_role"], kwargs["state"])
+            )
+            return False
+
+    panel = _FailedRestorePanel()
+    panel.profile_states = {
+        ("nl-free-soft", "free_soft"): "absent",
+        ("nl-free-standard", "free_standard"): "enabled",
+    }
+    panel.disable_results = [False]
+
+    result = asyncio.run(_run(database, panel, max_attempts=3))
+
+    assert result["manual_review"] == 1
+    assert result["retried"] == 0
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        user = session.query(User).filter_by(tg_id=2001).one()
+        assert job.status == "manual_review"
+        assert job.last_error_code == "source_disable_compensation_failed"
+        assert user.free_profile_state == "error"
+        assert user.free_profile_error_code == "source_disable_compensation_failed"
+
+
+def test_source_disable_compensation_marker_accepts_commit_ack_loss_by_readback(database) -> None:
+    from models import NodeProvisioningJob
+
+    _queue_free_to_soft(database)
+    lost_ack = False
+
+    class _AckLossSession:
+        def __init__(self):
+            self._inner = database()
+
+        def __enter__(self):
+            self._inner.__enter__()
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return self._inner.__exit__(exc_type, exc, tb)
+
+        def __getattr__(self, name):
+            return getattr(self._inner, name)
+
+        def commit(self):
+            nonlocal lost_ack
+            self._inner.commit()
+            job = self._inner.query(NodeProvisioningJob).one_or_none()
+            if (
+                not lost_ack
+                and job is not None
+                and job.status == "running"
+                and job.last_error_code == "source_disable_compensation_pending"
+            ):
+                lost_ack = True
+                raise RuntimeError("commit acknowledgement lost")
+
+    panel = FakePanel()
+    panel.profile_states = {
+        ("nl-free-soft", "free_soft"): "absent",
+        ("nl-free-standard", "free_standard"): "enabled",
+    }
+    panel.disable_results = [False]
+
+    result = asyncio.run(_run(_AckLossSession, panel, max_attempts=3))
+
+    assert lost_ack is True
+    assert result["retried"] == 1
+    assert panel.profile_states[("nl-free-soft", "free_soft")] == "absent"
+    assert panel.profile_states[("nl-free-standard", "free_standard")] == "enabled"
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        assert job.status == "queued"
+        assert job.last_error_code == "source_disable_failed"
+
+
+def test_stale_worker_cannot_compensate_after_pending_marker_is_recovered(database, monkeypatch) -> None:
+    import node_provisioning_service as service
+    from models import NodeProvisioningJob, User
+
+    _queue_free_to_soft(database)
+    original_compensate = service._compensate_failed_free_transition
+    concurrent_panel = FakePanel()
+    concurrent_result: dict[str, int | bool] = {}
+
+    async def reclaim_then_compensate(prepared, panel, **kwargs):
+        with database() as session:
+            job = session.query(NodeProvisioningJob).one()
+            assert job.status == "running"
+            assert job.last_error_code == "source_disable_compensation_pending"
+            job.locked_at = NOW - timedelta(minutes=2)
+            session.commit()
+        concurrent_result.update(
+            await service.process_node_provisioning_jobs(
+                database,
+                panel_factory=lambda: concurrent_panel,
+                now=NOW,
+                limit=1,
+                max_attempts=3,
+                stale_after_seconds=60,
+            )
+        )
+        return await original_compensate(prepared, panel, **kwargs)
+
+    monkeypatch.setattr(service, "_compensate_failed_free_transition", reclaim_then_compensate)
+    stale_panel = FakePanel()
+    stale_panel.profile_states = {
+        ("nl-free-soft", "free_soft"): "absent",
+        ("nl-free-standard", "free_standard"): "enabled",
+    }
+    stale_panel.disable_results = [False]
+
+    stale_result = asyncio.run(_run(database, stale_panel, max_attempts=3))
+
+    assert stale_result["claimed"] == 1
+    assert stale_result["succeeded"] == 0
+    assert concurrent_result["manual_review"] == 1
+    assert concurrent_result["claimed"] == 0
+    assert not any(event[0] == "restore" for event in stale_panel.events)
+    assert concurrent_panel.events == []
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        user = session.query(User).filter_by(tg_id=2001).one()
+        assert job.status == "manual_review"
+        assert job.last_error_code == "source_disable_compensation_stale"
+        assert user.free_profile_state == "error"
+        assert user.free_profile_error_code == "source_disable_compensation_stale"
+
+
+def test_terminal_source_disable_failure_leaves_no_cross_profile_residue(database) -> None:
+    from models import NodeProvisioningJob
+
+    _queue_free_to_soft(database)
+    panel = FakePanel()
+    panel.profile_states = {
+        ("nl-free-soft", "free_soft"): "absent",
+        ("nl-free-standard", "free_standard"): "enabled",
+    }
+    panel.disable_results = [False]
+
+    result = asyncio.run(_run(database, panel, max_attempts=1))
+
+    assert result["manual_review"] == 1
+    assert result["retried"] == 0
+    assert panel.profile_states == {
+        ("nl-free-soft", "free_soft"): "absent",
+        ("nl-free-standard", "free_standard"): "enabled",
+    }
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        assert job.status == "manual_review"
+        assert job.last_error_code == "source_disable_failed"
+
+
+def test_terminal_reentry_failure_restores_target_and_every_source(database) -> None:
+    from free_cycle_service import queue_free_profile_reentry
+    from models import NodeProvisioningJob
+
+    with database() as session:
+        _seed_nodes(session)
+        user, key = _seed_user(session, profile_state="soft_active")
+        user.sub_type = "PAID"
+        user.current_plan_code = "paid_30d"
+        key.node_code = "nl-paid"
+        key.pool_code = "premium_pool"
+        queue_free_profile_reentry(session, user=user, source="paid_expired", now=NOW)
+        session.commit()
+
+    panel = FakePanel()
+    panel.profile_states = {
+        ("nl-free-standard", "free_standard"): "absent",
+        ("nl-free-soft", "free_soft"): "enabled",
+        ("nl-paid", "paid"): "enabled",
+    }
+    panel.disable_results = [True, False]
+
+    result = asyncio.run(_run(database, panel, max_attempts=1))
+
+    assert result["manual_review"] == 1
+    assert panel.profile_states == {
+        ("nl-free-standard", "free_standard"): "absent",
+        ("nl-free-soft", "free_soft"): "enabled",
+        ("nl-paid", "paid"): "enabled",
+    }
+    restore_events = [event for event in panel.events if event[0] == "restore"]
+    assert restore_events == [
+        ("restore", "nl-free-standard", "free_standard", "absent"),
+        ("restore", "nl-paid", "paid", "enabled"),
+        ("restore", "nl-free-soft", "free_soft", "enabled"),
+    ]
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        assert job.status == "manual_review"
+        assert job.last_error_code == "source_disable_failed"
+
+
+@pytest.mark.parametrize("preimage_state", ["enabled", "disabled", "absent"])
+def test_superseded_compensation_restores_exact_target_preimage(preimage_state: str) -> None:
+    from node_provisioning_service import PreparedJob, _compensate_superseded_free_job
+
+    prepared = PreparedJob(
+        job_id=1,
+        job_type="free_to_soft",
+        tg_id=2001,
+        client_uuid="client-key",
+        panel_email="user@example.test",
+        sub_id="sub",
+        target_node_code="nl-free-soft",
+        target_role="free_soft",
+        source_bindings=(("nl-free-standard", "free_standard"),),
+        target_preimage_state=preimage_state,
+    )
+    panel = FakePanel()
+    panel.profile_states = {
+        ("nl-free-soft", "free_soft"): "enabled",
+        ("nl-free-standard", "free_standard"): "disabled",
+    }
+
+    asyncio.run(_compensate_superseded_free_job(prepared, panel))
+
+    assert panel.profile_states[("nl-free-soft", "free_soft")] == preimage_state
+    assert panel.profile_states[("nl-free-standard", "free_standard")] == "enabled"
+    assert panel.events[0] == ("restore", "nl-free-soft", "free_soft", preimage_state)
+
+
+def test_superseded_target_restore_accepts_lost_ack_only_after_exact_readback() -> None:
+    from node_provisioning_service import PreparedJob, _compensate_superseded_free_job
+
+    prepared = PreparedJob(
+        job_id=1,
+        job_type="free_to_soft",
+        tg_id=2001,
+        client_uuid="client-key",
+        panel_email="user@example.test",
+        sub_id="sub",
+        target_node_code="nl-free-soft",
+        target_role="free_soft",
+        source_bindings=(("nl-free-standard", "free_standard"),),
+        target_preimage_state="absent",
+    )
+    panel = FakePanel()
+    panel.profile_states = {
+        ("nl-free-soft", "free_soft"): "enabled",
+        ("nl-free-standard", "free_standard"): "disabled",
+    }
+    panel.restore_results = [RuntimeError("lost acknowledgement")]
+
+    asyncio.run(_compensate_superseded_free_job(prepared, panel))
+
+    assert panel.profile_states[("nl-free-soft", "free_soft")] == "absent"
+    assert panel.profile_states[("nl-free-standard", "free_standard")] == "enabled"
+
+
 def test_partial_target_confirmation_retries_without_premature_soft_state(database) -> None:
     from free_cycle_service import reconcile_free_profile_usage
     from models import NodeProvisioningJob, User
@@ -785,7 +1222,7 @@ def test_exception_result_is_redacted_and_becomes_bounded_manual_review(database
 
 
 def test_existing_rotate_access_key_job_is_executed_once(database) -> None:
-    from models import AccessKey, NodeProvisioningJob
+    from models import AccessKey, NodeProvisioningJob, User
 
     with database() as session:
         _seed_nodes(session)
@@ -813,13 +1250,605 @@ def test_existing_rotate_access_key_job_is_executed_once(database) -> None:
     assert [event[0] for event in panel.events] == ["rotate", "close"]
     with database() as session:
         key = session.query(AccessKey).one()
+        user = session.query(User).one()
         job = session.query(NodeProvisioningJob).one()
         assert key.key_uuid != old_uuid
         assert key.key_uuid == panel.events[0][2]
+        assert user.uuid == key.key_uuid
         assert key.state == "active"
         assert key.rotated_at == NOW
         assert job.replacement_key_uuid is None
         assert job.status == "succeeded"
+        snapshot = json.loads(job.desired_state_json)
+        assert snapshot["rotation"]["old_uuid_sha256"]
+        assert old_uuid not in job.desired_state_json
+        assert old_uuid not in (job.result_json or "")
+        assert snapshot["rotation"]["scope"] == "node:nl-free-standard"
+
+
+def test_rotation_runtime_apply_failure_is_repair_required_not_success(database) -> None:
+    from models import AccessKey, NodeProvisioningJob
+
+    with database() as session:
+        _seed_nodes(session)
+        user, key = _seed_user(session)
+        old_uuid = key.key_uuid
+        key.state = "rotation_requested"
+        session.add(
+            NodeProvisioningJob(
+                tg_id=user.tg_id,
+                key_id=key.id,
+                node_code=key.node_code,
+                job_type="rotate_access_key",
+                status="queued",
+                created_at=NOW,
+                updated_at=NOW,
+            )
+        )
+        session.commit()
+
+    class RuntimeApplyFailedPanel(FakePanel):
+        async def rotate_user_key_on_node(self, **kwargs):
+            self.events.append(("rotate", kwargs["node_code"]))
+            return type("Result", (), {"status": "manual_review", "code": "rotation_runtime_apply_failed"})()
+
+    result = asyncio.run(_run(database, RuntimeApplyFailedPanel()))
+
+    assert result["succeeded"] == 0
+    assert result["manual_review"] == 1
+    with database() as session:
+        key = session.query(AccessKey).one()
+        job = session.query(NodeProvisioningJob).one()
+        assert key.key_uuid == old_uuid
+        assert job.status == "manual_review"
+        assert job.last_error_code == "rotation_runtime_apply_failed"
+
+
+def test_pooled_rotate_updates_subscription_identity_and_all_matching_mappings(database) -> None:
+    from models import AccessKey, Node, NodeProvisioningJob, User, UserNode
+
+    with database() as session:
+        _seed_nodes(session)
+        user, key = _seed_user(session)
+        old_uuid = key.key_uuid
+        key.node_code = None
+        key.pool_code = "free_pool"
+        key.state = "rotation_requested"
+        session.flush()
+        nodes = session.query(Node).filter(Node.code.in_(["nl-free-standard", "nl-paid"])).all()
+        session.add_all(
+            [
+                UserNode(tg_id=user.tg_id, node_id=node.id, client_uuid=old_uuid, panel_email=user.email)
+                for node in nodes
+            ]
+        )
+        session.add(
+            NodeProvisioningJob(
+                tg_id=user.tg_id,
+                key_id=key.id,
+                node_code=None,
+                job_type="rotate_access_key",
+                status="queued",
+                created_at=NOW,
+                updated_at=NOW,
+            )
+        )
+        session.commit()
+
+    panel = FakePanel()
+    result = asyncio.run(_run(database, panel))
+
+    assert result["succeeded"] == 1
+    assert [event[0] for event in panel.events] == ["rotate_existing", "close"]
+    with database() as session:
+        key = session.query(AccessKey).one()
+        user = session.query(User).one()
+        mappings = session.query(UserNode).order_by(UserNode.id.asc()).all()
+        job = session.query(NodeProvisioningJob).one()
+        assert key.state == "active"
+        assert key.key_uuid == user.uuid
+        assert all(mapping.client_uuid == key.key_uuid for mapping in mappings)
+        assert session.query(User).filter(User.uuid == old_uuid).count() == 0
+        assert session.query(AccessKey).filter(AccessKey.key_uuid == old_uuid).count() == 0
+        assert session.query(UserNode).filter(UserNode.client_uuid == old_uuid).count() == 0
+        assert job.status == "succeeded"
+
+
+def test_claim_lease_renews_before_during_and_after_panel_await(database, monkeypatch) -> None:
+    import node_provisioning_service as service
+    from models import NodeProvisioningJob
+
+    with database() as session:
+        session.add(
+            NodeProvisioningJob(
+                job_type="reward_entitlement_sync",
+                status="queued",
+                created_at=NOW,
+                updated_at=NOW,
+            )
+        )
+        session.commit()
+        claim = service._claim_next_job(session, now=NOW, max_attempts=3)
+        assert claim is not None
+        session.commit()
+
+    lease_times = iter(
+        (
+            NOW + timedelta(seconds=1),
+            NOW + timedelta(seconds=2),
+            NOW + timedelta(seconds=3),
+        )
+    )
+    lease = service.ClaimLease(
+        session_factory=database,
+        claim=claim,
+        heartbeat_interval_seconds=30,
+        clock=lambda: next(lease_times),
+    )
+    real_wait = service.asyncio.wait
+    forced_heartbeat = {"done": False}
+
+    async def wait_with_forced_heartbeat(tasks, *, timeout):
+        if not forced_heartbeat["done"]:
+            forced_heartbeat["done"] = True
+            return set(), set(tasks)
+        return await real_wait(tasks, timeout=timeout)
+
+    monkeypatch.setattr(service.asyncio, "wait", wait_with_forced_heartbeat)
+
+    async def panel_operation():
+        return "ok"
+
+    assert asyncio.run(lease.run(panel_operation)) == "ok"
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        assert job.status == "running"
+        assert job.locked_at == NOW + timedelta(seconds=3)
+
+
+def test_reclaimed_claim_fences_stale_write_finalize_and_compensation(database) -> None:
+    import node_provisioning_service as service
+    from models import AccessKey, NodeProvisioningJob
+
+    with database() as session:
+        _seed_nodes(session)
+        user, key = _seed_user(session)
+        key.state = "rotation_requested"
+        session.add(
+            NodeProvisioningJob(
+                tg_id=user.tg_id,
+                key_id=key.id,
+                node_code=key.node_code,
+                job_type="rotate_access_key",
+                status="queued",
+                created_at=NOW,
+                updated_at=NOW,
+            )
+        )
+        session.commit()
+
+    with database() as session:
+        stale_claim = service._claim_next_job(session, now=NOW, max_attempts=3)
+        assert stale_claim is not None
+        stale_prepared = service._prepare_job(session, stale_claim)
+        session.commit()
+
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        job.locked_at = NOW - timedelta(minutes=2)
+        session.commit()
+    with database() as session:
+        recovered = service._recover_stale_jobs(
+            session,
+            now=NOW,
+            stale_after_seconds=60,
+            max_attempts=3,
+            limit=1,
+        )
+        assert recovered == {"recovered": 1, "manual_review": 0}
+        active_claim = service._claim_next_job(session, now=NOW, max_attempts=3)
+        assert active_claim is not None
+        active_prepared = service._prepare_job(session, active_claim)
+        session.commit()
+
+    stale_lease = service.ClaimLease(
+        session_factory=database,
+        claim=stale_claim,
+        heartbeat_interval_seconds=20,
+        clock=lambda: NOW + timedelta(seconds=1),
+    )
+    stale_panel = FakePanel()
+    with pytest.raises(service.ClaimLostError):
+        asyncio.run(
+            service._execute_panel(
+                stale_prepared,
+                stale_panel,
+                claim_lease=stale_lease,
+            )
+        )
+    assert stale_panel.events == []
+
+    with database() as session:
+        assert (
+            service._finalize_success(
+                session,
+                claim=stale_claim,
+                prepared=stale_prepared,
+                outcome="rotated",
+                now=NOW + timedelta(seconds=1),
+            )
+            == "claim_lost"
+        )
+        session.commit()
+
+    with pytest.raises(service.ClaimLostError):
+        asyncio.run(
+            service._compensate_rotation_after_finalize_failure(
+                stale_prepared,
+                stale_panel,
+                claim_lease=stale_lease,
+            )
+        )
+    assert stale_panel.events == []
+
+    active_lease = service.ClaimLease(
+        session_factory=database,
+        claim=active_claim,
+        heartbeat_interval_seconds=20,
+        clock=lambda: NOW + timedelta(seconds=2),
+    )
+    active_panel = FakePanel()
+    outcome = asyncio.run(
+        service._execute_panel(
+            active_prepared,
+            active_panel,
+            claim_lease=active_lease,
+        )
+    )
+    active_lease.renew()
+    with database() as session:
+        assert (
+            service._finalize_success(
+                session,
+                claim=active_claim,
+                prepared=active_prepared,
+                outcome=outcome,
+                now=NOW + timedelta(seconds=2),
+            )
+            == "rotated"
+        )
+        session.commit()
+    with database() as session:
+        assert session.query(NodeProvisioningJob).one().status == "succeeded"
+        assert session.query(AccessKey).one().key_uuid == active_prepared.replacement_key_uuid
+    assert [event[0] for event in active_panel.events] == ["rotate"]
+
+
+def test_pooled_rotation_lost_mid_call_does_not_rollback_active_worker(database) -> None:
+    import node_provisioning_service as service
+    from models import AccessKey, NodeProvisioningJob
+
+    with database() as session:
+        _seed_nodes(session)
+        user, key = _seed_user(session)
+        key.node_code = None
+        key.state = "rotation_requested"
+        session.add(
+            NodeProvisioningJob(
+                tg_id=user.tg_id,
+                key_id=key.id,
+                job_type="rotate_access_key",
+                status="queued",
+                created_at=NOW,
+                updated_at=NOW,
+            )
+        )
+        session.commit()
+
+    active_panel = FakePanel()
+    active_result: dict[str, int | bool] = {}
+
+    class ReclaimedDuringRotationPanel(FakePanel):
+        async def rotate_user_key_on_existing_nodes(self, **kwargs):
+            self.events.append(("rotate_existing",))
+            with database() as session:
+                job = session.query(NodeProvisioningJob).one()
+                job.locked_at = NOW - timedelta(minutes=2)
+                session.commit()
+            active_result.update(
+                await service.process_node_provisioning_jobs(
+                    database,
+                    panel_factory=lambda: active_panel,
+                    now=NOW,
+                    limit=1,
+                    max_attempts=3,
+                    stale_after_seconds=60,
+                )
+            )
+            return True
+
+    stale_panel = ReclaimedDuringRotationPanel()
+    stale_result = asyncio.run(_run(database, stale_panel))
+
+    assert stale_result["claimed"] == 1
+    assert stale_result["succeeded"] == 0
+    assert active_result["stale_recovered"] == 1
+    assert active_result["claimed"] == 1
+    assert active_result["succeeded"] == 1
+    assert not any(event[0].startswith("rollback_rotate") for event in stale_panel.events)
+    with database() as session:
+        assert session.query(NodeProvisioningJob).one().status == "succeeded"
+        assert session.query(AccessKey).one().state == "active"
+
+
+def test_rotate_finalize_blocks_concurrent_key_change(database) -> None:
+    from models import AccessKey, NodeProvisioningJob, User
+
+    with database() as session:
+        _seed_nodes(session)
+        user, key = _seed_user(session)
+        old_uuid = key.key_uuid
+        key.state = "rotation_requested"
+        session.add(
+            NodeProvisioningJob(
+                tg_id=user.tg_id,
+                key_id=key.id,
+                node_code=key.node_code,
+                job_type="rotate_access_key",
+                status="queued",
+                created_at=NOW,
+                updated_at=NOW,
+            )
+        )
+        session.commit()
+
+    class ConcurrentKeyChangePanel(FakePanel):
+        async def rotate_user_key_on_node(self, **kwargs):
+            with database() as session:
+                key = session.query(AccessKey).one()
+                key.key_uuid = "00000000-0000-4000-8000-000000000599"
+                session.commit()
+            return await super().rotate_user_key_on_node(**kwargs)
+
+    panel = ConcurrentKeyChangePanel()
+    result = asyncio.run(_run(database, panel))
+
+    assert result["succeeded"] == 0
+    assert result["manual_review"] == 1
+    assert not any(event[0].startswith("rollback_rotate") for event in panel.events)
+    with database() as session:
+        key = session.query(AccessKey).one()
+        user = session.query(User).one()
+        job = session.query(NodeProvisioningJob).one()
+        assert key.key_uuid != old_uuid
+        assert user.uuid == old_uuid
+        assert job.status == "manual_review"
+        assert job.last_error_code == "rotation_finalize_manual_review"
+
+
+def test_rotate_finalize_blocks_concurrent_subscription_identity_change(database) -> None:
+    from models import AccessKey, NodeProvisioningJob, User
+
+    with database() as session:
+        _seed_nodes(session)
+        user, key = _seed_user(session)
+        old_uuid = key.key_uuid
+        key.state = "rotation_requested"
+        session.add(
+            NodeProvisioningJob(
+                tg_id=user.tg_id,
+                key_id=key.id,
+                node_code=key.node_code,
+                job_type="rotate_access_key",
+                status="queued",
+                created_at=NOW,
+                updated_at=NOW,
+            )
+        )
+        session.commit()
+
+    class ConcurrentUserChangePanel(FakePanel):
+        async def rotate_user_key_on_node(self, **kwargs):
+            with database() as session:
+                user = session.query(User).one()
+                user.uuid = "00000000-0000-4000-8000-000000000699"
+                session.commit()
+            return await super().rotate_user_key_on_node(**kwargs)
+
+    panel = ConcurrentUserChangePanel()
+    result = asyncio.run(_run(database, panel))
+
+    assert result["succeeded"] == 0
+    assert result["manual_review"] == 1
+    assert not any(event[0].startswith("rollback_rotate") for event in panel.events)
+    with database() as session:
+        key = session.query(AccessKey).one()
+        user = session.query(User).one()
+        job = session.query(NodeProvisioningJob).one()
+        assert key.key_uuid == old_uuid
+        assert user.uuid != old_uuid
+        assert job.status == "manual_review"
+        assert job.last_error_code == "rotation_finalize_manual_review"
+
+
+def test_node_specific_secondary_rotation_does_not_replace_subscription_identity(database) -> None:
+    from models import AccessKey, Node, NodeProvisioningJob, User, UserNode
+
+    with database() as session:
+        _seed_nodes(session)
+        user, key = _seed_user(session)
+        subscription_uuid = user.uuid
+        old_uuid = "00000000-0000-4000-8000-000000000711"
+        key.key_uuid = old_uuid
+        key.node_code = "nl-paid"
+        key.pool_code = "premium_pool"
+        key.is_primary = False
+        key.state = "rotation_requested"
+        session.flush()
+        node = session.query(Node).filter_by(code="nl-paid").one()
+        session.add(UserNode(tg_id=user.tg_id, node_id=node.id, client_uuid=old_uuid, panel_email=user.email))
+        session.add(
+            NodeProvisioningJob(
+                tg_id=user.tg_id,
+                key_id=key.id,
+                node_code=key.node_code,
+                job_type="rotate_access_key",
+                status="queued",
+                created_at=NOW,
+                updated_at=NOW,
+            )
+        )
+        session.commit()
+
+    panel = FakePanel()
+    result = asyncio.run(_run(database, panel))
+
+    assert result["succeeded"] == 1
+    assert [event[0] for event in panel.events] == ["rotate", "close"]
+    with database() as session:
+        key = session.query(AccessKey).one()
+        user = session.query(User).one()
+        mapping = session.query(UserNode).one()
+        assert key.key_uuid != old_uuid
+        assert user.uuid == subscription_uuid
+        assert mapping.client_uuid == old_uuid
+
+
+def test_nonrotation_finalize_exception_does_not_call_rotation_rollback(database, monkeypatch) -> None:
+    import node_provisioning_service as service
+    from free_cycle_service import reconcile_free_profile_usage
+
+    with database() as session:
+        _seed_nodes(session)
+        user, _key = _seed_user(session)
+        reconcile_free_profile_usage(session, user=user, used_bytes=5 * GIB, source="test", now=NOW)
+        session.commit()
+
+    monkeypatch.setattr(service, "_finalize_success", lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("commit")))
+    panel = FakePanel()
+    result = asyncio.run(_run(database, panel))
+
+    assert result["retried"] == 1
+    assert not any(event[0].startswith("rollback_rotate") for event in panel.events)
+
+
+def test_rotation_precommit_finalize_failure_compensates_then_retries(database, monkeypatch) -> None:
+    import node_provisioning_service as service
+    from models import AccessKey, NodeProvisioningJob
+
+    with database() as session:
+        _seed_nodes(session)
+        user, key = _seed_user(session)
+        old_uuid = key.key_uuid
+        key.state = "rotation_requested"
+        session.add(NodeProvisioningJob(tg_id=user.tg_id, key_id=key.id, node_code=key.node_code, job_type="rotate_access_key", status="queued", created_at=NOW, updated_at=NOW))
+        session.commit()
+
+    monkeypatch.setattr(service, "_finalize_success", lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("before_commit")))
+    panel = FakePanel()
+    result = asyncio.run(_run(database, panel))
+
+    assert result["retried"] == 1
+    assert ("rollback_rotate", "nl-free-standard") in panel.events
+    with database() as session:
+        assert session.query(AccessKey).one().key_uuid == old_uuid
+        assert session.query(NodeProvisioningJob).one().status == "queued"
+
+
+def test_rotation_precommit_rollback_exception_is_immediate_manual_review(database, monkeypatch) -> None:
+    import node_provisioning_service as service
+    from models import AccessKey, NodeProvisioningJob
+
+    with database() as session:
+        _seed_nodes(session)
+        user, key = _seed_user(session)
+        key.state = "rotation_requested"
+        session.add(NodeProvisioningJob(tg_id=user.tg_id, key_id=key.id, node_code=key.node_code, job_type="rotate_access_key", status="queued", created_at=NOW, updated_at=NOW))
+        session.commit()
+
+    monkeypatch.setattr(service, "_finalize_success", lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("before_commit")))
+
+    class BrokenRollbackPanel(FakePanel):
+        async def rollback_user_key_rotation_on_node(self, **_kwargs):
+            raise RuntimeError("rollback transport")
+
+    result = asyncio.run(_run(database, BrokenRollbackPanel()))
+
+    assert result["retried"] == 0
+    assert result["manual_review"] == 1
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        assert job.status == "manual_review"
+        assert job.last_error_code == "rotation_finalize_manual_review"
+
+
+def test_stale_legacy_rotation_snapshot_is_sanitized_and_fails_closed(database) -> None:
+    from models import AccessKey, NodeProvisioningJob
+
+    legacy_raw = "00000000-0000-4000-8000-000000009999"
+    with database() as session:
+        _seed_nodes(session)
+        user, key = _seed_user(session)
+        key.state = "rotation_requested"
+        session.add(
+            NodeProvisioningJob(
+                tg_id=user.tg_id,
+                key_id=key.id,
+                node_code=key.node_code,
+                job_type="rotate_access_key",
+                status="queued",
+                desired_state_json=json.dumps({"rotation": {"old_uuid": legacy_raw, "scope": "node:nl-free-standard", "updates_subscription_uuid": True}}),
+                created_at=NOW,
+                updated_at=NOW,
+            )
+        )
+        session.commit()
+
+    result = asyncio.run(_run(database, FakePanel()))
+
+    assert result["manual_review"] == 1
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        assert job.status == "manual_review"
+        assert job.last_error_code == "rotation_key_changed"
+        assert legacy_raw not in (job.desired_state_json or "")
+        assert legacy_raw not in (job.result_json or "")
+        assert "old_uuid_sha256" in (job.desired_state_json or "")
+
+
+def test_rotation_commit_ack_loss_keeps_panels_new_when_db_is_fully_finalized(database) -> None:
+    from models import AccessKey, NodeProvisioningJob
+
+    with database() as session:
+        _seed_nodes(session)
+        user, key = _seed_user(session)
+        key.state = "rotation_requested"
+        session.add(NodeProvisioningJob(tg_id=user.tg_id, key_id=key.id, node_code=key.node_code, job_type="rotate_access_key", status="queued", created_at=NOW, updated_at=NOW))
+        session.commit()
+
+    raised = {"value": False}
+
+    def ack_loss_session():
+        session = database()
+        real_commit = session.commit
+
+        def commit():
+            real_commit()
+            if not raised["value"] and session.query(NodeProvisioningJob).filter_by(status="succeeded").count():
+                raised["value"] = True
+                raise RuntimeError("lost_ack")
+
+        session.commit = commit
+        return session
+
+    panel = FakePanel()
+    result = asyncio.run(_run(ack_loss_session, panel))
+
+    assert result["succeeded"] == 1
+    assert not any(event[0].startswith("rollback_rotate") for event in panel.events)
+    with database() as session:
+        assert session.query(AccessKey).one().state == "active"
+        assert session.query(NodeProvisioningJob).one().status == "succeeded"
 
 
 def test_payment_race_does_not_reproject_paid_user_or_key_to_free_soft(database) -> None:
@@ -831,6 +1860,8 @@ def test_payment_race_does_not_reproject_paid_user_or_key_to_free_soft(database)
         user, _key = _seed_user(session)
         reconcile_free_profile_usage(session, user=user, used_bytes=5 * GIB, source="node_observer", now=NOW)
         session.commit()
+
+    marker_seen = False
 
     class PaymentRacePanel(FakePanel):
         async def set_user_profile_enabled_on_node(self, **kwargs):
@@ -845,15 +1876,23 @@ def test_payment_race_does_not_reproject_paid_user_or_key_to_free_soft(database)
                 session.commit()
             return result
 
+        async def restore_user_profile_state_on_node(self, **kwargs):
+            nonlocal marker_seen
+            with database() as session:
+                job = session.query(NodeProvisioningJob).one()
+                marker_seen = job.last_error_code == "superseded_compensation_pending"
+            return await super().restore_user_profile_state_on_node(**kwargs)
+
     panel = PaymentRacePanel()
     result = asyncio.run(_run(database, panel))
 
     assert result["succeeded"] == 1
+    assert marker_seen is True
     assert panel.events == [
         ("ensure", "nl-free-soft", "free_soft", 0, 1),
         ("confirm", "nl-free-soft", "free_soft", 0, 1),
         ("disable", "nl-free-standard", "free_standard", False),
-        ("disable", "nl-free-soft", "free_soft", False),
+        ("restore", "nl-free-soft", "free_soft", "enabled"),
         ("disable", "nl-free-standard", "free_standard", True),
         ("close",),
     ]
@@ -903,13 +1942,150 @@ def test_payment_after_final_panel_check_is_compensated(database, monkeypatch) -
         ("ensure", "nl-free-soft", "free_soft", 0, 1),
         ("confirm", "nl-free-soft", "free_soft", 0, 1),
         ("disable", "nl-free-standard", "free_standard", False),
-        ("disable", "nl-free-soft", "free_soft", False),
+        ("restore", "nl-free-soft", "free_soft", "enabled"),
         ("disable", "nl-free-standard", "free_standard", True),
         ("close",),
     ]
     with database() as session:
         job = session.query(NodeProvisioningJob).one()
         assert json.loads(job.result_json)["code"] == "superseded"
+
+
+def test_post_finalize_compensation_marker_ack_loss_compensates_once(database, monkeypatch) -> None:
+    import node_provisioning_service as service
+    from free_cycle_service import reconcile_free_profile_usage
+    from models import AccessKey, NodeProvisioningJob, User
+
+    with database() as session:
+        _seed_nodes(session)
+        user, _key = _seed_user(session)
+        reconcile_free_profile_usage(session, user=user, used_bytes=5 * GIB, source="node_observer", now=NOW)
+        session.commit()
+
+    original_execute = service._execute_panel
+
+    async def execute_then_pay(prepared, panel, **kwargs):
+        outcome = await original_execute(prepared, panel, **kwargs)
+        with database() as session:
+            user = session.query(User).filter_by(tg_id=2001).one()
+            key = session.query(AccessKey).filter_by(tg_id=2001).one()
+            user.sub_type = "PAID"
+            user.current_plan_code = "paid_30d"
+            key.node_code = "nl-paid"
+            key.pool_code = "premium_pool"
+            session.commit()
+        return outcome
+
+    ack_lost = {"value": False}
+
+    def marker_ack_loss_session():
+        session = database()
+        real_commit = session.commit
+
+        def commit():
+            real_commit()
+            if not ack_lost["value"] and session.query(NodeProvisioningJob).filter_by(
+                status="running",
+                last_error_code="superseded_compensation_pending",
+            ).count():
+                ack_lost["value"] = True
+                raise RuntimeError("lost_ack")
+
+        session.commit = commit
+        return session
+
+    monkeypatch.setattr(service, "_execute_panel", execute_then_pay)
+    panel = FakePanel()
+    result = asyncio.run(_run(marker_ack_loss_session, panel))
+
+    assert ack_lost["value"] is True
+    assert result["succeeded"] == 1
+    assert result["retried"] == 0
+    assert result["manual_review"] == 0
+    assert panel.events == [
+        ("ensure", "nl-free-soft", "free_soft", 0, 1),
+        ("confirm", "nl-free-soft", "free_soft", 0, 1),
+        ("disable", "nl-free-standard", "free_standard", False),
+        ("restore", "nl-free-soft", "free_soft", "enabled"),
+        ("disable", "nl-free-standard", "free_standard", True),
+        ("close",),
+    ]
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        assert job.status == "succeeded"
+        assert job.last_error_code is None
+        assert json.loads(job.result_json)["code"] == "superseded"
+
+
+def test_post_finalize_compensation_is_fenced_from_concurrent_claim(database, monkeypatch) -> None:
+    import node_provisioning_service as service
+    from free_cycle_service import reconcile_free_profile_usage
+    from models import AccessKey, NodeProvisioningJob, User
+
+    with database() as session:
+        _seed_nodes(session)
+        user, _key = _seed_user(session)
+        reconcile_free_profile_usage(session, user=user, used_bytes=5 * GIB, source="node_observer", now=NOW)
+        session.commit()
+
+    original_execute = service._execute_panel
+    original_compensate = service._compensate_superseded_free_job
+    concurrent_panel = FakePanel()
+    concurrent_result: dict[str, int | bool] = {}
+
+    async def execute_then_pay(prepared, panel, **kwargs):
+        outcome = await original_execute(prepared, panel, **kwargs)
+        with database() as session:
+            user = session.query(User).filter_by(tg_id=2001).one()
+            key = session.query(AccessKey).filter_by(tg_id=2001).one()
+            user.sub_type = "PAID"
+            user.current_plan_code = "paid_30d"
+            key.node_code = "nl-paid"
+            key.pool_code = "premium_pool"
+            session.commit()
+        return outcome
+
+    async def reclaim_then_compensate(prepared, panel, **kwargs):
+        with database() as session:
+            job = session.query(NodeProvisioningJob).one()
+            assert job.status == "running"
+            assert job.lock_token is not None
+            assert job.last_error_code == "superseded_compensation_pending"
+            job.locked_at = NOW - timedelta(minutes=2)
+            session.commit()
+        concurrent_result.update(
+            await service.process_node_provisioning_jobs(
+                database,
+                panel_factory=lambda: concurrent_panel,
+                now=NOW,
+                limit=1,
+                max_attempts=3,
+                stale_after_seconds=60,
+            )
+        )
+        return await original_compensate(prepared, panel, **kwargs)
+
+    monkeypatch.setattr(service, "_execute_panel", execute_then_pay)
+    monkeypatch.setattr(service, "_compensate_superseded_free_job", reclaim_then_compensate)
+    stale_panel = FakePanel()
+    stale_result = asyncio.run(_run(database, stale_panel))
+
+    assert stale_result["claimed"] == 1
+    assert stale_result["succeeded"] == 0
+    assert concurrent_result["stale_recovered"] == 0
+    assert concurrent_result["manual_review"] == 1
+    assert concurrent_result["claimed"] == 0
+    assert stale_panel.events == [
+        ("ensure", "nl-free-soft", "free_soft", 0, 1),
+        ("confirm", "nl-free-soft", "free_soft", 0, 1),
+        ("disable", "nl-free-standard", "free_standard", False),
+        ("close",),
+    ]
+    assert concurrent_panel.events == []
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        assert job.status == "manual_review"
+        assert job.last_error_code == "superseded_compensation_stale"
 
 
 def test_failed_post_finalize_compensation_is_manual_review(database, monkeypatch) -> None:
@@ -947,7 +2123,63 @@ def test_failed_post_finalize_compensation_is_manual_review(database, monkeypatc
     with database() as session:
         job = session.query(NodeProvisioningJob).one()
         assert job.status == "manual_review"
-        assert job.last_error_code == "superseded_target_disable_failed"
+        assert job.last_error_code == "superseded_source_restore_failed"
+
+
+def test_superseded_absent_restore_ambiguity_is_manual_after_durable_marker(database, monkeypatch) -> None:
+    import node_provisioning_service as service
+    from free_cycle_service import reconcile_free_profile_usage
+    from models import AccessKey, NodeProvisioningJob, User
+
+    with database() as session:
+        _seed_nodes(session)
+        user, _key = _seed_user(session)
+        reconcile_free_profile_usage(session, user=user, used_bytes=5 * GIB, source="node_observer", now=NOW)
+        session.commit()
+
+    original_execute = service._execute_panel
+
+    async def execute_then_pay(prepared, panel, **kwargs):
+        outcome = await original_execute(prepared, panel, **kwargs)
+        with database() as session:
+            user = session.query(User).filter_by(tg_id=2001).one()
+            key = session.query(AccessKey).filter_by(tg_id=2001).one()
+            user.sub_type = "PAID"
+            user.current_plan_code = "paid_30d"
+            key.node_code = "nl-paid"
+            key.pool_code = "premium_pool"
+            session.commit()
+        return outcome
+
+    marker_seen = False
+
+    class _UnsupportedAbsentRestorePanel(FakePanel):
+        async def restore_user_profile_state_on_node(self, **kwargs):
+            nonlocal marker_seen
+            with database() as session:
+                job = session.query(NodeProvisioningJob).one()
+                marker_seen = job.last_error_code == "superseded_compensation_pending"
+            self.events.append(
+                ("restore", kwargs["node_code"], kwargs["expected_access_role"], kwargs["state"])
+            )
+            return False
+
+    monkeypatch.setattr(service, "_execute_panel", execute_then_pay)
+    panel = _UnsupportedAbsentRestorePanel()
+    panel.profile_states = {
+        ("nl-free-soft", "free_soft"): "absent",
+        ("nl-free-standard", "free_standard"): "enabled",
+    }
+
+    result = asyncio.run(_run(database, panel))
+
+    assert marker_seen is True
+    assert result["manual_review"] == 1
+    assert result["succeeded"] == 0
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        assert job.status == "manual_review"
+        assert job.last_error_code == "superseded_target_restore_failed"
 
 
 def test_payment_race_during_free_reentry_restores_paid_profile(database) -> None:
@@ -988,7 +2220,7 @@ def test_payment_race_during_free_reentry_restores_paid_profile(database) -> Non
         ("reset", "nl-free-standard", "free_standard"),
         ("disable", "nl-free-soft", "free_soft", False),
         ("disable", "nl-paid", "paid", False),
-        ("disable", "nl-free-standard", "free_standard", False),
+        ("restore", "nl-free-standard", "free_standard", "enabled"),
         ("disable", "nl-paid", "paid", True),
         ("close",),
     ]
@@ -1046,14 +2278,14 @@ def test_failed_payment_race_compensation_requires_manual_review(database) -> No
         ("reset", "nl-free-standard", "free_standard"),
         ("disable", "nl-free-soft", "free_soft", False),
         ("disable", "nl-paid", "paid", False),
-        ("disable", "nl-free-standard", "free_standard", False),
+        ("restore", "nl-free-standard", "free_standard", "enabled"),
         ("disable", "nl-paid", "paid", True),
         ("close",),
     ]
     with database() as session:
         job = session.query(NodeProvisioningJob).one()
         assert job.status == "manual_review"
-        assert job.last_error_code == "superseded_target_disable_failed"
+        assert job.last_error_code == "superseded_source_restore_failed"
 
 
 def test_payment_race_compensation_accepts_one_restored_paid_source(database) -> None:

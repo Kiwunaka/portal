@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "core_path": "/REPLACE/WITH/ABSOLUTE/PATH/TO/sing-box",
+  "credential_store_path": "/etc/pokrov/authenticated-egress-canaries.json",
+  "probe": {
+    "hostname": "REPLACE_WITH_POKROV_OWNED_HOSTNAME",
+    "port": 443,
+    "path": "/api/public/authenticated-egress-probe",
+    "expected_status": 204,
+    "marker_header_name": "X-Pokrov-Egress-Probe",
+    "marker_header_value": "pokrov-authenticated-egress-v1"
+  },
+  "timeouts": {
+    "total_seconds": 15.0,
+    "core_start_seconds": 3.0,
+    "connect_seconds": 5.0,
+    "io_seconds": 5.0,
+    "shutdown_seconds": 1.0
+  }
+}

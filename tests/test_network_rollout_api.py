@@ -9,6 +9,7 @@ import os
 import sys
 import time
 import uuid
+from dataclasses import replace
 from datetime import timedelta
 from pathlib import Path
 from urllib.parse import urlencode
@@ -87,6 +88,26 @@ def _load_api(monkeypatch, tmp_path: Path):
 
     api = importlib.import_module("api")
     monkeypatch.setattr(api, "ControlPanel", _FakePanel)
+    original_enabled_nodes = api.enabled_nodes
+
+    def _authenticated_test_nodes(session):
+        observed_at = api._utcnow()
+        synthetic_profiles = api._synthetic_transport_node().transport_profiles_json
+        return [
+            replace(
+                node,
+                is_healthy=True,
+                edge_reachability_ok=True,
+                authenticated_egress_ok=True,
+                last_authenticated_egress_at=observed_at,
+                dataplane_ok=True,
+                last_probe_at=observed_at,
+                transport_profiles_json=synthetic_profiles,
+            )
+            for node in original_enabled_nodes(session)
+        ]
+
+    monkeypatch.setattr(api, "enabled_nodes", _authenticated_test_nodes)
     return api
 
 
@@ -682,6 +703,18 @@ def test_warp_material_hardening_limits_stale_material_and_reports_summary(monke
 def test_client_warp_lifecycle_api_records_consent_and_redacts_runtime_events(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
+    telemetry_secrets = [
+        "vless://synthetic-vless-secret@node.example:443?security=reality",
+        "trojan://synthetic-trojan-secret@node.example:443",
+        "ss://synthetic-ss-secret@node.example:443",
+        "wg://synthetic-wg-secret@node.example:443",
+        "connect.pokrov.space/s8Kx2mP7qR4wT/synthetic-connect-secret",
+        "Bearer synthetic-bearer-secret",
+        "access-token=synthetic-access-secret",
+        "private-key=synthetic-private-secret",
+        "token=synthetic-token-secret",
+        "11111111-2222-3333-4444-555555555555",
+    ]
     rollout_payload = _rollout_payload()
     rollout_payload["warp_policy"] = {
         "enabled": True,
@@ -745,12 +778,17 @@ def test_client_warp_lifecycle_api_records_consent_and_redacts_runtime_events(mo
             "event_name": "runtime_fallback",
             "state": "fallback",
             "reason_code": "handshake_failed",
-            "message": "baseline fallback used",
+            "message": telemetry_secrets[0],
             "meta": {
                 "wireguard_config": {"private-key": "test-private-key"},
                 "account": {"access-token": "test-access-token"},
                 "subscription_url": "https://connect.pokrov.space/s8Kx2mP7qR4wT/secret",
-                "safe_detail": "fallback",
+                "safe_detail": ["fallback", *telemetry_secrets],
+                "runtime_phase": "running",
+                "nested": {
+                    "safe_detail": "ss://another-secret@203.0.113.5:443",
+                    "node_host": "node.internal.example",
+                },
             },
         },
     )
@@ -767,6 +805,9 @@ def test_client_warp_lifecycle_api_records_consent_and_redacts_runtime_events(mo
     assert "test-private-key" not in after_json
     assert "test-access-token" not in after_json
     assert "connect.pokrov.space/s8Kx2mP7qR4wT/secret" not in after_json
+    for sentinel in telemetry_secrets:
+        assert sentinel not in after_json
+        assert sentinel not in event.text
 
     rotate = client.post("/api/client/warp/rotate", headers=auth_headers, json={"reason_code": "user_requested"})
     assert rotate.status_code == 200, rotate.text
@@ -792,7 +833,14 @@ def test_client_warp_lifecycle_api_records_consent_and_redacts_runtime_events(mo
         assert "test-private-key" not in ledger_json
         assert "test-access-token" not in ledger_json
         assert "connect.pokrov.space/s8Kx2mP7qR4wT/secret" not in ledger_json
+        assert "ss://another-secret" not in ledger_json
+        assert "node.internal.example" not in ledger_json
+        assert "message" not in ledger_json
+        assert "nested" not in ledger_json
+        for sentinel in telemetry_secrets:
+            assert sentinel not in ledger_json
         assert "fallback" in ledger_json
+        assert "running" in ledger_json
     finally:
         db.close()
 

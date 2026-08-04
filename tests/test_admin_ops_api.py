@@ -2038,6 +2038,7 @@ def test_admin_action_intent_audit_helper_preserves_l1_wrapper_compatibility(
     finally:
         session.close()
 
+
     session = api.SessionLocal()
     try:
         assert session.query(AdminAudit).filter_by(action="intent_atomic_probe").count() == 0
@@ -2063,3 +2064,95 @@ def test_admin_action_intent_audit_helper_preserves_l1_wrapper_compatibility(
         assert session.query(AdminAudit).filter_by(action="legacy_l1_wrapper").count() == 1
     finally:
         session.close()
+
+
+def test_admin_observability_sanitizes_legacy_transport_health_on_read(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from admin_ops_service import build_node_observability
+    from models import NodeHealthSample, NodeRuntimeMetric
+
+    now = _utcnow()
+    session = api.SessionLocal()
+    try:
+        session.add(
+            api.Node(
+                code="pl",
+                name="Poland",
+                host="pl.example.test",
+                inbound_id=1,
+                enabled=True,
+                accepting_new_clients=True,
+                hoster_family="hetzner",
+                hoster_asn="AS24940",
+                hoster_subnet="198.51.100.0/24",
+                last_probe_stage="tls_sni",
+                last_probe_error_kind="tls_handshake_failed",
+                last_probe_error_message="forbidden-admin-error-message",
+            )
+        )
+        session.add(
+            NodeHealthSample(
+                node_code="pl",
+                sampled_at=now,
+                is_healthy=True,
+                score=95.0,
+                probe_stage="tls_sni",
+                probe_error_kind="tls_handshake_failed",
+                probe_classification="transport_failure",
+                transport_health_json=json.dumps(
+                    {
+                        "panel_state": "healthy",
+                        "dataplane_state": "healthy",
+                        "endpoint": "forbidden-admin-endpoint.invalid",
+                        "certificate": "forbidden-admin-certificate",
+                        "token": "forbidden-admin-token",
+                        "nested": {"host": "forbidden-nested.invalid"},
+                    }
+                ),
+            )
+        )
+        session.add(
+            NodeRuntimeMetric(
+                node_code="pl",
+                sampled_at=now,
+                source="node_agent",
+                meta_json=json.dumps(
+                    {
+                        "panel_state": "healthy",
+                        "exception": "forbidden-admin-runtime-exception",
+                    }
+                ),
+            )
+        )
+        session.commit()
+
+        payload = build_node_observability(
+            s=session,
+            node_code="pl",
+            now=now,
+            metrics_stale_after_seconds=900,
+            include_ru_history=False,
+        )
+    finally:
+        session.close()
+
+    assert payload is not None
+    assert payload["node"] == {
+        "code": "pl",
+        "name": "Poland",
+        "hoster_family": "hetzner",
+        "hoster_asn": "AS24940",
+        "weight": 100,
+    }
+    assert payload["sources"]["brain_metrics"]["details"]["probe_stage"] == "tls_sni"
+    rendered = json.dumps(payload, sort_keys=True)
+    for forbidden in (
+        "forbidden-admin-error-message",
+        "forbidden-admin-endpoint.invalid",
+        "forbidden-admin-certificate",
+        "forbidden-admin-token",
+        "forbidden-admin-runtime-exception",
+        "forbidden-nested.invalid",
+        "198.51.100.0/24",
+    ):
+        assert forbidden not in rendered

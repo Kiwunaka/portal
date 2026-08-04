@@ -4,6 +4,8 @@ import os
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from transport_catalog import node_transport_profiles
+
 
 FREE_NODE_CODE_PREFERENCES = ("nl-free", "nl_free", "free", "pl_free")
 _PREMIUM_PLAN_CODES = {"trial", "channel_bonus", "start_99"}
@@ -46,8 +48,12 @@ def _env_bool(name: str, default: bool) -> bool:
 
 
 CAPACITY_AWARE_NODE_SELECTION = _env_bool("CAPACITY_AWARE_NODE_SELECTION", True)
+AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED = _env_bool(
+    "AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED",
+    False,
+)
 SUBSCRIPTION_DYNAMIC_ORDERING = _env_bool("SUBSCRIPTION_DYNAMIC_ORDERING", True)
-SUBSCRIPTION_EXCLUDE_HARD_REJECT = _env_bool("SUBSCRIPTION_EXCLUDE_HARD_REJECT", False)
+SUBSCRIPTION_EXCLUDE_HARD_REJECT = _env_bool("SUBSCRIPTION_EXCLUDE_HARD_REJECT", True)
 KEY_PRESSURE_SCORING = _env_bool("KEY_PRESSURE_SCORING", True)
 KEY_PRESSURE_FAIR_USE_ROUTING = _env_bool("KEY_PRESSURE_FAIR_USE_ROUTING", False)
 USERNODE_MAPPING_AS_CANDIDATE_LIMIT = _env_bool("USERNODE_MAPPING_AS_CANDIDATE_LIMIT", False)
@@ -61,6 +67,8 @@ SMART_CONNECT_TX_DRAIN_RATIO = _env_float("SMART_CONNECT_TX_DRAIN_RATIO", 0.82, 
 SMART_CONNECT_TX_HARD_RATIO = _env_float("SMART_CONNECT_TX_HARD_RATIO", 0.92, minimum=0.01, maximum=10.0)
 SMART_CONNECT_MAX_PACKET_LOSS_PERCENT = _env_float("SMART_CONNECT_MAX_PACKET_LOSS_PERCENT", 2.0, minimum=0.0, maximum=100.0)
 SMART_CONNECT_MAX_TCP_RETRANS_PERCENT = _env_float("SMART_CONNECT_MAX_TCP_RETRANS_PERCENT", 5.0, minimum=0.0, maximum=100.0)
+SMART_CONNECT_DISK_SOFT_PERCENT = _env_float("SMART_CONNECT_DISK_SOFT_PERCENT", 90.0, minimum=1.0, maximum=100.0)
+SMART_CONNECT_DISK_REJECT_PERCENT = _env_float("SMART_CONNECT_DISK_REJECT_PERCENT", 95.0, minimum=1.0, maximum=100.0)
 SMART_CONNECT_DEFAULT_PORT_CAPACITY_MBPS = _env_float("NODE_METRICS_PORT_CAPACITY_MBPS", 1000.0, minimum=0.0)
 
 
@@ -123,7 +131,7 @@ def nodes_for_access_role(nodes: list[Any], access_role: str, *, required: bool 
 
 def validate_node_access_roles(nodes: list[Any], *, require_free_pair: bool = False) -> dict[str, list[Any]]:
     bindings: dict[str, list[Any]] = {role: [] for role in sorted(NODE_ACCESS_ROLES)}
-    inbound_owners: dict[tuple[str, str, int], str] = {}
+    inbound_owners: dict[tuple[str, str, int], tuple[str, str]] = {}
     for node in nodes:
         role = node_access_role(node, strict=True)
         inbound_id = int(getattr(node, "inbound_id", 0) or 0)
@@ -132,13 +140,25 @@ def validate_node_access_roles(nodes: list[Any], *, require_free_pair: bool = Fa
             raise NodeAccessRoleError(f"node {code} access_role {role} requires a positive inbound_id")
         panel_base = str(getattr(node, "panel_base_url", "") or "").strip().lower().rstrip("/")
         panel_path = str(getattr(node, "panel_path", "") or "").strip().lower().strip("/")
-        binding = (panel_base, panel_path, inbound_id)
-        previous = inbound_owners.get(binding)
-        if previous is not None:
-            raise NodeAccessRoleError(
-                f"duplicate panel inbound binding for nodes {previous} and {code}: inbound_id={inbound_id}"
-            )
-        inbound_owners[binding] = code
+        profiles = node_transport_profiles(node, include_disabled=True)
+        positive_profiles = [
+            (str(profile.get("name") or "<unnamed>"), int(profile.get("inbound_id") or 0))
+            for profile in profiles
+            if int(profile.get("inbound_id") or 0) > 0
+        ]
+        if not positive_profiles:
+            positive_profiles = [("canonical", inbound_id)]
+        for profile_name, profile_inbound_id in positive_profiles:
+            binding = (panel_base, panel_path, profile_inbound_id)
+            previous = inbound_owners.get(binding)
+            if previous is not None:
+                previous_code, previous_profile = previous
+                raise NodeAccessRoleError(
+                    "duplicate panel transport inbound binding for "
+                    f"{previous_code}/{previous_profile} and {code}/{profile_name}: "
+                    f"inbound_id={profile_inbound_id}"
+                )
+            inbound_owners[binding] = (code, profile_name)
         bindings[role].append(node)
 
     if require_free_pair:
@@ -292,6 +312,15 @@ def node_capacity_status(
     cpu_hard = _policy_float(policy, "hard_cpu_percent", SMART_CONNECT_CPU_REJECT_PERCENT)
     packet_loss_limit = _policy_float(policy, "max_packet_loss_percent", SMART_CONNECT_MAX_PACKET_LOSS_PERCENT)
     retrans_limit = _policy_float(policy, "max_tcp_retrans_percent", SMART_CONNECT_MAX_TCP_RETRANS_PERCENT)
+    disk_soft = _policy_float(policy, "soft_disk_percent", SMART_CONNECT_DISK_SOFT_PERCENT)
+    disk_hard = _policy_float(policy, "hard_disk_percent", SMART_CONNECT_DISK_REJECT_PERCENT)
+    disk_total_gb = _float_attr(node, "disk_total_gb", 0.0)
+    disk_used_gb = _float_attr(node, "disk_used_gb", 0.0)
+    disk_percent = (
+        max(0.0, disk_used_gb) / disk_total_gb * 100.0
+        if disk_total_gb > 0.0
+        else None
+    )
 
     reason: str | None = None
     state = "healthy"
@@ -305,10 +334,10 @@ def node_capacity_status(
         reason = "unhealthy"
     elif node_is_stale(node, now=now, stale_after_seconds=stale_after):
         reason = "stale"
-    elif getattr(node, "dataplane_ok", None) is False:
-        reason = "dataplane_down"
     elif _float_attr(node, "cpu_percent", 0.0) >= cpu_hard:
         reason = "cpu_hot"
+    elif disk_percent is not None and disk_percent >= disk_hard:
+        reason = "disk_full"
     elif tx_ratio is not None and tx_ratio >= tx_hard:
         reason = "network_saturated"
     elif packet_loss_limit > 0 and _float_attr(node, "packet_loss_percent", 0.0) >= packet_loss_limit:
@@ -324,6 +353,8 @@ def node_capacity_status(
         state = "warm"
     elif _float_attr(node, "cpu_percent", 0.0) >= cpu_soft:
         state = "warm"
+    elif disk_percent is not None and disk_percent >= disk_soft:
+        state = "warm"
 
     score = node_selection_score(node, policy=policy, client_rtt_ms=None)
     return {
@@ -332,6 +363,7 @@ def node_capacity_status(
         "score": float(score),
         "tx_mbps": node_tx_mbps(node),
         "tx_ratio": tx_ratio,
+        "disk_percent": round(disk_percent, 3) if disk_percent is not None else None,
         "capacity_mbps": node_capacity_mbps(node, policy),
         "provisioned_clients_count": _int_attr(node, "provisioned_clients_count", _int_attr(node, "active_clients", 0)),
         "online_connections_hint": _int_attr(node, "online_connections_hint", 0),

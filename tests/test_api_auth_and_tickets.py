@@ -37,6 +37,43 @@ def _utcnow() -> datetime:
 
 
 class ApiAuthAndTicketsTests(unittest.TestCase):
+    @staticmethod
+    def _legacy_reality_subscription_node(
+        *,
+        code: str,
+        access_role: str,
+        last_health_at: datetime | None,
+        is_healthy: bool = True,
+        accepting_new_clients: bool = True,
+        is_draining: bool = False,
+        legacy_profile_enabled: bool = True,
+    ):
+        from models import Node
+
+        return Node(
+            code=code,
+            name=code.upper(),
+            host=f"{code}.example.test",
+            vless_port=443,
+            reality_sni="www.example.test",
+            reality_pbk=f"pbk-{code}",
+            reality_sid=f"sid-{code}",
+            panel_base_url=f"https://{code}.example.test:8444",
+            panel_path="/panel",
+            panel_user="admin",
+            panel_pass="pass",
+            inbound_id=1,
+            enabled=True,
+            access_role=access_role,
+            accepting_new_clients=accepting_new_clients,
+            is_draining=is_draining,
+            is_healthy=is_healthy,
+            last_health_at=last_health_at,
+            transport_profiles_json=json.dumps(
+                [{"name": "legacy_reality_fallback", "enabled": legacy_profile_enabled}]
+            ),
+        )
+
     def setUp(self) -> None:
         repo_root = Path(__file__).resolve().parents[1]
         portal_dir = str(repo_root / "portal_bot")
@@ -1260,10 +1297,25 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                 ipv6_health="degraded",
                 last_probe_classification="provider_specific_path",
                 transport_profiles_json='{"legacy_reality_fallback":{"enabled":true},"grpc_443_primary":{"enabled":true}}',
-                transport_health_json='{"grpc_443_primary":"healthy","legacy_reality_fallback":"degraded"}',
+                transport_health_json=json.dumps(
+                    {
+                        "dns_resolution": "healthy",
+                        "tcp_connect": "healthy",
+                        "tls_handshake": "degraded",
+                        "reality_target": "healthy",
+                        "panel_state": "healthy",
+                        "dataplane_state": "healthy",
+                        "endpoint": "forbidden-legacy-endpoint.invalid",
+                        "tls_server_name": "forbidden-legacy-sni.invalid",
+                        "peer_ip": "198.51.100.123",
+                        "certificate": "forbidden-legacy-certificate",
+                        "raw_exception": "forbidden-legacy-exception",
+                        "token": "forbidden-legacy-token",
+                    }
+                ),
                 last_probe_stage="tls_sni",
                 last_probe_error_kind="tls_handshake_failed",
-                last_probe_error_message="tls handshake failed",
+                last_probe_error_message="forbidden-legacy-error-message",
             )
             s.add(node)
             s.commit()
@@ -1283,14 +1335,26 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(item["disk_free_gb"], 28.6)
         self.assertEqual(item["last_probe_stage"], "tls_sni")
         self.assertEqual(item["last_probe_error_kind"], "tls_handshake_failed")
-        self.assertEqual(item["last_probe_error_message"], "tls handshake failed")
+        self.assertEqual(item["last_probe_error_message"], "tls_handshake_failed")
         self.assertEqual(item["hoster_family"], "hetzner")
         self.assertEqual(item["hoster_asn"], "AS24940")
-        self.assertEqual(item["subnet"], "5.45.84.0/24")
+        self.assertNotIn("subnet", item)
         self.assertEqual(item["ipv4_health"], "healthy")
         self.assertEqual(item["ipv6_health"], "degraded")
         self.assertEqual(item["probe_classification"], "provider_specific_path")
-        self.assertEqual(item["transport_health"]["grpc_443_primary"], "healthy")
+        self.assertEqual(item["transport_health"]["tls_handshake"], "degraded")
+        rendered = json.dumps(item, sort_keys=True)
+        for forbidden in (
+            "forbidden-legacy-endpoint.invalid",
+            "forbidden-legacy-sni.invalid",
+            "198.51.100.123",
+            "forbidden-legacy-certificate",
+            "forbidden-legacy-exception",
+            "forbidden-legacy-token",
+            "forbidden-legacy-error-message",
+            "5.45.84.0/24",
+        ):
+            self.assertNotIn(forbidden, rendered)
         if "transport_profiles" in item:
             self.assertTrue(item["transport_profiles"]["legacy_reality_fallback"]["enabled"])
             self.assertTrue(item["transport_profiles"]["grpc_443_primary"]["enabled"])
@@ -1343,8 +1407,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(r.status_code, 200, r.text)
         item = next(row for row in r.json()["nodes"] if row["code"] == "de")
         self.assertEqual(item["last_probe_stage"], "tls_sni")
-        self.assertEqual(item["last_probe_error_kind"], "tls_timeout")
-        self.assertEqual(item["last_probe_error_message"], "tls handshake timeout")
+        self.assertIsNone(item["last_probe_error_kind"])
+        self.assertIsNone(item["last_probe_error_message"])
         self.assertEqual(item["freshness_status"], "stale")
         self.assertIn("high_cpu", item["alerts"])
         self.assertIn("high_memory", item["alerts"])
@@ -3742,6 +3806,189 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertIn("text/plain", legacy_default.headers.get("content-type", ""))
         self.assertTrue(bool(legacy_default.text.strip()))
 
+    def test_free_plain_subscription_fails_closed_when_legacy_reality_is_not_eligible(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        stale_at = _utcnow() - timedelta(hours=1)
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_token = "token_1001_secure"
+            user.sub_type = "FREE"
+            user.current_plan_code = "free_monthly"
+            user.is_active = True
+            user.expiry_at = _utcnow() + timedelta(days=10)
+            node = self._legacy_reality_subscription_node(
+                code="nl-free",
+                access_role="free_standard",
+                last_health_at=stale_at,
+            )
+            s.add(node)
+            s.commit()
+        finally:
+            s.close()
+
+        stale = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=plain")
+        self.assertEqual(stale.status_code, 503, stale.text)
+        self.assertEqual(stale.text, "")
+
+        s = SessionLocal()
+        try:
+            node = s.query(self.api.Node).filter_by(code="nl-free").one()
+            node.last_health_at = _utcnow()
+            node.is_healthy = False
+            s.commit()
+        finally:
+            s.close()
+
+        unhealthy = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=plain")
+        self.assertEqual(unhealthy.status_code, 503, unhealthy.text)
+        self.assertEqual(unhealthy.text, "")
+
+    def test_paid_happ_subscription_does_not_resurrect_rejected_legacy_nodes(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_token = "token_1001_secure"
+            user.sub_type = "PAID"
+            user.current_plan_code = "1_month"
+            user.is_active = True
+            user.expiry_at = _utcnow() + timedelta(days=10)
+            s.add(
+                self._legacy_reality_subscription_node(
+                    code="pl",
+                    access_role="paid",
+                    last_health_at=_utcnow(),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        rejected_states = (
+            ("unhealthy", {"is_healthy": False}),
+            ("draining", {"is_healthy": True, "is_draining": True}),
+            (
+                "non_accepting",
+                {
+                    "is_healthy": True,
+                    "is_draining": False,
+                    "accepting_new_clients": False,
+                },
+            ),
+            (
+                "disabled_legacy_profile",
+                {
+                    "accepting_new_clients": True,
+                    "is_draining": False,
+                    "legacy_profile_enabled": False,
+                },
+            ),
+        )
+        for state, values in rejected_states:
+            with self.subTest(state=state):
+                s = SessionLocal()
+                try:
+                    node = s.query(self.api.Node).filter_by(code="pl").one()
+                    node.is_healthy = bool(values.get("is_healthy", True))
+                    node.is_draining = bool(values.get("is_draining", False))
+                    node.accepting_new_clients = bool(values.get("accepting_new_clients", True))
+                    profile_enabled = bool(values.get("legacy_profile_enabled", True))
+                    node.transport_profiles_json = json.dumps(
+                        [{"name": "legacy_reality_fallback", "enabled": profile_enabled}]
+                    )
+                    s.commit()
+                finally:
+                    s.close()
+
+                happ = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=happ")
+                self.assertEqual(happ.status_code, 200, happ.text)
+                self.assertIn("#custom-tunnel-config: ", happ.text)
+                self.assertNotIn("vless://", happ.text)
+                custom_line = next(
+                    line for line in happ.text.splitlines() if line.startswith("#custom-tunnel-config: ")
+                )
+                config = json.loads(custom_line.split(": ", 1)[1])
+                self.assertFalse(
+                    any(outbound.get("type") == "vless" for outbound in config.get("outbounds", [])),
+                    config,
+                )
+
+    def test_paid_stale_or_missing_telemetry_keeps_legacy_happ_recovery(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_token = "token_1001_secure"
+            user.sub_type = "PAID"
+            user.current_plan_code = "1_month"
+            user.is_active = True
+            user.expiry_at = _utcnow() + timedelta(days=10)
+            s.add(
+                self._legacy_reality_subscription_node(
+                    code="pl",
+                    access_role="paid",
+                    last_health_at=_utcnow() - timedelta(hours=1),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        for state in ("stale", "missing"):
+            with self.subTest(state=state):
+                if state == "missing":
+                    s = SessionLocal()
+                    try:
+                        node = s.query(self.api.Node).filter_by(code="pl").one()
+                        node.last_health_at = None
+                        node.last_probe_at = None
+                        node.last_ok_at = None
+                        s.commit()
+                    finally:
+                        s.close()
+
+                plain = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=plain")
+                self.assertEqual(plain.status_code, 200, plain.text)
+                self.assertTrue(bool(plain.text.strip()))
+
+                happ = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=happ")
+                self.assertEqual(happ.status_code, 200, happ.text)
+                self.assertIn("vless://", happ.text)
+                self.assertIn("pl.example.test", happ.text)
+
+    def test_paid_legacy_recovery_fallback_only_allows_stale_enabled_reality(self) -> None:
+        from types import SimpleNamespace
+
+        stale = SimpleNamespace(code="stale", enabled_profile=True)
+        unhealthy = SimpleNamespace(code="unhealthy", enabled_profile=True)
+        disabled_profile = SimpleNamespace(code="disabled-profile", enabled_profile=False)
+        reasons = {"stale": "stale", "unhealthy": "unhealthy", "disabled-profile": "stale"}
+
+        with patch.object(self.api, "_filter_nodes_for_transport_profile", return_value=[stale, unhealthy, disabled_profile]), patch.object(
+            self.api, "_node_capacity_policy_by_code", return_value={}
+        ), patch.object(
+            self.api, "_node_supports_transport_profile", side_effect=lambda node, _profile: node.enabled_profile
+        ), patch.object(
+            self.api, "node_hard_reject_reason", side_effect=lambda node, **_kwargs: reasons[node.code]
+        ):
+            rows = self.api._paid_legacy_recovery_nodes(
+                session=object(),
+                nodes=[stale, unhealthy, disabled_profile],
+                rollout_config={},
+            )
+
+        self.assertEqual([row.code for row in rows], ["stale"])
+
     def test_dashboard_and_profile_payloads_use_canonical_connect_host(self) -> None:
         from db import SessionLocal
         from models import User
@@ -4810,6 +5057,41 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                 raise IntegrityError("insert", {}, Exception("duplicate"))
 
         self.assertFalse(self.api._mark_campaign_once(_FakeSession(), tg_id=1001, campaign_key="channel_subscriber_10d"))
+
+    def test_paid_stale_happ_uses_legacy_transport_when_requested_grpc_is_disabled(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).one()
+            user.sub_token = "token_1001_secure"
+            user.sub_type = "PAID"
+            user.is_active = True
+            user.expiry_at = _utcnow() + timedelta(days=10)
+            node = self._legacy_reality_subscription_node(
+                code="pl", access_role="paid", last_health_at=_utcnow() - timedelta(hours=1)
+            )
+            node.transport_profiles_json = json.dumps([
+                {"name": "legacy_reality_fallback", "enabled": True},
+                {"name": "grpc_443_primary", "enabled": False},
+            ])
+            s.add(node)
+            s.commit()
+        finally:
+            s.close()
+
+        with patch.object(
+            self.api.app_first_service,
+            "build_client_policy",
+            return_value={"transport_profile": "grpc_443_primary"},
+        ):
+            response = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=happ")
+        self.assertEqual(response.status_code, 200, response.text)
+        cfg = json.loads(next(line for line in response.text.splitlines() if line.startswith("#custom-tunnel-config: ")).split(": ", 1)[1])
+        outbound = next(row for row in cfg["outbounds"] if row.get("type") == "vless")
+        self.assertIn("reality", outbound["tls"])
+        self.assertNotIn("transport", outbound)
 
 
 if __name__ == "__main__":

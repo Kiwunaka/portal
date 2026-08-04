@@ -159,6 +159,12 @@ def node_transport_profiles(node: Any, *, include_disabled: bool = True) -> list
     return [item for item in normalized if bool(item.get("enabled"))]
 
 
+def has_explicit_transport_profile(node: Any, name: str | None) -> bool:
+    """Whether the raw catalog, rather than legacy synthesis, names a profile."""
+    requested = _clean_text(name, fallback=LEGACY_REALITY_FALLBACK)
+    return any(_clean_text(row.get("name")) == requested for row in _load_raw_profiles(node))
+
+
 def enabled_transport_profiles(node: Any, *, include_operator_lab: bool = False) -> list[dict[str, Any]]:
     profiles = node_transport_profiles(node, include_disabled=False)
     if include_operator_lab:
@@ -174,21 +180,20 @@ def transport_profile_by_name(
     allow_operator_lab: bool = False,
 ) -> dict[str, Any]:
     requested = _clean_text(name, fallback=LEGACY_REALITY_FALLBACK)
-    profiles = node_transport_profiles(node, include_disabled=include_disabled)
+    # Search the complete catalog first.  An explicit disabled profile is
+    # authoritative and must not be mistaken for a missing profile, otherwise
+    # legacy synthesis can silently re-enable it from compatibility fields.
+    profiles = node_transport_profiles(node, include_disabled=True)
     for profile in profiles:
         if str(profile.get("name") or "") != requested:
             continue
         if not allow_operator_lab and requested == OPERATOR_LAB:
             break
-        if include_disabled or bool(profile.get("enabled")):
-            return profile
-        break
+        return profile
 
     for profile in profiles:
         if str(profile.get("name") or "") != LEGACY_REALITY_FALLBACK:
             continue
-        if include_disabled or bool(profile.get("enabled")):
-            return profile
         return profile
 
     return _legacy_transport_profile(node)

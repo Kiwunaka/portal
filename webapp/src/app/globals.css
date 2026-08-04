@@ -154,6 +154,8 @@
   --line-dark: var(--pokrov-line-dark, rgba(202, 215, 206, 0.1));
   --glass: var(--pokrov-surface, rgba(255, 255, 255, 0.76));
   --glass-dark: var(--pokrov-surface-dark, rgba(15, 22, 18, 0.84));
+  --font-golos: "Golos Text Variable";
+  --font-jetbrains: "JetBrains Mono Variable";
   --font-body: var(--font-golos, "Golos Text"), "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-display: var(--font-golos, "Golos Text"), "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: var(--font-jetbrains, "JetBrains Mono"), "SFMono-Regular", Consolas, "Liberation Mono", monospace;

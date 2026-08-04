@@ -11,9 +11,25 @@ except ImportError:
 
 bootstrap_slice(globals())
 
+try:
+    from .node_observability_sanitizer import sanitize_runtime_metric_meta
+except ImportError:
+    from node_observability_sanitizer import sanitize_runtime_metric_meta
+
 @app.get("/api/health")
 async def health() -> dict:
     return {"status": "ok", "ts": _utcnow().isoformat()}
+
+
+@app.get("/api/public/authenticated-egress-probe", status_code=204)
+async def authenticated_egress_probe_marker() -> Response:
+    return Response(
+        status_code=204,
+        headers={
+            "X-Pokrov-Egress-Probe": "pokrov-authenticated-egress-v1",
+            "Cache-Control": "no-store",
+        },
+    )
 
 
 @app.post("/api/internal/observer/batches")
@@ -298,7 +314,14 @@ async def auth_telegram_oidc_start() -> dict:
     try:
         payload = build_telegram_oidc_authorize_url()
     except RuntimeError as exc:
-        raise HTTPException(status_code=503, detail=str(exc)) from exc
+        # Configuration exceptions can include the configured redirect URL or
+        # other deployment detail. Keep the public auth contract fixed.
+        logger.warning("telegram_oidc_start_failed code=telegram_oidc_unavailable")
+        raise _auth_http_exception(
+            detail="Telegram sign-in is temporarily unavailable. Try again later.",
+            code="telegram_oidc_unavailable",
+            status_code=503,
+        ) from exc
     return {
         "ok": True,
         "mode": "oidc",
@@ -310,16 +333,30 @@ async def auth_telegram_oidc_start() -> dict:
 @app.post("/api/auth/telegram/oidc/finish")
 async def auth_telegram_oidc_finish(payload: TelegramOidcFinishIn, response: Response) -> dict:
     if not verify_telegram_oidc_state_token(payload.state):
-        raise HTTPException(status_code=401, detail="Invalid Telegram OAuth state")
+        raise _auth_http_exception(
+            detail="Telegram sign-in expired. Start sign-in again.",
+            code="telegram_oidc_state_expired",
+        )
     try:
         verified = await exchange_telegram_oidc_code(
             code=payload.code,
             state_token=payload.state,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=401, detail=str(exc)) from exc
+        logger.warning("telegram_oidc_finish_failed code=telegram_oidc_invalid")
+        raise _auth_http_exception(
+            detail="Telegram sign-in could not be verified. Start sign-in again.",
+            code="telegram_oidc_invalid",
+        ) from exc
     except RuntimeError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+        # Provider and transport errors may contain response bodies, URLs,
+        # addresses, ports or credentials. Log only the stable classification.
+        logger.warning("telegram_oidc_finish_failed code=telegram_oidc_unavailable")
+        raise _auth_http_exception(
+            detail="Telegram sign-in is temporarily unavailable. Try again later.",
+            code="telegram_oidc_unavailable",
+            status_code=502,
+        ) from exc
 
     tg_id = int(verified.get("id") or 0)
     if tg_id <= 0:
@@ -1362,12 +1399,21 @@ async def client_update_route_policy(
         user = s.query(User).filter(User.tg_id == tg_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        app_first_service.persist_route_policy(
-            user,
-            route_mode=payload.route_mode,
-            selected_apps=list(payload.selected_apps or []),
-            requires_elevated_privileges=payload.requires_elevated_privileges,
-        )
+        try:
+            app_first_service.persist_route_policy(
+                user,
+                route_mode=payload.route_mode,
+                selected_apps=list(payload.selected_apps or []),
+                requires_elevated_privileges=payload.requires_elevated_privileges,
+            )
+        except app_first_service.RoutePolicyValidationError as exc:
+            raise HTTPException(
+                status_code=422,
+                detail={
+                    "code": exc.code,
+                    "message": "Select at least one app before using selected-apps routing.",
+                },
+            ) from exc
         s.commit()
         s.refresh(user)
         return _route_policy_payload(user)
@@ -1508,14 +1554,30 @@ def _smart_connect_rejection_reason(
         return "unhealthy"
     if node_is_stale(node, now=now, stale_after_seconds=SMART_CONNECT_STALE_AFTER_SECONDS):
         return "stale"
+    if AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED:
+        if getattr(node, "authenticated_egress_ok", None) is not True:
+            return (
+                "authenticated_egress_failed"
+                if getattr(node, "authenticated_egress_ok", None) is False
+                else "authenticated_egress_unavailable"
+            )
+        authenticated_at = getattr(node, "last_authenticated_egress_at", None)
+        if not isinstance(authenticated_at, datetime):
+            return "authenticated_egress_unavailable"
+        if authenticated_at.tzinfo is not None and authenticated_at.utcoffset() is not None:
+            authenticated_at = authenticated_at.astimezone(timezone.utc).replace(tzinfo=None)
+        if (now - authenticated_at).total_seconds() > SMART_CONNECT_STALE_AFTER_SECONDS:
+            return "authenticated_egress_stale"
     if node_cpu_penalty(node) is None:
         return "cpu_hot"
-    if not _node_supports_transport_profile(node, transport_profile):
+    is_ru_bridge_relay = str(transport_profile or "").strip() == RU_BRIDGE_RELAY
+    if not is_ru_bridge_relay and not _node_supports_transport_profile(node, transport_profile):
         return "transport_mismatch"
     filtered = _filter_nodes_for_transport_profile(
         nodes=[node],
         rollout_config=rollout_config,
         transport_profile=transport_profile,
+        apply_exclusions=not is_ru_bridge_relay,
     )
     if not filtered:
         return "transport_allowlist_mismatch"
@@ -1571,6 +1633,7 @@ def _smart_connect_shortlist(
             {
                 "code": code,
                 "country": _node_country_name(code),
+                "outbound_tag": _node_label_ru(code, str(getattr(node, "name", "") or "")),
                 "rank": index,
                 "probe": probe_payload,
                 "rank_hint": {
@@ -2704,16 +2767,25 @@ async def client_managed_profile(
             rollout_config=rollout_config,
             transport_profile=transport_profile,
         )
+        effective_by_code = _nodes_by_code(effective_nodes)
+        shortlist_codes = [
+            str(item.get("code") or "").strip().lower()
+            for item in smart_connect.get("shortlist") or []
+            if str(item.get("code") or "").strip()
+        ]
+        effective_nodes = [effective_by_code[code] for code in shortlist_codes if code in effective_by_code]
+        if not effective_nodes:
+            raise HTTPException(status_code=503, detail="No eligible nodes")
         requested_node_code = str(selected_node_code or "").strip().lower()
-        effective_codes = {
-            str(getattr(node, "code", "") or "").strip().lower()
-            for node in effective_nodes
-            if str(getattr(node, "code", "") or "").strip()
-        }
-        if requested_node_code not in effective_codes:
+        if requested_node_code not in set(shortlist_codes):
             requested_node_code = ""
+        ranked_effective_nodes = rank_nodes_for_app(
+            effective_nodes,
+            policy_by_code=_node_capacity_policy_by_code(s),
+            now=_utcnow(),
+        )
         effective_nodes = _prefer_smart_connect_node_order(
-            nodes=effective_nodes,
+            nodes=ranked_effective_nodes,
             preferred_node_code=requested_node_code
             or str((smart_connect.get("stickiness") or {}).get("preferred_node_code") or ""),
         )
@@ -2927,20 +2999,21 @@ async def client_nodes_select(
             if str(item.get("code") or "").strip()
         }
         effective_by_code = _nodes_by_code(effective_nodes)
-        effective_codes = set(effective_by_code.keys())
+        if not shortlist_codes:
+            raise HTTPException(status_code=503, detail="No eligible nodes")
         mode = str(payload.mode or "auto").strip().lower()
         selected_node_code = str(payload.selected_node_code or "").strip().lower()
         previous_node_code = str(payload.previous_node_code or "").strip().lower()
         policy_by_code = _node_capacity_policy_by_code(s)
-        rtt_by_code = _best_rtt_by_code(payload.samples, allowed_codes=shortlist_codes or effective_codes)
+        rtt_by_code = _best_rtt_by_code(payload.samples, allowed_codes=shortlist_codes)
         accepted_samples = [
             {"node_code": code, "rtt_ms": int(value)}
             for code, value in sorted(rtt_by_code.items())
         ]
 
-        candidate_codes = shortlist_codes or effective_codes
+        candidate_codes = shortlist_codes
         if mode == "manual":
-            if selected_node_code not in effective_codes:
+            if selected_node_code not in candidate_codes:
                 raise HTTPException(status_code=400, detail="selected node is not eligible")
             winner = selected_node_code
             stickiness_applied = False
@@ -3340,6 +3413,7 @@ async def internal_node_metrics(
         await _require_node_metrics_signature(request, node=node)
         policy = s.query(NodeCapacityPolicy).filter(func.lower(NodeCapacityPolicy.node_code) == wanted).first()
         capacity = _apply_node_metric_payload(node, payload, policy=policy)
+        safe_meta = sanitize_runtime_metric_meta(payload.meta)
         sampled_at = payload.sampled_at or _utcnow()
         metric = NodeRuntimeMetric(
             node_code=wanted,
@@ -3363,7 +3437,7 @@ async def internal_node_metrics(
             capacity_score=float(capacity.get("score") or 0.0),
             capacity_state=str(capacity.get("state") or "unknown"),
             reject_reason=str(capacity.get("reject_reason") or "") or None,
-            meta_json=json.dumps(payload.meta or {}, ensure_ascii=False, separators=(",", ":"))[:4000],
+            meta_json=json.dumps(safe_meta, ensure_ascii=False, separators=(",", ":")),
         )
         s.add(metric)
         s.commit()

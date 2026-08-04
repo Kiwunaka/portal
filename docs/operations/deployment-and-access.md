@@ -465,6 +465,75 @@ secret/key state remain `NOT_REQUESTED`, `MANUAL_OWNER_TEST`, or
 
 - [monitoring-and-visibility.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/monitoring-and-visibility.md)
 
+### Authenticated egress adapter rollout
+
+This rollout is fail-closed and must be staged. Collection can be deployed
+before enforcement because `AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED` defaults
+to `false`; while it is disabled, smart-connect retains the existing health and
+capacity eligibility rules. Enabling it before every intended candidate has a
+fresh authenticated PASS excludes nodes without that proof and can produce
+`503` when no authenticated candidate remains.
+
+Repository templates are deliberately non-runnable placeholders:
+
+- `infra/portal-authenticated-egress-adapter.example.json` is the exact
+  non-secret adapter schema;
+- `infra/portal-authenticated-egress-canaries.example.json` is the separate
+  credential-store schema and must never be copied into logs or evidence after
+  real values are inserted;
+- `infra/portal-node-metrics-authenticated-egress.conf` is the systemd drop-in
+  wiring for the existing collector service; install it at
+  `/etc/systemd/system/portal-node-metrics.service.d/authenticated-egress.conf`.
+
+Owner-authorized deployment sequence:
+
+1. Install a pinned sing-box binary and
+   `scripts/singbox_authenticated_egress_adapter.py` as absolute root-owned,
+   non-symlink regular files with mode `0755`; install `/etc/pokrov` and
+   `/run/pokrov-authenticated-egress` with mode `0700`. The production
+   adapter is Linux-only: each invocation creates its own `0700` subdirectory
+   and a `0600` Unix socket, and rejects any core whose loopback SOCKS listener
+   cannot be proved through `/proc` to belong to that live child.
+2. Create the dedicated, revocable canary clients outside the repository.
+   Install the runtime adapter config at the adapter's fixed
+   `/etc/pokrov/authenticated-egress-adapter.json` path, then install the
+   separate canary credential store and non-secret profile/expiry registry as
+   root or collector-service owned mode `0600`. Replace every example
+   placeholder; do not put values in argv,
+   environment files, shell history, reports, or systemd unit text.
+3. Before connecting the collector, invoke the adapter locally with one
+   owner-controlled synthetic request and retain only its machine-code result.
+   Confirm strict `not_run` for binding/material mismatch, then perform the
+   owner-approved real canary test and require `authenticated_egress` PASS.
+4. Install the systemd drop-in, set the existing
+   `NODE_AUTHENTICATED_EGRESS_ADAPTER` and
+   `NODE_AUTHENTICATED_EGRESS_PROFILES` paths, and daemon-reload. Before
+   restarting the normal timer, run one explicitly scoped collector cycle as
+   `python scripts/collect_node_metrics.py --only <node-code>`. The allowlist
+   must contain exact enabled node codes; unknown or disabled codes fail before
+   any probe or health write. The normal systemd timer omits `--only` and
+   therefore retains full-pool collection. Do not start with the full registry.
+5. Verify for that exact node that the DB timestamp is fresh,
+   `authenticated_egress_ok=true`, admin output shows the same PASS, and basic
+   `edge_reachability_ok` remains a separate diagnostic.
+6. Record an owner-approved canary percentage and expand the registry by an
+   explicit node allowlist to that percentage of enabled node inventory. The
+   current control is per-node, not per-user traffic bucketing; do not label it
+   as a user percentage. Observe at least one full freshness window before each
+   expansion.
+7. Expand to the full eligible inventory only after every included node has a
+   fresh authenticated PASS and the projected smart-connect candidate set is
+   non-empty. Then set `AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED=true`, restart
+   the API, and verify the live shortlist before calling the rollout complete.
+
+Rollback: first set `AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED=false` and restart
+the API to restore the previous node-selection behavior. Then remove the
+drop-in/runtime variables or restore the previous code candidate, daemon-reload,
+and restart only the metrics timer/service as authorized. Removing only
+credentials is an emergency revocation action; if enforcement remains enabled,
+it intentionally returns to fail-closed exclusion and may cause `503`, so it is
+not a healthy steady-state rollback.
+
 ### Paid rewards rollout boundary
 
 The paid wheel/calendar implementation is repository-candidate truth until the
@@ -676,10 +745,10 @@ Transport policy rule:
 - app-managed session and profile delivery should use the rollout-selected transport profile, while manual/export compatibility links stay on `legacy_reality_fallback` until the share-link parity wave lands
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint; `subscription_url` stays manual/import fallback only
 - capacity-aware app routing uses `GET /api/client/nodes/candidates`, `POST /api/client/nodes/select`, and optional `selected_node_code` on `GET /api/client/profile/managed`; `POST /api/client/nodes/latency-samples` remains compatibility telemetry
-- subscription rendering dynamically orders nodes while `SUBSCRIPTION_DYNAMIC_ORDERING=true`; `SUBSCRIPTION_EXCLUDE_HARD_REJECT=false` is the default so paid/trial subscriptions keep fallback countries even when a node is penalized by low `health_score`; `true` is an emergency opt-in that can temporarily hide explicitly hard-rejected nodes without deleting metrics or keys
+- subscription rendering dynamically orders nodes while `SUBSCRIPTION_DYNAMIC_ORDERING=true`; `SUBSCRIPTION_EXCLUDE_HARD_REJECT=true` is the fail-closed default, so explicitly hard-rejected nodes are not rendered into paid/trial subscriptions. Low `health_score` alone remains a ranking penalty, not a hard rejection. `false` is an explicit rollback-only override and must not be used as a healthy production steady state
 - observer-lite deployments whose Xray access log emits naive timestamps must set `PORTAL_OBSERVER_SOURCE_TIMEZONE` (or pass `--source-timezone`) to `UTC`, `Z`, or a strict fixed offset such as `+03:00` or `-04:00`; IANA names, absent settings, and invalid or out-of-bounds offsets make each affected line a counted parse error and no observation is sent for that line
 - offset-aware observer timestamps are converted to canonical UTC `Z` before batching; the collector never interprets a naive timestamp as server-local time or UTC implicitly
-- core rollout/rollback flags are `CAPACITY_AWARE_NODE_SELECTION`, `SUBSCRIPTION_DYNAMIC_ORDERING`, `SUBSCRIPTION_EXCLUDE_HARD_REJECT`, `KEY_PRESSURE_SCORING`, `KEY_PRESSURE_FAIR_USE_ROUTING`, `APP_NODES_SELECT_ENDPOINT`, `XRAY_METRICS_COLLECTOR`, `NODE_AGENT_METRICS`, and `USERNODE_MAPPING_AS_CANDIDATE_LIMIT`
+- core rollout/rollback flags are `CAPACITY_AWARE_NODE_SELECTION`, `AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED`, `SUBSCRIPTION_DYNAMIC_ORDERING`, `SUBSCRIPTION_EXCLUDE_HARD_REJECT`, `KEY_PRESSURE_SCORING`, `KEY_PRESSURE_FAIR_USE_ROUTING`, `APP_NODES_SELECT_ENDPOINT`, `XRAY_METRICS_COLLECTOR`, `NODE_AGENT_METRICS`, and `USERNODE_MAPPING_AS_CANDIDATE_LIMIT`
 - as of `2026-06-29`, rolling maintenance updated non-current delivery nodes `free`, `it`, `nl`, `pl`, and `us` to 3x-ui `3.4.1` with bundled Xray `26.6.22`; each node has a root-only backup under `/root/pokrov-xui-backups/*-v3.4.1`, while `de` was intentionally left untouched because it was the operator's active connection node during the rollout
 - 3x-ui `3.x` requires CSRF for session-authenticated unsafe panel API requests; `PanelClient` must fetch `/csrf-token`, send `X-CSRF-Token` on panel POSTs, and keep an unsafe cookie jar for IP-based panel hosts such as `de`
 - when backfilling many existing users into one 3x-ui inbound, create clients sequentially and verify the panel client count against `user_nodes`; concurrent `addClient` calls mutate the same inbound settings document and can leave database mappings ahead of actual panel clients

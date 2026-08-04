@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import sys
@@ -110,6 +111,150 @@ class PanelClientMultiInboundTests(unittest.IsolatedAsyncioTestCase):
         found = await client.find_client_by_tgid(42)
         self.assertIsNotNone(found)
         self.assertEqual(found["id"], "u-2")
+
+    async def test_empty_successful_inbound_list_remains_legitimate_absence(self) -> None:
+        from panel_client import PanelClient
+
+        class _Response:
+            status = 200
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *_args):
+                return False
+
+            async def json(self, **_kwargs):
+                return {"success": True, "obj": []}
+
+        class _Session:
+            def get(self, *_args, **_kwargs):
+                return _Response()
+
+        client = PanelClient(self._node())
+        client.cookies = {"session": "present"}
+        client.session = _Session()
+
+        self.assertEqual(await client._get_inbounds(), [])
+        self.assertEqual(await client.find_clients_by_tgid(42, include_disabled=True), [])
+
+    async def test_inbound_network_failure_raises_typed_error_instead_of_absence(self) -> None:
+        from panel_client import PanelClient, PanelReadError
+
+        secret = "https://user:password@panel.example/clients/raw-uuid"
+
+        class _Session:
+            def get(self, *_args, **_kwargs):
+                raise RuntimeError(secret)
+
+        client = PanelClient(self._node())
+        client.cookies = {"session": "present"}
+        client.session = _Session()
+
+        async def successful_reauth():
+            return True
+
+        client.login = successful_reauth
+
+        with self.assertRaises(PanelReadError) as raised:
+            await client.find_clients_by_tgid(42, include_disabled=True)
+
+        self.assertEqual(raised.exception.error_kind, "panel_inbounds_network_error")
+        self.assertNotIn(secret, str(raised.exception))
+
+    async def test_inbound_login_failure_is_not_an_empty_list(self) -> None:
+        from panel_client import PanelClient, PanelReadError
+
+        client = PanelClient(self._node())
+
+        async def failed_login():
+            return False
+
+        client.login = failed_login
+
+        with self.assertRaises(PanelReadError) as raised:
+            await client._get_inbounds()
+
+        self.assertEqual(raised.exception.error_kind, "panel_login_failed")
+
+    async def test_inbound_http_failure_remains_typed_after_bounded_reauth(self) -> None:
+        from panel_client import PanelClient, PanelReadError
+
+        class _Response:
+            status = 503
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, *_args):
+                return False
+
+        class _Session:
+            def get(self, *_args, **_kwargs):
+                return _Response()
+
+        client = PanelClient(self._node())
+        client.cookies = {"session": "present"}
+        client.session = _Session()
+
+        async def successful_reauth():
+            return True
+
+        client.login = successful_reauth
+
+        with self.assertRaises(PanelReadError) as raised:
+            await client._get_inbounds()
+
+        self.assertEqual(raised.exception.error_kind, "panel_inbounds_http_error")
+
+    async def test_inbound_snapshot_derives_public_key_without_exposing_private_key(self) -> None:
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.primitives.asymmetric import x25519
+
+        from panel_client import PanelClient
+
+        private_bytes = bytes(range(1, 33))
+        private_key = base64.urlsafe_b64encode(private_bytes).decode("ascii").rstrip("=")
+        expected_public = base64.urlsafe_b64encode(
+            x25519.X25519PrivateKey.from_private_bytes(private_bytes)
+            .public_key()
+            .public_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PublicFormat.Raw,
+            )
+        ).decode("ascii").rstrip("=")
+        client = PanelClient(self._node())
+
+        async def fake_get_inbounds():
+            return [
+                {
+                    "id": 1,
+                    "remark": "primary",
+                    "enable": True,
+                    "port": 443,
+                    "protocol": "vless",
+                    "streamSettings": json.dumps(
+                        {
+                            "network": "tcp",
+                            "security": "reality",
+                            "realitySettings": {
+                                "privateKey": private_key,
+                                "dest": "example.com:443",
+                                "serverNames": ["example.com"],
+                                "shortIds": ["sid"],
+                            },
+                        }
+                    ),
+                }
+            ]
+
+        client._get_inbounds = fake_get_inbounds
+
+        snapshot = await client.get_inbound_snapshot()
+
+        self.assertIsNotNone(snapshot)
+        self.assertEqual(snapshot["public_key"], expected_public)
+        self.assertNotIn(private_key, json.dumps(snapshot))
 
     async def test_ensure_client_syncs_all_enabled_catalog_inbounds(self) -> None:
         from panel_client import PanelClient

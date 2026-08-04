@@ -27,6 +27,14 @@ from models import (
     UserNode,
 )
 from node_policy import node_capacity_status
+from node_observability_sanitizer import (
+    safe_error_kind,
+    safe_hoster_asn,
+    safe_hoster_family,
+    safe_probe_classification,
+    safe_probe_stage,
+    sanitize_transport_health,
+)
 from observer_service import observer_stale_after_seconds
 from ru_probe_service import (
     RU_RUN_STALE_AFTER_SECONDS,
@@ -104,8 +112,8 @@ def _json_object(value: str | None) -> dict[str, Any]:
 
 
 def _panel_state_from_json(value: str | None) -> str | None:
-    state = str(_json_object(value).get("panel_state") or "").strip().lower()
-    return state or None
+    state = sanitize_transport_health(value).get("panel_state")
+    return str(state) if state and state != "unknown" else None
 
 
 def _month_boundary(*, year: int, month: int, day: int, tz: ZoneInfo) -> datetime:
@@ -485,6 +493,8 @@ def node_timeseries_rows(*, s, from_dt: datetime, to_dt: datetime, node_code: st
                 "online_connections_hint": int(row.online_connections_hint or 0),
                 "packet_loss_percent": float(row.packet_loss_percent or 0.0) if row.packet_loss_percent is not None else None,
                 "tcp_retrans_percent": float(row.tcp_retrans_percent or 0.0) if row.tcp_retrans_percent is not None else None,
+                "edge_reachability_ok": row.edge_reachability_ok,
+                "authenticated_egress_ok": row.authenticated_egress_ok,
                 "dataplane_ok": row.dataplane_ok,
                 "dataplane_rtt_ms": int(row.dataplane_rtt_ms or 0) if row.dataplane_rtt_ms is not None else None,
                 "capacity_score": float(row.capacity_score or 0.0) if row.capacity_score is not None else None,
@@ -827,6 +837,8 @@ def admin_nodes_capacity_payload(*, s, now: datetime) -> dict[str, Any]:
             "tx_ratio": capacity.get("tx_ratio"),
             "capacity_mbps": capacity.get("capacity_mbps"),
             "cpu_percent": float(getattr(node, "cpu_percent", 0.0) or 0.0),
+            "edge_reachability_ok": getattr(node, "edge_reachability_ok", None),
+            "authenticated_egress_ok": getattr(node, "authenticated_egress_ok", None),
             "dataplane_ok": getattr(node, "dataplane_ok", None),
             "dataplane_rtt_ms": getattr(node, "dataplane_rtt_ms", None),
             "packet_loss_percent": getattr(node, "packet_loss_percent", None),
@@ -1033,23 +1045,28 @@ def build_node_observability(
             else None
         ),
         "probe_stage": (
-            str(latest_sample.probe_stage or "") or None
+            safe_probe_stage(latest_sample.probe_stage) or None
             if latest_sample is not None
-            else (str(getattr(node, "last_probe_stage", "") or "") or None)
+            else (safe_probe_stage(getattr(node, "last_probe_stage", "")) or None)
             if has_brain_source
             else None
         ),
         "probe_error_kind": (
-            str(latest_sample.probe_error_kind or "") or None
+            safe_error_kind(latest_sample.probe_error_kind) or None
             if latest_sample is not None
-            else (str(getattr(node, "last_probe_error_kind", "") or "") or None)
+            else (safe_error_kind(getattr(node, "last_probe_error_kind", "")) or None)
             if has_brain_source
             else None
         ),
         "probe_classification": (
-            str(latest_sample.probe_classification or "") or None
+            safe_probe_classification(latest_sample.probe_classification) or None
             if latest_sample is not None
-            else (str(getattr(node, "last_probe_classification", "") or "") or None)
+            else (
+                safe_probe_classification(
+                    getattr(node, "last_probe_classification", "")
+                )
+                or None
+            )
             if has_brain_source
             else None
         ),
@@ -1163,9 +1180,8 @@ def build_node_observability(
         "node": {
             "code": wanted,
             "name": str(node.name or ""),
-            "hoster_family": str(node.hoster_family or "") or None,
-            "hoster_asn": str(node.hoster_asn or "") or None,
-            "subnet": str(node.hoster_subnet or "") or None,
+            "hoster_family": safe_hoster_family(node.hoster_family),
+            "hoster_asn": safe_hoster_asn(node.hoster_asn),
             "weight": int(node.weight or 0),
         },
         "lifecycle": {
@@ -1218,14 +1234,23 @@ def build_node_observability(
         "network": {
             "ipv4_health": str(node.ipv4_health or "") or None,
             "ipv6_health": str(node.ipv6_health or "") or None,
+            "edge_reachability_ok": node.edge_reachability_ok,
+            "authenticated_egress_ok": node.authenticated_egress_ok,
+            "last_authenticated_egress_at": safe_iso(node.last_authenticated_egress_at),
+            "authenticated_egress_error_kind": safe_error_kind(
+                node.authenticated_egress_error_kind
+            )
+            or None,
             "dataplane_ok": node.dataplane_ok,
             "dataplane_rtt_ms": node.dataplane_rtt_ms,
             "packet_loss_percent": node.packet_loss_percent,
             "tcp_retrans_percent": node.tcp_retrans_percent,
-            "probe_classification": str(node.last_probe_classification or "")
+            "probe_classification": safe_probe_classification(
+                node.last_probe_classification
+            )
             or None,
-            "last_probe_stage": str(node.last_probe_stage or "") or None,
-            "last_probe_error_kind": str(node.last_probe_error_kind or "") or None,
+            "last_probe_stage": safe_probe_stage(node.last_probe_stage) or None,
+            "last_probe_error_kind": safe_error_kind(node.last_probe_error_kind) or None,
         },
         "transports": _safe_transport_rows(node),
         "ru": {
@@ -1329,7 +1354,6 @@ def admin_search_results(
                 func.lower(func.coalesce(Node.name, "")).like(like, escape="\\"),
                 func.lower(func.coalesce(Node.hoster_family, "")).like(like, escape="\\"),
                 func.lower(func.coalesce(Node.hoster_asn, "")).like(like, escape="\\"),
-                func.lower(func.coalesce(Node.hoster_subnet, "")).like(like, escape="\\"),
             )
         )
         .order_by(Node.code.asc())

@@ -4,6 +4,7 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import sys
 import time
 from datetime import datetime, timezone
@@ -18,7 +19,36 @@ from models import Node, NodeCapacityPolicy, NodeHealthSample, NodeRuntimeMetric
 from nodes_repo import NodeRuntime  # noqa: E402
 from panel_client import PanelClient  # noqa: E402
 from node_dataplane_probe import probe_node_endpoint  # noqa: E402
+from authenticated_egress_probe import probe_authenticated_egress  # noqa: E402
+from node_observability_sanitizer import (  # noqa: E402
+    ERROR_KINDS as _SAFE_ERROR_KINDS,
+    HOSTER_FAMILIES as _SAFE_HOSTER_FAMILIES,
+    PROBE_CLASSIFICATIONS as _SAFE_PROBE_CLASSIFICATIONS,
+    PROBE_STAGES as _SAFE_PROBE_STAGES,
+    TRANSPORT_HEALTH_KEYS as _SAFE_TRANSPORT_KEYS,
+    TRANSPORT_HEALTH_STATES as _SAFE_TRANSPORT_STATES,
+    safe_error_kind as _shared_safe_error_kind,
+    safe_hoster_asn,
+    safe_hoster_family,
+    safe_probe_classification as _shared_safe_probe_classification,
+    safe_probe_stage as _shared_safe_probe_stage,
+)
 from node_policy import node_capacity_status  # noqa: E402
+
+
+_NODE_CODE_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+
+
+def _parse_only_codes(value: str) -> list[str]:
+    """Parse an explicit, exact node-code allowlist for a scoped collector run."""
+
+    raw_codes = str(value or "").split(",")
+    codes = [code.strip().lower() for code in raw_codes]
+    if not codes or any(not code or _NODE_CODE_RE.fullmatch(code) is None for code in codes):
+        raise ValueError("--only requires comma-separated valid node codes")
+    if len(set(codes)) != len(codes):
+        raise ValueError("--only requires unique node codes")
+    return sorted(codes)
 
 
 def _to_runtime(node: Node) -> NodeRuntime:
@@ -59,6 +89,13 @@ def _to_runtime(node: Node) -> NodeRuntime:
         network_tx_mbps_5m=getattr(node, "network_tx_mbps_5m", None),
         tcp_retrans_percent=getattr(node, "tcp_retrans_percent", None),
         packet_loss_percent=getattr(node, "packet_loss_percent", None),
+        disk_used_gb=getattr(node, "disk_used_gb", None),
+        disk_total_gb=getattr(node, "disk_total_gb", None),
+        disk_free_gb=getattr(node, "disk_free_gb", None),
+        edge_reachability_ok=getattr(node, "edge_reachability_ok", None),
+        authenticated_egress_ok=getattr(node, "authenticated_egress_ok", None),
+        last_authenticated_egress_at=getattr(node, "last_authenticated_egress_at", None),
+        authenticated_egress_error_kind=getattr(node, "authenticated_egress_error_kind", None),
         dataplane_ok=getattr(node, "dataplane_ok", None),
         dataplane_rtt_ms=getattr(node, "dataplane_rtt_ms", None),
         capacity_score=getattr(node, "capacity_score", None),
@@ -109,11 +146,16 @@ def _rolling_error_rate(s, node_code: str, window: int) -> float:
     return errors / total
 
 
-def _truncate_error(message: object, limit: int = 500) -> str:
-    text = str(message or "").strip()
-    if len(text) <= limit:
-        return text
-    return text[: limit - 3].rstrip() + "..."
+def _safe_error_kind(value: object, fallback: str = "probe_failed") -> str:
+    return _shared_safe_error_kind(value, fallback)
+
+
+def _safe_probe_stage(value: object, fallback: str = "probe") -> str:
+    return _shared_safe_probe_stage(value, fallback)
+
+
+def _safe_probe_classification(value: object, fallback: str = "probe_failed") -> str:
+    return _shared_safe_probe_classification(value, fallback)
 
 
 def _nullable_int(value: object) -> int | None:
@@ -172,6 +214,35 @@ def _inbound_clients(inbound: dict) -> list[dict]:
     settings = _json_dict(inbound.get("settings", "{}"))
     clients = settings.get("clients", []) or []
     return clients if isinstance(clients, list) else []
+
+
+def _has_required_system_metrics(
+    *,
+    cpu_percent: float | None,
+    memory_used_mb: int | None,
+    memory_total_mb: int | None,
+    disk_used_gb: float | None,
+    disk_total_gb: float | None,
+    disk_free_gb: float | None,
+    network_rx_bytes_total: int | None,
+    network_tx_bytes_total: int | None,
+    network_rx_bytes_per_sec: int | None,
+    network_tx_bytes_per_sec: int | None,
+) -> bool:
+    """A fresh sample is usable only when every required metric family arrived."""
+    has_rx = network_rx_bytes_total is not None or network_rx_bytes_per_sec is not None
+    has_tx = network_tx_bytes_total is not None or network_tx_bytes_per_sec is not None
+    return all(
+        value is not None
+        for value in (
+            cpu_percent,
+            memory_used_mb,
+            memory_total_mb,
+            disk_used_gb,
+            disk_total_gb,
+            disk_free_gb,
+        )
+    ) and has_rx and has_tx
 
 
 def _utcnow() -> datetime:
@@ -235,39 +306,70 @@ def _build_transport_health_payload(
     dataplane_stage: str,
     dataplane_error_kind: str,
     dataplane_error_message: str,
+    authenticated_egress_state: str,
+    authenticated_egress_error_kind: str,
+    metrics_complete: bool,
     probe: dict[str, object] | None,
 ) -> dict[str, object]:
-    payload = _json_dict((probe or {}).get("transport_health"))
-    dataplane_summary = _string_or_none((probe or {}).get("root_cause_summary")) or ""
-    dataplane_detail = _string_or_none((probe or {}).get("root_cause_detail")) or ""
+    raw_transport = _json_dict((probe or {}).get("transport_health"))
+    payload = {
+        key: str(raw_transport.get(key) or "unknown")
+        if str(raw_transport.get(key) or "unknown") in _SAFE_TRANSPORT_STATES
+        else "unknown"
+        for key in _SAFE_TRANSPORT_KEYS
+    }
+    safe_dataplane_error_kind = _safe_error_kind(
+        dataplane_error_kind,
+        "probe_failed" if dataplane_state != "healthy" else "",
+    )
+    dataplane_summary = safe_dataplane_error_kind or "edge_reachability_healthy"
+    dataplane_detail = dataplane_summary
+    safe_panel_error_kind = _safe_error_kind(
+        panel_error_kind,
+        "panel_probe_failed" if panel_state != "healthy" else "",
+    )
     root_cause_summary, root_cause_detail = _combine_probe_root_cause(
         panel_state=panel_state,
         panel_stage=panel_stage,
-        panel_error_kind=panel_error_kind,
-        panel_error_message=panel_error_message,
+        panel_error_kind=safe_panel_error_kind,
+        panel_error_message=safe_panel_error_kind,
         dataplane_state=dataplane_state,
         dataplane_stage=dataplane_stage,
-        dataplane_error_kind=dataplane_error_kind,
-        dataplane_error_message=dataplane_error_message,
+        dataplane_error_kind=safe_dataplane_error_kind,
+        dataplane_error_message=safe_dataplane_error_kind,
         dataplane_summary=dataplane_summary,
         dataplane_detail=dataplane_detail,
     )
+    if panel_state == "healthy" and dataplane_state == "healthy" and authenticated_egress_state != "healthy":
+        root_cause_summary = (
+            "Authenticated egress failed while edge reachability passed."
+            if authenticated_egress_state == "failed"
+            else "Authenticated egress is unavailable while edge reachability passed."
+        )
+        root_cause_detail = authenticated_egress_error_kind or "authenticated_egress_unavailable"
     payload.update(
         {
             "panel_state": panel_state,
             "panel_stage": panel_stage,
-            "panel_error_kind": panel_error_kind,
-            "panel_error_message": panel_error_message,
+            "panel_error_kind": safe_panel_error_kind,
+            "panel_error_message": safe_panel_error_kind or None,
             "dataplane_state": dataplane_state,
             "dataplane_stage": dataplane_stage,
-            "dataplane_error_kind": dataplane_error_kind,
-            "dataplane_error_message": dataplane_error_message,
+            "dataplane_error_kind": safe_dataplane_error_kind,
+            "dataplane_error_message": safe_dataplane_error_kind or None,
+            "edge_reachability_state": dataplane_state,
+            "authenticated_egress_state": authenticated_egress_state,
+            "authenticated_egress_error_kind": _safe_error_kind(
+                authenticated_egress_error_kind,
+                "authenticated_egress_unavailable" if authenticated_egress_state != "healthy" else "",
+            ),
+            "metrics_state": "complete" if metrics_complete else "missing",
             "root_cause_summary": root_cause_summary,
             "root_cause_detail": root_cause_detail,
         }
     )
-    target_semantics = _string_or_none((probe or {}).get("target_semantics"))
-    if target_semantics:
+    target_semantics = str((probe or {}).get("target_semantics") or "").strip()
+    if target_semantics in {"telegram_app_path", "telegram_web_path", "generic_path"}:
         payload["target_semantics"] = target_semantics
     return payload
 
@@ -370,11 +472,12 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
     network_total_mbps: float | None = None
     panel_stage = "panel_login"
     panel_error_kind = "panel_login_failed"
-    panel_error_message = "panel login returned false"
+    panel_error_message = "panel_login_failed"
     panel_state = "failed"
     probe_at = now
     probe: dict | None = None
     dataplane_latency_ms: int | None = None
+    metrics_complete = False
 
     try:
         ok = await client.login()
@@ -383,16 +486,28 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             panel_error_kind = ""
             panel_error_message = ""
             system_metrics = await client.get_system_metrics()
-            cpu_percent = system_metrics.get("cpu_percent")  # type: ignore[assignment]
-            memory_used_mb = system_metrics.get("memory_used_mb")  # type: ignore[assignment]
-            memory_total_mb = system_metrics.get("memory_total_mb")  # type: ignore[assignment]
-            disk_used_gb = system_metrics.get("disk_used_gb")  # type: ignore[assignment]
-            disk_total_gb = system_metrics.get("disk_total_gb")  # type: ignore[assignment]
-            disk_free_gb = system_metrics.get("disk_free_gb")  # type: ignore[assignment]
+            cpu_percent = _nullable_float(system_metrics.get("cpu_percent"))
+            memory_used_mb = _nullable_int(system_metrics.get("memory_used_mb"))
+            memory_total_mb = _nullable_int(system_metrics.get("memory_total_mb"))
+            disk_used_gb = _nullable_float(system_metrics.get("disk_used_gb"))
+            disk_total_gb = _nullable_float(system_metrics.get("disk_total_gb"))
+            disk_free_gb = _nullable_float(system_metrics.get("disk_free_gb"))
             network_rx_bytes_total = _nullable_int(system_metrics.get("network_rx_bytes_total"))
             network_tx_bytes_total = _nullable_int(system_metrics.get("network_tx_bytes_total"))
             network_rx_bytes_per_sec = _nullable_int(system_metrics.get("network_rx_bytes_per_sec"))
             network_tx_bytes_per_sec = _nullable_int(system_metrics.get("network_tx_bytes_per_sec"))
+            metrics_complete = _has_required_system_metrics(
+                cpu_percent=cpu_percent,
+                memory_used_mb=memory_used_mb,
+                memory_total_mb=memory_total_mb,
+                disk_used_gb=disk_used_gb,
+                disk_total_gb=disk_total_gb,
+                disk_free_gb=disk_free_gb,
+                network_rx_bytes_total=network_rx_bytes_total,
+                network_tx_bytes_total=network_tx_bytes_total,
+                network_rx_bytes_per_sec=network_rx_bytes_per_sec,
+                network_tx_bytes_per_sec=network_tx_bytes_per_sec,
+            )
             try:
                 online_summary = await client.get_node_online_summary()
                 online_connections_hint = int((online_summary or {}).get("online_connections_now") or 0)
@@ -419,52 +534,118 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
                 break
             if not panel_healthy:
                 panel_error_kind = "inbound_not_found"
-                panel_error_message = f"inbound {runtime.inbound_id} not found on panel"
+                panel_error_message = "inbound_not_found"
         latency_ms = int((time.perf_counter() - started) * 1000)
-    except Exception as exc:
+    except Exception:
         latency_ms = int((time.perf_counter() - started) * 1000)
         panel_error_kind = "panel_probe_failed"
-        panel_error_message = _truncate_error(exc)
+        panel_error_message = panel_error_kind
     finally:
         await client.close()
 
     try:
-        probe = probe_node_endpoint(
+        probe = await asyncio.to_thread(
+            probe_node_endpoint,
             host=str(runtime.host or "").strip(),
             port=int(runtime.vless_port or 443),
             sni=str(runtime.reality_sni or runtime.host or "").strip() or None,
         )
         probe_at = probe.get("probed_at") or now
         dataplane_latency_ms = _nullable_int(probe.get("latency_ms"))
-    except Exception as exc:  # pragma: no cover - defensive fallback
+    except Exception:  # pragma: no cover - defensive fallback
         probe = {
             "ok": False,
             "stage": "probe",
             "error_kind": "probe_failed",
-            "error_message": _truncate_error(exc),
+            "error_message": "probe_failed",
             "probe_classification": "probe_failed",
             "ipv4_health": "unknown",
             "ipv6_health": "unknown",
             "transport_health": {},
-            "root_cause_summary": "Dataplane probe failed before any operator-readable result was produced.",
-            "root_cause_detail": _truncate_error(exc),
+            "root_cause_summary": "probe_failed",
+            "root_cause_detail": "probe_failed",
         }
         probe_at = now
-    dataplane_stage = str((probe or {}).get("stage") or "")
-    dataplane_error_kind = str((probe or {}).get("error_kind") or "")
-    dataplane_error_message = _truncate_error((probe or {}).get("error_message") or "")
-    dataplane_state = "healthy" if bool((probe or {}).get("ok")) else "failed"
-    healthy = bool(panel_healthy and dataplane_state == "healthy")
-    probe_stage = panel_stage if panel_state != "healthy" else dataplane_stage
-    probe_error_kind = panel_error_kind if panel_state != "healthy" else dataplane_error_kind
-    probe_error_message = panel_error_message if panel_state != "healthy" else dataplane_error_message
+    edge_reachability_ok = bool((probe or {}).get("edge_reachability_ok", (probe or {}).get("ok")))
+    dataplane_stage = _safe_probe_stage((probe or {}).get("stage"))
+    dataplane_error_kind = _safe_error_kind((probe or {}).get("error_kind"))
+    dataplane_error_message = dataplane_error_kind or None
+    dataplane_state = "healthy" if edge_reachability_ok else "failed"
 
-    hoster_family = _string_or_none((probe or {}).get("hoster_family"))
-    hoster_asn = _string_or_none((probe or {}).get("hoster_asn"))
-    hoster_subnet = _string_or_none((probe or {}).get("hoster_subnet"))
-    probe_classification = _string_or_none((probe or {}).get("probe_classification"))
-    ipv4_health = _string_or_none((probe or {}).get("ipv4_health"))
-    ipv6_health = _string_or_none((probe or {}).get("ipv6_health"))
+    if edge_reachability_ok:
+        try:
+            authenticated_probe = await asyncio.to_thread(
+                probe_authenticated_egress,
+                node_code=str(runtime.code or "").strip(),
+                host=str(runtime.host or "").strip(),
+                port=int(runtime.vless_port or 443),
+            )
+        except Exception:  # pragma: no cover - defensive fallback
+            authenticated_probe = {
+                "ok": None,
+                "state": "unavailable",
+                "stage": "authenticated_egress",
+                "error_kind": "authenticated_egress_probe_failed",
+                "probe_classification": "authenticated_egress_unavailable",
+                "probed_at": now,
+            }
+    else:
+        authenticated_probe = {
+            "ok": None,
+            "state": "unavailable",
+            "stage": "authenticated_egress",
+            "error_kind": "prerequisite_failed",
+            "probe_classification": "authenticated_egress_unavailable",
+            "probed_at": now,
+        }
+    authenticated_raw_ok = authenticated_probe.get("ok")
+    authenticated_egress_ok = authenticated_raw_ok if isinstance(authenticated_raw_ok, bool) else None
+    authenticated_egress_state = (
+        "healthy" if authenticated_egress_ok is True else ("failed" if authenticated_egress_ok is False else "unavailable")
+    )
+    authenticated_egress_error_kind = _safe_error_kind(
+        authenticated_probe.get("error_kind"),
+        "authenticated_egress_unavailable" if authenticated_egress_ok is not True else "",
+    )
+    authenticated_probe_at = authenticated_probe.get("probed_at")
+    if not isinstance(authenticated_probe_at, datetime):
+        authenticated_probe_at = now
+
+    healthy = bool(
+        panel_healthy
+        and dataplane_state == "healthy"
+        and authenticated_egress_ok is True
+        and metrics_complete
+    )
+    if panel_state != "healthy":
+        probe_stage = panel_stage
+        probe_error_kind = panel_error_kind
+        probe_error_message = panel_error_message
+    elif dataplane_state != "healthy":
+        probe_stage = dataplane_stage
+        probe_error_kind = dataplane_error_kind
+        probe_error_message = dataplane_error_message
+    else:
+        probe_stage = "authenticated_egress"
+        probe_error_kind = authenticated_egress_error_kind
+        probe_error_message = ""
+    selected_probe_at = authenticated_probe_at if panel_state == "healthy" and dataplane_state == "healthy" else probe_at
+
+    hoster_family = safe_hoster_family((probe or {}).get("hoster_family"))
+    hoster_asn = safe_hoster_asn((probe or {}).get("hoster_asn"))
+    hoster_subnet = None
+    probe_classification = _safe_probe_classification(
+        (probe or {}).get("probe_classification")
+        if panel_state != "healthy" or dataplane_state != "healthy"
+        else authenticated_probe.get("probe_classification"),
+        "authenticated_egress_unavailable" if authenticated_egress_ok is not True else "authenticated_egress",
+    )
+    ipv4_health = str((probe or {}).get("ipv4_health") or "unknown").strip().lower()
+    ipv6_health = str((probe or {}).get("ipv6_health") or "unknown").strip().lower()
+    if ipv4_health not in _SAFE_TRANSPORT_STATES:
+        ipv4_health = "unknown"
+    if ipv6_health not in _SAFE_TRANSPORT_STATES:
+        ipv6_health = "unknown"
     transport_health_payload = _build_transport_health_payload(
         panel_state=panel_state,
         panel_stage=panel_stage,
@@ -474,6 +655,9 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
         dataplane_stage=dataplane_stage,
         dataplane_error_kind=dataplane_error_kind,
         dataplane_error_message=dataplane_error_message,
+        authenticated_egress_state=authenticated_egress_state,
+        authenticated_egress_error_kind=authenticated_egress_error_kind,
+        metrics_complete=metrics_complete,
         probe=probe,
     )
     transport_health_json = _json_text(transport_health_payload)
@@ -518,7 +702,7 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             error_rate=error_rate,
             active_clients=active_clients,
             healthy=healthy,
-            cpu_percent=float(cpu_percent or 0.0),
+            cpu_percent=cpu_percent,
             memory_used_mb=int(memory_used_mb or 0),
             memory_total_mb=int(memory_total_mb or 0),
             disk_used_gb=float(disk_used_gb or 0.0),
@@ -530,14 +714,14 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             panel_latency_ms=latency_ms,
             panel_error_rate=error_rate,
             active_clients=active_clients,
-            cpu_percent=float(cpu_percent or 0.0),
+            cpu_percent=cpu_percent,
             total_up_bytes=max(0, int(total_up_bytes)),
             total_down_bytes=max(0, int(total_down_bytes)),
             total_traffic_bytes=max(0, int(total_up_bytes) + int(total_down_bytes)),
             is_healthy=healthy,
             score=score,
             source=source,
-            probe_at=probe_at,
+            probe_at=selected_probe_at,
             probe_stage=probe_stage,
             probe_error_kind=probe_error_kind or None,
             probe_error_message=probe_error_message or None,
@@ -568,7 +752,7 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             row.active_clients = active_clients
             row.provisioned_clients_count = active_clients
             row.online_connections_hint = online_connections_hint
-            row.cpu_percent = float(cpu_percent or 0.0)
+            row.cpu_percent = cpu_percent
             row.memory_used_mb = _nullable_int(memory_used_mb)
             row.memory_total_mb = _nullable_int(memory_total_mb)
             row.disk_used_gb = _nullable_float(disk_used_gb)
@@ -583,9 +767,13 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             row.network_tx_mbps_1m = _nullable_float(network_tx_mbps_1m)
             row.network_rx_mbps_5m = _nullable_float(network_rx_mbps_5m)
             row.network_tx_mbps_5m = _nullable_float(network_tx_mbps_5m)
+            row.edge_reachability_ok = edge_reachability_ok
+            row.authenticated_egress_ok = authenticated_egress_ok
+            row.last_authenticated_egress_at = authenticated_probe_at
+            row.authenticated_egress_error_kind = authenticated_egress_error_kind or None
             row.dataplane_ok = dataplane_state == "healthy"
             row.dataplane_rtt_ms = dataplane_latency_ms if dataplane_state == "healthy" else None
-            row.last_probe_at = probe_at
+            row.last_probe_at = selected_probe_at
             row.last_probe_stage = probe_stage or None
             row.last_probe_error_kind = probe_error_kind or None
             row.last_probe_error_message = probe_error_message or None
@@ -616,6 +804,8 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
                     cpu_percent=_nullable_float(cpu_percent),
                     memory_used_mb=_nullable_int(memory_used_mb),
                     memory_total_mb=_nullable_int(memory_total_mb),
+                    edge_reachability_ok=edge_reachability_ok,
+                    authenticated_egress_ok=authenticated_egress_ok,
                     dataplane_ok=dataplane_state == "healthy",
                     dataplane_rtt_ms=dataplane_latency_ms if dataplane_state == "healthy" else None,
                     capacity_score=float(capacity.get("score") or 0.0),
@@ -625,6 +815,9 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
                         {
                             "panel_state": panel_state,
                             "dataplane_state": dataplane_state,
+                            "edge_reachability_state": dataplane_state,
+                            "authenticated_egress_state": authenticated_egress_state,
+                            "authenticated_egress_error_kind": authenticated_egress_error_kind,
                             "probe_stage": probe_stage,
                             "probe_error_kind": probe_error_kind,
                         },
@@ -649,6 +842,7 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             "total_down_bytes": max(0, int(total_down_bytes)),
             "error_rate": round(error_rate, 4),
             "cpu_percent": cpu_percent,
+            "metrics_complete": metrics_complete,
             "memory_used_mb": memory_used_mb,
             "memory_total_mb": memory_total_mb,
             "disk_free_gb": disk_free_gb,
@@ -660,16 +854,217 @@ async def _collect_one(*, node: Node, error_window: int, source: str) -> dict:
             "ipv6_health": ipv6_health,
             "panel_state": panel_state,
             "dataplane_state": dataplane_state,
+            "edge_reachability_state": dataplane_state,
+            "authenticated_egress_state": authenticated_egress_state,
         }
     finally:
         s.close()
 
 
-async def run(*, error_window: int, source: str) -> int:
-    init_db()
+def _persist_collector_failure(*, node: Node, error_window: int, source: str, detail_code: str) -> bool:
+    """Persist an eligible node's bounded collector failure without inventing telemetry."""
+
+    now = _utcnow()
+    transport_health_json = _json_text(
+        _build_transport_health_payload(
+            panel_state="unavailable",
+            panel_stage="collector",
+            panel_error_kind=detail_code,
+            panel_error_message=detail_code,
+            dataplane_state="unavailable",
+            dataplane_stage="collector",
+            dataplane_error_kind=detail_code,
+            dataplane_error_message=detail_code,
+            authenticated_egress_state="unavailable",
+            authenticated_egress_error_kind=detail_code,
+            metrics_complete=False,
+            probe=None,
+        )
+    )
+    s = None
+    try:
+        s = SessionLocal()
+        row = s.query(Node).filter(Node.id == node.id, Node.enabled == True).first()
+        if row is None:
+            return False
+        error_rate = min(1.0, max(_rolling_error_rate(s, str(row.code or ""), error_window), 0.5))
+        s.add(
+            NodeHealthSample(
+                node_code=row.code,
+                sampled_at=now,
+                panel_latency_ms=None,
+                panel_error_rate=error_rate,
+                active_clients=None,
+                cpu_percent=None,
+                memory_used_mb=None,
+                memory_total_mb=None,
+                disk_used_gb=None,
+                disk_total_gb=None,
+                disk_free_gb=None,
+                network_rx_bytes_total=None,
+                network_tx_bytes_total=None,
+                network_rx_mbps=None,
+                network_tx_mbps=None,
+                network_total_mbps=None,
+                total_up_bytes=None,
+                total_down_bytes=None,
+                total_traffic_bytes=None,
+                is_healthy=False,
+                score=0.0,
+                source=source,
+                probe_at=now,
+                probe_stage="collector",
+                probe_error_kind=detail_code,
+                probe_error_message=detail_code,
+                probe_classification="collector_unavailable",
+                ipv4_health="unknown",
+                ipv6_health="unknown",
+                transport_health_json=transport_health_json,
+            )
+        )
+        row.health_score = 0.0
+        row.last_health_at = now
+        row.is_healthy = False
+        row.panel_error_rate = error_rate
+        row.edge_reachability_ok = None
+        row.authenticated_egress_ok = None
+        row.authenticated_egress_error_kind = detail_code
+        row.dataplane_ok = None
+        row.dataplane_rtt_ms = None
+        row.last_probe_at = now
+        row.last_probe_stage = "collector"
+        row.last_probe_error_kind = detail_code
+        row.last_probe_error_message = detail_code
+        row.last_probe_classification = "collector_unavailable"
+        row.transport_health_json = transport_health_json
+        policy = s.query(NodeCapacityPolicy).filter(NodeCapacityPolicy.node_code == row.code).first()
+        capacity = node_capacity_status(row, policy=policy, now=now)
+        row.capacity_score = float(capacity.get("score") or 0.0)
+        row.capacity_state = str(capacity.get("state") or "unknown")
+        row.capacity_reject_reason = str(capacity.get("reject_reason") or "") or None
+        s.add(
+            NodeRuntimeMetric(
+                node_code=row.code,
+                sampled_at=now,
+                source=source,
+                provisioned_clients_count=int(row.provisioned_clients_count or 0),
+                online_connections_hint=int(row.online_connections_hint or 0),
+                network_rx_mbps_1m=_nullable_float(row.network_rx_mbps_1m),
+                network_tx_mbps_1m=_nullable_float(row.network_tx_mbps_1m),
+                network_rx_mbps_5m=_nullable_float(row.network_rx_mbps_5m),
+                network_tx_mbps_5m=_nullable_float(row.network_tx_mbps_5m),
+                network_total_mbps=_nullable_float(row.network_total_mbps),
+                cpu_percent=_nullable_float(row.cpu_percent),
+                memory_used_mb=_nullable_int(row.memory_used_mb),
+                memory_total_mb=_nullable_int(row.memory_total_mb),
+                edge_reachability_ok=None,
+                authenticated_egress_ok=None,
+                dataplane_ok=None,
+                dataplane_rtt_ms=None,
+                capacity_score=float(capacity.get("score") or 0.0),
+                capacity_state=str(capacity.get("state") or "unknown"),
+                reject_reason=str(capacity.get("reject_reason") or "") or None,
+                meta_json=json.dumps(
+                    {
+                        "panel_state": "unavailable",
+                        "dataplane_state": "unavailable",
+                        "edge_reachability_state": "unavailable",
+                        "authenticated_egress_state": "unavailable",
+                        "authenticated_egress_error_kind": detail_code,
+                        "probe_stage": "collector",
+                        "probe_error_kind": detail_code,
+                        "metrics_state": "missing",
+                    },
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
+            )
+        )
+        s.commit()
+        return True
+    except Exception:
+        if s is not None:
+            try:
+                s.rollback()
+            except Exception:
+                pass
+        return False
+    finally:
+        if s is not None:
+            try:
+                s.close()
+            except Exception:
+                pass
+
+
+def _collector_failure_row(*, node: Node, error_window: int, source: str, detail_code: str) -> dict:
+    persisted = _persist_collector_failure(
+        node=node,
+        error_window=error_window,
+        source=source,
+        detail_code=detail_code,
+    )
+    if not persisted:
+        print(f"{str(node.code or '').strip()}: collector_failure_persistence_failed", file=sys.stderr)
+    return {
+        "code": str(node.code or ""),
+        "healthy": False,
+        "score": 0.0,
+        "latency_ms": None,
+        "dataplane_rtt_ms": None,
+        "active_clients": None,
+        "provisioned_clients_count": None,
+        "online_connections_hint": None,
+        "total_up_bytes": None,
+        "total_down_bytes": None,
+        "error_rate": 1.0,
+        "cpu_percent": None,
+        "memory_used_mb": None,
+        "memory_total_mb": None,
+        "disk_free_gb": None,
+        "network_total_mbps": None,
+        "probe_stage": "collector",
+        "probe_error_kind": detail_code,
+        "probe_classification": "collector_unavailable",
+        "ipv4_health": "unknown",
+        "ipv6_health": "unknown",
+        "panel_state": "unavailable",
+        "dataplane_state": "unavailable",
+        "edge_reachability_state": "unavailable",
+        "authenticated_egress_state": "unavailable",
+        "metrics_complete": False,
+        "collector_status": "failure_persisted" if persisted else "persistence_failed",
+    }
+
+
+async def run(
+    *,
+    error_window: int,
+    source: str,
+    max_concurrency: int = 4,
+    per_node_timeout_seconds: float = 45.0,
+    only: list[str] | None = None,
+) -> int:
+    # Full-pool service runs retain the legacy initialization behavior. A
+    # scoped canary must validate its enabled-node allowlist before any setup
+    # that could write to the database.
+    if only is None:
+        init_db()
     s = SessionLocal()
     try:
-        nodes = s.query(Node).filter(Node.enabled == True).order_by(Node.code.asc()).all()
+        enabled = s.query(Node).filter(Node.enabled == True).order_by(Node.code.asc()).all()
+        if only is None:
+            nodes = enabled
+        else:
+            requested = set(only)
+            if not requested:
+                print("Requested --only scope does not match enabled node inventory.", file=sys.stderr)
+                return 2
+            nodes = [node for node in enabled if str(node.code or "").strip().lower() in requested]
+            found = {str(node.code or "").strip().lower() for node in nodes}
+            if found != requested:
+                print("Requested --only scope does not match enabled node inventory.", file=sys.stderr)
+                return 2
     finally:
         s.close()
 
@@ -677,9 +1072,34 @@ async def run(*, error_window: int, source: str) -> int:
         print("No enabled nodes found.")
         return 0
 
-    results = []
-    for node in nodes:
-        results.append(await _collect_one(node=node, error_window=error_window, source=source))
+    semaphore = asyncio.Semaphore(max(1, int(max_concurrency)))
+    timeout_seconds = max(1.0, float(per_node_timeout_seconds))
+
+    async def collect_bounded(node: Node) -> dict:
+        async with semaphore:
+            try:
+                return await asyncio.wait_for(
+                    _collect_one(node=node, error_window=error_window, source=source),
+                    timeout=timeout_seconds,
+                )
+            except TimeoutError:
+                return _collector_failure_row(
+                    node=node,
+                    error_window=error_window,
+                    source=source,
+                    detail_code="collector_timeout",
+                )
+            except Exception:
+                return _collector_failure_row(
+                    node=node,
+                    error_window=error_window,
+                    source=source,
+                    detail_code="collector_exception",
+                )
+
+    # asyncio.gather preserves the input order, keeping stdout and handoff
+    # evidence deterministic even though node collection is concurrent.
+    results = await asyncio.gather(*(collect_bounded(node) for node in nodes))
 
     for row in results:
         print(
@@ -689,17 +1109,37 @@ async def run(*, error_window: int, source: str) -> int:
             f"online_connections_hint={row['online_connections_hint']} "
             f"up_bytes={row['total_up_bytes']} down_bytes={row['total_down_bytes']} "
             f"error_rate={row['error_rate']} cpu={row['cpu_percent']} "
-            f"ram={row['memory_used_mb']}/{row['memory_total_mb']}MB disk_free={row['disk_free_gb']}GB"
+            f"ram={row['memory_used_mb']}/{row['memory_total_mb']}MB disk_free={row['disk_free_gb']}GB "
+            f"collector_status={row.get('collector_status', 'ok')}"
         )
-    return 0
+    return 1 if any(row.get("collector_status") == "persistence_failed" for row in results) else 0
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description="Collect per-node runtime metrics and update health score.")
     ap.add_argument("--error-window", type=int, default=int(os.getenv("NODE_HEALTH_ERROR_WINDOW", "30")))
     ap.add_argument("--source", default="collector")
+    ap.add_argument("--only", default=None, help="comma-separated exact enabled node-code allowlist")
+    ap.add_argument("--max-concurrency", type=int, default=int(os.getenv("NODE_METRICS_MAX_CONCURRENCY", "4")))
+    ap.add_argument(
+        "--per-node-timeout-seconds",
+        type=float,
+        default=float(os.getenv("NODE_METRICS_PER_NODE_TIMEOUT_SECONDS", "45")),
+    )
     args = ap.parse_args()
-    return asyncio.run(run(error_window=args.error_window, source=args.source))
+    try:
+        only = _parse_only_codes(args.only) if args.only is not None else None
+    except ValueError as exc:
+        ap.error(str(exc))
+    return asyncio.run(
+        run(
+            error_window=args.error_window,
+            source=args.source,
+            max_concurrency=args.max_concurrency,
+            per_node_timeout_seconds=args.per_node_timeout_seconds,
+            only=only,
+        )
+    )
 
 
 if __name__ == "__main__":

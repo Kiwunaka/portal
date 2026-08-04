@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Golos_Text, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
+
+import "@fontsource-variable/golos-text";
+import "@fontsource-variable/jetbrains-mono";
 
 import { CANONICAL_WEBAPP_URL, getDesignTokenThemeCss } from "@/lib/portal";
 
@@ -8,18 +10,6 @@ import { POKROV_LEGACY_THEME_STORAGE_KEYS, POKROV_THEME_STORAGE_KEY, pokrovBrand
 import QaOverlayHost from "./qa-overlay-host";
 import TelegramWebAppInit from "./telegram-webapp-init";
 import "./globals.css";
-
-const golosText = Golos_Text({
-  subsets: ["latin", "cyrillic"],
-  variable: "--font-golos",
-  display: "swap",
-});
-
-const jetBrainsMono = JetBrains_Mono({
-  subsets: ["latin", "cyrillic"],
-  variable: "--font-jetbrains",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(CANONICAL_WEBAPP_URL),
@@ -49,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="ru"
-      className={`${golosText.variable} ${jetBrainsMono.variable} scroll-smooth`}
+      className="scroll-smooth"
       data-scroll-behavior="smooth"
       suppressHydrationWarning
     >

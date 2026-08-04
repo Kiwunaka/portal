@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "profiles": {
+    "replace_with_profile_id": {
+      "node_code": "replace_with_node_code",
+      "endpoint": {
+        "host": "replace-with-node-host.invalid",
+        "port": 443
+      },
+      "uuid": "REPLACE_WITH_DEDICATED_CANARY_UUID",
+      "flow": "xtls-rprx-vision",
+      "reality": {
+        "server_name": "replace-with-reality-server-name.invalid",
+        "public_key": "REPLACE_WITH_REALITY_PUBLIC_KEY",
+        "short_id": "REPLACE_WITH_REALITY_SHORT_ID",
+        "fingerprint": "chrome"
+      }
+    }
+  }
+}

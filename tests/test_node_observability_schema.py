@@ -62,8 +62,16 @@ class NodeObservabilitySchemaTests(unittest.TestCase):
                 "ipv6_health",
                 "last_probe_classification",
                 "transport_health_json",
+                "edge_reachability_ok",
+                "authenticated_egress_ok",
+                "last_authenticated_egress_at",
+                "authenticated_egress_error_kind",
             }.issubset(cols)
         )
+
+    def test_node_runtime_metrics_separates_edge_and_authenticated_egress(self) -> None:
+        cols = self._columns("node_runtime_metrics")
+        self.assertTrue({"edge_reachability_ok", "authenticated_egress_ok"}.issubset(cols))
 
     def test_node_health_samples_table_has_probe_observability_columns(self) -> None:
         cols = self._columns("node_health_samples")

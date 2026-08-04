@@ -56,13 +56,13 @@ WINDOWS_CORE_PATH = WINDOWS_RUNTIME_ROOT / "pokrov-core.dll"
 WINDOWS_CRONET_PATH = WINDOWS_RUNTIME_ROOT / "libcronet.dll"
 
 POKROV_CORE_REPOSITORY = "Kiwunaka/POKROV-core"
-POKROV_CORE_RELEASE_TAG = "v1.0.1"
-POKROV_CORE_RELEASE_URL = "https://github.com/Kiwunaka/pokrov-core/releases/tag/v1.0.1"
-POKROV_CORE_SOURCE_COMMIT = "3c256e5560220f2b4233d72ed057d1b72e8d3ad5"
-ANDROID_CORE_SIZE = 106831626
-ANDROID_CORE_SHA256 = "25b96622f9ef6e648e1167847ef4205c63bad88c7c897e862bf36249830114e3"
-WINDOWS_CORE_SIZE = 55117824
-WINDOWS_CORE_SHA256 = "8f4aa233054b78ac2e6dbcef7634b6f4829a9f27f4cd65674de80f6f3b299f9e"
+POKROV_CORE_RELEASE_TAG = "v1.0.2"
+POKROV_CORE_RELEASE_URL = "https://github.com/Kiwunaka/pokrov-core/releases/tag/v1.0.2"
+POKROV_CORE_SOURCE_COMMIT = "a469240dc3e1e1736ff73348b113f164c277492a"
+ANDROID_CORE_SIZE = 106832036
+ANDROID_CORE_SHA256 = "e98861ec0b658304515c04af6ab98a60f3664f8b5eb7660b57e6f0baa0df385f"
+WINDOWS_CORE_SIZE = 55122944
+WINDOWS_CORE_SHA256 = "b6d4e28b5fb9d475acc623fed84d2009137a55972a841216a81ae6ac45f98305"
 WINDOWS_CRONET_SIZE = 8596992
 WINDOWS_CRONET_SHA256 = "8ef1f8bbde77f954af1ae47bee1819ac8dc2354bb0e1d4baba3dad9e58d7a6f7"
 
@@ -90,8 +90,8 @@ def _product_contract_failures(contract: dict[str, object]) -> list[str]:
         failures.append("product contract must keep advanced_fallback_core as xray")
     if int(contract.get("trial_days", 0)) != 5:
         failures.append("product contract must keep the trial at 5 days")
-    if int(contract.get("telegram_bonus_days", 0)) != 10:
-        failures.append("product contract must keep the Telegram bonus at 10 days")
+    if int(contract.get("telegram_bonus_days", 0)) != 5:
+        failures.append("product contract must keep the Telegram bonus at 5 days")
 
     public_scope = list(contract.get("public_scope") or [])
     if public_scope != ["android", "windows"]:
@@ -182,7 +182,7 @@ def _runtime_artifact_failures(runtime_artifacts: dict[str, object]) -> list[str
         or int(reproducible_windows.get("size") or 0) != WINDOWS_CORE_SIZE
         or reproducible_windows.get("sha256") != WINDOWS_CORE_SHA256
         or reproducible_build.get("libcronet_sha256") != WINDOWS_CRONET_SHA256
-        or provenance.get("promotion_rule") != "accept_exact_v1.0.1_release_artifacts"
+        or provenance.get("promotion_rule") != "accept_exact_v1.0.2_release_artifacts"
     ):
         failures.append("runtime artifacts must pin the clean reproducible POKROV Core release provenance")
 

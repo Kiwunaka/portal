@@ -127,6 +127,15 @@ class RetentionTemplateSeedTests(unittest.TestCase):
             self.assertIn("last_probe_classification", node_names)
             self.assertIn("transport_health_json", node_names)
             self.assertIn("transport_profiles_json", node_names)
+            self.assertIn("edge_reachability_ok", node_names)
+            self.assertIn("authenticated_egress_ok", node_names)
+            self.assertIn("last_authenticated_egress_at", node_names)
+            self.assertIn("authenticated_egress_error_kind", node_names)
+
+            runtime_cols = conn.execute(self.migrations.text("PRAGMA table_info(node_runtime_metrics);")).fetchall()
+            runtime_names = {str(r[1]) for r in runtime_cols}
+            self.assertIn("edge_reachability_ok", runtime_names)
+            self.assertIn("authenticated_egress_ok", runtime_names)
 
             sample_cols = conn.execute(self.migrations.text("PRAGMA table_info(node_health_samples);")).fetchall()
             sample_names = {str(r[1]) for r in sample_cols}

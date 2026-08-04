@@ -9,6 +9,9 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from cryptography import x509
+from cryptography.x509.oid import NameOID
+
 _HOSTER_SIGNATURES: dict[str, tuple[tuple[str, ...], str]] = {
     "hetzner": (("hetzner",), "AS24940"),
     "digitalocean": (("digitalocean",), "AS14061"),
@@ -24,6 +27,21 @@ _HOSTER_SIGNATURES: dict[str, tuple[tuple[str, ...], str]] = {
     "netcup": (("netcup",), "AS197540"),
     "timeweb": (("timeweb",), "AS9123"),
 }
+_PROBE_STAGES = frozenset({"dns", "tcp_connect", "tls_sni", "reality_target", "probe"})
+_PROBE_ERROR_KINDS = frozenset(
+    {
+        "",
+        "dns_lookup_failed",
+        "tcp_connect_failed",
+        "tcp_connect_timeout",
+        "tls_handshake_failed",
+        "reality_target_mismatch",
+        "reality_target_unavailable",
+        "probe_failed",
+    }
+)
+_TRANSPORT_HEALTH_KEYS = ("dns_resolution", "tcp_connect", "tls_handshake", "reality_target")
+_TRANSPORT_HEALTH_STATES = frozenset({"healthy", "degraded", "unavailable", "unknown"})
 
 
 def _utcnow() -> datetime:
@@ -37,18 +55,26 @@ def _truncate(message: object, limit: int = 500) -> str:
     return text[: limit - 3].rstrip() + "..."
 
 
-def _certificate_names(cert: dict) -> list[str]:
+def _certificate_names_from_der(der_certificate: bytes | None) -> list[str]:
+    """Return DNS SANs and common names without trusting the certificate chain."""
+    if not der_certificate:
+        return []
+    try:
+        certificate = x509.load_der_x509_certificate(der_certificate)
+    except (TypeError, ValueError):
+        return []
+
     names: list[str] = []
-    for key, value in cert.get("subjectAltName", []) or []:
-        if key == "DNS" and value and value not in names:
-            names.append(str(value).strip().lower())
-    for part in cert.get("subject", []) or []:
-        for key, value in part:
-            if key == "commonName" and value:
-                name = str(value).strip().lower()
-                if name not in names:
-                    names.append(name)
-    return names
+    try:
+        san = certificate.extensions.get_extension_for_class(x509.SubjectAlternativeName).value
+        names.extend(str(value).strip().lower() for value in san.get_values_for_type(x509.DNSName))
+    except x509.ExtensionNotFound:
+        pass
+    names.extend(
+        str(attribute.value).strip().lower()
+        for attribute in certificate.subject.get_attributes_for_oid(NameOID.COMMON_NAME)
+    )
+    return list(dict.fromkeys(name for name in names if name))
 
 
 def _certificate_matches_expected_target(expected_target: str, certificate_names: list[str]) -> bool:
@@ -195,28 +221,72 @@ def _root_cause_summary(payload: dict) -> str:
 
 
 def _root_cause_detail(payload: dict) -> str:
-    host = str(payload.get("host") or "").strip()
-    connected_ip = str(payload.get("connected_ip") or "").strip()
-    connected_family = str(payload.get("connected_family") or "").strip()
-    certificate_names = [str(item or "").strip() for item in list(payload.get("certificate_names") or []) if str(item or "").strip()]
-    expected_target = str(payload.get("sni") or host or "").strip()
-    error_message = str(payload.get("error_message") or "").strip()
-    details: list[str] = []
+    if bool(payload.get("ok")):
+        return "edge_reachability_healthy"
+    error_kind = str(payload.get("error_kind") or "probe_failed")
+    return error_kind if error_kind in _PROBE_ERROR_KINDS and error_kind else "probe_failed"
 
-    if host:
-        details.append(f"target={host}")
-    if expected_target and expected_target != host:
-        details.append(f"expected_target={expected_target}")
-    if connected_ip:
-        if connected_family:
-            details.append(f"connected to {connected_ip} over {connected_family}")
-        else:
-            details.append(f"connected to {connected_ip}")
-    if certificate_names:
-        details.append("certificate_names=" + ",".join(certificate_names))
-    if error_message:
-        details.append(f"error={error_message}")
-    return "; ".join(details)
+
+def _public_probe_payload(payload: dict) -> dict:
+    """Return the retained probe record without endpoint or exception material."""
+
+    raw_stage = str(payload.get("stage") or "probe")
+    stage = "tcp_connect" if raw_stage.startswith("tcp_") else raw_stage
+    if stage not in _PROBE_STAGES:
+        stage = "probe"
+    error_kind = str(payload.get("error_kind") or "")
+    if error_kind not in _PROBE_ERROR_KINDS:
+        error_kind = "probe_failed"
+    transport = dict(payload.get("transport_health") or {})
+    safe_transport = {
+        key: str(transport.get(key) or "unknown")
+        if str(transport.get(key) or "unknown") in _TRANSPORT_HEALTH_STATES
+        else "unknown"
+        for key in _TRANSPORT_HEALTH_KEYS
+    }
+    latency_ms = payload.get("latency_ms")
+    try:
+        latency_ms = max(0, min(int(latency_ms), 60_000)) if latency_ms is not None else None
+    except (TypeError, ValueError):
+        latency_ms = None
+    target_semantics = str(payload.get("target_semantics") or "generic_path")
+    if target_semantics not in {"telegram_app_path", "telegram_web_path", "generic_path"}:
+        target_semantics = "generic_path"
+    hoster_family = str(payload.get("hoster_family") or "")
+    if hoster_family not in _HOSTER_SIGNATURES:
+        hoster_family = ""
+    known_asns = {asn for _aliases, asn in _HOSTER_SIGNATURES.values()}
+    hoster_asn = str(payload.get("hoster_asn") or "")
+    if hoster_asn not in known_asns:
+        hoster_asn = ""
+    classification = str(payload.get("probe_classification") or "probe_failed")
+    if classification not in {"healthy", "dns_failure", "transport_failure", "provider_specific_path", "probe_failed"}:
+        classification = "probe_failed"
+    family_states = {"healthy", "degraded", "unavailable", "unknown"}
+    ipv4_health = str(payload.get("ipv4_health") or "unknown")
+    ipv6_health = str(payload.get("ipv6_health") or "unknown")
+    return {
+        "probe_kind": "edge_reachability",
+        "ok": bool(payload.get("ok")),
+        "edge_reachability_ok": bool(payload.get("edge_reachability_ok")),
+        "latency_ms": latency_ms,
+        "target_check_available": bool(payload.get("target_check_available")),
+        "target_ok": bool(payload.get("target_ok")),
+        "stage": stage,
+        "error_kind": error_kind,
+        "error_message": error_kind or None,
+        "probed_at": payload.get("probed_at"),
+        "probe_classification": classification,
+        "ipv4_health": ipv4_health if ipv4_health in family_states else "unknown",
+        "ipv6_health": ipv6_health if ipv6_health in family_states else "unknown",
+        "transport_health": safe_transport,
+        "target_semantics": target_semantics,
+        "hoster_family": hoster_family or None,
+        "hoster_asn": hoster_asn or None,
+        "hoster_subnet": None,
+        "root_cause_summary": _root_cause_summary(payload),
+        "root_cause_detail": _root_cause_detail(payload),
+    }
 
 
 def _resolve_dns(host: str, port: int) -> dict:
@@ -259,23 +329,29 @@ def _probe_tls(host: str, port: int, sni: str, timeout_sec: float) -> dict:
     context.verify_mode = ssl.CERT_NONE
     with socket.create_connection((host, port), timeout=timeout_sec) as sock:
         with context.wrap_socket(sock, server_hostname=sni) as tls_sock:
-            cert = tls_sock.getpeercert() or {}
-            certificate_names = _certificate_names(cert)
+            # CERT_NONE intentionally keeps the handshake independent from the
+            # local trust store, but getpeercert() then returns an empty mapping.
+            # Parse the public DER certificate instead so an empty mapping cannot
+            # turn an unverified REALITY target into a green probe.
+            certificate_der = tls_sock.getpeercert(binary_form=True)
+            certificate_names = _certificate_names_from_der(certificate_der)
             peer_ip = _peer_ip_from_socket(tls_sock)
-            # Some TLS handshakes expose an empty parsed certificate here even when the
-            # socket is healthy. Treat that as "target check unavailable", not mismatch.
-            target_ok = True if not certificate_names else _certificate_matches_expected_target(sni, certificate_names)
+            target_check_available = bool(certificate_names)
+            target_ok = target_check_available and _certificate_matches_expected_target(sni, certificate_names)
             result = {
-                "stage": "reality_target" if target_ok else "tls_sni",
+                "stage": "reality_target",
                 "tls_protocol": str(tls_sock.version() or ""),
                 "tls_cipher": str((tls_sock.cipher() or ("", "", ""))[0] or ""),
                 "certificate_names": certificate_names,
+                "target_check_available": target_check_available,
                 "target_ok": target_ok,
                 "connected_ip": peer_ip,
                 "connected_family": _ip_family(peer_ip),
             }
-            if not target_ok:
-                result["stage"] = "reality_target"
+            if not target_check_available:
+                result["error_kind"] = "reality_target_unavailable"
+                result["error_message"] = "certificate names unavailable for reality target validation"
+            elif not target_ok:
                 result["error_kind"] = "reality_target_mismatch"
                 result["error_message"] = "certificate names do not match expected reality target"
             return result
@@ -291,7 +367,7 @@ def _derive_probe_classification(payload: dict) -> str:
         return "dns_failure"
     if error_kind in {"tcp_connect_failed", "tcp_connect_timeout"} or stage.startswith("tcp_"):
         return "transport_failure"
-    if error_kind in {"tls_handshake_failed", "reality_target_mismatch"} or stage in {"tls_sni", "reality_target"}:
+    if error_kind in {"tls_handshake_failed", "reality_target_mismatch", "reality_target_unavailable"} or stage in {"tls_sni", "reality_target"}:
         return "provider_specific_path"
     return "probe_failed"
 
@@ -317,7 +393,9 @@ def _derive_transport_health(payload: dict) -> dict[str, str]:
         transport["tls_handshake"] = "degraded"
 
     if stage == "reality_target":
-        transport["reality_target"] = "healthy" if bool(payload.get("ok")) else "degraded"
+        transport["reality_target"] = "healthy" if bool(payload.get("ok")) else (
+            "unavailable" if error_kind == "reality_target_unavailable" else "degraded"
+        )
 
     return transport
 
@@ -398,10 +476,13 @@ def _apply_additive_probe_fields(payload: dict) -> None:
 
 
 def probe_node_endpoint(*, host: str, port: int = 443, sni: str | None = None, timeout_sec: float = 5.0) -> dict:
+    """Probe unauthenticated edge reachability, not VLESS/REALITY egress."""
     target_sni = str(sni or host).strip()
     probed_at = _utcnow()
     payload = {
+        "probe_kind": "edge_reachability",
         "ok": False,
+        "edge_reachability_ok": False,
         "host": host,
         "port": int(port),
         "sni": target_sni,
@@ -414,6 +495,7 @@ def probe_node_endpoint(*, host: str, port: int = 443, sni: str | None = None, t
         "tls_protocol": "",
         "tls_cipher": "",
         "certificate_names": [],
+        "target_check_available": False,
         "target_ok": False,
         "stage": "",
         "error_kind": "",
@@ -439,36 +521,37 @@ def probe_node_endpoint(*, host: str, port: int = 443, sni: str | None = None, t
             payload["error_message"] = _truncate(
                 tls_result.get("error_message") or "certificate names do not match expected reality target"
             )
-    except socket.gaierror as exc:
+    except socket.gaierror:
         payload["stage"] = "dns"
         payload["error_kind"] = "dns_lookup_failed"
-        payload["error_message"] = _truncate(exc)
-    except TimeoutError as exc:
-        payload["stage"] = payload["stage"] or f"tcp_{port}"
+        payload["error_message"] = "dns_lookup_failed"
+    except TimeoutError:
+        payload["stage"] = payload["stage"] or "tcp_connect"
         payload["error_kind"] = "tcp_connect_timeout"
-        payload["error_message"] = _truncate(exc)
-    except ssl.SSLError as exc:
+        payload["error_message"] = "tcp_connect_timeout"
+    except ssl.SSLError:
         payload["stage"] = "tls_sni"
         payload["error_kind"] = "tls_handshake_failed"
-        payload["error_message"] = _truncate(exc)
-    except OSError as exc:
+        payload["error_message"] = "tls_handshake_failed"
+    except OSError:
         current_stage = str(payload.get("stage") or "")
         if not current_stage:
-            current_stage = f"tcp_{port}"
+            current_stage = "tcp_connect"
         payload["stage"] = current_stage
-        payload["error_kind"] = "tcp_connect_failed" if current_stage.startswith("tcp_") else "probe_failed"
-        payload["error_message"] = _truncate(exc)
-    except Exception as exc:  # pragma: no cover - defensive fallback
+        payload["error_kind"] = "tcp_connect_failed" if current_stage.startswith("tcp") else "probe_failed"
+        payload["error_message"] = payload["error_kind"]
+    except Exception:  # pragma: no cover - defensive fallback
         payload["stage"] = str(payload.get("stage") or "probe")
         payload["error_kind"] = "probe_failed"
-        payload["error_message"] = _truncate(exc)
+        payload["error_message"] = "probe_failed"
+    payload["edge_reachability_ok"] = bool(payload.get("ok"))
     _apply_additive_probe_fields(payload)
-    return payload
+    return _public_probe_payload(payload)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Best-effort external node dataplane probe: DNS, TCP 443, TLS/SNI, and target validation."
+        description="Best-effort unauthenticated edge probe: DNS, TCP, TLS/SNI, and target validation."
     )
     parser.add_argument("--host", required=True)
     parser.add_argument("--port", type=int, default=443)
@@ -488,7 +571,7 @@ def main() -> int:
         out_path = Path(args.out)
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(text, encoding="utf-8")
-        print(out_path)
+        print("probe_artifact_written")
     else:
         print(text)
     return 0 if payload["ok"] else 2

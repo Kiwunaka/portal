@@ -31,6 +31,8 @@ class RemoteDeployBrainPortalCodeTests(unittest.TestCase):
         self.assertIn("/root/shared/design-tokens.json", targets)
         self.assertIn("/root/shared/support-ai-knowledge.json", targets)
         self.assertIn("/root/shared/support-agent-policy.json", targets)
+        self.assertIn("/root/portal_bot/authenticated_egress_probe.py", targets)
+        self.assertIn("/root/portal_bot/singbox_authenticated_egress_adapter.py", targets)
 
     def test_restart_default_includes_feedbackbot(self) -> None:
         module = _load_module()

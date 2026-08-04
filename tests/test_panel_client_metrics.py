@@ -1,7 +1,10 @@
+import asyncio
+import json
 import os
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 
 class PanelClientMetricsTests(unittest.IsolatedAsyncioTestCase):
@@ -83,3 +86,82 @@ class PanelClientMetricsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(metrics["network_rx_bytes_total"], 1179433328818)
         self.assertEqual(metrics["network_tx_bytes_per_sec"], 126925)
         self.assertEqual(metrics["network_rx_bytes_per_sec"], 129934)
+
+    async def test_get_client_snapshot_reuses_one_inbounds_read(self) -> None:
+        from panel_client import PanelClient
+
+        client = PanelClient(self._node())
+        calls = 0
+
+        async def fake_get_inbounds():
+            nonlocal calls
+            calls += 1
+            return [
+                {
+                    "id": 1,
+                    "settings": json.dumps(
+                        {"clients": [{"tgId": "42", "email": "user@example.test", "enable": True}]}
+                    ),
+                    "clientStats": [{"email": "user@example.test", "online": True, "up": 3, "down": 4}],
+                }
+            ]
+
+        client._get_inbounds = fake_get_inbounds
+        found, runtime = await client.get_client_snapshot_by_tgid(42)
+
+        self.assertEqual(calls, 1)
+        self.assertEqual(found["email"], "user@example.test")
+        self.assertEqual(runtime["total"], 7)
+
+    async def test_user_key_snapshots_are_bounded_and_keep_partial_results_in_order(self) -> None:
+        from control_panel import ControlPanel
+
+        nodes = [
+            SimpleNamespace(code="pl", name="Poland", host="pl.example.test", enabled=True, is_healthy=True),
+            SimpleNamespace(code="nl", name="Netherlands", host="nl.example.test", enabled=True, is_healthy=False),
+        ]
+        panel = ControlPanel(concurrency=2)
+        hostile_panel_error = (
+            "panel unavailable at https://panel.example.test/private?token=super-secret"
+        )
+
+        async def fake_refresh():
+            return nodes
+
+        active = 0
+        max_active = 0
+
+        class FakeClient:
+            def __init__(self, code: str) -> None:
+                self.code = code
+
+            async def get_client_snapshot_by_tgid(self, tg_id: int):
+                nonlocal active, max_active
+                if tg_id != 42:
+                    raise AssertionError(f"unexpected tg_id: {tg_id}")
+                active += 1
+                max_active = max(max_active, active)
+                try:
+                    await asyncio.sleep(0.15)
+                    if self.code == "nl":
+                        raise RuntimeError(hostile_panel_error)
+                    return {"email": "user@example.test", "enable": True}, {"total": 7, "online": True}
+                finally:
+                    active -= 1
+
+        panel.refresh = fake_refresh
+        panel._clients = {node.code: FakeClient(node.code) for node in nodes}
+        started = asyncio.get_running_loop().time()
+        rows = await panel.get_user_key_snapshots(tg_id=42)
+        elapsed = asyncio.get_running_loop().time() - started
+
+        self.assertEqual(max_active, 2)
+        self.assertLess(elapsed, 0.25)
+        self.assertEqual([row["node_code"] for row in rows], ["pl", "nl"])
+        self.assertEqual(rows[0]["runtime"]["total"], 7)
+        self.assertIsNone(rows[1]["client"])
+        self.assertEqual(rows[1]["error"], "panel_request_failed")
+        serialized = repr(rows)
+        self.assertNotIn("panel unavailable", serialized)
+        self.assertNotIn("https://panel.example.test/private", serialized)
+        self.assertNotIn("super-secret", serialized)

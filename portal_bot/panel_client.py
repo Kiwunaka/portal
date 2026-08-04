@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+import base64
 import json
 import logging
 import time
@@ -10,6 +12,8 @@ import re
 from urllib.parse import quote
 
 import aiohttp
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric import x25519
 
 from nodes_repo import NodeRuntime
 from node_policy import (
@@ -22,6 +26,61 @@ from transport_catalog import node_transport_profiles, transport_inbound_ids
 
 
 logger = logging.getLogger(__name__)
+
+_PANEL_READ_ERROR_KINDS = frozenset(
+    {
+        "panel_read_failed",
+        "panel_login_failed",
+        "panel_reauth_failed",
+        "panel_inbounds_http_error",
+        "panel_inbounds_payload_error",
+        "panel_inbounds_response_error",
+        "panel_inbounds_network_error",
+        "panel_client_lookup_error",
+    }
+)
+
+
+class PanelReadError(RuntimeError):
+    """A bounded, non-sensitive failure to read authoritative panel state."""
+
+    def __init__(self, error_kind: str) -> None:
+        normalized = re.sub(r"[^a-z0-9_]+", "_", str(error_kind or "").strip().lower())[:64]
+        self.error_kind = normalized if normalized in _PANEL_READ_ERROR_KINDS else "panel_read_failed"
+        super().__init__(self.error_kind)
+
+
+def panel_error_kind(exc: BaseException) -> str:
+    """Return a stable response-safe panel error kind without exception detail."""
+    if isinstance(exc, PanelReadError):
+        return exc.error_kind
+    if isinstance(exc, (asyncio.TimeoutError, TimeoutError)):
+        return "panel_timeout"
+    if isinstance(exc, aiohttp.ClientError):
+        return "panel_network_error"
+    return "panel_request_failed"
+
+
+def _derive_reality_public_key(private_key: str) -> str:
+    """Derive the shareable REALITY public key without retaining its private key."""
+    encoded = str(private_key or "").strip()
+    if not encoded:
+        return ""
+    try:
+        raw_private = base64.urlsafe_b64decode(encoded + ("=" * (-len(encoded) % 4)))
+        if len(raw_private) != 32:
+            return ""
+        public_bytes = (
+            x25519.X25519PrivateKey.from_private_bytes(raw_private)
+            .public_key()
+            .public_bytes(
+                encoding=serialization.Encoding.Raw,
+                format=serialization.PublicFormat.Raw,
+            )
+        )
+        return base64.urlsafe_b64encode(public_bytes).decode("ascii").rstrip("=")
+    except Exception:
+        return ""
 
 
 def _deep_find(obj, keys: set[str]):
@@ -263,10 +322,17 @@ class PanelClient:
             return [inb for inb in inbounds if int(inb.get("id") or 0) == fallback]
         return [inb for inb in inbounds if int(inb.get("id") or 0) in target_ids]
 
-    async def find_clients_by_tgid(self, tg_id: int, *, include_disabled: bool = False) -> list[tuple[int, dict]]:
+    async def find_clients_by_tgid(
+        self,
+        tg_id: int,
+        *,
+        include_disabled: bool = False,
+        _inbounds: list[dict] | None = None,
+    ) -> list[tuple[int, dict]]:
         target_tg = str(tg_id).strip()
         matches: list[tuple[int, dict]] = []
-        for inb in self._selected_inbounds(await self._get_inbounds(), include_disabled=include_disabled):
+        inbounds = await self._get_inbounds() if _inbounds is None else _inbounds
+        for inb in self._selected_inbounds(inbounds, include_disabled=include_disabled):
             inbound_id = int(inb.get("id") or 0)
             settings = self._decode_settings(inb.get("settings", "{}"))
             for client in settings.get("clients", []) or []:
@@ -354,16 +420,16 @@ class PanelClient:
                     self.cookies = resp.cookies
                 return True
         except Exception as e:
-            logger.exception("panel login error node=%s: %s", self.node.code, e)
+            logger.warning("panel login error node=%s error_kind=%s", self.node.code, type(e).__name__)
             return False
 
     async def _get_inbounds(self) -> list[dict]:
         if not self.cookies:
             ok = await self.login()
             if not ok:
-                return []
+                raise PanelReadError("panel_login_failed")
 
-        async def _fetch() -> list[dict] | None:
+        async def _fetch() -> list[dict]:
             await self.ensure_session()
             try:
                 async with self.session.get(
@@ -372,25 +438,35 @@ class PanelClient:
                     timeout=aiohttp.ClientTimeout(total=20),
                 ) as resp:
                     if resp.status != 200:
-                        return None
-                    data = await resp.json(content_type=None)
+                        raise PanelReadError("panel_inbounds_http_error")
+                    try:
+                        data = await resp.json(content_type=None)
+                    except Exception:
+                        raise PanelReadError("panel_inbounds_payload_error") from None
                     if not isinstance(data, dict) or not data.get("success"):
-                        return None
-                    return data.get("obj", []) or []
+                        raise PanelReadError("panel_inbounds_response_error")
+                    inbounds = data.get("obj")
+                    if not isinstance(inbounds, list):
+                        raise PanelReadError("panel_inbounds_payload_error")
+                    if not all(isinstance(item, dict) for item in inbounds):
+                        raise PanelReadError("panel_inbounds_payload_error")
+                    return [dict(item) for item in inbounds]
+            except PanelReadError:
+                raise
             except Exception:
-                return None
+                raise PanelReadError("panel_inbounds_network_error") from None
 
-        inbounds = await _fetch()
-        if inbounds is not None:
-            return inbounds
+        try:
+            return await _fetch()
+        except PanelReadError:
+            pass
 
         self.cookies = None
         self.csrf_token = None
         ok = await self.login()
         if not ok:
-            return []
-        inbounds = await _fetch()
-        return inbounds if inbounds is not None else []
+            raise PanelReadError("panel_reauth_failed")
+        return await _fetch()
 
     async def get_server_status(self) -> dict | None:
         if not self.cookies:
@@ -407,12 +483,58 @@ class PanelClient:
                 if resp.status != 200:
                     return None
                 data = await resp.json(content_type=None)
-                if not isinstance(data, dict) or not bool(data.get("success")):
+                if not isinstance(data, dict) or data.get("success") is not True:
                     return None
                 obj = data.get("obj")
                 return obj if isinstance(obj, dict) else None
         except Exception:
             return None
+
+    async def restart_xray_service(self) -> bool:
+        """Request an Xray restart; callers must separately await readiness."""
+        if not self.cookies:
+            ok = await self.login()
+            if not ok:
+                return False
+        await self.ensure_session()
+        try:
+            async with self.session.post(
+                f"{self._base()}/panel/api/server/restartXrayService",
+                headers=await self._csrf_headers(),
+                cookies=self.cookies,
+                timeout=aiohttp.ClientTimeout(total=30),
+            ) as resp:
+                if resp.status != 200:
+                    return False
+                data = await resp.json(content_type=None)
+                return isinstance(data, dict) and data.get("success") is True
+        except Exception:
+            return False
+
+    async def wait_for_xray_running(
+        self,
+        *,
+        attempts: int = 12,
+        interval_seconds: float = 0.5,
+    ) -> bool:
+        """Boundedly wait for the official server-status Xray running signal."""
+        bounded_attempts = max(1, min(12, int(attempts)))
+        bounded_interval = max(0.0, min(1.0, float(interval_seconds)))
+        running_samples = 0
+        for attempt in range(bounded_attempts):
+            status = await self.get_server_status()
+            xray = status.get("xray") if isinstance(status, dict) else None
+            state = str(xray.get("state") or "").strip().lower() if isinstance(xray, dict) else ""
+            error = str(xray.get("errorMsg") or "").strip() if isinstance(xray, dict) else ""
+            if state == "running" and not error:
+                running_samples += 1
+                if running_samples >= 2:
+                    return True
+            else:
+                running_samples = 0
+            if attempt + 1 < bounded_attempts and bounded_interval:
+                await asyncio.sleep(bounded_interval)
+        return False
 
     async def get_system_metrics(self) -> dict[str, float | int | None]:
         status = await self.get_server_status()
@@ -517,7 +639,7 @@ class PanelClient:
             auth_latency_ms = int(round((time.monotonic() - started) * 1000))
         except Exception as exc:
             auth_latency_ms = int(round((time.monotonic() - started) * 1000))
-            error = str(exc)[:300]
+            error = panel_error_kind(exc)
         return {
             "node_code": str(getattr(self.node, "code", "") or ""),
             "panel_auth_ok": bool(auth_ok),
@@ -558,6 +680,9 @@ class PanelClient:
                 stream = {}
 
             reality = stream.get("realitySettings") or {}
+            private_key = reality.get("privateKey")
+            if private_key is None:
+                private_key = reality.get("private_key")
             short_ids = reality.get("shortIds") or []
             if isinstance(short_ids, str):
                 short_ids = [short_ids]
@@ -576,7 +701,7 @@ class PanelClient:
                 "dest": str(reality.get("dest") or ""),
                 "server_names": [str(x or "") for x in server_names if str(x or "").strip()],
                 "short_ids": [str(x or "") for x in short_ids if str(x or "").strip()],
-                "public_key": "",
+                "public_key": _derive_reality_public_key(str(private_key or "")),
             }
         return None
 
@@ -639,6 +764,14 @@ class PanelClient:
             return None
         return matches[0][1]
 
+    async def get_client_snapshot_by_tgid(self, tg_id: int) -> tuple[dict | None, dict | None]:
+        """Fetch the panel inbound list once for a user key and its runtime data."""
+        inbounds = await self._get_inbounds()
+        matches = await self.find_clients_by_tgid(tg_id, _inbounds=inbounds)
+        client = matches[0][1] if matches else None
+        runtime = await self.get_client_runtime_by_tgid(tg_id, _inbounds=inbounds) if client else None
+        return client, runtime
+
     async def find_clients_by_identity(
         self,
         *,
@@ -685,14 +818,19 @@ class PanelClient:
         matches.sort(key=lambda row: row[0])
         return matches
 
-    async def get_client_runtime_by_tgid(self, tg_id: int) -> dict | None:
+    async def get_client_runtime_by_tgid(
+        self,
+        tg_id: int,
+        *,
+        _inbounds: list[dict] | None = None,
+    ) -> dict | None:
         """
         Return best-effort runtime snapshot for a client on this node:
         - enable flag from panel client settings
         - traffic counters from clientStats
         - online status when the panel exposes it (field names vary by x-ui versions)
         """
-        inbounds = await self._get_inbounds()
+        inbounds = await self._get_inbounds() if _inbounds is None else _inbounds
         for inb in self._selected_inbounds(inbounds):
             settings = self._decode_settings(inb.get("settings", "{}"))
             clients = settings.get("clients", []) or []
@@ -1015,14 +1153,13 @@ class PanelClient:
                 ok = bool(data.get("success"))
                 if not ok:
                     logger.warning(
-                        "add_client legacy endpoint returned false node=%s inbound=%s msg=%s",
+                        "add_client legacy endpoint returned false node=%s inbound=%s",
                         self.node.code,
                         target_inbound_id,
-                        str(data.get("msg") or "")[:200],
                     )
                 return ok
         except Exception as e:
-            logger.exception("add_client error node=%s: %s", self.node.code, e)
+            logger.warning("add_client error node=%s error_kind=%s", self.node.code, type(e).__name__)
             return False
 
     async def _add_client_modern(self, *, client_obj: dict, inbound_id: int) -> bool:
@@ -1071,14 +1208,17 @@ class PanelClient:
                 ok = bool(data.get("success")) if isinstance(data, dict) else False
                 if not ok:
                     logger.warning(
-                        "add_client modern endpoint returned false node=%s inbound=%s msg=%s",
+                        "add_client modern endpoint returned false node=%s inbound=%s",
                         self.node.code,
                         inbound_id,
-                        str((data or {}).get("msg") if isinstance(data, dict) else "")[:200],
                     )
                 return ok
         except Exception as e:
-            logger.exception("add_client modern endpoint error node=%s: %s", self.node.code, e)
+            logger.warning(
+                "add_client modern endpoint error node=%s error_kind=%s",
+                self.node.code,
+                type(e).__name__,
+            )
             return False
 
     async def update_client_enable(
@@ -1158,14 +1298,17 @@ class PanelClient:
                 ok = bool(data.get("success"))
                 if not ok:
                     logger.warning(
-                        "update_client legacy endpoint returned false node=%s inbound=%s msg=%s",
+                        "update_client legacy endpoint returned false node=%s inbound=%s",
                         self.node.code,
                         target_inbound_id,
-                        str(data.get("msg") or "")[:200],
                     )
                 return ok
         except Exception as e:
-            logger.exception("update_client_enable error node=%s: %s", self.node.code, e)
+            logger.warning(
+                "update_client_enable error node=%s error_kind=%s",
+                self.node.code,
+                type(e).__name__,
+            )
             return False
 
     async def _update_client_modern(self, *, updated: dict, inbound_id: int) -> bool:
@@ -1209,14 +1352,17 @@ class PanelClient:
                 ok = bool(data.get("success")) if isinstance(data, dict) else False
                 if not ok:
                     logger.warning(
-                        "update_client modern endpoint returned false node=%s inbound=%s msg=%s",
+                        "update_client modern endpoint returned false node=%s inbound=%s",
                         self.node.code,
                         inbound_id,
-                        str((data or {}).get("msg") if isinstance(data, dict) else "")[:200],
                     )
                 return ok
         except Exception as e:
-            logger.exception("update_client modern endpoint error node=%s: %s", self.node.code, e)
+            logger.warning(
+                "update_client modern endpoint error node=%s error_kind=%s",
+                self.node.code,
+                type(e).__name__,
+            )
             return False
 
     async def _reset_client_traffic_by_email(self, *, email: str, inbound_id: int | None = None) -> bool:
@@ -1340,11 +1486,11 @@ class PanelClient:
                 data = await resp.json()
                 return bool(data.get("success"))
         except Exception as e:
-            logger.exception(
-                "delete_client_from_inbound error node=%s inbound_id=%s: %s",
+            logger.warning(
+                "delete_client_from_inbound error node=%s inbound_id=%s error_kind=%s",
                 self.node.code,
                 inbound_id,
-                e,
+                type(e).__name__,
             )
             return False
 
@@ -1388,17 +1534,15 @@ class PanelClient:
             ok_all = ok_all and ok
             if ok:
                 logger.info(
-                    "cleaned cross-inbound conflict node=%s from_inbound=%s client_uuid=%s",
+                    "cleaned cross-inbound conflict node=%s from_inbound=%s",
                     self.node.code,
                     inb_id,
-                    client_uuid,
                 )
             else:
                 logger.warning(
-                    "failed to clean cross-inbound conflict node=%s from_inbound=%s client_uuid=%s",
+                    "failed to clean cross-inbound conflict node=%s from_inbound=%s",
                     self.node.code,
                     inb_id,
-                    client_uuid,
                 )
         return ok_all
 
@@ -1565,6 +1709,52 @@ class PanelClient:
             )
         )
 
+    async def remove_client_explicit(
+        self,
+        *,
+        tg_id: int,
+        client_uuid: str,
+        email: str,
+        inbound_id: int,
+    ) -> bool:
+        """Delete one exact inbound identity and confirm absence after ambiguous ACKs."""
+        target_inbound_id = int(inbound_id or 0)
+        if target_inbound_id <= 0:
+            return False
+
+        async def _matching_rows() -> list[dict]:
+            rows = await self.find_clients_by_identity(
+                tg_id=int(tg_id),
+                client_uuid=str(client_uuid or ""),
+                email=str(email or ""),
+                include_disabled=True,
+            )
+            return [
+                dict(client or {})
+                for found_inbound, client in rows
+                if int(found_inbound or 0) == target_inbound_id
+            ]
+
+        matches = await _matching_rows()
+        if not matches:
+            return True
+        if len(matches) != 1:
+            return False
+        observed_uuid = str(matches[0].get("id") or "").strip()
+        if not observed_uuid or observed_uuid != str(client_uuid or "").strip():
+            return False
+        try:
+            deleted = await self._delete_client_from_inbound(
+                inbound_id=target_inbound_id,
+                client_uuid=observed_uuid,
+            )
+        except Exception:
+            deleted = False
+        remaining = await _matching_rows()
+        if remaining:
+            return False
+        return bool(deleted) or not remaining
+
     async def confirm_client_profile(
         self,
         *,
@@ -1621,8 +1811,15 @@ class PanelClient:
                         email = str((client or {}).get("email", "") or "").strip()
                         if email and email not in matched_emails:
                             matched_emails.append(email)
+            except PanelReadError:
+                raise
             except Exception as e:
-                logger.exception("delete_client_uuid lookup error node=%s: %s", self.node.code, e)
+                logger.warning(
+                    "delete_client_uuid lookup error node=%s error_kind=%s",
+                    self.node.code,
+                    type(e).__name__,
+                )
+                raise PanelReadError("panel_client_lookup_error") from None
 
         if matched_emails:
             ok_all = True
@@ -1652,7 +1849,12 @@ class PanelClient:
                     ok = bool(data.get("success"))
                     ok_any = ok_any or ok
             except Exception as e:
-                logger.exception("delete_client error node=%s inbound_id=%s: %s", self.node.code, inbound_id, e)
+                logger.warning(
+                    "delete_client error node=%s inbound_id=%s error_kind=%s",
+                    self.node.code,
+                    inbound_id,
+                    type(e).__name__,
+                )
         return ok_any
 
     async def delete_client_email(self, email: str, *, keep_traffic: bool = False) -> bool:
@@ -1677,7 +1879,11 @@ class PanelClient:
                 data = await resp.json()
                 return bool(data.get("success"))
         except Exception as e:
-            logger.exception("delete_client_email error node=%s email=%s: %s", self.node.code, clean_email, e)
+            logger.warning(
+                "delete_client_email error node=%s error_kind=%s",
+                self.node.code,
+                type(e).__name__,
+            )
             return False
 
     async def update_client_comment_by_tgid(self, tg_id: int, comment: str) -> bool:

@@ -107,6 +107,13 @@ pokrov.space:8444, www.pokrov.space:8444, app.pokrov.space:8444, www.app.pokrov.
 
   @api_hosts host api.pokrov.space
   handle @api_hosts {
+    @authenticated_egress_probe path /api/public/authenticated-egress-probe
+    handle @authenticated_egress_probe {
+      header X-Pokrov-Egress-Probe "pokrov-authenticated-egress-v1"
+      header Cache-Control "no-store"
+      respond "" 204
+    }
+
     @subscription path /s8Kx2mP7qR4wT/*
     handle @subscription {
       reverse_proxy 127.0.0.1:8080

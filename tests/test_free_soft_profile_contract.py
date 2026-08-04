@@ -10,6 +10,7 @@ from types import SimpleNamespace
 
 import pytest
 from sqlalchemy import create_engine
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker
 
 
@@ -27,6 +28,7 @@ def _node(
     *,
     panel_base_url: str = "https://nl-free.test:8444",
 ):
+    observed_at = datetime.now()
     return SimpleNamespace(
         code=code,
         access_role=role,
@@ -36,6 +38,12 @@ def _node(
         enabled=True,
         accepting_new_clients=True,
         is_draining=False,
+        is_healthy=True,
+        health_score=100.0,
+        last_health_at=observed_at,
+        last_probe_at=observed_at,
+        last_authenticated_egress_at=observed_at,
+        authenticated_egress_ok=True,
     )
 
 
@@ -256,6 +264,128 @@ def test_free_profile_transition_query_locks_canonical_user_row(session) -> None
     assert "FOR UPDATE" in compiled.upper()
 
 
+def test_reconcile_retries_only_deadlock_with_rollback_and_fresh_session(monkeypatch) -> None:
+    import free_cycle_service as service
+
+    user = _free_user(tg_id=1304)
+    sessions = []
+    reconciled = []
+    created_jobs = []
+
+    class Deadlock(Exception):
+        pgcode = "40P01"
+
+    class Query:
+        def filter(self, *_args):
+            return self
+
+        def with_for_update(self):
+            return self
+
+        def one_or_none(self):
+            return user
+
+    class Session:
+        def __init__(self):
+            self.events = []
+
+        def query(self, _model):
+            self.events.append("lock_user")
+            return Query()
+
+        def commit(self):
+            self.events.append("commit")
+
+        def rollback(self):
+            self.events.append("rollback")
+
+        def close(self):
+            self.events.append("close")
+
+    def make_session():
+        item = Session()
+        sessions.append(item)
+        return item
+
+    def reconcile(session, **_kwargs):
+        reconciled.append(session)
+        if len(reconciled) == 1:
+            raise OperationalError("SELECT FOR UPDATE", {}, Deadlock())
+        created_jobs.append("free_to_soft")
+        return {"queued": True, "job_id": 77, "reason": "threshold_reached"}
+
+    monkeypatch.setattr(service, "reconcile_free_profile_usage", reconcile)
+
+    result = service.reconcile_free_profile_usage_in_new_transaction(
+        tg_id=user.tg_id,
+        used_bytes=5 * GIB,
+        source="managed_profile_runtime",
+        session_factory=make_session,
+    )
+
+    assert result == {"queued": True, "job_id": 77, "reason": "threshold_reached"}
+    assert len(sessions) == 2
+    assert sessions[0].events == ["lock_user", "rollback", "close"]
+    assert sessions[1].events == ["lock_user", "commit", "close"]
+    assert reconciled == sessions
+    assert created_jobs == ["free_to_soft"]
+
+
+def test_reconcile_does_not_retry_non_transaction_operational_error(monkeypatch) -> None:
+    import free_cycle_service as service
+
+    user = _free_user(tg_id=1305)
+    sessions = []
+
+    class ConnectionFailure(Exception):
+        pgcode = "08006"
+
+    class Query:
+        def filter(self, *_args):
+            return self
+
+        def with_for_update(self):
+            return self
+
+        def one_or_none(self):
+            return user
+
+    class Session:
+        def __init__(self):
+            self.events = []
+
+        def query(self, _model):
+            self.events.append("lock_user")
+            return Query()
+
+        def rollback(self):
+            self.events.append("rollback")
+
+        def close(self):
+            self.events.append("close")
+
+    def make_session():
+        item = Session()
+        sessions.append(item)
+        return item
+
+    def reconcile(_session, **_kwargs):
+        raise OperationalError("SELECT FOR UPDATE", {}, ConnectionFailure())
+
+    monkeypatch.setattr(service, "reconcile_free_profile_usage", reconcile)
+
+    with pytest.raises(OperationalError):
+        service.reconcile_free_profile_usage_in_new_transaction(
+            tg_id=user.tg_id,
+            used_bytes=5 * GIB,
+            source="managed_profile_runtime",
+            session_factory=make_session,
+        )
+
+    assert len(sessions) == 1
+    assert sessions[0].events == ["lock_user", "rollback", "close"]
+
+
 def test_exact_finalize_lock_waits_instead_of_skipping_payment_row(session) -> None:
     from sqlalchemy.dialects import postgresql
 
@@ -375,6 +505,17 @@ def test_premium_pool_key_never_exposes_operator_lab(monkeypatch) -> None:
     selected = nodes_repo.eligible_nodes(object(), user, key=key)
 
     assert [node.code for node in selected] == ["nl-paid"]
+
+
+def test_subscription_does_not_restore_pool_when_every_node_is_hard_rejected(monkeypatch) -> None:
+    import nodes_repo
+
+    rejected = _node("nl-paid", "paid", 51)
+    rejected.is_healthy = False
+    user = SimpleNamespace(sub_type="PAID", current_plan_code="paid_30d", is_active=True)
+    monkeypatch.setattr(nodes_repo, "enabled_nodes", lambda _session: [rejected])
+
+    assert nodes_repo.eligible_nodes(object(), user, purpose="subscription") == []
 
 
 def test_api_paid_pool_never_exposes_operator_lab(api_module) -> None:

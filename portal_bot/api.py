@@ -35,12 +35,18 @@ from urllib.parse import parse_qsl, urlencode, urlparse
 import aiohttp
 from dotenv import load_dotenv
 from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Query, Request, Response
+from fastapi.exception_handlers import (
+    http_exception_handler,
+    request_validation_exception_handler,
+)
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, or_, case, func, text
 from sqlalchemy import text as sql_text
 from sqlalchemy.exc import IntegrityError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # Load env from repo-local file first to avoid cwd-dependent startup behavior.
 load_dotenv(dotenv_path=Path(__file__).resolve().with_name(".env"))
@@ -146,6 +152,7 @@ from support_ai_service import SupportAIConfig
 from support_agent_service import SupportAgentService, support_fallback_reply
 from nodes_repo import enabled_nodes
 from node_policy import (
+    AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED,
     CAPACITY_AWARE_NODE_SELECTION,
     KEY_PRESSURE_FAIR_USE_ROUTING,
     KEY_PRESSURE_SCORING,
@@ -167,6 +174,7 @@ from node_policy import (
     node_tx_ratio,
     node_tx_mbps,
     rank_nodes_for_app,
+    rank_nodes_legacy,
     rank_nodes_for_subscription,
     free_user_has_bounded_premium_trial,
     user_free_access_role,
@@ -191,6 +199,7 @@ from free_cycle_service import (
     mark_user_became_free,
     queue_free_profile_reentry,
     reconcile_free_profile_usage,
+    reconcile_free_profile_usage_in_new_transaction,
 )
 from email_auth_service import (
     DuplicateEmailIdentityError,
@@ -291,7 +300,7 @@ from shared_surface_facts import (
     get_public_urls,
     get_tariff_catalog,
 )
-from transport_catalog import LEGACY_REALITY_FALLBACK, OPERATOR_LAB, RESERVE_XHTTP_CDN, RU_BRIDGE_RELAY, node_transport_profiles, transport_profile_by_name
+from transport_catalog import LEGACY_REALITY_FALLBACK, OPERATOR_LAB, RESERVE_XHTTP_CDN, RU_BRIDGE_RELAY, has_explicit_transport_profile, node_transport_profiles, transport_profile_by_name
 from web_auth_service import (
     SESSION_TTL_SECONDS,
     build_telegram_oidc_authorize_url,
@@ -1918,14 +1927,14 @@ def _build_reconciled_access_policy(
 ) -> dict[str, Any]:
     current = now or _utcnow()
     if str(getattr(user, "sub_type", "") or "").strip().upper() == "FREE":
-        reconcile_free_profile_usage(
-            session,
-            user=user,
+        reconcile_free_profile_usage_in_new_transaction(
+            tg_id=int(user.tg_id),
             used_bytes=max(0, int(used_bytes or 0)),
             source=source,
             now=current,
+            session_factory=SessionLocal,
         )
-        session.commit()
+        session.refresh(user)
     return _build_access_policy(user=user, used_bytes=used_bytes, now=current)
 
 
@@ -1965,6 +1974,69 @@ def _maybe_downgrade_expired_to_free(s, user: User) -> bool:
 app = FastAPI(title="POKROV API", version="2.0.0")
 
 
+_AUTH_ERROR_HEADER = "X-POKROV-Auth-Error"
+_AUTH_ERROR_CODE_RE = re.compile(r"^[a-z0-9_]{1,64}$")
+_AUTH_ERROR_FALLBACK_CODES = {
+    400: "bad_request",
+    401: "auth_required",
+    403: "forbidden",
+    404: "resource_not_found",
+    409: "conflict",
+    422: "request_invalid",
+    429: "rate_limited",
+}
+
+
+def _has_explicit_auth_error_header(headers: dict[str, str] | None) -> bool:
+    return any(
+        str(name).lower() == _AUTH_ERROR_HEADER.lower()
+        for name in (headers or {})
+    )
+
+
+def _safe_auth_error_code(detail: Any) -> str | None:
+    if not isinstance(detail, dict):
+        return None
+    raw_code = detail.get("code")
+    if not isinstance(raw_code, str):
+        return None
+    code = raw_code.strip().lower()
+    return code if _AUTH_ERROR_CODE_RE.fullmatch(code) else None
+
+
+def _fallback_auth_error_code(status_code: int) -> str:
+    if int(status_code) >= 500:
+        return "service_unavailable"
+    return _AUTH_ERROR_FALLBACK_CODES.get(int(status_code), "request_failed")
+
+
+@app.exception_handler(StarletteHTTPException)
+async def add_auth_error_header(
+    request: Request,
+    exc: StarletteHTTPException,
+) -> Response:
+    """Add one safe machine-readable code without changing FastAPI's error body."""
+    response = await http_exception_handler(request, exc)
+    if _has_explicit_auth_error_header(exc.headers):
+        return response
+    response.headers[_AUTH_ERROR_HEADER] = (
+        _safe_auth_error_code(exc.detail)
+        or _fallback_auth_error_code(exc.status_code)
+    )
+    return response
+
+
+@app.exception_handler(RequestValidationError)
+async def add_validation_error_header(
+    request: Request,
+    exc: RequestValidationError,
+) -> Response:
+    """Keep FastAPI's standard 422 response while adding its stable header."""
+    response = await request_validation_exception_handler(request, exc)
+    response.headers[_AUTH_ERROR_HEADER] = "request_invalid"
+    return response
+
+
 @app.middleware("http")
 async def bind_current_request(request: Request, call_next):
     token = _current_request_ctx.set(request)
@@ -1980,6 +2052,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=[_AUTH_ERROR_HEADER],
 )
 SUPPORT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -8197,7 +8270,6 @@ async def _get_user_runtime_summary(*, s, user: User, nodes: list[Node] | None =
     panel_error = ""
     panel = ControlPanel()
     try:
-        await panel.login()
         panel_rows = await panel.get_user_key_snapshots(tg_id=int(user.tg_id), node_codes=node_codes)
     except Exception as exc:
         panel_error = str(exc)[:200]

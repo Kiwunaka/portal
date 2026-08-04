@@ -586,6 +586,8 @@ def test_start_trial_requires_recovery_for_existing_device_session(monkeypatch, 
         before = (user.app_device_name, user.app_platform, user.app_last_seen_at, user.app_last_ip)
     finally:
         db.close()
+
+
     second = client.post(
         "/api/client/session/start-trial",
         headers={"X-Real-IP": "203.0.113.77"},
@@ -611,6 +613,46 @@ def test_start_trial_requires_recovery_for_existing_device_session(monkeypatch, 
         assert after == before
     finally:
         db.close()
+
+
+def test_app_route_policy_rejects_empty_selected_apps_without_persisting(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-route-empty-selected-apps",
+            "device_name": "Windows PC",
+            "platform": "windows",
+            "os_version": "11",
+            "app_version": "1.0.0",
+            "locale": "ru",
+            "time_zone": "Europe/Moscow",
+            "trial_days": 5,
+        },
+    )
+    assert trial_response.status_code == 200
+    token = trial_response.json()["session_token"]
+
+    response = client.post(
+        "/api/client/route-policy",
+        headers={"Authorization": f"Bearer {token}"},
+        json={"route_mode": "selected_apps", "selected_apps": []},
+    )
+
+    assert response.status_code == 422
+    assert response.json()["detail"] == {
+        "code": "selected_apps_required",
+        "message": "Select at least one app before using selected-apps routing.",
+    }
+    persisted = client.get(
+        "/api/client/route-policy",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert persisted.status_code == 200
+    assert persisted.json()["route_mode"] == "all_traffic"
+    assert persisted.json()["selected_apps"] == []
 
 
 def test_failed_bootstrap_does_not_consume_unreturned_refresh_credential(monkeypatch, tmp_path):

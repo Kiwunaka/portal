@@ -4,6 +4,8 @@ import json
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from sqlalchemy.exc import OperationalError
+
 from control_panel import ControlPanel  # Retained as a compatibility/test seam; scheduler never instantiates it.
 from db import SessionLocal
 from models import Node, NodeProvisioningJob, User
@@ -12,6 +14,8 @@ from node_policy import FREE_SOFT_ROLE, FREE_STANDARD_QUOTA_BYTES, PAID_ROLE, no
 
 FREE_CYCLE_DAYS = 30
 _PREMIUM_FREE_PLAN_CODES = frozenset({"trial", "channel_bonus", "start_99"})
+_POSTGRES_RETRYABLE_TRANSACTION_CODES = frozenset({"40P01", "40001"})
+_RECONCILE_MAX_ATTEMPTS = 2
 
 
 def _utcnow() -> datetime:
@@ -179,6 +183,61 @@ def reconcile_free_profile_usage(
     user.free_profile_job_id = int(job.id)
     user.free_profile_error_code = None
     return {"queued": True, "job_id": int(job.id), "reason": "threshold_reached"}
+
+
+def _is_retryable_postgres_transaction_error(exc: OperationalError) -> bool:
+    """Return True only for PostgreSQL deadlock or serialization failures."""
+    original = getattr(exc, "orig", None)
+    code = getattr(original, "pgcode", None) or getattr(original, "sqlstate", None)
+    return str(code or "").upper() in _POSTGRES_RETRYABLE_TRANSACTION_CODES
+
+
+def reconcile_free_profile_usage_in_new_transaction(
+    *,
+    tg_id: int,
+    used_bytes: int,
+    source: str,
+    now: datetime | None = None,
+    session_factory=SessionLocal,
+    max_attempts: int = _RECONCILE_MAX_ATTEMPTS,
+) -> dict[str, Any]:
+    """
+    Reconcile one FREE profile in a short transaction that locks User first.
+
+    Request handlers may have a long-lived read session while collecting panel
+    telemetry.  Keeping the transition out of that session prevents it from
+    acquiring the User row after unrelated work.  A PostgreSQL deadlock or
+    serialization failure aborts its transaction, so each bounded retry uses a
+    newly created session after rollback.  Other database errors are re-raised.
+    """
+    attempts = max(1, min(int(max_attempts or 1), _RECONCILE_MAX_ATTEMPTS))
+    for attempt in range(attempts):
+        session = session_factory()
+        try:
+            user = _locked_free_profile_user_query(session, tg_id=int(tg_id)).one_or_none()
+            if user is None:
+                return {"queued": False, "job_id": None, "reason": "user_not_found"}
+            result = reconcile_free_profile_usage(
+                session,
+                user=user,
+                used_bytes=max(0, int(used_bytes or 0)),
+                source=source,
+                now=now,
+            )
+            session.commit()
+            return result
+        except OperationalError as exc:
+            session.rollback()
+            if _is_retryable_postgres_transaction_error(exc) and attempt + 1 < attempts:
+                continue
+            raise
+        except Exception:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+    raise RuntimeError("unreachable free profile reconciliation retry state")
 
 
 def queue_free_profile_reset(

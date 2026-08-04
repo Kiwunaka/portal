@@ -5,6 +5,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
+TimeoutStartSec=180s
 WorkingDirectory=/root/portal_bot
 EnvironmentFile=-/root/portal_bot/.env
 ExecStart=/root/portal_bot/venv/bin/python /root/portal_bot/collect_node_metrics.py

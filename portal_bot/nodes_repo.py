@@ -55,6 +55,13 @@ class NodeRuntime:
     network_tx_mbps_5m: float | None = None
     tcp_retrans_percent: float | None = None
     packet_loss_percent: float | None = None
+    disk_used_gb: float | None = None
+    disk_total_gb: float | None = None
+    disk_free_gb: float | None = None
+    edge_reachability_ok: bool | None = None
+    authenticated_egress_ok: bool | None = None
+    last_authenticated_egress_at: datetime | None = None
+    authenticated_egress_error_kind: str | None = None
     dataplane_ok: bool | None = None
     dataplane_rtt_ms: int | None = None
     capacity_score: float | None = None
@@ -124,6 +131,13 @@ def legacy_node() -> NodeRuntime:
         network_tx_mbps_5m=None,
         tcp_retrans_percent=None,
         packet_loss_percent=None,
+        disk_used_gb=None,
+        disk_total_gb=None,
+        disk_free_gb=None,
+        edge_reachability_ok=None,
+        authenticated_egress_ok=None,
+        last_authenticated_egress_at=None,
+        authenticated_egress_error_kind=None,
         dataplane_ok=None,
         dataplane_rtt_ms=None,
         capacity_score=None,
@@ -183,6 +197,13 @@ def enabled_nodes(session) -> list[NodeRuntime]:
                 network_tx_mbps_5m=getattr(n, "network_tx_mbps_5m", None),
                 tcp_retrans_percent=getattr(n, "tcp_retrans_percent", None),
                 packet_loss_percent=getattr(n, "packet_loss_percent", None),
+                disk_used_gb=getattr(n, "disk_used_gb", None),
+                disk_total_gb=getattr(n, "disk_total_gb", None),
+                disk_free_gb=getattr(n, "disk_free_gb", None),
+                edge_reachability_ok=getattr(n, "edge_reachability_ok", None),
+                authenticated_egress_ok=getattr(n, "authenticated_egress_ok", None),
+                last_authenticated_egress_at=getattr(n, "last_authenticated_egress_at", None),
+                authenticated_egress_error_kind=getattr(n, "authenticated_egress_error_kind", None),
                 dataplane_ok=getattr(n, "dataplane_ok", None),
                 dataplane_rtt_ms=getattr(n, "dataplane_rtt_ms", None),
                 capacity_score=getattr(n, "capacity_score", None),
@@ -220,9 +241,7 @@ def eligible_nodes(session, user, key=None, purpose: str = "subscription") -> li
                 pool = paid_pool_nodes(nodes)
 
     if str(purpose or "").strip().lower() in {"subscription", "profile", "smart_connect"}:
-        ranked = rank_nodes_for_subscription(pool)
-        if ranked:
-            return ranked
+        return rank_nodes_for_subscription(pool)
     return [
         node
         for node in rank_nodes_for_subscription(pool)

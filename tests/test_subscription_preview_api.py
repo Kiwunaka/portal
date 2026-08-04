@@ -87,7 +87,7 @@ def test_client_subscription_preview_ignores_partial_provisioning_evidence(monke
     assert response.json()["node_order"] == ["pl", "de", "it"]
 
 
-def test_client_subscription_preview_keeps_unhealthy_nodes_as_fallback(monkeypatch, tmp_path) -> None:
+def test_client_subscription_preview_excludes_unhealthy_nodes(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
 
@@ -108,7 +108,61 @@ def test_client_subscription_preview_keeps_unhealthy_nodes_as_fallback(monkeypat
     response = client.get("/api/client/subscription/preview?format=vless", headers=_auth_headers(start_body))
 
     assert response.status_code == 200, response.text
-    assert response.json()["node_order"] == ["pl", "de", "it"]
+    assert response.json()["node_order"] == ["pl", "de"]
+
+
+def test_client_subscription_preview_excludes_disk_full_runtime_projection(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    now = _utcnow()
+    _add_node(
+        api,
+        code="pl",
+        health_score=99.0,
+        weight=110,
+        disk_used_gb=96.0,
+        disk_total_gb=100.0,
+        disk_free_gb=4.0,
+        last_health_at=now,
+    )
+    _add_node(api, code="de", health_score=95.0, weight=105, last_health_at=now)
+
+    start_body = _start_trial(client, install_id="install-subscription-disk-policy-runtime")
+    response = client.get("/api/client/subscription/preview?format=vless", headers=_auth_headers(start_body))
+
+    assert response.status_code == 200, response.text
+    assert response.json()["node_order"] == ["de"]
+
+
+def test_free_subscription_preview_excludes_disk_full_canonical_node(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    now = _utcnow()
+    _add_node(
+        api,
+        code="nl-free",
+        health_score=99.0,
+        disk_used_gb=96.0,
+        disk_total_gb=100.0,
+        disk_free_gb=4.0,
+        last_health_at=now,
+    )
+
+    start_body = _start_trial(client, install_id="install-free-subscription-disk-policy-runtime")
+    db = api.SessionLocal()
+    try:
+        user = db.query(api.User).filter(api.User.tg_id == int(start_body["account_id"])).first()
+        assert user is not None
+        user.current_plan_code = "free_monthly"
+        user.sub_type = "FREE"
+        db.commit()
+    finally:
+        db.close()
+
+    response = client.get("/api/client/subscription/preview?format=vless", headers=_auth_headers(start_body))
+
+    assert response.status_code == 200, response.text
+    assert response.json()["node_order"] == []
 
 
 def test_admin_subscription_preview_debugs_order_without_raw_subscription_secret(monkeypatch, tmp_path) -> None:

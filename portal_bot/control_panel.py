@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -26,10 +27,41 @@ from node_policy import (
     validate_node_access_roles,
 )
 from nodes_repo import enabled_nodes
-from panel_client import PanelClient
+from panel_client import PanelClient, panel_error_kind
 
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class RotationPanelResult:
+    status: str
+    code: str
+
+    @property
+    def succeeded(self) -> bool:
+        return self.status == "succeeded"
+
+    @property
+    def manual_review(self) -> bool:
+        return self.status == "manual_review"
+
+    def __bool__(self) -> bool:
+        return self.succeeded
+
+
+@dataclass(frozen=True)
+class PanelUserSnapshot:
+    tg_id: int
+    uuid: str
+    email: str
+    sub_token: str
+    sub_type: str
+    current_plan_code: str | None
+    is_active: bool
+    expiry_at: object | None
+    free_profile_state: str
+    free_profile_active_role: str
 
 
 class ControlPanel:
@@ -78,21 +110,23 @@ class ControlPanel:
         s = SessionLocal()
         try:
             nodes = enabled_nodes(s)
-            # Keep existing clients if node code matches, otherwise rebuild.
-            codes = {n.code for n in nodes}
-            for code in list(self._clients.keys()):
-                if code not in codes:
-                    try:
-                        await self._clients[code].close()
-                    except Exception:
-                        pass
-                    self._clients.pop(code, None)
-            for n in nodes:
-                if n.code not in self._clients:
-                    self._clients[n.code] = PanelClient(n)
-            return nodes
         finally:
             s.close()
+        validate_node_access_roles(nodes)
+        # Keep existing clients if node code matches, otherwise rebuild. The DB
+        # session is closed before any async client cleanup.
+        codes = {n.code for n in nodes}
+        for code in list(self._clients.keys()):
+            if code not in codes:
+                try:
+                    await self._clients[code].close()
+                except Exception:
+                    pass
+                self._clients.pop(code, None)
+        for n in nodes:
+            if n.code not in self._clients:
+                self._clients[n.code] = PanelClient(n)
+        return nodes
 
     @staticmethod
     def _compare_node_inbound(node, runtime: dict | None, *, error: str = "") -> dict:
@@ -100,6 +134,7 @@ class ControlPanel:
         expected_sni = str(getattr(node, "reality_sni", "") or "").strip()
         expected_sid = str(getattr(node, "reality_sid", "") or "").strip()
         expected_pbk = str(getattr(node, "reality_pbk", "") or "").strip()
+        runtime_pbk = str(runtime.get("public_key") or "").strip()
         server_names = [str(x or "").strip() for x in runtime.get("server_names", [])]
         dest = str(runtime.get("dest", "") or "").strip()
         checks = {
@@ -111,7 +146,7 @@ class ControlPanel:
             "security_match": str(runtime.get("security") or "") == "reality",
             "sni_match": (not expected_sni) or (expected_sni in server_names) or dest.startswith(f"{expected_sni}:"),
             "sid_match": (not expected_sid) or (expected_sid in [str(x or "").strip() for x in runtime.get("short_ids", [])]),
-            "pbk_match": (not expected_pbk) or (not str(runtime.get("public_key") or "")) or (expected_pbk == str(runtime.get("public_key") or "")),
+            "pbk_match": (not expected_pbk) or (bool(runtime_pbk) and expected_pbk == runtime_pbk),
         }
         mismatches = [name for name, ok in checks.items() if not ok]
         return {
@@ -155,7 +190,7 @@ class ControlPanel:
                 if not runtime:
                     error = "inbound_not_found"
             except Exception as exc:
-                error = str(exc)[:200]
+                error = panel_error_kind(exc)
             results.append(self._compare_node_inbound(n, runtime, error=error))
 
         return {
@@ -248,7 +283,7 @@ class ControlPanel:
                     s.add(UserNode(tg_id=tg_id, node_id=n.id, client_uuid=client_uuid, panel_email=email))
             s.commit()
         except Exception as e:
-            logger.warning("user_nodes persist failed: %s", e)
+            logger.warning("user_nodes persist failed error_kind=%s", type(e).__name__)
         finally:
             s.close()
 
@@ -271,20 +306,32 @@ class ControlPanel:
         groups = self._requested_node_groups(nodes, node_codes or [])
         results: dict[str, bool] = {}
         for _group_key, candidates in groups:
-            toggled = False
             for n in candidates:
                 try:
-                    c = await self._clients[n.code].find_client_by_tgid(tg_id)
-                    if not c:
-                        continue
-                    results[n.code] = await self._clients[n.code].update_client_enable(c, enable, sub_id=sub_id)
-                    toggled = True
-                    break
+                    matches = await self._clients[n.code].find_clients_by_tgid(
+                        int(tg_id),
+                        include_disabled=True,
+                    )
                 except Exception:
                     results[n.code] = False
-            if not toggled and candidates:
-                # User absent on the pool is not an error for compatibility.
-                results[candidates[0].code] = True
+                    continue
+                if not matches:
+                    # A successful exhaustive read proves absence.
+                    results[n.code] = True
+                    continue
+                updated_all = True
+                for inbound_id, client in matches:
+                    try:
+                        updated = await self._clients[n.code].update_client_enable(
+                            client,
+                            bool(enable),
+                            sub_id=sub_id,
+                            inbound_id=int(inbound_id),
+                        )
+                    except Exception:
+                        updated = False
+                    updated_all = updated_all and bool(updated)
+                results[n.code] = updated_all
         return results
 
     async def get_user_key_snapshots(
@@ -308,31 +355,30 @@ class ControlPanel:
         else:
             selected_nodes = list(nodes)
 
-        rows: list[dict] = []
-        for n in selected_nodes:
-            code = str(getattr(n, "code", "") or "").strip()
+        semaphore = asyncio.Semaphore(max(1, int(self._concurrency or 1)))
+
+        async def _collect(node) -> dict:
+            code = str(getattr(node, "code", "") or "").strip()
             client = None
             runtime = None
             error = ""
             try:
-                client = await self._clients[code].find_client_by_tgid(int(tg_id))
-                if client:
-                    runtime = await self._clients[code].get_client_runtime_by_tgid(int(tg_id))
+                async with semaphore:
+                    client, runtime = await self._clients[code].get_client_snapshot_by_tgid(int(tg_id))
             except Exception as exc:
-                error = str(exc)[:200]
-            rows.append(
-                {
-                    "node_code": code,
-                    "node_name": str(getattr(n, "name", "") or ""),
-                    "node_host": str(getattr(n, "host", "") or ""),
-                    "node_enabled": bool(getattr(n, "enabled", True)),
-                    "node_healthy": bool(getattr(n, "is_healthy", False)),
-                    "client": client,
-                    "runtime": runtime,
-                    "error": error,
-                }
-            )
-        return rows
+                error = panel_error_kind(exc)
+            return {
+                "node_code": code,
+                "node_name": str(getattr(node, "name", "") or ""),
+                "node_host": str(getattr(node, "host", "") or ""),
+                "node_enabled": bool(getattr(node, "enabled", True)),
+                "node_healthy": bool(getattr(node, "is_healthy", False)),
+                "client": client,
+                "runtime": runtime,
+                "error": error,
+            }
+
+        return await asyncio.gather(*[_collect(node) for node in selected_nodes], return_exceptions=False)
 
     async def get_node_online_summaries(self, *, node_codes: list[str] | None = None) -> dict[str, dict]:
         nodes = await self.refresh()
@@ -360,7 +406,7 @@ class ControlPanel:
                 summary = {
                     "online_keys_now": 0,
                     "online_connections_now": 0,
-                    "panel_error": str(exc)[:200],
+                    "panel_error": panel_error_kind(exc),
                 }
             return code, summary
 
@@ -450,7 +496,7 @@ class ControlPanel:
                         "panel_latency_ms": None,
                         "csrf_mode": False,
                         "api_token_mode": False,
-                        "error": str(exc)[:300],
+                        "error": panel_error_kind(exc),
                         "server_status": None,
                         "system": {},
                         "inbound": None,
@@ -618,45 +664,522 @@ class ControlPanel:
         *,
         tg_id: int,
         node_code: str,
+        old_key_uuid: str,
         new_key_uuid: str,
         sub_id: str,
-    ) -> bool:
+    ) -> RotationPanelResult:
         node = await self._resolve_target_node(node_code)
         if node is None:
+            return RotationPanelResult("retry", "rotation_panel_failed")
+        return await self._rotate_user_key_on_nodes(
+            nodes=[node],
+            tg_id=tg_id,
+            old_key_uuid=old_key_uuid,
+            new_key_uuid=new_key_uuid,
+            sub_id=sub_id,
+        )
+
+    async def get_user_profile_state_on_node(
+        self,
+        *,
+        tg_id: int,
+        client_uuid: str,
+        email: str,
+        node_code: str,
+        expected_access_role: str,
+    ) -> str:
+        """Return the exact canonical-inbound preimage for compensation."""
+        node = await self._resolve_exact_role_node(node_code, expected_access_role)
+        if node is None:
+            raise RuntimeError("profile_node_missing")
+        rows = await self._clients[str(node.code)].find_clients_by_identity(
+            tg_id=int(tg_id),
+            client_uuid=str(client_uuid or ""),
+            email=str(email or ""),
+            include_disabled=True,
+        )
+        matching = [
+            dict(client or {})
+            for inbound_id, client in rows
+            if int(inbound_id or 0) == int(node.inbound_id or 0)
+        ]
+        if not matching:
+            return "absent"
+        if len(matching) != 1:
+            raise RuntimeError("profile_state_ambiguous")
+        return "enabled" if bool(matching[0].get("enable", True)) else "disabled"
+
+    async def restore_user_profile_state_on_node(
+        self,
+        *,
+        tg_id: int,
+        client_uuid: str,
+        email: str,
+        sub_id: str,
+        node_code: str,
+        expected_access_role: str,
+        state: str,
+    ) -> bool:
+        """Restore one canonical inbound to a previously recorded safe state."""
+        node = await self._resolve_exact_role_node(node_code, expected_access_role)
+        if node is None:
             return False
-        client = await self._clients[str(node.code)].find_client_by_tgid(int(tg_id))
-        if client is None:
+        normalized_state = str(state or "").strip().lower()
+        client = self._clients[str(node.code)]
+        if normalized_state == "absent":
+            return bool(
+                await client.remove_client_explicit(
+                    tg_id=int(tg_id),
+                    client_uuid=str(client_uuid or ""),
+                    email=str(email or ""),
+                    inbound_id=int(node.inbound_id),
+                )
+            )
+        if normalized_state not in {"enabled", "disabled"}:
             return False
-        if str(client.get("id") or "").strip() == str(new_key_uuid or "").strip():
-            return True
-        updated = dict(client)
-        updated["id"] = str(new_key_uuid or "")
-        updated["tgId"] = str(int(tg_id))
-        role = node_access_role(node)
+        role = node_access_role(node, strict=True)
         total_bytes = FREE_STANDARD_QUOTA_BYTES if role == FREE_STANDARD_ROLE else 0
         limit_ip = 1 if role in {FREE_STANDARD_ROLE, FREE_SOFT_ROLE} else 5
-        ok = await self._clients[str(node.code)].update_client_enable(
-            updated,
-            bool(client.get("enable", True)),
+        enabled = normalized_state == "enabled"
+        ensured = await client.ensure_client_explicit(
+            tg_id=int(tg_id),
+            client_uuid=str(client_uuid or ""),
+            email=str(email or ""),
             sub_id=str(sub_id or ""),
+            enable=enabled,
             inbound_id=int(node.inbound_id),
-            total_bytes_override=total_bytes,
-            limit_ip_override=limit_ip,
-            lookup_client_uuid=str(client.get("id") or ""),
+            total_bytes=total_bytes,
+            limit_ip=limit_ip,
         )
-        if not ok:
+        if not ensured:
             return False
-        return bool(
-            await self._clients[str(node.code)].confirm_client_profile(
+        if role == "paid":
+            restored_all = await self.set_user_profile_enabled_on_node(
                 tg_id=int(tg_id),
-                client_uuid=str(new_key_uuid or ""),
+                node_code=str(node.code),
+                expected_access_role=role,
+                enable=enabled,
+                sub_id=str(sub_id or ""),
+            )
+            if not restored_all:
+                return False
+        return bool(
+            await client.confirm_client_profile(
+                tg_id=int(tg_id),
+                client_uuid=str(client_uuid or ""),
+                email=str(email or ""),
+                inbound_id=int(node.inbound_id),
+                total_bytes=total_bytes,
+                limit_ip=limit_ip,
+                enabled=enabled,
+            )
+        )
+
+    async def _read_rotation_client(self, *, node, tg_id: int) -> dict | None:
+        """Read exactly one client on the node's managed inbound, or fail closed."""
+        panel_client = self._clients[str(node.code)]
+        rows = await panel_client.find_clients_by_tgid(int(tg_id), include_disabled=True)
+        if not rows:
+            return None
+        matching = [
+            dict(client or {})
+            for inbound_id, client in rows
+            if int(inbound_id or 0) == int(getattr(node, "inbound_id", 0) or 0)
+        ]
+        # A same-account client outside the canonical inbound is not absence:
+        # it is ambiguous ownership and must block rotation before any write.
+        if len(rows) != 1 or len(matching) != 1:
+            raise RuntimeError("rotation_panel_ambiguous")
+        return matching[0]
+
+    @staticmethod
+    def _rotation_observation(client: dict | None, *, old_key_uuid: str, new_key_uuid: str) -> str:
+        if client is None:
+            return "unknown"
+        observed = str(client.get("id") or "").strip()
+        if observed == str(old_key_uuid or "").strip():
+            return "old"
+        if observed == str(new_key_uuid or "").strip():
+            return "new"
+        return "unknown"
+
+    async def _write_rotation_client(
+        self,
+        *,
+        node,
+        client: dict,
+        tg_id: int,
+        old_key_uuid: str,
+        new_key_uuid: str,
+        sub_id: str,
+    ) -> str:
+        old_uuid = str(old_key_uuid or "").strip()
+        new_uuid = str(new_key_uuid or "").strip()
+        if not old_uuid or not new_uuid or str(client.get("id") or "").strip() != old_uuid:
+            return "unknown"
+        updated = dict(client)
+        updated["id"] = new_uuid
+        updated["tgId"] = str(int(tg_id))
+        try:
+            role = node_access_role(node)
+            total_bytes = FREE_STANDARD_QUOTA_BYTES if role == FREE_STANDARD_ROLE else 0
+            limit_ip = 1 if role in {FREE_STANDARD_ROLE, FREE_SOFT_ROLE} else 5
+            ok = await self._clients[str(node.code)].update_client_enable(
+                updated,
+                bool(client.get("enable", True)),
+                sub_id=str(sub_id or ""),
+                inbound_id=int(node.inbound_id),
+                total_bytes_override=total_bytes,
+                limit_ip_override=limit_ip,
+                lookup_client_uuid=old_uuid,
+            )
+        except Exception:
+            ok = False
+        # A false/exceptional write is ambiguous. Always read back before
+        # deciding whether this node was changed and needs compensation.
+        try:
+            observed = await self._read_rotation_client(node=node, tg_id=int(tg_id))
+        except Exception:
+            return "unknown"
+        state = self._rotation_observation(observed, old_key_uuid=old_uuid, new_key_uuid=new_uuid)
+        if not ok:
+            return "new_ambiguous" if state == "new" else state
+        if state != "new":
+            return state
+        try:
+            confirmed = await self._clients[str(node.code)].confirm_client_profile(
+                tg_id=int(tg_id),
+                client_uuid=new_uuid,
                 email=str(updated.get("email") or ""),
                 inbound_id=int(node.inbound_id),
                 total_bytes=total_bytes,
                 limit_ip=limit_ip,
                 enabled=bool(client.get("enable", True)),
             )
+        except Exception:
+            confirmed = False
+        if confirmed:
+            return "new"
+        try:
+            observed = await self._read_rotation_client(node=node, tg_id=int(tg_id))
+        except Exception:
+            return "unknown"
+        state = self._rotation_observation(observed, old_key_uuid=old_uuid, new_key_uuid=new_uuid)
+        return "new_unconfirmed" if state == "new" else state
+
+    async def _restore_exact_client_on_node(
+        self,
+        *,
+        node,
+        client: dict,
+        tg_id: int,
+        old_key_uuid: str,
+        new_key_uuid: str,
+        sub_id: str,
+    ) -> bool:
+        old_uuid = str(old_key_uuid or "").strip()
+        new_uuid = str(new_key_uuid or "").strip()
+        if not old_uuid or not new_uuid:
+            return False
+        restored = dict(client)
+        restored["id"] = old_uuid
+        restored["tgId"] = str(int(tg_id))
+        try:
+            role = node_access_role(node)
+            total_bytes = FREE_STANDARD_QUOTA_BYTES if role == FREE_STANDARD_ROLE else 0
+            limit_ip = 1 if role in {FREE_STANDARD_ROLE, FREE_SOFT_ROLE} else 5
+            ok = await self._clients[str(node.code)].update_client_enable(
+                restored,
+                bool(client.get("enable", True)),
+                sub_id=str(sub_id or ""),
+                inbound_id=int(node.inbound_id),
+                total_bytes_override=total_bytes,
+                limit_ip_override=limit_ip,
+                lookup_client_uuid=new_uuid,
+            )
+        except Exception:
+            ok = False
+        try:
+            observed = await self._read_rotation_client(node=node, tg_id=int(tg_id))
+        except Exception:
+            return False
+        state = self._rotation_observation(observed, old_key_uuid=old_uuid, new_key_uuid=new_uuid)
+        if state != "old":
+            return False
+        try:
+            return bool(
+                await self._clients[str(node.code)].confirm_client_profile(
+                    tg_id=int(tg_id),
+                    client_uuid=old_uuid,
+                    email=str(restored.get("email") or ""),
+                    inbound_id=int(node.inbound_id),
+                    total_bytes=total_bytes,
+                    limit_ip=limit_ip,
+                    enabled=bool(client.get("enable", True)),
+                )
+            )
+        except Exception:
+            return False
+
+    async def _apply_rotation_runtime_and_confirm(
+        self,
+        *,
+        node,
+        client: dict,
+        tg_id: int,
+        expected_key_uuid: str,
+    ) -> bool:
+        """Apply a confirmed panel UUID state to Xray, then recheck panel state.
+
+        The post-apply readback confirms the durable panel client row. The
+        authenticated restart acknowledgement plus an `xray.state=running`
+        status read is the runtime-apply signal; a panel readback alone must
+        never be treated as that signal.
+        """
+        panel_client = self._clients[str(node.code)]
+        try:
+            applied = await panel_client.restart_xray_service()
+        except Exception:
+            return False
+        if not applied:
+            return False
+        try:
+            ready = await panel_client.wait_for_xray_running()
+        except Exception:
+            return False
+        if not ready:
+            return False
+        try:
+            observed = await self._read_rotation_client(node=node, tg_id=int(tg_id))
+        except Exception:
+            return False
+        if str((observed or {}).get("id") or "").strip() != str(expected_key_uuid or "").strip():
+            return False
+        try:
+            role = node_access_role(node)
+            total_bytes = FREE_STANDARD_QUOTA_BYTES if role == FREE_STANDARD_ROLE else 0
+            limit_ip = 1 if role in {FREE_STANDARD_ROLE, FREE_SOFT_ROLE} else 5
+            return bool(
+                await panel_client.confirm_client_profile(
+                    tg_id=int(tg_id),
+                    client_uuid=str(expected_key_uuid or ""),
+                    email=str(client.get("email") or ""),
+                    inbound_id=int(node.inbound_id),
+                    total_bytes=total_bytes,
+                    limit_ip=limit_ip,
+                    enabled=bool(client.get("enable", True)),
+                )
+            )
+        except Exception:
+            return False
+
+    async def rotate_user_key_on_existing_nodes(
+        self,
+        *,
+        tg_id: int,
+        old_key_uuid: str,
+        new_key_uuid: str,
+        sub_id: str,
+    ) -> RotationPanelResult:
+        """Rotate every existing enabled-inventory copy without provisioning absent nodes."""
+        nodes = await self.refresh()
+        return await self._rotate_user_key_on_nodes(
+            nodes=nodes,
+            tg_id=tg_id,
+            old_key_uuid=old_key_uuid,
+            new_key_uuid=new_key_uuid,
+            sub_id=sub_id,
         )
+
+    async def rollback_user_key_rotation_on_node(
+        self,
+        *,
+        tg_id: int,
+        node_code: str,
+        old_key_uuid: str,
+        new_key_uuid: str,
+        sub_id: str,
+    ) -> RotationPanelResult:
+        node = await self._resolve_target_node(node_code)
+        if node is None:
+            return RotationPanelResult("manual_review", "rotation_compensation_failed")
+        return await self._rollback_user_key_rotation_on_nodes(
+            nodes=[node],
+            tg_id=tg_id,
+            old_key_uuid=old_key_uuid,
+            new_key_uuid=new_key_uuid,
+            sub_id=sub_id,
+        )
+
+    async def rollback_user_key_rotation_on_existing_nodes(
+        self,
+        *,
+        tg_id: int,
+        old_key_uuid: str,
+        new_key_uuid: str,
+        sub_id: str,
+    ) -> RotationPanelResult:
+        return await self._rollback_user_key_rotation_on_nodes(
+            nodes=await self.refresh(),
+            tg_id=tg_id,
+            old_key_uuid=old_key_uuid,
+            new_key_uuid=new_key_uuid,
+            sub_id=sub_id,
+        )
+
+    async def _rollback_user_key_rotation_on_nodes(
+        self,
+        *,
+        nodes: list,
+        tg_id: int,
+        old_key_uuid: str,
+        new_key_uuid: str,
+        sub_id: str,
+    ) -> RotationPanelResult:
+        found = False
+        complete = True
+        runtime_reconcile: list[tuple[object, dict]] = []
+        for node in nodes:
+            code = str(getattr(node, "code", "") or "").strip()
+            if not code or code not in self._clients:
+                continue
+            try:
+                client = await self._read_rotation_client(node=node, tg_id=int(tg_id))
+            except Exception:
+                complete = False
+                continue
+            if client is None:
+                continue
+            found = True
+            state = self._rotation_observation(client, old_key_uuid=old_key_uuid, new_key_uuid=new_key_uuid)
+            if state == "old":
+                runtime_reconcile.append((node, client))
+                continue
+            if state != "new" or not await self._restore_exact_client_on_node(
+                node=node,
+                client=client,
+                tg_id=int(tg_id),
+                old_key_uuid=old_key_uuid,
+                new_key_uuid=new_key_uuid,
+                sub_id=sub_id,
+            ):
+                complete = False
+                continue
+            runtime_reconcile.append((node, client))
+        for node, client in runtime_reconcile:
+            if not await self._apply_rotation_runtime_and_confirm(
+                node=node,
+                client=client,
+                tg_id=int(tg_id),
+                expected_key_uuid=str(old_key_uuid or ""),
+            ):
+                complete = False
+        if not found or not complete:
+            return RotationPanelResult("manual_review", "rotation_compensation_failed")
+        return RotationPanelResult("succeeded", "compensated")
+
+    async def _rotate_user_key_on_nodes(
+        self,
+        *,
+        nodes: list,
+        tg_id: int,
+        old_key_uuid: str,
+        new_key_uuid: str,
+        sub_id: str,
+    ) -> RotationPanelResult:
+        old_uuid = str(old_key_uuid or "").strip()
+        new_uuid = str(new_key_uuid or "").strip()
+        if not old_uuid or not new_uuid:
+            return RotationPanelResult("manual_review", "rotation_panel_manual_review")
+        existing: list[tuple[object, dict, str]] = []
+        # Preflight every node before the first write. New UUID is allowed only
+        # as idempotent recovery from a prior interrupted attempt.
+        for node in nodes:
+            code = str(getattr(node, "code", "") or "").strip()
+            if not code or code not in self._clients:
+                continue
+            try:
+                client = await self._read_rotation_client(node=node, tg_id=int(tg_id))
+            except Exception:
+                return RotationPanelResult("manual_review", "rotation_panel_manual_review")
+            if client is None:
+                continue
+            state = self._rotation_observation(client, old_key_uuid=old_uuid, new_key_uuid=new_uuid)
+            if state == "unknown":
+                return RotationPanelResult("manual_review", "rotation_panel_manual_review")
+            existing.append((node, client, state))
+        if not existing:
+            return RotationPanelResult("retry", "rotation_panel_failed")
+
+        async def compensate() -> bool:
+            complete = True
+            runtime_reconcile: list[tuple[object, dict]] = []
+            for changed_node, changed_client, state in reversed(existing):
+                if state == "old":
+                    runtime_reconcile.append((changed_node, changed_client))
+                    continue
+                if state != "new":
+                    complete = False
+                    continue
+                if not await self._restore_exact_client_on_node(
+                    node=changed_node,
+                    client=changed_client,
+                    tg_id=int(tg_id),
+                    old_key_uuid=old_uuid,
+                    new_key_uuid=new_uuid,
+                    sub_id=sub_id,
+                ):
+                    complete = False
+                else:
+                    runtime_reconcile.append((changed_node, changed_client))
+            for restored_node, restored_client in runtime_reconcile:
+                if not await self._apply_rotation_runtime_and_confirm(
+                    node=restored_node,
+                    client=restored_client,
+                    tg_id=int(tg_id),
+                    expected_key_uuid=old_uuid,
+                ):
+                    complete = False
+            return complete
+
+        for index, (node, client, state) in enumerate(existing):
+            if state == "new":
+                continue
+            observed = await self._write_rotation_client(
+                node=node,
+                client=client,
+                tg_id=int(tg_id),
+                old_key_uuid=old_uuid,
+                new_key_uuid=new_uuid,
+                sub_id=sub_id,
+            )
+            if observed == "new":
+                existing[index] = (node, client, "new")
+                continue
+            if observed in {"new_unconfirmed", "new_ambiguous"}:
+                existing[index] = (node, client, "new")
+            compensated = await compensate()
+            if not compensated:
+                return RotationPanelResult("manual_review", "rotation_compensation_failed")
+            if observed in {"old", "new_unconfirmed", "new_ambiguous"}:
+                return RotationPanelResult("retry", "rotation_panel_failed")
+            return RotationPanelResult("manual_review", "rotation_panel_manual_review")
+        # Panel/client readback only proves the durable panel row. Explicitly
+        # apply every affected panel to Xray before canonical DB finalization.
+        # An apply failure triggers best-effort restoration across every safely
+        # restored panel, then still returns manual review because runtime state
+        # on the failed panel is not proven.
+        for node, client, _state in existing:
+            if not await self._apply_rotation_runtime_and_confirm(
+                node=node,
+                client=client,
+                tg_id=int(tg_id),
+                expected_key_uuid=new_uuid,
+            ):
+                if not await compensate():
+                    return RotationPanelResult("manual_review", "rotation_compensation_failed")
+                return RotationPanelResult("manual_review", "rotation_runtime_apply_failed")
+        return RotationPanelResult("succeeded", "rotated")
 
     async def set_user_key_enabled_on_node(
         self,
@@ -761,11 +1284,12 @@ class ControlPanel:
         `sub_token` (preferred) is used as subscription subId in panels.
         """
         sub_id = sub_token or str(tg_id)
-        user = None
+        user: PanelUserSnapshot | None = None
         try:
             s = SessionLocal()
             try:
-                user = s.query(User).filter_by(tg_id=int(tg_id)).first()
+                row = s.query(User).filter_by(tg_id=int(tg_id)).first()
+                user = self._user_snapshot(row) if row is not None else None
             finally:
                 s.close()
         except Exception:
@@ -802,48 +1326,83 @@ class ControlPanel:
         """
         s = SessionLocal()
         try:
-            u = s.query(User).filter_by(uuid=user_uuid).first()
-            if not u:
-                return False
-            sub_id = u.sub_token or str(u.tg_id)
-            if user_uses_free_pool(u):
-                nodes = await self.refresh()
-                free_codes = self._free_node_codes(nodes, user=u)
-                if not free_codes:
-                    return False
-                res = await self.ensure_user_on_all_nodes(
-                    tg_id=u.tg_id,
-                    client_uuid=u.uuid,
-                    email=u.email,
-                    sub_id=sub_id,
-                    enable=enable,
-                    only_node_codes=free_codes,
-                )
-                return any(res.values())
-
-            res = await self.ensure_user_on_all_nodes(
-                tg_id=u.tg_id,
-                client_uuid=u.uuid,
-                email=u.email,
-                sub_id=sub_id,
-                enable=enable,
-                only_node_codes=None,
-            )
-            return any(res.values())
+            row = s.query(User).filter_by(uuid=user_uuid).first()
+            user = self._user_snapshot(row) if row is not None else None
         finally:
             s.close()
+        if user is None:
+            return False
+        return await self._set_user_snapshot_enabled(user, enable=bool(enable))
+
+    @staticmethod
+    def _user_snapshot(user: User) -> PanelUserSnapshot:
+        return PanelUserSnapshot(
+            tg_id=int(user.tg_id),
+            uuid=str(user.uuid or ""),
+            email=str(user.email or ""),
+            sub_token=str(user.sub_token or ""),
+            sub_type=str(user.sub_type or ""),
+            current_plan_code=(str(user.current_plan_code) if user.current_plan_code is not None else None),
+            is_active=bool(user.is_active),
+            expiry_at=user.expiry_at,
+            free_profile_state=str(getattr(user, "free_profile_state", "") or ""),
+            free_profile_active_role=str(getattr(user, "free_profile_active_role", "") or ""),
+        )
+
+    async def _set_user_snapshot_enabled(self, user: PanelUserSnapshot, *, enable: bool) -> bool:
+        sub_id = user.sub_token or str(user.tg_id)
+        if not enable:
+            nodes = await self.refresh()
+            node_codes = [
+                str(getattr(node, "code", "") or "").strip()
+                for node in nodes
+                if str(getattr(node, "code", "") or "").strip()
+            ]
+            if not node_codes:
+                return False
+            results = await self.set_existing_user_enabled_on_nodes(
+                tg_id=int(user.tg_id),
+                node_codes=node_codes,
+                enable=False,
+                sub_id=sub_id,
+            )
+            return bool(results) and all(bool(value) for value in results.values())
+        if user_uses_free_pool(user):
+            nodes = await self.refresh()
+            free_codes = self._free_node_codes(nodes, user=user)
+            if not free_codes:
+                return False
+            result = await self.ensure_user_on_all_nodes(
+                tg_id=user.tg_id,
+                client_uuid=user.uuid,
+                email=user.email,
+                sub_id=sub_id,
+                enable=True,
+                only_node_codes=free_codes,
+            )
+            return any(result.values())
+        result = await self.ensure_user_on_all_nodes(
+            tg_id=user.tg_id,
+            client_uuid=user.uuid,
+            email=user.email,
+            sub_id=sub_id,
+            enable=True,
+            only_node_codes=None,
+        )
+        return any(result.values())
 
     async def update_client_traffic(self, tg_id: int, add_gb: int) -> bool:
         # Traffic/device policy is applied in panel_client based on node/env.
         # Here we just re-ensure user records to refresh policy safely.
         s = SessionLocal()
         try:
-            u = s.query(User).filter_by(tg_id=tg_id).first()
-            if not u:
-                return False
-            return await self.enable_client(u.uuid, True)
+            row = s.query(User).filter_by(tg_id=tg_id).first()
+            user = self._user_snapshot(row) if row is not None else None
         finally:
             s.close()
+        if user is None:
+            return False
+        return await self._set_user_snapshot_enabled(user, enable=True)
 
     async def set_client_traffic(self, tg_id: int, total_gb: int) -> bool:
         # Legacy compatibility: policy is node/env-driven, not ad-hoc per call.

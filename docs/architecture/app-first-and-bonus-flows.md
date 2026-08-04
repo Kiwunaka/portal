@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-07-22
+Last updated: 2026-08-03
 
 ## Document Status
 
@@ -212,6 +212,9 @@ Current `client_policy` contract:
 - `route_policy.mode`: normalized mirror of the current `route_mode`
 - `route_policy.selected_apps`: normalized mirror of the current `selected_apps`
 - `route_policy.requires_elevated_privileges`: normalized mirror of the current elevation requirement
+- `POST /api/client/route-policy` rejects `route_mode=selected_apps` with an
+  empty normalized `selected_apps` list as HTTP `422` with stable code
+  `selected_apps_required`; it leaves the prior persisted policy unchanged.
 - `package_catalog_version`: versioned Android direct-app catalog stamp from shared facts
 - `ruleset_version`: versioned routing/ruleset stamp from shared facts
 - `support_context.transport`: `legacy_reality_fallback`
@@ -228,6 +231,9 @@ First-run route-mode choice:
 - the client must show exactly two first-layer consumer choices: `Optimize everything on this device` and `Only selected apps`
 - `Optimize everything on this device` is the default public path and stays `TUN`-first
 - `Only selected apps` is the split-tunneling path and must write per-device app/process selection state instead of revealing raw proxy or service controls
+- An empty selected-app set is invalid: the API must not persist it for
+  `selected_apps`, and the client must block connect/sync and direct the user
+  to choose at least one app. It must never degrade to a device-wide tunnel.
 - the chosen mode must round-trip through backend-owned `route_mode`, `selected_apps`, and `route_policy.*` fields so `start-trial`, `dashboard`, and recovery flows all agree on the live device state
 - Windows should use a known-app or executable picker; Android should use an installed-package picker
 - current P3 client work may use manual app/process identifiers as a bridge; Android app-managed profiles map selected package identifiers into sing-box `include_package`
@@ -286,11 +292,11 @@ Rollout note:
 
 Smart-connect contract:
 
-- `GET /api/client/profile/managed` returns a shortlist revision plus `smart_connect.shortlist`
+- `GET /api/client/profile/managed` returns a shortlist revision plus `smart_connect.shortlist`; its material contains only those shortlisted nodes and returns `503 No eligible nodes` when the shortlist is empty
 - premium users can receive up to `SMART_CONNECT_SHORTLIST_LIMIT` eligible non-free nodes, default `8`; free-tier users still receive only `NL-free`
-- the shortlist rejects disabled, draining, unhealthy, stale, dataplane-down, saturated, high-loss/retransmit, `cpu_percent >= SMART_CONNECT_CPU_REJECT_PERCENT`, transport-incompatible, and rollout-blocked nodes while `CAPACITY_AWARE_NODE_SELECTION=true`
-- shortlist items expose `health_score`, `cpu_percent`, `panel_latency_ms`, `backend_penalty`, `cpu_penalty`, `capacity_state`, `capacity_score`, `tx_ratio`, `tx_mbps`, `provisioned_clients_count`, `online_connections_hint`, and an internal `probe.host` / `probe.port` target for app-side RTT checks
-- the client asks `GET /api/client/nodes/candidates`, performs best-effort RTT probes, posts the result to `POST /api/client/nodes/select`, and may refetch `GET /api/client/profile/managed?selected_node_code=...` before materializing the runtime config
+- the shortlist rejects disabled, draining, unhealthy, stale, missing or dataplane-down, saturated, high-loss/retransmit, `cpu_percent >= SMART_CONNECT_CPU_REJECT_PERCENT`, transport-incompatible, and rollout-blocked nodes while `CAPACITY_AWARE_NODE_SELECTION=true`; neither explicit selection nor automatic selection may fall back to a rejected node
+- shortlist items expose canonical `outbound_tag`, `health_score`, `cpu_percent`, `panel_latency_ms`, `backend_penalty`, `cpu_penalty`, `capacity_state`, `capacity_score`, `tx_ratio`, `tx_mbps`, `provisioned_clients_count`, `online_connections_hint`, and an internal `probe.host` / `probe.port` target for app-side RTT checks; `outbound_tag` identifies the unique direct proxy that must belong to the returned final selector
+- the client asks `GET /api/client/nodes/candidates`, performs best-effort RTT probes, posts the result to `POST /api/client/nodes/select`, and promotes the selected `outbound_tag` inside the already authorized managed profile before materialization; one bounded `GET /api/client/profile/managed?selected_node_code=...` refetch is allowed only when local identity mapping cannot be proven
 - the selection score is capacity-aware: `effective_score = rtt_ms + dataplane_rtt + cpu_penalty + backend_penalty + network_pressure`, with lower scores preferred; low `health_score` adds backend penalty but does not by itself hard-reject a node while dataplane and explicit capacity checks remain healthy
 - stickiness stays active with a default `20%` threshold so the app does not flap between nodes on tiny wins
 - explicit `UserNode` mappings are provisioning/history state; they must not trap premium-grade users on one or two old nodes or reduce the candidate pool
@@ -546,7 +552,13 @@ Current user-facing delivery semantics:
 Compatibility note:
 
 - `?format=plain` still exists for backend compatibility and advanced/manual recovery
-- `?format=happ` exists for Happ-compatible open subscription delivery; it returns VLESS fallback lines plus Happ `custom-tunnel-config` carrying the same smart sing-box manifest, including `Белые списки` where the client version supports that parameter
+- `?format=happ` exists for Happ-compatible open subscription delivery; it returns VLESS fallback lines plus Happ `custom-tunnel-config` carrying the same smart sing-box manifest, including `Белые списки` where the client version supports that parameter. For paid manual recovery when smart ranking has no telemetry-eligible node, that embedded config uses the same transport-filtered legacy fallback as its VLESS lines.
+- Smart managed material remains fail-closed when no eligible node exists. For
+  paid explicit legacy/manual Reality recovery only, a transport- and
+  rollout-filtered fallback is allowed solely for a node rejected because its
+  telemetry is missing or stale. Disabled, unhealthy, draining, non-accepting,
+  saturated, or otherwise hard-rejected nodes remain excluded; free legacy
+  renders remain fail-closed.
 - format variants must be derived with URL query parameters inside the opened
   authenticated manual section. They must not be sent to third-party pages,
   telemetry, support artifacts, or public HTML

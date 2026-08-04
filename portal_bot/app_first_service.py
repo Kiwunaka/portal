@@ -19,6 +19,16 @@ ROUTE_MODE_ALL_TRAFFIC = "all_traffic"
 ROUTE_MODE_SELECTED_APPS = "selected_apps"
 _ROUTE_MODE_VALUES = {ROUTE_MODE_ALL_TRAFFIC, ROUTE_MODE_SELECTED_APPS}
 _DESKTOP_ROUTE_PLATFORMS = {"windows", "linux", "macos", "darwin"}
+ROUTE_POLICY_SELECTED_APPS_REQUIRED_CODE = "selected_apps_required"
+
+
+class RoutePolicyValidationError(ValueError):
+    """A stable, user-safe route-policy validation failure."""
+
+    code = ROUTE_POLICY_SELECTED_APPS_REQUIRED_CODE
+
+    def __init__(self) -> None:
+        super().__init__("Select at least one app before using selected-apps routing.")
 
 
 def normalize_app_device_name(value: str | None, *, fallback: str = "Current device") -> str:
@@ -131,6 +141,11 @@ def persist_route_policy(
         selected_apps=selected_apps,
         requires_elevated_privileges=requires_elevated_privileges,
     )
+    if (
+        policy["route_mode"] == ROUTE_MODE_SELECTED_APPS
+        and not policy["selected_apps"]
+    ):
+        raise RoutePolicyValidationError()
     user.route_mode = str(policy["route_mode"])
     user.route_selected_apps_json = json.dumps(policy["selected_apps"], ensure_ascii=True)
     user.route_requires_elevated_privileges = bool(policy["requires_elevated_privileges"])

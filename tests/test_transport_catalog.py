@@ -5,6 +5,7 @@ import json
 import os
 import sys
 import unittest
+from unittest.mock import patch
 from pathlib import Path
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
@@ -172,6 +173,48 @@ class TransportCatalogTests(unittest.TestCase):
         self.assertEqual(params["sni"][0], "catalog-sni.example.test")
         self.assertEqual(params["pbk"][0], "catalog-pbk")
         self.assertEqual(params["sid"][0], "catalog-sid")
+
+    def test_explicit_disabled_legacy_profile_is_not_synthesized_as_enabled(self) -> None:
+        node = SimpleNamespace(
+            host="legacy.example.test", vless_port=443, reality_sni="sni",
+            reality_pbk="pbk", reality_sid="sid", fingerprint="firefox",
+            flow="xtls-rprx-vision", inbound_id=7,
+            transport_profiles_json=json.dumps([{"name": "legacy_reality_fallback", "enabled": False}]),
+        )
+
+        profile = self.transport_catalog.transport_profile_by_name(
+            node, "legacy_reality_fallback", include_disabled=False
+        )
+
+        self.assertFalse(profile["enabled"])
+        self.assertTrue(
+            self.transport_catalog.has_explicit_transport_profile(node, "legacy_reality_fallback")
+        )
+
+    def test_explicit_disabled_grpc_profile_is_not_synthesized_as_enabled(self) -> None:
+        node = SimpleNamespace(
+            host="grpc.example.test", vless_port=443, reality_sni="sni",
+            reality_pbk="pbk", reality_sid="sid", fingerprint="firefox",
+            flow="xtls-rprx-vision", inbound_id=7,
+            transport_profiles_json=json.dumps([{"name": "grpc_443_primary", "enabled": False}]),
+        )
+
+        profile = self.transport_catalog.transport_profile_by_name(
+            node, "grpc_443_primary", include_disabled=False
+        )
+
+        self.assertFalse(profile["enabled"])
+        self.assertTrue(
+            self.transport_catalog.has_explicit_transport_profile(node, "grpc_443_primary")
+        )
+
+        with patch.object(self.api, "_filter_nodes_for_transport_profile", return_value=[node]):
+            effective = self.api._effective_transport_nodes(
+                nodes=[node],
+                transport_profile="grpc_443_primary",
+                rollout_config={},
+            )
+        self.assertEqual(effective, [])
 
     def test_singbox_multi_node_config_can_emit_grpc_transport(self) -> None:
         node = SimpleNamespace(

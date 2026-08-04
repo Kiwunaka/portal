@@ -11,6 +11,27 @@ except ImportError:
 
 bootstrap_slice(globals())
 
+try:
+    from .node_observability_sanitizer import (
+        safe_error_kind,
+        safe_hoster_asn,
+        safe_hoster_family,
+        safe_probe_classification,
+        safe_probe_error_message,
+        safe_probe_stage,
+        sanitize_transport_health,
+    )
+except ImportError:
+    from node_observability_sanitizer import (
+        safe_error_kind,
+        safe_hoster_asn,
+        safe_hoster_family,
+        safe_probe_classification,
+        safe_probe_error_message,
+        safe_probe_stage,
+        sanitize_transport_health,
+    )
+
 def _transport_profiles_payload(node: Any) -> dict[str, dict[str, Any]]:
     out: dict[str, dict[str, Any]] = {}
     for profile in node_transport_profiles(node, include_disabled=True):
@@ -224,6 +245,7 @@ def _synthetic_transport_node() -> Any:
 
 
 def _effective_transport_nodes(*, nodes: list[Any], transport_profile: str, rollout_config: dict[str, Any]) -> list[Any]:
+    requested = str(transport_profile or LEGACY_REALITY_FALLBACK).strip() or LEGACY_REALITY_FALLBACK
     filtered = _filter_nodes_for_transport_profile(
         nodes=nodes,
         rollout_config=rollout_config,
@@ -237,7 +259,12 @@ def _effective_transport_nodes(*, nodes: list[Any], transport_profile: str, roll
     ]
     if supporting:
         return supporting
-    if str(transport_profile or LEGACY_REALITY_FALLBACK).strip() == LEGACY_REALITY_FALLBACK and filtered:
+    # An explicit requested profile is authoritative even when disabled.  Do
+    # not replace it with synthetic compatibility material; synthesis is only
+    # for catalogs that genuinely omit the requested transport everywhere.
+    if any(has_explicit_transport_profile(node, requested) for node in filtered):
+        return []
+    if requested == LEGACY_REALITY_FALLBACK and filtered:
         return filtered
     return [_synthetic_transport_node()]
 
@@ -1041,19 +1068,10 @@ def _serialize_admin_node(
     network_port_capacity_mbps = float(NODE_METRICS_PORT_CAPACITY_MBPS or 0.0)
     network_utilization_percent = _network_utilization_percent(network_total_mbps)
     network_peak_utilization_percent_24h = _network_utilization_percent(network_peak_mbps_24h)
-    transport_health: dict[str, Any] = {}
-    raw_transport_health = str(getattr(n, "transport_health_json", "") or "").strip()
-    if raw_transport_health:
-        try:
-            parsed_transport_health = json.loads(raw_transport_health)
-        except Exception:
-            parsed_transport_health = {}
-        if isinstance(parsed_transport_health, dict):
-            transport_health = {
-                str(key): value
-                for key, value in parsed_transport_health.items()
-                if str(key or "").strip()
-            }
+    transport_health = sanitize_transport_health(
+        getattr(n, "transport_health_json", None)
+    )
+    last_probe_error_kind = safe_error_kind(getattr(n, "last_probe_error_kind", ""))
     transport_profiles = _transport_profiles_payload(n)
     return {
         "code": n.code,
@@ -1089,6 +1107,8 @@ def _serialize_admin_node(
         "network_tx_mbps_5m": getattr(n, "network_tx_mbps_5m", None),
         "tcp_retrans_percent": getattr(n, "tcp_retrans_percent", None),
         "packet_loss_percent": getattr(n, "packet_loss_percent", None),
+        "edge_reachability_ok": getattr(n, "edge_reachability_ok", None),
+        "authenticated_egress_ok": getattr(n, "authenticated_egress_ok", None),
         "dataplane_ok": getattr(n, "dataplane_ok", None),
         "dataplane_rtt_ms": getattr(n, "dataplane_rtt_ms", None),
         "capacity_state": str(getattr(n, "capacity_state", "") or "unknown"),
@@ -1108,15 +1128,17 @@ def _serialize_admin_node(
         "freshness_age_seconds": int((now - last_sample_at).total_seconds()) if last_sample_at else None,
         "alerts": _legacy_node_alerts(resolved_alert_kinds),
         "alert_kinds": resolved_alert_kinds,
-        "last_probe_stage": str(getattr(n, "last_probe_stage", "") or "") or None,
-        "last_probe_error_kind": str(getattr(n, "last_probe_error_kind", "") or "") or None,
-        "last_probe_error_message": str(getattr(n, "last_probe_error_message", "") or "") or None,
-        "hoster_family": str(getattr(n, "hoster_family", "") or "") or None,
-        "hoster_asn": str(getattr(n, "hoster_asn", "") or "") or None,
-        "subnet": str(getattr(n, "hoster_subnet", "") or "") or None,
+        "last_probe_stage": safe_probe_stage(getattr(n, "last_probe_stage", "")) or None,
+        "last_probe_error_kind": last_probe_error_kind or None,
+        "last_probe_error_message": safe_probe_error_message(last_probe_error_kind),
+        "hoster_family": safe_hoster_family(getattr(n, "hoster_family", "")),
+        "hoster_asn": safe_hoster_asn(getattr(n, "hoster_asn", "")),
         "ipv4_health": str(getattr(n, "ipv4_health", "") or "") or None,
         "ipv6_health": str(getattr(n, "ipv6_health", "") or "") or None,
-        "probe_classification": str(getattr(n, "last_probe_classification", "") or "") or None,
+        "probe_classification": safe_probe_classification(
+            getattr(n, "last_probe_classification", "")
+        )
+        or None,
         "transport_health": transport_health,
         "transport_profiles": transport_profiles,
         "observer_last_push_at": _safe_iso(getattr(n, "observer_last_push_at", None)),
@@ -1268,6 +1290,38 @@ def _rank_subscription_nodes(
             }
         )
     return ordered, excluded
+
+
+_PAID_LEGACY_RECOVERY_TELEMETRY_REASONS = frozenset({"stale", "missing_telemetry"})
+
+
+def _paid_legacy_recovery_nodes(
+    *,
+    session,
+    nodes: list[Any],
+    rollout_config: dict[str, Any],
+) -> list[Any]:
+    """Return only safe paid manual-recovery Reality nodes with stale telemetry."""
+    policy_by_code = _node_capacity_policy_by_code(session)
+    candidates = _filter_nodes_for_transport_profile(
+        nodes=nodes,
+        rollout_config=rollout_config,
+        transport_profile=LEGACY_REALITY_FALLBACK,
+        apply_exclusions=True,
+    )
+    allowed: list[Any] = []
+    for node in candidates:
+        if not _node_supports_transport_profile(node, LEGACY_REALITY_FALLBACK):
+            continue
+        code = str(getattr(node, "code", "") or "").strip().lower()
+        reason = node_hard_reject_reason(
+            node,
+            policy=policy_by_code.get(code),
+            now=_utcnow(),
+        )
+        if reason in _PAID_LEGACY_RECOVERY_TELEMETRY_REASONS:
+            allowed.append(node)
+    return rank_nodes_legacy(allowed)
 
 
 def _clash_subscription_config(*, user_uuid: str, nodes: list[Any], title: str, transport_profile: str) -> str:
@@ -1632,6 +1686,18 @@ async def subscription(token: str, request: Request, format: str = Query(default
             rollout_config=rollout_config,
             transport_profile=LEGACY_REALITY_FALLBACK,
         )
+        # Smart delivery must fail closed when no eligible node remains.  The
+        # explicit legacy/manual formats are a recovery compatibility path,
+        # however, so a missing/stale observability sample must not turn their
+        # otherwise transport-ready Reality links into an empty 200 response.
+        # Keep the same transport/rollout filtering; only skip dynamic hard
+        # rejection for this legacy rendering fallback.
+        if not legacy_nodes_for_user and str(user.sub_type or "").upper() != "FREE":
+            legacy_nodes_for_user = _paid_legacy_recovery_nodes(
+                session=ranking_session,
+                nodes=nodes_for_user,
+                rollout_config=rollout_config,
+            )
     finally:
         ranking_session.close()
 
@@ -1669,6 +1735,8 @@ async def subscription(token: str, request: Request, format: str = Query(default
         return Response(content=content_text, media_type="application/json", headers=headers)
 
     links = []
+    if (user.sub_type or "").upper() == "FREE" and not legacy_nodes_for_user:
+        return Response(content="", media_type="text/plain", status_code=503)
     for n in legacy_nodes_for_user:
         links.append(_generate_vless_link(user_uuid=user.uuid, node=n, name=_node_label_ru(n.code, n.name)))
     raw = "\n".join(links)
@@ -1676,11 +1744,20 @@ async def subscription(token: str, request: Request, format: str = Query(default
         if (user.sub_type or "").upper() == "FREE" and not smart_nodes_for_user:
             return Response(content="", media_type="text/plain", status_code=503)
 
+        # Happ is an explicit manual compatibility format.  Keep its embedded
+        # tunnel config aligned with the legacy VLESS fallback for paid users
+        # when dynamic smart ranking has no telemetry-eligible node.
+        happ_nodes_for_user = smart_nodes_for_user or legacy_nodes_for_user
+        happ_transport_profile = (
+            smart_transport_profile
+            if smart_nodes_for_user
+            else LEGACY_REALITY_FALLBACK
+        )
         cfg = _subscription_singbox_config(
             user_uuid=user.uuid,
             sub_type=str(user.sub_type or ""),
-            nodes=smart_nodes_for_user,
-            transport_profile=smart_transport_profile,
+            nodes=happ_nodes_for_user,
+            transport_profile=happ_transport_profile,
             rollout_config=rollout_config,
         )
         content_text = _happ_subscription_text(singbox_config=cfg, vless_links=links)
@@ -1699,7 +1776,7 @@ async def subscription(token: str, request: Request, format: str = Query(default
             client_format=client_format,
             user_agent=user_agent,
             request_host=request_host,
-            node_codes=[str(getattr(n, "code", "") or "").strip().lower() for n in smart_nodes_for_user],
+            node_codes=[str(getattr(n, "code", "") or "").strip().lower() for n in happ_nodes_for_user],
             excluded_nodes=smart_excluded_nodes,
             response_status=200,
             content_text=content_text,

@@ -27,6 +27,19 @@ owners; implemented behavior here is not production evidence by itself.
 
 ## Account Identity Boundary
 
+### Controlled Error Header
+
+Every controlled HTTP error returned by the FastAPI public surface carries a
+bounded `X-POKROV-Auth-Error` response header. An explicitly supplied header is
+authoritative. Otherwise the server uses a normalized structured `detail.code`
+only when it matches `[a-z0-9_]{1,64}`; it never derives a header value from
+free-form detail or an exception. Plain errors use stable fallbacks:
+`401 auth_required`, `403 forbidden`, `404 resource_not_found`, `409 conflict`,
+`429 rate_limited`, and controlled `5xx service_unavailable`. The header is
+additive: it does not change the status or FastAPI error body. FastAPI's
+standard request-validation `422` response uses `request_invalid` without
+parsing validation detail, and the header is exposed to configured CORS origins.
+
 The repository candidate implements an additive account foundation: UUID `accounts.id`
 is persisted and `users.account_id` is a nullable projection. The
 public numeric `account_id` remains a compatibility projection. Device sessions
@@ -46,6 +59,11 @@ A completed production cutover, mixed-fleet safety, and full migration must not 
 The repository candidate implements the following Android/Windows session
 contract. It is not production evidence until the deployment and client gates
 in the active work order are complete.
+
+Route-policy updates use `POST /api/client/route-policy`. The
+`selected_apps` mode requires at least one normalized package/process
+identifier; an empty selection is rejected as HTTP `422` with stable code
+`selected_apps_required` and does not replace the existing persisted policy.
 
 - `POST /api/client/session/start-trial` creates the account/device session only
   when that real device has no session history. It returns the existing
@@ -256,21 +274,61 @@ TTL after the final issuance before routing app access back to the old revision.
   remaining instead of interpreting the fresh soft counter as another 5 GiB.
 - Provisioning jobs are idempotent per account cycle, row-locked on PostgreSQL,
   bounded on retry/stale recovery, and preserve the pre-existing
-  `rotate_access_key` job contract. Errors persist only stable redacted codes.
+  `rotate_access_key` job contract. Every running claim carries a fresh fencing
+  token and renews its lease through panel work; a worker that loses ownership
+  cannot continue panel mutation, finalize the database, or run compensation.
+  Errors persist only stable redacted codes.
+- A pooled legacy key (`node_code=NULL`) rotates only panel copies already
+  found in the enabled inventory: every copy must still hold the exact old
+  credential or the exact persisted replacement from an interrupted attempt;
+  absent nodes are never provisioned. The first safe claim persists the old
+  credential fingerprint and scope in the job's desired state. Duplicate rows
+  on the canonical inbound or any same-account row on another managed inbound
+  are ambiguous and block before mutation. Every ambiguous panel write
+  receives an exact guarded readback; unknown state or failed compensation is
+  manual review, never a blind retry. Finalization compares the locked snapshot
+  and, for the primary/legacy subscription identity, atomically replaces
+  matching `User.uuid` and `UserNode.client_uuid` values before the job can
+  succeed. A failed DB finalize triggers guarded panel rollback and is retryable
+  only while the canonical DB still matches that original snapshot.
+- UUID rollback converges every affected panel copy, including rows whose
+  durable value is already the old UUID: each affected panel receives the
+  runtime apply/restart sequence and an exact post-apply row readback before
+  compensation can be reported as complete.
 - Target profile ensure and exact confirmation happen before source disable.
   Reset additionally clears standard traffic before soft disable. A payment or
   entitlement projection that supersedes an in-flight free job must not be
   overwritten during finalization. The worker compensates a superseded panel
-  mutation by disabling the free target and restoring the paid source, or the
-  last confirmed standard source when paid provisioning is not yet visible;
-  failed compensation goes directly to manual review.
+  mutation by restoring the exact recorded target preimage (`enabled`,
+  `disabled`, or `absent`) with live readback, then restoring the paid source,
+  or the last confirmed standard source when paid provisioning is not yet
+  visible. Compensation is fenced by a durable pending marker; an unsupported
+  removal, ambiguous readback, or failed compensation goes directly to manual
+  review instead of guessing that the target should be disabled.
+- An ordinary source-disable failure also compensates before retry or terminal
+  failure. The worker durably records the exact target/source panel preimage and
+  a fenced compensation-pending marker, restores every binding through the
+  current claim lease, and confirms each restored state by readback. A lost
+  panel or database acknowledgement is accepted only when that exact readback
+  proves the intended state; stale or uncertain compensation is manual review.
 - Expiry/revocation re-entry uses the same durable reset job: it confirms and
   clears standard first, then disables every configured paid source and a stale
-  soft source. Merely changing `sub_type` or `current_plan_code` is not panel
-  synchronization proof.
+  soft source. Revocation updates every matching managed inbound; only a
+  successful exhaustive panel read may treat absence as idempotent success,
+  while a panel read error remains failure. Merely changing `sub_type` or
+  `current_plan_code` is not panel synchronization proof.
+- Panel inbound reads distinguish a successful empty list from authentication,
+  HTTP, payload, and network failure with bounded typed error kinds. Lookup,
+  revocation, preimage capture, and compensation propagate those failures and
+  never reinterpret them as an absent client or successful cleanup.
 - `free_standard`, `free_soft`, `paid`, and `operator_lab` are explicit node
-  roles with positive non-duplicated inbound bindings. Missing free roles never
-  fall back to paid or operator-only nodes.
+  roles with positive non-duplicated inbound bindings. Uniqueness covers every
+  enabled or disabled transport-catalog profile sharing the same normalized
+  panel identity, not only each node's canonical inbound. Missing free roles
+  never fall back to paid or operator-only nodes.
+- Control-panel network awaits run only after their database sessions close;
+  user data crossing that boundary is an immutable scalar snapshot rather than
+  a live ORM object.
 - Public locations, subscription rendering, legacy control-panel helpers, and
   admin resync all resolve the persisted free role. Transition/error states
   cannot be force-resynced by legacy admin actions. Expiry monitors only queue

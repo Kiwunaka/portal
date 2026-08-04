@@ -270,7 +270,14 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
         self.assertEqual(int(profile.json()["tg_id"]), account_id)
 
         config_path = urlparse(subscription_url).path
-        with patch.object(self.api, "_nodes_for_user", side_effect=lambda user, nodes, session=None: list(nodes or [])[:1]):
+        with (
+            patch.object(self.api, "_nodes_for_user", side_effect=lambda user, nodes, session=None: list(nodes or [])[:1]),
+            patch.object(
+                self.api,
+                "_rank_subscription_nodes",
+                side_effect=lambda **kwargs: (list(kwargs.get("nodes") or [])[:1], []),
+            ),
+        ):
             smart_profile = self.client.get(config_path, headers={"Host": "connect.pokrov.space"})
         self.assertEqual(smart_profile.status_code, 200, smart_profile.text)
         self.assertEqual(smart_profile.headers.get("content-type"), "application/json")

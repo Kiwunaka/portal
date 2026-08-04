@@ -25,7 +25,10 @@ _UNSAFE_KEY_FRAGMENTS = (
     "auth",
     "bearer",
     "cookie",
+    "credential",
     "key",
+    "message",
+    "password",
     "private",
     "secret",
     "subscription",
@@ -34,7 +37,46 @@ _UNSAFE_KEY_FRAGMENTS = (
     "warp_config",
     "wireguard",
 )
-_UNSAFE_VALUE_RE = re.compile(r"(https?://|bearer\s+|private[-_ ]?key|access[-_ ]?token)", re.IGNORECASE)
+_SAFE_META_KEYS = frozenset(
+    {
+        "action",
+        "actor_tg_id",
+        "attempt",
+        "attempt_count",
+        "carrier",
+        "diagnostic_code",
+        "elapsed_ms",
+        "error_class",
+        "error_code",
+        "fallback_reason",
+        "material_id",
+        "platform",
+        "previous_state",
+        "result",
+        "retryable",
+        "runtime_phase",
+        "safe_detail",
+        "source",
+        "transport",
+        "transport_profile",
+    }
+)
+_CONNECTION_URI_RE = re.compile(r"\b[a-z][a-z0-9+.-]{1,31}://", re.IGNORECASE)
+_CONNECT_HOST_RE = re.compile(r"\bconnect\.pokrov\.space(?:[:/]|\b)", re.IGNORECASE)
+_HOSTNAME_RE = re.compile(
+    r"\b(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}\b",
+    re.IGNORECASE,
+)
+_IPV4_RE = re.compile(r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+_IPV6_RE = re.compile(r"\b(?:[0-9a-f]{1,4}:){2,7}[0-9a-f]{1,4}\b", re.IGNORECASE)
+_UUID_LIKE_RE = re.compile(
+    r"\b[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\b",
+    re.IGNORECASE,
+)
+_SECRET_LABEL_RE = re.compile(
+    r"\b(?:bearer|access[-_ ]?token|refresh[-_ ]?token|private[-_ ]?key|api[-_ ]?key|token|password|credential)\b",
+    re.IGNORECASE,
+)
 _MATERIAL_SECRET_ENV_KEYS = (
     "WARP_MATERIAL_SECRET",
     "WEBAPP_SESSION_SECRET",
@@ -150,14 +192,27 @@ def _unsafe_key(key: Any) -> bool:
     return any(fragment in lowered for fragment in _UNSAFE_KEY_FRAGMENTS)
 
 
+def _unsafe_warp_value(value: str) -> bool:
+    return bool(
+        _CONNECTION_URI_RE.search(value)
+        or _CONNECT_HOST_RE.search(value)
+        or _HOSTNAME_RE.search(value)
+        or _IPV4_RE.search(value)
+        or _IPV6_RE.search(value)
+        or _UUID_LIKE_RE.search(value)
+        or _SECRET_LABEL_RE.search(value)
+    )
+
+
 def sanitize_warp_meta(value: Any) -> Any:
+    """Keep only bounded, non-sensitive diagnostics in the WARP event ledger."""
     if value is None:
         return None
     if isinstance(value, dict):
         out: dict[str, Any] = {}
         for key, child in value.items():
-            clean_key = str(key or "").strip()
-            if _unsafe_key(clean_key):
+            clean_key = str(key or "").strip().lower()
+            if clean_key not in _SAFE_META_KEYS or _unsafe_key(clean_key):
                 continue
             clean_child = sanitize_warp_meta(child)
             if clean_child is not None:
@@ -174,7 +229,7 @@ def sanitize_warp_meta(value: Any) -> Any:
         raw = value.strip()
         if not raw:
             return None
-        if _UNSAFE_VALUE_RE.search(raw):
+        if _unsafe_warp_value(raw):
             return "[redacted]"
         return raw[:500]
     return str(value)[:200]

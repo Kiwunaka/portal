@@ -54,6 +54,14 @@ def test_capacity_flag_falls_back_to_legacy_health_weight_order(monkeypatch):
     assert [node.code for node in ranked] == ["high-health-saturated", "lower-health"]
 
 
+def test_authenticated_egress_enforcement_defaults_off(monkeypatch):
+    monkeypatch.delenv("AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED", raising=False)
+
+    node_policy = _reload_node_policy(monkeypatch)
+
+    assert node_policy.AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED is False
+
+
 def test_subscription_flags_can_return_legacy_order_without_hard_exclusion(monkeypatch):
     node_policy = _reload_node_policy(
         monkeypatch,
@@ -88,6 +96,15 @@ def test_subscription_default_keeps_low_health_nodes_as_fallback_choices(monkeyp
     assert capacity["state"] == "healthy"
     assert capacity["reject_reason"] is None
     assert node_policy.node_backend_penalty(low_health) > node_policy.node_backend_penalty(healthy)
+
+
+def test_subscription_default_excludes_explicit_hard_reject(monkeypatch):
+    node_policy = _reload_node_policy(monkeypatch)
+
+    healthy = _node("healthy")
+    failed = _node("failed", is_healthy=False)
+
+    assert [node.code for node in node_policy.rank_nodes_for_subscription([failed, healthy])] == ["healthy"]
 
 
 def test_manual_country_ranking_keeps_low_health_as_penalized_fallback(monkeypatch):

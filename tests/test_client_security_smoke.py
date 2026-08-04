@@ -57,7 +57,7 @@ class ClientSecuritySmokeTests(unittest.TestCase):
             "default_runtime_core": "sing-box",
             "advanced_fallback_core": "xray",
             "trial_days": 5,
-            "telegram_bonus_days": 10,
+            "telegram_bonus_days": 5,
             "public_scope": ["android", "windows", "ios"],
             "readiness_only_scope": ["macos"],
             "free_tier": {
@@ -135,7 +135,7 @@ class ClientSecuritySmokeTests(unittest.TestCase):
         failures = self.module._runtime_artifact_failures(runtime_artifacts)
 
         self.assertIn("runtime artifacts must stay pinned to Kiwunaka/POKROV-core", failures)
-        self.assertIn("runtime artifacts must stay pinned to POKROV Core v1.0.1", failures)
+        self.assertIn("runtime artifacts must stay pinned to POKROV Core v1.0.2", failures)
         self.assertIn("runtime artifacts must not declare a Windows helper binary", failures)
         self.assertIn("runtime artifacts must pin the reviewed Android POKROV Core AAR", failures)
 
@@ -162,7 +162,7 @@ class ClientSecuritySmokeTests(unittest.TestCase):
                         },
                         "libcronet_sha256": self.module.WINDOWS_CRONET_SHA256,
                     },
-                    "promotion_rule": "accept_exact_v1.0.1_release_artifacts",
+                    "promotion_rule": "accept_exact_v1.0.2_release_artifacts",
                 },
                 "desktop_abi": {
                     "name": "pokrov-core",

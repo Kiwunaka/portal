@@ -1097,6 +1097,8 @@ def _ensure_capacity_domain_sqlite(conn) -> None:
               memory_total_mb INTEGER,
               tcp_retrans_percent FLOAT,
               packet_loss_percent FLOAT,
+              edge_reachability_ok BOOLEAN,
+              authenticated_egress_ok BOOLEAN,
               dataplane_ok BOOLEAN,
               dataplane_rtt_ms INTEGER,
               capacity_score FLOAT,
@@ -1107,6 +1109,12 @@ def _ensure_capacity_domain_sqlite(conn) -> None:
             """
         )
     )
+    for col, ddl in (
+        ("edge_reachability_ok", "BOOLEAN"),
+        ("authenticated_egress_ok", "BOOLEAN"),
+    ):
+        if not _sqlite_column_exists(conn, "node_runtime_metrics", col):
+            conn.execute(text(f"ALTER TABLE node_runtime_metrics ADD COLUMN {col} {ddl};"))
     conn.execute(
         text(
             """
@@ -1407,6 +1415,8 @@ def _ensure_capacity_domain_postgres(conn) -> None:
               memory_total_mb INTEGER,
               tcp_retrans_percent DOUBLE PRECISION,
               packet_loss_percent DOUBLE PRECISION,
+              edge_reachability_ok BOOLEAN,
+              authenticated_egress_ok BOOLEAN,
               dataplane_ok BOOLEAN,
               dataplane_rtt_ms INTEGER,
               capacity_score DOUBLE PRECISION,
@@ -1417,6 +1427,8 @@ def _ensure_capacity_domain_postgres(conn) -> None:
             """
         )
     )
+    _postgres_add_column_if_missing(conn, "node_runtime_metrics", "edge_reachability_ok", "BOOLEAN")
+    _postgres_add_column_if_missing(conn, "node_runtime_metrics", "authenticated_egress_ok", "BOOLEAN")
     conn.execute(text("CREATE TABLE IF NOT EXISTS key_usage_rollups (id SERIAL PRIMARY KEY, key_id INTEGER, tg_id BIGINT, node_code VARCHAR(32) NOT NULL, panel_email VARCHAR(100), window_bucket_at TIMESTAMP NOT NULL, window_seconds INTEGER NOT NULL DEFAULT 300, upload_bytes BIGINT NOT NULL DEFAULT 0, download_bytes BIGINT NOT NULL DEFAULT 0, total_bytes BIGINT NOT NULL DEFAULT 0, peak_tx_mbps DOUBLE PRECISION, observations INTEGER NOT NULL DEFAULT 0, source VARCHAR(64) NOT NULL DEFAULT 'observer', created_at TIMESTAMP NOT NULL);"))
     conn.execute(text("CREATE TABLE IF NOT EXISTS key_source_observations (id SERIAL PRIMARY KEY, key_id INTEGER, tg_id BIGINT, node_code VARCHAR(32) NOT NULL, panel_email VARCHAR(100), source_ip_hash VARCHAR(64) NOT NULL, source_asn VARCHAR(32), source_country VARCHAR(8), window_bucket_at TIMESTAMP NOT NULL, first_seen_at TIMESTAMP NOT NULL, last_seen_at TIMESTAMP NOT NULL, hit_count INTEGER NOT NULL DEFAULT 0, meta_json TEXT);"))
     conn.execute(text("CREATE TABLE IF NOT EXISTS key_pressure_state (key_id INTEGER PRIMARY KEY, tg_id BIGINT, node_code VARCHAR(32), panel_email VARCHAR(100), state VARCHAR(32) NOT NULL DEFAULT 'ok', pressure_score DOUBLE PRECISION NOT NULL DEFAULT 0, reasons_json TEXT, distinct_source_ips_1h INTEGER NOT NULL DEFAULT 0, distinct_source_ips_24h INTEGER NOT NULL DEFAULT 0, node_count_24h INTEGER NOT NULL DEFAULT 0, traffic_gb_24h DOUBLE PRECISION NOT NULL DEFAULT 0, manual_review_required BOOLEAN NOT NULL DEFAULT FALSE, updated_at TIMESTAMP NOT NULL);"))
@@ -2733,6 +2745,10 @@ def run_migrations(engine: Engine) -> None:
                 ("network_tx_mbps_5m", "FLOAT"),
                 ("tcp_retrans_percent", "FLOAT"),
                 ("packet_loss_percent", "FLOAT"),
+                ("edge_reachability_ok", "BOOLEAN"),
+                ("authenticated_egress_ok", "BOOLEAN"),
+                ("last_authenticated_egress_at", "DATETIME"),
+                ("authenticated_egress_error_kind", "VARCHAR(64)"),
                 ("dataplane_ok", "BOOLEAN"),
                 ("dataplane_rtt_ms", "INTEGER"),
                 ("capacity_score", "FLOAT"),
@@ -3643,6 +3659,10 @@ def _run_postgres_migrations(engine: Engine) -> None:
         _postgres_add_column_if_missing(conn, "nodes", "network_tx_mbps_5m", "DOUBLE PRECISION")
         _postgres_add_column_if_missing(conn, "nodes", "tcp_retrans_percent", "DOUBLE PRECISION")
         _postgres_add_column_if_missing(conn, "nodes", "packet_loss_percent", "DOUBLE PRECISION")
+        _postgres_add_column_if_missing(conn, "nodes", "edge_reachability_ok", "BOOLEAN")
+        _postgres_add_column_if_missing(conn, "nodes", "authenticated_egress_ok", "BOOLEAN")
+        _postgres_add_column_if_missing(conn, "nodes", "last_authenticated_egress_at", "TIMESTAMP")
+        _postgres_add_column_if_missing(conn, "nodes", "authenticated_egress_error_kind", "VARCHAR(64)")
         _postgres_add_column_if_missing(conn, "nodes", "dataplane_ok", "BOOLEAN")
         _postgres_add_column_if_missing(conn, "nodes", "dataplane_rtt_ms", "INTEGER")
         _postgres_add_column_if_missing(conn, "nodes", "capacity_score", "DOUBLE PRECISION")

@@ -29,7 +29,7 @@ def _sign_telegram_init_data(*, bot_token: str, params: dict[str, str]) -> str:
     return urlencode(payload)
 
 
-def _load_api(monkeypatch, tmp_path: Path):
+def _load_api(monkeypatch, tmp_path: Path, *, authenticated_egress_enforcement: bool = True):
     db_path = tmp_path / "smart-connect-test.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path.as_posix()}")
     monkeypatch.setenv("WEBAPP_SESSION_SECRET", "smart-connect-secret")
@@ -41,6 +41,10 @@ def _load_api(monkeypatch, tmp_path: Path):
     monkeypatch.setenv("BOT_TOKEN", "test_bot_token_123")
     monkeypatch.setenv("ADMIN_ID", "9999")
     monkeypatch.setenv("ADMIN_IDS", "9999")
+    monkeypatch.setenv(
+        "AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED",
+        "true" if authenticated_egress_enforcement else "false",
+    )
 
     for name in [
         "api",
@@ -161,8 +165,14 @@ def _add_node(
     accepting_new_clients: bool = True,
     is_draining: bool = False,
     cpu_percent: float = 30.0,
+    dataplane_ok: bool | None = True,
+    authenticated_egress_ok: bool | None = True,
+    last_authenticated_egress_at: datetime | None = None,
     last_health_at: datetime | None = None,
     grpc_enabled: bool = True,
+    disk_used_gb: float | None = None,
+    disk_total_gb: float | None = None,
+    disk_free_gb: float | None = None,
 ) -> int:
     from models import Node
 
@@ -190,7 +200,13 @@ def _add_node(
             health_score=health_score,
             is_healthy=is_healthy,
             cpu_percent=cpu_percent,
+            dataplane_ok=dataplane_ok,
+            authenticated_egress_ok=authenticated_egress_ok,
+            last_authenticated_egress_at=last_authenticated_egress_at or last_health_at or _utcnow(),
             last_health_at=last_health_at or _utcnow(),
+            disk_used_gb=disk_used_gb,
+            disk_total_gb=disk_total_gb,
+            disk_free_gb=disk_free_gb,
             transport_profiles_json=_transport_profiles(grpc_enabled=grpc_enabled),
         )
         s.add(node)
@@ -256,6 +272,14 @@ def test_managed_profile_exposes_capacity_ranked_eligible_premium_shortlist(monk
     assert smart_connect["eligible"] is True
     assert smart_connect["fallback_required"] is False
     assert [item["code"] for item in smart_connect["shortlist"]] == ["pl", "de", "us", "it", "nl", "es"]
+    assert [item["outbound_tag"] for item in smart_connect["shortlist"]] == [
+        "🇵🇱 Польша",
+        "🇩🇪 Германия",
+        "🇺🇸 США",
+        "🇮🇹 Италия",
+        "🇳🇱 Нидерланды",
+        "🏳️ ES",
+    ]
     assert len(smart_connect["shortlist"]) == 6
     penalties = {item["code"]: item for item in smart_connect["shortlist"]}
     assert penalties["nl"]["rank_hint"]["backend_penalty"] == 0
@@ -265,6 +289,12 @@ def test_managed_profile_exposes_capacity_ranked_eligible_premium_shortlist(monk
     assert "fr" not in {item["code"] for item in smart_connect["shortlist"]}
     assert "be" not in {item["code"] for item in smart_connect["shortlist"]}
     assert "nl-free" not in {item["code"] for item in smart_connect["shortlist"]}
+    selector = next(
+        item
+        for item in managed.json()["config_payload"]["outbounds"]
+        if item.get("type") == "selector" and item.get("tag") == "🌍 Страны"
+    )
+    assert selector["default"] == "🇵🇱 Польша"
 
 
 def test_managed_profile_uses_nl_free_only_for_free_pool(monkeypatch, tmp_path) -> None:
@@ -291,6 +321,7 @@ def test_managed_profile_uses_nl_free_only_for_free_pool(monkeypatch, tmp_path) 
 
     smart_connect = managed.json()["smart_connect"]
     assert [item["code"] for item in smart_connect["shortlist"]] == ["nl-free"]
+    assert smart_connect["shortlist"][0]["outbound_tag"] == "🇳🇱 NL Free"
 
 
 def test_managed_profile_premium_shortlist_ignores_usernode_mapping_limits(monkeypatch, tmp_path) -> None:
@@ -318,7 +349,7 @@ def test_managed_profile_premium_shortlist_ignores_usernode_mapping_limits(monke
     assert [item["code"] for item in managed.json()["smart_connect"]["shortlist"]] == ["pl", "de", "it"]
 
 
-def test_managed_profile_flags_fallback_when_no_eligible_nodes_remain(monkeypatch, tmp_path) -> None:
+def test_managed_profile_fails_closed_when_no_eligible_nodes_remain(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
 
@@ -326,16 +357,153 @@ def test_managed_profile_flags_fallback_when_no_eligible_nodes_remain(monkeypatc
     _add_node(api, code="pl", health_score=95.0, cpu_percent=90.0, last_health_at=_utcnow())
     _add_node(api, code="de", health_score=95.0, is_healthy=False, last_health_at=_utcnow())
     _add_node(api, code="it", health_score=95.0, last_health_at=stale_at)
+    _add_node(api, code="es", health_score=95.0, authenticated_egress_ok=None, last_health_at=_utcnow())
 
     start_body = _start_trial(client, install_id="install-fallback")
     managed = client.get("/api/client/profile/managed", headers=_auth_headers(start_body))
-    assert managed.status_code == 200, managed.text
+    assert managed.status_code == 503, managed.text
+    assert managed.json()["detail"] == "No eligible nodes"
 
-    smart_connect = managed.json()["smart_connect"]
-    assert smart_connect["eligible"] is False
-    assert smart_connect["fallback_required"] is True
-    assert smart_connect["shortlist"] == []
-    assert smart_connect["shortlist_reason"] == "no_eligible_nodes"
+
+def test_smart_connect_excludes_disk_full_runtime_projection_but_keeps_unknown_disk(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    now = _utcnow()
+    _add_node(
+        api,
+        code="pl",
+        health_score=99.0,
+        disk_used_gb=96.0,
+        disk_total_gb=100.0,
+        disk_free_gb=4.0,
+        last_health_at=now,
+    )
+    _add_node(api, code="de", health_score=95.0, last_health_at=now)
+
+    start_body = _start_trial(client, install_id="install-disk-policy-runtime")
+    managed = client.get("/api/client/profile/managed", headers=_auth_headers(start_body))
+
+    assert managed.status_code == 200, managed.text
+    assert [item["code"] for item in managed.json()["smart_connect"]["shortlist"]] == ["de"]
+
+
+def test_smart_connect_uses_authenticated_egress_not_basic_edge_flag(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    _add_node(
+        api,
+        code="pl",
+        health_score=95.0,
+        dataplane_ok=False,
+        authenticated_egress_ok=True,
+        last_health_at=_utcnow(),
+    )
+    start_body = _start_trial(client, install_id="install-authenticated-egress-authority")
+
+    managed = client.get("/api/client/profile/managed", headers=_auth_headers(start_body))
+
+    assert managed.status_code == 200, managed.text
+    assert [item["code"] for item in managed.json()["smart_connect"]["shortlist"]] == ["pl"]
+
+
+def test_smart_connect_keeps_legacy_eligibility_until_authenticated_egress_enforcement(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path, authenticated_egress_enforcement=False)
+    client = TestClient(api.app)
+
+    _add_node(
+        api,
+        code="pl",
+        health_score=95.0,
+        authenticated_egress_ok=None,
+        last_health_at=_utcnow(),
+    )
+    start_body = _start_trial(client, install_id="install-authenticated-egress-rollout-disabled")
+
+    managed = client.get("/api/client/profile/managed", headers=_auth_headers(start_body))
+
+    assert managed.status_code == 200, managed.text
+    assert [item["code"] for item in managed.json()["smart_connect"]["shortlist"]] == ["pl"]
+
+
+def test_smart_connect_rejects_stale_authenticated_egress_even_with_fresh_basic_health(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    _add_node(
+        api,
+        code="pl",
+        authenticated_egress_ok=True,
+        last_authenticated_egress_at=_utcnow() - timedelta(hours=2),
+        last_health_at=_utcnow(),
+    )
+    start_body = _start_trial(client, install_id="install-stale-authenticated-egress")
+
+    managed = client.get("/api/client/profile/managed", headers=_auth_headers(start_body))
+
+    assert managed.status_code == 503, managed.text
+    assert managed.json()["detail"] == "No eligible nodes"
+
+
+def test_managed_profile_ignores_rejected_explicit_node_and_emits_only_shortlist(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    now = _utcnow()
+    _add_node(api, code="pl", health_score=98.0, last_health_at=now)
+    _add_node(api, code="de", health_score=95.0, authenticated_egress_ok=False, last_health_at=now)
+
+    start_body = _start_trial(client, install_id="install-managed-fail-closed")
+    managed = client.get(
+        "/api/client/profile/managed?selected_node_code=de",
+        headers=_auth_headers(start_body),
+    )
+    assert managed.status_code == 200, managed.text
+    payload = managed.json()
+    assert [item["code"] for item in payload["smart_connect"]["shortlist"]] == ["pl"]
+    assert "selected_node_code" not in payload["smart_connect"]
+    country_selector = next(
+        item
+        for item in payload["config_payload"]["outbounds"]
+        if item.get("type") == "selector" and item.get("tag") == "🌍 Страны"
+    )
+    assert country_selector["outbounds"] == ["🇵🇱 Польша"]
+
+
+def test_client_nodes_select_rejects_manual_hard_rejected_node(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    now = _utcnow()
+    _add_node(api, code="pl", health_score=98.0, last_health_at=now)
+    _add_node(api, code="de", health_score=95.0, authenticated_egress_ok=False, last_health_at=now)
+    start_body = _start_trial(client, install_id="install-manual-fail-closed")
+
+    response = client.post(
+        "/api/client/nodes/select",
+        headers=_auth_headers(start_body),
+        json={"mode": "manual", "selected_node_code": "de", "samples": []},
+    )
+
+    assert response.status_code == 400, response.text
+    assert response.json()["detail"] == "selected node is not eligible"
+
+
+def test_client_nodes_select_fails_closed_when_shortlist_is_empty(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+
+    _add_node(api, code="de", health_score=95.0, authenticated_egress_ok=False, last_health_at=_utcnow())
+    start_body = _start_trial(client, install_id="install-auto-fail-closed")
+
+    response = client.post(
+        "/api/client/nodes/select",
+        headers=_auth_headers(start_body),
+        json={"mode": "auto", "samples": []},
+    )
+
+    assert response.status_code == 503, response.text
+    assert response.json()["detail"] == "No eligible nodes"
 
 
 def test_latency_samples_are_ingested_and_exposed_as_sticky_hint(monkeypatch, tmp_path) -> None:

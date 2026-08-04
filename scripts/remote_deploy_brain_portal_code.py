@@ -254,8 +254,10 @@ def iter_upload_mappings(repo_root: Path) -> list[tuple[Path, str]]:
         mappings.append((requirements, "/root/portal_bot/requirements.txt"))
 
     for source_name, target_name in (
+        ("authenticated_egress_probe.py", "authenticated_egress_probe.py"),
         ("collect_node_metrics.py", "collect_node_metrics.py"),
         ("node_dataplane_probe.py", "node_dataplane_probe.py"),
+        ("singbox_authenticated_egress_adapter.py", "singbox_authenticated_egress_adapter.py"),
     ):
         source = repo_root / "scripts" / source_name
         if source.exists():

@@ -127,6 +127,65 @@ def test_oidc_finish_issues_web_session_token(monkeypatch, tmp_path):
     assert session_payload["user"]["username"] == "pokrov_user"
 
 
+def test_oidc_failures_are_redacted_and_keep_status_codes(monkeypatch, tmp_path, caplog):
+    api, web_auth_service = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    sensitive = "https://198.51.100.77:8443/token?access_token=provider-secret"
+
+    def failing_start():
+        raise RuntimeError(f"provider configuration failed: {sensitive}")
+
+    monkeypatch.setattr(api, "build_telegram_oidc_authorize_url", failing_start)
+    start = client.get("/api/auth/telegram/oidc/start")
+
+    assert start.status_code == 503
+    assert start.headers["X-POKROV-Auth-Error"] == "telegram_oidc_unavailable"
+    assert start.json()["detail"] == "Telegram sign-in is temporarily unavailable. Try again later."
+    assert sensitive not in start.text
+    assert "198.51.100.77" not in start.text
+    assert "8443" not in start.text
+    assert "provider-secret" not in start.text
+
+    state_token = web_auth_service.create_telegram_oidc_state_token(
+        redirect_uri="https://app.pokrov.test/",
+    )
+
+    async def failing_finish(*, code: str, state_token: str):
+        raise RuntimeError(f"provider exchange failed: {sensitive}")
+
+    monkeypatch.setattr(api, "exchange_telegram_oidc_code", failing_finish)
+    finish = client.post(
+        "/api/auth/telegram/oidc/finish",
+        json={"code": "oidc-code-123", "state": state_token},
+    )
+
+    assert finish.status_code == 502
+    assert finish.headers["X-POKROV-Auth-Error"] == "telegram_oidc_unavailable"
+    assert finish.json()["detail"] == "Telegram sign-in is temporarily unavailable. Try again later."
+    assert sensitive not in finish.text
+    assert "198.51.100.77" not in finish.text
+    assert "8443" not in finish.text
+    assert "provider-secret" not in finish.text
+
+    async def invalid_finish(*, code: str, state_token: str):
+        raise ValueError(f"token validation failed: {sensitive}")
+
+    monkeypatch.setattr(api, "exchange_telegram_oidc_code", invalid_finish)
+    invalid = client.post(
+        "/api/auth/telegram/oidc/finish",
+        json={"code": "oidc-code-123", "state": state_token},
+    )
+
+    assert invalid.status_code == 401
+    assert invalid.headers["X-POKROV-Auth-Error"] == "telegram_oidc_invalid"
+    assert invalid.json()["detail"] == "Telegram sign-in could not be verified. Start sign-in again."
+    assert sensitive not in invalid.text
+    assert "198.51.100.77" not in invalid.text
+    assert "8443" not in invalid.text
+    assert "provider-secret" not in invalid.text
+    assert sensitive not in caplog.text
+
+
 def test_validate_telegram_oidc_id_token_accepts_valid_signature(monkeypatch, tmp_path):
     _api, web_auth_service = _load_api(monkeypatch, tmp_path)
 

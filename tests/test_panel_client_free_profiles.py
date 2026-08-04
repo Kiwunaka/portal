@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from types import SimpleNamespace
 
 import pytest
@@ -198,6 +199,120 @@ def test_uuid_rotation_addresses_old_client_but_sends_new_uuid() -> None:
     assert old_uuid not in payload["settings"]
 
 
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [({"success": True}, True), ({"success": "false"}, False)],
+)
+def test_restart_xray_service_requires_literal_authenticated_success_response(payload: dict, expected: bool) -> None:
+    from panel_client import PanelClient
+
+    calls: list[str] = []
+
+    class Response:
+        status = 200
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def json(self, **_kwargs):
+            return payload
+
+    class Session:
+        def post(self, url, **_kwargs):
+            calls.append(url)
+            return Response()
+
+    client = PanelClient(_node("free_standard", inbound_id=41))
+    client.cookies = {"session": "test"}
+    client.session = Session()
+
+    async def ensure_session():
+        return None
+
+    async def csrf_headers():
+        return {}
+
+    client.ensure_session = ensure_session
+    client._csrf_headers = csrf_headers
+
+    assert asyncio.run(client.restart_xray_service()) is expected
+    assert calls == ["https://nl-free.test:8444/panel/panel/api/server/restartXrayService"]
+
+
+@pytest.mark.parametrize(
+    ("success", "expected"),
+    [(True, {"xray": {"state": "running"}}), ("false", None)],
+)
+def test_server_status_requires_literal_authenticated_success_response(success, expected) -> None:
+    from panel_client import PanelClient
+
+    class Response:
+        status = 200
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+        async def json(self, **_kwargs):
+            return {"success": success, "obj": {"xray": {"state": "running"}}}
+
+    class Session:
+        def get(self, _url, **_kwargs):
+            return Response()
+
+    client = PanelClient(_node("free_standard"))
+    client.cookies = {"session": "test"}
+    client.session = Session()
+
+    async def ensure_session():
+        return None
+
+    client.ensure_session = ensure_session
+
+    assert asyncio.run(client.get_server_status()) == expected
+
+
+def test_wait_for_xray_running_rejects_down_status() -> None:
+    from panel_client import PanelClient
+
+    client = PanelClient(_node("free_standard"))
+    calls = []
+
+    async def status():
+        calls.append("status")
+        return {"xray": {"state": "error", "errorMsg": "start failed"}}
+
+    client.get_server_status = status
+
+    assert asyncio.run(client.wait_for_xray_running(attempts=2, interval_seconds=0)) is False
+    assert calls == ["status", "status"]
+
+
+def test_wait_for_xray_running_accepts_stable_running_status() -> None:
+    from panel_client import PanelClient
+
+    client = PanelClient(_node("free_standard"))
+    statuses = iter(
+        [
+            {"xray": {"state": "stop", "errorMsg": ""}},
+            {"xray": {"state": "running", "errorMsg": ""}},
+            {"xray": {"state": "running", "errorMsg": ""}},
+        ]
+    )
+
+    async def status():
+        return next(statuses)
+
+    client.get_server_status = status
+
+    assert asyncio.run(client.wait_for_xray_running(attempts=3, interval_seconds=0)) is True
+
+
 def test_paid_source_disable_updates_every_managed_inbound() -> None:
     from control_panel import ControlPanel
 
@@ -302,6 +417,65 @@ def test_paid_source_restore_never_enables_operator_lab_transport() -> None:
     assert calls == [(43, True)]
 
 
+def test_paid_compensation_restore_reenables_every_regular_transport() -> None:
+    from control_panel import ControlPanel
+
+    node = _node("paid", inbound_id=43)
+    node.code = "nl-paid"
+    calls: list[tuple] = []
+
+    class Client:
+        async def ensure_client_explicit(self, **kwargs):
+            calls.append(("ensure", kwargs["inbound_id"], kwargs["enable"]))
+            return True
+
+        async def find_clients_by_tgid(self, _tg_id, *, include_disabled=False):
+            assert include_disabled is True
+            return [
+                (43, {"id": "uuid-restore", "_transport_profile": "legacy_reality_fallback"}),
+                (44, {"id": "uuid-restore", "_transport_profile": "operator_lab"}),
+                (45, {"id": "uuid-restore", "_transport_profile": "grpc_443_primary"}),
+            ]
+
+        async def update_client_enable(self, _client, enable, **kwargs):
+            calls.append(("update", kwargs["inbound_id"], bool(enable)))
+            return True
+
+        async def confirm_client_profile(self, **kwargs):
+            calls.append(("confirm", kwargs["inbound_id"], kwargs["enabled"]))
+            return True
+
+    panel = ControlPanel()
+
+    async def resolve(node_code: str, expected_access_role: str):
+        assert node_code == "nl-paid"
+        assert expected_access_role == "paid"
+        return node
+
+    panel._resolve_exact_role_node = resolve
+    panel._clients = {"nl-paid": Client()}
+
+    ok = asyncio.run(
+        panel.restore_user_profile_state_on_node(
+            tg_id=4007,
+            client_uuid="uuid-restore",
+            email="user-4007@example.test",
+            sub_id="sub-4007",
+            node_code="nl-paid",
+            expected_access_role="paid",
+            state="enabled",
+        )
+    )
+
+    assert ok is True
+    assert calls == [
+        ("ensure", 43, True),
+        ("update", 43, True),
+        ("update", 45, True),
+        ("confirm", 43, True),
+    ]
+
+
 def test_control_panel_legacy_free_resolution_uses_persisted_soft_role() -> None:
     from control_panel import ControlPanel
 
@@ -319,3 +493,95 @@ def test_control_panel_legacy_free_resolution_uses_persisted_soft_role() -> None
     )
 
     assert ControlPanel._free_node_codes(nodes, user=user) == ["nl-free-soft"]
+
+
+def test_cross_inbound_cleanup_logs_never_expose_client_uuid(caplog) -> None:
+    from panel_client import PanelClient
+
+    raw_uuid = "adversarial-secret-client-uuid"
+    client = PanelClient(_node("paid", inbound_id=43))
+
+    async def get_inbounds():
+        return [
+            {
+                "id": 44,
+                "settings": {
+                    "clients": [
+                        {
+                            "id": raw_uuid,
+                            "tgId": "4999",
+                            "email": "adversarial@example.test",
+                        }
+                    ]
+                },
+            }
+        ]
+
+    async def delete_client_from_inbound(**_kwargs):
+        return False
+
+    client._get_inbounds = get_inbounds
+    client._delete_client_from_inbound = delete_client_from_inbound
+    caplog.set_level(logging.INFO)
+
+    ok = asyncio.run(
+        client._cleanup_cross_inbound_conflicts(
+            tg_id=4999,
+            email="adversarial@example.test",
+            preserve_inbound_ids={43},
+        )
+    )
+
+    assert ok is False
+    assert raw_uuid not in caplog.text
+    assert "adversarial@example.test" not in caplog.text
+
+
+def test_delete_error_log_redacts_exception_payload_containing_uuid(caplog) -> None:
+    from panel_client import PanelClient
+
+    raw_uuid = "adversarial-secret-client-uuid-in-exception"
+    client = PanelClient(_node("paid", inbound_id=43))
+    client.cookies = {"session": "present"}
+
+    class _Session:
+        def post(self, *_args, **_kwargs):
+            raise RuntimeError(f"request failed for {raw_uuid}")
+
+    async def ensure_session():
+        client.session = _Session()
+
+    async def csrf_headers():
+        return {}
+
+    client.ensure_session = ensure_session
+    client._csrf_headers = csrf_headers
+    caplog.set_level(logging.WARNING)
+
+    ok = asyncio.run(client._delete_client_from_inbound(inbound_id=43, client_uuid=raw_uuid))
+
+    assert ok is False
+    assert raw_uuid not in caplog.text
+    assert "RuntimeError" in caplog.text
+
+
+def test_runtime_snapshot_redacts_adversarial_exception_detail() -> None:
+    from panel_client import PanelClient
+
+    secret = "https://user:password@panel.example/provider/raw-client-uuid"
+    client = PanelClient(_node("paid", inbound_id=43))
+
+    async def login():
+        return True
+
+    async def failed_status():
+        raise RuntimeError(secret)
+
+    client.login = login
+    client.get_server_status = failed_status
+
+    snapshot = asyncio.run(client.get_node_runtime_snapshot())
+
+    assert snapshot["error"] == "panel_request_failed"
+    assert secret not in str(snapshot)
+    assert "password" not in str(snapshot)
