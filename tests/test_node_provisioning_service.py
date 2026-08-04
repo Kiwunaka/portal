@@ -1019,6 +1019,8 @@ def test_reset_ensures_limited_standard_resets_traffic_then_disables_soft(databa
         ("ensure", "nl-free-standard", "free_standard", 5 * GIB, 1),
         ("confirm", "nl-free-standard", "free_standard", 5 * GIB, 1),
         ("reset", "nl-free-standard", "free_standard"),
+        ("disable", "nl-free-standard", "free_standard", True),
+        ("confirm", "nl-free-standard", "free_standard", 5 * GIB, 1),
         ("disable", "nl-free-soft", "free_soft", False),
         ("close",),
     ]
@@ -1099,6 +1101,8 @@ def test_paid_reentry_confirms_standard_before_disabling_paid_and_soft_sources(d
         ("ensure", "nl-free-standard", "free_standard", 5 * GIB, 1),
         ("confirm", "nl-free-standard", "free_standard", 5 * GIB, 1),
         ("reset", "nl-free-standard", "free_standard"),
+        ("disable", "nl-free-standard", "free_standard", True),
+        ("confirm", "nl-free-standard", "free_standard", 5 * GIB, 1),
         ("disable", "nl-free-soft", "free_soft", False),
         ("disable", "nl-paid", "paid", False),
         ("close",),
@@ -2218,6 +2222,8 @@ def test_payment_race_during_free_reentry_restores_paid_profile(database) -> Non
         ("ensure", "nl-free-standard", "free_standard", 5 * GIB, 1),
         ("confirm", "nl-free-standard", "free_standard", 5 * GIB, 1),
         ("reset", "nl-free-standard", "free_standard"),
+        ("disable", "nl-free-standard", "free_standard", True),
+        ("confirm", "nl-free-standard", "free_standard", 5 * GIB, 1),
         ("disable", "nl-free-soft", "free_soft", False),
         ("disable", "nl-paid", "paid", False),
         ("restore", "nl-free-standard", "free_standard", "enabled"),
@@ -2252,7 +2258,7 @@ def test_failed_payment_race_compensation_requires_manual_review(database) -> No
     class FailedCompensationPanel(FakePanel):
         def __init__(self) -> None:
             super().__init__()
-            self.disable_results = [True, True, False]
+            self.disable_results = [True, True, True, False]
 
         async def set_user_profile_enabled_on_node(self, **kwargs):
             result = await super().set_user_profile_enabled_on_node(**kwargs)
@@ -2276,6 +2282,8 @@ def test_failed_payment_race_compensation_requires_manual_review(database) -> No
         ("ensure", "nl-free-standard", "free_standard", 5 * GIB, 1),
         ("confirm", "nl-free-standard", "free_standard", 5 * GIB, 1),
         ("reset", "nl-free-standard", "free_standard"),
+        ("disable", "nl-free-standard", "free_standard", True),
+        ("confirm", "nl-free-standard", "free_standard", 5 * GIB, 1),
         ("disable", "nl-free-soft", "free_soft", False),
         ("disable", "nl-paid", "paid", False),
         ("restore", "nl-free-standard", "free_standard", "enabled"),

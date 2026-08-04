@@ -1049,6 +1049,32 @@ async def _execute_panel(
         )
         if not reset_ok:
             raise ProvisioningError("target_traffic_reset_failed")
+        reenabled = await _run_panel_operation(
+            lambda: panel.set_user_profile_enabled_on_node(
+                tg_id=prepared.tg_id,
+                node_code=str(prepared.target_node_code or ""),
+                expected_access_role=FREE_STANDARD_ROLE,
+                enable=True,
+                sub_id=prepared.sub_id,
+            ),
+            claim_lease=claim_lease,
+        )
+        if not reenabled:
+            raise ProvisioningError("target_reenable_failed")
+        reconfirmed = await _run_panel_operation(
+            lambda: panel.confirm_user_profile_on_node(
+                tg_id=prepared.tg_id,
+                client_uuid=prepared.client_uuid,
+                email=prepared.panel_email,
+                node_code=str(prepared.target_node_code or ""),
+                expected_access_role=FREE_STANDARD_ROLE,
+                total_bytes=FREE_STANDARD_QUOTA_BYTES,
+                limit_ip=1,
+            ),
+            claim_lease=claim_lease,
+        )
+        if not reconfirmed:
+            raise ProvisioningError("target_reconfirm_failed")
     if superseded_check is not None and superseded_check():
         return "superseded_compensation_required"
     source_bindings = prepared.source_bindings
