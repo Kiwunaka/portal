@@ -199,6 +199,60 @@ def test_uuid_rotation_addresses_old_client_but_sends_new_uuid() -> None:
     assert old_uuid not in payload["settings"]
 
 
+def test_reset_flag_falls_back_to_modern_client_api_on_legacy_404() -> None:
+    from panel_client import PanelClient
+
+    class Response:
+        status = 404
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return None
+
+    class Session:
+        def post(self, _url, **_kwargs):
+            return Response()
+
+    client = PanelClient(_node("free_standard", inbound_id=41))
+    client.cookies = {"session": "test"}
+    client.session = Session()
+    modern_calls: list[dict] = []
+
+    async def ensure_session():
+        return None
+
+    async def csrf_headers():
+        return {}
+
+    async def update_modern(**kwargs):
+        modern_calls.append(kwargs)
+        return True
+
+    client.ensure_session = ensure_session
+    client._csrf_headers = csrf_headers
+    client._update_client_modern = update_modern
+
+    ok = asyncio.run(
+        client._update_client_with_reset_flag(
+            {
+                "id": "00000000-0000-4000-8000-000000004005",
+                "email": "user-4005@example.test",
+                "tgId": "4005",
+                "enable": True,
+                "subId": "sub-4005",
+            },
+            inbound_id=41,
+        )
+    )
+
+    assert ok is True
+    assert len(modern_calls) == 1
+    assert modern_calls[0]["inbound_id"] == 41
+    assert modern_calls[0]["updated"]["reset"] > 0
+
+
 @pytest.mark.parametrize(
     ("payload", "expected"),
     [({"success": True}, True), ({"success": "false"}, False)],

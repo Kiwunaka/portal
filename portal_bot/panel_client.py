@@ -1447,6 +1447,11 @@ class PanelClient:
                 cookies=self.cookies,
                 timeout=aiohttp.ClientTimeout(total=20),
             ) as resp:
+                if resp.status == 404:
+                    return await self._update_client_modern(
+                        updated=updated,
+                        inbound_id=target_inbound_id,
+                    )
                 if resp.status != 200:
                     return False
                 data = await resp.json(content_type=None)
