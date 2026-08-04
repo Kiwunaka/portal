@@ -1875,11 +1875,7 @@ def ops_alert_notification_batches(notifications: list[dict[str, Any]]) -> list[
 
     if resolved:
         lines = [f"✅ POKROV: восстановлено, закрыто событий — {len(resolved)}"]
-        for item in resolved[:8]:
-            lines.append(f"• {str(item.get('title') or 'Событие мониторинга').strip()}")
-        if len(resolved) > 8:
-            lines.append(f"Ещё закрыто: {len(resolved) - 8}.")
-        lines.append("Текущие проверки больше не подтверждают проблему.")
+        lines.append("Текущие проверки больше не подтверждают проблемы. Действий не требуется.")
         batches.append(
             {
                 "fingerprints": [str(item.get("fingerprint") or "") for item in resolved],
