@@ -21,12 +21,12 @@ The rework canon now freezes the following target identity and access model for 
 - `POKROV-app/main` is the only active client lane expected to implement this contract family
 - `app-next/` and `external/client-fork/app/` are retired bootstrap or rollback references only and must not override the active contract
 - one canonical `app-first` account links `install_id`, email, Telegram, devices, and activation keys
-- store-app entry remains the premium-trial path: the first valid device gets `5 days` of premium trial without mandatory registration, then downgrades to `free_monthly`
+- store-app entry remains the premium-trial path: the first valid device gets `5 days` of premium trial without mandatory registration, then moves to `expired_or_blocked` until purchase or another premium grant
 - site email signup is a live additive browser continuation lane when `/api/auth/email/status` reports public delivery readiness; it must not be described as a premium-trial replacement for the app-first path
 - browser continuation can start from app handoff, Telegram, or email; all three land in the same cabinet session family instead of creating competing account tracks
 - Telegram is recovery, linking, restore-premium, bonus, community, support fallback, and bot-side fallback commerce, not the primary login or commerce wall
 - commerce becomes `buy key -> redeem key -> managed premium`, with raw subscription links hidden from default UX and exposed only for explicit recovery/manual flows
-- free-tier policy is fixed to one logical `NL-free` location and one device: `free_standard` has an exact `5 * 1024^3` byte panel cap, then a confirmed transition moves the credential to a distinct `free_soft` inbound shaped toward `2 Mbps` per observed public IP until the 30-day reset
+- consumer free-tier delivery is retired and fail-closed by default (`FREE_TIER_ENABLED=false`); legacy `free_standard`/`free_soft` roles remain only as rollback and cleanup compatibility and must never fall back to paid nodes
 - `GET /api/dashboard`, `GET /api/user/*`, `POST /api/client/session/start-trial`, and `GET /api/client/profile/managed` should converge on one linked-identity and access-state contract that also carries redeem eligibility, promo-slot payloads, and the hidden transport matrix
 - normal consumer UI shows one logical location; ordered transports such as `vless_reality -> vmess -> trojan -> xhttp` remain hidden rollout detail rather than mass-UI choice
 
@@ -152,7 +152,7 @@ Contract rule:
 - `/api/connect/confirm`, `clicked_connect`, `connected_ok`, and other
   client-authored events remain diagnostics only and cannot activate access
 - replayed observer batches/evidence return idempotently without moving expiry;
-  an unactivated stale reservation projects to `free_monthly` while paid and
+  an unactivated stale reservation projects to `expired_or_blocked` while paid and
   unrelated active grants or current paid/bonus `User` projections remain
   untouched
 - canonical-account merge keeps exactly one trial authority: active beats
@@ -293,7 +293,7 @@ Rollout note:
 Smart-connect contract:
 
 - `GET /api/client/profile/managed` returns a shortlist revision plus `smart_connect.shortlist`; its material contains only those shortlisted nodes and returns `503 No eligible nodes` when the shortlist is empty
-- premium users can receive up to `SMART_CONNECT_SHORTLIST_LIMIT` eligible non-free nodes, default `8`; free-tier users still receive only `NL-free`
+- premium users can receive up to `SMART_CONNECT_SHORTLIST_LIMIT` eligible non-free nodes, default `8`; expired users receive no delivery shortlist
 - the shortlist rejects disabled, draining, unhealthy, stale, missing or dataplane-down, saturated, high-loss/retransmit, `cpu_percent >= SMART_CONNECT_CPU_REJECT_PERCENT`, transport-incompatible, and rollout-blocked nodes while `CAPACITY_AWARE_NODE_SELECTION=true`; neither explicit selection nor automatic selection may fall back to a rejected node
 - shortlist items expose canonical `outbound_tag`, `health_score`, `cpu_percent`, `panel_latency_ms`, `backend_penalty`, `cpu_penalty`, `capacity_state`, `capacity_score`, `tx_ratio`, `tx_mbps`, `provisioned_clients_count`, `online_connections_hint`, and an internal `probe.host` / `probe.port` target for app-side RTT checks; `outbound_tag` identifies the unique direct proxy that must belong to the returned final selector
 - the client asks `GET /api/client/nodes/candidates`, performs best-effort RTT probes, posts the result to `POST /api/client/nodes/select`, and promotes the selected `outbound_tag` inside the already authorized managed profile before materialization; one bounded `GET /api/client/profile/managed?selected_node_code=...` refetch is allowed only when local identity mapping cannot be proven
@@ -783,8 +783,8 @@ Current backend-derived access states exposed to WebApp and admin surfaces:
 
 - `trial_premium`
 - `bonus_premium`
-- `free_monthly`
-- `free_soft_mode`
+- `free_monthly` (legacy disabled compatibility)
+- `free_soft_mode` (legacy disabled compatibility)
 - `paid_unlimited`
 - `expired_or_blocked`
 
@@ -793,26 +793,18 @@ Rules:
 - app-first trial reserves premium-grade access for `7 days`; its `5-day`
   consumption clock starts at the first valid internal observer observation
 - a new channel claim adds `+5 days`; already-issued `+10 days` grants remain grandfathered
-- once premium expires, auto-downgrade must set `current_plan_code=free_monthly`, not `trial`
-- the worker also reconciles stale `FREE`/`trial` projections. Only an exact active,
-  bounded `premium_trial` grant inside the reservation clock may keep paid-pool
-  placement; missing, unbounded, or stale grant state is quarantined for manual
-  review, projected to `free_monthly`, and queued for free-profile provisioning
-  idempotently
-- `free_monthly` keeps an exact `5 * 1024^3` byte quota per 30-day cycle with device limit `1` on a node explicitly labeled `access_role=free_standard`
-- reaching the quota records server-side evidence and queues one durable transition; bytes alone never project `free_soft_mode`
-- the persisted lifecycle is `standard -> soft_transition_pending -> soft_active`, with `error` for bounded retry/manual review; reset uses `soft_active -> reset_pending -> standard`
-- the worker must ensure and confirm the target role before disabling the source role; reset additionally clears standard-profile traffic before disabling soft
-- a successful reset starts the next full 30-day window at confirmation time; delayed worker execution cannot shorten the user's next cycle
-- API selection, subscription output, Telegram/admin resync, and legacy panel wrappers must all use the persisted free role; transition/error states refuse legacy resync
-- if a payment supersedes an in-flight transition, the worker compensates the panel mutation and restores a usable source; compensation failure is manual-review evidence, never a silent success
-- only confirmed `free_soft` state projects `free_soft_mode`; its distinct inbound has no panel hard cap because the local Linux shaper targets `2 Mbps` per observed public IP in each direction
-- the IP shaper is not per-account proof: clients behind one NAT share the cap, and production enablement remains blocked until Linux nftables/throughput/counter/rollback canary evidence exists
+- once premium expires, the account remains recoverable and payable but access becomes `expired_or_blocked`; automatic free downgrade is disabled
+- entitlement rebuilds and the worker preserve or recover a `FREE` account as
+  `trial` only from an exact bounded `premium_trial` grant in `reserved` or
+  `active` state. A bounded reservation keeps paid-pool placement without
+  starting the five-day consumption clock; missing, unbounded, or stale grant
+  state is quarantined for manual review and projected to `expired_or_blocked`
+- legacy free-cycle states, roles and provisioning jobs remain rollback-only while
+  `FREE_TIER_ENABLED=false`; queued legacy free jobs are cancelled before claim
 - `paid_unlimited` remains unlimited traffic with device limit `5`
 - premium-grade access states `trial_premium`, `bonus_premium`, and `paid_unlimited` must use the paid pool: all enabled non-free delivery nodes
-- free-tier access states remain one logical `NL-free` location, but routing must select distinct explicit `free_standard` and `free_soft` roles/inbounds; missing soft role must retry/manual-review and never fall back to paid or `operator_lab`
-- backend-facing `node_policy` should therefore resolve to `paid_pool` for premium-grade access and the persisted free role for free-tier access
-- desired-state provisioning should place active premium/trial/paid keys on all enabled paid nodes at current scale, while free keys remain on the free pool; renderer output should follow the same pool boundary and capacity state
+- backend-facing `node_policy` resolves premium-grade access to `paid_pool`; when free delivery is disabled it resolves no free node at all
+- desired-state provisioning places only active premium/trial/paid keys on enabled paid nodes; expired/free-retired keys are revoked and must not be rerouted to paid or `operator_lab`
 
 ## Runtime Notes
 

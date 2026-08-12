@@ -154,6 +154,8 @@ class BotPaywallTests(unittest.TestCase):
         importlib.reload(self.bot_module)
 
     def test_admin_resync_respects_persisted_free_role_and_blocks_transitions(self) -> None:
+        previous_free_tier_enabled = os.environ.get("FREE_TIER_ENABLED")
+        os.environ["FREE_TIER_ENABLED"] = "true"
         nodes = [
             types.SimpleNamespace(
                 code="nl-free-standard",
@@ -199,6 +201,10 @@ class BotPaywallTests(unittest.TestCase):
                 self.bot_module._bot_resync_node_codes(paid_pending_user)
         finally:
             self.bot_module._bot_enabled_nodes = old_enabled_nodes
+            if previous_free_tier_enabled is None:
+                os.environ.pop("FREE_TIER_ENABLED", None)
+            else:
+                os.environ["FREE_TIER_ENABLED"] = previous_free_tier_enabled
 
         bulk_source = inspect.getsource(self.bot_module.admin_sync_free_pl)
         self.assertIn("_bot_resync_node_codes", bulk_source)
@@ -2265,7 +2271,7 @@ class BotPaywallTests(unittest.TestCase):
     def test_tariff_payment_choice_text_stays_rub_only_and_closed_without_launch_gate(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")
         text = self.bot_module._build_tariff_payment_choice_text(tariff_key="1_month", tg_id=1001)
-        self.assertIn("Цена в ₽: *249 ₽*", text)
+        self.assertIn("Цена в ₽: *239 ₽*", text)
         self.assertNotIn("Stars", text)
         self.assertNotIn("⭐", text)
         self.assertIn("Оплата пока закрыта", text)
@@ -2287,7 +2293,7 @@ class BotPaywallTests(unittest.TestCase):
             keyboard = self.bot_module._build_tariff_payment_choice_keyboard(tg_id=1001, tariff_key="3_months")
         finally:
             self.bot_module.enabled_public_provider_catalog = old_catalog
-        self.assertEqual(keyboard.inline_keyboard[0][0].text, "💳 Lava.top · 699 ₽")
+        self.assertEqual(keyboard.inline_keyboard[0][0].text, "💳 Lava.top · 669 ₽")
         self.assertEqual(keyboard.inline_keyboard[0][0].callback_data, "pay_rub:lavatop:3_months")
         flat_rows = [button.text for row in keyboard.inline_keyboard for button in row]
         self.assertIn("💎 Сэкономить на долгом тарифе", flat_rows)
@@ -2394,8 +2400,8 @@ class BotPaywallTests(unittest.TestCase):
         keyboard = self.bot_module.tariff_keyboard(tg_id=1001, show_trial=True, include_long_plans=False)
         labels = [row[0].text for row in keyboard.inline_keyboard]
         self.assertTrue(any("99 ₽" in text for text in labels))
-        self.assertTrue(any("249 ₽" in text for text in labels))
-        self.assertTrue(any("699 ₽" in text for text in labels))
+        self.assertTrue(any("239 ₽" in text for text in labels))
+        self.assertTrue(any("669 ₽" in text for text in labels))
         self.assertFalse(any("⭐" in text for text in labels))
         self.assertFalse(any("Stars" in text for text in labels))
         self.assertFalse(any("points" in text.lower() for text in labels))
@@ -2513,8 +2519,8 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual(retry_button.text, "💳 Оплатить")
         self.assertIsNone(getattr(retry_button, "icon_custom_emoji_id", None))
 
-    def test_twelve_month_tariff_savings_is_45_percent(self) -> None:
-        self.assertEqual(self.bot_module._tariff_savings_pct("12_months"), 45)
+    def test_twelve_month_tariff_savings_is_30_percent(self) -> None:
+        self.assertEqual(self.bot_module._tariff_savings_pct("12_months"), 30)
 
     def test_tariff_payment_choice_text_calls_points_bonuses(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")

@@ -9,7 +9,14 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any, Awaitable, Callable, Mapping
 
-from support_ai_service import SupportAIConfig, generate_support_reply, provider_timeout_ceiling
+from support_ai_service import (
+    DEFAULT_MODEL,
+    SupportAIConfig,
+    canonical_support_model,
+    generate_support_reply,
+    provider_run_deadline_ceiling,
+    provider_timeout_ceiling,
+)
 from support_agent_context import SupportContextBuilder
 from support_agent_grounding import SupportGroundingEngine
 from support_agent_harness import (
@@ -124,14 +131,19 @@ class SupportAgentRuntimeSettings:
                 return default
             return value
 
-        provider_timeout_max = provider_timeout_ceiling(
-            str(source.get("SUPPORT_AI_API_BASE_URL") or "")
-        )
+        api_base_url = str(source.get("SUPPORT_AI_API_BASE_URL") or "")
+        provider_timeout_max = provider_timeout_ceiling(api_base_url)
+        run_deadline_max = provider_run_deadline_ceiling(api_base_url)
         settings = cls(
             agent_enabled=boolean("SUPPORT_AI_AGENT_ENABLED", False),
             valid=True,
             invalid_reason=None,
-            run_deadline_seconds=number("SUPPORT_AI_RUN_DEADLINE_SECONDS", 25.0, 0.1, 25.0),
+            run_deadline_seconds=number(
+                "SUPPORT_AI_RUN_DEADLINE_SECONDS",
+                25.0,
+                0.1,
+                run_deadline_max,
+            ),
             provider_timeout_seconds=number(
                 "SUPPORT_AI_TIMEOUT_SECONDS",
                 20.0,
@@ -364,7 +376,10 @@ class SupportAgentService:
                 source="support_ai",
             )
 
-        if self.config.model != "minimax-m3" or self.config.reasoning_effort != "medium":
+        if (
+            canonical_support_model(self.config.model) != DEFAULT_MODEL
+            or self.config.reasoning_effort != "medium"
+        ):
             logger.warning("support agent disabled code=agent_profile_invalid")
             return self._local_result(message, scope.client_session_id)
 

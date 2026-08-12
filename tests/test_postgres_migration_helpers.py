@@ -1,7 +1,9 @@
+import os
 import re
 import sys
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from sqlalchemy import Identity, JSON
 from sqlalchemy.dialects import postgresql, sqlite
@@ -561,6 +563,37 @@ class PostgresMigrationHelperTests(unittest.TestCase):
         )
         self.assertIn("is_enabled", backfill_sql)
         self.assertIn("TRUE", backfill_sql)
+
+    def test_access_key_backfill_fails_closed_when_free_tier_is_disabled(self) -> None:
+        conn = _FakeConn()
+
+        with mock.patch.dict(os.environ, {"FREE_TIER_ENABLED": "false"}, clear=False):
+            self.migrations._ensure_capacity_domain_postgres(conn)
+
+        access_key_sql, params = next(
+            (sql, params)
+            for sql, params in conn.executed
+            if "INSERT INTO access_keys" in sql
+        )
+        self.assertIn("current_plan_code", access_key_sql)
+        self.assertIn("THEN 'free_pool'", access_key_sql)
+        self.assertIn("ELSE 'premium_pool'", access_key_sql)
+        self.assertIn("ELSE 'inactive'", access_key_sql)
+        self.assertIs(params["free_tier_enabled"], False)
+
+    def test_access_key_backfill_keeps_trial_on_premium_pool(self) -> None:
+        conn = _FakeConn()
+
+        with mock.patch.dict(os.environ, {"FREE_TIER_ENABLED": "true"}, clear=False):
+            self.migrations._ensure_capacity_domain_postgres(conn)
+
+        access_key_sql, params = next(
+            (sql, params)
+            for sql, params in conn.executed
+            if "INSERT INTO access_keys" in sql
+        )
+        self.assertIn("('trial', 'channel_bonus', 'start_99')", access_key_sql)
+        self.assertIs(params["free_tier_enabled"], True)
 
     def test_ru_probe_postgres_ddl_matches_full_contract(self) -> None:
         conn = _FakeConn()

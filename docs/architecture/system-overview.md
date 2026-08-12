@@ -95,7 +95,7 @@ Reference-lane note:
 - `portal_bot/support_ai_service.py`
   Legacy one-call OpenAI-compatible helper and shared bounded sanitizer; retained only when `SUPPORT_AI_ENABLED=true` and `SUPPORT_AI_AGENT_ENABLED=false`.
 - `portal_bot/support_agent_harness.py`, `portal_bot/support_agent_context.py`, and `portal_bot/support_agent_provider.py`
-  Bounded mini-agent loop, stable cacheable context, and an exact-route OpenAI-compatible adapter for canonical `minimax-m3` with medium reasoning. The xCody route sends that ID directly; the exact OpenRouter route maps it to `minimax/minimax-m3` on the wire, allows a 24-second provider window inside the 25-second harness deadline, and normalizes only a single clean JSON Markdown fence before the unchanged closed-schema safety checks.
+  Bounded mini-agent loop, stable cacheable context, and an exact-route OpenAI-compatible adapter for canonical `deepseek-v4-flash-0731` with medium reasoning. The exact OpenRouter route maps it to `deepseek/deepseek-v4-flash-0731` on the wire, leaves the completion budget provider-managed so reasoning cannot consume a short `max_tokens` cap, excludes the private reasoning trace, allows a 45-second provider window inside a 50-second harness deadline, and normalizes only a single clean JSON Markdown fence before the unchanged closed-schema safety checks.
 - `portal_bot/support_agent_policy.py`, `portal_bot/support_agent_knowledge.py`, and `portal_bot/support_agent_sessions.py`
   Fail-closed policy/KB validation, read-only local topic retrieval, and owner-scoped process-memory/rate limits.
 - `portal_bot/worker.py`
@@ -161,6 +161,7 @@ Node lifecycle rule:
 - `POKROV` database decides assignment and lifecycle
 - 3x-ui executes the resulting config
 - node retirement sequence is `drain -> resync -> disable`
+- consumer free-tier delivery is retired by default: `FREE_TIER_ENABLED=false`, expired accounts keep recovery/payment access, and no free node may fall back to the paid pool
 - the RF reserve contour lives outside the normal delivery lifecycle until explicitly promoted
 
 ### User Interfaces
@@ -580,7 +581,7 @@ RF host rule:
 - keep `rf1` outside the default runtime delivery pool in phase 1
 - `rf1` promotion remains in backlog
 - owner-approved exception on `2026-06-01`: `mini` may run `ru_bridge_relay` on `tcp/443` as the legacy primary emergency bridge to enabled non-US POKROV delivery nodes; additional RU bridge hosts may be added as separate endpoint ids in `ru_bridge_relay.endpoints[]`. Keep all bridge hosts out of the standard delivery pool, keep US excluded, and keep a rollback path that disables the rollout profile without touching normal Reality delivery
-- owner-approved exception on `2026-04-24`: the dedicated free node (`151.245.217.23`) runs `portal-mtproto.service` as a Telegram-only MTProto proxy on `tcp/9443`; it is not a new generic delivery role and must not displace the node's normal `x-ui` listener on `tcp/443`
+- historical owner-approved exception on `2026-04-24`: the former dedicated free node (`151.245.217.23`) may retain a Telegram-only MTProto proxy on `tcp/9443`, but consumer free delivery is retired and the host has no enabled canonical delivery role; current MTProto or Xray service state requires fresh node-side evidence
 
 ## Public Hostnames And Migration Roles
 

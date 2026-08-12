@@ -7,7 +7,6 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Chip } from "../../components/ui/chip";
 import { cn } from "../../components/utils";
-import { MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
 import { TELEGRAM_START_PROMISE } from "../../lib/seo-pages";
 import {
   getCheckoutTariffPlans,
@@ -119,6 +118,42 @@ const PAYMENT_METHOD_OPTIONS: Array<{
   { code: "sbp", label: "СБП", hint: "Через приложение банка" },
   { code: "card", label: "Карта", hint: "Банковская карта" },
 ];
+
+const PLAN_MONTHS: Record<string, number> = {
+  "1_month": 1,
+  "3_months": 3,
+  "6_months": 6,
+  "9_months": 9,
+  "12_months": 12,
+};
+
+function deviceCountLabel(count: number): string {
+  const normalized = Math.max(1, Math.trunc(count || 1));
+  if (normalized === 1) return "1 устройство";
+  if (normalized >= 2 && normalized <= 4) return `${normalized} устройства`;
+  return `${normalized} устройств`;
+}
+
+function planSupportingText(plan: PlanOption, discountPercent: number): string {
+  if (plan.code === "start_99") {
+    return `Один раз · ${deviceCountLabel(plan.device_limit)}`;
+  }
+  const months = PLAN_MONTHS[plan.code] || 0;
+  const discountedTotal = Math.max(1, Math.round(plan.amount_rub * (1 - discountPercent / 100)));
+  const monthly = months > 0 ? Math.round(discountedTotal / months) : 0;
+  const monthlyText = monthly > 0 ? `${monthly} ₽/мес · ` : "";
+  return `${monthlyText}${deviceCountLabel(plan.device_limit)}`;
+}
+
+function planBadgeLabel(plan: PlanOption, compact = false): string | null {
+  if (plan.code === "start_99") return compact ? "1 раз" : "Только один раз";
+  if (plan.code === "1_month") return null;
+  return plan.badge || null;
+}
+
+function validBuyerEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
 
 function fallbackPlans(): PlanOption[] {
   return getCheckoutTariffPlans()
@@ -301,11 +336,14 @@ export default function CheckoutClient() {
   const [catalog, setCatalog] = useState<PublicCatalogResponse | null>(null);
   const [plans, setPlans] = useState<PlanOption[]>(() => fallbackPlans());
   const [selectedPlan, setSelectedPlan] = useState(queryPlan);
+  const [planPickerOpen, setPlanPickerOpen] = useState(false);
   const [promoCode, setPromoCode] = useState((searchParams.get("promo") || "").trim().toUpperCase());
   const [keyInput, setKeyInput] = useState(initialKeyInput);
   const [keyStatus, setKeyStatus] = useState<AccessKeyStatusResponse | null>(null);
   const [providerState, setProviderState] = useState<PaymentProviderState | null>(null);
-  const [statusText, setStatusText] = useState("");
+  const [keyStatusText, setKeyStatusText] = useState("");
+  const [checkoutStatusText, setCheckoutStatusText] = useState("");
+  const [emailError, setEmailError] = useState("");
   const [keyBusy, setKeyBusy] = useState(initialKeyInput.length >= 6);
   const [buyerEmail, setBuyerEmail] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodChoice>("sbp");
@@ -375,7 +413,7 @@ export default function CheckoutClient() {
       .catch((error) => {
         if (!cancelled) {
           setKeyStatus(null);
-          setStatusText(String((error as { message?: string })?.message || error || "Не удалось проверить ключ."));
+          setKeyStatusText(String((error as { message?: string })?.message || error || "Не удалось проверить ключ."));
         }
       })
       .finally(() => {
@@ -392,7 +430,7 @@ export default function CheckoutClient() {
     const normalized = rawValue.toUpperCase().trim();
     setKeyInput(normalized);
     setKeyStatus(null);
-    setStatusText("");
+    setKeyStatusText("");
     setKeyBusy(normalized.length >= 6);
   };
 
@@ -412,16 +450,22 @@ export default function CheckoutClient() {
   const checkoutBlockedReasons = providerState?.blocked_reason_texts?.length
     ? providerState.blocked_reason_texts
     : providerState?.blocked_reasons || [];
+  const activePlanMonths = PLAN_MONTHS[activePlan.code] || 0;
+  const activePlanTotal = Math.max(1, Math.round(activePlan.amount_rub * (1 - discountPercent / 100)));
+  const activePlanMonthly = activePlanMonths > 0 ? Math.round(activePlanTotal / activePlanMonths) : 0;
 
   const startPublicCheckout = async (): Promise<void> => {
     if (!checkoutReady || !activeProviderCode) return;
     const email = buyerEmail.trim().toLowerCase();
-    if (!email) {
-      setStatusText("Укажите email для доставки ключа доступа после оплаты.");
+    if (!validBuyerEmail(email)) {
+      setEmailError(email ? "Проверьте адрес email." : "Укажите email для чека и кода активации.");
+      setCheckoutStatusText("");
+      document.getElementById("checkout-buyer-email")?.focus();
       return;
     }
+    setEmailError("");
     setCheckoutBusy(true);
-    setStatusText("");
+    setCheckoutStatusText("");
     try {
       const order = await createPublicRubOrder({
         provider: activeProviderCode,
@@ -437,7 +481,7 @@ export default function CheckoutClient() {
       }
       window.location.assign(paymentUrl);
     } catch (error) {
-      setStatusText(String((error as { message?: string })?.message || error || "Не удалось создать платеж."));
+      setCheckoutStatusText(String((error as { message?: string })?.message || error || "Не удалось создать платеж."));
     } finally {
       setCheckoutBusy(false);
     }
@@ -445,263 +489,265 @@ export default function CheckoutClient() {
 
   return (
     <div className="pb-16">
-      <section className="mx-auto flex max-w-3xl flex-col items-center gap-4 px-4 pt-12 pb-10 text-center sm:px-6 sm:pt-16">
-        <Chip tone="neutral">POKROV PREMIUM · безлимитный трафик от 99 ₽</Chip>
-        <Chip tone={checkoutReady ? "brand" : "neutral"}>
-          <span className={cn("size-1.5 rounded-full", checkoutReady ? "bg-status-green" : "bg-ink-muted")} />
-          {checkoutReady ? "Оплата доступна" : "Оплата временно недоступна"}
-        </Chip>
-        <h1 className="font-display text-[2rem] leading-[1.1] font-extrabold tracking-[-0.01em] text-ink sm:text-[2.5rem]">
-          Безлимитный VPN от 99 ₽
-        </h1>
-        <p className="max-w-lg text-base leading-relaxed text-ink-soft">
-          5 дней бесплатно без карты. Затем — безлимитный трафик, без тарифного ограничения скорости, до 5 устройств
-          и ни одного автосписания.
-        </p>
-      </section>
+      <section className="mx-auto max-w-5xl px-4 pt-5 sm:px-6 sm:pt-9">
+        <Card className="overflow-hidden p-0 shadow-medium">
+          <div className="flex flex-col gap-4 border-b border-line bg-canvas-alt px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-8 sm:py-7">
+            <div className="flex max-w-2xl flex-col items-start gap-2.5">
+              <Chip tone="neutral">POKROV PREMIUM</Chip>
+              <div>
+                <h1 className="font-display text-[1.75rem] leading-[1.08] font-extrabold tracking-[-0.01em] text-ink sm:text-[2.25rem]">
+                  Оформление доступа
+                </h1>
+                <p className="mt-2 text-[0.875rem] leading-relaxed text-ink-soft sm:text-[0.9375rem]">
+                  Один платёж, без автосписаний. Код и чек придут на email.
+                </p>
+              </div>
+            </div>
+            <Chip tone={checkoutReady ? "brand" : "neutral"}>
+              <span className={cn("size-1.5 rounded-full", checkoutReady ? "bg-status-green" : "bg-ink-muted")} />
+              {checkoutReady ? "Оплата доступна" : "Оплата временно недоступна"}
+            </Chip>
+          </div>
 
-      <section className="mx-auto mb-10 grid max-w-6xl gap-4 px-4 sm:px-6 md:grid-cols-3">
-        <Card className="flex flex-col gap-1.5">
-          <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-brand uppercase">Без счётчика гигабайтов</span>
-          <h3 className="text-[1.0625rem] font-semibold text-ink">Безлимитный трафик</h3>
-          <p className="text-[0.9375rem] leading-relaxed text-ink-soft">
-            На платном сроке трафик не заканчивается и не требует покупки дополнительных пакетов.
-          </p>
-        </Card>
-        <Card className="flex flex-col gap-1.5">
-          <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-brand uppercase">Без урезания по тарифу</span>
-          <h3 className="text-[1.0625rem] font-semibold text-ink">Без тарифного ограничения*</h3>
-          <p className="text-[0.9375rem] leading-relaxed text-ink-soft">
-            POKROV не режет скорость по тарифу. Фактическая скорость зависит от сети, устройства, локации и нагрузки.
-          </p>
-        </Card>
-        <Card className="flex flex-col gap-1.5">
-          <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-brand uppercase">Один аккаунт</span>
-          <h3 className="text-[1.0625rem] font-semibold text-ink">До 5 устройств</h3>
-          <p className="text-[0.9375rem] leading-relaxed text-ink-soft">
-            Android и Windows в одном аккаунте. Точный лимит каждого тарифа виден до оплаты.
-          </p>
-        </Card>
-      </section>
+          <div className="grid lg:grid-cols-[1.08fr_0.92fr]">
+            <div className="flex flex-col gap-5 border-b border-line px-5 py-6 sm:px-8 sm:py-8 lg:border-r lg:border-b-0">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[0.75rem] font-semibold tracking-[0.08em] text-brand-strong uppercase">Шаг 1</p>
+                  <h2 className="font-display text-[1.25rem] font-bold text-ink">Выберите срок</h2>
+                </div>
+                <span className="text-[0.75rem] text-ink-muted">Безлимитный трафик</span>
+              </div>
 
-      <section className="mx-auto grid max-w-6xl items-start gap-6 px-4 sm:px-6 lg:grid-cols-[1.5fr_1fr]">
-        <Card className="flex flex-col gap-7">
-          <h2 className="font-display text-[1.375rem] font-bold text-ink">Выберите тариф</h2>
-          <div className="flex flex-col gap-2.5">
-            {plans.map((plan) => {
-              const planPreviewDiscountPercent = planDiscountPercent(plan.code, promoCode);
-              return (
+              <div className="relative">
                 <button
-                  key={plan.code}
                   type="button"
-                  onClick={() => setSelectedPlan(plan.code)}
-                  className={cn(
-                    "flex min-h-11 items-center justify-between gap-4 rounded-(--radius-control) border px-4 py-3.5 text-left transition-[border-color,background-color,box-shadow] duration-200 ease-(--ease-apple) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
-                    selectedPlan === plan.code
-                      ? "border-brand bg-brand-soft shadow-soft"
-                      : "border-line bg-surface hover:border-line-strong",
-                  )}
+                  onClick={() => setPlanPickerOpen((value) => !value)}
+                  aria-expanded={planPickerOpen}
+                  aria-controls="checkout-plan-picker"
+                  className="flex min-h-11 w-full items-center justify-between gap-4 rounded-(--radius-control) border border-brand bg-brand-soft px-4 py-4 text-left shadow-soft transition-[border-color,background-color,box-shadow] duration-200 ease-(--ease-apple) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
                 >
-                  <span className="flex flex-col gap-0.5">
-                    <span className="flex items-center gap-2">
-                      <strong className="text-[0.9375rem] font-semibold text-ink">{plan.label}</strong>
-                      {plan.badge ? (
-                        <span
-                          className={cn(
-                            "inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold text-brand-strong",
-                            selectedPlan === plan.code ? "bg-surface" : "bg-brand-soft",
-                          )}
-                        >
-                          {plan.badge}
+                  <span className="flex min-w-0 flex-col gap-1">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <strong className="text-[1rem] font-semibold text-ink">{activePlan.label}</strong>
+                      {planBadgeLabel(activePlan) ? (
+                        <span className="rounded-full bg-surface px-2 py-0.5 text-[0.6875rem] font-semibold text-brand-strong">
+                          {planBadgeLabel(activePlan)}
                         </span>
                       ) : null}
                     </span>
-                    <span className="text-[0.8125rem] text-ink-soft">
-                      {plan.days} дней • до {plan.device_limit} устройств
-                    </span>
+                    <span className="text-[0.75rem] text-ink-soft">{planSupportingText(activePlan, discountPercent)}</span>
                   </span>
-                  <span className="text-[1.0625rem] font-bold text-ink">{formatPrice(plan.amount_rub, planPreviewDiscountPercent)}</span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <strong className="text-[1.25rem] text-ink">{activePlanTotal} ₽</strong>
+                    <span aria-hidden="true" className={cn("text-[0.75rem] text-brand-strong transition-transform duration-200", planPickerOpen ? "rotate-180" : "")}>▼</span>
+                  </span>
                 </button>
-              );
-            })}
-          </div>
 
-          <div className="flex flex-col gap-2.5">
-            <strong className="text-[0.9375rem] font-semibold text-ink">Что вы получаете</strong>
-            <ul className="m-0 flex list-none flex-col gap-2 p-0 text-[0.875rem] leading-relaxed text-ink-soft">
-              <li>Безлимитный трафик на любом платном сроке.</li>
-              <li>Без тарифного ограничения скорости; фактическая скорость зависит от условий подключения.</li>
-              <li>До 5 устройств на основных тарифах; точный лимит выбранного плана виден до оплаты.</li>
-              <li>5 дней бесплатного доступа на первом подтверждённом устройстве — без карты.</li>
-              <li>Код после оплаты продлевает тот профиль, где вы его активируете: в приложении или кабинете.</li>
-              <li>{TELEGRAM_START_PROMISE}</li>
-            </ul>
-          </div>
+                {planPickerOpen ? (
+                  <div id="checkout-plan-picker" className="mt-2 grid grid-cols-2 gap-2 rounded-(--radius-control) border border-line bg-surface p-2 shadow-medium sm:grid-cols-3">
+                    {plans.map((plan) => {
+                      const planPreviewDiscountPercent = planDiscountPercent(plan.code, promoCode);
+                      const selected = selectedPlan === plan.code;
+                      return (
+                        <button
+                          key={plan.code}
+                          type="button"
+                          onClick={() => {
+                            setSelectedPlan(plan.code);
+                            setPlanPickerOpen(false);
+                          }}
+                          aria-pressed={selected}
+                          className={cn(
+                            "flex min-h-20 flex-col justify-between gap-2 rounded-(--radius-control) border px-3 py-2.5 text-left transition-[border-color,background-color] duration-200 ease-(--ease-apple) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+                            selected ? "border-brand bg-brand-soft" : "border-line bg-surface hover:border-line-strong",
+                          )}
+                        >
+                          <span className="flex w-full items-start justify-between gap-1">
+                            <strong className="text-[0.8125rem] font-semibold text-ink">{plan.label}</strong>
+                            {planBadgeLabel(plan, true) ? <span className="text-[0.625rem] font-semibold text-brand-strong">{planBadgeLabel(plan, true)}</span> : null}
+                          </span>
+                          <strong className="text-[0.9375rem] text-ink">{formatPrice(plan.amount_rub, planPreviewDiscountPercent)}</strong>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+              </div>
 
-          <div className="flex flex-col gap-2.5">
-            <strong className="text-[0.9375rem] font-semibold text-ink">Промокод</strong>
-            <input
-              value={promoCode}
-              onChange={(event) => setPromoCode(event.target.value.toUpperCase().trim())}
-              placeholder="Например: POKROV10"
-              className={INPUT_CLASS}
-            />
-            <p className="text-[0.8125rem] text-ink-soft">
-              {activePlanDiscountBlocked
-                ? "Для приветственного тарифа 99 ₽ промокод не применяется."
-                : discountPercent > 0
-                ? `Скидка ${discountPercent}% уже заложена в итог для ${activePlan.label}.`
-                : "Промокод меняет только итоговую сумму."}
-            </p>
-          </div>
-
-          <div className="flex flex-col gap-2.5">
-            <strong className="text-[0.9375rem] font-semibold text-ink">Уже есть код?</strong>
-            <input
-              value={keyInput}
-              onChange={(event) => updateKeyInput(event.target.value)}
-              placeholder="POKROV-XXXX-XXXX"
-              className={INPUT_CLASS}
-            />
-            {keyBusy ? <p className="text-[0.8125rem] text-ink-soft">Проверяем статус кода…</p> : null}
-            {keyStatus ? (
-              <ul className="m-0 flex list-none flex-col gap-1.5 p-0 text-[0.875rem] text-ink-soft">
-                <li>Код: {maskAccessKey(keyStatus.key)}</li>
-                <li>План: {keyStatus.plan?.label || `${keyStatus.days} дней`}</li>
-                <li>Статус: {keyStatus.redeemed ? "уже активирован" : "готов к активации"}</li>
-              </ul>
-            ) : null}
-          </div>
-        </Card>
-
-        <Card className="flex flex-col gap-5 lg:sticky lg:top-24">
-          <h2 className="font-display text-[1.375rem] font-bold text-ink">К оплате</h2>
-          <p className="text-[0.875rem] leading-relaxed text-ink-soft">
-            После разовой оплаты придёт код. Введите его в нужном профиле POKROV — в приложении или кабинете — и срок
-            обновится без автосписаний.
-          </p>
-
-          <dl className="m-0 flex flex-col gap-2 border-y border-line py-4 text-[0.9375rem]">
-            <div className="flex justify-between gap-3">
-              <dt className="text-ink-soft">Тариф</dt>
-              <dd className="m-0 font-semibold text-ink">{activePlan.label}</dd>
+              <p className="text-[0.8125rem] leading-relaxed text-ink-soft">
+                Сменить срок — нажмите на карточку. Приветственные 99 ₽ доступны один раз.
+              </p>
             </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-ink-soft">Срок</dt>
-              <dd className="m-0 font-semibold text-ink">{activePlan.days} дней</dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-ink-soft">Устройства</dt>
-              <dd className="m-0 font-semibold text-ink">до {activePlan.device_limit}</dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt className="text-ink-soft">Платформы</dt>
-              <dd className="m-0 font-semibold text-ink">{formatPlatformScope(catalog?.public_surface_policy?.public_platform_scope)}</dd>
-            </div>
-            <div className="mt-1 flex justify-between gap-3 text-[1.0625rem]">
-              <dt className="font-semibold text-ink">Сумма</dt>
-              <dd className="m-0 font-bold text-brand">{formatPrice(activePlan.amount_rub, discountPercent)}</dd>
-            </div>
-          </dl>
 
-          {checkoutReady ? (
-            <label className="flex flex-col gap-2 text-[0.875rem] font-medium text-ink" htmlFor="checkout-buyer-email">
-              Email для чека и кода активации
-              <input
-                id="checkout-buyer-email"
-                type="email"
-                value={buyerEmail}
-                onChange={(event) => setBuyerEmail(event.target.value)}
-                placeholder="email@example.com"
-                className={INPUT_CLASS}
-                required
-              />
-            </label>
-          ) : null}
+            <div className="flex flex-col gap-5 px-5 py-6 sm:px-8 sm:py-8">
+              <div className="flex items-end justify-between gap-4 border-b border-line pb-4">
+                <div>
+                  <p className="text-[0.75rem] font-semibold tracking-[0.08em] text-brand-strong uppercase">Шаг 2</p>
+                  <h2 className="font-display text-[1.25rem] font-bold text-ink">Оплата</h2>
+                  <p className="mt-1 text-[0.75rem] text-ink-soft">
+                    {activePlan.days} дней · {formatPlatformScope(catalog?.public_surface_policy?.public_platform_scope)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <strong className="block font-display text-[1.75rem] leading-none text-brand">{activePlanTotal} ₽</strong>
+                  {activePlanMonthly > 0 ? <span className="mt-1 block text-[0.75rem] text-ink-soft">≈ {activePlanMonthly} ₽/мес</span> : null}
+                </div>
+              </div>
 
-          {checkoutReady ? (
-            <div className="flex flex-col gap-2">
-              <span className="text-[0.875rem] font-medium text-ink">Способ оплаты</span>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {PAYMENT_METHOD_OPTIONS.map((option) => {
-                  const selected = option.code === paymentMethod;
-                  return (
-                    <button
-                      key={option.code}
-                      type="button"
-                      onClick={() => setPaymentMethod(option.code)}
-                      className={cn(
-                        "min-h-11 rounded-(--radius-control) border px-3 py-2 text-left transition-[border-color,background-color] duration-200 ease-(--ease-apple) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
-                        selected ? "border-brand bg-brand-soft" : "border-line bg-surface hover:border-line-strong",
-                      )}
-                      aria-pressed={selected}
-                    >
-                      <span className="block text-[0.875rem] font-semibold text-ink">{option.label}</span>
-                      <span className="block text-[0.75rem] text-ink-soft">{option.hint}</span>
-                    </button>
-                  );
-                })}
+              {checkoutReady ? (
+                <label className="flex flex-col gap-2 text-[0.875rem] font-medium text-ink" htmlFor="checkout-buyer-email">
+                  Email для чека и кода
+                  <input
+                    id="checkout-buyer-email"
+                    type="email"
+                    value={buyerEmail}
+                    onChange={(event) => {
+                      setBuyerEmail(event.target.value);
+                      setEmailError("");
+                    }}
+                    placeholder="email@example.com"
+                    className={cn(INPUT_CLASS, emailError ? "border-status-red" : "")}
+                    aria-invalid={Boolean(emailError)}
+                    aria-describedby={emailError ? "checkout-email-error" : undefined}
+                    required
+                  />
+                  {emailError ? (
+                    <span id="checkout-email-error" role="alert" className="text-[0.8125rem] font-normal text-status-red">
+                      {emailError}
+                    </span>
+                  ) : null}
+                </label>
+              ) : null}
+
+              {checkoutReady ? (
+                <div className="flex flex-col gap-2">
+                  <span className="text-[0.875rem] font-medium text-ink">Способ оплаты</span>
+                  <div className="grid grid-cols-2 gap-2">
+                    {PAYMENT_METHOD_OPTIONS.map((option) => {
+                      const selected = option.code === paymentMethod;
+                      return (
+                        <button
+                          key={option.code}
+                          type="button"
+                          onClick={() => setPaymentMethod(option.code)}
+                          className={cn(
+                            "min-h-11 rounded-(--radius-control) border px-3 py-2 text-left transition-[border-color,background-color] duration-200 ease-(--ease-apple) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
+                            selected ? "border-brand bg-brand-soft" : "border-line bg-surface hover:border-line-strong",
+                          )}
+                          aria-pressed={selected}
+                        >
+                          <span className="block text-[0.875rem] font-semibold text-ink">{option.label}</span>
+                          <span className="block text-[0.6875rem] text-ink-soft">{option.hint}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
+              {checkoutReady ? (
+                <Button onClick={startPublicCheckout} disabled={checkoutBusy} size="lg" className="w-full">
+                  Оплатить {activePlanTotal} ₽
+                </Button>
+              ) : (
+                <span aria-disabled="true" className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-canvas-alt px-6 text-[0.9375rem] font-semibold text-ink-muted">
+                  Оплата временно недоступна
+                </span>
+              )}
+
+              <p className="-mt-2 text-center text-[0.75rem] leading-relaxed text-ink-soft">
+                Разовая оплата · без автосписаний · код на email
+              </p>
+
+              {checkoutStatusText ? (
+                <p role="alert" className="rounded-(--radius-control) bg-canvas-alt px-4 py-3 text-[0.875rem] text-ink">
+                  {checkoutStatusText}
+                </p>
+              ) : null}
+
+              {!checkoutReady ? (
+                <p className="text-[0.8125rem] leading-relaxed text-ink-soft">
+                  {checkoutBlockedReasons.length
+                    ? "Оплата временно недоступна. Откройте кабинет или напишите в поддержку — подскажем следующий шаг."
+                    : "Проверяем доступность оплаты. Если кнопка не появится, продолжайте через поддержку или кабинет."}
+                </p>
+              ) : null}
+
+              <div className="flex flex-col divide-y divide-line border-y border-line">
+                <details className="group py-3">
+                  <summary className="cursor-pointer text-[0.875rem] font-semibold text-ink">Есть промокод?</summary>
+                  <label className="mt-3 flex flex-col gap-2 text-[0.8125rem] text-ink-soft" htmlFor="checkout-promo-code">
+                    Введите код — сумма обновится сразу
+                    <input
+                      id="checkout-promo-code"
+                      value={promoCode}
+                      onChange={(event) => setPromoCode(event.target.value.toUpperCase().trim())}
+                      placeholder="Например: POKROV10"
+                      className={INPUT_CLASS}
+                    />
+                    <span>
+                      {activePlanDiscountBlocked
+                        ? "На приветственные 99 ₽ дополнительная скидка не действует."
+                        : discountPercent > 0
+                        ? `Скидка ${discountPercent}% учтена в сумме.`
+                        : ""}
+                    </span>
+                  </label>
+                </details>
+
+                <details className="group py-3">
+                  <summary className="cursor-pointer text-[0.875rem] font-semibold text-ink">Что входит в доступ?</summary>
+                  <ul className="mt-3 mb-0 flex list-none flex-col gap-2 p-0 text-[0.8125rem] leading-relaxed text-ink-soft">
+                    <li>Безлимитный трафик без пакетов гигабайтов.</li>
+                    <li>Android + Windows, до {activePlan.device_limit} устройств.</li>
+                    <li>Поддержка поможет с оплатой и активацией.</li>
+                  </ul>
+                </details>
+
+                <details className="group py-3">
+                  <summary className="cursor-pointer text-[0.875rem] font-semibold text-ink">Уже есть код активации?</summary>
+                  <div className="mt-3 flex flex-col gap-3">
+                    <label className="sr-only" htmlFor="checkout-access-key">Код активации</label>
+                    <input
+                      id="checkout-access-key"
+                      value={keyInput}
+                      onChange={(event) => updateKeyInput(event.target.value)}
+                      placeholder="POKROV-XXXX-XXXX"
+                      className={INPUT_CLASS}
+                    />
+                    {keyBusy ? <p className="text-[0.8125rem] text-ink-soft">Проверяем статус кода…</p> : null}
+                    {keyStatusText ? <p role="alert" className="text-[0.8125rem] text-status-red">{keyStatusText}</p> : null}
+                    {keyStatus ? (
+                      <p className="text-[0.8125rem] leading-relaxed text-ink-soft">
+                        {maskAccessKey(keyStatus.key)} · {keyStatus.plan?.label || `${keyStatus.days} дней`} · {keyStatus.redeemed ? "уже активирован" : "готов к активации"}
+                      </p>
+                    ) : null}
+                    <Button href={redeemHref} variant="secondary" target="_blank" rel="noreferrer" className="w-full">
+                      Активировать код
+                    </Button>
+                  </div>
+                </details>
+
+                <details className="group py-3">
+                  <summary className="cursor-pointer text-[0.875rem] font-semibold text-ink">Перед оплатой — важное</summary>
+                  <ul className="mt-3 mb-0 flex list-none flex-col gap-2 p-0 text-[0.8125rem] leading-relaxed text-ink-soft">
+                    <li>99 ₽ доступны один раз — для первой успешной оплаты.</li>
+                    {marketingPromoIds.map((contentId) => {
+                      const content = describePromoContent(contentId);
+                      return (
+                        <li key={contentId}>
+                          <strong className="text-ink">{content.title}</strong>: {content.body}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <a href={config.webappUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex text-[0.8125rem] font-semibold text-brand-strong underline-offset-4 hover:underline">
+                    Открыть кабинет
+                  </a>
+                </details>
               </div>
             </div>
-          ) : null}
-
-          {checkoutReady ? (
-            <Button onClick={startPublicCheckout} disabled={checkoutBusy} size="lg" className="w-full">
-              Оплатить {formatPrice(activePlan.amount_rub, discountPercent)}
-            </Button>
-          ) : (
-            <span
-              aria-disabled="true"
-              className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-canvas-alt px-6 text-[0.9375rem] font-semibold text-ink-muted"
-            >
-              Оплата временно недоступна
-            </span>
-          )}
-
-          {!checkoutReady ? (
-            <p className="text-[0.8125rem] leading-relaxed text-ink-soft">
-              {checkoutBlockedReasons.length
-                ? "Оплата временно недоступна. Откройте кабинет или напишите в поддержку — подскажем следующий шаг."
-                : "Проверяем доступность оплаты. Если кнопка не появится, продолжайте через поддержку или кабинет."}
-            </p>
-          ) : null}
-
-          <div className="flex flex-col gap-2">
-            <Button href={redeemHref} variant="secondary" target="_blank" rel="noreferrer" className="w-full">
-              Активировать код в кабинете
-            </Button>
-            <Button href={config.webappUrl} variant="secondary" target="_blank" rel="noreferrer" className="w-full">
-              Открыть кабинет
-            </Button>
-            <Button href={config.botUrl} variant="secondary" target="_blank" rel="noreferrer" className="w-full">
-              Продолжить в Telegram
-            </Button>
-            <Button href={MARKETING_CANONICAL_PATHS.install} variant="ghost" className="w-full">
-              Сначала забрать 5 дней бесплатно
-            </Button>
-          </div>
-
-          <p className="text-[0.8125rem] leading-relaxed text-ink-soft">
-            Email нужен для чека и кода активации. Уже начали в приложении? Введите код именно там или откройте кабинет
-            из приложения, чтобы продлить тот же профиль.
-          </p>
-
-          {statusText ? (
-            <p className="rounded-(--radius-control) bg-canvas-alt px-4 py-3 text-[0.875rem] text-ink">{statusText}</p>
-          ) : null}
-
-          <div className="flex flex-col gap-2">
-            <strong className="text-[0.9375rem] font-semibold text-ink">Перед оплатой — самое важное</strong>
-            <ul className="m-0 flex list-none flex-col gap-2 p-0 text-[0.875rem] leading-relaxed text-ink-soft">
-              {marketingPromoIds.map((contentId) => {
-                const content = describePromoContent(contentId);
-                return (
-                  <li key={contentId}>
-                    <strong className="text-ink">{content.title}</strong>: {content.body}
-                  </li>
-                );
-              })}
-            </ul>
           </div>
         </Card>
       </section>

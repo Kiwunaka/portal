@@ -141,7 +141,6 @@ def _default_checks() -> list[Check]:
                 "getPricingPreviewDiscountPercent",
                 "tariffPlanAllowsDiscount",
                 "payment_method: paymentMethod",
-                "MARKETING_CANONICAL_PATHS.install",
             ),
             must_not_contain=(
                 "config.connectUrl",

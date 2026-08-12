@@ -173,7 +173,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         *,
         plan_code: str = "1_month",
         duration_days: int = 30,
-        amount_rub: str = "249.00",
+        amount_rub: str = "239.00",
         currency: str = "RUB",
         source: str = "site",
     ) -> str:
@@ -283,7 +283,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     tg_id=1001,
                     plan_code="1_month",
                     source="site",
-                    amount=249.0,
+                    amount=239.0,
                     currency="RUB",
                     status="pending",
                     meta_json=self._freekassa_order_meta(),
@@ -296,7 +296,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         payload = {
             "order_id": "order-1001",
             "external_tx_id": "tx-abc-1",
-            "amount": "249.00",
+            "amount": "239.00",
             "currency": "RUB",
             "status": "paid",
             "tg_id": "1001",
@@ -421,7 +421,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     tg_id=2002,
                     plan_code="1_month",
                     source="site",
-                    amount=249.0,
+                    amount=239.0,
                     currency="RUB",
                     status="pending",
                     meta_json=self._freekassa_order_meta(),
@@ -435,7 +435,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             "order_id": "order-2002",
             "external_tx_id": "tx-abc-2b",
             "status": "paid",
-            "amount": "249.00",
+            "amount": "239.00",
             "currency": "RUB",
             "tg_id": "2002",
             "plan_code": "1_month",
@@ -502,7 +502,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     tg_id=2401,
                     plan_code="1_month",
                     source="site",
-                    amount=249.0,
+                    amount=239.0,
                     currency="RUB",
                     status="pending",
                     created_at=self.api._utcnow(),
@@ -571,7 +571,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     tg_id=2402,
                     plan_code="1_month",
                     source="site",
-                    amount=249.0,
+                    amount=239.0,
                     currency="RUB",
                     status="pending",
                     created_at=self.api._utcnow(),
@@ -664,7 +664,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         from models import ExternalOrder, ExternalPaymentEvent
 
         merchant_id = "69962"
-        amount = "249.00"
+        amount = "239.00"
         order_id = "order-3001"
         sig = self._fk_sci_signature(
             merchant_id=merchant_id,
@@ -699,7 +699,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         client = TestClient(self.api.app)
         payload = {
             "MERCHANT_ID": "69962",
-            "AMOUNT": "249.00",
+            "AMOUNT": "239.00",
             "MERCHANT_ORDER_ID": "order-3002",
             "SIGN": "bad_signature",
             "intid": "tx-fk-2",
@@ -711,7 +711,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         client = TestClient(self.api.app)
         payload = {
             "MERCHANT_ID": "69962",
-            "AMOUNT": "249.00",
+            "AMOUNT": "239.00",
             "MERCHANT_ORDER_ID": "order-incomplete-sci",
             "status": "paid",
         }
@@ -731,7 +731,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         client = TestClient(self.api.app)
         payload = {
             "order_id": "order-generic-disabled",
-            "amount": "249.00",
+            "amount": "239.00",
             "currency": "RUB",
             "status": "paid",
         }
@@ -763,7 +763,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         )
 
     def test_freekassa_decimal_amount_and_currency_are_strict(self) -> None:
-        self.assertEqual(self.api._payload_amount_decimal({"AMOUNT": "249.00"}), Decimal("249.00"))
+        self.assertEqual(self.api._payload_amount_decimal({"AMOUNT": "239.00"}), Decimal("239.00"))
         self.assertEqual(self.api._payload_currency({"CURRENCY": "rub"}), "RUB")
         for invalid in ("", "0", "-1", "1.001", "NaN", "Infinity"):
             with self.subTest(invalid=invalid):
@@ -789,7 +789,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     tg_id=7401,
                     plan_code="1_month",
                     source="site",
-                    amount=249.0,
+                    amount=239.0,
                     currency="RUB",
                     status="pending",
                     meta_json=self._freekassa_order_meta(),
@@ -802,7 +802,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
 
         base_payload = {
             "MERCHANT_ID": "69962",
-            "AMOUNT": "249.00",
+            "AMOUNT": "239.00",
             "MERCHANT_ORDER_ID": order_id,
             "SIGN": "signature-shape-only",
             "CURRENCY": "RUB",
@@ -819,7 +819,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             (True, "ok"),
         )
         mismatches = (
-            ({"AMOUNT": "249.01"}, "amount_mismatch"),
+            ({"AMOUNT": "239.01"}, "amount_mismatch"),
             ({"AMOUNT": "NaN"}, "invalid_amount"),
             ({"CURRENCY": "USD"}, "currency_mismatch"),
             ({"us_plan_code": "12_months"}, "plan_mismatch"),
@@ -855,7 +855,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     source="site",
                     campaign="canonical-campaign",
                     promo_code="CANONICAL",
-                    amount=249.0,
+                    amount=239.0,
                     currency="RUB",
                     status="pending",
                     meta_json=self._freekassa_order_meta(),
@@ -886,7 +886,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.assertEqual(row.source, "site")
             self.assertEqual(row.campaign, "canonical-campaign")
             self.assertEqual(row.promo_code, "CANONICAL")
-            self.assertEqual(float(row.amount or 0), 249.0)
+            self.assertEqual(float(row.amount or 0), 239.0)
             self.assertEqual(row.currency, "RUB")
             self.assertEqual(row.status, "manual_review")
         finally:
@@ -902,7 +902,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                 s,
                 provider="freekassa",
                 order_id="fk-unknown-callback-order",
-                payload={"AMOUNT": "249.00", "CURRENCY": "RUB", "status": "failed"},
+                payload={"AMOUNT": "239.00", "CURRENCY": "RUB", "status": "failed"},
                 status="failed",
                 mark_paid=False,
             )
@@ -938,7 +938,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     tg_id=7403,
                     plan_code="1_month",
                     source="site",
-                    amount=249.0,
+                    amount=239.0,
                     currency="RUB",
                     status="pending",
                     created_at=self.api._utcnow(),
@@ -992,7 +992,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     tg_id=7404,
                     plan_code="1_month",
                     source="site",
-                    amount=249.0,
+                    amount=239.0,
                     currency="RUB",
                     status="pending",
                     meta_json=self._freekassa_order_meta(duration_days=17),
@@ -1071,7 +1071,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     tg_id=2003,
                     plan_code="1_month",
                     source="site",
-                    amount=249.0,
+                    amount=239.0,
                     currency="RUB",
                     status="pending",
                     meta_json=self._freekassa_order_meta(),
@@ -1083,7 +1083,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             s.close()
 
         merchant_id = "69962"
-        amount = "249.00"
+        amount = "239.00"
         order_id = "order-ref-first-1"
         sig = self._fk_sci_signature(
             merchant_id=merchant_id,
@@ -1163,7 +1163,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                     tg_id=1001,
                     plan_code="1_month",
                     source="site",
-                    amount=249.0,
+                    amount=239.0,
                     currency="RUB",
                     status="pending",
                     meta_json=self._freekassa_order_meta(),
@@ -1285,12 +1285,12 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertTrue(body.get("ok"))
         self.assertTrue(body.get("discount_applied"))
         self.assertEqual(int(body.get("discount_pct") or 0), 20)
-        self.assertEqual(int(body.get("base_amount_rub") or 0), 249)
-        self.assertEqual(int(body.get("amount_rub") or 0), 199)
+        self.assertEqual(int(body.get("base_amount_rub") or 0), 239)
+        self.assertEqual(int(body.get("amount_rub") or 0), 191)
         self.assertEqual(body.get("provider"), "lavatop")
         self.assertEqual(body.get("payment_url"), "https://app.lava.top/pay/pending-discount-test")
         self.assertEqual(captured.get("provider"), "lavatop")
-        self.assertEqual(int(captured.get("amount_rub") or 0), 199)
+        self.assertEqual(int(captured.get("amount_rub") or 0), 191)
         self.assertEqual(captured.get("custom", {}).get("campaign"), "launch_w1")
         self.assertEqual(captured.get("custom", {}).get("promo_code"), "WELCOME20")
 
@@ -1307,7 +1307,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             meta = json.loads(row.meta_json or "{}")
             self.assertEqual(meta.get("entitlement_snapshot", {}).get("plan_code"), "1_month")
             self.assertEqual(meta.get("entitlement_snapshot", {}).get("duration_days"), 30)
-            self.assertEqual(meta.get("entitlement_snapshot", {}).get("amount_rub"), "199.00")
+            self.assertEqual(meta.get("entitlement_snapshot", {}).get("amount_rub"), "191.00")
             self.assertEqual(meta.get("entitlement_snapshot", {}).get("currency"), "RUB")
             self.assertEqual(meta.get("entitlement_snapshot", {}).get("source"), "site")
         finally:
@@ -1386,12 +1386,12 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertTrue(body.get("ok"))
         self.assertTrue(body.get("discount_applied"))
         self.assertEqual(int(body.get("discount_pct") or 0), 20)
-        self.assertEqual(int(body.get("base_amount_rub") or 0), 249)
-        self.assertEqual(int(body.get("amount_rub") or 0), 199)
+        self.assertEqual(int(body.get("base_amount_rub") or 0), 239)
+        self.assertEqual(int(body.get("amount_rub") or 0), 191)
         self.assertEqual(body.get("provider"), "lavatop")
         self.assertEqual(body.get("payment_url"), "https://app.lava.top/pay/referral-discount-test")
         self.assertEqual(captured.get("provider"), "lavatop")
-        self.assertEqual(int(captured.get("amount_rub") or 0), 199)
+        self.assertEqual(int(captured.get("amount_rub") or 0), 191)
 
     def test_lavatop_public_order_applies_direct_promo_to_non_start99_plan_with_card(self) -> None:
         client = TestClient(self.api.app)
@@ -1454,10 +1454,10 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertTrue(body.get("ok"))
         self.assertTrue(body.get("discount_applied"))
         self.assertEqual(int(body.get("discount_pct") or 0), 20)
-        self.assertEqual(int(body.get("base_amount_rub") or 0), 249)
-        self.assertEqual(int(body.get("amount_rub") or 0), 199)
+        self.assertEqual(int(body.get("base_amount_rub") or 0), 239)
+        self.assertEqual(int(body.get("amount_rub") or 0), 191)
         self.assertEqual(captured["provider"], "lavatop")
-        self.assertEqual(int(captured["amount_rub"]), 199)
+        self.assertEqual(int(captured["amount_rub"]), 191)
         self.assertEqual(captured["custom"]["promo_code"], "WELCOME20")
         self.assertEqual(captured["custom"]["payment_method"], "card")
         self.assertEqual(captured["custom"]["lavatop_payment_provider"], "SMART_GLOCAL")
@@ -1976,7 +1976,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                         provider="lavatop",
                         plan_code="1_month",
                         status="paid",
-                        amount=249,
+                        amount=239,
                         currency="RUB",
                     ),
                 ]
@@ -4195,7 +4195,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
                 tg_id=8803,
                 plan_code="1_month",
                 source="site",
-                amount=249,
+                amount=239,
                 currency="RUB",
                 status="pending",
                 meta_json=self._freekassa_order_meta(),
@@ -4206,13 +4206,13 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             s.close()
         signature = self._fk_sci_signature(
             merchant_id="69962",
-            amount="249.00",
+            amount="239.00",
             order_id=order_id,
             secret_word_2="fk_sw2_test",
         )
         payload = {
             "MERCHANT_ID": "69962",
-            "AMOUNT": "249.00",
+            "AMOUNT": "239.00",
             "MERCHANT_ORDER_ID": order_id,
             "SIGN": signature,
             "us_tg_id": "999999",

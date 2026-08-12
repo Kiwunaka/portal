@@ -163,6 +163,7 @@ from node_policy import (
     SUBSCRIPTION_EXCLUDE_HARD_REJECT,
     PAID_ROLE,
     canonical_free_node_code,
+    free_tier_enabled,
     node_access_role,
     node_capacity_status,
     node_backend_penalty,
@@ -197,6 +198,7 @@ from free_cycle_service import (
     FREE_STANDARD_QUOTA_BYTES,
     ensure_user_free_cycle_state,
     mark_user_became_free,
+    project_user_to_expired,
     queue_free_profile_reentry,
     reconcile_free_profile_usage,
     reconcile_free_profile_usage_in_new_transaction,
@@ -452,7 +454,7 @@ def _shared_telegram_username(key: str, fallback: str) -> str:
 
 
 API_ENABLE_USAGE = env_bool("API_ENABLE_USAGE", default=False)
-AUTO_DOWNGRADE_TO_FREE = env_bool("AUTO_DOWNGRADE_TO_FREE", default=True)
+AUTO_DOWNGRADE_TO_FREE = free_tier_enabled() and env_bool("AUTO_DOWNGRADE_TO_FREE", default=False)
 AUTO_FREE_DAYS = int(os.getenv("AUTO_FREE_DAYS", "3650"))
 FREE_TOTAL_GB = int(FREE_STANDARD_QUOTA_BYTES // (1024**3))
 FREE_STANDARD_QUOTA_GB = int(FREE_STANDARD_QUOTA_BYTES // (1024**3))
@@ -610,8 +612,8 @@ RUB_PLAN_LABELS = {
 }
 GIFT_CARD_TYPES = {
     "mini": {"days": 7, "stars": 59, "name": "Mini"},
-    "standard": {"days": 30, "stars": 249, "name": "Standard"},
-    "premium": {"days": 90, "stars": 699, "name": "Premium"},
+    "standard": {"days": 30, "stars": 239, "name": "Standard"},
+    "premium": {"days": 90, "stars": 669, "name": "Premium"},
 }
 PAYMENT_PROVIDER_WHITELIST = {"cardlink", "freekassa", "lavatop", "pally", "platima"}
 FK_NOTIFY_IP_ALLOWLIST = [
@@ -1855,6 +1857,20 @@ def _build_access_policy(*, user: User, used_bytes: int, now: datetime | None = 
             **free_profile_facts,
         }
 
+    if sub_type == "FREE" and not free_tier_enabled():
+        return {
+            "access_state": "expired_or_blocked",
+            "traffic_policy": {
+                "kind": "blocked",
+                "label": "access_required",
+            },
+            "traffic_limit_gb": None,
+            "traffic_remaining_gb": None,
+            "next_reset_at": None,
+            "soft_mode_active": False,
+            **free_profile_facts,
+        }
+
     if active_window and (
         sub_type.startswith("TRIAL")
         or sub_type.startswith("BONUS")
@@ -1927,7 +1943,7 @@ def _build_reconciled_access_policy(
     now: datetime | None = None,
 ) -> dict[str, Any]:
     current = now or _utcnow()
-    if str(getattr(user, "sub_type", "") or "").strip().upper() == "FREE":
+    if free_tier_enabled() and str(getattr(user, "sub_type", "") or "").strip().upper() == "FREE":
         reconcile_free_profile_usage_in_new_transaction(
             tg_id=int(user.tg_id),
             used_bytes=max(0, int(used_bytes or 0)),
@@ -1949,7 +1965,7 @@ def _maybe_downgrade_expired_to_free(s, user: User) -> bool:
     - Only when expiry_at has passed
     """
     try:
-        if not AUTO_DOWNGRADE_TO_FREE:
+        if not free_tier_enabled() or not AUTO_DOWNGRADE_TO_FREE:
             return False
         if not user.is_active:
             return False
@@ -2453,16 +2469,19 @@ def _linked_identities_payload(*, s, user: User, auth_user: dict[str, Any] | Non
 
 def _free_caps_payload(*, user: User, access_policy: dict[str, Any]) -> dict[str, Any]:
     free_active = str(access_policy.get("access_state") or "").strip() in {"free_monthly", "free_soft_mode"}
+    free_enabled = bool(_FREE_TIER_FACTS.get("enabled", False)) and free_tier_enabled()
     return {
+        "enabled": free_enabled,
+        "status": str(_FREE_TIER_FACTS.get("status") or "retired_pending_replacement"),
         "plan_code": str(_FREE_TIER_FACTS.get("plan_code") or "free_monthly"),
-        "location_code": str(_FREE_TIER_FACTS.get("location_code") or "NL-free"),
+        "location_code": str(_FREE_TIER_FACTS.get("location_code") or "NL-free") if free_enabled else None,
         "traffic_limit_gb": int(_FREE_TIER_FACTS.get("traffic_limit_gb") or 5),
         "cycle_days": int(_FREE_TIER_FACTS.get("cycle_days") or 30),
         "speed_limit_mbps": int(_FREE_TIER_FACTS.get("speed_limit_mbps") or 50),
         "soft_mode_speed_limit_mbps": int(_FREE_TIER_FACTS.get("soft_mode_speed_limit_mbps") or 2),
         "device_limit": int(_FREE_TIER_FACTS.get("device_limit") or 1),
-        "monthly_reset": bool(_FREE_TIER_FACTS.get("monthly_reset", True)),
-        "active": free_active,
+        "monthly_reset": free_enabled and bool(_FREE_TIER_FACTS.get("monthly_reset", True)),
+        "active": free_enabled and free_active,
         "next_reset_at": access_policy.get("next_reset_at"),
         "transition_state": str(access_policy.get("free_profile_state") or "standard"),
         "active_role": str(access_policy.get("free_profile_active_role") or "free_standard"),
@@ -3512,15 +3531,16 @@ def _ensure_user_row_for_login(
 
         now = _utcnow()
         sub_token = secrets.token_urlsafe(32)
+        free_enabled = free_tier_enabled()
         row = User(
             tg_id=int(tg_id),
             username=(str(username).strip()[:100] if username else None),
             uuid=str(uuid.uuid4()),
             email=f"User_{int(tg_id)}",
             sub_type="FREE",
-            current_plan_code="free_monthly",
+            current_plan_code="free_monthly" if free_enabled else "free_retired",
             created_at=now,
-            expiry_at=now + timedelta(days=max(3650, int(AUTO_FREE_DAYS))),
+            expiry_at=now + timedelta(days=max(3650, int(AUTO_FREE_DAYS))) if free_enabled else now,
             is_active=True,
             stars_paid=0,
             total_gb=0,
@@ -3528,7 +3548,10 @@ def _ensure_user_row_for_login(
             tos_accepted=False,
             sub_token=sub_token,
         )
-        mark_user_became_free(row, now=now)
+        if free_enabled:
+            mark_user_became_free(row, now=now)
+        else:
+            project_user_to_expired(row, now=now, source="account_created_without_free")
         s.add(row)
         ensure_user_account_foundation(
             s,

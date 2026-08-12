@@ -1132,6 +1132,8 @@ def _queue_expired_user_reentry(session, *, user: User, now: datetime) -> dict:
         source="bot_expiry_monitor",
         now=now,
     )
+    if str(result.get("reason") or "") == "free_tier_disabled":
+        return result
     auto_free_days = max(30, int(os.getenv("AUTO_FREE_DAYS", "3650")))
     user.expiry_at = now + timedelta(days=auto_free_days)
     user.is_active = True

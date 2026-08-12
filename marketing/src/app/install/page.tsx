@@ -43,7 +43,8 @@ export const metadata = buildMarketingMetadata(
 
 export default function InstallPage() {
   const facts = getSharedProductFacts();
-  const androidHref = buildCabinetDownloadsHref("android");
+  const androidHref = config.androidApkUrl || buildCabinetDownloadsHref("android");
+  const androidDirectDownload = Boolean(config.androidApkUrl);
   const windowsHref = buildCabinetDownloadsHref("windows");
 
   const platforms: InstallPlatform[] = [
@@ -52,7 +53,7 @@ export default function InstallPage() {
       label: getCopyText("marketing.install.tabs.android", "Android"),
       note: getCopyText(
         "marketing.install.android.note",
-        "Для большинства телефонов подходит основной файл (arm64). Для старых устройств в кабинете есть отдельная legacy-версия.",
+        "Один универсальный APK подходит поддерживаемым Android-устройствам. Google Play для этого релиза не нужен.",
       ),
       steps: [
         {
@@ -60,7 +61,7 @@ export default function InstallPage() {
           title: getCopyText("marketing.install.android.step1.title", "Скачайте файл"),
           text: getCopyText(
             "marketing.install.android.step1.text",
-            "Откройте кабинет. Он выдаст актуальный APK для вашего аккаунта.",
+            "Скачайте универсальный APK из официального POKROV Releases. Аккаунт понадобится уже после установки.",
           ),
         },
         {
@@ -119,10 +120,10 @@ export default function InstallPage() {
 
   const faqItems: AccordionItem[] = [
     {
-      question: getCopyText("marketing.install.faq.file.q", "Почему файл выдаётся через кабинет?"),
+      question: getCopyText("marketing.install.faq.file.q", "Откуда скачивается официальный файл?"),
       answer: getCopyText(
         "marketing.install.faq.file.a",
-        "Кабинет всегда показывает актуальную версию для вашего аккаунта и не даёт скачать подделку с чужого «зеркала». Сами релизы открыто лежат на GitHub Releases.",
+        "Android APK скачивается из публичного POKROV Releases. Windows-файл открывается через кабинет. Не используйте случайные зеркала и пересланные архивы.",
       ),
     },
     {
@@ -136,7 +137,7 @@ export default function InstallPage() {
       question: getCopyText("marketing.install.faq.apk.q", "Какой APK выбрать на Android?"),
       answer: getCopyText(
         "marketing.install.faq.apk.a",
-        "Основной файл (arm64) подходит почти всем современным телефонам. Если телефон старый и файл не ставится, возьмите в кабинете legacy-версию (armeabi).",
+        "Скачайте универсальный pokrov-android-universal.apk. Отдельно выбирать arm64 или legacy-файл больше не нужно.",
       ),
     },
     {
@@ -184,7 +185,9 @@ export default function InstallPage() {
         </div>
         <div className="flex flex-col items-center gap-1">
           <p className="m-0 text-[0.8125rem] text-ink-soft">
-            {getCopyText("marketing.install.cta.note", "Файл выдаст кабинет — откроется в новой вкладке.")}
+            {androidDirectDownload
+              ? "Android APK скачается из официального публичного POKROV Releases."
+              : getCopyText("marketing.install.cta.note", "Файл выдаст кабинет — откроется в новой вкладке.")}
           </p>
           <Link
             href={SEO_PAGE_PATHS.trustGithubReleases}

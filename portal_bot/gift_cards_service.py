@@ -14,8 +14,8 @@ from shared_surface_facts import get_tariff_catalog
 
 GIFT_CARD_TYPES: dict[str, dict[str, Any]] = {
     "mini": {"days": 7, "stars": 59, "name": "Mini"},
-    "standard": {"days": 30, "stars": 249, "name": "Standard"},
-    "premium": {"days": 90, "stars": 699, "name": "Premium"},
+    "standard": {"days": 30, "stars": 239, "name": "Standard"},
+    "premium": {"days": 90, "stars": 669, "name": "Premium"},
 }
 
 

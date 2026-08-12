@@ -1,0 +1,99 @@
+{
+  "automated_gate": "PASS",
+  "candidate": {
+    "fixture_sha256": "77b99c98878e4954b5b62e9d7c669e4c891a07740cf3a70fd7cf39a178d21bf9",
+    "git_commit": "d89fb6a2d79dff0ab862f0afca0cc81d986da7a8",
+    "knowledge_sha256": "c2b57f2725fcd8e1ebf5657e79901bea617533bb9b58b9d8891f415aa8ac2715",
+    "knowledge_version": "2026-07-23.1",
+    "model": "deepseek-v4-flash-0731",
+    "payload_contract_sha256": "6d1352c7d91fcd084a319a077a90c5b5ee27ee5ae2fba8b3dcb03250f61ac7b5",
+    "policy_sha256": "efbf66df5c0c9f6888cd0384a841b1aacd73a4c97e90e641f488970838862471",
+    "policy_version": "1",
+    "prompt_bundle_sha256": "468cfffc1765c43b254c1d4ace46acc54d6ac1a8318cb5059eed055b47f91412",
+    "prompt_bundle_version": "8",
+    "reasoning_effort": "medium",
+    "retriever_sha256": "01c9d29c6b943f4a1b4f52e47110eadc0a27537a1c0d0f55528ca2df29fd1ab8",
+    "retriever_version": "code-owned-v3",
+    "route_sha256": "76ef4ad6f0c8a4ae66efb13875c107cee40c78997a212353d379acfbb2f45591"
+  },
+  "evidence_label": "MANUAL_OWNER_TEST",
+  "exceptions": 0,
+  "fixture_counts": {
+    "smoke": 12
+  },
+  "human_review_status": "NOT_REQUESTED",
+  "mode": "live-smoke",
+  "privacy": {
+    "provider_sensitive_leaks": 0,
+    "retained_text_fields": 0
+  },
+  "provider": {
+    "adapter": "xcody_openai_chat_completions",
+    "answer_origin_counts": {
+      "code_owned": 2,
+      "model": 10
+    },
+    "boundary_breach_count": 0,
+    "busy_count": 0,
+    "busy_rate": 0.0,
+    "cache_evidence_rate": 1.0,
+    "cache_hit_rate_when_reported": 1.0,
+    "cached_tokens": 11776,
+    "completion_tokens": 4403,
+    "error_class_counts": {},
+    "fallback_count": 0,
+    "local_fallback_rate": 0.0,
+    "maximum_request_count": 1,
+    "observation_count": 12,
+    "p50_ms": 8500,
+    "p95_ms": 18953,
+    "p99_ms": 18953,
+    "parse_failure_count": 0,
+    "parse_failure_rate": 0.0,
+    "payload_format_http_400_count": 0,
+    "peak_concurrency": 1,
+    "prompt_tokens": 14584,
+    "provider_failure_count": 0,
+    "provider_p50_ms": 8906,
+    "provider_p95_ms": 18938,
+    "provider_p99_ms": 18938,
+    "provider_request_count": 10,
+    "queue_p50_ms": 0,
+    "queue_p95_ms": 0,
+    "queue_p99_ms": 0,
+    "rate_limit_count": 0,
+    "rate_limit_rate": 0.0,
+    "retrieval_disposition_counts": {
+      "candidate": 6,
+      "confident": 6
+    },
+    "safety_failure_count": 0,
+    "safety_failure_rate": 0.0,
+    "stable_prefix_consistent": true,
+    "stable_prefix_hash": "7eb4cebc66daae98e16b83bfd99a2d040cecf13a0cb79e7cbff026069a8aa3e3",
+    "status_class_counts": {
+      "2xx": 10
+    },
+    "timeout_count": 0,
+    "timeout_rate": 0.0,
+    "unhandled_exception_count": 0
+  },
+  "quality": {
+    "final_threshold": 11,
+    "parseable_threshold": 10,
+    "safe_parseable_provider_replies": 10,
+    "safe_transfer_count": 12,
+    "valid_final_outcomes": 12
+  },
+  "resources": {
+    "harness_concurrency_limit": 2,
+    "process_cpu_percent": 0.178,
+    "rate_bucket_count": 6,
+    "rate_bucket_limit": 1024,
+    "rss_bytes": null,
+    "rss_evidence": "NOT_OBSERVED",
+    "session_count": 9,
+    "session_limit": 256
+  },
+  "schema_version": "2"
+}

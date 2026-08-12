@@ -10,7 +10,7 @@ from typing import Any
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
-from free_cycle_service import FREE_CYCLE_DAYS, queue_free_profile_reentry
+from free_cycle_service import FREE_CYCLE_DAYS, project_user_to_expired, queue_free_profile_reentry
 from models import (
     AccessKey,
     Account,
@@ -22,6 +22,7 @@ from models import (
     ReferralTransition,
     User,
 )
+from node_policy import free_tier_enabled
 
 
 TRIAL_RESERVATION_DAYS = 7
@@ -708,6 +709,20 @@ def rebuild_account_entitlement_projection(session, *, account_id: str, now: dat
         now=current_now,
     )
     grants = _active_projection_grants(session, account_id=account_key, now=current_now)
+    reserved_trial = (
+        _trial_query(session, account_id=account_key)
+        .filter(
+            EntitlementGrant.status == "reserved",
+            EntitlementGrant.reversed_at.is_(None),
+            EntitlementGrant.reservation_expires_at.isnot(None),
+            EntitlementGrant.reservation_expires_at > current_now,
+            EntitlementGrant.reservation_expires_at
+            <= current_now + timedelta(days=TRIAL_RESERVATION_DAYS) + TRIAL_PROJECTION_CLOCK_TOLERANCE,
+        )
+        .order_by(EntitlementGrant.created_at.asc(), EntitlementGrant.id.asc())
+        .with_for_update()
+        .first()
+    )
     remaining: list[tuple[EntitlementGrant, timedelta]] = []
     cursor = max(current_now, legacy_premium.expires_at) if legacy_premium is not None else current_now
     for grant in grants:
@@ -736,6 +751,13 @@ def rebuild_account_entitlement_projection(session, *, account_id: str, now: dat
     latest_bonus = max(bonus_grants, key=lambda row: (row.activated_at or row.created_at, row.id), default=None)
     legacy_policy = _legacy_snapshot_policy(legacy_premium) if legacy_premium is not None else None
     premium_active = cursor > current_now
+    premium_delivery_active = bool(
+        reserved_trial is not None
+        or (
+            premium_active
+            and (latest_paid is not None or latest_bonus is not None or legacy_policy in {"PAID", "BONUS", "TRIAL"})
+        )
+    )
     for user in users:
         was_free_monthly = (
             str(user.sub_type or "").strip().upper() == "FREE"
@@ -756,20 +778,34 @@ def rebuild_account_entitlement_projection(session, *, account_id: str, now: dat
             user.current_plan_code = str(
                 (latest_bonus.plan_code if latest_bonus is not None else legacy_premium.plan_code) or "bonus"
             )
-        elif str(user.sub_type or "").upper() not in {"MANUAL", "VIP", "PRO"}:
-            user.expiry_at = max(
-                current_now,
-                user.free_cycle_next_reset_at or current_now,
-                legacy_free_expiry or current_now,
-            )
+        elif reserved_trial is not None:
+            user.expiry_at = reserved_trial.reservation_expires_at
             user.sub_type = "FREE"
-            user.current_plan_code = "free_monthly"
-            if not was_free_monthly:
-                _mark_user_became_free(session, user, now=current_now)
+            user.current_plan_code = "trial"
+            user.trial_used = True
+        elif str(user.sub_type or "").upper() not in {"MANUAL", "VIP", "PRO"}:
+            if free_tier_enabled():
+                user.expiry_at = max(
+                    current_now,
+                    user.free_cycle_next_reset_at or current_now,
+                    legacy_free_expiry or current_now,
+                )
+                user.sub_type = "FREE"
+                user.current_plan_code = "free_monthly"
+                if not was_free_monthly:
+                    _mark_user_became_free(session, user, now=current_now)
+            else:
+                project_user_to_expired(user, now=current_now, source="entitlement_projection")
     tg_ids = [int(user.tg_id) for user in users]
     if tg_ids:
         for key in session.query(AccessKey).filter(AccessKey.tg_id.in_(tg_ids), AccessKey.state == "active").all():
-            key.pool_code = "premium_pool" if premium_active else "free_pool"
+            if premium_delivery_active:
+                key.pool_code = "premium_pool"
+            elif free_tier_enabled():
+                key.pool_code = "free_pool"
+            else:
+                key.state = "revoked"
+                key.revoked_at = current_now
             key.updated_at = current_now
     session.flush()
     return cursor
@@ -839,9 +875,24 @@ def reconcile_stale_trial_projections(
     limit: int = 200,
 ) -> dict[str, int]:
     current_now = (now or _utcnow()).replace(microsecond=0)
+    trial_account_ids = (
+        session.query(EntitlementGrant.account_id)
+        .filter(
+            EntitlementGrant.source == TRIAL_SOURCE,
+            EntitlementGrant.grant_kind == "premium_trial",
+            EntitlementGrant.status.in_(["reserved", "active"]),
+            EntitlementGrant.reversed_at.is_(None),
+        )
+    )
     rows = (
         session.query(User)
-        .filter(User.sub_type == "FREE", User.current_plan_code == "trial")
+        .filter(User.sub_type == "FREE")
+        .filter(
+            or_(
+                User.current_plan_code == "trial",
+                User.account_id.in_(trial_account_ids),
+            )
+        )
         .order_by(User.tg_id.asc())
         .limit(max(1, min(int(limit), 1000)))
         .with_for_update()

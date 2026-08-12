@@ -106,7 +106,7 @@ def test_candidate_identity_is_closed_and_hash_bound(exact_candidate) -> None:
         "retriever_version",
         "retriever_sha256",
     }
-    assert exact_candidate["model"] == "minimax-m3"
+    assert exact_candidate["model"] == "deepseek-v4-flash-0731"
     assert exact_candidate["reasoning_effort"] == "medium"
 
 

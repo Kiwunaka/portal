@@ -138,15 +138,15 @@ class SupportAIServiceTests(unittest.TestCase):
             )
         return Path(tmp.name)
 
-    def test_xcody_payload_has_openai_shape_and_no_identifiers(self) -> None:
+    def test_openrouter_payload_has_openai_shape_and_no_identifiers(self) -> None:
         import support_ai_service
 
         knowledge_path = self._knowledge_path()
         config = support_ai_service.SupportAIConfig(
             enabled=True,
             api_key="sk-test",
-            api_base_url="https://enterprise.xcody.dev/v1",
-            model="minimax-m3",
+            api_base_url="https://openrouter.ai/api/v1",
+            model="deepseek-v4-flash-0731",
             reasoning_effort="medium",
             timeout_seconds=7.0,
             knowledge_path=str(knowledge_path),
@@ -171,17 +171,17 @@ class SupportAIServiceTests(unittest.TestCase):
         self.assertEqual(reply, "Ответ из базы знаний.")
         self.assertEqual(len(fake_factory.posts), 1)
         post = fake_factory.posts[0]
-        self.assertEqual(post["url"], "https://enterprise.xcody.dev/v1/chat/completions")
+        self.assertEqual(post["url"], "https://openrouter.ai/api/v1/chat/completions")
         self.assertEqual(post["headers"]["Authorization"], "Bearer sk-test")
         self.assertEqual(
             set(post["json"]),
-            {"model", "messages", "temperature", "max_tokens", "n", "reasoning_effort"},
+            {"model", "messages", "temperature", "n", "reasoning"},
         )
-        self.assertEqual(post["json"]["model"], "minimax-m3")
+        self.assertEqual(post["json"]["model"], "deepseek/deepseek-v4-flash-0731")
         self.assertEqual(post["json"]["temperature"], 0.2)
-        self.assertEqual(post["json"]["max_tokens"], 700)
+        self.assertNotIn("max_tokens", post["json"])
         self.assertEqual(post["json"]["n"], 1)
-        self.assertEqual(post["json"]["reasoning_effort"], "medium")
+        self.assertEqual(post["json"]["reasoning"], {"effort": "medium", "exclude": True})
         self.assertEqual([item["role"] for item in post["json"]["messages"]], ["system", "user"])
         self.assertIn("compact structured format", post["json"]["messages"][0]["content"])
         self.assertIn("Support knowledge JSON", post["json"]["messages"][0]["content"])
@@ -1288,7 +1288,7 @@ class SupportAIServiceTests(unittest.TestCase):
         config = support_ai_service.SupportAIConfig(
             enabled=True,
             api_key="sk-test",
-            api_base_url="https://api.xcody.dev/v1",
+            api_base_url="https://openrouter.ai/api/v1",
             knowledge_path=str(knowledge_path),
             max_answer_chars=1000,
         )
@@ -1337,7 +1337,7 @@ class SupportAIServiceTests(unittest.TestCase):
         config = support_ai_service.SupportAIConfig(
             enabled=True,
             api_key="sk-test",
-            api_base_url="https://api.xcody.dev/v1",
+            api_base_url="https://openrouter.ai/api/v1",
             knowledge_path=str(knowledge_path),
             max_user_chars=5000,
             max_answer_chars=5000,
@@ -1410,7 +1410,7 @@ class SupportAIServiceTests(unittest.TestCase):
         config = support_ai_service.SupportAIConfig(
             enabled=True,
             api_key="sk-test",
-            api_base_url="https://api.xcody.dev/v1",
+            api_base_url="https://openrouter.ai/api/v1",
             knowledge_path=str(knowledge_path),
             max_user_chars=5000,
             max_answer_chars=5000,
@@ -1447,7 +1447,7 @@ class SupportAIServiceTests(unittest.TestCase):
         config = support_ai_service.SupportAIConfig(
             enabled=True,
             api_key="sk-test",
-            api_base_url="https://api.xcody.dev/v1",
+            api_base_url="https://openrouter.ai/api/v1",
             knowledge_path=str(knowledge_path),
             max_answer_chars=30,
         )
@@ -1533,7 +1533,7 @@ class SupportAIServiceTests(unittest.TestCase):
         config = support_ai_service.SupportAIConfig(
             enabled=True,
             api_key="sk-test",
-            api_base_url="https://api.xcody.dev/v1",
+            api_base_url="https://openrouter.ai/api/v1",
             knowledge_path=str(knowledge_path),
         )
         oversized_body = b"{" + (b"B" * support_ai_service._MAX_PROVIDER_RESPONSE_BYTES)
@@ -1639,13 +1639,13 @@ class SupportAIServiceTests(unittest.TestCase):
         self.assertIsNone(reply)
         self.assertEqual(len(failing_factory.posts), 1)
 
-    def test_config_defaults_to_xcody_minimax_medium(self) -> None:
+    def test_config_defaults_to_openrouter_deepseek_medium(self) -> None:
         import support_ai_service
 
         config = support_ai_service.SupportAIConfig.from_env({})
 
-        self.assertEqual(config.api_base_url, "https://api.xcody.dev/v1")
-        self.assertEqual(config.model, "minimax-m3")
+        self.assertEqual(config.api_base_url, "https://openrouter.ai/api/v1")
+        self.assertEqual(config.model, "deepseek-v4-flash-0731")
         self.assertEqual(config.reasoning_effort, "medium")
         self.assertEqual(config.max_context_chars, 30000)
         self.assertEqual(config.max_output_tokens, 1200)
@@ -1656,12 +1656,14 @@ class SupportAIServiceTests(unittest.TestCase):
 
         exact = support_ai_service.SupportAIConfig.from_env(
             {
+                "SUPPORT_AI_API_BASE_URL": "https://provider.example/v1",
                 "SUPPORT_AI_TIMEOUT_SECONDS": "20",
                 "SUPPORT_AI_MAX_CONTEXT_CHARS": "30000",
             }
         )
         clamped = support_ai_service.SupportAIConfig.from_env(
             {
+                "SUPPORT_AI_API_BASE_URL": "https://provider.example/v1",
                 "SUPPORT_AI_TIMEOUT_SECONDS": "20.1",
                 "SUPPORT_AI_MAX_CONTEXT_CHARS": "30001",
             }
@@ -1672,26 +1674,26 @@ class SupportAIServiceTests(unittest.TestCase):
         self.assertEqual(clamped.timeout_seconds, 20.0)
         self.assertEqual(clamped.max_context_chars, 30000)
 
-    def test_exact_openrouter_route_allows_24_second_provider_window(self) -> None:
+    def test_exact_openrouter_route_allows_45_second_provider_window(self) -> None:
         import support_ai_service
 
         exact = support_ai_service.SupportAIConfig.from_env(
             {
                 "SUPPORT_AI_API_BASE_URL": "https://openrouter.ai/api/v1",
-                "SUPPORT_AI_TIMEOUT_SECONDS": "24",
+                "SUPPORT_AI_TIMEOUT_SECONDS": "45",
             }
         )
         clamped = support_ai_service.SupportAIConfig.from_env(
             {
                 "SUPPORT_AI_API_BASE_URL": "https://openrouter.ai/api/v1",
-                "SUPPORT_AI_TIMEOUT_SECONDS": "24.1",
+                "SUPPORT_AI_TIMEOUT_SECONDS": "45.1",
             }
         )
 
-        self.assertEqual(exact.timeout_seconds, 24.0)
-        self.assertEqual(clamped.timeout_seconds, 24.0)
+        self.assertEqual(exact.timeout_seconds, 45.0)
+        self.assertEqual(clamped.timeout_seconds, 45.0)
 
-    def test_xcody_output_budget_is_hard_capped_at_live_validated_limit(self) -> None:
+    def test_provider_output_budget_is_hard_capped_at_live_validated_limit(self) -> None:
         import support_ai_service
 
         config = support_ai_service.SupportAIConfig.from_env(
@@ -1755,7 +1757,7 @@ class SupportAIServiceTests(unittest.TestCase):
                     "SUPPORT_AI_ENABLED": "true",
                     "SUPPORT_AI_API_KEY": "sk-or-test",
                     "SUPPORT_AI_API_BASE_URL": "https://openrouter.ai/api/v1",
-                    "SUPPORT_AI_MODEL": "minimax-m3",
+                    "SUPPORT_AI_MODEL": "deepseek/deepseek-v4-flash-0731",
                     "SUPPORT_AI_KB_PATH": str(knowledge_path),
                 }
             )
@@ -1771,8 +1773,9 @@ class SupportAIServiceTests(unittest.TestCase):
             )
             post = fake_factory.posts[0]
             self.assertEqual(post["url"], "https://openrouter.ai/api/v1/chat/completions")
-            self.assertEqual(post["json"]["model"], "minimax/minimax-m3")
-            self.assertEqual(post["json"]["reasoning_effort"], "medium")
+            self.assertEqual(post["json"]["model"], "deepseek/deepseek-v4-flash-0731")
+            self.assertEqual(post["json"]["reasoning"], {"effort": "medium", "exclude": True})
+            self.assertNotIn("max_tokens", post["json"])
         finally:
             knowledge_path.unlink(missing_ok=True)
 

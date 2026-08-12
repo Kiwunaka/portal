@@ -931,8 +931,8 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
       const plan = {
         code: String(payload.plan_code || "1_month"),
         label: "1 month",
-        amount_rub: 249,
-        amount_stars: 249,
+        amount_rub: 239,
+        amount_stars: 239,
         days: 30,
         duration_days: 30,
         device_limit: 5,
@@ -960,7 +960,7 @@ async function registerApiMocks(page: Page, opts: MockOptions): Promise<void> {
         plan: {
           code: "1_month",
           label: "1 month",
-          amount_rub: 249,
+          amount_rub: 239,
           days: 30,
           duration_days: 30,
           device_limit: 5,

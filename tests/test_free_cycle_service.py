@@ -18,12 +18,13 @@ class FreeCycleServiceTests(unittest.IsolatedAsyncioTestCase):
         self._tmp = tempfile.TemporaryDirectory()
         self.db_path = str((Path(self._tmp.name) / f"portal_free_cycle_test_{uuid.uuid4().hex}.db").resolve())
         self._saved_env: dict[str, str | None] = {}
-        for k in ("DATABASE_URL", "BOT_TOKEN", "FREE_CYCLE_DAYS"):
+        for k in ("DATABASE_URL", "BOT_TOKEN", "FREE_CYCLE_DAYS", "FREE_TIER_ENABLED"):
             self._saved_env[k] = os.environ.get(k)
 
         os.environ["DATABASE_URL"] = f"sqlite:///{Path(self.db_path).as_posix()}"
         os.environ["BOT_TOKEN"] = "test_bot_token_123"
         os.environ["FREE_CYCLE_DAYS"] = "30"
+        os.environ["FREE_TIER_ENABLED"] = "true"
 
         for module_name in ("config", "db", "models", "migrations", "free_cycle_service"):
             if module_name in sys.modules:

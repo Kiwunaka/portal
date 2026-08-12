@@ -1,6 +1,6 @@
 # Pricing - POKROV
 
-Last updated: 2026-07-23
+Last updated: 2026-08-12
 
 Canonical checkout page: https://pokrov.space/checkout/
 
@@ -37,7 +37,7 @@ Paid access is unlimited by traffic. POKROV does not impose a tariff-level speed
 ## 1 month
 
 - Plan code: 1_month
-- Price: 249 RUB
+- Price: 239 RUB
 - Duration: 30 days
 - Device limit: 5
 - Notes: flexible monthly option
@@ -45,10 +45,10 @@ Paid access is unlimited by traffic. POKROV does not impose a tariff-level speed
 ## 3 months
 
 - Plan code: 3_months
-- Price: 699 RUB
+- Price: 669 RUB
 - Duration: 91 days
 - Device limit: 5
-- Notes: saves about 6% compared with three monthly payments
+- Notes: saves about 7% compared with three monthly payments
 
 ## 6 months
 
@@ -56,23 +56,23 @@ Paid access is unlimited by traffic. POKROV does not impose a tariff-level speed
 - Price: 1199 RUB
 - Duration: 182 days
 - Device limit: 5
-- Notes: saves about 20% compared with six monthly payments
+- Notes: saves about 16% compared with six monthly payments
 
 ## 9 months
 
 - Plan code: 9_months
-- Price: 1399 RUB
+- Price: 1699 RUB
 - Duration: 273 days
 - Device limit: 5
-- Notes: saves about 38% compared with nine monthly payments
+- Notes: saves about 21% compared with nine monthly payments
 
 ## 12 months
 
 - Plan code: 12_months
-- Price: 1644 RUB
+- Price: 1999 RUB
 - Duration: 365 days
 - Device limit: 5
-- Notes: maximum 45% saving compared with twelve monthly payments
+- Notes: maximum 30% saving compared with twelve monthly payments
 
 ## Official download and trust paths
 

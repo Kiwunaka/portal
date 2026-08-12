@@ -47,6 +47,16 @@ def _env_bool(name: str, default: bool) -> bool:
     return bool(default)
 
 
+def free_tier_enabled() -> bool:
+    """Return the owner-controlled free-tier delivery switch.
+
+    Disabled is the fail-closed default. The legacy free-cycle code remains
+    available for rollback and historical reconciliation, but it cannot select
+    or provision a free node unless the operator explicitly enables it.
+    """
+    return _env_bool("FREE_TIER_ENABLED", False)
+
+
 CAPACITY_AWARE_NODE_SELECTION = _env_bool("CAPACITY_AWARE_NODE_SELECTION", True)
 AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED = _env_bool(
     "AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED",
@@ -604,6 +614,8 @@ def user_free_access_role(user: Any) -> str:
 
 
 def canonical_free_node_code(nodes: list[Any], *, access_role: str = FREE_STANDARD_ROLE) -> str | None:
+    if not free_tier_enabled():
+        return None
     role_nodes = [node for node in nodes if node_access_role(node) == str(access_role or "").strip().lower()]
     pools = (
         [node for node in role_nodes if node_is_delivery_ready(node)],

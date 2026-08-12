@@ -597,7 +597,7 @@ async def show_status(callback: CallbackQuery):
         if is_subscriber:
             status_text += "\n📢 Канал подтверждён — бонусный режим доступен."
         else:
-            status_text += "\n📢 Канал не подтверждён — сейчас работает базовый бесплатный режим."
+            status_text += "\n📢 Канал не подтверждён — бонусный доступ не активен."
     panel_snapshot = await _panel_online_snapshot(tg_id)
     status_text += f"\n🌐 Онлайн: `{_panel_online_text(panel_snapshot)}`"
     status_text += f"\n🕓 Последний онлайн: `{_panel_last_online_text(panel_snapshot)}`"

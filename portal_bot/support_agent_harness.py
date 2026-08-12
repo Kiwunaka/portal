@@ -84,7 +84,8 @@ _MIXED_FOLLOWUP_RE = re.compile(
     r"\b(?:но|однако|при\s+этом|кроме|а\s+ещ[её])\b"
 )
 _MIN_PROVIDER_WINDOW_SECONDS = 0.1
-_MAX_PROVIDER_TIMEOUT_SECONDS = 24.0
+_MAX_PROVIDER_TIMEOUT_SECONDS = 45.0
+_MAX_RUN_DEADLINE_SECONDS = 50.0
 _EMPTY_HASH = "0" * 64
 _REDACTION_CATEGORIES = frozenset(
     {
@@ -345,7 +346,7 @@ class SupportAgentHarness:
             or not math.isfinite(concurrency_wait_seconds)
             or not 0.001 <= concurrency_wait_seconds <= 0.25
             or not math.isfinite(run_deadline_seconds)
-            or not 0.1 <= run_deadline_seconds <= 25.0
+            or not 0.1 <= run_deadline_seconds <= _MAX_RUN_DEADLINE_SECONDS
             or not math.isfinite(provider_timeout_seconds)
             or not 0.1 <= provider_timeout_seconds <= _MAX_PROVIDER_TIMEOUT_SECONDS
         ):

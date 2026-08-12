@@ -18,6 +18,7 @@ from node_policy import (
     FREE_STANDARD_ROLE,
     PAID_ROLE,
     NodeAccessRoleError,
+    free_tier_enabled,
     node_access_role,
     nodes_for_access_role,
     validate_node_access_roles,
@@ -1648,6 +1649,28 @@ async def process_node_provisioning_jobs(
             max_attempts=bounded_attempts,
             limit=bounded_limit,
         )
+        if not free_tier_enabled():
+            retired_jobs = (
+                session.query(NodeProvisioningJob)
+                .filter(NodeProvisioningJob.status == "queued")
+                .filter(NodeProvisioningJob.job_type.in_(["free_to_soft", "free_to_standard"]))
+                .order_by(NodeProvisioningJob.created_at.asc(), NodeProvisioningJob.id.asc())
+                .limit(bounded_limit)
+                .all()
+            )
+            for job in retired_jobs:
+                job.status = "cancelled"
+                job.completed_at = current
+                job.updated_at = current
+                job.next_run_at = None
+                job.locked_at = None
+                job.lock_token = None
+                job.last_error_code = "free_tier_disabled"
+                job.result_json = _result_json(
+                    outcome="cancelled",
+                    code="free_tier_disabled",
+                    attempt=int(job.attempts or 0),
+                )
         result["stale_recovered"] = int(recovered["recovered"])
         result["manual_review"] = int(exhausted) + int(recovered["manual_review"])
         session.commit()

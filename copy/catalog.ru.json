@@ -496,7 +496,7 @@
     },
     "bot.tariffs.long": {
       "surface": "bot.paywall",
-      "ru": "💎 *Максимум выгоды на длинном сроке*\n\nЧем дольше доступ, тем ниже цена месяца. Годовой план экономит 45% против помесячной оплаты: платите один раз и пользуетесь без постоянных продлений.",
+      "ru": "💎 *Максимум выгоды на длинном сроке*\n\nЧем дольше доступ, тем ниже цена месяца. Годовой план экономит 30% против помесячной оплаты: платите один раз и пользуетесь без постоянных продлений.",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
@@ -1108,7 +1108,7 @@
     },
     "marketing.home.pricing.sub": {
       "surface": "marketing.home.pricing",
-      "ru": "5 дней бесплатно без карты. На платных тарифах — безлимитный трафик, до 5 устройств и экономия до 45%. Автосписаний нет.",
+      "ru": "5 дней бесплатно без карты. На платных тарифах — безлимитный трафик, до 5 устройств и экономия до 30%. Автосписаний нет.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1495,7 +1495,7 @@
     },
     "marketing.install.android.note": {
       "surface": "marketing.install.android",
-      "ru": "Для большинства телефонов подходит основной файл (arm64). Для старых устройств в кабинете есть отдельная legacy-версия.",
+      "ru": "Один универсальный APK подходит поддерживаемым Android-устройствам. Google Play для этого релиза не нужен.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1504,7 +1504,7 @@
     },
     "marketing.install.android.step1.text": {
       "surface": "marketing.install.android.step1",
-      "ru": "Откройте кабинет — он выдаст актуальный APK для вашего аккаунта.",
+      "ru": "Скачайте универсальный APK из официального POKROV Releases. Аккаунт понадобится уже после установки.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1567,7 +1567,7 @@
     },
     "marketing.install.faq.apk.a": {
       "surface": "marketing.install.faq.apk",
-      "ru": "Основной файл (arm64) подходит почти всем современным телефонам. Если телефон старый и файл не ставится — возьмите в кабинете legacy-версию (armeabi).",
+      "ru": "Скачайте универсальный pokrov-android-universal.apk. Отдельно выбирать arm64 или legacy-файл больше не нужно.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1585,7 +1585,7 @@
     },
     "marketing.install.faq.file.a": {
       "surface": "marketing.install.faq.file",
-      "ru": "Кабинет всегда показывает актуальную версию для вашего аккаунта и не даёт скачать подделку с чужого «зеркала». Сами релизы открыто лежат на GitHub Releases.",
+      "ru": "Android APK скачивается из публичного POKROV Releases. Windows-файл открывается через кабинет. Не используйте случайные зеркала и пересланные архивы.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1594,7 +1594,7 @@
     },
     "marketing.install.faq.file.q": {
       "surface": "marketing.install.faq.file",
-      "ru": "Почему файл выдаётся через кабинет?",
+      "ru": "Откуда скачивается официальный файл?",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,

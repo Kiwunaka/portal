@@ -112,8 +112,8 @@ def _config():
     return SupportAIConfig(
         enabled=True,
         api_key="sk-test-key",
-        api_base_url="https://enterprise.xcody.dev/v1",
-        model="minimax-m3",
+        api_base_url="https://openrouter.ai/api/v1",
+        model="deepseek-v4-flash-0731",
         reasoning_effort="medium",
         timeout_seconds=20.0,
         max_context_chars=30_000,
@@ -159,20 +159,19 @@ def test_exact_xcody_synthesis_payload_and_normalized_usage() -> None:
 
     assert factory.posts == [
         {
-            "url": "https://enterprise.xcody.dev/v1/chat/completions",
+            "url": "https://openrouter.ai/api/v1/chat/completions",
             "headers": {
                 "Authorization": "Bearer sk-test-key",
                 "Content-Type": "application/json",
             },
             "json": {
-                "model": "minimax-m3",
+                "model": "deepseek/deepseek-v4-flash-0731",
                 "messages": [
                     {"role": "system", "content": "stable"},
                     {"role": "user", "content": "volatile"},
                 ],
-                "reasoning_effort": "medium",
+                "reasoning": {"effort": "medium", "exclude": True},
                 "temperature": 0.2,
-                "max_tokens": 1_200,
                 "n": 1,
                 "response_format": {"type": "json_object"},
             },
@@ -186,7 +185,7 @@ def test_exact_xcody_synthesis_payload_and_normalized_usage() -> None:
     assert factory.timeout.total == 20.0
 
 
-def test_exact_openrouter_route_maps_canonical_minimax_model() -> None:
+def test_exact_openrouter_route_maps_canonical_deepseek_model() -> None:
     from support_agent_provider import XCodyChatAdapter
     from support_ai_service import SupportAIConfig
 
@@ -194,7 +193,7 @@ def test_exact_openrouter_route_maps_canonical_minimax_model() -> None:
         enabled=True,
         api_key="sk-or-test-key",
         api_base_url="https://openrouter.ai/api/v1",
-        model="minimax-m3",
+        model="deepseek-v4-flash-0731",
         reasoning_effort="medium",
         timeout_seconds=24.0,
         max_context_chars=30_000,
@@ -209,8 +208,9 @@ def test_exact_openrouter_route_maps_canonical_minimax_model() -> None:
 
     assert turn.finish_reason == "stop"
     assert factory.posts[0]["url"] == "https://openrouter.ai/api/v1/chat/completions"
-    assert factory.posts[0]["json"]["model"] == "minimax/minimax-m3"
-    assert factory.posts[0]["json"]["reasoning_effort"] == "medium"
+    assert factory.posts[0]["json"]["model"] == "deepseek/deepseek-v4-flash-0731"
+    assert factory.posts[0]["json"]["reasoning"] == {"effort": "medium", "exclude": True}
+    assert "max_tokens" not in factory.posts[0]["json"]
     assert factory.timeout.total == 24.0
 
 
@@ -263,7 +263,7 @@ def test_timeout_and_complete_payload_bounds_are_enforced_before_post() -> None:
     adapter, factory = _adapter_with_response(SAFE_RESPONSE)
     with pytest.raises(ProviderCallError, match="provider_request_invalid"):
         asyncio.run(
-            adapter.complete_synthesis(messages=SAFE_TWO_MESSAGES, request_timeout=20.1)
+            adapter.complete_synthesis(messages=SAFE_TWO_MESSAGES, request_timeout=45.1)
         )
     oversized = (
         {"role": "system", "content": "stable"},

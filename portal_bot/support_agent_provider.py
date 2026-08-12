@@ -13,6 +13,7 @@ import aiohttp
 from support_ai_service import (
     SupportAIConfig,
     _ProviderResponseTooLarge,
+    provider_generation_controls,
     provider_timeout_ceiling,
     provider_wire_model,
     read_bounded_provider_json,
@@ -174,11 +175,10 @@ class XCodyChatAdapter:
         payload = {
             "model": provider_wire_model(self.config),
             "messages": [dict(item) for item in messages],
-            "reasoning_effort": self.config.reasoning_effort,
             "temperature": 0.2,
-            "max_tokens": self.config.max_output_tokens,
             "n": 1,
             "response_format": {"type": "json_object"},
+            **provider_generation_controls(self.config),
         }
         serialized = json.dumps(
             payload,

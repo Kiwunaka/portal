@@ -17,8 +17,8 @@ def _config(*, enabled: bool = True, key: str = "sk-test"):
     return SupportAIConfig(
         enabled=enabled,
         api_key=key,
-        api_base_url="https://enterprise.xcody.dev/v1",
-        model="minimax-m3",
+        api_base_url="https://openrouter.ai/api/v1",
+        model="deepseek-v4-flash-0731",
         reasoning_effort="medium",
     )
 
@@ -198,28 +198,31 @@ def test_missing_key_and_invalid_agent_limits_fail_before_harness_construction()
     assert invalid_flag_factory.calls == []
 
 
-def test_exact_openrouter_route_allows_24_second_runtime_timeout() -> None:
+def test_exact_openrouter_route_allows_long_reasoning_runtime_window() -> None:
     from support_agent_service import SupportAgentRuntimeSettings
 
     openrouter = SupportAgentRuntimeSettings.from_env(
         {
             "SUPPORT_AI_AGENT_ENABLED": "true",
             "SUPPORT_AI_API_BASE_URL": "https://openrouter.ai/api/v1",
-            "SUPPORT_AI_TIMEOUT_SECONDS": "24",
+            "SUPPORT_AI_TIMEOUT_SECONDS": "45",
+            "SUPPORT_AI_RUN_DEADLINE_SECONDS": "50",
         }
     )
-    xcody = SupportAgentRuntimeSettings.from_env(
+    other_provider = SupportAgentRuntimeSettings.from_env(
         {
             "SUPPORT_AI_AGENT_ENABLED": "true",
-            "SUPPORT_AI_API_BASE_URL": "https://api.xcody.dev/v1",
-            "SUPPORT_AI_TIMEOUT_SECONDS": "24",
+            "SUPPORT_AI_API_BASE_URL": "https://provider.example/v1",
+            "SUPPORT_AI_TIMEOUT_SECONDS": "45",
+            "SUPPORT_AI_RUN_DEADLINE_SECONDS": "50",
         }
     )
 
     assert openrouter.valid is True
-    assert openrouter.provider_timeout_seconds == 24.0
-    assert xcody.valid is False
-    assert xcody.invalid_reason == "support_ai_timeout_seconds_invalid"
+    assert openrouter.provider_timeout_seconds == 45.0
+    assert openrouter.run_deadline_seconds == 50.0
+    assert other_provider.valid is False
+    assert other_provider.invalid_reason == "support_ai_run_deadline_seconds_invalid"
 
 
 def test_agent_output_budget_defaults_to_1200_and_rejects_higher_values() -> None:
@@ -358,7 +361,7 @@ def test_obsolete_tool_loop_env_values_have_no_effect() -> None:
 
 @pytest.mark.parametrize(
     ("model", "reasoning"),
-    (("other-model", "medium"), ("minimax-m3", "high")),
+    (("other-model", "medium"), ("deepseek-v4-flash-0731", "high")),
 )
 def test_agent_mode_refuses_a_non_locked_synthesis_profile(model, reasoning) -> None:
     from dataclasses import replace

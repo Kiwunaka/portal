@@ -67,8 +67,14 @@ export function Topbar({ labels }: { labels: TopbarLabels }) {
         </div>
 
         <div className="flex items-center gap-1.5 md:hidden">
-          <Button href={labels.downloadHref} variant="primary" className="px-4">
-            {labels.download}
+          <Button
+            href={labels.downloadHref}
+            variant="primary"
+            className="px-4"
+            aria-label={labels.download}
+          >
+            <span className="sm:hidden">Скачать</span>
+            <span className="hidden sm:inline">{labels.download}</span>
           </Button>
           <button
             type="button"

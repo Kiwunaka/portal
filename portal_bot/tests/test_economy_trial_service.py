@@ -7,6 +7,7 @@ import importlib.util
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import pytest
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
 
@@ -16,6 +17,11 @@ if str(PORTAL_BOT_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_BOT_DIR))
 
 NOW = datetime(2026, 7, 12, 9, 0, 0)
+
+
+@pytest.fixture(autouse=True)
+def _enable_legacy_free_tier(monkeypatch):
+    monkeypatch.setenv("FREE_TIER_ENABLED", "true")
 
 
 def _session(tmp_path: Path):
@@ -252,6 +258,51 @@ def test_stale_trial_projection_reconciliation_preserves_exact_bounded_reservati
     account, device, user = _seed_account(session, suffix="31")
     grant = reserve_trial(session, account_id=account.id, device_id=device.id, now=NOW)
     user.expiry_at = NOW + timedelta(days=3650)
+    session.flush()
+
+    result = reconcile_stale_trial_projections(session, now=NOW, limit=20)
+
+    assert result == {"scanned": 1, "preserved": 1, "reconciled": 0, "manual_review": 0}
+    assert grant.status == "reserved"
+    assert user.sub_type == "FREE"
+    assert user.current_plan_code == "trial"
+    assert user.expiry_at == NOW + timedelta(days=7)
+    session.close()
+    engine.dispose()
+
+
+def test_rebuild_preserves_reserved_trial_when_free_tier_is_disabled(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("FREE_TIER_ENABLED", "false")
+    from economy_service import rebuild_account_entitlement_projection, reserve_trial
+    from node_policy import user_uses_free_pool
+
+    engine, session = _session(tmp_path)
+    account, device, user = _seed_account(session, suffix="311")
+    grant = reserve_trial(session, account_id=account.id, device_id=device.id, now=NOW)
+    user.current_plan_code = "free_retired"
+    user.expiry_at = NOW
+    session.flush()
+
+    rebuild_account_entitlement_projection(session, account_id=account.id, now=NOW + timedelta(minutes=1))
+
+    assert grant.status == "reserved"
+    assert user.sub_type == "FREE"
+    assert user.current_plan_code == "trial"
+    assert user.expiry_at == NOW + timedelta(days=7)
+    assert user_uses_free_pool(user, now=NOW + timedelta(minutes=1)) is False
+    session.close()
+    engine.dispose()
+
+
+def test_reconciliation_recovers_retired_projection_from_bounded_trial(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("FREE_TIER_ENABLED", "false")
+    from economy_service import reconcile_stale_trial_projections, reserve_trial
+
+    engine, session = _session(tmp_path)
+    account, device, user = _seed_account(session, suffix="312")
+    grant = reserve_trial(session, account_id=account.id, device_id=device.id, now=NOW)
+    user.current_plan_code = "free_retired"
+    user.expiry_at = NOW
     session.flush()
 
     result = reconcile_stale_trial_projections(session, now=NOW, limit=20)

@@ -55,7 +55,7 @@ RF access rule:
 - keep a hard kill switch for the `rf1` VIP/manual contour so it can be withdrawn without touching the standard consumer path
 - `rf1` reserve work remains backlog-only
 - owner-approved exception on `2026-06-01`: `mini` may run `ru_bridge_relay` on `tcp/443` through Xray Reality as the legacy primary emergency bridge to POKROV delivery nodes except US; additional RU bridge hosts may be added as separate `ru_bridge_relay.endpoints[]` ids without replacing `mini`. Do not add bridge hosts to the normal runtime delivery pool and do not move control-plane services onto them.
-- owner-approved exception on `2026-04-24`: the live Telegram-only MTProto proxy runs on the dedicated free node (`151.245.217.23:9443`) through `portal-mtproto.service`; this is not a control-plane service and must not displace the free pool's existing `x-ui` listener on `tcp/443`
+- historical owner-approved exception on `2026-04-24`: the former dedicated free node (`151.245.217.23`) may carry a Telegram-only MTProto proxy on `tcp/9443`; it is not a control-plane or subscription-delivery service, and its current runtime state is unattested while the host is inaccessible
 - `mini` / `RFMINI` is the canonical RU-origin sandbox when SSH credentials are current; if access is blocked, label the release evidence as `RU-origin check: BLOCKED_BY_ACCESS`
 - current `mini` SSH access, verified on `2026-06-01`: use `kiwunaka@176.123.166.119:22` with the retained local password bundle; `29374` opens TCP but resets before the SSH banner and should not be used as the primary SSH path
 - RU probe readiness itself is a tracked operational dependency for release confidence and is scoped to `POKROV` public hosts, API health, and delivery-node reachability
@@ -139,18 +139,18 @@ Repo-side deploy rule:
 - the deploy payload must include the full shared backend truth set under `/root/shared/`: `product-facts.json`, `public-urls.json`, `design-tokens.json`, `tariff-catalog.json`, `access-matrix.json`, `promo-slots.json`, `support-ai-knowledge.json`, and `support-agent-policy.json`
 - the deploy step should be treated as failed if any requested unit does not become `active` after restart
 - support AI is a `portal-api` and `portal-helpbot` runtime feature and remains disabled by default. The exact route table is: `SUPPORT_AI_ENABLED=false` selects local fallback; `SUPPORT_AI_ENABLED=true` with `SUPPORT_AI_AGENT_ENABLED=false` selects the legacy one-call helper; both flags `true` select the code-owned harness. There is no shadow or double call. Immediate rollback from the harness is `SUPPORT_AI_AGENT_ENABLED=false`; disabling all provider use is `SUPPORT_AI_ENABLED=false`.
-- both provider paths use xCody OpenAI-compatible `POST /v1/chat/completions`. The harness profile is locked to `minimax-m3`, `reasoning_effort=medium`, a 20-second provider timeout, at most one request per eligible message, and at most two concurrent provider runs. It sends exactly one system message plus one user message and no `tools`, `tool_choice`, retry, or continuation payload.
-- publish only the following secret-free harness configuration; keep the real key solely in the service environment through blank-at-rest `XCODY_API_KEY` or the compatibility alias `SUPPORT_AI_API_KEY`:
+- both provider paths use OpenRouter-compatible `POST /v1/chat/completions`. The harness profile is locked to canonical `deepseek-v4-flash-0731` (`deepseek/deepseek-v4-flash-0731` on the wire), medium provider-managed reasoning with the private trace excluded, a 45-second provider timeout inside a 50-second total deadline, at most one request per eligible message, and at most two concurrent provider runs. It intentionally omits `max_tokens` for this reasoning model and sends exactly one system message plus one user message with no `tools`, `tool_choice`, retry, or continuation payload.
+- publish only the following secret-free harness configuration; keep the real key solely in the service environment through blank-at-rest `SUPPORT_AI_API_KEY`. `XCODY_API_KEY` remains a legacy compatibility alias only:
 
 ```dotenv
 SUPPORT_AI_ENABLED=false
 SUPPORT_AI_AGENT_ENABLED=false
-SUPPORT_AI_API_BASE_URL=https://api.xcody.dev/v1
-XCODY_API_KEY=
-SUPPORT_AI_MODEL=minimax-m3
+SUPPORT_AI_API_BASE_URL=https://openrouter.ai/api/v1
+SUPPORT_AI_API_KEY=
+SUPPORT_AI_MODEL=deepseek/deepseek-v4-flash-0731
 SUPPORT_AI_REASONING_EFFORT=medium
-SUPPORT_AI_TIMEOUT_SECONDS=20
-SUPPORT_AI_RUN_DEADLINE_SECONDS=25
+SUPPORT_AI_TIMEOUT_SECONDS=45
+SUPPORT_AI_RUN_DEADLINE_SECONDS=50
 SUPPORT_AI_MAX_CONCURRENCY=2
 SUPPORT_AI_CONCURRENCY_WAIT_MS=250
 SUPPORT_AI_SESSION_TTL_SECONDS=3600
@@ -702,17 +702,18 @@ Status:
 - while the bridge is globally enabled, `RU_BRIDGE_SELECTOR_DIRECT_CODES` controls which direct country entries remain visible to Hiddify balancers; the default keeps `de` direct and lets bridge-eligible non-DE countries surface through `Белые списки`
 - rollback is `defaults.transport_profile=legacy_reality_fallback`; enable or keep `ru_bridge_relay` only through an explicit cohort/carrier/default decision after verification
 
-### Telegram MTProto proxy on free node
+### Telegram MTProto proxy on the former free node
 
 - [remote_install_mtproto_proxy.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_install_mtproto_proxy.py)
 
-Current state:
+Current canonical state:
 
-- the dedicated free node (`151.245.217.23`) hosts `portal-mtproto.service` on `tcp/9443`
-- `x-ui.service` continues to own `tcp/443` on the free node for normal free-pool delivery
-- the previous `mini:443` MTProto attempt is disabled; this compatibility proxy is kept only on the dedicated free node
-- the MTProto secret and share links live only in `/etc/portal-mtproto.env` on the free node; do not copy them into docs, commits, or handoff reports
-- `portal-mtproto-config-refresh.timer` is enabled on the free node because it can reach `core.telegram.org`
+- the node (`151.245.217.23`) is disabled for POKROV consumer delivery; its free-pool membership, active free keys, mappings, and queued/running free-provisioning jobs are zero
+- `x-ui.service`/Xray shutdown on that host is `BLOCKED_BY_ACCESS` until fresh node-side evidence is available; the canonical application and database do not route users there
+- `portal-mtproto.service` on `tcp/9443` is a separate Telegram-only compatibility service, not subscription delivery; its current runtime state also requires fresh node-side evidence
+- the previous `mini:443` MTProto attempt is disabled; if this compatibility proxy is retained, it stays isolated on the former free node
+- any MTProto secret and share links must live only in `/etc/portal-mtproto.env` on the former free node; do not copy them into docs, commits, or handoff reports
+- enable `portal-mtproto-config-refresh.timer` only after fresh reachability and service-state evidence from that host
 - the official Telegram MTProxy source currently needs a PID namespace workaround on this host, so the systemd unit starts it through `unshare --fork --pid --mount-proc`
 
 Typical install or refresh from the repository root:
@@ -721,7 +722,7 @@ Typical install or refresh from the repository root:
 python scripts/remote_install_mtproto_proxy.py --node-code free --node-host 151.245.217.23 --ssh-port 29374 --listen-port 9443 --enable-refresh-timer
 ```
 
-If the endpoint must be registered with Telegram, send `151.245.217.23:9443` or an approved DNS name that resolves to `151.245.217.23` and still uses port `9443`.
+If the endpoint is deliberately restored and freshly verified, register `151.245.217.23:9443` or an approved DNS name that resolves to `151.245.217.23` and still uses port `9443`.
 
 ### Feedback bot service install
 

@@ -1501,7 +1501,7 @@ TARIFFS = {
     },
     "1_month": {
         "name": "📅 1 Месяц",
-        "stars": 249,
+        "stars": 239,
         "days": 30,
         "gb": 0,
         "subId": "MONTHLY",
@@ -1509,7 +1509,7 @@ TARIFFS = {
     },
     "3_months": {
         "name": "📅 3 Месяца",
-        "stars": 699,
+        "stars": 669,
         "days": 91,
         "gb": 0,
         "subId": "QUARTERLY",
@@ -1525,7 +1525,7 @@ TARIFFS = {
     },
     "9_months": {
         "name": "📅 9 Месяцев",
-        "stars": 1399,
+        "stars": 1699,
         "days": 273,
         "gb": 0,
         "subId": "NINE_MONTHS",
@@ -1533,7 +1533,7 @@ TARIFFS = {
     },
     "12_months": {
         "name": "📅 12 Месяцев",
-        "stars": 1644,
+        "stars": 1999,
         "days": 365,
         "gb": 0,
         "subId": "YEARLY",
@@ -1566,12 +1566,12 @@ GIFT_CARD_TYPES = {
     },
     "standard": {
         "name": "🎁 Standard (30 Дней)",
-        "stars": 249,
+        "stars": 239,
         "days": 30
     },
     "premium": {
         "name": "🎁 Premium (90 Дней)",
-        "stars": 699,
+        "stars": 669,
         "days": 90
     },
 }

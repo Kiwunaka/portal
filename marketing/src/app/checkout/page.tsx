@@ -20,7 +20,7 @@ export const metadata = buildMarketingMetadata(
 
 export default function CheckoutPage() {
   return (
-    <PageShell>
+    <PageShell checkout>
       <JsonLd
         data={buildBreadcrumbJsonLd([
           { name: CANONICAL_PLATFORM_BRAND, path: "/" },

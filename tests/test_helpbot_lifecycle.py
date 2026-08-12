@@ -122,7 +122,7 @@ class HelpbotLifecycleTests(unittest.TestCase):
         os.environ["TG_BTN_EMOJI_DANGER_ID"] = "5368324170671202299"
         os.environ["SUPPORT_AI_ENABLED"] = "false"
         os.environ["SUPPORT_AI_API_KEY"] = ""
-        os.environ["SUPPORT_AI_MODEL"] = "deepseek/deepseek-v4-flash"
+        os.environ["SUPPORT_AI_MODEL"] = "deepseek/deepseek-v4-flash-0731"
         os.environ["SUPPORT_AI_MIN_INTERVAL_SECONDS"] = "0"
 
         for module_name in (

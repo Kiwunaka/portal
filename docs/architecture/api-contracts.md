@@ -254,12 +254,17 @@ TTL after the final issuance before routing app access back to the old revision.
   `connected_ok`, runtime stats, funnel events, and other client-authored
   telemetry are never activation evidence.
 - The worker expires unactivated reservations after `7 days` and updates only
-  the legacy compatibility projection to `free_monthly` when no paid or
+  the legacy compatibility projection to `expired_or_blocked` when no paid or
   unrelated active grant or current `User` projection survives. This projection
   guard remains required while payment and bonus paths have not all cut over to
   grants. Panel synchronization remains retryable and cannot fabricate evidence.
 
-### Free Profile Provisioning
+### Legacy Free Profile Provisioning (Disabled)
+
+`FREE_TIER_ENABLED=false` is the fail-closed production default. The API returns
+`expired_or_blocked`, selects no free node, and cancels queued legacy free jobs.
+The rules below are retained solely for rollback compatibility when an operator
+explicitly enables the legacy contour.
 
 - Free quota authority is exactly `5 * 1024^3` bytes on `free_standard`; an
   environment override cannot change the credential hard cap.

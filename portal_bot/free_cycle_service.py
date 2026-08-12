@@ -9,7 +9,7 @@ from sqlalchemy.exc import OperationalError
 from control_panel import ControlPanel  # Retained as a compatibility/test seam; scheduler never instantiates it.
 from db import SessionLocal
 from models import Node, NodeProvisioningJob, User
-from node_policy import FREE_SOFT_ROLE, FREE_STANDARD_QUOTA_BYTES, PAID_ROLE, node_access_role
+from node_policy import FREE_SOFT_ROLE, FREE_STANDARD_QUOTA_BYTES, PAID_ROLE, free_tier_enabled, node_access_role
 
 
 FREE_CYCLE_DAYS = 30
@@ -54,11 +54,36 @@ def _next_cycle_at(*, anchor: datetime, now: datetime) -> datetime:
     return nxt
 
 
+def project_user_to_expired(
+    user: User,
+    *,
+    now: datetime | None = None,
+    source: str = "free_tier_disabled",
+) -> None:
+    """Keep the account usable while removing any consumer free entitlement."""
+    ts = now or _utcnow()
+    user.sub_type = "FREE"
+    user.current_plan_code = "free_retired"
+    expiry = getattr(user, "expiry_at", None)
+    if not isinstance(expiry, datetime) or expiry > ts:
+        user.expiry_at = ts
+    user.is_active = True
+    user.free_cycle_next_reset_at = None
+    user.free_profile_state = "retired"
+    user.free_profile_source = str(source or "free_tier_disabled").strip()[:64] or "free_tier_disabled"
+    user.free_profile_state_changed_at = ts
+    user.free_profile_job_id = None
+    user.free_profile_error_code = None
+
+
 def mark_user_became_free(user: User, *, now: datetime | None = None) -> None:
     """
     Reset FREE cycle anchor for a user who has just switched to FREE.
     """
     ts = now or _utcnow()
+    if not free_tier_enabled():
+        project_user_to_expired(user, now=ts)
+        return
     user.free_cycle_anchor_at = ts
     user.free_cycle_last_reset_at = ts
     user.free_cycle_next_reset_at = ts + timedelta(days=FREE_CYCLE_DAYS)
@@ -78,7 +103,7 @@ def ensure_user_free_cycle_state(user: User, *, now: datetime | None = None) -> 
     Ensure FREE cycle fields are initialized.
     Returns True when any field was changed.
     """
-    if not _is_free(user):
+    if not free_tier_enabled() or not _is_free(user):
         return False
 
     ts = now or _utcnow()
@@ -131,6 +156,9 @@ def reconcile_free_profile_usage(
     observed = max(0, int(used_bytes or 0))
     user = _lock_free_profile_user(session, user)
 
+    if not free_tier_enabled():
+        project_user_to_expired(user, now=ts, source="free_usage_disabled")
+        return {"queued": False, "job_id": None, "reason": "free_tier_disabled"}
     if not _is_free_standard_eligible(user) or not bool(getattr(user, "is_active", False)):
         return {"queued": False, "job_id": None, "reason": "not_free_standard"}
 
@@ -250,6 +278,9 @@ def queue_free_profile_reset(
 ) -> dict[str, Any]:
     ts = now or _utcnow()
     user = _lock_free_profile_user(session, user)
+    if not free_tier_enabled():
+        project_user_to_expired(user, now=ts, source=source)
+        return {"queued": False, "job_id": None, "reason": "free_tier_disabled"}
     if not _is_free_standard_eligible(user) or not bool(getattr(user, "is_active", False)):
         return {"queued": False, "job_id": None, "reason": "not_free_standard"}
     ensure_user_free_cycle_state(user, now=ts)
@@ -313,6 +344,9 @@ def queue_free_profile_reentry(
     """Project expired premium access to free and durably reconcile panel roles."""
     ts = now or _utcnow()
     user = _lock_free_profile_user(session, user)
+    if not free_tier_enabled():
+        project_user_to_expired(user, now=ts, source=source)
+        return {"queued": False, "job_id": None, "reason": "free_tier_disabled"}
     already_projected_free = (
         str(getattr(user, "sub_type", "") or "").strip().upper() == "FREE"
         and str(getattr(user, "current_plan_code", "") or "").strip().lower() == "free_monthly"
@@ -354,6 +388,8 @@ def bootstrap_free_cycle_for_existing_users(*, now: datetime | None = None) -> d
     One-time migration helper:
     - Existing FREE users get anchor at migration timestamp.
     """
+    if not free_tier_enabled():
+        return {"scanned": 0, "initialized": 0, "disabled": True}
     ts = now or _utcnow()
     s = SessionLocal()
     scanned = 0
@@ -383,6 +419,16 @@ async def process_due_free_cycle_resets(*, max_users: int = 300) -> dict[str, An
     Queue durable monthly resets for FREE users whose cycle reached next_reset_at.
     The provisioning worker advances cycle timestamps only after panel proof.
     """
+    if not free_tier_enabled():
+        return {
+            "ok": True,
+            "due": 0,
+            "queued": 0,
+            "reset_ok": 0,
+            "reset_failed": 0,
+            "bootstrapped": 0,
+            "disabled": True,
+        }
     now = _utcnow()
     s = SessionLocal()
     changed = 0

@@ -7,7 +7,7 @@ type ButtonVariant = "primary" | "secondary" | "ghost";
 type ButtonSize = "md" | "lg";
 
 const BASE =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-full font-semibold no-underline transition-[transform,background-color,border-color,box-shadow] duration-200 ease-(--ease-apple) select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:scale-[0.98]";
+  "inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full font-semibold no-underline transition-[transform,background-color,border-color,box-shadow] duration-200 ease-(--ease-apple) select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:scale-[0.98]";
 
 const VARIANTS: Record<ButtonVariant, string> = {
   primary: "bg-brand text-ink-inverse shadow-soft hover:bg-brand-strong",

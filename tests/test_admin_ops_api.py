@@ -756,7 +756,9 @@ def test_admin_ops_free_tier_provider_status_and_alerts(monkeypatch, tmp_path) -
     assert free_body["summary"]["free_users"] == 2
     assert free_body["summary"]["near_cap_users"] == 1
     assert free_body["summary"]["over_cap_users"] == 1
-    assert free_body["facts"]["node_pool"] == "NL-free"
+    assert free_body["facts"]["enabled"] is False
+    assert free_body["facts"]["status"] == "retired_pending_replacement"
+    assert free_body["facts"]["node_pool"] is None
     assert free_body["facts"]["traffic_limit_bytes"] == 5 * 1024**3
     assert free_body["facts"]["standard_access_role"] == "free_standard"
     assert free_body["facts"]["soft_access_role"] == "free_soft"

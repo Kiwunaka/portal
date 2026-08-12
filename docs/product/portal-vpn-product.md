@@ -153,7 +153,7 @@ Quick Connect rule:
 
 - `Auto-select` remains the default daily path.
 - premium app-managed profiles expose a backend-built smart shortlist of up to `8` eligible non-free nodes
-- free-tier access still resolves only to the dedicated `NL-free` node
+- consumer free-tier delivery is retired; expired accounts keep recovery, support, and payment access but receive no delivery node, while the bounded first-use premium trial resolves through the paid pool
 - the shortlist rejects disabled, draining, unhealthy, stale, `cpu_percent >= SMART_CONNECT_CPU_REJECT_PERCENT` (default `85`), and transport-incompatible nodes before the client measures latency
 - the client combines real device RTT with backend CPU and health penalties and keeps the previous node when the improvement stays below the `20%` stickiness threshold
 - incident-promoted `ru_bridge_relay` profiles may use `mini` as a first-hop bridge to non-US POKROV delivery nodes; this is an emergency reachability contour, not a normal RU delivery node or a public RU-readiness claim

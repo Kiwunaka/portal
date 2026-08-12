@@ -6,6 +6,7 @@ import uuid
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -15,6 +16,11 @@ if str(PORTAL_BOT_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_BOT_DIR))
 
 NOW = datetime(2026, 7, 12, 12, 0, 0)
+
+
+@pytest.fixture(autouse=True)
+def _enable_legacy_free_tier(monkeypatch):
+    monkeypatch.setenv("FREE_TIER_ENABLED", "true")
 
 
 def _session(tmp_path: Path):

@@ -26,7 +26,13 @@ PORTAL_DIR = REPO_ROOT / "portal_bot"
 if str(PORTAL_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_DIR))
 
-from support_ai_service import SupportAIConfig, provider_timeout_ceiling  # noqa: E402
+from support_ai_service import (  # noqa: E402
+    DEFAULT_API_BASE_URL,
+    DEFAULT_MODEL,
+    SupportAIConfig,
+    provider_run_deadline_ceiling,
+    provider_timeout_ceiling,
+)
 from support_agent_context import PROMPT_BUNDLE_VERSION, SupportContextBuilder  # noqa: E402
 from support_agent_grounding import (  # noqa: E402
     RETRIEVER_RULES_SHA256,
@@ -61,10 +67,9 @@ from support_agent_sessions import (  # noqa: E402
 DEFAULT_FIXTURE_PATH = REPO_ROOT / "tests" / "fixtures" / "support-agent-live-eval.json"
 DEFAULT_KNOWLEDGE_PATH = REPO_ROOT / "shared" / "support-ai-knowledge.json"
 DEFAULT_POLICY_PATH = REPO_ROOT / "shared" / "support-agent-policy.json"
-DEFAULT_BASE_URL = "https://api.xcody.dev/v1"
-DEFAULT_MODEL = "minimax-m3"
+DEFAULT_BASE_URL = DEFAULT_API_BASE_URL
 DEFAULT_REASONING_EFFORT = "medium"
-LIVE_DEADLINE_MS = 25_000
+LIVE_DEADLINE_MS = 50_000
 _MAX_FIXTURE_BYTES = 262_144
 _MAX_REPORT_BYTES = 131_072
 _MAX_REVIEW_BYTES = 1_048_576
@@ -230,9 +235,9 @@ _PAYLOAD_CONTRACT = {
     "endpoint": "/chat/completions",
     "message_roles": ["system", "user"],
     "model": DEFAULT_MODEL,
-    "reasoning_effort": DEFAULT_REASONING_EFFORT,
+    "reasoning": {"effort": DEFAULT_REASONING_EFFORT, "exclude": True},
     "temperature": 0.2,
-    "max_tokens": 1200,
+    "max_tokens": None,
     "n": 1,
     "response_format": "json_object",
     "tools": False,
@@ -833,7 +838,9 @@ def _build_runtime(*, repo_root: Path, adapter: object) -> _Runtime:
         context_builder=context_builder,
         max_concurrency=2,
         concurrency_wait_seconds=0.25,
-        run_deadline_seconds=25.0,
+        run_deadline_seconds=provider_run_deadline_ceiling(
+            str(getattr(adapter_config, "api_base_url", ""))
+        ),
         provider_timeout_seconds=provider_timeout,
         trace_callback=collector,
     )

@@ -104,6 +104,12 @@ class _FakeSSH:
     def set_missing_host_key_policy(self, _policy) -> None:
         pass
 
+    def load_system_host_keys(self) -> None:
+        pass
+
+    def load_host_keys(self, _path: str) -> None:
+        pass
+
     def connect(self, host: str | None = None, **kwargs) -> None:
         self.connect_kwargs = {"host": host or kwargs.get("hostname"), **kwargs}
 
@@ -310,6 +316,16 @@ def test_remote_cleanup_inactive_users_panel_script_loads_env_before_db_import()
     assert script.index('load_env("/root/portal_bot/.env")') < script.index("from db import SessionLocal")
 
 
+def test_remote_cleanup_inactive_users_purge_removes_access_keys_before_users() -> None:
+    module = _load_script("remote_cleanup_inactive_users.py")
+
+    purge_sql = module._purge_sql([1001, 1002])
+
+    assert "DELETE FROM access_keys WHERE tg_id IN (SELECT tg_id FROM ids)" in purge_sql
+    assert "'access_keys', (SELECT count(*) FROM del_access_keys)" in purge_sql
+    assert purge_sql.index("del_access_keys AS") < purge_sql.index("del_users AS")
+
+
 def test_remote_cleanup_inactive_users_backup_retention_is_bounded() -> None:
     module = _load_script("remote_cleanup_inactive_users.py")
     current = "/root/portal_bot/backups/portal_pre_inactive_user_purge_20260721_140000.dump"
@@ -321,6 +337,81 @@ def test_remote_cleanup_inactive_users_backup_retention_is_bounded() -> None:
     assert 'rm -f -- "$candidate"' in command
     with pytest.raises(ValueError):
         module._build_backup_retention_command("/root/portal_bot/.env")
+
+
+def test_remote_retire_free_tier_plan_is_non_destructive(monkeypatch, capsys) -> None:
+    module = _load_script("remote_retire_free_tier.py")
+    fake = _install_fake_ssh(module, monkeypatch)
+    calls: list[str] = []
+    monkeypatch.setattr(module, "_psql_json", lambda *_args, **_kwargs: {"target_users_total": 31})
+    monkeypatch.setattr(module, "_backup_postgres", lambda *_args, **_kwargs: calls.append("backup"))
+    monkeypatch.setattr(module, "_run_panel_cleanup", lambda *_args, **_kwargs: calls.append("panel"))
+    monkeypatch.setattr(sys, "argv", ["remote_retire_free_tier.py", "--brain-ip", "82.21.114.104"])
+
+    assert module.main() == 0
+
+    assert '"mode": "plan"' in capsys.readouterr().out
+    assert calls == []
+    assert fake.closed is True
+
+
+def test_remote_retire_free_tier_apply_requires_exact_confirm(monkeypatch) -> None:
+    module = _load_script("remote_retire_free_tier.py")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["remote_retire_free_tier.py", "--brain-ip", "82.21.114.104", "--apply"],
+    )
+
+    with pytest.raises(SystemExit) as exc:
+        module.main()
+
+    assert "Apply requires --confirm RETIRE_FREE_TIER" in str(exc.value)
+
+
+def test_remote_retire_free_tier_keeps_accounts_and_redacts_panel_output() -> None:
+    module = _load_script("remote_retire_free_tier.py")
+
+    apply_sql = module._apply_sql()
+    panel_script = module._panel_cleanup_script()
+
+    assert "UPDATE users" in apply_sql
+    assert "DELETE FROM users" not in apply_sql
+    assert "current_plan_code = 'free_retired'" in apply_sql
+    assert "UPDATE access_keys" in apply_sql
+    assert "UPDATE nodes" in apply_sql
+    assert 'load_env("/root/portal_bot/.env")' in panel_script
+    assert panel_script.index('load_env("/root/portal_bot/.env")') < panel_script.index("from db import SessionLocal")
+    assert '"clients_before"' in panel_script
+    assert '"results"' not in panel_script
+
+
+def test_remote_retire_free_tier_ssh_fallback_stops_only_delivery_services(monkeypatch, tmp_path) -> None:
+    module = _load_script("remote_retire_free_tier.py")
+    fake = _FakeSSH()
+    commands: list[str] = []
+
+    def fake_exec(command: str, timeout: int):
+        commands.append(command)
+        return None, _FakeStream("inactive|inactive|0"), _FakeStream("")
+
+    fake.exec_command = fake_exec
+    monkeypatch.setattr(module, "connect_node", lambda **_kwargs: (fake, "test"))
+
+    result = module._stop_free_delivery_via_ssh(
+        targets=[{"code": "free", "host": "free.example.test"}],
+        passwords_path=tmp_path / "passwords.txt",
+    )
+
+    assert result == {
+        "free_nodes": 1,
+        "reachable_nodes": 1,
+        "delivery_stopped_nodes": 1,
+        "active_delivery_nodes": 0,
+    }
+    assert "systemctl disable --now x-ui" in commands[0]
+    assert "systemctl disable --now xray" in commands[0]
+    assert "mtproto" not in commands[0].lower()
 
 
 def test_remote_install_portal_worker_service_uploads_service_and_restart_commands(monkeypatch) -> None:

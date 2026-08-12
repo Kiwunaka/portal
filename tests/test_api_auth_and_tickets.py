@@ -103,6 +103,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             "SUPPORT_AI_API_KEY",
             "SUPPORT_AI_MODEL",
             "SUPPORT_AI_MIN_INTERVAL_SECONDS",
+            "FREE_TIER_ENABLED",
+            "AUTO_DOWNGRADE_TO_FREE",
         ):
             self._saved_env[k] = os.environ.get(k)
 
@@ -120,8 +122,10 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         os.environ["SUPPORT_UPLOAD_DIR"] = str((Path(self._tmp.name) / "support_uploads").resolve())
         os.environ["SUPPORT_AI_ENABLED"] = "false"
         os.environ["SUPPORT_AI_API_KEY"] = ""
-        os.environ["SUPPORT_AI_MODEL"] = "deepseek/deepseek-v4-flash"
+        os.environ["SUPPORT_AI_MODEL"] = "deepseek/deepseek-v4-flash-0731"
         os.environ["SUPPORT_AI_MIN_INTERVAL_SECONDS"] = "0"
+        os.environ["FREE_TIER_ENABLED"] = "true"
+        os.environ["AUTO_DOWNGRADE_TO_FREE"] = "true"
 
         if "config" in sys.modules:
             importlib.reload(sys.modules["config"])

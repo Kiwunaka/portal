@@ -102,12 +102,12 @@ def _product_contract_failures(contract: dict[str, object]) -> list[str]:
         failures.append("product contract must keep readiness_only_scope limited to ios and macos")
 
     free_tier = dict(contract.get("free_tier") or {})
-    if free_tier.get("node_pool") != "NL-free":
-        failures.append("product contract must keep free_tier.node_pool as NL-free")
-    if int(free_tier.get("traffic_gb", 0)) != 5:
-        failures.append("product contract must keep free_tier.traffic_gb at 5")
-    if int(free_tier.get("speed_mbps", 0)) != 50:
-        failures.append("product contract must keep free_tier.speed_mbps at 50")
+    if free_tier.get("enabled") is not False:
+        failures.append("product contract must keep free_tier disabled")
+    if free_tier.get("status") != "retired_pending_replacement":
+        failures.append("product contract must mark free_tier retired_pending_replacement")
+    if free_tier.get("node_pool") is not None:
+        failures.append("product contract must not publish a free_tier node_pool")
 
     monetization = dict(contract.get("monetization") or {})
     if monetization.get("in_app_purchases") is not False:
@@ -137,12 +137,12 @@ def _runtime_profile_failures(runtime_profile: dict[str, object]) -> list[str]:
         failures.append("runtime profile must keep advanced_fallback_core as xray")
 
     free_tier = dict(runtime_profile.get("free_tier") or {})
-    if free_tier.get("node_pool") != "NL-free":
-        failures.append("runtime profile must keep free_tier.node_pool as NL-free")
-    if int(free_tier.get("traffic_gb", 0)) != 5:
-        failures.append("runtime profile must keep free_tier.traffic_gb at 5")
-    if int(free_tier.get("speed_mbps", 0)) != 50:
-        failures.append("runtime profile must keep free_tier.speed_mbps at 50")
+    if free_tier.get("enabled") is not False:
+        failures.append("runtime profile must keep free_tier disabled")
+    if free_tier.get("status") != "retired_pending_replacement":
+        failures.append("runtime profile must mark free_tier retired_pending_replacement")
+    if free_tier.get("node_pool") is not None:
+        failures.append("runtime profile must not publish a free_tier node_pool")
 
     official_surfaces = dict(runtime_profile.get("official_surfaces") or {})
     if official_surfaces.get("checkout") != "https://pay.pokrov.space/checkout/":

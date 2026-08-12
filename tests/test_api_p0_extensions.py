@@ -273,7 +273,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertEqual(start.status_code, 200, start.text)
         body = start.json()
         self.assertTrue(body["ok"])
-        self.assertEqual(body["amount_stars"], 1399)
+        self.assertEqual(body["amount_stars"], 1699)
         self.assertIn("t.me/pokrov_vpnbot", body["pay_url"])
 
         points = client.get("/api/points", headers=hdrs)
@@ -484,7 +484,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
                                     "cta_href": "https://partner.example.com/",
                                     "placement": "home_banner",
                                     "dismissible": True,
-                                    "contexts": ["free_monthly"],
+                                    "contexts": ["expired_or_blocked"],
                                     "sort_order": 10,
                                 },
                                 {
@@ -492,7 +492,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
                                     "content_id": "partner_promo",
                                     "title": "Unsafe",
                                     "cta_href": "javascript:alert(1)",
-                                    "contexts": ["free_monthly"],
+                                    "contexts": ["expired_or_blocked"],
                                     "sort_order": 20,
                                 },
                             ]

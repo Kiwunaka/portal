@@ -34,6 +34,7 @@ class WorkerRetentionTests(unittest.TestCase):
             *cleanup_env_keys,
             "RU_PROBE_RETENTION_DAYS",
             "RU_PROBE_HEARTBEAT_RETENTION_DAYS",
+            "FREE_TIER_ENABLED",
         ):
             self._saved_env[key] = os.environ.get(key)
         for key in cleanup_env_keys:
@@ -47,6 +48,7 @@ class WorkerRetentionTests(unittest.TestCase):
         os.environ["PUBLIC_CHANNEL"] = "pokrov_vpn"
         os.environ["RU_PROBE_RETENTION_DAYS"] = "180"
         os.environ["RU_PROBE_HEARTBEAT_RETENTION_DAYS"] = "30"
+        os.environ["FREE_TIER_ENABLED"] = "true"
 
         for mod_name in ("config", "db", "worker"):
             if mod_name in sys.modules:

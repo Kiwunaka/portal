@@ -281,6 +281,9 @@ del_admin_audit AS (
 del_incentive_campaigns AS (
     DELETE FROM incentive_campaigns WHERE created_by IN (SELECT tg_id FROM ids) RETURNING 1
 ),
+del_access_keys AS (
+    DELETE FROM access_keys WHERE tg_id IN (SELECT tg_id FROM ids) RETURNING 1
+),
 del_user_nodes AS (
     DELETE FROM user_nodes WHERE tg_id IN (SELECT tg_id FROM ids) RETURNING 1
 ),
@@ -318,6 +321,7 @@ SELECT jsonb_build_object(
     'gift_cards', (SELECT count(*) FROM del_gift_cards),
     'admin_audit', (SELECT count(*) FROM del_admin_audit),
     'incentive_campaigns', (SELECT count(*) FROM del_incentive_campaigns),
+    'access_keys', (SELECT count(*) FROM del_access_keys),
     'user_nodes', (SELECT count(*) FROM del_user_nodes),
     'users', (SELECT count(*) FROM del_users)
 )::text;

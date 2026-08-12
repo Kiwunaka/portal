@@ -77,7 +77,9 @@ class ClientSecuritySmokeTests(unittest.TestCase):
 
         self.assertIn("product contract must keep public_scope limited to android and windows", failures)
         self.assertIn("product contract must keep readiness_only_scope limited to ios and macos", failures)
-        self.assertIn("product contract must keep free_tier.node_pool as NL-free", failures)
+        self.assertIn("product contract must keep free_tier disabled", failures)
+        self.assertIn("product contract must mark free_tier retired_pending_replacement", failures)
+        self.assertIn("product contract must not publish a free_tier node_pool", failures)
         self.assertIn("product contract must keep monetization.in_app_purchases disabled", failures)
         self.assertIn(
             "product contract must keep public_routing_modes as all_except_ru, full_tunnel, selected_apps",
@@ -90,9 +92,9 @@ class ClientSecuritySmokeTests(unittest.TestCase):
             "default_runtime_core": "sing-box",
             "advanced_fallback_core": "xray",
             "free_tier": {
-                "node_pool": "NL-free",
-                "traffic_gb": 5,
-                "speed_mbps": 50,
+                "enabled": False,
+                "status": "retired_pending_replacement",
+                "node_pool": None,
             },
             "official_surfaces": {
                 "checkout": "https://pay.pokrov.space/checkout/",

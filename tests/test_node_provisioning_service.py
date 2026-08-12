@@ -21,6 +21,11 @@ GIB = 1024**3
 NOW = datetime(2026, 7, 13, 14, 0, 0)
 
 
+@pytest.fixture(autouse=True)
+def _enable_legacy_free_tier(monkeypatch):
+    monkeypatch.setenv("FREE_TIER_ENABLED", "true")
+
+
 @pytest.fixture()
 def database(tmp_path):
     from models import Base

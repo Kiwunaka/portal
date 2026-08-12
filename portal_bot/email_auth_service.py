@@ -15,8 +15,9 @@ from account_security_errors import EmailOtpError
 from account_foundation_service import ensure_user_account_foundation
 from config import env_bool, env_int
 from email_delivery_service import deliver_auth_message as deliver_email_auth_message
-from free_cycle_service import mark_user_became_free
+from free_cycle_service import mark_user_became_free, project_user_to_expired
 from models import User, WebEmailIdentity, WebEmailToken
+from node_policy import free_tier_enabled
 
 
 EMAIL_AUTH_DEBUG_ECHO = env_bool("EMAIL_AUTH_DEBUG_ECHO", default=False)
@@ -160,15 +161,16 @@ def ensure_email_account_user(
             return row
 
     target_tg_id = _next_email_account_tg_id(session)
+    free_enabled = free_tier_enabled()
     row = User(
         tg_id=int(target_tg_id),
         username=None,
         uuid=str(uuid.uuid4()),
         email=f"EMAIL_{int(target_tg_id)}",
         sub_type="FREE",
-        current_plan_code="free_monthly",
+        current_plan_code="free_monthly" if free_enabled else "free_retired",
         created_at=now,
-        expiry_at=now + timedelta(days=FREE_ACCOUNT_LIFETIME_DAYS),
+        expiry_at=now + timedelta(days=FREE_ACCOUNT_LIFETIME_DAYS) if free_enabled else now,
         is_active=True,
         stars_paid=0,
         total_gb=0,
@@ -177,7 +179,10 @@ def ensure_email_account_user(
         sub_token=secrets.token_urlsafe(32),
         display_name=(str(display_name or "").strip()[:100] or email_norm.split("@", 1)[0][:100] or None),
     )
-    mark_user_became_free(row, now=now)
+    if free_enabled:
+        mark_user_became_free(row, now=now)
+    else:
+        project_user_to_expired(row, now=now, source="email_account_without_free")
     session.add(row)
     session.flush()
     return row

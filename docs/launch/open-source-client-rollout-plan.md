@@ -169,7 +169,7 @@ Product stance:
   catalog
 - do not enable third-party free configs silently by default
 - do not call the feeds official POKROV nodes
-- do not mix free third-party configs with the official POKROV paid/free node
+- do not mix free third-party configs with official POKROV paid delivery; POKROV consumer free-node delivery is retired
   pool
 - do not promise safety, speed, privacy, legality, uptime, or availability for
   third-party public configs

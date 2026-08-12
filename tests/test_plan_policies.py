@@ -23,6 +23,7 @@ class PlanPolicyTests(unittest.TestCase):
             "NODE_PL_FREE_TOTAL_GB",
             "NODE_PL_LIMIT_IP",
             "NODE_PL_TOTAL_GB",
+            "FREE_TIER_ENABLED",
             "DATABASE_URL",
             "BOT_TOKEN",
         ):
@@ -133,6 +134,7 @@ class PlanPolicyTests(unittest.TestCase):
         os.environ["FREE_TOTAL_GB"] = "5"
         os.environ["FREE_LIMIT_IP"] = "1"
         os.environ["PAID_LIMIT_IP"] = "5"
+        os.environ["FREE_TIER_ENABLED"] = "true"
 
         api = importlib.import_module("api")
         importlib.reload(api)
@@ -239,8 +241,8 @@ class PlanPolicyTests(unittest.TestCase):
 
         access = api._build_access_policy(user=user, used_bytes=0, now=now)
 
-        self.assertEqual(access["access_state"], "free_monthly")
-        self.assertEqual(access["traffic_policy"]["kind"], "metered")
+        self.assertEqual(access["access_state"], "expired_or_blocked")
+        self.assertEqual(access["traffic_policy"]["kind"], "blocked")
 
     def test_api_plan_catalog_fallback_defaults(self) -> None:
         api = importlib.import_module("api")
@@ -260,8 +262,8 @@ class PlanPolicyTests(unittest.TestCase):
         api = importlib.import_module("api")
         importlib.reload(api)
 
-        final_price, pct = api._price_with_pending_discount(amount_rub=249, pending_pct=20)
-        self.assertEqual(final_price, 199)
+        final_price, pct = api._price_with_pending_discount(amount_rub=239, pending_pct=20)
+        self.assertEqual(final_price, 191)
         self.assertEqual(pct, 20)
 
 

@@ -212,23 +212,23 @@ def test_run_xcody_uses_openai_chat_shape_and_validates_with_apply_validator(tmp
     result = module.run_xcody_refresh(
         repo_root=module.REPO_ROOT,
         api_key="sk-test",
-        base_url="https://enterprise.xcody.dev/v1",
+        base_url="https://openrouter.ai/api/v1",
         provider=provider,
     )
 
     assert result.payload["scope"] == "public_support"
     assert len(provider.calls) == 1
     call = provider.calls[0]
-    assert call["url"] == "https://enterprise.xcody.dev/v1/chat/completions"
+    assert call["url"] == "https://openrouter.ai/api/v1/chat/completions"
     assert call["headers"] == {
         "Authorization": "Bearer sk-test",
         "Content-Type": "application/json",
     }
     request = call["payload"]
-    assert request["model"] == "minimax-m3"
-    assert request["reasoning_effort"] == "medium"
+    assert request["model"] == "deepseek/deepseek-v4-flash-0731"
+    assert request["reasoning"] == {"effort": "medium", "exclude": True}
     assert request["n"] == 1
-    assert request["max_tokens"] == 16_000
+    assert "max_tokens" not in request
     assert request["messages"][0]["role"] == "system"
     assert "closed JSON object" in request["messages"][0]["content"]
     source_packet = json.loads(request["messages"][1]["content"])

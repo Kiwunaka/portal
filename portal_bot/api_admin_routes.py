@@ -3145,8 +3145,11 @@ async def admin_provider_quota_status(x_telegram_init_data: str = Header(default
 
 
 def _admin_free_tier_facts_payload() -> dict[str, Any]:
+    enabled = bool(_FREE_TIER_FACTS.get("enabled", False)) and free_tier_enabled()
     return {
-        "node_pool": str(_FREE_TIER_FACTS.get("location_code") or "NL-free"),
+        "enabled": enabled,
+        "status": str(_FREE_TIER_FACTS.get("status") or "retired_pending_replacement"),
+        "node_pool": str(_FREE_TIER_FACTS.get("location_code") or "NL-free") if enabled else None,
         "traffic_limit_gb": FREE_STANDARD_QUOTA_GB,
         "traffic_limit_bytes": int(FREE_STANDARD_QUOTA_BYTES),
         "cycle_days": int(_FREE_TIER_FACTS.get("cycle_days") or 30),
@@ -3155,7 +3158,7 @@ def _admin_free_tier_facts_payload() -> dict[str, Any]:
         "device_limit": int(_FREE_TIER_FACTS.get("device_limit") or 1),
         "standard_access_role": str(_FREE_TIER_FACTS.get("standard_access_role") or "free_standard"),
         "soft_access_role": str(_FREE_TIER_FACTS.get("soft_access_role") or "free_soft"),
-        "monthly_reset": bool(_FREE_TIER_FACTS.get("monthly_reset", True)),
+        "monthly_reset": enabled and bool(_FREE_TIER_FACTS.get("monthly_reset", True)),
         "source": "shared_product_facts",
     }
 

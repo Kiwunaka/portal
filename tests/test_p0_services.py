@@ -69,7 +69,7 @@ class P0ServicesTests(unittest.TestCase):
             tg_id=1001,
             source="webapp",
             plan_code="9_months",
-            amount_stars=1399,
+            amount_stars=1699,
             currency="XTR",
         )
         self.assertIsNotNone(row)
@@ -100,7 +100,7 @@ class P0ServicesTests(unittest.TestCase):
             tg_id=1002,
             source="bot",
             plan_code="1_month",
-            amount_stars=249,
+            amount_stars=239,
             currency="XTR",
         )
         self.assertIsNotNone(row)
@@ -127,21 +127,21 @@ class P0ServicesTests(unittest.TestCase):
             tg_id=3001,
             source="bot",
             plan_code="1_month",
-            amount_stars=249,
+            amount_stars=239,
             currency="XTR",
         )
         second = svc.start_attempt(
             tg_id=3001,
             source="bot",
             plan_code="3_months",
-            amount_stars=699,
+            amount_stars=669,
             currency="XTR",
         )
         self.assertIsNotNone(first)
         self.assertIsNotNone(second)
         resolved = svc.resolve_pending_attempt_for_payment(
             tg_id=3001,
-            amount_stars=699,
+            amount_stars=669,
             currency="XTR",
             within_hours=24,
         )
@@ -165,11 +165,11 @@ class P0ServicesTests(unittest.TestCase):
         self.assertEqual(total, 300)
         self.assertGreaterEqual(expiring, 0)
 
-        # For 1_month=249 with first purchase 20%:
-        # plan cap after first-discount ~= 99, so redeemable should be <= 99.
+        # For 1_month=239 with first purchase 20%:
+        # the plan cap is derived from the discounted amount.
         preview = pts.preview_redeemable_points(
             tg_id=2001,
-            plan_price_stars=249,
+            plan_price_stars=239,
             first_purchase_discount_pct=0.20,
         )
         self.assertEqual(preview.available_points, 300)

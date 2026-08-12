@@ -16,13 +16,15 @@ import aiohttp
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_API_BASE_URL = "https://api.xcody.dev/v1"
-DEFAULT_MODEL = "minimax-m3"
+DEFAULT_API_BASE_URL = "https://openrouter.ai/api/v1"
+DEFAULT_MODEL = "deepseek-v4-flash-0731"
 DEFAULT_REASONING_EFFORT = "medium"
 OPENROUTER_API_BASE_URL = "https://openrouter.ai/api/v1"
-OPENROUTER_MINIMAX_M3_MODEL = "minimax/minimax-m3"
+OPENROUTER_DEEPSEEK_V4_FLASH_0731_MODEL = "deepseek/deepseek-v4-flash-0731"
 DEFAULT_PROVIDER_TIMEOUT_SECONDS = 20.0
-OPENROUTER_PROVIDER_TIMEOUT_SECONDS = 24.0
+OPENROUTER_PROVIDER_TIMEOUT_SECONDS = 45.0
+OPENROUTER_RUN_DEADLINE_SECONDS = 50.0
+DEFAULT_RUN_DEADLINE_SECONDS = 25.0
 DEFAULT_KNOWLEDGE_PATH = Path(__file__).resolve().parents[1] / "shared" / "support-ai-knowledge.json"
 
 _MAX_SANITIZER_INPUT_CHARS = 65536
@@ -264,6 +266,13 @@ def _parse_reasoning_effort(value: str | None) -> str:
     return DEFAULT_REASONING_EFFORT
 
 
+def canonical_support_model(value: str | None) -> str:
+    raw = (value or DEFAULT_MODEL).strip()
+    if raw in {DEFAULT_MODEL, OPENROUTER_DEEPSEEK_V4_FLASH_0731_MODEL}:
+        return DEFAULT_MODEL
+    return raw
+
+
 def _bounded_env_int(value: str | None, *, default: int, maximum: int, minimum: int = 1) -> int:
     parsed = _parse_int(value, default=default)
     if parsed < minimum:
@@ -311,7 +320,7 @@ class SupportAIConfig:
             enabled=_parse_bool(source.get("SUPPORT_AI_ENABLED"), default=False),
             api_key=api_key,
             api_base_url=api_base_url,
-            model=(source.get("SUPPORT_AI_MODEL") or DEFAULT_MODEL).strip(),
+            model=canonical_support_model(source.get("SUPPORT_AI_MODEL")),
             reasoning_effort=_parse_reasoning_effort(source.get("SUPPORT_AI_REASONING_EFFORT")),
             timeout_seconds=_bounded_env_float(
                 source.get("SUPPORT_AI_TIMEOUT_SECONDS"),
@@ -347,14 +356,40 @@ def provider_timeout_ceiling(api_base_url: str) -> float:
     )
 
 
+def provider_run_deadline_ceiling(api_base_url: str) -> float:
+    return (
+        OPENROUTER_RUN_DEADLINE_SECONDS
+        if is_exact_openrouter_route(api_base_url)
+        else DEFAULT_RUN_DEADLINE_SECONDS
+    )
+
+
 def provider_wire_model(config: SupportAIConfig) -> str:
     """Map the canonical model ID only for the exact owned OpenRouter route."""
     if (
-        config.model == DEFAULT_MODEL
+        canonical_support_model(config.model) == DEFAULT_MODEL
         and is_exact_openrouter_route(config.api_base_url)
     ):
-        return OPENROUTER_MINIMAX_M3_MODEL
+        return OPENROUTER_DEEPSEEK_V4_FLASH_0731_MODEL
     return config.model
+
+
+def provider_generation_controls(config: SupportAIConfig) -> dict[str, Any]:
+    """Keep 0731 reasoning provider-managed while bounding the final answer."""
+    if (
+        canonical_support_model(config.model) == DEFAULT_MODEL
+        and is_exact_openrouter_route(config.api_base_url)
+    ):
+        return {
+            "reasoning": {
+                "effort": config.reasoning_effort,
+                "exclude": True,
+            }
+        }
+    return {
+        "max_tokens": config.max_output_tokens,
+        "reasoning_effort": config.reasoning_effort,
+    }
 
 
 def _split_trailing_url_punctuation(value: str) -> tuple[str, str]:
@@ -1288,9 +1323,8 @@ def _payload(user_text: str, *, config: SupportAIConfig) -> dict[str, Any]:
             {"role": "user", "content": redacted_text},
         ],
         "temperature": 0.2,
-        "max_tokens": config.max_output_tokens,
         "n": 1,
-        "reasoning_effort": config.reasoning_effort,
+        **provider_generation_controls(config),
     }
 
 

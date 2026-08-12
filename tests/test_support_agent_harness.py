@@ -103,7 +103,7 @@ class _Adapter:
         self.plan = plan
         self.secret = secret
         self.call_count = 0
-        self.config = SimpleNamespace(model="minimax-m3", reasoning_effort="medium")
+        self.config = SimpleNamespace(model="deepseek-v4-flash-0731", reasoning_effort="medium")
 
     async def complete_synthesis(self, *, messages, request_timeout):
         from support_agent_provider import ProviderCallError, ProviderUsage, SynthesisTurn

@@ -28,8 +28,8 @@ from support_agent_knowledge import (  # noqa: E402
 
 
 DEFAULT_OUTPUT = REPO_ROOT / "shared" / "support-ai-knowledge.json"
-DEFAULT_BASE_URL = "https://api.xcody.dev/v1"
-DEFAULT_MODEL = "minimax-m3"
+DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
+DEFAULT_MODEL = "deepseek/deepseek-v4-flash-0731"
 DEFAULT_REASONING_EFFORT = "medium"
 MAX_SOURCE_FILE_CHARS = 50_000
 MAX_SOURCE_BUNDLE_CHARS = 200_000
@@ -484,9 +484,8 @@ def build_xcody_request(
             },
         ],
         "temperature": 0.1,
-        "max_tokens": 16_000,
         "n": 1,
-        "reasoning_effort": reasoning_effort,
+        "reasoning": {"effort": reasoning_effort, "exclude": True},
     }
 
 

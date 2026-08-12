@@ -8,6 +8,8 @@ from pathlib import Path
 
 from sqlalchemy import Engine, event, text
 
+from node_policy import free_tier_enabled
+
 
 def _sqlite_column_exists(conn, table: str, column: str) -> bool:
     rows = conn.execute(text(f"PRAGMA table_info({table});")).fetchall()
@@ -1316,14 +1318,29 @@ def _ensure_capacity_domain_sqlite(conn) -> None:
               tg_id, key_uuid, panel_email, pool_code, state, source, is_primary, created_at, updated_at
             )
             SELECT tg_id, uuid, coalesce(nullif(trim(email), ''), 'user-' || tg_id),
-                   CASE WHEN upper(coalesce(sub_type, '')) = 'FREE' THEN 'free_pool' ELSE 'premium_pool' END,
-                   CASE WHEN coalesce(is_active, 1) THEN 'active' ELSE 'inactive' END,
+                   CASE
+                     WHEN :free_tier_enabled = 1
+                          AND upper(coalesce(sub_type, '')) = 'FREE'
+                          AND lower(coalesce(current_plan_code, '')) NOT IN ('trial', 'channel_bonus', 'start_99')
+                       THEN 'free_pool'
+                     ELSE 'premium_pool'
+                   END,
+                   CASE
+                     WHEN coalesce(is_active, 1)
+                          AND (
+                            :free_tier_enabled = 1
+                            OR upper(coalesce(sub_type, '')) <> 'FREE'
+                            OR lower(coalesce(current_plan_code, '')) IN ('trial', 'channel_bonus', 'start_99')
+                          )
+                       THEN 'active'
+                     ELSE 'inactive'
+                   END,
                    'legacy_user', 1, :now_value, :now_value
             FROM users
             WHERE uuid IS NOT NULL AND trim(uuid) <> '';
             """
         ),
-        {"now_value": now_param},
+        {"now_value": now_param, "free_tier_enabled": int(free_tier_enabled())},
     )
     conn.execute(
         text(
@@ -1496,15 +1513,30 @@ def _ensure_capacity_domain_postgres(conn) -> None:
             """
             INSERT INTO access_keys (tg_id, key_uuid, panel_email, pool_code, state, source, is_primary, created_at, updated_at)
             SELECT tg_id, uuid, coalesce(nullif(btrim(email), ''), 'user-' || tg_id),
-                   CASE WHEN upper(coalesce(sub_type, '')) = 'FREE' THEN 'free_pool' ELSE 'premium_pool' END,
-                   CASE WHEN coalesce(is_active, TRUE) THEN 'active' ELSE 'inactive' END,
+                   CASE
+                     WHEN :free_tier_enabled
+                          AND upper(coalesce(sub_type, '')) = 'FREE'
+                          AND lower(coalesce(current_plan_code, '')) NOT IN ('trial', 'channel_bonus', 'start_99')
+                       THEN 'free_pool'
+                     ELSE 'premium_pool'
+                   END,
+                   CASE
+                     WHEN coalesce(is_active, TRUE)
+                          AND (
+                            :free_tier_enabled
+                            OR upper(coalesce(sub_type, '')) <> 'FREE'
+                            OR lower(coalesce(current_plan_code, '')) IN ('trial', 'channel_bonus', 'start_99')
+                          )
+                       THEN 'active'
+                     ELSE 'inactive'
+                   END,
                    'legacy_user', TRUE, :now_value, :now_value
             FROM users
             WHERE uuid IS NOT NULL AND btrim(uuid) <> ''
             ON CONFLICT DO NOTHING;
             """
         ),
-        {"now_value": now_param},
+        {"now_value": now_param, "free_tier_enabled": bool(free_tier_enabled())},
     )
     conn.execute(
         text(

@@ -225,7 +225,7 @@ def test_client_locations_catalog_exposes_searchable_real_node_catalog(monkeypat
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["auto"]["enabled"] is True
-    assert body["freePoolCode"] == "nl-free"
+    assert body["freePoolCode"] is None
     assert body["query"] == "ams"
     assert body["search"]["matched"] >= 1
     assert body["countries"]
@@ -677,8 +677,8 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
         config=SupportAIConfig(
             enabled=True,
             api_key="sk-test",
-            api_base_url="https://enterprise.xcody.dev/v1",
-            model="minimax-m3",
+            api_base_url="https://openrouter.ai/api/v1",
+            model="deepseek-v4-flash-0731",
             reasoning_effort="medium",
         ),
         env={"SUPPORT_AI_AGENT_ENABLED": "true"},

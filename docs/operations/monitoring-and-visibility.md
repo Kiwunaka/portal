@@ -459,7 +459,7 @@ Operational rule:
 - daily panel counts must compare only managed identities (`tgId`, `User_<tg_id>`, or a panel UUID that maps to an expected POKROV user); legacy/manual 3x-ui rows without a POKROV managed identity are tracked as `unknown_rows` and require a separate cleanup decision before deletion
 - expected access is satisfied only by an enabled panel client; disabled retained entries stay in inventory counters but do not count as provisioned access
 - enabled managed identities outside their expected pool are retained as one count-only access-drift observation with unique-identity and placement totals; this does not page by itself because a legacy or extra placement is not proof of user impact. Missing expected enabled profiles remain actionable issues; disabled unexpected entries remain non-paging inventory.
-- daily expected access evaluates each active non-manual user with the current pool policy at the report timestamp: bounded premium trials and premium users use paid nodes, while free users use only the canonical node for their exact persisted `free_standard` or `free_soft` role. Strict node-role failures, ambiguous entitlement projections, and manual/test users are count-only `policy_unresolved` or `manual` evidence, never actionable access drift; retained reports must not contain their Telegram IDs, UUIDs, emails, or raw panel identities
+- daily expected access evaluates each active non-manual user with the current pool policy at the report timestamp: bounded premium trials and premium users use paid nodes; while `FREE_TIER_ENABLED=false`, free/expired users expect no delivery access. The canonical `free_standard` or `free_soft` node rule applies only during an explicitly enabled rollback. Strict node-role failures, ambiguous entitlement projections, and manual/test users are count-only `policy_unresolved` or `manual` evidence, never actionable access drift; retained reports must not contain their Telegram IDs, UUIDs, emails, or raw panel identities
 - retained `user_nodes` rows for inactive or retired access are reported in the JSON summary but must not page operators by themselves when panel managed identities match the current expected users
 - disabled nodes and control-plane rows must stay visible in capacity payloads when useful, but must not create `node_capacity:*` active alerts merely because their disabled state is intentional
 - CPU, RAM, disk, network, panel-API latency, error-rate, and client-density alerts require three consecutive samples by default (`NODE_METRICS_SUSTAINED_SAMPLES`); a single current snapshot must never bypass this window
@@ -509,10 +509,10 @@ Admin ops app wave `2026-07-06`, command-center redesign updated locally on
 - `predeploy_node_readiness.py` classifies a public `443` to internal listener difference as `verified_front` only when the node-local transport-front unit is active, its exact loopback backend mapping exists, HAProxy validates the installed config and owns `443`, and Xray owns the mapped listener. Any missing check remains drift; verified fronting never authorizes changing the public profile to the internal port.
 - node lifecycle actions in `adminapp` require explicit typed confirmation; node resync supports dry-run before execution
 - `/api/admin/broadcast` supports `dry_run=true`; the UI must preview/dry-run before allowing a real broadcast send
-- `/api/admin/free-tier/summary` and `/api/admin/free-tier/users` expose the logical `NL-free` free tier: one device, exact `5 * 1024^3` byte standard quota per 30 days, persisted provisioning state/job/error, and the confirmed soft-mode target of `2 Mbps` per observed public IP
+- `/api/admin/free-tier/summary` and `/api/admin/free-tier/users` are retained as retirement and historical-observability surfaces; with `FREE_TIER_ENABLED=false` they must show no active delivery keys, mappings, enabled pool membership, or queued/running free-provisioning jobs
 - operators must monitor queued/running/retry/manual-review node-provisioning jobs and must not infer `soft_active` from traffic bytes; the target role/inbound must be confirmed first
 - an access-key UUID rotation is not successful on canonical DB or panel-row readback alone: after every affected panel confirms the replacement row, the worker must receive an authenticated Xray restart acknowledgement, then bounded `/server/status` proof from two consecutive samples that `xray.state=running` with no `xray.errorMsg`, and then re-read the panel row. The same apply/readback sequence is required when compensation restores the old UUID. An apply error or post-apply row mismatch is `rotation_runtime_apply_failed` (or `rotation_compensation_failed` during rollback) and requires `manual_review`; it must never finalize the canonical UUID. These panel signals confirm process/config application, not an independent authenticated dataplane canary; the dedicated egress canary remains an operator-run check and is not invoked with a customer identity during rotation.
-- `free_standard` and `free_soft` must have distinct positive inbound bindings; missing roles, duplicate bindings, paid fallback, and `operator_lab` fallback are configuration failures
+- `free_standard` and `free_soft` are legacy rollback/cleanup roles only; while free delivery is disabled they must not be selected, provisioned, or fall back to paid or `operator_lab` nodes
 - nftables shaper readiness requires Linux canary evidence for syntax, IPv4/IPv6 TCP/UDP throughput, NAT sharing, counters, premium isolation, idempotent setup, and rollback; local dry-run evidence is not production proof
 - `/api/admin/provider-quotas`, `/api/admin/provider-quotas/{node_code}`, and `/api/admin/provider-quotas/status` own manual provider/hoster traffic-cap configuration, reset windows, thresholds, status, and audit trail
 - `/api/admin/nodes/timeseries` exposes CPU, RAM, disk, network, traffic-counter, and capacity history from `node_health_samples` and `node_runtime_metrics`
@@ -592,7 +592,7 @@ RF role split:
 - owner-approved exception on `2026-06-01`: `mini` may carry emergency `ru_bridge_relay` traffic on `tcp/443` for allowlisted or incident-promoted cohorts, bridging only to POKROV delivery nodes except US
 - planned topology after the new RU host is live: eligible foreign non-US nodes may have two bridge paths, `mini` and the new RU bridge; each path needs independent listener, downstream, and rollback evidence
 - do not treat `rf1` as a general delivery node until repeated RU probes prove stability
-- owner-approved exception on `2026-04-24`: the dedicated free node (`151.245.217.23`) also runs the Telegram-only `portal-mtproto.service` on `tcp/9443`; monitor it separately from POKROV delivery-node health and do not count it as normal subscription traffic
+- the former dedicated free node (`151.245.217.23`) has no enabled POKROV delivery role in the canonical database; its separate Telegram-only MTProto service, if retained, stays outside subscription traffic and needs its own current runtime attestation
 
 Current backlog note:
 
@@ -622,9 +622,9 @@ Reserve interpretation:
 
 Telegram MTProto proxy interpretation:
 
-- `portal-mtproto.service active` proves the Telegram proxy daemon is running on the free node
+- `portal-mtproto.service active` would prove only that the Telegram proxy daemon is running on the former free node; no current service-state claim is allowed without reachable node-side evidence
 - `current-origin check` and `brain-origin check` should verify `151.245.217.23:9443/tcp` separately from HTTPS checks because MTProto is not an HTTP service
-- free-node reachability to `core.telegram.org` controls whether the daily config refresh timer can stay enabled
+- former-free-node reachability to `core.telegram.org` controls whether the separate MTProto config refresh timer may be enabled
 - if `mini` is considered again for the standard release probe, a fresh RU-origin check must prove POKROV host/API/node reachability first; any separate proxy work stays outside the standard RU-origin release verdict
 - the MTProto link and secret are operational secret material and should stay in `/etc/portal-mtproto.env`, not in docs or incident reports
 

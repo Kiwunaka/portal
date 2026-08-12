@@ -1,5 +1,5 @@
 {
-  "version": "2026-07-13",
+  "version": "2026-08-11-free-tier-retired",
   "identity_model": "app-first",
   "public_defaults": {
     "routing_mode": "all_except_ru",
@@ -14,10 +14,10 @@
       "grant_state": "trial_premium",
       "requires_registration": false,
       "trial_days": 5,
-      "downgrade_state": "free_monthly"
+      "downgrade_state": "expired_or_blocked"
     },
     "site_email_signup": {
-      "grant_state": "free_monthly",
+      "grant_state": "expired_or_blocked",
       "requires_registration": true,
       "trial_days": 0
     },
@@ -29,6 +29,8 @@
     }
   },
   "free_tier": {
+    "enabled": false,
+    "status": "retired_pending_replacement",
     "plan_code": "free_monthly",
     "location_code": "NL-free",
     "traffic_limit_gb": 5,
@@ -70,6 +72,7 @@
       "redeem_eligible": false
     },
     "free_monthly": {
+      "availability": "legacy_disabled",
       "kind": "free",
       "traffic_policy": "metered",
       "device_policy": "free_limit",
@@ -78,6 +81,7 @@
       "redeem_eligible": true
     },
     "free_soft_mode": {
+      "availability": "legacy_disabled",
       "kind": "free",
       "traffic_policy": "soft_limited",
       "device_policy": "free_limit",
@@ -96,7 +100,7 @@
   },
   "recovery_rules": {
     "telegram": "restore_premium_link_support_bonus",
-    "email": "free_only_entry",
+    "email": "account_recovery_only",
     "manual_link": "explicit_request_only"
   }
 }
