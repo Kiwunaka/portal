@@ -189,6 +189,18 @@ paths reviewed first.
   receives `Следующая попытка: 27.08 в 10:40` after its 13.08 spin. Before/after
   configuration hashes are retained in the operator evidence without storing
   account identifiers or reward payloads here.
+- [x] `PASS_PRODUCTION_ROUTE` A fresh production-backed paid Rewards Hub audit exposed a
+  missing referral code/link. The client no longer invents the unusable
+  placeholder `POKROV` or renders disabled icon actions: it shows an honest
+  refresh state until a real link exists, then only `Пригласить` and
+  `Скопировать ссылку`. Final production-signed LDPlayer readback shows both
+  live actions and no pseudo-code; the compact Profile summary also no longer
+  exposes the account referral code.
+- [x] `PASS_PRODUCTION_ROUTE` Paid accounts that predate referral-code provisioning now get
+  one unique legacy-compatible code lazily from bonus/referral summary reads;
+  repeated reads return the same code/link and trial reads remain mutation-free.
+  Focused API tests cover trial, first paid read and stable replay. Backend
+  deploy, paid-account readback and repeat client refresh pass.
 - [ ] `TODO` Verify replay/idempotency, distribution boundaries, achievement
   unlock and complete bonus history in LDPlayer.
 - [ ] `TODO` Verify promo-code success, invalid, already-used, expired and
@@ -362,6 +374,15 @@ the physical production candidate.
   человек` promise. Shared status pills and chat lifecycle hints now flex and
   wrap; focused widget QA reproduces no overflow. Publication and exact
   final-candidate QA remain open.
+- [x] `DONE_LOCAL` Fresh production-backed LDPlayer QA asked why bonuses are not
+  available in trial. The in-app assistant returned the correct five-day
+  trial/paid-reward explanation after bounded waits of 8–16 seconds and did not
+  create or open a human ticket.
+- [x] `DONE_LOCAL` Support now has one prominent AI entry; secondary Telegram
+  support lives under a labelled `Ещё варианты поддержки` menu. Structured
+  assistant replies render as native `Коротко` and `Что сделать` sections,
+  collapse secondary sentences behind a TalkBack-reachable `Подробности`
+  control, and avoid repeating the always-visible human escalation action.
 - [ ] Make provider, local-grounding and human-fallback sources operationally
   distinguishable without exposing internals or confusing the user.
 - [ ] AI must diagnose WARP/location/routing/notification/trial/reward issues
@@ -666,6 +687,40 @@ targeted and auditable; signing recovery exists without exposing the key.
   lane as a fail-closed compatibility gate: the Telegram claim is absent, one
   paid notice is visible and the channel action is clearly labelled. Retained
   screenshot and UI tree: `docs/audit-artifacts/2026-08-13-direct-release/android-rewards-trial-compact.*`.
+- The later paid-account Rewards Hub pass confirms the production service now
+  exposes the approved `+10 days` rule and 14-day roulette cooldown, but also
+  found that this account had no provisioned referral link. The local backend
+  and client fixes above are retained for deploy/readback; pre-fix screenshot
+  `E:/POKROV-ops-evidence/2026-08-13-goal-continuation/ldplayer-app-audit/42-rewards-paid.png`
+  contains no account identifier or raw credential.
+- Fresh support evidence in the same directory records the simplified support
+  menu, the real bonus/trial assistant exchange, compact structured reply and
+  expanded-details state as `29-support-fixed.png`, `31-ai-sheet.png`,
+  `35-ai-compact.png`, and `36-ai-details.png`.
+- Final local regression for the referral/support slice passes `169/169`
+  backend app-first/reward/referral/migration/rollout tests and `146/146`
+  combined Flutter design/app-shell tests. `flutter analyze`, Python compilation
+  and both repository `git diff --check` checks pass. The intentionally broader
+  backend router matrix exceeded its 10-minute local limit without a retained
+  result, so it is not counted as a pass.
+- Backend deploy retained rollback snapshot
+  `/root/portal_bot.deploy-backups/20260813T144318Z-18128`; Caddy, API, bot,
+  helpbot, feedbackbot and worker are active. Brain-origin verification passed
+  health/static checks and three subscription fetches (`7` hosts, `27`
+  outbounds each).
+- Final production-signed Android `1.0.3+11` local artifacts: universal
+  `20B69DBA14D74F0E55B07DEFF07929EED63084C347A949E339FEBF52B043DBE6`,
+  ARM64 `CED2219E0A387EB671F321139E25BAEE731621591567A5CB6232CF45EB1CA939`,
+  ARMv7 `194B62856F8A5EEBB55C3A3EEB20AFBCEDAC4F2671E5369A0C5C0F2701AFA04B`,
+  x86_64 `C03B451B0A2DBC3D420A76372AC72BD211E821F2D3CDA3AC9BE5E731DDCDAD13`;
+  certificate SHA-256 remains
+  `0A0602A7DF5D96A0B427909D004F3DDF26DEF86587634BF16694DA8D654B2500`.
+  The exact x86_64 artifact update-installed in LDPlayer and retained the paid
+  session. Evidence `49-profile-no-code.*` and `50-rewards-final.*` proves the
+  compact Profile omits the code while Rewards exposes the two live link
+  actions. XML containing an earlier raw referral code was deleted; no retained
+  XML evidence contains it. This same-version local build is not published over
+  public `v1.0.3-beta.2`.
 - Current post-reward-fix Android local candidate passed production signing,
   package/version, non-debuggable and ABI verification. SHA-256: universal
   `04455331DA42AFBCE95EF50A26726FC63324A39FCD225991494C271AAFC73A2E`,

@@ -665,6 +665,15 @@ compatibility, never delay a payment/bonus start and never select
   safe Telegram referral link, bonus days, and current points tier for the
   app-first account. The app may expose copy/share/open actions for that link;
   referral anti-abuse, bonus granting, and campaign tuning remain backend-owned.
+- An active paid account that predates referral-code provisioning receives one
+  legacy-compatible, unique referral code lazily on its first bonus-summary or
+  referral-summary read. The same code and safe Telegram link remain stable on
+  later reads. Trial, free, expired, merged, and otherwise ineligible accounts
+  must not receive a code as a side effect of those reads.
+- App surfaces must fail closed when the backend has not returned a real safe
+  referral link: do not invent a display code, expose dead share/copy controls,
+  or imply that an invitation was created. Show a refreshable unavailable state
+  until the server returns the stable link.
 - one referred account has at most one account-owned referrer; self-referral and
   cycles are rejected while legacy `User.referrer_id` remains a projection
 - the referred friend receives no automatic grant from install, registration,

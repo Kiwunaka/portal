@@ -68,6 +68,7 @@ WHEEL_DISCOUNT_SECTORS = (5, 7, 10)
 CALENDAR_MILESTONES = frozenset({7, 14, 21, 28})
 _TERMINAL_MERGE_REVIEW_STATUSES = frozenset({"closed", "dismissed", "resolved"})
 _SAFE_PRESET_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+_REFERRAL_CODE_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 _LOGGER = logging.getLogger(__name__)
 
 
@@ -207,6 +208,25 @@ def _naive_utc(value: datetime) -> datetime:
     if value.tzinfo is not None:
         value = value.astimezone(timezone.utc).replace(tzinfo=None)
     return value.replace(microsecond=0)
+
+
+def ensure_referral_code(*, s, user: User) -> str:
+    """Create the legacy-compatible invite code inside the caller transaction."""
+
+    existing = str(user.referral_code or "").strip().upper()
+    if existing:
+        return existing
+    for _ in range(32):
+        candidate = "SWAZ" + "".join(
+            secrets.choice(_REFERRAL_CODE_ALPHABET) for _ in range(4)
+        )
+        collision = s.query(User.tg_id).filter(User.referral_code == candidate).first()
+        if collision is not None:
+            continue
+        user.referral_code = candidate
+        s.flush()
+        return candidate
+    raise RewardDomainError("referral_code_generation_failed")
 
 
 def reward_sync_state(job: NodeProvisioningJob | None) -> str:

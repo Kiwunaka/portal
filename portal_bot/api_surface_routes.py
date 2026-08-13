@@ -1388,6 +1388,22 @@ def _bonus_referral_summary_payload(*, s, user: User, tg_id: int) -> dict[str, A
     }
 
 
+def _ensure_paid_referral_code_for_summary(*, s, user: User) -> str:
+    existing = str(user.referral_code or "").strip()
+    if existing:
+        return existing
+    reward_access = evaluate_active_paid(
+        s,
+        account_id=str(user.account_id or ""),
+        now=_reward_now(),
+    )
+    if not reward_access.eligible:
+        return ""
+    code = ensure_referral_code(s=s, user=user)
+    s.commit()
+    return code
+
+
 def _bonus_feature_disabled_detail(*, feature: str) -> dict[str, Any]:
     return {
         "code": "bonus_feature_disabled",
@@ -1928,6 +1944,7 @@ async def bonuses_summary(request: Request, x_telegram_init_data: str = Header(d
         user = s.query(User).filter_by(tg_id=tg_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        _ensure_paid_referral_code_for_summary(s=s, user=user)
         return _bonus_summary_payload(s=s, user=user, tg_id=tg_id)
     finally:
         s.close()
@@ -1942,6 +1959,7 @@ async def bonuses_referral_summary(request: Request, x_telegram_init_data: str =
         user = s.query(User).filter_by(tg_id=tg_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
+        _ensure_paid_referral_code_for_summary(s=s, user=user)
         return _bonus_referral_summary_payload(s=s, user=user, tg_id=tg_id)
     finally:
         s.close()

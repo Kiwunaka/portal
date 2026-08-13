@@ -245,6 +245,7 @@ from rewards_service import (
     RewardForbidden,
     WheelState,
     checkin_calendar,
+    ensure_referral_code,
     evaluate_active_paid,
     get_calendar_state,
     get_reward_history,

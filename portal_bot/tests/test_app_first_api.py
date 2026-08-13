@@ -4,6 +4,7 @@ import importlib
 import hashlib
 import hmac
 import json
+import re
 import sys
 import time
 from datetime import datetime, timedelta
@@ -1650,6 +1651,51 @@ def test_app_session_can_read_bonus_and_referral_summaries(monkeypatch, tmp_path
     channel = bonuses_response.json()["channel"]
     assert channel["offer_days"] == 5
     assert channel["claimed_days"] == 10
+
+
+def test_paid_bonus_summary_creates_one_stable_referral_link(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    _install_fake_panel(monkeypatch, api)
+    client = TestClient(api.app)
+    install_id = "install-paid-referral-link"
+
+    trial_response = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": install_id,
+            "device_name": "Pixel Fold",
+            "platform": "android",
+            "trial_days": 5,
+        },
+    )
+    token = trial_response.json()["session_token"]
+    trial_summary = client.get(
+        "/api/bonuses/summary",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert trial_summary.status_code == 200, trial_summary.text
+    assert trial_summary.json()["referral_code"] == ""
+
+    _promote_install_to_paid(api, install_id=install_id, now=api._utcnow())
+    paid_summary = client.get(
+        "/api/bonuses/summary",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert paid_summary.status_code == 200, paid_summary.text
+    first_code = paid_summary.json()["referral_code"]
+    assert re.fullmatch(r"SWAZ[A-Z0-9]{4}", first_code)
+    assert paid_summary.json()["referral"]["code"] == first_code
+    assert paid_summary.json()["referral"]["link"].endswith(
+        f"start=ref_{first_code}"
+    )
+
+    repeated = client.get(
+        "/api/bonuses/referral/summary",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["code"] == first_code
+    assert repeated.json()["link"].endswith(f"start=ref_{first_code}")
 
 
 def test_app_session_can_read_safe_bonus_history(monkeypatch, tmp_path):
