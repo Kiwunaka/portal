@@ -376,6 +376,17 @@ and failures retain an honest human-support path.
   history and idempotency without making an unauthorized real charge.
 - [ ] Confirm 99 ₽ cannot stack with referral/promo discounts; standard plans
   may use only backend-approved discounts.
+- [x] `PASS_PRODUCTION_ROUTE` Mobile production checkout at `390x844` keeps one
+  selected-plan card with the six prices behind its picker. Selecting the
+  12-month plan updates the card and payment summary to `1999 ₽`,
+  `≈ 167 ₽/мес`, `365 дней` and `5 устройств`; disclosures open in place and
+  the page has no horizontal overflow. No order or payment was submitted.
+- [x] `PASS_PRODUCTION_ROUTE` Empty-email validation remains on the checkout,
+  exposes `aria-invalid`, `aria-errormessage` and a live alert, and now keeps
+  the complete field plus error visible below the fixed mobile header. The
+  production measurement after static deploy `20260813131024` is input top
+  `208.875`, header bottom `64.8`, input bottom `252.875`, with a `96px`
+  scroll margin. Email autocomplete and mobile email input mode are enabled.
 
 Acceptance: exact prices and terms match everywhere, the mobile checkout is
 short and understandable, and no payment-success claim is made without current
@@ -749,6 +760,13 @@ targeted and auditable; signing recovery exists without exposing the key.
   junction at its stable repository path. Android/Windows build trees remain on
   `E:` as well; current `C:` free space stayed above 90 GB during the `beta.2`
   rebuild and publication.
+- The retained legacy Hiddify client reference is now on `E:` behind a verified
+  junction; its ignored April `out`, `dist` and `.gradle` outputs were removed.
+  Marketing static output remains reproducible and was deleted after deploy.
+  Next/Turbopack rejects `.next` or `node_modules` junctions outside its
+  filesystem root, so the required marketing dependencies stay local while
+  `.next` is removed after each production build instead of being retained on
+  `C:`.
 - Post-cleanup verification passed against the junctioned environment: client
   Git resolves its LFS object and temp directories on `E:`, platform lifecycle
   smoke is `1/1`, the P0/client sequence is `27/27`, the paywall sequence is
@@ -775,6 +793,11 @@ targeted and auditable; signing recovery exists without exposing the key.
   download of every public asset matches `SHA256SUMS.txt`. The final public
   production-sync handoff is `8775` bytes with GitHub digest
   `84417b6630543faf589a5d2c3a61a870224d8626e8601ece0a2e60e46ee05caa`.
+- Production checkout static deploy `20260813131024` fixes the mobile
+  validation scroll trap. Current in-app-browser evidence at `390x844` proves
+  the selected-plan picker, all six public prices, 12-month summary,
+  disclosures, empty-email recovery, error semantics and zero horizontal
+  overflow without creating an order or starting a payment.
 - Platform task-first guide source commit
   `d7929a221c03f3ca1c377f83ae3eb4be4d7c4115` and client production-sync
   metadata commit `521b6bff009cac51b94f3fe62cfe396fc732b6e9` are pushed.
