@@ -602,15 +602,19 @@ export default function CheckoutClient() {
                   <input
                     id="checkout-buyer-email"
                     type="email"
+                    name="email"
+                    autoComplete="email"
+                    inputMode="email"
                     value={buyerEmail}
                     onChange={(event) => {
                       setBuyerEmail(event.target.value);
                       setEmailError("");
                     }}
                     placeholder="email@example.com"
-                    className={cn(INPUT_CLASS, emailError ? "border-status-red" : "")}
+                    className={cn(INPUT_CLASS, "scroll-mt-24", emailError ? "border-status-red" : "")}
                     aria-invalid={Boolean(emailError)}
                     aria-describedby={emailError ? "checkout-email-error" : undefined}
+                    aria-errormessage={emailError ? "checkout-email-error" : undefined}
                     required
                   />
                   {emailError ? (
