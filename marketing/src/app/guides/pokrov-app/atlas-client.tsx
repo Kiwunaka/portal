@@ -2,7 +2,7 @@
 
 import { CheckCircle2, ChevronDown, Search, X } from "lucide-react";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   POKROV_ATLAS_CATEGORIES,
@@ -34,9 +34,19 @@ function screenSearchText(screen: PokrovAtlasScreen): string {
 export function PokrovAtlasClient() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState(ALL);
-  const [expanded, setExpanded] = useState<Set<string>>(
-    () => new Set([POKROV_SCREEN_ATLAS[0].id]),
-  );
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+
+  useEffect(() => {
+    const id = decodeURIComponent(window.location.hash.slice(1));
+    if (!id || !POKROV_SCREEN_ATLAS.some((screen) => screen.id === id)) return;
+    const frame = window.requestAnimationFrame(() => {
+      setExpanded(new Set([id]));
+      window.requestAnimationFrame(() => {
+        document.getElementById(id)?.scrollIntoView({ block: "start" });
+      });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   const visible = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("ru");
@@ -164,12 +174,15 @@ export function PokrovAtlasClient() {
               key={screen.id}
               id={screen.id}
               open={open}
-              onToggle={(event) =>
-                setScreenExpanded(screen.id, event.currentTarget.open)
-              }
               className="group scroll-mt-24 rounded-panel border border-line bg-surface shadow-[0_16px_44px_rgba(15,23,42,0.07)]"
             >
-              <summary className="flex min-h-20 cursor-pointer list-none items-start justify-between gap-4 rounded-panel p-4 outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset sm:p-5">
+              <summary
+                onClick={(event) => {
+                  event.preventDefault();
+                  setScreenExpanded(screen.id, !open);
+                }}
+                className="flex min-h-20 cursor-pointer list-none items-start justify-between gap-4 rounded-panel p-4 outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset sm:p-5"
+              >
                 <span className="flex min-w-0 items-start gap-3">
                   <span className="grid size-10 shrink-0 place-items-center rounded-[13px] bg-brand text-sm font-black text-white">
                     {screen.order}

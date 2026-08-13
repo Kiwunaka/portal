@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpenCheck, Search, X } from "lucide-react";
+import { BookOpenCheck, ChevronDown, Search, X } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -28,6 +28,25 @@ function detailSearchText(detail: UserGuideDetail | undefined): string[] {
       control.use_when,
     ]),
   ];
+}
+
+function atlasSearchText(screen: (typeof POKROV_SCREEN_ATLAS)[number]): string {
+  return [
+    screen.title,
+    screen.category,
+    screen.purpose,
+    ...screen.path,
+    ...(screen.recommendedSetup || []),
+    screen.caution || "",
+    ...screen.hotspots.flatMap((hotspot) => [
+      hotspot.label,
+      hotspot.action,
+      hotspot.explanation,
+      hotspot.recommendation || "",
+    ]),
+  ]
+    .join(" ")
+    .toLocaleLowerCase("ru");
 }
 
 export function GuidesClient() {
@@ -66,6 +85,14 @@ export function GuidesClient() {
         .toLocaleLowerCase("ru")
         .includes(normalized);
     });
+  }, [category, query]);
+
+  const atlasMatches = useMemo(() => {
+    const normalized = query.trim().toLocaleLowerCase("ru");
+    if (!normalized || category !== ALL) return [];
+    return POKROV_SCREEN_ATLAS.filter((screen) =>
+      atlasSearchText(screen).includes(normalized),
+    );
   }, [category, query]);
 
   return (
@@ -180,18 +207,61 @@ export function GuidesClient() {
         ) : null}
       </div>
 
+      {atlasMatches.length ? (
+        <section className="rounded-panel border border-brand/30 bg-brand-soft p-4">
+          <p className="text-xs font-bold tracking-[0.08em] text-brand uppercase">
+            Найдено в атласе экранов · {atlasMatches.length}
+          </p>
+          <div className="mt-2 grid gap-2">
+            {atlasMatches.slice(0, 3).map((screen) => (
+              <Link
+                key={screen.id}
+                href={`/guides/pokrov-app/#${screen.id}`}
+                className="flex min-h-11 items-center justify-between gap-3 rounded-[12px] border border-line bg-surface px-3.5 py-2.5 text-sm font-semibold text-ink outline-none hover:border-brand/50 focus-visible:ring-2 focus-visible:ring-brand"
+              >
+                <span>{screen.title}</span>
+                <span className="shrink-0 text-brand">Открыть</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <div className="grid gap-4">
         {visible.map((guide) => {
           const detail = USER_GUIDE_DETAILS[guide.id];
           return (
-            <div key={guide.id} id={guide.id} className="min-w-0 scroll-mt-24">
-              <Card className="flex min-w-0 flex-col gap-4">
+            <details
+              key={guide.id}
+              id={guide.id}
+              className="group min-w-0 scroll-mt-24 rounded-panel border border-line bg-surface shadow-[0_14px_38px_rgba(15,23,42,0.06)]"
+            >
+              <summary className="flex min-h-24 cursor-pointer list-none items-start justify-between gap-3 rounded-panel p-4 outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset sm:p-5">
+                <span className="min-w-0">
+                  <span className="block text-xs font-semibold tracking-[0.08em] text-brand uppercase">
+                    {guide.category} · {guide.platform}
+                  </span>
+                  <span className="mt-1 block font-display text-lg font-bold text-ink sm:text-xl">
+                    {guide.title}
+                  </span>
+                  <span className="mt-1 line-clamp-2 block text-sm leading-6 text-ink-soft">
+                    {guide.expected}
+                  </span>
+                </span>
+                <ChevronDown
+                  size={22}
+                  aria-hidden="true"
+                  className="mt-2 shrink-0 text-ink-muted transition-transform group-open:rotate-180"
+                />
+              </summary>
+
+              <div className="grid gap-4 border-t border-line p-4 sm:p-5">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-xs font-semibold tracking-[0.08em] text-brand uppercase">
-                      {guide.category} · {guide.platform}
+                      Подробная инструкция
                     </p>
-                    <h2 className="mt-1 font-display text-xl font-bold text-ink">
+                    <h2 className="mt-1 font-display text-xl font-bold text-ink sm:text-2xl">
                       {guide.title}
                     </h2>
                   </div>
@@ -301,13 +371,13 @@ export function GuidesClient() {
                     </ul>
                   </details>
                 ) : null}
-              </Card>
-            </div>
+              </div>
+            </details>
           );
         })}
       </div>
 
-      {visible.length === 0 ? (
+      {visible.length === 0 && atlasMatches.length === 0 ? (
         <Card className="text-sm leading-relaxed text-ink-soft">
           Ничего не найдено. Сбросьте категорию или попробуйте название кнопки,
           клиента либо платформы. Если задачи всё равно нет, отправьте её в

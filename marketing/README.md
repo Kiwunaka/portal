@@ -126,10 +126,12 @@ The public selected-feature catalog owns these static/export-safe routes:
 - `/programs/` for switch, research, and team-pack intake explanations;
 - `/guides/` for 46 searchable instructions, category filters, failure
   branches, proactive fallback setup, 18 real screens across seven fallback
-  clients, and a per-task visual target;
+  clients, and a per-task visual target; results stay collapsed until the user
+  opens the one instruction they need;
 - `/guides/pokrov-app/` for the separate 20-screen Android atlas captured from
-  the current local candidate, with non-obscuring numbered target outlines and
-  button-by-button legends.
+  the recorded local candidate, with non-obscuring numbered target outlines and
+  button-by-button legends; capture metadata lives in a disclosure instead of
+  competing with the search task.
 
 All routes consume `shared/trust-and-guides.json` through the typed shared
 module. `shared/guide-visuals.ts` must cover every guide ID. Fallback-client
