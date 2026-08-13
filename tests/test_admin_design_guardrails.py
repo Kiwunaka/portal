@@ -70,14 +70,15 @@ def test_public_surfaces_bundle_the_canonical_cyrillic_fonts() -> None:
     marketing_globals = _read(MARKETING_GLOBALS)
     webapp_globals = _read(WEBAPP_GLOBALS)
 
-    for source in (marketing_layout, webapp_layout):
-        assert 'from "next/font/google"' in source
-        assert "Golos_Text" in source
-        assert 'subsets: ["latin", "cyrillic"]' in source
-        assert 'variable: "--font-golos"' in source
+    assert 'from "next/font/google"' in marketing_layout
+    assert "Golos_Text" in marketing_layout
+    assert 'subsets: ["latin", "cyrillic"]' in marketing_layout
+    assert 'variable: "--font-golos"' in marketing_layout
 
-    assert "JetBrains_Mono" in webapp_layout
-    assert 'variable: "--font-jetbrains"' in webapp_layout
+    assert 'import "@fontsource-variable/golos-text"' in webapp_layout
+    assert 'import "@fontsource-variable/jetbrains-mono"' in webapp_layout
+    assert '--font-golos: "Golos Text Variable"' in webapp_globals
+    assert '--font-jetbrains: "JetBrains Mono Variable"' in webapp_globals
     for globals_source in (marketing_globals, webapp_globals):
         assert '--font-golos: "Golos Text"' not in globals_source
 

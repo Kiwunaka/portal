@@ -106,6 +106,7 @@ exact-candidate evidence still have to close.
 | Bot serves current ARM64/ARMv7/universal Android and setup/portable Windows artifacts; Apple gives only an honest compatible-client/key path | 11 | `IN_PROGRESS`; live signed-session API returns exact `beta.2` split APK/setup metadata, fresh/linked Telegram button QA and portable/Apple paths remain open |
 | Direct Android release includes split APKs, production signing, hashes and encrypted keystore recovery; Windows includes setup and portable | 12, 14 | `IN_PROGRESS`; exact `1.0.3+11` Android splits and `1.0.3-beta.2+11` Windows artifacts are public with verified hashes, Huawei and external-media recovery remain manual |
 | All screens and the complete ad-to-support-to-checkout path are retested on the exact published candidate; LDPlayer does not substitute for Huawei/Core | 8, 13, 15 | `TODO` exact-candidate QA |
+| Light/dark/system theme, large text and reduced motion keep readable brand, status, navigation and action hierarchy | 2, 8, 13 | `IN_PROGRESS`; fresh LDPlayer dark/1.3x audit found and locally closed brand, muted-text, location-metadata, AI-card and status overflow defects; final versioned candidate QA remains open |
 | Inspect dirty/untracked material, keep important artifacts, remove only proven trash; backup before prod; delete only identified QA users/data after QA | 14, 15 | `IN_PROGRESS`; production backup/restore and repository cleanup pass, targeted QA-account cleanup remains after live evidence |
 | Deploy, exact asset publication, anonymous download verification, scoped commits and pushes for both repositories, then an evidence-labelled handoff | 15 | `PASS_CURRENT_BETA`; `beta.2` assets, both repository commits/pushes, runtime sync, backend/static deploy, brain verify and anonymous full-download hashes pass; promotion branches and manual device gates remain separate owner actions |
 
@@ -113,8 +114,8 @@ exact-candidate evidence still have to close.
 
 | Lane | Repository | Promotion branch | Active working branch | Current state |
 | --- | --- | --- | --- | --- |
-| Platform, site, bot, cabinet, admin | `C:/Users/kiwun/Documents/ai/VPN` | `master` | `codex/platform-product-readiness-20260804` | scoped release work committed and pushed; tracker finalization is the only current diff |
-| Android, Windows, shared client | `C:/Users/kiwun/Documents/ai/POKROV-app` | `main` | `codex/product-readiness-20260804` | clean; source, release and production-sync commits pushed |
+| Platform, site, bot, cabinet, admin | `C:/Users/kiwun/Documents/ai/VPN` | `master` | `codex/platform-product-readiness-20260804` | dark-token/font-contract/tracker slice is verified on the active release branch; final journey QA remains open |
+| Android, Windows, shared client | `C:/Users/kiwun/Documents/ai/POKROV-app` | `main` | `codex/product-readiness-20260804` | dark/large-text source and tests are verified on the active release branch; final versioned candidate remains open |
 | VPN core | `C:/Users/kiwun/Documents/ai/POKROV-core` | independent `v1.0.3` release | `codex/core-1.0.2-egress-probe` | clean, committed, tagged, pushed and publicly released |
 
 Untracked files must be inspected and classified. Keep source, tests, evidence
@@ -226,6 +227,12 @@ and admin.
 - [x] `PASS_EXACT_CANDIDATE` The exact `beta.2` x86_64 APK renders the centered
   Home and finite hourglass state with the complete secondary label
   `Настраиваем`; installed `base.apk` SHA-256 equals the published candidate.
+- [x] `PASS_LOCAL_SIGNED_BUILD` A production-signed local x86_64 rebuild uses
+  the dark mint accent for the raster brand mark and raises muted text from
+  `#78857E` to `#83908A`. The new muted token measures `5.16:1` on the dark
+  surface; LDPlayer dark Home visibly keeps both brand marks and navigation
+  readable. This source is newer than public `beta.2`, so publication and exact
+  final-candidate QA remain open.
 
 Acceptance: the selected Home is recognizable in the running app, all visible
 controls work, the banner can appear/disappear without a client update, and the
@@ -247,6 +254,10 @@ connect state is understandable without reading a paragraph.
 - [x] `DONE_LOCAL` Show real country flags/names and a compact
   `ping · load · freshness` row without the observed truncation. Exact-device
   plausibility and duplicate/availability checks remain candidate QA.
+- [x] `PASS_LOCAL_SIGNED_BUILD` At Android `1.3x`, country/quality and
+  `ping · load · freshness` now wrap to two lines instead of reducing the
+  evidence to fragments such as `От…` and `сей…`. Fresh before/after LDPlayer
+  captures are retained; publication and exact final-candidate QA remain open.
 - [ ] Verify automatic, manual, favorite, recent, reconnect and restart paths.
 - [ ] Prove manual UI selection reaches managed profile, outbound selection and
   final egress; UI selection alone is not a pass.
@@ -346,6 +357,11 @@ the physical production candidate.
   numbered-step structure instead of collapsing it into one text wall. The
   provider prompt already requests one short result and two to four steps; both
   paths still require deployed phone-size visual verification.
+- [x] `PASS_LOCAL_SIGNED_BUILD` At Android `1.3x`, the AI-first card gets a
+  third description line and visibly preserves the complete `Если не поможет —
+  человек` promise. Shared status pills and chat lifecycle hints now flex and
+  wrap; focused widget QA reproduces no overflow. Publication and exact
+  final-candidate QA remain open.
 - [ ] Make provider, local-grounding and human-fallback sources operationally
   distinguishable without exposing internals or confusing the user.
 - [ ] AI must diagnose WARP/location/routing/notification/trial/reward issues
@@ -764,9 +780,11 @@ targeted and auditable; signing recovery exists without exposing the key.
   junction; its ignored April `out`, `dist` and `.gradle` outputs were removed.
   Marketing static output remains reproducible and was deleted after deploy.
   Next/Turbopack rejects `.next` or `node_modules` junctions outside its
-  filesystem root, so the required marketing dependencies stay local while
-  `.next` is removed after each production build instead of being retained on
-  `C:`.
+  filesystem root; Webpack also fails when the dependency junction crosses
+  drives. The three required Next dependency trees therefore stay local on
+  `C:` as the only build-critical exception. Reproducible `.next`/`out` output
+  is deleted after each production deploy; Android/Windows/Core/LFS/release
+  archives and other genuinely heavy material remain on `E:`.
 - Post-cleanup verification passed against the junctioned environment: client
   Git resolves its LFS object and temp directories on `E:`, platform lifecycle
   smoke is `1/1`, the P0/client sequence is `27/27`, the paywall sequence is
@@ -798,6 +816,22 @@ targeted and auditable; signing recovery exists without exposing the key.
   the selected-plan picker, all six public prices, 12-month summary,
   disclosures, empty-email recovery, error semantics and zero horizontal
   overflow without creating an order or starting a payment.
+- Dark/large-text local signed Android validation uses certificate SHA-256
+  `0A0602A7DF5D96A0B427909D004F3DDF26DEF86587634BF16694DA8D654B2500`;
+  the latest x86_64 APK SHA-256 is
+  `8815298C3A3F7F2FB26AD5BA9D0E6417264502A0D6D53138B826AB6F378782CF`.
+  The combined design/app-shell suite passes `145/145`; Flutter analyze and
+  seed validation pass. Fresh LDPlayer evidence under
+  `E:/POKROV-ops-evidence/2026-08-13-goal-continuation/ldplayer-app-audit/`
+  records dark Home and the `1.3x` Locations/Profile/Support before/after
+  states. This same-version local build is not published over `beta.2`.
+- Static release `20260813134637` deploys the aligned dark muted token to
+  marketing/WebApp/admin. All three production builds and lint pass; brain
+  verification passes three subscription fetches and reports Caddy, API, bot,
+  helpbot, feedbackbot and worker active. All six local `.next`/`out` trees and
+  three obsolete `E:` static-output copies were then deleted as reproducible
+  artifacts. The required Next dependency exception leaves `C:` with about
+  about `94 GB` free.
 - Platform task-first guide source commit
   `d7929a221c03f3ca1c377f83ae3eb4be4d7c4115` and client production-sync
   metadata commit `521b6bff009cac51b94f3fe62cfe396fc732b6e9` are pushed.

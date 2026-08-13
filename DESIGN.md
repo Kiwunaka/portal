@@ -1,6 +1,6 @@
 # POKROV Design System
 
-Last updated: 2026-07-12
+Last updated: 2026-08-13
 
 Document class: CANONICAL
 
@@ -37,7 +37,7 @@ Type and spacing scales live in tokens: `--pokrov-font-size-*` (display, title, 
 ## Typography
 
 - Brand family: **Golos Text** (display + body), Cyrillic-first. Mono: JetBrains Mono for technical strings.
-- Fonts load through `next/font/google` (subsets `latin` + `cyrillic`) in each web layout and are self-hosted at build time. CSS-only font references are forbidden.
+- Marketing loads Golos through `next/font/google` with `latin` + `cyrillic` subsets and self-hosts it at build time. The cabinet imports pinned `@fontsource-variable` packages for Golos and JetBrains Mono, which bundle the files with the static application. CSS-only font-family references without a bundled font source are forbidden.
 - Consume the `--font-body` / `--font-display` variables (which resolve from the `next/font` `--font-golos` variable). Never consume the raw `--pokrov-font-body` / `--pokrov-font-display` family strings directly: `next/font` uses hashed family names, so the raw string will not resolve to the self-hosted face.
 - Display letter-spacing is `-0.01em`; Golos needs less negative tracking than the retired Manrope.
 - Golos supports weights 400–900; surfaces may use up to 800 for display headlines without a new token.
