@@ -52,6 +52,13 @@ The completed repository feature/story audit remains available through
 [2026-06-27--repo-feature-story-audit/INDEX.md](2026-06-27--repo-feature-story-audit/INDEX.md),
 with its current output summary and completion evidence retained in that wave.
 
+## Ready Follow-up Wave
+
+The owner-deferred post-release device, origin and recovery proof is preserved
+in [2026-08-14--postrelease-manual-proof/INDEX.md](2026-08-14--postrelease-manual-proof/INDEX.md).
+It is a next-task hardening wave, not a retroactive blocker for the published
+`v1.0.4-beta.1` prerelease.
+
 ## Continuity Contract
 
 A new orchestrator must be able to resume active work from the wave folder without chat history. Preserve:

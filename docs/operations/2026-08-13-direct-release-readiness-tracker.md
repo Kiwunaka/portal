@@ -930,7 +930,7 @@ targeted and auditable; signing recovery exists without exposing the key.
   succeeded. This does not upgrade the unsigned setup or untested Windows
   tunnel paths to release passes.
 
-## 1.0.4 Beta.1 Distribution Closure — Product Goal Still Active
+## 1.0.4 Beta.1 Owner-accepted Goal Closure
 
 - Public prerelease: `https://github.com/Kiwunaka/pokrov/releases/tag/v1.0.4-beta.1`.
   All four Android APKs, Windows setup, portable ZIP, manifest and checksum
@@ -966,16 +966,16 @@ targeted and auditable; signing recovery exists without exposing the key.
   before final Flutter-only UI edits proves WARP, per-app reverse routing,
   Quick Settings and Wi-Fi/LTE continuity; exact-final repetition stays
   `MANUAL_OWNER_TEST`.
-- Remaining stronger-claim gates: encrypted offline keystore recovery copy on
-  owner media, Android endurance/MTU/blocked-UDP53 matrix, exact-final
-  WARP/per-app/uplink repetition, trusted Windows signing, exact Windows
-  connected TUN/DNS/teardown, real Telegram-user button/session journey and an
-  independent RU-origin probe if RU-origin readiness is claimed.
-- This section closes build, publication and runtime delivery only. It does not
-  close the active end-to-end product goal: rewards/promo edge cases, live ad
-  lifecycle, five-option locations, full support fallback matrix, real
-  Telegram-user journey, exhaustive Huawei QA and Windows connected runtime
-  remain explicitly open above.
+- On 2026-08-14 the owner accepted the direct Android+Windows release goal as
+  complete on the published `v1.0.4-beta.1` prerelease and production cutover.
+  This is an owner scope/acceptance decision, not a fabricated runtime `PASS`
+  for checks that were not executed.
+- The remaining stronger-claim gates were moved intact to
+  `docs/developer/work-orders/2026-08-14--postrelease-manual-proof/`: Huawei
+  endurance and exact-final WARP/per-app/lifecycle, Wi-Fi/LTE continuity,
+  isolated Windows TUN/DNS, a real Telegram-user journey, an independent
+  RU-origin probe and encrypted keystore recovery on external owner media.
+  Until run, each stays `MANUAL_OWNER_TEST` in that follow-up.
 
 ## Canonical Owners And Evidence Pointers
 
