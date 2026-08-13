@@ -5,7 +5,9 @@ Last updated: 2026-08-13
 Last compaction reconciliation: 2026-08-13. The active Codex goal, this ledger,
 the current platform/client diffs and retained runtime evidence were compared;
 no accepted reward, AI, advertising, selected-screen, distribution or cleanup
-requirement was dropped.
+requirement was dropped. Device identity/admin, bot Apple fallback,
+campaign-entry, bonus/roulette, AI, remote-ad and full-path work remain
+explicit below until their own evidence closes them.
 
 Document class: `ACTIVE_EXECUTION`
 
@@ -89,7 +91,7 @@ exact-candidate evidence still have to close.
 
 | Requirement that must not be lost | Owner/workstream | Current release state |
 | --- | --- | --- |
-| Trial is exactly five days; no rewards on trial; paid, expired and grandfathered states are distinct | 1, 7, 13 | `IN_PROGRESS`; trial gate and an exact production-backed paid QA session pass, expired/grandfathered matrix remains open |
+| Trial is exactly five days; no rewards on trial; paid, expired and grandfathered states are distinct | 1, 7, 13 | `IN_PROGRESS`; the shared Android/Windows shell hides dead trial Telegram/referral actions and states the paid gate explicitly, production-backed paid QA passes, expired/grandfathered matrix remains open |
 | Telegram `+5`, referral `+10` only after the friend's held first payment, conservative paid-only roulette, promo/history/idempotency | 1 | `IN_PROGRESS`; local 132-test matrix, two production-backed paid QA spins, persisted 14-day production preset and exact `beta.2` first-load Rewards Hub pass; promo/replay edge matrix remains open |
 | Real achievements and statistics, restrained Xbox-like success/reward motion, no invented ad-block numbers or vague Activity filler | 1 | `DONE_LOCAL`; reward reveal passed production-backed LDPlayer visual QA, achievement unlock and exact final-candidate QA remain open |
 | Owner-selected centered Home, duration pill to checkout, finite wait animation and no glowing/heavy vector | 2 | `PASS_EXACT_CANDIDATE`; `beta.2` x86_64 update-install and visual check pass, including the untruncated `Настраиваем` wait state |
@@ -115,7 +117,7 @@ exact-candidate evidence still have to close.
 | Lane | Repository | Promotion branch | Active working branch | Current state |
 | --- | --- | --- | --- | --- |
 | Platform, site, bot, cabinet, admin | `C:/Users/kiwun/Documents/ai/VPN` | `master` | `codex/platform-product-readiness-20260804` | dark-token/font-contract/tracker slice is verified on the active release branch; final journey QA remains open |
-| Android, Windows, shared client | `C:/Users/kiwun/Documents/ai/POKROV-app` | `main` | `codex/product-readiness-20260804` | dark/large-text source and tests are verified on the active release branch; final versioned candidate remains open |
+| Android, Windows, shared client | `C:/Users/kiwun/Documents/ai/POKROV-app` | `main` | `codex/product-readiness-20260804` | trial-reward UX, dark/large-text source and tests are verified on the active release branch; final versioned candidate remains open |
 | VPN core | `C:/Users/kiwun/Documents/ai/POKROV-core` | independent `v1.0.3` release | `codex/core-1.0.2-egress-probe` | clean, committed, tagged, pushed and publicly released |
 
 Untracked files must be inspected and classified. Keep source, tests, evidence
@@ -201,6 +203,13 @@ paths reviewed first.
   repeated reads return the same code/link and trial reads remain mutation-free.
   Focused API tests cover trial, first paid read and stable replay. Backend
   deploy, paid-account readback and repeat client refresh pass.
+- [x] `DONE_LOCAL` Fresh Windows visual QA exposed a shared trial-state mismatch:
+  Home offered a dead `+5 дней за Telegram` card and the Rewards Hub rendered a
+  refresh-style unavailable referral link instead of the paid gate. The shared
+  Android/Windows shell now hides the Home reward action on trial, shows
+  both Telegram and referral rewards as locked without active CTAs, shows
+  `Ссылка появится автоматически после первой оплаты`, and keeps the real
+  actions for paid accounts. The full shared widget file passes `120/120`.
 - [ ] `TODO` Verify replay/idempotency, distribution boundaries, achievement
   unlock and complete bonus history in LDPlayer.
 - [ ] `TODO` Verify promo-code success, invalid, already-used, expired and
@@ -538,6 +547,14 @@ honest supported alternative, never an old/wrong binary or a false store claim.
 - [x] `PASS_PRODUCTION_ROUTE` Website/bot/client delivery metadata recommends
   ARM64 and exposes platform/ABI choices. Live runtime sync, backend/static
   deploy and brain-origin signed-session readback all return `beta.2` links.
+- [x] `PASS_LOCAL_SOURCE_NEWER` A fresh current-source Windows release build
+  completed tests/analyze/build and visual Home/profile inspection. Local
+  setup SHA-256 is
+  `800DD66313A2972609BA0572C0AF05EB991BF01A9B52FA2813492B119114BBC1`;
+  portable ZIP SHA-256 is
+  `717FD7AEDE508C1FA7F3FCD3F34816EABC1EC17173020A874A8A7567E822A74D`.
+  It remains unsigned and deliberately must not overwrite public `beta.2`
+  because current source is newer while the version identity is unchanged.
 
 Acceptance: direct users download the smallest correct artifact by default;
 every public file matches the exact tested candidate and published hash.
@@ -896,6 +913,14 @@ targeted and auditable; signing recovery exists without exposing the key.
   profile is also retained. The inactive-user audit reports `safe_garbage_total
   = 0`, so no production account or related data was deleted and no guard was
   bypassed.
+- Fresh source-newer Windows evidence under
+  `E:/POKROV-ops-evidence/2026-08-13-goal-continuation/windows-app-audit/`
+  records the old trial Home with the dead Telegram reward card, the rebuilt
+  Home without that card, and the current trial Profile. The first packaging
+  attempt correctly failed because the inspected app was still resident in the
+  tray and held a plugin DLL; after stopping that exact local process, packaging
+  succeeded. This does not upgrade the unsigned setup or untested Windows
+  tunnel paths to release passes.
 
 ## Canonical Owners And Evidence Pointers
 
