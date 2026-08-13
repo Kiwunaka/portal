@@ -116,6 +116,8 @@ const FAQ_ENTRIES = [
   },
 ];
 
+const ROW_ACTION_CLASS = "inline-flex min-h-12 items-center rounded-control px-2 text-sm font-semibold text-brand hover:bg-brand-soft hover:text-brand-strong";
+
 function formatDate(value?: string | null): string {
   if (!value) return "недавно";
   const parsed = new Date(value);
@@ -258,7 +260,7 @@ export default function SupportPage() {
           title="Последнее обращение"
           action={
             latestTicket ? (
-              <AppRouteLink href={`/support/thread/?id=${latestTicket.id}`} className="text-sm font-semibold text-brand hover:text-brand-strong">
+              <AppRouteLink href={`/support/thread/?id=${latestTicket.id}`} className={ROW_ACTION_CLASS}>
                 Открыть
               </AppRouteLink>
             ) : null
@@ -286,7 +288,7 @@ export default function SupportPage() {
             label="Новый вопрос"
             hint="Короткая форма с вложением"
             action={
-              <button type="button" onClick={() => openComposer(CATEGORIES[0])} className="text-sm font-semibold text-brand hover:text-brand-strong">
+              <button type="button" onClick={() => openComposer(CATEGORIES[0])} className={ROW_ACTION_CLASS}>
                 Написать
               </button>
             }
@@ -296,7 +298,7 @@ export default function SupportPage() {
             label="Telegram"
             hint="Удобно для быстрого живого ответа"
             action={
-              <AppRouteLink href={supportLink} target="_blank" hardNavigate={false} className="text-sm font-semibold text-brand hover:text-brand-strong">
+              <AppRouteLink href={supportLink} target="_blank" hardNavigate={false} className={ROW_ACTION_CLASS}>
                 Открыть
               </AppRouteLink>
             }

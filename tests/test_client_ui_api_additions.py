@@ -253,10 +253,96 @@ def test_client_locations_catalog_exposes_searchable_real_node_catalog(monkeypat
     assert amsterdam["latencyMs"] == 38
     assert amsterdam["latencySource"] == "brain"
     assert amsterdam["load"] == 0.31
+    assert amsterdam["variants"] == [
+        {
+            "id": "direct",
+            "label": "Обычный",
+            "description": "Прямое подключение",
+        }
+    ]
     assert amsterdam["probe"] == {"host": "example.test", "port": 443}
     assert amsterdam["measuredAt"] == now.replace(tzinfo=timezone.utc).isoformat()
     assert datetime.fromisoformat(amsterdam["measuredAt"]).utcoffset() == timedelta(0)
     assert "old-node" not in {city["code"] for city in all_cities}
+
+
+def test_client_locations_catalog_exposes_only_safe_available_bridge_variants(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    rollout_payload = _rollout_payload()
+    rollout_payload["ru_bridge_relay"] = {
+        "enabled": True,
+        "allowlist_node_codes": ["nl", "us"],
+        "excluded_node_codes": ["us"],
+        "endpoints": [
+            {
+                "id": "mini",
+                "label": "Белые списки",
+                "endpoint_host": "bridge-secret.example.test",
+                "reality_public_key": "bridge-secret-pbk",
+                "reality_short_id": "bridge-secret-sid",
+            },
+            {
+                "id": "ru_spb",
+                "label": "Белые списки тип 2",
+                "endpoint_host": "bridge-spb-secret.example.test",
+                "reality_public_key": "bridge-spb-secret-pbk",
+                "reality_short_id": "bridge-spb-secret-sid",
+            },
+            {
+                "id": "disabled",
+                "label": "Не показывать",
+                "enabled": False,
+                "reality_public_key": "disabled-secret-pbk",
+            },
+            {
+                "id": "invalid",
+                "label": "Без ключа",
+                "endpoint_host": "invalid-secret.example.test",
+            },
+        ],
+    }
+    s = api.SessionLocal()
+    try:
+        api._set_app_setting_json(s=s, key="network_rollout_config", value=rollout_payload)
+        s.commit()
+    finally:
+        s.close()
+
+    now = _utcnow()
+    _add_node(api, code="nl-ams-01", last_health_at=now)
+    _add_node(api, code="us-nyc-01", last_health_at=now)
+    _add_node(api, code="de-fra-01", last_health_at=now)
+    start_body = _start_trial(client, install_id="locations-bridge-variants-device")
+
+    response = client.get("/api/client/locations", headers=_auth_headers(start_body))
+
+    assert response.status_code == 200, response.text
+    cities = {
+        city["code"]: city
+        for country in response.json()["countries"]
+        for city in country["cities"]
+    }
+    assert cities["nl-ams-01"]["variants"] == [
+        {"id": "direct", "label": "Обычный", "description": "Прямое подключение"},
+        {"id": "mini", "label": "Белые списки", "description": "Для ограниченных сетей"},
+        {"id": "ru_spb", "label": "Белые списки тип 2", "description": "Для ограниченных сетей"},
+    ]
+    assert cities["us-nyc-01"]["variants"] == [
+        {"id": "direct", "label": "Обычный", "description": "Прямое подключение"}
+    ]
+    assert cities["de-fra-01"]["variants"] == [
+        {"id": "direct", "label": "Обычный", "description": "Прямое подключение"}
+    ]
+    for city in cities.values():
+        for variant in city["variants"]:
+            assert set(variant) == {"id", "label", "description"}
+    encoded_variants = json.dumps(
+        {code: city["variants"] for code, city in cities.items()},
+        ensure_ascii=False,
+    )
+    assert "secret" not in encoded_variants
+    assert "§hide§" not in encoded_variants
 
 
 def test_client_account_devices_notifications_push_and_subscription_contract(monkeypatch, tmp_path) -> None:

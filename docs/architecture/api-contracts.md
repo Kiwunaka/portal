@@ -54,6 +54,19 @@ A completed production cutover, mixed-fleet safety, and full migration must not 
 
 `GET /api/client/apps` must return only approved runtime links. Empty Android or Windows URLs mean the corresponding public download is not available and must be presented as gated/support-routed.
 
+`GET /api/client/locations` keeps its existing country/city shape and adds a
+deterministic `variants` list to every returned city. The first item is always
+`{"id":"direct","label":"Обычный","description":"Прямое подключение"}`.
+Enabled `ru_bridge_relay.endpoints[]` follow in rollout order only when the
+bridge is globally enabled, the endpoint has valid material, the node passes
+bridge allowlist/exclusion rules, and the node's required delivery transport is
+enabled. Each bridge item exposes only stable endpoint `id`, short operator
+label, and the fixed consumer description `Для ограниченных сетей`; it never
+contains endpoint host/port, Reality keys or short IDs, sing-box tags, or raw
+config. US and any other excluded or non-allowlisted node remain direct-only.
+The additive list and existing `profileRevision` let clients cache the safe
+catalog without breaking readers that ignore unknown fields.
+
 ### Device Sessions
 
 The repository candidate implements the following Android/Windows session

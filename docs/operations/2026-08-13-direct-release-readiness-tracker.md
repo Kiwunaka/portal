@@ -463,16 +463,19 @@ Acceptance: a new mobile user always knows the next action and can reach a
 working client without a store, Telegram is optional where the product contract
 says so, and detailed help remains discoverable rather than dumped on screen.
 
-### 9. Advertising Entry Points And Campaign Operations — `TODO`
+### 9. Advertising Entry Points And Campaign Operations — `IN_PROGRESS`
 
-- [ ] Decide and document campaign destination by intent: broad product traffic,
+- [x] `DONE_LOCAL` Decide and document campaign destination by intent: broad product traffic,
   Android install, Windows install, returning user, promo/referral and support.
+  The canonical policy is in `docs/product/portal-vpn-product.md`: broad and
+  install intent start on the mobile site, while promo/referral and other
+  account-bound intent use the sanitized admin-generated Telegram path.
 - [ ] Keep both direct site and Telegram bot entry viable. Test whether the bot's
   transparency/convenience improves conversion without making Telegram a
   mandatory account wall.
-- [ ] Define links/UTM/deep-link/app-handoff behavior and safe fallback when the
+- [x] `DONE_LOCAL` Define links/UTM/deep-link/app-handoff behavior and safe fallback when the
   app is absent.
-- [ ] Ensure campaign links preserve attribution without leaking tokens or raw
+- [x] `DONE_LOCAL` Ensure campaign links preserve attribution without leaking tokens or raw
   account identifiers.
 - [ ] Define promotion lifecycle: audience, eligibility, start/end, impression,
   dismiss, click, conversion and rollback; never fake counters.

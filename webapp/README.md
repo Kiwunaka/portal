@@ -1,6 +1,6 @@
 # POKROV WebApp
 
-Last updated: 2026-07-22
+Last updated: 2026-08-13
 
 ## Document Status
 
@@ -68,6 +68,7 @@ Keep the public/browser split explicit:
 - `webapp/` starts when the user needs session continuation, cabinet actions, redeem, support, renewal, or statistics
 - `adminapp/` starts when the operator needs admin tooling at `https://admin.pokrov.space/`
 - browser entry should route known or newly verified users into the same cabinet session model whether they arrived from app handoff, Telegram, or the public email lane when delivery is fully ready
+- browser entry heading and subtitle follow the active email action (`Вход`, `Регистрация`, confirmation, or recovery) instead of retaining login copy after a mode switch
 - public `Open cabinet` CTA should point to `https://app.pokrov.space/`
 - public pricing and acquisition belong to `marketing/`; cabinet checkout is continuation-only and should defer to the hosted key-first flow
 
@@ -89,6 +90,10 @@ Rules:
 - `?format=plain` remains hidden compatibility-only behavior and must stay out of normal cabinet UX
 - `connect.pokrov.space` is for config delivery, not for public acquisition or payment entry
 - cabinet checkout must not drift into a second public paywall or direct raw-link delivery story
+- cabinet renewal and checkout keep the shared six-plan catalog (`99`, `239`, `669`, `1199`, `1699`, and `1999` RUB) as the complete local fail-safe; a failed or partial catalog request must not collapse the surface to a stale subset
+- download rows and their secondary APK/file actions keep at least a 44 px touch target on mobile
+- downloads instructions and the six-plan renewal grid stay behind explicit disclosures on narrow screens; the main download or checkout action remains visible first
+- an active trial's `5 days` entitlement links to the compact `start_99` checkout continuation without changing the public `от 99 ₽ за полный месяц` price fact
 - public email continuation must stay hidden/marked `soon` unless sender readiness, delivery confirmation, public mode, and debug-echo-off checks are live
 - marketing and cabinet copy should inherit governed text from `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json` instead of inventing separate public messaging
 - support upload responses expose `attachment_id`; preferred create/reply requests send only that ID and never resend the server-private media triplet

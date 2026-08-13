@@ -11,8 +11,9 @@ import { ActionCard, ActionGrid } from "@/components/ui/tiles";
 import { cn } from "@/components/utils";
 import { formatDays, formatDevicesLimit } from "@/lib/ru-plural";
 import { resolvePlanLabel } from "@/lib/access-policy";
-import { createRubCheckoutOrder, fetchPublicCatalog, getRubPaymentProviders, type RubPaymentProvidersResult } from "@/lib/api";
-import { getCheckoutTariffPlans, getCopyText, getPricingPreviewDiscountPercent, normalizePlanCode, tariffPlanAllowsDiscount } from "@/lib/portal";
+import { createRubCheckoutOrder, fetchPublicCatalog, getRubPaymentProviders, type PlanCatalogRow, type RubPaymentProvidersResult } from "@/lib/api";
+import { getCabinetFallbackPlans, resolveCabinetPlans } from "@/lib/cabinet-plans";
+import { getCopyText, getPricingPreviewDiscountPercent, normalizePlanCode, tariffPlanAllowsDiscount } from "@/lib/portal";
 import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 import { useSearchParams } from "next/navigation";
@@ -39,16 +40,19 @@ const PAYMENT_METHOD_OPTIONS: Array<{
   { code: "card", label: "Карта", hint: "Visa, Mastercard или МИР" },
 ];
 
-const SHARED_PLANS: DisplayPlan[] = getCheckoutTariffPlans()
-  .map((plan) => ({
+function toDisplayPlans(plans: PlanCatalogRow[]): DisplayPlan[] {
+  return plans.map((plan) => ({
     code: plan.code,
     label: plan.label,
     badge: plan.badge || undefined,
-    days: Number(plan.duration_days || 0),
+    days: Number(plan.days || 0),
     amountRub: Number(plan.amount_rub || 0),
     deviceLimit: Number(plan.device_limit || 1),
-    note: plan.cabinet_note || plan.marketing_note || plan.label,
+    note: plan.label,
   }));
+}
+
+const SHARED_PLANS: DisplayPlan[] = toDisplayPlans(getCabinetFallbackPlans());
 
 function normalizePromo(raw: string): string {
   return String(raw || "").trim().toUpperCase();
@@ -90,22 +94,7 @@ export default function CheckoutPage() {
     const load = async () => {
       try {
         const payload = await fetchPublicCatalog();
-        const nextPlans = (payload.plans || [])
-          .filter(
-            (plan) =>
-              Boolean(plan.is_active) &&
-              Number(plan.amount_rub || 0) > 0,
-          )
-          .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0))
-          .map((plan) => ({
-            code: plan.code,
-            label: plan.label,
-            badge: plan.badge || undefined,
-            days: Number(plan.days || 0),
-            amountRub: Number(plan.amount_rub || 0),
-            deviceLimit: Number(plan.device_limit || 1),
-            note: plan.label,
-          }));
+        const nextPlans = toDisplayPlans(resolveCabinetPlans(payload.plans));
 
         if (!cancelled) {
           setPlans(nextPlans.length ? nextPlans : SHARED_PLANS);

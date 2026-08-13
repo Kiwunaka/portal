@@ -62,6 +62,7 @@ LOCAL_RENDERABLE_TOPICS = MappingProxyType(
     {
         "activation_key_vs_connection_link": "0ac3057751e942d48f5c96bdd1130fe7cf92b32e68db0a607081dc9e7c07e1eb",
         "android_battery_background": "5a09a84f21e52d1ca6ed56bec9f350c31808d69a70e411058df5bf195ea3cfc7",
+        "app_notifications": "49d6e78896ef8fab58150e3105c26aa57465749c8b48776882ad6bafe1f1f1dd",
         "beta_scope": "9e57af27af9c800cf3433824779056a1807850b58c96f17c63a98f1372471248",
         "connected_no_internet": "9c963318034cb8cadd617753de64c313d6c95ccec1308ec55a4fedba2061e26b",
         "connection_link_meaning": "6e2085b78ae3b87082a3be33c78fe468ef8b7ec62636a742c66c79ac5d068154",
@@ -70,17 +71,22 @@ LOCAL_RENDERABLE_TOPICS = MappingProxyType(
         "happ_import": "ad177dd08001a41218771d15d2cb7906fe77b7e6748801299368b595b39cd34f",
         "hiddify_empty_profile": "b19d929ed1a65fc009106a414897710c58d1345cf669ba3f12a13f066abef720",
         "hiddify_import": "b0d71b43c101258dc4c1d45df80d6a5aba1280bdc588077be384f13cd8512c24",
+        "location_selection": "c85e2e5ad8d6f845ea6fac706ded90304cfb90df066d820a4165a5b397eccd40",
         "manual_path_when_app_unavailable": "5fb04df2e3fdb3ff027387c1880510f3c9fa068e8c45e6227fc19648db66f6d3",
         "one_active_client_rule": "22154f258d626009541c5b3d2943e5c5385ec072b8f953eadb8b2730c84393d5",
         "one_site_not_open": "7609ab592299cf6f10578f2d4c81e7b5cace798afb9edbc6f66b894e1e8b4031",
         "operator_handoff": "fd8b39d192de33550d86e7fbafd43fc085cfff0879f7835bb2b70b9b4be7b5c3",
         "other_network_client_conflict": "70aeb16bac579fc1f57c68ed4358fc78df68ba810c74cf394377cc3dbf449539",
+        "payment_not_applied": "daffb2d666c39e28465dba7bc44787dadf14dac1b81e1cbb44e4e16198b3c3fc",
         "pokrov_warp_troubleshooting": "0ee0d94e7a5bd68fb2efaf4a9866f0349fa26a7ea53f3b57ab7aadcf86d43f62",
         "private_dns_and_filters": "8a74b0f5e513df6946052c799f634a6e95164336f386161dc6b7052f1a9d9e9a",
         "refresh_after_renewal": "6059d8cb09bd54dd97ee120881f46e06d137a66564b5934b32cd02a42f172b0b",
         "routing_all_except_ru": "434f45daff0616e6a63a5f2ad495d7d2453810ab5a369f217b9ebf4c4eca5eb1",
+        "routing_full_tunnel": "5d88fe4f22d58ae888e8bb240f4fb86e0a2e04e1303f1ed83bd55aef23246022",
         "slow_speed": "e438111bc98bb4fa4f45ac9990e72795941abef8807786fac780ec91f93244f9",
         "streisand_import": "093cc9bc8b06ee4b38ba0b99b46e99261031eeb916580e33204a78afad0e9787",
+        "telegram_bonus": "0a6a4aee625231bd1c53d64b4a917114d2b65abe9f01337ae6783fad6835c8fb",
+        "trial_has_no_bonuses": "132b889c57e597317075130514b0a2f80e0408583618cea435484512382eb31f",
         "v2rayn_import": "28e4f8ecd51897cc65123f148618e0c356c137302fc93b2050e9df8c8288cbc7",
         "v2rayn_proxy_tun": "bd49563da88b7c77ad733252536a3bb2f4a79daa49e0535116286912020cd906",
         "v2rayng_import": "9c3555c155b2a5c14b01967c6f38e0d72427db6218d52f73e4ce51ae9f5a81db",
@@ -238,6 +244,21 @@ INTENT_RULES = (
         ("нет такого", "все сайты не открываются"),
     ),
     IntentRule(
+        "location_selection",
+        (
+            ("локацию", "локация", "сервер", "страну"),
+            ("выбрать", "поменять", "переключить", "не открывается", "не работает"),
+        ),
+    ),
+    IntentRule(
+        "app_notifications",
+        (
+            ("уведомление", "уведомления", "push", "notification"),
+            ("не приходит", "не приходят", "пропало", "пропали", "нет уведомлений"),
+        ),
+        ("приходят нормально", "уже приходят"),
+    ),
+    IntentRule(
         "pokrov_warp_troubleshooting",
         (
             ("warp", "варп", "усиленная защита", "enhanced protection"),
@@ -283,11 +304,42 @@ INTENT_RULES = (
         ("новый срок уже появился",),
     ),
     IntentRule(
+        "trial_has_no_bonuses",
+        (
+            ("пробный период", "пробном периоде", "триал", "trial"),
+            ("бонус", "бонусы", "рулетка", "награда"),
+            ("недоступен", "недоступна", "недоступны", "не начислился", "почему"),
+        ),
+    ),
+    IntentRule(
+        "telegram_bonus",
+        (
+            ("telegram", "телеграм", "канал"),
+            ("бонус", "+5"),
+            ("не начислился", "не начислен", "недоступен", "как получить", "не получается"),
+        ),
+    ),
+    IntentRule(
+        "payment_not_applied",
+        (
+            ("оплатил", "оплатила", "деньги списались", "после оплаты"),
+            ("не продлился", "не продлилось", "нет доступа", "ключ не пришел", "код не пришел"),
+        ),
+    ),
+    IntentRule(
         "routing_all_except_ru",
         (
             ("российские сайты", "сайты рф", "ru напрямую"),
             ("напрямую", "без vpn"),
             ("остальные", "остальное", "другие"),
+        ),
+        ("не хочу",),
+    ),
+    IntentRule(
+        "routing_full_tunnel",
+        (
+            ("весь трафик", "полный туннель", "полного туннеля", "все через"),
+            ("pokrov", "vpn", "впн", "режим"),
         ),
         ("не хочу",),
     ),

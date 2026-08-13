@@ -982,7 +982,7 @@
     },
     "marketing.home.hero.subtitle": {
       "surface": "marketing.home.hero",
-      "ru": "Быстрый VPN для YouTube, TikTok, ChatGPT, соцсетей и сайтов. 5 дней бесплатно без карты. Затем — безлимитный трафик от 99 ₽ и до 5 устройств.",
+      "ru": "YouTube, TikTok, ChatGPT и сайты — одной кнопкой. 5 дней бесплатно без карты.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1702,7 +1702,7 @@
     },
     "marketing.install.subtitle": {
       "surface": "marketing.install",
-      "ru": "Выберите Android или Windows, скачайте официальный файл и нажмите «Подключить». После установки получите 5 дней бесплатно — карта не нужна.",
+      "ru": "Выберите устройство и скачайте официальный файл. После установки — 5 дней бесплатно без карты.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,

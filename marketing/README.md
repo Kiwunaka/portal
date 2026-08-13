@@ -1,6 +1,6 @@
 # POKROV Marketing
 
-Last updated: 2026-07-22
+Last updated: 2026-08-13
 
 ## Document Status
 
@@ -84,6 +84,8 @@ Current priority:
 5. Reduce repeated proof cards and section descriptions before adding new
    marketing blocks.
 6. Keep checkout/install/legal SEO facts accurate.
+7. On 390 px mobile, keep the first screen to one short meaning and a primary CTA; move troubleshooting and secondary detail into existing accordions or disclosures.
+8. The trial `5 days` fact may link to the compact checkout continuation, while the adjacent price fact remains exactly `от 99 ₽` / `за полный месяц`.
 
 ## Density Ownership
 

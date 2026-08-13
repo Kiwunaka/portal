@@ -194,7 +194,16 @@ export default function DashboardPage() {
           <div className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-3 text-sm">
               <span className="font-semibold text-ink">Осталось <AnimatedDays value={runway.days} /></span>
-              <span className="text-ink-soft">план на {formatDays(runway.max)}</span>
+              {trialMode ? (
+                <AppRouteLink
+                  href="/subscription/checkout/?plan=start_99"
+                  className="inline-flex min-h-12 items-center rounded-control px-2 font-semibold text-brand hover:bg-brand-soft hover:text-brand-strong"
+                >
+                  5 дней → тарифы
+                </AppRouteLink>
+              ) : (
+                <span className="text-ink-soft">план на {formatDays(runway.max)}</span>
+              )}
             </div>
             <Meter value={runway.value} max={runway.max} tone={runwayTone} label="Оставшийся срок доступа" />
           </div>

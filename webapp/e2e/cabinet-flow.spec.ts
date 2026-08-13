@@ -772,12 +772,19 @@ test.describe("Cabinet flow", () => {
 
     await page.goto("/");
 
-    await expect(page.getByRole("heading", { name: "Кабинет POKROV" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Вход в аккаунт" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("Войдите по email или через Telegram");
     await expect(page.getByRole("button", { name: "Вход" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Регистрация" })).toBeVisible();
     await expect(page.getByPlaceholder("name@example.com")).toBeVisible();
     await expect(page.getByPlaceholder("Пароль")).toBeVisible();
     await expect(page.getByRole("button", { name: "Войти через Telegram" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Регистрация" }).click();
+    await expect(page.getByRole("heading", { name: "Создать аккаунт" })).toBeVisible();
+    await expect(page.locator("main")).toContainText("Зарегистрируйтесь по email");
+    await expect(page.getByRole("heading", { name: "Вход в аккаунт" })).toHaveCount(0);
+    await expect(page.locator("main")).not.toContainText("Войдите по email или через Telegram");
   });
 
   test("keeps the email entry available alongside Telegram", async ({ page }) => {
@@ -787,7 +794,7 @@ test.describe("Cabinet flow", () => {
 
     await page.goto("/");
 
-    await expect(page.getByRole("heading", { name: "Кабинет POKROV" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Вход в аккаунт" })).toBeVisible();
     await expect(page.getByPlaceholder("name@example.com")).toBeVisible();
     await expect(page.getByRole("button", { name: "Войти через Telegram" })).toBeVisible();
   });
@@ -904,6 +911,109 @@ test.describe("Cabinet flow", () => {
     await expect(page).toHaveURL(/\/downloads\/?$/);
     await expect(page.locator("main h1")).toBeVisible();
     await expect(page.locator("main")).toContainText("Приложение для Android");
+  });
+
+  test("keeps all six canonical plans when the public plan request fails", async ({ page }) => {
+    await page.route("**/api/public/plans", (route) =>
+      route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ detail: "unavailable" }) }),
+    );
+
+    await page.goto("/subscription/");
+
+    await expect(page.locator("details", { hasText: "Все тарифы" })).toHaveCount(1);
+    await expect(page.getByTestId("subscription-plan-grid")).not.toBeVisible();
+    await page.getByText("Все тарифы", { exact: true }).click();
+    const grid = page.getByTestId("subscription-plan-grid");
+    await expect(page.locator("main")).toContainText("Часть тарифов не обновилась");
+    await expect(grid.locator("article")).toHaveCount(6);
+    for (const [code, price] of [
+      ["start_99", 99],
+      ["1_month", 239],
+      ["3_months", 669],
+      ["6_months", 1199],
+      ["9_months", 1699],
+      ["12_months", 1999],
+    ] as const) {
+      await expect(grid.locator(`[data-plan-code='${code}']`)).toContainText(`${price} ₽`);
+    }
+  });
+
+  test("gives secondary APK downloads a mobile-safe touch target", async ({ page }) => {
+    await page.route("**/api/client/apps", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          android: {
+            apk_url: "https://downloads.pokrov.space/pokrov-android-universal.apk",
+            apk_variants: [
+              { abi: "arm64-v8a", url: "https://downloads.pokrov.space/pokrov-android-arm64.apk" },
+              { abi: "armeabi-v7a", url: "https://downloads.pokrov.space/pokrov-android-armv7.apk" },
+            ],
+            mirror_url: "",
+          },
+          windows: { exe_url: "", mirror_url: "" },
+          docs_url: "",
+        }),
+      }),
+    );
+    await page.setViewportSize({ width: 390, height: 844 });
+
+    await page.goto("/downloads/");
+
+    const secondaryApk = page.locator("main a[href='https://downloads.pokrov.space/pokrov-android-armv7.apk']");
+    await expect(secondaryApk).toBeVisible();
+    const box = await secondaryApk.boundingBox();
+    expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(1);
+  });
+
+  test("keeps download instructions compact until requested", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto("/downloads/");
+
+    const disclosure = page.getByText("Как подключиться за 3 шага", { exact: true });
+    await expect(disclosure).toBeVisible();
+    await expect(page.getByText("Берите файл только на этой странице.")).not.toBeVisible();
+    await disclosure.click();
+    await expect(page.getByText("Берите файл только на этой странице.")).toBeVisible();
+  });
+
+  test("links a trial entitlement to compact checkout", async ({ page }) => {
+    const trialExpiry = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
+    await page.route("**/api/dashboard", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...mockDashboard(),
+          sub_type: "TRIAL",
+          segment: "TRIAL",
+          access_state: "trial_premium",
+          current_plan_code: "trial_premium",
+          expiry_at: trialExpiry,
+        }),
+      }),
+    );
+    await page.route("**/api/user/1001", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ...mockSessionUser(),
+          sub_type: "TRIAL",
+          segment: "TRIAL",
+          access_state: "trial_premium",
+          expiry_at: trialExpiry,
+        }),
+      }),
+    );
+
+    await page.goto("/dashboard/");
+
+    const trialLink = page.getByRole("link", { name: "5 дней → тарифы" });
+    await expect(trialLink).toHaveAttribute("href", "/subscription/checkout/?plan=start_99");
+    expect((await trialLink.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
   });
 
   test("shows branded root and cabinet not-found recovery screens", async ({ page }) => {
@@ -1038,6 +1148,7 @@ test.describe("Cabinet flow", () => {
 
     await page.goto("/subscription/");
 
+    await page.getByText("Все тарифы", { exact: true }).click();
     const firstPaidPlanAction = page.locator("main a[href='/subscription/checkout/?plan=1_month']");
     await expect(firstPaidPlanAction).toBeVisible();
     const box = await firstPaidPlanAction.boundingBox();
@@ -1199,6 +1310,8 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).toContainText("Оформление");
     await expect(page.locator("main")).toContainText("1 месяц");
     await expect(page.locator("main")).toContainText("Способ оплаты");
+    await page.getByRole("button", { name: /1 месяц.*239 ₽/ }).click();
+    await expect(page.getByRole("radiogroup", { name: "Срок доступа" }).getByRole("radio")).toHaveCount(6);
     await expect(page.locator("main")).toContainText("К оплате");
     await expect(page.getByRole("button", { name: /Оплатить \d+ ₽/ }).first()).toBeDisabled();
     await expect(page.locator("main")).toContainText("Разовая оплата · без автосписаний");

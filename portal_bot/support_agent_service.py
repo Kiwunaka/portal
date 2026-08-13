@@ -10,10 +10,12 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable, Mapping
 
 from support_ai_service import (
+    DEFAULT_API_BASE_URL,
     DEFAULT_MODEL,
     SupportAIConfig,
     canonical_support_model,
     generate_support_reply,
+    is_exact_openrouter_route,
     provider_run_deadline_ceiling,
     provider_timeout_ceiling,
 )
@@ -135,7 +137,7 @@ class SupportAgentRuntimeSettings:
                 return default
             return value
 
-        api_base_url = str(source.get("SUPPORT_AI_API_BASE_URL") or "")
+        api_base_url = str(source.get("SUPPORT_AI_API_BASE_URL") or DEFAULT_API_BASE_URL)
         provider_timeout_max = provider_timeout_ceiling(api_base_url)
         run_deadline_max = provider_run_deadline_ceiling(api_base_url)
         settings = cls(
@@ -144,13 +146,13 @@ class SupportAgentRuntimeSettings:
             invalid_reason=None,
             run_deadline_seconds=number(
                 "SUPPORT_AI_RUN_DEADLINE_SECONDS",
-                25.0,
+                run_deadline_max,
                 0.1,
                 run_deadline_max,
             ),
             provider_timeout_seconds=number(
                 "SUPPORT_AI_TIMEOUT_SECONDS",
-                20.0,
+                provider_timeout_max,
                 0.1,
                 provider_timeout_max,
             ),
@@ -355,6 +357,14 @@ class SupportAgentService:
             logger.warning("support agent disabled code=agent_settings_invalid")
             return self._local_result(message, scope.client_session_id)
 
+        if (
+            not is_exact_openrouter_route(self.config.api_base_url)
+            or canonical_support_model(self.config.model) != DEFAULT_MODEL
+            or self.config.reasoning_effort != "medium"
+        ):
+            logger.warning("support agent disabled code=agent_profile_invalid")
+            return self._local_result(message, scope.client_session_id)
+
         if not self.settings.agent_enabled:
             try:
                 owner_number = int(authenticated_owner_id) if str(authenticated_owner_id).isdigit() else 0
@@ -380,13 +390,6 @@ class SupportAgentService:
                 should_escalate=should_escalate,
                 source="support_ai",
             )
-
-        if (
-            canonical_support_model(self.config.model) != DEFAULT_MODEL
-            or self.config.reasoning_effort != "medium"
-        ):
-            logger.warning("support agent disabled code=agent_profile_invalid")
-            return self._local_result(message, scope.client_session_id)
 
         if self._harness is None:
             try:

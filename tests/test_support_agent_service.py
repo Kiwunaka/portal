@@ -225,6 +225,20 @@ def test_exact_openrouter_route_allows_long_reasoning_runtime_window() -> None:
     assert other_provider.invalid_reason == "support_ai_run_deadline_seconds_invalid"
 
 
+def test_exact_openrouter_route_defaults_to_long_reasoning_runtime_window() -> None:
+    from support_agent_service import SupportAgentRuntimeSettings
+
+    settings = SupportAgentRuntimeSettings.from_env(
+        {
+            "SUPPORT_AI_AGENT_ENABLED": "true",
+        }
+    )
+
+    assert settings.valid is True
+    assert settings.provider_timeout_seconds == 45.0
+    assert settings.run_deadline_seconds == 50.0
+
+
 def test_agent_output_budget_defaults_to_1200_and_rejects_higher_values() -> None:
     from support_agent_service import SupportAgentRuntimeSettings
 
@@ -378,6 +392,54 @@ def test_agent_mode_refuses_a_non_locked_synthesis_profile(model, reasoning) -> 
     result = _generate(service)
     assert result.source == "local_fallback"
     assert factory.calls == []
+
+
+def test_agent_mode_refuses_non_openrouter_provider_before_harness() -> None:
+    from dataclasses import replace
+
+    from support_agent_service import SupportAgentService
+
+    config = replace(_config(), api_base_url="https://provider.example/v1")
+    factory = _HarnessFactory(_HarnessSpy())
+    service = SupportAgentService(
+        config=config,
+        env={
+            "SUPPORT_AI_AGENT_ENABLED": "true",
+            "SUPPORT_AI_API_BASE_URL": "https://provider.example/v1",
+        },
+        harness_factory=factory,
+    )
+
+    result = _generate(service)
+
+    assert result.source == "local_fallback"
+    assert factory.calls == []
+
+
+def test_legacy_mode_refuses_non_openrouter_provider_before_request() -> None:
+    from dataclasses import replace
+
+    from support_agent_service import SupportAgentService
+
+    legacy_calls = []
+
+    async def legacy(*args, **kwargs):
+        legacy_calls.append((args, kwargs))
+        return "must not run"
+
+    service = SupportAgentService(
+        config=replace(_config(), api_base_url="https://provider.example/v1"),
+        env={
+            "SUPPORT_AI_AGENT_ENABLED": "false",
+            "SUPPORT_AI_API_BASE_URL": "https://provider.example/v1",
+        },
+        legacy_generate=legacy,
+    )
+
+    result = _generate(service)
+
+    assert result.source == "local_fallback"
+    assert legacy_calls == []
 
 
 def test_visible_session_is_owner_and_surface_scoped_before_harness() -> None:

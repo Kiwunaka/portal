@@ -22,7 +22,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import AppRouteLink from "@/components/app-route-link";
-import CabinetEntryAuth from "@/components/cabinet-entry-auth";
+import CabinetEntryAuth, { EMAIL_MODE_COPY, type EmailMode } from "@/components/cabinet-entry-auth";
 import RouteTransition from "@/components/route-transition";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -311,6 +311,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
   });
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [routeActivity, setRouteActivity] = useState(false);
+  const [emailMode, setEmailMode] = useState<EmailMode>("login");
   const showActivity = refreshing || routeActivity;
 
   const firstThemeApplyRef = useRef(true);
@@ -377,9 +378,10 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
   }
 
   if (webLoginRequired) {
+    const authCopy = EMAIL_MODE_COPY[emailMode];
     return (
-      <ShellState title="Вход в аккаунт" description="Доступ, устройства, оплата и поддержка.">
-        <CabinetEntryAuth siteUrl={CABINET_SITE_URL} />
+      <ShellState title={authCopy.title} description={authCopy.subtitle}>
+        <CabinetEntryAuth siteUrl={CABINET_SITE_URL} onModeChange={setEmailMode} />
       </ShellState>
     );
   }
@@ -647,7 +649,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
                 <AppRouteLink
                   href="/settings/"
                   className={cn(
-                    "grid h-10 w-10 place-items-center rounded-full bg-brand text-xs font-semibold text-brand-contrast uppercase",
+                    "grid h-11 w-11 place-items-center rounded-full bg-brand text-xs font-semibold text-brand-contrast uppercase",
                     FOCUS_RING,
                   )}
                   aria-label={accountLabel}

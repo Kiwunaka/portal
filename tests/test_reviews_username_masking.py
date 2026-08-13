@@ -1,8 +1,8 @@
 import importlib
 import os
 import sys
+import tempfile
 import unittest
-import uuid
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -15,7 +15,8 @@ class ReviewsUsernameMaskingTests(unittest.TestCase):
         if portal_dir not in sys.path:
             sys.path.insert(0, portal_dir)
 
-        self.db_path = str((repo_root / f"portal_reviews_mask_test_{uuid.uuid4().hex}.db").resolve())
+        self._temp_dir = tempfile.TemporaryDirectory(prefix="pokrov_reviews_mask_")
+        self.db_path = str((Path(self._temp_dir.name) / "portal.db").resolve())
         db_uri_path = Path(self.db_path).as_posix()
         self._saved_env: dict[str, str | None] = {}
         for k in ("DATABASE_URL", "BOT_TOKEN", "ADMIN_ID", "SUPPORT_USERNAME"):
@@ -51,6 +52,7 @@ class ReviewsUsernameMaskingTests(unittest.TestCase):
             Path(self.db_path).unlink(missing_ok=True)
         except Exception:
             pass
+        self._temp_dir.cleanup()
 
     def test_mask_public_username_cases(self) -> None:
         self.assertEqual(self.api._mask_public_username("alexey"), "alex****")

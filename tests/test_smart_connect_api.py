@@ -169,6 +169,7 @@ def _add_node(
     authenticated_egress_ok: bool | None = True,
     last_authenticated_egress_at: datetime | None = None,
     last_health_at: datetime | None = None,
+    legacy_enabled: bool = True,
     grpc_enabled: bool = True,
     disk_used_gb: float | None = None,
     disk_total_gb: float | None = None,
@@ -207,7 +208,10 @@ def _add_node(
             disk_used_gb=disk_used_gb,
             disk_total_gb=disk_total_gb,
             disk_free_gb=disk_free_gb,
-            transport_profiles_json=_transport_profiles(grpc_enabled=grpc_enabled),
+            transport_profiles_json=_transport_profiles(
+                legacy_enabled=legacy_enabled,
+                grpc_enabled=grpc_enabled,
+            ),
         )
         s.add(node)
         s.commit()
@@ -670,13 +674,30 @@ def test_ru_bridge_relay_emits_nested_country_protocol_choices_with_us_direct_on
     rollout_payload = _rollout_payload()
     rollout_payload["ru_bridge_relay"] = {
         "enabled": True,
-        "endpoint_host": "176.123.166.119",
-        "endpoint_port": 443,
-        "tls_server_name": "www.yandex.ru",
-        "reality_public_key": "ru-bridge-pbk",
-        "reality_short_id": "ab12cd34",
-        "fingerprint": "chrome",
+        "allowlist_node_codes": ["pl", "nl", "it", "us", "de"],
         "excluded_node_codes": ["us"],
+        "endpoints": [
+            {
+                "id": "mini",
+                "label": "Белые списки",
+                "endpoint_host": "176.123.166.119",
+                "endpoint_port": 443,
+                "tls_server_name": "www.yandex.ru",
+                "reality_public_key": "ru-bridge-pbk",
+                "reality_short_id": "ab12cd34",
+                "fingerprint": "chrome",
+            },
+            {
+                "id": "ru_spb",
+                "label": "Белые списки тип 2",
+                "endpoint_host": "193.233.216.73",
+                "endpoint_port": 443,
+                "tls_server_name": "www.yandex.ru",
+                "reality_public_key": "ru-spb-bridge-pbk",
+                "reality_short_id": "ef56ab78",
+                "fingerprint": "chrome",
+            },
+        ],
     }
     rollout_payload["cohort_overrides"]["ru-bridge-canary"] = {
         "install_ids": ["install-ru-bridge"],
@@ -694,6 +715,7 @@ def test_ru_bridge_relay_emits_nested_country_protocol_choices_with_us_direct_on
     _add_node(api, code="nl", health_score=96.0, last_health_at=now)
     _add_node(api, code="it", health_score=94.0, last_health_at=now)
     _add_node(api, code="us", health_score=99.0, last_health_at=now)
+    _add_node(api, code="de", health_score=97.0, last_health_at=now, legacy_enabled=False)
 
     start_body = _start_trial(client, install_id="install-ru-bridge")
     assert start_body["client_policy"]["transport_profile"] == "ru_bridge_relay"
@@ -706,11 +728,14 @@ def test_ru_bridge_relay_emits_nested_country_protocol_choices_with_us_direct_on
     assert body["transport_profile"] == "ru_bridge_relay"
     assert body["fallback_order"] == ["ru_bridge_relay", "legacy_reality_fallback"]
     assert body["config_format"] == "singbox-json"
+    assert body["smart_connect"]["rejected_counts"]["transport_mismatch"] == 1
 
     config = body["config_payload"]
     outbounds = {item["tag"]: item for item in config["outbounds"]}
     hidden_bridge_tag = f"POKROV мост{api.HIDDIFY_HIDDEN_TAG_SUFFIX}"
+    hidden_spb_bridge_tag = f"POKROV мост Белые списки тип 2{api.HIDDIFY_HIDDEN_TAG_SUFFIX}"
     assert hidden_bridge_tag in outbounds
+    assert hidden_spb_bridge_tag in outbounds
     assert "POKROV мост" not in outbounds
     assert not any("via RU" in tag or "RU bridge" in tag for tag in outbounds)
     bridge = outbounds[hidden_bridge_tag]
@@ -719,6 +744,11 @@ def test_ru_bridge_relay_emits_nested_country_protocol_choices_with_us_direct_on
     assert bridge["tls"]["server_name"] == "www.yandex.ru"
     assert bridge["tls"]["reality"]["public_key"] == "ru-bridge-pbk"
     assert bridge["tls"]["reality"]["short_id"] == "ab12cd34"
+    assert outbounds[hidden_spb_bridge_tag]["server"] == "193.233.216.73"
+    assert config["_meta"]["ru_bridge"]["endpoints"] == [
+        {"id": "mini", "label": "Белые списки"},
+        {"id": "ru_spb", "label": "Белые списки тип 2"},
+    ]
 
     country_selector = outbounds["🌍 Страны"]
     assert country_selector["outbounds"] == [
@@ -734,13 +764,18 @@ def test_ru_bridge_relay_emits_nested_country_protocol_choices_with_us_direct_on
     for label in ["🇵🇱 Польша", "🇳🇱 Нидерланды", "🇮🇹 Италия"]:
         normal_tag = f"{label} · Обычный"
         bridge_tag = f"{label} · Белые списки"
-        assert outbounds[label]["outbounds"] == [normal_tag, bridge_tag]
+        bridge_spb_tag = f"{label} · Белые списки тип 2"
+        assert outbounds[label]["outbounds"] == [normal_tag, bridge_tag, bridge_spb_tag]
         assert outbounds[normal_tag]["type"] == "vless"
         assert "detour" not in outbounds[normal_tag]
         assert outbounds[bridge_tag]["type"] == "vless"
         assert outbounds[bridge_tag]["detour"] == hidden_bridge_tag
+        assert outbounds[bridge_spb_tag]["type"] == "vless"
+        assert outbounds[bridge_spb_tag]["detour"] == hidden_spb_bridge_tag
 
     assert outbounds["🇺🇸 США"]["outbounds"] == ["🇺🇸 США · Обычный"]
     assert outbounds["🇺🇸 США · Обычный"]["type"] == "vless"
     assert "detour" not in outbounds["🇺🇸 США · Обычный"]
     assert "🇺🇸 США · Белые списки" not in outbounds
+    assert "🇺🇸 США · Белые списки тип 2" not in outbounds
+    assert "🇩🇪 Германия" not in outbounds

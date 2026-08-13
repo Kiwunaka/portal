@@ -37,6 +37,20 @@ export function SeoContentPage({ page }: { page: SeoPage }) {
     answer: item.answer,
     question: item.question,
   }));
+  const compactSupportItems = page.cluster === "support"
+    ? [
+        ...page.sections.map((section) => ({
+          question: section.title,
+          answer: [section.body, ...(section.bullets || [])].join(" "),
+        })),
+        ...(page.steps?.length
+          ? [{
+              question: "Что делать по порядку?",
+              answer: page.steps.map((step, index) => `${index + 1}. ${step.name}: ${step.text}`).join(" "),
+            }]
+          : []),
+      ]
+    : [];
 
   return (
     <PageShell>
@@ -84,7 +98,18 @@ export function SeoContentPage({ page }: { page: SeoPage }) {
         </section>
       ) : null}
 
-      {page.sections.length ? (
+      {compactSupportItems.length ? (
+        <section className="border-t border-line bg-canvas-alt">
+          <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 sm:py-16">
+            <Reveal>
+              <SectionHeading kicker="По шагам" title="Проверьте основное" sub="Откройте только нужный пункт." />
+            </Reveal>
+            <Reveal>
+              <Accordion items={compactSupportItems} defaultOpenFirst={false} />
+            </Reveal>
+          </div>
+        </section>
+      ) : page.sections.length ? (
         <section className="border-t border-line bg-canvas-alt">
           <div className="mx-auto grid max-w-6xl gap-8 px-4 py-16 sm:px-6 sm:py-20 lg:grid-cols-[0.95fr_1.35fr]">
             <Reveal>
@@ -116,7 +141,7 @@ export function SeoContentPage({ page }: { page: SeoPage }) {
         </section>
       ) : null}
 
-      {page.steps?.length ? (
+      {page.steps?.length && !compactSupportItems.length ? (
         <section className="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-20">
           <Reveal>
             <SectionHeading title="Порядок действий" sub="Сначала файл из официального источника, потом запуск и проверка." />

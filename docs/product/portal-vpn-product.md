@@ -379,6 +379,44 @@ Product wording rule:
 - news channel: `@pokrov_vpn`
 - legacy usernames `swazist_bot` and `portal_service_bot` are officially disabled and must not be documented as active product surfaces
 
+### Campaign Entry Policy Without App Stores
+
+POKROV keeps both the site and Telegram bot, but they serve different intent.
+The default paid-ad destination is the mobile site because it can explain the
+product, show the official signer/download source and record an anonymous
+funnel step before asking for identity. Telegram is the preferred conversion
+entry when the campaign already carries a promo/referral intent or when the
+user expects an account-bound continuation.
+
+- broad product/search traffic -> `https://pokrov.space/`;
+- explicit Android or Windows install intent -> the matching platform state at
+  `https://pokrov.space/install/`, with ARM64 recommended first on Android;
+- promo, referral and account-bound campaign -> an admin-generated
+  `https://t.me/pokrov_vpnbot?start=...` link; the bot binds the intent before
+  it offers checkout, download or cabinet continuation;
+- known-user renewal or return -> the authenticated cabinet subscription/task
+  route, with normal login recovery when the session is absent;
+- help intent -> searchable public guides first, then
+  `@pokrov_supportbot` for a new human ticket when self-service is insufficient;
+- an in-app remote campaign -> only its approved POKROV HTTPS or Telegram
+  target, never an arbitrary executable, tracking pixel or public checkout
+  ticket.
+
+Public ad links may carry only coarse `utm_source`, `utm_medium`,
+`utm_campaign`, `utm_content`, platform and plan intent. They must not contain
+Telegram IDs, account/device IDs, emails, activation keys, subscription URLs,
+checkout tickets or raw IP data. Bot `start` payloads stay sanitized and within
+Telegram's length limit; raw payloads are not retained in analytics. A public
+campaign cannot mint a user-bound checkout ticket, so an unbound checkout CTA
+must fall back to the bot or authenticated cabinet rather than pretending that
+payment can continue anonymously.
+
+Every campaign must have an owner, audience, truthful offer, start/end,
+destination, safe fallback and measurement key before activation. Pausing or
+expiring a campaign must leave the normal site/install path usable; disabling
+an app banner must remove the slot without an empty placeholder or an app
+update.
+
 ### Post-Trial Access Model
 
 - consumer `free_monthly`, `free_standard`, and `free_soft` delivery is retired;

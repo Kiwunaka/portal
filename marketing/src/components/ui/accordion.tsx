@@ -55,11 +55,19 @@ function AccordionRow({ item, defaultOpen = false }: { item: AccordionItem; defa
   );
 }
 
-export function Accordion({ className, items }: { className?: string; items: AccordionItem[] }) {
+export function Accordion({
+  className,
+  defaultOpenFirst = true,
+  items,
+}: {
+  className?: string;
+  defaultOpenFirst?: boolean;
+  items: AccordionItem[];
+}) {
   return (
     <div className={cn("rounded-(--radius-panel) border border-line bg-surface px-6 shadow-soft sm:px-8", className)}>
       {items.map((item, index) => (
-        <AccordionRow key={item.question} item={item} defaultOpen={index === 0} />
+        <AccordionRow key={item.question} item={item} defaultOpen={defaultOpenFirst && index === 0} />
       ))}
     </div>
   );

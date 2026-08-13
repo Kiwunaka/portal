@@ -163,6 +163,13 @@
       "forbidden_concepts": ["самая быстрая гарантированно", "100% скорость"]
     },
     {
+      "id": "app_notifications",
+      "prompt": "Почему уведомления POKROV не приходят на устройство?",
+      "accepted_topic_ids": ["app_notifications"],
+      "required_concept_groups": [["разрешение уведомлений", "уведомлен"], ["откройте pokrov", "открыть pokrov", "обновите состояние"], ["устройство", "ос"]],
+      "forbidden_concepts": ["отключите энергосбережение целиком", "гарантированно"]
+    },
+    {
       "id": "windows_network_reset_light",
       "prompt": "После отключения POKROV на Windows сеть ведёт себя странно. Какие лёгкие шаги сделать без опасных команд?",
       "accepted_topic_ids": ["windows_network_reset_light"],

@@ -57,7 +57,7 @@ def test_repository_bundle_loads_and_ranks_known_connection_issue() -> None:
     snapshot = store.load(REPO_ROOT / "shared" / "support-ai-knowledge.json")
     hits = store.search("Подключено, но сайты не открываются", limit=3)
 
-    assert len(snapshot.topics_by_id) == 65
+    assert len(snapshot.topics_by_id) == 66
     assert hits
     assert hits[0].topic_id == "connected_no_internet"
     assert len(snapshot.compact_index) <= 10_000
@@ -84,9 +84,9 @@ def test_repository_retrieval_covers_realistic_support_intents() -> None:
         top_one += int(bool(hits) and hits[0].topic_id in accepted)
         top_three += int(any(hit.topic_id in accepted for hit in hits))
 
-    assert len(fixture["normal"]) == 48
+    assert len(fixture["normal"]) == 49
     assert top_one >= 33
-    assert top_three == 48
+    assert top_three == 49
 
 
 def test_repo_search_prioritizes_android_choice_and_support_handoff_context() -> None:

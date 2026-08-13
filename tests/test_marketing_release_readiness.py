@@ -93,13 +93,14 @@ def test_marketing_sitemap_includes_checkout_route() -> None:
     assert "MARKETING_CANONICAL_PATHS.checkout" in sitemap_block
 
 
-def test_homepage_free_trial_ctas_start_with_install_not_checkout() -> None:
+def test_homepage_primary_trial_cta_starts_with_install_and_trial_fact_can_open_checkout() -> None:
     hero = _read("components", "home", "hero.tsx")
     pricing = _read("components", "home", "pricing.tsx")
     final_cta = _read("components", "home", "final-cta.tsx")
 
-    assert "MARKETING_CANONICAL_PATHS.install" in hero
-    assert "MARKETING_CANONICAL_PATHS.checkout" not in hero
+    assert '<Button href={MARKETING_CANONICAL_PATHS.install} size="lg">' in hero
+    assert "MARKETING_CANONICAL_PATHS.checkout" in hero
+    assert "?plan=start_99" in hero
     assert 'href="/#how-it-works"' in hero
     assert "MARKETING_CANONICAL_PATHS.install" in pricing
     assert "MARKETING_CANONICAL_PATHS.checkout" in pricing

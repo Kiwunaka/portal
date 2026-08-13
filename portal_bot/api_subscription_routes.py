@@ -120,6 +120,49 @@ def _filter_nodes_for_transport_profile(
     return out
 
 
+def _ru_bridge_endpoints_for_node(
+    *,
+    node: Any,
+    rollout_config: dict[str, Any],
+    transport_profile: str,
+) -> list[dict[str, Any]]:
+    """Return only bridge endpoints that can back a real choice for this node."""
+
+    if not ru_bridge_relay_enabled(rollout_config):
+        return []
+    raw_endpoints = ru_bridge_relay_endpoints(rollout_config)
+    endpoints: list[dict[str, Any]] = []
+    seen_ids = {"direct"}
+    for raw_endpoint in raw_endpoints:
+        endpoint_id = str(raw_endpoint.get("id") or "").strip().lower()
+        if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,63}", endpoint_id) or endpoint_id in seen_ids:
+            continue
+        label = " ".join(str(raw_endpoint.get("label") or "Белые списки").split())[:48].strip()
+        endpoint = dict(raw_endpoint)
+        endpoint["id"] = endpoint_id
+        endpoint["label"] = label or "Белые списки"
+        endpoints.append(endpoint)
+        seen_ids.add(endpoint_id)
+    if not endpoints:
+        return []
+
+    code = str(getattr(node, "code", "") or "").strip().lower()
+    base = _node_code_base(code)
+    allowlist = set(transport_node_allowlist(rollout_config, RU_BRIDGE_RELAY))
+    excluded = set(transport_node_exclusions(rollout_config, RU_BRIDGE_RELAY))
+    if allowlist and code not in allowlist and base not in allowlist:
+        return []
+    if code in excluded or base in excluded:
+        return []
+
+    requested_transport = str(transport_profile or LEGACY_REALITY_FALLBACK).strip()
+    if requested_transport == RU_BRIDGE_RELAY:
+        requested_transport = LEGACY_REALITY_FALLBACK
+    if not _node_supports_transport_profile(node, requested_transport):
+        return []
+    return endpoints
+
+
 def _managed_manifest_fallback_order(transport_profile: str) -> list[str]:
     primary = str(transport_profile or LEGACY_REALITY_FALLBACK).strip() or LEGACY_REALITY_FALLBACK
     order = [primary]
@@ -242,7 +285,11 @@ def _effective_transport_nodes(*, nodes: list[Any], transport_profile: str, roll
         apply_exclusions=str(transport_profile or "").strip() != RU_BRIDGE_RELAY,
     )
     if str(transport_profile or "").strip() == RU_BRIDGE_RELAY:
-        return filtered
+        return [
+            node
+            for node in filtered
+            if _node_supports_transport_profile(node, LEGACY_REALITY_FALLBACK)
+        ]
     supporting = [
         node for node in filtered if _node_supports_transport_profile(node, transport_profile)
     ]
@@ -573,20 +620,18 @@ def _singbox_multi_node_config(
     selector_opts = []
     ru_torrent_outbounds: list[str] = []
     selector_tag = "🌍 Страны"
-    bridge_enabled = bool(rollout_config and ru_bridge_relay_enabled(rollout_config))
-    bridge_endpoints = ru_bridge_relay_endpoints(rollout_config or {}) if bridge_enabled else []
-    bridge_excluded_codes = set(transport_node_exclusions(rollout_config or {}, RU_BRIDGE_RELAY)) if bridge_enabled else set()
-
-    def bridge_excluded(node: Any) -> bool:
-        code = str(getattr(node, "code", "") or "").strip().lower()
-        base = _node_code_base(code)
-        return code in bridge_excluded_codes or base in bridge_excluded_codes
+    used_bridge_endpoints_by_id: dict[str, dict[str, Any]] = {}
 
     for n in nodes:
         tag = _node_label_ru(getattr(n, "code", ""), getattr(n, "name", ""))
         code = str(getattr(n, "code", "") or "").strip().lower()
         base = _node_code_base(code)
-        has_bridge_choice = bridge_enabled and not bridge_excluded(n)
+        node_bridge_endpoints = _ru_bridge_endpoints_for_node(
+            node=n,
+            rollout_config=rollout_config or {},
+            transport_profile=transport_profile,
+        )
+        has_bridge_choice = bool(node_bridge_endpoints)
         keep_direct_visible = (
             not has_bridge_choice
             or code in RU_BRIDGE_SELECTOR_DIRECT_CODES
@@ -605,7 +650,7 @@ def _singbox_multi_node_config(
             ru_torrent_outbounds.append(tag)
 
         if has_bridge_choice:
-            for idx, endpoint in enumerate(bridge_endpoints):
+            for idx, endpoint in enumerate(node_bridge_endpoints):
                 bridge_label = str(endpoint.get("label") or ("Белые списки" if idx == 0 else f"Белые списки тип {idx + 1}")).strip()
                 bridge_node_tag = f"{tag} · {bridge_label}"
                 bridged_outbound = dict(direct_outbound)
@@ -613,6 +658,7 @@ def _singbox_multi_node_config(
                 bridged_outbound["detour"] = _ru_bridge_endpoint_tag(idx, endpoint)
                 outbounds.append(bridged_outbound)
                 selector_opts.append(bridge_node_tag)
+                used_bridge_endpoints_by_id.setdefault(str(endpoint.get("id") or ""), endpoint)
 
     selector_default = selector_opts[0] if selector_opts else "direct"
     torrent_outbound_tag = ""
@@ -626,8 +672,9 @@ def _singbox_multi_node_config(
                 "default": ru_torrent_outbounds[0],
             }
         )
-    if bridge_enabled:
-        for idx, endpoint in enumerate(bridge_endpoints):
+    used_bridge_endpoints = list(used_bridge_endpoints_by_id.values())
+    if used_bridge_endpoints:
+        for idx, endpoint in enumerate(used_bridge_endpoints):
             outbounds.append(
                 _ru_bridge_outbound(
                     user_uuid=user_uuid,
@@ -651,11 +698,11 @@ def _singbox_multi_node_config(
     )
 
     meta: dict[str, Any] = {"title": title}
-    if bridge_enabled:
+    if used_bridge_endpoints:
         meta["ru_bridge"] = {
             "enabled": True,
-            "excluded_node_codes": sorted(bridge_excluded_codes),
-            "endpoints": [{"id": item.get("id"), "label": item.get("label")} for item in bridge_endpoints],
+            "excluded_node_codes": sorted(transport_node_exclusions(rollout_config or {}, RU_BRIDGE_RELAY)),
+            "endpoints": [{"id": item.get("id"), "label": item.get("label")} for item in used_bridge_endpoints],
         }
 
     return {
@@ -686,18 +733,25 @@ def _singbox_ru_bridge_config(
 ) -> dict:
     bridge = ru_bridge_relay_config(rollout_config)
     selector_tag = "🌍 Страны"
-    bridge_endpoints = ru_bridge_relay_endpoints(rollout_config)
-    excluded = set(transport_node_exclusions(rollout_config, RU_BRIDGE_RELAY))
 
     outbounds = []
     selector_opts = []
     ru_torrent_outbounds: list[str] = []
-    def bridge_excluded(node: Any) -> bool:
-        code = str(getattr(node, "code", "") or "").strip().lower()
-        base = _node_code_base(code)
-        return code in excluded or base in excluded
+    used_bridge_endpoints_by_id: dict[str, dict[str, Any]] = {}
 
-    ordered_nodes = sorted(enumerate(nodes), key=lambda item: (bridge_excluded(item[1]), item[0]))
+    ordered_nodes = sorted(
+        enumerate(nodes),
+        key=lambda item: (
+            not bool(
+                _ru_bridge_endpoints_for_node(
+                    node=item[1],
+                    rollout_config=rollout_config,
+                    transport_profile=RU_BRIDGE_RELAY,
+                )
+            ),
+            item[0],
+        ),
+    )
     for _idx, n in ordered_nodes:
         label = _node_label_ru(getattr(n, "code", ""), getattr(n, "name", ""))
         code = str(getattr(n, "code", "") or "").strip().lower()
@@ -716,7 +770,12 @@ def _singbox_ru_bridge_config(
         country_opts.append(normal_tag)
         if base == "ru":
             ru_torrent_outbounds.append(normal_tag)
-        if code in excluded or base in excluded:
+        node_bridge_endpoints = _ru_bridge_endpoints_for_node(
+            node=n,
+            rollout_config=rollout_config,
+            transport_profile=RU_BRIDGE_RELAY,
+        )
+        if not node_bridge_endpoints:
             outbounds.append(
                 {
                     "type": "selector",
@@ -727,7 +786,7 @@ def _singbox_ru_bridge_config(
             )
             continue
 
-        for idx, endpoint in enumerate(bridge_endpoints):
+        for idx, endpoint in enumerate(node_bridge_endpoints):
             bridge_label = str(endpoint.get("label") or ("Белые списки" if idx == 0 else f"Белые списки тип {idx + 1}")).strip()
             bridge_node_tag = f"{label} · {bridge_label}"
             bridged_outbound = dict(direct_outbound)
@@ -735,6 +794,7 @@ def _singbox_ru_bridge_config(
             bridged_outbound["detour"] = _ru_bridge_endpoint_tag(idx, endpoint)
             outbounds.append(bridged_outbound)
             country_opts.append(bridge_node_tag)
+            used_bridge_endpoints_by_id.setdefault(str(endpoint.get("id") or ""), endpoint)
         outbounds.append(
             {
                 "type": "selector",
@@ -756,6 +816,7 @@ def _singbox_ru_bridge_config(
                 "default": ru_torrent_outbounds[0],
             }
         )
+    used_bridge_endpoints = list(used_bridge_endpoints_by_id.values())
     outbounds.extend(
         [
             *[
@@ -765,7 +826,7 @@ def _singbox_ru_bridge_config(
                     tag=_ru_bridge_endpoint_tag(idx, endpoint),
                     bridge=endpoint,
                 )
-                for idx, endpoint in enumerate(bridge_endpoints)
+                for idx, endpoint in enumerate(used_bridge_endpoints)
             ],
             {
                 "type": "selector",
@@ -795,9 +856,9 @@ def _singbox_ru_bridge_config(
         "_meta": {
             "title": title,
             "ru_bridge": {
-                "enabled": True,
+                "enabled": bool(used_bridge_endpoints),
                 "excluded_node_codes": bridge.get("excluded_node_codes", []),
-                "endpoints": [{"id": item.get("id"), "label": item.get("label")} for item in bridge_endpoints],
+                "endpoints": [{"id": item.get("id"), "label": item.get("label")} for item in used_bridge_endpoints],
             },
         },
     }

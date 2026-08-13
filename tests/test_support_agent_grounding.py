@@ -263,6 +263,34 @@ def test_warp_failure_alias_is_grounded(grounding_engine):
     assert decision.grounding_topic_id == "pokrov_warp_troubleshooting"
 
 
+@pytest.mark.parametrize(
+    ("topic_id", "prompt"),
+    (
+        ("pokrov_warp_troubleshooting", "Почему WARP не работает?"),
+        ("location_selection", "Какую локацию выбрать?"),
+        ("routing_all_except_ru", "Хочу российские сайты напрямую, а остальные через POKROV."),
+        ("routing_full_tunnel", "Что делает режим полного туннеля в POKROV?"),
+        ("app_notifications", "Уведомления POKROV не приходят."),
+        ("trial_has_no_bonuses", "Почему в пробном периоде бонусы недоступны?"),
+        ("telegram_bonus", "Telegram-бонус не начислился."),
+        ("payment_not_applied", "Оплатил, но доступ не продлился."),
+    ),
+)
+def test_common_product_issues_keep_diagnostics_before_handoff(
+    repo_grounding_engine,
+    policy_snapshot,
+    topic_id,
+    prompt,
+):
+    decision = repo_grounding_engine.select(prompt, None)
+    reply = repo_grounding_engine.render_local(decision, policy_snapshot)
+
+    assert decision.disposition.value == "confident"
+    assert decision.grounding_topic_id == topic_id
+    assert reply is not None
+    assert not reply.startswith("Напишите в поддержку")
+
+
 def test_confident_and_candidate_coverage_is_non_vacuous(repo_grounding_engine):
     bundle = json.loads(
         (REPO_ROOT / "tests/fixtures/support-agent-live-eval.json").read_text(

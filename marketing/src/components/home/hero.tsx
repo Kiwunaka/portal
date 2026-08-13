@@ -13,6 +13,7 @@ export function Hero() {
     {
       title: getCopyText("marketing.home.hero.fact_trial.title", `${facts.trial.days} дней`),
       text: getCopyText("marketing.home.hero.fact_trial.text", "за 0 ₽, без карты"),
+      href: `${MARKETING_CANONICAL_PATHS.checkout}?plan=start_99`,
     },
     {
       title: getCopyText("marketing.home.hero.fact_price.title", `от ${startPrice}`),
@@ -52,14 +53,31 @@ export function Hero() {
             {getCopyText("marketing.home.hero.secondary_cta", "Как это работает")}
           </Button>
         </div>
-        <dl className="mt-2 grid w-full max-w-lg grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
-          {factItems.map((item) => (
-            <div key={item.title} className="flex flex-col gap-0.5 border-l-2 border-brand-soft pl-3">
-              <dt className="text-[0.9375rem] font-bold text-ink">{item.title}</dt>
-              <dd className="m-0 text-[0.8125rem] text-ink-soft">{item.text}</dd>
-            </div>
-          ))}
-        </dl>
+        <div className="mt-2 grid w-full max-w-lg grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
+          {factItems.map((item) => {
+            const content = (
+              <>
+                <span className="text-[0.9375rem] font-bold text-ink">{item.title}</span>
+                <span className="text-[0.8125rem] text-ink-soft">{item.text}</span>
+              </>
+            );
+            return (
+              <div key={item.title} className="border-l-2 border-brand-soft pl-3">
+                {item.href ? (
+                  <a
+                    href={item.href}
+                    aria-label={`${item.title}: выбрать срок доступа`}
+                    className="flex min-h-11 flex-col justify-center gap-0.5 rounded-r-lg no-underline outline-none transition-colors hover:bg-brand-soft focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                  >
+                    {content}
+                  </a>
+                ) : (
+                  <div className="flex min-h-11 flex-col justify-center gap-0.5">{content}</div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
       <HeroVisual />
     </section>

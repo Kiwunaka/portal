@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { CircleCheck, Download, KeyRound, LifeBuoy, QrCode, ShieldCheck, TriangleAlert } from "lucide-react";
+import { ChevronDown, CircleCheck, Download, KeyRound, LifeBuoy, QrCode, ShieldCheck, TriangleAlert } from "lucide-react";
 
 import CopyButton from "@/components/cabinet/copy-button";
 import { StatusHero } from "@/components/cabinet/status-hero";
@@ -22,28 +22,18 @@ import {
   resolvePlanLabel,
 } from "@/lib/access-policy";
 import { fetchPublicPlans, type PlanCatalogRow } from "@/lib/api";
-import { getCopyText, getTariffPlans, normalizePlanCode } from "@/lib/portal";
+import { getCabinetFallbackPlans, resolveCabinetPlans } from "@/lib/cabinet-plans";
+import { getCopyText, normalizePlanCode } from "@/lib/portal";
 import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 import { formatDays, formatDevicesLimit } from "@/lib/ru-plural";
 import { subscriptionUrlForFormat } from "@/lib/subscription-format";
 
+const ROW_ACTION_CLASS =
+  "inline-flex min-h-12 items-center rounded-control px-2 text-sm font-semibold text-brand transition-colors hover:text-brand-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand";
+
 function fallbackPlans(): PlanCatalogRow[] {
-  return getTariffPlans()
-    .filter((plan) => Boolean(plan.is_active) && Number(plan.amount_rub || 0) > 0)
-    .map((plan) => ({
-      code: plan.code,
-      label: plan.label,
-      amount_rub: Number(plan.amount_rub || 0),
-      amount_stars: Number(plan.amount_stars || 0),
-      days: Number(plan.duration_days || 0),
-      device_limit: Number(plan.device_limit || 0),
-      node_policy: plan.node_policy,
-      badge: plan.badge || "",
-      is_active: Boolean(plan.is_active),
-      sort_order: Number(plan.sort_order || 0),
-    }))
-    .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
+  return getCabinetFallbackPlans();
 }
 
 function formatDate(value?: string | null): string {
@@ -94,7 +84,7 @@ function CompatibleClientImport({
           href={downloadUrl}
           target="_blank"
           rel="noreferrer"
-          className="text-sm font-semibold text-brand hover:text-brand-strong"
+          className={ROW_ACTION_CLASS}
         >
           Скачать
         </a>
@@ -145,12 +135,10 @@ export default function SubscriptionPage() {
     const load = async () => {
       try {
         const payload = await fetchPublicPlans();
-        const rows = (payload.plans || [])
-          .filter((plan) => Boolean(plan.is_active))
-          .sort((a, b) => Number(a.sort_order || 0) - Number(b.sort_order || 0));
+        const rows = resolveCabinetPlans(payload.plans);
 
         if (!cancelled) {
-          setPlans(rows.length ? rows : fallbackPlans());
+          setPlans(rows);
           setError("");
         }
       } catch (nextError) {
@@ -215,7 +203,7 @@ export default function SubscriptionPage() {
       ? "Можно перейти на полный доступ без месячного лимита."
       : "Выберите срок или активируйте код.";
 
-  const visiblePlans = plans.slice(0, 4);
+  const visiblePlans = plans;
   const featuredCode = visiblePlans.length
     ? visiblePlans.reduce((best, plan) => (Number(plan.days || 0) > Number(best.days || 0) ? plan : best), visiblePlans[0]).code
     : "";
@@ -236,8 +224,16 @@ export default function SubscriptionPage() {
       />
 
       <section className="flex flex-col gap-2.5">
-        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Срок</h2>
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <details className="group overflow-hidden rounded-card border border-line bg-surface shadow-soft">
+          <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset">
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-ink">Все тарифы</span>
+              <span className="mt-0.5 block text-xs text-ink-soft">6 сроков · от 99 ₽ · без автосписаний</span>
+            </span>
+            <ChevronDown className="shrink-0 text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" size={18} strokeWidth={2} aria-hidden="true" />
+          </summary>
+          <div className="border-t border-line p-3">
+            <div data-testid="subscription-plan-grid" className="grid grid-cols-2 gap-3 lg:grid-cols-3">
           {visiblePlans.map((plan) => {
             const normalizedCode = normalizePlanCode(plan.code);
             const isCurrent = Boolean(currentPaidPlanCode) && normalizedCode === currentPaidPlanCode;
@@ -247,6 +243,7 @@ export default function SubscriptionPage() {
             return (
               <article
                 key={plan.code}
+                data-plan-code={plan.code}
                 className={cn(
                   "flex flex-col gap-2 rounded-card border bg-surface p-4 shadow-soft",
                   isFeatured ? "border-brand shadow-medium" : "border-line",
@@ -284,7 +281,9 @@ export default function SubscriptionPage() {
               </article>
             );
           })}
-        </div>
+            </div>
+          </div>
+        </details>
       </section>
       {error ? <p className="px-1 text-sm text-warn-text">Часть тарифов не обновилась: {error}</p> : null}
 
@@ -355,7 +354,7 @@ export default function SubscriptionPage() {
                     value="Android и Windows"
                     hint="Проверенный fallback"
                     action={
-                      <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-brand hover:text-brand-strong">
+                      <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank" rel="noreferrer" className={ROW_ACTION_CLASS}>
                         Скачать
                       </a>
                     }
@@ -378,7 +377,7 @@ export default function SubscriptionPage() {
                     label="v2rayN"
                     value="Windows"
                     action={
-                      <a href="https://github.com/2dust/v2rayN/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-brand hover:text-brand-strong">
+                      <a href="https://github.com/2dust/v2rayN/releases" target="_blank" rel="noreferrer" className={ROW_ACTION_CLASS}>
                         Скачать
                       </a>
                     }
@@ -387,7 +386,7 @@ export default function SubscriptionPage() {
                     label="NekoBox"
                     value="Android"
                     action={
-                      <a href="https://github.com/MatsuriDayo/NekoBoxForAndroid/releases" target="_blank" rel="noreferrer" className="text-sm font-semibold text-brand hover:text-brand-strong">
+                      <a href="https://github.com/MatsuriDayo/NekoBoxForAndroid/releases" target="_blank" rel="noreferrer" className={ROW_ACTION_CLASS}>
                         Скачать
                       </a>
                     }

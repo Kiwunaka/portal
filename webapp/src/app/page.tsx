@@ -1,12 +1,11 @@
 "use client";
 
 import AppRouteLink from "@/components/app-route-link";
-import CabinetEntryAuth from "@/components/cabinet-entry-auth";
+import CabinetEntryAuth, { EMAIL_MODE_COPY, type EmailMode } from "@/components/cabinet-entry-auth";
 import { Button } from "@/components/ui/button";
 import { SkeletonBlock, SkeletonLine, SkeletonRegion } from "@/components/ui/skeleton";
-import { getCopyText } from "@/lib/portal";
 import { PortalSessionProvider, usePortalSession } from "@/lib/session";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { pokrovBranding } from "./branding";
 import PokrovLogo from "./pokrov-logo";
@@ -36,6 +35,8 @@ function EntrySkeleton() {
 
 function EntryBody() {
   const { loading, error, webLoginRequired, refresh, logoutWebSession } = usePortalSession();
+  const [emailMode, setEmailMode] = useState<EmailMode>("login");
+  const authCopy = EMAIL_MODE_COPY[emailMode];
 
   useEffect(() => {
     if (!loading && !webLoginRequired) {
@@ -94,15 +95,15 @@ function EntryBody() {
 
       <div className="mt-8">
         <h1 className="font-display text-[clamp(2.15rem,7vw,3.2rem)] leading-[1.02] font-semibold tracking-[-0.02em] text-ink">
-          {getCopyText("webapp.entry.title", "Кабинет POKROV")}
+          {authCopy.title}
         </h1>
         <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">
-          {getCopyText("webapp.entry.subtitle", "Войдите, чтобы скачать приложение, проверить доступ, продлить срок или написать в поддержку.")}
+          {authCopy.subtitle}
         </p>
       </div>
 
       <div className="mt-7">
-        <CabinetEntryAuth siteUrl={pokrovBranding.marketingUrl} />
+        <CabinetEntryAuth siteUrl={pokrovBranding.marketingUrl} onModeChange={setEmailMode} />
       </div>
     </EntryPanel>
   );

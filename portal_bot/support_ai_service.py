@@ -324,7 +324,7 @@ class SupportAIConfig:
             reasoning_effort=_parse_reasoning_effort(source.get("SUPPORT_AI_REASONING_EFFORT")),
             timeout_seconds=_bounded_env_float(
                 source.get("SUPPORT_AI_TIMEOUT_SECONDS"),
-                default=DEFAULT_PROVIDER_TIMEOUT_SECONDS,
+                default=provider_timeout_ceiling(api_base_url),
                 maximum=provider_timeout_ceiling(api_base_url),
             ),
             knowledge_path=(source.get("SUPPORT_AI_KB_PATH") or str(DEFAULT_KNOWLEDGE_PATH)).strip(),

@@ -1571,7 +1571,8 @@ def _smart_connect_rejection_reason(
     if node_cpu_penalty(node) is None:
         return "cpu_hot"
     is_ru_bridge_relay = str(transport_profile or "").strip() == RU_BRIDGE_RELAY
-    if not is_ru_bridge_relay and not _node_supports_transport_profile(node, transport_profile):
+    required_transport = LEGACY_REALITY_FALLBACK if is_ru_bridge_relay else transport_profile
+    if not _node_supports_transport_profile(node, required_transport):
         return "transport_mismatch"
     filtered = _filter_nodes_for_transport_profile(
         nodes=[node],
@@ -2056,6 +2057,42 @@ def _admit_support_assistant_diagnostics(raw_value: Any) -> dict[str, str | int 
     return admitted
 
 
+def _client_location_variants(
+    *,
+    node: Any,
+    rollout_config: dict[str, Any],
+    transport_profile: str,
+) -> list[dict[str, str]]:
+    variants = [
+        {
+            "id": "direct",
+            "label": "Обычный",
+            "description": "Прямое подключение",
+        }
+    ]
+    seen_ids = {"direct"}
+    for endpoint in _ru_bridge_endpoints_for_node(
+        node=node,
+        rollout_config=rollout_config,
+        transport_profile=transport_profile,
+    ):
+        endpoint_id = str(endpoint.get("id") or "").strip().lower()
+        if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,63}", endpoint_id) or endpoint_id in seen_ids:
+            continue
+        label = " ".join(str(endpoint.get("label") or "Белые списки").split())[:48].strip()
+        if not label:
+            label = "Белые списки"
+        variants.append(
+            {
+                "id": endpoint_id,
+                "label": label,
+                "description": "Для ограниченных сетей",
+            }
+        )
+        seen_ids.add(endpoint_id)
+    return variants
+
+
 @app.get("/api/client/locations")
 async def client_locations_catalog(
     request: Request,
@@ -2123,6 +2160,11 @@ async def client_locations_catalog(
                 "premium": not node_is_free(node),
                 "load": _node_load_ratio(node),
                 "measuredAt": _safe_iso(getattr(node, "last_health_at", None)),
+                "variants": _client_location_variants(
+                    node=node,
+                    rollout_config=rollout_config,
+                    transport_profile=transport_profile,
+                ),
                 "probe": (
                     {"host": probe_host, "port": probe_port}
                     if probe_host and 0 < probe_port <= 65535

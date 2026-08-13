@@ -1649,7 +1649,7 @@ class SupportAIServiceTests(unittest.TestCase):
         self.assertEqual(config.reasoning_effort, "medium")
         self.assertEqual(config.max_context_chars, 30000)
         self.assertEqual(config.max_output_tokens, 1200)
-        self.assertEqual(config.timeout_seconds, 20.0)
+        self.assertEqual(config.timeout_seconds, 45.0)
 
     def test_agent_timeout_and_context_env_ceilings_are_exact_and_clamped(self) -> None:
         import support_ai_service

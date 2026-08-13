@@ -13,7 +13,26 @@ import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
-type EmailMode = "login" | "register" | "verify" | "recover";
+export type EmailMode = "login" | "register" | "verify" | "recover";
+
+export const EMAIL_MODE_COPY: Record<EmailMode, { title: string; subtitle: string }> = {
+  login: {
+    title: "Вход в аккаунт",
+    subtitle: "Войдите по email или через Telegram, чтобы продолжить в кабинете.",
+  },
+  register: {
+    title: "Создать аккаунт",
+    subtitle: "Зарегистрируйтесь по email, чтобы сохранить доступ в одном профиле.",
+  },
+  verify: {
+    title: "Подтвердить email",
+    subtitle: "Введите код из письма, чтобы завершить регистрацию и открыть кабинет.",
+  },
+  recover: {
+    title: "Восстановить доступ",
+    subtitle: "Получите код по email и задайте новый пароль.",
+  },
+};
 
 const EMAIL_MODE_LABELS: Record<EmailMode, string> = {
   login: "Вход",
@@ -32,7 +51,13 @@ function externalPageUrl(siteUrl: string, pathname: "/offer/" | "/privacy/"): st
   }
 }
 
-export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
+export default function CabinetEntryAuth({
+  siteUrl,
+  onModeChange,
+}: {
+  siteUrl: string;
+  onModeChange?: (mode: EmailMode) => void;
+}) {
   const { webLoginBusy, webLoginError } = usePortalSession();
   const reduceMotion = useReducedMotion();
   const passwordRef = useRef<HTMLInputElement | null>(null);
@@ -49,6 +74,10 @@ export default function CabinetEntryAuth({ siteUrl }: { siteUrl: string }) {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [emailAuthStatus, setEmailAuthStatus] = useState<EmailAuthStatusResult | null>(null);
   const [emailAuthChecked, setEmailAuthChecked] = useState(false);
+
+  useEffect(() => {
+    onModeChange?.(emailMode);
+  }, [emailMode, onModeChange]);
 
   useEffect(() => {
     let cancelled = false;

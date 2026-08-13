@@ -5,11 +5,11 @@ import type { ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import {
   Archive,
+  ChevronDown,
   Download,
   FileText,
   Hourglass,
   LifeBuoy,
-  LogIn,
   MonitorSmartphone,
   RefreshCw,
   Smartphone,
@@ -48,7 +48,12 @@ function formatDate(value?: string | null): string {
 
 function externalAction(href: string, label: string): ReactNode {
   return (
-    <a href={href} target="_blank" rel="noreferrer" className="text-sm font-semibold text-brand hover:text-brand-strong">
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex min-h-12 items-center rounded-control px-2 text-sm font-semibold text-brand hover:bg-brand-soft hover:text-brand-strong"
+    >
       {label}
     </a>
   );
@@ -175,8 +180,6 @@ export function CabinetDownloadsSurface() {
   }, []);
 
   const rows = useMemo(() => buildRows(payload), [payload]);
-  const hasAndroid = rows.some((item) => item.key.startsWith("android"));
-  const hasWindows = rows.some((item) => item.key.startsWith("windows"));
   const primaryRows = rows.filter(
     (item) => item.key === "android-arm64-v8a" || item.key === "android-apk" || item.key === "windows-exe",
   );
@@ -254,31 +257,35 @@ export function CabinetDownloadsSurface() {
 
       {error ? <p className="px-1 text-sm text-warn-text">Часть ссылок не удалось обновить: {error}</p> : null}
 
-      <section className="flex flex-col gap-2.5">
-        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Как подключиться за 3 шага</h2>
-        <InstructionSteps
-          steps={[
-            {
-              art: "download",
-              title: "Скачайте и установите",
-              description: "Файл для Android или Windows выше на этой странице. Другие источники лучше не использовать.",
-            },
-            {
-              art: "login",
-              title: "Войдите в тот же аккаунт",
-              description: "Почта или Telegram — тем же способом, что и здесь. Доступ подтянется сам.",
-            },
-            {
-              art: "connect",
-              title: "Нажмите «Подключить»",
-              description: "Одна кнопка в приложении. Настраивать ничего не нужно.",
-            },
-          ]}
-        />
-      </section>
+      <details className="group overflow-hidden rounded-card border border-line bg-surface shadow-soft">
+        <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset">
+          Как подключиться за 3 шага
+          <ChevronDown className="shrink-0 text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" size={18} strokeWidth={2} aria-hidden="true" />
+        </summary>
+        <div className="border-t border-line p-3">
+          <InstructionSteps
+            steps={[
+              {
+                art: "download",
+                title: "Скачайте и установите",
+                description: "Берите файл только на этой странице.",
+              },
+              {
+                art: "login",
+                title: "Войдите в тот же аккаунт",
+                description: "Почта или Telegram — доступ подтянется сам.",
+              },
+              {
+                art: "connect",
+                title: "Нажмите «Подключить»",
+                description: "Настраивать ничего не нужно.",
+              },
+            ]}
+          />
+        </div>
+      </details>
 
       <GroupedSection title="После скачивания">
-        <Row icon={LogIn} label="Войти в тот же аккаунт" hint="Профиль подтянется сам" value={hasAndroid || hasWindows ? "важно" : undefined} />
         <Row icon={MonitorSmartphone} label="Проверить устройство" hint="После входа оно появится в списке" href="/devices/" />
         <Row icon={LifeBuoy} label="Поддержка" hint="Если файл не открылся или вход не прошел" href="/support/" />
         <Row icon={RefreshCw} label="Обновлено" hint="По данным страницы загрузок" value={formatDate(payload?.updated_at)} />
