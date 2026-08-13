@@ -848,6 +848,15 @@ targeted and auditable; signing recovery exists without exposing the key.
   junction at its stable repository path. Android/Windows build trees remain on
   `E:` as well; current `C:` free space stayed above 90 GB during the `beta.2`
   rebuild and publication.
+- A follow-up workspace sweep moved the 9.3 GB Android SDK, global Gradle home,
+  video-ad/OpenCode dependency trees and future npm/Pub caches to `E:` while
+  preserving stable paths through junctions. It also removed 133 stale
+  POKROV/Flutter/Kotlin temp trees and reproducible project caches from `C:` into
+  the recoverable `E:/POKROV-trash-staging/2026-08-13/` quarantine. Free space
+  increased from 93.83 GB to 106.41 GB. `adb`, `sdkmanager`, Gradle and Flutter
+  pass after the move. The three Next dependency trees remain local because the
+  proven cross-drive Next/Turbopack failure makes them a build-critical
+  exception; their local Next binaries pass after restoration.
 - The retained legacy Hiddify client reference is now on `E:` behind a verified
   junction; its ignored April `out`, `dist` and `.gradle` outputs were removed.
   Marketing static output remains reproducible and was deleted after deploy.
