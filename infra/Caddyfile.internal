@@ -95,6 +95,14 @@ pokrov.space:8444, www.pokrov.space:8444, app.pokrov.space:8444, www.app.pokrov.
 
   @connect_host host connect.pokrov.space
   handle @connect_host {
+    @singbox_rules path /rules/geoip-ru.srs /rules/adblock.srs
+    handle @singbox_rules {
+      header Content-Type "application/octet-stream"
+      header Cache-Control "public, max-age=21600"
+      root * /var/www/portal
+      file_server
+    }
+
     @subscription path /s8Kx2mP7qR4wT/*
     handle @subscription {
       reverse_proxy 127.0.0.1:8080

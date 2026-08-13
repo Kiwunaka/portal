@@ -191,6 +191,53 @@ def _cache_header_retry(
     return "bash -lc " + shlex.quote(script)
 
 
+def _binary_rule_set_retry(
+    url: str,
+    *,
+    host: str,
+    attempts: int = 6,
+    pause_sec: float = 1.0,
+) -> str:
+    target_url = str(url or "").strip()
+    if not target_url.startswith(("http://", "https://")):
+        target_url = f"https://{target_url}"
+    base = " ".join(
+        [
+            "curl",
+            "-fsS",
+            "--insecure",
+            "--resolve",
+            shlex.quote(f"{host}:443:127.0.0.1"),
+            "-D",
+            '"$headers_file"',
+            "-o",
+            '"$body_file"',
+            shlex.quote(target_url),
+        ]
+    )
+    script = (
+        "headers_file=/tmp/portal_verify_rule_headers.$$; "
+        "body_file=/tmp/portal_verify_rule_body.$$; "
+        "cleanup() { rm -f \"$headers_file\" \"$body_file\"; }; "
+        "trap cleanup EXIT; "
+        f"for i in $(seq 1 {int(attempts)}); do "
+        f"if {base}; then "
+        "content_type=$(awk 'BEGIN{IGNORECASE=1} /^content-type:/ {sub(/^[^:]*:[[:space:]]*/, \"\"); gsub(/\\r/, \"\"); print; exit}' \"$headers_file\"); "
+        "size=$(wc -c < \"$body_file\" | tr -d '[:space:]'); "
+        "magic=$(od -An -tx1 -N3 \"$body_file\" | tr -d '[:space:]'); "
+        "if [ \"$content_type\" = application/octet-stream ] && [ \"$magic\" = 535253 ] && [ \"$size\" -ge 32 ]; then "
+        "printf 'Content-Type: %s size=%s magic=SRS\\n' \"$content_type\" \"$size\"; "
+        "exit 0; "
+        "fi; "
+        "fi; "
+        f"sleep {pause_sec}; "
+        "done; "
+        "printf 'invalid rule set content_type=%s size=%s magic=%s\\n' \"${content_type:-<missing>}\" \"${size:-0}\" \"${magic:-<missing>}\"; "
+        "exit 22"
+    )
+    return "bash -lc " + shlex.quote(script)
+
+
 def _build_subscription_check_script(*, api_domain: str, connect_domain: str, repeat: int) -> str:
     return f"""#!/usr/bin/env bash
 set -euo pipefail
@@ -344,6 +391,20 @@ def main() -> int:
 
         curl_checks = [
             ("health443", _curl_retry(f"{api_domain}/api/health", host=api_domain)),
+            (
+                "rulesGeoIpRu443",
+                _binary_rule_set_retry(
+                    f"{connect_domain}/rules/geoip-ru.srs",
+                    host=connect_domain,
+                ),
+            ),
+            (
+                "rulesAdblock443",
+                _binary_rule_set_retry(
+                    f"{connect_domain}/rules/adblock.srs",
+                    host=connect_domain,
+                ),
+            ),
             ("webapp443", _curl_retry("app.pokrov.space/", host="app.pokrov.space")),
             ("webappCache443", _cache_header_retry("app.pokrov.space/", host="app.pokrov.space")),
             ("webappDashboardCache443", _cache_header_retry("app.pokrov.space/dashboard", host="app.pokrov.space")),

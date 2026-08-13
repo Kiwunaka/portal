@@ -69,6 +69,27 @@ class VerifyBrainReadyTests(unittest.TestCase):
         self.assertIn("no-cache", cmd)
         self.assertIn("must-revalidate", cmd)
 
+    def test_binary_rule_set_probe_requires_octet_stream_and_srs_magic(self) -> None:
+        cmd = self.module._binary_rule_set_retry(
+            "connect.pokrov.space/rules/geoip-ru.srs",
+            host="connect.pokrov.space",
+        )
+
+        self.assertIn("application/octet-stream", cmd)
+        self.assertIn("535253", cmd)
+        self.assertIn("size", cmd)
+        self.assertIn("curl -fsS", cmd)
+        self.assertIn("--resolve", cmd)
+
+    def test_caddy_serves_only_owned_singbox_rule_set_paths_before_redirect(self) -> None:
+        caddyfile = (Path(__file__).resolve().parents[1] / "infra" / "Caddyfile.internal").read_text(encoding="utf-8")
+
+        connect_block = caddyfile[caddyfile.index("@connect_host host connect.pokrov.space") :]
+        self.assertIn("@singbox_rules path /rules/geoip-ru.srs /rules/adblock.srs", connect_block)
+        self.assertIn('header Content-Type "application/octet-stream"', connect_block)
+        self.assertIn("root * /var/www/portal", connect_block)
+        self.assertLess(connect_block.index("handle @singbox_rules"), connect_block.index("redir https://app.pokrov.space{uri} 308"))
+
     def test_main_returns_failure_when_required_service_is_inactive(self) -> None:
         ssh = MagicMock()
         sftp = MagicMock()
@@ -87,6 +108,8 @@ class VerifyBrainReadyTests(unittest.TestCase):
             (0, "active\n", ""),
             (3, "inactive\n", ""),
             (0, "LISTEN 0 4096 0.0.0.0:443\nLISTEN 0 4096 0.0.0.0:8444\n", ""),
+            (0, "ok", ""),
+            (0, "ok", ""),
             (0, "ok", ""),
             (0, "ok", ""),
             (0, "Ускорить интернет сейчас", ""),
