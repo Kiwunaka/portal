@@ -90,31 +90,31 @@ exact-candidate evidence still have to close.
 | Requirement that must not be lost | Owner/workstream | Current release state |
 | --- | --- | --- |
 | Trial is exactly five days; no rewards on trial; paid, expired and grandfathered states are distinct | 1, 7, 13 | `IN_PROGRESS`; trial gate and an exact production-backed paid QA session pass, expired/grandfathered matrix remains open |
-| Telegram `+5`, referral `+10` only after the friend's held first payment, conservative paid-only roulette, promo/history/idempotency | 1 | `IN_PROGRESS`; local 132-test matrix, two production-backed paid QA spins and the persisted 14-day production preset pass; promo and replay matrix remain open |
+| Telegram `+5`, referral `+10` only after the friend's held first payment, conservative paid-only roulette, promo/history/idempotency | 1 | `IN_PROGRESS`; local 132-test matrix, two production-backed paid QA spins, persisted 14-day production preset and exact `beta.2` first-load Rewards Hub pass; promo/replay edge matrix remains open |
 | Real achievements and statistics, restrained Xbox-like success/reward motion, no invented ad-block numbers or vague Activity filler | 1 | `DONE_LOCAL`; reward reveal passed production-backed LDPlayer visual QA, achievement unlock and exact final-candidate QA remain open |
-| Owner-selected centered Home, duration pill to checkout, finite wait animation and no glowing/heavy vector | 2 | `DONE_LOCAL`; exact-candidate device comparison remains open |
+| Owner-selected centered Home, duration pill to checkout, finite wait animation and no glowing/heavy vector | 2 | `PASS_EXACT_CANDIDATE`; `beta.2` x86_64 update-install and visual check pass, including the untruncated `Настраиваем` wait state |
 | Remote ad can be enabled without an app update and configured with image/logo/text/CTA/colors/link/schedule/audience/dismiss | 2, 9 | `DONE_LOCAL`; production operation, image fallback and campaign lifecycle remain open |
 | Honest locations, flags, five initial choices, manual refresh, real measurement origin, current load/health and no fake geographic ping claim | 3 | `IN_PROGRESS`; UI is local, Core/egress and physical proof remain open |
 | WARP and manual country selection work through UI, profile, Core, DNS and real egress rather than only showing green state | 3, 13 | `TODO` exact-candidate physical proof |
 | Full/Smart/RU-direct/per-app routes, real AdGuard toggle, Chrome and Yandex in both directions, `2ip.ru`, Wi-Fi/LTE and separate RU-origin probe | 4, 13 | `IN_PROGRESS`; UI/app catalog is local, traffic proof remains open |
 | Thin correctly scaled branded Quick Settings tile plus useful, uncut and configurable notification with status/country/mode/speed/actions | 5, 13 | `IN_PROGRESS`; physical Huawei proof remains open |
-| Native support chat and diagnostics; AI first, useful escalation only when needed; exact `deepseek/deepseek-v4-flash-0731`, one request, 65-second assistant timeout, no hard output cap | 6 | `IN_PROGRESS`; live app response observed, answer hierarchy/source/fallback matrix remain open |
+| Native support chat and diagnostics; AI first, useful escalation only when needed; exact `deepseek/deepseek-v4-flash-0731`, one request, 65-second assistant timeout, no hard output cap | 6 | `IN_PROGRESS`; exact model and a useful live native-app WARP response pass, source/fallback/error matrix remains open |
 | `99 ₽` first full month once, then `239 ₽`; `669/1199/1699/1999 ₽`; one compact checkout rather than a text wall | 7 | `IN_PROGRESS`; catalog is local, every surface and payment continuation remain open |
-| Mobile-first site, help, cabinet and bot use concise primary actions with details in sheets/accordions/tooltips | 8, 11 | `TODO` full journey review |
+| Mobile-first site, help, cabinet and bot use concise primary actions with details in sheets/accordions/tooltips | 8, 11 | `IN_PROGRESS`; production `/guides` and the 20-screen app atlas are search-first/collapsed and pass Chrome mobile QA, full cabinet/bot journey remains open |
 | Campaign destinations, Telegram-vs-site entry, UTM/deep links, promotions and safe no-store continuation are intentional and measurable | 9 | `TODO` |
 | Admin shows a privacy-safe account/device identity instead of only generic `POKROV App` or an opaque UID | 10 | `DONE_LOCAL`; linked Telegram plus normalized device/model/platform now lead the UI, linked-email projection and deployed visual QA remain open |
-| Bot serves current ARM64/ARMv7/universal Android and setup/portable Windows artifacts; Apple gives only an honest compatible-client/key path | 11 | `IN_PROGRESS`; Android hierarchy is implemented and tested, final URLs plus Windows portable and fresh/linked runtime QA remain open |
-| Direct Android release includes split APKs, production signing, hashes and encrypted keystore recovery; Windows includes setup and portable | 12, 14 | `IN_PROGRESS`; exact 1.0.3 Android splits and Windows beta artifacts are public with verified hashes, Huawei and external-media recovery remain manual |
+| Bot serves current ARM64/ARMv7/universal Android and setup/portable Windows artifacts; Apple gives only an honest compatible-client/key path | 11 | `IN_PROGRESS`; live signed-session API returns exact `beta.2` split APK/setup metadata, fresh/linked Telegram button QA and portable/Apple paths remain open |
+| Direct Android release includes split APKs, production signing, hashes and encrypted keystore recovery; Windows includes setup and portable | 12, 14 | `IN_PROGRESS`; exact `1.0.3+11` Android splits and `1.0.3-beta.2+11` Windows artifacts are public with verified hashes, Huawei and external-media recovery remain manual |
 | All screens and the complete ad-to-support-to-checkout path are retested on the exact published candidate; LDPlayer does not substitute for Huawei/Core | 8, 13, 15 | `TODO` exact-candidate QA |
 | Inspect dirty/untracked material, keep important artifacts, remove only proven trash; backup before prod; delete only identified QA users/data after QA | 14, 15 | `IN_PROGRESS`; production backup/restore and repository cleanup pass, targeted QA-account cleanup remains after live evidence |
-| Deploy, exact asset publication, anonymous download verification, scoped commits and pushes for both repositories, then an evidence-labelled handoff | 15 | `IN_PROGRESS`; assets and client commits are public, platform commit/deploy/runtime verification remain |
+| Deploy, exact asset publication, anonymous download verification, scoped commits and pushes for both repositories, then an evidence-labelled handoff | 15 | `PASS_CURRENT_BETA`; `beta.2` assets, both repository commits/pushes, runtime sync, backend/static deploy, brain verify and anonymous full-download hashes pass; promotion branches and manual device gates remain separate owner actions |
 
 ## Current Repositories And Branches
 
 | Lane | Repository | Promotion branch | Active working branch | Current state |
 | --- | --- | --- | --- | --- |
-| Platform, site, bot, cabinet, admin | `C:/Users/kiwun/Documents/ai/VPN` | `master` | `codex/platform-product-readiness-20260804` | intentionally dirty; preserve unrelated work |
-| Android, Windows, shared client | `C:/Users/kiwun/Documents/ai/POKROV-app` | `main` | `codex/product-readiness-20260804` | intentionally dirty; preserve unrelated work |
+| Platform, site, bot, cabinet, admin | `C:/Users/kiwun/Documents/ai/VPN` | `master` | `codex/platform-product-readiness-20260804` | scoped release work committed and pushed; tracker finalization is the only current diff |
+| Android, Windows, shared client | `C:/Users/kiwun/Documents/ai/POKROV-app` | `main` | `codex/product-readiness-20260804` | clean; source, release and production-sync commits pushed |
 | VPN core | `C:/Users/kiwun/Documents/ai/POKROV-core` | independent `v1.0.3` release | `codex/core-1.0.2-egress-probe` | clean, committed, tagged, pushed and publicly released |
 
 Untracked files must be inspected and classified. Keep source, tests, evidence
@@ -175,6 +175,12 @@ paths reviewed first.
 - [x] `DONE_LOCAL` Replace the raw ISO last-action timestamp with localized
   `ДД.ММ в ЧЧ:ММ` copy. Focused Flutter test and `flutter analyze` pass; this last
   source change requires one final Android rebuild before publication.
+- [x] `PASS_EXACT_CANDIDATE` `v1.0.3-beta.2` fixes the startup ordering that
+  previously let subscription refresh and bonus summary reconcile the same
+  expired session concurrently. The 118-test app-shell file passes; the exact
+  installed x86_64 APK opens roulette/history immediately with no generic error,
+  shows the 14-day cooldown, Telegram `+5` and referral `+10`, and no longer
+  repeats the cooldown label as a dead action.
 - [x] `PASS_PRODUCTION_ROUTE` The persisted production wheel configuration was
   migrated transactionally from `paid_weekly_v1` / `168` hours to
   `paid_fortnightly_discounts_v3` / `336` hours. Exact database readback returned
@@ -217,6 +223,9 @@ and admin.
   LDPlayer Home in one visual input, fix visible spacing/type/radius and repeat
   the comparison. The retained comparison normalizes both images to the same
   height and disconnected state without distorting the taller source reference.
+- [x] `PASS_EXACT_CANDIDATE` The exact `beta.2` x86_64 APK renders the centered
+  Home and finite hourglass state with the complete secondary label
+  `Настраиваем`; installed `base.apk` SHA-256 equals the published candidate.
 
 Acceptance: the selected Home is recognizable in the running app, all visible
 controls work, the banner can appear/disappear without a client update, and the
@@ -324,6 +333,10 @@ the physical production candidate.
   immediately handing the question to a human. This proves the client/API path,
   but not yet that every answer came from the configured provider rather than a
   grounded local response.
+- [x] `PASS_EXACT_CANDIDATE` The retained production session used the native
+  assistant sheet for a WARP problem and received a bounded Russian diagnostic
+  answer without immediately opening a human ticket. Production configuration
+  readback still resolves `deepseek/deepseek-v4-flash-0731`, reasoning `medium`.
 - [x] `PASS_PRODUCTION_ROUTE` The deployed provider route is enabled for both
   support AI and the support agent and resolves the exact model identifier
   `deepseek/deepseek-v4-flash-0731`, reasoning `medium`, without a client or
@@ -368,7 +381,7 @@ Acceptance: exact prices and terms match everywhere, the mobile checkout is
 short and understandable, and no payment-success claim is made without current
 provider evidence.
 
-### 8. Site, Cabinet, Help And End-To-End Acquisition — `TODO`
+### 8. Site, Cabinet, Help And End-To-End Acquisition — `IN_PROGRESS`
 
 - [ ] Walk advertising link -> mobile landing -> Telegram bot or site -> login ->
   cabinet -> download -> onboarding/trial -> connection -> support -> checkout
@@ -382,6 +395,12 @@ provider evidence.
   and reduced motion.
 - [ ] Compare the full user journey with current VPN competitors and current
   mobile checkout/help patterns using source links and dated evidence.
+- [x] `PASS_PRODUCTION_ROUTE` `/guides` is now task/search-first: 46 long guides
+  remain discoverable but collapsed, while one search also returns matching
+  entries from the 20-screen POKROV atlas. Atlas hash links open and scroll the
+  exact screen. Chrome mobile QA at `390x844` found no horizontal overflow; the
+  WARP search and `#protection-home` disclosure both pass after production
+  deploy `20260813124114`.
 
 Acceptance: a new mobile user always knows the next action and can reach a
 working client without a store, Telegram is optional where the product contract
@@ -436,6 +455,11 @@ privacy-safe.
   offers ARMv7 for old devices and universal only as fallback; explain ABI
   briefly. x86_64 stays in the cabinet/API for emulators instead of cluttering
   the normal phone path. Focused bot and public-copy tests pass.
+- [x] `PASS_PRODUCTION_ROUTE` Brain-origin synthetic signed-session smoke reads
+  the live bot token without returning it and confirms `/api/client/apps`
+  exposes `v1.0.3-beta.2`: ARM64 primary, ARMv7, x86_64, universal and Windows
+  setup with exact size/SHA-256. This is API/runtime proof, not a real Telegram
+  user button pass.
 - [ ] Windows action returns the current setup and exposes portable download as
   a secondary option with honest SmartScreen/unsigned status.
 - [ ] Apple action must not claim a native POKROV app. Until Apple work resumes,
@@ -449,8 +473,8 @@ honest supported alternative, never an old/wrong binary or a false store claim.
 
 ### 12. Packaging And Direct Distribution — `IN_PROGRESS`
 
-- [x] `PASS_EXACT_CANDIDATE` Version is `1.0.3+10`; published prerelease tag is
-  `v1.0.3-beta.1`.
+- [x] `PASS_EXACT_CANDIDATE` Version is `1.0.3+11`; published prerelease tag is
+  `v1.0.3-beta.2`.
 - [x] `PASS_EXACT_CANDIDATE` Production-signed Android split APKs are public:
   `arm64-v8a` primary, `armeabi-v7a` legacy, `x86_64` emulator and universal
   fallback.
@@ -463,18 +487,23 @@ honest supported alternative, never an old/wrong binary or a false store claim.
   routing/WARP support, account/trial and checkout continuation.
 - [x] Preserve honest unsigned/SmartScreen wording until trusted Windows signing
   is actually available.
-- [x] `DONE_LOCAL` Update website/bot/client delivery metadata so ARM64 is
-  recommended and platform/ABI choices are discoverable. Live runtime sync is
-  still pending deployment.
+- [x] `PASS_PRODUCTION_ROUTE` Website/bot/client delivery metadata recommends
+  ARM64 and exposes platform/ABI choices. Live runtime sync, backend/static
+  deploy and brain-origin signed-session readback all return `beta.2` links.
 
 Acceptance: direct users download the smallest correct artifact by default;
 every public file matches the exact tested candidate and published hash.
 
-### 13. Exact-Candidate QA — `TODO`
+### 13. Exact-Candidate QA — `IN_PROGRESS`
 
 - [ ] LDPlayer: clean install/update, every screen, trial and canonical paid UI,
   bonuses, banner, checkout continuation, support and API error states. Do not
   claim tunnel-core proof from LDPlayer.
+- [x] `PASS_EXACT_CANDIDATE_PARTIAL` `beta.2` update-install, installed-file
+  SHA-256 equality, centered Home/busy motion, premium state, locations and
+  flags, per-app policy, native AI response, bonus first-load, roulette/history
+  and profile-state restore pass in LDPlayer. Banner/checkout/error-state and
+  exhaustive every-screen coverage remain open; tunnel/core is not claimed.
 - [ ] Huawei: clean install/update, permissions, onboarding, all screens,
   connect cycles, auto/manual locations, WARP, all routing modes, per-app,
   tile/notification, background/lock/kill/reboot/battery saver and
@@ -520,22 +549,26 @@ targeted and auditable; signing recovery exists without exposing the key.
   runtime engine, Android and Windows hosts.
 - [x] Android JVM/Gradle tests and split release builds.
 - [x] Windows release build/package smoke.
-- [ ] Marketing, cabinet and admin lint/builds pass. Browser automation remains
-  pending owner permission to use the chosen Chrome browser.
-- [ ] Documentation link/contract checks and `git diff --check` pass; final secret scan and
-  artifact hash verification.
-- [ ] Review canonical docs and this tracker against implemented behavior.
-- [ ] Deploy platform only after backups and scoped production preflight.
-- [ ] Run deployed current-origin and brain-origin checks; run RU-origin
+- [x] Marketing, cabinet and admin production builds pass. The changed marketing
+  guide slice also passes lint, SEO and responsive checks; Chrome production
+  mobile QA covers guide search, atlas deeplink and install entry.
+- [x] Documentation link/contract checks and `git diff --check` pass; exact
+  release files pass SHA256SUMS and GitHub digest verification. Changed-file
+  secret scans found no private key, OpenRouter/GitHub/Telegram token or bearer
+  credential pattern.
+- [x] Review canonical docs and this tracker against implemented behavior.
+- [x] Deploy platform only after backups and scoped production preflight.
+- [x] Run deployed current-origin and brain-origin checks; run RU-origin
   independently when access exists.
-- [ ] Stage only authorized files, self-review both diffs, commit and push both
-  working branches. Client commits `7bfd68c` and `ff0577a` are pushed; platform
-  commit/push remains.
+- [x] Stage only authorized files, self-review both diffs, commit and push both
+  working branches. Client source/release/sync commits `78ab9f3`, `cdb8a75` and
+  `521b6bf` are pushed; platform guide commit `d7929a2` is pushed and this
+  tracker finalization follows on the same branch.
 - [ ] Promote through platform `master` and client `main` only with an explicit
   reviewed release action.
 - [x] Publish exact Android/Windows assets and verify anonymous downloads match
   size and SHA-256.
-- [ ] Produce final release handoff with commits, URLs, hashes, backups, deployed
+- [x] Produce final release handoff with commits, URLs, hashes, backups, deployed
   version, PASS/MANUAL/BLOCKED matrix and remaining risks.
 
 ## Current Local Evidence
@@ -677,32 +710,33 @@ targeted and auditable; signing recovery exists without exposing the key.
   `:app:compileDebugKotlin` pass.
 - The physical phone is currently unavailable; all physical-client gates remain
   pending until it is returned.
-- Exact final Android build `1.0.3+10` is production-signed with certificate
+- Exact release Android build `1.0.3+11` is production-signed with certificate
   SHA-256 `0A0602A7DF5D96A0B427909D004F3DDF26DEF86587634BF16694DA8D654B2500`.
   Published SHA-256 values are ARM64
-  `FDB6A27E18FB69ACB44D2FA6B84E1E65431C329D239ED6C6A2C1EF152CB944AA`,
-  ARMv7 `78641659F2CE9A2549FC1F5305FD7CBA2E3CDD741698B458A93D812F6F3FB109`,
-  x86_64 `C6EFEA066D26D7B023591B072BBFE3BC8712F982A0776AB6B22F364EBBDA766C`
+  `1FDA394624ACB2DAD59A629DF23A5D92F621FD75C346EFB81B31AAA4745CEDF6`,
+  ARMv7 `58919AF2820A649200086116687754FCA20ECB44AD69F9C8C511FD9299AA69D4`,
+  x86_64 `F993DAEAEEBB01049E11FFC8E4CD93BA9B41873F417FBC70F7A61391A9C8D52E`
   and universal
-  `0BB4AAB5A7A148C963D2FD4FB29ED973021E3B265E7AEFA0493D6485EE2DE311`.
+  `6A8803001F2517F26FB2B28EF3CD9AEE949B93581F7978B6D8FDD02C48F851B9`.
 - Exact Windows setup SHA-256 is
-  `F2D8103C0F03D0BCDA6D25CC3ACEB97F7E5BAF4F7554310D3909DEEFAC978BCA`;
+  `7EE28D1FF058E3E09FEF05EDB496E6C44B2783235FFB1A4C25A3925E523CF70A`;
   portable ZIP is
-  `AF5EB1E9E6EB522D7436A52BAF06A30128FDB5C5AB2928568A1B402DEA54CBD7`.
+  `66D2081D1674C96F3E9F24EDE4CB3F0909397C49C3CD167FE00241141A97B7A8`.
   Both remain unsigned beta artifacts with mandatory SmartScreen copy.
-- Public GitHub prerelease `v1.0.3-beta.1` contains four Android APKs, Windows
+- Public GitHub prerelease `v1.0.3-beta.2` contains four Android APKs, Windows
   setup, portable ZIP, manifest, checksums and release handoff. A fresh
   anonymous full download of all nine assets matched exact size and SHA-256.
-- Client source/release commits `7bfd68cc2a084037286de071f76748b9d7898b7d`
-  and `ff0577aa7e751323d20a6507c18aff5a66bf1e06` are pushed to
-  `codex/product-readiness-20260804`.
+- Client source/release commits `78ab9f394a7581cf0f1a0c22fe448bbe1e94b089`
+  and `cdb8a755a471bcfc167b3c0d81ef491182b3a16c` are pushed to
+  `codex/product-readiness-20260804`; production-sync metadata commit
+  `521b6bf` is pushed on the same branch.
 - The final Quick Gate rerun produced valid production builds for marketing,
   WebApp and AdminApp. Its app-shell failures were six leaked picker timeout
   timers; native installed-app/process discovery is now lazy and the complete
-  117-test file passes. API lifecycle passes in the repository `.venv` after
-  applying the project Starlette constraint. Playwright was not used because
-  Chrome is the owner-selected browser and automation permission is still
-  pending.
+  118-test file passes. API lifecycle passes in the repository `.venv` after
+  applying the project Starlette constraint. The owner-selected Chrome browser
+  now also passes production mobile guide search, atlas deeplink and install
+  entry QA without horizontal overflow.
 - Disk cleanup moved client release artifacts, Core distributions, generated
   images, frontend outputs, build directories, dependency caches, project
   venv, Pub cache and the client Git LFS store to `E:`. Stable paths on `C:` use
@@ -710,6 +744,11 @@ targeted and auditable; signing recovery exists without exposing the key.
   LFS temporary transfers were deleted. `C:` increased from approximately
   `0.10 GB` to `94.23 GB` free; Git source, history, tracked LFS objects,
   signing material and exact-candidate evidence were retained.
+- The remaining tracked client release archive (`artifacts/releases/pokrov-app`,
+  about 2 GB including history) is now physically on `E:` behind a verified
+  junction at its stable repository path. Android/Windows build trees remain on
+  `E:` as well; current `C:` free space stayed above 90 GB during the `beta.2`
+  rebuild and publication.
 - Post-cleanup verification passed against the junctioned environment: client
   Git resolves its LFS object and temp directories on `E:`, platform lifecycle
   smoke is `1/1`, the P0/client sequence is `27/27`, the paywall sequence is
@@ -728,6 +767,17 @@ targeted and auditable; signing recovery exists without exposing the key.
   pricing is exactly `99/239/669/1199/1699/1999 RUB`, `/install` contains the
   exact ARM64 and Windows setup links, and the refreshed public GitHub handoff
   SHA-256 matches the client-owned file.
+- `beta.2` runtime handoff and backend/static redeploy pass. Brain release
+  snapshot `/root/portal_bot.deploy-backups/20260813T123454Z-34940` is retained;
+  static release `20260813124114` is live. Caddy, API, bot, helpbot,
+  feedbackbot and worker are active. Brain-origin signed-session smoke returns
+  the exact split APK and Windows setup URLs/hashes, and a no-credential full
+  download of every public asset matches `SHA256SUMS.txt`. The final public
+  production-sync handoff is `8775` bytes with GitHub digest
+  `84417b6630543faf589a5d2c3a61a870224d8626e8601ece0a2e60e46ee05caa`.
+- Platform task-first guide source commit
+  `d7929a221c03f3ca1c377f83ae3eb4be4d7c4115` and client production-sync
+  metadata commit `521b6bff009cac51b94f3fe62cfe396fc732b6e9` are pushed.
 - Post-backup production account cleanup was fail-closed. The one install with
   an explicit Codex QA marker is already linked to an identity and therefore is
   not eligible for guarded test-user deletion; the owner-linked support/Huawei
