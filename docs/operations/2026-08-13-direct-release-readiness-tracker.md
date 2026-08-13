@@ -720,6 +720,20 @@ targeted and auditable; signing recovery exists without exposing the key.
   token or bearer token; remaining generic matches are explicit redaction and
   fake-secret test fixtures. Retained visual/signing evidence totals only
   `3,633,026` bytes and is not a discarded build cache.
+- Platform commit `48709207def5d34515db6ed52a7805072d5dd5f5` and client
+  runtime-metadata commit `cef44149dab283f5c9d5a28774b077b07417a612`
+  are pushed. Production release handoff sync, backend deploy, static deploy and
+  post-deploy verification pass; Caddy plus portal API/bot/helpbot/feedbackbot/
+  worker are active and the backend rollback snapshot is retained. Live public
+  pricing is exactly `99/239/669/1199/1699/1999 RUB`, `/install` contains the
+  exact ARM64 and Windows setup links, and the refreshed public GitHub handoff
+  SHA-256 matches the client-owned file.
+- Post-backup production account cleanup was fail-closed. The one install with
+  an explicit Codex QA marker is already linked to an identity and therefore is
+  not eligible for guarded test-user deletion; the owner-linked support/Huawei
+  profile is also retained. The inactive-user audit reports `safe_garbage_total
+  = 0`, so no production account or related data was deleted and no guard was
+  bypassed.
 
 ## Canonical Owners And Evidence Pointers
 
