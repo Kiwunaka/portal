@@ -16,6 +16,8 @@ RELEASE_KEYS = (
     "APP_ANDROID_APK_URL",
     "APP_ANDROID_APK_ARM64_URL",
     "APP_ANDROID_APK_ARMEABI_V7A_URL",
+    "APP_ANDROID_APK_X86_64_URL",
+    "APP_ANDROID_APK_UNIVERSAL_URL",
     "APP_ANDROID_MIRROR_URL",
     "APP_ANDROID_VERSION",
     "APP_ANDROID_SHA256",
@@ -24,6 +26,10 @@ RELEASE_KEYS = (
     "APP_ANDROID_ARM64_SIZE_BYTES",
     "APP_ANDROID_ARMEABI_V7A_SHA256",
     "APP_ANDROID_ARMEABI_V7A_SIZE_BYTES",
+    "APP_ANDROID_X86_64_SHA256",
+    "APP_ANDROID_X86_64_SIZE_BYTES",
+    "APP_ANDROID_UNIVERSAL_SHA256",
+    "APP_ANDROID_UNIVERSAL_SIZE_BYTES",
     "APP_WINDOWS_EXE_URL",
     "APP_WINDOWS_MIRROR_URL",
     "APP_WINDOWS_VERSION",
@@ -99,6 +105,8 @@ def _read_release_metadata(path: Path) -> dict[str, str]:
         _set_if_blank("APP_ANDROID_APK_URL", android.get("apk_url", ""))
         _set_if_blank("APP_ANDROID_APK_ARM64_URL", android.get("apk_arm64_url", ""))
         _set_if_blank("APP_ANDROID_APK_ARMEABI_V7A_URL", android.get("apk_armeabi_v7a_url", ""))
+        _set_if_blank("APP_ANDROID_APK_X86_64_URL", android.get("apk_x86_64_url", ""))
+        _set_if_blank("APP_ANDROID_APK_UNIVERSAL_URL", android.get("apk_universal_url", ""))
         _set_if_blank("APP_ANDROID_MIRROR_URL", android.get("mirror_url", ""))
         _set_if_blank("APP_ANDROID_VERSION", payload.get("version", ""))
         _set_if_blank("APP_ANDROID_SHA256", android.get("sha256", ""))
@@ -117,6 +125,14 @@ def _read_release_metadata(path: Path) -> dict[str, str]:
                     _set_if_blank("APP_ANDROID_APK_ARMEABI_V7A_URL", variant.get("url", ""))
                     _set_if_blank("APP_ANDROID_ARMEABI_V7A_SHA256", variant.get("sha256", ""))
                     _set_if_blank("APP_ANDROID_ARMEABI_V7A_SIZE_BYTES", variant.get("size_bytes", variant.get("size", "")))
+                elif abi == "x86_64":
+                    _set_if_blank("APP_ANDROID_APK_X86_64_URL", variant.get("url", ""))
+                    _set_if_blank("APP_ANDROID_X86_64_SHA256", variant.get("sha256", ""))
+                    _set_if_blank("APP_ANDROID_X86_64_SIZE_BYTES", variant.get("size_bytes", variant.get("size", "")))
+                elif abi == "universal":
+                    _set_if_blank("APP_ANDROID_APK_UNIVERSAL_URL", variant.get("url", ""))
+                    _set_if_blank("APP_ANDROID_UNIVERSAL_SHA256", variant.get("sha256", ""))
+                    _set_if_blank("APP_ANDROID_UNIVERSAL_SIZE_BYTES", variant.get("size_bytes", variant.get("size", "")))
         _set_if_blank("APP_WINDOWS_EXE_URL", windows.get("exe_url", ""))
         _set_if_blank("APP_WINDOWS_MIRROR_URL", windows.get("mirror_url", ""))
         _set_if_blank("APP_WINDOWS_VERSION", payload.get("version", ""))
@@ -136,6 +152,8 @@ def _validate_release_env(values: dict[str, str]) -> list[str]:
         or str(values.get("APP_ANDROID_APK_URL", "")).strip()
         or str(values.get("APP_ANDROID_APK_ARM64_URL", "")).strip()
         or str(values.get("APP_ANDROID_APK_ARMEABI_V7A_URL", "")).strip()
+        or str(values.get("APP_ANDROID_APK_UNIVERSAL_URL", "")).strip()
+        or str(values.get("APP_ANDROID_APK_X86_64_URL", "")).strip()
         or str(values.get("APP_ANDROID_MIRROR_URL", "")).strip()
     )
     windows_primary = (

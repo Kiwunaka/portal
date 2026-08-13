@@ -51,7 +51,16 @@ function dateText(value: string | null): string {
 }
 
 function userName(row: AdminUserListRow): string {
-  return row.displayName || (row.username ? `@${row.username}` : `Пользователь ${row.tgId}`);
+  if (row.linkedTelegramUsername) return `@${row.linkedTelegramUsername}`;
+  if (row.username && !row.username.toLowerCase().startsWith("app_")) return `@${row.username}`;
+  return row.displayName || row.deviceName || `Пользователь ${row.tgId}`;
+}
+
+function deviceLabel(row: AdminUserListRow): string {
+  const device = row.deviceName || row.displayName;
+  const platform = row.appPlatform ? row.appPlatform.toUpperCase() : "";
+  if (device && platform) return `${device} · ${platform}`;
+  return device || platform || "Устройство не указано";
 }
 
 export function UserList({
@@ -166,6 +175,7 @@ export function UserList({
                     <td className="px-3 py-2 align-middle">
                       <button type="button" aria-current={isSelected ? "true" : undefined} onClick={() => onSelect(row.tgId)} className="min-h-10 text-left font-semibold text-[color:var(--atlas-text)] hover:underline">
                         {userName(row)}
+                        <span className="block max-w-56 truncate text-[10px] font-normal text-[color:var(--atlas-text-muted)]">{deviceLabel(row)}</span>
                         <span className="block font-mono text-[10px] font-normal text-[color:var(--atlas-text-muted)]">TG {row.tgId}</span>
                       </button>
                     </td>

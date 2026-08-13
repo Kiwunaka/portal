@@ -12,11 +12,10 @@ import {
   type PromoSlotCatalogSlot,
 } from "@/lib/api";
 import { fmtRuDate } from "@/lib/date-format";
-import { getAccessMatrix, getPromoSlotsCatalog, getTariffPlans } from "@/lib/portal";
+import { getPromoSlotsCatalog, getTariffPlans } from "@/lib/portal";
 import { Check, Copy, KeyRound, LayoutTemplate, RefreshCw, Save, Search, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-const ACCESS_MATRIX = getAccessMatrix();
 const PROMO_CATALOG = getPromoSlotsCatalog();
 const DEFAULT_PROMO_SLOTS: PromoSlotCatalogSlot[] = PROMO_CATALOG.slots.map((slot) => ({
   id: slot.id,
@@ -68,8 +67,21 @@ function createAssignmentState(
       enabled: existing?.enabled ?? Boolean(contentMap.get(nextContentId)?.default_enabled),
       title: existing?.title ?? "",
       body: existing?.body ?? "",
+      badge_label: existing?.badge_label ?? "",
+      image_url: existing?.image_url ?? "",
+      image_layout: existing?.image_layout ?? "logo",
       cta_label: existing?.cta_label ?? "",
       cta_href: existing?.cta_href ?? "",
+      accent_color: existing?.accent_color ?? "",
+      background_color: existing?.background_color ?? "",
+      text_color: existing?.text_color ?? "",
+      button_color: existing?.button_color ?? "",
+      button_text_color: existing?.button_text_color ?? "",
+      placement: existing?.placement ?? "",
+      dismissible: existing?.dismissible ?? true,
+      whole_card_clickable: existing?.whole_card_clickable ?? true,
+      starts_at: existing?.starts_at ?? "",
+      ends_at: existing?.ends_at ?? "",
       contexts: existing?.contexts?.length ? [...existing.contexts] : [...slot.contexts],
       sort_order: existing?.sort_order ?? index + 1,
     };
@@ -101,6 +113,8 @@ function formatContextLabel(value: string): string {
     session: "есть сессия",
     ticketed: "после обращения",
     trial_premium: "тестовый доступ",
+    bonus_premium: "бонусный премиум",
+    paid_unlimited: "оплаченный премиум",
   };
   return labels[value] || value;
 }
@@ -282,10 +296,10 @@ export default function AdminPromosPage() {
   return (
     <section className="space-y-5">
       <article className={adminPanelClass("neutral")}>
-        <h2 className="font-display text-xl font-bold">Ключи доступа и подсказки</h2>
+          <h2 className="font-display text-xl font-bold">Ключи доступа и кампании</h2>
         <p className="mt-2 text-sm text-[color:var(--atlas-text-soft)]">
           Здесь оператор выпускает ключи доступа, проверяет уже выданные ключи, сверяет тарифы и управляет
-          подсказками, которые видит пользователь в кабинете.
+          кампаниями, которые видит пользователь в приложении и кабинете.
         </p>
       </article>
 
@@ -303,13 +317,10 @@ export default function AdminPromosPage() {
         </article>
 
         <article className={adminPanelClass("neutral")}>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--atlas-text-soft)]">Бесплатный режим</p>
-          <h3 className="mt-2 font-display text-2xl font-semibold">
-            {ACCESS_MATRIX.free_tier.location_code} • {ACCESS_MATRIX.free_tier.traffic_limit_gb} ГБ
-          </h3>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-[color:var(--atlas-text-soft)]">После триала</p>
+          <h3 className="mt-2 font-display text-2xl font-semibold">Без бесплатной ноды</h3>
           <p className="mt-3 text-sm leading-6 text-[color:var(--atlas-text-soft)]">
-            Сброс раз в месяц, {ACCESS_MATRIX.free_tier.speed_limit_mbps} Мбит/с на IP, до{" "}
-            {ACCESS_MATRIX.free_tier.device_limit} устройства. После тестового периода пользователь остаётся здесь.
+            Аккаунт сохраняет вход, поддержку и оплату, но не получает VPN-ноду, пока не появится новый платный доступ.
           </p>
         </article>
 
@@ -465,7 +476,7 @@ export default function AdminPromosPage() {
             <LayoutTemplate size={20} />
           </div>
           <div>
-            <h2 className="font-display text-xl font-bold">Подсказки в кабинете</h2>
+            <h2 className="font-display text-xl font-bold">Реклама и подсказки</h2>
             <p className="text-xs text-[color:var(--atlas-text-soft)]">
               Версия {remoteVersion} • настройки {remoteAvailable ? "загружены" : "из резерва"}
             </p>
@@ -493,8 +504,8 @@ export default function AdminPromosPage() {
         </div>
 
         <p className="mb-4 text-sm text-[color:var(--atlas-text-soft)]">
-          Здесь выбирается, какие подсказки показывать в разных местах кабинета. Если внешние настройки
-          недоступны, кабинет использует резервный режим: <strong>{formatFallbackBehavior(fallbackBehavior)}</strong>.
+          Здесь настраивается удалённый блок приложения и кабинета: аудитория, текст, картинка, ссылка,
+          цвета, расписание и крестик. Изменения приходят без обновления клиента. Резервный режим: <strong>{formatFallbackBehavior(fallbackBehavior)}</strong>.
         </p>
 
         <div className="space-y-4">
@@ -595,14 +606,140 @@ export default function AdminPromosPage() {
                   </label>
                 </div>
 
-                <label className="inline-flex items-center gap-2 text-sm text-[color:var(--atlas-text-soft)]">
-                  <input
-                    type="checkbox"
-                    checked={assignment.enabled}
-                    onChange={(event) => updateAssignment(assignment.slot_id, { enabled: event.target.checked })}
-                  />
-                  Показывать подсказку
-                </label>
+                <div className="grid gap-3 lg:grid-cols-[1fr,180px]">
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">Картинка или логотип (HTTPS)</span>
+                    <input
+                      value={assignment.image_url || ""}
+                      onChange={(event) => updateAssignment(assignment.slot_id, { image_url: event.target.value })}
+                      placeholder="https://cdn.example/banner.webp"
+                      className="w-full rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-3 text-sm outline-none"
+                    />
+                  </label>
+
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">Вид картинки</span>
+                    <select
+                      value={assignment.image_layout || "logo"}
+                      onChange={(event) => updateAssignment(assignment.slot_id, { image_layout: event.target.value })}
+                      className="w-full rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-3 text-sm outline-none"
+                    >
+                      <option value="logo">Логотип слева</option>
+                      <option value="banner">Баннер во всю ширину</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="grid gap-3 lg:grid-cols-3">
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">Метка</span>
+                    <input
+                      value={assignment.badge_label || ""}
+                      onChange={(event) => updateAssignment(assignment.slot_id, { badge_label: event.target.value })}
+                      placeholder="Предложение"
+                      className="w-full rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-3 text-sm outline-none"
+                    />
+                  </label>
+
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">Начало</span>
+                    <input
+                      type="datetime-local"
+                      value={assignment.starts_at || ""}
+                      onChange={(event) => updateAssignment(assignment.slot_id, { starts_at: event.target.value })}
+                      className="w-full rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-3 text-sm outline-none"
+                    />
+                  </label>
+
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">Окончание</span>
+                    <input
+                      type="datetime-local"
+                      value={assignment.ends_at || ""}
+                      onChange={(event) => updateAssignment(assignment.slot_id, { ends_at: event.target.value })}
+                      className="w-full rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] px-3 py-3 text-sm outline-none"
+                    />
+                  </label>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                  {([
+                    ["Акцент", "accent_color"],
+                    ["Фон", "background_color"],
+                    ["Текст", "text_color"],
+                    ["Кнопка", "button_color"],
+                    ["Текст кнопки", "button_text_color"],
+                  ] as const).map(([label, field]) => (
+                    <label key={field} className="text-sm">
+                      <span className="mb-1 block text-xs uppercase tracking-[0.12em] text-[color:var(--atlas-text-soft)]">{label}</span>
+                      <input
+                        type="color"
+                        value={assignment[field] || "#0B6B53"}
+                        onChange={(event) => updateAssignment(assignment.slot_id, { [field]: event.target.value })}
+                        className="h-11 w-full rounded-xl border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-1"
+                      />
+                    </label>
+                  ))}
+                </div>
+
+                <div
+                  className="overflow-hidden rounded-2xl border p-4"
+                  style={{
+                    backgroundColor: assignment.background_color || undefined,
+                    borderColor: assignment.accent_color || undefined,
+                    color: assignment.text_color || undefined,
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    {assignment.image_url && assignment.image_layout !== "banner" ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={assignment.image_url} alt="" className="h-12 w-12 rounded-xl object-contain" />
+                    ) : null}
+                    <div className="min-w-0 flex-1">
+                      {assignment.badge_label ? <p className="text-[10px] font-bold uppercase">{assignment.badge_label}</p> : null}
+                      <p className="font-display text-base font-bold">{assignment.title || "Заголовок рекламы"}</p>
+                      <p className="mt-1 text-xs opacity-70">{assignment.body || "Короткий текст предложения"}</p>
+                    </div>
+                    {assignment.cta_label ? (
+                      <span
+                        className="rounded-xl px-4 py-2 text-xs font-bold"
+                        style={{
+                          backgroundColor: assignment.button_color || assignment.accent_color || undefined,
+                          color: assignment.button_text_color || undefined,
+                        }}
+                      >
+                        {assignment.cta_label}
+                      </span>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-5 text-sm text-[color:var(--atlas-text-soft)]">
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={assignment.enabled}
+                      onChange={(event) => updateAssignment(assignment.slot_id, { enabled: event.target.checked })}
+                    />
+                    Показывать
+                  </label>
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={assignment.dismissible !== false}
+                      onChange={(event) => updateAssignment(assignment.slot_id, { dismissible: event.target.checked })}
+                    />
+                    Крестик закрытия
+                  </label>
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={assignment.whole_card_clickable !== false}
+                      onChange={(event) => updateAssignment(assignment.slot_id, { whole_card_clickable: event.target.checked })}
+                    />
+                    Весь блок — ссылка
+                  </label>
+                </div>
               </div>
             );
           })}

@@ -826,27 +826,6 @@ def _bytes_to_gb(value: int) -> float:
     return round(float(max(0, int(value or 0))) / float(1024**3), 3)
 
 
-def _estimate_active_users_proxy(
-    *,
-    live_connections: int,
-    live_nodes: int,
-    saw_ip_count: bool,
-    observed_ip_count_24h: int | None,
-) -> tuple[int, str]:
-    connections = max(0, int(live_connections or 0))
-    nodes = max(0, int(live_nodes or 0))
-    observed = max(0, int(observed_ip_count_24h or 0))
-    if saw_ip_count:
-        if connections <= 0:
-            return 0, "panel_ip_count"
-        if observed > 0:
-            return min(connections, observed), "panel_ip_count_capped_by_unique_ip_24h"
-        return connections, "panel_ip_count"
-    if nodes > 0:
-        return nodes, "online_nodes"
-    return 0, "none"
-
-
 async def _admin_user_keys_state(user: User, *, nodes: list) -> dict[str, Any]:
     allowed_nodes = _nodes_for_user(user, nodes)
     allowed_by_code = {str(getattr(n, "code", "") or ""): n for n in allowed_nodes}
@@ -1061,6 +1040,7 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
             "linked_telegram_id": int(user.linked_telegram_id) if getattr(user, "linked_telegram_id", None) is not None else None,
             "linked_telegram_username": getattr(user, "linked_telegram_username", None),
             "app_install_id": getattr(user, "app_install_id", None),
+            "app_device_name": getattr(user, "app_device_name", None),
             "app_platform": getattr(user, "app_platform", None),
             "app_last_seen_at": _safe_iso(getattr(user, "app_last_seen_at", None)),
             "observer_state": observer_payload.get("state", "ok"),

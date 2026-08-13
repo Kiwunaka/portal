@@ -61,11 +61,17 @@ async def main():
             .order_by(User.created_at.asc())
             .all()
         )
+        requested_tg_id = int(os.getenv('SYNC_TG_ID', '0') or 0)
+        if requested_tg_id:
+            all_users = [u for u in all_users if int(u.tg_id) == requested_tg_id]
     finally:
         s.close()
 
     if not nodes:
         print('No nodes in DB.')
+        return 2
+    if not all_users:
+        print('No matching users in DB.')
         return 2
     has_free_pool = any('free' in ((getattr(n, 'code', '') or '').lower()) for n in nodes)
     if not has_free_pool:
@@ -141,6 +147,7 @@ def main() -> int:
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
     ap.add_argument("--concurrency", type=int, default=6)
     ap.add_argument("--passes", type=int, default=2)
+    ap.add_argument("--tg-id", type=int, default=0, help="Limit sync to one exact user.")
     args = ap.parse_args()
 
     pw = os.getenv("NODE_PASS_BRAIN", "").strip() or _parse_passwords(Path(args.passwords))
@@ -170,7 +177,10 @@ def main() -> int:
         finally:
             sftp.close()
 
-        env = f"export SYNC_CONCURRENCY={int(args.concurrency)} SYNC_PASSES={int(args.passes)};"
+        env = (
+            f"export SYNC_CONCURRENCY={int(args.concurrency)} "
+            f"SYNC_PASSES={int(args.passes)} SYNC_TG_ID={int(args.tg_id)};"
+        )
         cmd = f"cd /root/portal_bot && {env} . venv/bin/activate && python /root/portal_bot/portal_sync_users_to_nodes.py"
         code, out, err = _run(ssh, cmd, timeout=3600)
         if out.strip():

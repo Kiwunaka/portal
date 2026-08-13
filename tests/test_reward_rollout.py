@@ -9,7 +9,7 @@ from pathlib import Path
 import pytest
 
 from scripts.reward_rollout import (
-    PAID_WEEKLY_V1,
+    PAID_FORTNIGHTLY_DISCOUNTS_V3,
     ConfigMutation,
     InstanceReport,
     RolloutRuntimeError,
@@ -100,7 +100,7 @@ class FakeRuntime:
         if self.readback_override is not None:
             return deepcopy(self.readback_override)
         if self.configure_calls:
-            return deepcopy(PAID_WEEKLY_V1)
+            return deepcopy(PAID_FORTNIGHTLY_DISCOUNTS_V3)
         return deepcopy(self.previous_wheel_config)
 
 
@@ -202,7 +202,7 @@ def test_configure_snapshots_and_hashes_exact_preset_without_secrets(tmp_path: P
             "--candidate",
             CANDIDATE,
             "--confirm-apply",
-            "paid_weekly_v1",
+            "paid_fortnightly_discounts_v3",
             "--evidence-dir",
             str(tmp_path),
         ],
@@ -210,10 +210,12 @@ def test_configure_snapshots_and_hashes_exact_preset_without_secrets(tmp_path: P
     )
 
     assert result.status == "PASS"
-    assert result.readback == PAID_WEEKLY_V1
+    assert result.readback == PAID_FORTNIGHTLY_DISCOUNTS_V3
     evidence = json.loads((tmp_path / "wheel-config.json").read_text(encoding="utf-8"))
-    expected_hash = hashlib.sha256(canonical_json(PAID_WEEKLY_V1)).hexdigest()
-    assert evidence["preset"] == "paid_weekly_v1"
+    expected_hash = hashlib.sha256(
+        canonical_json(PAID_FORTNIGHTLY_DISCOUNTS_V3)
+    ).hexdigest()
+    assert evidence["preset"] == "paid_fortnightly_discounts_v3"
     assert evidence["sha256"] == expected_hash
     assert evidence["readback"]["sha256"] == expected_hash
     assert evidence["previous"]["key_count"] == 2
@@ -230,7 +232,7 @@ def test_configure_fails_closed_when_exact_readback_does_not_match(tmp_path: Pat
             "--candidate",
             CANDIDATE,
             "--confirm-apply",
-            "paid_weekly_v1",
+            "paid_fortnightly_discounts_v3",
             "--evidence-dir",
             str(tmp_path),
         ],
@@ -251,7 +253,7 @@ def test_configure_requires_completed_reward_state_backfill(tmp_path: Path) -> N
             "--candidate",
             CANDIDATE,
             "--confirm-apply",
-            "paid_weekly_v1",
+            "paid_fortnightly_discounts_v3",
             "--evidence-dir",
             str(tmp_path),
         ],
@@ -264,7 +266,9 @@ def test_configure_requires_completed_reward_state_backfill(tmp_path: Path) -> N
 
 
 def test_verify_requires_backfill_state_and_exact_config(tmp_path: Path) -> None:
-    runtime = fake_runtime(previous_wheel_config=deepcopy(PAID_WEEKLY_V1))
+    runtime = fake_runtime(
+        previous_wheel_config=deepcopy(PAID_FORTNIGHTLY_DISCOUNTS_V3)
+    )
 
     result = main(
         ["verify", "--candidate", CANDIDATE, "--evidence-dir", str(tmp_path)],

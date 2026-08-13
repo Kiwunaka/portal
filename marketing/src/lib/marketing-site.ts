@@ -70,7 +70,7 @@ const START_PLAN = PUBLIC_TARIFF_PLANS[0] || null;
 export const PAID_REWARDS_MARKETING_ENABLED = process.env.NEXT_PUBLIC_PAID_REWARDS_MARKETING_ENABLED === "1";
 
 export const PAID_REWARDS_MARKETING_COPY =
-  "Для активной платной подписки доступны еженедельное колесо бонусов и календарь активности. В колесе возможен редкий джекпот +30 дней.";
+  "Для активной платной подписки доступно колесо бонусов раз в 14 дней. В нём есть скидки, бонусные дни и редкий джекпот +30 дней; календарь пока отключён.";
 
 export const MARKETING_FEATURE_LIST = [
   "Доступ к привычным сервисам на Android и Windows",

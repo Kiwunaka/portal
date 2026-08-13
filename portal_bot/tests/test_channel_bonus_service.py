@@ -6,8 +6,11 @@ import sys
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 from sqlalchemy.exc import IntegrityError
+import pytest
+from fastapi import HTTPException
 
 
 PORTAL_BOT_DIR = Path(__file__).resolve().parents[1]
@@ -38,6 +41,7 @@ def _load_api_and_service(monkeypatch, tmp_path: Path):
         "tickets_repo",
         "events_service",
         "economy_service",
+        "rewards_service",
         "offers_service",
         "pay_attempts_service",
         "points_service",
@@ -52,6 +56,19 @@ def _load_api_and_service(monkeypatch, tmp_path: Path):
     api = importlib.import_module("api")
     service = importlib.import_module("channel_bonus_service")
     return api, service
+
+
+def _allow_paid_access(monkeypatch) -> None:
+    import rewards_service
+
+    monkeypatch.setattr(
+        rewards_service,
+        "evaluate_active_paid",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            eligible=True,
+            reason="eligible",
+        ),
+    )
 
 
 def test_channel_subscriber_status_reports_link_required_and_claim_state(monkeypatch, tmp_path):
@@ -106,6 +123,7 @@ def test_channel_subscriber_status_reports_link_required_and_claim_state(monkeyp
 
 def test_claim_channel_bonus_updates_user_and_returns_public_shape(monkeypatch, tmp_path):
     api, service = _load_api_and_service(monkeypatch, tmp_path)
+    _allow_paid_access(monkeypatch)
     session = api.SessionLocal()
     now = datetime(2026, 4, 13, tzinfo=timezone.utc).replace(tzinfo=None)
 
@@ -173,8 +191,73 @@ def test_claim_channel_bonus_updates_user_and_returns_public_shape(monkeypatch, 
         session.close()
 
 
+def test_trial_channel_bonus_is_rejected_before_membership_lookup(monkeypatch, tmp_path):
+    api, service = _load_api_and_service(monkeypatch, tmp_path)
+    session = api.SessionLocal()
+    now = datetime(2026, 4, 13, tzinfo=timezone.utc).replace(tzinfo=None)
+    member_checks = 0
+
+    try:
+        user = api.User(
+            tg_id=9000000000012,
+            username="app_trial_bonus_locked",
+            uuid="22222222-2222-2222-2222-222222222232",
+            email="APP_9000000000012",
+            sub_type="TRIAL",
+            current_plan_code="trial",
+            created_at=now,
+            expiry_at=now + api.timedelta(days=5),
+            is_active=True,
+            tos_accepted=True,
+            is_app_user=True,
+            app_install_id="install-trial-bonus-locked",
+            linked_telegram_id=777012,
+        )
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+
+        from models import CampaignSend
+
+        session.add(
+            CampaignSend(
+                tg_id=user.tg_id,
+                campaign_key="opening_premium_14d",
+                sent_at=now,
+            )
+        )
+        session.commit()
+
+        async def fake_is_channel_member(_channel: str, _tg_id: int):
+            nonlocal member_checks
+            member_checks += 1
+            return True, "member"
+
+        with pytest.raises(HTTPException) as raised:
+            asyncio.run(
+                service.claim_channel_bonus(
+                    s=session,
+                    user=user,
+                    tg_id=int(user.tg_id),
+                    public_channel="pokrov_vpn",
+                    bonus_days=5,
+                    opening_bonus_campaign_key="opening_premium_14d",
+                    subscriber_campaign_key="channel_subscriber_v1",
+                    points_expiry_days=90,
+                    is_channel_member=fake_is_channel_member,
+                )
+            )
+
+        assert raised.value.status_code == 403
+        assert raised.value.detail["code"] == "active_paid_required"
+        assert member_checks == 0
+    finally:
+        session.close()
+
+
 def test_api_and_bot_projections_converge_on_one_account_grant(monkeypatch, tmp_path):
     api, service = _load_api_and_service(monkeypatch, tmp_path)
+    _allow_paid_access(monkeypatch)
     from models import Account, EntitlementGrant
 
     session = api.SessionLocal()
@@ -270,6 +353,7 @@ def test_api_and_bot_projections_converge_on_one_account_grant(monkeypatch, tmp_
 
 def test_concurrent_channel_claim_uniqueness_conflict_returns_canonical_grant(monkeypatch, tmp_path):
     api, service = _load_api_and_service(monkeypatch, tmp_path)
+    _allow_paid_access(monkeypatch)
     from models import Account, EntitlementGrant
 
     session = api.SessionLocal()

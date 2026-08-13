@@ -71,7 +71,7 @@ def _seed_account(session, *, suffix: str, sub_type: str = "FREE"):
     return account, device, user
 
 
-def test_reservation_is_seven_days_and_does_not_start_trial_clock(tmp_path: Path) -> None:
+def test_reservation_is_five_days_and_does_not_start_trial_clock(tmp_path: Path) -> None:
     from economy_service import read_trial_projection, reserve_trial
 
     engine, session = _session(tmp_path)
@@ -105,16 +105,16 @@ def test_reservation_is_seven_days_and_does_not_start_trial_clock(tmp_path: Path
     assert second_device_replay.id == grant.id
     assert grant.status == "reserved"
     assert grant.reserved_at == NOW
-    assert grant.reservation_expires_at == NOW + timedelta(days=7)
+    assert grant.reservation_expires_at == NOW + timedelta(days=5)
     assert grant.activated_at is None
     assert grant.expires_at is None
     assert grant.duration_days == 5
     assert user.current_plan_code == "trial"
-    assert user.expiry_at == NOW + timedelta(days=7)
+    assert user.expiry_at == NOW + timedelta(days=5)
     assert projection == {
         "state": "reserved",
         "reserved_at": NOW.isoformat(),
-        "reservation_expires_at": (NOW + timedelta(days=7)).isoformat(),
+        "reservation_expires_at": (NOW + timedelta(days=5)).isoformat(),
         "activated_at": None,
         "expires_at": None,
         "duration_days": 5,
@@ -266,7 +266,7 @@ def test_stale_trial_projection_reconciliation_preserves_exact_bounded_reservati
     assert grant.status == "reserved"
     assert user.sub_type == "FREE"
     assert user.current_plan_code == "trial"
-    assert user.expiry_at == NOW + timedelta(days=7)
+    assert user.expiry_at == NOW + timedelta(days=5)
     session.close()
     engine.dispose()
 
@@ -288,8 +288,29 @@ def test_rebuild_preserves_reserved_trial_when_free_tier_is_disabled(monkeypatch
     assert grant.status == "reserved"
     assert user.sub_type == "FREE"
     assert user.current_plan_code == "trial"
-    assert user.expiry_at == NOW + timedelta(days=7)
+    assert user.expiry_at == NOW + timedelta(days=5)
     assert user_uses_free_pool(user, now=NOW + timedelta(minutes=1)) is False
+    session.close()
+    engine.dispose()
+
+
+def test_legacy_seven_day_reservation_is_shrunk_with_its_user_projection(tmp_path: Path) -> None:
+    from economy_service import normalize_reserved_trial_deadlines, reserve_trial
+
+    engine, session = _session(tmp_path)
+    account, device, user = _seed_account(session, suffix="11")
+    grant = reserve_trial(session, account_id=account.id, device_id=device.id, now=NOW)
+    grant.reservation_expires_at = NOW + timedelta(days=7)
+    user.expiry_at = NOW + timedelta(days=7)
+    session.flush()
+
+    result = normalize_reserved_trial_deadlines(session, now=NOW + timedelta(hours=1))
+
+    assert result == {"corrected": 1, "projected": 1}
+    assert grant.reservation_expires_at == NOW + timedelta(days=5)
+    assert user.expiry_at == NOW + timedelta(days=5)
+    replay = normalize_reserved_trial_deadlines(session, now=NOW + timedelta(hours=2))
+    assert replay == {"corrected": 0, "projected": 0}
     session.close()
     engine.dispose()
 
@@ -311,7 +332,7 @@ def test_reconciliation_recovers_retired_projection_from_bounded_trial(monkeypat
     assert grant.status == "reserved"
     assert user.sub_type == "FREE"
     assert user.current_plan_code == "trial"
-    assert user.expiry_at == NOW + timedelta(days=7)
+    assert user.expiry_at == NOW + timedelta(days=5)
     session.close()
     engine.dispose()
 

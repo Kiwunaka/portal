@@ -25,7 +25,7 @@ export default function TelegramPage() {
       heroKicker="5 дней в приложении + 5 дней за Telegram"
       heroTitle="Заберите до 10 дней POKROV на старте"
       heroSubtitle={TELEGRAM_START_PROMISE}
-      scenarioTitle="Одна подписка на канал — ещё 5 дней к бесплатному старту"
+      scenarioTitle="Первая оплата, подписка на канал — и ещё 5 дней"
       scenarioBody="Плюс обновления сервиса и быстрый вход в поддержку."
       scenarioCards={[
         {

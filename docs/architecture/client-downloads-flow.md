@@ -27,6 +27,12 @@ lists the default `arm64-v8a` file and the legacy `armeabi-v7a` file with URL,
 SHA-256, and size metadata. The backend returns `update_policy: none` unless
 the client sends a matching `platform` and `current_version`.
 
+The main bot follows the same consumer hierarchy: its primary Android button
+uses `APP_ANDROID_APK_ARM64_URL` when present, then the compatibility
+`APP_ANDROID_APK_URL`. Configured ARMv7 and universal URLs appear as clearly
+secondary buttons. The x86_64 artifact remains available through the cabinet/API
+for emulator use and is not promoted to normal phone users.
+
 ## Handoff Source
 
 Client release metadata lives in

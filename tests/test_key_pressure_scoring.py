@@ -170,6 +170,9 @@ def test_internal_xray_stats_records_rollup_sources_and_pressure(monkeypatch, tm
 
 
 def test_internal_xray_stats_queues_free_soft_transition_exactly_at_binary_five_gib(monkeypatch, tmp_path) -> None:
+    # Consumer free delivery is fail-closed by default; this is rollback-path
+    # coverage for the legacy threshold reconciler.
+    monkeypatch.setenv("FREE_TIER_ENABLED", "true")
     monkeypatch.delenv("NODE_AGENT_METRICS_SECRET", raising=False)
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)

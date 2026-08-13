@@ -53,6 +53,8 @@ Canonical asset shape:
 
 - `pokrov-android-arm64-v8a.apk`
 - `pokrov-android-armeabi-v7a.apk`
+- `pokrov-android-x86_64.apk` for LDPlayer and other x86_64 emulators
+- `pokrov-android-universal.apk` as the larger fallback when ABI is unknown
 - `pokrov-windows-setup-x64.exe`
 - `SHA256SUMS.txt`
 - optional `release-manifest.json`
@@ -138,6 +140,18 @@ Current backend env/config fields:
 - `APP_ANDROID_MIN_SUPPORTED_VERSION`
 - `APP_ANDROID_SHA256`
 - `APP_ANDROID_SIZE_BYTES`
+- `APP_ANDROID_APK_ARM64_URL`
+- `APP_ANDROID_ARM64_SHA256`
+- `APP_ANDROID_ARM64_SIZE_BYTES`
+- `APP_ANDROID_APK_ARMEABI_V7A_URL`
+- `APP_ANDROID_ARMEABI_V7A_SHA256`
+- `APP_ANDROID_ARMEABI_V7A_SIZE_BYTES`
+- `APP_ANDROID_APK_X86_64_URL`
+- `APP_ANDROID_X86_64_SHA256`
+- `APP_ANDROID_X86_64_SIZE_BYTES`
+- `APP_ANDROID_APK_UNIVERSAL_URL`
+- `APP_ANDROID_UNIVERSAL_SHA256`
+- `APP_ANDROID_UNIVERSAL_SIZE_BYTES`
 - `APP_ANDROID_RELEASE_NOTES`
 - `APP_ANDROID_RELEASE_NOTES_URL`
 - `APP_ANDROID_PUBLISHED_AT`

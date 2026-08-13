@@ -239,6 +239,43 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
+    def _promote_test_user_to_paid(self, tg_id: int = 1001) -> None:
+        from account_foundation_service import ensure_user_account_foundation
+        from db import SessionLocal
+        from models import EntitlementGrant, User
+
+        now = _utcnow().replace(microsecond=0)
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=tg_id).one()
+            ensure_user_account_foundation(s, user, now=now)
+            user.sub_type = "PAID"
+            user.current_plan_code = "1_month"
+            user.is_active = True
+            user.expiry_at = now + timedelta(days=30)
+            s.add(
+                EntitlementGrant(
+                    id=str(uuid.uuid4()),
+                    account_id=str(user.account_id),
+                    legacy_tg_id=int(user.tg_id),
+                    idempotency_key=f"test-paid-channel:{user.account_id}",
+                    source="provider_payment",
+                    status="active",
+                    grant_kind="paid_access",
+                    plan_code="1_month",
+                    starts_at=now,
+                    expires_at=now + timedelta(days=30),
+                    activated_at=now,
+                    duration_days=30,
+                    provider="test",
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
     def test_telegram_delivery_is_offline_by_default(self) -> None:
         self.assertIsInstance(self.api._telegram_send_message, AsyncMock)
 
@@ -397,6 +434,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                         tos_accepted=True,
                         is_app_user=True,
                         app_install_id="ios-install-1004",
+                        app_device_name="iPhone 15 Pro",
+                        app_platform="ios",
                         display_name="Alice iPhone",
                         linked_telegram_id=4040,
                         linked_telegram_username="linked_alice",
@@ -441,6 +480,9 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(len(search_rows), 1)
         self.assertEqual(int(search_rows[0]["tg_id"]), 1004)
         self.assertEqual(search_rows[0]["origin"], "app")
+        self.assertEqual(search_rows[0]["linked_telegram_username"], "linked_alice")
+        self.assertEqual(search_rows[0]["app_device_name"], "iPhone 15 Pro")
+        self.assertEqual(search_rows[0]["app_platform"], "ios")
 
     def test_admin_delete_test_user_rejects_real_user_and_deletes_manual_user(self) -> None:
         from db import SessionLocal
@@ -2801,8 +2843,9 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         )
         self.assertNotEqual(blocked.headers.get("access-control-allow-origin"), "https://evil.example")
 
-    def test_channel_bonus_claim_upgrades_free_to_paid(self) -> None:
+    def test_channel_bonus_claim_extends_active_paid_access(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        self._promote_test_user_to_paid()
 
         async def fake_is_member(channel_username: str, tg_id: int):
             return True, "member"
@@ -2819,7 +2862,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertTrue(body["ok"])
         self.assertFalse(body["already_claimed"])
         self.assertEqual(body["premium_days"], 5)
-        self.assertEqual(body["sub_type"], "BONUS")
+        self.assertEqual(body["sub_type"], "PAID")
         self.assertTrue(body["sync_ok"])
         activated_events = self._event_rows("promo_channel_activated")
         self.assertEqual(len(activated_events), 1)
@@ -2837,6 +2880,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
     def test_channel_bonus_claim_does_not_persist_points_when_outer_commit_fails(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        self._promote_test_user_to_paid()
         from db import SessionLocal
         from models import PointsLedger, User
 
@@ -2866,7 +2910,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         try:
             user = s.query(User).filter_by(tg_id=1001).first()
             self.assertIsNotNone(user)
-            self.assertEqual((user.sub_type or "").upper(), "FREE")
+            self.assertEqual((user.sub_type or "").upper(), "PAID")
             self.assertIsNone(getattr(user, "channel_bonus_claimed_at", None))
 
             rows = (
@@ -2881,6 +2925,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
     def test_channel_bonus_claim_requires_membership(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        self._promote_test_user_to_paid()
 
         async def fake_not_member(channel_username: str, tg_id: int):
             return False, "not_member"
@@ -2892,6 +2937,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
     def test_channel_bonus_claim_treats_left_as_not_member(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        self._promote_test_user_to_paid()
 
         async def fake_left(channel_username: str, tg_id: int):
             return False, "left"
@@ -2925,6 +2971,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
     def test_channel_bonus_claim_blocked_by_opening_promo_claim(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        self._promote_test_user_to_paid()
         from db import SessionLocal
         from models import CampaignSend
 
@@ -3768,7 +3815,17 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             any("Белые списки" in str(outbound.get("tag") or "") for outbound in cfg.get("outbounds", [])),
             cfg,
         )
-        self.assertEqual(cfg["dns"]["servers"], [{"tag": "google", "address": "8.8.8.8", "detour": "🌍 Страны"}])
+        self.assertEqual(
+            cfg["dns"]["servers"],
+            [
+                {"tag": "bootstrap", "address": "local"},
+                {"tag": "google", "address": "8.8.8.8", "detour": "🌍 Страны"},
+            ],
+        )
+        self.assertEqual(
+            cfg["route"]["default_domain_resolver"],
+            {"server": "bootstrap", "strategy": "prefer_ipv4"},
+        )
         self.assertEqual(cfg["dns"]["final"], "google")
 
         self.assertEqual(happ_ua.status_code, 200, happ_ua.text)
@@ -4953,17 +5010,17 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(
             cfg_get.json()["wheel_config"],
             {
-                "preset": "paid_weekly_discounts_v2",
+                "preset": "paid_fortnightly_discounts_v3",
                 "weights": [
-                    {"kind": "days", "value": 1, "weight": 8300},
-                    {"kind": "discount", "value": 5, "weight": 500},
-                    {"kind": "days", "value": 3, "weight": 790},
-                    {"kind": "discount", "value": 7, "weight": 200},
-                    {"kind": "days", "value": 7, "weight": 100},
-                    {"kind": "discount", "value": 10, "weight": 100},
-                    {"kind": "days", "value": 30, "weight": 10},
+                    {"kind": "days", "value": 1, "weight": 7500},
+                    {"kind": "discount", "value": 5, "weight": 1800},
+                    {"kind": "days", "value": 3, "weight": 500},
+                    {"kind": "discount", "value": 7, "weight": 150},
+                    {"kind": "days", "value": 7, "weight": 40},
+                    {"kind": "discount", "value": 10, "weight": 9},
+                    {"kind": "days", "value": 30, "weight": 1},
                 ],
-                "cooldown_hours": 168,
+                "cooldown_hours": 336,
             },
         )
 

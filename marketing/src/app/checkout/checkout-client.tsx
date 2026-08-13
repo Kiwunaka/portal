@@ -7,6 +7,7 @@ import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 import { Chip } from "../../components/ui/chip";
 import { cn } from "../../components/utils";
+import { MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
 import { TELEGRAM_START_PROMISE } from "../../lib/seo-pages";
 import {
   getCheckoutTariffPlans,
@@ -667,11 +668,21 @@ export default function CheckoutClient() {
               ) : null}
 
               {!checkoutReady ? (
-                <p className="text-[0.8125rem] leading-relaxed text-ink-soft">
-                  {checkoutBlockedReasons.length
-                    ? "Оплата временно недоступна. Откройте кабинет или напишите в поддержку — подскажем следующий шаг."
-                    : "Проверяем доступность оплаты. Если кнопка не появится, продолжайте через поддержку или кабинет."}
-                </p>
+                <div className="flex flex-col gap-3">
+                  <p className="text-[0.8125rem] leading-relaxed text-ink-soft">
+                    {checkoutBlockedReasons.length
+                      ? "Оплата временно недоступна. Начните с приложения или напишите в поддержку — подскажем следующий шаг."
+                      : "Проверяем доступность оплаты. Если кнопка не появится, начните с приложения или напишите в поддержку."}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button href={MARKETING_CANONICAL_PATHS.install} variant="secondary" className="w-full">
+                      Скачать
+                    </Button>
+                    <Button href={config.botUrl} variant="secondary" target="_blank" rel="noreferrer" className="w-full">
+                      Поддержка
+                    </Button>
+                  </div>
+                </div>
               ) : null}
 
               <div className="flex flex-col divide-y divide-line border-y border-line">

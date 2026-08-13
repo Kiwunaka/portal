@@ -49,6 +49,19 @@ PAID_WEEKLY_DISCOUNTS_V2: dict[str, object] = {
         {"kind": "days", "value": 30, "weight": 10},
     ],
 }
+PAID_FORTNIGHTLY_DISCOUNTS_V3: dict[str, object] = {
+    "preset": "paid_fortnightly_discounts_v3",
+    "cooldown_hours": 336,
+    "weights": [
+        {"kind": "days", "value": 1, "weight": 7500},
+        {"kind": "discount", "value": 5, "weight": 1800},
+        {"kind": "days", "value": 3, "weight": 500},
+        {"kind": "discount", "value": 7, "weight": 150},
+        {"kind": "days", "value": 7, "weight": 40},
+        {"kind": "discount", "value": 10, "weight": 9},
+        {"kind": "days", "value": 30, "weight": 1},
+    ],
+}
 PAID_GRANT_SOURCES = frozenset({"provider_payment", "compatibility_projection"})
 WHEEL_SECTORS = (1, 3, 7, 30)
 WHEEL_DISCOUNT_SECTORS = (5, 7, 10)
@@ -258,13 +271,18 @@ def parse_paid_weekly_config(
     explicit: bool,
 ) -> WheelConfig:
     candidate = dict(
-        PAID_WEEKLY_DISCOUNTS_V2 if not explicit and not payload else payload
+        PAID_FORTNIGHTLY_DISCOUNTS_V3 if not explicit and not payload else payload
     )
     preset = str(candidate.get("preset") or "")
-    if preset not in {"paid_weekly_v1", "paid_weekly_discounts_v2"}:
+    if preset not in {
+        "paid_weekly_v1",
+        "paid_weekly_discounts_v2",
+        "paid_fortnightly_discounts_v3",
+    }:
         raise InvalidWheelConfig("wheel_preset_invalid")
     cooldown = candidate.get("cooldown_hours")
-    if type(cooldown) is not int or cooldown != 168:
+    expected_cooldown = 336 if preset == "paid_fortnightly_discounts_v3" else 168
+    if type(cooldown) is not int or cooldown != expected_cooldown:
         raise InvalidWheelConfig("wheel_cooldown_invalid")
 
     raw = candidate.get("weights")
@@ -290,9 +308,14 @@ def parse_paid_weekly_config(
             for value, weight in zip(values, weights, strict=True)
         )
     else:
+        preset_contract = (
+            PAID_FORTNIGHTLY_DISCOUNTS_V3
+            if preset == "paid_fortnightly_discounts_v3"
+            else PAID_WEEKLY_DISCOUNTS_V2
+        )
         expected = tuple(
             (str(row["kind"]), int(row["value"]), int(row["weight"]))
-            for row in PAID_WEEKLY_DISCOUNTS_V2["weights"]
+            for row in preset_contract["weights"]
         )
         try:
             actual = tuple(
@@ -318,7 +341,7 @@ def parse_paid_weekly_config(
         )
     return WheelConfig(
         preset=preset,
-        cooldown_hours=168,
+        cooldown_hours=expected_cooldown,
         outcomes=outcomes,
     )
 
@@ -406,7 +429,7 @@ def _parse_wheel_config(
     config_payload: Mapping[str, object] | None,
 ) -> WheelConfig:
     return (
-        parse_paid_weekly_config(PAID_WEEKLY_DISCOUNTS_V2, explicit=False)
+        parse_paid_weekly_config(PAID_FORTNIGHTLY_DISCOUNTS_V3, explicit=False)
         if config_payload is None
         else parse_paid_weekly_config(config_payload, explicit=True)
     )

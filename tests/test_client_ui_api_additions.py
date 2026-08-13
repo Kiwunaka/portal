@@ -140,6 +140,7 @@ def _add_node(
     health_score: float = 95.0,
     cpu_percent: float = 30.0,
     panel_latency_ms: int | None = 40,
+    dataplane_rtt_ms: int | None = None,
     is_healthy: bool = True,
     enabled: bool = True,
     last_health_at: datetime | None = None,
@@ -171,6 +172,7 @@ def _add_node(
             is_healthy=is_healthy,
             cpu_percent=cpu_percent,
             panel_latency_ms=panel_latency_ms,
+            dataplane_rtt_ms=dataplane_rtt_ms,
             last_health_at=last_health_at or _utcnow(),
             transport_profiles_json=_transport_profiles(),
         )
@@ -214,7 +216,15 @@ def test_client_locations_catalog_exposes_searchable_real_node_catalog(monkeypat
     _seed_rollout(api)
 
     now = _utcnow()
-    _add_node(api, code="nl-ams-01", health_score=94.0, cpu_percent=31.0, panel_latency_ms=38, last_health_at=now)
+    _add_node(
+        api,
+        code="nl-ams-01",
+        health_score=94.0,
+        cpu_percent=31.0,
+        panel_latency_ms=3800,
+        dataplane_rtt_ms=38,
+        last_health_at=now,
+    )
     _add_node(api, code="de-fra-01", health_score=91.0, cpu_percent=42.0, panel_latency_ms=52, last_health_at=now)
     _add_node(api, code="nl-free", health_score=89.0, cpu_percent=58.0, panel_latency_ms=71, last_health_at=now)
     _add_node(api, code="old-node", health_score=98.0, cpu_percent=20.0, last_health_at=now - timedelta(hours=3))
@@ -241,8 +251,11 @@ def test_client_locations_catalog_exposes_searchable_real_node_catalog(monkeypat
     assert amsterdam["premium"] is True
     assert amsterdam["healthScore"] == 0.94
     assert amsterdam["latencyMs"] == 38
+    assert amsterdam["latencySource"] == "brain"
     assert amsterdam["load"] == 0.31
-    assert amsterdam["measuredAt"] == now.isoformat()
+    assert amsterdam["probe"] == {"host": "example.test", "port": 443}
+    assert amsterdam["measuredAt"] == now.replace(tzinfo=timezone.utc).isoformat()
+    assert datetime.fromisoformat(amsterdam["measuredAt"]).utcoffset() == timedelta(0)
     assert "old-node" not in {city["code"] for city in all_cities}
 
 
@@ -733,6 +746,9 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
                 "platform": "windows",
                 "route_mode": "all_except_ru",
                 "connection_status": "connected",
+                "enhanced_protection_state": "fallback",
+                "enhanced_protection_consent": True,
+                "enhanced_protection_available": True,
                 "attacker_key": attacker_value,
             },
         },
@@ -745,6 +761,15 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
     assert assistant_body["source"] == "support_agent"
     generated_session_id = assistant_body["assistantSessionId"]
     assert 16 <= len(generated_session_id) <= 64
+    assert dict(recording_harness.requests[0].safe_diagnostics) == {
+        "app_version": "1.0.0",
+        "connection_status": "connected",
+        "enhanced_protection_available": True,
+        "enhanced_protection_consent": True,
+        "enhanced_protection_state": "fallback",
+        "platform": "windows",
+        "route_mode": "all_except_ru",
+    }
 
     supplied = client.post(
         "/api/client/support/assistant",
@@ -825,7 +850,12 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
         serialized_events = "\n".join(str(event.meta_json or "") for event in events)
     finally:
         event_session.close()
-    assert '"diagnostics_keys":["app_version","connection_status","platform","route_mode"]' in serialized_events
+    assert (
+        '"diagnostics_keys":["app_version","connection_status",'
+        '"enhanced_protection_available","enhanced_protection_consent",'
+        '"enhanced_protection_state","platform","route_mode"]'
+        in serialized_events
+    )
     assert "attacker_key" not in serialized_events
     assert attacker_value not in serialized_events
     assert attacker_value not in caplog.text

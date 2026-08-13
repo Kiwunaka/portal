@@ -370,8 +370,8 @@ def test_start_trial_enforces_canonical_trial_days_and_reports_provisioning(monk
         assert user is not None
         assert user.expiry_at is not None
         remaining = user.expiry_at - api._utcnow()
-        assert remaining >= timedelta(days=6)
-        assert remaining <= timedelta(days=8)
+        assert remaining >= timedelta(days=4)
+        assert remaining <= timedelta(days=6)
     finally:
         db.close()
 
@@ -586,7 +586,6 @@ def test_start_trial_requires_recovery_for_existing_device_session(monkeypatch, 
         before = (user.app_device_name, user.app_platform, user.app_last_seen_at, user.app_last_ip)
     finally:
         db.close()
-
 
     second = client.post(
         "/api/client/session/start-trial",
@@ -1462,6 +1461,12 @@ def test_channel_bonus_claim_uses_linked_telegram_identity_for_app_account(monke
     finally:
         db.close()
 
+    _promote_install_to_paid(
+        api,
+        install_id="install-bonus",
+        now=api._utcnow(),
+    )
+
     claim_response = client.post(
         "/api/bonuses/channel/claim",
         headers={"Authorization": f"Bearer {token}"},
@@ -1479,15 +1484,18 @@ def test_channel_bonus_claim_uses_linked_telegram_identity_for_app_account(monke
     )
     assert user_response.status_code == 200
     user_payload = user_response.json()
-    assert user_payload["sub_type"] == "BONUS"
+    assert user_payload["sub_type"] == "PAID"
     assert user_payload["bonuses"]["channel_bonus"]["claimed_at"]
 
 
 def test_channel_subscriber_check_is_read_only_for_linked_app_account(monkeypatch, tmp_path):
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
+    membership_checks = 0
 
     async def fake_is_channel_member(channel_username: str, tg_id: int):
+        nonlocal membership_checks
+        membership_checks += 1
         assert channel_username == "pokrov_vpn"
         return (tg_id == 888001, "member" if tg_id == 888001 else "not_member")
 
@@ -1527,12 +1535,13 @@ def test_channel_subscriber_check_is_read_only_for_linked_app_account(monkeypatc
     assert check_response.status_code == 200
     payload = check_response.json()
     assert payload["ok"] is True
-    assert payload["subscriber"] is True
-    assert payload["reason"] == "member"
-    assert payload["claim_required"] is True
+    assert payload["subscriber"] is False
+    assert payload["reason"] == "active_paid_required"
+    assert payload["claim_required"] is False
     assert payload["bonus_days"] == 5
     assert payload["points_granted"] == 0
     assert payload["campaign_marked"] is False
+    assert membership_checks == 0
 
     assert api.available_points(tg_id=account_id)[0] == 0
 
@@ -1596,6 +1605,12 @@ def test_app_session_can_read_bonus_and_referral_summaries(monkeypatch, tmp_path
 
     assert summary_response.status_code == 200, summary_response.text
     summary = summary_response.json()
+    assert summary["reward_access"] == {
+        "eligible": False,
+        "state": "paid_required",
+        "reason": "active_paid_required",
+        "message": "В пробном периоде бонусов нет. Они откроются после первой оплаты.",
+    }
     assert summary["ok"] is True
     assert summary["referral_count"] == 3
     assert summary["referral_code"] == "POKROV3"
@@ -1608,8 +1623,12 @@ def test_app_session_can_read_bonus_and_referral_summaries(monkeypatch, tmp_path
     assert "start=ref_POKROV3" in summary["referral"]["link"]
     assert summary["promo"]["redeem_endpoint"] == "/api/bonuses/promo/redeem"
     assert summary["promo"]["pending_discount_pct"] == 20
-    assert summary["wheel"]["enabled"] is False
+    assert summary["wheel"]["enabled"] is True
+    assert summary["wheel"]["eligible"] is False
+    assert summary["wheel"]["reason"] == "active_paid_required"
     assert summary["calendar"]["enabled"] is False
+    assert summary["calendar"]["eligible"] is False
+    assert summary["calendar"]["reason"] == "bonus_feature_disabled"
     quests = {item["id"]: item for item in summary["achievements"]["quests"]}
     assert quests["first_tunnel"]["completed"] is False
     assert quests["first_tunnel"]["verification"] == "connection_evidence"
@@ -1714,6 +1733,7 @@ def test_app_session_can_read_safe_bonus_history(monkeypatch, tmp_path):
 
 
 def test_app_bonus_wheel_and_calendar_endpoints_are_feature_gated(monkeypatch, tmp_path):
+    monkeypatch.setenv("BONUS_WHEEL_ENABLED", "false")
     api = _load_api(monkeypatch, tmp_path)
     _install_fake_panel(monkeypatch, api)
     client = TestClient(api.app)
@@ -1847,9 +1867,19 @@ def test_paid_reward_api_uses_account_ledger_and_idempotent_calendar(monkeypatch
     assert wheel_spin.status_code == 200, wheel_spin.text
     spin_payload = wheel_spin.json()
     assert spin_payload["ok"] is True
-    assert spin_payload["reward_days"] in (1, 3, 7, 30)
-    assert spin_payload["grant_id"]
-    assert spin_payload["sync_state"] == "sync_pending"
+    assert spin_payload["reward_kind"] in {"days", "discount"}
+    if spin_payload["reward_kind"] == "days":
+        assert spin_payload["reward_days"] in (1, 3, 7, 30)
+        assert spin_payload["reward_value"] == spin_payload["reward_days"]
+        assert spin_payload["discount_pct"] == 0
+        assert spin_payload["grant_id"]
+        assert spin_payload["sync_state"] == "sync_pending"
+    else:
+        assert spin_payload["reward_days"] == 0
+        assert spin_payload["reward_value"] in (5, 7, 10)
+        assert spin_payload["discount_pct"] == spin_payload["reward_value"]
+        assert spin_payload["grant_id"] is None
+        assert spin_payload["sync_state"] == "not_required"
     assert spin_payload["summary"]["wheel"]["can_spin"] is False
     assert spin_payload["summary"]["achievements"]["items"]
 

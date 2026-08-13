@@ -56,13 +56,13 @@ WINDOWS_CORE_PATH = WINDOWS_RUNTIME_ROOT / "pokrov-core.dll"
 WINDOWS_CRONET_PATH = WINDOWS_RUNTIME_ROOT / "libcronet.dll"
 
 POKROV_CORE_REPOSITORY = "Kiwunaka/POKROV-core"
-POKROV_CORE_RELEASE_TAG = "v1.0.2"
-POKROV_CORE_RELEASE_URL = "https://github.com/Kiwunaka/pokrov-core/releases/tag/v1.0.2"
-POKROV_CORE_SOURCE_COMMIT = "a469240dc3e1e1736ff73348b113f164c277492a"
-ANDROID_CORE_SIZE = 106832036
-ANDROID_CORE_SHA256 = "e98861ec0b658304515c04af6ab98a60f3664f8b5eb7660b57e6f0baa0df385f"
-WINDOWS_CORE_SIZE = 55122944
-WINDOWS_CORE_SHA256 = "b6d4e28b5fb9d475acc623fed84d2009137a55972a841216a81ae6ac45f98305"
+POKROV_CORE_RELEASE_TAG = "v1.0.3"
+POKROV_CORE_RELEASE_URL = "https://github.com/Kiwunaka/pokrov-core/releases/tag/v1.0.3"
+POKROV_CORE_SOURCE_COMMIT = "69a74545101708e56183c92e31f2b4c7b2509884"
+ANDROID_CORE_SIZE = 106861671
+ANDROID_CORE_SHA256 = "6e6f3b688fe415c9392e19aa4f8660885316897cfc369cf8c3ff3d01100ee14f"
+WINDOWS_CORE_SIZE = 55134208
+WINDOWS_CORE_SHA256 = "7cc83854fc4022b759e9de3d0942b90a24c859cfd51e3231d04e7c7a6b7d5054"
 WINDOWS_CRONET_SIZE = 8596992
 WINDOWS_CRONET_SHA256 = "8ef1f8bbde77f954af1ae47bee1819ac8dc2354bb0e1d4baba3dad9e58d7a6f7"
 
@@ -182,7 +182,7 @@ def _runtime_artifact_failures(runtime_artifacts: dict[str, object]) -> list[str
         or int(reproducible_windows.get("size") or 0) != WINDOWS_CORE_SIZE
         or reproducible_windows.get("sha256") != WINDOWS_CORE_SHA256
         or reproducible_build.get("libcronet_sha256") != WINDOWS_CRONET_SHA256
-        or provenance.get("promotion_rule") != "accept_exact_v1.0.2_release_artifacts"
+        or provenance.get("promotion_rule") != "accept_exact_v1.0.3_release_artifacts"
     ):
         failures.append("runtime artifacts must pin the clean reproducible POKROV Core release provenance")
 

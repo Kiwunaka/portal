@@ -120,17 +120,6 @@ def _filter_nodes_for_transport_profile(
     return out
 
 
-def _node_supports_transport_profile(node: Any, transport_profile: str | None) -> bool:
-    requested = str(transport_profile or LEGACY_REALITY_FALLBACK).strip() or LEGACY_REALITY_FALLBACK
-    profile = transport_profile_by_name(
-        node,
-        requested,
-        include_disabled=False,
-        allow_operator_lab=True,
-    )
-    return str(profile.get("name") or "") == requested and bool(profile.get("enabled"))
-
-
 def _managed_manifest_fallback_order(transport_profile: str) -> list[str]:
     primary = str(transport_profile or LEGACY_REALITY_FALLBACK).strip() or LEGACY_REALITY_FALLBACK
     order = [primary]
@@ -405,14 +394,6 @@ def _generate_vless_link(*, user_uuid: str, node, name: str) -> str:
     return f"vless://{user_uuid}@{host}:{port}?{query}#{safe_name}"
 
 
-def _node_code_base(code: str) -> str:
-    code = (code or "").lower().strip()
-    for sep in ("_", "-", "."):
-        if sep in code:
-            code = code.split(sep, 1)[0]
-    return code
-
-
 def _node_label_ru(code: str, fallback_name: str = "") -> str:
     """
     Human-friendly labels for clients (Hiddify/sing-box).
@@ -567,10 +548,17 @@ def _singbox_common_route_rules(
 def _singbox_tunneled_dns(selector_tag: str) -> dict[str, Any]:
     return {
         "servers": [
+            {"tag": "bootstrap", "address": "local"},
             {"tag": "google", "address": "8.8.8.8", "detour": selector_tag},
         ],
         "final": "google",
     }
+
+
+def _singbox_default_domain_resolver() -> dict[str, str]:
+    # Node and direct rule-set hostnames must resolve before the selected
+    # tunnel exists. Content DNS remains on the tunneled resolver above.
+    return {"server": "bootstrap", "strategy": "prefer_ipv4"}
 
 
 def _singbox_multi_node_config(
@@ -679,6 +667,7 @@ def _singbox_multi_node_config(
             "rule_set": _singbox_remote_rule_sets(),
             "rules": _singbox_common_route_rules(selector_tag=selector_tag, torrent_outbound=torrent_outbound_tag),
             "auto_detect_interface": True,
+            "default_domain_resolver": _singbox_default_domain_resolver(),
             "final": selector_tag,
         },
         "experimental": {
@@ -799,6 +788,7 @@ def _singbox_ru_bridge_config(
             "rule_set": _singbox_remote_rule_sets(),
             "rules": _singbox_common_route_rules(selector_tag=selector_tag, torrent_outbound=torrent_outbound_tag),
             "auto_detect_interface": True,
+            "default_domain_resolver": _singbox_default_domain_resolver(),
             "final": selector_tag,
         },
         "experimental": {"cache_file": {"enabled": True}},
@@ -870,6 +860,7 @@ def _singbox_free_allowlist_config(
             "rule_set": _singbox_remote_rule_sets(),
             "rules": _singbox_common_route_rules(selector_tag=selector_tag, youtube_direct=True),
             "auto_detect_interface": True,
+            "default_domain_resolver": _singbox_default_domain_resolver(),
             "final": selector_tag,
         },
         "experimental": {"cache_file": {"enabled": True}},

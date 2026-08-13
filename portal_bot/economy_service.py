@@ -25,7 +25,7 @@ from models import (
 from node_policy import free_tier_enabled
 
 
-TRIAL_RESERVATION_DAYS = 7
+TRIAL_RESERVATION_DAYS = 5
 TRIAL_DURATION_DAYS = 5
 TRIAL_PROJECTION_CLOCK_TOLERANCE = timedelta(minutes=5)
 TRIAL_SOURCE = "premium_trial"
@@ -33,10 +33,10 @@ TRIAL_EVIDENCE_KIND = "observer_connection"
 PRE_FIRST_PAYMENT_PREMIUM_CAP_DAYS = 15
 CHANNEL_GRANT_DAYS = 5
 GRANDFATHERED_CHANNEL_GRANT_DAYS = 10
-FRIEND_GRANT_DAYS = 5
+LEGACY_FRIEND_GRANT_DAYS = 5
 CHANNEL_GRACE_HOURS = 24
 REFERRER_HOLD_HOURS = 72
-REFERRER_GRANT_DAYS = 15
+REFERRER_GRANT_DAYS = 10
 
 
 @dataclass(frozen=True)
@@ -238,9 +238,6 @@ def record_connection_evidence(
         raise ValueError("evidence_key is required")
     existing = session.query(ConnectionEvidence).filter_by(evidence_key=stable_key).first()
     if existing is not None:
-        reserved_trial = _trial_query(session, account_id=str(account_id)).filter_by(status="reserved").first()
-        if reserved_trial is None and session.query(ReferralRelationship.id).filter_by(referred_account_id=str(account_id)).first():
-            activate_referred_friend_reward(session, account_id=str(account_id), evidence=existing, now=existing.observed_at)
         return existing
 
     row = ConnectionEvidence(
@@ -259,9 +256,6 @@ def record_connection_evidence(
             session.flush()
     except IntegrityError:
         row = session.query(ConnectionEvidence).filter_by(evidence_key=stable_key).one()
-    reserved_trial = _trial_query(session, account_id=str(account_id)).filter_by(status="reserved").first()
-    if reserved_trial is None and session.query(ReferralRelationship.id).filter_by(referred_account_id=str(account_id)).first():
-        activate_referred_friend_reward(session, account_id=str(account_id), evidence=row, now=row.observed_at)
     return row
 
 
@@ -291,8 +285,6 @@ def activate_reserved_trial(session, *, account_id: str, evidence: ConnectionEvi
     grant.activation_evidence_id = str(evidence.id)
     grant.updated_at = _utcnow()
     _project_active_trial(session, account_id=str(account_id), expires_at=expires_at)
-    if session.query(ReferralRelationship.id).filter_by(referred_account_id=str(account_id)).first():
-        activate_referred_friend_reward(session, account_id=str(account_id), evidence=evidence, now=observed_at)
     return TrialActivationResult(grant=grant, activated_now=True)
 
 
@@ -321,6 +313,49 @@ def read_trial_projection(session, *, account_id: str, now: datetime | None = No
         "expires_at": _safe_iso(grant.expires_at),
         "duration_days": int(grant.duration_days or TRIAL_DURATION_DAYS),
     }
+
+
+def normalize_reserved_trial_deadlines(
+    session,
+    *,
+    now: datetime | None = None,
+    limit: int = 1000,
+) -> dict[str, int]:
+    """Shrink legacy seven-day reservations to the canonical five-day window."""
+    current_now = (now or _utcnow()).replace(microsecond=0)
+    rows = (
+        session.query(EntitlementGrant)
+        .filter(
+            EntitlementGrant.source == TRIAL_SOURCE,
+            EntitlementGrant.grant_kind == "premium_trial",
+            EntitlementGrant.status == "reserved",
+            EntitlementGrant.reversed_at.is_(None),
+            EntitlementGrant.reserved_at.isnot(None),
+            EntitlementGrant.reservation_expires_at.isnot(None),
+        )
+        .order_by(EntitlementGrant.reserved_at.asc(), EntitlementGrant.id.asc())
+        .limit(max(1, min(int(limit), 10_000)))
+        .with_for_update()
+        .all()
+    )
+    corrected = 0
+    projected = 0
+    for grant in rows:
+        canonical_deadline = grant.reserved_at + timedelta(days=TRIAL_RESERVATION_DAYS)
+        if grant.reservation_expires_at <= canonical_deadline:
+            continue
+        grant.reservation_expires_at = canonical_deadline
+        grant.updated_at = current_now
+        corrected += 1
+        if canonical_deadline > current_now:
+            _project_reserved_trial(
+                session,
+                account_id=str(grant.account_id),
+                reservation_expires_at=canonical_deadline,
+            )
+            projected += 1
+    session.flush()
+    return {"corrected": corrected, "projected": projected}
 
 
 def expire_stale_trial_reservations(session, *, now: datetime | None = None) -> dict[str, int]:
@@ -1407,7 +1442,10 @@ def grant_referred_friend_bonus(
     account_id: str,
     evidence: ConnectionEvidence,
     now: datetime | None = None,
+    allow_legacy_migration: bool = False,
 ) -> EntitlementGrant:
+    if not allow_legacy_migration:
+        raise ValueError("referral_invitee_bonus_disabled")
     account_key = str(account_id or "").strip()
     if not account_key or str(evidence.account_id) != account_key or evidence.evidence_kind != TRIAL_EVIDENCE_KIND:
         raise ValueError("canonical server connection evidence is required")
@@ -1416,8 +1454,12 @@ def grant_referred_friend_bonus(
         return existing
     current_now = (now or evidence.observed_at or _utcnow()).replace(microsecond=0)
     _ensure_projection_baseline_grant(session, account_id=account_key, now=current_now)
-    days = _available_prepayment_days(session, account_id=account_key, requested_days=FRIEND_GRANT_DAYS)
-    if days != FRIEND_GRANT_DAYS:
+    days = _available_prepayment_days(
+        session,
+        account_id=account_key,
+        requested_days=LEGACY_FRIEND_GRANT_DAYS,
+    )
+    if days != LEGACY_FRIEND_GRANT_DAYS:
         raise ValueError("pre_first_payment_premium_cap")
     starts_at, expires_at = _project_additive_days(session, account_id=account_key, days=days, now=current_now)
     grant = EntitlementGrant(
@@ -1621,37 +1663,7 @@ def activate_referred_friend_reward(
     evidence: ConnectionEvidence | None,
     now: datetime | None = None,
 ) -> EntitlementGrant:
-    account_key = str(account_id or "").strip()
-    if evidence is None or str(evidence.account_id) != account_key:
-        raise ValueError("connection_evidence is required")
-    relationship = (
-        session.query(ReferralRelationship)
-        .filter_by(referred_account_id=account_key)
-        .with_for_update()
-        .one_or_none()
-    )
-    if relationship is None:
-        raise ValueError("referral_relationship_not_found")
-    if relationship.friend_grant_id:
-        existing = session.query(EntitlementGrant).filter_by(id=str(relationship.friend_grant_id)).one_or_none()
-        if existing is not None:
-            return existing
-    grant = grant_referred_friend_bonus(session, account_id=account_key, evidence=evidence, now=now)
-    relationship.friend_evidence_id = str(evidence.id)
-    relationship.friend_grant_id = str(grant.id)
-    relationship.friend_granted_at = evidence.observed_at
-    relationship.updated_at = (now or evidence.observed_at).replace(microsecond=0)
-    _record_referral_transition(
-        session,
-        relationship=relationship,
-        transition_key=f"referral-friend-released:v1:{account_key}",
-        transition_kind="friend_reward_released",
-        status="released",
-        occurred_at=relationship.updated_at,
-        metadata={"evidence_id": str(evidence.id), "grant_id": str(grant.id)},
-    )
-    session.flush()
-    return grant
+    raise ValueError("referral_invitee_bonus_disabled")
 
 
 def _valid_first_payment_key(payment_key: str) -> bool:

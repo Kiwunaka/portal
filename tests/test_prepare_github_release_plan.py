@@ -24,7 +24,7 @@ class PrepareGithubReleasePlanTests(unittest.TestCase):
     def test_build_plan_outputs_prerelease_command_and_handoff_urls(self) -> None:
         with tempfile.TemporaryDirectory() as temp_root:
             root = Path(temp_root)
-            apk = root / "pokrov-android-universal.apk"
+            apk = root / "pokrov-android-arm64-v8a.apk"
             exe = root / "pokrov-windows-setup-x64.exe"
             notes = root / "notes.md"
             apk.write_bytes(b"apk")
@@ -47,14 +47,14 @@ class PrepareGithubReleasePlanTests(unittest.TestCase):
         self.assertEqual(command[:3], ["gh", "release", "create"])
         self.assertNotIn("--draft", command)
         self.assertIn("--prerelease", command)
-        self.assertIn("pokrov-android-universal.apk", command[4])
+        self.assertIn("pokrov-android-arm64-v8a.apk", command[4])
         self.assertIn("pokrov-windows-setup-x64.exe", command[5])
         self.assertIn(str(apk), "\n".join(plan["staging"]["commands"]))
         self.assertIn(str(exe), "\n".join(plan["staging"]["commands"]))
         self.assertEqual(plan["expected_urls"]["APP_ANDROID_PLAY_URL"], "")
         self.assertEqual(
             plan["expected_urls"]["APP_ANDROID_APK_URL"],
-            "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-android-universal.apk",
+            "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-android-arm64-v8a.apk",
         )
         self.assertEqual(
             plan["expected_urls"]["APP_WINDOWS_EXE_URL"],
@@ -62,8 +62,8 @@ class PrepareGithubReleasePlanTests(unittest.TestCase):
         )
         self.assertEqual(plan["expected_urls"]["APP_DOCS_URL"], "https://pokrov.space/install/")
         self.assertEqual(plan["artifacts"][0]["sha256"], apk_sha256)
-        self.assertEqual(plan["artifacts"][0]["filename"], "pokrov-android-universal.apk")
-        self.assertEqual(plan["artifacts"][0]["source_filename"], "pokrov-android-universal.apk")
+        self.assertEqual(plan["artifacts"][0]["filename"], "pokrov-android-arm64-v8a.apk")
+        self.assertEqual(plan["artifacts"][0]["source_filename"], "pokrov-android-arm64-v8a.apk")
 
     def test_build_plan_stages_raw_build_names_to_canonical_asset_names(self) -> None:
         with tempfile.TemporaryDirectory() as temp_root:
@@ -88,12 +88,58 @@ class PrepareGithubReleasePlanTests(unittest.TestCase):
             )
 
         self.assertEqual(plan["artifacts"][0]["source_filename"], "app-release.apk")
-        self.assertEqual(plan["artifacts"][0]["filename"], "pokrov-android-universal.apk")
-        self.assertEqual(plan["artifacts"][0]["path"], str(stage_dir / "pokrov-android-universal.apk"))
+        self.assertEqual(plan["artifacts"][0]["filename"], "pokrov-android-arm64-v8a.apk")
+        self.assertEqual(plan["artifacts"][0]["path"], str(stage_dir / "pokrov-android-arm64-v8a.apk"))
         self.assertEqual(plan["artifacts"][1]["source_filename"], "pokrov-windows-beta-x64-0.2.0-beta.1-setup.exe")
         self.assertEqual(plan["artifacts"][1]["filename"], "pokrov-windows-setup-x64.exe")
-        self.assertIn("pokrov-android-universal.apk", plan["expected_urls"]["APP_ANDROID_APK_URL"])
+        self.assertIn("pokrov-android-arm64-v8a.apk", plan["expected_urls"]["APP_ANDROID_APK_URL"])
         self.assertNotIn("app-release.apk", plan["expected_urls"]["APP_ANDROID_APK_URL"])
+
+    def test_build_plan_includes_all_android_splits_and_accepts_current_v1_prerelease_tags(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_root:
+            root = Path(temp_root)
+            arm64 = root / "app-arm64-v8a-release.apk"
+            armv7 = root / "app-armeabi-v7a-release.apk"
+            x86_64 = root / "app-x86_64-release.apk"
+            universal = root / "app-release.apk"
+            exe = root / "pokrov-windows-setup-x64.exe"
+            notes = root / "notes.md"
+            for path, payload in (
+                (arm64, b"arm64"),
+                (armv7, b"armv7"),
+                (x86_64, b"x86_64"),
+                (universal, b"universal"),
+                (exe, b"exe"),
+            ):
+                path.write_bytes(payload)
+            notes.write_text("release notes", encoding="utf-8")
+
+            plan = self.module._build_plan(
+                repo="Kiwunaka/pokrov",
+                tag="v1.0.3-beta.1",
+                title="POKROV 1.0.3-beta.1",
+                android_apk=arm64,
+                android_armeabi_v7a_apk=armv7,
+                android_x86_64_apk=x86_64,
+                android_universal_apk=universal,
+                windows_exe=exe,
+                notes_file=notes,
+                docs_url="https://pokrov.space/install/",
+            )
+
+        self.assertEqual(
+            [item["filename"] for item in plan["artifacts"]],
+            [
+                "pokrov-android-arm64-v8a.apk",
+                "pokrov-android-armeabi-v7a.apk",
+                "pokrov-android-x86_64.apk",
+                "pokrov-android-universal.apk",
+                "pokrov-windows-setup-x64.exe",
+            ],
+        )
+        self.assertTrue(plan["expected_urls"]["APP_ANDROID_APK_URL"].endswith("pokrov-android-arm64-v8a.apk"))
+        self.assertTrue(plan["expected_urls"]["APP_ANDROID_APK_UNIVERSAL_URL"].endswith("pokrov-android-universal.apk"))
+        self.assertEqual(len(plan["gh_command"][4:9]), 5)
 
     def test_build_plan_rejects_non_beta_tag_and_wrong_artifact_extensions(self) -> None:
         with tempfile.TemporaryDirectory() as temp_root:
@@ -114,14 +160,14 @@ class PrepareGithubReleasePlanTests(unittest.TestCase):
                 docs_url="https://pokrov.space/install/",
             )
 
-        self.assertIn("tag must be a 0.x.x beta tag, for example v0.2.0-beta.1", failures)
+        self.assertIn("tag must be a beta/rc prerelease tag, for example v1.0.3-beta.1", failures)
         self.assertIn(f"Android APK must have .apk extension: {apk}", failures)
         self.assertIn(f"Windows EXE must have .exe extension: {exe}", failures)
 
     def test_build_plan_rejects_non_install_docs_url(self) -> None:
         with tempfile.TemporaryDirectory() as temp_root:
             root = Path(temp_root)
-            apk = root / "pokrov-android-universal.apk"
+            apk = root / "pokrov-android-arm64-v8a.apk"
             exe = root / "pokrov-windows-setup-x64.exe"
             notes = root / "notes.md"
             apk.write_bytes(b"apk")
@@ -181,7 +227,7 @@ class PrepareGithubReleasePlanTests(unittest.TestCase):
     def test_build_plan_reports_missing_github_cli_without_failing_plan(self) -> None:
         with tempfile.TemporaryDirectory() as temp_root:
             root = Path(temp_root)
-            apk = root / "pokrov-android-universal.apk"
+            apk = root / "pokrov-android-arm64-v8a.apk"
             exe = root / "pokrov-windows-setup-x64.exe"
             notes = root / "notes.md"
             apk.write_bytes(b"apk")

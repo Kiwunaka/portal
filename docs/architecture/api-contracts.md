@@ -253,7 +253,7 @@ TTL after the final issuance before routing app access back to the old revision.
 - `POST /api/connect/confirm`, `/api/events`, `clicked_connect`,
   `connected_ok`, runtime stats, funnel events, and other client-authored
   telemetry are never activation evidence.
-- The worker expires unactivated reservations after `7 days` and updates only
+- The worker expires unactivated reservations after `5 days` and updates only
   the legacy compatibility projection to `expired_or_blocked` when no paid or
   unrelated active grant or current `User` projection survives. This projection
   guard remains required while payment and bonus paths have not all cut over to
@@ -338,6 +338,13 @@ explicitly enables the legacy contour.
   admin resync all resolve the persisted free role. Transition/error states
   cannot be force-resynced by legacy admin actions. Expiry monitors only queue
   the durable re-entry job and do not mutate panel profiles directly.
+- The native locations catalog exposes `latencyMs` as dataplane RTT when the
+  collector has it; panel-control latency is used only as a compatibility
+  fallback and must not be presented as the user's route ping.
+- The automatic Smart Connect shortlist remains bounded, but an explicit
+  manual location choice may promote any currently eligible catalog node into
+  the managed-profile shortlist. Disabled, unhealthy, stale, overloaded, or
+  transport-incompatible nodes remain fail-closed.
 - A confirmed reset starts a fresh full 30-day cycle. Migration retains any
   prior invalid node role in `access_role_legacy` before heuristic backfill so
   an application rollback can restore the old value without deleting evidence.
@@ -354,18 +361,21 @@ position, grant duration, and synchronization state.
   offer and retain an actual historical `claimed_days` value separately.
 - `GET /api/bonuses/summary` adds nested `referral`, `channel_bonus`,
   `opening_bonus`, `promo`, `history`, `wheel`, `calendar`, and `achievements`
+  plus `reward_access` with the canonical paid gate and human trial copy,
   without exposing a canonical account UUID, private subscription URL, raw
   random weights, or internal job metadata.
 - `GET /api/bonuses/wheel/state` returns `enabled`, `eligible`, `reason`,
   public `state`, flag name/state, `can_spin`, `last_spin_at`, `next_spin_at`,
-  `cooldown_hours`, `last_reward_days`, safe ordered `sectors`, `sync_state`,
-  `ledger_ready`, and `config_preset`. `sectors` are labels, not probability
+  `cooldown_hours`, `last_reward_days`, `last_discount_pct`, safe ordered day
+  and discount sectors, `sync_state`, `ledger_ready`, and `config_preset`.
+  Sectors are labels, not probability
   evidence; missing, empty, invalid, or unknown sectors must fail closed.
 - `GET /api/bonuses/calendar` returns `enabled`, `eligible`, `reason`, public
   `state`, flag name/state, `checked_in_today`, `can_checkin`, cycle dates/day,
   `next_milestone`, safe checked dates, achievements, and `sync_state`.
-- `POST /api/bonuses/wheel/spin` returns the server-selected `reward_days`,
-  `grant_id`, `sync_state`, fresh wheel `state`, `expiry_at`, `sync_ok`, and a
+- `POST /api/bonuses/wheel/spin` returns the server-selected reward kind/value,
+  `reward_days` or `discount_pct`, `grant_id` when a day grant exists,
+  `sync_state`, fresh wheel `state`, `expiry_at`, `sync_ok`, and a
   fresh summary. `POST /api/bonuses/calendar/checkin` returns the equivalent
   grant/sync fields plus `already_checked_in`, cycle position, state, and
   summary. A repeat calendar check-in on the same day is idempotent and may
@@ -377,7 +387,7 @@ Stable mutation errors are:
 | --- | --- | --- | --- |
 | `403` | `bonus_feature_disabled` | `feature` | The independent rollout flag is off. |
 | `403` | `active_paid_required` | none | The exact active-paid predicate failed, including a bonus-only tail after paid expiry. |
-| `409` | `wheel_cooldown_active` | `next_spin_at`, `last_reward_days` | The 168-hour wheel cooldown has not elapsed. |
+| `409` | `wheel_cooldown_active` | `next_spin_at`, `last_reward_days`, `last_discount_pct` | The 336-hour wheel cooldown has not elapsed. |
 | `503` | `reward_state_unavailable` | none | State/config/integrity could not be safely resolved; clients must not invent a result. |
 
 An eligible mutation atomically writes canonical `RewardAccountState`, a typed
@@ -386,6 +396,15 @@ An eligible mutation atomically writes canonical `RewardAccountState`, a typed
 `manual_review`. `sync_pending` does not revoke the committed grant, while
 `manual_review` must remain operator-visible and must never be presented as a
 successful panel synchronization.
+
+`GET /api/client/promo-slots?surface=app` returns only active assignments for
+the caller's access context and schedule. An app slot may carry title/body,
+badge, HTTPS image, `logo` or `banner` layout, CTA, safe HTTPS/TG target,
+`#RRGGBB` accent/background/text/button colors, placement, dismissibility and
+whole-card click behavior. Server normalization rejects unsupported slots,
+content/context combinations, URL schemes, layouts, colors and malformed
+schedules. The client remembers a dismissal by slot/content/schedule; changing
+that campaign identity permits a new impression without a client update.
 
 ## Payment Providers
 

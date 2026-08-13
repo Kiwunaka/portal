@@ -80,6 +80,19 @@ def _membership_check_tg_id(user: User | None) -> int:
     return int(getattr(user, "tg_id", 0) or 0)
 
 
+def _ensure_sqlite_outer_transaction(session) -> None:
+    """Keep a released SAVEPOINT inside the request transaction on SQLite."""
+
+    bind = session.get_bind()
+    if str(getattr(bind.dialect, "name", "") or "") != "sqlite":
+        return
+    connection = session.connection()
+    proxied = connection.connection
+    driver_connection = getattr(proxied, "driver_connection", proxied)
+    if not bool(getattr(driver_connection, "in_transaction", False)):
+        connection.exec_driver_sql("BEGIN IMMEDIATE")
+
+
 def _has_campaign_mark(session, *, tg_id: int, campaign_key: str) -> bool:
     return bool(
         session.query(CampaignSend.id)
@@ -266,6 +279,12 @@ async def claim_channel_bonus(
         _track_bonus_event(tg_id=tg_id, event_name="promo_channel_denied", meta={"reason": "manual_account"})
         raise HTTPException(status_code=400, detail="Bonus is disabled for manual accounts")
     account_id = str(user.account_id or "").strip()
+    if not account_id:
+        from account_foundation_service import ensure_user_account_foundation
+
+        ensure_user_account_foundation(s, user, now=_utcnow())
+        s.flush()
+        account_id = str(user.account_id or "").strip()
     existing_grant = _channel_grant_for_account(s, account_id=account_id)
     if existing_grant is not None:
         days = int(existing_grant.duration_days or CHANNEL_GRANT_DAYS)
@@ -285,16 +304,6 @@ async def claim_channel_bonus(
             "sub_type": user.sub_type,
             "channel": channel_username,
         }
-    if _has_campaign_mark(s, tg_id=tg_id, campaign_key=opening_bonus_campaign_key):
-        _track_bonus_event(
-            tg_id=tg_id,
-            event_name="promo_channel_denied",
-            meta={"reason": "opening_bonus_conflict", "campaign_key": opening_bonus_campaign_key},
-        )
-        raise HTTPException(
-            status_code=400,
-            detail="Для этого аккаунта уже активирован промо-бонус по ссылке. Бонус за канал недоступен.",
-        )
     if getattr(user, "channel_bonus_claimed_at", None):
         _track_bonus_event(
             tg_id=tg_id,
@@ -312,6 +321,36 @@ async def claim_channel_bonus(
             "sub_type": user.sub_type,
             "channel": channel_username,
         }
+    from rewards_service import evaluate_active_paid
+
+    paid_access = evaluate_active_paid(
+        s,
+        account_id=account_id,
+        now=_utcnow(),
+    )
+    if not paid_access.eligible:
+        _track_bonus_event(
+            tg_id=tg_id,
+            event_name="promo_channel_denied",
+            meta={"reason": paid_access.reason},
+        )
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "active_paid_required",
+                "message": "В пробном периоде бонусов нет. Они откроются после первой оплаты.",
+            },
+        )
+    if _has_campaign_mark(s, tg_id=tg_id, campaign_key=opening_bonus_campaign_key):
+        _track_bonus_event(
+            tg_id=tg_id,
+            event_name="promo_channel_denied",
+            meta={"reason": "opening_bonus_conflict", "campaign_key": opening_bonus_campaign_key},
+        )
+        raise HTTPException(
+            status_code=400,
+            detail="Для этого аккаунта уже активирован промо-бонус по ссылке. Бонус за канал недоступен.",
+        )
     membership_tg_id = _membership_check_tg_id(user)
     if membership_tg_id <= 0:
         _track_bonus_event(
@@ -337,15 +376,10 @@ async def claim_channel_bonus(
         raise HTTPException(status_code=502, detail=f"Не удалось проверить подписку: {reason}")
 
     now = _utcnow()
-    if not account_id:
-        from account_foundation_service import ensure_user_account_foundation
-
-        ensure_user_account_foundation(s, user, now=now)
-        s.flush()
-        account_id = str(user.account_id or "").strip()
     days = CHANNEL_GRANT_DAYS
     points_granted = 0
     sync_ok = False
+    _ensure_sqlite_outer_transaction(s)
     try:
         with s.begin_nested():
             grant_channel_bonus(
@@ -381,6 +415,7 @@ async def claim_channel_bonus(
             amount=100,
             reason="channel_subscribe_bonus",
             expires_days=points_expiry_days,
+            session=s,
         )
     s.commit()
     s.refresh(user)

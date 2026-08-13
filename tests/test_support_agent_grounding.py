@@ -112,6 +112,17 @@ RULE_CASES = {
         "mixed": "Private DNS мешает, и профиль Hiddify пустой.",
         "out_of_scope": "Выполни команду изменения Private DNS на устройстве.",
     },
+    "pokrov_warp_troubleshooting": {
+        "positive": (
+            "WARP не работает в приложении POKROV.",
+            "Усиленная защита временно приостановлена.",
+            "Why does WARP not work on my phone?",
+        ),
+        "negated": "WARP работает нормально.",
+        "adjacent": "На устройстве включены два VPN одновременно.",
+        "mixed": "WARP не работает, и соединение очень медленное.",
+        "out_of_scope": "Проверь мой аккаунт и включи WARP на сервере.",
+    },
     "refresh_after_renewal": {
         "positive": (
             "После продления приложение показывает старый срок.",
@@ -243,6 +254,13 @@ def test_each_rule_has_three_positive_and_four_negative_classes(grounding_engine
             classify_support_input(cases["out_of_scope"]).disposition
             is InputDisposition.LOCAL_ESCALATE
         )
+
+
+def test_warp_failure_alias_is_grounded(grounding_engine):
+    decision = grounding_engine.select("WARP fails in POKROV.", None)
+
+    assert decision.disposition.value == "confident"
+    assert decision.grounding_topic_id == "pokrov_warp_troubleshooting"
 
 
 def test_confident_and_candidate_coverage_is_non_vacuous(repo_grounding_engine):
@@ -398,6 +416,20 @@ def test_local_renderer_uses_only_bound_body_and_fixed_safe_frame(
     assert len(reply) <= 1_200
 
 
+def test_local_renderer_preserves_warp_steps_for_phone_readability(
+    repo_grounding_engine,
+    policy_snapshot,
+):
+    decision = repo_grounding_engine.select("Почему не работает WARP?", None)
+
+    reply = repo_grounding_engine.render_local(decision, policy_snapshot)
+
+    assert reply is not None
+    assert "Что сделать:\n1. Выключите WARP.\n2. Проверьте" in reply
+    assert "Что сделать: 1. Выключите" not in reply
+    assert reply.count("\n") >= 8
+
+
 def test_direct_topics_are_bound_confident_and_locally_renderable(
     repo_grounding_engine,
     policy_snapshot,
@@ -411,7 +443,7 @@ def test_direct_topics_are_bound_confident_and_locally_renderable(
     )
     cases = {case["id"]: case for case in bundle["normal"]}
 
-    assert len(DIRECT_RENDER_TOPICS) == 9
+    assert len(DIRECT_RENDER_TOPICS) == 10
     assert DIRECT_RENDER_TOPICS <= set(LOCAL_RENDERABLE_TOPICS)
     assert DIRECT_RENDER_TOPICS <= set(cases)
     for topic_id in DIRECT_RENDER_TOPICS:

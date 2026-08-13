@@ -27,6 +27,7 @@ from economy_service import (
     cancel_channel_loss_grace,
     expire_stale_trial_reservations,
     migrate_pending_legacy_referral_queue,
+    normalize_reserved_trial_deadlines,
     reconcile_stale_trial_projections,
     rebuild_due_entitlement_projections,
     release_due_referrer_rewards,
@@ -76,7 +77,7 @@ START99_WELCOME_MIN_HOURS = max(1, int(os.getenv("START99_WELCOME_MIN_HOURS", "2
 START99_WELCOME_MAX_HOURS = max(START99_WELCOME_MIN_HOURS + 1, int(os.getenv("START99_WELCOME_MAX_HOURS", "48")))
 START99_WELCOME_DISCOUNT_PCT = max(1, min(95, int(os.getenv("START99_WELCOME_DISCOUNT_PCT", "15"))))
 START99_WELCOME_DISCOUNT_CODE = (os.getenv("START99_WELCOME_DISCOUNT_CODE") or "STARTBOOST").strip().upper()[:20]
-REFERRAL_BONUS_DAYS = max(1, int(os.getenv("REFERRAL_BONUS_DAYS", "15")))
+REFERRAL_BONUS_DAYS = max(1, int(os.getenv("REFERRAL_BONUS_DAYS", "10")))
 REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, int(os.getenv("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", "168")))
 EVENT_RETENTION_DAYS = max(1, int(os.getenv("EVENT_RETENTION_DAYS", "180")))
 FUNNEL_EVENT_RETENTION_DAYS = max(1, int(os.getenv("FUNNEL_EVENT_RETENTION_DAYS", "180")))
@@ -1182,9 +1183,12 @@ async def trial_reservation_expiry_job() -> None:
     while True:
         session = SessionLocal()
         try:
+            normalization_result = normalize_reserved_trial_deadlines(session, now=_utcnow())
             result = expire_stale_trial_reservations(session, now=_utcnow())
             projection_result = reconcile_stale_trial_projections(session, now=_utcnow(), limit=200)
             session.commit()
+            if int(normalization_result.get("corrected", 0)) > 0:
+                logger.info("trial_reservation_normalization result=%s", normalization_result)
             if int(result.get("expired", 0)) > 0:
                 logger.info("trial_reservation_expiry result=%s", result)
             if int(projection_result.get("reconciled", 0)) > 0:

@@ -245,7 +245,7 @@ def upsert_app_trial_user(
             sub_type="FREE",
             current_plan_code="trial",
             created_at=now,
-            expiry_at=now + timedelta(days=7),
+            expiry_at=now + timedelta(days=canonical_trial_days),
             is_active=True,
             stars_paid=0,
             total_gb=0,
@@ -294,7 +294,7 @@ def upsert_app_trial_user(
         if not user.sub_type:
             user.sub_type = "FREE"
         if not user.expiry_at:
-            user.expiry_at = now + timedelta(days=7)
+            user.expiry_at = now + timedelta(days=canonical_trial_days)
         if user.is_active is None:
             user.is_active = True
         if not str(getattr(user, "route_mode", "") or "").strip():

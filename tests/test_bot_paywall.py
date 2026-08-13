@@ -153,6 +153,39 @@ class BotPaywallTests(unittest.TestCase):
         self.bot_module = importlib.import_module("bot")
         importlib.reload(self.bot_module)
 
+    def test_android_download_rows_keep_arm64_primary_and_variants_secondary(self) -> None:
+        old_armv7 = self.bot_module.APP_ANDROID_APK_ARMEABI_V7A_URL
+        old_universal = self.bot_module.APP_ANDROID_APK_UNIVERSAL_URL
+        old_x86 = self.bot_module.APP_ANDROID_APK_X86_64_URL
+        self.bot_module.APP_ANDROID_APK_ARMEABI_V7A_URL = "https://example.test/pokrov-armv7.apk"
+        self.bot_module.APP_ANDROID_APK_UNIVERSAL_URL = "https://example.test/pokrov-universal.apk"
+        self.bot_module.APP_ANDROID_APK_X86_64_URL = "https://example.test/pokrov-x86_64.apk"
+        try:
+            rows = self.bot_module._platform_download_rows(
+                "android",
+                "https://example.test/pokrov-arm64.apk",
+                "Скачать ARM64 · основной",
+            )
+        finally:
+            self.bot_module.APP_ANDROID_APK_ARMEABI_V7A_URL = old_armv7
+            self.bot_module.APP_ANDROID_APK_UNIVERSAL_URL = old_universal
+            self.bot_module.APP_ANDROID_APK_X86_64_URL = old_x86
+
+        buttons = [row[0] for row in rows]
+        self.assertEqual(
+            [button["text"] for button in buttons],
+            ["Скачать ARM64 · основной", "ARMv7 · старый телефон", "Universal · запасной"],
+        )
+        self.assertEqual(
+            [button["url"] for button in buttons],
+            [
+                "https://example.test/pokrov-arm64.apk",
+                "https://example.test/pokrov-armv7.apk",
+                "https://example.test/pokrov-universal.apk",
+            ],
+        )
+        self.assertNotIn("https://example.test/pokrov-x86_64.apk", [button["url"] for button in buttons])
+
     def test_admin_resync_respects_persisted_free_role_and_blocks_transitions(self) -> None:
         previous_free_tier_enabled = os.environ.get("FREE_TIER_ENABLED")
         os.environ["FREE_TIER_ENABLED"] = "true"
@@ -760,7 +793,7 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual(label1, label2)
         self.assertIn(label1, set(self.bot_module.MAIN_CONNECT_CTA_LABELS.values()))
 
-    def test_friend_gift_link_waits_for_server_connection_evidence(self) -> None:
+    def test_retired_friend_gift_mutation_stays_disabled(self) -> None:
         self.bot_module.FRIEND_GIFT_ENABLED = True
         self.bot_module.FRIEND_GIFT_DAYS = 3
         self.bot_module.FRIEND_GIFT_CAMPAIGN_KEY = "friend_gift_3d"
@@ -805,21 +838,23 @@ class BotPaywallTests(unittest.TestCase):
         finally:
             self.bot_module.create_subscription = old_create_subscription
 
-        self.assertTrue(ok1)
-        self.assertEqual(reason1, "linked_waiting_evidence")
+        self.assertFalse(ok1)
+        self.assertEqual(reason1, "disabled")
         self.assertFalse(ok2)
-        self.assertEqual(reason2, "already_linked")
+        self.assertEqual(reason2, "disabled")
         self.assertEqual(calls, [])
         from models import EntitlementGrant, ReferralRelationship, User
 
         session = self.bot_module.Session()
         try:
             referred = session.query(User).filter_by(tg_id=1001).one()
-            referrer = session.query(User).filter_by(tg_id=2002).one()
-            relationship = session.query(ReferralRelationship).filter_by(referred_account_id=referred.account_id).one()
-            self.assertEqual(relationship.referrer_account_id, referrer.account_id)
+            session.query(User).filter_by(tg_id=2002).one()
+            self.assertEqual(
+                session.query(ReferralRelationship).filter_by(referred_account_id=referred.account_id).count(),
+                0,
+            )
             self.assertEqual(session.query(EntitlementGrant).filter_by(source="referral_friend").count(), 0)
-            self.assertEqual(referred.referrer_id, 2002)
+            self.assertIsNone(referred.referrer_id)
         finally:
             session.close()
 
@@ -1775,7 +1810,7 @@ class BotPaywallTests(unittest.TestCase):
         finally:
             session.close()
 
-    def test_friend_link_does_not_call_subscription_or_burn_campaign_claim(self) -> None:
+    def test_retired_friend_link_does_not_call_subscription_or_burn_campaign_claim(self) -> None:
         self.bot_module.FRIEND_GIFT_ENABLED = True
         self.bot_module.FRIEND_GIFT_DAYS = 3
         self.bot_module.FRIEND_GIFT_CAMPAIGN_KEY = "friend_gift_3d"
@@ -1824,10 +1859,10 @@ class BotPaywallTests(unittest.TestCase):
         finally:
             self.bot_module.create_subscription = old_create_subscription
 
-        self.assertTrue(ok)
-        self.assertEqual(reason, "linked_waiting_evidence")
+        self.assertFalse(ok)
+        self.assertEqual(reason, "disabled")
         self.assertFalse(replay_ok)
-        self.assertEqual(replay_reason, "already_linked")
+        self.assertEqual(replay_reason, "disabled")
 
     def test_activate_promo_code_tracks_success_and_denial(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")
@@ -3149,7 +3184,7 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("платн", callback.answers[-1][0].lower())
 
     def test_telegram_aliases_share_one_wheel_cooldown(self) -> None:
-        from models import EntitlementGrant, NodeProvisioningJob
+        from models import EntitlementGrant, NodeProvisioningJob, RewardClaim, User
 
         self._seed_paid_reward_authority(1001, 1002)
         first = _FakeCallback(1001)
@@ -3170,11 +3205,20 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("следующ", alias.message.edits[-1].lower())
         session = self.bot_module.Session()
         try:
-            self.assertEqual(session.query(EntitlementGrant).filter_by(source="bonus_wheel").count(), 1)
+            grant_count = session.query(EntitlementGrant).filter_by(source="bonus_wheel").count()
+            discount_count = (
+                session.query(RewardClaim)
+                .filter(RewardClaim.reward_key.like("wheel_discount_%"))
+                .count()
+            )
+            self.assertEqual(grant_count + discount_count, 1)
             self.assertEqual(
                 session.query(NodeProvisioningJob).filter_by(job_type="reward_entitlement_sync").count(),
-                1,
+                grant_count,
             )
+            if discount_count:
+                paid_user = session.query(User).filter_by(tg_id=1001).one()
+                self.assertIn(int(paid_user.pending_discount_pct or 0), {5, 7, 10})
         finally:
             session.close()
 

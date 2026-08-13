@@ -297,7 +297,7 @@ def test_managed_profile_exposes_capacity_ranked_eligible_premium_shortlist(monk
     assert selector["default"] == "🇵🇱 Польша"
 
 
-def test_managed_profile_uses_nl_free_only_for_free_pool(monkeypatch, tmp_path) -> None:
+def test_managed_profile_does_not_deliver_a_node_to_retired_free_pool(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
 
@@ -317,11 +317,8 @@ def test_managed_profile_uses_nl_free_only_for_free_pool(monkeypatch, tmp_path) 
         db.close()
 
     managed = client.get("/api/client/profile/managed", headers=_auth_headers(start_body))
-    assert managed.status_code == 200, managed.text
-
-    smart_connect = managed.json()["smart_connect"]
-    assert [item["code"] for item in smart_connect["shortlist"]] == ["nl-free"]
-    assert smart_connect["shortlist"][0]["outbound_tag"] == "🇳🇱 NL Free"
+    assert managed.status_code == 503, managed.text
+    assert managed.json()["detail"] == "No eligible nodes"
 
 
 def test_managed_profile_premium_shortlist_ignores_usernode_mapping_limits(monkeypatch, tmp_path) -> None:
@@ -347,6 +344,42 @@ def test_managed_profile_premium_shortlist_ignores_usernode_mapping_limits(monke
     managed = client.get("/api/client/profile/managed", headers=_auth_headers(start_body))
     assert managed.status_code == 200, managed.text
     assert [item["code"] for item in managed.json()["smart_connect"]["shortlist"]] == ["pl", "de", "it"]
+
+
+def test_manual_choice_can_promote_any_eligible_catalog_node_beyond_auto_shortlist(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    api.SMART_CONNECT_SHORTLIST_LIMIT = 2
+    client = TestClient(api.app)
+
+    now = _utcnow()
+    _add_node(api, code="pl", health_score=99.0, last_health_at=now)
+    _add_node(api, code="de", health_score=98.0, last_health_at=now)
+    _add_node(api, code="it", health_score=80.0, last_health_at=now)
+
+    start_body = _start_trial(client, install_id="install-manual-outside-auto-shortlist")
+    headers = _auth_headers(start_body)
+    selected = client.post(
+        "/api/client/nodes/select",
+        headers=headers,
+        json={"mode": "manual", "selected_node_code": "it", "samples": []},
+    )
+    assert selected.status_code == 200, selected.text
+    assert selected.json()["selected_node_code"] == "it"
+
+    managed = client.get(
+        "/api/client/profile/managed?selected_node_code=it",
+        headers=headers,
+    )
+    assert managed.status_code == 200, managed.text
+    payload = managed.json()
+    assert [item["code"] for item in payload["smart_connect"]["shortlist"]] == ["it", "pl"]
+    assert payload["smart_connect"]["selected_node_code"] == "it"
+    country_selector = next(
+        item
+        for item in payload["config_payload"]["outbounds"]
+        if item.get("type") == "selector" and item.get("tag") == "🌍 Страны"
+    )
+    assert country_selector["default"] == "🇮🇹 Италия"
 
 
 def test_managed_profile_fails_closed_when_no_eligible_nodes_remain(monkeypatch, tmp_path) -> None:

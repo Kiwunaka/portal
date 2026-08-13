@@ -910,7 +910,7 @@ async def admin_wheel_settings(callback: CallbackQuery):
         + "\n".join(prizes_text)
         + "\n\n"
         + f"<b>Кулдаун:</b> {cooldown_days} дней ({cooldown_hours}ч)\n"
-        + "Конфигурация фиксирована контрактом PAID_WEEKLY_DISCOUNTS_V2.",
+        + "Конфигурация фиксирована контрактом PAID_FORTNIGHTLY_DISCOUNTS_V3.",
         reply_markup=kb,
         parse_mode=ParseMode.HTML,
     )
@@ -1751,14 +1751,14 @@ async def show_admin_users(callback: CallbackQuery):
 async def admin_wheel_set_preset(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
-    await callback.answer("Preset фиксирован: PAID_WEEKLY_DISCOUNTS_V2.", show_alert=True)
+    await callback.answer("Preset фиксирован: PAID_FORTNIGHTLY_DISCOUNTS_V3.", show_alert=True)
 
 
 @router.callback_query(F.data == "wheel_weights")
 async def admin_wheel_set_weights_prompt(callback: CallbackQuery):
     if callback.from_user.id != ADMIN_ID:
         return
-    await callback.answer("Ручные веса отключены контрактом PAID_WEEKLY_DISCOUNTS_V2.", show_alert=True)
+    await callback.answer("Ручные веса отключены контрактом PAID_FORTNIGHTLY_DISCOUNTS_V3.", show_alert=True)
 
 
 @router.callback_query(F.data.startswith("mass_extend_run_"))

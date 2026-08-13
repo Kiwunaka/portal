@@ -78,7 +78,21 @@ class RemoteBrainApplyReleaseHandoffTests(unittest.TestCase):
                   "release_version": "0.9.0-beta+20508",
                   "downloads": {
                     "android": {
-                      "apk_url": "https://downloads.example.com/pokrov-android.apk"
+                      "apk_url": "https://downloads.example.com/pokrov-android-arm64.apk",
+                      "apk_variants": [
+                        {
+                          "abi": "x86_64",
+                          "url": "https://downloads.example.com/pokrov-android-x86_64.apk",
+                          "sha256": "cccc",
+                          "size_bytes": 300
+                        },
+                        {
+                          "abi": "universal",
+                          "url": "https://downloads.example.com/pokrov-android-universal.apk",
+                          "sha256": "dddd",
+                          "size_bytes": 400
+                        }
+                      ]
                     },
                     "windows": {
                       "exe_url": "https://downloads.example.com/pokrov-windows.exe"
@@ -92,7 +106,13 @@ class RemoteBrainApplyReleaseHandoffTests(unittest.TestCase):
 
             values = self.module._read_release_metadata(metadata_file)
 
-        self.assertEqual(values["APP_ANDROID_APK_URL"], "https://downloads.example.com/pokrov-android.apk")
+        self.assertEqual(values["APP_ANDROID_APK_URL"], "https://downloads.example.com/pokrov-android-arm64.apk")
+        self.assertEqual(values["APP_ANDROID_APK_X86_64_URL"], "https://downloads.example.com/pokrov-android-x86_64.apk")
+        self.assertEqual(values["APP_ANDROID_X86_64_SHA256"], "cccc")
+        self.assertEqual(values["APP_ANDROID_X86_64_SIZE_BYTES"], "300")
+        self.assertEqual(values["APP_ANDROID_APK_UNIVERSAL_URL"], "https://downloads.example.com/pokrov-android-universal.apk")
+        self.assertEqual(values["APP_ANDROID_UNIVERSAL_SHA256"], "dddd")
+        self.assertEqual(values["APP_ANDROID_UNIVERSAL_SIZE_BYTES"], "400")
         self.assertEqual(values["APP_WINDOWS_EXE_URL"], "https://downloads.example.com/pokrov-windows.exe")
         self.assertEqual(values["APP_DOCS_URL"], "https://pokrov.space/install/")
 

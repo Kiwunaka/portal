@@ -1175,7 +1175,7 @@ test.describe("Cabinet flow", () => {
     await expect(page).toHaveURL(/\/settings\/?$/);
   });
 
-  test("shows honest payment history and Russian checkout continuation copy", async ({ page }) => {
+  test("shows honest payment history and a compact Russian checkout", async ({ page }) => {
     await page.goto("/subscription/");
     await expect(page.locator("main")).not.toContainText("История оплат");
     await expect(page.locator("main")).not.toContainText("Оплаты появятся здесь");
@@ -1196,11 +1196,13 @@ test.describe("Cabinet flow", () => {
 
     await page.goto("/subscription/checkout/?plan=1_month&promo=POKROV10");
     await expect(page.getByRole("heading", { name: "Продлить доступ" })).toBeVisible();
-    await expect(page.locator("main")).toContainText("Срок");
-    await expect(page.locator("main")).toContainText("Итог");
-    await expect(page.locator("main")).toContainText("Что дальше");
-    await expect(page.locator("main")).toContainText("Перейти к оплате");
-    await expect(page.getByRole("button", { name: "Перейти к оплате" }).first()).toBeDisabled();
+    await expect(page.locator("main")).toContainText("Оформление");
+    await expect(page.locator("main")).toContainText("1 месяц");
+    await expect(page.locator("main")).toContainText("Способ оплаты");
+    await expect(page.locator("main")).toContainText("К оплате");
+    await expect(page.getByRole("button", { name: /Оплатить \d+ ₽/ }).first()).toBeDisabled();
+    await expect(page.locator("main")).toContainText("Разовая оплата · без автосписаний");
+    await expect(page.locator("main")).not.toContainText("Что дальше");
     await expect(page.locator("main")).toContainText("Оплата временно недоступна. Попробуйте позже или откройте поддержку.");
     await expect(page.locator("main")).not.toContainText("Из личного кабинета");
     await expect(page.locator("main")).not.toContainText("Покупка проходит на платежной странице");

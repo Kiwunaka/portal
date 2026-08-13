@@ -58,6 +58,13 @@
       "forbidden_concepts": ["удалите все программы", "гарантированно"]
     },
     {
+      "id": "pokrov_warp_troubleshooting",
+      "prompt": "Почему WARP временно приостановлен и не работает в приложении POKROV?",
+      "accepted_topic_ids": ["pokrov_warp_troubleshooting"],
+      "required_concept_groups": [["выключите warp", "выключить warp"], ["обычное подключение", "базовое соединение"], ["сведения для поддержки", "диагностик"]],
+      "forbidden_concepts": ["пришлите приватный ключ", "пришлите конфигурацию wireguard"]
+    },
+    {
       "id": "profile_empty",
       "prompt": "После импорта профиль пустой и серверов нет. Какие безопасные шаги сделать?",
       "accepted_topic_ids": ["profile_empty"],

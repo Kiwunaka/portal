@@ -47,7 +47,10 @@ The current program is locked around these target product decisions:
 - `marketing` is the only public acquisition, pricing, and paywall surface, and its default public path is `trial -> install -> first connection`; checkout remains an honest continuation after product check or explicit plan intent. `webapp` is session-aware continuation, support, redeem, and renewal continuation; `adminapp` is the primary operator surface, with the legacy web admin retained only as a parity fallback
 - public browser copy and visual governance are centralized through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json`, with locked host and product facts inherited from the shared fact files
 - visible user-facing cabinet IA becomes `Главная / Доступ / Помощь / Аккаунт`, backed by `/dashboard/`, `/subscription/`, `/support/`, and `/settings/`; `devices`, `statistics`, `downloads`, `redeem`, hosted-checkout continuation, and compatibility redirects are task/detail routes rather than parallel public-entry surfaces
-- app surfaces must not use ad SDKs or third-party ads; only approved first-party promo slots may render remotely managed promo content
+- app surfaces must not use third-party ad SDKs, tracking pixels, executable ad
+  payloads, or unreviewed links. The first-party promo-slot delivery path may
+  render operator-approved POKROV or partner campaigns with explicit schedule,
+  audience, creative, safe target and dismiss behavior
 - normal consumer UX should show one logical location, while transport variants `VLESS+REALITY`, `VMess`, `Trojan`, and `XHTTP` stay hidden behind auto, diagnostics, or admin controls
 - target client IA becomes `Protection / Locations / Rules / Profile`, with `Support`, `Devices`, `Subscription`, and `Settings` nested inside `Profile`
 - visible routing story becomes `All except RU`, `Full tunnel`, and `Selected apps`, with `Rules` owning split tunneling and bypass behavior
@@ -77,12 +80,13 @@ Production deployment of account foundation is not proven. A completed productio
 - default runtime core: `sing-box`
 - `xray` role: advanced compatibility fallback only
 - free trial: `5 days`
-- first account/device receives one idempotent `7-day` activation reservation;
+- first account/device receives one idempotent `5-day` activation reservation;
   the premium entitlement itself remains exactly `5 days` and starts only from
   authenticated internal node/control-plane connection evidence
 - client connect confirmation, `clicked_connect`, `connected_ok`, and funnel
   telemetry never activate the trial
-- Telegram reward: `+5 days` for new account-owned grants; already-issued `+10 days` grants are grandfathered
+- paid Telegram reward: `+5 days` for new account-owned grants after first
+  payment; trial is ineligible and already-issued `+10 days` grants are grandfathered
 - current distributed beta: `1.0.0-beta`
 - canonical public client version line remains `1.0.0-beta`; any later candidate
   requires exact promoted-client evidence
@@ -153,6 +157,7 @@ Quick Connect rule:
 
 - `Auto-select` remains the default daily path.
 - premium app-managed profiles expose a backend-built smart shortlist of up to `8` eligible non-free nodes
+- manual location selection may promote any currently eligible catalog node into that bounded profile; the automatic ranking limit must not make a visible healthy location unselectable
 - consumer free-tier delivery is retired; expired accounts keep recovery, support, and payment access but receive no delivery node, while the bounded first-use premium trial resolves through the paid pool
 - the shortlist rejects disabled, draining, unhealthy, stale, `cpu_percent >= SMART_CONNECT_CPU_REJECT_PERCENT` (default `85`), and transport-incompatible nodes before the client measures latency
 - the client combines real device RTT with backend CPU and health penalties and keeps the previous node when the improvement stays below the `20%` stickiness threshold
@@ -245,7 +250,7 @@ Public-facing copy across marketing and webapp should follow one simple style:
 
 - calm, direct, and premium without fake urgency, countdown theater, or exaggerated rescue language
 - `app-first` in onboarding language, with Telegram framed as optional continuation or fallback
-- lead cards and above-the-fold proof with concrete user-checkable hooks: `5 days`, `no card for trial`, `Android + Windows`, `+5 days for Telegram`, `up to 5 devices in paid plans`, `cabinet`, and `support`
+- lead cards and above-the-fold proof with concrete user-checkable hooks: `5 days`, `no card for trial`, `Android + Windows`, `+5 days for Telegram after payment`, `up to 5 devices in paid plans`, `cabinet`, and `support`
 - avoid mood-first public phrases such as `спокойный маршрут`, `легкий путь`, `понятный сценарий`, or similar filler when a real product fact, action, limit, or status can be shown instead
 - marketing and cabinet copy must stay governed through `shared/copy.ts`, `copy/catalog.ru.json`, and `shared/design-tokens.json` so both surfaces tell the same product story
 - email continuation copy may be live when the delivery path is ready, and must degrade honestly if delivery readiness fails
@@ -306,14 +311,21 @@ Product wording rule:
 - trial must create a real backend account, device, session, and working subscription source
 - trial must never be decorative UI-only state
 - trial is premium-grade access during those `5 days`
-- after trial expiry the account automatically moves to `free_monthly`
+- rewards are unavailable during trial; app, cabinet, bot, and support must say
+  that they open after the first successful payment instead of reporting a
+  generic connection failure
+- after trial expiry the account stays recoverable and payable but receives no
+  delivery node until a paid or separately authorized premium grant exists
 
 ### Telegram Reward
 
-- exact public promise: `До 10 дней на старте: 5 дней бесплатно в приложении и ещё 5 дней после привязки Telegram и подтверждения подписки на канал.`
-- new reward value: `+5 days`, once per canonical account
+- exact public promise: `После первой оплаты можно получить ещё 5 дней за привязку Telegram и подтверждение подписки на канал.`
+- new reward value: `+5 days`, once per canonical paid account
 - already-issued `+10 days` channel rewards remain grandfathered and are never shortened or reissued
 - leaving the channel starts a `24 hour` grace period; rejoining cancels grace, and expiry removes only the unused channel interval
+- a currently active canonical `paid_access` grant is required before a new
+  membership lookup or claim; trial, expired, free, and bonus-only accounts are
+  ineligible
 - the app-first account must first link Telegram
 - reward validation then checks membership in the configured public channel
 - active public channel: `@pokrov_vpn`
@@ -321,16 +333,21 @@ Product wording rule:
 
 ### Promo And Referral Bonuses
 
-- a referred friend receives `+5 days` once, only from canonical server `ConnectionEvidence`
-- the referrer receives `+15 days` once after the referred account's first successful payment and a full `72 hour` hold
+- a referred friend receives no automatic days for install, registration,
+  trial activation, connection evidence, or first payment
+- the referrer receives `+10 days` once after the referred account's first successful payment and a full `72 hour` hold
 - client events, admin gifts, and later renewals cannot release these day grants
-- before first successful payment, trial + Telegram + friend grants are capped at exactly `15 premium days` per canonical account
 - app-first bonus summary, referral summary, and promo-code redemption are backend-owned API contracts
 - the app may redeem promo codes through the unified code entry or the bonus promo endpoint
 - the app may show referral code, safe Telegram referral link, and copy/share/open actions from the referral summary contract; referral anti-abuse and bonus granting stay backend-owned
 - bonus history is an app-safe backend contract and must show only compact reward events, not raw subscription links, full promo codes, tokens, or backend event metadata
-- Rewards Hub may render only enabled first-party app promo slots from `GET /api/client/promo-slots?surface=app`; third-party ads, unsafe links, and tracking campaign payloads remain forbidden
-- roulette and calendar remain disabled by default, but their backend mutation routes are ledger-backed under `BONUS_WHEEL_ENABLED` / `BONUS_CALENDAR_ENABLED`; the app may show active spin/check-in controls only when backend summary state says the feature is enabled and ready
+- app surfaces may render only enabled operator-authored promo slots from
+  `GET /api/client/promo-slots?surface=app`; unsafe links, third-party ad SDKs,
+  tracking pixels, and hidden executable payloads remain forbidden
+- the paid roulette is enabled by default with a backend-owned `14 day`
+  cooldown; the calendar remains independently disabled by default. The app
+  shows a control only from backend summary state and may run it only when
+  `eligible` and `can_spin` / `can_checkin` are both true
 
 ### Paid Subscriber Rewards
 
@@ -340,16 +357,17 @@ Product wording rule:
 - trial, free access, bonus-only access, an expired paid interval, and a reward
   tail after paid expiry are ineligible even when the projected expiry remains
   in the future
-- the weekly wheel exposes only the possible `1`, `3`, `7`, and `30` day
-  sectors; sector size and order are not probabilities, and public/support copy
-  must not publish backend weights
+- the fortnightly wheel exposes possible `1`, `3`, `7`, and `30` day rewards
+  plus one-use `5%`, `7%`, and `10%` standard-plan discounts; sector size and
+  order are not probabilities, rewards never stack over an existing pending
+  wheel discount, and public/support copy must not publish backend weights
 - the activity calendar grants `+1 day` only at consecutive-day milestones
   `7`, `14`, `21`, and `28`; a missed day starts a new cycle
 - reward state belongs to the canonical account, awarded duration belongs to
   typed entitlement grants, and panel synchronization is a durable retryable
   job; legacy `RewardClaim`/achievement rows are compatibility evidence only
-- `BONUS_WHEEL_ENABLED` and `BONUS_CALENDAR_ENABLED` remain independent and
-  false by default. Public availability copy has a separate build-time gate,
+- `BONUS_WHEEL_ENABLED` and `BONUS_CALENDAR_ENABLED` remain independent kill
+  switches; wheel defaults on and calendar defaults off. Public availability copy has a separate build-time gate,
   `NEXT_PUBLIC_PAID_REWARDS_MARKETING_ENABLED`, and must remain absent until the
   deployed backend has been enabled and verified
 
@@ -363,12 +381,11 @@ Product wording rule:
 
 ### Post-Trial Access Model
 
-- `free_monthly`: exactly `5 * 1024^3` bytes per 30 days on the ordinary `free_standard` profile
-- `free_monthly` device limit: `1`
-- quota evidence queues a durable move to a separate `free_soft` inbound; the UI stays in transition state until that target is confirmed
-- confirmed `free_soft` stays usable at a target `2 Mbps` per observed public IP until the next reset; users behind one NAT share that cap
-- reset is also durable: enable and confirm standard, reset its traffic, then disable soft; failures retry with a bounded manual-review state
-- `free_monthly` keeps monthly traffic reset via the free-cycle and node-provisioning workers
+- consumer `free_monthly`, `free_standard`, and `free_soft` delivery is retired;
+  those names remain rollback/cleanup compatibility only and must not be offered
+  or provisioned for a new expired account
+- an expired account retains recovery, support, history, devices and purchase
+  continuation but receives no delivery node until new premium authority exists
 - `paid` remains unlimited traffic with up to `5 devices`
 - all active, non-hidden RUB plans with positive `amount_rub` are eligible for hosted checkout after the payment gate; frontend checkout must not keep a stale one-plan allowlist
 - anonymous paid checkout is claimable by the same verified email account in either payment/attach order; this backend slice does not yet expose the OTP claim UI or public claim endpoints

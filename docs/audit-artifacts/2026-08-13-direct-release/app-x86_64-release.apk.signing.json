@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "artifact": "app-x86_64-release.apk",
+  "abi": "x86_64",
+  "package_name": "space.pokrov.pokrov_android_shell",
+  "version_name": "1.0.2",
+  "version_code": "4009",
+  "distribution": "direct_apk",
+  "build_mode": "release",
+  "debuggable": false,
+  "signing_state": "production_self_managed",
+  "certificate_sha256": "0A0602A7DF5D96A0B427909D004F3DDF26DEF86587634BF16694DA8D654B2500",
+  "apk_sha256": "24612B18EDC33EE5178821E67EDC2E8B15568E23EE74F1721CCB27C0790B72FF",
+  "size_bytes": 107500334,
+  "api_base_url": "https://api.pokrov.space",
+  "verified_at_utc": "2026-08-13T03:48:18.9871613Z"
+}

@@ -103,12 +103,14 @@ class _Adapter:
         self.plan = plan
         self.secret = secret
         self.call_count = 0
+        self.requests = []
         self.config = SimpleNamespace(model="deepseek-v4-flash-0731", reasoning_effort="medium")
 
     async def complete_synthesis(self, *, messages, request_timeout):
         from support_agent_provider import ProviderCallError, ProviderUsage, SynthesisTurn
 
         self.call_count += 1
+        self.requests.append({"messages": messages, "request_timeout": request_timeout})
         if self.plan == "unused":
             raise AssertionError("unused_adapter_called")
         if self.plan == "timeout":
@@ -452,6 +454,51 @@ def test_factory_rejects_unknown_closed_plans(harness_case_factory) -> None:
             provider_plan="second_call",
             store_plan="ok",
         )
+
+
+def test_app_diagnostics_reach_the_single_synthesis_request_as_untrusted_context(
+    harness_case_factory,
+) -> None:
+    case = harness_case_factory(
+        name="safe_app_diagnostics",
+        input_mode="safe",
+        retrieval="confident",
+        provider_plan="answer",
+        store_plan="ok",
+    )
+    request = replace(
+        case.request,
+        safe_diagnostics=(
+            ("connection_status", "Подключено"),
+            ("enhanced_protection_available", True),
+            ("enhanced_protection_consent", True),
+            ("enhanced_protection_state", "fallback"),
+            ("platform", "android"),
+            ("route_mode", "allExceptRu"),
+        ),
+    )
+
+    result = asyncio.run(case.harness.run(request))
+
+    assert result.status == "answer"
+    assert case.adapter.call_count == 1
+    provider_messages = case.adapter.requests[0]["messages"]
+    current_context = json.loads(
+        str(provider_messages[1]["content"])
+        .split("UNTRUSTED_SUPPORT_CONTEXT_JSON\n", 1)[1]
+        .split("\nEND_UNTRUSTED_SUPPORT_CONTEXT_JSON", 1)[0]
+    )
+    current_question = current_context["current_question"]
+    assert "APP_DIAGNOSTICS_JSON" in current_question
+    assert '"enhanced_protection_state":"fallback"' in current_question
+    assert '"enhanced_protection_consent":true' in current_question
+    assert '"platform":"android"' in current_question
+    stored = case.session_store.real.get(
+        request.session_scope.internal_session_key,
+        100.0,
+    )
+    assert stored is not None
+    assert "APP_DIAGNOSTICS_JSON" not in stored.messages[0].content
 
 
 def test_code_owned_provenance_and_candidate_state_are_not_model_owned(

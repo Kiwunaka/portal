@@ -12,22 +12,35 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CLIENT_ROOT = REPO_ROOT.parent / "POKROV-app"
-DEFAULT_ANDROID_APK = CLIENT_ROOT / "apps" / "android_shell" / "build" / "app" / "outputs" / "flutter-apk" / "app-release.apk"
-DEFAULT_WINDOWS_EXE = (
-    CLIENT_ROOT
-    / "apps"
-    / "windows_shell"
-    / "build"
-    / "release_bundle"
-    / "pokrov-windows-beta-x64-0.2.0-beta.1-setup.exe"
-)
+ANDROID_OUTPUT_ROOT = CLIENT_ROOT / "apps" / "android_shell" / "build" / "app" / "outputs" / "flutter-apk"
+DEFAULT_ANDROID_APK = ANDROID_OUTPUT_ROOT / "app-arm64-v8a-release.apk"
+DEFAULT_ANDROID_ARMEABI_V7A_APK = ANDROID_OUTPUT_ROOT / "app-armeabi-v7a-release.apk"
+DEFAULT_ANDROID_X86_64_APK = ANDROID_OUTPUT_ROOT / "app-x86_64-release.apk"
+DEFAULT_ANDROID_UNIVERSAL_APK = ANDROID_OUTPUT_ROOT / "app-release.apk"
+WINDOWS_OUTPUT_ROOT = CLIENT_ROOT / "apps" / "windows_shell" / "build" / "release_bundle"
+
+
+def _newest_windows_setup() -> Path:
+    candidates = [path for path in WINDOWS_OUTPUT_ROOT.glob("pokrov-windows-*-setup.exe") if path.is_file()]
+    if candidates:
+        return max(candidates, key=lambda path: path.stat().st_mtime_ns)
+    return WINDOWS_OUTPUT_ROOT / "pokrov-windows-setup-x64.exe"
+
+
+DEFAULT_WINDOWS_EXE = _newest_windows_setup()
 DEFAULT_NOTES_FILE = REPO_ROOT / "docs" / "launch" / "open-beta-release-notes.md"
 DEFAULT_DOCS_URL = "https://pokrov.space/install/"
-DEFAULT_REPO = "Kiwunaka/POKROV-app"
+DEFAULT_REPO = "Kiwunaka/pokrov"
 DEFAULT_RELEASE_HANDOFF = CLIENT_ROOT / "artifacts" / "releases" / "release-handoff.json"
-CANONICAL_ANDROID_APK_NAME = "pokrov-android-universal.apk"
+CANONICAL_ANDROID_APK_NAME = "pokrov-android-arm64-v8a.apk"
+CANONICAL_ANDROID_ARMEABI_V7A_APK_NAME = "pokrov-android-armeabi-v7a.apk"
+CANONICAL_ANDROID_X86_64_APK_NAME = "pokrov-android-x86_64.apk"
+CANONICAL_ANDROID_UNIVERSAL_APK_NAME = "pokrov-android-universal.apk"
 CANONICAL_WINDOWS_EXE_NAME = "pokrov-windows-setup-x64.exe"
-BETA_TAG_RE = re.compile(r"^v?0\.\d+\.\d+-[0-9A-Za-z.-]*beta[0-9A-Za-z.-]*(?:\+[0-9A-Za-z.-]+)?$")
+PRERELEASE_TAG_RE = re.compile(
+    r"^v?\d+\.\d+\.\d+-(?:beta|rc)(?:[.-][0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$",
+    re.IGNORECASE,
+)
 
 
 def _sha256(path: Path) -> str:
@@ -58,6 +71,7 @@ def _release_handoff_failures(
     tag: str,
     android_apk: Path,
     windows_exe: Path,
+    android_variants: dict[str, Path] | None = None,
 ) -> list[str]:
     if release_handoff is None:
         return []
@@ -74,9 +88,14 @@ def _release_handoff_failures(
         return []
 
     downloads = (payload.get("downloads") or {}) if isinstance(payload, dict) else {}
+    windows_downloads = downloads.get("windows") or {} if isinstance(downloads, dict) else {}
     expected = {
         "Android APK": _normalize_sha256((downloads.get("android") or {}).get("sha256") if isinstance(downloads, dict) else ""),
-        "Windows EXE": _normalize_sha256((downloads.get("windows") or {}).get("sha256") if isinstance(downloads, dict) else ""),
+        "Windows EXE": _normalize_sha256(
+            windows_downloads.get("sha256") or windows_downloads.get("exe_sha256")
+            if isinstance(windows_downloads, dict)
+            else ""
+        ),
     }
     actual = {
         "Android APK": (_sha256(Path(android_apk)), Path(android_apk)),
@@ -91,6 +110,21 @@ def _release_handoff_failures(
                 f"{label} SHA256 does not match release handoff for {tag}: "
                 f"expected {expected_sha} from {path}, got {actual_sha} from {source}"
             )
+    handoff_variants = (downloads.get("android") or {}).get("apk_variants") if isinstance(downloads, dict) else []
+    expected_variant_hashes = {
+        str(item.get("abi") or "").strip(): _normalize_sha256(item.get("sha256"))
+        for item in (handoff_variants or [])
+        if isinstance(item, dict)
+    }
+    for abi, source in (android_variants or {}).items():
+        expected_sha = expected_variant_hashes.get(abi, "")
+        if expected_sha:
+            actual_sha = _sha256(source)
+            if expected_sha != actual_sha:
+                failures.append(
+                    f"Android {abi} APK SHA256 does not match release handoff for {tag}: "
+                    f"expected {expected_sha} from {path}, got {actual_sha} from {source}"
+                )
     return failures
 
 
@@ -98,8 +132,8 @@ def _plan_failures(*, repo: str, tag: str, android_apk: Path, windows_exe: Path,
     failures: list[str] = []
     if not str(repo or "").strip() or "/" not in str(repo or ""):
         failures.append("GitHub repo must use owner/name format")
-    if not BETA_TAG_RE.fullmatch(str(tag or "").strip()):
-        failures.append("tag must be a 0.x.x beta tag, for example v0.2.0-beta.1")
+    if not PRERELEASE_TAG_RE.fullmatch(str(tag or "").strip()):
+        failures.append("tag must be a beta/rc prerelease tag, for example v1.0.3-beta.1")
     failures.extend(_artifact_failures(Path(android_apk), label="Android APK", suffix=".apk"))
     failures.extend(_artifact_failures(Path(windows_exe), label="Windows EXE", suffix=".exe"))
     if not Path(notes_file).is_file():
@@ -171,7 +205,19 @@ def _build_plan(
     gh_path: str | None = None,
     stage_dir: Path | None = None,
     release_handoff: Path | None = None,
+    android_armeabi_v7a_apk: Path | None = None,
+    android_x86_64_apk: Path | None = None,
+    android_universal_apk: Path | None = None,
 ) -> dict[str, object]:
+    variant_sources = {
+        abi: Path(path)
+        for abi, path in (
+            ("armeabi-v7a", android_armeabi_v7a_apk),
+            ("x86_64", android_x86_64_apk),
+            ("universal", android_universal_apk),
+        )
+        if path is not None
+    }
     failures = _plan_failures(
         repo=repo,
         tag=tag,
@@ -180,6 +226,8 @@ def _build_plan(
         notes_file=notes_file,
         docs_url=docs_url,
     )
+    for abi, path in variant_sources.items():
+        failures.extend(_artifact_failures(path, label=f"Android {abi} APK", suffix=".apk"))
     if not failures:
         failures.extend(
             _release_handoff_failures(
@@ -187,6 +235,7 @@ def _build_plan(
                 tag=tag,
                 android_apk=Path(android_apk),
                 windows_exe=Path(windows_exe),
+                android_variants=variant_sources,
             )
         )
     if failures:
@@ -200,8 +249,30 @@ def _build_plan(
     notes_file = Path(notes_file)
     stage_dir = Path(stage_dir) if stage_dir else _stage_dir_for_tag(tag)
     staged_android_apk = stage_dir / CANONICAL_ANDROID_APK_NAME
+    staged_android_variants = {
+        "armeabi-v7a": stage_dir / CANONICAL_ANDROID_ARMEABI_V7A_APK_NAME,
+        "x86_64": stage_dir / CANONICAL_ANDROID_X86_64_APK_NAME,
+        "universal": stage_dir / CANONICAL_ANDROID_UNIVERSAL_APK_NAME,
+    }
     staged_windows_exe = stage_dir / CANONICAL_WINDOWS_EXE_NAME
     release_base = f"https://github.com/{repo}/releases/download/{tag}"
+
+    android_artifacts = [
+        _artifact_info(android_apk, staged_path=staged_android_apk, role="android_arm64_apk"),
+        *[
+            _artifact_info(
+                source,
+                staged_path=staged_android_variants[abi],
+                role=f"android_{abi.replace('-', '_')}_apk",
+            )
+            for abi, source in variant_sources.items()
+        ],
+    ]
+    staged_android_paths = [Path(item["path"]) for item in android_artifacts]
+    expected_variant_urls = {
+        abi: f"{release_base}/{staged_android_variants[abi].name}" if abi in variant_sources else ""
+        for abi in staged_android_variants
+    }
 
     return {
         "mode": "plan_only",
@@ -212,7 +283,7 @@ def _build_plan(
         "draft": False,
         "prerelease": True,
         "artifacts": [
-            _artifact_info(android_apk, staged_path=staged_android_apk, role="android_apk"),
+            *android_artifacts,
             _artifact_info(windows_exe, staged_path=staged_windows_exe, role="windows_exe"),
         ],
         "staging": {
@@ -221,12 +292,20 @@ def _build_plan(
             "commands": [
                 f"New-Item -ItemType Directory -Force -Path {_ps_single_quote(stage_dir)} | Out-Null",
                 _copy_item_command(source=android_apk, destination=staged_android_apk),
+                *[
+                    _copy_item_command(source=source, destination=staged_android_variants[abi])
+                    for abi, source in variant_sources.items()
+                ],
                 _copy_item_command(source=windows_exe, destination=staged_windows_exe),
             ],
         },
         "expected_urls": {
             "APP_ANDROID_PLAY_URL": "",
             "APP_ANDROID_APK_URL": f"{release_base}/{staged_android_apk.name}",
+            "APP_ANDROID_APK_ARM64_URL": f"{release_base}/{staged_android_apk.name}",
+            "APP_ANDROID_APK_ARMEABI_V7A_URL": expected_variant_urls["armeabi-v7a"],
+            "APP_ANDROID_APK_X86_64_URL": expected_variant_urls["x86_64"],
+            "APP_ANDROID_APK_UNIVERSAL_URL": expected_variant_urls["universal"],
             "APP_WINDOWS_EXE_URL": f"{release_base}/{staged_windows_exe.name}",
             "APP_DOCS_URL": docs_url,
         },
@@ -238,7 +317,7 @@ def _build_plan(
             "release",
             "create",
             tag,
-            str(staged_android_apk),
+            *[str(path) for path in staged_android_paths],
             str(staged_windows_exe),
             "--repo",
             repo,
@@ -252,11 +331,14 @@ def _build_plan(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Prepare a non-mutating GitHub Releases plan for POKROV APK/EXE artifacts.")
+    parser = argparse.ArgumentParser(description="Prepare a non-mutating GitHub Releases plan for POKROV split APK/EXE artifacts.")
     parser.add_argument("--repo", default=DEFAULT_REPO, help="GitHub repo in owner/name format.")
-    parser.add_argument("--tag", required=True, help="Release tag. Must stay on the 0.x.x-beta line, for example v0.2.0-beta.1.")
+    parser.add_argument("--tag", required=True, help="Beta/rc release tag, for example v1.0.3-beta.1.")
     parser.add_argument("--title", default="", help="Release title. Defaults to POKROV <tag without v>.")
     parser.add_argument("--android-apk", default=str(DEFAULT_ANDROID_APK))
+    parser.add_argument("--android-armeabi-v7a-apk", default=str(DEFAULT_ANDROID_ARMEABI_V7A_APK))
+    parser.add_argument("--android-x86-64-apk", default=str(DEFAULT_ANDROID_X86_64_APK))
+    parser.add_argument("--android-universal-apk", default=str(DEFAULT_ANDROID_UNIVERSAL_APK))
     parser.add_argument("--windows-exe", default=str(DEFAULT_WINDOWS_EXE))
     parser.add_argument("--notes-file", default=str(DEFAULT_NOTES_FILE))
     parser.add_argument("--docs-url", default=DEFAULT_DOCS_URL)
@@ -287,6 +369,9 @@ def main() -> int:
         tag=args.tag,
         title=args.title,
         android_apk=Path(args.android_apk),
+        android_armeabi_v7a_apk=Path(args.android_armeabi_v7a_apk),
+        android_x86_64_apk=Path(args.android_x86_64_apk),
+        android_universal_apk=Path(args.android_universal_apk),
         windows_exe=Path(args.windows_exe),
         notes_file=Path(args.notes_file),
         docs_url=args.docs_url,

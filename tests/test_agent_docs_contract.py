@@ -1231,7 +1231,9 @@ def test_active_operations_use_current_client_release_path() -> None:
     )
     assert "external/client-fork/scripts/release_handoff.ps1" not in combined
     assert "external/client-fork/scripts/check_release_urls.py" not in combined
-    assert "pokrov-android-universal.apk" not in combined
+    assert "pokrov-android-arm64-v8a.apk" in combined
+    assert "pokrov-android-universal.apk" in combined
+    assert "larger fallback" in combined
     assert "pokrov-android-arm64-v8a.apk" in combined
     assert "pokrov-android-armeabi-v7a.apk" in combined
     assert "POKROV-app/artifacts/releases/pokrov-app/" in combined

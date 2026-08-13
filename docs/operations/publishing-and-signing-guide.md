@@ -96,6 +96,8 @@ Current canonical release artifacts:
 
 - `pokrov-android-arm64-v8a.apk` = default Android APK
 - `pokrov-android-armeabi-v7a.apk` = legacy ARMv7 APK
+- `pokrov-android-x86_64.apk` = emulator-only APK for LDPlayer and other x86_64 Android environments
+- `pokrov-android-universal.apk` = larger fallback APK when ABI selection is unknown
 - `pokrov-android-market.aab` = market handoff only; no store availability claim
 - `pokrov-windows-setup-x64.exe`
 - `pokrov-windows-setup-x64.msix`
@@ -179,7 +181,8 @@ Notes:
 6. Upload the `AAB` to Google Play when store publication is ready.
 7. Upload `pokrov-android-arm64-v8a.apk` as the default direct download and
    `pokrov-android-armeabi-v7a.apk` as the explicitly labeled legacy ARMv7
-   variant to GitHub Releases.
+   variant to GitHub Releases. Publish `pokrov-android-x86_64.apk` for
+   emulators and keep `pokrov-android-universal.apk` as the larger fallback.
 8. Keep `pokrov-android-market.aab` as market handoff only until a real store
    submission is approved; the bundle does not establish store availability.
 9. Write and verify the versioned `release-handoff.json`, then pass that exact
@@ -408,7 +411,8 @@ Operational rule for this repo:
 Minimum publishing verification:
 
 - artifact names match canon: default `pokrov-android-arm64-v8a.apk`, legacy
-  `pokrov-android-armeabi-v7a.apk`, market-only
+  `pokrov-android-armeabi-v7a.apk`, emulator `pokrov-android-x86_64.apk`,
+  fallback `pokrov-android-universal.apk`, market-only
   `pokrov-android-market.aab`, and the candidate Windows artifacts
 - the versioned `release-handoff.json` matches exact candidate hashes, sizes,
   URLs, version, release channel, and manual gates

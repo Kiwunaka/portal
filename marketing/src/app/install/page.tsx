@@ -45,7 +45,8 @@ export default function InstallPage() {
   const facts = getSharedProductFacts();
   const androidHref = config.androidApkUrl || buildCabinetDownloadsHref("android");
   const androidDirectDownload = Boolean(config.androidApkUrl);
-  const windowsHref = buildCabinetDownloadsHref("windows");
+  const windowsHref = config.windowsExeUrl || buildCabinetDownloadsHref("windows");
+  const windowsDirectDownload = Boolean(config.windowsExeUrl);
 
   const platforms: InstallPlatform[] = [
     {
@@ -53,7 +54,7 @@ export default function InstallPage() {
       label: getCopyText("marketing.install.tabs.android", "Android"),
       note: getCopyText(
         "marketing.install.android.note",
-        "Один универсальный APK подходит поддерживаемым Android-устройствам. Google Play для этого релиза не нужен.",
+        "ARM64 подходит большинству телефонов. Старые и универсальные варианты спрятаны в кабинете — выбирать их обычно не нужно.",
       ),
       steps: [
         {
@@ -61,7 +62,7 @@ export default function InstallPage() {
           title: getCopyText("marketing.install.android.step1.title", "Скачайте файл"),
           text: getCopyText(
             "marketing.install.android.step1.text",
-            "Скачайте универсальный APK из официального POKROV Releases. Аккаунт понадобится уже после установки.",
+            "Скачайте рекомендуемый ARM64 APK из официального POKROV Releases. Аккаунт понадобится уже после установки.",
           ),
         },
         {
@@ -95,7 +96,7 @@ export default function InstallPage() {
           title: getCopyText("marketing.install.windows.step1.title", "Скачайте установщик"),
           text: getCopyText(
             "marketing.install.windows.step1.text",
-            "Откройте кабинет. Он выдаст актуальный EXE-файл для вашего аккаунта.",
+            "Скачайте установщик из официального POKROV Releases. Portable-версия доступна в кабинете.",
           ),
         },
         {
@@ -123,7 +124,7 @@ export default function InstallPage() {
       question: getCopyText("marketing.install.faq.file.q", "Откуда скачивается официальный файл?"),
       answer: getCopyText(
         "marketing.install.faq.file.a",
-        "Android APK скачивается из публичного POKROV Releases. Windows-файл открывается через кабинет. Не используйте случайные зеркала и пересланные архивы.",
+        "Android APK и Windows-установщик скачиваются из публичного POKROV Releases. Portable-версия Windows доступна в кабинете. Не используйте случайные зеркала и пересланные архивы.",
       ),
     },
     {
@@ -137,7 +138,7 @@ export default function InstallPage() {
       question: getCopyText("marketing.install.faq.apk.q", "Какой APK выбрать на Android?"),
       answer: getCopyText(
         "marketing.install.faq.apk.a",
-        "Скачайте универсальный pokrov-android-universal.apk. Отдельно выбирать arm64 или legacy-файл больше не нужно.",
+        "Берите ARM64 — он подходит большинству телефонов и заметно меньше universal. Если установка не проходит, откройте «Другие версии» в кабинете: там есть ARMv7 и universal.",
       ),
     },
     {
@@ -185,8 +186,8 @@ export default function InstallPage() {
         </div>
         <div className="flex flex-col items-center gap-1">
           <p className="m-0 text-[0.8125rem] text-ink-soft">
-            {androidDirectDownload
-              ? "Android APK скачается из официального публичного POKROV Releases."
+            {androidDirectDownload && windowsDirectDownload
+              ? "Android APK и Windows-установщик скачаются из официального POKROV Releases."
               : getCopyText("marketing.install.cta.note", "Файл выдаст кабинет — откроется в новой вкладке.")}
           </p>
           <Link

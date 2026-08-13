@@ -173,7 +173,35 @@ def test_exact_xcody_synthesis_payload_and_normalized_usage() -> None:
                 "reasoning": {"effort": "medium", "exclude": True},
                 "temperature": 0.2,
                 "n": 1,
-                "response_format": {"type": "json_object"},
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "pokrov_support_reply",
+                        "strict": True,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "schema_version": {
+                                    "type": "string",
+                                    "enum": ["1"],
+                                    "description": "POKROV support response schema version.",
+                                },
+                                "status": {
+                                    "type": "string",
+                                    "enum": ["answer", "escalate"],
+                                    "description": "Whether the assistant can answer or needs human support.",
+                                },
+                                "reply": {
+                                    "type": "string",
+                                    "description": "A concise support answer in Russian.",
+                                },
+                            },
+                            "required": ["schema_version", "status", "reply"],
+                            "additionalProperties": False,
+                        },
+                    },
+                },
+                "provider": {"require_parameters": True},
             },
         }
     ]

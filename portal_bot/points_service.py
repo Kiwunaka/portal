@@ -266,6 +266,7 @@ def award_points(
     expires_days: int | None = None,
     ref_tg_id: int | None = None,
     pay_attempt_id: int | None = None,
+    session=None,
 ) -> int:
     grant = max(0, int(amount))
     if grant <= 0:
@@ -275,7 +276,8 @@ def award_points(
     if expires_days is not None:
         exp_days = max(1, int(expires_days))
         exp = now + timedelta(days=exp_days)
-    s = _session()
+    owns_session = session is None
+    s = _session() if owns_session else session
     try:
         row = PointsLedger(
             tg_id=int(tg_id),
@@ -287,13 +289,19 @@ def award_points(
             created_at=now,
         )
         s.add(row)
-        s.commit()
+        if owns_session:
+            s.commit()
+        else:
+            s.flush()
         return int(grant)
     except Exception:
-        s.rollback()
-        return 0
+        if owns_session:
+            s.rollback()
+            return 0
+        raise
     finally:
-        s.close()
+        if owns_session:
+            s.close()
 
 
 def preview_redeemable_points(

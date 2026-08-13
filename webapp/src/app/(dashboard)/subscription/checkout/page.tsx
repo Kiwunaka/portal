@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, CalendarClock, CircleCheck, CreditCard, KeyRound, LifeBuoy, Loader2, TriangleAlert } from "lucide-react";
+import { ArrowLeft, ChevronDown, CircleCheck, CreditCard, KeyRound, LifeBuoy, Loader2, TriangleAlert } from "lucide-react";
 
 import { StatusHero } from "@/components/cabinet/status-hero";
 import { Button } from "@/components/ui/button";
@@ -76,6 +76,7 @@ export default function CheckoutPage() {
   const [providerProbePending, setProviderProbePending] = useState(true);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutError, setCheckoutError] = useState("");
+  const [planPickerOpen, setPlanPickerOpen] = useState(false);
 
   useEffect(() => {
     setSelectedCode(normalizePlanCode(searchParams.get("plan"), "start_99"));
@@ -194,130 +195,136 @@ export default function CheckoutPage() {
   const heroTone = checkoutReady ? "success" : providerProbePending ? "neutral" : "warning";
 
   return (
-    <main className="mx-auto flex w-full max-w-[860px] flex-col gap-5">
+    <main className="mx-auto flex w-full max-w-[720px] flex-col gap-4">
       <StatusHero
         title={getCopyText("webapp.checkout.title", "Продлить доступ")}
         meta={resolvePlanLabel(dash, user)}
-        body={getCopyText("webapp.checkout.subtitle", "Выберите срок, проверьте итог и перейдите к оплате. Продление останется на текущем профиле.")}
+        body={getCopyText("webapp.checkout.subtitle", "Одна оплата без автосписаний. Доступ останется на текущем профиле.")}
         tone={heroTone}
         icon={checkoutReady || providerProbePending ? CreditCard : TriangleAlert}
-        action={
-          <Button
-            onClick={startCheckout}
-            loading={checkoutBusy}
-            disabled={!checkoutReady}
-            className="w-full sm:w-auto"
-          >
-            Перейти к оплате
-          </Button>
-        }
       />
 
-      <GroupedSection title="Срок">
-        {availablePlans.map((plan) => {
-          const selected = plan.code === activePlan?.code;
-          return (
-            <button
-              key={plan.code}
-              type="button"
-              role="radio"
-              aria-checked={selected}
-              onClick={() => setSelectedCode(plan.code)}
-              className={cn(
-                "flex min-h-[56px] w-full items-center gap-3 px-4 py-2.5 text-left transition-colors duration-150 motion-reduce:transition-none",
-                selected ? "bg-brand-soft/60" : "hover:bg-canvas-alt",
-              )}
-            >
-              <span
-                className={cn(
-                  "grid size-9 shrink-0 place-items-center rounded-[10px] transition-colors duration-150 motion-reduce:transition-none",
-                  selected ? "bg-brand text-brand-contrast" : "bg-brand-soft text-brand",
-                )}
-              >
-                {selected ? (
-                  <CircleCheck size={18} strokeWidth={2} aria-hidden="true" />
-                ) : (
-                  <CalendarClock size={18} strokeWidth={2} aria-hidden="true" />
-                )}
+      <GroupedSection title="Оформление">
+        <div className="p-4">
+          <button
+            type="button"
+            onClick={() => setPlanPickerOpen((value) => !value)}
+            aria-expanded={planPickerOpen}
+            aria-controls="cabinet-checkout-plans"
+            className="flex min-h-[64px] w-full items-center gap-3 rounded-control border border-brand bg-brand-soft/60 px-4 py-3 text-left outline-none transition-colors duration-150 hover:bg-brand-soft focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 motion-reduce:transition-none"
+          >
+            <span className="grid size-9 shrink-0 place-items-center rounded-[10px] bg-brand text-brand-contrast">
+              <CircleCheck size={18} strokeWidth={2} aria-hidden="true" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="flex items-center gap-2">
+                <span className="truncate text-sm font-semibold text-ink">{activePlan?.label}</span>
+                {activePlan?.badge ? (
+                  <span className="inline-flex shrink-0 items-center rounded-full border border-ok-line bg-ok-bg px-1.5 py-0.5 text-[10px] font-bold text-ok-text uppercase">
+                    {activePlan.badge}
+                  </span>
+                ) : null}
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="flex items-center gap-2">
-                  <span className="block truncate text-sm font-semibold text-ink">{plan.label}</span>
-                  {plan.badge ? (
-                    <span className="inline-flex shrink-0 items-center rounded-full border border-ok-line bg-ok-bg px-1.5 py-0.5 text-[10px] font-bold text-ok-text uppercase">
-                      {plan.badge}
+              <span className="mt-0.5 block truncate text-[13px] leading-5 text-ink-soft">
+                {formatDuration(activePlan?.days || 0)} · {formatDevicesLimit(activePlan?.deviceLimit || 1)}
+              </span>
+            </span>
+            <strong className="shrink-0 text-base text-ink">{activePlan?.amountRub} ₽</strong>
+            <ChevronDown
+              size={18}
+              strokeWidth={2}
+              aria-hidden="true"
+              className={cn("shrink-0 text-ink-soft transition-transform duration-150 motion-reduce:transition-none", planPickerOpen && "rotate-180")}
+            />
+          </button>
+
+          {planPickerOpen ? (
+            <div id="cabinet-checkout-plans" role="radiogroup" aria-label="Срок доступа" className="mt-2 grid gap-2 sm:grid-cols-2">
+              {availablePlans.map((plan) => {
+                const selected = plan.code === activePlan?.code;
+                return (
+                  <button
+                    key={plan.code}
+                    type="button"
+                    role="radio"
+                    aria-checked={selected}
+                    onClick={() => {
+                      setSelectedCode(plan.code);
+                      setPlanPickerOpen(false);
+                    }}
+                    className={cn(
+                      "flex min-h-[58px] items-center gap-3 rounded-control border px-3 py-2.5 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 motion-reduce:transition-none",
+                      selected ? "border-brand bg-brand-soft/60" : "border-line bg-surface hover:bg-canvas-alt",
+                    )}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-ink">{plan.label}</span>
+                      <span className="mt-0.5 block text-xs text-ink-soft">{formatDuration(plan.days)} · {formatDevicesLimit(plan.deviceLimit)}</span>
                     </span>
-                  ) : null}
-                </span>
-                <span className="mt-0.5 block truncate text-[13px] leading-5 text-ink-soft">
-                  {formatDuration(plan.days)} · {formatDevicesLimit(plan.deviceLimit)}
-                </span>
-              </span>
-              <span className="shrink-0 text-sm font-bold text-ink">{plan.amountRub} ₽</span>
-              <span
-                className={cn(
-                  "shrink-0 text-sm font-semibold",
-                  selected ? "text-ok-text" : "text-brand",
-                )}
-              >
-                {selected ? "Выбрано" : "Выбрать"}
-              </span>
-            </button>
-          );
-        })}
-      </GroupedSection>
-      {catalogError ? <p className="px-1 text-sm text-warn-text">Каталог не обновился: {catalogError}</p> : null}
-
-      <GroupedSection title="Способ оплаты">
-        <div className="grid gap-2 p-4 sm:grid-cols-2">
-          {PAYMENT_METHOD_OPTIONS.map((option) => {
-            const selected = option.code === paymentMethod;
-            return (
-              <Chip
-                key={option.code}
-                active={selected}
-                onClick={() => setPaymentMethod(option.code)}
-                className="min-h-[72px] justify-start rounded-control px-4 py-3 text-left"
-              >
-                <span className="flex min-w-0 flex-col gap-1">
-                  <span className="text-sm font-semibold text-ink">{option.label}</span>
-                  <span className="text-xs leading-5 font-normal text-ink-soft">{option.hint}</span>
-                </span>
-              </Chip>
-            );
-          })}
-        </div>
-      </GroupedSection>
-
-      <GroupedSection title="Итог">
-        <div className="space-y-3 p-4">
-          <Input
-            value={promoInput}
-            onChange={(event) => setPromoInput(event.target.value)}
-            placeholder="Промокод"
-          />
-          {promoBlockedByPlan ? (
-            <p className="text-sm text-warn-text">
-              Для приветственного тарифа 99 ₽ промокод не применяется.
-            </p>
+                    <strong className="shrink-0 text-sm text-ink">{plan.amountRub} ₽</strong>
+                  </button>
+                );
+              })}
+            </div>
           ) : null}
-          <div className="rounded-control border border-line bg-canvas-alt px-4 py-3 text-sm leading-6 text-ink-soft">
-            <div className="flex justify-between gap-3">
-              <span>Базовая цена</span>
-              <strong className="text-ink">{activePlan?.amountRub} ₽</strong>
-            </div>
-            <div className="flex justify-between gap-3">
-              <span>Скидка</span>
-              <strong className="text-ink">{discountAmount > 0 ? `${discountAmount} ₽` : "нет"}</strong>
-            </div>
-            <div className="mt-2 flex justify-between gap-3 text-base text-ink">
+          {catalogError ? <p className="mt-2 text-sm text-warn-text">Каталог не обновился: {catalogError}</p> : null}
+        </div>
+
+        <div className="p-4">
+          <p className="mb-2 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Способ оплаты</p>
+          <div className="grid grid-cols-2 gap-2">
+            {PAYMENT_METHOD_OPTIONS.map((option) => {
+              const selected = option.code === paymentMethod;
+              return (
+                <Chip
+                  key={option.code}
+                  active={selected}
+                  onClick={() => setPaymentMethod(option.code)}
+                  className="min-h-[60px] justify-start rounded-control px-3 py-2.5 text-left"
+                >
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-sm font-semibold text-ink">{option.label}</span>
+                    <span className="line-clamp-2 text-xs leading-4 font-normal text-ink-soft">{option.hint}</span>
+                  </span>
+                </Chip>
+              );
+            })}
+          </div>
+        </div>
+
+        <details className="group px-4">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-control py-2 text-sm font-semibold text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
+            Есть промокод?
+            <ChevronDown size={18} strokeWidth={2} aria-hidden="true" className="shrink-0 text-ink-soft transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" />
+          </summary>
+          <div className="space-y-2 pb-4">
+            <Input
+              value={promoInput}
+              onChange={(event) => setPromoInput(event.target.value)}
+              placeholder="Промокод"
+            />
+            {promoBlockedByPlan ? <p className="text-sm text-warn-text">Для приветственных 99 ₽ промокод не применяется.</p> : null}
+            {discountAmount > 0 ? <p className="text-sm text-ok-text">Скидка {discountPercent}% применена.</p> : null}
+          </div>
+        </details>
+
+        <div className="space-y-3 p-4">
+          <div className="rounded-control border border-line bg-canvas-alt px-4 py-3">
+            {discountAmount > 0 ? (
+              <div className="mb-1 flex justify-between gap-3 text-sm text-ink-soft">
+                <span>Цена до скидки</span>
+                <span className="line-through">{activePlan?.amountRub} ₽</span>
+              </div>
+            ) : null}
+            <div className="flex items-end justify-between gap-3 text-ink">
               <span className="font-semibold">К оплате</span>
-              <strong>{totalAmount} ₽</strong>
+              <strong className="font-display text-2xl leading-none">{totalAmount} ₽</strong>
             </div>
           </div>
           <Button onClick={startCheckout} loading={checkoutBusy} disabled={!checkoutReady} block>
-            Перейти к оплате
+            Оплатить {totalAmount} ₽
           </Button>
+          <p className="text-center text-xs leading-5 text-ink-soft">Разовая оплата · без автосписаний</p>
           {providerProbePending ? (
             <p className="flex items-center gap-2 text-sm text-ink-soft" role="status">
               <Loader2 size={15} strokeWidth={2.2} className="shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
@@ -327,16 +334,19 @@ export default function CheckoutPage() {
           {providerWarning ? <p className="text-sm text-warn-text">{providerWarning}</p> : null}
           {checkoutError ? <p className="text-sm text-danger-text">{checkoutError}</p> : null}
         </div>
-      </GroupedSection>
 
-      <section className="flex flex-col gap-2.5">
-        <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Что дальше</h2>
-        <ActionGrid className="sm:grid-cols-3">
-          <ActionCard icon={KeyRound} title="У меня уже есть код" hint="Активировать оплату, подарок или промокод" href="/redeem/" />
-          <ActionCard icon={LifeBuoy} title="Оплата не обновилась" hint="Откройте одно обращение в поддержке" href="/support/" />
-          <ActionCard icon={ArrowLeft} title="Назад к доступу" hint="Сроки, ссылка подключения и загрузки" href="/subscription/" />
-        </ActionGrid>
-      </section>
+        <details className="group px-4">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 rounded-control py-2 text-sm font-semibold text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2">
+            Код активации или помощь
+            <ChevronDown size={18} strokeWidth={2} aria-hidden="true" className="shrink-0 text-ink-soft transition-transform duration-150 group-open:rotate-180 motion-reduce:transition-none" />
+          </summary>
+          <ActionGrid className="pb-4 sm:grid-cols-3">
+            <ActionCard icon={KeyRound} title="Есть код" hint="Активировать доступ" href="/redeem/" />
+            <ActionCard icon={LifeBuoy} title="Нужна помощь" hint="Открыть поддержку" href="/support/" />
+            <ActionCard icon={ArrowLeft} title="Назад" hint="К управлению доступом" href="/subscription/" />
+          </ActionGrid>
+        </details>
+      </GroupedSection>
     </main>
   );
 }

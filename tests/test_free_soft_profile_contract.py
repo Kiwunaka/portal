@@ -48,7 +48,10 @@ def _node(
 
 
 @pytest.fixture()
-def session():
+def session(monkeypatch):
+    # The consumer free tier is retired in production. These tests exercise the
+    # explicitly opt-in rollback implementation only.
+    monkeypatch.setenv("FREE_TIER_ENABLED", "true")
     from models import Base
 
     engine = create_engine("sqlite:///:memory:")
@@ -68,6 +71,7 @@ def api_module(monkeypatch, tmp_path):
     monkeypatch.setenv("BOT_TOKEN", "test-token")
     monkeypatch.setenv("ADMIN_ID", "9999")
     monkeypatch.setenv("WEBAPP_SESSION_SECRET", "test-session-secret")
+    monkeypatch.setenv("FREE_TIER_ENABLED", "true")
     for module_name in ("config", "db", "api"):
         monkeypatch.delitem(sys.modules, module_name, raising=False)
     module = importlib.import_module("api")

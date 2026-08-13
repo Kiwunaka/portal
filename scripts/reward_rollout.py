@@ -22,10 +22,14 @@ PORTAL_BOT_DIR = REPO_ROOT / "portal_bot"
 if str(PORTAL_BOT_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_BOT_DIR))
 
-from rewards_service import PAID_WEEKLY_V1 as _SERVICE_PAID_WEEKLY_V1  # noqa: E402
+from rewards_service import (  # noqa: E402
+    PAID_FORTNIGHTLY_DISCOUNTS_V3 as _SERVICE_PAID_FORTNIGHTLY_DISCOUNTS_V3,
+)
 
 
-PAID_WEEKLY_V1: dict[str, object] = deepcopy(_SERVICE_PAID_WEEKLY_V1)
+PAID_FORTNIGHTLY_DISCOUNTS_V3: dict[str, object] = deepcopy(
+    _SERVICE_PAID_FORTNIGHTLY_DISCOUNTS_V3
+)
 PASS = "PASS"
 BLOCKED = "BLOCKED"
 RUNTIME_MANIFEST_ENV = "REWARD_ROLLOUT_RUNTIME_MANIFEST"
@@ -284,7 +288,7 @@ def run_configure(
     candidate: str,
     evidence_dir: Path,
 ) -> RolloutResult:
-    """Write and read back the exact paid-weekly preset after all guards pass."""
+    """Write and read back the exact paid-fortnightly preset after all guards pass."""
 
     candidate = _normalize_candidate(candidate)
     snapshot, snapshot_codes = _snapshot_or_block(runtime)
@@ -297,8 +301,11 @@ def run_configure(
 
     if not codes:
         try:
-            mutation = runtime.configure_wheel(deepcopy(PAID_WEEKLY_V1))
-            if not mutation.committed or mutation.readback != PAID_WEEKLY_V1:
+            mutation = runtime.configure_wheel(deepcopy(PAID_FORTNIGHTLY_DISCOUNTS_V3))
+            if (
+                not mutation.committed
+                or mutation.readback != PAID_FORTNIGHTLY_DISCOUNTS_V3
+            ):
                 codes.append("wheel_config_readback_mismatch")
         except RolloutRuntimeError as exc:
             codes.append(exc.code)
@@ -307,11 +314,11 @@ def run_configure(
 
     codes_tuple = tuple(dict.fromkeys(codes))
     status = PASS if not codes_tuple else BLOCKED
-    target_hash = _hash_summary(PAID_WEEKLY_V1)
+    target_hash = _hash_summary(PAID_FORTNIGHTLY_DISCOUNTS_V3)
     evidence = _base_evidence(operation="configure", candidate=candidate, status=status, codes=codes_tuple)
     evidence.update(
         {
-            "preset": "paid_weekly_v1",
+            "preset": "paid_fortnightly_discounts_v3",
             "sha256": target_hash["sha256"],
             "counts": counts,
             "previous": _hash_summary(mutation.previous if mutation else None),
@@ -350,7 +357,7 @@ def run_verify(
         codes.append("reward_state_backfill_incomplete")
     try:
         config = runtime.read_wheel_config()
-        if config != PAID_WEEKLY_V1:
+        if config != PAID_FORTNIGHTLY_DISCOUNTS_V3:
             codes.append("wheel_config_readback_mismatch")
     except RolloutRuntimeError as exc:
         codes.append(exc.code)
@@ -368,7 +375,7 @@ def run_verify(
                 "reward_state_complete": bool(
                     snapshot is not None and snapshot.reward_state_accounts == snapshot.canonical_accounts
                 ),
-                "wheel_config_exact": config == PAID_WEEKLY_V1,
+                "wheel_config_exact": config == PAID_FORTNIGHTLY_DISCOUNTS_V3,
             },
             "wheel_config": _hash_summary(config),
         }
@@ -570,7 +577,7 @@ class LiveRuntime:
         from models import AppSetting
         from rewards_service import parse_paid_weekly_config
 
-        if payload != PAID_WEEKLY_V1:
+        if payload != PAID_FORTNIGHTLY_DISCOUNTS_V3:
             raise RolloutRuntimeError("wheel_config_target_not_exact")
         parse_paid_weekly_config(payload, explicit=True)
         SessionLocal = self._session_factory()
@@ -656,7 +663,7 @@ def main(
 
     expected_confirmation = {
         "backfill": "reward-state-v1",
-        "configure": "paid_weekly_v1",
+        "configure": "paid_fortnightly_discounts_v3",
     }.get(args.command)
     if expected_confirmation is not None and args.confirm_apply != expected_confirmation:
         raise SystemExit(f"explicit confirmation required: --confirm-apply {expected_confirmation}")

@@ -67,6 +67,60 @@ export type PromoRow = {
   created_at: string | null;
 };
 
+export type PromoSlotAssignment = {
+  slot_id: string;
+  content_id: string;
+  enabled: boolean;
+  title?: string | null;
+  body?: string | null;
+  badge_label?: string | null;
+  image_url?: string | null;
+  image_layout?: "logo" | "banner" | string | null;
+  cta_label?: string | null;
+  cta_href?: string | null;
+  accent_color?: string | null;
+  background_color?: string | null;
+  text_color?: string | null;
+  button_color?: string | null;
+  button_text_color?: string | null;
+  placement?: string | null;
+  dismissible?: boolean;
+  whole_card_clickable?: boolean;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  contexts: string[];
+  sort_order: number;
+};
+
+export type PromoSlotCatalogSlot = {
+  id: string;
+  surface: string;
+  contexts: string[];
+  allowed_content_ids: string[];
+};
+
+export type PromoSlotCatalogContent = {
+  id: string;
+  kind: string;
+  goal: string;
+  default_enabled: boolean;
+};
+
+export type PromoSlotsPayload = {
+  version: string;
+  mode: string;
+  remote_available: boolean;
+  fallback_behavior: string;
+  assignments: PromoSlotAssignment[];
+  catalog: {
+    version: string;
+    mode: string;
+    fallback_behavior: string;
+    slots: PromoSlotCatalogSlot[];
+    content_catalog: PromoSlotCatalogContent[];
+  };
+};
+
 export type ReferralRow = {
   id: number;
   order_id: string;
@@ -210,6 +264,11 @@ export async function fetchPromos(init?: ApiRequestInit): Promise<PromoRow[]> {
     const promoType = text(row.promo_type);
     return code ? [{ code, promo_type: promoType === "discount" || promoType === "days" ? promoType : null, value: finite(row.value), uses_left: finite(row.uses_left), used_count: finite(row.used_count), expires_at: text(row.expires_at), created_at: text(row.created_at) }] : [];
   }) : [];
+}
+
+export async function fetchPromoSlots(init?: ApiRequestInit): Promise<PromoSlotsPayload> {
+  const data = await apiFetch<{ promo_slots: PromoSlotsPayload }>("/api/admin/promo-slots", init);
+  return data.promo_slots;
 }
 
 export async function fetchReferrals(status: string, init?: ApiRequestInit): Promise<ReferralRow[]> {

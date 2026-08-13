@@ -14,6 +14,7 @@ from support_ai_service import (
     SupportAIConfig,
     _ProviderResponseTooLarge,
     provider_generation_controls,
+    provider_response_controls,
     provider_timeout_ceiling,
     provider_wire_model,
     read_bounded_provider_json,
@@ -177,7 +178,7 @@ class XCodyChatAdapter:
             "messages": [dict(item) for item in messages],
             "temperature": 0.2,
             "n": 1,
-            "response_format": {"type": "json_object"},
+            **provider_response_controls(self.config),
             **provider_generation_controls(self.config),
         }
         serialized = json.dumps(

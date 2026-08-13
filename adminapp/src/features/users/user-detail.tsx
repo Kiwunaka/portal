@@ -174,7 +174,11 @@ export function UserDetail({
   onRefresh: () => void;
 }) {
   const panelId = useId();
-  const name = data.user.displayName || (data.user.username ? `@${data.user.username}` : `Пользователь ${data.user.tgId}`);
+  const name = data.user.linkedTelegramUsername
+    ? `@${data.user.linkedTelegramUsername}`
+    : data.user.username && !data.user.username.toLowerCase().startsWith("app_")
+      ? `@${data.user.username}`
+      : data.user.displayName || data.user.deviceName || `Пользователь ${data.user.tgId}`;
   const panelWarning = data.summary.panelState === "partial"
     ? {
         title: "Снимок панели неполный",
@@ -246,7 +250,9 @@ export function UserDetail({
                     {[
                       ["Telegram ID", String(data.user.tgId)],
                       ["Имя в Telegram", data.user.username ? `@${data.user.username}` : "Не указано"],
+                      ["Привязанный Telegram", data.user.linkedTelegramUsername ? `@${data.user.linkedTelegramUsername}` : "Не привязан"],
                       ["Источник", data.user.origin === "app" ? "Приложение" : data.user.origin === "telegram" ? "Telegram" : data.user.origin === "manual_test" ? "Ручной тест" : "Не указан"],
+                      ["Устройство", data.user.deviceName || "Не указано"],
                       ["ID установки", data.user.installId || "Не указан"],
                       ["Платформа", data.user.appPlatform || "Не указана"],
                       ["Последняя активность приложения", dateText(data.user.appLastSeenAt)],

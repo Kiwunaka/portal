@@ -126,10 +126,52 @@ class PublishGithubReleaseAssetsTests(unittest.TestCase):
         self.assertEqual(plan["classification"], "DRY_RUN")
         self.assertEqual(plan["token"]["present"], False)
         self.assertEqual(plan["release_auth"]["ready"], False)
-        self.assertEqual([asset["upload_name"] for asset in plan["assets"]], ["pokrov-android-universal.apk", "pokrov-windows-setup-x64.exe"])
+        self.assertEqual([asset["upload_name"] for asset in plan["assets"]], ["pokrov-android-arm64-v8a.apk", "pokrov-windows-setup-x64.exe"])
         self.assertIn("GitHub CLI", "\n".join(plan["execute_requirements"]))
         self.assertIn("GITHUB_TOKEN", "\n".join(plan["execute_requirements"]))
         self.assertEqual(plan["expected_urls"]["APP_ANDROID_PLAY_URL"], "")
+
+    def test_dry_run_plan_publishes_all_split_apks_with_arm64_as_default(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_root:
+            root = Path(temp_root)
+            paths = _sample_inputs(root)
+            armv7 = root / "app-armeabi-v7a-release.apk"
+            x86_64 = root / "app-x86_64-release.apk"
+            universal = root / "app-release-universal.apk"
+            armv7.write_bytes(b"armv7")
+            x86_64.write_bytes(b"x86_64")
+            universal.write_bytes(b"universal")
+
+            plan = self.module.build_publish_plan(
+                repo="Kiwunaka/pokrov",
+                tag="v1.0.3-rc.1",
+                title="POKROV 1.0.3-rc.1",
+                android_apk=paths["apk"],
+                android_armeabi_v7a_apk=armv7,
+                android_x86_64_apk=x86_64,
+                android_universal_apk=universal,
+                windows_exe=paths["exe"],
+                notes_file=paths["notes"],
+                docs_url="https://pokrov.space/install/",
+                execute=False,
+                go_evidence_file=None,
+                env={},
+            )
+
+        self.assertEqual(
+            [asset["upload_name"] for asset in plan["assets"]],
+            [
+                "pokrov-android-arm64-v8a.apk",
+                "pokrov-android-armeabi-v7a.apk",
+                "pokrov-android-x86_64.apk",
+                "pokrov-android-universal.apk",
+                "pokrov-windows-setup-x64.exe",
+            ],
+        )
+        self.assertEqual(
+            plan["expected_urls"]["APP_ANDROID_APK_URL"],
+            plan["expected_urls"]["APP_ANDROID_APK_ARM64_URL"],
+        )
 
     def test_execute_rejects_current_no_go_handoff_before_uploading(self) -> None:
         with tempfile.TemporaryDirectory() as temp_root:
@@ -343,8 +385,8 @@ class PublishGithubReleaseAssetsTests(unittest.TestCase):
         self.assertEqual(fake_api.created_release_payloads[0]["payload"]["draft"], False)
         self.assertEqual(fake_api.created_release_payloads[0]["payload"]["prerelease"], True)
         self.assertEqual(fake_api.created_release_payloads[0]["payload"]["body"], "release notes")
-        self.assertEqual([upload["name"] for upload in fake_api.uploads], ["pokrov-android-universal.apk", "pokrov-windows-setup-x64.exe"])
-        self.assertEqual([asset["name"] for asset in result["uploaded_assets"]], ["pokrov-android-universal.apk", "pokrov-windows-setup-x64.exe"])
+        self.assertEqual([upload["name"] for upload in fake_api.uploads], ["pokrov-android-arm64-v8a.apk", "pokrov-windows-setup-x64.exe"])
+        self.assertEqual([asset["name"] for asset in result["uploaded_assets"]], ["pokrov-android-arm64-v8a.apk", "pokrov-windows-setup-x64.exe"])
         self.assertNotIn("app-release.apk", "\n".join(asset["browser_download_url"] for asset in result["uploaded_assets"]))
         self.assertEqual(result["publish_method"], "github_rest")
 
@@ -372,8 +414,8 @@ class PublishGithubReleaseAssetsTests(unittest.TestCase):
         self.assertEqual(plan["token"]["present"], False)
         self.assertEqual(plan["github_cli"]["authenticated"], True)
         self.assertEqual(plan["release_auth"]["methods"], ["gh_cli_keyring"])
-        self.assertEqual(fake_cli.created_release_payloads[0]["asset_names"], ["pokrov-android-universal.apk", "pokrov-windows-setup-x64.exe"])
-        self.assertEqual([asset["name"] for asset in result["uploaded_assets"]], ["pokrov-android-universal.apk", "pokrov-windows-setup-x64.exe"])
+        self.assertEqual(fake_cli.created_release_payloads[0]["asset_names"], ["pokrov-android-arm64-v8a.apk", "pokrov-windows-setup-x64.exe"])
+        self.assertEqual([asset["name"] for asset in result["uploaded_assets"]], ["pokrov-android-arm64-v8a.apk", "pokrov-windows-setup-x64.exe"])
         self.assertEqual(result["publish_method"], "gh_cli")
 
 

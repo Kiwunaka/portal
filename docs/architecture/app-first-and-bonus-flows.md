@@ -131,7 +131,7 @@ Predeploy account-foundation gates:
    - canonical UUID account projection
    - real device registry row
    - current compatibility bearer session
-   - one account/device trial reservation expiring after `7 days`
+   - one account/device trial reservation expiring after `5 days`
 6. backend returns:
    - `session` payload with canonical session fields
    - `client_policy` payload with routing, DNS, transport, and recovery defaults
@@ -145,7 +145,7 @@ Predeploy account-foundation gates:
 Contract rule:
 
 - caller-controlled `trial_days` is no longer part of the canonical client contract; the backend always enforces the fixed `5-day` trial from shared truth
-- the provisional credential remains usable during the `7-day` reservation,
+- the provisional credential remains usable during the `5-day` reservation,
   but `activated_at` and the effective expiry are written exactly once only
   from authenticated internal observer evidence; expiry is
   `first_valid_evidence_at + 5 days`
@@ -623,13 +623,15 @@ Contract rule:
 
 ## Telegram Bonus Claim Flow
 
-1. app-first account must already be linked to Telegram
-2. app or web surfaces may call `POST /api/channel/subscriber/check` to verify membership readiness
-3. `POST /api/channel/subscriber/check` is read-only and must never grant points or mark campaign state
-4. the real reward path calls `POST /api/bonuses/channel/claim`
-5. backend checks membership for the linked Telegram account
-6. if membership is valid, backend grants a new account-owned `+5 days` once
-7. if not linked or not eligible, backend returns the correct reason
+1. account must have active canonical paid access; trial, expired, free and
+   bonus-only authority returns `active_paid_required` before Telegram lookup
+2. app-first account must already be linked to Telegram
+3. app or web surfaces may call `POST /api/channel/subscriber/check` to verify membership readiness
+4. `POST /api/channel/subscriber/check` is read-only and must never grant points or mark campaign state
+5. the real reward path calls `POST /api/bonuses/channel/claim`
+6. backend checks membership for the linked Telegram account
+7. if membership is valid, backend grants a new account-owned `+5 days` once
+8. if not linked or not eligible, backend returns the correct structured reason
 
 Existing issued `+10 days` channel grants are grandfathered. Membership loss
 starts `24 hours` of grace; rejoin cancels grace. A due reversal marks only the
@@ -648,8 +650,8 @@ Premium addition and rebuild classify contributions explicitly. Typed
 cursor. A compatibility `legacy_snapshot` contributes only when its persisted
 `sub_type`/plan metadata classifies it as `PAID`, `TRIAL`, or `BONUS`; it is a
 single aggregate baseline rather than another acquisition grant. `FREE`
-snapshots and free-cycle resets are tracked only as free fallback, never delay a
-payment/bonus start, never count toward the `15 day` cap, and never select
+snapshots and free-cycle resets are retained only as rollback/cleanup
+compatibility, never delay a payment/bonus start and never select
 `premium_pool`.
 
 ## Bonus Summary, Referral, And Promo Flow
@@ -657,16 +659,17 @@ payment/bonus start, never count toward the `15 day` cap, and never select
 - `GET /api/bonuses/summary` is the app-facing bonus summary for the Profile
   surface. It includes flat compatibility fields plus nested `referral`,
   `channel_bonus`, `opening_bonus`, `promo`, `history`, `wheel`, and
-  `calendar` sections.
+  `calendar` sections plus `reward_access`, which owns paid eligibility and
+  trial-safe explanatory copy.
 - `GET /api/bonuses/referral/summary` returns referral count, referral code,
   safe Telegram referral link, bonus days, and current points tier for the
   app-first account. The app may expose copy/share/open actions for that link;
   referral anti-abuse, bonus granting, and campaign tuning remain backend-owned.
 - one referred account has at most one account-owned referrer; self-referral and
   cycles are rejected while legacy `User.referrer_id` remains a projection
-- friend `+5 days` releases once from canonical server `ConnectionEvidence`,
-  never from `clicked_connect`, `connected_ok`, or another client event
-- referrer `+15 days` is queued only by the referred account's first successful
+- the referred friend receives no automatic grant from install, registration,
+  trial, `ConnectionEvidence`, `clicked_connect`, `connected_ok`, or payment
+- referrer `+10 days` is queued only by the referred account's first successful
   payment and releases once after a full `72 hour` hold; gifts and renewals do
   not qualify
 - pending legacy referral queue rows are migrated idempotently into the same
@@ -716,7 +719,6 @@ payment/bonus start, never count toward the `15 day` cap, and never select
 - account merge keeps one effective semantic `referral_friend` and
   `referral_referrer` grant per canonical reward, repairs relationship pointers,
   and retains duplicate grants as audit-visible `superseded` rows
-- before first payment, trial + Telegram + friend grants are capped at `15 days`
 - the Telegram channel gate applies only when a genuinely new lead requests the
   trial; payment, renewal, recovery, and support remain ungated
 - `GET /api/bonuses/history` returns an app-safe, compact recent bonus ledger
@@ -728,15 +730,18 @@ payment/bonus start, never count toward the `15 day` cap, and never select
   application rules, then returns the promo result plus a fresh summary payload.
 - `POST /api/redeem` also accepts promo codes and returns `kind=promo`.
 - `GET /api/bonuses/wheel/state` and `GET /api/bonuses/calendar` expose
-  disabled-by-default state payloads that the app may render as safe Rewards
-  Hub previews. When `BONUS_WHEEL_ENABLED` or `BONUS_CALENDAR_ENABLED` is true,
+  server-owned state payloads that the app may render as safe Rewards Hub
+  controls. Wheel defaults enabled with a `336 hour` cooldown; calendar remains
+  disabled by default. When `BONUS_WHEEL_ENABLED` or `BONUS_CALENDAR_ENABLED` is true,
   they expose ready/cooldown/check-in state from the reward ledger.
-- The wheel state exposes only the ordered, validated reward-day `sectors`
-  needed for rendering. Backend-owned weights and probabilities remain private
-  and must not be inferred by the client.
-- `GET /api/client/promo-slots?surface=app` may feed Rewards Hub with enabled
-  first-party promo slots only. Third-party ad SDKs, unsafe links, tracking
-  pixels, and non-POKROV campaign rendering stay out of the app.
+- The wheel state exposes only ordered, validated reward-day `sectors` and
+  one-use discount sectors needed for rendering. Backend-owned weights and
+  probabilities remain private and must not be inferred by the client.
+- `GET /api/client/promo-slots?surface=app` may feed eligible app placements
+  with enabled operator-authored promo slots. Payloads may define safe
+  image/logo, text, CTA, colors, schedule, audience, whole-card link and dismiss
+  behavior. Third-party ad SDKs, unsafe links, tracking pixels and executable
+  campaign payloads stay out of the app.
 - `POST /api/bonuses/wheel/spin` and
   `POST /api/bonuses/calendar/checkin` are app-facing, feature-flagged mutation
   routes. With flags off they return structured disabled errors. With flags on
@@ -773,7 +778,7 @@ payment/bonus start, never count toward the `15 day` cap, and never select
   Open merge reviews and invalid merge chains fence rollout backfill/readiness;
   they are not auto-resolved by the reward lane.
 - `BONUS_WHEEL_ENABLED` and `BONUS_CALENDAR_ENABLED` are independent kill
-  switches and false by default. The Telegram adapter and API call the same
+  switches; wheel defaults true and calendar defaults false. The Telegram adapter and API call the same
   reward service; no adapter may retain a local random draw or direct expiry
   mutation.
 
@@ -790,9 +795,10 @@ Current backend-derived access states exposed to WebApp and admin surfaces:
 
 Rules:
 
-- app-first trial reserves premium-grade access for `7 days`; its `5-day`
+- app-first trial reserves premium-grade access for `5 days`; its `5-day`
   consumption clock starts at the first valid internal observer observation
-- a new channel claim adds `+5 days`; already-issued `+10 days` grants remain grandfathered
+- a new paid-eligible channel claim adds `+5 days`; trial cannot claim it and
+  already-issued `+10 days` grants remain grandfathered
 - once premium expires, the account remains recoverable and payable but access becomes `expired_or_blocked`; automatic free downgrade is disabled
 - entitlement rebuilds and the worker preserve or recover a `FREE` account as
   `trial` only from an exact bounded `premium_trial` grant in `reserved` or
@@ -925,10 +931,11 @@ Useful achievements and quests are projections of server evidence: verified
 first tunnel, active device count, the routing-lesson event, and an approved or
 rewarded research application. They do not create an automatic entitlement.
 
-The weekly wheel uses the server-owned `paid_weekly_v2` table. Its maximum
+The fortnightly wheel uses the server-owned
+`paid_fortnightly_discounts_v3` table with a `336 hour` cooldown. Its maximum
 premium-day result remains 30 days. Percentage discounts are one-use and do not
 stack; a second pending discount is converted to one premium day. The activity
-calendar remains server-authoritative.
+calendar remains server-authoritative and independently disabled by default.
 
 Service incidents are operator-owned records with an affected account/window
 boundary. Compensation runs through an idempotent entitlement ledger and a

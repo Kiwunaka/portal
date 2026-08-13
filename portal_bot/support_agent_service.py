@@ -51,6 +51,10 @@ _CONNECTION_TOPIC_MARKERS = (
     "network",
     "dns",
     "route",
+    "warp",
+    "варп",
+    "enhanced protection",
+    "усиленная защита",
     "slow",
     "hiddify",
     "v2ray",
@@ -329,6 +333,7 @@ class SupportAgentService:
         assistant_session_id: str | None = None,
         ticket_id: int | None = None,
         validated_sender_id: int | None = None,
+        safe_diagnostics: Mapping[str, str | int | bool | None] | None = None,
     ) -> SupportReplyResult:
         try:
             scope = self._resolve_scope(
@@ -397,6 +402,9 @@ class SupportAgentService:
                     session_scope=scope,
                     message=message,
                     now=float(self.time_source()),
+                    safe_diagnostics=tuple(
+                        sorted((safe_diagnostics or {}).items())
+                    ),
                 )
             )
         except Exception:

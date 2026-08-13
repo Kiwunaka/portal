@@ -1046,24 +1046,48 @@ async def show_settings(callback: CallbackQuery):
 
 _PLATFORM_SCREENS = {
     "ios": ("bot.instruction.platform_ios", IOS_APP_LINK, "Открыть страницу для iPhone"),
-    "android": ("bot.instruction.platform_android", ANDROID_APP_LINK, "Скачать POKROV"),
+    "android": (
+        "bot.instruction.platform_android",
+        ANDROID_APP_LINK,
+        "Скачать ARM64 · основной" if APP_ANDROID_APK_ARM64_URL else "Скачать POKROV",
+    ),
     "win": ("bot.instruction.platform_windows", WINDOWS_APP_LINK, "Скачать POKROV"),
     "mac": ("bot.instruction.platform_macos", MAC_APP_LINK, "Открыть страницу для macOS"),
 }
 
 
-async def _render_platform_screen(callback: CallbackQuery, platform: str) -> None:
-    """Per-platform install screen: download, funnel to access check, manual fallback."""
-    copy_key, url, btn = _PLATFORM_SCREENS.get(platform, _PLATFORM_SCREENS["android"])
+def _platform_download_rows(platform: str, url: str, button_text: str) -> list[list[dict]]:
     rows = [
         [
             _btn_spec(
-                text=btn,
+                text=button_text,
                 url=url,
                 style=BTN_STYLE_PRIMARY,
                 emoji_key="download",
             )
-        ],
+        ]
+    ]
+    if platform != "android":
+        return rows
+
+    seen_urls = {str(url or "").strip()}
+    variants = (
+        ("ARMv7 · старый телефон", APP_ANDROID_APK_ARMEABI_V7A_URL),
+        ("Universal · запасной", APP_ANDROID_APK_UNIVERSAL_URL),
+    )
+    for label, variant_url in variants:
+        clean_url = str(variant_url or "").strip()
+        if not clean_url or clean_url in seen_urls:
+            continue
+        seen_urls.add(clean_url)
+        rows.append([_btn_spec(text=label, url=clean_url, emoji_key="download")])
+    return rows
+
+
+async def _render_platform_screen(callback: CallbackQuery, platform: str) -> None:
+    """Per-platform install screen: download, funnel to access check, manual fallback."""
+    copy_key, url, btn = _PLATFORM_SCREENS.get(platform, _PLATFORM_SCREENS["android"])
+    rows = _platform_download_rows(platform, url, btn) + [
         [
             _btn_spec(
                 text="Приложение уже стоит",
@@ -1282,8 +1306,8 @@ async def show_referral(callback: CallbackQuery):
 
     await callback.message.edit_text(
         f"🎁 *Пригласите друга по своей ссылке*\n\n"
-        "Друг получает 5 дней бесплатно и быстрый вход в приложение.\n"
-        f"После активации вы получите *+{REFERRAL_BONUS_DAYS} дней* к доступу.\n\n"
+        "Друг получает обычные 5 дней пробного доступа — без отдельного подарка за ссылку.\n"
+        f"Вы получите *+{REFERRAL_BONUS_DAYS} дней* после его первой оплаты и проверки 72 часа.\n\n"
         f"👇 *Ваша ссылка для приглашения:*\n`{invite_link}`\n\n"
         f"Активировано по ссылке: {ref_count}\n"
         f"Бонусных дней начислено: {bonus_earned}",
@@ -1359,7 +1383,7 @@ async def show_wheel(callback: CallbackQuery):
 
     await callback.message.edit_text(
         "🎰 *Колесо Фортуны!*\n\n"
-        "Крути раз в неделю и получай бонусные дни.\n\n"
+        "Крути раз в 14 дней и получай бонусные дни или скидку.\n\n"
         f"🎁 *Секторы:*\n{prizes_text}\n\n"
         f"{status_text}",
         reply_markup=kb,
@@ -1681,8 +1705,8 @@ FAQ_ANSWERS = {
     "referral": (
         "🎁 *Реферальная программа*\n\n"
         "• Пригласите друга по своей ссылке\n"
-        "• Друг получает 5 дней бесплатно для проверки\n"
-        f"• Вы получаете *+{REFERRAL_BONUS_DAYS} дней* после его активации\n\n"
+        "• Друг получает стандартный пробный период, без лишнего бонуса за ссылку\n"
+        f"• Вы получаете *+{REFERRAL_BONUS_DAYS} дней* после его первой оплаты и проверки 72 часа\n\n"
         "Откройте меню → *🎁 Пригласить друга*"
     ),
     "device": (
@@ -2592,11 +2616,11 @@ async def handle_text_input(message: Message):
             return
 
         if action == "wheel_cd":
-            await message.answer("Конфигурация PAID_WEEKLY_DISCOUNTS_V2 фиксирована: кулдаун 7 дней.")
+            await message.answer("Конфигурация PAID_FORTNIGHTLY_DISCOUNTS_V3 фиксирована: кулдаун 14 дней.")
             return
 
         if action == "wheel_weights":
-            await message.answer("Ручные веса отключены: действует фиксированный PAID_WEEKLY_DISCOUNTS_V2.")
+            await message.answer("Ручные веса отключены: действует фиксированный PAID_FORTNIGHTLY_DISCOUNTS_V3.")
             return
 
         if action == "manual_create":

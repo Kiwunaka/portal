@@ -799,11 +799,17 @@ async def user_data(
             tg_id=tg_id,
             campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY,
         )
+        channel_paid_access = evaluate_active_paid(
+            s,
+            account_id=str(user.account_id or ""),
+            now=_reward_now(),
+        )
         can_claim_channel_bonus = bool(
             PUBLIC_CHANNEL
             and not channel_claimed_at
             and not opening_bonus_claimed
             and (user.sub_type or "").upper() != "MANUAL"
+            and channel_paid_access.eligible
         )
         free_speed_kbps = _effective_free_speed_kbps(user)
         free_speed_mbps = int(round((free_speed_kbps * 8) / 1000)) if (user.sub_type or "").upper() == "FREE" else None
@@ -1117,6 +1123,8 @@ async def client_apps(
     android_url = _safe_public_url(Settings.APP_ANDROID_APK_URL)
     android_arm64_url = _safe_public_url(getattr(Settings, "APP_ANDROID_APK_ARM64_URL", ""))
     android_armeabi_v7a_url = _safe_public_url(getattr(Settings, "APP_ANDROID_APK_ARMEABI_V7A_URL", ""))
+    android_x86_64_url = _safe_public_url(getattr(Settings, "APP_ANDROID_APK_X86_64_URL", ""))
+    android_universal_url = _safe_public_url(getattr(Settings, "APP_ANDROID_APK_UNIVERSAL_URL", ""))
     windows_url = _safe_public_url(Settings.APP_WINDOWS_EXE_URL)
     android_variants = [
         ClientAndroidApkVariant(
@@ -1132,6 +1140,20 @@ async def client_apps(
             url=android_armeabi_v7a_url,
             sha256=str(getattr(Settings, "APP_ANDROID_ARMEABI_V7A_SHA256", "") or "").strip(),
             size=max(0, int(getattr(Settings, "APP_ANDROID_ARMEABI_V7A_SIZE_BYTES", 0) or 0)),
+        ),
+        ClientAndroidApkVariant(
+            abi="universal",
+            label="Android Universal",
+            url=android_universal_url,
+            sha256=str(getattr(Settings, "APP_ANDROID_UNIVERSAL_SHA256", "") or "").strip(),
+            size=max(0, int(getattr(Settings, "APP_ANDROID_UNIVERSAL_SIZE_BYTES", 0) or 0)),
+        ),
+        ClientAndroidApkVariant(
+            abi="x86_64",
+            label="Android x86_64",
+            url=android_x86_64_url,
+            sha256=str(getattr(Settings, "APP_ANDROID_X86_64_SHA256", "") or "").strip(),
+            size=max(0, int(getattr(Settings, "APP_ANDROID_X86_64_SIZE_BYTES", 0) or 0)),
         ),
     ]
     android_variants = [variant for variant in android_variants if variant.url]
@@ -1476,24 +1498,24 @@ def _bonus_achievements_payload(
         is not None
     )
     items = [
-        {"id": "first_launch", "title": "Первый запуск", "description": "Приложение связано с аккаунтом.", "unlocked": bool(getattr(user, "is_app_user", False))},
-        {"id": "first_tunnel", "title": "Первый туннель", "description": "Сервер получил подтверждение успешного подключения.", "unlocked": first_tunnel},
-        {"id": "second_device", "title": "Два устройства", "description": "К аккаунту привязаны два активных устройства.", "unlocked": active_device_count >= 2},
-        {"id": "telegram_bonus", "title": "Telegram-бонус", "description": "Бонус канала подтверждён сервером.", "unlocked": bool(getattr(user, "channel_bonus_claimed_at", None))},
-        {"id": "first_wheel", "title": "Первая рулетка", "description": "Первый результат записан в reward ledger.", "unlocked": "first_wheel" in custom_ids},
+        {"id": "first_launch", "title": "Добро пожаловать", "description": "Вы запустили POKROV.", "unlocked": bool(getattr(user, "is_app_user", False))},
+        {"id": "first_tunnel", "title": "Под защитой", "description": "Первое защищённое подключение.", "unlocked": first_tunnel},
+        {"id": "second_device", "title": "Свои устройства", "description": "POKROV работает на двух устройствах.", "unlocked": active_device_count >= 2},
+        {"id": "telegram_bonus", "title": "Вместе с POKROV", "description": "Получен бонус за Telegram-канал.", "unlocked": bool(getattr(user, "channel_bonus_claimed_at", None))},
+        {"id": "first_wheel", "title": "Первая удача", "description": "Получен первый приз в рулетке.", "unlocked": "first_wheel" in custom_ids},
         {
             "id": "first_checkin",
             "title": "Первая отметка",
-            "description": "Первая серверная отметка в календаре.",
+            "description": "Первая отметка сохранена.",
             "unlocked": bool(calendar_state.achievements.get("first_checkin")),
         },
         {
             "id": "streak_7",
             "title": "7 отметок",
-            "description": "Семь серверных отметок в текущем цикле.",
+            "description": "Семь отметок подряд.",
             "unlocked": bool(calendar_state.achievements.get("streak_7")),
         },
-        {"id": "first_referral", "title": "Первый друг", "description": "Первое приглашение учтено реферальным ledger.", "unlocked": bool(int(getattr(user, "referral_count", 0) or 0) > 0)},
+        {"id": "first_referral", "title": "Первый друг", "description": "Друг оплатил POKROV по вашему приглашению.", "unlocked": bool(int(getattr(user, "referral_count", 0) or 0) > 0)},
     ]
     quests = [
         {
@@ -1803,6 +1825,11 @@ def _bonus_calendar_state_payload(
 
 def _bonus_summary_payload(*, s, user: User, tg_id: int) -> dict[str, Any]:
     now = _reward_now()
+    reward_access = evaluate_active_paid(
+        s,
+        account_id=str(user.account_id or ""),
+        now=now,
+    )
     referral = _bonus_referral_summary_payload(s=s, user=user, tg_id=tg_id)
     history = _bonus_history_payload(s=s, user=user, tg_id=tg_id, limit=20)
     wheel_state = get_wheel_state(
@@ -1836,6 +1863,16 @@ def _bonus_summary_payload(*, s, user: User, tg_id: int) -> dict[str, Any]:
     return {
         "ok": True,
         "tg_id": tg_id,
+        "reward_access": {
+            "eligible": bool(reward_access.eligible),
+            "state": "paid" if reward_access.eligible else "paid_required",
+            "reason": str(reward_access.reason),
+            "message": (
+                "Бонусы доступны."
+                if reward_access.eligible
+                else "В пробном периоде бонусов нет. Они откроются после первой оплаты."
+            ),
+        },
         "referral_count": int(user.referral_count or 0),
         "referral_code": str(user.referral_code or "").strip(),
         "referral_bonus_days": REFERRAL_BONUS_DAYS,
@@ -1855,6 +1892,9 @@ def _bonus_summary_payload(*, s, user: User, tg_id: int) -> dict[str, Any]:
             "claimed": bool(channel_status["claimed"]),
             "claimed_at": channel_claimed_at,
             "channel_username": PUBLIC_CHANNEL,
+            "eligible": bool(reward_access.eligible) or bool(channel_status["claimed"]),
+            "can_claim": bool(reward_access.eligible) and not bool(channel_status["claimed"]),
+            "reason": "eligible" if reward_access.eligible else str(reward_access.reason),
         },
         "opening_bonus": {
             "premium_days": int(OPENING_PREMIUM_DAYS),
@@ -2089,6 +2129,25 @@ async def channel_subscriber_check(request: Request, x_telegram_init_data: str =
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         channel_status = channel_bonus_service.channel_bonus_status(s, user=user)
+        if not channel_status["claimed"]:
+            paid_access = evaluate_active_paid(
+                s,
+                account_id=str(user.account_id or ""),
+                now=_reward_now(),
+            )
+            if not paid_access.eligible:
+                return {
+                    "ok": True,
+                    "subscriber": False,
+                    "reason": "active_paid_required",
+                    "points_granted": 0,
+                    "campaign_marked": False,
+                    "link_required": False,
+                    "claim_required": False,
+                    "already_claimed": False,
+                    "bonus_days": int(CHANNEL_PREMIUM_DAYS),
+                    "message": "В пробном периоде бонусов нет. Они откроются после первой оплаты.",
+                }
     finally:
         s.close()
 

@@ -60,6 +60,12 @@ class _FakeSSH:
         self.closed = False
         self.sftp_closed = False
 
+    def load_system_host_keys(self) -> None:
+        pass
+
+    def load_host_keys(self, _path: str) -> None:
+        pass
+
     def set_missing_host_key_policy(self, _policy) -> None:
         pass
 
@@ -1134,6 +1140,8 @@ def test_remote_brain_sync_users_to_nodes_uploads_free_paid_partitioning_snippet
             "8",
             "--passes",
             "3",
+            "--tg-id",
+            "9000000000000",
         ],
     )
 
@@ -1145,7 +1153,8 @@ def test_remote_brain_sync_users_to_nodes_uploads_free_paid_partitioning_snippet
     assert "Other countries are PAID-only." in uploaded
     joined = "\n".join(fake.commands)
     assert "test -x /root/portal_bot/venv/bin/python" in joined
-    assert "SYNC_CONCURRENCY=8 SYNC_PASSES=3" in joined
+    assert "SYNC_CONCURRENCY=8 SYNC_PASSES=3 SYNC_TG_ID=9000000000000" in joined
+    assert "requested_tg_id" in uploaded
     assert "DATABASE_URL=sqlite" not in joined
     assert "python /root/portal_bot/portal_sync_users_to_nodes.py" in joined
     assert "brain-secret" not in joined

@@ -594,14 +594,15 @@ $env:REWARD_ROLLOUT_RUNTIME_MANIFEST = 'C:\absolute\owned-runtime\reward-runtime
 
 & python.exe -B scripts/reward_rollout.py preflight --candidate $candidate --evidence-dir $evidence
 & python.exe -B scripts/reward_rollout.py backfill --candidate $candidate --confirm-apply reward-state-v1 --evidence-dir $evidence
-& python.exe -B scripts/reward_rollout.py configure --candidate $candidate --confirm-apply paid_weekly_v1 --evidence-dir $evidence
+& python.exe -B scripts/reward_rollout.py configure --candidate $candidate --confirm-apply paid_fortnightly_discounts_v3 --evidence-dir $evidence
 & python.exe -B scripts/reward_rollout.py verify --candidate $candidate --evidence-dir $evidence
 ```
 
 `preflight` and `verify` are read-only. `backfill` invokes the account-owned
 reward-state backfill in one guarded database transaction and rolls it back if
 the zero-unresolved invariant fails. `configure` locks `wheel_config`, hashes
-the previous value, writes the exact code-owned `paid_weekly_v1` preset, reads
+the previous value, writes the exact code-owned
+`paid_fortnightly_discounts_v3` preset, reads
 it back in the same transaction, and rolls back on mismatch. Evidence contains
 only candidate identity, timestamps, stable result codes, counts, and canonical
 JSON hashes; it does not contain raw settings or runtime-manifest rows. A command
@@ -624,7 +625,8 @@ Required order:
 4. Deploy the patched API, bot, and worker with both reward flags still false.
    Read both state endpoints and confirm `disabled_until_feature_flag`; mutation
    probes must return `bonus_feature_disabled` without creating grants/jobs.
-5. Snapshot the previous `wheel_config`, write exact preset `paid_weekly_v1`,
+5. Snapshot the previous `wheel_config`, write exact preset
+   `paid_fortnightly_discounts_v3`,
    read it back, and retain canonical-JSON hashes plus outcome/count metadata.
    Do not copy secrets, raw user rows, private URLs, or provider payloads into
    evidence.
@@ -1187,6 +1189,8 @@ Then copy the resulting URLs into runtime env:
 - `APP_ANDROID_APK_URL`
 - `APP_ANDROID_APK_ARM64_URL`
 - `APP_ANDROID_APK_ARMEABI_V7A_URL`
+- `APP_ANDROID_APK_X86_64_URL`
+- `APP_ANDROID_APK_UNIVERSAL_URL`
 - `APP_ANDROID_MIRROR_URL`
 - `APP_WINDOWS_EXE_URL`
 - `APP_WINDOWS_MIRROR_URL`
@@ -1204,6 +1208,10 @@ handoff builds:
 - `APP_ANDROID_ARM64_SIZE_BYTES`
 - `APP_ANDROID_ARMEABI_V7A_SHA256`
 - `APP_ANDROID_ARMEABI_V7A_SIZE_BYTES`
+- `APP_ANDROID_X86_64_SHA256`
+- `APP_ANDROID_X86_64_SIZE_BYTES`
+- `APP_ANDROID_UNIVERSAL_SHA256`
+- `APP_ANDROID_UNIVERSAL_SIZE_BYTES`
 - `APP_ANDROID_RELEASE_NOTES`
 - `APP_ANDROID_RELEASE_NOTES_URL`
 - `APP_ANDROID_PUBLISHED_AT`

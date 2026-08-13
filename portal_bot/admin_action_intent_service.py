@@ -5119,12 +5119,12 @@ def _app_setting_state(
 def _normalize_wheel_config_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
     _reject_extra_payload_fields(payload, {"preset", "weights", "cooldown_hours"})
     preset = _bounded_text(
-        payload.get("preset", "paid_weekly_discounts_v2"),
+        payload.get("preset", "paid_fortnightly_discounts_v3"),
         field="preset",
         minimum=2,
         maximum=32,
     )
-    cooldown = _normalize_promo_integer(payload.get("cooldown_hours", 168), field="cooldown_hours", minimum=1, maximum=2160)
+    cooldown = _normalize_promo_integer(payload.get("cooldown_hours", 336), field="cooldown_hours", minimum=1, maximum=2160)
     weights_value = payload.get("weights")
     if not isinstance(weights_value, list) or not 1 <= len(weights_value) <= 20:
         raise ActionIntentError("invalid_payload", status_code=422, message="weights должен содержать 1..20 элементов.")

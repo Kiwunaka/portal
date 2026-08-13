@@ -440,7 +440,7 @@ export default function RewardsPage() {
               <Badge tone="success" dot>Для платной подписки</Badge>
               <h1 className="mt-2 text-2xl font-bold tracking-[-0.02em] text-ink">Награды за активность</h1>
               <p className="mt-1 max-w-2xl text-sm leading-6 text-ink-soft">
-                Забирайте еженедельный бонус и отмечайте активность. Начисление всегда подтверждает сервер.
+                Крутите колесо раз в 14 дней. Начисление или скидку всегда подтверждает сервер.
               </p>
             </div>
           </div>

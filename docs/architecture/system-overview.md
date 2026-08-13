@@ -751,6 +751,11 @@ Operator diagnosis should be able to correlate:
 - current runtime connection footprint across assigned nodes
 - current traffic usage source, including whether it comes from runtime panel data or a fallback
 
+The general admin list prefers a linked Telegram handle or a non-synthetic
+account name, and shows the normalized app device name/model and platform as
+secondary context. Immutable numeric/install identifiers remain available for
+exact support lookup but are not the only visible identity.
+
 This visibility supports:
 
 - connection triage

@@ -392,6 +392,46 @@ def provider_generation_controls(config: SupportAIConfig) -> dict[str, Any]:
     }
 
 
+def provider_response_controls(config: SupportAIConfig) -> dict[str, Any]:
+    """Require the owned OpenRouter route to return the support wire contract."""
+    if (
+        canonical_support_model(config.model) == DEFAULT_MODEL
+        and is_exact_openrouter_route(config.api_base_url)
+    ):
+        return {
+            "response_format": {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "pokrov_support_reply",
+                    "strict": True,
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "schema_version": {
+                                "type": "string",
+                                "enum": ["1"],
+                                "description": "POKROV support response schema version.",
+                            },
+                            "status": {
+                                "type": "string",
+                                "enum": ["answer", "escalate"],
+                                "description": "Whether the assistant can answer or needs human support.",
+                            },
+                            "reply": {
+                                "type": "string",
+                                "description": "A concise support answer in Russian.",
+                            },
+                        },
+                        "required": ["schema_version", "status", "reply"],
+                        "additionalProperties": False,
+                    },
+                },
+            },
+            "provider": {"require_parameters": True},
+        }
+    return {"response_format": {"type": "json_object"}}
+
+
 def _split_trailing_url_punctuation(value: str) -> tuple[str, str]:
     text = value if isinstance(value, str) else str(value or "")
     split_at = len(text)

@@ -234,6 +234,7 @@ from economy_service import (
     release_due_referrer_rewards,
 )
 from rewards_service import (
+    PAID_FORTNIGHTLY_DISCOUNTS_V3,
     PAID_WEEKLY_DISCOUNTS_V2,
     PAID_WEEKLY_V1,
     CalendarState,
@@ -244,6 +245,7 @@ from rewards_service import (
     RewardForbidden,
     WheelState,
     checkin_calendar,
+    evaluate_active_paid,
     get_calendar_state,
     get_reward_history,
     get_wheel_state,
@@ -473,7 +475,7 @@ SUPPORT_USERNAME = (
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstrip("@")
 PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or _shared_telegram_username("channel_username", "@pokrov_vpn")).lstrip("@")
 BOT_USERNAME = (os.getenv("BOT_USERNAME") or _shared_telegram_username("bot_username", "@pokrov_vpnbot")).lstrip("@")
-REFERRAL_BONUS_DAYS = env_int("REFERRAL_BONUS_DAYS", 15)
+REFERRAL_BONUS_DAYS = env_int("REFERRAL_BONUS_DAYS", 10)
 REFERRAL_ANTIFRAUD_HOURS = max(0, env_int("REFERRAL_ANTIFRAUD_HOURS", 24))
 REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, env_int("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", 168))
 CHANNEL_PREMIUM_DAYS = 5
@@ -496,7 +498,7 @@ RUB_CHECKOUT_ENABLED = env_bool("RUB_CHECKOUT_ENABLED", default=False)
 PAID_CHECKOUT_LAUNCH_APPROVED = env_bool("PAID_CHECKOUT_LAUNCH_APPROVED", default=False)
 CHECKOUT_WIDGET_ENABLED = env_bool("CHECKOUT_WIDGET_ENABLED", default=False)
 CHANNEL_SPEED_BUMP_ENABLED = env_bool("CHANNEL_SPEED_BUMP_ENABLED", default=False)
-BONUS_WHEEL_ENABLED = env_bool("BONUS_WHEEL_ENABLED", default=False)
+BONUS_WHEEL_ENABLED = env_bool("BONUS_WHEEL_ENABLED", default=True)
 BONUS_CALENDAR_ENABLED = env_bool("BONUS_CALENDAR_ENABLED", default=False)
 BONUS_CALENDAR_REWARD_DAYS = max(0, env_int("BONUS_CALENDAR_REWARD_DAYS", 1))
 FREE_SPEED_BUMP_UNSUB_KBPS = max(1, env_int("FREE_SPEED_BUMP_UNSUB_KBPS", 1250))
@@ -703,7 +705,7 @@ def _default_live_updates() -> list[dict[str, Any]]:
     ]
 
 
-DEFAULT_WHEEL_CONFIG: dict[str, Any] = PAID_WEEKLY_DISCOUNTS_V2
+DEFAULT_WHEEL_CONFIG: dict[str, Any] = PAID_FORTNIGHTLY_DISCOUNTS_V3
 
 
 def _normalize_channel_username(raw: str | None) -> str | None:
@@ -796,7 +798,7 @@ def _validate_wheel_weights(weights: list[dict[str, Any]]) -> list[dict[str, int
 def _normalized_wheel_config(payload: dict[str, Any] | None) -> dict[str, Any]:
     try:
         config = parse_paid_weekly_config(
-            payload or PAID_WEEKLY_DISCOUNTS_V2,
+            payload or PAID_FORTNIGHTLY_DISCOUNTS_V3,
             explicit=payload is not None,
         )
     except InvalidWheelConfig as exc:
@@ -1289,11 +1291,19 @@ class AdminPromoSlotAssignmentIn(BaseModel):
     enabled: bool = True
     title: str | None = Field(default=None, max_length=160)
     body: str | None = Field(default=None, max_length=500)
+    badge_label: str | None = Field(default=None, max_length=48)
     image_url: str | None = Field(default=None, max_length=600)
+    image_layout: str | None = Field(default=None, max_length=24)
     cta_label: str | None = Field(default=None, max_length=80)
     cta_href: str | None = Field(default=None, max_length=600)
+    accent_color: str | None = Field(default=None, max_length=9)
+    background_color: str | None = Field(default=None, max_length=9)
+    text_color: str | None = Field(default=None, max_length=9)
+    button_color: str | None = Field(default=None, max_length=9)
+    button_text_color: str | None = Field(default=None, max_length=9)
     placement: str | None = Field(default=None, max_length=64)
     dismissible: bool = True
+    whole_card_clickable: bool = True
     starts_at: str | None = Field(default=None, max_length=64)
     ends_at: str | None = Field(default=None, max_length=64)
     contexts: list[str] = Field(default_factory=list, max_length=32)
@@ -1498,16 +1508,16 @@ class AdminWheelWeightIn(BaseModel):
 
 
 class AdminWheelConfigIn(BaseModel):
-    preset: str = Field(default="paid_weekly_discounts_v2", min_length=2, max_length=32)
+    preset: str = Field(default="paid_fortnightly_discounts_v3", min_length=2, max_length=32)
     weights: list[AdminWheelWeightIn] = Field(
         default_factory=lambda: [
             AdminWheelWeightIn(**row)
-            for row in PAID_WEEKLY_DISCOUNTS_V2["weights"]
+            for row in PAID_FORTNIGHTLY_DISCOUNTS_V3["weights"]
         ],
         min_length=4,
         max_length=7,
     )
-    cooldown_hours: int = Field(default=168, ge=168, le=168)
+    cooldown_hours: int = Field(default=336, ge=168, le=336)
 
 
 class AdminCampaignLinksBuildIn(BaseModel):
@@ -2110,7 +2120,13 @@ def _verify_telegram_data(init_data: str) -> dict[str, Any] | None:
 
 
 def _safe_iso(dt: datetime | None) -> str | None:
-    return dt.isoformat() if dt else None
+    if dt is None:
+        return None
+    # PostgreSQL returns several legacy UTC columns as naive datetimes.  A
+    # timezone-less API value is interpreted in the device's local timezone,
+    # which made fresh node measurements look hours old outside UTC.
+    normalized = dt if dt.tzinfo is not None else dt.replace(tzinfo=timezone.utc)
+    return normalized.astimezone(timezone.utc).isoformat()
 
 
 def _track_bonus_event(*, tg_id: int, event_name: str, meta: dict[str, Any] | None = None) -> None:
@@ -2506,6 +2522,17 @@ def _redeem_eligibility_payload(*, user: User, access_policy: dict[str, Any]) ->
     }
 
 
+def _node_supports_transport_profile(node: Any, transport_profile: str | None) -> bool:
+    requested = str(transport_profile or LEGACY_REALITY_FALLBACK).strip() or LEGACY_REALITY_FALLBACK
+    profile = transport_profile_by_name(
+        node,
+        requested,
+        include_disabled=False,
+        allow_operator_lab=True,
+    )
+    return str(profile.get("name") or "") == requested and bool(profile.get("enabled"))
+
+
 def _hidden_transport_matrix_payload(*, nodes: list[Any], client_policy: dict[str, Any] | None = None) -> dict[str, Any]:
     order = list(_ACCESS_PUBLIC_DEFAULTS.get("hidden_transport_order") or ["vless_reality", "vmess", "trojan", "xhttp"])
     active_transport = str((client_policy or {}).get("transport_kind") or "").strip().lower()
@@ -2650,17 +2677,41 @@ def _normalize_promo_slot_assignment(raw: dict[str, Any], *, strict: bool) -> di
             return None
         return value[:64]
 
+    def safe_color(raw_color: Any, *, field: str) -> str | None:
+        value = str(raw_color or "").strip().upper()
+        if not value:
+            return None
+        if not re.fullmatch(r"#[0-9A-F]{6}", value):
+            if strict:
+                raise HTTPException(status_code=400, detail=f"Promo {field} must use #RRGGBB")
+            return None
+        return value
+
+    image_layout = str(raw.get("image_layout") or "logo").strip().lower()
+    if image_layout not in {"logo", "banner"}:
+        if strict:
+            raise HTTPException(status_code=400, detail="Promo image_layout must be logo or banner")
+        image_layout = "logo"
+
     return {
         "slot_id": slot_id,
         "content_id": content_id,
         "enabled": bool(raw.get("enabled", True)),
         "title": str(raw.get("title") or "").strip()[:160] or None,
         "body": str(raw.get("body") or "").strip()[:500] or None,
+        "badge_label": str(raw.get("badge_label") or "").strip()[:48] or None,
         "image_url": safe_promo_url(raw.get("image_url"), field="image_url"),
+        "image_layout": image_layout,
         "cta_label": str(raw.get("cta_label") or "").strip()[:80] or None,
         "cta_href": safe_promo_url(raw.get("cta_href"), field="cta_href"),
+        "accent_color": safe_color(raw.get("accent_color"), field="accent_color"),
+        "background_color": safe_color(raw.get("background_color"), field="background_color"),
+        "text_color": safe_color(raw.get("text_color"), field="text_color"),
+        "button_color": safe_color(raw.get("button_color"), field="button_color"),
+        "button_text_color": safe_color(raw.get("button_text_color"), field="button_text_color"),
         "placement": str(raw.get("placement") or slot_facts.get("placement") or "").strip()[:64] or None,
         "dismissible": bool(raw.get("dismissible", True)),
+        "whole_card_clickable": bool(raw.get("whole_card_clickable", True)),
         "starts_at": safe_schedule(raw.get("starts_at"), field="starts_at"),
         "ends_at": safe_schedule(raw.get("ends_at"), field="ends_at"),
         "contexts": contexts,
@@ -2733,11 +2784,19 @@ def _promo_slots_payload_for_surface(*, s, surface: str, access_state: str) -> d
                 "contexts": list(assignment.get("contexts") or []),
                 "title": assignment.get("title"),
                 "body": assignment.get("body"),
+                "badge_label": assignment.get("badge_label"),
                 "image_url": assignment.get("image_url"),
+                "image_layout": assignment.get("image_layout"),
                 "cta_label": assignment.get("cta_label"),
                 "cta_href": assignment.get("cta_href"),
+                "accent_color": assignment.get("accent_color"),
+                "background_color": assignment.get("background_color"),
+                "text_color": assignment.get("text_color"),
+                "button_color": assignment.get("button_color"),
+                "button_text_color": assignment.get("button_text_color"),
                 "placement": assignment.get("placement") or str(slot_facts.get("placement") or "").strip() or None,
                 "dismissible": bool(assignment.get("dismissible", True)),
+                "whole_card_clickable": bool(assignment.get("whole_card_clickable", True)),
                 "starts_at": assignment.get("starts_at"),
                 "ends_at": assignment.get("ends_at"),
                 "sort_order": int(assignment.get("sort_order") or 100),
@@ -3769,6 +3828,8 @@ def _serialize_admin_user_row(
         "linked_telegram_id": int(user.linked_telegram_id) if getattr(user, "linked_telegram_id", None) is not None else None,
         "linked_telegram_username": getattr(user, "linked_telegram_username", None),
         "app_install_id": getattr(user, "app_install_id", None),
+        "app_device_name": getattr(user, "app_device_name", None),
+        "app_platform": getattr(user, "app_platform", None),
         "observer_state": observer["state"],
         "observer_updated_at": observer["updated_at"],
     }
@@ -8177,6 +8238,14 @@ def _clean_public_text(value: object, *, max_len: int) -> str:
     return raw[:max_len]
 
 
+def _node_code_base(code: str) -> str:
+    normalized = (code or "").lower().strip()
+    for separator in ("_", "-", "."):
+        if separator in normalized:
+            normalized = normalized.split(separator, 1)[0]
+    return normalized
+
+
 def _node_country_name(code: str) -> str:
     raw = (code or "").strip().lower()
     if "free" in raw:
@@ -8189,6 +8258,11 @@ def _node_country_name(code: str) -> str:
         "nl": "Netherlands",
         "de": "Germany",
         "brain": "Germany",
+        "ru": "Russia",
+        "fi": "Finland",
+        "fr": "France",
+        "gb": "United Kingdom",
+        "uk": "United Kingdom",
     }
     return names.get(base, base.upper() if base else "Node")
 
@@ -8265,6 +8339,27 @@ async def _get_panel_usage_legacy(tg_id: int) -> dict | None:
     except Exception:
         return None
     return None
+
+
+def _estimate_active_users_proxy(
+    *,
+    live_connections: int,
+    live_nodes: int,
+    saw_ip_count: bool,
+    observed_ip_count_24h: int | None,
+) -> tuple[int, str]:
+    connections = max(0, int(live_connections or 0))
+    nodes = max(0, int(live_nodes or 0))
+    observed = max(0, int(observed_ip_count_24h or 0))
+    if saw_ip_count:
+        if connections <= 0:
+            return 0, "panel_ip_count"
+        if observed > 0:
+            return min(connections, observed), "panel_ip_count_capped_by_unique_ip_24h"
+        return connections, "panel_ip_count"
+    if nodes > 0:
+        return nodes, "online_nodes"
+    return 0, "none"
 
 
 async def _get_user_runtime_summary(*, s, user: User, nodes: list[Node] | None = None) -> dict[str, Any]:

@@ -495,6 +495,45 @@ def test_discount_wheel_draw_boundaries(draw: int, kind: str, value: int) -> Non
 
 
 @pytest.mark.parametrize(
+    ("draw", "kind", "value"),
+    (
+        (0, "days", 1),
+        (7499, "days", 1),
+        (7500, "discount", 5),
+        (9299, "discount", 5),
+        (9300, "days", 3),
+        (9799, "days", 3),
+        (9800, "discount", 7),
+        (9949, "discount", 7),
+        (9950, "days", 7),
+        (9989, "days", 7),
+        (9990, "discount", 10),
+        (9998, "discount", 10),
+        (9999, "days", 30),
+    ),
+)
+def test_paid_fortnightly_v3_has_conservative_exact_boundaries(
+    draw: int,
+    kind: str,
+    value: int,
+) -> None:
+    from rewards_service import (
+        PAID_FORTNIGHTLY_DISCOUNTS_V3,
+        _reward_outcome_for_draw,
+        parse_paid_weekly_config,
+    )
+
+    config = parse_paid_weekly_config(
+        PAID_FORTNIGHTLY_DISCOUNTS_V3,
+        explicit=True,
+    )
+    outcome = _reward_outcome_for_draw(config, draw)
+
+    assert config.cooldown_hours == 336
+    assert (outcome.kind, outcome.value) == (kind, value)
+
+
+@pytest.mark.parametrize(
     ("account_status", "sub_type", "grant_source", "grant_kind", "expected_reason"),
     (
         ("active", "PAID", "provider_payment", "paid_access", "eligible"),

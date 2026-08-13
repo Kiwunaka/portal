@@ -84,11 +84,17 @@ class ApiP0ExtensionsTests(unittest.TestCase):
             "APP_ANDROID_APK_URL",
             "APP_ANDROID_APK_ARM64_URL",
             "APP_ANDROID_APK_ARMEABI_V7A_URL",
+            "APP_ANDROID_APK_X86_64_URL",
+            "APP_ANDROID_APK_UNIVERSAL_URL",
             "APP_ANDROID_MIRROR_URL",
             "APP_ANDROID_ARM64_SHA256",
             "APP_ANDROID_ARM64_SIZE_BYTES",
             "APP_ANDROID_ARMEABI_V7A_SHA256",
             "APP_ANDROID_ARMEABI_V7A_SIZE_BYTES",
+            "APP_ANDROID_X86_64_SHA256",
+            "APP_ANDROID_X86_64_SIZE_BYTES",
+            "APP_ANDROID_UNIVERSAL_SHA256",
+            "APP_ANDROID_UNIVERSAL_SIZE_BYTES",
             "APP_WINDOWS_EXE_URL",
             "APP_WINDOWS_MIRROR_URL",
             "APP_DOCS_URL",
@@ -107,11 +113,17 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         os.environ["APP_ANDROID_APK_URL"] = ""
         os.environ["APP_ANDROID_APK_ARM64_URL"] = ""
         os.environ["APP_ANDROID_APK_ARMEABI_V7A_URL"] = ""
+        os.environ["APP_ANDROID_APK_X86_64_URL"] = ""
+        os.environ["APP_ANDROID_APK_UNIVERSAL_URL"] = ""
         os.environ["APP_ANDROID_MIRROR_URL"] = ""
         os.environ["APP_ANDROID_ARM64_SHA256"] = ""
         os.environ["APP_ANDROID_ARM64_SIZE_BYTES"] = "0"
         os.environ["APP_ANDROID_ARMEABI_V7A_SHA256"] = ""
         os.environ["APP_ANDROID_ARMEABI_V7A_SIZE_BYTES"] = "0"
+        os.environ["APP_ANDROID_X86_64_SHA256"] = ""
+        os.environ["APP_ANDROID_X86_64_SIZE_BYTES"] = "0"
+        os.environ["APP_ANDROID_UNIVERSAL_SHA256"] = ""
+        os.environ["APP_ANDROID_UNIVERSAL_SIZE_BYTES"] = "0"
         os.environ["APP_WINDOWS_EXE_URL"] = ""
         os.environ["APP_WINDOWS_MIRROR_URL"] = ""
         os.environ["APP_DOCS_URL"] = ""
@@ -390,10 +402,16 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.api.Settings.APP_ANDROID_APK_URL = "https://github.com/example/pokrov-vpn/releases/latest/download/pokrov-vpn-android-arm64.apk"
         self.api.Settings.APP_ANDROID_APK_ARM64_URL = "https://github.com/example/pokrov-vpn/releases/latest/download/pokrov-vpn-android-arm64.apk"
         self.api.Settings.APP_ANDROID_APK_ARMEABI_V7A_URL = "https://github.com/example/pokrov-vpn/releases/latest/download/pokrov-vpn-android-armv7.apk"
+        self.api.Settings.APP_ANDROID_APK_X86_64_URL = "https://github.com/example/pokrov-vpn/releases/latest/download/pokrov-vpn-android-x86_64.apk"
+        self.api.Settings.APP_ANDROID_APK_UNIVERSAL_URL = "https://github.com/example/pokrov-vpn/releases/latest/download/pokrov-vpn-android-universal.apk"
         self.api.Settings.APP_ANDROID_ARM64_SHA256 = "a" * 64
         self.api.Settings.APP_ANDROID_ARM64_SIZE_BYTES = 123
         self.api.Settings.APP_ANDROID_ARMEABI_V7A_SHA256 = "b" * 64
         self.api.Settings.APP_ANDROID_ARMEABI_V7A_SIZE_BYTES = 456
+        self.api.Settings.APP_ANDROID_X86_64_SHA256 = "c" * 64
+        self.api.Settings.APP_ANDROID_X86_64_SIZE_BYTES = 789
+        self.api.Settings.APP_ANDROID_UNIVERSAL_SHA256 = "d" * 64
+        self.api.Settings.APP_ANDROID_UNIVERSAL_SIZE_BYTES = 987
         self.api.Settings.APP_ANDROID_MIRROR_URL = "https://downloads.example.com/mobile/pokrov-vpn-android.apk"
         self.api.Settings.APP_WINDOWS_EXE_URL = "https://github.com/example/pokrov-vpn/releases/latest/download/pokrov-vpn-windows.exe"
         self.api.Settings.APP_WINDOWS_MIRROR_URL = "https://downloads.example.com/desktop/pokrov-vpn-windows.exe"
@@ -423,6 +441,20 @@ class ApiP0ExtensionsTests(unittest.TestCase):
                     "url": self.api.Settings.APP_ANDROID_APK_ARMEABI_V7A_URL,
                     "sha256": "b" * 64,
                     "size": 456,
+                },
+                {
+                    "abi": "universal",
+                    "label": "Android Universal",
+                    "url": self.api.Settings.APP_ANDROID_APK_UNIVERSAL_URL,
+                    "sha256": "d" * 64,
+                    "size": 987,
+                },
+                {
+                    "abi": "x86_64",
+                    "label": "Android x86_64",
+                    "url": self.api.Settings.APP_ANDROID_APK_X86_64_URL,
+                    "sha256": "c" * 64,
+                    "size": 789,
                 },
             ],
         )
@@ -479,11 +511,19 @@ class ApiP0ExtensionsTests(unittest.TestCase):
                                     "content_id": "partner_promo",
                                     "title": "Partner",
                                     "body": "Short owner-approved banner",
+                                    "badge_label": "Offer",
                                     "image_url": "https://cdn.example.com/banner.png",
+                                    "image_layout": "banner",
                                     "cta_label": "Open",
                                     "cta_href": "https://partner.example.com/",
+                                    "accent_color": "#0B6B53",
+                                    "background_color": "#F4FAF7",
+                                    "text_color": "#10221C",
+                                    "button_color": "#0B6B53",
+                                    "button_text_color": "#FFFFFF",
                                     "placement": "home_banner",
                                     "dismissible": True,
+                                    "whole_card_clickable": True,
                                     "contexts": ["expired_or_blocked"],
                                     "sort_order": 10,
                                 },
@@ -492,6 +532,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
                                     "content_id": "partner_promo",
                                     "title": "Unsafe",
                                     "cta_href": "javascript:alert(1)",
+                                    "accent_color": "emerald",
                                     "contexts": ["expired_or_blocked"],
                                     "sort_order": 20,
                                 },
@@ -513,10 +554,16 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         slots = [slot for slot in body["slots"] if slot["slot_id"] == "app.home.banner"]
         self.assertEqual(len(slots), 2)
         self.assertEqual(slots[0]["placement"], "home_banner")
+        self.assertEqual(slots[0]["badge_label"], "Offer")
         self.assertEqual(slots[0]["image_url"], "https://cdn.example.com/banner.png")
+        self.assertEqual(slots[0]["image_layout"], "banner")
         self.assertEqual(slots[0]["cta_href"], "https://partner.example.com/")
+        self.assertEqual(slots[0]["accent_color"], "#0B6B53")
+        self.assertEqual(slots[0]["button_text_color"], "#FFFFFF")
         self.assertTrue(slots[0]["dismissible"])
+        self.assertTrue(slots[0]["whole_card_clickable"])
         self.assertIsNone(slots[1]["cta_href"])
+        self.assertIsNone(slots[1]["accent_color"])
 
     def test_start_trial_returns_session_and_subscription_url(self) -> None:
         calls: list[dict[str, object]] = []

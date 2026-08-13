@@ -9,7 +9,7 @@ import {
 export const SEO_LAST_REVIEWED_DATE = "2026-08-12";
 
 export const TELEGRAM_START_PROMISE =
-  "До 10 дней на старте: 5 дней бесплатно в приложении и ещё 5 дней после привязки Telegram и подтверждения подписки на канал.";
+  "5 дней бесплатно в приложении. После первой оплаты можно получить ещё 5 дней за привязку Telegram и подтверждение подписки на канал.";
 
 export const SEO_PAGE_PATHS = {
   android: "/android/",
@@ -233,7 +233,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
       {
         question: "Как скачать VPN на Android?",
         answer:
-          "Откройте страницу установки POKROV и скачайте универсальный APK из официального публичного Releases. Выбирать архитектуру вручную не нужно.",
+          "Откройте страницу установки POKROV и скачайте рекомендуемый ARM64 APK из официального публичного Releases. Другие архитектуры доступны в кабинете.",
       },
       {
         question: "Нужна ли банковская карта для старта?",
@@ -344,13 +344,13 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
   }),
   withDefaults({
     answer:
-      "Установите POKROV на Android за три шага: скачайте универсальный APK из официального POKROV Releases, разрешите установку и нажмите «Подключить». В приложении уже ждут 5 бесплатных дней — без банковской карты.",
+      "Установите POKROV на Android за три шага: скачайте рекомендуемый ARM64 APK из официального POKROV Releases, разрешите установку и нажмите «Подключить». В приложении уже ждут 5 бесплатных дней — без банковской карты.",
     breadcrumbName: "Установка Android",
     cards: [
       {
         eyebrow: "Шаг 1",
         title: "Скачайте APK",
-        body: "Страница установки ведёт на актуальный универсальный APK из официального публичного POKROV Releases.",
+        body: "Страница установки ведёт на актуальный ARM64 APK из официального публичного POKROV Releases. ARMv7 и universal доступны в кабинете.",
       },
       {
         eyebrow: "Шаг 2",
@@ -366,12 +366,12 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
     changeFrequency: "weekly",
     cluster: "install",
     description:
-      "Как установить POKROV на Android: скачать универсальный APK из официального POKROV Releases, разрешить установку, включить VPN и проверить 5 дней бесплатно.",
+      "Как установить POKROV на Android: скачать ARM64 APK из официального POKROV Releases, разрешить установку, включить VPN и проверить 5 дней бесплатно.",
     faq: [
       {
         question: "Какой APK нужен для Android?",
         answer:
-          "Скачайте универсальный pokrov-android-universal.apk. Отдельно выбирать arm64 или legacy-вариант не нужно.",
+          "Для большинства телефонов скачайте pokrov-android-arm64-v8a.apk. ARMv7 нужен только старым устройствам; universal — запасной вариант без выбора архитектуры.",
       },
       {
         question: "Это безопаснее, чем искать APK в интернете?",
@@ -388,7 +388,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
     heroKicker: "Официальный APK · 5 дней за 0 ₽ · одна кнопка",
     kind: "install",
     path: SEO_PAGE_PATHS.installAndroid,
-    primaryCta: { href: "/install/", label: "Скачать универсальный APK" },
+    primaryCta: { href: "/install/", label: "Скачать APK для Android" },
     priority: 0.8,
     related: [
       { href: SEO_PAGE_PATHS.android, label: "VPN для Android" },
@@ -410,7 +410,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
       },
     ],
     steps: [
-      { name: "Скачать APK", text: "Откройте страницу установки POKROV и скачайте универсальный Android-файл из официального Releases." },
+      { name: "Скачать APK", text: "Откройте страницу установки POKROV и скачайте рекомендуемый ARM64-файл из официального Releases." },
       { name: "Разрешить источник", text: "В системном окне Android разрешите установку из выбранного источника." },
       { name: "Открыть приложение", text: "Запустите POKROV, войдите и нажмите подключение." },
       { name: "Проверить сценарии", text: "Откройте YouTube, TikTok, Telegram и обычный браузер." },
@@ -631,7 +631,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
   }),
   withDefaults({
     answer:
-      "POKROV публикует APK и Windows-файлы через публичный GitHub Releases. Android-кнопка ведёт прямо на актуальный универсальный APK; кабинет остаётся источником Windows-файла и данных аккаунта.",
+      "POKROV публикует APK и Windows-файлы через публичный GitHub Releases. Android-кнопка ведёт на основной ARM64 APK; другие версии и Windows-файл доступны в кабинете.",
     breadcrumbName: "GitHub Releases",
     cards: [
       {
@@ -883,7 +883,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
       {
         eyebrow: "Android",
         title: "APK не ставится",
-        body: "Проверьте, что универсальный APK скачан из официального POKROV Releases, и сверьте минимальную версию Android.",
+        body: "Проверьте, что APK скачан из официального POKROV Releases, и сверьте минимальную версию Android. Если ARM64 не устанавливается, используйте вариант из кабинета.",
       },
       {
         eyebrow: "Windows",
@@ -1096,7 +1096,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
     cards: [],
     changeFrequency: "weekly",
     cluster: "scenario",
-    description: "До 10 дней POKROV на старте: 5 дней бесплатно в приложении и ещё 5 дней за привязку Telegram и подписку на канал.",
+    description: "5 дней POKROV бесплатно, затем Telegram-бонус +5 дней после первой оплаты, привязки аккаунта и подтверждения подписки на канал.",
     faq: [
       {
         question: "Telegram обязателен для старта?",
@@ -1106,7 +1106,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
       {
         question: "Как получить ещё 5 дней?",
         answer:
-          "Подпишитесь на официальный канал и заберите бонус в аккаунте. Проверка подписки проходит явно, без скрытых условий.",
+          "После первой оплаты привяжите Telegram, подпишитесь на официальный канал и заберите бонус в аккаунте. Проверка подписки проходит явно, без скрытых условий.",
       },
       {
         question: "Куда писать с проблемой?",
@@ -1114,8 +1114,8 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
           "В официальный бот поддержки. Так быстрее разобрать установку, оплату, доступ и Telegram-бонус.",
       },
     ],
-    h1: "Заберите до 10 дней POKROV на старте",
-    heroKicker: "5 дней в приложении + 5 дней за Telegram",
+    h1: "5 дней бесплатно и Telegram-бонус после оплаты",
+    heroKicker: "5 дней без карты · затем +5 дней за Telegram",
     kind: "intent",
     path: "/telegram/",
     priority: 0.78,
@@ -1126,7 +1126,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
       { href: "/install/", label: "Установка" },
     ],
     sections: [],
-    title: "До 10 дней POKROV бесплатно на старте | Telegram-бонус",
+    title: "5 дней POKROV бесплатно и Telegram-бонус после оплаты",
   }),
   withDefaults({
     answer:

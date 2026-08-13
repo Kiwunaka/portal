@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 RETRIEVER_VERSION = "code-owned-v3"
-LOCAL_RENDERER_VERSION = "local-body-v3"
+LOCAL_RENDERER_VERSION = "local-body-v4"
 _MAX_PINNED_FOLLOWUP_CHARS = 240
 _HTTP_URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
 _LOCAL_PREFIX = "Коротко\n"
@@ -75,9 +75,10 @@ LOCAL_RENDERABLE_TOPICS = MappingProxyType(
         "one_site_not_open": "7609ab592299cf6f10578f2d4c81e7b5cace798afb9edbc6f66b894e1e8b4031",
         "operator_handoff": "fd8b39d192de33550d86e7fbafd43fc085cfff0879f7835bb2b70b9b4be7b5c3",
         "other_network_client_conflict": "70aeb16bac579fc1f57c68ed4358fc78df68ba810c74cf394377cc3dbf449539",
+        "pokrov_warp_troubleshooting": "0ee0d94e7a5bd68fb2efaf4a9866f0349fa26a7ea53f3b57ab7aadcf86d43f62",
         "private_dns_and_filters": "8a74b0f5e513df6946052c799f634a6e95164336f386161dc6b7052f1a9d9e9a",
         "refresh_after_renewal": "6059d8cb09bd54dd97ee120881f46e06d137a66564b5934b32cd02a42f172b0b",
-        "routing_all_except_ru": "9de97577aeeab78b456e4a7c2f2fbf93a3a781b247ac15f28394938dfc9da52b",
+        "routing_all_except_ru": "434f45daff0616e6a63a5f2ad495d7d2453810ab5a369f217b9ebf4c4eca5eb1",
         "slow_speed": "e438111bc98bb4fa4f45ac9990e72795941abef8807786fac780ec91f93244f9",
         "streisand_import": "093cc9bc8b06ee4b38ba0b99b46e99261031eeb916580e33204a78afad0e9787",
         "v2rayn_import": "28e4f8ecd51897cc65123f148618e0c356c137302fc93b2050e9df8c8288cbc7",
@@ -97,6 +98,7 @@ DIRECT_RENDER_TOPICS = frozenset(
         "one_active_client_rule",
         "one_site_not_open",
         "operator_handoff",
+        "pokrov_warp_troubleshooting",
         "windows_network_reset_light",
     }
 )
@@ -234,6 +236,27 @@ INTENT_RULES = (
             ("не открывается", "не работает", "кроме одного"),
         ),
         ("нет такого", "все сайты не открываются"),
+    ),
+    IntentRule(
+        "pokrov_warp_troubleshooting",
+        (
+            ("warp", "варп", "усиленная защита", "enhanced protection"),
+            (
+                "не работает",
+                "не включается",
+                "приостановлен",
+                "приостановлена",
+                "not work",
+                "not working",
+                "fail",
+                "fails",
+                "failed",
+                "paused",
+                "runtime service",
+                "runtime_service_start_failed",
+            ),
+        ),
+        ("работает нормально", "включен и работает", "works normally"),
     ),
     IntentRule(
         "private_dns_and_filters",
@@ -391,6 +414,20 @@ def _truncate_at_word(value: str, limit: int) -> str:
     return shortened
 
 
+def _compact_local_body(value: str) -> str:
+    """Normalize copy without flattening its phone-friendly structure."""
+    lines: list[str] = []
+    for raw_line in str(value or "").splitlines():
+        line = " ".join(raw_line.split())
+        if line:
+            lines.append(line)
+        elif lines and lines[-1]:
+            lines.append("")
+    while lines and not lines[-1]:
+        lines.pop()
+    return "\n".join(lines)
+
+
 class SupportGroundingEngine:
     def __init__(
         self,
@@ -486,7 +523,7 @@ class SupportGroundingEngine:
         if topic_id is None or topic_id not in self._active_local_topics:
             return None
         body = _HTTP_URL_RE.sub("", self.knowledge.topics_by_id[topic_id].body)
-        body = " ".join(body.split())
+        body = _compact_local_body(body)
         body_limit = policy.policy.max_reply_chars - len(_LOCAL_PREFIX) - len(_LOCAL_SUFFIX)
         if body_limit <= 0:
             return None

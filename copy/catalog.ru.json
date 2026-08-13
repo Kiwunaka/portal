@@ -310,7 +310,7 @@
     },
     "bot.instruction.platform_android": {
       "surface": "bot.onboarding",
-      "ru": "🤖 *Android*\n\n1. Скачайте приложение POKROV\n2. Войдите через почту или Telegram\n3. Нажмите «Подключить»\n\nЕсли приложение недоступно, есть запасной путь: установите Karing или Happ и добавьте личную ссылку из кабинета POKROV.",
+      "ru": "🤖 *Android*\n\nARM64 — основной и самый лёгкий файл для большинства телефонов.\n\n1. Скачайте APK и разрешите установку\n2. Откройте POKROV\n3. Нажмите «Подключить»\n\nARMv7 и universal нужны только если основной APK не устанавливается.",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
@@ -1459,7 +1459,7 @@
     },
     "marketing.home.telegram.cta": {
       "surface": "marketing.home.telegram",
-      "ru": "Забрать ещё 5 дней",
+      "ru": "Бонус +5 дней после оплаты",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1468,7 +1468,7 @@
     },
     "marketing.home.telegram.text": {
       "surface": "marketing.home.telegram",
-      "ru": "Привяжите Telegram, подпишитесь на официальный канал и заберите ещё 5 дней в приложении. Там же публикуем обновления и статусы работы.",
+      "ru": "После первой оплаты привяжите Telegram, подпишитесь на официальный канал и заберите ещё 5 дней в приложении. Там же публикуем обновления и статусы работы.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1495,7 +1495,7 @@
     },
     "marketing.install.android.note": {
       "surface": "marketing.install.android",
-      "ru": "Один универсальный APK подходит поддерживаемым Android-устройствам. Google Play для этого релиза не нужен.",
+      "ru": "ARM64 подходит большинству телефонов. Старые и универсальные варианты спрятаны в кабинете — выбирать их обычно не нужно.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1504,7 +1504,7 @@
     },
     "marketing.install.android.step1.text": {
       "surface": "marketing.install.android.step1",
-      "ru": "Скачайте универсальный APK из официального POKROV Releases. Аккаунт понадобится уже после установки.",
+      "ru": "Скачайте рекомендуемый ARM64 APK из официального POKROV Releases. Аккаунт понадобится уже после установки.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1567,7 +1567,7 @@
     },
     "marketing.install.faq.apk.a": {
       "surface": "marketing.install.faq.apk",
-      "ru": "Скачайте универсальный pokrov-android-universal.apk. Отдельно выбирать arm64 или legacy-файл больше не нужно.",
+      "ru": "Берите ARM64 — он подходит большинству телефонов и заметно меньше universal. Если установка не проходит, откройте «Другие версии» в кабинете: там есть ARMv7 и universal.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1585,7 +1585,7 @@
     },
     "marketing.install.faq.file.a": {
       "surface": "marketing.install.faq.file",
-      "ru": "Android APK скачивается из публичного POKROV Releases. Windows-файл открывается через кабинет. Не используйте случайные зеркала и пересланные архивы.",
+      "ru": "Android APK и Windows-установщик скачиваются из публичного POKROV Releases. Portable-версия Windows доступна в кабинете. Не используйте случайные зеркала и пересланные архивы.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1747,7 +1747,7 @@
     },
     "marketing.install.windows.step1.text": {
       "surface": "marketing.install.windows.step1",
-      "ru": "Откройте кабинет — он выдаст актуальный EXE-файл для вашего аккаунта.",
+      "ru": "Скачайте установщик из официального POKROV Releases. Portable-версия доступна в кабинете.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,

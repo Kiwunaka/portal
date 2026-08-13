@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "artifact": "app-armeabi-v7a-release.apk",
+  "abi": "armeabi-v7a",
+  "package_name": "space.pokrov.pokrov_android_shell",
+  "version_name": "1.0.2",
+  "version_code": "1009",
+  "distribution": "direct_apk",
+  "build_mode": "release",
+  "debuggable": false,
+  "signing_state": "production_self_managed",
+  "certificate_sha256": "0A0602A7DF5D96A0B427909D004F3DDF26DEF86587634BF16694DA8D654B2500",
+  "apk_sha256": "A45C378860975B73C552FE32A317180991D1F4E39C9800653112F6806B9DDB4D",
+  "size_bytes": 88263625,
+  "api_base_url": "https://api.pokrov.space",
+  "verified_at_utc": "2026-08-13T03:48:18.2331647Z"
+}

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import logging
 import math
 import re
@@ -11,6 +12,7 @@ from dataclasses import dataclass, field, replace
 from typing import Callable, Mapping, Sequence
 
 from support_agent_context import (
+    MAX_CURRENT_MESSAGE_CHARS,
     PROMPT_BUNDLE_VERSION,
     ContextBuildError,
     SupportContextBuilder,
@@ -87,6 +89,15 @@ _MIN_PROVIDER_WINDOW_SECONDS = 0.1
 _MAX_PROVIDER_TIMEOUT_SECONDS = 45.0
 _MAX_RUN_DEADLINE_SECONDS = 50.0
 _EMPTY_HASH = "0" * 64
+_SAFE_DIAGNOSTIC_KEYS = (
+    "platform",
+    "app_version",
+    "connection_status",
+    "route_mode",
+    "enhanced_protection_state",
+    "enhanced_protection_consent",
+    "enhanced_protection_available",
+)
 _REDACTION_CATEGORIES = frozenset(
     {
         "private_link",
@@ -153,6 +164,7 @@ class SupportAgentRequest:
     session_scope: SessionScope
     message: str
     now: float
+    safe_diagnostics: tuple[tuple[str, str | int | bool | None], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -264,6 +276,62 @@ def _closed_counts(values: Mapping[str, int]) -> tuple[tuple[str, int], ...]:
         count = raw_count if type(raw_count) is int and raw_count >= 0 else 0
         counts[category] = counts.get(category, 0) + count
     return tuple(sorted(counts.items()))
+
+
+def _valid_safe_diagnostics(
+    values: tuple[tuple[str, str | int | bool | None], ...],
+) -> bool:
+    if not isinstance(values, tuple) or len(values) > len(_SAFE_DIAGNOSTIC_KEYS):
+        return False
+    seen: set[str] = set()
+    for item in values:
+        if not isinstance(item, tuple) or len(item) != 2:
+            return False
+        key, value = item
+        if key not in _SAFE_DIAGNOSTIC_KEYS or key in seen:
+            return False
+        seen.add(key)
+        if isinstance(value, str):
+            if len(value) > 512 or any(
+                ord(character) < 32 and character not in "\t\n\r"
+                for character in value
+            ):
+                return False
+        elif type(value) not in {int, bool} and value is not None:
+            return False
+    return True
+
+
+def _synthesis_question_with_diagnostics(
+    message: str,
+    diagnostics: tuple[tuple[str, str | int | bool | None], ...],
+) -> str:
+    if not diagnostics:
+        return message
+    by_key = dict(diagnostics)
+    admitted: dict[str, str | int | bool] = {}
+    marker = "\n\nAPP_DIAGNOSTICS_JSON\n"
+    for key in _SAFE_DIAGNOSTIC_KEYS:
+        value = by_key.get(key)
+        if value is None:
+            continue
+        candidate = {**admitted, key: value}
+        encoded = json.dumps(
+            candidate,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        if len(message) + len(marker) + len(encoded) > MAX_CURRENT_MESSAGE_CHARS:
+            continue
+        admitted = candidate
+    if not admitted:
+        return message
+    encoded = json.dumps(
+        admitted,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return f"{message}{marker}{encoded}"
 
 
 def _safe_config_code(adapter: object, name: str, default: str) -> str:
@@ -391,6 +459,7 @@ class SupportAgentHarness:
             and not isinstance(request.now, bool)
             and math.isfinite(float(request.now))
             and request.now >= 0
+            and _valid_safe_diagnostics(request.safe_diagnostics)
         )
 
     def _append_pair(
@@ -629,7 +698,10 @@ class SupportAgentHarness:
                 policy=self.policy,
                 knowledge=self.knowledge,
                 session=session,
-                redacted_message=boundary.model_text,
+                redacted_message=_synthesis_question_with_diagnostics(
+                    boundary.model_text,
+                    request.safe_diagnostics,
+                ),
                 decision=decision,
             )
         except ContextBuildError as exc:

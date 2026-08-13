@@ -1,5 +1,5 @@
 {
-  "version": "2026-04-22",
+  "version": "2026-08-13",
   "mode": "whitelist_slots",
   "fallback_behavior": "contextual_only_when_remote_unavailable",
   "slots": [
@@ -7,49 +7,49 @@
       "id": "app.protection.contextual",
       "surface": "app",
       "placement": "protection_contextual",
-      "contexts": ["trial_premium", "free_monthly", "free_soft_mode"],
+      "contexts": ["trial_premium", "bonus_premium", "paid_unlimited", "expired_or_blocked"],
       "allowed_content_ids": ["redeem_key", "telegram_bonus", "support_recovery"]
     },
     {
       "id": "app.home.corner",
       "surface": "app",
       "placement": "home_corner",
-      "contexts": ["trial_premium", "free_monthly", "free_soft_mode", "expired_or_blocked"],
+      "contexts": ["trial_premium", "bonus_premium", "paid_unlimited", "expired_or_blocked"],
       "allowed_content_ids": ["redeem_key", "telegram_bonus", "support_recovery", "release_update", "partner_promo"]
     },
     {
       "id": "app.home.banner",
       "surface": "app",
       "placement": "home_banner",
-      "contexts": ["trial_premium", "free_monthly", "free_soft_mode", "expired_or_blocked"],
+      "contexts": ["trial_premium", "bonus_premium", "paid_unlimited", "expired_or_blocked"],
       "allowed_content_ids": ["redeem_key", "telegram_bonus", "support_recovery", "release_update", "partner_promo", "incident_notice"]
     },
     {
       "id": "app.profile.contextual",
       "surface": "app",
       "placement": "account",
-      "contexts": ["free_monthly", "free_soft_mode", "expired_or_blocked"],
+      "contexts": ["trial_premium", "bonus_premium", "paid_unlimited", "expired_or_blocked"],
       "allowed_content_ids": ["redeem_key", "support_recovery", "partner_promo"]
     },
     {
       "id": "app.rewards.banner",
       "surface": "app",
       "placement": "rewards",
-      "contexts": ["trial_premium", "free_monthly", "free_soft_mode"],
+      "contexts": ["trial_premium", "bonus_premium", "paid_unlimited", "expired_or_blocked"],
       "allowed_content_ids": ["telegram_bonus", "partner_promo"]
     },
     {
       "id": "app.support.banner",
       "surface": "app",
       "placement": "support",
-      "contexts": ["trial_premium", "free_monthly", "free_soft_mode", "expired_or_blocked"],
+      "contexts": ["trial_premium", "bonus_premium", "paid_unlimited", "expired_or_blocked"],
       "allowed_content_ids": ["support_recovery", "incident_notice"]
     },
     {
       "id": "app.global.banner",
       "surface": "app",
       "placement": "global_banner",
-      "contexts": ["trial_premium", "free_monthly", "free_soft_mode", "expired_or_blocked"],
+      "contexts": ["trial_premium", "bonus_premium", "paid_unlimited", "expired_or_blocked"],
       "allowed_content_ids": ["release_update", "partner_promo", "incident_notice"]
     },
     {

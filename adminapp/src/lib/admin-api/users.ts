@@ -16,6 +16,9 @@ export type AdminUserListRow = {
   expiryAt: string | null;
   createdAt: string | null;
   installId: string | null;
+  deviceName: string | null;
+  appPlatform: string | null;
+  linkedTelegramUsername: string | null;
   observerState: string;
   observerUpdatedAt: string | null;
 };
@@ -37,8 +40,6 @@ export type AdminUserIdentity = AdminUserListRow & {
   referralCount: number;
   streakMonths: number;
   linkedTelegramId: number | null;
-  linkedTelegramUsername: string | null;
-  appPlatform: string | null;
   appLastSeenAt: string | null;
 };
 
@@ -217,6 +218,9 @@ function mapUserRow(value: unknown): AdminUserListRow {
     expiryAt: optionalText(row.expiry_at),
     createdAt: optionalText(row.created_at),
     installId: optionalText(row.app_install_id),
+    deviceName: optionalText(row.app_device_name),
+    appPlatform: optionalText(row.app_platform),
+    linkedTelegramUsername: optionalText(row.linked_telegram_username),
     observerState: text(row.observer_state) || "ok",
     observerUpdatedAt: optionalText(row.observer_updated_at),
   };
@@ -234,8 +238,6 @@ function mapIdentity(value: unknown): AdminUserIdentity {
     referralCount: number(row.referral_count),
     streakMonths: number(row.streak_months),
     linkedTelegramId: optionalNumber(row.linked_telegram_id),
-    linkedTelegramUsername: optionalText(row.linked_telegram_username),
-    appPlatform: optionalText(row.app_platform),
     appLastSeenAt: optionalText(row.app_last_seen_at),
   };
 }

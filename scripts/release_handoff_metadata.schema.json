@@ -44,6 +44,12 @@
             "apk_armeabi_v7a_url": {
               "type": "string"
             },
+            "apk_x86_64_url": {
+              "type": "string"
+            },
+            "apk_universal_url": {
+              "type": "string"
+            },
             "apk_variants": {
               "type": "array",
               "items": {
@@ -103,6 +109,12 @@
         "APP_ANDROID_APK_ARMEABI_V7A_URL": {
           "type": "string"
         },
+        "APP_ANDROID_APK_X86_64_URL": {
+          "type": "string"
+        },
+        "APP_ANDROID_APK_UNIVERSAL_URL": {
+          "type": "string"
+        },
         "APP_ANDROID_MIRROR_URL": {
           "type": "string"
         },
@@ -125,6 +137,18 @@
           "type": "string"
         },
         "APP_ANDROID_ARMEABI_V7A_SIZE_BYTES": {
+          "type": "string"
+        },
+        "APP_ANDROID_X86_64_SHA256": {
+          "type": "string"
+        },
+        "APP_ANDROID_X86_64_SIZE_BYTES": {
+          "type": "string"
+        },
+        "APP_ANDROID_UNIVERSAL_SHA256": {
+          "type": "string"
+        },
+        "APP_ANDROID_UNIVERSAL_SIZE_BYTES": {
           "type": "string"
         },
         "APP_WINDOWS_EXE_URL": {

@@ -139,7 +139,7 @@ def test_grandfathered_channel_backfill_preserves_issued_ten_days(tmp_path: Path
     engine.dispose()
 
 
-def test_pre_first_payment_trial_channel_friend_cap_is_exactly_fifteen_days(tmp_path: Path) -> None:
+def test_legacy_pre_first_payment_trial_channel_friend_cap_is_exactly_fifteen_days(tmp_path: Path) -> None:
     from economy_service import (
         activate_reserved_trial,
         grant_channel_bonus,
@@ -182,7 +182,13 @@ def test_pre_first_payment_trial_channel_friend_cap_is_exactly_fifteen_days(tmp_
         telegram_id=user.tg_id,
         now=NOW,
     )
-    friend = grant_referred_friend_bonus(session, account_id=account.id, evidence=evidence, now=NOW)
+    friend = grant_referred_friend_bonus(
+        session,
+        account_id=account.id,
+        evidence=evidence,
+        now=NOW,
+        allow_legacy_migration=True,
+    )
 
     assert channel.duration_days == 5
     assert friend.duration_days == 5
@@ -346,7 +352,7 @@ def test_referral_relationship_rejects_self_and_cycles(tmp_path: Path) -> None:
     engine.dispose()
 
 
-def test_friend_reward_requires_canonical_connection_evidence_and_is_once(tmp_path: Path) -> None:
+def test_invitee_reward_is_disabled_even_with_canonical_connection_evidence(tmp_path: Path) -> None:
     from economy_service import (
         activate_referred_friend_reward,
         create_referral_relationship,
@@ -369,7 +375,7 @@ def test_friend_reward_requires_canonical_connection_evidence_and_is_once(tmp_pa
     )
     session.add(device)
     session.flush()
-    relationship = create_referral_relationship(
+    create_referral_relationship(
         session,
         referred_account_id=referred.id,
         referrer_account_id=referrer.id,
@@ -377,7 +383,7 @@ def test_friend_reward_requires_canonical_connection_evidence_and_is_once(tmp_pa
         now=NOW,
     )
 
-    with __import__("pytest").raises(ValueError, match="connection_evidence"):
+    with __import__("pytest").raises(ValueError, match="referral_invitee_bonus_disabled"):
         activate_referred_friend_reward(session, account_id=referred.id, evidence=None, now=NOW)
     evidence = record_connection_evidence(
         session,
@@ -388,25 +394,16 @@ def test_friend_reward_requires_canonical_connection_evidence_and_is_once(tmp_pa
         observed_at=NOW,
         evidence_key="friend:observer:14",
     )
-    first = activate_referred_friend_reward(session, account_id=referred.id, evidence=evidence, now=NOW)
-    replay = activate_referred_friend_reward(
-        session,
-        account_id=referred.id,
-        evidence=evidence,
-        now=NOW + timedelta(hours=1),
-    )
+    with __import__("pytest").raises(ValueError, match="referral_invitee_bonus_disabled"):
+        activate_referred_friend_reward(session, account_id=referred.id, evidence=evidence, now=NOW)
 
-    assert replay.id == first.id
-    assert first.duration_days == 5
-    assert first.activation_evidence_id == evidence.id
     assert user.expiry_at == NOW + timedelta(days=5)
-    assert relationship.friend_grant_id == first.id
-    assert session.query(EntitlementGrant).filter_by(source="referral_friend").count() == 1
+    assert session.query(EntitlementGrant).filter_by(source="referral_friend").count() == 0
     session.close()
     engine.dispose()
 
 
-def test_recording_server_evidence_automatically_releases_friend_reward(tmp_path: Path) -> None:
+def test_recording_server_evidence_does_not_release_invitee_reward(tmp_path: Path) -> None:
     from economy_service import create_referral_relationship, record_connection_evidence
     from models import AccountDevice, EntitlementGrant
 
@@ -453,14 +450,12 @@ def test_recording_server_evidence_automatically_releases_friend_reward(tmp_path
     )
 
     assert replay.id == evidence.id
-    reward = session.query(EntitlementGrant).filter_by(source="referral_friend").one()
-    assert reward.activation_evidence_id == evidence.id
-    assert reward.duration_days == 5
+    assert session.query(EntitlementGrant).filter_by(source="referral_friend").count() == 0
     session.close()
     engine.dispose()
 
 
-def test_trial_activation_then_friend_reward_preserves_both_intervals(tmp_path: Path) -> None:
+def test_trial_activation_grants_only_the_five_day_trial(tmp_path: Path) -> None:
     from economy_service import (
         activate_reserved_trial,
         create_referral_relationship,
@@ -505,8 +500,8 @@ def test_trial_activation_then_friend_reward_preserves_both_intervals(tmp_path: 
     activation = activate_reserved_trial(session, account_id=referred.id, evidence=evidence)
 
     assert activation.activated_now is True
-    assert user.expiry_at == evidence.observed_at + timedelta(days=10)
-    assert session.query(EntitlementGrant).filter_by(source="referral_friend").count() == 1
+    assert user.expiry_at == evidence.observed_at + timedelta(days=5)
+    assert session.query(EntitlementGrant).filter_by(source="referral_friend").count() == 0
     session.close()
     engine.dispose()
 
@@ -553,10 +548,10 @@ def test_referrer_reward_waits_full_72_hours_and_payment_replays_converge(tmp_pa
     assert before == {"released": 0, "waiting": 1, "rejected": 0}
     assert at_due == {"released": 1, "waiting": 0, "rejected": 0}
     assert worker_replay == {"released": 0, "waiting": 0, "rejected": 0}
-    assert referrer_user.expiry_at == NOW + timedelta(days=35)
+    assert referrer_user.expiry_at == NOW + timedelta(days=30)
     reward = session.query(EntitlementGrant).filter_by(source="referral_referrer").one()
     assert reward.idempotency_key == f"referral-referrer:v1:{referred.id}"
-    assert reward.duration_days == 15
+    assert reward.duration_days == 10
     assert session.query(ReferralTransition).filter_by(transition_kind="referrer_reward_released").count() == 1
     session.close()
     engine.dispose()
@@ -787,7 +782,7 @@ def test_provider_order_replay_cannot_move_fulfillment_to_another_account(tmp_pa
     engine.dispose()
 
 
-def test_friend_bonus_promotes_free_policy_preserves_paid_and_downgrades_after_expiry(tmp_path: Path) -> None:
+def test_legacy_friend_bonus_promotes_free_policy_preserves_paid_and_downgrades_after_expiry(tmp_path: Path) -> None:
     from economy_service import grant_referred_friend_bonus, rebuild_account_entitlement_projection, record_connection_evidence
     from models import AccessKey, AccountDevice
 
@@ -827,7 +822,13 @@ def test_friend_bonus_promotes_free_policy_preserves_paid_and_downgrades_after_e
         evidence_key="bonus-policy:34",
     )
 
-    grant_referred_friend_bonus(session, account_id=account.id, evidence=evidence, now=NOW)
+    grant_referred_friend_bonus(
+        session,
+        account_id=account.id,
+        evidence=evidence,
+        now=NOW,
+        allow_legacy_migration=True,
+    )
 
     assert user.sub_type == "BONUS"
     assert user.current_plan_code == "referral_friend"
@@ -840,7 +841,7 @@ def test_friend_bonus_promotes_free_policy_preserves_paid_and_downgrades_after_e
     engine.dispose()
 
 
-def test_friend_bonus_keeps_paid_policy_then_transitions_bonus_to_free(tmp_path: Path) -> None:
+def test_legacy_friend_bonus_keeps_paid_policy_then_transitions_bonus_to_free(tmp_path: Path) -> None:
     from economy_service import grant_referred_friend_bonus, rebuild_account_entitlement_projection, record_connection_evidence
     from models import AccessKey, AccountDevice
 
@@ -879,7 +880,13 @@ def test_friend_bonus_keeps_paid_policy_then_transitions_bonus_to_free(tmp_path:
         evidence_key="paid-bonus-policy:35",
     )
 
-    grant_referred_friend_bonus(session, account_id=account.id, evidence=evidence, now=NOW)
+    grant_referred_friend_bonus(
+        session,
+        account_id=account.id,
+        evidence=evidence,
+        now=NOW,
+        allow_legacy_migration=True,
+    )
     assert user.sub_type == "PAID"
     assert key.pool_code == "premium_pool"
 
@@ -981,7 +988,13 @@ def test_free_cycle_expiry_never_extends_provider_payment_or_bonus(tmp_path: Pat
         observed_at=NOW,
         evidence_key="free-boundary-friend:42",
     )
-    friend = grant_referred_friend_bonus(session, account_id=friend_account.id, evidence=evidence, now=NOW)
+    friend = grant_referred_friend_bonus(
+        session,
+        account_id=friend_account.id,
+        evidence=evidence,
+        now=NOW,
+        allow_legacy_migration=True,
+    )
     assert friend.starts_at == NOW
     assert friend.expires_at == NOW + timedelta(days=5)
     assert friend_user.expiry_at == NOW + timedelta(days=5)
@@ -1104,7 +1117,13 @@ def test_pre_first_payment_cap_ignores_free_snapshot_duration(tmp_path: Path) ->
         session, account_id=account.id, legacy_tg_id=user.tg_id,
         telegram_id=user.tg_id, now=NOW,
     )
-    friend = grant_referred_friend_bonus(session, account_id=account.id, evidence=evidence, now=NOW)
+    friend = grant_referred_friend_bonus(
+        session,
+        account_id=account.id,
+        evidence=evidence,
+        now=NOW,
+        allow_legacy_migration=True,
+    )
 
     assert channel.duration_days == friend.duration_days == 5
     premium_acquisition = session.query(EntitlementGrant).filter(

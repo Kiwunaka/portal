@@ -1,9 +1,9 @@
 # Release Gate Report
 
-- Generated at: `2026-08-12 05:36:54`
-- Status: `PASS`
+- Generated at: `2026-08-13 12:34:05`
+- Status: `FAIL`
 - Gate set: `quick`
-- Brain IP supplied: `yes`
+- Brain IP supplied: `no`
 - Client platform gates: `none`
 - Android audit required by selected gates: `no`
 
@@ -11,25 +11,24 @@
 
 | Gate | Exit code | Duration (s) |
 |---|---:|---:|
-| Node predeploy readiness | 0 | 17.83 |
-| Critical worker regression | 0 | 52.74 |
-| Client security smoke | 0 | 0.82 |
-| Client portal Flutter tests | 0 | 94.19 |
-| API lifecycle smoke | 0 | 19.43 |
-| Public link checks | 0 | 0.16 |
-| Marketing production build | 0 | 39.50 |
-| AdminApp production build | 0 | 44.52 |
-| Admin webapp smoke | 0 | 0.32 |
-| WebApp production build | 0 | 47.16 |
-| WebApp Playwright E2E | 0 | 137.52 |
-| UI visual smoke | 0 | 0.20 |
+| Critical worker regression | 0 | 33.97 |
+| Client security smoke | 0 | 0.51 |
+| Client portal Flutter tests | 1 | 70.37 |
+| API lifecycle smoke | 1 | 3.30 |
+| Public link checks | 0 | 0.10 |
+| Marketing production build | 0 | 27.43 |
+| AdminApp production build | 0 | 26.41 |
+| Admin webapp smoke | 0 | 0.18 |
+| WebApp production build | 0 | 29.95 |
+| WebApp Playwright E2E | 1 | 2.57 |
+| UI visual smoke | 0 | 0.09 |
 
 ## Evidence Classification
 
 | Evidence | Scope | Status | Notes |
 |---|---|---|---|
-| current-origin check | local quick gate set | PASS | Runs on the operator workstation; does not prove brain-origin or RU-origin reachability. |
-| brain-origin check | `scripts/verify_brain_ready.py` / predeploy readiness | PASS | Requires `--brain-ip` and live SSH/API access; keep separate from current-origin results. |
+| current-origin check | local quick gate set | FAIL | Runs on the operator workstation; does not prove brain-origin or RU-origin reachability. |
+| brain-origin check | `scripts/verify_brain_ready.py` / predeploy readiness | BLOCKED_BY_ACCESS | Requires `--brain-ip` and live SSH/API access; keep separate from current-origin results. |
 | RU-origin check | external RU probe (`mini` or replacement) | BLOCKED_BY_ACCESS | Not run by this local gate; requires an external RU probe host and redacted report. |
 | Android physical audit | release-build localhost/control-surface audit | BLOCKED_BY_ACCESS | Public Android remains blocked unless this is run on physical hardware with the release build. |
 | Runtime app-download smoke | `/api/client/apps` and provider checks | SKIPPED_NO_LIVE_TOKEN | Requires `TELEGRAM_INIT_DATA`; omit raw token values from evidence. |
@@ -37,67 +36,19 @@
 
 ## Command Tails
 
-### Node predeploy readiness
-
-- Command: `C:\Users\kiwun\Documents\ai\VPN\.venv\Scripts\python.exe scripts/predeploy_node_readiness.py --brain-ip 82.21.114.104 --web-domain pokrov.space --ssh-user root --ssh-port 29374 --passwords C:\Users\kiwun\Documents\ai\VPN\VPN NODE SSH KEYS\PASSWORDS.txt`
-- Exit: `0`
-
-```text
-      "dns_ok": true,
-      "tcp_ok": true,
-      "tls_ok": true,
-      "target_tls_ok": true,
-      "dns_records": [
-        "158.255.3.39"
-      ],
-      "error_kind": "",
-      "error_message": ""
-    },
-    {
-      "code": "ru_spb",
-      "host": "ru-spb.pokrov.space",
-      "dns_ok": true,
-      "tcp_ok": true,
-      "tls_ok": true,
-      "target_tls_ok": true,
-      "dns_records": [
-        "193.233.216.73"
-      ],
-      "error_kind": "",
-      "error_message": ""
-    },
-    {
-      "code": "us",
-      "host": "80.209.240.179",
-      "dns_ok": true,
-      "tcp_ok": true,
-      "tls_ok": true,
-      "target_tls_ok": true,
-      "dns_records": [
-        "80.209.240.179"
-      ],
-      "error_kind": "",
-      "error_message": ""
-    }
-  ],
-  "failures": [],
-  "ok": true
-}
-```
-
 ### Critical worker regression
 
-- Command: `C:\Users\kiwun\Documents\ai\VPN\.venv\Scripts\python.exe -m pytest tests/test_worker_retention.py -q --basetemp C:\Users\kiwun\Documents\ai\VPN\.tmp\pytest-basetemp\release-gate-ic0dakte`
+- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe -m pytest tests/test_worker_retention.py -q --basetemp C:\Users\kiwun\Documents\ai\VPN\.tmp\pytest-basetemp\release-gate-qmij0ri_`
 - Exit: `0`
 
 ```text
 ....................                                                     [100%]
-20 passed in 50.78s
+20 passed in 33.04s
 ```
 
 ### Client security smoke
 
-- Command: `C:\Users\kiwun\Documents\ai\VPN\.venv\Scripts\python.exe scripts/client_security_smoke.py`
+- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe scripts/client_security_smoke.py`
 - Exit: `0`
 
 ```text
@@ -112,68 +63,103 @@
 
 ### Client portal Flutter tests
 
-- Command: `C:\Users\kiwun\Documents\ai\VPN\.venv\Scripts\python.exe scripts/run_client_release_gate.py test --suite portal`
-- Exit: `0`
+- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe scripts/run_client_release_gate.py test --suite portal`
+- Exit: `1`
 
 ```text
-  path_provider_platform_interface 2.1.2 (2.1.3 available)
-  screen_retriever 0.2.0 (0.2.2 available)
-  screen_retriever_linux 0.2.0 (0.2.2 available)
-  screen_retriever_macos 0.2.0 (0.2.2 available)
-  screen_retriever_platform_interface 0.2.0 (0.2.2 available)
-  screen_retriever_windows 0.2.0 (0.2.2 available)
-  source_span 1.10.0 (1.10.2 available)
-  string_scanner 1.2.0 (1.4.1 available)
-  term_glyph 1.2.1 (1.2.2 available)
-  test_api 0.7.7 (0.7.13 available)
-  tray_manager 0.5.2 (0.5.3 available)
-  url_launcher 6.3.1 (6.3.2 available)
-  url_launcher_android 6.3.14 (6.3.32 available)
-  url_launcher_ios 6.3.3 (6.4.1 available)
-  url_launcher_linux 3.2.1 (3.2.2 available)
-  url_launcher_macos 3.2.2 (3.2.5 available)
-  url_launcher_web 2.3.3 (2.4.3 available)
-  url_launcher_windows 3.1.4 (3.1.5 available)
-  vector_math 2.2.0 (2.4.2 available)
-  vm_service 14.2.5 (15.2.0 available)
-  win32 5.10.1 (6.4.0 available)
-  window_manager 0.5.1 (0.5.2 available)
-Got dependencies!
-40 packages have newer versions incompatible with dependency constraints.
-Try `flutter pub outdated` for more information.
-00:00 +0: loading C:/Users/kiwun/Documents/ai/POKROV-app/apps/windows_shell/test/widget_test.dart
-00:00 +0: C:/Users/kiwun/Documents/ai/POKROV-app/apps/windows_shell/test/widget_test.dart: windows minimum size keeps the compact drawer lane reachable
-00:00 +1: C:/Users/kiwun/Documents/ai/POKROV-app/apps/windows_shell/test/widget_test.dart: windows tray connection label reports actionable state
-00:00 +2: C:/Users/kiwun/Documents/ai/POKROV-app/apps/windows_shell/test/widget_test.dart: windows tray show window restores minimized windows before focusing
-00:00 +3: C:/Users/kiwun/Documents/ai/POKROV-app/apps/windows_shell/test/widget_test.dart: windows tray show window skips restore when already visible
-00:00 +4: C:/Users/kiwun/Documents/ai/POKROV-app/apps/windows_shell/test/widget_test.dart: windows close hides to tray while prevent-close is active
-00:00 +5: C:/Users/kiwun/Documents/ai/POKROV-app/apps/windows_shell/test/widget_test.dart: windows close leaves the window alone when prevent-close is off
-00:00 +6: C:/Users/kiwun/Documents/ai/POKROV-app/apps/windows_shell/test/widget_test.dart: windows tray exit destroys tray before the native window
-00:00 +7: C:/Users/kiwun/Documents/ai/POKROV-app/apps/windows_shell/test/widget_test.dart: windows shell boots the shared protection surface
-00:00 +8: C:/Users/kiwun/Documents/ai/POKROV-app/apps/windows_shell/test/widget_test.dart: windows shell boots the shared protection surface
-00:01 +9: All tests passed!
+
+Warning: A call to tap() with finder "Found 1 widget with key [<'locations-catalog-city-nl-ams-01'>]: [
+  Padding-[<'locations-catalog-city-nl-ams-01'>](padding: EdgeInsets(0.0, 8.0, 0.0, 8.0), dependencies: [Directionality], renderObject: RenderPadding#5a21e relayoutBoundary=up25),
+]" derived an Offset (Offset(640.0, 461.0)) that would not hit test on the specified widget.
+Maybe the widget is actually off-screen, or another widget is obscuring it, or the widget cannot receive pointer events.
+The finder corresponds to this RenderBox: RenderPadding#5a21e relayoutBoundary=up25
+The hit test result at that offset is: HitTestResult(RenderPointerListener#a978e@Offset(428.0, 33.0), RenderSemanticsAnnotations#9dbcd@Offset(428.0, 33.0), RenderMouseRegion#66eeb@Offset(428.0, 33.0), RenderSemanticsAnnotations#2e2e5@Offset(428.0, 33.0), _RenderInkFeatures#05cd8@Offset(428.0, 33.0), RenderCustomPaint#de61e@Offset(428.0, 33.0), RenderClipPath#bfc3e@Offset(428.0, 33.0), RenderPadding#73a3b@Offset(429.0, 34.0), RenderDecoratedBox#42bad@Offset(429.0, 34.0), RenderPointerListener#018a6@Offset(429.0, 34.0), RenderSemanticsGestureHandler#4beeb@Offset(429.0, 34.0), RenderMouseRegion#57192@Offset(429.0, 34.0), RenderSemanticsAnnotations#917d7@Offset(429.0, 34.0), RenderFlex#d8db0@Offset(429.0, 34.0), RenderFlex#38d08@Offset(429.0, 67.0), RenderPadding#6ba03@Offset(449.0, 87.0), RenderPadding#3911b@Offset(450.0, 88.0), RenderDecoratedBox#6a33a@Offset(450.0, 88.0), RenderPadding#cb00e@Offset(450.0, 88.0), RenderRepaintBoundary#333ea@Offset(450.0, 88.0), RenderIndexedSemantics#7d564@Offset(450.0, 88.0), RenderSliverList@(mainAxis: 445.0, crossAxis: 450.0), RenderSliverPadding@(mainAxis: 461.0, crossAxis: 640.0), RenderViewport#e94e4@Offset(640.0, 461.0), RenderIgnorePointer#fab0f@Offset(640.0, 461.0), RenderSemanticsAnnotations#a0d38@Offset(640.0, 461.0), RenderPointerListener#83e3a@Offset(640.0, 461.0), RenderSemanticsGestureHandler#d0362@Offset(640.0, 461.0), RenderPointerListener#5f525@Offset(640.0, 461.0), _RenderScrollSemantics#9961d@Offset(640.0, 461.0), _RenderLayoutBuilder#b5059@Offset(640.0, 461.0), RenderRepaintBoundary#21f02@Offset(640.0, 461.0), RenderOffstage#ea5f9@Offset(640.0, 461.0), RenderStack#bfa01@Offset(640.0, 461.0), RenderOpacity#c2577@Offset(640.0, 461.0), RenderFlex#6646e@Offset(640.0, 461.0), RenderStack#fd08b@Offset(640.0, 461.0), RenderPadding#faa8e@Offset(640.0, 461.0), RenderStack#e3a64@Offset(640.0, 461.0), RenderDecoratedBox#8ce42@Offset(640.0, 461.0), _RenderLayoutBuilder#13494@Offset(640.0, 461.0), RenderCustomMultiChildLayoutBox#678e9@Offset(640.0, 461.0), _RenderInkFeatures#9f843@Offset(640.0, 461.0), RenderPhysicalModel#3756b@Offset(640.0, 461.0), RenderAnnotatedRegion<SystemUiOverlayStyle>#b8007@Offset(640.0, 461.0), RenderSemanticsAnnotations#deb4e@Offset(640.0, 461.0), RenderSemanticsAnnotations#51e43@Offset(640.0, 461.0), RenderSemanticsAnnotations#40a66@Offset(640.0, 461.0), RenderRepaintBoundary#ab355@Offset(640.0, 461.0), RenderIgnorePointer#33f20@Offset(640.0, 461.0), RenderStack#6d467@Offset(640.0, 461.0), RenderDecoratedBox#24c77@Offset(640.0, 461.0), RenderRepaintBoundary#c00f2@Offset(640.0, 461.0), RenderSemanticsAnnotations#aa437@Offset(640.0, 461.0), RenderOffstage#3f5b2@Offset(640.0, 461.0), RenderSemanticsAnnotations#24bd5@Offset(640.0, 461.0), _RenderTheater#0f989@Offset(640.0, 461.0), RenderAbsorbPointer#679f1@Offset(640.0, 461.0), RenderPointerListener#b4a3d@Offset(640.0, 461.0), RenderSemanticsAnnotations#87c7e@Offset(640.0, 461.0), RenderSemanticsAnnotations#7b29e@Offset(640.0, 461.0), RenderSemanticsAnnotations#fa82f@Offset(640.0, 461.0), RenderTapRegionSurface#f6f87@Offset(640.0, 461.0), RenderSemanticsAnnotations#aca81@Offset(640.0, 461.0), RenderSemanticsAnnotations#702c3@Offset(640.0, 461.0), RenderSemanticsAnnotations#9c726@Offset(640.0, 461.0), HitTestEntry<HitTestTarget>#bcc34(_ReusableRenderView#c9008), HitTestEntry<HitTestTarget>#25bd7(<AutomatedTestWidgetsFlutterBinding>))
+#0      WidgetController._getElementPoint (package:flutter_test/src/controller.dart:2081:25)
+#1      WidgetController.getCenter (package:flutter_test/src/controller.dart:1865:12)
+#2      WidgetController.tap (package:flutter_test/src/controller.dart:1045:7)
+#3      main.<anonymous closure> (file:///C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart:7936:18)
+<asynchronous suspension>
+#4      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#5      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1059:5)
+<asynchronous suspension>
+#6      StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+To silence this warning, pass "warnIfMissed: false" to "tap()".
+To make this warning fatal, set WidgetController.hitTestWarningShouldBeFatal to true.
+
+00:26 +238 -6: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: profile keeps cached notifications when refresh is offline
+00:26 +239 -6: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: primary connect action auto-prepares and starts host runtime
+00:26 +240 -6: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: first route scope blocks an empty selected-apps list
+00:27 +241 -6: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: late client-experience restore cannot replace first-connect route choice
+00:27 +242 -6: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: first route scope confirmation survives a shell restart
+00:27 +243 -6: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: primary connect activates once from pointer and keyboard
+00:27 +244 -6: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: bootstrap failures surface as a calm recovery banner
+00:27 +245 -6: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: unexpected runtime errors surface as redacted recovery feedback
+00:27 +246 -6: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: android reconnect refreshes the managed profile even when one is already staged
+00:28 +247 -6: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: primary connect action is disabled when live connect is unavailable
+00:28 +248 -6: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: first Android consent converges after delayed native running without lifecycle resume
+00:28 +249 -6: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: primary connect action polls the host bridge until runtime is running
+00:28 +250 -6: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: android shell refreshes runtime snapshot when the app resumes
+00:28 +251 -6: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: tab changes animate through the shared tab transition wrapper
+00:28 +252 -6: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: profile and rewards hub expose accent pull-to-refresh
+00:28 +253 -6: C:/Users/kiwun/Documents/ai/POKROV-app/packages/app_shell/test/pokrov_seed_app_test.dart: builds seed app context for public and readiness-only host lanes
+00:28 +254 -6: Some tests failed.
 [client-gate] C:\Program Files\PowerShell\7\pwsh.EXE -NoProfile -ExecutionPolicy Bypass -File C:\Users\kiwun\Documents\ai\POKROV-app\scripts\bootstrap-workspace.ps1 (cwd=C:\Users\kiwun\Documents\ai\POKROV-app)
 [client-gate] C:\Users\kiwun\AppData\Roaming\npm\flutter.CMD test (cwd=C:\Users\kiwun\Documents\ai\POKROV-app\packages\app_shell)
-[client-gate] C:\Users\kiwun\AppData\Roaming\npm\flutter.CMD test (cwd=C:\Users\kiwun\Documents\ai\POKROV-app\apps\android_shell)
-[client-gate] C:\Users\kiwun\AppData\Roaming\npm\flutter.CMD test (cwd=C:\Users\kiwun\Documents\ai\POKROV-app\apps\windows_shell)
 ```
 
 ### API lifecycle smoke
 
-- Command: `C:\Users\kiwun\Documents\ai\VPN\.venv\Scripts\python.exe scripts/api_lifecycle_smoke.py`
-- Exit: `0`
+- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe scripts/api_lifecycle_smoke.py`
+- Exit: `1`
 
 ```text
-.
-----------------------------------------------------------------------
-Ran 1 test in 17.588s
+  File "<frozen importlib._bootstrap_external>", line 995, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "C:\Users\kiwun\Documents\ai\VPN\portal_bot\api.py", line 2001, in <module>
+    app = FastAPI(title="POKROV API", version="2.0.0")
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\kiwun\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\applications.py", line 896, in __init__
+    ] = webhooks or routing.APIRouter()
+                    ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\kiwun\AppData\Local\Programs\Python\Python312\Lib\site-packages\fastapi\routing.py", line 837, in __init__
+    super().__init__(
+TypeError: Router.__init__() got an unexpected keyword argument 'on_startup'
 
-OK
+======================================================================
+ERROR: test_api_only_lifecycle_covers_trial_connect_support_bonuses_and_purchase (test_api_lifecycle_smoke.ApiLifecycleSmokeTests.test_api_only_lifecycle_covers_trial_connect_support_bonuses_and_purchase)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\kiwun\AppData\Local\Programs\Python\Python312\Lib\shutil.py", line 633, in _rmtree_unsafe
+    os.unlink(fullname)
+PermissionError: [WinError 32] \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd \ufffd\ufffd \ufffd\ufffd\ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd \ufffd \ufffd\ufffd\ufffd\ufffd\ufffd, \ufffd\ufffd\ufffd \ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd: 'E:\\CodexCaches\\temp\\tmpmh11dsqu\\portal_api_test_6a96b28e9e704563aa4c433f4770fdec.db'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\kiwun\AppData\Local\Programs\Python\Python312\Lib\tempfile.py", line 950, in cleanup
+    self._rmtree(self.name, ignore_errors=self._ignore_cleanup_errors)
+  File "C:\Users\kiwun\AppData\Local\Programs\Python\Python312\Lib\tempfile.py", line 930, in _rmtree
+    _shutil.rmtree(name, onexc=onexc)
+  File "C:\Users\kiwun\AppData\Local\Programs\Python\Python312\Lib\shutil.py", line 781, in rmtree
+    return _rmtree_unsafe(path, onexc)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\kiwun\AppData\Local\Programs\Python\Python312\Lib\shutil.py", line 635, in _rmtree_unsafe
+    onexc(os.unlink, fullname, err)
+  File "C:\Users\kiwun\AppData\Local\Programs\Python\Python312\Lib\tempfile.py", line 905, in onexc
+    _os.unlink(path)
+PermissionError: [WinError 32] \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd \ufffd\ufffd \ufffd\ufffd\ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd \ufffd \ufffd\ufffd\ufffd\ufffd\ufffd, \ufffd\ufffd\ufffd \ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd \ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd\ufffd: 'E:\\CodexCaches\\temp\\tmpmh11dsqu\\portal_api_test_6a96b28e9e704563aa4c433f4770fdec.db'
+
+----------------------------------------------------------------------
+Ran 1 test in 2.403s
+
+FAILED (errors=2)
 ```
 
 ### Public link checks
 
-- Command: `C:\Users\kiwun\Documents\ai\VPN\.venv\Scripts\python.exe scripts/check-links.py`
+- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe scripts/check-links.py`
 - Exit: `0`
 
 ```text
@@ -219,7 +205,7 @@ Link check passed.
 ```text
   Generating static pages using 19 workers (16/32)
   Generating static pages using 19 workers (24/32)
-✓ Generating static pages using 19 workers (32/32) in 908.1ms
+✓ Generating static pages using 19 workers (32/32) in 480.0ms
   Finalizing page optimization ...
 
 Route (app)
@@ -273,15 +259,15 @@ Route (app)
   ✓ externalDir
 
   Creating an optimized production build ...
-✓ Compiled successfully in 8.9s
+✓ Compiled successfully in 5.4s
   Running TypeScript ...
-  Finished TypeScript in 10.6s ...
+  Finished TypeScript in 5.3s ...
   Collecting page data using 5 workers ...
   Generating static pages using 5 workers (0/17) ...
   Generating static pages using 5 workers (4/17)
   Generating static pages using 5 workers (8/17)
   Generating static pages using 5 workers (12/17)
-✓ Generating static pages using 5 workers (17/17) in 1039ms
+✓ Generating static pages using 5 workers (17/17) in 652ms
   Finalizing page optimization ...
 
 Route (app)
@@ -300,7 +286,7 @@ Route (app)
 
 ### Admin webapp smoke
 
-- Command: `C:\Users\kiwun\Documents\ai\VPN\.venv\Scripts\python.exe scripts/admin_webapp_smoke.py`
+- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe scripts/admin_webapp_smoke.py`
 - Exit: `0`
 
 ```text
@@ -358,54 +344,23 @@ Admin WebApp smoke passed.
 ### WebApp Playwright E2E
 
 - Command: `npm.cmd run test:e2e`
-- Exit: `0`
+- Exit: `1`
 
 ```text
-  ok 36 e2e\cabinet-flow.spec.ts:856:7 › Cabinet flow › uses the side drawer as the only mobile cabinet navigation (1.3s)
-  ok 37 e2e\cabinet-flow.spec.ts:895:7 › Cabinet flow › keeps cabinet navigation usable with left-click browser routing (1.5s)
-  ok 38 e2e\cabinet-flow.spec.ts:909:7 › Cabinet flow › shows branded root and cabinet not-found recovery screens (880ms)
-  ok 39 e2e\cabinet-flow.spec.ts:921:7 › Cabinet flow › shows subscription manual connection only as an explicit fallback (1.1s)
-  ok 40 e2e\cabinet-flow.spec.ts:942:7 › Cabinet flow › builds the Happ URL without leaking it to third parties (926ms)
-  ok 41 e2e\cabinet-flow.spec.ts:970:7 › Cabinet flow › keeps manual setup closed from a direct hash when no active link exists (765ms)
-  ok 42 e2e\cabinet-flow.spec.ts:984:7 › Cabinet flow › keeps paid plan cards selectable for a free monthly account (739ms)
-  ok 43 e2e\cabinet-flow.spec.ts:1047:7 › Cabinet flow › renders runtime connections on devices and keeps statistics as its own safe-summary page (1.5s)
-  ok 44 e2e\cabinet-flow.spec.ts:1068:7 › Cabinet flow › issues a one-time device code without exposing the subscription URL (1.1s)
-  ok 45 e2e\cabinet-flow.spec.ts:1077:7 › Cabinet flow › searches fallback guides and the POKROV screen atlas on mobile (2.2s)
-  ok 46 e2e\cabinet-flow.spec.ts:1110:7 › Cabinet flow › submits a competitor-switch application without automatic reward (1.8s)
-  ok 47 e2e\cabinet-flow.spec.ts:1132:7 › Cabinet flow › keeps redeem as a compact activation task (1.1s)
-  ok 48 e2e\cabinet-flow.spec.ts:1146:7 › Cabinet flow › keeps cabinet copy human and hides node internals (1.5s)
-  ok 49 e2e\cabinet-flow.spec.ts:1160:7 › Cabinet flow › settings exposes clear Telegram bonus actions without raw account details (2.5s)
-  ok 50 e2e\cabinet-flow.spec.ts:1178:7 › Cabinet flow › shows honest payment history and Russian checkout continuation copy (1.5s)
-  ok 51 e2e\cabinet-flow.spec.ts:1216:7 › Cabinet flow › keeps downloads and support flows usable without the app (2.5s)
-  ok 52 e2e\cabinet-flow.spec.ts:1250:7 › Cabinet flow › renders support thread attachments without exposing private access data (2.3s)
-  ok 53 e2e\cabinet-flow.spec.ts:1307:7 › Cabinet flow › sends staged attachment id without the private media triplet (6.4s)
-  ok 54 e2e\cabinet-flow.spec.ts:1389:7 › Cabinet flow › keeps legal documents as compact support rows (1.1s)
-  ok 55 e2e\cabinet-flow.spec.ts:1402:7 › Cabinet flow › stays inside a narrow mobile viewport for core cabinet pages (1.6s)
-  ok 56 e2e\rewards.spec.ts:268:7 › rewards fail-closed cabinet surface › shows anonymized referral conversion and history (1.1s)
-  ok 57 e2e\rewards.spec.ts:286:7 › rewards fail-closed cabinet surface › keeps calendar usable when wheel state fails (780ms)
-  ok 58 e2e\rewards.spec.ts:294:7 › rewards fail-closed cabinet surface › keeps wheel usable when calendar state fails (907ms)
-  ok 59 e2e\rewards.spec.ts:302:7 › rewards fail-closed cabinet surface › does not invent sectors or animate an unknown committed reward (1.1s)
-  ok 60 e2e\rewards.spec.ts:312:7 › rewards fail-closed cabinet surface › renders one sector as a guaranteed reward card (972ms)
-  ok 61 e2e\rewards.spec.ts:327:9 › rewards fail-closed cabinet surface › fails closed for missing sectors (1.0s)
-  ok 62 e2e\rewards.spec.ts:327:9 › rewards fail-closed cabinet surface › fails closed for duplicate sectors (976ms)
-  ok 63 e2e\rewards.spec.ts:327:9 › rewards fail-closed cabinet surface › fails closed for non-positive sectors (732ms)
-  ok 64 e2e\rewards.spec.ts:327:9 › rewards fail-closed cabinet surface › fails closed for too many sectors (926ms)
-  ok 65 e2e\rewards.spec.ts:327:9 › rewards fail-closed cabinet surface › fails closed for excessive reward (946ms)
-  ok 66 e2e\rewards.spec.ts:337:9 › rewards fail-closed cabinet surface › keeps FREE rewards ineligible (991ms)
-  ok 67 e2e\rewards.spec.ts:337:9 › rewards fail-closed cabinet surface › keeps TRIAL rewards ineligible (986ms)
-  ok 68 e2e\rewards.spec.ts:337:9 › rewards fail-closed cabinet surface › keeps BONUS rewards ineligible (964ms)
-  ok 69 e2e\rewards.spec.ts:347:7 › rewards fail-closed cabinet surface › keeps expired rewards ineligible (959ms)
-  ok 70 e2e\rewards.spec.ts:355:7 › rewards fail-closed cabinet surface › renders disabled features without mutation controls (1.0s)
-  ok 71 e2e\rewards.spec.ts:365:7 › rewards fail-closed cabinet surface › accepts the server same-day calendar response (1.1s)
-  ok 72 e2e\rewards.spec.ts:374:7 › rewards fail-closed cabinet surface › refetches wheel state and entitlement after committed reward (971ms)
-  ok 73 e2e\rewards.spec.ts:387:7 › rewards fail-closed cabinet surface › refetches calendar state and entitlement after check-in (1.0s)
+> pokrov-webapp@0.1.0 test:e2e
+> node ./scripts/run-e2e.mjs full
 
-  73 passed (1.7m)
+
+> pokrov-webapp@0.1.0 build
+> next build && node ./scripts/fix-export-segment-paths.mjs
+
+'next' is not recognized as an internal or external command,
+operable program or batch file.
 ```
 
 ### UI visual smoke
 
-- Command: `C:\Users\kiwun\Documents\ai\VPN\.venv\Scripts\python.exe scripts/ui_visual_smoke.py`
+- Command: `C:\Users\kiwun\AppData\Local\Programs\Python\Python312\python.exe scripts/ui_visual_smoke.py`
 - Exit: `0`
 
 ```text

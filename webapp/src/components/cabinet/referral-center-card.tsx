@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock3, Gift, Send, ShieldCheck, UserCheck, Users } from "lucide-react";
+import { Clock3, Gift, Send, ShieldCheck, Users } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import CopyButton from "@/components/cabinet/copy-button";
@@ -85,7 +85,6 @@ export default function ReferralCenterCard() {
 
   const metrics = [
     { label: "Приглашены", value: summary.conversion.invited, icon: Users },
-    { label: "Активированы", value: summary.conversion.activated, icon: UserCheck },
     { label: "Оплатили", value: summary.conversion.paid, icon: ShieldCheck },
     { label: "Награды", value: summary.conversion.rewarded, icon: Gift },
   ];
@@ -105,7 +104,7 @@ export default function ReferralCenterCard() {
         <Badge tone="success">+{summary.bonus_days} дн. после условий</Badge>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-3 gap-2">
         {metrics.map(({ label, value, icon: Icon }) => (
           <div key={label} className="rounded-control border border-line bg-canvas-alt p-3">
             <Icon size={17} strokeWidth={2} aria-hidden="true" className="text-brand" />

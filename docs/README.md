@@ -61,6 +61,7 @@ This registry classifies important platform documents and the active client poin
 | `OPERATOR_PLAYBOOK` | work-order authoring | `docs/developer/orchestration/wo-authoring-guide.md` | `RECONCILED` |
 | `OPERATOR_PLAYBOOK` | release publishing | `docs/operations/publishing-and-signing-guide.md` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | public beta release | `docs/operations/public-beta-release-runbook.md` | `RECONCILED` |
+| `ACTIVE_EXECUTION` | next direct Android and Windows release | `docs/operations/2026-08-13-direct-release-readiness-tracker.md` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | Android production signing | `docs/operations/android-production-signing-handoff.md` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | Android physical-device audit | `docs/operations/android-physical-device-audit-handoff.md` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | RU-origin probe | `docs/operations/ru-origin-probe-handoff.md` | `RECONCILED` |

@@ -287,6 +287,10 @@ FEEDBACK_USERNAME = (os.getenv("FEEDBACK_USERNAME") or "pokrov_feedbackbot").lst
 FEEDBACK_USERNAME = (os.getenv("FEEDBACK_BOT_USERNAME") or FEEDBACK_USERNAME).lstrip("@")
 APP_ANDROID_PLAY_URL = (os.getenv("APP_ANDROID_PLAY_URL") or "").strip()
 APP_ANDROID_APK_URL = (os.getenv("APP_ANDROID_APK_URL") or "").strip()
+APP_ANDROID_APK_ARM64_URL = (os.getenv("APP_ANDROID_APK_ARM64_URL") or "").strip()
+APP_ANDROID_APK_ARMEABI_V7A_URL = (os.getenv("APP_ANDROID_APK_ARMEABI_V7A_URL") or "").strip()
+APP_ANDROID_APK_X86_64_URL = (os.getenv("APP_ANDROID_APK_X86_64_URL") or "").strip()
+APP_ANDROID_APK_UNIVERSAL_URL = (os.getenv("APP_ANDROID_APK_UNIVERSAL_URL") or "").strip()
 APP_ANDROID_MIRROR_URL = (os.getenv("APP_ANDROID_MIRROR_URL") or "").strip()
 APP_WINDOWS_EXE_URL = (os.getenv("APP_WINDOWS_EXE_URL") or "").strip()
 APP_WINDOWS_MIRROR_URL = (os.getenv("APP_WINDOWS_MIRROR_URL") or "").strip()
@@ -314,7 +318,12 @@ def _first_non_empty(*values: str) -> str:
 
 
 IOS_APP_LINK = APP_DOCS_URL
-ANDROID_APP_LINK = _first_non_empty(APP_ANDROID_APK_URL, APP_ANDROID_MIRROR_URL, APP_DOCS_URL)
+ANDROID_APP_LINK = _first_non_empty(
+    APP_ANDROID_APK_ARM64_URL,
+    APP_ANDROID_APK_URL,
+    APP_ANDROID_MIRROR_URL,
+    APP_DOCS_URL,
+)
 WINDOWS_APP_LINK = _first_non_empty(APP_WINDOWS_EXE_URL, APP_WINDOWS_MIRROR_URL, APP_DOCS_URL)
 MAC_APP_LINK = APP_DOCS_URL
 
@@ -355,7 +364,10 @@ OPENING_PREMIUM_DAYS = max(1, int(os.getenv("OPENING_PREMIUM_DAYS", "14")))
 OPENING_PREMIUM_CAMPAIGN_KEY = (
     (os.getenv("OPENING_PREMIUM_CAMPAIGN_KEY") or f"opening_premium_{OPENING_PREMIUM_DAYS}d").strip()[:64]
 )
-FRIEND_GIFT_ENABLED = _env_bool("FRIEND_GIFT_ENABLED", default=True)
+# Invitees receive the regular five-day trial, never extra referral days.
+# Retain the old link parser below so deployed links still attribute the
+# referrer, but fail closed on the retired gift mutation.
+FRIEND_GIFT_ENABLED = False
 RUB_CHECKOUT_ENABLED = _env_bool("RUB_CHECKOUT_ENABLED", default=False)
 PAID_CHECKOUT_LAUNCH_APPROVED = _env_bool("PAID_CHECKOUT_LAUNCH_APPROVED", default=False)
 # Public-beta policy: never create new Telegram Stars checkout. Successful
@@ -366,7 +378,7 @@ FRIEND_GIFT_CAMPAIGN_KEY = (
     (os.getenv("FRIEND_GIFT_CAMPAIGN_KEY") or f"friend_gift_{FRIEND_GIFT_DAYS}d").strip()[:64]
 )
 CHANNEL_PREMIUM_DAYS = 5
-BONUS_WHEEL_ENABLED = _env_bool("BONUS_WHEEL_ENABLED", default=False)
+BONUS_WHEEL_ENABLED = _env_bool("BONUS_WHEEL_ENABLED", default=True)
 BOT_RUB_BUTTON_ENABLED = _env_bool("BOT_RUB_BUTTON_ENABLED", default=False)
 MAIN_CONNECT_CTA_LABELS = {
     "a": "Продлить или начать",
@@ -1078,6 +1090,7 @@ from account_foundation_service import (
     ensure_user_account_foundation,
 )
 from rewards_service import (
+    PAID_FORTNIGHTLY_DISCOUNTS_V3,
     PAID_WEEKLY_DISCOUNTS_V2,
     PAID_WEEKLY_V1,
     InvalidWheelConfig,
@@ -1555,7 +1568,7 @@ def normalize_tariff_key(key: str) -> str:
     return TARIFF_KEY_ALIASES.get(key, key)
 
 
-REFERRAL_BONUS_DAYS = int(os.getenv("REFERRAL_BONUS_DAYS", "15"))
+REFERRAL_BONUS_DAYS = int(os.getenv("REFERRAL_BONUS_DAYS", "10"))
 
 # Gift card types: {key: {name, stars, days}}
 GIFT_CARD_TYPES = {
@@ -1827,46 +1840,7 @@ def set_referrer_by_code(tg_id: int, referral_code: str) -> bool:
     return set_referrer(tg_id, referrer_id)
 
 async def award_referral_bonus(referrer_id: int, bonus_days: int = REFERRAL_BONUS_DAYS) -> bool:
-    """Award bonus days to referrer for each paid purchase by referred user."""
-    session = Session()
-    referrer = session.query(User).filter_by(tg_id=referrer_id).first()
-    if referrer:
-        # Referral rewards are available only for active paid users.
-        if not _is_paid_active_user(referrer):
-            session.close()
-            return False
-
-        referrer.referral_count = (referrer.referral_count or 0) + 1
-        
-        # Award Days
-        expiry = _naive_utc(referrer.expiry_at)
-        now = _utcnow()
-        if expiry and expiry > now:
-            referrer.expiry_at = expiry + timedelta(days=bonus_days)
-        else:
-            referrer.expiry_at = now + timedelta(days=bonus_days)
-        
-        referrer.is_active = True
-        
-        session.commit()
-        session.close()
-        
-        # Ensure enabled in panel
-        try:
-            # We need to get UUID. extend_user isn't async/doesn't do panel.
-            # So we do it manually via panel API instance if available
-            # We assume 'panel' global exists if this is called from bot execution context
-            # But this is a helper function. We should import panel or use get_user to find UUID.
-            pass # We rely on periodic checks or user interaction to re-enable
-            # Or better:
-            ref_user = get_user(referrer_id)
-            if ref_user:
-                 await panel.enable_client(ref_user.uuid, True)
-        except:
-            pass
-            
-        return True
-    session.close()
+    """Retired direct grant; payment fulfillment uses the guarded 72h queue."""
     return False
 
 def get_referral_stats(tg_id: int) -> dict:
@@ -2178,40 +2152,9 @@ async def _try_activate_friend_gift_bonus(
     username: str | None,
     referral_code: str,
 ) -> tuple[bool, str]:
-    if not FRIEND_GIFT_ENABLED:
-        return False, "disabled"
-    if not check_tos_accepted(tg_id):
-        return False, "tos_required"
-
-    ref_code = (referral_code or "").strip().upper()[:10]
-    inviter_tg_id = get_user_by_referral_code(ref_code) if ref_code else None
-    if not inviter_tg_id or int(inviter_tg_id) == int(tg_id):
-        return False, "invalid_ref"
-
-    user = get_user(tg_id)
-    if not user:
-        ensure_pending_user(tg_id, username=username)
-        user = get_user(tg_id)
-    if username:
-        update_user_username(tg_id, username)
-
-    if _is_paid_active_user(user):
-        return False, "already_paid_active"
-    linked_now = set_referrer_by_code(tg_id, ref_code)
-    if not linked_now:
-        return False, "already_linked"
-
-    track_event(
-        tg_id=int(tg_id),
-        event_name="promo_friend_referral_linked",
-        source="bot",
-        meta={
-            "campaign_key": FRIEND_GIFT_CAMPAIGN_KEY,
-            "referral_code": ref_code,
-            "days_pending_server_evidence": 5,
-        },
-    )
-    return True, "linked_waiting_evidence"
+    # The old gift link remains attributable as a normal referral, but cannot
+    # grant invitee days. The inviter reward is queued only after first payment.
+    return False, "disabled"
 
 
 def _channel_name_for_url() -> str:
@@ -2702,13 +2645,19 @@ def _save_wheel_config(
     cooldown_hours: int | None = None,
     preset: str | None = None,
 ) -> dict:
-    selected_preset = str(preset or "paid_weekly_discounts_v2")
+    selected_preset = str(preset or "paid_fortnightly_discounts_v3")
     selected_cooldown = (
         int(cooldown_hours)
         if cooldown_hours is not None
-        else int(cooldown_days) * 24 if cooldown_days is not None else 168
+        else int(cooldown_days) * 24 if cooldown_days is not None else 336
     )
-    if selected_preset == "paid_weekly_discounts_v2":
+    if selected_preset == "paid_fortnightly_discounts_v3":
+        candidate = {
+            "preset": selected_preset,
+            "weights": [dict(row) for row in PAID_FORTNIGHTLY_DISCOUNTS_V3["weights"]],
+            "cooldown_hours": selected_cooldown,
+        }
+    elif selected_preset == "paid_weekly_discounts_v2":
         candidate = {
             "preset": selected_preset,
             "weights": [dict(row) for row in PAID_WEEKLY_DISCOUNTS_V2["weights"]],

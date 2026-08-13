@@ -54,6 +54,21 @@ function externalAction(href: string, label: string): ReactNode {
   );
 }
 
+function androidVariantCopy(abi: string): Pick<DownloadRow, "label" | "hint"> {
+  switch (abi) {
+    case "arm64-v8a":
+      return { label: "Android", hint: "ARM64 · основной файл для большинства телефонов" };
+    case "armeabi-v7a":
+      return { label: "Старый Android", hint: "ARMv7 · только если ARM64 не устанавливается" };
+    case "x86_64":
+      return { label: "Android-эмулятор", hint: "x86_64 · LDPlayer и другие эмуляторы" };
+    case "universal":
+      return { label: "Универсальный APK", hint: "Подойдёт без выбора архитектуры, но весит больше" };
+    default:
+      return { label: "Android APK", hint: abi || "Дополнительный вариант" };
+  }
+}
+
 function buildRows(payload: ClientAppsPayload | null): DownloadRow[] {
   const androidApk = payload?.android?.apk_url || "";
   const androidVariants = (payload?.android?.apk_variants || []).filter((item) => item.url);
@@ -67,8 +82,7 @@ function buildRows(payload: ClientAppsPayload | null): DownloadRow[] {
       key: `android-${variant.abi || "apk"}`,
       icon: Smartphone,
       platform: "android" as const,
-      label: variant.abi === "armeabi-v7a" ? "Android для старых устройств" : "Android для новых устройств",
-      hint: variant.abi === "armeabi-v7a" ? "ARMv7 · если телефон очень старый" : "ARM64 · основной файл для большинства телефонов",
+      ...androidVariantCopy(variant.abi),
       value: "APK",
       href: variant.url,
       action: externalAction(variant.url, "Скачать"),
@@ -163,9 +177,16 @@ export function CabinetDownloadsSurface() {
   const rows = useMemo(() => buildRows(payload), [payload]);
   const hasAndroid = rows.some((item) => item.key.startsWith("android"));
   const hasWindows = rows.some((item) => item.key.startsWith("windows"));
-  const primaryRows = rows.filter((item) => (item.key.startsWith("android-") && item.key !== "android-mirror") || item.key === "windows-exe");
+  const primaryRows = rows.filter(
+    (item) => item.key === "android-arm64-v8a" || item.key === "android-apk" || item.key === "windows-exe",
+  );
   const secondaryRows = rows.filter((item) => !primaryRows.includes(item));
-  const firstDownload = rows.find((item) => item.key === "android-apk") || rows.find((item) => item.key === "windows-exe") || rows[0] || null;
+  const firstDownload =
+    rows.find((item) => item.key === "android-arm64-v8a") ||
+    rows.find((item) => item.key === "android-apk") ||
+    rows.find((item) => item.key === "windows-exe") ||
+    rows[0] ||
+    null;
 
   return (
     <main className="mx-auto flex w-full max-w-[860px] flex-col gap-5">

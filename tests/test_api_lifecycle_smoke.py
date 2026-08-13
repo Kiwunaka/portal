@@ -335,9 +335,9 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
             return True, "member"
 
         with patch.object(self.api, "_is_channel_member", new=_always_member):
-            channel_bonus = self.client.post("/api/bonuses/channel/claim", headers=auth_headers)
-        self.assertEqual(channel_bonus.status_code, 200, channel_bonus.text)
-        self.assertTrue(channel_bonus.json().get("ok"))
+            trial_channel_bonus = self.client.post("/api/bonuses/channel/claim", headers=auth_headers)
+        self.assertEqual(trial_channel_bonus.status_code, 403, trial_channel_bonus.text)
+        self.assertEqual(trial_channel_bonus.json()["detail"]["code"], "active_paid_required")
 
         promo_redeem = self.client.post("/api/promo/redeem", headers=auth_headers, json={"code": "SMOKE14"})
         self.assertEqual(promo_redeem.status_code, 200, promo_redeem.text)
@@ -433,6 +433,11 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
         self.assertEqual(str(dashboard_after_body.get("sub_type") or ""), "PAID")
         self.assertEqual(str(dashboard_after_body.get("current_plan_code") or ""), "1_month")
         self.assertNotEqual(str(dashboard_after_body.get("expiry_at") or ""), expiry_before)
+
+        with patch.object(self.api, "_is_channel_member", new=_always_member):
+            channel_bonus = self.client.post("/api/bonuses/channel/claim", headers=auth_headers)
+        self.assertEqual(channel_bonus.status_code, 200, channel_bonus.text)
+        self.assertTrue(channel_bonus.json().get("ok"))
 
         final_ticket_list = self.client.get("/api/tickets", headers=auth_headers)
         self.assertEqual(final_ticket_list.status_code, 200, final_ticket_list.text)

@@ -1592,6 +1592,7 @@ def _smart_connect_shortlist(
     transport_profile: str,
     rollout_config: dict[str, Any],
     profile_revision: str,
+    preferred_node_code: str = "",
 ) -> dict[str, Any]:
     now = _utcnow()
     policy_by_code = _node_capacity_policy_by_code(session)
@@ -1612,6 +1613,17 @@ def _smart_connect_shortlist(
         eligible.append(node)
 
     eligible = rank_nodes_for_app(eligible, policy_by_code=policy_by_code, now=now)
+    requested_preferred_code = str(preferred_node_code or "").strip().lower()
+    if requested_preferred_code:
+        eligible = sorted(
+            eligible,
+            key=lambda node: (
+                0
+                if str(getattr(node, "code", "") or "").strip().lower()
+                == requested_preferred_code
+                else 1
+            ),
+        )
     shortlist_limit = 1 if user_uses_free_pool(user) else SMART_CONNECT_SHORTLIST_LIMIT
     shortlist_nodes = eligible[:shortlist_limit]
     shortlist_codes = [str(getattr(node, "code", "") or "").strip().lower() for node in shortlist_nodes]
@@ -1768,6 +1780,7 @@ def _node_city_name(code: str, fallback_name: str = "") -> str:
         "it": "Milan",
         "par": "Paris",
         "fr": "Paris",
+        "ru": "Moscow",
     }
     if "free" in raw:
         return cities.get(_node_country_code(raw), "Free node")
@@ -1793,6 +1806,19 @@ def _node_load_ratio(node: Any) -> float:
     except Exception:
         raw = 0.0
     return round(max(0.0, min(raw, 1.0)), 3)
+
+
+def _node_client_latency_ms(node: Any) -> int | None:
+    """Prefer dataplane RTT; panel login latency is only a fallback."""
+    for attribute in ("dataplane_rtt_ms", "panel_latency_ms"):
+        raw = getattr(node, attribute, None)
+        try:
+            value = int(raw) if raw is not None else None
+        except (TypeError, ValueError):
+            value = None
+        if value is not None and value >= 0:
+            return value
+    return None
 
 
 def _node_matches_query(*, node: Any, country: str, city: str, query: str) -> bool:
@@ -2001,6 +2027,9 @@ ASSISTANT_DIAGNOSTIC_KEYS = frozenset(
         "platform",
         "route_mode",
         "connection_status",
+        "enhanced_protection_state",
+        "enhanced_protection_consent",
+        "enhanced_protection_available",
     }
 )
 
@@ -2080,16 +2109,25 @@ async def client_locations_catalog(
             city = _node_city_name(code, str(getattr(node, "name", "") or ""))
             if not _node_matches_query(node=node, country=country, city=city, query=query):
                 continue
+            transport = _node_transport_profile(node, transport_profile)
+            probe_host = str(transport.get("host") or getattr(node, "host", "") or "").strip()
+            probe_port = int(transport.get("port") or getattr(node, "vless_port", 443) or 443)
             city_row = {
                 "code": code,
                 "city": city,
                 "country": country,
                 "countryCode": country_code,
                 "healthScore": _node_health_ratio(node),
-                "latencyMs": _safe_ping(node),
+                "latencyMs": _node_client_latency_ms(node),
+                "latencySource": "brain",
                 "premium": not node_is_free(node),
                 "load": _node_load_ratio(node),
                 "measuredAt": _safe_iso(getattr(node, "last_health_at", None)),
+                "probe": (
+                    {"host": probe_host, "port": probe_port}
+                    if probe_host and 0 < probe_port <= 65535
+                    else None
+                ),
             }
             bucket = grouped.setdefault(
                 country_code,
@@ -2151,6 +2189,16 @@ async def client_subscription(request: Request, x_telegram_init_data: str = Head
             "renewUrl": _checkout_url_for_user(tg_id=int(user.tg_id), source="app"),
             "plans": _client_subscription_plans(s),
             "trafficPolicy": dict(access_policy.get("traffic_policy") or {}),
+            "usage": {
+                "trafficUsedBytes": int(runtime.get("traffic_total_bytes", 0) or 0),
+                "activeConnections": int(runtime.get("active_connections", 0) or 0),
+                "lastOnlineAt": runtime.get("last_online_at"),
+                "source": (
+                    "panel_runtime"
+                    if runtime.get("panel_state") == "ok"
+                    else "unavailable"
+                ),
+            },
             "currentPlanCode": str(getattr(user, "current_plan_code", "") or "").strip() or None,
         }
     finally:
@@ -2673,6 +2721,7 @@ async def client_support_assistant(
             message=message,
             assistant_session_id=supplied_session_id,
             ticket_id=ticket_id or None,
+            safe_diagnostics=diagnostics,
         )
         reply = str(result.reply or "").strip() or support_fallback_reply(message)
 
@@ -2739,6 +2788,7 @@ async def client_managed_profile(
         transport_profile = str(client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK).strip() or LEGACY_REALITY_FALLBACK
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
+        requested_node_code = str(selected_node_code or "").strip().lower()
         smart_connect = _smart_connect_shortlist(
             session=s,
             user=user,
@@ -2746,6 +2796,7 @@ async def client_managed_profile(
             transport_profile=transport_profile,
             rollout_config=rollout_config,
             profile_revision=str(client_policy.get("profile_revision") or ""),
+            preferred_node_code=requested_node_code,
         )
         sync_ok = await _sync_control_panel_access(user=user)
         if not sync_ok:
@@ -2776,7 +2827,6 @@ async def client_managed_profile(
         effective_nodes = [effective_by_code[code] for code in shortlist_codes if code in effective_by_code]
         if not effective_nodes:
             raise HTTPException(status_code=503, detail="No eligible nodes")
-        requested_node_code = str(selected_node_code or "").strip().lower()
         if requested_node_code not in set(shortlist_codes):
             requested_node_code = ""
         ranked_effective_nodes = rank_nodes_for_app(
@@ -2985,6 +3035,8 @@ async def client_nodes_select(
             rollout_config=rollout_config,
             transport_profile=resolved_profile,
         )
+        mode = str(payload.mode or "auto").strip().lower()
+        selected_node_code = str(payload.selected_node_code or "").strip().lower()
         smart_connect = _smart_connect_shortlist(
             session=s,
             user=user,
@@ -2992,6 +3044,7 @@ async def client_nodes_select(
             transport_profile=resolved_profile,
             rollout_config=rollout_config,
             profile_revision=str(payload.profile_revision or client_policy.get("profile_revision") or ""),
+            preferred_node_code=selected_node_code if mode == "manual" else "",
         )
         shortlist_codes = {
             str(item.get("code") or "").strip().lower()
@@ -3001,8 +3054,6 @@ async def client_nodes_select(
         effective_by_code = _nodes_by_code(effective_nodes)
         if not shortlist_codes:
             raise HTTPException(status_code=503, detail="No eligible nodes")
-        mode = str(payload.mode or "auto").strip().lower()
-        selected_node_code = str(payload.selected_node_code or "").strip().lower()
         previous_node_code = str(payload.previous_node_code or "").strip().lower()
         policy_by_code = _node_capacity_policy_by_code(s)
         rtt_by_code = _best_rtt_by_code(payload.samples, allowed_codes=shortlist_codes)

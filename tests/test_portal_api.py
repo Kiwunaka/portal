@@ -155,7 +155,17 @@ class PortalApiTests(unittest.TestCase):
         self.assertEqual(len(vless_outbounds), 3)
         selector = next(o for o in cfg["outbounds"] if o.get("type") == "selector")
         self.assertIn(selector["default"], selector["outbounds"])
-        self.assertEqual(cfg["dns"]["servers"], [{"tag": "google", "address": "8.8.8.8", "detour": selector["tag"]}])
+        self.assertEqual(
+            cfg["dns"]["servers"],
+            [
+                {"tag": "bootstrap", "address": "local"},
+                {"tag": "google", "address": "8.8.8.8", "detour": selector["tag"]},
+            ],
+        )
+        self.assertEqual(
+            cfg["route"]["default_domain_resolver"],
+            {"server": "bootstrap", "strategy": "prefer_ipv4"},
+        )
         self.assertEqual(cfg["dns"]["final"], "google")
         self.assertEqual(len(selector["outbounds"]), 3)
         self.assertEqual(set(selector["outbounds"]), {o.get("tag") for o in vless_outbounds})
@@ -386,7 +396,17 @@ class PortalApiTests(unittest.TestCase):
         selector = next(o for o in cfg["outbounds"] if o.get("type") == "selector")
         selector_tag = selector["tag"]
         self.assertEqual(cfg["route"]["final"], selector_tag)
-        self.assertEqual(cfg["dns"]["servers"], [{"tag": "google", "address": "8.8.8.8", "detour": selector_tag}])
+        self.assertEqual(
+            cfg["dns"]["servers"],
+            [
+                {"tag": "bootstrap", "address": "local"},
+                {"tag": "google", "address": "8.8.8.8", "detour": selector_tag},
+            ],
+        )
+        self.assertEqual(
+            cfg["route"]["default_domain_resolver"],
+            {"server": "bootstrap", "strategy": "prefer_ipv4"},
+        )
         self.assertEqual(cfg["dns"]["final"], "google")
         first_vless = next(o for o in cfg["outbounds"] if o.get("type") == "vless")
         self.assertNotIn("transport", first_vless)
@@ -452,7 +472,7 @@ class PortalApiTests(unittest.TestCase):
         out = api._nodes_for_user(user, nodes)
         self.assertEqual([n.code for n in out], ["nl", "it"])
 
-    def test_nodes_for_free_user_only_use_canonical_free_node(self) -> None:
+    def test_nodes_for_free_user_fail_closed_while_free_delivery_is_disabled(self) -> None:
         import importlib
 
         api = importlib.import_module("api")
@@ -465,7 +485,7 @@ class PortalApiTests(unittest.TestCase):
             SimpleNamespace(code="nl"),
         ]
         out = api._nodes_for_user(user, nodes)
-        self.assertEqual([n.code for n in out], ["free"])
+        self.assertEqual(out, [])
 
     def test_node_labels_include_nl_and_nl_free(self) -> None:
         import importlib

@@ -547,8 +547,10 @@ def test_paid_compensation_restore_reenables_every_regular_transport() -> None:
     ]
 
 
-def test_control_panel_legacy_free_resolution_uses_persisted_soft_role() -> None:
+def test_control_panel_legacy_free_resolution_uses_persisted_soft_role(monkeypatch) -> None:
     from control_panel import ControlPanel
+
+    monkeypatch.setenv("FREE_TIER_ENABLED", "true")
 
     nodes = [
         _node("free_standard", inbound_id=41),
