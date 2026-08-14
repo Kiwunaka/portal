@@ -783,7 +783,7 @@ def test_real_device_registry_revoke_requires_fresh_auth(monkeypatch, tmp_path):
     assert item["id"] == "install-device-revoke"
     assert item["registryId"] == body["session"]["device_id"]
     assert item["current"] is True
-    assert item["label"] == "POKROV Windows Surface Laptop"
+    assert item["label"] == "Surface Laptop"
     assert item["osVersion"] == "11 24H2"
     assert item["appVersion"] == "1.0.6"
 

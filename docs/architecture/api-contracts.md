@@ -141,6 +141,10 @@ identifier; an empty selection is rejected as HTTP `422` with stable code
 - `PATCH /api/client/devices/current` updates only the device bound to the
   authenticated session. It accepts a bounded human-safe label and platform
   metadata, never a serial number, hardware ID or arbitrary target device ID.
+  A redundant client prefix such as `POKROV Android`/`POKROV Windows` is
+  removed when a real model or computer name follows it, so compact device
+  lists lead with `Samsung SM-S9110` or `Surface Laptop` instead of clipping
+  the useful identity behind a generic product label.
 - `DELETE /api/client/devices/{device_id}` accepts either identifier, requires a
   recent `fresh_auth_at`, increments `credential_version`, marks the device
   revoked and revokes all sessions bound to that device.

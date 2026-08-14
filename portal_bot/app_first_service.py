@@ -35,6 +35,21 @@ def normalize_app_device_name(value: str | None, *, fallback: str = "Current dev
     text = str(value or "").strip()
     if not text:
         return fallback
+    for prefix in (
+        "POKROV Android ",
+        "POKROV Windows ",
+        "POKROV Linux ",
+        "POKROV macOS ",
+        "POKROV iOS ",
+    ):
+        if text.casefold().startswith(prefix.casefold()):
+            text = text[len(prefix) :].strip()
+            if text:
+                first, separator, tail = text.partition(" ")
+                if first.islower():
+                    first = first.capitalize()
+                text = first + (separator + tail if separator else "")
+            break
     return text[:120]
 
 

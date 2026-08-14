@@ -84,6 +84,14 @@ def _rollout_client_policy(
     }
 
 
+def test_device_name_normalizer_exposes_the_model_before_the_pokrov_prefix(monkeypatch, tmp_path):
+    _api, service = _load_api_and_service(monkeypatch, tmp_path)
+
+    assert service.normalize_app_device_name("POKROV Android samsung SM-S9110") == "Samsung SM-S9110"
+    assert service.normalize_app_device_name("POKROV Windows Surface Laptop") == "Surface Laptop"
+    assert service.normalize_app_device_name("POKROV Android") == "POKROV Android"
+
+
 def test_load_api_and_service_restores_collected_core_modules_after_context(tmp_path):
     module_names = ("models", "app_first_service")
     originals = {name: importlib.import_module(name) for name in module_names}
