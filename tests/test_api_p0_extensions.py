@@ -652,8 +652,19 @@ class ApiP0ExtensionsTests(unittest.TestCase):
                                     "title": "Partner",
                                     "body": "Short owner-approved banner",
                                     "badge_label": "Offer",
-                                    "image_url": "https://cdn.example.com/banner.png",
-                                    "image_layout": "banner",
+                                    "image_url": "https://api.pokrov.space/api/public/promo-media/banner.png",
+                                    "image_layout": "media_only",
+                                    "media_type": "video",
+                                    "media_url": "https://api.pokrov.space/api/public/promo-media/banner.mp4",
+                                    "poster_url": "https://api.pokrov.space/api/public/promo-media/poster.webp",
+                                    "fallback_image_url": "https://api.pokrov.space/api/public/promo-media/fallback.webp",
+                                    "media_mime": "video/mp4",
+                                    "media_width": 1080,
+                                    "media_height": 1080,
+                                    "media_bytes": 123456,
+                                    "media_duration_seconds": 12,
+                                    "autoplay": True,
+                                    "loop": False,
                                     "cta_label": "Open",
                                     "cta_href": "https://partner.example.com/",
                                     "accent_color": "#0B6B53",
@@ -664,6 +675,9 @@ class ApiP0ExtensionsTests(unittest.TestCase):
                                     "placement": "home_banner",
                                     "dismissible": True,
                                     "whole_card_clickable": True,
+                                    "ends_at": (datetime.utcnow() + timedelta(hours=24)).isoformat(),
+                                    "countdown_mode": "ends_at",
+                                    "countdown_label": "Скидка −70% · осталось",
                                     "contexts": ["expired_or_blocked"],
                                     "sort_order": 10,
                                 },
@@ -671,6 +685,8 @@ class ApiP0ExtensionsTests(unittest.TestCase):
                                     "slot_id": "app.home.banner",
                                     "content_id": "partner_promo",
                                     "title": "Unsafe",
+                                    "media_type": "image",
+                                    "media_url": "https://tracker.example.com/pixel.png",
                                     "cta_href": "javascript:alert(1)",
                                     "accent_color": "emerald",
                                     "contexts": ["expired_or_blocked"],
@@ -695,8 +711,30 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertEqual(len(slots), 2)
         self.assertEqual(slots[0]["placement"], "home_banner")
         self.assertEqual(slots[0]["badge_label"], "Offer")
-        self.assertEqual(slots[0]["image_url"], "https://cdn.example.com/banner.png")
-        self.assertEqual(slots[0]["image_layout"], "banner")
+        self.assertEqual(
+            slots[0]["image_url"],
+            "https://api.pokrov.space/api/public/promo-media/fallback.webp",
+        )
+        self.assertEqual(slots[0]["image_layout"], "media_only")
+        self.assertEqual(slots[0]["media_type"], "video")
+        self.assertEqual(
+            slots[0]["media_url"],
+            "https://api.pokrov.space/api/public/promo-media/banner.mp4",
+        )
+        self.assertEqual(
+            slots[0]["poster_url"],
+            "https://api.pokrov.space/api/public/promo-media/poster.webp",
+        )
+        self.assertEqual(slots[0]["media_mime"], "video/mp4")
+        self.assertEqual(slots[0]["media_width"], 1080)
+        self.assertEqual(slots[0]["media_height"], 1080)
+        self.assertEqual(slots[0]["media_bytes"], 123456)
+        self.assertEqual(slots[0]["media_duration_seconds"], 12)
+        self.assertTrue(slots[0]["autoplay"])
+        self.assertFalse(slots[0]["loop"])
+        self.assertEqual(slots[0]["countdown_mode"], "ends_at")
+        self.assertEqual(slots[0]["countdown_label"], "Скидка −70% · осталось")
+        self.assertTrue(body["server_time"])
         self.assertEqual(slots[0]["cta_href"], "https://partner.example.com/")
         self.assertEqual(slots[0]["accent_color"], "#0B6B53")
         self.assertEqual(slots[0]["button_text_color"], "#FFFFFF")
@@ -704,6 +742,84 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertTrue(slots[0]["whole_card_clickable"])
         self.assertIsNone(slots[1]["cta_href"])
         self.assertIsNone(slots[1]["accent_color"])
+        self.assertIsNone(slots[1]["media_url"])
+
+    def test_admin_promo_media_upload_is_magic_checked_and_publicly_cacheable(self) -> None:
+        media_dir = (Path(self._tmp.name) / "promo-media").resolve()
+        self.api.PROMO_MEDIA_DIR = media_dir
+        self.api.PROMO_MEDIA_MAX_BYTES = 1024
+        png = (
+            b"\x89PNG\r\n\x1a\n"
+            b"\x00\x00\x00\x0dIHDR"
+            b"\x00\x00\x00\x01\x00\x00\x00\x01"
+            b"\x08\x06\x00\x00\x00"
+        )
+        client = TestClient(self.api.app)
+        admin_headers = {
+            "X-Telegram-Init-Data": self._init_data(9999, "owner"),
+            "Content-Type": "image/png",
+        }
+
+        uploaded = client.post("/api/admin/promo-media", headers=admin_headers, content=png)
+
+        self.assertEqual(uploaded.status_code, 200, uploaded.text)
+        asset = uploaded.json()["asset"]
+        self.assertEqual(asset["media_type"], "image")
+        self.assertEqual(asset["mime"], "image/png")
+        self.assertEqual(asset["width"], 1)
+        self.assertEqual(asset["height"], 1)
+        self.assertRegex(asset["id"], r"^[a-f0-9]{32}\.png$")
+        self.assertTrue((media_dir / asset["id"]).is_file())
+
+        public = client.get(f"/api/public/promo-media/{asset['id']}")
+        self.assertEqual(public.status_code, 200, public.text)
+        self.assertEqual(public.content, png)
+        self.assertEqual(public.headers["content-type"], "image/png")
+        self.assertEqual(public.headers["cache-control"], "public, max-age=31536000, immutable")
+        self.assertEqual(public.headers["x-content-type-options"], "nosniff")
+
+        rejected = client.post(
+            "/api/admin/promo-media",
+            headers={**admin_headers, "Content-Type": "image/svg+xml"},
+            content=b"<svg><script>alert(1)</script></svg>",
+        )
+        self.assertEqual(rejected.status_code, 415, rejected.text)
+
+    def test_admin_promo_publish_rejects_unsafe_or_incomplete_media(self) -> None:
+        base = {
+            "slot_id": "app.home.banner",
+            "content_id": "partner_promo",
+            "enabled": True,
+            "contexts": ["paid_unlimited"],
+            "title": "Акция",
+        }
+        invalid_cases = (
+            {
+                **base,
+                "media_type": "image",
+                "media_url": "https://tracker.example.com/pixel.png",
+            },
+            {
+                **base,
+                "image_layout": "media_only",
+                "title": "",
+            },
+            {
+                **base,
+                "media_type": "video",
+                "media_url": "https://api.pokrov.space/api/public/promo-media/clip.mp4",
+            },
+            {
+                **base,
+                "starts_at": "2026-08-15T12:00:00Z",
+                "ends_at": "2026-08-15T11:00:00Z",
+            },
+        )
+
+        for payload in invalid_cases:
+            with self.subTest(payload=payload):
+                with self.assertRaises(self.api.HTTPException):
+                    self.api._normalize_promo_slot_assignment(payload, strict=True)
 
     def test_start_trial_returns_session_and_subscription_url(self) -> None:
         calls: list[dict[str, object]] = []

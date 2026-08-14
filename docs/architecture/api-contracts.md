@@ -451,13 +451,27 @@ An eligible mutation atomically writes canonical `RewardAccountState`, a typed
 successful panel synchronization.
 
 `GET /api/client/promo-slots?surface=app` returns only active assignments for
-the caller's access context and schedule. An app slot may carry title/body,
-badge, HTTPS image, `logo` or `banner` layout, CTA, safe HTTPS/TG target,
-`#RRGGBB` accent/background/text/button colors, placement, dismissibility and
-whole-card click behavior. Server normalization rejects unsupported slots,
-content/context combinations, URL schemes, layouts, colors and malformed
-schedules. The client remembers a dismissal by slot/content/schedule; changing
-that campaign identity permits a new impression without a client update.
+the caller's access context and schedule plus `server_time` for countdown
+alignment. An app slot may carry optional title/body/badge, layout
+`logo|banner|media_only`, first-party `image|animated_image|video` media,
+dimensions/bytes/MIME, video poster and static fallback, CTA, safe HTTPS/TG
+target, `#RRGGBB` colors, placement, priority, dismissibility and whole-card
+click behavior. `media_only` needs no copy or CTA; a video requires both poster
+and fallback. Countdown `ends_at` expires fail-closed without an app update.
+Server normalization rejects unsupported slots, content/context combinations,
+external media hosts, URL schemes, layouts, colors, incomplete video, empty
+enabled creatives and malformed/reversed schedules. The client remembers a
+dismissal by slot/content/schedule; changing that campaign identity permits a
+new impression.
+
+`POST /api/admin/promo-media` accepts an authenticated raw asset body up to the
+configured limit (24 MiB by default), detects PNG/APNG/JPEG/WebP/GIF/MP4/WebM
+from file magic rather than filename, stores it under an opaque content hash,
+and returns safe metadata. `GET /api/public/promo-media/{asset_id}` serves only
+those known suffixes with immutable caching, `nosniff`, and inline disposition.
+SVG/HTML/script and third-party media URLs are not campaign inputs. Promo
+events remain first-party and may contain only slot/content/placement identity,
+never advertising IDs, installed-app lists or browsing history.
 
 ## Payment Providers
 

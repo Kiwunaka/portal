@@ -4759,6 +4759,23 @@ async def start99_eligibility(
         s.close()
 
 
+@app.get("/api/public/promo-media/{asset_id}")
+async def public_promo_media(asset_id: str) -> FileResponse:
+    path = _promo_media_path(asset_id)
+    mime = _PROMO_MEDIA_SUFFIX_MIME.get(path.suffix.lower())
+    if not mime:
+        raise HTTPException(status_code=404, detail="Promo media not found")
+    return FileResponse(
+        path,
+        media_type=mime,
+        headers={
+            "Cache-Control": "public, max-age=31536000, immutable",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Disposition": f'inline; filename="{path.name}"',
+        },
+    )
+
+
 @app.post("/api/payments/freekassa/orders/create", response_model=RubOrderActionOut)
 async def freekassa_order_create(
     payload: FreekassaOrderCreateIn,

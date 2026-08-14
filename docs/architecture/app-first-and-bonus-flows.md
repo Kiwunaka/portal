@@ -752,10 +752,13 @@ compatibility, never delay a payment/bonus start and never select
   one-use discount sectors needed for rendering. Backend-owned weights and
   probabilities remain private and must not be inferred by the client.
 - `GET /api/client/promo-slots?surface=app` may feed eligible app placements
-  with enabled operator-authored promo slots. Payloads may define safe
-  image/logo, text, CTA, colors, schedule, audience, whole-card link and dismiss
-  behavior. Third-party ad SDKs, unsafe links, tracking pixels and executable
-  campaign payloads stay out of the app.
+  with every enabled operator-authored promo slot in server priority order;
+  the client does not silently truncate the response. Payloads may define
+  optional copy, `logo|banner|media_only`, first-party static/animated/video
+  media, poster/fallback, colors, audience, whole-card link, dismiss policy,
+  start/end and server-aligned countdown. Media upload is admin-authenticated,
+  magic-checked and content-addressed. Third-party ad SDKs, external tracking
+  media, unsafe links and executable campaign payloads stay out of the app.
 - `POST /api/bonuses/wheel/spin` and
   `POST /api/bonuses/calendar/checkin` are app-facing, feature-flagged mutation
   routes. With flags off they return structured disabled errors. With flags on

@@ -300,7 +300,19 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(len(events), 1)
         self.assertEqual(
             events[0]["meta"]["diagnostics_keys"],
-            ["connection_status", "platform"],
+            [
+                "account_access_state",
+                "account_days_left",
+                "account_device_count",
+                "account_plan",
+                "account_telegram_linked",
+                "connection_status",
+                "panel_active_connections",
+                "panel_last_online_age_seconds",
+                "panel_runtime_state",
+                "platform",
+                "telegram_bonus_state",
+            ],
         )
 
     def _upload_support_attachment(

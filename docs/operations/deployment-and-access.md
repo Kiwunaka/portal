@@ -131,6 +131,11 @@ Repo-side deploy rule:
 - the default restart set is `portal-api`, `portal-bot`, `portal-helpbot`, and `portal-feedbackbot`
 - a normal git `push` runs repository guardrails only; production backend/static deploy still requires the manual release workflow in `full` mode or an explicit operator-run deploy command
 - backend code deploy is staged and fail-closed: files upload to `/root/portal_bot.deploy-staging/<release_id>/`, current live files are backed up under `/root/portal_bot.deploy-backups/<release_id>/`, and the script runs remote Python bytecode compilation plus shared JSON validation before promoting staged files into `/root/portal_bot` or `/root/shared`
+- promo media is durable runtime data under `PROMO_MEDIA_DIR` (default
+  `/root/portal_bot/uploads/promos`), not a code-deploy payload. Staged backend
+  promotion must leave that directory untouched. Server migration/backup must
+  snapshot it together with the active `promo_slots_config_v1`; an asset is not
+  removed while an active or rollback campaign references its content hash
 - staged requirements are installed in a temporary staging venv first; the live venv is updated only after staged syntax/JSON/requirements preflight passes
 - if preflight or requirements installation fails, the script exits before live file promotion and before any `systemctl restart`
 - if a requested unit fails restart or does not report `active`, the script restores the previous backed-up backend/shared files and restarts the requested units on that previous file set

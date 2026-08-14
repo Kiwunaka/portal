@@ -2386,6 +2386,54 @@ async def admin_promo_slots_get(x_telegram_init_data: str = Header(default="")) 
         s.close()
 
 
+@app.post("/api/admin/promo-media")
+async def admin_promo_media_upload(
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    raw_bytes = await _read_promo_media_upload(request)
+    media_type, mime, suffix = _detect_promo_media(raw_bytes)
+    digest = hashlib.sha256(raw_bytes).hexdigest()
+    asset_id = f"{digest[:32]}{suffix}"
+    PROMO_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+    target = (PROMO_MEDIA_DIR / asset_id).resolve()
+    target.relative_to(PROMO_MEDIA_DIR.resolve())
+    if not target.exists():
+        temp = (PROMO_MEDIA_DIR / f".{asset_id}.{secrets.token_hex(8)}.tmp").resolve()
+        temp.relative_to(PROMO_MEDIA_DIR.resolve())
+        try:
+            temp.write_bytes(raw_bytes)
+            os.replace(temp, target)
+        finally:
+            temp.unlink(missing_ok=True)
+    width, height = _promo_image_dimensions(raw_bytes, mime)
+    _audit_admin(
+        actor_tg_id=actor,
+        action="admin_promo_media_upload",
+        meta={
+            "asset_id": asset_id,
+            "sha256_prefix": digest[:16],
+            "media_type": media_type,
+            "mime": mime,
+            "bytes": len(raw_bytes),
+        },
+    )
+    return {
+        "ok": True,
+        "asset": {
+            "id": asset_id,
+            "url": _promo_media_public_url(asset_id),
+            "media_type": media_type,
+            "mime": mime,
+            "bytes": len(raw_bytes),
+            "width": width,
+            "height": height,
+            "sha256": digest.upper(),
+        },
+    }
+
+
 @app.put("/api/admin/promo-slots")
 async def admin_promo_slots_put(
     payload: AdminPromoSlotsPutIn,

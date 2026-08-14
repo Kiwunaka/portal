@@ -85,6 +85,17 @@ export type PromoSlotAssignment = {
   badge_label?: string | null;
   image_url?: string | null;
   image_layout?: "logo" | "banner" | string | null;
+  media_type?: "image" | "animated_image" | "video" | string | null;
+  media_url?: string | null;
+  poster_url?: string | null;
+  fallback_image_url?: string | null;
+  media_mime?: string | null;
+  media_width?: number | null;
+  media_height?: number | null;
+  media_bytes?: number | null;
+  media_duration_seconds?: number | null;
+  autoplay?: boolean;
+  loop?: boolean;
   cta_label?: string | null;
   cta_href?: string | null;
   accent_color?: string | null;
@@ -97,8 +108,21 @@ export type PromoSlotAssignment = {
   whole_card_clickable?: boolean;
   starts_at?: string | null;
   ends_at?: string | null;
+  countdown_mode?: "none" | "ends_at" | string | null;
+  countdown_label?: string | null;
   contexts: string[];
   sort_order: number;
+};
+
+export type PromoMediaAsset = {
+  id: string;
+  url: string;
+  media_type: "image" | "animated_image" | "video";
+  mime: string;
+  bytes: number;
+  width: number | null;
+  height: number | null;
+  sha256: string;
 };
 
 export type PromoSlotCatalogSlot = {
@@ -292,6 +316,21 @@ export async function fetchPromos(init?: ApiRequestInit): Promise<PromoRow[]> {
 export async function fetchPromoSlots(init?: ApiRequestInit): Promise<PromoSlotsPayload> {
   const data = await apiFetch<{ promo_slots: PromoSlotsPayload }>("/api/admin/promo-slots", init);
   return data.promo_slots;
+}
+
+export async function uploadPromoMedia(file: File, init?: ApiRequestInit): Promise<PromoMediaAsset> {
+  const data = await apiFetch<{ asset: PromoMediaAsset }>("/api/admin/promo-media", {
+    ...init,
+    method: "POST",
+    body: file,
+    headers: {
+      ...(init?.headers || {}),
+      "Content-Type": file.type || "application/octet-stream",
+      "X-Upload-Filename": file.name,
+    },
+    timeoutMs: 60_000,
+  });
+  return data.asset;
 }
 
 export async function fetchReferrals(status: string, init?: ApiRequestInit): Promise<ReferralRow[]> {

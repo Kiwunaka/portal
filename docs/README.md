@@ -9,6 +9,7 @@ This registry classifies important platform documents and the active client poin
 | `ACTIVE_EXECUTION` | selected cross-surface VPN feature wave | `docs/developer/work-orders/2026-07-23--selected-vpn-features/` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | post-release manual proof follow-up | `docs/developer/work-orders/2026-08-14--postrelease-manual-proof/` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | POKROV 1.0.6 stable direct release | `docs/developer/work-orders/2026-08-14-stable-1.0.6-release/` | `RECONCILED` |
+| `ACTIVE_EXECUTION` | POKROV 1.0.7 promos, variant status and RU app presets | `docs/developer/work-orders/2026-08-14-stable-1.0.7-promos-node-status-ru-apps/` | `REVIEWED_NO_CHANGE` |
 | `ACTIVE_EXECUTION` | conversion-first acquisition and retention | `docs/developer/work-orders/2026-08-14--conversion-acquisition-reconciliation/` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | open-source client rollout | `docs/launch/open-source-client-rollout-plan.md` | `RECONCILED` |
 | `EVIDENCE` | release evidence | `docs/audit-artifacts/` | `REVIEWED_NO_CHANGE` |

@@ -1,6 +1,6 @@
 # POKROV AdminApp
 
-Last updated: 2026-07-23
+Last updated: 2026-08-14
 
 ## Статус документа
 
@@ -44,6 +44,15 @@ lineage после one-time handoff. Вид `Продукт` используе�
 дедуплицирует пересекающиеся app/bot/payment события. Во всех карточках
 знаменатель явный; raw session hash, Telegram/account/order ids и event rows в
 интерфейс не передаются.
+
+`/promos` управляет allowlisted remote slots, а не произвольной рекламной
+разметкой. Новый слот по умолчанию выключен. Оператор выбирает placement,
+контент, аудиторию, приоритет, copy/цвета/CTA, dismiss policy и расписание;
+mobile preview показывает ту же компактную композицию. Медиа загружается в
+POKROV как PNG/JPEG/WebP/GIF/MP4/WebM до 24 MiB. Внешний media URL, пустой
+включённый creative, `media_only` без файла, video без poster+fallback и
+обратный интервал блокируют подтверждение. Публикация остаётся fingerprinted
+action-intent; выключение/откат не требует новой версии клиента.
 
 ## Правила интерфейса
 

@@ -351,7 +351,11 @@ Product wording rule:
 - bonus history is an app-safe backend contract and must show only compact reward events, not raw subscription links, full promo codes, tokens, or backend event metadata
 - app surfaces may render only enabled operator-authored promo slots from
   `GET /api/client/promo-slots?surface=app`; unsafe links, third-party ad SDKs,
-  tracking pixels, and hidden executable payloads remain forbidden
+  external tracking media, and hidden executable payloads remain forbidden.
+  Owner-uploaded media is served from the POKROV API only; a creative may be
+  copy-led or media-only, static/animated/video, temporary with countdown, and
+  dismissible or mandatory. Mandatory never means overlaying the VPN control
+  or system navigation
 - the paid roulette is enabled by default with a backend-owned `14 day`
   cooldown; the calendar remains independently disabled by default. The app
   shows a control only from backend summary state and may run it only when
@@ -424,6 +428,11 @@ destination, safe fallback and measurement key before activation. Pausing or
 expiring a campaign must leave the normal site/install path usable; disabling
 an app banner must remove the slot without an empty placeholder or an app
 update.
+
+App campaign measurement is first-party only: `impression`, `click`,
+`dismiss`, and `expired` use the approved slot/content/placement identifiers.
+The campaign system does not receive an advertising identifier, installed-app
+inventory, third-party SDK payload, or browsing history.
 
 ### Post-Trial Access Model
 

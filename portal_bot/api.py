@@ -542,6 +542,10 @@ SUPPORT_UPLOAD_DIR = Path(
 ).resolve()
 SUPPORT_UPLOAD_URL_PREFIX = f"/{(os.getenv('SUPPORT_UPLOAD_URL_PREFIX') or 'uploads/support').strip().strip('/')}"
 SUPPORT_UPLOAD_MAX_BYTES = max(1, env_int("SUPPORT_UPLOAD_MAX_BYTES", 20 * 1024 * 1024))
+PROMO_MEDIA_DIR = Path(
+    os.getenv("PROMO_MEDIA_DIR") or (Path(__file__).resolve().parent / "uploads" / "promos")
+).resolve()
+PROMO_MEDIA_MAX_BYTES = max(1, env_int("PROMO_MEDIA_MAX_BYTES", 24 * 1024 * 1024))
 SUPPORT_PENDING_UPLOAD_TTL_HOURS = max(1, env_int("SUPPORT_PENDING_UPLOAD_TTL_HOURS", 24))
 SUPPORT_PENDING_UPLOAD_MAX_COUNT = max(1, env_int("SUPPORT_PENDING_UPLOAD_MAX_COUNT", 5))
 SUPPORT_PENDING_UPLOAD_MAX_BYTES = max(
@@ -1315,6 +1319,17 @@ class AdminPromoSlotAssignmentIn(BaseModel):
     badge_label: str | None = Field(default=None, max_length=48)
     image_url: str | None = Field(default=None, max_length=600)
     image_layout: str | None = Field(default=None, max_length=24)
+    media_type: str | None = Field(default=None, max_length=32)
+    media_url: str | None = Field(default=None, max_length=600)
+    poster_url: str | None = Field(default=None, max_length=600)
+    fallback_image_url: str | None = Field(default=None, max_length=600)
+    media_mime: str | None = Field(default=None, max_length=80)
+    media_width: int | None = Field(default=None, ge=1, le=16_384)
+    media_height: int | None = Field(default=None, ge=1, le=16_384)
+    media_bytes: int | None = Field(default=None, ge=1, le=PROMO_MEDIA_MAX_BYTES)
+    media_duration_seconds: int | None = Field(default=None, ge=1, le=300)
+    autoplay: bool = False
+    loop: bool = True
     cta_label: str | None = Field(default=None, max_length=80)
     cta_href: str | None = Field(default=None, max_length=600)
     accent_color: str | None = Field(default=None, max_length=9)
@@ -1327,6 +1342,8 @@ class AdminPromoSlotAssignmentIn(BaseModel):
     whole_card_clickable: bool = True
     starts_at: str | None = Field(default=None, max_length=64)
     ends_at: str | None = Field(default=None, max_length=64)
+    countdown_mode: str | None = Field(default=None, max_length=24)
+    countdown_label: str | None = Field(default=None, max_length=80)
     contexts: list[str] = Field(default_factory=list, max_length=32)
     sort_order: int = Field(default=100, ge=0, le=10_000)
 
@@ -2132,6 +2149,7 @@ app.add_middleware(
     expose_headers=[_AUTH_ERROR_HEADER],
 )
 SUPPORT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+PROMO_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def _verify_telegram_data(init_data: str) -> dict[str, Any] | None:
@@ -2742,7 +2760,7 @@ def _normalize_promo_slot_assignment(raw: dict[str, Any], *, strict: bool) -> di
     if not contexts:
         contexts = list(allowed_contexts)
 
-    def safe_promo_url(raw_url: Any, *, field: str) -> str | None:
+    def safe_promo_url(raw_url: Any, *, field: str, first_party_media: bool = False) -> str | None:
         url = str(raw_url or "").strip()
         if not url:
             return None
@@ -2755,6 +2773,15 @@ def _normalize_promo_slot_assignment(raw: dict[str, Any], *, strict: bool) -> di
             if strict:
                 raise HTTPException(status_code=400, detail=f"Promo {field} must include a host")
             return None
+        if first_party_media:
+            host = str(parsed.hostname or "").strip().lower().rstrip(".")
+            if parsed.scheme != "https" or not (host == "pokrov.space" or host.endswith(".pokrov.space")):
+                if strict:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Promo {field} must use first-party POKROV media hosting",
+                    )
+                return None
         return url[:600]
 
     def safe_schedule(raw_dt: Any, *, field: str) -> str | None:
@@ -2780,20 +2807,112 @@ def _normalize_promo_slot_assignment(raw: dict[str, Any], *, strict: bool) -> di
         return value
 
     image_layout = str(raw.get("image_layout") or "logo").strip().lower()
-    if image_layout not in {"logo", "banner"}:
+    if image_layout not in {"logo", "banner", "media_only"}:
         if strict:
-            raise HTTPException(status_code=400, detail="Promo image_layout must be logo or banner")
+            raise HTTPException(status_code=400, detail="Promo image_layout must be logo, banner or media_only")
         image_layout = "logo"
+
+    media_type = str(raw.get("media_type") or "").strip().lower()
+    if not media_type and (raw.get("media_url") or raw.get("image_url")):
+        media_type = "image"
+    if media_type not in {"", "image", "animated_image", "video"}:
+        if strict:
+            raise HTTPException(status_code=400, detail="Promo media_type is not supported")
+        media_type = ""
+    media_url = safe_promo_url(
+        raw.get("media_url") or raw.get("image_url"),
+        field="media_url",
+        first_party_media=True,
+    )
+    poster_url = safe_promo_url(raw.get("poster_url"), field="poster_url", first_party_media=True)
+    fallback_image_url = safe_promo_url(
+        raw.get("fallback_image_url"),
+        field="fallback_image_url",
+        first_party_media=True,
+    )
+    media_mime = str(raw.get("media_mime") or "").strip().lower()[:80] or None
+    if media_mime and media_mime not in {
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+        "video/mp4",
+        "video/webm",
+    }:
+        if strict:
+            raise HTTPException(status_code=400, detail="Promo media_mime is not supported")
+        media_mime = None
+
+    def bounded_media_integer(field: str, maximum: int) -> int | None:
+        value = raw.get(field)
+        if value in {None, ""}:
+            return None
+        try:
+            number = int(value)
+        except (TypeError, ValueError):
+            if strict:
+                raise HTTPException(status_code=400, detail=f"Promo {field} must be an integer")
+            return None
+        if number < 1 or number > maximum:
+            if strict:
+                raise HTTPException(status_code=400, detail=f"Promo {field} is outside the supported range")
+            return None
+        return number
+
+    countdown_mode = str(raw.get("countdown_mode") or "none").strip().lower()
+    if countdown_mode not in {"none", "ends_at"}:
+        if strict:
+            raise HTTPException(status_code=400, detail="Promo countdown_mode must be none or ends_at")
+        countdown_mode = "none"
+    starts_at = safe_schedule(raw.get("starts_at"), field="starts_at")
+    ends_at = safe_schedule(raw.get("ends_at"), field="ends_at")
+    if countdown_mode == "ends_at" and not ends_at:
+        if strict:
+            raise HTTPException(status_code=400, detail="Promo countdown requires ends_at")
+        countdown_mode = "none"
+    parsed_starts_at = _parse_optional_datetime(starts_at)
+    parsed_ends_at = _parse_optional_datetime(ends_at)
+    if parsed_starts_at and parsed_ends_at and parsed_starts_at >= parsed_ends_at:
+        if strict:
+            raise HTTPException(status_code=400, detail="Promo ends_at must be after starts_at")
+        starts_at = None
+
+    enabled = bool(raw.get("enabled", True))
+    title = str(raw.get("title") or "").strip()[:160] or None
+    body = str(raw.get("body") or "").strip()[:500] or None
+    badge_label = str(raw.get("badge_label") or "").strip()[:48] or None
+    if strict and enabled:
+        if image_layout == "media_only" and not media_url:
+            raise HTTPException(status_code=400, detail="Promo media_only layout requires media_url")
+        if media_type and not media_url:
+            raise HTTPException(status_code=400, detail="Promo media_type requires media_url")
+        if media_type == "video" and (not poster_url or not fallback_image_url):
+            raise HTTPException(status_code=400, detail="Promo video requires poster and static fallback")
+        if not (title or body or badge_label or media_url):
+            raise HTTPException(status_code=400, detail="Enabled promo must contain copy or media")
 
     return {
         "slot_id": slot_id,
         "content_id": content_id,
-        "enabled": bool(raw.get("enabled", True)),
-        "title": str(raw.get("title") or "").strip()[:160] or None,
-        "body": str(raw.get("body") or "").strip()[:500] or None,
-        "badge_label": str(raw.get("badge_label") or "").strip()[:48] or None,
-        "image_url": safe_promo_url(raw.get("image_url"), field="image_url"),
+        "enabled": enabled,
+        "title": title,
+        "body": body,
+        "badge_label": badge_label,
+        # Retain image_url for clients before 1.0.7. A video degrades to its
+        # poster/static fallback instead of being fed to an image decoder.
+        "image_url": media_url if media_type != "video" else fallback_image_url or poster_url,
         "image_layout": image_layout,
+        "media_type": media_type or None,
+        "media_url": media_url,
+        "poster_url": poster_url,
+        "fallback_image_url": fallback_image_url,
+        "media_mime": media_mime,
+        "media_width": bounded_media_integer("media_width", 16_384),
+        "media_height": bounded_media_integer("media_height", 16_384),
+        "media_bytes": bounded_media_integer("media_bytes", PROMO_MEDIA_MAX_BYTES),
+        "media_duration_seconds": bounded_media_integer("media_duration_seconds", 300),
+        "autoplay": bool(raw.get("autoplay", False)),
+        "loop": bool(raw.get("loop", True)),
         "cta_label": str(raw.get("cta_label") or "").strip()[:80] or None,
         "cta_href": safe_promo_url(raw.get("cta_href"), field="cta_href"),
         "accent_color": safe_color(raw.get("accent_color"), field="accent_color"),
@@ -2804,8 +2923,10 @@ def _normalize_promo_slot_assignment(raw: dict[str, Any], *, strict: bool) -> di
         "placement": str(raw.get("placement") or slot_facts.get("placement") or "").strip()[:64] or None,
         "dismissible": bool(raw.get("dismissible", True)),
         "whole_card_clickable": bool(raw.get("whole_card_clickable", True)),
-        "starts_at": safe_schedule(raw.get("starts_at"), field="starts_at"),
-        "ends_at": safe_schedule(raw.get("ends_at"), field="ends_at"),
+        "starts_at": starts_at,
+        "ends_at": ends_at,
+        "countdown_mode": countdown_mode,
+        "countdown_label": str(raw.get("countdown_label") or "").strip()[:80] or None,
         "contexts": contexts,
         "sort_order": max(0, int(raw.get("sort_order") or 100)),
     }
@@ -2879,6 +3000,17 @@ def _promo_slots_payload_for_surface(*, s, surface: str, access_state: str) -> d
                 "badge_label": assignment.get("badge_label"),
                 "image_url": assignment.get("image_url"),
                 "image_layout": assignment.get("image_layout"),
+                "media_type": assignment.get("media_type"),
+                "media_url": assignment.get("media_url"),
+                "poster_url": assignment.get("poster_url"),
+                "fallback_image_url": assignment.get("fallback_image_url"),
+                "media_mime": assignment.get("media_mime"),
+                "media_width": assignment.get("media_width"),
+                "media_height": assignment.get("media_height"),
+                "media_bytes": assignment.get("media_bytes"),
+                "media_duration_seconds": assignment.get("media_duration_seconds"),
+                "autoplay": bool(assignment.get("autoplay", False)),
+                "loop": bool(assignment.get("loop", True)),
                 "cta_label": assignment.get("cta_label"),
                 "cta_href": assignment.get("cta_href"),
                 "accent_color": assignment.get("accent_color"),
@@ -2891,6 +3023,8 @@ def _promo_slots_payload_for_surface(*, s, surface: str, access_state: str) -> d
                 "whole_card_clickable": bool(assignment.get("whole_card_clickable", True)),
                 "starts_at": assignment.get("starts_at"),
                 "ends_at": assignment.get("ends_at"),
+                "countdown_mode": assignment.get("countdown_mode") or "none",
+                "countdown_label": assignment.get("countdown_label"),
                 "sort_order": int(assignment.get("sort_order") or 100),
                 "goal": str(content_facts.get("goal") or "").strip() or None,
                 "kind": str(content_facts.get("kind") or "").strip() or None,
@@ -2900,12 +3034,108 @@ def _promo_slots_payload_for_surface(*, s, surface: str, access_state: str) -> d
     return {
         "surface": str(surface or "").strip(),
         "access_state": str(access_state or "").strip(),
+        "server_time": _safe_iso(now),
         "remote_available": bool(normalized.get("remote_available")),
         "fallback_behavior": str(normalized.get("fallback_behavior") or "contextual_only_when_remote_unavailable"),
         "mode": str(normalized.get("mode") or "whitelist_slots"),
         "approved_slots": approved_slots,
         "slots": slots,
     }
+
+
+_PROMO_MEDIA_ASSET_RE = re.compile(r"^[a-f0-9]{32}\.(?:gif|jpe?g|png|webp|mp4|webm)$")
+_PROMO_MEDIA_SUFFIX_MIME = {
+    ".gif": "image/gif",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".mp4": "video/mp4",
+    ".webm": "video/webm",
+}
+
+
+def _detect_promo_media(raw_bytes: bytes) -> tuple[str, str, str]:
+    """Return (media_type, MIME, suffix) from bytes, never from filename."""
+    if raw_bytes.startswith(b"\x89PNG\r\n\x1a\n"):
+        return ("animated_image" if b"acTL" in raw_bytes[:1_048_576] else "image", "image/png", ".png")
+    if raw_bytes.startswith((b"GIF87a", b"GIF89a")):
+        return "animated_image", "image/gif", ".gif"
+    if raw_bytes.startswith(b"\xff\xd8\xff"):
+        return "image", "image/jpeg", ".jpg"
+    if len(raw_bytes) >= 12 and raw_bytes[:4] == b"RIFF" and raw_bytes[8:12] == b"WEBP":
+        animated = b"ANIM" in raw_bytes[:1_048_576]
+        return ("animated_image" if animated else "image", "image/webp", ".webp")
+    if len(raw_bytes) >= 12 and raw_bytes[4:8] == b"ftyp":
+        return "video", "video/mp4", ".mp4"
+    if raw_bytes.startswith(b"\x1a\x45\xdf\xa3"):
+        return "video", "video/webm", ".webm"
+    raise HTTPException(status_code=415, detail="Promo media must be PNG, JPEG, WebP, GIF, MP4 or WebM")
+
+
+def _promo_image_dimensions(raw_bytes: bytes, mime: str) -> tuple[int | None, int | None]:
+    try:
+        if mime == "image/png" and len(raw_bytes) >= 24:
+            return int.from_bytes(raw_bytes[16:20], "big"), int.from_bytes(raw_bytes[20:24], "big")
+        if mime == "image/gif" and len(raw_bytes) >= 10:
+            return int.from_bytes(raw_bytes[6:8], "little"), int.from_bytes(raw_bytes[8:10], "little")
+        if mime == "image/jpeg":
+            offset = 2
+            while offset + 9 < len(raw_bytes):
+                if raw_bytes[offset] != 0xFF:
+                    offset += 1
+                    continue
+                marker = raw_bytes[offset + 1]
+                if marker in {0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF}:
+                    return int.from_bytes(raw_bytes[offset + 7 : offset + 9], "big"), int.from_bytes(raw_bytes[offset + 5 : offset + 7], "big")
+                if marker in {0xD8, 0xD9}:
+                    offset += 2
+                    continue
+                segment_length = int.from_bytes(raw_bytes[offset + 2 : offset + 4], "big")
+                if segment_length < 2:
+                    break
+                offset += 2 + segment_length
+    except (IndexError, ValueError):
+        return None, None
+    return None, None
+
+
+async def _read_promo_media_upload(request: Request) -> bytes:
+    content_length = str(request.headers.get("content-length") or "").strip()
+    if content_length.isdigit() and int(content_length) > PROMO_MEDIA_MAX_BYTES:
+        raise HTTPException(status_code=413, detail="Promo media is too large")
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in request.stream():
+        total += len(chunk)
+        if total > PROMO_MEDIA_MAX_BYTES:
+            raise HTTPException(status_code=413, detail="Promo media is too large")
+        chunks.append(bytes(chunk))
+    raw_bytes = b"".join(chunks)
+    if not raw_bytes:
+        raise HTTPException(status_code=400, detail="Promo media is empty")
+    return raw_bytes
+
+
+def _promo_media_public_url(asset_id: str) -> str:
+    base = _safe_public_url(getattr(Settings, "PUBLIC_API_BASE_URL", ""))
+    if not base:
+        base = f"https://{(getattr(Settings, 'PUBLIC_API_DOMAIN', '') or 'api.pokrov.space').strip().strip('/')}"
+    return f"{base.rstrip('/')}/api/public/promo-media/{asset_id}"
+
+
+def _promo_media_path(asset_id: str) -> Path:
+    normalized = str(asset_id or "").strip().lower()
+    if not _PROMO_MEDIA_ASSET_RE.fullmatch(normalized):
+        raise HTTPException(status_code=404, detail="Promo media not found")
+    path = (PROMO_MEDIA_DIR / normalized).resolve()
+    try:
+        path.relative_to(PROMO_MEDIA_DIR.resolve())
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Promo media not found")
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Promo media not found")
+    return path
 
 
 def _public_catalog_payload(*, s) -> dict[str, Any]:
