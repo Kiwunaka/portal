@@ -14,7 +14,7 @@ export function Steps() {
       title: getCopyText("marketing.home.steps.download.title", "Скачайте POKROV"),
       text: getCopyText(
         "marketing.home.steps.download.text",
-        "Выберите Android или Windows и возьмите актуальный файл из официального кабинета.",
+        "Выберите Android или Windows и скачайте актуальный официальный файл без регистрации.",
       ),
       variant: "download" as const,
     },

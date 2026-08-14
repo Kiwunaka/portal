@@ -1130,6 +1130,7 @@ from models import (
 )
 from nodes_repo import enabled_nodes
 from events_service import track_event
+from acquisition_service import AcquisitionError, consume_acquisition_handoff
 from free_cycle_service import mark_user_became_free, queue_free_profile_reentry
 from gift_cards_service import (
     create_gift_card as create_gift_card_service,
@@ -2427,6 +2428,8 @@ def _classify_start_arg_for_analytics(
 ) -> str:
     if not (start_arg or "").strip():
         return "plain"
+    if _parse_acquisition_start_handle(start_arg):
+        return "acquisition"
     if int(app_link_account_id or 0) > 0:
         return "app_link"
     if (start_arg or "").strip().lower() in {"pay", "renew"}:
@@ -2444,6 +2447,43 @@ def _classify_start_arg_for_analytics(
     if deeplink_campaign_key:
         return "campaign"
     return "other"
+
+
+def _parse_acquisition_start_handle(start_arg: str) -> str:
+    raw = str(start_arg or "").strip()
+    if not raw.lower().startswith("acq_"):
+        return ""
+    handle = raw[4:]
+    if not re.fullmatch(r"[A-Za-z0-9_-]{32,60}", handle):
+        return ""
+    return handle
+
+
+def _consume_bot_acquisition_handoff(*, tg_id: int, user: User | None, start_arg: str) -> bool:
+    handle = _parse_acquisition_start_handle(start_arg)
+    if not handle or user is None:
+        return False
+    session = Session()
+    try:
+        consume_acquisition_handoff(
+            session,
+            raw_handle=handle,
+            expected_purpose="telegram_continue",
+            bound_tg_id=int(tg_id),
+            bound_account_id=str(getattr(user, "account_id", "") or "") or None,
+            now=_utcnow(),
+        )
+        session.commit()
+        return True
+    except AcquisitionError:
+        session.rollback()
+        return False
+    except Exception:
+        session.rollback()
+        logger.exception("bot acquisition handoff failed tg_id=%s", int(tg_id))
+        return False
+    finally:
+        session.close()
 
 
 def _channel_bonus_ineligible_reason(*, tg_id: int, user: User | None) -> str | None:
@@ -4101,24 +4141,29 @@ def _trial_offer_available(user: User | None) -> bool:
 
 
 def _main_menu_cta_spec(tg_id: int) -> dict[str, str]:
-    checkout_available = not _bot_checkout_blocked_reasons()
-    if checkout_available:
-        return _btn_spec(
-            text=_main_connect_cta_text(tg_id),
-            callback_data="charge",
-            style=BTN_STYLE_SUCCESS,
-            emoji_key="payment",
-        )
-
     user = get_user(int(tg_id)) if int(tg_id or 0) > 0 else None
+    expiry = _naive_utc(getattr(user, "expiry_at", None))
+    if bool(user and user.is_active and expiry and expiry > _utcnow()):
+        return _btn_spec(
+            text="Подключить устройство",
+            callback_data="instruction",
+            style=BTN_STYLE_PRIMARY,
+            emoji_key="device",
+        )
     if _trial_offer_available(user):
         return _btn_spec(
             text="Попробовать 5 дней бесплатно",
             callback_data="instruction",
-            style=BTN_STYLE_SUCCESS,
+            style=BTN_STYLE_PRIMARY,
             emoji_key="free",
         )
-
+    if not _bot_checkout_blocked_reasons():
+        return _btn_spec(
+            text="Продлить доступ",
+            callback_data="charge",
+            style=BTN_STYLE_SUCCESS,
+            emoji_key="payment",
+        )
     return _btn_spec(
         text="Активировать код",
         callback_data="gift_redeem_prompt",
@@ -4129,27 +4174,12 @@ def _main_menu_cta_spec(tg_id: int) -> dict[str, str]:
 
 def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
     rows = [
-        [
-            _btn_spec(
-                text="Подключить устройство",
-                callback_data="instruction",
-                style=BTN_STYLE_PRIMARY,
-                emoji_key="device",
-            )
-        ],
         [_main_menu_cta_spec(tg_id)],
         [
-            _btn_spec(text="Проверить доступ", callback_data="status", emoji_key="success"),
+            _btn_spec(text="Мой доступ", callback_data="status", emoji_key="success"),
             _btn_spec(text="Помощь", callback_data="confused_help", emoji_key="support"),
         ],
-        [
-            _btn_spec(text="VPN не работает", callback_data="faq_notwork", emoji_key="warning"),
-            _btn_spec(text="Низкая скорость", callback_data="faq_speed", emoji_key="faq"),
-        ],
-        [
-            _btn_spec(text="Кабинет", web_app_url=WEBAPP_URL, emoji_key="cabinet"),
-            _btn_spec(text="Ещё", callback_data="settings", emoji_key="settings"),
-        ],
+        [_btn_spec(text="Ещё", callback_data="settings", emoji_key="settings")],
     ]
     if tg_id == ADMIN_ID:
         rows.append([_btn_spec(text="Админ-панель", callback_data="admin", emoji_key="brand")])
@@ -4159,6 +4189,33 @@ def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
 def main_keyboard(tg_id: int = 0) -> InlineKeyboardMarkup:
     """Main menu aligned to the single primary user path."""
     return _keyboard_from_specs(main_keyboard_specs(tg_id))
+
+
+def new_user_keyboard_specs() -> list[list[dict[str, str]]]:
+    """Cold-start surface: choose a platform before account controls."""
+    return [
+        [
+            _btn_spec(
+                text="Android",
+                callback_data="instr_android",
+                style=BTN_STYLE_PRIMARY,
+                emoji_key="phone",
+            ),
+            _btn_spec(
+                text="Windows",
+                callback_data="instr_win",
+                emoji_key="device",
+            ),
+        ],
+        [_btn_spec(text="Тарифы", callback_data="charge", emoji_key="payment")],
+        [
+            _btn_spec(
+                text="Как проверить POKROV",
+                callback_data="verify_pokrov",
+                emoji_key="success",
+            )
+        ],
+    ]
 
 
 def tariff_keyboard_specs(

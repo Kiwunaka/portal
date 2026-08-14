@@ -19,8 +19,8 @@
   },
   "referral_reward": {
     "friend_days": 5,
-    "friend_authority": "server_connection_evidence",
-    "referrer_days": 15,
+    "friend_authority": "first_successful_paid_purchase",
+    "referrer_days": 10,
     "referrer_hold_hours": 72,
     "pre_first_payment_premium_cap_days": 15
   },

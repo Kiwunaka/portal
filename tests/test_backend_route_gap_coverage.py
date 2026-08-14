@@ -199,8 +199,157 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
         summary = self.client.get("/api/admin/funnel/summary", headers=self.admin_headers)
         self.assertEqual(summary.status_code, 200, summary.text)
         body = summary.json()
-        self.assertIn("stages", body)
+        self.assertIn("acquisition", body)
+        self.assertIn("product", body)
         self.assertIn("period", body)
+
+    def test_admin_funnel_separates_exact_acquisition_from_product_users(self) -> None:
+        from db import SessionLocal
+        from models import (
+            AccountExperienceState,
+            AcquisitionHandoff,
+            AcquisitionSession,
+            Event,
+            ExternalOrder,
+            FunnelEvent,
+            PayAttempt,
+            User,
+        )
+
+        now = self.api._utcnow()
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == 1001).one()
+            user.account_id = "account-funnel-1001"
+            user.app_last_seen_at = now
+            acquisition = AcquisitionSession(
+                id="acquisition-funnel-1",
+                session_key_hash="a" * 64,
+                first_source="telegram_ads",
+                first_channel="marketing",
+                first_campaign="august",
+                first_entry_route="/install",
+                last_source="telegram_ads",
+                last_channel="checkout",
+                last_campaign="august",
+                last_entry_route="/checkout",
+                bound_tg_id=1001,
+                bound_account_id=user.account_id,
+                created_at=now,
+                first_touch_at=now,
+                last_touch_at=now,
+                expires_at=now + timedelta(days=180),
+            )
+            session.add(acquisition)
+            session.flush()
+            session.add(
+                FunnelEvent(
+                    session_id=acquisition.session_key_hash,
+                    channel="marketing",
+                    event_name="download_click",
+                    stage="download",
+                    source="telegram_ads",
+                    path="/install",
+                    created_at=now,
+                )
+            )
+            session.add_all(
+                [
+                    AcquisitionHandoff(
+                        id="handoff-install-1",
+                        token_hash="b" * 64,
+                        acquisition_session_id=acquisition.id,
+                        purpose="android_install",
+                        created_at=now,
+                        expires_at=now + timedelta(hours=72),
+                        consumed_at=now,
+                        bound_tg_id=1001,
+                        bound_account_id=user.account_id,
+                    ),
+                    AcquisitionHandoff(
+                        id="handoff-checkout-1",
+                        token_hash="c" * 64,
+                        acquisition_session_id=acquisition.id,
+                        purpose="checkout",
+                        created_at=now,
+                        expires_at=now + timedelta(hours=72),
+                        consumed_at=now,
+                        bound_tg_id=1001,
+                        bound_account_id=user.account_id,
+                        bound_order_id="order-funnel-1",
+                    ),
+                ]
+            )
+            session.add(
+                ExternalOrder(
+                    order_id="order-funnel-1",
+                    tg_id=1001,
+                    provider="lavatop",
+                    plan_code="start_99",
+                    source="telegram_ads",
+                    campaign="august",
+                    acquisition_session_id=acquisition.id,
+                    amount=99,
+                    currency="RUB",
+                    status="paid",
+                    created_at=now,
+                    paid_at=now,
+                )
+            )
+            session.add(
+                PayAttempt(
+                    tg_id=1001,
+                    source="bot",
+                    plan_code="start_99",
+                    amount_stars=99,
+                    status="paid",
+                    acquisition_session_id=acquisition.id,
+                    started_at=now,
+                    updated_at=now,
+                    paid_at=now,
+                )
+            )
+            session.add(
+                AccountExperienceState(
+                    account_id=user.account_id,
+                    first_connection_reported_at=now,
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+            session.add_all(
+                [
+                    Event(tg_id=1001, event_name="opened_webapp", source="webapp", created_at=now),
+                    Event(tg_id=1001, event_name="clicked_pay", source="webapp", created_at=now),
+                    Event(tg_id=1001, event_name="paid", source="webapp", created_at=now),
+                    Event(tg_id=1001, event_name="connected_ok", source="webapp", created_at=now),
+                ]
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        summary = self.client.get(
+            "/api/admin/funnel/summary",
+            headers=self.admin_headers,
+            params={"from": (now - timedelta(days=1)).isoformat(), "to": (now + timedelta(days=1)).isoformat()},
+        )
+        self.assertEqual(summary.status_code, 200, summary.text)
+        body = summary.json()
+        self.assertEqual(
+            body["acquisition"]["totals"],
+            {"sessions": 1, "entry_intents": 1, "resolved_entries": 1, "checkouts": 1, "paid": 1, "connected": 1},
+        )
+        self.assertEqual(
+            body["product"]["totals"],
+            {"opened": 1, "checkouts": 1, "paid": 1, "connected": 1},
+        )
+        self.assertEqual(body["acquisition"]["by_source"][0]["source"], "telegram_ads")
+        self.assertNotIn("recent", body)
+        serialized = summary.text
+        self.assertNotIn("acquisition-funnel-1", serialized)
+        self.assertNotIn("account-funnel-1001", serialized)
+        self.assertNotIn("order-funnel-1", serialized)
 
     def test_admin_broadcast_and_referral_gap_routes(self) -> None:
         sent_to: list[int] = []

@@ -118,7 +118,7 @@ const platformRelated: SeoLink[] = [
 
 const intentRelated: SeoLink[] = [
   { href: "/vpn/", label: "VPN для Android и Windows" },
-  { href: SEO_PAGE_PATHS.bestVpn, label: "Лучший VPN" },
+  { href: SEO_PAGE_PATHS.bestVpn, label: "Как выбрать VPN" },
   { href: SEO_PAGE_PATHS.android, label: "Android" },
   { href: SEO_PAGE_PATHS.windows, label: "Windows" },
   { href: "/youtube/", label: "YouTube" },
@@ -167,9 +167,9 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
           "Да. В POKROV есть 5 дней бесплатно без карты: установите приложение для Android или Windows, проверьте подключение и только потом решайте, нужен ли платный срок.",
       },
       {
-        question: "POKROV подходит, если я ищу лучший ВПН?",
+        question: "POKROV подходит для простого старта?",
         answer:
-          "Да. POKROV — лучший VPN для тех, кто хочет быстро подключить Android или Windows без ручных профилей: 5 дней бесплатно, официальные файлы, тарифы от 99 ₽ и разовая оплата без автосписаний.",
+          "POKROV рассчитан на быстрый старт без ручных профилей: Android и Windows, 5 дней бесплатно, официальные файлы, первый полный месяц 99 ₽ один раз и разовая оплата без автосписаний.",
       },
       {
         question: "Какие устройства поддерживаются?",
@@ -202,11 +202,11 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
           "Используйте официальный сайт, кабинет, бота или поддержку. Не ставьте APK и EXE из случайных архивов: приложение получает сетевой доступ, источник файла тут не мелочь.",
       },
     ],
-    title: "Лучший VPN для Android и Windows скачать бесплатно | POKROV",
+    title: "VPN для Android и Windows скачать бесплатно | POKROV",
   }),
   withDefaults({
     answer:
-      "POKROV — лучший VPN для быстрого старта на Android: официальный APK, одна кнопка подключения и 5 дней бесплатно без карты. Проверьте YouTube, TikTok и другие приложения на своём телефоне до оплаты.",
+      "POKROV для быстрого старта на Android: официальный APK, одна кнопка подключения и 5 дней бесплатно без карты. Проверьте YouTube, TikTok и другие приложения на своём телефоне до оплаты.",
     breadcrumbName: "Android",
     cards: [
       {
@@ -228,7 +228,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
     changeFrequency: "weekly",
     cluster: "platform",
     description:
-      "Лучший VPN для Android: POKROV APK из официального кабинета, 5 дней бесплатно без карты, YouTube и TikTok одной кнопкой.",
+      "VPN для Android: POKROV APK из официального Releases, 5 дней бесплатно без карты, YouTube и TikTok одной кнопкой.",
     faq: [
       {
         question: "Как скачать VPN на Android?",
@@ -246,8 +246,8 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
           "Нет публичного обещания про магазин в этой бета-волне. Android-версия распространяется вне магазина через официальный кабинет и GitHub Releases.",
       },
     ],
-    h1: "Лучший VPN для Android: POKROV на 5 дней бесплатно",
-    heroKicker: "Лучший Android VPN · официальный APK · 0 ₽",
+    h1: "VPN для Android: POKROV на 5 дней бесплатно",
+    heroKicker: "Android VPN · официальный APK · 0 ₽",
     kind: "intent",
     path: SEO_PAGE_PATHS.android,
     primaryCta: { href: SEO_PAGE_PATHS.installAndroid, label: "Инструкция для Android" },
@@ -271,11 +271,11 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
           "Запустите YouTube, TikTok, Telegram, браузер, рабочие сайты. Потом переключитесь с Wi-Fi на мобильную сеть. Если связь меняется, поддержка быстрее разберёт проблему по конкретному примеру.",
       },
     ],
-    title: "Лучший VPN для Android скачать бесплатно | POKROV APK",
+    title: "VPN для Android скачать бесплатно | POKROV APK",
   }),
   withDefaults({
     answer:
-      "POKROV — лучший VPN для быстрого старта на Windows: официальный EXE, подключение одной кнопкой и 5 дней бесплатно без карты. Скачайте из кабинета, установите и проверьте свои сервисы до оплаты.",
+      "POKROV для быстрого старта на Windows: официальный EXE, подключение одной кнопкой и 5 дней бесплатно без карты. Скачайте из POKROV Releases, установите и проверьте свои сервисы до оплаты.",
     breadcrumbName: "Windows",
     cards: [
       {
@@ -297,7 +297,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
     changeFrequency: "weekly",
     cluster: "platform",
     description:
-      "Лучший VPN для Windows: POKROV, официальный EXE, 5 дней бесплатно без карты, одна кнопка подключения и помощь со SmartScreen.",
+      "VPN для Windows: POKROV, официальный EXE, 5 дней бесплатно без карты, одна кнопка подключения и помощь со SmartScreen.",
     faq: [
       {
         question: "Как скачать VPN для Windows?",
@@ -315,8 +315,8 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
           "Да. В приложении доступно 5 дней бесплатно без карты. Этого хватает, чтобы проверить поведение на своём компьютере.",
       },
     ],
-    h1: "Лучший VPN для Windows: скачайте POKROV и проверьте бесплатно",
-    heroKicker: "Лучший Windows VPN · 5 дней за 0 ₽ · официальный EXE",
+    h1: "VPN для Windows: скачайте POKROV и проверьте бесплатно",
+    heroKicker: "Windows VPN · 5 дней за 0 ₽ · официальный EXE",
     kind: "intent",
     path: SEO_PAGE_PATHS.windows,
     primaryCta: { href: SEO_PAGE_PATHS.installWindows, label: "Инструкция для Windows" },
@@ -340,7 +340,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
           "Проверьте браузер, YouTube, TikTok, Telegram Desktop и те программы, которыми вы пользуетесь каждый день. Если Windows просит разрешение на сетевой доступ, разрешите его для POKROV.",
       },
     ],
-    title: "Лучший VPN для Windows скачать бесплатно | POKROV",
+    title: "VPN для Windows скачать бесплатно | POKROV",
   }),
   withDefaults({
     answer:
@@ -700,8 +700,8 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
   }),
   withDefaults({
     answer:
-      `POKROV — лучший VPN 2026 для быстрого старта на Android и Windows: YouTube и TikTok одной кнопкой, 5 дней за 0 ₽, официальные файлы, тарифы от 99 ₽ без автосписаний и до 5 устройств. ${TELEGRAM_START_PROMISE}`,
-    breadcrumbName: "Лучший VPN",
+      `Выбирайте VPN по проверяемым условиям. POKROV даёт Android и Windows, YouTube и TikTok одной кнопкой, 5 дней за 0 ₽, официальные файлы, первый полный месяц 99 ₽ один раз и до 5 устройств на основных тарифах. ${TELEGRAM_START_PROMISE}`,
+    breadcrumbName: "Как выбрать VPN",
     cards: [
       {
         eyebrow: "Старт",
@@ -722,15 +722,15 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
     changeFrequency: "weekly",
     cluster: "compare",
     description:
-      "Лучший VPN 2026 для Android и Windows: POKROV, 5 дней бесплатно, YouTube и TikTok одной кнопкой, до 5 устройств и тарифы от 99 ₽.",
+      "Как выбрать VPN для Android и Windows: проверяем источник файлов, бесплатный период, цену, устройства и отсутствие автосписаний на примере POKROV.",
     faq: [
       {
-        question: "Какой VPN лучший в 2026 году?",
+        question: "Как выбрать VPN в 2026 году?",
         answer:
-          "Для простого старта на Android и Windows выбирайте POKROV: 5 дней бесплатно без карты, официальные APK и Windows-файлы, подключение одной кнопкой, поддержка и разовое продление без автосписаний.",
+          "Проверьте платформы, источник файлов, пробный период, полную цену и автосписания. У POKROV это Android и Windows, 5 дней без карты, официальный APK/EXE и разовые сроки без автопродления.",
       },
       {
-        question: "Какой лучший бесплатный VPN без карты?",
+        question: "Как проверить VPN бесплатно без карты?",
         answer:
           `${TELEGRAM_START_PROMISE} Банковская карта для бесплатного старта не нужна, а подключение можно проверить до оплаты.`,
       },
@@ -745,8 +745,8 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
           "POKROV рассчитан именно на Android и Windows. Файлы доступны через официальный кабинет и GitHub Releases, а основные тарифы поддерживают до 5 устройств.",
       },
     ],
-    h1: "POKROV — лучший VPN 2026 для Android и Windows",
-    heroKicker: "Лучший VPN 2026 · 5 дней за 0 ₽ · от 99 ₽",
+    h1: "Как выбрать VPN для Android и Windows",
+    heroKicker: "Проверяемые условия · 5 дней за 0 ₽ · первый месяц 99 ₽",
     kind: "compare",
     path: SEO_PAGE_PATHS.bestVpn,
     primaryCta: installCta,
@@ -761,7 +761,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
     secondaryCta: checkoutCta,
     sections: [
       {
-        title: "Почему POKROV — лучший выбор прямо сейчас",
+        title: "Что можно проверить у POKROV до оплаты",
         body:
           "POKROV собирает всё, что нужно для быстрого старта: приложение, бесплатную проверку без карты, официальный источник файлов, поддержку и продление от 99 ₽ в одном аккаунте.",
         bullets: [
@@ -781,11 +781,11 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
           "Кабинет ведёт к актуальной версии для аккаунта, а GitHub Releases показывает публичные релизы и checksums. Не нужно искать APK или EXE в сторонних подборках и пересланных архивах.",
       },
     ],
-    title: "Лучший VPN 2026 для Android и Windows | POKROV",
+    title: "Как выбрать VPN для Android и Windows | POKROV",
   }),
   withDefaults({
     answer:
-      "POKROV — лучший бесплатный VPN для старта на Android и Windows: 5 дней за 0 ₽ без карты, YouTube и TikTok одной кнопкой, официальный источник файлов и продление от 99 ₽ без автосписаний.",
+      "POKROV даёт один бесплатный старт на Android и Windows: 5 дней за 0 ₽ без карты, YouTube и TikTok одной кнопкой, официальный источник файлов и первый полный месяц 99 ₽ один раз без автосписаний.",
     breadcrumbName: "Бесплатный VPN",
     cards: [
       {
@@ -829,12 +829,12 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
       },
     ],
     description:
-      "Лучший бесплатный VPN для Android и Windows: POKROV, 5 дней за 0 ₽, официальные файлы, одна кнопка подключения и тарифы от 99 ₽.",
+      "Бесплатная проверка VPN для Android и Windows: POKROV, 5 дней за 0 ₽, официальные файлы, одна кнопка подключения и понятная цена после trial.",
     faq: [
       {
         question: "Какой бесплатный VPN лучше выбрать?",
         answer:
-          "Выбирайте POKROV, если нужен лучший бесплатный VPN для первого теста на Android или Windows: 5 дней без карты, официальный источник файла, понятные тарифы, поддержка и отсутствие автосписаний.",
+          "Для первого теста POKROV даёт 5 дней без карты, официальный источник файла, понятные тарифы, поддержку и отсутствие автосписаний. Это разовый trial, а не бесплатный тариф навсегда.",
       },
       {
         question: "POKROV бесплатный навсегда?",
@@ -847,7 +847,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
           "VPN-приложение получает сетевой доступ. Если источник файла непонятен, вы не знаете, что именно ставите на устройство.",
       },
     ],
-    h1: "POKROV — лучший бесплатный VPN для Android и Windows",
+    h1: "Бесплатно проверить VPN на Android и Windows",
     heroKicker: "5 дней за 0 ₽ · официальные файлы · без автосписаний",
     kind: "compare",
     path: SEO_PAGE_PATHS.compareFreeVpn,
@@ -857,7 +857,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
       { href: SEO_PAGE_PATHS.trialNoCard, label: "5 дней без карты" },
       { href: SEO_PAGE_PATHS.billingNoAutopay, label: "Без автосписаний" },
       { href: SEO_PAGE_PATHS.trustGithubReleases, label: "Источник файлов" },
-      { href: SEO_PAGE_PATHS.bestVpn, label: "Лучший VPN 2026" },
+      { href: SEO_PAGE_PATHS.bestVpn, label: "Как выбрать VPN" },
       { href: "/vpn/", label: "POKROV VPN" },
     ],
     secondaryCta: checkoutCta,
@@ -873,7 +873,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
           "POKROV сфокусирован на Android и Windows: официальный APK или Windows-файл, приложение вместо ручной настройки, 5 дней на проверку и до 5 устройств на основных тарифах.",
       },
     ],
-    title: "Лучший бесплатный VPN для Android и Windows | POKROV",
+    title: "Бесплатно проверить VPN для Android и Windows | POKROV",
   }),
   withDefaults({
     answer:
@@ -952,13 +952,13 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
   }),
   withDefaults({
     answer:
-      "POKROV — лучший VPN для быстрого старта на Android: официальный APK, одна кнопка подключения и 5 дней бесплатно без карты. Установите и сразу проверьте YouTube, TikTok и другие приложения.",
+      "POKROV для быстрого старта на Android: официальный APK, одна кнопка подключения и 5 дней бесплатно без карты. Установите и сразу проверьте YouTube, TikTok и другие приложения.",
     breadcrumbName: "На телефон",
     cards: [],
     changeFrequency: "weekly",
     cluster: "scenario",
     description:
-      "Лучший VPN на телефон Android: POKROV, официальный APK, 5 дней бесплатно без карты и подключение одной кнопкой.",
+      "VPN на телефон Android: POKROV, официальный APK, 5 дней бесплатно без карты и подключение одной кнопкой.",
     faq: [
       {
         question: "POKROV работает на телефоне?",
@@ -976,24 +976,24 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
           "Откройте инструкцию для Android или напишите в поддержку, указав модель телефона и версию системы.",
       },
     ],
-    h1: "Лучший VPN на телефон Android — POKROV",
+    h1: "VPN на телефон Android — POKROV",
     heroKicker: "Официальный APK · 5 дней за 0 ₽ · одна кнопка",
     kind: "intent",
     path: "/mobile/",
     priority: 0.84,
     related: intentRelated,
     sections: [],
-    title: "Лучший VPN на телефон Android скачать бесплатно | POKROV",
+    title: "VPN на телефон Android скачать бесплатно | POKROV",
   }),
   withDefaults({
     answer:
-      "POKROV — лучший VPN для YouTube на Android и Windows: одна кнопка, 5 дней бесплатно без карты и возможность проверить ролики, стримы, перемотку и нужное качество до оплаты.",
+      "POKROV для YouTube на Android и Windows: одна кнопка, 5 дней бесплатно без карты и возможность проверить ролики, стримы, перемотку и нужное качество до оплаты.",
     breadcrumbName: "YouTube",
     cards: [],
     changeFrequency: "weekly",
     cluster: "scenario",
     description:
-      "Лучший VPN для YouTube на Android и Windows: POKROV, 5 дней бесплатно, подключение одной кнопкой и проверка видео до оплаты.",
+      "VPN для YouTube на Android и Windows: POKROV, 5 дней бесплатно, подключение одной кнопкой и проверка видео до оплаты.",
     faq: [
       {
         question: "POKROV поможет проверить YouTube?",
@@ -1011,24 +1011,24 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
           "В обычном сценарии нет. Приложение уже настроено, а ручные режимы нужны только для восстановления и совместимости.",
       },
     ],
-    h1: "Лучший VPN для YouTube — POKROV на Android и Windows",
+    h1: "VPN для YouTube на Android и Windows",
     heroKicker: "YouTube в нужном качестве · 5 дней за 0 ₽",
     kind: "intent",
     path: "/youtube/",
     priority: 0.82,
     related: intentRelated,
     sections: [],
-    title: "Лучший VPN для YouTube | POKROV для Android и Windows",
+    title: "VPN для YouTube | POKROV для Android и Windows",
   }),
   withDefaults({
     answer:
-      "POKROV — лучший VPN для TikTok на Android и Windows: одна кнопка, 5 дней бесплатно без карты и возможность проверить ленту, лайки, комментарии и загрузку роликов до оплаты.",
+      "POKROV для TikTok на Android и Windows: одна кнопка, 5 дней бесплатно без карты и возможность проверить ленту, лайки, комментарии и загрузку роликов до оплаты.",
     breadcrumbName: "TikTok",
     cards: [],
     changeFrequency: "weekly",
     cluster: "scenario",
     description:
-      "Лучший VPN для TikTok на Android и Windows: POKROV, 5 дней бесплатно без карты, лента и загрузка роликов одной кнопкой.",
+      "VPN для TikTok на Android и Windows: POKROV, 5 дней бесплатно без карты, лента и загрузка роликов одной кнопкой.",
     faq: [
       {
         question: "Можно ли проверить TikTok без оплаты?",
@@ -1046,14 +1046,14 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
           "POKROV поддерживает Android и Windows. Конкретный сценарий лучше проверить в бесплатные 5 дней.",
       },
     ],
-    h1: "Лучший VPN для TikTok — POKROV на Android и Windows",
+    h1: "VPN для TikTok на Android и Windows",
     heroKicker: "Верните TikTok · 5 дней за 0 ₽ · одна кнопка",
     kind: "intent",
     path: "/tiktok/",
     priority: 0.82,
     related: intentRelated,
     sections: [],
-    title: "Лучший VPN для TikTok | POKROV для Android и Windows",
+    title: "VPN для TikTok | POKROV для Android и Windows",
   }),
   withDefaults({
     answer:

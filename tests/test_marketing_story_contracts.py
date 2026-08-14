@@ -61,7 +61,6 @@ def test_homepage_navigation_mobile_menu_and_core_sections_have_story_contracts(
             "Steps",
             "Showcase",
             "Pricing",
-            "TelegramBonus",
             "Faq",
             "FinalCta",
         ),
@@ -72,7 +71,10 @@ def test_homepage_navigation_mobile_menu_and_core_sections_have_story_contracts(
         (
             "HeroVisual",
             "getTariffPlans().find",
-            "MARKETING_CANONICAL_PATHS.install",
+            "PlatformDownloadAction",
+            "initialAndroidUrl={config.androidApkUrl}",
+            "initialWindowsUrl={config.windowsExeUrl}",
+            "YouTube, TikTok и ChatGPT — одной кнопкой",
             'href="/#how-it-works"',
         ),
         context="homepage hero",
@@ -83,6 +85,7 @@ def test_homepage_navigation_mobile_menu_and_core_sections_have_story_contracts(
             "function Pricing",
             "getTariffPlans()",
             ".filter((plan) => plan.is_active)",
+            '["start_99", "6_months", "12_months"]',
             "plans.map",
             "PriceCard",
             "MARKETING_CANONICAL_PATHS.checkout",
@@ -167,6 +170,7 @@ def test_marketing_checkout_contract_keeps_provider_fallback_redeem_and_email_fl
     checkout = _read("marketing/src/app/checkout/checkout-client.tsx")
     checkout_page = _read("marketing/src/app/checkout/page.tsx")
     cabinet_checkout = _read("webapp/src/app/(dashboard)/subscription/checkout/page.tsx")
+    cabinet_plans = _read("webapp/src/lib/cabinet-plans.ts")
     tariff_helpers = _read("shared/tariff-catalog.ts")
 
     _assert_contains(
@@ -184,6 +188,11 @@ def test_marketing_checkout_contract_keeps_provider_fallback_redeem_and_email_fl
             "/api/payments/providers",
             "async function createPublicRubOrder",
             "/api/payments/orders/create-public",
+            "/api/payments/start-99-eligibility",
+            "checkout_ticket: payload.checkout_ticket",
+            "start_99_already_used",
+            "Приветственный месяц уже использован",
+            'replacementPlan || "1_month"',
             "buyer_email",
             "payment_method",
             "promo_code",
@@ -210,7 +219,7 @@ def test_marketing_checkout_contract_keeps_provider_fallback_redeem_and_email_fl
     assert "CHECKOUT_READY_PLAN_CODES" not in checkout
     assert "CHECKOUT_READY_PLAN_CODES" not in cabinet_checkout
     _assert_contains(
-        cabinet_checkout,
+        cabinet_checkout + cabinet_plans,
         (
             "getCheckoutTariffPlans",
             "tariffPlanAllowsDiscount",
@@ -242,7 +251,7 @@ def test_marketing_checkout_contract_keeps_provider_fallback_redeem_and_email_fl
     )
 
 
-def test_best_vpn_search_surface_is_proof_first() -> None:
+def test_vpn_selection_search_surface_is_proof_first_without_absolute_claims() -> None:
     seo_pages = _read("marketing/src/lib/seo-pages.ts")
     best_vpn_page = _read("marketing/src/app/best-vpn/page.tsx")
     shared_copy = _read("shared/copy.ts")
@@ -252,9 +261,9 @@ def test_best_vpn_search_surface_is_proof_first() -> None:
         seo_pages,
         (
             'bestVpn: "/best-vpn/"',
-            "POKROV — лучший VPN 2026 для Android и Windows",
+            "Как выбрать VPN для Android и Windows",
             "5 дней за 0 ₽",
-            "тарифы от 99 ₽ без автосписаний",
+            "первый полный месяц 99 ₽ один раз",
             "официальные файлы",
         ),
         context="best VPN SEO registry",
@@ -286,6 +295,61 @@ def test_best_vpn_search_surface_is_proof_first() -> None:
 
     assert "Direct-meaning VPN wording is not allowed" not in shared_copy
     assert "ok: true" in shared_copy
+    assert "лучший VPN" not in seo_pages
+    assert "Лучший VPN" not in seo_pages
+    assert "POKROV — лучший" not in llms
+
+
+def test_active_release_surfaces_have_no_advertising_sdk_or_vendor_tracker() -> None:
+    client_root = ROOT.parent / "POKROV-app"
+    assert client_root.is_dir()
+    forbidden = (
+        "firebase_analytics",
+        "firebase-analytics",
+        "appsflyer",
+        "adjust_sdk",
+        "com.adjust.sdk",
+        "facebook-android-sdk",
+        "com.facebook.appevents",
+        "posthog",
+        "mixpanel",
+        "@segment/analytics",
+        "sentry_flutter",
+        "@sentry/nextjs",
+        "googletagmanager",
+        "gtag(",
+        "hotjar",
+        "clarity.ms",
+        "matomo",
+    )
+    roots = (
+        ROOT / "marketing" / "src",
+        ROOT / "webapp" / "src",
+        ROOT / "adminapp" / "src",
+        client_root / "apps",
+        client_root / "packages",
+    )
+    files = [
+        ROOT / "marketing" / "package.json",
+        ROOT / "webapp" / "package.json",
+        ROOT / "adminapp" / "package.json",
+        client_root / "pubspec.yaml",
+        client_root / "pubspec.lock",
+    ]
+    for source_root in roots:
+        files.extend(
+            path
+            for path in source_root.rglob("*")
+            if path.is_file()
+            and not any(part in {"build", ".dart_tool", "test", "docs", "node_modules"} for part in path.parts)
+            and path.suffix.lower() in {".ts", ".tsx", ".js", ".json", ".yaml", ".yml", ".dart", ".kt", ".kts", ".xml", ".cpp", ".h"}
+        )
+    for path in files:
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8", errors="ignore").lower()
+        hits = [marker for marker in forbidden if marker in text]
+        assert not hits, f"{path} contains third-party tracker markers: {hits}"
 
 
 def test_install_legal_machine_files_and_intent_pages_remain_available() -> None:
@@ -303,15 +367,18 @@ def test_install_legal_machine_files_and_intent_pages_remain_available() -> None
         assert (ROOT / relative_path).exists(), f"missing {relative_path}"
 
     install_page = _read("marketing/src/app/install/page.tsx")
+    download_actions = _read("marketing/src/components/install/download-actions.tsx")
+    release_assets = _read("marketing/src/lib/release-assets.ts")
     vpn_page = _read("marketing/src/app/vpn/page.tsx")
 
     _assert_contains(
-        install_page,
+        install_page + download_actions + release_assets,
         (
-            "function buildCabinetDownloadsHref",
-            'url.pathname = "/downloads/"',
-            'url.searchParams.set("platform", platform)',
-            "config.webappUrl",
+            'fetch(`${CANONICAL_API_BASE_URL}/api/public/client-apps?channel=beta`',
+            'credentials: "omit"',
+            '"pokrov-android-arm64-v8a.apk"',
+            '"pokrov-windows-setup-x64.exe"',
+            "Ссылка не подменяется кабинетом",
             "config.supportTelegramUrl",
             "PlatformTabs",
             'id: "android"',

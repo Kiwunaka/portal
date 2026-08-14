@@ -119,7 +119,7 @@ do not create another implicit loader or restore a monolith.
 Run from the platform repository:
 
 ~~~powershell
-$py = '.venv/Scripts/python.exe'
+$py = (Get-Command python.exe).Source
 & $py -B -m pytest -p no:cacheprovider tests/test_module_slices.py -q
 & $py -B -m pytest -p no:cacheprovider portal_bot/tests/test_app_first_api.py tests/test_portal_api.py -q
 & $py -B -m pytest -p no:cacheprovider tests/test_api_auth_and_tickets.py tests/test_bot_paywall.py -q

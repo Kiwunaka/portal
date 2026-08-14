@@ -7,6 +7,7 @@ import logging
 import os
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 import aiohttp
 from dotenv import load_dotenv
@@ -35,11 +36,12 @@ from economy_service import (
 )
 from free_cycle_service import FREE_STANDARD_QUOTA_BYTES, process_due_free_cycle_resets, queue_free_profile_reentry
 from models import (
+    AcquisitionHandoff,
+    AcquisitionSession,
     AdminActionIntent,
     CampaignSend,
     Event,
     EntitlementGrant,
-    ExternalOrder,
     ExternalPaymentEvent,
     FunnelEvent,
     InternalIngestNonce,
@@ -56,7 +58,6 @@ from models import (
     UserKeyPolicy,
 )
 from node_provisioning_service import process_node_provisioning_jobs
-from offers_service import create_offer, expire_stale_offers, get_active_offer
 from observer_service import cleanup_observer_retention
 from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark_abandoned_notified
 from admin_ops_service import ops_alert_notification_batches, refresh_ops_alerts_for_current_state
@@ -72,11 +73,6 @@ SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or os.getenv("SUPPORT_USER
 FREE_TOTAL_GB = int(FREE_STANDARD_QUOTA_BYTES // (1024**3))
 PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "pokrov_vpn").lstrip("@")
 AUTO_FREE_DAYS = int(os.getenv("AUTO_FREE_DAYS", "3650"))
-START99_WELCOME_ENABLED = os.getenv("START99_WELCOME_ENABLED", "1").strip().lower() in {"1", "true", "yes", "on", "y"}
-START99_WELCOME_MIN_HOURS = max(1, int(os.getenv("START99_WELCOME_MIN_HOURS", "24")))
-START99_WELCOME_MAX_HOURS = max(START99_WELCOME_MIN_HOURS + 1, int(os.getenv("START99_WELCOME_MAX_HOURS", "48")))
-START99_WELCOME_DISCOUNT_PCT = max(1, min(95, int(os.getenv("START99_WELCOME_DISCOUNT_PCT", "15"))))
-START99_WELCOME_DISCOUNT_CODE = (os.getenv("START99_WELCOME_DISCOUNT_CODE") or "STARTBOOST").strip().upper()[:20]
 REFERRAL_BONUS_DAYS = max(1, int(os.getenv("REFERRAL_BONUS_DAYS", "10")))
 REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, int(os.getenv("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", "168")))
 EVENT_RETENTION_DAYS = max(1, int(os.getenv("EVENT_RETENTION_DAYS", "180")))
@@ -189,16 +185,6 @@ RETENTION_DEFAULT_COPY: dict[str, dict[str, str]] = {
             "Откройте продление и снова подключайтесь."
         ),
     },
-    "start99_offer": {
-        "a": (
-            "Вы уже проверили POKROV в реальном трафике.\n\n"
-            "Мы сохранили скидку {discount_pct}% на первое продление."
-        ),
-        "b": (
-            "Бесплатный период почти закончился.\n\n"
-            "Скидка {discount_pct}% уже ждёт на следующем шаге продления."
-        ),
-    },
 }
 
 RETENTION_BUTTONS: dict[str, dict[str, str]] = {
@@ -207,7 +193,6 @@ RETENTION_BUTTONS: dict[str, dict[str, str]] = {
     "t1": {"a": "Продлить сейчас", "b": "Избежать паузы"},
     "t0": {"a": "Открыть продление", "b": "Оставить доступ активным"},
     "reactivation": {"a": "Вернуться в POKROV", "b": "Проверить подключение"},
-    "start99_offer": {"a": "Продлить со скидкой", "b": "Забрать предложение"},
 }
 
 
@@ -229,14 +214,39 @@ def _ab_variant_for_user(*, tg_id: int, flow_key: str) -> str:
     return "b" if (digest[0] % 2) else "a"
 
 
-def _expiry_stage(delta: timedelta) -> str:
-    if timedelta(days=2) < delta <= timedelta(days=3):
+def _expiry_access_kind(user: User) -> str:
+    plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
+    sub_type = str(getattr(user, "sub_type", "") or "").strip().upper()
+    if plan_code == "trial" or sub_type.startswith("TRIAL"):
+        return "trial"
+    if plan_code in {"channel_bonus", "bonus"} or sub_type.startswith("BONUS") or sub_type in {
+        "CHANNEL_BONUS",
+        "OPENING_BONUS",
+        "FRIEND_GIFT",
+    }:
+        return "bonus"
+    return "paid"
+
+
+def _expiry_stage(delta: timedelta, *, access_kind: str = "paid") -> str:
+    if access_kind == "paid" and timedelta(days=2) < delta <= timedelta(days=3):
         return "t3"
-    if timedelta(hours=20) < delta <= timedelta(hours=28):
+    if timedelta(hours=16) < delta <= timedelta(hours=32):
         return "t1"
-    if timedelta(hours=-1) <= delta <= timedelta(hours=1):
+    if timedelta(hours=-12) <= delta <= timedelta(hours=12):
         return "t0"
     return ""
+
+
+def _telegram_delivery_window_open(user: User, *, now: datetime) -> bool:
+    timezone_name = str(getattr(user, "app_timezone", "") or "").strip() or "Europe/Moscow"
+    try:
+        user_timezone = ZoneInfo(timezone_name)
+    except Exception:
+        user_timezone = ZoneInfo("Europe/Moscow")
+    aware_now = now.replace(tzinfo=timezone.utc) if now.tzinfo is None else now.astimezone(timezone.utc)
+    local_hour = aware_now.astimezone(user_timezone).hour
+    return 9 <= local_hour < 21
 
 
 def _retention_template_key(*, flow: str, variant: str) -> str:
@@ -276,7 +286,6 @@ def _retention_text(*, flow: str, variant: str, context: dict[str, str] | None =
         "t1": "retention.t1",
         "t0": "retention.t0",
         "reactivation": "retention.reactivation",
-        "start99_offer": "retention.start99_offer",
     }.get(flow_key, "")
     fallback = (
         get_copy_text(catalog_key, "") if catalog_key else ""
@@ -303,31 +312,9 @@ def _retention_buttons(*, flow: str, variant: str) -> list[list[dict[str, str]]]
         or "Продолжить"
     )
     rows = [[{"text": label, "url": _bot_pay_url()}]]
-    if flow_key in {"welcome", "reactivation", "start99_offer"} and PUBLIC_CHANNEL:
+    if flow_key in {"welcome", "reactivation"} and PUBLIC_CHANNEL:
         rows.append([{"text": "📣 Канал с обновлениями", "url": f"https://t.me/{PUBLIC_CHANNEL}"}])
     return rows
-
-
-def _ensure_pending_discount(*, tg_id: int, pct: int, code: str) -> tuple[int, bool]:
-    s = SessionLocal()
-    try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            return 0, False
-        current = int(getattr(user, "pending_discount_pct", 0) or 0)
-        target = max(1, min(95, int(pct)))
-        if current >= target and current > 0:
-            return current, False
-        user.pending_discount_pct = int(target)
-        user.pending_discount_code = str(code or START99_WELCOME_DISCOUNT_CODE).strip().upper()[:20]
-        user.pending_discount_set_at = _utcnow()
-        s.commit()
-        return int(target), True
-    except Exception:
-        s.rollback()
-        return 0, False
-    finally:
-        s.close()
 
 
 async def _telegram_send_message(
@@ -658,6 +645,8 @@ async def welcome_chain_job() -> None:
             s.close()
 
         for u in users:
+            if not _telegram_delivery_window_open(u, now=now):
+                continue
             campaign_key = "welcome_chain_v1"
             if not _mark_campaign_sent_once(tg_id=int(u.tg_id), campaign_key=campaign_key):
                 continue
@@ -698,14 +687,17 @@ async def expiry_chain_job() -> None:
             s.close()
 
         for u in users:
+            if not _telegram_delivery_window_open(u, now=now):
+                continue
             expiry = u.expiry_at
             if not expiry:
                 continue
             delta = expiry - now
-            stage = _expiry_stage(delta)
+            access_kind = _expiry_access_kind(u)
+            stage = _expiry_stage(delta, access_kind=access_kind)
             if not stage:
                 continue
-            campaign_key = f"expiry_{stage}:{expiry.date().isoformat()}"
+            campaign_key = f"expiry_{access_kind}_{stage}:{expiry.date().isoformat()}"
             if not _mark_campaign_sent_once(tg_id=int(u.tg_id), campaign_key=campaign_key):
                 continue
             variant = _ab_variant_for_user(tg_id=int(u.tg_id), flow_key=f"expiry_{stage}")
@@ -720,168 +712,21 @@ async def expiry_chain_job() -> None:
                     tg_id=int(u.tg_id),
                     event_name="retention_ping",
                     source="worker",
-                    meta={"flow": "expiry_chain", "stage": stage, "variant": variant, "campaign_key": campaign_key},
-                )
-        await asyncio.sleep(3600)
-
-
-async def start99_welcome_offer_job() -> None:
-    while True:
-        if not START99_WELCOME_ENABLED:
-            await asyncio.sleep(900)
-            continue
-
-        now = _utcnow()
-        newer_than = now - timedelta(hours=int(START99_WELCOME_MAX_HOURS))
-        older_than = now - timedelta(hours=int(START99_WELCOME_MIN_HOURS))
-        s = SessionLocal()
-        try:
-            rows = (
-                s.query(ExternalOrder)
-                .filter(ExternalOrder.tg_id.isnot(None))
-                .filter(ExternalOrder.paid_at.isnot(None))
-                .filter(ExternalOrder.paid_at >= newer_than)
-                .filter(ExternalOrder.paid_at <= older_than)
-                .filter(func.lower(func.coalesce(ExternalOrder.status, "")) == "paid")
-                .filter(func.lower(func.coalesce(ExternalOrder.plan_code, "")) == "start_99")
-                .order_by(ExternalOrder.paid_at.desc())
-                .limit(300)
-                .all()
-            )
-        finally:
-            s.close()
-
-        for row in rows:
-            tg_id = int(getattr(row, "tg_id", 0) or 0)
-            if tg_id <= 0:
-                continue
-            campaign_key = f"start99_welcome_offer:{str(getattr(row, 'order_id', '') or '')[:32]}"
-            if not _mark_campaign_sent_once(tg_id=tg_id, campaign_key=campaign_key):
-                continue
-            variant = _ab_variant_for_user(tg_id=tg_id, flow_key="start99_offer")
-            discount_pct, applied_now = _ensure_pending_discount(
-                tg_id=tg_id,
-                pct=int(START99_WELCOME_DISCOUNT_PCT),
-                code=START99_WELCOME_DISCOUNT_CODE,
-            )
-            text = _retention_text(
-                flow="start99_offer",
-                variant=variant,
-                context={"discount_pct": str(max(1, int(discount_pct or START99_WELCOME_DISCOUNT_PCT)))},
-            )
-            if not applied_now and int(discount_pct) > 0:
-                text += f"\n\nТекущая сохранённая скидка: {int(discount_pct)}%."
-            ok = await _telegram_send_message(
-                chat_id=tg_id,
-                text=text,
-                buttons=_retention_buttons(flow="start99_offer", variant=variant),
-            )
-            if ok:
-                track_event(
-                    tg_id=tg_id,
-                    event_name="retention_ping",
-                    source="worker",
                     meta={
-                        "flow": "start99_welcome_offer",
+                        "flow": "expiry_chain",
+                        "access_kind": access_kind,
+                        "stage": stage,
                         "variant": variant,
                         "campaign_key": campaign_key,
-                        "discount_pct": int(discount_pct or 0),
-                        "applied_now": bool(applied_now),
                     },
                 )
-        await asyncio.sleep(900)
-
-
-async def _legacy_usage_bytes(*, tg_id: int) -> int:
-    if not Settings.PANEL_PATH:
-        return 0
-    try:
-        base = Settings.PANEL_BASE_URL.rstrip("/")
-        path = Settings.PANEL_PATH.strip("/")
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{base}/{path}/login",
-                data={"username": Settings.PANEL_USER, "password": Settings.PANEL_PASS},
-                timeout=aiohttp.ClientTimeout(total=10),
-            ) as login_resp:
-                if login_resp.status != 200:
-                    return 0
-                cookies = login_resp.cookies
-            async with session.get(
-                f"{base}/{path}/panel/api/inbounds/list",
-                cookies=cookies,
-                timeout=aiohttp.ClientTimeout(total=10),
-            ) as list_resp:
-                if list_resp.status != 200:
-                    return 0
-                data = await list_resp.json()
-                if not data.get("success"):
-                    return 0
-                for inb in data.get("obj", []):
-                    if int(inb.get("id") or 0) != int(Settings.INBOUND_ID):
-                        continue
-                    clients = (inb.get("clientStats") or [])
-                    for c in clients:
-                        if str(c.get("tgId", "")).strip() == str(int(tg_id)):
-                            return int(c.get("up", 0) or 0) + int(c.get("down", 0) or 0)
-    except Exception:
-        return 0
-    return 0
-
-
-async def oto_free_job() -> None:
-    while True:
-        expire_stale_offers()
-        now = _utcnow()
-        s = SessionLocal()
-        try:
-            users = (
-                s.query(User)
-                .filter(User.tg_id > 0)
-                .filter(func.upper(User.sub_type) == "FREE")
-                .filter(User.is_active == True)
-                .all()
-            )
-        finally:
-            s.close()
-
-        for u in users:
-            if get_active_offer(tg_id=int(u.tg_id), offer_type="trial_oto"):
-                continue
-
-            near_expiry = bool(u.expiry_at and (u.expiry_at - now) <= timedelta(hours=24))
-            low_gb = False
-            used_bytes = await _legacy_usage_bytes(tg_id=int(u.tg_id))
-            if used_bytes > 0:
-                used_gb = used_bytes / float(1024**3)
-                remaining_gb = max(0.0, float(FREE_TOTAL_GB) - used_gb)
-                low_gb = remaining_gb <= float(FREE_TOTAL_GB) * 0.2
-
-            if not (near_expiry or low_gb):
-                continue
-
-            trigger_reason = "low_gb" if low_gb else "near_expiry"
-            offer = create_offer(
-                tg_id=int(u.tg_id),
-                offer_type="trial_oto",
-                plan_code="1_month",
-                price_stars=149,
-                trigger_reason=trigger_reason,
-                expires_at=now + timedelta(hours=2),
-            )
-            if not offer:
-                continue
-
-            text = "🎁 Мягкий апгрейд на 2 часа: 1 месяц за 149 ₽.\nОффер закреплён за вами."
-            buttons = [[{"text": "Подключить / Продлить", "url": _bot_pay_url()}]]
-            await _telegram_send_message(chat_id=int(u.tg_id), text=text, buttons=buttons)
-        await asyncio.sleep(900)
+        await asyncio.sleep(3600)
 
 
 async def reactivation_job() -> None:
     while True:
         now = _utcnow()
-        campaign_base = f"reactivation_new_node:{now.strftime('%Y%m%d')}"
+        campaign_base = f"promo:reactivation:{now.strftime('%Y%m%d')}"
         s = SessionLocal()
         try:
             rows = (
@@ -900,7 +745,11 @@ async def reactivation_job() -> None:
             s.close()
 
         for u in rows:
-            if _sent_recently(tg_id=int(u.tg_id), campaign_prefix="reactivation_new_node:", within_days=30):
+            if not _telegram_delivery_window_open(u, now=now):
+                continue
+            if _sent_recently(tg_id=int(u.tg_id), campaign_prefix="expiry_", within_days=3):
+                continue
+            if _sent_recently(tg_id=int(u.tg_id), campaign_prefix="promo:", within_days=30):
                 continue
             if not _mark_campaign_sent_once(tg_id=int(u.tg_id), campaign_key=campaign_base):
                 continue
@@ -1262,6 +1111,18 @@ def run_telemetry_retention_once(*, session, now: datetime) -> dict[str, int]:
         else now.astimezone(timezone.utc)
     )
     deleted = {
+        "acquisition_handoffs": _delete_older_than(
+            session,
+            AcquisitionHandoff,
+            AcquisitionHandoff.expires_at,
+            now,
+        ),
+        "acquisition_sessions": _delete_older_than(
+            session,
+            AcquisitionSession,
+            AcquisitionSession.expires_at,
+            now,
+        ),
         "events": _delete_older_than(
             session,
             Event,
@@ -1373,8 +1234,6 @@ async def main() -> None:
         asyncio.create_task(_supervise_job("welcome_chain", welcome_chain_job)),
         asyncio.create_task(_supervise_job("abandoned_cart", abandoned_cart_job)),
         asyncio.create_task(_supervise_job("expiry_chain", expiry_chain_job)),
-        asyncio.create_task(_supervise_job("start99_welcome_offer", start99_welcome_offer_job)),
-        asyncio.create_task(_supervise_job("oto_free", oto_free_job)),
         asyncio.create_task(_supervise_job("reactivation", reactivation_job)),
         asyncio.create_task(_supervise_job("node_metrics_watchdog", node_metrics_watchdog_job)),
         asyncio.create_task(_supervise_job("admin_ops_alert_refresh", admin_ops_alert_refresh_job)),

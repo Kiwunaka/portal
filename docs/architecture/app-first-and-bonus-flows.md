@@ -678,11 +678,11 @@ compatibility, never delay a payment/bonus start and never select
   until the server returns the stable link.
 - one referred account has at most one account-owned referrer; self-referral and
   cycles are rejected while legacy `User.referrer_id` remains a projection
-- the referred friend receives no automatic grant from install, registration,
-  trial, `ConnectionEvidence`, `clicked_connect`, `connected_ok`, or payment
-- referrer `+10 days` is queued only by the referred account's first successful
-  payment and releases once after a full `72 hour` hold; gifts and renewals do
-  not qualify
+- the referred friend receives no grant from install, registration, trial,
+  `ConnectionEvidence`, `clicked_connect`, or `connected_ok`; their first
+  successful provider payment releases one idempotent `+5 day` grant
+- referrer `+10 days` is queued by that same first successful payment and
+  releases once after a full `72 hour` hold; gifts and renewals do not qualify
 - pending legacy referral queue rows are migrated idempotently into the same
   canonical relationship and first-payment hold using their original queued
   payment time. A row is marked `superseded_account` only after migration;

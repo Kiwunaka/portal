@@ -212,7 +212,7 @@ export default function VpnSeoPage() {
                   Telegram
                 </Link>
                 <Link href={MARKETING_CANONICAL_PATHS.bestVpn} className="text-[0.875rem] font-semibold text-brand no-underline hover:text-brand-strong">
-                  Лучший VPN 2026
+                  Как выбрать VPN
                 </Link>
                 <Link href={SEO_PAGE_PATHS.android} className="text-[0.875rem] font-semibold text-brand no-underline hover:text-brand-strong">
                   Android

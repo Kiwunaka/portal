@@ -130,6 +130,8 @@ class ApiP0ExtensionsTests(unittest.TestCase):
 
         for module_name in (
             "api",
+            "acquisition_service",
+            "gift_cards_service",
             "events_service",
             "offers_service",
             "pay_attempts_service",
@@ -397,6 +399,88 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertRegex(body["updated_at"], r"^\d{4}-\d{2}-\d{2}T")
         self.assertTrue(body["updated_at"].endswith("Z"))
 
+    def test_funnel_event_keeps_bounded_attribution_without_raw_urls(self) -> None:
+        from db import SessionLocal
+        from models import AcquisitionSession, FunnelEvent
+
+        raw_session_id = "browser-session-api-0001"
+        client = TestClient(self.api.app)
+        response = client.post(
+            "/api/funnel/events",
+            json={
+                "event_name": "download_click",
+                "stage": "download",
+                "channel": "marketing",
+                "source": "telegram_ads",
+                "session_id": raw_session_id,
+                "path": "/install/?token=must-not-stay",
+                "entry_route": "/install/?token=must-not-stay",
+                "referrer": "https://search.example/private?q=must-not-stay",
+                "campaign": "aug_launch",
+                "utm_content": "video_03",
+                "ref": "creator_17",
+                "meta": {
+                    "asset": "pokrov-android-arm64-v8a.apk",
+                    "platform": "android",
+                    "href": "https://example.test/private?token=must-not-stay",
+                    "text": "raw button copy",
+                },
+            },
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+
+        s = SessionLocal()
+        try:
+            event = s.query(FunnelEvent).one()
+            acquisition = s.query(AcquisitionSession).one()
+            self.assertNotEqual(event.session_id, raw_session_id)
+            self.assertEqual(event.session_id, acquisition.session_key_hash)
+            self.assertEqual(event.path, "/install/")
+            self.assertEqual(event.referrer, "search.example")
+            self.assertNotIn("must-not-stay", str(event.meta_json or ""))
+            self.assertNotIn("raw button copy", str(event.meta_json or ""))
+            self.assertEqual(acquisition.first_campaign, "aug_launch")
+            self.assertEqual(acquisition.last_content, "video_03")
+            self.assertEqual(acquisition.last_ref, "creator_17")
+        finally:
+            s.close()
+
+    def test_acquisition_handoff_is_authenticated_and_one_time(self) -> None:
+        client = TestClient(self.api.app)
+        created = client.post(
+            "/api/acquisition/handoffs",
+            json={
+                "session_id": "browser-session-api-0002",
+                "purpose": "account_continue",
+                "channel": "marketing",
+                "source": "telegram_ads",
+                "campaign": "aug_launch",
+                "entry_route": "/install/",
+            },
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        handle = str(created.json()["handle"])
+
+        unauthenticated = client.post(
+            "/api/acquisition/handoffs/consume",
+            json={"handle": handle, "purpose": "account_continue"},
+        )
+        self.assertEqual(unauthenticated.status_code, 401, unauthenticated.text)
+
+        headers = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        consumed = client.post(
+            "/api/acquisition/handoffs/consume",
+            headers=headers,
+            json={"handle": handle, "purpose": "account_continue"},
+        )
+        self.assertEqual(consumed.status_code, 200, consumed.text)
+        replay = client.post(
+            "/api/acquisition/handoffs/consume",
+            headers=headers,
+            json={"handle": handle, "purpose": "account_continue"},
+        )
+        self.assertEqual(replay.status_code, 409, replay.text)
+
     def test_client_apps_endpoint_returns_outside_store_configured_urls(self) -> None:
         self.api.Settings.APP_ANDROID_PLAY_URL = "https://play.google.com/store/apps/details?id=space.pokrov.vpn"
         self.api.Settings.APP_ANDROID_APK_URL = "https://github.com/example/pokrov-vpn/releases/latest/download/pokrov-vpn-android-arm64.apk"
@@ -493,6 +577,62 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         required = client.get("/api/client/apps?platform=android&current_version=0.8.9", headers=hdrs)
         self.assertEqual(required.status_code, 200, required.text)
         self.assertEqual(required.json()["android"]["update"]["update_policy"], "required")
+
+    def test_public_client_apps_is_anonymous_and_fail_closed_to_approved_release_assets(self) -> None:
+        release = "https://github.com/Kiwunaka/pokrov/releases/download/v1.0.4-beta.1"
+        self.api.Settings.APP_ANDROID_APK_URL = f"{release}/pokrov-android-arm64-v8a.apk"
+        self.api.Settings.APP_ANDROID_APK_ARM64_URL = f"{release}/pokrov-android-arm64-v8a.apk"
+        self.api.Settings.APP_ANDROID_APK_ARMEABI_V7A_URL = f"{release}/pokrov-android-armeabi-v7a.apk"
+        self.api.Settings.APP_ANDROID_APK_UNIVERSAL_URL = "https://evil.example/pokrov-android-universal.apk"
+        self.api.Settings.APP_ANDROID_APK_X86_64_URL = f"{release}/pokrov-android-x86_64.apk?download=1"
+        self.api.Settings.APP_ANDROID_ARM64_SHA256 = "a" * 64
+        self.api.Settings.APP_ANDROID_ARM64_SIZE_BYTES = 101
+        self.api.Settings.APP_ANDROID_ARMEABI_V7A_SHA256 = "b" * 64
+        self.api.Settings.APP_ANDROID_ARMEABI_V7A_SIZE_BYTES = 102
+        self.api.Settings.APP_ANDROID_UNIVERSAL_SHA256 = "c" * 64
+        self.api.Settings.APP_ANDROID_UNIVERSAL_SIZE_BYTES = 103
+        self.api.Settings.APP_ANDROID_X86_64_SHA256 = "d" * 64
+        self.api.Settings.APP_ANDROID_X86_64_SIZE_BYTES = 104
+        self.api.Settings.APP_ANDROID_VERSION = "1.0.4"
+        self.api.Settings.APP_ANDROID_RELEASE_NOTES_URL = "https://github.com/Kiwunaka/pokrov/releases/tag/v1.0.4-beta.1"
+        self.api.Settings.APP_WINDOWS_EXE_URL = f"{release}/pokrov-windows-setup-x64.exe"
+        self.api.Settings.APP_WINDOWS_SHA256 = "e" * 64
+        self.api.Settings.APP_WINDOWS_SIZE_BYTES = 105
+        self.api.Settings.APP_WINDOWS_VERSION = "1.0.4-beta.1"
+        self.api.Settings.APP_WINDOWS_RELEASE_NOTES_URL = "https://github.com/Kiwunaka/pokrov/releases/tag/v1.0.4-beta.1"
+        self.api.Settings.APP_DOCS_URL = "https://pokrov.space/install/"
+
+        response = TestClient(self.api.app).get("/api/public/client-apps?platform=android&current_version=1.0.3")
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.headers["cache-control"], "public, max-age=300, stale-if-error=3600")
+        body = response.json()
+        self.assertEqual(body["android"]["apk_url"], f"{release}/pokrov-android-arm64-v8a.apk")
+        self.assertEqual(body["android"]["sha256"], "A" * 64)
+        self.assertEqual(
+            [variant["abi"] for variant in body["android"]["apk_variants"]],
+            ["arm64-v8a", "armeabi-v7a"],
+        )
+        self.assertNotIn("evil.example", response.text)
+        self.assertNotIn("download=1", response.text)
+        self.assertEqual(body["windows"]["exe_url"], f"{release}/pokrov-windows-setup-x64.exe")
+        self.assertEqual(body["windows"]["sha256"], "E" * 64)
+        self.assertEqual(body["docs_url"], "https://pokrov.space/install/")
+
+    def test_public_client_apps_omits_asset_when_hash_or_size_is_missing(self) -> None:
+        release = "https://github.com/Kiwunaka/pokrov/releases/download/v1.0.4-beta.1"
+        self.api.Settings.APP_ANDROID_APK_ARM64_URL = f"{release}/pokrov-android-arm64-v8a.apk"
+        self.api.Settings.APP_ANDROID_ARM64_SHA256 = ""
+        self.api.Settings.APP_ANDROID_ARM64_SIZE_BYTES = 101
+        self.api.Settings.APP_WINDOWS_EXE_URL = f"{release}/pokrov-windows-setup-x64.exe"
+        self.api.Settings.APP_WINDOWS_SHA256 = "f" * 64
+        self.api.Settings.APP_WINDOWS_SIZE_BYTES = 0
+
+        body = TestClient(self.api.app).get("/api/public/client-apps").json()
+
+        self.assertEqual(body["android"]["apk_url"], "")
+        self.assertEqual(body["android"]["apk_variants"], [])
+        self.assertEqual(body["windows"]["exe_url"], "")
 
     def test_client_promo_slots_support_safe_banner_fields(self) -> None:
         from db import SessionLocal

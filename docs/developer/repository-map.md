@@ -103,13 +103,16 @@ target it do not make it a normal delivery node or control-plane host.
 | Developer documentation | tests/test_agent_docs_contract.py |
 | Active client boundary | scripts/run_client_release_gate.py targeting POKROV-app |
 
-Run Python tests through the existing platform .venv; use the focused commands
-in the [Developer Guide](developer-guide.md).
+Run interactive Python checks through the configured system interpreter after
+installing `portal_bot/requirements.txt`; exact release scripts may retain an
+isolated environment they create themselves. Use the focused commands in the
+[Developer Guide](developer-guide.md).
 
 ## Current Release And Promotion Truth
 
-- Distributed client: 1.0.0-beta.
-- Target candidate: 1.0.0-rc.1.
+- Distributed client prerelease: v1.0.4-beta.1 (Android 1.0.4+2013; Windows
+  1.0.4-beta.1+13).
+- The next candidate is defined only by an exact release handoff.
 - Stable 1.0.0: unproven.
 - Account foundation: implemented in the repository, not
   production-deployed/proven.

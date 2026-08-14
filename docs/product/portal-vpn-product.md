@@ -87,10 +87,9 @@ Production deployment of account foundation is not proven. A completed productio
   telemetry never activate the trial
 - paid Telegram reward: `+5 days` for new account-owned grants after first
   payment; trial is ineligible and already-issued `+10 days` grants are grandfathered
-- current distributed beta: `1.0.0-beta`
-- canonical public client version line remains `1.0.0-beta`; any later candidate
-  requires exact promoted-client evidence
-- target candidate: `1.0.0-rc.1`
+- current distributed prerelease: `v1.0.4-beta.1`; Android `1.0.4+2013` and
+  Windows `1.0.4-beta.1+13`
+- any later candidate requires exact promoted-client and public-asset evidence
 - stable `1.0.0`: unproven
 - Russian is a first-class user language
 - recommended public routing mode: `All except RU`
@@ -333,9 +332,11 @@ Product wording rule:
 
 ### Promo And Referral Bonuses
 
-- a referred friend receives no automatic days for install, registration,
-  trial activation, connection evidence, or first payment
-- the referrer receives `+10 days` once after the referred account's first successful payment and a full `72 hour` hold
+- a referred friend receives no days for install, registration, trial
+  activation or connection evidence, then receives `+5 days` once after their
+  first successful provider payment
+- the referrer receives `+10 days` once after that first successful payment and
+  a full `72 hour` hold
 - client events, admin gifts, and later renewals cannot release these day grants
 - app-first bonus summary, referral summary, and promo-code redemption are backend-owned API contracts
 - the app may redeem promo codes through the unified code entry or the bonus promo endpoint

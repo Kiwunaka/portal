@@ -7,7 +7,7 @@
     "Use only this support knowledge. If the answer is not covered, recommend contacting support without promising what support will do.",
     "Do not ask for card details, private connection URLs, QR codes, raw subscription links, Telegram initData, passwords, private keys, or payment payloads.",
     "Do not claim store availability, stable 1.0.0, trusted Windows signing, raw Android physical-audit proof, or RU-origin readiness.",
-    "Use VPN / ВПН directly when it helps the user understand the product. POKROV may be described as the best VPN for a fast start on Android and Windows when the same answer names the supporting facts: 5 days free without a card, official files, one-button connection, pricing from 99 RUB, or up to 5 devices on main plans.",
+    "Use VPN / ВПН directly when it helps the user understand the product. Do not call POKROV the best VPN or make absolute superiority claims. Name only verifiable facts: 5 days free without a card, official files, one-button connection, one first full month for 99 RUB, or up to 5 devices on main plans.",
     "For beta/manual setup, use Hiddify as the verified fallback when available; Happ uses the dedicated ?format=happ subscription URL.",
     "Prefer safe next steps: POKROV app, cabinet, official bot, compatible-client guide, Telegram support fallback.",
     "Keep answers short for beginners: one likely cause, 2-4 concrete steps, and what to send support if it remains broken.",
@@ -75,8 +75,8 @@
     },
     {
       "id": "referral_paid_reward",
-      "keywords": ["реферал", "пригласить друга", "referral", "+10 дней", "бонус за друга"],
-      "body": "Пригласивший получает +10 дней только после первой успешной оплаты друга и серверной антифрод-паузы 72 часа. За саму установку, запуск триала или подключение дни не начисляются. Имена и аккаунты приглашённых в приложении не показываются."
+      "keywords": ["реферал", "пригласить друга", "referral", "+5 дней другу", "+10 дней", "бонус за друга"],
+      "body": "После первой успешной оплаты приглашённый получает +5 дней, а пригласивший — +10 дней после серверной антифрод-паузы 72 часа. За саму установку, запуск триала или подключение дни не начисляются. Имена и аккаунты приглашённых в приложении не показываются."
     },
     {
       "id": "reward_eligibility_unknown",

@@ -171,6 +171,21 @@ checks.append(
     )
 )
 
+public_apps_status, public_apps_payload, public_apps_error = get_json(
+    "/api/public/client-apps",
+    headers={{"Accept": "application/json"}},
+)
+checks.append(
+    check(
+        "api_public_client_apps_anonymous",
+        PASS if public_apps_status is not None and 200 <= int(public_apps_status) < 400 else BLOCKED_BY_ACCESS,
+        missing=[] if public_apps_status is not None and 200 <= int(public_apps_status) < 400 else [public_apps_error or f"HTTP {{public_apps_status}}"],
+        note="Anonymous public release catalog; no user token or initData is sent.",
+        source=f"{{base}}/api/public/client-apps",
+        http_status=public_apps_status,
+    )
+)
+
 apps_payload = {{}}
 providers_payload = {{}}
 if token:
@@ -211,6 +226,7 @@ print(json.dumps({{
     "token_present": bool(token),
     "checks": checks,
     "client_apps": apps_payload if isinstance(apps_payload, dict) else {{}},
+    "public_client_apps": public_apps_payload if isinstance(public_apps_payload, dict) else {{}},
     "payment_providers": providers_payload if isinstance(providers_payload, dict) else {{}},
 }}, ensure_ascii=False))
 PY"""
@@ -280,6 +296,11 @@ def build_report(
 ) -> dict[str, Any]:
     checks = _sanitize_remote_checks(remote_payload)
     client_apps = remote_payload.get("client_apps") if isinstance(remote_payload.get("client_apps"), Mapping) else {}
+    public_client_apps = (
+        remote_payload.get("public_client_apps")
+        if isinstance(remote_payload.get("public_client_apps"), Mapping)
+        else {}
+    )
     provider_payload = remote_payload.get("payment_providers") if isinstance(remote_payload.get("payment_providers"), Mapping) else {}
 
     if require_release_handoff:
@@ -291,6 +312,16 @@ def build_report(
                 missing=release_failures,
                 note="Live /api/client/apps must expose GitHub Releases APK/EXE and install docs before runtime link launch.",
                 source="/api/client/apps",
+            )
+        )
+        public_release_failures = _release_handoff_failures(dict(public_client_apps or {}))
+        checks.append(
+            _status(
+                "runtime_public_client_apps_release_handoff",
+                PASS if not public_release_failures else BLOCKED_BY_ACCESS,
+                missing=public_release_failures,
+                note="Live anonymous /api/public/client-apps must expose exact GitHub Releases APK/EXE and install docs.",
+                source="/api/public/client-apps",
             )
         )
 
@@ -320,7 +351,14 @@ def build_report(
     classification = _classification(checks)
     runtime_app_download_smoke_passed = classification == PASS and (
         not require_release_handoff
-        or any(check.get("name") == "runtime_client_apps_release_handoff" and check.get("status") == PASS for check in checks)
+        or (
+            any(check.get("name") == "runtime_client_apps_release_handoff" and check.get("status") == PASS for check in checks)
+            and any(
+                check.get("name") == "runtime_public_client_apps_release_handoff"
+                and check.get("status") == PASS
+                for check in checks
+            )
+        )
     )
     return {
         "ok": classification == PASS,
@@ -333,6 +371,7 @@ def build_report(
         "runtime_app_download_smoke_passed": bool(runtime_app_download_smoke_passed),
         "note": "This proves backend auth and runtime link policy using synthetic signed initData generated on brain; it is not proof that a real user opened Telegram WebApp.",
         "client_apps": dict(client_apps or {}),
+        "public_client_apps": dict(public_client_apps or {}),
         "checks": checks,
     }
 

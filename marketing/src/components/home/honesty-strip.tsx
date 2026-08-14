@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Gift, KeyRound, MessagesSquare, Package } from "lucide-react";
+import { Gift, KeyRound, Package, ShieldCheck } from "lucide-react";
 
 import { Stagger } from "../motion/reveal";
 import { CANONICAL_GITHUB_RELEASES_URL, getCopyText } from "../../lib/pokrov";
@@ -38,9 +38,12 @@ export function HonestyStrip() {
       href: CANONICAL_GITHUB_RELEASES_URL,
     },
     {
-      icon: <MessagesSquare {...ICON_PROPS} />,
-      title: getCopyText("marketing.home.honesty.support.title", "Поддержка по шагам"),
-      text: getCopyText("marketing.home.honesty.support.text", "Помогаем с установкой, подключением и оплатой по шагам"),
+      icon: <ShieldCheck {...ICON_PROPS} />,
+      title: getCopyText("marketing.home.honesty.privacy.title", "Без истории посещений"),
+      text: getCopyText(
+        "marketing.home.honesty.privacy.text",
+        "Без рекламных SDK и сторонних трекеров. Историю посещённых сайтов не храним",
+      ),
     },
   ];
 

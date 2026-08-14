@@ -18,6 +18,7 @@ import {
 } from "../../lib/marketing-site";
 import { CANONICAL_PLATFORM_BRAND, getCopyText } from "../../lib/pokrov";
 import type { SeoPage } from "../../lib/seo-pages";
+import { TrackedBotLink } from "../tracked-bot-link";
 
 export type IntentScenarioCard = {
   desc: string;
@@ -41,6 +42,7 @@ export type IntentLandingProps = {
   scenarioCards: IntentScenarioCard[];
   scenarioTitle: string;
   seoPage?: SeoPage;
+  telegramBotCta?: boolean;
 };
 
 const DEFAULT_RELATED: IntentRelatedLink[] = [
@@ -63,6 +65,7 @@ export function IntentLanding({
   scenarioCards,
   scenarioTitle,
   seoPage,
+  telegramBotCta = false,
 }: IntentLandingProps) {
   const relatedLinks = (related ?? seoPage?.related ?? DEFAULT_RELATED).filter((link) => link.href !== pagePath);
   const faqItems = seoPage?.faq.map((item) => ({ answer: item.answer, question: item.question })) || [];
@@ -94,9 +97,13 @@ export function IntentLanding({
           </p>
         ) : null}
         <div className="flex flex-wrap items-center justify-center gap-3">
-          <Button href={MARKETING_CANONICAL_PATHS.install} size="lg">
-            {getCopyText("marketing.intent.cta.primary", "Попробовать бесплатно")}
-          </Button>
+          {telegramBotCta ? (
+            <TrackedBotLink>Открыть бот POKROV</TrackedBotLink>
+          ) : (
+            <Button href={MARKETING_CANONICAL_PATHS.install} size="lg">
+              {getCopyText("marketing.intent.cta.primary", "Попробовать бесплатно")}
+            </Button>
+          )}
           <Button href="/#pricing" size="lg" variant="secondary">
             {getCopyText("marketing.intent.cta.secondary", "Тарифы от 99 ₽")}
           </Button>

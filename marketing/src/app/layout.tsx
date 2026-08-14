@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     template: "%s",
   },
   description:
-    "Быстрый VPN для YouTube, TikTok, ChatGPT и сайтов. 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽.",
+    "VPN для YouTube, TikTok, ChatGPT и сайтов. 5 дней бесплатно без карты, первый полный месяц 99 ₽ один раз, затем обычный месяц 239 ₽.",
   applicationName: CANONICAL_PLATFORM_BRAND,
   alternates: {
     canonical: `${CANONICAL_MARKETING_SITE_URL}/`,
@@ -38,7 +38,7 @@ export const metadata: Metadata = {
     locale: "ru_RU",
     siteName: CANONICAL_PLATFORM_BRAND,
     title: "POKROV VPN для Android и Windows",
-    description: "Android и Windows, 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽.",
+    description: "Android и Windows, 5 дней бесплатно без карты, первый полный месяц 99 ₽ один раз, затем обычный месяц 239 ₽.",
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     images: [
       {

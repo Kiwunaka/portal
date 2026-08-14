@@ -8,6 +8,7 @@ import { Card } from "../../components/ui/card";
 import { Chip } from "../../components/ui/chip";
 import { cn } from "../../components/utils";
 import { MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
+import { mintAcquisitionHandoff } from "../../lib/acquisition";
 import { TELEGRAM_START_PROMISE } from "../../lib/seo-pages";
 import {
   getCheckoutTariffPlans,
@@ -106,6 +107,24 @@ type PublicRubOrderResponse = {
   payment_url?: string | null;
   status: string;
 };
+
+type Start99EligibilityResponse = {
+  known: boolean;
+  eligible: boolean;
+  reason?: string | null;
+  replacement_plan?: string;
+  replacement_checkout_ticket?: string | null;
+};
+
+class CheckoutRequestError extends Error {
+  constructor(
+    message: string,
+    readonly code = "checkout_failed",
+    readonly replacementPlan = "",
+  ) {
+    super(message);
+  }
+}
 
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 const promoCatalog = getPromoSlotsCatalog();
@@ -224,10 +243,12 @@ async function fetchPaymentProviderState(): Promise<PaymentProviderState | null>
 async function createPublicRubOrder(payload: {
   provider: string;
   plan_code: string;
-  buyer_email: string;
+  buyer_email?: string;
+  checkout_ticket?: string;
   promo_code?: string;
   currency?: string;
   payment_method?: PaymentMethodChoice;
+  acquisition_handle?: string;
 }): Promise<PublicRubOrderResponse> {
   let lastError = "Не удалось создать платеж.";
   for (const base of candidateApiBases()) {
@@ -239,22 +260,59 @@ async function createPublicRubOrder(payload: {
           provider: payload.provider,
           plan_code: payload.plan_code,
           buyer_email: payload.buyer_email,
+          checkout_ticket: payload.checkout_ticket,
           source: "site",
           promo_code: payload.promo_code || undefined,
           currency: payload.currency || "RUB",
           payment_method: payload.payment_method,
+          acquisition_handle: payload.acquisition_handle,
         }),
       });
       if (!response.ok) {
-        lastError = (await response.text()) || `HTTP ${response.status}`;
+        const raw = await response.text();
+        try {
+          const parsed = JSON.parse(raw) as {
+            detail?: string | { code?: string; message?: string; replacement_plan?: string };
+          };
+          const detail = parsed.detail;
+          if (typeof detail === "object" && detail) {
+            throw new CheckoutRequestError(
+              String(detail.message || `HTTP ${response.status}`),
+              String(detail.code || "checkout_failed"),
+              String(detail.replacement_plan || ""),
+            );
+          }
+        } catch (error) {
+          if (error instanceof CheckoutRequestError) throw error;
+        }
+        lastError = raw || `HTTP ${response.status}`;
         continue;
       }
       return (await response.json()) as PublicRubOrderResponse;
     } catch (error) {
+      if (error instanceof CheckoutRequestError) throw error;
       lastError = String((error as { message?: string })?.message || error || lastError);
     }
   }
   throw new Error(lastError);
+}
+
+async function fetchStart99Eligibility(checkoutTicket: string): Promise<Start99EligibilityResponse | null> {
+  if (!checkoutTicket) return null;
+  for (const base of candidateApiBases()) {
+    try {
+      const response = await fetch(`${base}/api/payments/start-99-eligibility`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ checkout_ticket: checkoutTicket }),
+      });
+      if (!response.ok) continue;
+      return (await response.json()) as Start99EligibilityResponse;
+    } catch {
+      // Try next base.
+    }
+  }
+  return null;
 }
 
 function describePromoContent(contentId: string): { title: string; body: string } {
@@ -333,6 +391,7 @@ export function CheckoutLoadingFallback() {
 export default function CheckoutClient() {
   const searchParams = useSearchParams();
   const queryPlan = normalizePlanCode(searchParams.get("plan"), "start_99");
+  const checkoutTicket = (searchParams.get("checkout_ticket") || "").trim();
   const initialKeyInput = (searchParams.get("key") || "").trim().toUpperCase();
   const [catalog, setCatalog] = useState<PublicCatalogResponse | null>(null);
   const [plans, setPlans] = useState<PlanOption[]>(() => fallbackPlans());
@@ -349,6 +408,8 @@ export default function CheckoutClient() {
   const [buyerEmail, setBuyerEmail] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodChoice>("sbp");
   const [checkoutBusy, setCheckoutBusy] = useState(false);
+  const [start99Eligibility, setStart99Eligibility] = useState<"unknown" | "eligible" | "ineligible">("unknown");
+  const [activeCheckoutTicket, setActiveCheckoutTicket] = useState(checkoutTicket);
 
   // Fetch the catalog exactly once on mount: plan selection must not refetch.
   // Selection is reconciled through a functional update instead of a dep.
@@ -384,6 +445,24 @@ export default function CheckoutClient() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!checkoutTicket) return;
+    let cancelled = false;
+    void fetchStart99Eligibility(checkoutTicket).then((payload) => {
+      if (cancelled || !payload?.known) return;
+      const next = payload.eligible ? "eligible" : "ineligible";
+      setStart99Eligibility(next);
+      if (!payload.eligible) {
+        setSelectedPlan((current) => (current === "start_99" ? payload.replacement_plan || "1_month" : current));
+        setActiveCheckoutTicket(String(payload.replacement_checkout_ticket || ""));
+        setCheckoutStatusText("Приветственный месяц уже использован. Выбран обычный месяц за 239 ₽.");
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [checkoutTicket]);
 
   useEffect(() => {
     let cancelled = false;
@@ -458,7 +537,7 @@ export default function CheckoutClient() {
   const startPublicCheckout = async (): Promise<void> => {
     if (!checkoutReady || !activeProviderCode) return;
     const email = buyerEmail.trim().toLowerCase();
-    if (!validBuyerEmail(email)) {
+    if (!activeCheckoutTicket && !validBuyerEmail(email)) {
       setEmailError(email ? "Проверьте адрес email." : "Укажите email для чека и кода активации.");
       setCheckoutStatusText("");
       document.getElementById("checkout-buyer-email")?.focus();
@@ -468,13 +547,16 @@ export default function CheckoutClient() {
     setCheckoutBusy(true);
     setCheckoutStatusText("");
     try {
+      const acquisition = await mintAcquisitionHandoff("checkout");
       const order = await createPublicRubOrder({
         provider: activeProviderCode,
         plan_code: activePlan.code,
-        buyer_email: email,
+        buyer_email: activeCheckoutTicket ? undefined : email,
+        checkout_ticket: activeCheckoutTicket || undefined,
         promo_code: discountPercent > 0 ? promoCode : undefined,
         currency: "RUB",
         payment_method: paymentMethod,
+        acquisition_handle: acquisition?.handle,
       });
       const paymentUrl = String(order.payment_url || "").trim();
       if (!paymentUrl) {
@@ -482,7 +564,16 @@ export default function CheckoutClient() {
       }
       window.location.assign(paymentUrl);
     } catch (error) {
-      setCheckoutStatusText(String((error as { message?: string })?.message || error || "Не удалось создать платеж."));
+      if (error instanceof CheckoutRequestError && error.code === "start_99_already_used") {
+        const eligibility = checkoutTicket ? await fetchStart99Eligibility(checkoutTicket) : null;
+        setStart99Eligibility("ineligible");
+        setSelectedPlan(eligibility?.replacement_plan || error.replacementPlan || "1_month");
+        setActiveCheckoutTicket(String(eligibility?.replacement_checkout_ticket || ""));
+        setPlanPickerOpen(false);
+        setCheckoutStatusText("Приветственный месяц уже использован. Выбран обычный месяц за 239 ₽.");
+      } else {
+        setCheckoutStatusText(String((error as { message?: string })?.message || error || "Не удалось создать платеж."));
+      }
     } finally {
       setCheckoutBusy(false);
     }
@@ -500,7 +591,9 @@ export default function CheckoutClient() {
                   Оформление доступа
                 </h1>
                 <p className="mt-2 text-[0.875rem] leading-relaxed text-ink-soft sm:text-[0.9375rem]">
-                  Один платёж, без автосписаний. Код и чек придут на email.
+                  {activeCheckoutTicket
+                    ? "Один платёж, без автосписаний. Покупка привязана к вашему аккаунту."
+                    : "Один платёж, без автосписаний. Код и чек придут на email."}
                 </p>
               </div>
             </div>
@@ -550,23 +643,34 @@ export default function CheckoutClient() {
                     {plans.map((plan) => {
                       const planPreviewDiscountPercent = planDiscountPercent(plan.code, promoCode);
                       const selected = selectedPlan === plan.code;
+                      const disabled = plan.code === "start_99" && start99Eligibility === "ineligible";
                       return (
                         <button
                           key={plan.code}
                           type="button"
                           onClick={() => {
+                            if (disabled) return;
                             setSelectedPlan(plan.code);
                             setPlanPickerOpen(false);
                           }}
+                          disabled={disabled}
                           aria-pressed={selected}
                           className={cn(
                             "flex min-h-20 flex-col justify-between gap-2 rounded-(--radius-control) border px-3 py-2.5 text-left transition-[border-color,background-color] duration-200 ease-(--ease-apple) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
-                            selected ? "border-brand bg-brand-soft" : "border-line bg-surface hover:border-line-strong",
+                            disabled
+                              ? "cursor-not-allowed border-line bg-canvas-alt opacity-60"
+                              : selected
+                                ? "border-brand bg-brand-soft"
+                                : "border-line bg-surface hover:border-line-strong",
                           )}
                         >
                           <span className="flex w-full items-start justify-between gap-1">
                             <strong className="text-[0.8125rem] font-semibold text-ink">{plan.label}</strong>
-                            {planBadgeLabel(plan, true) ? <span className="text-[0.625rem] font-semibold text-brand-strong">{planBadgeLabel(plan, true)}</span> : null}
+                            {disabled ? (
+                              <span className="text-[0.625rem] font-semibold text-ink-muted">Уже использован</span>
+                            ) : planBadgeLabel(plan, true) ? (
+                              <span className="text-[0.625rem] font-semibold text-brand-strong">{planBadgeLabel(plan, true)}</span>
+                            ) : null}
                           </span>
                           <strong className="text-[0.9375rem] text-ink">{formatPrice(plan.amount_rub, planPreviewDiscountPercent)}</strong>
                         </button>
@@ -596,7 +700,7 @@ export default function CheckoutClient() {
                 </div>
               </div>
 
-              {checkoutReady ? (
+              {checkoutReady && !activeCheckoutTicket ? (
                 <label className="flex flex-col gap-2 text-[0.875rem] font-medium text-ink" htmlFor="checkout-buyer-email">
                   Email для чека и кода
                   <input
@@ -662,7 +766,9 @@ export default function CheckoutClient() {
               )}
 
               <p className="-mt-2 text-center text-[0.75rem] leading-relaxed text-ink-soft">
-                Разовая оплата · без автосписаний · код на email
+                {activeCheckoutTicket
+                  ? "Разовая оплата · без автосписаний · доступ в аккаунт"
+                  : "Разовая оплата · без автосписаний · код на email"}
               </p>
 
               {checkoutStatusText ? (

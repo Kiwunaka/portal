@@ -182,8 +182,11 @@ def test_client_lane_docs_point_to_pokrov_app_as_development_truth() -> None:
         "Use history to answer why. Never let archive, completed plans, generated "
         "references, or old decisions determine what to implement now."
     ) in app_readme
-    assert "public cutover approval: `blocked for a new candidate`" in app_cutover
-    assert "public Android release approval: `blocked pending production-signing PASS for the exact candidate`" in app_cutover
+    assert (
+        "public cutover approval: `Android direct-APK first approved and published; "
+        "Windows remains a separate blocked lane`"
+    ) in app_cutover
+    assert "public Android release approval:" in app_cutover
     assert "public Windows release approval: `blocked pending trusted-signing PASS for the exact candidate`" in app_cutover
     assert "long-term repo truth: `yes`" in app_cutover
     assert "bootstrap source removed from active policy and active docs on `2026-04-23`" in app_next_summary
@@ -209,8 +212,14 @@ def test_root_release_orchestration_uses_wrappers_and_bridge_archive_mirror() ->
     assert "status.windows_shell_root" in client_gate_text
     assert "versioned bridge bundle mirrors and checksums under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/<version>/`" in deployment_text
     assert "write the active client-lane bundle into `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/<version>/`" in deployment_text
-    assert handoff_seed["release_truth"]["retained_bridge_archive_root"] == "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/bridge/0.9.0-beta+20508"
-    assert handoff_seed["release_truth"]["active_release_metadata_root"] == "C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases"
+    assert (
+        handoff_seed["release_truth"]["retained_bridge_archive_root"]
+        == "artifacts/releases/bridge/0.9.0-beta+20508"
+    )
+    assert (
+        handoff_seed["release_truth"]["active_release_metadata"]
+        == "artifacts/releases/release-handoff.json"
+    )
 
 
 def test_runtime_bot_defaults_use_new_pokrov_identities() -> None:

@@ -16,7 +16,7 @@ export function FinalCta() {
           <p className="max-w-lg text-base leading-relaxed text-ink-soft">
             {getCopyText(
               "marketing.home.final.sub",
-              `YouTube, TikTok, ChatGPT и нужные сайты — одной кнопкой. ${facts.trial.days} дней бесплатно без карты, затем безлимитный трафик от 99 ₽.`,
+              `YouTube, TikTok, ChatGPT и нужные сайты — одной кнопкой. ${facts.trial.days} дней бесплатно без карты. Первый полный месяц — 99 ₽ один раз, затем обычный месяц — 239 ₽.`,
             )}
           </p>
         </Reveal>

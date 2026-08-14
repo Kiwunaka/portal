@@ -507,7 +507,6 @@ def evaluate_active_paid(
             EntitlementGrant.grant_kind == "paid_access",
             EntitlementGrant.source.in_(sorted(PAID_GRANT_SOURCES)),
             EntitlementGrant.starts_at.isnot(None),
-            EntitlementGrant.starts_at <= current_now,
             EntitlementGrant.expires_at.isnot(None),
             EntitlementGrant.expires_at > current_now,
         )

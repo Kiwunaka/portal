@@ -1,6 +1,6 @@
 # API Contracts
 
-Last updated: 2026-07-22
+Last updated: 2026-08-14
 
 This page captures release-critical API contract expectations for the current
 repository candidate. It is also a concise router to the canonical domain
@@ -52,7 +52,38 @@ A completed production cutover, mixed-fleet safety, and full migration must not 
 
 ## Client Apps
 
-`GET /api/client/apps` must return only approved runtime links. Empty Android or Windows URLs mean the corresponding public download is not available and must be presented as gated/support-routed.
+`GET /api/client/apps` is authenticated and must return only approved runtime
+links for app, bot, and cabinet consumers. `GET /api/public/client-apps` is the
+anonymous marketing projection of the same runtime release source. The public
+projection is cacheable, contains no account data, accepts only the exact
+versioned GitHub Release filenames owned by POKROV, and publishes an artifact
+only when its SHA-256 and positive byte size are present. Empty Android or
+Windows URLs mean that download is unavailable; public install pages must show
+that state explicitly and must not substitute a login or cabinet redirect.
+
+### First-party acquisition handoff
+
+`POST /api/funnel/events` accepts only the bounded acquisition fields used to
+answer source, next step, completed action, and drop-off. The browser-generated
+session value is SHA-256 hashed with a domain separator before persistence; the
+raw value, raw URL/query, IP address, user agent, VPN destination history,
+message text, credentials, and provider payloads are not stored. First touch is
+immutable, last touch is updated by later accepted events, and the session
+expires after `180 days` from its latest touch.
+
+`POST /api/acquisition/handoffs` issues a random opaque handle for exactly one
+allowlisted purpose: Android install, Windows install, account continuation,
+checkout, or Telegram continuation. The database stores only the token hash;
+the handle expires after `72 hours`, is consumed once, grants no authentication
+or product access, and rejects wrong-purpose, replay, expiry, or cross-account
+binding. A missing handoff remains `unknown`; the platform must not infer a
+browser/device/account relationship from timestamps, IP, or user agent.
+
+`POST /api/acquisition/handoffs/consume` may bind the acquisition session to a
+known Telegram/account/order lineage. External orders and Telegram Stars
+`pay_attempts` retain the exact acquisition-session foreign key available when
+checkout starts; signed provider callbacks remain payment authority and cannot
+rewrite first/last-touch attribution.
 
 `GET /api/client/locations` keeps its existing country/city shape and adds a
 deterministic `variants` list to every returned city. The first item is always

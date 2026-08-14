@@ -160,42 +160,6 @@ def _pct(part: int, total: int) -> float:
     return round(float(part) / float(total) * 100.0, 1)
 
 
-def _count_funnel_sessions(s, *, from_dt: datetime, to_dt: datetime, stages: set[str] | None = None, event_names: set[str] | None = None) -> int:
-    q = s.query(func.count(func.distinct(FunnelEvent.session_id))).filter(FunnelEvent.created_at >= from_dt, FunnelEvent.created_at <= to_dt)
-    if stages:
-        q = q.filter(FunnelEvent.stage.in_(sorted(stages)))
-    if event_names:
-        q = q.filter(FunnelEvent.event_name.in_(sorted(event_names)))
-    return int(q.scalar() or 0)
-
-
-def _count_known_event_users(s, *, from_dt: datetime, to_dt: datetime, event_names: set[str]) -> int:
-    return int(
-        s.query(func.count(func.distinct(Event.tg_id)))
-        .filter(Event.created_at >= from_dt, Event.created_at <= to_dt)
-        .filter(Event.event_name.in_(sorted(event_names)))
-        .scalar()
-        or 0
-    )
-
-
-def _count_pay_attempt_users(s, *, from_dt: datetime, to_dt: datetime, statuses: set[str] | None = None) -> int:
-    q = s.query(func.count(func.distinct(PayAttempt.tg_id))).filter(PayAttempt.started_at >= from_dt, PayAttempt.started_at <= to_dt)
-    if statuses:
-        q = q.filter(func.lower(func.coalesce(PayAttempt.status, "")).in_(sorted(statuses)))
-    return int(q.scalar() or 0)
-
-
-def _count_paid_external_orders(s, *, from_dt: datetime, to_dt: datetime) -> int:
-    return int(
-        s.query(func.count(func.distinct(ExternalOrder.order_id)))
-        .filter(ExternalOrder.paid_at.isnot(None), ExternalOrder.paid_at >= from_dt, ExternalOrder.paid_at <= to_dt)
-        .filter(func.lower(func.coalesce(ExternalOrder.status, "")) == "paid")
-        .scalar()
-        or 0
-    )
-
-
 def _funnel_stage_row(key: str, label: str, entered: int, reached_next: int) -> dict[str, Any]:
     entered = max(0, int(entered or 0))
     reached_next = max(0, int(reached_next or 0))
@@ -209,148 +173,300 @@ def _funnel_stage_row(key: str, label: str, entered: int, reached_next: int) -> 
     }
 
 
-def _source_bucket(rows: list[dict[str, Any]], source: str) -> dict[str, Any]:
-    for row in rows:
-        if row["source"] == source:
-            return row
-    row = {"source": source, "visitors": 0, "app_opens": 0, "checkouts": 0, "paid": 0, "connected": 0}
-    rows.append(row)
-    return row
-
-
 def _admin_funnel_summary_payload(*, s, from_dt: datetime, to_dt: datetime) -> dict[str, Any]:
-    visitors = _count_funnel_sessions(s, from_dt=from_dt, to_dt=to_dt, stages={"site_visit"})
-    site_app_intents = _count_funnel_sessions(
-        s,
-        from_dt=from_dt,
-        to_dt=to_dt,
-        stages={"install_intent", "cabinet_intent", "bot_intent"},
+    cohort = (
+        s.query(AcquisitionSession)
+        .filter(AcquisitionSession.first_touch_at >= from_dt, AcquisitionSession.first_touch_at <= to_dt)
+        .all()
     )
-    known_app_opens = _count_known_event_users(s, from_dt=from_dt, to_dt=to_dt, event_names={"opened_webapp", "deep_link_opened"})
-    app_opens = site_app_intents + known_app_opens
+    cohort_ids = {str(row.id) for row in cohort}
+    hash_to_id = {str(row.session_key_hash): str(row.id) for row in cohort}
 
-    site_checkouts = _count_funnel_sessions(s, from_dt=from_dt, to_dt=to_dt, stages={"checkout_view", "checkout_start"})
-    known_checkout_events = _count_known_event_users(s, from_dt=from_dt, to_dt=to_dt, event_names={"clicked_pay", "pay_started"})
-    pay_attempts_started = _count_pay_attempt_users(s, from_dt=from_dt, to_dt=to_dt)
-    checkouts = site_checkouts + max(known_checkout_events, pay_attempts_started)
+    entry_ids: set[str] = set()
+    resolved_ids: set[str] = set()
+    checkout_ids: set[str] = set()
+    paid_ids: set[str] = set()
+    connected_ids: set[str] = set()
 
-    known_paid_events = _count_known_event_users(s, from_dt=from_dt, to_dt=to_dt, event_names={"paid", "renewed"})
-    paid_attempt_users = _count_pay_attempt_users(s, from_dt=from_dt, to_dt=to_dt, statuses={"paid"})
-    paid_external_orders = _count_paid_external_orders(s, from_dt=from_dt, to_dt=to_dt)
-    paid = max(known_paid_events, paid_attempt_users, paid_external_orders)
-
-    connected = _count_known_event_users(s, from_dt=from_dt, to_dt=to_dt, event_names={"connected_ok"})
-    stages = [
-        _funnel_stage_row("site_to_app", "Сайт → кабинет или бот", visitors, app_opens),
-        _funnel_stage_row("app_to_checkout", "Кабинет/бот → оплата", app_opens, checkouts),
-        _funnel_stage_row("checkout_to_paid", "Оплата → подтверждение", checkouts, paid),
-        _funnel_stage_row("paid_to_connected", "Оплачено → подключение", paid, connected),
-    ]
-
-    by_source: list[dict[str, Any]] = []
-    for source, count in (
-        s.query(FunnelEvent.source, func.count(func.distinct(FunnelEvent.session_id)))
-        .filter(FunnelEvent.created_at >= from_dt, FunnelEvent.created_at <= to_dt)
-        .filter(FunnelEvent.stage == "site_visit")
-        .group_by(FunnelEvent.source)
-        .order_by(func.count(func.distinct(FunnelEvent.session_id)).desc())
-        .limit(20)
-        .all()
-    ):
-        _source_bucket(by_source, str(source or "unknown"))["visitors"] += int(count or 0)
-
-    for source, event_name, count in (
-        s.query(Event.source, Event.event_name, func.count(func.distinct(Event.tg_id)))
-        .filter(Event.created_at >= from_dt, Event.created_at <= to_dt)
-        .filter(Event.event_name.in_(["opened_webapp", "deep_link_opened", "clicked_pay", "pay_started", "paid", "renewed", "connected_ok"]))
-        .group_by(Event.source, Event.event_name)
-        .all()
-    ):
-        bucket = _source_bucket(by_source, str(source or "unknown"))
-        name = str(event_name or "")
-        if name in {"opened_webapp", "deep_link_opened"}:
-            bucket["app_opens"] += int(count or 0)
-        elif name in {"clicked_pay", "pay_started"}:
-            bucket["checkouts"] += int(count or 0)
-        elif name in {"paid", "renewed"}:
-            bucket["paid"] += int(count or 0)
-        elif name == "connected_ok":
-            bucket["connected"] += int(count or 0)
-
-    for source, status, count in (
-        s.query(PayAttempt.source, PayAttempt.status, func.count(func.distinct(PayAttempt.tg_id)))
-        .filter(PayAttempt.started_at >= from_dt, PayAttempt.started_at <= to_dt)
-        .group_by(PayAttempt.source, PayAttempt.status)
-        .all()
-    ):
-        bucket = _source_bucket(by_source, str(source or "unknown"))
-        bucket["checkouts"] += int(count or 0)
-        if str(status or "").lower() == "paid":
-            bucket["paid"] += int(count or 0)
-
-    by_source.sort(key=lambda row: (row["visitors"] + row["app_opens"] + row["checkouts"] + row["paid"]), reverse=True)
-
-    recent_site = [
-        {
-            "kind": "site",
-            "created_at": _safe_iso(row.created_at),
-            "session_id": row.session_id,
-            "tg_id": row.tg_id,
-            "event_name": row.event_name,
-            "stage": row.stage,
-            "source": row.source,
-            "path": row.path,
+    if hash_to_id:
+        entry_hashes = {
+            str(value)
+            for (value,) in (
+                s.query(FunnelEvent.session_id)
+                .filter(FunnelEvent.session_id.in_(sorted(hash_to_id)))
+                .filter(FunnelEvent.created_at <= to_dt)
+                .filter(FunnelEvent.event_name.in_(["download_click", "bot_open_intent"]))
+                .distinct()
+                .all()
+            )
         }
-        for row in (
-            s.query(FunnelEvent)
-            .filter(FunnelEvent.created_at >= from_dt, FunnelEvent.created_at <= to_dt)
-            .order_by(FunnelEvent.created_at.desc(), FunnelEvent.id.desc())
-            .limit(25)
+        entry_ids.update(hash_to_id[value] for value in entry_hashes if value in hash_to_id)
+
+    handoffs = []
+    if cohort_ids:
+        handoffs = (
+            s.query(AcquisitionHandoff)
+            .filter(AcquisitionHandoff.acquisition_session_id.in_(sorted(cohort_ids)))
+            .filter(AcquisitionHandoff.created_at <= to_dt)
             .all()
         )
+    entry_purposes = {"android_install", "windows_install", "account_continue", "telegram_continue"}
+    for row in handoffs:
+        session_id = str(row.acquisition_session_id)
+        if row.purpose in entry_purposes:
+            entry_ids.add(session_id)
+            if row.consumed_at is not None and row.consumed_at <= to_dt:
+                resolved_ids.add(session_id)
+        elif row.purpose == "checkout" and row.consumed_at is not None and row.consumed_at <= to_dt:
+            checkout_ids.add(session_id)
+
+    external_orders = []
+    pay_attempts = []
+    if cohort_ids:
+        external_orders = (
+            s.query(ExternalOrder)
+            .filter(ExternalOrder.acquisition_session_id.in_(sorted(cohort_ids)))
+            .filter(ExternalOrder.created_at <= to_dt)
+            .all()
+        )
+        pay_attempts = (
+            s.query(PayAttempt)
+            .filter(PayAttempt.acquisition_session_id.in_(sorted(cohort_ids)))
+            .filter(PayAttempt.started_at <= to_dt)
+            .all()
+        )
+    for row in external_orders:
+        session_id = str(row.acquisition_session_id or "")
+        checkout_ids.add(session_id)
+        if str(row.status or "").lower() == "paid" and row.paid_at is not None and row.paid_at <= to_dt:
+            paid_ids.add(session_id)
+    for row in pay_attempts:
+        session_id = str(row.acquisition_session_id or "")
+        checkout_ids.add(session_id)
+        if str(row.status or "").lower() == "paid" and row.paid_at is not None and row.paid_at <= to_dt:
+            paid_ids.add(session_id)
+
+    bound_account_ids = {str(row.bound_account_id) for row in cohort if row.bound_account_id}
+    connection_times: dict[str, list[datetime]] = {}
+    if bound_account_ids:
+        for row in s.query(AccountExperienceState).filter(AccountExperienceState.account_id.in_(sorted(bound_account_ids))).all():
+            values = [value for value in (row.first_connection_reported_at, row.first_connection_verified_at) if value is not None]
+            if values:
+                connection_times.setdefault(str(row.account_id), []).extend(values)
+        for account_id, observed_at in (
+            s.query(ConnectionEvidence.account_id, ConnectionEvidence.observed_at)
+            .filter(ConnectionEvidence.account_id.in_(sorted(bound_account_ids)))
+            .filter(ConnectionEvidence.observed_at <= to_dt)
+            .all()
+        ):
+            if observed_at is not None:
+                connection_times.setdefault(str(account_id), []).append(observed_at)
+    for row in cohort:
+        account_id = str(row.bound_account_id or "")
+        if any(row.first_touch_at <= value <= to_dt for value in connection_times.get(account_id, [])):
+            connected_ids.add(str(row.id))
+
+    entry_ids &= cohort_ids
+    resolved_ids &= entry_ids
+    checkout_ids &= resolved_ids
+    paid_ids &= checkout_ids
+    connected_ids &= paid_ids
+
+    acquisition_stages = [
+        _funnel_stage_row("visit_to_entry", "Первый визит → скачивание или бот", len(cohort_ids), len(entry_ids)),
+        _funnel_stage_row("entry_to_bound", "Скачивание/бот → подтверждённый вход", len(entry_ids), len(resolved_ids)),
+        _funnel_stage_row("bound_to_checkout", "Вход → начало оплаты", len(resolved_ids), len(checkout_ids)),
+        _funnel_stage_row("checkout_to_paid", "Начали оплату → оплатили", len(checkout_ids), len(paid_ids)),
+        _funnel_stage_row("paid_to_connected", "Оплатили → подключились", len(paid_ids), len(connected_ids)),
     ]
-    recent_known = [
-        {
-            "kind": "user",
-            "created_at": _safe_iso(row.created_at),
-            "session_id": row.session_id,
-            "tg_id": int(row.tg_id),
-            "event_name": row.event_name,
-            "stage": "",
-            "source": row.source,
-            "path": "",
-        }
-        for row in (
-            s.query(Event)
+
+    source_rows: list[dict[str, Any]] = []
+    for source in sorted({str(row.first_source or "unknown") for row in cohort}):
+        source_ids = {str(row.id) for row in cohort if str(row.first_source or "unknown") == source}
+        source_rows.append(
+            {
+                "source": source,
+                "sessions": len(source_ids),
+                "entry_intents": len(source_ids & entry_ids),
+                "resolved_entries": len(source_ids & resolved_ids),
+                "checkouts": len(source_ids & checkout_ids),
+                "paid": len(source_ids & paid_ids),
+                "connected": len(source_ids & connected_ids),
+            }
+        )
+    source_rows.sort(key=lambda row: (-int(row["sessions"]), str(row["source"])))
+
+    product_open_users = {
+        int(value)
+        for (value,) in (
+            s.query(Event.tg_id)
             .filter(Event.created_at >= from_dt, Event.created_at <= to_dt)
-            .order_by(Event.created_at.desc(), Event.id.desc())
-            .limit(25)
+            .filter(Event.event_name.in_(["opened_webapp", "deep_link_opened"]))
+            .distinct()
             .all()
         )
+        if value is not None and int(value) > 0
+    }
+    product_open_users.update(
+        int(value)
+        for (value,) in (
+            s.query(User.tg_id)
+            .filter(User.app_last_seen_at >= from_dt, User.app_last_seen_at <= to_dt)
+            .distinct()
+            .all()
+        )
+        if value is not None and int(value) > 0
+    )
+
+    checkout_users = {
+        int(value)
+        for (value,) in (
+            s.query(Event.tg_id)
+            .filter(Event.created_at >= from_dt, Event.created_at <= to_dt)
+            .filter(Event.event_name.in_(["clicked_pay", "pay_started"]))
+            .distinct()
+            .all()
+        )
+        if value is not None and int(value) > 0
+    }
+    checkout_users.update(
+        int(value)
+        for (value,) in s.query(PayAttempt.tg_id).filter(PayAttempt.started_at >= from_dt, PayAttempt.started_at <= to_dt).distinct().all()
+        if value is not None and int(value) > 0
+    )
+    checkout_users.update(
+        int(value)
+        for (value,) in s.query(ExternalOrder.tg_id).filter(ExternalOrder.created_at >= from_dt, ExternalOrder.created_at <= to_dt).distinct().all()
+        if value is not None and int(value) > 0
+    )
+
+    paid_users = {
+        int(value)
+        for (value,) in (
+            s.query(Event.tg_id)
+            .filter(Event.created_at >= from_dt, Event.created_at <= to_dt)
+            .filter(Event.event_name.in_(["paid", "renewed"]))
+            .distinct()
+            .all()
+        )
+        if value is not None and int(value) > 0
+    }
+    paid_users.update(
+        int(value)
+        for (value,) in (
+            s.query(PayAttempt.tg_id)
+            .filter(PayAttempt.paid_at >= from_dt, PayAttempt.paid_at <= to_dt)
+            .filter(func.lower(func.coalesce(PayAttempt.status, "")) == "paid")
+            .distinct()
+            .all()
+        )
+        if value is not None and int(value) > 0
+    )
+    paid_users.update(
+        int(value)
+        for (value,) in (
+            s.query(ExternalOrder.tg_id)
+            .filter(ExternalOrder.paid_at >= from_dt, ExternalOrder.paid_at <= to_dt)
+            .filter(func.lower(func.coalesce(ExternalOrder.status, "")) == "paid")
+            .distinct()
+            .all()
+        )
+        if value is not None and int(value) > 0
+    )
+
+    connected_users = {
+        int(value)
+        for (value,) in (
+            s.query(Event.tg_id)
+            .filter(Event.created_at >= from_dt, Event.created_at <= to_dt)
+            .filter(Event.event_name == "connected_ok")
+            .distinct()
+            .all()
+        )
+        if value is not None and int(value) > 0
+    }
+    product_account_ids = {
+        str(value)
+        for (value,) in (
+            s.query(AccountExperienceState.account_id)
+            .filter(
+                or_(
+                    and_(AccountExperienceState.first_connection_reported_at >= from_dt, AccountExperienceState.first_connection_reported_at <= to_dt),
+                    and_(AccountExperienceState.first_connection_verified_at >= from_dt, AccountExperienceState.first_connection_verified_at <= to_dt),
+                )
+            )
+            .distinct()
+            .all()
+        )
+        if value
+    }
+    product_account_ids.update(
+        str(value)
+        for (value,) in (
+            s.query(ConnectionEvidence.account_id)
+            .filter(ConnectionEvidence.observed_at >= from_dt, ConnectionEvidence.observed_at <= to_dt)
+            .distinct()
+            .all()
+        )
+        if value
+    )
+    if product_account_ids:
+        connected_users.update(
+            int(value)
+            for (value,) in s.query(User.tg_id).filter(User.account_id.in_(sorted(product_account_ids))).distinct().all()
+            if value is not None and int(value) > 0
+        )
+
+    product_checkout_users = product_open_users & checkout_users
+    product_paid_users = product_checkout_users & paid_users
+    product_connected_users = product_paid_users & connected_users
+    product_stages = [
+        _funnel_stage_row("open_to_checkout", "Открыли продукт → начали оплату", len(product_open_users), len(product_checkout_users)),
+        _funnel_stage_row("checkout_to_paid", "Начали оплату → оплатили", len(product_checkout_users), len(product_paid_users)),
+        _funnel_stage_row("paid_to_connected", "Оплатили → подключились", len(product_paid_users), len(product_connected_users)),
     ]
-    recent = sorted(recent_site + recent_known, key=lambda row: str(row.get("created_at") or ""), reverse=True)[:40]
 
     return {
         "period": {"from": from_dt.date().isoformat(), "to": to_dt.date().isoformat()},
-        "totals": {
-            "visitors": visitors,
-            "app_opens": app_opens,
-            "checkouts": checkouts,
-            "paid": paid,
-            "connected": connected,
+        "acquisition": {
+            "cohort": "first_touch_in_period",
+            "totals": {
+                "sessions": len(cohort_ids),
+                "entry_intents": len(entry_ids),
+                "resolved_entries": len(resolved_ids),
+                "checkouts": len(checkout_ids),
+                "paid": len(paid_ids),
+                "connected": len(connected_ids),
+            },
+            "stages": acquisition_stages,
+            "drop_reasons": [
+                {"reason": "Не скачали приложение и не открыли бота", "count": acquisition_stages[0]["dropped"]},
+                {"reason": "Не подтвердили вход из приложения или бота", "count": acquisition_stages[1]["dropped"]},
+                {"reason": "Не начали оплату", "count": acquisition_stages[2]["dropped"]},
+                {"reason": "Оплата не подтверждена", "count": acquisition_stages[3]["dropped"]},
+                {"reason": "Первое подключение не подтверждено", "count": acquisition_stages[4]["dropped"]},
+            ],
+            "by_source": source_rows[:20],
         },
-        "stages": stages,
-        "drop_reasons": [
-            {"reason": "Ушли с сайта до кабинета или бота", "count": stages[0]["dropped"]},
-            {"reason": "Открыли кабинет/бот, но не начали оплату", "count": stages[1]["dropped"]},
-            {"reason": "Начали оплату, но подтверждение не пришло", "count": stages[2]["dropped"]},
-            {"reason": "Оплата есть, подключение не подтверждено событием", "count": stages[3]["dropped"]},
-        ],
-        "by_source": by_source[:20],
-        "recent": recent,
+        "product": {
+            "cohort": "known_user_open_in_period",
+            "totals": {
+                "opened": len(product_open_users),
+                "checkouts": len(product_checkout_users),
+                "paid": len(product_paid_users),
+                "connected": len(product_connected_users),
+            },
+            "stages": product_stages,
+            "drop_reasons": [
+                {"reason": "Открыли продукт, но не начали оплату", "count": product_stages[0]["dropped"]},
+                {"reason": "Начали оплату, но не оплатили", "count": product_stages[1]["dropped"]},
+                {"reason": "Оплатили, но подключение не подтверждено", "count": product_stages[2]["dropped"]},
+            ],
+        },
         "notes": [
-            "Сайт считается по анонимным session_id без IP и user-agent.",
-            "Кабинет, бот и оплата считаются по известным пользовательским событиям и платежным попыткам.",
+            "Acquisition — first-touch cohort по хэшированному first-party session ID; downstream считается только по серверно связанному handoff, order/pay attempt и account.",
+            "Product — distinct known users; пересекающиеся события, попытки и заказы объединяются, а не складываются.",
+            "Raw URL, referrer path, IP, user-agent, session hash, Telegram ID и account ID в ответ не попадают.",
         ],
     }
 
@@ -602,42 +718,119 @@ async def api_track_funnel_event(payload: FunnelEventIn, request: Request) -> di
     stage = _clean_funnel_slug(payload.stage, default="site_visit")
     if stage not in FUNNEL_STAGE_WHITELIST:
         raise HTTPException(status_code=400, detail="Unsupported funnel stage")
-    channel = _clean_funnel_slug(payload.channel, default="site", max_len=32)
-    if channel not in FUNNEL_CHANNEL_WHITELIST:
-        channel = "site"
-    source = _clean_funnel_slug(payload.source, default="unknown", max_len=64)
     session_id = _clean_public_text(payload.session_id, max_len=96)
     if len(session_id) < 8:
         raise HTTPException(status_code=400, detail="Invalid session id")
-    meta_json = None
-    if payload.meta:
-        try:
-            meta_json = json.dumps(payload.meta, ensure_ascii=False, separators=(",", ":"))[:3800]
-        except Exception:
-            meta_json = None
-    row = FunnelEvent(
-        session_id=session_id,
-        channel=channel,
-        event_name=event_name,
-        stage=stage,
-        source=source,
-        path=_clean_public_text(payload.path, max_len=512) or None,
-        referrer=_clean_public_text(payload.referrer, max_len=600) or None,
-        campaign=_clean_funnel_slug(payload.campaign, default="", max_len=64) or None,
-        meta_json=meta_json,
-        created_at=_utcnow(),
+    touch = normalize_acquisition_touch(
+        source=payload.source,
+        channel=payload.channel,
+        campaign=payload.campaign,
+        content=payload.utm_content,
+        referral=payload.ref,
+        entry_route=payload.entry_route or payload.path or "/",
+        referrer=payload.referrer,
     )
     s = SessionLocal()
     try:
-        s.add(row)
+        _, row = record_funnel_event(
+            s,
+            raw_session_id=session_id,
+            event_name=event_name,
+            stage=stage,
+            touch=touch,
+            meta=payload.meta,
+            now=_utcnow(),
+        )
         s.commit()
         event_id = int(row.id)
+    except AcquisitionError as exc:
+        s.rollback()
+        raise HTTPException(status_code=exc.status_code, detail=exc.code) from exc
     except Exception:
         s.rollback()
         raise
     finally:
         s.close()
     return {"ok": True, "event_id": event_id}
+
+
+@app.post("/api/acquisition/handoffs")
+async def api_create_acquisition_handoff(payload: AcquisitionHandoffCreateIn, request: Request) -> dict:
+    session_id = _clean_public_text(payload.session_id, max_len=96)
+    _enforce_beta_rate_limit("events", request, identity=f"handoff:{session_id}")
+    touch = normalize_acquisition_touch(
+        source=payload.source,
+        channel=payload.channel,
+        campaign=payload.campaign,
+        content=payload.utm_content,
+        referral=payload.ref,
+        entry_route=payload.entry_route or "/",
+        referrer=payload.referrer,
+    )
+    s = SessionLocal()
+    try:
+        handle, handoff = create_acquisition_handoff(
+            s,
+            raw_session_id=session_id,
+            touch=touch,
+            purpose=payload.purpose,
+            asset=payload.asset,
+            now=_utcnow(),
+        )
+        s.commit()
+        return {
+            "ok": True,
+            "handle": handle,
+            "purpose": handoff.purpose,
+            "expires_at": handoff.expires_at.isoformat() if handoff.expires_at else None,
+        }
+    except AcquisitionError as exc:
+        s.rollback()
+        raise HTTPException(status_code=exc.status_code, detail=exc.code) from exc
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
+@app.post("/api/acquisition/handoffs/consume")
+async def api_consume_acquisition_handoff(
+    payload: AcquisitionHandoffConsumeIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    auth_user = _require_auth_user(x_telegram_init_data, request=request)
+    tg_id = int(auth_user.get("id", 0))
+    purpose = clean_acquisition_slug(payload.purpose, max_len=32)
+    if purpose not in {"android_install", "windows_install", "account_continue", "telegram_continue"}:
+        raise HTTPException(status_code=400, detail="invalid_handoff_purpose")
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == tg_id).first()
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        consume_acquisition_handoff(
+            s,
+            raw_handle=payload.handle,
+            expected_purpose=purpose,
+            bound_tg_id=tg_id,
+            bound_account_id=str(getattr(user, "account_id", "") or "") or None,
+            now=_utcnow(),
+        )
+        s.commit()
+        return {"ok": True, "bound": True}
+    except AcquisitionError as exc:
+        s.rollback()
+        raise HTTPException(status_code=exc.status_code, detail=exc.code) from exc
+    except HTTPException:
+        s.rollback()
+        raise
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
 
 
 @app.post("/api/connect/confirm")
@@ -1109,15 +1302,12 @@ async def dashboard_snapshot(
         s.close()
 
 
-@app.get("/api/client/apps")
-async def client_apps(
-    request: Request,
-    platform: str = Query(default="", max_length=16),
-    current_version: str = Query(default="", max_length=48),
-    channel: str = Query(default="", max_length=32),
-    x_telegram_init_data: str = Header(default=""),
+def _build_client_apps_response(
+    *,
+    platform: str,
+    current_version: str,
+    channel: str,
 ) -> ClientAppsResponse:
-    _require_auth_user(x_telegram_init_data, request=request)
     release_channel = str(channel or getattr(Settings, "APP_RELEASE_CHANNEL", "beta") or "beta").strip().lower() or "beta"
     requested_platform = str(platform or "").strip().lower()
     android_url = _safe_public_url(Settings.APP_ANDROID_APK_URL)
@@ -1220,6 +1410,198 @@ async def client_apps(
             "mode": "prompt",
             "silent_update": False,
         },
+    )
+
+
+_PUBLIC_CLIENT_ASSET_FILENAMES = {
+    "arm64-v8a": "pokrov-android-arm64-v8a.apk",
+    "armeabi-v7a": "pokrov-android-armeabi-v7a.apk",
+    "universal": "pokrov-android-universal.apk",
+    "x86_64": "pokrov-android-x86_64.apk",
+    "windows": "pokrov-windows-setup-x64.exe",
+}
+
+
+def _safe_public_client_asset_url(value: str, *, expected_filename: str) -> str:
+    raw = str(value or "").strip()
+    try:
+        parsed = urlparse(raw)
+    except ValueError:
+        return ""
+    parts = parsed.path.split("/")
+    if (
+        parsed.scheme != "https"
+        or (parsed.hostname or "").lower() != "github.com"
+        or parsed.port is not None
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+        or len(parts) != 7
+        or parts[1:5] != ["Kiwunaka", "pokrov", "releases", "download"]
+        or not re.fullmatch(r"v[0-9A-Za-z][0-9A-Za-z._-]{0,63}", parts[5])
+        or parts[6] != expected_filename
+    ):
+        return ""
+    return raw
+
+
+def _safe_public_release_notes_url(value: str) -> str:
+    raw = str(value or "").strip()
+    try:
+        parsed = urlparse(raw)
+    except ValueError:
+        return ""
+    parts = parsed.path.split("/")
+    if (
+        parsed.scheme != "https"
+        or (parsed.hostname or "").lower() != "github.com"
+        or parsed.port is not None
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+        or len(parts) != 6
+        or parts[1:5] != ["Kiwunaka", "pokrov", "releases", "tag"]
+        or not re.fullmatch(r"v[0-9A-Za-z][0-9A-Za-z._-]{0,63}", parts[5])
+    ):
+        return ""
+    return raw
+
+
+def _safe_public_release_sha256(value: str) -> str:
+    raw = str(value or "").strip().upper()
+    return raw if re.fullmatch(r"[0-9A-F]{64}", raw) else ""
+
+
+def _safe_public_release_size(value: int) -> int:
+    size = max(0, int(value or 0))
+    return size if size <= 10 * 1024 * 1024 * 1024 else 0
+
+
+def _public_client_apps_projection(source: ClientAppsResponse) -> ClientAppsResponse:
+    variants: list[ClientAndroidApkVariant] = []
+    for variant in source.android.apk_variants:
+        expected_filename = _PUBLIC_CLIENT_ASSET_FILENAMES.get(str(variant.abi))
+        if not expected_filename:
+            continue
+        url = _safe_public_client_asset_url(variant.url, expected_filename=expected_filename)
+        sha256 = _safe_public_release_sha256(variant.sha256)
+        size = _safe_public_release_size(variant.size)
+        if not url or not sha256 or not size:
+            continue
+        variants.append(
+            ClientAndroidApkVariant(
+                abi=variant.abi,
+                label=variant.label,
+                url=url,
+                sha256=sha256,
+                size=size,
+            )
+        )
+    primary = next((variant for variant in variants if variant.abi == "arm64-v8a"), None)
+
+    windows_url = _safe_public_client_asset_url(
+        source.windows.exe_url,
+        expected_filename=_PUBLIC_CLIENT_ASSET_FILENAMES["windows"],
+    )
+    windows_sha256 = _safe_public_release_sha256(source.windows.sha256)
+    windows_size = _safe_public_release_size(source.windows.size)
+    if not windows_url or not windows_sha256 or not windows_size:
+        windows_url = ""
+        windows_sha256 = ""
+        windows_size = 0
+
+    android_url = primary.url if primary else ""
+    android_sha256 = primary.sha256 if primary else ""
+    android_size = primary.size if primary else 0
+    android_update = source.android.update
+    windows_update = source.windows.update
+    return ClientAppsResponse(
+        android=ClientAndroidApps(
+            play_url="",
+            apk_url=android_url,
+            mirror_url="",
+            apk_variants=variants,
+            version=source.android.version,
+            sha256=android_sha256,
+            size=android_size,
+            release_notes=source.android.release_notes,
+            release_notes_url=_safe_public_release_notes_url(source.android.release_notes_url),
+            published_at=source.android.published_at,
+            update=ClientAppUpdateInfo(
+                platform=android_update.platform,
+                channel=android_update.channel,
+                latest_version=android_update.latest_version,
+                min_supported_version=android_update.min_supported_version,
+                update_policy=android_update.update_policy if android_url else "none",
+                url=android_url,
+                sha256=android_sha256,
+                size=android_size,
+                release_notes=android_update.release_notes,
+                release_notes_url=_safe_public_release_notes_url(android_update.release_notes_url),
+                published_at=android_update.published_at,
+                rollout_percent=android_update.rollout_percent,
+                force_after=None,
+            ),
+        ),
+        windows=ClientWindowsApps(
+            exe_url=windows_url,
+            mirror_url="",
+            version=source.windows.version,
+            sha256=windows_sha256,
+            size=windows_size,
+            release_notes=source.windows.release_notes,
+            release_notes_url=_safe_public_release_notes_url(source.windows.release_notes_url),
+            published_at=source.windows.published_at,
+            update=ClientAppUpdateInfo(
+                platform=windows_update.platform,
+                channel=windows_update.channel,
+                latest_version=windows_update.latest_version,
+                min_supported_version=windows_update.min_supported_version,
+                update_policy=windows_update.update_policy if windows_url else "none",
+                url=windows_url,
+                sha256=windows_sha256,
+                size=windows_size,
+                release_notes=windows_update.release_notes,
+                release_notes_url=_safe_public_release_notes_url(windows_update.release_notes_url),
+                published_at=windows_update.published_at,
+                rollout_percent=windows_update.rollout_percent,
+                force_after=None,
+            ),
+        ),
+        docs_url=(
+            source.docs_url
+            if source.docs_url in {"https://pokrov.space/install/", "https://www.pokrov.space/install/"}
+            else ""
+        ),
+        updated_at=source.updated_at,
+        update_check=source.update_check,
+    )
+
+
+@app.get("/api/client/apps")
+async def client_apps(
+    request: Request,
+    platform: str = Query(default="", max_length=16),
+    current_version: str = Query(default="", max_length=48),
+    channel: str = Query(default="", max_length=32),
+    x_telegram_init_data: str = Header(default=""),
+) -> ClientAppsResponse:
+    _require_auth_user(x_telegram_init_data, request=request)
+    return _build_client_apps_response(platform=platform, current_version=current_version, channel=channel)
+
+
+@app.get("/api/public/client-apps")
+async def public_client_apps(
+    response: Response,
+    platform: str = Query(default="", max_length=16),
+    current_version: str = Query(default="", max_length=48),
+    channel: str = Query(default="", max_length=32),
+) -> ClientAppsResponse:
+    response.headers["Cache-Control"] = "public, max-age=300, stale-if-error=3600"
+    return _public_client_apps_projection(
+        _build_client_apps_response(platform=platform, current_version=current_version, channel=channel)
     )
 
 

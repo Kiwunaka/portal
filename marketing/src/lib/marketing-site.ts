@@ -441,7 +441,7 @@ export function buildSoftwareApplicationJsonLd(options?: {
     mainEntityOfPage: canonicalUrl,
     url: canonicalUrl,
     description:
-      "POKROV — лучший VPN для простого старта на Android и Windows: 5 дней бесплатно, одна кнопка подключения и до 5 устройств на основных тарифах.",
+      "POKROV для простого старта на Android и Windows: 5 дней бесплатно, одна кнопка подключения и до 5 устройств на основных тарифах.",
   };
 }
 

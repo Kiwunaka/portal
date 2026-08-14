@@ -143,7 +143,7 @@ test("каждый раздел запрашивает только собств
     { href: "/tickets", label: "Тикеты", paths: [/^\/api\/admin\/tickets\?status=&limit=100$/] },
     { href: "/payments", label: "Платежи", paths: [/^\/api\/admin\/payments\/summary\?period=7d$/, /^\/api\/admin\/payments\/orders\?limit=80$/] },
     { href: "/funnel", label: "Воронка", paths: [/^\/api\/admin\/funnel\/summary\?from=.+&to=.+$/] },
-    { href: "/promos", label: "Промо", paths: [/^\/api\/admin\/promos\?limit=100$/] },
+    { href: "/promos", label: "Промо", paths: [/^\/api\/admin\/promos\?limit=100$/, /^\/api\/admin\/promo-slots$/] },
     { href: "/referrals", label: "Рефералы", paths: [/^\/api\/admin\/referrals\/pending\?limit=100&status=pending$/, /^\/api\/admin\/referrals\/pending\?limit=100&status=rewarded$/] },
     { href: "/release", label: "Релиз", paths: [/^\/api\/admin\/releases\/candidates\?limit=50$/, /^\/api\/admin\/releases\/[a-f0-9]{64}\/readiness$/] },
     { href: "/broadcast", label: "Рассылка", paths: [] }

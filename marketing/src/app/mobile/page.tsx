@@ -17,7 +17,7 @@ export default function MobilePage() {
     <IntentLanding
       pagePath={MARKETING_CANONICAL_PATHS.mobile}
       breadcrumbName="На телефон"
-      heroKicker="Лучший VPN на Android · 5 дней за 0 ₽"
+      heroKicker="VPN на Android · 5 дней за 0 ₽"
       heroTitle="Верните нужные сервисы на телефон одной кнопкой"
       heroSubtitle="Скачайте официальный APK, нажмите «Подключить» и проверьте YouTube, TikTok и другие приложения. 5 дней бесплатно, карта не нужна."
       scenarioTitle="Почему POKROV — сильный выбор для телефона"

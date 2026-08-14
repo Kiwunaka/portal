@@ -17,7 +17,7 @@ export default function YoutubePage() {
     <IntentLanding
       pagePath={MARKETING_CANONICAL_PATHS.youtube}
       breadcrumbName="YouTube"
-      heroKicker="Лучший VPN для YouTube · 5 дней за 0 ₽"
+      heroKicker="VPN для YouTube · 5 дней за 0 ₽"
       heroTitle="Смотрите YouTube в нужном качестве — без ручной настройки VPN"
       heroSubtitle="Скачайте POKROV, нажмите «Подключить» и проверьте ролики, стримы и перемотку на своей сети. 5 дней бесплатно, карта не нужна."
       scenarioTitle="От установки до первого видео — три шага"

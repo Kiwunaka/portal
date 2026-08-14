@@ -79,10 +79,14 @@ git diff --name-only against the declared write scope before staging.
 
 ## Focused Verification Commands
 
-Use the existing platform virtual environment for Python commands:
+Interactive focused checks use the configured system Python. Install the
+tracked backend requirements into that interpreter after dependency changes;
+release and migration rehearsals may still create an isolated environment when
+their script owns one.
 
 ~~~powershell
-$py = 'C:/Users/kiwun/Documents/ai/VPN/.venv/Scripts/python.exe'
+$py = (Get-Command python.exe).Source
+& $py -m pip install -r portal_bot/requirements.txt
 ~~~
 
 ### Backend, account, API, and bots

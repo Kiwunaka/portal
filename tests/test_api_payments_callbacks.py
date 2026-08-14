@@ -105,6 +105,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
 
         for module_name in (
             "api",
+            "acquisition_service",
             "db",
             "models",
             "migrations",
@@ -911,6 +912,50 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.assertIsNone(
                 s.query(ExternalOrder).filter_by(order_id="fk-unknown-callback-order").one_or_none()
             )
+        finally:
+            s.close()
+
+    def test_signed_provider_callback_cannot_overwrite_created_order_attribution(self) -> None:
+        from db import SessionLocal
+        from models import ExternalOrder
+
+        order_id = "lavatop-immutable-attribution"
+        s = SessionLocal()
+        try:
+            s.add(
+                ExternalOrder(
+                    order_id=order_id,
+                    provider="lavatop",
+                    source="telegram_ads",
+                    campaign="aug_launch",
+                    acquisition_session_id="acquisition-session-a",
+                    amount=239.0,
+                    currency="RUB",
+                    status="pending",
+                    meta_json="{}",
+                    created_at=self.api._utcnow(),
+                )
+            )
+            s.commit()
+            row = self.api._upsert_external_order(
+                s,
+                provider="lavatop",
+                order_id=order_id,
+                payload={
+                    "source": "callback_override",
+                    "campaign": "callback_override",
+                    "status": "completed",
+                },
+                status="paid",
+                mark_paid=True,
+            )
+            s.commit()
+
+            self.assertIsNotNone(row)
+            self.assertEqual(row.source, "telegram_ads")
+            self.assertEqual(row.campaign, "aug_launch")
+            self.assertEqual(row.acquisition_session_id, "acquisition-session-a")
+            self.assertEqual(row.status, "paid")
         finally:
             s.close()
 
@@ -2007,7 +2052,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.api.create_rub_payment = old_create
 
         self.assertEqual(response.status_code, 409, response.text)
-        self.assertIn("start_99 is available only once", response.text)
+        self.assertEqual(response.json()["detail"]["code"], "start_99_already_used")
 
         s = SessionLocal()
         try:
@@ -2076,7 +2121,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.api.create_rub_payment = old_create
 
         self.assertEqual(response.status_code, 409, response.text)
-        self.assertIn("start_99 is available only once", response.text)
+        self.assertEqual(response.json()["detail"]["code"], "start_99_already_used")
 
         s = SessionLocal()
         try:
@@ -2146,13 +2191,121 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.api.create_rub_payment = old_create
 
         self.assertEqual(response.status_code, 409, response.text)
-        self.assertIn("start_99 is available only once", response.text)
+        self.assertEqual(response.json()["detail"]["code"], "start_99_already_used")
 
         s = SessionLocal()
         try:
             rows = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 4457).all()
             self.assertEqual(len(rows), 1)
             self.assertEqual(rows[0].order_id, "lavatop_1_month_paid_4457")
+        finally:
+            s.close()
+
+    def test_start99_eligibility_returns_disabled_state_and_regular_month_ticket(self) -> None:
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import ExternalOrder, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=4458,
+                    username="eligibility_paid",
+                    uuid=str(uuid.uuid4()),
+                    email="user_4458",
+                    sub_type="PAID",
+                    is_active=True,
+                    first_purchase_done=True,
+                    tos_accepted=True,
+                )
+            )
+            s.add(
+                ExternalOrder(
+                    order_id="eligibility-prior-paid-order",
+                    tg_id=4458,
+                    provider="lavatop",
+                    plan_code="1_month",
+                    status="paid",
+                    amount=239,
+                    currency="RUB",
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        ticket = self.api._create_checkout_ticket(
+            tg_id=4458,
+            plan_code="start_99",
+            promo_code="",
+            campaign_key="campaign-a",
+            source="bot",
+        )
+        response = client.post(
+            "/api/payments/start-99-eligibility",
+            json={"checkout_ticket": ticket},
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        payload = response.json()
+        self.assertTrue(payload["known"])
+        self.assertFalse(payload["eligible"])
+        self.assertEqual(payload["reason"], "start_99_already_used")
+        self.assertEqual(payload["replacement_plan"], "1_month")
+        replacement = self.api._parse_checkout_ticket(payload["replacement_checkout_ticket"])
+        self.assertIsNotNone(replacement)
+        self.assertEqual(replacement["tg_id"], 4458)
+        self.assertEqual(replacement["plan_code"], "1_month")
+        self.assertEqual(replacement["campaign_key"], "campaign-a")
+
+    def test_anonymous_start99_rejects_email_with_prior_provider_confirmed_payment(self) -> None:
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import ExternalOrder, PaymentEntitlementClaim
+
+        s = SessionLocal()
+        try:
+            s.add(
+                PaymentEntitlementClaim(
+                    provider="lavatop",
+                    order_id="anonymous-prior-paid",
+                    buyer_email_norm="repeat@pokrov.test",
+                    status="paid_unclaimed",
+                    plan_code="1_month",
+                    duration_days=30,
+                    paid_at=self.api._utcnow(),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        async def _unexpected_create_rub_payment(**kwargs):
+            raise AssertionError("repeat anonymous start_99 must be blocked before invoice creation")
+
+        old_create = self.api.create_rub_payment
+        try:
+            self.api.create_rub_payment = _unexpected_create_rub_payment
+            response = client.post(
+                "/api/payments/orders/create-public",
+                json={
+                    "provider": "lavatop",
+                    "plan_code": "start_99",
+                    "buyer_email": "REPEAT@pokrov.test",
+                    "currency": "RUB",
+                },
+            )
+        finally:
+            self.api.create_rub_payment = old_create
+
+        self.assertEqual(response.status_code, 409, response.text)
+        self.assertEqual(response.json()["detail"]["code"], "start_99_already_used")
+        s = SessionLocal()
+        try:
+            self.assertEqual(s.query(ExternalOrder).count(), 0)
         finally:
             s.close()
 

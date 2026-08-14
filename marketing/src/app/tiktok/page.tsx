@@ -17,7 +17,7 @@ export default function TiktokPage() {
     <IntentLanding
       pagePath={MARKETING_CANONICAL_PATHS.tiktok}
       breadcrumbName="TikTok"
-      heroKicker="Лучший VPN для TikTok · 5 дней за 0 ₽"
+      heroKicker="VPN для TikTok · 5 дней за 0 ₽"
       heroTitle="Верните TikTok: ленту, лайки и загрузку роликов"
       heroSubtitle="Скачайте POKROV, нажмите «Подключить» и проверьте TikTok на своём устройстве. 5 дней бесплатно, без карты и автосписаний."
       scenarioTitle="Вернуть ленту проще, чем искать новый VPN"

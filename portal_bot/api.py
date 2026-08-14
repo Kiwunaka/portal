@@ -57,12 +57,15 @@ from db import SessionLocal, init_db
 from models import (
     AccessKey,
     AccountDevice,
+    AccountExperienceState,
     ConnectionEvidence,
     Achievement,
     AdminAudit,
     AppSetting,
     AuthSession,
     AntiAbuseEvent,
+    AcquisitionHandoff,
+    AcquisitionSession,
     CampaignSend,
     DevicePairingCode,
     Event,
@@ -183,6 +186,16 @@ from node_policy import (
 )
 from control_panel import ControlPanel
 from events_service import track_event
+from acquisition_service import (
+    AcquisitionError,
+    acquisition_snapshot,
+    clean_acquisition_slug,
+    clean_entry_route,
+    consume_acquisition_handoff,
+    create_acquisition_handoff,
+    normalize_acquisition_touch,
+    record_funnel_event,
+)
 from offers_service import accept_offer, create_offer, get_active_offer
 from pay_attempts_service import start_attempt
 from points_service import (
@@ -1331,7 +1344,28 @@ class FunnelEventIn(BaseModel):
     path: str | None = Field(default=None, max_length=512)
     referrer: str | None = Field(default=None, max_length=600)
     campaign: str | None = Field(default=None, max_length=64)
+    utm_content: str | None = Field(default=None, max_length=64)
+    ref: str | None = Field(default=None, max_length=64)
+    entry_route: str | None = Field(default=None, max_length=128)
     meta: dict[str, Any] | None = None
+
+
+class AcquisitionHandoffCreateIn(BaseModel):
+    session_id: str = Field(min_length=8, max_length=96)
+    purpose: str = Field(min_length=3, max_length=32)
+    asset: str | None = Field(default=None, max_length=96)
+    channel: str = Field(default="site", max_length=32)
+    source: str = Field(default="unknown", max_length=64)
+    campaign: str | None = Field(default=None, max_length=64)
+    utm_content: str | None = Field(default=None, max_length=64)
+    ref: str | None = Field(default=None, max_length=64)
+    entry_route: str | None = Field(default=None, max_length=128)
+    referrer: str | None = Field(default=None, max_length=600)
+
+
+class AcquisitionHandoffConsumeIn(BaseModel):
+    handle: str = Field(min_length=32, max_length=160)
+    purpose: str = Field(default="account_continue", min_length=3, max_length=32)
 
 
 class ObserverObservationIn(BaseModel):
@@ -1364,6 +1398,7 @@ class FreekassaOrderCreateIn(BaseModel):
     promo_code: str | None = Field(default=None, max_length=32)
     currency: str = Field(default="RUB", max_length=8)
     payment_method: str | None = Field(default=None, max_length=16)
+    acquisition_handle: str | None = Field(default=None, min_length=32, max_length=160)
 
 
 class FreekassaPublicOrderCreateIn(BaseModel):
@@ -1371,6 +1406,7 @@ class FreekassaPublicOrderCreateIn(BaseModel):
     checkout_ticket: str = Field(min_length=16, max_length=1200)
     currency: str = Field(default="RUB", max_length=8)
     payment_method: str | None = Field(default=None, max_length=16)
+    acquisition_handle: str | None = Field(default=None, min_length=32, max_length=160)
 
 
 class FreekassaOrderActionOut(BaseModel):
@@ -1417,6 +1453,7 @@ class RubOrderCreateIn(BaseModel):
     promo_code: str | None = Field(default=None, max_length=32)
     currency: str = Field(default="RUB", max_length=8)
     payment_method: str | None = Field(default=None, max_length=16)
+    acquisition_handle: str | None = Field(default=None, min_length=32, max_length=160)
 
 
 class RubPublicOrderCreateIn(BaseModel):
@@ -1429,6 +1466,11 @@ class RubPublicOrderCreateIn(BaseModel):
     promo_code: str | None = Field(default=None, max_length=32)
     currency: str = Field(default="RUB", max_length=8)
     payment_method: str | None = Field(default=None, max_length=16)
+    acquisition_handle: str | None = Field(default=None, min_length=32, max_length=160)
+
+
+class Start99EligibilityIn(BaseModel):
+    checkout_ticket: str = Field(min_length=16, max_length=1200)
 
 
 class RubOrderActionOut(FreekassaOrderActionOut):
@@ -2275,10 +2317,52 @@ def _has_successful_provider_payment(*, s, user: User) -> bool:
 
 
 def _ensure_start99_available_for_user(*, s, user: User | None, plan_code: str) -> None:
-    if (plan_code or "").strip().lower() != "start_99" or not user:
+    if (plan_code or "").strip().lower() != "start_99":
         return
-    if _has_successful_provider_payment(s=s, user=user):
-        raise HTTPException(status_code=409, detail="start_99 is available only once per user")
+    if user and _has_successful_provider_payment(s=s, user=user):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "start_99_already_used",
+                "message": "Приветственный месяц уже использован.",
+                "replacement_plan": "1_month",
+            },
+        )
+
+
+def _has_successful_provider_payment_for_email(*, s, buyer_email_norm: str) -> bool:
+    email = str(buyer_email_norm or "").strip().lower()
+    if not email:
+        return False
+    row = (
+        s.query(PaymentEntitlementClaim.id)
+        .filter(func.lower(PaymentEntitlementClaim.buyer_email_norm) == email)
+        .filter(PaymentEntitlementClaim.paid_at.isnot(None))
+        .filter(func.lower(func.coalesce(PaymentEntitlementClaim.status, "")) != "reversed")
+        .first()
+    )
+    return bool(row)
+
+
+def _ensure_start99_available_for_order(
+    *,
+    s,
+    user: User | None,
+    buyer_email_norm: str,
+    plan_code: str,
+) -> None:
+    _ensure_start99_available_for_user(s=s, user=user, plan_code=plan_code)
+    if (plan_code or "").strip().lower() != "start_99":
+        return
+    if _has_successful_provider_payment_for_email(s=s, buyer_email_norm=buyer_email_norm):
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "start_99_already_used",
+                "message": "Приветственный месяц уже использован.",
+                "replacement_plan": "1_month",
+            },
+        )
 
 
 def _access_matrix_state_facts(access_state: str | None) -> dict[str, Any]:
@@ -5000,7 +5084,7 @@ def _upsert_external_order(
         row.tg_id = _safe_int(_payload_value(payload, "tg_id", "telegram_id", "user_id", "us_tg_id"))
         row.plan_code = _payload_plan_code(payload) or row.plan_code
     callback_can_define_authority = _normalize_provider(provider) != "freekassa"
-    if callback_can_define_authority:
+    if callback_can_define_authority and created:
         row.source = (
             _payload_value(payload, "source", "checkout_source", "us_source")
             or _payload_nested_value(payload, "clientUtm", "utm_medium")
@@ -5011,6 +5095,7 @@ def _upsert_external_order(
             or _payload_nested_value(payload, "clientUtm", "utm_campaign")
             or row.campaign
         )
+    if callback_can_define_authority:
         row.promo_code = _payload_value(payload, "promo_code", "coupon") or row.promo_code
     meta = _external_order_meta(row)
     meta["callback"] = _redact_payment_payload(payload, max_serialized=1000)
@@ -8210,6 +8295,7 @@ FUNNEL_EVENT_WHITELIST = {
     "checkout_start",
     "bot_open_intent",
     "cabinet_open_intent",
+    "download_click",
 }
 
 FUNNEL_STAGE_WHITELIST = {
@@ -8219,6 +8305,7 @@ FUNNEL_STAGE_WHITELIST = {
     "bot_intent",
     "checkout_view",
     "checkout_start",
+    "download",
 }
 
 FUNNEL_CHANNEL_WHITELIST = {"site", "marketing", "checkout", "webapp", "bot"}

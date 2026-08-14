@@ -82,6 +82,11 @@ async def cmd_start(message: Message):
     if friend_gift_referral_code:
         set_referrer_by_code(tg_id, friend_gift_referral_code)
     update_user_username(tg_id, username)
+    _consume_bot_acquisition_handoff(
+        tg_id=int(tg_id),
+        user=user,
+        start_arg=start_arg,
+    )
     if deeplink_promo_code or deeplink_campaign_key:
         checkout_context_by_user[int(tg_id)] = {
             "promo_code": str(deeplink_promo_code or "").upper()[:20],
@@ -359,18 +364,7 @@ async def cmd_start(message: Message):
         return
 
     text = bot_text("bot.menu.new_user")
-    rows = [
-        [
-            _btn_spec(
-                text="Попробовать POKROV бесплатно",
-                callback_data="mode_simple",
-                style=BTN_STYLE_PRIMARY,
-                emoji_key="free",
-            )
-        ],
-        [_btn_spec(text="Тарифы от 99 ₽", web_app_url=WEBAPP_URL, emoji_key="payment")],
-        [_btn_spec(text="Все возможности", callback_data="mode_pro", emoji_key="settings")],
-    ]
+    rows = new_user_keyboard_specs()
     ok = await _send_rich_copy(
         message=message,
         bot=message.bot,
@@ -1013,9 +1007,31 @@ async def confused_help(callback: CallbackQuery):
     await callback.answer()
 
 
+@router.callback_query(F.data == "verify_pokrov")
+async def verify_pokrov(callback: CallbackQuery):
+    rows = [
+        [
+            _btn_spec(text="Android", callback_data="instr_android", emoji_key="phone"),
+            _btn_spec(text="Windows", callback_data="instr_win", emoji_key="device"),
+        ],
+        [_btn_spec(text="Тарифы", callback_data="charge", emoji_key="payment")],
+        [_btn_spec(text="◀️ Назад", callback_data="back")],
+    ]
+    await _edit_text_with_specs(
+        bot=callback.message.bot,
+        chat_id=callback.message.chat.id,
+        message_id=callback.message.message_id,
+        text=bot_text("bot.instruction.verify"),
+        rows=rows,
+        parse_mode=ParseMode.MARKDOWN,
+    )
+    await callback.answer()
+
+
 @router.callback_query(F.data == "settings")
 async def show_settings(callback: CallbackQuery):
     rows = [
+        [_btn_spec(text="Кабинет", web_app_url=WEBAPP_URL, emoji_key="cabinet")],
         [_btn_spec(text="Ручное подключение", callback_data="show_key", emoji_key="link")],
         [_btn_spec(text="Инструкции", callback_data="instruction", emoji_key="device")],
         [_btn_spec(text="Бонусы", callback_data="menu_bonuses", emoji_key="diamond")],
@@ -1306,7 +1322,7 @@ async def show_referral(callback: CallbackQuery):
 
     await callback.message.edit_text(
         f"🎁 *Пригласите друга по своей ссылке*\n\n"
-        "Друг получает обычные 5 дней пробного доступа — без отдельного подарка за ссылку.\n"
+        "Друг получит *+5 дней* после своей первой успешной оплаты.\n"
         f"Вы получите *+{REFERRAL_BONUS_DAYS} дней* после его первой оплаты и проверки 72 часа.\n\n"
         f"👇 *Ваша ссылка для приглашения:*\n`{invite_link}`\n\n"
         f"Активировано по ссылке: {ref_count}\n"
@@ -1705,7 +1721,7 @@ FAQ_ANSWERS = {
     "referral": (
         "🎁 *Реферальная программа*\n\n"
         "• Пригласите друга по своей ссылке\n"
-        "• Друг получает стандартный пробный период, без лишнего бонуса за ссылку\n"
+        "• Друг получает *+5 дней* после своей первой успешной оплаты\n"
         f"• Вы получаете *+{REFERRAL_BONUS_DAYS} дней* после его первой оплаты и проверки 72 часа\n\n"
         "Откройте меню → *🎁 Пригласить друга*"
     ),

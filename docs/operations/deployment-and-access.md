@@ -1111,8 +1111,9 @@ Default release slug in this repo:
 Current release boundary:
 
 - public distribution is the public GitHub prerelease handoff for the outside-store beta through the current cabinet/runtime contract
-- distributed version: `1.0.0-beta`
-- target candidate: `1.0.0-rc.1`
+- distributed prerelease: `v1.0.4-beta.1` (Android `1.0.4+2013`; Windows
+  `1.0.4-beta.1+13`)
+- a later candidate exists only after an exact release handoff
 - stable `1.0.0` is not proven
 - artifact creation, signing, and candidate publication are owned by [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md); this guide owns runtime application and deploy access
 

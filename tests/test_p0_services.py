@@ -4,7 +4,7 @@ import sys
 import tempfile
 import unittest
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 
@@ -90,6 +90,45 @@ class P0ServicesTests(unittest.TestCase):
         self.assertIsNotNone(fetched2)
         self.assertEqual(fetched2.status, svc.STATUS_PAID)
         self.assertIsNotNone(fetched2.paid_at)
+
+    def test_pay_attempt_stamps_latest_server_bound_acquisition_session(self) -> None:
+        from db import SessionLocal
+        from models import AcquisitionSession
+
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        session = SessionLocal()
+        try:
+            for suffix, minutes in (("older", 30), ("latest", 5)):
+                touched_at = now - timedelta(minutes=minutes)
+                session.add(
+                    AcquisitionSession(
+                        id=f"acquisition-{suffix}",
+                        session_key_hash=("a" if suffix == "older" else "b") * 64,
+                        first_source="telegram_ads",
+                        first_channel="marketing",
+                        first_entry_route="/telegram",
+                        last_source="telegram_ads",
+                        last_channel="bot",
+                        last_entry_route="/telegram",
+                        bound_tg_id=4101,
+                        created_at=touched_at,
+                        first_touch_at=touched_at,
+                        last_touch_at=touched_at,
+                        expires_at=now + timedelta(days=180),
+                    )
+                )
+            session.commit()
+        finally:
+            session.close()
+
+        row = self.pay_attempts_service.start_attempt(
+            tg_id=4101,
+            source="bot",
+            plan_code="start_99",
+            amount_stars=99,
+        )
+        self.assertIsNotNone(row)
+        self.assertEqual(row.acquisition_session_id, "acquisition-latest")
 
     def test_abandoned_candidates_detection(self) -> None:
         svc = self.pay_attempts_service

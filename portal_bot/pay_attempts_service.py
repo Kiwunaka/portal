@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from db import SessionLocal
-from models import PayAttempt
+from models import AcquisitionSession, PayAttempt
 
 
 STATUS_STARTED = "started"
@@ -30,6 +30,14 @@ def start_attempt(
     now = _utcnow()
     s = SessionLocal()
     try:
+        acquisition = (
+            s.query(AcquisitionSession)
+            .filter(AcquisitionSession.bound_tg_id == int(tg_id))
+            .filter(AcquisitionSession.first_touch_at <= now)
+            .filter(AcquisitionSession.expires_at > now)
+            .order_by(AcquisitionSession.last_touch_at.desc(), AcquisitionSession.id.desc())
+            .first()
+        )
         row = PayAttempt(
             tg_id=int(tg_id),
             source=(source or "bot")[:32],
@@ -39,6 +47,7 @@ def start_attempt(
             status=STATUS_STARTED,
             invoice_payload=(invoice_payload[:255] if invoice_payload else None),
             offer_id=offer_id,
+            acquisition_session_id=(str(acquisition.id) if acquisition is not None else None),
             started_at=now,
             updated_at=now,
         )

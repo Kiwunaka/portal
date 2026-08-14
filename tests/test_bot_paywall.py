@@ -2468,7 +2468,7 @@ class BotPaywallTests(unittest.TestCase):
             self.assertTrue(getattr(buttons["buy_3_months"], "icon_custom_emoji_id", None))
 
     def test_main_keyboard_colors_only_primary_actions(self) -> None:
-        with patch.object(self.bot_module, "_bot_checkout_blocked_reasons", return_value=[]):
+        with patch.object(self.bot_module, "get_user", return_value=None):
             rows = self.bot_module.main_keyboard_specs(1001)
 
         buttons = [button for row in rows for button in row]
@@ -2482,7 +2482,6 @@ class BotPaywallTests(unittest.TestCase):
             styled,
             [
                 ("instruction", self.bot_module.BTN_STYLE_PRIMARY),
-                ("charge", self.bot_module.BTN_STYLE_SUCCESS),
             ],
         )
 
@@ -2585,17 +2584,35 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("5 дней", text)
         self.assertNotIn("3 дня", text)
 
-    def test_main_keyboard_uses_kabinet_label_instead_of_portal(self) -> None:
-        rows = self.bot_module.main_keyboard_specs(1001)
+    def test_main_keyboard_keeps_one_guided_first_layer(self) -> None:
+        with patch.object(self.bot_module, "get_user", return_value=None):
+            rows = self.bot_module.main_keyboard_specs(1001)
         labels = [str(button.get("text") or "") for row in rows for button in row]
         upper_labels = [label.upper() for label in labels]
-        self.assertTrue(any("КАБИНЕТ" in label for label in upper_labels))
-        self.assertTrue(any("ПОДКЛЮЧИТЬ УСТРОЙСТВО" in label for label in upper_labels))
-        self.assertTrue(any("VPN НЕ РАБОТАЕТ" in label for label in upper_labels))
-        self.assertTrue(any("НИЗКАЯ СКОРОСТЬ" in label for label in upper_labels))
+        self.assertEqual(len(labels), 4)
+        self.assertTrue(any("5 ДНЕЙ" in label for label in upper_labels))
+        self.assertTrue(any("МОЙ ДОСТУП" in label for label in upper_labels))
+        self.assertTrue(any("ПОМОЩЬ" in label for label in upper_labels))
+        self.assertFalse(any("КАБИНЕТ" in label for label in upper_labels))
+        self.assertFalse(any("VPN НЕ РАБОТАЕТ" in label for label in upper_labels))
+        self.assertFalse(any("НИЗКАЯ СКОРОСТЬ" in label for label in upper_labels))
         self.assertFalse(any("ПОРТАЛ" in label for label in upper_labels))
         self.assertFalse(any("РУЧНАЯ ССЫЛКА" in label for label in upper_labels))
         self.assertFalse(any("БОНУСЫ" in label for label in upper_labels))
+        self.assertIn('text="Кабинет"', inspect.getsource(self.bot_module.show_settings))
+
+    def test_new_user_first_layer_is_platform_first_without_panel_actions(self) -> None:
+        rows = self.bot_module.new_user_keyboard_specs()
+        buttons = [button for row in rows for button in row]
+        labels = [str(button.get("text") or "") for button in buttons]
+        callbacks = [str(button.get("callback_data") or "") for button in buttons]
+
+        self.assertEqual(labels, ["Android", "Windows", "Тарифы", "Как проверить POKROV"])
+        self.assertEqual(
+            callbacks,
+            ["instr_android", "instr_win", "charge", "verify_pokrov"],
+        )
+        self.assertFalse(any(button.get("web_app") for button in buttons))
 
     def test_main_menu_cta_does_not_offer_unavailable_checkout_or_repeat_trial(self) -> None:
         with patch.object(self.bot_module, "_bot_checkout_blocked_reasons", return_value=["blocked"]):
@@ -2619,10 +2636,20 @@ class BotPaywallTests(unittest.TestCase):
                 trial_used=False,
             )
             with patch.object(self.bot_module, "get_user", return_value=active_paid):
-                self.assertEqual(self.bot_module._main_menu_cta_spec(1001)["callback_data"], "gift_redeem_prompt")
+                self.assertEqual(self.bot_module._main_menu_cta_spec(1001)["callback_data"], "instruction")
 
         with patch.object(self.bot_module, "_bot_checkout_blocked_reasons", return_value=[]):
-            self.assertEqual(self.bot_module._main_menu_cta_spec(1001)["callback_data"], "charge")
+            with patch.object(self.bot_module, "get_user", return_value=used_trial):
+                self.assertEqual(self.bot_module._main_menu_cta_spec(1001)["callback_data"], "charge")
+
+    def test_acquisition_start_handle_is_opaque_and_classified_without_raw_meta(self) -> None:
+        handle = "A" * 43
+        self.assertEqual(self.bot_module._parse_acquisition_start_handle(f"acq_{handle}"), handle)
+        self.assertEqual(self.bot_module._parse_acquisition_start_handle("acq_short"), "")
+        self.assertEqual(
+            self.bot_module._classify_start_arg_for_analytics(start_arg=f"acq_{handle}"),
+            "acquisition",
+        )
 
     def test_help_command_opens_faq_menu(self) -> None:
         message = _FakeMessage()

@@ -6,7 +6,7 @@ import sys
 import tempfile
 import unittest
 import uuid
-from datetime import timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from unittest import mock
 
@@ -83,6 +83,64 @@ class WorkerRetentionTests(unittest.TestCase):
         self.assertEqual(self.worker._expiry_stage(timedelta(hours=23)), "t1")
         self.assertEqual(self.worker._expiry_stage(timedelta(minutes=30)), "t0")
         self.assertEqual(self.worker._expiry_stage(timedelta(days=5)), "")
+
+    def test_trial_and_bonus_do_not_receive_paid_t3_message(self) -> None:
+        from types import SimpleNamespace
+
+        trial = SimpleNamespace(current_plan_code="trial", sub_type="FREE")
+        bonus = SimpleNamespace(current_plan_code="channel_bonus", sub_type="BONUS")
+        paid = SimpleNamespace(current_plan_code="6_months", sub_type="PAID")
+
+        self.assertEqual(self.worker._expiry_access_kind(trial), "trial")
+        self.assertEqual(self.worker._expiry_access_kind(bonus), "bonus")
+        self.assertEqual(self.worker._expiry_access_kind(paid), "paid")
+        self.assertEqual(
+            self.worker._expiry_stage(timedelta(days=2, hours=12), access_kind="trial"),
+            "",
+        )
+        self.assertEqual(
+            self.worker._expiry_stage(timedelta(days=2, hours=12), access_kind="bonus"),
+            "",
+        )
+        self.assertEqual(
+            self.worker._expiry_stage(timedelta(days=2, hours=12), access_kind="paid"),
+            "t3",
+        )
+
+    def test_worker_does_not_schedule_unapproved_start99_followup_discount(self) -> None:
+        source = inspect.getsource(self.worker.main)
+        self.assertNotIn('"start99_welcome_offer"', source)
+        self.assertFalse(hasattr(self.worker, "start99_welcome_offer_job"))
+
+    def test_telegram_delivery_window_uses_device_timezone_and_moscow_fallback(self) -> None:
+        from types import SimpleNamespace
+
+        utc_user = SimpleNamespace(app_timezone="UTC")
+        invalid_user = SimpleNamespace(app_timezone="not/a-zone")
+
+        self.assertTrue(
+            self.worker._telegram_delivery_window_open(
+                utc_user,
+                now=datetime(2026, 8, 14, 12, 0, 0),
+            )
+        )
+        self.assertFalse(
+            self.worker._telegram_delivery_window_open(
+                utc_user,
+                now=datetime(2026, 8, 14, 2, 0, 0),
+            )
+        )
+        self.assertTrue(
+            self.worker._telegram_delivery_window_open(
+                invalid_user,
+                now=datetime(2026, 8, 14, 7, 0, 0),
+            )
+        )
+
+    def test_worker_does_not_schedule_legacy_free_upgrade_offer(self) -> None:
+        source = inspect.getsource(self.worker.main)
+        self.assertNotIn('"oto_free"', source)
+        self.assertFalse(hasattr(self.worker, "oto_free_job"))
 
     def test_ab_variant_is_stable(self) -> None:
         v1 = self.worker._ab_variant_for_user(tg_id=1001, flow_key="expiry_t3")
@@ -964,6 +1022,83 @@ class WorkerRetentionTests(unittest.TestCase):
             self.assertEqual(session.query(RuProbeUploaderHeartbeat).count(), 1)
             self.assertEqual(session.query(ReleaseCandidate).count(), 1)
             self.assertEqual(session.query(ReleaseOriginEvidence).count(), 1)
+        finally:
+            session.close()
+
+    def test_telemetry_retention_removes_expired_acquisition_state(self) -> None:
+        from models import AcquisitionHandoff, AcquisitionSession
+
+        now = self.worker._utcnow()
+        session = self.db.SessionLocal()
+        try:
+            expired = AcquisitionSession(
+                id=str(uuid.uuid4()),
+                session_key_hash="a" * 64,
+                first_source="direct",
+                first_channel="site",
+                first_entry_route="/",
+                last_source="direct",
+                last_channel="site",
+                last_entry_route="/",
+                created_at=now - timedelta(days=181),
+                first_touch_at=now - timedelta(days=181),
+                last_touch_at=now - timedelta(days=181),
+                expires_at=now - timedelta(seconds=1),
+            )
+            active = AcquisitionSession(
+                id=str(uuid.uuid4()),
+                session_key_hash="b" * 64,
+                first_source="campaign",
+                first_channel="marketing",
+                first_entry_route="/install",
+                last_source="campaign",
+                last_channel="marketing",
+                last_entry_route="/install",
+                created_at=now,
+                first_touch_at=now,
+                last_touch_at=now,
+                expires_at=now + timedelta(days=180),
+            )
+            session.add_all([expired, active])
+            session.flush()
+            session.add_all(
+                [
+                    AcquisitionHandoff(
+                        id=str(uuid.uuid4()),
+                        token_hash="c" * 64,
+                        acquisition_session_id=expired.id,
+                        purpose="android_install",
+                        created_at=now - timedelta(days=4),
+                        expires_at=now - timedelta(seconds=1),
+                    ),
+                    AcquisitionHandoff(
+                        id=str(uuid.uuid4()),
+                        token_hash="d" * 64,
+                        acquisition_session_id=active.id,
+                        purpose="windows_install",
+                        created_at=now,
+                        expires_at=now + timedelta(hours=72),
+                    ),
+                ]
+            )
+            session.commit()
+
+            deleted = self.worker.run_telemetry_retention_once(
+                session=session,
+                now=now,
+            )
+            session.commit()
+
+            self.assertEqual(deleted["acquisition_handoffs"], 1)
+            self.assertEqual(deleted["acquisition_sessions"], 1)
+            self.assertEqual(
+                [row.id for row in session.query(AcquisitionSession).all()],
+                [active.id],
+            )
+            self.assertEqual(
+                [row.acquisition_session_id for row in session.query(AcquisitionHandoff).all()],
+                [active.id],
+            )
         finally:
             session.close()
 

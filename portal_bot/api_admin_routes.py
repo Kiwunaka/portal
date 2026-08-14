@@ -424,6 +424,59 @@ def _admin_payment_period_bounds(period: str) -> tuple[str, datetime, datetime]:
     return label, start, now
 
 
+def _count_funnel_sessions(
+    s,
+    *,
+    from_dt: datetime,
+    to_dt: datetime,
+    stages: set[str] | None = None,
+    event_names: set[str] | None = None,
+) -> int:
+    query = (
+        s.query(func.count(func.distinct(FunnelEvent.session_id)))
+        .filter(FunnelEvent.created_at >= from_dt, FunnelEvent.created_at <= to_dt)
+    )
+    if stages:
+        query = query.filter(FunnelEvent.stage.in_(sorted(stages)))
+    if event_names:
+        query = query.filter(FunnelEvent.event_name.in_(sorted(event_names)))
+    return int(query.scalar() or 0)
+
+
+def _count_known_event_users(
+    s,
+    *,
+    from_dt: datetime,
+    to_dt: datetime,
+    event_names: set[str],
+) -> int:
+    return int(
+        s.query(func.count(func.distinct(Event.tg_id)))
+        .filter(Event.created_at >= from_dt, Event.created_at <= to_dt)
+        .filter(Event.event_name.in_(sorted(event_names)))
+        .scalar()
+        or 0
+    )
+
+
+def _count_pay_attempt_users(
+    s,
+    *,
+    from_dt: datetime,
+    to_dt: datetime,
+    statuses: set[str] | None = None,
+) -> int:
+    query = (
+        s.query(func.count(func.distinct(PayAttempt.tg_id)))
+        .filter(PayAttempt.started_at >= from_dt, PayAttempt.started_at <= to_dt)
+    )
+    if statuses:
+        query = query.filter(
+            func.lower(func.coalesce(PayAttempt.status, "")).in_(sorted(statuses))
+        )
+    return int(query.scalar() or 0)
+
+
 def _admin_payments_summary_payload(*, s, period: str) -> dict[str, Any]:
     label, from_dt, to_dt = _admin_payment_period_bounds(period)
     paid_time = func.coalesce(ExternalOrder.paid_at, ExternalOrder.created_at)

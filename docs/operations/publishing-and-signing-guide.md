@@ -57,8 +57,9 @@ Until store URLs are live, the canonical distribution source is:
 
 - GitHub Releases for Android and Windows binaries
 
-Current public distribution is the public GitHub prerelease `1.0.0-beta` in
-`Kiwunaka/pokrov`. `1.0.0-rc.1` is the target candidate, and stable 1.0.0 is not proven.
+Current public distribution is the public GitHub prerelease `v1.0.4-beta.1` in
+`Kiwunaka/pokrov`. A later candidate requires a new exact release handoff, and
+stable 1.0.0 is not proven.
 This guide does not claim store availability or trusted Windows signing.
 
 All public download surfaces must be wired from the same release handoff values:
@@ -122,8 +123,10 @@ Treat `AAB`, `MSIX`, and portable `ZIP` as market/operator artifacts, not first-
 
 Current public user-facing version policy:
 
-- the distributed beta line is `1.0.0-beta`
-- `1.0.0-rc.1` is the target candidate; stable `1.0.0` remains unproven
+- the distributed prerelease is `v1.0.4-beta.1`; Android is `1.0.4+2013` and
+  Windows is `1.0.4-beta.1+13`
+- a later candidate requires exact signed artifacts and handoff; stable `1.0.0`
+  remains unproven
 - Android `versionName`, Windows display version, cabinet download badges, and public changelog copy should stay aligned to the distributed beta line
 - internal build numbers and platform-native version codes may remain numeric or platform-specific and are not the public label
 - inherited upstream display strings such as `2.5.7 dev` must not remain visible on public user-facing surfaces

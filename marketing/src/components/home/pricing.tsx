@@ -20,6 +20,7 @@ export function Pricing() {
   const facts = getSharedProductFacts();
   const plans = getTariffPlans()
     .filter((plan) => plan.is_active)
+    .filter((plan) => ["start_99", "6_months", "12_months"].includes(plan.code))
     .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0));
 
   const yearPlan = plans.find((plan) => Number(plan.duration_days) >= 360);
@@ -29,10 +30,10 @@ export function Pricing() {
       <Reveal>
         <SectionHeading
           kicker={getCopyText("marketing.home.pricing.kicker", "POKROV PREMIUM")}
-          title={getCopyText("marketing.home.pricing.title", "Безлимитный VPN от 99 ₽")}
+          title={getCopyText("marketing.home.pricing.title", "Три понятных варианта")}
           sub={getCopyText(
             "marketing.home.pricing.sub",
-            "5 дней бесплатно без карты. На платных тарифах — безлимитный трафик, до 5 устройств и экономия до 30%. Автосписаний нет.",
+            "Первый полный месяц — 99 ₽ один раз. Потом можно взять обычный месяц за 239 ₽ или сразу выбрать выгодный срок. Автосписаний нет.",
           )}
         />
       </Reveal>
@@ -88,12 +89,17 @@ export function Pricing() {
       </div>
 
       <Reveal>
-        <p className="mt-8 text-center text-[0.8125rem] text-ink-soft">
+        <div className="mt-8 flex flex-col items-center gap-3 text-center">
+          <Button href={MARKETING_CANONICAL_PATHS.checkout} variant="secondary">
+            Все тарифы
+          </Button>
+          <p className="m-0 text-[0.8125rem] text-ink-soft">
           {getCopyText(
             "marketing.home.pricing.note",
             "Платные тарифы безлимитны по трафику. POKROV не ставит тарифный лимит скорости; фактическая скорость зависит от сети, устройства, локации и нагрузки.",
           )}
-        </p>
+          </p>
+        </div>
       </Reveal>
     </section>
   );

@@ -1,6 +1,5 @@
-import Link from "next/link";
-
 import JsonLd from "../../components/json-ld";
+import { DownloadActions } from "../../components/install/download-actions";
 import { PlatformTabs, type InstallPlatform } from "../../components/install/platform-tabs";
 import { PageShell } from "../../components/layout/page-shell";
 import { Reveal } from "../../components/motion/reveal";
@@ -26,13 +25,6 @@ import { getSeoPage, SEO_PAGE_PATHS } from "../../lib/seo-pages";
 const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
 const SEO_PAGE = getSeoPage("/install/");
 
-function buildCabinetDownloadsHref(platform: "android" | "windows"): string {
-  const url = new URL(config.webappUrl);
-  url.pathname = "/downloads/";
-  url.searchParams.set("platform", platform);
-  return url.toString();
-}
-
 export const metadata = buildMarketingMetadata(
   SEO_PAGE.title,
   SEO_PAGE.description,
@@ -43,10 +35,6 @@ export const metadata = buildMarketingMetadata(
 
 export default function InstallPage() {
   const facts = getSharedProductFacts();
-  const androidHref = config.androidApkUrl || buildCabinetDownloadsHref("android");
-  const androidDirectDownload = Boolean(config.androidApkUrl);
-  const windowsHref = config.windowsExeUrl || buildCabinetDownloadsHref("windows");
-  const windowsDirectDownload = Boolean(config.windowsExeUrl);
 
   const platforms: InstallPlatform[] = [
     {
@@ -176,27 +164,11 @@ export default function InstallPage() {
             "Выберите Android или Windows, скачайте официальный файл и нажмите «Подключить». После установки получите 5 дней бесплатно — карта не нужна.",
           )}
         </p>
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <Button href={androidHref} size="lg" target="_blank" rel="noreferrer">
-            {getCopyText("marketing.install.cta.android", "Скачать POKROV на Android")}
-          </Button>
-          <Button href={windowsHref} size="lg" variant="secondary" target="_blank" rel="noreferrer">
-            {getCopyText("marketing.install.cta.windows", "Скачать POKROV на Windows")}
-          </Button>
-        </div>
-        <div className="flex flex-col items-center gap-1">
-          <p className="m-0 text-[0.8125rem] text-ink-soft">
-            {androidDirectDownload && windowsDirectDownload
-              ? "Android APK и Windows-установщик скачаются из официального POKROV Releases."
-              : getCopyText("marketing.install.cta.note", "Файл выдаст кабинет — откроется в новой вкладке.")}
-          </p>
-          <Link
-            href={SEO_PAGE_PATHS.trustGithubReleases}
-            className="text-[0.8125rem] font-medium text-brand no-underline hover:text-brand-strong focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
-          >
-            {getCopyText("marketing.install.cta.releases_link", "Файлы и checksums — на GitHub Releases")}
-          </Link>
-        </div>
+        <DownloadActions
+          initialAndroidUrl={config.androidApkUrl}
+          initialWindowsUrl={config.windowsExeUrl}
+          releasesHelpHref={SEO_PAGE_PATHS.trustGithubReleases}
+        />
       </section>
 
       <section className="mx-auto max-w-6xl px-4 pb-16 sm:px-6 sm:pb-20">

@@ -3,9 +3,12 @@ import { Button } from "../ui/button";
 import { Chip } from "../ui/chip";
 import { getCopyText, getSharedProductFacts, getTariffPlans } from "../../lib/pokrov";
 import { MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
+import { getPokrovPublicConfig } from "../../lib/pokrov";
+import { PlatformDownloadAction } from "./platform-download-action";
 
 export function Hero() {
   const facts = getSharedProductFacts();
+  const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
   const startPlan = getTariffPlans().find((plan) => plan.is_active) || null;
   const startPrice = startPlan ? `${startPlan.amount_rub} ₽` : "99 ₽";
 
@@ -37,18 +40,19 @@ export function Hero() {
           {getCopyText("marketing.home.hero.kicker", "POKROV VPN · Android + Windows")}
         </Chip>
         <h1 className="font-display text-[2.5rem] leading-[1.08] font-extrabold tracking-[-0.01em] text-ink sm:text-[3.25rem] lg:text-[3.5rem]">
-          {getCopyText("marketing.home.hero.title", "Открывайте привычные сервисы")}
+          {getCopyText("marketing.home.hero.title", "YouTube, TikTok и ChatGPT — одной кнопкой")}
         </h1>
         <p className="max-w-lg text-lg leading-relaxed text-ink-soft">
           {getCopyText(
             "marketing.home.hero.subtitle",
-            "Быстрый VPN для YouTube, TikTok, ChatGPT, соцсетей и сайтов. 5 дней бесплатно без карты. Затем — безлимитный трафик от 99 ₽ и до 5 устройств.",
+            "POKROV для Android и Windows. 5 дней бесплатно, карта не нужна.",
           )}
         </p>
         <div className="flex flex-wrap gap-3">
-          <Button href={MARKETING_CANONICAL_PATHS.install} size="lg">
-            {getCopyText("marketing.home.hero.primary_cta", "Попробовать бесплатно")}
-          </Button>
+          <PlatformDownloadAction
+            initialAndroidUrl={config.androidApkUrl}
+            initialWindowsUrl={config.windowsExeUrl}
+          />
           <Button href="/#how-it-works" size="lg" variant="secondary">
             {getCopyText("marketing.home.hero.secondary_cta", "Как это работает")}
           </Button>

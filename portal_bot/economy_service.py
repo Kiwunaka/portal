@@ -33,7 +33,7 @@ TRIAL_EVIDENCE_KIND = "observer_connection"
 PRE_FIRST_PAYMENT_PREMIUM_CAP_DAYS = 15
 CHANNEL_GRANT_DAYS = 5
 GRANDFATHERED_CHANNEL_GRANT_DAYS = 10
-LEGACY_FRIEND_GRANT_DAYS = 5
+FRIEND_GRANT_DAYS = 5
 CHANNEL_GRACE_HOURS = 24
 REFERRER_HOLD_HOURS = 72
 REFERRER_GRANT_DAYS = 10
@@ -1008,6 +1008,79 @@ def _provider_order_key(grant: EntitlementGrant) -> str:
     return f"{str(grant.provider or '').strip().lower()}:{str(grant.external_order_id or '').strip()}"[:160]
 
 
+def _grant_referred_friend_after_first_payment(
+    session,
+    *,
+    relationship: ReferralRelationship,
+    payment: EntitlementGrant,
+    paid_at: datetime,
+    now: datetime,
+) -> EntitlementGrant:
+    account_key = str(relationship.referred_account_id)
+    idempotency_key = f"referral-friend:v1:{account_key}"
+    existing = (
+        session.query(EntitlementGrant)
+        .filter_by(idempotency_key=idempotency_key)
+        .with_for_update()
+        .one_or_none()
+    )
+    if existing is not None:
+        relationship.friend_grant_id = str(existing.id)
+        relationship.friend_granted_at = relationship.friend_granted_at or existing.activated_at or existing.created_at
+        return existing
+
+    starts_at, expires_at = _project_additive_days(
+        session,
+        account_id=account_key,
+        days=FRIEND_GRANT_DAYS,
+        now=paid_at,
+    )
+    payment_key = _provider_order_key(payment)
+    grant = EntitlementGrant(
+        id=str(uuid.uuid4()),
+        account_id=account_key,
+        idempotency_key=idempotency_key,
+        source="referral_friend",
+        status="active",
+        grant_kind="premium_bonus",
+        plan_code="referral_friend",
+        starts_at=starts_at,
+        expires_at=expires_at,
+        activated_at=paid_at,
+        duration_days=FRIEND_GRANT_DAYS,
+        provider="first_provider_payment",
+        external_order_id=payment_key,
+        created_at=now,
+        updated_at=now,
+    )
+    _set_grant_metadata(
+        grant,
+        {
+            "authority": "first_successful_paid_purchase",
+            "payment_grant_id": str(payment.id),
+        },
+    )
+    session.add(grant)
+    session.flush()
+    relationship.friend_grant_id = str(grant.id)
+    relationship.friend_granted_at = paid_at
+    relationship.updated_at = now
+    _record_referral_transition(
+        session,
+        relationship=relationship,
+        transition_key=f"referral-friend-paid:v1:{account_key}",
+        transition_kind="friend_reward_released",
+        status=str(relationship.status),
+        occurred_at=now,
+        metadata={
+            "duration_days": FRIEND_GRANT_DAYS,
+            "authority": "first_successful_paid_purchase",
+        },
+    )
+    rebuild_account_entitlement_projection(session, account_id=account_key, now=now)
+    return grant
+
+
 def normalize_account_payment_history(
     session,
     *,
@@ -1055,6 +1128,13 @@ def normalize_account_payment_history(
 
     payment_key = _provider_order_key(first)
     paid_at = _naive_utc(first.activated_at or first.created_at or current_now)
+    _grant_referred_friend_after_first_payment(
+        session,
+        relationship=relationship,
+        payment=first,
+        paid_at=paid_at,
+        now=current_now,
+    )
     if not relationship.first_payment_key:
         relationship = queue_first_payment_referrer_reward(
             session,
@@ -1457,9 +1537,9 @@ def grant_referred_friend_bonus(
     days = _available_prepayment_days(
         session,
         account_id=account_key,
-        requested_days=LEGACY_FRIEND_GRANT_DAYS,
+        requested_days=FRIEND_GRANT_DAYS,
     )
-    if days != LEGACY_FRIEND_GRANT_DAYS:
+    if days != FRIEND_GRANT_DAYS:
         raise ValueError("pre_first_payment_premium_cap")
     starts_at, expires_at = _project_additive_days(session, account_id=account_key, days=days, now=current_now)
     grant = EntitlementGrant(

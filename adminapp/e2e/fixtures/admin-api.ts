@@ -781,19 +781,33 @@ const revenueOrders = [
 
 const revenueFunnel = {
   period: { from: "2026-06-16", to: "2026-07-15" },
-  totals: { visitors: 1200, app_opens: 720, checkouts: 310, paid: 180, connected: 151 },
-  stages: [
-    { key: "site_to_app", label: "Сайт → кабинет или бот", entered: 1200, reached_next: 720, dropped: 480, conversion_pct: 60 },
-    { key: "app_to_checkout", label: "Кабинет/бот → оплата", entered: 720, reached_next: 310, dropped: 410, conversion_pct: 43.1 },
-    { key: "checkout_to_paid", label: "Оплата → подтверждение", entered: 310, reached_next: 180, dropped: 130, conversion_pct: 58.1 },
-    { key: "paid_to_connected", label: "Оплачено → подключение", entered: 180, reached_next: 151, dropped: 29, conversion_pct: 83.9 },
-  ],
-  drop_reasons: [{ reason: "Не начали оплату", count: 410 }, { reason: "Callback не подтверждён", count: 130 }],
-  by_source: [
-    { source: "site", visitors: 800, app_opens: 440, checkouts: 190, paid: 108, connected: 91 },
-    { source: "bot", visitors: null, app_opens: 280, checkouts: 120, paid: 72, connected: 60 },
-  ],
-  notes: ["Анонимные site sessions не содержат IP."]
+  acquisition: {
+    cohort: "first_touch_in_period",
+    totals: { sessions: 1200, entry_intents: 720, resolved_entries: 540, checkouts: 310, paid: 180, connected: 151 },
+    stages: [
+      { key: "visit_to_entry", label: "Первый визит → скачивание или бот", entered: 1200, reached_next: 720, dropped: 480, conversion_pct: 60 },
+      { key: "entry_to_bound", label: "Скачивание/бот → подтверждённый вход", entered: 720, reached_next: 540, dropped: 180, conversion_pct: 75 },
+      { key: "bound_to_checkout", label: "Вход → начало оплаты", entered: 540, reached_next: 310, dropped: 230, conversion_pct: 57.4 },
+      { key: "checkout_to_paid", label: "Начали оплату → оплатили", entered: 310, reached_next: 180, dropped: 130, conversion_pct: 58.1 },
+      { key: "paid_to_connected", label: "Оплатили → подключились", entered: 180, reached_next: 151, dropped: 29, conversion_pct: 83.9 },
+    ],
+    drop_reasons: [{ reason: "Не начали оплату", count: 230 }, { reason: "Оплата не подтверждена", count: 130 }],
+    by_source: [
+      { source: "site", sessions: 800, entry_intents: 440, resolved_entries: 330, checkouts: 190, paid: 108, connected: 91 },
+      { source: "bot", sessions: 400, entry_intents: 280, resolved_entries: 210, checkouts: 120, paid: 72, connected: 60 },
+    ],
+  },
+  product: {
+    cohort: "known_user_open_in_period",
+    totals: { opened: 720, checkouts: 310, paid: 180, connected: 151 },
+    stages: [
+      { key: "open_to_checkout", label: "Открыли продукт → начали оплату", entered: 720, reached_next: 310, dropped: 410, conversion_pct: 43.1 },
+      { key: "checkout_to_paid", label: "Начали оплату → оплатили", entered: 310, reached_next: 180, dropped: 130, conversion_pct: 58.1 },
+      { key: "paid_to_connected", label: "Оплатили → подключились", entered: 180, reached_next: 151, dropped: 29, conversion_pct: 83.9 },
+    ],
+    drop_reasons: [{ reason: "Открыли продукт, но не начали оплату", count: 410 }],
+  },
+  notes: ["Raw identifiers are not returned."]
 };
 
 const revenuePromos = [
@@ -1863,7 +1877,7 @@ export async function installAdminApiMock(
         await fulfillJson(route, { detail: "Воронка временно недоступна", code: "funnel_unavailable" }, options.funnelStatus);
         return;
       }
-      await fulfillJson(route, options.revenueScenario === "populated" ? revenueFunnel : { period: { from: null, to: null }, totals: {}, stages: [], drop_reasons: [], by_source: [], notes: [] });
+      await fulfillJson(route, options.revenueScenario === "populated" ? revenueFunnel : { period: { from: null, to: null }, acquisition: { cohort: "first_touch_in_period", totals: {}, stages: [], drop_reasons: [], by_source: [] }, product: { cohort: "known_user_open_in_period", totals: {}, stages: [], drop_reasons: [] }, notes: [] });
       return;
     }
 
@@ -1906,7 +1920,7 @@ export async function installAdminApiMock(
       "/api/admin/keys/pressure": { rows: [] },
       "/api/admin/tickets": { tickets: [] },
       "/api/admin/live-updates": { updates: [] },
-      "/api/admin/funnel/summary": { stages: [], sources: [] },
+      "/api/admin/funnel/summary": { period: { from: null, to: null }, acquisition: { cohort: "first_touch_in_period", totals: {}, stages: [], drop_reasons: [], by_source: [] }, product: { cohort: "known_user_open_in_period", totals: {}, stages: [], drop_reasons: [] }, notes: [] },
       "/api/admin/users": { page: 1, page_size: 80, total: 0, sort: "created_desc", users: [] },
       "/api/admin/promos": { promos: options.promoRows ?? [] },
       "/api/admin/referrals/pending": { rows: [] }

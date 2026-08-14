@@ -6,7 +6,6 @@ import { Pricing } from "../components/home/pricing";
 import { ServicesGrid } from "../components/home/services-grid";
 import { Showcase } from "../components/home/showcase";
 import { Steps } from "../components/home/steps";
-import { TelegramBonus } from "../components/home/telegram-bonus";
 import JsonLd from "../components/json-ld";
 import { PageShell } from "../components/layout/page-shell";
 import {
@@ -18,8 +17,8 @@ import {
 } from "../lib/marketing-site";
 
 export const metadata = buildMarketingMetadata(
-  "POKROV VPN для Android и Windows — 5 дней бесплатно",
-  "Быстрый VPN для YouTube, TikTok, ChatGPT и сайтов. 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽.",
+  "YouTube, TikTok и ChatGPT — одной кнопкой | POKROV",
+  "POKROV для Android и Windows: 5 дней бесплатно без карты, официальный APK и EXE, первый полный месяц 99 ₽ без автосписаний.",
   {
     path: "/",
   },
@@ -37,7 +36,6 @@ export default function HomePage() {
       <Steps />
       <Showcase />
       <Pricing />
-      <TelegramBonus />
       <Faq />
       <FinalCta />
     </PageShell>

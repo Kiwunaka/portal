@@ -736,10 +736,16 @@ def test_canonical_payment_fact_is_first_once_across_linked_projections(tmp_path
     assert replay.grant.id == first.grant.id
     assert renewal.is_first_payment is False
     assert session.query(EntitlementGrant).filter_by(source="provider_payment").count() == 2
+    friend = session.query(EntitlementGrant).filter_by(source="referral_friend").one()
+    assert friend.duration_days == 5
+    assert friend.provider == "first_provider_payment"
+    assert friend.activated_at == NOW
     assert {app_user.first_purchase_done, bot_user.first_purchase_done} == {True}
-    assert app_user.expiry_at == bot_user.expiry_at == NOW + timedelta(days=60)
+    assert app_user.expiry_at == bot_user.expiry_at == NOW + timedelta(days=65)
     relationship = first.relationship
     assert relationship is not None
+    assert relationship.friend_grant_id == friend.id
+    assert relationship.friend_granted_at == NOW
     assert relationship.first_payment_key == "lavatop:canonical-first"
     assert relationship.hold_until == NOW + timedelta(hours=72)
     session.close()

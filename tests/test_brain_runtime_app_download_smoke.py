@@ -26,6 +26,7 @@ def _base_remote_payload() -> dict:
         "checks": [
             {"name": "brain_bot_runtime_token", "status": "PASS", "missing": []},
             {"name": "api_health", "status": "PASS", "missing": [], "http_status": 200},
+            {"name": "api_public_client_apps_anonymous", "status": "PASS", "missing": [], "http_status": 200},
             {"name": "api_client_apps_signed_init_data", "status": "PASS", "missing": [], "http_status": 200},
             {"name": "api_payment_providers", "status": "PASS", "missing": [], "http_status": 200},
         ],
@@ -36,6 +37,16 @@ def _base_remote_payload() -> dict:
             },
             "windows": {
                 "exe_url": "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-windows-setup-x64.exe",
+            },
+            "docs_url": "https://pokrov.space/install/",
+        },
+        "public_client_apps": {
+            "android": {
+                "play_url": "",
+                "apk_url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.0.4-beta.1/pokrov-android-arm64-v8a.apk",
+            },
+            "windows": {
+                "exe_url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.0.4-beta.1/pokrov-windows-setup-x64.exe",
             },
             "docs_url": "https://pokrov.space/install/",
         },
@@ -58,6 +69,7 @@ def test_build_report_passes_signed_init_runtime_links_with_blocked_provider_cat
     assert report["runtime_app_download_smoke_passed"] is True
     checks = {check["name"]: check for check in report["checks"]}
     assert checks["runtime_client_apps_release_handoff"]["status"] == "PASS"
+    assert checks["runtime_public_client_apps_release_handoff"]["status"] == "PASS"
     assert checks["runtime_payment_provider_policy"]["status"] == "PASS"
 
 
@@ -77,6 +89,24 @@ def test_build_report_blocks_when_runtime_links_are_not_synced() -> None:
     checks = {check["name"]: check for check in report["checks"]}
     assert "android release URL is missing" in checks["runtime_client_apps_release_handoff"]["missing"]
     assert "windows release URL is missing" in checks["runtime_client_apps_release_handoff"]["missing"]
+
+
+def test_build_report_blocks_when_public_runtime_links_are_not_synced() -> None:
+    module = _load_module()
+    payload = _base_remote_payload()
+    payload["public_client_apps"] = {
+        "android": {"play_url": "", "apk_url": "", "mirror_url": ""},
+        "windows": {"exe_url": "", "mirror_url": ""},
+        "docs_url": "https://pokrov.space/install/",
+    }
+
+    report = module.build_report(remote_payload=payload)
+
+    assert report["ok"] is False
+    assert report["classification"] == "BLOCKED_BY_ACCESS"
+    checks = {check["name"]: check for check in report["checks"]}
+    assert "android release URL is missing" in checks["runtime_public_client_apps_release_handoff"]["missing"]
+    assert "windows release URL is missing" in checks["runtime_public_client_apps_release_handoff"]["missing"]
 
 
 def test_build_report_rejects_non_lavatop_green_provider_catalog() -> None:

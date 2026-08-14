@@ -1912,7 +1912,9 @@ def _client_notification_items(
     live_updates: list[LiveUpdate] | None = None,
     compensation_grants: list[EntitlementGrant] | None = None,
     program_applications: list[ProgramApplication] | None = None,
+    now: datetime | None = None,
 ) -> list[dict[str, Any]]:
+    current_now = now or _utcnow()
     items: list[dict[str, Any]] = []
     for incident in list(incidents or [])[:10]:
         notification_id = f"incident.{incident.id}"
@@ -1968,17 +1970,52 @@ def _client_notification_items(
             }
         )
     access_state = str(access_policy.get("access_state") or "").strip().lower()
-    if access_state in {"trial_premium", "bonus_premium", "paid_unlimited"}:
-        days_left = _client_days_left(getattr(user, "expiry_at", None))
-        notification_id = "access.trial" if access_state == "trial_premium" else f"access.{access_state}"
+    expiry_at = getattr(user, "expiry_at", None)
+    access_kind = {
+        "trial_premium": "trial",
+        "bonus_premium": "bonus",
+        "paid_unlimited": "paid",
+    }.get(access_state)
+    if not access_kind:
+        plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
+        sub_type = str(getattr(user, "sub_type", "") or "").strip().upper()
+        if plan_code == "trial" or sub_type.startswith("TRIAL"):
+            access_kind = "trial"
+        elif plan_code in {"channel_bonus", "bonus"} or sub_type.startswith("BONUS"):
+            access_kind = "bonus"
+        elif expiry_at is not None:
+            access_kind = "paid"
+    access_stage = ""
+    if expiry_at is not None and access_kind:
+        delta = expiry_at - current_now
+        if access_kind == "paid" and timedelta(days=2) < delta <= timedelta(days=3):
+            access_stage = "t3"
+        elif timedelta(hours=20) < delta <= timedelta(hours=28):
+            access_stage = "t1"
+        elif timedelta(hours=-1) <= delta <= timedelta(hours=1):
+            access_stage = "t0"
+    if access_stage and access_kind and expiry_at is not None:
+        notification_id = f"access.{access_kind}.{access_stage}.{expiry_at.date().isoformat()}"
+        if access_stage == "t3":
+            title = "Доступ закончится через 3 дня"
+            body = "Продлите заранее, если хотите сохранить подключение без паузы."
+        elif access_stage == "t1":
+            title = "Пробный период закончится завтра" if access_kind == "trial" else "До окончания доступа 1 день"
+            body = "Выберите подходящий срок — автосписаний нет."
+        elif expiry_at > current_now:
+            title = "Доступ заканчивается сегодня"
+            body = "Продлить можно в кабинете. Автосписаний нет."
+        else:
+            title = "Доступ закончился"
+            body = "Выберите срок, чтобы снова подключить POKROV."
         items.append(
             {
                 "id": notification_id,
                 "kind": "access",
-                "title": "Доступ активен",
-                "body": f"Осталось {days_left} дн." if days_left else "Доступ сейчас активен.",
-                "createdAt": _safe_iso(getattr(user, "app_last_seen_at", None) or getattr(user, "created_at", None) or _utcnow()),
-                "ctaLabel": "Открыть кабинет",
+                "title": title,
+                "body": body,
+                "createdAt": _safe_iso(expiry_at),
+                "ctaLabel": "Выбрать срок",
                 "ctaHref": _public_webapp_url(),
                 "read": notification_id in read_ids,
             }
@@ -4140,6 +4177,7 @@ async def _rub_create_order_internal(
     buyer_email: str | None = None,
     payment_method: str | None = None,
     consume_pending_discount: bool = False,
+    acquisition_handle: str | None = None,
 ) -> RubOrderActionOut:
     _ensure_checkout_runtime_ready()
     provider = _normalize_provider(provider)
@@ -4173,10 +4211,32 @@ async def _rub_create_order_internal(
             user = s.query(User).filter(User.tg_id == int(normalized_tg_id)).first()
         if normalized_tg_id > 0 and not user:
             raise HTTPException(status_code=404, detail="User not found")
+        acquisition_handoff = None
+        acquisition_row = None
+        attribution_snapshot = None
+        if acquisition_handle:
+            try:
+                acquisition_handoff, acquisition_row, attribution_snapshot = consume_acquisition_handoff(
+                    s,
+                    raw_handle=acquisition_handle,
+                    expected_purpose="checkout",
+                    bound_tg_id=(int(normalized_tg_id) if normalized_tg_id > 0 else None),
+                    bound_account_id=(str(getattr(user, "account_id", "") or "") or None) if user else None,
+                    now=_utcnow(),
+                )
+            except AcquisitionError as exc:
+                raise HTTPException(status_code=exc.status_code, detail=exc.code) from exc
+            source = str(attribution_snapshot["last"].get("source") or source or "unknown")[:32]
+            campaign = str(attribution_snapshot["last"].get("campaign") or "")[:64]
         normalized_plan_code = str(plan.get("code") or plan_code).strip().lower()
         if not public_provider_is_configured_for_plan(provider, normalized_plan_code):
             raise HTTPException(status_code=503, detail=f"{provider} plan is not configured for public RUB checkout")
-        _ensure_start99_available_for_user(s=s, user=user, plan_code=normalized_plan_code)
+        _ensure_start99_available_for_order(
+            s=s,
+            user=user,
+            buyer_email_norm=buyer_email_norm,
+            plan_code=normalized_plan_code,
+        )
         base_amount = max(0, int(plan.get("amount_rub") or 0))
         final_amount = base_amount
         discount_pct = 0
@@ -4225,6 +4285,8 @@ async def _rub_create_order_internal(
         order_prefix = "fk" if provider == "freekassa" else provider[:12]
         order_subject = str(normalized_tg_id if normalized_tg_id > 0 else "public")
         order_id = f"{order_prefix}_{source}_{order_subject}_{int(time.time())}_{secrets.token_hex(4)}"
+        if acquisition_handoff is not None:
+            acquisition_handoff.bound_order_id = order_id
         plan_label = str(plan.get("label") or RUB_PLAN_LABELS.get(plan_code) or plan_code).strip()
         fulfillment_mode = "account_extend" if normalized_tg_id > 0 else "access_key_email"
         ext = ExternalOrder(
@@ -4234,6 +4296,7 @@ async def _rub_create_order_internal(
             plan_code=normalized_plan_code,
             source=source,
             campaign=(campaign or "").strip()[:64] or None,
+            acquisition_session_id=(str(acquisition_row.id) if acquisition_row is not None else None),
             promo_code=effective_promo or None,
             amount=float(amount_rub),
             currency=(currency or "RUB").strip().upper()[:16] or "RUB",
@@ -4242,6 +4305,7 @@ async def _rub_create_order_internal(
                 {
                     "source": source,
                     "campaign": campaign,
+                    "attribution_snapshot": attribution_snapshot,
                     "requested_promo_code": requested_promo or None,
                     "promo_code": effective_promo,
                     "tg_id": int(normalized_tg_id) if normalized_tg_id > 0 else None,
@@ -4444,6 +4508,7 @@ async def rub_order_create(
         currency=(payload.currency or "RUB").strip().upper(),
         payment_method=payload.payment_method,
         consume_pending_discount=False,
+        acquisition_handle=payload.acquisition_handle,
     )
 
 
@@ -4498,7 +4563,56 @@ async def rub_order_create_public(
         buyer_email=buyer_email,
         payment_method=payload.payment_method,
         consume_pending_discount=False,
+        acquisition_handle=payload.acquisition_handle,
     )
+
+
+@app.post("/api/payments/start-99-eligibility")
+async def start99_eligibility(
+    payload: Start99EligibilityIn,
+    request: Request,
+) -> dict[str, Any]:
+    ticket_raw = str(payload.checkout_ticket or "").strip()
+    identity = hashlib.sha256(ticket_raw.encode("utf-8")).hexdigest()[:32]
+    _enforce_beta_rate_limit("start99_eligibility", request, identity=identity)
+    ticket_payload = _parse_checkout_ticket(ticket_raw)
+    if not ticket_payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired checkout ticket")
+    tg_id = int(ticket_payload.get("tg_id") or 0)
+    if tg_id <= 0:
+        raise HTTPException(status_code=400, detail="Checkout ticket has no user binding")
+    s = SessionLocal()
+    try:
+        user = s.query(User).filter(User.tg_id == tg_id).first()
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+        eligible = not _has_successful_provider_payment(s=s, user=user)
+        replacement_ticket = None
+        if not eligible:
+            replacement_ticket = _create_checkout_ticket(
+                tg_id=tg_id,
+                plan_code="1_month",
+                promo_code=_sanitize_deeplink_token(
+                    str(ticket_payload.get("promo_code") or ""),
+                    max_len=20,
+                    uppercase=True,
+                ),
+                campaign_key=_sanitize_deeplink_token(
+                    str(ticket_payload.get("campaign_key") or ""),
+                    max_len=64,
+                    uppercase=False,
+                ),
+                source=str(ticket_payload.get("source") or "bot").strip().lower(),
+            )
+        return {
+            "known": True,
+            "eligible": eligible,
+            "reason": None if eligible else "start_99_already_used",
+            "replacement_plan": "1_month",
+            "replacement_checkout_ticket": replacement_ticket,
+        }
+    finally:
+        s.close()
 
 
 @app.post("/api/payments/freekassa/orders/create", response_model=RubOrderActionOut)
@@ -4516,6 +4630,7 @@ async def freekassa_order_create(
         promo_code=payload.promo_code,
         currency=payload.currency,
         payment_method=payload.payment_method,
+        acquisition_handle=payload.acquisition_handle,
     )
     return await rub_order_create(generic, request=request, x_telegram_init_data=x_telegram_init_data)
 
@@ -4531,6 +4646,7 @@ async def freekassa_order_create_public(
         checkout_ticket=payload.checkout_ticket,
         currency=payload.currency,
         payment_method=payload.payment_method,
+        acquisition_handle=payload.acquisition_handle,
     )
     return await rub_order_create_public(generic, request=request)
 

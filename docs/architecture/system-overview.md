@@ -149,6 +149,12 @@ Reference-lane note:
   and ledger metadata
 - `GET /api/client/nodes/candidates`, `POST /api/client/nodes/select`, and optional `selected_node_code` on `GET /api/client/profile/managed` form the primary app node-selection contract; `POST /api/client/nodes/latency-samples` remains compatibility telemetry for install-scoped RTT samples and carrier/platform context
 - `GET /api/client/locations` preserves the existing country/city catalog and adds a stable safe `variants` list per city for manual route choice: `direct` / `Обычный` is always first, while enabled `ru_bridge_relay` endpoint ids and short labels appear only when that exact node passes endpoint validity, bridge allowlist/exclusion, and transport-eligibility checks. The variant projection never exposes bridge hosts, ports, Reality material, hidden selector tags, or raw config, and uses the same availability helper as Hiddify/sing-box rendering so excluded targets such as US stay direct-only.
+- `GET /api/client/notifications` emits access notices only in actionable expiry
+  windows. Paid access uses T-3/T-1/T0; trial and bonus access use T-1/T0. A
+  stable id includes access kind, stage and expiry date, so reading an old
+  notice cannot hide a later entitlement. Telegram delivery uses the same
+  access distinction, respects 09:00–21:00 in the last known device timezone
+  with Moscow fallback, and lets lifecycle warnings suppress operator promo.
 - `POST /api/client/runtime/stats` is best-effort app telemetry and must not be required from external subscription clients; `connected=true` may record only an account UX `reported` milestone
 - signed observer ingestion remains the only `verified` first-connection path and the only connection source allowed to activate a reserved trial
 - `GET /api/user/*` exposes account experience state, while `POST /api/account/experience/onboarding` persists cabinet/app onboarding completion or skip without touching entitlement state
@@ -519,8 +525,9 @@ Public web rule:
 
 - `marketing/` is the indexable discovery layer
 - `webapp/` is the authenticated or session-aware continuation layer, not a second public acquisition page
-- authenticated app, bot, and cabinet download payloads should resolve runtime `APP_*` values through `/api/client/apps`
-- marketing download CTA, metadata icons, favicon, and share-preview assets are build-time outputs and must be rebuilt or redeployed when public release URLs or derived brand assets change
+- authenticated app, bot, and cabinet download payloads resolve runtime `APP_*` values through `/api/client/apps`
+- the public install page resolves the cacheable, anonymous `/api/public/client-apps` projection of that same runtime source; it accepts only exact versioned POKROV GitHub assets with SHA-256 and size and fails closed without redirecting to login
+- metadata icons, favicon, and share-preview assets remain build-time outputs and must be rebuilt or redeployed when derived brand assets change
 - public SEO pages may vary the entry copy, but they must not create separate product rules or bypass the canonical checkout/session model
 
 ### API-Only Regression Flow
@@ -635,12 +642,24 @@ Dashboard and user-cabinet traffic visibility must come from server-side node ru
 - the cabinet/admin subscription-sharing proxy metric should be described as an estimate, not a people counter: it is derived from live IP activity and capped by recent unique IP evidence so operators can distinguish likely people-sharing from raw connection fan-out
 - app device records remain useful, but they are a separate app-first visibility layer and must not be shown as the only source of "connected devices"
 
-Admin funnel visibility uses two data families:
+Admin funnel visibility is first-party only and exposes two non-interchangeable
+cohorts:
 
-- anonymous public-site events in `funnel_events` for page entry and CTA intent, stored without IP address or user-agent retention
-- known user and payment events from `events`, `pay_attempts`, and `external_orders` for cabinet/bot open, checkout start, paid confirmation, and connection confirmation
+- acquisition starts with `acquisition_sessions.first_touch_at` inside the
+  selected period, then follows only exact handoff/order/payment/connect
+  lineage; anonymous sessions without a valid handoff remain `unknown`
+- product starts with distinct known users that opened the app/account inside
+  the selected period; overlapping `events`, `pay_attempts`, and
+  `external_orders` are deduplicated before later stages are intersected
 
-This funnel is an operator diagnosis surface for “where did people stop?” and must not replace signed payment callbacks, fulfillment records, or Postgres entitlement truth.
+The browser session id is stored only as a domain-separated SHA-256 digest.
+Bounded first/last touch and approved event metadata are retained for `180
+days`; opaque one-time cross-surface handles expire after `72 hours`. Raw
+URL/query, IP, user agent, VPN destination history, message bodies, credentials,
+provider payloads, anonymous ids, and customer ids are not exposed by the
+aggregate admin API. The funnel is an operator diagnosis surface for “where did
+people stop?” and must not replace signed payment callbacks, fulfillment
+records, or Postgres entitlement truth.
 
 Required external geography check:
 
@@ -803,6 +822,7 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `POST /api/payments/orders/create-public`
 - `GET /api/dashboard`
 - `GET /api/client/apps`
+- `GET /api/public/client-apps`
 - `GET /api/nodes/status`
 - `GET /api/reviews`
 - `POST /api/reviews`
@@ -838,6 +858,7 @@ Current release-gate smoke focus should cover:
 - Telegram OIDC start and finish
 - bot token handoff into webapp
 - `GET /api/client/apps`
+- anonymous `GET /api/public/client-apps` with exact APK/EXE metadata
 - `GET /api/payments/providers`
 - checkout continuation from session or ticket
 

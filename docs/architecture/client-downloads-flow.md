@@ -4,8 +4,10 @@ Last updated: 2026-06-07
 
 ## Runtime Source
 
-The canonical runtime source for public client links and update metadata is
-`/api/client/apps`.
+The canonical runtime source for authenticated update metadata is
+`/api/client/apps`. The bounded anonymous release projection is
+`/api/public/client-apps`; it exposes only allowlisted public GitHub release
+assets with a valid SHA-256 and positive bounded size.
 
 The app should check this runtime metadata on launch or resume and ask the user
 to update when the backend marks a newer version as optional, recommended, or
@@ -15,7 +17,7 @@ auto-update.
 Current request shape:
 
 ```http
-GET /api/client/apps?platform=android&current_version=1.0.0-beta&channel=beta
+GET /api/client/apps?platform=android&current_version=1.0.4&channel=beta
 X-Telegram-Init-Data: <redacted>
 ```
 
@@ -32,6 +34,12 @@ uses `APP_ANDROID_APK_ARM64_URL` when present, then the compatibility
 `APP_ANDROID_APK_URL`. Configured ARMv7 and universal URLs appear as clearly
 secondary buttons. The x86_64 artifact remains available through the cabinet/API
 for emulator use and is not promoted to normal phone users.
+
+The static marketing export uses build-time exact release URLs when present and
+refreshes them from `/api/public/client-apps` in the browser. Missing or invalid
+runtime metadata produces an explicit temporary-unavailable state and the
+public Releases/checksum help link; it never falls back to authenticated
+`/downloads/`.
 
 ## Handoff Source
 

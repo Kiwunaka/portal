@@ -46,11 +46,13 @@ def test_home_copy_uses_native_rich_structure_and_custom_emoji() -> None:
     returning_copy = home_copy(returning=True, show_trial=False)
     assert "<h2>" in copy.rich_html
     assert "<tg-emoji emoji-id=" in copy.rich_html
-    assert "<ul>" in copy.rich_html
+    assert "YouTube, TikTok и ChatGPT — одной кнопкой" in copy.rich_html
+    assert "<ul>" not in copy.rich_html
     assert "<h2>" not in copy.fallback_html
-    assert "Добро пожаловать" in copy.fallback_html
+    assert "POKROV VPN" in copy.fallback_html
+    assert "карта не нужна" in copy.fallback_html
     assert "5 дней" not in returning_copy.fallback_html
-    assert "Проверить или продлить доступ" in returning_copy.fallback_html
+    assert "Мой доступ" in returning_copy.fallback_html
 
 
 def test_device_picker_only_adds_slideshow_for_two_safe_https_urls() -> None:

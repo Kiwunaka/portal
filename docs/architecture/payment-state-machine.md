@@ -76,7 +76,8 @@ A legacy `FREE` snapshot, free-cycle, or `free_monthly` credential expiry is
 never a premium baseline. The first such account fact
 may record one normalized referral transition and a `72 hour` hold; every linked
 app/bot projection reads that same history. Callback and worker replay converge
-to one `+15 day` referrer grant. Admin plan keys, gifts, promos, later renewals,
+to one immediate `+5 day` referred-friend grant and one held `+10 day`
+referrer grant. Admin plan keys, gifts, promos, later renewals,
 and client activity events are not first-payment authority.
 
 Historical compatibility backfill requires a successful provider/order row or

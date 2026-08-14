@@ -2455,6 +2455,134 @@ def _ensure_admin_action_intent_domain_postgres(conn) -> None:
     )
 
 
+def _ensure_acquisition_domain_sqlite(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS acquisition_sessions (
+              id VARCHAR(36) PRIMARY KEY,
+              session_key_hash VARCHAR(64) NOT NULL,
+              first_source VARCHAR(64) NOT NULL DEFAULT 'unknown',
+              first_channel VARCHAR(32) NOT NULL DEFAULT 'site',
+              first_campaign VARCHAR(64),
+              first_content VARCHAR(64),
+              first_ref VARCHAR(64),
+              first_entry_route VARCHAR(128) NOT NULL DEFAULT '/',
+              first_referrer_host VARCHAR(128),
+              last_source VARCHAR(64) NOT NULL DEFAULT 'unknown',
+              last_channel VARCHAR(32) NOT NULL DEFAULT 'site',
+              last_campaign VARCHAR(64),
+              last_content VARCHAR(64),
+              last_ref VARCHAR(64),
+              last_entry_route VARCHAR(128) NOT NULL DEFAULT '/',
+              last_referrer_host VARCHAR(128),
+              bound_tg_id BIGINT,
+              bound_account_id VARCHAR(36),
+              created_at DATETIME NOT NULL,
+              first_touch_at DATETIME NOT NULL,
+              last_touch_at DATETIME NOT NULL,
+              expires_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_acquisition_sessions_key_hash ON acquisition_sessions(session_key_hash);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_sessions_bound_tg_id ON acquisition_sessions(bound_tg_id);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_sessions_bound_account_id ON acquisition_sessions(bound_account_id);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_sessions_last_touch_at ON acquisition_sessions(last_touch_at);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_sessions_expires_at ON acquisition_sessions(expires_at);"))
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS acquisition_handoffs (
+              id VARCHAR(36) PRIMARY KEY,
+              token_hash VARCHAR(64) NOT NULL,
+              acquisition_session_id VARCHAR(36) NOT NULL REFERENCES acquisition_sessions(id),
+              purpose VARCHAR(32) NOT NULL,
+              asset VARCHAR(96),
+              bound_tg_id BIGINT,
+              bound_account_id VARCHAR(36),
+              bound_order_id VARCHAR(128),
+              created_at DATETIME NOT NULL,
+              expires_at DATETIME NOT NULL,
+              consumed_at DATETIME
+            );
+            """
+        )
+    )
+    conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_acquisition_handoffs_token_hash ON acquisition_handoffs(token_hash);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_handoffs_session_id ON acquisition_handoffs(acquisition_session_id);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_handoffs_purpose ON acquisition_handoffs(purpose);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_handoffs_bound_tg_id ON acquisition_handoffs(bound_tg_id);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_handoffs_bound_account_id ON acquisition_handoffs(bound_account_id);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_handoffs_bound_order_id ON acquisition_handoffs(bound_order_id);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_handoffs_expires_at ON acquisition_handoffs(expires_at);"))
+
+
+def _ensure_acquisition_domain_postgres(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS acquisition_sessions (
+              id VARCHAR(36) PRIMARY KEY,
+              session_key_hash VARCHAR(64) NOT NULL,
+              first_source VARCHAR(64) NOT NULL DEFAULT 'unknown',
+              first_channel VARCHAR(32) NOT NULL DEFAULT 'site',
+              first_campaign VARCHAR(64),
+              first_content VARCHAR(64),
+              first_ref VARCHAR(64),
+              first_entry_route VARCHAR(128) NOT NULL DEFAULT '/',
+              first_referrer_host VARCHAR(128),
+              last_source VARCHAR(64) NOT NULL DEFAULT 'unknown',
+              last_channel VARCHAR(32) NOT NULL DEFAULT 'site',
+              last_campaign VARCHAR(64),
+              last_content VARCHAR(64),
+              last_ref VARCHAR(64),
+              last_entry_route VARCHAR(128) NOT NULL DEFAULT '/',
+              last_referrer_host VARCHAR(128),
+              bound_tg_id BIGINT,
+              bound_account_id VARCHAR(36),
+              created_at TIMESTAMP NOT NULL,
+              first_touch_at TIMESTAMP NOT NULL,
+              last_touch_at TIMESTAMP NOT NULL,
+              expires_at TIMESTAMP NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_acquisition_sessions_key_hash ON acquisition_sessions(session_key_hash);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_sessions_bound_tg_id ON acquisition_sessions(bound_tg_id);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_sessions_bound_account_id ON acquisition_sessions(bound_account_id);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_sessions_last_touch_at ON acquisition_sessions(last_touch_at);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_sessions_expires_at ON acquisition_sessions(expires_at);"))
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS acquisition_handoffs (
+              id VARCHAR(36) PRIMARY KEY,
+              token_hash VARCHAR(64) NOT NULL,
+              acquisition_session_id VARCHAR(36) NOT NULL REFERENCES acquisition_sessions(id),
+              purpose VARCHAR(32) NOT NULL,
+              asset VARCHAR(96),
+              bound_tg_id BIGINT,
+              bound_account_id VARCHAR(36),
+              bound_order_id VARCHAR(128),
+              created_at TIMESTAMP NOT NULL,
+              expires_at TIMESTAMP NOT NULL,
+              consumed_at TIMESTAMP
+            );
+            """
+        )
+    )
+    conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_acquisition_handoffs_token_hash ON acquisition_handoffs(token_hash);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_handoffs_session_id ON acquisition_handoffs(acquisition_session_id);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_handoffs_purpose ON acquisition_handoffs(purpose);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_handoffs_bound_tg_id ON acquisition_handoffs(bound_tg_id);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_handoffs_bound_account_id ON acquisition_handoffs(bound_account_id);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_handoffs_bound_order_id ON acquisition_handoffs(bound_order_id);"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_handoffs_expires_at ON acquisition_handoffs(expires_at);"))
+
+
 def run_migrations(engine: Engine) -> None:
     """
     Idempotent SQLite migrations for legacy DBs.
@@ -3204,6 +3332,7 @@ def run_migrations(engine: Engine) -> None:
                   status VARCHAR(20) DEFAULT 'started',
                   invoice_payload VARCHAR(255),
                   offer_id INTEGER,
+                  acquisition_session_id VARCHAR(36),
                   started_at DATETIME NOT NULL,
                   updated_at DATETIME NOT NULL,
                   paid_at DATETIME,
@@ -3212,8 +3341,12 @@ def run_migrations(engine: Engine) -> None:
                 """
             )
         )
+        if conn.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name='pay_attempts';")).fetchone():
+            if not _sqlite_column_exists(conn, "pay_attempts", "acquisition_session_id"):
+                conn.execute(text("ALTER TABLE pay_attempts ADD COLUMN acquisition_session_id VARCHAR(36);"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_pay_attempts_invoice_payload ON pay_attempts(invoice_payload);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pay_attempts_tg_status_started ON pay_attempts(tg_id, status, started_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pay_attempts_acquisition_session_id ON pay_attempts(acquisition_session_id);"))
 
         # external provider orders/events: callback idempotency and audit trail.
         conn.execute(
@@ -3227,6 +3360,7 @@ def run_migrations(engine: Engine) -> None:
                   plan_code VARCHAR(32),
                   source VARCHAR(32),
                   campaign VARCHAR(64),
+                  acquisition_session_id VARCHAR(36),
                   promo_code VARCHAR(32),
                   meta_json TEXT,
                   amount FLOAT DEFAULT 0,
@@ -3252,12 +3386,14 @@ def run_migrations(engine: Engine) -> None:
             wanted_external_cols = [
                 ("source", "VARCHAR(32)"),
                 ("campaign", "VARCHAR(64)"),
+                ("acquisition_session_id", "VARCHAR(36)"),
                 ("promo_code", "VARCHAR(32)"),
                 ("meta_json", "TEXT"),
             ]
             for col, ddl in wanted_external_cols:
                 if not _sqlite_column_exists(conn, "external_orders", col):
                     conn.execute(text(f"ALTER TABLE external_orders ADD COLUMN {col} {ddl};"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_acquisition_session_id ON external_orders(acquisition_session_id);"))
 
         conn.execute(
             text(
@@ -3599,6 +3735,7 @@ def run_migrations(engine: Engine) -> None:
         # already accepts the newer POKROV-XXXX-XXXX format without table rebuild.
 
         # Seed default retention templates for admin editing (idempotent).
+        _ensure_acquisition_domain_sqlite(conn)
         _ensure_free_profile_schema_sqlite(conn)
         _ensure_reward_schema_sqlite(conn)
         _seed_retention_templates(conn, dialect="sqlite")
@@ -3820,6 +3957,7 @@ def _run_postgres_migrations(engine: Engine) -> None:
                   plan_code VARCHAR(32),
                   source VARCHAR(32),
                   campaign VARCHAR(64),
+                  acquisition_session_id VARCHAR(36),
                   promo_code VARCHAR(32),
                   meta_json TEXT,
                   amount DOUBLE PRECISION DEFAULT 0,
@@ -3833,11 +3971,13 @@ def _run_postgres_migrations(engine: Engine) -> None:
         )
         _postgres_add_column_if_missing(conn, "external_orders", "source", "VARCHAR(32)")
         _postgres_add_column_if_missing(conn, "external_orders", "campaign", "VARCHAR(64)")
+        _postgres_add_column_if_missing(conn, "external_orders", "acquisition_session_id", "VARCHAR(36)")
         _postgres_add_column_if_missing(conn, "external_orders", "promo_code", "VARCHAR(32)")
         _postgres_add_column_if_missing(conn, "external_orders", "meta_json", "TEXT")
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_order_id ON external_orders(order_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_tg_id ON external_orders(tg_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_provider ON external_orders(provider);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_external_orders_acquisition_session_id ON external_orders(acquisition_session_id);"))
         _ensure_external_order_attention_index(conn)
         conn.execute(
             text(
@@ -3963,7 +4103,9 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_source ON funnel_events(source);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_created_at ON funnel_events(created_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_funnel_events_stage_created ON funnel_events(stage, created_at);"))
+        _postgres_add_column_if_missing(conn, "pay_attempts", "acquisition_session_id", "VARCHAR(36)")
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pay_attempts_tg_status_started ON pay_attempts(tg_id, status, started_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_pay_attempts_acquisition_session_id ON pay_attempts(acquisition_session_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_offers_tg_status_exp ON offers(tg_id, status, expires_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_points_ledger_tg_exp_created ON points_ledger(tg_id, expires_at, created_at);"))
         conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_campaign_sends_tg_campaign ON campaign_sends(tg_id, campaign_key);"))
@@ -4268,6 +4410,7 @@ def _run_postgres_migrations(engine: Engine) -> None:
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_reward_claims_tg_id ON reward_claims(tg_id);"))
 
         # Seed default retention templates for admin editing (idempotent).
+        _ensure_acquisition_domain_postgres(conn)
         _ensure_free_profile_schema_postgres(conn)
         _ensure_reward_schema_postgres(conn)
         _seed_retention_templates(conn, dialect="postgresql")

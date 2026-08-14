@@ -612,6 +612,31 @@ def test_active_paid_predicate_rejects_expired_paid_interval_with_reward_tail(
     assert result.reason == "active_paid_required"
 
 
+def test_active_paid_predicate_accepts_paid_purchase_queued_after_bonus_tail(
+    reward_session,
+    now,
+) -> None:
+    from rewards_service import evaluate_active_paid
+
+    account_id = seed_reward_identity(
+        reward_session,
+        now=now,
+        account_status="active",
+        sub_type="PAID",
+        grant_source="provider_payment",
+        grant_kind="paid_access",
+    )
+    paid_grant = reward_session.query(EntitlementGrant).filter_by(account_id=account_id).one()
+    paid_grant.starts_at = now + timedelta(days=7)
+    paid_grant.expires_at = now + timedelta(days=37)
+    reward_session.flush()
+
+    result = evaluate_active_paid(reward_session, account_id=account_id, now=now)
+
+    assert result.eligible is True
+    assert result.reason == "eligible"
+
+
 @pytest.mark.parametrize(
     ("cycle_day", "last_check", "cycle_start", "valid"),
     (

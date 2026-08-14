@@ -1,6 +1,6 @@
 # Monitoring And Visibility
 
-Last updated: 2026-07-17
+Last updated: 2026-08-14
 
 ## Document Status
 
@@ -82,6 +82,38 @@ Operational rule:
 If the issue is email-specific, hand off through:
 
 - [email-delivery-webhook-handoff.md](C:/Users/kiwun/Documents/ai/VPN/docs/operations/email-delivery-webhook-handoff.md)
+
+## First-party Acquisition And Product Funnels
+
+POKROV uses only its own bounded funnel telemetry. No advertising SDK or
+third-party marketing tracker is part of this contract. The allowed questions
+are: where the person came from, which POKROV step they reached, what action
+they completed, and where the journey stopped.
+
+Acquisition data keeps normalized first/last touch values for `source`,
+`campaign`, `content`, `ref`, entry route, channel, and referrer host. It may
+record an approved asset click, bot intent, checkout start, provider-confirmed
+payment, account/app continuation, and confirmed connection. It must not retain
+raw browser session ids, raw URL/query strings, IP addresses, user agents, VPN
+destination history, support message bodies, credentials, connection material,
+or provider payloads. Browser sessions are retained for `180 days`; one-time
+cross-surface handoffs expire after `72 hours` and cannot grant access.
+
+The `/funnel` admin screen deliberately exposes two separate cohorts:
+
+- `Реклама`: browser acquisition sessions whose first touch is inside the
+  selected period. Its lineage is entry intent → resolved handoff → linked
+  checkout → provider-confirmed paid → confirmed connect. Missing handoff is
+  `unknown`; no IP/UA/timestamp fingerprinting is allowed.
+- `Продукт`: distinct known users with an app/account open inside the period.
+  Checkout, paid, and connect sets are intersected with the preceding known-user
+  set. Overlapping `events`, Telegram Stars attempts, and external orders must
+  not inflate one person into several conversions.
+
+Every downstream numerator is a subset of its preceding denominator. Payment
+truth comes from signed provider callbacks and entitlement records, never from
+marketing events. The aggregate response and UI must not enumerate anonymous
+session hashes, handoff tokens, Telegram/account/order ids, or raw event rows.
 
 ## Transport Rollout Visibility
 

@@ -308,6 +308,15 @@
       "compliance_notes": "Bot core flow copy, 2026-07 tone pass. Mirrors portal_bot/bot_texts.py fallback.",
       "ab_variant": "control"
     },
+    "bot.instruction.verify": {
+      "surface": "bot.onboarding",
+      "ru": "✅ *Как проверить POKROV*\n\n1. Скачайте приложение для Android или Windows\n2. Войдите и нажмите «Подключить»\n3. Откройте YouTube, TikTok или ChatGPT\n\nПервые 5 дней бесплатны, карта не нужна.",
+      "variables": [],
+      "tone": "warm",
+      "allowed_public": false,
+      "compliance_notes": "Bot verification flow copy. Mirrors portal_bot/bot_texts.py fallback.",
+      "ab_variant": "control"
+    },
     "bot.instruction.platform_android": {
       "surface": "bot.onboarding",
       "ru": "🤖 *Android*\n\nARM64 — основной и самый лёгкий файл для большинства телефонов.\n\n1. Скачайте APK и разрешите установку\n2. Откройте POKROV\n3. Нажмите «Подключить»\n\nARMv7 и universal нужны только если основной APK не устанавливается.",
@@ -364,7 +373,7 @@
     },
     "bot.menu.home": {
       "surface": "bot.main",
-      "ru": "🛡 *POKROV VPN*\n\nYouTube, TikTok, ChatGPT, соцсети и нужные сайты — на Android и Windows. Управляйте подключением, тарифом и устройствами прямо здесь.\n\nВыберите действие:",
+      "ru": "🛡 *POKROV VPN*\n\nВыберите один следующий шаг. Остальные настройки спрятаны в разделе «Ещё».",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
@@ -373,7 +382,7 @@
     },
     "bot.menu.new_user": {
       "surface": "bot.main",
-      "ru": "🚀 *POKROV VPN — привычные сервисы снова доступны*\n\nYouTube, TikTok, ChatGPT, соцсети и сайты — на Android и Windows.\n\n✅ 5 дней бесплатно, без карты\n✅ Безлимитный трафик на платных тарифах\n✅ До 5 устройств\n✅ От 99 ₽, без автосписаний\n\nПопробуйте прямо сейчас:",
+      "ru": "🛡 *POKROV VPN*\n\nYouTube, TikTok и ChatGPT — одной кнопкой.\n\nДля Android и Windows. 5 дней бесплатно, карта не нужна.\n\nВыберите своё устройство:",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
@@ -382,7 +391,7 @@
     },
     "bot.menu.returning": {
       "surface": "bot.main",
-      "ru": "👋 *POKROV готов к работе*\n\nПодключайтесь, проверьте доступ или выберите выгодный срок продления:",
+      "ru": "👋 *POKROV готов к работе*\n\nПродолжите с главного действия или проверьте свой доступ.",
       "variables": [],
       "tone": "warm",
       "allowed_public": false,
@@ -982,7 +991,7 @@
     },
     "marketing.home.hero.subtitle": {
       "surface": "marketing.home.hero",
-      "ru": "YouTube, TikTok, ChatGPT и сайты — одной кнопкой. 5 дней бесплатно без карты.",
+      "ru": "POKROV для Android и Windows. 5 дней бесплатно, карта не нужна.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -991,7 +1000,7 @@
     },
     "marketing.home.hero.title": {
       "surface": "marketing.home.hero",
-      "ru": "Открывайте привычные сервисы",
+      "ru": "YouTube, TikTok и ChatGPT — одной кнопкой",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1414,7 +1423,7 @@
     },
     "marketing.home.steps.download.text": {
       "surface": "marketing.home.steps.download",
-      "ru": "Выберите Android или Windows и возьмите актуальный файл из официального кабинета.",
+      "ru": "Выберите Android или Windows и скачайте актуальный официальный файл без регистрации.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,

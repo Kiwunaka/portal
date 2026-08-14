@@ -1688,6 +1688,49 @@ class FunnelEvent(Base):
     created_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
 
 
+class AcquisitionSession(Base):
+    __tablename__ = "acquisition_sessions"
+
+    id = Column(String(36), primary_key=True)
+    session_key_hash = Column(String(64), unique=True, index=True, nullable=False)
+    first_source = Column(String(64), nullable=False, default="unknown")
+    first_channel = Column(String(32), nullable=False, default="site")
+    first_campaign = Column(String(64), nullable=True)
+    first_content = Column(String(64), nullable=True)
+    first_ref = Column(String(64), nullable=True)
+    first_entry_route = Column(String(128), nullable=False, default="/")
+    first_referrer_host = Column(String(128), nullable=True)
+    last_source = Column(String(64), nullable=False, default="unknown")
+    last_channel = Column(String(32), nullable=False, default="site")
+    last_campaign = Column(String(64), nullable=True)
+    last_content = Column(String(64), nullable=True)
+    last_ref = Column(String(64), nullable=True)
+    last_entry_route = Column(String(128), nullable=False, default="/")
+    last_referrer_host = Column(String(128), nullable=True)
+    bound_tg_id = Column(BigInteger, index=True, nullable=True)
+    bound_account_id = Column(String(36), index=True, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    first_touch_at = Column(DateTime, default=_utcnow, nullable=False)
+    last_touch_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
+    expires_at = Column(DateTime, index=True, nullable=False)
+
+
+class AcquisitionHandoff(Base):
+    __tablename__ = "acquisition_handoffs"
+
+    id = Column(String(36), primary_key=True)
+    token_hash = Column(String(64), unique=True, index=True, nullable=False)
+    acquisition_session_id = Column(String(36), ForeignKey("acquisition_sessions.id"), index=True, nullable=False)
+    purpose = Column(String(32), index=True, nullable=False)
+    asset = Column(String(96), nullable=True)
+    bound_tg_id = Column(BigInteger, index=True, nullable=True)
+    bound_account_id = Column(String(36), index=True, nullable=True)
+    bound_order_id = Column(String(128), index=True, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    expires_at = Column(DateTime, index=True, nullable=False)
+    consumed_at = Column(DateTime, nullable=True)
+
+
 class ObserverBatch(Base):
     __tablename__ = "observer_batches"
     __table_args__ = (UniqueConstraint("node_id", "batch_id", name="uq_observer_batches_node_batch"),)
@@ -1798,6 +1841,7 @@ class PayAttempt(Base):
     status = Column(String(20), default="started", nullable=False)
     invoice_payload = Column(String(255), unique=True, nullable=True)
     offer_id = Column(Integer, nullable=True)
+    acquisition_session_id = Column(String(36), index=True, nullable=True)
     started_at = Column(DateTime, default=_utcnow, nullable=False)
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
     paid_at = Column(DateTime, nullable=True)
@@ -1814,6 +1858,7 @@ class ExternalOrder(Base):
     plan_code = Column(String(32), nullable=True)
     source = Column(String(32), nullable=True)
     campaign = Column(String(64), nullable=True)
+    acquisition_session_id = Column(String(36), index=True, nullable=True)
     promo_code = Column(String(32), nullable=True)
     meta_json = Column(Text, nullable=True)
     amount = Column(Float, default=0.0, nullable=False)

@@ -50,43 +50,42 @@ def home_copy(
     show_trial: bool = True,
 ) -> RichMessageCopy:
     if new_user:
-        title = "Добро пожаловать в POKROV"
-        lead = "Настроим защищённое подключение за пару минут."
+        return RichMessageCopy(
+            rich_html=(
+                f"<h2>{rich_emoji('brand')} POKROV VPN</h2>"
+                "<p><b>YouTube, TikTok и ChatGPT — одной кнопкой.</b></p>"
+                "<p>Для Android и Windows. 5 дней бесплатно, карта не нужна.</p>"
+                "<footer>Выберите своё устройство.</footer>"
+            ),
+            fallback_html=(
+                "🛡 <b>POKROV VPN</b>\n\n"
+                "<b>YouTube, TikTok и ChatGPT — одной кнопкой.</b>\n\n"
+                "Для Android и Windows. 5 дней бесплатно, карта не нужна.\n\n"
+                "Выберите своё устройство."
+            ),
+        )
     elif returning:
         title = "С возвращением в POKROV"
-        lead = "Всё на месте — выберите следующий шаг."
+        lead = "Продолжите с главного действия или проверьте свой доступ."
     else:
         title = "POKROV"
-        lead = "Подключение, доступ и помощь — в одном меню."
+        lead = "Выберите один следующий шаг."
 
-    access_rich = (
-        f"{rich_emoji('free')} Проверить сервис 5 дней без карты"
+    access_note = (
+        "5 дней бесплатно, карта не нужна."
         if show_trial
-        else f"{rich_emoji('success')} Проверить или продлить доступ"
-    )
-    access_fallback = (
-        "🆓 Проверить сервис 5 дней без карты"
-        if show_trial
-        else "✅ Проверить или продлить доступ"
+        else "Доступ и продление находятся в кнопке «Мой доступ»."
     )
     return RichMessageCopy(
         rich_html=(
             f"<h2>{rich_emoji('brand')} {html.escape(title)}</h2>"
             f"<p><b>{html.escape(lead)}</b></p>"
-            "<ul>"
-            f"<li>{rich_emoji('device')} Установить POKROV и подключить устройство</li>"
-            f"<li>{access_rich}</li>"
-            f"<li>{rich_emoji('world')} Управлять доступом через кабинет</li>"
-            "</ul>"
-            "<footer>Нажмите нужное действие ниже.</footer>"
+            f"<footer>{html.escape(access_note)}</footer>"
         ),
         fallback_html=(
             f"🛡 <b>{html.escape(title)}</b>\n\n"
             f"{html.escape(lead)}\n\n"
-            "💻 Установить POKROV и подключить устройство\n"
-            f"{access_fallback}\n"
-            "🌐 Управлять доступом через кабинет\n\n"
-            "Нажмите нужное действие ниже."
+            f"{html.escape(access_note)}"
         ),
     )
 

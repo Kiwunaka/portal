@@ -151,25 +151,32 @@ test("Деньги: сбой реестра заказов не скрывает
   await expect(page.getByRole("alert").filter({ hasText: "payment_orders_unavailable" })).toBeVisible();
 });
 
-test("Деньги: воронка применяет общий range/source/stage к графику и таблице", async ({ page }) => {
+test("Деньги: рекламная и продуктовая воронки не смешивают cohort и пользователей", async ({ page }) => {
   await installAdminApiMock(page, { revenueScenario: "populated" });
   await page.goto("/funnel?range=30d");
 
   await expect(page.getByRole("heading", { name: "Воронка", level: 1 })).toBeVisible();
   const chart = page.getByLabel("График воронки");
+  await expect(chart).toHaveAttribute("data-view", "acquisition");
   await expect(chart).toHaveAttribute("data-source", "all");
   await page.getByLabel("Источник воронки").selectOption("site");
-  await page.getByLabel("Стадия воронки").selectOption("paid");
+  await page.getByLabel("Стадия воронки").selectOption("checkout_to_paid");
   await expect(page).toHaveURL(/source=site/);
-  await expect(page).toHaveURL(/stage=paid/);
+  await expect(page).toHaveURL(/stage=checkout_to_paid/);
   await expect(chart).toHaveAttribute("data-source", "site");
-  await expect(chart).toHaveAttribute("data-stage", "paid");
+  await expect(chart).toHaveAttribute("data-stage", "checkout_to_paid");
   await expect(page.getByRole("cell", { name: "site", exact: true })).toBeVisible();
   await expect(page.getByRole("cell", { name: "bot", exact: true })).toHaveCount(0);
   await expect(page.getByRole("columnheader", { name: "Оплатили" })).toBeVisible();
-  await expect(page.getByRole("columnheader", { name: "Посетители" })).toHaveCount(0);
-  await expect(page.getByText("Оплата → подтверждение", { exact: true })).toBeVisible();
-  await expect(page.getByText("Кабинет/бот → оплата", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("columnheader", { name: "Первый визит" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "Начали оплату → оплатили", exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Продукт", exact: true }).click();
+  await expect(page).toHaveURL(/view=product/);
+  await expect(chart).toHaveAttribute("data-view", "product");
+  await expect(page.getByLabel("Источник воронки")).toHaveCount(0);
+  await expect(page.getByRole("cell", { name: "Открыли продукт → начали оплату", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Как считается продукт" })).toBeVisible();
   await expect(page.getByText(/\{.*\}|payload_json|raw json/i)).toHaveCount(0);
 });
 
@@ -179,7 +186,7 @@ test("Деньги: promo edit и delete проходят через L2/L3 serve
 
   await page.getByRole("button", { name: "WELCOME20" }).click();
   await page.getByLabel("Значение промокода").fill("25");
-  await page.getByRole("button", { name: "Проверить и сохранить" }).click();
+  await page.getByLabel("Редактор промокода").getByRole("button", { name: "Проверить и сохранить" }).click();
   let dialog = page.getByRole("dialog", { name: "Проверка действия" });
   await expect(dialog).toContainText("точные before/after и срок промокода");
   await dialog.getByLabel("Подтверждение").fill("ПОДТВЕРДИТЬ");

@@ -47,13 +47,22 @@ export type PaymentSummary = {
 export type PaymentOrdersPayload = { orders: PaymentOrder[]; total: number | null; limit: number | null; offset: number | null };
 
 export type FunnelStage = { key: string; label: string; entered: number | null; reached_next: number | null; dropped: number | null; conversion_pct: number | null };
-export type FunnelSource = { source: string; visitors: number | null; app_opens: number | null; checkouts: number | null; paid: number | null; connected: number | null };
+export type FunnelSource = { source: string; sessions: number | null; entry_intents: number | null; resolved_entries: number | null; checkouts: number | null; paid: number | null; connected: number | null };
 export type FunnelPayload = {
   period: { from: string | null; to: string | null };
-  totals: { visitors: number | null; app_opens: number | null; checkouts: number | null; paid: number | null; connected: number | null };
-  stages: FunnelStage[];
-  drop_reasons: Array<{ reason: string; count: number | null }>;
-  by_source: FunnelSource[];
+  acquisition: {
+    cohort: string;
+    totals: { sessions: number | null; entry_intents: number | null; resolved_entries: number | null; checkouts: number | null; paid: number | null; connected: number | null };
+    stages: FunnelStage[];
+    drop_reasons: Array<{ reason: string; count: number | null }>;
+    by_source: FunnelSource[];
+  };
+  product: {
+    cohort: string;
+    totals: { opened: number | null; checkouts: number | null; paid: number | null; connected: number | null };
+    stages: FunnelStage[];
+    drop_reasons: Array<{ reason: string; count: number | null }>;
+  };
   notes: string[];
 };
 
@@ -243,14 +252,28 @@ export async function fetchFunnel(range: FunnelRange, init?: ApiRequestInit): Pr
   const query = new URLSearchParams(rangeBounds(range));
   const data = await apiFetch<Record<string, unknown>>(`/api/admin/funnel/summary?${query.toString()}`, init);
   const period = data.period && typeof data.period === "object" ? data.period as Record<string, unknown> : {};
-  const totals = data.totals && typeof data.totals === "object" ? data.totals as Record<string, unknown> : {};
+  const acquisition = data.acquisition && typeof data.acquisition === "object" ? data.acquisition as Record<string, unknown> : {};
+  const product = data.product && typeof data.product === "object" ? data.product as Record<string, unknown> : {};
+  const acquisitionTotals = acquisition.totals && typeof acquisition.totals === "object" ? acquisition.totals as Record<string, unknown> : {};
+  const productTotals = product.totals && typeof product.totals === "object" ? product.totals as Record<string, unknown> : {};
   const rows = (value: unknown): Record<string, unknown>[] => Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object")) : [];
+  const stages = (value: unknown): FunnelStage[] => rows(value).map((row) => ({ key: text(row.key) || "unknown", label: text(row.label) || "Без названия", entered: finite(row.entered), reached_next: finite(row.reached_next), dropped: finite(row.dropped), conversion_pct: finite(row.conversion_pct) }));
+  const drops = (value: unknown): Array<{ reason: string; count: number | null }> => rows(value).map((row) => ({ reason: text(row.reason) || "Без причины", count: finite(row.count) }));
   return {
     period: { from: text(period.from), to: text(period.to) },
-    totals: { visitors: finite(totals.visitors), app_opens: finite(totals.app_opens), checkouts: finite(totals.checkouts), paid: finite(totals.paid), connected: finite(totals.connected) },
-    stages: rows(data.stages).map((row) => ({ key: text(row.key) || "unknown", label: text(row.label) || "Без названия", entered: finite(row.entered), reached_next: finite(row.reached_next), dropped: finite(row.dropped), conversion_pct: finite(row.conversion_pct) })),
-    drop_reasons: rows(data.drop_reasons).map((row) => ({ reason: text(row.reason) || "Без причины", count: finite(row.count) })),
-    by_source: rows(data.by_source).map((row) => ({ source: text(row.source) || "unknown", visitors: finite(row.visitors), app_opens: finite(row.app_opens), checkouts: finite(row.checkouts), paid: finite(row.paid), connected: finite(row.connected) })),
+    acquisition: {
+      cohort: text(acquisition.cohort) || "first_touch_in_period",
+      totals: { sessions: finite(acquisitionTotals.sessions), entry_intents: finite(acquisitionTotals.entry_intents), resolved_entries: finite(acquisitionTotals.resolved_entries), checkouts: finite(acquisitionTotals.checkouts), paid: finite(acquisitionTotals.paid), connected: finite(acquisitionTotals.connected) },
+      stages: stages(acquisition.stages),
+      drop_reasons: drops(acquisition.drop_reasons),
+      by_source: rows(acquisition.by_source).map((row) => ({ source: text(row.source) || "unknown", sessions: finite(row.sessions), entry_intents: finite(row.entry_intents), resolved_entries: finite(row.resolved_entries), checkouts: finite(row.checkouts), paid: finite(row.paid), connected: finite(row.connected) })),
+    },
+    product: {
+      cohort: text(product.cohort) || "known_user_open_in_period",
+      totals: { opened: finite(productTotals.opened), checkouts: finite(productTotals.checkouts), paid: finite(productTotals.paid), connected: finite(productTotals.connected) },
+      stages: stages(product.stages),
+      drop_reasons: drops(product.drop_reasons),
+    },
     notes: Array.isArray(data.notes) ? data.notes.filter((item): item is string => typeof item === "string") : [],
   };
 }

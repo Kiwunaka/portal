@@ -379,6 +379,7 @@ def test_client_account_devices_notifications_push_and_subscription_contract(mon
     s = api.SessionLocal()
     try:
         user = s.query(User).filter(User.app_install_id == "account-p1-device").one()
+        user.expiry_at = now + timedelta(hours=23)
         s.add(
             ServiceIncident(
                 id="00000000-0000-4000-8000-000000009001",
@@ -447,11 +448,14 @@ def test_client_account_devices_notifications_push_and_subscription_contract(mon
     assert next(item for item in inbox["items"] if item["kind"] == "incident")["id"] == (
         "incident.00000000-0000-4000-8000-000000009001"
     )
+    access_notice = next(item for item in inbox["items"] if item["kind"] == "access")
+    assert access_notice["id"].startswith("access.trial.t1.")
+    assert access_notice["title"] == "Пробный период закончится завтра"
 
     mark_read = client.post(
         "/api/client/notifications/read",
         headers=headers,
-        json={"ids": ["access.trial"]},
+        json={"ids": [access_notice["id"]]},
     )
     assert mark_read.status_code == 200, mark_read.text
     assert mark_read.json()["ok"] is True

@@ -4,8 +4,8 @@ Last updated: 2026-07-12
 
 Document class: `ACTIVE_EXECUTION`
 
-Scope: outside-store beta execution only. The distributed version is
-`1.0.0-beta`; `1.0.0-rc.1` is the target candidate. This runbook does not
+Scope: outside-store beta execution only. The distributed prerelease is
+`v1.0.4-beta.1`. A later candidate requires a new exact handoff. This runbook does not
 authorize stable `1.0.0`, store availability, trusted Windows signing, raw
 Android audit, or RU-origin readiness claims.
 
@@ -13,7 +13,7 @@ Android audit, or RU-origin readiness claims.
 
 Public beta is GO for Android APK and Windows EXE outside app stores as of `2026-05-15`. This is not a `1.0.0` release, not an app-store release, and not a trusted Windows-signing claim.
 
-The distributed `1.0.0-beta` is a public GitHub prerelease in
+The distributed `v1.0.4-beta.1` is a public GitHub prerelease in
 `Kiwunaka/pokrov`, not a stable or store release.
 
 The current direct Android handoff uses
