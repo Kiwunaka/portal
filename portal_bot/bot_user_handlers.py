@@ -950,12 +950,13 @@ async def show_mtproto(callback: CallbackQuery):
 def _device_select_rows() -> list[list[dict[str, str]]]:
     return [
         [
-            _btn_spec(text="iOS (iPhone)", callback_data="instr_ios", emoji_key="phone"),
-            _btn_spec(text="Android", callback_data="instr_android", emoji_key="phone"),
-        ],
-        [
+            _btn_spec(
+                text="Android",
+                callback_data="instr_android",
+                style=BTN_STYLE_PRIMARY,
+                emoji_key="phone",
+            ),
             _btn_spec(text="Windows", callback_data="instr_win", emoji_key="device"),
-            _btn_spec(text="macOS", callback_data="instr_mac", emoji_key="device"),
         ],
         [_btn_spec(text="Открыть кабинет", web_app_url=WEBAPP_URL, emoji_key="cabinet")],
         [_btn_spec(text="Помощь с выбором", callback_data="confused_help", emoji_key="support")],

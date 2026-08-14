@@ -2614,6 +2614,18 @@ class BotPaywallTests(unittest.TestCase):
         )
         self.assertFalse(any(button.get("web_app") for button in buttons))
 
+    def test_returning_user_device_picker_keeps_release_platforms_only(self) -> None:
+        rows = self.bot_module._device_select_rows()
+        buttons = [button for row in rows for button in row]
+        labels = [str(button.get("text") or "") for button in buttons]
+        callbacks = [str(button.get("callback_data") or "") for button in buttons]
+
+        self.assertEqual(labels[:2], ["Android", "Windows"])
+        self.assertIn("instr_android", callbacks)
+        self.assertIn("instr_win", callbacks)
+        self.assertNotIn("instr_ios", callbacks)
+        self.assertNotIn("instr_mac", callbacks)
+
     def test_main_menu_cta_does_not_offer_unavailable_checkout_or_repeat_trial(self) -> None:
         with patch.object(self.bot_module, "_bot_checkout_blocked_reasons", return_value=["blocked"]):
             with patch.object(self.bot_module, "TELEGRAM_STARS_CHECKOUT_ENABLED", True):
