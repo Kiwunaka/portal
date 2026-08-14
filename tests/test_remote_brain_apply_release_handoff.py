@@ -125,7 +125,13 @@ class RemoteBrainApplyReleaseHandoffTests(unittest.TestCase):
                 {
                   "runtime_env": {
                     "APP_ANDROID_APK_URL": "https://metadata.example.com/pokrov-android.apk",
+                    "APP_ANDROID_RELEASE_NOTES": "Android release notes",
+                    "APP_ANDROID_RELEASE_NOTES_URL": "https://metadata.example.com/android-notes",
+                    "APP_ANDROID_PUBLISHED_AT": "2026-08-14T05:56:25Z",
                     "APP_WINDOWS_EXE_URL": "https://metadata.example.com/pokrov-windows.exe",
+                    "APP_WINDOWS_RELEASE_NOTES": "Windows release notes",
+                    "APP_WINDOWS_RELEASE_NOTES_URL": "https://metadata.example.com/windows-notes",
+                    "APP_WINDOWS_PUBLISHED_AT": "2026-08-14T05:56:25Z",
                     "APP_DOCS_URL": "https://pokrov.space/install/"
                   }
                 }
@@ -147,6 +153,10 @@ class RemoteBrainApplyReleaseHandoffTests(unittest.TestCase):
             values, source = self.module._resolve_release_values(str(metadata_file), str(env_file))
 
         self.assertEqual(values["APP_ANDROID_APK_URL"], "https://metadata.example.com/pokrov-android.apk")
+        self.assertEqual(values["APP_ANDROID_RELEASE_NOTES"], "Android release notes")
+        self.assertEqual(values["APP_ANDROID_PUBLISHED_AT"], "2026-08-14T05:56:25Z")
+        self.assertEqual(values["APP_WINDOWS_RELEASE_NOTES"], "Windows release notes")
+        self.assertEqual(values["APP_WINDOWS_PUBLISHED_AT"], "2026-08-14T05:56:25Z")
         self.assertEqual(source, metadata_file)
 
     def test_rewrite_env_updates_existing_release_keys_and_adds_missing_ones(self) -> None:
