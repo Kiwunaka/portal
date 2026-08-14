@@ -324,7 +324,7 @@ function describePromoContent(contentId: string): { title: string; body: string 
   }
   if (contentId === "telegram_bonus") {
     return {
-      title: "Доведите бесплатный старт до 10 дней",
+      title: "Ещё 5 дней после первой оплаты",
       body: TELEGRAM_START_PROMISE,
     };
   }

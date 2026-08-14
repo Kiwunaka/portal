@@ -22,15 +22,15 @@ export default function TelegramPage() {
     <IntentLanding
       pagePath={MARKETING_CANONICAL_PATHS.telegram}
       breadcrumbName="Telegram"
-      heroKicker="5 дней в приложении + 5 дней за Telegram"
-      heroTitle="Заберите до 10 дней POKROV на старте"
+      heroKicker="5 дней без карты · ещё +5 после первой оплаты"
+      heroTitle="Получите 5 дней бесплатно и ещё 5 после оплаты"
       heroSubtitle={TELEGRAM_START_PROMISE}
       scenarioTitle="Первая оплата, подписка на канал — и ещё 5 дней"
       scenarioBody="Плюс обновления сервиса и быстрый вход в поддержку."
       scenarioCards={[
         {
-          eyebrow: "Ещё 5 дней",
-          title: "Удвойте время на проверку POKROV",
+          eyebrow: "После первой оплаты",
+          title: "Получите ещё 5 дней за Telegram",
           desc: "Привяжите Telegram, подпишитесь на официальный канал и подтвердите подписку в аккаунте.",
         },
         {

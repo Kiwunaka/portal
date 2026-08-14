@@ -540,7 +540,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
     primaryCta: installCta,
     priority: 0.82,
     related: [
-      { href: "/telegram/", label: "Ещё 5 дней через Telegram" },
+      { href: "/telegram/", label: "Бонус +5 дней после оплаты" },
       { href: SEO_PAGE_PATHS.billingNoAutopay, label: "Без автосписаний" },
       { href: SEO_PAGE_PATHS.android, label: "Android" },
       { href: SEO_PAGE_PATHS.windows, label: "Windows" },
@@ -1115,7 +1115,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
       },
     ],
     h1: "5 дней бесплатно и Telegram-бонус после оплаты",
-    heroKicker: "5 дней без карты · затем +5 дней за Telegram",
+    heroKicker: "5 дней без карты · +5 после первой оплаты",
     kind: "intent",
     path: "/telegram/",
     priority: 0.78,

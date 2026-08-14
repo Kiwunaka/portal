@@ -287,6 +287,10 @@ def test_telegram_ten_day_start_promise_is_explicit_five_plus_five() -> None:
     ]
     assert missing_reference == [], "missing canonical 5 + 5 copy reference:\n" + "\n".join(missing_reference)
 
+    public_copy = "\n".join(path.read_text(encoding="utf-8") for path in MARKETING_TELEGRAM_PROMISE_FILES)
+    assert "до 10 дней POKROV на старте" not in public_copy
+    assert "5 дней в приложении + 5 дней за Telegram" not in public_copy
+
 
 def test_paid_rewards_marketing_copy_is_guarded_by_exact_opt_in_flag() -> None:
     marketing_site = (ROOT / "marketing/src/lib/marketing-site.ts").read_text(encoding="utf-8")

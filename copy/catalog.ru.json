@@ -775,7 +775,7 @@
     },
     "marketing.footer.link.channel": {
       "surface": "marketing.footer.link",
-      "ru": "Бонус +5 дней и новости",
+      "ru": "Новости и бонус после оплаты",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
