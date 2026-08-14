@@ -2626,6 +2626,30 @@ class BotPaywallTests(unittest.TestCase):
         self.assertNotIn("instr_ios", callbacks)
         self.assertNotIn("instr_mac", callbacks)
 
+    def test_installed_app_action_does_not_resell_active_access(self) -> None:
+        active = types.SimpleNamespace(
+            is_active=True,
+            expiry_at=self.bot_module._utcnow() + timedelta(days=5),
+        )
+        with patch.object(self.bot_module, "get_user", return_value=active):
+            action = self.bot_module._installed_app_action_spec(1001)
+        self.assertEqual(action["text"], "Проверить доступ")
+        self.assertEqual(action["callback_data"], "status")
+
+        with patch.object(self.bot_module, "get_user", return_value=None):
+            action = self.bot_module._installed_app_action_spec(1001)
+        self.assertEqual(action["text"], "Приложение уже стоит")
+        self.assertEqual(action["callback_data"], "simple_step3")
+
+    def test_install_paywall_does_not_advertise_unavailable_trial_bonus(self) -> None:
+        keyboard = self.bot_module._mode_simple_step3_keyboard()
+        callbacks = [
+            str(button.callback_data or "")
+            for row in keyboard.inline_keyboard
+            for button in row
+        ]
+        self.assertNotIn("bonus_offer_trial", callbacks)
+
     def test_main_menu_cta_does_not_offer_unavailable_checkout_or_repeat_trial(self) -> None:
         with patch.object(self.bot_module, "_bot_checkout_blocked_reasons", return_value=["blocked"]):
             with patch.object(self.bot_module, "TELEGRAM_STARS_CHECKOUT_ENABLED", True):

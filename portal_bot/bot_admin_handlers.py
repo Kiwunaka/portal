@@ -2078,20 +2078,22 @@ async def mode_simple_step3(callback: CallbackQuery):
     await _render_mode_simple_step3(callback)
 
 
-async def _render_mode_simple_step3(callback: CallbackQuery) -> None:
+def _mode_simple_step3_keyboard() -> InlineKeyboardMarkup:
     starter_price = int(TARIFFS["1_month"]["stars"])
     recommended_price = int(TARIFFS["6_months"]["stars"])
-    kb = InlineKeyboardMarkup(inline_keyboard=[
+    return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🔥 Попробовать VPN бесплатно", callback_data="trial_direct")],
         [InlineKeyboardButton(text=f"💎 6 месяцев · {recommended_price} ₽", callback_data="buy_6_months")],
         [InlineKeyboardButton(text=f"🚀 1 месяц · {starter_price} ₽", callback_data="buy_1_month")],
         [InlineKeyboardButton(text="Сравнить все планы", callback_data="charge")],
-        [InlineKeyboardButton(text=f"🎁 Ещё {CHANNEL_PREMIUM_DAYS} дней за Telegram", callback_data="bonus_offer_trial")],
         [InlineKeyboardButton(text="◀️ Назад", callback_data="instruction")],
     ])
+
+
+async def _render_mode_simple_step3(callback: CallbackQuery) -> None:
     await callback.message.edit_text(
         bot_text("bot.instruction.step_access"),
-        reply_markup=kb,
+        reply_markup=_mode_simple_step3_keyboard(),
         parse_mode=ParseMode.MARKDOWN,
     )
     await callback.answer()

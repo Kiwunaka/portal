@@ -1101,18 +1101,29 @@ def _platform_download_rows(platform: str, url: str, button_text: str) -> list[l
     return rows
 
 
+def _installed_app_action_spec(tg_id: int) -> dict[str, str]:
+    user = get_user(int(tg_id))
+    expiry = _naive_utc(getattr(user, "expiry_at", None))
+    if bool(user and user.is_active and expiry and expiry > _utcnow()):
+        return _btn_spec(
+            text="Проверить доступ",
+            callback_data="status",
+            style=BTN_STYLE_SUCCESS,
+            emoji_key="success",
+        )
+    return _btn_spec(
+        text="Приложение уже стоит",
+        callback_data="simple_step3",
+        style=BTN_STYLE_SUCCESS,
+        emoji_key="success",
+    )
+
+
 async def _render_platform_screen(callback: CallbackQuery, platform: str) -> None:
     """Per-platform install screen: download, funnel to access check, manual fallback."""
     copy_key, url, btn = _PLATFORM_SCREENS.get(platform, _PLATFORM_SCREENS["android"])
     rows = _platform_download_rows(platform, url, btn) + [
-        [
-            _btn_spec(
-                text="Приложение уже стоит",
-                callback_data="simple_step3",
-                style=BTN_STYLE_SUCCESS,
-                emoji_key="success",
-            )
-        ],
+        [_installed_app_action_spec(callback.from_user.id)],
         [_btn_spec(text="Ручное подключение", callback_data="show_key", emoji_key="link")],
         [_btn_spec(text="◀️ Устройства", callback_data="instruction")],
     ]
