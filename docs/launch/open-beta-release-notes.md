@@ -2,14 +2,18 @@
 
 Last updated: 2026-08-14
 
-Status: POKROV `1.0.5-beta.1` Android/Windows direct-release candidate passed local exact gates. Public publication and production runtime sync are the remaining release steps.
+Status: POKROV `1.0.5-beta.1` is published as a public Android/Windows prerelease and synchronized to the production runtime catalog.
 
-POKROV Android `1.0.5-beta.1` is the next direct-APK release. It is
+POKROV Android `1.0.5-beta.1` is the current direct-APK release. It is
 production-signed for same-signer updates and targets the production POKROV
 API. Google Play is not part of this release.
 
-Planned public release:
+Public release:
 `https://github.com/Kiwunaka/pokrov/releases/tag/v1.0.5-beta.1`.
+
+The public release exposes four Android ABI variants plus Windows setup and
+portable assets. Anonymous post-publication downloads and both production app
+catalogs matched the retained sizes and SHA-256 values.
 
 Known limits mirror `shared/beta-known-limitations.json` and
 `docs/launch/known-issues.md`.
@@ -35,8 +39,10 @@ Known limits:
 
 - `outside_store_beta`: Android distribution is a signed direct APK through
   GitHub Releases and the official POKROV download handoff, not an app store.
-- `runtime_download_handoff`: production `/api/client/apps`, public URLs and
-  runtime hashes must match `1.0.5-beta.1` before this candidate is announced.
+- `runtime_download_handoff`: production authenticated and anonymous app
+  catalogs expose the exact `1.0.5-beta.1` URLs, sizes, SHA-256 values and
+  release notes; the final smoke is retained outside Git on the ops evidence
+  volume.
 - `windows_unsigned`: Windows may show Microsoft Defender SmartScreen or an
   unknown-publisher warning.
 - `android_public_download`: the Android APK is public without account auth;

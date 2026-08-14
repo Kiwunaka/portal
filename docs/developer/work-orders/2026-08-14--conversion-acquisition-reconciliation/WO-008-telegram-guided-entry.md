@@ -1,6 +1,6 @@
 # WO-008 — Telegram Guided Entry
 
-Status: `IN_PROGRESS`
+Status: `COMPLETE`
 
 ## Outcome
 
@@ -54,5 +54,6 @@ or send free text during visual verification.
   `Мой доступ`, `Помощь` and `Ещё`; Android keeps ARM64 primary and alternatives
   secondary.
 - `PASS_LOCAL`: focused rich-message, menu and callback tests pass.
-- `PENDING`: the deployed production bot still shows the old eight-button
-  returning panel until WO-011; exact Browser proof follows deploy.
+- `PASS`: production Browser proof shows the four-action returning menu,
+  Android/Windows-only picker, split APK and Windows links, and an active user
+  reaching access status without a duplicate paywall.

@@ -1,6 +1,6 @@
 # WO-005 — Marketing And SEO Conversion Layer
 
-Status: `IN_PROGRESS`
+Status: `COMPLETE`
 
 ## Outcome
 
@@ -43,5 +43,5 @@ matrix and current-run mobile screenshots for visual assertions.
   decision layer; intent pages no longer claim absolute `лучший VPN` status.
 - `PASS_LOCAL`: marketing lint/build, SEO and story-contract checks passed on
   the working candidate before final combined gates.
-- `PENDING`: repeat responsive matrix and production current-origin Browser
-  proof after WO-011 deploy.
+- `PASS`: responsive matrix and production current-origin Browser proof cover
+  homepage, Telegram intent and compact six-plan checkout after WO-011 deploy.

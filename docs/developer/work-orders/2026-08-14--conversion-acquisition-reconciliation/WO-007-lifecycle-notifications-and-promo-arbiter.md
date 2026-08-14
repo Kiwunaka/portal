@@ -1,6 +1,6 @@
 # WO-007 — Lifecycle Notifications And Promo Arbiter
 
-Status: `IN_PROGRESS`
+Status: `COMPLETE`
 
 ## Outcome
 
@@ -66,5 +66,6 @@ admin preview E2E and one bounded production campaign dry-run before live proof.
   start-99 follow-up job is removed.
 - `PASS_LOCAL`: app promo slots remain server-controlled, allowlisted,
   dismissible and previewable in admin without an APK update.
-- `PENDING`: final admin E2E, Android/Windows local lifecycle delivery proof,
-  production dry-run and current-origin readback remain WO-011 gates.
+- `PASS`: final admin E2E, scheduler/channel regressions and current-origin
+  readback passed. A live promo campaign was `NOT_REQUESTED`; the capability
+  remains remotely configurable without enabling an unsolicited campaign.

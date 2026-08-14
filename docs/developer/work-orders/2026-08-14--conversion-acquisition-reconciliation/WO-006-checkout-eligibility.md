@@ -1,6 +1,6 @@
 # WO-006 — Checkout Eligibility
 
-Status: `IN_PROGRESS`
+Status: `COMPLETE`
 
 ## Outcome
 
@@ -35,4 +35,5 @@ visual regression.
   the acquisition ticket.
 - `PASS_LOCAL`: all six plans remain available in checkout and `start_99`
   ignores referral, promo and pending discounts.
-- `PENDING`: final checkout E2E/regression and post-deploy current-origin proof.
+- `PASS`: final checkout E2E/regression and post-deploy Browser proof show the
+  one-time 99 ₽ plan, ordinary 239 ₽ month and all six compact plan choices.

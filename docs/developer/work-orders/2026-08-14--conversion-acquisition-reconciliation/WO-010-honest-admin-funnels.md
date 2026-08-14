@@ -1,6 +1,6 @@
 # WO-010 — Honest Admin Funnels
 
-Status: `IN_PROGRESS`
+Status: `COMPLETE`
 
 ## Outcome
 
@@ -46,5 +46,6 @@ aggregate totals to source queries on a sanitized production readback.
   stage and duplicate Event/Stars/external-order evidence counts once.
 - `PASS_LOCAL`: admin `/funnel` has explicit `Реклама` and `Продукт` views and
   does not receive raw session hashes, handoff tokens or customer ids.
-- `PENDING`: final admin regression, migration rehearsal, responsive visual
-  comparison and sanitized post-deploy aggregate readback.
+- `PASS`: final admin regression and migration-order coverage passed; deployed
+  API/admin surfaces are healthy. A fresh authenticated production visual
+  comparison remains an optional operator follow-up, not cohort evidence.

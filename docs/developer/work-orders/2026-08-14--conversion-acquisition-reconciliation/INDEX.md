@@ -1,6 +1,6 @@
 # POKROV Conversion-first Acquisition And Retention
 
-Status: `ACTIVE_EXECUTION`
+Status: `COMPLETE`
 
 ## Goal
 
@@ -43,14 +43,14 @@ Status: `ACTIVE_EXECUTION`
 | [WO-001](WO-001-audit-reconciliation-and-owner-decisions.md) | Старые аудиты сверены с точным baseline, решения владельца записаны | — | `COMPLETE` |
 | [WO-002](WO-002-product-truth-and-branch-baseline.md) | Одна текущая правда о версии, ценах, trial, free и referral; безопасные рабочие ветки | WO-001 | `COMPLETE` |
 | [WO-003](WO-003-public-release-and-direct-downloads.md) | Публичный безопасный каталог релизов и прямые Android/Windows загрузки без auth fallback | WO-002 | `COMPLETE` |
-| [WO-004](WO-004-first-party-attribution-and-handoff.md) | First/last touch, реальные download/checkout/paid/connect события и TTL handoff до app/account | WO-002, WO-003 | `IN_PROGRESS` |
-| [WO-005](WO-005-marketing-and-seo-conversion-layer.md) | Новый первый слой сайта, три тарифа и честные intent/SEO формулировки | WO-002, WO-003 | `IN_PROGRESS` |
-| [WO-006](WO-006-checkout-eligibility.md) | `start_99` виден только доступному аккаунту; compact checkout не регрессирует | WO-002 | `IN_PROGRESS` |
-| [WO-007](WO-007-lifecycle-notifications-and-promo-arbiter.md) | Единая приоритетная доставка lifecycle/incident/promo по app, OS и Telegram | WO-002, WO-004 | `IN_PROGRESS` |
-| [WO-008](WO-008-telegram-guided-entry.md) | Бот ведёт к одному следующему шагу вместо панели, рабочие download/help ветки сохранены | WO-003, WO-004 | `IN_PROGRESS` |
-| [WO-009](WO-009-live-whitelist-variants.md) | `Белые списки` видны и выбираются в production app, fail-closed безопасность сохранена | WO-002 | `IN_PROGRESS` |
-| [WO-010](WO-010-honest-admin-funnels.md) | Acquisition и product funnels разделены и не выдают сумму разных identity за cohort | WO-004 | `IN_PROGRESS` |
-| [WO-011](WO-011-release-promotion-and-production-proof.md) | Exact gates, commits, push, deploy и current-origin production evidence | WO-003..WO-010 | `PENDING` |
+| [WO-004](WO-004-first-party-attribution-and-handoff.md) | First/last touch, реальные download/checkout/paid/connect события и TTL handoff до app/account | WO-002, WO-003 | `COMPLETE` |
+| [WO-005](WO-005-marketing-and-seo-conversion-layer.md) | Новый первый слой сайта, три тарифа и честные intent/SEO формулировки | WO-002, WO-003 | `COMPLETE` |
+| [WO-006](WO-006-checkout-eligibility.md) | `start_99` виден только доступному аккаунту; compact checkout не регрессирует | WO-002 | `COMPLETE` |
+| [WO-007](WO-007-lifecycle-notifications-and-promo-arbiter.md) | Единая приоритетная доставка lifecycle/incident/promo по app, OS и Telegram | WO-002, WO-004 | `COMPLETE` |
+| [WO-008](WO-008-telegram-guided-entry.md) | Бот ведёт к одному следующему шагу вместо панели, рабочие download/help ветки сохранены | WO-003, WO-004 | `COMPLETE` |
+| [WO-009](WO-009-live-whitelist-variants.md) | `Белые списки` видны и выбираются в production app, fail-closed безопасность сохранена | WO-002 | `COMPLETE` |
+| [WO-010](WO-010-honest-admin-funnels.md) | Acquisition и product funnels разделены и не выдают сумму разных identity за cohort | WO-004 | `COMPLETE` |
+| [WO-011](WO-011-release-promotion-and-production-proof.md) | Exact gates, commits, push, deploy и current-origin production evidence | WO-003..WO-010 | `COMPLETE` |
 
 ## Acceptance Oracle
 
@@ -116,7 +116,8 @@ Browser не использует системную мышь. Платёж, о�
 
 ## Resume Rule
 
-Продолжать с первого `IN_PROGRESS` WO. Не начинать широкую полировку app UI до
+Эта цель закрыта. Следующую ручную runtime-волну продолжать из
+`../2026-08-14--postrelease-manual-proof/`. Не начинать широкую полировку app UI до
 новых замечаний владельца после фактического использования приложения. Эти
 замечания добавляются отдельным bounded WO или superseding addendum, не
 подмешиваются молча в текущие acceptance criteria.

@@ -1,6 +1,6 @@
 # WO-009 — Live `Белые списки` Variants
 
-Status: `IN_PROGRESS`
+Status: `COMPLETE`
 
 ## Outcome
 

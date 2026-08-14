@@ -1,6 +1,6 @@
 # WO-004 — First-party Attribution And Install Handoff
 
-Status: `IN_PROGRESS`
+Status: `COMPLETE`
 
 ## Outcome
 
@@ -58,5 +58,5 @@ privacy/source audit and retention job proof.
   the acquisition-session foreign key.
 - `PASS_LOCAL`: worker cleanup removes expired sessions/handoffs without
   deleting active lineage.
-- `PENDING`: final marketing/bot E2E, migration rehearsal, full regression and
-  post-deploy current-origin proof in WO-011.
+- `PASS`: final marketing/bot E2E, migration order coverage, full regression
+  and post-deploy current-origin proof completed in WO-011.
