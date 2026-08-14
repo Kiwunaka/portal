@@ -1,6 +1,6 @@
 # POKROV 1.0.6 Stable Release Work Order
 
-Status: `ACTIVE_EXECUTION`
+Status: `COMPLETE`
 
 Owner outcome: выпустить прямой Android APK и Windows-пакет как стабильный
 релиз без beta-канала, сохранить текущий аккаунт и сетевые контракты, убрать
@@ -32,7 +32,7 @@ production metadata.
   latest: <https://github.com/Kiwunaka/pokrov/releases/tag/v1.0.6>.
 - [x] В релизе есть отдельные Android APK `arm64-v8a`, `armeabi-v7a`, `x86_64`
   и universal fallback, а также Windows setup/portable/manifest/checksums.
-- [ ] Production metadata, бот и сайт отдают только точные stable URL, размеры
+- [x] Production metadata, бот и сайт отдают только точные stable URL, размеры
   и SHA-256 нового релиза.
 
 ### Android P0 и UX
@@ -64,7 +64,7 @@ production metadata.
   устройства и безопасное состояние panel/runtime.
 - [x] ИИ не получает UID, email, username, host, ключи, raw config, payment
   payload и не может выполнять произвольные API/DB операции.
-- [ ] После deploy live trial-аккаунт видит Telegram-бонус без ложной ошибки и
+- [x] После deploy live trial-аккаунт видит Telegram-бонус без ложной ошибки и
   AI отвечает по фактическому состоянию этого же аккаунта.
 
 ### Сайт, кабинет, бот и инструкции
@@ -101,13 +101,19 @@ production metadata.
 - [x] Windows stable setup/portable собраны с честным unsigned/SmartScreen warning.
 - [x] Client release-коммит `c915aafb9a0aa1abf8f7cac9876e535695914796`
   запушен в feature branch и fast-forward в `main`; source-tag `v1.0.6` запушен.
-- [ ] Закоммитить и запушить platform `master`.
-- [ ] Задеплоить platform и статические web surfaces, выполнить current-origin
+- [x] Platform-коммиты `860225d008ad7f1e7020a89121d8dfb91659988f` и
+  `411a32e5084b283a73b07eca8b3c12d5282fdc6d` запушены в feature branch и
+  fast-forward в `master`.
+- [x] Задеплоить platform и статические web surfaces, выполнить current-origin
   и brain-origin readback, затем опубликовать stable update metadata.
 
 ## Текущие доказательства
 
 - Реальный Huawei: `E:/POKROV-ops-evidence/2026-08-14-stable-release-audit/huawei-1.0.6/`.
+- Точный post-deploy LDPlayer readback колокольчика, бонусов, AI и устройств:
+  `E:/POKROV-ops-evidence/2026-08-14-stable-release-audit/ldplayer-postdeploy/`.
+- Public и brain-origin release smoke:
+  `E:/POKROV-ops-evidence/2026-08-14-stable-release-audit/`.
 - Competitor review: DedProxy APK, DedAI XAPK и предоставленное видео проверены
   только как UX-референсы; чужой код и ассеты в POKROV не копируются.
 - Подробные post-release endurance/network/manual gates остаются в отдельном
@@ -117,8 +123,8 @@ production metadata.
 ## Release honesty
 
 GitHub stable release `v1.0.6` опубликован и его восемь assets сверены с
-локальным staging по имени, размеру и SHA-256. До production metadata/deploy
-прежняя `1.0.5-beta.1` ещё может встречаться в API, боте и сайте; это открытый
-операционный шаг, а не состояние нового бинарного релиза. Windows остаётся
-прямой unsigned-дистрибуцией с явным предупреждением, не trusted-signed/store
-выпуском.
+локальным staging по имени, размеру и SHA-256. Production metadata, бот, сайт,
+кабинет и install surfaces синхронизированы с точными stable URL, размерами и
+хэшами; пятипроходный brain-origin readback прошёл после финального backend
+deploy. Windows остаётся прямой unsigned-дистрибуцией с явным предупреждением,
+не trusted-signed/store выпуском.
