@@ -1,31 +1,31 @@
 # Open Beta Release Notes
 
-Last updated: 2026-08-12
+Last updated: 2026-08-14
 
-Status: Android direct APK published and synced to production. Owner/channel posting remains manual.
+Status: POKROV `1.0.5-beta.1` Android/Windows direct-release candidate passed local exact gates. Public publication and production runtime sync are the remaining release steps.
 
-POKROV Android `1.0.2-beta.1` is the current direct-APK release. It is
+POKROV Android `1.0.5-beta.1` is the next direct-APK release. It is
 production-signed for same-signer updates and targets the production POKROV
 API. Google Play is not part of this release.
 
-Public release:
-`https://github.com/Kiwunaka/pokrov/releases/tag/v1.0.2-beta.1`.
-The anonymous full-download smoke matched the published `287207515`-byte APK
-and SHA-256 `9820CDA01DEA74CDBD34A9D1FA76B7CFC1DD24D0D452D8521239DFF9DA6BEACA`.
+Planned public release:
+`https://github.com/Kiwunaka/pokrov/releases/tag/v1.0.5-beta.1`.
 
 Known limits mirror `shared/beta-known-limitations.json` and
 `docs/launch/known-issues.md`.
 
-2026-08-12 Android refresh:
+2026-08-14 Android/Windows refresh:
 
+- Added direct platform-aware downloads and a short-lived one-time acquisition handoff into Android and Windows.
+- Made the available `Обычный / Белые списки` location variants explicit in the app.
 - Simplified Home, Locations, Rules, Profile, support, and checkout journeys.
 - Added the branded Quick Settings tile and a configurable foreground
   notification with country, route, speed, open, and disconnect controls.
 - Added Android per-app routing in both directions: only selected apps through
   VPN, or selected apps direct while everything else uses VPN.
-- Smart split, both per-app directions, support AI, checkout, diagnostics,
-  notification controls, and the final signed APK were verified on physical
-  Android 12 hardware.
+- Smart split, both per-app directions, support AI, checkout, diagnostics and
+  notification controls retain automated coverage. Exact-final endurance,
+  WARP and Wi-Fi↔LTE remain manual owner gates and are not presented as a pass.
 - Monthly pricing is `239 ₽`; 3, 6, 9, and 12 months are `669 / 1199 / 1699 /
   1999 ₽`. The one-time first-month welcome offer remains `99 ₽`.
 - In-app support uses the exact deployed
@@ -35,9 +35,8 @@ Known limits:
 
 - `outside_store_beta`: Android distribution is a signed direct APK through
   GitHub Releases and the official POKROV download handoff, not an app store.
-- `runtime_download_handoff`: production `/api/client/apps`, API health, and
-  the live provider-policy smoke passed for the exact `1.0.2` URL, size, and
-  SHA-256.
+- `runtime_download_handoff`: production `/api/client/apps`, public URLs and
+  runtime hashes must match `1.0.5-beta.1` before this candidate is announced.
 - `windows_unsigned`: Windows may show Microsoft Defender SmartScreen or an
   unknown-publisher warning.
 - `android_public_download`: the Android APK is public without account auth;
