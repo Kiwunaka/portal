@@ -57,6 +57,7 @@ ARTIFACT_STAGING_BLOCKER_MARKERS = (
     "safe_to_publish_public_beta=false",
     "safe_to_enable_paid_checkout=false",
 )
+GH_RELEASE_CREATE_TIMEOUT_SECONDS = 900
 PRERELEASE_TAG_RE = re.compile(
     r"^v?\d+\.\d+\.\d+-(?:beta|rc)(?:[.-][0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$",
     re.IGNORECASE,
@@ -462,7 +463,13 @@ class SubprocessGithubCli:
             str(notes_file),
             "--prerelease",
         ]
-        created = subprocess.run(command, text=True, capture_output=True, check=False, timeout=180)
+        created = subprocess.run(
+            command,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=GH_RELEASE_CREATE_TIMEOUT_SECONDS,
+        )
         if created.returncode != 0:
             message = (created.stderr or created.stdout or "gh release create failed").strip()
             raise SystemExit(message)

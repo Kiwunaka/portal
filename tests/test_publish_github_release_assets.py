@@ -418,6 +418,9 @@ class PublishGithubReleaseAssetsTests(unittest.TestCase):
         self.assertEqual([asset["name"] for asset in result["uploaded_assets"]], ["pokrov-android-arm64-v8a.apk", "pokrov-windows-setup-x64.exe"])
         self.assertEqual(result["publish_method"], "gh_cli")
 
+    def test_gh_cli_timeout_allows_large_split_release_uploads(self) -> None:
+        self.assertGreaterEqual(self.module.GH_RELEASE_CREATE_TIMEOUT_SECONDS, 900)
+
 
 if __name__ == "__main__":
     unittest.main()
