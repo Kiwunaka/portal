@@ -191,7 +191,7 @@ def test_claim_channel_bonus_updates_user_and_returns_public_shape(monkeypatch, 
         session.close()
 
 
-def test_trial_channel_bonus_is_rejected_before_membership_lookup(monkeypatch, tmp_path):
+def test_trial_channel_bonus_is_available_before_payment(monkeypatch, tmp_path):
     api, service = _load_api_and_service(monkeypatch, tmp_path)
     session = api.SessionLocal()
     now = datetime(2026, 4, 13, tzinfo=timezone.utc).replace(tzinfo=None)
@@ -217,40 +217,35 @@ def test_trial_channel_bonus_is_rejected_before_membership_lookup(monkeypatch, t
         session.commit()
         session.refresh(user)
 
-        from models import CampaignSend
-
-        session.add(
-            CampaignSend(
-                tg_id=user.tg_id,
-                campaign_key="opening_premium_14d",
-                sent_at=now,
-            )
-        )
-        session.commit()
-
         async def fake_is_channel_member(_channel: str, _tg_id: int):
             nonlocal member_checks
             member_checks += 1
             return True, "member"
 
-        with pytest.raises(HTTPException) as raised:
-            asyncio.run(
-                service.claim_channel_bonus(
-                    s=session,
-                    user=user,
-                    tg_id=int(user.tg_id),
-                    public_channel="pokrov_vpn",
-                    bonus_days=5,
-                    opening_bonus_campaign_key="opening_premium_14d",
-                    subscriber_campaign_key="channel_subscriber_v1",
-                    points_expiry_days=90,
-                    is_channel_member=fake_is_channel_member,
-                )
-            )
+        async def fake_sync(_user):
+            return True
 
-        assert raised.value.status_code == 403
-        assert raised.value.detail["code"] == "active_paid_required"
-        assert member_checks == 0
+        payload = asyncio.run(
+            service.claim_channel_bonus(
+                s=session,
+                user=user,
+                tg_id=int(user.tg_id),
+                public_channel="pokrov_vpn",
+                bonus_days=5,
+                opening_bonus_campaign_key="opening_premium_14d",
+                subscriber_campaign_key="channel_subscriber_v1",
+                points_expiry_days=90,
+                is_channel_member=fake_is_channel_member,
+                sync_user_after_paid_bonus=fake_sync,
+            )
+        )
+
+        session.refresh(user)
+        assert payload["ok"] is True
+        assert payload["premium_days"] == 5
+        assert member_checks == 1
+        assert user.channel_bonus_claimed_at is not None
+        assert user.current_plan_code == "channel_bonus"
     finally:
         session.close()
 

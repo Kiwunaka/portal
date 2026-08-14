@@ -114,7 +114,7 @@ class Settings:
     APP_WINDOWS_EXE_URL: str = os.getenv("APP_WINDOWS_EXE_URL", "").strip()
     APP_WINDOWS_MIRROR_URL: str = os.getenv("APP_WINDOWS_MIRROR_URL", "").strip()
     APP_DOCS_URL: str = os.getenv("APP_DOCS_URL", "").strip()
-    APP_RELEASE_CHANNEL: str = os.getenv("APP_RELEASE_CHANNEL", "beta").strip()
+    APP_RELEASE_CHANNEL: str = os.getenv("APP_RELEASE_CHANNEL", "stable").strip()
     APP_ANDROID_VERSION: str = os.getenv("APP_ANDROID_VERSION", "").strip()
     APP_ANDROID_MIN_SUPPORTED_VERSION: str = os.getenv("APP_ANDROID_MIN_SUPPORTED_VERSION", "").strip()
     APP_ANDROID_SHA256: str = os.getenv("APP_ANDROID_SHA256", "").strip()

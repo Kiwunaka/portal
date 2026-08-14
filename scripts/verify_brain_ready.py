@@ -101,6 +101,35 @@ def _listener_missing_ports(output: str, ports: tuple[int, ...]) -> list[int]:
     return missing
 
 
+def _required_secret_presence_cmd() -> str:
+    """Check release-critical secret presence without returning secret bytes."""
+    script = r"""set -euo pipefail
+env_file="$(systemctl show portal-api.service --property=EnvironmentFiles --value | awk '{print $1}')"
+if [ -z "$env_file" ] || [ ! -r "$env_file" ]; then
+  env_file=/root/portal_bot/.env
+fi
+ENV_FILE="$env_file" python3 - <<'PY'
+import os
+from pathlib import Path
+
+path = Path(os.environ["ENV_FILE"])
+values = {}
+for raw_line in path.read_text(encoding="utf-8", errors="strict").splitlines():
+    line = raw_line.strip()
+    if not line or line.startswith("#") or "=" not in line:
+        continue
+    key, value = line.split("=", 1)
+    values[key.strip()] = value.strip().strip('"').strip("'")
+
+name = "DEVICE_PAIRING_HMAC_SECRET"
+if len(values.get(name, "")) < 32:
+    print(f"{name}=missing_or_short")
+    raise SystemExit(2)
+print(f"{name}=present length_ok=1")
+PY"""
+    return "bash -lc " + shlex.quote(script)
+
+
 def _curl_retry(
     url: str,
     *,
@@ -374,6 +403,11 @@ def main() -> int:
             _print_result(name, out, err)
             if code != 0 or (out.strip() or err.strip()).strip() != "active":
                 failures.append(f"{unit} is not active")
+
+        code, out, err = _run(ssh, _required_secret_presence_cmd(), timeout=60)
+        _print_result("requiredSecrets", out, err)
+        if code != 0:
+            failures.append("DEVICE_PAIRING_HMAC_SECRET is missing or too short")
 
         required_listener_ports = list(DEFAULT_REQUIRED_LISTENER_PORTS)
         if args.check_legacy_2096:

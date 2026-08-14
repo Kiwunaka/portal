@@ -271,7 +271,7 @@ def test_warp_failure_alias_is_grounded(grounding_engine):
         ("routing_all_except_ru", "Хочу российские сайты напрямую, а остальные через POKROV."),
         ("routing_full_tunnel", "Что делает режим полного туннеля в POKROV?"),
         ("app_notifications", "Уведомления POKROV не приходят."),
-        ("trial_has_no_bonuses", "Почему в пробном периоде бонусы недоступны?"),
+        ("trial_bonus_limits", "Почему в пробном периоде бонусы недоступны?"),
         ("telegram_bonus", "Telegram-бонус не начислился."),
         ("payment_not_applied", "Оплатил, но доступ не продлился."),
     ),

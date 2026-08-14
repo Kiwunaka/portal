@@ -318,7 +318,7 @@ export default function SupportPage() {
           <TileGrid className="xl:grid-cols-3">
             <Tile icon={ShieldCheck} label="Доступ" value={resolvePlanLabel(dash, user)} hint="Без личных ключей" tone="success" />
             <Tile icon={MonitorSmartphone} label="Устройства" value={`${deviceCount} из ${deviceLimit}`} hint="Связано с профилем" tone="neutral" href="/devices/" />
-            <Tile icon={Wifi} label="Подключения" value={String(activeConnections)} hint="Безопасная сводка" tone="info" />
+            <Tile icon={Wifi} label="Сессий в сети" value={String(activeConnections)} hint="Общий счётчик POKROV" tone="info" />
           </TileGrid>
         </section>
 

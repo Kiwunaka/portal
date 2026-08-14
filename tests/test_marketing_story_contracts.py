@@ -374,7 +374,7 @@ def test_install_legal_machine_files_and_intent_pages_remain_available() -> None
     _assert_contains(
         install_page + download_actions + release_assets,
         (
-            'fetch(`${CANONICAL_API_BASE_URL}/api/public/client-apps?channel=beta`',
+            'fetch(`${CANONICAL_API_BASE_URL}/api/public/client-apps?channel=stable`',
             'credentials: "omit"',
             '"pokrov-android-arm64-v8a.apk"',
             '"pokrov-windows-setup-x64.exe"',

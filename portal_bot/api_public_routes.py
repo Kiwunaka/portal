@@ -2061,13 +2061,22 @@ def _client_notification_items(
 
 ASSISTANT_DIAGNOSTIC_KEYS = frozenset(
     {
+        "account_access_state",
+        "account_days_left",
+        "account_device_count",
+        "account_plan",
+        "account_telegram_linked",
         "app_version",
+        "panel_active_connections",
+        "panel_last_online_age_seconds",
+        "panel_runtime_state",
         "platform",
         "route_mode",
         "connection_status",
         "enhanced_protection_state",
         "enhanced_protection_consent",
         "enhanced_protection_available",
+        "telegram_bonus_state",
     }
 )
 
@@ -2092,6 +2101,84 @@ def _admit_support_assistant_diagnostics(raw_value: Any) -> dict[str, str | int 
     if len(serialized) > 4096:
         raise HTTPException(status_code=422, detail="Invalid safe diagnostics")
     return admitted
+
+
+async def _support_assistant_account_diagnostics(*, s, user: User) -> dict[str, str | int | bool | None]:
+    """Return a same-account, identifier-free snapshot for the support agent."""
+    runtime: dict[str, Any]
+    try:
+        nodes = enabled_nodes(s)
+        nodes_for_user = _nodes_for_user(user, nodes, session=s)
+        runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
+    except Exception:
+        logger.warning("support assistant account snapshot panel lookup failed")
+        runtime = {"panel_state": "error", "status": "unknown", "traffic_total_bytes": 0}
+
+    access_policy = _build_reconciled_access_policy(
+        session=s,
+        user=user,
+        used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0),
+        source="support_assistant_runtime",
+    )
+    access_state = str(access_policy.get("access_state") or "expired_or_blocked").strip().lower()
+    days_left = _client_days_left(getattr(user, "expiry_at", None))
+    if access_state == "trial_premium":
+        days_left = min(days_left, int(APP_TRIAL_DEFAULT_DAYS))
+
+    plan_code = re.sub(
+        r"[^a-z0-9_.:-]+",
+        "_",
+        str(getattr(user, "current_plan_code", "") or "").strip().lower(),
+    )[:64]
+    account_id = str(getattr(user, "account_id", "") or "").strip()
+    device_count = 0
+    if account_id:
+        device_count = int(
+            s.query(func.count(AccountDevice.id))
+            .filter(
+                AccountDevice.account_id == account_id,
+                AccountDevice.state == "active",
+                AccountDevice.revoked_at.is_(None),
+            )
+            .scalar()
+            or 0
+        )
+
+    linked_telegram_id = _linked_telegram_id(user)
+    telegram_linked = bool(
+        linked_telegram_id
+        or (not _is_app_or_email_account(user) and int(getattr(user, "tg_id", 0) or 0) > 0)
+    )
+    channel_status = channel_bonus_service.channel_bonus_status(s, user=user)
+    if bool(channel_status.get("claimed")):
+        telegram_bonus_state = "claimed"
+    elif not bool(getattr(user, "tos_accepted", False)):
+        telegram_bonus_state = "tos_required"
+    elif str(getattr(user, "sub_type", "") or "").strip().upper() == "MANUAL":
+        telegram_bonus_state = "unavailable"
+    else:
+        telegram_bonus_state = "available"
+
+    panel_state = str(runtime.get("panel_state") or "error").strip().lower()
+    panel_runtime_state = (
+        str(runtime.get("status") or "unknown").strip().lower()
+        if panel_state == "ok"
+        else "unavailable"
+    )
+    last_online_age = runtime.get("last_online_age_seconds")
+    return {
+        "account_access_state": access_state,
+        "account_days_left": max(0, int(days_left)),
+        "account_device_count": max(0, device_count),
+        "account_plan": plan_code or None,
+        "account_telegram_linked": telegram_linked,
+        "panel_active_connections": max(0, int(runtime.get("active_connections", 0) or 0)),
+        "panel_last_online_age_seconds": (
+            max(0, int(last_online_age)) if last_online_age is not None else None
+        ),
+        "panel_runtime_state": panel_runtime_state,
+        "telegram_bonus_state": telegram_bonus_state,
+    }
 
 
 def _client_location_variants(
@@ -2534,6 +2621,62 @@ async def client_program_application_cancel(
         s.close()
 
 
+@app.patch("/api/client/devices/current")
+async def client_device_metadata_update(
+    payload: AppDeviceMetadataIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    s, user, auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        now = _utcnow()
+        account_id = str(auth_user.get("account_id") or getattr(user, "account_id", "") or "").strip()
+        current_registry_id = str(auth_user.get("device_id") or "").strip()
+        current_install_id = str(getattr(user, "app_install_id", "") or "").strip()
+        device = None
+        if account_id and current_registry_id:
+            device = (
+                s.query(AccountDevice)
+                .filter(
+                    AccountDevice.account_id == account_id,
+                    AccountDevice.id == current_registry_id,
+                )
+                .first()
+            )
+        if device is None and account_id and current_install_id:
+            device = (
+                s.query(AccountDevice)
+                .filter(
+                    AccountDevice.account_id == account_id,
+                    AccountDevice.install_id == current_install_id,
+                )
+                .first()
+            )
+
+        label = app_first_service.normalize_app_device_name(payload.device_name)
+        platform = str(payload.platform or "device").strip().lower()[:32] or "device"
+        os_version = str(payload.os_version or "").strip()[:64] or None
+        app_version = str(payload.app_version or "").strip()[:32] or None
+        user.app_device_name = label
+        user.app_platform = platform
+        user.app_os_version = os_version
+        user.app_version = app_version
+        user.app_last_seen_at = now
+        if device is not None:
+            device.label = label
+            device.platform = platform
+            device.os_version = os_version
+            device.app_version = app_version
+            device.last_seen_at = now
+        s.commit()
+        return {"ok": True}
+    except Exception:
+        s.rollback()
+        raise
+    finally:
+        s.close()
+
+
 @app.get("/api/client/devices")
 async def client_devices(request: Request, x_telegram_init_data: str = Header(default="")) -> dict[str, Any]:
     s, user, auth_user = _client_user_session(request, x_telegram_init_data)
@@ -2791,6 +2934,7 @@ async def client_support_assistant(
             if int(ticket.user_tg_id) != int(user.tg_id):
                 raise HTTPException(status_code=403, detail="Access denied")
         diagnostics = _admit_support_assistant_diagnostics(payload.safeDiagnostics)
+        diagnostics.update(await _support_assistant_account_diagnostics(s=s, user=user))
         message = str(payload.message or "").strip()
         supplied_session_id = payload.assistant_session_id or payload.assistantSessionId
         owner_id = str(getattr(user, "account_id", "") or "").strip() or f"tg:{int(user.tg_id)}"

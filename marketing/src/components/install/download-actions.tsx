@@ -46,7 +46,7 @@ export function DownloadActions({
 
   useEffect(() => {
     const controller = new AbortController();
-    void fetch(`${CANONICAL_API_BASE_URL}/api/public/client-apps?channel=beta`, {
+    void fetch(`${CANONICAL_API_BASE_URL}/api/public/client-apps?channel=stable`, {
       credentials: "omit",
       headers: { Accept: "application/json" },
       signal: controller.signal,

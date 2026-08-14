@@ -19,21 +19,27 @@ import { GroupedSection, Row } from "@/components/ui/grouped";
 import { usePortalSession } from "@/lib/session";
 
 export default function ProtectionPage() {
-  const { dash } = usePortalSession();
-  const activeConnections = Math.max(
-    0,
-    Number(dash?.connection_snapshot?.active_connections ?? dash?.active_sessions ?? 0),
-  );
-  const serverObserved = activeConnections > 0;
+  const { user } = usePortalSession();
+  const connectionState = user?.experience?.first_connection.state || "none";
+  const serverObserved = connectionState === "verified";
+  const clientReported = connectionState === "reported";
 
   return (
     <main className="mx-auto flex w-full max-w-[900px] flex-col gap-5">
       <StatusHero
-        title={serverObserved ? "Сервер видит подключение" : "Сервер не видит активную сессию"}
-        meta={serverObserved ? `${activeConnections} активн.` : "Последний серверный срез"}
+        title={
+          serverObserved
+            ? "Подключение этого аккаунта подтверждено"
+            : clientReported
+              ? "Приложение сообщило о подключении"
+              : "Подключение этого аккаунта не подтверждено"
+        }
+        meta={serverObserved ? "Observer-сигнал этого аккаунта" : "Проверьте состояние в приложении"}
         body={
           serverObserved
-            ? "Это подтверждает активную серверную сессию, но не заменяет проверки DNS и маршрутов на устройстве."
+            ? "Сервер подтвердил подключение именно этого аккаунта. DNS и локальные маршруты всё равно проверяются на устройстве."
+            : clientReported
+              ? "Локальный runtime уже отчитался; ждём ближайший независимый observer-сигнал именно этого аккаунта."
             : "Откройте приложение: только оно видит системный туннель, DNS и локальные маршруты."
         }
         tone={serverObserved ? "success" : "warning"}
@@ -46,7 +52,7 @@ export default function ProtectionPage() {
           icon={Activity}
           label="Туннель"
           hint="Приложение сверяет фактическое состояние runtime на устройстве."
-          value={serverObserved ? "есть server-сигнал" : "проверить в приложении"}
+          value={serverObserved ? "подтверждено" : clientReported ? "сообщено приложением" : "проверить в приложении"}
         />
         <Row
           icon={Network}

@@ -764,12 +764,28 @@ def test_real_device_registry_revoke_requires_fresh_auth(monkeypatch, tmp_path):
     body = started.json()
     headers = {"Authorization": f"Bearer {body['access_token']}"}
 
+    renamed = client.patch(
+        "/api/client/devices/current",
+        headers=headers,
+        json={
+            "device_name": "POKROV Windows Surface Laptop",
+            "platform": "windows",
+            "os_version": "11 24H2",
+            "app_version": "1.0.6",
+        },
+    )
+    assert renamed.status_code == 200
+    assert renamed.json()["ok"] is True
+
     devices = client.get("/api/client/devices", headers=headers)
     assert devices.status_code == 200
     item = devices.json()["items"][0]
     assert item["id"] == "install-device-revoke"
     assert item["registryId"] == body["session"]["device_id"]
     assert item["current"] is True
+    assert item["label"] == "POKROV Windows Surface Laptop"
+    assert item["osVersion"] == "11 24H2"
+    assert item["appVersion"] == "1.0.6"
 
     stale = client.delete(f"/api/client/devices/{item['registryId']}", headers=headers)
     assert stale.status_code == 409
@@ -1536,13 +1552,13 @@ def test_channel_subscriber_check_is_read_only_for_linked_app_account(monkeypatc
     assert check_response.status_code == 200
     payload = check_response.json()
     assert payload["ok"] is True
-    assert payload["subscriber"] is False
-    assert payload["reason"] == "active_paid_required"
-    assert payload["claim_required"] is False
+    assert payload["subscriber"] is True
+    assert payload["reason"] == "member"
+    assert payload["claim_required"] is True
     assert payload["bonus_days"] == 5
     assert payload["points_granted"] == 0
     assert payload["campaign_marked"] is False
-    assert membership_checks == 0
+    assert membership_checks == 1
 
     assert api.available_points(tg_id=account_id)[0] == 0
 
@@ -1610,7 +1626,10 @@ def test_app_session_can_read_bonus_and_referral_summaries(monkeypatch, tmp_path
         "eligible": False,
         "state": "paid_required",
         "reason": "active_paid_required",
-        "message": "В пробном периоде бонусов нет. Они откроются после первой оплаты.",
+        "message": (
+            "Telegram-бонус уже получен. Рулетка, календарь и реферальные "
+            "начисления откроются после первой оплаты."
+        ),
     }
     assert summary["ok"] is True
     assert summary["referral_count"] == 3
@@ -1619,6 +1638,9 @@ def test_app_session_can_read_bonus_and_referral_summaries(monkeypatch, tmp_path
     assert summary["channel_bonus"]["claimed"] is True
     assert summary["channel_bonus"]["offer_days"] == 5
     assert summary["channel_bonus"]["claimed_days"] == 10
+    assert summary["channel_bonus"]["eligible"] is True
+    assert summary["channel_bonus"]["can_claim"] is False
+    assert summary["channel_bonus"]["reason"] == "already_claimed"
     assert summary["referral"]["count"] == 3
     assert summary["referral"]["code"] == "POKROV3"
     assert "start=ref_POKROV3" in summary["referral"]["link"]
@@ -1979,7 +2001,12 @@ def test_paid_reward_api_uses_account_ledger_and_idempotent_calendar(monkeypatch
         assert user.last_wheel_spin is None
         assert int(user.streak_months or 0) == 0
         assert user.streak_last_check is None
-        assert db.query(api.RewardClaim).filter_by(tg_id=user.tg_id).count() == 0
+        legacy_discount_claims = (
+            db.query(api.RewardClaim).filter_by(tg_id=user.tg_id).count()
+        )
+        assert legacy_discount_claims == (
+            1 if spin_payload["reward_kind"] == "discount" else 0
+        )
         reward_grants = (
             db.query(api.EntitlementGrant)
             .filter(
@@ -1988,8 +2015,14 @@ def test_paid_reward_api_uses_account_ledger_and_idempotent_calendar(monkeypatch
             )
             .all()
         )
-        assert len(reward_grants) == 2
-        assert db.query(api.NodeProvisioningJob).filter_by(job_type="reward_entitlement_sync").count() == 2
+        expected_grants = 2 if spin_payload["reward_kind"] == "days" else 1
+        assert len(reward_grants) == expected_grants
+        assert (
+            db.query(api.NodeProvisioningJob)
+            .filter_by(job_type="reward_entitlement_sync")
+            .count()
+            == expected_grants
+        )
     finally:
         db.close()
 

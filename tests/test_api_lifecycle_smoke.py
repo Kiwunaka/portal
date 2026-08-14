@@ -334,10 +334,10 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
         async def _always_member(*_args, **_kwargs):
             return True, "member"
 
-        with patch.object(self.api, "_is_channel_member", new=_always_member):
-            trial_channel_bonus = self.client.post("/api/bonuses/channel/claim", headers=auth_headers)
-        self.assertEqual(trial_channel_bonus.status_code, 403, trial_channel_bonus.text)
-        self.assertEqual(trial_channel_bonus.json()["detail"]["code"], "active_paid_required")
+        trial_bonus_summary = self.client.get("/api/bonuses/summary", headers=auth_headers)
+        self.assertEqual(trial_bonus_summary.status_code, 200, trial_bonus_summary.text)
+        self.assertTrue(trial_bonus_summary.json()["channel_bonus"]["can_claim"])
+        self.assertEqual(trial_bonus_summary.json()["channel_bonus"]["reason"], "eligible")
 
         promo_redeem = self.client.post("/api/promo/redeem", headers=auth_headers, json={"code": "SMOKE14"})
         self.assertEqual(promo_redeem.status_code, 200, promo_redeem.text)

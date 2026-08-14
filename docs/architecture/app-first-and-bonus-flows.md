@@ -625,15 +625,16 @@ Contract rule:
 
 ## Telegram Bonus Claim Flow
 
-1. account must have active canonical paid access; trial, expired, free and
-   bonus-only authority returns `active_paid_required` before Telegram lookup
+1. the one-time Telegram offer is available before or after the first payment;
+   a trial account may use it as an acquisition reward
 2. app-first account must already be linked to Telegram
 3. app or web surfaces may call `POST /api/channel/subscriber/check` to verify membership readiness
 4. `POST /api/channel/subscriber/check` is read-only and must never grant points or mark campaign state
 5. the real reward path calls `POST /api/bonuses/channel/claim`
 6. backend checks membership for the linked Telegram account
 7. if membership is valid, backend grants a new account-owned `+5 days` once
-8. if not linked or not eligible, backend returns the correct structured reason
+8. manual accounts, an already consumed Telegram grant, or a conflicting
+   pre-payment acquisition grant remain ineligible with an explicit reason
 
 Existing issued `+10 days` channel grants are grandfathered. Membership loss
 starts `24 hours` of grace; rejoin cancels grace. A due reversal marks only the
@@ -661,8 +662,10 @@ compatibility, never delay a payment/bonus start and never select
 - `GET /api/bonuses/summary` is the app-facing bonus summary for the Profile
   surface. It includes flat compatibility fields plus nested `referral`,
   `channel_bonus`, `opening_bonus`, `promo`, `history`, `wheel`, and
-  `calendar` sections plus `reward_access`, which owns paid eligibility and
-  trial-safe explanatory copy.
+  `calendar` sections plus `reward_access`, which owns the paid eligibility of
+  wheel, calendar, and referral rewards. `channel_bonus.eligible` and
+  `channel_bonus.can_claim` are independent because the one-time Telegram
+  reward is intentionally available during the trial.
 - `GET /api/bonuses/referral/summary` returns referral count, referral code,
   safe Telegram referral link, bonus days, and current points tier for the
   app-first account. The app may expose copy/share/open actions for that link;

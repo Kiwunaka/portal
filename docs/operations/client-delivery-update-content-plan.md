@@ -74,7 +74,7 @@ Each public asset record should expose:
 Current platform contract:
 
 - `/api/client/apps` is the existing client download endpoint
-- `/api/client/apps?platform=<android|windows>&current_version=<version>&channel=beta`
+- `/api/client/apps?platform=<android|windows>&current_version=<version>&channel=stable`
   returns prompt-mode update metadata for the requested platform
 - `config/release-handoff.seed.json` in `POKROV-app` is the repo-owned handoff
   seed for current binary metadata

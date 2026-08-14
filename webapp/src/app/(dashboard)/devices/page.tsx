@@ -94,7 +94,7 @@ export default function DevicesPage() {
       <section className="flex flex-col gap-2.5">
         <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Сводка</h2>
         <TileGrid>
-          <Tile icon={Wifi} label="Подключений сейчас" value={`${formatCount(activeConnections)} из ${formatCount(deviceLimit)}`} hint="Живые подключения" tone="success" />
+          <Tile icon={Wifi} label="Сессий в сети" value={formatCount(activeConnections)} hint="Общий счётчик, не ваши устройства" tone="success" />
           <Tile icon={MonitorSmartphone} label="Известных устройств" value={formatCount(knownAppDevices)} hint="Связаны с аккаунтом" tone="neutral" />
           <Tile icon={Globe} label="Точек доступа" value={`${formatCount(activeNodes)} из ${formatCount(knownNodes)}`} hint="Счетчик готовности" tone="info" />
           <Tile icon={Users} label="Людей онлайн" value={formatCount(activeUsersEstimate)} hint="Ориентир по сети" tone="neutral" />

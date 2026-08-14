@@ -1308,7 +1308,9 @@ def _build_client_apps_response(
     current_version: str,
     channel: str,
 ) -> ClientAppsResponse:
-    release_channel = str(channel or getattr(Settings, "APP_RELEASE_CHANNEL", "beta") or "beta").strip().lower() or "beta"
+    release_channel = str(
+        channel or getattr(Settings, "APP_RELEASE_CHANNEL", "stable") or "stable"
+    ).strip().lower() or "stable"
     requested_platform = str(platform or "").strip().lower()
     android_url = _safe_public_url(Settings.APP_ANDROID_APK_URL)
     android_arm64_url = _safe_public_url(getattr(Settings, "APP_ANDROID_APK_ARM64_URL", ""))
@@ -1377,7 +1379,7 @@ def _build_client_apps_response(
     )
     return ClientAppsResponse(
         android=ClientAndroidApps(
-            # Public beta distribution is outside app stores; keep the compatibility field empty.
+            # Direct distribution is outside app stores; keep the compatibility field empty.
             play_url="",
             apk_url=android_url,
             mirror_url=_safe_public_url(Settings.APP_ANDROID_MIRROR_URL),
@@ -2258,6 +2260,39 @@ def _bonus_summary_payload(*, s, user: User, tg_id: int) -> dict[str, Any]:
         tg_id=tg_id,
         campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY,
     )
+    channel_claimed = bool(channel_status["claimed"])
+    channel_claimable = bool(
+        not channel_claimed
+        and bool(getattr(user, "tos_accepted", False))
+        and str(getattr(user, "sub_type", "") or "").strip().upper() != "MANUAL"
+        and not opening_claimed
+    )
+    if channel_claimed:
+        channel_reason = "already_claimed"
+    elif not bool(getattr(user, "tos_accepted", False)):
+        channel_reason = "tos_required"
+    elif str(getattr(user, "sub_type", "") or "").strip().upper() == "MANUAL":
+        channel_reason = "manual_account"
+    elif opening_claimed:
+        channel_reason = "opening_bonus_conflict"
+    else:
+        channel_reason = "eligible"
+    if reward_access.eligible:
+        reward_message = "Бонусы доступны."
+    elif channel_claimed:
+        reward_message = (
+            "Telegram-бонус уже получен. Рулетка, календарь и реферальные "
+            "начисления откроются после первой оплаты."
+        )
+    elif channel_claimable:
+        reward_message = (
+            f"Telegram-бонус +{int(CHANNEL_PREMIUM_DAYS)} дней доступен сейчас. "
+            "Рулетка, календарь и реферальные начисления откроются после первой оплаты."
+        )
+    else:
+        reward_message = (
+            "Рулетка, календарь и реферальные начисления откроются после первой оплаты."
+        )
     return {
         "ok": True,
         "tg_id": tg_id,
@@ -2265,11 +2300,7 @@ def _bonus_summary_payload(*, s, user: User, tg_id: int) -> dict[str, Any]:
             "eligible": bool(reward_access.eligible),
             "state": "paid" if reward_access.eligible else "paid_required",
             "reason": str(reward_access.reason),
-            "message": (
-                "Бонусы доступны."
-                if reward_access.eligible
-                else "В пробном периоде бонусов нет. Они откроются после первой оплаты."
-            ),
+            "message": reward_message,
         },
         "referral_count": int(user.referral_count or 0),
         "referral_code": str(user.referral_code or "").strip(),
@@ -2287,12 +2318,12 @@ def _bonus_summary_payload(*, s, user: User, tg_id: int) -> dict[str, Any]:
             "premium_days": int(CHANNEL_PREMIUM_DAYS),
             "offer_days": int(channel_status["offer_days"]),
             "claimed_days": int(channel_status["claimed_days"]),
-            "claimed": bool(channel_status["claimed"]),
+            "claimed": channel_claimed,
             "claimed_at": channel_claimed_at,
             "channel_username": PUBLIC_CHANNEL,
-            "eligible": bool(reward_access.eligible) or bool(channel_status["claimed"]),
-            "can_claim": bool(reward_access.eligible) and not bool(channel_status["claimed"]),
-            "reason": "eligible" if reward_access.eligible else str(reward_access.reason),
+            "eligible": channel_claimed or channel_claimable,
+            "can_claim": channel_claimable,
+            "reason": channel_reason,
         },
         "opening_bonus": {
             "premium_days": int(OPENING_PREMIUM_DAYS),
@@ -2529,25 +2560,6 @@ async def channel_subscriber_check(request: Request, x_telegram_init_data: str =
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         channel_status = channel_bonus_service.channel_bonus_status(s, user=user)
-        if not channel_status["claimed"]:
-            paid_access = evaluate_active_paid(
-                s,
-                account_id=str(user.account_id or ""),
-                now=_reward_now(),
-            )
-            if not paid_access.eligible:
-                return {
-                    "ok": True,
-                    "subscriber": False,
-                    "reason": "active_paid_required",
-                    "points_granted": 0,
-                    "campaign_marked": False,
-                    "link_required": False,
-                    "claim_required": False,
-                    "already_claimed": False,
-                    "bonus_days": int(CHANNEL_PREMIUM_DAYS),
-                    "message": "В пробном периоде бонусов нет. Они откроются после первой оплаты.",
-                }
     finally:
         s.close()
 

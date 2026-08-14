@@ -138,6 +138,9 @@ identifier; an empty selection is rejected as HTTP `422` with stable code
   revoking its refresh family without revoking the device.
 - `GET /api/client/devices` reads `account_devices`. Compatibility field `id`
   remains the install ID while `registryId` is the canonical device UUID.
+- `PATCH /api/client/devices/current` updates only the device bound to the
+  authenticated session. It accepts a bounded human-safe label and platform
+  metadata, never a serial number, hardware ID or arbitrary target device ID.
 - `DELETE /api/client/devices/{device_id}` accepts either identifier, requires a
   recent `fresh_auth_at`, increments `credential_version`, marks the device
   revoked and revokes all sessions bound to that device.
@@ -405,7 +408,9 @@ position, grant duration, and synchronization state.
   offer and retain an actual historical `claimed_days` value separately.
 - `GET /api/bonuses/summary` adds nested `referral`, `channel_bonus`,
   `opening_bonus`, `promo`, `history`, `wheel`, `calendar`, and `achievements`
-  plus `reward_access` with the canonical paid gate and human trial copy,
+  plus `reward_access` with the canonical paid gate for wheel/calendar/referral
+  rewards. `channel_bonus.eligible` and `channel_bonus.can_claim` are separate:
+  the one-time Telegram `+5 days` offer is available before the first payment,
   without exposing a canonical account UUID, private subscription URL, raw
   random weights, or internal job metadata.
 - `GET /api/bonuses/wheel/state` returns `enabled`, `eligible`, `reason`,
@@ -683,9 +688,16 @@ and at most six safe messages; it is neither stored in the ticket nor persisted
 across process restart. An optional `ticketId` is authorized before any model
 or tool call.
 
-Only diagnostic keys `app_version`, `platform`, `route_mode`, and
-`connection_status` may enter bounded event metadata. Diagnostic values do not
-enter model context, agent memory, or logs. The harness is limited to six
+Client-authored diagnostics enter through a fixed allowlist. Before the harness
+call, the authenticated endpoint adds an identifier-free, same-account snapshot:
+access state and days left, normalized plan code, active-device count, whether
+Telegram is linked, Telegram-bonus state, and bounded panel runtime facts
+(online/offline/unavailable, active-connection count, last-online age). Server
+facts override colliding client keys. The model receives those scalar facts only
+for the current synthesis request; they are not added to agent memory. Raw
+account/Telegram/device IDs, usernames, email, node hosts, subscription URLs,
+keys, configs, payment data, and panel payloads are never admitted. Event
+metadata records diagnostic key names, not values. The harness is limited to six
 requests per authenticated owner per rolling minute even if the client rotates
 session IDs. Failure, missing support knowledge, and agent escalation still
 return a safe `local_fallback` response with `shouldEscalate=true`; they do not

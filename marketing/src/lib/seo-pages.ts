@@ -9,7 +9,7 @@ import {
 export const SEO_LAST_REVIEWED_DATE = "2026-08-12";
 
 export const TELEGRAM_START_PROMISE =
-  "5 дней бесплатно в приложении. После первой оплаты можно получить ещё 5 дней за привязку Telegram и подтверждение подписки на канал.";
+  "5 дней бесплатно в приложении. Ещё 5 дней можно получить без оплаты за привязку Telegram и подтверждение подписки на канал.";
 
 export const SEO_PAGE_PATHS = {
   android: "/android/",
@@ -540,7 +540,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
     primaryCta: installCta,
     priority: 0.82,
     related: [
-      { href: "/telegram/", label: "Бонус +5 дней после оплаты" },
+      { href: "/telegram/", label: "Бонус +5 дней за Telegram" },
       { href: SEO_PAGE_PATHS.billingNoAutopay, label: "Без автосписаний" },
       { href: SEO_PAGE_PATHS.android, label: "Android" },
       { href: SEO_PAGE_PATHS.windows, label: "Windows" },
@@ -1096,7 +1096,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
     cards: [],
     changeFrequency: "weekly",
     cluster: "scenario",
-    description: "5 дней POKROV бесплатно, затем Telegram-бонус +5 дней после первой оплаты, привязки аккаунта и подтверждения подписки на канал.",
+    description: "5 дней POKROV бесплатно и Telegram-бонус +5 дней после привязки аккаунта и подтверждения подписки на канал.",
     faq: [
       {
         question: "Telegram обязателен для старта?",
@@ -1106,7 +1106,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
       {
         question: "Как получить ещё 5 дней?",
         answer:
-          "После первой оплаты привяжите Telegram, подпишитесь на официальный канал и заберите бонус в аккаунте. Проверка подписки проходит явно, без скрытых условий.",
+          "Привяжите Telegram, подпишитесь на официальный канал и заберите одноразовый бонус в аккаунте. Оплата для Telegram-бонуса не нужна; проверка подписки проходит явно.",
       },
       {
         question: "Куда писать с проблемой?",
@@ -1114,8 +1114,8 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
           "В официальный бот поддержки. Так быстрее разобрать установку, оплату, доступ и Telegram-бонус.",
       },
     ],
-    h1: "5 дней бесплатно и Telegram-бонус после оплаты",
-    heroKicker: "5 дней без карты · +5 после первой оплаты",
+    h1: "5 дней бесплатно и Telegram-бонус без оплаты",
+    heroKicker: "5 дней без карты · ещё +5 за Telegram",
     kind: "intent",
     path: "/telegram/",
     priority: 0.78,
@@ -1126,7 +1126,7 @@ export const SEO_INDEXABLE_PAGES: SeoPage[] = [
       { href: "/install/", label: "Установка" },
     ],
     sections: [],
-    title: "5 дней POKROV бесплатно и Telegram-бонус после оплаты",
+    title: "5 дней POKROV бесплатно и Telegram-бонус без оплаты",
   }),
   withDefaults({
     answer:

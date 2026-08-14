@@ -23,9 +23,9 @@ export default function TelegramPage() {
       pagePath={MARKETING_CANONICAL_PATHS.telegram}
       breadcrumbName="Telegram"
       heroKicker="5 дней без карты · ещё +5 после первой оплаты"
-      heroTitle="Получите 5 дней бесплатно и ещё 5 после оплаты"
+      heroTitle="Получите 5 дней бесплатно и ещё 5 за Telegram"
       heroSubtitle={TELEGRAM_START_PROMISE}
-      scenarioTitle="Первая оплата, подписка на канал — и ещё 5 дней"
+      scenarioTitle="Привязка Telegram, подписка на канал — и ещё 5 дней"
       scenarioBody="Плюс обновления сервиса и быстрый вход в поддержку."
       scenarioCards={[
         {

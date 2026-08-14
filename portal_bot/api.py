@@ -1103,6 +1103,13 @@ class AppSessionRefreshIn(BaseModel):
     refresh_token: str = Field(min_length=32, max_length=512)
 
 
+class AppDeviceMetadataIn(BaseModel):
+    device_name: str = Field(min_length=2, max_length=120)
+    platform: str = Field(min_length=2, max_length=32)
+    os_version: str | None = Field(default=None, max_length=64)
+    app_version: str | None = Field(default=None, max_length=32)
+
+
 class RecoveryCodeExchangeIn(BaseModel):
     code: str = Field(min_length=18, max_length=32)
     install_id: str = Field(min_length=8, max_length=128)

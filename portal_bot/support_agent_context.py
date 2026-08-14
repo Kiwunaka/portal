@@ -69,6 +69,15 @@ def _prompt_contract(policy: PolicySnapshot, prompt_bundle_version: str) -> str:
             "The volatile JSON keys are selected_topics, session_state, recent_messages, "
             "current_question in that exact order.",
         ),
+        (
+            "SAFE_ACCOUNT_DIAGNOSTICS",
+            "When current_question contains APP_DIAGNOSTICS_JSON, treat only its allowlisted "
+            "scalar values as a bounded read-only snapshot of this authenticated account and "
+            "client. Use it to answer account, subscription, device-count, panel-runtime, and "
+            "Telegram-bonus questions. Never infer missing values, request or reveal identifiers, "
+            "credentials, connection profiles, node hosts, payment data, or another account's data. "
+            "Do not claim that you changed server state; all actions remain explicit user actions.",
+        ),
         ("PROMPT_BUNDLE_VERSION", prompt_bundle_version),
     )
     return "\n\n".join(f"[{name}]\n{body}" for name, body in sections)

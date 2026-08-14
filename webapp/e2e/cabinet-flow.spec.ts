@@ -721,7 +721,8 @@ test.describe("Cabinet flow", () => {
   test("keeps server and device protection checks distinct", async ({ page }) => {
     await page.goto("/protection/");
 
-    await expect(page.getByRole("heading", { name: "Сервер видит подключение" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Подключение этого аккаунта не подтверждено" })).toBeVisible();
+    await expect(page.locator("main")).not.toContainText("2 активн.");
     await expect(page.locator("main")).toContainText("Туннель");
     await expect(page.locator("main")).toContainText("DNS");
     await expect(page.locator("main")).toContainText("Интернет / HTTPS");
@@ -1161,8 +1162,9 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("heading", { name: "Устройства" })).toBeVisible();
     await expect(page.locator("main")).toContainText("Сводка");
     await expect(page.locator("main")).toContainText("Список");
-    await expect(page.locator("main")).toContainText("Подключений сейчас");
-    await expect(page.locator("main")).toContainText("2 из 5");
+    await expect(page.locator("main")).toContainText("Сессий в сети");
+    await expect(page.locator("main")).toContainText("Общий счётчик, не ваши устройства");
+    await expect(page.locator("main")).not.toContainText("2 из 5");
     await expect(page.locator("main")).not.toContainText("Главное сейчас");
     await expect(page.locator("main")).toContainText("Добавить устройство");
 
@@ -1170,6 +1172,7 @@ test.describe("Cabinet flow", () => {
     await expect(page).toHaveURL(/\/statistics\/?$/);
     await expect(page.getByRole("heading", { name: "Статистика" })).toBeVisible();
     await expect(page.locator("main")).toContainText("Безопасная сводка");
+    await expect(page.locator("main")).toContainText("Сессий в сети");
     await expect(page.locator("main")).toContainText("Людей онлайн");
     await expect(page.locator("main")).not.toContainText("Короткая картина");
     await expect(page.locator("main")).not.toContainText("pl.pokrov.space");

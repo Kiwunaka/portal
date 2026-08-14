@@ -321,26 +321,6 @@ async def claim_channel_bonus(
             "sub_type": user.sub_type,
             "channel": channel_username,
         }
-    from rewards_service import evaluate_active_paid
-
-    paid_access = evaluate_active_paid(
-        s,
-        account_id=account_id,
-        now=_utcnow(),
-    )
-    if not paid_access.eligible:
-        _track_bonus_event(
-            tg_id=tg_id,
-            event_name="promo_channel_denied",
-            meta={"reason": paid_access.reason},
-        )
-        raise HTTPException(
-            status_code=403,
-            detail={
-                "code": "active_paid_required",
-                "message": "В пробном периоде бонусов нет. Они откроются после первой оплаты.",
-            },
-        )
     if _has_campaign_mark(s, tg_id=tg_id, campaign_key=opening_bonus_campaign_key):
         _track_bonus_event(
             tg_id=tg_id,

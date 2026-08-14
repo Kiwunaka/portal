@@ -721,6 +721,17 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
     _seed_rollout(api)
     _add_node(api, code="nl-ams-01")
 
+    async def _runtime_summary(**_kwargs):
+        return {
+            "panel_state": "ok",
+            "status": "online",
+            "active_connections": 2,
+            "last_online_age_seconds": 90,
+            "traffic_total_bytes": 0,
+        }
+
+    monkeypatch.setattr(api, "_get_user_runtime_summary", _runtime_summary)
+
     from support_ai_service import SupportAIConfig
     from support_agent_grounding import SupportGroundingEngine
     from support_agent_harness import SupportAgentHarness
@@ -851,7 +862,8 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
     assert assistant_body["source"] == "support_agent"
     generated_session_id = assistant_body["assistantSessionId"]
     assert 16 <= len(generated_session_id) <= 64
-    assert dict(recording_harness.requests[0].safe_diagnostics) == {
+    first_diagnostics = dict(recording_harness.requests[0].safe_diagnostics)
+    assert {
         "app_version": "1.0.0",
         "connection_status": "connected",
         "enhanced_protection_available": True,
@@ -859,7 +871,15 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
         "enhanced_protection_state": "fallback",
         "platform": "windows",
         "route_mode": "all_except_ru",
-    }
+    }.items() <= first_diagnostics.items()
+    assert first_diagnostics["account_access_state"] == "trial_premium"
+    assert first_diagnostics["account_days_left"] == 5
+    assert first_diagnostics["account_device_count"] == 1
+    assert first_diagnostics["account_telegram_linked"] is False
+    assert first_diagnostics["panel_active_connections"] == 2
+    assert first_diagnostics["panel_last_online_age_seconds"] == 90
+    assert first_diagnostics["panel_runtime_state"] == "online"
+    assert first_diagnostics["telegram_bonus_state"] == "available"
 
     supplied = client.post(
         "/api/client/support/assistant",
@@ -940,12 +960,20 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
         serialized_events = "\n".join(str(event.meta_json or "") for event in events)
     finally:
         event_session.close()
-    assert (
-        '"diagnostics_keys":["app_version","connection_status",'
-        '"enhanced_protection_available","enhanced_protection_consent",'
-        '"enhanced_protection_state","platform","route_mode"]'
-        in serialized_events
-    )
+    for diagnostic_key in (
+        "account_access_state",
+        "account_days_left",
+        "account_device_count",
+        "account_plan",
+        "account_telegram_linked",
+        "app_version",
+        "connection_status",
+        "panel_active_connections",
+        "panel_last_online_age_seconds",
+        "panel_runtime_state",
+        "telegram_bonus_state",
+    ):
+        assert diagnostic_key in serialized_events
     assert "attacker_key" not in serialized_events
     assert attacker_value not in serialized_events
     assert attacker_value not in caplog.text

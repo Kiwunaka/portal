@@ -224,7 +224,7 @@ export default function DashboardPage() {
           />
           <Tile
             icon={Wifi}
-            label="Подключения"
+            label="Сессии в сети"
             value={
               activeConnections > 0 ? (
                 <span className="inline-flex items-center gap-2">
@@ -232,12 +232,13 @@ export default function DashboardPage() {
                     <span className="absolute inline-flex h-full w-full rounded-full bg-status-green opacity-60 motion-safe:animate-[ping_2.4s_cubic-bezier(0,0,0.2,1)_infinite]" />
                     <span className="relative inline-flex size-2 rounded-full bg-status-green" />
                   </span>
-                  <AnimatedNumber value={activeConnections} /> активно
+                  <AnimatedNumber value={activeConnections} /> сейчас
                 </span>
               ) : (
                 "нет активных"
               )
             }
+            hint="Общий счётчик POKROV"
             tone="success"
           />
           <Tile icon={CalendarCheck} label="Доступ до" value={formatDate(dash?.expiry_at)} tone="neutral" href="/subscription/" />

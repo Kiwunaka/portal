@@ -85,8 +85,8 @@ LOCAL_RENDERABLE_TOPICS = MappingProxyType(
         "routing_full_tunnel": "5d88fe4f22d58ae888e8bb240f4fb86e0a2e04e1303f1ed83bd55aef23246022",
         "slow_speed": "e438111bc98bb4fa4f45ac9990e72795941abef8807786fac780ec91f93244f9",
         "streisand_import": "093cc9bc8b06ee4b38ba0b99b46e99261031eeb916580e33204a78afad0e9787",
-        "telegram_bonus": "0a6a4aee625231bd1c53d64b4a917114d2b65abe9f01337ae6783fad6835c8fb",
-        "trial_has_no_bonuses": "132b889c57e597317075130514b0a2f80e0408583618cea435484512382eb31f",
+        "telegram_bonus": "d8390b618fde2a7ff67d86391c2f31825f36a989a29eb4ecbec0b859971d6ed3",
+        "trial_bonus_limits": "3a77f2b70d3bb4780828b72b6225105348f19eeaced732c93c6521b1fc9cf701",
         "v2rayn_import": "28e4f8ecd51897cc65123f148618e0c356c137302fc93b2050e9df8c8288cbc7",
         "v2rayn_proxy_tun": "bd49563da88b7c77ad733252536a3bb2f4a79daa49e0535116286912020cd906",
         "v2rayng_import": "9c3555c155b2a5c14b01967c6f38e0d72427db6218d52f73e4ce51ae9f5a81db",
@@ -304,7 +304,7 @@ INTENT_RULES = (
         ("новый срок уже появился",),
     ),
     IntentRule(
-        "trial_has_no_bonuses",
+        "trial_bonus_limits",
         (
             ("пробный период", "пробном периоде", "триал", "trial"),
             ("бонус", "бонусы", "рулетка", "награда"),

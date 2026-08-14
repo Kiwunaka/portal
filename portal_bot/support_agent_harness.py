@@ -90,6 +90,11 @@ _MAX_PROVIDER_TIMEOUT_SECONDS = 45.0
 _MAX_RUN_DEADLINE_SECONDS = 50.0
 _EMPTY_HASH = "0" * 64
 _SAFE_DIAGNOSTIC_KEYS = (
+    "account_access_state",
+    "account_days_left",
+    "account_device_count",
+    "account_plan",
+    "account_telegram_linked",
     "platform",
     "app_version",
     "connection_status",
@@ -97,6 +102,10 @@ _SAFE_DIAGNOSTIC_KEYS = (
     "enhanced_protection_state",
     "enhanced_protection_consent",
     "enhanced_protection_available",
+    "panel_active_connections",
+    "panel_last_online_age_seconds",
+    "panel_runtime_state",
+    "telegram_bonus_state",
 )
 _REDACTION_CATEGORIES = frozenset(
     {

@@ -17,7 +17,7 @@ auto-update.
 Current request shape:
 
 ```http
-GET /api/client/apps?platform=android&current_version=1.0.4&channel=beta
+GET /api/client/apps?platform=android&current_version=1.0.5&channel=stable
 X-Telegram-Init-Data: <redacted>
 ```
 

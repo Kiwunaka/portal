@@ -48,6 +48,14 @@ class VerifyBrainReadyTests(unittest.TestCase):
         self.assertIn("ports = [443, 8444]", cmd)
         self.assertNotIn("?:", cmd)
 
+    def test_required_secret_probe_never_prints_secret_value(self) -> None:
+        cmd = self.module._required_secret_presence_cmd()
+
+        self.assertIn("DEVICE_PAIRING_HMAC_SECRET", cmd)
+        self.assertIn("present length_ok=1", cmd)
+        self.assertNotIn("print(values", cmd)
+        self.assertNotIn("print(value", cmd)
+
     def test_curl_retry_accepts_any_current_marker(self) -> None:
         cmd = self.module._curl_retry(
             "pay.pokrov.space/checkout/",
@@ -107,6 +115,7 @@ class VerifyBrainReadyTests(unittest.TestCase):
             (0, "active\n", ""),
             (0, "active\n", ""),
             (3, "inactive\n", ""),
+            (0, "DEVICE_PAIRING_HMAC_SECRET=present length_ok=1\n", ""),
             (0, "LISTEN 0 4096 0.0.0.0:443\nLISTEN 0 4096 0.0.0.0:8444\n", ""),
             (0, "ok", ""),
             (0, "ok", ""),

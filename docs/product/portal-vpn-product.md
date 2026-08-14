@@ -85,8 +85,10 @@ Production deployment of account foundation is not proven. A completed productio
   authenticated internal node/control-plane connection evidence
 - client connect confirmation, `clicked_connect`, `connected_ok`, and funnel
   telemetry never activate the trial
-- paid Telegram reward: `+5 days` for new account-owned grants after first
-  payment; trial is ineligible and already-issued `+10 days` grants are grandfathered
+- Telegram channel reward: one account-owned `+5 days` grant after Telegram
+  linking and confirmed membership in the official channel; trial users are
+  eligible, payment is not required, and already-issued `+10 days` grants are
+  grandfathered
 - current distributed prerelease: `v1.0.4-beta.1`; Android `1.0.4+2013` and
   Windows `1.0.4-beta.1+13`
 - any later candidate requires exact promoted-client and public-asset evidence
@@ -217,6 +219,11 @@ Current cabinet role:
   `webapp/src/app/(admin)/admin/` is the parity fallback
 - site, cabinet, and admin must keep obvious navigation back to each other so no surface becomes a dead end
 - consumer cabinet screens should show safe summaries such as `connect.pokrov.space` and route categories while keeping raw personal links, public IP, and node internals hidden on screen
+- global panel counters are labelled as network-wide estimates and never used
+  as proof that the current account is connected; account protection status is
+  derived only from that account's first-connection/observer state
+- the current client may refresh its own bounded device label and platform
+  metadata; it cannot rename another device or expose hardware identifiers
 - consumer cabinet screens must not expose raw subscription edit, regenerate, or share actions in the first-layer UI
 - authenticated support in the cabinet should continue as a real ticket thread with uploads, not as decorative form state or a fake live-chat promise
 - the primary `adminapp` information architecture is grouped as `People`, `Access`, `Payments`, `Network`, `Diagnostics`, `Messaging`, and `Feedback`
@@ -639,9 +646,10 @@ Shadowrocket, and the not-yet-published owned Apple lane; only Hiddify is
 labelled as the verified manual fallback, while every other third-party path
 keeps its best-effort or advanced qualifier.
 
-`/guides/pokrov-app/` is the separate Android application atlas. It currently
-contains 20 user-visible screens and panels captured by ADB from the exact
-`1.0.0-beta.4` local candidate. Each image has hollow numbered target outlines
+`/guides/pokrov-app/` is the separate Android application atlas. Its primary
+Home, Locations, Rules, Profile, and Notifications images are current real
+Huawei captures from the production-signed `1.0.6` candidate; remaining
+task-specific panels retain real ADB captures until refreshed. Each image has hollow numbered target outlines
 and a separate legend, so annotations never cover the control text. The atlas
 covers the four main surfaces plus protection/recovery, routing, DNS/LAN,
 trusted Wi-Fi, Always-on handoff, account, subscription, activation,

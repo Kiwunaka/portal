@@ -63,7 +63,7 @@ export default function StatisticsPage() {
           <Tile icon={ShieldCheck} label="Режим" value={resolvePlanLabel(dash, user)} hint={dash?.expiry_at ? `До ${formatDate(dash.expiry_at)}` : "Дата уточняется"} tone="success" href="/subscription/" />
           <Tile icon={Gauge} label="Трафик" value={formatGb(trafficUsed)} hint={resolveTrafficStatusText(dash, user)} tone="info" />
           <Tile icon={MonitorSmartphone} label="Устройства" value={`${formatCount(deviceCount)} из ${formatCount(deviceLimit)}`} hint="Связанные экраны" tone="neutral" href="/devices/" />
-          <Tile icon={Wifi} label="Подключения сейчас" value={formatCount(activeConnections)} hint="Живая активность" tone="success" />
+          <Tile icon={Wifi} label="Сессий в сети" value={formatCount(activeConnections)} hint="Общий счётчик POKROV" tone="success" />
           <Tile icon={Users} label="Людей онлайн" value={formatCount(activeUsersEstimate)} hint="Ориентир, не список" tone="neutral" />
           <Tile icon={Globe} label="Точки доступа" value={`${formatCount(activeNodes)} из ${formatCount(knownNodes)}`} hint="Счетчик готовности" tone="info" />
           <Tile icon={CalendarSync} label="Обновление лимита" value={nextResetAt ? formatDate(nextResetAt) : "не нужно"} hint="Для текущего режима" tone="neutral" />
