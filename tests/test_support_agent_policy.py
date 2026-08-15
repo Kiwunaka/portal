@@ -41,7 +41,7 @@ def _valid_policy() -> dict[str, object]:
             "redacted_user_message",
         ],
         "forbidden_data": [
-            "account_data",
+            "raw_account_data",
             "database",
             "attachment",
             "credential",
@@ -60,8 +60,8 @@ def _valid_policy() -> dict[str, object]:
         "escalation_rules": [
             "uncertain",
             "missing_source",
-            "account_specific",
-            "payment_specific",
+            "unresolved_account_anomaly",
+            "unresolved_payment_anomaly",
             "sensitive_input",
             "human_requested",
             "invalid_output",

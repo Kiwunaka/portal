@@ -317,21 +317,22 @@ Product wording rule:
 - trial must create a real backend account, device, session, and working subscription source
 - trial must never be decorative UI-only state
 - trial is premium-grade access during those `5 days`
-- rewards are unavailable during trial; app, cabinet, bot, and support must say
-  that they open after the first successful payment instead of reporting a
-  generic connection failure
+- the one-time Telegram `+5 days` acquisition reward remains available during
+  trial; roulette, calendar, and referral rewards open after the first
+  successful payment. App, cabinet, bot, and support must name that split
+  instead of reporting a generic connection failure
 - after trial expiry the account stays recoverable and payable but receives no
   delivery node until a paid or separately authorized premium grant exists
 
 ### Telegram Reward
 
-- exact public promise: `После первой оплаты можно получить ещё 5 дней за привязку Telegram и подтверждение подписки на канал.`
-- new reward value: `+5 days`, once per canonical paid account
+- exact public promise: `Можно один раз получить ещё 5 дней за привязку Telegram и подтверждение подписки на канал — даже до первой оплаты.`
+- new reward value: `+5 days`, once per canonical account
 - already-issued `+10 days` channel rewards remain grandfathered and are never shortened or reissued
 - leaving the channel starts a `24 hour` grace period; rejoining cancels grace, and expiry removes only the unused channel interval
-- a currently active canonical `paid_access` grant is required before a new
-  membership lookup or claim; trial, expired, free, and bonus-only accounts are
-  ineligible
+- trial and paid accounts may run the membership lookup and claim; manual
+  accounts, a consumed Telegram grant, or a conflicting pre-payment acquisition
+  grant remain ineligible with an explicit reason
 - the app-first account must first link Telegram
 - reward validation then checks membership in the configured public channel
 - active public channel: `@pokrov_vpn`

@@ -501,6 +501,97 @@ def test_app_diagnostics_reach_the_single_synthesis_request_as_untrusted_context
     assert "APP_DIAGNOSTICS_JSON" not in stored.messages[0].content
 
 
+@pytest.mark.parametrize(
+    ("message", "diagnostics", "expected", "topic_id"),
+    (
+        (
+            "К какой ноде я сейчас подключён?",
+            (
+                ("connection_active", True),
+                ("current_location_label", "Франкфурт · Белые списки"),
+            ),
+            "Франкфурт · Белые списки",
+            "current_connection_snapshot",
+        ),
+        (
+            "К какой я ноде подключен?",
+            (
+                ("connection_active", True),
+                ("current_location_label", "Франкфурт · Белые списки"),
+            ),
+            "Франкфурт · Белые списки",
+            "current_connection_snapshot",
+        ),
+        (
+            "Какие промокоды мне доступны?",
+            (
+                ("public_promo_codes", "SUMMER20,PAID10"),
+                ("public_promo_state", "available"),
+            ),
+            "SUMMER20, PAID10",
+            "promo_codes",
+        ),
+    ),
+)
+def test_account_snapshot_questions_are_code_owned_without_provider_guess(
+    harness_case_factory,
+    message,
+    diagnostics,
+    expected,
+    topic_id,
+) -> None:
+    case = harness_case_factory(
+        name=f"snapshot-{topic_id}",
+        input_mode="safe",
+        retrieval="none",
+        provider_plan="unused",
+        store_plan="ok",
+    )
+    request = replace(
+        case.request,
+        message=message,
+        safe_diagnostics=diagnostics,
+    )
+
+    result = asyncio.run(case.harness.run(request))
+
+    assert result.status == "answer"
+    assert result.answer_origin == "code_owned"
+    assert result.grounding_topic_id == topic_id
+    assert expected in result.reply
+    assert result.provider_request_count == 0
+    assert case.adapter.call_count == 0
+
+
+def test_model_escalation_does_not_disable_unrelated_future_ai_turn(
+    harness_case_factory,
+) -> None:
+    case = harness_case_factory(
+        name="soft-model-escalation",
+        input_mode="safe",
+        retrieval="confident",
+        provider_plan="escalate",
+        store_plan="ok",
+    )
+
+    first = asyncio.run(case.harness.run(case.request))
+    assert first.status == "escalate"
+    assert first.session_state is not None
+    assert first.session_state.escalation_requested is False
+
+    case.adapter.plan = "answer"
+    second_request = replace(
+        case.request,
+        message="Какой срок пробного периода?",
+        now=101.0,
+    )
+    second = asyncio.run(case.harness.run(second_request))
+
+    assert second.status == "answer"
+    assert second.answer_origin == "model"
+    assert case.adapter.call_count == 2
+
+
 def test_code_owned_provenance_and_candidate_state_are_not_model_owned(
     harness_case_factory,
 ) -> None:

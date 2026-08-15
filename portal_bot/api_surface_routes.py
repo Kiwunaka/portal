@@ -992,17 +992,12 @@ async def user_data(
             tg_id=tg_id,
             campaign_key=OPENING_PREMIUM_CAMPAIGN_KEY,
         )
-        channel_paid_access = evaluate_active_paid(
-            s,
-            account_id=str(user.account_id or ""),
-            now=_reward_now(),
-        )
         can_claim_channel_bonus = bool(
             PUBLIC_CHANNEL
             and not channel_claimed_at
             and not opening_bonus_claimed
+            and bool(getattr(user, "tos_accepted", False))
             and (user.sub_type or "").upper() != "MANUAL"
-            and channel_paid_access.eligible
         )
         free_speed_kbps = _effective_free_speed_kbps(user)
         free_speed_mbps = int(round((free_speed_kbps * 8) / 1000)) if (user.sub_type or "").upper() == "FREE" else None

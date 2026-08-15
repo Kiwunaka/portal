@@ -110,6 +110,15 @@ async def cmd_start(message: Message):
         },
     )
 
+    if start_arg.strip().lower() == "pair_device":
+        await _send_device_pairing_code_message(
+            bot=message.bot,
+            chat_id=int(tg_id),
+            tg_id=int(tg_id),
+            entrypoint="start",
+        )
+        return
+
     if app_link_account_id > 0:
         bind_status = _bind_app_account_to_telegram(
             account_tg_id=int(app_link_account_id),
@@ -958,6 +967,14 @@ def _device_select_rows() -> list[list[dict[str, str]]]:
             ),
             _btn_spec(text="Windows", callback_data="instr_win", emoji_key="device"),
         ],
+        [
+            _btn_spec(
+                text="Код для входа в POKROV",
+                callback_data="device_pairing_code",
+                style=BTN_STYLE_SUCCESS,
+                emoji_key="key",
+            )
+        ],
         [_btn_spec(text="Открыть кабинет", web_app_url=WEBAPP_URL, emoji_key="cabinet")],
         [_btn_spec(text="Помощь с выбором", callback_data="confused_help", emoji_key="support")],
         [_btn_spec(text="◀️ Назад", callback_data="back")],
@@ -1006,6 +1023,114 @@ async def confused_help(callback: CallbackQuery):
         rows=rows,
     )
     await callback.answer()
+
+
+def _issue_bot_device_pairing_code(tg_id: int) -> str:
+    session = Session()
+    try:
+        user = (
+            session.query(User)
+            .filter(User.tg_id == int(tg_id))
+            .with_for_update()
+            .one_or_none()
+        )
+        if user is None:
+            raise device_pairing_service.DevicePairingError(
+                "account_not_found",
+                "Account is unavailable.",
+            )
+        ensure_user_account_foundation(session, user, now=_utcnow())
+        issued = device_pairing_service.issue_pairing_code(
+            session,
+            account_id=str(user.account_id or ""),
+            issued_by_session_id=None,
+            now=_utcnow(),
+        )
+        session.commit()
+        return str(issued.code)
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+def _device_pairing_code_text(code: str) -> str:
+    return (
+        "🔑 *Код для входа в POKROV*\n\n"
+        f"`{code}`\n\n"
+        "Откройте POKROV → «Уже пользуюсь» и введите этот код. "
+        "Он одноразовый и действует 10 минут."
+    )
+
+
+def _device_pairing_code_rows() -> list[list[dict[str, str]]]:
+    return [
+        [_btn_spec(text="Обновить код", callback_data="device_pairing_code", emoji_key="refresh")],
+        [_btn_spec(text="Скачать приложение", callback_data="instruction", emoji_key="download")],
+        [_btn_spec(text="◀️ Назад", callback_data="instruction")],
+    ]
+
+
+async def _send_device_pairing_code_message(
+    *,
+    bot: Bot,
+    chat_id: int,
+    tg_id: int,
+    entrypoint: str,
+) -> None:
+    try:
+        code = _issue_bot_device_pairing_code(tg_id)
+        sent = await bot.send_message(
+            chat_id,
+            _device_pairing_code_text(code),
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=_keyboard_from_specs(_device_pairing_code_rows()),
+        )
+        last_bot_message[int(tg_id)] = sent.message_id
+        track_event(
+            tg_id=int(tg_id),
+            event_name="device_pairing_code_issued",
+            source="bot",
+            meta={"entrypoint": str(entrypoint or "bot")[:32]},
+        )
+    except Exception as exc:
+        logger.warning(
+            "device pairing code issue failed tg_id=%s error=%s",
+            tg_id,
+            type(exc).__name__,
+        )
+        sent = await bot.send_message(
+            chat_id,
+            "Не удалось создать код входа. Попробуйте еще раз через минуту.",
+            reply_markup=_keyboard_from_specs(_device_pairing_code_rows()),
+        )
+        last_bot_message[int(tg_id)] = sent.message_id
+
+
+@router.callback_query(F.data == "device_pairing_code")
+async def show_device_pairing_code(callback: CallbackQuery):
+    try:
+        code = _issue_bot_device_pairing_code(callback.from_user.id)
+        await callback.message.edit_text(
+            _device_pairing_code_text(code),
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=_keyboard_from_specs(_device_pairing_code_rows()),
+        )
+        track_event(
+            tg_id=int(callback.from_user.id),
+            event_name="device_pairing_code_issued",
+            source="bot",
+            meta={"entrypoint": "device_picker"},
+        )
+        await callback.answer("Код действует 10 минут")
+    except Exception as exc:
+        logger.warning(
+            "device pairing code issue failed tg_id=%s error=%s",
+            callback.from_user.id,
+            type(exc).__name__,
+        )
+        await callback.answer("Не удалось создать код. Попробуйте еще раз.", show_alert=True)
 
 
 @router.callback_query(F.data == "verify_pokrov")
@@ -1102,20 +1227,12 @@ def _platform_download_rows(platform: str, url: str, button_text: str) -> list[l
 
 
 def _installed_app_action_spec(tg_id: int) -> dict[str, str]:
-    user = get_user(int(tg_id))
-    expiry = _naive_utc(getattr(user, "expiry_at", None))
-    if bool(user and user.is_active and expiry and expiry > _utcnow()):
-        return _btn_spec(
-            text="Проверить доступ",
-            callback_data="status",
-            style=BTN_STYLE_SUCCESS,
-            emoji_key="success",
-        )
+    del tg_id
     return _btn_spec(
-        text="Приложение уже стоит",
-        callback_data="simple_step3",
+        text="Код для входа в POKROV",
+        callback_data="device_pairing_code",
         style=BTN_STYLE_SUCCESS,
-        emoji_key="success",
+        emoji_key="key",
     )
 
 

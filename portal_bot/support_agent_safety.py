@@ -60,10 +60,27 @@ _HUMAN_REQUEST_RE = re.compile(
 _OUT_OF_SCOPE_RES = (
     re.compile(
         r"\b(?:проверьте|проверь|посмотрите|откройте|зайдите|исправьте|inspect|check)\b"
-        r".{0,60}\b(?:мой|мою|аккаунт|оплат\w*|ключ\w*|вложен\w*|скриншот\w*|баз\w*\s+данн\w*|сервер\w*|хост\w*|account|payment|attachment|database|server)\b",
+        r".{0,60}\b(?:ключ\w*|вложен\w*|скриншот\w*|баз\w*(?:\s+данн\w*)?|сервер\w*|хост\w*|key|attachment|database|server|host)\b",
         re.IGNORECASE | re.DOTALL,
     ),
     re.compile(r"\b(?:выполните|выполни|запустите|запусти|execute|run)\b.{0,40}\b(?:команд\w*|shell|скрипт\w*|command)\b", re.IGNORECASE | re.DOTALL),
+)
+_ACCOUNT_SESSION_ACTION_RE = re.compile(
+    r"\b(?:зайдите|зайди|войдите|войди|откройте|открой|log\s*in)\b"
+    r".{0,60}\b(?:мой|мою|аккаунт\w*|account)\b",
+    re.IGNORECASE | re.DOTALL,
+)
+_MUTATING_ACTION_RE = re.compile(
+    r"\b(?:удали(?:те)?|исправ(?:ь|ьте)|обнови(?:те)?|включи(?:те)?|"
+    r"выключи(?:те)?|поменя(?:й|йте)|измени(?:те)?|"
+    r"(?:мож(?:ешь|ете)|надо|нужно)\s+(?:удалить|исправить|обновить|включить|"
+    r"выключить|поменять|изменить)|(?:please\s+)?(?:delete|change|update|enable|disable))\b",
+    re.IGNORECASE,
+)
+_MUTATION_TARGET_RE = re.compile(
+    r"\b(?:аккаунт\w*|устройств\w*|профил\w*|срок\w*|маршрут\w*|режим\w*|"
+    r"warp|варп|тун\w*|dns|account|device|profile|route)\b",
+    re.IGNORECASE,
 )
 _PUBLIC_INPUT_HOSTS = frozenset(
     {
@@ -352,7 +369,11 @@ def _redact_pii(text: str, *, redact_all_urls: bool = False) -> tuple[str, list[
 def _local_escalation_reason(text: str) -> str | None:
     if _HUMAN_REQUEST_RE.search(text):
         return "human_requested"
-    if any(pattern.search(text) for pattern in _OUT_OF_SCOPE_RES):
+    if (
+        any(pattern.search(text) for pattern in _OUT_OF_SCOPE_RES)
+        or _ACCOUNT_SESSION_ACTION_RE.search(text)
+        or (_MUTATING_ACTION_RE.search(text) and _MUTATION_TARGET_RE.search(text))
+    ):
         return "out_of_scope"
     return None
 

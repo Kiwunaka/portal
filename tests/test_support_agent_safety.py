@@ -65,7 +65,6 @@ def test_hard_reject_wins_over_command_or_human_request() -> None:
 @pytest.mark.parametrize(
     "message",
     [
-        "Проверьте мой аккаунт и скажите остаток дней",
         "Проверьте мою оплату по базе",
         "Посмотрите мой ключ подключения",
         "Откройте вложение и изучите скриншот",
@@ -82,6 +81,16 @@ def test_out_of_scope_actions_escalate_without_storable_text(message: str) -> No
     assert result.disposition is InputDisposition.LOCAL_ESCALATE
     assert result.model_text == ""
     assert result.escalation_reason == "out_of_scope"
+
+
+def test_same_account_read_only_question_reaches_bounded_agent_context() -> None:
+    from support_agent_safety import InputDisposition, classify_support_input
+
+    result = classify_support_input("Проверьте мой аккаунт и скажите остаток дней")
+
+    assert result.disposition is InputDisposition.CONTINUE
+    assert result.model_text == "Проверьте мой аккаунт и скажите остаток дней"
+    assert result.escalation_reason is None
 
 
 def test_safe_human_request_keeps_only_redacted_text_for_sticky_transfer() -> None:

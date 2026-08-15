@@ -18,7 +18,7 @@ from support_agent_sessions import SessionState, StoredMessage
 from support_agent_state import ATTEMPTED_STEP_CODES, OUTCOME_CODES
 
 
-PROMPT_BUNDLE_VERSION = "8"
+PROMPT_BUNDLE_VERSION = "9"
 MAX_PROVIDER_REQUEST_CHARS = 30_000
 PROVIDER_ENVELOPE_RESERVE_CHARS = 512
 MAX_STABLE_PREFIX_CHARS = 18_000
@@ -74,7 +74,8 @@ def _prompt_contract(policy: PolicySnapshot, prompt_bundle_version: str) -> str:
             "When current_question contains APP_DIAGNOSTICS_JSON, treat only its allowlisted "
             "scalar values as a bounded read-only snapshot of this authenticated account and "
             "client. Use it to answer account, subscription, device-count, panel-runtime, and "
-            "Telegram-bonus questions. Never infer missing values, request or reveal identifiers, "
+            "Telegram-bonus, current-location, and published-promo questions. Client location is "
+            "device-reported; account and promo values are server-owned. Never infer missing values, request or reveal identifiers, "
             "credentials, connection profiles, node hosts, payment data, or another account's data. "
             "Do not claim that you changed server state; all actions remain explicit user actions.",
         ),

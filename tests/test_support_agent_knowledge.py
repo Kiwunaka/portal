@@ -57,7 +57,7 @@ def test_repository_bundle_loads_and_ranks_known_connection_issue() -> None:
     snapshot = store.load(REPO_ROOT / "shared" / "support-ai-knowledge.json")
     hits = store.search("Подключено, но сайты не открываются", limit=3)
 
-    assert len(snapshot.topics_by_id) == 66
+    assert len(snapshot.topics_by_id) == 69
     assert hits
     assert hits[0].topic_id == "connected_no_internet"
     assert len(snapshot.compact_index) <= 10_000

@@ -311,6 +311,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                 "panel_last_online_age_seconds",
                 "panel_runtime_state",
                 "platform",
+                "public_promo_codes",
+                "public_promo_state",
                 "telegram_bonus_state",
             ],
         )

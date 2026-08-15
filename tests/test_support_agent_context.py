@@ -133,7 +133,7 @@ def test_synthesis_hashes_change_only_with_owned_stable_inputs() -> None:
         redacted_message="Первый вопрос",
         decision=replace(first_decision, retriever_sha256="e" * 64),
     )
-    changed_layout = SupportContextBuilder(prompt_bundle_version="9").build_synthesis(
+    changed_layout = SupportContextBuilder(prompt_bundle_version="10").build_synthesis(
         policy=policy,
         knowledge=knowledge,
         session=None,

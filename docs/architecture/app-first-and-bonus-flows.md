@@ -939,6 +939,10 @@ The app-first account now has three bounded continuation paths:
 - an authenticated device or cabinet can issue a short-lived one-time pairing
   code; claiming it creates a separate revocable device session and enforces
   the account device limit;
+- the canonical main bot exposes `Код для входа в POKROV` in its device picker
+  and through `/start pair_device`; it issues the same server-owned,
+  eight-character, single-use code with a ten-minute TTL and never stores or
+  logs the plaintext code after the Telegram response;
 - the referral summary exposes anonymized funnel counts and transition history,
   never invited-user identity or contact data;
 - switch, research, and team-pack forms create manually reviewed applications.

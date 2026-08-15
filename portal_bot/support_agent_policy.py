@@ -30,7 +30,7 @@ _SOURCE_HIERARCHY = (
     "redacted_user_message",
 )
 _FORBIDDEN_DATA = (
-    "account_data",
+    "raw_account_data",
     "database",
     "attachment",
     "credential",
@@ -44,8 +44,8 @@ _FORBIDDEN_DATA = (
 _ESCALATION_RULES = (
     "uncertain",
     "missing_source",
-    "account_specific",
-    "payment_specific",
+    "unresolved_account_anomaly",
+    "unresolved_payment_anomaly",
     "sensitive_input",
     "human_requested",
     "invalid_output",
@@ -166,7 +166,7 @@ def render_synthesis_policy_prompt(policy: SupportAgentPolicy) -> str:
         '- status must be "answer" or "escalate".',
         f"- reply must be non-empty and no longer than {policy.max_reply_chars} characters.",
         "Never return source IDs, state, actions, tool calls, or hidden reasoning.",
-        "Never request or expose accounts, payments, attachments, diagnostics, keys, configs, QR data, commands, files, hosts, or secrets.",
+        "Use only the allowlisted same-account and current-client scalar snapshot supplied by the harness. Never request or expose raw account records, payment payloads, attachments, raw diagnostics, keys, configs, QR data, commands, files, hosts, or secrets.",
         "Never output any URL, domain, IP address, token, key, QR payload, or connection material. Refer to public surfaces by plain names only.",
         "Never tell the user to delete or uninstall apps or profiles, reset or clear data, clear cache or cookies, log out, use incognito mode, revoke or reissue credentials, or disable system-wide settings.",
         "Never promise that support, an operator, or engineers will inspect or fix infrastructure, routes, accounts, payments, or credentials. You may always recommend contacting support, but never promise what support will do.",

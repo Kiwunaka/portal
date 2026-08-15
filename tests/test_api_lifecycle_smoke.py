@@ -263,6 +263,9 @@ class ApiLifecycleSmokeTests(unittest.TestCase):
         self.assertEqual(dashboard_before.status_code, 200, dashboard_before.text)
         dashboard_before_body = dashboard_before.json()
         self.assertTrue(str(dashboard_before_body.get("subscription_url") or "").startswith("https://connect.pokrov.space/s8Kx2mP7qR4wT/"))
+        profile_before = self.client.get(f"/api/user/{account_id}", headers=auth_headers)
+        self.assertEqual(profile_before.status_code, 200, profile_before.text)
+        self.assertTrue(profile_before.json()["bonuses"]["channel_bonus"]["can_claim"])
         expiry_before = str(dashboard_before_body.get("expiry_at") or "")
 
         profile = self.client.get(f"/api/user/{account_id}", headers=auth_headers)

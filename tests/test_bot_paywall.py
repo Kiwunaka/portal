@@ -2623,23 +2623,21 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual(labels[:2], ["Android", "Windows"])
         self.assertIn("instr_android", callbacks)
         self.assertIn("instr_win", callbacks)
+        self.assertIn("device_pairing_code", callbacks)
         self.assertNotIn("instr_ios", callbacks)
         self.assertNotIn("instr_mac", callbacks)
 
     def test_installed_app_action_does_not_resell_active_access(self) -> None:
-        active = types.SimpleNamespace(
-            is_active=True,
-            expiry_at=self.bot_module._utcnow() + timedelta(days=5),
-        )
-        with patch.object(self.bot_module, "get_user", return_value=active):
-            action = self.bot_module._installed_app_action_spec(1001)
-        self.assertEqual(action["text"], "Проверить доступ")
-        self.assertEqual(action["callback_data"], "status")
+        action = self.bot_module._installed_app_action_spec(1001)
+        self.assertEqual(action["text"], "Код для входа в POKROV")
+        self.assertEqual(action["callback_data"], "device_pairing_code")
 
-        with patch.object(self.bot_module, "get_user", return_value=None):
-            action = self.bot_module._installed_app_action_spec(1001)
-        self.assertEqual(action["text"], "Приложение уже стоит")
-        self.assertEqual(action["callback_data"], "simple_step3")
+    def test_device_pairing_code_copy_is_explicit_and_short_lived(self) -> None:
+        text = self.bot_module._device_pairing_code_text("ABCD-EFGH")
+        self.assertIn("`ABCD-EFGH`", text)
+        self.assertIn("одноразовый", text.lower())
+        self.assertIn("10 минут", text)
+        self.assertNotIn("оплат", text.lower())
 
     def test_install_paywall_does_not_advertise_unavailable_trial_bonus(self) -> None:
         keyboard = self.bot_module._mode_simple_step3_keyboard()

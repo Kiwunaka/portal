@@ -1085,6 +1085,7 @@ def _naive_utc(dt: datetime | None) -> datetime | None:
 # ==========================================
 from db import SessionLocal, init_db
 import channel_bonus_service
+import device_pairing_service
 from economy_service import create_referral_relationship, record_successful_payment_grant
 from account_foundation_service import (
     ensure_user_account_foundation,

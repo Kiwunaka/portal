@@ -802,6 +802,32 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
 
     start_body = _start_trial(client, install_id="support-p1-device")
     headers = _auth_headers(start_body)
+    from models import IncentiveCampaign, PromoCode
+
+    promo_session = api.SessionLocal()
+    try:
+        promo_session.add(
+            PromoCode(
+                code="SUPPORT20",
+                promo_type="discount",
+                value=20,
+                uses_left=10,
+            )
+        )
+        promo_session.add(
+            IncentiveCampaign(
+                name="Support account offer",
+                campaign_type="promo",
+                target_value="SUPPORT20",
+                segment="all_active",
+                max_activations=10,
+                activations_count=0,
+                is_active=True,
+            )
+        )
+        promo_session.commit()
+    finally:
+        promo_session.close()
 
     invalid_scope = client.post(
         "/api/client/support/assistant",
@@ -847,6 +873,8 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
                 "platform": "windows",
                 "route_mode": "all_except_ru",
                 "connection_status": "connected",
+                "connection_active": True,
+                "current_location_label": "Франкфурт · Белые списки",
                 "enhanced_protection_state": "fallback",
                 "enhanced_protection_consent": True,
                 "enhanced_protection_available": True,
@@ -866,6 +894,8 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
     assert {
         "app_version": "1.0.0",
         "connection_status": "connected",
+        "connection_active": True,
+        "current_location_label": "Франкфурт · Белые списки",
         "enhanced_protection_available": True,
         "enhanced_protection_consent": True,
         "enhanced_protection_state": "fallback",
@@ -880,6 +910,8 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
     assert first_diagnostics["panel_last_online_age_seconds"] == 90
     assert first_diagnostics["panel_runtime_state"] == "online"
     assert first_diagnostics["telegram_bonus_state"] == "available"
+    assert first_diagnostics["public_promo_state"] == "available"
+    assert first_diagnostics["public_promo_codes"] == "SUPPORT20"
 
     supplied = client.post(
         "/api/client/support/assistant",
@@ -968,10 +1000,14 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
         "account_telegram_linked",
         "app_version",
         "connection_status",
+        "connection_active",
+        "current_location_label",
         "panel_active_connections",
         "panel_last_online_age_seconds",
         "panel_runtime_state",
         "telegram_bonus_state",
+        "public_promo_state",
+        "public_promo_codes",
     ):
         assert diagnostic_key in serialized_events
     assert "attacker_key" not in serialized_events

@@ -329,7 +329,7 @@ def test_human_transfer_uses_fixed_harness_reply_and_existing_action_objects() -
     )
     result = generate_with(outcome)
     assert result.reply == (
-        "Не удалось безопасно подготовить ответ. Передаю вопрос специалисту поддержки."
+        "Не нашёл подтверждённого ответа. Могу подключить специалиста поддержки."
     )
     assert result.source == "local_fallback"
     assert result.should_escalate is True

@@ -2066,6 +2066,8 @@ ASSISTANT_DIAGNOSTIC_KEYS = frozenset(
         "account_device_count",
         "account_plan",
         "account_telegram_linked",
+        "public_promo_state",
+        "public_promo_codes",
         "app_version",
         "panel_active_connections",
         "panel_last_online_age_seconds",
@@ -2073,6 +2075,8 @@ ASSISTANT_DIAGNOSTIC_KEYS = frozenset(
         "platform",
         "route_mode",
         "connection_status",
+        "connection_active",
+        "current_location_label",
         "enhanced_protection_state",
         "enhanced_protection_consent",
         "enhanced_protection_available",
@@ -2101,6 +2105,66 @@ def _admit_support_assistant_diagnostics(raw_value: Any) -> dict[str, str | int 
     if len(serialized) > 4096:
         raise HTTPException(status_code=422, detail="Invalid safe diagnostics")
     return admitted
+
+
+def _support_assistant_promo_snapshot(*, s, user: User) -> dict[str, str | None]:
+    """List only live segment-matched campaign codes for this account."""
+
+    try:
+        now = _utcnow()
+        campaigns = (
+            s.query(IncentiveCampaign)
+            .filter(func.lower(IncentiveCampaign.campaign_type) == "promo")
+            .filter(IncentiveCampaign.is_active == True)
+            .order_by(IncentiveCampaign.id.desc())
+            .limit(24)
+            .all()
+        )
+        codes: list[str] = []
+        for campaign in campaigns:
+            if campaign.starts_at and campaign.starts_at > now:
+                continue
+            if campaign.ends_at and campaign.ends_at <= now:
+                continue
+            maximum = int(campaign.max_activations or -1)
+            if maximum >= 0 and int(campaign.activations_count or 0) >= maximum:
+                continue
+            if not _campaign_segment_match(user=user, segment=str(campaign.segment or "all_active")):
+                continue
+            code = str(campaign.target_value or "").strip().upper()
+            if not re.fullmatch(r"[A-Z0-9][A-Z0-9_-]{1,19}", code) or code in codes:
+                continue
+            promo = s.query(PromoCode).filter(func.upper(PromoCode.code) == code).first()
+            if promo is None:
+                continue
+            if int(promo.uses_left or 0) == 0:
+                continue
+            if promo.expires_at and promo.expires_at <= now:
+                continue
+            if str(promo.promo_type or "").strip().lower() not in {"days", "discount"}:
+                continue
+            if int(promo.value or 0) <= 0:
+                continue
+            used = (
+                s.query(PromoUsage.id)
+                .filter(
+                    PromoUsage.tg_id == int(user.tg_id),
+                    func.upper(PromoUsage.promo_code) == code,
+                )
+                .first()
+            )
+            if used is not None:
+                continue
+            codes.append(code)
+            if len(codes) >= 3:
+                break
+        return {
+            "public_promo_state": "available" if codes else "none",
+            "public_promo_codes": ",".join(codes) or None,
+        }
+    except Exception:
+        logger.warning("support assistant promo snapshot lookup failed")
+        return {"public_promo_state": "unavailable", "public_promo_codes": None}
 
 
 async def _support_assistant_account_diagnostics(*, s, user: User) -> dict[str, str | int | bool | None]:
@@ -2178,6 +2242,7 @@ async def _support_assistant_account_diagnostics(*, s, user: User) -> dict[str, 
         ),
         "panel_runtime_state": panel_runtime_state,
         "telegram_bonus_state": telegram_bonus_state,
+        **_support_assistant_promo_snapshot(s=s, user=user),
     }
 
 

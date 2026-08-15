@@ -62,7 +62,7 @@ from support_agent_state import (
 logger = logging.getLogger(__name__)
 
 SAFE_FALLBACK_REPLY = (
-    "Не удалось безопасно подготовить ответ. Передаю вопрос специалисту поддержки."
+    "Не нашёл подтверждённого ответа. Могу подключить специалиста поддержки."
 )
 RESOLVED_ACK_REPLY = "Хорошо, проблема решена. Если появится новый вопрос, напишите в поддержку."
 PROGRESS_ACK_REPLY = (
@@ -95,9 +95,13 @@ _SAFE_DIAGNOSTIC_KEYS = (
     "account_device_count",
     "account_plan",
     "account_telegram_linked",
+    "public_promo_state",
+    "public_promo_codes",
     "platform",
     "app_version",
     "connection_status",
+    "connection_active",
+    "current_location_label",
     "route_mode",
     "enhanced_protection_state",
     "enhanced_protection_consent",
@@ -106,6 +110,23 @@ _SAFE_DIAGNOSTIC_KEYS = (
     "panel_last_online_age_seconds",
     "panel_runtime_state",
     "telegram_bonus_state",
+)
+_CURRENT_LOCATION_QUESTION_RE = re.compile(
+    r"(?:\b(?:к|на)\s+какой\s+(?:я\s+)?(?:нод\w*|локаци\w*|сервер\w*|стран\w*)"
+    r"(?:\s+я)?(?:\s+сейчас)?\s+подключ\w*|\bкуда\s+(?:я\s+)?подключ[её]н\w*|"
+    r"\bка(?:кая|кой)\s+(?:у\s+меня\s+)?(?:сейчас\s+)?(?:активн\w*|текущ\w*)\s+"
+    r"(?:нод\w*|локаци\w*|сервер\w*|стран\w*)|"
+    r"\bка(?:кая|кой)\s+(?:нод\w*|локаци\w*|сервер\w*|стран\w*)\s+сейчас\b|"
+    r"\b(?:текущ\w*|активн\w*)\s+(?:нод\w*|локаци\w*|сервер\w*|стран\w*)\b)",
+    re.IGNORECASE,
+)
+_PROMO_QUESTION_RE = re.compile(
+    r"\b(?:промокод\w*|промо\s*код\w*|купон\w*)\b",
+    re.IGNORECASE,
+)
+_PROMO_CODE_RE = re.compile(r"[A-Z0-9][A-Z0-9_-]{1,19}")
+_SAFE_LOCATION_LABEL_RE = re.compile(
+    r"[0-9A-Za-zА-Яа-яЁё][0-9A-Za-zА-Яа-яЁё .()·_\-/]{0,79}"
 )
 _REDACTION_CATEGORIES = frozenset(
     {
@@ -343,6 +364,87 @@ def _synthesis_question_with_diagnostics(
     return f"{message}{marker}{encoded}"
 
 
+def _safe_location_label(value: object) -> str:
+    candidate = " ".join(str(value or "").split())
+    if not candidate or not _SAFE_LOCATION_LABEL_RE.fullmatch(candidate):
+        return ""
+    return candidate
+
+
+def _safe_promo_codes(value: object) -> tuple[str, ...]:
+    if not isinstance(value, str):
+        return ()
+    codes: list[str] = []
+    for raw in value.split(","):
+        code = raw.strip().upper()
+        if _PROMO_CODE_RE.fullmatch(code) and code not in codes:
+            codes.append(code)
+        if len(codes) >= 3:
+            break
+    return tuple(codes)
+
+
+def _code_owned_snapshot_reply(
+    message: str,
+    diagnostics: tuple[tuple[str, str | int | bool | None], ...],
+) -> tuple[str, str] | None:
+    """Render exact read-only account/client facts without a provider guess."""
+
+    by_key = dict(diagnostics)
+    if _CURRENT_LOCATION_QUESTION_RE.search(message):
+        connected = by_key.get("connection_active") is True
+        location = _safe_location_label(by_key.get("current_location_label"))
+        if connected and location and location.casefold() not in {
+            "локация проверяется",
+            "выбранная локация",
+        }:
+            reply = (
+                f"Коротко\nНа этом устройстве POKROV сейчас подключён: {location}.\n\n"
+                "Что это значит\nЭто подтверждённая активная локация клиента, без адреса ноды и приватных данных."
+            )
+        elif connected:
+            reply = (
+                "Коротко\nVPN подключён, но приложение ещё не подтвердило точную активную локацию.\n\n"
+                "Что сделать\nОткройте «Локации» и дождитесь окончания проверки соединения."
+            )
+        elif location and location.casefold() not in {
+            "автоматически",
+            "локация проверяется",
+            "выбранная локация",
+        }:
+            reply = (
+                f"Коротко\nСейчас VPN выключен; выбрана локация {location}, но активной ноды нет.\n\n"
+                "Что сделать\nПодключите POKROV, чтобы приложение подтвердило фактическую ноду."
+            )
+        else:
+            reply = (
+                "Коротко\nСейчас нет подтверждённой активной ноды.\n\n"
+                "Что сделать\nПодключите POKROV и повторите вопрос после проверки соединения."
+            )
+        return "current_connection_snapshot", reply
+
+    if _PROMO_QUESTION_RE.search(message):
+        codes = _safe_promo_codes(by_key.get("public_promo_codes"))
+        promo_state = str(by_key.get("public_promo_state") or "unknown").strip().lower()
+        if codes:
+            reply = (
+                f"Коротко\nДля этого аккаунта сейчас доступны промокоды: {', '.join(codes)}.\n\n"
+                "Что сделать\nВведите нужный код в разделе «Бонусы». Условия и итог проверит сервер до применения."
+            )
+        elif promo_state == "none":
+            reply = (
+                "Коротко\nДля этого аккаунта сейчас нет опубликованного активного промокода.\n\n"
+                "Что сделать\nЕсли код уже пришёл в баннере, уведомлении или официальном боте, введите его в разделе «Бонусы»."
+            )
+        else:
+            reply = (
+                "Коротко\nНе удалось безопасно проверить доступные этому аккаунту промокоды.\n\n"
+                "Что сделать\nИспользуйте только код из баннера, уведомления или официального бота и введите его в разделе «Бонусы»."
+            )
+        return "promo_codes", reply
+    return None
+
+
 def _safe_config_code(adapter: object, name: str, default: str) -> str:
     config = getattr(adapter, "config", None)
     value = getattr(config, name, default)
@@ -505,6 +607,21 @@ class SupportAgentHarness:
             return _human_transfer("session_write_failed", status="escalate")
         return _human_transfer(reason, status="escalate", session_state=state)
 
+    def _persist_soft_transfer_or_unstored(
+        self,
+        request: SupportAgentRequest,
+        user_text: str,
+        state: SafeSessionState,
+        reason: str,
+        stats: _RunStats,
+    ) -> _Outcome:
+        """Offer a human for one turn without disabling later AI questions."""
+
+        if not self._append_pair(request, user_text, SAFE_FALLBACK_REPLY, state):
+            stats.error_code = "session_write_failed"
+            return _human_transfer("session_write_failed", status="escalate")
+        return _human_transfer(reason, status="escalate", session_state=state)
+
     def _persist_answer_or_transfer(
         self,
         request: SupportAgentRequest,
@@ -580,6 +697,33 @@ class SupportAgentHarness:
             escalation_reason=None,
         )
 
+    def _persist_code_owned_snapshot(
+        self,
+        request: SupportAgentRequest,
+        user_text: str,
+        state: SafeSessionState,
+        topic_id: str,
+        reply_text: str,
+        stats: _RunStats,
+    ) -> _Outcome:
+        try:
+            reply = validate_safe_reply(reply_text, self.policy)
+        except SafetyValidationError as exc:
+            stats.error_code = _fixed_error_code(exc)
+            return _human_transfer(stats.error_code, status="fallback")
+        if not self._append_pair(request, user_text, reply, state):
+            stats.error_code = "session_write_failed"
+            return _human_transfer("session_write_failed", status="fallback")
+        return _Outcome(
+            status="answer",
+            reply=reply,
+            context_topic_ids=(topic_id,),
+            grounding_topic_id=topic_id,
+            session_state=state,
+            answer_origin="code_owned",
+            escalation_reason=None,
+        )
+
     async def _execute_locked(
         self,
         request: SupportAgentRequest,
@@ -604,6 +748,25 @@ class SupportAgentHarness:
             )
 
         signals = classify_conversation_signals(boundary.model_text)
+        snapshot_answer = _code_owned_snapshot_reply(
+            boundary.model_text,
+            request.safe_diagnostics,
+        )
+        if snapshot_answer is not None:
+            topic_id, reply = snapshot_answer
+            state = state_after_answer(
+                None if session is None else session.state,
+                topic_id if topic_id in self.knowledge.topics_by_id else None,
+                signals,
+            )
+            return self._persist_code_owned_snapshot(
+                request,
+                boundary.model_text,
+                state,
+                topic_id,
+                reply,
+                stats,
+            )
         normalized_resolution = boundary.model_text.casefold().replace("ё", "е")
         if (
             signals.outcome == "resolved"
@@ -744,11 +907,12 @@ class SupportAgentHarness:
                 source_text=source_text,
             )
             if model.status == "escalate":
-                state = _state_for_any_transfer(
+                state = state_after_answer(
                     None if session is None else session.state,
+                    decision.grounding_topic_id,
                     signals,
                 )
-                return self._persist_transfer_or_unstored(
+                return self._persist_soft_transfer_or_unstored(
                     request,
                     boundary.model_text,
                     state,

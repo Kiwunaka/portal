@@ -60,9 +60,10 @@ Status vocabulary:
   users on paid infrastructure or advertise a free fallback.
 - [x] The premium trial is exactly `5 days`; no hidden seven-day reservation or
   conflicting date may appear to users.
-- [x] Trial accounts receive no rewards. The UI must say this explicitly instead
-  of showing a network error.
-- [x] Telegram channel reward is `+5 days`, once, only after paid eligibility.
+- [x] Trial accounts may claim the one-time Telegram channel reward; roulette,
+  calendar and referral rewards remain unavailable until the first payment. The
+  UI must name that split instead of showing a network error.
+- [x] Telegram channel reward is `+5 days`, once, including before payment.
   Existing larger historical grants remain readable and are not clawed back.
 - [x] Referral reward is `+10 days` for the referrer only after the friend's
   first successful payment survives the configured hold. Install, registration
