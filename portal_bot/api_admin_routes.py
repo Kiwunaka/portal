@@ -5110,6 +5110,39 @@ async def _execute_admin_client_action_external(
     runtime = dict(context.get("runtime_payload") or {})
     execution = dict(context.get("execution") or {})
 
+    if action == "emergency_catalog.stage":
+        try:
+            config = load_emergency_catalog_worker_config()
+            bundle = await fetch_approved_source_bundle()
+            session = SessionLocal()
+            try:
+                staged = stage_snapshot(
+                    session,
+                    materials=bundle.materials,
+                    source_revision=bundle.source_revision,
+                    source_digest=bundle.source_digest,
+                    crypto=config.crypto,
+                    expected_payload_sha256=config.expected_payload_sha256,
+                )
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+            finally:
+                session.close()
+        except Exception:
+            return {
+                "ok": False,
+                "code": "emergency_catalog_stage_failed",
+                "failed": 1,
+            }
+        return {
+            "ok": True,
+            "code": "emergency_catalog_staged" if staged.created else "emergency_catalog_unchanged",
+            "count": len(bundle.materials),
+            "changed": int(staged.created),
+        }
+
     if action == "user.manual_create":
         tg_id = int(execution["candidate_tg_id"])
         session = SessionLocal()
@@ -6202,7 +6235,11 @@ async def _execute_admin_guarded_action(
             post_commit_executor=_execute_admin_post_commit,
             external_timeout_seconds=(
                 300.0
-                if action in {"user.bulk_key_action", "user.preset_run"}
+                if action in {
+                    "user.bulk_key_action",
+                    "user.preset_run",
+                    "emergency_catalog.stage",
+                }
                 else 30.0
             ),
             return_replay_state=True,
@@ -6371,6 +6408,91 @@ async def admin_action_intent_status(
         raise AssertionError("unreachable")
     finally:
         session.close()
+
+
+@app.get("/api/admin/emergency-network/status")
+async def admin_emergency_network_status(
+    request: Request,
+    limit: int = Query(default=20, ge=1, le=50),
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    _require_admin(x_telegram_init_data, request=request)
+    session = SessionLocal()
+    try:
+        return build_emergency_catalog_admin_status(session, limit=limit)
+    finally:
+        session.close()
+
+
+@app.post("/api/admin/emergency-network/stage")
+async def admin_emergency_network_stage(
+    payload: dict[str, Any],
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="emergency_catalog.stage",
+        target_type="emergency_catalog",
+        target_id="global",
+        payload=dict(payload),
+        request=request,
+    )
+
+
+@app.post("/api/admin/emergency-network/snapshots/{snapshot_id}/promote")
+async def admin_emergency_network_promote(
+    snapshot_id: str,
+    payload: dict[str, Any],
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="emergency_catalog.promote",
+        target_type="emergency_snapshot",
+        target_id=str(snapshot_id),
+        payload=dict(payload),
+        request=request,
+    )
+
+
+@app.post("/api/admin/emergency-network/snapshots/{snapshot_id}/disable")
+async def admin_emergency_network_disable(
+    snapshot_id: str,
+    payload: dict[str, Any],
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="emergency_catalog.disable",
+        target_type="emergency_snapshot",
+        target_id=str(snapshot_id),
+        payload=dict(payload),
+        request=request,
+    )
+
+
+@app.post("/api/admin/emergency-network/snapshots/{snapshot_id}/rollback")
+async def admin_emergency_network_rollback(
+    snapshot_id: str,
+    payload: dict[str, Any],
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data, request=request).get("id", 0))
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="emergency_catalog.rollback",
+        target_type="emergency_snapshot",
+        target_id=str(snapshot_id),
+        payload=dict(payload),
+        request=request,
+    )
 
 
 @app.post("/api/admin/nodes/{node_code}/disable")

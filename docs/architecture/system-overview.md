@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-07-22
+Last updated: 2026-08-15
 
 ## Document Status
 
@@ -149,6 +149,8 @@ Reference-lane note:
   and ledger metadata
 - `GET /api/client/nodes/candidates`, `POST /api/client/nodes/select`, and optional `selected_node_code` on `GET /api/client/profile/managed` form the primary app node-selection contract; `POST /api/client/nodes/latency-samples` remains compatibility telemetry for install-scoped RTT samples and carrier/platform context
 - `GET /api/client/locations` preserves the existing country/city catalog and adds a stable safe `variants` list per city for manual route choice: `direct` / `Обычный` is always first, while enabled `ru_bridge_relay` endpoint ids and short labels appear only when that exact node passes endpoint validity, bridge allowlist/exclusion, and transport-eligibility checks. The variant projection never exposes bridge hosts, ports, Reality material, hidden selector tags, or raw config, and uses the same availability helper as Hiddify/sing-box rendering so excluded targets such as US stay direct-only.
+- `GET /api/client/emergency-network/catalog` and `POST /api/client/emergency-network/profile` own the separate trial/paid emergency-network surface. They serve a signed 4–12 entry reserve catalog and one of three bounded reserve-first chains; the normal location catalog, WARP and third-party routing/DNS policy are not reused as implicit emergency behavior. Public catalog projection contains only stable ids, country, status, latency, freshness and supported modes; encrypted endpoint material is materialized only inside an authenticated managed profile.
+- emergency snapshots move through `staging` to one atomic `active` revision only after exact adapter probes. Automatic promotion rejects fewer than four healthy endpoints, excessive churn and an operator-disabled distribution state. Disable blocks new catalog/profile delivery but cannot recall a valid signed catalog already cached on a device; entitlement and snapshot expiry remain mandatory client-side checks.
 - `GET /api/client/notifications` emits access notices only in actionable expiry
   windows. Paid access uses T-3/T-1/T0; trial and bonus access use T-1/T0. A
   stable id includes access kind, stage and expiry date, so reading an old
@@ -176,7 +178,7 @@ Node lifecycle rule:
 - `webapp/`
   user cabinet and session continuation; legacy admin routes stay only until `adminapp/` parity is proven
 - `adminapp/`
-  standalone Russian-language Next.js operator surface for `https://admin.pokrov.space/`, with 15 direct route modules: dashboard, nodes, traffic, alerts, provider caps, free tier, users, online, tickets, payments, funnel, promos, referrals, release, and broadcast
+  standalone Russian-language Next.js operator surface for `https://admin.pokrov.space/`, with 16 direct route modules: dashboard, nodes, traffic, alerts, provider caps, emergency network, free tier, users, online, tickets, payments, funnel, promos, referrals, release, and broadcast
 - `marketing/`
   public website, pricing, legal pages, and public conversion flows
 - `C:/Users/kiwun/Documents/ai/POKROV-app/`
@@ -206,7 +208,7 @@ Client release safety rule:
 
 Admin ownership rule:
 
-- `adminapp` is the primary new admin surface for user, online, node, payment, funnel, ticket, metrics, traffic, free-tier, provider-cap, release, broadcast, and durable-alert work
+- `adminapp` is the primary new admin surface for user, online, node, payment, funnel, ticket, metrics, traffic, free-tier, provider-cap, emergency-catalog, release, broadcast, and durable-alert work
 - `webapp` admin routes are retained as a temporary parity fallback and must not be deleted until the dedicated `adminapp` has full workflow parity and regression coverage
 - Telegram admin in `portal_bot/bot.py` is fallback/emergency tooling and must follow the same user-status semantics as web admin
 - `/api/admin/summary` remains the operator truth snapshot for entitlement counts, install-backed activity, observer-backed activity, and data-quality status badges
@@ -214,6 +216,12 @@ Admin ownership rule:
 - `/api/admin/online/users` is the bounded live online aggregate for operator lists; it must not expose raw IP addresses outside individual user investigation views
 - `/api/admin/payments/summary?period=today|7d|30d` is the payments aggregate for revenue, status counts, stuck-payment attention, and abandoned buy/checkout counts
 - dangerous admin actions exposed by `adminapp` require a server-owned action intent, explicit confirmation, idempotency, and durable audit; broadcast and bulk-style work should use dry-run/preview first where the backend supports it
+- `GET /api/admin/emergency-network/status` exposes only worker readiness,
+  snapshot revisions/counts, active identity, aggregate probe levels, rejection
+  summaries and retained rollback candidates. Stage, promote and rollback use
+  the same action-intent boundary; raw bundle data, endpoint material,
+  host-hashes, ciphertext, signatures and keys never cross the admin read
+  boundary.
 
 Public connection delivery rule:
 

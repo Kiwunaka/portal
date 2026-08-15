@@ -8,6 +8,7 @@ const routes = [
   ["/traffic", "Трафик"],
   ["/alerts", "Алерты"],
   ["/provider-caps", "Лимиты провайдеров"],
+  ["/emergency-network", "Экстренная сеть"],
   ["/free-tier", "Бесплатный контур"],
   ["/users", "Пользователи"],
   ["/online", "Сейчас онлайн"],
@@ -26,7 +27,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("все 15 маршрутов открываются напрямую с русскими заголовками", async ({ page }) => {
+test("все 16 маршрутов открываются напрямую с русскими заголовками", async ({ page }) => {
   await installAdminApiMock(page);
 
   for (const [path, label] of routes) {

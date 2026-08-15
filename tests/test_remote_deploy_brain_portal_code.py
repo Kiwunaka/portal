@@ -33,6 +33,7 @@ class RemoteDeployBrainPortalCodeTests(unittest.TestCase):
         self.assertIn("/root/shared/support-agent-policy.json", targets)
         self.assertIn("/root/portal_bot/authenticated_egress_probe.py", targets)
         self.assertIn("/root/portal_bot/singbox_authenticated_egress_adapter.py", targets)
+        self.assertIn("/root/portal_bot/emergency_linux_probe_adapter.py", targets)
 
     def test_restart_default_includes_long_running_services(self) -> None:
         module = _load_module()
@@ -75,6 +76,18 @@ class RemoteDeployBrainPortalCodeTests(unittest.TestCase):
         self.assertIn("install -D -m 0644", promote)
         self.assertIn("/root/portal_bot.deploy-backups/20260705T010203Z-1/root/portal_bot/api.py", restore)
         self.assertIn("rm -f /root/shared/product-facts.json", restore)
+
+    def test_emergency_probe_adapter_is_promoted_and_restored_executable(self) -> None:
+        module = _load_module()
+        target = "/root/portal_bot/emergency_linux_probe_adapter.py"
+        stage_root = "/root/portal_bot.deploy-staging/20260705T010203Z-1"
+        backup_root = "/root/portal_bot.deploy-backups/20260705T010203Z-1"
+
+        promote = module._build_promote_command([(Path("adapter.py"), target)], stage_root)
+        restore = module._build_restore_command([target], backup_root)
+
+        self.assertIn("install -D -m 0755", promote)
+        self.assertIn("install -D -m 0755", restore)
 
     def test_backup_prune_is_bounded_to_timestamped_deploy_snapshots(self) -> None:
         module = _load_module()

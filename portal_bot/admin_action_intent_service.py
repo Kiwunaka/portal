@@ -32,6 +32,7 @@ from models import (
     ExternalOrder,
     ExternalPaymentEvent,
     Event,
+    EmergencyCatalogSnapshot,
     GiftCard,
     IncentiveCampaign,
     LiveUpdate,
@@ -435,7 +436,12 @@ def _redacted_text(value: str) -> dict[str, Any]:
 def _safe_iso(value: datetime | None) -> str | None:
     if value is None:
         return None
-    return value.isoformat()
+    aware = (
+        value.replace(tzinfo=timezone.utc)
+        if value.tzinfo is None or value.utcoffset() is None
+        else value.astimezone(timezone.utc)
+    )
+    return aware.isoformat()
 
 
 def _normalize_empty_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -5694,8 +5700,342 @@ def _node_sync_external_context(state: EntityState, _payload: Mapping[str, Any])
     }
 
 
+def _emergency_snapshot_public(row: EmergencyCatalogSnapshot | None) -> dict[str, Any] | None:
+    if row is None:
+        return None
+    return {
+        "snapshot_id": str(row.id),
+        "catalog_version": str(row.catalog_version),
+        "source_revision": str(row.source_revision),
+        "status": str(row.status),
+        "candidate_count": int(row.candidate_count or 0),
+        "healthy_count": int(row.healthy_count or 0),
+        "active_endpoint_count": int(row.active_endpoint_count or 0),
+        "rejection_code": str(row.rejection_code) if row.rejection_code else None,
+        "operator_approved": bool(row.operator_approved),
+        "updated_at": _safe_iso(row.updated_at),
+    }
+
+
+def _emergency_stage_state(
+    session,
+    target_id: str,
+    _payload: Mapping[str, Any],
+    for_update: bool,
+) -> EntityState:
+    if target_id != "global":
+        raise ActionIntentError(
+            "invalid_target",
+            status_code=422,
+            message="Цель staging должна быть global.",
+        )
+    query = session.query(EmergencyCatalogSnapshot).filter(
+        EmergencyCatalogSnapshot.status.in_(("staging", "active"))
+    )
+    if for_update and str(session.get_bind().dialect.name) == "postgresql":
+        query = query.with_for_update()
+    rows = query.order_by(EmergencyCatalogSnapshot.created_at.desc()).all()
+    before = {
+        "active": _emergency_snapshot_public(
+            next((row for row in rows if str(row.status) == "active"), None)
+        ),
+        "staging_count": sum(1 for row in rows if str(row.status) == "staging"),
+    }
+    return EntityState(
+        entity=rows,
+        version_snapshot=before,
+        public_snapshot=before,
+        context={
+            "mode": "stage emergency catalog",
+            "after_snapshot": {"state": "staging refreshed from approved mirror quorum"},
+            "challenge": "ПОДТВЕРДИТЬ УПРАВЛЕНИЕ",
+        },
+    )
+
+
+def _emergency_snapshot_state(
+    session,
+    target_id: str,
+    _payload: Mapping[str, Any],
+    for_update: bool,
+    *,
+    mode: str,
+) -> EntityState:
+    query = session.query(EmergencyCatalogSnapshot).filter(
+        EmergencyCatalogSnapshot.id == str(target_id)
+    )
+    row = _row_for_update(query, session, for_update)
+    if row is None:
+        raise ActionIntentError(
+            "target_not_found",
+            status_code=404,
+            message="Снимок аварийного каталога не найден.",
+        )
+    if mode == "promote" and str(row.status) != "staging":
+        raise ActionIntentError(
+            "invalid_state",
+            status_code=409,
+            message="Продвигать можно только staging-снимок.",
+        )
+    if mode == "disable" and str(row.status) != "active":
+        raise ActionIntentError(
+            "invalid_state",
+            status_code=409,
+            message="Отключить можно только текущий активный снимок.",
+        )
+    if mode == "rollback":
+        try:
+            from emergency_catalog_service import rollback_candidates
+        except ImportError:  # pragma: no cover - package import
+            from .emergency_catalog_service import rollback_candidates
+        allowed = {str(item["snapshot_id"]) for item in rollback_candidates(session, limit=3)}
+        if str(row.id) not in allowed:
+            raise ActionIntentError(
+                "invalid_state",
+                status_code=409,
+                message="Снимок не входит в три удерживаемых кандидата отката.",
+            )
+    distribution_query = session.query(EmergencyCatalogSnapshot).filter(
+        EmergencyCatalogSnapshot.status.in_(("active", "disabled"))
+    )
+    if for_update and str(session.get_bind().dialect.name) == "postgresql":
+        distribution_query = distribution_query.with_for_update()
+    distribution_rows = distribution_query.order_by(
+        EmergencyCatalogSnapshot.updated_at.desc(),
+        EmergencyCatalogSnapshot.id.desc(),
+    ).all()
+    if len(distribution_rows) > 1:
+        raise ActionIntentError(
+            "multiple_distribution_snapshots",
+            status_code=409,
+            message="Состояние выдачи каталога неоднозначно.",
+        )
+    distribution = distribution_rows[0] if distribution_rows else None
+    before = _emergency_snapshot_public(row)
+    safe_delta: dict[str, Any] | None = None
+    if mode == "promote":
+        try:
+            from emergency_catalog_crypto import EmergencyCatalogCrypto, EmergencyCatalogCryptoError
+            from emergency_catalog_service import EmergencyCatalogServiceError, safe_promotion_delta
+        except ImportError:  # pragma: no cover - package import
+            from .emergency_catalog_crypto import EmergencyCatalogCrypto, EmergencyCatalogCryptoError
+            from .emergency_catalog_service import EmergencyCatalogServiceError, safe_promotion_delta
+        try:
+            safe_delta = safe_promotion_delta(
+                session,
+                snapshot_id=str(row.id),
+                crypto=EmergencyCatalogCrypto.from_environment(),
+            )
+        except EmergencyCatalogCryptoError as exc:
+            raise ActionIntentError(
+                "emergency_catalog_crypto_unavailable",
+                status_code=503,
+                message="Ключи аварийного каталога не настроены.",
+            ) from exc
+        except EmergencyCatalogServiceError as exc:
+            raise ActionIntentError(
+                str(exc.code),
+                status_code=409,
+                message="Не удалось построить безопасный preview ревизии.",
+            ) from exc
+    version_snapshot = {
+        "target": before,
+        "distribution": _emergency_snapshot_public(distribution),
+    }
+    after_snapshot = {
+        "snapshot_id": str(row.id),
+        "state": (
+            "active"
+            if mode == "promote"
+            else "distribution disabled"
+            if mode == "disable"
+            else "rollback clone active"
+        ),
+    }
+    if safe_delta is not None:
+        after_snapshot["safe_delta"] = safe_delta
+    return EntityState(
+        entity=row,
+        version_snapshot=version_snapshot,
+        public_snapshot=version_snapshot,
+        context={
+            "mode": f"{mode} emergency catalog",
+            "after_snapshot": after_snapshot,
+            "challenge": str(row.id),
+        },
+    )
+
+
+def _emergency_promote_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _emergency_snapshot_state(
+        session,
+        target_id,
+        payload,
+        for_update,
+        mode="promote",
+    )
+
+
+def _emergency_rollback_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _emergency_snapshot_state(
+        session,
+        target_id,
+        payload,
+        for_update,
+        mode="rollback",
+    )
+
+
+def _emergency_disable_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    return _emergency_snapshot_state(
+        session,
+        target_id,
+        payload,
+        for_update,
+        mode="disable",
+    )
+
+
+def _emergency_change_preview(state: EntityState, _payload: Mapping[str, Any]) -> dict[str, Any]:
+    mode = str(state.context["mode"])
+    warnings = [
+        "Сущность и текущая ревизия выдачи зафиксированы сервером; адреса и ключи не раскрываются.",
+    ]
+    if mode.startswith("disable"):
+        warnings.append(
+            "Новые запросы каталога будут остановлены; уже выданный подписанный офлайн-кэш может работать до своего срока действия."
+        )
+    return _simple_preview(
+        f"Изменение {mode}",
+        state.public_snapshot,
+        state.context.get("after_snapshot"),
+        warnings,
+    )
+
+
+def _execute_emergency_catalog_db(
+    session,
+    state: EntityState,
+    _payload: Mapping[str, Any],
+) -> dict[str, Any]:
+    try:
+        from emergency_catalog_crypto import EmergencyCatalogCrypto, EmergencyCatalogCryptoError
+        from emergency_catalog_service import (
+            disable_active_catalog,
+            EmergencyCatalogServiceError,
+            promote_snapshot,
+            rollback_to_snapshot,
+        )
+    except ImportError:  # pragma: no cover - package import
+        from .emergency_catalog_crypto import EmergencyCatalogCrypto, EmergencyCatalogCryptoError
+        from .emergency_catalog_service import (
+            disable_active_catalog,
+            EmergencyCatalogServiceError,
+            promote_snapshot,
+            rollback_to_snapshot,
+        )
+    try:
+        crypto = EmergencyCatalogCrypto.from_environment()
+        mode = str(state.context["mode"])
+        if mode.startswith("promote"):
+            promoted = promote_snapshot(
+                session,
+                snapshot_id=str(state.entity.id),
+                crypto=crypto,
+                operator_approved=True,
+            )
+        elif mode.startswith("disable"):
+            disabled = disable_active_catalog(
+                session,
+                snapshot_id=str(state.entity.id),
+            )
+            return {
+                "snapshot_id": str(disabled.id),
+                "catalog_version": str(disabled.catalog_version),
+                "status": str(disabled.status),
+                "active_endpoint_count": int(disabled.active_endpoint_count or 0),
+                "offline_cache_recallable": False,
+            }
+        else:
+            promoted = rollback_to_snapshot(
+                session,
+                target_snapshot_id=str(state.entity.id),
+                crypto=crypto,
+            )
+    except EmergencyCatalogCryptoError as exc:
+        raise ActionIntentError(
+            "emergency_catalog_crypto_unavailable",
+            status_code=503,
+            message="Ключи аварийного каталога не настроены.",
+        ) from exc
+    except EmergencyCatalogServiceError as exc:
+        raise ActionIntentError(
+            str(exc.code),
+            status_code=409,
+            message="Снимок не прошёл безопасные условия операции.",
+        ) from exc
+    return {
+        "snapshot_id": str(promoted.snapshot.id),
+        "catalog_version": str(promoted.snapshot.catalog_version),
+        "status": str(promoted.snapshot.status),
+        "active_endpoint_count": int(promoted.snapshot.active_endpoint_count or 0),
+        "replacement_fraction": float(promoted.replacement_fraction),
+    }
+
+
 ACTION_POLICIES.update(
     {
+        "emergency_catalog.stage": ActionPolicy(
+            action="emergency_catalog.stage",
+            target_type="emergency_catalog",
+            risk_level="L2",
+            payload_normalizer=_normalize_empty_payload,
+            entity_state_builder=_emergency_stage_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_phrase",
+            challenge_builder=_management_challenge,
+            executor_kind="external",
+            audit_action="admin_emergency_catalog_stage",
+        ),
+        "emergency_catalog.promote": ActionPolicy(
+            action="emergency_catalog.promote",
+            target_type="emergency_snapshot",
+            risk_level="L3",
+            payload_normalizer=_normalize_empty_payload,
+            entity_state_builder=_emergency_promote_state,
+            preview_builder=_emergency_change_preview,
+            challenge_kind="exact_snapshot_id",
+            challenge_builder=_context_target_challenge,
+            executor_kind="db",
+            audit_action="admin_emergency_catalog_promote",
+            db_executor=_execute_emergency_catalog_db,
+        ),
+        "emergency_catalog.disable": ActionPolicy(
+            action="emergency_catalog.disable",
+            target_type="emergency_snapshot",
+            risk_level="L3",
+            payload_normalizer=_normalize_empty_payload,
+            entity_state_builder=_emergency_disable_state,
+            preview_builder=_emergency_change_preview,
+            challenge_kind="exact_snapshot_id",
+            challenge_builder=_context_target_challenge,
+            executor_kind="db",
+            audit_action="admin_emergency_catalog_disable",
+            db_executor=_execute_emergency_catalog_db,
+        ),
+        "emergency_catalog.rollback": ActionPolicy(
+            action="emergency_catalog.rollback",
+            target_type="emergency_snapshot",
+            risk_level="L3",
+            payload_normalizer=_normalize_empty_payload,
+            entity_state_builder=_emergency_rollback_state,
+            preview_builder=_emergency_change_preview,
+            challenge_kind="exact_snapshot_id",
+            challenge_builder=_context_target_challenge,
+            executor_kind="db",
+            audit_action="admin_emergency_catalog_rollback",
+            db_executor=_execute_emergency_catalog_db,
+        ),
         "plan.create": ActionPolicy(
             action="plan.create",
             target_type="plan",
@@ -5996,6 +6336,10 @@ ACTION_POLICIES.update(
 
 
 ACTION_POLICY_ROUTES: dict[str, tuple[tuple[str, str], ...]] = {
+    "emergency_catalog.stage": (("POST", "/api/admin/emergency-network/stage"),),
+    "emergency_catalog.promote": (("POST", "/api/admin/emergency-network/snapshots/{snapshot_id}/promote"),),
+    "emergency_catalog.disable": (("POST", "/api/admin/emergency-network/snapshots/{snapshot_id}/disable"),),
+    "emergency_catalog.rollback": (("POST", "/api/admin/emergency-network/snapshots/{snapshot_id}/rollback"),),
     "payment.reconcile": (("POST", "/api/admin/payments/orders/{provider}/{order_id}/reconcile"),),
     "user.manual_create": (("POST", "/api/admin/users/manual"),),
     "user.extend": (

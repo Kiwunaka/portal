@@ -4,6 +4,7 @@ import type { OpsShellStatus } from "@/components/ops/shell-status";
 import { BroadcastPage } from "@/features/control/broadcast-page";
 import { ReleasePage } from "@/features/control/release-page";
 import { AlertsPage } from "@/features/network/alerts-page";
+import { EmergencyNetworkPage } from "@/features/network/emergency-network-page";
 import { FreeTierPage } from "@/features/network/free-tier-page";
 import { ProviderLimitsPage } from "@/features/network/provider-limits-page";
 import { TrafficPage } from "@/features/network/traffic-page";
@@ -28,6 +29,7 @@ type RouteRenderer = (props: RouteProps) => ReactNode;
 export const OPS_FEATURE_REGISTRY: Record<OpsSectionId, RouteRenderer> = {
   dashboard: ({ onShellStatus, onNavigate }) => <OverviewPage onShellStatus={onShellStatus} onNavigate={onNavigate} />,
   nodes: ({ onShellStatus }) => <NodesPage onShellStatus={onShellStatus} />,
+  "emergency-network": ({ onShellStatus }) => <EmergencyNetworkPage onShellStatus={onShellStatus} />,
   traffic: ({ onShellStatus }) => <TrafficPage onShellStatus={onShellStatus} />,
   alerts: ({ onShellStatus }) => <AlertsPage onShellStatus={onShellStatus} />,
   "provider-caps": ({ onShellStatus }) => <ProviderLimitsPage onShellStatus={onShellStatus} />,

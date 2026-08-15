@@ -1082,6 +1082,7 @@ const LEGACY_GET_PATHS = new Set([
   "/api/admin/nodes/timeseries",
   "/api/admin/provider-quotas",
   "/api/admin/provider-quotas/status",
+  "/api/admin/emergency-network/status",
   "/api/admin/free-tier/summary",
   "/api/admin/nodes/health",
   "/api/admin/nodes/runtime",
@@ -1913,6 +1914,27 @@ export async function installAdminApiMock(
       "/api/admin/nodes/timeseries": { rows: [] },
       "/api/admin/provider-quotas": { quotas: [] },
       "/api/admin/provider-quotas/status": { generated_at: generatedAt, nodes: [] },
+      "/api/admin/emergency-network/status": {
+        generated_at: generatedAt,
+        worker: {
+          enabled: false,
+          configuration_state: "disabled",
+          interval_seconds: null,
+          probe_concurrency: null
+        },
+        snapshot_counts: {},
+        active: null,
+        distribution: null,
+        probe_summary: {
+          snapshot_id: null,
+          pending: 0,
+          healthy: 0,
+          unavailable: 0,
+          total: 0
+        },
+        rollback_candidates: [],
+        snapshots: []
+      },
       "/api/admin/nodes/health": { nodes: options.ruScenario ? nodeRows : [] },
       "/api/admin/nodes/runtime": { ok: true, nodes: [] },
       "/api/admin/online/users": { ok: true, generated_at: generatedAt, rows: [] },

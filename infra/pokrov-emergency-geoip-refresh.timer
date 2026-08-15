@@ -1,0 +1,12 @@
+[Unit]
+Description=Weekly POKROV local emergency-network country database refresh
+
+[Timer]
+OnBootSec=5m
+OnCalendar=weekly
+RandomizedDelaySec=30m
+Persistent=true
+Unit=pokrov-emergency-geoip-refresh.service
+
+[Install]
+WantedBy=timers.target

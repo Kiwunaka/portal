@@ -11,6 +11,7 @@ This registry classifies important platform documents and the active client poin
 | `ACTIVE_EXECUTION` | POKROV 1.0.6 stable direct release | `docs/developer/work-orders/2026-08-14-stable-1.0.6-release/` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | POKROV 1.0.7 promos, variant status and RU app presets | `docs/developer/work-orders/2026-08-14-stable-1.0.7-promos-node-status-ru-apps/` | `REVIEWED_NO_CHANGE` |
 | `ACTIVE_EXECUTION` | conversion-first acquisition and retention | `docs/developer/work-orders/2026-08-14--conversion-acquisition-reconciliation/` | `RECONCILED` |
+| `ACTIVE_EXECUTION` | trial/paid RU emergency network | `docs/developer/work-orders/2026-08-15--emergency-network/` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | open-source client rollout | `docs/launch/open-source-client-rollout-plan.md` | `RECONCILED` |
 | `EVIDENCE` | release evidence | `docs/audit-artifacts/` | `REVIEWED_NO_CHANGE` |
 | `EVIDENCE` | dated public beta narrative | `docs/launch/open-beta-release-notes.md` | `REVIEWED_NO_CHANGE` |

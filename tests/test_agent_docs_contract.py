@@ -1347,7 +1347,7 @@ def test_admin_command_center_and_ru_probe_owners_are_cross_linked() -> None:
         REPO_ROOT / "docs/operations/deployment-and-access.md"
     ).read_text(encoding="utf-8")
 
-    assert admin.count("| `/") == 15
+    assert admin.count("| `/") == 16
     for pointer in (
         "docs/architecture/system-overview.md",
         "docs/operations/monitoring-and-visibility.md",
@@ -1358,6 +1358,9 @@ def test_admin_command_center_and_ru_probe_owners_are_cross_linked() -> None:
     assert "ru_probe_uploader.py" in overview
     assert "ru_probe_runs + ru_probe_target_results" in overview
     assert "/api/admin/probes/ru-origin/latest" in overview
+    assert "/api/admin/emergency-network/status" in admin
+    assert "/api/admin/emergency-network/status" in overview
+    assert "/api/admin/emergency-network/status" in monitoring
 
     combined_ru = monitoring + "\n" + handoff
     for required in (

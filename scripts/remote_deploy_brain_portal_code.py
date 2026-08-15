@@ -25,6 +25,9 @@ REMOTE_PORTAL_ROOT = "/root/portal_bot"
 REMOTE_SHARED_ROOT = "/root/shared"
 REMOTE_STAGE_ROOT = "/root/portal_bot.deploy-staging"
 REMOTE_BACKUP_ROOT = "/root/portal_bot.deploy-backups"
+EXECUTABLE_PORTAL_TARGETS = frozenset(
+    {"/root/portal_bot/emergency_linux_probe_adapter.py"}
+)
 DEFAULT_BACKUP_RETENTION_COUNT = 5
 SYSTEMD_UNIT_RE = re.compile(r"^[A-Za-z0-9_.@:-]+$")
 if str(REPO_ROOT / "scripts") not in sys.path:
@@ -71,6 +74,10 @@ def _run_checked(ssh: paramiko.SSHClient, cmd: str, *, label: str, timeout: int 
 
 def _q(value: str) -> str:
     return shlex.quote(str(value))
+
+
+def _install_mode(target: str) -> str:
+    return "0755" if str(target) in EXECUTABLE_PORTAL_TARGETS else "0644"
 
 
 def _release_id() -> str:
@@ -195,7 +202,9 @@ def _build_promote_command(mappings: list[tuple[Path, str]], stage_root: str) ->
     ]
     for _source, target in mappings:
         stage_target = _stage_target_for(target, stage_root)
-        lines.append(f"install -D -m 0644 {_q(stage_target)} {_q(target)}")
+        lines.append(
+            f"install -D -m {_install_mode(target)} {_q(stage_target)} {_q(target)}"
+        )
     return "\n".join(lines)
 
 
@@ -206,7 +215,7 @@ def _build_restore_command(targets: list[str], backup_root: str) -> str:
         lines.extend(
             [
                 f"if [ -e {_q(backup_target)} ]; then",
-                f"  install -D -m 0644 {_q(backup_target)} {_q(target)}",
+                f"  install -D -m {_install_mode(target)} {_q(backup_target)} {_q(target)}",
                 "else",
                 f"  rm -f {_q(target)}",
                 "fi",

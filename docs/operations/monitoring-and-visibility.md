@@ -1,6 +1,6 @@
 # Monitoring And Visibility
 
-Last updated: 2026-08-14
+Last updated: 2026-08-15
 
 ## Document Status
 
@@ -525,7 +525,7 @@ Runtime telemetry wave `2026-06-02`:
 Admin ops app wave `2026-07-06`, command-center redesign updated locally on
 `2026-07-23`:
 
-- `adminapp/` is the dedicated operator UI for `https://admin.pokrov.space/`; it is desktop-first, Russian-language, action-first, and exposes 15 direct route modules in a compact light top navigation while keeping mobile focused on triage/status
+- `adminapp/` is the dedicated operator UI for `https://admin.pokrov.space/`; it is desktop-first, Russian-language, action-first, and exposes 16 direct route modules in a compact light top navigation while keeping mobile focused on triage/status
 - the active shell has no fixed desktop sidebar; the overview is a light triage ledger with an incident feed, selected evidence, factual next-step links, separate Brain/RU freshness, and a compact fleet strip
 - the first screen uses only its compact overview and RU-latest reads; selecting an incident does not fetch another payload, while charts, full alert actions, and heavy entity cards remain route-local
 - global admin search routes operators into user investigation by Telegram ID, username, display name, install ID, order ID, node code, key/email, or related operator identifiers
@@ -555,6 +555,30 @@ Admin ops app wave `2026-07-06`, command-center redesign updated locally on
 - the overview reads its active-alert queue from the same durable snapshot and does not issue a second `/api/admin/alerts` request; the dedicated alerts route keeps its own read/ack/silence workflow
 - Telegram admin notifications for new and resolved warning/critical alerts must include only short titles and fingerprints; do not include raw config payloads, API tokens, provider secrets, panel passwords, or full metadata JSON
 
+Emergency catalog visibility wave `2026-08-15`:
+
+- `GET /api/admin/emergency-network/status` is the bounded operator read model
+  for worker enablement/configuration state, snapshot status counts, active
+  revision, aggregate exact-probe levels and retained rollback candidates
+- the read model reports `ready`, `disabled` or `invalid` worker configuration
+  without returning adapter paths, source URLs, controlled probe URL/digest,
+  endpoint material, host hashes, ciphertext, signatures or crypto keys
+- staging, promotion, disable and rollback are explicit action-intent operations with
+  confirmation and idempotency. Staging remains unavailable unless the worker
+  configuration is fully ready; promotion remains unavailable below four
+  healthy exact adapter probes
+- every promotion preview exposes only a bounded safe delta (retained, added and
+  removed counts plus the replacement ratio). Automatic worker promotion stops
+  while distribution is disabled; an explicit operator promotion or rollback
+  reopens it
+- disable is a server-side kill switch for new catalog/profile delivery. It does
+  not recall a still-valid signed offline catalog already cached on a device, so
+  snapshot expiry and entitlement checks remain part of incident handling
+- these local admin aggregates show catalog control-plane state only. They do
+  not prove access through a Russian white-list origin, tunnel behavior or the
+  exact release candidate; retain those as separate RU-origin and release
+  evidence
+
 Primary repository touchpoints:
 
 - `scripts/collect_node_metrics.py`
@@ -578,6 +602,7 @@ Primary repository touchpoints:
 - `/api/admin/payments/summary`
 - `/api/admin/free-tier/summary`
 - `/api/admin/provider-quotas/status`
+- `/api/admin/emergency-network/status`
 - `/api/admin/alerts`
 - `/api/admin/funnel/summary`
 - `/api/funnel/events`

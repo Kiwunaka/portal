@@ -1,0 +1,19 @@
+[Unit]
+Description=Refresh POKROV local emergency-network country database
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/root/portal_bot
+EnvironmentFile=-/root/portal_bot/.env
+ExecStart=/root/portal_bot/venv/bin/python /root/portal_bot/emergency_geoip_refresh.py
+User=root
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/var/lib/pokrov-geoip
+ProtectKernelTunables=true
+ProtectControlGroups=true
+LockPersonality=true

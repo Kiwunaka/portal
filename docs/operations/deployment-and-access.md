@@ -397,8 +397,45 @@ restart a service.
 - `infra/brain-haproxy-l4.cfg` and `infra/portal-transport-front.cfg` use HAProxy TCP stick-tables as a self-hosted burst guard; this is not a volumetric DDoS guarantee and hoster/network filtering remains a separate incident-control layer
 - `infra/Caddyfile.internal` owns the public HTTP security headers (`nosniff`, `Referrer-Policy`, `Permissions-Policy`, `frame-ancestors`, `Alt-Svc: clear`) while API path limits remain backend-owned
 - [remote_deploy_brain_caddy_config.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_caddy_config.py) validates the repo Caddy config, uploads it to `brain`, backs up `/etc/caddy/Caddyfile`, validates the installed file, reloads Caddy, and retains only the five newest script-owned `Caddyfile.bak-<release_id>` rollback files; use it for Caddy-only changes instead of the older legacy proxy patch helper
+- [remote_deploy_brain_haproxy_config.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_haproxy_config.py) applies the same validate/backup/install/reload/health/rollback contour to `/etc/haproxy/haproxy.cfg`; deploy the proxy-protocol-aware Caddy config first, then HAProxy `send-proxy-v2`, so a partial rollout never sends a PROXY preface to an unprepared listener
 - fresh node/bootstrap paths must enable UFW default-deny and fail2ban `sshd` with escalating bans; root password access is retained only as break-glass until the owner approves a key-only cutover
 - repo-managed systemd units should carry `NoNewPrivileges`, `PrivateTmp`, and read-mostly system protections unless a unit has a documented operational need for broader write access
+
+### Emergency catalog deploy
+
+The emergency catalog is deployed fail-closed. Source code, migrations, admin
+UI and the pinned probe runtime may be installed while
+`EMERGENCY_CATALOG_WORKER_ENABLED=false`; no source row is distributed merely
+because the code exists on `brain`.
+
+Required order:
+
+1. take and retain the normal production database backup;
+2. deploy portal code and static sites, leaving the emergency worker disabled;
+3. run `remote_prepare_emergency_catalog_env.py --brain-ip 82.21.114.104`
+   without `--enable-worker`. It creates signing and material-encryption keys on
+   `brain`, writes a mode-`0600` environment file atomically and prints only the
+   public signing key/key id;
+4. install the exact hash-pinned Linux probe engine and GeoIP refresh units with
+   `remote_install_emergency_runtime.py`;
+5. deploy `infra/Caddyfile.internal`, verify Caddy, then deploy
+   `infra/brain-haproxy-l4.cfg`; confirm the owned payload endpoint returns its
+   deterministic digest and a country header derived from the real PROXY peer;
+6. restart/verify API and worker with distribution still disabled, inspect the
+   redacted admin status, then explicitly enable the worker and stage/probe one
+   snapshot;
+7. promote only 4–12 fresh exact-probed candidates with the bounded safe-delta
+   preview. Start the client cohort only after signed readback and synthetic
+   route proof.
+
+Do not copy private signing or material keys into the repository, release
+artifacts, logs or operator browser. Before destructive server recovery, retain
+the mode-`0600` environment backup on an encrypted operator-controlled medium;
+losing the signing key requires a client trust-key rotation, not silent key
+replacement. The admin `disable` action stops new catalog/profile delivery and
+prevents automatic worker promotion, but it cannot recall a valid offline cache
+already stored on a device. Use short snapshot expiry plus entitlement checks,
+then explicit rollback or promotion to reopen distribution.
 
 ### Bot token / username switch
 

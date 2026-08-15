@@ -112,6 +112,13 @@ export default function PrivacyPage() {
             только в объёме, который нужен для оплаты, возврата, сверки спорного статуса или поддержки пользователя.
           </p>
           <p className="text-[0.9375rem] leading-relaxed text-ink-soft">
+            Для доступности экстренной сети страна подключения определяется локально на сервере по базе{" "}
+            <a href="https://db-ip.com" target="_blank" rel="noreferrer" className={LINK_CLASS}>
+              DB-IP Lite
+            </a>{" "}
+            (CC BY 4.0). Raw IP не передаётся DB-IP и не сохраняется этой проверкой.
+          </p>
+          <p className="text-[0.9375rem] leading-relaxed text-ink-soft">
             Полезные страницы:{" "}
             <Link href="/" className={LINK_CLASS}>
               главная POKROV

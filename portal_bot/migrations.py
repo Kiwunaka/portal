@@ -2583,6 +2583,198 @@ def _ensure_acquisition_domain_postgres(conn) -> None:
     conn.execute(text("CREATE INDEX IF NOT EXISTS ix_acquisition_handoffs_expires_at ON acquisition_handoffs(expires_at);"))
 
 
+def _ensure_emergency_catalog_domain_sqlite(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS emergency_catalog_snapshots (
+              id VARCHAR(36) PRIMARY KEY,
+              catalog_version VARCHAR(64) NOT NULL,
+              contract_version VARCHAR(64) NOT NULL,
+              source_revision VARCHAR(64) NOT NULL,
+              source_digest VARCHAR(64) NOT NULL,
+              status VARCHAR(24) NOT NULL DEFAULT 'staging',
+              candidate_count INTEGER NOT NULL DEFAULT 0,
+              healthy_count INTEGER NOT NULL DEFAULT 0,
+              active_endpoint_count INTEGER NOT NULL DEFAULT 0,
+              catalog_ciphertext TEXT,
+              catalog_hash VARCHAR(64),
+              signature_b64 VARCHAR(128),
+              signing_key_id VARCHAR(64),
+              rejection_code VARCHAR(64),
+              parent_snapshot_id VARCHAR(36),
+              rollback_of_snapshot_id VARCHAR(36),
+              operator_approved BOOLEAN NOT NULL DEFAULT 0,
+              issued_at DATETIME,
+              expires_at DATETIME,
+              activated_at DATETIME,
+              superseded_at DATETIME,
+              created_at DATETIME NOT NULL,
+              updated_at DATETIME NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS emergency_catalog_endpoints (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              snapshot_id VARCHAR(36) NOT NULL REFERENCES emergency_catalog_snapshots(id) ON DELETE CASCADE,
+              stable_id VARCHAR(32) NOT NULL,
+              ordinal INTEGER NOT NULL,
+              transport VARCHAR(16) NOT NULL,
+              endpoint_host_hash VARCHAR(64) NOT NULL,
+              material_ciphertext TEXT NOT NULL,
+              material_hash VARCHAR(64) NOT NULL,
+              probe_state VARCHAR(24) NOT NULL DEFAULT 'pending',
+              exit_country VARCHAR(2),
+              latency_ms INTEGER,
+              authenticated BOOLEAN NOT NULL DEFAULT 0,
+              payload_ok BOOLEAN NOT NULL DEFAULT 0,
+              payload_sha256 VARCHAR(64),
+              verification_source VARCHAR(32),
+              verified_at DATETIME,
+              error_code VARCHAR(64),
+              created_at DATETIME NOT NULL,
+              updated_at DATETIME NOT NULL,
+              CONSTRAINT uq_emergency_catalog_endpoint_snapshot_stable UNIQUE (snapshot_id, stable_id)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS emergency_eligibility_cache (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              account_id VARCHAR(36) NOT NULL,
+              install_id_hash VARCHAR(64) NOT NULL,
+              country_code VARCHAR(2) NOT NULL,
+              source VARCHAR(32) NOT NULL,
+              observed_at DATETIME NOT NULL,
+              expires_at DATETIME NOT NULL,
+              created_at DATETIME NOT NULL,
+              updated_at DATETIME NOT NULL,
+              CONSTRAINT uq_emergency_eligibility_account_install UNIQUE (account_id, install_id_hash)
+            );
+            """
+        )
+    )
+    for ddl in (
+        "CREATE UNIQUE INDEX IF NOT EXISTS ix_emergency_catalog_snapshots_catalog_version ON emergency_catalog_snapshots(catalog_version);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_snapshots_source_digest ON emergency_catalog_snapshots(source_digest);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_snapshots_status ON emergency_catalog_snapshots(status);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_snapshots_expires_at ON emergency_catalog_snapshots(expires_at);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_status_activated ON emergency_catalog_snapshots(status, activated_at);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_source_created ON emergency_catalog_snapshots(source_digest, created_at);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_endpoints_snapshot_id ON emergency_catalog_endpoints(snapshot_id);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_endpoints_stable_id ON emergency_catalog_endpoints(stable_id);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_endpoints_probe_state ON emergency_catalog_endpoints(probe_state);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_endpoints_verified_at ON emergency_catalog_endpoints(verified_at);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_endpoint_snapshot_probe ON emergency_catalog_endpoints(snapshot_id, probe_state);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_eligibility_cache_account_id ON emergency_eligibility_cache(account_id);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_eligibility_cache_expires_at ON emergency_eligibility_cache(expires_at);",
+    ):
+        conn.execute(text(ddl))
+
+
+def _ensure_emergency_catalog_domain_postgres(conn) -> None:
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS emergency_catalog_snapshots (
+              id VARCHAR(36) PRIMARY KEY,
+              catalog_version VARCHAR(64) NOT NULL,
+              contract_version VARCHAR(64) NOT NULL,
+              source_revision VARCHAR(64) NOT NULL,
+              source_digest VARCHAR(64) NOT NULL,
+              status VARCHAR(24) NOT NULL DEFAULT 'staging',
+              candidate_count INTEGER NOT NULL DEFAULT 0,
+              healthy_count INTEGER NOT NULL DEFAULT 0,
+              active_endpoint_count INTEGER NOT NULL DEFAULT 0,
+              catalog_ciphertext TEXT,
+              catalog_hash VARCHAR(64),
+              signature_b64 VARCHAR(128),
+              signing_key_id VARCHAR(64),
+              rejection_code VARCHAR(64),
+              parent_snapshot_id VARCHAR(36),
+              rollback_of_snapshot_id VARCHAR(36),
+              operator_approved BOOLEAN NOT NULL DEFAULT FALSE,
+              issued_at TIMESTAMP,
+              expires_at TIMESTAMP,
+              activated_at TIMESTAMP,
+              superseded_at TIMESTAMP,
+              created_at TIMESTAMP NOT NULL,
+              updated_at TIMESTAMP NOT NULL
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS emergency_catalog_endpoints (
+              id SERIAL PRIMARY KEY,
+              snapshot_id VARCHAR(36) NOT NULL REFERENCES emergency_catalog_snapshots(id) ON DELETE CASCADE,
+              stable_id VARCHAR(32) NOT NULL,
+              ordinal INTEGER NOT NULL,
+              transport VARCHAR(16) NOT NULL,
+              endpoint_host_hash VARCHAR(64) NOT NULL,
+              material_ciphertext TEXT NOT NULL,
+              material_hash VARCHAR(64) NOT NULL,
+              probe_state VARCHAR(24) NOT NULL DEFAULT 'pending',
+              exit_country VARCHAR(2),
+              latency_ms INTEGER,
+              authenticated BOOLEAN NOT NULL DEFAULT FALSE,
+              payload_ok BOOLEAN NOT NULL DEFAULT FALSE,
+              payload_sha256 VARCHAR(64),
+              verification_source VARCHAR(32),
+              verified_at TIMESTAMP,
+              error_code VARCHAR(64),
+              created_at TIMESTAMP NOT NULL,
+              updated_at TIMESTAMP NOT NULL,
+              CONSTRAINT uq_emergency_catalog_endpoint_snapshot_stable UNIQUE (snapshot_id, stable_id)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS emergency_eligibility_cache (
+              id SERIAL PRIMARY KEY,
+              account_id VARCHAR(36) NOT NULL,
+              install_id_hash VARCHAR(64) NOT NULL,
+              country_code VARCHAR(2) NOT NULL,
+              source VARCHAR(32) NOT NULL,
+              observed_at TIMESTAMP NOT NULL,
+              expires_at TIMESTAMP NOT NULL,
+              created_at TIMESTAMP NOT NULL,
+              updated_at TIMESTAMP NOT NULL,
+              CONSTRAINT uq_emergency_eligibility_account_install UNIQUE (account_id, install_id_hash)
+            );
+            """
+        )
+    )
+    for ddl in (
+        "CREATE UNIQUE INDEX IF NOT EXISTS ix_emergency_catalog_snapshots_catalog_version ON emergency_catalog_snapshots(catalog_version);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_snapshots_source_digest ON emergency_catalog_snapshots(source_digest);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_snapshots_status ON emergency_catalog_snapshots(status);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_snapshots_expires_at ON emergency_catalog_snapshots(expires_at);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_status_activated ON emergency_catalog_snapshots(status, activated_at);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_source_created ON emergency_catalog_snapshots(source_digest, created_at);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_endpoints_snapshot_id ON emergency_catalog_endpoints(snapshot_id);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_endpoints_stable_id ON emergency_catalog_endpoints(stable_id);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_endpoints_probe_state ON emergency_catalog_endpoints(probe_state);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_endpoints_verified_at ON emergency_catalog_endpoints(verified_at);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_catalog_endpoint_snapshot_probe ON emergency_catalog_endpoints(snapshot_id, probe_state);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_eligibility_cache_account_id ON emergency_eligibility_cache(account_id);",
+        "CREATE INDEX IF NOT EXISTS ix_emergency_eligibility_cache_expires_at ON emergency_eligibility_cache(expires_at);",
+    ):
+        conn.execute(text(ddl))
+
+
 def run_migrations(engine: Engine) -> None:
     """
     Idempotent SQLite migrations for legacy DBs.
@@ -3080,6 +3272,7 @@ def run_migrations(engine: Engine) -> None:
         _ensure_ru_probe_domain_sqlite(conn)
         _ensure_release_evidence_domain_sqlite(conn)
         _ensure_admin_action_intent_domain_sqlite(conn)
+        _ensure_emergency_catalog_domain_sqlite(conn)
 
         # events: minimal product analytics.
         conn.execute(
@@ -3945,6 +4138,7 @@ def _run_postgres_migrations(engine: Engine) -> None:
         _ensure_ru_probe_domain_postgres(conn)
         _ensure_release_evidence_domain_postgres(conn)
         _ensure_admin_action_intent_domain_postgres(conn)
+        _ensure_emergency_catalog_domain_postgres(conn)
 
         conn.execute(
             text(

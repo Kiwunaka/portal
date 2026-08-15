@@ -1,7 +1,18 @@
 {
   auto_https disable_redirects
-  servers {
+  servers :80 {
     protocols h1 h2
+  }
+  servers :8444 {
+    protocols h1 h2
+    listener_wrappers {
+      proxy_protocol {
+        timeout 2s
+        allow 127.0.0.1/32 ::1/128
+        fallback_policy skip
+      }
+      tls
+    }
   }
 }
 

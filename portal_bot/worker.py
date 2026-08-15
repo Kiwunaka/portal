@@ -63,6 +63,7 @@ from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark
 from admin_ops_service import ops_alert_notification_batches, refresh_ops_alerts_for_current_state
 from antiabuse_privacy_service import drain_antiabuse_retention
 from support_attachment_cleanup_service import SupportAttachmentCleanupCursor, reconcile_support_attachments
+from emergency_catalog_worker import emergency_catalog_worker_enabled, emergency_catalog_worker_job
 import incident_service
 
 logger = logging.getLogger(__name__)
@@ -1249,6 +1250,12 @@ async def main() -> None:
         asyncio.create_task(_supervise_job("referral_bonus_queue", referral_bonus_queue_job)),
         asyncio.create_task(_supervise_job("key_limits_watchdog", key_limits_watchdog_job)),
     ]
+    if emergency_catalog_worker_enabled():
+        tasks.append(
+            asyncio.create_task(
+                _supervise_job("emergency_catalog", emergency_catalog_worker_job)
+            )
+        )
     await asyncio.gather(*tasks)
 
 

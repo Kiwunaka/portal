@@ -1,6 +1,6 @@
 {
-  "version": "2026-07-23.7",
-  "last_verified": "2026-07-23",
+  "version": "2026-08-15.1",
+  "last_verified": "2026-08-15",
   "responsibility_map": {
     "legal_identity_state": "owner_details_required_before_commercial_publication",
     "rows": [
@@ -77,6 +77,13 @@
       "purpose": "Понять, какой этап установки или оплаты не сработал.",
       "retention": "До 180 дней.",
       "scope": "Этап и campaign-метка; endpoint не сохраняет IP и User-Agent."
+    },
+    {
+      "field": "Страна сети для экстренного режима",
+      "collected": true,
+      "purpose": "Показать экстренную сеть trial/paid-пользователю из РФ без постоянной проверки текущего адреса.",
+      "retention": "Код страны и хэш Install ID — до 24 часов; raw IP для этой проверки не сохраняется.",
+      "scope": "IP обрабатывается в памяти на сервере по локальной DB-IP Lite и не отправляется сервису геолокации."
     },
     {
       "field": "Платёжный ledger",

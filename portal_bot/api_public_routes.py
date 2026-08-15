@@ -16,6 +16,51 @@ try:
 except ImportError:
     from node_observability_sanitizer import sanitize_runtime_metric_meta
 
+try:
+    from .emergency_catalog_crypto import EmergencyCatalogCrypto, EmergencyCatalogCryptoError
+    from .emergency_geoip_service import (
+        lookup_country_code,
+        observe_request_country,
+        request_public_ip,
+    )
+    from .emergency_catalog_service import (
+        EmergencyCatalogServiceError,
+        read_serving_catalog,
+        read_serving_endpoint_material,
+    )
+    from .emergency_eligibility_service import resolve_emergency_eligibility
+    from .emergency_profile_service import (
+        EmergencyProfileError,
+        build_emergency_singbox_config,
+        build_profile_payload,
+        build_safe_catalog_payload,
+    )
+    from .models import EmergencyCatalogEndpoint, EmergencyCatalogSnapshot
+except ImportError:
+    from emergency_catalog_crypto import EmergencyCatalogCrypto, EmergencyCatalogCryptoError
+    from emergency_geoip_service import (
+        lookup_country_code,
+        observe_request_country,
+        request_public_ip,
+    )
+    from emergency_catalog_service import (
+        EmergencyCatalogServiceError,
+        read_serving_catalog,
+        read_serving_endpoint_material,
+    )
+    from emergency_eligibility_service import resolve_emergency_eligibility
+    from emergency_profile_service import (
+        EmergencyProfileError,
+        build_emergency_singbox_config,
+        build_profile_payload,
+        build_safe_catalog_payload,
+    )
+    from models import EmergencyCatalogEndpoint, EmergencyCatalogSnapshot
+
+
+EMERGENCY_PROBE_PAYLOAD_V1 = b"POKROV emergency probe payload v1\n"
+EMERGENCY_PROBE_PAYLOAD_V1_SHA256 = hashlib.sha256(EMERGENCY_PROBE_PAYLOAD_V1).hexdigest()
+
 @app.get("/api/health")
 async def health() -> dict:
     return {"status": "ok", "ts": _utcnow().isoformat()}
@@ -30,6 +75,281 @@ async def authenticated_egress_probe_marker() -> Response:
             "Cache-Control": "no-store",
         },
     )
+
+
+@app.get("/api/emergency-probe/payload-v1")
+async def emergency_probe_payload_v1(request: Request) -> Response:
+    """Owned deterministic payload used only by the controlled Core adapter."""
+
+    headers = {
+        "Cache-Control": "no-store",
+        "X-Pokrov-Probe-Schema": "pokrov-emergency-probe-payload-v1",
+        "X-Content-SHA256": EMERGENCY_PROBE_PAYLOAD_V1_SHA256,
+    }
+    public_ip = request_public_ip(request)
+    country = lookup_country_code(public_ip) if public_ip else None
+    if country:
+        headers["X-Pokrov-Exit-Country"] = country
+    return Response(
+        content=EMERGENCY_PROBE_PAYLOAD_V1,
+        media_type="application/octet-stream",
+        headers=headers,
+    )
+
+
+def _emergency_eligibility_projection(eligibility: Any) -> dict[str, Any]:
+    return {
+        "eligible": bool(eligibility.eligible),
+        "accessEligible": bool(eligibility.access_eligible),
+        "networkEligible": bool(eligibility.network_eligible),
+        "source": str(eligibility.source or ""),
+        "countryCode": eligibility.country_code,
+        "validUntil": _safe_iso(eligibility.valid_until),
+    }
+
+
+def _emergency_owned_hops(*, session: Any, user: Any) -> tuple[Any | None, Any | None, list[str]]:
+    rollout_config = load_network_rollout_config(session=session)
+    nodes_for_user = _nodes_for_user(user, enabled_nodes(session), session=session)
+    effective_nodes = _effective_transport_nodes(
+        nodes=nodes_for_user,
+        transport_profile=LEGACY_REALITY_FALLBACK,
+        rollout_config=rollout_config,
+    )
+    effective_nodes = rank_nodes_for_app(
+        effective_nodes,
+        policy_by_code=_node_capacity_policy_by_code(session),
+        now=_utcnow(),
+    )
+    foreign = next(
+        (
+            node
+            for node in effective_nodes
+            if _node_code_base(str(getattr(node, "code", "") or "")) != "ru"
+        ),
+        None,
+    )
+    owned_ru = next(
+        (
+            node
+            for node in effective_nodes
+            if _node_code_base(str(getattr(node, "code", "") or "")) == "ru"
+        ),
+        None,
+    )
+    modes = ["reserve_direct"]
+    if foreign is not None:
+        modes.append("reserve_foreign")
+    if foreign is not None and owned_ru is not None:
+        modes.append("reserve_ru_foreign")
+    return foreign, owned_ru, modes
+
+
+def _emergency_owned_outbound(*, user: Any, node: Any, tag: str) -> dict[str, Any]:
+    return _node_outbound_from_transport_profile(
+        user_uuid=str(getattr(user, "uuid", "") or ""),
+        node=node,
+        tag=tag,
+        transport_profile=LEGACY_REALITY_FALLBACK,
+    )
+
+
+def _observe_emergency_request_country(*, session: Any, user: Any, request: Request) -> None:
+    country = observe_request_country(
+        session,
+        request=request,
+        account_id=str(getattr(user, "account_id", "") or ""),
+        install_id=str(getattr(user, "app_install_id", "") or ""),
+    )
+    if country:
+        session.commit()
+
+
+@app.get("/api/client/emergency-network/catalog")
+async def client_emergency_network_catalog(
+    request: Request,
+    manual_limited_network: bool = Query(default=False),
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        _observe_emergency_request_country(session=s, user=user, request=request)
+        access_policy = _build_reconciled_access_policy(
+            session=s,
+            user=user,
+            used_bytes=0,
+            source="emergency_catalog",
+        )
+        eligibility = resolve_emergency_eligibility(
+            s,
+            account_id=str(getattr(user, "account_id", "") or ""),
+            install_id=str(getattr(user, "app_install_id", "") or ""),
+            access_state=str(access_policy.get("access_state") or ""),
+            manual_limited_network=bool(manual_limited_network),
+        )
+        base: dict[str, Any] = {
+            "schemaVersion": "pokrov-emergency-catalog-response-v1",
+            "available": False,
+            "reason": "not_eligible",
+            "eligibility": _emergency_eligibility_projection(eligibility),
+            "disclosure": {
+                "title": "Экстренная сеть POKROV",
+                "body": "В прямом аварийном режиме первая точка может быть из согласованного внешнего пула и не управляется POKROV.",
+                "warpSupported": False,
+            },
+            "envelope": None,
+        }
+        if not eligibility.eligible:
+            return base
+        try:
+            crypto = EmergencyCatalogCrypto.from_environment()
+            payload = read_serving_catalog(s, crypto=crypto)
+        except (EmergencyCatalogCryptoError, EmergencyCatalogServiceError):
+            base["reason"] = "catalog_unavailable"
+            return base
+
+        snapshot = (
+            s.query(EmergencyCatalogSnapshot)
+            .filter(EmergencyCatalogSnapshot.catalog_version == str(payload["catalog_version"]))
+            .first()
+        )
+        if snapshot is None:
+            return base
+        rows = (
+            s.query(EmergencyCatalogEndpoint)
+            .filter(
+                EmergencyCatalogEndpoint.snapshot_id == snapshot.id,
+                EmergencyCatalogEndpoint.stable_id.in_(
+                    [
+                        str(item.get("stable_id") or "")
+                        for item in payload.get("endpoints", [])
+                        if isinstance(item, dict)
+                    ]
+                ),
+            )
+            .all()
+        )
+        row_by_id = {row.stable_id: row for row in rows}
+        _foreign, _owned_ru, modes = _emergency_owned_hops(session=s, user=user)
+        try:
+            signed_payload = build_safe_catalog_payload(
+                catalog=payload,
+                endpoint_rows=row_by_id,
+                install_id=str(getattr(user, "app_install_id", "") or ""),
+                access_state=str(access_policy.get("access_state") or ""),
+                access_expiry=getattr(user, "expiry_at", None),
+                eligibility=eligibility,
+                supported_modes=modes,
+            )
+            working_count = sum(
+                1 for item in signed_payload["items"] if item.get("status") == "working"
+            )
+            if working_count < 4:
+                base["reason"] = "insufficient_working_reserves"
+                return base
+            base["available"] = True
+            base["reason"] = "ready"
+            base["envelope"] = crypto.signed_envelope(signed_payload)
+        except (EmergencyCatalogCryptoError, EmergencyProfileError):
+            base["reason"] = "catalog_invalid"
+        return base
+    finally:
+        s.close()
+
+
+@app.post("/api/client/emergency-network/profile")
+async def client_emergency_network_profile(
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    raw_body = await request.body()
+    if len(raw_body) > 4096:
+        raise HTTPException(status_code=413, detail="Emergency profile request is too large")
+    try:
+        body = json.loads(raw_body.decode("utf-8"))
+    except (UnicodeError, ValueError):
+        raise HTTPException(status_code=422, detail="Emergency profile request is invalid")
+    allowed_keys = {"catalog_revision", "reserve_id", "chain_mode", "manual_limited_network"}
+    if not isinstance(body, dict) or set(body) != allowed_keys:
+        raise HTTPException(status_code=422, detail="Emergency profile request is invalid")
+    if not isinstance(body.get("manual_limited_network"), bool):
+        raise HTTPException(status_code=422, detail="Emergency profile request is invalid")
+
+    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        _observe_emergency_request_country(session=s, user=user, request=request)
+        access_policy = _build_reconciled_access_policy(
+            session=s,
+            user=user,
+            used_bytes=0,
+            source="emergency_profile",
+        )
+        eligibility = resolve_emergency_eligibility(
+            s,
+            account_id=str(getattr(user, "account_id", "") or ""),
+            install_id=str(getattr(user, "app_install_id", "") or ""),
+            access_state=str(access_policy.get("access_state") or ""),
+            manual_limited_network=body["manual_limited_network"],
+        )
+        if not eligibility.eligible:
+            raise HTTPException(status_code=403, detail="Emergency network is not available")
+        try:
+            crypto = EmergencyCatalogCrypto.from_environment()
+            selected = read_serving_endpoint_material(
+                s,
+                stable_id=str(body.get("reserve_id") or ""),
+                crypto=crypto,
+            )
+        except (EmergencyCatalogCryptoError, EmergencyCatalogServiceError):
+            raise HTTPException(status_code=409, detail="Emergency catalog changed")
+        if selected.catalog.get("catalog_version") != str(body.get("catalog_revision") or ""):
+            raise HTTPException(status_code=409, detail="Emergency catalog changed")
+
+        foreign, owned_ru, supported_modes = _emergency_owned_hops(session=s, user=user)
+        chain_mode = str(body.get("chain_mode") or "").strip().lower()
+        if chain_mode not in supported_modes:
+            raise HTTPException(status_code=409, detail="Emergency route is unavailable")
+        foreign_outbound = (
+            _emergency_owned_outbound(user=user, node=foreign, tag="owned-foreign")
+            if foreign is not None
+            else None
+        )
+        ru_outbound = (
+            _emergency_owned_outbound(user=user, node=owned_ru, tag="owned-ru")
+            if owned_ru is not None
+            else None
+        )
+        try:
+            config = build_emergency_singbox_config(
+                reserve_outbound=selected.record["outbound"],
+                chain_mode=chain_mode,
+                foreign_outbound=foreign_outbound,
+                ru_outbound=ru_outbound,
+                ruleset_base_url=_singbox_rule_set_base_url(),
+            )
+            catalog_expiry = datetime.fromisoformat(
+                str(selected.catalog.get("expires_at") or "").replace("Z", "+00:00")
+            )
+            profile = build_profile_payload(
+                catalog_revision=str(selected.catalog["catalog_version"]),
+                reserve_id=str(body["reserve_id"]),
+                chain_mode=chain_mode,
+                install_id=str(getattr(user, "app_install_id", "") or ""),
+                access_state=str(access_policy.get("access_state") or ""),
+                access_expiry=getattr(user, "expiry_at", None),
+                eligibility=eligibility,
+                catalog_expiry=catalog_expiry,
+                config_payload=config,
+            )
+            envelope = crypto.signed_envelope(profile)
+        except (EmergencyCatalogCryptoError, EmergencyProfileError, ValueError):
+            raise HTTPException(status_code=409, detail="Emergency profile is unavailable")
+        return {
+            "schemaVersion": "pokrov-emergency-profile-response-v1",
+            "envelope": envelope,
+        }
+    finally:
+        s.close()
 
 
 @app.post("/api/internal/observer/batches")

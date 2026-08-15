@@ -140,6 +140,50 @@ export type FreeTierPayload = {
   generatedAt: string | null;
 };
 
+export type EmergencyCatalogSnapshot = {
+  snapshot_id: string;
+  catalog_version: string;
+  source_revision: string;
+  status: string;
+  candidate_count: number;
+  healthy_count: number;
+  active_endpoint_count: number;
+  rejection_code: string | null;
+  operator_approved: boolean;
+  issued_at: string | null;
+  expires_at: string | null;
+  activated_at: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export type EmergencyCatalogStatus = {
+  generated_at: string | null;
+  worker: {
+    enabled: boolean;
+    configuration_state: "ready" | "disabled" | "invalid" | string;
+    interval_seconds: number | null;
+    probe_concurrency: number | null;
+  };
+  snapshot_counts: Record<string, number>;
+  active: EmergencyCatalogSnapshot | null;
+  distribution: EmergencyCatalogSnapshot | null;
+  probe_summary: {
+    snapshot_id: string | null;
+    pending: number;
+    healthy: number;
+    unavailable: number;
+    total: number;
+  };
+  rollback_candidates: Array<{
+    snapshot_id: string;
+    catalog_version: string;
+    endpoint_count: number;
+    activated_at: string | null;
+  }>;
+  snapshots: EmergencyCatalogSnapshot[];
+};
+
 function rangeBounds(range: TrafficRange): { from: string; to: string } {
   const days = range === "7d" ? 7 : range === "90d" ? 90 : 30;
   const to = new Date();
@@ -209,4 +253,8 @@ export async function fetchFreeTier(q: string, init?: ApiRequestInit): Promise<F
     total: typeof usersData.total === "number" && Number.isFinite(usersData.total) ? usersData.total : null,
     generatedAt: typeof usersData.generated_at === "string" ? usersData.generated_at : summaryData.summary?.generated_at || null,
   };
+}
+
+export function fetchEmergencyCatalogStatus(init?: ApiRequestInit): Promise<EmergencyCatalogStatus> {
+  return apiFetch<EmergencyCatalogStatus>("/api/admin/emergency-network/status", init);
 }

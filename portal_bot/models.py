@@ -1671,6 +1671,99 @@ class WarpMaterial(Base):
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
+class EmergencyCatalogSnapshot(Base):
+    __tablename__ = "emergency_catalog_snapshots"
+
+    id = Column(String(36), primary_key=True)
+    catalog_version = Column(String(64), unique=True, index=True, nullable=False)
+    contract_version = Column(String(64), nullable=False)
+    source_revision = Column(String(64), nullable=False)
+    source_digest = Column(String(64), index=True, nullable=False)
+    status = Column(String(24), default="staging", index=True, nullable=False)
+    candidate_count = Column(Integer, default=0, nullable=False)
+    healthy_count = Column(Integer, default=0, nullable=False)
+    active_endpoint_count = Column(Integer, default=0, nullable=False)
+    catalog_ciphertext = Column(Text, nullable=True)
+    catalog_hash = Column(String(64), nullable=True)
+    signature_b64 = Column(String(128), nullable=True)
+    signing_key_id = Column(String(64), nullable=True)
+    rejection_code = Column(String(64), nullable=True)
+    parent_snapshot_id = Column(String(36), nullable=True)
+    rollback_of_snapshot_id = Column(String(36), nullable=True)
+    operator_approved = Column(Boolean, default=False, nullable=False)
+    issued_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, index=True, nullable=True)
+    activated_at = Column(DateTime, index=True, nullable=True)
+    superseded_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+    __table_args__ = (
+        Index("ix_emergency_catalog_status_activated", "status", "activated_at"),
+        Index("ix_emergency_catalog_source_created", "source_digest", "created_at"),
+    )
+
+
+class EmergencyCatalogEndpoint(Base):
+    __tablename__ = "emergency_catalog_endpoints"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    snapshot_id = Column(
+        String(36),
+        ForeignKey("emergency_catalog_snapshots.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    stable_id = Column(String(32), index=True, nullable=False)
+    ordinal = Column(Integer, nullable=False)
+    transport = Column(String(16), nullable=False)
+    endpoint_host_hash = Column(String(64), nullable=False)
+    material_ciphertext = Column(Text, nullable=False)
+    material_hash = Column(String(64), nullable=False)
+    probe_state = Column(String(24), default="pending", index=True, nullable=False)
+    exit_country = Column(String(2), nullable=True)
+    latency_ms = Column(Integer, nullable=True)
+    authenticated = Column(Boolean, default=False, nullable=False)
+    payload_ok = Column(Boolean, default=False, nullable=False)
+    payload_sha256 = Column(String(64), nullable=True)
+    verification_source = Column(String(32), nullable=True)
+    verified_at = Column(DateTime, index=True, nullable=True)
+    error_code = Column(String(64), nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "snapshot_id",
+            "stable_id",
+            name="uq_emergency_catalog_endpoint_snapshot_stable",
+        ),
+        Index("ix_emergency_catalog_endpoint_snapshot_probe", "snapshot_id", "probe_state"),
+    )
+
+
+class EmergencyEligibilityCache(Base):
+    __tablename__ = "emergency_eligibility_cache"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    account_id = Column(String(36), index=True, nullable=False)
+    install_id_hash = Column(String(64), nullable=False)
+    country_code = Column(String(2), nullable=False)
+    source = Column(String(32), nullable=False)
+    observed_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime, index=True, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "account_id",
+            "install_id_hash",
+            name="uq_emergency_eligibility_account_install",
+        ),
+    )
+
+
 class FunnelEvent(Base):
     __tablename__ = "funnel_events"
 

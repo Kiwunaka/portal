@@ -7,6 +7,7 @@ export const OPS_GROUPS = [
       { id: "traffic", label: "Трафик", href: "/traffic" },
       { id: "alerts", label: "Алерты", href: "/alerts" },
       { id: "provider-caps", label: "Лимиты провайдеров", href: "/provider-caps" },
+      { id: "emergency-network", label: "Экстренная сеть", href: "/emergency-network" },
       { id: "free-tier", label: "Бесплатный контур", href: "/free-tier" }
     ]
   },
