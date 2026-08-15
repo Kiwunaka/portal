@@ -275,9 +275,8 @@ Acceptable models:
 Required for every public binary:
 
 - canonical filename
-- current prerelease label `v1.0.4-beta.1` until a newer candidate is backed by
-  an exact release handoff;
-  stable `1.0.0` remains unproven
+- current stable-direct label `v1.0.10`, backed by the exact client release
+  handoff; later versions require the same artifact and runtime proof
 - SHA-256 checksum
 - install note
 - beta warning where signing or store trust is not complete

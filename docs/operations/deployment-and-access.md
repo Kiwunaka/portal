@@ -1152,11 +1152,12 @@ Default release slug in this repo:
 
 Current release boundary:
 
-- public distribution is the public GitHub prerelease handoff for the outside-store beta through the current cabinet/runtime contract
-- distributed prerelease: `v1.0.4-beta.1` (Android `1.0.4+2013`; Windows
-  `1.0.4-beta.1+13`)
+- public distribution is the public GitHub stable-direct handoff through the
+  current cabinet/runtime contract
+- distributed release: `v1.0.10` (Android and Windows `1.0.10+19`)
 - a later candidate exists only after an exact release handoff
-- stable `1.0.0` is not proven
+- stable-direct publication does not prove store availability, trusted Windows
+  signing, exact-final Huawei/RU-LTE evidence or Apple readiness
 - artifact creation, signing, and candidate publication are owned by [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md); this guide owns runtime application and deploy access
 
 Default artifact names:

@@ -110,10 +110,10 @@ isolated environment they create themselves. Use the focused commands in the
 
 ## Current Release And Promotion Truth
 
-- Distributed client prerelease: v1.0.4-beta.1 (Android 1.0.4+2013; Windows
-  1.0.4-beta.1+13).
+- Distributed stable-direct client: v1.0.10 (Android and Windows 1.0.10+19).
 - The next candidate is defined only by an exact release handoff.
-- Stable 1.0.0: unproven.
+- Store availability, trusted Windows signing and exact-final Huawei/RU-LTE
+  claims remain unproven.
 - Account foundation: implemented in the repository, not
   production-deployed/proven.
 - Platform code and docs promote through portal/master; active client code,

@@ -1,13 +1,13 @@
 # Public Beta Release Runbook
 
-Last updated: 2026-07-12
+Last updated: 2026-08-15
 
-Document class: `ACTIVE_EXECUTION`
+Document class: `EVIDENCE`
 
-Scope: outside-store beta execution only. The distributed prerelease is
-`v1.0.4-beta.1`. A later candidate requires a new exact handoff. This runbook does not
-authorize stable `1.0.0`, store availability, trusted Windows signing, raw
-Android audit, or RU-origin readiness claims.
+Scope: historical outside-store beta execution for `v1.0.4-beta.1`. The current
+stable-direct release is `v1.0.10` and follows the publishing/signing guide plus
+the exact client handoff. This retained runbook does not authorize store
+availability, trusted Windows signing, raw Android audit or RU-origin claims.
 
 ## Current Decision
 

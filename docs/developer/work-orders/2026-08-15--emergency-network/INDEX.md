@@ -1,6 +1,6 @@
 # POKROV Emergency Network
 
-Status: `ACTIVE`
+Status: `RELEASED_WITH_MANUAL_GATES`
 
 Created: `2026-08-15`
 
@@ -82,8 +82,8 @@ rollback. Она не включает обновление или перепи�
 | [WO-003](WO-003-admin-controls-and-observability.md) | Admin preview, promotion, disable, rollback, rejection reasons и freshness | WO-002 | `DONE` |
 | [WO-004](WO-004-api-entitlement-and-profile-chains.md) | Safe locations API, entitlement/RU gates и три exact managed-profile chains | WO-001, WO-002 | `DONE` |
 | [WO-005](WO-005-client-ui-and-offline-cache.md) | Emergency UX, disclosure, statuses, manual mode, signed bootstrap/LKG, no WARP | WO-004 | `DONE` |
-| [WO-006](WO-006-exact-runtime-and-synthetic-bs-proof.md) | Exact Core 1.0.3, DNS/route/chain validation and isolated firewall proof on Android/Windows | WO-004, WO-005 | `IN_PROGRESS` |
-| [WO-007](WO-007-canary-release-and-production.md) | 5%→25%→100% gates, exact artifacts, deploy, monitoring and rollback | WO-003, WO-006 | `IN_PROGRESS` |
+| [WO-006](WO-006-exact-runtime-and-synthetic-bs-proof.md) | Exact Core 1.0.3, DNS/route/chain validation and isolated firewall proof on Android/Windows | WO-004, WO-005 | `CLOSED_WITH_MANUAL_GATE` |
+| [WO-007](WO-007-canary-release-and-production.md) | Stable-direct artifacts, deploy, monitoring and rollback | WO-003, WO-006 | `CLOSED_STABLE_DIRECT_WITH_MANUAL_GATES` |
 
 ## Acceptance Oracle
 
@@ -162,21 +162,29 @@ diff/secret checks and retained rollback to be green.
 ## Current State And Next Action
 
 - Goal and owner decisions: fixed.
-- Platform implementation: complete locally on `codex/emergency-network`; exact
-  promotion commit and deploy are pending.
-- Client implementation: pushed as `POKROV-app/main@ed8405d`; Android 1.0.10
-  production-signed split/universal APKs and Windows 1.0.10 bundles were built
-  with signing key id `emg-20260815-v1`.
+- Platform implementation and production deploy: complete through
+  `master@c567787`.
+- Client runtime implementation: `POKROV-app/main@43af4a6`; stable release
+  metadata: `6f52ad6`. Public `v1.0.10` contains four production-signed Android
+  APKs plus Windows setup/portable/manifest and `SHA256SUMS.txt`; GitHub reports
+  exact size and SHA-256 for all eight assets.
 - Production key material was created on brain with worker disabled. Only its
   public Ed25519 key entered the client build; private material stayed server-side.
 - WO-001 parser/fixture/source audit: `DONE`; focused and docs contract checks
   pass and no upstream credential material is retained.
-- Live discovery: all three approved mirrors agree; 23 rows survive strict
-  normalization from 157 candidates. None is active before exact controlled
-  auth/payload verification.
-- Local verification: 91 Emergency/remote-runtime tests, 17 action-intent tests,
-  Flutter analyze plus 294 full tests, client docs/seed, admin lint/build and
-  60/60 E2E pass. Exact client LDPlayer predeploy UI proof is retained on `E:`.
-- Current gate: deploy platform/runtime at worker-off, then run exact probes,
-  isolated LDPlayer firewall proof and 5% canary. Real Russian LTE/БС remains
-  `MANUAL_OWNER_TEST_REAL_RU_BS` and forbids the real-БС badge/100% claim.
+- Production catalog: active snapshot with 21 candidates, 13 healthy probe
+  states and five published active reserves. Promotion/rollback remains
+  available through the redacted admin surface.
+- Final client verification: Flutter analyze PASS, 296/296 tests PASS,
+  seed/docs contracts PASS, exact production signing PASS and live signed
+  LDPlayer catalog/UI/topology proof retained on `E:`.
+- Production release verification: public stable non-prerelease `v1.0.10`,
+  GitHub asset digest PASS 8/8, five-repeat brain readiness PASS and authenticated
+  plus anonymous runtime client-catalog smoke PASS for Android/Windows 1.0.10.
+- `BLOCKED_BY_ACCESS`: LDPlayer and the normal POKROV control profile both fail
+  the Reality data plane on this host network; the isolated firewall executor
+  and controlled fixture are unavailable. No clean Windows network test was
+  attempted because Hiddify must stay connected.
+- `MANUAL_OWNER_TEST_REAL_RU_BS`: exact Huawei/RU-LTE proof remains required and
+  forbids the real-БС badge. It is a post-release manual gate under the owner's
+  stable-direct decision, not a fabricated PASS.

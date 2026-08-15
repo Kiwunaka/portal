@@ -56,8 +56,9 @@ with its current output summary and completion evidence retained in that wave.
 
 The owner-deferred post-release device, origin and recovery proof is preserved
 in [2026-08-14--postrelease-manual-proof/INDEX.md](2026-08-14--postrelease-manual-proof/INDEX.md).
-It is a next-task hardening wave, not a retroactive blocker for the published
-`v1.0.4-beta.1` prerelease.
+It was created after the `v1.0.4-beta.1` prerelease and remains the owner-deferred
+hardening queue after the later stable-direct `v1.0.10` release; it is not a
+retroactive blocker for either publication.
 
 ## Continuity Contract
 

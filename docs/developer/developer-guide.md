@@ -34,8 +34,9 @@ meaningful risk requires a work order.
   POKROV-app/main is the client promotion line.
 - Retired bootstrap material and bridge bundles are archive or rollback
   evidence, never active development lanes.
-- The distributed client is 1.0.0-beta. 1.0.0-rc.1 is a target; stable 1.0.0
-  is not proven.
+- The distributed stable-direct client is `v1.0.10`; store publication,
+  trusted Windows signing and exact-final Huawei/RU-LTE claims remain separate
+  manual gates.
 - mini is an operator probe/sandbox and an opt-in emergency bridge. It is not
   part of normal delivery or the control plane.
 

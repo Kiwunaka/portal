@@ -7,7 +7,7 @@
 | WO id | `WO-007-canary-release-and-production` |
 | Title | Exact emergency-network candidate is promoted, monitored and reversible |
 | Ceremony | `release_wo` |
-| WO status | `in_progress` |
+| WO status | `closed_stable_direct_with_manual_gates` |
 | Orchestrator | `/root` |
 | Repository lane | `mixed` |
 | Working branch or worktree | exact reviewed platform/client promotion commits |
@@ -73,10 +73,24 @@ required, GitHub digest/signing checks, deploy verify, signed catalog smoke,
 
 ## Status And Handoff
 
-- Current WO status: `in_progress`
+- Current WO status: `closed_stable_direct_with_manual_gates`
 - Dependencies: WO-003, WO-006
-- Client source is pushed and exact 1.0.10 artifacts are built but not yet
-  published. Platform source is locally green and pending promotion commit.
-- Deploy/promotion: prepare backend/admin/runtime with worker disabled, prove the
-  signed catalog and isolated route, then start the 5% canary. No 100% rollout
-  or real-БС label is allowed without owner LTE evidence.
+- Platform emergency source is pushed through `c567787`; client runtime source
+  is pushed through `43af4a6`, with release metadata on `6f52ad6`.
+- Public stable direct release `v1.0.10` is published, non-draft and
+  non-prerelease. Eight public assets match local staging by exact size and
+  SHA-256. Android has four production-signed ABI variants; Windows setup and
+  portable artifacts retain the explicit unsigned SmartScreen warning.
+- Production release handoff, backend restart and static-site deploy passed.
+  Caddy plus portal API, bot, helpbot, feedbackbot and worker are active;
+  five repeated subscription reads passed; both SRS rule sets are valid.
+- Brain-signed authenticated and anonymous client catalogs expose Android and
+  Windows `1.0.10` on the stable channel; the retained runtime smoke is PASS.
+  Public update readback returns `recommended` with the exact `v1.0.10` URL for
+  Android `1.0.9`, and `none` for an already-current `1.0.10` client.
+- Owner directed a stable direct release instead of a beta/canary channel.
+  Percentage canary staging is `SKIPPED_BY_OWNER`; catalog rollback and the
+  previous `1.0.9` public release remain available. This does not convert the
+  absent Russian LTE proof into PASS or authorize a real-BS badge.
+- Exact Huawei/RU-LTE, Windows clean TUN/DNS without Hiddify and the controlled
+  synthetic firewall lab remain explicit post-release manual gates.

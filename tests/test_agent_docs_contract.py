@@ -1237,18 +1237,25 @@ def test_active_operations_use_current_client_release_path() -> None:
     assert "pokrov-android-arm64-v8a.apk" in combined
     assert "pokrov-android-armeabi-v7a.apk" in combined
     assert "POKROV-app/artifacts/releases/pokrov-app/" in combined
-    assert "stable 1.0.0 is not proven" in combined.casefold()
+    assert "v1.0.10" in combined
+    assert "stable-direct" in combined.casefold()
 
 
-def test_active_release_owners_name_public_github_prerelease() -> None:
+def test_active_release_owners_name_public_github_stable_direct() -> None:
     owner_paths = (
         "docs/operations/deployment-and-access.md",
         "docs/operations/publishing-and-signing-guide.md",
-        "docs/operations/public-beta-release-runbook.md",
     )
     for relative_path in owner_paths:
         text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
-        assert "public GitHub prerelease" in text, relative_path
+        assert "stable-direct" in text.casefold(), relative_path
+        assert "v1.0.10" in text, relative_path
+
+    historical_beta = (
+        REPO_ROOT / "docs/operations/public-beta-release-runbook.md"
+    ).read_text(encoding="utf-8")
+    assert "Document class: `EVIDENCE`" in historical_beta
+    assert "historical outside-store beta" in historical_beta
 
 
 def test_publishing_keeps_release_link_handoff_as_evidence_only() -> None:

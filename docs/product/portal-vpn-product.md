@@ -89,10 +89,11 @@ Production deployment of account foundation is not proven. A completed productio
   linking and confirmed membership in the official channel; trial users are
   eligible, payment is not required, and already-issued `+10 days` grants are
   grandfathered
-- current distributed prerelease: `v1.0.4-beta.1`; Android `1.0.4+2013` and
-  Windows `1.0.4-beta.1+13`
+- current distributed stable-direct release: `v1.0.10`; Android `1.0.10+19`
+  with ARM64, ARMv7, x86_64 and universal APKs, plus Windows `1.0.10+19`
 - any later candidate requires exact promoted-client and public-asset evidence
-- stable `1.0.0`: unproven
+- stable channel: public outside-store `v1.0.10`; this does not claim store
+  availability, trusted Windows signing, exact Huawei/RU-LTE proof or Apple support
 - Russian is a first-class user language
 - recommended public routing mode: `All except RU`
 - public routing mode set: `All except RU`, `Full tunnel`, and `Selected apps`
@@ -103,15 +104,23 @@ Production deployment of account foundation is not proven. A completed productio
 
 - release target remains `Android + Windows`
 - next platform after those gates is Linux; Apple platforms follow later only with build/sign/notarization/TestFlight/App Store evidence
-- outside-store public beta for Android + Windows is `GO` as of `2026-05-15` with the retained launch-decision evidence pack
-- `Windows` stays in scope for the public `v1` ship when its normal gates are green; the current outside-store beta remains unsigned and must keep unknown-publisher warning copy visible
-- `Android` public beta promotion uses the operator-approved physical-device audit plus the APK/EXE outside-store handoff; store publishing, raw physical audit proof, and stronger Android safety claims remain separate later gates
-- runtime `/api/client/apps` verification and GitHub Releases APK/EXE handoff are green for the beta; a real-user Telegram WebApp opening remains a manual owner test, not a local agent blocker
-- marketing and cabinet availability copy may describe the Android and Windows outside-store beta only alongside current limitations, official-source guidance, and support routing
+- outside-store stable-direct Android + Windows release `v1.0.10` is public as
+  of `2026-08-15`; the retained beta packs remain historical evidence
+- `Windows` remains unsigned and must keep unknown-publisher/SmartScreen warning
+  copy visible; stable-direct distribution does not equal trusted publisher signing
+- `Android` uses production-signed direct APKs; store publishing, exact-final
+  Huawei endurance and stronger raw-device claims remain separate gates
+- runtime `/api/client/apps`, anonymous `/api/public/client-apps`, GitHub digests
+  and the stable handoff are green for `1.0.10`; a real-user Telegram WebApp
+  opening remains a manual owner test
+- marketing and cabinet may describe the stable outside-store Android/Windows
+  release only alongside official-source guidance and current limitations
 - repo/static/client green gates do not by themselves prove live deploy, live node enablement, or separate `current-origin`, `brain-origin`, and `RU-origin` checks; the 2026-05-15 pack includes current-origin and brain-origin evidence, while RU-origin remains an accepted skip
 - emulator or adb-only audit runs are valid preflight for adb wiring and timing, but the public beta handoff must retain physical release-build audit evidence for Android
 - do not describe Android app-isolation features such as split tunneling, Private Space, Knox, Shelter, or similar tooling as sufficient mitigations for an unauthenticated local control surface
-- broad/stable release, `1.0.0`, app-store availability, trusted Windows signing, raw Android audit proof, and RU-origin readiness must not be claimed until each has current redacted evidence
+- app-store availability, trusted Windows signing, exact-final raw Android proof,
+  real-БС emergency proof and RU-origin readiness must not be claimed until each
+  has current redacted evidence
 
 ## Russia-Aware Routing Direction
 

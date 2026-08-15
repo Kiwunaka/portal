@@ -1,14 +1,17 @@
 # Open Beta Release Notes
 
-Last updated: 2026-08-14
+Last updated: 2026-08-15
 
-Status: POKROV `1.0.5-beta.1` is published as a public Android/Windows prerelease and synchronized to the production runtime catalog.
+Status: historical beta notes. The current public stable-direct release is
+POKROV `v1.0.10`; its canonical truth lives in the client release handoff and
+the publishing/signing guide.
 
-POKROV Android `1.0.5-beta.1` is the current direct-APK release. It is
+POKROV Android `1.0.5-beta.1` was the direct-APK release described by this
+historical note. It is
 production-signed for same-signer updates and targets the production POKROV
 API. Google Play is not part of this release.
 
-Public release:
+Historical public release:
 `https://github.com/Kiwunaka/pokrov/releases/tag/v1.0.5-beta.1`.
 
 The public release exposes four Android ABI variants plus Windows setup and
