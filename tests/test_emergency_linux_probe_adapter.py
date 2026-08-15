@@ -67,7 +67,8 @@ def test_adapter_returns_only_safe_pinned_engine_result(transport: str) -> None:
     assert result["authenticated"] is True
     assert result["payload_ok"] is True
     assert result["exit_country"] == "DE"
-    assert result["verification_source"] == "exact_embedded_engine_1_13_0_linux"
+    assert result["verification_source"] == "exact_core_1_13_0_linux"
+    assert len(result["verification_source"]) <= 32
     assert set(result) == {
         "schema_version",
         "stable_id",

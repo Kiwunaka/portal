@@ -413,7 +413,7 @@ def run_adapter(
             max(0, round((time.monotonic() - started_at) * 1000)),
         ),
         "verified_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-        "verification_source": "exact_embedded_engine_1_13_0_linux",
+        "verification_source": "exact_core_1_13_0_linux",
         "error_code": "",
     }
 
