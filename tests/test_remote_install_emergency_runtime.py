@@ -44,3 +44,15 @@ def test_release_id_is_safe_path_component() -> None:
     assert release_id.count("/") == 0
     assert release_id.count("\\") == 0
     assert release_id.endswith(f"-{installer.os.getpid()}")
+
+
+def test_geoip_unit_creates_its_sandbox_writable_directory() -> None:
+    service = (
+        Path(__file__).resolve().parents[1]
+        / "infra"
+        / "pokrov-emergency-geoip-refresh.service"
+    ).read_text(encoding="utf-8")
+
+    assert "StateDirectory=pokrov-geoip" in service
+    assert "StateDirectoryMode=0755" in service
+    assert "ReadWritePaths=/var/lib/pokrov-geoip" in service
