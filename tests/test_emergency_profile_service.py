@@ -193,6 +193,11 @@ def test_exact_reserve_first_chain_shapes(mode, expected_final, expected_detours
         {"protocol": "dns", "outbound": "dns-out"},
         {"ip_is_private": True, "outbound": "direct"},
     ]
+    assert config["dns"]["servers"][1] == {
+        "tag": "emergency-dns",
+        "address": "https://1.1.1.1/dns-query",
+        "detour": expected_final,
+    }
     assert {tag: item["detour"] for tag, item in proxies.items() if "detour" in item} == expected_detours
     assert "domain_resolver" not in proxies[RESERVE_TAG]
     for tag in expected_detours:

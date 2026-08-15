@@ -33,6 +33,7 @@ CATALOG_REFRESH_AFTER = timedelta(hours=2)
 ROUTE_SCOPE = "all_except_ru"
 RULESET_HOST = "connect.pokrov.space"
 RULESET_PATH = "/rules/geoip-ru.srs"
+EMERGENCY_DNS_URL = "https://1.1.1.1/dns-query"
 
 RESERVE_TAG = "POKROV emergency reserve"
 OWNED_RU_TAG = "POKROV owned RU"
@@ -271,7 +272,11 @@ def build_emergency_singbox_config(
         "dns": {
             "servers": [
                 {"tag": "bootstrap", "address": "local"},
-                {"tag": "emergency-dns", "address": "8.8.8.8", "detour": final_tag},
+                {
+                    "tag": "emergency-dns",
+                    "address": EMERGENCY_DNS_URL,
+                    "detour": final_tag,
+                },
             ],
             "final": "emergency-dns",
         },
@@ -459,7 +464,11 @@ def validate_emergency_singbox_config(
         or dns_servers
         != [
             {"tag": "bootstrap", "address": "local"},
-            {"tag": "emergency-dns", "address": "8.8.8.8", "detour": expected_final},
+            {
+                "tag": "emergency-dns",
+                "address": EMERGENCY_DNS_URL,
+                "detour": expected_final,
+            },
         ]
     ):
         raise EmergencyProfileError("profile_dns_route_invalid")
