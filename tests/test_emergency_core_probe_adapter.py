@@ -36,7 +36,7 @@ def _request(*, transport: str = "tcp") -> dict[str, object]:
     return {
         "schema_version": adapter.PROBE_SCHEMA,
         "stable_id": "emg_" + ("a" * 24),
-        "probe_url": "https://connect.pokrov.space/api/emergency-probe/payload-v1",
+        "probe_url": "https://api.pokrov.space/api/emergency-probe/payload-v1",
         "expected_payload_sha256": hashlib.sha256(EXPECTED_BODY).hexdigest(),
         "outbound": outbound,
     }
@@ -201,5 +201,5 @@ def test_probe_requires_owned_non_ru_country_header(monkeypatch) -> None:
     with pytest.raises(adapter.AdapterFailure, match="probe_country_unavailable"):
         adapter._probe_through_socks(
             12345,
-            "https://connect.pokrov.space/api/emergency-probe/payload-v1",
+            "https://api.pokrov.space/api/emergency-probe/payload-v1",
         )

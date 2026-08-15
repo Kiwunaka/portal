@@ -11,7 +11,7 @@ from portal_bot.emergency_catalog_source import parse_emergency_source
 
 
 EXPECTED = hashlib.sha256(b"pokrov-emergency-probe-v1").hexdigest()
-PROBE_URL = "https://connect.pokrov.space/api/emergency-probe/payload-v1"
+PROBE_URL = "https://api.pokrov.space/api/emergency-probe/payload-v1"
 
 
 def _material():

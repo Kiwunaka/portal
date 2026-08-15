@@ -22,7 +22,7 @@ except ImportError:  # pragma: no cover - package import
 
 
 PROBE_ADAPTER_SCHEMA = "pokrov-emergency-probe-adapter-v1"
-CONTROLLED_PROBE_HOSTS = frozenset({"connect.pokrov.space"})
+CONTROLLED_PROBE_HOSTS = frozenset({"api.pokrov.space"})
 CONTROLLED_PROBE_PATH = "/api/emergency-probe/payload-v1"
 MAX_ADAPTER_OUTPUT_BYTES = 16 * 1024
 MAX_ADAPTER_COMMAND_PARTS = 4

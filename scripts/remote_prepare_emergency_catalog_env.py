@@ -16,7 +16,7 @@ except ImportError:  # pragma: no cover - package import
     from .node_access import DEFAULT_PASSWORDS, connect_node
 
 
-PROBE_URL = "https://connect.pokrov.space/api/emergency-probe/payload-v1"
+PROBE_URL = "https://api.pokrov.space/api/emergency-probe/payload-v1"
 PROBE_PAYLOAD = b"POKROV emergency probe payload v1\n"
 PROBE_DIGEST = hashlib.sha256(PROBE_PAYLOAD).hexdigest()
 REMOTE_ENV = "/root/portal_bot/.env"
