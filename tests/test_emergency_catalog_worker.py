@@ -198,7 +198,7 @@ async def test_worker_bounds_probes_and_atomically_promotes(
 
     async def probe_runner(material, **kwargs):
         nonlocal current, maximum
-        assert kwargs["adapter_command"] == (str(adapter_path),)
+        assert kwargs["adapter_command"] == (sys.executable, str(adapter_path))
         assert kwargs["probe_url"] == CONTROLLED_PROBE_URL
         assert kwargs["expected_payload_sha256"] == EXPECTED_DIGEST
         async with lock:

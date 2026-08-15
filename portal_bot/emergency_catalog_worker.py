@@ -6,6 +6,7 @@ import asyncio
 import logging
 import os
 import re
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -246,7 +247,7 @@ async def _probe_materials(
             try:
                 result = await probe_runner(
                     material,
-                    adapter_command=(config.adapter_path,),
+                    adapter_command=(sys.executable, config.adapter_path),
                     probe_url=config.probe_url,
                     expected_payload_sha256=config.expected_payload_sha256,
                     timeout_seconds=config.probe_timeout_seconds,
