@@ -1066,7 +1066,7 @@ def _device_pairing_code_text(code: str) -> str:
 
 def _device_pairing_code_rows() -> list[list[dict[str, str]]]:
     return [
-        [_btn_spec(text="Обновить код", callback_data="device_pairing_code", emoji_key="refresh")],
+        [_btn_spec(text="Обновить код", callback_data="device_pairing_code")],
         [_btn_spec(text="Скачать приложение", callback_data="instruction", emoji_key="download")],
         [_btn_spec(text="◀️ Назад", callback_data="instruction")],
     ]
@@ -1103,7 +1103,6 @@ async def _send_device_pairing_code_message(
         sent = await bot.send_message(
             chat_id,
             "Не удалось создать код входа. Попробуйте еще раз через минуту.",
-            reply_markup=_keyboard_from_specs(_device_pairing_code_rows()),
         )
         last_bot_message[int(tg_id)] = sent.message_id
 

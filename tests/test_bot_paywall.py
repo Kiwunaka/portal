@@ -2639,6 +2639,18 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("10 минут", text)
         self.assertNotIn("оплат", text.lower())
 
+    def test_device_pairing_code_keyboard_uses_only_registered_icons(self) -> None:
+        keyboard = self.bot_module._keyboard_from_specs(
+            self.bot_module._device_pairing_code_rows()
+        )
+        labels = [
+            button.text
+            for row in keyboard.inline_keyboard
+            for button in row
+        ]
+        self.assertIn("Обновить код", labels)
+        self.assertTrue(any("Скачать приложение" in label for label in labels))
+
     def test_install_paywall_does_not_advertise_unavailable_trial_bonus(self) -> None:
         keyboard = self.bot_module._mode_simple_step3_keyboard()
         callbacks = [
