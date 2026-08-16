@@ -14,7 +14,7 @@ except ImportError:  # pragma: no cover - package import
 
 
 ELIGIBLE_ACCESS_STATES = frozenset({"trial_premium", "paid_unlimited"})
-RU_CACHE_TTL = timedelta(hours=24)
+RU_CACHE_TTL = timedelta(days=7)
 _SAFE_SOURCE_RE = re.compile(r"^[a-z0-9][a-z0-9._:-]{0,31}$")
 
 
@@ -108,7 +108,7 @@ def resolve_emergency_eligibility(
             True,
             "manual_limited_network",
             None,
-            current + timedelta(hours=6),
+            current + RU_CACHE_TTL,
         )
     try:
         hashed_install = install_id_hash(install_id)

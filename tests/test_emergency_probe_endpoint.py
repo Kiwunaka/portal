@@ -204,6 +204,31 @@ def test_authenticated_trial_gets_signed_safe_catalog_and_exact_direct_profile(
             if item.get("type") == "vless"
         )
 
+        bundle_response = client.post(
+            "/api/client/emergency-network/offline-bundle",
+            headers=headers,
+            json={"manual_limited_network": True},
+        )
+        assert bundle_response.status_code == 200, bundle_response.text
+        assert bundle_response.headers["cache-control"] == "no-store"
+        bundle = bundle_response.json()
+        assert bundle["schemaVersion"] == "pokrov-emergency-offline-bundle-v1"
+        assert _decode_payload(bundle["catalogEnvelope"])["catalog_revision"] == catalog_version
+        assert len(bundle["profileEnvelopes"]) == 12
+        assert {
+            (item["reserveId"], item["chainMode"])
+            for item in bundle["profileEnvelopes"]
+        } == {
+            (reserve_id, mode)
+            for reserve_id in reserve_ids
+            for mode in ("reserve_direct", "reserve_foreign", "reserve_ru_foreign")
+        }
+        for item in bundle["profileEnvelopes"]:
+            payload = _decode_payload(item["envelope"])
+            assert payload["catalog_revision"] == catalog_version
+            assert payload["reserve_id"] == item["reserveId"]
+            assert payload["chain_mode"] == item["chainMode"]
+
         for mode, expected_detours, expected_final in (
             (
                 "reserve_foreign",

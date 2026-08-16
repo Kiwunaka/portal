@@ -454,3 +454,5 @@ def test_eligibility_is_only_trial_paid_plus_cached_ru_or_explicit_manual(sessio
     assert unknown.source == "country_unknown" and unknown.eligible is False
     assert manual.source == "manual_limited_network" and manual.eligible is True
     assert cached.source == "cached_server_country" and cached.eligible is True
+    assert manual.valid_until == (NOW + timedelta(days=7)).replace(tzinfo=None)
+    assert cached.valid_until == (NOW + timedelta(days=7)).replace(tzinfo=None)

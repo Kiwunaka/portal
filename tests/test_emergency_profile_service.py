@@ -109,12 +109,42 @@ def test_safe_catalog_is_device_bound_bounded_and_contains_no_material() -> None
     encoded = json.dumps(result)
     assert "198.51.100" not in encoded
     assert "secret-" not in encoded
-    assert result["offline_valid_until"] == (NOW + timedelta(hours=6)).isoformat().replace(
+    assert result["offline_valid_until"] == (NOW + timedelta(hours=20)).isoformat().replace(
         "+00:00", "Z"
     )
     assert result["items"][0]["verification"] == "synthetic_bs"
     assert result["items"][1]["verification"] == "ordinary"
     assert result["items"][0]["modes"] == ["reserve_direct", "reserve_foreign"]
+
+
+def test_offline_lease_is_seven_days_but_never_outlives_access_or_catalog() -> None:
+    config = build_emergency_singbox_config(
+        reserve_outbound=_outbound(host="reserve.example", user="reserve-user"),
+        chain_mode="reserve_direct",
+    )
+    eligibility = EmergencyEligibility(
+        True,
+        True,
+        True,
+        "cached_server_country",
+        "RU",
+        NOW + timedelta(days=30),
+    )
+    payload = build_profile_payload(
+        catalog_revision="emg-" + "b" * 32,
+        reserve_id="emg_" + "c" * 24,
+        chain_mode="reserve_direct",
+        install_id="install-12345678",
+        access_state="paid_unlimited",
+        access_expiry=NOW + timedelta(days=30),
+        eligibility=eligibility,
+        catalog_expiry=NOW + timedelta(days=30),
+        config_payload=config,
+        now=NOW,
+    )
+    assert payload["offline_valid_until"] == (NOW + timedelta(days=7)).isoformat().replace(
+        "+00:00", "Z"
+    )
 
 
 def test_safe_catalog_distinguishes_failed_probe_from_stale_healthy_probe() -> None:
@@ -264,7 +294,7 @@ def test_profile_payload_is_bound_to_access_catalog_and_device() -> None:
     assert payload["route_scope"] == "all_except_ru"
     assert payload["warp"] is False
     assert payload["quick_settings_eligible"] is False
-    assert payload["offline_valid_until"] == (NOW + timedelta(hours=6)).isoformat().replace(
+    assert payload["offline_valid_until"] == (NOW + timedelta(hours=20)).isoformat().replace(
         "+00:00", "Z"
     )
     assert len(payload["device_binding"]) == 64

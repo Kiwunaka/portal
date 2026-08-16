@@ -822,3 +822,15 @@ New tables are additive through the repository's `create_all` startup path:
 `service_incidents`, `incident_compensations`, `device_pairing_codes`, and
 `program_applications`. No endpoint returns stored code HMACs, operator notes to
 normal clients, or invited-user identity.
+
+## Emergency offline bundle
+
+`POST /api/client/emergency-network/offline-bundle` requires a normal app
+session and exact JSON `{ "manual_limited_network": boolean }`. It returns
+`pokrov-emergency-offline-bundle-v1` with one signed safe catalog and the exact
+signed profile envelope for every working reserve and advertised chain mode.
+The response is `Cache-Control: no-store`, contains 4–12 reserves and no more
+than 36 profiles, and fails closed on entitlement, RU/manual eligibility,
+catalog, crypto, topology, or profile errors. Each envelope is bound to the
+current install and expires no later than the active access, catalog,
+eligibility, or seven-day offline lease.

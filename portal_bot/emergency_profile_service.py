@@ -28,8 +28,8 @@ except ImportError:  # pragma: no cover - package import
 CATALOG_PAYLOAD_TYPE = "pokrov.emergency.catalog"
 PROFILE_PAYLOAD_TYPE = "pokrov.emergency.profile"
 DISCLOSURE_REVISION = "2026-08-15.1"
-OFFLINE_LEASE_MAX_AGE = timedelta(hours=6)
-CATALOG_REFRESH_AFTER = timedelta(hours=2)
+OFFLINE_LEASE_MAX_AGE = timedelta(days=7)
+CATALOG_REFRESH_AFTER = timedelta(hours=6)
 ROUTE_SCOPE = "all_except_ru"
 RULESET_HOST = "connect.pokrov.space"
 RULESET_PATH = "/rules/geoip-ru.srs"
