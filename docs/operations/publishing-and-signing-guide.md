@@ -57,7 +57,7 @@ Until store URLs are live, the canonical distribution source is:
 
 - GitHub Releases for Android and Windows binaries
 
-Current public distribution is the stable-direct GitHub release `v1.0.10` in
+Current public distribution is the stable-direct GitHub release `v1.0.11` in
 `Kiwunaka/pokrov`. It is public, non-draft and non-prerelease; eight assets
 match the retained staging set by exact size and SHA-256. A later candidate
 still requires a new exact release handoff.
@@ -124,8 +124,8 @@ Treat `AAB`, `MSIX`, and portable `ZIP` as market/operator artifacts, not first-
 
 Current public user-facing version policy:
 
-- the distributed stable-direct release is `v1.0.10`; Android and Windows are
-  `1.0.10+19`
+- the distributed stable-direct release is `v1.0.11`; Android and Windows are
+  `1.0.11+20`
 - a later candidate requires exact signed artifacts, public digest proof and a
   synchronized runtime handoff
 - Android `versionName`, Windows display version, cabinet download badges, and

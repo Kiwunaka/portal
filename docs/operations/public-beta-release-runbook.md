@@ -5,7 +5,7 @@ Last updated: 2026-08-15
 Document class: `EVIDENCE`
 
 Scope: historical outside-store beta execution for `v1.0.4-beta.1`. The current
-stable-direct release is `v1.0.10` and follows the publishing/signing guide plus
+stable-direct release is `v1.0.11` and follows the publishing/signing guide plus
 the exact client handoff. This retained runbook does not authorize store
 availability, trusted Windows signing, raw Android audit or RU-origin claims.
 

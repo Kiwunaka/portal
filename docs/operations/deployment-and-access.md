@@ -1154,7 +1154,7 @@ Current release boundary:
 
 - public distribution is the public GitHub stable-direct handoff through the
   current cabinet/runtime contract
-- distributed release: `v1.0.10` (Android and Windows `1.0.10+19`)
+- distributed release: `v1.0.11` (Android and Windows `1.0.11+20`)
 - a later candidate exists only after an exact release handoff
 - stable-direct publication does not prove store availability, trusted Windows
   signing, exact-final Huawei/RU-LTE evidence or Apple readiness
