@@ -89,10 +89,10 @@ Production deployment of account foundation is not proven. A completed productio
   linking and confirmed membership in the official channel; trial users are
   eligible, payment is not required, and already-issued `+10 days` grants are
   grandfathered
-- current distributed stable-direct release: `v1.0.11`; Android `1.0.11+20`
-  with ARM64, ARMv7, x86_64 and universal APKs, plus Windows `1.0.11+20`
+- current distributed stable-direct release: `v1.0.13`; Android `1.0.13+22`
+  with ARM64, ARMv7, x86_64 and universal APKs, plus Windows `1.0.13+22`
 - any later candidate requires exact promoted-client and public-asset evidence
-- stable channel: public outside-store `v1.0.11`; this does not claim store
+- stable channel: public outside-store `v1.0.13`; this does not claim store
   availability, trusted Windows signing, exact Huawei/RU-LTE proof or Apple support
 - Russian is a first-class user language
 - recommended public routing mode: `All except RU`
@@ -104,14 +104,14 @@ Production deployment of account foundation is not proven. A completed productio
 
 - release target remains `Android + Windows`
 - next platform after those gates is Linux; Apple platforms follow later only with build/sign/notarization/TestFlight/App Store evidence
-- outside-store stable-direct Android + Windows release `v1.0.11` is public as
+- outside-store stable-direct Android + Windows release `v1.0.13` is public as
   of `2026-08-16`; the retained beta packs remain historical evidence
 - `Windows` remains unsigned and must keep unknown-publisher/SmartScreen warning
   copy visible; stable-direct distribution does not equal trusted publisher signing
 - `Android` uses production-signed direct APKs; store publishing, exact-final
   Huawei endurance and stronger raw-device claims remain separate gates
 - runtime `/api/client/apps`, anonymous `/api/public/client-apps`, GitHub digests
-  and the stable handoff are green for `1.0.11`; a real-user Telegram WebApp
+  and the stable handoff are green for `1.0.13`; a real-user Telegram WebApp
   opening remains a manual owner test
 - marketing and cabinet may describe the stable outside-store Android/Windows
   release only alongside official-source guidance and current limitations

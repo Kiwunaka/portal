@@ -1237,7 +1237,7 @@ def test_active_operations_use_current_client_release_path() -> None:
     assert "pokrov-android-arm64-v8a.apk" in combined
     assert "pokrov-android-armeabi-v7a.apk" in combined
     assert "POKROV-app/artifacts/releases/pokrov-app/" in combined
-    assert "v1.0.11" in combined
+    assert "v1.0.13" in combined
     assert "stable-direct" in combined.casefold()
 
 
@@ -1249,7 +1249,7 @@ def test_active_release_owners_name_public_github_stable_direct() -> None:
     for relative_path in owner_paths:
         text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
         assert "stable-direct" in text.casefold(), relative_path
-        assert "v1.0.11" in text, relative_path
+        assert "v1.0.13" in text, relative_path
 
     historical_beta = (
         REPO_ROOT / "docs/operations/public-beta-release-runbook.md"
