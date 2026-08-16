@@ -473,10 +473,21 @@ def promote_snapshot(
         removed = active_ids.difference(selected_ids)
         replacement_fraction = len(removed) / max(1, len(active_ids))
         if replacement_fraction > MAX_AUTOMATIC_REPLACEMENT_FRACTION and not operator_approved:
-            snapshot.rejection_code = "automatic_churn_limit"
-            snapshot.updated_at = _naive_utc(current)
-            session.flush()
-            raise EmergencyCatalogServiceError("automatic_churn_limit")
+            fresh_active_ids = {
+                row.stable_id
+                for row in _selected_verified_rows(
+                    session,
+                    snapshot_id=current_active.id,
+                    current=current,
+                    verification_max_age=verification_max_age,
+                )
+                if row.stable_id in active_ids
+            }
+            if len(fresh_active_ids) >= MIN_ACTIVE_ENDPOINTS:
+                snapshot.rejection_code = "automatic_churn_limit"
+                snapshot.updated_at = _naive_utc(current)
+                session.flush()
+                raise EmergencyCatalogServiceError("automatic_churn_limit")
 
     signed_endpoints: list[dict[str, Any]] = []
     for row in selected_rows:
@@ -659,11 +670,12 @@ def read_serving_endpoint_material(
         raise EmergencyCatalogServiceError("serving_endpoint_missing")
     if endpoint.probe_state != "healthy" or not endpoint.authenticated or not endpoint.payload_ok:
         raise EmergencyCatalogServiceError("serving_endpoint_unhealthy")
-    if (
-        endpoint.verified_at is None
-        or _aware_utc(endpoint.verified_at) < current - DEFAULT_VERIFICATION_MAX_AGE
-    ):
-        raise EmergencyCatalogServiceError("serving_endpoint_stale")
+    if endpoint.verified_at is None:
+        raise EmergencyCatalogServiceError("serving_endpoint_unverified")
+    # The signed serving catalog is the last-known-good recovery set. Its own
+    # bounded expiry is the authority for offline use; a 24-hour probe age is a
+    # freshness signal, not a reason to strand an already entitled device when
+    # the control plane is unreachable.
     record = _open_endpoint_record(endpoint, crypto=crypto)
     if record.get("outbound") != selected.get("outbound"):
         raise EmergencyCatalogServiceError("serving_endpoint_material_mismatch")

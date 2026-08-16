@@ -305,10 +305,12 @@ async def client_emergency_network_catalog(
                 eligibility=eligibility,
                 supported_modes=modes,
             )
-            working_count = sum(
-                1 for item in signed_payload["items"] if item.get("status") == "working"
+            usable_count = sum(
+                1
+                for item in signed_payload["items"]
+                if item.get("status") in {"working", "stale"}
             )
-            if working_count < 4:
+            if usable_count < 4:
                 base["reason"] = "insufficient_working_reserves"
                 return base
             base["available"] = True
@@ -400,10 +402,12 @@ async def client_emergency_network_offline_bundle(
                 eligibility=eligibility,
                 supported_modes=supported_modes,
             )
-            working_items = [
-                item for item in catalog_payload["items"] if item.get("status") == "working"
+            usable_items = [
+                item
+                for item in catalog_payload["items"]
+                if item.get("status") in {"working", "stale"}
             ]
-            if len(working_items) < 4:
+            if len(usable_items) < 4:
                 raise HTTPException(
                     status_code=409,
                     detail="Emergency catalog has insufficient working reserves",
@@ -413,7 +417,7 @@ async def client_emergency_network_offline_bundle(
             raise HTTPException(status_code=409, detail="Emergency catalog is unavailable")
 
         profile_envelopes: list[dict[str, Any]] = []
-        for item in working_items:
+        for item in usable_items:
             reserve_id = str(item["id"])
             for chain_mode in item["modes"]:
                 profile_envelopes.append(

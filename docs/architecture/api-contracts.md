@@ -828,9 +828,13 @@ normal clients, or invited-user identity.
 `POST /api/client/emergency-network/offline-bundle` requires a normal app
 session and exact JSON `{ "manual_limited_network": boolean }`. It returns
 `pokrov-emergency-offline-bundle-v1` with one signed safe catalog and the exact
-signed profile envelope for every working reserve and advertised chain mode.
+signed profile envelope for every fresh or still-valid signed last-known-good
+reserve and advertised chain mode.
 The response is `Cache-Control: no-store`, contains 4–12 reserves and no more
 than 36 profiles, and fails closed on entitlement, RU/manual eligibility,
 catalog, crypto, topology, or profile errors. Each envelope is bound to the
 current install and expires no later than the active access, catalog,
 eligibility, or seven-day offline lease.
+Probe age remains visible as `working` versus `stale`, but it does not shorten
+an already signed catalog lease. Expired, unhealthy, unauthenticated, or
+unsigned material still fails closed.

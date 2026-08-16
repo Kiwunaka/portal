@@ -230,7 +230,8 @@ Emergency readiness is prepared only after the normal app-first session has
 proved `trial_premium` or `paid_unlimited`. The authenticated client may request
 `POST /api/client/emergency-network/offline-bundle`; the backend rechecks
 access plus RU/manual eligibility and returns a device-bound signed catalog and
-all working reserve/chain profiles. The client stores that response encrypted
+all fresh or still-valid signed last-known-good reserve/chain profiles. The
+client stores that response encrypted
 and may use it without the control plane until the earliest signed account,
 catalog, eligibility, or seven-day boundary. This is not an offline signup or
 fresh-device authorization path.

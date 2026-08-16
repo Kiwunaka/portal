@@ -174,7 +174,7 @@ def test_promoted_catalog_is_signed_bounded_and_served(session, crypto) -> None:
     ] for item in served["endpoints"])
 
 
-def test_profile_material_rejects_stale_probe_before_catalog_expiry(session, crypto) -> None:
+def test_profile_material_keeps_signed_lkg_usable_until_catalog_expiry(session, crypto) -> None:
     staged = _stage(
         session,
         crypto,
@@ -183,13 +183,14 @@ def test_profile_material_rejects_stale_probe_before_catalog_expiry(session, cry
     )
     promoted = promote_snapshot(session, snapshot_id=staged.id, crypto=crypto, now=NOW)
 
-    with pytest.raises(EmergencyCatalogServiceError, match="serving_endpoint_stale"):
-        read_serving_endpoint_material(
-            session,
-            stable_id=promoted.selected_stable_ids[0],
-            crypto=crypto,
-            now=NOW + timedelta(hours=25),
-        )
+    selected = read_serving_endpoint_material(
+        session,
+        stable_id=promoted.selected_stable_ids[0],
+        crypto=crypto,
+        now=NOW + timedelta(hours=25),
+    )
+
+    assert selected.endpoint.stable_id == promoted.selected_stable_ids[0]
 
 
 def test_operator_disable_stops_distribution_and_requires_explicit_reactivation(session, crypto) -> None:
@@ -271,6 +272,35 @@ def test_automatic_churn_over_half_is_blocked_without_replacing_active(session, 
     assert first.status == "active"
     assert second.status == "staging"
     assert second.rejection_code == "automatic_churn_limit"
+
+
+def test_automatic_churn_rolls_forward_after_active_fresh_quorum_is_lost(session, crypto) -> None:
+    first = _stage(
+        session,
+        crypto,
+        [_material(index) for index in range(1, 5)],
+        digest_char="2",
+    )
+    promote_snapshot(session, snapshot_id=first.id, crypto=crypto, now=NOW)
+    second = _stage(
+        session,
+        crypto,
+        [_material(index) for index in range(5, 9)],
+        digest_char="3",
+        now=NOW + timedelta(hours=25),
+    )
+
+    promoted = promote_snapshot(
+        session,
+        snapshot_id=second.id,
+        crypto=crypto,
+        now=NOW + timedelta(hours=25),
+    )
+
+    assert promoted.snapshot.status == "active"
+    assert promoted.replacement_fraction == 1.0
+    assert promoted.snapshot.operator_approved is False
+    assert first.status == "superseded"
 
 
 def test_operator_can_promote_large_churn_and_lkg_survives_active_tamper(session, crypto) -> None:
