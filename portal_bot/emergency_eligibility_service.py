@@ -134,3 +134,41 @@ def resolve_emergency_eligibility(
         country,
         row.expires_at,
     )
+
+
+def resolve_emergency_offline_bundle_eligibility(
+    session,
+    *,
+    account_id: str,
+    install_id: str,
+    access_state: str,
+    manual_limited_network: bool,
+    precache_only: bool,
+    now: datetime | None = None,
+) -> EmergencyEligibility:
+    """Permit paid/trial reserve precaching before control-plane loss.
+
+    ``entitlement_precache`` does not assert that the current network is in RU
+    or restricted. The client must keep that bundle hidden until a trusted RU
+    observation exists or the user explicitly enables limited-network mode.
+    """
+
+    current = _naive_utc(now or datetime.now(timezone.utc))
+    resolved = resolve_emergency_eligibility(
+        session,
+        account_id=account_id,
+        install_id=install_id,
+        access_state=access_state,
+        manual_limited_network=manual_limited_network,
+        now=current,
+    )
+    if resolved.eligible or not precache_only or not resolved.access_eligible:
+        return resolved
+    return EmergencyEligibility(
+        True,
+        True,
+        False,
+        "entitlement_precache",
+        resolved.country_code,
+        current + RU_CACHE_TTL,
+    )

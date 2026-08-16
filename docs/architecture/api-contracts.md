@@ -808,6 +808,10 @@ Admin APIs must keep payment, download, node, ticket, and user states audit-frie
   rate-limited by IP and code/install fingerprints. A valid unexpired one-time
   code creates a normal device session, enforces the account device limit, and
   cannot move an existing install between accounts.
+- Every authenticated client route that persists or signs device-scoped state
+  resolves `install_id` from the token's active `AccountDevice`. The legacy
+  `users.app_install_id` fallback applies only to compatibility bearers without
+  a `device_id` claim; a paired phone never inherits the owner's old install.
 - `GET /api/client/programs` returns public capabilities and owned
   applications. Application create/cancel is account-scoped; switch, research,
   and team-pack submissions require manual review, while affiliate is disabled.
@@ -826,12 +830,16 @@ normal clients, or invited-user identity.
 ## Emergency offline bundle
 
 `POST /api/client/emergency-network/offline-bundle` requires a normal app
-session and exact JSON `{ "manual_limited_network": boolean }`. It returns
+session and JSON `{ "manual_limited_network": boolean, "precache_only"?:
+boolean }`. `precache_only=true` may issue the signed device-bound bundle for
+an active trial/paid account before RU/manual network confirmation, but the
+catalog is marked `entitlement_precache` and remains activation-gated in the
+client. Older requests without that flag keep the RU/manual gate. It returns
 `pokrov-emergency-offline-bundle-v1` with one signed safe catalog and the exact
 signed profile envelope for every fresh or still-valid signed last-known-good
 reserve and advertised chain mode.
 The response is `Cache-Control: no-store`, contains 4–12 reserves and no more
-than 36 profiles, and fails closed on entitlement, RU/manual eligibility,
+than 36 profiles, and fails closed on entitlement, activation eligibility,
 catalog, crypto, topology, or profile errors. Each envelope is bound to the
 current install and expires no later than the active access, catalog,
 eligibility, or seven-day offline lease.

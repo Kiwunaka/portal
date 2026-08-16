@@ -269,6 +269,69 @@ def test_authenticated_trial_gets_signed_safe_catalog_and_exact_direct_profile(
             assert all("domain_resolver" not in proxies[tag] for tag in expected_detours)
 
 
+def test_paired_device_precaches_bundle_for_its_own_install_before_an_outage(
+    monkeypatch, tmp_path
+) -> None:
+    monkeypatch.setenv("EMERGENCY_CATALOG_SIGNING_KEY_ID", "emergency-test-v1")
+    monkeypatch.setenv("EMERGENCY_CATALOG_MATERIAL_KEY_B64", _b64url(b"m" * 32))
+    monkeypatch.setenv("EMERGENCY_CATALOG_SIGNING_PRIVATE_KEY_B64", _b64url(b"s" * 32))
+    api = _load_api(monkeypatch, tmp_path)
+    api._plan_device_limit = lambda _user: 5
+    crypto_module = importlib.import_module("emergency_catalog_crypto")
+    profile_module = importlib.import_module("emergency_profile_service")
+    crypto = crypto_module.EmergencyCatalogCrypto.from_environment()
+
+    with TestClient(api.app) as client:
+        owner_token = _start_trial(client, install_id="emergency-owner-install")
+        owner_headers = {"Authorization": f"Bearer {owner_token}"}
+        pairing = client.post(
+            "/api/client/device-pairing/codes",
+            headers=owner_headers,
+        )
+        assert pairing.status_code == 200, pairing.text
+        claimed = client.post(
+            "/api/client/device-pairing/claim",
+            json={
+                "code": pairing.json()["pairing"]["code"],
+                "install_id": "emergency-paired-install",
+                "device_name": "Huawei test",
+                "platform": "android",
+                "app_version": "1.0.13",
+            },
+        )
+        assert claimed.status_code == 200, claimed.text
+        paired_headers = {
+            "Authorization": f"Bearer {claimed.json()['access_token']}"
+        }
+
+        _install_owned_hops(api)
+        _stage_catalog(api, crypto)
+
+        normal = client.post(
+            "/api/client/emergency-network/offline-bundle",
+            headers=paired_headers,
+            json={"manual_limited_network": False},
+        )
+        assert normal.status_code == 403
+
+        precached = client.post(
+            "/api/client/emergency-network/offline-bundle",
+            headers=paired_headers,
+            json={
+                "manual_limited_network": False,
+                "precache_only": True,
+            },
+        )
+        assert precached.status_code == 200, precached.text
+        catalog = _decode_payload(precached.json()["catalogEnvelope"])
+        assert catalog["eligibility"]["source"] == "entitlement_precache"
+        assert catalog["device_binding"] == profile_module.emergency_device_binding(
+            "emergency-paired-install"
+        )
+        assert catalog["device_binding"] != profile_module.emergency_device_binding(
+            "emergency-owner-install"
+        )
+
 def test_emergency_profile_fails_closed_for_wrong_catalog_and_request_shape(monkeypatch, tmp_path) -> None:
     monkeypatch.setenv("EMERGENCY_CATALOG_SIGNING_KEY_ID", "emergency-test-v1")
     monkeypatch.setenv("EMERGENCY_CATALOG_MATERIAL_KEY_B64", _b64url(b"m" * 32))

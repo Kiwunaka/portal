@@ -94,3 +94,25 @@ required, GitHub digest/signing checks, deploy verify, signed catalog smoke,
   absent Russian LTE proof into PASS or authorize a real-BS badge.
 - Exact Huawei/RU-LTE, Windows clean TUN/DNS without Hiddify and the controlled
   synthetic firewall lab remain explicit post-release manual gates.
+
+### 2026-08-16 Huawei carrier follow-up
+
+- Exact production-signed Android `1.0.13+22` on the owner's Huawei tested the
+  signed offline catalog over Beeline LTE and the restored saved Wi-Fi. The
+  active snapshot exposed four of fourteen retained candidates because only
+  four were currently fresh and promotion-eligible; increasing the count with
+  failed or stale candidates is not an acceptable readiness fix.
+- All four active reserves timed out on both tested networks. The set lacked
+  useful failure-domain diversity: every active root used gRPC on port 4443.
+  Therefore real carrier readiness is `FAIL`, not a real-BS pass, and the
+  current catalog needs freshly verified roots across independently filtered
+  transports/ports/providers before emergency availability can be claimed.
+- The observed Android false-positive was fixed in the exact `1.0.13` source:
+  an offline emergency root must pass a non-VPN TCP preflight before Core/TUN
+  startup, and the app automatically tries the other signed compatible roots.
+  The exact Huawei rerun produced four bounded failures, no Core/TUN start, no
+  VPN transport, and an explicit `Ни один сохранённый резерв не доступен`
+  surface while the underlying LTE remained validated.
+- Retained local evidence is under
+  `E:\POKROV-ops-evidence\2026-08-16-account-emergency-bugs`; it is operator
+  evidence, not repository or public release material.

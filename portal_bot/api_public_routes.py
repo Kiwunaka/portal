@@ -28,7 +28,10 @@ try:
         read_serving_catalog,
         read_serving_endpoint_material,
     )
-    from .emergency_eligibility_service import resolve_emergency_eligibility
+    from .emergency_eligibility_service import (
+        resolve_emergency_eligibility,
+        resolve_emergency_offline_bundle_eligibility,
+    )
     from .emergency_profile_service import (
         EmergencyProfileError,
         build_emergency_singbox_config,
@@ -48,7 +51,10 @@ except ImportError:
         read_serving_catalog,
         read_serving_endpoint_material,
     )
-    from emergency_eligibility_service import resolve_emergency_eligibility
+    from emergency_eligibility_service import (
+        resolve_emergency_eligibility,
+        resolve_emergency_offline_bundle_eligibility,
+    )
     from emergency_profile_service import (
         EmergencyProfileError,
         build_emergency_singbox_config,
@@ -154,12 +160,18 @@ def _emergency_owned_outbound(*, user: Any, node: Any, tag: str) -> dict[str, An
     )
 
 
-def _observe_emergency_request_country(*, session: Any, user: Any, request: Request) -> None:
+def _observe_emergency_request_country(
+    *,
+    session: Any,
+    user: Any,
+    install_id: str,
+    request: Request,
+) -> None:
     country = observe_request_country(
         session,
         request=request,
         account_id=str(getattr(user, "account_id", "") or ""),
-        install_id=str(getattr(user, "app_install_id", "") or ""),
+        install_id=install_id,
     )
     if country:
         session.commit()
@@ -179,6 +191,7 @@ def _build_emergency_profile_envelope(
     foreign: Any | None,
     owned_ru: Any | None,
     supported_modes: list[str],
+    install_id: str,
 ) -> dict[str, Any]:
     try:
         selected = read_serving_endpoint_material(
@@ -217,7 +230,7 @@ def _build_emergency_profile_envelope(
             catalog_revision=str(selected.catalog["catalog_version"]),
             reserve_id=reserve_id,
             chain_mode=chain_mode,
-            install_id=str(getattr(user, "app_install_id", "") or ""),
+            install_id=install_id,
             access_state=access_state,
             access_expiry=access_expiry,
             eligibility=eligibility,
@@ -235,9 +248,15 @@ async def client_emergency_network_catalog(
     manual_limited_network: bool = Query(default=False),
     x_telegram_init_data: str = Header(default=""),
 ) -> dict[str, Any]:
-    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    s, user, auth_user = _client_user_session(request, x_telegram_init_data)
     try:
-        _observe_emergency_request_country(session=s, user=user, request=request)
+        install_id = _client_authenticated_install_id(s, user=user, auth_user=auth_user)
+        _observe_emergency_request_country(
+            session=s,
+            user=user,
+            install_id=install_id,
+            request=request,
+        )
         access_policy = _build_reconciled_access_policy(
             session=s,
             user=user,
@@ -247,7 +266,7 @@ async def client_emergency_network_catalog(
         eligibility = resolve_emergency_eligibility(
             s,
             account_id=str(getattr(user, "account_id", "") or ""),
-            install_id=str(getattr(user, "app_install_id", "") or ""),
+            install_id=install_id,
             access_state=str(access_policy.get("access_state") or ""),
             manual_limited_network=bool(manual_limited_network),
         )
@@ -299,7 +318,7 @@ async def client_emergency_network_catalog(
             signed_payload = build_safe_catalog_payload(
                 catalog=payload,
                 endpoint_rows=row_by_id,
-                install_id=str(getattr(user, "app_install_id", "") or ""),
+                install_id=install_id,
                 access_state=str(access_policy.get("access_state") or ""),
                 access_expiry=getattr(user, "expiry_at", None),
                 eligibility=eligibility,
@@ -338,15 +357,23 @@ async def client_emergency_network_offline_bundle(
         raise HTTPException(status_code=422, detail="Emergency bundle request is invalid")
     if (
         not isinstance(body, dict)
-        or set(body) != {"manual_limited_network"}
+        or not set(body).issubset({"manual_limited_network", "precache_only"})
+        or "manual_limited_network" not in body
         or not isinstance(body.get("manual_limited_network"), bool)
+        or ("precache_only" in body and not isinstance(body.get("precache_only"), bool))
     ):
         raise HTTPException(status_code=422, detail="Emergency bundle request is invalid")
 
     response.headers["Cache-Control"] = "no-store"
-    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    s, user, auth_user = _client_user_session(request, x_telegram_init_data)
     try:
-        _observe_emergency_request_country(session=s, user=user, request=request)
+        install_id = _client_authenticated_install_id(s, user=user, auth_user=auth_user)
+        _observe_emergency_request_country(
+            session=s,
+            user=user,
+            install_id=install_id,
+            request=request,
+        )
         access_policy = _build_reconciled_access_policy(
             session=s,
             user=user,
@@ -355,12 +382,13 @@ async def client_emergency_network_offline_bundle(
         )
         access_state = str(access_policy.get("access_state") or "")
         access_expiry = getattr(user, "expiry_at", None)
-        eligibility = resolve_emergency_eligibility(
+        eligibility = resolve_emergency_offline_bundle_eligibility(
             s,
             account_id=str(getattr(user, "account_id", "") or ""),
-            install_id=str(getattr(user, "app_install_id", "") or ""),
+            install_id=install_id,
             access_state=access_state,
             manual_limited_network=body["manual_limited_network"],
+            precache_only=bool(body.get("precache_only", False)),
         )
         if not eligibility.eligible:
             raise HTTPException(status_code=403, detail="Emergency network is not available")
@@ -396,7 +424,7 @@ async def client_emergency_network_offline_bundle(
             catalog_payload = build_safe_catalog_payload(
                 catalog=catalog,
                 endpoint_rows=row_by_id,
-                install_id=str(getattr(user, "app_install_id", "") or ""),
+                install_id=install_id,
                 access_state=access_state,
                 access_expiry=access_expiry,
                 eligibility=eligibility,
@@ -437,6 +465,7 @@ async def client_emergency_network_offline_bundle(
                             foreign=foreign,
                             owned_ru=owned_ru,
                             supported_modes=supported_modes,
+                            install_id=install_id,
                         ),
                     }
                 )
@@ -467,9 +496,15 @@ async def client_emergency_network_profile(
     if not isinstance(body.get("manual_limited_network"), bool):
         raise HTTPException(status_code=422, detail="Emergency profile request is invalid")
 
-    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    s, user, auth_user = _client_user_session(request, x_telegram_init_data)
     try:
-        _observe_emergency_request_country(session=s, user=user, request=request)
+        install_id = _client_authenticated_install_id(s, user=user, auth_user=auth_user)
+        _observe_emergency_request_country(
+            session=s,
+            user=user,
+            install_id=install_id,
+            request=request,
+        )
         access_policy = _build_reconciled_access_policy(
             session=s,
             user=user,
@@ -479,7 +514,7 @@ async def client_emergency_network_profile(
         eligibility = resolve_emergency_eligibility(
             s,
             account_id=str(getattr(user, "account_id", "") or ""),
-            install_id=str(getattr(user, "app_install_id", "") or ""),
+            install_id=install_id,
             access_state=str(access_policy.get("access_state") or ""),
             manual_limited_network=body["manual_limited_network"],
         )
@@ -504,6 +539,7 @@ async def client_emergency_network_profile(
             foreign=foreign,
             owned_ru=owned_ru,
             supported_modes=supported_modes,
+            install_id=install_id,
         )
         return {
             "schemaVersion": "pokrov-emergency-profile-response-v1",
@@ -2074,6 +2110,7 @@ def _smart_connect_shortlist(
     transport_profile: str,
     rollout_config: dict[str, Any],
     profile_revision: str,
+    install_id: str,
     preferred_node_code: str = "",
 ) -> dict[str, Any]:
     now = _utcnow()
@@ -2109,7 +2146,6 @@ def _smart_connect_shortlist(
     shortlist_limit = 1 if user_uses_free_pool(user) else SMART_CONNECT_SHORTLIST_LIMIT
     shortlist_nodes = eligible[:shortlist_limit]
     shortlist_codes = [str(getattr(node, "code", "") or "").strip().lower() for node in shortlist_nodes]
-    install_id = str(getattr(user, "app_install_id", "") or "").strip()
     latest_sample = _smart_connect_latest_sample(session, user=user, install_id=install_id)
     preferred_node_code = str(latest_sample.get("selected_node_code") or "").strip().lower() or None
     if preferred_node_code and preferred_node_code not in shortlist_codes:
@@ -2206,6 +2242,41 @@ def _client_user_session(request: Request, x_telegram_init_data: str) -> tuple[A
     except Exception:
         s.close()
         raise
+
+
+def _client_authenticated_install_id(
+    session: Any,
+    *,
+    user: User,
+    auth_user: dict[str, Any],
+) -> str:
+    """Resolve the install bound to the authenticated access token.
+
+    Device-pairing sessions belong to an ``AccountDevice`` and must never
+    inherit the legacy install id stored on whichever User row represents the
+    canonical account. Legacy stateless tokens have no device claim and retain
+    the bounded compatibility fallback.
+    """
+
+    account_id = str(getattr(user, "account_id", "") or "").strip()
+    device_id = str((auth_user or {}).get("device_id") or "").strip()
+    if device_id:
+        device = (
+            session.query(AccountDevice)
+            .filter(
+                AccountDevice.id == device_id,
+                AccountDevice.account_id == account_id,
+                AccountDevice.state == "active",
+                AccountDevice.revoked_at.is_(None),
+            )
+            .first()
+        )
+        install_id = str(getattr(device, "install_id", "") or "").strip()
+        if install_id:
+            return install_id
+        raise HTTPException(status_code=403, detail="Authenticated device is unavailable")
+
+    return str(getattr(user, "app_install_id", "") or "").strip()
 
 
 def _client_event_meta(value: dict[str, Any] | None) -> str:
@@ -2772,10 +2843,10 @@ async def client_locations_catalog(
     x_portal_carrier: str = Header(default=""),
 ) -> dict[str, Any]:
     del platform
-    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    s, user, auth_user = _client_user_session(request, x_telegram_init_data)
     try:
         rollout_config = load_network_rollout_config(session=s)
-        install_id = str(getattr(user, "app_install_id", "") or "").strip() or None
+        install_id = _client_authenticated_install_id(s, user=user, auth_user=auth_user)
         client_policy = app_first_service.build_client_policy(
             session=s,
             user=user,
@@ -2794,6 +2865,7 @@ async def client_locations_catalog(
             transport_profile=transport_profile,
             rollout_config=rollout_config,
             profile_revision=str(client_policy.get("profile_revision") or ""),
+            install_id=install_id,
         )
 
         grouped: dict[str, dict[str, Any]] = {}
@@ -2892,6 +2964,21 @@ async def client_subscription(request: Request, x_telegram_init_data: str = Head
         days_left = _client_days_left(expiry)
         if access_state == "trial_premium":
             days_left = min(days_left, int(APP_TRIAL_DEFAULT_DAYS))
+        linked_telegram_id = _linked_telegram_id(user)
+        telegram_native = bool(
+            not _is_app_or_email_account(user)
+            and int(getattr(user, "tg_id", 0) or 0) > 0
+        )
+        telegram_linked = bool(linked_telegram_id or telegram_native)
+        telegram_username = str(
+            getattr(
+                user,
+                "username" if telegram_native else "linked_telegram_username",
+                "",
+            )
+            or ""
+        ).strip()
+        email_identity = _verified_email_identity_for_account_family(s, user=user)
         return {
             "lane": _client_subscription_lane(access_state),
             "accessState": access_state,
@@ -2912,6 +2999,22 @@ async def client_subscription(request: Request, x_telegram_init_data: str = Head
                 ),
             },
             "currentPlanCode": str(getattr(user, "current_plan_code", "") or "").strip() or None,
+            "identities": {
+                "telegram": {
+                    "linked": telegram_linked,
+                    "username": telegram_username or None,
+                    "source": "native" if telegram_native else ("linked" if linked_telegram_id else None),
+                },
+                "email": {
+                    "linked": email_identity is not None,
+                    "address": (
+                        str(getattr(email_identity, "email", "") or "").strip() or None
+                        if email_identity is not None
+                        else None
+                    ),
+                    "verified": bool(email_identity and getattr(email_identity, "is_verified", False)),
+                },
+            },
         }
     finally:
         s.close()
@@ -3546,7 +3649,7 @@ async def client_managed_profile(
         _maybe_downgrade_expired_to_free(s, user)
         _ensure_free_cycle_state_persisted(s, user)
         rollout_config = load_network_rollout_config(session=s)
-        install_id = str(getattr(user, "app_install_id", "") or "").strip() or None
+        install_id = _client_authenticated_install_id(s, user=user, auth_user=auth_user)
         client_policy = app_first_service.build_client_policy(
             session=s,
             user=user,
@@ -3565,6 +3668,7 @@ async def client_managed_profile(
             transport_profile=transport_profile,
             rollout_config=rollout_config,
             profile_revision=str(client_policy.get("profile_revision") or ""),
+            install_id=install_id,
             preferred_node_code=requested_node_code,
         )
         sync_ok = await _sync_control_panel_access(user=user)
@@ -3725,10 +3829,11 @@ async def client_nodes_candidates(
         _maybe_downgrade_expired_to_free(s, user)
         _ensure_free_cycle_state_persisted(s, user)
         rollout_config = load_network_rollout_config(session=s)
+        install_id = _client_authenticated_install_id(s, user=user, auth_user=auth_user)
         client_policy = app_first_service.build_client_policy(
             session=s,
             user=user,
-            install_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
+            install_id=install_id,
             carrier=_request_carrier_header(x_portal_carrier),
             rollout_config=rollout_config,
         )
@@ -3743,6 +3848,7 @@ async def client_nodes_candidates(
             transport_profile=resolved_profile,
             rollout_config=rollout_config,
             profile_revision=str(profile_revision or client_policy.get("profile_revision") or ""),
+            install_id=install_id,
         )
         return {
             "ok": True,
@@ -3774,7 +3880,7 @@ async def client_nodes_select(
         user = s.query(User).filter(User.tg_id == tg_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        install_id = str(getattr(user, "app_install_id", "") or "").strip()
+        install_id = _client_authenticated_install_id(s, user=user, auth_user=auth_user)
         if not install_id:
             raise HTTPException(status_code=400, detail="install_id is required")
         if str(os.getenv("APP_NODES_SELECT_ENDPOINT", "true")).strip().lower() in {"0", "false", "no", "off"}:
@@ -3813,6 +3919,7 @@ async def client_nodes_select(
             transport_profile=resolved_profile,
             rollout_config=rollout_config,
             profile_revision=str(payload.profile_revision or client_policy.get("profile_revision") or ""),
+            install_id=install_id,
             preferred_node_code=selected_node_code if mode == "manual" else "",
         )
         shortlist_codes = {
@@ -4406,7 +4513,7 @@ async def client_nodes_latency_samples(
         user = s.query(User).filter(User.tg_id == tg_id).first()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        install_id = str(getattr(user, "app_install_id", "") or "").strip()
+        install_id = _client_authenticated_install_id(s, user=user, auth_user=auth_user)
         if not install_id:
             raise HTTPException(status_code=400, detail="install_id is required")
 
@@ -4431,6 +4538,7 @@ async def client_nodes_latency_samples(
             transport_profile=transport_profile,
             rollout_config=rollout_config,
             profile_revision=str(payload.profile_revision or client_policy.get("profile_revision") or ""),
+            install_id=install_id,
         )
         allowed_codes = {
             str(item.get("code") or "").strip().lower()
@@ -4490,7 +4598,7 @@ def _client_warp_context(request: Request, x_telegram_init_data: str) -> tuple[A
     if not user:
         s.close()
         raise HTTPException(status_code=404, detail="User not found")
-    install_id = str(getattr(user, "app_install_id", "") or "").strip()
+    install_id = _client_authenticated_install_id(s, user=user, auth_user=auth_user)
     rollout_config = load_network_rollout_config(session=s)
     policy = public_warp_policy_for_user(
         s,
@@ -4752,9 +4860,20 @@ async def client_telegram_link_start(request: Request, x_telegram_init_data: str
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
         linked_id = _linked_telegram_id(user)
-        linked_username = str(getattr(user, "linked_telegram_username", "") or "").strip()
+        telegram_native = bool(
+            not _is_app_or_email_account(user)
+            and int(getattr(user, "tg_id", 0) or 0) > 0
+        )
+        linked_username = str(
+            getattr(
+                user,
+                "username" if telegram_native else "linked_telegram_username",
+                "",
+            )
+            or ""
+        ).strip()
         start_code = ""
-        if not linked_id:
+        if not linked_id and not telegram_native:
             start_code = app_first_service.create_app_telegram_start_code(
                 s,
                 account_tg_id=int(user.tg_id),
@@ -4765,8 +4884,8 @@ async def client_telegram_link_start(request: Request, x_telegram_init_data: str
         channel_username = (PUBLIC_CHANNEL or "").lstrip("@").strip()
         return {
             "ok": True,
-            "linked": bool(linked_id),
-            "linked_telegram_id": linked_id or None,
+            "linked": bool(linked_id or telegram_native),
+            "linked_telegram_id": linked_id or (int(user.tg_id) if telegram_native else None),
             "linked_telegram_username": linked_username or None,
             "start_code": start_code,
             "bot_url": f"https://t.me/{bot_username}?start={start_code}" if start_code else f"https://t.me/{bot_username}",

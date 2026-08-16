@@ -363,6 +363,10 @@ def test_client_account_devices_notifications_push_and_subscription_contract(mon
     assert sub_body["renewUrl"].startswith("https://pay.pokrov.space/checkout/")
     assert sub_body["plans"]
     assert {"id", "title", "price"} <= set(sub_body["plans"][0])
+    assert sub_body["identities"] == {
+        "telegram": {"linked": False, "username": None, "source": None},
+        "email": {"linked": False, "address": None, "verified": False},
+    }
 
     devices = client.get("/api/client/devices", headers=headers)
     assert devices.status_code == 200, devices.text
@@ -470,6 +474,43 @@ def test_client_account_devices_notifications_push_and_subscription_contract(mon
     assert push_body["ok"] is True
     assert push_body["provider"] == "poll"
     assert push_body["tokenHash"] == hashlib.sha256(b"local-test-token").hexdigest()
+
+
+def test_native_telegram_account_is_already_linked_in_client_profile(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    _seed_rollout(api)
+    _add_node(api, code="nl-ams-01")
+
+    started = _start_trial(client, install_id="native-telegram-device")
+    headers = _auth_headers(started)
+    from models import User
+
+    with api.SessionLocal() as db:
+        user = db.query(User).filter(User.app_install_id == "native-telegram-device").one()
+        user.is_app_user = False
+        user.username = "pokrov_owner"
+        db.commit()
+
+    subscription = client.get("/api/client/subscription", headers=headers)
+    assert subscription.status_code == 200, subscription.text
+    identities = subscription.json()["identities"]
+    assert identities["telegram"] == {
+        "linked": True,
+        "username": "pokrov_owner",
+        "source": "native",
+    }
+    assert identities["email"] == {
+        "linked": False,
+        "address": None,
+        "verified": False,
+    }
+
+    link = client.post("/api/client/telegram/link", headers=headers)
+    assert link.status_code == 200, link.text
+    assert link.json()["linked"] is True
+    assert link.json()["start_code"] == ""
+    assert "?start=" not in link.json()["bot_url"]
 
 
 def test_confirmed_incident_admin_flow_previews_and_applies_exact_compensation(
