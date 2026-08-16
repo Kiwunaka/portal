@@ -424,9 +424,11 @@ Required order:
 6. restart/verify API and worker with distribution still disabled, inspect the
    redacted admin status, then explicitly enable the worker and stage/probe one
    snapshot;
-7. promote only 4–12 fresh exact-probed candidates with the bounded safe-delta
-   preview. Start the client cohort only after signed readback and synthetic
-   route proof.
+7. promote only a 4–12 member rolling pool of fresh exact-probed candidates
+   with the bounded safe-delta preview. Current-revision successes lead; recent
+   retained successes may fill empty slots for at most 24 hours, with stable
+   material identity and unique-host checks. Start the client cohort only after
+   signed readback and synthetic route proof.
 
 Do not copy private signing or material keys into the repository, release
 artifacts, logs or operator browser. Before destructive server recovery, retain

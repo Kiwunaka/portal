@@ -12,7 +12,7 @@
 | Repository lane | `platform` |
 | Working branch or worktree | scoped platform branch after WO-001 |
 | Intended promotion state | platform `master` after review; deploy only in WO-007 |
-| Created / updated | `2026-08-15` |
+| Created / updated | `2026-08-15` / `2026-08-16` |
 
 ## Goal
 
@@ -47,10 +47,12 @@ API contracts and production deployment playbook.
 ## Acceptance Oracle
 
 - Authoritative boundary: active signed snapshot read by API materialization.
-- Success observation: a staging snapshot with 4–12 healthy unique endpoints
-  promotes atomically and can roll back to one of three retained predecessors.
-- Negative cases: fewer than four healthy, >50% automatic churn, stale signature,
-  probe mismatch or partial write never replaces active.
+- Success observation: a staging revision plus recent exact successes form an
+  atomic 4–12 unique-host pool and can roll back to one of three retained
+  predecessors without contaminating the restored set with newer history.
+- Negative cases: fewer than four fresh exact successes across the bounded
+  pool, >50% automatic churn below a saturated 12-member pool, stale signature,
+  stale/future probe, material mismatch or partial write never replaces active.
 - Proof mechanism: migration/model tests, worker integration tests, signature
   tamper tests, deterministic payload/auth probe fixture and rollback smoke.
 - Limitations: backend probe is not physical-device or RU-BS proof.
@@ -71,8 +73,9 @@ snapshot negative smoke, diff/secret check and retained staging/rollback report.
 - Current WO status: `done`
 - Dependency: WO-001
 - Implemented: encrypted endpoint records, versioned staging, bounded exact-Core
-  probes, 4–12 promotion, >50% automatic churn stop, signed active catalog,
-  three retained LKG candidates, rollback clone and env-gated worker.
+  probes, rolling 24-hour 4–12 promotion, conditional >50% automatic churn stop,
+  signed active catalog, three retained LKG candidates, exact rollback clone and
+  env-gated worker.
 - Proof: focused Emergency/worker/migration/crypto/tamper tests pass. Production
   signing material exists server-side, while worker remains disabled until
   runtime deploy and exact probe canary.

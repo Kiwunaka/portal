@@ -120,7 +120,9 @@ def test_crypto_encrypts_and_signs_with_tamper_rejection(crypto) -> None:
         crypto.decrypt_json(ciphertext[:-2] + "xx")
 
 
-def test_staging_stores_only_encrypted_material_and_is_recently_idempotent(session, crypto) -> None:
+def test_staging_stores_only_encrypted_material_and_is_recently_idempotent(
+    session, crypto
+) -> None:
     materials = [_material(index) for index in range(1, 5)]
 
     first = _stage(session, crypto, materials, digest_char="a")
@@ -134,7 +136,11 @@ def test_staging_stores_only_encrypted_material_and_is_recently_idempotent(sessi
         expected_payload_sha256=EXPECTED_PAYLOAD_SHA256,
         now=NOW + timedelta(minutes=10),
     )
-    rows = session.query(models.EmergencyCatalogEndpoint).filter_by(snapshot_id=first.id).all()
+    rows = (
+        session.query(models.EmergencyCatalogEndpoint)
+        .filter_by(snapshot_id=first.id)
+        .all()
+    )
 
     assert second.created is False
     assert second.snapshot.id == first.id
@@ -144,11 +150,15 @@ def test_staging_stores_only_encrypted_material_and_is_recently_idempotent(sessi
     assert all(row.material_hash not in row.material_ciphertext for row in rows)
 
 
-def test_promotion_requires_four_unique_fresh_authenticated_non_ru_hosts(session, crypto) -> None:
+def test_promotion_requires_four_unique_fresh_authenticated_non_ru_hosts(
+    session, crypto
+) -> None:
     duplicate_host = [_material(index, host_slot=1) for index in range(1, 5)]
     snapshot = _stage(session, crypto, duplicate_host, digest_char="b")
 
-    with pytest.raises(EmergencyCatalogServiceError, match="insufficient_healthy_endpoints"):
+    with pytest.raises(
+        EmergencyCatalogServiceError, match="insufficient_healthy_endpoints"
+    ):
         promote_snapshot(session, snapshot_id=snapshot.id, crypto=crypto, now=NOW)
 
     assert snapshot.status == "staging"
@@ -159,7 +169,9 @@ def test_promoted_catalog_is_signed_bounded_and_served(session, crypto) -> None:
     materials = [_material(index) for index in range(1, 7)]
     snapshot = _stage(session, crypto, materials, digest_char="c")
 
-    promoted = promote_snapshot(session, snapshot_id=snapshot.id, crypto=crypto, now=NOW)
+    promoted = promote_snapshot(
+        session, snapshot_id=snapshot.id, crypto=crypto, now=NOW
+    )
     served = read_serving_catalog(session, crypto=crypto, now=NOW + timedelta(hours=1))
 
     assert promoted.snapshot.status == "active"
@@ -167,14 +179,20 @@ def test_promoted_catalog_is_signed_bounded_and_served(session, crypto) -> None:
     assert len(promoted.selected_stable_ids) == 6
     assert served["catalog_version"] == snapshot.catalog_version
     assert len(served["endpoints"]) == 6
-    assert all(item["supported_chain_modes"] == [
-        "reserve_direct",
-        "reserve_foreign",
-        "reserve_ru_foreign",
-    ] for item in served["endpoints"])
+    assert all(
+        item["supported_chain_modes"]
+        == [
+            "reserve_direct",
+            "reserve_foreign",
+            "reserve_ru_foreign",
+        ]
+        for item in served["endpoints"]
+    )
 
 
-def test_profile_material_keeps_signed_lkg_usable_until_catalog_expiry(session, crypto) -> None:
+def test_profile_material_keeps_signed_lkg_usable_until_catalog_expiry(
+    session, crypto
+) -> None:
     staged = _stage(
         session,
         crypto,
@@ -193,8 +211,12 @@ def test_profile_material_keeps_signed_lkg_usable_until_catalog_expiry(session, 
     assert selected.endpoint.stable_id == promoted.selected_stable_ids[0]
 
 
-def test_operator_disable_stops_distribution_and_requires_explicit_reactivation(session, crypto) -> None:
-    first = _stage(session, crypto, [_material(index) for index in range(1, 5)], digest_char="8")
+def test_operator_disable_stops_distribution_and_requires_explicit_reactivation(
+    session, crypto
+) -> None:
+    first = _stage(
+        session, crypto, [_material(index) for index in range(1, 5)], digest_char="8"
+    )
     promote_snapshot(session, snapshot_id=first.id, crypto=crypto, now=NOW)
     second = _stage(
         session,
@@ -219,17 +241,23 @@ def test_operator_disable_stops_distribution_and_requires_explicit_reactivation(
     assert delta == {
         "distribution_state": "active",
         "current_count": 4,
-        "next_count": 4,
-        "retained_count": 2,
-        "removed_count": 2,
+        "next_count": 6,
+        "retained_count": 4,
+        "removed_count": 0,
         "added_count": 2,
-        "replacement_percent": 50.0,
+        "replacement_percent": 0.0,
         "automatic_limit_exceeded": False,
     }
     assert disabled.status == "disabled"
-    with pytest.raises(EmergencyCatalogServiceError, match="catalog_distribution_disabled"):
-        read_serving_catalog(session, crypto=crypto, now=NOW + timedelta(hours=1, minutes=2))
-    with pytest.raises(EmergencyCatalogServiceError, match="catalog_distribution_disabled"):
+    with pytest.raises(
+        EmergencyCatalogServiceError, match="catalog_distribution_disabled"
+    ):
+        read_serving_catalog(
+            session, crypto=crypto, now=NOW + timedelta(hours=1, minutes=2)
+        )
+    with pytest.raises(
+        EmergencyCatalogServiceError, match="catalog_distribution_disabled"
+    ):
         promote_snapshot(
             session,
             snapshot_id=second.id,
@@ -248,11 +276,16 @@ def test_operator_disable_stops_distribution_and_requires_explicit_reactivation(
     assert first.status == "superseded"
 
 
-def test_automatic_churn_over_half_is_blocked_without_replacing_active(session, crypto) -> None:
+def test_automatic_churn_over_half_is_blocked_without_replacing_active(
+    session, crypto
+) -> None:
     first_materials = [_material(index) for index in range(1, 5)]
     first = _stage(session, crypto, first_materials, digest_char="d")
     promote_snapshot(session, snapshot_id=first.id, crypto=crypto, now=NOW)
-    next_materials = [_material(index) for index in (1, 5, 6, 7)]
+    next_materials = [
+        _material(index, host_slot=host_slot)
+        for index, host_slot in zip(range(5, 9), range(1, 5), strict=True)
+    ]
     second = _stage(
         session,
         crypto,
@@ -274,7 +307,98 @@ def test_automatic_churn_over_half_is_blocked_without_replacing_active(session, 
     assert second.rejection_code == "automatic_churn_limit"
 
 
-def test_automatic_churn_rolls_forward_after_active_fresh_quorum_is_lost(session, crypto) -> None:
+def test_promotion_accumulates_recent_exact_probes_across_refreshes(
+    session, crypto
+) -> None:
+    historical = _stage(
+        session,
+        crypto,
+        [_material(index) for index in range(1, 9)],
+        digest_char="6",
+    )
+    current = _stage(
+        session,
+        crypto,
+        [_material(index) for index in range(9, 13)],
+        digest_char="7",
+        now=NOW + timedelta(hours=1),
+    )
+
+    promoted = promote_snapshot(
+        session,
+        snapshot_id=current.id,
+        crypto=crypto,
+        now=NOW + timedelta(hours=1),
+    )
+    served = read_serving_catalog(session, crypto=crypto, now=NOW + timedelta(hours=1))
+
+    assert historical.status == "staging"
+    assert promoted.snapshot.active_endpoint_count == 12
+    assert set(promoted.selected_stable_ids) == {
+        _material(index).stable_id for index in range(1, 13)
+    }
+    assert len(served["endpoints"]) == 12
+
+
+def test_promotion_does_not_carry_expired_probe_history(session, crypto) -> None:
+    _stage(
+        session,
+        crypto,
+        [_material(index) for index in range(1, 5)],
+        digest_char="a",
+        now=NOW - timedelta(hours=25),
+    )
+    current = _stage(
+        session,
+        crypto,
+        [_material(5)],
+        digest_char="b",
+        now=NOW,
+    )
+
+    with pytest.raises(
+        EmergencyCatalogServiceError, match="insufficient_healthy_endpoints"
+    ):
+        promote_snapshot(session, snapshot_id=current.id, crypto=crypto, now=NOW)
+
+    assert current.status == "staging"
+    assert current.healthy_count == 1
+
+
+def test_saturated_verified_pool_can_replace_a_smaller_fresh_catalog(
+    session, crypto
+) -> None:
+    first = _stage(
+        session,
+        crypto,
+        [_material(index) for index in range(1, 5)],
+        digest_char="8",
+    )
+    promote_snapshot(session, snapshot_id=first.id, crypto=crypto, now=NOW)
+    current = _stage(
+        session,
+        crypto,
+        [_material(index) for index in range(20, 32)],
+        digest_char="9",
+        now=NOW + timedelta(hours=1),
+    )
+
+    promoted = promote_snapshot(
+        session,
+        snapshot_id=current.id,
+        crypto=crypto,
+        now=NOW + timedelta(hours=1),
+    )
+
+    assert promoted.snapshot.active_endpoint_count == 12
+    assert promoted.replacement_fraction == 1.0
+    assert promoted.snapshot.operator_approved is False
+    assert first.status == "superseded"
+
+
+def test_automatic_churn_rolls_forward_after_active_fresh_quorum_is_lost(
+    session, crypto
+) -> None:
     first = _stage(
         session,
         crypto,
@@ -303,8 +427,12 @@ def test_automatic_churn_rolls_forward_after_active_fresh_quorum_is_lost(session
     assert first.status == "superseded"
 
 
-def test_operator_can_promote_large_churn_and_lkg_survives_active_tamper(session, crypto) -> None:
-    first = _stage(session, crypto, [_material(index) for index in range(1, 5)], digest_char="f")
+def test_operator_can_promote_large_churn_and_lkg_survives_active_tamper(
+    session, crypto
+) -> None:
+    first = _stage(
+        session, crypto, [_material(index) for index in range(1, 5)], digest_char="f"
+    )
     promote_snapshot(session, snapshot_id=first.id, crypto=crypto, now=NOW)
     second = _stage(
         session,
@@ -330,8 +458,12 @@ def test_operator_can_promote_large_churn_and_lkg_survives_active_tamper(session
     assert served["catalog_version"] == first.catalog_version
 
 
-def test_one_step_rollback_reissues_retained_snapshot_as_new_version(session, crypto) -> None:
-    first = _stage(session, crypto, [_material(index) for index in range(1, 5)], digest_char="2")
+def test_one_step_rollback_reissues_retained_snapshot_as_new_version(
+    session, crypto
+) -> None:
+    first = _stage(
+        session, crypto, [_material(index) for index in range(1, 5)], digest_char="2"
+    )
     promote_snapshot(session, snapshot_id=first.id, crypto=crypto, now=NOW)
     second = _stage(
         session,
@@ -340,7 +472,9 @@ def test_one_step_rollback_reissues_retained_snapshot_as_new_version(session, cr
         digest_char="3",
         now=NOW + timedelta(hours=1),
     )
-    promote_snapshot(session, snapshot_id=second.id, crypto=crypto, now=NOW + timedelta(hours=1))
+    promote_snapshot(
+        session, snapshot_id=second.id, crypto=crypto, now=NOW + timedelta(hours=1)
+    )
 
     assert [item["snapshot_id"] for item in rollback_candidates(session)] == [first.id]
     rolled_back = rollback_to_snapshot(
@@ -353,18 +487,25 @@ def test_one_step_rollback_reissues_retained_snapshot_as_new_version(session, cr
 
     assert rolled_back.snapshot.status == "active"
     assert rolled_back.snapshot.rollback_of_snapshot_id == first.id
-    assert rolled_back.snapshot.catalog_version not in {first.catalog_version, second.catalog_version}
+    assert rolled_back.snapshot.catalog_version not in {
+        first.catalog_version,
+        second.catalog_version,
+    }
     assert {item["stable_id"] for item in served["endpoints"]} == {
         item.stable_id for item in [_material(index) for index in range(1, 5)]
     }
 
 
-def test_rollback_reissues_only_the_endpoints_signed_into_the_target(session, crypto) -> None:
+def test_rollback_reissues_only_the_endpoints_signed_into_the_target(
+    session, crypto
+) -> None:
     materials = [_material(index) for index in range(1, 14)]
     first = _stage(session, crypto, materials, digest_char="4")
     promoted = promote_snapshot(session, snapshot_id=first.id, crypto=crypto, now=NOW)
     retained_ids = set(promoted.selected_stable_ids)
-    omitted_id = next(item.stable_id for item in materials if item.stable_id not in retained_ids)
+    omitted_id = next(
+        item.stable_id for item in materials if item.stable_id not in retained_ids
+    )
     omitted = (
         session.query(models.EmergencyCatalogEndpoint)
         .filter_by(snapshot_id=first.id, stable_id=omitted_id)
@@ -398,12 +539,15 @@ def test_rollback_reissues_only_the_endpoints_signed_into_the_target(session, cr
     assert omitted_id not in retained_ids
 
 
-def test_legacy_sqlite_migration_creates_emergency_tables_idempotently(tmp_path) -> None:
+def test_legacy_sqlite_migration_creates_emergency_tables_idempotently(
+    tmp_path,
+) -> None:
     engine = create_engine(f"sqlite:///{(tmp_path / 'legacy.db').as_posix()}")
     legacy_tables = [
         table
         for table in models.Base.metadata.sorted_tables
-        if table.name not in {
+        if table.name
+        not in {
             "emergency_catalog_snapshots",
             "emergency_catalog_endpoints",
             "emergency_eligibility_cache",
@@ -419,16 +563,18 @@ def test_legacy_sqlite_migration_creates_emergency_tables_idempotently(tmp_path)
         "emergency_catalog_snapshots",
         "emergency_catalog_endpoints",
         "emergency_eligibility_cache",
-    }.issubset(
-        schema.get_table_names()
-    )
-    assert {column["name"] for column in schema.get_columns("emergency_catalog_snapshots")} >= {
+    }.issubset(schema.get_table_names())
+    assert {
+        column["name"] for column in schema.get_columns("emergency_catalog_snapshots")
+    } >= {
         "catalog_ciphertext",
         "signature_b64",
         "rollback_of_snapshot_id",
         "expires_at",
     }
-    assert {column["name"] for column in schema.get_columns("emergency_catalog_endpoints")} >= {
+    assert {
+        column["name"] for column in schema.get_columns("emergency_catalog_endpoints")
+    } >= {
         "material_ciphertext",
         "endpoint_host_hash",
         "authenticated",
@@ -438,7 +584,9 @@ def test_legacy_sqlite_migration_creates_emergency_tables_idempotently(tmp_path)
     engine.dispose()
 
 
-def test_eligibility_is_only_trial_paid_plus_cached_ru_or_explicit_manual(session) -> None:
+def test_eligibility_is_only_trial_paid_plus_cached_ru_or_explicit_manual(
+    session,
+) -> None:
     denied = resolve_emergency_eligibility(
         session,
         account_id="account-1",

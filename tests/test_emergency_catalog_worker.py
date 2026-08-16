@@ -87,7 +87,9 @@ def crypto() -> EmergencyCatalogCrypto:
     return EmergencyCatalogCrypto.generate_for_tests()
 
 
-def _config(crypto: EmergencyCatalogCrypto, adapter_path: Path, *, concurrency: int = 2):
+def _config(
+    crypto: EmergencyCatalogCrypto, adapter_path: Path, *, concurrency: int = 2
+):
     return EmergencyCatalogWorkerConfig(
         crypto=crypto,
         adapter_path=str(adapter_path),
@@ -99,11 +101,19 @@ def _config(crypto: EmergencyCatalogCrypto, adapter_path: Path, *, concurrency: 
 
 def test_worker_is_disabled_by_default_and_unknown_values_do_not_enable() -> None:
     assert emergency_catalog_worker_enabled({}) is False
-    assert emergency_catalog_worker_enabled({"EMERGENCY_CATALOG_WORKER_ENABLED": "maybe"}) is False
-    assert emergency_catalog_worker_enabled({"EMERGENCY_CATALOG_WORKER_ENABLED": "true"}) is True
+    assert (
+        emergency_catalog_worker_enabled({"EMERGENCY_CATALOG_WORKER_ENABLED": "maybe"})
+        is False
+    )
+    assert (
+        emergency_catalog_worker_enabled({"EMERGENCY_CATALOG_WORKER_ENABLED": "true"})
+        is True
+    )
 
 
-def test_enabled_worker_requires_complete_fail_closed_environment(monkeypatch, adapter_path) -> None:
+def test_enabled_worker_requires_complete_fail_closed_environment(
+    monkeypatch, adapter_path
+) -> None:
     monkeypatch.setenv("EMERGENCY_CATALOG_WORKER_ENABLED", "1")
     for key in (
         "EMERGENCY_CATALOG_SIGNING_KEY_ID",
@@ -115,7 +125,9 @@ def test_enabled_worker_requires_complete_fail_closed_environment(monkeypatch, a
     ):
         monkeypatch.delenv(key, raising=False)
 
-    with pytest.raises(EmergencyCatalogWorkerError, match="material_key_missing_or_invalid"):
+    with pytest.raises(
+        EmergencyCatalogWorkerError, match="material_key_missing_or_invalid"
+    ):
         load_emergency_catalog_worker_config()
 
     private_key = Ed25519PrivateKey.generate().private_bytes(
@@ -152,8 +164,12 @@ def test_interval_below_thirty_minutes_is_rejected(monkeypatch, adapter_path) ->
     values = {
         "EMERGENCY_CATALOG_WORKER_ENABLED": "1",
         "EMERGENCY_CATALOG_SIGNING_KEY_ID": "worker-test-v1",
-        "EMERGENCY_CATALOG_MATERIAL_KEY_B64": base64.urlsafe_b64encode(b"m" * 32).decode(),
-        "EMERGENCY_CATALOG_SIGNING_PRIVATE_KEY_B64": base64.urlsafe_b64encode(private_key).decode(),
+        "EMERGENCY_CATALOG_MATERIAL_KEY_B64": base64.urlsafe_b64encode(
+            b"m" * 32
+        ).decode(),
+        "EMERGENCY_CATALOG_SIGNING_PRIVATE_KEY_B64": base64.urlsafe_b64encode(
+            private_key
+        ).decode(),
         "EMERGENCY_CATALOG_PROBE_ADAPTER_PATH": str(adapter_path),
         "EMERGENCY_CATALOG_PROBE_URL": CONTROLLED_PROBE_URL,
         "EMERGENCY_CATALOG_EXPECTED_PAYLOAD_SHA256": EXPECTED_DIGEST,
@@ -167,7 +183,9 @@ def test_interval_below_thirty_minutes_is_rejected(monkeypatch, adapter_path) ->
 
 
 @pytest.mark.asyncio
-async def test_invalid_runtime_contract_fails_before_source_fetch(crypto, adapter_path) -> None:
+async def test_invalid_runtime_contract_fails_before_source_fetch(
+    crypto, adapter_path
+) -> None:
     source_called = False
 
     async def source_fetcher():
@@ -175,8 +193,12 @@ async def test_invalid_runtime_contract_fails_before_source_fetch(crypto, adapte
         source_called = True
         return _bundle()
 
-    invalid = replace(_config(crypto, adapter_path), probe_url="https://example.test/probe")
-    with pytest.raises(EmergencyCatalogWorkerError, match="probe_url_missing_or_invalid"):
+    invalid = replace(
+        _config(crypto, adapter_path), probe_url="https://example.test/probe"
+    )
+    with pytest.raises(
+        EmergencyCatalogWorkerError, match="probe_url_missing_or_invalid"
+    ):
         await run_emergency_catalog_once(config=invalid, source_fetcher=source_fetcher)
 
     assert source_called is False
@@ -213,7 +235,7 @@ async def test_worker_bounds_probes_and_atomically_promotes(
             payload_sha256=EXPECTED_DIGEST,
             exit_country="FR",
             latency_ms=25,
-            verified_at=NOW,
+            verified_at=datetime.now(timezone.utc),
         )
 
     summary = await run_emergency_catalog_once(
@@ -259,4 +281,9 @@ async def test_probe_errors_remain_staged_and_never_promote(
         snapshot = session.get(models.EmergencyCatalogSnapshot, summary.snapshot_id)
         assert snapshot.status == "staging"
         assert snapshot.rejection_code == "insufficient_healthy_endpoints"
-        assert session.query(models.EmergencyCatalogSnapshot).filter_by(status="active").count() == 0
+        assert (
+            session.query(models.EmergencyCatalogSnapshot)
+            .filter_by(status="active")
+            .count()
+            == 0
+        )

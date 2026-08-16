@@ -88,7 +88,15 @@ class ServingEndpointMaterial:
     record: dict[str, Any]
 
 
-def _distribution_snapshot(session, *, for_update: bool = False) -> EmergencyCatalogSnapshot | None:
+@dataclass(frozen=True, slots=True)
+class _VerifiedPoolCandidate:
+    source: EmergencyCatalogEndpoint
+    target: EmergencyCatalogEndpoint | None
+
+
+def _distribution_snapshot(
+    session, *, for_update: bool = False
+) -> EmergencyCatalogSnapshot | None:
     query = (
         session.query(EmergencyCatalogSnapshot)
         .filter(EmergencyCatalogSnapshot.status.in_(("active", "disabled")))
@@ -123,12 +131,18 @@ def _selected_verified_rows(
             EmergencyCatalogEndpoint.payload_ok.is_(True),
             EmergencyCatalogEndpoint.verified_at >= min_verified_at,
         )
-        .order_by(EmergencyCatalogEndpoint.latency_ms.asc(), EmergencyCatalogEndpoint.stable_id.asc())
+        .order_by(
+            EmergencyCatalogEndpoint.latency_ms.asc(),
+            EmergencyCatalogEndpoint.stable_id.asc(),
+        )
         .all()
     )
     selected: list[EmergencyCatalogEndpoint] = []
     seen_hosts: set[str] = set()
     for row in rows:
+        verified_at = _aware_utc(row.verified_at)
+        if verified_at > current + timedelta(minutes=5):
+            continue
         if str(row.exit_country or "").upper() == "RU":
             continue
         if row.endpoint_host_hash in seen_hosts:
@@ -138,6 +152,145 @@ def _selected_verified_rows(
         if len(selected) == MAX_ACTIVE_ENDPOINTS:
             break
     return selected
+
+
+def _selected_verified_pool(
+    session,
+    *,
+    snapshot: EmergencyCatalogSnapshot,
+    crypto: EmergencyCatalogCrypto,
+    current: datetime,
+    verification_max_age: timedelta,
+) -> list[_VerifiedPoolCandidate]:
+    """Keep the newest exact-probed endpoints across recent source refreshes."""
+
+    current_rows = _selected_verified_rows(
+        session,
+        snapshot_id=snapshot.id,
+        current=current,
+        verification_max_age=verification_max_age,
+    )
+    target_rows = {
+        row.stable_id: row
+        for row in session.query(EmergencyCatalogEndpoint)
+        .filter(EmergencyCatalogEndpoint.snapshot_id == snapshot.id)
+        .all()
+    }
+    selected = [_VerifiedPoolCandidate(source=row, target=row) for row in current_rows]
+    seen_ids = {row.stable_id for row in current_rows}
+    seen_hosts = {row.endpoint_host_hash for row in current_rows}
+    if len(selected) >= MAX_ACTIVE_ENDPOINTS:
+        return selected[:MAX_ACTIVE_ENDPOINTS]
+
+    min_verified_at = _naive_utc(current - verification_max_age)
+    history_snapshots = (
+        session.query(EmergencyCatalogSnapshot)
+        .filter(
+            EmergencyCatalogSnapshot.id != snapshot.id,
+            EmergencyCatalogSnapshot.status.in_(("active", "superseded", "staging")),
+        )
+        .order_by(
+            (EmergencyCatalogSnapshot.status == "active").desc(),
+            EmergencyCatalogSnapshot.updated_at.desc(),
+            EmergencyCatalogSnapshot.id.desc(),
+        )
+        .limit(32)
+        .all()
+    )
+    for history in history_snapshots:
+        rows = (
+            session.query(EmergencyCatalogEndpoint)
+            .filter(
+                EmergencyCatalogEndpoint.snapshot_id == history.id,
+                EmergencyCatalogEndpoint.probe_state == "healthy",
+                EmergencyCatalogEndpoint.authenticated.is_(True),
+                EmergencyCatalogEndpoint.payload_ok.is_(True),
+                EmergencyCatalogEndpoint.verified_at >= min_verified_at,
+            )
+            .order_by(
+                EmergencyCatalogEndpoint.verified_at.desc(),
+                EmergencyCatalogEndpoint.latency_ms.asc(),
+                EmergencyCatalogEndpoint.stable_id.asc(),
+            )
+            .all()
+        )
+        for row in rows:
+            if len(selected) >= MAX_ACTIVE_ENDPOINTS:
+                return selected
+            if row.stable_id in seen_ids or row.endpoint_host_hash in seen_hosts:
+                continue
+            verified_at = _aware_utc(row.verified_at)
+            if verified_at > current + timedelta(minutes=5):
+                continue
+            if str(row.exit_country or "").upper() == "RU":
+                continue
+            source_record = _open_endpoint_record(row, crypto=crypto)
+            target = target_rows.get(row.stable_id)
+            if target is not None:
+                target_record = _open_endpoint_record(target, crypto=crypto)
+                if (
+                    target.material_hash != row.material_hash
+                    or target_record != source_record
+                ):
+                    raise EmergencyCatalogServiceError(
+                        "endpoint_material_identity_mismatch"
+                    )
+            selected.append(_VerifiedPoolCandidate(source=row, target=target))
+            seen_ids.add(row.stable_id)
+            seen_hosts.add(row.endpoint_host_hash)
+    return selected
+
+
+def _materialize_verified_pool(
+    session,
+    *,
+    snapshot: EmergencyCatalogSnapshot,
+    selected: Sequence[_VerifiedPoolCandidate],
+    current: datetime,
+) -> list[EmergencyCatalogEndpoint]:
+    rows: list[EmergencyCatalogEndpoint] = []
+    next_ordinal = (
+        max(
+            (
+                int(row.ordinal or 0)
+                for row in session.query(EmergencyCatalogEndpoint)
+                .filter(EmergencyCatalogEndpoint.snapshot_id == snapshot.id)
+                .all()
+            ),
+            default=0,
+        )
+        + 1
+    )
+    for candidate in selected:
+        source = candidate.source
+        target = candidate.target
+        if target is None:
+            target = EmergencyCatalogEndpoint(
+                snapshot_id=snapshot.id,
+                stable_id=source.stable_id,
+                ordinal=next_ordinal,
+                transport=source.transport,
+                endpoint_host_hash=source.endpoint_host_hash,
+                material_ciphertext=source.material_ciphertext,
+                material_hash=source.material_hash,
+                created_at=_naive_utc(current),
+                updated_at=_naive_utc(current),
+            )
+            next_ordinal += 1
+            session.add(target)
+        target.probe_state = "healthy"
+        target.exit_country = source.exit_country
+        target.latency_ms = source.latency_ms
+        target.authenticated = True
+        target.payload_ok = True
+        target.payload_sha256 = source.payload_sha256
+        target.verification_source = source.verification_source
+        target.verified_at = source.verified_at
+        target.error_code = None
+        target.updated_at = _naive_utc(current)
+        rows.append(target)
+    session.flush()
+    return rows
 
 
 def _naive_utc(value: datetime) -> datetime:
@@ -210,7 +363,9 @@ def _validate_probe_result(
     if payload_sha256 != expected_payload_sha256:
         return "unavailable", "payload_mismatch"
     if not result.authenticated:
-        return "unavailable", _safe_code(result.error_code, fallback="authentication_failed")
+        return "unavailable", _safe_code(
+            result.error_code, fallback="authentication_failed"
+        )
     if not result.payload_ok:
         return "unavailable", _safe_code(result.error_code, fallback="payload_failed")
     return "healthy", ""
@@ -305,11 +460,15 @@ def stage_snapshot(
             material_ciphertext=crypto.encrypt_json(record),
             material_hash=_material_hash(record),
             probe_state=state,
-            exit_country=(str(probe.exit_country).strip().upper() if probe is not None else None),
+            exit_country=(
+                str(probe.exit_country).strip().upper() if probe is not None else None
+            ),
             latency_ms=(int(probe.latency_ms) if probe is not None else None),
             authenticated=(bool(probe.authenticated) if probe is not None else False),
             payload_ok=(bool(probe.payload_ok) if probe is not None else False),
-            payload_sha256=(str(probe.payload_sha256).strip().lower() if probe is not None else None),
+            payload_sha256=(
+                str(probe.payload_sha256).strip().lower() if probe is not None else None
+            ),
             verification_source=(
                 _safe_code(probe.verification_source, fallback="controlled_core")
                 if probe is not None
@@ -357,7 +516,9 @@ def apply_probe_result(
     endpoint.authenticated = bool(result.authenticated)
     endpoint.payload_ok = bool(result.payload_ok)
     endpoint.payload_sha256 = str(result.payload_sha256 or "").strip().lower() or None
-    endpoint.verification_source = _safe_code(result.verification_source, fallback="controlled_core")
+    endpoint.verification_source = _safe_code(
+        result.verification_source, fallback="controlled_core"
+    )
     endpoint.verified_at = _naive_utc(result.verified_at)
     endpoint.error_code = error_code or None
     endpoint.updated_at = _naive_utc(current)
@@ -379,7 +540,10 @@ def _open_endpoint_record(
     record = crypto.decrypt_json(endpoint.material_ciphertext)
     if _material_hash(record) != str(endpoint.material_hash or ""):
         raise EmergencyCatalogServiceError("endpoint_material_hash_mismatch")
-    if record.get("stable_id") != endpoint.stable_id or record.get("transport") != endpoint.transport:
+    if (
+        record.get("stable_id") != endpoint.stable_id
+        or record.get("transport") != endpoint.transport
+    ):
         raise EmergencyCatalogServiceError("endpoint_material_identity_mismatch")
     outbound = record.get("outbound")
     if not isinstance(outbound, dict) or outbound.get("type") != "vless":
@@ -408,7 +572,10 @@ def _open_signed_snapshot(
     if payload.get("catalog_version") != snapshot.catalog_version:
         raise EmergencyCatalogServiceError("snapshot_version_mismatch")
     endpoints = payload.get("endpoints")
-    if not isinstance(endpoints, list) or not MIN_ACTIVE_ENDPOINTS <= len(endpoints) <= MAX_ACTIVE_ENDPOINTS:
+    if (
+        not isinstance(endpoints, list)
+        or not MIN_ACTIVE_ENDPOINTS <= len(endpoints) <= MAX_ACTIVE_ENDPOINTS
+    ):
         raise EmergencyCatalogServiceError("snapshot_endpoint_count_invalid")
     return payload
 
@@ -419,6 +586,7 @@ def promote_snapshot(
     snapshot_id: str,
     crypto: EmergencyCatalogCrypto,
     operator_approved: bool = False,
+    accumulate_recent_verified: bool = True,
     now: datetime | None = None,
     verification_max_age: timedelta = DEFAULT_VERIFICATION_MAX_AGE,
     catalog_lifetime: timedelta = DEFAULT_CATALOG_LIFETIME,
@@ -433,14 +601,26 @@ def promote_snapshot(
     if snapshot is None or snapshot.status != "staging":
         raise EmergencyCatalogServiceError("snapshot_not_staging")
 
-    selected_rows = _selected_verified_rows(
-        session,
-        snapshot_id=snapshot.id,
-        current=current,
-        verification_max_age=verification_max_age,
-    )
-    snapshot.healthy_count = len(selected_rows)
-    if len(selected_rows) < MIN_ACTIVE_ENDPOINTS:
+    if accumulate_recent_verified:
+        selected_pool = _selected_verified_pool(
+            session,
+            snapshot=snapshot,
+            crypto=crypto,
+            current=current,
+            verification_max_age=verification_max_age,
+        )
+    else:
+        selected_pool = [
+            _VerifiedPoolCandidate(source=row, target=row)
+            for row in _selected_verified_rows(
+                session,
+                snapshot_id=snapshot.id,
+                current=current,
+                verification_max_age=verification_max_age,
+            )
+        ]
+    snapshot.healthy_count = len(selected_pool)
+    if len(selected_pool) < MIN_ACTIVE_ENDPOINTS:
         snapshot.rejection_code = "insufficient_healthy_endpoints"
         snapshot.updated_at = _naive_utc(current)
         session.flush()
@@ -461,7 +641,7 @@ def promote_snapshot(
         if current_distribution is not None and current_distribution.status == "active"
         else None
     )
-    selected_ids = tuple(row.stable_id for row in selected_rows)
+    selected_ids = tuple(candidate.source.stable_id for candidate in selected_pool)
     replacement_fraction = 0.0
     if current_active is not None:
         active_payload = _open_signed_snapshot(current_active, crypto=crypto)
@@ -472,7 +652,11 @@ def promote_snapshot(
         }
         removed = active_ids.difference(selected_ids)
         replacement_fraction = len(removed) / max(1, len(active_ids))
-        if replacement_fraction > MAX_AUTOMATIC_REPLACEMENT_FRACTION and not operator_approved:
+        if (
+            replacement_fraction > MAX_AUTOMATIC_REPLACEMENT_FRACTION
+            and not operator_approved
+            and len(selected_pool) < MAX_ACTIVE_ENDPOINTS
+        ):
             fresh_active_ids = {
                 row.stable_id
                 for row in _selected_verified_rows(
@@ -489,6 +673,12 @@ def promote_snapshot(
                 session.flush()
                 raise EmergencyCatalogServiceError("automatic_churn_limit")
 
+    selected_rows = _materialize_verified_pool(
+        session,
+        snapshot=snapshot,
+        selected=selected_pool,
+        current=current,
+    )
     signed_endpoints: list[dict[str, Any]] = []
     for row in selected_rows:
         record = _open_endpoint_record(row, crypto=crypto)
@@ -521,7 +711,9 @@ def promote_snapshot(
     snapshot.active_endpoint_count = len(signed_endpoints)
     snapshot.operator_approved = bool(operator_approved)
     snapshot.rejection_code = None
-    snapshot.parent_snapshot_id = current_distribution.id if current_distribution is not None else None
+    snapshot.parent_snapshot_id = (
+        current_distribution.id if current_distribution is not None else None
+    )
     snapshot.issued_at = _naive_utc(current)
     snapshot.expires_at = _naive_utc(expires_at)
     snapshot.activated_at = _naive_utc(current)
@@ -582,13 +774,14 @@ def safe_promotion_delta(
     target = session.get(EmergencyCatalogSnapshot, str(snapshot_id))
     if target is None or target.status != "staging":
         raise EmergencyCatalogServiceError("snapshot_not_staging")
-    selected = _selected_verified_rows(
+    selected = _selected_verified_pool(
         session,
-        snapshot_id=target.id,
+        snapshot=target,
+        crypto=crypto,
         current=current,
         verification_max_age=verification_max_age,
     )
-    next_ids = {row.stable_id for row in selected}
+    next_ids = {candidate.source.stable_id for candidate in selected}
     distribution = _distribution_snapshot(session)
     current_ids: set[str] = set()
     if distribution is not None:
@@ -601,16 +794,23 @@ def safe_promotion_delta(
     retained = current_ids.intersection(next_ids)
     removed = current_ids.difference(next_ids)
     added = next_ids.difference(current_ids)
-    replacement_fraction = len(removed) / max(1, len(current_ids)) if current_ids else 0.0
+    replacement_fraction = (
+        len(removed) / max(1, len(current_ids)) if current_ids else 0.0
+    )
     return {
-        "distribution_state": str(distribution.status) if distribution is not None else "empty",
+        "distribution_state": str(distribution.status)
+        if distribution is not None
+        else "empty",
         "current_count": len(current_ids),
         "next_count": len(next_ids),
         "retained_count": len(retained),
         "removed_count": len(removed),
         "added_count": len(added),
         "replacement_percent": round(replacement_fraction * 100, 1),
-        "automatic_limit_exceeded": replacement_fraction > MAX_AUTOMATIC_REPLACEMENT_FRACTION,
+        "automatic_limit_exceeded": (
+            replacement_fraction > MAX_AUTOMATIC_REPLACEMENT_FRACTION
+            and len(next_ids) < MAX_ACTIVE_ENDPOINTS
+        ),
     }
 
 
@@ -668,7 +868,11 @@ def read_serving_endpoint_material(
     )
     if endpoint is None:
         raise EmergencyCatalogServiceError("serving_endpoint_missing")
-    if endpoint.probe_state != "healthy" or not endpoint.authenticated or not endpoint.payload_ok:
+    if (
+        endpoint.probe_state != "healthy"
+        or not endpoint.authenticated
+        or not endpoint.payload_ok
+    ):
         raise EmergencyCatalogServiceError("serving_endpoint_unhealthy")
     if endpoint.verified_at is None:
         raise EmergencyCatalogServiceError("serving_endpoint_unverified")
@@ -700,7 +904,9 @@ def rollback_candidates(session, *, limit: int = 3) -> list[dict[str, Any]]:
             "snapshot_id": row.id,
             "catalog_version": row.catalog_version,
             "endpoint_count": int(row.active_endpoint_count or 0),
-            "activated_at": _iso_z(_aware_utc(row.activated_at)) if row.activated_at else None,
+            "activated_at": _iso_z(_aware_utc(row.activated_at))
+            if row.activated_at
+            else None,
         }
         for row in rows
     ]
@@ -714,7 +920,9 @@ def rollback_to_snapshot(
     now: datetime | None = None,
 ) -> PromotionResult:
     current = _aware_utc(now or datetime.now(timezone.utc))
-    allowed_ids = {item["snapshot_id"] for item in rollback_candidates(session, limit=3)}
+    allowed_ids = {
+        item["snapshot_id"] for item in rollback_candidates(session, limit=3)
+    }
     if str(target_snapshot_id) not in allowed_ids:
         raise EmergencyCatalogServiceError("rollback_target_not_retained")
     target = session.get(EmergencyCatalogSnapshot, str(target_snapshot_id))
@@ -787,6 +995,7 @@ def rollback_to_snapshot(
             snapshot_id=clone.id,
             crypto=crypto,
             operator_approved=True,
+            accumulate_recent_verified=False,
             now=current,
         )
     except Exception:
