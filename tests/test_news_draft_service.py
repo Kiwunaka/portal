@@ -44,17 +44,28 @@ def test_feed_parser_accepts_only_owned_item_hosts_and_current_items() -> None:
     parsed = parse_news_feed(RSS, source=source, now=datetime(2026, 8, 17, 12, 0, 0))
     assert len(parsed) == 1
     assert parsed[0].source_url == "https://habr.com/ru/articles/123456/"
-    foreign = RSS.replace(b"https://habr.com/ru/articles/123456/", b"https://evil.example/item")
-    assert parse_news_feed(foreign, source=source, now=datetime(2026, 8, 17, 12, 0, 0)) == ()
+    foreign = RSS.replace(
+        b"https://habr.com/ru/articles/123456/", b"https://evil.example/item"
+    )
+    assert (
+        parse_news_feed(foreign, source=source, now=datetime(2026, 8, 17, 12, 0, 0))
+        == ()
+    )
     try:
-        parse_news_feed(b"<!DOCTYPE html><html></html>", source=source, now=datetime(2026, 8, 17, 12, 0, 0))
+        parse_news_feed(
+            b"<!DOCTYPE html><html></html>",
+            source=source,
+            now=datetime(2026, 8, 17, 12, 0, 0),
+        )
     except NewsDraftFetchError as exc:
         assert exc.code == "feed_payload_invalid"
     else:
         raise AssertionError("HTML payload must fail closed")
 
 
-def test_daily_collection_deduplicates_cross_feed_items_and_retains_safe_run_status(tmp_path: Path) -> None:
+def test_daily_collection_deduplicates_cross_feed_items_and_retains_safe_run_status(
+    tmp_path: Path,
+) -> None:
     factory = _session_factory(tmp_path)
 
     async def fake_fetch(_client, _source):
@@ -104,4 +115,3 @@ def test_default_feed_configuration_is_bounded_https() -> None:
     assert 1 <= len(feeds) <= 6
     assert all(feed.url.startswith("https://") for feed in feeds)
     assert all(feed.item_hosts for feed in feeds)
-
