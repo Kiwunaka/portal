@@ -63,6 +63,22 @@ def test_feed_parser_accepts_only_owned_item_hosts_and_current_items() -> None:
         raise AssertionError("HTML payload must fail closed")
 
 
+def test_feed_parser_repairs_invalid_utf8_without_relaxing_xml_safety() -> None:
+    source = NewsFeed(
+        name="Хабр",
+        url="https://habr.com/feed",
+        item_hosts=("habr.com",),
+    )
+    malformed = RSS.replace(b"network", b"net\xffwork", 1)
+    parsed = parse_news_feed(
+        malformed,
+        source=source,
+        now=datetime(2026, 8, 17, 12, 0, 0),
+    )
+    assert len(parsed) == 1
+    assert parsed[0].source_url == "https://habr.com/ru/articles/123456/"
+
+
 def test_daily_collection_deduplicates_cross_feed_items_and_retains_safe_run_status(
     tmp_path: Path,
 ) -> None:

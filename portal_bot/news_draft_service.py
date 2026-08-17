@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import html
 import json
+import logging
 import os
 import re
 import time
@@ -19,6 +20,9 @@ import aiohttp
 from sqlalchemy.exc import IntegrityError
 
 from models import NewsDraft, NewsDraftRun
+
+
+logger = logging.getLogger(__name__)
 
 
 MAX_FEEDS = 6
@@ -81,7 +85,9 @@ def news_draft_worker_enabled(env: Mapping[str, str] | None = None) -> bool:
 def news_draft_interval_seconds(env: Mapping[str, str] | None = None) -> int:
     source = os.environ if env is None else env
     try:
-        value = int(str(source.get("NEWS_DRAFT_INTERVAL_SECONDS") or DEFAULT_INTERVAL_SECONDS))
+        value = int(
+            str(source.get("NEWS_DRAFT_INTERVAL_SECONDS") or DEFAULT_INTERVAL_SECONDS)
+        )
     except ValueError as exc:
         raise NewsDraftConfigError("interval_invalid") from exc
     return max(MIN_INTERVAL_SECONDS, min(172_800, value))
@@ -114,7 +120,9 @@ def configured_news_feeds(env: Mapping[str, str] | None = None) -> tuple[NewsFee
                 }
             )
         )
-        if not item_hosts or any(re.fullmatch(r"[a-z0-9.-]{3,253}", host) is None for host in item_hosts):
+        if not item_hosts or any(
+            re.fullmatch(r"[a-z0-9.-]{3,253}", host) is None for host in item_hosts
+        ):
             raise NewsDraftConfigError("feed_item_hosts_invalid")
         feeds.append(NewsFeed(name=name, url=url, item_hosts=item_hosts))
     return tuple(feeds)
@@ -165,11 +173,20 @@ def _entry_link(element: ET.Element) -> str:
     return ""
 
 
-def parse_news_feed(payload: bytes, *, source: NewsFeed, now: datetime) -> tuple[NewsCandidate, ...]:
-    if not payload or len(payload) > MAX_FEED_BYTES or b"<!DOCTYPE" in payload[:4096].upper():
+def parse_news_feed(
+    payload: bytes, *, source: NewsFeed, now: datetime
+) -> tuple[NewsCandidate, ...]:
+    if (
+        not payload
+        or len(payload) > MAX_FEED_BYTES
+        or b"<!DOCTYPE" in payload[:4096].upper()
+    ):
         raise NewsDraftFetchError("feed_payload_invalid")
     try:
-        root = ET.fromstring(payload)
+        # Some otherwise valid feeds contain an isolated malformed UTF-8 byte.
+        # Replacing only undecodable bytes keeps the XML structure fail-closed
+        # while avoiding a full-source outage because of one broken title.
+        root = ET.fromstring(payload.decode("utf-8", errors="replace"))
     except ET.ParseError as exc:
         raise NewsDraftFetchError("feed_xml_invalid") from exc
     elements = [
@@ -183,12 +200,19 @@ def parse_news_feed(payload: bytes, *, source: NewsFeed, now: datetime) -> tuple
         link = _entry_link(element)
         parsed_link = urlparse(link)
         host = str(parsed_link.hostname or "").lower().rstrip(".")
-        if len(title) < 8 or parsed_link.scheme != "https" or host not in source.item_hosts:
+        if (
+            len(title) < 8
+            or parsed_link.scheme != "https"
+            or host not in source.item_hosts
+        ):
             continue
         published_at = _parse_datetime(
             _child_text(element, ("pubdate", "published", "updated", "date"))
         )
-        if published_at and (published_at < now - timedelta(days=14) or published_at > now + timedelta(hours=6)):
+        if published_at and (
+            published_at < now - timedelta(days=14)
+            or published_at > now + timedelta(hours=6)
+        ):
             continue
         item_id = _child_text(element, ("guid", "id")) or link
         candidates.append(
@@ -214,8 +238,15 @@ async def fetch_news_feed(client: aiohttp.ClientSession, source: NewsFeed) -> by
         ) as response:
             if response.status != 200:
                 raise NewsDraftFetchError("feed_http_error")
-            content_type = str(response.headers.get("Content-Type") or "").split(";", 1)[0].lower()
-            if content_type not in {"application/rss+xml", "application/atom+xml", "application/xml", "text/xml"}:
+            content_type = (
+                str(response.headers.get("Content-Type") or "").split(";", 1)[0].lower()
+            )
+            if content_type not in {
+                "application/rss+xml",
+                "application/atom+xml",
+                "application/xml",
+                "text/xml",
+            }:
                 raise NewsDraftFetchError("feed_content_type_invalid")
             body = await response.content.read(MAX_FEED_BYTES + 1)
             if len(body) > MAX_FEED_BYTES:
@@ -239,7 +270,11 @@ def ingest_news_candidates(
     duplicates = 0
     for candidate in candidates:
         item_hash = hashlib.sha256(candidate.item_key.encode("utf-8")).hexdigest()
-        if session.query(NewsDraft.id).filter(NewsDraft.source_item_sha256 == item_hash).first():
+        if (
+            session.query(NewsDraft.id)
+            .filter(NewsDraft.source_item_sha256 == item_hash)
+            .first()
+        ):
             duplicates += 1
             continue
         if created >= max_new:
@@ -270,7 +305,9 @@ async def collect_news_drafts(
     *,
     env: Mapping[str, str] | None = None,
     now: datetime | None = None,
-    fetcher: Callable[[aiohttp.ClientSession, NewsFeed], Awaitable[bytes]] = fetch_news_feed,
+    fetcher: Callable[
+        [aiohttp.ClientSession, NewsFeed], Awaitable[bytes]
+    ] = fetch_news_feed,
 ) -> dict[str, object]:
     started_clock = time.monotonic()
     observed_at = now or datetime.now(timezone.utc).replace(tzinfo=None)
@@ -287,6 +324,7 @@ async def collect_news_drafts(
     session.commit()
     source_succeeded = 0
     source_failed = 0
+    source_failure_codes: list[str] = []
     candidates: list[NewsCandidate] = []
     try:
         async with aiohttp.ClientSession() as client:
@@ -297,8 +335,14 @@ async def collect_news_drafts(
                     source_succeeded += 1
                     if parsed:
                         candidates.append(parsed[0])
-                except NewsDraftFetchError:
+                except NewsDraftFetchError as exc:
                     source_failed += 1
+                    source_failure_codes.append(exc.code)
+                    logger.warning(
+                        "news_draft source_failed source=%s code=%s",
+                        feed.name,
+                        exc.code,
+                    )
         ingest = ingest_news_candidates(
             session,
             run=run,
@@ -310,8 +354,23 @@ async def collect_news_drafts(
         run.candidates_seen = len(candidates)
         run.drafts_created = int(ingest["created"])
         run.duplicates_skipped = int(ingest["duplicates"])
-        run.status = "failed" if source_succeeded == 0 else "partial" if source_failed else "completed"
-        run.failure_code = "all_sources_failed" if source_succeeded == 0 else "some_sources_failed" if source_failed else None
+        run.status = (
+            "failed"
+            if source_succeeded == 0
+            else "partial"
+            if source_failed
+            else "completed"
+        )
+        unique_failure_codes = sorted(set(source_failure_codes))
+        run.failure_code = (
+            unique_failure_codes[0]
+            if source_succeeded == 0 and len(unique_failure_codes) == 1
+            else "all_sources_failed"
+            if source_succeeded == 0
+            else "some_sources_failed"
+            if source_failed
+            else None
+        )
         run.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
         run.duration_ms = max(0, int((time.monotonic() - started_clock) * 1000))
         session.commit()
