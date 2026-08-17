@@ -1,6 +1,6 @@
 # POKROV Product Analytics, Telegram Entry And Operator UX
 
-Status: `IN_PROGRESS`
+Status: `COMPLETED`
 
 Last updated: 2026-08-17
 
@@ -152,11 +152,11 @@ visible page-load timings for key screens.
 | WO-001 | Fresh visual/product audit and current-state inventory | — | `COMPLETED` |
 | WO-002 | Event/error schema, storage, ingestion, retention and client/server wiring | WO-001 | `COMPLETED` |
 | WO-003 | Per-recipient Telegram delivery analytics and failed-only retry | WO-002 | `COMPLETED` |
-| WO-004 | Compact Telegram entry, no visible Stars/cabinet duplication | WO-001 | `COMPLETED_LOCAL_PENDING_PROD_READBACK` |
+| WO-004 | Compact Telegram entry, no visible Stars/cabinet duplication | WO-001 | `COMPLETED` |
 | WO-005 | Real screenshot atlas and broad problem/FAQ coverage | WO-001, WO-004 | `COMPLETED` |
-| WO-006 | Fast, useful admin analytics and performance/accessibility proof | WO-002, WO-003 | `COMPLETED_LOCAL_PENDING_PROD_READBACK` |
-| WO-007 | Daily internet-news draft and approval pipeline | WO-002, WO-006 | `COMPLETED_LOCAL_PENDING_PROD_ENABLEMENT` |
-| WO-008 | Gates, production proof, commit/push/deploy and closure | WO-002..WO-007 | `IN_PROGRESS` |
+| WO-006 | Fast, useful admin analytics and performance/accessibility proof | WO-002, WO-003 | `COMPLETED_WITH_PROD_AUTH_LIMIT` |
+| WO-007 | Daily internet-news draft and approval pipeline | WO-002, WO-006 | `COMPLETED` |
+| WO-008 | Gates, production proof, commit/push/deploy and closure | WO-002..WO-007 | `COMPLETED` |
 
 ## Acceptance Oracle
 
@@ -197,10 +197,16 @@ The wave closes only when:
 
 ## Current State And Next Action
 
-WO-001 through WO-007 are implemented locally. Current evidence includes the
-production Telegram baseline and public `1.1.1` LDPlayer screens. Event Envelope
-V1, delivery attempts, compact bot, 22-screen atlas, admin product-quality views
-and draft-only news pipeline are in the working diff. Next action: finish WO-008
-with the full affected gates, exact diff review, commit/push/deploy and current-
-origin readbacks. Acquisition/user-base and stores remain owner-owned and are not
-silently added to this wave.
+The wave is complete. Platform code through `09b228e` is deployed; `master`
+contains the final evidence record. Client telemetry is pushed to `main` at
+`6575c22` and intentionally waits for the next client binary because no honest
+physical-device release proof was available in this wave. Public stable remains
+`1.1.1`.
+
+Production readback proves the compact Telegram `/start` and Help/Back flow,
+healthy platform services and current public surfaces. Draft-only news is enabled
+once per day and the latest production run completed with two pending drafts;
+automatic publication remains disabled. The authenticated admin visual readback
+remains `BLOCKED_BY_ACCESS` because the browser session expired, while the public
+admin shell, affected API contracts and authenticated synthetic E2E are green.
+Acquisition/user-base and stores remain owner-owned and were not changed.
