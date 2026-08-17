@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-08-03
+Last updated: 2026-08-17
 
 ## Document Status
 
@@ -355,6 +355,10 @@ Repository session rules:
   `401 refresh_reuse_detected`
 - `POST /api/client/session/revoke` revokes the current family but leaves the
   device registered
+- a successful one-time device-pairing claim issues a new device-bound session
+  for the existing canonical account; the client replaces its abandoned local
+  trial session only after that claim succeeds and then re-reads subscription
+  identity before declaring the profile restored
 - app-derived cabinet handoff and cabinet-session tokens retain source
   session/device/epoch binding and are invalidated with that source family
 - `GET /api/client/devices` reads the real registry; `DELETE` requires fresh
@@ -432,6 +436,9 @@ separately:
 - `POST /api/client/warp/revoke`
 - `POST /api/client/warp/rotate`
 - `POST /api/client/warp/events`
+- `POST /api/client/telegram/link`
+- `POST /api/client/telegram/link/events`
+- `POST /api/client/device-pairing/claim`
 - `PUT /api/admin/client/warp/material`
 - `GET /api/admin/client/warp/summary`
 - `GET /api/public/catalog`

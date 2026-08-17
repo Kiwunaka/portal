@@ -1398,7 +1398,7 @@ export async function installAdminApiMock(
       const referralAction = action === "referral.process";
       const broadcastAction = action === "broadcast.send";
       const revenueAction = paymentAction || promoAction || referralAction;
-      const l3Action = broadcastAction || action === "node.disable" || action === "user.block" || action === "user.regenerate_token" || action === "user.safe_delete" || action === "provider_quota.delete" || action === "promo.delete";
+      const l3Action = broadcastAction || action === "node.disable" || action === "user.block" || action === "user.regenerate_token" || action === "user.migration_code" || action === "user.safe_delete" || action === "provider_quota.delete" || action === "promo.delete";
       const challenge = action === "node.disable"
         ? nodeCode.toUpperCase()
         : action === "provider_quota.delete"

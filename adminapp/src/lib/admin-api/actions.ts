@@ -40,6 +40,7 @@ export type AdminActionResult = {
   result_code?: string;
   result?: Record<string, unknown>;
   node?: Record<string, unknown>;
+  pairing_code?: string;
 };
 
 export type ActionIntentRequest = {

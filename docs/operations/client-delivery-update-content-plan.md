@@ -1,6 +1,6 @@
 # Client Delivery, Update Check, And Dynamic Content Plan
 
-Last updated: 2026-07-12
+Last updated: 2026-08-17
 
 Status: active product/operations plan
 
@@ -169,6 +169,19 @@ Client behavior:
 - `optional`: quiet row or small sheet
 - `recommended`: launch-time sheet with a normal dismiss path
 - `required`: blocking sheet until update or exit
+
+`1.1.0` promotion rule:
+
+- keep runtime metadata on public `1.0.13` until every signed `1.1.0` asset is
+  uploaded and its anonymous size/hash smoke passes
+- then set both `latest_version` and `min_supported_version` to `1.1.0` for the
+  owner-approved platform because compatibility with older clients is retired
+- use concise Russian release copy: `Исправили вход по коду и привязку
+  Telegram. Упростили режим белых списков: POKROV сам выбирает рабочий канал и
+  предлагает его, если обычное подключение недоступно. Добавили безопасную
+  диагностику ошибок.`
+- the same release summary may be reused in the in-app notice and Telegram
+  announcement; do not publish English or internal transport terminology
 
 Android beta behavior:
 

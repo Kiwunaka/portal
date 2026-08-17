@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-08-15
+Last updated: 2026-08-17
 
 ## Document Status
 
@@ -488,13 +488,16 @@ Architecture rule:
 ### Telegram Linking And Reward Flow
 
 1. app-first account requests Telegram linking
-2. backend issues a deep link to `@pokrov_vpnbot`
+2. backend issues a one-time deep link to `@pokrov_vpnbot`; the handoff expires
+   after 15 minutes and stale rows are retained only as inactive audit history
 3. bot links Telegram identity to the app-first account, except the configured admin Telegram identity cannot be bound to a non-admin app/email account
-4. app or web surfaces may call read-only subscriber status check
-5. reward grant still happens only on the explicit claim API
-6. backend validates membership in `@pokrov_vpn`
-7. backend grants a new account-owned `+5 days` once when eligible; issued legacy `+10 days` grants remain grandfathered
-8. membership loss opens `24 hours` of grace, and a due reversal removes only the unused channel interval
+4. after returning from Telegram, the app re-reads the authenticated subscription
+   projection before showing the linked username; Telegram does not supply email
+5. app or web surfaces may call read-only subscriber status check
+6. reward grant still happens only on the explicit claim API
+7. backend validates membership in `@pokrov_vpn`
+8. backend grants a new account-owned `+5 days` once when eligible; issued legacy `+10 days` grants remain grandfathered
+9. membership loss opens `24 hours` of grace, and a due reversal removes only the unused channel interval
 
 Linked Telegram identity supports recovery, bonuses, support context, and diagnostics. Admin API authorization must come from the authenticated admin account/session itself, not from an account's linked Telegram identity.
 
@@ -814,6 +817,7 @@ Major currently live public and app-first routes in `portal_bot/api.py` include:
 - `GET /api/admin/promo-slots`
 - `PUT /api/admin/promo-slots`
 - `POST /api/client/telegram/link`
+- `POST /api/client/telegram/link/events`
 - `POST|GET|DELETE /api/client/device-pairing/*`
 - `GET|POST|DELETE /api/client/programs*`
 - `GET /api/public/status`

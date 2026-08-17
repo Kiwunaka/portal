@@ -84,6 +84,37 @@ def _rollout_client_policy(
     }
 
 
+def test_app_telegram_start_code_expires_and_is_replaced(monkeypatch, tmp_path):
+    api, service = _load_api_and_service(monkeypatch, tmp_path)
+    from models import StartLink
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    session = api.SessionLocal()
+    try:
+        first = service.create_app_telegram_start_code(
+            session,
+            account_tg_id=44001,
+            now=now,
+        )
+        session.commit()
+        row = session.query(StartLink).filter_by(code=first).one()
+        row.updated_at = now - timedelta(minutes=16)
+        session.commit()
+
+        second = service.create_app_telegram_start_code(
+            session,
+            account_tg_id=44001,
+            now=now,
+        )
+        session.commit()
+
+        assert second != first
+        assert session.query(StartLink).filter_by(code=first).one().is_active is False
+        assert session.query(StartLink).filter_by(code=second).one().is_active is True
+    finally:
+        session.close()
+
+
 def test_device_name_normalizer_exposes_the_model_before_the_pokrov_prefix(monkeypatch, tmp_path):
     _api, service = _load_api_and_service(monkeypatch, tmp_path)
 

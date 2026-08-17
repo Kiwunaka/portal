@@ -1295,6 +1295,23 @@ async def admin_regenerate_manual_token(
     )
 
 
+@app.post("/api/admin/users/{tg_id}/migration-code")
+async def admin_issue_user_migration_code(
+    tg_id: int,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="user.migration_code",
+        target_type="user",
+        target_id=str(tg_id),
+        payload={},
+        request=request,
+    )
+
+
 @app.post("/api/admin/users/{tg_id}/safe-delete")
 async def admin_safe_delete_test_user(
     tg_id: int,
@@ -4749,6 +4766,32 @@ def _execute_admin_client_action_db(
             actor_tg_id=actor_tg_id,
             action=action,
         )
+
+    if action == "user.migration_code":
+        user = state.entity
+        now = _utcnow()
+        ensure_user_account_foundation(session, user, now=now)
+        account_id = str(user.account_id or "").strip()
+        if not account_id:
+            raise ActionIntentError(
+                "account_not_ready",
+                status_code=409,
+                message="Аккаунт пользователя ещё не подготовлен для переноса.",
+            )
+        issued = device_pairing_service.issue_pairing_code(
+            session,
+            account_id=account_id,
+            issued_by_session_id=None,
+            now=now,
+        )
+        return {
+            "code": "migration_code_issued",
+            "tg_id": int(user.tg_id),
+            "pairing_code": issued.code,
+            "code_hint": str(issued.row.code_hint),
+            "expires_at": _safe_iso(issued.row.expires_at),
+            "ttl_seconds": int(device_pairing_service.PAIRING_CODE_TTL_SECONDS),
+        }
 
     if action == "payment.reconcile":
         order = state.entity

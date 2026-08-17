@@ -120,6 +120,12 @@ async def cmd_start(message: Message):
         return
 
     if app_link_account_id > 0:
+        track_event(
+            tg_id=int(tg_id),
+            event_name="app_telegram_link_bot_started",
+            source="bot",
+            meta={"handoff": "app_link"},
+        )
         bind_status = _bind_app_account_to_telegram(
             account_tg_id=int(app_link_account_id),
             telegram_id=int(tg_id),
@@ -130,8 +136,15 @@ async def cmd_start(message: Message):
             tg_id=int(tg_id),
             event_name="app_telegram_link_start",
             source="bot",
-            meta={"account_tg_id": int(app_link_account_id), "status": str(bind_status or "")},
+            meta={"status": str(bind_status or "")},
         )
+        if bind_status in {"linked", "already_linked"}:
+            track_event(
+                tg_id=int(tg_id),
+                event_name="app_telegram_link_bound",
+                source="bot",
+                meta={"status": str(bind_status)},
+            )
         messages = {
             "linked": (
                 "✅ *Telegram уже привязан к POKROV.*\n\n"

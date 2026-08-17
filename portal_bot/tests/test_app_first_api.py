@@ -1432,7 +1432,10 @@ def test_app_session_can_request_telegram_link(monkeypatch, tmp_path):
     token = trial_response.json()["session_token"]
     link_response = client.post(
         "/api/client/telegram/link",
-        headers={"Authorization": f"Bearer {token}"},
+        headers={
+            "Authorization": f"Bearer {token}",
+            "User-Agent": "POKROV/android/1.1.0",
+        },
     )
 
     assert link_response.status_code == 200
@@ -1441,6 +1444,33 @@ def test_app_session_can_request_telegram_link(monkeypatch, tmp_path):
     assert payload["linked"] is False
     assert payload["bot_url"].startswith("https://t.me/pokrov_vpnbot?start=")
     assert payload["start_code"].startswith("app")
+
+    event_response = client.post(
+        "/api/client/telegram/link/events",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "User-Agent": "POKROV/android/1.1.0",
+        },
+        json={"event_name": "handoff_opened"},
+    )
+    assert event_response.status_code == 200
+
+    db = api.SessionLocal()
+    try:
+        events = (
+            db.query(api.Event)
+            .filter(api.Event.event_name.like("app_telegram_link_%"))
+            .order_by(api.Event.id.asc())
+            .all()
+        )
+        assert [row.event_name for row in events] == [
+            "app_telegram_link_requested",
+            "app_telegram_link_handoff_opened",
+        ]
+        assert all(str(row.session_id or "") != "install-link" for row in events)
+        assert all('"app_version":"1.1.0"' in str(row.meta_json or "") for row in events)
+    finally:
+        db.close()
 
 
 def test_channel_bonus_claim_uses_linked_telegram_identity_for_app_account(monkeypatch, tmp_path):

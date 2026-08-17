@@ -236,7 +236,7 @@ from email_auth_service import (
 )
 from email_delivery_service import deliver_payment_access_key, email_delivery_runtime_status
 from account_security_errors import AccountRecoveryError, EmailOtpError
-from antiabuse_privacy_service import record_antiabuse_event
+from antiabuse_privacy_service import install_hmac_candidates, record_antiabuse_event
 from economy_service import (
     create_referral_relationship,
     migrate_pending_legacy_referral_queue,
@@ -2083,6 +2083,7 @@ _AUTH_ERROR_FALLBACK_CODES = {
     422: "request_invalid",
     429: "rate_limited",
 }
+_POKROV_CLIENT_UA_RE = re.compile(r"^POKROV/(?P<platform>[a-z0-9_-]{1,24})/(?P<version>[A-Za-z0-9.+_-]{1,32})$")
 
 
 def _has_explicit_auth_error_header(headers: dict[str, str] | None) -> bool:
@@ -2108,6 +2109,32 @@ def _fallback_auth_error_code(status_code: int) -> str:
     return _AUTH_ERROR_FALLBACK_CODES.get(int(status_code), "request_failed")
 
 
+def _safe_client_request_identity(request: Request) -> tuple[str, str, str]:
+    path = str(getattr(request.url, "path", "") or "")
+    if not path.startswith("/api/client/") or not re.fullmatch(r"/[A-Za-z0-9_./{}:-]{1,159}", path):
+        return "", "unknown", "unknown"
+    match = _POKROV_CLIENT_UA_RE.fullmatch(str(request.headers.get("user-agent") or "").strip())
+    if match is None:
+        return path, "unknown", "unknown"
+    return path, match.group("platform"), match.group("version")
+
+
+def _log_client_auth_failure(request: Request, *, status_code: int, code: str) -> None:
+    if int(status_code) not in {401, 409, 429}:
+        return
+    path, platform, version = _safe_client_request_identity(request)
+    if not path:
+        return
+    logger.info(
+        "client_auth_failure route=%s status=%s code=%s platform=%s app_version=%s",
+        path,
+        int(status_code),
+        str(code),
+        platform,
+        version,
+    )
+
+
 @app.exception_handler(StarletteHTTPException)
 async def add_auth_error_header(
     request: Request,
@@ -2116,11 +2143,15 @@ async def add_auth_error_header(
     """Add one safe machine-readable code without changing FastAPI's error body."""
     response = await http_exception_handler(request, exc)
     if _has_explicit_auth_error_header(exc.headers):
+        code = str((exc.headers or {}).get(_AUTH_ERROR_HEADER) or "request_failed")
+        _log_client_auth_failure(request, status_code=exc.status_code, code=code)
         return response
-    response.headers[_AUTH_ERROR_HEADER] = (
+    code = (
         _safe_auth_error_code(exc.detail)
         or _fallback_auth_error_code(exc.status_code)
     )
+    response.headers[_AUTH_ERROR_HEADER] = code
+    _log_client_auth_failure(request, status_code=exc.status_code, code=code)
     return response
 
 
@@ -3743,6 +3774,7 @@ _BETA_RATE_LIMIT_DEFAULTS_PER_MINUTE = {
     "device_pairing_issue": 6,
     "device_pairing_claim": 8,
     "device_pairing_claim_ip": 30,
+    "client_diagnostic_event": 30,
     "program_application": 6,
     "ticket_create": 20,
     "ticket_upload": 30,

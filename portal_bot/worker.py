@@ -62,6 +62,7 @@ from observer_service import cleanup_observer_retention
 from pay_attempts_service import find_abandoned_candidates, mark_abandoned, mark_abandoned_notified
 from admin_ops_service import ops_alert_notification_batches, refresh_ops_alerts_for_current_state
 from antiabuse_privacy_service import drain_antiabuse_retention
+from app_first_service import expire_app_telegram_start_codes
 from support_attachment_cleanup_service import SupportAttachmentCleanupCursor, reconcile_support_attachments
 from emergency_catalog_worker import emergency_catalog_worker_enabled, emergency_catalog_worker_job
 import incident_service
@@ -1112,6 +1113,10 @@ def run_telemetry_retention_once(*, session, now: datetime) -> dict[str, int]:
         else now.astimezone(timezone.utc)
     )
     deleted = {
+        "app_telegram_links_expired": expire_app_telegram_start_codes(
+            session,
+            now=now,
+        ),
         "acquisition_handoffs": _delete_older_than(
             session,
             AcquisitionHandoff,

@@ -1334,6 +1334,9 @@ def _user_entity_state(
         "sub_type": str(user.sub_type or ""),
         "sub_token_hash": _semantic_hash("admin-user-sub-token", str(user.sub_token or "")),
         "uuid_hash": _semantic_hash("admin-user-uuid", str(user.uuid or "")),
+        "account_id_hash": _semantic_hash(
+            "admin-user-account-id", str(user.account_id or "")
+        ),
         "mappings": [
             {
                 "id": int(row.id),
@@ -1373,6 +1376,7 @@ def _user_entity_state(
         "is_active": bool(user.is_active),
         "expiry_at": _safe_iso(user.expiry_at),
         "manual_test": _manual_test_user(user),
+        "account_ready": bool(str(user.account_id or "").strip()),
         "key_count": len(mappings),
     }
     return EntityState(
@@ -1383,6 +1387,7 @@ def _user_entity_state(
             "tg_id": tg_id,
             "user_uuid": str(user.uuid or ""),
             "sub_token": str(user.sub_token or ""),
+            "account_id": str(user.account_id or ""),
             "mappings": mappings,
             "key_policies": policies,
             "reward_claims": claims,
@@ -1825,6 +1830,23 @@ def _regenerate_preview(state: EntityState, _payload: Mapping[str, Any]) -> dict
         state.public_snapshot,
         {"token": "будет заменён", "panel_sync": "будет выполнена"},
         ["Старая ссылка перестанет работать. Токен в предпросмотре не показывается."],
+    )
+
+
+def _migration_code_preview(
+    state: EntityState, _payload: Mapping[str, Any]
+) -> dict[str, Any]:
+    return _simple_preview(
+        f"Для пользователя {state.context['tg_id']} будет выпущен одноразовый код переноса.",
+        state.public_snapshot,
+        {
+            "device_pairing_code": "будет показан один раз",
+            "valid_for_minutes": 10,
+        },
+        [
+            "Код даёт новому устройству полный доступ к этому аккаунту.",
+            "После закрытия результата код нельзя будет посмотреть повторно.",
+        ],
     )
 
 
@@ -3244,6 +3266,25 @@ ACTION_POLICIES: dict[str, ActionPolicy] = {
         external_context_builder=_user_external_context,
         audit_target_builder=_audit_user_target,
         audit_meta_builder=_safe_user_audit_meta,
+    ),
+    "user.migration_code": ActionPolicy(
+        action="user.migration_code",
+        target_type="user",
+        risk_level="L3",
+        payload_normalizer=_normalize_empty_payload,
+        entity_state_builder=_user_entity_state,
+        preview_builder=_migration_code_preview,
+        challenge_kind="exact_tg_id",
+        challenge_builder=_user_challenge,
+        executor_kind="db",
+        audit_action="admin_user_migration_code_issue",
+        audit_target_builder=_audit_user_target,
+        audit_meta_builder=_safe_user_audit_meta,
+        result_sanitizer=lambda result: {
+            key: value
+            for key, value in result.items()
+            if key != "pairing_code"
+        },
     ),
     "user.safe_delete": ActionPolicy(
         action="user.safe_delete",
@@ -6348,6 +6389,7 @@ ACTION_POLICY_ROUTES: dict[str, tuple[tuple[str, str], ...]] = {
     ),
     "user.block": (("POST", "/api/admin/users/{tg_id}/manual/block"),),
     "user.regenerate_token": (("POST", "/api/admin/users/{tg_id}/manual/regenerate-token"),),
+    "user.migration_code": (("POST", "/api/admin/users/{tg_id}/migration-code"),),
     "user.safe_delete": (("POST", "/api/admin/users/{tg_id}/safe-delete"),),
     "user.delete_test": (("POST", "/api/admin/users/{tg_id}/delete-test-user"),),
     "user.key_toggle": (("POST", "/api/admin/users/{tg_id}/keys/{node_code}/toggle"),),

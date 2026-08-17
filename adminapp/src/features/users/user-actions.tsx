@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Ban, CalendarPlus, KeyRound, MessageSquareText, RefreshCw, Send, ShieldCheck, Trash2 } from "lucide-react";
+import { Ban, CalendarPlus, Copy, KeyRound, MessageSquareText, RefreshCw, Send, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
 
 import { ActionIntentDialog } from "@/components/ops/action-intent-dialog";
 import { Badge, Button, Card, SectionTitle } from "@/components/ui";
@@ -36,6 +36,7 @@ export function UserActions({
   const [extendDays, setExtendDays] = useState("30");
   const [message, setMessage] = useState("");
   const [preset, setPreset] = useState("reset_key");
+  const [migrationCode, setMigrationCode] = useState("");
   const isBlocked = !user.isActive;
 
   const validExtendDays = useMemo(() => {
@@ -50,6 +51,9 @@ export function UserActions({
 
   function handleResult(result: AdminActionResult) {
     if (request?.action === "user.message" && result.status === "completed") setMessage("");
+    if (request?.action === "user.migration_code" && result.status === "completed") {
+      setMigrationCode(typeof result.pairing_code === "string" ? result.pairing_code : "");
+    }
   }
 
   return (
@@ -113,12 +117,27 @@ export function UserActions({
                 <Button tone="danger" onClick={() => openAction(userRequest(user.tgId, "user.regenerate_token", "/manual/regenerate-token", {}))}>
                   <KeyRound size={15} /> Обновить ссылку подключения
                 </Button>
+                <Button tone="secondary" onClick={() => openAction(userRequest(user.tgId, "user.migration_code", "/migration-code", {}))}>
+                  <Smartphone size={15} /> Код переноса в приложение
+                </Button>
                 {user.isManual ? (
                   <Button tone="danger" onClick={() => openAction(userRequest(user.tgId, "user.safe_delete", "/safe-delete", { confirm: true }))}>
                     <Trash2 size={15} /> Удалить тестового пользователя
                   </Button>
                 ) : null}
               </div>
+              {migrationCode ? (
+                <div className="mt-3 rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-surface)] p-3">
+                  <p className="text-xs text-[color:var(--atlas-text-soft)]">Покажите код владельцу один раз. Он действует 10 минут и привязывает новое устройство ко всему аккаунту.</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <code className="rounded bg-[color:var(--atlas-canvas)] px-3 py-2 text-base font-semibold tracking-widest">{migrationCode}</code>
+                    <Button tone="ghost" onClick={() => void navigator.clipboard.writeText(migrationCode)}>
+                      <Copy size={15} /> Копировать
+                    </Button>
+                    <Button tone="ghost" onClick={() => setMigrationCode("")}>Скрыть</Button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
 

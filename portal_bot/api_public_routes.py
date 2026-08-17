@@ -1982,6 +1982,10 @@ class ClientRuntimeStatsIn(BaseModel):
     error_code: str | None = Field(default=None, max_length=64)
 
 
+class ClientTelegramLinkEventIn(BaseModel):
+    event_name: str = Field(min_length=1, max_length=32)
+
+
 class AccountOnboardingStatusIn(BaseModel):
     status: str = Field(min_length=7, max_length=9)
 
@@ -2277,6 +2281,44 @@ def _client_authenticated_install_id(
         raise HTTPException(status_code=403, detail="Authenticated device is unavailable")
 
     return str(getattr(user, "app_install_id", "") or "").strip()
+
+
+def _client_telemetry_identity(
+    session: Any,
+    *,
+    user: User,
+    auth_user: dict[str, Any],
+    request: Request,
+) -> tuple[str | None, dict[str, Any]]:
+    install_id = _client_authenticated_install_id(
+        session,
+        user=user,
+        auth_user=auth_user,
+    )
+    candidates = install_hmac_candidates(install_id)
+    candidate = candidates[0] if candidates else None
+    device_id = str((auth_user or {}).get("device_id") or "").strip()
+    device = None
+    if device_id:
+        device = (
+            session.query(AccountDevice)
+            .filter(
+                AccountDevice.id == device_id,
+                AccountDevice.account_id == str(getattr(user, "account_id", "") or "").strip(),
+            )
+            .first()
+        )
+    _path, ua_platform, ua_version = _safe_client_request_identity(request)
+    platform = str(getattr(device, "platform", "") or ua_platform or "unknown").strip().lower()[:24]
+    app_version = str(getattr(device, "app_version", "") or ua_version or "unknown").strip()[:32]
+    return (
+        str(candidate.install_hmac) if candidate is not None else None,
+        {
+            "platform": platform or "unknown",
+            "app_version": app_version or "unknown",
+            "install_hmac_version": int(candidate.version) if candidate is not None else None,
+        },
+    )
 
 
 def _client_event_meta(value: dict[str, Any] | None) -> str:
@@ -4028,29 +4070,37 @@ async def client_runtime_stats(
     request: Request,
     x_telegram_init_data: str = Header(default=""),
 ) -> dict[str, Any]:
-    auth_user = _require_auth_user(x_telegram_init_data, request=request)
-    tg_id = int(auth_user.get("id", 0))
-    s = SessionLocal()
+    s, user, auth_user = _client_user_session(request, x_telegram_init_data)
     try:
-        user = s.query(User).filter(User.tg_id == tg_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
+        session_id, identity_meta = _client_telemetry_identity(
+            s,
+            user=user,
+            auth_user=auth_user,
+            request=request,
+        )
+        runtime_phase = str(payload.runtime_phase or "").strip().lower()
+        error_code = str(payload.error_code or "").strip().lower()
+        if runtime_phase and not re.fullmatch(r"[a-z0-9_.-]{1,32}", runtime_phase):
+            raise HTTPException(status_code=422, detail="Invalid runtime phase")
+        if error_code and not re.fullmatch(r"[a-z0-9_.-]{1,64}", error_code):
+            raise HTTPException(status_code=422, detail="Invalid error code")
         _record_client_event(
             s,
             user=user,
             event_name="client_runtime_stats",
             source="app",
-            session_id=str(getattr(user, "app_install_id", "") or "").strip() or None,
+            session_id=session_id or "unavailable",
             meta={
+                **identity_meta,
                 "profile_revision": str(payload.profile_revision or "") or None,
                 "selected_node_code": str(payload.selected_node_code or "").strip().lower() or None,
-                "runtime_phase": str(payload.runtime_phase or "").strip().lower() or None,
+                "runtime_phase": runtime_phase or None,
                 "connected": payload.connected,
                 "uptime_seconds": payload.uptime_seconds,
                 "rtt_ms": payload.rtt_ms,
                 "rx_mbps": payload.rx_mbps,
                 "tx_mbps": payload.tx_mbps,
-                "error_code": str(payload.error_code or "").strip() or None,
+                "error_code": error_code or None,
             },
         )
         if bool(payload.connected):
@@ -4852,13 +4902,8 @@ async def client_warp_events(
 
 @app.post("/api/client/telegram/link")
 async def client_telegram_link_start(request: Request, x_telegram_init_data: str = Header(default="")) -> dict:
-    auth_user = _require_auth_user(x_telegram_init_data, request=request)
-    tg_id = int(auth_user.get("id", 0))
-    s = SessionLocal()
+    s, user, auth_user = _client_user_session(request, x_telegram_init_data)
     try:
-        user = s.query(User).filter(User.tg_id == tg_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
         linked_id = _linked_telegram_id(user)
         telegram_native = bool(
             not _is_app_or_email_account(user)
@@ -4879,6 +4924,20 @@ async def client_telegram_link_start(request: Request, x_telegram_init_data: str
                 account_tg_id=int(user.tg_id),
                 now=_utcnow(),
             )
+        session_id, identity_meta = _client_telemetry_identity(
+            s,
+            user=user,
+            auth_user=auth_user,
+            request=request,
+        )
+        _record_client_event(
+            s,
+            user=user,
+            event_name="app_telegram_link_requested",
+            source="app",
+            session_id=session_id or "unavailable",
+            meta={**identity_meta, "linked": bool(linked_id or telegram_native)},
+        )
         s.commit()
         bot_username = (BOT_USERNAME or "pokrov_vpnbot").lstrip("@")
         channel_username = (PUBLIC_CHANNEL or "").lstrip("@").strip()
@@ -4891,6 +4950,43 @@ async def client_telegram_link_start(request: Request, x_telegram_init_data: str
             "bot_url": f"https://t.me/{bot_username}?start={start_code}" if start_code else f"https://t.me/{bot_username}",
             "channel_url": f"https://t.me/{channel_username}" if channel_username else None,
         }
+    finally:
+        s.close()
+
+
+@app.post("/api/client/telegram/link/events")
+async def client_telegram_link_event(
+    payload: ClientTelegramLinkEventIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, bool]:
+    allowed = {"handoff_opened", "handoff_open_failed", "verify_requested"}
+    event_name = str(payload.event_name or "").strip().lower()
+    if event_name not in allowed:
+        raise HTTPException(status_code=422, detail="Unsupported Telegram link event")
+    s, user, auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        session_id, identity_meta = _client_telemetry_identity(
+            s,
+            user=user,
+            auth_user=auth_user,
+            request=request,
+        )
+        _enforce_beta_rate_limit(
+            "client_diagnostic_event",
+            request,
+            identity=session_id or str(user.tg_id),
+        )
+        _record_client_event(
+            s,
+            user=user,
+            event_name=f"app_telegram_link_{event_name}",
+            source="app",
+            session_id=session_id or "unavailable",
+            meta=identity_meta,
+        )
+        s.commit()
+        return {"ok": True}
     finally:
         s.close()
 

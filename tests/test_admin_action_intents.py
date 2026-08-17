@@ -1225,6 +1225,7 @@ def test_client_and_ticket_mutation_routes_require_action_intent(
         ("POST", "/api/admin/users/1001/manual-extend", {"days": 30}),
         ("POST", "/api/admin/users/1001/manual/block", {"blocked": True}),
         ("POST", "/api/admin/users/1001/manual/regenerate-token", {}),
+        ("POST", "/api/admin/users/1001/migration-code", {}),
         ("POST", "/api/admin/users/1001/safe-delete", {"confirm": True}),
         ("POST", "/api/admin/users/1001/delete-test-user", {}),
         ("POST", "/api/admin/users/1001/keys/nl/toggle", {"enable": False}),
@@ -1248,6 +1249,75 @@ def test_client_and_ticket_mutation_routes_require_action_intent(
         response = client.request(method, path, json=body, headers=_admin_headers())
         assert response.status_code == 428, f"{method} {path}: {response.text}"
         assert _detail_code(response) == "intent_required"
+
+
+def test_operator_migration_code_is_one_time_and_not_persisted(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import AdminActionIntent, DevicePairingCode, User
+
+    session = api.SessionLocal()
+    try:
+        session.add(
+            User(
+                tg_id=8123,
+                username="legacy-owner",
+                sub_type="PAID",
+                is_active=True,
+                expiry_at=datetime.now(timezone.utc).replace(tzinfo=None)
+                + timedelta(days=30),
+            )
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    client = TestClient(api.app)
+    prepared = _prepare(
+        client,
+        action="user.migration_code",
+        target_type="user",
+        target_id="8123",
+        payload={},
+    )
+    assert prepared.status_code == 200, prepared.text
+    assert prepared.json()["confirmation_challenge"] == "8123"
+    intent_id = str(prepared.json()["intent_id"])
+    idempotency_key = str(uuid.uuid4())
+    headers = _execute_headers(
+        intent_id,
+        idempotency_key=idempotency_key,
+        confirmation_hash=hashlib.sha256(b"8123").hexdigest(),
+    )
+    issued = client.post(
+        "/api/admin/users/8123/migration-code",
+        headers=headers,
+        json={},
+    )
+    assert issued.status_code == 200, issued.text
+    pairing_code = str(issued.json()["pairing_code"])
+    assert len(pairing_code) == 9
+    assert pairing_code[4] == "-"
+
+    replay = client.post(
+        "/api/admin/users/8123/migration-code",
+        headers=headers,
+        json={},
+    )
+    assert replay.status_code == 200, replay.text
+    assert "pairing_code" not in replay.json()
+
+    session = api.SessionLocal()
+    try:
+        intent = session.query(AdminActionIntent).filter_by(id=intent_id).one()
+        assert pairing_code not in str(intent.result_summary_json or "")
+        assert session.query(DevicePairingCode).count() == 1
+        user = session.query(User).filter_by(tg_id=8123).one()
+        assert str(user.account_id or "")
+    finally:
+        session.close()
 
 
 def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_l1(

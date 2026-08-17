@@ -2172,6 +2172,40 @@ class BotPaywallTests(unittest.TestCase):
         finally:
             session.close()
 
+    def test_app_link_bind_rejects_expired_handoff_before_identity_change(self) -> None:
+        app_tg_id = 9_000_000_000_104
+        start_code = "app_link_expired_104"
+        session = self.bot_module.Session()
+        try:
+            session.add(
+                self.bot_module.StartLink(
+                    code=start_code,
+                    target_action=f"app_link:{app_tg_id}",
+                    is_active=True,
+                )
+            )
+            session.commit()
+            row = session.query(self.bot_module.StartLink).filter_by(code=start_code).one()
+            row.updated_at = self.bot_module._utcnow() - timedelta(minutes=16)
+            session.commit()
+        finally:
+            session.close()
+
+        result = self.bot_module._bind_app_account_to_telegram(
+            account_tg_id=app_tg_id,
+            telegram_id=1001,
+            telegram_username="telegram_owner",
+            start_code=start_code,
+        )
+
+        self.assertEqual(result, "expired")
+        session = self.bot_module.Session()
+        try:
+            row = session.query(self.bot_module.StartLink).filter_by(code=start_code).one()
+            self.assertFalse(row.is_active)
+        finally:
+            session.close()
+
     def test_app_link_bind_requires_both_user_endpoints_and_keeps_link_unused(self) -> None:
         app_tg_id = 9_000_000_000_103
         missing_telegram_id = 1003

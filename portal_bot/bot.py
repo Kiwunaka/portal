@@ -1086,6 +1086,7 @@ def _naive_utc(dt: datetime | None) -> datetime | None:
 from db import SessionLocal, init_db
 import channel_bonus_service
 import device_pairing_service
+from app_first_service import app_telegram_start_link_is_fresh
 from economy_service import create_referral_relationship, record_successful_payment_grant
 from account_foundation_service import (
     ensure_user_account_foundation,
@@ -2347,7 +2348,13 @@ def _bind_app_account_to_telegram(
             .with_for_update()
             .first()
         )
+        now = _utcnow()
         if not row:
+            return "expired"
+        if not app_telegram_start_link_is_fresh(row, now=now):
+            row.is_active = False
+            row.updated_at = now
+            session.commit()
             return "expired"
         locked_users = (
             session.query(User)
@@ -2386,7 +2393,6 @@ def _bind_app_account_to_telegram(
         if linked_id and linked_id != int(telegram_id):
             return "account_linked_elsewhere"
 
-        now = _utcnow()
         user.linked_telegram_id = int(telegram_id)
         user.linked_telegram_username = str(telegram_username or "").strip() or None
         user.linked_telegram_linked_at = now

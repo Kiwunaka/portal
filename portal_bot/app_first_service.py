@@ -20,6 +20,7 @@ ROUTE_MODE_SELECTED_APPS = "selected_apps"
 _ROUTE_MODE_VALUES = {ROUTE_MODE_ALL_TRAFFIC, ROUTE_MODE_SELECTED_APPS}
 _DESKTOP_ROUTE_PLATFORMS = {"windows", "linux", "macos", "darwin"}
 ROUTE_POLICY_SELECTED_APPS_REQUIRED_CODE = "selected_apps_required"
+APP_TELEGRAM_START_LINK_TTL_SECONDS = 15 * 60
 
 
 class RoutePolicyValidationError(ValueError):
@@ -199,8 +200,51 @@ def build_client_policy(
     return client_policy
 
 
+def expire_app_telegram_start_codes(
+    session,
+    *,
+    now: datetime,
+    account_tg_id: int | None = None,
+) -> int:
+    """Deactivate expired app-to-Telegram handoffs without deleting audit rows."""
+
+    cutoff = now - timedelta(seconds=APP_TELEGRAM_START_LINK_TTL_SECONDS)
+    query = session.query(StartLink).filter(
+        StartLink.is_active == True,
+        StartLink.target_action.like("app_link:%"),
+        StartLink.updated_at < cutoff,
+    )
+    if account_tg_id is not None:
+        query = query.filter(StartLink.target_action == f"app_link:{int(account_tg_id)}")
+    rows = query.with_for_update().all()
+    for row in rows:
+        row.is_active = False
+        row.updated_at = now
+    if rows:
+        session.flush()
+    return len(rows)
+
+
+def app_telegram_start_link_is_fresh(row: StartLink | None, *, now: datetime) -> bool:
+    if row is None or not bool(getattr(row, "is_active", False)):
+        return False
+    action = str(getattr(row, "target_action", "") or "").strip().lower()
+    if not action.startswith("app_link:"):
+        return True
+    updated_at = getattr(row, "updated_at", None)
+    return bool(
+        updated_at is not None
+        and updated_at >= now - timedelta(seconds=APP_TELEGRAM_START_LINK_TTL_SECONDS)
+    )
+
+
 def create_app_telegram_start_code(session, *, account_tg_id: int, now: datetime) -> str:
     action = f"app_link:{int(account_tg_id)}"
+    expire_app_telegram_start_codes(
+        session,
+        now=now,
+        account_tg_id=int(account_tg_id),
+    )
     existing = (
         session.query(StartLink)
         .filter(StartLink.target_action == action)
