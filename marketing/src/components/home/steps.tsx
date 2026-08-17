@@ -45,7 +45,7 @@ export function Steps() {
             title={getCopyText("marketing.home.steps.title", "Скачали. Вошли. Нажали «Подключить».")}
             sub={getCopyText(
               "marketing.home.steps.sub",
-              "Никаких профилей и ключей. Установите, войдите и нажмите одну кнопку.",
+              "На Android и Windows никаких профилей и ключей: установите, войдите и нажмите одну кнопку.",
             )}
           />
         </Reveal>

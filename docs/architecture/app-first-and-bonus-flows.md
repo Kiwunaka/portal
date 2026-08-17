@@ -25,7 +25,7 @@ The rework canon now freezes the following target identity and access model for 
 - site email signup is a live additive browser continuation lane when `/api/auth/email/status` reports public delivery readiness; it must not be described as a premium-trial replacement for the app-first path
 - browser continuation can start from app handoff, Telegram, or email; all three land in the same cabinet session family instead of creating competing account tracks
 - Telegram is recovery, linking, restore-premium, bonus, community, support fallback, and bot-side fallback commerce, not the primary login or commerce wall
-- commerce becomes `buy key -> redeem key -> managed premium`, with raw subscription links hidden from default UX and exposed only for explicit recovery/manual flows
+- commerce becomes `buy key -> redeem key -> managed premium`; raw subscription links are hidden from default UX and exposed only in the authenticated Apple manual-connection path
 - consumer free-tier delivery is retired and fail-closed by default (`FREE_TIER_ENABLED=false`); legacy `free_standard`/`free_soft` roles remain only as rollback and cleanup compatibility and must never fall back to paid nodes
 - `GET /api/dashboard`, `GET /api/user/*`, `POST /api/client/session/start-trial`, and `GET /api/client/profile/managed` should converge on one linked-identity and access-state contract that also carries redeem eligibility, promo-slot payloads, and the hidden transport matrix
 - normal consumer UI shows one logical location; ordered transports such as `vless_reality -> vmess -> trojan -> xhttp` remain hidden rollout detail rather than mass-UI choice
@@ -553,22 +553,21 @@ Checkout rule:
 - payment provider readiness is contractually separate from app-first access; public checkout must remain unavailable or degraded for any route not covered by `docs/product/payment-and-access-key-contract.md` and current provider evidence
 - `webapp` renewal is continuation-only and should defer to the same hosted activation-key flow
 - Telegram bot billing remains valid as a secondary path; bot orders are Telegram-ticket-bound and do not collect buyer email
-- raw subscription links remain hidden from default public commerce and first-layer cabinet UI, but the authenticated cabinet and paid Telegram bot flow may show the single `connect.pokrov.space` link after fulfillment as an explicit beta-stage manual import fallback while still preferring the POKROV app and cabinet
+- raw subscription links remain hidden from public commerce and Android/Windows flows; the authenticated cabinet and Telegram bot may reveal one `connect.pokrov.space` key only for iPhone, iPad, and macOS compatible clients
 - signed payment callbacks must not grant access unless the normalized local status is `paid`; failed, cancelled, refunded, chargeback, invalid-signature, and unknown/manual-review states are recorded for operator reconciliation instead of extending the account
 
 ## Subscription Delivery Semantics
 
 Current user-facing delivery semantics:
 
-- one private base `ссылка подключения` only in an authenticated explicit
-  manual/recovery fallback
+- one private base `ключ подключения` only in the authenticated Apple manual path
 - one QR built from the same base URL only when that fallback is intentionally revealed
 - one key-first commerce path: buy key -> redeem key -> managed premium
 - no public format split in bot, site, or first-layer webapp wording
 - consumer client and cabinet flows should prefer reconnect, refresh, route-mode change, checkout, and support over raw subscription copy/edit surfaces
-- the main Telegram bot must not put the manual link, QR, share action, or security reset on the first menu layer; those actions belong in `Ещё`, device instructions, or explicit manual/recovery context
+- the main Telegram bot exposes Apple as a device choice, but the key and QR stay behind that explicit Apple screen; Android and Windows screens contain only official-file and app-login actions
 - redeem surfaces must reject or clearly explain `connect.pokrov.space` URLs as connection links, not activation keys
-- payment, gift, and bonus success messages should prefer app/cabinet continuation and may offer a `Ручная ссылка / QR` button, but should not paste the full bearer connection URL into the message body by default
+- payment, gift, and bonus success messages prefer app/cabinet continuation and must not paste the bearer URL; Apple users reveal it only through the dedicated copy/QR action
 
 Compatibility note:
 

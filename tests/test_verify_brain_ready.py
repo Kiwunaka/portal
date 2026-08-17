@@ -98,6 +98,16 @@ class VerifyBrainReadyTests(unittest.TestCase):
         self.assertIn("root * /var/www/portal", connect_block)
         self.assertLess(connect_block.index("handle @singbox_rules"), connect_block.index("redir https://app.pokrov.space{uri} 308"))
 
+    def test_caddy_allows_only_telegram_to_embed_the_user_cabinet(self) -> None:
+        caddyfile = (Path(__file__).resolve().parents[1] / "infra" / "Caddyfile.internal").read_text(encoding="utf-8")
+
+        webapp_block = caddyfile[
+            caddyfile.index("@webapp_host host app.pokrov.space") : caddyfile.index("@adminapp_host host")
+        ]
+        self.assertIn("-X-Frame-Options", webapp_block)
+        self.assertIn("frame-ancestors https://web.telegram.org https://*.telegram.org", webapp_block)
+        self.assertNotIn("frame-ancestors *", webapp_block)
+
     def test_main_returns_failure_when_required_service_is_inactive(self) -> None:
         ssh = MagicMock()
         sftp = MagicMock()

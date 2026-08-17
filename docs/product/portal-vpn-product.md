@@ -19,7 +19,7 @@ This file is living source of truth for product direction and user-facing produc
 - `Android`
 - `Windows`
 
-`Linux`, `iOS`, and `macOS` are roadmap/readiness tracks only for this release wave. They are not part of the full public `v1` promise.
+`Linux`, native `iOS`, and native `macOS` are roadmap/readiness tracks only for this release wave. Apple users keep an explicit compatible-client path with an authenticated personal key; that path is not a native Apple release claim.
 
 Primary user goal:
 
@@ -304,7 +304,7 @@ explicitly needed:
 - one authenticated base connection link and matching QR
 - one canonical host: `connect.pokrov.space`
 - no first-layer consumer screen should lead with QR, raw token, raw config, or transport settings
-- `POKROV` is the primary client; `Hiddify` is the verified manual fallback
+- `POKROV` APK/EXE is the only primary path on Android and Windows; authenticated manual keys are reserved for Apple-compatible clients
 - the authenticated manual section may derive `format=happ` for Happ with
   `URL.searchParams`; Happ remains best-effort and the user must not edit query parameters manually
 - a private URL or QR must never be placed in a third-party link, telemetry,

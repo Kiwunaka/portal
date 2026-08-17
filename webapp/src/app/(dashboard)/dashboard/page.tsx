@@ -141,7 +141,7 @@ export default function DashboardPage() {
       : connectionState === "verified"
         ? "Первое подключение подтверждено сервером. Управляйте устройствами из этого аккаунта."
         : connectionState === "reported"
-          ? "Приложение подключилось. Серверное подтверждение появится после ближайшего observer-сигнала."
+          ? "Приложение подключилось. Статус обновится автоматически после следующей проверки."
       : trialMode
         ? `Пробный период работает${daysRemaining !== null ? `, осталось ${formatCount(daysRemaining)} дн.` : "."}`
         : nextStep === "connect"

@@ -85,8 +85,8 @@ Rules:
 
 - frontend must not treat `https://app.pokrov.space/api/*` HTML fallback as valid API success
 - cabinet entry is continuation-first and must not be documented or styled like a second acquisition surface
-- first-layer cabinet UI should guide users through app install, device connection, renewal, and support before exposing manual connection details
-- the single public `ссылка подключения` and matching QR may appear only behind an explicit manual/recovery fallback or after a fulfilled commerce/support path that truly needs manual import
+- first-layer cabinet UI guides Android users to the APK, Windows users to the EXE, and Apple users to a separate manual-connection card
+- the private connection key and matching QR may appear only inside the authenticated Apple path; Android and Windows user flows must not offer raw subscription import
 - `?format=plain` remains hidden compatibility-only behavior and must stay out of normal cabinet UX
 - `connect.pokrov.space` is for config delivery, not for public acquisition or payment entry
 - cabinet checkout must not drift into a second public paywall or direct raw-link delivery story

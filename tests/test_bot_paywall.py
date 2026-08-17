@@ -375,7 +375,7 @@ class BotPaywallTests(unittest.TestCase):
         link = self.bot_module.build_subscription_link(1001)
         self.assertTrue(link.startswith("https://connect.pokrov.space/s8Kx2mP7qR4wT/token_1001_secure"))
 
-    def test_show_key_exposes_single_public_connection_link(self) -> None:
+    def test_show_key_keeps_apple_key_behind_explicit_copy_or_qr(self) -> None:
         class _EditableMessage(_FakeMessage):
             async def edit_text(self, text, **kwargs):
                 self.edits.append(str(text))
@@ -415,15 +415,18 @@ class BotPaywallTests(unittest.TestCase):
             asyncio.run(self.bot_module.show_key(callback))
 
         final_text = callback.message.edits[-1]
-        self.assertIn("https://connect.pokrov.space/s8Kx2mP7qR4wT/token_1001_secure", final_text)
+        self.assertNotIn("https://connect.pokrov.space/s8Kx2mP7qR4wT/token_1001_secure", final_text)
+        self.assertIn("Apple: ручное подключение", final_text)
+        self.assertIn("Android", final_text)
+        self.assertIn("Windows", final_text)
         self.assertNotIn("?format=plain", final_text)
         self.assertNotIn("Обычная ссылка", final_text)
 
         reply_markup = callback.message.edit_kwargs[-1]["reply_markup"]
         labels = [button.text for row in reply_markup.inline_keyboard for button in row]
-        self.assertIn("📋 Скопировать ссылку", labels)
+        self.assertIn("📋 Скопировать ключ Apple", labels)
         self.assertIn("📋 Скопировать для Happ", labels)
-        self.assertIn("📱 QR для Hiddify", labels)
+        self.assertIn("📱 QR для Apple-клиента", labels)
         self.assertIn("📱 QR для Happ", labels)
         self.assertIn("📲 Как подключить вручную", labels)
         self.assertNotIn("Karing", " ".join(labels))
@@ -2644,14 +2647,14 @@ class BotPaywallTests(unittest.TestCase):
         labels = [str(button.get("text") or "") for button in buttons]
         callbacks = [str(button.get("callback_data") or "") for button in buttons]
 
-        self.assertEqual(labels, ["Android", "Windows", "Уже пользуюсь POKROV", "Помощь"])
+        self.assertEqual(labels, ["Android", "Windows", "iPhone, iPad и Mac", "Уже пользуюсь POKROV", "Помощь"])
         self.assertEqual(
             callbacks,
-            ["instr_android", "instr_win", "device_pairing_code", "confused_help"],
+            ["instr_android", "instr_win", "instr_apple", "device_pairing_code", "confused_help"],
         )
         self.assertFalse(any(button.get("web_app") for button in buttons))
 
-    def test_returning_user_device_picker_keeps_release_platforms_only(self) -> None:
+    def test_returning_user_device_picker_keeps_native_and_apple_paths_distinct(self) -> None:
         rows = self.bot_module._device_select_rows()
         buttons = [button for row in rows for button in row]
         labels = [str(button.get("text") or "") for button in buttons]
@@ -2660,9 +2663,49 @@ class BotPaywallTests(unittest.TestCase):
         self.assertEqual(labels[:2], ["Android", "Windows"])
         self.assertIn("instr_android", callbacks)
         self.assertIn("instr_win", callbacks)
+        self.assertIn("instr_apple", callbacks)
         self.assertIn("device_pairing_code", callbacks)
         self.assertNotIn("instr_ios", callbacks)
         self.assertNotIn("instr_mac", callbacks)
+
+    def test_platform_screens_never_offer_manual_keys_to_android_or_windows(self) -> None:
+        for platform in ("android", "win"):
+            callback = _FakeCallback(1001, data=f"instr_{platform}")
+            callback.message.bot = object()
+            callback.message.message_id = 1
+            captured: list[dict] = []
+
+            async def capture(**kwargs):
+                captured.append(kwargs)
+                return True
+
+            with patch.object(self.bot_module, "_edit_text_with_specs", side_effect=capture):
+                asyncio.run(self.bot_module._render_platform_screen(callback, platform))
+            callbacks = [
+                str(button.get("callback_data") or "")
+                for row in captured[-1]["rows"]
+                for button in row
+            ]
+            self.assertNotIn("show_key", callbacks)
+
+        callback = _FakeCallback(1001, data="instr_apple")
+        callback.message.bot = object()
+        callback.message.message_id = 1
+        captured = []
+
+        async def capture_apple(**kwargs):
+            captured.append(kwargs)
+            return True
+
+        with patch.object(self.bot_module, "_edit_text_with_specs", side_effect=capture_apple):
+            asyncio.run(self.bot_module._render_platform_screen(callback, "apple"))
+        callbacks = [
+            str(button.get("callback_data") or "")
+            for row in captured[-1]["rows"]
+            for button in row
+        ]
+        self.assertIn("show_key", callbacks)
+        self.assertNotIn("device_pairing_code", callbacks)
 
     def test_installed_app_action_does_not_resell_active_access(self) -> None:
         action = self.bot_module._installed_app_action_spec(1001)
@@ -2819,7 +2862,7 @@ class BotPaywallTests(unittest.TestCase):
         labels = [button.text for row in reply_markup.inline_keyboard for button in row]
         self.assertIn("📲 Подключить это устройство", labels)
         self.assertIn("🎫 Есть код оплаты или подарок", labels)
-        self.assertIn("🔗 Есть личная ссылка", labels)
+        self.assertIn("🔗 Apple: ручное подключение", labels)
         self.assertIn("⚠️ Подключение не работает", labels)
         self.assertIn("❓ Частые вопросы", labels)
 

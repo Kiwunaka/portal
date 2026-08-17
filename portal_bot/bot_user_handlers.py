@@ -712,7 +712,7 @@ async def show_key(callback: CallbackQuery):
         free_note += f" Платный доступ откроет платные локации и до {PAID_LIMIT_IP} устройств."
 
     copy_button = _subscription_copy_button(
-        label="📋 Скопировать ссылку",
+        label="📋 Скопировать ключ Apple",
         value=sub_link,
         fallback_callback="copy_key",
     )
@@ -731,20 +731,19 @@ async def show_key(callback: CallbackQuery):
             [copy_button],
             [happ_copy_button],
             *fallback_rows,
-            [InlineKeyboardButton(text="📱 QR для Hiddify", callback_data="show_qr")],
+            [InlineKeyboardButton(text="📱 QR для Apple-клиента", callback_data="show_qr")],
             [InlineKeyboardButton(text="📱 QR для Happ", callback_data="show_happ_qr")],
-            [InlineKeyboardButton(text="📲 Как подключить вручную", callback_data="instruction")],
+            [InlineKeyboardButton(text="📲 Как подключить Apple", callback_data="instr_apple")],
             [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
         ]
     )
 
     await _edit_or_answer_callback_text(
         callback,
-        f"🔗 *Ручное подключение*\n\n"
-        "Это запасной способ, если POKROV не подключился сам. Сначала попробуйте приложение; ссылку используйте только для ручного подключения.\n\n"
-        "Это личная ссылка для подключения. Не пересылайте её: по ней можно пользоваться вашим доступом.\n\n"
-        f"`{sub_link}`\n\n"
-        "Если приложения POKROV пока нет на устройстве, начните с Hiddify. Для Happ используйте отдельную кнопку или QR — вручную менять ссылку не нужно.\n"
+        "🍎 *Apple: ручное подключение*\n\n"
+        "Для iPhone, iPad и Mac установите совместимое приложение, затем скопируйте личный ключ или откройте QR ниже.\n\n"
+        "На Android используйте APK POKROV, на Windows — EXE: ключ там не нужен.\n\n"
+        "Ключ личный. Не пересылайте его: по нему можно пользоваться вашим доступом.\n"
         f"{free_note}",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
@@ -758,7 +757,7 @@ async def copy_key_callback(callback: CallbackQuery):
     sub_link = build_subscription_link(tg_id)
     track_event(tg_id=tg_id, event_name="copied_key", source="bot")
     await callback.message.answer(
-        f"📋 <b>Обычная ссылка для Hiddify</b>\n<code>{html.escape(sub_link)}</code>",
+        f"📋 <b>Личный ключ для Apple</b>\n<code>{html.escape(sub_link)}</code>",
         parse_mode=ParseMode.HTML,
     )
     await callback.answer("Ссылка показана")
@@ -982,6 +981,13 @@ def _device_select_rows() -> list[list[dict[str, str]]]:
         ],
         [
             _btn_spec(
+                text="iPhone, iPad и Mac",
+                callback_data="instr_apple",
+                emoji_key="device",
+            )
+        ],
+        [
+            _btn_spec(
                 text="Код для входа в POKROV",
                 callback_data="device_pairing_code",
                 style=BTN_STYLE_SUCCESS,
@@ -1023,7 +1029,7 @@ async def confused_help(callback: CallbackQuery):
             )
         ],
         [_btn_spec(text="🎫 Есть код оплаты или подарок", callback_data="menu_more")],
-        [_btn_spec(text="Есть личная ссылка", callback_data="show_key", emoji_key="link")],
+        [_btn_spec(text="Apple: ручное подключение", callback_data="instr_apple", emoji_key="link")],
         [_btn_spec(text="Подключение не работает", callback_data="support", emoji_key="warning")],
         [_btn_spec(text="Частые вопросы", callback_data="faqmenu", emoji_key="faq")],
         [_btn_spec(text="◀️ Назад", callback_data="back")],
@@ -1182,6 +1188,7 @@ async def show_settings(callback: CallbackQuery):
 
 
 _PLATFORM_SCREENS = {
+    "apple": ("bot.instruction.platform_ios", IOS_APP_LINK, "Инструкция для Apple"),
     "ios": ("bot.instruction.platform_ios", IOS_APP_LINK, "Открыть страницу для iPhone"),
     "android": (
         "bot.instruction.platform_android",
@@ -1242,13 +1249,15 @@ def _installed_app_action_spec(tg_id: int) -> dict[str, str]:
 
 
 async def _render_platform_screen(callback: CallbackQuery, platform: str) -> None:
-    """Per-platform install screen: download, funnel to access check, manual fallback."""
+    """Per-platform install screen with manual keys restricted to Apple."""
     copy_key, url, btn = _PLATFORM_SCREENS.get(platform, _PLATFORM_SCREENS["android"])
-    rows = _platform_download_rows(platform, url, btn) + [
-        [_installed_app_action_spec(callback.from_user.id)],
-        [_btn_spec(text="Ручное подключение", callback_data="show_key", emoji_key="link")],
-        [_btn_spec(text="◀️ Устройства", callback_data="instruction")],
-    ]
+    apple_platform = platform in {"apple", "ios", "mac"}
+    rows = _platform_download_rows(platform, url, btn)
+    if apple_platform:
+        rows += [[_btn_spec(text="Получить личный ключ", callback_data="show_key", style=BTN_STYLE_SUCCESS, emoji_key="link")]]
+    else:
+        rows += [[_installed_app_action_spec(callback.from_user.id)]]
+    rows += [[_btn_spec(text="◀️ Устройства", callback_data="instruction")]]
     await _edit_text_with_specs(
         bot=callback.message.bot,
         chat_id=callback.message.chat.id,
@@ -1260,7 +1269,7 @@ async def _render_platform_screen(callback: CallbackQuery, platform: str) -> Non
     await callback.answer()
 
 
-@router.callback_query(F.data.in_({"instr_ios", "instr_android", "instr_win", "instr_mac"}))
+@router.callback_query(F.data.in_({"instr_apple", "instr_ios", "instr_android", "instr_win", "instr_mac"}))
 async def instruction_platform(callback: CallbackQuery):
     await _render_platform_screen(callback, (callback.data or "").replace("instr_", ""))
 

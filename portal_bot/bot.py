@@ -4224,6 +4224,13 @@ def new_user_keyboard_specs() -> list[list[dict[str, str]]]:
         ],
         [
             _btn_spec(
+                text="iPhone, iPad и Mac",
+                callback_data="instr_apple",
+                emoji_key="device",
+            )
+        ],
+        [
+            _btn_spec(
                 text="Уже пользуюсь POKROV",
                 callback_data="device_pairing_code",
                 emoji_key="key",

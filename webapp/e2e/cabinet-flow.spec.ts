@@ -726,7 +726,7 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).toContainText("Туннель");
     await expect(page.locator("main")).toContainText("DNS");
     await expect(page.locator("main")).toContainText("Интернет / HTTPS");
-    await expect(page.locator("main")).toContainText("не выдаются за внешний leak-тест");
+    await expect(page.locator("main")).toContainText("точная проверка остаётся в приложении");
     await expect(page.locator("main")).toContainText("Автоматических бесконечных повторов нет");
   });
 
@@ -973,7 +973,7 @@ test.describe("Cabinet flow", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("/downloads/");
 
-    const disclosure = page.getByText("Как подключиться за 3 шага", { exact: true });
+    const disclosure = page.getByText("Android и Windows: подключение за 3 шага", { exact: true });
     await expect(disclosure).toBeVisible();
     await expect(page.getByText("Берите файл только на этой странице.")).not.toBeVisible();
     await disclosure.click();
@@ -1029,7 +1029,7 @@ test.describe("Cabinet flow", () => {
     await expect(page.getByRole("link", { name: /В поддержку/i })).toBeVisible();
   });
 
-  test("shows subscription manual connection only as an explicit fallback", async ({ page }) => {
+  test("shows Apple manual connection only as an explicit platform path", async ({ page }) => {
     await page.goto("/subscription/");
 
     await expect(page.locator("main h1", { hasText: "Продлить доступ" })).toBeVisible();
@@ -1039,13 +1039,13 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).not.toContainText("Коротко о режимах");
 
     const manualConnection = page.locator("#manual-setup");
-    await expect(manualConnection).toContainText("Ручная настройка");
+    await expect(manualConnection).toContainText("Apple: ручное подключение");
     await expect(manualConnection).not.toContainText("mock_token");
-    await expect(manualConnection).not.toContainText("Совместимые клиенты");
+    await expect(manualConnection).not.toContainText("Совместимые Apple-клиенты");
     await manualConnection.getByRole("button", { name: "Показать" }).click();
     await expect(manualConnection).toContainText("mock_token");
-    await expect(manualConnection).toContainText("Совместимые клиенты");
-    await expect(manualConnection.getByRole("button", { name: "Скопировать ссылку" })).toBeVisible();
+    await expect(manualConnection).toContainText("Совместимые Apple-клиенты");
+    await expect(manualConnection.getByRole("button", { name: "Скопировать ключ" })).toBeVisible();
     await expect(manualConnection.getByRole("link", { name: "Открыть ссылку" })).toBeVisible();
     await expect(page.locator("main")).not.toContainText("?format=plain");
   });
@@ -1086,9 +1086,9 @@ test.describe("Cabinet flow", () => {
     const manualConnection = page.locator("#manual-setup");
     await expect(manualConnection).toContainText("Появится после активации");
     await expect(manualConnection).toContainText("скрыто");
-    await expect(manualConnection).not.toContainText("Совместимые клиенты");
+    await expect(manualConnection).not.toContainText("Совместимые Apple-клиенты");
     await expect(manualConnection).not.toContainText("connect.pokrov.space");
-    await expect(manualConnection.getByRole("button", { name: "Скопировать ссылку" })).toHaveCount(0);
+    await expect(manualConnection.getByRole("button", { name: "Скопировать ключ" })).toHaveCount(0);
     await expect(manualConnection.getByRole("link", { name: "Открыть ссылку" })).toHaveCount(0);
   });
 
@@ -1212,10 +1212,10 @@ test.describe("Cabinet flow", () => {
     await page.getByRole("link", { name: /Все экраны и кнопки POKROV/ }).click();
     await expect(page).toHaveURL(/\/guides\/pokrov-app\/?$/);
     await expect(page.getByRole("heading", { name: "Весь POKROV по экранам и кнопкам" })).toBeVisible();
-    await expect(page.getByText("Показано:").locator("..")).toContainText("20 из 20");
+    await expect(page.getByText("Показано:").locator("..")).toContainText("22 из 22");
 
     await page.getByRole("searchbox", { name: "Найти экран или кнопку" }).fill("DNS");
-    await expect(page.getByText("Показано:").locator("..")).toContainText("3 из 20");
+    await expect(page.getByText("Показано:").locator("..")).toContainText("3 из 22");
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
       await page.evaluate(() => document.documentElement.clientWidth),
     );
@@ -1344,6 +1344,8 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).toContainText("Windows");
     await expect(page.locator("main")).toContainText("предупреждение");
     await expect(page.locator("main a[href*='github.com'][href$='pokrov-windows-setup-x64.exe']").first()).toBeVisible();
+    await expect(page.locator("main")).toContainText("iPhone, iPad и Mac");
+    await expect(page.getByRole("link", { name: "Настроить" })).toHaveAttribute("href", "/subscription/#manual-setup");
     await expect(page.locator("main")).not.toContainText("Что делать сейчас");
 
     await page.goto("/support/");

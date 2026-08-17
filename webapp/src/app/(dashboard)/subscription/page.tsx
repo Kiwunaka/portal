@@ -289,13 +289,13 @@ export default function SubscriptionPage() {
 
       <GroupedSection title="Действия">
         <Row icon={KeyRound} label="Активировать код" hint="Оплата, подарок или промокод" href="/redeem/" />
-        <Row icon={Download} label="Скачать приложение" hint="Android и Windows" href="/downloads/" />
+        <Row icon={Download} label="Скачать приложение" hint="APK для Android · EXE для Windows" href="/downloads/" />
         <Row icon={LifeBuoy} label="Помощь" hint="Если оплата не обновилась" href="/support/" />
       </GroupedSection>
 
       <section id="manual-setup" className="scroll-mt-24 space-y-2">
         <div className="flex items-center justify-between gap-3 px-1">
-          <h2 className="text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Ручная настройка</h2>
+          <h2 className="text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Apple: ручное подключение</h2>
           <Button
             variant="secondary"
             size="sm"
@@ -308,8 +308,8 @@ export default function SubscriptionPage() {
         <div className="overflow-hidden rounded-card border border-line bg-surface shadow-soft">
           <Row
             icon={QrCode}
-            label="Личная ссылка и QR"
-            hint={manualAccessReady ? "Только для восстановления или совместимого клиента" : "Появится после активации"}
+            label="Личный ключ и QR"
+            hint={manualAccessReady ? "Для iPhone, iPad и Mac" : "Появится после активации"}
             value={manualAccessVisible ? "открыто" : "скрыто"}
           />
           <AnimatePresence initial={false}>
@@ -326,7 +326,7 @@ export default function SubscriptionPage() {
                 <SubscriptionQrCard value={subscriptionUrl} active={manualAccessReady} />
                 <div className="min-w-0">
                   <p className="text-sm leading-6 text-ink-soft">
-                    Скопируйте ссылку только на устройстве, которому доверяете. Она открывает профиль подключения.
+                    Используйте ключ только в совместимом Apple-приложении. На Android установите APK POKROV, на Windows — EXE.
                   </p>
                   <div className="mt-4 rounded-control border border-line bg-canvas-alt px-3 py-3">
                     <p className="font-mono text-xs leading-6 break-all text-ink">{subscriptionUrl}</p>
@@ -334,7 +334,7 @@ export default function SubscriptionPage() {
                   <div className="mt-4 flex flex-wrap gap-3">
                     <CopyButton
                       text={subscriptionUrl}
-                      label="Скопировать ссылку"
+                      label="Скопировать ключ"
                       copiedLabel="Скопировано"
                       toastMessage="Ссылка скопирована"
                       disabled={!manualAccessReady}
@@ -347,12 +347,12 @@ export default function SubscriptionPage() {
               </div>
 
               <div>
-                <p className="mb-2 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Совместимые клиенты</p>
+                <p className="mb-2 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Совместимые Apple-клиенты</p>
                 <GroupedSection>
                   <Row
                     label="Hiddify"
-                    value="Android и Windows"
-                    hint="Проверенный fallback"
+                    value="Apple"
+                    hint="Если доступен в вашем App Store"
                     action={
                       <a href="https://github.com/hiddify/hiddify-app/releases" target="_blank" rel="noreferrer" className={ROW_ACTION_CLASS}>
                         Скачать
@@ -362,7 +362,7 @@ export default function SubscriptionPage() {
                   {happSubscriptionUrl ? (
                     <CompatibleClientImport
                       name="Happ"
-                      platforms="Android, Windows, macOS и iOS"
+                      platforms="iPhone, iPad и Mac"
                       formatLabel="format=happ"
                       subscriptionUrl={happSubscriptionUrl}
                       downloadUrl="https://www.happ.su/main/"
@@ -373,24 +373,7 @@ export default function SubscriptionPage() {
                       Не удалось безопасно подготовить ссылку для Happ.
                     </div>
                   )}
-                  <Row
-                    label="v2rayN"
-                    value="Windows"
-                    action={
-                      <a href="https://github.com/2dust/v2rayN/releases" target="_blank" rel="noreferrer" className={ROW_ACTION_CLASS}>
-                        Скачать
-                      </a>
-                    }
-                  />
-                  <Row
-                    label="NekoBox"
-                    value="Android"
-                    action={
-                      <a href="https://github.com/MatsuriDayo/NekoBoxForAndroid/releases" target="_blank" rel="noreferrer" className={ROW_ACTION_CLASS}>
-                        Скачать
-                      </a>
-                    }
-                  />
+                  <Row label="Другие Apple-клиенты" value="Streisand · V2Box · Shadowrocket" href="/guides/" />
                 </GroupedSection>
               </div>
                 </div>

@@ -80,6 +80,10 @@ pokrov.space:8444, www.pokrov.space:8444, app.pokrov.space:8444, www.app.pokrov.
 
   @webapp_host host app.pokrov.space
   handle @webapp_host {
+    header {
+      -X-Frame-Options
+      Content-Security-Policy "frame-ancestors https://web.telegram.org https://*.telegram.org; base-uri 'self'; object-src 'none'"
+    }
     @webapp_static path /_next/static/*
     @webapp_html {
       not path /_next/static/*

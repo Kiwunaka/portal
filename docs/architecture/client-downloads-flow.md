@@ -35,6 +35,11 @@ uses `APP_ANDROID_APK_ARM64_URL` when present, then the compatibility
 secondary buttons. The x86_64 artifact remains available through the cabinet/API
 for emulator use and is not promoted to normal phone users.
 
+Platform delivery is explicit: Android uses an APK, Windows uses the EXE, and
+iPhone/iPad/macOS use the authenticated manual Apple path until a signed native
+Apple release exists. Raw subscription keys are not offered from Android or
+Windows install screens.
+
 The static marketing export uses build-time exact release URLs when present and
 refreshes them from `/api/public/client-apps` in the browser. Missing or invalid
 runtime metadata produces an explicit temporary-unavailable state and the

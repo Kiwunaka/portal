@@ -13,6 +13,7 @@ import {
   MonitorSmartphone,
   RefreshCw,
   Smartphone,
+  TabletSmartphone,
 } from "lucide-react";
 
 import { InstructionSteps } from "@/components/cabinet/instructions";
@@ -28,7 +29,7 @@ const config = getPortalPublicConfig(process.env as Record<string, string | unde
 type DownloadRow = {
   key: string;
   icon: LucideIcon;
-  platform?: "android" | "windows";
+  platform?: "android" | "windows" | "apple";
   label: string;
   hint: string;
   value: string;
@@ -52,6 +53,17 @@ function externalAction(href: string, label: string): ReactNode {
       href={href}
       target="_blank"
       rel="noreferrer"
+      className="inline-flex min-h-12 items-center rounded-control px-2 text-sm font-semibold text-brand hover:bg-brand-soft hover:text-brand-strong"
+    >
+      {label}
+    </a>
+  );
+}
+
+function internalAction(href: string, label: string): ReactNode {
+  return (
+    <a
+      href={href}
       className="inline-flex min-h-12 items-center rounded-control px-2 text-sm font-semibold text-brand hover:bg-brand-soft hover:text-brand-strong"
     >
       {label}
@@ -138,6 +150,16 @@ function buildRows(payload: ClientAppsPayload | null): DownloadRow[] {
           action: externalAction(windowsMirror, "Открыть"),
         }
       : null,
+    {
+      key: "apple-manual",
+      icon: TabletSmartphone,
+      platform: "apple" as const,
+      label: "iPhone, iPad и Mac",
+      hint: "Совместимое приложение и личный ключ POKROV",
+      value: "Apple",
+      href: "/subscription/#manual-setup",
+      action: internalAction("/subscription/#manual-setup", "Настроить"),
+    },
     docsUrl
       ? {
           key: "docs",
@@ -181,7 +203,7 @@ export function CabinetDownloadsSurface() {
 
   const rows = useMemo(() => buildRows(payload), [payload]);
   const primaryRows = rows.filter(
-    (item) => item.key === "android-arm64-v8a" || item.key === "android-apk" || item.key === "windows-exe",
+    (item) => item.key === "android-arm64-v8a" || item.key === "android-apk" || item.key === "windows-exe" || item.key === "apple-manual",
   );
   const secondaryRows = rows.filter((item) => !primaryRows.includes(item));
   const firstDownload =
@@ -196,7 +218,7 @@ export function CabinetDownloadsSurface() {
       <StatusHero
         title={getCopyText("webapp.downloads.title", "Загрузки")}
         meta={rows.length ? "Публичная бета" : "Файлы подгружаются"}
-        body={getCopyText("webapp.downloads.subtitle", "Скачайте приложение для Android или Windows отсюда, затем войдите в тот же аккаунт.")}
+        body={getCopyText("webapp.downloads.subtitle", "Android и Windows устанавливаются из официального файла. Для Apple используйте личный ключ в совместимом приложении.")}
         tone={rows.length ? "success" : "neutral"}
         icon={Download}
         action={
@@ -233,8 +255,13 @@ export function CabinetDownloadsSurface() {
                     <p className="mt-1 text-[13px] leading-5 text-ink-soft">{item.hint}</p>
                   </div>
                   {item.href ? (
-                    <Button href={item.href} target="_blank" rel="noreferrer" block>
-                      Скачать
+                    <Button
+                      href={item.href}
+                      target={item.platform === "apple" ? undefined : "_blank"}
+                      rel={item.platform === "apple" ? undefined : "noreferrer"}
+                      block
+                    >
+                      {item.platform === "apple" ? "Настроить" : "Скачать"}
                     </Button>
                   ) : null}
                 </article>
@@ -259,7 +286,7 @@ export function CabinetDownloadsSurface() {
 
       <details className="group overflow-hidden rounded-card border border-line bg-surface shadow-soft">
         <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-ink outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-inset">
-          Как подключиться за 3 шага
+          Android и Windows: подключение за 3 шага
           <ChevronDown className="shrink-0 text-ink-muted transition-transform group-open:rotate-180 motion-reduce:transition-none" size={18} strokeWidth={2} aria-hidden="true" />
         </summary>
         <div className="border-t border-line p-3">

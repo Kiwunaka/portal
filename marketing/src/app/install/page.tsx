@@ -175,6 +175,19 @@ export default function InstallPage() {
         <Reveal>
           <PlatformTabs platforms={platforms} />
         </Reveal>
+        <Reveal className="mx-auto mt-6 max-w-3xl rounded-card border border-line bg-surface p-5 shadow-soft">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="font-display text-lg font-bold text-ink">iPhone, iPad и Mac</h2>
+              <p className="mt-1 text-sm leading-6 text-ink-soft">
+                Нативного приложения POKROV для Apple пока нет. Подключение работает через совместимое приложение и личный ключ из кабинета.
+              </p>
+            </div>
+            <Button href={`${config.webappUrl}/subscription/#manual-setup`} variant="secondary" target="_blank" rel="noreferrer">
+              Настроить Apple
+            </Button>
+          </div>
+        </Reveal>
       </section>
 
       <section className="border-t border-line bg-canvas-alt">
