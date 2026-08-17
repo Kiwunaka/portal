@@ -1,3 +1,8 @@
+# Weekly Release Gate Snapshot (20260817)
+
+- Exported UTC: `2026-08-17T05:01:29.481955+00:00`
+- Source report: `/home/runner/work/portal/portal/docs/audit-artifacts/release_gate_report.md`
+
 # Release Gate Report
 
 - Generated at: `2026-08-17 05:01:29`
@@ -314,3 +319,4 @@ UI visual smoke passed.
 POKROV-app workspace is unavailable for this gate run: missing /home/runner/work/portal/POKROV-app/config/product-contract.seed.json, /home/runner/work/portal/POKROV-app/config/runtime-profile.seed.json, /home/runner/work/portal/POKROV-app/config/runtime-artifacts.seed.json (+2 more)
 BLOCKED_BY_ACCESS: client gates skipped for this CI guardrail run
 ```
+
