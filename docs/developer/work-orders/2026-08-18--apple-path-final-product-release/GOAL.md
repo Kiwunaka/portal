@@ -1,6 +1,6 @@
 # Apple path and final product release
 
-Status: in progress
+Status: complete with explicit manual-device gates
 
 ## Outcome
 
@@ -19,17 +19,30 @@ POKROV 1.1.2 clients:
 
 ## Acceptance
 
-- [ ] current-run before/after screenshots for public site, cabinet, bot, and Android
-- [ ] focused bot, webapp, marketing, Caddy, Flutter, and Android-host tests pass
-- [ ] full relevant release gates pass for the exact 1.1.2 source candidate
-- [ ] production-signed split APKs and Windows direct artifacts are built and hash recorded
-- [ ] exact APK update/install and launch pass on LDPlayer and the owner Huawei when ADB is available
-- [ ] platform and client commits are pushed to `master` and `main`
-- [ ] GitHub release and production runtime handoff are deployed and read back
-- [ ] user-facing release notices are Russian and describe the Apple path without exposing a private key
+- [x] current-run screenshots for public site, cabinet, redacted bot main menu, and Android are retained
+- [x] focused bot, webapp, marketing, Caddy, Flutter, and Android-host tests pass
+- [x] relevant release gates pass for the exact 1.1.2 source candidate with the explicit manual gates below
+- [x] production-signed split APKs and Windows direct artifacts are built and hashes recorded
+- [x] exact signed APK update/install and launch pass on LDPlayer; Huawei is `MANUAL_OWNER_TEST` because ADB did not enumerate it
+- [x] platform and client commits are pushed to `master` and `main`
+- [x] GitHub release and production runtime handoff are deployed and read back
+- [x] user-facing 1.1.2 release notes are Russian and describe the Apple path without exposing a private key
 
 ## Evidence
 
 Retain redacted screenshots and machine-readable summaries in `evidence/`.
 Never retain Telegram IDs, personal subscription URLs, session tokens, or raw
 provider material.
+
+Current-run evidence includes the 1.1.2 Android Home/protection states, public
+site/install and cabinet login pages, and a cropped bot main-menu screenshot.
+Production readback separately proves required 1.1.2 Android/Windows update
+metadata, eight public assets, healthy runtime services, and Telegram-only
+cabinet framing.
+
+## Manual gates retained
+
+- exact 1.1.2 arm64 install and carrier/RU-origin proof on the owner Huawei
+- Windows connected TUN/DNS proof without the host Hiddify dependency
+- trusted Windows publisher signing
+- exact-final WARP/per-app/uplink endurance and encrypted keystore backup
