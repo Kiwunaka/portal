@@ -8,7 +8,11 @@ import type { OpsShellStatus } from "@/components/ops/shell-status";
 import { Badge, Button, Card, MetricCell, MetricStrip, SectionTitle } from "@/components/ui";
 import type { ActionIntentRequest, AdminActionResult, PreparedActionIntent } from "@/lib/admin-api/actions";
 import { AdminApiError } from "@/lib/admin-api/client";
-import { fetchActionIntentStatus } from "@/lib/admin-api/control";
+import {
+  fetchActionIntentStatus,
+  fetchBroadcastDelivery,
+  type BroadcastDeliverySummary,
+} from "@/lib/admin-api/control";
 
 type BroadcastSegment = "all_active" | "paid" | "free" | "expired" | "custom";
 type BroadcastDraft = {
@@ -61,6 +65,17 @@ function resultCount(result: AdminActionResult | null, key: "attempted" | "sent"
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+const DELIVERY_REASON_LABELS: Record<string, string> = {
+  blocked: "Бот заблокирован",
+  bot_not_started_or_chat_not_found: "Бот не запущен или чат не найден",
+  account_deactivated: "Аккаунт Telegram удалён",
+  rate_limited: "Лимит Telegram",
+  transient_provider: "Временный сбой Telegram",
+  delivery_uncertain: "Итог доставки неизвестен — не повторять",
+  internal: "Внутренняя ошибка",
+  unknown_safe: "Неизвестная безопасная категория",
+};
+
 function resultTone(result: AdminActionResult): "success" | "warning" | "danger" {
   if (result.status === "completed") return "success";
   if (result.status === "uncertain" || result.status === "executing") return "warning";
@@ -81,6 +96,7 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
   const [statusError, setStatusError] = useState("");
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [outcomeUncertain, setOutcomeUncertain] = useState(false);
+  const [delivery, setDelivery] = useState<BroadcastDeliverySummary | null>(null);
   const clearStorageOnEmptyRef = useRef(false);
 
   useEffect(() => {
@@ -120,6 +136,11 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
     setStatusError("");
     setOutcomeUncertain(!isDefinitiveStoredOutcome(result));
     if (result.status === "completed" && result.ok) clearConfirmedDraft();
+    if (result.action_intent_id) {
+      void fetchBroadcastDelivery(result.action_intent_id)
+        .then(setDelivery)
+        .catch(() => undefined);
+    }
   }, [clearConfirmedDraft]);
 
   const handleUncertainOutcome = useCallback(() => {
@@ -137,8 +158,12 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
     setCheckingStatus(true);
     setStatusError("");
     try {
-      const result = await fetchActionIntentStatus(statusIntentId, { timeoutMs: 15_000 });
+      const [result, deliveryResult] = await Promise.all([
+        fetchActionIntentStatus(statusIntentId, { timeoutMs: 15_000 }),
+        fetchBroadcastDelivery(statusIntentId, { timeoutMs: 15_000 }).catch(() => null),
+      ]);
       setLastResult(result);
+      if (deliveryResult) setDelivery(deliveryResult);
       setOutcomeUncertain(!isDefinitiveStoredOutcome(result));
       if (result.status === "completed" && result.ok) clearConfirmedDraft();
     } catch (error) {
@@ -187,6 +212,27 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
       action: "broadcast.send",
       target: { type: "broadcast", id: "broadcast" },
       payload,
+      endpoint: "/api/admin/broadcast",
+      method: "POST",
+    });
+    setDialogOpen(true);
+  }
+
+  function openFailedRetry() {
+    if (!statusIntentId || !delivery?.retryable_failed || !draft.text.trim()) {
+      setFormError("Для безопасного повтора нужен исходный текст и подтверждённые временные ошибки.");
+      return;
+    }
+    setRequest({
+      action: "broadcast.send",
+      target: { type: "broadcast", id: "broadcast" },
+      payload: {
+        segment: "retry_failed",
+        limit: 1000,
+        tg_ids: [],
+        retry_intent_id: statusIntentId,
+        text: draft.text,
+      },
       endpoint: "/api/admin/broadcast",
       method: "POST",
     });
@@ -250,6 +296,16 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
               <Badge tone={resultTone(lastResult)}>{lastResult.status === "completed" ? "Отправка подтверждена" : lastResult.status === "uncertain" || lastResult.status === "executing" ? "Итог неясен — не повторять" : "Отправка завершилась с ошибкой"}</Badge>
               <dl className="grid grid-cols-2 gap-2"><dt className="text-[color:var(--atlas-text-muted)]">Попыток</dt><dd className="font-semibold tabular-nums">{attempted ?? "— · Нет данных"}</dd><dt className="text-[color:var(--atlas-text-muted)]">Отправлено</dt><dd className="font-semibold tabular-nums">{sent ?? "— · Нет данных"}</dd><dt className="text-[color:var(--atlas-text-muted)]">Ошибок</dt><dd className="font-semibold tabular-nums">{failed ?? "— · Нет данных"}</dd><dt className="text-[color:var(--atlas-text-muted)]">Код результата</dt><dd className="break-all font-mono text-[11px]">{lastResult.result_code || "— · Нет данных"}</dd></dl>
               <div className="border-t border-[color:var(--atlas-border)] pt-3"><p className="text-[color:var(--atlas-text-muted)]">Intent ID</p><code className="mt-1 block break-all">{lastResult.action_intent_id || "— · Нет данных"}</code><p className="mt-2 text-[color:var(--atlas-text-muted)]">Audit ID</p><code className="mt-1 block">{lastResult.audit_id ?? "— · Нет данных"}</code></div>
+              {delivery ? <div className="border-t border-[color:var(--atlas-border)] pt-3">
+                <dl className="grid grid-cols-2 gap-2">
+                  <dt className="text-[color:var(--atlas-text-muted)]">Можно повторить</dt><dd className="font-semibold tabular-nums">{delivery.retryable_failed}</dd>
+                  <dt className="text-[color:var(--atlas-text-muted)]">Без повтора</dt><dd className="font-semibold tabular-nums">{delivery.terminal_failed}</dd>
+                  <dt className="text-[color:var(--atlas-text-muted)]">Всего попыток</dt><dd className="font-semibold tabular-nums">{delivery.attempts}</dd>
+                  <dt className="text-[color:var(--atlas-text-muted)]">Среднее время</dt><dd className="font-semibold tabular-nums">{delivery.average_duration_ms === null ? "—" : `${delivery.average_duration_ms} мс`}</dd>
+                </dl>
+                {Object.keys(delivery.reason_counts).length ? <ul className="mt-3 space-y-1" aria-label="Причины ошибок доставки">{Object.entries(delivery.reason_counts).map(([reason, count]) => <li key={reason} className="flex justify-between gap-3"><span>{DELIVERY_REASON_LABELS[reason] || reason}</span><strong className="tabular-nums">{count}</strong></li>)}</ul> : null}
+                {delivery.retryable_failed > 0 ? <Button className="mt-3 w-full" tone="secondary" onClick={openFailedRetry}><RefreshCw size={15} /> Повторить только временные ошибки</Button> : null}
+              </div> : null}
             </div> : <p className="text-xs leading-5 text-[color:var(--atlas-text-soft)]">Подтверждённого результата ещё нет. Черновик не очищается при ошибке, 401 или неопределённом исходе.</p>}
           </Card>
           {statusError ? <Card><div role="alert" className="text-xs leading-5 text-[color:var(--atlas-status-warning-text)]">{statusError}</div></Card> : null}

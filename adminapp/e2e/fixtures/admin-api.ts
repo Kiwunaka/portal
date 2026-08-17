@@ -806,6 +806,15 @@ const revenueFunnel = {
       { key: "paid_to_connected", label: "Оплатили → подключились", entered: 180, reached_next: 151, dropped: 29, conversion_pct: 83.9 },
     ],
     drop_reasons: [{ reason: "Открыли продукт, но не начали оплату", count: 410 }],
+    observability: {
+      summary: { events: 4830, successes: 3190, failures: 94, retryable_failures: 17, active_users_7d: 151, clock_skewed: 6, latest_event_at: "2026-07-15T09:58:00Z" },
+      errors: [{ key: "provider_timeout", count: 31, latest_at: "2026-07-15T09:40:00Z" }],
+      error_categories: [{ key: "network", count: 66, latest_at: "2026-07-15T09:40:00Z" }],
+      stages: [{ key: "core_start", count: 28, latest_at: "2026-07-15T09:40:00Z" }],
+      subsystems: [{ key: "tunnel", count: 66, latest_at: "2026-07-15T09:40:00Z" }],
+      network_classes: [{ key: "wifi", count: 2700, latest_at: "2026-07-15T09:58:00Z" }],
+      versions: [{ platform: "android", app_version: "1.1.1", events: 3900, users: 164, latest_at: "2026-07-15T09:58:00Z" }],
+    },
   },
   notes: ["Raw identifiers are not returned."]
 };
@@ -1092,6 +1101,7 @@ const LEGACY_GET_PATHS = new Set([
   "/api/admin/keys/pressure",
   "/api/admin/tickets",
   "/api/admin/live-updates",
+  "/api/admin/news-drafts",
   "/api/admin/funnel/summary",
   "/api/admin/users",
   "/api/admin/promos",
@@ -1140,7 +1150,8 @@ function isRevenueMutationPath(pathname: string): boolean {
   return /^\/api\/admin\/payments\/orders\/[^/]+\/[^/]+\/reconcile$/.test(pathname)
     || pathname === "/api/admin/promos"
     || /^\/api\/admin\/promos\/[^/]+$/.test(pathname)
-    || pathname === "/api/admin/referrals/process";
+    || pathname === "/api/admin/referrals/process"
+    || pathname === "/api/admin/live-updates";
 }
 
 function isAlertActionPath(pathname: string): boolean {
@@ -1878,7 +1889,7 @@ export async function installAdminApiMock(
         await fulfillJson(route, { detail: "Воронка временно недоступна", code: "funnel_unavailable" }, options.funnelStatus);
         return;
       }
-      await fulfillJson(route, options.revenueScenario === "populated" ? revenueFunnel : { period: { from: null, to: null }, acquisition: { cohort: "first_touch_in_period", totals: {}, stages: [], drop_reasons: [], by_source: [] }, product: { cohort: "known_user_open_in_period", totals: {}, stages: [], drop_reasons: [] }, notes: [] });
+      await fulfillJson(route, options.revenueScenario === "populated" ? revenueFunnel : { period: { from: null, to: null }, acquisition: { cohort: "first_touch_in_period", totals: {}, stages: [], drop_reasons: [], by_source: [] }, product: { cohort: "known_user_open_in_period", totals: {}, stages: [], drop_reasons: [], observability: {} }, notes: [] });
       return;
     }
 
@@ -1942,7 +1953,14 @@ export async function installAdminApiMock(
       "/api/admin/keys/pressure": { rows: [] },
       "/api/admin/tickets": { tickets: [] },
       "/api/admin/live-updates": { updates: [] },
-      "/api/admin/funnel/summary": { period: { from: null, to: null }, acquisition: { cohort: "first_touch_in_period", totals: {}, stages: [], drop_reasons: [], by_source: [] }, product: { cohort: "known_user_open_in_period", totals: {}, stages: [], drop_reasons: [] }, notes: [] },
+      "/api/admin/news-drafts": {
+        worker: { enabled: true, configuration_state: "ready", interval_seconds: 86400, sources: ["Хабр · сетевые технологии", "Хабр · информационная безопасность"] },
+        counts: { pending: 1, approved: 2 },
+        latest_run: { run_id: "news-run-1", status: "completed", sources_total: 2, sources_succeeded: 2, sources_failed: 0, candidates_seen: 2, drafts_created: 1, duplicates_skipped: 1, duration_ms: 420, failure_code: null, started_at: "2026-07-15T09:00:00Z", finished_at: "2026-07-15T09:00:01Z" },
+        drafts: [{ id: 501, source_name: "Хабр · сетевые технологии", source_url: "https://habr.com/ru/articles/123456/", source_title: "Тестовый заголовок о работе интернета", source_published_at: "2026-07-15T08:00:00Z", status: "pending", live_update_id: null, discovered_at: "2026-07-15T09:00:01Z", reviewed_at: null }],
+        freshness_at: "2026-07-15T09:00:01Z"
+      },
+      "/api/admin/funnel/summary": { period: { from: null, to: null }, acquisition: { cohort: "first_touch_in_period", totals: {}, stages: [], drop_reasons: [], by_source: [] }, product: { cohort: "known_user_open_in_period", totals: {}, stages: [], drop_reasons: [], observability: {} }, notes: [] },
       "/api/admin/users": { page: 1, page_size: 80, total: 0, sort: "created_desc", users: [] },
       "/api/admin/promos": { promos: options.promoRows ?? [] },
       "/api/admin/referrals/pending": { rows: [] }

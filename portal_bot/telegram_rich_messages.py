@@ -74,7 +74,7 @@ def home_copy(
     access_note = (
         "5 дней бесплатно, карта не нужна."
         if show_trial
-        else "Доступ и продление находятся в кнопке «Мой доступ»."
+        else "Срок и продление доступны в приложении и кабинете."
     )
     return RichMessageCopy(
         rich_html=(

@@ -130,8 +130,8 @@ The public selected-feature catalog owns these static/export-safe routes:
   branches, proactive fallback setup, 18 real screens across seven fallback
   clients, and a per-task visual target; results stay collapsed until the user
   opens the one instruction they need;
-- `/guides/pokrov-app/` for the separate 20-screen Android atlas whose primary
-  screens are real Huawei captures from the production-signed 1.0.6 candidate,
+- `/guides/pokrov-app/` for the separate 22-screen Android atlas whose primary
+  screens are real Huawei and LDPlayer captures from the public stable 1.1.1 APK,
   with non-obscuring numbered target outlines and
   button-by-button legends; capture metadata lives in a disclosure instead of
   competing with the search task.

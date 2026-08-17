@@ -67,6 +67,7 @@ def _load_api(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         "internal_request_auth",
         "migrations",
         "models",
+        "news_draft_service",
         "node_policy",
         "nodes_repo",
         "offers_service",
@@ -83,6 +84,93 @@ def _load_api(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     ):
         sys.modules.pop(name, None)
     return importlib.import_module("api")
+
+
+def test_news_draft_requires_guarded_editor_approval_and_cannot_publish_twice(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import LiveUpdate, NewsDraft
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    session = api.SessionLocal()
+    try:
+        draft = NewsDraft(
+            source_name="Хабр · сетевые технологии",
+            source_url="https://habr.com/ru/articles/123456/",
+            source_title="Как изменилась работа сетей",
+            source_item_sha256="a" * 64,
+            fetch_run_id="run-news-1",
+            source_published_at=now - timedelta(hours=1),
+            status="pending",
+            discovered_at=now,
+        )
+        session.add(draft)
+        session.commit()
+        draft_id = int(draft.id)
+    finally:
+        session.close()
+    client = TestClient(api.app)
+    listing = client.get(
+        "/api/admin/news-drafts?status=pending&limit=20",
+        headers=_admin_headers(),
+    )
+    assert listing.status_code == 200, listing.text
+    assert listing.json()["counts"]["pending"] == 1
+    assert listing.json()["drafts"][0]["source_title"] == "Как изменилась работа сетей"
+    assert "source_item_sha256" not in listing.text
+    payload = {
+        "source_draft_id": draft_id,
+        "title": "Что изменилось в работе сетей",
+        "summary": "Коротко объясняем изменение и его практический смысл для пользователей POKROV.",
+        "link": "https://habr.com/ru/articles/123456/",
+        "is_active": True,
+        "sort_order": 100,
+    }
+    direct = client.post(
+        "/api/admin/live-updates", headers=_admin_headers(), json=payload
+    )
+    assert direct.status_code == 428
+    prepared = _prepare(
+        client,
+        action="live_update.create",
+        target_type="live_update",
+        target_id="new",
+        payload=payload,
+    )
+    assert prepared.status_code == 200, prepared.text
+    assert prepared.json()["preview"]["after"]["source_draft_id"] == draft_id
+
+    completed = client.post(
+        "/api/admin/live-updates",
+        headers=_execute_headers(
+            str(prepared.json()["intent_id"]),
+            confirmation_hash=hashlib.sha256("ПОДТВЕРДИТЬ".encode("utf-8")).hexdigest(),
+        ),
+        json=payload,
+    )
+    assert completed.status_code == 200, completed.text
+
+    session = api.SessionLocal()
+    try:
+        saved_draft = session.query(NewsDraft).filter(NewsDraft.id == draft_id).one()
+        update = session.query(LiveUpdate).one()
+        assert saved_draft.status == "approved"
+        assert saved_draft.live_update_id == update.id
+        assert saved_draft.reviewed_by_tg_id == 9999
+        assert update.title == payload["title"]
+        assert update.is_active is True
+    finally:
+        session.close()
+    repeated = _prepare(
+        client,
+        action="live_update.create",
+        target_type="live_update",
+        target_id="new",
+        payload=payload,
+    )
+    assert repeated.status_code == 409
 
 
 def _seed_nodes(api) -> None:
@@ -242,7 +330,9 @@ def test_revenue_promos_and_referrals_use_exact_server_previews_and_atomic_audit
     assert referral_body["preview"]["before"]["selection_count"] == 1
     assert referral_body["preview"]["before"]["decision_basis"] == "reward_ready"
     assert referral_body["preview"]["before"]["order_id"] == "safe-order-ref-4102"
-    assert "SYNTHETIC-RAW-REFERRAL-META" not in json.dumps(referral_body, ensure_ascii=False)
+    assert "SYNTHETIC-RAW-REFERRAL-META" not in json.dumps(
+        referral_body, ensure_ascii=False
+    )
 
     confirmation_hash = hashlib.sha256("ПОДТВЕРДИТЬ".encode("utf-8")).hexdigest()
     promo_done = client.patch(
@@ -274,13 +364,17 @@ def test_revenue_promos_and_referrals_use_exact_server_previews_and_atomic_audit
         audits = {
             row.action: json.loads(row.meta or "{}")
             for row in session.query(AdminAudit)
-            .filter(AdminAudit.action.in_(["admin_promo_update", "admin_referrals_process"]))
+            .filter(
+                AdminAudit.action.in_(["admin_promo_update", "admin_referrals_process"])
+            )
             .all()
         }
         assert set(audits) == {"admin_promo_update", "admin_referrals_process"}
         assert audits["admin_promo_update"]["from_code"] == "WELCOME20"
         assert audits["admin_referrals_process"]["queue_ids"] == [int(queue.id)]
-        assert "safe-order-ref-4102" not in json.dumps(audits["admin_referrals_process"])
+        assert "safe-order-ref-4102" not in json.dumps(
+            audits["admin_referrals_process"]
+        )
         assert "SYNTHETIC-RAW-REFERRAL-META" not in json.dumps(audits)
     finally:
         session.close()
@@ -401,7 +495,11 @@ def test_prepare_contract_is_frozen_redacted_and_unknown_actions_fail_closed(
     assert body["confirmation_challenge"] == "NL"
     assert body["confirmation_challenge_kind"] == "exact_node_code"
     expires_at = datetime.fromisoformat(str(body["expires_at"]).replace("Z", "+00:00"))
-    assert timedelta(minutes=9, seconds=55) <= expires_at - datetime.now(timezone.utc) <= timedelta(minutes=10, seconds=5)
+    assert (
+        timedelta(minutes=9, seconds=55)
+        <= expires_at - datetime.now(timezone.utc)
+        <= timedelta(minutes=10, seconds=5)
+    )
     assert "synthetic-panel-secret" not in response.text.lower()
     assert "operator-secret" not in response.text.lower()
     assert "nl-panel.example.test" not in response.text.lower()
@@ -512,13 +610,16 @@ def test_all_node_policies_execute_once_with_atomic_audit(
         "failed": 0,
         "skipped": 0,
     }
-    assert _execute_node_action(
-        client,
-        action="node.resync",
-        intent_id=intent_id,
-        payload=resync_payload,
-        idempotency_key=idempotency_key,
-    ).json() == completed.json()
+    assert (
+        _execute_node_action(
+            client,
+            action="node.resync",
+            intent_id=intent_id,
+            payload=resync_payload,
+            idempotency_key=idempotency_key,
+        ).json()
+        == completed.json()
+    )
     assert EmptyPanel.login_calls == 1
 
     from models import AdminActionIntent, AdminAudit
@@ -632,13 +733,16 @@ def test_resync_freezes_redacted_selection_and_uncertain_result_never_retries(
     assert result["result_code"] == "external_exception"
     assert result["action_intent_id"] == intent_id
     assert isinstance(result["audit_id"], int)
-    assert _execute_node_action(
-        client,
-        action="node.resync",
-        intent_id=intent_id,
-        payload=payload,
-        idempotency_key=idempotency_key,
-    ).json() == result
+    assert (
+        _execute_node_action(
+            client,
+            action="node.resync",
+            intent_id=intent_id,
+            payload=payload,
+            idempotency_key=idempotency_key,
+        ).json()
+        == result
+    )
     assert attempts == [1]
 
     session = api.SessionLocal()
@@ -656,7 +760,10 @@ def test_resync_freezes_redacted_selection_and_uncertain_result_never_retries(
         assert all(value.lower() not in safe_text for value in private_values)
         assert all(str(value) not in safe_text for value in recipient_ids)
         audit_meta = json.loads(str(audit.meta))
-        assert audit_meta["selection_hash"] == prepared_body["preview"]["selection"]["hash"]
+        assert (
+            audit_meta["selection_hash"]
+            == prepared_body["preview"]["selection"]["hash"]
+        )
         assert audit_meta["selected_count"] == 2
         assert audit_meta["outcome"] == "uncertain"
     finally:
@@ -709,7 +816,9 @@ def test_consume_rechecks_binding_expiry_confirmation_and_entity_version(
     assert _detail_code(payload_mismatch) == "intent_mismatch"
     assert payload_mismatch.json()["detail"]["intent_id"] == intent_id
 
-    assert service.confirmation_sha256("  Е\u0308  ") == service.confirmation_sha256("Ё")
+    assert service.confirmation_sha256("  Е\u0308  ") == service.confirmation_sha256(
+        "Ё"
+    )
     original_compare = service._constant_time_compare
     compare_calls: list[tuple[str, str]] = []
 
@@ -791,7 +900,10 @@ def test_consume_rechecks_binding_expiry_confirmation_and_entity_version(
     assert expired.json()["detail"]["intent_id"] == expired_id
     session = api.SessionLocal()
     try:
-        assert session.query(AdminActionIntent).filter_by(id=expired_id).one().status == "expired"
+        assert (
+            session.query(AdminActionIntent).filter_by(id=expired_id).one().status
+            == "expired"
+        )
     finally:
         session.close()
 
@@ -816,7 +928,9 @@ def test_concurrent_consume_is_atomic_and_idempotency_replays_stored_result(
     with ThreadPoolExecutor(max_workers=2) as pool:
         responses = list(pool.map(execute, keys))
     assert sorted(response.status_code for response in responses) == [200, 409]
-    winner_index = next(index for index, response in enumerate(responses) if response.status_code == 200)
+    winner_index = next(
+        index for index, response in enumerate(responses) if response.status_code == 200
+    )
     winner_key = keys[winner_index]
     completed = responses[winner_index].json()
     assert completed["status"] == "completed"
@@ -843,7 +957,11 @@ def test_concurrent_consume_is_atomic_and_idempotency_replays_stored_result(
         node = session.query(Node).filter_by(code="nl").one()
         intent = session.query(AdminActionIntent).filter_by(id=intent_id).one()
         audits = session.query(AdminAudit).filter_by(action="admin_node_disable").all()
-        assert (node.enabled, node.accepting_new_clients, node.is_draining) == (False, False, False)
+        assert (node.enabled, node.accepting_new_clients, node.is_draining) == (
+            False,
+            False,
+            False,
+        )
         assert intent.status == "completed"
         assert intent.consumed_at is not None
         assert intent.client_idempotency_key == winner_key
@@ -885,7 +1003,11 @@ def test_audit_failure_rolls_back_node_and_intent_without_leaking_error(
     try:
         node = session.query(Node).filter_by(code="nl").one()
         intent = session.query(AdminActionIntent).filter_by(id=intent_id).one()
-        assert (node.enabled, node.accepting_new_clients, node.is_draining) == (True, True, False)
+        assert (node.enabled, node.accepting_new_clients, node.is_draining) == (
+            True,
+            True,
+            False,
+        )
         assert intent.status == "prepared"
         assert intent.client_idempotency_key is None
         assert intent.admin_audit_id is None
@@ -1069,13 +1191,16 @@ def test_external_executor_outcomes_are_async_bounded_finalized_and_not_retried(
     )
     assert timed_out["status"] == "uncertain"
     assert timed_out["result_code"] == "external_timeout"
-    assert execute(
-        timeout_id,
-        timeout_key,
-        hangs,
-        timeout=0.01,
-        node_code="de",
-    ) == timed_out
+    assert (
+        execute(
+            timeout_id,
+            timeout_key,
+            hangs,
+            timeout=0.01,
+            node_code="de",
+        )
+        == timed_out
+    )
     assert timeout_attempts == [1]
 
     malformed_secret = "SYNTHETIC-PRIVATE-MALFORMED-BODY"
@@ -1106,12 +1231,15 @@ def test_external_executor_outcomes_are_async_bounded_finalized_and_not_retried(
     )
     assert raised["status"] == "uncertain"
     assert raised["result_code"] == "external_exception"
-    assert execute(
-        exception_id,
-        exception_key,
-        raises_private,
-        node_code="it",
-    ) == raised
+    assert (
+        execute(
+            exception_id,
+            exception_key,
+            raises_private,
+            node_code="it",
+        )
+        == raised
+    )
     assert exception_attempts == [1]
 
     stale_id = prepare_intent()
@@ -1144,7 +1272,6 @@ def test_external_executor_outcomes_are_async_bounded_finalized_and_not_retried(
         session.commit()
     finally:
         session.close()
-
 
     stale_effect_calls: list[int] = []
 
@@ -1185,7 +1312,9 @@ def test_external_executor_outcomes_are_async_bounded_finalized_and_not_retried(
             AdminActionIntent.id.in_(expected)
         ):
             assert persisted.status == expected[persisted.id]
-            audit = session.query(AdminAudit).filter_by(id=persisted.admin_audit_id).one()
+            audit = (
+                session.query(AdminAudit).filter_by(id=persisted.admin_audit_id).one()
+            )
             audit_meta = json.loads(audit.meta)
             assert audit_meta["outcome"] == persisted.status
             assert audit_meta["result_code"] == persisted.result_code
@@ -1196,16 +1325,19 @@ def test_external_executor_outcomes_are_async_bounded_finalized_and_not_retried(
                 AdminActionIntent.id.in_(expected)
             )
         ).lower()
-        safe_text += " " + " ".join(
-            str(row.meta or "")
-            for row in session.query(AdminAudit).filter(
-                AdminAudit.id.in_(
-                    session.query(AdminActionIntent.admin_audit_id).filter(
-                        AdminActionIntent.id.in_(expected)
+        safe_text += (
+            " "
+            + " ".join(
+                str(row.meta or "")
+                for row in session.query(AdminAudit).filter(
+                    AdminAudit.id.in_(
+                        session.query(AdminActionIntent.admin_audit_id).filter(
+                            AdminActionIntent.id.in_(expected)
+                        )
                     )
                 )
-            )
-        ).lower()
+            ).lower()
+        )
         assert provider_reference.lower() not in safe_text
         assert malformed_secret.lower() not in safe_text
         assert exception_secret.lower() not in safe_text
@@ -1220,7 +1352,11 @@ def test_client_and_ticket_mutation_routes_require_action_intent(
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
     cases = (
-        ("POST", "/api/admin/users/manual", {"display_name": "Ручной пользователь", "days": 30}),
+        (
+            "POST",
+            "/api/admin/users/manual",
+            {"display_name": "Ручной пользователь", "days": 30},
+        ),
         ("POST", "/api/admin/users/1001/manual/extend", {"days": 30}),
         ("POST", "/api/admin/users/1001/manual-extend", {"days": 30}),
         ("POST", "/api/admin/users/1001/manual/block", {"blocked": True}),
@@ -1231,16 +1367,29 @@ def test_client_and_ticket_mutation_routes_require_action_intent(
         ("POST", "/api/admin/users/1001/keys/nl/toggle", {"enable": False}),
         ("POST", "/api/admin/users/1001/keys/nl/reset-traffic", {}),
         ("POST", "/api/admin/users/1001/keys/nl/resync-subid", {}),
-        ("PUT", "/api/admin/users/1001/key-limits/nl", {"hard_cap_gb": 100, "apply_now": False}),
+        (
+            "PUT",
+            "/api/admin/users/1001/key-limits/nl",
+            {"hard_cap_gb": 100, "apply_now": False},
+        ),
         ("POST", "/api/admin/users/1001/loyalty/grant", {"tier_days": 30}),
         ("POST", "/api/admin/users/1001/presets/run", {"preset": "extend_1d"}),
         (
             "POST",
             "/api/admin/users/keys/bulk-action",
-            {"action": "disable", "segment": "custom", "tg_ids": [1001], "dry_run": True},
+            {
+                "action": "disable",
+                "segment": "custom",
+                "tg_ids": [1001],
+                "dry_run": True,
+            },
         ),
         ("POST", "/api/admin/users/1001/message", {"text": "Проверка"}),
-        ("POST", "/api/admin/tickets/7/reply", {"body": "Проверили, доступ восстановлен."}),
+        (
+            "POST",
+            "/api/admin/tickets/7/reply",
+            {"body": "Проверили, доступ восстановлен."},
+        ),
         ("POST", "/api/admin/tickets/7/status", {"status": "closed"}),
         ("POST", "/api/admin/keys/17/rotate", {"reason": "operator"}),
     )
@@ -1347,7 +1496,14 @@ def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_
         assert unguarded.status_code == 428, unguarded.text
         assert _detail_code(unguarded) == "intent_required"
 
-    from models import AdminActionIntent, AdminAudit, NodeHealthSample, OpsAlert, ProviderTrafficQuota, ProviderTrafficQuotaAudit
+    from models import (
+        AdminActionIntent,
+        AdminAudit,
+        NodeHealthSample,
+        OpsAlert,
+        ProviderTrafficQuota,
+        ProviderTrafficQuotaAudit,
+    )
 
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     session = api.SessionLocal()
@@ -1369,8 +1525,16 @@ def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_
         )
         session.add_all(
             [
-                NodeHealthSample(node_code="nl", sampled_at=now - timedelta(days=1), total_traffic_bytes=10 * (1024**3)),
-                NodeHealthSample(node_code="nl", sampled_at=now - timedelta(hours=1), total_traffic_bytes=40 * (1024**3)),
+                NodeHealthSample(
+                    node_code="nl",
+                    sampled_at=now - timedelta(days=1),
+                    total_traffic_bytes=10 * (1024**3),
+                ),
+                NodeHealthSample(
+                    node_code="nl",
+                    sampled_at=now - timedelta(hours=1),
+                    total_traffic_bytes=40 * (1024**3),
+                ),
             ]
         )
         session.add(
@@ -1389,7 +1553,12 @@ def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_
             )
         )
         session.commit()
-        alert_id = int(session.query(OpsAlert).filter_by(fingerprint="provider_quota:nl:test").one().id)
+        alert_id = int(
+            session.query(OpsAlert)
+            .filter_by(fingerprint="provider_quota:nl:test")
+            .one()
+            .id
+        )
     finally:
         session.close()
 
@@ -1486,7 +1655,9 @@ def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_
     confirmation_hash = hashlib.sha256("ПОДТВЕРДИТЬ".encode("utf-8")).hexdigest()
     stale = client.patch(
         "/api/admin/provider-quotas/nl",
-        headers=_execute_headers(str(prepared.json()["intent_id"]), confirmation_hash=confirmation_hash),
+        headers=_execute_headers(
+            str(prepared.json()["intent_id"]), confirmation_hash=confirmation_hash
+        ),
         json=update_payload,
     )
     assert stale.status_code == 409, stale.text
@@ -1501,7 +1672,9 @@ def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_
     )
     completed = client.patch(
         "/api/admin/provider-quotas/nl",
-        headers=_execute_headers(str(fresh.json()["intent_id"]), confirmation_hash=confirmation_hash),
+        headers=_execute_headers(
+            str(fresh.json()["intent_id"]), confirmation_hash=confirmation_hash
+        ),
         json=update_payload,
     )
     assert completed.status_code == 200, completed.text
@@ -1555,7 +1728,9 @@ def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_
     assert deleted.status_code == 200, deleted.text
     assert deleted.json()["deleted"] is True
 
-    acknowledged = client.post(f"/api/admin/alerts/{alert_id}/ack", headers=_admin_headers())
+    acknowledged = client.post(
+        f"/api/admin/alerts/{alert_id}/ack", headers=_admin_headers()
+    )
     silenced = client.post(
         f"/api/admin/alerts/{alert_id}/silence",
         headers=_admin_headers(),
@@ -1566,11 +1741,17 @@ def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_
 
     session = api.SessionLocal()
     try:
-        assert session.query(ProviderTrafficQuota).filter_by(node_code="nl").count() == 0
+        assert (
+            session.query(ProviderTrafficQuota).filter_by(node_code="nl").count() == 0
+        )
         quota = session.query(ProviderTrafficQuota).filter_by(node_code="de").one()
         assert quota.included_bytes == 80 * (1024**3)
         assert quota.notes == private_note
-        provider_audits = session.query(ProviderTrafficQuotaAudit).order_by(ProviderTrafficQuotaAudit.id.asc()).all()
+        provider_audits = (
+            session.query(ProviderTrafficQuotaAudit)
+            .order_by(ProviderTrafficQuotaAudit.id.asc())
+            .all()
+        )
         assert [(row.node_code, row.action) for row in provider_audits] == [
             ("de", "create"),
             ("nl", "update"),
@@ -1584,7 +1765,11 @@ def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_
                     continue
                 snapshot = json.loads(raw_snapshot)
                 assert "notes" not in snapshot
-                assert set(snapshot) >= {"notes_present", "notes_length", "notes_sha256"}
+                assert set(snapshot) >= {
+                    "notes_present",
+                    "notes_length",
+                    "notes_sha256",
+                }
                 assert len(snapshot["notes_sha256"]) == 64
         guarded_admin_audits = (
             session.query(AdminAudit)
@@ -1605,13 +1790,33 @@ def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_
             "admin_provider_quota_delete",
             "admin_provider_quota_update",
         ]
-        assert all(private_note not in str(row.meta or "") for row in guarded_admin_audits)
-        assert session.query(AdminAudit).filter_by(action="admin_ops_alert_ack").count() == 1
-        assert session.query(AdminAudit).filter_by(action="admin_ops_alert_silence").count() == 1
-        intent = session.query(AdminActionIntent).filter_by(id=fresh.json()["intent_id"]).one()
+        assert all(
+            private_note not in str(row.meta or "") for row in guarded_admin_audits
+        )
+        assert (
+            session.query(AdminAudit).filter_by(action="admin_ops_alert_ack").count()
+            == 1
+        )
+        assert (
+            session.query(AdminAudit)
+            .filter_by(action="admin_ops_alert_silence")
+            .count()
+            == 1
+        )
+        intent = (
+            session.query(AdminActionIntent)
+            .filter_by(id=fresh.json()["intent_id"])
+            .one()
+        )
         assert private_note not in intent.canonical_payload_json
-        assert json.loads(intent.canonical_payload_json)["included_bytes"] == 120 * (1024**3)
-        create_intent = session.query(AdminActionIntent).filter_by(id=create_prepared.json()["intent_id"]).one()
+        assert json.loads(intent.canonical_payload_json)["included_bytes"] == 120 * (
+            1024**3
+        )
+        create_intent = (
+            session.query(AdminActionIntent)
+            .filter_by(id=create_prepared.json()["intent_id"])
+            .one()
+        )
         assert private_note not in create_intent.canonical_payload_json
     finally:
         session.close()
@@ -1623,7 +1828,12 @@ def test_provider_quota_admin_audit_failure_rolls_back_whole_guarded_transaction
 ) -> None:
     api = _load_api(monkeypatch, tmp_path)
     _seed_nodes(api)
-    from models import AdminActionIntent, AdminAudit, ProviderTrafficQuota, ProviderTrafficQuotaAudit
+    from models import (
+        AdminActionIntent,
+        AdminAudit,
+        ProviderTrafficQuota,
+        ProviderTrafficQuotaAudit,
+    )
 
     client = TestClient(api.app)
     payload = {
@@ -1681,9 +1891,21 @@ def test_provider_quota_admin_audit_failure_rolls_back_whole_guarded_transaction
 
     session = api.SessionLocal()
     try:
-        assert session.query(ProviderTrafficQuota).filter_by(node_code="de").count() == 1
-        assert session.query(ProviderTrafficQuotaAudit).filter_by(node_code="de", action="create").count() == 1
-        assert session.query(AdminAudit).filter_by(action="admin_provider_quota_create").count() == 1
+        assert (
+            session.query(ProviderTrafficQuota).filter_by(node_code="de").count() == 1
+        )
+        assert (
+            session.query(ProviderTrafficQuotaAudit)
+            .filter_by(node_code="de", action="create")
+            .count()
+            == 1
+        )
+        assert (
+            session.query(AdminAudit)
+            .filter_by(action="admin_provider_quota_create")
+            .count()
+            == 1
+        )
         intent = session.query(AdminActionIntent).filter_by(id=intent_id).one()
         assert intent.status == "completed"
         assert intent.admin_audit_id is not None
@@ -1720,7 +1942,6 @@ def test_private_message_and_bulk_selection_persist_only_hashes(
         session.commit()
     finally:
         session.close()
-
 
     client = TestClient(api.app)
     private_message = "SYNTHETIC-PRIVATE-TASK14-MESSAGE"
@@ -1836,7 +2057,9 @@ def test_private_message_and_bulk_selection_persist_only_hashes(
     session = api.SessionLocal()
     try:
         message_intent = session.query(AdminActionIntent).filter_by(id=intent_id).one()
-        audit = session.query(AdminAudit).filter_by(id=message_intent.admin_audit_id).one()
+        audit = (
+            session.query(AdminAudit).filter_by(id=message_intent.admin_audit_id).one()
+        )
         persisted_message = " ".join(
             (
                 message_intent.canonical_payload_json,
@@ -1850,7 +2073,11 @@ def test_private_message_and_bulk_selection_persist_only_hashes(
         assert canonical_message["text"]["length"] == len(private_message)
         assert len(canonical_message["text"]["sha256"]) == 64
 
-        bulk_intent = session.query(AdminActionIntent).filter_by(id=bulk.json()["intent_id"]).one()
+        bulk_intent = (
+            session.query(AdminActionIntent)
+            .filter_by(id=bulk.json()["intent_id"])
+            .one()
+        )
         canonical_bulk = json.loads(bulk_intent.canonical_payload_json)
         assert "tg_ids" not in canonical_bulk
         assert canonical_bulk["tg_ids_count"] == 2
@@ -1908,9 +2135,10 @@ def test_broadcast_executes_only_frozen_recipients_and_message(
     assert preview["confirmation_challenge"] == "ОТПРАВИТЬ"
     assert preview["preview"]["before"]["recipient_count"] == 2
     assert len(preview["preview"]["before"]["recipient_hash"]) == 64
-    assert preview["preview"]["after"]["message_sha256"] == hashlib.sha256(
-        text.encode("utf-8")
-    ).hexdigest()
+    assert (
+        preview["preview"]["after"]["message_sha256"]
+        == hashlib.sha256(text.encode("utf-8")).hexdigest()
+    )
     intent_id = str(preview["intent_id"])
 
     session = api.SessionLocal()
@@ -1927,11 +2155,20 @@ def test_broadcast_executes_only_frozen_recipients_and_message(
         message: str,
         *,
         disable_web_page_preview: bool | None = None,
-    ) -> bool:
-        deliveries.append((chat_id, message, disable_web_page_preview))
-        return True
+    ):
+        from telegram_delivery_service import TelegramDeliveryResult
 
-    monkeypatch.setattr(api, "_telegram_send_message", send)
+        deliveries.append((chat_id, message, disable_web_page_preview))
+        return TelegramDeliveryResult(
+            sent=True,
+            reason_code="sent",
+            retryable=False,
+            duration_ms=12,
+            http_status=200,
+            message_id=chat_id,
+        )
+
+    monkeypatch.setattr(api, "_telegram_send_message_detailed", send)
     idempotency_key = str(uuid.uuid4())
     headers = _execute_headers(
         intent_id,
@@ -1978,9 +2215,17 @@ def test_broadcast_executes_only_frozen_recipients_and_message(
             "message_sha256",
             "message_length",
         }
-        assert canonical["message_sha256"] == hashlib.sha256(text.encode("utf-8")).hexdigest()
+        assert (
+            canonical["message_sha256"]
+            == hashlib.sha256(text.encode("utf-8")).hexdigest()
+        )
         assert canonical["message_length"] == len(text)
-        assert session.query(AdminBroadcastRecipientPlan).filter_by(intent_id=intent_id).count() == 2
+        assert (
+            session.query(AdminBroadcastRecipientPlan)
+            .filter_by(intent_id=intent_id)
+            .count()
+            == 2
+        )
         audit = session.query(AdminAudit).filter_by(id=intent.admin_audit_id).one()
         persisted_public = " ".join(
             (
@@ -2050,8 +2295,14 @@ def test_warp_material_intent_persists_fingerprints_only(
     assert prepared.json()["confirmation_challenge"] == "7301"
     session = api.SessionLocal()
     try:
-        intent = session.query(AdminActionIntent).filter_by(id=prepared.json()["intent_id"]).one()
-        persisted = " ".join((intent.canonical_payload_json, intent.preview_snapshot_json))
+        intent = (
+            session.query(AdminActionIntent)
+            .filter_by(id=prepared.json()["intent_id"])
+            .one()
+        )
+        persisted = " ".join(
+            (intent.canonical_payload_json, intent.preview_snapshot_json)
+        )
         assert private_key not in persisted
         assert account_token not in persisted
         assert "install-warp-7301" not in persisted
@@ -2076,7 +2327,11 @@ def test_warp_material_intent_persists_fingerprints_only(
 
     session = api.SessionLocal()
     try:
-        intent = session.query(AdminActionIntent).filter_by(id=prepared.json()["intent_id"]).one()
+        intent = (
+            session.query(AdminActionIntent)
+            .filter_by(id=prepared.json()["intent_id"])
+            .one()
+        )
         durable = str(intent.result_summary_json or "")
         assert "install-warp-7301" not in durable
         assert private_key not in durable
@@ -2162,12 +2417,9 @@ def test_issued_codes_survive_lost_response_without_entering_intent_status(
             durable = str(intent.result_summary_json or "")
             assert all(code not in durable for code in codes)
             assert "issued_fingerprints" in durable
-            assert (
-                session.query(GiftCard)
-                .filter(GiftCard.code.in_(codes), GiftCard.created_by == 9999)
-                .count()
-                == len(codes)
-            )
+            assert session.query(GiftCard).filter(
+                GiftCard.code.in_(codes), GiftCard.created_by == 9999
+            ).count() == len(codes)
         finally:
             session.close()
 
@@ -2217,13 +2469,13 @@ def test_broadcast_timeout_is_uncertain_and_same_idempotency_does_not_resend(
         _message: str,
         *,
         disable_web_page_preview: bool | None = None,
-    ) -> bool:
+    ):
         assert disable_web_page_preview is True
         nonlocal attempts
         attempts += 1
         raise TimeoutError("synthetic network timeout")
 
-    monkeypatch.setattr(api, "_telegram_send_message", timeout_send)
+    monkeypatch.setattr(api, "_telegram_send_message_detailed", timeout_send)
     key = str(uuid.uuid4())
     headers = _execute_headers(
         intent_id,
@@ -2253,3 +2505,156 @@ def test_broadcast_timeout_is_uncertain_and_same_idempotency_does_not_resend(
     )
     assert status.status_code == 200, status.text
     assert status.json() == uncertain.json()
+
+
+def test_broadcast_retry_freezes_only_retryable_failures_and_never_resends_success(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import AdminBroadcastDeliveryAttempt, User
+    from telegram_delivery_service import TelegramDeliveryResult
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    session = api.SessionLocal()
+    try:
+        session.add_all(
+            [
+                User(
+                    tg_id=tg_id,
+                    uuid=f"00000000-0000-4000-8000-{tg_id:012d}",
+                    email=f"broadcast-retry-{tg_id}@example.test",
+                    sub_type="PAID",
+                    created_at=now,
+                    expiry_at=now + timedelta(days=30),
+                    is_active=True,
+                    sub_token=f"broadcast-retry-token-{tg_id}",
+                )
+                for tg_id in (7301, 7302)
+            ]
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    client = TestClient(api.app)
+    text = "Проверка доставки"
+    payload = {"segment": "custom", "limit": 10, "tg_ids": [7301, 7302], "text": text}
+    prepared = _prepare(
+        client,
+        action="broadcast.send",
+        target_type="broadcast",
+        target_id="broadcast",
+        payload=payload,
+    )
+    root_intent_id = str(prepared.json()["intent_id"])
+    calls: list[int] = []
+
+    async def first_delivery(chat_id: int, _message: str, **_kwargs):
+        calls.append(chat_id)
+        if chat_id == 7301:
+            return TelegramDeliveryResult(
+                sent=True,
+                reason_code="sent",
+                retryable=False,
+                duration_ms=10,
+                http_status=200,
+                message_id=101,
+            )
+        return TelegramDeliveryResult(
+            sent=False,
+            reason_code="rate_limited",
+            retryable=True,
+            duration_ms=20,
+            http_status=429,
+            telegram_error_code=429,
+        )
+
+    monkeypatch.setattr(api, "_telegram_send_message_detailed", first_delivery)
+    first = client.post(
+        "/api/admin/broadcast",
+        headers=_execute_headers(
+            root_intent_id,
+            idempotency_key=str(uuid.uuid4()),
+            confirmation_hash=hashlib.sha256("ОТПРАВИТЬ".encode("utf-8")).hexdigest(),
+        ),
+        json={**payload, "dry_run": False},
+    )
+    assert first.status_code == 200, first.text
+    assert first.json()["sent"] == 1
+    assert first.json()["failed"] == 1
+    assert first.json()["retryable_failed"] == 1
+    assert first.json()["reason_counts"] == {"rate_limited": 1}
+
+    retry_payload = {
+        "segment": "retry_failed",
+        "limit": 1000,
+        "tg_ids": [],
+        "retry_intent_id": root_intent_id,
+        "text": text,
+    }
+    retry_prepared = _prepare(
+        client,
+        action="broadcast.send",
+        target_type="broadcast",
+        target_id="broadcast",
+        payload=retry_payload,
+    )
+    assert retry_prepared.status_code == 200, retry_prepared.text
+    assert retry_prepared.json()["preview"]["before"]["recipient_count"] == 1
+    retry_intent_id = str(retry_prepared.json()["intent_id"])
+
+    async def retry_delivery(chat_id: int, _message: str, **_kwargs):
+        calls.append(chat_id)
+        return TelegramDeliveryResult(
+            sent=True,
+            reason_code="sent",
+            retryable=False,
+            duration_ms=15,
+            http_status=200,
+            message_id=102,
+        )
+
+    monkeypatch.setattr(api, "_telegram_send_message_detailed", retry_delivery)
+    retried = client.post(
+        "/api/admin/broadcast",
+        headers=_execute_headers(
+            retry_intent_id,
+            idempotency_key=str(uuid.uuid4()),
+            confirmation_hash=hashlib.sha256("ОТПРАВИТЬ".encode("utf-8")).hexdigest(),
+        ),
+        json={**retry_payload, "dry_run": False},
+    )
+    assert retried.status_code == 200, retried.text
+    assert retried.json()["sent"] == 1
+    assert retried.json()["failed"] == 0
+    assert calls == [7301, 7302, 7302]
+
+    retry_again = _prepare(
+        client,
+        action="broadcast.send",
+        target_type="broadcast",
+        target_id="broadcast",
+        payload=retry_payload,
+    )
+    assert retry_again.status_code == 409
+    assert _detail_code(retry_again) == "empty_selection"
+
+    session = api.SessionLocal()
+    try:
+        attempts = (
+            session.query(AdminBroadcastDeliveryAttempt)
+            .order_by(
+                AdminBroadcastDeliveryAttempt.tg_id,
+                AdminBroadcastDeliveryAttempt.attempt_number,
+            )
+            .all()
+        )
+        assert [(row.tg_id, row.attempt_number, row.status) for row in attempts] == [
+            (7301, 1, "sent"),
+            (7302, 1, "failed"),
+            (7302, 2, "sent"),
+        ]
+        assert {row.campaign_intent_id for row in attempts} == {root_intent_id}
+    finally:
+        session.close()

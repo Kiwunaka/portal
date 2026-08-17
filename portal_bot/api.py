@@ -41,7 +41,7 @@ from fastapi.exception_handlers import (
 )
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import and_, or_, case, func, text
 from sqlalchemy import text as sql_text
@@ -61,6 +61,8 @@ from models import (
     ConnectionEvidence,
     Achievement,
     AdminAudit,
+    AdminActionIntent,
+    AdminBroadcastDeliveryAttempt,
     AppSetting,
     AuthSession,
     AntiAbuseEvent,
@@ -82,6 +84,8 @@ from models import (
     KeySourceObservation,
     KeyUsageRollup,
     LiveUpdate,
+    NewsDraft,
+    NewsDraftRun,
     Node,
     NodeCapacityPolicy,
     NodeHealthSample,
@@ -185,7 +189,14 @@ from node_policy import (
     user_uses_free_pool,
 )
 from control_panel import ControlPanel
-from events_service import track_event
+from events_service import safe_event_meta_json, track_event
+from telegram_delivery_service import TelegramDeliveryResult, send_telegram_message
+from news_draft_service import (
+    NewsDraftConfigError,
+    configured_news_feeds,
+    news_draft_interval_seconds,
+    news_draft_worker_enabled,
+)
 from acquisition_service import (
     AcquisitionError,
     acquisition_snapshot,
@@ -1242,6 +1253,7 @@ class AdminBroadcastIn(BaseModel):
     segment: str = Field(default="all_active")
     limit: int = Field(default=500, ge=1, le=1000)
     tg_ids: list[int] = Field(default_factory=list)
+    retry_intent_id: str | None = Field(default=None, max_length=36)
     dry_run: bool = False
 
 
@@ -1358,8 +1370,25 @@ class AdminPromoSlotsPutIn(BaseModel):
 
 class EventIn(BaseModel):
     event_name: str = Field(min_length=2, max_length=64)
+    event_id: str | None = Field(default=None, max_length=36)
+    occurred_at: datetime | None = None
     source: str = Field(default="webapp", max_length=32)
     session_id: str | None = Field(default=None, max_length=64)
+    platform: str | None = Field(default=None, max_length=24)
+    app_version: str | None = Field(default=None, max_length=32)
+    build_number: str | None = Field(default=None, max_length=24)
+    surface: str | None = Field(default=None, max_length=32)
+    subsystem: str | None = Field(default=None, max_length=32)
+    stage: str | None = Field(default=None, max_length=64)
+    result: str | None = Field(default=None, max_length=24)
+    error_category: str | None = Field(default=None, max_length=32)
+    error_code: str | None = Field(default=None, max_length=64)
+    retryable: bool | None = None
+    attempt_number: int | None = Field(default=None, ge=1, le=100)
+    retry_after_seconds: int | None = Field(default=None, ge=0, le=86_400)
+    duration_ms: int | None = Field(default=None, ge=0, le=3_600_000)
+    trace_id: str | None = Field(default=None, max_length=64)
+    network_class: str | None = Field(default=None, max_length=24)
     meta: dict[str, Any] | None = None
 
 
@@ -1544,6 +1573,7 @@ class AdminLiveUpdateCreateIn(BaseModel):
     published_at: str | None = None
     is_active: bool = True
     sort_order: int = Field(default=100, ge=0, le=10000)
+    source_draft_id: int | None = Field(default=None, ge=1)
 
 
 class AdminLiveUpdateUpdateIn(BaseModel):
@@ -6858,26 +6888,33 @@ async def _telegram_send_message(
     reply_markup: dict[str, Any] | None = None,
     disable_web_page_preview: bool | None = None,
 ) -> bool:
+    result = await _telegram_send_message_detailed(
+        chat_id,
+        text,
+        parse_mode=parse_mode,
+        reply_markup=reply_markup,
+        disable_web_page_preview=disable_web_page_preview,
+    )
+    return bool(result.sent)
+
+
+async def _telegram_send_message_detailed(
+    chat_id: int,
+    text: str,
+    *,
+    parse_mode: str | None = None,
+    reply_markup: dict[str, Any] | None = None,
+    disable_web_page_preview: bool | None = None,
+) -> TelegramDeliveryResult:
     token = _current_bot_token()
-    if not token:
-        return False
-    endpoint = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {"chat_id": int(chat_id), "text": text}
-    if parse_mode:
-        payload["parse_mode"] = parse_mode
-    if reply_markup:
-        payload["reply_markup"] = reply_markup
-    if disable_web_page_preview is not None:
-        payload["disable_web_page_preview"] = bool(disable_web_page_preview)
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(endpoint, json=payload, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-                if resp.status != 200:
-                    return False
-                body = await resp.json()
-                return bool(body.get("ok"))
-    except Exception:
-        return False
+    return await send_telegram_message(
+        token=token,
+        chat_id=int(chat_id),
+        text=str(text),
+        parse_mode=parse_mode,
+        reply_markup=reply_markup,
+        disable_web_page_preview=disable_web_page_preview,
+    )
 
 
 def _telegram_paid_access_keyboard() -> dict[str, Any]:
@@ -8539,14 +8576,68 @@ def _process_referral_bonus_queue(*, limit: int = 100, force_without_activity: b
 
 _diag_rate_limit: dict[int, float] = {}
 EVENT_WHITELIST = {
+    "app_opened",
     "opened_webapp",
+    "download_started",
+    "download_completed",
+    "download_failed",
+    "install_started",
+    "install_completed",
+    "install_failed",
+    "update_seen",
+    "update_started",
+    "update_downloaded",
+    "update_install_opened",
+    "update_completed",
+    "update_failed",
+    "login_started",
+    "login_completed",
+    "login_failed",
+    "device_code_requested",
+    "device_code_claimed",
+    "device_code_failed",
+    "telegram_link_started",
+    "telegram_link_completed",
+    "telegram_link_failed",
+    "email_link_started",
+    "email_link_completed",
+    "email_link_failed",
+    "legacy_migration_started",
+    "legacy_migration_completed",
+    "legacy_migration_failed",
     "copied_key",
     "clicked_connect",
+    "connect_requested",
+    "connect_started",
+    "connect_succeeded",
     "clicked_pay",
     "pay_started",
     "paid",
     "connected_ok",
     "connect_failed",
+    "connect_cancelled",
+    "disconnected",
+    "background_restore_succeeded",
+    "background_restore_failed",
+    "reboot_restore_succeeded",
+    "reboot_restore_failed",
+    "location_selected",
+    "whitelist_connect_started",
+    "whitelist_connect_succeeded",
+    "whitelist_connect_failed",
+    "dns_check_succeeded",
+    "dns_check_failed",
+    "per_app_plan_applied",
+    "per_app_plan_failed",
+    "network_changed",
+    "support_opened",
+    "support_ai_requested",
+    "support_ai_succeeded",
+    "support_ai_failed",
+    "support_ai_escalated",
+    "diagnostics_started",
+    "diagnostics_sent",
+    "diagnostics_failed",
     "auth_handoff_started",
     "config_opened",
     "config_import_attempted",
@@ -8558,6 +8649,10 @@ EVENT_WHITELIST = {
     "deep_link_opened",
     "copy_used",
     "routing_lesson_completed",
+    "promo_impression",
+    "promo_click",
+    "promo_dismiss",
+    "promo_expired",
 }
 
 FUNNEL_EVENT_WHITELIST = {

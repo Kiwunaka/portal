@@ -319,12 +319,17 @@ def _first_non_empty(*values: str) -> str:
 
 IOS_APP_LINK = APP_DOCS_URL
 ANDROID_APP_LINK = _first_non_empty(
-    APP_ANDROID_APK_ARM64_URL,
+    f"{PUBLIC_API_BASE_URL.rstrip('/')}/api/public/downloads/android-arm64",
     APP_ANDROID_APK_URL,
     APP_ANDROID_MIRROR_URL,
     APP_DOCS_URL,
 )
-WINDOWS_APP_LINK = _first_non_empty(APP_WINDOWS_EXE_URL, APP_WINDOWS_MIRROR_URL, APP_DOCS_URL)
+WINDOWS_APP_LINK = _first_non_empty(
+    f"{PUBLIC_API_BASE_URL.rstrip('/')}/api/public/downloads/windows-x64",
+    APP_WINDOWS_EXE_URL,
+    APP_WINDOWS_MIRROR_URL,
+    APP_DOCS_URL,
+)
 MAC_APP_LINK = APP_DOCS_URL
 
 # Protected users — NEVER modify, sync, or message these users
@@ -4172,10 +4177,10 @@ def _main_menu_cta_spec(tg_id: int) -> dict[str, str]:
             emoji_key="payment",
         )
     return _btn_spec(
-        text="Активировать код",
-        callback_data="gift_redeem_prompt",
+        text="Восстановить доступ",
+        callback_data="confused_help",
         style=BTN_STYLE_PRIMARY,
-        emoji_key="key",
+        emoji_key="support",
     )
 
 
@@ -4183,10 +4188,13 @@ def main_keyboard_specs(tg_id: int = 0) -> list[list[dict[str, str]]]:
     rows = [
         [_main_menu_cta_spec(tg_id)],
         [
-            _btn_spec(text="Мой доступ", callback_data="status", emoji_key="success"),
+            _btn_spec(text="Войти по коду", callback_data="device_pairing_code", emoji_key="key"),
             _btn_spec(text="Помощь", callback_data="confused_help", emoji_key="support"),
         ],
-        [_btn_spec(text="Ещё", callback_data="settings", emoji_key="settings")],
+        [
+            _btn_spec(text="Активировать код", callback_data="menu_more", emoji_key="key"),
+            _btn_spec(text="Кабинет", web_app_url=WEBAPP_URL, emoji_key="cabinet"),
+        ],
     ]
     if tg_id == ADMIN_ID:
         rows.append([_btn_spec(text="Админ-панель", callback_data="admin", emoji_key="brand")])
@@ -4214,14 +4222,14 @@ def new_user_keyboard_specs() -> list[list[dict[str, str]]]:
                 emoji_key="device",
             ),
         ],
-        [_btn_spec(text="Тарифы", callback_data="charge", emoji_key="payment")],
         [
             _btn_spec(
-                text="Как проверить POKROV",
-                callback_data="verify_pokrov",
-                emoji_key="success",
+                text="Уже пользуюсь POKROV",
+                callback_data="device_pairing_code",
+                emoji_key="key",
             )
         ],
+        [_btn_spec(text="Помощь", callback_data="confused_help", emoji_key="support")],
     ]
 
 

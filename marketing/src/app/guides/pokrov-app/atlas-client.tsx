@@ -233,8 +233,8 @@ export function PokrovAtlasClient() {
                   <Image
                     src={screen.imageSrc}
                     alt={screen.imageAlt}
-                    width={1920}
-                    height={1080}
+                    width={1080}
+                    height={1920}
                     unoptimized
                     loading="eager"
                     className="h-auto w-full"

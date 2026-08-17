@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import type { OpsShellStatus } from "@/components/ops/shell-status";
 import { BroadcastPage } from "@/features/control/broadcast-page";
+import { NewsPage } from "@/features/control/news-page";
 import { ReleasePage } from "@/features/control/release-page";
 import { AlertsPage } from "@/features/network/alerts-page";
 import { EmergencyNetworkPage } from "@/features/network/emergency-network-page";
@@ -42,7 +43,8 @@ export const OPS_FEATURE_REGISTRY: Record<OpsSectionId, RouteRenderer> = {
   promos: ({ onShellStatus }) => <PromosPage onShellStatus={onShellStatus} />,
   referrals: ({ onShellStatus }) => <ReferralsPage onShellStatus={onShellStatus} />,
   release: ({ onShellStatus }) => <ReleasePage onShellStatus={onShellStatus} />,
-  broadcast: ({ onShellStatus }) => <BroadcastPage onShellStatus={onShellStatus} />
+  broadcast: ({ onShellStatus }) => <BroadcastPage onShellStatus={onShellStatus} />,
+  news: ({ onShellStatus }) => <NewsPage onShellStatus={onShellStatus} />
 };
 
 export function ActiveOpsRoute({

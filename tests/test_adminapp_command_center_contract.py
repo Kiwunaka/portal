@@ -110,6 +110,7 @@ def test_all_routes_and_primary_operator_copy_are_russian() -> None:
         "Рефералы",
         "Релиз",
         "Рассылка",
+        "Новости",
     ):
         assert f'label: "{label}"' in sections
 
@@ -131,6 +132,7 @@ def test_all_routes_and_primary_operator_copy_are_russian() -> None:
         "/referrals",
         "/release",
         "/broadcast",
+        "/news",
     ):
         assert f'["{route}",' in accessibility
 

@@ -27,6 +27,7 @@ from models import (
     AccessKey,
     AdminActionIntent,
     AdminAudit,
+    AdminBroadcastDeliveryAttempt,
     AdminBroadcastRecipientPlan,
     AppSetting,
     ExternalOrder,
@@ -36,6 +37,7 @@ from models import (
     GiftCard,
     IncentiveCampaign,
     LiveUpdate,
+    NewsDraft,
     PlanCatalog,
     PromoCode,
     PromoUsage,
@@ -76,6 +78,8 @@ _EXTERNAL_RESULT_KEYS = frozenset(
         "sent",
         "changed",
         "failed",
+        "retryable_failed",
+        "terminal_failed",
         "skipped",
         "job_id",
         "tg_id",
@@ -95,6 +99,7 @@ _EXTERNAL_RESULT_KEYS = frozenset(
         "requires_force",
         "preview_tg_ids",
         "details",
+        "reason_counts",
     }
 )
 _EXTERNAL_COUNT_KEYS = (
@@ -103,6 +108,8 @@ _EXTERNAL_COUNT_KEYS = (
     "sent",
     "changed",
     "failed",
+    "retryable_failed",
+    "terminal_failed",
     "skipped",
     "users",
     "tier_days",
@@ -914,14 +921,17 @@ def _normalize_message_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 
 def _normalize_broadcast_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
-    _reject_extra_payload_fields(payload, {"segment", "limit", "tg_ids", "text"})
+    _reject_extra_payload_fields(
+        payload,
+        {"segment", "limit", "tg_ids", "text", "retry_intent_id"},
+    )
     segment = _bounded_text(
         payload.get("segment", "all_active"),
         field="segment",
         minimum=2,
         maximum=32,
     ).lower()
-    if segment not in {"all_active", "free", "paid", "expired", "custom"}:
+    if segment not in {"all_active", "free", "paid", "expired", "custom", "retry_failed"}:
         raise ActionIntentError(
             "invalid_payload",
             status_code=422,
@@ -958,6 +968,34 @@ def _normalize_broadcast_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
             status_code=409,
             message="Список получателей рассылки пуст.",
         )
+    retry_intent_id = str(payload.get("retry_intent_id") or "").strip()
+    if retry_intent_id:
+        try:
+            retry_intent_id = str(uuid.UUID(retry_intent_id))
+        except ValueError as exc:
+            raise ActionIntentError(
+                "invalid_payload",
+                status_code=422,
+                message="Идентификатор исходной рассылки указан неверно.",
+            ) from exc
+    if segment == "retry_failed" and not retry_intent_id:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Для повтора укажите исходную рассылку.",
+        )
+    if segment != "retry_failed" and retry_intent_id:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Исходная рассылка допустима только для повтора ошибок.",
+        )
+    if segment == "retry_failed" and tg_ids:
+        raise ActionIntentError(
+            "invalid_payload",
+            status_code=422,
+            message="Получатели повтора определяются сервером.",
+        )
     text_value = _bounded_text(
         payload.get("text"),
         field="text",
@@ -970,6 +1008,7 @@ def _normalize_broadcast_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
         "segment": segment,
         "limit": int(limit),
         "tg_ids": tg_ids,
+        "retry_intent_id": retry_intent_id or None,
         "text": text_value,
         "requested_tg_ids_hash": hashlib.sha256(
             canonical_json_bytes(tg_ids)
@@ -981,13 +1020,16 @@ def _normalize_broadcast_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
 
 def _normalize_broadcast_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
     runtime = _normalize_broadcast_runtime(payload)
-    return {
+    normalized = {
         "segment": runtime["segment"],
         "limit": runtime["limit"],
         "requested_tg_ids_hash": runtime["requested_tg_ids_hash"],
         "message_sha256": runtime["message_sha256"],
         "message_length": runtime["message_length"],
     }
+    if runtime["retry_intent_id"]:
+        normalized["retry_intent_id"] = runtime["retry_intent_id"]
+    return normalized
 
 
 def _normalize_ticket_reply_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
@@ -1660,6 +1702,77 @@ def _broadcast_entity_state(
             message="Цель рассылки указана неверно.",
         )
     segment = str(payload["segment"])
+    if segment == "retry_failed":
+        source_intent_id = str(payload.get("retry_intent_id") or "")
+        source_intent = (
+            session.query(AdminActionIntent)
+            .filter(AdminActionIntent.id == source_intent_id)
+            .first()
+        )
+        if source_intent is None or str(source_intent.action) != "broadcast.send":
+            raise ActionIntentError(
+                "retry_source_unavailable",
+                status_code=409,
+                message="Исходная рассылка для повтора недоступна.",
+            )
+        try:
+            source_payload = json.loads(str(source_intent.canonical_payload_json or "{}"))
+        except (TypeError, ValueError):
+            source_payload = {}
+        if str(source_payload.get("message_sha256") or "") != str(payload["message_sha256"]):
+            raise ActionIntentError(
+                "payload_mismatch",
+                status_code=409,
+                message="Для повтора нужен точный исходный текст рассылки.",
+            )
+        source_rows = (
+            session.query(AdminBroadcastDeliveryAttempt)
+            .filter(AdminBroadcastDeliveryAttempt.intent_id == source_intent_id)
+            .order_by(AdminBroadcastDeliveryAttempt.id.asc())
+            .all()
+        )
+        if not source_rows:
+            raise ActionIntentError(
+                "retry_source_unavailable",
+                status_code=409,
+                message="У исходной рассылки нет сохранённых результатов доставки.",
+            )
+        campaign_ids = {str(row.campaign_intent_id) for row in source_rows}
+        if len(campaign_ids) != 1:
+            raise ActionIntentError(
+                "retry_source_unavailable",
+                status_code=409,
+                message="Цепочка исходной рассылки повреждена; повтор заблокирован.",
+            )
+        campaign_intent_id = next(iter(campaign_ids))
+        rows = (
+            session.query(AdminBroadcastDeliveryAttempt)
+            .filter(AdminBroadcastDeliveryAttempt.campaign_intent_id == campaign_intent_id)
+            .order_by(
+                AdminBroadcastDeliveryAttempt.tg_id.asc(),
+                AdminBroadcastDeliveryAttempt.attempt_number.asc(),
+            )
+            .all()
+        )
+        by_recipient: dict[int, list[AdminBroadcastDeliveryAttempt]] = {}
+        for row in rows:
+            by_recipient.setdefault(int(row.tg_id), []).append(row)
+        observed_at = _utcnow().replace(tzinfo=None)
+        selection: list[int] = []
+        for tg_id, attempts in by_recipient.items():
+            if any(str(row.status) == "sent" for row in attempts):
+                continue
+            latest = attempts[-1]
+            retry_after = int(latest.retry_after_seconds or 0)
+            finished_at = latest.finished_at
+            if finished_at is not None and getattr(finished_at, "tzinfo", None) is not None:
+                finished_at = finished_at.astimezone(timezone.utc).replace(tzinfo=None)
+            if retry_after and finished_at and finished_at + timedelta(seconds=retry_after) > observed_at:
+                continue
+            if str(latest.status) == "failed" and bool(latest.retryable):
+                selection.append(tg_id)
+        return _broadcast_state_from_selection(selection[: int(payload["limit"])])
+
     query = session.query(User.tg_id).filter(User.tg_id > 0)
     if segment == "all_active":
         query = query.filter(User.is_active == True)
@@ -1937,8 +2050,13 @@ def _message_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str
 
 def _broadcast_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[str, Any]:
     count = int(state.context["recipient_count"])
+    retrying = str(payload.get("segment") or "") == "retry_failed"
     return _simple_preview(
-        f"Рассылка будет отправлена {count} зафиксированным получателям.",
+        (
+            f"Повтор будет отправлен {count} получателям только с временными ошибками."
+            if retrying
+            else f"Рассылка будет отправлена {count} зафиксированным получателям."
+        ),
         {
             "recipient_count": count,
             "recipient_hash": str(state.context["recipient_hash"]),
@@ -1951,7 +2069,11 @@ def _broadcast_preview(state: EntityState, payload: Mapping[str, Any]) -> dict[s
         },
         [
             "Список получателей зафиксирован на этапе предпросмотра.",
-            "Повторная отправка после неопределённого результата запрещена.",
+            (
+                "Уже успешные и терминально недоступные получатели исключены сервером."
+                if retrying
+                else "Повторная отправка после неопределённого результата запрещена."
+            ),
         ],
     )
 
@@ -2036,12 +2158,13 @@ def _ticket_external_context(state: EntityState, _payload: Mapping[str, Any]) ->
 
 def _broadcast_external_context(
     state: EntityState,
-    _payload: Mapping[str, Any],
+    payload: Mapping[str, Any],
 ) -> dict[str, Any]:
     return {
         "selected_tg_ids": list(state.context["selected_tg_ids"]),
         "recipient_count": int(state.context["recipient_count"]),
         "recipient_hash": str(state.context["recipient_hash"]),
+        "retry_intent_id": str(payload.get("retry_intent_id") or "") or None,
     }
 
 
@@ -2143,6 +2266,7 @@ def _broadcast_audit_meta(
         "message_length": int(payload["message_length"]),
         "recipient_hash": str(state.context["recipient_hash"]),
         "recipient_count": int(state.context["recipient_count"]),
+        "retry_intent_id": str(payload.get("retry_intent_id") or "") or None,
     }
 
 
@@ -4667,6 +4791,7 @@ def _normalize_live_update_runtime(
         "published_at",
         "is_active",
         "sort_order",
+        "source_draft_id",
     }
     _reject_extra_payload_fields(payload, allowed)
     if partial and not payload:
@@ -4696,6 +4821,15 @@ def _normalize_live_update_runtime(
         out["is_active"] = bool(value)
     if "sort_order" in payload or not partial:
         out["sort_order"] = _normalize_promo_integer(payload.get("sort_order", 100), field="sort_order", minimum=0, maximum=10_000)
+    if "source_draft_id" in payload:
+        if partial:
+            raise ActionIntentError("invalid_payload", status_code=422, message="source_draft_id допустим только при создании.")
+        out["source_draft_id"] = _normalize_promo_integer(
+            payload.get("source_draft_id"),
+            field="source_draft_id",
+            minimum=1,
+            maximum=2_000_000_000,
+        )
     if not partial and not out.get("link") and not (out.get("channel_username") and out.get("post_id")):
         raise ActionIntentError("invalid_payload", status_code=422, message="Нужна ссылка или Telegram post target.")
     return out
@@ -4755,6 +4889,24 @@ def _live_update_state(
         before: dict[str, Any] | None = None
         version = {"count": int(count or 0), "max_id": int(max_id or 0)}
         challenge = "new"
+        source_draft = None
+        source_draft_id = int(payload.get("source_draft_id") or 0)
+        if source_draft_id:
+            source_draft = _row_for_update(
+                session.query(NewsDraft).filter(NewsDraft.id == source_draft_id),
+                session,
+                for_update,
+            )
+            if source_draft is None:
+                raise ActionIntentError("target_not_found", status_code=404, message="Черновик новости не найден.")
+            if str(source_draft.status or "").strip().lower() != "pending" or source_draft.live_update_id is not None:
+                raise ActionIntentError("state_changed", status_code=409, message="Черновик уже обработан.")
+            version["source_draft"] = {
+                "id": int(source_draft.id),
+                "status": str(source_draft.status or ""),
+                "source_item_sha256": str(source_draft.source_item_sha256 or ""),
+                "live_update_id": source_draft.live_update_id,
+            }
     else:
         update_id = _integer_target(target_id, positive=True)
         row = _row_for_update(
@@ -6775,6 +6927,53 @@ def _normalize_external_outcome(
                 intent_id=intent_id,
                 audit_id=audit_id,
             )
+        if action == "broadcast.send":
+            retryable_failed = int(facts.get("retryable_failed") or 0)
+            terminal_failed = int(facts.get("terminal_failed") or 0)
+            if retryable_failed + terminal_failed != int(facts["failed"]):
+                return _malformed_external_outcome(
+                    raw_result=raw_result,
+                    intent_id=intent_id,
+                    audit_id=audit_id,
+                )
+            reason_counts_raw = raw_result.get("reason_counts")
+            if not isinstance(reason_counts_raw, Mapping):
+                return _malformed_external_outcome(
+                    raw_result=raw_result,
+                    intent_id=intent_id,
+                    audit_id=audit_id,
+                )
+            allowed_reasons = {
+                "blocked",
+                "bot_not_started_or_chat_not_found",
+                "account_deactivated",
+                "rate_limited",
+                "transient_provider",
+                "delivery_uncertain",
+                "internal",
+                "unknown_safe",
+            }
+            reason_counts: dict[str, int] = {}
+            for reason, count in reason_counts_raw.items():
+                if (
+                    not isinstance(reason, str)
+                    or reason not in allowed_reasons
+                    or type(count) is not int
+                    or not 0 <= int(count) <= _MAX_EXTERNAL_COUNT
+                ):
+                    return _malformed_external_outcome(
+                        raw_result=raw_result,
+                        intent_id=intent_id,
+                        audit_id=audit_id,
+                    )
+                reason_counts[reason] = int(count)
+            if sum(reason_counts.values()) != int(facts["failed"]):
+                return _malformed_external_outcome(
+                    raw_result=raw_result,
+                    intent_id=intent_id,
+                    audit_id=audit_id,
+                )
+            facts["reason_counts"] = dict(sorted(reason_counts.items()))
         has_bulk_diagnostics = any(
             key in raw_result for key in ("preview_tg_ids", "details")
         )

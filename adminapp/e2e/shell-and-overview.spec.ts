@@ -43,7 +43,8 @@ const expectedGroups = [
     label: "Управление",
     links: [
       ["Релиз", "/release"],
-      ["Рассылка", "/broadcast"]
+      ["Рассылка", "/broadcast"],
+      ["Новости", "/news"]
     ]
   }
 ] as const;
@@ -81,7 +82,7 @@ test("initData обменивается на сессию только чере�
   ))).toBe(true);
 });
 
-test("оболочка группирует 16 разделов и открывает палитру с клавиатуры", async ({ page }) => {
+test("оболочка группирует 17 разделов и открывает палитру с клавиатуры", async ({ page }) => {
   await installAdminApiMock(page);
   await page.goto("/");
 
@@ -148,7 +149,8 @@ test("каждый раздел запрашивает только собств
     { href: "/promos", label: "Промо", paths: [/^\/api\/admin\/promos\?limit=100$/, /^\/api\/admin\/promo-slots$/] },
     { href: "/referrals", label: "Рефералы", paths: [/^\/api\/admin\/referrals\/pending\?limit=100&status=pending$/, /^\/api\/admin\/referrals\/pending\?limit=100&status=rewarded$/] },
     { href: "/release", label: "Релиз", paths: [/^\/api\/admin\/releases\/candidates\?limit=50$/, /^\/api\/admin\/releases\/[a-f0-9]{64}\/readiness$/] },
-    { href: "/broadcast", label: "Рассылка", paths: [] }
+    { href: "/broadcast", label: "Рассылка", paths: [] },
+    { href: "/news", label: "Новости", paths: [/^\/api\/admin\/news-drafts\?status=all&limit=100$/] }
   ];
 
   for (const route of routes) {

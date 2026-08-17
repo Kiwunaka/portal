@@ -344,6 +344,11 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
             body["product"]["totals"],
             {"opened": 1, "checkouts": 1, "paid": 1, "connected": 1},
         )
+        observability = body["product"]["observability"]
+        self.assertGreaterEqual(int(observability["summary"]["events"]), 4)
+        self.assertEqual(int(observability["summary"]["active_users_7d"]), 1)
+        self.assertIn("versions", observability)
+        self.assertIn("errors", observability)
         self.assertEqual(body["acquisition"]["by_source"][0]["source"], "telegram_ads")
         self.assertNotIn("recent", body)
         serialized = summary.text
@@ -366,11 +371,24 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
             payload=broadcast_payload,
         )
 
-        async def fake_send_message(tg_id: int, _text: str) -> bool:
-            sent_to.append(int(tg_id))
-            return True
+        from telegram_delivery_service import TelegramDeliveryResult
 
-        with patch.object(self.api, "_telegram_send_message", new=fake_send_message):
+        async def fake_send_message(
+            tg_id: int,
+            _text: str,
+            **_kwargs,
+        ) -> TelegramDeliveryResult:
+            sent_to.append(int(tg_id))
+            return TelegramDeliveryResult(
+                sent=True,
+                reason_code="sent",
+                retryable=False,
+                duration_ms=1,
+                http_status=200,
+                message_id=123,
+            )
+
+        with patch.object(self.api, "_telegram_send_message_detailed", new=fake_send_message):
             broadcast = self.client.post(
                 "/api/admin/broadcast",
                 headers=broadcast_headers,

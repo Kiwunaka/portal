@@ -52,7 +52,7 @@ def test_home_copy_uses_native_rich_structure_and_custom_emoji() -> None:
     assert "POKROV VPN" in copy.fallback_html
     assert "карта не нужна" in copy.fallback_html
     assert "5 дней" not in returning_copy.fallback_html
-    assert "Мой доступ" in returning_copy.fallback_html
+    assert "приложении и кабинете" in returning_copy.fallback_html
 
 
 def test_device_picker_only_adds_slideshow_for_two_safe_https_urls() -> None:

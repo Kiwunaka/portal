@@ -257,7 +257,16 @@ def test_account_onboarding_and_connection_milestone_are_server_scoped(monkeypat
     runtime = client.post(
         "/api/client/runtime/stats",
         headers=auth,
-        json={"runtime_phase": "running", "connected": True, "uptime_seconds": 12},
+        json={
+            "runtime_phase": "running",
+            "connected": True,
+            "uptime_seconds": 12,
+            "selected_node_code": "de-fra-01",
+            "route_mode": "full_tunnel",
+            "duration_ms": 3210,
+            "attempt_number": 2,
+            "network_class": "lte",
+        },
     )
     assert runtime.status_code == 200
 
@@ -266,6 +275,18 @@ def test_account_onboarding_and_connection_milestone_are_server_scoped(monkeypat
     assert after["experience"]["first_connection"]["reported_at"]
     assert after["experience"]["first_connection"]["verified_at"] is None
     assert after["sync"]["connected_once"] is True
+    db = api.SessionLocal()
+    try:
+        event = db.query(api.Event).filter_by(tg_id=tg_id, event_name="connected_ok").one()
+        assert event.result == "success"
+        assert event.stage == "running"
+        assert event.subsystem == "runtime"
+        assert event.duration_ms == 3210
+        assert event.attempt_number == 2
+        assert event.network_class == "lte"
+        assert event.app_version
+    finally:
+        db.close()
 
 
 def test_security_event_is_mirrored_to_privacy_ledger(monkeypatch, tmp_path):

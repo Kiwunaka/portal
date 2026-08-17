@@ -173,6 +173,115 @@ def _funnel_stage_row(key: str, label: str, entered: int, reached_next: int) -> 
     }
 
 
+def _admin_product_observability_payload(*, s, from_dt: datetime, to_dt: datetime) -> dict[str, Any]:
+    range_filter = (Event.created_at >= from_dt, Event.created_at <= to_dt)
+    error_filter = or_(Event.result == "failure", Event.error_code.isnot(None))
+    total_events = int(s.query(func.count(Event.id)).filter(*range_filter).scalar() or 0)
+    failed_events = int(
+        s.query(func.count(Event.id)).filter(*range_filter).filter(error_filter).scalar() or 0
+    )
+    retryable_failures = int(
+        s.query(func.count(Event.id))
+        .filter(*range_filter)
+        .filter(error_filter, Event.retryable == True)
+        .scalar()
+        or 0
+    )
+    successful_events = int(
+        s.query(func.count(Event.id))
+        .filter(*range_filter, Event.result == "success")
+        .scalar()
+        or 0
+    )
+    skewed_events = int(
+        s.query(func.count(Event.id))
+        .filter(*range_filter)
+        .filter(Event.clock_skew_state.in_(["client_late", "client_future"]))
+        .scalar()
+        or 0
+    )
+    latest_event_at = s.query(func.max(Event.received_at)).filter(*range_filter).scalar()
+
+    active_from = min(to_dt, _utcnow()) - timedelta(days=7)
+    active_identities = {
+        (f"account:{account_id}" if account_id else f"telegram:{int(tg_id)}")
+        for account_id, tg_id in (
+            s.query(Event.account_id, Event.tg_id)
+            .filter(Event.created_at >= active_from, Event.created_at <= to_dt)
+            .filter(Event.event_name == "connected_ok")
+            .filter(or_(Event.result.is_(None), Event.result == "success"))
+            .distinct()
+            .all()
+        )
+        if account_id or (tg_id is not None and int(tg_id) > 0)
+    }
+
+    def grouped_rows(column: Any, *, errors_only: bool = False, limit: int = 10) -> list[dict[str, Any]]:
+        query = (
+            s.query(column, func.count(Event.id), func.max(Event.received_at))
+            .filter(*range_filter)
+            .filter(column.isnot(None), column != "")
+        )
+        if errors_only:
+            query = query.filter(error_filter)
+        rows = (
+            query.group_by(column)
+            .order_by(func.count(Event.id).desc(), column.asc())
+            .limit(limit)
+            .all()
+        )
+        return [
+            {
+                "key": str(key or "unknown")[:64],
+                "count": int(count or 0),
+                "latest_at": _safe_iso(latest_at),
+            }
+            for key, count, latest_at in rows
+        ]
+
+    version_rows = (
+        s.query(
+            Event.platform,
+            Event.app_version,
+            func.count(Event.id),
+            func.count(func.distinct(Event.tg_id)),
+            func.max(Event.received_at),
+        )
+        .filter(*range_filter)
+        .filter(Event.platform.isnot(None), Event.app_version.isnot(None))
+        .group_by(Event.platform, Event.app_version)
+        .order_by(func.count(Event.id).desc(), Event.platform.asc(), Event.app_version.desc())
+        .limit(20)
+        .all()
+    )
+    return {
+        "summary": {
+            "events": total_events,
+            "successes": successful_events,
+            "failures": failed_events,
+            "retryable_failures": retryable_failures,
+            "active_users_7d": len(active_identities),
+            "clock_skewed": skewed_events,
+            "latest_event_at": _safe_iso(latest_event_at),
+        },
+        "errors": grouped_rows(Event.error_code, errors_only=True),
+        "error_categories": grouped_rows(Event.error_category, errors_only=True),
+        "stages": grouped_rows(Event.stage, errors_only=True),
+        "subsystems": grouped_rows(Event.subsystem, errors_only=True),
+        "network_classes": grouped_rows(Event.network_class),
+        "versions": [
+            {
+                "platform": str(platform or "unknown")[:24],
+                "app_version": str(app_version or "unknown")[:32],
+                "events": int(events or 0),
+                "users": int(users or 0),
+                "latest_at": _safe_iso(latest_at),
+            }
+            for platform, app_version, events, users, latest_at in version_rows
+        ],
+    }
+
+
 def _admin_funnel_summary_payload(*, s, from_dt: datetime, to_dt: datetime) -> dict[str, Any]:
     cohort = (
         s.query(AcquisitionSession)
@@ -462,6 +571,11 @@ def _admin_funnel_summary_payload(*, s, from_dt: datetime, to_dt: datetime) -> d
                 {"reason": "Начали оплату, но не оплатили", "count": product_stages[1]["dropped"]},
                 {"reason": "Оплатили, но подключение не подтверждено", "count": product_stages[2]["dropped"]},
             ],
+            "observability": _admin_product_observability_payload(
+                s=s,
+                from_dt=from_dt,
+                to_dt=to_dt,
+            ),
         },
         "notes": [
             "Acquisition — first-touch cohort по хэшированному first-party session ID; downstream считается только по серверно связанному handoff, order/pay attempt и account.",
@@ -705,6 +819,25 @@ async def api_track_event(payload: EventIn, request: Request, x_telegram_init_da
         source=(payload.source or "webapp"),
         session_id=payload.session_id,
         meta=payload.meta or {},
+        event_id=payload.event_id,
+        occurred_at=payload.occurred_at,
+        account_id=str(auth_user.get("account_id") or "") or None,
+        device_id=str(auth_user.get("device_id") or "") or None,
+        platform=payload.platform,
+        app_version=payload.app_version,
+        build_number=payload.build_number,
+        surface=payload.surface or payload.source,
+        subsystem=payload.subsystem,
+        stage=payload.stage,
+        result=payload.result,
+        error_category=payload.error_category,
+        error_code=payload.error_code,
+        retryable=payload.retryable,
+        attempt_number=payload.attempt_number,
+        retry_after_seconds=payload.retry_after_seconds,
+        duration_ms=payload.duration_ms,
+        trace_id=payload.trace_id,
+        network_class=payload.network_class,
     )
     return {"ok": bool(event_id), "event_id": event_id}
 
@@ -1600,6 +1733,36 @@ async def public_client_apps(
     return _public_client_apps_projection(
         _build_client_apps_response(platform=platform, current_version=current_version, channel=channel)
     )
+
+
+def _current_download_target(kind: str) -> str:
+    targets = {
+        "android-arm64": getattr(Settings, "APP_ANDROID_APK_ARM64_URL", ""),
+        "android-armv7": getattr(Settings, "APP_ANDROID_APK_ARMEABI_V7A_URL", ""),
+        "android-universal": getattr(Settings, "APP_ANDROID_APK_UNIVERSAL_URL", ""),
+        "android-x86_64": getattr(Settings, "APP_ANDROID_APK_X86_64_URL", ""),
+        "windows-x64": getattr(Settings, "APP_WINDOWS_EXE_URL", ""),
+    }
+    target = _safe_public_url(targets.get(str(kind), ""))
+    if not target:
+        raise HTTPException(status_code=503, detail="Download temporarily unavailable")
+    return target
+
+
+@app.get("/api/public/downloads/{kind}")
+async def public_current_download(kind: str) -> RedirectResponse:
+    if kind not in {
+        "android-arm64",
+        "android-armv7",
+        "android-universal",
+        "android-x86_64",
+        "windows-x64",
+    }:
+        raise HTTPException(status_code=404, detail="Download not found")
+    response = RedirectResponse(_current_download_target(kind), status_code=307)
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    return response
 
 
 @app.get("/api/nodes/status")

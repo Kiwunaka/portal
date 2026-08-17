@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Cable, CreditCard, Percent, RefreshCw, UsersRound } from "lucide-react";
+import { Activity, AlertTriangle, Cable, Clock3, CreditCard, Percent, RefreshCw, UsersRound } from "lucide-react";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import type { ColumnDef } from "@tanstack/react-table";
 
@@ -10,7 +10,7 @@ import { RouteBoundary } from "@/components/ops/route-boundary";
 import type { OpsShellStatus } from "@/components/ops/shell-status";
 import { Badge, Button, Card, DataTable, EmptyState, MetricCell, MetricStrip, SectionTitle } from "@/components/ui";
 import { AdminApiError } from "@/lib/admin-api/client";
-import { fetchFunnel, type FunnelRange, type FunnelSource, type FunnelStage } from "@/lib/admin-api/revenue";
+import { fetchFunnel, type FunnelDiagnosticRow, type FunnelRange, type FunnelSource, type FunnelStage, type FunnelVersionRow } from "@/lib/admin-api/revenue";
 import { useRouteResource } from "@/lib/use-route-resource";
 import { readUrlState, replaceUrlState, subscribeToUrlState, urlCodecs } from "@/lib/url-state";
 
@@ -111,6 +111,17 @@ export function FunnelPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
       cell: ({ row }) => <NumberValue value={row.original[metric.key]} />,
     })),
   ], []);
+  const diagnosticColumns = useMemo<ColumnDef<FunnelDiagnosticRow>[]>(() => [
+    { header: "Код", cell: ({ row }) => <span className="font-mono text-xs">{row.original.key}</span> },
+    { header: "События", cell: ({ row }) => <NumberValue value={row.original.count} /> },
+    { header: "Последнее", cell: ({ row }) => row.original.latest_at ? new Date(row.original.latest_at).toLocaleString("ru-RU") : <MissingData /> },
+  ], []);
+  const versionColumns = useMemo<ColumnDef<FunnelVersionRow>[]>(() => [
+    { header: "Клиент", cell: ({ row }) => <span className="font-semibold">{row.original.platform} · {row.original.app_version}</span> },
+    { header: "Пользователи", cell: ({ row }) => <NumberValue value={row.original.users} /> },
+    { header: "События", cell: ({ row }) => <NumberValue value={row.original.events} /> },
+    { header: "Последнее", cell: ({ row }) => row.original.latest_at ? new Date(row.original.latest_at).toLocaleString("ru-RU") : <MissingData /> },
+  ], []);
 
   const selectView = (view: FunnelView) => {
     replaceUrlState<FunnelUrlState>({ view, source: "", stage: "" }, FUNNEL_URL_CODECS);
@@ -165,7 +176,20 @@ export function FunnelPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
       {urlState.view === "acquisition" ? (
         <Card><SectionTitle title="Источники первого касания" description="Источник фиксируется при первой first-party сессии. Ни raw URL, ни IP, ни идентификаторы пользователя сюда не попадают." />{filteredSources.length ? <DataTable data={filteredSources} columns={sourceColumns} empty="Нет источников" /> : resource.data ? <EmptyState description="По выбранному источнику нет данных." /> : <MissingData />}</Card>
       ) : (
-        <Card><SectionTitle title="Как считается продукт" description="Открытия, checkout, оплаты и подключения объединяются по известному серверному пользователю. Повторные события не раздувают показатели." /><p className="mt-3 max-w-3xl text-sm text-[color:var(--atlas-text-soft)]">Этот срез отвечает на вопрос «где спотыкаются уже известные пользователи». Для рекламных решений вернитесь в «Реклама»: там действует first-touch cohort и доступен разрез по источнику.</p></Card>
+        <div className="space-y-3">
+          <MetricStrip label="Качество продукта">
+            <MetricCell icon={<UsersRound aria-hidden="true" size={17} />} label="Активны за 7 дней" value={finite(product?.observability.summary.active_users_7d) === null ? <MissingData /> : valueText(product?.observability.summary.active_users_7d)} detail="Успешно подключались" tone="success" />
+            <MetricCell icon={<Activity aria-hidden="true" size={17} />} label="События" value={finite(product?.observability.summary.events) === null ? <MissingData /> : valueText(product?.observability.summary.events)} detail={`Диапазон: ${urlState.range}`} tone="info" />
+            <MetricCell icon={<AlertTriangle aria-hidden="true" size={17} />} label="Ошибки" value={finite(product?.observability.summary.failures) === null ? <MissingData /> : valueText(product?.observability.summary.failures)} detail={`${valueText(product?.observability.summary.retryable_failures)} временных`} tone={Number(product?.observability.summary.failures || 0) > 0 ? "warning" : "neutral"} />
+            <MetricCell icon={<Clock3 aria-hidden="true" size={17} />} label="Сдвиг часов" value={finite(product?.observability.summary.clock_skewed) === null ? <MissingData /> : valueText(product?.observability.summary.clock_skewed)} detail="Поздние или будущие события" tone={Number(product?.observability.summary.clock_skewed || 0) > 0 ? "warning" : "neutral"} />
+          </MetricStrip>
+          <section className="ops-workspace xl:grid-cols-2">
+            <Card><SectionTitle title="Ошибки клиента" description="Без текста сообщений, URL, IP и пользовательских идентификаторов." />{product?.observability.errors.length ? <DataTable data={product.observability.errors} columns={diagnosticColumns} empty="Ошибок нет" /> : <EmptyState description="За выбранный период кодированных ошибок нет." className="min-h-0" />}</Card>
+            <Card><SectionTitle title="Где ломается" description="Стадии и подсистемы, в которых зафиксирован отрицательный результат." />{product?.observability.stages.length ? <DataTable data={product.observability.stages} columns={diagnosticColumns} empty="Стадий нет" /> : <EmptyState description="Сервер не получил ошибок с указанием стадии." className="min-h-0" />}</Card>
+          </section>
+          <Card><SectionTitle title="Версии клиентов" description="Разрез по платформе и версии помогает увидеть старые сборки и миграционные проблемы." />{product?.observability.versions.length ? <DataTable data={product.observability.versions} columns={versionColumns} empty="Версий нет" /> : <EmptyState description="Клиенты ещё не прислали версию в Event Envelope V1." className="min-h-0" />}</Card>
+          <Card><SectionTitle title="Как считается продукт" description="Открытия, checkout, оплаты и подключения объединяются по известному серверному пользователю. Повторные события не раздувают показатели." /><p className="mt-3 max-w-3xl text-sm text-[color:var(--atlas-text-soft)]">Этот срез отвечает на вопрос «где спотыкаются уже известные пользователи». Для рекламных решений вернитесь в «Реклама»: там действует first-touch cohort и доступен разрез по источнику.</p></Card>
+        </div>
       )}
     </div>
   );

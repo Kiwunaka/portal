@@ -1980,6 +1980,11 @@ class ClientRuntimeStatsIn(BaseModel):
     rx_mbps: float | None = Field(default=None, ge=0)
     tx_mbps: float | None = Field(default=None, ge=0)
     error_code: str | None = Field(default=None, max_length=64)
+    route_mode: str | None = Field(default=None, max_length=32)
+    duration_ms: int | None = Field(default=None, ge=0, le=3_600_000)
+    attempt_number: int | None = Field(default=None, ge=1, le=100)
+    retryable: bool | None = None
+    network_class: str | None = Field(default=None, max_length=24)
 
 
 class ClientTelegramLinkEventIn(BaseModel):
@@ -2334,14 +2339,59 @@ def _record_client_event(
     session_id: str | None = None,
     meta: dict[str, Any] | None = None,
 ) -> None:
+    observed_at = _utcnow()
+    safe_meta = dict(meta or {})
+    error_code = str(safe_meta.get("error_code") or "").strip().lower()
+    platform = str(safe_meta.get("platform") or "").strip().lower()
+    app_version = str(safe_meta.get("app_version") or "").strip()
+    retryable = safe_meta.get("retryable")
+    attempt_number = safe_meta.get("attempt_number")
+    duration_ms = safe_meta.get("duration_ms")
+    network_class = str(safe_meta.get("network_class") or "").strip().lower()
     s.add(
         Event(
             tg_id=int(user.tg_id),
             event_name=str(event_name or "").strip()[:64],
+            schema_version=1,
+            event_id=str(uuid.uuid4()),
             source=str(source or "app").strip()[:32] or "app",
             session_id=(str(session_id or getattr(user, "app_install_id", "") or "").strip()[:64] or None),
-            meta_json=_client_event_meta(meta),
-            created_at=_utcnow(),
+            account_id=str(getattr(user, "account_id", "") or "").strip()[:36] or None,
+            platform=platform[:24] or None,
+            app_version=app_version[:32] or None,
+            surface="app",
+            subsystem="runtime" if safe_meta.get("runtime_phase") else None,
+            stage=str(safe_meta.get("runtime_phase") or "").strip().lower()[:64] or None,
+            result=(
+                "success"
+                if safe_meta.get("connected") is True
+                else "failure"
+                if error_code
+                else "reported"
+            ),
+            error_category="runtime" if error_code else None,
+            error_code=error_code[:64] or None,
+            retryable=bool(retryable) if isinstance(retryable, bool) else None,
+            attempt_number=(
+                max(1, min(int(attempt_number), 100))
+                if isinstance(attempt_number, int)
+                else None
+            ),
+            duration_ms=(
+                max(0, min(int(duration_ms), 3_600_000))
+                if isinstance(duration_ms, int)
+                else None
+            ),
+            network_class=(
+                network_class[:24]
+                if re.fullmatch(r"[a-z0-9_.-]{1,24}", network_class)
+                else None
+            ),
+            occurred_at=observed_at,
+            received_at=observed_at,
+            clock_skew_state="ok",
+            meta_json=safe_event_meta_json(safe_meta),
+            created_at=observed_at,
         )
     )
 
@@ -4084,10 +4134,24 @@ async def client_runtime_stats(
             raise HTTPException(status_code=422, detail="Invalid runtime phase")
         if error_code and not re.fullmatch(r"[a-z0-9_.-]{1,64}", error_code):
             raise HTTPException(status_code=422, detail="Invalid error code")
+        event_name = "client_runtime_stats"
+        if bool(payload.connected):
+            event_name = "connected_ok"
+        elif error_code:
+            event_name = error_code
+        elif runtime_phase == "connect_requested":
+            event_name = "clicked_connect"
+        elif runtime_phase in {
+            "app_opened",
+            "update_available",
+            "update_download_started",
+            "update_installer_opened",
+        }:
+            event_name = runtime_phase
         _record_client_event(
             s,
             user=user,
-            event_name="client_runtime_stats",
+            event_name=event_name,
             source="app",
             session_id=session_id or "unavailable",
             meta={
@@ -4101,6 +4165,11 @@ async def client_runtime_stats(
                 "rx_mbps": payload.rx_mbps,
                 "tx_mbps": payload.tx_mbps,
                 "error_code": error_code or None,
+                "route_mode": str(payload.route_mode or "").strip().lower() or None,
+                "duration_ms": payload.duration_ms,
+                "attempt_number": payload.attempt_number,
+                "retryable": payload.retryable,
+                "network_class": str(payload.network_class or "").strip().lower() or None,
             },
         )
         if bool(payload.connected):

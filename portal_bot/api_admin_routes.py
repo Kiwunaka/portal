@@ -1651,6 +1651,7 @@ async def admin_broadcast(
                 "segment": segment,
                 "limit": limit,
                 "tg_ids": list(payload.tg_ids),
+                "retry_intent_id": payload.retry_intent_id,
             },
             request=request,
         )
@@ -1689,6 +1690,111 @@ async def admin_broadcast(
         "sent": 0,
         "failed": 0,
     }
+
+
+def _broadcast_delivery_summary(*, campaign_intent_id: str) -> dict[str, Any]:
+    session = SessionLocal()
+    try:
+        rows = (
+            session.query(AdminBroadcastDeliveryAttempt)
+            .filter(
+                AdminBroadcastDeliveryAttempt.campaign_intent_id
+                == str(campaign_intent_id)
+            )
+            .order_by(
+                AdminBroadcastDeliveryAttempt.tg_id.asc(),
+                AdminBroadcastDeliveryAttempt.attempt_number.asc(),
+            )
+            .limit(MAX_BROADCAST_LIMIT * 20)
+            .all()
+        )
+    finally:
+        session.close()
+    by_recipient: dict[int, list[AdminBroadcastDeliveryAttempt]] = {}
+    for row in rows:
+        by_recipient.setdefault(int(row.tg_id), []).append(row)
+    reason_counts: dict[str, int] = {}
+    delivered = 0
+    retryable_failed = 0
+    terminal_failed = 0
+    total_attempts = 0
+    duration_total_ms = 0
+    first_started_at: datetime | None = None
+    last_finished_at: datetime | None = None
+    for attempts in by_recipient.values():
+        total_attempts += len(attempts)
+        duration_total_ms += sum(max(0, int(row.duration_ms or 0)) for row in attempts)
+        starts = [row.started_at for row in attempts if row.started_at is not None]
+        finishes = [row.finished_at for row in attempts if row.finished_at is not None]
+        if starts:
+            candidate = min(starts)
+            first_started_at = candidate if first_started_at is None else min(first_started_at, candidate)
+        if finishes:
+            candidate = max(finishes)
+            last_finished_at = candidate if last_finished_at is None else max(last_finished_at, candidate)
+        if any(str(row.status) == "sent" for row in attempts):
+            delivered += 1
+            continue
+        latest = attempts[-1]
+        reason = str(latest.reason_code or "unknown_safe")
+        reason_counts[reason] = int(reason_counts.get(reason, 0)) + 1
+        if bool(latest.retryable):
+            retryable_failed += 1
+        else:
+            terminal_failed += 1
+    return {
+        "campaign_intent_id": str(campaign_intent_id),
+        "recipients": len(by_recipient),
+        "delivered": delivered,
+        "failed": max(0, len(by_recipient) - delivered),
+        "retryable_failed": retryable_failed,
+        "terminal_failed": terminal_failed,
+        "attempts": total_attempts,
+        "reason_counts": dict(sorted(reason_counts.items())),
+        "average_duration_ms": (
+            int(round(duration_total_ms / total_attempts)) if total_attempts else None
+        ),
+        "first_started_at": _safe_iso(first_started_at),
+        "last_finished_at": _safe_iso(last_finished_at),
+        "freshness_seconds": (
+            max(0, int((_utcnow() - last_finished_at).total_seconds()))
+            if last_finished_at is not None
+            else None
+        ),
+    }
+
+
+@app.get("/api/admin/broadcasts/{intent_id}/delivery")
+async def admin_broadcast_delivery(
+    intent_id: str,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    _require_admin(x_telegram_init_data)
+    try:
+        normalized_intent_id = str(uuid.UUID(str(intent_id)))
+    except ValueError as exc:
+        raise HTTPException(status_code=404, detail="Broadcast not found") from exc
+    session = SessionLocal()
+    try:
+        intent = (
+            session.query(AdminActionIntent)
+            .filter(AdminActionIntent.id == normalized_intent_id)
+            .first()
+        )
+        if intent is None or str(intent.action) != "broadcast.send":
+            raise HTTPException(status_code=404, detail="Broadcast not found")
+        campaign_row = (
+            session.query(AdminBroadcastDeliveryAttempt.campaign_intent_id)
+            .filter(AdminBroadcastDeliveryAttempt.intent_id == normalized_intent_id)
+            .order_by(AdminBroadcastDeliveryAttempt.id.asc())
+            .first()
+        )
+    finally:
+        session.close()
+    campaign_intent_id = (
+        str(campaign_row[0]) if campaign_row is not None else normalized_intent_id
+    )
+    return {"ok": True, **_broadcast_delivery_summary(campaign_intent_id=campaign_intent_id)}
 
 
 @app.get("/api/admin/promos")
@@ -2125,6 +2231,77 @@ async def admin_program_application_review(
         s.close()
 
 
+@app.get("/api/admin/news-drafts")
+async def admin_news_drafts(
+    x_telegram_init_data: str = Header(default=""),
+    status: str = Query(default="all", pattern="^(all|pending|approved)$"),
+    limit: int = Query(default=100, ge=1, le=200),
+) -> dict:
+    _require_admin(x_telegram_init_data)
+    s = SessionLocal()
+    try:
+        config_state = "ready"
+        try:
+            feeds = configured_news_feeds()
+            interval_seconds = news_draft_interval_seconds()
+        except NewsDraftConfigError:
+            feeds = ()
+            interval_seconds = None
+            config_state = "invalid"
+        query = s.query(NewsDraft)
+        if status != "all":
+            query = query.filter(NewsDraft.status == status)
+        rows = query.order_by(NewsDraft.discovered_at.desc(), NewsDraft.id.desc()).limit(limit).all()
+        latest_run = s.query(NewsDraftRun).order_by(NewsDraftRun.started_at.desc(), NewsDraftRun.id.desc()).first()
+        counts = dict(
+            s.query(NewsDraft.status, func.count(NewsDraft.id))
+            .group_by(NewsDraft.status)
+            .all()
+        )
+        return {
+            "worker": {
+                "enabled": news_draft_worker_enabled(),
+                "configuration_state": config_state,
+                "interval_seconds": interval_seconds,
+                "sources": [feed.name for feed in feeds],
+            },
+            "counts": {str(key): int(value or 0) for key, value in counts.items()},
+            "latest_run": None
+            if latest_run is None
+            else {
+                "run_id": str(latest_run.run_id),
+                "status": str(latest_run.status),
+                "sources_total": int(latest_run.sources_total or 0),
+                "sources_succeeded": int(latest_run.sources_succeeded or 0),
+                "sources_failed": int(latest_run.sources_failed or 0),
+                "candidates_seen": int(latest_run.candidates_seen or 0),
+                "drafts_created": int(latest_run.drafts_created or 0),
+                "duplicates_skipped": int(latest_run.duplicates_skipped or 0),
+                "duration_ms": int(latest_run.duration_ms) if latest_run.duration_ms is not None else None,
+                "failure_code": str(latest_run.failure_code or "") or None,
+                "started_at": _safe_iso(latest_run.started_at),
+                "finished_at": _safe_iso(latest_run.finished_at),
+            },
+            "drafts": [
+                {
+                    "id": int(row.id),
+                    "source_name": str(row.source_name),
+                    "source_url": str(row.source_url),
+                    "source_title": str(row.source_title),
+                    "source_published_at": _safe_iso(row.source_published_at),
+                    "status": str(row.status),
+                    "live_update_id": int(row.live_update_id) if row.live_update_id is not None else None,
+                    "discovered_at": _safe_iso(row.discovered_at),
+                    "reviewed_at": _safe_iso(row.reviewed_at),
+                }
+                for row in rows
+            ],
+            "freshness_at": _safe_iso(latest_run.finished_at if latest_run is not None else None),
+        }
+    finally:
+        s.close()
+
+
 @app.get("/api/admin/live-updates")
 async def admin_live_updates(x_telegram_init_data: str = Header(default=""), include_inactive: bool = True) -> dict:
     _require_admin(x_telegram_init_data)
@@ -2173,7 +2350,7 @@ async def admin_live_updates_create(
         action="live_update.create",
         target_type="live_update",
         target_id="new",
-        payload=payload.model_dump(),
+        payload=payload.model_dump(exclude_unset=True),
         request=request,
     )
 
@@ -4504,7 +4681,24 @@ def _execute_task20_admin_action_db(
             raise ActionIntentError("invalid_payload", status_code=422, message="Нужна ссылка или Telegram post target.")
         row.updated_at = now
         session.flush()
-        return {"id": int(row.id)}
+        source_draft_id = int(runtime.get("source_draft_id") or 0)
+        if source_draft_id:
+            draft = (
+                session.query(NewsDraft)
+                .filter(NewsDraft.id == source_draft_id)
+                .with_for_update()
+                .first()
+            )
+            if draft is None:
+                raise ActionIntentError("target_not_found", status_code=404, message="Черновик новости не найден.")
+            if str(draft.status or "").strip().lower() != "pending" or draft.live_update_id is not None:
+                raise ActionIntentError("state_changed", status_code=409, message="Черновик уже обработан.")
+            draft.status = "approved"
+            draft.reviewed_by_tg_id = int(actor_tg_id)
+            draft.reviewed_at = now
+            draft.live_update_id = int(row.id)
+            session.flush()
+        return {"id": int(row.id), "source_draft_id": source_draft_id or None}
 
     if action in {"start_link.create", "start_link.update", "start_link.delete"}:
         row = state.entity
@@ -5810,23 +6004,114 @@ async def _execute_admin_client_action_external(
             or len(recipients) != int(execution["recipient_count"])
         ):
             raise RuntimeError("frozen broadcast plan is unavailable")
-        sent = 0
-        failed = 0
+        execution_intent_id = str(context.get("action_intent_id") or "")
+        retry_intent_id = str(execution.get("retry_intent_id") or "")
+        campaign_intent_id = execution_intent_id
+        if retry_intent_id:
+            lookup_session = SessionLocal()
+            try:
+                source = (
+                    lookup_session.query(AdminBroadcastDeliveryAttempt.campaign_intent_id)
+                    .filter(AdminBroadcastDeliveryAttempt.intent_id == retry_intent_id)
+                    .order_by(AdminBroadcastDeliveryAttempt.id.asc())
+                    .first()
+                )
+            finally:
+                lookup_session.close()
+            if source is None:
+                raise RuntimeError("broadcast retry source is unavailable")
+            campaign_intent_id = str(source[0])
         for tg_id in recipients:
-            if await _telegram_send_message(
+            attempt_session = SessionLocal()
+            try:
+                existing = (
+                    attempt_session.query(AdminBroadcastDeliveryAttempt)
+                    .filter(
+                        AdminBroadcastDeliveryAttempt.campaign_intent_id
+                        == campaign_intent_id,
+                        AdminBroadcastDeliveryAttempt.tg_id == tg_id,
+                    )
+                    .order_by(AdminBroadcastDeliveryAttempt.attempt_number.asc())
+                    .all()
+                )
+                if any(str(row.status) == "sent" for row in existing):
+                    continue
+                attempt_number = max(
+                    [int(row.attempt_number) for row in existing] or [0]
+                ) + 1
+            finally:
+                attempt_session.close()
+            if attempt_number > 20:
+                raise RuntimeError("broadcast retry limit reached")
+            started_at = _utcnow()
+            delivery = await _telegram_send_message_detailed(
                 tg_id,
                 str(runtime["text"]),
                 disable_web_page_preview=True,
-            ):
-                sent += 1
-            else:
-                failed += 1
+            )
+            finished_at = _utcnow()
+            save_session = SessionLocal()
+            try:
+                save_session.add(
+                    AdminBroadcastDeliveryAttempt(
+                        intent_id=execution_intent_id,
+                        campaign_intent_id=campaign_intent_id,
+                        tg_id=tg_id,
+                        attempt_number=attempt_number,
+                        status="sent" if delivery.sent else "failed",
+                        reason_code=str(delivery.reason_code),
+                        retryable=bool(delivery.retryable),
+                        http_status=delivery.http_status,
+                        telegram_error_code=delivery.telegram_error_code,
+                        retry_after_seconds=delivery.retry_after_seconds,
+                        message_id=delivery.message_id,
+                        provider_error_hash=delivery.provider_error_hash,
+                        duration_ms=int(delivery.duration_ms),
+                        started_at=started_at,
+                        finished_at=finished_at,
+                    )
+                )
+                save_session.commit()
+            except Exception:
+                save_session.rollback()
+                raise
+            finally:
+                save_session.close()
+        summary = _broadcast_delivery_summary(campaign_intent_id=campaign_intent_id)
+        state_session = SessionLocal()
+        try:
+            selected_rows = (
+                state_session.query(AdminBroadcastDeliveryAttempt)
+                .filter(
+                    AdminBroadcastDeliveryAttempt.campaign_intent_id == campaign_intent_id,
+                    AdminBroadcastDeliveryAttempt.tg_id.in_(recipients),
+                )
+                .order_by(
+                    AdminBroadcastDeliveryAttempt.tg_id.asc(),
+                    AdminBroadcastDeliveryAttempt.attempt_number.asc(),
+                )
+                .all()
+            )
+        finally:
+            state_session.close()
+        selected_by_recipient: dict[int, list[AdminBroadcastDeliveryAttempt]] = {}
+        for row in selected_rows:
+            selected_by_recipient.setdefault(int(row.tg_id), []).append(row)
+        sent = sum(
+            1
+            for attempts in selected_by_recipient.values()
+            if any(str(row.status) == "sent" for row in attempts)
+        )
+        failed = len(recipients) - sent
         return {
             "ok": failed == 0,
             "code": "broadcast_sent" if failed == 0 else "broadcast_partial",
             "attempted": len(recipients),
             "sent": sent,
             "failed": failed,
+            "retryable_failed": int(summary["retryable_failed"]),
+            "terminal_failed": int(summary["terminal_failed"]),
+            "reason_counts": dict(summary["reason_counts"]),
         }
 
     if action == "user.message":
@@ -6196,6 +6481,13 @@ def _admin_guarded_action_response(
                 "attempted": int(facts.get("attempted") or 0),
                 "sent": int(facts.get("sent") or 0),
                 "failed": int(facts.get("failed") or 0),
+                "retryable_failed": int(facts.get("retryable_failed") or 0),
+                "terminal_failed": int(facts.get("terminal_failed") or 0),
+                "reason_counts": (
+                    dict(facts.get("reason_counts") or {})
+                    if isinstance(facts.get("reason_counts"), dict)
+                    else {}
+                ),
             }
         )
 

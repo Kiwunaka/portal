@@ -48,6 +48,17 @@ export type PaymentOrdersPayload = { orders: PaymentOrder[]; total: number | nul
 
 export type FunnelStage = { key: string; label: string; entered: number | null; reached_next: number | null; dropped: number | null; conversion_pct: number | null };
 export type FunnelSource = { source: string; sessions: number | null; entry_intents: number | null; resolved_entries: number | null; checkouts: number | null; paid: number | null; connected: number | null };
+export type FunnelDiagnosticRow = { key: string; count: number | null; latest_at: string | null };
+export type FunnelVersionRow = { platform: string; app_version: string; events: number | null; users: number | null; latest_at: string | null };
+export type FunnelProductObservability = {
+  summary: { events: number | null; successes: number | null; failures: number | null; retryable_failures: number | null; active_users_7d: number | null; clock_skewed: number | null; latest_event_at: string | null };
+  errors: FunnelDiagnosticRow[];
+  error_categories: FunnelDiagnosticRow[];
+  stages: FunnelDiagnosticRow[];
+  subsystems: FunnelDiagnosticRow[];
+  network_classes: FunnelDiagnosticRow[];
+  versions: FunnelVersionRow[];
+};
 export type FunnelPayload = {
   period: { from: string | null; to: string | null };
   acquisition: {
@@ -62,6 +73,7 @@ export type FunnelPayload = {
     totals: { opened: number | null; checkouts: number | null; paid: number | null; connected: number | null };
     stages: FunnelStage[];
     drop_reasons: Array<{ reason: string; count: number | null }>;
+    observability: FunnelProductObservability;
   };
   notes: string[];
 };
@@ -280,9 +292,12 @@ export async function fetchFunnel(range: FunnelRange, init?: ApiRequestInit): Pr
   const product = data.product && typeof data.product === "object" ? data.product as Record<string, unknown> : {};
   const acquisitionTotals = acquisition.totals && typeof acquisition.totals === "object" ? acquisition.totals as Record<string, unknown> : {};
   const productTotals = product.totals && typeof product.totals === "object" ? product.totals as Record<string, unknown> : {};
+  const observability = product.observability && typeof product.observability === "object" ? product.observability as Record<string, unknown> : {};
+  const observabilitySummary = observability.summary && typeof observability.summary === "object" ? observability.summary as Record<string, unknown> : {};
   const rows = (value: unknown): Record<string, unknown>[] => Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => Boolean(item && typeof item === "object")) : [];
   const stages = (value: unknown): FunnelStage[] => rows(value).map((row) => ({ key: text(row.key) || "unknown", label: text(row.label) || "Без названия", entered: finite(row.entered), reached_next: finite(row.reached_next), dropped: finite(row.dropped), conversion_pct: finite(row.conversion_pct) }));
   const drops = (value: unknown): Array<{ reason: string; count: number | null }> => rows(value).map((row) => ({ reason: text(row.reason) || "Без причины", count: finite(row.count) }));
+  const diagnostics = (value: unknown): FunnelDiagnosticRow[] => rows(value).map((row) => ({ key: text(row.key) || "unknown", count: finite(row.count), latest_at: text(row.latest_at) }));
   return {
     period: { from: text(period.from), to: text(period.to) },
     acquisition: {
@@ -297,6 +312,23 @@ export async function fetchFunnel(range: FunnelRange, init?: ApiRequestInit): Pr
       totals: { opened: finite(productTotals.opened), checkouts: finite(productTotals.checkouts), paid: finite(productTotals.paid), connected: finite(productTotals.connected) },
       stages: stages(product.stages),
       drop_reasons: drops(product.drop_reasons),
+      observability: {
+        summary: {
+          events: finite(observabilitySummary.events),
+          successes: finite(observabilitySummary.successes),
+          failures: finite(observabilitySummary.failures),
+          retryable_failures: finite(observabilitySummary.retryable_failures),
+          active_users_7d: finite(observabilitySummary.active_users_7d),
+          clock_skewed: finite(observabilitySummary.clock_skewed),
+          latest_event_at: text(observabilitySummary.latest_event_at),
+        },
+        errors: diagnostics(observability.errors),
+        error_categories: diagnostics(observability.error_categories),
+        stages: diagnostics(observability.stages),
+        subsystems: diagnostics(observability.subsystems),
+        network_classes: diagnostics(observability.network_classes),
+        versions: rows(observability.versions).map((row) => ({ platform: text(row.platform) || "unknown", app_version: text(row.app_version) || "unknown", events: finite(row.events), users: finite(row.users), latest_at: text(row.latest_at) })),
+      },
     },
     notes: Array.isArray(data.notes) ? data.notes.filter((item): item is string => typeof item === "string") : [],
   };

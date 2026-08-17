@@ -256,6 +256,67 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         bad = client.post("/api/events", headers=hdrs, json={"event_name": "totally_unknown_event", "source": "webapp"})
         self.assertEqual(bad.status_code, 400, bad.text)
 
+        event_uuid = str(uuid.uuid4())
+        envelope = {
+            "event_name": "connect_failed",
+            "event_id": event_uuid,
+            "occurred_at": (datetime.utcnow() - timedelta(days=1)).isoformat(),
+            "source": "app",
+            "platform": "android",
+            "app_version": "1.1.1",
+            "build_number": "2015",
+            "surface": "home",
+            "subsystem": "tunnel",
+            "stage": "core_start",
+            "result": "failure",
+            "error_category": "network",
+            "error_code": "provider_timeout",
+            "retryable": True,
+            "attempt_number": 2,
+            "duration_ms": 4200,
+            "network_class": "lte",
+            "meta": {
+                "route_mode": "full_tunnel",
+                "message": "must-not-survive",
+                "refresh_token": "must-not-survive",
+                "email": "must-not-survive@example.test",
+                "raw_reason": "provider returned private text",
+            },
+        }
+        first = client.post("/api/events", headers=hdrs, json=envelope)
+        replay = client.post("/api/events", headers=hdrs, json=envelope)
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(replay.status_code, 200, replay.text)
+        self.assertEqual(first.json()["event_id"], replay.json()["event_id"])
+
+        from models import Event
+        from db import SessionLocal
+
+        session = SessionLocal()
+        try:
+            rows = session.query(Event).filter(Event.event_id == event_uuid).all()
+            self.assertEqual(len(rows), 1)
+            row = rows[0]
+            self.assertEqual(row.platform, "android")
+            self.assertEqual(row.error_code, "provider_timeout")
+            self.assertEqual(row.clock_skew_state, "client_late")
+            self.assertEqual(json.loads(row.meta_json or "{}"), {"route_mode": "full_tunnel"})
+        finally:
+            session.close()
+
+    def test_public_download_redirect_always_resolves_current_stable_asset(self) -> None:
+        client = TestClient(self.api.app)
+        current = "https://github.com/example/pokrov/releases/download/v1.1.1/pokrov-android-arm64-v8a.apk"
+        self.api.Settings.APP_ANDROID_APK_ARM64_URL = current
+
+        response = client.get("/api/public/downloads/android-arm64", follow_redirects=False)
+        self.assertEqual(response.status_code, 307, response.text)
+        self.assertEqual(response.headers.get("location"), current)
+        self.assertEqual(response.headers.get("cache-control"), "no-store")
+
+        missing = client.get("/api/public/downloads/ios", follow_redirects=False)
+        self.assertEqual(missing.status_code, 404, missing.text)
+
     def test_pay_attempt_start_offer_accept_and_points(self) -> None:
         client = TestClient(self.api.app)
         hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}

@@ -32,7 +32,8 @@ export const OPS_GROUPS = [
     label: "Управление",
     sections: [
       { id: "release", label: "Релиз", href: "/release" },
-      { id: "broadcast", label: "Рассылка", href: "/broadcast" }
+      { id: "broadcast", label: "Рассылка", href: "/broadcast" },
+      { id: "news", label: "Новости", href: "/news" }
     ]
   }
 ] as const;

@@ -10,6 +10,7 @@ import {
   LineChart,
   Megaphone,
   Radio,
+  Newspaper,
   Rocket,
   Server,
   Share2,
@@ -40,7 +41,8 @@ const SECTION_ICONS: Record<OpsSectionId, LucideIcon> = {
   promos: Megaphone,
   referrals: Share2,
   release: Rocket,
-  broadcast: Radio
+  broadcast: Radio,
+  news: Newspaper
 };
 
 const DESKTOP_LABELS: Record<OpsSectionId, string> = {
@@ -59,7 +61,8 @@ const DESKTOP_LABELS: Record<OpsSectionId, string> = {
   promos: "Промо",
   referrals: "Рефералы",
   release: "Релиз",
-  broadcast: "Рассылка"
+  broadcast: "Рассылка",
+  news: "Новости"
 };
 
 export interface OpsNavigationProps {
@@ -131,7 +134,7 @@ export function OpsDesktopNavigation({ active, onNavigate }: OpsDesktopNavigatio
           <section
             key={group.label}
             aria-labelledby={`ops-desktop-group-${group.sections[0].id}`}
-            className="flex shrink-0 items-center border-r border-[color:var(--atlas-border)] px-1 first:pl-0 last:border-r-0 min-[1440px]:px-1.5"
+            className="flex shrink-0 items-center border-r border-[color:var(--atlas-border)] px-1 first:pl-0 last:border-r-0 min-[1536px]:px-1.5"
           >
             <h2
               id={`ops-desktop-group-${group.sections[0].id}`}
@@ -155,7 +158,7 @@ export function OpsDesktopNavigation({ active, onNavigate }: OpsDesktopNavigatio
                       onNavigate(item.href);
                     }}
                     className={cn(
-                      "relative flex min-h-11 items-center gap-1.5 px-1.5 text-xs font-semibold transition-colors min-[1440px]:px-2",
+                      "relative flex min-h-11 items-center gap-1.5 px-1.5 text-xs font-semibold transition-colors min-[1536px]:px-2",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--atlas-focus)]",
                       selected
                         ? "text-[color:var(--atlas-primary)] after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-[color:var(--atlas-primary)]"
@@ -163,7 +166,7 @@ export function OpsDesktopNavigation({ active, onNavigate }: OpsDesktopNavigatio
                     )}
                   >
                     <Icon aria-hidden="true" size={15} strokeWidth={1.8} />
-                    <span className="hidden whitespace-nowrap min-[1440px]:inline">{DESKTOP_LABELS[item.id]}</span>
+                    <span className="hidden whitespace-nowrap min-[1536px]:inline">{DESKTOP_LABELS[item.id]}</span>
                   </a>
                 );
               })}

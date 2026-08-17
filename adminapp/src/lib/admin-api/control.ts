@@ -85,3 +85,73 @@ export function fetchActionIntentStatus(
     init,
   );
 }
+
+export type BroadcastDeliverySummary = {
+  campaign_intent_id: string;
+  recipients: number;
+  delivered: number;
+  failed: number;
+  retryable_failed: number;
+  terminal_failed: number;
+  attempts: number;
+  reason_counts: Record<string, number>;
+  average_duration_ms: number | null;
+  first_started_at: string | null;
+  last_finished_at: string | null;
+  freshness_seconds: number | null;
+};
+
+export async function fetchBroadcastDelivery(
+  intentId: string,
+  init?: ApiRequestInit,
+): Promise<BroadcastDeliverySummary> {
+  const data = await apiFetch<{ ok: boolean } & BroadcastDeliverySummary>(
+    `/api/admin/broadcasts/${encodeURIComponent(intentId)}/delivery`,
+    init,
+  );
+  return data;
+}
+
+export type NewsDraftRow = {
+  id: number;
+  source_name: string;
+  source_url: string;
+  source_title: string;
+  source_published_at: string | null;
+  status: "pending" | "approved" | string;
+  live_update_id: number | null;
+  discovered_at: string | null;
+  reviewed_at: string | null;
+};
+
+export type NewsDraftRun = {
+  run_id: string;
+  status: string;
+  sources_total: number;
+  sources_succeeded: number;
+  sources_failed: number;
+  candidates_seen: number;
+  drafts_created: number;
+  duplicates_skipped: number;
+  duration_ms: number | null;
+  failure_code: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+};
+
+export type NewsDraftPage = {
+  worker: {
+    enabled: boolean;
+    configuration_state: string;
+    interval_seconds: number | null;
+    sources: string[];
+  };
+  counts: Record<string, number>;
+  latest_run: NewsDraftRun | null;
+  drafts: NewsDraftRow[];
+  freshness_at: string | null;
+};
+
+export function fetchNewsDrafts(init?: ApiRequestInit): Promise<NewsDraftPage> {
+  return apiFetch<NewsDraftPage>("/api/admin/news-drafts?status=all&limit=100", init);
+}

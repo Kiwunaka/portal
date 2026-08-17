@@ -180,8 +180,8 @@ class BotPaywallTests(unittest.TestCase):
             [button["url"] for button in buttons],
             [
                 "https://example.test/pokrov-arm64.apk",
-                "https://example.test/pokrov-armv7.apk",
-                "https://example.test/pokrov-universal.apk",
+                f"{self.bot_module.PUBLIC_API_BASE_URL.rstrip('/')}/api/public/downloads/android-armv7",
+                f"{self.bot_module.PUBLIC_API_BASE_URL.rstrip('/')}/api/public/downloads/android-universal",
             ],
         )
         self.assertNotIn("https://example.test/pokrov-x86_64.apk", [button["url"] for button in buttons])
@@ -1953,7 +1953,7 @@ class BotPaywallTests(unittest.TestCase):
                 meta = json.loads(raw_meta)
                 self.assertFalse(code in raw_meta)
                 self.assertNotIn("code", meta)
-                self.assertEqual(meta["code_preview"], f"...{code[-4:]}")
+                self.assertNotIn("code_preview", meta)
                 self.assertEqual(meta["code_fp"], hashlib.sha256(code.encode("utf-8")).hexdigest()[:16])
                 self.assertEqual(meta["code_len"], len(code))
         finally:
@@ -2012,7 +2012,7 @@ class BotPaywallTests(unittest.TestCase):
             self.assertFalse(code in raw_meta)
             self.assertNotIn("code", meta)
             self.assertEqual(meta["reason"], "payment_account_conflict")
-            self.assertEqual(meta["code_preview"], f"...{code[-4:]}")
+            self.assertNotIn("code_preview", meta)
             self.assertEqual(meta["code_fp"], hashlib.sha256(code.encode("utf-8")).hexdigest()[:16])
             self.assertEqual(meta["code_len"], len(code))
         finally:
@@ -2623,17 +2623,20 @@ class BotPaywallTests(unittest.TestCase):
             rows = self.bot_module.main_keyboard_specs(1001)
         labels = [str(button.get("text") or "") for row in rows for button in row]
         upper_labels = [label.upper() for label in labels]
-        self.assertEqual(len(labels), 4)
+        self.assertEqual(len(labels), 5)
         self.assertTrue(any("5 ДНЕЙ" in label for label in upper_labels))
-        self.assertTrue(any("МОЙ ДОСТУП" in label for label in upper_labels))
+        self.assertTrue(any("ВОЙТИ ПО КОДУ" in label for label in upper_labels))
         self.assertTrue(any("ПОМОЩЬ" in label for label in upper_labels))
-        self.assertFalse(any("КАБИНЕТ" in label for label in upper_labels))
+        self.assertTrue(any("КАБИНЕТ" in label for label in upper_labels))
+        self.assertTrue(any("АКТИВИРОВАТЬ КОД" in label for label in upper_labels))
+        self.assertFalse(any("МОЙ ДОСТУП" in label for label in upper_labels))
+        self.assertFalse(any("ЕЩЁ" in label for label in upper_labels))
         self.assertFalse(any("VPN НЕ РАБОТАЕТ" in label for label in upper_labels))
         self.assertFalse(any("НИЗКАЯ СКОРОСТЬ" in label for label in upper_labels))
         self.assertFalse(any("ПОРТАЛ" in label for label in upper_labels))
         self.assertFalse(any("РУЧНАЯ ССЫЛКА" in label for label in upper_labels))
         self.assertFalse(any("БОНУСЫ" in label for label in upper_labels))
-        self.assertIn('text="Кабинет"', inspect.getsource(self.bot_module.show_settings))
+        self.assertNotIn('text="Кабинет"', inspect.getsource(self.bot_module.show_settings))
 
     def test_new_user_first_layer_is_platform_first_without_panel_actions(self) -> None:
         rows = self.bot_module.new_user_keyboard_specs()
@@ -2641,10 +2644,10 @@ class BotPaywallTests(unittest.TestCase):
         labels = [str(button.get("text") or "") for button in buttons]
         callbacks = [str(button.get("callback_data") or "") for button in buttons]
 
-        self.assertEqual(labels, ["Android", "Windows", "Тарифы", "Как проверить POKROV"])
+        self.assertEqual(labels, ["Android", "Windows", "Уже пользуюсь POKROV", "Помощь"])
         self.assertEqual(
             callbacks,
-            ["instr_android", "instr_win", "charge", "verify_pokrov"],
+            ["instr_android", "instr_win", "device_pairing_code", "confused_help"],
         )
         self.assertFalse(any(button.get("web_app") for button in buttons))
 
@@ -2707,7 +2710,7 @@ class BotPaywallTests(unittest.TestCase):
                 trial_used=True,
             )
             with patch.object(self.bot_module, "get_user", return_value=used_trial):
-                self.assertEqual(self.bot_module._main_menu_cta_spec(1001)["callback_data"], "gift_redeem_prompt")
+                self.assertEqual(self.bot_module._main_menu_cta_spec(1001)["callback_data"], "confused_help")
 
             active_paid = types.SimpleNamespace(
                 is_active=True,

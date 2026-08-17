@@ -1433,6 +1433,62 @@ class AdminBroadcastRecipientPlan(Base):
     )
 
 
+class AdminBroadcastDeliveryAttempt(Base):
+    __tablename__ = "admin_broadcast_delivery_attempts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    intent_id = Column(
+        String(36),
+        ForeignKey(
+            "admin_action_intents.id",
+            name="fk_admin_broadcast_attempt_intent",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
+    )
+    campaign_intent_id = Column(String(36), nullable=False)
+    tg_id = Column(BigInteger, nullable=False)
+    attempt_number = Column(Integer, nullable=False)
+    status = Column(String(16), nullable=False)
+    reason_code = Column(String(64), nullable=False)
+    retryable = Column(Boolean, default=False, nullable=False)
+    http_status = Column(Integer, nullable=True)
+    telegram_error_code = Column(Integer, nullable=True)
+    retry_after_seconds = Column(Integer, nullable=True)
+    message_id = Column(BigInteger, nullable=True)
+    provider_error_hash = Column(String(64), nullable=True)
+    duration_ms = Column(Integer, nullable=False)
+    started_at = Column(DateTime, nullable=False)
+    finished_at = Column(DateTime, nullable=False)
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=sql_text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "campaign_intent_id",
+            "tg_id",
+            "attempt_number",
+            name="uq_admin_broadcast_attempt_number",
+        ),
+        CheckConstraint("tg_id > 0", name="ck_admin_broadcast_attempt_tg_id"),
+        CheckConstraint(
+            "attempt_number >= 1 AND attempt_number <= 20",
+            name="ck_admin_broadcast_attempt_number",
+        ),
+        CheckConstraint(
+            "duration_ms >= 0 AND duration_ms <= 3600000",
+            name="ck_admin_broadcast_attempt_duration",
+        ),
+        Index("ix_admin_broadcast_attempt_intent", intent_id),
+        Index("ix_admin_broadcast_attempt_campaign", campaign_intent_id),
+        Index("ix_admin_broadcast_attempt_result", intent_id, status, retryable),
+        Index("ix_admin_broadcast_attempt_recipient", campaign_intent_id, tg_id),
+    )
+
+
 class SecurityRateLimitBucket(Base):
     __tablename__ = "security_rate_limit_buckets"
 
@@ -1631,8 +1687,30 @@ class Event(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     tg_id = Column(BigInteger, index=True, nullable=False)
     event_name = Column(String(64), index=True, nullable=False)
+    schema_version = Column(Integer, default=1, nullable=False)
+    event_id = Column(String(36), unique=True, index=True, nullable=True)
     source = Column(String(32), default="unknown", nullable=False)
     session_id = Column(String(64), nullable=True)
+    account_id = Column(String(36), index=True, nullable=True)
+    device_id = Column(String(36), nullable=True)
+    platform = Column(String(24), index=True, nullable=True)
+    app_version = Column(String(32), index=True, nullable=True)
+    build_number = Column(String(24), nullable=True)
+    surface = Column(String(32), index=True, nullable=True)
+    subsystem = Column(String(32), index=True, nullable=True)
+    stage = Column(String(64), index=True, nullable=True)
+    result = Column(String(24), index=True, nullable=True)
+    error_category = Column(String(32), index=True, nullable=True)
+    error_code = Column(String(64), index=True, nullable=True)
+    retryable = Column(Boolean, nullable=True)
+    attempt_number = Column(Integer, nullable=True)
+    retry_after_seconds = Column(Integer, nullable=True)
+    duration_ms = Column(Integer, nullable=True)
+    trace_id = Column(String(64), index=True, nullable=True)
+    network_class = Column(String(24), nullable=True)
+    occurred_at = Column(DateTime, index=True, nullable=True)
+    received_at = Column(DateTime, default=_utcnow, index=True, nullable=True)
+    clock_skew_state = Column(String(24), nullable=True)
     meta_json = Column(String(4000), nullable=True)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
 
@@ -2054,6 +2132,41 @@ class LiveUpdate(Base):
     sort_order = Column(Integer, default=100, nullable=False)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class NewsDraftRun(Base):
+    __tablename__ = "news_draft_runs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    run_id = Column(String(64), unique=True, index=True, nullable=False)
+    status = Column(String(24), index=True, nullable=False)
+    sources_total = Column(Integer, default=0, nullable=False)
+    sources_succeeded = Column(Integer, default=0, nullable=False)
+    sources_failed = Column(Integer, default=0, nullable=False)
+    candidates_seen = Column(Integer, default=0, nullable=False)
+    drafts_created = Column(Integer, default=0, nullable=False)
+    duplicates_skipped = Column(Integer, default=0, nullable=False)
+    duration_ms = Column(Integer, nullable=True)
+    failure_code = Column(String(64), nullable=True)
+    started_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
+    finished_at = Column(DateTime, nullable=True)
+
+
+class NewsDraft(Base):
+    __tablename__ = "news_drafts"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    source_name = Column(String(64), nullable=False)
+    source_url = Column(String(600), nullable=False)
+    source_title = Column(String(300), nullable=False)
+    source_item_sha256 = Column(String(64), unique=True, index=True, nullable=False)
+    fetch_run_id = Column(String(64), index=True, nullable=False)
+    source_published_at = Column(DateTime, nullable=True)
+    status = Column(String(24), default="pending", index=True, nullable=False)
+    reviewed_by_tg_id = Column(BigInteger, nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    live_update_id = Column(Integer, index=True, nullable=True)
+    discovered_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
 
 
 class StartLink(Base):

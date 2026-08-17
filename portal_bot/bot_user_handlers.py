@@ -988,7 +988,6 @@ def _device_select_rows() -> list[list[dict[str, str]]]:
                 emoji_key="key",
             )
         ],
-        [_btn_spec(text="Открыть кабинет", web_app_url=WEBAPP_URL, emoji_key="cabinet")],
         [_btn_spec(text="Помощь с выбором", callback_data="confused_help", emoji_key="support")],
         [_btn_spec(text="◀️ Назад", callback_data="back")],
     ]
@@ -1027,7 +1026,6 @@ async def confused_help(callback: CallbackQuery):
         [_btn_spec(text="Есть личная ссылка", callback_data="show_key", emoji_key="link")],
         [_btn_spec(text="Подключение не работает", callback_data="support", emoji_key="warning")],
         [_btn_spec(text="Частые вопросы", callback_data="faqmenu", emoji_key="faq")],
-        [_btn_spec(text="Открыть кабинет", web_app_url=WEBAPP_URL, emoji_key="cabinet")],
         [_btn_spec(text="◀️ Назад", callback_data="back")],
     ]
     await _edit_rich_copy(
@@ -1168,32 +1166,17 @@ async def verify_pokrov(callback: CallbackQuery):
 
 @router.callback_query(F.data == "settings")
 async def show_settings(callback: CallbackQuery):
-    rows = [
-        [_btn_spec(text="Кабинет", web_app_url=WEBAPP_URL, emoji_key="cabinet")],
-        [_btn_spec(text="Ручное подключение", callback_data="show_key", emoji_key="link")],
-        [_btn_spec(text="Инструкции", callback_data="instruction", emoji_key="device")],
-        [_btn_spec(text="Бонусы", callback_data="menu_bonuses", emoji_key="diamond")],
-        [_btn_spec(text="Коды и подарки", callback_data="menu_more", emoji_key="key")],
-        [
-            _btn_spec(
-                text="Сбросить ссылку",
-                callback_data="panic_menu",
-                style=BTN_STYLE_DANGER,
-                emoji_key="warning",
-            )
-        ],
-        [_btn_spec(text="Помочь начать", callback_data="mode_simple", emoji_key="support")],
-        [_btn_spec(text="◀️ Назад", callback_data="back")],
-    ]
-    if _stars_checkout_creation_enabled():
-        rows.insert(
-            3,
-            [_btn_spec(text="Family +1 слот", callback_data="buy_family_slot", emoji_key="crown")],
-        )
-    await _edit_rich_copy(
-        callback=callback,
-        copy=settings_copy(),
-        rows=rows,
+    await _edit_text_with_specs(
+        bot=callback.message.bot,
+        chat_id=callback.message.chat.id,
+        message_id=callback.message.message_id,
+        text=(
+            "*Меню POKROV обновилось.*\n\n"
+            "Загрузка, вход и помощь теперь находятся на одном коротком экране. "
+            "Подробный аккаунт открывается в кабинете."
+        ),
+        rows=main_keyboard_specs(int(callback.from_user.id)),
+        parse_mode=ParseMode.MARKDOWN,
     )
     await callback.answer()
 
@@ -1226,8 +1209,18 @@ def _platform_download_rows(platform: str, url: str, button_text: str) -> list[l
 
     seen_urls = {str(url or "").strip()}
     variants = (
-        ("ARMv7 · старый телефон", APP_ANDROID_APK_ARMEABI_V7A_URL),
-        ("Universal · запасной", APP_ANDROID_APK_UNIVERSAL_URL),
+        (
+            "ARMv7 · старый телефон",
+            f"{PUBLIC_API_BASE_URL.rstrip('/')}/api/public/downloads/android-armv7"
+            if APP_ANDROID_APK_ARMEABI_V7A_URL
+            else "",
+        ),
+        (
+            "Universal · запасной",
+            f"{PUBLIC_API_BASE_URL.rstrip('/')}/api/public/downloads/android-universal"
+            if APP_ANDROID_APK_UNIVERSAL_URL
+            else "",
+        ),
     )
     for label, variant_url in variants:
         clean_url = str(variant_url or "").strip()
@@ -1319,37 +1312,23 @@ async def menu_bonuses(callback: CallbackQuery):
 
 @router.callback_query(F.data == "menu_more")
 async def menu_more(callback: CallbackQuery):
-    """More menu: gift cards, promo, share"""
+    """Compact code activation menu retained for existing purchases and promos."""
     tg_id = int(callback.from_user.id)
     pending_redeem_codes.discard(tg_id)
     pending_promo_codes.discard(tg_id)
-    feedback_url = f"https://t.me/{FEEDBACK_USERNAME}"
-    rows = []
-    if _stars_checkout_creation_enabled():
-        rows.extend(
-            [
-                [InlineKeyboardButton(text="🎫 Подарить", callback_data="gift_cards")],
-                [InlineKeyboardButton(text="👨‍👩‍👧‍👦 Family +1 слот", callback_data="buy_family_slot")],
-            ]
-        )
-    rows.extend(
+    rows = [
         [
-            [
-                InlineKeyboardButton(text="🎁 Активировать подарок", callback_data="gift_redeem_prompt"),
-                InlineKeyboardButton(text="🎟️ Ввести промокод", callback_data="promo_activate_prompt"),
-            ],
-            [InlineKeyboardButton(text="ℹ️ Помощь по промокоду", callback_data="promo_help")],
-            [InlineKeyboardButton(text="Оставить отзыв", callback_data="review_start")],
-            [InlineKeyboardButton(text="💌 Идеи и фидбэк", url=feedback_url)],
-            [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
-        ]
-    )
+            InlineKeyboardButton(text="🎁 Код доступа или подарок", callback_data="gift_redeem_prompt"),
+            InlineKeyboardButton(text="🎟️ Промокод", callback_data="promo_activate_prompt"),
+        ],
+        [InlineKeyboardButton(text="ℹ️ Как работают коды", callback_data="promo_help")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
+    ]
     kb = InlineKeyboardMarkup(inline_keyboard=rows)
 
     await callback.message.edit_text(
-        "📦 *Ещё*\n\n"
-        "Здесь собраны дополнительные действия: подарок, код или отзыв.\n\n"
-        "Выберите, что хотите сделать дальше:",
+        "🎟️ *Активировать код*\n\n"
+        "Выберите тип кода. Оплата, устройства и история остаются в приложении и кабинете.",
         reply_markup=kb,
         parse_mode=ParseMode.MARKDOWN
     )
@@ -1375,7 +1354,7 @@ async def promo_help(callback: CallbackQuery):
 async def gift_redeem_prompt(callback: CallbackQuery):
     pending_redeem_codes.add(callback.from_user.id)
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_more")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
     ])
     await callback.message.edit_text(
         "🎁 *Активация подарка*\n\n"
@@ -1391,7 +1370,7 @@ async def gift_redeem_prompt(callback: CallbackQuery):
 async def promo_activate_prompt(callback: CallbackQuery):
     pending_promo_codes.add(callback.from_user.id)
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="◀️ Назад", callback_data="menu_more")],
+        [InlineKeyboardButton(text="◀️ Назад", callback_data="back")],
     ])
     await callback.message.edit_text(
         "🎟️ *Активация промокода*\n\n"
@@ -2970,7 +2949,6 @@ async def network_status_scan(callback: CallbackQuery):
 def _support_hub_rows() -> list[list[dict[str, str]]]:
     support_new_url = f"https://t.me/{SUPPORT_USERNAME}?start=ticket_new"
     support_my_url = f"https://t.me/{SUPPORT_USERNAME}?start=ticket_my"
-    feedback_url = f"https://t.me/{FEEDBACK_USERNAME}"
     return [
         [
             _btn_spec(
@@ -2983,8 +2961,6 @@ def _support_hub_rows() -> list[list[dict[str, str]]]:
         [_btn_spec(text="Мои обращения", url=support_my_url, emoji_key="cabinet")],
         [_btn_spec(text="Частые вопросы", callback_data="faqmenu", emoji_key="faq")],
         [_btn_spec(text="Диагностика", callback_data="support_diagnose", emoji_key="target")],
-        [_btn_spec(text="Идеи и фидбэк", url=feedback_url, emoji_key="message")],
-        [_btn_spec(text="Открыть кабинет", web_app_url=PUBLIC_BOT_WEBAPP_MENU_URL, emoji_key="world")],
         [_btn_spec(text="◀️ Назад", callback_data="back")],
     ]
 

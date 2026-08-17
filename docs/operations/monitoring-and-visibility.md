@@ -242,8 +242,8 @@ Support attachment visibility for this candidate is metadata-only:
 
 Default retention windows:
 
-- `EVENT_RETENTION_DAYS=180` for `events`
-- `FUNNEL_EVENT_RETENTION_DAYS=180` for `funnel_events`
+- `EVENT_RETENTION_DAYS=90` for raw product/error `events`
+- `FUNNEL_EVENT_RETENTION_DAYS=90` for raw `funnel_events`
 - `PAY_ATTEMPT_RETENTION_DAYS=365` for Telegram Stars `pay_attempts`
 - `EXTERNAL_PAYMENT_EVENT_RETENTION_DAYS=180` for raw provider callback event logs
 - `SUBSCRIPTION_EVENT_RETENTION_DAYS=90` for subscription fetch/render logs
@@ -525,7 +525,7 @@ Runtime telemetry wave `2026-06-02`:
 Admin ops app wave `2026-07-06`, command-center redesign updated locally on
 `2026-07-23`:
 
-- `adminapp/` is the dedicated operator UI for `https://admin.pokrov.space/`; it is desktop-first, Russian-language, action-first, and exposes 16 direct route modules in a compact light top navigation while keeping mobile focused on triage/status
+- `adminapp/` is the dedicated operator UI for `https://admin.pokrov.space/`; it is desktop-first, Russian-language, action-first, and exposes 17 direct route modules in a compact light top navigation while keeping mobile focused on triage/status
 - the active shell has no fixed desktop sidebar; the overview is a light triage ledger with an incident feed, selected evidence, factual next-step links, separate Brain/RU freshness, and a compact fleet strip
 - the first screen uses only its compact overview and RU-latest reads; selecting an incident does not fetch another payload, while charts, full alert actions, and heavy entity cards remain route-local
 - global admin search routes operators into user investigation by Telegram ID, username, display name, install ID, order ID, node code, key/email, or related operator identifiers
@@ -540,7 +540,22 @@ Admin ops app wave `2026-07-06`, command-center redesign updated locally on
 - A Reality public-profile/listener-port difference can be inspected with `python scripts/reconcile_node_runtime_ports.py --only <codes>`. The default is dry-run and prints only node code, public DB port, live Xray listener port, status, and mismatch names. A port-only difference is `topology_unattested`, not an automatically repairable drift: HAProxy or another L4 frontend may intentionally own public `443` and route to an internal listener such as `10443`. Never rewrite the public profile to an internal port for a fronted node. Applying requires explicit current production authorization, `--apply`, the same exact `--only` allowlist, one current CAS confirmation per node (`--confirm <code:expected_db_port:expected_runtime_port>`), and a separate operator attestation (`--attest-direct-listener <code:expected_runtime_port>`) made only after current node-side evidence proves that no L4 frontend owns or maps the public endpoint. Apply rebuilds the plan from fresh panel snapshots immediately before its DB transaction; both confirmations must match that fresh plan. The DB CAS covers enabled state and every persisted Node field used to resolve the selected profile, so any concurrent metadata change rolls back the batch. Apply aborts the whole batch unless the live inbound has the exact expected inbound id and matches enabled/VLESS/TCP/Reality/SNI/SID/PBK with port as its only difference; it changes only canonical DB inventory, never panels, clients, Xray, or services. A post-commit readback mismatch exits nonzero and triggers only a guarded compare-and-swap compensating rollback from the retained in-memory preimage; output reports the redacted rollback status, and a rollback conflict requires manual owner recovery. After approval, retain the redacted dry-run, topology evidence, exact confirmations, apply output, and post-apply dry-run for the exact candidate.
 - `predeploy_node_readiness.py` classifies a public `443` to internal listener difference as `verified_front` only when the node-local transport-front unit is active, its exact loopback backend mapping exists, HAProxy validates the installed config and owns `443`, and Xray owns the mapped listener. Any missing check remains drift; verified fronting never authorizes changing the public profile to the internal port.
 - node lifecycle actions in `adminapp` require explicit typed confirmation; node resync supports dry-run before execution
-- `/api/admin/broadcast` supports `dry_run=true`; the UI must preview/dry-run before allowing a real broadcast send. Broadcast delivery disables Telegram web-page previews, so release notices remain compact and cannot surface a stale or unrelated cached OpenGraph image.
+- `/api/admin/broadcast` persists one bounded attempt per frozen recipient. The
+  operator sees delivered, terminal/retryable failures, reason categories,
+  attempt timing and freshness. Failed-only retry may select only explicit 429
+  rows and never a successful or uncertain recipient. Raw Telegram response
+  text and recipient IDs are not returned by the aggregate endpoint.
+- product/error events use Event Envelope V1: idempotent `event_id`, occurrence
+  and receive time, duration, platform/version/surface/subsystem/stage, bounded
+  attribution, normalized result/error/retry fields and allowlisted metadata.
+  Active user means a distinct account with a confirmed successful connection
+  in the rolling seven-day window. The envelope must never contain browsing
+  history, destination traffic, raw config, credentials or private chat text.
+- `/api/admin/news-drafts` exposes only bounded RSS-source/run health and safe
+  draft metadata. `portal-worker` may collect once per day when
+  `NEWS_DRAFT_WORKER_ENABLED=true`; it stores no article body, deduplicates by
+  source item hash and cannot publish. An editor must write the Russian summary
+  and complete the existing L2 `live_update.create` intent.
 - `/api/admin/free-tier/summary` and `/api/admin/free-tier/users` are retained as retirement and historical-observability surfaces; with `FREE_TIER_ENABLED=false` they must show no active delivery keys, mappings, enabled pool membership, or queued/running free-provisioning jobs
 - operators must monitor queued/running/retry/manual-review node-provisioning jobs and must not infer `soft_active` from traffic bytes; the target role/inbound must be confirmed first
 - an access-key UUID rotation is not successful on canonical DB or panel-row readback alone: after every affected panel confirms the replacement row, the worker must receive an authenticated Xray restart acknowledgement, then bounded `/server/status` proof from two consecutive samples that `xray.state=running` with no `xray.errorMsg`, and then re-read the panel row. The same apply/readback sequence is required when compensation restores the old UUID. An apply error or post-apply row mismatch is `rotation_runtime_apply_failed` (or `rotation_compensation_failed` during rollback) and requires `manual_review`; it must never finalize the canonical UUID. These panel signals confirm process/config application, not an independent authenticated dataplane canary; the dedicated egress canary remains an operator-run check and is not invoked with a customer identity during rotation.

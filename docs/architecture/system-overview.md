@@ -178,7 +178,7 @@ Node lifecycle rule:
 - `webapp/`
   user cabinet and session continuation; legacy admin routes stay only until `adminapp/` parity is proven
 - `adminapp/`
-  standalone Russian-language Next.js operator surface for `https://admin.pokrov.space/`, with 16 direct route modules: dashboard, nodes, traffic, alerts, provider caps, emergency network, free tier, users, online, tickets, payments, funnel, promos, referrals, release, and broadcast
+  standalone Russian-language Next.js operator surface for `https://admin.pokrov.space/`, with 17 direct route modules: dashboard, nodes, traffic, alerts, provider caps, emergency network, free tier, users, online, tickets, payments, funnel, promos, referrals, release, broadcast, and news drafts
 - `marketing/`
   public website, pricing, legal pages, and public conversion flows
 - `C:/Users/kiwun/Documents/ai/POKROV-app/`
@@ -861,6 +861,26 @@ backend state, render wheel sectors without weights, and fail closed when
 sector/state payloads are missing or unknown.
 
 The backend exposes both public/app-first surfaces and a broader Telegram/admin-oriented API set. Keep docs aligned with the actual route inventory in `portal_bot/api.py`.
+
+Product telemetry is first-party and uses one bounded Event Envelope V1 across
+app, site, bot, payment and worker stages. `event_id` makes ingestion
+idempotent; occurrence and receive times remain distinct; errors carry a safe
+category/code/stage/duration/retry shape. Provider-confirmed payment and durable
+entitlement records remain the authority for access. Telemetry never becomes a
+source for browsing history, destination capture, private support text or raw
+connection material.
+
+The main Telegram bot is an acquisition/recovery adapter, not a second cabinet.
+Its first level contains one state-aware next step, downloads, login/link code,
+activation and short help. Device lists, payment history, referrals, settings,
+manual URLs and historical Telegram payment compatibility remain outside the current main
+menu. The web cabinet continues to own full account management.
+
+`news_draft_service.py` reads a bounded HTTPS RSS allowlist once per day only
+when explicitly enabled. It stores source name, item title/link, timestamps and
+safe run aggregates, not article bodies. Duplicate items do not re-enter the
+review queue. Manual L2 approval creates a `LiveUpdate`; autonomous publication
+or Telegram posting is not part of the worker.
 
 Current release-gate smoke focus should cover:
 

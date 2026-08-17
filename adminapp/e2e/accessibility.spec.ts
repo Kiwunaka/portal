@@ -18,7 +18,8 @@ const routes = [
   ["/promos", "Промо"],
   ["/referrals", "Рефералы"],
   ["/release", "Релиз"],
-  ["/broadcast", "Рассылка"]
+  ["/broadcast", "Рассылка"],
+  ["/news", "Новости"]
 ] as const;
 
 test.beforeEach(async ({ page }) => {
@@ -27,7 +28,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test("все 16 маршрутов открываются напрямую с русскими заголовками", async ({ page }) => {
+test("все 17 маршрутов открываются напрямую с русскими заголовками", async ({ page }) => {
   await installAdminApiMock(page);
 
   for (const [path, label] of routes) {

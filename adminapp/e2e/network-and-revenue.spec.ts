@@ -176,6 +176,10 @@ test("Деньги: рекламная и продуктовая воронки 
   await expect(chart).toHaveAttribute("data-view", "product");
   await expect(page.getByLabel("Источник воронки")).toHaveCount(0);
   await expect(page.getByRole("cell", { name: "Открыли продукт → начали оплату", exact: true })).toBeVisible();
+  await expect(page.getByText("151", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ошибки клиента" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "provider_timeout", exact: true })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "android · 1.1.1", exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Как считается продукт" })).toBeVisible();
   await expect(page.getByText(/\{.*\}|payload_json|raw json/i)).toHaveCount(0);
 });

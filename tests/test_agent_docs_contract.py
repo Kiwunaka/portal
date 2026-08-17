@@ -1354,7 +1354,7 @@ def test_admin_command_center_and_ru_probe_owners_are_cross_linked() -> None:
         REPO_ROOT / "docs/operations/deployment-and-access.md"
     ).read_text(encoding="utf-8")
 
-    assert admin.count("| `/") == 16
+    assert admin.count("| `/") == 17
     for pointer in (
         "docs/architecture/system-overview.md",
         "docs/operations/monitoring-and-visibility.md",

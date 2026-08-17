@@ -65,6 +65,7 @@ from antiabuse_privacy_service import drain_antiabuse_retention
 from app_first_service import expire_app_telegram_start_codes
 from support_attachment_cleanup_service import SupportAttachmentCleanupCursor, reconcile_support_attachments
 from emergency_catalog_worker import emergency_catalog_worker_enabled, emergency_catalog_worker_job
+from news_draft_service import collect_news_drafts, news_draft_interval_seconds, news_draft_worker_enabled
 import incident_service
 
 logger = logging.getLogger(__name__)
@@ -77,8 +78,8 @@ PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "pokrov_vpn").lstrip("@")
 AUTO_FREE_DAYS = int(os.getenv("AUTO_FREE_DAYS", "3650"))
 REFERRAL_BONUS_DAYS = max(1, int(os.getenv("REFERRAL_BONUS_DAYS", "10")))
 REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, int(os.getenv("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", "168")))
-EVENT_RETENTION_DAYS = max(1, int(os.getenv("EVENT_RETENTION_DAYS", "180")))
-FUNNEL_EVENT_RETENTION_DAYS = max(1, int(os.getenv("FUNNEL_EVENT_RETENTION_DAYS", "180")))
+EVENT_RETENTION_DAYS = max(1, int(os.getenv("EVENT_RETENTION_DAYS", "90")))
+FUNNEL_EVENT_RETENTION_DAYS = max(1, int(os.getenv("FUNNEL_EVENT_RETENTION_DAYS", "90")))
 PAY_ATTEMPT_RETENTION_DAYS = max(1, int(os.getenv("PAY_ATTEMPT_RETENTION_DAYS", "365")))
 EXTERNAL_PAYMENT_EVENT_RETENTION_DAYS = max(1, int(os.getenv("EXTERNAL_PAYMENT_EVENT_RETENTION_DAYS", "180")))
 SUBSCRIPTION_EVENT_RETENTION_DAYS = max(1, int(os.getenv("SUBSCRIPTION_EVENT_RETENTION_DAYS", "90")))
@@ -1222,6 +1223,24 @@ async def telemetry_retention_job() -> None:
         await asyncio.sleep(TELEMETRY_RETENTION_INTERVAL_SECONDS)
 
 
+async def news_draft_job() -> None:
+    while True:
+        try:
+            result = await collect_news_drafts(SessionLocal)
+            logger.info(
+                "news_draft status=%s sources_succeeded=%s sources_failed=%s drafts_created=%s duplicates=%s duration_ms=%s",
+                result.get("status"),
+                result.get("sources_succeeded"),
+                result.get("sources_failed"),
+                result.get("drafts_created"),
+                result.get("duplicates_skipped"),
+                result.get("duration_ms"),
+            )
+        except Exception:
+            logger.exception("news_draft_job failed")
+        await asyncio.sleep(news_draft_interval_seconds())
+
+
 async def _supervise_job(name: str, job_factory, *, restart_delay_seconds: int = 10) -> None:
     while True:
         try:
@@ -1260,6 +1279,10 @@ async def main() -> None:
             asyncio.create_task(
                 _supervise_job("emergency_catalog", emergency_catalog_worker_job)
             )
+        )
+    if news_draft_worker_enabled():
+        tasks.append(
+            asyncio.create_task(_supervise_job("news_draft", news_draft_job))
         )
     await asyncio.gather(*tasks)
 

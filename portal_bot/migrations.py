@@ -2284,6 +2284,48 @@ def _ensure_admin_action_intent_domain_sqlite(conn) -> None:
             "ON admin_broadcast_recipient_plan(intent_id);"
         )
     )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS admin_broadcast_delivery_attempts (
+              id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+              intent_id VARCHAR(36) NOT NULL,
+              campaign_intent_id VARCHAR(36) NOT NULL,
+              tg_id BIGINT NOT NULL,
+              attempt_number INTEGER NOT NULL,
+              status VARCHAR(16) NOT NULL,
+              reason_code VARCHAR(64) NOT NULL,
+              retryable BOOLEAN NOT NULL DEFAULT FALSE,
+              http_status INTEGER,
+              telegram_error_code INTEGER,
+              retry_after_seconds INTEGER,
+              message_id BIGINT,
+              provider_error_hash VARCHAR(64),
+              duration_ms INTEGER NOT NULL,
+              started_at DATETIME NOT NULL,
+              finished_at DATETIME NOT NULL,
+              created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT fk_admin_broadcast_attempt_intent
+                FOREIGN KEY (intent_id) REFERENCES admin_action_intents(id)
+                ON DELETE CASCADE,
+              CONSTRAINT uq_admin_broadcast_attempt_number
+                UNIQUE (campaign_intent_id, tg_id, attempt_number),
+              CONSTRAINT ck_admin_broadcast_attempt_tg_id CHECK (tg_id > 0),
+              CONSTRAINT ck_admin_broadcast_attempt_number
+                CHECK (attempt_number >= 1 AND attempt_number <= 20),
+              CONSTRAINT ck_admin_broadcast_attempt_duration
+                CHECK (duration_ms >= 0 AND duration_ms <= 3600000)
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS ix_admin_broadcast_attempt_intent ON admin_broadcast_delivery_attempts(intent_id);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_broadcast_attempt_campaign ON admin_broadcast_delivery_attempts(campaign_intent_id);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_broadcast_attempt_result ON admin_broadcast_delivery_attempts(intent_id, status, retryable);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_broadcast_attempt_recipient ON admin_broadcast_delivery_attempts(campaign_intent_id, tg_id);",
+    ]:
+        conn.execute(text(sql))
     for sql in [
         "DROP TRIGGER IF EXISTS trg_user_nodes_guard_mapping_insert;",
         """
@@ -2395,6 +2437,48 @@ def _ensure_admin_action_intent_domain_postgres(conn) -> None:
             "ON admin_broadcast_recipient_plan(intent_id);"
         )
     )
+    conn.execute(
+        text(
+            """
+            CREATE TABLE IF NOT EXISTS admin_broadcast_delivery_attempts (
+              id BIGSERIAL NOT NULL PRIMARY KEY,
+              intent_id VARCHAR(36) NOT NULL,
+              campaign_intent_id VARCHAR(36) NOT NULL,
+              tg_id BIGINT NOT NULL,
+              attempt_number INTEGER NOT NULL,
+              status VARCHAR(16) NOT NULL,
+              reason_code VARCHAR(64) NOT NULL,
+              retryable BOOLEAN NOT NULL DEFAULT FALSE,
+              http_status INTEGER,
+              telegram_error_code INTEGER,
+              retry_after_seconds INTEGER,
+              message_id BIGINT,
+              provider_error_hash VARCHAR(64),
+              duration_ms INTEGER NOT NULL,
+              started_at TIMESTAMPTZ NOT NULL,
+              finished_at TIMESTAMPTZ NOT NULL,
+              created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT fk_admin_broadcast_attempt_intent
+                FOREIGN KEY (intent_id) REFERENCES admin_action_intents(id)
+                ON DELETE CASCADE,
+              CONSTRAINT uq_admin_broadcast_attempt_number
+                UNIQUE (campaign_intent_id, tg_id, attempt_number),
+              CONSTRAINT ck_admin_broadcast_attempt_tg_id CHECK (tg_id > 0),
+              CONSTRAINT ck_admin_broadcast_attempt_number
+                CHECK (attempt_number >= 1 AND attempt_number <= 20),
+              CONSTRAINT ck_admin_broadcast_attempt_duration
+                CHECK (duration_ms >= 0 AND duration_ms <= 3600000)
+            );
+            """
+        )
+    )
+    for sql in [
+        "CREATE INDEX IF NOT EXISTS ix_admin_broadcast_attempt_intent ON admin_broadcast_delivery_attempts(intent_id);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_broadcast_attempt_campaign ON admin_broadcast_delivery_attempts(campaign_intent_id);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_broadcast_attempt_result ON admin_broadcast_delivery_attempts(intent_id, status, retryable);",
+        "CREATE INDEX IF NOT EXISTS ix_admin_broadcast_attempt_recipient ON admin_broadcast_delivery_attempts(campaign_intent_id, tg_id);",
+    ]:
+        conn.execute(text(sql))
     conn.execute(
         text(
             """
@@ -3282,18 +3366,73 @@ def run_migrations(engine: Engine) -> None:
                   id INTEGER PRIMARY KEY AUTOINCREMENT,
                   tg_id BIGINT NOT NULL,
                   event_name VARCHAR(64) NOT NULL,
+                  schema_version INTEGER NOT NULL DEFAULT 1,
+                  event_id VARCHAR(36),
                   source VARCHAR(32) DEFAULT 'unknown',
                   session_id VARCHAR(64),
+                  account_id VARCHAR(36),
+                  device_id VARCHAR(36),
+                  platform VARCHAR(24),
+                  app_version VARCHAR(32),
+                  build_number VARCHAR(24),
+                  surface VARCHAR(32),
+                  subsystem VARCHAR(32),
+                  stage VARCHAR(64),
+                  result VARCHAR(24),
+                  error_category VARCHAR(32),
+                  error_code VARCHAR(64),
+                  retryable BOOLEAN,
+                  attempt_number INTEGER,
+                  retry_after_seconds INTEGER,
+                  duration_ms INTEGER,
+                  trace_id VARCHAR(64),
+                  network_class VARCHAR(24),
+                  occurred_at DATETIME,
+                  received_at DATETIME,
+                  clock_skew_state VARCHAR(24),
                   meta_json VARCHAR(4000),
                   created_at DATETIME NOT NULL
                 );
                 """
             )
         )
+        event_columns = [
+            ("schema_version", "INTEGER NOT NULL DEFAULT 1"),
+            ("event_id", "VARCHAR(36)"),
+            ("account_id", "VARCHAR(36)"),
+            ("device_id", "VARCHAR(36)"),
+            ("platform", "VARCHAR(24)"),
+            ("app_version", "VARCHAR(32)"),
+            ("build_number", "VARCHAR(24)"),
+            ("surface", "VARCHAR(32)"),
+            ("subsystem", "VARCHAR(32)"),
+            ("stage", "VARCHAR(64)"),
+            ("result", "VARCHAR(24)"),
+            ("error_category", "VARCHAR(32)"),
+            ("error_code", "VARCHAR(64)"),
+            ("retryable", "BOOLEAN"),
+            ("attempt_number", "INTEGER"),
+            ("retry_after_seconds", "INTEGER"),
+            ("duration_ms", "INTEGER"),
+            ("trace_id", "VARCHAR(64)"),
+            ("network_class", "VARCHAR(24)"),
+            ("occurred_at", "DATETIME"),
+            ("received_at", "DATETIME"),
+            ("clock_skew_state", "VARCHAR(24)"),
+        ]
+        for column, ddl in event_columns:
+            if not _sqlite_column_exists(conn, "events", column):
+                conn.execute(text(f"ALTER TABLE events ADD COLUMN {column} {ddl};"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_tg_id ON events(tg_id);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_event_name ON events(event_name);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_event_created ON events(event_name, created_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_tg_created ON events(tg_id, created_at);"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_events_event_id ON events(event_id) WHERE event_id IS NOT NULL;"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_account_created ON events(account_id, created_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_error_created ON events(error_category, error_code, created_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_received_at ON events(received_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_platform_version_created ON events(platform, app_version, created_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_result_created ON events(result, created_at);"))
 
         # warp_events: app-facing enhanced protection lifecycle ledger.
         conn.execute(
@@ -3721,6 +3860,54 @@ def run_migrations(engine: Engine) -> None:
                     conn.execute(text(f"ALTER TABLE live_updates ADD COLUMN {col} {ddl};"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_live_updates_active_sort ON live_updates(is_active, sort_order);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_live_updates_channel_post ON live_updates(channel_username, post_id);"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS news_draft_runs (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  run_id VARCHAR(64) NOT NULL,
+                  status VARCHAR(24) NOT NULL,
+                  sources_total INTEGER DEFAULT 0 NOT NULL,
+                  sources_succeeded INTEGER DEFAULT 0 NOT NULL,
+                  sources_failed INTEGER DEFAULT 0 NOT NULL,
+                  candidates_seen INTEGER DEFAULT 0 NOT NULL,
+                  drafts_created INTEGER DEFAULT 0 NOT NULL,
+                  duplicates_skipped INTEGER DEFAULT 0 NOT NULL,
+                  duration_ms INTEGER,
+                  failure_code VARCHAR(64),
+                  started_at DATETIME NOT NULL,
+                  finished_at DATETIME
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_news_draft_runs_run_id ON news_draft_runs(run_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_news_draft_runs_started ON news_draft_runs(started_at);"))
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS news_drafts (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  source_name VARCHAR(64) NOT NULL,
+                  source_url VARCHAR(600) NOT NULL,
+                  source_title VARCHAR(300) NOT NULL,
+                  source_item_sha256 VARCHAR(64) NOT NULL,
+                  fetch_run_id VARCHAR(64) NOT NULL,
+                  source_published_at DATETIME,
+                  status VARCHAR(24) DEFAULT 'pending' NOT NULL,
+                  reviewed_by_tg_id BIGINT,
+                  reviewed_at DATETIME,
+                  live_update_id INTEGER,
+                  discovered_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_news_drafts_item_hash ON news_drafts(source_item_sha256);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_news_drafts_status_discovered ON news_drafts(status, discovered_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_news_drafts_fetch_run ON news_drafts(fetch_run_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_news_drafts_live_update ON news_drafts(live_update_id);"))
 
         # deep links: admin-managed start payloads.
         conn.execute(
@@ -4208,9 +4395,41 @@ def _run_postgres_migrations(engine: Engine) -> None:
             )
         )
 
+        for column, ddl in [
+            ("schema_version", "INTEGER NOT NULL DEFAULT 1"),
+            ("event_id", "VARCHAR(36)"),
+            ("account_id", "VARCHAR(36)"),
+            ("device_id", "VARCHAR(36)"),
+            ("platform", "VARCHAR(24)"),
+            ("app_version", "VARCHAR(32)"),
+            ("build_number", "VARCHAR(24)"),
+            ("surface", "VARCHAR(32)"),
+            ("subsystem", "VARCHAR(32)"),
+            ("stage", "VARCHAR(64)"),
+            ("result", "VARCHAR(24)"),
+            ("error_category", "VARCHAR(32)"),
+            ("error_code", "VARCHAR(64)"),
+            ("retryable", "BOOLEAN"),
+            ("attempt_number", "INTEGER"),
+            ("retry_after_seconds", "INTEGER"),
+            ("duration_ms", "INTEGER"),
+            ("trace_id", "VARCHAR(64)"),
+            ("network_class", "VARCHAR(24)"),
+            ("occurred_at", "TIMESTAMP"),
+            ("received_at", "TIMESTAMP"),
+            ("clock_skew_state", "VARCHAR(24)"),
+        ]:
+            _postgres_add_column_if_missing(conn, "events", column, ddl)
+
         # Multi-column indexes from P0.
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_event_created ON events(event_name, created_at);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_tg_created ON events(tg_id, created_at);"))
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_events_event_id ON events(event_id) WHERE event_id IS NOT NULL;"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_account_created ON events(account_id, created_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_error_created ON events(error_category, error_code, created_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_received_at ON events(received_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_platform_version_created ON events(platform, app_version, created_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_events_result_created ON events(result, created_at);"))
         conn.execute(
             text(
                 """
@@ -4455,6 +4674,54 @@ def _run_postgres_migrations(engine: Engine) -> None:
         _postgres_add_column_if_missing(conn, "live_updates", "post_id", "INTEGER")
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_live_updates_active_sort ON live_updates(is_active, sort_order);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_live_updates_channel_post ON live_updates(channel_username, post_id);"))
+
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS news_draft_runs (
+                  id SERIAL PRIMARY KEY,
+                  run_id VARCHAR(64) NOT NULL,
+                  status VARCHAR(24) NOT NULL,
+                  sources_total INTEGER DEFAULT 0 NOT NULL,
+                  sources_succeeded INTEGER DEFAULT 0 NOT NULL,
+                  sources_failed INTEGER DEFAULT 0 NOT NULL,
+                  candidates_seen INTEGER DEFAULT 0 NOT NULL,
+                  drafts_created INTEGER DEFAULT 0 NOT NULL,
+                  duplicates_skipped INTEGER DEFAULT 0 NOT NULL,
+                  duration_ms INTEGER,
+                  failure_code VARCHAR(64),
+                  started_at TIMESTAMP NOT NULL,
+                  finished_at TIMESTAMP
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_news_draft_runs_run_id ON news_draft_runs(run_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_news_draft_runs_started ON news_draft_runs(started_at);"))
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS news_drafts (
+                  id SERIAL PRIMARY KEY,
+                  source_name VARCHAR(64) NOT NULL,
+                  source_url VARCHAR(600) NOT NULL,
+                  source_title VARCHAR(300) NOT NULL,
+                  source_item_sha256 VARCHAR(64) NOT NULL,
+                  fetch_run_id VARCHAR(64) NOT NULL,
+                  source_published_at TIMESTAMP,
+                  status VARCHAR(24) DEFAULT 'pending' NOT NULL,
+                  reviewed_by_tg_id BIGINT,
+                  reviewed_at TIMESTAMP,
+                  live_update_id INTEGER,
+                  discovered_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS uq_news_drafts_item_hash ON news_drafts(source_item_sha256);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_news_drafts_status_discovered ON news_drafts(status, discovered_at);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_news_drafts_fetch_run ON news_drafts(fetch_run_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_news_drafts_live_update ON news_drafts(live_update_id);"))
 
         conn.execute(
             text(
