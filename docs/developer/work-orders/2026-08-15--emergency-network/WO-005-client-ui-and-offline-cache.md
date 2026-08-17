@@ -48,7 +48,7 @@ existing locations/variant cache/materialization and host secure-storage pattern
 ## Acceptance Oracle
 
 - Authoritative boundary: visible UI selection plus persisted exact staged profile.
-- Success observation: entitled cached-RU/manual-mode user can discover up to 12
+- Success observation: entitled cached-RU/manual-mode user can discover up to 20
   reserves, understand status/freshness, accept disclosure, choose a mode and
   reconnect with the same stable ID; restart/offline uses the last valid signed
   cache without leaking entitlement.
@@ -74,7 +74,7 @@ host-focused tests, diff/secret check and retained compact screenshots.
 - Current WO status: `done`
 - Dependency: WO-004
 - Implemented and pushed in `POKROV-app/main@ed8405d`: nested Locations surface,
-  4–12 compact rows, refresh/status/proof levels, manual limited-network mode,
+  4–20 compact rows, refresh/status/proof levels, manual limited-network mode,
   three route choices, first-use disclosure, encrypted device-bound signed LKG
   and exact fail-closed profile validation on Android/Windows.
 - Flutter analyze, 294 full tests, client docs/seed contracts and production

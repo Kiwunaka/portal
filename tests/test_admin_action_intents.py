@@ -1920,10 +1920,15 @@ def test_broadcast_executes_only_frozen_recipients_and_message(
     finally:
         session.close()
 
-    deliveries: list[tuple[int, str]] = []
+    deliveries: list[tuple[int, str, bool | None]] = []
 
-    async def send(chat_id: int, message: str) -> bool:
-        deliveries.append((chat_id, message))
+    async def send(
+        chat_id: int,
+        message: str,
+        *,
+        disable_web_page_preview: bool | None = None,
+    ) -> bool:
+        deliveries.append((chat_id, message, disable_web_page_preview))
         return True
 
     monkeypatch.setattr(api, "_telegram_send_message", send)
@@ -1952,7 +1957,7 @@ def test_broadcast_executes_only_frozen_recipients_and_message(
     assert sent.json()["attempted"] == 2
     assert sent.json()["sent"] == 2
     assert sent.json()["failed"] == 0
-    assert deliveries == [(7101, text), (7102, text)]
+    assert deliveries == [(7101, text, True), (7102, text, True)]
 
     replay = client.post(
         "/api/admin/broadcast",
@@ -1960,7 +1965,7 @@ def test_broadcast_executes_only_frozen_recipients_and_message(
         json={**payload, "dry_run": False},
     )
     assert replay.json() == sent.json()
-    assert deliveries == [(7101, text), (7102, text)]
+    assert deliveries == [(7101, text, True), (7102, text, True)]
 
     session = api.SessionLocal()
     try:
@@ -2207,7 +2212,13 @@ def test_broadcast_timeout_is_uncertain_and_same_idempotency_does_not_resend(
     intent_id = str(prepared.json()["intent_id"])
     attempts = 0
 
-    async def timeout_send(_chat_id: int, _message: str) -> bool:
+    async def timeout_send(
+        _chat_id: int,
+        _message: str,
+        *,
+        disable_web_page_preview: bool | None = None,
+    ) -> bool:
+        assert disable_web_page_preview is True
         nonlocal attempts
         attempts += 1
         raise TimeoutError("synthetic network timeout")

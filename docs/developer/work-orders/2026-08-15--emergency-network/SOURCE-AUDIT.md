@@ -72,10 +72,15 @@ unsupported `qq` fingerprint and remains rejected. Actual country, credential
 validity, deterministic payload transfer and restricted-network behavior are
 still unproved.
 
-Therefore the product contract is **4–12 active reserves**, not a promise that
-the current source always contains 12. Promotion fails closed below four fresh
+Therefore the product contract is **4–20 active reserves**, not a promise that
+the current source always contains 20. Promotion fails closed below four fresh
 verified candidates. No result in this audit may receive the label
 `Проверено при реальном БС`.
+
+The upper bound was raised from 12 to 20 after exact Huawei/Beeline evidence
+showed that server-reachable candidates can diverge sharply by carrier and
+region. The client still tests every retained path locally and never treats the
+larger signed pool as proof that a route works in the current device network.
 
 ## Redacted Regression Fixture
 

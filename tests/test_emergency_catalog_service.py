@@ -319,7 +319,7 @@ def test_promotion_accumulates_recent_exact_probes_across_refreshes(
     current = _stage(
         session,
         crypto,
-        [_material(index) for index in range(9, 13)],
+        [_material(index) for index in range(9, 21)],
         digest_char="7",
         now=NOW + timedelta(hours=1),
     )
@@ -333,11 +333,11 @@ def test_promotion_accumulates_recent_exact_probes_across_refreshes(
     served = read_serving_catalog(session, crypto=crypto, now=NOW + timedelta(hours=1))
 
     assert historical.status == "staging"
-    assert promoted.snapshot.active_endpoint_count == 12
+    assert promoted.snapshot.active_endpoint_count == 20
     assert set(promoted.selected_stable_ids) == {
-        _material(index).stable_id for index in range(1, 13)
+        _material(index).stable_id for index in range(1, 21)
     }
-    assert len(served["endpoints"]) == 12
+    assert len(served["endpoints"]) == 20
 
 
 def test_promotion_does_not_carry_expired_probe_history(session, crypto) -> None:
@@ -378,7 +378,7 @@ def test_saturated_verified_pool_can_replace_a_smaller_fresh_catalog(
     current = _stage(
         session,
         crypto,
-        [_material(index) for index in range(20, 32)],
+        [_material(index) for index in range(20, 40)],
         digest_char="9",
         now=NOW + timedelta(hours=1),
     )
@@ -390,7 +390,7 @@ def test_saturated_verified_pool_can_replace_a_smaller_fresh_catalog(
         now=NOW + timedelta(hours=1),
     )
 
-    assert promoted.snapshot.active_endpoint_count == 12
+    assert promoted.snapshot.active_endpoint_count == 20
     assert promoted.replacement_fraction == 1.0
     assert promoted.snapshot.operator_approved is False
     assert first.status == "superseded"
@@ -499,7 +499,7 @@ def test_one_step_rollback_reissues_retained_snapshot_as_new_version(
 def test_rollback_reissues_only_the_endpoints_signed_into_the_target(
     session, crypto
 ) -> None:
-    materials = [_material(index) for index in range(1, 14)]
+    materials = [_material(index) for index in range(1, 22)]
     first = _stage(session, crypto, materials, digest_char="4")
     promoted = promote_snapshot(session, snapshot_id=first.id, crypto=crypto, now=NOW)
     retained_ids = set(promoted.selected_stable_ids)

@@ -20,8 +20,10 @@ import {
   type SeoPage,
 } from "./seo-pages";
 
-export const DEFAULT_MARKETING_SHARE_IMAGE_PATH = "/opengraph-image.png";
-export const DEFAULT_MARKETING_TWITTER_IMAGE_PATH = "/twitter-image.png";
+export const DEFAULT_MARKETING_SHARE_IMAGE_PATH =
+  "/opengraph-image.png?v=20260817";
+export const DEFAULT_MARKETING_TWITTER_IMAGE_PATH =
+  "/twitter-image.png?v=20260817";
 export const DEFAULT_MARKETING_SHARE_IMAGE_WIDTH = 1200;
 export const DEFAULT_MARKETING_SHARE_IMAGE_HEIGHT = 630;
 

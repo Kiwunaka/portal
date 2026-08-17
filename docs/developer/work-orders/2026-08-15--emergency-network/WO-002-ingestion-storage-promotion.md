@@ -48,10 +48,10 @@ API contracts and production deployment playbook.
 
 - Authoritative boundary: active signed snapshot read by API materialization.
 - Success observation: a staging revision plus recent exact successes form an
-  atomic 4–12 unique-host pool and can roll back to one of three retained
+  atomic 4–20 unique-host pool and can roll back to one of three retained
   predecessors without contaminating the restored set with newer history.
 - Negative cases: fewer than four fresh exact successes across the bounded
-  pool, >50% automatic churn below a saturated 12-member pool, stale signature,
+  pool, >50% automatic churn below a saturated 20-member pool, stale signature,
   stale/future probe, material mismatch or partial write never replaces active.
 - Proof mechanism: migration/model tests, worker integration tests, signature
   tamper tests, deterministic payload/auth probe fixture and rollback smoke.
@@ -73,7 +73,7 @@ snapshot negative smoke, diff/secret check and retained staging/rollback report.
 - Current WO status: `done`
 - Dependency: WO-001
 - Implemented: encrypted endpoint records, versioned staging, bounded exact-Core
-  probes, rolling 24-hour 4–12 promotion, conditional >50% automatic churn stop,
+  probes, rolling 24-hour 4–20 promotion, conditional >50% automatic churn stop,
   signed active catalog, three retained LKG candidates, exact rollback clone and
   env-gated worker.
 - Proof: focused Emergency/worker/migration/crypto/tamper tests pass. Production

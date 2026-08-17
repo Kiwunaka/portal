@@ -59,6 +59,8 @@ def test_marketing_metadata_declares_canonical_and_share_metadata() -> None:
     assert "canonical" in marketing_site
     assert "twitter" in marketing_site
     assert "images" in marketing_site
+    assert '"/opengraph-image.png?v=20260817"' in marketing_site
+    assert '"/twitter-image.png?v=20260817"' in marketing_site
     assert "buildMarketingMetadata" in home_page
     assert "buildSoftwareApplicationJsonLd" in home_page
     assert "buildFaqJsonLd" in home_page
@@ -98,7 +100,9 @@ def test_homepage_primary_trial_cta_starts_with_install_and_trial_fact_can_open_
     pricing = _read("components", "home", "pricing.tsx")
     final_cta = _read("components", "home", "final-cta.tsx")
 
-    assert '<Button href={MARKETING_CANONICAL_PATHS.install} size="lg">' in hero
+    assert "PlatformDownloadAction" in hero
+    assert "initialAndroidUrl={config.androidApkUrl}" in hero
+    assert "initialWindowsUrl={config.windowsExeUrl}" in hero
     assert "MARKETING_CANONICAL_PATHS.checkout" in hero
     assert "?plan=start_99" in hero
     assert 'href="/#how-it-works"' in hero

@@ -838,7 +838,7 @@ client. Older requests without that flag keep the RU/manual gate. It returns
 `pokrov-emergency-offline-bundle-v1` with one signed safe catalog and the exact
 signed profile envelope for every fresh or still-valid signed last-known-good
 reserve and advertised chain mode.
-The response is `Cache-Control: no-store`, contains 4–12 reserves selected from
+The response is `Cache-Control: no-store`, contains 4–20 reserves selected from
 the rolling 24-hour exact-verified pool and no more than 36 profiles, and fails closed on entitlement, activation eligibility,
 catalog, crypto, topology, or profile errors. Each envelope is bound to the
 current install and expires no later than the active access, catalog,

@@ -40,6 +40,9 @@ test("broadcast draft survives a 401 prepare error", async ({ page }) => {
   const api = await installAdminApiMock(page, { actionIntentPrepareStatus: 401 });
   await openControl(page, "/broadcast");
 
+  await expect(page.getByText(/Ссылка уйдёт без большой карточки предпросмотра/)).toBeVisible();
+  await expect(page.getByText(/не ставьте эмодзи вместо логотипа/)).toBeVisible();
+
   const draft = "Черновик после 401";
   await page.getByLabel("Текст рассылки").fill(draft);
   await page.getByRole("button", { name: "Подготовить защищённый предпросмотр" }).click();

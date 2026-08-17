@@ -206,6 +206,7 @@ export function PokrovAtlasClient() {
                 />
               </summary>
 
+              {open ? (
               <div className="border-t border-line p-4 sm:p-5">
                 {screen.recommendedSetup?.length ? (
                   <section className="mb-4 rounded-control border border-brand/25 bg-brand-soft p-4">
@@ -235,6 +236,7 @@ export function PokrovAtlasClient() {
                     width={1920}
                     height={1080}
                     unoptimized
+                    loading="eager"
                     className="h-auto w-full"
                   />
                   {screen.hotspots.map((hotspot, index) => (
@@ -297,6 +299,7 @@ export function PokrovAtlasClient() {
                   </p>
                 ) : null}
               </div>
+              ) : null}
             </details>
           );
         })}

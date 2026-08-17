@@ -5813,7 +5813,11 @@ async def _execute_admin_client_action_external(
         sent = 0
         failed = 0
         for tg_id in recipients:
-            if await _telegram_send_message(tg_id, str(runtime["text"])):
+            if await _telegram_send_message(
+                tg_id,
+                str(runtime["text"]),
+                disable_web_page_preview=True,
+            ):
                 sent += 1
             else:
                 failed += 1

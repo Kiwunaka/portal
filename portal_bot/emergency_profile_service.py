@@ -270,6 +270,7 @@ def build_emergency_singbox_config(
     config: dict[str, Any] = {
         "log": {"level": "warn", "timestamp": True},
         "dns": {
+            "strategy": "ipv4_only",
             "servers": [
                 {"tag": "bootstrap", "address": "local"},
                 {
@@ -460,6 +461,7 @@ def validate_emergency_singbox_config(
     dns_servers = dns.get("servers") if isinstance(dns, dict) else None
     if (
         not isinstance(dns, dict)
+        or dns.get("strategy") != "ipv4_only"
         or dns.get("final") != "emergency-dns"
         or dns_servers
         != [
