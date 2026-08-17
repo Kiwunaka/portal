@@ -125,10 +125,12 @@ class RemoteBrainApplyReleaseHandoffTests(unittest.TestCase):
                 {
                   "runtime_env": {
                     "APP_ANDROID_APK_URL": "https://metadata.example.com/pokrov-android.apk",
+                    "APP_ANDROID_MIN_SUPPORTED_VERSION": "1.1.0",
                     "APP_ANDROID_RELEASE_NOTES": "Android release notes",
                     "APP_ANDROID_RELEASE_NOTES_URL": "https://metadata.example.com/android-notes",
                     "APP_ANDROID_PUBLISHED_AT": "2026-08-14T05:56:25Z",
                     "APP_WINDOWS_EXE_URL": "https://metadata.example.com/pokrov-windows.exe",
+                    "APP_WINDOWS_MIN_SUPPORTED_VERSION": "1.1.0",
                     "APP_WINDOWS_RELEASE_NOTES": "Windows release notes",
                     "APP_WINDOWS_RELEASE_NOTES_URL": "https://metadata.example.com/windows-notes",
                     "APP_WINDOWS_PUBLISHED_AT": "2026-08-14T05:56:25Z",
@@ -153,9 +155,11 @@ class RemoteBrainApplyReleaseHandoffTests(unittest.TestCase):
             values, source = self.module._resolve_release_values(str(metadata_file), str(env_file))
 
         self.assertEqual(values["APP_ANDROID_APK_URL"], "https://metadata.example.com/pokrov-android.apk")
+        self.assertEqual(values["APP_ANDROID_MIN_SUPPORTED_VERSION"], "1.1.0")
         self.assertEqual(values["APP_ANDROID_RELEASE_NOTES"], "Android release notes")
         self.assertEqual(values["APP_ANDROID_PUBLISHED_AT"], "2026-08-14T05:56:25Z")
         self.assertEqual(values["APP_WINDOWS_RELEASE_NOTES"], "Windows release notes")
+        self.assertEqual(values["APP_WINDOWS_MIN_SUPPORTED_VERSION"], "1.1.0")
         self.assertEqual(values["APP_WINDOWS_PUBLISHED_AT"], "2026-08-14T05:56:25Z")
         self.assertEqual(source, metadata_file)
 
@@ -173,8 +177,10 @@ class RemoteBrainApplyReleaseHandoffTests(unittest.TestCase):
             {
                 "APP_ANDROID_PLAY_URL": "",
                 "APP_ANDROID_APK_URL": "https://new.example/apk",
+                "APP_ANDROID_MIN_SUPPORTED_VERSION": "1.1.0",
                 "APP_ANDROID_MIRROR_URL": "",
                 "APP_WINDOWS_EXE_URL": "https://new.example/exe",
+                "APP_WINDOWS_MIN_SUPPORTED_VERSION": "1.1.0",
                 "APP_WINDOWS_MIRROR_URL": "",
                 "APP_DOCS_URL": "https://pokrov.space/install/",
             },
@@ -182,7 +188,9 @@ class RemoteBrainApplyReleaseHandoffTests(unittest.TestCase):
 
         self.assertIn("EXISTING=1", updated)
         self.assertIn("APP_ANDROID_APK_URL=https://new.example/apk", updated)
+        self.assertIn("APP_ANDROID_MIN_SUPPORTED_VERSION=1.1.0", updated)
         self.assertIn("APP_WINDOWS_EXE_URL=https://new.example/exe", updated)
+        self.assertIn("APP_WINDOWS_MIN_SUPPORTED_VERSION=1.1.0", updated)
         self.assertIn("APP_DOCS_URL=https://pokrov.space/install/", updated)
         self.assertEqual(updated.count("APP_ANDROID_APK_URL="), 1)
 
