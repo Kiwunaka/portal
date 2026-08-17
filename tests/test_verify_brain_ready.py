@@ -104,7 +104,12 @@ class VerifyBrainReadyTests(unittest.TestCase):
         webapp_block = caddyfile[
             caddyfile.index("@webapp_host host app.pokrov.space") : caddyfile.index("@adminapp_host host")
         ]
-        self.assertIn("-X-Frame-Options", webapp_block)
+        frame_deny_block = caddyfile[
+            caddyfile.index("@frame_deny not host app.pokrov.space") : caddyfile.index("@www_marketing host")
+        ]
+        self.assertIn('Content-Security-Policy "frame-ancestors \'none\'', frame_deny_block)
+        self.assertIn('X-Frame-Options "DENY"', frame_deny_block)
+        self.assertNotIn('X-Frame-Options "DENY"', webapp_block)
         self.assertIn("frame-ancestors https://web.telegram.org https://*.telegram.org", webapp_block)
         self.assertNotIn("frame-ancestors *", webapp_block)
 

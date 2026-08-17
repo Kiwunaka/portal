@@ -30,9 +30,13 @@ pokrov.space:8444, www.pokrov.space:8444, app.pokrov.space:8444, www.app.pokrov.
     X-Content-Type-Options "nosniff"
     Referrer-Policy "strict-origin-when-cross-origin"
     Permissions-Policy "geolocation=(), microphone=(), camera=(), payment=()"
+    -Server
+  }
+
+  @frame_deny not host app.pokrov.space
+  header @frame_deny {
     Content-Security-Policy "frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
     X-Frame-Options "DENY"
-    -Server
   }
 
   @www_marketing host www.pokrov.space
@@ -81,7 +85,6 @@ pokrov.space:8444, www.pokrov.space:8444, app.pokrov.space:8444, www.app.pokrov.
   @webapp_host host app.pokrov.space
   handle @webapp_host {
     header {
-      -X-Frame-Options
       Content-Security-Policy "frame-ancestors https://web.telegram.org https://*.telegram.org; base-uri 'self'; object-src 'none'"
     }
     @webapp_static path /_next/static/*
