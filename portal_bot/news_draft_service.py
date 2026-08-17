@@ -183,10 +183,7 @@ def parse_news_feed(
     ):
         raise NewsDraftFetchError("feed_payload_invalid")
     try:
-        # Some otherwise valid feeds contain an isolated malformed UTF-8 byte.
-        # Replacing only undecodable bytes keeps the XML structure fail-closed
-        # while avoiding a full-source outage because of one broken title.
-        root = ET.fromstring(payload.decode("utf-8", errors="replace"))
+        root = ET.fromstring(payload)
     except ET.ParseError as exc:
         raise NewsDraftFetchError("feed_xml_invalid") from exc
     elements = [
@@ -248,10 +245,14 @@ async def fetch_news_feed(client: aiohttp.ClientSession, source: NewsFeed) -> by
                 "text/xml",
             }:
                 raise NewsDraftFetchError("feed_content_type_invalid")
-            body = await response.content.read(MAX_FEED_BYTES + 1)
-            if len(body) > MAX_FEED_BYTES:
-                raise NewsDraftFetchError("feed_too_large")
-            return body
+            chunks: list[bytes] = []
+            total = 0
+            async for chunk in response.content.iter_chunked(65_536):
+                total += len(chunk)
+                if total > MAX_FEED_BYTES:
+                    raise NewsDraftFetchError("feed_too_large")
+                chunks.append(chunk)
+            return b"".join(chunks)
     except asyncio.TimeoutError as exc:
         raise NewsDraftFetchError("feed_timeout") from exc
     except aiohttp.ClientError as exc:

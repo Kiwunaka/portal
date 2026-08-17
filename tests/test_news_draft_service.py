@@ -15,10 +15,12 @@ if str(PORTAL_BOT_DIR) not in sys.path:
 
 from models import Base, NewsDraft, NewsDraftRun  # noqa: E402
 from news_draft_service import (  # noqa: E402
+    MAX_FEED_BYTES,
     NewsDraftFetchError,
     NewsFeed,
     collect_news_drafts,
     configured_news_feeds,
+    fetch_news_feed,
     parse_news_feed,
 )
 
@@ -63,20 +65,55 @@ def test_feed_parser_accepts_only_owned_item_hosts_and_current_items() -> None:
         raise AssertionError("HTML payload must fail closed")
 
 
-def test_feed_parser_repairs_invalid_utf8_without_relaxing_xml_safety() -> None:
+def test_feed_fetch_consumes_every_chunk_and_keeps_the_size_cap() -> None:
     source = NewsFeed(
         name="Хабр",
         url="https://habr.com/feed",
         item_hosts=("habr.com",),
     )
-    malformed = RSS.replace(b"network", b"net\xffwork", 1)
-    parsed = parse_news_feed(
-        malformed,
-        source=source,
-        now=datetime(2026, 8, 17, 12, 0, 0),
+
+    class FakeContent:
+        def __init__(self, chunks):
+            self.chunks = chunks
+
+        async def iter_chunked(self, _size):
+            for chunk in self.chunks:
+                yield chunk
+
+    class FakeResponse:
+        status = 200
+        headers = {"Content-Type": "text/xml; charset=utf-8"}
+
+        def __init__(self, chunks):
+            self.content = FakeContent(chunks)
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return False
+
+    class FakeClient:
+        def __init__(self, chunks):
+            self.response = FakeResponse(chunks)
+
+        def get(self, *_args, **_kwargs):
+            return self.response
+
+    assert (
+        asyncio.run(fetch_news_feed(FakeClient([b"one", b"two"]), source)) == b"onetwo"
     )
-    assert len(parsed) == 1
-    assert parsed[0].source_url == "https://habr.com/ru/articles/123456/"
+    try:
+        asyncio.run(
+            fetch_news_feed(
+                FakeClient([b"x" * MAX_FEED_BYTES, b"y"]),
+                source,
+            )
+        )
+    except NewsDraftFetchError as exc:
+        assert exc.code == "feed_too_large"
+    else:
+        raise AssertionError("Oversized feed must fail closed")
 
 
 def test_daily_collection_deduplicates_cross_feed_items_and_retains_safe_run_status(
