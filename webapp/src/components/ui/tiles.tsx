@@ -47,7 +47,7 @@ export function Tile({
         )}
         {href ? <ChevronRight size={18} strokeWidth={2} aria-hidden="true" className="text-ink-muted" /> : null}
       </span>
-      <span className="mt-3 block truncate text-lg font-bold text-ink">{value}</span>
+      <span className="mt-3 block min-w-0 break-words text-lg leading-tight font-bold text-ink">{value}</span>
       <span className="block text-[13px] font-medium text-ink-soft">{label}</span>
       {hint ? <span className="mt-0.5 block text-xs text-ink-soft">{hint}</span> : null}
     </>

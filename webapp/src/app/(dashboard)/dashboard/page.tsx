@@ -192,7 +192,7 @@ export default function DashboardPage() {
       >
         {runway ? (
           <div className="flex flex-col gap-1.5">
-            <div className="flex items-baseline justify-between gap-3 text-sm">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-sm">
               <span className="font-semibold text-ink">Осталось <AnimatedDays value={runway.days} /></span>
               {trialMode ? (
                 <AppRouteLink

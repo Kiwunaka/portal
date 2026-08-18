@@ -877,6 +877,18 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).not.toContainText("Ручная настройка");
     await expect(page.locator("main")).not.toContainText("mock_token");
 
+    const summaryValues = page.locator("main span.mt-3.text-lg");
+    await expect(summaryValues.first()).toBeVisible();
+    const valueLayout = await summaryValues.evaluateAll((elements) =>
+      elements.map((element) => ({
+        className: element.className,
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+      })),
+    );
+    expect(valueLayout.every((item) => !item.className.includes("truncate"))).toBe(true);
+    expect(valueLayout.every((item) => item.scrollWidth <= item.clientWidth + 1)).toBe(true);
+
     await menuButton.click();
 
     const drawer = page.getByTestId("mobile-cabinet-drawer");
