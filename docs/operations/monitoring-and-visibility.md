@@ -162,7 +162,7 @@ Smart-connect visibility rule:
 - accepted client RTT and node-selection uploads are stored through the `smart_connect_latency_sample` event with `install_id`, `carrier`, `platform`, selected node, previous node, accepted RTT samples, selection mode, and whether stickiness was applied
 - operators should be able to reason about recent RTT quality by node, carrier, and platform without exposing raw samples in public consumer UI
 - subscription renders should record `subscription_fetch_events` and `rendered_subscription_snapshots` with token fingerprints, resolved format, node order, excluded-node reasons, status, and content hashes, never raw tokens or rendered subscription bodies
-- shortlist evidence must respect the paid-pool vs `NL-free` pool boundary; a “better ping” does not authorize crossing the access-tier rule
+- shortlist evidence must respect effective `TRIAL`/`PAID` entitlement; legacy free-pool rows are retirement evidence and never authorize live delivery
 
 ## WARP Material Visibility
 
@@ -556,16 +556,18 @@ Admin ops app wave `2026-07-06`, command-center redesign updated locally on
   `NEWS_DRAFT_WORKER_ENABLED=true`; it stores no article body, deduplicates by
   source item hash and cannot publish. An editor must write the Russian summary
   and complete the existing L2 `live_update.create` intent.
-- `/api/admin/free-tier/summary` and `/api/admin/free-tier/users` are retained as retirement and historical-observability surfaces; with `FREE_TIER_ENABLED=false` they must show no active delivery keys, mappings, enabled pool membership, or queued/running free-provisioning jobs
+- consumer access has exactly three effective statuses: `TRIAL`, `PAID` and `PENDING`; every current gift, promo-day grant and operator grant is `PAID`, while raw `FREE` values are legacy storage only
+- `/api/admin/free-tier/summary` and `/api/admin/free-tier/users` are retained as `Архив FREE` retirement and historical-observability surfaces; with `FREE_TIER_ENABLED=false` they must show no active delivery keys, mappings, enabled pool membership, or queued/running free-provisioning jobs
+- a node reconciliation is complete only when every `TRIAL`/`PAID` account is enabled on each canonical paid-node group and every `PENDING` account is disabled everywhere; aggregate dry-run/apply/readback evidence must contain no raw Telegram ID, UUID, email or connection material
 - operators must monitor queued/running/retry/manual-review node-provisioning jobs and must not infer `soft_active` from traffic bytes; the target role/inbound must be confirmed first
 - an access-key UUID rotation is not successful on canonical DB or panel-row readback alone: after every affected panel confirms the replacement row, the worker must receive an authenticated Xray restart acknowledgement, then bounded `/server/status` proof from two consecutive samples that `xray.state=running` with no `xray.errorMsg`, and then re-read the panel row. The same apply/readback sequence is required when compensation restores the old UUID. An apply error or post-apply row mismatch is `rotation_runtime_apply_failed` (or `rotation_compensation_failed` during rollback) and requires `manual_review`; it must never finalize the canonical UUID. These panel signals confirm process/config application, not an independent authenticated dataplane canary; the dedicated egress canary remains an operator-run check and is not invoked with a customer identity during rotation.
 - `free_standard` and `free_soft` are legacy rollback/cleanup roles only; while free delivery is disabled they must not be selected, provisioned, or fall back to paid or `operator_lab` nodes
 - nftables shaper readiness requires Linux canary evidence for syntax, IPv4/IPv6 TCP/UDP throughput, NAT sharing, counters, premium isolation, idempotent setup, and rollback; local dry-run evidence is not production proof
 - `/api/admin/provider-quotas`, `/api/admin/provider-quotas/{node_code}`, and `/api/admin/provider-quotas/status` own manual provider/hoster traffic-cap configuration, reset windows, thresholds, status, and audit trail
 - `/api/admin/nodes/timeseries` exposes CPU, RAM, disk, network, traffic-counter, and capacity history from `node_health_samples` and `node_runtime_metrics`
-- `/api/admin/traffic/summary` groups `key_usage_rollups` by day, node, and pool for free/premium traffic review
+- `/api/admin/traffic/summary` groups `key_usage_rollups` by day, node, and pool; any free-pool series is historical retirement evidence, not a current tariff
 - `/api/admin/alerts`, `/api/admin/alerts/{id}/ack`, and `/api/admin/alerts/{id}/silence` own durable alert center behavior; alert rows store severity, source, status, first/last seen, resolved state, ack, silence window, and Telegram delivery status
-- durable alert sources in v1 are free cap, provider cap, node metrics freshness, node capacity, and selected security/admin error counters
+- durable alert sources in v1 include the retired-free-pool invariant, provider cap, node metrics freshness, node capacity, and selected security/admin error counters
 - `portal_bot/worker.py` runs `admin_ops_alert_refresh` on a short interval so durable alerts and Telegram admin notifications do not depend on an operator opening `adminapp/`
 - the overview reads its active-alert queue from the same durable snapshot and does not issue a second `/api/admin/alerts` request; the dedicated alerts route keeps its own read/ack/silence workflow
 - Telegram admin notifications for new and resolved warning/critical alerts must include only short titles and fingerprints; do not include raw config payloads, API tokens, provider secrets, panel passwords, or full metadata JSON

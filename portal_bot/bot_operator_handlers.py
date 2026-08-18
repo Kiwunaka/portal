@@ -401,31 +401,31 @@ def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
         _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={"reason": "empty_code"})
         return False, "❌ Промокод пустой"
     if not check_tos_accepted(int(tg_id)):
-        _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={"code": code, "reason": "tos_required"})
+        _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={**_activation_code_safe_meta(code), "reason": "tos_required"})
         return False, "⚠️ Сначала примите оферту через /start."
 
     session = Session()
     try:
         promo = session.query(PromoCode).filter_by(code=code).first()
         if not promo:
-            _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={"code": code, "reason": "not_found"})
+            _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={**_activation_code_safe_meta(code), "reason": "not_found"})
             return False, "❌ Промокод не найден"
         if promo.expires_at and promo.expires_at < _utcnow():
-            _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={"code": code, "reason": "expired"})
+            _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={**_activation_code_safe_meta(code), "reason": "expired"})
             return False, "❌ Срок действия промокода истёк"
 
         if promo.uses_left == 0:
-            _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={"code": code, "reason": "exhausted"})
+            _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={**_activation_code_safe_meta(code), "reason": "exhausted"})
             return False, "❌ Промокод больше не активен"
 
         usage = session.query(PromoUsage).filter_by(tg_id=tg_id, promo_code=code).first()
         if usage:
-            _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={"code": code, "reason": "already_redeemed"})
+            _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={**_activation_code_safe_meta(code), "reason": "already_redeemed"})
             return False, "❌ Вы уже использовали этот промокод"
 
         user = session.query(User).filter_by(tg_id=tg_id).first()
         if not user:
-            _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={"code": code, "reason": "user_not_found"})
+            _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={**_activation_code_safe_meta(code), "reason": "user_not_found"})
             return False, "❌ Пользователь не найден"
 
         active_campaigns_for_code = (
@@ -447,7 +447,7 @@ def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
             _track_bonus_event(
                 tg_id=int(tg_id),
                 event_name="promo_redeem_denied",
-                meta={"code": code, "reason": "campaign_restriction_mismatch"},
+                meta={**_activation_code_safe_meta(code), "reason": "campaign_restriction_mismatch"},
             )
             session.flush()
             return False, "❌ Промокод недоступен для этого аккаунта"
@@ -455,7 +455,7 @@ def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
         promo_type = str(promo.promo_type or "").strip().lower()
         promo_value = int(promo.value or 0)
         if promo_type not in {"days", "discount"} or promo_value <= 0:
-            _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={"code": code, "reason": "invalid_value"})
+            _track_bonus_event(tg_id=int(tg_id), event_name="promo_redeem_denied", meta={**_activation_code_safe_meta(code), "reason": "invalid_value"})
             return False, "❌ Промокод некорректен"
 
         if promo_type == "days":
@@ -467,6 +467,8 @@ def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
                 else:
                     user.expiry_at = now + timedelta(days=promo_value)
                 user.is_active = True
+                user.sub_type = "PAID"
+                user.current_plan_code = "promo_grant"
             result_text = f"🎁 Вам добавлено *+{promo_value} дней!*"
         elif promo_type == "discount":
             user = session.query(User).filter_by(tg_id=tg_id).first()
@@ -490,7 +492,7 @@ def activate_promo_code_for_user(tg_id: int, code: str) -> tuple[bool, str]:
             tg_id=int(tg_id),
             event_name="promo_redeemed",
             meta={
-                "code": code,
+                **_activation_code_safe_meta(code),
                 "promo_type": promo_type,
                 "value": int(promo_value),
                 "applied_days": int(promo_value if promo_type == "days" else 0),

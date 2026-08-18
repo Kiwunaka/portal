@@ -21,23 +21,23 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
     s = SessionLocal()
     try:
         active_user_filter = _effective_active_user_filter(now=now)
-        user_sub_type = func.upper(func.coalesce(User.sub_type, ""))
         user_counts = (
             s.query(
                 func.count(User.tg_id).label("total_users"),
                 func.sum(case((active_user_filter, 1), else_=0)).label("active_users"),
-                func.sum(case((user_sub_type == "FREE", 1), else_=0)).label("free_users"),
-                func.sum(case((user_sub_type == "PAID", 1), else_=0)).label("paid_users"),
+                func.sum(case((_paid_entitlement_filter(now=now), 1), else_=0)).label("paid_users"),
+                func.sum(case((_pending_entitlement_filter(now=now), 1), else_=0)).label("pending_users"),
                 func.sum(case((and_(active_user_filter, _premium_entitlement_filter()), 1), else_=0)).label("active_nonfree_accounts"),
                 func.sum(case((and_(active_user_filter, _trial_entitlement_filter()), 1), else_=0)).label("trial_accounts"),
                 func.sum(case((and_(active_user_filter, _bonus_entitlement_filter()), 1), else_=0)).label("bonus_accounts"),
             )
+            .filter(User.tg_id > 0, ~_manual_test_user_filter())
             .one()
         )
         total_users = int(getattr(user_counts, "total_users", 0) or 0)
         active_users = int(getattr(user_counts, "active_users", 0) or 0)
-        free_users = int(getattr(user_counts, "free_users", 0) or 0)
         paid_users = int(getattr(user_counts, "paid_users", 0) or 0)
+        pending_users = int(getattr(user_counts, "pending_users", 0) or 0)
         active_nonfree_accounts = int(getattr(user_counts, "active_nonfree_accounts", 0) or 0)
         trial_accounts = int(getattr(user_counts, "trial_accounts", 0) or 0)
         bonus_accounts = int(getattr(user_counts, "bonus_accounts", 0) or 0)
@@ -228,8 +228,9 @@ async def admin_summary(x_telegram_init_data: str = Header(default="")) -> dict:
             "users": {
                 "total": int(total_users),
                 "active": int(active_users),
-                "free": int(free_users),
+                "free": 0,
                 "paid": int(paid_users),
+                "pending": int(pending_users),
                 "active_nonfree_accounts": int(active_nonfree_accounts),
                 "trial_accounts": int(trial_accounts),
                 "bonus_accounts": int(bonus_accounts),
@@ -846,9 +847,11 @@ def _admin_select_users_for_segment(
     elif seg == "blocked":
         query = query.filter(_admin_user_status_filter("blocked", now=now))
     elif seg == "paid":
-        query = query.filter(User.tg_id > 0).filter(~_manual_test_user_filter()).filter(func.upper(User.sub_type) == "PAID")
-    elif seg == "free":
-        query = query.filter(User.tg_id > 0).filter(~_manual_test_user_filter()).filter(func.upper(User.sub_type) == "FREE")
+        query = query.filter(_paid_entitlement_filter(now=now))
+    elif seg == "trial":
+        query = query.filter(_effective_active_user_filter(now=now), _trial_entitlement_filter())
+    elif seg in {"pending", "free"}:
+        query = query.filter(_pending_entitlement_filter(now=now))
     elif seg == "manual_test":
         query = query.filter(_manual_test_user_filter())
     elif seg == "custom":
@@ -1078,6 +1081,8 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
             "username": user.username,
             "display_name": getattr(user, "display_name", None),
             "sub_type": user.sub_type,
+            "current_plan_code": str(getattr(user, "current_plan_code", "") or "") or None,
+            "access_status": effective_user_access_status(user),
             "is_active": bool(user.is_active),
             "effective_active": bool(user_status == "active"),
             "status": user_status,
@@ -1665,10 +1670,15 @@ async def admin_broadcast(
             query = s.query(User.tg_id).filter(User.tg_id > 0)
             if segment == "all_active":
                 query = query.filter(User.is_active == True)
-            elif segment == "free":
-                query = query.filter(func.upper(User.sub_type) == "FREE")
+            elif segment in {"pending", "free"}:
+                query = query.filter(_pending_entitlement_filter(now=_utcnow()))
             elif segment == "paid":
-                query = query.filter(func.upper(User.sub_type) == "PAID")
+                query = query.filter(_paid_entitlement_filter(now=_utcnow()))
+            elif segment == "trial":
+                query = query.filter(
+                    _effective_active_user_filter(now=_utcnow()),
+                    _trial_entitlement_filter(),
+                )
             elif segment == "expired":
                 query = query.filter(User.expiry_at.isnot(None), User.expiry_at < _utcnow())
             else:
@@ -3299,14 +3309,15 @@ async def _refresh_ops_alerts_for_payload(*, s, now: datetime) -> tuple[list[dic
 
 def _admin_ops_compact_summary_payload(*, s, now: datetime, metrics_status: dict[str, Any]) -> dict[str, Any]:
     active_user_filter = _effective_active_user_filter(now=now)
-    user_sub_type = func.upper(func.coalesce(User.sub_type, ""))
     user_counts = (
         s.query(
             func.count(User.tg_id).label("total"),
             func.sum(case((active_user_filter, 1), else_=0)).label("active"),
-            func.sum(case((user_sub_type == "FREE", 1), else_=0)).label("free"),
-            func.sum(case((user_sub_type == "PAID", 1), else_=0)).label("paid"),
+            func.sum(case((_paid_entitlement_filter(now=now), 1), else_=0)).label("paid"),
+            func.sum(case((_pending_entitlement_filter(now=now), 1), else_=0)).label("pending"),
+            func.sum(case((and_(active_user_filter, _trial_entitlement_filter()), 1), else_=0)).label("trial"),
         )
+        .filter(User.tg_id > 0, ~_manual_test_user_filter())
         .one()
     )
     node_counts = (
@@ -3329,8 +3340,10 @@ def _admin_ops_compact_summary_payload(*, s, now: datetime, metrics_status: dict
         "users": {
             "total": int(getattr(user_counts, "total", 0) or 0),
             "active": int(getattr(user_counts, "active", 0) or 0),
-            "free": int(getattr(user_counts, "free", 0) or 0),
+            "free": 0,
             "paid": int(getattr(user_counts, "paid", 0) or 0),
+            "trial": int(getattr(user_counts, "trial", 0) or 0),
+            "pending": int(getattr(user_counts, "pending", 0) or 0),
         },
         "tickets": {"open": open_tickets},
         "nodes": {"total": total_nodes, "healthy": healthy_nodes},
@@ -5208,10 +5221,8 @@ def _execute_admin_client_action_db(
             user.expiry_at = candidate
             user.is_active = True
             if int(payload["delta_days"]) > 0 and not bool(state.public_snapshot.get("manual_test")):
-                sub_type = str(getattr(user, "sub_type", "") or "").strip().upper()
                 plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
-                if sub_type in {"", "FREE", "PENDING"}:
-                    user.sub_type = "PAID"
+                user.sub_type = "PAID"
                 if plan_code in {"", "free", "free_monthly", "free_retired", "trial"}:
                     user.current_plan_code = "admin_grant"
         session.flush()
@@ -6197,7 +6208,64 @@ async def _execute_admin_client_action_external(
 
 
 async def _execute_admin_post_commit(context: dict[str, Any]) -> dict[str, Any]:
-    if str(context.get("action") or "") != "ticket.status":
+    action = str(context.get("action") or "")
+    if action == "user.extend":
+        execution = dict(context.get("execution") or {})
+        tg_id = int(execution["tg_id"])
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter(User.tg_id == tg_id).first()
+            if user is None:
+                return {"ok": False, "code": "user_missing"}
+            client_uuid = str(user.uuid or "")
+            email = str(user.email or f"User_{tg_id}")
+            sub_id = str(user.sub_token or tg_id)
+            access_status = effective_user_access_status(user)
+        finally:
+            session.close()
+
+        panel = ControlPanel()
+        results: dict[str, bool] = {}
+        try:
+            nodes = await panel.refresh()
+            node_codes = [
+                str(getattr(node, "code", "") or "").strip()
+                for node in nodes
+                if str(getattr(node, "code", "") or "").strip()
+            ]
+            if access_status in {"TRIAL", "PAID"}:
+                results = await panel.ensure_user_on_all_nodes(
+                    tg_id=tg_id,
+                    client_uuid=client_uuid,
+                    email=email,
+                    sub_id=sub_id,
+                    enable=True,
+                    only_node_codes=None,
+                )
+            elif node_codes:
+                results = await panel.set_existing_user_enabled_on_nodes(
+                    tg_id=tg_id,
+                    node_codes=node_codes,
+                    enable=False,
+                    sub_id=sub_id,
+                )
+        finally:
+            await panel.close()
+        sync_ok = bool(results) and all(bool(value) for value in results.values())
+        _key_history_log(
+            tg_id=tg_id,
+            action="admin_extend_access_sync",
+            actor_tg_id=int(context.get("actor_tg_id") or 0),
+            meta={
+                "access_status": access_status,
+                "nodes_attempted": len(results),
+                "nodes_ok": sum(1 for value in results.values() if bool(value)),
+                "sync_ok": sync_ok,
+            },
+        )
+        return {"ok": sync_ok, "code": "access_synced" if sync_ok else "access_sync_partial"}
+
+    if action != "ticket.status":
         return {"ok": True, "code": "post_commit_not_required"}
     execution = dict(context.get("execution") or {})
     ticket_id = int(execution["ticket_id"])

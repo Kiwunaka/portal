@@ -184,6 +184,7 @@ from node_policy import (
     rank_nodes_for_app,
     rank_nodes_legacy,
     rank_nodes_for_subscription,
+    effective_user_access_status,
     free_user_has_bounded_premium_trial,
     user_free_access_role,
     user_uses_free_pool,
@@ -1898,8 +1899,8 @@ def _plan_total_gb(user: User) -> int:
 
 def _plan_device_limit(user: User) -> int:
     plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
-    st = (user.sub_type or "").upper()
-    if st == "FREE":
+    access_status = effective_user_access_status(user)
+    if access_status == "PENDING":
         return 1
     if plan_code:
         s = SessionLocal()
@@ -1909,7 +1910,7 @@ def _plan_device_limit(user: User) -> int:
                 return max(1, int(row.get("device_limit") or 1))
         finally:
             s.close()
-    if plan_code == "start_99":
+    if access_status == "TRIAL" or plan_code == "start_99":
         return 1
     return max(0, int(PAID_LIMIT_IP))
 
@@ -1957,6 +1958,28 @@ def _build_access_policy(*, user: User, used_bytes: int, now: datetime | None = 
         access_state = "bonus_premium" if getattr(user, "channel_bonus_claimed_at", None) else "trial_premium"
         return {
             "access_state": access_state,
+            "traffic_policy": {
+                "kind": "unlimited",
+                "label": "premium_unlimited",
+            },
+            "traffic_limit_gb": None,
+            "traffic_remaining_gb": None,
+            "next_reset_at": None,
+            "soft_mode_active": False,
+            **free_profile_facts,
+        }
+
+    if effective_user_access_status(user, now=current_now) == "PAID":
+        bonus_access = bool(
+            active_window
+            and (
+                plan_code == "channel_bonus"
+                or sub_type.startswith("BONUS")
+                or sub_type in {"CHANNEL_BONUS", "OPENING_BONUS", "FRIEND_GIFT"}
+            )
+        )
+        return {
+            "access_state": "bonus_premium" if bonus_access else "paid_unlimited",
             "traffic_policy": {
                 "kind": "unlimited",
                 "label": "premium_unlimited",
@@ -4049,11 +4072,35 @@ def _premium_entitlement_filter():
     plan_code = func.lower(func.coalesce(User.current_plan_code, ""))
     return or_(
         plan_code.in_(["trial", "channel_bonus", "start_99"]),
+        and_(
+            ~plan_code.in_(["", "free", "free_monthly", "free_retired"]),
+            sub_type.in_(["", "FREE", "PENDING"]),
+        ),
         sub_type.in_(["PAID", "BONUS", "CHANNEL_BONUS", "OPENING_BONUS", "FRIEND_GIFT", "VIP", "PRO", "BASIC", "MONTHLY", "QUARTERLY", "HALF_YEAR", "YEARLY"]),
         sub_type.like("PAID%"),
         sub_type.like("PREMIUM%"),
         sub_type.like("TRIAL%"),
         sub_type.like("BONUS%"),
+    )
+
+
+def _paid_entitlement_filter(*, now: datetime):
+    return and_(
+        _effective_active_user_filter(now=now),
+        _premium_entitlement_filter(),
+        ~_trial_entitlement_filter(),
+    )
+
+
+def _pending_entitlement_filter(*, now: datetime):
+    manual_expr = _manual_test_user_filter()
+    return and_(
+        User.tg_id > 0,
+        ~manual_expr,
+        ~or_(
+            and_(_effective_active_user_filter(now=now), _trial_entitlement_filter()),
+            _paid_entitlement_filter(now=now),
+        ),
     )
 
 
@@ -4205,6 +4252,8 @@ def _serialize_admin_user_row(
         "username": user.username,
         "display_name": getattr(user, "display_name", None),
         "sub_type": user.sub_type,
+        "current_plan_code": str(getattr(user, "current_plan_code", "") or "") or None,
+        "access_status": effective_user_access_status(user, now=current_now),
         "is_active": bool(user.is_active),
         "effective_active": bool(status == "active"),
         "status": status,

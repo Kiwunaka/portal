@@ -634,6 +634,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             user.sub_type = "PAID"
             user.current_plan_code = "1_month"
             user.sub_token = "subtoken-paid-1001"
+            user.is_active = True
+            user.expiry_at = self.api._utcnow() + timedelta(days=30)
             pl = Node(
                 code="pl",
                 name="Poland",
@@ -688,6 +690,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             user.sub_type = "PAID"
             user.current_plan_code = "1_month"
             user.sub_token = "subtoken-paid-1001"
+            user.is_active = True
+            user.expiry_at = self.api._utcnow() + timedelta(days=30)
             brain = Node(
                 code="brain",
                 name="Brain",
@@ -1242,6 +1246,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             user.sub_type = "PAID"
             user.current_plan_code = "1_month"
             user.sub_token = "subtoken-paid-1001"
+            user.is_active = True
+            user.expiry_at = self.api._utcnow() + timedelta(days=30)
             source = Node(
                 code="pl",
                 name="Poland",
@@ -3042,6 +3048,34 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         finally:
             s.close()
 
+    def test_admin_positive_grant_converts_trial_to_paid(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).one()
+            user.sub_type = "TRIAL"
+            user.current_plan_code = "trial"
+            user.is_active = True
+            user.expiry_at = self.api._utcnow() + timedelta(days=3)
+            s.commit()
+        finally:
+            s.close()
+
+        response = self._execute_admin_intent(
+            action="user.extend",
+            target_type="user",
+            target_id=1001,
+            method="POST",
+            path="/api/admin/users/1001/manual/extend",
+            payload={"delta_days": 5},
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["sub_type"], "PAID")
+        self.assertEqual(response.json()["current_plan_code"], "admin_grant")
+
     def test_admin_manual_user_crud_flow(self) -> None:
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
@@ -3582,7 +3616,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             meta_dump = json.dumps(row["meta"], ensure_ascii=False)
             self.assertNotIn("code", row["meta"])
             self.assertNotIn(code, meta_dump)
-            self.assertEqual(str(row["meta"].get("code_preview") or ""), f"...{code[-4:]}")
+            self.assertNotIn("code_preview", row["meta"])
             self.assertEqual(
                 str(row["meta"].get("code_fp") or ""),
                 hashlib.sha256(code.encode("utf-8")).hexdigest()[:16],
@@ -3616,7 +3650,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         meta_dump = json.dumps(meta, ensure_ascii=False)
         self.assertNotIn("code", meta)
         self.assertNotIn(code, meta_dump)
-        self.assertEqual(meta.get("code_preview"), "...2026")
+        self.assertNotIn("code_preview", meta)
         self.assertEqual(meta.get("code_fp"), hashlib.sha256(code.encode("utf-8")).hexdigest()[:16])
 
     def test_promo_redeem_supports_unlimited_uses_flag(self) -> None:
@@ -3637,7 +3671,12 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(redeemed.status_code, 200, redeemed.text)
         events = self._event_rows("promo_redeemed")
         self.assertEqual(len(events), 1)
-        self.assertEqual(str(events[0]["meta"].get("code") or ""), "FOREVER20")
+        self.assertNotIn("code", events[0]["meta"])
+        self.assertNotIn("code_preview", events[0]["meta"])
+        self.assertEqual(
+            str(events[0]["meta"].get("code_fp") or ""),
+            hashlib.sha256(b"FOREVER20").hexdigest()[:16],
+        )
         self.assertEqual(str(events[0]["meta"].get("promo_type") or ""), "discount")
 
         from db import SessionLocal
@@ -3648,6 +3687,38 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             row = s.query(PromoCode).filter_by(code="FOREVER20").first()
             self.assertIsNotNone(row)
             self.assertEqual(int(row.uses_left or 0), -1)
+        finally:
+            s.close()
+
+    def test_promo_days_converts_legacy_free_storage_to_paid_access(self) -> None:
+        user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+        from db import SessionLocal
+        from models import PromoCode, User
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            user.sub_type = "FREE"
+            user.current_plan_code = "free_retired"
+            user.is_active = False
+            user.expiry_at = _utcnow() - timedelta(days=1)
+            s.add(PromoCode(code="PAIDGIFT", promo_type="days", value=3, uses_left=1))
+            s.commit()
+        finally:
+            s.close()
+
+        response = self.client.post("/api/promo/redeem", headers=user_hdrs, json={"code": "PAIDGIFT"})
+        self.assertEqual(response.status_code, 200, response.text)
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).first()
+            assert user is not None
+            self.assertTrue(bool(user.is_active))
+            self.assertEqual(str(user.sub_type or ""), "PAID")
+            self.assertEqual(str(user.current_plan_code or ""), "promo_grant")
+            self.assertGreater(user.expiry_at, _utcnow())
         finally:
             s.close()
 
@@ -3667,7 +3738,12 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(redeemed.status_code, 400, redeemed.text)
         denied = self._event_rows("promo_redeem_denied")
         self.assertEqual(len(denied), 1)
-        self.assertEqual(str(denied[0]["meta"].get("code") or ""), "ZERODAYS")
+        self.assertNotIn("code", denied[0]["meta"])
+        self.assertNotIn("code_preview", denied[0]["meta"])
+        self.assertEqual(
+            str(denied[0]["meta"].get("code_fp") or ""),
+            hashlib.sha256(b"ZERODAYS").hexdigest()[:16],
+        )
         self.assertEqual(str(denied[0]["meta"].get("reason") or ""), "invalid_value")
 
         s = SessionLocal()
@@ -4445,6 +4521,9 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(summary_resp.status_code, 200, summary_resp.text)
         payload = summary_resp.json()
         users = payload.get("users") or {}
+        self.assertEqual(int(users.get("free") or 0), 0)
+        self.assertGreaterEqual(int(users.get("paid") or 0), 2)
+        self.assertGreaterEqual(int(users.get("pending") or 0), 1)
         self.assertEqual(int(users.get("active_nonfree_accounts") or 0), 3)
         self.assertEqual(int(users.get("trial_accounts") or 0), 1)
         self.assertEqual(int(users.get("bonus_accounts") or 0), 1)

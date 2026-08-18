@@ -117,6 +117,8 @@ export type OpsOverview = {
       active: number;
       free: number;
       paid: number;
+      trial?: number;
+      pending?: number;
       unique_install_ids_24h?: number;
       unique_install_ids_7d?: number;
     };

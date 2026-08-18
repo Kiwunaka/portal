@@ -157,6 +157,9 @@ Reference-lane note:
   notice cannot hide a later entitlement. Telegram delivery uses the same
   access distinction, respects 09:00–21:00 in the last known device timezone
   with Moscow fallback, and lets lifecycle warnings suppress operator promo.
+- `POST /api/client/notifications/dismiss` records account-scoped dismissal of
+  explicit notification ids; later inbox reads omit those ids without deleting
+  the retained source update, incident, grant, or access history.
 - `POST /api/client/runtime/stats` is best-effort app telemetry and must not be required from external subscription clients; `connected=true` may record only an account UX `reported` milestone
 - signed observer ingestion remains the only `verified` first-connection path and the only connection source allowed to activate a reserved trial
 - `GET /api/user/*` exposes account experience state, while `POST /api/account/experience/onboarding` persists cabinet/app onboarding completion or skip without touching entitlement state
@@ -171,6 +174,17 @@ Node lifecycle rule:
 - 3x-ui executes the resulting config
 - node retirement sequence is `drain -> resync -> disable`
 - consumer free-tier delivery is retired by default: `FREE_TIER_ENABLED=false`, expired accounts keep recovery/payment access, and no free node may fall back to the paid pool
+- user-facing and operator-effective access has exactly three states:
+  `TRIAL`, `PAID`, and `PENDING`. Admin grants, gifts, bonuses, promos, and
+  provider payments are `PAID` while their access window is active. Historical
+  `FREE` values may remain in storage for migration/audit compatibility but are
+  never exposed as a live product tier.
+- panel desired state follows the effective window rather than the legacy
+  `sub_type`: every active `TRIAL`/`PAID` identity is enabled across every
+  enabled paid delivery node, while `PENDING` is disabled everywhere. Admin
+  extensions synchronize after commit, the expiry worker disables panels before
+  marking the local projection inactive, and the guarded reconciliation script
+  repairs historical drift without printing user identifiers.
 - the RF reserve contour lives outside the normal delivery lifecycle until explicitly promoted
 
 ### User Interfaces

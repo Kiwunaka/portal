@@ -1895,8 +1895,21 @@ class BotPaywallTests(unittest.TestCase):
             self.bot_module.track_event = old_track_event
 
         self.assertEqual([item["event_name"] for item in tracked], ["promo_redeemed", "promo_redeem_denied"])
-        self.assertEqual(str(tracked[0]["meta"].get("code") or ""), "WELCOME14")
+        self.assertNotIn("code", tracked[0]["meta"])
+        self.assertEqual(str(tracked[0]["meta"].get("code_preview") or ""), "...ME14")
+        self.assertEqual(
+            str(tracked[0]["meta"].get("code_fp") or ""),
+            hashlib.sha256(b"WELCOME14").hexdigest()[:16],
+        )
         self.assertEqual(str(tracked[1]["meta"].get("reason") or ""), "already_redeemed")
+        session = self.bot_module.Session()
+        try:
+            user = session.query(self.bot_module.User).filter_by(tg_id=1001).first()
+            self.assertIsNotNone(user)
+            self.assertEqual(str(user.sub_type or ""), "PAID")
+            self.assertEqual(str(user.current_plan_code or ""), "promo_grant")
+        finally:
+            session.close()
 
     def test_redeem_gift_card_tracks_success_and_denial(self) -> None:
         self.bot_module.ensure_pending_user(1001, username="alice")

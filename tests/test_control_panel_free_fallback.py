@@ -63,7 +63,7 @@ class ControlPanelFreeFallbackTests(unittest.IsolatedAsyncioTestCase):
             last_probe_at=None,
         )
 
-    async def test_add_client_free_targets_free_pool(self) -> None:
+    async def test_add_client_free_stays_disabled_even_when_legacy_pool_exists(self) -> None:
         from control_panel import ControlPanel
 
         cp = ControlPanel()
@@ -80,8 +80,8 @@ class ControlPanelFreeFallbackTests(unittest.IsolatedAsyncioTestCase):
         cp.ensure_user_on_all_nodes = fake_ensure_user_on_all_nodes
 
         ok = await cp.add_client("uuid", "email", "FREE", 0, 123, "token")
-        self.assertTrue(ok)
-        self.assertEqual(calls, [["free"]])
+        self.assertFalse(ok)
+        self.assertEqual(calls, [])
 
     async def test_add_client_free_returns_false_without_free_pool(self) -> None:
         from control_panel import ControlPanel
@@ -103,7 +103,7 @@ class ControlPanelFreeFallbackTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(ok)
         self.assertEqual(calls, [])
 
-    async def test_enable_client_free_uses_free_pool(self) -> None:
+    async def test_enable_client_free_stays_disabled_even_when_legacy_pool_exists(self) -> None:
         from control_panel import ControlPanel
         from models import User
 
@@ -148,8 +148,8 @@ class ControlPanelFreeFallbackTests(unittest.IsolatedAsyncioTestCase):
         finally:
             cp_mod.SessionLocal = old_session_local
 
-        self.assertTrue(ok)
-        self.assertEqual(calls, [["free"]])
+        self.assertFalse(ok)
+        self.assertEqual(calls, [])
 
     async def test_disable_client_toggles_existing_copies_without_provisioning(self) -> None:
         from control_panel import ControlPanel

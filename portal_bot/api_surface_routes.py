@@ -2773,14 +2773,14 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
     try:
         user = s.query(User).filter_by(tg_id=tg_id).first()
         if not user:
-            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={"code": code, "reason": "user_not_found"})
+            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={**_access_key_safe_meta(code), "reason": "user_not_found"})
             raise HTTPException(status_code=404, detail="User not found")
         if not bool(getattr(user, "tos_accepted", False)):
-            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={"code": code, "reason": "tos_required"})
+            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={**_access_key_safe_meta(code), "reason": "tos_required"})
             raise HTTPException(status_code=400, detail="Сначала примите оферту в боте (/start)")
         promo = s.query(PromoCode).filter(func.upper(PromoCode.code) == code).first()
         if not promo:
-            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={"code": code, "reason": "not_found"})
+            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={**_access_key_safe_meta(code), "reason": "not_found"})
             raise HTTPException(status_code=404, detail="Promo not found")
         active_campaigns_for_code = (
             s.query(func.count(IncentiveCampaign.id))
@@ -2801,25 +2801,25 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
             _track_bonus_event(
                 tg_id=tg_id,
                 event_name="promo_redeem_denied",
-                meta={"code": code, "reason": "campaign_restriction_mismatch"},
+                meta={**_access_key_safe_meta(code), "reason": "campaign_restriction_mismatch"},
             )
             raise HTTPException(status_code=403, detail="Promo campaign restrictions mismatch for this user")
         uses_left = int(promo.uses_left or 0)
         if uses_left == 0:
-            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={"code": code, "reason": "exhausted"})
+            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={**_access_key_safe_meta(code), "reason": "exhausted"})
             raise HTTPException(status_code=400, detail="Promo exhausted")
         if promo.expires_at and promo.expires_at < _utcnow():
-            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={"code": code, "reason": "expired"})
+            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={**_access_key_safe_meta(code), "reason": "expired"})
             raise HTTPException(status_code=400, detail="Promo expired")
         used = s.query(PromoUsage).filter_by(tg_id=tg_id, promo_code=promo.code).first()
         if used:
-            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={"code": code, "reason": "already_redeemed"})
+            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={**_access_key_safe_meta(code), "reason": "already_redeemed"})
             raise HTTPException(status_code=400, detail="Promo already redeemed")
 
         promo_type = (promo.promo_type or "").strip().lower()
         value = int(promo.value or 0)
         if promo_type not in {"days", "discount"} or value <= 0:
-            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={"code": code, "reason": "invalid_value"})
+            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={**_access_key_safe_meta(code), "reason": "invalid_value"})
             raise HTTPException(status_code=400, detail="Promo has invalid value")
         applied_days = 0
         pending_discount_pct = 0
@@ -2830,6 +2830,8 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
             else:
                 user.expiry_at = now + timedelta(days=value)
             user.is_active = True
+            user.sub_type = "PAID"
+            user.current_plan_code = "promo_grant"
             applied_days = value
         elif promo_type == "discount":
             user.pending_discount_pct = max(1, min(95, int(value)))
@@ -2855,13 +2857,13 @@ async def promo_redeem(payload: PromoRedeemIn, request: Request, x_telegram_init
             s.commit()
         except IntegrityError:
             s.rollback()
-            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={"code": code, "reason": "already_redeemed"})
+            _track_bonus_event(tg_id=tg_id, event_name="promo_redeem_denied", meta={**_access_key_safe_meta(code), "reason": "already_redeemed"})
             raise HTTPException(status_code=400, detail="Promo already redeemed")
         _track_bonus_event(
             tg_id=tg_id,
             event_name="promo_redeemed",
             meta={
-                "code": str(promo.code or ""),
+                **_access_key_safe_meta(str(promo.code or "")),
                 "promo_type": promo_type,
                 "value": int(value),
                 "applied_days": int(applied_days),

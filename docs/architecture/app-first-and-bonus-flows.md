@@ -832,6 +832,12 @@ Current backend-derived access states exposed to WebApp and admin surfaces:
 
 Rules:
 
+- the effective account status vocabulary is only `TRIAL`, `PAID`, or
+  `PENDING`; it is derived from the current active window and grant/plan
+  semantics, not directly from a legacy `sub_type` string
+- admin-issued days, gifts, promos, referral/channel rewards, incident
+  compensation, and provider payments are `PAID` for the duration of their
+  active window; `PENDING` means there is no current usable entitlement
 - app-first trial reserves premium-grade access for `5 days`; its `5-day`
   consumption clock starts at the first valid internal observer observation
 - a new paid-eligible channel claim adds `+5 days`; trial cannot claim it and
@@ -849,7 +855,11 @@ Rules:
 - backend-facing `node_policy` resolves premium-grade access to `paid_pool`; when free delivery is disabled it resolves no free node at all
 - an active, unexpired legacy `PENDING` or empty subscription projection follows the same paid-pool decision as its effective premium access state; it must not show active premium in the client while profile delivery searches the disabled free pool
 - a positive admin day grant for a non-manual account normalizes legacy empty, `FREE`, or `PENDING` subscription metadata to `PAID`; missing or free/trial plan metadata becomes `admin_grant`, while manual test accounts keep their explicit `MANUAL` identity
-- desired-state provisioning places only active premium/trial/paid keys on enabled paid nodes; expired/free-retired keys are revoked and must not be rerouted to paid or `operator_lab`
+- desired-state provisioning places only active `TRIAL`/`PAID` keys on every
+  enabled paid node; `PENDING`, expired, and free-retired keys are disabled and
+  must not be rerouted to paid or `operator_lab`. A successful admin extension
+  triggers this sync after commit; the expiry worker and guarded reconciliation
+  script close panel/database drift.
 
 ## Runtime Notes
 

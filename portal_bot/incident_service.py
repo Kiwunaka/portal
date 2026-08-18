@@ -99,7 +99,7 @@ def preview_incident_compensation(
     rows = (
         session.query(Event)
         .filter(
-            Event.event_name == "client_runtime_stats",
+            Event.event_name.in_(("client_runtime_stats", "connected_ok")),
             Event.created_at >= incident.started_at,
             Event.created_at <= incident.ended_at,
         )

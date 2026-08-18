@@ -37,8 +37,10 @@ function statusTone(status: string): "success" | "warning" | "danger" | "neutral
 
 function planLabel(plan: string | null): string {
   const value = String(plan || "").toLowerCase();
-  if (value === "paid") return "Платный";
-  if (value === "free") return "Бесплатный";
+  if (value === "paid") return "Оплачен";
+  if (value === "trial") return "Пробный";
+  if (value === "pending") return "Ожидает доступа";
+  if (value === "free") return "Ожидает доступа";
   if (value === "manual") return "Ручной";
   return plan || "Не указан";
 }

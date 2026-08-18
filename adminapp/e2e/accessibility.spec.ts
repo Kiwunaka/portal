@@ -9,7 +9,7 @@ const routes = [
   ["/alerts", "Алерты"],
   ["/provider-caps", "Лимиты провайдеров"],
   ["/emergency-network", "Экстренная сеть"],
-  ["/free-tier", "Бесплатный контур"],
+  ["/free-tier", "Архив FREE"],
   ["/users", "Пользователи"],
   ["/online", "Сейчас онлайн"],
   ["/tickets", "Тикеты"],

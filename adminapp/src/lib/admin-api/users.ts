@@ -211,7 +211,7 @@ function mapUserRow(value: unknown): AdminUserListRow {
     tgId: signedUserId(row.tg_id),
     username: optionalText(row.username),
     displayName: optionalText(row.display_name),
-    plan: optionalText(row.sub_type),
+    plan: optionalText(row.access_status) || optionalText(row.sub_type),
     status: text(row.status) || "unknown",
     origin: optionalText(row.origin),
     isManual: Boolean(row.is_manual),

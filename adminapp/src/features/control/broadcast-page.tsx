@@ -14,7 +14,7 @@ import {
   type BroadcastDeliverySummary,
 } from "@/lib/admin-api/control";
 
-type BroadcastSegment = "all_active" | "paid" | "free" | "expired" | "custom";
+type BroadcastSegment = "all_active" | "paid" | "trial" | "pending" | "expired" | "custom";
 type BroadcastDraft = {
   segment: BroadcastSegment;
   limit: string;
@@ -24,11 +24,12 @@ type BroadcastDraft = {
 
 const STORAGE_KEY = "pokrov_admin_broadcast_draft_v1";
 const EMPTY_DRAFT: BroadcastDraft = { segment: "all_active", limit: "500", customIds: "", text: "" };
-const SEGMENTS: BroadcastSegment[] = ["all_active", "paid", "free", "expired", "custom"];
+const SEGMENTS: BroadcastSegment[] = ["all_active", "paid", "trial", "pending", "expired", "custom"];
 const SEGMENT_LABELS: Record<BroadcastSegment, string> = {
   all_active: "Все активные",
   paid: "Платные",
-  free: "Бесплатные",
+  trial: "Пробный период",
+  pending: "Ожидают доступа",
   expired: "Истёкшие",
   custom: "Список ID",
 };
@@ -279,7 +280,7 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
             {outcomeUncertain ? <div role="status" className="rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-status-warning-line)] bg-[color:var(--atlas-status-warning-bg)] p-3 text-xs leading-5 text-[color:var(--atlas-status-warning-text)]"><span className="font-semibold">Новая рассылка заблокирована.</span> Итог предыдущей отправки ещё не подтверждён сервером. Доступна только проверка статуса.</div> : null}
             {formError ? <div role="alert" className="rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-status-danger-line)] bg-[color:var(--atlas-status-danger-bg)] p-3 text-xs text-[color:var(--atlas-status-danger-text)]">{formError}</div> : null}
             <div className="grid gap-3 sm:grid-cols-2">
-              <label className="block text-xs font-semibold">Сегмент<select aria-label="Сегмент рассылки" value={draft.segment} disabled={outcomeUncertain} onChange={(event) => updateDraft({ segment: event.target.value as BroadcastSegment })} className="mt-1 min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3"><option value="all_active">Все активные</option><option value="paid">Платные</option><option value="free">Бесплатные</option><option value="expired">Истёкшие</option><option value="custom">Список Telegram ID</option></select></label>
+              <label className="block text-xs font-semibold">Сегмент<select aria-label="Сегмент рассылки" value={draft.segment} disabled={outcomeUncertain} onChange={(event) => updateDraft({ segment: event.target.value as BroadcastSegment })} className="mt-1 min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3"><option value="all_active">Все активные</option><option value="paid">Оплаченные</option><option value="trial">Пробный период</option><option value="pending">Ожидают доступа</option><option value="expired">Истёкшие</option><option value="custom">Список Telegram ID</option></select></label>
               <label className="block text-xs font-semibold">Лимит<input aria-label="Лимит рассылки" inputMode="numeric" value={draft.limit} disabled={outcomeUncertain} onChange={(event) => updateDraft({ limit: event.target.value })} className="mt-1 min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3 tabular-nums" /></label>
             </div>
             {draft.segment === "custom" ? <label className="block text-xs font-semibold">Telegram ID получателей<textarea aria-label="Telegram ID получателей" value={draft.customIds} disabled={outcomeUncertain} onChange={(event) => updateDraft({ customIds: event.target.value })} placeholder="10001, 10002" className="mt-1 min-h-20 w-full rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] p-3 font-mono text-xs" /><span className="mt-1 block font-normal text-[color:var(--atlas-text-muted)]">Список не возвращается в UI и не попадает в intent/audit; сохраняются только count и SHA-256.</span></label> : null}

@@ -26,7 +26,7 @@ const SOURCE_LABELS: Record<string, string> = {
   node_metrics: "Метрики ноды",
   node_capacity: "Ёмкость ноды",
   provider_quota: "Лимит провайдера",
-  free_tier: "Бесплатный контур",
+  free_tier: "Архив FREE",
   security: "Безопасность",
   ru_probe: "RU-origin"
 };

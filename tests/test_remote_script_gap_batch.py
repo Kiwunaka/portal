@@ -1126,7 +1126,7 @@ def test_remote_install_free_per_ip_limiter_uploads_infra_scripts_and_runs_rate_
     assert fake.closed is True
 
 
-def test_remote_brain_sync_users_to_nodes_uploads_free_paid_partitioning_snippet(
+def test_remote_brain_sync_users_to_nodes_defaults_to_safe_status_dry_run(
     monkeypatch, capsys
 ) -> None:
     module = _load_script("remote_brain_sync_users_to_nodes.py")
@@ -1151,18 +1151,41 @@ def test_remote_brain_sync_users_to_nodes_uploads_free_paid_partitioning_snippet
 
     uploaded = fake.files["/root/portal_bot/portal_sync_users_to_nodes.py"].decode("utf-8")
     assert "load_service_env" in uploaded
-    assert "Dedicated FREE pools receive only FREE users." in uploaded
-    assert "Other countries are PAID-only." in uploaded
+    assert "effective_user_access_status" in uploaded
+    assert "status in {'TRIAL', 'PAID'}" in uploaded
+    assert "failed_tg_ids" not in uploaded
     joined = "\n".join(fake.commands)
     assert "test -x /root/portal_bot/venv/bin/python" in joined
-    assert "SYNC_CONCURRENCY=8 SYNC_PASSES=3 SYNC_TG_ID=9000000000000" in joined
+    assert "SYNC_APPLY=0" in joined
+    assert "SYNC_TG_ID=9000000000000" in joined
+    assert "SYNC_CONCURRENCY=8" in joined
+    assert "SYNC_PASSES=3" in joined
     assert "requested_tg_id" in uploaded
     assert "DATABASE_URL=sqlite" not in joined
-    assert "python /root/portal_bot/portal_sync_users_to_nodes.py" in joined
+    assert "/root/portal_bot/venv/bin/python /root/portal_bot/portal_sync_users_to_nodes.py" in joined
     assert "brain-secret" not in joined
     assert "brain-secret" not in capsys.readouterr().out
     assert fake.sftp_closed is True
     assert fake.closed is True
+
+
+def test_remote_brain_sync_users_to_nodes_requires_exact_apply_confirmation(
+    monkeypatch,
+) -> None:
+    module = _load_script("remote_brain_sync_users_to_nodes.py")
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "remote_brain_sync_users_to_nodes.py",
+            "--brain-ip",
+            "82.21.114.104",
+            "--apply",
+        ],
+    )
+
+    with pytest.raises(SystemExit, match="RECONCILE_TRIAL_PAID_PENDING"):
+        module.main()
 
 
 def test_remote_sync_users_to_nodes_uploads_portal_code_db_and_runs_sync(

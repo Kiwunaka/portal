@@ -84,6 +84,72 @@ class WorkerRetentionTests(unittest.TestCase):
         self.assertEqual(self.worker._expiry_stage(timedelta(minutes=30)), "t0")
         self.assertEqual(self.worker._expiry_stage(timedelta(days=5)), "")
 
+    def test_expired_access_is_disabled_on_panels_before_local_deactivation(self) -> None:
+        from models import User
+
+        now = datetime(2026, 8, 18, 12, 0, 0)
+        session = self.db.SessionLocal()
+        try:
+            session.add_all(
+                [
+                    User(
+                        tg_id=4101,
+                        uuid="00000000-0000-0000-0000-000000004101",
+                        email="expired_4101",
+                        sub_type="PAID",
+                        current_plan_code="admin_grant",
+                        is_active=True,
+                        expiry_at=now - timedelta(minutes=1),
+                        tos_accepted=True,
+                    ),
+                    User(
+                        tg_id=4102,
+                        uuid="00000000-0000-0000-0000-000000004102",
+                        email="active_4102",
+                        sub_type="PAID",
+                        current_plan_code="admin_grant",
+                        is_active=True,
+                        expiry_at=now + timedelta(days=1),
+                        tos_accepted=True,
+                    ),
+                ]
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        calls: list[tuple[str, bool]] = []
+
+        class FakePanel:
+            async def enable_client(self, user_uuid: str, enable: bool = True) -> bool:
+                calls.append((user_uuid, enable))
+                return True
+
+            async def close(self) -> None:
+                return None
+
+        with mock.patch.object(self.worker, "ControlPanel", FakePanel), mock.patch.object(
+            self.worker,
+            "track_event",
+        ) as track_event:
+            result = asyncio.run(self.worker._expire_panel_access_once(now=now))
+
+        self.assertEqual(result, {"attempted": 1, "disabled": 1, "deferred": 0})
+        self.assertEqual(
+            calls,
+            [("00000000-0000-0000-0000-000000004101", False)],
+        )
+        track_event.assert_called_once()
+
+        session = self.db.SessionLocal()
+        try:
+            expired = session.query(User).filter(User.tg_id == 4101).one()
+            active = session.query(User).filter(User.tg_id == 4102).one()
+            self.assertFalse(expired.is_active)
+            self.assertTrue(active.is_active)
+        finally:
+            session.close()
+
     def test_trial_and_bonus_do_not_receive_paid_t3_message(self) -> None:
         from types import SimpleNamespace
 

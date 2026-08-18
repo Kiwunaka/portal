@@ -100,15 +100,15 @@ test("Сеть: пустой лимит не открывает intent, а об�
   await expect(limit).toHaveValue("123");
 });
 
-test("Сеть: бесплатный контур показывает burn rate и только FREE-строки", async ({ page }) => {
+test("Сеть: архив FREE показывает legacy burn rate и только raw FREE-строки", async ({ page }) => {
   await installAdminApiMock(page, { networkScenario: "populated" });
   await page.goto("/free-tier");
 
-  await expect(page.getByRole("heading", { name: "Бесплатный контур", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Архив FREE", level: 1 })).toBeVisible();
   await expect(page.getByText("Расход в день", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: /^Анна Бесплатная(?:\s|$)/ })).toBeVisible();
   await expect(page.getByRole("link", { name: /^Илья Бесплатный(?:\s|$)/ })).toBeVisible();
-  await expect(page.getByText("Платный пул в расчёты и строки этого экрана не входит.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Здесь только legacy-строки FREE; действующий доступ определяется как TRIAL, PAID или PENDING.", { exact: true })).toBeVisible();
   await expect(page.getByText("paid_pool", { exact: true })).toHaveCount(0);
 });
 

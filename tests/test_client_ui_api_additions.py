@@ -464,6 +464,18 @@ def test_client_account_devices_notifications_push_and_subscription_contract(mon
     assert mark_read.status_code == 200, mark_read.text
     assert mark_read.json()["ok"] is True
 
+    release_notice = next(item for item in inbox["items"] if item["kind"] == "release")
+    dismiss = client.post(
+        "/api/client/notifications/dismiss",
+        headers=headers,
+        json={"ids": [release_notice["id"]]},
+    )
+    assert dismiss.status_code == 200, dismiss.text
+    assert dismiss.json()["accepted"] == 1
+    refreshed = client.get("/api/client/notifications", headers=headers)
+    assert refreshed.status_code == 200, refreshed.text
+    assert release_notice["id"] not in {item["id"] for item in refreshed.json()["items"]}
+
     push = client.post(
         "/api/client/push/register",
         headers=headers,

@@ -54,7 +54,11 @@ from models import (
     ProviderTrafficQuota,
     WarpMaterial,
 )
-from node_policy import canonical_free_node_code, node_is_free, user_uses_free_pool
+from node_policy import (
+    canonical_free_node_code,
+    node_is_free,
+    user_uses_free_pool,
+)
 from nodes_repo import enabled_nodes
 from ru_probe_contract import canonical_json_bytes
 
@@ -859,7 +863,7 @@ def _normalize_bulk_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
     segment = _bounded_text(
         payload.get("segment", "all_active"), field="segment", minimum=2, maximum=32
     ).lower()
-    if segment not in {"all", "all_active", "active", "inactive", "expired", "blocked", "paid", "free", "manual", "manual_test", "custom"}:
+    if segment not in {"all", "all_active", "active", "inactive", "expired", "blocked", "paid", "trial", "pending", "free", "manual", "manual_test", "custom"}:
         raise ActionIntentError(
             "invalid_payload", status_code=422, message="Сегмент не поддерживается."
         )
@@ -931,7 +935,7 @@ def _normalize_broadcast_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
         minimum=2,
         maximum=32,
     ).lower()
-    if segment not in {"all_active", "free", "paid", "expired", "custom", "retry_failed"}:
+    if segment not in {"all_active", "paid", "trial", "pending", "free", "expired", "custom", "retry_failed"}:
         raise ActionIntentError(
             "invalid_payload",
             status_code=422,
@@ -1576,6 +1580,71 @@ def _manual_user_filter():
     )
 
 
+def _trial_user_filter():
+    sub_type = func.upper(func.coalesce(User.sub_type, ""))
+    plan_code = func.lower(func.coalesce(User.current_plan_code, ""))
+    return or_(plan_code == "trial", sub_type.like("TRIAL%"))
+
+
+def _premium_user_filter():
+    sub_type = func.upper(func.coalesce(User.sub_type, ""))
+    plan_code = func.lower(func.coalesce(User.current_plan_code, ""))
+    return or_(
+        plan_code.in_(["trial", "channel_bonus", "start_99"]),
+        and_(
+            ~plan_code.in_(["", "free", "free_monthly", "free_retired"]),
+            sub_type.in_(["", "FREE", "PENDING"]),
+        ),
+        sub_type.in_([
+            "PAID",
+            "BONUS",
+            "CHANNEL_BONUS",
+            "OPENING_BONUS",
+            "FRIEND_GIFT",
+            "VIP",
+            "PRO",
+            "BASIC",
+            "MONTHLY",
+            "QUARTERLY",
+            "HALF_YEAR",
+            "YEARLY",
+        ]),
+        sub_type.like("PAID%"),
+        sub_type.like("PREMIUM%"),
+        sub_type.like("TRIAL%"),
+        sub_type.like("BONUS%"),
+    )
+
+
+def _paid_user_filter(*, now: datetime):
+    manual = _manual_user_filter()
+    live = and_(
+        User.tg_id > 0,
+        ~manual,
+        User.is_active == True,
+        User.expiry_at.isnot(None),
+        User.expiry_at > now,
+    )
+    return and_(live, _premium_user_filter(), ~_trial_user_filter())
+
+
+def _pending_user_filter(*, now: datetime):
+    manual = _manual_user_filter()
+    live_trial = and_(
+        User.tg_id > 0,
+        ~manual,
+        User.is_active == True,
+        User.expiry_at.isnot(None),
+        User.expiry_at > now,
+        _trial_user_filter(),
+    )
+    return and_(
+        User.tg_id > 0,
+        ~manual,
+        ~or_(live_trial, _paid_user_filter(now=now)),
+    )
+
+
 def _bulk_user_query(session, payload: Mapping[str, Any]):
     segment = str(payload["segment"])
     now = _utcnow().replace(tzinfo=None)
@@ -1595,9 +1664,11 @@ def _bulk_user_query(session, payload: Mapping[str, Any]):
     elif segment == "expired":
         query = query.filter(expired)
     elif segment == "paid":
-        query = query.filter(User.tg_id > 0, ~manual, func.upper(User.sub_type) == "PAID")
-    elif segment == "free":
-        query = query.filter(User.tg_id > 0, ~manual, func.upper(User.sub_type) == "FREE")
+        query = query.filter(_paid_user_filter(now=now))
+    elif segment == "trial":
+        query = query.filter(active, _trial_user_filter())
+    elif segment in {"pending", "free"}:
+        query = query.filter(_pending_user_filter(now=now))
     elif segment in {"manual", "manual_test"}:
         query = query.filter(manual)
     elif segment == "custom":
@@ -1773,13 +1844,21 @@ def _broadcast_entity_state(
                 selection.append(tg_id)
         return _broadcast_state_from_selection(selection[: int(payload["limit"])])
 
+    observed_at = _utcnow().replace(tzinfo=None)
     query = session.query(User.tg_id).filter(User.tg_id > 0)
     if segment == "all_active":
         query = query.filter(User.is_active == True)
-    elif segment == "free":
-        query = query.filter(func.upper(User.sub_type) == "FREE")
+    elif segment in {"pending", "free"}:
+        query = query.filter(_pending_user_filter(now=observed_at))
     elif segment == "paid":
-        query = query.filter(func.upper(User.sub_type) == "PAID")
+        query = query.filter(_paid_user_filter(now=observed_at))
+    elif segment == "trial":
+        query = query.filter(
+            User.is_active == True,
+            User.expiry_at.isnot(None),
+            User.expiry_at > observed_at,
+            _trial_user_filter(),
+        )
     elif segment == "expired":
         query = query.filter(
             User.expiry_at.isnot(None),
@@ -2553,6 +2632,10 @@ def _ticket_status_post_commit(state: EntityState, payload: Mapping[str, Any]) -
     }
 
 
+def _user_extend_post_commit(state: EntityState, _payload: Mapping[str, Any]) -> dict[str, Any]:
+    return {"tg_id": int(state.context["tg_id"])}
+
+
 def _normalize_node_lifecycle_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
     if set(payload) - {"force"}:
         raise ActionIntentError(
@@ -3267,6 +3350,7 @@ ACTION_POLICIES: dict[str, ActionPolicy] = {
         audit_action="admin_manual_extend",
         audit_target_builder=_audit_user_target,
         audit_meta_builder=_safe_user_audit_meta,
+        post_commit_context_builder=_user_extend_post_commit,
     ),
     "user.key_toggle": ActionPolicy(
         action="user.key_toggle",
@@ -5826,7 +5910,7 @@ def _normalize_node_sync_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
     tg_value = payload.get("tg_id")
     tg_id = None if tg_value is None else _normalize_promo_integer(tg_value, field="tg_id", minimum=1, maximum=2**63 - 1)
     segment = _bounded_text(payload.get("segment", "active"), field="segment", minimum=2, maximum=32).lower()
-    if segment not in {"active", "free", "paid"}:
+    if segment not in {"active", "paid", "trial", "pending", "free"}:
         raise ActionIntentError("invalid_payload", status_code=422, message="Сегмент sync не поддерживается.")
     return {
         "tg_id": tg_id,
@@ -5843,10 +5927,18 @@ def _node_sync_state(session, target_id: str, payload: Mapping[str, Any], for_up
         query = query.filter(User.tg_id == int(payload["tg_id"]))
     elif payload["segment"] == "active":
         query = query.filter(User.is_active == True)
-    elif payload["segment"] == "free":
-        query = query.filter(func.upper(User.sub_type) == "FREE")
+    elif payload["segment"] in {"pending", "free"}:
+        query = query.filter(_pending_user_filter(now=_utcnow().replace(tzinfo=None)))
+    elif payload["segment"] == "trial":
+        current = _utcnow().replace(tzinfo=None)
+        query = query.filter(
+            User.is_active == True,
+            User.expiry_at.isnot(None),
+            User.expiry_at > current,
+            _trial_user_filter(),
+        )
     else:
-        query = query.filter(func.upper(User.sub_type) == "PAID")
+        query = query.filter(_paid_user_filter(now=_utcnow().replace(tzinfo=None)))
     if for_update and str(session.get_bind().dialect.name) == "postgresql":
         query = query.with_for_update()
     users = query.order_by(User.created_at.asc(), User.tg_id.asc()).limit(int(payload["limit"])).all()

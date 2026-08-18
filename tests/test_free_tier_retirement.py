@@ -49,6 +49,30 @@ def test_free_tier_is_fail_closed_but_bounded_trial_stays_premium(monkeypatch) -
     assert node_policy.user_uses_free_pool(retired_user, now=now) is True
 
 
+def test_effective_access_status_has_only_trial_paid_pending() -> None:
+    import node_policy
+
+    now = datetime(2026, 8, 18, 12, 0, 0)
+    cases = [
+        ("FREE", "trial", now + timedelta(days=5), True, "TRIAL"),
+        ("PAID", "admin_grant", now + timedelta(days=30), True, "PAID"),
+        ("BONUS", "reward_wheel", now + timedelta(days=1), True, "PAID"),
+        ("FREE", "channel_bonus", now + timedelta(days=5), True, "PAID"),
+        ("FREE", "free_retired", now, True, "PENDING"),
+        ("PENDING", None, None, True, "PENDING"),
+        ("PAID", "1_month", now + timedelta(days=30), False, "PENDING"),
+    ]
+    for sub_type, plan_code, expiry_at, is_active, expected in cases:
+        user = SimpleNamespace(
+            sub_type=sub_type,
+            current_plan_code=plan_code,
+            expiry_at=expiry_at,
+            is_active=is_active,
+        )
+        assert node_policy.effective_user_access_status(user, now=now) == expected
+        assert node_policy.user_uses_free_pool(user, now=now) is (expected == "PENDING")
+
+
 def test_retired_free_projection_keeps_account_but_expires_access(monkeypatch) -> None:
     import free_cycle_service
 

@@ -19,7 +19,7 @@ const expectedGroups = [
       ["Алерты", "/alerts"],
       ["Лимиты провайдеров", "/provider-caps"],
       ["Экстренная сеть", "/emergency-network"],
-      ["Бесплатный контур", "/free-tier"]
+      ["Архив FREE", "/free-tier"]
     ]
   },
   {
@@ -140,7 +140,7 @@ test("каждый раздел запрашивает только собств
     { href: "/alerts", label: "Алерты", paths: [/^\/api\/admin\/alerts\?status=active$/] },
     { href: "/provider-caps", label: "Лимиты провайдеров", paths: [/^\/api\/admin\/provider-quotas$/, /^\/api\/admin\/provider-quotas\/status$/] },
     { href: "/emergency-network", label: "Экстренная сеть", paths: [/^\/api\/admin\/emergency-network\/status$/] },
-    { href: "/free-tier", label: "Бесплатный контур", paths: [/^\/api\/admin\/free-tier\/summary$/, /^\/api\/admin\/free-tier\/users\?limit=500$/] },
+    { href: "/free-tier", label: "Архив FREE", paths: [/^\/api\/admin\/free-tier\/summary$/, /^\/api\/admin\/free-tier\/users\?limit=500$/] },
     { href: "/users", label: "Пользователи", paths: [/^\/api\/admin\/users\?page_size=80&offset=0&sort=created_desc$/, /^\/api\/admin\/online\/users\?limit=200$/] },
     { href: "/online", label: "Сейчас онлайн", paths: [/^\/api\/admin\/online\/users\?limit=200$/] },
     { href: "/tickets", label: "Тикеты", paths: [/^\/api\/admin\/tickets\?status=&limit=100$/] },

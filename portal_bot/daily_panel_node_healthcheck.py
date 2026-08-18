@@ -17,13 +17,9 @@ from control_panel import ControlPanel
 from db import SessionLocal
 from models import Node, NodeHealthSample, User, UserNode
 from node_policy import (
-    FREE_SOFT_ROLE,
-    FREE_STANDARD_ROLE,
     NodeAccessRoleError,
-    free_pool_node_codes,
+    effective_user_access_status,
     paid_pool_node_codes,
-    user_free_access_role,
-    user_uses_free_pool,
     validate_node_access_roles,
 )
 from nodes_repo import enabled_nodes
@@ -34,28 +30,6 @@ API_HEALTH_URL = os.getenv("DAILY_HEALTH_API_URL", "http://127.0.0.1:8080/api/he
 METRICS_STALE_AFTER_MINUTES = int(os.getenv("DAILY_HEALTH_METRICS_STALE_AFTER_MINUTES", "15"))
 PANEL_HEALTHCHECK_MAX_CONCURRENCY = 4
 PANEL_HEALTHCHECK_NODE_TIMEOUT_SECONDS = 45
-
-_PREMIUM_PLAN_CODES = frozenset({"trial", "channel_bonus", "start_99"})
-_EXPLICIT_PREMIUM_SUB_TYPES = frozenset(
-    {
-        "PAID",
-        "BONUS",
-        "CHANNEL_BONUS",
-        "OPENING_BONUS",
-        "FRIEND_GIFT",
-        "VIP",
-        "PRO",
-        "BASIC",
-        "MONTHLY",
-        "QUARTERLY",
-        "HALF_YEAR",
-        "YEARLY",
-    }
-)
-_FREE_PROFILE_STATES = frozenset(
-    {"standard", "soft_transition_pending", "soft_active", "reset_pending", "error"}
-)
-
 
 @dataclass(frozen=True)
 class PolicyIdentityScope:
@@ -129,53 +103,14 @@ def _panel_client_enabled(row: dict) -> bool:
     return str(raw or "").strip().lower() not in {"0", "false", "no", "off", "disabled"}
 
 
-def _entitlement_policy_is_ambiguous(user: User) -> bool:
-    """Reject compatibility fallbacks that are unsafe as remediation authority."""
-
-    sub_type = str(getattr(user, "sub_type", "") or "").strip().upper()
-    plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
-    if plan_code in _PREMIUM_PLAN_CODES or sub_type == "FREE":
-        return False
-    if sub_type in _EXPLICIT_PREMIUM_SUB_TYPES:
-        return False
-    return not (
-        sub_type.startswith("TRIAL")
-        or sub_type.startswith("BONUS")
-        or sub_type.startswith("PAID_")
-        or sub_type.startswith("PREMIUM")
-    )
-
-
-def _free_profile_policy_is_ambiguous(user: User) -> bool:
-    active_role = str(getattr(user, "free_profile_active_role", "") or "").strip().lower()
-    state = str(getattr(user, "free_profile_state", "") or "").strip().lower()
-    if active_role not in {FREE_STANDARD_ROLE, FREE_SOFT_ROLE} or state not in _FREE_PROFILE_STATES:
-        return True
-    if state in {"standard", "soft_transition_pending"}:
-        return active_role != FREE_STANDARD_ROLE
-    if state in {"soft_active", "reset_pending"}:
-        return active_role != FREE_SOFT_ROLE
-    return False
-
-
 def _expected_codes_for_user(user: User, nodes: list, *, now: datetime) -> tuple[list[str], str | None]:
     """Resolve one active user's exact policy pool or a stable unresolved reason."""
-
-    if _entitlement_policy_is_ambiguous(user):
-        return [], "entitlement_ambiguous"
     try:
-        uses_free_pool = user_uses_free_pool(user, now=now)
-        if uses_free_pool:
-            if _free_profile_policy_is_ambiguous(user):
-                return [], "free_profile_ambiguous"
-            access_role = user_free_access_role(user)
-            if access_role not in {FREE_STANDARD_ROLE, FREE_SOFT_ROLE}:
-                return [], "free_role_invalid"
-            codes = free_pool_node_codes(nodes, access_role=access_role)
-            missing_reason = f"{access_role}_pool_missing"
-        else:
-            codes = paid_pool_node_codes(nodes)
-            missing_reason = "paid_pool_missing"
+        status = effective_user_access_status(user, now=now)
+        if status == "PENDING":
+            return [], None
+        codes = paid_pool_node_codes(nodes)
+        missing_reason = "paid_pool_missing"
     except (NodeAccessRoleError, TypeError, ValueError):
         return [], "policy_evaluation_failed"
 

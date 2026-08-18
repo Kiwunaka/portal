@@ -584,32 +584,38 @@ def free_user_has_bounded_premium_trial(user: Any, *, now: datetime | None = Non
     return expiry - current_now <= FREE_TRIAL_RESERVATION_MAX_AGE
 
 
-def user_uses_free_pool(user: Any, *, now: datetime | None = None) -> bool:
+def effective_user_access_status(user: Any, *, now: datetime | None = None) -> str:
+    """Return the product access status without exposing legacy storage labels.
+
+    ``FREE`` is retained in old rows only as a storage/migration detail.  It is
+    not a live product tier: a bounded trial is TRIAL, any other live premium
+    grant is PAID, and everything without a current access window is PENDING.
+    """
+
+    current_now = _normalize_utc_naive(now) or _utcnow()
+    expiry = _normalize_utc_naive(getattr(user, "expiry_at", None))
+    if not bool(getattr(user, "is_active", False)) or expiry is None or expiry <= current_now:
+        return "PENDING"
+
     sub_type = str(getattr(user, "sub_type", "") or "").strip().upper()
     plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
+    if plan_code == "trial" or sub_type.startswith("TRIAL"):
+        return "TRIAL"
 
-    if sub_type == "FREE":
-        return not free_user_has_bounded_premium_trial(user, now=now)
-    if plan_code in _PREMIUM_PLAN_CODES:
-        return False
-    if sub_type in {"", "PENDING"}:
-        current_now = _normalize_utc_naive(now) or _utcnow()
-        expiry = _normalize_utc_naive(getattr(user, "expiry_at", None))
-        has_active_entitlement = (
-            bool(getattr(user, "is_active", False))
-            and expiry is not None
-            and expiry > current_now
-        )
-        return not has_active_entitlement
-    if sub_type.startswith("TRIAL"):
-        return False
-    if sub_type.startswith("BONUS") or sub_type in {"CHANNEL_BONUS", "OPENING_BONUS", "FRIEND_GIFT"}:
-        return False
-    if sub_type in {"MANUAL", "PAID", "VIP", "PRO", "BASIC", "MONTHLY", "QUARTERLY", "HALF_YEAR", "YEARLY"}:
-        return False
-    if sub_type.startswith("PAID_") or sub_type.startswith("PREMIUM"):
-        return False
-    return True
+    if sub_type in {"", "FREE", "PENDING"} and plan_code in {
+        "",
+        "free",
+        "free_monthly",
+        "free_retired",
+    }:
+        return "PENDING"
+    return "PAID"
+
+
+def user_uses_free_pool(user: Any, *, now: datetime | None = None) -> bool:
+    # Compatibility name: with consumer FREE retired this means "must not be
+    # delivered to the paid pool".  No enabled free node is implied.
+    return effective_user_access_status(user, now=now) == "PENDING"
 
 
 def user_free_access_role(user: Any) -> str:

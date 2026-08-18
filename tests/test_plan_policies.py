@@ -122,13 +122,30 @@ class PlanPolicyTests(unittest.TestCase):
         api = importlib.import_module("api")
         importlib.reload(api)
 
-        free_user = SimpleNamespace(sub_type="FREE")
-        paid_user = SimpleNamespace(sub_type="PAID")
+        free_user = SimpleNamespace(
+            sub_type="FREE",
+            current_plan_code="free_retired",
+            is_active=False,
+            expiry_at=None,
+        )
+        paid_user = SimpleNamespace(
+            sub_type="PAID",
+            current_plan_code=None,
+            is_active=True,
+            expiry_at=api._utcnow() + timedelta(days=30),
+        )
+        legacy_admin_grant = SimpleNamespace(
+            sub_type="FREE",
+            current_plan_code="admin_grant",
+            is_active=True,
+            expiry_at=api._utcnow() + timedelta(days=30),
+        )
 
         self.assertEqual(api._plan_total_gb(free_user), 5)
         self.assertEqual(api._plan_total_gb(paid_user), 0)
         self.assertEqual(api._plan_device_limit(free_user), 1)
         self.assertEqual(api._plan_device_limit(paid_user), 5)
+        self.assertEqual(api._plan_device_limit(legacy_admin_grant), 5)
 
     def test_api_access_policy_for_paid_trial_bonus_and_free_soft_mode(self) -> None:
         os.environ["FREE_TOTAL_GB"] = "5"
@@ -194,7 +211,7 @@ class PlanPolicyTests(unittest.TestCase):
         self.assertEqual(soft["traffic_limit_gb"], 5.0)
         self.assertEqual(soft["traffic_remaining_gb"], 0.0)
 
-    def test_free_pool_routing_fails_closed_for_stale_free_plan_labels(self) -> None:
+    def test_trial_labels_never_reactivate_retired_free_pool(self) -> None:
         from node_policy import user_uses_free_pool
 
         now = datetime(2030, 1, 10, 12, 0, 0)
@@ -212,7 +229,7 @@ class PlanPolicyTests(unittest.TestCase):
         )
 
         self.assertFalse(user_uses_free_pool(valid_trial, now=now))
-        self.assertTrue(user_uses_free_pool(stale_trial, now=now))
+        self.assertFalse(user_uses_free_pool(stale_trial, now=now))
         for plan_code in ("channel_bonus", "start_99", "1_month"):
             with self.subTest(plan_code=plan_code):
                 user = SimpleNamespace(
@@ -221,7 +238,7 @@ class PlanPolicyTests(unittest.TestCase):
                     is_active=True,
                     expiry_at=now + timedelta(days=3650),
                 )
-                self.assertTrue(user_uses_free_pool(user, now=now))
+                self.assertFalse(user_uses_free_pool(user, now=now))
 
     def test_access_policy_does_not_promote_unbounded_free_trial_projection(self) -> None:
         api = importlib.import_module("api")

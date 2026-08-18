@@ -674,9 +674,77 @@ async def welcome_chain_job() -> None:
         await asyncio.sleep(3600)
 
 
+async def _expire_panel_access_once(*, now: datetime | None = None) -> dict[str, int]:
+    current_now = now or _utcnow()
+    session = SessionLocal()
+    try:
+        expired = (
+            session.query(User.tg_id, User.uuid, User.expiry_at)
+            .filter(
+                User.tg_id > 0,
+                func.upper(User.sub_type) != "MANUAL",
+                User.is_active == True,
+                User.expiry_at.isnot(None),
+                User.expiry_at <= current_now,
+            )
+            .all()
+        )
+    finally:
+        session.close()
+
+    attempted = 0
+    disabled_count = 0
+    panel = ControlPanel()
+    try:
+        for tg_id, user_uuid, expiry_at in expired:
+            normalized_uuid = str(user_uuid or "").strip()
+            if not normalized_uuid:
+                continue
+            attempted += 1
+            if not await panel.enable_client(normalized_uuid, False):
+                continue
+            update_session = SessionLocal()
+            try:
+                current = (
+                    update_session.query(User)
+                    .filter(
+                        User.tg_id == int(tg_id),
+                        User.is_active == True,
+                        User.expiry_at == expiry_at,
+                        User.expiry_at <= current_now,
+                    )
+                    .first()
+                )
+                if current is None:
+                    continue
+                current.is_active = False
+                update_session.commit()
+            except Exception:
+                update_session.rollback()
+                continue
+            finally:
+                update_session.close()
+            disabled_count += 1
+            track_event(
+                tg_id=int(tg_id),
+                event_name="panel_access_expired_disabled",
+                source="worker",
+                meta={"expiry_at": expiry_at.isoformat()},
+            )
+    finally:
+        await panel.close()
+    return {
+        "attempted": attempted,
+        "disabled": disabled_count,
+        "deferred": max(0, attempted - disabled_count),
+    }
+
+
 async def expiry_chain_job() -> None:
     while True:
         now = _utcnow()
+        await _expire_panel_access_once(now=now)
+
         s = SessionLocal()
         try:
             users = (

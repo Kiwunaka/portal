@@ -237,42 +237,46 @@ def test_panel_rows_bounds_parallel_reads_keeps_order_and_isolates_failures(monk
 
 
 @pytest.mark.parametrize("state", ["soft_active", "reset_pending", "error"])
-def test_expected_policy_uses_exact_free_soft_role(state: str) -> None:
+def test_expected_policy_never_routes_legacy_free_state(state: str) -> None:
     user = _user(free_profile_state=state, free_profile_active_role="free_soft")
 
     codes, reason = _expected_codes_for_user(user, POLICY_NODES, now=NOW)
 
-    assert codes == ["nl-free-soft"]
+    assert codes == []
     assert reason is None
 
 
-def test_expected_policy_keeps_only_bounded_free_trial_on_paid_nodes() -> None:
+def test_expected_policy_routes_every_active_trial_to_paid_nodes() -> None:
     bounded = _user(current_plan_code="trial", expiry_at=NOW + timedelta(days=5))
     stale_reservation = _user(current_plan_code="trial", expiry_at=NOW + timedelta(days=8))
 
     assert _expected_codes_for_user(bounded, POLICY_NODES, now=NOW) == (["de-paid"], None)
     assert _expected_codes_for_user(stale_reservation, POLICY_NODES, now=NOW) == (
-        ["nl-free-standard"],
+        ["de-paid"],
         None,
     )
 
 
-def test_expected_policy_flags_inconsistent_free_role_state() -> None:
+def test_expected_policy_ignores_inconsistent_legacy_free_role_state() -> None:
     user = _user(free_profile_state="soft_active", free_profile_active_role="free_standard")
 
-    assert _expected_codes_for_user(user, POLICY_NODES, now=NOW) == ([], "free_profile_ambiguous")
+    assert _expected_codes_for_user(user, POLICY_NODES, now=NOW) == ([], None)
 
 
 def test_expected_policy_passes_exact_now_to_pool_authority(monkeypatch) -> None:
     observed: list[datetime] = []
 
-    def fake_user_uses_free_pool(_user, *, now):
+    def fake_effective_status(_user, *, now):
         observed.append(now)
-        return True
+        return "PENDING"
 
-    monkeypatch.setattr(healthcheck, "user_uses_free_pool", fake_user_uses_free_pool)
+    monkeypatch.setattr(
+        healthcheck,
+        "effective_user_access_status",
+        fake_effective_status,
+    )
 
-    assert _expected_codes_for_user(_user(), POLICY_NODES, now=NOW) == (["nl-free-standard"], None)
+    assert _expected_codes_for_user(_user(), POLICY_NODES, now=NOW) == ([], None)
     assert observed == [NOW]
 
 

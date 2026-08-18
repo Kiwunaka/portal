@@ -75,8 +75,9 @@ function tone(value: string): Tone {
 
 function planLabel(value: string | null): string {
   const normalized = String(value || "").toLowerCase();
-  if (normalized === "paid") return "Платный";
-  if (normalized === "free") return "Бесплатный";
+  if (normalized === "paid") return "Оплачен";
+  if (normalized === "trial") return "Пробный";
+  if (normalized === "pending" || normalized === "free") return "Ожидает доступа";
   if (normalized === "manual") return "Ручной";
   return value || "Не указан";
 }

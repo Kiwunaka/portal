@@ -2547,6 +2547,28 @@ def _client_notification_read_ids(s, *, user: User) -> set[str]:
     return out
 
 
+def _client_notification_dismissed_ids(s, *, user: User) -> set[str]:
+    rows = (
+        s.query(Event)
+        .filter(Event.tg_id == int(user.tg_id))
+        .filter(Event.event_name == "client_notification_dismissed")
+        .order_by(Event.created_at.desc(), Event.id.desc())
+        .limit(200)
+        .all()
+    )
+    out: set[str] = set()
+    for row in rows:
+        try:
+            payload = json.loads(str(row.meta_json or "{}"))
+        except Exception:
+            payload = {}
+        for item in list((payload or {}).get("ids") or []):
+            value = str(item or "").strip()
+            if value:
+                out.add(value)
+    return out
+
+
 def _client_notification_items(
     *,
     user: User,
@@ -3547,6 +3569,7 @@ async def client_notifications(
             source="client_notifications_runtime",
         )
         read_ids = _client_notification_read_ids(s, user=user)
+        dismissed_ids = _client_notification_dismissed_ids(s, user=user)
         incidents = (
             s.query(ServiceIncident)
             .filter(ServiceIncident.status == "confirmed")
@@ -3593,6 +3616,7 @@ async def client_notifications(
             compensation_grants=compensation_grants,
             program_applications=program_applications,
         )
+        items = [item for item in items if str(item.get("id") or "") not in dismissed_ids]
         return {
             "items": items,
             "nextCursor": None,
@@ -3619,6 +3643,31 @@ async def client_notifications_read(
             s,
             user=user,
             event_name="client_notification_read",
+            meta={"ids": ids},
+        )
+        s.commit()
+        return {"ok": True, "accepted": len(ids), "ignored": []}
+    finally:
+        s.close()
+
+
+@app.post("/api/client/notifications/dismiss")
+async def client_notifications_dismiss(
+    payload: ClientNotificationsReadIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    s, user, _auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        ids = []
+        for item in list(payload.ids or [])[:100]:
+            value = str(item or "").strip()
+            if value and value not in ids:
+                ids.append(value[:128])
+        _record_client_event(
+            s,
+            user=user,
+            event_name="client_notification_dismissed",
             meta={"ids": ids},
         )
         s.commit()

@@ -24,7 +24,7 @@ const SOURCE_LABELS: Record<string, string> = {
   node_metrics: "Метрики ноды",
   node_capacity: "Ёмкость ноды",
   provider_quota: "Лимит провайдера",
-  free_tier: "Бесплатный контур",
+  free_tier: "Архив FREE",
   security: "Безопасность",
   ru_probe: "RU-origin",
 };
@@ -75,7 +75,7 @@ function entityHref(alert: NetworkAlert): { href: string; label: string } | null
   if (alert.tg_id !== null) return { href: `/users?selected=${encodeURIComponent(String(alert.tg_id))}`, label: `Открыть пользователя ${alert.tg_id}` };
   if (alert.source === "provider_quota" && alert.node_code) return { href: `/provider-caps?selected=${encodeURIComponent(alert.node_code)}`, label: `Открыть лимит ${alert.node_code.toUpperCase()}` };
   if (alert.node_code) return { href: `/nodes?selected=${encodeURIComponent(alert.node_code)}`, label: `Открыть ноду ${alert.node_code.toUpperCase()}` };
-  if (alert.source === "free_tier") return { href: "/free-tier", label: "Открыть бесплатный контур" };
+  if (alert.source === "free_tier") return { href: "/free-tier", label: "Открыть архив FREE" };
   return null;
 }
 

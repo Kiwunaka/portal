@@ -87,22 +87,22 @@ export function FreeTierPage({ onShellStatus }: { onShellStatus?: (status: OpsSh
   return (
     <div className="ops-page space-y-3">
       <div className="ops-route-toolbar">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]"><Badge tone={resource.error ? "warning" : "info"}>Только бесплатный контур</Badge><span>Платный пул в расчёты и строки этого экрана не входит.</span></div>
+        <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]"><Badge tone={resource.error ? "warning" : "info"}>Архив, не тариф</Badge><span>Здесь только legacy-строки FREE; действующий доступ определяется как TRIAL, PAID или PENDING.</span></div>
         <Button tone="secondary" disabled={resource.loading || resource.refreshing} onClick={resource.reload}><RefreshCw size={15} className={resource.refreshing ? "animate-spin" : ""} /> Обновить</Button>
       </div>
 
-      <RouteBoundary loading={resource.loading} refreshing={resource.refreshing} error={resource.error} hasData={resource.data !== null} retryLabel="Повторить загрузку бесплатного контура" onRetry={resource.reload}>
+      <RouteBoundary loading={resource.loading} refreshing={resource.refreshing} error={resource.error} hasData={resource.data !== null} retryLabel="Повторить загрузку архива FREE" onRetry={resource.reload}>
         {resource.data ? (
           <div className="space-y-3">
-            <MetricStrip label="Сводка бесплатного контура">
-              <MetricCell icon={<UsersRound aria-hidden="true" size={17} />} label="Пользователи" value={<NumberValue value={summary?.free_users} digits={0} />} detail="Только FREE-контур" tone="info" />
+            <MetricStrip label="Сводка архива FREE">
+              <MetricCell icon={<UsersRound aria-hidden="true" size={17} />} label="Legacy-строки" value={<NumberValue value={summary?.free_users} digits={0} />} detail="Не продуктовый тариф" tone="info" />
               <MetricCell icon={<Gauge aria-hidden="true" size={17} />} label="Использовано" value={<NumberValue value={summary?.used_gb} suffix=" ГиБ" />} detail={finite(summary?.limit_gb_total) === null ? "Общий лимит недоступен" : `Из ${numberText(summary?.limit_gb_total, " ГиБ")}`} tone="success" />
               <MetricCell icon={<Flame aria-hidden="true" size={17} />} label="Суточный темп" value={<NumberValue value={summary?.burn_rate_gb_per_day} suffix=" ГиБ" digits={3} />} detail="По текущим циклам" tone="neutral" />
               <MetricCell icon={<TriangleAlert aria-hidden="true" size={17} />} label="У лимита" value={finite(summary?.near_cap_users) === null || finite(summary?.over_cap_users) === null ? <MissingData /> : Number(summary?.near_cap_users) + Number(summary?.over_cap_users)} detail="Near cap + over cap" tone={Number(summary?.near_cap_users || 0) + Number(summary?.over_cap_users || 0) > 0 ? "warning" : "success"} />
             </MetricStrip>
             <div className="ops-workspace lg:grid-cols-[minmax(19rem,0.58fr)_minmax(0,1.42fr)]">
               <Card>
-                <SectionTitle title="Темп расхода" description="Серверная сумма только по FREE-пользователям и их циклам." />
+                <SectionTitle title="Архивная телеметрия" description="Технические legacy-строки FREE. Они не означают действующий бесплатный тариф." />
                 <dl>
                   <Metric label="Расход в день" value={<NumberValue value={summary?.burn_rate_gb_per_day} suffix=" ГиБ" digits={3} />} hint={finite(summary?.burn_rate_gb_per_day) === null ? <MissingData inline /> : "По доступным rollup за текущие циклы"} />
                   <Metric label="Использовано всего" value={<NumberValue value={summary?.used_gb} suffix=" ГиБ" />} hint={<span>Из лимита <NumberValue value={summary?.limit_gb_total} suffix=" ГиБ" inline /></span>} />
@@ -115,8 +115,8 @@ export function FreeTierPage({ onShellStatus }: { onShellStatus?: (status: OpsSh
               </Card>
 
               <Card>
-                <div className="flex flex-wrap items-end justify-between gap-3"><SectionTitle title="Пользователи бесплатного контура" description="Только строки FREE, без подмешивания платных пользователей." /><label className="relative block min-w-[240px] text-xs font-semibold">Поиск<span className="pointer-events-none absolute bottom-3 left-3 text-[color:var(--atlas-text-muted)]"><Search size={14} /></span><input type="search" aria-label="Поиск в бесплатном контуре" value={urlState.q} onChange={(event) => replaceUrlState<FreeUrlState>({ q: event.target.value }, FREE_URL_CODECS)} placeholder="Telegram ID или имя" className="mt-1 min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] pl-9 pr-3 outline-none focus:border-[color:var(--atlas-focus)]" /></label></div>
-                {resource.data.users.length ? <DataTable data={resource.data.users} columns={columns} empty="Нет пользователей" /> : <EmptyState description={urlState.q ? "По этому запросу бесплатные пользователи не найдены." : "Сервер вернул пустой FREE-список. Это не считается нулевым расходом."} />}
+                <div className="flex flex-wrap items-end justify-between gap-3"><SectionTitle title="Архив FREE" description="Сырой тип хранения для миграции. Фактический доступ смотрите как TRIAL, PAID или PENDING в разделе пользователей." /><label className="relative block min-w-[240px] text-xs font-semibold">Поиск<span className="pointer-events-none absolute bottom-3 left-3 text-[color:var(--atlas-text-muted)]"><Search size={14} /></span><input type="search" aria-label="Поиск в архиве FREE" value={urlState.q} onChange={(event) => replaceUrlState<FreeUrlState>({ q: event.target.value }, FREE_URL_CODECS)} placeholder="Telegram ID или имя" className="mt-1 min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] pl-9 pr-3 outline-none focus:border-[color:var(--atlas-focus)]" /></label></div>
+                {resource.data.users.length ? <DataTable data={resource.data.users} columns={columns} empty="Нет legacy-строк" /> : <EmptyState description={urlState.q ? "По этому запросу legacy-строки не найдены." : "Сервер вернул пустой архив FREE. Это не считается нулевым расходом."} />}
                 <p className="mt-3 text-xs text-[color:var(--atlas-text-muted)]">Всего по серверному фильтру: <NumberValue value={resource.data.total} digits={0} inline />. Источник: {summary?.source || <MissingData inline />}.</p>
               </Card>
             </div>
