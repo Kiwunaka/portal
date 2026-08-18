@@ -1063,8 +1063,10 @@ def test_remote_brain_promo_grant_premium_days_backs_up_excludes_manuals_and_res
     joined = "\n".join(fake.commands)
     assert "mkdir -p /root/backups" in joined
     assert 'sqlite3 /root/portal_bot/portal.db ".backup /root/backups/portal.db.promo-' in joined
-    assert "where lower(coalesce(sub_type,''))!='manual';" in joined
-    assert "upper(coalesce(sub_type,''))='FREE'" in joined
+    assert "where lower(coalesce(sub_type,''))!='manual'" in joined
+    assert "coalesce(is_manual,0)=0 and created_by_admin is null" in joined
+    assert "upper(coalesce(sub_type,'')) in ('','FREE','PENDING')" in joined
+    assert "then 'admin_grant' else current_plan_code end" in joined
     assert "select 'users_manual=' || count(*)" in joined
     assert "systemctl restart portal-api" in joined
     assert "systemctl is-active portal-bot" in joined

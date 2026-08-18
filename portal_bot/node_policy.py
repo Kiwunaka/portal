@@ -593,7 +593,14 @@ def user_uses_free_pool(user: Any, *, now: datetime | None = None) -> bool:
     if plan_code in _PREMIUM_PLAN_CODES:
         return False
     if sub_type in {"", "PENDING"}:
-        return True
+        current_now = _normalize_utc_naive(now) or _utcnow()
+        expiry = _normalize_utc_naive(getattr(user, "expiry_at", None))
+        has_active_entitlement = (
+            bool(getattr(user, "is_active", False))
+            and expiry is not None
+            and expiry > current_now
+        )
+        return not has_active_entitlement
     if sub_type.startswith("TRIAL"):
         return False
     if sub_type.startswith("BONUS") or sub_type in {"CHANNEL_BONUS", "OPENING_BONUS", "FRIEND_GIFT"}:

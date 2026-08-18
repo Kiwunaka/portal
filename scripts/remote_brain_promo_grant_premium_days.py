@@ -82,8 +82,11 @@ def main() -> int:
         promo_sql = (
             "update users "
             f"set is_active=1, expiry_at='{expiry_str}', "
-            "sub_type=(case when upper(coalesce(sub_type,''))='FREE' then 'PAID' else sub_type end) "
-            "where lower(coalesce(sub_type,''))!='manual';"
+            "sub_type=(case when upper(coalesce(sub_type,'')) in ('','FREE','PENDING') then 'PAID' else sub_type end), "
+            "current_plan_code=(case when lower(coalesce(current_plan_code,'')) in "
+            "('','free','free_monthly','free_retired','trial') then 'admin_grant' else current_plan_code end) "
+            "where lower(coalesce(sub_type,''))!='manual' "
+            "and coalesce(is_manual,0)=0 and created_by_admin is null;"
             "select 'users_total=' || count(*) from users;"
             "select 'users_manual=' || count(*) from users where lower(coalesce(sub_type,''))='manual';"
             "select 'users_free=' || count(*) from users where upper(coalesce(sub_type,''))='FREE';"
@@ -109,4 +112,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -5207,11 +5207,20 @@ def _execute_admin_client_action_db(
         else:
             user.expiry_at = candidate
             user.is_active = True
+            if int(payload["delta_days"]) > 0 and not bool(state.public_snapshot.get("manual_test")):
+                sub_type = str(getattr(user, "sub_type", "") or "").strip().upper()
+                plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
+                if sub_type in {"", "FREE", "PENDING"}:
+                    user.sub_type = "PAID"
+                if plan_code in {"", "free", "free_monthly", "free_retired", "trial"}:
+                    user.current_plan_code = "admin_grant"
         session.flush()
         return {
             "expiry_at": _safe_iso(user.expiry_at),
             "is_active": bool(user.is_active),
             "delta_days": int(payload["delta_days"]),
+            "sub_type": str(getattr(user, "sub_type", "") or ""),
+            "current_plan_code": str(getattr(user, "current_plan_code", "") or ""),
         }
 
     if action == "user.key_limits":

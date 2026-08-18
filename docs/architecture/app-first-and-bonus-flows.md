@@ -847,6 +847,8 @@ Rules:
 - `paid_unlimited` remains unlimited traffic with device limit `5`
 - premium-grade access states `trial_premium`, `bonus_premium`, and `paid_unlimited` must use the paid pool: all enabled non-free delivery nodes
 - backend-facing `node_policy` resolves premium-grade access to `paid_pool`; when free delivery is disabled it resolves no free node at all
+- an active, unexpired legacy `PENDING` or empty subscription projection follows the same paid-pool decision as its effective premium access state; it must not show active premium in the client while profile delivery searches the disabled free pool
+- a positive admin day grant for a non-manual account normalizes legacy empty, `FREE`, or `PENDING` subscription metadata to `PAID`; missing or free/trial plan metadata becomes `admin_grant`, while manual test accounts keep their explicit `MANUAL` identity
 - desired-state provisioning places only active premium/trial/paid keys on enabled paid nodes; expired/free-retired keys are revoked and must not be rerouted to paid or `operator_lab`
 
 ## Runtime Notes

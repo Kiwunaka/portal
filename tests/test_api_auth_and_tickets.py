@@ -3007,6 +3007,41 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         r2 = self.client.post("/api/nodes/diagnostics/run", headers=user_hdrs)
         self.assertEqual(r2.status_code, 429, r2.text)
 
+    def test_admin_positive_grant_normalizes_legacy_pending_entitlement(self) -> None:
+        from db import SessionLocal
+        from models import User
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).one()
+            user.sub_type = "PENDING"
+            user.current_plan_code = None
+            user.is_active = True
+            user.expiry_at = self.api._utcnow() + timedelta(days=1)
+            s.commit()
+        finally:
+            s.close()
+
+        response = self._execute_admin_intent(
+            action="user.extend",
+            target_type="user",
+            target_id=1001,
+            method="POST",
+            path="/api/admin/users/1001/manual/extend",
+            payload={"delta_days": 7},
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["sub_type"], "PAID")
+        self.assertEqual(response.json()["current_plan_code"], "admin_grant")
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).one()
+            self.assertEqual(user.sub_type, "PAID")
+            self.assertEqual(user.current_plan_code, "admin_grant")
+        finally:
+            s.close()
+
     def test_admin_manual_user_crud_flow(self) -> None:
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 

@@ -472,6 +472,46 @@ class PortalApiTests(unittest.TestCase):
         out = api._nodes_for_user(user, nodes)
         self.assertEqual([n.code for n in out], ["nl", "it"])
 
+    def test_nodes_for_active_legacy_pending_user_use_premium_pool(self) -> None:
+        import importlib
+
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        user = SimpleNamespace(
+            tg_id=1003,
+            sub_type="PENDING",
+            current_plan_code=None,
+            is_active=True,
+            expiry_at=api._utcnow() + timedelta(days=7),
+        )
+        nodes = [
+            SimpleNamespace(code="free"),
+            SimpleNamespace(code="de"),
+            SimpleNamespace(code="nl"),
+        ]
+
+        out = api._nodes_for_user(user, nodes)
+
+        self.assertEqual([n.code for n in out], ["de", "nl"])
+
+    def test_nodes_for_expired_legacy_pending_user_stay_fail_closed(self) -> None:
+        import importlib
+
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        user = SimpleNamespace(
+            tg_id=1004,
+            sub_type="PENDING",
+            current_plan_code=None,
+            is_active=True,
+            expiry_at=api._utcnow() - timedelta(seconds=1),
+        )
+        nodes = [SimpleNamespace(code="free"), SimpleNamespace(code="de")]
+
+        self.assertEqual(api._nodes_for_user(user, nodes), [])
+
     def test_nodes_for_free_user_fail_closed_while_free_delivery_is_disabled(self) -> None:
         import importlib
 
