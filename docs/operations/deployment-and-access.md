@@ -755,6 +755,7 @@ Status:
 Current canonical state:
 
 - the node (`151.245.217.23`) is disabled for POKROV consumer delivery; its free-pool membership, active free keys, mappings, and queued/running free-provisioning jobs are zero
+- the `2026-08-19` guarded retirement apply revoked the final residual free key and retired the remaining free-target rows; a post-apply plan and paid-node coverage readback both returned zero consumer drift. The retained database backups were created on Brain before mutation.
 - `x-ui.service`/Xray shutdown on that host is `BLOCKED_BY_ACCESS` until fresh node-side evidence is available; the canonical application and database do not route users there
 - `portal-mtproto.service` on `tcp/9443` is a separate Telegram-only compatibility service, not subscription delivery; its current runtime state also requires fresh node-side evidence
 - the previous `mini:443` MTProto attempt is disabled; if this compatibility proxy is retained, it stays isolated on the former free node
@@ -769,6 +770,17 @@ python scripts/remote_install_mtproto_proxy.py --node-code free --node-host 151.
 ```
 
 If the endpoint is deliberately restored and freshly verified, register `151.245.217.23:9443` or an approved DNS name that resolves to `151.245.217.23` and still uses port `9443`.
+
+### Scheduled release announcement
+
+Use `scripts/remote_schedule_release_announcement.py` only after the matching platform code is deployed and Brain readiness is green. The script accepts an explicit timezone-aware timestamp between two minutes and 24 hours ahead, uploads a `0600` config under `/root/portal_bot/ops-schedules/`, and creates a persistent one-shot systemd timer. At execution time the Brain job prepares and confirms the same guarded admin intents used by the operator UI:
+
+- `live_update.create` publishes the Russian in-app update card;
+- `broadcast.send` freezes the active Telegram audience and records delivered, retryable and terminal outcomes per recipient;
+- deterministic idempotency keys prevent a replay from duplicating either action;
+- the config is removed only after both guarded actions complete. Partial Telegram delivery remains retained evidence and exits nonzero.
+
+Never schedule before deploying `portal_bot/release_announcement_job.py`, and never place credentials, raw recipient identifiers or connection material in the config or systemd description.
 
 ### Feedback bot service install
 

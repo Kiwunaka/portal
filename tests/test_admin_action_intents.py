@@ -662,6 +662,8 @@ def test_resync_freezes_redacted_selection_and_uncertain_result_never_retries(
                 username=f"private-recipient-{index}",
                 sub_type="PAID",
                 current_plan_code="1_month",
+                expiry_at=datetime.now(timezone.utc).replace(tzinfo=None)
+                + timedelta(days=30),
                 is_active=True,
             )
             session.add(user)

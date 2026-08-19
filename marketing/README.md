@@ -22,6 +22,8 @@ the old webapp admin routes are a retained parity fallback only.
   pages continue to use `marketing/src/components/intent/intent-landing.tsx`.
 - `/checkout/` is the public hosted-checkout continuation entry.
 - `/install/` is the public install/help entry.
+- `/support/` is the short support entry and reuses the canonical
+  `/support/install/` task page instead of falling through to the homepage.
 - `/offer/` and `/privacy/` are legal pages.
 
 ## Surface Boundary
@@ -122,6 +124,8 @@ python -m pytest tests/test_frontend_text_integrity.py tests/test_public_copy_gu
 The public selected-feature catalog owns these static/export-safe routes:
 
 - `/status/` for current and recent operator-owned incidents;
+- `/support/` and `/support/install/` for the same compact installation and
+  connection-help task;
 - `/transparency/` for responsibility and field-level privacy facts;
 - `/fallback/` for official fallback-client guidance and the owner-approved
   temporary Apple account best-effort boundary;

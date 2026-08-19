@@ -775,7 +775,7 @@
     },
     "marketing.footer.link.channel": {
       "surface": "marketing.footer.link",
-      "ru": "Новости и бонус после оплаты",
+      "ru": "Новости и Telegram-бонус",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,

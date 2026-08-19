@@ -34,7 +34,7 @@ export default function PokrovAppGuidePage() {
 
       <section className="mx-auto flex max-w-6xl flex-col gap-4 px-4 pt-10 pb-8 sm:px-6 sm:pt-14">
         <span className="text-[0.8125rem] font-semibold tracking-[0.08em] text-brand uppercase">
-          {POKROV_SCREEN_ATLAS.length} экранов · поиск по кнопкам
+          {POKROV_SCREEN_ATLAS.length} экрана · поиск по кнопкам
         </span>
         <h1 className="max-w-4xl font-display text-[2.25rem] leading-[1.1] font-extrabold tracking-[-0.01em] text-ink sm:text-[2.75rem]">
           Найдите нужный экран POKROV

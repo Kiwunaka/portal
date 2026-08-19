@@ -106,7 +106,7 @@ export function GuidesClient() {
         </span>
         <span>
           <span className="block text-xs font-bold tracking-[0.08em] text-brand uppercase">
-            Отдельный атлас · {POKROV_SCREEN_ATLAS.length} экранов
+            Отдельный атлас · {POKROV_SCREEN_ATLAS.length} экрана
           </span>
           <span className="mt-1 block font-display text-lg font-bold text-ink">
             Весь POKROV: что делает каждая кнопка

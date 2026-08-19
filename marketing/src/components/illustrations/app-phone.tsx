@@ -9,15 +9,15 @@ const SCREENS: Record<
   { alt: string; src: string }
 > = {
   connect: {
-    alt: "Реальный главный экран POKROV VPN 1.0.6 на Android",
+    alt: "Реальный главный экран POKROV VPN на Android",
     src: "/app-screens/android-home-1.0.6.png",
   },
   locations: {
-    alt: "Реальный экран локаций POKROV VPN 1.0.6 на Android",
+    alt: "Реальный экран локаций POKROV VPN на Android",
     src: "/app-screens/android-locations-1.0.6.png",
   },
   account: {
-    alt: "Реальный экран профиля POKROV VPN 1.0.6 на Android",
+    alt: "Реальный экран профиля POKROV VPN на Android",
     src: "/app-screens/android-profile-1.0.6.png",
   },
 };
