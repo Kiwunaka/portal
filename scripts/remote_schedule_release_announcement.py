@@ -77,12 +77,12 @@ def main() -> int:
         "delete_after_success": True,
     }
 
-    ssh = connect_node(
+    ssh, _auth_method = connect_node(
+        code="brain",
         host=args.brain_ip,
         port=int(args.ssh_port),
-        username=str(args.ssh_user),
+        user=str(args.ssh_user),
         passwords_path=Path(args.passwords),
-        node_code="brain",
     )
     try:
         exists_code, exists_out, _exists_err = _run(
