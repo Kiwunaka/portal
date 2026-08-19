@@ -3311,7 +3311,7 @@ def grant_admin_paid_days(
     """Apply an operator grant as paid access, never as an extended trial."""
 
     grant_days = int(days)
-    if grant_days <= 0:
+    if grant_days < 0:
         return extend_user(tg_id, grant_days, 0)
 
     normalized_plan = str(plan_code or "admin_grant").strip().lower()[:32]
@@ -3335,8 +3335,12 @@ def grant_admin_paid_days(
             return False
         now = _utcnow()
         current_expiry = _naive_utc(user.expiry_at)
-        baseline = now if reset_from_now else max(current_expiry or now, now)
-        user.expiry_at = baseline + timedelta(days=grant_days)
+        if grant_days == 0:
+            if not bool(user.is_active) or current_expiry is None or current_expiry <= now:
+                return False
+        else:
+            baseline = now if reset_from_now else max(current_expiry or now, now)
+            user.expiry_at = baseline + timedelta(days=grant_days)
         user.is_active = True
         user.sub_type = "PAID"
         user.current_plan_code = normalized_plan

@@ -153,6 +153,35 @@ class BotPaywallTests(unittest.TestCase):
         self.bot_module = importlib.import_module("bot")
         importlib.reload(self.bot_module)
 
+    def test_zero_day_admin_reconciliation_keeps_expiry_and_replaces_trial_label(self) -> None:
+        expiry = self.bot_module._utcnow() + timedelta(days=29)
+        session = self.bot_module.Session()
+        try:
+            session.add(
+                self.bot_module.User(
+                    tg_id=9000000000013,
+                    username="app_000013",
+                    sub_type="PAID",
+                    current_plan_code="trial",
+                    expiry_at=expiry,
+                    is_active=True,
+                )
+            )
+            session.commit()
+        finally:
+            session.close()
+
+        self.assertTrue(self.bot_module.grant_admin_paid_days(9000000000013, 0))
+
+        session = self.bot_module.Session()
+        try:
+            user = session.query(self.bot_module.User).filter_by(tg_id=9000000000013).one()
+            self.assertEqual(user.current_plan_code, "admin_grant")
+            self.assertEqual(user.sub_type, "PAID")
+            self.assertEqual(user.expiry_at, expiry)
+        finally:
+            session.close()
+
     def test_android_download_rows_keep_arm64_primary_and_variants_secondary(self) -> None:
         old_armv7 = self.bot_module.APP_ANDROID_APK_ARMEABI_V7A_URL
         old_universal = self.bot_module.APP_ANDROID_APK_UNIVERSAL_URL
