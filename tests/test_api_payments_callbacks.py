@@ -3314,7 +3314,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
 
         public_rows = client.get("/api/public/live-updates")
         self.assertEqual(public_rows.status_code, 200, public_rows.text)
-        self.assertGreaterEqual(len(public_rows.json().get("updates", [])), 1)
+        self.assertEqual(public_rows.json().get("updates"), [])
 
         create_payload = {
                 "title": "Node maintenance completed",

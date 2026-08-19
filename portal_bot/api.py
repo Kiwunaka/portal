@@ -686,57 +686,7 @@ def _default_plan_catalog() -> list[dict[str, Any]]:
 
 
 def _default_live_updates() -> list[dict[str, Any]]:
-    channel = (PUBLIC_CHANNEL or "pokrov_vpn").lstrip("@")
-    return [
-        {
-            "id": 0,
-            "title": "Новые узлы NL/PL",
-            "summary": "Добавлены свежие точки доступа и обновлены рекомендации по клиентам.",
-            "date": "2026-02-14",
-            "link": f"https://t.me/{channel}/1",
-        },
-        {
-            "id": 0,
-            "title": "Промо-неделя для новых пользователей",
-            "summary": "Стартовые предложения и бонусы для участников канала проекта.",
-            "date": "2026-02-13",
-            "link": f"https://t.me/{channel}/2",
-        },
-        {
-            "id": 0,
-            "title": "Гайд по быстрому подключению",
-            "summary": "Обновили инструкции и deep links для популярных клиентов.",
-            "date": "2026-02-12",
-            "link": f"https://t.me/{channel}/3",
-        },
-    ]
-
-
-def _default_live_updates() -> list[dict[str, Any]]:
-    channel = (PUBLIC_CHANNEL or "pokrov_vpn").lstrip("@")
-    return [
-        {
-            "id": 0,
-            "title": "Новые точки подключения NL/PL",
-            "summary": "Обновили точки доступа и короткие рекомендации по старту для актуальных клиентов.",
-            "date": "2026-02-14",
-            "link": f"https://t.me/{channel}/1",
-        },
-        {
-            "id": 0,
-            "title": "Обновлён кабинет POKROV",
-            "summary": "Сделали поддержку, загрузки и checkout прямее и без лишнего шума.",
-            "date": "2026-02-13",
-            "link": f"https://t.me/{channel}/2",
-        },
-        {
-            "id": 0,
-            "title": "Короткий путь к запуску",
-            "summary": "Проверили быстрый вход через Telegram и обновили открывающие ссылки для новых пользователей.",
-            "date": "2026-02-12",
-            "link": f"https://t.me/{channel}/3",
-        },
-    ]
+    return []
 
 
 DEFAULT_WHEEL_CONFIG: dict[str, Any] = PAID_FORTNIGHTLY_DISCOUNTS_V3

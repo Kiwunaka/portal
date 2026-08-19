@@ -34,6 +34,7 @@ Status: `PASS` for the public current-origin journey and exact local client regr
 - the atlas counter used `22 экранов`; corrected to `22 экрана`;
 - illustration alt text carried a stale release number; version-specific text was removed;
 - the scheduled announcement summary initially read Telegram counts from the wrong layer of the guarded result; it now reports the persisted per-recipient totals and reason categories.
+- the stale active `POKROV 1.1.1` card was removed through a guarded admin intent, and the API fallback that fabricated three old placeholder updates was retired. Before the scheduled `1.1.5` publication, the public update list is now honestly empty.
 
 ## Access and server readback
 
