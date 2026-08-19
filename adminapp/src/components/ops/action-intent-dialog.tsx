@@ -121,6 +121,11 @@ const FIELD_LABELS: Record<string, string> = {
   referrer_tg_id: "Реферер",
   referred_tg_id: "Приглашённый",
   decision_basis: "Основание решения",
+  title: "Заголовок",
+  summary: "Краткий текст",
+  link: "Ссылка",
+  sort_order: "Приоритет показа",
+  source_draft_id: "Черновик новости",
 };
 
 function valueText(value: unknown, field: string): string {

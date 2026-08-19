@@ -4861,6 +4861,27 @@ def _model_change_preview(state: EntityState, _payload: Mapping[str, Any]) -> di
     )
 
 
+def _live_update_preview(state: EntityState, _payload: Mapping[str, Any]) -> dict[str, Any]:
+    mode = str(state.context.get("mode") or "update").strip().lower()
+    challenge = str(state.context.get("challenge") or "").strip()
+    titles = {
+        "create": "Опубликовать новость",
+        "update": f"Изменить новость {challenge}",
+        "delete": f"Удалить новость {challenge}",
+    }
+    summaries = {
+        "create": "Будет создана новая пользовательская карточка новости.",
+        "update": "Будет изменена существующая пользовательская карточка новости.",
+        "delete": "Пользовательская карточка новости будет удалена.",
+    }
+    return _simple_preview(
+        titles.get(mode, "Изменить новость"),
+        state.public_snapshot,
+        state.context.get("after_snapshot"),
+        [summaries.get(mode, "Сервер зафиксировал текущую версию новости перед изменением.")],
+    )
+
+
 def _normalize_live_update_runtime(
     payload: Mapping[str, Any],
     *,
@@ -6364,7 +6385,7 @@ ACTION_POLICIES.update(
             payload_normalizer=_normalize_live_update_create_payload,
             runtime_payload_normalizer=_normalize_live_update_create_runtime,
             entity_state_builder=_live_update_create_state,
-            preview_builder=_model_change_preview,
+            preview_builder=_live_update_preview,
             challenge_kind="exact_phrase",
             challenge_builder=_l2_challenge,
             executor_kind="db",
@@ -6377,7 +6398,7 @@ ACTION_POLICIES.update(
             payload_normalizer=_normalize_live_update_update_payload,
             runtime_payload_normalizer=_normalize_live_update_update_runtime,
             entity_state_builder=_live_update_update_state,
-            preview_builder=_model_change_preview,
+            preview_builder=_live_update_preview,
             challenge_kind="exact_phrase",
             challenge_builder=_l2_challenge,
             executor_kind="db",
@@ -6389,7 +6410,7 @@ ACTION_POLICIES.update(
             risk_level="L3",
             payload_normalizer=_normalize_empty_payload,
             entity_state_builder=_live_update_delete_state,
-            preview_builder=_model_change_preview,
+            preview_builder=_live_update_preview,
             challenge_kind="exact_live_update_id",
             challenge_builder=_context_target_challenge,
             executor_kind="db",

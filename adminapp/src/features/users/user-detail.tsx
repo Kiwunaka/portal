@@ -11,11 +11,12 @@ import { formatSourceAge } from "@/lib/ops-status/presentation";
 
 import { UserActions } from "./user-actions";
 
-export const USER_DETAIL_TABS = ["overview", "keys", "payments", "tickets", "risk", "audit", "investigation"] as const;
+export const USER_DETAIL_TABS = ["overview", "events", "keys", "payments", "tickets", "risk", "audit", "investigation"] as const;
 export type UserDetailTab = typeof USER_DETAIL_TABS[number];
 
 const TAB_LABELS: Record<UserDetailTab, string> = {
   overview: "Обзор",
+  events: "События приложения",
   keys: "Ключи",
   payments: "Платежи",
   tickets: "Тикеты",
@@ -54,6 +55,10 @@ function statusLabel(value: string): string {
     pending: "Ожидает",
     created: "Создан",
     failed: "Ошибка",
+    failure: "Ошибка",
+    error: "Ошибка",
+    success: "Успешно",
+    timeout: "Таймаут",
     ok: "Норма",
     watch: "Наблюдение",
     suspicious: "Подозрение",
@@ -67,10 +72,33 @@ function statusLabel(value: string): string {
 
 function tone(value: string): Tone {
   const normalized = value.toLowerCase();
-  if (["blocked", "failed", "suspicious", "high", "critical"].includes(normalized)) return "danger";
+  if (["blocked", "failed", "failure", "error", "suspicious", "high", "critical"].includes(normalized)) return "danger";
   if (["expired", "watch", "medium", "pending", "created", "in_progress"].includes(normalized)) return "warning";
-  if (["active", "ok", "paid", "closed", "low"].includes(normalized)) return "success";
+  if (["active", "ok", "success", "paid", "closed", "low"].includes(normalized)) return "success";
   return "neutral";
+}
+
+function eventLabel(value: string): string {
+  const labels: Record<string, string> = {
+    app_bootstrap: "Запуск приложения",
+    clicked_connect: "Нажал «Подключить»",
+    connected_ok: "Подключение подтверждено",
+    connect_failed: "Подключение не удалось",
+    runtime_start_failed: "Core не запустился",
+    runtime_start_after_permission_failed: "Не запустилось после разрешения Windows",
+    desktop_competing_vpn_active: "Обнаружен другой VPN",
+    desktop_tun_start_failed: "Не запустился Windows TUN",
+    update_check_failed: "Не удалось проверить обновление",
+    config_import_attempted: "Попытка импорта профиля",
+    subscription_numeric_fallback: "Резервный разбор подписки",
+  };
+  return labels[value] || value.replaceAll("_", " ");
+}
+
+function durationText(value: number | null): string {
+  if (value === null) return "—";
+  if (value < 1000) return `${value} мс`;
+  return `${new Intl.NumberFormat("ru-RU", { maximumFractionDigits: 1 }).format(value / 1000)} с`;
 }
 
 function planLabel(value: string | null): string {
@@ -293,6 +321,26 @@ export function UserDetail({
                 <Badge key="sub" tone={key.subIdMatches === null ? "warning" : key.subIdMatches ? "success" : "danger"}>{key.subIdMatches === null ? "Нет данных" : key.subIdMatches ? "Синхронизирована" : "Не совпадает"}</Badge>,
                 key.panelState === "error" ? "Панель не ответила" : key.lastOnlineAt ? formatSourceAge(key.lastOnlineAt) : "Возраст неизвестен",
               ])} />
+            </div>
+          ) : null}
+
+          {tab === "events" ? (
+            <div>
+              <SectionTitle title="Последние события приложения" description="До 100 безопасных событий: шаг, версия клиента, результат и нормализованная причина. Токены, ключи, адреса сайтов и произвольные payload сюда не попадают." />
+              <DetailTable headers={["Время", "Событие", "Результат", "Клиент", "Этап", "Длительность"]} empty="Приложение ещё не отправляло диагностические события для этого аккаунта." rows={data.appEvents.map((event) => {
+                const result = event.result || (event.errorCode ? "error" : "unknown");
+                const client = [event.platform, event.appVersion ? `v${event.appVersion}${event.buildNumber ? `+${event.buildNumber}` : ""}` : null].filter(Boolean).join(" · ") || "Не указан";
+                const stage = [event.subsystem, event.stage, event.networkClass].filter(Boolean).join(" · ") || "Не указан";
+                const error = [event.errorCategory, event.errorCode].filter(Boolean).join(" / ");
+                return [
+                  dateText(event.occurredAt || event.receivedAt),
+                  <div key="event"><div className="font-semibold">{eventLabel(event.eventName)}</div><div className="mt-1 font-mono text-[11px] text-[color:var(--atlas-text-muted)]">{event.eventName}</div></div>,
+                  <div key="result"><Badge tone={tone(result)}>{statusLabel(result)}</Badge>{error ? <div className="mt-1 max-w-64 break-words font-mono text-[11px] text-[color:var(--atlas-status-danger-text)]">{error}</div> : null}</div>,
+                  client,
+                  stage,
+                  durationText(event.durationMs),
+                ];
+              })} />
             </div>
           ) : null}
 

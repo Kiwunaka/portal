@@ -4901,7 +4901,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
 
     def test_admin_user_card_exposes_online_now_summary_and_current_nodes(self) -> None:
         from db import SessionLocal
-        from models import Node, ObserverUserState, User, UserNode
+        from models import Event, Node, ObserverUserState, User, UserNode
 
         admin_hdrs = {"X-Telegram-Init-Data": self._init_data(9999, "admin")}
 
@@ -4963,6 +4963,27 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
                     UserNode(tg_id=1001, node_id=us.id, client_uuid=str(user.uuid), panel_email=str(user.email)),
                     UserNode(tg_id=1001, node_id=nl.id, client_uuid=str(user.uuid), panel_email=str(user.email)),
                 ]
+            )
+            s.add(
+                Event(
+                    tg_id=1001,
+                    event_name="runtime_start_failed",
+                    source="app",
+                    platform="windows",
+                    app_version="1.1.5",
+                    build_number="28",
+                    subsystem="runtime",
+                    stage="core_start",
+                    result="failure",
+                    error_category="runtime",
+                    error_code="desktop_tun_start_failed",
+                    retryable=True,
+                    attempt_number=2,
+                    duration_ms=5400,
+                    network_class="wifi",
+                    meta_json='{"raw_config":"must-not-leak","site":"example.test"}',
+                    occurred_at=_utcnow(),
+                )
             )
             s.add(
                 ObserverUserState(
@@ -5062,6 +5083,15 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             self.assertEqual(int(key_rows["pl"].get("current_connections") or 0), 3)
             self.assertEqual(int(key_rows["us"].get("current_connections") or 0), 1)
             self.assertEqual(int(key_rows["nl"].get("current_connections") or 0), 0)
+            app_events = body.get("app_events") or []
+            runtime_event = next(row for row in app_events if row.get("event_name") == "runtime_start_failed")
+            self.assertEqual(runtime_event.get("platform"), "windows")
+            self.assertEqual(runtime_event.get("app_version"), "1.1.5")
+            self.assertEqual(runtime_event.get("error_code"), "desktop_tun_start_failed")
+            self.assertEqual(runtime_event.get("duration_ms"), 5400)
+            self.assertNotIn("meta_json", runtime_event)
+            self.assertNotIn("raw_config", response.text)
+            self.assertNotIn("example.test", response.text)
         finally:
             self.api.ControlPanel = original_panel
 

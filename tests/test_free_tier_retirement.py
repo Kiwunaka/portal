@@ -56,6 +56,7 @@ def test_effective_access_status_has_only_trial_paid_pending() -> None:
     cases = [
         ("FREE", "trial", now + timedelta(days=5), True, "TRIAL"),
         ("PAID", "admin_grant", now + timedelta(days=30), True, "PAID"),
+        ("PAID", "trial", now + timedelta(days=30), True, "PAID"),
         ("BONUS", "reward_wheel", now + timedelta(days=1), True, "PAID"),
         ("FREE", "channel_bonus", now + timedelta(days=5), True, "PAID"),
         ("FREE", "free_retired", now, True, "PENDING"),

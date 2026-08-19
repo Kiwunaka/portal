@@ -599,6 +599,11 @@ def effective_user_access_status(user: Any, *, now: datetime | None = None) -> s
 
     sub_type = str(getattr(user, "sub_type", "") or "").strip().upper()
     plan_code = str(getattr(user, "current_plan_code", "") or "").strip().lower()
+    # Explicit paid authority wins over a stale legacy plan label. Older
+    # administrator flows could promote sub_type without replacing `trial`;
+    # treating that contradictory row as a trial hid paid access in clients.
+    if sub_type in {"PAID", "MANUAL", "VIP", "PRO"}:
+        return "PAID"
     if plan_code == "trial" or sub_type.startswith("TRIAL"):
         return "TRIAL"
 

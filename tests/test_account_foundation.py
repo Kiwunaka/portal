@@ -157,6 +157,34 @@ def test_account_foundation_models_cover_release_contract() -> None:
     } <= set(tables["antiabuse_events"].c.keys())
 
 
+def test_updated_legacy_user_refreshes_existing_access_snapshot(tmp_path: Path) -> None:
+    engine, session = _session_for(tmp_path)
+    now = datetime(2026, 8, 19, 12, 0, 0)
+    user = _user(7013, now=now, plan="trial", expiry_days=5)
+    session.add(user)
+    session.flush()
+
+    ensure_user_account_foundation(session, user, now=now)
+    session.flush()
+    snapshot = session.query(EntitlementGrant).filter_by(source="legacy_snapshot").one()
+    assert snapshot.plan_code == "trial"
+
+    paid_expiry = now + timedelta(days=35)
+    user.sub_type = "PAID"
+    user.current_plan_code = "admin_grant"
+    user.expiry_at = paid_expiry
+    ensure_user_account_foundation(session, user, now=now + timedelta(minutes=1))
+    session.flush()
+
+    refreshed = session.query(EntitlementGrant).filter_by(id=snapshot.id).one()
+    assert refreshed.status == "active"
+    assert refreshed.plan_code == "admin_grant"
+    assert refreshed.expires_at == paid_expiry
+    assert session.query(EntitlementGrant).filter_by(source="legacy_snapshot").count() == 1
+    session.close()
+    engine.dispose()
+
+
 def test_legacy_entitlement_table_is_preserved_beside_account_ledger(tmp_path: Path) -> None:
     engine = create_engine(f"sqlite:///{(tmp_path / 'legacy-entitlements.db').as_posix()}")
     with engine.begin() as connection:

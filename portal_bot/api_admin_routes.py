@@ -1060,6 +1060,29 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
             .limit(100)
             .all()
         )
+        event_identity_filters = [Event.tg_id == int(tg_id)]
+        account_id = str(getattr(user, "account_id", "") or "").strip()
+        if account_id:
+            event_identity_filters.append(Event.account_id == account_id)
+        recent_app_event_rows = (
+            s.query(Event)
+            .filter(or_(*event_identity_filters))
+            .filter(
+                or_(
+                    Event.platform.isnot(None),
+                    func.lower(func.coalesce(Event.source, "")).in_(
+                        ["app", "client", "android", "windows", "app_shell", "android_shell", "windows_shell"]
+                    ),
+                    func.lower(func.coalesce(Event.surface, "")).in_(["app", "client"]),
+                )
+            )
+            .order_by(
+                func.coalesce(Event.occurred_at, Event.received_at, Event.created_at).desc(),
+                Event.id.desc(),
+            )
+            .limit(100)
+            .all()
+        )
         payment_order_rows = (
             s.query(ExternalOrder)
             .filter(ExternalOrder.tg_id == int(tg_id))
@@ -1126,6 +1149,30 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
                 "created_at": _safe_iso(row.created_at),
             }
             for row in recent_admin_rows
+        ]
+        app_event_payload = [
+            {
+                "id": int(row.id),
+                "event_name": str(row.event_name or "")[:64],
+                "source": str(row.source or "unknown")[:32],
+                "platform": str(row.platform or "")[:24] or None,
+                "app_version": str(row.app_version or "")[:32] or None,
+                "build_number": str(row.build_number or "")[:24] or None,
+                "surface": str(row.surface or "")[:32] or None,
+                "subsystem": str(row.subsystem or "")[:32] or None,
+                "stage": str(row.stage or "")[:64] or None,
+                "result": str(row.result or "")[:24] or None,
+                "error_category": str(row.error_category or "")[:32] or None,
+                "error_code": str(row.error_code or "")[:64] or None,
+                "retryable": bool(row.retryable) if row.retryable is not None else None,
+                "attempt_number": int(row.attempt_number) if row.attempt_number is not None else None,
+                "duration_ms": int(row.duration_ms) if row.duration_ms is not None else None,
+                "network_class": str(row.network_class or "")[:24] or None,
+                "clock_skew_state": str(row.clock_skew_state or "")[:24] or None,
+                "occurred_at": _safe_iso(row.occurred_at),
+                "received_at": _safe_iso(row.received_at or row.created_at),
+            }
+            for row in recent_app_event_rows
         ]
         payment_order_payload = [_admin_payment_order_payload(s=s, order=row) for row in payment_order_rows]
     finally:
@@ -1200,6 +1247,7 @@ async def admin_user_card(tg_id: int, x_telegram_init_data: str = Header(default
         "key_policies": policy_payload,
         "key_history": history_payload,
         "admin_actions": recent_admin_payload,
+        "app_events": app_event_payload,
         "payment_orders": payment_order_payload,
         "risk": risk,
         "observer": observer_summary_payload,

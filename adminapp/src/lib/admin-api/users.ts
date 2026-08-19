@@ -152,6 +152,28 @@ export type AdminUserAuditItem = {
   createdAt: string | null;
 };
 
+export type AdminUserAppEvent = {
+  id: number;
+  eventName: string;
+  source: string;
+  platform: string | null;
+  appVersion: string | null;
+  buildNumber: string | null;
+  surface: string | null;
+  subsystem: string | null;
+  stage: string | null;
+  result: string | null;
+  errorCategory: string | null;
+  errorCode: string | null;
+  retryable: boolean | null;
+  attemptNumber: number | null;
+  durationMs: number | null;
+  networkClass: string | null;
+  clockSkewState: string | null;
+  occurredAt: string | null;
+  receivedAt: string | null;
+};
+
 export type AdminUserDetail = {
   user: AdminUserIdentity;
   summary: AdminUserSummary;
@@ -160,6 +182,7 @@ export type AdminUserDetail = {
   payments: AdminUserPayment[];
   keyHistory: AdminUserAuditItem[];
   adminActions: AdminUserAuditItem[];
+  appEvents: AdminUserAppEvent[];
   observer: AdminUserObserverSummary;
   risk: AdminUserRisk;
 };
@@ -367,6 +390,31 @@ function mapAudit(value: unknown): AdminUserAuditItem {
   };
 }
 
+function mapAppEvent(value: unknown): AdminUserAppEvent {
+  const row = record(value);
+  return {
+    id: positiveId(row.id),
+    eventName: text(row.event_name),
+    source: text(row.source) || "unknown",
+    platform: optionalText(row.platform),
+    appVersion: optionalText(row.app_version),
+    buildNumber: optionalText(row.build_number),
+    surface: optionalText(row.surface),
+    subsystem: optionalText(row.subsystem),
+    stage: optionalText(row.stage),
+    result: optionalText(row.result),
+    errorCategory: optionalText(row.error_category),
+    errorCode: optionalText(row.error_code),
+    retryable: typeof row.retryable === "boolean" ? row.retryable : null,
+    attemptNumber: optionalNumber(row.attempt_number),
+    durationMs: optionalNumber(row.duration_ms),
+    networkClass: optionalText(row.network_class),
+    clockSkewState: optionalText(row.clock_skew_state),
+    occurredAt: optionalText(row.occurred_at),
+    receivedAt: optionalText(row.received_at),
+  };
+}
+
 export async function fetchUsers(
   params: { q?: string; status?: UserListStatus; sort?: UserListSort; limit?: number; offset?: number } = {},
   init?: ApiRequestInit,
@@ -400,6 +448,7 @@ export async function fetchUserDetail(tgId: number, init?: ApiRequestInit): Prom
     payments: records(payload.payment_orders).map(mapPayment).filter((payment) => payment.id > 0),
     keyHistory: records(payload.key_history).map(mapAudit).filter((item) => item.id > 0),
     adminActions: records(payload.admin_actions).map(mapAudit).filter((item) => item.id > 0),
+    appEvents: records(payload.app_events).map(mapAppEvent).filter((item) => item.id > 0 && Boolean(item.eventName)),
     observer: mapObserver(payload.observer),
     risk: mapRisk(payload.risk),
   };

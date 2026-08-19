@@ -1840,9 +1840,15 @@ async def admin_add_days(callback: CallbackQuery):
     tg_id = int(parts[3])
     days = int(parts[4])
 
-    extend_user(tg_id, days, 0)
+    updated = grant_admin_paid_days(tg_id, days)
+    if not updated:
+        await callback.answer("❌ Пользователь не найден", show_alert=True)
+        return
     if days >= 0:
-        await callback.answer(f"✅ Добавлено {days} дней!")
+        sync_results = await sync_admin_paid_user_nodes(tg_id)
+        failed = sum(1 for ok in sync_results.values() if not ok)
+        suffix = f" Узлы: ошибок {failed}." if failed else ""
+        await callback.answer(f"✅ Добавлено {days} дней!{suffix}")
     else:
         await callback.answer(f"✅ Списано {abs(days)} дней.")
 
@@ -2315,7 +2321,6 @@ async def admin_tariff_menu(callback: CallbackQuery):
     p9 = int(TARIFFS["9_months"]["stars"])
     p12 = int(TARIFFS["12_months"]["stars"])
     kb = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🆓 Бесплатный (соцсети + AI)", callback_data=f"adm_set_{tg_id}_trial")],
         [InlineKeyboardButton(text=f"📅 1 Месяц ({p1} Stars)", callback_data=f"adm_set_{tg_id}_1_month")],
         [InlineKeyboardButton(text=f"📅 3 Месяца ({p3} Stars)", callback_data=f"adm_set_{tg_id}_3_months")],
         [InlineKeyboardButton(text=f"📅 6 Месяцев ({p6} Stars)", callback_data=f"adm_set_{tg_id}_6_months")],
@@ -2402,6 +2407,13 @@ async def admin_set_tariff(callback: CallbackQuery, bot: Bot):
     else:
         tariff_key = parts[3]
 
+    if tariff_key == "trial":
+        await callback.answer(
+            "Пробный доступ выдаётся только автоматически при первом запуске.",
+            show_alert=True,
+        )
+        return
+
     # Pre-defined presets logic based on TARIFFS constant to avoid duplication
     preset = None
     if tariff_key in TARIFFS:
@@ -2416,25 +2428,20 @@ async def admin_set_tariff(callback: CallbackQuery, bot: Bot):
     if user:
         target_sub = _normalize_sub_type(t.get("sub_type") or tariff_key)
         old_sub = _normalize_sub_type(user.sub_type)
-        if _is_freemium_sub_type(old_sub) and target_sub == "PAID":
-            reset_user_expiry_from_now(tg_id, preset["days"], 0)
-        else:
-            # Default behavior: extend from current expiry.
-            extend_user(tg_id, preset["days"], 0)
-
-        # Update plan in DB (keep internal sub_type consistent with TARIFFS, so wheel/logic works).
-        session = Session()
-        db_user = session.query(User).filter_by(tg_id=tg_id).first()
-        if db_user:
-            db_user.sub_type = t.get("sub_type") or tariff_key.upper()
-            db_user.total_gb = preset["gb"]
-            if _is_freemium_sub_type(db_user.sub_type):
-                mark_user_became_free(db_user)
-            session.commit()
-        session.close()
+        updated = grant_admin_paid_days(
+            tg_id,
+            preset["days"],
+            plan_code=tariff_key,
+            reset_from_now=_is_freemium_sub_type(old_sub) and target_sub == "PAID",
+            total_gb=preset["gb"],
+        )
+        if not updated:
+            await callback.answer("❌ Пользователь не найден")
+            return
 
         # SET traffic on panel (not add) - this resets used to 0 and sets new limit
         await panel.set_tariff_traffic(tg_id, preset["gb"])
+        await sync_admin_paid_user_nodes(tg_id)
 
         await callback.answer(f"✅ Установлен тариф: {preset['name']}")
     else:

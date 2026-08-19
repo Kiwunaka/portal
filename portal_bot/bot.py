@@ -3300,6 +3300,58 @@ def extend_user(tg_id: int, days: int, stars: int) -> bool:
     return user is not None
 
 
+def grant_admin_paid_days(
+    tg_id: int,
+    days: int,
+    *,
+    plan_code: str = "admin_grant",
+    reset_from_now: bool = False,
+    total_gb: int | None = None,
+) -> bool:
+    """Apply an operator grant as paid access, never as an extended trial."""
+
+    grant_days = int(days)
+    if grant_days <= 0:
+        return extend_user(tg_id, grant_days, 0)
+
+    normalized_plan = str(plan_code or "admin_grant").strip().lower()[:32]
+    if not normalized_plan or normalized_plan in {
+        "free",
+        "free_monthly",
+        "free_retired",
+        "trial",
+    }:
+        normalized_plan = "admin_grant"
+
+    session = Session()
+    try:
+        user = (
+            session.query(User)
+            .filter_by(tg_id=int(tg_id))
+            .with_for_update()
+            .first()
+        )
+        if user is None:
+            return False
+        now = _utcnow()
+        current_expiry = _naive_utc(user.expiry_at)
+        baseline = now if reset_from_now else max(current_expiry or now, now)
+        user.expiry_at = baseline + timedelta(days=grant_days)
+        user.is_active = True
+        user.sub_type = "PAID"
+        user.current_plan_code = normalized_plan
+        if total_gb is not None:
+            user.total_gb = max(0, int(total_gb))
+        ensure_user_account_foundation(session, user, now=now)
+        session.commit()
+        return True
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
 def reset_user_expiry_from_now(tg_id: int, days: int, stars: int) -> bool:
     session = Session()
     user = session.query(User).filter_by(tg_id=tg_id).first()
@@ -3350,6 +3402,38 @@ def audit_admin(actor_tg_id: int, action: str, target_tg_id: int | None = None, 
 # ==========================================
 # Multi-node panel operations are handled by ControlPanel (portal_bot/control_panel.py).
 panel = ControlPanel()
+
+
+async def sync_admin_paid_user_nodes(tg_id: int) -> dict[str, bool]:
+    """Best-effort paid-pool sync after an administrator changes access."""
+
+    session = Session()
+    try:
+        user = session.query(User).filter_by(tg_id=int(tg_id)).first()
+        if user is None:
+            return {}
+        client_uuid = str(user.uuid or "")
+        email = str(user.email or f"User_{int(tg_id)}")
+        sub_id = str(user.sub_token or int(tg_id))
+        enabled = bool(user.is_active)
+    finally:
+        session.close()
+
+    try:
+        return await panel.ensure_user_on_all_nodes(
+            tg_id=int(tg_id),
+            client_uuid=client_uuid,
+            email=email,
+            sub_id=sub_id,
+            enable=enabled,
+        )
+    except Exception as exc:
+        logger.warning(
+            "admin paid node sync failed tg_id=%s error_type=%s",
+            int(tg_id),
+            type(exc).__name__,
+        )
+        return {}
 
 # ==========================================
 #               BOT HANDLERS

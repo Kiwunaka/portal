@@ -855,6 +855,10 @@ Rules:
 - backend-facing `node_policy` resolves premium-grade access to `paid_pool`; when free delivery is disabled it resolves no free node at all
 - an active, unexpired legacy `PENDING` or empty subscription projection follows the same paid-pool decision as its effective premium access state; it must not show active premium in the client while profile delivery searches the disabled free pool
 - a positive admin day grant for a non-manual account normalizes legacy empty, `FREE`, or `PENDING` subscription metadata to `PAID`; missing or free/trial plan metadata becomes `admin_grant`, while manual test accounts keep their explicit `MANUAL` identity
+- the Telegram administrator tariff picker exposes paid durations only. Trial
+  remains a one-time automatic first-device grant; stale callback buttons cannot
+  assign it manually. Telegram day grants and tariff changes normalize the
+  plan label in the same transaction and immediately request paid-node sync
 - desired-state provisioning places only active `TRIAL`/`PAID` keys on every
   enabled paid node; `PENDING`, expired, and free-retired keys are disabled and
   must not be rerouted to paid or `operator_lab`. A successful admin extension

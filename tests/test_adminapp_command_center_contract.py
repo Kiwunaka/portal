@@ -177,3 +177,18 @@ def test_accessibility_mobile_and_feature_boundaries_remain_explicit() -> None:
     boundary = (ADMINAPP / "src/components/ops/route-boundary.tsx").read_text(encoding="utf-8")
     assert "Технический код:" in boundary
     assert "ID обращения:" in boundary
+
+
+def test_user_card_exposes_safe_app_events_and_promo_scenarios_are_explained() -> None:
+    users = (ADMINAPP / "src/features/users/user-detail.tsx").read_text(encoding="utf-8")
+    users_api = (ADMINAPP / "src/lib/admin-api/users.ts").read_text(encoding="utf-8")
+    promos = (ADMINAPP / "src/features/revenue/campaign-slots-panel.tsx").read_text(encoding="utf-8")
+    intent = (ADMINAPP / "src/components/ops/action-intent-dialog.tsx").read_text(encoding="utf-8")
+
+    assert 'events: "События приложения"' in users
+    assert "Последние события приложения" in users
+    assert "appEvents: records(payload.app_events)" in users_api
+    assert "Сценарий блока" in promos
+    assert "Сценарий определяет назначение блока" in promos
+    for field in ("title", "summary", "link", "sort_order", "source_draft_id"):
+        assert f"  {field}:" in intent

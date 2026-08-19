@@ -49,7 +49,7 @@ def test_all_telegram_story_rows_keep_live_source_references() -> None:
             assert path.exists(), f"{row['canonical_id']} source ref is stale: {relative_path}"
 
 
-def test_main_bot_public_and_admin_story_triggers_remain_present() -> None:
+def test_main_bot_public_story_triggers_remain_present() -> None:
     bot = _read_main_bot_surface()
 
     _assert_contains(
@@ -85,6 +85,17 @@ def test_main_bot_public_and_admin_story_triggers_remain_present() -> None:
         ),
         context="main bot public triggers",
     )
+
+
+def test_main_bot_admin_story_and_paid_grant_contracts_remain_present() -> None:
+    bot = _read_main_bot_surface()
+
+    assert "grant_admin_paid_days(tg_id, days)" in bot
+    assert "sync_admin_paid_user_nodes(tg_id)" in bot
+    assert "plan_code=tariff_key" in bot
+    assert "current_plan_code = normalized_plan" in bot
+    assert "Бесплатный (соцсети + AI)" not in bot
+    assert "Пробный доступ выдаётся только автоматически" in bot
     _assert_contains(
         bot,
         (

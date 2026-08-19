@@ -39,8 +39,22 @@ function contentLabel(value: string): string {
     redeem_key: "Активация ключа",
     support_recovery: "Поддержка",
     telegram_bonus: "Telegram-бонус",
+    release_update: "Обновление приложения",
+    incident_notice: "Сервисное сообщение",
   };
   return labels[value] || value;
+}
+
+function contentDescription(value: string): string {
+  const descriptions: Record<string, string> = {
+    partner_promo: "Обычная акция или партнёрское предложение с вашей кнопкой и ссылкой.",
+    redeem_key: "Ведёт пользователя к вводу купленного ключа или к продлению доступа.",
+    support_recovery: "Помогает восстановить доступ или открыть поддержку в текущей поверхности.",
+    telegram_bonus: "Предлагает привязать Telegram и получить доступный бонус.",
+    release_update: "Сообщает о новой версии и ведёт к безопасному обновлению клиента.",
+    incident_notice: "Показывает предупреждение о работах, сбое или временном ограничении.",
+  };
+  return descriptions[value] || "Сценарий определяет назначение блока и допустимое действие кнопки.";
 }
 
 function dateInput(value: string | null | undefined): string {
@@ -302,10 +316,11 @@ export function CampaignSlotsPanel() {
                   })}
                 </select>
               </label>
-              <label className="text-xs font-semibold">Тип блока
+              <label className="text-xs font-semibold">Сценарий блока
                 <select value={selected.content_id} onChange={(event) => update({ content_id: event.target.value })} className={inputClass}>
                   {selectedSlot.allowed_content_ids.map((id) => <option key={id} value={id}>{contentLabel(id)}</option>)}
                 </select>
+                <span className="mt-1 block font-normal leading-5 text-[color:var(--atlas-text-muted)]">{contentDescription(selected.content_id)}</span>
               </label>
             </div>
 

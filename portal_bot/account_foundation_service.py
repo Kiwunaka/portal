@@ -1168,7 +1168,16 @@ def _ensure_legacy_grant(
         }
     existing = session.query(EntitlementGrant).filter_by(idempotency_key=idempotency_key).first()
     if existing is not None:
+        plan_code = _clean(user.current_plan_code) or _clean(user.sub_type).lower() or "legacy"
         existing.account_id = account_id
+        existing.legacy_tg_id = int(user.tg_id)
+        existing.source = "legacy_snapshot"
+        existing.status = "active" if bool(user.is_active) else "inactive"
+        existing.grant_kind = "access_snapshot"
+        existing.plan_code = plan_code
+        existing.starts_at = user.created_at
+        existing.expires_at = user.expiry_at
+        existing.provider = "legacy_user"
         try:
             existing_metadata = json.loads(str(existing.metadata_json or "{}"))
             if not isinstance(existing_metadata, dict):

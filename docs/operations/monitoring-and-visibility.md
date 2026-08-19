@@ -551,6 +551,11 @@ Admin ops app wave `2026-07-06`, command-center redesign updated locally on
   Active user means a distinct account with a confirmed successful connection
   in the rolling seven-day window. The envelope must never contain browsing
   history, destination traffic, raw config, credentials or private chat text.
+- the user card exposes a bounded safe event timeline for support diagnosis:
+  event name, occurrence/receive time, platform/version/build, subsystem/stage,
+  result, normalized error, retryability, duration and network class. It never
+  returns arbitrary event metadata, session/device/account ids, trace ids,
+  browsing destinations, raw configs or credentials.
 - `/api/admin/news-drafts` exposes only bounded RSS-source/run health and safe
   draft metadata. `portal-worker` may collect once per day when
   `NEWS_DRAFT_WORKER_ENABLED=true`; it stores no article body, deduplicates by

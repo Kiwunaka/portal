@@ -13,6 +13,12 @@ test("прямая ссылка на пользователя загружает
   expect(api.calls.some((call) => call.path === "/api/admin/users/1001/investigation")).toBe(false);
   await expect(page.getByText("203.0.113.44", { exact: true })).toHaveCount(0);
 
+  await page.getByRole("tab", { name: "События приложения" }).click();
+  await expect(page).toHaveURL(/selected=1001.*tab=events/);
+  await expect(page.getByText("Core не запустился", { exact: true })).toBeVisible();
+  await expect(page.getByText(/desktop_tun_start_failed/)).toBeVisible();
+  await expect(page.getByText("windows · v1.1.5+28", { exact: true })).toBeVisible();
+
   await page.getByRole("tab", { name: "Расследование" }).click();
   await expect(page).toHaveURL(/selected=1001.*tab=investigation/);
   await expect(page.getByText("203.0.113.44", { exact: true })).toBeVisible();

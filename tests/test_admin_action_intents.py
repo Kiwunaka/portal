@@ -140,6 +140,7 @@ def test_news_draft_requires_guarded_editor_approval_and_cannot_publish_twice(
         payload=payload,
     )
     assert prepared.status_code == 200, prepared.text
+    assert prepared.json()["preview"]["title"] == "Опубликовать новость"
     assert prepared.json()["preview"]["after"]["source_draft_id"] == draft_id
 
     completed = client.post(
