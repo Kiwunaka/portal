@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -223,6 +224,178 @@ def test_exact_product_and_component_targets_are_accepted() -> None:
         },
     )
     assert blockers == []
+
+
+def test_exact_bound_core_target_is_accepted() -> None:
+    blockers = MODULE._target_contract_blockers(
+        versions={
+            "android": "1.2.0+30",
+            "windows": "1.2.0+30",
+            "app_shell": "1.2.0",
+        },
+        handoff_target={
+            "product_version": "1.2.0",
+            "platform_build": 30,
+            "package_version": "1.2.0+30",
+            "state": "PRE_CANDIDATE_LOCAL",
+            "candidate_created": False,
+        },
+        core_release={
+            "version": "1.1.0",
+            "state": "PRE_CANDIDATE_LOCAL",
+            "candidate_created": False,
+        },
+        core_target={
+            "required_for_product": "1.2.0",
+            "version": "1.1.0",
+            "release_tag": "v1.1.0",
+            "state": "PRE_CANDIDATE_LOCAL",
+            "candidate_created": False,
+            "artifact_state": "exact_local_replacement_bound",
+        },
+    )
+    assert blockers == []
+
+
+def _bound_runtime_seed(client_root: Path, core_revision: str) -> dict[str, object]:
+    android_path = client_root / "apps/android_shell/android/app/libs/pokrov-core.aar"
+    windows_path = (
+        client_root
+        / "apps/windows_shell/windows/runner/resources/runtime/pokrov-core.dll"
+    )
+    cronet_path = windows_path.with_name("libcronet.dll")
+    for path, content in (
+        (android_path, b"android-core"),
+        (windows_path, b"windows-core"),
+        (cronet_path, b"cronet"),
+    ):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(content)
+
+    def identity(path: Path) -> dict[str, object]:
+        return {
+            "size": path.stat().st_size,
+            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        }
+
+    android = identity(android_path)
+    windows = identity(windows_path)
+    cronet = identity(cronet_path)
+    proof_hash = "a" * 64
+    return {
+        "version": "1.1.0",
+        "release_tag_created": False,
+        "source_commit": core_revision,
+        "activation_state": "active_pre_candidate_local",
+        "development_target": {
+            "artifact_state": "exact_local_replacement_bound",
+        },
+        "artifact_provenance": {
+            "status": "clean_reproducible_pre_candidate_local",
+            "vcs_stamp": "disabled_for_reproducible_release_artifacts",
+            "release_url": None,
+            "evidence_ceiling": "PRE_CANDIDATE_LOCAL",
+            "candidate_created": False,
+            "promotion_authorized": False,
+            "reproducible_build": {
+                "android": android,
+                "windows": windows,
+                "libcronet_sha256": cronet["sha256"],
+            },
+            "artifact_evidence": {
+                "android": {
+                    "result": "PASS_BYTE_IDENTICAL_TWO_BUILDS",
+                    "tree_sha256": proof_hash,
+                    "evidence_sha256": proof_hash,
+                    "abis": ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"],
+                },
+                "windows": {
+                    "result": "PASS_BYTE_IDENTICAL_TWO_BUILDS",
+                    "tree_sha256": proof_hash,
+                    "evidence_sha256": proof_hash,
+                    "required_exports": 15,
+                    "proxy_only_start_stop_cycles": 100,
+                    "proxy_only_result": "PASS_LOCAL",
+                },
+                "sbom": [
+                    {"name": "pokrov-core.cdx.json", "sha256": proof_hash},
+                    {"name": "sing-box.cdx.json", "sha256": proof_hash},
+                ],
+            },
+        },
+        "desktop_abi": {
+            "required_capabilities": ["structured_operational_events"],
+            "structured_events": {
+                "callback_symbol": "pokrovCoreSetEventCallback",
+                "context_symbol": "pokrovCoreSetEventContext",
+                "exact_replacement_artifact": "bound_pre_candidate_local",
+            },
+        },
+        "assets": {
+            "android": {
+                "entry": "pokrov-core.aar",
+                **android,
+                "sync_destination": "apps/android_shell/android/app/libs",
+                "sync_policy": "exact_pre_candidate_build",
+            },
+            "windows": {
+                "entry": "pokrov-core.dll",
+                **windows,
+                "runtime_dependencies": ["libcronet.dll"],
+                "runtime_dependency_size": {"libcronet.dll": cronet["size"]},
+                "runtime_dependency_sha256": {"libcronet.dll": cronet["sha256"]},
+                "sync_destination": (
+                    "apps/windows_shell/windows/runner/resources/runtime"
+                ),
+                "sync_policy": "exact_pre_candidate_build",
+            },
+        },
+    }
+
+
+def test_bound_core_artifacts_require_exact_local_bytes(tmp_path: Path) -> None:
+    core_revision = "f" * 40
+    runtime_seed = _bound_runtime_seed(tmp_path, core_revision)
+
+    summary, blockers = MODULE._core_artifact_binding(
+        client_root=tmp_path,
+        runtime_seed=runtime_seed,
+        core_revision=core_revision,
+    )
+    assert blockers == []
+    assert summary["verified_exact_local_bytes"] is True
+    assert all(item["match"] for item in summary["files"].values())
+
+    dll_path = (
+        tmp_path / "apps/windows_shell/windows/runner/resources/runtime/pokrov-core.dll"
+    )
+    dll_path.write_bytes(b"tampered")
+    summary, blockers = MODULE._core_artifact_binding(
+        client_root=tmp_path,
+        runtime_seed=runtime_seed,
+        core_revision=core_revision,
+    )
+    assert summary["verified_exact_local_bytes"] is False
+    assert {blocker["id"] for blocker in blockers} == {
+        "core_artifact_binding_bytes_invalid"
+    }
+
+
+def test_unbound_core_artifact_remains_pending(tmp_path: Path) -> None:
+    summary, blockers = MODULE._core_artifact_binding(
+        client_root=tmp_path,
+        runtime_seed={
+            "development_target": {"artifact_state": "pending"},
+            "desktop_abi": {
+                "structured_events": {"exact_replacement_artifact": "pending"}
+            },
+        },
+        core_revision="f" * 40,
+    )
+    assert summary["verified_exact_local_bytes"] is False
+    assert [blocker["id"] for blocker in blockers] == [
+        "core_replacement_artifact_pending"
+    ]
 
 
 def test_relabelled_retained_core_or_candidate_state_fails_closed() -> None:

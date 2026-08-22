@@ -22,6 +22,9 @@ VALID_INDEXES = {f"I{number}" for number in range(6)}
 VALID_STAGES = {"pre_freeze", "candidate", "external", "deferred"}
 VALID_EXTERNAL_GATES = {"pre_candidate", "post_candidate"}
 STAGE_POLICY_RELATIVE_PATH = Path("shared/release-1.2.0-candidate-stage-policy.json")
+SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
+BOUND_CORE_ARTIFACT_STATE = "exact_local_replacement_bound"
+BOUND_STRUCTURED_EVENT_STATE = "bound_pre_candidate_local"
 
 
 def _read_json(path: Path) -> dict[str, Any]:
@@ -77,6 +80,315 @@ def _pubspec_version(path: Path) -> str:
     if match is None:
         raise ValueError(f"missing version in {path}")
     return match.group(1)
+
+
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _core_artifact_binding(
+    *,
+    client_root: Path,
+    runtime_seed: dict[str, Any],
+    core_revision: str,
+) -> tuple[dict[str, Any], list[dict[str, str]]]:
+    """Validate exact local Core bytes and their fail-closed evidence contract."""
+
+    blockers: list[dict[str, str]] = []
+
+    def add(identifier: str, detail: str) -> None:
+        blockers.append(
+            {
+                "id": identifier,
+                "status": "BLOCKED_LOCAL_ARTIFACT",
+                "detail": detail,
+            }
+        )
+
+    core_target = runtime_seed.get("development_target", {})
+    if not isinstance(core_target, dict):
+        core_target = {}
+    desktop_abi_seed = runtime_seed.get("desktop_abi", {})
+    if not isinstance(desktop_abi_seed, dict):
+        desktop_abi_seed = {}
+    structured_events = desktop_abi_seed.get("structured_events", {})
+    if not isinstance(structured_events, dict):
+        structured_events = {}
+    artifact_state = str(core_target.get("artifact_state") or "")
+    structured_event_state = str(
+        structured_events.get("exact_replacement_artifact") or ""
+    )
+    summary: dict[str, Any] = {
+        "artifact_state": artifact_state,
+        "structured_event_artifact_state": structured_event_state,
+        "activation_state": str(runtime_seed.get("activation_state") or ""),
+        "verified_exact_local_bytes": False,
+        "files": {},
+    }
+    if (
+        artifact_state != BOUND_CORE_ARTIFACT_STATE
+        or structured_event_state != BOUND_STRUCTURED_EVENT_STATE
+    ):
+        add(
+            "core_replacement_artifact_pending",
+            "exact structured-event Core replacement artifact is not bound",
+        )
+        return summary, blockers
+
+    provenance = runtime_seed.get("artifact_provenance", {})
+    assets = runtime_seed.get("assets", {})
+    desktop_abi = runtime_seed.get("desktop_abi", {})
+    if not isinstance(provenance, dict):
+        provenance = {}
+    if not isinstance(assets, dict):
+        assets = {}
+    if not isinstance(desktop_abi, dict):
+        desktop_abi = {}
+    android = assets.get("android", {})
+    windows = assets.get("windows", {})
+    if not isinstance(android, dict):
+        android = {}
+    if not isinstance(windows, dict):
+        windows = {}
+
+    metadata_errors: list[str] = []
+
+    def require(condition: bool, field: str) -> None:
+        if not condition:
+            metadata_errors.append(field)
+
+    require(str(runtime_seed.get("version") or "") == CORE_TARGET_VERSION, "version")
+    require(
+        str(runtime_seed.get("source_commit") or "").lower() == core_revision,
+        "source_commit",
+    )
+    require(runtime_seed.get("release_tag_created") is False, "release_tag_created")
+    require(
+        str(runtime_seed.get("activation_state") or "") == "active_pre_candidate_local",
+        "activation_state",
+    )
+    require(
+        str(provenance.get("status") or "") == "clean_reproducible_pre_candidate_local",
+        "artifact_provenance.status",
+    )
+    require(
+        str(provenance.get("evidence_ceiling") or "") == "PRE_CANDIDATE_LOCAL",
+        "artifact_provenance.evidence_ceiling",
+    )
+    require(provenance.get("candidate_created") is False, "candidate_created")
+    require(provenance.get("promotion_authorized") is False, "promotion_authorized")
+    require(
+        "release_url" in provenance and provenance.get("release_url") is None,
+        "release_url",
+    )
+    require(
+        str(provenance.get("vcs_stamp") or "")
+        == "disabled_for_reproducible_release_artifacts",
+        "artifact_provenance.vcs_stamp",
+    )
+    require(
+        android.get("entry") == "pokrov-core.aar"
+        and android.get("sync_destination") == "apps/android_shell/android/app/libs"
+        and android.get("sync_policy") == "exact_pre_candidate_build",
+        "assets.android",
+    )
+    require(
+        windows.get("entry") == "pokrov-core.dll"
+        and windows.get("sync_destination")
+        == "apps/windows_shell/windows/runner/resources/runtime"
+        and windows.get("sync_policy") == "exact_pre_candidate_build",
+        "assets.windows",
+    )
+    require(
+        windows.get("runtime_dependencies") == ["libcronet.dll"],
+        "assets.windows.runtime_dependencies",
+    )
+    require(
+        structured_events.get("callback_symbol") == "pokrovCoreSetEventCallback"
+        and structured_events.get("context_symbol") == "pokrovCoreSetEventContext",
+        "desktop_abi.structured_events.symbols",
+    )
+    required_capabilities = desktop_abi.get("required_capabilities", [])
+    require(
+        isinstance(required_capabilities, list)
+        and "structured_operational_events" in required_capabilities,
+        "desktop_abi.required_capabilities",
+    )
+
+    build = provenance.get("reproducible_build", {})
+    evidence = provenance.get("artifact_evidence", {})
+    if not isinstance(build, dict):
+        build = {}
+    if not isinstance(evidence, dict):
+        evidence = {}
+    android_build = build.get("android", {})
+    windows_build = build.get("windows", {})
+    android_evidence = evidence.get("android", {})
+    windows_evidence = evidence.get("windows", {})
+    sbom = evidence.get("sbom", [])
+    for value, name in (
+        (android_build, "reproducible_build.android"),
+        (windows_build, "reproducible_build.windows"),
+        (android_evidence, "artifact_evidence.android"),
+        (windows_evidence, "artifact_evidence.windows"),
+    ):
+        require(isinstance(value, dict), name)
+    if not isinstance(android_build, dict):
+        android_build = {}
+    if not isinstance(windows_build, dict):
+        windows_build = {}
+    if not isinstance(android_evidence, dict):
+        android_evidence = {}
+    if not isinstance(windows_evidence, dict):
+        windows_evidence = {}
+
+    require(
+        android_evidence.get("result") == "PASS_BYTE_IDENTICAL_TWO_BUILDS",
+        "artifact_evidence.android.result",
+    )
+    android_abis = android_evidence.get("abis", [])
+    require(
+        isinstance(android_abis, list)
+        and all(isinstance(value, str) for value in android_abis)
+        and set(android_abis) == {"armeabi-v7a", "arm64-v8a", "x86", "x86_64"},
+        "artifact_evidence.android.abis",
+    )
+    require(
+        windows_evidence.get("result") == "PASS_BYTE_IDENTICAL_TWO_BUILDS",
+        "artifact_evidence.windows.result",
+    )
+    require(
+        windows_evidence.get("required_exports") == 15,
+        "artifact_evidence.windows.required_exports",
+    )
+    require(
+        windows_evidence.get("proxy_only_start_stop_cycles") == 100
+        and windows_evidence.get("proxy_only_result") == "PASS_LOCAL",
+        "artifact_evidence.windows.proxy_only",
+    )
+    for value, field in (
+        (android_evidence.get("tree_sha256"), "artifact_evidence.android.tree_sha256"),
+        (
+            android_evidence.get("evidence_sha256"),
+            "artifact_evidence.android.evidence_sha256",
+        ),
+        (windows_evidence.get("tree_sha256"), "artifact_evidence.windows.tree_sha256"),
+        (
+            windows_evidence.get("evidence_sha256"),
+            "artifact_evidence.windows.evidence_sha256",
+        ),
+    ):
+        require(
+            isinstance(value, str) and SHA256_PATTERN.fullmatch(value) is not None,
+            field,
+        )
+    sbom_map = (
+        {
+            str(item.get("name") or ""): str(item.get("sha256") or "")
+            for item in sbom
+            if isinstance(item, dict)
+        }
+        if isinstance(sbom, list)
+        else {}
+    )
+    require(
+        isinstance(sbom, list)
+        and len(sbom) == 2
+        and set(sbom_map) == {"pokrov-core.cdx.json", "sing-box.cdx.json"}
+        and all(SHA256_PATTERN.fullmatch(value) for value in sbom_map.values()),
+        "artifact_evidence.sbom",
+    )
+
+    file_contracts = (
+        (
+            "android",
+            client_root / "apps/android_shell/android/app/libs/pokrov-core.aar",
+            android.get("size"),
+            android.get("sha256"),
+            android_build.get("size"),
+            android_build.get("sha256"),
+        ),
+        (
+            "windows",
+            client_root
+            / "apps/windows_shell/windows/runner/resources/runtime/pokrov-core.dll",
+            windows.get("size"),
+            windows.get("sha256"),
+            windows_build.get("size"),
+            windows_build.get("sha256"),
+        ),
+        (
+            "libcronet",
+            client_root
+            / "apps/windows_shell/windows/runner/resources/runtime/libcronet.dll",
+            (windows.get("runtime_dependency_size") or {}).get("libcronet.dll")
+            if isinstance(windows.get("runtime_dependency_size"), dict)
+            else None,
+            (windows.get("runtime_dependency_sha256") or {}).get("libcronet.dll")
+            if isinstance(windows.get("runtime_dependency_sha256"), dict)
+            else None,
+            None,
+            build.get("libcronet_sha256"),
+        ),
+    )
+    byte_errors: list[str] = []
+    for (
+        label,
+        path,
+        declared_size,
+        declared_hash,
+        build_size,
+        build_hash,
+    ) in file_contracts:
+        declared_hash = str(declared_hash or "").lower()
+        build_hash = str(build_hash or "").lower()
+        contract_valid = (
+            isinstance(declared_size, int)
+            and declared_size > 0
+            and SHA256_PATTERN.fullmatch(declared_hash) is not None
+            and (build_size is None or build_size == declared_size)
+            and build_hash == declared_hash
+        )
+        if not path.is_file():
+            actual_size = None
+            actual_hash = None
+            byte_errors.append(f"{label}:missing")
+        else:
+            actual_size = path.stat().st_size
+            actual_hash = _sha256_file(path)
+            if (
+                not contract_valid
+                or actual_size != declared_size
+                or actual_hash != declared_hash
+            ):
+                byte_errors.append(f"{label}:identity")
+        summary["files"][label] = {
+            "path": path.relative_to(client_root).as_posix(),
+            "declared_size": declared_size,
+            "declared_sha256": declared_hash,
+            "actual_size": actual_size,
+            "actual_sha256": actual_hash,
+            "match": contract_valid
+            and actual_size == declared_size
+            and actual_hash == declared_hash,
+        }
+
+    if metadata_errors:
+        add(
+            "core_artifact_binding_metadata_invalid",
+            "invalid exact Core artifact metadata: " + ", ".join(metadata_errors),
+        )
+    if byte_errors:
+        add(
+            "core_artifact_binding_bytes_invalid",
+            "exact Core artifact byte identity failed: " + ", ".join(byte_errors),
+        )
+    summary["verified_exact_local_bytes"] = not blockers
+    return summary, blockers
 
 
 def _load_ledger(path: Path) -> list[dict[str, str]]:
@@ -296,7 +608,8 @@ def _target_contract_blockers(
         or str(core_target.get("release_tag") or "") != f"v{CORE_TARGET_VERSION}"
         or str(core_target.get("state") or "") != "PRE_CANDIDATE_LOCAL"
         or core_target.get("candidate_created") is not False
-        or str(core_target.get("artifact_state") or "") != "pending"
+        or str(core_target.get("artifact_state") or "")
+        not in {"pending", BOUND_CORE_ARTIFACT_STATE}
     ):
         add(
             "client_core_target_invalid",
@@ -404,14 +717,13 @@ def build_report(
                 "detail": "client runtime seed does not bind the active Core source revision",
             }
         )
-    if core_state["seed_structured_event_artifact"] != "ready":
-        blockers.append(
-            {
-                "id": "core_replacement_artifact_pending",
-                "status": "BLOCKED_LOCAL_ARTIFACT",
-                "detail": "exact structured-event Core replacement artifact is not ready",
-            }
-        )
+    artifact_binding, artifact_blockers = _core_artifact_binding(
+        client_root=client_root,
+        runtime_seed=runtime_seed,
+        core_revision=core_state["source_revision"],
+    )
+    core_state["artifact_binding"] = artifact_binding
+    blockers.extend(artifact_blockers)
 
     pending_rows: list[dict[str, Any]] = []
     for row in pending:
