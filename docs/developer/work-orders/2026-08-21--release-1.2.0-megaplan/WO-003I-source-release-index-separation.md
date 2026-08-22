@@ -37,8 +37,9 @@ mistaken for the separate signed public release index.
 
 ## Retained local proof
 
-- Repository hygiene: `PASS`; 576 effective tracked paths, 138 retained-history
-  files, two pending exact temp deletions, three active runtime binaries.
+- Repository hygiene: `PASS`; the two exact temp helpers are absent from the
+  clean client commit, retained history is unchanged and the three active
+  runtime binaries remain hash-owned.
 - Strict-v2 client contract: `PASS`, 16 cases including retained-history and
   tracked-source destination rejection.
 - Release-v2 CI source contract: `PASS`.
@@ -47,8 +48,11 @@ mistaken for the separate signed public release index.
   strict-v2, CI, repository, presentation, performance and docs gate: `PASS`.
 - Platform documentation/context tests: `PASS`, `32/32`; platform context audit
   and link check: `PASS`.
+- Clean client source freeze: commit
+  `551c6e1fb9977560fc2660d4562e08fe69a89742`; the standard client gate and
+  cross-repository seed validation pass with a clean worktree.
 - Candidate preflight: expected `BLOCKED`, five blockers,
-  `candidate_created=false`, 111 rows below `I3`.
+  `candidate_created=false`, 74 rows below `I3`.
 - `git diff --name-only -- artifacts/releases`: empty.
 
 Evidence:
@@ -56,9 +60,10 @@ Evidence:
 
 ## Evidence ceiling
 
-The deletion and executable source boundary exist only in a dirty client
-worktree. The public release-index repository is unavailable, so its ownership,
-signature policy and exact revision cannot be inspected or frozen. This proves
-local implementation (`I2`), not a clean locally verified separation (`I3`),
-candidate proof (`I4`) or release proof (`I5`). No commit, signing, publication,
-deployment or promotion was requested or performed.
+The deletion and executable source boundary now exist in the exact clean client
+commit `551c6e1fb9977560fc2660d4562e08fe69a89742`. The public release-index
+repository is still unavailable, so its ownership, signature policy and exact
+revision cannot be inspected or frozen. `REL/REPO-001` therefore remains at
+`I2`: a clean source commit does not prove the separate signed public index,
+candidate (`I4`) or release (`I5`). No signing, publication, deployment or
+promotion was requested or performed.

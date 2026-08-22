@@ -2254,3 +2254,35 @@ SEO, production/responsive/no-JS/reduced-motion/browser checks.
 ceilings because deployed provider, public readback, PostgreSQL concurrency
 and atomic exact-candidate deployment are not local facts. No provider call,
 payment, deployment, publication or promotion occurred.
+
+## 2026-08-23 — WO-013H clean source freeze
+
+Platform, active Android/Windows client and Core now have exact clean local
+source identities: platform
+`1ac65cb501a4f3866d2515855b7d168b88b99a25`, client
+`551c6e1fb9977560fc2660d4562e08fe69a89742` and Core
+`fcb3c8bbc6efdeed284417369aacb522722ebfa2`. No push or promotion-branch
+mutation occurred.
+
+Core passes its full gate with pinned Go 1.25.13. The client passes its full
+standard gate and exact cross-repository seed validation. The platform
+canonical release matrix passes `674/674` plus 38 subtests; dependency,
+75-operation Admin API v2 OpenAPI/SDK, context, docs/preflight, compileall,
+WebApp/Marketing/AdminApp local quality and diff checks pass. The platform
+change manifest covers 502 files at
+`3c081ee259b0d9d2dc93ecbfcef6835145cb1684e594430f6000415c017558d2`.
+An unbounded repository-wide pytest diagnostic stopped at 6% is explicitly
+`NOT_CREDITED_OVERSCOPED_ABORTED` and contributes no PASS claim.
+
+The clean read-only preflight is expected `BLOCKED` with five blockers and
+`candidate_created=false`: missing public release index, stale client/Core seed
+binding, pending Core replacement artifact, three local pre-freeze rows and
+three external pre-candidate rows. The dirty-worktree blocker is closed.
+
+No row advances. Distribution remains `I3=303`, `I2=19`, `I1=40`, `I0=15`;
+74 rows remain below `I3` and the stage split remains `3/33/17/21`.
+`REL/TEST-001`, `REL/REPO-001` and `FE_PR/PR-00` remain `I2` because hosted
+Ubuntu, the separate public index and isolated no-visible-UI PR proof are still
+absent. No candidate artifact, trusted signature, device/VM run, provider call,
+payment, deployment, publication, campaign, RU-origin proof or promotion
+occurred.

@@ -29,8 +29,11 @@ separate authority and access.
 
 ## Current preflight truth
 
-- Platform, client and Core feature worktrees are dirty and therefore cannot
-  identify an exact candidate yet.
+- Platform, client and Core source worktrees are clean at exact local freeze
+  commits: platform `1ac65cb501a4f3866d2515855b7d168b88b99a25`, client
+  `551c6e1fb9977560fc2660d4562e08fe69a89742`, Core
+  `fcb3c8bbc6efdeed284417369aacb522722ebfa2`. These are source identities,
+  not a release candidate.
 - Product source target is now exact `1.2.0+30` for Android/Windows and
   `1.2.0` for app-shell. The retained public handoff remains historical
   `1.1.6` schema v1 truth and is explicitly forbidden for new promotion.
@@ -47,13 +50,15 @@ separate authority and access.
 - Trusted Windows signing, Android production lineage, clean Windows VM,
   physical Android devices, current/brain/RU origins, provider/legal/OIDC
   surfaces and external pilot authorization remain manual/external gates.
-- The current ledger has 276 rows at local `I3`; 101 of 377 remain below
-  `I3`. Of those, 36 are `I2`, 45 are `I1` and 20 are `I0`. The source-test
-  advances do not create candidate or production proof.
-- The exact stage policy now classifies those 101 rows as 31 `pre_freeze`, 32
+- The current ledger has 303 rows at local `I3`; 74 of 377 remain below `I3`.
+  Of those, 19 are `I2`, 40 are `I1` and 15 are `I0`. The clean source commits
+  do not advance any row by themselves or create candidate/production proof.
+- The exact stage policy classifies those 74 rows as 3 `pre_freeze`, 33
   `candidate`, 17 `external` and 21 `deferred`. Three external rows are explicit
-  pre-candidate blockers. The live read-only preflight remains `BLOCKED` with
-  seven blockers and does not infer stage from summary/status/next-action text.
+  pre-candidate blockers. The clean-source read-only preflight remains
+  `BLOCKED` with five blockers: missing public release index, stale client/Core
+  seed binding, pending Core replacement artifact, three local pre-freeze rows
+  and three external pre-candidate rows.
 
 ## Evidence labels
 
@@ -202,24 +207,18 @@ No current instruction authorizes this slice.
 
 ## Current next action
 
-Continue `WO-013B`: deterministic state migration, the standard Windows/Linux
-client gate, the local fault/chaos/overhead contracts and the seven-item
-permanent STOP-SHIP registry now exist. Cross-repository compatibility,
-four-proof green state, the client PR workflow, both critical portal
-Playwright suites and the six Operator Center support-operation rows are locally
-proved, the private Android operational producer set closes five more local
-rows, the stack-only Windows crash profile closes one, and the direct-cutover/
-visual-baseline reconciliation closes two. The Core release-CI matrix closes
-one more source-contract row, and the active-client product-facts adoption
-closes another, leaving 99 rows below `I3`. The exact stage matrix narrows the
-actionable local set to 29
-`pre_freeze` rows and keeps 32 candidate, 17 external and 21 deferred rows out
-of the old circular heuristic. Live branch
-protection is `NO_GO`: platform/client are blocked by the current
-private-repository plan and Core main is unprotected. Hosted frontend CI is
-still `NOT_RUN`. Those external proofs, the owner decision and WIN-003
-clean-host proof cannot be replaced by local source tests. Continue the next
-bounded 29-row local pre-freeze set while exact E2E/device/hosted work stays in
-`WO-013E`. Enter `WO-013C` only after the full local source gate passes. Stop
-before candidate creation if a required version/signing/release-index/owner
-decision cannot be resolved from repository authority.
+The full local source gates pass on clean platform, client and Core commits, but
+candidate creation remains blocked. Produce the exact structured-event Core
+replacement artifact from the frozen Core source with pinned reproducible
+toolchains, bind its ABI/SBOM/provenance and update the client runtime seed in a
+new clean client commit. Obtain and freeze the separate public release-index
+revision. Run the standard client gate in hosted Ubuntu and satisfy or retain
+the honest block for the isolated no-visible-UI PR-00 proof. Then rerun the
+five-blocker read-only preflight against the new exact revisions.
+
+Live branch protection remains `NO_GO`: platform/client are blocked by the
+current private-repository plan and Core main is unprotected. Hosted frontend
+CI is `NOT_RUN`; trusted signing, exact devices/VMs, providers, OIDC, legal,
+current/brain/RU origins and promotion stay in `WO-013E..G` under their separate
+authority. Do not create or label a candidate while any explicit pre-candidate
+blocker remains.

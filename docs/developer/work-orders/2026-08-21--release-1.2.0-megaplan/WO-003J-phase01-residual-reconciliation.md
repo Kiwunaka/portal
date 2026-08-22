@@ -8,8 +8,8 @@ Promotion: `NOT_REQUESTED`
 ## Decision
 
 Reconcile two Phase 01 rows against their exact source acceptance without
-claiming that a missing public release repository or a combined dirty worktree
-is a frozen release PR.
+claiming that a missing public release repository or a broad cross-slice source
+freeze is an isolated no-visible-UI release PR.
 
 ## Stable public trust surface
 
@@ -38,16 +38,18 @@ The PR-00 inputs are implemented across their canonical owners:
 
 Current commercial-contract generation and the focused manifest/catalog tests
 pass `73/73`; focused client motion/app-shell regression passes `164/164`.
-However, all later feature/UI slices share dirty worktrees, so the source-plan
-requirement that PR-00 itself have no visible UI change cannot be proved from an
-isolated clean revision. `FE_PR/PR-00` advances to implementation `I2`, not
-local proof `I3`.
+Platform, client and Core now have clean exact source commits, but those commits
+contain the complete cross-slice 1.2.0 source wave, including visible UI work.
+They do not prove that PR-00 itself was isolated with no visible UI delta, and
+hosted required checks have not run. `FE_PR/PR-00` remains implementation
+`I2`, not local proof `I3`.
 
 Evidence:
 `evidence/003J-phase01-residual-reconciliation/003J-phase01-residual-reconciliation.json`.
 
 ## Evidence ceiling
 
-No public release-index checkout, clean freeze commit, isolated PR, hosted CI,
-signed artifact, candidate, publication or promotion exists. Those absences are
-the remaining proof, not documentation gaps.
+No public release-index checkout, isolated no-visible-UI PR, hosted CI, signed
+artifact, candidate, publication or promotion exists. Clean aggregate commits
+exist, but they do not satisfy the narrower PR-00 acceptance. Those absences
+are the remaining proof, not documentation gaps.

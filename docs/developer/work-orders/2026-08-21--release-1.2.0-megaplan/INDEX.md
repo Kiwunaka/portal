@@ -1,8 +1,8 @@
 # POKROV 1.2.0 Megaplan — Wave Index
 
-Last updated: 2026-08-22
+Last updated: 2026-08-23
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_10_LOCAL_PACKAGE_COMPLETE_PHASE_11_QUEUED`
+Wave status: `PHASE_11_CLEAN_SOURCE_FREEZE_PARTIAL_BLOCKED`
 Release candidate: `NOT_CREATED`
 
 ## Outcome
@@ -35,7 +35,7 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete; exact-candidate performance/manual gates retained | `WO-010` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
 | 10 | FRKN-derived rules; isolated AWG2 PoC, later HY2 decision | Local package complete; exact artifact/device/RU gates open | `WO-012` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Active local preparation; 013C closes explicit release limitations and 013D closes the reversible stable-pointer source contract at local `I3`; candidate not created | `WO-013`, `WO-013C`, `WO-013D` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Platform/client/Core are frozen at clean exact local commits; 013C closes explicit release limitations, 013D closes the reversible stable-pointer source contract and 013H records the clean source freeze; public index, hosted gates and Core replacement artifact remain blocked; candidate not created | `WO-013`, `WO-013C`, `WO-013D`, `WO-013H` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -53,8 +53,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-003F` | Bind release notes and visible UI version to strict v2 | Cross-repo release identity consumers | Complete locally (`I3`) | `WO-003`, `WO-003D`, `WO-003E` |
 | `WO-003G` | Separate current readiness owners from retained candidate history | Cross-repo documentation/release authority | Complete locally (`I3`) | `WO-003F` |
 | `WO-003H` | Reconcile package, API/UI and active documentation version truth | Cross-repo release version authority | Complete locally (`I3`) | `WO-003F`, `WO-003G` |
-| `WO-003I` | Remove tracked temp helpers and enforce source/history/staging/public-index separation | Client source/release boundary | Implemented locally (`I2`); clean commit and public index remain blocked | `WO-003H` |
-| `WO-003J` | Reconcile the public trust-surface and freeze/contracts aggregate without overstating unavailable evidence | Cross-repo release authority | `P12-023 I1`, `PR-00 I2`; external index and isolated clean freeze remain blocked | `WO-003I`, `WO-006I`, `WO-008A`, `WO-010E` |
+| `WO-003I` | Remove tracked temp helpers and enforce source/history/staging/public-index separation | Client source/release boundary | Implemented in clean client commit (`I2`); separate public index remains `BLOCKED_BY_ACCESS` | `WO-003H` |
+| `WO-003J` | Reconcile the public trust-surface and freeze/contracts aggregate without overstating unavailable evidence | Cross-repo release authority | `P12-023 I1`, `PR-00 I2`; clean aggregate commits exist, but external index, isolated no-visible-UI PR and hosted gates remain blocked | `WO-003I`, `WO-006I`, `WO-008A`, `WO-010E` |
 | `WO-004` | Establish state/core truth | Client/core | Complete (`I3`) | `WO-003B` |
 | `WO-004A2` | Accept the one-truth direct cutover and close deterministic critical-state visual baselines | Client presentation/evidence | Complete locally (`PR-01/PR-02 I3`) | `WO-004A`, `WO-010E1` |
 | `WO-004B2` | Complete the Core platform-build/security/reproducibility CI contract without overstating hosted execution | Core release CI/evidence | Complete locally (`CORE-001 I3`); hosted/exact-candidate jobs remain open | `WO-004B`, `WO-006C` |
@@ -92,6 +92,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013A3` | Move PB-14 out of the circular local-freeze lane because its signed-manifest health-stop proof requires an exact candidate | Platform release preflight | Complete locally; no ledger advancement, PB-14 remains unproved | `WO-013A2`, `WO-006J` |
 | `WO-013C` | Make Linux non-shipment and Android OEM background/permission/surface limitations explicit and machine-bound | Platform/client release limitations | Complete locally (`REL_DOD/DOD-17 I3`); exact-candidate release notes and physical OEM proof remain open | `WO-005`, `WO-006`, `WO-013` |
 | `WO-013D` | Make the client stable pointer reversible through an exact rollback catalog, atomic switch contract and retained evidence | Client/platform release rollback | Complete locally (`FE/P12-130 I3`); exact-candidate portal/runtime drill remains `NOT_RUN` | `WO-003`, `WO-013C` |
+| `WO-013H` | Freeze clean platform/client/Core source identities and retain honest preflight blockers | Cross-repo release source freeze | Complete local evidence; no ledger advancement, candidate remains uncreated | `WO-013B`, `WO-013C`, `WO-013D` |
 
 ## Current evidence
 
@@ -99,6 +100,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `EXECUTION-LEDGER.csv` is the machine-readable item register; `(plan,id)` is the primary key.
 - `EXECUTION-INDEX.md` defines the completion index and aggregate reporting rules.
 - `SOURCE-CROSSWALK.md` preserves plan coverage and conflict decisions.
+- `evidence/013H-clean-source-freeze/013H-clean-source-freeze.json` binds the
+  clean source commits, local gates and five remaining preflight blockers.
 
 ## Collision and promotion gates
 
@@ -110,11 +113,12 @@ The row order is a dependency order, not permission for one giant merge. Each im
 
 ## Next action
 
-Continue bounded local closure for the 3 rows explicitly staged
-`pre_freeze`; 33 candidate, 17 external and 21 deferred rows do not belong to
-that local queue. Three external pre-candidate rows remain blocking. Before any
-candidate can exist, commit and freeze clean platform/client/Core revisions,
-obtain the separate public release-index revision, and replace the pending Core
-development artifacts with exact identities. Do not build/sign/promote
-artifacts, deploy, mutate a server, enroll a cohort or claim RU readiness
-without the separate owner authority and access required by each gate.
+The clean source revisions now exist. Continue the three explicit local
+`pre_freeze` rows by producing the exact Core replacement artifact, updating
+the client seed in a new clean commit, running the standard hosted Ubuntu gate
+and retaining the honest isolated-PR result. Obtain and freeze the separate
+public release-index revision; three external pre-candidate rows also remain
+blocking. The 33 candidate, 17 external and 21 deferred rows do not belong to
+the local pre-freeze queue. Do not sign/promote artifacts, deploy, mutate a
+server, enroll a cohort or claim RU readiness without the separate owner
+authority and access required by each gate.

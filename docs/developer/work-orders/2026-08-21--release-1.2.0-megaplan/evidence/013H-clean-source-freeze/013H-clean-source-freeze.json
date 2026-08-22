@@ -1,0 +1,120 @@
+{
+  "schema": "pokrov.release-1.2.0.clean-source-freeze.v1",
+  "generated_at": "2026-08-22T22:44:59Z",
+  "work_order": "WO-013H",
+  "status": "COMPLETE_LOCAL_EVIDENCE_NO_LEDGER_ADVANCEMENT",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "promotion_authorized": false,
+  "sources": {
+    "platform": {
+      "branch": "codex/1.2.0-phase00",
+      "revision": "1ac65cb501a4f3866d2515855b7d168b88b99a25",
+      "working_tree_state": "clean"
+    },
+    "client": {
+      "branch": "codex/1.2.0-release-v2",
+      "revision": "551c6e1fb9977560fc2660d4562e08fe69a89742",
+      "working_tree_state": "clean"
+    },
+    "core": {
+      "branch": "codex/1.2.0-release-v2",
+      "revision": "fcb3c8bbc6efdeed284417369aacb522722ebfa2",
+      "working_tree_state": "clean",
+      "source_version": "1.1.0"
+    }
+  },
+  "local_results": {
+    "core_standard_gate": "PASS_PINNED_GO_1.25.13",
+    "core_format_abi_observability_awg2_release_ci": "PASS",
+    "client_standard_gate": "PASS",
+    "client_app_shell_tests_reported": 385,
+    "client_android_gradle_tasks_reported": 162,
+    "client_cross_repository_seed_gate": "PASS",
+    "platform_canonical_pytest": {
+      "status": "PASS",
+      "passed": 674,
+      "subtests_passed": 38,
+      "warnings": 19,
+      "duration_seconds": 2198.34
+    },
+    "platform_dependency_contract": "PASS",
+    "admin_v2_openapi_and_sdk": "PASS_75_OPERATIONS",
+    "admin_v2_contract_sha256": "beebbea12e3c5168d0bb54cd96e752aeebf7768df15f5194d5f22bb94669531c",
+    "platform_context_audit": "PASS",
+    "platform_docs_preflight_tests": "PASS_44_OF_44",
+    "platform_compileall": "PASS",
+    "platform_unified_local_quality_gate": "PASS",
+    "platform_diff_check": "PASS",
+    "platform_change_manifest_files": 502,
+    "platform_change_manifest_sha256": "3c081ee259b0d9d2dc93ecbfcef6835145cb1684e594430f6000415c017558d2",
+    "platform_intentional_visual_snapshot_binaries": 8,
+    "platform_untracked_over_2_mib": 0,
+    "overscoped_repository_pytest": "NOT_CREDITED_OVERSCOPED_ABORTED_AT_6_PERCENT"
+  },
+  "ledger": {
+    "total": 377,
+    "distribution": {
+      "I3": 303,
+      "I2": 19,
+      "I1": 40,
+      "I0": 15
+    },
+    "below_i3": 74,
+    "pending_stage_counts": {
+      "pre_freeze": 3,
+      "candidate": 33,
+      "external": 17,
+      "deferred": 21
+    },
+    "row_outcomes": {
+      "REL/TEST-001": "I2_UNCHANGED_HOSTED_UBUNTU_NOT_RUN",
+      "REL/REPO-001": "I2_UNCHANGED_PUBLIC_INDEX_BLOCKED_BY_ACCESS",
+      "FE_PR/PR-00": "I2_UNCHANGED_CLEAN_AGGREGATE_NOT_ISOLATED"
+    }
+  },
+  "preflight": {
+    "status": "BLOCKED",
+    "evidence_ceiling": "LOCAL_READ_ONLY_PREFLIGHT",
+    "candidate_created": false,
+    "blocker_count": 5,
+    "source_report_bytes": 43535,
+    "source_report_sha256": "33b97f0dc14d1355810632a52b4e9787061d4c04676c75b545116676bc15cbca",
+    "blockers": [
+      {
+        "id": "release_index_missing",
+        "status": "BLOCKED_BY_ACCESS"
+      },
+      {
+        "id": "client_core_seed_revision_stale",
+        "status": "BLOCKED_LOCAL_ARTIFACT"
+      },
+      {
+        "id": "core_replacement_artifact_pending",
+        "status": "BLOCKED_LOCAL_ARTIFACT"
+      },
+      {
+        "id": "ledger_pre_freeze_incomplete",
+        "status": "BLOCKED_LOCAL_FREEZE",
+        "rows": 3
+      },
+      {
+        "id": "ledger_external_pre_candidate_incomplete",
+        "status": "BLOCKED_EXTERNAL_PRECONDITION",
+        "rows": 3
+      }
+    ]
+  },
+  "external_or_manual": {
+    "push": "NOT_REQUESTED",
+    "hosted_ci": "NOT_RUN",
+    "public_release_index": "BLOCKED_BY_ACCESS",
+    "core_replacement_artifact": "PENDING",
+    "trusted_signing": "NOT_RUN",
+    "device_or_vm": "NOT_RUN",
+    "provider_or_payment": "NOT_RUN",
+    "deployment": "NOT_AUTHORIZED",
+    "publication": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}
