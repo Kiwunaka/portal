@@ -1,0 +1,28 @@
+{
+  "schema": "pokrov.release-1.2.0.marketing-homepage-contract-drift.v1",
+  "generated_at": "2026-08-22T08:48:24Z",
+  "work_order": "WO-011H",
+  "advanced_rows": [],
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "defect": {
+    "initial_result": "NOT_PASS_47_PASSED_4_SUBTESTS_1_FAILED",
+    "stale_expectations": [
+      "ServicesGrid mounted on homepage",
+      "YouTube/TikTok/ChatGPT one-button hero claim"
+    ],
+    "canonical_surface": "trust-led marketing/src/app/page.tsx",
+    "application_behavior_changed": false
+  },
+  "local_results": {
+    "marketing_story_contracts": "PASS_6_OF_6",
+    "adjacent_api_marketing_copy_regression": "PASS_48_TESTS_4_SUBTESTS",
+    "warnings": "EXISTING_DATETIME_UTCNOW_DEPRECATIONS_ONLY"
+  },
+  "manual_or_external": {
+    "public_readback": "NOT_RUN",
+    "deploy": "NOT_AUTHORIZED",
+    "campaign": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

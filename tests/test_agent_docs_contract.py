@@ -542,7 +542,7 @@ def test_docs_finalization_rollback_preserves_release_evidence() -> None:
         REPO_ROOT / "docs" / "operations" / "rollback-runbook.md"
     ).read_text(encoding="utf-8")
     lowered = text.casefold()
-    assert "Last updated: 2026-07-14" in text
+    assert "Last updated: 2026-08-22" in text
     assert "remove or blank public download urls" not in lowered
     assert "switch the active pointer to the last verified release handoff" in lowered
     assert (
@@ -551,6 +551,13 @@ def test_docs_finalization_rollback_preserves_release_evidence() -> None:
     )
     assert "prepare a short support notice" in lowered
     assert "only through an explicitly authorized owner/operator" in lowered
+    assert "config/release-rollback-catalog.seed.json" in text
+    assert "scripts/set-release-stable-pointer.ps1" in text
+    assert "optimistic lock" in lowered
+    assert "external backup" in lowered
+    assert "exact `1.2.0` candidate does not exist yet" in lowered
+    assert "`NOT_AUTHORIZED`" in text
+    assert "`NOT_RUN`" in text
     assert (
         "[Paid Beta Deploy And Rollback Checklist]"
         "(deployment-and-access.md#paid-beta-deploy-and-rollback-checklist)"
@@ -1222,7 +1229,6 @@ def test_active_operations_use_current_client_release_path() -> None:
         "docs/operations/monitoring-and-visibility.md",
         "docs/operations/publishing-and-signing-guide.md",
         "docs/operations/client-delivery-update-content-plan.md",
-        "docs/operations/public-beta-release-runbook.md",
         "docs/operations/android-production-signing-handoff.md",
     )
     combined = "\n".join(
@@ -1237,7 +1243,9 @@ def test_active_operations_use_current_client_release_path() -> None:
     assert "pokrov-android-arm64-v8a.apk" in combined
     assert "pokrov-android-armeabi-v7a.apk" in combined
     assert "POKROV-app/artifacts/releases/pokrov-app/" in combined
-    assert "v1.0.13" in combined
+    assert "v1.1.6" in combined
+    assert "1.2.0+30" in combined
+    assert "v1.0.13" not in combined
     assert "stable-direct" in combined.casefold()
 
 
@@ -1245,17 +1253,83 @@ def test_active_release_owners_name_public_github_stable_direct() -> None:
     owner_paths = (
         "docs/operations/deployment-and-access.md",
         "docs/operations/publishing-and-signing-guide.md",
+        "docs/developer/developer-guide.md",
+        "docs/developer/repository-map.md",
     )
     for relative_path in owner_paths:
         text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
         assert "stable-direct" in text.casefold(), relative_path
-        assert "v1.0.13" in text, relative_path
+        assert "v1.1.6" in text, relative_path
+        assert "1.1.6+29" in text, relative_path
+        assert "1.2.0+30" in text, relative_path
+        assert "candidate_created=false" in text, relative_path
+        assert "config/release-handoff.seed.json" in text, relative_path
+        assert "v1.0.10" not in text, relative_path
+        assert "v1.0.13" not in text, relative_path
 
     historical_beta = (
         REPO_ROOT / "docs/operations/public-beta-release-runbook.md"
     ).read_text(encoding="utf-8")
     assert "Document class: `EVIDENCE`" in historical_beta
     assert "historical outside-store beta" in historical_beta
+
+
+def test_superseded_release_trackers_are_evidence_only() -> None:
+    registry = (REPO_ROOT / "docs/README.md").read_text(encoding="utf-8")
+    expected_rows = (
+        "| `EVIDENCE` | retained public beta release | "
+        "`docs/operations/public-beta-release-runbook.md` | `RECONCILED` |",
+        "| `EVIDENCE` | retained 2026-08-13 direct release tracker | "
+        "`docs/operations/2026-08-13-direct-release-readiness-tracker.md` | "
+        "`RECONCILED` |",
+    )
+    for row in expected_rows:
+        assert row in registry
+
+    beta = (REPO_ROOT / "docs/operations/public-beta-release-runbook.md").read_text(
+        encoding="utf-8"
+    )
+    direct = (
+        REPO_ROOT / "docs/operations/2026-08-13-direct-release-readiness-tracker.md"
+    ).read_text(encoding="utf-8")
+    assert "Document class: `EVIDENCE`" in beta
+    assert "Document class: `EVIDENCE`" in direct
+    assert "## Current Decision" not in beta
+    assert "supersedes this" in direct
+    assert "do not authorize a new candidate or promotion" in direct
+
+
+def test_completed_versioned_work_orders_are_evidence_only() -> None:
+    registry = (REPO_ROOT / "docs/README.md").read_text(encoding="utf-8")
+    expected = {
+        "retained v1.0.4-beta.1 manual-proof queue": (
+            "docs/developer/work-orders/2026-08-14--postrelease-manual-proof/"
+        ),
+        "completed POKROV 1.0.6 stable-direct release": (
+            "docs/developer/work-orders/2026-08-14-stable-1.0.6-release/"
+        ),
+        "completed POKROV 1.1.1 product-analytics/operator wave": (
+            "docs/developer/work-orders/2026-08-17--product-analytics-admin-bot/"
+        ),
+        "completed POKROV 1.0.8 promos/variant-status wave": (
+            "docs/developer/work-orders/"
+            "2026-08-14-stable-1.0.7-promos-node-status-ru-apps/"
+        ),
+        "completed conversion-first acquisition and retention wave": (
+            "docs/developer/work-orders/"
+            "2026-08-14--conversion-acquisition-reconciliation/"
+        ),
+        "released POKROV 1.0.10 emergency-network wave": (
+            "docs/developer/work-orders/2026-08-15--emergency-network/"
+        ),
+    }
+    for owner, directory in expected.items():
+        row = f"| `EVIDENCE` | {owner} | `{directory}` | `RECONCILED` |"
+        assert row in registry
+        index_text = (REPO_ROOT / directory / "INDEX.md").read_text(
+            encoding="utf-8"
+        )
+        assert "Document class: `EVIDENCE`" in index_text
 
 
 def test_publishing_keeps_release_link_handoff_as_evidence_only() -> None:
@@ -1354,7 +1428,7 @@ def test_admin_command_center_and_ru_probe_owners_are_cross_linked() -> None:
         REPO_ROOT / "docs/operations/deployment-and-access.md"
     ).read_text(encoding="utf-8")
 
-    assert admin.count("| `/") == 17
+    assert admin.count("| `/") == 22
     for pointer in (
         "docs/architecture/system-overview.md",
         "docs/operations/monitoring-and-visibility.md",
@@ -1365,7 +1439,9 @@ def test_admin_command_center_and_ru_probe_owners_are_cross_linked() -> None:
     assert "ru_probe_uploader.py" in overview
     assert "ru_probe_runs + ru_probe_target_results" in overview
     assert "/api/admin/probes/ru-origin/latest" in overview
-    assert "/api/admin/emergency-network/status" in admin
+    assert "/api/admin/v2/network/{traffic|alerts|providers|emergency}" in admin
+    assert "/api/admin/v2/network/*" in overview
+    assert "/api/admin/v2/network/*" in monitoring
     assert "/api/admin/emergency-network/status" in overview
     assert "/api/admin/emergency-network/status" in monitoring
 

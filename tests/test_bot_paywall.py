@@ -457,7 +457,7 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("📋 Скопировать для Happ", labels)
         self.assertIn("📱 QR для Apple-клиента", labels)
         self.assertIn("📱 QR для Happ", labels)
-        self.assertIn("📲 Как подключить вручную", labels)
+        self.assertIn("📲 Как подключить Apple", labels)
         self.assertNotIn("Karing", " ".join(labels))
         self.assertNotIn("👨‍👩‍👧‍👦 Поделиться доступом", labels)
         self.assertNotIn("🚨 Panic Mode", labels)
@@ -2887,9 +2887,13 @@ class BotPaywallTests(unittest.TestCase):
         self.assertIn("поддерж", menu_source.lower())
         self.assertIn("импорт", execute_source.lower())
 
-    def test_admin_trial_gift_matches_five_day_canonical_trial(self) -> None:
+    def test_admin_trial_gift_uses_canonical_product_fact(self) -> None:
         source = inspect.getsource(self.bot_module.admin_gift)
-        self.assertIn('"trial": {"days": 5', source)
+        self.assertIn('"trial": {"days": FRIEND_GIFT_DAYS', source)
+        self.assertEqual(
+            self.bot_module.FRIEND_GIFT_DAYS,
+            self.bot_module._BOT_PRODUCT_FACTS["trial"]["days"],
+        )
         self.assertNotIn("Пробный (7 дней)", source)
 
     def test_confused_help_routes_to_user_intents_without_raw_link(self) -> None:

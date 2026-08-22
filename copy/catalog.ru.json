@@ -847,7 +847,7 @@
     },
     "marketing.footer.tagline": {
       "surface": "marketing.footer",
-      "ru": "Быстрый VPN для Android и Windows: 5 дней бесплатно, затем безлимитный трафик от 99 ₽.",
+      "ru": "POKROV для Android и Windows: 5 дней бесплатно без карты. Первый полный месяц — 99 ₽ один раз, автосписаний нет.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -883,7 +883,7 @@
     },
     "marketing.home.final.sub": {
       "surface": "marketing.home.final",
-      "ru": "YouTube, TikTok, ChatGPT и нужные сайты — одной кнопкой. 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽.",
+      "ru": "5 дней бесплатно без карты. Первый полный месяц — 99 ₽ один раз. Автосписаний нет.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -901,7 +901,7 @@
     },
     "marketing.home.final.title": {
       "surface": "marketing.home.final",
-      "ru": "Подключите POKROV VPN за минуту",
+      "ru": "Проверьте POKROV до оплаты",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -964,7 +964,7 @@
     },
     "marketing.home.hero.kicker": {
       "surface": "marketing.home.hero",
-      "ru": "POKROV VPN · Android + Windows",
+      "ru": "POKROV · Android + Windows",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -991,7 +991,7 @@
     },
     "marketing.home.hero.subtitle": {
       "surface": "marketing.home.hero",
-      "ru": "POKROV для Android и Windows. 5 дней бесплатно, карта не нужна.",
+      "ru": "Установите POKROV для Android или Windows и получите 5 дней бесплатно без карты.",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1000,7 +1000,7 @@
     },
     "marketing.home.hero.title": {
       "surface": "marketing.home.hero",
-      "ru": "YouTube, TikTok и ChatGPT — одной кнопкой",
+      "ru": "Проверьте подключение до оплаты",
       "variables": [],
       "tone": "premium-warm",
       "allowed_public": true,
@@ -1072,8 +1072,8 @@
     },
     "marketing.home.honesty.trial.title": {
       "surface": "marketing.home.honesty.trial",
-      "ru": "5 дней за 0 ₽",
-      "variables": [],
+      "ru": "{trial_days} дней за 0 ₽",
+      "variables": ["trial_days"],
       "tone": "premium-warm",
       "allowed_public": true,
       "compliance_notes": "2026-07 redesign copy pass.",
@@ -1468,8 +1468,8 @@
     },
     "marketing.home.telegram.cta": {
       "surface": "marketing.home.telegram",
-      "ru": "Бонус +5 дней после оплаты",
-      "variables": [],
+      "ru": "Забрать +{telegram_reward_days} дней",
+      "variables": ["telegram_reward_days"],
       "tone": "premium-warm",
       "allowed_public": true,
       "compliance_notes": "2026-07 redesign copy pass.",
@@ -1477,8 +1477,8 @@
     },
     "marketing.home.telegram.text": {
       "surface": "marketing.home.telegram",
-      "ru": "После первой оплаты привяжите Telegram, подпишитесь на официальный канал и заберите ещё 5 дней в приложении. Там же публикуем обновления и статусы работы.",
-      "variables": [],
+      "ru": "Привяжите Telegram, подпишитесь на официальный канал и заберите ещё {telegram_reward_days} дней в приложении — оплата для этого не нужна. Там же публикуем обновления и статусы работы.",
+      "variables": ["telegram_reward_days"],
       "tone": "premium-warm",
       "allowed_public": true,
       "compliance_notes": "2026-07 redesign copy pass.",

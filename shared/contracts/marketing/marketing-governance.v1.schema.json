@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pokrov.space/contracts/marketing/marketing-governance.v1.schema.json",
+  "title": "POKROV Marketing Governance V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "revision",
+    "default_copy_profile",
+    "default_campaign_launch_state",
+    "profiles",
+    "channels",
+    "claims",
+    "copy_bindings",
+    "prohibited_claim_patterns",
+    "trust_led_forbidden_markers",
+    "trust_led_files",
+    "source_contract",
+    "source_sha256",
+    "copy_catalog_sha256",
+    "evidence_source_sha256",
+    "contract_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "pokrov-marketing-governance-v1"},
+    "revision": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}\\.[1-9][0-9]*$"},
+    "default_copy_profile": {"const": "trust_owned"},
+    "default_campaign_launch_state": {"type": "string", "pattern": "^blocked_"},
+    "profiles": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["profile_id", "copy_state", "campaign_launch_state", "allowed_channels", "service_led", "approval"],
+        "properties": {
+          "profile_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$"},
+          "copy_state": {"enum": ["repository_verified", "blocked_owner_legal_approval_required"]},
+          "campaign_launch_state": {"type": "string", "pattern": "^blocked_"},
+          "allowed_channels": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+          "service_led": {"type": "boolean"},
+          "approval": {"type": "null"}
+        }
+      }
+    },
+    "channels": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["channel_id", "requires_consent", "erid_policy", "launch_state"],
+        "properties": {
+          "channel_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$"},
+          "requires_consent": {"type": "boolean"},
+          "erid_policy": {"type": "string", "minLength": 1},
+          "launch_state": {"type": "string", "pattern": "^blocked_"}
+        }
+      }
+    },
+    "claims": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim_id", "canonical_ru", "status", "allowed_profiles", "allowed_surfaces", "evidence"],
+        "properties": {
+          "claim_id": {"type": "string", "pattern": "^[a-z][a-z0-9_]{1,63}$"},
+          "canonical_ru": {"type": "string", "minLength": 1},
+          "status": {"const": "repository_verified"},
+          "allowed_profiles": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+          "allowed_surfaces": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+          "evidence": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["path", "pointer", "equals", "source_sha256"],
+              "properties": {
+                "path": {"type": "string", "minLength": 1},
+                "pointer": {"type": "string", "pattern": "^/"},
+                "equals": {},
+                "source_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "copy_bindings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["copy_key", "profile_id", "claim_ids", "copy_sha256"],
+        "properties": {
+          "copy_key": {"type": "string", "minLength": 1},
+          "profile_id": {"type": "string", "minLength": 1},
+          "claim_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+          "copy_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+        }
+      }
+    },
+    "prohibited_claim_patterns": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "trust_led_forbidden_markers": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "trust_led_files": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+    "source_contract": {"const": "shared/marketing-governance.source.json"},
+    "source_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "copy_catalog_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "evidence_source_sha256": {
+      "type": "object",
+      "additionalProperties": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+    },
+    "contract_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

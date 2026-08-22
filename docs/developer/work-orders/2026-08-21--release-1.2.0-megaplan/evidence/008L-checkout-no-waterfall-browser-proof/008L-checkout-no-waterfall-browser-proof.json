@@ -1,0 +1,58 @@
+{
+  "schema": "pokrov.release-1.2.0.checkout-no-waterfall-browser-proof.v1",
+  "generated_at": "2026-08-22T18:38:21Z",
+  "work_order": "WO-008L",
+  "row_outcomes": {
+    "FE/P12-120": "I3"
+  },
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "sources": {
+    "platform_revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "platform_dirty_entries": 359
+  },
+  "authority": {
+    "source_plan_lane": "portal",
+    "source_acceptance": "No unnecessary waterfall",
+    "cabinet_independent_requests": ["public_catalog", "payment_providers"],
+    "public_independent_requests": ["public_catalog", "payment_providers", "acquisition_handoff"],
+    "dependent_request": "offer_preview_after_verified_catalog_and_selected_plan",
+    "active_client_expansion_required": false
+  },
+  "source_sha256": {
+    "cabinet_checkout": "7d031b5e5314be9037690061b4c5c881bbb3d94d379cdb368b67c054ad283fda",
+    "public_checkout": "12a4f55e56b43cc69e07c1f7b08a76143edb5b0e8e80c65e6d0398c6ede13b46",
+    "cabinet_browser_spec": "4af38716b85c245aa8105e762ea193c0c9599d7d3622a7ca0f08295d248a7429",
+    "marketing_responsive_gate": "7c82f0c637cd06f7a33c23041ce4721fd77166ffae1bece825c041ec24a181f5"
+  },
+  "local_results": {
+    "webapp_focused_eslint": "PASS",
+    "marketing_eslint": "PASS",
+    "cabinet_concurrency_probe": "PASS_2_OF_2_BEFORE_RELEASE_START_SPREAD_LT_500_MS",
+    "public_checkout_concurrency_probe": "PASS_3_OF_3_BEFORE_RELEASE_START_SPREAD_LT_500_MS",
+    "webapp_production_build_and_focused_browser": "PASS_1_OF_1",
+    "cabinet_and_rewards_browser_regression": "PASS_69_OF_69",
+    "marketing_production_responsive_and_browser_gate": "PASS",
+    "candidate_preflight": "EXPECTED_BLOCKED_7_BLOCKERS_CANDIDATE_NOT_CREATED",
+    "docs_and_candidate_preflight_contracts": "PASS_37_OF_37",
+    "scoped_diff_check": "PASS_WITH_WINDOWS_CRLF_WARNINGS_ONLY",
+    "scoped_secret_scan": "PASS_1_E2E_FIXTURE_PLACEHOLDER_MATCH_CLASSIFIED",
+    "ledger_distribution": "I3_299_I2_21_I1_40_I0_17_TOTAL_377",
+    "ledger_below_i3": 78,
+    "pending_stage_counts": {
+      "pre_freeze": 7,
+      "candidate": 33,
+      "external": 17,
+      "deferred": 21
+    }
+  },
+  "manual_or_external": {
+    "exact_candidate": "NOT_CREATED",
+    "deployed_origin_timing": "NOT_RUN",
+    "provider_or_public_origin": "NOT_RUN",
+    "payment": "NOT_AUTHORIZED",
+    "deployment": "NOT_AUTHORIZED",
+    "publication": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

@@ -64,6 +64,13 @@ from admin_ops_service import ops_alert_notification_batches, refresh_ops_alerts
 from antiabuse_privacy_service import drain_antiabuse_retention
 from app_first_service import expire_app_telegram_start_codes
 from support_attachment_cleanup_service import SupportAttachmentCleanupCursor, reconcile_support_attachments
+from support_bundle_worker import (
+    load_configured_support_decryptor,
+    run_support_bundle_ingest_once,
+)
+from operator_observability_service import run_operator_retention_once
+from payment_entitlement_outbox import run_payment_entitlement_outbox_once
+from commercial_capacity_service import run_commercial_capacity_evaluation
 from emergency_catalog_worker import emergency_catalog_worker_enabled, emergency_catalog_worker_job
 from news_draft_service import collect_news_drafts, news_draft_interval_seconds, news_draft_worker_enabled
 import incident_service
@@ -76,7 +83,6 @@ SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or os.getenv("SUPPORT_USER
 FREE_TOTAL_GB = int(FREE_STANDARD_QUOTA_BYTES // (1024**3))
 PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or "pokrov_vpn").lstrip("@")
 AUTO_FREE_DAYS = int(os.getenv("AUTO_FREE_DAYS", "3650"))
-REFERRAL_BONUS_DAYS = max(1, int(os.getenv("REFERRAL_BONUS_DAYS", "10")))
 REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, int(os.getenv("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", "168")))
 EVENT_RETENTION_DAYS = max(1, int(os.getenv("EVENT_RETENTION_DAYS", "90")))
 FUNNEL_EVENT_RETENTION_DAYS = max(1, int(os.getenv("FUNNEL_EVENT_RETENTION_DAYS", "90")))
@@ -107,6 +113,16 @@ NODE_PROVISIONING_STALE_AFTER_SECONDS = max(
 )
 NODE_PROVISIONING_POLL_SECONDS = max(1, min(300, int(os.getenv("NODE_PROVISIONING_POLL_SECONDS", "10"))))
 ADMIN_OPS_ALERT_REFRESH_INTERVAL_SECONDS = max(60, int(os.getenv("ADMIN_OPS_ALERT_REFRESH_INTERVAL_SECONDS", "300")))
+COMMERCIAL_CAPACITY_AUTOMATION_ENABLED = str(
+    os.getenv("COMMERCIAL_CAPACITY_AUTOMATION_ENABLED", "true")
+).strip().lower() not in {"0", "false", "no", "off"}
+COMMERCIAL_CAPACITY_AUTOMATION_INTERVAL_SECONDS = max(
+    30,
+    min(
+        3600,
+        int(os.getenv("COMMERCIAL_CAPACITY_AUTOMATION_INTERVAL_SECONDS", "300")),
+    ),
+)
 SUPPORT_ATTACHMENT_CLEANUP_INTERVAL_SECONDS = max(
     60,
     int(os.getenv("SUPPORT_ATTACHMENT_CLEANUP_INTERVAL_SECONDS", "900")),
@@ -131,6 +147,59 @@ SUPPORT_ATTACHMENT_UPLOAD_DIR = Path(
     os.getenv("SUPPORT_UPLOAD_DIR") or (Path(__file__).resolve().parent / "uploads" / "support")
 ).resolve()
 _SUPPORT_ATTACHMENT_CLEANUP_CURSOR = SupportAttachmentCleanupCursor()
+SUPPORT_BUNDLE_WORKER_ENABLED = str(
+    os.getenv("POKROV_SUPPORT_BUNDLE_WORKER_ENABLED") or ""
+).strip().lower() in {"1", "true", "yes", "on"}
+SUPPORT_BUNDLE_WORKER_INTERVAL_SECONDS = max(
+    1,
+    min(300, int(os.getenv("POKROV_SUPPORT_BUNDLE_WORKER_INTERVAL_SECONDS", "5"))),
+)
+SUPPORT_BUNDLE_WORKER_BATCH_LIMIT = max(
+    1,
+    min(20, int(os.getenv("POKROV_SUPPORT_BUNDLE_WORKER_BATCH_LIMIT", "5"))),
+)
+SUPPORT_BUNDLE_QUARANTINE_DIR = Path(
+    os.getenv("POKROV_SUPPORT_BUNDLE_QUARANTINE_DIR")
+    or (Path(__file__).resolve().parent / "private" / "support-bundle-quarantine")
+).resolve()
+SUPPORT_BUNDLE_ACCEPTED_DIR = Path(
+    os.getenv("POKROV_SUPPORT_BUNDLE_ACCEPTED_DIR")
+    or (Path(__file__).resolve().parent / "private" / "support-bundle-accepted")
+).resolve()
+RELEASE_HEALTH_RETENTION_DAYS = max(
+    1, int(os.getenv("RELEASE_HEALTH_RETENTION_DAYS", "90"))
+)
+SUPPORT_BUNDLE_ACCEPTED_RETENTION_DAYS = max(
+    1, int(os.getenv("SUPPORT_BUNDLE_ACCEPTED_RETENTION_DAYS", "30"))
+)
+SUPPORT_BUNDLE_QUARANTINE_RETENTION_DAYS = max(
+    1, int(os.getenv("SUPPORT_BUNDLE_QUARANTINE_RETENTION_DAYS", "7"))
+)
+SUPPORT_BUNDLE_INCOMPLETE_GRACE_DAYS = max(
+    0, int(os.getenv("SUPPORT_BUNDLE_INCOMPLETE_GRACE_DAYS", "1"))
+)
+SUPPORT_BUNDLE_ACCESS_AUDIT_RETENTION_DAYS = max(
+    1, int(os.getenv("SUPPORT_BUNDLE_ACCESS_AUDIT_RETENTION_DAYS", "365"))
+)
+SUPPORT_BUNDLE_RETENTION_BATCH_LIMIT = max(
+    1, min(1000, int(os.getenv("SUPPORT_BUNDLE_RETENTION_BATCH_LIMIT", "100")))
+)
+PAYMENT_ENTITLEMENT_OUTBOX_BATCH_LIMIT = max(
+    1, min(100, int(os.getenv("PAYMENT_ENTITLEMENT_OUTBOX_BATCH_LIMIT", "20")))
+)
+PAYMENT_ENTITLEMENT_OUTBOX_MAX_ATTEMPTS = max(
+    1, min(20, int(os.getenv("PAYMENT_ENTITLEMENT_OUTBOX_MAX_ATTEMPTS", "5")))
+)
+PAYMENT_ENTITLEMENT_OUTBOX_STALE_AFTER_SECONDS = max(
+    30,
+    min(
+        86_400,
+        int(os.getenv("PAYMENT_ENTITLEMENT_OUTBOX_STALE_AFTER_SECONDS", "300")),
+    ),
+)
+PAYMENT_ENTITLEMENT_OUTBOX_POLL_SECONDS = max(
+    1, min(300, int(os.getenv("PAYMENT_ENTITLEMENT_OUTBOX_POLL_SECONDS", "5")))
+)
 
 _TEMPLATE_CACHE_TTL_SECONDS = max(30, int(os.getenv("RETENTION_TEMPLATE_CACHE_TTL_SECONDS", "180")))
 _TEMPLATE_CACHE: dict[str, tuple[datetime, str]] = {}
@@ -1099,6 +1168,31 @@ async def support_attachment_cleanup_job() -> None:
         await asyncio.sleep(SUPPORT_ATTACHMENT_CLEANUP_INTERVAL_SECONDS)
 
 
+async def support_bundle_ingest_job() -> None:
+    decryptor = load_configured_support_decryptor()
+    while True:
+        try:
+            report = await asyncio.to_thread(
+                run_support_bundle_ingest_once,
+                SessionLocal,
+                decryptor=decryptor,
+                quarantine_root=SUPPORT_BUNDLE_QUARANTINE_DIR,
+                accepted_root=SUPPORT_BUNDLE_ACCEPTED_DIR,
+                limit=SUPPORT_BUNDLE_WORKER_BATCH_LIMIT,
+            )
+            if report.selected or report.failed:
+                logger.info(
+                    "support_bundle_ingest selected=%s validated=%s rejected=%s failed=%s",
+                    report.selected,
+                    report.validated,
+                    report.rejected,
+                    report.failed,
+                )
+        except Exception:
+            logger.exception("support_bundle_ingest_job failed")
+        await asyncio.sleep(SUPPORT_BUNDLE_WORKER_INTERVAL_SECONDS)
+
+
 async def trial_reservation_expiry_job() -> None:
     while True:
         session = SessionLocal()
@@ -1271,6 +1365,20 @@ def run_telemetry_retention_once(*, session, now: datetime) -> dict[str, int]:
             or 0
         ),
     }
+    deleted.update(
+        run_operator_retention_once(
+            session,
+            now=now,
+            quarantine_root=SUPPORT_BUNDLE_QUARANTINE_DIR,
+            accepted_root=SUPPORT_BUNDLE_ACCEPTED_DIR,
+            release_health_days=RELEASE_HEALTH_RETENTION_DAYS,
+            accepted_bundle_days=SUPPORT_BUNDLE_ACCEPTED_RETENTION_DAYS,
+            rejected_bundle_days=SUPPORT_BUNDLE_QUARANTINE_RETENTION_DAYS,
+            incomplete_grace_days=SUPPORT_BUNDLE_INCOMPLETE_GRACE_DAYS,
+            access_audit_days=SUPPORT_BUNDLE_ACCESS_AUDIT_RETENTION_DAYS,
+            batch_limit=SUPPORT_BUNDLE_RETENTION_BATCH_LIMIT,
+        )
+    )
     return deleted
 
 
@@ -1309,6 +1417,53 @@ async def news_draft_job() -> None:
         await asyncio.sleep(news_draft_interval_seconds())
 
 
+async def payment_entitlement_outbox_job() -> None:
+    while True:
+        counters = await asyncio.to_thread(
+            run_payment_entitlement_outbox_once,
+            SessionLocal,
+            now=_utcnow(),
+            batch_limit=PAYMENT_ENTITLEMENT_OUTBOX_BATCH_LIMIT,
+            max_attempts=PAYMENT_ENTITLEMENT_OUTBOX_MAX_ATTEMPTS,
+            stale_after_seconds=PAYMENT_ENTITLEMENT_OUTBOX_STALE_AFTER_SECONDS,
+        )
+        if any(int(value) > 0 for value in counters.values()):
+            logger.info("payment_entitlement_outbox counters=%s", counters)
+        await asyncio.sleep(PAYMENT_ENTITLEMENT_OUTBOX_POLL_SECONDS)
+
+
+def _run_commercial_capacity_once() -> dict:
+    session = SessionLocal()
+    try:
+        result = run_commercial_capacity_evaluation(
+            session,
+            now=_utcnow(),
+            apply=True,
+        )
+        session.commit()
+        return result
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+async def commercial_capacity_automation_job() -> None:
+    while True:
+        result = await asyncio.to_thread(_run_commercial_capacity_once)
+        if int(result.get("transition_count") or 0) > 0:
+            capacity = dict(result.get("capacity") or {})
+            logger.info(
+                "commercial_capacity transitions=%s active_units=%s limit_units=%s band=%s",
+                int(result.get("transition_count") or 0),
+                capacity.get("active_units"),
+                capacity.get("limit_units"),
+                capacity.get("band"),
+            )
+        await asyncio.sleep(COMMERCIAL_CAPACITY_AUTOMATION_INTERVAL_SECONDS)
+
+
 async def _supervise_job(name: str, job_factory, *, restart_delay_seconds: int = 10) -> None:
     while True:
         try:
@@ -1333,6 +1488,12 @@ async def main() -> None:
         asyncio.create_task(_supervise_job("channel_bonus_guard", channel_bonus_guard_job)),
         asyncio.create_task(_supervise_job("free_cycle_reset", free_cycle_reset_job)),
         asyncio.create_task(_supervise_job("node_provisioning", node_provisioning_job)),
+        asyncio.create_task(
+            _supervise_job(
+                "payment_entitlement_outbox",
+                payment_entitlement_outbox_job,
+            )
+        ),
         asyncio.create_task(_supervise_job("observer_retention", observer_retention_job)),
         asyncio.create_task(_supervise_job("support_attachment_cleanup", support_attachment_cleanup_job)),
         asyncio.create_task(_supervise_job("trial_reservation_expiry", trial_reservation_expiry_job)),
@@ -1351,6 +1512,21 @@ async def main() -> None:
     if news_draft_worker_enabled():
         tasks.append(
             asyncio.create_task(_supervise_job("news_draft", news_draft_job))
+        )
+    if COMMERCIAL_CAPACITY_AUTOMATION_ENABLED:
+        tasks.append(
+            asyncio.create_task(
+                _supervise_job(
+                    "commercial_capacity_automation",
+                    commercial_capacity_automation_job,
+                )
+            )
+        )
+    if SUPPORT_BUNDLE_WORKER_ENABLED:
+        tasks.append(
+            asyncio.create_task(
+                _supervise_job("support_bundle_ingest", support_bundle_ingest_job)
+            )
         )
     await asyncio.gather(*tasks)
 

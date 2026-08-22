@@ -40,6 +40,15 @@ iPhone/iPad/macOS use the authenticated manual Apple path until a signed native
 Apple release exists. Raw subscription keys are not offered from Android or
 Windows install screens.
 
+The authenticated cabinet treats runtime metadata as a release projection, not
+as an untyped link list. Its primary Android/Windows action requires URL,
+version, channel, publication date, positive size and a valid SHA-256. It shows
+format and architecture alongside those fields, exposes missing/partial states,
+and withholds download actions until the projection is complete. Browser
+platform detection supplies only the initial selection: unknown platforms must
+choose, and a missing Windows artifact never falls back to an Android APK (or
+vice versa). Unbound mirror links are not promoted as equivalent artifacts.
+
 The static marketing export uses build-time exact release URLs when present and
 refreshes them from `/api/public/client-apps` in the browser. Missing or invalid
 runtime metadata produces an explicit temporary-unavailable state and the
@@ -52,6 +61,13 @@ Client release metadata lives in
 `C:/Users/kiwun/Documents/ai/POKROV-app/config/release-handoff.seed.json` and
 retained release evidence under
 `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/`.
+
+The stable root handoff and its versioned rollback targets are bound by
+`C:/Users/kiwun/Documents/ai/POKROV-app/config/release-rollback-catalog.seed.json`.
+Only exact cataloged bytes may replace the pointer, with optimistic lock,
+external backup, receipt and readback; runtime config and static marketing still
+require their separate authorized sync/rebuild. A local pointer fixture does
+not prove deployed rollback.
 
 Public download URLs must not be invented in platform docs; they must come from
 approved client handoff evidence and the active runtime config.

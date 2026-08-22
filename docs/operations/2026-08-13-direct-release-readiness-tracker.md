@@ -9,12 +9,13 @@ requirement was dropped. Device identity/admin, bot Apple fallback,
 campaign-entry, bonus/roulette, AI, remote-ad and full-path work remain
 explicit below until their own evidence closes them.
 
-Document class: `ACTIVE_EXECUTION`
+Document class: `EVIDENCE`
 
-Scope: the next direct, outside-store POKROV release for Android and Windows.
-This tracker coordinates platform and client work but does not replace the
-canonical owners named below. It must stay current until the exact candidate is
-published or explicitly rejected.
+Scope: retained execution record for the direct Android and Windows release
+line reviewed on 2026-08-13/14. The POKROV 1.2.0 megaplan under
+`docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/` supersedes this
+tracker for current execution. Statuses below remain evidence for their named
+candidate and date; they do not authorize a new candidate or promotion.
 
 ## Objective
 

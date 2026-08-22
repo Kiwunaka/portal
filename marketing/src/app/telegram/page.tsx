@@ -5,9 +5,13 @@ import {
   PAID_REWARDS_MARKETING_COPY,
   PAID_REWARDS_MARKETING_ENABLED,
 } from "../../lib/marketing-site";
+import { getSharedProductFacts } from "../../lib/pokrov";
 import { getSeoPage, TELEGRAM_START_PROMISE } from "../../lib/seo-pages";
 
 const seoPage = getSeoPage(MARKETING_CANONICAL_PATHS.telegram);
+const productFacts = getSharedProductFacts();
+const trialDays = productFacts.trial.days;
+const telegramRewardDays = productFacts.telegram_reward.days;
 
 export const metadata = buildMarketingMetadata(
   seoPage.title,
@@ -22,15 +26,15 @@ export default function TelegramPage() {
     <IntentLanding
       pagePath={MARKETING_CANONICAL_PATHS.telegram}
       breadcrumbName="Telegram"
-      heroKicker="5 дней без карты · ещё +5 после первой оплаты"
-      heroTitle="Получите 5 дней бесплатно и ещё 5 за Telegram"
+      heroKicker={`${trialDays} дней без карты · ещё +${telegramRewardDays} за Telegram без оплаты`}
+      heroTitle={`Получите ${trialDays} дней бесплатно и ещё ${telegramRewardDays} за Telegram`}
       heroSubtitle={TELEGRAM_START_PROMISE}
-      scenarioTitle="Привязка Telegram, подписка на канал — и ещё 5 дней"
+      scenarioTitle={`Привязка Telegram, подписка на канал — и ещё ${telegramRewardDays} дней`}
       scenarioBody="Плюс обновления сервиса и быстрый вход в поддержку."
       scenarioCards={[
         {
-          eyebrow: "После первой оплаты",
-          title: "Получите ещё 5 дней за Telegram",
+          eyebrow: "Без оплаты",
+          title: `Получите ещё ${telegramRewardDays} дней за Telegram`,
           desc: "Привяжите Telegram, подпишитесь на официальный канал и подтвердите подписку в аккаунте.",
         },
         {

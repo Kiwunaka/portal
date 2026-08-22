@@ -37,15 +37,15 @@ export function Hero() {
       <div className="flex flex-col items-start gap-6">
         <Chip>
           <span className="size-1.5 rounded-full bg-brand" />
-          {getCopyText("marketing.home.hero.kicker", "POKROV VPN · Android + Windows")}
+          {getCopyText("marketing.home.hero.kicker", "POKROV · Android + Windows")}
         </Chip>
         <h1 className="font-display text-[2.5rem] leading-[1.08] font-extrabold tracking-[-0.01em] text-ink sm:text-[3.25rem] lg:text-[3.5rem]">
-          {getCopyText("marketing.home.hero.title", "YouTube, TikTok и ChatGPT — одной кнопкой")}
+          {getCopyText("marketing.home.hero.title", "Проверьте подключение до оплаты")}
         </h1>
         <p className="max-w-lg text-lg leading-relaxed text-ink-soft">
           {getCopyText(
             "marketing.home.hero.subtitle",
-            "POKROV для Android и Windows. 5 дней бесплатно, карта не нужна.",
+            "Установите POKROV для Android или Windows и получите 5 дней бесплатно без карты.",
           )}
         </p>
         <div className="flex flex-wrap gap-3">

@@ -322,6 +322,62 @@ def _seed_reward_job(
     return grant, job
 
 
+def _seed_payment_job(session):
+    from models import Account, EntitlementGrant, User
+    from node_provisioning_service import enqueue_payment_entitlement_sync
+
+    account_id = "00000000-0000-4000-8000-000000000451"
+    grant_id = "00000000-0000-4000-8000-000000000452"
+    session.add(
+        Account(
+            id=account_id,
+            status="active",
+            created_source="test",
+            created_at=NOW,
+            updated_at=NOW,
+        )
+    )
+    session.add(
+        User(
+            tg_id=4151,
+            account_id=account_id,
+            uuid=str(uuid.uuid4()),
+            sub_type="PAID",
+            current_plan_code="1_month",
+            is_active=True,
+            expiry_at=NOW + timedelta(days=30),
+        )
+    )
+    grant = EntitlementGrant(
+        id=grant_id,
+        account_id=account_id,
+        legacy_tg_id=4151,
+        idempotency_key="lavatop:payment-sync-order",
+        source="provider_payment",
+        status="active",
+        grant_kind="paid_access",
+        plan_code="1_month",
+        starts_at=NOW,
+        expires_at=NOW + timedelta(days=30),
+        activated_at=NOW,
+        duration_days=30,
+        provider="lavatop",
+        external_order_id="payment-sync-order",
+        created_at=NOW,
+        updated_at=NOW,
+    )
+    session.add(grant)
+    session.flush()
+    return enqueue_payment_entitlement_sync(
+        session,
+        account_id=account_id,
+        entitlement_grant_id=grant_id,
+        provider="lavatop",
+        order_id="payment-sync-order",
+        now=NOW,
+    )
+
+
 def test_reward_sync_enqueue_rejects_missing_and_nonreward_grants(database) -> None:
     from models import EntitlementGrant
     from node_provisioning_service import (
@@ -447,6 +503,46 @@ def test_reward_sync_worker_updates_every_active_account_alias_once(database) ->
         assert job.status == "completed"
         assert job.completed_at == NOW
         assert reward_sync_state(job) == "synced"
+
+
+def test_payment_entitlement_sync_worker_updates_account_and_completes(database) -> None:
+    from models import NodeProvisioningJob
+
+    with database() as session:
+        _seed_payment_job(session)
+        session.commit()
+
+    panel = FakePanel()
+    result = asyncio.run(_run(database, panel))
+
+    assert result["claimed"] == result["succeeded"] == 1
+    assert panel.events == [("traffic", 4151, 0), ("close",)]
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        assert job.job_type == "payment_entitlement_sync"
+        assert job.status == "completed"
+        assert job.completed_at == NOW
+
+
+def test_payment_entitlement_sync_fails_closed_if_grant_was_reversed(database) -> None:
+    from models import EntitlementGrant, NodeProvisioningJob
+
+    with database() as session:
+        _seed_payment_job(session)
+        grant = session.query(EntitlementGrant).one()
+        grant.status = "reversed"
+        grant.reversed_at = NOW
+        session.commit()
+
+    panel = FakePanel()
+    result = asyncio.run(_run(database, panel, max_attempts=1))
+
+    assert result["manual_review"] == 1
+    assert panel.events == [("close",)]
+    with database() as session:
+        job = session.query(NodeProvisioningJob).one()
+        assert job.status == "manual_review"
+        assert job.last_error_code == "payment_sync_grant_invalid"
 
 
 @pytest.mark.parametrize("failure", (False, RuntimeError("must-not-be-persisted")))

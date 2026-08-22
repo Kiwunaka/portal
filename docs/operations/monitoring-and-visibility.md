@@ -1,6 +1,6 @@
 # Monitoring And Visibility
 
-Last updated: 2026-08-15
+Last updated: 2026-08-21
 
 ## Document Status
 
@@ -115,6 +115,17 @@ truth comes from signed provider callbacks and entitlement records, never from
 marketing events. The aggregate response and UI must not enumerate anonymous
 session hashes, handoff tokens, Telegram/account/order ids, or raw event rows.
 
+Commercial capacity is a separate entitlement-owned projection. The
+`capacity_automation` object on `GET /api/admin/campaigns` shows exact commercial
+revision/SHA, active units, the 300-unit limit, current band, 70% pause and
+strict-below-65% resume thresholds, pending reservation forecast, gate reasons,
+per-campaign caps/paid/reservation counts and evaluation freshness. Alert on a
+stale worker/readback or a live auto-managed campaign at a forbidden capacity
+band. Do not treat projected pending units, node telemetry, clicks or funnel
+counts as entitlement truth. Transition evidence is the bounded `AdminAudit`
+chain `capacity.auto_pause|auto_hold|auto_resume`; a dashboard read performs no
+mutation.
+
 ## Transport Rollout Visibility
 
 Transport rollout must stay visible to operators instead of being buried in opaque config.
@@ -224,7 +235,16 @@ Operational rules:
 - callback failure spikes should be checked against provider dashboard status before treating them as user payment failures
 - volumetric DDoS is still outside the guarantee of app-level counters; correlate with HAProxy, hoster, and firewall evidence
 
-Support attachment visibility for this candidate is metadata-only:
+Support attachment and encrypted-bundle visibility for this candidate is
+metadata-only:
+
+- `shared/contracts/support/` defines the signed recipient-key and short-lived
+  extended-policy shapes. The authenticated route records bounded case/upload,
+  offset, status, byte-count and failure-code metadata only. It never logs,
+  decrypts or parses ciphertext. The isolated worker validates content in
+  memory and keeps only the original encrypted envelope in accepted/quarantine
+  storage. Local route/worker/client tests are not production key custody,
+  storage, deploy, rotation, schedule or successful-upload evidence;
 
 - `ticket_attachment_uploaded` logs owner ID, canonical media type, stored private reference, and byte count, never file bytes or payload content;
 - `support_upload_reject` is emitted once for each HTTP format, body-size, attachment-size, or pending quota rejection, including oversized streaming reads; it includes only a stable reason and status. Non-HTTP storage/persistence failure uses `store_failed`. Filename, body, bytes, and private payload are excluded;
@@ -525,9 +545,51 @@ Runtime telemetry wave `2026-06-02`:
 Admin ops app wave `2026-07-06`, command-center redesign updated locally on
 `2026-07-23`:
 
-- `adminapp/` is the dedicated operator UI for `https://admin.pokrov.space/`; it is desktop-first, Russian-language, action-first, and exposes 17 direct route modules in a compact light top navigation while keeping mobile focused on triage/status
+- `adminapp/` is the canonical operator UI for
+  `https://admin.pokrov.space/`. Overview plus 17 peer capability routes are a
+  frozen direct-entry set mapped by `operator-center.manifest.json` into seven
+  target workspaces; five network routes, incident and two support routes now
+  use v2 work contracts, while 10 routes remain on compatibility contracts.
+  Frontend build, route manifest, expected Admin API schema
+  and backend meta identity are separate evidence inputs
+- a missing optional deployment identity remains `null` plus an explicit
+  warning. A contradictory app, route-manifest hash or frontend/API schema is a
+  P0 candidate/deploy mismatch: stop the cutover and use the retained rollback
+  target. Local build or plan-only success is not public readback
+- the canonical v2 browser path starts with `/api/admin/v2/auth/me` and uses an
+  opaque HttpOnly `__Host-` cookie. The browser keeps only the derived CSRF in
+  process memory; bearer and raw Telegram initData are absent from Web Storage.
+  Missing/revoked/expired sessions, revoked roles, unknown permissions and
+  untrusted unsafe origins are access failures, never a healthy source state
+- operator bootstrap/revoke/step-up and every successful v2 command retain
+  environment plus the exact role/permission snapshot. Governance now exposes
+  a bounded explorer/CSV, Action Intent-to-audit command lineage, JIT/break-glass
+  review state and a redacted support-bundle access log. Export and sensitive-log
+  reads create their own audit rows; local test evidence is not production
+  identity, hosted retention-worker or public-deploy proof
+- expired temporal roles are authorization failures on the next request. Monitor
+  pending JIT/break-glass reviews, active break-glass grants, suspended operators
+  with live sessions, and the last-active-superadmin guard. Never resolve those
+  conditions through direct table edits during normal operation
+- `/api/admin/v2/governance/privacy` reports configured raw telemetry windows,
+  support-bundle TTL/hold/backlog counts and field inventory. Treat non-zero
+  overdue backlog, file errors or a stopped retention worker as unresolved even
+  when the governance read itself is healthy
 - the active shell has no fixed desktop sidebar; the overview is a light triage ledger with an incident feed, selected evidence, factual next-step links, separate Brain/RU freshness, and a compact fleet strip
 - the first screen uses only its compact overview and RU-latest reads; selecting an incident does not fetch another payload, while charts, full alert actions, and heavy entity cards remain route-local
+- the network workspace reads `/api/admin/v2/network/*`. Fleet and Node 360 must
+  show inventory, brain/runtime, observer and RU-origin status independently;
+  an invalid RU manifest is a failed RU source, not permission to label current
+  or brain evidence as RU evidence and not a reason to hide the rest of fleet
+- network reads are observation-only: opening traffic, alerts, providers or the
+  emergency catalog must not refresh alerts, poll providers, promote catalogs,
+  emit notifications or mutate command state. Provider-note text, host/panel
+  material, subnets and raw emergency endpoint material are forbidden in the
+  browser projection
+- migrated node/provider/emergency commands and alert silence must appear in
+  the same Action Intent audit lineage. A direct legacy network mutation from
+  the canonical frontend is a migration regression; a destructive command
+  without high-risk permission plus current step-up is an authorization failure
 - global admin search routes operators into user investigation by Telegram ID, username, display name, install ID, order ID, node code, key/email, or related operator identifiers
 - v1 does not require Grafana, Beszel, Netdata, VictoriaMetrics, or provider APIs; first-party Postgres tables, collected node samples, usage rollups, and admin API snapshots are the source of truth
 - `/api/admin/ops/overview` is the top-level ops snapshot combining a purpose-built compact user/ticket/node summary, one metrics-freshness snapshot, node capacity, free-tier burn, provider cap status, and already durable active alerts; it must not invoke the full `/api/admin/summary` or refresh the alert engine on a browser read
@@ -540,27 +602,85 @@ Admin ops app wave `2026-07-06`, command-center redesign updated locally on
 - A Reality public-profile/listener-port difference can be inspected with `python scripts/reconcile_node_runtime_ports.py --only <codes>`. The default is dry-run and prints only node code, public DB port, live Xray listener port, status, and mismatch names. A port-only difference is `topology_unattested`, not an automatically repairable drift: HAProxy or another L4 frontend may intentionally own public `443` and route to an internal listener such as `10443`. Never rewrite the public profile to an internal port for a fronted node. Applying requires explicit current production authorization, `--apply`, the same exact `--only` allowlist, one current CAS confirmation per node (`--confirm <code:expected_db_port:expected_runtime_port>`), and a separate operator attestation (`--attest-direct-listener <code:expected_runtime_port>`) made only after current node-side evidence proves that no L4 frontend owns or maps the public endpoint. Apply rebuilds the plan from fresh panel snapshots immediately before its DB transaction; both confirmations must match that fresh plan. The DB CAS covers enabled state and every persisted Node field used to resolve the selected profile, so any concurrent metadata change rolls back the batch. Apply aborts the whole batch unless the live inbound has the exact expected inbound id and matches enabled/VLESS/TCP/Reality/SNI/SID/PBK with port as its only difference; it changes only canonical DB inventory, never panels, clients, Xray, or services. A post-commit readback mismatch exits nonzero and triggers only a guarded compare-and-swap compensating rollback from the retained in-memory preimage; output reports the redacted rollback status, and a rollback conflict requires manual owner recovery. After approval, retain the redacted dry-run, topology evidence, exact confirmations, apply output, and post-apply dry-run for the exact candidate.
 - `predeploy_node_readiness.py` classifies a public `443` to internal listener difference as `verified_front` only when the node-local transport-front unit is active, its exact loopback backend mapping exists, HAProxy validates the installed config and owns `443`, and Xray owns the mapped listener. Any missing check remains drift; verified fronting never authorizes changing the public profile to the internal port.
 - node lifecycle actions in `adminapp` require explicit typed confirmation; node resync supports dry-run before execution
-- `/api/admin/broadcast` persists one bounded attempt per frozen recipient. The
-  operator sees delivered, terminal/retryable failures, reason categories,
-  attempt timing and freshness. Failed-only retry may select only explicit 429
-  rows and never a successful or uncertain recipient. Raw Telegram response
-  text and recipient IDs are not returned by the aggregate endpoint.
+- `/api/admin/v2/growth/broadcasts/{intent_id}/delivery` reads the bounded
+  attempts persisted for one frozen broadcast intent. The operator sees
+  delivered, terminal/retryable failures, reason categories, attempt timing and
+  freshness. Failed-only retry may select only explicit 429 rows and never a
+  successful or uncertain recipient. Raw Telegram response text and recipient
+  IDs are not returned by the aggregate endpoint. Canonical send/status use the
+  v2 growth action-intent boundary; `/api/admin/broadcast` remains compatibility
+  execution behind that stored intent, not a second browser write path.
 - product/error events use Event Envelope V1: idempotent `event_id`, occurrence
   and receive time, duration, platform/version/surface/subsystem/stage, bounded
   attribution, normalized result/error/retry fields and allowlisted metadata.
   Active user means a distinct account with a confirmed successful connection
   in the rolling seven-day window. The envelope must never contain browsing
   history, destination traffic, raw config, credentials or private chat text.
+- operational release health is separate from product events. Authenticated
+  `POST /api/client/observability/release-health/batches` accepts at most 100
+  strict Operational Event Envelope V1 projections per bounded JSON/gzip body.
+  It retains event/build/platform/outcome/catalog-code dimensions in
+  `release_health_events` plus one nullable `selected_app_count` integer for the
+  exact Android `app.routing.selection.finished` projection. The value is
+  bounded to `0..128`; package names, executable names and selected-app lists
+  are rejected. Duplicate UUIDs do not increment the cohort and the table has
+  no account, install, device, session, correlation, IP, domain, destination,
+  package or arbitrary metadata column.
+- Android and Windows write the allowlisted operational record to their bounded
+  local store before attempting this projection. Upload is best-effort and
+  existing-session-only; an unavailable session leaves local evidence intact
+  and must not trigger trial or session creation.
+- release-health schema/compression/privacy rejects retain only aggregate
+  `quarantine.<reason>` counters. Payloads, `Authorization`, `Cookie`, request
+  bodies and arbitrary headers are not logged or quarantined. These counters
+  are ingest health, not incident, payment, entitlement or support authority.
+- `GET /api/admin/observability/release-health` groups current-window events by
+  exact release/build/platform identity and reports crash/connect/update counts
+  plus deltas against the preceding equal window. Android routing adds only
+  `routing_count_events` and `selected_app_count_total`; neither field reveals
+  which packages were selected. The known-issue read model is candidate scoped.
+  Neither projection carries identity/destination/package fields or mutates
+  incidents/releases. Retention emits only integer counters:
+  deleted health rows, bundle rows, accepted objects, quarantine chunks, access
+  audits, held skips, missing files, and file errors. Non-zero `file_errors`, a
+  persistent backlog, or a stopped worker blocks production retention evidence.
+- L1 support can use the safe bundle summary/timeline but cannot download an
+  object. L2/SRE access requires the explicit allowlist, a fixed reason, an
+  expiring one-time grant, and retained audit rows. A local RBAC test is not
+  evidence that production identities or directory permissions are correct.
+- Temporary support-mode issuance is an audited L2 Action Intent tied to one
+  case and exact build. Monitor issued/redeemed/expired status and command
+  outcomes without logging the activation code, code hash, nonce, signed
+  payload or user diagnostic contents. Repeated redeem failures are abuse or
+  client-version signals, not permission to weaken owner/audience checks.
+- The `PSD1-*` diagnostic decoder is a no-upload read. Its output is bounded
+  non-identifying facts and must never be correlated into account/device truth
+  without separate authorized evidence. Android/Windows manual export writes
+  only the encrypted envelope; export cancellation is not delivery success.
+- Production support-mode evidence requires the exact candidate and retained
+  proof of visible indicator, <=30-minute expiry, cumulative caps, nonce replay
+  rejection, Android SAF export, Windows save dialog and encrypted-only file
+  contents. Local source/widget/unit proof remains `I3`, not runtime `I4`.
 - the user card exposes a bounded safe event timeline for support diagnosis:
   event name, occurrence/receive time, platform/version/build, subsystem/stage,
   result, normalized error, retryability, duration and network class. It never
   returns arbitrary event metadata, session/device/account ids, trace ids,
   browsing destinations, raw configs or credentials.
-- `/api/admin/news-drafts` exposes only bounded RSS-source/run health and safe
-  draft metadata. `portal-worker` may collect once per day when
+- `/api/admin/v2/growth/news-drafts` exposes only bounded RSS-source/run health
+  and safe draft metadata; `/api/admin/v2/growth/live-updates` preserves
+  `source_draft_id` lineage. `portal-worker` may collect once per day when
   `NEWS_DRAFT_WORKER_ENABLED=true`; it stores no article body, deduplicates by
   source item hash and cannot publish. An editor must write the Russian summary
-  and complete the existing L2 `live_update.create` intent.
+  and complete the v2 growth L2 `live_update.create` intent.
+- release rollout monitoring is candidate- and platform-scoped. The cockpit
+  must keep current/brain/RU evidence separate and show diagnostic gates,
+  adoption, release-health delta, support-bundle delta, known issues, observation
+  deadline and thresholds together. A missing cohort is `MISSING`, not zero.
+  Rollout start requires all gates; observation close requires its elapsed
+  window and PASS health delta. Pause/rollback request/mismatched artifact
+  configuration must make the public client-app response advertise zero rollout.
+  `external_artifact_switch=NOT_PERFORMED` is an operator action result, never
+  rollback completion evidence.
 - consumer access has exactly three effective statuses: `TRIAL`, `PAID` and `PENDING`; every current gift, promo-day grant and operator grant is `PAID`, while raw `FREE` values are legacy storage only
 - `/api/admin/free-tier/summary` and `/api/admin/free-tier/users` are retained as `Архив FREE` retirement and historical-observability surfaces; with `FREE_TIER_ENABLED=false` they must show no active delivery keys, mappings, enabled pool membership, or queued/running free-provisioning jobs
 - a node reconciliation is complete only when every `TRIAL`/`PAID` account is enabled on each canonical paid-node group and every `PENDING` account is disabled everywhere; aggregate dry-run/apply/readback evidence must contain no raw Telegram ID, UUID, email or connection material
@@ -568,6 +688,24 @@ Admin ops app wave `2026-07-06`, command-center redesign updated locally on
 - a scheduled release announcement must execute the existing guarded `live_update.create` and `broadcast.send` actions, use deterministic per-action idempotency keys and retain per-recipient Telegram outcome reasons. `scripts/remote_schedule_release_announcement.py` installs a one-shot persistent Brain timer from a root-only config; a partial broadcast is a failed guarded action and must not be reported as complete.
 - `/api/public/live-updates` returns an empty list when there is no active operator-authored update. It must not invent placeholder releases, dates or Telegram post links; expired release cards are removed through guarded `live_update.delete` or disabled through guarded `live_update.update`.
 - operators must monitor queued/running/retry/manual-review node-provisioning jobs and must not infer `soft_active` from traffic bytes; the target role/inbound must be confirmed first
+- payment-entitlement outbox visibility is integer-only: `pending`,
+  `processing`, `delivered`, `dead_letter`, and oldest open age in seconds. The
+  worker log reports only integer transition counters. It must not include the
+  event payload, provider body, local owner, checkout URL, SQL or parameters;
+  stale claims recover after the configured lease and exhausted work remains a
+  closed-code dead letter for reconciliation
+- payment-provider HTTP telemetry is aggregate and fixed-shape: provider,
+  closed operation, HTTP status, integer latency and closed result code, with
+  count/total/max latency rollups. URL/query, headers, credentials, request
+  fields, response body and exception text are forbidden. A local sample proves
+  instrumentation shape only; provider availability, deployed pool saturation,
+  timeout rate and latency SLO require exact-runtime evidence
+- `/api/health.payment_db` is the bounded-threadpool payment DB projection:
+  integer-only active/max-active, started/completed/failed, queue-wait total/max
+  and use-case duration total/max. It must never expose SQL, bind parameters,
+  account/order identity or exception text. Sustained active=max-active,
+  increasing queue wait or failure count is an operator signal, but local tests
+  do not establish production pool sizing or latency SLOs
 - an access-key UUID rotation is not successful on canonical DB or panel-row readback alone: after every affected panel confirms the replacement row, the worker must receive an authenticated Xray restart acknowledgement, then bounded `/server/status` proof from two consecutive samples that `xray.state=running` with no `xray.errorMsg`, and then re-read the panel row. The same apply/readback sequence is required when compensation restores the old UUID. An apply error or post-apply row mismatch is `rotation_runtime_apply_failed` (or `rotation_compensation_failed` during rollback) and requires `manual_review`; it must never finalize the canonical UUID. These panel signals confirm process/config application, not an independent authenticated dataplane canary; the dedicated egress canary remains an operator-run check and is not invoked with a customer identity during rotation.
 - `free_standard` and `free_soft` are legacy rollback/cleanup roles only; while free delivery is disabled they must not be selected, provisioned, or fall back to paid or `operator_lab` nodes
 - nftables shaper readiness requires Linux canary evidence for syntax, IPv4/IPv6 TCP/UDP throughput, NAT sharing, counters, premium isolation, idempotent setup, and rollback; local dry-run evidence is not production proof

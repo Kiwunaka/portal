@@ -1,0 +1,113 @@
+{
+  "candidate_created": false,
+  "core_branch": "codex/1.2.0-release-v2",
+  "core_head": "69a74545101708e56183c92e31f2b4c7b2509884",
+  "core_source_dirty": true,
+  "date": "2026-08-22",
+  "evidence_ceiling": "I3_LOCAL_SOURCE_AND_CI_CONTRACT_PROOF",
+  "hosted_ci_status": "NOT_RUN",
+  "ledger_advancement": [
+    "REL/CORE-001 I2->I3"
+  ],
+  "ledger_distribution": {
+    "I0": 20,
+    "I1": 45,
+    "I2": 35,
+    "I3": 277,
+    "at_least_i1": 357,
+    "below_i3": 100,
+    "total": 377
+  },
+  "ledger_unchanged": [
+    "REL_DOD/DOD-10 remains I2"
+  ],
+  "noncanonical_diagnostics": [
+    {
+      "result": "NOT_CREDITED_NONCANONICAL_SHELL",
+      "summary": "The first full-gate attempt used Windows PowerShell 5, whose ConvertFrom-Json lacks -Depth; the canonical pwsh rerun passed."
+    },
+    {
+      "result": "DIAGNOSTIC_ONLY_SCOPE_DEBT",
+      "summary": "Broad Staticcheck found inherited style, deprecation and dead-code debt; the release gate is intentionally bounded to SA2*, SA5* and SA6* over supported release packages."
+    }
+  ],
+  "promotion_authorized": false,
+  "shipped_platform_contract": {
+    "android": "ACTIVE_TWO_BUILD_CI",
+    "apple": "SOURCE_BUILD_CI_HOSTED_RESULT_AND_DEVICE_PROOF_REQUIRED",
+    "linux": "TEST_AND_ANALYSIS_ONLY_NOT_SHIPPED_IN_1.2.0",
+    "windows": "ACTIVE_TWO_BUILD_CI_AND_100_CYCLE_CLIENT_BACKTEST"
+  },
+  "source_hashes": {
+    ".github/workflows/ci.yml": "eb77a72c03d19e7b7a986d02df83c58acd40324879b687d8e436e9a227499d55",
+    "README.md": "15650282e5009dfeb99169d7bd4dc0c41ad496200401c95b96816dd907d928e4",
+    "docs/release.md": "c096eab6171c0bb48afcc5bc926b76b134b296d73965b9316b231d43ca54fd32",
+    "scripts/build-android.ps1": "efb7a9d3bdadf489f3411d1ce79f860240606942e4ce8eb4e61a1a31d2352611",
+    "scripts/build-apple.sh": "69357dd5afc4168b3521fce078fe4c4604b2f9348854c8db483ea6042fc3df46",
+    "scripts/new-release-artifact-evidence.ps1": "dc04f0fc9bb435d51c3244e4ba51b5d3129548c96e1d59a5eb383f5c49c658ed",
+    "scripts/test.ps1": "68356e695255afdb5923926f4dacb0f571551fdeb91728e7b80bb601a6616d8f",
+    "scripts/verify-release-ci-contract.ps1": "f129b99de63f9f5803ed02d3b47325f8c87a94ed68fab530e49b500a0d79a442",
+    "v2/config/parser_fuzz_test.go": "c9e226c8ba3ea7f0db9adde5f68d4bd0ba764dacdf899b5b87038d93356f338a"
+  },
+  "source_sbom": [
+    {
+      "components": 239,
+      "detected_license_evidence": 200,
+      "name": "pokrov-core.cdx.json",
+      "sha256": "75ed4615dba81e0fadb0b848487b0f763601d428b40e33664bafd4e2fe4d9a41",
+      "size": 311627,
+      "without_detected_license_evidence": 39
+    },
+    {
+      "components": 226,
+      "detected_license_evidence": 189,
+      "name": "sing-box.cdx.json",
+      "sha256": "4d797f5fb8807431b2e4303736d845276fe68a9beabfe0c9a8615fc462590289",
+      "size": 267255,
+      "without_detected_license_evidence": 37
+    }
+  ],
+  "source_sbom_status": "PASS_WITH_DECLARED_LICENSE_DETECTION_WARNINGS",
+  "status": "PASS_LOCAL_WITH_DECLARED_LIMITATIONS",
+  "tool_pins": {
+    "cyclonedx_gomod": "v1.10.0",
+    "go": "go1.25.13",
+    "govulncheck": "v1.7.0",
+    "mingw_chocolatey": "13.2.0",
+    "staticcheck": "v0.7.0"
+  },
+  "verification": [
+    {
+      "command": "pwsh -NoLogo -NoProfile -File scripts/test.ps1 -GoExecutable <go1.25.13>",
+      "result": "PASS; brand, ABI exports=15, observability, AWG2, release-CI contract, full root module, AWG, daemon, libbox, TLS and uTLS"
+    },
+    {
+      "command": "staticcheck -checks=SA2*,SA5*,SA6* <supported root and embedded packages>",
+      "result": "PASS"
+    },
+    {
+      "command": "go test -run=^$ -fuzz=FuzzParseConfigDoesNotPanic -fuzztime=5s ./v2/config",
+      "result": "PASS; 66088 executions; 151 new interesting inputs; no panic"
+    },
+    {
+      "command": "cyclonedx-gomod v1.10.0 root and sing-box generation repeated with -licenses -std -json -notimestamp -noserial",
+      "result": "PASS_WITH_DECLARED_LICENSE_DETECTION_WARNINGS; both repeat SHA-256 values match byte-for-byte"
+    },
+    {
+      "command": "scripts/new-release-artifact-evidence.ps1 matching and one-byte-mismatch fixtures",
+      "result": "PASS; matching trees accepted and mismatch rejected"
+    },
+    {
+      "command": "pwsh -NoLogo -NoProfile -File scripts/verify-release-ci-contract.ps1",
+      "result": "PASS"
+    },
+    {
+      "command": "Python yaml.safe_load(.github/workflows/ci.yml)",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    }
+  ]
+}

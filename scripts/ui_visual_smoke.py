@@ -139,8 +139,11 @@ def _default_checks() -> list[Check]:
                 "buildRedeemHref",
                 "/api/payments/providers",
                 "/api/payments/orders/create-public",
-                "getPricingPreviewDiscountPercent",
-                "tariffPlanAllowsDiscount",
+                "COMMERCIAL_REVISION",
+                'response.headers.get("X-Pokrov-Commercial-Revision")',
+                'payload.promo_authority !== "server_offer_preview_only"',
+                "assertCommercialPlanProjection(payload.plans)",
+                "Boolean(catalog && providerState?.ok",
                 "payment_method: paymentMethod",
             ),
             must_not_contain=(

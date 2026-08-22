@@ -29,9 +29,14 @@ MARKETING_TELEGRAM_PROMISE_FILES = [
     ROOT / "marketing/src/app/vpn/page.tsx",
 ]
 
+PRODUCT_FACTS = json.loads(
+    (ROOT / "shared/product-facts.json").read_text(encoding="utf-8")
+)
+TRIAL_DAYS = int(PRODUCT_FACTS["trial"]["days"])
+TELEGRAM_REWARD_DAYS = int(PRODUCT_FACTS["telegram_reward"]["days"])
 TELEGRAM_START_PROMISE = (
-    "5 дней бесплатно в приложении. Ещё 5 дней можно получить без оплаты за привязку "
-    "Telegram и подтверждение подписки на канал."
+    f"{TRIAL_DAYS} дней бесплатно в приложении. Ещё {TELEGRAM_REWARD_DAYS} дней "
+    "можно получить без оплаты за привязку Telegram и подтверждение подписки на канал."
 )
 
 PAID_REWARDS_MARKETING_COPY = (
@@ -290,6 +295,35 @@ def test_telegram_ten_day_start_promise_is_explicit_five_plus_five() -> None:
     public_copy = "\n".join(path.read_text(encoding="utf-8") for path in MARKETING_TELEGRAM_PROMISE_FILES)
     assert "до 10 дней POKROV на старте" not in public_copy
     assert "5 дней в приложении + 5 дней за Telegram" not in public_copy
+
+
+def test_live_trial_and_telegram_consumers_bind_shared_product_facts() -> None:
+    dashboard = (ROOT / "webapp/src/app/(dashboard)/dashboard/page.tsx").read_text(
+        encoding="utf-8"
+    )
+    telegram_page = (ROOT / "marketing/src/app/telegram/page.tsx").read_text(
+        encoding="utf-8"
+    )
+    telegram_home = (
+        ROOT / "marketing/src/components/home/telegram-bonus.tsx"
+    ).read_text(encoding="utf-8")
+    catalog = json.loads((ROOT / "copy/catalog.ru.json").read_text(encoding="utf-8"))[
+        "items"
+    ]
+
+    assert "const TRIAL_DAYS = 5" not in dashboard
+    assert "getSharedProductFacts().trial.days" in dashboard
+    assert "productFacts.trial.days" in telegram_page
+    assert "productFacts.telegram_reward.days" in telegram_page
+    assert "После первой оплаты" not in telegram_page
+    assert "После первой оплаты" not in catalog["marketing.home.telegram.text"]["ru"]
+    assert catalog["marketing.home.telegram.cta"]["variables"] == [
+        "telegram_reward_days"
+    ]
+    assert catalog["marketing.home.telegram.text"]["variables"] == [
+        "telegram_reward_days"
+    ]
+    assert "telegram_reward_days: facts.telegram_reward.days" in telegram_home
 
 
 def test_paid_rewards_marketing_copy_is_guarded_by_exact_opt_in_flag() -> None:

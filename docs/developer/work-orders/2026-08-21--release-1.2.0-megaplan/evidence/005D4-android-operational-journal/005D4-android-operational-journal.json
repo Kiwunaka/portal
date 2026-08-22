@@ -1,0 +1,82 @@
+{
+  "schema": "pokrov.release-1.2.0.android-operational-journal.v1",
+  "generated_at": "2026-08-22T10:40:34Z",
+  "work_order": "WO-005D4",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "promotion_authorized": false,
+  "sources": {
+    "client": {
+      "revision_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+      "working_tree_state": "dirty"
+    },
+    "platform_ledger": {
+      "revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+      "working_tree_state": "dirty"
+    }
+  },
+  "journal_contract": {
+    "storage": "app_private_no_backup",
+    "current_file_max_bytes": 262144,
+    "previous_file_max_bytes": 262144,
+    "writer_queue_capacity": 256,
+    "free_form_fields": [],
+    "stack_capture": false,
+    "dropped_record_accounting": true
+  },
+  "producers": [
+    "vpn_service_lifecycle",
+    "vpn_and_notification_permissions",
+    "default_network_callback",
+    "doze",
+    "app_standby",
+    "background_restriction",
+    "main_thread_watchdog",
+    "direct_updater_identity",
+    "updater_handoff"
+  ],
+  "verification": {
+    "direct_debug_unit_tests": "PASS_172_OF_172",
+    "store_debug_unit_tests": "PASS_172_OF_172",
+    "direct_debug_build": "PASS",
+    "store_debug_build": "PASS",
+    "client_docs_contract": "PASS",
+    "client_seed_explicit_active_roots": "PASS",
+    "git_diff_check": "PASS_WITH_LINE_ENDING_WARNINGS",
+    "retained_release_artifact_delta": "NONE"
+  },
+  "diagnostics": [
+    {
+      "command": "validate-seed.ps1 with default neighboring roots",
+      "result": "NOT_CREDITED_WRONG_CORE_ROOT_MISSING_ABI_CONTRACT"
+    },
+    {
+      "command": "validate-seed.ps1 with explicit active platform/Core worktrees",
+      "result": "PASS"
+    }
+  ],
+  "ledger": {
+    "advanced": [
+      "OBS/OBS-037:I0->I3",
+      "OBS/OBS-038:I0->I3",
+      "OBS/OBS-039:I0->I3",
+      "OBS/OBS-041:I0->I3",
+      "OBS/OBS-042:I0->I3"
+    ],
+    "distribution": {
+      "I3": 273,
+      "I2": 36,
+      "I1": 47,
+      "I0": 21,
+      "total": 377,
+      "at_least_i1": 356,
+      "below_i3": 104
+    }
+  },
+  "manual_or_candidate": {
+    "physical_device_journal": "MANUAL_OWNER_TEST",
+    "controlled_anr": "MANUAL_OWNER_TEST",
+    "network_power_lifecycle": "MANUAL_OWNER_TEST",
+    "production_signed_upgrade": "MANUAL_OWNER_TEST"
+  }
+}

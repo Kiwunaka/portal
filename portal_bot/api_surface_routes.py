@@ -813,12 +813,27 @@ async def api_track_event(payload: EventIn, request: Request, x_telegram_init_da
     event_name = (payload.event_name or "").strip()
     if event_name not in EVENT_WHITELIST:
         raise HTTPException(status_code=400, detail="Unsupported event name")
+    event_meta = dict(payload.meta or {})
+    if event_name.startswith("promo_"):
+        lineage_session = SessionLocal()
+        try:
+            lineage = validate_commercial_promo_event_lineage(
+                lineage_session,
+                tg_id=tg_id,
+                meta=event_meta,
+            )
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        finally:
+            lineage_session.close()
+        if lineage is not None:
+            event_meta.update(lineage)
     event_id = track_event(
         tg_id=tg_id,
         event_name=event_name,
         source=(payload.source or "webapp"),
         session_id=payload.session_id,
-        meta=payload.meta or {},
+        meta=event_meta,
         event_id=payload.event_id,
         occurred_at=payload.occurred_at,
         account_id=str(auth_user.get("account_id") or "") or None,
@@ -1206,6 +1221,7 @@ async def user_data(
                 s=s,
                 surface="webapp",
                 access_state=str(access_policy.get("access_state") or ""),
+                user=user,
             ),
             "hidden_transport_matrix": _hidden_transport_matrix_payload(nodes=nodes_for_user, client_policy=client_policy),
             "location_matrix": _location_matrix_payload(user=user, nodes=nodes_for_user, client_policy=client_policy),
@@ -1401,6 +1417,7 @@ async def dashboard_snapshot(
                 s=s,
                 surface="webapp",
                 access_state=str(access_policy.get("access_state") or ""),
+                user=user,
             ),
             hidden_transport_matrix=_hidden_transport_matrix_payload(nodes=nodes_for_user, client_policy=client_policy),
             location_matrix=_location_matrix_payload(user=user, nodes=nodes_for_user, client_policy=client_policy),
@@ -1430,6 +1447,55 @@ async def dashboard_snapshot(
         s.close()
 
 
+def _release_manifest_identity() -> ClientReleaseManifestIdentity | None:
+    schema_version = int(getattr(Settings, "APP_RELEASE_SCHEMA_VERSION", 0) or 0)
+    candidate_label = str(
+        getattr(Settings, "APP_RELEASE_CANDIDATE_LABEL", "") or ""
+    ).strip()
+    handoff_sha256 = str(
+        getattr(Settings, "APP_RELEASE_HANDOFF_SHA256", "") or ""
+    ).strip().lower()
+    artifact_set_sha256 = str(
+        getattr(Settings, "APP_RELEASE_ARTIFACT_SET_SHA256", "") or ""
+    ).strip().lower()
+    core_version = str(
+        getattr(Settings, "APP_RELEASE_CORE_VERSION", "") or ""
+    ).strip()
+    core_desktop_abi = int(
+        getattr(Settings, "APP_RELEASE_CORE_DESKTOP_ABI", 0) or 0
+    )
+    core_android_package = str(
+        getattr(Settings, "APP_RELEASE_CORE_ANDROID_PACKAGE", "") or ""
+    ).strip()
+    release_version = str(
+        getattr(Settings, "APP_ANDROID_VERSION", "") or ""
+    ).strip()
+    if (
+        schema_version != 2
+        or re.fullmatch(r"pokrov-[0-9]+\.[0-9]+\.[0-9]+[A-Za-z0-9._+-]*", candidate_label)
+        is None
+        or re.fullmatch(r"[0-9a-f]{64}", handoff_sha256) is None
+        or re.fullmatch(r"[0-9a-f]{64}", artifact_set_sha256) is None
+        or re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?", core_version)
+        is None
+        or core_desktop_abi < 1
+        or core_android_package != "space.pokrov.core"
+        or str(getattr(Settings, "APP_WINDOWS_VERSION", "") or "").strip()
+        != release_version
+        or candidate_label != f"pokrov-{release_version}"
+    ):
+        return None
+    return ClientReleaseManifestIdentity(
+        schema_version=2,
+        candidate_label=candidate_label,
+        handoff_sha256=handoff_sha256,
+        artifact_set_sha256=artifact_set_sha256,
+        core_version=core_version,
+        core_desktop_abi=core_desktop_abi,
+        core_android_package=core_android_package,
+    )
+
+
 def _build_client_apps_response(
     *,
     platform: str,
@@ -1446,6 +1512,40 @@ def _build_client_apps_response(
     android_x86_64_url = _safe_public_url(getattr(Settings, "APP_ANDROID_APK_X86_64_URL", ""))
     android_universal_url = _safe_public_url(getattr(Settings, "APP_ANDROID_APK_UNIVERSAL_URL", ""))
     windows_url = _safe_public_url(Settings.APP_WINDOWS_EXE_URL)
+    rollout_session = SessionLocal()
+    try:
+        try:
+            android_rollout = public_client_rollout_policy(
+                rollout_session,
+                platform="android",
+                configured_version=getattr(Settings, "APP_ANDROID_VERSION", ""),
+                configured_min_supported_version=getattr(
+                    Settings, "APP_ANDROID_MIN_SUPPORTED_VERSION", ""
+                ),
+            )
+            windows_rollout = public_client_rollout_policy(
+                rollout_session,
+                platform="windows",
+                configured_version=getattr(Settings, "APP_WINDOWS_VERSION", ""),
+                configured_min_supported_version=getattr(
+                    Settings, "APP_WINDOWS_MIN_SUPPORTED_VERSION", ""
+                ),
+            )
+        except OperatorReleaseError:
+            android_rollout = {
+                "rollout_percent": 0,
+                "min_supported_version": getattr(
+                    Settings, "APP_ANDROID_MIN_SUPPORTED_VERSION", ""
+                ),
+            }
+            windows_rollout = {
+                "rollout_percent": 0,
+                "min_supported_version": getattr(
+                    Settings, "APP_WINDOWS_MIN_SUPPORTED_VERSION", ""
+                ),
+            }
+    finally:
+        rollout_session.close()
     android_variants = [
         ClientAndroidApkVariant(
             abi="arm64-v8a",
@@ -1483,13 +1583,14 @@ def _build_client_apps_response(
         current_version=current_version,
         channel=release_channel,
         latest_version=getattr(Settings, "APP_ANDROID_VERSION", ""),
-        min_supported_version=getattr(Settings, "APP_ANDROID_MIN_SUPPORTED_VERSION", ""),
+        min_supported_version=str(android_rollout["min_supported_version"]),
         url=android_url or _safe_public_url(Settings.APP_ANDROID_MIRROR_URL),
         sha256=getattr(Settings, "APP_ANDROID_SHA256", ""),
         size=int(getattr(Settings, "APP_ANDROID_SIZE_BYTES", 0) or 0),
         release_notes=getattr(Settings, "APP_ANDROID_RELEASE_NOTES", ""),
         release_notes_url=getattr(Settings, "APP_ANDROID_RELEASE_NOTES_URL", ""),
         published_at=getattr(Settings, "APP_ANDROID_PUBLISHED_AT", ""),
+        rollout_percent=int(android_rollout["rollout_percent"]),
     )
     windows_update = _client_app_update_info(
         platform="windows",
@@ -1497,13 +1598,14 @@ def _build_client_apps_response(
         current_version=current_version,
         channel=release_channel,
         latest_version=getattr(Settings, "APP_WINDOWS_VERSION", ""),
-        min_supported_version=getattr(Settings, "APP_WINDOWS_MIN_SUPPORTED_VERSION", ""),
+        min_supported_version=str(windows_rollout["min_supported_version"]),
         url=windows_url or _safe_public_url(Settings.APP_WINDOWS_MIRROR_URL),
         sha256=getattr(Settings, "APP_WINDOWS_SHA256", ""),
         size=int(getattr(Settings, "APP_WINDOWS_SIZE_BYTES", 0) or 0),
         release_notes=getattr(Settings, "APP_WINDOWS_RELEASE_NOTES", ""),
         release_notes_url=getattr(Settings, "APP_WINDOWS_RELEASE_NOTES_URL", ""),
         published_at=getattr(Settings, "APP_WINDOWS_PUBLISHED_AT", ""),
+        rollout_percent=int(windows_rollout["rollout_percent"]),
     )
     return ClientAppsResponse(
         android=ClientAndroidApps(
@@ -1531,6 +1633,7 @@ def _build_client_apps_response(
             published_at=str(getattr(Settings, "APP_WINDOWS_PUBLISHED_AT", "") or "").strip(),
             update=windows_update,
         ),
+        release_manifest=_release_manifest_identity(),
         docs_url=_safe_public_url(Settings.APP_DOCS_URL),
         updated_at=f"{_utcnow().replace(microsecond=0).isoformat()}Z",
         update_check={
@@ -1700,6 +1803,7 @@ def _public_client_apps_projection(source: ClientAppsResponse) -> ClientAppsResp
                 force_after=None,
             ),
         ),
+        release_manifest=source.release_manifest,
         docs_url=(
             source.docs_url
             if source.docs_url in {"https://pokrov.space/install/", "https://www.pokrov.space/install/"}
@@ -3088,6 +3192,7 @@ async def _redeem_access_key_for_auth_user(
             s=s,
             surface="webapp",
             access_state=str(access_policy.get("access_state") or ""),
+            user=user,
         )
         key_status = _access_key_status_payload(s=s, card=card)
     except HTTPException:

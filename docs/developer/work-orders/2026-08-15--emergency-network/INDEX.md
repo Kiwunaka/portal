@@ -1,6 +1,11 @@
 # POKROV Emergency Network
 
+Document class: `EVIDENCE`
+
 Status: `RELEASED_WITH_MANUAL_GATES`
+
+This record owns the released `1.0.10` wave only. Current 1.2.0 emergency and
+FRKN gates require fresh exact-candidate evidence from the 1.2.0 megaplan.
 
 Created: `2026-08-15`
 

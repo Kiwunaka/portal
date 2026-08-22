@@ -1,7 +1,7 @@
 "use client";
 
 import { apiFetch, type ApiRequestInit } from "./client";
-import type { OpsAlert, OpsOverview } from "./types";
+import type { AdminV2Envelope, OpsOverview } from "./types";
 
 export type RuLatestSource = {
   status: string;
@@ -29,15 +29,12 @@ export type RuLatestStatus = RuLatestSource & {
   nodes: Array<RuLatestSource & { node_code: string }>;
 };
 
-export function fetchOpsOverview(init?: ApiRequestInit): Promise<OpsOverview> {
-  return apiFetch<OpsOverview>("/api/admin/ops/overview", init);
+export async function fetchOpsOverview(init?: ApiRequestInit): Promise<OpsOverview> {
+  const response = await apiFetch<AdminV2Envelope<OpsOverview>>("/api/admin/v2/shift/overview", init);
+  return response.data;
 }
 
-export function fetchRuLatest(init?: ApiRequestInit): Promise<RuLatestStatus> {
-  return apiFetch<RuLatestStatus>("/api/admin/probes/ru-origin/latest", init);
-}
-
-export async function fetchAlerts(status = "active", init?: ApiRequestInit): Promise<OpsAlert[]> {
-  const data = await apiFetch<{ alerts: OpsAlert[] }>(`/api/admin/alerts?status=${encodeURIComponent(status)}`, init);
-  return data.alerts || [];
+export async function fetchRuLatest(init?: ApiRequestInit): Promise<RuLatestStatus> {
+  const response = await apiFetch<AdminV2Envelope<RuLatestStatus>>("/api/admin/v2/network/ru/latest", init);
+  return response.data;
 }

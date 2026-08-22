@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { useRef, useState, type KeyboardEvent } from "react";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 
 import { StepMiniIllustration, type StepMiniVariant } from "../illustrations/step-mini";
 import { StepCard } from "../ui/step-card";
@@ -22,8 +22,33 @@ export type InstallPlatform = {
 
 export function PlatformTabs({ platforms }: { platforms: InstallPlatform[] }) {
   const [activeId, setActiveId] = useState(platforms[0]?.id ?? "android");
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const reduceMotion = useReducedMotion();
   const active = platforms.find((platform) => platform.id === activeId) ?? platforms[0];
+
+  const selectTab = (index: number) => {
+    const platform = platforms[index];
+    if (!platform) return;
+    setActiveId(platform.id);
+    tabRefs.current[index]?.focus();
+  };
+
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const lastIndex = platforms.length - 1;
+    const nextIndex =
+      event.key === "ArrowRight"
+        ? (index + 1) % platforms.length
+        : event.key === "ArrowLeft"
+          ? (index - 1 + platforms.length) % platforms.length
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? lastIndex
+              : null;
+    if (nextIndex === null || platforms.length === 0) return;
+    event.preventDefault();
+    selectTab(nextIndex);
+  };
 
   return (
     <div className="flex flex-col gap-8">
@@ -32,28 +57,31 @@ export function PlatformTabs({ platforms }: { platforms: InstallPlatform[] }) {
         aria-label="Платформа"
         className="mx-auto flex rounded-full border border-line bg-canvas-alt p-1"
       >
-        {platforms.map((platform) => {
+        {platforms.map((platform, index) => {
           const selected = platform.id === active.id;
           return (
             <button
               key={platform.id}
+              ref={(node) => {
+                tabRefs.current[index] = node;
+              }}
               role="tab"
               type="button"
               aria-selected={selected}
               aria-controls={`install-panel-${platform.id}`}
               id={`install-tab-${platform.id}`}
+              tabIndex={selected ? 0 : -1}
               onClick={() => setActiveId(platform.id)}
+              onKeyDown={(event) => handleTabKeyDown(event, index)}
               className={cn(
                 "relative min-h-11 rounded-full px-6 text-[0.9375rem] font-semibold transition-colors duration-200 ease-(--ease-apple) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
                 selected ? "text-ink" : "text-ink-soft hover:text-ink",
               )}
             >
               {selected ? (
-                <motion.span
-                  layoutId="install-tab-pill"
+                <span
                   aria-hidden="true"
                   className="absolute inset-0 rounded-full bg-surface shadow-soft"
-                  transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 480, damping: 40 }}
                 />
               ) : null}
               <span className="relative z-10">{platform.label}</span>
@@ -63,7 +91,7 @@ export function PlatformTabs({ platforms }: { platforms: InstallPlatform[] }) {
       </div>
 
       <AnimatePresence mode="wait" initial={false}>
-        <motion.div
+        <m.div
           key={active.id}
           role="tabpanel"
           id={`install-panel-${active.id}`}
@@ -87,7 +115,7 @@ export function PlatformTabs({ platforms }: { platforms: InstallPlatform[] }) {
             ))}
           </div>
           {active.note ? <p className="text-center text-[0.8125rem] text-ink-soft">{active.note}</p> : null}
-        </motion.div>
+        </m.div>
       </AnimatePresence>
     </div>
   );

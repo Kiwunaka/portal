@@ -236,6 +236,22 @@ def _step_timeout_sec(args: argparse.Namespace, step_name: str) -> int | None:
 def _build_steps(args: argparse.Namespace, *, python: str) -> list[tuple[str, list[str], Path]]:
     steps: list[tuple[str, list[str], Path]] = []
 
+    release_metadata_file = str(getattr(args, "release_metadata_file", "") or "").strip()
+    release_env_file = str(getattr(args, "release_env_file", "") or "").strip()
+    if release_metadata_file:
+        steps.append(
+            (
+                "release handoff v2 validation",
+                [
+                    python,
+                    "scripts/validate_release_handoff_metadata.py",
+                    "--metadata-file",
+                    release_metadata_file,
+                ],
+                REPO_ROOT,
+            )
+        )
+
     if not args.skip_gates:
         gate_cmd = [
             python,
@@ -255,8 +271,6 @@ def _build_steps(args: argparse.Namespace, *, python: str) -> list[tuple[str, li
             gate_cmd.append("--quick")
         steps.append(("release gates", gate_cmd, REPO_ROOT))
 
-    release_metadata_file = str(getattr(args, "release_metadata_file", "") or "").strip()
-    release_env_file = str(getattr(args, "release_env_file", "") or "").strip()
     if release_metadata_file or release_env_file:
         handoff_cmd = [
             python,
@@ -577,6 +591,11 @@ def main() -> int:
     )
     if need_remote and not args.brain_ip.strip():
         raise SystemExit("--brain-ip is required for deploy/verify steps")
+    if need_remote and not args.dry_run:
+        if not release_metadata_file:
+            raise SystemExit("--release-metadata-file with strict release-handoff v2 metadata is required for remote execution")
+        if release_env_file:
+            raise SystemExit("--release-env-file is legacy-only and cannot be used for remote execution")
     if (
         need_remote
         and os.getenv("NODE_PASS_BRAIN", "").strip()

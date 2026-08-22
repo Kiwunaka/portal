@@ -1,0 +1,45 @@
+{
+  "schema": "pokrov.dependency-contract.v1",
+  "python": {
+    "version": "3.12.5",
+    "pip": "26.1.2",
+    "uv": "0.9.26"
+  },
+  "node": {
+    "version": "22.14.0",
+    "npm": "11.7.0",
+    "lockfile_version": 3
+  },
+  "shared_frontend_versions": {
+    "next": "16.3.2",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "@tailwindcss/postcss": "4.3.2",
+    "@types/node": "22.19.9",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.3.2",
+    "tailwindcss": "4.3.2",
+    "typescript": "5.9.3"
+  },
+  "browser_tooling": {
+    "version": "1.61.1",
+    "packages": {
+      "adminapp": "@playwright/test",
+      "webapp": "@playwright/test",
+      "marketing": "playwright"
+    }
+  },
+  "frontends": [
+    "adminapp",
+    "webapp",
+    "marketing"
+  ],
+  "workflows": [
+    ".github/workflows/guardrails.yml",
+    ".github/workflows/release-orchestrator-manual.yml",
+    ".github/workflows/release-v2-contract.yml",
+    ".github/workflows/weekly-release-gate-snapshot.yml"
+  ]
+}

@@ -4,19 +4,20 @@ Last updated: 2026-08-15
 
 Document class: `EVIDENCE`
 
-Scope: historical outside-store beta execution for `v1.0.4-beta.1`. The current
-stable-direct release is `v1.0.11` and follows the publishing/signing guide plus
-the exact client handoff. This retained runbook does not authorize store
-availability, trusted Windows signing, raw Android audit or RU-origin claims.
+Scope: historical outside-store beta execution for `v1.0.4-beta.1`. That beta
+has been superseded; current release truth comes from the publishing/signing
+guide and the exact client handoff. This retained runbook does not authorize
+store availability, trusted Windows signing, raw Android audit or RU-origin
+claims.
 
-## Current Decision
+## Retained Decision
 
 Public beta is GO for Android APK and Windows EXE outside app stores as of `2026-05-15`. This is not a `1.0.0` release, not an app-store release, and not a trusted Windows-signing claim.
 
 The distributed `v1.0.4-beta.1` is a public GitHub prerelease in
 `Kiwunaka/pokrov`, not a stable or store release.
 
-The current direct Android handoff uses
+That beta Android handoff used
 `pokrov-android-arm64-v8a.apk` by default and
 `pokrov-android-armeabi-v7a.apk` only for legacy ARMv7 devices. Market AAB
 handoff remains separate and does not imply store availability.

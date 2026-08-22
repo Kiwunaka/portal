@@ -7,12 +7,13 @@ This registry classifies important platform documents and the active client poin
 | `CANONICAL` | product | `docs/product/portal-vpn-product.md` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | market-ready wave | `docs/developer/work-orders/2026-07-09-growth-megapass/` | `PENDING_WAVE_3` |
 | `ACTIVE_EXECUTION` | selected cross-surface VPN feature wave | `docs/developer/work-orders/2026-07-23--selected-vpn-features/` | `RECONCILED` |
-| `ACTIVE_EXECUTION` | post-release manual proof follow-up | `docs/developer/work-orders/2026-08-14--postrelease-manual-proof/` | `RECONCILED` |
-| `ACTIVE_EXECUTION` | POKROV 1.0.6 stable direct release | `docs/developer/work-orders/2026-08-14-stable-1.0.6-release/` | `RECONCILED` |
-| `ACTIVE_EXECUTION` | product analytics, Telegram entry, instructions, admin UX and news drafts | `docs/developer/work-orders/2026-08-17--product-analytics-admin-bot/` | `RECONCILED` |
-| `ACTIVE_EXECUTION` | POKROV 1.0.7 promos, variant status and RU app presets | `docs/developer/work-orders/2026-08-14-stable-1.0.7-promos-node-status-ru-apps/` | `REVIEWED_NO_CHANGE` |
-| `ACTIVE_EXECUTION` | conversion-first acquisition and retention | `docs/developer/work-orders/2026-08-14--conversion-acquisition-reconciliation/` | `RECONCILED` |
-| `ACTIVE_EXECUTION` | trial/paid RU emergency network | `docs/developer/work-orders/2026-08-15--emergency-network/` | `RECONCILED` |
+| `EVIDENCE` | retained v1.0.4-beta.1 manual-proof queue | `docs/developer/work-orders/2026-08-14--postrelease-manual-proof/` | `RECONCILED` |
+| `EVIDENCE` | completed POKROV 1.0.6 stable-direct release | `docs/developer/work-orders/2026-08-14-stable-1.0.6-release/` | `RECONCILED` |
+| `EVIDENCE` | completed POKROV 1.1.1 product-analytics/operator wave | `docs/developer/work-orders/2026-08-17--product-analytics-admin-bot/` | `RECONCILED` |
+| `EVIDENCE` | completed POKROV 1.0.8 promos/variant-status wave | `docs/developer/work-orders/2026-08-14-stable-1.0.7-promos-node-status-ru-apps/` | `RECONCILED` |
+| `ACTIVE_EXECUTION` | POKROV 1.2.0 cross-repository release megaplan | `docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/` | `RECONCILED` |
+| `EVIDENCE` | completed conversion-first acquisition and retention wave | `docs/developer/work-orders/2026-08-14--conversion-acquisition-reconciliation/` | `RECONCILED` |
+| `EVIDENCE` | released POKROV 1.0.10 emergency-network wave | `docs/developer/work-orders/2026-08-15--emergency-network/` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | open-source client rollout | `docs/launch/open-source-client-rollout-plan.md` | `RECONCILED` |
 | `EVIDENCE` | release evidence | `docs/audit-artifacts/` | `REVIEWED_NO_CHANGE` |
 | `EVIDENCE` | dated public beta narrative | `docs/launch/open-beta-release-notes.md` | `REVIEWED_NO_CHANGE` |
@@ -23,6 +24,8 @@ This registry classifies important platform documents and the active client poin
 | `CANONICAL` | task routing | `docs/developer/agent-context-map.md` | `RECONCILED` |
 | `EVIDENCE` | 2026-05-15 beta decision baseline | `docs/product/public-beta-prd.md` | `REVIEWED_NO_CHANGE` |
 | `CANONICAL` | payment and access | `docs/product/payment-and-access-key-contract.md` | `RECONCILED` |
+| `CANONICAL` | generated commercial revision, base-price, legal-gate and capacity binding | `shared/commercial-contract.json`, `shared/commercial-contract.schema.json`, `docs/generated/commercial-contract.md` | `RECONCILED` |
+| `CANONICAL` | marketing claim governance and bounded winback pilot | `shared/contracts/marketing/marketing-governance.v1.json`, `shared/contracts/marketing/winback-pilot.v1.json`, `docs/generated/marketing-governance.md`, `docs/generated/winback-pilot.md`, `docs/operations/marketing-governance-and-winback-pilot.md` | `RECONCILED` |
 | `HISTORICAL_REFERENCE` | dated platform availability snapshot | `docs/archive/flat-docs/platform-availability-2026-05-26.md` | `RECONCILED` |
 | `HISTORICAL_REFERENCE` | 2026-07 Telegram VPN and censorship research | `docs/archive/competitive/telegram-vpn-2026-07-12/` | `RECONCILED` |
 | `CANONICAL` | known limitations | `docs/product/beta-known-limitations.md` | `RECONCILED` |
@@ -32,9 +35,12 @@ This registry classifies important platform documents and the active client poin
 | `CANONICAL` | API contracts | `docs/architecture/api-contracts.md` | `RECONCILED` |
 | `CANONICAL` | payment state | `docs/architecture/payment-state-machine.md` | `RECONCILED` |
 | `CANONICAL` | support and feedback | `docs/architecture/support-feedback-flow.md` | `PENDING_WAVE_3` |
+| `CANONICAL` | operational observability and error taxonomy | `shared/contracts/observability/README.md` | `RECONCILED` |
+| `CANONICAL` | support-bundle signing contracts | `shared/contracts/support/README.md` | `RECONCILED` |
 | `CANONICAL` | client delivery | `docs/architecture/client-downloads-flow.md` | `RECONCILED` |
 | `CANONICAL` | deployment and access | `docs/operations/deployment-and-access.md` | `RECONCILED` |
 | `CANONICAL` | monitoring and origins | `docs/operations/monitoring-and-visibility.md` | `RECONCILED` |
+| `CANONICAL` | performance budgets and bounded local quality gate | `docs/operations/performance-and-local-quality-gate.md` | `RECONCILED` |
 | `CANONICAL` | client delivery operations | `docs/operations/client-delivery-update-content-plan.md` | `RECONCILED` |
 | `CANONICAL` | design contract | `DESIGN.md` | `RECONCILED` |
 | `CANONICAL` | design synchronization | `docs/design/design-system-sync.md` | `RECONCILED` |
@@ -66,8 +72,8 @@ This registry classifies important platform documents and the active client poin
 | `OPERATOR_PLAYBOOK` | orchestration | `docs/developer/orchestration/orchestration-standard.md` | `RECONCILED` |
 | `OPERATOR_PLAYBOOK` | work-order authoring | `docs/developer/orchestration/wo-authoring-guide.md` | `RECONCILED` |
 | `OPERATOR_PLAYBOOK` | release publishing | `docs/operations/publishing-and-signing-guide.md` | `RECONCILED` |
-| `ACTIVE_EXECUTION` | public beta release | `docs/operations/public-beta-release-runbook.md` | `RECONCILED` |
-| `ACTIVE_EXECUTION` | next direct Android and Windows release | `docs/operations/2026-08-13-direct-release-readiness-tracker.md` | `RECONCILED` |
+| `EVIDENCE` | retained public beta release | `docs/operations/public-beta-release-runbook.md` | `RECONCILED` |
+| `EVIDENCE` | retained 2026-08-13 direct release tracker | `docs/operations/2026-08-13-direct-release-readiness-tracker.md` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | Android production signing | `docs/operations/android-production-signing-handoff.md` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | Android physical-device audit | `docs/operations/android-physical-device-audit-handoff.md` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | RU-origin probe | `docs/operations/ru-origin-probe-handoff.md` | `RECONCILED` |
@@ -75,6 +81,7 @@ This registry classifies important platform documents and the active client poin
 | `EVIDENCE` | plans and decisions closure audit | `docs/operations/2026-06-06-plans-decisions-closure-audit.md` | `REVIEWED_NO_CHANGE` |
 | `EVIDENCE` | email delivery webhook handoff | `docs/operations/email-delivery-webhook-handoff.md` | `REVIEWED_NO_CHANGE` |
 | `OPERATOR_PLAYBOOK` | rollback | `docs/operations/rollback-runbook.md` | `RECONCILED` |
+| `OPERATOR_PLAYBOOK` | observability and support access review | `docs/operations/observability-access-review.md` | `RECONCILED` |
 | `OPERATOR_PLAYBOOK` | payment reconciliation | `docs/operations/payment-reconciliation.md` | `PENDING_WAVE_3` |
 | `OPERATOR_PLAYBOOK` | provider payments | `docs/operations/lavatop-payment-operations.md` | `PENDING_WAVE_3` |
 | `OPERATOR_PLAYBOOK` | Android release audit | `docs/operations/android-release-audit.md` | `RECONCILED` |

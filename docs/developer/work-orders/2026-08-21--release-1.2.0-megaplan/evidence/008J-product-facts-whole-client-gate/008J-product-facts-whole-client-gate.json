@@ -1,0 +1,66 @@
+{
+  "schema": "pokrov.release-1.2.0.product-facts-whole-client-gate.v1",
+  "generated_at": "2026-08-22T18:21:10Z",
+  "work_order": "WO-008J",
+  "row_outcomes": {
+    "FE/P12-024": "I3"
+  },
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "sources": {
+    "platform_revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "platform_dirty_entries": 358,
+    "client_revision_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+    "client_dirty_entries": 185
+  },
+  "authority": {
+    "trial_reward_and_platform_scope": "shared/product-facts.json",
+    "price_and_offer": "server responses and shared/commercial-contract.json",
+    "public_release_targets": ["android", "windows"],
+    "readiness_only_targets": ["ios", "macos"],
+    "local_price_fallback": false
+  },
+  "source_sha256": {
+    "platform_sync": "c144d02dabfe54dcf6cb86e57db8f3bcfc0fd91b02589bf5e54f4476045279c0",
+    "platform_sync_tests": "943cba65c25d5791079702f1b2ecb8a8b70f332a34d40c24e537915c9a3a7d11",
+    "product_facts_raw": "428ccf40411b81c0ba55706a5551e4e6ce2ef126e19f5216f1a3e97e1dcbccb6",
+    "commercial_contract_raw": "fca9efda08455ca7591315c648c2328164c947d2d8b219182c39b5751d964594",
+    "tariff_catalog_raw": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7",
+    "client_product_seed": "b532e39e83c3974063d46b5eee3a9a6437bde013aa7601de31a11ba0d457e28e",
+    "client_generated_facts": "78b1f7e78099829745efab3693daed8c28e7ffe8a5824aaca464bffb4d106ba0",
+    "client_seed_context": "455618f47bd5a3ad1c5c65f1524b62c2afe7c6674fbe5bcbf0dda34b23079326",
+    "client_bootstrap": "b02a09d06aec478ad50c72ece7c0b96d73d3b58f01817c646bf3acd838aa7360",
+    "client_profile": "3d7f26df950d3aa15366d2e3af042c20ccba2985a358a1a7b8d407dafb86826b",
+    "client_scope_test": "a399ee338619498fff1b0f23c299d63621a945d322c65b42b5668dc494e98e01",
+    "client_bootstrap_test": "a96e135cb02a26dc7e7c4c14c72384dcade13807a1fb5cf9088272f0625aad31"
+  },
+  "local_results": {
+    "commercial_copy_and_shared_contracts": "PASS_33_OF_33",
+    "shared_facts_focused": "PASS_11_OF_11",
+    "active_client_projection_check": "PASS",
+    "active_client_device_scope": "PASS_1_OF_1",
+    "active_client_server_price_parsing": "PASS_1_OF_1",
+    "ruff_and_python_compile": "PASS",
+    "docs_and_candidate_preflight_contracts": "PASS_37_OF_37",
+    "candidate_preflight": "EXPECTED_BLOCKED_7_BLOCKERS_CANDIDATE_NOT_CREATED",
+    "scoped_diff_check": "PASS_WITH_WINDOWS_CRLF_WARNINGS_ONLY",
+    "scoped_secret_scan": "PASS_1_TEST_FIXTURE_PLACEHOLDER_MATCH_CLASSIFIED",
+    "ledger_distribution": "I3_297_I2_23_I1_40_I0_17_TOTAL_377",
+    "ledger_below_i3": 80,
+    "pending_stage_counts": {
+      "pre_freeze": 9,
+      "candidate": 33,
+      "external": 17,
+      "deferred": 21
+    }
+  },
+  "manual_or_external": {
+    "exact_candidate": "NOT_CREATED",
+    "physical_android_or_windows": "NOT_RUN",
+    "deployed_provider_or_public_readback": "NOT_RUN",
+    "payment_or_campaign": "NOT_AUTHORIZED",
+    "deployment": "NOT_AUTHORIZED",
+    "publication": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

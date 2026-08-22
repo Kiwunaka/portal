@@ -1,6 +1,6 @@
 # Beta Known Limitations
 
-Last updated: 2026-07-18
+Last updated: 2026-08-22
 
 Structured source: `shared/beta-known-limitations.json`
 
@@ -40,6 +40,18 @@ contract. Keep it aligned with `docs/launch/known-issues.md`.
   surface audit is owner-attested for beta. Raw device audit proof,
   Play/store signing, and stronger Android safety claims remain manual
   follow-up.
+- `linux_not_shipped_1_2_0`: the official POKROV Linux client is
+  `NOT_SHIPPED_IN_1.2.0`. The public release pair remains Android and Windows.
+  Flutter/Linux dependencies, compatibility-client instructions, dormant
+  Linux error codes and the PB-09 placeholder are not an official Linux
+  artifact, daemon, package, support matrix or availability claim.
+- `android_oem_background_limits`: Android OEM battery/background policy,
+  VPN-permission handling, notification behavior and cached Quick Settings
+  state can stop or delay recovery despite the foreground-service contract.
+  Do not promise uninterrupted background operation across OEMs. The exact
+  `1.2.0` candidate still requires physical background, screen-off, lockscreen,
+  notification, tile, permission-revoke and reconnect evidence; safe support
+  routing remains `AND-BG-001/002/003`, `AND-VPN-004` and `PB-08`.
 - `support_best_effort`: support is best-effort during beta through the cabinet
   and `@pokrov_supportbot`. Do not imply SLA-backed support until live operator
   workflow evidence exists.

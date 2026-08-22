@@ -1,0 +1,75 @@
+{
+  "schema": "pokrov.release-1.2.0.admin-v2-generated-contract.v1",
+  "generated_at": "2026-08-22T16:44:39Z",
+  "work_order": "WO-009H",
+  "row_outcomes": {
+    "OC/OC-120": "I3"
+  },
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "sources": {
+    "platform_revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "platform_dirty_entries": 348,
+    "client_revision_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+    "client_dirty_entries": 184,
+    "core_revision_before_uncommitted_changes": "69a74545101708e56183c92e31f2b4c7b2509884",
+    "core_dirty_entries": 57
+  },
+  "contract": {
+    "schema": "pokrov.admin-v2.openapi.v1",
+    "openapi_version": "3.1.0",
+    "operation_count": 73,
+    "json_envelope_operations": 71,
+    "binary_operations": 2,
+    "referenced_schema_count": 7,
+    "maximum_list_limit": 1000,
+    "offset_range": [0, 100000],
+    "semantic_sha256": "5177721e0c8dad91d8196fa35416b751639101bb0688ce0d8f841c1d0889812d",
+    "permission_matrix_sha256": "67405f20a82e0fa79a8ba18e06858baaa61996251e7e3c54c3ab73d0fa2cd09a",
+    "artifact_sha256": "371dd7c8f6399bbc06858e530a9cea4151f62baac45d468cdb46e640e723d69f"
+  },
+  "source_sha256": {
+    "platform_contract_router": "ad38eee96f304ae31f26092550c2c07cf32730c5c4c55ff3f5289dd935b5e29c",
+    "platform_admin_v2_router": "963d91b610ee736d34d0895015b213d8a70489ee5c79bd6ec0ae970e965cc525",
+    "openapi_generator": "c3ba415ebd17e20fab25c47233a0c081ddaffd18367d14e5b102677cc40c3d45",
+    "typescript_generator": "c22f02e21b9bac4c8a3d25f372e5590f97282c9577bee302eb44e0e53f8f2639",
+    "generated_typescript": "86658fccfa18af9069de5301d7f7e2f87e91650d64ee25f9eb8a20fe34657898",
+    "browser_api_client": "79e5227414db35957959c2dce2e50e9022ebd3f7636fc2aa6d2401dc980f7488",
+    "negative_browser_test": "7a2f76354867b9436e4dc1141d4469c29d410a9e15801010ab181f8571db1add"
+  },
+  "local_results": {
+    "python_compile": "PASS",
+    "openapi_generation_check": "PASS",
+    "typescript_generation_check": "PASS",
+    "backend_admin_contract_matrix": "PASS_59_OF_59",
+    "adminapp_lint": "PASS",
+    "adminapp_production_build": "PASS_30_STATIC_PAGES",
+    "adminapp_playwright": "PASS_76_OF_76",
+    "malformed_success_envelope": "PASS_FAIL_CLOSED",
+    "documentation_contracts": "PASS_32_OF_32",
+    "platform_client_core_diff_check": "PASS_WITH_LINE_ENDING_WARNINGS_ONLY",
+    "targeted_secret_scan": "PASS_NO_MATCHES",
+    "ledger_and_evidence_parse": "PASS",
+    "candidate_preflight": "EXPECTED_BLOCKED",
+    "candidate_created": false,
+    "ledger_distribution": "I3_292_I2_27_I1_41_I0_17_TOTAL_377",
+    "ledger_below_i3": 85,
+    "pending_stage_counts": {
+      "pre_freeze": 15,
+      "candidate": 32,
+      "external": 17,
+      "deferred": 21
+    }
+  },
+  "manual_or_external": {
+    "frozen_clean_revision": "NOT_CREATED",
+    "hosted_clean_generation_check": "NOT_RUN",
+    "exact_candidate_schema_publication": "NOT_RUN",
+    "authenticated_staging_readback": "NOT_RUN",
+    "authenticated_production_readback": "NOT_RUN",
+    "deployment": "NOT_AUTHORIZED",
+    "server_mutation": "NOT_AUTHORIZED",
+    "publication": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

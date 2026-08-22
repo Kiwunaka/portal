@@ -3,6 +3,7 @@ import { Golos_Text } from "next/font/google";
 
 import JsonLd from "../components/json-ld";
 import FunnelTracker from "../components/funnel-tracker";
+import { MarketingMotionProvider } from "../components/motion/motion-provider";
 import {
   buildOrganizationJsonLd,
   buildWebSiteJsonLd,
@@ -88,7 +89,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <JsonLd data={buildOrganizationJsonLd()} />
         <JsonLd data={buildWebSiteJsonLd()} />
         <FunnelTracker />
-        {children}
+        <MarketingMotionProvider>{children}</MarketingMotionProvider>
       </body>
     </html>
   );

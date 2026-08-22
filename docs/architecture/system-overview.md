@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-08-17
+Last updated: 2026-08-21
 
 ## Document Status
 
@@ -47,9 +47,50 @@ Reference-lane note:
 - `portal_bot/api.py`
   FastAPI composition root for shared dependencies, middleware, compatibility
   exports, and ordered route registration. HTTP implementations are grouped in
-  `api_public_routes.py`, `api_surface_routes.py`, `api_admin_routes.py`, and
+  `api_public_routes.py`, `api_client_routes.py`,
+  `api_commercial_offer_routes.py`, `api_payment_routes.py`,
+  `api_observability_routes.py`, `api_support_bundle_routes.py`,
+  `api_operator_observability_routes.py`, `api_surface_routes.py`,
+  `api_admin_routes.py`, `api_admin_action_routes.py`,
+  `api_admin_network_routes.py`, and
   `api_subscription_routes.py`; see the
   [backend module map](../developer/backend-module-map.md).
+- `portal_bot/api_payment_routes.py`
+  Transport-only payment slice. It preserves the established route-table order
+  and delegates callback, immutable-order, provider, outbox, HTTP-session and
+  DB-threadpool work to their focused owners.
+- `portal_bot/payment_callback_application.py`
+  Explicitly injected provider-callback application sequence. The composition
+  root retains only dependency construction and a legacy delegating export;
+  callback business orchestration does not live in `api.py`.
+- `portal_bot/payment_order_service.py`
+  Immutable local order intent and sanitized provider-result authority. Exact
+  retry reuses the same intent; immutable drift and terminal-state regression
+  fail closed.
+- `portal_bot/payment_entitlement_outbox.py`
+  Transactional payment-to-entitlement event owner with bounded claim,
+  stale-recovery, retry/dead-letter, and idempotent provisioning dispatch.
+- `portal_bot/outbound_http.py`
+  FastAPI-lifespan-owned bounded reusable HTTP sessions for the declared
+  payment-provider surface. Telemetry excludes URLs, headers, credentials and
+  provider bodies.
+- `portal_bot/payment_db_runtime.py`
+  Transitional payment DB boundary: complete synchronous use cases own their
+  session/transaction in the bounded AnyIO worker pool and return no ORM row.
+- `portal_bot/commercial_contract.py`
+  Fail-closed Python owner for the generated commercial manifest. Startup binds
+  the manifest digest to `shared/product-facts.json` and
+  `shared/tariff-catalog.json`; catalog projections with different plan codes,
+  base RUB prices, durations, or device limits are unavailable rather than
+  silently accepted.
+- `portal_bot/request_correlation.py`
+  Typed request context. A canonical client correlation UUIDv4 is retained or
+  replaced, while every request receives a new server request UUID; both are
+  returned as bounded response headers on success and error.
+- `portal_bot/observability_ingest.py`
+  Validates and idempotently stores the identity-free aggregate
+  `release_health` projection of Operational Event Envelope V1. It owns no
+  payment, entitlement, support-case, account, install, or destination truth.
 - `portal_bot/app_first_service.py`
   Bounded app-first/session helper used by the API for trial bootstrap, session payload shaping, and Telegram link start context.
 - `portal_bot/account_foundation_service.py`
@@ -87,7 +128,8 @@ Reference-lane note:
   presentation layer uses editable rich messages with equivalent HTML
   fallback, semantic button colors, and a curated custom-emoji registry;
   callback and payment behavior remain independent of those Telegram client
-  capabilities.
+  capabilities. Paid tariff prices and durations are projected from the same
+  generated commercial manifest used by FastAPI.
 - `portal_bot/helpbot.py`
   Dedicated support bot.
 - `portal_bot/support_agent_service.py`
@@ -161,6 +203,10 @@ Reference-lane note:
   explicit notification ids; later inbox reads omit those ids without deleting
   the retained source update, incident, grant, or access history.
 - `POST /api/client/runtime/stats` is best-effort app telemetry and must not be required from external subscription clients; `connected=true` may record only an account UX `reported` milestone
+- authenticated native first-session events use the fixed `/api/events`
+  vocabulary and bearer-derived account/device correlation. Their bounded
+  envelope excludes acquisition handles, credentials, profiles, endpoints and
+  raw host errors, and remains advisory rather than access or connection proof
 - signed observer ingestion remains the only `verified` first-connection path and the only connection source allowed to activate a reserved trial
 - `GET /api/user/*` exposes account experience state, while `POST /api/account/experience/onboarding` persists cabinet/app onboarding completion or skip without touching entitlement state
 - additive `client_policy` fields `transport_kind`, `engine_hint`, and `profile_revision` let the client apply the right engine/runtime without guessing
@@ -192,7 +238,12 @@ Node lifecycle rule:
 - `webapp/`
   user cabinet and session continuation; legacy admin routes stay only until `adminapp/` parity is proven
 - `adminapp/`
-  standalone Russian-language Next.js operator surface for `https://admin.pokrov.space/`, with 17 direct route modules: dashboard, nodes, traffic, alerts, provider caps, emergency network, free tier, users, online, tickets, payments, funnel, promos, referrals, release, broadcast, and news drafts
+  canonical Russian-language Next.js operator surface for
+  `https://admin.pokrov.space/`; seven workspaces and all 28 direct routes have
+  locally proved canonical owners. `operator-center.manifest.json` maps them into
+  `shift`, `support`, `network`, `money`, `growth`, `releases`, and `governance`
+  while `operator-center.cutover.json` binds counts, action boundaries,
+  redaction checks and still-closed external cutover gates
 - `marketing/`
   public website, pricing, legal pages, and public conversion flows
 - `C:/Users/kiwun/Documents/ai/POKROV-app/`
@@ -202,7 +253,9 @@ Node lifecycle rule:
 - `external/client-fork/app/`
   retired rollback/archive reference client, with some legacy `POKROV VPN` identifiers still present for compatibility
 - `shared/`
-  shared public copy, canonical hostnames, product facts, and design tokens
+  shared public copy, canonical hostnames, product facts, design tokens, and the
+  deterministic `commercial-contract.json` binding base tariff/legal/capacity
+  truth to one `commercial_revision` and SHA-256
 
 Current public-surface split:
 
@@ -210,10 +263,96 @@ Current public-surface split:
 - current canonical indexable entry routes are `/mobile/`, `/tiktok/`, `/youtube/`, `/devices/`, and `/telegram/`, with permanent redirects from the earlier legacy SEO slugs
 - public marketing CTA priority is app-first trial, install, and first connection; checkout, install help, and cabinet-open flows remain explicit exits for known intent
 - `webapp/` owns browser entry, dashboard, subscription, devices, statistics, support, task routes such as downloads, redeem, and hosted-checkout continuation, plus compatibility redirects for older cabinet routes
-- `adminapp/` owns `admin.pokrov.space` and is the new primary operator surface; existing `webapp/src/app/(admin)/admin/` routes are retained only as a parity fallback until the dedicated panel covers every operator workflow and the old routes pass a deletion checklist
+- `adminapp/` owns `admin.pokrov.space` and is the only canonical operator
+  product; its seven-workspace shell and 28 direct routes are locally mapped to
+  canonical capability owners with no `legacy-route-active` manifest state.
+  Five bounded legacy API read patterns remain compatibility projections for
+  user/search/promo data; they receive no new features and never participate in
+  dual-write. Existing `webapp/src/app/(admin)/admin/` routes remain a read-only
+  fallback until authenticated exact-candidate cutover proof permits redirects
+  and later removal
 - `webapp/` browser entry is a continuation router for app handoff, Telegram login, and email login when delivery readiness is green
 - `/pricing/` in `webapp/` is compatibility-only continuation that now redirects to `/subscription/` and must not drift back into a public acquisition surface
 - `connect.pokrov.space` stays outside the marketing/cabinet storytelling layer and remains the config-delivery host for the one public connection link plus QR; it serves the rollout-selected app-managed profile, with `legacy_reality_fallback` as the baseline until canary cohorts flip to `grpc_443_primary`
+
+Commercial authority rule:
+
+- `shared/product-facts.json` owns stable product and legal readiness fields;
+  `shared/tariff-catalog.json` owns base tariff and capacity policy inputs;
+  `scripts/generate_commercial_contract.py` deterministically binds them into
+  `shared/commercial-contract.json` and
+  `docs/generated/commercial-contract.md`
+- FastAPI validates the generated digest at startup and returns
+  `X-Pokrov-Commercial-Revision` on every response; `/api/public/catalog` and
+  `/api/public/plans` additionally fail with `503` if the DB plan projection
+  differs from the manifest
+- marketing and cabinet checkout require the response header and body revision
+  to match their build-time manifest before payment is enabled; static plans may
+  be displayed only as an unavailable fallback
+- promo codes and temporary campaign savings are never calculated from a
+  frontend table. `POST /api/public/offers/preview` evaluates PromoCode,
+  commercial offer price and every campaign gate on the server; an invalid path
+  returns the manifest base price and no usable token
+- `incentive_campaigns` remains the only mutable campaign root. New rows carry
+  a stable `cmp_*` public ID, objective, lifecycle/campaign revision, exact
+  commercial revision, legal/channel/seller/terms bindings, finite paid cap,
+  capacity guard and closed pause/kill reason. No parallel marketing-campaign
+  table exists
+- `commercial_campaign_policy.py` evaluates activation at action-intent preview,
+  confirm, admin readback and actual promo/gift lookup. A stale revision,
+  non-live lifecycle, missing owner legal record, unpublished seller,
+  unapproved offer, mismatched terms, disallowed channel, exhausted paid cap or
+  forbidden capacity band fails closed. Legacy rows without a public ID are
+  deactivated by the additive migration
+- `commercial_offers`, `commercial_creatives`, `commercial_assignments`,
+  `commercial_reservations` and identity-free `commercial_conversions` are
+  children of that root. Offer rows bind exact
+  plan/base/final price, currency, terms and commercial revision; assignments
+  bind an eligible audience subject only as a campaign-scoped dedicated HMAC; a unique
+  assignment reservation owns one absolute non-renewable 60–900 second hold
+- `commercial_offer_service.py` owns closed preview reasons, exact server price,
+  conservative quota readback and the versioned HMAC token. The token binds
+  subject/plan/campaign/creative/variant/assignment/impression/click/offer/reservation, exact
+  price/revisions and absolute deadlines without raw identity or provider data.
+  `api_commercial_offer_routes.py` is only the no-store public transport
+- `commercial_order_service.py` owns atomic token-to-order binding and paid
+  consumption. In the pre-provider transaction it derives only server-issued
+  subjects, locks and revalidates the campaign/offer/creative/assignment/
+  reservation, manifest price/revisions, legal/channel/capacity gates and paid
+  caps, then stores one unique reservation/order binding. Exact retry reuses the
+  same local order; stale, foreign, expired or drifted input fails closed
+- retry, paid consume and failed-checkout expiry take the campaign quota-owner
+  lock before payment-order/reservation locks, preventing a retry/callback lock
+  inversion on PostgreSQL
+- a commercial order uses immutable `pokrov-payment-order-intent-v2` with a
+  nested identity-free lineage snapshot and token SHA-256. Provider I/O remains
+  outside the transaction. Successful entitlement fulfillment consumes that
+  reservation once and increments paid counters once; callbacks cannot create
+  attribution, and reversal never erases it. Due reservations are released only
+  when local provider-checkout evidence is the bounded `error` state, so a ready
+  delayed callback keeps its binding
+- `commercial_attribution_service.py` owns the idempotent provider/order/stage
+  projection. Paid and reversed stages commit with payment/entitlement truth;
+  verified-connect and the named D7 `[7d,14d)` / D30 `[30d,37d)` retention
+  stages can come only from durable observer `ConnectionEvidence`. Renewal
+  comes only from a later provider-payment grant. No projection row stores raw
+  subject/account/device identity, token, callback payload, destination or
+  entitlement secret
+- the admin payment summary exposes this as a read-only campaign/revision/
+  capacity-unit model with gross/refund/net revenue and explicit freshness.
+  Funnel/client telemetry is diagnostic only and cannot create paid or
+  connection stages
+- the preview/order/attribution contract alone grants no access and is not
+  deployed paid-checkout proof. Consumer UI remains WO-008F
+- the capacity input is a distinct-account projection of active/grace,
+  non-reversed entitlement grants. The manifest limit is 300 units; acquisition
+  pauses at 70% and resumes only below 65%, while renewal and recovery objectives
+  are capacity-exempt. This is repository policy proof, not deployed capacity or
+  live auto-pause evidence
+- the current legal launch state is deliberately blocked and the capacity limit
+  is a policy input only. Repository state does not prove seller publication,
+  legal approval, deployed capacity, campaign activation, CDN readback, or a
+  production payment
 
 Client release safety rule:
 
@@ -222,9 +361,90 @@ Client release safety rule:
 
 Admin ownership rule:
 
-- `adminapp` is the primary new admin surface for user, online, node, payment, funnel, ticket, metrics, traffic, free-tier, provider-cap, emergency-catalog, release, broadcast, and durable-alert work
+- `adminapp` is the only canonical operator product. Its checked-in
+  `operator-center.manifest.json` is the capability/route migration oracle and
+  `operator-center.cutover.json` is the local parity/gate oracle. All 28 routes
+  have explicit non-legacy states; this is local proof only, not permission to
+  redirect or delete fallback surfaces
 - `webapp` admin routes are retained as a temporary parity fallback and must not be deleted until the dedicated `adminapp` has full workflow parity and regression coverage
 - Telegram admin in `portal_bot/bot.py` is fallback/emergency tooling and must follow the same user-status semantics as web admin
+- `portal_bot/admin_v2/` is the modular Operator Center BFF boundary. Its
+  `roles`, `security`, `meta` and `router` modules do not use the legacy
+  `bootstrap_slice(globals())` loader. `GET /api/admin/v2/meta` exposes bounded
+  backend/schema/release identity in the v2 envelope
+- `WO-009B` replaces browser-readable auth on the canonical v2 path with an
+  opaque HMAC-hashed `__Host-` HttpOnly cookie, idle/absolute expiry, CSRF,
+  environment-scoped persistent operator/role/session records, inventory,
+  revoke/logout and deny-by-default permission dependencies. Effective roles
+  are read from Postgres/SQLite on every request; audit rows retain the exact
+  role/permission snapshot. The compatibility bootstrap and step-up verify the
+  existing Telegram admin identity and do not claim OIDC/passkey assurance
+- the v2 frontend stores neither bearer nor raw initData. Frozen legacy admin
+  routes temporarily accept the v2 session only through the enumerated
+  `legacy.admin.access` permission; unsafe calls still require CSRF. Existing
+  legacy bearer endpoints remain fallback-only until measured cutover
+- the v2 shell owns a desktop rail, tablet drawer and bounded mobile primary
+  navigation. Its topbar reads frontend build identity, `/api/admin/v2/meta`
+  and the current session envelope, then surfaces environment, commit/source,
+  API schema, client release, idle expiry and an explicit mismatch banner.
+  Route resources register refresh callbacks explicitly, retain last-good data
+  with stale/error state, and keep filters/selections in canonical URLs. Global
+  search does not persist query/result history in browser storage
+- `portal_bot/support_work_service.py` projects the Support Inbox, User 360 and
+  correlated attempt explorer from the existing ticket, Event Envelope,
+  observer and support-bundle authorities. Ticket workflow state is
+  environment-scoped and versioned; internal notes are operator-only. Raw
+  `meta_json`, IP, URL, token, config and original device/session/trace values
+  never enter the v2 read model
+- `portal_bot/operator_network_service.py` composes the network workspace from
+  the existing node inventory, health/runtime/observer, RU probe, durable alert,
+  provider quota, traffic rollup and emergency catalog authorities. Fleet and
+  Node 360 omit hosts, panel credentials, subnets and raw connection material;
+  provider notes are represented only by presence, length and SHA-256. A bad RU
+  manifest degrades the RU source on fleet/detail and yields an explicit 503 on
+  the dedicated RU-latest route instead of taking down the other network reads
+- `/api/admin/v2/network/*` owns fleet, Node 360, traffic, alert, provider,
+  RU-origin/uploader and emergency read models. Network mutations reuse the
+  single Action Intent registry; destructive node/provider/emergency actions
+  require the high-risk permission and step-up, and `alert.silence` is version-bound
+- `portal_bot/operator_money_service.py` composes Operator Center money/growth
+  reads from existing order, signed callback, payment claim, entitlement grant,
+  outbox, FREE archive, promo, AppSetting and program authorities. It does not
+  create an admin money ledger. Full stored gift/access codes and raw provider,
+  claim, grant or outbox payloads are excluded; newly issued codes appear only
+  in the one-time action result
+- `/api/admin/v2/money/*` owns payment summary/list/360, access, FREE archive and
+  promo projections; `/api/admin/v2/growth/*` owns bounded bonus configuration
+  and program application reads. Both fail closed outside the production
+  commerce environment. Their writes reuse stored Action Intent; program review
+  is version-bound L3 and creates at most one idempotent entitlement reward
+- `portal_bot/operator_release_service.py` composes release candidates, exact
+  component revisions/artifact hashes, current/brain/RU evidence, diagnostic
+  gates, aggregate adoption, release-health regression, support delta and known
+  issues from their existing authorities. `release_rollout_v1` stores only the
+  versioned operator rollout policy; it is not a second artifact or deployment
+  registry
+- `/api/admin/v2/releases/*` owns the release cockpit/adoption reads and guarded
+  rollout intents. Start is evidence-gated, observation close is time- and
+  health-gated, and rollback records `external_artifact_switch=NOT_PERFORMED`.
+  Public app metadata fails closed to zero rollout on pause, rollback request,
+  invalid registry or candidate/configured-version mismatch
+- `portal_bot/operator_growth_service.py` exposes aggregate broadcast delivery,
+  bounded news drafts and live-update lineage through `/api/admin/v2/growth/*`.
+  Canonical broadcast/news writes reuse the single Action Intent path; no
+  recipient identity, raw Telegram response or article body enters the read model
+- `portal_bot/operator_governance_service.py` composes role catalog, operator
+  access/session inventory, audit explorer/CSV, command lineage, sensitive
+  support-bundle access and live privacy/retention status from existing
+  authorities. `portal_bot/operator_governance_actions.py` executes only
+  step-up-protected stored Action Intents for role, operator, session and access
+  review changes; it creates no second identity or audit store
+- active operator roles are temporal: standing rows have no expiry, while JIT
+  and break-glass rows stop granting permissions after `expires_at`. Role
+  grant/revoke/review metadata and command/resource links are additive columns;
+  the SQLite compatibility migration is rerunnable and PostgreSQL uses additive
+  `IF NOT EXISTS` changes. Browser read models exclude session secrets, token
+  hashes, CSRF, raw Action Intent payload/results and bundle contents
 - `/api/admin/summary` remains the operator truth snapshot for entitlement counts, install-backed activity, observer-backed activity, and data-quality status badges
 - `/api/admin/ops/overview` is the new dedicated ops snapshot for `adminapp`, combining summary, metrics freshness, capacity, traffic cap visibility, free-tier burn, provider quotas, and durable alerts
 - `/api/admin/online/users` is the bounded live online aggregate for operator lists; it must not expose raw IP addresses outside individual user investigation views
@@ -578,7 +798,10 @@ This contour is observe-and-verify only. It does not change cashier UI design, b
 5. code performs allowlisted retrieval before the model and sends only selected topic bodies, never the global KB index; the model has no tools and each eligible turn makes at most one provider request
 6. fingerprint-bound public diagnostics cover WARP, location choice, route modes, notifications, trial limitations, Telegram bonus, and payment-not-applied cases before human handoff; provider failure may use only the same validated topic body
 7. output schema, source provenance, actions, state, risky-action checks, success acknowledgement, fallback, and human transfer are enforced by code; missing or unsafe evidence cannot be repaired by a second model call
-8. a successful ticket hint is stored as sender role `assistant`; operator responds through the current tooling, and the hint never closes or resolves the ticket
+8. a successful ticket hint is stored as sender role `assistant`; operator responds through Support Inbox using version-bound Action Intents, and an internal note never reaches the user thread
+9. User 360 and the attempt explorer use only allowlisted Event Envelope facts plus opaque grouped references; raw diagnostic payload and identity remain outside the browser
+10. after explicit preview/consent, a configured release client stores only the encrypted support envelope in a private outbox and resumes a case-bound upload through the dedicated support-bundle API
+11. the web process treats every chunk as opaque ciphertext; an opt-in isolated worker verifies/decrypts in memory and retains only the encrypted object, while production key custody and deployment remain separately evidenced gates
 
 ### Feedback And Review Flow
 
@@ -770,15 +993,41 @@ binds eligible RU evidence to its stored probe run. `adminapp` reads candidates
 and readiness through `/api/admin/releases/*`; it does not manufacture a green
 release verdict from local test results.
 
-`portal_bot/admin_action_intent_service.py` owns risky operator mutations. An
-intent captures actor, action, target, normalized parameters, before-state,
-expected effect, confirmation contract, expiry, idempotency key, result summary,
-and audit linkage. The original mutation route executes only a matching live
-intent. If the response is lost, the client reads intent status instead of
-blindly replaying the side effect. Redaction and allowlists apply before
+`portal_bot/admin_action_intent_service.py` owns risky operator mutation domain
+policy: payload normalization, entity snapshots, previews, challenges and the
+single `ACTION_POLICIES` registry. `portal_bot/admin_action_intent_runtime.py`
+owns generic intent persistence/execution state and receives that exact mapping
+explicitly; it registers no actions or routes. An intent captures actor,
+action, target, normalized parameters, before-state, expected effect,
+confirmation contract, expiry, idempotency key, result summary and audit
+linkage. The original mutation route executes only a matching live intent. If
+the response is lost, the client reads intent status instead of blindly
+replaying the side effect. Redaction and allowlists apply before
 before/after/result material becomes durable or returns to the browser.
 
-These two services are deliberately separate: release evidence proves an exact
+`portal_bot/operator_work_service.py` projects the environment-scoped My Shift
+and Incident Room read models. `OperatorTask` is a distinct work record; it does
+not replace ticket, payment, release, alert or incident domain authority.
+Existing `ServiceIncident` remains the public-status and compensation root and
+is extended additively with workflow version/owner/team/impact/runbook/comms/
+postmortem fields. `OperatorIncidentEvent` is append-only timeline evidence and
+`OperatorIncidentLink` stores only typed references. `OpsAlert` carries its own
+optimistic version and optional incident link. Task, incident and alert writes
+are registered action-intent policies; their execute step rechecks the stored
+target, environment and expected version. Incident compensation delegates only
+to the existing idempotent incident/account entitlement ledger and cannot
+create a parallel grant authority.
+
+`portal_bot/support_work_service.py` projects the environment-scoped Support
+Inbox, User 360 and bounded attempt explorer. It keeps `SupportTicket` and
+`tickets_repo` as the mutation authority, reads only allowlisted Event Envelope
+columns, emits opaque diagnostic references and retains support-bundle
+TTL/retention/access-audit summaries. `portal_bot/support_work_actions.py`
+registers claim/assign/update/internal-note policies in the same Action Intent
+registry; expected ticket versions are rechecked at execution, and internal
+notes remain invisible to public ticket readers.
+
+These services remain deliberately separated by authority: release evidence proves an exact
 candidate and origin; an action intent authorizes one operator mutation. Neither
 is a production deploy mechanism.
 
@@ -883,6 +1132,30 @@ category/code/stage/duration/retry shape. Provider-confirmed payment and durable
 entitlement records remain the authority for access. Telemetry never becomes a
 source for browsing history, destination capture, private support text or raw
 connection material.
+
+Operational observability is a separate closed contract under
+`shared/contracts/observability/`. Its authenticated release-health endpoint
+accepts only a reduced build/platform/result projection: no correlation tree,
+account/install/session/device identity, destination, IP, domain, package name,
+raw configuration or request material is accepted or stored. The one bounded
+exception to the otherwise attribute-free remote projection is integer
+`selected_app_count` (`0..128`) for the exact Android routing-selection terminal
+event; selected package identifiers never cross the device boundary. Duplicate
+event UUIDs are ignored by the unique ingest boundary.
+Rejected payloads create only bounded reason counters; telemetry cannot create
+or change payments, entitlement, incidents, compensation or support cases.
+
+`operator_observability_service.py` projects those rows into version/build/
+platform crash, connection, and update counts plus previous-window deltas. It
+also sums the Android routing count and event count without retaining or
+returning package identifiers. It
+also owns the candidate-scoped known-issue registry and the closed support-
+bundle summary. References to release or incident records are labels only and
+have no authority side effects. Raw encrypted object access is a separate,
+short-lived, audited L2/SRE grant path; ordinary support L1 has no download
+capability. The telemetry worker owns bounded retention for health rows,
+encrypted accepted/quarantine objects, upload rows, and access audits while
+preserving explicit holds.
 
 The main Telegram bot is an acquisition/recovery adapter, not a second cabinet.
 Its first level contains one state-aware next step, downloads, login/link code,

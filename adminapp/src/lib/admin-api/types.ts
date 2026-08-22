@@ -261,13 +261,34 @@ export type PaymentsSummaryPayload = {
   problem_orders: Array<Record<string, unknown>>;
 };
 
-export type AdminSessionPayload = {
-  ok: boolean;
-  token: string;
-  expires_in: number;
-  user?: {
-    id: number;
-    username?: string | null;
-    role?: string | null;
+export type AdminOperatorSessionData = {
+  operator: {
+    id: string;
+    legacy_actor_tg_id: number;
+    display_name: string | null;
+    environment: string;
+    roles: string[];
+    permissions: string[];
   };
+  session: {
+    id: string;
+    created_at: string;
+    idle_expires_at: string;
+    absolute_expires_at: string;
+    step_up_at: string | null;
+    csrf_token: string;
+  };
+  token_transport?: "http_only_cookie";
+};
+
+export type AdminV2Envelope<T> = {
+  data: T;
+  meta: {
+    generated_at: string;
+    trace_id: string | null;
+    schema_version: string;
+    query_ms: number;
+  };
+  sources: Array<Record<string, unknown>>;
+  warnings: Array<{ code: string; message?: string; field?: string }>;
 };

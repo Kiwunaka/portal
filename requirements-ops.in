@@ -1,0 +1,5 @@
+-c portal_bot/requirements.in
+
+paramiko==4.0.0
+openai==2.15.0
+requests==2.32.3

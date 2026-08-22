@@ -1,0 +1,344 @@
+{
+  "contract_id": "pokrov.observability-data-inventory.v1",
+  "field_groups": [
+    {
+      "fields": [
+        "attributes.artifact_kind",
+        "attributes.bundle_item_count",
+        "attributes.bundle_size_bytes",
+        "attributes.bytes_in",
+        "attributes.bytes_out",
+        "attributes.contract_sha256",
+        "attributes.contract_version",
+        "attributes.core_abi",
+        "attributes.crash_signature",
+        "attributes.dns_ready",
+        "attributes.dropped_count",
+        "attributes.duration_ms",
+        "attributes.effective_mtu",
+        "attributes.egress_ready",
+        "attributes.error_count",
+        "attributes.from_version",
+        "attributes.interface_ready",
+        "attributes.journal_kind",
+        "attributes.manifest_version",
+        "attributes.network_class",
+        "attributes.operation",
+        "attributes.permission_state",
+        "attributes.phase",
+        "attributes.queue_depth",
+        "attributes.reason_class",
+        "attributes.retention_days",
+        "attributes.retry_after_ms",
+        "attributes.retry_count",
+        "attributes.routes_ready",
+        "attributes.segment_number",
+        "attributes.status_class",
+        "attributes.support_mode",
+        "attributes.to_version",
+        "attributes.update_channel"
+      ],
+      "group": "allowlisted_attributes",
+      "modes": [
+        "local_operational",
+        "support_bundle"
+      ],
+      "owner": "observability",
+      "purpose": "Bounded local/support evidence; never arbitrary metadata.",
+      "retention": "local_android_7d_windows_14d; bundle_profile_ttl",
+      "surface": "operational_event_envelope"
+    },
+    {
+      "fields": [
+        "attributes.selected_app_count"
+      ],
+      "group": "android_routing_count_only",
+      "modes": [
+        "local_operational",
+        "release_health",
+        "support_bundle"
+      ],
+      "owner": "client_runtime",
+      "purpose": "Measure only the bounded number of selected Android routing apps; package names and identifiers remain device-local.",
+      "retention": "local_android_7d; remote_release_health_90d",
+      "surface": "operational_event_envelope"
+    },
+    {
+      "fields": [
+        "build.app_version",
+        "build.architecture",
+        "build.build_number",
+        "build.candidate_label",
+        "build.channel",
+        "build.core_abi",
+        "build.core_version",
+        "build.git_revision",
+        "build.platform"
+      ],
+      "group": "build_identity",
+      "modes": [
+        "local_operational",
+        "release_health",
+        "support_bundle"
+      ],
+      "owner": "release_engineering",
+      "purpose": "Separate exact build/platform/channel/Core cohorts.",
+      "retention": "local_android_7d_windows_14d; remote_release_health_90d",
+      "surface": "operational_event_envelope"
+    },
+    {
+      "fields": [
+        "correlation.attempt_id",
+        "correlation.generation",
+        "correlation.parent_span_id",
+        "correlation.run_id",
+        "correlation.sequence",
+        "correlation.span_id",
+        "correlation.trace_id"
+      ],
+      "group": "correlation",
+      "modes": [
+        "local_operational",
+        "support_bundle"
+      ],
+      "owner": "client_runtime",
+      "purpose": "Order one local attempt without account or device identity.",
+      "retention": "local_android_7d_windows_14d; bundle_profile_ttl",
+      "surface": "operational_event_envelope"
+    },
+    {
+      "fields": [
+        "error.code",
+        "error.origin"
+      ],
+      "group": "error_identity",
+      "modes": [
+        "local_operational",
+        "release_health",
+        "support_bundle"
+      ],
+      "owner": "observability",
+      "purpose": "Bind a failure to the canonical safe error catalog.",
+      "retention": "local_android_7d_windows_14d; remote_release_health_90d",
+      "surface": "operational_event_envelope"
+    },
+    {
+      "fields": [
+        "component",
+        "event_id",
+        "name",
+        "occurred_at_utc",
+        "outcome",
+        "privacy_class",
+        "schema_version",
+        "severity",
+        "stage",
+        "subsystem"
+      ],
+      "group": "event_identity_and_taxonomy",
+      "modes": [
+        "local_operational",
+        "release_health",
+        "support_bundle"
+      ],
+      "owner": "observability",
+      "purpose": "Bounded lifecycle/failure classification and deduplication.",
+      "retention": "local_android_7d_windows_14d; remote_release_health_90d",
+      "surface": "operational_event_envelope"
+    },
+    {
+      "fields": [
+        "app_version",
+        "architecture",
+        "build_number",
+        "candidate_label",
+        "channel",
+        "component",
+        "core_abi",
+        "core_version",
+        "error_code",
+        "error_origin",
+        "event_id",
+        "event_name",
+        "git_revision",
+        "id",
+        "occurred_at",
+        "outcome",
+        "platform",
+        "received_at",
+        "schema_version",
+        "selected_app_count",
+        "severity",
+        "stage",
+        "subsystem"
+      ],
+      "group": "persisted_projection",
+      "modes": [
+        "aggregate_release_health"
+      ],
+      "owner": "release_observability",
+      "purpose": "Identity-free exact-build release health and regression deltas.",
+      "retention": "90_days",
+      "surface": "release_health_events"
+    },
+    {
+      "fields": [
+        "count",
+        "reason",
+        "updated_at"
+      ],
+      "group": "payload_free_counters",
+      "modes": [
+        "server_security_audit"
+      ],
+      "owner": "security_observability",
+      "purpose": "Measure accept/quarantine health without retaining payloads.",
+      "retention": "aggregate_counter_lifetime",
+      "surface": "release_health_ingest_counters"
+    },
+    {
+      "fields": [
+        "app_version",
+        "build_number",
+        "candidate_label",
+        "created_at",
+        "created_by_tg_id",
+        "error_code",
+        "id",
+        "incident_ref",
+        "issue_code",
+        "platform",
+        "release_ref",
+        "safe_summary",
+        "severity",
+        "status",
+        "title",
+        "updated_at",
+        "updated_by_tg_id"
+      ],
+      "group": "version_scoped_issue_evidence",
+      "modes": [
+        "operator_support",
+        "release_health"
+      ],
+      "owner": "release_operations",
+      "purpose": "Track safe version/platform/error evidence and operator custody.",
+      "retention": "until_resolved_and_owner_reviewed",
+      "surface": "release_known_issues"
+    },
+    {
+      "fields": [
+        "access_token_hash",
+        "action",
+        "actor_role",
+        "actor_tg_id",
+        "created_at",
+        "expires_at",
+        "grant_id",
+        "id",
+        "reason_code",
+        "retention_hold",
+        "ticket_id",
+        "upload_id",
+        "used_at"
+      ],
+      "group": "privileged_access_custody",
+      "modes": [
+        "server_security_audit"
+      ],
+      "owner": "security",
+      "purpose": "Audit actor-bound, reason-bound, single-use ciphertext access.",
+      "retention": "365_days; hold_override",
+      "surface": "support_bundle_access_audits"
+    },
+    {
+      "fields": [
+        "created_at",
+        "id",
+        "offset_bytes",
+        "sha256",
+        "size_bytes",
+        "stored_name",
+        "upload_id"
+      ],
+      "group": "opaque_resumable_chunks",
+      "modes": [
+        "support_bundle"
+      ],
+      "owner": "support_ingest",
+      "purpose": "Resume an opaque encrypted upload and verify chunk integrity.",
+      "retention": "until_validation_or_upload_expiry",
+      "surface": "support_bundle_chunks"
+    },
+    {
+      "fields": [
+        "app_version",
+        "architecture",
+        "build_number",
+        "bundle_id",
+        "completed_at",
+        "content_type",
+        "created_at",
+        "diagnostic_profile",
+        "expected_sha256",
+        "expected_size_bytes",
+        "expires_at",
+        "failure_code",
+        "id",
+        "idempotency_key",
+        "last_error_code",
+        "last_phase",
+        "object_name",
+        "observed_attempts",
+        "owner_account_id",
+        "owner_binding_hash",
+        "owner_tg_id",
+        "platform",
+        "proof_outcome",
+        "received_size_bytes",
+        "retention_held_at",
+        "retention_hold",
+        "retention_hold_reason",
+        "status",
+        "ticket_id",
+        "updated_at",
+        "upload_id",
+        "validated_at"
+      ],
+      "group": "case_binding_integrity_and_summary",
+      "modes": [
+        "support_bundle"
+      ],
+      "owner": "support_security",
+      "purpose": "Authorize one case-bound encrypted object and expose a safe summary.",
+      "retention": "accepted_30d; rejected_7d; incomplete_until_expiry_plus_1d; hold_override",
+      "surface": "support_bundle_uploads"
+    }
+  ],
+  "schema_version": 1,
+  "threat_model": {
+    "controls": [
+      "closed_schemas_and_error_catalog",
+      "identity_free_release_health_projection",
+      "android_routing_count_only_projection",
+      "encrypted_case_bound_bundle",
+      "rate_size_decompression_and_idempotency_limits",
+      "actor_reason_ttl_and_audit_bound_access",
+      "tested_retention_and_hold_policy"
+    ],
+    "forbidden_assets": [
+      "account_or_device_identity_in_release_health",
+      "credentials_tokens_private_keys_or_raw_profiles",
+      "destination_domains_ips_urls_or_selected_app_names",
+      "plaintext_support_bundle_content"
+    ],
+    "threats": [
+      "identity_correlation",
+      "destination_leakage",
+      "forged_build_or_error_evidence",
+      "decompression_or_archive_abuse",
+      "privileged_bundle_access_abuse",
+      "unbounded_retention_or_volume"
+    ]
+  }
+}

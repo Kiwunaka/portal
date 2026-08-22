@@ -44,14 +44,24 @@ def _load_api(monkeypatch, tmp_path: Path):
         if name in {
             "api",
             "api_admin_routes",
+            "api_observability_routes",
+            "api_support_bundle_routes",
+            "api_operator_observability_routes",
             "api_public_routes",
+            "api_commercial_offer_routes",
             "api_subscription_routes",
             "api_surface_routes",
+            "commercial_campaign_policy",
+            "commercial_offer_service",
+            "commercial_order_service",
+            "commercial_attribution_service",
             "config",
             "db",
             "migrations",
             "models",
             "module_slices",
+            "observability_ingest",
+            "request_correlation",
         } or name.startswith("emergency_catalog"):
             sys.modules.pop(name, None)
     return importlib.import_module("api")

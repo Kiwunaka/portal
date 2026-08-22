@@ -1,6 +1,7 @@
 "use client";
 
 import { apiFetch } from "./client";
+import type { AdminV2Envelope } from "./types";
 
 export type ActionRiskLevel = "L2" | "L3" | string;
 
@@ -41,6 +42,8 @@ export type AdminActionResult = {
   result?: Record<string, unknown>;
   node?: Record<string, unknown>;
   pairing_code?: string;
+  gift_code?: { code: string; card_type: string; days?: number; stars?: number };
+  issued?: Array<{ key: string; plan?: Record<string, unknown>; issued_at?: string }>;
 };
 
 export type ActionIntentRequest = {
@@ -49,12 +52,16 @@ export type ActionIntentRequest = {
   payload: Record<string, unknown>;
   endpoint: string;
   method?: "POST" | "PUT" | "PATCH" | "DELETE";
+  workspace?: "shift" | "incidents" | "support" | "network" | "money" | "growth" | "releases" | "governance";
 };
 
 export function prepareActionIntent(
-  request: Pick<ActionIntentRequest, "action" | "target" | "payload">,
+  request: Pick<ActionIntentRequest, "action" | "target" | "payload" | "workspace">,
 ): Promise<PreparedActionIntent> {
-  return apiFetch<PreparedActionIntent>("/api/admin/action-intents", {
+  const path = request.workspace
+    ? `/api/admin/v2/${request.workspace}/action-intents`
+    : "/api/admin/action-intents";
+  const pending = apiFetch<PreparedActionIntent | AdminV2Envelope<PreparedActionIntent>>(path, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -64,6 +71,9 @@ export function prepareActionIntent(
     }),
     timeoutMs: 15_000,
   });
+  return pending.then((response) => request.workspace
+    ? (response as AdminV2Envelope<PreparedActionIntent>).data
+    : response as PreparedActionIntent);
 }
 
 export async function confirmationSha256(input: string): Promise<string> {
@@ -80,6 +90,9 @@ export async function executeAdminAction({
   confirmation,
   method = "POST",
   idempotencyKey = globalThis.crypto.randomUUID(),
+  workspace,
+  action,
+  target,
 }: {
   endpoint: string;
   payload: Record<string, unknown>;
@@ -87,17 +100,29 @@ export async function executeAdminAction({
   confirmation: string;
   method?: "POST" | "PUT" | "PATCH" | "DELETE";
   idempotencyKey?: string;
+  workspace?: "shift" | "incidents" | "support" | "network" | "money" | "growth" | "releases" | "governance";
+  action?: string;
+  target?: { type: string; id: string };
 }): Promise<AdminActionResult> {
   const confirmationHash = await confirmationSha256(confirmation);
-  return apiFetch<AdminActionResult>(endpoint, {
-    method,
+  const path = workspace
+    ? `/api/admin/v2/${workspace}/action-intents/${encodeURIComponent(intent.intent_id)}/execute`
+    : endpoint;
+  const body = workspace
+    ? { action, target, payload }
+    : payload;
+  const response = await apiFetch<AdminActionResult | AdminV2Envelope<AdminActionResult>>(path, {
+    method: workspace ? "POST" : method,
     headers: {
       "Content-Type": "application/json",
       "X-Admin-Intent-Id": intent.intent_id,
       "X-Admin-Idempotency-Key": idempotencyKey,
       "X-Admin-Confirmation-SHA256": confirmationHash,
     },
-    body: JSON.stringify(payload),
+    body: JSON.stringify(body),
     timeoutMs: 45_000,
   });
+  return workspace
+    ? (response as AdminV2Envelope<AdminActionResult>).data
+    : response as AdminActionResult;
 }

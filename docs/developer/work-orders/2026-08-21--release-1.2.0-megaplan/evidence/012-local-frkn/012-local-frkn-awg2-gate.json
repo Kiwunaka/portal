@@ -1,0 +1,161 @@
+{
+  "candidate_proven": false,
+  "captured_at_utc": "2026-08-22T05:09:44Z",
+  "cohort_status": "NOT_AUTHORIZED",
+  "gate_id": "pokrov.release-1.2.frkn-awg2.local",
+  "gate_version": "1.0.0",
+  "local_status": "PASS",
+  "manual_lanes": [
+    {
+      "id": "owned-awg-server",
+      "required_for_candidate": true,
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "id": "exact-android-aar-network",
+      "required_for_candidate": true,
+      "status": "MANUAL_OWNER_TEST"
+    },
+    {
+      "id": "exact-windows-dll-network",
+      "required_for_candidate": true,
+      "status": "MANUAL_OWNER_TEST"
+    },
+    {
+      "id": "physical-device-lifecycle",
+      "required_for_candidate": true,
+      "status": "MANUAL_OWNER_TEST"
+    },
+    {
+      "id": "battery-cpu-thermal-baseline",
+      "required_for_candidate": true,
+      "status": "MANUAL_OWNER_TEST"
+    },
+    {
+      "id": "current-brain-ru-origin-matrix",
+      "required_for_candidate": true,
+      "status": "BLOCKED_BY_ACCESS"
+    },
+    {
+      "id": "bounded-opt-in-cohort",
+      "required_for_candidate": true,
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "id": "exact-candidate-go-no-go",
+      "required_for_candidate": true,
+      "status": "NOT_REQUESTED"
+    }
+  ],
+  "promotion_status": "NOT_REQUESTED",
+  "ru_ready": false,
+  "schema_version": 1,
+  "scope": "local_source_and_synthetic_only",
+  "sources": {
+    "client": {
+      "revision": "ba7930ea83487874f47a49199ade89868c5675b3",
+      "working_tree_state": "dirty"
+    },
+    "core": {
+      "revision": "69a74545101708e56183c92e31f2b4c7b2509884",
+      "working_tree_state": "dirty"
+    },
+    "platform": {
+      "revision": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+      "working_tree_state": "dirty"
+    }
+  },
+  "steps": [
+    {
+      "category": "contract",
+      "duration_seconds": 0.084,
+      "exit_code": 0,
+      "id": "cross-repo-contract-sync",
+      "status": "PASS"
+    },
+    {
+      "category": "platform",
+      "duration_seconds": 0.099,
+      "exit_code": 0,
+      "id": "platform-awg-style",
+      "status": "PASS"
+    },
+    {
+      "category": "platform",
+      "duration_seconds": 88.707,
+      "exit_code": 0,
+      "id": "platform-awg-contract-tests",
+      "status": "PASS"
+    },
+    {
+      "category": "platform",
+      "duration_seconds": 0.762,
+      "exit_code": 0,
+      "id": "platform-gate-tests",
+      "status": "PASS"
+    },
+    {
+      "category": "documentation",
+      "duration_seconds": 0.848,
+      "exit_code": 0,
+      "id": "platform-doc-contracts",
+      "status": "PASS"
+    },
+    {
+      "category": "documentation",
+      "duration_seconds": 0.571,
+      "exit_code": 0,
+      "id": "platform-script-manifest",
+      "status": "PASS"
+    },
+    {
+      "category": "documentation",
+      "duration_seconds": 0.091,
+      "exit_code": 0,
+      "id": "platform-doc-links",
+      "status": "PASS"
+    },
+    {
+      "category": "core",
+      "duration_seconds": 8.277,
+      "exit_code": 0,
+      "id": "core-contract-and-tests",
+      "status": "PASS"
+    },
+    {
+      "category": "client",
+      "duration_seconds": 2.522,
+      "exit_code": 0,
+      "id": "client-runtime-analyze",
+      "status": "PASS"
+    },
+    {
+      "category": "client",
+      "duration_seconds": 19.399,
+      "exit_code": 0,
+      "id": "client-runtime-tests",
+      "status": "PASS"
+    },
+    {
+      "category": "repository",
+      "duration_seconds": 0.248,
+      "exit_code": 0,
+      "id": "platform-diff-check",
+      "status": "PASS"
+    },
+    {
+      "category": "repository",
+      "duration_seconds": 0.054,
+      "exit_code": 0,
+      "id": "core-diff-check",
+      "status": "PASS"
+    },
+    {
+      "category": "repository",
+      "duration_seconds": 0.172,
+      "exit_code": 0,
+      "id": "client-diff-check",
+      "status": "PASS"
+    }
+  ]
+}

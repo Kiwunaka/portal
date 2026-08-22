@@ -1,0 +1,340 @@
+{
+  "schema_version": "pokrov-marketing-governance-v1",
+  "revision": "2026-08-22.1",
+  "default_copy_profile": "trust_owned",
+  "default_campaign_launch_state": "blocked_owner_approval_required",
+  "profiles": [
+    {
+      "profile_id": "service_rf",
+      "copy_state": "blocked_owner_legal_approval_required",
+      "campaign_launch_state": "blocked_owner_legal_approval_required",
+      "allowed_channels": [],
+      "service_led": true,
+      "approval": null
+    },
+    {
+      "profile_id": "trust_owned",
+      "copy_state": "repository_verified",
+      "campaign_launch_state": "blocked_owner_approval_required",
+      "allowed_channels": [
+        "consented_email",
+        "owned_app",
+        "owned_cabinet",
+        "owned_telegram",
+        "owned_web"
+      ],
+      "service_led": false,
+      "approval": null
+    }
+  ],
+  "channels": [
+    {
+      "channel_id": "consented_email",
+      "requires_consent": true,
+      "erid_policy": "owner_legal_qualification_required",
+      "launch_state": "blocked_consent_and_owner_approval_required"
+    },
+    {
+      "channel_id": "owned_app",
+      "requires_consent": false,
+      "erid_policy": "owner_legal_qualification_required",
+      "launch_state": "blocked_owner_approval_required"
+    },
+    {
+      "channel_id": "owned_cabinet",
+      "requires_consent": false,
+      "erid_policy": "owner_legal_qualification_required",
+      "launch_state": "blocked_owner_approval_required"
+    },
+    {
+      "channel_id": "owned_telegram",
+      "requires_consent": true,
+      "erid_policy": "owner_legal_qualification_required",
+      "launch_state": "blocked_consent_and_owner_approval_required"
+    },
+    {
+      "channel_id": "owned_web",
+      "requires_consent": false,
+      "erid_policy": "owner_legal_qualification_required",
+      "launch_state": "blocked_owner_approval_required"
+    },
+    {
+      "channel_id": "rf_advertising",
+      "requires_consent": false,
+      "erid_policy": "required_when_legally_applicable",
+      "launch_state": "blocked_owner_legal_approval_required"
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "android_windows_public_scope",
+      "canonical_ru": "Для Android и Windows",
+      "status": "repository_verified",
+      "allowed_profiles": [
+        "trust_owned"
+      ],
+      "allowed_surfaces": [
+        "owned_app",
+        "owned_cabinet",
+        "owned_web"
+      ],
+      "evidence": [
+        {
+          "path": "shared/product-facts.json",
+          "pointer": "/platform_scope/public",
+          "equals": [
+            "android",
+            "windows"
+          ],
+          "source_sha256": "428ccf40411b81c0ba55706a5551e4e6ce2ef126e19f5216f1a3e97e1dcbccb6"
+        }
+      ]
+    },
+    {
+      "claim_id": "main_plans_up_to_5_devices",
+      "canonical_ru": "До 5 устройств на основных тарифах",
+      "status": "repository_verified",
+      "allowed_profiles": [
+        "trust_owned"
+      ],
+      "allowed_surfaces": [
+        "owned_app",
+        "owned_cabinet",
+        "owned_web"
+      ],
+      "evidence": [
+        {
+          "path": "shared/tariff-catalog.json",
+          "pointer": "/plans/1/device_limit",
+          "equals": 5,
+          "source_sha256": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+        },
+        {
+          "path": "shared/tariff-catalog.json",
+          "pointer": "/plans/2/device_limit",
+          "equals": 5,
+          "source_sha256": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+        },
+        {
+          "path": "shared/tariff-catalog.json",
+          "pointer": "/plans/3/device_limit",
+          "equals": 5,
+          "source_sha256": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+        },
+        {
+          "path": "shared/tariff-catalog.json",
+          "pointer": "/plans/4/device_limit",
+          "equals": 5,
+          "source_sha256": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+        },
+        {
+          "path": "shared/tariff-catalog.json",
+          "pointer": "/plans/5/device_limit",
+          "equals": 5,
+          "source_sha256": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+        }
+      ]
+    },
+    {
+      "claim_id": "start_99_once_no_autopay",
+      "canonical_ru": "Первый полный месяц — 99 ₽ один раз. Автосписаний нет",
+      "status": "repository_verified",
+      "allowed_profiles": [
+        "trust_owned"
+      ],
+      "allowed_surfaces": [
+        "owned_app",
+        "owned_cabinet",
+        "owned_web"
+      ],
+      "evidence": [
+        {
+          "path": "shared/tariff-catalog.json",
+          "pointer": "/plans/0/code",
+          "equals": "start_99",
+          "source_sha256": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+        },
+        {
+          "path": "shared/tariff-catalog.json",
+          "pointer": "/plans/0/amount_rub",
+          "equals": 99,
+          "source_sha256": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+        },
+        {
+          "path": "shared/tariff-catalog.json",
+          "pointer": "/plans/0/duration_days",
+          "equals": 30,
+          "source_sha256": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+        },
+        {
+          "path": "shared/tariff-catalog.json",
+          "pointer": "/plans/0/renewal_policy",
+          "equals": "manual_no_auto_renewal",
+          "source_sha256": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+        }
+      ]
+    },
+    {
+      "claim_id": "trial_5_days_no_card",
+      "canonical_ru": "5 дней бесплатно без карты",
+      "status": "repository_verified",
+      "allowed_profiles": [
+        "trust_owned"
+      ],
+      "allowed_surfaces": [
+        "owned_app",
+        "owned_cabinet",
+        "owned_web"
+      ],
+      "evidence": [
+        {
+          "path": "shared/product-facts.json",
+          "pointer": "/trial/days",
+          "equals": 5,
+          "source_sha256": "428ccf40411b81c0ba55706a5551e4e6ce2ef126e19f5216f1a3e97e1dcbccb6"
+        },
+        {
+          "path": "shared/product-facts.json",
+          "pointer": "/trial/payment_card_required",
+          "equals": false,
+          "source_sha256": "428ccf40411b81c0ba55706a5551e4e6ce2ef126e19f5216f1a3e97e1dcbccb6"
+        }
+      ]
+    },
+    {
+      "claim_id": "try_before_payment",
+      "canonical_ru": "Проверьте подключение до оплаты",
+      "status": "repository_verified",
+      "allowed_profiles": [
+        "trust_owned"
+      ],
+      "allowed_surfaces": [
+        "owned_app",
+        "owned_cabinet",
+        "owned_web"
+      ],
+      "evidence": [
+        {
+          "path": "shared/product-facts.json",
+          "pointer": "/trial/days",
+          "equals": 5,
+          "source_sha256": "428ccf40411b81c0ba55706a5551e4e6ce2ef126e19f5216f1a3e97e1dcbccb6"
+        },
+        {
+          "path": "shared/product-facts.json",
+          "pointer": "/trial/payment_card_required",
+          "equals": false,
+          "source_sha256": "428ccf40411b81c0ba55706a5551e4e6ce2ef126e19f5216f1a3e97e1dcbccb6"
+        }
+      ]
+    }
+  ],
+  "copy_bindings": [
+    {
+      "copy_key": "marketing.footer.tagline",
+      "profile_id": "trust_owned",
+      "claim_ids": [
+        "android_windows_public_scope",
+        "start_99_once_no_autopay",
+        "trial_5_days_no_card"
+      ],
+      "copy_sha256": "edfa346956f9dfc2f021ab763df9155eb51b375ba60d801d3835cf8203755034"
+    },
+    {
+      "copy_key": "marketing.home.final.sub",
+      "profile_id": "trust_owned",
+      "claim_ids": [
+        "start_99_once_no_autopay",
+        "trial_5_days_no_card"
+      ],
+      "copy_sha256": "d577d27c385af6b7983fa6c42b6d41238691d8d3c3057c5f4e0e269a6529502f"
+    },
+    {
+      "copy_key": "marketing.home.final.title",
+      "profile_id": "trust_owned",
+      "claim_ids": [
+        "try_before_payment"
+      ],
+      "copy_sha256": "9248e444d21e18c3a33e35c2454641e5e06729fd08e3dc438e60d2b9afee5a6e"
+    },
+    {
+      "copy_key": "marketing.home.hero.fact_devices.title",
+      "profile_id": "trust_owned",
+      "claim_ids": [
+        "main_plans_up_to_5_devices"
+      ],
+      "copy_sha256": "4a5e4b2567ff3adb921428519933c44b5a116575187fe8aa345a0107479e26f4"
+    },
+    {
+      "copy_key": "marketing.home.hero.fact_platforms.title",
+      "profile_id": "trust_owned",
+      "claim_ids": [
+        "android_windows_public_scope"
+      ],
+      "copy_sha256": "b9058d3e12007e4b43f8e95b137fc95fe75f1948a9145083899a196b9acfb94e"
+    },
+    {
+      "copy_key": "marketing.home.hero.fact_trial.text",
+      "profile_id": "trust_owned",
+      "claim_ids": [
+        "trial_5_days_no_card"
+      ],
+      "copy_sha256": "326a0a7cedc6fab12b1e702946d90d54ed67367f037f50526a7a968cd5b57820"
+    },
+    {
+      "copy_key": "marketing.home.hero.kicker",
+      "profile_id": "trust_owned",
+      "claim_ids": [
+        "android_windows_public_scope"
+      ],
+      "copy_sha256": "6db03b3561fd681edd9f8aed7312a1b6fedba4f85ff575ca707672f608dc9347"
+    },
+    {
+      "copy_key": "marketing.home.hero.subtitle",
+      "profile_id": "trust_owned",
+      "claim_ids": [
+        "android_windows_public_scope",
+        "trial_5_days_no_card"
+      ],
+      "copy_sha256": "abc10a6452c5915328963409983678555ecccca5290949013c6ade76a0bf7916"
+    },
+    {
+      "copy_key": "marketing.home.hero.title",
+      "profile_id": "trust_owned",
+      "claim_ids": [
+        "try_before_payment"
+      ],
+      "copy_sha256": "6106fe00a7c4383a007a5231995a672514e0a2521a487516922ae15298084c0b"
+    }
+  ],
+  "prohibited_claim_patterns": [
+    "(?i)100%\\s*(?:аноним|доступ|безопас)",
+    "(?i)(?:полная|гарантированная)\\s+анонимность",
+    "(?i)гарантированн(?:ый|ая|ое)\\s+(?:доступ|аптайм|скорость)",
+    "(?i)никогда\\s+не\\s+отключается",
+    "(?i)лучший\\s+(?:vpn|впн)",
+    "(?i)разблокирует\\s+всё",
+    "(?i)обходит\\s+любые\\s+ограничения"
+  ],
+  "trust_led_forbidden_markers": [
+    "chatgpt",
+    "tiktok",
+    "youtube",
+    "без блокировок",
+    "обход блокировок"
+  ],
+  "trust_led_files": [
+    "marketing/src/app/page.tsx",
+    "marketing/src/components/home/final-cta.tsx",
+    "marketing/src/components/home/hero.tsx",
+    "marketing/src/components/layout/footer.tsx"
+  ],
+  "source_contract": "shared/marketing-governance.source.json",
+  "source_sha256": "2ec7f3698fcfdc7fe085e8ff6ebafd1c59dd5d785ee961130fe752f900651e6a",
+  "copy_catalog_sha256": "e5bde735e38fc1b2eb008753e74e4c99aaaad9c2ef225e202f84b4539995198a",
+  "evidence_source_sha256": {
+    "shared/product-facts.json": "428ccf40411b81c0ba55706a5551e4e6ce2ef126e19f5216f1a3e97e1dcbccb6",
+    "shared/tariff-catalog.json": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+  },
+  "contract_sha256": "6cd7f3cc94a2c45367569b88296da817fb3c80d510e5092daa53beb70ff4e97f"
+}

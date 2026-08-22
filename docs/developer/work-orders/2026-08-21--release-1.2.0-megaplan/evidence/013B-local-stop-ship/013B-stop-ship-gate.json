@@ -1,0 +1,151 @@
+{
+  "candidate_proven": false,
+  "expected_stop_ship_ids": [
+    "PAY-001",
+    "PAY-002",
+    "REL-001",
+    "REL-002",
+    "WIN-001",
+    "WIN-002",
+    "WIN-003"
+  ],
+  "generated_at": "2026-08-22T06:41:55.003452Z",
+  "hosted_branch_protection": [
+    {
+      "branch": "master",
+      "error_class": "feature_or_permission_unavailable",
+      "repository": "Kiwunaka/portal",
+      "required_checks": [
+        "cross-repository-contract"
+      ],
+      "result": "BLOCKED_BY_ACCESS",
+      "stop_ship_id": "REL-001"
+    },
+    {
+      "branch": "main",
+      "error_class": "feature_or_permission_unavailable",
+      "repository": "Kiwunaka/POKROV-app",
+      "required_checks": [
+        "cross-repository-contract"
+      ],
+      "result": "BLOCKED_BY_ACCESS",
+      "stop_ship_id": "REL-001"
+    },
+    {
+      "branch": "main",
+      "error_class": "branch_unprotected",
+      "repository": "Kiwunaka/pokrov-core",
+      "required_checks": [
+        "test",
+        "release-contract"
+      ],
+      "result": "FAIL_UNPROTECTED",
+      "stop_ship_id": "REL-001"
+    }
+  ],
+  "local_regressions": [
+    {
+      "checks": [
+        {
+          "missing_anchor_count": 0,
+          "path": "tests/test_payment_provider_boundaries.py",
+          "repository": "platform",
+          "result": "PASS",
+          "sha256": "dec84da5e1891f1a0cd72773a0d6255579857b6aa47c0096856171c5004f2d34"
+        }
+      ],
+      "id": "PAY-001",
+      "result": "PASS"
+    },
+    {
+      "checks": [
+        {
+          "missing_anchor_count": 0,
+          "path": "tests/test_payment_provider_boundaries.py",
+          "repository": "platform",
+          "result": "PASS",
+          "sha256": "dec84da5e1891f1a0cd72773a0d6255579857b6aa47c0096856171c5004f2d34"
+        }
+      ],
+      "id": "PAY-002",
+      "result": "PASS"
+    },
+    {
+      "checks": [
+        {
+          "missing_anchor_count": 0,
+          "path": "tests/test_release_gate_check.py",
+          "repository": "platform",
+          "result": "PASS",
+          "sha256": "98bd45b6f8b53a8fbbfc85b15fc297bb6c1c071ecf01043a3e4751d95832aab1"
+        }
+      ],
+      "id": "REL-001",
+      "result": "PASS"
+    },
+    {
+      "checks": [
+        {
+          "missing_anchor_count": 0,
+          "path": "test/release-v2-ci-contract.ps1",
+          "repository": "client",
+          "result": "PASS",
+          "sha256": "c72b878bc7cded1176f9e7b5a648078640d1d87333abf907ef3135130fe2eb89"
+        }
+      ],
+      "id": "REL-002",
+      "result": "PASS"
+    },
+    {
+      "checks": [
+        {
+          "missing_anchor_count": 0,
+          "path": "apps/windows_shell/test/windows_release_contract_test.dart",
+          "repository": "client",
+          "result": "PASS",
+          "sha256": "bba7fddfb68de9798a4230a6c8e0a99d82da3161d082b6beb977494ef725a74e"
+        }
+      ],
+      "id": "WIN-001",
+      "result": "PASS"
+    },
+    {
+      "checks": [
+        {
+          "missing_anchor_count": 0,
+          "path": "apps/windows_shell/test/windows_release_contract_test.dart",
+          "repository": "client",
+          "result": "PASS",
+          "sha256": "bba7fddfb68de9798a4230a6c8e0a99d82da3161d082b6beb977494ef725a74e"
+        }
+      ],
+      "id": "WIN-002",
+      "result": "PASS"
+    },
+    {
+      "checks": [
+        {
+          "missing_anchor_count": 0,
+          "path": "packages/app_shell/test/connection_experience_test.dart",
+          "repository": "client",
+          "result": "PASS",
+          "sha256": "fbefed1248415290129697382fbcd6d7b869c0e11d75a02fcd232355784909eb"
+        }
+      ],
+      "id": "WIN-003",
+      "result": "PASS"
+    }
+  ],
+  "manual_gates": [
+    {
+      "gate": "Exact-candidate Windows 10/11 clean-host TUN, DNS, egress and rollback evidence",
+      "result": "NOT_RUN",
+      "stop_ship_id": "WIN-003"
+    }
+  ],
+  "registry": "C:\\Users\\kiwun\\Documents\\ai\\VPN-1.2.0-phase00\\shared\\release-1.2.0-stop-ship-regressions.json",
+  "registry_sha256": "c654a6019b8b7c36b05f6602bfcdd509c22250c2f7b8f9c05c7125acad7082b7",
+  "release": "1.2.0",
+  "schema": "pokrov.release-1.2.0.stop-ship-gate.v1",
+  "status": "NO_GO"
+}

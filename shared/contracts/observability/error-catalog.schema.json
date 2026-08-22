@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pokrov.space/schemas/error-catalog-v1.schema.json",
+  "title": "POKROV Operational Error Catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "catalog_version",
+    "entries"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "catalog_version": {
+      "const": "1.2.0"
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/entry"
+      }
+    }
+  },
+  "$defs": {
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "severity",
+        "owner",
+        "public_message_key",
+        "public_message_ru",
+        "operator_action",
+        "retry_policy",
+        "release_blocking"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9-]{1,23}-[0-9]{3}$"
+        },
+        "severity": {
+          "enum": [
+            "info",
+            "warn",
+            "error",
+            "fatal"
+          ]
+        },
+        "owner": {
+          "enum": [
+            "app",
+            "release",
+            "portal",
+            "network",
+            "security",
+            "runtime",
+            "node",
+            "core",
+            "platform",
+            "windows",
+            "android",
+            "linux",
+            "support"
+          ]
+        },
+        "public_message_key": {
+          "type": "string",
+          "pattern": "^error\\.[a-z0-9_]{3,64}$"
+        },
+        "public_message_ru": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 180
+        },
+        "operator_action": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{2,63}$"
+        },
+        "retry_policy": {
+          "enum": [
+            "none",
+            "user_action",
+            "bounded_backoff",
+            "once_after_recovery"
+          ]
+        },
+        "release_blocking": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

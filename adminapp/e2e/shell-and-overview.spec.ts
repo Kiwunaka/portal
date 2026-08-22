@@ -10,48 +10,74 @@ const apiCorsHeaders = {
 };
 
 const expectedGroups = [
-  { label: "Команда", links: [["Главная", "/"]] },
   {
-    label: "Сеть",
-    links: [
-      ["Ноды", "/nodes"],
-      ["Трафик", "/traffic"],
-      ["Алерты", "/alerts"],
-      ["Лимиты провайдеров", "/provider-caps"],
-      ["Экстренная сеть", "/emergency-network"],
-      ["Архив FREE", "/free-tier"]
-    ]
+    label: "Моя смена",
+    links: [["Моя смена", "/shift"], ["Главная", "/"]]
   },
   {
-    label: "Клиенты",
+    label: "Пользователи и поддержка",
     links: [
+      ["Пользователи и поддержка", "/support"],
       ["Пользователи", "/users"],
       ["Сейчас онлайн", "/online"],
       ["Тикеты", "/tickets"]
     ]
   },
   {
-    label: "Деньги и рост",
+    label: "Сеть и инциденты",
     links: [
-      ["Платежи", "/payments"],
-      ["Воронка", "/funnel"],
-      ["Промо", "/promos"],
-      ["Рефералы", "/referrals"]
+      ["Сеть и инциденты", "/network"],
+      ["Ноды", "/nodes"],
+      ["Трафик", "/traffic"],
+      ["Алерты", "/alerts"],
+      ["Incident Room", "/incidents"],
+      ["Лимиты провайдеров", "/provider-caps"],
+      ["Экстренная сеть", "/emergency-network"]
     ]
   },
   {
-    label: "Управление",
+    label: "Деньги и доступ",
     links: [
-      ["Релиз", "/release"],
+      ["Деньги и доступ", "/money"],
+      ["Платежи", "/payments"],
+      ["Доступ", "/access"],
+      ["Архив FREE", "/free-tier"],
+      ["Промокоды", "/promos"]
+    ]
+  },
+  {
+    label: "Рост и коммуникации",
+    links: [
+      ["Рост и коммуникации", "/growth"],
+      ["Воронка", "/funnel"],
+      ["Бонусы", "/bonuses"],
+      ["Программы", "/programs"],
+      ["Рефералы", "/referrals"],
       ["Рассылка", "/broadcast"],
       ["Новости", "/news"]
     ]
+  },
+  {
+    label: "Релизы и клиенты",
+    links: [
+      ["Релизы и клиенты", "/releases"],
+      ["Релиз", "/release"]
+    ]
+  },
+  {
+    label: "Управление системой",
+    links: [["Управление системой", "/governance"]]
   }
 ] as const;
 
-test("существующая admin-сессия используется без повторного обмена", async ({ page }) => {
+function isShellIdentityGet(path: string): boolean {
+  return path === "/api/admin/v2/auth/me" || path === "/api/admin/v2/meta";
+}
+
+test("серверная cookie-сессия проверяется без чтения legacy bearer из Web Storage", async ({ page }) => {
   await page.addInitScript(() => {
-    window.sessionStorage.setItem("pokrov_admin_session_token", "mock-admin-token");
+    window.sessionStorage.setItem("pokrov_admin_session_token", "forbidden-session-token");
+    window.localStorage.setItem("pokrov_admin_init_data", "forbidden-init-data");
   });
   const api = await installAdminApiMock(page);
 
@@ -59,34 +85,60 @@ test("существующая admin-сессия используется бе�
   await expect(page.getByRole("heading", { name: "Требует реакции" })).toBeVisible();
   await expect.poll(() => api.calls.some((call) => (
     call.method === "GET"
-    && call.path === "/api/admin/ops/overview"
-    && call.headers?.authorization === "Bearer mock-admin-token"
+    && call.path === "/api/admin/v2/auth/me"
+    && !call.headers?.authorization
   ))).toBe(true);
+  await expect.poll(() => page.evaluate(() => ({
+    token: window.sessionStorage.getItem("pokrov_admin_session_token"),
+    initData: window.localStorage.getItem("pokrov_admin_init_data")
+  }))).toEqual({ token: null, initData: null });
+  expect(api.calls.some((call) => call.method === "POST" && call.path === "/api/admin/v2/auth/bootstrap")).toBe(false);
   expect(api.calls.some((call) => call.method === "POST" && call.path === "/api/admin/auth/session")).toBe(false);
 });
 
-test("initData обменивается на сессию только через явный вход", async ({ page }) => {
+test("Telegram runtime initData доступен только через явный compatibility-вход", async ({ page }) => {
+  const initData = "query_id=test&user=%7B%22id%22%3A9999%7D&auth_date=1&hash=test";
+  await page.addInitScript((runtimeInitData) => {
+    (window as typeof window & { Telegram?: { WebApp?: { initData?: string } } }).Telegram = {
+      WebApp: { initData: runtimeInitData }
+    };
+  }, initData);
   const api = await installAdminApiMock(page, { requireInitDataForSession: true });
   await page.goto("/");
 
   await expect(page.getByRole("heading", { name: "Вход в админку" })).toBeVisible();
-  const initData = "query_id=test&user=%7B%22id%22%3A9999%7D&auth_date=1&hash=test";
-  await page.getByLabel("Telegram WebApp initData").fill(initData);
-  await page.getByRole("button", { name: "Войти по initData" }).click();
+  expect(api.calls.some((call) => call.method === "POST" && call.path === "/api/admin/v2/auth/bootstrap")).toBe(false);
+  await page.getByRole("button", { name: "Compatibility-вход" }).click();
+  await expect(page.getByRole("heading", { name: "Требует реакции" })).toBeVisible();
+  await expect(page.getByLabel("Telegram WebApp initData")).toHaveCount(0);
+  await expect.poll(() => api.calls.some((call) => (
+    call.method === "POST"
+    && call.path === "/api/admin/v2/auth/bootstrap"
+    && call.headers?.["x-telegram-init-data"] === initData
+  ))).toBe(true);
+  expect(await page.evaluate(() => window.sessionStorage.getItem("pokrov_admin_init_data"))).toBeNull();
+});
+
+test("OIDC callback открывает cookie-сессию и удаляет code/state из URL", async ({ page }) => {
+  const api = await installAdminApiMock(page, { operatorSessionInitiallyMissing: true });
+  await page.goto("/?code=operator-code-1234&state=operator-oidc-state-123456");
 
   await expect(page.getByRole("heading", { name: "Требует реакции" })).toBeVisible();
   await expect.poll(() => api.calls.some((call) => (
     call.method === "POST"
-    && call.path === "/api/admin/auth/session"
-    && call.headers?.["x-telegram-init-data"] === initData
+    && call.path === "/api/admin/v2/auth/oidc/finish"
+    && (call.body as { code?: string; state?: string })?.code === "operator-code-1234"
+    && (call.body as { code?: string; state?: string })?.state === "operator-oidc-state-123456"
   ))).toBe(true);
+  await expect(page).toHaveURL(/\/$/);
+  expect(api.calls.some((call) => call.headers?.authorization)).toBe(false);
 });
 
-test("оболочка группирует 17 разделов и открывает палитру с клавиатуры", async ({ page }) => {
+test("оболочка группирует семь рабочих областей и открывает палитру с клавиатуры", async ({ page }) => {
   await installAdminApiMock(page);
   await page.goto("/");
 
-  const navigation = page.getByRole("navigation", { name: "Разделы центра управления" });
+  const navigation = page.getByRole("navigation", { name: "Рабочие области центра управления" });
   const groups = navigation.getByRole("region");
   await expect(groups).toHaveCount(expectedGroups.length);
   for (const [groupIndex, group] of expectedGroups.entries()) {
@@ -114,16 +166,33 @@ test("верхняя панель показывает фактический с
   await installAdminApiMock(page);
   await page.goto("/");
 
+  const banner = page.getByRole("banner");
   await expect(page.getByLabel("Состояние API: Норма")).toBeVisible();
   await expect(page.getByLabel("Состояние сессии: Норма")).toBeVisible();
-  await expect(page.getByRole("banner").locator('time[datetime="2026-07-15T09:50:00Z"]')).toBeVisible();
+  await expect(banner.locator('time[datetime="2026-07-15T09:50:00Z"]')).toBeVisible();
   await expect(page.getByText(/Старейший источник:/)).not.toContainText("Нет данных");
+  await expect(banner.getByText("Среда", { exact: true }).locator("..")).toContainText("test");
+  await expect(banner.getByText("FE", { exact: true }).locator("..").locator("dd")).toHaveText(/^[a-f0-9]{8}$/);
+  await expect(banner.getByText("API", { exact: true }).locator("..").locator("dd")).toHaveText("admin-v2.1");
+  await expect(banner.getByText("Клиент", { exact: true }).locator("..")).toContainText("1.2.0-rc.1");
+  await expect(banner.locator('time[datetime="2026-07-15T10:30:00Z"]')).toBeVisible();
+  await expect(banner.getByText("Source", { exact: true }).locator("..").locator("dd")).toHaveText(/^(clean|dirty)$/);
+});
+
+test("несовпадение frontend/API identity блокирующе видно в оболочке", async ({ page }) => {
+  await installAdminApiMock(page, { apiSchema: "admin-v2.99" });
+  await page.goto("/");
+
+  const mismatch = page.getByRole("alert").filter({ hasText: "Несовпадение кандидата" });
+  await expect(mismatch).toBeVisible();
+  await expect(mismatch).toContainText("api_schema_mismatch");
+  await expect(mismatch).toContainText("Остановите cutover");
 });
 
 test("главная не загружает данные скрытых разделов", async ({ page }) => {
   const api = await installAdminApiMock(page);
   await page.goto("/");
-  await expect.poll(() => api.calls.some((call) => call.path === "/api/admin/ops/overview")).toBe(true);
+  await expect.poll(() => api.calls.some((call) => call.path === "/api/admin/v2/shift/overview")).toBe(true);
 
   expect(api.calls.map((call) => call.path)).not.toContain("/api/admin/users?page_size=50");
   expect(api.calls.map((call) => call.path)).not.toContain("/api/admin/nodes/runtime");
@@ -134,23 +203,36 @@ test("главная не загружает данные скрытых раз�
 test("каждый раздел запрашивает только собственные источники", async ({ page }) => {
   const api = await installAdminApiMock(page);
   const routes: ReadonlyArray<{ href: string; label: string; paths: readonly RegExp[] }> = [
-    { href: "/", label: "Главная", paths: [/^\/api\/admin\/ops\/overview$/, /^\/api\/admin\/probes\/ru-origin\/latest$/] },
-    { href: "/nodes", label: "Ноды", paths: [/^\/api\/admin\/nodes\/health$/, /^\/api\/admin\/probes\/ru-origin\/latest$/] },
-    { href: "/traffic", label: "Трафик", paths: [/^\/api\/admin\/traffic\/summary\?from=.+&to=.+$/] },
-    { href: "/alerts", label: "Алерты", paths: [/^\/api\/admin\/alerts\?status=active$/] },
-    { href: "/provider-caps", label: "Лимиты провайдеров", paths: [/^\/api\/admin\/provider-quotas$/, /^\/api\/admin\/provider-quotas\/status$/] },
-    { href: "/emergency-network", label: "Экстренная сеть", paths: [/^\/api\/admin\/emergency-network\/status$/] },
-    { href: "/free-tier", label: "Архив FREE", paths: [/^\/api\/admin\/free-tier\/summary$/, /^\/api\/admin\/free-tier\/users\?limit=500$/] },
-    { href: "/users", label: "Пользователи", paths: [/^\/api\/admin\/users\?page_size=80&offset=0&sort=created_desc$/, /^\/api\/admin\/online\/users\?limit=200$/] },
-    { href: "/online", label: "Сейчас онлайн", paths: [/^\/api\/admin\/online\/users\?limit=200$/] },
-    { href: "/tickets", label: "Тикеты", paths: [/^\/api\/admin\/tickets\?status=&limit=100$/] },
-    { href: "/payments", label: "Платежи", paths: [/^\/api\/admin\/payments\/summary\?period=7d$/, /^\/api\/admin\/payments\/orders\?limit=80$/] },
-    { href: "/funnel", label: "Воронка", paths: [/^\/api\/admin\/funnel\/summary\?from=.+&to=.+$/] },
-    { href: "/promos", label: "Промо", paths: [/^\/api\/admin\/promos\?limit=100$/, /^\/api\/admin\/promo-slots$/] },
-    { href: "/referrals", label: "Рефералы", paths: [/^\/api\/admin\/referrals\/pending\?limit=100&status=pending$/, /^\/api\/admin\/referrals\/pending\?limit=100&status=rewarded$/] },
-    { href: "/release", label: "Релиз", paths: [/^\/api\/admin\/releases\/candidates\?limit=50$/, /^\/api\/admin\/releases\/[a-f0-9]{64}\/readiness$/] },
+    { href: "/", label: "Главная", paths: [/^\/api\/admin\/v2\/shift\/overview$/, /^\/api\/admin\/v2\/network\/ru\/latest$/] },
+    { href: "/shift", label: "Моя смена", paths: [/^\/api\/admin\/v2\/shift$/] },
+    { href: "/nodes", label: "Ноды", paths: [/^\/api\/admin\/v2\/network\/fleet$/, /^\/api\/admin\/v2\/network\/ru\/latest$/] },
+    { href: "/traffic", label: "Трафик", paths: [/^\/api\/admin\/v2\/network\/traffic\?from=.+&to=.+$/] },
+    { href: "/alerts", label: "Алерты", paths: [/^\/api\/admin\/v2\/network\/alerts\?status=active$/] },
+    { href: "/incidents", label: "Incident Room", paths: [/^\/api\/admin\/v2\/incidents$/] },
+    { href: "/provider-caps", label: "Лимиты провайдеров", paths: [/^\/api\/admin\/v2\/network\/providers$/] },
+    { href: "/emergency-network", label: "Экстренная сеть", paths: [/^\/api\/admin\/v2\/network\/emergency$/] },
+    { href: "/free-tier", label: "Архив FREE", paths: [/^\/api\/admin\/v2\/money\/free-archive\?limit=500$/] },
+    { href: "/access", label: "Доступ", paths: [/^\/api\/admin\/v2\/money\/access$/] },
+    { href: "/users", label: "Пользователи", paths: [/^\/api\/admin\/users\?page_size=80&offset=0&sort=created_desc$/, /^\/api\/admin\/v2\/support\/online\?limit=200$/] },
+    { href: "/online", label: "Сейчас онлайн", paths: [/^\/api\/admin\/v2\/support\/online\?limit=200$/] },
+    { href: "/tickets", label: "Тикеты", paths: [/^\/api\/admin\/v2\/support\/tickets\?status=&limit=100$/] },
+    { href: "/payments", label: "Платежи", paths: [/^\/api\/admin\/v2\/money\/payments\/summary\?period=7d$/, /^\/api\/admin\/v2\/money\/payments\/orders\?limit=80$/] },
+    { href: "/funnel", label: "Воронка", paths: [/^\/api\/admin\/v2\/growth\/funnel\?from=.+&to=.+$/] },
+    { href: "/promos", label: "Промокоды", paths: [/^\/api\/admin\/v2\/money\/promos\?limit=100$/, /^\/api\/admin\/promo-slots$/, /^\/api\/admin\/campaigns\?limit=200$/] },
+    { href: "/bonuses", label: "Бонусы", paths: [/^\/api\/admin\/v2\/growth\/bonuses$/] },
+    { href: "/programs", label: "Программы", paths: [/^\/api\/admin\/v2\/growth\/programs\?limit=200$/] },
+    { href: "/referrals", label: "Рефералы", paths: [/^\/api\/admin\/v2\/growth\/referrals\?limit=100&status=pending$/, /^\/api\/admin\/v2\/growth\/referrals\?limit=100&status=rewarded$/] },
+    { href: "/release", label: "Релиз", paths: [/^\/api\/admin\/v2\/releases\/candidates\?limit=50$/, /^\/api\/admin\/v2\/releases\/candidates\/[a-f0-9]{64}\/cockpit\?hours=24$/] },
     { href: "/broadcast", label: "Рассылка", paths: [] },
-    { href: "/news", label: "Новости", paths: [/^\/api\/admin\/news-drafts\?status=all&limit=100$/] }
+    { href: "/news", label: "Новости", paths: [/^\/api\/admin\/v2\/growth\/news-drafts\?status=all&limit=100$/] },
+    { href: "/governance", label: "Управление системой", paths: [
+      /^\/api\/admin\/v2\/governance\/roles$/,
+      /^\/api\/admin\/v2\/governance\/operators\?limit=200$/,
+      /^\/api\/admin\/v2\/governance\/operators\/[0-9a-f-]{36}$/,
+      /^\/api\/admin\/v2\/governance\/audit\?limit=100$/,
+      /^\/api\/admin\/v2\/governance\/privacy$/,
+      /^\/api\/admin\/v2\/governance\/sensitive-access\?limit=100$/,
+    ] }
   ];
 
   for (const route of routes) {
@@ -159,13 +241,13 @@ test("каждый раздел запрашивает только собств
     await expect(page.getByRole("heading", { name: route.label, exact: true, level: 1 })).toBeVisible();
     if (route.paths.length) {
       await expect.poll(() => {
-        const calls = api.calls.slice(firstCall).filter((call) => call.method === "GET").map((call) => call.path);
+        const calls = api.calls.slice(firstCall).filter((call) => call.method === "GET" && !isShellIdentityGet(call.path)).map((call) => call.path);
         return route.paths.every((pattern) => calls.some((path) => pattern.test(path)));
       }).toBe(true);
     } else {
       await page.waitForTimeout(150);
     }
-    const calls = api.calls.slice(firstCall).filter((call) => call.method === "GET").map((call) => call.path);
+    const calls = api.calls.slice(firstCall).filter((call) => call.method === "GET" && !isShellIdentityGet(call.path)).map((call) => call.path);
     expect(calls.every((path) => route.paths.some((pattern) => pattern.test(path))), `скрытый GET на ${route.href}: ${calls.join(", ")}`).toBe(true);
   }
 });
@@ -191,16 +273,12 @@ test("клиентская навигация из промо изолирует
   await expect(page.getByRole("button", { name: "Повторить очередь" })).toBeVisible();
 });
 
-test("раздел без чтений не подтверждает сессию даже после локального 401", async ({ page }) => {
-  await page.addInitScript(() => {
-    window.sessionStorage.setItem("pokrov_admin_session_token", "mock-admin-token");
-  });
+test("раздел без доменных чтений отделяет подтверждённую сессию от локального 401", async ({ page }) => {
   const api = await installAdminApiMock(page, { broadcastStatus: 401 });
   await page.goto("/broadcast");
   await expect(page.getByLabel("Состояние API: Нет данных")).toBeVisible();
   await expect(page.getByLabel("Состояние сессии: Нет данных")).toBeVisible();
   await expect(page.getByLabel("Состояние API: Норма")).toHaveCount(0);
-  await expect(page.getByLabel("Состояние сессии: Норма")).toHaveCount(0);
 
   await page.getByLabel("Текст рассылки").fill("Проверка локального отказа");
   await page.getByRole("button", { name: "Подготовить защищённый предпросмотр" }).click();
@@ -209,10 +287,9 @@ test("раздел без чтений не подтверждает сесси�
   await dialog.getByRole("button", { name: "Выполнить" }).click();
   await expect(dialog.getByText("Действие завершилось с ошибкой", { exact: true })).toBeVisible();
   await expect(dialog.getByText("ID обращения: broadcast-test-id", { exact: true })).toBeVisible();
-  await expect.poll(() => api.calls.some((call) => call.method === "POST" && call.path === "/api/admin/broadcast")).toBe(true);
+  await expect.poll(() => api.calls.some((call) => call.method === "POST" && /^\/api\/admin\/v2\/growth\/action-intents\/[0-9a-f-]{36}\/execute$/.test(call.path))).toBe(true);
   await expect(page.getByLabel("Состояние API: Нет данных")).toBeVisible();
   await expect(page.getByLabel("Состояние сессии: Нет данных")).toBeVisible();
-  await expect(page.getByLabel("Состояние сессии: Норма")).toHaveCount(0);
 });
 
 test("отключённый ресурс не показывает карточку предыдущего ключа", async ({ page }) => {
@@ -278,7 +355,6 @@ test("отключённый ресурс не показывает карточ
 test("polling работает только на видимой активной главной и очищается при уходе", async ({ page }) => {
   await page.clock.install({ time: new Date("2026-07-16T00:00:00Z") });
   await page.addInitScript(() => {
-    window.sessionStorage.setItem("pokrov_admin_session_token", "mock-admin-token");
     let visibility: DocumentVisibilityState = "visible";
     Object.defineProperty(document, "visibilityState", {
       configurable: true,
@@ -293,8 +369,8 @@ test("polling работает только на видимой активной
     };
   });
   const api = await installAdminApiMock(page);
-  const overviewCount = () => api.calls.filter((call) => call.path === "/api/admin/ops/overview").length;
-  const ruLatestCount = () => api.calls.filter((call) => call.path === "/api/admin/probes/ru-origin/latest").length;
+  const overviewCount = () => api.calls.filter((call) => call.path === "/api/admin/v2/shift/overview").length;
+  const ruLatestCount = () => api.calls.filter((call) => call.path === "/api/admin/v2/network/ru/latest").length;
 
   await page.goto("/");
   await page.clock.runFor(1);
@@ -325,7 +401,7 @@ test("polling работает только на видимой активной
 
   await page.getByRole("link", { name: "Ноды", exact: true }).click();
   await expect(page).toHaveURL(/\/nodes$/);
-  await expect.poll(() => api.calls.some((call) => call.path === "/api/admin/nodes/health")).toBe(true);
+  await expect.poll(() => api.calls.some((call) => call.path === "/api/admin/v2/network/fleet")).toBe(true);
   const countAfterUnmount = overviewCount();
   const ruCountAfterUnmount = ruLatestCount();
   await page.clock.fastForward(180_000);
@@ -337,7 +413,7 @@ test("главная показывает отдельную свежесть RU
   const api = await installAdminApiMock(page);
   await page.goto("/");
 
-  await expect.poll(() => api.calls.some((call) => call.path === "/api/admin/probes/ru-origin/latest")).toBe(true);
+  await expect.poll(() => api.calls.some((call) => call.path === "/api/admin/v2/network/ru/latest")).toBe(true);
   const ruRow = page.locator("span", { hasText: /^RU-origin$/ }).locator("xpath=../../..");
   await expect(ruRow).toContainText("Текущий пригодный запуск");
   await expect(ruRow.locator('time[datetime="2026-07-15T09:50:00Z"]').first()).toBeVisible();
@@ -366,9 +442,9 @@ test("сбой RU-origin не скрывает overview и имеет локал
   await expect(page.getByRole("alert").filter({ hasText: "RU-origin не загрузился" })).toBeVisible();
   const retry = page.getByRole("button", { name: "Повторить загрузку RU-origin" });
   await expect(retry).toBeVisible();
-  const beforeRetry = api.calls.filter((call) => call.path === "/api/admin/probes/ru-origin/latest").length;
+  const beforeRetry = api.calls.filter((call) => call.path === "/api/admin/v2/network/ru/latest").length;
   await retry.click();
-  await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/probes/ru-origin/latest").length).toBeGreaterThan(beforeRetry);
+  await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/v2/network/ru/latest").length).toBeGreaterThan(beforeRetry);
 });
 
 test("очередь действий сортируется детерминированно и не подменяет пропуски нулём", async ({ page }) => {
@@ -429,7 +505,7 @@ test("выбор сигнала перестраивает triage локальн
 
   await page.goto("/");
   await expect(page.getByRole("button", { name: "Открыть сигнал: DE: диск выше порога" })).toHaveAttribute("aria-pressed", "true");
-  await expect.poll(() => api.calls.filter((call) => call.method === "GET").length).toBe(2);
+  await expect.poll(() => api.calls.filter((call) => call.method === "GET" && !isShellIdentityGet(call.path)).length).toBe(2);
   const callsBeforeSelection = api.calls.length;
 
   await page.getByRole("button", { name: "Открыть сигнал: NL: Panel API отвечает медленно" }).click();
@@ -455,7 +531,7 @@ test("обновление сохраняет последний успешны�
     releaseSecondOverview = resolve;
   });
   let overviewCalls = 0;
-  await page.route("**/api/admin/ops/overview", async (route) => {
+  await page.route("**/api/admin/v2/shift/overview", async (route) => {
     overviewCalls += 1;
     if (overviewCalls === 2) await secondOverviewGate;
     await route.fallback();
@@ -473,6 +549,60 @@ test("обновление сохраняет последний успешны�
   releaseSecondOverview();
   await expect(page.getByText("Обновляем", { exact: true })).toHaveCount(0);
   await expect(activeUsers).toContainText("88");
+});
+
+test("ошибка route-scoped refresh сохраняет last-good данные и помечает их деградацию", async ({ page }) => {
+  await installAdminApiMock(page);
+  let overviewCalls = 0;
+  await page.route("**/api/admin/v2/shift/overview", async (route) => {
+    overviewCalls += 1;
+    if (overviewCalls === 1) {
+      await route.fallback();
+      return;
+    }
+    await route.fulfill({
+      status: 503,
+      headers: { ...apiCorsHeaders, "content-type": "application/json; charset=utf-8" },
+      body: JSON.stringify({ detail: "overview temporarily unavailable" })
+    });
+  });
+
+  await page.goto("/");
+  const activeUsers = page.getByText("Активные пользователи", { exact: true }).locator("..");
+  await expect(activeUsers).toContainText("88");
+  await page.getByRole("banner").getByRole("button", { name: "Обновить" }).click();
+
+  await expect.poll(() => overviewCalls).toBe(2);
+  await expect(activeUsers).toContainText("88");
+  await expect(page.getByRole("alert").filter({ hasText: "Последние успешные данные сохранены" })).toBeVisible();
+  await expect(page.getByLabel("Состояние API: Требует внимания")).toBeVisible();
+});
+
+test("битый success envelope Admin API v2 отклоняется без ложного успеха", async ({ page }) => {
+  await installAdminApiMock(page);
+  await page.route("**/api/admin/v2/shift/overview", async (route) => {
+    await route.fulfill({
+      status: 200,
+      headers: { ...apiCorsHeaders, "content-type": "application/json; charset=utf-8" },
+      body: JSON.stringify({
+        data: { generated_at: "2026-07-15T09:50:00Z" },
+        meta: {
+          generated_at: "2026-07-15T09:50:00Z",
+          schema_version: "admin-v2.1",
+          query_ms: 1,
+          trace_id: null
+        },
+        sources: []
+      })
+    });
+  });
+
+  await page.goto("/");
+
+  await expect(page.getByRole("heading", { name: "Источник не ответил" })).toBeVisible();
+  await expect(page.getByText(/Технический код: admin_v2_envelope_invalid\./)).toBeVisible();
+  await expect(page.getByLabel("Состояние API: Требует внимания")).toBeVisible();
+  await expect(page.getByText("Активные пользователи", { exact: true })).toHaveCount(0);
 });
 
 test("обычный 401 от overview показывает деградацию и сбой сессии без access-evidence", async ({ page }) => {
@@ -497,7 +627,7 @@ test("401 выбранного traffic-раздела не выглядит но
 });
 
 test("нулевой реальный успех не маскируется synthetic module result", async ({ page }) => {
-  await installAdminApiMock(page, { failAllLegacyRequests: true });
+  await installAdminApiMock(page, { failAllLegacyRequests: true, overviewStatus: 500, ruLatestStatus: 503 });
   await page.goto("/");
 
   await expect(page.getByLabel("Состояние API: Сбой")).toBeVisible();
@@ -509,15 +639,15 @@ test("нулевой реальный успех не маскируется syn
 test("прерванная старая загрузка не перезаписывает новый маршрут", async ({ page }) => {
   const api = await installAdminApiMock(page, { delayFirstOverviewFailure: true, ruScenario: "fresh-pass" });
   const abortedOverview = page.waitForEvent("requestfailed", {
-    predicate: (request) => new URL(request.url()).pathname === "/api/admin/ops/overview"
+    predicate: (request) => new URL(request.url()).pathname === "/api/admin/v2/shift/overview"
   });
   await page.goto("/");
-  await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/ops/overview").length).toBe(1);
+  await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/v2/shift/overview").length).toBe(1);
 
   await page.getByRole("link", { name: "Ноды", exact: true }).click();
   await expect(page).toHaveURL(/\/nodes$/);
-  await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/nodes/health").length).toBe(1);
-  expect(api.calls.filter((call) => call.path === "/api/admin/ops/overview")).toHaveLength(1);
+  await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/v2/network/fleet").length).toBe(1);
+  expect(api.calls.filter((call) => call.path === "/api/admin/v2/shift/overview")).toHaveLength(1);
   await abortedOverview;
   await expect(page.getByLabel("Состояние API: Норма")).toBeVisible();
   await expect(page.getByLabel("Состояние сессии: Норма")).toBeVisible();
@@ -552,6 +682,37 @@ test("поиск начинается с двух символов и ведёт
   await expect(page.getByRole("dialog", { name: "Палитра команд" })).toBeHidden();
   await expect(commandsButton).toBeFocused();
   expect(api.calls.filter((call) => call.path.startsWith("/api/admin/search?")).every((call) => call.method === "GET")).toBe(true);
+});
+
+test("глобальный поиск находит opaque support bundle и открывает связанный кейс", async ({ page }) => {
+  const api = await installAdminApiMock(page);
+  await page.goto("/");
+  await page.getByRole("button", { name: "Команды" }).click();
+  await page.getByRole("searchbox", { name: "Глобальный поиск" }).fill("bundle_22222222222222222222");
+
+  await expect.poll(() => api.calls.filter((call) => call.path.startsWith("/api/admin/v2/support/search?")).length).toBe(1);
+  await page.getByRole("button", { name: /Пакет поддержки · тикет #501/ }).click();
+
+  await expect(page).toHaveURL(/\/tickets\?selected=501$/);
+});
+
+test("поисковая строка и результаты не становятся историей после закрытия палитры", async ({ page }) => {
+  await installAdminApiMock(page);
+  await page.goto("/");
+
+  const commandsButton = page.getByRole("button", { name: "Команды" });
+  await commandsButton.click();
+  await page.getByRole("searchbox", { name: "Глобальный поиск" }).fill("nl");
+  await expect(page.getByRole("button", { name: /Нода NL/ })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await commandsButton.click();
+
+  await expect(page.getByRole("searchbox", { name: "Глобальный поиск" })).toHaveValue("");
+  await expect(page.getByRole("button", { name: /Нода NL/ })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => ({
+    local: Object.entries(window.localStorage),
+    session: Object.entries(window.sessionStorage)
+  }))).toEqual({ local: [], session: [] });
 });
 
 test("поиск 404 оставляет палитру и текущий маршрут рабочими", async ({ page }) => {

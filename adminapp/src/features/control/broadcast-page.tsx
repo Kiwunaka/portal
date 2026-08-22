@@ -213,8 +213,9 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
       action: "broadcast.send",
       target: { type: "broadcast", id: "broadcast" },
       payload,
-      endpoint: "/api/admin/broadcast",
+      endpoint: "/api/admin/v2/growth/action-intents",
       method: "POST",
+      workspace: "growth",
     });
     setDialogOpen(true);
   }
@@ -234,8 +235,9 @@ export function BroadcastPage({ onShellStatus }: { onShellStatus?: (status: OpsS
         retry_intent_id: statusIntentId,
         text: draft.text,
       },
-      endpoint: "/api/admin/broadcast",
+      endpoint: "/api/admin/v2/growth/action-intents",
       method: "POST",
+      workspace: "growth",
     });
     setDialogOpen(true);
   }

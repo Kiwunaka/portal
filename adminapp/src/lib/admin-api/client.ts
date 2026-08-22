@@ -1,12 +1,18 @@
 "use client";
 
 import { CANONICAL_API_BASE_URL } from "@/lib/portal";
-import type { AdminSessionPayload } from "./types";
+import { matchAdminV2Operation } from "./generated/admin-v2";
+import type { AdminOperatorSessionData, AdminV2Envelope } from "./types";
 
-const WEB_SESSION_TOKEN_KEY = "portal_web_session_token";
-const ADMIN_INIT_DATA_KEY = "pokrov_admin_init_data";
-const ADMIN_SESSION_TOKEN_KEY = "pokrov_admin_session_token";
+const LEGACY_AUTH_STORAGE_KEYS = [
+  "portal_web_session_token",
+  "pokrov_admin_init_data",
+  "pokrov_admin_session_token"
+] as const;
+const ADMIN_CSRF_HEADER = "X-Pokrov-Admin-CSRF";
 const DEFAULT_TIMEOUT_MS = 15000;
+const ADMIN_V2_PREFIX = "/api/admin/v2/";
+let adminCsrfToken = "";
 
 export type ApiRequestInit = RequestInit & { timeoutMs?: number };
 
@@ -24,78 +30,88 @@ export class AdminApiError extends Error {
   }
 }
 
-function getCookieValue(name: string): string {
-  if (typeof document === "undefined") return "";
-  const prefix = `${encodeURIComponent(name)}=`;
-  for (const part of document.cookie.split(";")) {
-    const item = part.trim();
-    if (item.startsWith(prefix)) return decodeURIComponent(item.slice(prefix.length));
-  }
-  return "";
-}
-
-function getStoredValue(key: string): string {
-  if (typeof window === "undefined") return "";
-  try {
-    return String(window.localStorage?.getItem(key) || "").trim();
-  } catch {
-    return "";
-  }
-}
-
-function getAdminInitDataFromStorage(): string {
-  if (typeof window === "undefined") return "";
-  try {
-    const sessionValue = String(window.sessionStorage?.getItem(ADMIN_INIT_DATA_KEY) || "").trim();
-    if (sessionValue) return sessionValue;
-  } catch {
-    // Ignore blocked storage.
-  }
-  try {
-    const legacyValue = String(window.localStorage?.getItem(ADMIN_INIT_DATA_KEY) || "").trim();
-    if (!legacyValue) return "";
-    window.sessionStorage?.setItem(ADMIN_INIT_DATA_KEY, legacyValue);
-    window.localStorage?.removeItem(ADMIN_INIT_DATA_KEY);
-    return legacyValue;
-  } catch {
-    return "";
-  }
-}
-
 function getTelegramInitData(): string {
   if (typeof window === "undefined") return "";
   const tg = (window as typeof window & { Telegram?: { WebApp?: { initData?: string } } }).Telegram?.WebApp;
-  return String(tg?.initData || getAdminInitDataFromStorage() || "").trim();
+  return String(tg?.initData || "").trim();
 }
 
-function getAdminSessionToken(): string {
-  if (typeof window === "undefined") return "";
-  try {
-    return String(window.sessionStorage?.getItem(ADMIN_SESSION_TOKEN_KEY) || "").trim();
-  } catch {
-    return "";
+export function hasTelegramMiniAppIdentity(): boolean {
+  return Boolean(getTelegramInitData());
+}
+
+export function purgeLegacyAdminAuthStorage(): void {
+  if (typeof window === "undefined") return;
+  for (const key of LEGACY_AUTH_STORAGE_KEYS) {
+    try {
+      window.sessionStorage?.removeItem(key);
+      window.localStorage?.removeItem(key);
+    } catch {
+      // A blocked storage API must not bypass server session validation.
+    }
   }
 }
 
-function getWebSessionToken(): string {
-  return getStoredValue(WEB_SESSION_TOKEN_KEY) || getCookieValue(WEB_SESSION_TOKEN_KEY);
+export function clearAdminSessionMemory(): void {
+  adminCsrfToken = "";
 }
 
-function authHeaders(): Headers {
+function authHeaders(method: string): Headers {
   const headers = new Headers();
-  const token = getAdminSessionToken() || getWebSessionToken();
-  const initData = getTelegramInitData();
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-    headers.set("X-Web-Auth-Token", token);
+  if (!["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase()) && adminCsrfToken) {
+    headers.set(ADMIN_CSRF_HEADER, adminCsrfToken);
   }
-  if (initData) headers.set("X-Telegram-Init-Data", initData);
   return headers;
 }
 
 function apiBase(): string {
   const envBase = String(process.env.NEXT_PUBLIC_API_BASE_URL || "").trim();
   return (envBase || CANONICAL_API_BASE_URL || "https://api.pokrov.space").replace(/\/+$/, "");
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function assertGeneratedAdminV2Route(path: string, method: string): void {
+  if (!path.startsWith(ADMIN_V2_PREFIX) || matchAdminV2Operation(path, method) !== null) return;
+  throw new AdminApiError(
+    "Admin API v2 request is absent from the generated contract.",
+    0,
+    "admin_v2_contract_mismatch",
+    null,
+  );
+}
+
+function assertAdminV2Envelope(path: string, value: unknown): void {
+  if (!path.startsWith(ADMIN_V2_PREFIX)) return;
+  if (!isRecord(value)) {
+    throw new AdminApiError("Admin API v2 response is not an object.", 502, "admin_v2_envelope_invalid", null);
+  }
+  const keys = Object.keys(value).sort();
+  const meta = value.meta;
+  const metaKeys = isRecord(meta) ? Object.keys(meta).sort() : [];
+  if (
+    keys.join(",") !== "data,meta,sources,warnings" ||
+    !isRecord(meta) ||
+    !["generated_at,query_ms,schema_version", "generated_at,query_ms,schema_version,trace_id"].includes(metaKeys.join(",")) ||
+    typeof meta.generated_at !== "string" ||
+    typeof meta.schema_version !== "string" ||
+    !meta.schema_version.startsWith("admin-v2.") ||
+    typeof meta.query_ms !== "number" ||
+    (meta.trace_id !== undefined && meta.trace_id !== null && typeof meta.trace_id !== "string") ||
+    !Array.isArray(value.sources) ||
+    !value.sources.every(isRecord) ||
+    !Array.isArray(value.warnings) ||
+    !value.warnings.every(isRecord)
+  ) {
+    throw new AdminApiError(
+      "Admin API v2 response does not match the generated envelope.",
+      502,
+      "admin_v2_envelope_invalid",
+      isRecord(meta) && typeof meta.trace_id === "string" ? meta.trace_id : null,
+    );
+  }
 }
 
 type ParsedApiError = {
@@ -122,75 +138,39 @@ async function parseApiError(response: Response): Promise<ParsedApiError> {
   const detail = body.detail && typeof body.detail === "object" && !Array.isArray(body.detail)
     ? (body.detail as Record<string, unknown>)
     : {};
+  const v2Error = body.error && typeof body.error === "object" && !Array.isArray(body.error)
+    ? (body.error as Record<string, unknown>)
+    : {};
+  const v2Meta = body.meta && typeof body.meta === "object" && !Array.isArray(body.meta)
+    ? (body.meta as Record<string, unknown>)
+    : {};
   const message =
+    optionalErrorField(v2Error.message) ||
     optionalErrorField(body.detail) ||
     optionalErrorField(body.message) ||
     optionalErrorField(detail.message) ||
     `API error ${response.status}`;
-  const code = optionalErrorField(body.code) || optionalErrorField(detail.code);
+  const code = optionalErrorField(v2Error.code) || optionalErrorField(body.code) || optionalErrorField(detail.code);
   const correlationId =
     optionalErrorField(body.correlation_id) ||
     optionalErrorField(body.correlationId) ||
     optionalErrorField(detail.correlation_id) ||
     optionalErrorField(detail.correlationId) ||
+    optionalErrorField(v2Meta.trace_id) ||
     optionalErrorField(response.headers.get("x-correlation-id")) ||
     optionalErrorField(response.headers.get("x-request-id"));
 
   return { message, code, correlationId };
 }
 
-export function saveAdminInitData(value: string): void {
-  if (typeof window === "undefined") return;
-  const clean = String(value || "").trim();
-  if (!clean) return;
-  try {
-    window.sessionStorage.setItem(ADMIN_INIT_DATA_KEY, clean);
-    window.localStorage.removeItem(ADMIN_INIT_DATA_KEY);
-  } catch {
-    // Auth gate will stay visible if storage is unavailable.
-  }
-}
-
-export function clearAdminInitData(): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.sessionStorage.removeItem(ADMIN_INIT_DATA_KEY);
-    window.localStorage.removeItem(ADMIN_INIT_DATA_KEY);
-  } catch {
-    // Ignore blocked storage.
-  }
-}
-
-export function saveAdminSessionToken(token: string): void {
-  if (typeof window === "undefined") return;
-  const clean = String(token || "").trim();
-  if (!clean) return;
-  try {
-    window.sessionStorage.setItem(ADMIN_SESSION_TOKEN_KEY, clean);
-  } catch {
-    // Auth gate will stay visible if storage is unavailable.
-  }
-}
-
-export function clearAdminSessionToken(): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.sessionStorage.removeItem(ADMIN_SESSION_TOKEN_KEY);
-  } catch {
-    // Ignore blocked storage.
-  }
-}
-
-export function hasAdminAuthMaterial(): boolean {
-  return Boolean(getAdminSessionToken() || getWebSessionToken() || getTelegramInitData());
-}
-
 export async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<T> {
   const { timeoutMs = DEFAULT_TIMEOUT_MS, signal, ...requestInit } = init || {};
+  const method = requestInit.method || "GET";
+  assertGeneratedAdminV2Route(path, method);
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);
   const headers = new Headers(requestInit.headers || {});
-  for (const [key, value] of authHeaders()) headers.set(key, value);
+  for (const [key, value] of authHeaders(method)) headers.set(key, value);
   try {
     const response = await fetch(`${apiBase()}${path}`, {
       ...requestInit,
@@ -203,7 +183,9 @@ export async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<
       throw new AdminApiError(parsedError.message, response.status, parsedError.code, parsedError.correlationId);
     }
     if (response.status === 204) return {} as T;
-    return (await response.json()) as T;
+    const payload: unknown = await response.json();
+    assertAdminV2Envelope(path, payload);
+    return payload as T;
   } finally {
     window.clearTimeout(timer);
   }
@@ -211,10 +193,12 @@ export async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<
 
 export async function apiFetchBlob(path: string, init?: ApiRequestInit): Promise<Blob> {
   const { timeoutMs = DEFAULT_TIMEOUT_MS, signal, ...requestInit } = init || {};
+  const method = requestInit.method || "GET";
+  assertGeneratedAdminV2Route(path, method);
   const controller = new AbortController();
   const timer = window.setTimeout(() => controller.abort(), timeoutMs);
   const headers = new Headers(requestInit.headers || {});
-  for (const [key, value] of authHeaders()) headers.set(key, value);
+  for (const [key, value] of authHeaders(method)) headers.set(key, value);
   try {
     const response = await fetch(`${apiBase()}${path}`, {
       ...requestInit,
@@ -232,6 +216,72 @@ export async function apiFetchBlob(path: string, init?: ApiRequestInit): Promise
   }
 }
 
-export function createAdminSession(): Promise<AdminSessionPayload> {
-  return apiFetch<AdminSessionPayload>("/api/admin/auth/session", { method: "POST" });
+function acceptAdminSession(
+  payload: AdminV2Envelope<AdminOperatorSessionData>
+): AdminV2Envelope<AdminOperatorSessionData> {
+  adminCsrfToken = String(payload.data.session.csrf_token || "").trim();
+  return payload;
+}
+
+export async function getCurrentAdminSession(): Promise<AdminV2Envelope<AdminOperatorSessionData>> {
+  return acceptAdminSession(
+    await apiFetch<AdminV2Envelope<AdminOperatorSessionData>>("/api/admin/v2/auth/me")
+  );
+}
+
+export async function bootstrapAdminSession(): Promise<AdminV2Envelope<AdminOperatorSessionData>> {
+  const headers = new Headers();
+  const initData = getTelegramInitData();
+  if (initData) headers.set("X-Telegram-Init-Data", initData);
+  return acceptAdminSession(
+    await apiFetch<AdminV2Envelope<AdminOperatorSessionData>>("/api/admin/v2/auth/bootstrap", {
+      method: "POST",
+      headers
+    })
+  );
+}
+
+type AdminOidcStartData = {
+  mode: "login" | "step_up";
+  provider: "telegram_oidc";
+  auth_url: string;
+  redirect_uri: string;
+};
+
+export async function startAdminOidc(
+  mode: "login" | "step_up" = "login"
+): Promise<AdminV2Envelope<AdminOidcStartData>> {
+  return apiFetch<AdminV2Envelope<AdminOidcStartData>>(
+    `/api/admin/v2/auth/oidc/start?mode=${mode}`
+  );
+}
+
+export async function finishAdminOidcSession(
+  code: string,
+  state: string
+): Promise<AdminV2Envelope<AdminOperatorSessionData>> {
+  return acceptAdminSession(
+    await apiFetch<AdminV2Envelope<AdminOperatorSessionData>>(
+      "/api/admin/v2/auth/oidc/finish",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code, state })
+      }
+    )
+  );
+}
+
+export async function finishAdminOidcStepUp(
+  code: string,
+  state: string
+): Promise<AdminV2Envelope<{ step_up_at: string; valid_for_seconds: number; method: "telegram_oidc" }>> {
+  return apiFetch<AdminV2Envelope<{ step_up_at: string; valid_for_seconds: number; method: "telegram_oidc" }>>(
+    "/api/admin/v2/auth/step-up",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code, state })
+    }
+  );
 }

@@ -180,6 +180,7 @@ export function UsersPage({ onShellStatus }: { onShellStatus?: (status: OpsShell
                   onlineByTgId={onlineByTgId}
                   onlineSampledAt={online.data?.generatedAt || null}
                   filters={urlState}
+                  sensitiveIdentityVisible={users.data.fieldAccess.sensitiveIdentity}
                   selected={selected}
                   onFiltersChange={updateFilters}
                   onSelect={selectUser}

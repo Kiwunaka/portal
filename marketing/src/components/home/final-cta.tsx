@@ -11,12 +11,12 @@ export function FinalCta() {
       <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-16 text-center sm:px-6 sm:py-24">
         <Reveal className="flex flex-col items-center gap-4">
           <h2 className="font-display max-w-2xl text-[2rem] leading-[1.12] font-extrabold tracking-[-0.01em] text-ink sm:text-[2.5rem]">
-            {getCopyText("marketing.home.final.title", "Подключите POKROV VPN за минуту")}
+            {getCopyText("marketing.home.final.title", "Проверьте POKROV до оплаты")}
           </h2>
           <p className="max-w-lg text-base leading-relaxed text-ink-soft">
             {getCopyText(
               "marketing.home.final.sub",
-              `YouTube, TikTok, ChatGPT и нужные сайты — одной кнопкой. ${facts.trial.days} дней бесплатно без карты. Первый полный месяц — 99 ₽ один раз, затем обычный месяц — 239 ₽.`,
+              `${facts.trial.days} дней бесплатно без карты. Первый полный месяц — 99 ₽ один раз. Автосписаний нет.`,
             )}
           </p>
         </Reveal>

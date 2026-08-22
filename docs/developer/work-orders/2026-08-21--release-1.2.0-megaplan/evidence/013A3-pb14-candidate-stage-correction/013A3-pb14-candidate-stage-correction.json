@@ -1,0 +1,46 @@
+{
+  "schema": "pokrov.release-1.2.0.pb14-candidate-stage-correction.v1",
+  "generated_at": "2026-08-22T18:16:38Z",
+  "work_order": "WO-013A3",
+  "ledger_rows_advanced": [],
+  "candidate_created": false,
+  "promotion_status": "NOT_REQUESTED",
+  "policy_change": {
+    "plan": "OBS_PB",
+    "id": "PB-14",
+    "from_stage": "pre_freeze",
+    "to_stage": "candidate",
+    "override_count": 71,
+    "default_stage": "pre_freeze"
+  },
+  "source_sha256": {
+    "stage_policy": "b1f66479e5a272de79968319584f8609a2dadc75227ca1ffceba509a00c293e4",
+    "preflight": "978016f493416497ac22181d13489bdcffeb40a96f2dd6b12fcbf58feeb027fc",
+    "preflight_tests": "45ce1f3a5b4bddd7cf9aa7af1903c79eddb2266d166b6bef1865ba08ab10af1f"
+  },
+  "local_results": {
+    "preflight_unit_tests": "PASS_9_OF_9",
+    "docs_and_preflight_contracts": "PASS_37_OF_37",
+    "live_preflight": "EXPECTED_BLOCKED_7_BLOCKERS_CANDIDATE_NOT_CREATED",
+    "scoped_diff_check": "PASS",
+    "scoped_secret_scan": "PASS_0_MATCHES_4_FILES",
+    "ledger_distribution": "I3_296_I2_24_I1_40_I0_17_TOTAL_377",
+    "ledger_below_i3": 81,
+    "pending_stage_counts": {
+      "pre_freeze": 10,
+      "candidate": 33,
+      "external": 17,
+      "deferred": 21
+    },
+    "external_pre_candidate_rows": 3
+  },
+  "evidence_ceiling": {
+    "pb14_proven": false,
+    "signed_manifest_cohort": "NOT_CREATED",
+    "health_breach_stop": "NOT_RUN",
+    "rollback": "NOT_RUN",
+    "deployment": "NOT_AUTHORIZED",
+    "publication": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

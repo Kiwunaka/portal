@@ -13,7 +13,7 @@ import {
   type AdminActionResult,
   type PreparedActionIntent,
 } from "@/lib/admin-api/actions";
-import { AdminApiError } from "@/lib/admin-api/client";
+import { AdminApiError, startAdminOidc } from "@/lib/admin-api/client";
 
 type DialogPhase =
   | "preparing"
@@ -126,6 +126,80 @@ const FIELD_LABELS: Record<string, string> = {
   link: "Ссылка",
   sort_order: "Приоритет показа",
   source_draft_id: "Черновик новости",
+  id: "ID",
+  account_ref: "Аккаунт",
+  kind: "Тип",
+  source_name: "Источник заявки",
+  seats: "Мест",
+  contact: "Контакт",
+  operator_note: "Примечание оператора",
+  operator_note_present: "Есть примечание оператора",
+  reward_days: "Дней награды",
+  rewarded: "Награда выдана",
+  reward_grant_ref: "Начисление",
+  created_at: "Создано",
+  reviewed_at: "Рассмотрено",
+  plan: "Тариф",
+  plan_code: "Код тарифа",
+  quantity: "Количество",
+  card_type: "Тип подарка",
+  issued_count: "Всего выдано",
+  max_issue_id: "Последняя выдача",
+  sha256: "SHA-256",
+  bytes: "Размер, байт",
+  version: "Версия",
+  public_status: "Публичный статус",
+  workflow_status: "Статус инцидента",
+  priority: "Приоритет",
+  due_at: "Срок",
+  next_action: "Следующее действие",
+  source: "Источник",
+  owner_operator_id: "Ответственный оператор",
+  owner_team: "Команда",
+  linked_entity_type: "Тип связанной сущности",
+  linked_entity_id: "ID связанной сущности",
+  incident_key: "Ключ инцидента",
+  severity: "Критичность",
+  started_at: "Начало",
+  ended_at: "Окончание",
+  affected_node_codes: "Затронутые ноды",
+  compensation_days: "Дней компенсации",
+  compensation_completed: "Компенсация завершена",
+  impacted_accounts: "Затронуто аккаунтов",
+  impact: "Влияние",
+  next_update_at: "Следующее обновление",
+  runbook_url: "Runbook",
+  communications_summary: "Коммуникации",
+  postmortem_status: "Статус postmortem",
+  postmortem_url: "Postmortem",
+  alert_id: "Алерт",
+  alert_version: "Версия алерта",
+  alert_status: "Статус алерта",
+  incident_id: "Инцидент",
+  target_incident_version: "Версия инцидента",
+  entity_type: "Тип сущности",
+  entity_id: "ID сущности",
+  label: "Метка",
+  operator_id: "Оператор",
+  display_name: "Имя оператора",
+  role: "Роль и выдача",
+  role_code: "Код роли",
+  environment: "Среда",
+  grant_kind: "Тип выдачи",
+  grant_reason: "Причина выдачи",
+  granted_by_operator_id: "Кем выдано",
+  granted_at: "Выдано",
+  active: "Активно",
+  review_status: "Статус ревью",
+  reviewed_by_operator_id: "Кем проверено",
+  review_note: "Итог ревью",
+  session_id: "Сессия",
+  sessions: "Сессии",
+  last_seen_at: "Последняя активность",
+  absolute_expires_at: "Абсолютный срок",
+  revoked: "Отозвано",
+  revoked_at: "Отозвано в",
+  revoke_reason: "Причина отзыва",
 };
 
 function valueText(value: unknown, field: string): string {
@@ -133,6 +207,7 @@ function valueText(value: unknown, field: string): string {
   if (value === false) return "Нет";
   if (value === null || value === undefined || value === "") return MISSING_DATA_TEXT;
   if (typeof value === "number") return value.toLocaleString("ru-RU");
+  if (typeof value === "object") return JSON.stringify(value);
   const raw = String(value);
   if (field.endsWith("_at")) {
     const timestamp = Date.parse(raw);
@@ -170,6 +245,21 @@ function PreviewState({ title, values }: { title: string; values: Record<string,
         ))}
       </dl>
     </section>
+  );
+}
+
+function IssuedSecretResult({ result }: { result: AdminActionResult | null }) {
+  const codes = [
+    ...(result?.gift_code?.code ? [result.gift_code.code] : []),
+    ...(Array.isArray(result?.issued) ? result.issued.flatMap((row) => typeof row.key === "string" && row.key ? [row.key] : []) : []),
+  ];
+  if (!codes.length) return null;
+  return (
+    <div className="mt-3 rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-status-warning-line)] bg-[color:var(--atlas-status-warning-bg)] p-3 text-[color:var(--atlas-status-warning-text)]">
+      <p className="text-xs font-semibold">Сохраните выданные коды сейчас</p>
+      <p className="mt-1 text-[11px] leading-5">Read model больше не покажет полный код. Не вставляйте его в тикеты или заметки.</p>
+      <div className="mt-2 space-y-1">{codes.map((code) => <code key={code} className="block select-all break-all rounded bg-[color:var(--atlas-canvas)] px-2 py-1.5 text-xs">{code}</code>)}</div>
+    </div>
   );
 }
 
@@ -231,6 +321,7 @@ export function ActionIntentDialog({
   const [result, setResult] = useState<AdminActionResult | null>(null);
   const [confirmation, setConfirmation] = useState("");
   const [correlationId, setCorrelationId] = useState<string | null>(null);
+  const [failureCode, setFailureCode] = useState<string | null>(null);
   const [checking, setChecking] = useState(false);
   const preparedRequestRef = useRef<ActionIntentRequest | null>(null);
   const prepareSequenceRef = useRef(0);
@@ -243,6 +334,7 @@ export function ActionIntentDialog({
     setResult(null);
     setConfirmation("");
     setCorrelationId(null);
+    setFailureCode(null);
     try {
       const prepared = await prepareActionIntent(nextRequest);
       if (sequence !== prepareSequenceRef.current) return;
@@ -251,7 +343,9 @@ export function ActionIntentDialog({
       setPhase("ready");
     } catch (error) {
       if (sequence !== prepareSequenceRef.current) return;
-      setCorrelationId(error instanceof AdminApiError ? error.correlationId : null);
+      const apiError = error instanceof AdminApiError ? error : null;
+      setCorrelationId(apiError?.correlationId || null);
+      setFailureCode(apiError?.code || null);
       setPhase("prepare_failed");
     }
   }, [onPrepared]);
@@ -295,6 +389,7 @@ export function ActionIntentDialog({
     executingRef.current = true;
     setPhase("executing");
     setCorrelationId(null);
+    setFailureCode(null);
     try {
       const completed = await executeAdminAction({
         endpoint: request.endpoint,
@@ -302,6 +397,9 @@ export function ActionIntentDialog({
         intent,
         confirmation,
         method: request.method,
+        workspace: request.workspace,
+        action: request.action,
+        target: request.target,
       });
       setResult(completed);
       onResult?.(completed);
@@ -318,6 +416,7 @@ export function ActionIntentDialog({
     } catch (error) {
       const apiError = error instanceof AdminApiError ? error : null;
       setCorrelationId(apiError?.correlationId || null);
+      setFailureCode(apiError?.code || null);
       if (apiError?.code === "expired_intent") setPhase("expired");
       else if (apiError?.code === "stale_intent") setPhase("stale");
       else if (apiError?.status === 428 || apiError?.code === "intent_required") setPhase("required");
@@ -347,6 +446,23 @@ export function ActionIntentDialog({
     }
   }, [checking, onCheckState]);
 
+  const beginOidcStepUp = useCallback(async () => {
+    setChecking(true);
+    try {
+      const envelope = await startAdminOidc("step_up");
+      const authUrl = new URL(envelope.data.auth_url);
+      if (authUrl.protocol !== "https:" || authUrl.hostname !== "oauth.telegram.org") {
+        throw new Error("operator_oidc_authorize_url_invalid");
+      }
+      window.location.assign(authUrl.toString());
+    } catch (error) {
+      const apiError = error instanceof AdminApiError ? error : null;
+      setCorrelationId(apiError?.correlationId || null);
+      setFailureCode(apiError?.code || "operator_oidc_unavailable");
+      setChecking(false);
+    }
+  }, []);
+
   const message = phaseMessage(phase);
   const preview = intent?.preview;
   const expiresAt = intent ? Date.parse(intent.expires_at) : Number.NaN;
@@ -374,6 +490,11 @@ export function ActionIntentDialog({
           ) : null}
           {phase === "expired" || phase === "stale" || phase === "required" || phase === "prepare_failed" ? (
             <Button tone="secondary" onClick={prepareAgain}><RefreshCw size={15} /> Подготовить новый предпросмотр</Button>
+          ) : null}
+          {failureCode === "operator_step_up_required" ? (
+            <Button tone="primary" disabled={checking} onClick={() => void beginOidcStepUp()}>
+              <ShieldAlert size={15} /> Подтвердить через OIDC
+            </Button>
           ) : null}
           {phase === "uncertain" ? (
             <Button tone="primary" disabled={checking} onClick={checkState}>
@@ -461,6 +582,7 @@ export function ActionIntentDialog({
           {result?.audit_id ? <p className="mt-2 text-xs font-semibold">ID аудита: {result.audit_id}</p> : null}
           {result?.action_intent_id ? <p className="mt-1 text-[11px] text-[color:var(--atlas-text-soft)]">ID действия: {result.action_intent_id}</p> : null}
           {correlationId ? <p className="mt-1 text-[11px] text-[color:var(--atlas-text-soft)]">ID обращения: {correlationId}</p> : null}
+          <IssuedSecretResult result={result} />
         </div>
       ) : null}
     </Dialog>

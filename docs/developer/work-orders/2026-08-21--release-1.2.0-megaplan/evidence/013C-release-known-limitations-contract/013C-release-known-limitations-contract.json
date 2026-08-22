@@ -1,0 +1,61 @@
+{
+  "schema": "pokrov.release-1.2.0.known-limitations-contract.v1",
+  "generated_at": "2026-08-22T18:44:35Z",
+  "work_order": "WO-013C",
+  "row_outcomes": {
+    "REL_DOD/DOD-17": "I3"
+  },
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "sources": {
+    "platform_revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "platform_dirty_entries": 363,
+    "client_revision_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+    "client_dirty_entries": 185
+  },
+  "authority": {
+    "structured_owner": "shared/beta-known-limitations.json",
+    "working_target": "1.2.0",
+    "public_release_pair": ["android", "windows"],
+    "linux": "NOT_SHIPPED_IN_1.2.0",
+    "linux_contract": "OBS_PB/PB-09 notShipped with no runtime action",
+    "android_oem_contract": ["OBS_PB/PB-08", "AND-BG-001", "AND-BG-002", "AND-BG-003", "AND-VPN-004"],
+    "uninterrupted_oem_background_claim_allowed": false
+  },
+  "source_sha256": {
+    "structured_limitations": "c45b0ead1d8427f214652304ecc0f04c33e9d0ebf20984279e980844e598b2ee",
+    "platform_product_mirror": "903946e30abd06291db7f1da344275c8d3d22de436508a54bdbcb27572ec8d68",
+    "platform_launch_mirror": "6461629e6e774bcbe6e1392a4e30d7267dd85c51b6aaae97ed0b65d0d25109d6",
+    "platform_limitations_test": "f663757cf34f4543e99d9e0d937224a1796e988a3c36bac7e8b06b0aae0c2381",
+    "client_product_owner": "6bfdf82f80d7897363d4d88e071779121f6cb2d056e4c331ca0eccb9085b4f62",
+    "client_cutover_owner": "d7430465abd205fc8527abe144315f0f0e7c52207216cf10dce2e380b35a544a",
+    "client_problem_book": "66757d8826f0209d1af3502feca10570c14cb3e07737343baae203bb89749c85",
+    "client_problem_book_test": "920ff7e8b7a271378cebbc0e568b992a7cc3c01a833268e4a027c776bf4b0330"
+  },
+  "local_results": {
+    "platform_canon_and_limitations": "PASS_31_OF_31",
+    "platform_observability_and_limitations": "PASS_21_OF_21",
+    "client_docs_contract": "PASS",
+    "client_problem_book_runtime": "PASS_7_OF_7",
+    "candidate_preflight": "EXPECTED_BLOCKED_7_BLOCKERS_CANDIDATE_NOT_CREATED",
+    "docs_and_candidate_preflight_contracts": "PASS_37_OF_37",
+    "scoped_diff_check": "PASS_WITH_WINDOWS_CRLF_WARNINGS_ONLY",
+    "scoped_secret_scan": "PASS_0_MATCHES_PLATFORM_AND_CLIENT",
+    "ledger_distribution": "I3_300_I2_21_I1_40_I0_16_TOTAL_377",
+    "ledger_below_i3": 77,
+    "pending_stage_counts": {
+      "pre_freeze": 6,
+      "candidate": 33,
+      "external": 17,
+      "deferred": 21
+    }
+  },
+  "manual_or_external": {
+    "exact_candidate": "NOT_CREATED",
+    "android_physical_oem_matrix": "NOT_RUN",
+    "exact_candidate_release_notes": "NOT_CREATED",
+    "deployment": "NOT_AUTHORIZED",
+    "publication": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

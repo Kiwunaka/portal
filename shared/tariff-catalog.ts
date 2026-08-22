@@ -39,12 +39,6 @@ export function normalizeTariffPlanCode(code: string | null | undefined, fallbac
   return aliased || fallback;
 }
 
-export function getPricingPreviewDiscountPercent(raw: string | null | undefined): number {
-  const normalized = String(raw || "").trim().toUpperCase();
-  if (!normalized) return 0;
-  return Number(tariffCatalog.pricing_preview.discount_codes[normalized as keyof typeof tariffCatalog.pricing_preview.discount_codes] || 0);
-}
-
 export function tariffPlanAllowsDiscount(code: string | null | undefined): boolean {
   return normalizeTariffPlanCode(code, "") !== "start_99";
 }

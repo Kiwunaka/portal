@@ -14,7 +14,10 @@ the old webapp admin routes are a retained parity fallback only.
 
 ## Current Surface Map
 
-- `/` is owned by `marketing/src/components/home/homepage.tsx`.
+- `/` is owned by `marketing/src/app/page.tsx`. Its trust-led sequence is
+  `Hero`, `HonestyStrip`, `Steps`, `Showcase`, `Pricing`, `Faq` and `FinalCta`;
+  the retired service-claim grid must not be remounted as a parallel homepage
+  promise surface.
 - Shared public metadata, FAQ, sitemap paths, and JSON-LD helpers live in
   `marketing/src/lib/marketing-site.ts`.
 - Reusable search-intent pages use `marketing/src/components/seo/seo-content-page.tsx`
@@ -103,6 +106,35 @@ Marketing CSS variables should bridge through `shared/design-tokens.json` via
 `getDesignTokenCssVariables("public")`; route-specific exceptions need a clear
 reason in the route or this README.
 
+Motion is progressive and bounded. Reveal content is visible in server HTML
+and becomes observer-driven only after its own client island hydrates; compact
+stagger groups use at most 60 ms per item and 240 ms total, while long lists do
+not stagger. Hero chips finish after two cycles. With OS Reduce Motion enabled,
+the desktop showcase renders every screen in normal document flow instead of
+creating the sticky track, spatial hero motion is absent, and carousel scroll
+actions are immediate. The mobile showcase always exposes previous/next
+controls and an announced `Экран N из M` position.
+
+The 2026-08-22 production build measured the shared Framer Motion chunk at
+141.5 KiB minified / 47.2 KiB gzip. Marketing therefore uses strict
+`LazyMotion` with an asynchronous `domAnimation` feature bundle and minimal
+`m` components; layout-only motion must not reintroduce `domMax` without a new
+measurement and user-visible need. The resulting feature split is 43.5 KiB
+minified / 17.1 KiB gzip, a 98.0 KiB / 30.1 KiB reduction for that measured
+animation payload.
+
+Install platform tabs use automatic activation with one tab in the keyboard
+order. Left/Right arrows wrap, Home/End select the boundary tabs, and focus,
+`aria-selected` and the visible panel move together. `check:responsive` proves
+that keyboard contract and runs `axe-core` on the homepage and install route;
+any serious or critical finding fails the check alongside the existing
+responsive, no-JavaScript and reduced-motion matrix.
+
+`check:responsive` builds the production static export, applies the same
+dot-joined Next segment-payload aliases expected by a plain static host, and
+serves `out/` through the pinned Python toolchain. It deliberately does not use
+the Next development server or Fast Refresh as release evidence.
+
 ## Verification
 
 Run from `marketing/`:
@@ -113,11 +145,31 @@ npm.cmd run check:seo
 npm.cmd run check:responsive
 ```
 
+Browser performance samples are collected only against an explicitly named
+owned environment. `npm.cmd run collect:performance -- ...` emits a numeric
+array for one allowlisted LCP/CLS/TBT or cabinet route-content metric; it does
+not assert PASS. Sampling rules, budgets, evidence normalization and current
+manual gates are owned by
+`docs/operations/performance-and-local-quality-gate.md`.
+
 Run from the repository root when visible Russian copy changes:
 
 ```powershell
 python -m pytest tests/test_frontend_text_integrity.py tests/test_public_copy_guardrails.py -q
 ```
+
+## Claim governance and commercial pilot
+
+Public copy is constrained by the generated marketing-governance registry and
+its canonical evidence references. Trust-led owned copy is the repository
+default; service-led or advertising profiles remain blocked until a real,
+non-expired owner legal record names the permitted channels. Checkout price,
+deadline, terms, availability and commercial lineage remain server-owned.
+
+The 1.2.0 winback package is local and fail-closed. Marketing must not turn its
+draft contract into a public campaign, infer eligibility, reset its 72-hour
+deadline or select a winner from CTR. The operational owner and external gates
+are documented in `docs/operations/marketing-governance-and-winback-pilot.md`.
 
 ## Trust And Guide Routes
 

@@ -126,6 +126,8 @@ CLIENT_ROOT_REQUIRED_PATHS = (
     CLIENT_ROOT / "config" / "product-contract.seed.json",
     CLIENT_ROOT / "config" / "runtime-profile.seed.json",
     CLIENT_ROOT / "config" / "runtime-artifacts.seed.json",
+    CLIENT_ROOT / "scripts" / "new-release-handoff-v2.ps1",
+    CLIENT_ROOT / "test" / "release-handoff-v2-contract.ps1",
     CLIENT_ROOT / "apps" / "android_shell",
     CLIENT_ROOT / "apps" / "windows_shell",
 )
@@ -133,6 +135,7 @@ CLIENT_ROOT_GATE_NAMES = {
     "Client security smoke",
     "Client Flutter tests",
     "Client portal Flutter tests",
+    "Client release-handoff v2 contract",
 }
 
 
@@ -508,6 +511,14 @@ def _client_flutter_test_gate(*, suite: str) -> tuple[str, list[str], Path]:
     )
 
 
+def _client_release_v2_contract_gate() -> tuple[str, list[str], Path]:
+    return (
+        "Client release-handoff v2 contract",
+        [sys.executable, "scripts/run_client_release_gate.py", "contract"],
+        REPO_ROOT,
+    )
+
+
 def _client_build_gate(*, target: str) -> tuple[str, list[str], Path]:
     gate_names = {
         "windows": "Client Windows release build",
@@ -565,6 +576,7 @@ def _default_gates(*, client_platform_gates: list[str] | None = None) -> list[tu
     gates = [
         _release_pytest_gate(),
         ("Admin/auth regressions", [sys.executable, "-m", "pytest", "tests/test_api_auth_and_tickets.py", "-q"], REPO_ROOT),
+        _client_release_v2_contract_gate(),
         _client_security_smoke_gate(),
         _client_flutter_test_gate(suite="full"),
         _api_lifecycle_smoke_gate(),
@@ -584,6 +596,7 @@ def _default_gates(*, client_platform_gates: list[str] | None = None) -> list[tu
 def _quick_gates(*, client_platform_gates: list[str] | None = None) -> list[tuple[str, list[str], Path]]:
     gates = [
         ("Critical worker regression", [sys.executable, "-m", "pytest", "tests/test_worker_retention.py", "-q"], REPO_ROOT),
+        _client_release_v2_contract_gate(),
         _client_security_smoke_gate(),
         _client_flutter_test_gate(suite="portal"),
         _api_lifecycle_smoke_gate(),

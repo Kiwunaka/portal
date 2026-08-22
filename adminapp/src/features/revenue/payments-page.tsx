@@ -114,6 +114,7 @@ export function PaymentsPage({ onShellStatus }: { onShellStatus?: (status: OpsSh
       payload: { status: nextStatus, note: cleanNote },
       endpoint: `/api/admin/payments/orders/${encodeURIComponent(order.provider)}/${encodeURIComponent(order.order_id)}/reconcile`,
       method: "POST",
+      workspace: "money",
     });
     setDialogOpen(true);
   }

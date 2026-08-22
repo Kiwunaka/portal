@@ -349,6 +349,35 @@ def retention_backlog_counts(session, *, now: datetime | None = None) -> dict[st
     }
 
 
+def antiabuse_retention_status(session, *, now: datetime | None = None) -> dict[str, Any]:
+    """Return bounded policy/backlog facts without exposing HMAC material."""
+    current = now or _utcnow()
+    return {
+        "policy": {
+            "raw_ip_hours": _bounded_env_int(
+                "ANTIABUSE_RAW_IP_RETENTION_HOURS",
+                RAW_IP_MAX_HOURS,
+                minimum=1,
+                maximum=RAW_IP_MAX_HOURS,
+            ),
+            "full_ip_hmac_days": _bounded_env_int(
+                "ANTIABUSE_FULL_IP_HMAC_RETENTION_DAYS",
+                FULL_IP_HMAC_MAX_DAYS,
+                minimum=1,
+                maximum=FULL_IP_HMAC_MAX_DAYS,
+            ),
+            "prefix_ip_hmac_days": _bounded_env_int(
+                "ANTIABUSE_PREFIX_HMAC_RETENTION_DAYS",
+                PREFIX_IP_HMAC_MAX_DAYS,
+                minimum=1,
+                maximum=PREFIX_IP_HMAC_MAX_DAYS,
+            ),
+            "disposition": "null_expired_raw_and_hmac_fields_keep_audit_rows",
+        },
+        "backlog": retention_backlog_counts(session, now=current),
+    }
+
+
 def read_retention_backlog(session_factory, *, now: datetime | None = None) -> dict[str, int]:
     session = session_factory()
     try:

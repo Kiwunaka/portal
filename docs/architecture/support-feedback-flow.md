@@ -19,6 +19,57 @@ Last updated: 2026-08-15
 - Account merge moves only the two canonical ownership fields. Legacy attribution, support rows, messages, upload metadata, and files remain intact. Manual/test-user cleanup may remove only still-legacy `NULL`-owned tickets for that exact Telegram ID.
 - Delivery is separate from authorization. Operator replies use bounded deterministic routing: an explicit linked Telegram target on the canonical account, then enabled Telegram-identity evidence, then the ticket's historical ID only when it is a real Telegram ID. If no real target exists, delivery is skipped with a metadata-only warning; synthetic app or email IDs are never treated as Telegram chats.
 
+## Operator Support Work Boundary
+
+- `SupportTicket` remains the only ticket root. Release 1.2 adds server-owned
+  environment, priority, queue, assignment/team, waiting-on, SLA, escalation,
+  incident/attempt links and optimistic `version` fields through rerunnable
+  additive migrations; legacy rows are backfilled without replacing messages
+  or attribution.
+- `/api/admin/v2/support/tickets` owns queue ordering and filters. Claim,
+  assignment and workflow updates use workspace Action Intents; compatible
+  reply/status/internal-note routes use the same intent registry, idempotency
+  and expected-version collision check.
+- Internal notes are `visibility=internal`. Operator detail may request them;
+  `tickets_repo.list_ticket_messages` excludes them by default, so API, main
+  bot and helpbot user reads cannot expose operator-only text.
+- User 360 always returns the safe account/ticket/observer projection. Opaque
+  installation, session and attempt references plus bounded diagnostic
+  fingerprints are read only when the operator has `support.sensitive.read`.
+  Without it the service does not query Event rows and returns explicit
+  `field_access=redacted`, not a false empty-data claim. It never returns
+  arbitrary `meta_json`, raw device/install/session/trace values, IP, URL,
+  config, key or token material.
+- Correlated attempt search requires `support.sensitive.read`. Support-bundle
+  summaries retain existing TTL, retention and access-audit limits; observer
+  state is a read-only trusted signal. Neither projection changes ticket,
+  account, entitlement or encrypted-bundle authority.
+
+### Temporary support mode and short code
+
+- The ordinary diagnostics screen always generates a local `PSD1-*` short code
+  that summarizes only platform, route/connection class, app/build, issue and
+  expiry date, plus a 16-bit diagnostic hash prefix. Copying or decoding it
+  uploads no file and reveals no account, device, installation, package,
+  destination or configuration identity.
+- L2 may issue `support.mode.issue` only for an existing case through the v2
+  Action Intent lifecycle. The one-time `PSM1-*` activation code is not stored
+  in plaintext. Redemption is owner-bound, exact-build, expiring and one-time;
+  mismatched audience cannot consume the code.
+- The client independently verifies the Ed25519 signature, exact audience,
+  schema, nonce, issuance time and expiry, then shows categories, TTL and caps
+  and requires explicit user confirmation. A persistent indicator remains
+  visible until manual or automatic disable.
+- Support mode permits only the signed category/collector pairs. It cannot run
+  commands, mutate VPN/routes/DNS, read user files, capture packets or
+  destinations, disclose credentials/configuration, hide itself or extend its
+  TTL. It expires within 30 minutes and enforces at most two bundles plus the
+  signed per-bundle and cumulative byte ceilings.
+- Both direct upload and manual Android/Windows export still use the same exact
+  preview/redaction pipeline and a verified recipient key. The only host file
+  is the encrypted `.pokrov-support` envelope; cancellation or failure must not
+  create or claim a plaintext artifact.
+
 ## AI Support Helper
 
 - Runtime home: `portal-api` and `portal-helpbot` on `brain`.
@@ -52,6 +103,35 @@ Last updated: 2026-08-15
 - Bound attachment reads inherit bound-ticket authorization, including normal admin access. Unbound/legacy rows retain exact owner/admin fallback, except an explicit-expiry unbound row returns `404` after expiry. Recovery is explicitly denied and cannot acquire admin bypass from a synthetic numeric ID.
 - The supervised worker owns global reconciliation. Defaults are a 900-second interval, 3600-second safety grace, 100-row expired batch, 500 selected file candidates, and 500 DB rows per run. It never deletes bound or null-expiry rows, removes old temp and rowless canonical files only after grace, validates exact canonical basenames before unlink, and reports integer-only counts including missing DB-row files. Each process-local cycle freezes a filesystem mtime cutoff and DB max-ID high-water, then advances lexicographic and ID cursors through bounded processing windows; newer entries cannot prolong the active cycle, and integer wrap flags expose completion. Restart discards the snapshot and starts a new cycle. File selection memory is bounded by the configured limit, but each run enumerates the full upload directory once, so enumeration cost is `O(total entries)`. Local wiring tests do not prove production scheduling or large-directory latency.
 - Old WebApp clients may submit the exact persisted `support/{stored_name}` triplet during rolling deployment. Ownership and supplied metadata are verified semantically, then canonicalized from the row. Forged/mismatched private references are rejected; non-private Telegram/client triplets remain compatible.
+- Release 1.2 support bundles use the closed contracts in
+  `shared/contracts/support/`: an Ed25519-signed X25519 recipient key set and,
+  only for the extended profile, an Ed25519-signed collection policy valid for
+  at most 30 minutes. The client preview and encrypted payload must derive from
+  the same deterministic manifest and per-file hashes. Plaintext ZIP/chat
+  fallback, arbitrary filesystem collection, raw config, destination history,
+  credentials, IP addresses, domains and email addresses are forbidden.
+- The authenticated support-bundle lane distributes the signed public key set,
+  creates or reuses a case-bound short-lived upload ticket, accepts sequential
+  resumable ciphertext chunks, exposes the authoritative resume offset and
+  queues completion. The client persists only the encrypted envelope in its
+  private outbox before network use and retains it for an explicit later retry
+  when offline. Ticket, chunk replay and completion are idempotent; the short
+  scalar diagnostics summary remains a separately labelled fallback.
+- The API process never decrypts or parses bundle content. The opt-in isolated
+  worker owns mounted private keys, complete-ciphertext integrity checks,
+  in-memory decryption, closed manifest/file/redaction validation and hostile
+  corpus rejection. Accepted storage contains only the original encrypted
+  envelope; rejected objects stay encrypted in private quarantine. Production
+  signing/recipient keys, custody/rotation, deployed private storage, worker
+  schedule and a real successful upload remain exact-candidate `I4` gates.
+- Support L1 reads only the closed bundle summary/timeline and cannot obtain a
+  download grant. Explicitly allowlisted L2/SRE actors may issue one-time,
+  15-minute-maximum grants for a fixed reason and download only the original
+  checksum-verified ciphertext. Grant, download, and retention-hold changes are
+  audited against the bundle's existing support case. The worker deletes only
+  eligible unheld accepted/quarantine/audit data in bounded batches and reports
+  integer counters; production scheduling, permissions, backlog, and real
+  operator-role evidence remain unproved until retained separately.
 - Recovery sessions have a narrower text-only support projection: upload, attachment download, and standalone `/api/client/support/assistant` return `403 recovery_scope_forbidden`; nonempty media fields on ticket create/message are rejected; all recovery ticket responses omit historical and new message media metadata. Normal client and admin attachment behavior remains unchanged.
 - Normal sessions retain standalone assistant `safeDiagnostics` compatibility. The active Android/Windows adapter currently always sends app diagnostics and uses the standalone assistant path, so this platform slice is not promotable for recovery UX until a separate recovery-aware client slice omits diagnostics/media and uses ticket text endpoints instead. That client repository is outside this task.
 - Telegram support ticket replies in both `@pokrov_supportbot` and the main bot admin queue accept text, photo, document, and video messages; captions are stored as the message body, and attachment metadata is retained on the ticket message.

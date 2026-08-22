@@ -1,5 +1,7 @@
 # POKROV Conversion-first Acquisition And Retention
 
+Document class: `EVIDENCE`
+
 Status: `COMPLETE`
 
 ## Goal

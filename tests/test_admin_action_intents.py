@@ -47,6 +47,7 @@ def _load_api(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     db_path = tmp_path / "admin-action-intents.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path.as_posix()}")
     monkeypatch.setenv("WEBAPP_SESSION_SECRET", "action-intent-test-secret")
+    monkeypatch.setenv("AWG2_LAB_MATERIAL_SECRET", "action-intent-awg2-test-secret")
     monkeypatch.setenv("BOT_TOKEN", "test_bot_token_123")
     monkeypatch.setenv("ADMIN_ID", "9999")
     monkeypatch.setenv("ADMIN_IDS", "9999,8888")
@@ -1739,7 +1740,8 @@ def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_
         headers=_admin_headers(),
         json={"minutes": 60},
     )
-    assert acknowledged.status_code == 200, acknowledged.text
+    assert acknowledged.status_code == 428, acknowledged.text
+    assert _detail_code(acknowledged) == "intent_required"
     assert silenced.status_code == 200, silenced.text
 
     session = api.SessionLocal()
@@ -1798,7 +1800,7 @@ def test_provider_quota_mutations_require_intent_freeze_version_and_keep_alerts_
         )
         assert (
             session.query(AdminAudit).filter_by(action="admin_ops_alert_ack").count()
-            == 1
+            == 0
         )
         assert (
             session.query(AdminAudit)
@@ -2659,5 +2661,119 @@ def test_broadcast_retry_freezes_only_retryable_failures_and_never_resends_succe
             (7302, 2, "sent"),
         ]
         assert {row.campaign_intent_id for row in attempts} == {root_intent_id}
+    finally:
+        session.close()
+def test_awg2_lab_material_intent_and_result_never_persist_endpoint_or_install(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    from models import AdminActionIntent, Awg2LabMaterial, User
+
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    session = api.SessionLocal()
+    try:
+        session.add(
+            User(
+                tg_id=7351,
+                uuid="00000000-0000-4000-8000-000000007351",
+                email="awg2-guard@example.test",
+                sub_type="PAID",
+                created_at=now,
+                expiry_at=now + timedelta(days=30),
+                is_active=True,
+                sub_token="awg2-guard-token",
+                app_install_id="install-awg2-7351",
+                app_platform="windows",
+            )
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    private_key = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+    peer_address = "192.0.2.10"
+    payload = {
+        "tg_id": 7351,
+        "install_id": "install-awg2-7351",
+        "generation": "awg2-lab-v1",
+        "endpoint_revision": "awg2-v1",
+        "server_record_id": "pokrov-awg2-pl-01",
+        "node_code": "pl",
+        "endpoint": {
+            "useIntegratedTun": False,
+            "private_key": private_key,
+            "address": ["10.66.0.2/32", "fd66::2/128"],
+            "mtu": 1408,
+            "jc": 4,
+            "jmin": 40,
+            "jmax": 70,
+            "s1": 0,
+            "s2": 0,
+            "s3": 0,
+            "s4": 0,
+            "h1": "1000001",
+            "h2": "1000002",
+            "h3": "1000003",
+            "h4": "1000004",
+            "peers": [
+                {
+                    "address": peer_address,
+                    "port": 51820,
+                    "public_key": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
+                    "allowed_ips": ["0.0.0.0/0", "::/0"],
+                    "persistent_keepalive_interval": 25,
+                }
+            ],
+        },
+    }
+    client = TestClient(api.app)
+    prepared = _prepare(
+        client,
+        action="awg2_lab_material.replace",
+        target_type="awg2_lab_material",
+        target_id="7351",
+        payload=payload,
+    )
+
+    assert prepared.status_code == 200, prepared.text
+    assert prepared.json()["risk_level"] == "L3"
+    assert prepared.json()["confirmation_challenge"] == "7351"
+    session = api.SessionLocal()
+    try:
+        intent = session.query(AdminActionIntent).filter_by(id=prepared.json()["intent_id"]).one()
+        persisted = " ".join((intent.canonical_payload_json, intent.preview_snapshot_json))
+        assert private_key not in persisted
+        assert peer_address not in persisted
+        assert "install-awg2-7351" not in persisted
+        assert len(json.loads(intent.canonical_payload_json)["endpoint"]["sha256"]) == 64
+    finally:
+        session.close()
+
+    executed = client.put(
+        "/api/admin/client/awg2-lab/material",
+        headers=_execute_headers(
+            str(prepared.json()["intent_id"]),
+            idempotency_key=str(uuid.uuid4()),
+            confirmation_hash=hashlib.sha256("7351".encode("utf-8")).hexdigest(),
+        ),
+        json=payload,
+    )
+    assert executed.status_code == 200, executed.text
+    assert "install_id" not in executed.json()["material"]
+    assert len(executed.json()["material"]["install_id_sha256"]) == 64
+    assert private_key not in executed.text
+    assert peer_address not in executed.text
+
+    session = api.SessionLocal()
+    try:
+        intent = session.query(AdminActionIntent).filter_by(id=prepared.json()["intent_id"]).one()
+        row = session.query(Awg2LabMaterial).filter_by(tg_id=7351, is_active=True).one()
+        durable = str(intent.result_summary_json or "")
+        assert private_key not in durable
+        assert peer_address not in durable
+        assert "install-awg2-7351" not in durable
+        assert private_key not in row.endpoint_ciphertext
+        assert peer_address not in row.endpoint_ciphertext
     finally:
         session.close()

@@ -48,8 +48,8 @@ def _b64url_decode(data: str) -> bytes:
     return base64.urlsafe_b64decode(padded.encode("ascii"))
 
 
-def _sign(text: str) -> str:
-    secret = _secret()
+def _sign(text: str, *, signing_secret: str | None = None) -> str:
+    secret = str(signing_secret or _secret()).strip()
     if not secret:
         return ""
     return hmac.new(secret.encode("utf-8"), text.encode("utf-8"), hashlib.sha256).hexdigest()
@@ -96,15 +96,30 @@ def _telegram_oidc_redirect_uri() -> str:
     return urlunsplit((scheme, netloc, path, "", ""))
 
 
-def _require_telegram_oidc_config() -> tuple[str, str, str]:
+def _normalize_oidc_redirect_uri(value: str) -> str:
+    raw = str(value or "").strip()
+    parsed = urlsplit(raw)
+    scheme = parsed.scheme or "https"
+    netloc = parsed.netloc
+    path = parsed.path or "/"
+    if not netloc or scheme not in {"http", "https"}:
+        raise RuntimeError("Telegram OAuth redirect URI is not configured")
+    return urlunsplit((scheme, netloc, path, "", ""))
+
+
+def _require_telegram_oidc_config(*, redirect_uri: str | None = None) -> tuple[str, str, str]:
     client_id = _telegram_oidc_client_id()
     client_secret = _telegram_oidc_client_secret()
-    redirect_uri = _telegram_oidc_redirect_uri()
+    resolved_redirect_uri = (
+        _normalize_oidc_redirect_uri(redirect_uri)
+        if redirect_uri is not None
+        else _telegram_oidc_redirect_uri()
+    )
     if not client_id:
         raise RuntimeError("Telegram OAuth client ID is not configured")
     if not client_secret:
         raise RuntimeError("Telegram OAuth client secret is not configured")
-    return client_id, client_secret, redirect_uri
+    return client_id, client_secret, resolved_redirect_uri
 
 
 def _pkce_verifier() -> str:
@@ -116,30 +131,53 @@ def _pkce_challenge(verifier: str) -> str:
     return _b64url(hashlib.sha256(verifier.encode("ascii")).digest())
 
 
-def create_telegram_oidc_state_token(*, redirect_uri: str, code_verifier: str | None = None) -> str:
-    verifier = str(code_verifier or _pkce_verifier()).strip()
-    if len(verifier) < 43:
+def create_telegram_oidc_state_token(
+    *,
+    redirect_uri: str,
+    code_verifier: str | None = None,
+    purpose: str = "web_user",
+    csrf: str | None = None,
+    include_code_verifier: bool = True,
+    signing_secret: str | None = None,
+) -> str:
+    verifier = str(code_verifier or _pkce_verifier()).strip() if include_code_verifier else ""
+    if include_code_verifier and len(verifier) < 43:
         verifier = verifier.ljust(43, "x")
+    normalized_redirect_uri = _normalize_oidc_redirect_uri(redirect_uri)
+    normalized_purpose = str(purpose or "").strip().lower()
+    if not re.fullmatch(r"[a-z][a-z0-9_]{1,31}", normalized_purpose):
+        raise ValueError("Telegram OAuth state purpose is invalid")
     now = int(time.time())
     payload = {
         "t": "to",
-        "c": secrets.token_urlsafe(12),
-        "v": verifier,
+        "c": str(csrf or secrets.token_urlsafe(12)).strip(),
         "e": now + TELEGRAM_OAUTH_STATE_TTL_SECONDS,
     }
+    if include_code_verifier:
+        payload["v"] = verifier
+    if normalized_redirect_uri != _telegram_oidc_redirect_uri():
+        payload["r"] = normalized_redirect_uri
+    if normalized_purpose != "web_user":
+        payload["p"] = normalized_purpose
     body = _b64url(json.dumps(payload, separators=(",", ":"), ensure_ascii=True).encode("utf-8"))
-    sig = _sign(body)
+    sig = _sign(body, signing_secret=signing_secret)
     if not sig:
         return ""
     return f"{body}.{sig}"
 
 
-def verify_telegram_oidc_state_token(token: str) -> dict[str, Any] | None:
+def verify_telegram_oidc_state_token(
+    token: str,
+    *,
+    expected_purpose: str | None = None,
+    require_code_verifier: bool = True,
+    signing_secret: str | None = None,
+) -> dict[str, Any] | None:
     raw = str(token or "").strip()
     if "." not in raw:
         return None
     body, sig = raw.rsplit(".", 1)
-    expected = _sign(body)
+    expected = _sign(body, signing_secret=signing_secret)
     if not expected or not hmac.compare_digest(expected, sig):
         return None
     try:
@@ -162,27 +200,74 @@ def verify_telegram_oidc_state_token(token: str) -> dict[str, Any] | None:
         except RuntimeError:
             return None
     verifier = str(payload.get("code_verifier") or payload.get("v") or "").strip()
-    if exp <= int(time.time()) or not redirect_uri or len(verifier) < 43:
+    purpose = str(payload.get("purpose") or payload.get("p") or "web_user").strip().lower()
+    if (
+        exp <= int(time.time())
+        or not redirect_uri
+        or (require_code_verifier and len(verifier) < 43)
+        or (not require_code_verifier and verifier and len(verifier) < 43)
+        or not re.fullmatch(r"[a-z][a-z0-9_]{1,31}", purpose)
+    ):
+        return None
+    if expected_purpose is not None and purpose != str(expected_purpose).strip().lower():
         return None
     return {
         "redirect_uri": redirect_uri,
         "code_verifier": verifier,
         "csrf": str(payload.get("csrf") or payload.get("c") or "").strip(),
+        "purpose": purpose,
     }
 
 
-def build_telegram_oidc_authorize_url() -> dict[str, str]:
-    client_id, _client_secret, redirect_uri = _require_telegram_oidc_config()
-    state_token = create_telegram_oidc_state_token(redirect_uri=redirect_uri)
+def build_telegram_oidc_authorize_url(
+    *,
+    redirect_uri: str | None = None,
+    purpose: str = "web_user",
+    cookie_bound: bool = False,
+    state_signing_secret: str | None = None,
+) -> dict[str, str]:
+    client_id, _client_secret, resolved_redirect_uri = _require_telegram_oidc_config(
+        redirect_uri=redirect_uri
+    )
+    verifier = _pkce_verifier()
+    csrf = secrets.token_urlsafe(12)
+    transaction_token = ""
+    if cookie_bound:
+        transaction_token = create_telegram_oidc_state_token(
+            redirect_uri=resolved_redirect_uri,
+            code_verifier=verifier,
+            purpose=purpose,
+            csrf=csrf,
+            signing_secret=state_signing_secret,
+        )
+        state_token = create_telegram_oidc_state_token(
+            redirect_uri=resolved_redirect_uri,
+            purpose=purpose,
+            csrf=csrf,
+            include_code_verifier=False,
+            signing_secret=state_signing_secret,
+        )
+    else:
+        state_token = create_telegram_oidc_state_token(
+            redirect_uri=resolved_redirect_uri,
+            code_verifier=verifier,
+            purpose=purpose,
+            csrf=csrf,
+            signing_secret=state_signing_secret,
+        )
     if not state_token:
         raise RuntimeError("Telegram OAuth state signing is not configured")
-    verified_state = verify_telegram_oidc_state_token(state_token)
+    verified_state = verify_telegram_oidc_state_token(
+        transaction_token or state_token,
+        expected_purpose=purpose,
+        signing_secret=state_signing_secret,
+    )
     if not verified_state:
         raise RuntimeError("Telegram OAuth state validation failed")
     query = urlencode(
         {
             "client_id": client_id,
-            "redirect_uri": redirect_uri,
+            "redirect_uri": resolved_redirect_uri,
             "response_type": "code",
             "scope": TELEGRAM_OAUTH_SCOPES,
             "state": state_token,
@@ -192,8 +277,9 @@ def build_telegram_oidc_authorize_url() -> dict[str, str]:
     )
     return {
         "auth_url": f"{TELEGRAM_OAUTH_AUTHORIZE_URL}?{query}",
-        "redirect_uri": redirect_uri,
+        "redirect_uri": resolved_redirect_uri,
         "state": state_token,
+        "transaction": transaction_token,
     }
 
 
@@ -305,11 +391,40 @@ def validate_telegram_oidc_id_token(*, id_token: str, client_id: str, jwks: dict
     return verified
 
 
-async def exchange_telegram_oidc_code(*, code: str, state_token: str) -> dict[str, Any]:
-    client_id, client_secret, _redirect_uri = _require_telegram_oidc_config()
-    verified_state = verify_telegram_oidc_state_token(state_token)
+async def exchange_telegram_oidc_code(
+    *,
+    code: str,
+    state_token: str,
+    expected_purpose: str | None = None,
+    transaction_token: str | None = None,
+    state_signing_secret: str | None = None,
+) -> dict[str, Any]:
+    verified_state = verify_telegram_oidc_state_token(
+        state_token,
+        expected_purpose=expected_purpose,
+        require_code_verifier=transaction_token is None,
+        signing_secret=state_signing_secret,
+    )
     if not verified_state:
         raise ValueError("Telegram OAuth state is invalid or expired")
+    if transaction_token is not None:
+        verified_transaction = verify_telegram_oidc_state_token(
+            transaction_token,
+            expected_purpose=expected_purpose,
+            signing_secret=state_signing_secret,
+        )
+        if not verified_transaction:
+            raise ValueError("Telegram OAuth transaction is invalid or expired")
+        for field in ("csrf", "redirect_uri", "purpose"):
+            if not hmac.compare_digest(
+                str(verified_state.get(field) or ""),
+                str(verified_transaction.get(field) or ""),
+            ):
+                raise ValueError("Telegram OAuth transaction does not match state")
+        verified_state = verified_transaction
+    client_id, client_secret, _redirect_uri = _require_telegram_oidc_config(
+        redirect_uri=str(verified_state["redirect_uri"])
+    )
 
     token_headers = {
         "Content-Type": "application/x-www-form-urlencoded",

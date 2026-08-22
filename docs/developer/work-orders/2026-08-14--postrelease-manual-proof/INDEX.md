@@ -1,6 +1,11 @@
 # POKROV Post-release Manual Proof
 
-Status: `READY`
+Document class: `EVIDENCE`
+
+Retained status for `v1.0.4-beta.1`: `READY`
+
+This queue is preserved for the named old bytes. Current 1.2.0 manual gates are
+owned by the 1.2.0 megaplan and require fresh exact-candidate evidence.
 
 This follow-up preserves the owner-deferred proof that was intentionally moved
 out of the completed `v1.0.4-beta.1` release goal on 2026-08-14. It does not

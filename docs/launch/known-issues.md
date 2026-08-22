@@ -1,6 +1,6 @@
 # Known Issues
 
-Last updated: 2026-07-18
+Last updated: 2026-08-22
 
 Structured source: `shared/beta-known-limitations.json`
 
@@ -35,6 +35,15 @@ support handoffs and public copy stay inside the same beta claim boundary.
 - `android_audit_attested`: Android physical release-build audit is
   owner-attested for the beta; raw device evidence is not attached as public
   proof, and stronger Android safety claims remain follow-up.
+- `linux_not_shipped_1_2_0`: Linux is `NOT_SHIPPED_IN_1.2.0`; Android and
+  Windows remain the only public release pair. Compatibility-client guidance,
+  transitive desktop dependencies and dormant Linux contracts are not an
+  official POKROV Linux binary or support promise.
+- `android_oem_background_limits`: OEM battery/background restrictions,
+  VPN-permission handling and cached notification/tile state may stop or delay
+  recovery. Do not promise uninterrupted Android background operation. Run the
+  exact `1.2.0` candidate on the physical OEM matrix and route affected users
+  through the bounded Android background/power guidance.
 - `support_best_effort`: support is best-effort during beta through the cabinet
   and `@pokrov_supportbot`.
 - `apple_readiness_only`: iOS and macOS are readiness tracks only and are not

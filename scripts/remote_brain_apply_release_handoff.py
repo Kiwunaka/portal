@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -11,7 +13,42 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
 DEFAULT_RELEASE_METADATA = REPO_ROOT.parent / "POKROV-app" / "artifacts" / "releases" / "release-handoff.json"
 LEGACY_DEFAULT_ENV_FILE = REPO_ROOT / "external" / "client-fork" / "release-links.env"
+CANONICAL_INSTALL_URL = "https://pokrov.space/install/"
+V2_ANDROID_ARTIFACTS = {
+    "arm64-v8a": (
+        "pokrov-android-arm64-v8a.apk",
+        "APP_ANDROID_APK_ARM64_URL",
+        "APP_ANDROID_ARM64_SHA256",
+        "APP_ANDROID_ARM64_SIZE_BYTES",
+    ),
+    "armeabi-v7a": (
+        "pokrov-android-armeabi-v7a.apk",
+        "APP_ANDROID_APK_ARMEABI_V7A_URL",
+        "APP_ANDROID_ARMEABI_V7A_SHA256",
+        "APP_ANDROID_ARMEABI_V7A_SIZE_BYTES",
+    ),
+    "x86_64": (
+        "pokrov-android-x86_64.apk",
+        "APP_ANDROID_APK_X86_64_URL",
+        "APP_ANDROID_X86_64_SHA256",
+        "APP_ANDROID_X86_64_SIZE_BYTES",
+    ),
+    "universal": (
+        "pokrov-android-universal.apk",
+        "APP_ANDROID_APK_UNIVERSAL_URL",
+        "APP_ANDROID_UNIVERSAL_SHA256",
+        "APP_ANDROID_UNIVERSAL_SIZE_BYTES",
+    ),
+}
 RELEASE_KEYS = (
+    "APP_RELEASE_SCHEMA_VERSION",
+    "APP_RELEASE_CHANNEL",
+    "APP_RELEASE_CANDIDATE_LABEL",
+    "APP_RELEASE_HANDOFF_SHA256",
+    "APP_RELEASE_ARTIFACT_SET_SHA256",
+    "APP_RELEASE_CORE_VERSION",
+    "APP_RELEASE_CORE_DESKTOP_ABI",
+    "APP_RELEASE_CORE_ANDROID_PACKAGE",
     "APP_ANDROID_PLAY_URL",
     "APP_ANDROID_APK_URL",
     "APP_ANDROID_APK_ARM64_URL",
@@ -89,10 +126,92 @@ def _read_release_env(path: Path) -> dict[str, str]:
     return out
 
 
+def _validate_v2_metadata(payload: dict[str, Any]) -> None:
+    scripts_root = str(Path(__file__).resolve().parent)
+    if scripts_root not in sys.path:
+        sys.path.insert(0, scripts_root)
+    from validate_release_handoff_metadata import ValidationIssue, validate_metadata
+
+    try:
+        validate_metadata(payload)
+    except ValidationIssue as exc:
+        raise SystemExit(f"Invalid strict release-handoff v2 metadata: {exc.code}") from exc
+
+
+def _v2_runtime_values(payload: dict[str, Any], path: Path) -> dict[str, str]:
+    _validate_v2_metadata(payload)
+    values = {key: "" for key in RELEASE_KEYS}
+    release = payload["release"]
+    release_notes = release["release_notes"]
+    compatibility = payload["compatibility"]
+    core_abi = compatibility["core_abi"]
+    promotion = payload["promotion"]
+
+    values.update(
+        {
+            "APP_RELEASE_SCHEMA_VERSION": "2",
+            "APP_RELEASE_CHANNEL": str(release["channel"]),
+            "APP_RELEASE_CANDIDATE_LABEL": str(release["candidate_label"]),
+            "APP_RELEASE_HANDOFF_SHA256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            "APP_RELEASE_ARTIFACT_SET_SHA256": str(
+                promotion["source_artifact_set_sha256"]
+            ).lower(),
+            "APP_RELEASE_CORE_VERSION": str(compatibility["core_version"]),
+            "APP_RELEASE_CORE_DESKTOP_ABI": str(core_abi["desktop"]),
+            "APP_RELEASE_CORE_ANDROID_PACKAGE": str(core_abi["android_package"]),
+            "APP_ANDROID_VERSION": str(release["version"]),
+            "APP_ANDROID_RELEASE_NOTES": str(release_notes["summary"]),
+            "APP_ANDROID_RELEASE_NOTES_URL": str(release_notes["url"]),
+            "APP_ANDROID_PUBLISHED_AT": str(release["created_at_utc"]),
+            "APP_WINDOWS_VERSION": str(release["version"]),
+            "APP_WINDOWS_RELEASE_NOTES": str(release_notes["summary"]),
+            "APP_WINDOWS_RELEASE_NOTES_URL": str(release_notes["url"]),
+            "APP_WINDOWS_PUBLISHED_AT": str(release["created_at_utc"]),
+            "APP_DOCS_URL": CANONICAL_INSTALL_URL,
+        }
+    )
+
+    android_candidates: dict[str, dict[str, Any]] = {}
+    for artifact in payload["artifacts"]:
+        platform = str(artifact["platform"])
+        kind = str(artifact["kind"])
+        architecture = str(artifact["architecture"])
+        file_name = str(artifact["file_name"])
+        if platform == "android" and kind == "apk":
+            mapping = V2_ANDROID_ARTIFACTS.get(architecture)
+            if mapping is None or file_name != mapping[0]:
+                continue
+            android_candidates[architecture] = artifact
+            values[mapping[1]] = str(artifact["public_url"])
+            values[mapping[2]] = str(artifact["sha256"]).lower()
+            values[mapping[3]] = str(artifact["size_bytes"])
+        elif (
+            platform == "windows"
+            and kind == "exe"
+            and architecture == "x64"
+            and file_name == "pokrov-windows-setup-x64.exe"
+        ):
+            values["APP_WINDOWS_EXE_URL"] = str(artifact["public_url"])
+            values["APP_WINDOWS_SHA256"] = str(artifact["sha256"]).lower()
+            values["APP_WINDOWS_SIZE_BYTES"] = str(artifact["size_bytes"])
+
+    for architecture in ("arm64-v8a", "universal", "armeabi-v7a", "x86_64"):
+        primary = android_candidates.get(architecture)
+        if primary is None:
+            continue
+        values["APP_ANDROID_APK_URL"] = str(primary["public_url"])
+        values["APP_ANDROID_SHA256"] = str(primary["sha256"]).lower()
+        values["APP_ANDROID_SIZE_BYTES"] = str(primary["size_bytes"])
+        break
+    return values
+
+
 def _read_release_metadata(path: Path) -> dict[str, str]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise SystemExit(f"Release metadata must be a JSON object: {path}")
+    if payload.get("schema_version") == 2:
+        return _v2_runtime_values(payload, path)
 
     runtime_env = payload.get("runtime_env", {})
     values: dict[str, str] = {}
@@ -169,6 +288,7 @@ def _validate_release_env(values: dict[str, str]) -> list[str]:
         or str(values.get("APP_WINDOWS_MIRROR_URL", "")).strip()
     )
     docs_url = str(values.get("APP_DOCS_URL", "")).strip()
+    schema_version = str(values.get("APP_RELEASE_SCHEMA_VERSION", "")).strip()
 
     if not android_primary:
         failures.append("android release URL is missing")
@@ -176,6 +296,22 @@ def _validate_release_env(values: dict[str, str]) -> list[str]:
         failures.append("windows release URL is missing")
     if not docs_url:
         failures.append("docs_url is missing")
+    if schema_version:
+        release_version = str(values.get("APP_ANDROID_VERSION", "")).strip()
+        if (
+            schema_version != "2"
+            or str(values.get("APP_WINDOWS_VERSION", "")).strip()
+            != release_version
+            or str(values.get("APP_RELEASE_CANDIDATE_LABEL", "")).strip()
+            != f"pokrov-{release_version}"
+            or len(str(values.get("APP_RELEASE_HANDOFF_SHA256", "")).strip())
+            != 64
+            or len(
+                str(values.get("APP_RELEASE_ARTIFACT_SET_SHA256", "")).strip()
+            )
+            != 64
+        ):
+            failures.append("strict v2 release identity is incomplete")
     return failures
 
 

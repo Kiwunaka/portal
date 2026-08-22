@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import importlib
 import json
 import sys
+import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from urllib.parse import urlencode
+from urllib.parse import urlsplit
 
 from fastapi.testclient import TestClient
 
@@ -19,10 +23,28 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
+def _admin_headers() -> dict[str, str]:
+    params = {
+        "auth_date": str(int(datetime.now(timezone.utc).timestamp())),
+        "query_id": "client-ui-admin-test",
+        "user": '{"id":9999,"first_name":"Admin","username":"admin"}',
+    }
+    data_check_string = "\n".join(f"{key}={value}" for key, value in sorted(params.items()))
+    secret_key = hmac.new(b"WebAppData", b"test_bot_token_123", hashlib.sha256).digest()
+    payload = dict(params)
+    payload["hash"] = hmac.new(
+        secret_key,
+        data_check_string.encode("utf-8"),
+        hashlib.sha256,
+    ).hexdigest()
+    return {"X-Telegram-Init-Data": urlencode(payload)}
+
+
 def _load_api(monkeypatch, tmp_path: Path):
     db_path = tmp_path / "client-ui-api-additions.db"
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path.as_posix()}")
     monkeypatch.setenv("WEBAPP_SESSION_SECRET", "client-ui-api-secret")
+    monkeypatch.setenv("AWG2_LAB_MATERIAL_SECRET", "client-ui-awg2-test-secret")
     monkeypatch.setenv("PUBLIC_API_BASE_URL", "https://api.pokrov.test")
     monkeypatch.setenv("PUBLIC_WEB_DOMAIN", "pokrov.test")
     monkeypatch.setenv("PAY_CHECKOUT_URL", "https://pay.pokrov.space/checkout/")
@@ -32,10 +54,21 @@ def _load_api(monkeypatch, tmp_path: Path):
     monkeypatch.setenv("BOT_TOKEN", "test_bot_token_123")
     monkeypatch.setenv("ADMIN_ID", "9999")
     monkeypatch.setenv("ADMIN_IDS", "9999")
+    monkeypatch.setenv("ADMIN_OPERATOR_SESSION_SECRET", "client-ui-operator-session-secret-32-bytes")
+    monkeypatch.setenv("ADMIN_OPERATOR_ENVIRONMENT", "test")
     monkeypatch.setenv("SUPPORT_AI_ENABLED", "0")
 
     for name in [
         "api",
+        "api_observability_routes",
+        "api_support_bundle_routes",
+        "api_operator_observability_routes",
+        "commercial_campaign_policy",
+        "commercial_offer_service",
+        "commercial_order_service",
+        "commercial_attribution_service",
+        "observability_ingest",
+        "request_correlation",
         "app_first_service",
         "config",
         "db",
@@ -208,6 +241,118 @@ def _start_trial(client: TestClient, *, install_id: str, platform: str = "window
 
 def _auth_headers(start_body: dict[str, object]) -> dict[str, str]:
     return {"Authorization": f"Bearer {start_body['session_token']}"}
+
+
+def _synthetic_awg2_endpoint() -> dict[str, object]:
+    return {
+        "useIntegratedTun": False,
+        "private_key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        "address": ["10.66.0.2/32", "fd66::2/128"],
+        "mtu": 1408,
+        "jc": 4,
+        "jmin": 40,
+        "jmax": 70,
+        "s1": 0,
+        "s2": 0,
+        "s3": 0,
+        "s4": 0,
+        "h1": "1000001",
+        "h2": "1000002",
+        "h3": "1000003",
+        "h4": "1000004",
+        "peers": [
+            {
+                "address": "192.0.2.10",
+                "port": 51820,
+                "public_key": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
+                "allowed_ips": ["0.0.0.0/0", "::/0"],
+                "persistent_keepalive_interval": 25,
+            }
+        ],
+    }
+
+
+def test_awg2_owner_lab_is_device_bound_managed_only_and_kill_rolls_back(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    _add_node(api, code="pl", last_health_at=_utcnow())
+    start_body = _start_trial(client, install_id="awg2-owner-device", platform="windows")
+
+    rollout = _rollout_payload()
+    rollout["cohort_overrides"] = {
+        "awg2-owner-lab": {
+            "install_ids": ["awg2-owner-device"],
+            "platforms": ["windows"],
+            "transport_profile": "awg2_lab",
+        }
+    }
+    rollout["awg2_lab"] = {
+        "enabled": True,
+        "kill_switch_engaged": False,
+        "allowlist_install_ids": ["awg2-owner-device"],
+        "allowlist_tg_ids": [],
+        "allowlist_node_codes": ["pl"],
+        "allowed_platforms": ["windows"],
+        "contract_id": "pokrov.awg2.endpoint.v1",
+        "contract_sha256": "3beb57eccd8d5e15ce7466496208fe1945f353b3417be58644911d1ded125a83",
+        "generation": "awg2-lab-v1",
+        "endpoint_revision": "awg2-v1",
+        "server_record_id": "pokrov-awg2-pl-01",
+        "server_owner": "pokrov",
+        "server_state": "ready",
+    }
+    session = api.SessionLocal()
+    try:
+        user = session.query(api.User).filter(api.User.app_install_id == "awg2-owner-device").one()
+        api.replace_awg2_lab_material(
+            session,
+            tg_id=int(user.tg_id),
+            install_id="awg2-owner-device",
+            generation="awg2-lab-v1",
+            endpoint_revision="awg2-v1",
+            server_record_id="pokrov-awg2-pl-01",
+            node_code="pl",
+            endpoint=_synthetic_awg2_endpoint(),
+        )
+        api._set_app_setting_json(s=session, key="network_rollout_config", value=rollout)
+        session.commit()
+    finally:
+        session.close()
+
+    managed = client.get("/api/client/profile/managed", headers=_auth_headers(start_body))
+
+    assert managed.status_code == 200, managed.text
+    body = managed.json()
+    assert body["transport_profile"] == "awg2_lab"
+    assert body["transport_kind"] == "awg2"
+    assert body["engine_hint"] == "singbox"
+    assert body["fallback_order"] == ["awg2_lab", "legacy_reality_fallback"]
+    assert body["config_format"] == "singbox-json"
+    assert body["config_payload"]["endpoints"][0]["type"] == "awg"
+    assert body["config_payload"]["endpoints"][0]["useIntegratedTun"] is False
+    assert body["config_payload"]["_meta"]["transport_contract"]["sha256"] == rollout["awg2_lab"]["contract_sha256"]
+    assert body["smart_connect"]["shortlist"][0]["probe"] is None
+
+    subscription_path = urlsplit(str(start_body["subscription_url"])).path
+    subscription = client.get(f"{subscription_path}?format=singbox")
+    assert subscription.status_code == 200, subscription.text
+    public_config = subscription.json()
+    assert "endpoints" not in public_config
+    assert all(item.get("type") != "awg" for item in public_config["outbounds"])
+
+    rollout["awg2_lab"]["kill_switch_engaged"] = True
+    session = api.SessionLocal()
+    try:
+        api._set_app_setting_json(s=session, key="network_rollout_config", value=rollout)
+        session.commit()
+    finally:
+        session.close()
+
+    rolled_back = client.get("/api/client/profile/managed", headers=_auth_headers(start_body))
+    assert rolled_back.status_code == 200, rolled_back.text
+    rollback_body = rolled_back.json()
+    assert rollback_body["transport_profile"] == "legacy_reality_fallback"
+    assert "endpoints" not in rollback_body["config_payload"]
 
 
 def test_client_locations_catalog_exposes_searchable_real_node_catalog(monkeypatch, tmp_path) -> None:
@@ -530,10 +675,17 @@ def test_confirmed_incident_admin_flow_previews_and_applies_exact_compensation(
     tmp_path,
 ) -> None:
     api = _load_api(monkeypatch, tmp_path)
-    client = TestClient(api.app)
+    client = TestClient(api.app, base_url="https://api.pokrov.test")
     _seed_rollout(api)
     _add_node(api, code="nl-ams-01")
     api._require_admin = lambda _init_data, request=None: {"id": 9999}
+
+    bootstrap = client.post("/api/admin/v2/auth/bootstrap", headers=_admin_headers())
+    assert bootstrap.status_code == 200, bootstrap.text
+    operator = bootstrap.json()["data"]
+    csrf = operator["session"]["csrf_token"]
+    operator_id = operator["operator"]["id"]
+    unsafe = {"X-Pokrov-Admin-CSRF": csrf}
 
     start_body = _start_trial(client, install_id="incident-account-device")
     headers = _auth_headers(start_body)
@@ -551,9 +703,11 @@ def test_confirmed_incident_admin_flow_previews_and_applies_exact_compensation(
     assert runtime.status_code == 200, runtime.text
 
     now = _utcnow()
-    create = client.post(
-        "/api/admin/service-incidents",
-        json={
+    incident_id = str(uuid.uuid4())
+    create_command = {
+        "action": "incident.create",
+        "target": {"type": "incident", "id": incident_id},
+        "payload": {
             "incident_key": "inc-api-nl-20260723",
             "title": "NL route outage",
             "summary": "Confirmed outage on the NL route.",
@@ -561,50 +715,104 @@ def test_confirmed_incident_admin_flow_previews_and_applies_exact_compensation(
             "started_at": (now - timedelta(minutes=5)).isoformat(),
             "affected_node_codes": ["nl-ams-01"],
             "compensation_days": 1,
+            "owner_operator_id": operator_id,
         },
+    }
+    create_preview = client.post(
+        "/api/admin/v2/incidents/action-intents",
+        headers=unsafe,
+        json=create_command,
+    )
+    assert create_preview.status_code == 200, create_preview.text
+    create_intent = create_preview.json()["data"]
+    create = client.post(
+        f"/api/admin/v2/incidents/action-intents/{create_intent['intent_id']}/execute",
+        headers={
+            **unsafe,
+            "X-Admin-Idempotency-Key": "77777777-7777-4777-8777-777777777777",
+            "X-Admin-Confirmation-SHA256": hashlib.sha256(
+                create_intent["confirmation_challenge"].encode("utf-8")
+            ).hexdigest(),
+        },
+        json=create_command,
     )
     assert create.status_code == 200, create.text
-    incident_id = create.json()["incident"]["id"]
 
+    resolve_command = {
+        "action": "incident.update",
+        "target": {"type": "incident", "id": incident_id},
+        "payload": {
+            "expected_version": 1,
+            "workflow_status": "resolved",
+            "ended_at": (now + timedelta(seconds=1)).isoformat(),
+            "note": "NL route restored.",
+        },
+    }
+    resolve_preview = client.post(
+        "/api/admin/v2/incidents/action-intents",
+        headers=unsafe,
+        json=resolve_command,
+    )
+    assert resolve_preview.status_code == 200, resolve_preview.text
+    resolve_intent = resolve_preview.json()["data"]
     resolve = client.post(
-        f"/api/admin/service-incidents/{incident_id}/resolve",
-        json={"ended_at": (now + timedelta(seconds=1)).isoformat()},
+        f"/api/admin/v2/incidents/action-intents/{resolve_intent['intent_id']}/execute",
+        headers={
+            **unsafe,
+            "X-Admin-Idempotency-Key": "88888888-8888-4888-8888-888888888888",
+            "X-Admin-Confirmation-SHA256": hashlib.sha256(
+                resolve_intent["confirmation_challenge"].encode("utf-8")
+            ).hexdigest(),
+        },
+        json=resolve_command,
     )
     assert resolve.status_code == 200, resolve.text
-    assert resolve.json()["compensationQueued"] is True
 
+    stepped_up = client.post(
+        "/api/admin/v2/auth/step-up",
+        headers={**unsafe, **_admin_headers()},
+    )
+    assert stepped_up.status_code == 200, stepped_up.text
+    compensation_command = {
+        "action": "incident.compensate",
+        "target": {"type": "incident", "id": incident_id},
+        "payload": {"expected_version": 2},
+    }
     preview = client.post(
-        f"/api/admin/service-incidents/{incident_id}/compensate",
-        json={"dry_run": True},
+        "/api/admin/v2/incidents/action-intents",
+        headers=unsafe,
+        json=compensation_command,
     )
     assert preview.status_code == 200, preview.text
-    assert preview.json()["preview"]["impactedAccounts"] == 1
+    compensation_intent = preview.json()["data"]
+    assert compensation_intent["preview"]["impacted_accounts"] == 1
 
+    execute_url = f"/api/admin/v2/incidents/action-intents/{compensation_intent['intent_id']}/execute"
     wrong_confirmation = client.post(
-        f"/api/admin/service-incidents/{incident_id}/compensate",
-        json={"dry_run": False, "confirm_incident_key": "wrong"},
+        execute_url,
+        headers={
+            **unsafe,
+            "X-Admin-Idempotency-Key": "99999999-9999-4999-8999-999999999999",
+            "X-Admin-Confirmation-SHA256": hashlib.sha256(b"wrong").hexdigest(),
+        },
+        json=compensation_command,
     )
     assert wrong_confirmation.status_code == 409
 
-    applied = client.post(
-        f"/api/admin/service-incidents/{incident_id}/compensate",
-        json={
-            "dry_run": False,
-            "confirm_incident_key": "inc-api-nl-20260723",
-        },
-    )
+    execution_headers = {
+        **unsafe,
+        "X-Admin-Idempotency-Key": "99999999-9999-4999-8999-999999999999",
+        "X-Admin-Confirmation-SHA256": hashlib.sha256(
+            b"inc-api-nl-20260723"
+        ).hexdigest(),
+    }
+    applied = client.post(execute_url, headers=execution_headers, json=compensation_command)
     assert applied.status_code == 200, applied.text
-    assert applied.json()["grantedAccounts"] == 1
+    assert applied.json()["data"]["granted_accounts"] == 1
 
-    repeated = client.post(
-        f"/api/admin/service-incidents/{incident_id}/compensate",
-        json={
-            "dry_run": False,
-            "confirm_incident_key": "inc-api-nl-20260723",
-        },
-    )
+    repeated = client.post(execute_url, headers=execution_headers, json=compensation_command)
     assert repeated.status_code == 200, repeated.text
-    assert repeated.json()["existingGrants"] == 1
+    assert repeated.json()["data"]["action_intent_id"] == applied.json()["data"]["action_intent_id"]
 
     inbox = client.get("/api/client/notifications", headers=headers)
     assert inbox.status_code == 200, inbox.text
@@ -729,32 +937,68 @@ def test_program_application_api_requires_operator_review_and_idempotent_confirm
     )
     assert wrong.status_code == 409
 
+    review_body = {
+        "status": "approved",
+        "operator_note": "Подтверждено на чистом стенде.",
+        "reward_days": 3,
+        "confirm_application_id": application["id"],
+    }
+    unguarded = client.post(
+        f"/api/admin/program-applications/{application['id']}/review",
+        json=review_body,
+    )
+    assert unguarded.status_code == 428
+    assert unguarded.json()["detail"]["code"] == "intent_required"
+
+    prepared = client.post(
+        "/api/admin/action-intents",
+        headers=_admin_headers(),
+        json={
+            "action": "program_application.review",
+            "target": {
+                "type": "program_application",
+                "id": application["id"],
+            },
+            "payload": {
+                "_environment": "production",
+                "_actor_tg_id": 9999,
+                "status": "approved",
+                "operator_note": "Подтверждено на чистом стенде.",
+                "reward_days": 3,
+            },
+        },
+    )
+    assert prepared.status_code == 200, prepared.text
+    intent_id = prepared.json()["intent_id"]
+    execution_headers = {
+        **_admin_headers(),
+        "X-Admin-Intent-Id": intent_id,
+        "X-Admin-Idempotency-Key": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "X-Admin-Confirmation-SHA256": hashlib.sha256(
+            application["id"].encode("utf-8")
+        ).hexdigest(),
+    }
     approved = client.post(
         f"/api/admin/program-applications/{application['id']}/review",
-        json={
-            "status": "approved",
-            "operator_note": "Подтверждено на чистом стенде.",
-            "reward_days": 3,
-            "confirm_application_id": application["id"],
-        },
+        headers=execution_headers,
+        json=review_body,
     )
     assert approved.status_code == 200, approved.text
     approved_body = approved.json()["application"]
     assert approved_body["status"] == "rewarded"
     assert approved_body["reward_days"] == 3
-    assert approved_body["reward_grant_id"]
+    assert approved_body["reward_grant_ref"]
 
     repeated = client.post(
         f"/api/admin/program-applications/{application['id']}/review",
-        json={
-            "status": "approved",
-            "operator_note": "Повторная отправка того же решения.",
-            "reward_days": 3,
-            "confirm_application_id": application["id"],
-        },
+        headers=execution_headers,
+        json=review_body,
     )
     assert repeated.status_code == 200, repeated.text
-    assert repeated.json()["application"]["reward_grant_id"] == approved_body["reward_grant_id"]
+    assert (
+        repeated.json()["application"]["reward_grant_ref"]
+        == approved_body["reward_grant_ref"]
+    )
 
     programs = client.get("/api/client/programs", headers=headers)
     assert programs.status_code == 200, programs.text
@@ -963,8 +1207,8 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
     assert first_diagnostics["panel_last_online_age_seconds"] == 90
     assert first_diagnostics["panel_runtime_state"] == "online"
     assert first_diagnostics["telegram_bonus_state"] == "available"
-    assert first_diagnostics["public_promo_state"] == "available"
-    assert first_diagnostics["public_promo_codes"] == "SUPPORT20"
+    assert first_diagnostics["public_promo_state"] == "none"
+    assert first_diagnostics["public_promo_codes"] is None
 
     supplied = client.post(
         "/api/client/support/assistant",

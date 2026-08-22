@@ -1,0 +1,58 @@
+{
+  "schema": "pokrov.release-1.2.0.shared-release-catalog-reconciliation.v1",
+  "generated_at": "2026-08-22T08:37:42Z",
+  "work_order": "WO-003E",
+  "advanced_rows": [
+    "FE/P12-010"
+  ],
+  "implementation_index": "I3",
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "source": {
+    "platform_revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "platform_dirty_entries": 329
+  },
+  "authority_path": {
+    "release_source": "strict release-handoff v2 runtime projection",
+    "authenticated_catalog": "/api/client/apps",
+    "public_catalog": "/api/public/client-apps",
+    "cabinet_consumer": "webapp/src/components/cabinet/downloads-surface.tsx",
+    "marketing_consumers": [
+      "marketing/src/components/install/download-actions.tsx",
+      "marketing/src/components/home/platform-download-action.tsx"
+    ],
+    "required_card_facts": [
+      "version",
+      "published_at",
+      "positive_size",
+      "architecture_and_format",
+      "channel",
+      "full_sha256"
+    ]
+  },
+  "local_results": {
+    "webapp_production_build": "PASS_40_STATIC_ROUTES",
+    "cabinet_playwright": "PASS_67_OF_67",
+    "exact_release_card_assertion": "PASS_ANDROID_AND_WINDOWS_ALL_REQUIRED_FACTS",
+    "client_apps_catalog_projection": "PASS_6_OF_6",
+    "focused_marketing_and_copy_contracts": "PASS_14_OF_14",
+    "documentation_context_and_preflight_tests": "PASS_34_OF_34",
+    "platform_context_audit": "PASS",
+    "documentation_links": "PASS",
+    "scoped_diff_check": "PASS_WITH_LINE_ENDING_WARNINGS_ONLY",
+    "candidate_preflight": "BLOCKED_5_CANDIDATE_FALSE_LEDGER_BELOW_I3_115",
+    "initial_wider_adjacent_regression": "NOT_PASS_47_PASSED_4_SUBTESTS_1_UNRELATED_STALE_SERVICESGRID_EXPECTATION",
+    "initial_failure_follow_up": "WO-011H",
+    "final_wider_adjacent_regression": "PASS_48_TESTS_4_SUBTESTS"
+  },
+  "manual_or_external": {
+    "real_candidate": "NOT_CREATED",
+    "hosted_ci": "NOT_RUN",
+    "authenticated_deployed_readback": "NOT_RUN",
+    "public_deployed_readback": "NOT_RUN",
+    "published_artifact_verification": "NOT_RUN",
+    "signing": "NOT_RUN",
+    "deploy": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

@@ -10,7 +10,7 @@ const BASE =
   "inline-flex min-h-11 items-center justify-center gap-2 whitespace-nowrap rounded-full font-semibold no-underline transition-[transform,background-color,border-color,box-shadow] duration-200 ease-(--ease-apple) select-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand active:scale-[0.98]";
 
 const VARIANTS: Record<ButtonVariant, string> = {
-  primary: "bg-brand text-ink-inverse shadow-soft hover:bg-brand-strong",
+  primary: "bg-brand-strong text-ink-inverse shadow-soft hover:brightness-90",
   secondary:
     "border border-line bg-surface text-ink shadow-soft hover:border-line-strong hover:bg-surface-subtle",
   ghost: "text-ink hover:bg-canvas-alt",

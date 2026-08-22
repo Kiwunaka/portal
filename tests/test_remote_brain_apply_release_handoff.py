@@ -1,4 +1,6 @@
+import hashlib
 import importlib.util
+import json
 import sys
 import tempfile
 import unittest
@@ -115,6 +117,79 @@ class RemoteBrainApplyReleaseHandoffTests(unittest.TestCase):
         self.assertEqual(values["APP_ANDROID_UNIVERSAL_SIZE_BYTES"], "400")
         self.assertEqual(values["APP_WINDOWS_EXE_URL"], "https://downloads.example.com/pokrov-windows.exe")
         self.assertEqual(values["APP_DOCS_URL"], "https://pokrov.space/install/")
+
+    def test_read_release_metadata_projects_strict_v2_to_runtime_values(self) -> None:
+        fixture = (
+            Path(__file__).resolve().parents[1]
+            / "tests"
+            / "fixtures"
+            / "release-handoff"
+            / "valid-v2.json"
+        )
+
+        values = self.module._read_release_metadata(fixture)
+
+        self.assertEqual(values["APP_RELEASE_SCHEMA_VERSION"], "2")
+        self.assertEqual(values["APP_RELEASE_CHANNEL"], "rc")
+        self.assertEqual(values["APP_RELEASE_CANDIDATE_LABEL"], "pokrov-1.2.0-rc.1")
+        self.assertEqual(
+            values["APP_RELEASE_HANDOFF_SHA256"],
+            hashlib.sha256(fixture.read_bytes()).hexdigest(),
+        )
+        self.assertEqual(
+            values["APP_RELEASE_ARTIFACT_SET_SHA256"],
+            "5254bd2f7d65c16a18b6f3deb81d0470c426495866b807b21873caae541987de",
+        )
+        self.assertEqual(values["APP_RELEASE_CORE_VERSION"], "1.1.0")
+        self.assertEqual(values["APP_RELEASE_CORE_DESKTOP_ABI"], "2")
+        self.assertEqual(values["APP_RELEASE_CORE_ANDROID_PACKAGE"], "space.pokrov.core")
+        self.assertEqual(values["APP_ANDROID_VERSION"], "1.2.0-rc.1")
+        self.assertEqual(
+            values["APP_ANDROID_APK_URL"],
+            "https://github.com/Kiwunaka/pokrov/releases/download/v1.2.0-rc.1/pokrov-android-arm64-v8a.apk",
+        )
+        self.assertEqual(values["APP_ANDROID_SHA256"], "2" * 64)
+        self.assertEqual(values["APP_ANDROID_SIZE_BYTES"], "100000000")
+        self.assertEqual(
+            values["APP_ANDROID_RELEASE_NOTES"],
+            "POKROV 1.2.0 RC: единый проверяемый кандидат для Android и Windows.",
+        )
+        self.assertEqual(
+            values["APP_ANDROID_RELEASE_NOTES_URL"],
+            "https://github.com/Kiwunaka/pokrov/releases/tag/v1.2.0-rc.1",
+        )
+        self.assertEqual(values["APP_ANDROID_PUBLISHED_AT"], "2026-08-21T12:00:00Z")
+        self.assertEqual(
+            values["APP_WINDOWS_EXE_URL"],
+            "https://github.com/Kiwunaka/pokrov/releases/download/v1.2.0-rc.1/pokrov-windows-setup-x64.exe",
+        )
+        self.assertEqual(values["APP_WINDOWS_SHA256"], "7" * 64)
+        self.assertEqual(
+            values["APP_WINDOWS_RELEASE_NOTES"],
+            values["APP_ANDROID_RELEASE_NOTES"],
+        )
+        self.assertEqual(
+            values["APP_WINDOWS_RELEASE_NOTES_URL"],
+            values["APP_ANDROID_RELEASE_NOTES_URL"],
+        )
+        self.assertEqual(values["APP_WINDOWS_PUBLISHED_AT"], "2026-08-21T12:00:00Z")
+        self.assertEqual(values["APP_DOCS_URL"], "https://pokrov.space/install/")
+
+    def test_read_release_metadata_rejects_invalid_strict_v2_before_projection(self) -> None:
+        fixture = (
+            Path(__file__).resolve().parents[1]
+            / "tests"
+            / "fixtures"
+            / "release-handoff"
+            / "valid-v2.json"
+        )
+        payload = json.loads(fixture.read_text(encoding="utf-8"))
+        payload["sources"]["core"]["revision"] = "not-a-revision"
+        with tempfile.TemporaryDirectory() as td:
+            metadata_file = Path(td) / "release-handoff.json"
+            metadata_file.write_text(json.dumps(payload), encoding="utf-8")
+            with self.assertRaisesRegex(SystemExit, "Invalid strict release-handoff v2 metadata"):
+                self.module._read_release_metadata(metadata_file)
 
     def test_resolve_release_values_prefers_metadata_before_legacy_env(self) -> None:
         with tempfile.TemporaryDirectory() as td:

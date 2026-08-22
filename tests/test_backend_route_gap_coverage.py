@@ -163,7 +163,22 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
         catalog = self.client.get("/api/public/catalog")
         self.assertEqual(catalog.status_code, 200, catalog.text)
         self.assertIn("Cache-Control", catalog.headers)
-        self.assertIsInstance(catalog.json(), dict)
+        catalog_body = catalog.json()
+        self.assertEqual(catalog.headers.get("X-Pokrov-Commercial-Revision"), self.api.COMMERCIAL_REVISION)
+        self.assertEqual(catalog_body.get("commercial_revision"), self.api.COMMERCIAL_REVISION)
+        self.assertEqual(catalog_body.get("price_authority"), "server_commercial_contract")
+        self.assertEqual(catalog_body.get("promo_authority"), "server_offer_preview_only")
+        self.assertFalse(catalog_body.get("legal_launch_ready"))
+
+        plans = self.client.get("/api/public/plans")
+        self.assertEqual(plans.status_code, 200, plans.text)
+        self.assertEqual(plans.headers.get("X-Pokrov-Commercial-Revision"), self.api.COMMERCIAL_REVISION)
+        self.assertEqual(plans.json().get("commercial_revision"), self.api.COMMERCIAL_REVISION)
+
+        health = self.client.get("/api/health")
+        self.assertEqual(health.status_code, 200, health.text)
+        self.assertEqual(health.headers.get("X-Pokrov-Commercial-Revision"), self.api.COMMERCIAL_REVISION)
+        self.assertEqual(health.json()["commercial"]["source_consistency"], "consistent")
 
         funnel = self.client.post(
             "/api/funnel/events",
@@ -446,7 +461,6 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
             segment="all_active",
             max_activations=5,
             auto_disable=True,
-            is_active=True,
             metadata={"source": "test"},
         ).model_dump()
         created = self.client.post(
@@ -464,32 +478,208 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
 
         listed = self.client.get("/api/admin/campaigns", headers=self.admin_headers)
         self.assertEqual(listed.status_code, 200, listed.text)
-        self.assertTrue(any(int(row["id"]) == campaign_id for row in listed.json()["campaigns"]))
+        capacity_automation = listed.json()["capacity_automation"]
+        self.assertEqual(
+            capacity_automation["schema"],
+            "pokrov-commercial-capacity-automation-v1",
+        )
+        self.assertEqual(
+            capacity_automation["commercial_revision"], self.api.COMMERCIAL_REVISION
+        )
+        self.assertEqual(
+            capacity_automation["forecast"]["pause_threshold_units"], 210
+        )
+        self.assertEqual(
+            capacity_automation["forecast"]["resume_below_units"], 194
+        )
+        listed_campaign = next(
+            row for row in listed.json()["campaigns"] if int(row["id"]) == campaign_id
+        )
+        self.assertTrue(str(listed_campaign["public_id"]).startswith("cmp_"))
+        self.assertEqual(listed_campaign["lifecycle_status"], "draft")
+        self.assertFalse(listed_campaign["policy"]["activation_allowed"])
+        self.assertIn("seller_unpublished", listed_campaign["policy"]["blocking_reasons"])
 
-        update_payload = {"name": "Gap campaign patched", "is_active": False}
+        update_payload = {
+            "expected_revision": int(listed_campaign["revision"]),
+            "name": "Gap campaign patched",
+            "lifecycle_status": "paused",
+            "state_reason": "owner_paused",
+        }
+        update_headers = self._prepare_admin_action(
+            action="campaign.update",
+            target_type="campaign",
+            target_id=str(campaign_id),
+            payload=update_payload,
+        )
         patched = self.client.patch(
-            f"/api/admin/campaigns/{campaign_id}",
-            headers=self._prepare_admin_action(
-                action="campaign.update",
-                target_type="campaign",
-                target_id=str(campaign_id),
-                payload=update_payload,
-            ),
-            json=update_payload,
+            f"/api/admin/campaigns/{campaign_id}", headers=update_headers, json=update_payload
         )
         self.assertEqual(patched.status_code, 200, patched.text)
+        replayed_update = self.client.patch(
+            f"/api/admin/campaigns/{campaign_id}", headers=update_headers, json=update_payload
+        )
+        self.assertEqual(replayed_update.status_code, 200, replayed_update.text)
+        self.assertEqual(replayed_update.json()["revision"], patched.json()["revision"])
 
+        stale_prepare = self.client.post(
+            "/api/admin/action-intents",
+            headers=self.admin_headers,
+            json={
+                "action": "campaign.update",
+                "target": {"type": "campaign", "id": str(campaign_id)},
+                "payload": {
+                    "expected_revision": int(listed_campaign["revision"]),
+                    "name": "stale campaign update",
+                },
+            },
+        )
+        self.assertEqual(stale_prepare.status_code, 409, stale_prepare.text)
+        self.assertEqual(stale_prepare.json()["detail"]["code"], "stale_campaign_revision")
+
+        delete_headers = self._prepare_admin_action(
+            action="campaign.delete",
+            target_type="campaign",
+            target_id=str(campaign_id),
+            payload={},
+        )
         deleted = self.client.delete(
-            f"/api/admin/campaigns/{campaign_id}",
-            headers=self._prepare_admin_action(
-                action="campaign.delete",
-                target_type="campaign",
-                target_id=str(campaign_id),
-                payload={},
-            ),
+            f"/api/admin/campaigns/{campaign_id}", headers=delete_headers
         )
         self.assertEqual(deleted.status_code, 200, deleted.text)
         self.assertTrue(deleted.json().get("ok"))
+        replayed_delete = self.client.delete(
+            f"/api/admin/campaigns/{campaign_id}", headers=delete_headers
+        )
+        self.assertEqual(replayed_delete.status_code, 200, replayed_delete.text)
+        self.assertEqual(replayed_delete.json()["revision"], deleted.json()["revision"])
+
+    def test_admin_winback_pilot_decision_fails_closed_without_live_evidence(self) -> None:
+        from db import SessionLocal
+        from models import IncentiveCampaign
+
+        session = SessionLocal()
+        try:
+            row = IncentiveCampaign(
+                name="Release 1.2 winback decision",
+                campaign_type="promo",
+                target_value="WIN10",
+                objective="winback",
+                lifecycle_status="draft",
+                segment="expired_paid_7_30d",
+                paid_cap=20,
+                starts_at=self.api._utcnow() - timedelta(hours=1),
+                ends_at=self.api._utcnow() + timedelta(hours=71),
+            )
+            session.add(row)
+            session.commit()
+            campaign_id = int(row.id)
+        finally:
+            session.close()
+
+        response = self.client.get(
+            f"/api/admin/campaigns/{campaign_id}/pilot-decision",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertEqual(body["decision"]["recommendation"], "stop")
+        self.assertEqual(body["decision"]["primary_metric"]["state"], "insufficient_data")
+        self.assertFalse(body["decision"]["scale_automatic"])
+        self.assertEqual(body["postmortem"]["winner_state"], "insufficient_data")
+        self.assertIsNone(body["postmortem"]["winner"])
+
+    def test_admin_campaign_live_activation_fails_closed_on_legal_contract(self) -> None:
+        create_payload = self.api.AdminCampaignCreateIn(
+            name="Blocked live campaign",
+            campaign_type="promo",
+            target_value="BLOCK10",
+            objective="acquisition",
+            lifecycle_status="draft",
+            legal_profile_status="owner_approved",
+            channels=["owned_web"],
+            seller_profile_id="seller-owner-approved-v1",
+            terms_revision=self.api.get_commercial_contract()["terms_revision"],
+            paid_cap=10,
+        ).model_dump()
+        create_headers = self._prepare_admin_action(
+            action="campaign.create",
+            target_type="campaign",
+            target_id="new",
+            payload=create_payload,
+        )
+        created = self.client.post(
+            "/api/admin/campaigns", headers=create_headers, json=create_payload
+        )
+        self.assertEqual(created.status_code, 200, created.text)
+        campaign_id = int(created.json()["id"])
+        replayed_create = self.client.post(
+            "/api/admin/campaigns", headers=create_headers, json=create_payload
+        )
+        self.assertEqual(replayed_create.status_code, 200, replayed_create.text)
+        self.assertEqual(int(replayed_create.json()["id"]), campaign_id)
+
+        listed = self.client.get("/api/admin/campaigns", headers=self.admin_headers)
+        row = next(
+            item for item in listed.json()["campaigns"] if int(item["id"]) == campaign_id
+        )
+        update_payload = {
+            "expected_revision": int(row["revision"]),
+            "lifecycle_status": "live",
+        }
+        prepared = self.client.post(
+            "/api/admin/action-intents",
+            headers=self.admin_headers,
+            json={
+                "action": "campaign.update",
+                "target": {"type": "campaign", "id": str(campaign_id)},
+                "payload": update_payload,
+            },
+        )
+        self.assertEqual(prepared.status_code, 200, prepared.text)
+        preview = prepared.json()["preview"]
+        self.assertIn("seller_unpublished", preview["after"]["policy"]["blocking_reasons"])
+        confirmation = str(prepared.json()["confirmation_challenge"])
+        blocked = self.client.patch(
+            f"/api/admin/campaigns/{campaign_id}",
+            headers={
+                **self.admin_headers,
+                "X-Admin-Intent-Id": str(prepared.json()["intent_id"]),
+                "X-Admin-Idempotency-Key": str(uuid.uuid4()),
+                "X-Admin-Confirmation-SHA256": hashlib.sha256(
+                    confirmation.encode("utf-8")
+                ).hexdigest(),
+            },
+            json=update_payload,
+        )
+        self.assertEqual(blocked.status_code, 409, blocked.text)
+        self.assertEqual(blocked.json()["detail"]["code"], "campaign_policy_blocked")
+
+        readback = self.client.get("/api/admin/campaigns", headers=self.admin_headers)
+        current = next(
+            item for item in readback.json()["campaigns"] if int(item["id"]) == campaign_id
+        )
+        self.assertEqual(current["lifecycle_status"], "draft")
+        self.assertFalse(current["is_active"])
+
+    def test_public_offer_preview_returns_server_base_for_unknown_promo(self) -> None:
+        response = self.client.post(
+            "/api/public/offers/preview",
+            json={"plan_code": "3_months", "promo_code": "UNKNOWN10"},
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertFalse(body["valid"])
+        self.assertEqual(body["reason_code"], "promo_unknown")
+        self.assertEqual(body["base_price_rub"], 669)
+        self.assertEqual(body["final_price_rub"], 669)
+        self.assertEqual(body["benefit_rub"], 0)
+        self.assertIsNone(body["offer_token"])
+        self.assertEqual(
+            response.headers["X-Pokrov-Commercial-Revision"],
+            self.api.COMMERCIAL_REVISION,
+        )
+        self.assertEqual(response.headers["Cache-Control"], "no-store, private")
 
     def test_admin_node_runtime_and_sync_gap_routes(self) -> None:
         class FakePanel:

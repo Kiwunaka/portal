@@ -9,6 +9,7 @@ GRPC_443_PRIMARY = "grpc_443_primary"
 RESERVE_XHTTP_CDN = "reserve_xhttp_cdn"
 RU_BRIDGE_RELAY = "ru_bridge_relay"
 OPERATOR_LAB = "operator_lab"
+AWG2_LAB = "awg2_lab"
 
 _PROFILE_ORDER = {
     LEGACY_REALITY_FALLBACK: 0,
@@ -16,6 +17,7 @@ _PROFILE_ORDER = {
     RESERVE_XHTTP_CDN: 2,
     RU_BRIDGE_RELAY: 3,
     OPERATOR_LAB: 4,
+    AWG2_LAB: 5,
 }
 
 
@@ -84,6 +86,10 @@ def _legacy_transport_profile(node: Any) -> dict[str, Any]:
 def _normalize_profile(node: Any, profile: dict[str, Any]) -> dict[str, Any] | None:
     name = _clean_text(profile.get("name"))
     if not name:
+        return None
+    # AWG2 material is device-bound and encrypted in awg2_lab_materials.  It
+    # must never be accepted from the shared node transport catalog.
+    if name == AWG2_LAB:
         return None
 
     legacy = _legacy_transport_profile(node)

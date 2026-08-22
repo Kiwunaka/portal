@@ -64,6 +64,11 @@ RF access rule:
 
 ## Operator Shell Policy
 
+Operator, release-health and support-bundle access is reviewed under
+[`observability-access-review.md`](observability-access-review.md). That
+playbook defines review cadence, independent ownership, fail-closed findings
+and the evidence boundary; this deployment guide does not replace it.
+
 - prefer `bash` when it is the simplest reliable operator path
 - use `powershell` when quoting, Windows path handling, SSH invocation, or local tooling behavior is more reliable there
 - pick the shell that reduces operator error for the exact command rather than forcing one shell everywhere
@@ -170,6 +175,117 @@ SUPPORT_AI_MAX_OUTPUT_TOKENS=1200
 - code pre-retrieves at most three topics from the validated deployed policy/KB snapshots. It has no model-visible tool and no DB, account, attachment, key/config, shell, arbitrary-file, or command-execution access; `safeDiagnostics` values never enter provider context. Provider/parse/safety failure can use a local KB answer only for fingerprint-bound confident routing; all other insufficient-evidence paths transfer to a human.
 - knowledge refresh remains operator-side: first run `python scripts/pokrov_support_ai_kb_refresh.py run-xcody --dry-run`, then only with an owner-side runtime `XCODY_API_KEY` run `python scripts/pokrov_support_ai_kb_refresh.py run-xcody --apply`; review the KB diff before any separately authorized deploy.
 - repository code cannot prove production feature flags, credential presence, enterprise route availability, or service state. This implementation did not deploy or restart production. Enablement requires retained live evidence for the exact committed route/model/reasoning/payload/policy/KB/retriever candidate, including zero payload-format HTTP 400 responses and honest latency/error/cache metrics.
+
+Encrypted support bundles are also disabled until the owner provisions all
+parts of the private runtime boundary. Keep the ticket HMAC secret and recipient
+private-key file out of Git; the API receives only a signed public key-set JSON.
+The quarantine and accepted directories must be private absolute paths on the
+same owned filesystem, not public/static upload roots. `portal-api` may receive
+and queue opaque ciphertext but must not have the recipient private-key file.
+Only `portal-worker` receives that mounted file, and the worker is enabled only
+after backup, retention, permission and rollback checks are retained.
+
+```dotenv
+POKROV_SUPPORT_UPLOAD_TICKET_SECRET=
+POKROV_SUPPORT_SIGNED_KEY_SET_JSON=
+POKROV_SUPPORT_BUNDLE_QUARANTINE_DIR=
+POKROV_SUPPORT_BUNDLE_ACCEPTED_DIR=
+POKROV_SUPPORT_BUNDLE_WORKER_ENABLED=false
+POKROV_SUPPORT_BUNDLE_WORKER_INTERVAL_SECONDS=5
+POKROV_SUPPORT_BUNDLE_WORKER_BATCH_LIMIT=5
+POKROV_SUPPORT_RECIPIENT_KEYS_FILE=
+POKROV_SUPPORT_BUNDLE_L2_TG_IDS=
+POKROV_SUPPORT_MODE_SIGNING_KEY_ID=
+POKROV_SUPPORT_MODE_SIGNING_PRIVATE_KEY_B64=
+POKROV_SUPPORT_MODE_CODE_SECRET=
+RELEASE_HEALTH_RETENTION_DAYS=90
+SUPPORT_BUNDLE_ACCEPTED_RETENTION_DAYS=30
+SUPPORT_BUNDLE_QUARANTINE_RETENTION_DAYS=7
+SUPPORT_BUNDLE_INCOMPLETE_GRACE_DAYS=1
+SUPPORT_BUNDLE_ACCESS_AUDIT_RETENTION_DAYS=365
+SUPPORT_BUNDLE_RETENTION_BATCH_LIMIT=100
+```
+
+The support-mode Ed25519 private key and code HMAC secret are server-only.
+`POKROV_SUPPORT_MODE_CODE_SECRET` must contain at least 32 bytes of secret
+material. The configured key ID/private key must match a public verification
+key embedded in the exact Android/Windows candidate; a local test key or a
+different candidate pin is a hard stop. Enabling issuance also requires current
+operator RBAC/audit readback, rotation and rollback evidence. These variables
+do not enable recipient decryption or support-bundle worker custody.
+
+The payment-entitlement outbox worker is always supervised with the portal
+worker; these values bound claim/retry work and do not enable a payment
+provider:
+
+```dotenv
+PAYMENT_ENTITLEMENT_OUTBOX_BATCH_LIMIT=20
+PAYMENT_ENTITLEMENT_OUTBOX_MAX_ATTEMPTS=5
+PAYMENT_ENTITLEMENT_OUTBOX_STALE_AFTER_SECONDS=300
+PAYMENT_ENTITLEMENT_OUTBOX_POLL_SECONDS=5
+```
+
+Commercial offer preview uses a dedicated HMAC key. It must not reuse the
+checkout-ticket, web-session, provider or support-upload secret. All API
+instances serving one commercial revision must receive the same candidate key;
+missing or shorter-than-32-byte material prevents token issuance. The TTL is
+clamped to 60–900 seconds and does not extend an existing reservation deadline.
+
+```dotenv
+COMMERCIAL_OFFER_HMAC_SECRET=
+COMMERCIAL_OFFER_HOLD_TTL_SECONDS=600
+```
+
+Pause acquisition and wait at least the maximum outstanding hold TTL before a
+key rotation or rollback that changes this secret; otherwise current holds fail
+signature verification by design. Retain only presence/key-version and exact
+candidate/process readback, never the key or a token. These variables do not
+approve legal launch, create a campaign, enable a provider or prove deployed
+preview/order behavior. Atomic order consumption is a separate release gate.
+
+The API process also owns one bounded payment-provider HTTP registry. These
+values configure its provider policies; code clamps every value. They do not
+enable a provider or prove production connectivity:
+
+```dotenv
+PAYMENT_HTTP_CONNECT_TIMEOUT_SECONDS=5
+PAYMENT_HTTP_SOCK_READ_TIMEOUT_SECONDS=15
+PAYMENT_HTTP_POOL_LIMIT=20
+PAYMENT_HTTP_MAX_RESPONSE_BYTES=65536
+LAVATOP_REQUEST_TIMEOUT_SECONDS=30
+CARDLINK_REQUEST_TIMEOUT_SECONDS=30
+PALLY_REQUEST_TIMEOUT_SECONDS=30
+PLATIMA_REQUEST_TIMEOUT_SECONDS=30
+FK_API_REQUEST_TIMEOUT_SECONDS=25
+```
+
+Before deployment, retain an exact-candidate startup/shutdown check and a
+sanitized telemetry sample containing only provider/operation/status/latency/
+result code. Prove timeout, pool and oversized-response behavior in the deployed
+environment without recording URL queries, headers, credentials or bodies.
+Local registry tests are not live provider or pool evidence.
+
+The same health endpoint includes a fixed integer-only `payment_db` projection.
+Before candidate promotion, exercise concurrent payment DB and independent async
+health requests on the deployed process, retain queue-wait/duration/failure
+counts, and confirm rollback after an injected candidate-only DB failure. Do not
+capture SQL, parameters or customer/order identifiers. Local threadpool tests
+do not prove deployed database-pool capacity or event-loop latency.
+
+Before a production rollout, apply the rerunnable outbox migration, verify the
+new table/indexes, start the worker, and retain queue depth/oldest-age plus one
+exact-candidate callback-to-provisioning readback. Local SQLite tests are not
+PostgreSQL migration, process supervision or control-panel proof.
+
+Local schema, API, crypto and worker tests do not prove production key custody,
+rotation, private-directory permissions, process isolation, scheduling or a
+successful real upload. Enablement and rollback are separate owner operations.
+Keep the L2 allowlist empty until named production operators and least-
+privilege directory access are approved. API workers may return accepted
+ciphertext but still receive no recipient private key. Before enablement,
+retain a dry retention run/backlog count, held-object proof, access-audit proof,
+and alerts for worker failure/file errors; these local defaults are not a
+PostgreSQL or object-store TTL.
 
 Observer-lite canary install:
 
@@ -384,12 +500,50 @@ restart a service.
 
 - [remote_deploy_brain_static_sites.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_static_sites.py)
 - static deploy packages `marketing/out`, `webapp/out`, and `adminapp/out` as local `tar.gz` bundles, uploads one archive per surface, extracts them into a versioned release directory, validates required files, then atomically switches `/var/www/portal/{marketing,webapp,adminapp}` symlinks
+- the `adminapp` prebuild deterministically emits `__build.json` and
+  `__routes.json` from `operator-center.manifest.json` and
+  `operator-center.cutover.json`; the pair binds exact
+  app/domain/frontend commit/source state/build time/expected API schema to the
+  route-manifest hash, cutover-matrix hash and seven-workspace migration oracle
+- local and remote static validation requires both identity files, matching
+  hashes and schemas, and rejects the obsolete `POKROV API superadmin v1`
+  shell. Post-deploy smoke reads both files from `admin.pokrov.space`; HTML/file
+  presence alone is insufficient Operator Center identity proof
+- immediately before switching the canonical `adminapp` symlink, the deploy
+  script atomically records the previous in-tree release target as
+  `/var/www/portal/adminapp.rollback`. This is a rollback pointer contract, not
+  proof that a production rollback drill has run
+- `--rollback-adminapp` is an explicit destructive operator mode. It requires
+  `--confirm-adminapp-rollback ROLLBACK_ADMINAPP` plus exact current/rollback
+  route-manifest and cutover-matrix SHA-256 values. The command rejects targets
+  outside `/var/www/portal/releases/*/adminapp`, validates both bundles before
+  switching, atomically swaps `adminapp`/`adminapp.rollback`, then validates the
+  served pointer again. Do not run it without an authorized exact candidate and
+  retained pre/post evidence
 - static deploy retains only the five newest versioned directories under `/var/www/portal/releases/`; the one-time `legacy_backups/` migration snapshot is not recreated after the public paths become symlinks
 - `webapp/public/telegram-web-app.js` is the reviewed byte-identical mirror of the official Telegram Mini App SDK v63 (`telegram-web-app.js?63`, SHA-256 recorded beside its layout include); the cabinet loads it from its own origin so an unavailable `telegram.org` cannot block pre-hydration startup, and any SDK refresh must update the pinned integrity test in the same change
-- `python scripts/remote_deploy_brain_static_sites.py --brain-ip 82.21.114.104 --plan-only` validates and bundles local `marketing/out`, `webapp/out`, and `adminapp/out` without opening SSH; local and remote validation must reject legacy `marketing/out/fk-verify.html` and `marketing/out/fk-payment-theme.css` files because Lava.top/hosted checkout is the current public payment path
+- `python scripts/remote_deploy_brain_static_sites.py --brain-ip 82.21.114.104 --plan-only` validates and bundles local `marketing/out`, `webapp/out`, and `adminapp/out` without opening SSH; it proves the local Operator Center identity checks are satisfiable but is not public readback. Local and remote validation must reject legacy `marketing/out/fk-verify.html` and `marketing/out/fk-payment-theme.css` files because Lava.top/hosted checkout is the current public payment path
 - before bundling, static deploy removes only the legacy `v=<release>` query field from exported `/_next/static/*` references while preserving unrelated query fields and fragments; Next chunk, CSS, font, and media filenames are content-hashed, HTML is revalidated, and inconsistent query-busted chunk identities can prevent soft navigation from committing
 - `app.pokrov.space` and `admin.pokrov.space`/`www.admin.pokrov.space` should serve HTML with `Cache-Control: no-cache, must-revalidate`, while `/_next/static/*` assets should serve `Cache-Control: public, max-age=31536000, immutable`
-- `admin.pokrov.space` serves the dedicated `adminapp/` static export and must route API calls to `https://api.pokrov.space`; `https://admin.pokrov.space` is part of the default credentialed API CORS allowlist, reuses the existing POKROV admin auth model, and does not make `webapp/` the admin host
+- `admin.pokrov.space` serves the dedicated `adminapp/` static export and must
+  route API calls to `https://api.pokrov.space`; the canonical v2 path uses a
+  credentialed opaque `__Host-pokrov_admin_session` cookie and does not make
+  `webapp/` the admin host. Production API configuration must provide a
+  dedicated `ADMIN_OPERATOR_SESSION_SECRET` of at least 32 bytes, the exact
+  `ADMIN_OPERATOR_ENVIRONMENT`, and the served admin origins in
+  `ADMIN_OPERATOR_TRUSTED_ORIGINS`; do not reuse or print another signing key.
+  `ADMIN_OPERATOR_OIDC_REDIRECT_URI` must be the exact registered HTTPS admin
+  callback (normally `https://admin.pokrov.space/`). Keep
+  `ADMIN_OPERATOR_LEGACY_BOOTSTRAP_ENABLED=true` only during measured identity
+  enrollment/cutover; set it to `false` after an authorized exact-candidate
+  OIDC login and step-up have been retained. OIDC does not auto-create an
+  operator or role, so provision and review those records before disabling the
+  compatibility path.
+  Idle, absolute, step-up and active-session bounds use the documented
+  `ADMIN_OPERATOR_*_SECONDS`/`ADMIN_OPERATOR_MAX_ACTIVE_SESSIONS` variables.
+  A missing/short secret or invalid environment fails closed. CORS must keep
+  the exact admin origin with credentials; wildcard credentialed origins are
+  forbidden
 - public Caddy on `brain` should keep HTTP/3 disabled with `servers { protocols h1 h2 }` and should serve `Alt-Svc: clear` on public HTTPS responses while browsers may still have the previous `h3=":8444"` alternative cached; this avoids user networks that fail QUIC or non-standard UDP paths while preserving standard HTTPS on `443`
 - public HTTP redirects are explicit in `infra/Caddyfile.internal`; do not rely on Caddy's automatic HTTPS redirect on the internal `:8444` listener, because public users must see `https://host/path`, not `https://host:8444/path`
 - `www.app.pokrov.space`, `www.api.pokrov.space`, `www.connect.pokrov.space`, and `www.pay.pokrov.space` are HTTPS redirect aliases to their canonical non-`www` hosts; `www.admin.pokrov.space` remains a served admin alias until `admin.pokrov.space` DNS is confirmed on authoritative and public resolvers
@@ -464,6 +618,11 @@ then explicit rollback or promotion to reopen distribution.
 - bridge-era `release-links.env` is a compatibility fallback only
 - canonical stable metadata pointer when maintained: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json`
 - schema reference: [release_handoff_metadata.schema.json](C:/Users/kiwun/Documents/ai/VPN/scripts/release_handoff_metadata.schema.json)
+- strict v2 input is validated again by the sync consumer, projected only from
+  canonical Android APK and Windows setup-EXE artifact identities, and carries
+  release channel, candidate, exact handoff/artifact-set SHA-256 and Core
+  version/ABI/package into runtime env; legacy `downloads/runtime_env` parsing
+  remains migration compatibility only
 
 Exact-candidate evidence boundary:
 
@@ -712,9 +871,49 @@ Retained dated evidence, not current procedure authority:
 - [Email Delivery Webhook Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/email-delivery-webhook-handoff.md)
 - [Release Links And Final Handoff](C:/Users/kiwun/Documents/ai/VPN/docs/operations/release-links-and-final-handoff.md)
 
+### Commercial capacity automation and revision rollback
+
+`portal-worker` owns the local commercial-capacity evaluator. Configure
+`COMMERCIAL_CAPACITY_AUTOMATION_ENABLED=true` and a bounded
+`COMMERCIAL_CAPACITY_AUTOMATION_INTERVAL_SECONDS` (default `300`, runtime clamp
+`30..3600`). Readback is `GET /api/admin/campaigns.capacity_automation`; it is
+not a production/provider/CDN proof. A live auto-managed campaign in a forbidden
+band, missing evaluation freshness or a transition without its bounded
+`AdminAudit` row is a stop condition.
+
+Create and verify one complete repository revision bundle without deploying it:
+
+```powershell
+python scripts/commercial_revision_bundle.py snapshot --output C:\safe\commercial-2026-08-21.1.zip
+python scripts/commercial_revision_bundle.py readback --bundle C:\safe\commercial-2026-08-21.1.zip
+python scripts/commercial_revision_bundle.py restore --bundle C:\safe\commercial-2026-08-21.1.zip
+```
+
+`restore` is dry-run unless `--apply` is explicit. Local apply additionally
+requires both `--expect-current-revision <current>` and
+`--expect-bundle-sha256 <readback-sha>`; it stages same-directory files,
+readbacks every byte and restores already-replaced preimages if any later write
+fails. The bundle contains the exact product facts, tariff sources/adapters,
+commercial JSON/schema/TypeScript adapter and generated reference. Repository
+restore does not deploy backend/static assets, purge a CDN, alter a campaign,
+or prove public/admin readback; those remain separately authorized steps.
+
 ### Lava.top Checkout Enablement
 
 The backend supports `lavatop` as the active RUB provider for public beta; public provider env must stay Lava-only (`RUB_PAYMENT_PROVIDER_ENABLED=lavatop`, `RUB_PAYMENT_PROVIDER_ORDER=lavatop`). As of `2026-05-15`, the authenticated cabinet beta path has redacted live evidence for invoice creation, authenticated success callback handling, invalid-auth rejection, account extension, and fulfillment idempotency. Required env is documented in [Lava.top Payment Operations](C:/Users/kiwun/Documents/ai/VPN/docs/operations/lavatop-payment-operations.md): `LAVATOP_API_KEY`, `LAVATOP_OFFER_ID` or per-plan `LAVATOP_OFFER_ID_<PLAN_CODE>`, and either `LAVATOP_WEBHOOK_API_KEY` or Basic webhook credentials. Anonymous public checkout also requires configured email delivery (`EMAIL_DELIVERY_WEBHOOK_URL` plus relay secret/SMTP env) before it can safely issue paid access keys.
+
+The 1.2.0 return projection additionally requires
+`PAYMENT_RETURN_HMAC_SECRET` (or the documented checkout/session signing
+fallback), bounded `PAYMENT_RETURN_TOKEN_TTL_SECONDS` and
+`PAYMENT_RETURN_PENDING_TTL_SECONDS`. `LAVATOP_SBP_ENABLED` and
+`LAVATOP_CARD_ENABLED` control the server-owned method capability rows;
+disabling a row must leave it visible and unavailable with a closed reason.
+
+Marketing `/success` and `/fail` are identity-free redirect adapters. They may
+carry `provider` and `return_surface` only, then return to checkout where the
+session token is read and the query is stripped. A deploy/readback check must
+fail if a return token, order ID, buyer identity or offer token appears in the
+provider redirect URL.
 
 Retained evidence: [Paid Checkout Launch Evidence - 2026-05-15](C:/Users/kiwun/Documents/ai/VPN/docs/audit-artifacts/paid-checkout-launch-evidence-brain-2026-05-15.json), [Brain Post-Deploy Live Probe - 2026-05-15](C:/Users/kiwun/Documents/ai/VPN/docs/audit-artifacts/brain-post-deploy-live-probe-2026-05-15.json), and [Live Payment And Email Confirmation - 2026-05-15](C:/Users/kiwun/Documents/ai/VPN/docs/audit-artifacts/live-payment-email-confirmation-2026-05-15.md). Failed-payment no-fulfillment and paid access-key delivery have beta evidence; refund/chargeback reconciliation remains an operator runbook requirement before stronger production checkout claims.
 
@@ -792,10 +991,10 @@ The transport rollout stays additive: the current Reality path remains in place 
 
 Transport policy rule:
 
-- `nodes.transport_profiles_json` is the canonical per-node transport catalog for rollout and should carry the fixed profile set `legacy_reality_fallback`, `grpc_443_primary`, `reserve_xhttp_cdn`, and `operator_lab`; `ru_bridge_relay` lives in `network_rollout_config` because it is a cross-node RU bridge, not a node-local delivery inbound
+- `nodes.transport_profiles_json` is the canonical per-node transport catalog for rollout and should carry the fixed profile set `legacy_reality_fallback`, `grpc_443_primary`, `reserve_xhttp_cdn`, and `operator_lab`; `ru_bridge_relay` lives in `network_rollout_config` because it is a cross-node RU bridge, not a node-local delivery inbound. `awg2_lab` is explicitly rejected from this catalog because its material is device-bound and encrypted separately.
 - legacy node fields such as `inbound_id`, `vless_port`, and `reality_*` remain compatibility input and should synthesize `legacy_reality_fallback` when the transport catalog is empty
 - `AppSetting.network_rollout_config` is the operator-controlled rollout source of truth for `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
-- `network_rollout_config` is a JSON policy blob with `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `reserve_xhttp_cdn`, `ru_bridge_relay`, `operator_lab`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
+- `network_rollout_config` is a JSON policy blob with `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `reserve_xhttp_cdn`, `ru_bridge_relay`, `operator_lab`, `awg2_lab`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
 - old node-inventory markdown moved to `docs/archive/flat-docs/08-node-inventory.md`; `scripts/node_inventory.py` keeps legacy bootstrap, DNS, and remote-maintenance helpers compatible with that retained IP snapshot, but live deployment decisions must still use Postgres/admin API state, rollout config, and current probe evidence
 - `defaults` normally pin `routing_mode_default=all_except_ru`, `transport_profile=legacy_reality_fallback`, and `dns_policy=ru_direct_split`; live incident response may temporarily set `transport_profile=ru_bridge_relay`
 - `carrier_overrides` and `cohort_overrides` may only change `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
@@ -804,6 +1003,9 @@ Transport policy rule:
 - app-managed sing-box configs load runtime rule sets from `https://connect.pokrov.space/rules/geoip-ru.srs` and `https://connect.pokrov.space/rules/adblock.srs`; the brain host mirrors those files under `/var/www/portal/rules/` and refreshes them with `pokrov-singbox-rules-refresh.timer`. Caddy serves only those two owned `/rules/` paths as `application/octet-stream` before the connect-host fallback redirect. `verify_brain_ready.py` must reject HTML/redirect regressions by requiring HTTP success, `SRS` binary magic and a nontrivial body for both files.
 - BitTorrent routing is RU-only when the rendered paid profile contains `ru`/`ru_spb` delivery outbounds: the generated config adds a hidden RU torrent selector and points `protocol=bittorrent` at it before the `geoip-ru` direct rule. Profiles without RU outbounds keep the old direct fallback.
 - `operator_lab` remains allowlist-only, carries `enabled`, `allowlist_install_ids`, `allowlist_tg_ids`, `allowlist_node_codes`, and `expires_at`, and must stay hidden from public UI and mass session/profile payloads
+- `awg2_lab` is a separate owner-only sing-box endpoint lane. Source defaults are `enabled=false` and `kill_switch_engaged=true`. Selection additionally requires the exact `pokrov.awg2.endpoint.v1` ID/SHA, `awg2-v1` endpoint revision, current generation, Windows/Android platform, install/user and node allowlists, a ready POKROV-owned `server_record_id`, and a current encrypted row in `awg2_lab_materials` for that exact device.
+- AWG2 endpoint material is provisioned only through the L3 guarded `PUT /api/admin/client/awg2-lab/material`; intent, preview, audit and result retain fingerprints and safe generation/server/node state, never the endpoint, keys or raw install ID. `AWG2_LAB_MATERIAL_SECRET` must come from the secret manager and must not be committed.
+- Only authenticated `GET /api/client/profile/managed` may return the decrypted typed endpoint. Token subscriptions, previews, Happ/Clash/manual exports, location choices and public UI force `legacy_reality_fallback` and never contain AWG2 material.
 - app-managed session and profile delivery should use the rollout-selected transport profile, while manual/export compatibility links stay on `legacy_reality_fallback` until the share-link parity wave lands
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint; `subscription_url` stays manual/import fallback only
 - capacity-aware app routing uses `GET /api/client/nodes/candidates`, `POST /api/client/nodes/select`, and optional `selected_node_code` on `GET /api/client/profile/managed`; `POST /api/client/nodes/latency-samples` remains compatibility telemetry
@@ -853,6 +1055,7 @@ Rollback shape:
 
 - restore `defaults.transport_profile` to `legacy_reality_fallback`
 - set `operator_lab.enabled=false`
+- set `awg2_lab.kill_switch_engaged=true` (or `enabled=false`); policy then falls back before profile issuance while encrypted material remains retained for audit/rotation
 - run `scripts/remote_apply_node_qdisc.py rollback`
 - keep `nodes.transport_profiles_json` in place as dormant metadata instead of deleting it
 
@@ -1101,6 +1304,8 @@ Current trusted origins in `BotFather` should include:
 
 - `https://pokrov.space/`
 - `https://app.pokrov.space/`
+- `https://admin.pokrov.space/` when Operator Center OIDC is enabled; this is
+  also the exact `ADMIN_OPERATOR_OIDC_REDIRECT_URI`.
 
 Telegram bot profile and native `Similar bots` readiness live in [Telegram Bot Profile Growth](C:/Users/kiwun/Documents/ai/VPN/docs/operations/telegram-bot-profile-growth.md).
 
@@ -1168,11 +1373,16 @@ Current release boundary:
 
 - public distribution is the public GitHub stable-direct handoff through the
   current cabinet/runtime contract
-- distributed release: `v1.0.13` (Android and Windows `1.0.13+22`)
+- retained distributed release: `v1.1.6`; public client package/build line
+  `1.1.6+29`
+- working source target: `1.2.0+30`, `PRE_CANDIDATE_LOCAL`,
+  `candidate_created=false`; it is not deployable release metadata
 - a later candidate exists only after an exact release handoff
 - stable-direct publication does not prove store availability, trusted Windows
   signing, exact-final Huawei/RU-LTE evidence or Apple readiness
 - artifact creation, signing, and candidate publication are owned by [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md); this guide owns runtime application and deploy access
+- retained public/development version truth is owned by the client
+  `config/release-handoff.seed.json`; runtime receives only a validated handoff
 
 Default artifact names:
 
@@ -1258,6 +1468,13 @@ Prompt-based app update metadata is optional but should be set for release
 handoff builds:
 
 - `APP_RELEASE_CHANNEL`
+- `APP_RELEASE_SCHEMA_VERSION`
+- `APP_RELEASE_CANDIDATE_LABEL`
+- `APP_RELEASE_HANDOFF_SHA256`
+- `APP_RELEASE_ARTIFACT_SET_SHA256`
+- `APP_RELEASE_CORE_VERSION`
+- `APP_RELEASE_CORE_DESKTOP_ABI`
+- `APP_RELEASE_CORE_ANDROID_PACKAGE`
 - `APP_ANDROID_VERSION`
 - `APP_ANDROID_MIN_SUPPORTED_VERSION`
 - `APP_ANDROID_SHA256`
@@ -1284,6 +1501,12 @@ handoff builds:
 These fields feed `/api/client/apps` and only support prompt-based update UI.
 They do not imply silent auto-update, store delivery, trusted Windows signing,
 or stable `1.0.0`.
+
+For strict v2, use `--dry-run` first. The preview must show schema `2`, the
+expected candidate/channel, exact handoff and artifact-set hashes, Core
+identity, and the canonical public APK/EXE records. A missing canonical asset
+or invalid v2 document fails before SSH is opened. This local projection is not
+runtime-sync or deploy evidence.
 
 Preferred automation path:
 

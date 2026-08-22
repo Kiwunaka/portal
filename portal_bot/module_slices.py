@@ -75,9 +75,7 @@ def bootstrap_slice(
 
 
 def _slice_exports(module: ModuleType) -> frozenset[str]:
-    bootstrap_names = frozenset(
-        getattr(module, "_SLICE_BOOTSTRAP_NAMES", frozenset())
-    )
+    bootstrap_names = frozenset(getattr(module, "_SLICE_BOOTSTRAP_NAMES", frozenset()))
     return frozenset(
         name
         for name in vars(module)
@@ -92,6 +90,12 @@ class _SliceOwnerModule(ModuleType):
         ModuleType.__setattr__(self, name, value)
         if name in _MODULE_IDENTITY_NAMES:
             return
+        # Tests and reload tooling can retain an old owner object after a fresh
+        # module with the same name has replaced it in ``sys.modules``. A late
+        # monkeypatch cleanup on that stale object must not mutate the current
+        # slice registry.
+        if sys.modules.get(self.__name__) is not self:
+            return
         for module in _SLICE_REGISTRY.get(self.__name__, ()):
             if name in vars(module):
                 ModuleType.__setattr__(module, name, value)
@@ -99,6 +103,8 @@ class _SliceOwnerModule(ModuleType):
     def __delattr__(self, name: str) -> None:
         ModuleType.__delattr__(self, name)
         if name in _MODULE_IDENTITY_NAMES:
+            return
+        if sys.modules.get(self.__name__) is not self:
             return
         for module in _SLICE_REGISTRY.get(self.__name__, ()):
             if name in vars(module):
@@ -114,14 +120,20 @@ def load_slices(
     owner_name = str(owner_namespace["__name__"])
     owner = sys.modules[owner_name]
     modules: list[ModuleType] = []
+    registered_owned_names = {
+        module.__name__: frozenset(getattr(module, "_SLICE_OWN_NAMES", ()))
+        for module in _SLICE_REGISTRY.get(owner_name, ())
+    }
 
-    # ``importlib.reload(owner)`` keeps the existing module dictionary.  Remove
-    # only symbols that still point at the previous slice definitions so the
-    # next bootstrap can identify freshly defined exports correctly.
-    for previous in _SLICE_REGISTRY.get(owner_name, ()):
-        for name in frozenset(getattr(previous, "_SLICE_OWN_NAMES", ())):
-            if owner_namespace.get(name) is vars(previous).get(name):
-                owner_namespace.pop(name, None)
+    # ``importlib.reload(owner)`` keeps the existing module dictionary, and
+    # test/runtime loaders can later restore an older owner object under the
+    # same module name. Clear every registered slice export by ownership, not
+    # by object identity. Otherwise a restored owner can seed an old function
+    # into the slice bootstrap set; the freshly defined replacement then looks
+    # inherited and silently disappears from the exported surface.
+    for owned_names in registered_owned_names.values():
+        for name in owned_names:
+            owner_namespace.pop(name, None)
 
     for module_name in module_names:
         _SLICE_IMPORT_OWNERS[module_name] = owner_name
@@ -129,7 +141,10 @@ def load_slices(
         if previous is None:
             module = importlib.import_module(module_name)
         else:
-            for name in frozenset(getattr(previous, "_SLICE_OWN_NAMES", ())):
+            names_to_clear = frozenset(getattr(previous, "_SLICE_OWN_NAMES", ())) | (
+                registered_owned_names.get(module_name, frozenset())
+            )
+            for name in names_to_clear:
                 vars(previous).pop(name, None)
             module = importlib.reload(previous)
         actual_owner = str(getattr(module, "_SLICE_OWNER_NAME", ""))

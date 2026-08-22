@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+import os
+import re
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import and_, or_
 from sqlalchemy.orm import Session
@@ -18,12 +20,18 @@ STATUS_OPEN = "open"
 STATUS_IN_PROGRESS = "in_progress"
 STATUS_CLOSED = "closed"
 VALID_STATUSES = {STATUS_OPEN, STATUS_IN_PROGRESS, STATUS_CLOSED}
+DEFAULT_SUPPORT_SLA_HOURS = 24
 MAX_SUPPORT_NOTIFICATION_ACCOUNT_IDS = 64
 MAX_SUPPORT_NOTIFICATION_TARGETS = 64
 
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _support_environment() -> str:
+    value = str(os.getenv("POKROV_ENVIRONMENT") or "production").strip().lower()
+    return value if re.fullmatch(r"[a-z][a-z0-9_-]{0,31}", value) else "production"
 
 
 def normalize_status(value: str | None) -> str:
@@ -95,8 +103,13 @@ def create_ticket(
     ticket = SupportTicket(
         user_tg_id=int(user_tg_id),
         account_id=resolved_account_id,
+        environment=_support_environment(),
         status=STATUS_OPEN,
         subject=subj[:200] if subj else None,
+        priority="normal",
+        queue="general",
+        sla_due_at=now + timedelta(hours=DEFAULT_SUPPORT_SLA_HOURS),
+        version=1,
         created_at=now,
         updated_at=now,
     )
@@ -268,10 +281,18 @@ def list_active_tickets(session: Session, limit: int = 20) -> list[SupportTicket
     )
 
 
-def list_ticket_messages(session: Session, ticket_id: int, limit: int = 20) -> list[SupportTicketMessage]:
+def list_ticket_messages(
+    session: Session,
+    ticket_id: int,
+    limit: int = 20,
+    *,
+    include_internal: bool = False,
+) -> list[SupportTicketMessage]:
+    query = session.query(SupportTicketMessage).filter(SupportTicketMessage.ticket_id == int(ticket_id))
+    if not include_internal:
+        query = query.filter(SupportTicketMessage.visibility != "internal")
     rows = (
-        session.query(SupportTicketMessage)
-        .filter(SupportTicketMessage.ticket_id == int(ticket_id))
+        query
         .order_by(SupportTicketMessage.created_at.desc(), SupportTicketMessage.id.desc())
         .limit(int(limit))
         .all()
@@ -290,6 +311,8 @@ def add_ticket_message(
     media_type: str | None = None,
     media_file_id: str | None = None,
     media_payload: str | None = None,
+    visibility: str = "public",
+    macro_code: str | None = None,
 ) -> SupportTicketMessage:
     ticket = get_ticket_by_id(session, int(ticket_id))
     if not ticket:
@@ -300,12 +323,22 @@ def add_ticket_message(
         raise ValueError("ticket message body cannot be empty")
     raw_role = (sender_role or "").strip().lower()
     role = raw_role if raw_role in {"admin", "assistant"} else "user"
+    normalized_visibility = str(visibility or "public").strip().lower()
+    if normalized_visibility not in {"public", "internal"}:
+        raise ValueError("ticket message visibility is invalid")
+    if normalized_visibility == "internal" and role not in {"admin", "assistant"}:
+        raise ValueError("internal ticket notes require an operator role")
+    normalized_macro = str(macro_code or "").strip().lower()
+    if normalized_macro and re.fullmatch(r"[a-z0-9][a-z0-9._-]{1,47}", normalized_macro) is None:
+        raise ValueError("ticket macro code is invalid")
 
     now = _utcnow()
     msg = SupportTicketMessage(
         ticket_id=int(ticket_id),
         sender_tg_id=int(sender_tg_id),
         sender_role=role,
+        visibility=normalized_visibility,
+        macro_code=normalized_macro or None,
         body=msg_body[:2000],
         media_type=(media_type or "").strip()[:32] or None,
         media_file_id=(media_file_id or "").strip()[:256] or None,
@@ -314,6 +347,7 @@ def add_ticket_message(
     )
     session.add(msg)
     ticket.updated_at = now
+    ticket.version = max(1, int(getattr(ticket, "version", 1) or 1)) + 1
     session.flush()
     return msg
 
@@ -327,6 +361,7 @@ def set_ticket_status(
 ) -> SupportTicket:
     new_status = normalize_status(status)
     now = _utcnow()
+    changed = str(ticket.status or "") != new_status
     ticket.status = new_status
     ticket.updated_at = now
     if new_status == STATUS_CLOSED:
@@ -334,6 +369,9 @@ def set_ticket_status(
     else:
         ticket.closed_at = None
     if assigned_admin_tg_id is not None:
+        changed = changed or int(ticket.assigned_admin_tg_id or 0) != int(assigned_admin_tg_id)
         ticket.assigned_admin_tg_id = int(assigned_admin_tg_id)
+    if changed:
+        ticket.version = max(1, int(getattr(ticket, "version", 1) or 1)) + 1
     session.flush()
     return ticket

@@ -9,7 +9,8 @@
     "identity_model": "app-first"
   },
   "trial": {
-    "days": 5
+    "days": 5,
+    "payment_card_required": false
   },
   "telegram_reward": {
     "days": 5,
@@ -45,7 +46,11 @@
   },
   "legal": {
     "offer_path": "/offer/",
-    "privacy_path": "/privacy/"
+    "privacy_path": "/privacy/",
+    "seller_publication_status": "blocked_unpublished",
+    "offer_review_status": "blocked_unapproved",
+    "rf_advertising_status": "blocked_no_owner_legal_decision",
+    "allowed_launch_channels": []
   },
   "operations": {
     "canonical_control_plane_host": "82.21.114.104",

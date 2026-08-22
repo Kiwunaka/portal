@@ -1,0 +1,83 @@
+{
+  "candidate_created": false,
+  "client_branch": "codex/1.2.0-release-v2",
+  "client_head": "ba7930ea83487874f47a49199ade89868c5675b3",
+  "date": "2026-08-22",
+  "evidence_ceiling": "I3_LOCAL_SOURCE_AND_WIDGET_PROOF",
+  "goldens": [
+    {
+      "path": "packages/app_shell/test/goldens/home-idle-light.png",
+      "sha256": "9aff00c7d14e910c617c93f0b6592b0c1152ac2ccd6c2f8e1c02fe23354fad1a"
+    },
+    {
+      "path": "packages/app_shell/test/goldens/route-scope-dark.png",
+      "sha256": "b41602eb38dfbfd539b847af2e950a991d3200230d6174fbe4f90a0af4a6303a"
+    },
+    {
+      "path": "packages/app_shell/test/goldens/home-verified-dark.png",
+      "sha256": "851807167b908fd1329d7a4b30325a59b5cea9ef1c0e4ed38b60eac40580dbb4"
+    },
+    {
+      "path": "packages/app_shell/test/goldens/home-degraded-light.png",
+      "sha256": "7abeac73d0a0af8757f02bd69722370bf7ea9dd94976ece4a152aedb61d4e8bd"
+    }
+  ],
+  "ledger_advancement": [
+    "FE_PR/PR-01 I1->I3",
+    "FE_PR/PR-02 I1->I3"
+  ],
+  "ledger_distribution": {
+    "I0": 20,
+    "I1": 45,
+    "I2": 36,
+    "I3": 276,
+    "below_i3": 101,
+    "total": 377
+  },
+  "owner_decision": "DIRECT_CUTOVER_ACCEPTED",
+  "promotion_authorized": false,
+  "source_hashes": {
+    "packages/app_shell/lib/src/features/home/connection_experience.dart": "db8dc8ce48b38ba125d0e16418017ecd4864f171476a29efab889448242a78c6",
+    "packages/app_shell/lib/src/shell/seed_shell.dart": "ec9cbcd3b906fb58448184de0281e9582fe4d5af63b92c6ebbcce5799c3bc437",
+    "packages/app_shell/test/connection_experience_test.dart": "fbefed1248415290129697382fbcd6d7b869c0e11d75a02fcd232355784909eb",
+    "packages/app_shell/test/pokrov_seed_app_test.dart": "1e398beb46478f9c3e04216aae54a5257f4370b5371566fe55b1ba4bc943c99e",
+    "test/client-presentation-boundary.ps1": "ee69e76d39b5137869c2dca0e5b83b8664d29b3851f98ad569dd8299f154d584"
+  },
+  "status": "PASS_LOCAL",
+  "verification": [
+    {
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File .\\test\\client-presentation-boundary.ps1",
+      "result": "PASS"
+    },
+    {
+      "command": "flutter test test/connection_experience_test.dart",
+      "result": "14/14 PASS",
+      "workdir": "packages/app_shell"
+    },
+    {
+      "command": "flutter test test/pokrov_seed_app_test.dart --plain-name matches deterministic critical-state goldens",
+      "result": "1/1 PASS; four retained images compared without update mode",
+      "workdir": "packages/app_shell"
+    },
+    {
+      "command": "rg -n ConnectionExperienceReducer.reduce|ConnectionPresentation.fromExperience packages/app_shell/lib --glob *.dart",
+      "result": "All reducer/presenter construction sites are inside connection_experience.dart"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py tests/test_release_1_2_candidate_preflight.py -q",
+      "result": "41/41 PASS"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "python -B scripts/check-links.py",
+      "result": "PASS"
+    },
+    {
+      "command": "python scripts/release_1_2_candidate_preflight.py --platform-root . --client-root <active-client> --core-root <active-core> --output <013A-preflight> --expect-blocked",
+      "result": "PASS_EXPECTED_BLOCKED; seven blockers; below_i3=101; stages=31/32/17/21"
+    }
+  ]
+}

@@ -1,4 +1,37 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page, type Route } from "@playwright/test";
+import axe from "axe-core";
+
+type AxeWindow = Window & {
+  axe: {
+    run: (
+      root: Document,
+      options: { resultTypes: string[] },
+    ) => Promise<{
+      violations: Array<{
+        id: string;
+        impact: string | null;
+        nodes: Array<{ target: unknown[]; failureSummary?: string }>;
+      }>;
+    }>;
+  };
+};
+
+async function seriousCriticalAxeViolations(page: Page) {
+  await page.addScriptTag({ content: axe.source });
+  return page.evaluate(async () => {
+    const results = await (window as unknown as AxeWindow).axe.run(document, {
+      resultTypes: ["violations"],
+    });
+    return results.violations
+      .filter((violation) => violation.impact === "serious" || violation.impact === "critical")
+      .map((violation) => ({
+        id: violation.id,
+        impact: violation.impact,
+        targets: violation.nodes.flatMap((node) => node.target.map(String)),
+        summary: violation.nodes.map((node) => node.failureSummary),
+      }));
+  });
+}
 
 type TicketMessageMock = {
   id: number;
@@ -101,7 +134,13 @@ function mockSessionUser() {
     bonuses: {
       wheel: { last_spin_at: null, streak_months: 2 },
       referral_count: 1,
-      channel_bonus: { premium_days: 5, offer_days: 5, claimed_days: 0, claimed_at: null, can_claim: true },
+      channel_bonus: {
+        premium_days: 5,
+        offer_days: 5,
+        claimed_days: 0,
+        claimed_at: null as string | null,
+        can_claim: true,
+      },
     },
     referral: { code: "mock", link: "https://t.me/pokrov_vpnbot?start=ref_mock", bonus_days: 10 },
     channel: { username: "pokrov_vpn", link: "https://t.me/pokrov_vpn", subscriber: true, speed_bump_active: true },
@@ -234,9 +273,13 @@ async function registerCabinetMocks(
     handoffTargetPath?: string;
     subscriptionUrl?: string;
     isActive?: boolean;
+    accessState?: string;
     channelClaimedDays?: number;
     channelClaimedAt?: string | null;
     onboardingShouldShow?: boolean;
+    experienceNextStep?: ExperienceMock["next_step"];
+    firstConnectionState?: ExperienceMock["first_connection"]["state"];
+    expiryAt?: string;
   } = {},
 ): Promise<void> {
   const seedWebSession = options.seedWebSession ?? true;
@@ -255,23 +298,31 @@ async function registerCabinetMocks(
   }, seedWebSession);
 
   const sessionUser: ReturnType<typeof mockSessionUser> & { experience?: ExperienceMock } = mockSessionUser();
-  if (options.onboardingShouldShow !== undefined) {
+  if (
+    options.onboardingShouldShow !== undefined
+    || options.experienceNextStep !== undefined
+    || options.firstConnectionState !== undefined
+  ) {
     sessionUser.experience = {
       onboarding: {
         version: 1,
         status: options.onboardingShouldShow ? "pending" : "completed",
-        should_show: options.onboardingShouldShow,
+        should_show: options.onboardingShouldShow ?? false,
         updated_at: options.onboardingShouldShow ? null : "2030-01-01T00:00:00",
       },
       first_connection: {
-        state: "none",
-        reported_at: null,
-        verified_at: null,
+        state: options.firstConnectionState || "none",
+        reported_at: options.firstConnectionState === "reported" ? "2030-01-01T00:00:00" : null,
+        verified_at: options.firstConnectionState === "verified" ? "2030-01-01T00:00:00" : null,
       },
-      next_step: "install",
+      next_step: options.experienceNextStep || "install",
     };
   }
   const dashboard = mockDashboard();
+  if (options.expiryAt !== undefined) {
+    sessionUser.expiry_at = options.expiryAt;
+    dashboard.expiry_at = options.expiryAt;
+  }
   const initialChannelClaimedDays = options.channelClaimedDays ?? 0;
   const initialChannelClaimedAt =
     options.channelClaimedAt === undefined && initialChannelClaimedDays > 0
@@ -291,6 +342,10 @@ async function registerCabinetMocks(
   if (options.isActive !== undefined) {
     sessionUser.is_active = options.isActive;
     dashboard.is_active = options.isActive;
+  }
+  if (options.accessState !== undefined) {
+    sessionUser.access_state = options.accessState;
+    dashboard.access_state = options.accessState;
   }
   let tickets = [...mockTickets()];
   let programApplications: Array<Record<string, unknown>> = [];
@@ -393,12 +448,61 @@ async function registerCabinetMocks(
       return json({
         android: {
           play_url: "",
-          apk_url: "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-android-universal.apk",
-          mirror_url: "https://mirror.pokrov.space/pokrov-vpn-android.apk",
+          apk_url: "https://github.com/Kiwunaka/pokrov/releases/download/v1.2.0-beta.1/pokrov-android-universal.apk",
+          mirror_url: "",
+          apk_variants: [
+            {
+              abi: "universal",
+              label: "Android Universal",
+              url: "https://github.com/Kiwunaka/pokrov/releases/download/v1.2.0-beta.1/pokrov-android-universal.apk",
+              sha256: "a".repeat(64),
+              size: 48 * 1024 * 1024,
+            },
+          ],
+          version: "1.2.0-beta.1",
+          sha256: "a".repeat(64),
+          size: 48 * 1024 * 1024,
+          published_at: "2030-01-01T00:00:00Z",
+          release_notes: "Единые release notes 1.2.0 для Android и Windows.",
+          release_notes_url: "https://github.com/Kiwunaka/pokrov/releases/tag/v1.2.0-beta.1",
+          update: {
+            platform: "android",
+            channel: "beta",
+            latest_version: "1.2.0-beta.1",
+            min_supported_version: "1.0.0",
+            update_policy: "none",
+            url: "https://github.com/Kiwunaka/pokrov/releases/download/v1.2.0-beta.1/pokrov-android-universal.apk",
+            sha256: "a".repeat(64),
+            size: 48 * 1024 * 1024,
+            release_notes: "Единые release notes 1.2.0 для Android и Windows.",
+            release_notes_url: "https://github.com/Kiwunaka/pokrov/releases/tag/v1.2.0-beta.1",
+            published_at: "2030-01-01T00:00:00Z",
+            rollout_percent: 100,
+          },
         },
         windows: {
-          exe_url: "https://github.com/Kiwunaka/POKROV-app/releases/download/v0.2.0-beta.1/pokrov-windows-setup-x64.exe",
-          mirror_url: "https://mirror.pokrov.space/pokrov-vpn-windows.exe",
+          exe_url: "https://github.com/Kiwunaka/pokrov/releases/download/v1.2.0-beta.1/pokrov-windows-setup-x64.exe",
+          mirror_url: "",
+          version: "1.2.0-beta.1",
+          sha256: "b".repeat(64),
+          size: 72 * 1024 * 1024,
+          published_at: "2030-01-01T00:00:00Z",
+          release_notes: "Единые release notes 1.2.0 для Android и Windows.",
+          release_notes_url: "https://github.com/Kiwunaka/pokrov/releases/tag/v1.2.0-beta.1",
+          update: {
+            platform: "windows",
+            channel: "beta",
+            latest_version: "1.2.0-beta.1",
+            min_supported_version: "1.0.0",
+            update_policy: "none",
+            url: "https://github.com/Kiwunaka/pokrov/releases/download/v1.2.0-beta.1/pokrov-windows-setup-x64.exe",
+            sha256: "b".repeat(64),
+            size: 72 * 1024 * 1024,
+            release_notes: "Единые release notes 1.2.0 для Android и Windows.",
+            release_notes_url: "https://github.com/Kiwunaka/pokrov/releases/tag/v1.2.0-beta.1",
+            published_at: "2030-01-01T00:00:00Z",
+            rollout_percent: 100,
+          },
         },
         docs_url: "https://pokrov.space/news/",
         updated_at: "2030-01-01T00:00:00",
@@ -677,11 +781,13 @@ test("settings preserves a grandfathered claimed Telegram bonus", async ({ page 
   await expect(page.getByRole("button", { name: /Забрать \+10 дней/i })).toHaveCount(0);
 });
 
-test("persists first-run onboarding in the account instead of local storage", async ({ page }) => {
+test("keeps the account checklist on demand and persists its dismissal server-side", async ({ page }) => {
   await registerCabinetMocks(page, { onboardingShouldShow: true });
   await page.goto("/dashboard/");
 
   const tour = page.getByTestId("onboarding-tour");
+  await expect(tour).toHaveCount(0);
+  await page.getByTestId("launch-checklist-open").click();
   await expect(tour).toBeVisible();
   await expect(tour.getByRole("heading", { name: "Добро пожаловать в POKROV" })).toBeVisible();
   await tour.getByRole("button", { name: "Пропустить" }).click();
@@ -691,6 +797,204 @@ test("persists first-run onboarding in the account instead of local storage", as
   await expect(page.getByTestId("onboarding-tour")).toHaveCount(0);
   const storedKeys = await page.evaluate(() => Object.keys(window.localStorage));
   expect(storedKeys).not.toContain("pokrov-onboarding-v1");
+});
+
+test("selects the dashboard CTA from the server lifecycle stage", async ({ page }) => {
+  await registerCabinetMocks(page, {
+    onboardingShouldShow: false,
+    experienceNextStep: "install",
+  });
+  await page.goto("/dashboard/");
+  await expect(page.getByRole("link", { name: "Скачать приложение" })).toHaveAttribute("href", "/downloads/");
+  await expect(page.getByTestId("onboarding-tour")).toHaveCount(0);
+});
+
+test("routes a connected account to devices and an expiring account to renewal", async ({ page }) => {
+  await registerCabinetMocks(page, {
+    onboardingShouldShow: false,
+    experienceNextStep: "complete",
+    firstConnectionState: "verified",
+  });
+  await page.goto("/dashboard/");
+  await expect(page.getByRole("link", { name: "Устройства", exact: true })).toHaveAttribute("href", "/devices/");
+
+  const expiringPage = await page.context().newPage();
+  await registerCabinetMocks(expiringPage, {
+    onboardingShouldShow: false,
+    experienceNextStep: "complete",
+    firstConnectionState: "verified",
+    expiryAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+  });
+  await expiringPage.goto("/dashboard/");
+  await expect(expiringPage.getByRole("heading", { name: "Доступ скоро закончится" })).toBeVisible();
+  await expect(expiringPage.getByRole("link", { name: "Продлить заранее" })).toHaveAttribute("href", "/subscription/checkout/");
+  await expiringPage.close();
+});
+
+test("renders every required fact from the shared release catalog", async ({ page }) => {
+  await registerCabinetMocks(page);
+  await page.goto("/downloads/");
+
+  const android = page.getByTestId("release-card-android");
+  await expect(android).toContainText("Universal · APK");
+  await expect(android).toContainText("1.2.0-beta.1");
+  await expect(android).toContainText("Бета");
+  await expect(android).toContainText("1 января 2030 г.");
+  await expect(android).toContainText("48 МиБ");
+  await expect(android).toContainText("Единые release notes 1.2.0 для Android и Windows.");
+  await expect(android.getByRole("link", { name: "Полные заметки о релизе" })).toHaveAttribute(
+    "href",
+    "https://github.com/Kiwunaka/pokrov/releases/tag/v1.2.0-beta.1",
+  );
+  await expect(android.getByText("a".repeat(64), { exact: true })).toBeVisible();
+
+  const windows = page.getByTestId("release-card-windows");
+  await expect(windows).toContainText("x64 · EXE");
+  await expect(windows).toContainText("1.2.0-beta.1");
+  await expect(windows).toContainText("Бета");
+  await expect(windows).toContainText("1 января 2030 г.");
+  await expect(windows).toContainText("72 МиБ");
+  await expect(windows).toContainText("Единые release notes 1.2.0 для Android и Windows.");
+  await expect(windows.getByRole("link", { name: "Полные заметки о релизе" })).toHaveAttribute(
+    "href",
+    "https://github.com/Kiwunaka/pokrov/releases/tag/v1.2.0-beta.1",
+  );
+  await expect(windows.getByText("b".repeat(64), { exact: true })).toBeVisible();
+});
+
+test("uses the detected Windows release and never substitutes Android on mismatch", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window.navigator, "userAgent", { configurable: true, get: () => "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" });
+    Object.defineProperty(window.navigator, "platform", { configurable: true, get: () => "Win32" });
+  });
+  await registerCabinetMocks(page);
+  await page.goto("/downloads/");
+
+  await expect(page.getByTestId("platform-windows")).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId("primary-download")).toContainText("Скачать для Windows");
+  await expect(page.getByTestId("primary-download")).toHaveAttribute("href", /pokrov-windows-setup-x64\.exe$/);
+
+  await page.route("**/api/client/apps", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        android: {
+          apk_url: "https://github.com/Kiwunaka/pokrov/releases/download/v1.2.0/pokrov-android-universal.apk",
+          apk_variants: [{ abi: "universal", url: "https://github.com/Kiwunaka/pokrov/releases/download/v1.2.0/pokrov-android-universal.apk", sha256: "a".repeat(64), size: 48 * 1024 * 1024 }],
+          version: "1.2.0",
+          published_at: "2030-01-01T00:00:00Z",
+          update: { channel: "stable" },
+        },
+        windows: { exe_url: "", mirror_url: "" },
+        docs_url: "",
+        updated_at: "2030-01-01T00:00:00Z",
+      }),
+    }),
+  );
+  await page.reload();
+  await expect(page.getByTestId("primary-download")).toHaveCount(0);
+  await expect(page.locator("main")).toContainText("Файл временно недоступен");
+});
+
+test("requires an explicit choice when the browser platform is unknown", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(window.navigator, "userAgent", { configurable: true, get: () => "Mozilla/5.0 (X11; Linux x86_64)" });
+    Object.defineProperty(window.navigator, "platform", { configurable: true, get: () => "Linux x86_64" });
+  });
+  await registerCabinetMocks(page);
+  await page.goto("/downloads/");
+
+  await expect(page.getByRole("button", { name: "Выберите платформу" })).toBeDisabled();
+  await expect(page.getByTestId("primary-download")).toHaveCount(0);
+  await page.getByTestId("platform-android").click();
+  await expect(page.getByTestId("primary-download")).toContainText("Скачать для Android");
+  await expect(page.getByTestId("primary-download")).toHaveAttribute("href", /\.apk$/);
+});
+
+test("renders every payment-return state and separates paid access mismatch", async ({ page }) => {
+  const cases = [
+    { state: "processing", terminal: false, active: true, text: "Платёж обрабатывается" },
+    { state: "paid", terminal: true, active: true, text: "Оплата подтверждена. Доступ активен." },
+    { state: "paid", terminal: true, active: false, text: "Оплата подтверждена, но доступ ещё не обновился" },
+    { state: "failed", terminal: true, active: false, text: "Платёж не подтверждён" },
+    { state: "cancelled", terminal: true, active: false, text: "Оплата отменена" },
+    { state: "manual_review", terminal: true, active: false, text: "Платёж требует ручной проверки" },
+    { state: "expired", terminal: true, active: false, text: "Платёжная сессия истекла" },
+  ] as const;
+
+  for (const item of cases) {
+    const statePage = await page.context().newPage();
+    await statePage.addInitScript(() => {
+      window.sessionStorage.setItem("pokrov.payment-return.v1", "return-token-e2e");
+    });
+    await registerCabinetMocks(statePage, { isActive: item.active });
+    await statePage.route("**/api/payments/orders/status", async (route) => {
+      expect(route.request().postDataJSON()).toEqual({ return_token: "return-token-e2e" });
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          ok: true,
+          state: item.state,
+          reason_code: item.state,
+          surface: "cabinet",
+          provider: "lavatop",
+          server_time: "2030-01-01T00:00:00Z",
+          next_poll_seconds: 60,
+          terminal: item.terminal,
+          support_required: item.state === "manual_review",
+          can_retry: ["failed", "cancelled", "expired"].includes(item.state),
+        }),
+      });
+    });
+
+    await statePage.goto("/subscription/checkout/?payment_return=1");
+    await expect(statePage).not.toHaveURL(/payment_return=/);
+    await expect(statePage.locator("main")).toContainText(item.text);
+    if (item.state === "paid" && !item.active) {
+      await expect(statePage.getByRole("button", { name: "Проверить доступ" })).toBeVisible();
+      await expect(statePage.getByRole("link", { name: "Поддержка" }).first()).toBeVisible();
+    }
+    if (item.state === "manual_review") {
+      await expect(statePage.getByRole("link", { name: "Открыть поддержку" })).toBeVisible();
+    }
+    if (["failed", "cancelled", "expired"].includes(item.state)) {
+      await expect(statePage.getByRole("button", { name: "Создать новый платёж" })).toBeVisible();
+    }
+    await statePage.close();
+  }
+});
+
+test("starts independent cabinet checkout data requests without a waterfall", async ({ page }) => {
+  await registerCabinetMocks(page);
+  const arrivals = new Map<string, number>();
+  const releases: Array<() => void> = [];
+  let released = false;
+
+  const hold = async (route: Route, label: string) => {
+    if (!arrivals.has(label)) arrivals.set(label, Date.now());
+    if (!released) {
+      await new Promise<void>((resolve) => releases.push(resolve));
+    }
+    await route.fulfill({
+      status: 503,
+      contentType: "application/json",
+      body: JSON.stringify({ detail: "deliberate concurrency probe" }),
+    });
+  };
+
+  await page.route("**/api/public/catalog", (route) => hold(route, "catalog"));
+  await page.route("**/api/payments/providers", (route) => hold(route, "providers"));
+
+  const navigation = page.goto("/subscription/checkout/");
+  await expect.poll(() => arrivals.size, { timeout: 5_000 }).toBe(2);
+  const arrivalTimes = [...arrivals.values()];
+  expect(Math.max(...arrivalTimes) - Math.min(...arrivalTimes)).toBeLessThan(500);
+
+  released = true;
+  releases.splice(0).forEach((release) => release());
+  await navigation;
 });
 
 test.describe("Cabinet flow", () => {
@@ -738,7 +1042,8 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator(".mobile-nav-root")).toHaveCount(0);
     await page.locator("aside nav a[href='/subscription/']").click();
     await expect(page).toHaveURL(/\/subscription\/?$/);
-    await expect(page.locator("main h1", { hasText: "Продлить доступ" })).toBeVisible();
+    await expect(page.locator("main h1", { hasText: "Продлить полный доступ" })).toBeVisible();
+    await expect(page.locator("main h1", { hasText: "Продлить полный доступ" })).toBeFocused();
   });
 
   test("deduplicates rapid same-section left clicks", async ({ page }) => {
@@ -906,7 +1211,7 @@ test.describe("Cabinet flow", () => {
     await expect(page).toHaveURL(/\/subscription\/?$/);
     await expect(drawer).toHaveCount(0);
 
-    await expect(page.locator("main h1", { hasText: "Продлить доступ" })).toBeVisible();
+    await expect(page.locator("main h1", { hasText: "Продлить полный доступ" })).toBeVisible();
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow).toBeLessThanOrEqual(1);
@@ -917,7 +1222,7 @@ test.describe("Cabinet flow", () => {
 
     await page.locator("aside nav a[href='/subscription/']").click();
     await expect(page).toHaveURL(/\/subscription\/?$/);
-    await expect(page.locator("main h1", { hasText: "Продлить доступ" })).toBeVisible();
+    await expect(page.locator("main h1", { hasText: "Продлить полный доступ" })).toBeVisible();
 
     await expect(page.locator("aside nav a[href='/downloads/']")).toHaveCount(0);
     await page.goto("/downloads/");
@@ -960,10 +1265,15 @@ test.describe("Cabinet flow", () => {
           android: {
             apk_url: "https://downloads.pokrov.space/pokrov-android-universal.apk",
             apk_variants: [
-              { abi: "arm64-v8a", url: "https://downloads.pokrov.space/pokrov-android-arm64.apk" },
-              { abi: "armeabi-v7a", url: "https://downloads.pokrov.space/pokrov-android-armv7.apk" },
+              { abi: "arm64-v8a", url: "https://downloads.pokrov.space/pokrov-android-arm64.apk", sha256: "a".repeat(64), size: 48 * 1024 * 1024 },
+              { abi: "armeabi-v7a", url: "https://downloads.pokrov.space/pokrov-android-armv7.apk", sha256: "b".repeat(64), size: 42 * 1024 * 1024 },
             ],
             mirror_url: "",
+            version: "1.2.0-beta.1",
+            published_at: "2030-01-01T00:00:00Z",
+            release_notes: "Единые release notes 1.2.0 для Android и Windows.",
+            release_notes_url: "https://github.com/Kiwunaka/pokrov/releases/tag/v1.2.0-beta.1",
+            update: { channel: "beta" },
           },
           windows: { exe_url: "", mirror_url: "" },
           docs_url: "",
@@ -974,6 +1284,7 @@ test.describe("Cabinet flow", () => {
 
     await page.goto("/downloads/");
 
+    await page.getByText("Другие варианты Android", { exact: true }).click();
     const secondaryApk = page.locator("main a[href='https://downloads.pokrov.space/pokrov-android-armv7.apk']");
     await expect(secondaryApk).toBeVisible();
     const box = await secondaryApk.boundingBox();
@@ -987,9 +1298,9 @@ test.describe("Cabinet flow", () => {
 
     const disclosure = page.getByText("Android и Windows: подключение за 3 шага", { exact: true });
     await expect(disclosure).toBeVisible();
-    await expect(page.getByText("Берите файл только на этой странице.")).not.toBeVisible();
+    await expect(page.getByText("Берите файл только на этой странице и сверяйте SHA-256.")).not.toBeVisible();
     await disclosure.click();
-    await expect(page.getByText("Берите файл только на этой странице.")).toBeVisible();
+    await expect(page.getByText("Берите файл только на этой странице и сверяйте SHA-256.")).toBeVisible();
   });
 
   test("links a trial entitlement to compact checkout", async ({ page }) => {
@@ -1044,8 +1355,8 @@ test.describe("Cabinet flow", () => {
   test("shows Apple manual connection only as an explicit platform path", async ({ page }) => {
     await page.goto("/subscription/");
 
-    await expect(page.locator("main h1", { hasText: "Продлить доступ" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Оплатить" }).first()).toBeVisible();
+    await expect(page.locator("main h1", { hasText: "Продлить полный доступ" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Продлить заранее" }).first()).toBeVisible();
     await expect(page.getByRole("link", { name: "Активировать код" }).first()).toBeVisible();
     await expect(page.locator("main")).not.toContainText("История оплат");
     await expect(page.locator("main")).not.toContainText("Коротко о режимах");
@@ -1327,9 +1638,9 @@ test.describe("Cabinet flow", () => {
     await expect(page.locator("main")).toContainText("Способ оплаты");
     await page.getByRole("button", { name: /1 месяц.*239 ₽/ }).click();
     await expect(page.getByRole("radiogroup", { name: "Срок доступа" }).getByRole("radio")).toHaveCount(6);
-    await expect(page.locator("main")).toContainText("К оплате");
-    await expect(page.getByRole("button", { name: /Оплатить \d+ ₽/ }).first()).toBeDisabled();
-    await expect(page.locator("main")).toContainText("Разовая оплата · без автосписаний");
+    await expect(page.locator("main")).toContainText("Итоговая сумма");
+    await expect(page.getByRole("button", { name: "Продолжить к оплате" })).toBeDisabled();
+    await expect(page.locator("main")).toContainText("разовая оплата · без автосписаний");
     await expect(page.locator("main")).not.toContainText("Что дальше");
     await expect(page.locator("main")).toContainText("Оплата временно недоступна. Попробуйте позже или откройте поддержку.");
     await expect(page.locator("main")).not.toContainText("Из личного кабинета");
@@ -1348,13 +1659,13 @@ test.describe("Cabinet flow", () => {
 
     await expect(page).toHaveURL(/\/downloads\/?$/);
     await expect(page.getByRole("heading", { name: "Загрузки" })).toBeVisible();
-    await expect(page.locator("main")).toContainText("Файлы");
+    await expect(page.locator("main")).toContainText("Сборки");
     await expect(page.locator("main")).toContainText("После скачивания");
-    await expect(page.locator("main")).toContainText("Публичная бета");
+    await expect(page.locator("main")).toContainText("Метаданные полные");
     await expect(page.locator("main")).toContainText("Приложение для Android");
     await expect(page.locator("main a[href*='github.com'][href$='pokrov-android-universal.apk']").first()).toBeVisible();
     await expect(page.locator("main")).toContainText("Windows");
-    await expect(page.locator("main")).toContainText("предупреждение");
+    await expect(page.locator("main")).toContainText("SHA-256");
     await expect(page.locator("main a[href*='github.com'][href$='pokrov-windows-setup-x64.exe']").first()).toBeVisible();
     await expect(page.locator("main")).toContainText("iPhone, iPad и Mac");
     await expect(page.getByRole("link", { name: "Настроить" })).toHaveAttribute("href", "/subscription/#manual-setup");
@@ -1539,6 +1850,101 @@ test.describe("Cabinet flow", () => {
       await expect(page.locator("main")).toBeVisible();
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
       expect(overflow).toBeLessThanOrEqual(1);
+    }
+  });
+
+  test("maps every server access state to the subscription title and primary action", async ({ page }) => {
+    const cases = [
+      { state: "paid_unlimited", title: "Продлить полный доступ", action: "Продлить заранее", active: true },
+      { state: "trial_premium", title: "Продолжить после пробного периода", action: "Выбрать срок", active: true },
+      { state: "bonus_premium", title: "Продолжить после бонуса", action: "Выбрать срок", active: true },
+      { state: "free_monthly", title: "Перейти на полный доступ", action: "Снять лимит", active: true },
+      { state: "free_soft_mode", title: "Вернуть полный доступ", action: "Снять ограничение", active: true },
+      { state: "expired_or_blocked", title: "Восстановить доступ", action: "Выбрать срок", active: false },
+      { state: "future_unknown_state", title: "Управление доступом", action: "Выбрать срок", active: false },
+    ] as const;
+
+    for (const item of cases) {
+      const statePage = await page.context().newPage();
+      await registerCabinetMocks(statePage, { accessState: item.state, isActive: item.active });
+      await statePage.goto("/subscription/");
+      await expect(statePage.getByRole("heading", { name: item.title })).toBeVisible();
+      await expect(statePage.getByRole("link", { name: item.action }).first()).toHaveAttribute(
+        "href",
+        "/subscription/checkout/",
+      );
+      await statePage.close();
+    }
+  });
+
+  test("restores focus after routes and the onboarding dialog", async ({ page }) => {
+    await page.goto("/dashboard/");
+
+    const opener = page.getByTestId("launch-checklist-open");
+    await opener.focus();
+    await opener.click();
+    const dialog = page.getByRole("dialog", { name: "Добро пожаловать в POKROV" });
+    await expect(dialog).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+    await expect(opener).toBeFocused();
+
+    await page.locator("a[href='/devices/']").first().click();
+    const destination = page.getByRole("heading", { name: "Устройства" });
+    await expect(destination).toBeVisible();
+    await expect(destination).toBeFocused();
+  });
+
+  test("has no serious or critical axe findings on critical cabinet routes", async ({ page }) => {
+    await page.emulateMedia({ colorScheme: "light", reducedMotion: "reduce" });
+    await page.addInitScript(() => {
+      window.localStorage.setItem("pokrov-theme", "light");
+    });
+    for (const route of ["/dashboard/", "/downloads/", "/subscription/checkout/?plan=1_month"]) {
+      await page.goto(route);
+      await expect(page.locator("main")).toBeVisible();
+      await page.waitForTimeout(50);
+      expect(await seriousCriticalAxeViolations(page), route).toEqual([]);
+    }
+  });
+
+  test("matches the deterministic cabinet visual matrix", async ({ page }) => {
+    const viewports = [
+      { name: "mobile", width: 390, height: 844 },
+      { name: "desktop", width: 1180, height: 820 },
+    ] as const;
+    const themes = ["light", "dark"] as const;
+    const motionModes = ["normal", "reduced"] as const;
+
+    for (const viewport of viewports) {
+      for (const theme of themes) {
+        for (const motion of motionModes) {
+          await page.setViewportSize({ width: viewport.width, height: viewport.height });
+          await page.emulateMedia({
+            colorScheme: theme,
+            reducedMotion: motion === "reduced" ? "reduce" : "no-preference",
+          });
+          await page.goto("/dashboard/");
+          await page.evaluate((selectedTheme) => {
+            window.localStorage.setItem("pokrov-theme", selectedTheme);
+          }, theme);
+          await page.reload();
+          await expect(page.getByRole("heading", { name: "Доступ активен" })).toBeVisible();
+          await page.evaluate(() => document.fonts.ready);
+          await page.addStyleTag({
+            content: "nextjs-portal { display: none !important; }",
+          });
+          await expect(page).toHaveScreenshot(
+            `dashboard-${viewport.name}-${theme}-${motion}.png`,
+            {
+              animations: "disabled",
+              caret: "hide",
+              fullPage: true,
+              scale: "css",
+            },
+          );
+        }
+      }
     }
   });
 });

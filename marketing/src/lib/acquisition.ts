@@ -150,12 +150,14 @@ export function attributionEventFields(context = getAcquisitionContext()) {
 export async function mintAcquisitionHandoff(
   purpose: "android_install" | "windows_install" | "account_continue" | "checkout" | "telegram_continue",
   asset?: string,
+  apiBaseUrl = CANONICAL_API_BASE_URL,
 ): Promise<{ handle: string; purpose: string; expires_at?: string | null } | null> {
   const context = getAcquisitionContext();
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 2500);
   try {
-    const response = await fetch(`${CANONICAL_API_BASE_URL}/api/acquisition/handoffs`, {
+    const apiBase = String(apiBaseUrl || CANONICAL_API_BASE_URL).trim().replace(/\/+$/, "");
+    const response = await fetch(`${apiBase}/api/acquisition/handoffs`, {
       method: "POST",
       credentials: "omit",
       headers: { "Content-Type": "application/json" },

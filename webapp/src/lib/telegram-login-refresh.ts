@@ -14,7 +14,10 @@ function refreshAgeSeconds(): number {
 }
 
 export function shouldRefreshTelegramWebLoginPayload(
-  payload: Pick<TelegramWebLoginPayload, "auth_date"> | null | undefined,
+  payload:
+    | (Partial<TelegramWebLoginPayload> & Pick<TelegramWebLoginPayload, "auth_date">)
+    | null
+    | undefined,
   nowSeconds = Math.floor(Date.now() / 1000),
 ): boolean {
   const authDate = Number(payload?.auth_date || 0);

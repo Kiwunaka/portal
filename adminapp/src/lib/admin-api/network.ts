@@ -1,6 +1,7 @@
 "use client";
 
 import { apiFetch, type ApiRequestInit } from "./client";
+import type { AdminV2Envelope } from "./types";
 
 export type TrafficRange = "7d" | "30d" | "90d";
 
@@ -22,6 +23,7 @@ export type TrafficPayload = {
 
 export type NetworkAlert = {
   id: number;
+  version: number;
   fingerprint: string;
   source: string;
   severity: string;
@@ -31,6 +33,7 @@ export type NetworkAlert = {
   node_code: string | null;
   tg_id: number | null;
   key_id: number | null;
+  incident_id: string | null;
   first_seen_at: string | null;
   last_seen_at: string | null;
   resolved_at: string | null;
@@ -195,7 +198,8 @@ function rangeBounds(range: TrafficRange): { from: string; to: string } {
 export async function fetchTrafficSummary(range: TrafficRange, init?: ApiRequestInit): Promise<TrafficPayload> {
   const bounds = rangeBounds(range);
   const query = new URLSearchParams(bounds);
-  const data = await apiFetch<Partial<TrafficPayload>>(`/api/admin/traffic/summary?${query.toString()}`, init);
+  const response = await apiFetch<AdminV2Envelope<Partial<TrafficPayload>>>(`/api/admin/v2/network/traffic?${query.toString()}`, init);
+  const data = response.data;
   return {
     ok: data.ok,
     from: typeof data.from === "string" ? data.from : null,
@@ -205,56 +209,39 @@ export async function fetchTrafficSummary(range: TrafficRange, init?: ApiRequest
 }
 
 export async function fetchNetworkAlerts(status: string, init?: ApiRequestInit): Promise<AlertsPayload> {
-  const data = await apiFetch<Partial<AlertsPayload>>(`/api/admin/alerts?status=${encodeURIComponent(status)}`, init);
+  const response = await apiFetch<AdminV2Envelope<{ generated_at?: string | null; items?: NetworkAlert[] }>>(`/api/admin/v2/network/alerts?status=${encodeURIComponent(status)}`, init);
+  const data = response.data;
   return {
-    ok: data.ok,
     generated_at: typeof data.generated_at === "string" ? data.generated_at : null,
-    alerts: Array.isArray(data.alerts) ? data.alerts : [],
+    alerts: Array.isArray(data.items) ? data.items : [],
   };
 }
 
-export async function acknowledgeAlert(id: number): Promise<NetworkAlert> {
-  const data = await apiFetch<{ alert: NetworkAlert }>(`/api/admin/alerts/${id}/ack`, { method: "POST" });
-  return data.alert;
-}
-
-export async function silenceAlert(id: number, minutes: number): Promise<NetworkAlert> {
-  const data = await apiFetch<{ alert: NetworkAlert }>(`/api/admin/alerts/${id}/silence`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ minutes }),
-  });
-  return data.alert;
-}
-
 export async function fetchProviderQuotas(init?: ApiRequestInit): Promise<ProviderQuotasPayload> {
-  const [configs, statuses] = await Promise.all([
-    apiFetch<{ quotas?: ProviderQuotaConfig[] }>("/api/admin/provider-quotas", init),
-    apiFetch<{ generated_at?: string | null; nodes?: ProviderQuotaStatus[] }>("/api/admin/provider-quotas/status", init),
-  ]);
+  const response = await apiFetch<AdminV2Envelope<{ generated_at?: string | null; configs?: ProviderQuotaConfig[]; statuses?: ProviderQuotaStatus[] }>>("/api/admin/v2/network/providers", init);
+  const data = response.data;
   return {
-    configs: Array.isArray(configs.quotas) ? configs.quotas : [],
-    statuses: Array.isArray(statuses.nodes) ? statuses.nodes : [],
-    generatedAt: typeof statuses.generated_at === "string" ? statuses.generated_at : null,
+    configs: Array.isArray(data.configs) ? data.configs : [],
+    statuses: Array.isArray(data.statuses) ? data.statuses : [],
+    generatedAt: typeof data.generated_at === "string" ? data.generated_at : null,
   };
 }
 
 export async function fetchFreeTier(q: string, init?: ApiRequestInit): Promise<FreeTierPayload> {
   const userQuery = new URLSearchParams({ limit: "500" });
   if (q.trim()) userQuery.set("q", q.trim());
-  const [summaryData, usersData] = await Promise.all([
-    apiFetch<{ summary: FreeTierSummary; facts: FreeTierFacts }>("/api/admin/free-tier/summary", init),
-    apiFetch<{ generated_at?: string | null; total?: number | null; facts: FreeTierFacts; users?: FreeTierUser[] }>(`/api/admin/free-tier/users?${userQuery.toString()}`, init),
-  ]);
+  const response = await apiFetch<AdminV2Envelope<{ generated_at?: string | null; summary: FreeTierSummary; facts: FreeTierFacts; total?: number | null; users?: FreeTierUser[] }>>(`/api/admin/v2/money/free-archive?${userQuery.toString()}`, init);
+  const data = response.data;
   return {
-    summary: summaryData.summary,
-    facts: summaryData.facts || usersData.facts,
-    users: Array.isArray(usersData.users) ? usersData.users : [],
-    total: typeof usersData.total === "number" && Number.isFinite(usersData.total) ? usersData.total : null,
-    generatedAt: typeof usersData.generated_at === "string" ? usersData.generated_at : summaryData.summary?.generated_at || null,
+    summary: data.summary,
+    facts: data.facts,
+    users: Array.isArray(data.users) ? data.users : [],
+    total: typeof data.total === "number" && Number.isFinite(data.total) ? data.total : null,
+    generatedAt: typeof data.generated_at === "string" ? data.generated_at : data.summary?.generated_at || null,
   };
 }
 
-export function fetchEmergencyCatalogStatus(init?: ApiRequestInit): Promise<EmergencyCatalogStatus> {
-  return apiFetch<EmergencyCatalogStatus>("/api/admin/emergency-network/status", init);
+export async function fetchEmergencyCatalogStatus(init?: ApiRequestInit): Promise<EmergencyCatalogStatus> {
+  const response = await apiFetch<AdminV2Envelope<EmergencyCatalogStatus>>("/api/admin/v2/network/emergency", init);
+  return response.data;
 }

@@ -552,6 +552,10 @@ Checkout rule:
 - public pricing starts from app-first marketing surfaces; `pokrov.space/checkout/` is the public plan and activation-key continuation route, not the first-pressure onboarding step
 - payment provider readiness is contractually separate from app-first access; public checkout must remain unavailable or degraded for any route not covered by `docs/product/payment-and-access-key-contract.md` and current provider evidence
 - `webapp` renewal is continuation-only and should defer to the same hosted activation-key flow
+- payment return uses the bounded server projection; `paid` must be followed
+  by an authenticated account refresh before the cabinet claims active access,
+  and a paid/inactive mismatch exposes refresh plus support rather than
+  treating payment state as entitlement
 - Telegram bot billing remains valid as a secondary path; bot orders are Telegram-ticket-bound and do not collect buyer email
 - raw subscription links remain hidden from public commerce and Android/Windows flows; the authenticated cabinet and Telegram bot may reveal one `connect.pokrov.space` key only for iPhone, iPad, and macOS compatible clients
 - signed payment callbacks must not grant access unless the normalized local status is `paid`; failed, cancelled, refunded, chargeback, invalid-signature, and unknown/manual-review states are recorded for operator reconciliation instead of extending the account
@@ -779,6 +783,18 @@ compatibility, never delay a payment/bonus start and never select
   start/end and server-aligned countdown. Media upload is admin-authenticated,
   magic-checked and content-addressed. Third-party ad SDKs, external tracking
   media, unsafe links and executable campaign payloads stay out of the app.
+
+The bounded 1.2.0 winback placement is a stricter dynamic subtype of that
+contract. App and cabinet consume one server-prioritized assignment only after
+pilot, legal/channel, capacity, audience, holdout, price, schedule and quota
+checks pass. The payload contains exact commercial lineage and a signed
+checkout ticket. App promo impression/click/dismiss/expired events repeat that
+lineage; the API rejects partial, stale or subject-conflicting values. Cabinet
+uses the same assignment contract on `webapp.subscription.contextual` and
+shows server price/deadline/terms/quota. Local dismiss/frequency state is only
+presentation; payment success and suppression remain server-owned. Ordinary
+access and offline product behavior continue when the pilot is absent, stale or
+blocked.
 - `POST /api/bonuses/wheel/spin` and
   `POST /api/bonuses/calendar/checkin` are app-facing, feature-flagged mutation
   routes. With flags off they return structured disabled errors. With flags on
@@ -948,6 +964,16 @@ Current event taxonomy should make the app-first journey visible across bot, sit
 - ticket create
 - expiry / churn
 - renewal / return
+
+The authenticated native first-session slice uses the fixed event names
+`app_first_open`, `acquisition_handoff_received|failed`,
+`trial_start_selected`, `existing_access_selected`,
+`vpn_permission_explainer_shown`, `vpn_permission_result`,
+`first_home_seen`, `connect_requested`, and `first_verified_connect`.
+`/api/events` derives account/device correlation from the bearer session; the
+native client does not upload an acquisition handle, session token, profile,
+endpoint, provider response, or raw host error. These rows remain advisory
+product telemetry and cannot activate a reserved trial or prove VPN egress.
 
 ## Release Scope Note
 

@@ -36,6 +36,10 @@ def get_tariff_catalog() -> dict[str, Any]:
     return _load_shared_json("tariff-catalog.json")
 
 
+def get_commercial_contract() -> dict[str, Any]:
+    return _load_shared_json("commercial-contract.json")
+
+
 def get_access_matrix() -> dict[str, Any]:
     return _load_shared_json("access-matrix.json")
 

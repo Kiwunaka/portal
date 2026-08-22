@@ -1,23 +1,41 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Loader2, LogIn } from "lucide-react";
 
 import type { OpsShellStatus } from "@/components/ops/shell-status";
 import { Badge, Button, Card, SectionTitle } from "@/components/ui";
 import { ErrorState, LoadingState } from "@/components/ui/states";
 import {
   AdminApiError,
-  clearAdminInitData,
-  clearAdminSessionToken,
-  createAdminSession,
-  hasAdminAuthMaterial,
-  saveAdminInitData,
-  saveAdminSessionToken
+  bootstrapAdminSession,
+  clearAdminSessionMemory,
+  finishAdminOidcSession,
+  finishAdminOidcStepUp,
+  getCurrentAdminSession,
+  hasTelegramMiniAppIdentity,
+  purgeLegacyAdminAuthStorage,
+  startAdminOidc
 } from "@/lib/admin-api/client";
+import {
+  loadOperatorShellIdentity,
+  type OperatorShellIdentity
+} from "@/lib/admin-api/identity";
 
 function isAccessDenied(error: unknown): boolean {
   return error instanceof AdminApiError && (error.status === 401 || error.status === 403);
+}
+
+function takeOidcCallback(): { code: string; state: string } | null {
+  const url = new URL(window.location.href);
+  const code = String(url.searchParams.get("code") || "").trim();
+  const state = String(url.searchParams.get("state") || "").trim();
+  if (!code && !state) return null;
+  url.searchParams.delete("code");
+  url.searchParams.delete("state");
+  window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  if (!code || !state) throw new Error("operator_oidc_callback_invalid");
+  return { code, state };
 }
 
 export function adminApiErrorText(error: AdminApiError | null, fallback: string): string {
@@ -48,34 +66,57 @@ export function adminApiErrorText(error: AdminApiError | null, fallback: string)
 
 export function AdminRouteBoundary({
   children,
-  onShellStatus
+  onShellStatus,
+  onIdentity
 }: {
   children: ReactNode;
   onShellStatus?: (status: OpsShellStatus) => void;
+  onIdentity?: (identity: OperatorShellIdentity | null) => void;
 }) {
   const [ready, setReady] = useState(false);
-  const [value, setValue] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const checkedAuthRef = useRef(false);
 
-  const startSession = useCallback(async (initData?: string, options?: { silent?: boolean }) => {
+  const startSession = useCallback(async (options?: { silent?: boolean; legacy?: boolean }) => {
     setBusy(true);
     if (!options?.silent) setError("");
+    let callbackAttempted = false;
     try {
-      const clean = String(initData || "").trim();
-      if (clean) saveAdminInitData(clean);
-      const session = await createAdminSession();
-      saveAdminSessionToken(session.token);
-      clearAdminInitData();
+      const callback = takeOidcCallback();
+      callbackAttempted = callback !== null;
+      let session: Awaited<ReturnType<typeof getCurrentAdminSession>>;
+      let hadSession = false;
+      try {
+        session = await getCurrentAdminSession();
+        hadSession = true;
+      } catch (reason) {
+        if (!isAccessDenied(reason)) throw reason;
+        clearAdminSessionMemory();
+        if (callback) {
+          session = await finishAdminOidcSession(callback.code, callback.state);
+        } else if (options?.legacy) {
+          session = await bootstrapAdminSession();
+        } else {
+          throw reason;
+        }
+      }
+      if (callback && hadSession) {
+        await finishAdminOidcStepUp(callback.code, callback.state);
+        session = await getCurrentAdminSession();
+      }
+      onIdentity?.(await loadOperatorShellIdentity(session));
       setReady(true);
+      onShellStatus?.({ api: "missing", session: "ok", oldestRequiredSourceAt: null });
     } catch (reason) {
+      onIdentity?.(null);
+      setReady(false);
       onShellStatus?.({
         api: "missing",
         session: isAccessDenied(reason) ? "failed" : "unavailable",
         oldestRequiredSourceAt: null
       });
-      if (!options?.silent) {
+      if (!options?.silent || callbackAttempted) {
         setError(reason instanceof AdminApiError
           ? adminApiErrorText(reason, "Не удалось открыть сессию. Проверьте доступ и повторите вход.")
           : "Не удалось открыть сессию. Проверьте доступ и повторите вход.");
@@ -83,17 +124,32 @@ export function AdminRouteBoundary({
     } finally {
       setBusy(false);
     }
-  }, [onShellStatus]);
+  }, [onIdentity, onShellStatus]);
+
+  const beginOidc = useCallback(async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const envelope = await startAdminOidc("login");
+      const authUrl = new URL(envelope.data.auth_url);
+      if (authUrl.protocol !== "https:" || authUrl.hostname !== "oauth.telegram.org") {
+        throw new Error("operator_oidc_authorize_url_invalid");
+      }
+      window.location.assign(authUrl.toString());
+    } catch (reason) {
+      setError(reason instanceof AdminApiError
+        ? adminApiErrorText(reason, "OIDC-вход временно недоступен.")
+        : "OIDC-вход временно недоступен.");
+      setBusy(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (checkedAuthRef.current) return;
     checkedAuthRef.current = true;
+    purgeLegacyAdminAuthStorage();
     onShellStatus?.({ api: "missing", session: "missing", oldestRequiredSourceAt: null });
-    if (hasAdminAuthMaterial()) {
-      const timer = window.setTimeout(() => setReady(true), 0);
-      return () => window.clearTimeout(timer);
-    }
-    const timer = window.setTimeout(() => void startSession("", { silent: true }), 0);
+    const timer = window.setTimeout(() => void startSession({ silent: true }), 0);
     return () => window.clearTimeout(timer);
   }, [onShellStatus, startSession]);
 
@@ -104,34 +160,17 @@ export function AdminRouteBoundary({
       <Card className="w-full max-w-xl">
         <SectionTitle
           title="Вход в админку"
-          description="Сначала проверяем текущую web-сессию. Если доступа нет, вставьте Telegram WebApp initData один раз."
-        />
-        <textarea
-          value={value}
-          onChange={(event) => setValue(event.target.value)}
-          aria-label="Telegram WebApp initData"
-          placeholder="query_id=...&user=...&auth_date=...&hash=..."
-          className="min-h-28 w-full rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] p-3 text-xs outline-none focus:border-[color:var(--atlas-focus)]"
+          description="Серверная операторская сессия не подтвердилась. Основной вход использует Telegram OIDC; оператор и роль должны быть заведены заранее."
         />
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button tone="primary" disabled={busy} onClick={() => void startSession()}>
-            {busy ? <Loader2 className="animate-spin" size={15} /> : <Check size={15} />} Войти через текущую сессию
+          <Button tone="primary" disabled={busy} onClick={() => void beginOidc()}>
+            {busy ? <Loader2 className="animate-spin" size={15} /> : <LogIn size={15} />} Войти через Telegram OIDC
           </Button>
-          <Button tone="secondary" disabled={busy || !value.trim()} onClick={() => void startSession(value)}>
-            {busy ? <Loader2 className="animate-spin" size={15} /> : <Check size={15} />} Войти по initData
-          </Button>
-          <Button
-            tone="ghost"
-            disabled={busy}
-            onClick={() => {
-              clearAdminInitData();
-              clearAdminSessionToken();
-              setValue("");
-              setError("");
-            }}
-          >
-            Сбросить
-          </Button>
+          {hasTelegramMiniAppIdentity() ? (
+            <Button tone="secondary" disabled={busy} onClick={() => void startSession({ legacy: true })}>
+              Compatibility-вход
+            </Button>
+          ) : null}
         </div>
         {error ? <div className="mt-3"><Badge tone="danger">{error}</Badge></div> : null}
       </Card>

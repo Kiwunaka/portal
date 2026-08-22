@@ -1,0 +1,65 @@
+{
+  "schema": "pokrov.release-1.2.0.phase01-residual-reconciliation.v1",
+  "generated_at": "2026-08-22T10:17:42Z",
+  "work_order": "WO-003J",
+  "advanced_rows": {
+    "FE/P12-023": "I1",
+    "FE_PR/PR-00": "I2"
+  },
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "source_acceptance": {
+    "public_release_owner": "Kiwunaka/pokrov",
+    "public_release_role": "TRUST_SURFACE_NOT_UI_SOURCE",
+    "required_facts": [
+      "canonical_apk_exe",
+      "sha256sums",
+      "signature_metadata",
+      "release_manifest",
+      "release_notes",
+      "minimum_os_architecture",
+      "app_build",
+      "core_version_abi",
+      "build_date",
+      "source_commits",
+      "channel",
+      "known_issues",
+      "upgrade_notes"
+    ],
+    "pr00_requirements": [
+      "release_branches",
+      "baseline_shas",
+      "flags",
+      "manifest_schema",
+      "product_facts_snapshot",
+      "reason_code_draft",
+      "motion_semantics",
+      "no_visible_ui_change"
+    ]
+  },
+  "current_evidence": {
+    "baseline_and_lanes": "WO-001_LOCAL_I3",
+    "strict_manifest_and_flags": "WO-002_003_003B_LOCAL_I3",
+    "product_facts_snapshot": "WO-008A_IMPLEMENTED",
+    "reason_code_catalog": "WO-006A_006I_LOCAL_I3_121_CODES",
+    "motion_semantics": "WO-010E_LOCAL_I3",
+    "commercial_contract_check": "PASS_REVISION_2026-08-21.1",
+    "platform_focused_contract_regression": "PASS_73_OF_73",
+    "client_motion_app_shell_regression": "PASS_164_OF_164",
+    "public_release_index": "BLOCKED_BY_ACCESS",
+    "exact_candidate": "NOT_CREATED",
+    "isolated_no_ui_freeze_revision": "MISSING"
+  },
+  "ledger_distribution": "I3_268_I2_36_I1_46_I0_27_TOTAL_377",
+  "ledger_at_least_i1": 350,
+  "ledger_below_i3": 109,
+  "manual_or_external": {
+    "clean_freeze_commit": "NOT_CREATED",
+    "isolated_freeze_pr": "NOT_CREATED",
+    "hosted_ci": "NOT_RUN",
+    "public_release_index_readback": "BLOCKED_BY_ACCESS",
+    "signing": "NOT_RUN",
+    "publication": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

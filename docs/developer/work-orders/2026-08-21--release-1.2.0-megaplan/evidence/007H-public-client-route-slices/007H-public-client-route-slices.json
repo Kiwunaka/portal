@@ -1,0 +1,109 @@
+{
+  "candidate_created": false,
+  "date": "2026-08-22",
+  "evidence_ceiling": "I2_IMPLEMENTED_PARTIAL_WITH_LOCAL_REGRESSION_PROOF",
+  "ledger_advancement": [],
+  "ledger_distribution": {
+    "I0": 20,
+    "I1": 45,
+    "I2": 33,
+    "I3": 279,
+    "at_least_i1": 357,
+    "below_i3": 98,
+    "total": 377
+  },
+  "ledger_unchanged": [
+    "REL/ARCH-002 remains I2"
+  ],
+  "noncanonical_diagnostics": [
+    {
+      "result": "DEFECT_REPRODUCED",
+      "summary": "The first broad mixed API run produced 225 passes, 12 passing subtests and 9 failures: eight late network-rollout failures after _synthetic_transport_node disappeared and one stale source-location assertion."
+    },
+    {
+      "result": "DEFECT_REPRODUCED_AFTER_PARTIAL_FIX",
+      "summary": "After registered stale-slice cleanup and source-contract correction, the exact mixed process still produced 226 passes, 12 passing subtests and 8 network-rollout failures in 963.15 seconds. This isolated restored owner identity as the remaining cause."
+    },
+    {
+      "result": "DIAGNOSTIC_ONLY_NOT_A_GATE",
+      "summary": "Exploratory broad Ruff format/check against legacy api.py exposed existing whole-file debt. Formatting noise was not retained; the semantic dirty state was preserved, compilation passed and the affected regression matrix is green."
+    }
+  ],
+  "platform_branch": "codex/1.2.0-phase00",
+  "platform_head": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+  "platform_source_dirty": true,
+  "promotion_authorized": false,
+  "remaining_architecture_inventory": {
+    "admin_action_intent_service_lines": 8365,
+    "status": "REMAINS_BEFORE_ARCH_002_I3"
+  },
+  "reload_contract": {
+    "failure": "A restored older owner export could enter the bootstrap set and cause the fresh same-named definition to lose registered ownership.",
+    "fix": "Clear owner exports by registered ownership rather than object identity and clear current plus registered slice-owned names before reload.",
+    "permanent_regressions": [
+      "stale owner monkeypatch cleanup cannot mutate replacement slices",
+      "restored stale slice cannot hide a registered export",
+      "restored stale owner cannot poison export ownership across a following clean replacement"
+    ]
+  },
+  "route_table": {
+    "duplicate_method_path_pairs": 0,
+    "path_objects": 289,
+    "unique_method_path_pairs": 300
+  },
+  "slice_lines": {
+    "api.py": 9594,
+    "api_client_routes.py": 3980,
+    "api_payment_routes.py": 381,
+    "api_public_routes.py": 2019,
+    "module_slices.py": 177
+  },
+  "source_hashes": {
+    "docs/architecture/system-overview.md": "fd2f5f99f181ded05eae3ee661330d95be249bf86567021a35acc43d87398bd2",
+    "docs/developer/backend-module-map.md": "c3520cee02c310ebbcda178b3e1e6f89f6b6177af9184d22b6ee76c097cb14b1",
+    "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/EXECUTION-INDEX.md": "e1345733ce4de5009219e56fd953dafe1f66de9477f7c68f14884edfa4fb06f9",
+    "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/INDEX.md": "2bae5884722dfb1949ff8fc9f9ccf8c89150df0cc39e7223765da7ed980169a0",
+    "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-007-portal-payment-reliability.md": "07989e1752ceae5bffde868ae5dfd9e61619ddea97ecbc6dd7af1b91a36c41e8",
+    "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-007H-public-client-route-slices.md": "b0da380afcad54dbd5d4705b68d8caf0e94819525f74e3e1b553de2aa4d6ac4a",
+    "portal_bot/api.py": "fc6ea61fac19f3882b8898ba12567e4aa8ffaba97be0972420565852df19bc1a",
+    "portal_bot/api_client_routes.py": "8b1e77db2726127fd7b9b6a0088eded4df9a0553aa92b3cb7f0448da99c02358",
+    "portal_bot/api_payment_routes.py": "45436e6b02dc54d54746d1514d23ecc618aa1df61902b1e164d5c38a2d5504bb",
+    "portal_bot/api_public_routes.py": "2c9dcc26f0f4c41266af14a592f4fab349046a740c1353e8d6a59f0479a82da8",
+    "portal_bot/module_slices.py": "84cfb0c5545bbbce61afc7f09bff395178f53116cc5204b4d9f8b67b1f8522fb",
+    "tests/test_admin_action_policy_coverage.py": "807ae8b807b287121a48ab013a47bd118cbd709a6c1a20db9e87e7f1d5176525",
+    "tests/test_module_slices.py": "75434366803c866ef34c961c3fa4d7666a8ab9d3a9fd49897573f22efb1596ca",
+    "tests/test_payment_bounded_context.py": "346dcdc5909e70301745b26e950240938f9985a17dd377cb14617c03c73078e6",
+    "tests/test_payment_db_runtime.py": "a4eff46acf1f94ec8513d1a07560e07d9e8fa0fc06a076c103a6747d67675ea3",
+    "tests/test_payment_http_registry.py": "3617e0ef83ea5e3454ff28d1ef4171ab95985840964a8d9bc692c1c6c98a06f6"
+  },
+  "stage_distribution_below_i3": {
+    "candidate": 32,
+    "deferred": 21,
+    "external": 17,
+    "external_pre_candidate": 3,
+    "pre_freeze": 28
+  },
+  "status": "PASS_PARTIAL_ARCHITECTURE_WITH_DECLARED_REMAINDER",
+  "verification": [
+    {
+      "command": "pytest tests/test_module_slices.py tests/test_payment_db_runtime.py tests/test_payment_http_registry.py tests/test_payment_bounded_context.py tests/test_admin_action_policy_coverage.py",
+      "result": "PASS; 25/25"
+    },
+    {
+      "command": "pytest tests/test_module_slices.py tests/test_network_rollout_api.py",
+      "result": "PASS; 16/16; 36.69 seconds"
+    },
+    {
+      "command": "single-process nine-file app-first/email/auth/P0/client/network/payment/smart-connect/subscription matrix",
+      "result": "PASS; 234 tests plus 12 subtests; 959.26 seconds"
+    },
+    {
+      "command": "import api and expand FastAPI methods into method/path pairs",
+      "result": "PASS; 300 unique pairs; no duplicates"
+    },
+    {
+      "command": "changed-file Python compile and focused Ruff checks",
+      "result": "PASS"
+    }
+  ]
+}

@@ -1,0 +1,60 @@
+{
+  "schema": "pokrov.release-1.2.0.readiness-current-history.v1",
+  "generated_at": "2026-08-22T09:28:59Z",
+  "work_order": "WO-003G",
+  "advanced_rows": [
+    "REL/DOC-001",
+    "REL_DOD/DOD-19"
+  ],
+  "implementation_index": "I3",
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "sources": {
+    "platform_revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "platform_dirty_entries": 331,
+    "client_revision_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+    "client_dirty_entries": 169,
+    "core_revision_before_uncommitted_changes": "69a74545101708e56183c92e31f2b4c7b2509884",
+    "core_dirty_entries": 51
+  },
+  "current_owners": [
+    "docs/implementation/client-release-backlog.md",
+    "docs/operations/cutover-readiness.md",
+    "docs/operations/android-release-audit.md",
+    "docs/operations/windows-release-readiness.md",
+    "docs/operations/warp-runtime-proof-checklist.md",
+    "docs/operations/responsive-golden-capture-plan.md",
+    "docs/operations/client-motion-performance-checklist.md",
+    "docs/operations/apple-release-readiness.md"
+  ],
+  "retained_snapshot_count": 6,
+  "canonical_truth": {
+    "retained_public_release": "1.1.6",
+    "development_target": "1.2.0+30",
+    "development_state": "PRE_CANDIDATE_LOCAL",
+    "candidate_created": false,
+    "public_cutover_allowed": false,
+    "active_core": "1.0.3",
+    "intended_core_replacement": "1.1.0_DIRTY_DEVELOPMENT_REPLACEMENT_PENDING"
+  },
+  "local_results": {
+    "client_docs_contract": "PASS",
+    "client_seed_and_cross_repo_contracts": "PASS",
+    "platform_docs_and_context_tests": "PASS_31_OF_31",
+    "platform_context_audit": "PASS",
+    "documentation_links": "PASS",
+    "json_parsing": "PASS",
+    "scoped_diff_check": "PASS_WITH_LINE_ENDING_WARNINGS_ONLY",
+    "candidate_preflight": "BLOCKED_5_CANDIDATE_FALSE_LEDGER_BELOW_I3_112",
+    "ledger_distribution": "I3_265_I2_35_I1_46_I0_31_TOTAL_377"
+  },
+  "manual_or_external": {
+    "real_candidate": "NOT_CREATED",
+    "public_release_index": "BLOCKED_BY_ACCESS",
+    "hosted_ci": "NOT_RUN",
+    "signed_artifact_identity": "NOT_RUN",
+    "physical_device_and_clean_machine_proof": "MANUAL_OWNER_TEST",
+    "deployed_readback": "NOT_RUN",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

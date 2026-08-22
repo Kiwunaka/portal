@@ -1,0 +1,32 @@
+{
+  "schema": "pokrov.release-1.2.0.abi-v3-decision.v1",
+  "generated_at": "2026-08-22T10:19:25Z",
+  "work_order": "WO-004D",
+  "row": "FE/P12-201",
+  "status": "DEFERRED_POST_1_2_0",
+  "implementation_index": "I1",
+  "source_decision": {
+    "frontend_adapter_without_abi_v3": true,
+    "core_abi_v2_preserved_for_1_2_0": true,
+    "abi_v3_proposed_after_1_2_0": true,
+    "p12_201_priority": "P2_AFTER_BLOCKERS",
+    "abi_v3_forbidden_as_1_2_0_blocker": true
+  },
+  "current_contract": {
+    "desktop_abi": 2,
+    "descriptor_schema": 1,
+    "event_abi": 1,
+    "client_connection_truth_owner": "typed_frontend_adapter",
+    "future_abi_fails_closed": true
+  },
+  "local_results": {
+    "core_canonical_release_gate": "PASS",
+    "runtime_engine": "PASS_59_WITH_1_DECLARED_EXACT_OLD_DLL_SKIP",
+    "gate_b": "LOCAL_I3",
+    "transport_classification": "LOCAL_I3"
+  },
+  "ledger_distribution": "I3_268_I2_36_I1_47_I0_26_TOTAL_377",
+  "ledger_at_least_i1": 351,
+  "ledger_below_i3": 109,
+  "candidate_or_promotion_effect": "NONE"
+}

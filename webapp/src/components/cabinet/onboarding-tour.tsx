@@ -112,6 +112,7 @@ export function OnboardingTour({ open, nextStep, saving = false, error = "", onC
   const reduceMotion = useReducedMotion();
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement | null>(null);
+  const restoreFocusRef = useRef<HTMLElement | null>(null);
   const [stepIndex, setStepIndex] = useState(() => initialStepFor(nextStep));
   const [direction, setDirection] = useState(1);
 
@@ -125,11 +126,17 @@ export function OnboardingTour({ open, nextStep, saving = false, error = "", onC
 
   useEffect(() => {
     if (!open || typeof document === "undefined") return;
+    restoreFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     document.body.classList.add("modal-open");
     const focusTimer = window.setTimeout(() => panelRef.current?.focus(), 30);
     return () => {
       document.body.classList.remove("modal-open");
       window.clearTimeout(focusTimer);
+      const restoreTarget = restoreFocusRef.current;
+      restoreFocusRef.current = null;
+      if (restoreTarget?.isConnected) {
+        window.requestAnimationFrame(() => restoreTarget.focus());
+      }
     };
   }, [open]);
 
@@ -255,11 +262,11 @@ export function OnboardingTour({ open, nextStep, saving = false, error = "", onC
                       <div>
                         <p className="text-xs font-semibold tracking-[0.14em] text-ink-muted uppercase">1 из 3</p>
                         <h2 id={titleId} className="mt-1.5 font-display text-[1.45rem] leading-tight font-bold tracking-[-0.02em] text-ink">Скачайте приложение</h2>
-                        <p className="mx-auto mt-2 max-w-[36ch] text-sm leading-6 text-ink-soft">Берите сборки только из раздела «Загрузки» кабинета. Неподписанная beta потребует ручного подтверждения установки.</p>
+                        <p className="mx-auto mt-2 max-w-[36ch] text-sm leading-6 text-ink-soft">Берите сборки только из раздела «Загрузки» кабинета. Там указаны версия, размер и SHA-256; неполный релиз скрывается.</p>
                       </div>
                       <ul className="m-0 w-full list-none divide-y divide-line overflow-hidden rounded-card border border-line bg-surface p-0 text-left shadow-soft">
-                        <PlatformRow icon={Smartphone} label="Android" hint="APK · публичная beta" />
-                        <PlatformRow icon={MonitorSmartphone} label="Windows" hint="EXE · публичная beta" />
+                        <PlatformRow icon={Smartphone} label="Android" hint="APK · версия и SHA-256" />
+                        <PlatformRow icon={MonitorSmartphone} label="Windows" hint="EXE · версия и SHA-256" />
                       </ul>
                     </>
                   ) : null}

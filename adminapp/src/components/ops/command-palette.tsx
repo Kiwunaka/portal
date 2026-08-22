@@ -8,7 +8,7 @@ import { AdminApiError, apiFetch } from "@/lib/admin-api/client";
 import { OPS_SECTIONS } from "@/lib/sections";
 
 export type AdminSearchResult = {
-  kind: "user" | "order" | "node" | "key";
+  kind: "user" | "order" | "node" | "key" | "case" | "support_bundle" | "correlation";
   id: string;
   title: string;
   subtitle: string;
@@ -17,7 +17,7 @@ export type AdminSearchResult = {
 
 type SearchState = "idle" | "loading" | "ready" | "unavailable" | "error";
 
-const SEARCH_KINDS = new Set<AdminSearchResult["kind"]>(["user", "order", "node", "key"]);
+const SEARCH_KINDS = new Set<AdminSearchResult["kind"]>(["user", "order", "node", "key", "case", "support_bundle", "correlation"]);
 const SEARCH_RESULT_FIELDS = new Set(["kind", "id", "title", "subtitle", "href"]);
 const ADMIN_ORIGIN = "https://admin.pokrov.space";
 const RAW_IP_PATTERN = /\b(?:\d{1,3}\.){3}\d{1,3}\b/;
@@ -143,10 +143,15 @@ function normalizeResult(value: unknown): AdminSearchResult | null {
 }
 
 function resultsFromPayload(payload: unknown): AdminSearchResult[] {
+  const envelopeData = payload && typeof payload === "object" && !Array.isArray(payload)
+    ? (payload as { data?: unknown }).data
+    : null;
   const raw = Array.isArray(payload)
     ? payload
     : payload && typeof payload === "object" && Array.isArray((payload as { results?: unknown }).results)
       ? ((payload as { results: unknown[] }).results)
+      : envelopeData && typeof envelopeData === "object" && Array.isArray((envelopeData as { results?: unknown }).results)
+        ? ((envelopeData as { results: unknown[] }).results)
       : [];
   return raw.map(normalizeResult).filter((item): item is AdminSearchResult => item !== null);
 }
@@ -155,7 +160,10 @@ const KIND_LABELS: Record<AdminSearchResult["kind"], string> = {
   user: "Пользователь",
   order: "Заказ",
   node: "Нода",
-  key: "Ключ"
+  key: "Ключ",
+  case: "Обращение",
+  support_bundle: "Пакет поддержки",
+  correlation: "Корреляция"
 };
 
 export interface CommandPaletteProps {
@@ -176,19 +184,24 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
 
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
-      apiFetch<unknown>(`/api/admin/search?q=${encodeURIComponent(trimmedQuery)}`, {
-        method: "GET",
-        signal: controller.signal
-      })
-        .then((payload) => {
+      const encodedQuery = encodeURIComponent(trimmedQuery);
+      Promise.allSettled([
+        apiFetch<unknown>(`/api/admin/search?q=${encodedQuery}`, { method: "GET", signal: controller.signal }),
+        apiFetch<unknown>(`/api/admin/v2/support/search?q=${encodedQuery}`, { method: "GET", signal: controller.signal }),
+      ])
+        .then((outcomes) => {
           if (controller.signal.aborted) return;
-          setResults(resultsFromPayload(payload));
-          setSearchState("ready");
-        })
-        .catch((error: unknown) => {
-          if (controller.signal.aborted) return;
+          const fulfilled = outcomes.filter((outcome): outcome is PromiseFulfilledResult<unknown> => outcome.status === "fulfilled");
+          if (fulfilled.length) {
+            const merged = fulfilled.flatMap((outcome) => resultsFromPayload(outcome.value));
+            const unique = merged.filter((item, index) => merged.findIndex((candidate) => candidate.kind === item.kind && candidate.id === item.id) === index);
+            setResults(unique);
+            setSearchState("ready");
+            return;
+          }
+          const errors = outcomes.map((outcome) => outcome.status === "rejected" ? outcome.reason : null);
           setResults([]);
-          setSearchState(error instanceof AdminApiError && error.status === 404 ? "unavailable" : "error");
+          setSearchState(errors.every((error) => error instanceof AdminApiError && error.status === 404) ? "unavailable" : "error");
         });
     }, 200);
 
@@ -208,7 +221,7 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
       open={open}
       onOpenChange={onOpenChange}
       title="Палитра команд"
-      description="Перейдите в раздел или найдите пользователя, заказ, ноду либо ключ."
+      description="Перейдите в раздел или найдите пользователя, заказ, ноду, ключ, обращение либо correlation-код."
       className="max-w-3xl"
       initialFocusRef={searchInputRef}
     >
@@ -227,7 +240,7 @@ export function CommandPalette({ open, onOpenChange, onNavigate }: CommandPalett
             setResults([]);
             setSearchState(nextQuery.trim().length >= 2 ? "loading" : "idle");
           }}
-          placeholder="Введите ID, имя, заказ, ноду или ключ"
+          placeholder="Введите ID, имя, заказ, ноду, case, support или correlation code"
           className="h-11 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] pl-10 pr-3 text-sm outline-none transition focus:border-[color:var(--atlas-focus)] focus:ring-2 focus:ring-[color:var(--atlas-focus)]/30"
         />
       </label>

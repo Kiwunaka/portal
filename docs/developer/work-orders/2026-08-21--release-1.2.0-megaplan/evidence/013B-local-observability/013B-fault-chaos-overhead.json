@@ -1,0 +1,104 @@
+{
+  "schema": "pokrov.release-1.2.0.local-observability-gate.v1",
+  "generated_at": "2026-08-22T06:32:10Z",
+  "work_order": "WO-013B",
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "client": {
+    "repository": "POKROV-app",
+    "branch": "codex/1.2.0-release-v2",
+    "head_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+    "worktree_state": "DIRTY_PRE_CANDIDATE_LOCAL",
+    "dirty_entry_count_at_capture": 163,
+    "product_version": "1.2.0+30"
+  },
+  "fault_matrix": {
+    "required_injections": 19,
+    "mapped_injections": 19,
+    "canonical_code_validation": "PASS",
+    "local_source_mapping": "PASS",
+    "actual_boundary_injection": "NOT_RUN",
+    "linux_polkit_case": "NOT_SHIPPED",
+    "ledger_result": "I1_VERIFIED_CONTRACT_ONLY",
+    "source_sha256": "89fa325bc49cf8cf096f49babebd0cf8f9fd86d8f529fc9eab8ba9eaa82bb8cb",
+    "test_sha256": "552a654d894855d233a8a61b9c111b174aa8e65ecd7b3a22e0f622f7df05689d"
+  },
+  "network_chaos": {
+    "scenarios": [
+      "packet_loss",
+      "dns_unavailable",
+      "mtu_black_hole",
+      "ipv6_path_unavailable"
+    ],
+    "synthetic_timeline_result": "PASS",
+    "verified_state_forbidden": "PASS",
+    "physical_or_emulated_network_mutation": "NOT_RUN",
+    "route_dns_cleanup_proof": "NOT_RUN",
+    "ledger_result": "I2_IMPLEMENTED_SYNTHETIC_LOCAL"
+  },
+  "overhead": {
+    "state": "PARTIAL_LOCAL",
+    "target": "windows",
+    "candidate_proven": false,
+    "events_attempted": 266,
+    "events_accepted": 266,
+    "events_dropped": 0,
+    "idle_bytes_per_minute": 8472,
+    "connect_burst_bytes": 216872,
+    "max_event_bytes": 849,
+    "emit_p95_microseconds": 358,
+    "peak_queue_bytes": 216872,
+    "rss_delta_bytes": 2830336,
+    "measured_results": {
+      "idle_volume": "PASS",
+      "connect_volume": "PASS",
+      "payload": "PASS",
+      "queue_volume": "PASS",
+      "queue_loss": "PASS"
+    },
+    "unmeasured_results": {
+      "idle_cpu": "NOT_MEASURED",
+      "cold_start_delta": "NOT_MEASURED",
+      "connect_latency_delta": "NOT_MEASURED",
+      "idle_app_delta": "NOT_MEASURED",
+      "physical_battery": "NOT_MEASURED",
+      "thermal": "NOT_MEASURED"
+    },
+    "ledger_result": "I1_LOCAL_PIPELINE_OBSERVATION_ONLY",
+    "assessment_sha256": "c00e458fddc0eada44bfe699fde874f71f1f5bbbf0dda22be0baa67a3ccb09f3",
+    "test_sha256": "717fcdd50cbcf786b81ad6212f90aca6b36f4243ac94da9260a3b8b296238c30",
+    "tool_sha256": "3545bffe5de62495c7312a89017d02a30ff2f4b989b39582cfb990b15bf90a8e"
+  },
+  "commands": [
+    {
+      "command": "flutter test test/fault_chaos_contract_test.dart test/overhead_contract_test.dart",
+      "result": "PASS_6_OF_6"
+    },
+    {
+      "command": "flutter analyze",
+      "workdir": "packages/observability_runtime",
+      "result": "PASS_NO_ISSUES"
+    },
+    {
+      "command": "flutter test",
+      "workdir": "packages/observability_runtime",
+      "result": "PASS_27_OF_27"
+    },
+    {
+      "command": "dart run tool/runtime_overhead_benchmark.dart --target=windows",
+      "result": "PARTIAL_LOCAL_MEASURED_LIMITS_PASS"
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/validate-seed.ps1 -PlatformRoot <phase00> -CoreRoot <core-release-v2>",
+      "result": "PASS"
+    }
+  ],
+  "manual_or_external": {
+    "exact_candidate": "NOT_CREATED",
+    "android_physical_device": "NOT_RUN",
+    "windows_clean_vm": "NOT_RUN",
+    "physical_network_chaos": "NOT_RUN",
+    "device_cpu_battery_thermal": "NOT_RUN",
+    "deployed_origin": "NOT_RUN"
+  }
+}

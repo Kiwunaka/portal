@@ -34,9 +34,15 @@ meaningful risk requires a work order.
   POKROV-app/main is the client promotion line.
 - Retired bootstrap material and bridge bundles are archive or rollback
   evidence, never active development lanes.
-- The distributed stable-direct client is `v1.0.10`; store publication,
-  trusted Windows signing and exact-final Huawei/RU-LTE claims remain separate
-  manual gates.
+- The retained distributed stable-direct client is `v1.1.6`; its public
+  package line is `1.1.6+29`. The working `1.2.0+30` line is
+  `PRE_CANDIDATE_LOCAL` with `candidate_created=false`. Store publication,
+  trusted Windows signing and exact-candidate Huawei/RU-LTE claims remain
+  separate manual gates.
+- Public and development version truth is owned by the client
+  `config/release-handoff.seed.json`; a generated strict-v2 handoff owns a new
+  exact candidate. This platform guide is a validated projection, not another
+  release manifest.
 - mini is an operator probe/sandbox and an opt-in emergency bridge. It is not
   part of normal delivery or the control plane.
 
@@ -80,15 +86,27 @@ git diff --name-only against the declared write scope before staging.
 
 ## Focused Verification Commands
 
-Interactive focused checks use the configured system Python. Install the
-tracked backend requirements into that interpreter after dependency changes;
-release and migration rehearsals may still create an isolated environment when
+Interactive focused checks use the configured system Python. Runtime, test and
+operator dependencies are compiled universal Python 3.12 lock files with exact
+versions and artifact hashes. Edit only `portal_bot/requirements.in`,
+`requirements-test.in` or `requirements-ops.in`, then regenerate the matching
+lock with the `uv 0.9.26` command recorded in its header. CI installs the test
+and ops locks with `--require-hashes`; do not add one-off `pip install` lines.
+Release and migration rehearsals may still create an isolated environment when
 their script owns one.
 
 ~~~powershell
 $py = (Get-Command python.exe).Source
-& $py -m pip install -r portal_bot/requirements.txt
+& $py -m pip install --require-hashes -r requirements-test.txt
+& $py scripts/check_dependency_contract.py
 ~~~
+
+The three frontend packages use exact direct versions and npm lockfile v3.
+`shared/dependency-contract.json` owns Python/pip/uv, Node/npm and shared
+Next/React/Tailwind/TypeScript/Playwright versions. Use `npm.cmd ci`, never
+`npm install`, for verification and release-bound CI. A toolchain or dependency
+change must update the source manifest, generated lock, shared contract when
+applicable, and pass `scripts/check_dependency_contract.py` in the same change.
 
 ### Backend, account, API, and bots
 
@@ -102,8 +120,10 @@ $py = (Get-Command python.exe).Source
 ### Primary admin and web fallback
 
 ~~~powershell
-& $py -B -m pytest -p no:cacheprovider tests/test_admin_ops_api.py -q
+& $py -B -m pytest -p no:cacheprovider tests/test_operator_center_manifest.py tests/test_admin_ops_api.py -q
 Push-Location adminapp
+npm.cmd run build:contract
+npm.cmd run lint
 npm.cmd run build
 npm.cmd run test:e2e
 Pop-Location
@@ -140,6 +160,20 @@ Pop-Location
 Keep current-origin, brain-origin, and RU-origin evidence separate. A local
 green test does not prove a deployed host or external origin.
 
+### Commercial capacity and rollback contract
+
+~~~powershell
+& $py -B -m pytest -p no:cacheprovider tests/test_commercial_campaign_policy.py tests/test_commercial_capacity_service.py tests/test_commercial_revision_bundle.py -q
+& $py -B scripts/commercial_revision_bundle.py snapshot --output C:\safe\commercial-revision.zip
+& $py -B scripts/commercial_revision_bundle.py readback --bundle C:\safe\commercial-revision.zip
+& $py -B scripts/commercial_revision_bundle.py restore --bundle C:\safe\commercial-revision.zip
+~~~
+
+The final command is a repository dry-run. Never add `--apply` without the
+current-revision and bundle-SHA guards, a reviewed diff and explicit scope for a
+local rollback. It still does not authorize deploy, CDN purge, campaign launch
+or public readback.
+
 ### Release orchestration
 
 - The GitHub Actions release orchestrator is manual-only and defaults to
@@ -152,12 +186,19 @@ green test does not prove a deployed host or external origin.
   `82.21.114.104` with `pokrov.space` and `api.pokrov.space`. The local
   `scripts/release_orchestrator.py` enforces the same brain-host boundary when
   `NODE_PASS_BRAIN` is present.
+- `verify-only` and `full` execution require a strict-v2
+  `release-handoff.json`; legacy env-only input is rejected. `dry-run` may omit
+  candidate metadata because it performs no remote mutation.
+- Release-bound workflows check out platform, active client, and Core
+  explicitly. The generic `Guardrails` workflow remains repository-local and
+  its allowed client skip is not release evidence.
 
 ### Active client boundary
 
 ~~~powershell
 & $py -B scripts/run_client_release_gate.py preflight
 & $py -B scripts/run_client_release_gate.py test --suite portal
+& $py -B scripts/run_client_release_gate.py contract --client-root C:\path\to\POKROV-app --core-root C:\path\to\POKROV-core
 ~~~
 
 Run builds and full client gates only when the task changes release behavior.

@@ -1,0 +1,66 @@
+{
+  "schema": "pokrov.release-1.2.0.source-release-index-boundary.v1",
+  "generated_at": "2026-08-22T09:51:34Z",
+  "work_order": "WO-003I",
+  "advanced_rows": [
+    "REL/REPO-001"
+  ],
+  "implementation_index": "I2",
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "sources": {
+    "platform_revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "platform_dirty_entries": 337,
+    "client_revision_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+    "client_dirty_entries_after_implementation": 174,
+    "core_revision_before_uncommitted_changes": "69a74545101708e56183c92e31f2b4c7b2509884",
+    "core_dirty_entries": 51
+  },
+  "inventory": {
+    "platform_tracked_temp_or_build_paths": 0,
+    "core_tracked_temp_or_build_paths": 0,
+    "client_temp_deletions": [
+      {
+        "path": "packages/app_shell/.tmp/generate_live_android_runtime.dart",
+        "deleted_lines": 22,
+        "recoverable_git_blob": "9522d859184c5609f40f3765ba6e788b980d7443"
+      },
+      {
+        "path": "packages/app_shell/.tmp/live_managed_profile_dump_test.dart",
+        "deleted_lines": 31,
+        "recoverable_git_blob": "9f7e3ac8809f0da575ef3053281c7cf6efabb58f"
+      }
+    ],
+    "retained_release_history_files": 138,
+    "retained_release_history_bytes": 4642837966,
+    "retained_release_history_diff_count": 0,
+    "active_tracked_runtime_binary_count": 3,
+    "active_runtime_paths": [
+      "apps/android_shell/android/app/libs/pokrov-core.aar",
+      "apps/windows_shell/windows/runner/resources/runtime/libcronet.dll",
+      "apps/windows_shell/windows/runner/resources/runtime/pokrov-core.dll"
+    ]
+  },
+  "local_results": {
+    "repository_hygiene_contract": "PASS_EFFECTIVE_TRACKED_576_HISTORY_138_PENDING_TEMP_DELETES_2_RUNTIME_BINARIES_3",
+    "release_handoff_v2_contract": "PASS_16_CASES",
+    "release_v2_ci_contract": "PASS",
+    "client_docs_contract": "PASS",
+    "full_client_cross_repository_gate": "PASS",
+    "platform_docs_and_context_tests": "PASS_32_OF_32",
+    "platform_context_audit": "PASS",
+    "platform_link_check": "PASS",
+    "candidate_preflight": "BLOCKED_5_CANDIDATE_FALSE_LEDGER_BELOW_I3_111",
+    "retained_release_history_diff": "PASS_EMPTY",
+    "ledger_distribution": "I3_266_I2_36_I1_45_I0_30_TOTAL_377"
+  },
+  "manual_or_external": {
+    "clean_client_revision": "NOT_CREATED",
+    "public_release_index": "BLOCKED_BY_ACCESS",
+    "public_release_index_revision": "MISSING",
+    "signed_index_manifest": "NOT_RUN",
+    "real_candidate": "NOT_CREATED",
+    "publication": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

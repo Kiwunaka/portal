@@ -201,28 +201,55 @@ class TicketRepoTests(unittest.TestCase):
 
             columns = {
                 table: {column["name"] for column in inspect(engine).get_columns(table)}
-                for table in ("support_tickets", "support_attachments")
+                for table in ("support_tickets", "support_ticket_messages", "support_attachments")
             }
             indexes = {
                 row["name"]
-                for table in ("support_tickets", "support_attachments")
+                for table in ("support_tickets", "support_ticket_messages", "support_attachments")
                 for row in inspect(engine).get_indexes(table)
             }
             with engine.connect() as conn:
-                ticket = conn.execute(text("SELECT user_tg_id, subject, account_id FROM support_tickets WHERE id=7")).one()
+                ticket = conn.execute(
+                    text(
+                        "SELECT user_tg_id, subject, account_id, environment, priority, queue, "
+                        "version, sla_due_at FROM support_tickets WHERE id=7"
+                    )
+                ).one()
                 message = conn.execute(
-                    text("SELECT body, media_type, media_file_id, media_payload FROM support_ticket_messages WHERE id=9")
+                    text(
+                        "SELECT body, media_type, media_file_id, media_payload, visibility, macro_code "
+                        "FROM support_ticket_messages WHERE id=9"
+                    )
                 ).one()
                 attachment = conn.execute(
                     text("SELECT owner_tg_id, original_name, owner_account_id FROM support_attachments WHERE id=11")
                 ).one()
 
             self.assertIn("account_id", columns["support_tickets"])
+            self.assertTrue(
+                {
+                    "environment",
+                    "priority",
+                    "queue",
+                    "assigned_team",
+                    "waiting_on",
+                    "sla_due_at",
+                    "escalated_at",
+                    "incident_id",
+                    "attempt_ref",
+                    "version",
+                }.issubset(columns["support_tickets"])
+            )
+            self.assertTrue({"visibility", "macro_code"}.issubset(columns["support_ticket_messages"]))
             self.assertIn("owner_account_id", columns["support_attachments"])
             self.assertIn("ix_support_tickets_account_id", indexes)
+            self.assertIn("ix_support_tickets_environment", indexes)
+            self.assertIn("ix_support_tickets_sla_due_at", indexes)
+            self.assertIn("ix_support_ticket_messages_visibility", indexes)
             self.assertIn("ix_support_attachments_owner_account_id", indexes)
-            self.assertEqual(tuple(ticket), (1001, "legacy subject", None))
-            self.assertEqual(tuple(message), ("legacy body", "photo", "telegram-file", '{"safe":true}'))
+            self.assertEqual(tuple(ticket[:7]), (1001, "legacy subject", None, "production", "normal", "general", 1))
+            self.assertIsNotNone(ticket.sla_due_at)
+            self.assertEqual(tuple(message), ("legacy body", "photo", "telegram-file", '{"safe":true}', "public", None))
             self.assertEqual(tuple(attachment), (1001, "legacy.png", None))
         finally:
             engine.dispose()

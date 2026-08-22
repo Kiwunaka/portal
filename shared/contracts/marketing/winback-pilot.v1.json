@@ -1,0 +1,118 @@
+{
+  "schema_version": "pokrov-winback-pilot-v1",
+  "pilot_id": "release_1_2_winback_paid_7_30d",
+  "revision": "2026-08-22.1",
+  "state": "draft_blocked",
+  "objective": "winback",
+  "legal_profile_id": "trust_owned",
+  "channels": [
+    "consented_email",
+    "owned_app",
+    "owned_cabinet",
+    "owned_telegram",
+    "owned_web"
+  ],
+  "audience": {
+    "paid_before": true,
+    "expired_min_days": 7,
+    "expired_max_days": 30,
+    "current_access_required": false,
+    "refund_dispute_required": false,
+    "unresolved_payment_required": false,
+    "unresolved_support_required": false
+  },
+  "offer": {
+    "plans": [
+      {
+        "plan_code": "3_months",
+        "base_amount_rub": 669,
+        "final_amount_rub": 602,
+        "capacity_cost_units": 1
+      },
+      {
+        "plan_code": "6_months",
+        "base_amount_rub": 1199,
+        "final_amount_rub": 1079,
+        "capacity_cost_units": 1
+      }
+    ],
+    "discount_percent": 10,
+    "duration_hours": 72,
+    "paid_cap": 20,
+    "per_subject_paid_cap": 1,
+    "stacking_allowed": false
+  },
+  "creatives": [
+    {
+      "variant": "a",
+      "title_ru": "Вернитесь без подписки",
+      "body_ru": "Оплатите один срок. Автосписаний не будет."
+    },
+    {
+      "variant": "b",
+      "title_ru": "Снова подключиться — на 10% дешевле",
+      "body_ru": "Скидка действует 72 часа на 3 и 6 месяцев."
+    }
+  ],
+  "holdout": {
+    "allocation_algorithm": "hmac_sha256_mod_10000",
+    "percentage": null,
+    "decision_state": "blocked_owner_decision_required"
+  },
+  "capacity": {
+    "allowed_bands": [
+      "green",
+      "yellow"
+    ],
+    "pause_at_ratio": 0.7,
+    "resume_below_ratio": 0.65,
+    "limit_units": 300
+  },
+  "suppression": [
+    "campaign_not_live",
+    "channel_consent_missing",
+    "current_access_active",
+    "expired_window_mismatch",
+    "holdout_assignment",
+    "legal_or_channel_blocked",
+    "owner_suppressed",
+    "paid_cap_reached",
+    "payment_already_consumed",
+    "refund_dispute_open",
+    "unresolved_payment",
+    "unresolved_support"
+  ],
+  "primary_metric": "net_revenue_30d_per_capacity_unit",
+  "guardrails": [
+    "capacity",
+    "first_verified_connect",
+    "incident",
+    "payment_error",
+    "refund",
+    "support_ticket"
+  ],
+  "decision": {
+    "minimum_observation_days": 30,
+    "ctr_can_select_winner": false,
+    "scale_requires_owner_approval": true,
+    "maximum_next_paid_cap": 50
+  },
+  "external_gates": [
+    "channel_consent_evidence",
+    "deployed_revision_readback",
+    "holdout_percentage_approved",
+    "kill_and_rollback_rehearsed",
+    "live_capacity_fresh",
+    "owner_legal_approval",
+    "production_payment_provider",
+    "seller_offer_terms_published",
+    "support_on_call"
+  ],
+  "commercial_revision": "2026-08-21.1",
+  "commercial_contract_sha256": "22b7ef26908c23c2bb53322dec959a3bc050a20a6c6d2feff9f78708b45e23cd",
+  "marketing_governance_revision": "2026-08-22.1",
+  "marketing_governance_sha256": "6cd7f3cc94a2c45367569b88296da817fb3c80d510e5092daa53beb70ff4e97f",
+  "source_contract": "shared/winback-pilot.source.json",
+  "source_sha256": "e851fab1c8186bcd1a194b799de3a1b8f94145331bce75541a161e1215fc9234",
+  "contract_sha256": "970e4424740a3107f99e511ae57fc57d6b0f82b8ac2f1f4832f1ec9d908e6658"
+}

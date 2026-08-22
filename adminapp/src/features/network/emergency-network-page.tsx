@@ -77,7 +77,8 @@ function SnapshotCard({
               action: "emergency_catalog.promote",
               target: { type: "emergency_snapshot", id: snapshot.snapshot_id },
               payload: {},
-              endpoint: `/api/admin/emergency-network/snapshots/${encodeURIComponent(snapshot.snapshot_id)}/promote`,
+              endpoint: "",
+              workspace: "network",
             })}
           >
             <ShieldCheck size={15} /> Продвинуть
@@ -90,7 +91,8 @@ function SnapshotCard({
               action: "emergency_catalog.rollback",
               target: { type: "emergency_snapshot", id: snapshot.snapshot_id },
               payload: {},
-              endpoint: `/api/admin/emergency-network/snapshots/${encodeURIComponent(snapshot.snapshot_id)}/rollback`,
+              endpoint: "",
+              workspace: "network",
             })}
           >
             <ArchiveRestore size={15} /> Откатить на этот снимок
@@ -103,7 +105,8 @@ function SnapshotCard({
               action: "emergency_catalog.disable",
               target: { type: "emergency_snapshot", id: snapshot.snapshot_id },
               payload: {},
-              endpoint: `/api/admin/emergency-network/snapshots/${encodeURIComponent(snapshot.snapshot_id)}/disable`,
+              endpoint: "",
+              workspace: "network",
             })}
           >
             <Ban size={15} /> Остановить выдачу
@@ -157,7 +160,8 @@ export function EmergencyNetworkPage({ onShellStatus }: { onShellStatus?: (statu
               action: "emergency_catalog.stage",
               target: { type: "emergency_catalog", id: "global" },
               payload: {},
-              endpoint: "/api/admin/emergency-network/stage",
+              endpoint: "",
+              workspace: "network",
             })}
           >
             <Database size={15} /> Получить staging

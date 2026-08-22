@@ -26,7 +26,8 @@ function actionRequest(
     action: `node.${command}`,
     target: { type: "node", id: code },
     payload,
-    endpoint: `/api/admin/nodes/${encodeURIComponent(code)}/${command}`,
+    endpoint: "",
+    workspace: "network",
   };
 }
 

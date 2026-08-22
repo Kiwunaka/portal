@@ -1,6 +1,7 @@
 "use client";
 
 import { apiFetch, type ApiRequestInit } from "./client";
+import type { AdminV2Envelope } from "./types";
 
 export type PaymentPeriod = "today" | "7d" | "30d";
 export type FunnelRange = "7d" | "30d" | "90d";
@@ -166,6 +167,72 @@ export type PromoSlotsPayload = {
   };
 };
 
+export type CommercialCampaignRow = {
+  id: number;
+  public_id: string | null;
+  name: string;
+  objective: string;
+  lifecycle_status: string;
+  revision: number;
+  commercial_revision: string | null;
+  channels: string[];
+  paid_cap: number;
+  paid_conversions_count: number;
+  state_reason: string;
+  starts_at: string | null;
+  ends_at: string | null;
+  policy: {
+    activation_allowed?: boolean;
+    blocking_reasons?: string[];
+  };
+};
+
+export type CommercialCampaignsPayload = {
+  commercial_revision: string;
+  contract_sha256: string;
+  campaigns: CommercialCampaignRow[];
+};
+
+export type WinbackPilotDecisionPayload = {
+  decision: {
+    generated_at: string | null;
+    campaign: { id: string; revision: number; lifecycle_status: string; ends_at: string | null };
+    pilot: { pilot_id: string; revision: string; contract_sha256: string; commercial_revision: string };
+    primary_metric: {
+      name: string;
+      state: string;
+      value: number | null;
+      net_revenue_30d_rub: number | null;
+      paid_capacity_units: number | null;
+      reason: string | null;
+    };
+    holdout: { state?: string; reason?: string | null };
+    guardrails: {
+      legal_capacity_policy?: { activation_allowed?: boolean; blocking_reasons?: string[] };
+      quota?: { paid_conversions?: number; paid_cap?: number; remaining?: number };
+      payment_errors?: { state?: string; count?: number; order_count?: number };
+      support?: { state?: string; ticket_count?: number | null; p0_p1_count?: number | null; reason?: string | null };
+      incidents?: { state?: string; count?: number; confirmed_open_count?: number };
+      promo_telemetry?: { state?: string; counts?: Record<string, number>; can_select_winner?: boolean };
+    };
+    observation_complete: boolean;
+    automatic_stop_reasons: string[];
+    recommendation: string;
+    winner: { variant: string; metric: string; value: number; basis: string } | null;
+    scale_automatic: boolean;
+    maximum_owner_review_paid_cap: number;
+    action_intents: Array<{ id: string; action: string; status: string; risk_level: string; audit_id: number | null; created_at: string | null }>;
+  };
+  postmortem: {
+    decision_pack_sha256: string;
+    recommendation: string;
+    winner_state: string;
+    winner: { variant?: string; metric?: string; value?: number } | null;
+    refusal_reasons: string[];
+    scale_requires_owner_approval: boolean;
+  };
+};
+
 export type ReferralRow = {
   id: number;
   order_id: string;
@@ -234,7 +301,8 @@ function paymentOrder(value: unknown): PaymentOrder | null {
 }
 
 export async function fetchPaymentSummary(period: PaymentPeriod, init?: ApiRequestInit): Promise<PaymentSummary> {
-  const data = await apiFetch<Record<string, unknown>>(`/api/admin/payments/summary?period=${period}`, init);
+  const response = await apiFetch<AdminV2Envelope<Record<string, unknown>>>(`/api/admin/v2/money/payments/summary?period=${period}`, init);
+  const data = response.data;
   const revenue = data.revenue && typeof data.revenue === "object" ? data.revenue as Record<string, unknown> : {};
   const attention = data.attention && typeof data.attention === "object" ? data.attention as Record<string, unknown> : {};
   const abandoned = data.abandoned && typeof data.abandoned === "object" ? data.abandoned as Record<string, unknown> : {};
@@ -265,13 +333,14 @@ export async function fetchPaymentOrders(filters: { status?: string; q?: string;
   if (filters.status?.trim()) query.set("status", filters.status.trim());
   if (filters.q?.trim()) query.set("q", filters.q.trim());
   if (filters.provider?.trim()) query.set("provider", filters.provider.trim());
-  const data = await apiFetch<Record<string, unknown>>(`/api/admin/payments/orders?${query.toString()}`, init);
+  const response = await apiFetch<AdminV2Envelope<Record<string, unknown>>>(`/api/admin/v2/money/payments/orders?${query.toString()}`, init);
+  const data = response.data;
   return { orders: Array.isArray(data.orders) ? data.orders.map(paymentOrder).filter((row): row is PaymentOrder => row !== null) : [], total: finite(data.total), limit: finite(data.limit), offset: finite(data.offset) };
 }
 
 export async function fetchPaymentOrder(provider: string, orderId: string, init?: ApiRequestInit): Promise<PaymentOrder> {
-  const data = await apiFetch<{ order?: unknown }>(`/api/admin/payments/orders/${encodeURIComponent(provider)}/${encodeURIComponent(orderId)}`, init);
-  const order = paymentOrder(data.order);
+  const response = await apiFetch<AdminV2Envelope<unknown>>(`/api/admin/v2/money/payments/orders/${encodeURIComponent(provider)}/${encodeURIComponent(orderId)}`, init);
+  const order = paymentOrder(response.data);
   if (!order) throw new Error("Сервер вернул неполную карточку заказа.");
   return order;
 }
@@ -286,7 +355,8 @@ function rangeBounds(range: FunnelRange): { from: string; to: string } {
 
 export async function fetchFunnel(range: FunnelRange, init?: ApiRequestInit): Promise<FunnelPayload> {
   const query = new URLSearchParams(rangeBounds(range));
-  const data = await apiFetch<Record<string, unknown>>(`/api/admin/funnel/summary?${query.toString()}`, init);
+  const response = await apiFetch<AdminV2Envelope<Record<string, unknown>>>(`/api/admin/v2/growth/funnel?${query.toString()}`, init);
+  const data = response.data;
   const period = data.period && typeof data.period === "object" ? data.period as Record<string, unknown> : {};
   const acquisition = data.acquisition && typeof data.acquisition === "object" ? data.acquisition as Record<string, unknown> : {};
   const product = data.product && typeof data.product === "object" ? data.product as Record<string, unknown> : {};
@@ -335,7 +405,8 @@ export async function fetchFunnel(range: FunnelRange, init?: ApiRequestInit): Pr
 }
 
 export async function fetchPromos(init?: ApiRequestInit): Promise<PromoRow[]> {
-  const data = await apiFetch<{ promos?: unknown[] }>("/api/admin/promos?limit=100", init);
+  const response = await apiFetch<AdminV2Envelope<{ promos?: unknown[] }>>("/api/admin/v2/money/promos?limit=100", init);
+  const data = response.data;
   return Array.isArray(data.promos) ? data.promos.flatMap((item) => {
     if (!item || typeof item !== "object") return [];
     const row = item as Record<string, unknown>;
@@ -348,6 +419,14 @@ export async function fetchPromos(init?: ApiRequestInit): Promise<PromoRow[]> {
 export async function fetchPromoSlots(init?: ApiRequestInit): Promise<PromoSlotsPayload> {
   const data = await apiFetch<{ promo_slots: PromoSlotsPayload }>("/api/admin/promo-slots", init);
   return data.promo_slots;
+}
+
+export async function fetchCommercialCampaigns(init?: ApiRequestInit): Promise<CommercialCampaignsPayload> {
+  return apiFetch<CommercialCampaignsPayload>("/api/admin/campaigns?limit=200", init);
+}
+
+export async function fetchWinbackPilotDecision(campaignId: number, init?: ApiRequestInit): Promise<WinbackPilotDecisionPayload> {
+  return apiFetch<WinbackPilotDecisionPayload>(`/api/admin/campaigns/${campaignId}/pilot-decision`, init);
 }
 
 export async function uploadPromoMedia(file: File, init?: ApiRequestInit): Promise<PromoMediaAsset> {
@@ -367,7 +446,8 @@ export async function uploadPromoMedia(file: File, init?: ApiRequestInit): Promi
 
 export async function fetchReferrals(status: string, init?: ApiRequestInit): Promise<ReferralRow[]> {
   const query = new URLSearchParams({ limit: "100", status });
-  const data = await apiFetch<{ rows?: unknown[] }>(`/api/admin/referrals/pending?${query.toString()}`, init);
+  const response = await apiFetch<AdminV2Envelope<{ rows?: unknown[] }>>(`/api/admin/v2/growth/referrals?${query.toString()}`, init);
+  const data = response.data;
   return Array.isArray(data.rows) ? data.rows.flatMap((item) => {
     if (!item || typeof item !== "object") return [];
     const row = item as Record<string, unknown>;

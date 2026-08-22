@@ -42,6 +42,13 @@ def _load_api(monkeypatch, tmp_path: Path):
 
     for name in [
         "api",
+        "api_observability_routes",
+        "api_support_bundle_routes",
+        "api_operator_observability_routes",
+        "commercial_campaign_policy",
+        "commercial_offer_service",
+        "observability_ingest",
+        "request_correlation",
         "account_experience_service",
         "app_first_service",
         "account_foundation_service",
@@ -208,6 +215,55 @@ def test_start_trial_returns_session_and_real_device_payload(monkeypatch, tmp_pa
     user_payload = user_response.json()
     assert user_payload["devices"][0]["name"] == "Samsung S25"
     assert user_payload["devices"][0]["platform"] == "android"
+
+
+def test_first_session_events_use_authenticated_account_device_correlation(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    start = client.post(
+        "/api/client/session/start-trial",
+        json={
+            "install_id": "install-first-session-events",
+            "device_name": "Pixel",
+            "platform": "android",
+            "app_version": "1.2.0",
+        },
+    )
+    assert start.status_code == 200, start.text
+    payload = start.json()
+    headers = {"Authorization": f"Bearer {payload['session_token']}"}
+
+    accepted = client.post(
+        "/api/events",
+        headers=headers,
+        json={
+            "event_name": "vpn_permission_result",
+            "source": "app",
+            "platform": "android",
+            "app_version": "1.2.0",
+            "surface": "first_session",
+            "subsystem": "onboarding",
+            "stage": "vpn_permission",
+            "result": "failure",
+            "error_category": "first_session",
+            "error_code": "vpn_permission_denied",
+            "retryable": True,
+        },
+    )
+    assert accepted.status_code == 200, accepted.text
+
+    db = api.SessionLocal()
+    try:
+        row = db.query(api.Event).filter_by(event_name="vpn_permission_result").one()
+        assert row.account_id == payload["session"]["canonical_account_id"]
+        assert row.device_id == payload["session"]["device_id"]
+        assert row.platform == "android"
+        assert row.app_version == "1.2.0"
+        assert row.surface == "first_session"
+        assert row.subsystem == "onboarding"
+        assert row.error_code == "vpn_permission_denied"
+    finally:
+        db.close()
 
 
 def test_account_onboarding_and_connection_milestone_are_server_scoped(monkeypatch, tmp_path):

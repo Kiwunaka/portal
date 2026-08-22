@@ -1,0 +1,63 @@
+{
+  "captured_at": "2026-08-21",
+  "release_target": "1.2.0",
+  "release_candidate": null,
+  "claim_boundary": "Local repository and public-index inspection only; no runtime, signing, device, RU-origin, provider, deploy or production proof.",
+  "repositories": {
+    "platform": {
+      "path": "C:/Users/kiwun/Documents/ai/VPN",
+      "remote": "https://github.com/Kiwunaka/portal.git",
+      "branch": "master",
+      "head": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+      "head_subject": "add safe paid projection reconciliation",
+      "promotion_branch": "master",
+      "dirty_unrelated": [
+        "competitor-profiles/_summary.md",
+        "competitor-profiles/frkn-org.md",
+        "competitor-profiles/raw/frkn-org/"
+      ]
+    },
+    "client": {
+      "path": "C:/Users/kiwun/Documents/ai/POKROV-app",
+      "branch": "main",
+      "head": "ba7930ea83487874f47a49199ade89868c5675b3",
+      "head_subject": "docs: publish 1.1.6 release handoff",
+      "promotion_branch": "main",
+      "worktree_clean": true,
+      "declared_android_windows_version": "1.1.6+29",
+      "latest_release_handoff": "1.1.6",
+      "public_release_source_commit": "f5fa60b0cb53a9e51032303e2190cbc083452305"
+    },
+    "core": {
+      "path": "C:/Users/kiwun/Documents/ai/POKROV-core",
+      "branch": "main",
+      "head": "69a74545101708e56183c92e31f2b4c7b2509884",
+      "tag": "v1.0.3",
+      "promotion_branch": "main",
+      "worktree_clean": true,
+      "release_version": "1.0.3",
+      "desktop_abi": 2
+    },
+    "public_release_index": {
+      "path": "C:/Users/kiwun/Documents/ai/pokrov-release",
+      "remote": "https://github.com/Kiwunaka/pokrov.git",
+      "branch": "main",
+      "head": "d0bf8e8c70ebeaa241f4c8f5b8a4452fd339ed15",
+      "worktree_clean": true,
+      "tracked_files": ["README.md"],
+      "asset_location": "GitHub Releases"
+    }
+  },
+  "confirmed_starting_gaps": [
+    "portal quick and weekly gates allow a missing client root",
+    "FreeKassa payment URL parser is defined twice",
+    "FreeKassa fallback can construct oa=0",
+    "client has no 1.2.0 candidate or manifest",
+    "core CI is Ubuntu-only and does not prove required DLL/AAR matrix",
+    "adminapp persists/requests raw Telegram initData in browser storage",
+    "discount codes exist in shared tariff preview data",
+    "active readiness documents and current 1.1.6 release evidence are not fully reconciled",
+    "public platforms are Android and Windows; Apple is readiness-only",
+    "trusted Windows signing, physical Huawei, clean-host Windows TUN/DNS and RU-origin proofs remain manual or absent"
+  ]
+}

@@ -1,10 +1,11 @@
 "use client";
 
-import { motion, useMotionValue, useReducedMotion, useSpring, useTransform } from "framer-motion";
+import { m, useMotionValue, useSpring, useTransform } from "framer-motion";
 import { Zap } from "lucide-react";
 import { useRef } from "react";
 
 import { AppPhoneIllustration } from "../illustrations/app-phone";
+import { usePrefersReducedMotion } from "../motion/use-prefers-reduced-motion";
 
 const EASE = [0.22, 1, 0.36, 1] as const;
 
@@ -17,30 +18,30 @@ function FloatingChip({
   className?: string;
   delay?: number;
 }) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
   return (
-    <motion.span
+    <m.span
       aria-hidden="true"
-      initial={{ opacity: 0, y: 10 }}
+      initial={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay, ease: EASE }}
+      transition={{ duration: reduceMotion ? 0 : 0.5, delay: reduceMotion ? 0 : delay, ease: EASE }}
       className={`absolute z-10 ${className || ""}`}
     >
-      <motion.span
+      <m.span
+        data-floating-chip-motion="finite"
         animate={reduceMotion ? undefined : { y: [0, -6, 0] }}
-        transition={reduceMotion ? undefined : { duration: 4.5, delay, repeat: Infinity, ease: "easeInOut" }}
+        transition={reduceMotion ? undefined : { duration: 4.5, delay, repeat: 1, ease: "easeInOut" }}
         className="flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-semibold text-ink shadow-medium"
       >
         {children}
-      </motion.span>
-    </motion.span>
+      </m.span>
+    </m.span>
   );
 }
 
-/** Client hero visual: live app screen with gently floating trust chips and a
- * subtle desktop pointer tilt (transform-only, reduced-motion safe). */
+/** Client hero visual with two finite chip cycles and mouse-only pointer tilt. */
 export function HeroVisual() {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = usePrefersReducedMotion();
   const frameRef = useRef<HTMLDivElement | null>(null);
   const pointerX = useMotionValue(0.5);
   const pointerY = useMotionValue(0.5);
@@ -62,7 +63,7 @@ export function HeroVisual() {
 
   return (
     <div className="relative flex justify-center lg:justify-end" style={{ perspective: 1100 }}>
-      <motion.div
+      <m.div
         ref={frameRef}
         onPointerMove={onPointerMove}
         onPointerLeave={onPointerLeave}
@@ -72,7 +73,7 @@ export function HeroVisual() {
         style={reduceMotion ? undefined : { rotateX, rotateY, transformStyle: "preserve-3d" }}
       >
         <AppPhoneIllustration variant="connect" />
-      </motion.div>
+      </m.div>
 
       <FloatingChip delay={0.35} className="top-14 -left-1 sm:left-2 lg:-left-10">
         <Zap size={12} strokeWidth={1.5} fill="currentColor" className="text-brand" aria-hidden="true" />

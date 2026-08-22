@@ -3,9 +3,6 @@ import { expect, test, type Page } from "@playwright/test";
 import { installAdminApiMock } from "./fixtures/admin-api";
 
 async function openControl(page: Page, path: "/release" | "/broadcast") {
-  await page.addInitScript(() => {
-    window.sessionStorage.setItem("pokrov_admin_session_token", "mock-admin-token");
-  });
   await page.goto(path);
 }
 
@@ -17,7 +14,7 @@ test("release checklist binds exact candidate and keeps origins honest", async (
   const secondCandidate = "b".repeat(64);
   await expect(page).toHaveURL(new RegExp(`candidate=${firstCandidate}`));
   await expect(page.getByText(firstCandidate, { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("2".repeat(64), { exact: true })).toBeVisible();
+  await expect(page.getByText("2".repeat(64), { exact: true }).first()).toBeVisible();
   await expect(page.getByText("current-origin", { exact: true })).toBeVisible();
   await expect(page.getByText("brain-origin", { exact: true })).toBeVisible();
   await expect(page.getByText("RU-origin", { exact: true })).toBeVisible();
@@ -32,8 +29,8 @@ test("release checklist binds exact candidate and keeps origins honest", async (
   await page.getByRole("button", { name: "Открыть релиз portal_bot 2026.07.17.2" }).click();
   await expect(page).toHaveURL(new RegExp(`candidate=${secondCandidate}`));
   await expect(page.getByText(secondCandidate, { exact: true }).first()).toBeVisible();
-  await expect(page.getByText("4".repeat(64), { exact: true })).toBeVisible();
-  await expect(page.getByText(/Итог backend: Подтверждено · PASS/)).toBeVisible();
+  await expect(page.getByText("4".repeat(64), { exact: true }).first()).toBeVisible();
+  await expect(page.getByText(/Release gates: Подтверждено · PASS/)).toBeVisible();
 });
 
 test("broadcast draft survives a 401 prepare error", async ({ page }) => {
@@ -72,8 +69,8 @@ test("broadcast preview freezes count and hash before exact confirmation", async
   await expect(execute).toBeEnabled();
   await execute.click();
   await expect(page.getByText("Действие выполнено", { exact: true })).toBeVisible();
-  await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/broadcast" && call.method === "POST").length).toBe(1);
-  const send = api.calls.find((call) => call.path === "/api/admin/broadcast" && call.method === "POST");
+  await expect.poll(() => api.calls.filter((call) => /\/api\/admin\/v2\/growth\/action-intents\/[0-9a-f-]{36}\/execute/.test(call.path) && call.method === "POST").length).toBe(1);
+  const send = api.calls.find((call) => /\/api\/admin\/v2\/growth\/action-intents\/[0-9a-f-]{36}\/execute/.test(call.path) && call.method === "POST");
   expect(send?.headers?.["x-admin-intent-id"]).toBeTruthy();
   expect(send?.headers?.["x-admin-idempotency-key"]).toBeTruthy();
   expect(send?.headers?.["x-admin-confirmation-sha256"]).toHaveLength(64);
@@ -95,8 +92,8 @@ test("uncertain broadcast offers status check and never retry-send", async ({ pa
   await expect(statusCheck).toBeVisible();
   await expect(page.getByRole("button", { name: /повтор/i })).toHaveCount(0);
   await statusCheck.click();
-  await expect.poll(() => api.calls.filter((call) => call.method === "GET" && /\/api\/admin\/action-intents\//.test(call.path)).length).toBe(1);
+  await expect.poll(() => api.calls.filter((call) => call.method === "GET" && /\/api\/admin\/v2\/growth\/action-intents\//.test(call.path)).length).toBe(1);
   await expect(page.getByRole("button", { name: "Подготовить защищённый предпросмотр" })).toBeDisabled();
-  expect(api.calls.filter((call) => call.method === "POST" && call.path === "/api/admin/broadcast")).toHaveLength(1);
+  expect(api.calls.filter((call) => call.method === "POST" && /\/api\/admin\/v2\/growth\/action-intents\/[0-9a-f-]{36}\/execute/.test(call.path))).toHaveLength(1);
   await expect.poll(() => page.evaluate(() => window.sessionStorage.getItem("pokrov_admin_broadcast_draft_v1"))).toContain(draft);
 });

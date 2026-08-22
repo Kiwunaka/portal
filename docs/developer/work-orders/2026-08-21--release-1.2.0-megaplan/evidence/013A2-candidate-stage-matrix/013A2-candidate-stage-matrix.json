@@ -1,0 +1,78 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate-stage-matrix-evidence.v1",
+  "generated_at": "2026-08-22T11:08:19Z",
+  "work_order": "WO-013A2",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "promotion_authorized": false,
+  "sources": {
+    "platform": {
+      "revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+      "working_tree_state": "dirty"
+    },
+    "client": {
+      "revision_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+      "working_tree_state": "dirty"
+    }
+  },
+  "policy": {
+    "schema": "pokrov.release-1.2.0.row-stage-policy/v1",
+    "path": "shared/release-1.2.0-candidate-stage-policy.json",
+    "sha256": "c2589d0dc7b577e33ece52dfaeac4040923888ede302a8a9bfdd8da6e7ced9c4",
+    "default_stage": "pre_freeze",
+    "ledger_rows": 377,
+    "exact_overrides": 70,
+    "free_text_stage_inference": false
+  },
+  "pending_matrix": {
+    "below_i3": 103,
+    "pre_freeze": 33,
+    "candidate": 32,
+    "external": 17,
+    "external_pre_candidate": 3,
+    "deferred": 21
+  },
+  "preflight": {
+    "status": "BLOCKED",
+    "blocker_count": 7,
+    "blocker_ids": [
+      "platform_worktree_dirty",
+      "client_worktree_dirty",
+      "core_worktree_dirty",
+      "release_index_missing",
+      "core_replacement_artifact_pending",
+      "ledger_pre_freeze_incomplete",
+      "ledger_external_pre_candidate_incomplete"
+    ]
+  },
+  "verification": {
+    "focused_unit_tests": "PASS_9_OF_9",
+    "ruff_check": "PASS",
+    "ruff_format_check": "PASS",
+    "live_read_only_preflight": "PASS_EXPECTED_BLOCKED",
+    "platform_docs_and_preflight_tests": "PASS",
+    "platform_context_audit": "PASS",
+    "platform_link_check": "PASS",
+    "json_validation": "PASS",
+    "git_diff_check": "PASS_WITH_LINE_ENDING_WARNINGS"
+  },
+  "ledger": {
+    "advanced": [],
+    "distribution": {
+      "I3": 274,
+      "I2": 36,
+      "I1": 47,
+      "I0": 20,
+      "total": 377,
+      "at_least_i1": 357,
+      "below_i3": 103
+    }
+  },
+  "mutations": {
+    "candidate": "NONE",
+    "release_index": "NONE",
+    "branch_settings": "NONE",
+    "server_or_production": "NONE",
+    "signing_or_publication": "NONE"
+  }
+}

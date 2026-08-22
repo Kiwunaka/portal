@@ -1681,6 +1681,25 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(reply.status_code, 200, reply.text)
         self.assertEqual(reply.json()["ticket"]["status"], "in_progress")
 
+        ticket_version = int(reply.json()["ticket"]["version"])
+        note_body = "Внутренняя заметка: проверить журнал оператора"
+        note = self._execute_admin_intent(
+            action="ticket.note",
+            target_type="ticket",
+            target_id=ticket_id,
+            method="POST",
+            path=f"/api/admin/tickets/{ticket_id}/note",
+            payload={"body": note_body, "expected_version": ticket_version},
+        )
+        self.assertEqual(note.status_code, 200, note.text)
+        self.assertEqual(note.json()["ticket"]["messages"][-1]["visibility"], "internal")
+        self.assertEqual(note.json()["ticket"]["messages"][-1]["body"], note_body)
+
+        public_ticket = self.client.get(f"/api/tickets/{ticket_id}", headers=user_hdrs)
+        self.assertEqual(public_ticket.status_code, 200, public_ticket.text)
+        self.assertNotIn(note_body, public_ticket.text)
+        self.assertNotIn('"visibility":"internal"', public_ticket.text)
+
     def test_ticket_create_appends_ai_hint_when_enabled(self) -> None:
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
         from support_agent_service import SupportReplyResult

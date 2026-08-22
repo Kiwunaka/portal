@@ -1,0 +1,163 @@
+{
+  "candidate_proven": false,
+  "captured_at_utc": "2026-08-22T03:08:52Z",
+  "gate_id": "pokrov.release-1.2.local-quality",
+  "gate_version": "1.0.0",
+  "local_status": "PASS",
+  "manual_lanes": [
+    {
+      "id": "candidate-device-performance",
+      "reason": "Android/Windows cold start, connect, frame, idle CPU and memory require release artifacts on reference devices.",
+      "required_for_promotion": true,
+      "status": "MANUAL_OWNER_TEST"
+    },
+    {
+      "id": "candidate-artifact-size-regression",
+      "reason": "APK/installer observations require the exact candidate artifacts and a comparable prior baseline.",
+      "required_for_promotion": true,
+      "status": "MANUAL_OWNER_TEST"
+    },
+    {
+      "id": "browser-lab-page-performance",
+      "reason": "LCP, CLS, TBT and route-content latency require the selected browser/network lab environment.",
+      "required_for_promotion": true,
+      "status": "MANUAL_OWNER_TEST"
+    },
+    {
+      "id": "controlled-origin-api-performance",
+      "reason": "Current-origin authenticated API samples need explicit environment and state-changing probe authorization.",
+      "required_for_promotion": true,
+      "status": "BLOCKED_BY_ACCESS"
+    },
+    {
+      "id": "exact-candidate-signing-device-origin",
+      "reason": "Signing, physical device, current/brain/RU origin and post-promotion proof remain Phase 11.",
+      "required_for_promotion": true,
+      "status": "MANUAL_OWNER_TEST"
+    }
+  ],
+  "promotion_status": "MANUAL_OWNER_TEST",
+  "schema_version": 1,
+  "scope": "local_worktree_only",
+  "sources": {
+    "client": {
+      "revision": "ba7930ea83487874f47a49199ade89868c5675b3",
+      "working_tree_state": "dirty"
+    },
+    "core": {
+      "revision": "69a74545101708e56183c92e31f2b4c7b2509884",
+      "working_tree_state": "dirty"
+    },
+    "platform": {
+      "revision": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+      "working_tree_state": "dirty"
+    }
+  },
+  "steps": [
+    {
+      "category": "performance",
+      "duration_seconds": 0.094,
+      "exit_code": 0,
+      "id": "performance-contract",
+      "status": "PASS"
+    },
+    {
+      "category": "unit",
+      "duration_seconds": 1.157,
+      "exit_code": 0,
+      "id": "performance-contract-tests",
+      "status": "PASS"
+    },
+    {
+      "category": "client-static",
+      "duration_seconds": 2.949,
+      "exit_code": 0,
+      "id": "client-analyze",
+      "status": "PASS"
+    },
+    {
+      "category": "client-widget",
+      "duration_seconds": 39.124,
+      "exit_code": 0,
+      "id": "client-widget-suite",
+      "status": "PASS"
+    },
+    {
+      "category": "client-contract",
+      "duration_seconds": 18.692,
+      "exit_code": 0,
+      "id": "client-seed-contract",
+      "status": "PASS"
+    },
+    {
+      "category": "client-contract",
+      "duration_seconds": 3.468,
+      "exit_code": 0,
+      "id": "client-docs-contract",
+      "status": "PASS"
+    },
+    {
+      "category": "web-component",
+      "duration_seconds": 8.398,
+      "exit_code": 0,
+      "id": "webapp-lint",
+      "status": "PASS"
+    },
+    {
+      "category": "web-build",
+      "duration_seconds": 12.802,
+      "exit_code": 0,
+      "id": "webapp-build",
+      "status": "PASS"
+    },
+    {
+      "category": "web-e2e-a11y-responsive",
+      "duration_seconds": 76.832,
+      "exit_code": 0,
+      "id": "webapp-cabinet-e2e",
+      "status": "PASS"
+    },
+    {
+      "category": "marketing-build",
+      "duration_seconds": 9.694,
+      "exit_code": 0,
+      "id": "marketing-build",
+      "status": "PASS"
+    },
+    {
+      "category": "marketing-contract",
+      "duration_seconds": 0.532,
+      "exit_code": 0,
+      "id": "marketing-seo",
+      "status": "PASS"
+    },
+    {
+      "category": "marketing-e2e-a11y-responsive",
+      "duration_seconds": 33.596,
+      "exit_code": 0,
+      "id": "marketing-responsive-reduced-motion",
+      "status": "PASS"
+    },
+    {
+      "category": "performance-input",
+      "duration_seconds": 22.135,
+      "exit_code": 0,
+      "id": "adminapp-build-for-static-budget",
+      "status": "PASS"
+    },
+    {
+      "category": "performance",
+      "duration_seconds": 4.935,
+      "exit_code": 0,
+      "id": "web-static-performance-collect",
+      "status": "PASS"
+    },
+    {
+      "category": "performance",
+      "duration_seconds": 0.108,
+      "exit_code": 0,
+      "id": "web-static-performance-gate",
+      "status": "PASS"
+    }
+  ]
+}

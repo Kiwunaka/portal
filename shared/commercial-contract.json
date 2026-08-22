@@ -1,0 +1,153 @@
+{
+  "schema_version": "pokrov-commercial-contract-v1",
+  "commercial_revision": "2026-08-21.1",
+  "effective_from": "2026-08-21T00:00:00Z",
+  "terms_revision": "2026-08-21.1-local-unapproved",
+  "currency": "RUB",
+  "catalog_version": "2026-08-12-balanced-long-plans-v3",
+  "price_authority": "server_commercial_contract",
+  "promo_authority": "server_offer_preview_only",
+  "campaign_saving_authority": "server_offer_preview_only",
+  "legal": {
+    "offer_path": "/offer/",
+    "privacy_path": "/privacy/",
+    "seller_publication_status": "blocked_unpublished",
+    "offer_review_status": "blocked_unapproved",
+    "rf_advertising_status": "blocked_no_owner_legal_decision",
+    "allowed_launch_channels": [],
+    "launch_ready": false
+  },
+  "capacity_policy": {
+    "limit_units": 300,
+    "unit_authority": "active_entitlement_projection",
+    "acquisition_allowed_bands": [
+      "green",
+      "yellow"
+    ],
+    "pause_at_ratio": 0.7,
+    "resume_below_ratio": 0.65,
+    "renewal_exempt": true,
+    "bands": [
+      {
+        "code": "green",
+        "minimum_ratio": 0.0,
+        "maximum_ratio": 0.499999
+      },
+      {
+        "code": "yellow",
+        "minimum_ratio": 0.5,
+        "maximum_ratio": 0.699999
+      },
+      {
+        "code": "orange",
+        "minimum_ratio": 0.7,
+        "maximum_ratio": 0.849999
+      },
+      {
+        "code": "red",
+        "minimum_ratio": 0.85,
+        "maximum_ratio": 0.999999
+      },
+      {
+        "code": "hold",
+        "minimum_ratio": 1.0,
+        "maximum_ratio": null
+      }
+    ]
+  },
+  "plans": [
+    {
+      "code": "start_99",
+      "label": "Первый месяц",
+      "amount_rub": 99,
+      "duration_days": 30,
+      "device_limit": 1,
+      "base_saving_percent": 0,
+      "temporary_campaign_saving_percent": 0,
+      "capacity_cost_units": 1,
+      "renewal_policy": "manual_no_auto_renewal",
+      "is_active": true,
+      "public_visibility": "pricing",
+      "sort_order": 1
+    },
+    {
+      "code": "1_month",
+      "label": "1 месяц",
+      "amount_rub": 239,
+      "duration_days": 30,
+      "device_limit": 5,
+      "base_saving_percent": 0,
+      "temporary_campaign_saving_percent": 0,
+      "capacity_cost_units": 1,
+      "renewal_policy": "manual_no_auto_renewal",
+      "is_active": true,
+      "public_visibility": "pricing",
+      "sort_order": 2
+    },
+    {
+      "code": "3_months",
+      "label": "3 месяца",
+      "amount_rub": 669,
+      "duration_days": 91,
+      "device_limit": 5,
+      "base_saving_percent": 7,
+      "temporary_campaign_saving_percent": 0,
+      "capacity_cost_units": 1,
+      "renewal_policy": "manual_no_auto_renewal",
+      "is_active": true,
+      "public_visibility": "pricing",
+      "sort_order": 3
+    },
+    {
+      "code": "6_months",
+      "label": "6 месяцев",
+      "amount_rub": 1199,
+      "duration_days": 182,
+      "device_limit": 5,
+      "base_saving_percent": 16,
+      "temporary_campaign_saving_percent": 0,
+      "capacity_cost_units": 1,
+      "renewal_policy": "manual_no_auto_renewal",
+      "is_active": true,
+      "public_visibility": "pricing",
+      "sort_order": 4
+    },
+    {
+      "code": "9_months",
+      "label": "9 месяцев",
+      "amount_rub": 1699,
+      "duration_days": 273,
+      "device_limit": 5,
+      "base_saving_percent": 21,
+      "temporary_campaign_saving_percent": 0,
+      "capacity_cost_units": 1,
+      "renewal_policy": "manual_no_auto_renewal",
+      "is_active": true,
+      "public_visibility": "pricing",
+      "sort_order": 5
+    },
+    {
+      "code": "12_months",
+      "label": "12 месяцев",
+      "amount_rub": 1999,
+      "duration_days": 365,
+      "device_limit": 5,
+      "base_saving_percent": 30,
+      "temporary_campaign_saving_percent": 0,
+      "capacity_cost_units": 1,
+      "renewal_policy": "manual_no_auto_renewal",
+      "is_active": true,
+      "public_visibility": "pricing",
+      "sort_order": 6
+    }
+  ],
+  "source_contracts": {
+    "product_facts": "shared/product-facts.json",
+    "tariff_catalog": "shared/tariff-catalog.json"
+  },
+  "source_sha256": {
+    "product_facts": "2c135eeee91adaca52bc35b103ce5839e7f670e557ff7b55970c4375a2916f54",
+    "tariff_catalog": "0e5acae30601854cee4c44c33af84e84bbdcd24d2788a7da1463bb3ee4a40d43"
+  },
+  "contract_sha256": "22b7ef26908c23c2bb53322dec959a3bc050a20a6c6d2feff9f78708b45e23cd"
+}

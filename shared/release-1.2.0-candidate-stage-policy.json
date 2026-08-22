@@ -1,0 +1,455 @@
+{
+  "schema": "pokrov.release-1.2.0.row-stage-policy/v1",
+  "default_stage": "pre_freeze",
+  "stages": {
+    "pre_freeze": "Must reach local I3 before an exact candidate may be created.",
+    "candidate": "Requires exact candidate bytes or a candidate-bound matrix and therefore does not block candidate creation.",
+    "external": "Requires owner, provider, production, legal, access or origin evidence outside local source execution.",
+    "deferred": "Explicitly outside the 1.2.0 release-bound scope or conditional on a later product decision."
+  },
+  "overrides": [
+    {
+      "plan": "REL",
+      "id": "WIN-003",
+      "stage": "candidate",
+      "reason": "Clean-host TUN, DNS, egress and rollback proof requires exact signed Windows bytes."
+    },
+    {
+      "plan": "REL_GATE",
+      "id": "GATE-A",
+      "stage": "candidate",
+      "reason": "The aggregate closes signing and clean-host evidence after candidate creation; branch policy has separate exact external rows."
+    },
+    {
+      "plan": "REL_GATE",
+      "id": "GATE-C",
+      "stage": "candidate",
+      "reason": "The platform aggregate requires exact Android and Windows matrices; Linux is separately deferred for 1.2.0."
+    },
+    {
+      "plan": "REL_GATE",
+      "id": "GATE-F",
+      "stage": "candidate",
+      "reason": "Exact RC migrations, chaos, security, signed artifacts and rollback cannot be proved before candidate bytes exist."
+    },
+    {
+      "plan": "REL_DOD",
+      "id": "DOD-01",
+      "stage": "candidate",
+      "reason": "The final STOP-SHIP rerun is bound to frozen revisions and candidate matrices; branch enforcement remains separately blocking."
+    },
+    {
+      "plan": "REL_DOD",
+      "id": "DOD-02",
+      "stage": "candidate",
+      "reason": "Manifest signature, artifact identity and runtime/static readback require one exact candidate."
+    },
+    {
+      "plan": "REL_DOD",
+      "id": "DOD-04",
+      "stage": "candidate",
+      "reason": "Windows clean-host TUN, DNS and rollback are exact-candidate proof."
+    },
+    {
+      "plan": "REL_DOD",
+      "id": "DOD-10",
+      "stage": "candidate",
+      "reason": "Final platform artifact and ABI evidence is bound to frozen Core and client candidate artifacts."
+    },
+    {
+      "plan": "REL_DOD",
+      "id": "DOD-13",
+      "stage": "candidate",
+      "reason": "Comparable performance baselines must identify the exact build, device and environment."
+    },
+    {
+      "plan": "REL_DOD",
+      "id": "DOD-15",
+      "stage": "candidate",
+      "reason": "Signed artifacts, SBOM, provenance and same-byte promotion require final candidate artifacts."
+    },
+    {
+      "plan": "REL_DOD",
+      "id": "DOD-18",
+      "stage": "candidate",
+      "reason": "Portal and client-channel rollback must be drilled against one candidate identity."
+    },
+    {
+      "plan": "REL_DOD",
+      "id": "DOD-20",
+      "stage": "candidate",
+      "reason": "The final go/no-go consumes candidate, external and rollback evidence and cannot precede candidate creation."
+    },
+    {
+      "plan": "OBS",
+      "id": "OBS-077",
+      "stage": "candidate",
+      "reason": "The E2E fault matrix must cross actual portal, client, Core and host candidate boundaries."
+    },
+    {
+      "plan": "OBS",
+      "id": "OBS-079",
+      "stage": "candidate",
+      "reason": "Physical or emulator network-chaos evidence must be retained against exact Android and Windows candidates."
+    },
+    {
+      "plan": "OBS",
+      "id": "OBS-080",
+      "stage": "candidate",
+      "reason": "Same-build cold-start, connect, CPU, battery and thermal comparisons require exact candidate devices."
+    },
+    {
+      "plan": "OBS_DOD",
+      "id": "DOD-05",
+      "stage": "candidate",
+      "reason": "Release overhead budgets require exact same-build Android and Windows measurements."
+    },
+    {
+      "plan": "OBS_PB",
+      "id": "PB-14",
+      "stage": "candidate",
+      "reason": "Signed-manifest cohort binding and a real health-breach promotion stop require one exact candidate identity."
+    },
+    {
+      "plan": "OC",
+      "id": "OC-640",
+      "stage": "candidate",
+      "reason": "Legacy retirement and real static rollback happen only after exact-candidate authentication parity."
+    },
+    {
+      "plan": "FE",
+      "id": "P12-022",
+      "stage": "candidate",
+      "reason": "Cross-repository manifest closure requires signature, artifacts and public/runtime readback for one exact candidate."
+    },
+    {
+      "plan": "FE_PR",
+      "id": "PR-10",
+      "stage": "candidate",
+      "reason": "The release-hardening aggregate includes signed assets, manifest, rollback and final smoke."
+    },
+    {
+      "plan": "FRKN_ADOPT",
+      "id": "ADOPT-02",
+      "stage": "candidate",
+      "reason": "Transport and network measurements must identify the exact client/Core candidate and environment."
+    },
+    {
+      "plan": "FRKN_ADOPT",
+      "id": "ADOPT-04",
+      "stage": "candidate",
+      "reason": "Owned endpoint-burn and protocol-block classification requires exact candidate reproductions."
+    },
+    {
+      "plan": "FRKN_ADOPT",
+      "id": "ADOPT-05",
+      "stage": "candidate",
+      "reason": "Immutable AAR/DLL identity, signer, source commit and SBOM bind final candidate artifacts."
+    },
+    {
+      "plan": "FRKN_AWG",
+      "id": "AWG-03",
+      "stage": "candidate",
+      "reason": "TCP, UDP, DNS and dual-stack interop requires exact Android AAR and Windows DLL candidates."
+    },
+    {
+      "plan": "FRKN_AWG",
+      "id": "AWG-07",
+      "stage": "candidate",
+      "reason": "Network, power and crash teardown require exact device and VM candidate matrices."
+    },
+    {
+      "plan": "FRKN_AWG",
+      "id": "AWG-08",
+      "stage": "candidate",
+      "reason": "Battery, CPU and thermal comparison requires exact same-build physical-device evidence."
+    },
+    {
+      "plan": "FRKN_PLAN",
+      "id": "W6-03",
+      "stage": "candidate",
+      "reason": "Windows clean-VM, suspend and forced-kill cleanup are exact-candidate tests."
+    },
+    {
+      "plan": "FRKN_PLAN",
+      "id": "W6-04",
+      "stage": "candidate",
+      "reason": "Network switches, Doze, Private DNS and IPv6 leaks require named candidate devices."
+    },
+    {
+      "plan": "FRKN_PLAN",
+      "id": "W6-05",
+      "stage": "candidate",
+      "reason": "Battery, CPU and thermal comparisons must use exact candidate and baseline builds."
+    },
+    {
+      "plan": "FRKN_PLAN",
+      "id": "W9-02",
+      "stage": "candidate",
+      "reason": "Current-origin, brain-origin and RU-origin evidence must bind the same exact candidate while staying separate."
+    },
+    {
+      "plan": "FRKN_PLAN",
+      "id": "W9-05",
+      "stage": "candidate",
+      "reason": "Metric-based transport go/no-go consumes exact candidate and required manual evidence."
+    },
+    {
+      "plan": "FRKN_UNCERTAINTY",
+      "id": "UNCERT-02",
+      "stage": "candidate",
+      "reason": "AWG Mobile compatibility must be proved against the pinned exact AAR and DLL."
+    },
+    {
+      "plan": "FRKN_UNCERTAINTY",
+      "id": "UNCERT-04",
+      "stage": "candidate",
+      "reason": "Low-end Android battery and thermal behavior requires exact same-build device measurements."
+    },
+    {
+      "plan": "REL",
+      "id": "REL-001",
+      "stage": "external",
+      "external_gate": "pre_candidate",
+      "reason": "Promotion-branch protection and required checks require repository-owner access and must exist before candidate freeze."
+    },
+    {
+      "plan": "REL_DOD",
+      "id": "DOD-09",
+      "stage": "external",
+      "external_gate": "pre_candidate",
+      "reason": "Strict required checks on all promotion branches are an owner-controlled pre-candidate condition."
+    },
+    {
+      "plan": "FE",
+      "id": "P12-023",
+      "stage": "external",
+      "external_gate": "pre_candidate",
+      "reason": "The separate signed public release-index revision is unavailable and must be frozen before candidate creation."
+    },
+    {
+      "plan": "OBS",
+      "id": "OBS-084",
+      "stage": "external",
+      "external_gate": "post_candidate",
+      "reason": "A real production access review requires current support/security owners and retained external evidence."
+    },
+    {
+      "plan": "OC",
+      "id": "OC-630",
+      "stage": "external",
+      "external_gate": "post_candidate",
+      "reason": "Authenticated staging/production roles, origins, screenshots and rollback require deployed access."
+    },
+    {
+      "plan": "FE",
+      "id": "P12-012",
+      "stage": "external",
+      "external_gate": "post_candidate",
+      "reason": "Final provider-capability evidence requires deployed provider and public readback."
+    },
+    {
+      "plan": "FE",
+      "id": "P12-013",
+      "stage": "external",
+      "external_gate": "post_candidate",
+      "reason": "Live payment-provider redirect and public/cabinet readback require provider access."
+    },
+    {
+      "plan": "FE",
+      "id": "P12-014",
+      "stage": "external",
+      "external_gate": "post_candidate",
+      "reason": "Final stale-checkout proof requires deployed provider/readback and PostgreSQL concurrency evidence."
+    },
+    {
+      "plan": "MKT",
+      "id": "MKT-600",
+      "stage": "external",
+      "external_gate": "post_candidate",
+      "reason": "Atomic deploy, CDN purge, public/admin revision readback and rollback rehearsal require authorization and deployed access."
+    },
+    {
+      "plan": "MKT_STAGE",
+      "id": "STAGE-4",
+      "stage": "external",
+      "external_gate": "post_candidate",
+      "reason": "Current legal, profile and channel approval is an owner decision, not local source evidence."
+    },
+    {
+      "plan": "MKT_STAGE",
+      "id": "STAGE-5",
+      "stage": "external",
+      "external_gate": "post_candidate",
+      "reason": "The controlled pilot requires separate owner authorization for cohort, channel and mutation scope."
+    },
+    {
+      "plan": "FRKN_AWG",
+      "id": "AWG-10",
+      "stage": "external",
+      "external_gate": "post_candidate",
+      "reason": "A distinct RU-origin canary requires owner authorization, owned infrastructure and named ASN evidence."
+    },
+    {
+      "plan": "FRKN_PLAN",
+      "id": "W3-01",
+      "stage": "external",
+      "external_gate": "post_candidate",
+      "reason": "Bringing up an owned AWG test server requires explicit infrastructure authority."
+    },
+    {
+      "plan": "FRKN_PLAN",
+      "id": "W9-01",
+      "stage": "external",
+      "external_gate": "post_candidate",
+      "reason": "An internal or opt-in cohort requires separate authorization after exact internal proof."
+    },
+    {
+      "plan": "FRKN_PLAN",
+      "id": "W9-03",
+      "stage": "external",
+      "external_gate": "post_candidate",
+      "reason": "Multi-ASN Russian regional coverage requires an owner-authorized bounded external matrix."
+    },
+    {
+      "plan": "FRKN_UNCERTAINTY",
+      "id": "UNCERT-01",
+      "stage": "external",
+      "external_gate": "post_candidate",
+      "reason": "Current FRKN server-side schema can be resolved only against an owned server."
+    },
+    {
+      "plan": "FRKN_UNCERTAINTY",
+      "id": "UNCERT-03",
+      "stage": "external",
+      "external_gate": "post_candidate",
+      "reason": "Transport effectiveness by Russian ASN and region requires fresh owned origin evidence."
+    },
+    {
+      "plan": "REL",
+      "id": "LNX-001",
+      "stage": "deferred",
+      "reason": "Linux is explicitly NOT_SHIPPED_IN_1.2.0 and requires a later supported-matrix owner decision."
+    },
+    {
+      "plan": "REL_DOD",
+      "id": "DOD-06",
+      "stage": "deferred",
+      "reason": "The Linux beta package and distro matrix are outside the 1.2.0 shipped-platform claim."
+    },
+    {
+      "plan": "OBS",
+      "id": "OBS-043",
+      "stage": "deferred",
+      "reason": "Linux daemon journald output depends on the deferred Linux beta lane."
+    },
+    {
+      "plan": "OBS",
+      "id": "OBS-044",
+      "stage": "deferred",
+      "reason": "Linux D-Bus and polkit spans depend on the deferred Linux beta lane."
+    },
+    {
+      "plan": "OBS",
+      "id": "OBS-045",
+      "stage": "deferred",
+      "reason": "Linux NetworkManager, resolved and nft events depend on the deferred Linux beta lane."
+    },
+    {
+      "plan": "OBS",
+      "id": "OBS-046",
+      "stage": "deferred",
+      "reason": "Linux daemon export depends on the deferred Linux beta lane."
+    },
+    {
+      "plan": "OBS",
+      "id": "OBS-087",
+      "stage": "deferred",
+      "reason": "Healthy-baseline diff is P2 and requires a later cohort privacy and authenticated projection contract."
+    },
+    {
+      "plan": "FE",
+      "id": "P12-201",
+      "stage": "deferred",
+      "reason": "ABI v3 ConnectionStatus is explicitly post-1.2.0; 1.2.0 remains on the typed ABI v2 adapter."
+    },
+    {
+      "plan": "FE",
+      "id": "P12-202",
+      "stage": "deferred",
+      "reason": "Full Profile and Rules extraction is conditional P2 after release blockers."
+    },
+    {
+      "plan": "FE",
+      "id": "P12-203",
+      "stage": "deferred",
+      "reason": "A portal component runner is conditional P2 and needs a concrete isolated-test failure."
+    },
+    {
+      "plan": "FE",
+      "id": "P12-205",
+      "stage": "deferred",
+      "reason": "Explainable Smart Connect is conditional P2 pending stable reason factors and acceptance evidence."
+    },
+    {
+      "plan": "FE",
+      "id": "P12-206",
+      "stage": "deferred",
+      "reason": "Additional Windows titlebar and tray polish is conditional P2 pending a physical usability failure."
+    },
+    {
+      "plan": "FE",
+      "id": "P12-207",
+      "stage": "deferred",
+      "reason": "A user motion override is conditional P2 and requires a separate product and persistence decision."
+    },
+    {
+      "plan": "FE",
+      "id": "P12-208",
+      "stage": "deferred",
+      "reason": "Support SSE or WebSocket is P2 and only justified by a measured polling failure."
+    },
+    {
+      "plan": "FE",
+      "id": "P12-209",
+      "stage": "deferred",
+      "reason": "Cross-device QR handoff is conditional P2 pending a measured completion failure."
+    },
+    {
+      "plan": "FE",
+      "id": "P12-210",
+      "stage": "deferred",
+      "reason": "Generated copy-contract documentation is P2 after release blockers; current source truth remains authoritative."
+    },
+    {
+      "plan": "FRKN_HY2",
+      "id": "HY2-01",
+      "stage": "deferred",
+      "reason": "Hysteria2 is a later bounded selector/fallback decision after AWG2 evidence, never a 1.2.0 blocker."
+    },
+    {
+      "plan": "FRKN_MONITOR",
+      "id": "MONITOR-01",
+      "stage": "deferred",
+      "reason": "AWG 3.0 and later obfuscation are monitor-only upstream items."
+    },
+    {
+      "plan": "FRKN_MONITOR",
+      "id": "MONITOR-02",
+      "stage": "deferred",
+      "reason": "Hysteria2 Gecko, Mimic and port hopping are monitor-only upstream items."
+    },
+    {
+      "plan": "FRKN_MONITOR",
+      "id": "MONITOR-03",
+      "stage": "deferred",
+      "reason": "TrustTunnel and fptn remain monitor-only without a production dependency and owner."
+    },
+    {
+      "plan": "FRKN_MONITOR",
+      "id": "MONITOR-04",
+      "stage": "deferred",
+      "reason": "XHTTP, REALITY and AWG blocking trends remain monitor-only owned evidence."
+    }
+  ]
+}

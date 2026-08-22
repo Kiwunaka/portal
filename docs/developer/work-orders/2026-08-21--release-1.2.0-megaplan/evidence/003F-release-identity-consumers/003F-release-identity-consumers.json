@@ -1,0 +1,63 @@
+{
+  "schema": "pokrov.release-1.2.0.release-identity-consumers.v1",
+  "generated_at": "2026-08-22T09:05:37Z",
+  "work_order": "WO-003F",
+  "advanced_rows": [
+    "REL_DOD/DOD-16"
+  ],
+  "implementation_index": "I3",
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "sources": {
+    "platform_revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "platform_dirty_entries": 398,
+    "client_revision_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+    "client_dirty_entries": 234,
+    "core_revision_before_uncommitted_changes": "69a74545101708e56183c92e31f2b4c7b2509884",
+    "core_dirty_entries": 53
+  },
+  "authority_path": {
+    "manifest": "strict release-handoff schema v2",
+    "release_fields": [
+      "release.version",
+      "release.created_at_utc",
+      "release.release_notes.summary",
+      "release.release_notes.url"
+    ],
+    "client_package_validation": "new-release-handoff-v2.ps1 -> check-client-version-parity.ps1",
+    "visible_client_identity": "POKROV_APP_VERSION -> pokrovClientVersion",
+    "runtime_projection": "remote_brain_apply_release_handoff.py",
+    "api_consumer": "/api/client/apps and /api/public/client-apps",
+    "ui_consumers": [
+      "client update prompt",
+      "client profile and navigation version",
+      "authenticated cabinet release cards"
+    ]
+  },
+  "local_results": {
+    "platform_schema_validator_runtime_projection": "PASS_57_OF_57",
+    "client_release_handoff_contract": "PASS_15_OF_15",
+    "client_seed_and_docs_contract": "PASS",
+    "client_update_prompt_widget": "PASS_1_OF_1",
+    "client_apps_api_projection": "PASS_6_OF_6_WITH_12_EXISTING_UTCNOW_WARNINGS",
+    "webapp_production_build": "PASS_40_STATIC_ROUTES",
+    "initial_cabinet_playwright": "NOT_PASS_66_OF_67_OLD_SECONDARY_APK_FIXTURE_MISSING_REQUIRED_RELEASE_NOTES",
+    "final_cabinet_playwright": "PASS_67_OF_67",
+    "candidate_preflight": "BLOCKED_5_CANDIDATE_FALSE_LEDGER_BELOW_I3_114",
+    "documentation_context_and_preflight_tests": "PASS_34_OF_34",
+    "platform_context_audit": "PASS",
+    "documentation_links": "PASS",
+    "json_parsing": "PASS_5_FILES",
+    "scoped_diff_check": "PASS_WITH_LINE_ENDING_WARNINGS_ONLY",
+    "ledger_distribution": "I3_263_I2_35_I1_47_I0_32_TOTAL_377"
+  },
+  "manual_or_external": {
+    "real_candidate": "NOT_CREATED",
+    "public_release_index": "BLOCKED_BY_ACCESS",
+    "hosted_ci": "NOT_RUN",
+    "signed_artifact_identity": "NOT_RUN",
+    "deployed_runtime_sync": "NOT_AUTHORIZED",
+    "deployed_client_or_cabinet_readback": "NOT_RUN",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

@@ -1,0 +1,128 @@
+{
+  "schema": "pokrov.release-stop-ship-regressions.v1",
+  "release": "1.2.0",
+  "source_plan": "POKROV_release_1.2.0_full_audit_with_client_logging_RU.md",
+  "entries": [
+    {
+      "id": "PAY-001",
+      "finding": "Duplicate FreeKassa payment URL parser",
+      "regressions": [
+        {
+          "repository": "platform",
+          "path": "tests/test_payment_provider_boundaries.py",
+          "contains": [
+            "def test_api_composition_has_no_duplicate_or_zero_amount_parser_fallback",
+            "provider_source.count(\"def parse_freekassa_payment_url(\") == 1"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "PAY-002",
+      "finding": "FreeKassa missing checkout URL could synthesize oa=0",
+      "regressions": [
+        {
+          "repository": "platform",
+          "path": "tests/test_payment_provider_boundaries.py",
+          "contains": [
+            "def test_freekassa_parser_fails_closed_without_synthetic_fallback",
+            "assert \"oa=0\" not in provider_source"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "REL-001",
+      "finding": "Promotion branches lack enforced required checks and provenance review",
+      "regressions": [
+        {
+          "repository": "platform",
+          "path": "tests/test_release_gate_check.py",
+          "contains": [
+            "def test_platform_release_v2_workflow_is_strict_and_cross_repository",
+            "self.assertNotIn(\"allow-missing-client-root\", workflow)"
+          ]
+        }
+      ],
+      "hosted_controls": [
+        {
+          "repository": "Kiwunaka/portal",
+          "branch": "master",
+          "required_checks": ["cross-repository-contract"]
+        },
+        {
+          "repository": "Kiwunaka/POKROV-app",
+          "branch": "main",
+          "required_checks": ["cross-repository-contract"]
+        },
+        {
+          "repository": "Kiwunaka/pokrov-core",
+          "branch": "main",
+          "required_checks": ["test", "release-contract"]
+        }
+      ]
+    },
+    {
+      "id": "REL-002",
+      "finding": "Client lacks mandatory hosted release workflow",
+      "regressions": [
+        {
+          "repository": "client",
+          "path": "test/release-v2-ci-contract.ps1",
+          "contains": [
+            "repository: Kiwunaka/portal",
+            "./scripts/run-tests.ps1",
+            "allow-missing-client-root"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "WIN-001",
+      "finding": "Windows ordinary second launch lacks singleton forwarding",
+      "regressions": [
+        {
+          "repository": "client",
+          "path": "apps/windows_shell/test/windows_release_contract_test.dart",
+          "contains": [
+            "windows setup registers bounded POKROV continuation protocol",
+            "CreateMutexW",
+            "SendMessageTimeoutW",
+            "case WM_COPYDATA"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "WIN-002",
+      "finding": "Windows Flutter UI relaunches fully elevated for TUN",
+      "regressions": [
+        {
+          "repository": "client",
+          "path": "apps/windows_shell/test/windows_release_contract_test.dart",
+          "contains": [
+            "windows shell delegates TUN privilege and owns user preferences",
+            "isNot(contains('TokenElevation'))",
+            "isNot(contains('ShellExecuteW'))",
+            "requestPokrovWindowsTunnelAuthorization"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "WIN-003",
+      "finding": "Windows can show false green without clean-host TUN and DNS proof",
+      "regressions": [
+        {
+          "repository": "client",
+          "path": "packages/app_shell/test/connection_experience_test.dart",
+          "contains": [
+            "verified state requires every DNS, host, uplink and egress proof",
+            "started tunnel without proof is verifying or degraded, never green"
+          ]
+        }
+      ],
+      "manual_gate": "Exact-candidate Windows 10/11 clean-host TUN, DNS, egress and rollback evidence"
+    }
+  ]
+}

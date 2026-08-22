@@ -3,7 +3,6 @@ import { FinalCta } from "../components/home/final-cta";
 import { Hero } from "../components/home/hero";
 import { HonestyStrip } from "../components/home/honesty-strip";
 import { Pricing } from "../components/home/pricing";
-import { ServicesGrid } from "../components/home/services-grid";
 import { Showcase } from "../components/home/showcase";
 import { Steps } from "../components/home/steps";
 import JsonLd from "../components/json-ld";
@@ -17,8 +16,8 @@ import {
 } from "../lib/marketing-site";
 
 export const metadata = buildMarketingMetadata(
-  "YouTube, TikTok и ChatGPT — одной кнопкой | POKROV",
-  "POKROV для Android и Windows: 5 дней бесплатно без карты, официальный APK и EXE, первый полный месяц 99 ₽ без автосписаний.",
+  "POKROV для Android и Windows — проверьте до оплаты",
+  "Установите POKROV на Android или Windows и проверьте подключение: 5 дней бесплатно без карты. Первый полный месяц — 99 ₽ один раз, автосписаний нет.",
   {
     path: "/",
   },
@@ -32,7 +31,6 @@ export default function HomePage() {
       <JsonLd data={buildTrustLinksJsonLd()} />
       <Hero />
       <HonestyStrip />
-      <ServicesGrid />
       <Steps />
       <Showcase />
       <Pricing />

@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   CalendarCheck,
   Gauge,
   Gift,
   KeyRound,
   LifeBuoy,
+  ListChecks,
   Lock,
   MonitorSmartphone,
   ShieldCheck,
@@ -32,12 +33,17 @@ import {
   resolvePlanLabel,
   resolveTrafficStatusText,
 } from "@/lib/access-policy";
-import { getCopyText, getTariffPlan, normalizePlanCode } from "@/lib/portal";
+import {
+  getCopyText,
+  getSharedProductFacts,
+  getTariffPlan,
+  normalizePlanCode,
+} from "@/lib/portal";
 import { updateOnboardingStatus, type OnboardingCompletionStatus } from "@/lib/api";
 import { usePortalSession } from "@/lib/session";
 import { formatDays } from "@/lib/ru-plural";
 
-const TRIAL_DAYS = 5;
+const TRIAL_DAYS = getSharedProductFacts().trial.days;
 
 function formatDate(value?: string | null): string {
   if (!value) return "уточняется";
@@ -86,7 +92,6 @@ export default function DashboardPage() {
   const [tourOpen, setTourOpen] = useState(false);
   const [tourSaving, setTourSaving] = useState(false);
   const [tourError, setTourError] = useState("");
-  const autoOpenedRef = useRef("");
   const accessState = getAccessState(dash, user);
   const trialMode = isTrialPremiumState(accessState);
   const softMode = isSoftModeState(accessState);
@@ -101,15 +106,6 @@ export default function DashboardPage() {
   const experience = user?.experience;
   const nextStep = experience?.next_step || "install";
   const connectionState = experience?.first_connection.state || "none";
-
-  useEffect(() => {
-    if (!experience?.onboarding.should_show) return;
-    const key = `${user?.account_id || user?.tg_id || "account"}:${experience.onboarding.version}`;
-    if (autoOpenedRef.current === key) return;
-    autoOpenedRef.current = key;
-    setTourError("");
-    setTourOpen(true);
-  }, [experience?.onboarding.should_show, experience?.onboarding.version, user?.account_id, user?.tg_id]);
 
   const closeTour = useCallback(async (status: OnboardingCompletionStatus) => {
     setTourSaving(true);
@@ -131,8 +127,15 @@ export default function DashboardPage() {
     }
   }, [refresh]);
 
-  const statusTone = !isActive ? "warning" : softMode ? "warning" : "success";
-  const statusTitle = !isActive ? "Доступ закончился" : softMode ? "Скорость ограничена" : "Доступ активен";
+  const expiringSoon = Boolean(isActive && nextStep === "complete" && daysRemaining !== null && daysRemaining <= 7);
+  const statusTone = !isActive || expiringSoon || softMode ? "warning" : "success";
+  const statusTitle = !isActive
+    ? "Доступ закончился"
+    : expiringSoon
+      ? "Доступ скоро закончится"
+      : softMode
+        ? "Скорость ограничена"
+        : "Доступ активен";
   const statusMeta = isActive ? `${planLabel} · до ${formatDate(dash?.expiry_at)}` : "Продление вернет доступ в этом аккаунте";
   const statusBody = !isActive
     ? "Продлите срок и снова подключайтесь в приложении."
@@ -147,15 +150,15 @@ export default function DashboardPage() {
         : nextStep === "connect"
           ? "Откройте приложение и нажмите «Подключить»."
           : "Скачайте приложение POKROV и войдите в этот же аккаунт.";
-  const primaryHref = !isActive
+  const primaryHref = !isActive || expiringSoon
     ? "/subscription/checkout/"
     : nextStep === "complete"
       ? "/devices/"
       : nextStep === "install"
         ? "/downloads/"
         : undefined;
-  const primaryLabel = !isActive
-    ? "Продлить"
+  const primaryLabel = !isActive || expiringSoon
+    ? expiringSoon ? "Продлить заранее" : "Продлить"
     : nextStep === "complete"
       ? "Устройства"
       : nextStep === "connect"
@@ -183,7 +186,10 @@ export default function DashboardPage() {
         action={
           <Button
             href={primaryHref}
-            onClick={primaryHref ? undefined : () => setTourOpen(true)}
+            onClick={primaryHref ? undefined : () => {
+              setTourError("");
+              setTourOpen(true);
+            }}
             className="w-full sm:w-auto"
           >
             {primaryLabel}
@@ -209,6 +215,35 @@ export default function DashboardPage() {
           </div>
         ) : null}
       </StatusHero>
+
+      <section className="flex flex-col gap-3 rounded-card border border-line bg-surface p-4 shadow-soft sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-[12px] bg-brand-soft text-brand">
+            <ListChecks size={19} strokeWidth={2} aria-hidden="true" />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-sm font-semibold text-ink">План запуска</h2>
+            <p className="mt-0.5 text-[13px] leading-5 text-ink-soft">
+              {nextStep === "install"
+                ? "Скачать приложение, войти и подключиться."
+                : nextStep === "connect"
+                  ? "Остался первый запуск подключения."
+                  : "Инструкция всегда доступна по запросу."}
+            </p>
+          </div>
+        </div>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setTourError("");
+            setTourOpen(true);
+          }}
+          data-testid="launch-checklist-open"
+          className="w-full sm:w-auto"
+        >
+          Открыть чек-лист
+        </Button>
+      </section>
 
       <section className="flex flex-col gap-2.5">
         <h2 className="px-1 text-xs font-bold tracking-[0.08em] text-ink-soft uppercase">Сводка</h2>

@@ -1,0 +1,51 @@
+{
+  "schema": "pokrov.release-1.2.0.version-truth.v1",
+  "generated_at": "2026-08-22T09:42:55Z",
+  "work_order": "WO-003H",
+  "advanced_rows": [
+    "REL/VER-001"
+  ],
+  "implementation_index": "I3",
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "sources": {
+    "platform_revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "platform_dirty_entries": 337,
+    "client_revision_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+    "client_dirty_entries": 169,
+    "core_revision_before_uncommitted_changes": "69a74545101708e56183c92e31f2b4c7b2509884",
+    "core_dirty_entries": 51
+  },
+  "version_truth": {
+    "retained_public_tag": "v1.1.6",
+    "retained_public_package_line": "1.1.6+29",
+    "development_package": "1.2.0+30",
+    "development_state": "PRE_CANDIDATE_LOCAL",
+    "candidate_created": false,
+    "active_core": "1.0.3",
+    "intended_core": "1.1.0_DIRTY_DEVELOPMENT_REPLACEMENT_PENDING",
+    "authority": "POKROV-app/config/release-handoff.seed.json -> generated strict-v2 candidate handoff"
+  },
+  "active_platform_owner_count": 4,
+  "reclassified_evidence_wave_count": 6,
+  "local_results": {
+    "client_seed_parity_and_cross_repo_gate": "PASS",
+    "platform_docs_context_schema_runtime_projection": "PASS_89_OF_89",
+    "client_apps_api_release_slice": "PASS_6_OF_6_WITH_12_EXISTING_UTCNOW_WARNINGS",
+    "client_update_prompt_widget": "PASS_1_OF_1",
+    "initial_combined_platform_slice": "NOT_PASS_97_OF_98_OLD_PROGRAM_APPLICATION_TEST_MISSING_REQUIRED_ACTION_INTENT",
+    "program_application_action_intent_regression": "PASS_1_OF_1_DIRECT_428_PREPARE_CONFIRM_EXECUTE_IDEMPOTENT_REPLAY_OPAQUE_GRANT_REF",
+    "full_client_ui_api_additions_file": "PASS_9_OF_9",
+    "final_combined_platform_slice": "PASS_98_OF_98",
+    "candidate_preflight": "BLOCKED_5_CANDIDATE_FALSE_LEDGER_BELOW_I3_111",
+    "ledger_distribution": "I3_266_I2_35_I1_45_I0_31_TOTAL_377"
+  },
+  "manual_or_external": {
+    "real_candidate": "NOT_CREATED",
+    "public_release_index": "BLOCKED_BY_ACCESS",
+    "hosted_ci": "NOT_RUN",
+    "deployed_version_readback": "NOT_RUN",
+    "signed_artifact_identity": "NOT_RUN",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

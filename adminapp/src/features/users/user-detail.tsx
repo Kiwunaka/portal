@@ -181,6 +181,16 @@ function DetailTable({ headers, rows, empty }: { headers: string[]; rows: ReactN
   );
 }
 
+function PermissionState({ permission, description }: { permission: string; description: string }) {
+  return (
+    <EmptyState
+      title="Данные скрыты политикой доступа"
+      description={`${description} Требуется право ${permission}.`}
+      className="min-h-28"
+    />
+  );
+}
+
 export function UserDetail({
   data,
   loadedAt,
@@ -227,6 +237,7 @@ export function UserDetail({
           <div>
             <h2 className="text-xl font-semibold text-[color:var(--atlas-text)]">Пользователь {data.user.tgId}</h2>
             <p className="mt-1 text-sm text-[color:var(--atlas-text-soft)]">{name}</p>
+            <p className="mt-1 font-mono text-[11px] text-[color:var(--atlas-text-muted)]">{data.support360.entity.accountRef || "account ref недоступен"}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Badge tone={tone(data.user.status)}>{statusLabel(data.user.status)}</Badge>
@@ -275,14 +286,19 @@ export function UserDetail({
               <div className="grid gap-3 lg:grid-cols-2">
                 <div>
                   <SectionTitle title="Основные сведения" description="Первый слой без токенов, ссылок подключения и исходных IP-адресов." />
+                  {!data.fieldAccess.sensitiveIdentity ? (
+                    <div className="mb-2">
+                      <PermissionState permission="support.sensitive.read" description="Привязанный Telegram, установка и устройство не показаны текущей роли." />
+                    </div>
+                  ) : null}
                   <dl className="grid gap-2 text-xs sm:grid-cols-2">
                     {[
                       ["Telegram ID", String(data.user.tgId)],
                       ["Имя в Telegram", data.user.username ? `@${data.user.username}` : "Не указано"],
-                      ["Привязанный Telegram", data.user.linkedTelegramUsername ? `@${data.user.linkedTelegramUsername}` : "Не привязан"],
+                      ["Привязанный Telegram", data.fieldAccess.sensitiveIdentity ? (data.user.linkedTelegramUsername ? `@${data.user.linkedTelegramUsername}` : "Не привязан") : "Скрыто ролью"],
                       ["Источник", data.user.origin === "app" ? "Приложение" : data.user.origin === "telegram" ? "Telegram" : data.user.origin === "manual_test" ? "Ручной тест" : "Не указан"],
-                      ["Устройство", data.user.deviceName || "Не указано"],
-                      ["ID установки", data.user.installId || "Не указан"],
+                      ["Устройство", data.fieldAccess.sensitiveIdentity ? (data.user.deviceName || "Не указано") : "Скрыто ролью"],
+                      ["ID установки", data.fieldAccess.sensitiveIdentity ? (data.user.installId || "Не указан") : "Скрыто ролью"],
                       ["Платформа", data.user.appPlatform || "Не указана"],
                       ["Последняя активность приложения", dateText(data.user.appLastSeenAt)],
                     ].map(([label, value]) => (
@@ -305,7 +321,11 @@ export function UserDetail({
                   </div>
                 </div>
               </div>
-              <UserActions user={data.user} keys={data.keys} onRefresh={onRefresh} />
+              {data.fieldAccess.legacyUserActions ? (
+                <UserActions user={data.user} keys={data.keys} onRefresh={onRefresh} />
+              ) : (
+                <PermissionState permission="legacy.admin.access" description="Устаревшие команды карточки недоступны этой роли; профильные операции выполняются через рабочее место тикетов." />
+              )}
             </div>
           ) : null}
 
@@ -325,7 +345,24 @@ export function UserDetail({
           ) : null}
 
           {tab === "events" ? (
-            <div>
+            !data.fieldAccess.supportDiagnostics || !data.fieldAccess.appEvents ? (
+              <PermissionState permission="support.sensitive.read" description="Установки, сессии, попытки и события приложения относятся к чувствительной диагностике." />
+            ) : (
+            <div className="space-y-4">
+              <div>
+                <SectionTitle title="Установки и сессии" description="Сервер группирует события по opaque refs. Исходные device/session/trace identifiers не возвращаются." />
+                <div className="grid gap-2 sm:grid-cols-2">{data.support360.installations.map((installation) => <article key={installation.installationRef} className="rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] p-3 text-xs"><code className="font-mono text-[11px]">{installation.installationRef}</code><p className="mt-2">{installation.sessions} сессий · {installation.attempts} попыток</p><p className="mt-1 text-[color:var(--atlas-text-muted)]">{dateText(installation.lastSeenAt)}</p></article>)}</div>
+                {!data.support360.installations.length ? <EmptyState description="Установки не определены по безопасным клиентским событиям." className="min-h-20" /> : null}
+              </div>
+              <div>
+                <SectionTitle title="Сгруппированные попытки" description="Внутри каждой попытки — только allowlist событий Event adapter v1." />
+                <DetailTable headers={["Попытка", "Сессия", "Результат", "Событий", "Последнее событие"]} empty="Коррелируемых попыток нет." rows={data.support360.attempts.map((attempt) => [<code key="attempt" className="font-mono text-[11px]">{attempt.attemptRef}</code>, <code key="session" className="font-mono text-[11px]">{attempt.sessionRef}</code>, <Badge key="outcome" tone={tone(attempt.outcome || "unknown")}>{statusLabel(attempt.outcome || "unknown")}</Badge>, String(attempt.eventCount), dateText(attempt.endedAt)])} />
+              </div>
+              <div>
+                <SectionTitle title="Диагностические отпечатки" description="Отпечаток строится из ограниченных кодов клиента, этапа, результата и версии; raw payload не участвует." />
+                <DetailTable headers={["Fingerprint", "Количество", "Клиент", "Этап", "Код"]} empty="Диагностические отпечатки отсутствуют." rows={data.support360.fingerprints.map((fingerprint) => [<code key="fp" className="font-mono text-[11px]">{fingerprint.fingerprint}</code>, String(fingerprint.count), [fingerprint.platform, fingerprint.appVersion].filter(Boolean).join(" · ") || "Не указан", [fingerprint.subsystem, fingerprint.stage].filter(Boolean).join(" · ") || "Не указан", fingerprint.errorCode || fingerprint.result || "—"])} />
+              </div>
+              <div>
               <SectionTitle title="Последние события приложения" description="До 100 безопасных событий: шаг, версия клиента, результат и нормализованная причина. Токены, ключи, адреса сайтов и произвольные payload сюда не попадают." />
               <DetailTable headers={["Время", "Событие", "Результат", "Клиент", "Этап", "Длительность"]} empty="Приложение ещё не отправляло диагностические события для этого аккаунта." rows={data.appEvents.map((event) => {
                 const result = event.result || (event.errorCode ? "error" : "unknown");
@@ -341,10 +378,15 @@ export function UserDetail({
                   durationText(event.durationMs),
                 ];
               })} />
+              </div>
             </div>
+            )
           ) : null}
 
           {tab === "payments" ? (
+            !data.fieldAccess.payments ? (
+              <PermissionState permission="money.read" description="Платёжные заказы пользователя недоступны текущей роли." />
+            ) : (
             <div>
               <SectionTitle title="Платежи" description="Заказы пользователя без исходного ответа провайдера и платёжных секретов." />
               <DetailTable headers={["Заказ", "Провайдер", "План", "Сумма", "Статус", "Создан"]} empty="Платежей пользователя нет." rows={data.payments.map((payment) => [
@@ -356,6 +398,7 @@ export function UserDetail({
                 dateText(payment.createdAt),
               ])} />
             </div>
+            )
           ) : null}
 
           {tab === "tickets" ? (
@@ -405,7 +448,11 @@ export function UserDetail({
               </div>
               <div>
                 <SectionTitle title="Действия администраторов" />
-                <DetailTable headers={["Время", "Действие", "Оператор"]} empty="Действий администраторов нет." rows={data.adminActions.map((item) => [dateText(item.createdAt), actionLabel(item.action), item.actorTgId === null ? "Не указан" : String(item.actorTgId)])} />
+                {data.fieldAccess.adminAudit ? (
+                  <DetailTable headers={["Время", "Действие", "Оператор"]} empty="Действий администраторов нет." rows={data.adminActions.map((item) => [dateText(item.createdAt), actionLabel(item.action), item.actorTgId === null ? "Не указан" : String(item.actorTgId)])} />
+                ) : (
+                  <PermissionState permission="governance.audit.read" description="История действий администраторов скрыта текущей роли." />
+                )}
               </div>
             </div>
           ) : null}

@@ -30,7 +30,8 @@ export function TelegramBonus() {
               <p className="max-w-lg text-[0.9375rem] leading-relaxed text-ink-soft">
                 {getCopyText(
                   "marketing.home.telegram.text",
-                  "Привяжите Telegram, подпишитесь на официальный канал и заберите ещё 5 дней в приложении — оплата для этого не нужна. Там же публикуем обновления и статусы работы.",
+                  `Привяжите Telegram, подпишитесь на официальный канал и заберите ещё ${facts.telegram_reward.days} дней в приложении — оплата для этого не нужна. Там же публикуем обновления и статусы работы.`,
+                  { telegram_reward_days: facts.telegram_reward.days },
                 )}
               </p>
             </div>
@@ -42,7 +43,11 @@ export function TelegramBonus() {
             rel="noopener noreferrer"
             className="shrink-0"
           >
-            {getCopyText("marketing.home.telegram.cta", "Забрать +5 дней")}
+            {getCopyText(
+              "marketing.home.telegram.cta",
+              `Забрать +${facts.telegram_reward.days} дней`,
+              { telegram_reward_days: facts.telegram_reward.days },
+            )}
           </Button>
         </div>
       </Reveal>

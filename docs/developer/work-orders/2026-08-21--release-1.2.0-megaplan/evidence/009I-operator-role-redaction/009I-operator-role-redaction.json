@@ -1,0 +1,82 @@
+{
+  "schema": "pokrov.release-1.2.0.operator-role-redaction.v1",
+  "generated_at": "2026-08-22T17:23:00Z",
+  "work_order": "WO-009I",
+  "row_outcomes": {
+    "OC/OC-110": "I3"
+  },
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "sources": {
+    "platform_revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "platform_dirty_entries": 351,
+    "client_revision_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+    "client_dirty_entries": 184,
+    "core_revision_before_uncommitted_changes": "69a74545101708e56183c92e31f2b4c7b2509884",
+    "core_dirty_entries": 57
+  },
+  "boundary": {
+    "legacy_bridge_default": "legacy.admin.access",
+    "support_sensitive_permission": "support.sensitive.read",
+    "money_permission": "money.read",
+    "audit_permission": "governance.audit.read",
+    "high_risk_permission": "command.high_risk",
+    "high_risk_requires_step_up": true,
+    "query_suppressed_when_redacted": true,
+    "openapi_operations": 73,
+    "openapi_semantic_sha256": "5177721e0c8dad91d8196fa35416b751639101bb0688ce0d8f841c1d0889812d"
+  },
+  "source_sha256": {
+    "role_registry": "161176035dd60e7449c1ee544574303325ed1504dcc14fdbe037d74949056ad5",
+    "admin_v2_router": "a2a122bce0897e491370a2f52bfb2c5304dbc79d3e384e15daa662931d6883fe",
+    "support_projection": "59af7008a6acc4a6fd731396cf95d82a90b93529af88c4c61b42e7527c927ad3",
+    "legacy_search_service": "436701f32e82e7e59a0147c8708e73cde39e64664c8f044c312d98a3666ab8cf",
+    "legacy_user_search": "547077d5b2d7df298fe7eb293307b35df11b253f7680aaf30dac365ea2bb804f",
+    "legacy_user_routes": "30bb0985f7437ce8c24be375bbfa614b8accdb1dbc99dfc4a4ff63e31f46a533",
+    "backend_role_tests": "526a44de8bab4e27af71a9a35bff23ccd6e054d6dff9d10cbd4580a4dafb3afa",
+    "adminapp_user_detail": "2f6bd68f18875fe92d6ae8734cd9e85cddebc01453c627a5954d55c68a0c58be",
+    "adminapp_user_list": "979ba3fc252ce3e2f01c19b760c4c0cd4255bdee23fb37dab8d6a8b65a73ae84",
+    "adminapp_support_mapper": "e49ad0f6f57665495aa781624415f85fc838707dae9830f22d8ea5f94d618c55",
+    "adminapp_user_mapper": "8f061ed5faf3d95342ec8aa7fb3b8b19ffd80672d0052288fae370cd7b9b9793",
+    "adminapp_role_browser_test": "3ee3330ad241d8fed9cccf67c0a46ada7e684c880e4c68c12220073639948d67",
+    "adminapp_api_fixture": "31697e48d758f59591aad23e268ba77b420d35012d403f20be37c2b79c2b3b93"
+  },
+  "local_results": {
+    "python_compile": "PASS",
+    "focused_role_redaction_high_risk": "PASS",
+    "backend_admin_contract_matrix": "PASS_75_OF_75",
+    "openapi_generation_check": "PASS_73_OPERATIONS",
+    "typescript_generation_check": "PASS",
+    "adminapp_lint": "PASS",
+    "adminapp_production_build": "PASS_30_STATIC_PAGES",
+    "adminapp_playwright": "PASS_77_OF_77",
+    "l1_redaction_browser_case": "PASS_PERMISSION_STATE_NOT_FALSE_EMPTY",
+    "documentation_contracts": "PASS_37_OF_37",
+    "platform_client_core_diff_check": "PASS_WITH_LINE_ENDING_WARNINGS_ONLY",
+    "targeted_secret_scan": "PASS_NO_MATCHES",
+    "evidence_json_parse": "PASS",
+    "candidate_preflight": "EXPECTED_BLOCKED",
+    "candidate_preflight_blockers": 7,
+    "candidate_created": false,
+    "ledger_distribution": "I3_293_I2_26_I1_41_I0_17_TOTAL_377",
+    "ledger_below_i3": 84,
+    "pending_stage_counts": {
+      "pre_freeze": 14,
+      "candidate": 32,
+      "external": 17,
+      "deferred": 21
+    }
+  },
+  "manual_or_external": {
+    "production_idp_or_passkey_step_up": "NOT_RUN",
+    "real_operator_assignment_and_readback": "NOT_RUN",
+    "retained_external_step_up_audit": "NOT_RUN",
+    "frozen_clean_revision": "NOT_CREATED",
+    "hosted_clean_check": "NOT_RUN",
+    "exact_candidate": "NOT_CREATED",
+    "deployment": "NOT_AUTHORIZED",
+    "server_mutation": "NOT_AUTHORIZED",
+    "publication": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

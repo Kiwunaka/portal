@@ -272,6 +272,8 @@ def create_acquisition_handoff(
         acquisition_session_id=acquisition.id,
         purpose=normalized_purpose,
         asset=normalized_asset or None,
+        impression_public_id=f"imp_{secrets.token_hex(16)}",
+        click_public_id=f"clk_{secrets.token_hex(16)}",
         created_at=observed_at,
         expires_at=observed_at + timedelta(hours=ACQUISITION_HANDOFF_TTL_HOURS),
     )

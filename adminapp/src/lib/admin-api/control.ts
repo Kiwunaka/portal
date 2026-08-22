@@ -2,6 +2,7 @@
 
 import { apiFetch, type ApiRequestInit } from "./client";
 import type { AdminActionResult } from "./actions";
+import type { AdminV2Envelope } from "./types";
 
 export type ReleaseEvidenceStatus =
   | "PASS"
@@ -62,28 +63,117 @@ export type ReleaseReadiness = {
   origins: ReleaseOriginReadiness[];
 };
 
-export function fetchReleaseCandidates(init?: ApiRequestInit): Promise<ReleaseCandidatePage> {
-  return apiFetch<ReleaseCandidatePage>("/api/admin/releases/candidates?limit=50", init);
-}
-
-export function fetchReleaseReadiness(
-  candidateId: string,
-  init?: ApiRequestInit,
-): Promise<ReleaseReadiness> {
-  return apiFetch<ReleaseReadiness>(
-    `/api/admin/releases/${encodeURIComponent(candidateId)}/readiness`,
+export async function fetchReleaseCandidates(init?: ApiRequestInit): Promise<ReleaseCandidatePage> {
+  const response = await apiFetch<AdminV2Envelope<ReleaseCandidatePage>>(
+    "/api/admin/v2/releases/candidates?limit=50",
     init,
   );
+  return response.data;
+}
+
+export type ReleaseGateMatrix = {
+  status: ReleaseEvidenceStatus;
+  ready: boolean;
+  origin_readiness_status: ReleaseEvidenceStatus;
+  checks: Array<{ check_name: string; status: ReleaseEvidenceStatus }>;
+};
+
+export type ReleaseRolloutState = {
+  candidate_id: string;
+  candidate_version?: string;
+  platform: "android" | "windows" | string;
+  status: string;
+  rollout_percent: number;
+  paused: boolean;
+  min_supported_version?: string | null;
+  observation_started_at?: string | null;
+  observation_ends_at?: string | null;
+  observation_closed_at?: string | null;
+  previous_candidate_id?: string | null;
+  rollback_candidate_id?: string | null;
+  thresholds?: Record<string, number>;
+  updated_at?: string | null;
+};
+
+export type ReleaseAdoption = {
+  window_days: number;
+  window_start: string | null;
+  authority: string;
+  cohorts: Array<{
+    platform: string;
+    app_version: string;
+    observed_installations: number;
+    last_seen_at: string | null;
+    share_percent: number;
+  }>;
+  platform_totals: Record<string, number>;
+};
+
+export type ReleaseCockpit = {
+  candidate: ReleaseCandidateSummary;
+  components: Array<{
+    candidate_id: string;
+    component: string;
+    version: string;
+    revision: string;
+    artifact_sha256: string;
+    descriptor_sha256: string;
+    imported_at: string | null;
+  }>;
+  readiness: ReleaseReadiness;
+  gate_matrix: ReleaseGateMatrix;
+  rollout: {
+    states: ReleaseRolloutState[];
+    active_by_platform: Record<string, string>;
+    source: string;
+  };
+  adoption: ReleaseAdoption;
+  health: { groups?: Array<Record<string, unknown>>; [key: string]: unknown };
+  health_gate: {
+    status: ReleaseEvidenceStatus;
+    reason: string;
+    thresholds: Record<string, number>;
+    groups: Array<Record<string, unknown>>;
+    breaches?: Array<Record<string, unknown>>;
+  };
+  support_delta: {
+    authority: string;
+    current: number;
+    previous: number;
+    delta: number;
+    window_hours: number;
+  };
+  known_issues: Array<Record<string, unknown>>;
+  generated_at: string | null;
+};
+
+export async function fetchReleaseCockpit(
+  candidateId: string,
+  init?: ApiRequestInit,
+): Promise<ReleaseCockpit> {
+  const response = await apiFetch<AdminV2Envelope<ReleaseCockpit>>(
+    `/api/admin/v2/releases/candidates/${encodeURIComponent(candidateId)}/cockpit?hours=24`,
+    init,
+  );
+  return response.data;
+}
+
+export async function fetchReleaseAdoption(init?: ApiRequestInit): Promise<ReleaseAdoption> {
+  const response = await apiFetch<AdminV2Envelope<ReleaseAdoption>>(
+    "/api/admin/v2/releases/adoption?days=30",
+    init,
+  );
+  return response.data;
 }
 
 export function fetchActionIntentStatus(
   intentId: string,
   init?: ApiRequestInit,
 ): Promise<AdminActionResult> {
-  return apiFetch<AdminActionResult>(
-    `/api/admin/action-intents/${encodeURIComponent(intentId)}`,
+  return apiFetch<AdminV2Envelope<AdminActionResult>>(
+    `/api/admin/v2/growth/action-intents/${encodeURIComponent(intentId)}`,
     init,
-  );
+  ).then((response) => response.data);
 }
 
 export type BroadcastDeliverySummary = {
@@ -105,11 +195,11 @@ export async function fetchBroadcastDelivery(
   intentId: string,
   init?: ApiRequestInit,
 ): Promise<BroadcastDeliverySummary> {
-  const data = await apiFetch<{ ok: boolean } & BroadcastDeliverySummary>(
-    `/api/admin/broadcasts/${encodeURIComponent(intentId)}/delivery`,
+  const data = await apiFetch<AdminV2Envelope<BroadcastDeliverySummary>>(
+    `/api/admin/v2/growth/broadcasts/${encodeURIComponent(intentId)}/delivery`,
     init,
   );
-  return data;
+  return data.data;
 }
 
 export type NewsDraftRow = {
@@ -152,6 +242,10 @@ export type NewsDraftPage = {
   freshness_at: string | null;
 };
 
-export function fetchNewsDrafts(init?: ApiRequestInit): Promise<NewsDraftPage> {
-  return apiFetch<NewsDraftPage>("/api/admin/news-drafts?status=all&limit=100", init);
+export async function fetchNewsDrafts(init?: ApiRequestInit): Promise<NewsDraftPage> {
+  const response = await apiFetch<AdminV2Envelope<NewsDraftPage>>(
+    "/api/admin/v2/growth/news-drafts?status=all&limit=100",
+    init,
+  );
+  return response.data;
 }

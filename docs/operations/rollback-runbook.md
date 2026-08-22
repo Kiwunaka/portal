@@ -1,6 +1,6 @@
 # Rollback Runbook
 
-Last updated: 2026-07-14
+Last updated: 2026-08-22
 
 ## Rollback Triggers
 
@@ -18,6 +18,44 @@ Last updated: 2026-07-14
 4. Keep existing paid access state intact unless a documented reconciliation task says otherwise.
 5. Prepare a short support notice if users are already affected. Publish it only through an explicitly authorized owner/operator.
 6. Follow the full [Paid Beta Deploy And Rollback Checklist](deployment-and-access.md#paid-beta-deploy-and-rollback-checklist) for retained evidence, rollback sources, and post-rollback verification.
+
+## Client Stable Pointer Rollback
+
+The client repository owns the executable pointer contract:
+
+- catalog: `C:/Users/kiwun/Documents/ai/POKROV-app/config/release-rollback-catalog.seed.json`
+- stable pointer: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json`
+- switcher: `C:/Users/kiwun/Documents/ai/POKROV-app/scripts/set-release-stable-pointer.ps1`
+
+Versioned handoffs are immutable rollback targets. Before promotion, the
+catalog must contain both the exact candidate and the retained prior stable
+handoff with matching identity and SHA-256. Validate and dry-run first:
+
+```powershell
+pwsh C:/Users/kiwun/Documents/ai/POKROV-app/scripts/set-release-stable-pointer.ps1 `
+  -CatalogPath C:/Users/kiwun/Documents/ai/POKROV-app/config/release-rollback-catalog.seed.json `
+  -ValidateOnly
+
+pwsh C:/Users/kiwun/Documents/ai/POKROV-app/scripts/set-release-stable-pointer.ps1 `
+  -CatalogPath C:/Users/kiwun/Documents/ai/POKROV-app/config/release-rollback-catalog.seed.json `
+  -ExpectedCurrentReleaseId <current-release-id> `
+  -TargetReleaseId <rollback-release-id>
+```
+
+An authorized apply additionally requires `-Apply`, a new `-BackupPath`, and a
+new `-ReceiptPath`. The external backup and receipt must be outside
+`artifacts/releases`;
+the backup must share the pointer filesystem. The expected current release is
+the optimistic lock. The switch fails closed on a stale current ID,
+missing/unlisted target, digest mismatch, overwrite attempt, or failed
+readback. After the pointer switch, apply the same versioned handoff
+to runtime config, rebuild static download surfaces if URLs changed, and retain
+separate `current-origin`, `brain-origin`, and `RU-origin` results where each is
+claimed.
+
+The current source contract and isolated A→B→A fixture are `PASS_LOCAL`. The
+exact `1.2.0` candidate does not exist yet, pointer/runtime mutation is
+`NOT_AUTHORIZED`, and its rollback drill remains `NOT_RUN`.
 
 ## Canonical Support Ownership Rollback
 

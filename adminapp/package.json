@@ -2,32 +2,41 @@
   "name": "pokrov-adminapp",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@11.7.0",
+  "engines": {
+    "node": "22.14.x"
+  },
   "scripts": {
     "dev": "next dev --webpack",
+    "build:contract": "node scripts/generate-build-contract.mjs",
+    "generate:sdk": "python ../scripts/generate_admin_v2_openapi.py && node scripts/generate-admin-v2-sdk.mjs",
+    "check:sdk": "python ../scripts/generate_admin_v2_openapi.py --check && node scripts/generate-admin-v2-sdk.mjs --check",
+    "prebuild": "npm run check:sdk && npm run build:contract",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "verify:cutover": "node scripts/verify-cutover.mjs"
   },
   "dependencies": {
-    "@tanstack/react-table": "^8.21.3",
-    "clsx": "^2.1.1",
-    "lucide-react": "^0.575.0",
-    "next": "16.2.10",
+    "@tanstack/react-table": "8.21.3",
+    "clsx": "2.1.1",
+    "lucide-react": "0.575.0",
+    "next": "16.3.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "recharts": "^3.6.0",
-    "tailwind-merge": "^3.5.0"
+    "recharts": "3.9.2",
+    "tailwind-merge": "3.6.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.61.1",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.10",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "@playwright/test": "1.61.1",
+    "@tailwindcss/postcss": "4.3.2",
+    "@types/node": "22.19.9",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.3.2",
+    "tailwindcss": "4.3.2",
+    "typescript": "5.9.3"
   }
 }

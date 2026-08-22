@@ -60,13 +60,28 @@ class ReleaseOrchestratorTests(unittest.TestCase):
         steps = self.module._build_steps(args, python="python")
         names = [name for name, _, _ in steps]
 
-        self.assertEqual(names[0], "release handoff sync")
+        self.assertEqual(names[0], "release handoff v2 validation")
+        self.assertEqual(names[1], "release handoff sync")
         self.assertEqual(names[-1], "post-deploy verify")
-        self.assertIn("scripts/remote_brain_apply_release_handoff.py", " ".join(steps[0][1]))
+        self.assertIn("scripts/validate_release_handoff_metadata.py", " ".join(steps[0][1]))
         self.assertIn("--metadata-file", steps[0][1])
-        self.assertIn("C:/tmp/release-handoff.json", steps[0][1])
-        self.assertIn("--env-file", steps[0][1])
-        self.assertIn("C:/tmp/release-links.env", steps[0][1])
+        self.assertIn("scripts/remote_brain_apply_release_handoff.py", " ".join(steps[1][1]))
+        self.assertIn("--metadata-file", steps[1][1])
+        self.assertIn("C:/tmp/release-handoff.json", steps[1][1])
+        self.assertIn("--env-file", steps[1][1])
+        self.assertIn("C:/tmp/release-links.env", steps[1][1])
+
+    def test_manual_workflow_requires_cross_repo_contract_and_v2_metadata(self) -> None:
+        workflow = (
+            self.module.REPO_ROOT / ".github" / "workflows" / "release-orchestrator-manual.yml"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("repository: Kiwunaka/POKROV-app", workflow)
+        self.assertIn("repository: Kiwunaka/pokrov-core", workflow)
+        self.assertIn("run_client_release_gate.py contract", workflow)
+        self.assertIn('"$MODE" != "dry-run" && -z "$RELEASE_METADATA_FILE"', workflow)
+        self.assertIn("release_env_file is legacy-only", workflow)
+        self.assertNotIn("allow-missing-client-root", workflow)
 
     def test_gates_only_mode_builds_and_runs_gate_steps(self) -> None:
         args = Namespace(
@@ -231,7 +246,7 @@ class ReleaseOrchestratorTests(unittest.TestCase):
             gates_only=False,
             verify_only=False,
             dry_run=False,
-            release_metadata_file="",
+            release_metadata_file="C:/tmp/release-handoff.json",
             release_env_file="",
             step_timeout_sec=3600,
             gate_timeout_sec=7200,
@@ -258,8 +273,11 @@ class ReleaseOrchestratorTests(unittest.TestCase):
                 exit_code = self.module.main()
 
         self.assertEqual(exit_code, 0)
-        self.assertEqual([call.args[0] for call in run_step.call_args_list], ["static deploy"])
-        self.assertEqual(run_step.call_args.kwargs["timeout_sec"], 3600)
+        self.assertEqual(
+            [call.args[0] for call in run_step.call_args_list],
+            ["release handoff v2 validation", "release handoff sync", "static deploy"],
+        )
+        self.assertEqual(run_step.call_args_list[-1].kwargs["timeout_sec"], 3600)
 
     def test_build_steps_restarts_feedbackbot_in_backend_deploy(self) -> None:
         args = Namespace(
@@ -320,7 +338,7 @@ class ReleaseOrchestratorTests(unittest.TestCase):
             gates_only=False,
             verify_only=False,
             dry_run=False,
-            release_metadata_file="",
+            release_metadata_file="C:/tmp/release-handoff.json",
             release_env_file="",
             qdisc_node=["pl"],
             qdisc_host=["pl=203.0.113.10"],
@@ -338,15 +356,17 @@ class ReleaseOrchestratorTests(unittest.TestCase):
         )
 
         with patch.object(self.module.argparse.ArgumentParser, "parse_args", return_value=args):
-            with patch.object(self.module, "_run", side_effect=[0, 0, 7, 0, 0]) as run_step:
+            with patch.object(self.module, "_run", side_effect=[0, 0, 0, 0, 7, 0, 0]) as run_step:
                 exit_code = self.module.main()
 
         self.assertEqual(exit_code, 7)
-        self.assertEqual(run_step.call_args_list[0].args[0], "qdisc persistence install (pl)")
-        self.assertEqual(run_step.call_args_list[1].args[0], "qdisc apply (pl)")
-        self.assertEqual(run_step.call_args_list[2].args[0], "qdisc smoke gate (pl)")
-        self.assertEqual(run_step.call_args_list[3].args[0], "qdisc rollback-safe disable (pl)")
-        self.assertEqual(run_step.call_args_list[4].args[0], "qdisc rollback (pl)")
+        self.assertEqual(run_step.call_args_list[0].args[0], "release handoff v2 validation")
+        self.assertEqual(run_step.call_args_list[1].args[0], "release handoff sync")
+        self.assertEqual(run_step.call_args_list[2].args[0], "qdisc persistence install (pl)")
+        self.assertEqual(run_step.call_args_list[3].args[0], "qdisc apply (pl)")
+        self.assertEqual(run_step.call_args_list[4].args[0], "qdisc smoke gate (pl)")
+        self.assertEqual(run_step.call_args_list[5].args[0], "qdisc rollback-safe disable (pl)")
+        self.assertEqual(run_step.call_args_list[6].args[0], "qdisc rollback (pl)")
 
     def test_observer_timer_ensure_requires_brain_ip(self) -> None:
         args = Namespace(
@@ -388,6 +408,62 @@ class ReleaseOrchestratorTests(unittest.TestCase):
                 self.module.main()
 
         self.assertEqual(str(ctx.exception), "--brain-ip is required for deploy/verify steps")
+
+    def test_remote_execution_requires_release_handoff_v2_metadata(self) -> None:
+        args = Namespace(
+            brain_ip="82.21.114.104",
+            web_domain="pokrov.space",
+            api_domain="api.pokrov.space",
+            ssh_user="root",
+            ssh_port=29374,
+            passwords="C:/tmp/PASSWORDS.txt",
+            quick_gate=False,
+            skip_gates=True,
+            skip_backend=False,
+            skip_static=True,
+            skip_verify=True,
+            ensure_metrics_timer=False,
+            ensure_observer_node=[],
+            gates_only=False,
+            verify_only=False,
+            dry_run=False,
+            release_metadata_file="",
+            release_env_file="",
+            qdisc_node=[],
+            qdisc_host=[],
+        )
+
+        with patch.object(self.module.argparse.ArgumentParser, "parse_args", return_value=args):
+            with self.assertRaisesRegex(SystemExit, "strict release-handoff v2 metadata"):
+                self.module.main()
+
+    def test_remote_execution_rejects_legacy_env_handoff(self) -> None:
+        args = Namespace(
+            brain_ip="82.21.114.104",
+            web_domain="pokrov.space",
+            api_domain="api.pokrov.space",
+            ssh_user="root",
+            ssh_port=29374,
+            passwords="C:/tmp/PASSWORDS.txt",
+            quick_gate=False,
+            skip_gates=True,
+            skip_backend=False,
+            skip_static=True,
+            skip_verify=True,
+            ensure_metrics_timer=False,
+            ensure_observer_node=[],
+            gates_only=False,
+            verify_only=False,
+            dry_run=False,
+            release_metadata_file="C:/tmp/release-handoff.json",
+            release_env_file="C:/tmp/release-links.env",
+            qdisc_node=[],
+            qdisc_host=[],
+        )
+
+        with patch.object(self.module.argparse.ArgumentParser, "parse_args", return_value=args):
+            with self.assertRaisesRegex(SystemExit, "legacy-only"):
+                self.module.main()
 
     def test_secret_bearing_remote_run_rejects_noncanonical_brain_host(self) -> None:
         args = Namespace(

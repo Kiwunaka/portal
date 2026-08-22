@@ -1,0 +1,69 @@
+{
+  "schema": "pokrov.release-1.2.0.local-client-gate.v1",
+  "generated_at": "2026-08-22T06:16:59Z",
+  "work_order": "WO-013B",
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "client": {
+    "repository": "POKROV-app",
+    "branch": "codex/1.2.0-release-v2",
+    "head_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+    "worktree_state": "DIRTY_PRE_CANDIDATE_LOCAL",
+    "dirty_entry_count_at_capture": 163,
+    "product_version": "1.2.0+30"
+  },
+  "state_migration_contract": {
+    "contract_id": "pokrov.client-state-migrations.v1",
+    "sha256": "737ed0249445ad4fadc9065522cb8a033559a55b213e8ba7c77f79f85f7645c7",
+    "source_product_range": ">=1.1.0 <1.2.0",
+    "migration_count": 5,
+    "non_migrating_state_count": 2,
+    "ledger_result": "I3_LOCAL_SOURCE_TEST_PROOF",
+    "exact_candidate_device_result": "NOT_RUN"
+  },
+  "standard_gate": {
+    "runner_sha256": "44377562f115f30a4cda025ba5a25bfc5c6fb9c7148b0b7637d7ae2f2ea7f692",
+    "workflow_sha256": "54b1c4c89f6524d6d54e282a45152c72490a1f6d6e372ba4058d7f75baaaf4d6",
+    "windows_local_result": "PASS",
+    "hosted_ubuntu_result": "NOT_RUN",
+    "ledger_result": "I2_IMPLEMENTED_WITH_WINDOWS_LOCAL_PROOF",
+    "foundation_analyze_modules": 3,
+    "test_bearing_modules": 8,
+    "flutter_tests_passed": 506,
+    "explicit_test_skips": [
+      "Exact released Windows Core DLL backtest requires POKROV_REAL_CORE_ROOT"
+    ],
+    "android_gradle": {
+      "result": "BUILD_SUCCESSFUL",
+      "direct_task": ":app:testDirectDebugUnitTest",
+      "store_task": ":app:testStoreDebugUnitTest",
+      "actionable_tasks": 145,
+      "executed_tasks": 10,
+      "up_to_date_tasks": 135
+    }
+  },
+  "commands": [
+    {
+      "command": "pwsh -NoProfile -File test/run-tests-contract.ps1",
+      "result": "PASS"
+    },
+    {
+      "command": "pwsh -NoProfile -File test/release-v2-ci-contract.ps1",
+      "result": "PASS"
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/validate-seed.ps1 -PlatformRoot <phase00> -CoreRoot <core-release-v2>",
+      "result": "PASS"
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/run-tests.ps1 -OfflinePubGet",
+      "result": "PASS_EXIT_0"
+    }
+  ],
+  "manual_or_external": {
+    "hosted_linux": "NOT_RUN",
+    "physical_android_upgrade_rollback": "NOT_RUN",
+    "physical_windows_upgrade_rollback": "NOT_RUN",
+    "signed_candidate": "NOT_CREATED"
+  }
+}

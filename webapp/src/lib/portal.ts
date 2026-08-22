@@ -25,13 +25,21 @@ export {
 
 export {
   getCheckoutTariffPlans,
-  getPricingPreviewDiscountPercent,
   getTariffCatalog,
   getTariffPlan,
   getTariffPlans,
   isCheckoutTariffPlan,
   tariffPlanAllowsDiscount,
 } from "../../../shared/tariff-catalog";
+
+export {
+  COMMERCIAL_CONTRACT_SHA256,
+  COMMERCIAL_REVISION,
+  assertCommercialPlanProjection,
+  commercialLaunchReady,
+  getCommercialContract,
+  getCommercialPlan,
+} from "../../../shared/commercial-contract";
 
 export {
   getPublicUrls as getSharedPublicUrls,

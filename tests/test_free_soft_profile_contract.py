@@ -502,7 +502,12 @@ def test_premium_pool_key_never_exposes_operator_lab(monkeypatch) -> None:
         _node("nl-paid", "paid", 51),
         _node("nl-lab", "operator_lab", 52),
     ]
-    user = SimpleNamespace(sub_type="PAID", current_plan_code="paid_30d", is_active=True)
+    user = SimpleNamespace(
+        sub_type="PAID",
+        current_plan_code="paid_30d",
+        is_active=True,
+        expiry_at=datetime.now() + timedelta(days=30),
+    )
     key = SimpleNamespace(pool_code="premium_pool")
     monkeypatch.setattr(nodes_repo, "enabled_nodes", lambda _session: nodes)
 
@@ -516,7 +521,12 @@ def test_subscription_does_not_restore_pool_when_every_node_is_hard_rejected(mon
 
     rejected = _node("nl-paid", "paid", 51)
     rejected.is_healthy = False
-    user = SimpleNamespace(sub_type="PAID", current_plan_code="paid_30d", is_active=True)
+    user = SimpleNamespace(
+        sub_type="PAID",
+        current_plan_code="paid_30d",
+        is_active=True,
+        expiry_at=datetime.now() + timedelta(days=30),
+    )
     monkeypatch.setattr(nodes_repo, "enabled_nodes", lambda _session: [rejected])
 
     assert nodes_repo.eligible_nodes(object(), user, purpose="subscription") == []
@@ -527,7 +537,12 @@ def test_api_paid_pool_never_exposes_operator_lab(api_module) -> None:
         _node("nl-paid", "paid", 51),
         _node("nl-lab", "operator_lab", 52),
     ]
-    user = SimpleNamespace(sub_type="PAID", current_plan_code="paid_30d", is_active=True)
+    user = SimpleNamespace(
+        sub_type="PAID",
+        current_plan_code="paid_30d",
+        is_active=True,
+        expiry_at=datetime.now() + timedelta(days=30),
+    )
 
     assert api_module._node_allowed_for_plan(user, nodes[0]) is True
     assert api_module._node_allowed_for_plan(user, nodes[1]) is False

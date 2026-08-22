@@ -30,6 +30,45 @@ class ReleaseGateCheckTests(unittest.TestCase):
 
         self.assertIn("Client security smoke", names)
         self.assertIn("Client Flutter tests", names)
+        self.assertIn("Client release-handoff v2 contract", names)
+
+    def test_platform_release_v2_workflow_is_strict_and_cross_repository(self) -> None:
+        workflow = (self.module.REPO_ROOT / ".github" / "workflows" / "release-v2-contract.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("repository: Kiwunaka/POKROV-app", workflow)
+        self.assertIn("repository: Kiwunaka/pokrov-core", workflow)
+        self.assertIn("ref: main", workflow)
+        self.assertIn("run_client_release_gate.py contract", workflow)
+        self.assertIn("--client-root", workflow)
+        self.assertIn("--core-root", workflow)
+        self.assertNotIn("allow-missing-client-root", workflow)
+        self.assertNotIn("release_orchestrator.py", workflow)
+
+    def test_weekly_release_snapshot_uses_strict_multi_repo_gate(self) -> None:
+        workflow = (
+            self.module.REPO_ROOT / ".github" / "workflows" / "weekly-release-gate-snapshot.yml"
+        ).read_text(encoding="utf-8-sig")
+
+        self.assertIn("repository: Kiwunaka/POKROV-app", workflow)
+        self.assertIn("repository: Kiwunaka/pokrov-core", workflow)
+        self.assertIn("POKROV_CORE_ROOT:", workflow)
+        self.assertIn("release_gate_check.py --quick", workflow)
+        self.assertNotIn("allow-missing-client-root", workflow)
+
+    def test_guardrails_runs_both_critical_playwright_frontends(self) -> None:
+        workflow = (
+            self.module.REPO_ROOT / ".github" / "workflows" / "guardrails.yml"
+        ).read_text(encoding="utf-8")
+        quick_gate_names = [name for name, _cmd, _cwd in self.module._quick_gates()]
+
+        self.assertIn("cd webapp", workflow)
+        self.assertIn("npx playwright install --with-deps chromium", workflow)
+        self.assertIn("cd adminapp", workflow)
+        self.assertIn("npx playwright install chromium", workflow)
+        self.assertIn("npm run test:e2e", workflow)
+        self.assertIn("WebApp Playwright E2E", quick_gate_names)
 
     def test_client_root_resolver_selects_the_main_worktree(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -106,6 +145,7 @@ class ReleaseGateCheckTests(unittest.TestCase):
 
         self.assertIn("Client security smoke", names)
         self.assertIn("Client portal Flutter tests", names)
+        self.assertIn("Client release-handoff v2 contract", names)
 
     def test_requested_client_platform_gates_are_appended(self) -> None:
         gates = self.module._default_gates(
@@ -216,6 +256,7 @@ class ReleaseGateCheckTests(unittest.TestCase):
             missing = Path(tmp) / "POKROV-app" / "config" / "product-contract.seed.json"
             with patch.object(self.module, "CLIENT_ROOT_REQUIRED_PATHS", (missing,)):
                 gates = [
+                    self.module._client_release_v2_contract_gate(),
                     self.module._client_security_smoke_gate(),
                     self.module._client_flutter_test_gate(suite="portal"),
                     ("Public link checks", [sys.executable, "scripts/check-links.py"], self.module.REPO_ROOT),
@@ -230,6 +271,7 @@ class ReleaseGateCheckTests(unittest.TestCase):
         names = [name for name, _cmd, _cwd in filtered]
         self.assertNotIn("Client security smoke", names)
         self.assertNotIn("Client portal Flutter tests", names)
+        self.assertNotIn("Client release-handoff v2 contract", names)
         self.assertIn("Public link checks", names)
         self.assertIn("Client workspace preflight (skipped)", names)
 
