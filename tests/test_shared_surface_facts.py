@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib
 import importlib.util
 import sys
@@ -185,6 +186,26 @@ def test_sync_shared_surface_facts_builds_pokrov_app_seed_updates_from_shared_tr
     assert f"static const offerUrl = '{public_urls['legal']['offer']}';" in dart
     assert f"static const privacyUrl = '{public_urls['legal']['privacy']}';" in dart
     assert public_urls["releases"]["github_releases"] in dart
+
+
+def test_shared_surface_fact_hash_is_stable_across_line_endings(tmp_path):
+    module_path = REPO_ROOT / "scripts" / "sync_shared_surface_facts.py"
+    spec = importlib.util.spec_from_file_location(
+        "sync_shared_surface_facts_hash", module_path
+    )
+    assert spec is not None and spec.loader is not None
+    sync_shared_surface_facts = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(sync_shared_surface_facts)
+
+    lf_path = tmp_path / "lf.json"
+    crlf_path = tmp_path / "crlf.json"
+    canonical = b'{"surface":"https://pokrov.space/"}\n'
+    lf_path.write_bytes(canonical)
+    crlf_path.write_bytes(canonical.replace(b"\n", b"\r\n"))
+
+    expected = hashlib.sha256(canonical).hexdigest()
+    assert sync_shared_surface_facts._canonical_text_sha256(lf_path) == expected
+    assert sync_shared_surface_facts._canonical_text_sha256(crlf_path) == expected
 
 
 def test_backend_trial_and_reward_constants_bind_shared_product_facts():

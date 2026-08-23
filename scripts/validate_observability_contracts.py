@@ -220,10 +220,11 @@ def load_json(path: Path) -> JsonObject:
 
 
 def file_sha256(path: Path) -> str:
-    """Return the lowercase SHA-256 of exact file bytes."""
+    """Return the lowercase SHA-256 of canonical UTF-8 text bytes."""
     try:
-        return hashlib.sha256(path.read_bytes()).hexdigest()
-    except OSError as exc:
+        canonical = path.read_text(encoding="utf-8").replace("\r\n", "\n")
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    except (OSError, UnicodeError) as exc:
         raise ValidationIssue("contract_unreadable", "$") from exc
 
 

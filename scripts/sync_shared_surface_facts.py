@@ -33,8 +33,13 @@ def _read_json(name: str) -> dict[str, Any]:
     return json.loads((SHARED_DIR / name).read_text(encoding="utf-8"))
 
 
+def _canonical_text_sha256(path: Path) -> str:
+    canonical = path.read_text(encoding="utf-8").replace("\r\n", "\n")
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 def _shared_sha256(name: str) -> str:
-    return hashlib.sha256((SHARED_DIR / name).read_bytes()).hexdigest()
+    return _canonical_text_sha256(SHARED_DIR / name)
 
 
 def _quoted(value: str) -> str:
