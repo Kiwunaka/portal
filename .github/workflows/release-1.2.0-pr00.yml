@@ -9,6 +9,7 @@ permissions:
 
 jobs:
   release-base-isolation:
+    if: github.event_name == 'workflow_dispatch' || github.head_ref == 'codex/1.2.0-pr00-true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
