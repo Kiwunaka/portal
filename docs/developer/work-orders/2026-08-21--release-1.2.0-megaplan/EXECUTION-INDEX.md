@@ -2357,20 +2357,25 @@ blocked by the private-repository plan and Core main is unprotected. No owner
 key, release-index push/PR, candidate, signature, deployment, publication or
 promotion was created.
 
-## 2026-08-23 — WO-013K isolated PR-00 local result
+## 2026-08-23 — WO-013K corrected release-base PR-00 result
 
-Dedicated platform branch `codex/1.2.0-pr00-freeze` now contains exact commit
-`dcfbbce17886277bd79ee1c9749c15dc64aa6508`, one commit over source-freeze
-revision `9567299b1d16a7499cbfb3cd08490deacfaca2ab`. Its diff contains exactly
-the branch-local PR-00 work order, machine contract, validator and focused
-tests. No AdminApp, Marketing, WebApp or legacy portal UI path changes.
+The first local-parent proof at `dcfbbce...` is withdrawn: although it changed
+four files over local parent `9567299...`, its actual diff to `origin/master`
+contained 514 paths and 121 visible UI paths. It was not PR-00-ready.
 
-The credited validator result is `PASS_LOCAL_ISOLATED_NO_VISIBLE_UI`: all four
-referenced worktrees were clean, 12 canonical inputs matched exact size and
-SHA-256 identity, the changed-path set was exactly `4/4`, and candidate and
-promotion flags remained false. Focused tests pass `2/2`; Ruff check/format
-and scoped diff check pass. The 607-byte validator JSON output has SHA-256
-`95a9449c79619fe30319dc70df86895877d9e199a1811df77077fcdffa0f53c1`.
+Corrected branch `codex/1.2.0-pr00-true` starts directly at the source plan's
+real platform base `280ed9157f5804d4bc719cb8d6cab471caafb937` and contains
+one commit, `1632234bb78d18b09fa83cd02249d27859b1c409`. Its actual promotion
+diff contains nine allowlisted contract/snapshot/validator/test/workflow paths
+and zero AdminApp, Marketing, WebApp or legacy portal UI paths.
+
+The corrected validator result is
+`PASS_RELEASE_BASE_ISOLATED_NO_VISIBLE_UI`: target and merge base are exact,
+four Git-blob snapshots match size/SHA-256 and semantic checks, changed paths
+are exactly `9/9`, and candidate/promotion flags remain false. Focused tests
+pass `3/3`; Ruff check/format and scoped diff check pass. The 1,034-byte
+validator JSON has SHA-256
+`4098f52226694f15787620954b59435a73e89839ef07e338f1ffa0f20eab6a31`.
 
 `FE_PR/PR-00` remains `I2`: branch push, hosted PR, review and required checks
 are `NOT_RUN` and were not authorized. Distribution remains `I3=303`,

@@ -125,6 +125,6 @@ approve a review/push of `f07654a...` to the public repository, and retain the
 hosted source-contract workflow plus public `origin/main` readback. Separately,
 run the updated client gate in hosted Ubuntu, resolve/retain the private-plan
 branch-protection limitation and run hosted review/required checks for exact
-isolated PR-00 revision `dcfbbce...`. The local no-visible-UI proof exists, but
+release-base PR-00 revision `1632234...`. The local no-visible-UI proof exists, but
 does not replace hosted PR evidence. Only then can preflight freeze the public
 index revision for candidate input.

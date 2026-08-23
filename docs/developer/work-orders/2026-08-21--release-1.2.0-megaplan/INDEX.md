@@ -112,8 +112,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
   audited legacy public baseline, local v2 contract revision, expected
   owner-key failure and unpublished four-blocker preflight.
 - `evidence/013K-pr00-isolated-result/013K-pr00-isolated-result.json` binds the
-  exact isolated PR-00 commit, its four evidence-only paths, 12 canonical
-  inputs and honest hosted-check ceiling.
+  exact release-base-isolated PR-00 commit, its nine allowlisted paths, four
+  exact snapshots, withdrawn local-parent proof and honest hosted-check ceiling.
 
 ## Collision and promotion gates
 
@@ -129,7 +129,7 @@ The exact Core bytes, local release-index v2 source and isolated PR-00 commit
 now exist. Continue the three explicit `pre_freeze` rows by running the
 standard hosted Ubuntu gate, provisioning/reviewing an owner-controlled public
 Ed25519 key and publishing/freezing the reviewed release-index contract, and,
-after owner authorization, pushing/reviewing exact PR-00 revision `dcfbbce...`
+after owner authorization, pushing/reviewing exact PR-00 revision `1632234...`
 through hosted required checks. Three external pre-candidate rows also remain
 blocking, including private-plan branch protection and public-index trust.
 The 33 candidate, 17 external and 21 deferred rows do not belong to the local

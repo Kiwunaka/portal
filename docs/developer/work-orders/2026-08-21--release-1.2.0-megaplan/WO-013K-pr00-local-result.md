@@ -1,71 +1,75 @@
-# WO-013K — Isolated PR-00 local result
+# WO-013K — Isolated PR-00 release-base result
 
-Status: `PASS_LOCAL_ISOLATED_PENDING_HOSTED_PR`
+Status: `PASS_RELEASE_BASE_ISOLATED_PENDING_HOSTED_PR`
 Phase: `01`, `11`
 Row: `FE_PR/PR-00`
 Push/PR: `NOT_AUTHORIZED`
 
 ## Outcome
 
-The dedicated platform branch `codex/1.2.0-pr00-freeze` contains exactly one
-commit over platform source-freeze revision
-`9567299b1d16a7499cbfb3cd08490deacfaca2ab`:
-`dcfbbce17886277bd79ee1c9749c15dc64aa6508`. Its tree is
-`fbc407ef3f51b347ea71163d9f8c5ce99d9f8216`.
+Dedicated platform branch `codex/1.2.0-pr00-true` starts at the exact source
+plan/promotion revision
+`280ed9157f5804d4bc719cb8d6cab471caafb937` and contains one commit:
+`1632234bb78d18b09fa83cd02249d27859b1c409`. Its tree is
+`3df581814bca498bfab102be0a843f6e741ec4ab`.
 
-The commit changes exactly four evidence-only paths: the branch-local work
-order, its machine contract, the validator and two focused validator tests.
-The diff contains no path under the AdminApp, Marketing, WebApp or legacy
-portal UI prefixes.
+The actual `origin/master..HEAD` diff contains exactly nine contract, snapshot,
+validator, test and hosted-workflow paths. It contains zero paths under the
+AdminApp, Marketing, WebApp or legacy portal UI prefixes.
+
+## Withdrawn local-parent proof
+
+Earlier commit `dcfbbce17886277bd79ee1c9749c15dc64aa6508` was isolated only
+relative to local aggregate parent `9567299...`. Against the real promotion
+base it contained 514 paths, including 121 visible UI paths. Its prior
+`PASS_LOCAL_ISOLATED_NO_VISIBLE_UI` label is withdrawn and receives no PR-ready
+credit. Retaining that correction prevents a local parent from substituting
+for the actual pull-request target.
 
 ## Bound acceptance
 
-The branch-local contract binds the source plan's eight PR-00 requirements:
+The corrected branch freezes all eight source-plan PR-00 requirements:
 
-- promotion branches and exact baseline/source revisions;
-- pre-candidate, candidate and promotion flags;
-- strict release manifest schema;
-- deterministic product-facts snapshot and client projection;
-- stable reason-code catalog/schema;
-- client motion and reduced-motion semantics;
-- an exact no-visible-UI diff policy.
+- platform/client release branches and exact source-plan base revisions;
+- explicit pre-candidate, promotion, Linux, ABI v3, public-index and no-UI
+  flags;
+- exact Git-blob snapshots of the strict manifest schema, product facts,
+  reason-code draft and client motion semantics;
+- promotion-base-aware single-commit and no-visible-UI diff policy.
 
-It independently hashes 12 canonical files across platform, client and the
-unpublished release index. It also binds exact client
-`8c6b955dced3b018825c53fe5d14cb632271adeb`, Core
-`fcb3c8bbc6efdeed284417369aacb522722ebfa2` and release-index
-`f07654af496d042fa8dba3d8b2695e987c8e9eb7` revisions. All four worktrees
-were clean during the credited run.
+The snapshots preserve exact bytes for review but do not replace their runtime
+canonical owners or create another mutable truth.
 
 ## Credited checks
 
-- PR-00 validator: `PASS_LOCAL_ISOLATED_NO_VISIBLE_UI`;
-- exact changed paths: `4/4` allowed, `0` visible UI paths;
-- canonical inputs: `12/12` exact size and SHA-256 identity;
-- validator unit tests: `2/2 PASS`;
+- validator: `PASS_RELEASE_BASE_ISOLATED_NO_VISIBLE_UI`;
+- target and merge base: exact `280ed915...`;
+- promotion diff: `9/9` allowlisted paths, `0` visible UI paths;
+- exact snapshots: `4/4` size and SHA-256 identity plus semantic checks;
+- validator unit tests: `3/3 PASS`;
 - Ruff check and format check: `PASS`;
 - scoped diff check: `PASS`.
 
-The 607-byte validator JSON output has SHA-256
-`95a9449c79619fe30319dc70df86895877d9e199a1811df77077fcdffa0f53c1`.
+The 1,034-byte validator JSON output has SHA-256
+`4098f52226694f15787620954b59435a73e89839ef07e338f1ffa0f20eab6a31`.
 The retained summary is
 `evidence/013K-pr00-isolated-result/013K-pr00-isolated-result.json`.
 
 ## Index decision
 
-`FE_PR/PR-00` remains `I2`. The local isolated commit closes the previous
-cross-slice/isolation evidence gap, but hosted review and required checks are
-`NOT_RUN`; the branch is not pushed and no PR exists. Distribution therefore
-remains `I3=303`, `I2=20`, `I1=39`, `I0=15`; 74 of 377 rows remain below
-`I3`, and stage counts remain `3/33/17/21` for
+`FE_PR/PR-00` remains `I2`. The real release-base isolation gap is now closed
+locally, but branch push, hosted workflow, review and required checks remain
+`NOT_RUN`. Distribution stays `I3=303`, `I2=20`, `I1=39`, `I0=15`; 74 of 377
+rows remain below `I3`, and stage counts stay `3/33/17/21` for
 pre-freeze/candidate/external/deferred.
 
 ## Evidence ceiling and next action
 
-This result proves one local evidence-only commit. It does not prove a hosted
-PR, review, required checks, branch protection, public release index, owner
-key, candidate, signature, device/origin run, publication or promotion.
+This result proves one release-base-isolated local commit. It does not prove a
+hosted PR, review, required checks, branch protection, public release index,
+owner key, candidate, signature, device/origin run, publication or promotion.
 
-After owner authorization, push the exact branch, create/review the PR and
-retain required-check results for exact revision `dcfbbce...`. Do not replace
-that operation with a new aggregate diff or credit unrelated hosted runs.
+After owner authorization, push exact branch `codex/1.2.0-pr00-true`, create a
+PR to `master` and retain the dedicated Ubuntu workflow plus required review
+for exact revision `1632234...`. Any target-branch movement must rerun the
+validator; do not credit the withdrawn `dcfbbce...` branch.

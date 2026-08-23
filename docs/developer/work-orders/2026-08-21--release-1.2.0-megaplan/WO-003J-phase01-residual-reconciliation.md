@@ -39,11 +39,13 @@ The PR-00 inputs are implemented across their canonical owners:
 
 Current commercial-contract generation and the focused manifest/catalog tests
 pass `73/73`; focused client motion/app-shell regression passes `164/164`.
-Dedicated branch `codex/1.2.0-pr00-freeze` now adds exactly one commit,
-`dcfbbce17886277bd79ee1c9749c15dc64aa6508`, over platform source-freeze
-revision `9567299b1d16a7499cbfb3cd08490deacfaca2ab`. Its validator returns
-`PASS_LOCAL_ISOLATED_NO_VISIBLE_UI`, binds 12 canonical inputs and permits
-exactly four evidence-only paths. The branch is not pushed and hosted required
+Dedicated branch `codex/1.2.0-pr00-true` now adds exactly one commit,
+`1632234bb78d18b09fa83cd02249d27859b1c409`, over the source plan's actual
+platform promotion base `280ed9157f5804d4bc719cb8d6cab471caafb937`. Its
+validator returns `PASS_RELEASE_BASE_ISOLATED_NO_VISIBLE_UI`, binds four exact
+contract snapshots and permits nine contract/evidence paths with zero visible
+UI paths. Prior `dcfbbce...` was isolated only against a local aggregate parent
+and is withdrawn. The corrected branch is not pushed and hosted required
 checks are `NOT_RUN`, so `FE_PR/PR-00` remains `I2`, not `I3`.
 
 Evidence:
