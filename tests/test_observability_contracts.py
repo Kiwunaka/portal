@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import importlib.util
 import json
 import sys
@@ -50,6 +51,18 @@ def test_canonical_contracts_and_valid_event_pass() -> None:
     assert summary.catalog_entry_count == 121
     assert summary.event_schema_sha256 == validator.file_sha256(EVENT_SCHEMA_PATH)
     assert summary.catalog_sha256 == validator.file_sha256(CATALOG_PATH)
+
+
+def test_contract_hash_is_stable_across_line_endings(tmp_path: Path) -> None:
+    lf_path = tmp_path / "lf.json"
+    crlf_path = tmp_path / "crlf.json"
+    canonical = b'{"schema_version":1}\n'
+    lf_path.write_bytes(canonical)
+    crlf_path.write_bytes(canonical.replace(b"\n", b"\r\n"))
+
+    expected = hashlib.sha256(canonical).hexdigest()
+    assert validator.file_sha256(lf_path) == expected
+    assert validator.file_sha256(crlf_path) == expected
 
 
 def test_unknown_top_level_event_field_fails_closed() -> None:
