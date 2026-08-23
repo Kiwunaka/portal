@@ -35,7 +35,7 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete; exact-candidate performance/manual gates retained | `WO-010` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
 | 10 | FRKN-derived rules; isolated AWG2 PoC, later HY2 decision | Local package complete; exact artifact/device/RU gates open | `WO-012` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013P closes exact source promotion: final signed platform/client/Core commits, exact PR-head checks, post-merge runs and artifact-bound final Core source are retained under the explicit owner-solo control; candidate construction, signing, physical device/clean-host, origin, provider and rollback gates remain open; candidate not created | `WO-013`, `WO-013C`, `WO-013D`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013Q assembles the exact local six-file app set from the 013P frozen tuple: Android production signing, SBOM/provenance, checksums, strict-v2 handoff and zero-blocker local-freeze preflight pass; Windows trusted signing, support-mode key binding and 12 device/origin/provider/owner/rollback gates remain open, so candidate is not created | `WO-013`, `WO-013C`, `WO-013D`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -101,6 +101,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013N` | Publish and read back the release-index trust root, merge hosted PR-00, and prove the exact hosted client standard gate | Public index/platform/client/Core pre-freeze evidence | Complete (`REL/REPO-001`, `FE_PR/PR-00`, `REL/TEST-001 I3`); candidate remains uncreated | `WO-013J`, `WO-013K`, `WO-013L`, owner GitHub authorization |
 | `WO-013O` | Replace the unavailable second reviewer/private-plan enforcement with an explicit fail-closed owner-solo PR/check control | Cross-repository promotion policy | Complete policy decision; exact final PR/check execution and row closure are retained by 013P | `WO-013M`, `WO-013N`, explicit sole-owner authorization |
 | `WO-013P` | Promote and retain the final source tuple under exact owner-solo PR/check controls | Platform/client/Core source promotion | Complete (`REL/REL-001`, `REL_DOD/DOD-09 I3`); candidate remains uncreated | `WO-013O`, exact hosted PR checks, owner GitHub authorization |
+| `WO-013Q` | Assemble and retain the exact local pre-candidate app artifacts, SBOM/provenance, checksums and strict handoff | Client/platform release evidence | Partial implementation (`REL_DOD/DOD-15 I2`): Android production signing passes; Windows trusted signing/support key and all candidate/manual/promotion proof remain open | `WO-013P`, frozen source tuple, explicit candidate-preparation authorization |
 
 ## Current evidence
 
@@ -137,6 +138,10 @@ The row order is a dependency order, not permission for one giant merge. Each im
   binds the final signed source tuple, exact PR heads and required checks,
   post-merge promotion runs, final Core artifact hashes, complete 3/3 solo
   readback and the honest no-candidate ceiling.
+- `evidence/013Q-local-pre-candidate-assembly/013Q-local-pre-candidate-assembly.json`
+  binds the six exact local app artifacts, Android production signer, unsigned
+  Windows result, SBOM/provenance, strict-v2 handoff, corrected preflight and
+  the remaining 12 promotion gates without claiming an RC or public release.
 
 ## Collision and promotion gates
 
