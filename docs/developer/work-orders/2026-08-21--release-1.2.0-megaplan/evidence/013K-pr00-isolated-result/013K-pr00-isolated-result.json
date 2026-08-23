@@ -1,0 +1,66 @@
+{
+  "schema": "pokrov.release-1.2.0.pr00-isolated-result/v1",
+  "recorded_at": "2026-08-23",
+  "state": "PRE_CANDIDATE_LOCAL",
+  "candidate_created": false,
+  "candidate_eligible": false,
+  "promotion_authorized": false,
+  "proof": {
+    "repository": "platform",
+    "branch": "codex/1.2.0-pr00-freeze",
+    "revision": "dcfbbce17886277bd79ee1c9749c15dc64aa6508",
+    "parent": "9567299b1d16a7499cbfb3cd08490deacfaca2ab",
+    "tree": "fbc407ef3f51b347ea71163d9f8c5ce99d9f8216",
+    "commit_subject": "release: isolate PR-00 freeze evidence",
+    "changed_paths": [
+      "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013K-pr00-isolated-freeze.md",
+      "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013K-pr00-isolated/pr00-freeze.json",
+      "scripts/validate_release_1_2_pr00_freeze.py",
+      "tests/test_release_1_2_pr00_freeze.py"
+    ],
+    "visible_ui_paths_changed": 0
+  },
+  "bound_revisions": {
+    "client": "8c6b955dced3b018825c53fe5d14cb632271adeb",
+    "core": "fcb3c8bbc6efdeed284417369aacb522722ebfa2",
+    "release_index": "f07654af496d042fa8dba3d8b2695e987c8e9eb7",
+    "release_index_published": false,
+    "release_index_active_signing_keys": 0
+  },
+  "validation": {
+    "status": "PASS_LOCAL_ISOLATED_NO_VISIBLE_UI",
+    "canonical_input_count": 12,
+    "validator_unit_tests": "PASS_2_OF_2",
+    "ruff_check": "PASS",
+    "ruff_format_check": "PASS",
+    "diff_check": "PASS",
+    "validator_stdout_bytes": 607,
+    "validator_stdout_sha256": "95a9449c79619fe30319dc70df86895877d9e199a1811df77077fcdffa0f53c1"
+  },
+  "hosted": {
+    "branch_pushed": false,
+    "pull_request_created": false,
+    "required_checks": "NOT_RUN",
+    "review": "NOT_RUN"
+  },
+  "ledger": {
+    "row": "FE_PR/PR-00",
+    "index": "I2",
+    "index_changed": false,
+    "reason": "Local isolated proof exists, but the source-plan acceptance still requires hosted review and required checks.",
+    "distribution": {
+      "I3": 303,
+      "I2": 20,
+      "I1": 39,
+      "I0": 15
+    },
+    "below_i3": 74,
+    "pending_stage_counts": {
+      "pre_freeze": 3,
+      "candidate": 33,
+      "external": 17,
+      "deferred": 21
+    }
+  },
+  "evidence_ceiling": "LOCAL_ISOLATED_COMMIT_ONLY"
+}

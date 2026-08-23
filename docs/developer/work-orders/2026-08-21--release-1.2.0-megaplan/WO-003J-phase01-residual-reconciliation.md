@@ -1,6 +1,6 @@
 # WO-003J — Phase 01 residual authority reconciliation
 
-Status: `PARTIAL_LOCAL_I1_I2`
+Status: `PARTIAL_LOCAL_I2_EXTERNAL_BLOCKERS`
 Phase: `01`
 Ledger rows: `FE/P12-023`, `FE_PR/PR-00`
 Promotion: `NOT_REQUESTED`
@@ -8,8 +8,8 @@ Promotion: `NOT_REQUESTED`
 ## Decision
 
 Reconcile two Phase 01 rows against their exact source acceptance without
-claiming that a missing public release repository or a broad cross-slice source
-freeze is an isolated no-visible-UI release PR.
+converting local implementation, an isolated local commit or unavailable
+hosted/public evidence into a stronger release claim.
 
 ## Stable public trust surface
 
@@ -19,11 +19,12 @@ signature metadata, manifest, release notes, minimum OS/architecture, app
 build, Core version/ABI, build date, source commits, channel, known issues and
 upgrade notes.
 
-The strict v2 handoff now defines these identities and the client staging gate
-keeps them out of source/history paths, but the separate repository is
-unavailable and no 1.2.0 candidate exists. `FE/P12-023` therefore advances only
-from captured `I0` to verified `I1` with `BLOCKED_BY_ACCESS`; implementation is
-not invented in the platform source tree.
+The strict v2 handoff defines these identities and the client staging gate
+keeps them out of source/history paths. The actual public baseline is now
+audited, and isolated release-index revision
+`f07654af496d042fa8dba3d8b2695e987c8e9eb7` implements the fail-closed v2
+source contract. It remains unpublished and has no owner-controlled active
+signing key. `FE/P12-023` is therefore `I2`, not public/candidate proof.
 
 ## Freeze/contracts train
 
@@ -38,18 +39,21 @@ The PR-00 inputs are implemented across their canonical owners:
 
 Current commercial-contract generation and the focused manifest/catalog tests
 pass `73/73`; focused client motion/app-shell regression passes `164/164`.
-Platform, client and Core now have clean exact source commits, but those commits
-contain the complete cross-slice 1.2.0 source wave, including visible UI work.
-They do not prove that PR-00 itself was isolated with no visible UI delta, and
-hosted required checks have not run. `FE_PR/PR-00` remains implementation
-`I2`, not local proof `I3`.
+Dedicated branch `codex/1.2.0-pr00-freeze` now adds exactly one commit,
+`dcfbbce17886277bd79ee1c9749c15dc64aa6508`, over platform source-freeze
+revision `9567299b1d16a7499cbfb3cd08490deacfaca2ab`. Its validator returns
+`PASS_LOCAL_ISOLATED_NO_VISIBLE_UI`, binds 12 canonical inputs and permits
+exactly four evidence-only paths. The branch is not pushed and hosted required
+checks are `NOT_RUN`, so `FE_PR/PR-00` remains `I2`, not `I3`.
 
 Evidence:
-`evidence/003J-phase01-residual-reconciliation/003J-phase01-residual-reconciliation.json`.
+
+- `evidence/003J-phase01-residual-reconciliation/003J-phase01-residual-reconciliation.json`;
+- `evidence/013K-pr00-isolated-result/013K-pr00-isolated-result.json`.
 
 ## Evidence ceiling
 
-No public release-index checkout, isolated no-visible-UI PR, hosted CI, signed
-artifact, candidate, publication or promotion exists. Clean aggregate commits
-exist, but they do not satisfy the narrower PR-00 acceptance. Those absences
-are the remaining proof, not documentation gaps.
+A local public-index checkout/implementation and a local isolated
+no-visible-UI commit now exist. A published owner-key-ready index, hosted PR,
+review, required checks, signed artifact, candidate, publication and promotion
+do not. Those are external/owner evidence gaps, not documentation gaps.

@@ -124,5 +124,7 @@ Owner must provision and review the public half of the release Ed25519 key,
 approve a review/push of `f07654a...` to the public repository, and retain the
 hosted source-contract workflow plus public `origin/main` readback. Separately,
 run the updated client gate in hosted Ubuntu, resolve/retain the private-plan
-branch-protection limitation and produce an honest isolated PR-00 proof. Only
-then can preflight freeze the public index revision for candidate input.
+branch-protection limitation and run hosted review/required checks for exact
+isolated PR-00 revision `dcfbbce...`. The local no-visible-UI proof exists, but
+does not replace hosted PR evidence. Only then can preflight freeze the public
+index revision for candidate input.

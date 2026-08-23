@@ -2356,3 +2356,24 @@ Hosted client runs remain absent. Platform/client branch-protection readback is
 blocked by the private-repository plan and Core main is unprotected. No owner
 key, release-index push/PR, candidate, signature, deployment, publication or
 promotion was created.
+
+## 2026-08-23 — WO-013K isolated PR-00 local result
+
+Dedicated platform branch `codex/1.2.0-pr00-freeze` now contains exact commit
+`dcfbbce17886277bd79ee1c9749c15dc64aa6508`, one commit over source-freeze
+revision `9567299b1d16a7499cbfb3cd08490deacfaca2ab`. Its diff contains exactly
+the branch-local PR-00 work order, machine contract, validator and focused
+tests. No AdminApp, Marketing, WebApp or legacy portal UI path changes.
+
+The credited validator result is `PASS_LOCAL_ISOLATED_NO_VISIBLE_UI`: all four
+referenced worktrees were clean, 12 canonical inputs matched exact size and
+SHA-256 identity, the changed-path set was exactly `4/4`, and candidate and
+promotion flags remained false. Focused tests pass `2/2`; Ruff check/format
+and scoped diff check pass. The 607-byte validator JSON output has SHA-256
+`95a9449c79619fe30319dc70df86895877d9e199a1811df77077fcdffa0f53c1`.
+
+`FE_PR/PR-00` remains `I2`: branch push, hosted PR, review and required checks
+are `NOT_RUN` and were not authorized. Distribution remains `I3=303`,
+`I2=20`, `I1=39`, `I0=15`; 74 rows remain below `I3`, and the stage split
+remains `3/33/17/21`. No candidate, key, signature, public-index publication,
+device/origin run, deployment or promotion occurred.
