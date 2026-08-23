@@ -52,12 +52,13 @@ def _read_object(path: Path) -> dict[str, Any]:
     return value
 
 
-def _sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
+def _git_blob_bytes(root: Path, relative: str) -> bytes:
+    return subprocess.run(
+        ["git", "show", f"HEAD:{Path(relative).as_posix()}"],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    ).stdout
 
 
 def _git(root: Path, *args: str) -> str:
@@ -224,15 +225,19 @@ def _validate_contract_data(root: Path, contract: dict[str, Any]) -> int:
             require(path.is_file(), f"snapshots.{position}.file")
             if not path.is_file():
                 continue
+            blob = _git_blob_bytes(root, relative)
             require(
-                path.stat().st_size == item.get("size"), f"snapshots.{position}.size"
+                len(blob) == item.get("size"), f"snapshots.{position}.size"
             )
             declared_sha = str(item.get("sha256") or "")
             require(
                 SHA256_RE.fullmatch(declared_sha) is not None,
                 f"snapshots.{position}.sha256_format",
             )
-            require(_sha256(path) == declared_sha, f"snapshots.{position}.sha256")
+            require(
+                hashlib.sha256(blob).hexdigest() == declared_sha,
+                f"snapshots.{position}.sha256",
+            )
             try:
                 _validate_snapshot_semantics(role, path)
             except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:

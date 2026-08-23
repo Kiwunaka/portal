@@ -1,10 +1,12 @@
 # POKROV 1.2.0 PR-00 — real release-base freeze
 
-Status: `PR_OPEN_CONTROL_FIX_PENDING`
+Status: `MERGED_HOSTED_PASS`
 Target: `Kiwunaka/portal@master`
 Target revision: `280ed9157f5804d4bc719cb8d6cab471caafb937`
 External actions: `AUTHORIZED_FOR_GIT_PUSH_PR_AND_ACTIONS_SECRET`
 Pull request: `https://github.com/Kiwunaka/portal/pull/18`
+PR head: `e26fcb0b3581c8b0261db29812563085b8fb90a9`
+Merge commit: `8cef00ace333d9164d7ac9f4a0856eb7fa88f173`
 
 ## Outcome
 
@@ -52,5 +54,9 @@ commit to that promotion base, not to an arbitrary local parent.
 - `candidate_created=false`, `promotion_authorized=false` and hosted checks
   honestly `NOT_RUN`.
 
-The dedicated workflow runs the same validator and unit tests on Ubuntu after
-the branch is pushed and a PR is created. A local pass is not hosted proof.
+The dedicated Ubuntu workflow and repository guardrails passed on PR 18. The
+PR was merged to `master` at `8cef00ace333d9164d7ac9f4a0856eb7fa88f173`.
+The retained PR-00 job is now scoped to the exact PR-00 head branch or explicit
+manual dispatch so it cannot misclassify unrelated future pull requests as
+PR-00. This is source-review evidence only: no candidate, deployment,
+publication or promotion occurred.
