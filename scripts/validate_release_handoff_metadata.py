@@ -24,23 +24,17 @@ EXIT_INVALID = 2
 EXIT_LEGACY_V1 = 3
 MAX_METADATA_BYTES = 2 * 1024 * 1024
 REPO_ROOT = Path(__file__).resolve().parents[1]
-OBSERVABILITY_CONTRACT_ROOT = (
-    REPO_ROOT / "shared" / "contracts" / "observability"
-)
+OBSERVABILITY_CONTRACT_ROOT = REPO_ROOT / "shared" / "contracts" / "observability"
 
 SHA256_PATTERN = re.compile(r"^[A-Fa-f0-9]{64}$")
 GIT_REVISION_PATTERN = re.compile(r"^[A-Fa-f0-9]{40}$")
-SEMVER_PATTERN = re.compile(
-    r"^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$"
-)
+SEMVER_PATTERN = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$")
 REPOSITORY_PATTERN = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
 CONTRACT_ID_PATTERN = re.compile(r"^[a-z][a-z0-9._-]{1,63}$")
 VERSION_TOKEN_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$")
 FORMAT_PATTERN = re.compile(r"^[a-z0-9][a-z0-9._+-]{1,63}$")
 GATE_ID_PATTERN = re.compile(r"^[A-Z][A-Z0-9_-]{2,63}$")
-ARTIFACT_FILE_PATTERN = re.compile(
-    r"^pokrov-[A-Za-z0-9][A-Za-z0-9._+-]{1,127}$"
-)
+ARTIFACT_FILE_PATTERN = re.compile(r"^pokrov-[A-Za-z0-9][A-Za-z0-9._+-]{1,127}$")
 SIGNER_IDENTITY_PATTERN = re.compile(r"^sha256:[A-Fa-f0-9]{64}$")
 
 EVIDENCE_STATUSES = frozenset(
@@ -268,11 +262,13 @@ def load_metadata(path: Path) -> JsonObject:
     return payload
 
 
-def file_sha256(path: Path) -> str:
-    """Return the lowercase SHA-256 of exact contract bytes."""
+def canonical_text_sha256(path: Path) -> str:
+    """Return a line-ending-independent SHA-256 for a UTF-8 contract."""
     try:
-        return hashlib.sha256(path.read_bytes()).hexdigest()
-    except OSError as exc:
+        text = path.read_text(encoding="utf-8")
+        canonical = text.replace("\r\n", "\n").replace("\r", "\n")
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    except (OSError, UnicodeError) as exc:
         raise ValidationIssue("canonical_contract_unreadable", "$") from exc
 
 
@@ -404,9 +400,7 @@ def _expect_utc_timestamp(value: JsonObject, field: str, path: str) -> str:
     try:
         datetime.fromisoformat(f"{raw[:-1]}+00:00")
     except ValueError as exc:
-        raise ValidationIssue(
-            "invalid_utc_timestamp", f"{path}.{field}"
-        ) from exc
+        raise ValidationIssue("invalid_utc_timestamp", f"{path}.{field}") from exc
     return raw
 
 
@@ -425,10 +419,13 @@ def _validate_release_notes(value: Any, *, version: str) -> None:
         path,
         code="invalid_release_notes_summary",
     )
-    if summary != summary.strip() or len(summary) > 1000 or "\n" in summary or "\r" in summary:
-        raise ValidationIssue(
-            "invalid_release_notes_summary", f"{path}.summary"
-        )
+    if (
+        summary != summary.strip()
+        or len(summary) > 1000
+        or "\n" in summary
+        or "\r" in summary
+    ):
+        raise ValidationIssue("invalid_release_notes_summary", f"{path}.summary")
     url = _expect_string(
         release_notes,
         "url",
@@ -472,9 +469,7 @@ def _validate_release(value: Any) -> tuple[str, str, str]:
         code="invalid_candidate_label",
     )
     if candidate_label != f"pokrov-{version}":
-        raise ValidationIssue(
-            "candidate_label_mismatch", "$.release.candidate_label"
-        )
+        raise ValidationIssue("candidate_label_mismatch", "$.release.candidate_label")
     _expect_utc_timestamp(release, "created_at_utc", "$.release")
     _validate_release_notes(release.get("release_notes"), version=version)
     return version, channel, candidate_label
@@ -522,9 +517,7 @@ def _validate_compatibility(value: Any) -> CoreCompatibility:
         pattern=SEMVER_PATTERN,
         code="invalid_core_version",
     )
-    core_abi = _expect_object(
-        compatibility.get("core_abi"), "$.compatibility.core_abi"
-    )
+    core_abi = _expect_object(compatibility.get("core_abi"), "$.compatibility.core_abi")
     _check_exact_keys(
         core_abi,
         frozenset({"desktop", "android_package"}),
@@ -585,9 +578,7 @@ def _validate_compatibility(value: Any) -> CoreCompatibility:
             code="invalid_contract_id",
         )
         if contract_id in contract_ids:
-            raise ValidationIssue(
-                "duplicate_contract_id", "$.compatibility.contracts"
-            )
+            raise ValidationIssue("duplicate_contract_id", "$.compatibility.contracts")
         contract_ids.add(contract_id)
         contract_version = _expect_string(
             contract,
@@ -608,7 +599,7 @@ def _validate_compatibility(value: Any) -> CoreCompatibility:
                     "$.compatibility.contracts",
                 )
             try:
-                canonical_sha256 = file_sha256(canonical_path)
+                canonical_sha256 = canonical_text_sha256(canonical_path)
             except ValidationIssue as exc:
                 raise ValidationIssue(
                     "canonical_contract_unreadable",
@@ -620,9 +611,7 @@ def _validate_compatibility(value: Any) -> CoreCompatibility:
                     "$.compatibility.contracts",
                 )
     if not REQUIRED_CONTRACT_IDS.issubset(contract_ids):
-        raise ValidationIssue(
-            "required_contract_missing", "$.compatibility.contracts"
-        )
+        raise ValidationIssue("required_contract_missing", "$.compatibility.contracts")
     return CoreCompatibility(
         version=core_version,
         desktop_abi=desktop_abi,
@@ -720,9 +709,7 @@ def _validate_artifact(
 ]:
     path = "$.artifacts"
     artifact = _expect_object(value, path)
-    _check_exact_keys(
-        artifact, ARTIFACT_REQUIRED_FIELDS, frozenset(), path
-    )
+    _check_exact_keys(artifact, ARTIFACT_REQUIRED_FIELDS, frozenset(), path)
     platform = _expect_enum(
         artifact,
         "platform",
@@ -776,18 +763,10 @@ def _validate_artifact(
     artifact_core_abi = artifact.get("core_abi")
     if platform == "android":
         if artifact_core_abi is not None:
-            raise ValidationIssue(
-                "artifact_core_abi_mismatch", f"{path}.core_abi"
-            )
-    elif type(artifact_core_abi) is not int or (
-        artifact_core_abi != core.desktop_abi
-    ):
-        raise ValidationIssue(
-            "artifact_core_abi_mismatch", f"{path}.core_abi"
-        )
-    core_artifact_sha256 = _expect_sha256(
-        artifact, "core_artifact_sha256", path
-    )
+            raise ValidationIssue("artifact_core_abi_mismatch", f"{path}.core_abi")
+    elif type(artifact_core_abi) is not int or (artifact_core_abi != core.desktop_abi):
+        raise ValidationIssue("artifact_core_abi_mismatch", f"{path}.core_abi")
+    core_artifact_sha256 = _expect_sha256(artifact, "core_artifact_sha256", path)
 
     signing_status = _validate_signing(artifact.get("signing"), f"{path}.signing")
     sbom_status = _validate_supply_evidence(
@@ -908,9 +887,7 @@ def _validate_promotion(
         CHANNELS,
         code="invalid_release_channel",
     )
-    if not _expect_boolean(
-        promotion, "same_byte_required", "$.promotion"
-    ):
+    if not _expect_boolean(promotion, "same_byte_required", "$.promotion"):
         raise ValidationIssue(
             "same_byte_promotion_required", "$.promotion.same_byte_required"
         )
@@ -982,9 +959,7 @@ def validate_metadata(
         payload.get("release")
     )
     source_revisions = _validate_sources(payload.get("sources"))
-    core = _validate_compatibility(
-        payload.get("compatibility")
-    )
+    core = _validate_compatibility(payload.get("compatibility"))
 
     artifact_values = _expect_list(payload.get("artifacts"), "$.artifacts")
     if not artifact_values:
@@ -1009,9 +984,7 @@ def validate_metadata(
             platform, core_artifact_sha256
         )
         if previous_core_hash != core_artifact_sha256:
-            raise ValidationIssue(
-                "platform_core_artifact_mismatch", "$.artifacts"
-            )
+            raise ValidationIssue("platform_core_artifact_mismatch", "$.artifacts")
 
     blocking_gate_count, gate_states = _validate_manual_gates(
         payload.get("manual_gates")
@@ -1023,9 +996,7 @@ def validate_metadata(
     stable_claim = release_channel == "stable" or target_channel == "stable"
     if stable_claim:
         if any(
-            status != "PASS"
-            for evidence in artifact_evidence
-            for status in evidence
+            status != "PASS" for evidence in artifact_evidence for status in evidence
         ):
             raise ValidationIssue("stable_supply_evidence_incomplete", "$.artifacts")
         if any(required and status != "PASS" for required, status in gate_states):
@@ -1039,8 +1010,7 @@ def validate_metadata(
         release_version=release_version,
         candidate_label=candidate_label,
         source_revisions={
-            name: revision.lower()
-            for name, revision in source_revisions.items()
+            name: revision.lower() for name, revision in source_revisions.items()
         },
         artifact_count=len(artifact_values),
         blocking_gate_count=blocking_gate_count,

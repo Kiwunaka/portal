@@ -18,6 +18,10 @@ Release-handoff v2 requires two descriptors in `compatibility.contracts`:
   `observability-event.schema.json`;
 - `error-catalog` version `1.2.0`, whose SHA-256 is computed from
   `error-catalog.json`.
+
+Both digests use UTF-8 text with CRLF and lone CR normalized to LF, so the
+contract identity is stable across Windows and Linux checkouts.
+
 - `SUPPORT-REFERENCE.md` is generated from that exact catalog and gives support
   the safe Russian message, owner, action and release-blocking flag for every
   current code. `generate_observability_support_reference.py --check` rejects

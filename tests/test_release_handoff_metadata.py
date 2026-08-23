@@ -13,9 +13,7 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "validate_release_handoff_metadata.py"
 SCHEMA_PATH = REPO_ROOT / "scripts" / "release_handoff_metadata.schema.json"
-FIXTURE_PATH = (
-    REPO_ROOT / "tests" / "fixtures" / "release-handoff" / "valid-v2.json"
-)
+FIXTURE_PATH = REPO_ROOT / "tests" / "fixtures" / "release-handoff" / "valid-v2.json"
 
 
 def _load_module() -> Any:
@@ -62,6 +60,17 @@ def test_v2_fixture_returns_safe_normalized_summary() -> None:
         "core": "c" * 40,
         "release_index": "d" * 40,
     }
+
+
+def test_canonical_contract_digest_normalizes_line_endings(tmp_path: Path) -> None:
+    lf_path = tmp_path / "lf.json"
+    crlf_path = tmp_path / "crlf.json"
+    lf_path.write_bytes(b'{\n  "schema": 1\n}\n')
+    crlf_path.write_bytes(b'{\r\n  "schema": 1\r\n}\r\n')
+
+    assert validator.canonical_text_sha256(lf_path) == validator.canonical_text_sha256(
+        crlf_path
+    )
 
 
 def test_artifact_set_digest_is_order_independent() -> None:
@@ -344,10 +353,7 @@ def test_cli_exit_codes_distinguish_v2_legacy_and_invalid(
 
     invalid = tmp_path / "invalid.json"
     invalid.write_text('{"schema_version":9}', encoding="utf-8")
-    assert (
-        validator.main(["--metadata-file", str(invalid)])
-        == validator.EXIT_INVALID
-    )
+    assert validator.main(["--metadata-file", str(invalid)]) == validator.EXIT_INVALID
     invalid_output = capsys.readouterr()
     assert '"classification":"invalid"' in invalid_output.err
 
@@ -363,10 +369,7 @@ def test_cli_error_does_not_echo_secret_or_public_url(
     metadata = tmp_path / "invalid.json"
     metadata.write_text(json.dumps(payload), encoding="utf-8")
 
-    assert (
-        validator.main(["--metadata-file", str(metadata)])
-        == validator.EXIT_INVALID
-    )
+    assert validator.main(["--metadata-file", str(metadata)]) == validator.EXIT_INVALID
     output = capsys.readouterr()
 
     assert secret not in output.err
@@ -396,10 +399,7 @@ def test_schema_and_validator_contract_constants_do_not_drift() -> None:
         "type": "integer",
     }
     assert set(release_v2["required"]) == validator.V2_REQUIRED_TOP_LEVEL
-    assert (
-        set(properties["release"]["required"])
-        == validator.RELEASE_REQUIRED_FIELDS
-    )
+    assert set(properties["release"]["required"]) == validator.RELEASE_REQUIRED_FIELDS
     assert (
         set(properties["compatibility"]["required"])
         == validator.COMPATIBILITY_REQUIRED_FIELDS
@@ -414,24 +414,18 @@ def test_schema_and_validator_contract_constants_do_not_drift() -> None:
     assert required_contracts == {
         contract_id: {
             "version": version,
-            "sha256": validator.file_sha256(path),
+            "sha256": validator.canonical_text_sha256(path),
         }
         for contract_id, (version, path) in validator.CANONICAL_CONTRACTS.items()
     }
-    assert set(
-        properties["compatibility"]["properties"]["core_abi"]["required"]
-    ) == {"desktop", "android_package"}
+    assert set(properties["compatibility"]["properties"]["core_abi"]["required"]) == {
+        "desktop",
+        "android_package",
+    }
+    assert set(defs["artifact"]["required"]) == validator.ARTIFACT_REQUIRED_FIELDS
+    assert set(defs["manualGate"]["required"]) == validator.MANUAL_GATE_REQUIRED_FIELDS
     assert (
-        set(defs["artifact"]["required"])
-        == validator.ARTIFACT_REQUIRED_FIELDS
-    )
-    assert (
-        set(defs["manualGate"]["required"])
-        == validator.MANUAL_GATE_REQUIRED_FIELDS
-    )
-    assert (
-        set(properties["promotion"]["required"])
-        == validator.PROMOTION_REQUIRED_FIELDS
+        set(properties["promotion"]["required"]) == validator.PROMOTION_REQUIRED_FIELDS
     )
     assert set(defs["evidenceStatus"]["enum"]) == validator.EVIDENCE_STATUSES
 
