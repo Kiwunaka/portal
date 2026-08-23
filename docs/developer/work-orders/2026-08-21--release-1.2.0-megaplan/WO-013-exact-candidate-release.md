@@ -6,7 +6,8 @@ Phase: `11`
 Lanes: platform, active Android/Windows client, Core, public release index,
 manual device/origin/provider/owner evidence
 Depends on: `WO-001..012`
-Production/external actions: `NOT_AUTHORIZED`
+Production/external actions: `NOT_AUTHORIZED`; source GitHub controls:
+`AUTHORIZED_OWNER_SOLO`
 
 ## Outcome
 
@@ -22,12 +23,19 @@ contract consumers, migrations, privacy/security/chaos harnesses, full local
 CI, reproducible unsigned artifact builds and the complete manual-gate matrix.
 It may create local commits on the isolated feature branches after all scoped
 checks pass. It may not manufacture a release candidate from dirty worktrees,
-reuse 1.1.6 evidence, sign with untrusted/debug identities, mutate branch
-protection, deploy, publish, update the stable pointer, contact users, create a
-live transport server, run a campaign/cohort or promote without the exact
-separate authority and access.
+reuse 1.1.6 evidence or sign with untrusted/debug identities. `WO-013O`
+authorizes the bounded owner-solo GitHub source controls and public Core branch
+protection. It still may not deploy, publish candidate assets, update the stable
+pointer, contact users, create a live transport server, run a campaign/cohort
+or promote without the exact separate authority and access.
 
 ## Current preflight truth
+
+Current override: `WO-013N` published the trust root and closed every explicit
+local pre-freeze row. `WO-013O` records the sole-owner exception, protects
+public Core main and advances `FE/P12-023` to `I3`. The older identities and
+counts below are retained as the local-preflight snapshot that led to those
+closures, not current release status.
 
 - Platform, client and Core worktrees are clean for the exact-byte-aware local
   preflight at platform `7a15ba2bd5d17617aca28205cd448b6c917929ab`,
@@ -211,22 +219,15 @@ No current instruction authorizes this slice.
 
 ## Current next action
 
-The full local source gates pass and the reproducible Core 1.1.0 Android/Windows
-bytes are bound to a clean client commit, but candidate creation remains
-blocked. Owner must provision/review the release Ed25519 public key and approve
-review/push of the local release-index v2 contract before its public revision
-can be frozen. Run the standard client gate in hosted Ubuntu and satisfy or
-retain the honest block for isolated no-visible-UI PR-00 proof. Resolve the
-three explicit external pre-candidate rows through owner/access action, then
-rerun the fail-closed preflight before constructing any candidate input.
+The public release-index source/trust root, PR-00 and exact hosted client gate
+are proved. The sole owner has authorized `OWNER_SOLO_EXCEPTION`; Core main now
+passes the live solo-safe branch policy. Assemble one current
+platform/client/artifact-bound-Core tuple, open its three exact promotion PRs
+and pass `owner-solo-pr-evidence.v1` readback for every named GitHub App check.
+Only that evidence closes `REL/REL-001` and `REL_DOD/DOD-09`.
 
-Live branch protection remains `NO_GO`: platform/client are blocked by the
-current private-repository plan, Core main is unprotected and every repository
-currently has zero eligible non-author write reviewers. `WO-013M` now fails
-closed unless the exact required checks are app-bound and the branch also
-enforces non-author/Code Owner/last-push review, stale dismissal, signatures,
-admins, linear history, conversation resolution and force-push/deletion bans.
-Hosted frontend CI is `NOT_RUN`; trusted signing, exact devices/VMs, providers,
-OIDC, legal, current/brain/RU origins and promotion stay in `WO-013E..G` under
-their separate authority. Do not create or label a candidate while any explicit
-pre-candidate blocker remains.
+After the exact PR controls pass, construct the immutable candidate input and
+enter `WO-013D..F`. Trusted signing, exact devices/VMs, providers, OIDC, legal,
+current/brain/RU origins and promotion retain their separate gates. Do not
+label a rebuild or an unbound source tuple as a candidate, and do not deploy or
+promote without the later explicit authority.

@@ -2469,3 +2469,40 @@ public trust revision lacks eligible non-author review. Signed exact-candidate
 assets and detached public readback remain later `I4` proof. No candidate,
 production deploy, device/origin claim, payment action, campaign or promotion
 occurred.
+
+## 2026-08-23 — WO-013O owner-solo promotion control
+
+The sole repository owner explicitly authorized `OWNER_SOLO_EXCEPTION` for
+release 1.2.0. The gate records `independent_review_performed=false`; it does
+not invent a second approval. Non-author review, non-author CODEOWNERS and the
+unavailable paid private-protection feature are waived only for this release.
+
+The compensating control binds an owner-authored PR to its exact 40-hex head
+and reads every named successful GitHub App check. Wrong owner/base/head,
+closed-unmerged PR, missing/failed check or missing app binding fails closed.
+PR-only promotion, signed public index, retained candidate evidence and
+same-byte promotion remain mandatory.
+
+Public `Kiwunaka/pokrov-core:main` now passes the solo-safe live policy: five
+strict checks are bound to GitHub Actions app `15368`; admins, signatures,
+linear history and conversation resolution are enforced; force pushes and
+deletion are disabled. Platform/client remain `BLOCKED_BY_ACCESS` on the
+private plan and require exact PR/check compensation.
+
+The clean read-only run binds platform `2708bf6...`, client `66d82be...` and
+Core `0e6b020...`. All seven local anchors pass, all reviewer controls report
+`OWNER_SOLO_EXCEPTION`, Core protection passes, and the aggregate is honestly
+`BLOCKED` because three exact PR controls plus WIN-003 remain `NOT_RUN`. The
+7,905-byte report SHA-256 is
+`1a8ef3e2cd3b7aeb82cc4337aadc3b930a737781e4c37afe4f1d9b19f7541546`.
+
+`FE/P12-023` advances `I2 -> I3`: its public trust root, hosted source check and
+exact readback were already proved, and the explicit owner exception resolves
+the only missing review precondition without claiming independent review.
+`REL/REL-001` and `REL_DOD/DOD-09` remain `I1` until exact final PR evidence
+passes.
+
+Distribution becomes `I3=307`, `I2=16`, `I1=39`, `I0=15`; 70 rows remain
+below `I3`, and the stage split becomes `0/33/16/21`. Candidate assembly may
+proceed, but no candidate, signature, production deploy, device/origin claim,
+payment action, campaign or stable promotion occurred.

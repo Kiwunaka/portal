@@ -1,0 +1,97 @@
+{
+  "schema": "pokrov.release-1.2.0.owner-solo-promotion-control/v1",
+  "recorded_at": "2026-08-23T16:07:30.570815Z",
+  "status": "OWNER_SOLO_EXCEPTION_AUTHORIZED_CORE_PROTECTED_EXACT_PR_EVIDENCE_PENDING",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "production_promotion_authorized": false,
+  "exception": {
+    "mode": "OWNER_SOLO_EXCEPTION",
+    "release": "1.2.0",
+    "owner_login": "Kiwunaka",
+    "authorized_at": "2026-08-23",
+    "independent_review_performed": false,
+    "expires_when": "release_1.2.0_is_closed",
+    "waived_controls": [
+      "eligible_non_author_pull_request_approval",
+      "codeowners_non_author_selection",
+      "paid_private_branch_protection"
+    ],
+    "compensating_controls": [
+      "exact_pull_request_head_sha",
+      "required_github_actions_success",
+      "github_app_bound_check_runs",
+      "pull_request_only_promotion",
+      "signed_public_release_index",
+      "retained_candidate_evidence",
+      "same_byte_promotion"
+    ]
+  },
+  "clean_sources": {
+    "platform": "2708bf6ac6bf572ec1aca94eab5f83d6b24d7347",
+    "client": "66d82be70e32ba3d9650c250c92750ac264cba0f",
+    "core": "0e6b0204d764ae6b1d726343f487a7004d13393b"
+  },
+  "core_branch_protection": {
+    "repository": "Kiwunaka/pokrov-core",
+    "branch": "main",
+    "result": "PASS",
+    "github_actions_app_id": 15368,
+    "strict_required_checks": [
+      "test",
+      "release-contract",
+      "android-artifact-reproducibility",
+      "windows-artifact-reproducibility",
+      "apple-source-build"
+    ],
+    "enforce_admins": true,
+    "required_signatures": true,
+    "required_linear_history": true,
+    "required_conversation_resolution": true,
+    "allow_force_pushes": false,
+    "allow_deletions": false,
+    "required_pull_request_reviews": null
+  },
+  "live_gate": {
+    "status": "BLOCKED",
+    "local_regressions": "PASS_7_OF_7",
+    "registry_sha256": "b4d997bc0c3544b3d62627de4ed2986fbace87e281ccf2150982df1e62fca954",
+    "report_bytes": 7905,
+    "report_sha256": "1a8ef3e2cd3b7aeb82cc4337aadc3b930a737781e4c37afe4f1d9b19f7541546",
+    "branch_results": {
+      "Kiwunaka/portal:master": "BLOCKED_BY_ACCESS",
+      "Kiwunaka/POKROV-app:main": "BLOCKED_BY_ACCESS",
+      "Kiwunaka/pokrov-core:main": "PASS"
+    },
+    "reviewer_results": {
+      "Kiwunaka/portal:master": "OWNER_SOLO_EXCEPTION",
+      "Kiwunaka/POKROV-app:main": "OWNER_SOLO_EXCEPTION",
+      "Kiwunaka/pokrov-core:main": "OWNER_SOLO_EXCEPTION"
+    },
+    "owner_solo_pr_controls": "NOT_RUN_3_OF_3",
+    "win_003_clean_host": "NOT_RUN"
+  },
+  "ledger": {
+    "advanced_rows": {
+      "FE/P12-023": "I2_TO_I3"
+    },
+    "unchanged_rows": {
+      "REL/REL-001": "I1_EXACT_OWNER_SOLO_PR_EVIDENCE_PENDING",
+      "REL_DOD/DOD-09": "I1_EXACT_OWNER_SOLO_PR_EVIDENCE_PENDING"
+    },
+    "distribution": {
+      "I3": 307,
+      "I2": 16,
+      "I1": 39,
+      "I0": 15
+    },
+    "below_i3": 70,
+    "pending_stage_counts": {
+      "pre_freeze": 0,
+      "candidate": 33,
+      "external": 16,
+      "deferred": 21
+    }
+  },
+  "evidence_ceiling": "OWNER_SOLO_POLICY_AUTHORIZED_CORE_PROTECTED_PRIVATE_EXACT_PR_CONTROLS_PENDING_NO_CANDIDATE"
+}
