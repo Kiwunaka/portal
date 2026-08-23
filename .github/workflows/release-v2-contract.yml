@@ -23,9 +23,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Kiwunaka/POKROV-app
-          ref: main
+          # PR 20 assembles the exact unmerged 1.2.0 tuple. Pushes and every
+          # other PR continue to validate the client promotion line.
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 20 && '879970d9e44f2375f9d00f4f12eebcc9bfc568b7' || 'main' }}
           path: POKROV-app
           ssh-key: ${{ secrets.POKROV_RELEASE_CLIENT_DEPLOY_KEY }}
+          lfs: true
           persist-credentials: false
 
       - name: Checkout Core promotion line

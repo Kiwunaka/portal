@@ -70,6 +70,7 @@ jobs:
           ref: main
           path: POKROV-app
           ssh-key: ${{ secrets.POKROV_RELEASE_CLIENT_DEPLOY_KEY }}
+          lfs: true
           persist-credentials: false
 
       - name: Checkout Core promotion line
