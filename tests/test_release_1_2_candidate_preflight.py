@@ -28,6 +28,26 @@ LEDGER_PATH = (
 STAGE_POLICY_PATH = REPO_ROOT / MODULE.STAGE_POLICY_RELATIVE_PATH
 
 
+def test_parser_accepts_separate_post_freeze_ledger_root(tmp_path: Path) -> None:
+    args = MODULE.build_parser().parse_args(
+        [
+            "--platform-root",
+            str(REPO_ROOT),
+            "--ledger-root",
+            str(tmp_path),
+            "--client-root",
+            str(tmp_path / "client"),
+            "--core-root",
+            str(tmp_path / "core"),
+            "--output",
+            str(tmp_path / "report.json"),
+        ]
+    )
+
+    assert args.platform_root == REPO_ROOT
+    assert args.ledger_root == tmp_path
+
+
 def test_pending_lane_preserves_non_pass_labels() -> None:
     base = {
         "plan": "REL",

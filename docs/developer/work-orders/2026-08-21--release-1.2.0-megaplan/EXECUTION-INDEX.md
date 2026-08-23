@@ -2554,3 +2554,30 @@ partially credited.
 split becomes `0/33/14/21`. Source promotion is complete, but no candidate,
 signature, physical-device/clean-host or origin proof, provider action,
 production deploy, payment, campaign or stable promotion occurred.
+
+## 2026-08-23 — WO-013Q exact local pre-candidate assembly
+
+The frozen 013P tuple now produces six retained local app artifacts. Four APKs
+and the store AAB use the production Android signer; the Windows service-first
+installer passes the complete local gate and package checks but Authenticode is
+`NotSigned`. The six-file set digest is
+`6a89748d26f84da3bef8ecae3bd5fd897747a74bae02311be8028224d4649964`.
+CycloneDX 1.5 SBOM, SLSA v1 provenance, final checksums and strict-v2 handoff
+are retained.
+
+Preflight tooling now separates frozen platform source from the post-freeze
+evidence ledger and records both clean revisions. Focused release regressions
+pass `58/58` plus 21 subtests. The final run binds platform `2ed944c...`, client
+`3904734...`, Core `bdbd97f...`, public index `4914368...`, ledger `2522bf0...`
+and tool `08dc6a9...`; it returns `READY_LOCAL_FREEZE` with zero blockers and
+zero pre-candidate rows below `I3`.
+
+This is `PRE_CANDIDATE_LOCAL`, not an RC. Trusted Windows signing and the
+support-mode verification key are missing; applying them changes artifact
+bytes and requires a regenerated handoff. The strict handoff retains 12
+required promotion gates below `PASS`. No public release, store publication,
+device/VM or origin proof, provider action, deployment or promotion occurred.
+
+`REL_DOD/DOD-15` advances `I0 -> I2`. Distribution becomes `I3=309`, `I2=17`,
+`I1=37`, `I0=14`; 68 rows remain below `I3`, and stage split remains
+`0/33/14/21`.

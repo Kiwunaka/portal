@@ -1,6 +1,6 @@
 # WO-013 — Exact 1.2.0 candidate, Gate F and promotion decision
 
-Status: `SOURCE_PROMOTION_COMPLETE_CANDIDATE_NOT_CREATED`
+Status: `LOCAL_PRE_CANDIDATE_ASSEMBLED_WINDOWS_SIGNING_BLOCKED`
 Classification: `ACTIVE_EXECUTION`
 Phase: `11`
 Lanes: platform, active Android/Windows client, Core, public release index,
@@ -37,7 +37,10 @@ public Core main and advances `FE/P12-023` to `I3`. The older identities and
 counts below are retained as the local-preflight snapshot that led to those
 closures, not current release status. `WO-013P` subsequently promotes the
 signed final platform/client/Core source tuple and closes `REL/REL-001` and
-`REL_DOD/DOD-09` at `I3`; it still records `candidate_created=false`.
+`REL_DOD/DOD-09` at `I3`. `WO-013Q` then assembles the exact local Android and
+Windows artifact set, SBOM, provenance and strict-v2 handoff. Android signing
+passes, but Windows trusted signing and support-mode key binding remain
+missing; `candidate_created=false` is retained.
 
 - Platform, client and Core worktrees are clean for the exact-byte-aware local
   preflight at platform `7a15ba2bd5d17617aca28205cd448b6c917929ab`,
@@ -228,9 +231,16 @@ No current instruction authorizes this slice.
 controls and the post-merge promotion runs pass. Candidate creation remains
 `NOT_CREATED` and is not authorized by source promotion alone.
 
-Under a separate explicit candidate-stage authorization, construct the
-immutable candidate input from exactly that tuple and enter `WO-013D..F`.
-Trusted signing, exact devices/VMs, providers, OIDC, legal,
-current/brain/RU origins and promotion retain their separate gates. Do not
-label a rebuild or an unbound source tuple as a candidate, and do not deploy or
-promote without the later explicit authority.
+`WO-013Q` uses the explicit candidate-preparation authorization to construct
+the immutable local input from exactly that tuple. The preflight is
+`READY_LOCAL_FREEZE`; Android production signing, six artifact identities,
+SBOM/provenance and strict-v2 metadata are retained. Windows remains unsigned,
+the support-mode public key is not embedded and 12 required promotion gates are
+not `PASS`, so this set stays `PRE_CANDIDATE_LOCAL`, not an RC.
+
+Next, provision the support-mode public key and a trusted Windows code-signing
+identity, then regenerate the affected artifact set and handoff. Only those new
+bytes can enter the exact device/VM, provider, OIDC, legal, current/brain and
+rollback matrices. RU-origin stays separate and is required only for an RU
+claim. Publication, deployment and stable promotion still require later
+explicit authority.
