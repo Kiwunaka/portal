@@ -2433,3 +2433,39 @@ remote setting. Distribution remains `I3=303`, `I2=20`, `I1=39`, `I0=15`; 74
 rows remain below `I3`, and the stage split remains `3/33/17/21`. No
 collaborator invitation, plan/visibility change, CODEOWNERS guess, branch
 mutation, push, PR, candidate, signature, deployment or promotion occurred.
+
+## 2026-08-23 — WO-013N authorized public and hosted pre-freeze closure
+
+Owner authorization permitted scoped Git pushes, PRs, Actions secrets and
+narrow evidence-only merges. Public `Kiwunaka/pokrov` PR 1 published the v2
+source contract and Ed25519 trust root, then merged main as
+`491436889ef911de868d704e68ba86e77102b0f1`. Post-merge run `32616614043`, job
+`97138291041`, and exact public main readback passed. Private signing material
+is secret-only under `POKROV_RELEASE_SIGNING_KEY_PEM`; no candidate manifest is
+signed.
+
+Platform PR 18 at `e26fcb0...` passed exact release-base isolation and
+Guardrails with ten allowlisted freeze/contracts paths and zero visible UI
+paths, then merged as `8cef00a...`. Three-path retained-workflow follow-up PR
+19 passed Guardrails and merged as `a25fa8a...`. The absence of a non-author
+review remains a separate branch-policy blocker rather than being relabelled a
+pass.
+
+Open PR 17 control `75a5c4f82c963d81f1c46dcf26a83cf39b8021cf`
+checked out exact platform `9b9467c...`, client `66d82be...` and artifact-bound
+Core `fcb3c8b...` with the read-only client deploy-key secret. Hosted run
+`32621490357`, job `97150195041`, passed SHA verification, cross-repository
+seed validation, App Shell `385/385`, runtime `59/59` plus one intentional
+skip, Android `8/8`, Windows `21/21` and Android Gradle `BUILD SUCCESSFUL`.
+Guardrails run `32621490362` also passed. Retained run `32620758845` remains a
+cancelled-after-failure disk-exhaustion diagnostic, not a pass.
+
+`REL/TEST-001`, `REL/REPO-001` and `FE_PR/PR-00` advance `I2 -> I3`.
+Distribution becomes `I3=306`, `I2=17`, `I1=39`, `I0=15`; 71 rows remain
+below `I3`, and the stage split becomes `0/33/17/21`. Candidate creation is
+still blocked by three external pre-candidate rows: branch policy/reviewer
+rows `REL/REL-001` and `REL_DOD/DOD-09`, plus `FE/P12-023` because the frozen
+public trust revision lacks eligible non-author review. Signed exact-candidate
+assets and detached public readback remain later `I4` proof. No candidate,
+production deploy, device/origin claim, payment action, campaign or promotion
+occurred.

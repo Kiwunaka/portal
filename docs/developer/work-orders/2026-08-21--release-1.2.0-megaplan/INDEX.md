@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-23
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_EXACT_CONTROLS_LOCAL_OWNER_PLAN_REVIEWER_ACCESS_BLOCKED`
+Wave status: `PHASE_11_PREFREEZE_I3_EXTERNAL_REVIEW_AND_BRANCH_POLICY_BLOCKED`
 Release candidate: `NOT_CREATED`
 
 ## Outcome
@@ -25,8 +25,8 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | Phase | Architectural outcome | State | Primary WO |
 |---|---|---|---|
 | 00 | Baseline, authority map, complete execution ledger | Locally proved (`I3`) | `WO-001` |
-| 01 | Release manifest, version/provenance contract, CI and stop-ship controls | Release-v2, client adoption, release-bound CI, reproducible dependencies, shared catalog, current/history separation and cross-repository version truth locally proved; fail-closed public-index source, isolated no-visible-UI PR-00, exact hosted-client control and full branch-policy verifier exist locally; public key/review/workflow/readback, private-repo plan/access, eligible Code Owner and hosted runs remain blocked | `WO-002`, `WO-003`, `WO-003B`, `WO-003C`, `WO-003D`, `WO-003E`, `WO-003F`, `WO-003G`, `WO-003H`, `WO-003I`, `WO-003J`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M` |
-| 02 | Typed connection state, proof-driven green state, core ABI and migrations | 004A/004A2, 004B/004B2, 004C and aggregate Gate B locally proved (`I3`); direct cutover and deterministic visual baselines are explicit; ABI v3 is deferred until after 1.2.0; Core release-CI source contract is complete while hosted/exact-candidate DoD remains open | `WO-004`, `WO-004A2`, `WO-004B2`, `WO-004D`, `WO-006I` |
+| 01 | Release manifest, version/provenance contract, CI and stop-ship controls | Release-v2, client adoption, release-bound CI, reproducible dependencies, shared catalog and cross-repository truth are locally proved; the public-index source/trust root is on public main, PR-00 is merged with hosted no-visible-UI proof and the exact hosted client gate passes; all explicit `pre_freeze` rows are `I3`; branch protection, selected non-author reviewer/CODEOWNERS and non-author review of the frozen public trust revision remain blocked | `WO-002`, `WO-003`, `WO-003B`, `WO-003C`, `WO-003D`, `WO-003E`, `WO-003F`, `WO-003G`, `WO-003H`, `WO-003I`, `WO-003J`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N` |
+| 02 | Typed connection state, proof-driven green state, core ABI and migrations | 004A/004A2, 004B/004B2, 004C and aggregate Gate B are `I3`; direct cutover and deterministic visual baselines are explicit; ABI v3 is deferred until after 1.2.0; current Core source passes all five hosted jobs, while one exact candidate revision combining hosted CI with the already-bound artifact bytes remains open | `WO-004`, `WO-004A2`, `WO-004B2`, `WO-004D`, `WO-006I`, `WO-013N` |
 | 03 | Windows/Android runtime boundaries; conditional Linux beta foundation | Locally complete: Windows service/recovery/journal and stack-only crash profile plus Android runtime/private operational producers are proved; Linux explicitly not shipped in 1.2.0 | `WO-005`, `WO-005C4`, `WO-005D4` |
 | 04 | Observability, error catalog, redacted bundle and support pipeline | Locally complete (`I3`) for shipped Android/Windows scope, including four-class safe transport failures, active operational producers, Android count-only routing, no-upload short code, signed temporary support mode, encrypted-only manual export and a current 7/7 MSVC native proof for the bounded Windows service journal; Linux remains explicitly not shipped and external custody, runtime and exact-candidate evidence remain open | `WO-006`, `WO-006I`, `WO-006J`, `WO-006K`, `WO-006L` |
 | 05 | Portal bounded contexts, payments, HTTP/DB/outbox reliability | Locally complete (`GATE-D` and `ARCH-002` at `I3`); 007G–007I split admin, public/client and Action Intent domain/runtime owners | `WO-007`, `WO-007G`, `WO-007H`, `WO-007I` |
@@ -35,7 +35,7 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete; exact-candidate performance/manual gates retained | `WO-010` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
 | 10 | FRKN-derived rules; isolated AWG2 PoC, later HY2 decision | Local package complete; exact artifact/device/RU gates open | `WO-012` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Core 1.1.0 artifacts are reproducible/bound, the public-index v2 contract is local/unpublished, 013K isolates PR-00, 013L isolates the hosted-client gate and 013M prevents partial branch settings from false-passing; owner signing key, publication/review, private-repo plan/access, trusted non-author Code Owner, hosted runs, signing and device/origin gates remain blocked; candidate not created | `WO-013`, `WO-013C`, `WO-013D`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Core 1.1.0 artifacts remain reproducible/bound; 013N proves public release-index source/trust-root publication, merged PR-00 isolation and the exact hosted client gate; current Core source CI also passes all five jobs without replacing the bound bytes; complete branch policy/reviewer controls, non-author public-trust review, candidate construction and device/origin gates remain blocked; candidate not created | `WO-013`, `WO-013C`, `WO-013D`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -53,11 +53,11 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-003F` | Bind release notes and visible UI version to strict v2 | Cross-repo release identity consumers | Complete locally (`I3`) | `WO-003`, `WO-003D`, `WO-003E` |
 | `WO-003G` | Separate current readiness owners from retained candidate history | Cross-repo documentation/release authority | Complete locally (`I3`) | `WO-003F` |
 | `WO-003H` | Reconcile package, API/UI and active documentation version truth | Cross-repo release version authority | Complete locally (`I3`) | `WO-003F`, `WO-003G` |
-| `WO-003I` | Remove tracked temp helpers and enforce source/history/staging/public-index separation | Client source/release boundary | Implemented in clean client commit (`I2`); public baseline is now inspected and local v2 index source remains unpublished/owner-key blocked | `WO-003H`, `WO-013J` |
-| `WO-003J` | Reconcile the public trust-surface and freeze/contracts aggregate without overstating unavailable evidence | Cross-repo release authority | `P12-023 I2`, `PR-00 I2`; local index contract, isolated PR-00 commit and exact hosted-client control exist, but public owner-key/workflow/readback, private checkout access and hosted gates remain blocked | `WO-003I`, `WO-006I`, `WO-008A`, `WO-010E`, `WO-013J`, `WO-013K`, `WO-013L` |
+| `WO-003I` | Remove tracked temp helpers and enforce source/history/staging/public-index separation | Client source/release boundary | Closed by 013N (`REL/REPO-001 I3`): clean source boundary plus public v2 main, trust root, hosted source-contract run and exact readback are retained | `WO-003H`, `WO-013J`, `WO-013N` |
+| `WO-003J` | Reconcile the public trust-surface and freeze/contracts aggregate without overstating unavailable evidence | Cross-repo release authority | 013N closes `REL/REPO-001`, `PR-00` and `TEST-001` at `I3`; `FE/P12-023` remains `I2` because the frozen public trust revision lacks eligible non-author review | `WO-003I`, `WO-006I`, `WO-008A`, `WO-010E`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013N` |
 | `WO-004` | Establish state/core truth | Client/core | Complete (`I3`) | `WO-003B` |
 | `WO-004A2` | Accept the one-truth direct cutover and close deterministic critical-state visual baselines | Client presentation/evidence | Complete locally (`PR-01/PR-02 I3`) | `WO-004A`, `WO-010E1` |
-| `WO-004B2` | Complete the Core platform-build/security/reproducibility CI contract without overstating hosted execution | Core release CI/evidence | Complete locally (`CORE-001 I3`); hosted/exact-candidate jobs remain open | `WO-004B`, `WO-006C` |
+| `WO-004B2` | Complete the Core platform-build/security/reproducibility CI contract without overstating hosted execution | Core release CI/evidence | `CORE-001 I3`; current head `0e6b020...` passes all five hosted jobs, but is not the artifact-bound Core source and therefore does not prove the exact candidate | `WO-004B`, `WO-006C`, `WO-013I`, `WO-013N` |
 | `WO-004D` | Keep ABI v3 `ConnectionStatus` out of the 1.2.0 blocker path per source authority | Core/client contract decision | Deferred post-1.2.0 (`I1`, no implementation claim) | `WO-004B`, `WO-006I` |
 | `WO-005` | Correct privilege/runtime platform architecture | Client/core | Complete locally; Linux not shipped | `WO-004` |
 | `WO-005C4` | Add one bounded stack-only Windows crash profile without full dumps | Active Windows client | Complete locally (`OBS-035 I3`) | `WO-005B2`, `WO-005C3`, `WO-006A` |
@@ -94,10 +94,11 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013D` | Make the client stable pointer reversible through an exact rollback catalog, atomic switch contract and retained evidence | Client/platform release rollback | Complete locally (`FE/P12-130 I3`); exact-candidate portal/runtime drill remains `NOT_RUN` | `WO-003`, `WO-013C` |
 | `WO-013H` | Freeze clean platform/client/Core source identities and retain honest preflight blockers | Cross-repo release source freeze | Complete local evidence; no ledger advancement, candidate remains uncreated | `WO-013B`, `WO-013C`, `WO-013D` |
 | `WO-013I` | Build Core 1.1.0 Android/Windows artifacts twice, bind exact bytes to the active client and verify them in preflight | Core/client/platform artifact boundary | Complete local pre-candidate evidence; no ledger advancement, three real preflight blockers remain | `WO-013H`, `WO-004B2` |
-| `WO-013J` | Audit the real public baseline and implement a fail-closed signed/same-byte release-index source contract | Public release-index/platform preflight | Local implementation complete (`P12-023 I2`); unpublished and owner-key blocked, no public/candidate claim | `WO-003I`, `WO-003J`, `WO-013I` |
-| `WO-013K` | Prove PR-00 as one isolated local evidence-only commit with no visible UI delta | Platform release review boundary | Local proof complete (`PR-00 I2`); exact branch is unpushed and hosted review/required checks are `NOT_RUN` | `WO-003J`, `WO-013H`, `WO-013J` |
-| `WO-013L` | Isolate an exact hosted Ubuntu client-gate control over the frozen three-repository tuple | Platform CI control/client gate | Local control complete (`TEST-001 I2`); source/control commits are unpushed, owner read-only private-repo secret is absent and hosted execution is `NOT_RUN` | `WO-003B`, `WO-013H`, `WO-013I`, `WO-013K` |
+| `WO-013J` | Audit the real public baseline and implement a fail-closed signed/same-byte release-index source contract | Public release-index/platform preflight | Source/trust-root publication closed by 013N (`REL/REPO-001 I3`); non-author review of frozen public main is absent, so `FE/P12-023` stays `I2`; exact signed candidate assets remain `I4` | `WO-003I`, `WO-003J`, `WO-013I`, `WO-013N` |
+| `WO-013K` | Prove PR-00 as one isolated local evidence-only commit with no visible UI delta | Platform release review boundary | Hosted isolation and merge closed by 013N (`PR-00 I3`); PR 18 and scoped follow-up PR 19 are merged, while non-author review remains a separate policy blocker | `WO-003J`, `WO-013H`, `WO-013J`, `WO-013N` |
+| `WO-013L` | Isolate an exact hosted Ubuntu client-gate control over the frozen three-repository tuple | Platform CI control/client gate | Exact hosted proof closed by 013N (`TEST-001 I3`): PR 17/run 32621490357 passes the full standard gate; control PR remains open and candidate evidence remains separate | `WO-003B`, `WO-013H`, `WO-013I`, `WO-013K`, `WO-013N` |
 | `WO-013M` | Make the branch-policy STOP-SHIP gate verify the complete review, provenance and anti-bypass contract | Cross-repository promotion policy | Local verifier complete; `REL-001`/`DOD-09` remain `I1` because private-plan protection, Core protection, trusted reviewer selection and live CODEOWNERS are absent | `WO-013B`, `WO-013H`, `WO-013L` |
+| `WO-013N` | Publish and read back the release-index trust root, merge hosted PR-00, and prove the exact hosted client standard gate | Public index/platform/client/Core pre-freeze evidence | Complete (`REL/REPO-001`, `FE_PR/PR-00`, `REL/TEST-001 I3`); candidate remains uncreated and three non-author-review/branch-policy pre-candidate rows remain blocking | `WO-013J`, `WO-013K`, `WO-013L`, owner GitHub authorization |
 
 ## Current evidence
 
@@ -122,6 +123,10 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013M-branch-policy-stop-ship/013M-branch-policy-stop-ship.json`
   binds the clean full-policy verifier, exact required-check sets, current live
   branch results, zero eligible non-author reviewers and honest `NO_GO` state.
+- `evidence/013N-authorized-prefreeze-closure/013N-authorized-prefreeze-closure.json`
+  binds public release-index main and key readback, merged PR-00 checks, the
+  exact hosted client `SUCCESS` tuple, secret names without private material,
+  supporting Core CI and the honest no-candidate ceiling.
 
 ## Collision and promotion gates
 
@@ -133,20 +138,22 @@ The row order is a dependency order, not permission for one giant merge. Each im
 
 ## Next action
 
-The exact Core bytes, local release-index v2 source, isolated PR-00 commit and
-release-base-isolated hosted-client control now exist. Continue the three
-explicit `pre_freeze` rows only after owner authorization: publish the exact
-source tuple; provision `POKROV_RELEASE_REPO_READ_TOKEN` with `contents:read`
-only for the private client repository; push/review control `085ac1a...` and
-retain its exact hosted Ubuntu run; provision/review an owner-controlled public
-Ed25519 key and publish/freeze the reviewed release-index contract; then
-push/review exact PR-00 revision `1632234...` through hosted required checks.
-For branch policy the owner must first select or invite at least one trusted
-non-author write reviewer, update the contract and protected `.github/CODEOWNERS`,
-then enable a supporting plan/visibility and apply the full app-bound policy to
-platform `master`, client `main` and Core `main`. Three external pre-candidate
-rows remain blocking, including that branch policy and public-index trust.
-The 33 candidate, 17 external and 21 deferred rows do not belong to the local
-pre-freeze queue. Do not create/sign/promote a candidate, deploy, mutate a
-server, enroll a cohort or claim RU readiness without the separate owner
-authority and access required by each gate.
+All explicit local `pre_freeze` rows are now `I3`. Candidate creation remains
+blocked by three external pre-candidate rows. For `REL/REL-001` and
+`REL_DOD/DOD-09`, select or invite at least one trusted non-author write
+reviewer, record the principal in the contract and reviewed
+`.github/CODEOWNERS`, enable a plan/visibility that supports the complete
+policy, then apply and read back every app-bound control on platform `master`,
+client `main` and Core `main`. For `FE/P12-023`, retain eligible non-author
+approval of the exact public source/trust-root revision and freeze the reviewed
+main. The published owner-authorized revision and hosted pass do not substitute
+for that independent review. Exact candidate assets, detached signatures and
+same-byte public readback remain later candidate/`I4` evidence.
+
+After those three rows close, enter the 33-row candidate lane with one frozen
+platform/client/artifact-bound-Core tuple and retain signing, SBOM/provenance,
+physical Android/Windows, current/brain/RU-origin, rollback and Gate F evidence.
+The remaining 17 external and 21 deferred rows keep their existing authority
+boundaries. Do not deploy, mutate production, execute a payment, enroll a
+campaign cohort or claim RU/stable readiness without the separate authority
+and exact evidence required by the owning gate.
