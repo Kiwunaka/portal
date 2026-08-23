@@ -45,22 +45,24 @@ separate authority and access.
 - Release-handoff schema/generator/validator v2 and release-bound workflow
   contracts exist locally, but no new v2 candidate metadata or signed artifact
   set exists.
-- The separate public release-index repository is not present in the local
-  workspace. Its exact revision and any same-byte public promotion remain
-  `BLOCKED_BY_ACCESS`.
+- The public release-index baseline is now inspected: public `origin/main`
+  `d0bf8e8c70ebeaa241f4c8f5b8a4452fd339ed15` is legacy checksum-only and
+  unsigned. Local branch `f07654af496d042fa8dba3d8b2695e987c8e9eb7`
+  implements the fail-closed v2 schema/signature/same-byte contract, but is
+  unpublished and has no owner-provisioned trusted signing key.
 - Trusted Windows signing, Android production lineage, clean Windows VM,
   physical Android devices, current/brain/RU origins, provider/legal/OIDC
   surfaces and external pilot authorization remain manual/external gates.
 - The current ledger has 303 rows at local `I3`; 74 of 377 remain below `I3`.
-  Of those, 19 are `I2`, 40 are `I1` and 15 are `I0`. The clean source commits
+  Of those, 20 are `I2`, 39 are `I1` and 15 are `I0`. The clean source commits
   do not advance any row by themselves or create candidate/production proof.
 - The exact stage policy classifies those 74 rows as 3 `pre_freeze`, 33
   `candidate`, 17 `external` and 21 `deferred`. Three external rows are explicit
-  pre-candidate blockers. The exact-byte-aware read-only preflight remains
-  `BLOCKED`, now with three blockers: missing public release index, three local
-  pre-freeze rows and three external pre-candidate rows. The stale seed and
-  pending replacement-artifact blockers are closed by exact revision and byte
-  verification.
+  pre-candidate blockers. With the local release-index branch supplied, the
+  exact-byte-aware read-only preflight remains `BLOCKED` with four blockers:
+  unpublished index revision, missing owner signing key, three local pre-freeze
+  rows and three external pre-candidate rows. The stale seed and pending
+  replacement-artifact blockers remain closed by exact revision/byte proof.
 
 ## Evidence labels
 
@@ -211,12 +213,12 @@ No current instruction authorizes this slice.
 
 The full local source gates pass and the reproducible Core 1.1.0 Android/Windows
 bytes are bound to a clean client commit, but candidate creation remains
-blocked. Obtain and freeze the separate public release-index revision. Run the
-standard client gate in hosted Ubuntu and satisfy or retain the honest block
-for the isolated no-visible-UI PR-00 proof. Resolve the three explicit external
-pre-candidate rows through owner/access action, then rerun the three-blocker
-read-only preflight against the new exact revisions before constructing any
-candidate input.
+blocked. Owner must provision/review the release Ed25519 public key and approve
+review/push of the local release-index v2 contract before its public revision
+can be frozen. Run the standard client gate in hosted Ubuntu and satisfy or
+retain the honest block for isolated no-visible-UI PR-00 proof. Resolve the
+three explicit external pre-candidate rows through owner/access action, then
+rerun the fail-closed preflight before constructing any candidate input.
 
 Live branch protection remains `NO_GO`: platform/client are blocked by the
 current private-repository plan and Core main is unprotected. Hosted frontend

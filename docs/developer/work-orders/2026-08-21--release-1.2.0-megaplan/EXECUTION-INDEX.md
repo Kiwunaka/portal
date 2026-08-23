@@ -1,6 +1,6 @@
 # POKROV 1.2.0 Execution Index
 
-Last updated: 2026-08-22
+Last updated: 2026-08-23
 
 ## Item scale
 
@@ -2320,3 +2320,39 @@ The artifacts are unsigned `PRE_CANDIDATE_LOCAL` inputs. SBOM warnings are not
 legal clearance. No push, release tag, hosted CI, trusted signing, physical
 device/clean VM, current/brain/RU-origin run, public index, deployment,
 publication or promotion occurred.
+
+## 2026-08-23 — WO-013J fail-closed public release-index contract
+
+The actual public `Kiwunaka/pokrov` baseline is now inspected rather than
+labelled unavailable. Public `origin/main` is the single unsigned commit
+`d0bf8e8c70ebeaa241f4c8f5b8a4452fd339ed15`; release tags are lightweight.
+The retained 1.1.6 release has eight GitHub-digested assets and matching
+`SHA256SUMS.txt`, but no detached manifest signature, source/SBOM/provenance
+binding or Windows publisher signature. Its Windows manifest also contains
+local build paths. It is explicitly legacy checksum-only evidence, not a
+candidate-eligible trust surface.
+
+Isolated release-index commit
+`f07654af496d042fa8dba3d8b2695e987c8e9eb7` implements the missing source
+contract: strict manifest schema, exact cross-repository revisions and contract
+hashes, trusted artifact signer/SBOM/provenance fields, GitHub digest parity,
+raw exact-byte Ed25519 detached signatures, same-byte/no-rebuild promotion,
+pinned dependencies and pinned-action CI. Repo-local source validation and
+`2/2` tests pass, including one-byte signature mutation rejection.
+
+The keyring is intentionally empty and `--require-ready` fails as expected.
+The local commit is not published. Platform preflight now fails closed on
+missing/invalid contracts, schema drift, missing trusted key, wrong remote and
+unpublished revision. Clean preflight remains `BLOCKED` with four blockers:
+unpublished release-index revision, missing owner signing key, three local
+pre-freeze rows and three external pre-candidate rows.
+
+`FE/P12-023` advances `I1 -> I2`; its trust-surface implementation exists
+locally but has no public/owner-key/candidate proof. `REL/REPO-001` remains
+`I2`. Distribution becomes `I3=303`, `I2=20`, `I1=39`, `I0=15`; 74 rows
+remain below `I3`, and stage split remains `3/33/17/21`.
+
+Hosted client runs remain absent. Platform/client branch-protection readback is
+blocked by the private-repository plan and Core main is unprotected. No owner
+key, release-index push/PR, candidate, signature, deployment, publication or
+promotion was created.
