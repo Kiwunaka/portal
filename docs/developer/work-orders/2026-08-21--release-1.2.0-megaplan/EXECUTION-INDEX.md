@@ -2622,3 +2622,50 @@ No row advances. `REL/REPO-001` and `FE/P12-023` remain `I3`;
 `REL_DOD/DOD-02` and `REL_DOD/DOD-15` remain `I2`. Distribution remains
 `I3=309`, `I2=17`, `I1=37`, `I0=14`; 68 rows remain below `I3`, and stage split
 remains `0/33/14/21`.
+
+## 2026-08-24 — WO-013S support-signing pin and hosted custody
+
+Client PR 12 head `e9d5607d353f55348d0829b2c54635c7bf84b234` added a
+tracked public support-signing seed and fail-closed Android/Windows production
+binding. Its complete hosted contract passed in run `32671146618`, job
+`97272076355`; it merged under `OWNER_SOLO_EXCEPTION` as client `main`
+`288c82b52cf3bda32b6c11f5261805aa8842bdc1`. Post-merge run
+`32671854568`, job `97273782247`, repeats the full client/Android gate
+successfully in `13m10s`. Local cross-repository, docs, support-pin, Windows
+and complete standard client gates pass. The tracked seed contains only public
+material, and production build overrides cannot omit or replace it.
+
+Platform PR 24 head `88ddc9826fee5d45c67d2e6d59945aae3cb56c34`
+passed Release v2 Contract run `32672197198`, job `97274597357`, and
+Guardrails run `32672197177`, job `97274597329`. It merged under the same
+explicit owner-solo control as platform `master`
+`f64905125bc515ff97b61c7e94a4050f280c45da`. The new workflow is
+master-only, read-only and secret-scoped to one validation step; pull requests
+cannot invoke it.
+
+Hosted custody run `32672708398`, job `97275867661`, passes in `28s`. Its
+public receipt binds exact platform/client revisions, key id
+`pokrov-support-2026-08`, public-key SHA-256
+`44aed43310eaf5442b3493cbe566b5f0f620a5660bb84a6bd028832114f48845`
+and client-seed SHA-256
+`1513ff81117f75e507c867f942197c966b2957303ce7b654f3a59550a0ccecc2`.
+It proves the hosted private Ed25519 seed derives the exact client public pin,
+the support-code secret meets the minimum contract and a revision-bound
+challenge signs and verifies. No secret value is present in the receipt.
+Post-merge Release v2 Contract run `32672708448`, job `97275867688`, also
+passes in `1m52s`; post-merge Guardrails run `32672708409`, job
+`97275867664`, passes in `11m15s`.
+
+This resolves the support public-pin source/build input and hosted custody
+gap, not deployed-runtime proof. `candidate_created=false` and
+`production_runtime_mutated=false`; no candidate, artifact rebuild, production
+deploy, GitHub Release, stable pointer, store publication or device/origin
+proof occurred. A trusted Windows Code Signing certificate is still absent,
+so `WINDOWS_TRUSTED_SIGNING` remains `BLOCKED_BY_ACCESS` and an exact
+promotable candidate cannot yet be assembled.
+
+No row advances. `REL_DOD/DOD-15` remains `I2` with a stronger resolved
+support-key input; `OBS/OBS-072` remains `I3` with hosted source-control
+custody but without deployed RBAC/audit or exact-device activation/replay
+proof. Distribution remains `I3=309`, `I2=17`, `I1=37`, `I0=14`; 68 rows
+remain below `I3`, and stage split remains `0/33/14/21`.

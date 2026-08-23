@@ -1,0 +1,128 @@
+{
+  "schema": "pokrov.release-1.2.0.support-signing-custody/v1",
+  "recorded_at": "2026-08-23T23:20:08Z",
+  "status": "SUPPORT_SIGNING_SOURCE_AND_HOSTED_CUSTODY_PROVED_WINDOWS_CERTIFICATE_BLOCKED",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "public_release_created": false,
+  "production_promotion_authorized": false,
+  "production_mutation_performed": false,
+  "owner_control": {
+    "mode": "OWNER_SOLO_EXCEPTION",
+    "independent_review_performed": false
+  },
+  "active_build_tuple": {
+    "platform_runtime_source": "2ed944c5eaa667c44a7bc1970d2dd175ff34f8c9",
+    "platform_promotion_line": "f64905125bc515ff97b61c7e94a4050f280c45da",
+    "client": "288c82b52cf3bda32b6c11f5261805aa8842bdc1",
+    "core": "bdbd97fae35103e705f55908caebf75b4a9ff72f",
+    "release_index": "7d5e402c47186fbe2ea1eb30ee1dc8cafdf066b2",
+    "candidate_frozen": false
+  },
+  "client_public_pin_control": {
+    "repository": "Kiwunaka/POKROV-app",
+    "pr": 12,
+    "head": "e9d5607d353f55348d0829b2c54635c7bf84b234",
+    "merge": "288c82b52cf3bda32b6c11f5261805aa8842bdc1",
+    "pr_run": 32671146618,
+    "pr_job": 97272076355,
+    "pr_conclusion": "PASS",
+    "pr_duration": "13m30s",
+    "post_merge_run": 32671854568,
+    "post_merge_job": 97273782247,
+    "post_merge_conclusion": "PASS",
+    "post_merge_duration": "13m10s",
+    "tracked_seed_path": "config/support-signing.seed.json",
+    "key_id": "pokrov-support-2026-08",
+    "public_key_sha256": "44aed43310eaf5442b3493cbe566b5f0f620a5660bb84a6bd028832114f48845",
+    "production_build_binding": "PASS_FAIL_CLOSED",
+    "cross_repository_seed_contract": "PASS",
+    "full_local_standard_gate": "PASS",
+    "private_material_tracked": false
+  },
+  "platform_custody_control": {
+    "repository": "Kiwunaka/portal",
+    "pr": 24,
+    "head": "88ddc9826fee5d45c67d2e6d59945aae3cb56c34",
+    "merge": "f64905125bc515ff97b61c7e94a4050f280c45da",
+    "pr_release_contract_run": 32672197198,
+    "pr_release_contract_job": 97274597357,
+    "pr_release_contract_conclusion": "PASS",
+    "pr_guardrails_run": 32672197177,
+    "pr_guardrails_job": 97274597329,
+    "pr_guardrails_conclusion": "PASS",
+    "post_merge_release_contract_run": 32672708448,
+    "post_merge_release_contract_job": 97275867688,
+    "post_merge_release_contract_conclusion": "PASS",
+    "post_merge_release_contract_duration": "1m52s",
+    "post_merge_guardrails_run": 32672708409,
+    "post_merge_guardrails_job": 97275867664,
+    "post_merge_guardrails_conclusion": "PASS",
+    "post_merge_guardrails_duration": "11m15s",
+    "custody_run": 32672708398,
+    "custody_job": 97275867661,
+    "custody_conclusion": "PASS",
+    "custody_duration": "28s",
+    "pull_request_secret_execution": false,
+    "workflow_permissions": "CONTENTS_READ",
+    "checkout_credentials_persisted": false,
+    "secret_scope": "VALIDATION_STEP_ONLY"
+  },
+  "public_custody_receipt": {
+    "artifact_id": 9501810777,
+    "artifact_name": "support-signing-custody-f64905125bc515ff97b61c7e94a4050f280c45da",
+    "artifact_retention_days": 30,
+    "receipt_schema": "pokrov.support-mode-signing-custody-receipt.v1",
+    "status": "PASS",
+    "scope": "hosted_source_control_custody",
+    "algorithm": "Ed25519",
+    "key_id": "pokrov-support-2026-08",
+    "public_key_b64url": "sTi6tP7u_vBZq-zf8gR-6ocHjwZiCZSQ-h0-967J8eE",
+    "public_key_sha256": "44aed43310eaf5442b3493cbe566b5f0f620a5660bb84a6bd028832114f48845",
+    "client_seed_sha256": "1513ff81117f75e507c867f942197c966b2957303ce7b654f3a59550a0ccecc2",
+    "challenge_sha256": "5e04d558a1401b5f39765929f80cfc8d14cb766f48badd10e57bde621ce5f78e",
+    "code_secret_contract": "PRESENT_MINIMUM_32_UTF8_BYTES",
+    "platform_revision": "f64905125bc515ff97b61c7e94a4050f280c45da",
+    "client_revision": "288c82b52cf3bda32b6c11f5261805aa8842bdc1",
+    "candidate_created": false,
+    "production_runtime_mutated": false,
+    "private_key_value_retained": false,
+    "support_code_secret_value_retained": false
+  },
+  "runtime_boundary": {
+    "production_support_mode_config_deployed": false,
+    "production_issue_redeem_executed": false,
+    "production_rbac_audit_readback": "NOT_RUN",
+    "exact_candidate_activation_replay": "NOT_RUN"
+  },
+  "windows_signing": {
+    "trusted_certificate": "BLOCKED_BY_ACCESS",
+    "trusted_artifact_signature": "NOT_RUN"
+  },
+  "superseded_pre_candidate": {
+    "work_order": "WO-013Q",
+    "disposition": "HISTORICAL_EVIDENCE_NOT_PROMOTABLE"
+  },
+  "required_before_candidate_build": [
+    "PROVISION_TRUSTED_WINDOWS_CODE_SIGNING_CERTIFICATE"
+  ],
+  "required_after_input_changes": [
+    "REBUILD_EXACT_ARTIFACT_SET",
+    "REGENERATE_CHECKSUMS",
+    "REGENERATE_SBOM",
+    "REGENERATE_PROVENANCE",
+    "REGENERATE_STRICT_V2_HANDOFF",
+    "GENERATE_AND_VERIFY_SIGNED_CANDIDATE_INDEX"
+  ],
+  "ledger": {
+    "advanced_rows": {},
+    "strengthened_rows": [
+      "REL_DOD/DOD-15",
+      "OBS/OBS-072"
+    ],
+    "distribution": {"I3": 309, "I2": 17, "I1": 37, "I0": 14},
+    "below_i3": 68,
+    "pending_stage_counts": {"pre_freeze": 0, "candidate": 33, "external": 14, "deferred": 21}
+  },
+  "evidence_ceiling": "SUPPORT_SIGNING_SOURCE_AND_HOSTED_CUSTODY_PROVED_NO_TRUSTED_WINDOWS_CERTIFICATE_NO_CANDIDATE_NO_PRODUCTION_RUNTIME_OR_PROMOTION_PROOF"
+}

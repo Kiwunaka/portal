@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-24
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_SIGNING_CONTROLS_MERGED_CANDIDATE_NOT_CREATED`
+Wave status: `PHASE_11_SUPPORT_SIGNING_CUSTODY_PROVED_WINDOWS_CERTIFICATE_BLOCKED`
 Release candidate: `NOT_CREATED`
 
 ## Outcome
@@ -28,14 +28,14 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 01 | Release manifest, version/provenance contract, CI and stop-ship controls | Release-v2, client adoption, release-bound CI, reproducible dependencies, shared catalog and cross-repository truth are proved; the public-index source/trust root is on public main, PR-00 is merged, and `OWNER_SOLO_EXCEPTION` explicitly replaces the unavailable second reviewer without claiming independent review; exact platform/client/Core PR heads, app-bound checks, signed merges and post-merge promotion runs are retained at `I3` | `WO-002`, `WO-003`, `WO-003B`, `WO-003C`, `WO-003D`, `WO-003E`, `WO-003F`, `WO-003G`, `WO-003H`, `WO-003I`, `WO-003J`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P` |
 | 02 | Typed connection state, proof-driven green state, core ABI and migrations | 004A/004A2, 004B/004B2, 004C and aggregate Gate B are `I3`; direct cutover and deterministic visual baselines are explicit; ABI v3 is deferred until after 1.2.0; final Core main passes all five hosted jobs and is the same source revision used for the locally reproducible Android/Windows bytes embedded by final client main; candidate signing and device proof remain open | `WO-004`, `WO-004A2`, `WO-004B2`, `WO-004D`, `WO-006I`, `WO-013N`, `WO-013P` |
 | 03 | Windows/Android runtime boundaries; conditional Linux beta foundation | Locally complete: Windows service/recovery/journal and stack-only crash profile plus Android runtime/private operational producers are proved; Linux explicitly not shipped in 1.2.0 | `WO-005`, `WO-005C4`, `WO-005D4` |
-| 04 | Observability, error catalog, redacted bundle and support pipeline | Locally complete (`I3`) for shipped Android/Windows scope, including four-class safe transport failures, active operational producers, Android count-only routing, no-upload short code, signed temporary support mode, encrypted-only manual export and a current 7/7 MSVC native proof for the bounded Windows service journal; Linux remains explicitly not shipped and external custody, runtime and exact-candidate evidence remain open | `WO-006`, `WO-006I`, `WO-006J`, `WO-006K`, `WO-006L` |
+| 04 | Observability, error catalog, redacted bundle and support pipeline | Locally complete (`I3`) for shipped Android/Windows scope, including four-class safe transport failures, active operational producers, Android count-only routing, no-upload short code, signed temporary support mode, encrypted-only manual export and a current 7/7 MSVC native proof for the bounded Windows service journal; 013S proves the active public pin and hosted source-control custody, while deployed runtime/RBAC/audit and exact-candidate device evidence remain open; Linux remains explicitly not shipped | `WO-006`, `WO-006I`, `WO-006J`, `WO-006K`, `WO-006L`, `WO-013S` |
 | 05 | Portal bounded contexts, payments, HTTP/DB/outbox reliability | Locally complete (`GATE-D` and `ARCH-002` at `I3`); 007G–007I split admin, public/client and Action Intent domain/runtime owners | `WO-007`, `WO-007G`, `WO-007H`, `WO-007I` |
 | 06 | Product facts, subscriptions, checkout, offers and attribution | Local source packages: 008A–008G commercial package at `I2`; 008H–008M close active-client generation, copy/public truth, whole-client product facts, subscription state presentation, no-waterfall loading and the complete local subscription/checkout aggregate at `I3`; deployed provider, broad commercial-consistency and exact-candidate gates stay open | `WO-008`, `WO-008H`, `WO-008I`, `WO-008J`, `WO-008K`, `WO-008L`, `WO-008M` |
 | 07 | Canonical Operator Center v2 and legacy admin cutover | Local package complete, including the deterministic 75-operation OpenAPI/TypeScript contract, purpose-bound Telegram OIDC Authorization Code plus PKCE login and same-identity step-up for preprovisioned operators, exact retained-bridge permissions and query-suppressed field redaction; live IdP, authenticated exact-candidate readback and cutover/rollback gates remain open | `WO-009`, `WO-009H`, `WO-009I`, `WO-009J` |
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete; exact-candidate performance/manual gates retained | `WO-010` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
 | 10 | FRKN-derived rules; isolated AWG2 PoC, later HY2 decision | Local package complete; exact artifact/device/RU gates open | `WO-012` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013Q retains the historical six-file local pre-candidate set; 013R merges fail-closed Windows Authenticode and deterministic secret-only release-index signing controls. The new client/index revisions supersede that set for promotion, while the trusted Windows certificate, support-mode key binding and 12 device/origin/provider/owner/rollback gates remain open, so candidate is not created | `WO-013`, `WO-013C`, `WO-013D`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013Q retains the historical six-file local pre-candidate set; 013R merges fail-closed Windows Authenticode and deterministic secret-only release-index signing controls; 013S binds the support-mode public pin to client `main` and proves hosted private-key custody without deploying runtime. The trusted Windows certificate and 12 device/origin/provider/owner/rollback gates remain open, so candidate is not created | `WO-013`, `WO-013C`, `WO-013D`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -103,6 +103,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013P` | Promote and retain the final source tuple under exact owner-solo PR/check controls | Platform/client/Core source promotion | Complete (`REL/REL-001`, `REL_DOD/DOD-09 I3`); candidate remains uncreated | `WO-013O`, exact hosted PR checks, owner GitHub authorization |
 | `WO-013Q` | Assemble and retain the exact local pre-candidate app artifacts, SBOM/provenance, checksums and strict handoff | Client/platform release evidence | Partial implementation (`REL_DOD/DOD-15 I2`): Android production signing passes; Windows trusted signing/support key and all candidate/manual/promotion proof remain open | `WO-013P`, frozen source tuple, explicit candidate-preparation authorization |
 | `WO-013R` | Merge fail-closed Windows Authenticode and deterministic secret-only public-index signing controls without manufacturing a candidate | Client/public-index/platform release evidence | Controls merged and hosted source gates pass; no row advances because the trusted Windows certificate, support key, rebuilt artifacts and signed candidate index remain absent | `WO-013Q`, owner-solo PR authorization, explicit release continuation |
+| `WO-013S` | Bind the support-mode public pin to active client source and prove hosted private-key custody without exposing secrets or mutating production | Client/platform support-signing boundary | Source/build input and hosted custody proved; `REL_DOD/DOD-15` remains `I2` and `OBS/OBS-072` remains `I3` because trusted Windows signing, rebuilt candidate artifacts and deployed runtime/device proof remain absent | `WO-013R`, owner-solo PR authorization, hosted repository secrets/variables |
 
 ## Current evidence
 
@@ -147,6 +148,10 @@ The row order is a dependency order, not permission for one giant merge. Each im
   Windows and public-index signing controls, exact PR/check revisions, the
   retained invalid-workflow correction, missing trusted certificate/support
   key and the superseded pre-candidate boundary without claiming signatures.
+- `evidence/013S-support-signing-custody/013S-support-signing-custody.json`
+  binds client public-pin source control, exact PR/merge/check revisions and the
+  hosted public custody receipt while retaining the missing Windows signer,
+  uncreated candidate and untouched production-runtime boundary.
 
 ## Collision and promotion gates
 
@@ -160,18 +165,20 @@ The row order is a dependency order, not permission for one giant merge. Each im
 
 All explicit `pre_freeze` and source-promotion rows are now `I3`. The 013Q
 artifact set remains historical evidence and is superseded for promotion by
-client `3cab149c5d54105900fdcdceb36bf616c729d2fa` and public-index
+client `288c82b52cf3bda32b6c11f5261805aa8842bdc1` and public-index
 `7d5e402c47186fbe2ea1eb30ee1dc8cafdf066b2`. Platform runtime source remains
 `2ed944c5eaa667c44a7bc1970d2dd175ff34f8c9` and Core remains
 `bdbd97fae35103e705f55908caebf75b4a9ff72f`. Candidate creation is still
 `NOT_CREATED`.
 
-The next authorized release slice must provision the support-mode public key
-and a trusted Windows Authenticode certificate, then rebuild the exact artifact
+The support-mode public pin and hosted signing custody are proved for the next
+build. The next candidate-preparation slice requires a trusted Windows
+Authenticode certificate. After that input exists, rebuild the exact artifact
 set and regenerate checksums, SBOM/provenance and strict handoff. Only then may
 the deterministic signer create a candidate index for the 33-row candidate
 lane and the physical Android/Windows, current/brain/RU-origin, rollback and
-Gate F evidence be retained.
+Gate F evidence be retained. Production support-mode runtime configuration is
+still not deployed and remains separate from candidate build readiness.
 The remaining 14 external and 21 deferred rows keep their existing authority
 boundaries. Do not deploy, mutate production, execute a payment, enroll a
 campaign cohort or claim RU/stable readiness without the separate authority
