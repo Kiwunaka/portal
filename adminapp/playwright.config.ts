@@ -15,7 +15,7 @@ export default defineConfig({
     trace: "retain-on-failure"
   },
   webServer: {
-    command: "npm.cmd run build && python -m http.server 3107 --bind 127.0.0.1 --directory out",
+    command: "npm run build && python -m http.server 3107 --bind 127.0.0.1 --directory out",
     url: "http://127.0.0.1:3107",
     reuseExistingServer: false,
     timeout: 180_000
