@@ -10,6 +10,8 @@ on:
 jobs:
   repo-guardrails:
     runs-on: ubuntu-latest
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
