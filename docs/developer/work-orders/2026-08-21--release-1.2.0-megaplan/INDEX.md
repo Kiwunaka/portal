@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-23
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_CLEAN_SOURCE_FREEZE_PARTIAL_BLOCKED`
+Wave status: `PHASE_11_CORE_ARTIFACT_BOUND_PARTIAL_BLOCKED`
 Release candidate: `NOT_CREATED`
 
 ## Outcome
@@ -35,7 +35,7 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete; exact-candidate performance/manual gates retained | `WO-010` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
 | 10 | FRKN-derived rules; isolated AWG2 PoC, later HY2 decision | Local package complete; exact artifact/device/RU gates open | `WO-012` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Platform/client/Core are frozen at clean exact local commits; 013C closes explicit release limitations, 013D closes the reversible stable-pointer source contract and 013H records the clean source freeze; public index, hosted gates and Core replacement artifact remain blocked; candidate not created | `WO-013`, `WO-013C`, `WO-013D`, `WO-013H` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Core 1.1.0 Android/Windows artifacts are reproducible and bound to the clean active client; 013C closes explicit release limitations, 013D closes the reversible stable-pointer source contract, 013H records the clean source freeze and 013I records exact local Core bytes; public index, hosted/isolated-PR, signing and device/origin gates remain blocked; candidate not created | `WO-013`, `WO-013C`, `WO-013D`, `WO-013H`, `WO-013I` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -93,6 +93,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013C` | Make Linux non-shipment and Android OEM background/permission/surface limitations explicit and machine-bound | Platform/client release limitations | Complete locally (`REL_DOD/DOD-17 I3`); exact-candidate release notes and physical OEM proof remain open | `WO-005`, `WO-006`, `WO-013` |
 | `WO-013D` | Make the client stable pointer reversible through an exact rollback catalog, atomic switch contract and retained evidence | Client/platform release rollback | Complete locally (`FE/P12-130 I3`); exact-candidate portal/runtime drill remains `NOT_RUN` | `WO-003`, `WO-013C` |
 | `WO-013H` | Freeze clean platform/client/Core source identities and retain honest preflight blockers | Cross-repo release source freeze | Complete local evidence; no ledger advancement, candidate remains uncreated | `WO-013B`, `WO-013C`, `WO-013D` |
+| `WO-013I` | Build Core 1.1.0 Android/Windows artifacts twice, bind exact bytes to the active client and verify them in preflight | Core/client/platform artifact boundary | Complete local pre-candidate evidence; no ledger advancement, three real preflight blockers remain | `WO-013H`, `WO-004B2` |
 
 ## Current evidence
 
@@ -102,6 +103,9 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `SOURCE-CROSSWALK.md` preserves plan coverage and conflict decisions.
 - `evidence/013H-clean-source-freeze/013H-clean-source-freeze.json` binds the
   clean source commits, local gates and five remaining preflight blockers.
+- `evidence/013I-core-artifact-binding/013I-core-artifact-binding.json` binds
+  the reproducible Core 1.1.0 bytes, clean client adoption and the reduced
+  three-blocker preflight without claiming a candidate.
 
 ## Collision and promotion gates
 
@@ -113,12 +117,12 @@ The row order is a dependency order, not permission for one giant merge. Each im
 
 ## Next action
 
-The clean source revisions now exist. Continue the three explicit local
-`pre_freeze` rows by producing the exact Core replacement artifact, updating
-the client seed in a new clean commit, running the standard hosted Ubuntu gate
-and retaining the honest isolated-PR result. Obtain and freeze the separate
-public release-index revision; three external pre-candidate rows also remain
-blocking. The 33 candidate, 17 external and 21 deferred rows do not belong to
-the local pre-freeze queue. Do not sign/promote artifacts, deploy, mutate a
-server, enroll a cohort or claim RU readiness without the separate owner
-authority and access required by each gate.
+The exact Core 1.1.0 Android/Windows bytes are now reproducible and bound to a
+clean client commit. Continue the three explicit local `pre_freeze` rows by
+running the standard hosted Ubuntu gate, obtaining and freezing the separate
+public release-index revision, and retaining an honest isolated PR-00 result.
+Three external pre-candidate rows also remain blocking. The 33 candidate, 17
+external and 21 deferred rows do not belong to the local pre-freeze queue. Do
+not create/sign/promote a candidate, deploy, mutate a server, enroll a cohort
+or claim RU readiness without the separate owner authority and access required
+by each gate.

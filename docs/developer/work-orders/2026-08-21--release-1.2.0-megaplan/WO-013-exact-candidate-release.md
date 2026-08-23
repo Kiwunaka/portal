@@ -29,18 +29,19 @@ separate authority and access.
 
 ## Current preflight truth
 
-- Platform, client and Core source worktrees are clean at exact local freeze
-  commits: platform `1ac65cb501a4f3866d2515855b7d168b88b99a25`, client
-  `551c6e1fb9977560fc2660d4562e08fe69a89742`, Core
-  `fcb3c8bbc6efdeed284417369aacb522722ebfa2`. These are source identities,
-  not a release candidate.
+- Platform, client and Core worktrees are clean for the exact-byte-aware local
+  preflight at platform `7a15ba2bd5d17617aca28205cd448b6c917929ab`,
+  client `336d5454d47fa33d08b7a6bae79b7980cc6b11b4` and Core
+  `fcb3c8bbc6efdeed284417369aacb522722ebfa2`. These are local source/artifact
+  identities, not a release candidate.
 - Product source target is now exact `1.2.0+30` for Android/Windows and
   `1.2.0` for app-shell. The retained public handoff remains historical
   `1.1.6` schema v1 truth and is explicitly forbidden for new promotion.
 - The separately versioned Core source target is `1.1.0` in
-  `PRE_CANDIDATE_LOCAL` state. Client runtime still executes the exact retained
-  `1.0.3` artifacts and explicitly marks the `1.1.0` structured-event
-  replacement artifact pending; no old hashes were relabelled.
+  `PRE_CANDIDATE_LOCAL` state. Android and Windows artifacts built twice from
+  the exact clean Core revision are byte-identical and are bound to the active
+  client by exact size/SHA-256. The retained public Core `1.0.3` identity stays
+  separate; no old hashes were relabelled and no `1.1.0` release tag exists.
 - Release-handoff schema/generator/validator v2 and release-bound workflow
   contracts exist locally, but no new v2 candidate metadata or signed artifact
   set exists.
@@ -55,10 +56,11 @@ separate authority and access.
   do not advance any row by themselves or create candidate/production proof.
 - The exact stage policy classifies those 74 rows as 3 `pre_freeze`, 33
   `candidate`, 17 `external` and 21 `deferred`. Three external rows are explicit
-  pre-candidate blockers. The clean-source read-only preflight remains
-  `BLOCKED` with five blockers: missing public release index, stale client/Core
-  seed binding, pending Core replacement artifact, three local pre-freeze rows
-  and three external pre-candidate rows.
+  pre-candidate blockers. The exact-byte-aware read-only preflight remains
+  `BLOCKED`, now with three blockers: missing public release index, three local
+  pre-freeze rows and three external pre-candidate rows. The stale seed and
+  pending replacement-artifact blockers are closed by exact revision and byte
+  verification.
 
 ## Evidence labels
 
@@ -207,14 +209,14 @@ No current instruction authorizes this slice.
 
 ## Current next action
 
-The full local source gates pass on clean platform, client and Core commits, but
-candidate creation remains blocked. Produce the exact structured-event Core
-replacement artifact from the frozen Core source with pinned reproducible
-toolchains, bind its ABI/SBOM/provenance and update the client runtime seed in a
-new clean client commit. Obtain and freeze the separate public release-index
-revision. Run the standard client gate in hosted Ubuntu and satisfy or retain
-the honest block for the isolated no-visible-UI PR-00 proof. Then rerun the
-five-blocker read-only preflight against the new exact revisions.
+The full local source gates pass and the reproducible Core 1.1.0 Android/Windows
+bytes are bound to a clean client commit, but candidate creation remains
+blocked. Obtain and freeze the separate public release-index revision. Run the
+standard client gate in hosted Ubuntu and satisfy or retain the honest block
+for the isolated no-visible-UI PR-00 proof. Resolve the three explicit external
+pre-candidate rows through owner/access action, then rerun the three-blocker
+read-only preflight against the new exact revisions before constructing any
+candidate input.
 
 Live branch protection remains `NO_GO`: platform/client are blocked by the
 current private-repository plan and Core main is unprotected. Hosted frontend

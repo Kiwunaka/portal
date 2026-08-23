@@ -2286,3 +2286,37 @@ Ubuntu, the separate public index and isolated no-visible-UI PR proof are still
 absent. No candidate artifact, trusted signature, device/VM run, provider call,
 payment, deployment, publication, campaign, RU-origin proof or promotion
 occurred.
+
+## 2026-08-23 — WO-013I reproducible Core 1.1.0 artifact binding
+
+Core revision `fcb3c8bbc6efdeed284417369aacb522722ebfa2` now produces
+byte-identical Android and Windows trees across two credited local builds. The
+Android AAR is 107,317,530 bytes at
+`26a7b9ebcf05065b33cc40848147a66db5172a9655cb9c77a839fa685145bf93`;
+the Windows DLL is 55,352,320 bytes at
+`10ee475d04417c4317221a85ca4b043a7489294d654fc4ce7a64ec56dcdcdbff`;
+and libcronet remains 8,596,992 bytes at
+`8ef1f8bbde77f954af1ae47bee1819ac8dc2354bb0e1d4baba3dad9e58d7a6f7`.
+The AAR contains four ABIs, the DLL has all 15 required exports, and the exact
+Windows Core passes 100 proxy-only start/stop cycles. That backtest does not
+claim TUN, DNS, route or leak protection.
+
+Client commit `336d5454d47fa33d08b7a6bae79b7980cc6b11b4` binds those exact
+bytes, Core SHA, reproducibility trees, SBOM identities and
+candidate/promotion=false state. Its full standard gate and cross-repository
+seed validation pass. The platform preflight at
+`7a15ba2bd5d17617aca28205cd448b6c917929ab` now independently hashes the
+three tracked runtime files and fails closed on metadata, source, evidence,
+size or byte drift; focused regression passes `12/12`.
+
+The clean read-only preflight is still expected `BLOCKED`, but the stale-seed
+and pending-Core-artifact blockers are closed. Three blockers remain: missing
+public release index, three local pre-freeze rows and three external
+pre-candidate rows. No row advances. Distribution remains `I3=303`, `I2=19`,
+`I1=40`, `I0=15`; 74 rows remain below `I3`, and the stage split remains
+`3/33/17/21`.
+
+The artifacts are unsigned `PRE_CANDIDATE_LOCAL` inputs. SBOM warnings are not
+legal clearance. No push, release tag, hosted CI, trusted signing, physical
+device/clean VM, current/brain/RU-origin run, public index, deployment,
+publication or promotion occurred.
