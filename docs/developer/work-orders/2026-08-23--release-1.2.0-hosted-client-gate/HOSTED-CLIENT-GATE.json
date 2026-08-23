@@ -19,7 +19,7 @@
     "client": {
       "repository": "Kiwunaka/POKROV-app",
       "visibility": "private",
-      "revision": "05332bf1b17410610829113fe92748d29f84c597"
+      "revision": "b783f6e075c60be42668b5b896e714b96a425156"
     },
     "core": {
       "repository": "Kiwunaka/pokrov-core",

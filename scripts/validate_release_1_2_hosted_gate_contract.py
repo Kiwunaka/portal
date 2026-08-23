@@ -20,7 +20,7 @@ CONTRACT_PATH = Path(
 WORKFLOW_PATH = Path(".github/workflows/release-1.2.0-hosted-client-gate.yml")
 EXPECTED_REVISIONS = {
     "platform": "9b9467c7ad788298dd51de2d5c769d13be5a12b3",
-    "client": "05332bf1b17410610829113fe92748d29f84c597",
+    "client": "b783f6e075c60be42668b5b896e714b96a425156",
     "core": "fcb3c8bbc6efdeed284417369aacb522722ebfa2",
 }
 EXPECTED_REPOSITORIES = {

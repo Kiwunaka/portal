@@ -18,7 +18,7 @@ and this handoff.
 ## Exact tuple
 
 - platform `9b9467c7ad788298dd51de2d5c769d13be5a12b3`;
-- client `05332bf1b17410610829113fe92748d29f84c597`;
+- client `b783f6e075c60be42668b5b896e714b96a425156`;
 - Core `fcb3c8bbc6efdeed284417369aacb522722ebfa2`.
 
 The hosted workflow checks out those full commit IDs, verifies every resulting
