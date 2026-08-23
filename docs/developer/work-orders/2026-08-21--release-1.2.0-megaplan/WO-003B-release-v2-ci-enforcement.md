@@ -156,3 +156,26 @@ Evidence boundary:
   mutation, promotion, branch-protection change or external message occurred;
 - `REL/REL-002` and `REL/REL-003` advance to `I3`; broader Gate A, DoD and
   frontend release rows retain partial evidence without an index advance.
+
+## 2026-08-23 exact hosted client gate control
+
+`REL/TEST-001` is deliberately narrower than this WO's already-complete
+release-v2 source enforcement. Release-base-isolated control commit
+`085ac1ae49eea71f60209d70438fbb8f404b53af` now makes its missing hosted
+Ubuntu run exact and reviewable without merging the broad implementation into
+the control PR.
+
+The five-path control binds platform
+`30859e115859386f5dd51210b5697af5440c36df`, client
+`8c6b955dced3b018825c53fe5d14cb632271adeb` and Core
+`fcb3c8bbc6efdeed284417369aacb522722ebfa2`. It verifies the three checked-out
+HEADs, then runs client `validate-seed.ps1` and `run-tests.ps1` on Ubuntu 24.04
+with pinned Python 3.12, Java 17, Flutter 3.38.5 and pinned action revisions.
+
+Local control validation, `4/4` focused tests, Ruff check/format and diff check
+pass. The control changes zero visible UI paths. Hosted execution is still
+`NOT_RUN`: the exact source commits are not published, the control branch is
+not pushed, and cross-private-repository checkout requires an owner-created
+`POKROV_RELEASE_REPO_READ_TOKEN` secret limited to `contents:read` on
+`Kiwunaka/POKROV-app`. No credential was generated or stored. Therefore
+`REL/TEST-001` stays `I2`; see `WO-013L`.

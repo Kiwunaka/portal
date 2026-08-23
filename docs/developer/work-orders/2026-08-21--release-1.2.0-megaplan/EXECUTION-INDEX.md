@@ -2382,3 +2382,28 @@ are `NOT_RUN` and were not authorized. Distribution remains `I3=303`,
 `I2=20`, `I1=39`, `I0=15`; 74 rows remain below `I3`, and the stage split
 remains `3/33/17/21`. No candidate, key, signature, public-index publication,
 device/origin run, deployment or promotion occurred.
+
+## 2026-08-23 — WO-013L exact hosted client gate control
+
+Release-base-isolated branch `codex/1.2.0-hosted-gate-control` starts at actual
+platform promotion revision `280ed9157f5804d4bc719cb8d6cab471caafb937`
+and contains one commit,
+`085ac1ae49eea71f60209d70438fbb8f404b53af`. Its promotion diff contains five
+allowlisted workflow/contract/validator/test/handoff paths and zero visible UI
+paths.
+
+The control binds platform `30859e115859386f5dd51210b5697af5440c36df`,
+client `8c6b955dced3b018825c53fe5d14cb632271adeb` and Core
+`fcb3c8bbc6efdeed284417369aacb522722ebfa2`. The pinned Ubuntu 24.04 workflow
+verifies all checked-out HEADs, then runs the client's cross-repository seed
+validation and complete standard entrypoint with Python 3.12, Java 17 and
+Flutter 3.38.5. Local validator, `4/4` tests, Ruff check/format and diff check
+pass. The 828-byte validator JSON has SHA-256
+`8fbd975ca969a42246bd6da822d2d5ea4a0fb5506c4ebc6d296e3c9e27725a00`.
+
+`REL/TEST-001` remains `I2`. Exact source publication, the owner-created
+least-privilege `POKROV_RELEASE_REPO_READ_TOKEN`, branch push/PR, hosted run and
+review are absent and were not authorized. Distribution remains `I3=303`,
+`I2=20`, `I1=39`, `I0=15`; 74 rows remain below `I3`, and the stage split
+remains `3/33/17/21`. No credential, candidate, signature, public-index
+publication, device/origin run, deployment or promotion was created.
