@@ -214,6 +214,13 @@ different candidate pin is a hard stop. Enabling issuance also requires current
 operator RBAC/audit readback, rotation and rollback evidence. These variables
 do not enable recipient decryption or support-bundle worker custody.
 
+The master-only/manual `Support Signing Custody` workflow verifies the hosted
+Actions private key and code-secret contract against the exact public pin on
+`POKROV-app/main`. Secret values are scoped only to the validation step; the
+retained artifact is a public revision/digest receipt. This source-control
+custody check does not copy secrets to production, enable issuance, build a
+candidate, or replace runtime/device/rollback evidence.
+
 The payment-entitlement outbox worker is always supervised with the portal
 worker; these values bound claim/retry work and do not enable a payment
 provider:

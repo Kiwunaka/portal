@@ -69,6 +69,7 @@
     "scripts/validate_observability_contracts.py",
     "scripts/validate_release_handoff_metadata.py",
     "scripts/verify_awg2_contract_sync.py",
+    "scripts/verify_support_signing_custody.py",
     "scripts/render_ru_probe_report.py",
     "scripts/release_orchestrator.py",
     "scripts/run_client_release_gate.py",

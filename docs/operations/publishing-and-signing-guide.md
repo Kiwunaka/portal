@@ -82,6 +82,11 @@ Release-bound CI is cross-repository and fail-closed:
   evidence;
 - non-dry-run remote orchestration requires a real strict-v2 metadata file,
   validates it locally before remote work, and rejects legacy env-only input.
+- the master-only/manual `Support Signing Custody` workflow derives the public
+  half from the hosted support-mode private key, matches it to the tracked pin
+  on client `main`, checks the code-secret minimum, and uploads only a public
+  revision/digest receipt; it does not deploy runtime secrets or create a
+  release candidate.
 
 These workflows produce contract evidence only. Until a workflow is observed
 green on the exact committed revisions, its GitHub-hosted result is unclaimed.

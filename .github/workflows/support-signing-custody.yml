@@ -1,0 +1,79 @@
+name: Support Signing Custody
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/support-signing-custody.yml
+      - scripts/verify_support_signing_custody.py
+      - tests/test_verify_support_signing_custody.py
+      - tests/test_support_signing_custody_workflow.py
+      - requirements-ops.txt
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-hosted-custody:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout trusted platform promotion line
+        uses: actions/checkout@v4
+        with:
+          path: platform
+          persist-credentials: false
+
+      - name: Checkout active client public pin
+        uses: actions/checkout@v4
+        with:
+          repository: Kiwunaka/POKROV-app
+          ref: main
+          path: POKROV-app
+          ssh-key: ${{ secrets.POKROV_RELEASE_CLIENT_DEPLOY_KEY }}
+          persist-credentials: false
+          sparse-checkout: config/support-signing.seed.json
+          sparse-checkout-cone-mode: false
+
+      - name: Capture exact public revisions
+        id: revisions
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "platform=$(git -C platform rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "client=$(git -C POKROV-app rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.5"
+
+      - name: Install locked verifier dependencies
+        working-directory: platform
+        run: |
+          python scripts/check_dependency_contract.py
+          python -m pip install pip==26.1.2
+          python -m pip install --require-hashes -r requirements-ops.txt
+
+      - name: Verify hosted custody against client pin
+        working-directory: platform
+        env:
+          POKROV_SUPPORT_MODE_SIGNING_KEY_ID: ${{ vars.POKROV_SUPPORT_MODE_SIGNING_KEY_ID }}
+          POKROV_SUPPORT_MODE_SIGNING_PUBLIC_KEY_B64: ${{ vars.POKROV_SUPPORT_MODE_SIGNING_PUBLIC_KEY_B64 }}
+          POKROV_SUPPORT_MODE_SIGNING_PRIVATE_KEY_B64: ${{ secrets.POKROV_SUPPORT_MODE_SIGNING_PRIVATE_KEY_B64 }}
+          POKROV_SUPPORT_MODE_CODE_SECRET: ${{ secrets.POKROV_SUPPORT_MODE_CODE_SECRET }}
+        run: >-
+          python scripts/verify_support_signing_custody.py
+          --client-seed "${{ github.workspace }}/POKROV-app/config/support-signing.seed.json"
+          --platform-revision "${{ steps.revisions.outputs.platform }}"
+          --client-revision "${{ steps.revisions.outputs.client }}"
+          --output "${{ runner.temp }}/support-signing-custody-receipt.json"
+
+      - name: Upload public custody receipt
+        uses: actions/upload-artifact@v4
+        with:
+          name: support-signing-custody-${{ steps.revisions.outputs.platform }}
+          path: ${{ runner.temp }}/support-signing-custody-receipt.json
+          if-no-files-found: error
+          retention-days: 30

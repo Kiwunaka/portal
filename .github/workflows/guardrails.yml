@@ -75,5 +75,8 @@ jobs:
       - name: Validate shared-facts and release-handoff contracts
         run: python -m unittest tests.test_shared_surface_facts tests.test_remote_brain_apply_release_handoff tests.test_release_orchestrator tests.test_smoke_client_apps
 
+      - name: Validate support signing custody controls
+        run: python -m pytest -q tests/test_verify_support_signing_custody.py tests/test_support_signing_custody_workflow.py
+
       - name: Quick release gate
         run: python scripts/release_gate_check.py --quick --allow-missing-client-root
