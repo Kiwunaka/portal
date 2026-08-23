@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import importlib.util
 import hashlib
 import json
@@ -193,6 +194,109 @@ def test_stage_policy_rejects_unknown_duplicate_or_ambiguous_overrides(
     rows = MODULE._load_ledger(LEDGER_PATH)
     with pytest.raises(ValueError, match=error):
         MODULE._load_stage_policy(path, rows)
+
+
+def _write_release_index_contract(root: Path, *, with_active_key: bool) -> None:
+    schema_path = root / "schemas/release-index-manifest-v2.schema.json"
+    schema_path.parent.mkdir(parents=True, exist_ok=True)
+    schema_path.write_text('{"type":"object"}\n', encoding="utf-8")
+    keyring_path = root / "trusted/release-signing-keys.json"
+    keyring_path.parent.mkdir(parents=True, exist_ok=True)
+    keys = []
+    if with_active_key:
+        keys.append(
+            {
+                "id": "release-2026-test",
+                "state": "active",
+                "public_key_base64": base64.b64encode(bytes(range(32))).decode(),
+            }
+        )
+    keyring_path.write_text(
+        json.dumps(
+            {
+                "schema": "pokrov.release-index.keyring/v1",
+                "keys": keys,
+            }
+        ),
+        encoding="utf-8",
+    )
+    contract = {
+        "schema": "pokrov.release-index.contract/v1",
+        "repository": "Kiwunaka/pokrov",
+        "promotion_branch": "main",
+        "candidate_manifest_path": "releases/1.2.0/release-index.json",
+        "development_target": {
+            "product_version": "1.2.0",
+            "state": "PRE_CANDIDATE_LOCAL",
+            "candidate_created": False,
+            "promotion_authorized": False,
+        },
+        "manifest_schema": {
+            "path": "schemas/release-index-manifest-v2.schema.json",
+            "sha256": hashlib.sha256(schema_path.read_bytes()).hexdigest(),
+        },
+        "trusted_keyring_path": "trusted/release-signing-keys.json",
+        "signature_policy": {
+            "algorithm": "ed25519",
+            "threshold": 1,
+            "detached_signature_suffix": ".sig",
+            "signed_payload": "exact_manifest_bytes",
+        },
+        "same_byte_policy": {
+            "require_artifact_sha256": True,
+            "require_github_asset_digest_match": True,
+            "require_manifest_signature": True,
+            "stable_pointer_atomic": True,
+            "rebuild_on_promotion": False,
+        },
+        "retained_public_release": {
+            "version": "1.1.6",
+            "tag": "v1.1.6",
+            "trust_state": "LEGACY_CHECKSUM_ONLY_NOT_CANDIDATE_ELIGIBLE",
+            "manifest_signature": False,
+        },
+    }
+    (root / MODULE.RELEASE_INDEX_CONTRACT_PATH).write_text(
+        json.dumps(contract), encoding="utf-8"
+    )
+
+
+def test_release_index_checkout_without_contract_fails_closed(tmp_path: Path) -> None:
+    summary, blockers = MODULE._release_index_contract(tmp_path)
+
+    assert summary["status"] == "MISSING"
+    assert [blocker["id"] for blocker in blockers] == ["release_index_contract_missing"]
+
+
+def test_release_index_contract_requires_owner_signing_key(tmp_path: Path) -> None:
+    _write_release_index_contract(tmp_path, with_active_key=False)
+
+    summary, blockers = MODULE._release_index_contract(tmp_path)
+
+    assert summary["status"] == "BLOCKED_OWNER_SIGNING_KEY"
+    assert summary["active_signing_keys"] == 0
+    assert [blocker["id"] for blocker in blockers] == [
+        "release_index_signing_key_missing"
+    ]
+
+
+def test_release_index_contract_accepts_exact_ready_source(tmp_path: Path) -> None:
+    _write_release_index_contract(tmp_path, with_active_key=True)
+
+    summary, blockers = MODULE._release_index_contract(tmp_path)
+
+    assert blockers == []
+    assert summary["status"] == "CONTRACT_READY_PRE_CANDIDATE"
+    assert summary["active_signing_keys"] == 1
+    assert len(summary["contract_sha256"]) == 64
+    assert len(summary["manifest_schema_sha256"]) == 64
+
+    schema_path = tmp_path / "schemas/release-index-manifest-v2.schema.json"
+    schema_path.write_text('{"type":"string"}\n', encoding="utf-8")
+    summary, blockers = MODULE._release_index_contract(tmp_path)
+    assert summary["status"] == "INVALID"
+    assert [blocker["id"] for blocker in blockers] == ["release_index_contract_invalid"]
+    assert "manifest_schema.bytes" in blockers[0]["detail"]
 
 
 def test_exact_product_and_component_targets_are_accepted() -> None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import csv
 from datetime import datetime, timezone
 import hashlib
@@ -22,6 +23,7 @@ VALID_INDEXES = {f"I{number}" for number in range(6)}
 VALID_STAGES = {"pre_freeze", "candidate", "external", "deferred"}
 VALID_EXTERNAL_GATES = {"pre_candidate", "post_candidate"}
 STAGE_POLICY_RELATIVE_PATH = Path("shared/release-1.2.0-candidate-stage-policy.json")
+RELEASE_INDEX_CONTRACT_PATH = Path("release-index.contract.json")
 SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$")
 BOUND_CORE_ARTIFACT_STATE = "exact_local_replacement_bound"
 BOUND_STRUCTURED_EVENT_STATE = "bound_pre_candidate_local"
@@ -71,6 +73,190 @@ def _git_identity(repo_root: Path) -> dict[str, Any]:
         "branch": branch,
         "working_tree_state": "dirty" if porcelain else "clean",
     }
+
+
+def _git_optional(repo_root: Path, *args: str) -> str | None:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=repo_root,
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    value = result.stdout.strip()
+    return value if result.returncode == 0 and value else None
+
+
+def _release_index_contract(
+    release_index_root: Path,
+) -> tuple[dict[str, Any], list[dict[str, str]]]:
+    """Validate the pre-candidate public-index policy without inventing a key."""
+
+    blockers: list[dict[str, str]] = []
+
+    def add(identifier: str, status: str, detail: str) -> None:
+        blockers.append({"id": identifier, "status": status, "detail": detail})
+
+    contract_path = release_index_root / RELEASE_INDEX_CONTRACT_PATH
+    summary: dict[str, Any] = {
+        "path": RELEASE_INDEX_CONTRACT_PATH.as_posix(),
+        "status": "MISSING",
+        "contract_sha256": None,
+        "manifest_schema_sha256": None,
+        "active_signing_keys": 0,
+        "candidate_created": False,
+        "promotion_authorized": False,
+    }
+    if not contract_path.is_file():
+        add(
+            "release_index_contract_missing",
+            "BLOCKED_LOCAL_RELEASE_INDEX",
+            "public release-index checkout has no fail-closed source contract",
+        )
+        return summary, blockers
+
+    contract = _read_json(contract_path)
+    summary["contract_sha256"] = _sha256_file(contract_path)
+    errors: list[str] = []
+
+    def require(condition: bool, field: str) -> None:
+        if not condition:
+            errors.append(field)
+
+    require(contract.get("schema") == "pokrov.release-index.contract/v1", "schema")
+    require(contract.get("repository") == "Kiwunaka/pokrov", "repository")
+    require(contract.get("promotion_branch") == "main", "promotion_branch")
+    require(
+        contract.get("candidate_manifest_path") == "releases/1.2.0/release-index.json",
+        "candidate_manifest_path",
+    )
+    target = contract.get("development_target", {})
+    if not isinstance(target, dict):
+        target = {}
+    require(target.get("product_version") == TARGET_VERSION, "target.product_version")
+    require(target.get("state") == "PRE_CANDIDATE_LOCAL", "target.state")
+    require(target.get("candidate_created") is False, "target.candidate_created")
+    require(
+        target.get("promotion_authorized") is False,
+        "target.promotion_authorized",
+    )
+
+    signature = contract.get("signature_policy", {})
+    if not isinstance(signature, dict):
+        signature = {}
+    require(signature.get("algorithm") == "ed25519", "signature.algorithm")
+    require(signature.get("threshold") == 1, "signature.threshold")
+    require(
+        signature.get("detached_signature_suffix") == ".sig",
+        "signature.detached_signature_suffix",
+    )
+    require(
+        signature.get("signed_payload") == "exact_manifest_bytes",
+        "signature.signed_payload",
+    )
+
+    same_byte = contract.get("same_byte_policy", {})
+    if not isinstance(same_byte, dict):
+        same_byte = {}
+    for field in (
+        "require_artifact_sha256",
+        "require_github_asset_digest_match",
+        "require_manifest_signature",
+        "stable_pointer_atomic",
+    ):
+        require(same_byte.get(field) is True, f"same_byte_policy.{field}")
+    require(
+        same_byte.get("rebuild_on_promotion") is False,
+        "same_byte_policy.rebuild_on_promotion",
+    )
+
+    manifest_schema = contract.get("manifest_schema", {})
+    if not isinstance(manifest_schema, dict):
+        manifest_schema = {}
+    schema_relative = manifest_schema.get("path")
+    schema_declared_hash = str(manifest_schema.get("sha256") or "").lower()
+    require(
+        schema_relative == "schemas/release-index-manifest-v2.schema.json",
+        "manifest_schema.path",
+    )
+    require(
+        SHA256_PATTERN.fullmatch(schema_declared_hash) is not None,
+        "manifest_schema.sha256",
+    )
+    schema_path = release_index_root / str(schema_relative or "")
+    if schema_path.is_file():
+        schema_actual_hash = _sha256_file(schema_path)
+        summary["manifest_schema_sha256"] = schema_actual_hash
+        require(schema_actual_hash == schema_declared_hash, "manifest_schema.bytes")
+    else:
+        require(False, "manifest_schema.file")
+
+    keyring_relative = contract.get("trusted_keyring_path")
+    require(
+        keyring_relative == "trusted/release-signing-keys.json",
+        "trusted_keyring_path",
+    )
+    keyring_path = release_index_root / str(keyring_relative or "")
+    active_keys: list[dict[str, Any]] = []
+    if keyring_path.is_file():
+        keyring = _read_json(keyring_path)
+        require(
+            keyring.get("schema") == "pokrov.release-index.keyring/v1",
+            "keyring.schema",
+        )
+        keys = keyring.get("keys", [])
+        require(isinstance(keys, list), "keyring.keys")
+        if isinstance(keys, list):
+            for key in keys:
+                if not isinstance(key, dict) or key.get("state") != "active":
+                    continue
+                encoded = key.get("public_key_base64")
+                try:
+                    decoded = base64.b64decode(encoded, validate=True)
+                except (TypeError, ValueError):
+                    decoded = b""
+                if (
+                    isinstance(key.get("id"), str)
+                    and re.fullmatch(r"[a-z0-9][a-z0-9._-]{2,63}", key["id"])
+                    and len(decoded) == 32
+                ):
+                    active_keys.append(key)
+                else:
+                    errors.append("keyring.active_key")
+    else:
+        require(False, "keyring.file")
+    summary["active_signing_keys"] = len(active_keys)
+
+    retained = contract.get("retained_public_release", {})
+    if not isinstance(retained, dict):
+        retained = {}
+    require(retained.get("version") == "1.1.6", "retained.version")
+    require(retained.get("tag") == "v1.1.6", "retained.tag")
+    require(
+        retained.get("trust_state") == "LEGACY_CHECKSUM_ONLY_NOT_CANDIDATE_ELIGIBLE",
+        "retained.trust_state",
+    )
+    require(retained.get("manifest_signature") is False, "retained.signature")
+
+    if errors:
+        summary["status"] = "INVALID"
+        add(
+            "release_index_contract_invalid",
+            "BLOCKED_LOCAL_RELEASE_INDEX",
+            "invalid release-index source contract: " + ", ".join(errors),
+        )
+    elif not active_keys:
+        summary["status"] = "BLOCKED_OWNER_SIGNING_KEY"
+        add(
+            "release_index_signing_key_missing",
+            "BLOCKED_BY_OWNER_DECISION",
+            "release-index contract has no active trusted Ed25519 public key",
+        )
+    else:
+        summary["status"] = "CONTRACT_READY_PRE_CANDIDATE"
+    return summary, blockers
 
 
 def _pubspec_version(path: Path) -> str:
@@ -670,6 +856,42 @@ def build_report(
                     "detail": "release-index revision must be clean",
                 }
             )
+        remote_url = _git_optional(
+            release_index_root, "config", "--get", "remote.origin.url"
+        )
+        published_revision = _git_optional(
+            release_index_root, "rev-parse", "refs/remotes/origin/main"
+        )
+        release_index["remote_url"] = remote_url
+        release_index["published_revision"] = published_revision
+        release_index["head_is_published_main"] = (
+            published_revision == release_index["revision"]
+        )
+        normalized_remote = (remote_url or "").lower().removesuffix(".git")
+        if normalized_remote not in {
+            "https://github.com/kiwunaka/pokrov",
+            "git@github.com:kiwunaka/pokrov",
+        }:
+            blockers.append(
+                {
+                    "id": "release_index_remote_invalid",
+                    "status": "BLOCKED_LOCAL_CONTRACT",
+                    "detail": "release-index checkout does not bind Kiwunaka/pokrov",
+                }
+            )
+        if published_revision != release_index["revision"]:
+            blockers.append(
+                {
+                    "id": "release_index_revision_unpublished",
+                    "status": "BLOCKED_EXTERNAL_PRECONDITION",
+                    "detail": "release-index HEAD is not the fetched public origin/main revision",
+                }
+            )
+        release_index_contract, release_index_blockers = _release_index_contract(
+            release_index_root
+        )
+        release_index["contract"] = release_index_contract
+        blockers.extend(release_index_blockers)
 
     versions = {
         "target": TARGET_VERSION,
