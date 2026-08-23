@@ -1,0 +1,103 @@
+{
+  "schema": "pokrov.release-1.2.0.signing-controls/v1",
+  "recorded_at": "2026-08-23T21:50:02Z",
+  "status": "SIGNING_CONTROLS_MERGED_CANDIDATE_INPUTS_STILL_BLOCKED",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "public_release_created": false,
+  "production_promotion_authorized": false,
+  "production_mutation_performed": false,
+  "owner_control": {
+    "mode": "OWNER_SOLO_EXCEPTION",
+    "independent_review_performed": false
+  },
+  "next_build_tuple": {
+    "platform_runtime_source": "2ed944c5eaa667c44a7bc1970d2dd175ff34f8c9",
+    "client": "3cab149c5d54105900fdcdceb36bf616c729d2fa",
+    "core": "bdbd97fae35103e705f55908caebf75b4a9ff72f",
+    "release_index": "7d5e402c47186fbe2ea1eb30ee1dc8cafdf066b2",
+    "candidate_frozen": false
+  },
+  "windows_signing_control": {
+    "repository": "Kiwunaka/POKROV-app",
+    "pr": 11,
+    "head": "dbed065714bd967748875407ef1afb357f3e2131",
+    "merge": "3cab149c5d54105900fdcdceb36bf616c729d2fa",
+    "pr_run": 32667486277,
+    "pr_job": 97263089736,
+    "pr_conclusion": "PASS",
+    "post_merge_run": 32668204355,
+    "post_merge_job": 97264860389,
+    "post_merge_conclusion": "PASS",
+    "post_merge_duration": "12m35s",
+    "focused_tests": "PASS_6_OF_6",
+    "full_local_standard_gate": "PASS",
+    "partial_configuration_rejection": "PASS_FAIL_CLOSED",
+    "unsigned_smoke": "PASS_MISSING_NOT_SIGNED",
+    "trusted_certificate": "BLOCKED_BY_ACCESS",
+    "trusted_artifact_signature": "NOT_RUN",
+    "prior_unsigned_setup_sha256": "fd1de72735b735851e69a010914e1d6090f6466efaacd2d90b67d5f8ca830899"
+  },
+  "release_index_signing_control": {
+    "repository": "Kiwunaka/pokrov",
+    "signer_pr": 2,
+    "signer_head": "ac3bfd511598ee2781d1aee788606949bc14d095",
+    "signer_merge": "0d416b56f0a26686638972e1b8c527bbad872a92",
+    "signer_pr_run": 32668457611,
+    "signer_pr_job": 97265476931,
+    "signer_pr_conclusion": "PASS",
+    "invalid_workflow_run": 32668483287,
+    "invalid_workflow_classification": "INVALID_BEFORE_ANY_JOB_NO_SECRET_ACCESS",
+    "fix_pr": 3,
+    "fix_head": "c003fe82373c4858865c20c8b9d1959a79ff2dba",
+    "fix_merge": "7d5e402c47186fbe2ea1eb30ee1dc8cafdf066b2",
+    "fix_pr_run": 32668539447,
+    "fix_pr_job": 97265668849,
+    "fix_pr_conclusion": "PASS",
+    "post_merge_run": 32668571694,
+    "post_merge_job": 97265747549,
+    "post_merge_conclusion": "PASS",
+    "local_tests": "PASS_4_OF_4",
+    "source_validation": "PASS_CONTRACT_READY_PRE_CANDIDATE",
+    "private_key_source": "GITHUB_SECRET_NAME_ONLY",
+    "private_key_secret_name": "POKROV_RELEASE_SIGNING_KEY_PEM",
+    "private_key_value_accessed": false,
+    "candidate_template_present": false,
+    "signed_candidate_index_created": false
+  },
+  "support_mode_signing": {
+    "production_public_key_bound_to_client": false,
+    "status": "BLOCKED_BY_ACCESS"
+  },
+  "superseded_pre_candidate": {
+    "work_order": "WO-013Q",
+    "client": "3904734ce7761cc92c4136f1eaf13e20f2354f72",
+    "release_index": "491436889ef911de868d704e68ba86e77102b0f1",
+    "disposition": "HISTORICAL_EVIDENCE_NOT_PROMOTABLE"
+  },
+  "required_before_candidate_build": [
+    "PROVISION_SUPPORT_MODE_PUBLIC_KEY",
+    "PROVISION_TRUSTED_WINDOWS_CODE_SIGNING_CERTIFICATE"
+  ],
+  "required_after_input_changes": [
+    "REBUILD_EXACT_ARTIFACT_SET",
+    "REGENERATE_CHECKSUMS",
+    "REGENERATE_SBOM",
+    "REGENERATE_PROVENANCE",
+    "REGENERATE_STRICT_V2_HANDOFF",
+    "GENERATE_AND_VERIFY_SIGNED_CANDIDATE_INDEX"
+  ],
+  "ledger": {
+    "advanced_rows": {},
+    "strengthened_rows": [
+      "REL/REPO-001",
+      "REL_DOD/DOD-02",
+      "REL_DOD/DOD-15",
+      "FE/P12-023"
+    ],
+    "distribution": {"I3": 309, "I2": 17, "I1": 37, "I0": 14},
+    "below_i3": 68,
+    "pending_stage_counts": {"pre_freeze": 0, "candidate": 33, "external": 14, "deferred": 21}
+  },
+  "evidence_ceiling": "SIGNING_SOURCE_CONTROLS_MERGED_NO_TRUSTED_WINDOWS_CERTIFICATE_NO_SUPPORT_KEY_NO_SIGNED_CANDIDATE_NO_PUBLICATION_OR_PRODUCTION_PROOF"
+}

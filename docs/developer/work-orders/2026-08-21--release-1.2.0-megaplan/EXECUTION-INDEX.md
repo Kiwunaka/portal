@@ -2581,3 +2581,44 @@ device/VM or origin proof, provider action, deployment or promotion occurred.
 `REL_DOD/DOD-15` advances `I0 -> I2`. Distribution becomes `I3=309`, `I2=17`,
 `I1=37`, `I0=14`; 68 rows remain below `I3`, and stage split remains
 `0/33/14/21`.
+
+## 2026-08-24 — WO-013R fail-closed signing controls
+
+Client PR 11 head `dbed065714bd967748875407ef1afb357f3e2131` passed the
+full cross-repository contract in run `32667486277`, job `97263089736`, and
+merged as client `main` `3cab149c5d54105900fdcdceb36bf616c729d2fa`.
+Post-merge run `32668204355`, job `97264860389`, repeats the complete hosted
+contract and standard client/Android flavor gate successfully in 12m35s.
+The Windows builder now signs the staged shell/service and Inno Setup
+installer/uninstaller only with a trusted Certificate Store Code Signing
+identity and HTTPS RFC3161 timestamp, verifies every final signature and
+reports unsigned local output as non-promotable `MISSING`. Focused tests pass
+`6/6`, the complete local client/Android release gate passes and unsigned smoke
+proof retains `NotSigned` plus setup SHA-256
+`fd1de72735b735851e69a010914e1d6090f6466efaacd2d90b67d5f8ca830899`.
+No trusted Windows certificate was supplied, so no signed Windows artifact is
+claimed.
+
+Public-index PR 2 head `ac3bfd511598ee2781d1aee788606949bc14d095`
+added deterministic tracked-template Ed25519 signing from the existing
+secret-only key, fail-closed validation and a read-only artifact-only manual
+workflow. Its PR run `32668457611` passed. The first merge
+`0d416b56f0a26686638972e1b8c527bbad872a92` produced retained invalid-workflow
+run `32668483287` before any job or secret access. PR 3 head
+`c003fe82373c4858865c20c8b9d1959a79ff2dba` corrected the runner-context
+phase, passed run `32668539447`, and merged as final public-index `main`
+`7d5e402c47186fbe2ea1eb30ee1dc8cafdf066b2`. Post-merge run `32668571694`,
+job `97265747549`, passes; no invalid workflow exists for the final SHA.
+
+The 013Q artifact set remains historical evidence bound to older client/index
+revisions and is not promotable. The next build still requires the support-mode
+public key and a trusted Windows Authenticode certificate; afterward all
+artifacts, checksums, SBOM/provenance and strict handoff must be regenerated
+before the signer may produce a candidate index. Candidate, public release,
+store publication, device/origin/provider proof, deployment and stable
+promotion remain absent.
+
+No row advances. `REL/REPO-001` and `FE/P12-023` remain `I3`;
+`REL_DOD/DOD-02` and `REL_DOD/DOD-15` remain `I2`. Distribution remains
+`I3=309`, `I2=17`, `I1=37`, `I0=14`; 68 rows remain below `I3`, and stage split
+remains `0/33/14/21`.

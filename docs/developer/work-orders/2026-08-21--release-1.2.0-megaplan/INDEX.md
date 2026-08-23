@@ -1,8 +1,8 @@
 # POKROV 1.2.0 Megaplan — Wave Index
 
-Last updated: 2026-08-23
+Last updated: 2026-08-24
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_SOURCE_PROMOTION_COMPLETE_CANDIDATE_NOT_CREATED`
+Wave status: `PHASE_11_SIGNING_CONTROLS_MERGED_CANDIDATE_NOT_CREATED`
 Release candidate: `NOT_CREATED`
 
 ## Outcome
@@ -35,7 +35,7 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete; exact-candidate performance/manual gates retained | `WO-010` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
 | 10 | FRKN-derived rules; isolated AWG2 PoC, later HY2 decision | Local package complete; exact artifact/device/RU gates open | `WO-012` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013Q assembles the exact local six-file app set from the 013P frozen tuple: Android production signing, SBOM/provenance, checksums, strict-v2 handoff and zero-blocker local-freeze preflight pass; Windows trusted signing, support-mode key binding and 12 device/origin/provider/owner/rollback gates remain open, so candidate is not created | `WO-013`, `WO-013C`, `WO-013D`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013Q retains the historical six-file local pre-candidate set; 013R merges fail-closed Windows Authenticode and deterministic secret-only release-index signing controls. The new client/index revisions supersede that set for promotion, while the trusted Windows certificate, support-mode key binding and 12 device/origin/provider/owner/rollback gates remain open, so candidate is not created | `WO-013`, `WO-013C`, `WO-013D`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -102,6 +102,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013O` | Replace the unavailable second reviewer/private-plan enforcement with an explicit fail-closed owner-solo PR/check control | Cross-repository promotion policy | Complete policy decision; exact final PR/check execution and row closure are retained by 013P | `WO-013M`, `WO-013N`, explicit sole-owner authorization |
 | `WO-013P` | Promote and retain the final source tuple under exact owner-solo PR/check controls | Platform/client/Core source promotion | Complete (`REL/REL-001`, `REL_DOD/DOD-09 I3`); candidate remains uncreated | `WO-013O`, exact hosted PR checks, owner GitHub authorization |
 | `WO-013Q` | Assemble and retain the exact local pre-candidate app artifacts, SBOM/provenance, checksums and strict handoff | Client/platform release evidence | Partial implementation (`REL_DOD/DOD-15 I2`): Android production signing passes; Windows trusted signing/support key and all candidate/manual/promotion proof remain open | `WO-013P`, frozen source tuple, explicit candidate-preparation authorization |
+| `WO-013R` | Merge fail-closed Windows Authenticode and deterministic secret-only public-index signing controls without manufacturing a candidate | Client/public-index/platform release evidence | Controls merged and hosted source gates pass; no row advances because the trusted Windows certificate, support key, rebuilt artifacts and signed candidate index remain absent | `WO-013Q`, owner-solo PR authorization, explicit release continuation |
 
 ## Current evidence
 
@@ -142,6 +143,10 @@ The row order is a dependency order, not permission for one giant merge. Each im
   binds the six exact local app artifacts, Android production signer, unsigned
   Windows result, SBOM/provenance, strict-v2 handoff, corrected preflight and
   the remaining 12 promotion gates without claiming an RC or public release.
+- `evidence/013R-signing-controls/013R-signing-controls.json` binds merged
+  Windows and public-index signing controls, exact PR/check revisions, the
+  retained invalid-workflow correction, missing trusted certificate/support
+  key and the superseded pre-candidate boundary without claiming signatures.
 
 ## Collision and promotion gates
 
@@ -153,14 +158,20 @@ The row order is a dependency order, not permission for one giant merge. Each im
 
 ## Next action
 
-All explicit `pre_freeze` and source-promotion rows are now `I3`. The frozen
-promotion tuple is platform `2ed944c5eaa667c44a7bc1970d2dd175ff34f8c9`,
-client `3904734ce7761cc92c4136f1eaf13e20f2354f72` and Core
+All explicit `pre_freeze` and source-promotion rows are now `I3`. The 013Q
+artifact set remains historical evidence and is superseded for promotion by
+client `3cab149c5d54105900fdcdceb36bf616c729d2fa` and public-index
+`7d5e402c47186fbe2ea1eb30ee1dc8cafdf066b2`. Platform runtime source remains
+`2ed944c5eaa667c44a7bc1970d2dd175ff34f8c9` and Core remains
 `bdbd97fae35103e705f55908caebf75b4a9ff72f`. Candidate creation is still
-`NOT_CREATED` and is not implied by source promotion.
+`NOT_CREATED`.
 
-The next authorized release slice must explicitly enter the 33-row candidate lane with that frozen tuple and retain signing, SBOM/provenance,
-physical Android/Windows, current/brain/RU-origin, rollback and Gate F evidence.
+The next authorized release slice must provision the support-mode public key
+and a trusted Windows Authenticode certificate, then rebuild the exact artifact
+set and regenerate checksums, SBOM/provenance and strict handoff. Only then may
+the deterministic signer create a candidate index for the 33-row candidate
+lane and the physical Android/Windows, current/brain/RU-origin, rollback and
+Gate F evidence be retained.
 The remaining 14 external and 21 deferred rows keep their existing authority
 boundaries. Do not deploy, mutate production, execute a payment, enroll a
 campaign cohort or claim RU/stable readiness without the separate authority
