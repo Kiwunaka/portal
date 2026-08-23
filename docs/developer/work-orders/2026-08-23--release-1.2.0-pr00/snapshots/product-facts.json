@@ -1,0 +1,59 @@
+{
+  "brands": {
+    "platform": "POKROV",
+    "client": "POKROV",
+    "network_marker_legacy_metadata": "POKROV Network"
+  },
+  "strategy": {
+    "client": "consumer-first",
+    "identity_model": "app-first"
+  },
+  "trial": {
+    "days": 5,
+    "payment_card_required": false
+  },
+  "telegram_reward": {
+    "days": 5,
+    "grandfathered_days": 10,
+    "membership_grace_hours": 24,
+    "claim_flow": "explicit_account_owned"
+  },
+  "referral_reward": {
+    "friend_days": 5,
+    "friend_authority": "first_successful_paid_purchase",
+    "referrer_days": 10,
+    "referrer_hold_hours": 72,
+    "pre_first_payment_premium_cap_days": 15
+  },
+  "engines": {
+    "default": "sing-box",
+    "advanced_fallback": "xray"
+  },
+  "platform_scope": {
+    "public": ["android", "windows"],
+    "readiness_only": ["apple"]
+  },
+  "network_defaults": {
+    "routing_mode_default": "all_except_ru",
+    "transport_profile_default": "legacy_reality_fallback",
+    "dns_policy_default": "ru_direct_split"
+  },
+  "versions": {
+    "ruleset_version": "2026-04-13",
+    "package_catalog_version": "2026-04-13",
+    "client_transport_baseline": "legacy_reality_fallback",
+    "support_recovery_order": ["app", "web", "telegram"]
+  },
+  "legal": {
+    "offer_path": "/offer/",
+    "privacy_path": "/privacy/",
+    "seller_publication_status": "blocked_unpublished",
+    "offer_review_status": "blocked_unapproved",
+    "rf_advertising_status": "blocked_no_owner_legal_decision",
+    "allowed_launch_channels": []
+  },
+  "operations": {
+    "canonical_control_plane_host": "82.21.114.104",
+    "legacy_compatibility_host": "kiwunaka.space"
+  }
+}

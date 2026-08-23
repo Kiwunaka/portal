@@ -98,6 +98,7 @@
     "scripts/remote_manage_xui.py",
     "scripts/remote_node_qdisc_smoke.py",
     "scripts/remote_prepare_brain_public.py",
+    "scripts/remote_schedule_release_announcement.py",
     "scripts/remote_setup_pl_free_8443.py",
     "scripts/remote_start_brain_bot.py",
     "scripts/remote_strings_brain_xui.py",
@@ -147,6 +148,7 @@
     "scripts/reconcile_node_runtime_ports.py",
     "scripts/text_integrity.py",
     "scripts/validate_android_physical_audit_evidence.py",
+    "scripts/validate_release_1_2_pr00.py",
     "scripts/generate_private_helper_coverage.py",
     "scripts/generate_defect_fix_retest_ledger.py"
   ],
