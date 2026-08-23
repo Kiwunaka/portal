@@ -1,0 +1,126 @@
+{
+  "schema": "pokrov.release-1.2.0.pr00-freeze/v2",
+  "state": "PRE_CANDIDATE_LOCAL",
+  "candidate_created": false,
+  "promotion_authorized": false,
+  "source_plan": {
+    "file": "POKROV_1.2.0_FRONTEND_AUDIT_AND_RELEASE_PLAN.md",
+    "section": "33/PR-00 — Freeze/contracts",
+    "acceptance": [
+      "release_branches",
+      "baseline_shas",
+      "flags",
+      "manifest_schema",
+      "product_facts_snapshot",
+      "reason_code_draft",
+      "motion_semantics",
+      "no_visible_ui_change"
+    ]
+  },
+  "branches": {
+    "platform": {
+      "repository": "Kiwunaka/portal",
+      "promotion_branch": "master",
+      "release_branch": "release/1.2.0-frontend",
+      "base_revision": "280ed9157f5804d4bc719cb8d6cab471caafb937"
+    },
+    "client": {
+      "repository": "Kiwunaka/POKROV-app",
+      "promotion_branch": "main",
+      "release_branch": "release/1.2.0-frontend",
+      "base_revision": "ba7930ea83487874f47a49199ade89868c5675b3"
+    },
+    "core": {
+      "repository": "Kiwunaka/pokrov-core",
+      "promotion_branch": "main",
+      "release_branch": "release/1.2.0-ui-contract",
+      "release_branch_condition": "ONLY_IF_ABI_CHANGES"
+    },
+    "release_index": {
+      "repository": "Kiwunaka/pokrov",
+      "promotion_branch": "main",
+      "release_creation_condition": "ONLY_AFTER_SIGNED_ARTIFACTS"
+    }
+  },
+  "flags": {
+    "product_target": "1.2.0",
+    "platform_build": 30,
+    "candidate_created": false,
+    "promotion_authorized": false,
+    "visible_ui_change_allowed_in_pr00": false,
+    "abi_v3_blocks_1_2_0": false,
+    "linux_shipped_in_1_2_0": false,
+    "public_release_index_published": false
+  },
+  "snapshots": [
+    {
+      "role": "manifest_schema",
+      "source_repository": "Kiwunaka/portal",
+      "source_revision": "8d269672e6fcae686cbac3d91af1fc8d9c57663b",
+      "source_path": "scripts/release_handoff_metadata.schema.json",
+      "source_git_blob": "6fc0ec0da82f8ee75fd1889ab4397ed0f226e4b3",
+      "path": "docs/developer/work-orders/2026-08-23--release-1.2.0-pr00/snapshots/release_handoff_metadata.schema.json",
+      "size": 15233,
+      "sha256": "eba6d4c2f8b2f8c92da4557209fc7b116eea3a68a26a34a258a5141467aa72ee"
+    },
+    {
+      "role": "product_facts_snapshot",
+      "source_repository": "Kiwunaka/portal",
+      "source_revision": "8d269672e6fcae686cbac3d91af1fc8d9c57663b",
+      "source_path": "shared/product-facts.json",
+      "source_git_blob": "f654b7f837e7d8934c66a8ad0b0e8601423533d2",
+      "path": "docs/developer/work-orders/2026-08-23--release-1.2.0-pr00/snapshots/product-facts.json",
+      "size": 1624,
+      "sha256": "3df7e7a03bf6a7e62e49e2791641428fb415cdca692a67b4a48fee79a853289e"
+    },
+    {
+      "role": "reason_code_draft",
+      "source_repository": "Kiwunaka/portal",
+      "source_revision": "8d269672e6fcae686cbac3d91af1fc8d9c57663b",
+      "source_path": "shared/contracts/observability/error-catalog.json",
+      "source_git_blob": "307a778cff0d33d5ce33cfbf4ac4870e6cef15ad",
+      "path": "docs/developer/work-orders/2026-08-23--release-1.2.0-pr00/snapshots/error-catalog.json",
+      "size": 36705,
+      "sha256": "7d3bf242777d5bf76bbebcf162e5969d3f83d7f68b2787051e1c4fddeadc3dc7"
+    },
+    {
+      "role": "motion_semantics",
+      "source_repository": "Kiwunaka/POKROV-app",
+      "source_revision": "8c6b955dced3b018825c53fe5d14cb632271adeb",
+      "source_path": "packages/app_shell/lib/src/design_system/pokrov_motion.dart",
+      "source_git_blob": "a985b9e20e8b14fc75623c05fc8c19bef4c18638",
+      "path": "docs/developer/work-orders/2026-08-23--release-1.2.0-pr00/snapshots/pokrov_motion.dart",
+      "size": 3653,
+      "sha256": "89c17bd6c063783b2f41840d40da264537350f82e1cc747dfe765d887a5c81c2"
+    }
+  ],
+  "isolated_pr": {
+    "repository": "Kiwunaka/portal",
+    "branch": "codex/1.2.0-pr00-true",
+    "target_branch": "master",
+    "target_revision": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "single_commit_required": true,
+    "allowed_paths": [
+      ".github/workflows/release-1.2.0-pr00.yml",
+      "docs/developer/work-orders/2026-08-23--release-1.2.0-pr00/PR00-FREEZE.json",
+      "docs/developer/work-orders/2026-08-23--release-1.2.0-pr00/README.md",
+      "docs/developer/work-orders/2026-08-23--release-1.2.0-pr00/snapshots/error-catalog.json",
+      "docs/developer/work-orders/2026-08-23--release-1.2.0-pr00/snapshots/pokrov_motion.dart",
+      "docs/developer/work-orders/2026-08-23--release-1.2.0-pr00/snapshots/product-facts.json",
+      "docs/developer/work-orders/2026-08-23--release-1.2.0-pr00/snapshots/release_handoff_metadata.schema.json",
+      "scripts/validate_release_1_2_pr00.py",
+      "scripts/manifest.yaml",
+      "tests/test_release_1_2_pr00.py"
+    ],
+    "visible_ui_prefixes": [
+      "adminapp/",
+      "marketing/src/",
+      "webapp/",
+      "portal_bot/static/",
+      "portal_bot/templates/"
+    ]
+  },
+  "hosted_required_checks": "NOT_RUN",
+  "candidate_eligible": false,
+  "evidence_ceiling": "RELEASE_BASE_ISOLATED_LOCAL_COMMIT"
+}
