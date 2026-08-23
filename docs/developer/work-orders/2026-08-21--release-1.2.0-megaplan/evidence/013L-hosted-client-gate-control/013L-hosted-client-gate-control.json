@@ -1,0 +1,84 @@
+{
+  "schema": "pokrov.release-1.2.0.hosted-client-gate-control/v1",
+  "recorded_at": "2026-08-23",
+  "state": "PRE_CANDIDATE_LOCAL",
+  "candidate_created": false,
+  "candidate_eligible": false,
+  "promotion_authorized": false,
+  "control": {
+    "repository": "Kiwunaka/portal",
+    "branch": "codex/1.2.0-hosted-gate-control",
+    "revision": "085ac1ae49eea71f60209d70438fbb8f404b53af",
+    "parent": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "merge_base": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "target_branch": "master",
+    "tree": "20512631797ebae7d3bd187e16d1f2e212354711",
+    "changed_path_count": 5,
+    "visible_ui_paths_changed": 0
+  },
+  "source_tuple": {
+    "platform": "30859e115859386f5dd51210b5697af5440c36df",
+    "client": "8c6b955dced3b018825c53fe5d14cb632271adeb",
+    "core": "fcb3c8bbc6efdeed284417369aacb522722ebfa2"
+  },
+  "hosted_contract": {
+    "runner": "ubuntu-24.04",
+    "python": "3.12",
+    "java": "17",
+    "flutter": "3.38.5",
+    "commands": [
+      "client/scripts/validate-seed.ps1",
+      "client/scripts/run-tests.ps1"
+    ],
+    "checked_out_head_verification": true,
+    "actions_pinned_to_full_revisions": true,
+    "private_client_secret": "POKROV_RELEASE_REPO_READ_TOKEN",
+    "required_client_permission": "contents:read",
+    "credential_material_in_repository": false
+  },
+  "validation": {
+    "status": "PASS_EXACT_HOSTED_GATE_CONTROL_LOCAL",
+    "validator_unit_tests": "PASS_4_OF_4",
+    "ruff_check": "PASS",
+    "ruff_format_check": "PASS",
+    "diff_check": "PASS",
+    "validator_stdout_bytes": 828,
+    "validator_stdout_sha256": "8fbd975ca969a42246bd6da822d2d5ea4a0fb5506c4ebc6d296e3c9e27725a00"
+  },
+  "hosted": {
+    "source_revisions_published": false,
+    "owner_private_checkout_secret_provisioned": false,
+    "branch_pushed": false,
+    "pull_request_created": false,
+    "execution": "NOT_RUN",
+    "required_checks": "NOT_RUN",
+    "review": "NOT_RUN"
+  },
+  "ledger": {
+    "row": "REL/TEST-001",
+    "index": "I2",
+    "index_changed": false,
+    "reason": "The exact release-base-isolated hosted control exists locally, but source publication, owner private-repository access and hosted execution are absent.",
+    "distribution": {
+      "I3": 303,
+      "I2": 20,
+      "I1": 39,
+      "I0": 15
+    },
+    "below_i3": 74,
+    "pending_stage_counts": {
+      "pre_freeze": 3,
+      "candidate": 33,
+      "external": 17,
+      "deferred": 21
+    }
+  },
+  "external_actions": {
+    "publish_source_tuple": "NOT_AUTHORIZED_NOT_RUN",
+    "provision_secret": "BLOCKED_BY_OWNER_ACTION",
+    "push_or_pr": "NOT_AUTHORIZED_NOT_RUN",
+    "deployment": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  },
+  "evidence_ceiling": "EXACT_HOSTED_GATE_CONTROL_LOCAL_ONLY"
+}

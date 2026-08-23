@@ -1,0 +1,87 @@
+{
+  "candidate_created": false,
+  "date": "2026-08-22",
+  "evidence_ceiling": "I2_IMPLEMENTED_PARTIAL_WITH_LOCAL_REGRESSION_PROOF",
+  "ledger_advancement": [],
+  "ledger_distribution": {
+    "I0": 20,
+    "I1": 45,
+    "I2": 34,
+    "I3": 278,
+    "at_least_i1": 357,
+    "below_i3": 99,
+    "total": 377
+  },
+  "ledger_unchanged": [
+    "REL/ARCH-002 remains I2"
+  ],
+  "noncanonical_diagnostics": [
+    {
+      "result": "DEFECT_REPRODUCED_AND_CORRECTED",
+      "summary": "The initial module-size guard failed because api_admin_routes.py had 7237 lines against its 7100 ceiling; the ceiling was not raised."
+    }
+  ],
+  "platform_branch": "codex/1.2.0-phase00",
+  "platform_head": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+  "platform_source_dirty": true,
+  "promotion_authorized": false,
+  "remaining_architecture_inventory": {
+    "admin_action_intent_service_lines": 8365,
+    "api_public_routes_lines": 5822,
+    "status": "REMAINS_BEFORE_ARCH_002_I3"
+  },
+  "route_table": {
+    "duplicate_method_path_pairs": 0,
+    "unique_method_path_pairs": 300
+  },
+  "slice_lines": {
+    "api.py": 9394,
+    "api_admin_action_routes.py": 2774,
+    "api_admin_network_routes.py": 153,
+    "api_admin_routes.py": 4336
+  },
+  "source_hashes": {
+    "docs/architecture/system-overview.md": "0b8dbb310e0c0153e26cdb9fb6d5177a5933639389d0982282357d229842ef48",
+    "docs/developer/backend-module-map.md": "6b424d7bf8311d48759d5ead9f662684887aa043764f1143541fb0e62a78d6e1",
+    "portal_bot/api.py": "df917b4ee19899b605ce15c869a558fb7126edc55b3cf66d288082ebb94a4964",
+    "portal_bot/api_admin_action_routes.py": "5097e72fb49048a5ea01754bd87776858cc18a1fb887a7c61ab7ec17d3a4cbb9",
+    "portal_bot/api_admin_network_routes.py": "5c30307014b84defde5c6a0a0d5bcf4e37be6c4e74cdda647727ec07bbb6acd9",
+    "portal_bot/api_admin_routes.py": "c581b3c77c4320c35fe62f42a2ac9920a675cb1b853ac5b0ca31a05e5a3be8f5",
+    "tests/test_admin_action_policy_coverage.py": "8636342b77577b8b786e1b8318d4af7006fd1136d1bfc72cc40625a1c87963c5",
+    "tests/test_module_slices.py": "21f2b43679afefe0a45b00f20d9ce8278754b18a6ccec1db2d1a26330e16b796"
+  },
+  "stage_distribution_below_i3": {
+    "candidate": 32,
+    "deferred": 21,
+    "external": 17,
+    "external_pre_candidate": 3,
+    "pre_freeze": 29
+  },
+  "status": "PASS_PARTIAL_ARCHITECTURE_WITH_DECLARED_REMAINDER",
+  "verification": [
+    {
+      "command": "pytest tests/test_module_slices.py",
+      "result": "PASS; 4/4 after initial size failure was corrected"
+    },
+    {
+      "command": "pytest action-intent, emergency catalog, operator network and route-gap matrix",
+      "result": "PASS; 33/33"
+    },
+    {
+      "command": "pytest mutation-policy, emergency probe and Operator Center manifest matrix",
+      "result": "PASS; 16/16"
+    },
+    {
+      "command": "router-required backend/API pytest matrix",
+      "result": "PASS; 154 tests plus 8 subtests; 637.61 seconds"
+    },
+    {
+      "command": "import api and count FastAPI method/path pairs",
+      "result": "PASS; 300 unique pairs; no duplicates"
+    },
+    {
+      "command": "changed-file Python compile, focused lint/format and diff checks",
+      "result": "PASS"
+    }
+  ]
+}

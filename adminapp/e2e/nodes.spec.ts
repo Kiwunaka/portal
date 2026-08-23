@@ -19,8 +19,8 @@ test("отключение ноды выполняется только посл
   const api = await installAdminApiMock(page, { ruScenario: "fresh-pass" });
   await page.goto("/nodes?selected=nl");
   await expect(page.getByRole("heading", { name: "Нода NL" })).toBeVisible();
-  const initialListLoads = api.calls.filter((call) => call.path === "/api/admin/nodes/health").length;
-  const initialDetailLoads = api.calls.filter((call) => call.path === "/api/admin/nodes/nl/observability?include_ru_history=false").length;
+  const initialListLoads = api.calls.filter((call) => call.path === "/api/admin/v2/network/fleet").length;
+  const initialDetailLoads = api.calls.filter((call) => call.path === "/api/admin/v2/network/nodes/nl?include_ru_history=false").length;
 
   await page.getByRole("button", { name: "Отключить ноду" }).click();
   const dialog = page.getByRole("dialog", { name: "Проверка действия" });
@@ -31,8 +31,8 @@ test("отключение ноды выполняется только посл
   await dialog.getByRole("button", { name: "Выполнить" }).click();
   await expect(dialog.getByText("ID аудита: 713", { exact: true })).toBeVisible();
 
-  const previewIndex = api.calls.findIndex((call) => call.path === "/api/admin/action-intents");
-  const executeIndex = api.calls.findIndex((call) => call.path === "/api/admin/nodes/nl/disable");
+  const previewIndex = api.calls.findIndex((call) => call.path === "/api/admin/v2/network/action-intents");
+  const executeIndex = api.calls.findIndex((call) => call.path.startsWith("/api/admin/v2/network/action-intents/") && call.path.endsWith("/execute"));
   expect(previewIndex).toBeGreaterThanOrEqual(0);
   expect(executeIndex).toBeGreaterThan(previewIndex);
   const execution = api.calls[executeIndex];
@@ -40,8 +40,9 @@ test("отключение ноды выполняется только посл
   expect(execution.headers?.["x-admin-idempotency-key"]).toMatch(/^[0-9a-f-]{36}$/);
   expect(execution.headers?.["x-admin-confirmation-sha256"]).toMatch(/^[0-9a-f]{64}$/);
   expect(execution.headers?.["x-admin-confirmation-sha256"]).not.toBe("NL");
-  await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/nodes/health").length).toBeGreaterThan(initialListLoads);
-  await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/nodes/nl/observability?include_ru_history=false").length).toBeGreaterThan(initialDetailLoads);
+  expect(api.calls.some((call) => call.path === "/api/admin/nodes/nl/disable")).toBe(false);
+  await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/v2/network/fleet").length).toBeGreaterThan(initialListLoads);
+  await expect.poll(() => api.calls.filter((call) => call.path === "/api/admin/v2/network/nodes/nl?include_ru_history=false").length).toBeGreaterThan(initialDetailLoads);
 });
 
 test("карточка ноды открывается за два действия, разделяет источники и лениво загружает RU-историю", async ({ page }) => {
@@ -51,7 +52,7 @@ test("карточка ноды открывается за два действ�
   const row = page.getByRole("row", { name: /^Открыть ноду NL\b/ });
   await expect(row).toBeVisible();
   expect(api.calls.some((call) => call.path.includes("/observability"))).toBe(false);
-  expect(api.calls.some((call) => call.path.startsWith("/api/admin/probes/ru-origin/runs"))).toBe(false);
+  expect(api.calls.some((call) => call.path.startsWith("/api/admin/v2/network/ru/runs"))).toBe(false);
 
   await row.click();
   await expect(page).toHaveURL(/selected=nl/);
@@ -60,11 +61,11 @@ test("карточка ноды открывается за два действ�
   await expect(overview.getByText("Текущий контур", { exact: true })).toBeVisible();
   await expect(overview.getByText("Brain-origin", { exact: true })).toBeVisible();
   await expect(overview.getByText("RU-origin", { exact: true })).toBeVisible();
-  await expect.poll(() => api.calls.some((call) => call.path === "/api/admin/nodes/nl/observability?include_ru_history=false")).toBe(true);
-  expect(api.calls.some((call) => call.path.startsWith("/api/admin/probes/ru-origin/runs"))).toBe(false);
+  await expect.poll(() => api.calls.some((call) => call.path === "/api/admin/v2/network/nodes/nl?include_ru_history=false")).toBe(true);
+  expect(api.calls.some((call) => call.path.startsWith("/api/admin/v2/network/ru/runs"))).toBe(false);
 
   await openRuTab(page);
-  await expect.poll(() => api.calls.some((call) => call.path.startsWith("/api/admin/probes/ru-origin/runs?"))).toBe(true);
+  await expect.poll(() => api.calls.some((call) => call.path.startsWith("/api/admin/v2/network/ru/runs?"))).toBe(true);
   await page.getByRole("button", { name: "7 дней" }).click();
   await expect(page).toHaveURL(/range=7d/);
 });
@@ -223,7 +224,7 @@ test("review-контракт: live wire, независимые RU-блоки, 
   await review.page.getByRole("button", { name: "Показать ещё" }).click();
   await expect.poll(() => reviewApi.calls.some((call) => call.path.includes("cursor=cursor-abort-next"))).toBe(true);
   await review.page.getByRole("main").getByRole("button", { name: "Обновить", exact: true }).click();
-  await expect.poll(() => reviewApi.calls.filter((call) => call.path.startsWith("/api/admin/probes/ru-origin/runs?") && !call.path.includes("cursor=")).length).toBeGreaterThan(1);
+  await expect.poll(() => reviewApi.calls.filter((call) => call.path.startsWith("/api/admin/v2/network/ru/runs?") && !call.path.includes("cursor=")).length).toBeGreaterThan(1);
   reviewApi.releaseHistoryContinuation();
   await expect(historyRegion.getByText(run391, { exact: false })).toHaveCount(1);
   await expect(historyRegion.getByText(run389, { exact: false })).toHaveCount(0);
@@ -286,8 +287,8 @@ test("review-контракт: live wire, независимые RU-блоки, 
   await expect(partialPage.getByText("Статус загрузчика недоступен", { exact: true })).toBeVisible();
   await partialPage.getByRole("button", { name: "Повторить историю" }).click();
   await partialPage.getByRole("button", { name: "Повторить статус загрузчика" }).click();
-  await expect.poll(() => partialApi.calls.filter((call) => call.path.startsWith("/api/admin/probes/ru-origin/runs")).length).toBeGreaterThan(1);
-  await expect.poll(() => partialApi.calls.filter((call) => call.path === "/api/admin/probes/ru-origin/uploader-status").length).toBeGreaterThan(1);
+  await expect.poll(() => partialApi.calls.filter((call) => call.path.startsWith("/api/admin/v2/network/ru/runs")).length).toBeGreaterThan(1);
+  await expect.poll(() => partialApi.calls.filter((call) => call.path === "/api/admin/v2/network/ru/uploader").length).toBeGreaterThan(1);
   await partialContext.close();
 
   const latestContext = await browser.newContext();
@@ -296,7 +297,7 @@ test("review-контракт: live wire, независимые RU-блоки, 
   await latestPage.goto("/nodes?selected=nl&tab=ru");
   await expect(latestPage.getByRole("region", { name: "История проверок из РФ" })).toBeVisible();
   await latestPage.getByRole("button", { name: "Повторить текущий RU-origin" }).click();
-  await expect.poll(() => latestApi.calls.filter((call) => call.path === "/api/admin/probes/ru-origin/latest").length).toBeGreaterThan(1);
+  await expect.poll(() => latestApi.calls.filter((call) => call.path === "/api/admin/v2/network/ru/latest").length).toBeGreaterThan(1);
   await latestContext.close();
 
   const uploader = await openScenario(browser, "uploader-fresh-failure");

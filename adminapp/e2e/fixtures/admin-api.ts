@@ -8,7 +8,7 @@ export type AdminApiCall = {
 };
 
 export type AdminSearchResult = {
-  kind: "user" | "order" | "node" | "key";
+  kind: "user" | "order" | "node" | "key" | "case" | "support_bundle" | "correlation";
   id: string;
   title: string;
   subtitle: string;
@@ -681,7 +681,11 @@ const unsafeSearchResults: Array<Record<string, unknown>> = [
 ];
 
 type AdminApiMockOptions = {
+  operatorPermissions?: string[];
+  redactUserFields?: boolean;
   requireInitDataForSession?: boolean;
+  operatorSessionInitiallyMissing?: boolean;
+  apiSchema?: string;
   ruScenario?: RuScenario;
   includeUnsafeSearchResults?: boolean;
   overviewStatus?: number;
@@ -861,9 +865,116 @@ const networkQuotaStatuses = [
 ];
 
 const networkAlerts = [
-  { id: 81, fingerprint: "provider_quota:nl", source: "provider_quota", severity: "warning", status: "active", title: "Лимит NL приближается", body: "Использовано 84,3% текущего лимита.", node_code: "nl", tg_id: null, key_id: null, first_seen_at: "2026-07-15T07:00:00Z", last_seen_at: "2026-07-15T09:50:00Z", resolved_at: null, acknowledged_at: null, silence_until: null },
-  { id: 82, fingerprint: "free_tier:over_cap", source: "free_tier", severity: "warning", status: "active", title: "Есть пользователи сверх лимита", body: "Проверьте бесплатный контур.", node_code: null, tg_id: null, key_id: null, first_seen_at: "2026-07-15T08:00:00Z", last_seen_at: "2026-07-15T09:45:00Z", resolved_at: null, acknowledged_at: null, silence_until: null },
+  { id: 81, version: 3, fingerprint: "provider_quota:nl", source: "provider_quota", severity: "warning", status: "active", title: "Лимит NL приближается", body: "Использовано 84,3% текущего лимита.", node_code: "nl", tg_id: null, key_id: null, incident_id: null, first_seen_at: "2026-07-15T07:00:00Z", last_seen_at: "2026-07-15T09:50:00Z", resolved_at: null, acknowledged_at: null, silence_until: null },
+  { id: 82, version: 1, fingerprint: "free_tier:over_cap", source: "free_tier", severity: "warning", status: "active", title: "Есть пользователи сверх лимита", body: "Проверьте бесплатный контур.", node_code: null, tg_id: null, key_id: null, incident_id: null, first_seen_at: "2026-07-15T08:00:00Z", last_seen_at: "2026-07-15T09:45:00Z", resolved_at: null, acknowledged_at: null, silence_until: null },
 ];
+
+const supportSearchResults: AdminSearchResult[] = [
+  {
+    kind: "case",
+    id: "501",
+    title: "Тикет #501",
+    subtitle: "Статус open, очередь connection",
+    href: "/tickets?selected=501"
+  },
+  {
+    kind: "support_bundle",
+    id: "bundle_22222222222222222222",
+    title: "Пакет поддержки · тикет #501",
+    subtitle: "Статус validated, профиль standard",
+    href: "/tickets?selected=501"
+  },
+  {
+    kind: "correlation",
+    id: "corr-support-501",
+    title: "Корреляция · тикет #501",
+    subtitle: "Этап dns_probe, код DNS-001",
+    href: "/tickets?selected=501"
+  }
+];
+
+const operatorId = "00000000-0000-4000-8000-000000000999";
+const operatorTaskMine = {
+  id: "00000000-0000-4000-8000-000000000201", environment: "test", title: "Проверить callback заказа",
+  owner_operator_id: operatorId, owner_team: "payments", status: "open", priority: "high",
+  due_at: "2026-07-15T11:00:00Z", next_action: "Сопоставить callback evidence", source: "payment_review",
+  linked_entity: { type: "payment_order", id: "order-review-901" }, version: 2, completed_at: null,
+  created_at: "2026-07-15T09:00:00Z", updated_at: "2026-07-15T09:55:00Z",
+};
+const operatorTaskUnassigned = {
+  ...operatorTaskMine,
+  id: "00000000-0000-4000-8000-000000000202", title: "Назначить владельца сетевого сигнала",
+  owner_operator_id: null, owner_team: null, priority: "critical", source: "alert", version: 1,
+  linked_entity: { type: "alert", id: "81" }, next_action: "Взять задачу и открыть Incident Room",
+};
+const operatorIncident = {
+  id: "00000000-0000-4000-8000-000000000301", key: "inc-provider-nl", environment: "test",
+  title: "Деградация лимита NL", summary: "Проверка влияния провайдерской квоты.", severity: "major",
+  public_status: "confirmed", workflow_status: "investigating", version: 4,
+  owner_operator_id: operatorId, owner_team: "network", impact: "Новые подключения могут быть ограничены.",
+  started_at: "2026-07-15T07:00:00Z", ended_at: null, next_update_at: "2026-07-15T10:30:00Z",
+  runbook_url: "https://runbooks.example.test/provider-quota", communications_summary: null,
+  postmortem_status: "not_required", postmortem_url: null, affected_node_codes: ["nl"],
+  compensation: { days: 1, impacted_accounts: 12, granted_accounts: 0, started_at: null, completed_at: null },
+  created_at: "2026-07-15T07:05:00Z", updated_at: "2026-07-15T09:55:00Z",
+};
+const operatorIncidentDetail = {
+  ...operatorIncident,
+  timeline: [
+    { id: "00000000-0000-4000-8000-000000000401", version: 1, event_type: "created", from_status: null, to_status: "investigating", note: "Создан из сигнала квоты.", actor_operator_id: operatorId, created_at: "2026-07-15T07:05:00Z" },
+  ],
+  linked_entities: [
+    { id: "00000000-0000-4000-8000-000000000501", type: "node", entity_id: "nl", label: "NL provider", created_at: "2026-07-15T07:06:00Z" },
+  ],
+  alerts: [{ id: 81, source: "provider_quota", severity: "warning", status: "active", title: "Лимит NL приближается", node_code: "nl", incident_id: operatorIncident.id, version: 3, first_seen_at: "2026-07-15T07:00:00Z", last_seen_at: "2026-07-15T09:50:00Z", acknowledged_at: null }],
+  follow_up_tasks: [operatorTaskMine],
+};
+
+function operatorShiftPayload() {
+  return {
+    environment: "test", operator_id: operatorId, teams: ["network", "payments"],
+    mine: [operatorTaskMine], team: [operatorTaskMine], unassigned: [operatorTaskUnassigned],
+    failed_commands: [{ intent_id: "intent-failed-1", action: "node.resync", status: "failed" }],
+    tickets: [{ id: 701, title: "Не подключается Android", status: "open" }],
+    incident_work: [operatorIncident], payment_review: [{ order_id: "order-review-901", provider: "freekassa", status: "manual_review" }],
+    release_blockers: [{ id: "gate-ru", title: "RU-origin evidence", status: "MISSING" }],
+    source_failures: [{ id: 82, source: "free_tier", severity: "warning", status: "active", title: "Есть пользователи сверх лимита", node_code: null, incident_id: null, version: 1, first_seen_at: "2026-07-15T08:00:00Z", last_seen_at: "2026-07-15T09:45:00Z", acknowledged_at: null }],
+  };
+}
+
+function releaseCockpit(candidateId: string) {
+  const readiness = releaseReadiness(candidateId);
+  const candidate = readiness.candidate;
+  return {
+    candidate,
+    components: [{
+      candidate_id: candidate.candidate_id,
+      component: candidate.component,
+      version: candidate.version,
+      revision: candidate.revision,
+      artifact_sha256: candidate.artifact_sha256,
+      descriptor_sha256: candidate.descriptor_sha256,
+      imported_at: candidate.imported_at,
+    }],
+    readiness,
+    gate_matrix: {
+      status: readiness.ready ? "PASS" : "MISSING",
+      ready: readiness.ready,
+      origin_readiness_status: readiness.status,
+      checks: [
+        { check_name: "app_tests", status: readiness.ready ? "PASS" : "MISSING" },
+        { check_name: "core_tests", status: readiness.ready ? "PASS" : "MISSING" },
+      ],
+    },
+    rollout: { states: [], active_by_platform: {}, source: "release_rollout_v1" },
+    adoption: { window_days: 30, window_start: "2026-06-15T10:00:00Z", authority: "active_account_devices_last_seen", cohorts: [], platform_totals: {} },
+    health: { groups: [] },
+    health_gate: { status: "MISSING", reason: "no_version_health", thresholds: {}, groups: [] },
+    support_delta: { authority: "version_bound_support_bundles", current: 0, previous: 0, delta: 0, window_hours: 24 },
+    known_issues: [],
+    generated_at: generatedAt,
+  };
+}
 
 const networkFreeSummary = {
   generated_at: generatedAt,
@@ -885,6 +996,35 @@ const networkFreeFacts = { node_pool: "NL-free", traffic_limit_gb: 5, cycle_days
 const networkFreeUsers = [
   { tg_id: 2001, username: "free_one", display_name: "Анна Бесплатная", is_active: true, current_plan_code: "free", used_gb: 5.2, limit_gb: 5, remaining_gb: 0, used_pct: 104, state: "over_cap", cycle_start: "2026-07-01T00:00:00Z", cycle_end: "2026-07-31T00:00:00Z", next_reset_at: "2026-07-31T00:00:00Z", source: "key_usage_rollups", rollup_count: 12 },
   { tg_id: 2002, username: "free_two", display_name: "Илья Бесплатный", is_active: true, current_plan_code: "free", used_gb: 1.5, limit_gb: 5, remaining_gb: 3.5, used_pct: 30, state: "ok", cycle_start: "2026-07-01T00:00:00Z", cycle_end: "2026-07-31T00:00:00Z", next_reset_at: "2026-07-31T00:00:00Z", source: "key_usage_rollups", rollup_count: 8 },
+];
+
+const moneyAccess = {
+  generated_at: generatedAt,
+  authority: { payments: "signed_callback_plus_external_orders", entitlements: "account_entitlement_grants", provisioning: "payment_entitlement_outbox", telemetry_confirms_payment: false },
+  claim_counts: { fulfilled: 18, manual_review: 1 },
+  grant_counts: { "active:paid_access": 17, "reserved:paid_access": 1, "active:bonus_days": 3 },
+  outbox: { pending: 1, processing: 0, delivered: 18, dead_letter: 0, oldest_open_age_seconds: 45 },
+  access_key_counts: { "active:payment": 17, "issued:gift": 2 },
+  recent_grants: [
+    { grant_ref: "grant_1234567890abcdefabcd", account_ref: "account_1234567890abcdefabcd", source: "payment_callback", status: "active", grant_kind: "paid_access", plan_code: "start_99", starts_at: generatedAt, expires_at: "2026-08-15T10:00:00Z", activated_at: generatedAt, reversed_at: null, reversal_reason: null, provider: "freekassa", order_ref: "order_1234567890abcdefabcd", created_at: generatedAt, updated_at: generatedAt },
+  ],
+  gift_codes: [
+    { gift_ref: "gift_1234567890abcdefabcd", code_hint: "GIF…123", code_sha256: "d".repeat(64), card_type: "mini", redeemed: false, created_at: generatedAt, redeemed_at: null },
+  ],
+  plans: [
+    { code: "start_99", label: "Старт", duration_days: 30, device_limit: 2, is_public: true },
+    { code: "family_299", label: "Семья", duration_days: 30, device_limit: 5, is_public: true },
+  ],
+};
+
+const growthBonuses = {
+  wheel: { preset: "paid_fortnightly_v3", cooldown_hours: 336, weights: [{ kind: "days", value: 1, weight: 70 }, { kind: "discount", value: 10, weight: 30 }] },
+  loyalty: { enabled: true, tiers: [{ days: 30, bonus_days: 1, perk: "priority_support" }, { days: 90, bonus_days: 3, perk: "fast_resync" }] },
+};
+
+const growthPrograms = [
+  { id: "00000000-0000-4000-8000-000000000801", account_ref: "account_80100000000000000000", kind: "research", status: "submitted", source_name: "RU connectivity study", seats: null, summary: "Проверка стабильности подключения в нескольких сетях и регионах.", contact: "research@example.test", operator_note: null, reward_days: 0, rewarded: false, reward_grant_ref: null, created_at: generatedAt, updated_at: generatedAt, reviewed_at: null },
+  { id: "00000000-0000-4000-8000-000000000802", account_ref: "account_80200000000000000000", kind: "team_pack", status: "under_review", source_name: null, seats: 8, summary: "Командный доступ для небольшой распределённой редакции.", contact: "team@example.test", operator_note: "Проверяем состав", reward_days: 0, rewarded: false, reward_grant_ref: null, created_at: generatedAt, updated_at: generatedAt, reviewed_at: null },
 ];
 
 const clientUserRows = [
@@ -918,9 +1058,9 @@ const clientUserRows = [
   },
 ];
 
-function clientUserDetail(tgId: number) {
+function clientUserDetail(tgId: number, redactFields = false) {
   const listRow = clientUserRows.find((row) => row.tg_id === tgId) || clientUserRows[0];
-  return {
+  const detail = {
     user: {
       ...listRow,
       tg_id: tgId,
@@ -1025,6 +1165,28 @@ function clientUserDetail(tgId: number) {
       factors: [{ key: "multi_ip", weight: 35, value: "2" }],
     },
   };
+  if (!redactFields) return detail;
+  return {
+    ...detail,
+    user: {
+      ...detail.user,
+      linked_telegram_id: null,
+      linked_telegram_username: null,
+      app_install_id: null,
+      app_device_name: null,
+    },
+    payment_orders: [],
+    admin_actions: [],
+    app_events: [],
+    key_history: detail.key_history.map((row) => ({ ...row, actor_tg_id: null })),
+    field_access: {
+      sensitive_identity: { state: "redacted", required_permission: "support.sensitive.read" },
+      app_events: { state: "redacted", required_permission: "support.sensitive.read" },
+      payment_orders: { state: "redacted", required_permission: "money.read" },
+      admin_actions: { state: "redacted", required_permission: "governance.audit.read" },
+      legacy_user_actions: { state: "redacted", required_permission: "legacy.admin.access" },
+    },
+  };
 }
 
 const clientInvestigation = {
@@ -1082,6 +1244,16 @@ const clientTicketList = {
   status_title: "Открыт",
   subject: "Не подключается",
   priority: "high",
+  queue: "connection",
+  assigned_admin_tg_id: null,
+  assigned_team: "support",
+  waiting_on: null,
+  sla_due_at: "2026-07-15T10:30:00Z",
+  sla_status: "at_risk",
+  escalated_at: null,
+  incident_id: null,
+  attempt_ref: "attempt_11111111111111111111",
+  version: 3,
   created_at: "2026-07-15T08:00:00Z",
   updated_at: "2026-07-15T09:45:00Z",
   closed_at: null,
@@ -1095,44 +1267,82 @@ const clientTicketDetail = {
       id: 1,
       sender_tg_id: 1001,
       sender_role: "user",
+      visibility: "public",
+      macro_code: null,
       body: "Нужна помощь с подключением",
       attachment: { type: "file", name: "диагностика.txt", content_type: "text/plain", size_bytes: 512, download_url: "/api/tickets/attachments/20260715-Abcdefgh1234.txt" },
       created_at: "2026-07-15T08:00:00Z",
     },
-    { id: 2, sender_tg_id: 9999, sender_role: "admin", body: "Уточните платформу", created_at: "2026-07-15T08:05:00Z" },
+    { id: 2, sender_tg_id: 9999, sender_role: "admin", visibility: "public", macro_code: null, body: "Уточните платформу", created_at: "2026-07-15T08:05:00Z" },
+    { id: 3, sender_tg_id: 9999, sender_role: "admin", visibility: "internal", macro_code: null, body: "Проверить Windows TUN", created_at: "2026-07-15T08:06:00Z" },
+  ],
+  support_bundles: [{ bundle_ref: "bundle_22222222222222222222", status: "validated", diagnostic_profile: "standard", app_version: "1.2.0", build_number: "42", platform: "windows", architecture: "x64", last_phase: "core_start", last_error_code: "CORE-001", proof_outcome: "failure", expires_at: "2026-07-22T08:00:00Z", retention_hold: false, access_audit: { count: 1, last_action: "grant", last_at: "2026-07-15T08:10:00Z" } }],
+};
+
+const supportAttempt = {
+  attempt_ref: "attempt_11111111111111111111",
+  installation_ref: "install_11111111111111111111",
+  session_ref: "session_11111111111111111111",
+  started_at: "2026-07-15T09:52:00Z",
+  ended_at: "2026-07-15T09:53:00Z",
+  outcome: "failure",
+  event_count: 5,
+  fingerprints: ["fp_11111111111111111111"],
+  events: [
+    { event_id: 10001, event_name: "vpn_permission_granted", fingerprint: "fp_11111111111111111111", result: "success", subsystem: "permission", stage: "permission", error_code: null, platform: "windows", app_version: "1.2.0", build_number: "42", occurred_at: "2026-07-15T09:52:00Z", received_at: "2026-07-15T09:52:01Z" },
+    { event_id: 10002, event_name: "runtime_start_failed", fingerprint: "fp_11111111111111111111", result: "failure", subsystem: "runtime", stage: "core_start", error_code: "CORE-001", platform: "windows", app_version: "1.2.0", build_number: "42", occurred_at: "2026-07-15T09:53:00Z", received_at: "2026-07-15T09:53:01Z" },
+    { event_id: 10003, event_name: "tun_unavailable", fingerprint: "fp_11111111111111111111", result: "failure", subsystem: "tun", stage: "tun", error_code: "TUN-001", platform: "windows", app_version: "1.2.0", build_number: "42", occurred_at: "2026-07-15T09:53:02Z", received_at: "2026-07-15T09:53:03Z" },
+    { event_id: 10004, event_name: "dns_probe_skipped", fingerprint: "fp_11111111111111111111", result: "skipped", subsystem: "dns", stage: "dns_probe", error_code: null, platform: "windows", app_version: "1.2.0", build_number: "42", occurred_at: "2026-07-15T09:53:04Z", received_at: "2026-07-15T09:53:05Z" },
+    { event_id: 10005, event_name: "egress_probe_skipped", fingerprint: "fp_11111111111111111111", result: "skipped", subsystem: "egress", stage: "egress_probe", error_code: null, platform: "windows", app_version: "1.2.0", build_number: "42", occurred_at: "2026-07-15T09:53:06Z", received_at: "2026-07-15T09:53:07Z" }
   ],
 };
 
+function clientSupportUser360(tgId: number, redactFields = false) {
+  return {
+    entity: { tg_id: tgId, account_ref: "account_11111111111111111111", username: "operator_test", display_name: "Иван Проверочный", status: "active", plan: "paid", platform: "windows", app_version: "1.2.0", last_seen_at: "2026-07-15T09:54:00Z" },
+    installations: redactFields ? [] : [{ installation_ref: supportAttempt.installation_ref, attempts: 1, sessions: 1, last_seen_at: supportAttempt.ended_at }],
+    sessions: redactFields ? [] : [{ session_ref: supportAttempt.session_ref, installation_ref: supportAttempt.installation_ref, attempts: 1, last_seen_at: supportAttempt.ended_at }],
+    attempts: redactFields ? [] : [supportAttempt],
+    fingerprints: redactFields ? [] : [{ fingerprint: "fp_11111111111111111111", count: 2, platform: "windows", app_version: "1.2.0", subsystem: "runtime", stage: "core_start", result: "failure", error_code: "CORE-001" }],
+    observer: { authority: "trusted_server_observer", state: "watch", observed_ip_count_24h: 2, observed_node_count_24h: 1, last_observed_at: "2026-07-15T09:58:00Z" },
+    privacy: { adapter: "event_allowlist_v1", excluded: ["meta_json", "ip", "url", "token"] },
+    field_access: {
+      support_diagnostics: {
+        state: redactFields ? "redacted" : "visible",
+        required_permission: "support.sensitive.read",
+      },
+    },
+  };
+}
+
 const LEGACY_GET_PATHS = new Set([
-  "/api/admin/ops/overview",
-  "/api/admin/probes/ru-origin/latest",
-  "/api/admin/alerts",
   "/api/admin/free-tier/users",
-  "/api/admin/traffic/summary",
   "/api/admin/nodes/timeseries",
-  "/api/admin/provider-quotas",
-  "/api/admin/provider-quotas/status",
-  "/api/admin/emergency-network/status",
   "/api/admin/free-tier/summary",
-  "/api/admin/nodes/health",
   "/api/admin/nodes/runtime",
-  "/api/admin/online/users",
   "/api/admin/payments/summary",
   "/api/admin/payments/orders",
   "/api/admin/keys/pressure",
   "/api/admin/tickets",
   "/api/admin/live-updates",
   "/api/admin/news-drafts",
-  "/api/admin/funnel/summary",
   "/api/admin/users",
   "/api/admin/promos",
-  "/api/admin/referrals/pending"
 ]);
 
-const FOCUSED_GET_PATHS = new Set([...LEGACY_GET_PATHS, "/api/admin/search"]);
+const FOCUSED_GET_PATHS = new Set([
+  ...LEGACY_GET_PATHS,
+  "/api/admin/search",
+  "/api/admin/v2/shift/overview",
+  "/api/admin/v2/support/online",
+  "/api/admin/v2/support/search",
+  "/api/admin/v2/support/known-issues",
+  "/api/admin/v2/growth/funnel",
+  "/api/admin/v2/growth/referrals",
+]);
 
 function isNodeObservabilityPath(pathname: string): boolean {
-  return /^\/api\/admin\/nodes\/[^/]+\/observability$/.test(pathname);
+  return /^\/api\/admin\/v2\/network\/nodes\/[^/]+$/.test(pathname);
 }
 
 function isNodeActionPath(pathname: string): boolean {
@@ -1156,7 +1366,7 @@ function isTicketDetailPath(pathname: string): boolean {
 }
 
 function isTicketActionPath(pathname: string): boolean {
-  return /^\/api\/admin\/tickets\/[1-9]\d*\/(reply|status)$/.test(pathname);
+  return /^\/api\/admin\/tickets\/[1-9]\d*\/(reply|status|note)$/.test(pathname);
 }
 
 function isProviderQuotaMutationPath(pathname: string): boolean {
@@ -1183,14 +1393,42 @@ function isReleaseReadinessPath(pathname: string): boolean {
   return /^\/api\/admin\/releases\/[a-f0-9]{64}\/readiness$/.test(pathname);
 }
 
+function isReleaseCockpitPath(pathname: string): boolean {
+  return /^\/api\/admin\/v2\/releases\/candidates\/[a-f0-9]{64}\/cockpit$/.test(pathname);
+}
+
 function isActionIntentStatusPath(pathname: string): boolean {
-  return /^\/api\/admin\/action-intents\/[0-9a-f-]{36}$/.test(pathname);
+  return /^\/api\/admin\/action-intents\/[0-9a-f-]{36}$/.test(pathname)
+    || /^\/api\/admin\/v2\/growth\/action-intents\/[0-9a-f-]{36}$/.test(pathname);
+}
+
+function isOperatorWorkPath(pathname: string): boolean {
+  return pathname === "/api/admin/v2/shift"
+    || pathname === "/api/admin/v2/tasks"
+    || pathname === "/api/admin/v2/incidents"
+    || /^\/api\/admin\/v2\/incidents\/[0-9a-f-]{36}$/.test(pathname)
+    || pathname === "/api/admin/v2/support/tickets"
+    || pathname === "/api/admin/v2/support/macros"
+    || /^\/api\/admin\/v2\/support\/(tickets\/[1-9]\d*|users\/-?[1-9]\d*|attempts)$/.test(pathname)
+    || /^\/api\/admin\/v2\/support\/tickets\/[1-9]\d*\/bundles\/bundle_[a-f0-9]{20}\/(access-grants|content)$/.test(pathname)
+    || /^\/api\/admin\/v2\/network\/(fleet|traffic|alerts|providers|emergency)$/.test(pathname)
+    || /^\/api\/admin\/v2\/network\/ru\/(latest|runs|uploader)$/.test(pathname)
+    || /^\/api\/admin\/v2\/money\/(payments\/summary|payments\/orders|payments\/orders\/[^/]+\/[^/]+|access|free-archive|promos)$/.test(pathname)
+    || /^\/api\/admin\/v2\/growth\/(bonuses|programs|news-drafts|live-updates)$/.test(pathname)
+    || /^\/api\/admin\/v2\/growth\/broadcasts\/[0-9a-f-]{36}\/delivery$/.test(pathname)
+    || pathname === "/api/admin/v2/releases/candidates"
+    || pathname === "/api/admin/v2/releases/adoption"
+    || /^\/api\/admin\/v2\/governance\/(roles|operators|audit|audit\/export|privacy|sensitive-access)$/.test(pathname)
+    || /^\/api\/admin\/v2\/governance\/operators\/[0-9a-f-]{36}$/.test(pathname)
+    || /^\/api\/admin\/v2\/governance\/audit\/commands\/[0-9a-f-]{36}$/.test(pathname)
+    || isReleaseCockpitPath(pathname)
+    || isNodeObservabilityPath(pathname)
+    || /^\/api\/admin\/v2\/(shift|incidents|support|network|money|growth|releases|governance)\/action-intents$/.test(pathname)
+    || /^\/api\/admin\/v2\/(shift|incidents|support|network|money|growth|releases|governance)\/action-intents\/[0-9a-f-]{36}\/execute$/.test(pathname);
 }
 
 function isFocusedGetPath(pathname: string): boolean {
   return FOCUSED_GET_PATHS.has(pathname)
-    || pathname === "/api/admin/probes/ru-origin/runs"
-    || pathname === "/api/admin/probes/ru-origin/uploader-status"
     || isNodeObservabilityPath(pathname)
     || isUserDetailPath(pathname)
     || isUserInvestigationPath(pathname)
@@ -1210,10 +1448,53 @@ function fulfillJson(route: Route, data: unknown, status = 200) {
       "access-control-allow-origin": origin,
       "access-control-allow-credentials": "true",
       "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
-      "access-control-allow-headers": "authorization,content-type,x-telegram-init-data,x-web-auth-token,x-admin-intent-id,x-admin-idempotency-key,x-admin-confirmation-sha256"
+      "access-control-allow-headers": "authorization,content-type,x-telegram-init-data,x-web-auth-token,x-pokrov-admin-csrf,x-admin-intent-id,x-admin-idempotency-key,x-admin-confirmation-sha256"
     },
     body: JSON.stringify(data)
   });
+}
+
+function operatorV2Envelope(data: unknown, sources: Array<Record<string, unknown>> = []) {
+  return {
+    data,
+    meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 },
+    sources,
+    warnings: [],
+  };
+}
+
+function operatorV2Error(code: string, message: string, traceId: string) {
+  return {
+    data: null,
+    meta: { generated_at: generatedAt, trace_id: traceId, schema_version: "admin-v2.1", query_ms: 0 },
+    sources: [],
+    warnings: [],
+    error: { code, message },
+  };
+}
+
+function emergencyNetworkPayload() {
+  return {
+    generated_at: generatedAt,
+    worker: {
+      enabled: false,
+      configuration_state: "disabled",
+      interval_seconds: null,
+      probe_concurrency: null,
+    },
+    snapshot_counts: {},
+    active: null,
+    distribution: null,
+    probe_summary: {
+      snapshot_id: null,
+      pending: 0,
+      healthy: 0,
+      unavailable: 0,
+      total: 0,
+    },
+    rollback_candidates: [],
+    snapshots: [],
+  };
 }
 
 export async function installAdminApiMock(
@@ -1225,6 +1506,13 @@ export async function installAdminApiMock(
   releaseFirstOverview: () => void;
   releaseHistoryContinuation: () => void;
 }> {
+  const operatorPermissions = options.operatorPermissions || [
+    "system.meta.read", "session.self.read", "session.step_up",
+    "support.read", "support.write", "support.sensitive.read",
+    "network.read", "network.write", "money.read", "money.write",
+    "growth.read", "growth.write", "releases.read", "releases.write",
+    "legacy.admin.access"
+  ];
   const calls: AdminApiCall[] = [];
   const overviewResponses: number[] = [];
   let releaseFirstOverview: () => void = () => undefined;
@@ -1239,6 +1527,9 @@ export async function installAdminApiMock(
   let ruLatestRequestCount = 0;
   let historyPageOneRequestCount = 0;
   let ticketReplyRequestCount = 0;
+  let operatorSessionReady = !(
+    options.requireInitDataForSession || options.operatorSessionInitiallyMissing
+  );
   await page.route("**/api/**", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
@@ -1259,9 +1550,11 @@ export async function installAdminApiMock(
       headers: {
         authorization: requestHeaders.authorization || "",
         "x-telegram-init-data": requestHeaders["x-telegram-init-data"] || "",
+        "x-pokrov-admin-csrf": requestHeaders["x-pokrov-admin-csrf"] || "",
         "x-admin-intent-id": requestHeaders["x-admin-intent-id"] || "",
         "x-admin-idempotency-key": requestHeaders["x-admin-idempotency-key"] || "",
         "x-admin-confirmation-sha256": requestHeaders["x-admin-confirmation-sha256"] || "",
+        "x-pokrov-support-grant": requestHeaders["x-pokrov-support-grant"] || "",
       },
     });
 
@@ -1269,21 +1562,26 @@ export async function installAdminApiMock(
       method === "GET"
       && options.networkDelayMs
       && [
-        "/api/admin/traffic/summary",
-        "/api/admin/alerts",
-        "/api/admin/provider-quotas",
-        "/api/admin/provider-quotas/status",
-        "/api/admin/free-tier/summary",
-        "/api/admin/free-tier/users",
+        "/api/admin/v2/network/traffic",
+        "/api/admin/v2/network/alerts",
+        "/api/admin/v2/network/providers",
+        "/api/admin/v2/money/free-archive",
       ].includes(url.pathname)
     ) {
       await new Promise((resolve) => setTimeout(resolve, options.networkDelayMs));
     }
 
     const knownPath = isFocusedGetPath(url.pathname)
+      || url.pathname === "/api/admin/v2/auth/me"
+      || url.pathname === "/api/admin/v2/auth/sessions"
+      || url.pathname === "/api/admin/v2/meta"
+      || url.pathname === "/api/admin/v2/auth/oidc/start"
+      || url.pathname === "/api/admin/v2/auth/oidc/finish"
+      || url.pathname === "/api/admin/v2/auth/bootstrap"
       || url.pathname === "/api/admin/auth/session"
       || url.pathname === "/api/admin/broadcast"
       || url.pathname === "/api/admin/action-intents"
+      || isOperatorWorkPath(url.pathname)
       || isNodeActionPath(url.pathname)
       || isUserActionPath(url.pathname)
       || isTicketActionPath(url.pathname)
@@ -1292,9 +1590,16 @@ export async function installAdminApiMock(
       || isAlertActionPath(url.pathname);
     const knownRequest =
       (method === "GET" && isFocusedGetPath(url.pathname)) ||
+      (method === "GET" && url.pathname === "/api/admin/v2/auth/me") ||
+      (method === "GET" && url.pathname === "/api/admin/v2/auth/sessions") ||
+      (method === "GET" && url.pathname === "/api/admin/v2/meta") ||
+      (method === "GET" && url.pathname === "/api/admin/v2/auth/oidc/start") ||
+      (method === "POST" && url.pathname === "/api/admin/v2/auth/oidc/finish") ||
+      (method === "POST" && url.pathname === "/api/admin/v2/auth/bootstrap") ||
       (method === "POST" && url.pathname === "/api/admin/auth/session") ||
       (method === "POST" && url.pathname === "/api/admin/broadcast") ||
       (method === "POST" && url.pathname === "/api/admin/action-intents") ||
+      ((method === "GET" || method === "POST") && isOperatorWorkPath(url.pathname)) ||
       (method === "POST" && isNodeActionPath(url.pathname)) ||
       ((method === "POST" || method === "PUT") && isUserActionPath(url.pathname)) ||
       (method === "POST" && isTicketActionPath(url.pathname)) ||
@@ -1321,6 +1626,405 @@ export async function installAdminApiMock(
       return;
     }
 
+    if (url.pathname === "/api/admin/v2/auth/me") {
+      if (!operatorSessionReady) {
+        await fulfillJson(route, {
+          data: null,
+          meta: { generated_at: generatedAt, trace_id: "session-test-id", schema_version: "admin-v2.1", query_ms: 0 },
+          sources: [],
+          warnings: [],
+          error: { code: "operator_session_missing", message: "Operator session is required." }
+        }, 401);
+        return;
+      }
+      await fulfillJson(route, {
+        data: {
+          operator: {
+            id: "00000000-0000-4000-8000-000000000999",
+            legacy_actor_tg_id: 9999,
+            display_name: "owner",
+            environment: "test",
+            roles: ["superadmin"],
+            permissions: operatorPermissions
+          },
+          session: {
+            id: "00000000-0000-4000-8000-000000000998",
+            created_at: generatedAt,
+            idle_expires_at: "2026-07-15T10:30:00Z",
+            absolute_expires_at: "2026-07-15T22:00:00Z",
+            step_up_at: null,
+            csrf_token: "mock-admin-csrf"
+          }
+        },
+        meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 },
+        sources: [],
+        warnings: []
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/v2/auth/sessions") {
+      await fulfillJson(route, {
+        data: {
+          items: [
+            {
+              id: "00000000-0000-4000-8000-000000000998",
+              current: true,
+              created_at: generatedAt,
+              last_seen_at: generatedAt,
+              idle_expires_at: "2026-07-15T10:30:00Z",
+              absolute_expires_at: "2026-07-15T22:00:00Z",
+              step_up_at: null,
+              revoked_at: null,
+              revoke_reason: null
+            }
+          ],
+          count: 1
+        },
+        meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 },
+        sources: [],
+        warnings: []
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/v2/meta") {
+      const apiSchema = options.apiSchema || "admin-v2.1";
+      await fulfillJson(route, {
+        data: {
+          app: "pokrov-operator-api",
+          api_schema: apiSchema,
+          portal_commit: "1111111111111111111111111111111111111111",
+          deployed_at: generatedAt,
+          db_schema: "portal-test",
+          active_client_release: "1.2.0-rc.1",
+          core_release: "1.2.0-rc.1",
+          expected_frontend_app: "pokrov-operator-center"
+        },
+        meta: { generated_at: generatedAt, trace_id: null, schema_version: apiSchema, query_ms: 0 },
+        sources: [],
+        warnings: []
+      });
+      return;
+    }
+
+    if (method === "GET" && url.pathname === "/api/admin/v2/shift") {
+      await fulfillJson(route, { data: operatorShiftPayload(), meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 }, sources: [], warnings: [] });
+      return;
+    }
+
+    if (method === "GET" && url.pathname === "/api/admin/v2/tasks") {
+      await fulfillJson(route, { data: { items: [operatorTaskMine, operatorTaskUnassigned], count: 2 }, meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 }, sources: [], warnings: [] });
+      return;
+    }
+
+    if (method === "GET" && url.pathname === "/api/admin/v2/incidents") {
+      await fulfillJson(route, { data: { items: [operatorIncident], count: 1 }, meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 }, sources: [], warnings: [] });
+      return;
+    }
+
+    if (method === "GET" && /^\/api\/admin\/v2\/incidents\/[0-9a-f-]{36}$/.test(url.pathname)) {
+      await fulfillJson(route, { data: operatorIncidentDetail, meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 }, sources: [], warnings: [] });
+      return;
+    }
+
+    if (method === "GET" && url.pathname === "/api/admin/v2/support/tickets") {
+      const status = (url.searchParams.get("status") || "").trim().toLowerCase();
+      const priority = (url.searchParams.get("priority") || "").trim().toLowerCase();
+      const rows = (status && status !== "active" && clientTicketList.status !== status) || (priority && clientTicketList.priority !== priority) ? [] : [clientTicketList];
+      await fulfillJson(route, { data: { items: rows, count: rows.length }, meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 }, sources: [], warnings: [] });
+      return;
+    }
+
+    if (method === "GET" && /^\/api\/admin\/v2\/support\/tickets\/[1-9]\d*$/.test(url.pathname)) {
+      await fulfillJson(route, { data: clientTicketDetail, meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 }, sources: [], warnings: [] });
+      return;
+    }
+
+    if (method === "GET" && url.pathname === "/api/admin/v2/support/macros") {
+      await fulfillJson(route, { data: { items: [{ code: "request_diagnostics", title: "Запросить диагностику", body: "Пришлите диагностический пакет из приложения." }] }, meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 }, sources: [], warnings: [] });
+      return;
+    }
+
+    if (method === "GET" && /^\/api\/admin\/v2\/support\/users\/-?[1-9]\d*$/.test(url.pathname)) {
+      const tgId = Number(url.pathname.split("/").at(-1));
+      await fulfillJson(route, { data: clientSupportUser360(tgId, options.redactUserFields), meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 }, sources: [], warnings: options.redactUserFields ? [{ code: "field_redacted", message: "Sensitive support diagnostics are hidden." }] : [] });
+      return;
+    }
+
+    if (method === "GET" && url.pathname === "/api/admin/v2/support/attempts") {
+      await fulfillJson(route, { data: { tg_id: 1001, ticket_id: Number(url.searchParams.get("ticket_id") || 501), linked_attempt_ref: url.searchParams.get("attempt_ref") || supportAttempt.attempt_ref, selected: supportAttempt, attempts: [supportAttempt], fingerprints: clientSupportUser360(1001).fingerprints, privacy: { adapter: "event_allowlist_v1" } }, meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 }, sources: [], warnings: [] });
+      return;
+    }
+
+    if (method === "GET" && url.pathname === "/api/admin/v2/support/search") {
+      if (options.searchStatus === 404) {
+        await fulfillJson(route, operatorV2Error("support_search_unavailable", "Поиск поддержки временно недоступен", "support-search-test-id"), 404);
+        return;
+      }
+      await fulfillJson(route, operatorV2Envelope({ results: supportSearchResults }));
+      return;
+    }
+
+    if (method === "GET" && url.pathname === "/api/admin/v2/support/known-issues") {
+      await fulfillJson(route, operatorV2Envelope({ issues: [{ candidate_label: "pokrov-1.2.0-rc.1", issue_code: "CORE-START-001", app_version: "1.2.0", build_number: "42", platform: "windows", severity: "error", status: "open", title: "Core не запускается после обновления", safe_summary: "Перезапустите службу POKROV и повторите одну попытку. При повторе передайте обращение SRE.", error_code: "CORE-001", incident_ref: "00000000-0000-4000-8000-000000000901", release_ref: "pokrov-1.2.0-rc.1", updated_at: generatedAt }], count: 1 }));
+      return;
+    }
+
+    if (method === "POST" && /^\/api\/admin\/v2\/support\/tickets\/501\/bundles\/bundle_22222222222222222222\/access-grants$/.test(url.pathname)) {
+      await fulfillJson(route, operatorV2Envelope({ bundle_ref: "bundle_22222222222222222222", access_grant: "grant_333333333333333333333333333333333333", expires_at: "2026-07-15T10:15:00Z" }));
+      return;
+    }
+
+    if (method === "GET" && /^\/api\/admin\/v2\/support\/tickets\/501\/bundles\/bundle_22222222222222222222\/content$/.test(url.pathname)) {
+      await route.fulfill({ status: 200, contentType: "application/octet-stream", body: "encrypted-support-ciphertext" });
+      return;
+    }
+
+    if (method === "POST" && /^\/api\/admin\/v2\/(shift|incidents|support|network|money|growth|releases|governance)\/action-intents$/.test(url.pathname)) {
+      const prepareStatus = options.actionIntentPrepareStatus ?? 200;
+      if (prepareStatus !== 200) {
+        await fulfillJson(route, operatorV2Error("intent_prepare_rejected", "Предпросмотр рассылки отклонён", "broadcast-prepare-test-id"), prepareStatus);
+        return;
+      }
+      const body = requestBody && typeof requestBody === "object" && !Array.isArray(requestBody) ? requestBody as Record<string, unknown> : {};
+      const target = body.target && typeof body.target === "object" && !Array.isArray(body.target) ? body.target as Record<string, unknown> : {};
+      const payload = body.payload && typeof body.payload === "object" && !Array.isArray(body.payload) ? body.payload as Record<string, unknown> : {};
+      const action = String(body.action || "operator_task.update");
+      const targetId = String(target.id || operatorTaskMine.id);
+      const alertAction = action.startsWith("alert.");
+      const incidentAction = action.startsWith("incident.");
+      const nodeAction = action.startsWith("node.");
+      const providerAction = action.startsWith("provider_quota.");
+      const paymentAction = action === "payment.reconcile";
+      const promoAction = action.startsWith("promo.");
+      const referralAction = action === "referral.process";
+      const programAction = action === "program_application.review";
+      const accessIssueAction = action === "access_key.issue";
+      const giftAction = action === "gift_code.create";
+      const configAction = action === "wheel_config.update" || action === "loyalty_config.update";
+      const broadcastAction = action === "broadcast.send";
+      const releaseAction = action.startsWith("release.");
+      const governanceAction = action.startsWith("operator.");
+      const nodeCode = targetId.toLowerCase();
+      const lifecycle = { enabled: true, accepting_new_clients: true, is_draining: false };
+      const providerBefore = { node_code: nodeCode.toUpperCase(), configured: true, node_status: "active", included_gb: 100, used_gb: 84.25, reset_day: 1, timezone: "UTC", warning_ratio: 0.8, critical_ratio: 0.95, enabled: true, notes_present: false, projected_exhaustion_at: "2026-07-18T12:00:00Z", updated_at: "2026-07-15T09:55:00Z" };
+      const providerAfter = action === "provider_quota.delete"
+        ? { ...providerBefore, configured: false, included_gb: null, reset_day: null, timezone: null, warning_ratio: null, critical_ratio: null, enabled: false, projected_exhaustion_at: null, updated_at: null }
+        : { ...providerBefore, included_gb: Number(payload.included_gb || 100) };
+      const highRisk = action === "incident.compensate"
+        || action === "node.disable"
+        || action === "node.sync_global"
+        || action === "provider_quota.delete"
+        || action === "emergency_catalog.promote"
+        || action === "emergency_catalog.rollback"
+        || action === "emergency_catalog.disable"
+        || action === "promo.delete"
+        || action === "program_application.review"
+        || action === "access_key.issue"
+        || action === "gift_code.create"
+        || broadcastAction
+        || (governanceAction && action !== "operator.access.review")
+        || ["release.rollout.start", "release.rollout.change", "release.rollout.rollback", "release.min_supported.set"].includes(action);
+      const before = broadcastAction
+        ? { recipient_count: 12, recipient_hash: "9".repeat(64) }
+        : governanceAction
+          ? { operator_id: targetId, status: "active", role: null }
+        : releaseAction
+          ? { candidate_id: targetId, platform: String(payload.platform || "android"), status: "candidate", rollout_percent: 0, paused: true }
+        : alertAction
+          ? { alert_id: Number(targetId), alert_version: Number(payload.expected_version || 1), alert_status: "active", incident_id: null }
+        : incidentAction
+          ? { id: targetId, version: Number(payload.expected_version || operatorIncident.version), workflow_status: operatorIncident.workflow_status, public_status: operatorIncident.public_status }
+          : providerAction
+            ? providerBefore
+            : nodeAction
+              ? { code: nodeCode.toUpperCase(), ...lifecycle, mapped_users: 31 }
+              : paymentAction
+                ? { id: targetId, status: "manual_review", callback_events: 2, callback_state: "failed" }
+                : promoAction
+                  ? { code: targetId, promo_type: "discount", value: 20, uses_left: 90 }
+                  : referralAction
+                    ? { selection_count: 2, queue_id: 301, order_id: "ref-order-301", referrer_tg_id: 1101, referred_tg_id: 2101, decision_basis: "reward_ready" }
+                  : programAction
+                    ? { ...growthPrograms[0], id: targetId }
+                    : accessIssueAction
+                      ? { plan: { code: targetId, label: "Мини", amount_rub: 99, days: 30, device_limit: 2, is_active: true }, issued_count: 14, max_issue_id: 14 }
+                      : giftAction
+                        ? { issued_count: 14, max_issue_id: 14 }
+                    : configAction
+                      ? { exists: true, updated_at: generatedAt, value: { sha256: "4".repeat(64), bytes: 128 } }
+                      : { id: targetId, version: Number(payload.expected_version || 1), status: "open" };
+      const after = broadcastAction
+        ? { segment: String(payload.segment || "all_active"), limit: Number(payload.limit || 500), message_sha256: "8".repeat(64), message_length: String(payload.text || "").length }
+        : governanceAction
+          ? { operator_id: targetId, status: action === "operator.suspend" ? "suspended" : "active", role: { role_code: String(payload.role_code || "readonly"), grant_kind: String(payload.grant_kind || "standing"), active: action !== "operator.role.revoke" } }
+        : releaseAction
+          ? { candidate_id: targetId, platform: String(payload.platform || "android"), status: action === "release.rollout.pause" ? "paused" : "staged", rollout_percent: action === "release.rollout.pause" ? 0 : Number(payload.rollout_percent || 10), paused: action === "release.rollout.pause" }
+        : alertAction
+          ? { alert_status: action === "alert.false_positive" ? "false_positive" : action === "alert.ack" ? "acknowledged" : action === "alert.silence" ? "silenced" : "active", incident_id: payload.incident_id || null }
+        : incidentAction
+          ? { workflow_status: payload.workflow_status || operatorIncident.workflow_status }
+          : providerAction
+            ? providerAfter
+            : nodeAction
+              ? { code: nodeCode.toUpperCase(), ...lifecycle, enabled: action !== "node.disable", accepting_new_clients: action !== "node.disable", mapped_users: 31 }
+              : paymentAction
+                ? { status: payload.status || "manual_review", operator_note_length: String(payload.note || "").length }
+                : promoAction
+                  ? action === "promo.delete" ? { code: targetId, promo_type: "discount", value: 20, uses_left: 90, exists: false } : { code: targetId, promo_type: payload.promo_type || "discount", value: payload.value || 20, uses_left: payload.uses_left || 90 }
+                  : referralAction
+                    ? { selection_count: 2, queue_id: 301, order_id: "ref-order-301", referrer_tg_id: 1101, referred_tg_id: 2101, decision_basis: "reward_ready", status: "process" }
+                  : programAction
+                    ? { status: Number(payload.reward_days || 0) > 0 ? "rewarded" : payload.status || "under_review", reward_days: Number(payload.reward_days || 0), operator_note_present: Boolean(payload.operator_note) }
+                    : accessIssueAction
+                      ? { plan_code: targetId, quantity: Number(payload.quantity || 1) }
+                      : giftAction
+                        ? { card_type: targetId }
+                    : configAction
+                      ? { sha256: "5".repeat(64), bytes: 144 }
+                      : { status: payload.status || "in_progress", owner_operator_id: payload.owner_operator_id || operatorId };
+      const intentId = nodeAction
+        ? "00000000-0000-4000-8000-000000000713"
+        : providerAction
+          ? "00000000-0000-4000-8000-000000000716"
+          : "00000000-0000-4000-8000-000000000721";
+      const prepared = {
+        ok: true, intent_id: intentId, action,
+        target: { type: String(target.type || "operator_task"), id: targetId }, risk_level: highRisk ? "L3" : "L2",
+        preview: {
+          title: broadcastAction ? "Защищённая рассылка" : governanceAction ? "Управление доступом оператора" : releaseAction ? "Управление релизом" : paymentAction ? `Сверка заказа ${targetId}` : promoAction ? `Промокод ${targetId}` : referralAction ? "Обработка реферальной очереди" : programAction ? "Решение по заявке программы" : accessIssueAction ? "Выдача пакета ключей" : giftAction ? "Создание подарочного кода" : configAction ? "Изменение конфигурации бонусов" : providerAction ? `Квота провайдера ${nodeCode.toUpperCase()}` : nodeAction ? `Команда для ноды ${nodeCode.toUpperCase()}` : "Переход рабочего объекта",
+          summary: broadcastAction ? "Сервер зафиксировал точных получателей и SHA-256 сообщения." : governanceAction ? "Сервер связал изменение с operator/role/session snapshot." : releaseAction ? "Сервер связал rollout с candidate и registry snapshot." : paymentAction ? "Провайдер, номер заказа, статус и версия callback зафиксированы сервером." : promoAction ? "Код, тип, значение, остаток использований и срок зафиксированы сервером." : referralAction ? "Сервер зафиксировал очередь и основание решения." : programAction ? "Статус и entitlement reward изменятся атомарно только при совпадении версии заявки." : accessIssueAction || giftAction ? "Сервер зафиксировал каталог и количество до генерации кодов." : configAction ? "Сервер связал конфигурацию с текущей версией AppSetting." : providerAction ? "Сервер пересчитал конфигурацию и прогноз исчерпания." : nodeAction ? action === "node.disable" ? `Будет отключена нода ${nodeCode.toUpperCase()}` : `Будет изменена нода ${nodeCode.toUpperCase()}` : "Сервер связал preview с текущей версией.",
+          before,
+          after,
+          warnings: broadcastAction ? ["Получатели зафиксированы. Автоматического повтора нет."] : releaseAction ? ["Команда изменяет клиентскую выдачу обновления."] : referralAction ? ["Действие не создаёт новый платёж."] : providerAction ? ["Прогноз рассчитан сервером."] : action === "node.disable" ? ["Принудительное отключение может оборвать активные подключения."] : [],
+          ...(referralAction ? { selection: { selection_count: 2, selection_hash: "4".repeat(64) } } : {}),
+        },
+        payload_hash: "1".repeat(64), snapshot_hash: "2".repeat(64), entity_version_hash: "3".repeat(64),
+        confirmation_challenge: broadcastAction ? "ОТПРАВИТЬ" : action === "incident.compensate" ? operatorIncident.key : (releaseAction || governanceAction) && highRisk ? targetId : action === "node.disable" || action === "provider_quota.delete" ? nodeCode.toUpperCase() : programAction || action === "promo.delete" || accessIssueAction || giftAction ? targetId : "ПОДТВЕРДИТЬ",
+        confirmation_challenge_kind: broadcastAction ? "exact_phrase" : governanceAction && highRisk ? "exact_target_id" : releaseAction && highRisk ? "exact_candidate_id" : programAction ? "exact_application_id" : action === "promo.delete" ? "exact_promo_code" : accessIssueAction ? "exact_plan_code" : giftAction ? "exact_card_type" : action === "node.disable" || action === "provider_quota.delete" ? "exact_node_code" : "exact_phrase", expires_at: "2099-07-15T10:10:00Z",
+      };
+      await fulfillJson(route, { data: prepared, meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 }, sources: [], warnings: [] });
+      return;
+    }
+
+    if (method === "POST" && /^\/api\/admin\/v2\/(shift|incidents|support|network|money|growth|releases|governance)\/action-intents\/[0-9a-f-]{36}\/execute$/.test(url.pathname)) {
+      const body = requestBody && typeof requestBody === "object" && !Array.isArray(requestBody) ? requestBody as Record<string, unknown> : {};
+      const action = String(body.action || "");
+      const workspace = url.pathname.split("/")[4];
+      const auditId = action.startsWith("node.") ? 713 : action.startsWith("provider_quota.") ? 716 : workspace === "money" ? 717 : workspace === "growth" ? 719 : 721;
+      const payload = body.payload && typeof body.payload === "object" && !Array.isArray(body.payload) ? body.payload as Record<string, unknown> : {};
+      const target = body.target && typeof body.target === "object" && !Array.isArray(body.target) ? body.target as Record<string, unknown> : {};
+      if (action === "broadcast.send" && (options.broadcastStatus ?? 200) !== 200) {
+        await fulfillJson(route, operatorV2Error("broadcast_session_rejected", "Сессия рассылки отклонена", "broadcast-test-id"), options.broadcastStatus);
+        return;
+      }
+      const broadcastOutcome = options.broadcastOutcome || "completed";
+      const actionResult = action === "broadcast.send"
+        ? { result: { attempted: 12, sent: broadcastOutcome === "completed" ? 12 : 8, failed: broadcastOutcome === "completed" ? 0 : 4 } }
+        : action === "gift_code.create"
+        ? { gift_code: { code: "GIFT-ONE-TIME-123", card_type: String(payload.card_type || "mini") } }
+        : action === "access_key.issue"
+          ? { issued: [{ key: "ACCESS-ONE-TIME-123", issued_at: generatedAt }] }
+          : action === "program_application.review"
+            ? { application: { ...growthPrograms[0], id: String(target.id || growthPrograms[0].id), status: Number(payload.reward_days || 0) > 0 ? "rewarded" : String(payload.status || "under_review"), reward_days: Number(payload.reward_days || 0), rewarded: Number(payload.reward_days || 0) > 0 } }
+            : {};
+      const outcome = action === "broadcast.send" ? broadcastOutcome : "completed";
+      await fulfillJson(route, { data: { ok: outcome === "completed", status: outcome, action_intent_id: requestHeaders["x-admin-intent-id"], audit_id: auditId, result_code: action === "broadcast.send" ? outcome === "completed" ? "broadcast_sent" : outcome === "failed" ? "broadcast_partial" : "external_timeout" : "completed", ...actionResult }, meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 }, sources: [], warnings: [] });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/v2/auth/oidc/start") {
+      await fulfillJson(route, {
+        data: {
+          mode: url.searchParams.get("mode") || "login",
+          provider: "telegram_oidc",
+          auth_url: "https://oauth.telegram.org/auth?client_id=777000&state=operator-oidc-state-123456",
+          redirect_uri: "https://admin.pokrov.test/"
+        },
+        meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 },
+        sources: [],
+        warnings: []
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/v2/auth/oidc/finish") {
+      const body = requestBody && typeof requestBody === "object"
+        ? requestBody as Record<string, unknown>
+        : {};
+      if (!String(body.code || "") || !String(body.state || "")) {
+        await fulfillJson(route, { error: { code: "operator_oidc_state_invalid" } }, 403);
+        return;
+      }
+      operatorSessionReady = true;
+      await fulfillJson(route, {
+        data: {
+          operator: {
+            id: "00000000-0000-4000-8000-000000000999",
+            legacy_actor_tg_id: 9999,
+            display_name: "owner",
+            environment: "test",
+            roles: ["superadmin"],
+            permissions: operatorPermissions
+          },
+          session: {
+            id: "00000000-0000-4000-8000-000000000998",
+            created_at: generatedAt,
+            idle_expires_at: "2026-07-15T10:30:00Z",
+            absolute_expires_at: "2026-07-15T22:00:00Z",
+            step_up_at: null,
+            csrf_token: "mock-admin-csrf"
+          },
+          token_transport: "http_only_cookie",
+          identity_method: "telegram_oidc"
+        },
+        meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 },
+        sources: [],
+        warnings: []
+      });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/v2/auth/bootstrap") {
+      if (options.requireInitDataForSession && !requestHeaders["x-telegram-init-data"]) {
+        await fulfillJson(route, {
+          data: null,
+          meta: { generated_at: generatedAt, trace_id: "session-test-id", schema_version: "admin-v2.1", query_ms: 0 },
+          sources: [],
+          warnings: [],
+          error: { code: "legacy_admin_rejected", message: "Нужен доверенный вход" }
+        }, 401);
+        return;
+      }
+      operatorSessionReady = true;
+      await fulfillJson(route, {
+        data: {
+          operator: {
+            id: "00000000-0000-4000-8000-000000000999",
+            legacy_actor_tg_id: 9999,
+            display_name: "owner",
+            environment: "test",
+            roles: ["superadmin"],
+            permissions: operatorPermissions
+          },
+          session: {
+            id: "00000000-0000-4000-8000-000000000998",
+            created_at: generatedAt,
+            idle_expires_at: "2026-07-15T10:30:00Z",
+            absolute_expires_at: "2026-07-15T22:00:00Z",
+            step_up_at: null,
+            csrf_token: "mock-admin-csrf"
+          },
+          token_transport: "http_only_cookie"
+        },
+        meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 },
+        sources: [],
+        warnings: [{ code: "compatibility_bootstrap" }]
+      });
+      return;
+    }
+
     if (url.pathname === "/api/admin/auth/session") {
       if (options.requireInitDataForSession && !requestHeaders["x-telegram-init-data"]) {
         await fulfillJson(
@@ -1344,6 +2048,86 @@ export async function installAdminApiMock(
       return;
     }
 
+    const governanceOperatorId = "00000000-0000-4000-8000-000000000999";
+    const governanceRole = {
+      id: "00000000-0000-4000-8000-000000000997",
+      role_code: "superadmin",
+      environment: "test",
+      grant_kind: "standing",
+      grant_reason: null,
+      granted_by_operator_id: null,
+      granted_at: generatedAt,
+      expires_at: null,
+      active: true,
+      review_status: "not_required",
+      reviewed_by_operator_id: null,
+      reviewed_at: null,
+      review_note: null,
+      revoked_at: null,
+      revoke_reason: null,
+    };
+    if (url.pathname === "/api/admin/v2/governance/roles") {
+      await fulfillJson(route, operatorV2Envelope({ roles: [{ code: "readonly", permissions: ["system.meta.read", "shift.read"] }, { code: "superadmin", permissions: ["governance.operators.manage", "governance.audit.read"] }], grant_kinds: ["standing", "jit", "break_glass"], temporal_limits_minutes: { jit: { min: 15, max: 1440 }, break_glass: { min: 5, max: 60 } }, rules: { self_role_change: "denied", last_superadmin_revoke: "denied", temporal_post_review: "required", break_glass_superadmin: "denied" } }));
+      return;
+    }
+    if (url.pathname === "/api/admin/v2/governance/operators") {
+      await fulfillJson(route, operatorV2Envelope({ items: [{ id: governanceOperatorId, legacy_actor_tg_id: 9999, display_name: "owner", identity_source: "legacy_bootstrap", status: "active", created_at: generatedAt, updated_at: generatedAt, suspended_at: null, active_roles: [governanceRole], pending_reviews: 0, active_sessions: 1, last_seen_at: generatedAt }], count: 1, environment: "test", generated_at: generatedAt }));
+      return;
+    }
+    if (url.pathname === `/api/admin/v2/governance/operators/${governanceOperatorId}`) {
+      await fulfillJson(route, operatorV2Envelope({ operator: { id: governanceOperatorId, legacy_actor_tg_id: 9999, display_name: "owner", identity_source: "legacy_bootstrap", status: "active", created_at: generatedAt, updated_at: generatedAt, suspended_at: null }, roles: [governanceRole], sessions: [{ id: "00000000-0000-4000-8000-000000000998", environment: "test", created_at: generatedAt, last_seen_at: generatedAt, idle_expires_at: "2099-07-15T10:30:00Z", absolute_expires_at: "2099-07-15T22:00:00Z", step_up_at: null, revoked_at: null, revoke_reason: null, active: true }], generated_at: generatedAt }));
+      return;
+    }
+    if (url.pathname === "/api/admin/v2/governance/audit") {
+      await fulfillJson(route, operatorV2Envelope({ items: [{ id: "00000000-0000-4000-8000-000000000996", operator_id: governanceOperatorId, operator_name: "owner", legacy_actor_tg_id: 9999, session_id: "00000000-0000-4000-8000-000000000998", action: "session.bootstrap", result: "success", reason_code: "legacy_admin_verified", environment: "test", roles: ["superadmin"], permissions: ["governance.audit.read"], trace_id: null, resource: null, command_intent_id: null, legacy_audit_id: null, created_at: generatedAt }], count: 1, generated_at: generatedAt }));
+      return;
+    }
+    if (url.pathname === "/api/admin/v2/governance/sensitive-access") {
+      await fulfillJson(route, operatorV2Envelope({ items: [], count: 0, source_scope: "global_legacy_support_bundle_authority", generated_at: generatedAt }));
+      return;
+    }
+    if (url.pathname === "/api/admin/v2/governance/privacy") {
+      await fulfillJson(route, operatorV2Envelope({ raw_policy: { default_days: 90, longer_lived_data: "only purpose-bound records", cleanup_authority: "worker.run_telemetry_retention_once", mode: "delete_or_bounded_hmac_anonymization" }, retention: [{ code: "events", raw_retention_days: 90, policy_source: "EVENT_RETENTION_DAYS", disposition: "delete", rows: 0, oldest_at: null, expired_backlog: 0 }], deletion_anonymization: { policy: { raw_ip_hours: 72, full_ip_hmac_days: 7, prefix_ip_hmac_days: 90, disposition: "null_expired_raw_and_hmac_fields_keep_audit_rows" }, backlog: { antiabuse_raw_ip: 0, antiabuse_full_hmac: 0, antiabuse_prefix_hmac: 0, security_event_ip: 0, user_last_ip: 0 } }, diagnostic_bundles: { accepted_retention_days: 30, quarantine_retention_days: 7, incomplete_grace_days: 1, access_audit_retention_days: 365, uploads: 0, retention_holds: 0, access_audits: 0, expired_unheld_backlog: 0, expired_held: 0, access_audit_unheld_backlog: 0, access_audit_held: 0 }, field_inventory: [{ family: "operator_session", fields: ["session_id", "timestamps"], classification: "restricted", excluded: ["token", "token_hash", "csrf"] }], generated_at: generatedAt }));
+      return;
+    }
+    if (url.pathname === "/api/admin/v2/governance/audit/export") {
+      await route.fulfill({ status: 200, contentType: "text/csv", body: "id,action\n1,session.bootstrap\n" });
+      return;
+    }
+
+    if (url.pathname === "/api/admin/v2/releases/candidates") {
+      await fulfillJson(route, operatorV2Envelope({ items: releaseCandidates, next_cursor: null, limit: 50 }, [{ authority: "release_evidence" }]));
+      return;
+    }
+
+    if (isReleaseCockpitPath(url.pathname)) {
+      const candidateId = url.pathname.split("/").at(-2) || "";
+      await fulfillJson(route, operatorV2Envelope(releaseCockpit(candidateId), [{ authority: "release_evidence" }]));
+      return;
+    }
+
+    if (url.pathname === "/api/admin/v2/releases/adoption") {
+      await fulfillJson(route, operatorV2Envelope(releaseCockpit(releaseCandidates[0].candidate_id).adoption));
+      return;
+    }
+
+    if (url.pathname === "/api/admin/v2/growth/news-drafts") {
+      await fulfillJson(route, operatorV2Envelope({
+        worker: { enabled: true, configuration_state: "ready", interval_seconds: 86400, sources: ["Хабр · сетевые технологии", "Хабр · информационная безопасность"] },
+        counts: { pending: 1, approved: 2 },
+        latest_run: { run_id: "news-run-1", status: "completed", sources_total: 2, sources_succeeded: 2, sources_failed: 0, candidates_seen: 2, drafts_created: 1, duplicates_skipped: 1, duration_ms: 420, failure_code: null, started_at: "2026-07-15T09:00:00Z", finished_at: "2026-07-15T09:00:01Z" },
+        drafts: [{ id: 501, source_name: "Хабр · сетевые технологии", source_url: "https://habr.com/ru/articles/123456/", source_title: "Тестовый заголовок о работе интернета", source_published_at: "2026-07-15T08:00:00Z", status: "pending", live_update_id: null, discovered_at: "2026-07-15T09:00:01Z", reviewed_at: null }],
+        freshness_at: "2026-07-15T09:00:01Z",
+      }, [{ authority: "news_drafts" }]));
+      return;
+    }
+
+    if (/^\/api\/admin\/v2\/growth\/broadcasts\/[0-9a-f-]{36}\/delivery$/.test(url.pathname)) {
+      const intentId = url.pathname.split("/").at(-2) || "";
+      await fulfillJson(route, operatorV2Envelope({ campaign_intent_id: intentId, recipients: 12, delivered: 12, failed: 0, retryable_failed: 0, terminal_failed: 0, attempts: 12, reason_counts: {}, average_duration_ms: 8, first_started_at: generatedAt, last_finished_at: generatedAt, freshness_seconds: 0, retry_scope: "failed_retryable_only" }));
+      return;
+    }
+
     if (url.pathname === "/api/admin/releases/candidates") {
       await fulfillJson(route, { items: releaseCandidates, next_cursor: null, limit: 50 });
       return;
@@ -1358,14 +2142,20 @@ export async function installAdminApiMock(
     if (isActionIntentStatusPath(url.pathname)) {
       const intentId = url.pathname.split("/").at(-1) || "";
       const outcome = options.broadcastStatusOutcome || options.broadcastOutcome || "uncertain";
-      await fulfillJson(route, {
+      const statusPayload = {
         ok: outcome === "completed",
         status: outcome,
         action_intent_id: intentId,
         audit_id: outcome === "uncertain" ? 719 : 718,
         result_code: outcome === "completed" ? "broadcast_sent" : outcome === "failed" ? "broadcast_partial" : "external_timeout",
         ...(outcome === "completed" ? { result: { attempted: 12, sent: 12, failed: 0 } } : {}),
-      });
+      };
+      await fulfillJson(
+        route,
+        url.pathname.startsWith("/api/admin/v2/")
+          ? operatorV2Envelope(statusPayload)
+          : statusPayload,
+      );
       return;
     }
 
@@ -1558,7 +2348,6 @@ export async function installAdminApiMock(
 
     if (options.failAllLegacyRequests && method === "GET" && LEGACY_GET_PATHS.has(url.pathname)) {
       await fulfillJson(route, { detail: "Legacy request failed", code: "legacy_test_failure" }, 500);
-      if (url.pathname === "/api/admin/ops/overview") overviewResponses.push(500);
       return;
     }
 
@@ -1570,7 +2359,7 @@ export async function installAdminApiMock(
 
     if (isUserDetailPath(url.pathname)) {
       const tgId = Number(url.pathname.split("/").at(-1));
-      await fulfillJson(route, clientUserDetail(tgId));
+      await fulfillJson(route, clientUserDetail(tgId, options.redactUserFields));
       return;
     }
 
@@ -1590,14 +2379,29 @@ export async function installAdminApiMock(
         if (!query) return true;
         return [row.tg_id, row.username, row.display_name, row.app_install_id].filter((value) => value !== null).join(" ").toLowerCase().includes(query);
       });
-      await fulfillJson(route, { page: 1, page_size: 80, total: rows.length, sort: url.searchParams.get("sort") || "created_desc", users: rows });
+      const visibleRows = options.redactUserFields
+        ? rows.map((row) => ({ ...row, linked_telegram_id: null, linked_telegram_username: null, app_install_id: null, app_device_name: null }))
+        : rows;
+      await fulfillJson(route, {
+        page: 1,
+        page_size: 80,
+        total: visibleRows.length,
+        sort: url.searchParams.get("sort") || "created_desc",
+        users: visibleRows,
+        field_access: {
+          sensitive_identity: {
+            state: options.redactUserFields ? "redacted" : "visible",
+            required_permission: "support.sensitive.read",
+          },
+        },
+      });
       return;
     }
 
-    if (url.pathname === "/api/admin/online/users") {
+    if (url.pathname === "/api/admin/v2/support/online") {
       const only = (url.searchParams.get("only") || "").trim().toLowerCase();
       const rows = only ? clientOnlinePayload.rows.filter((row) => row.nodes_online.includes(only)) : clientOnlinePayload.rows;
-      await fulfillJson(route, { ...clientOnlinePayload, total: rows.length, rows });
+      await fulfillJson(route, operatorV2Envelope({ ...clientOnlinePayload, total: rows.length, rows }, [{ authority: "control_panel_online_and_account_read_model" }]));
       return;
     }
 
@@ -1608,7 +2412,7 @@ export async function installAdminApiMock(
       return;
     }
 
-    if (url.pathname === "/api/admin/ops/overview") {
+    if (url.pathname === "/api/admin/v2/shift/overview") {
       const requestNumber = overviewRequestCount;
       overviewRequestCount += 1;
       const delayedFailure = options.delayFirstOverviewFailure && requestNumber === 0;
@@ -1628,7 +2432,7 @@ export async function installAdminApiMock(
         return;
       }
       const overviewAlerts = options.overviewAlerts || [];
-      await fulfillJson(route, {
+      const payload = {
         ok: true,
         generated_at: generatedAt,
         summary: {
@@ -1693,12 +2497,13 @@ export async function installAdminApiMock(
           critical_count: overviewAlerts.filter((alert) => alert.severity === "critical").length,
           warning_count: overviewAlerts.filter((alert) => alert.severity === "warning").length
         }
-      });
+      };
+      await fulfillJson(route, operatorV2Envelope(payload, [{ authority: "ops_metrics_capacity_and_alert_read_models" }]));
       overviewResponses.push(200);
       return;
     }
 
-    if (url.pathname === "/api/admin/probes/ru-origin/latest") {
+    if (url.pathname === "/api/admin/v2/network/ru/latest") {
       if (options.ruLatestStatus && options.ruLatestStatus !== 200) {
         await fulfillJson(
           route,
@@ -1712,7 +2517,7 @@ export async function installAdminApiMock(
         return;
       }
       if (options.ruScenario) {
-        await fulfillJson(route, ruLatestPayload(options.ruScenario));
+        await fulfillJson(route, operatorV2Envelope(ruLatestPayload(options.ruScenario), [{ authority: "ru_probe_runs" }]));
         return;
       }
       const configuredReasons = options.ruLatestReasonCodes || [];
@@ -1725,7 +2530,7 @@ export async function installAdminApiMock(
         : reasonCode === "required_target_incomplete"
           ? "incomplete"
           : "pass";
-      await fulfillJson(route, {
+      await fulfillJson(route, operatorV2Envelope({
         ok: true,
         generated_at: generatedAt,
         status: releaseVerdict === "fail" ? "failed" : releaseVerdict === "incomplete" ? "degraded" : "ok",
@@ -1761,11 +2566,11 @@ export async function installAdminApiMock(
             reason_code: "target_pass"
           }
         ]
-      });
+      }, [{ authority: "ru_probe_runs" }]));
       return;
     }
 
-    if (url.pathname === "/api/admin/probes/ru-origin/runs") {
+    if (url.pathname === "/api/admin/v2/network/ru/runs") {
       if (options.ruHistoryStatus && options.ruHistoryStatus !== 200) {
         await fulfillJson(route, { detail: "История RU-origin временно недоступна", code: "ru_history_unavailable" }, options.ruHistoryStatus);
         return;
@@ -1775,24 +2580,41 @@ export async function installAdminApiMock(
       if (!cursor) historyPageOneRequestCount += 1;
       if (options.ruScenario === "review-findings" && cursor === "cursor-abort-next") {
         await historyContinuationGate;
-        await fulfillJson(route, payload).catch(() => undefined);
+        await fulfillJson(route, operatorV2Envelope(payload, [{ authority: "ru_probe_runs" }])).catch(() => undefined);
         return;
       }
-      await fulfillJson(route, payload);
+      await fulfillJson(route, operatorV2Envelope(payload, [{ authority: "ru_probe_runs" }]));
       return;
     }
 
-    if (url.pathname === "/api/admin/probes/ru-origin/uploader-status") {
+    if (url.pathname === "/api/admin/v2/network/ru/uploader") {
       if (options.ruUploaderStatus && options.ruUploaderStatus !== 200) {
         await fulfillJson(route, { detail: "Статус загрузчика временно недоступен", code: "ru_uploader_unavailable" }, options.ruUploaderStatus);
         return;
       }
-      await fulfillJson(route, uploaderPayload(options.ruScenario || "fresh-pass"));
+      await fulfillJson(route, operatorV2Envelope(uploaderPayload(options.ruScenario || "fresh-pass"), [{ authority: "ru_probe_uploader_heartbeats" }]));
+      return;
+    }
+
+    if (url.pathname === "/api/admin/v2/network/fleet") {
+      const items = options.ruScenario ? nodeRows : [];
+      await fulfillJson(route, operatorV2Envelope({
+        generated_at: generatedAt,
+        authority: {
+          inventory: "nodes",
+          brain_metrics: "node_health_samples",
+          runtime: "node_runtime_metrics",
+          ru_origin: "ru_probe_runs",
+          alerts: "ops_alerts",
+        },
+        items,
+        count: items.length,
+      }, [{ authority: "node_360" }]));
       return;
     }
 
     if (isNodeObservabilityPath(url.pathname)) {
-      const code = decodeURIComponent(url.pathname.split("/").at(-2) || "").toLowerCase();
+      const code = decodeURIComponent(url.pathname.split("/").at(-1) || "").toLowerCase();
       if (options.nodeObservabilityDelayMs) {
         await new Promise((resolve) => setTimeout(resolve, options.nodeObservabilityDelayMs));
       }
@@ -1804,15 +2626,14 @@ export async function installAdminApiMock(
         await fulfillJson(route, { detail: "Node not found" }, 404);
         return;
       }
-      await fulfillJson(route, observabilityPayload(options.ruScenario || "fresh-pass"));
+      await fulfillJson(route, operatorV2Envelope(observabilityPayload(options.ruScenario || "fresh-pass"), [{ authority: "node_360" }]));
       return;
     }
 
-    if (url.pathname === "/api/admin/payments/summary") {
+    if (url.pathname === "/api/admin/v2/money/payments/summary") {
       const period = url.searchParams.get("period") || "7d";
       const multiplier = period === "today" ? 1 : period === "30d" ? 8 : 3;
-      await fulfillJson(route, {
-        ok: true,
+      await fulfillJson(route, operatorV2Envelope({
         period: { key: period, from: generatedAt, to: generatedAt },
         revenue: options.revenueScenario === "populated" ? { currency: "RUB", paid_count: 4 * multiplier, amount: 1295 * multiplier, by_currency: [{ currency: "RUB", paid_count: 4 * multiplier, revenue: 1295 * multiplier }] } : { currency: "RUB", paid_count: 0, amount: 0, by_currency: [] },
         status_counts: options.revenueScenario === "populated" ? { paid: 4 * multiplier, pending: 1, manual_review: 1, failed: 1 } : { paid: 0, pending: 0, manual_review: 0, failed: 0 },
@@ -1824,12 +2645,13 @@ export async function installAdminApiMock(
           buy_click_not_paid: options.revenueScenario === "populated" ? 8 * multiplier : 0,
           checkout_not_paid: options.revenueScenario === "populated" ? 4 * multiplier : 0
         },
+        mismatch_queues: options.revenueScenario === "populated" ? { manual_review: 1, callback_failed: 1 } : {},
         problem_orders: options.revenueScenario === "populated" ? [revenueOrders[0]] : []
-      });
+      }, [{ authority: "external_orders" }, { authority: "signed_payment_callbacks" }]));
       return;
     }
 
-    if (url.pathname === "/api/admin/traffic/summary") {
+    if (url.pathname === "/api/admin/v2/network/traffic") {
       if (options.trafficStatus && options.trafficStatus !== 200) {
         await fulfillJson(
           route,
@@ -1838,36 +2660,49 @@ export async function installAdminApiMock(
         );
         return;
       }
-      await fulfillJson(route, options.networkScenario === "populated" ? { ok: true, from: "2026-07-13", to: "2026-07-15", rows: networkTrafficRows } : { rows: [] });
+      await fulfillJson(route, operatorV2Envelope(options.networkScenario === "populated" ? { ok: true, from: "2026-07-13", to: "2026-07-15", rows: networkTrafficRows } : { rows: [] }, [{ authority: "key_usage_rollups" }]));
       return;
     }
 
-    if (options.networkScenario === "populated" && url.pathname === "/api/admin/alerts") {
+    if (options.networkScenario === "populated" && url.pathname === "/api/admin/v2/network/alerts") {
       const wanted = url.searchParams.get("status") || "active";
       const rows = wanted === "resolved" ? [] : networkAlerts;
-      await fulfillJson(route, { ok: true, generated_at: generatedAt, alerts: rows });
+      await fulfillJson(route, operatorV2Envelope({ generated_at: generatedAt, items: rows, count: rows.length }, [{ authority: "ops_alerts" }]));
       return;
     }
 
-    if (options.networkScenario === "populated" && url.pathname === "/api/admin/provider-quotas") {
-      await fulfillJson(route, { ok: true, quotas: [networkQuotaConfig] });
+    if (options.networkScenario === "populated" && url.pathname === "/api/admin/v2/network/providers") {
+      await fulfillJson(route, operatorV2Envelope({ generated_at: generatedAt, configs: [networkQuotaConfig], statuses: networkQuotaStatuses }, [{ authority: "provider_traffic_quotas" }]));
       return;
     }
 
-    if (options.networkScenario === "populated" && url.pathname === "/api/admin/provider-quotas/status") {
-      await fulfillJson(route, { ok: true, generated_at: generatedAt, nodes: networkQuotaStatuses });
+    if (url.pathname === "/api/admin/v2/network/emergency") {
+      await fulfillJson(route, operatorV2Envelope(emergencyNetworkPayload(), [{ authority: "emergency_catalog_snapshots" }]));
       return;
     }
 
-    if (options.networkScenario === "populated" && url.pathname === "/api/admin/free-tier/summary") {
-      await fulfillJson(route, { ok: true, summary: networkFreeSummary, facts: networkFreeFacts });
-      return;
-    }
-
-    if (options.networkScenario === "populated" && url.pathname === "/api/admin/free-tier/users") {
+    if (options.networkScenario === "populated" && url.pathname === "/api/admin/v2/money/free-archive") {
       const query = (url.searchParams.get("q") || "").toLowerCase();
       const rows = networkFreeUsers.filter((row) => !query || `${row.tg_id} ${row.username} ${row.display_name}`.toLowerCase().includes(query));
-      await fulfillJson(route, { ok: true, generated_at: generatedAt, total: rows.length, facts: networkFreeFacts, users: rows });
+      await fulfillJson(route, operatorV2Envelope({ generated_at: generatedAt, summary: networkFreeSummary, total: rows.length, facts: networkFreeFacts, users: rows }, [{ authority: "shared_access_matrix" }, { authority: "key_usage_rollups" }]));
+      return;
+    }
+
+    if (url.pathname === "/api/admin/v2/money/access") {
+      await fulfillJson(route, operatorV2Envelope(moneyAccess, [{ authority: "account_entitlement_grants" }, { authority: "payment_entitlement_outbox" }]));
+      return;
+    }
+
+    if (url.pathname === "/api/admin/v2/growth/bonuses") {
+      await fulfillJson(route, operatorV2Envelope(growthBonuses, [{ authority: "app_settings" }]));
+      return;
+    }
+
+    if (url.pathname === "/api/admin/v2/growth/programs") {
+      const status = url.searchParams.get("status") || "";
+      const kind = url.searchParams.get("kind") || "";
+      const applications = growthPrograms.filter((row) => (!status || row.status === status) && (!kind || row.kind === kind));
+      await fulfillJson(route, operatorV2Envelope({ applications }, [{ authority: "program_applications" }]));
       return;
     }
 
@@ -1884,7 +2719,7 @@ export async function installAdminApiMock(
       return;
     }
 
-    if (url.pathname === "/api/admin/payments/orders") {
+    if (url.pathname === "/api/admin/v2/money/payments/orders") {
       if (options.paymentOrdersStatus && options.paymentOrdersStatus !== 200) {
         await fulfillJson(route, { detail: "Реестр заказов временно недоступен", code: "payment_orders_unavailable" }, options.paymentOrdersStatus);
         return;
@@ -1892,38 +2727,38 @@ export async function installAdminApiMock(
       const wantedStatus = url.searchParams.get("status") || "";
       const q = (url.searchParams.get("q") || "").toLowerCase();
       const rows = (options.revenueScenario === "populated" ? revenueOrders : []).filter((row) => (!wantedStatus || row.status === wantedStatus) && (!q || `${row.order_id} ${row.tg_id}`.toLowerCase().includes(q)));
-      await fulfillJson(route, { orders: rows, total: rows.length, limit: 80, offset: 0 });
+      await fulfillJson(route, operatorV2Envelope({ orders: rows, total: rows.length, limit: 80, offset: 0 }, [{ authority: "external_orders" }]));
       return;
     }
 
-    if (isPaymentDetailPath(url.pathname)) {
+    if (/^\/api\/admin\/v2\/money\/payments\/orders\/[^/]+\/[^/]+$/.test(url.pathname)) {
       const parts = url.pathname.split("/");
       const orderId = decodeURIComponent(parts.at(-1) || "");
       const provider = decodeURIComponent(parts.at(-2) || "");
       const order = revenueOrders.find((row) => row.order_id === orderId && row.provider === provider);
-      await fulfillJson(route, order ? { order } : { detail: "Order not found" }, order ? 200 : 404);
+      await fulfillJson(route, order ? operatorV2Envelope({ ...order, problem_reasons: order.status === "manual_review" ? ["manual_review", "callback_failed"] : [], lineage: { claim: null, grant: null, outbox: null }, events: order.last_event ? [order.last_event] : [], commands: [] }, [{ authority: "external_orders" }]) : { detail: "Order not found" }, order ? 200 : 404);
       return;
     }
 
-    if (url.pathname === "/api/admin/funnel/summary") {
+    if (url.pathname === "/api/admin/v2/growth/funnel") {
       if (options.funnelStatus && options.funnelStatus !== 200) {
         await fulfillJson(route, { detail: "Воронка временно недоступна", code: "funnel_unavailable" }, options.funnelStatus);
         return;
       }
-      await fulfillJson(route, options.revenueScenario === "populated" ? revenueFunnel : { period: { from: null, to: null }, acquisition: { cohort: "first_touch_in_period", totals: {}, stages: [], drop_reasons: [], by_source: [] }, product: { cohort: "known_user_open_in_period", totals: {}, stages: [], drop_reasons: [], observability: {} }, notes: [] });
+      await fulfillJson(route, operatorV2Envelope(options.revenueScenario === "populated" ? revenueFunnel : { period: { from: null, to: null }, acquisition: { cohort: "first_touch_in_period", totals: {}, stages: [], drop_reasons: [], by_source: [] }, product: { cohort: "known_user_open_in_period", totals: {}, stages: [], drop_reasons: [], observability: {} }, notes: [] }, [{ authority: "acquisition_commerce_and_event_read_models" }]));
       return;
     }
 
-    if (url.pathname === "/api/admin/promos") {
+    if (url.pathname === "/api/admin/v2/money/promos") {
       if (options.promosStatus && options.promosStatus !== 200) {
         await fulfillJson(route, { detail: "Промокоды временно недоступны", code: "promos_unavailable" }, options.promosStatus);
         return;
       }
-      await fulfillJson(route, { promos: options.promoRows ?? (options.revenueScenario === "populated" ? revenuePromos : []) });
+      await fulfillJson(route, operatorV2Envelope({ promos: options.promoRows ?? (options.revenueScenario === "populated" ? revenuePromos : []) }, [{ authority: "promo_codes" }]));
       return;
     }
 
-    if (url.pathname === "/api/admin/referrals/pending" && options.referralsStatus && options.referralsStatus !== 200) {
+    if (url.pathname === "/api/admin/v2/growth/referrals" && options.referralsStatus && options.referralsStatus !== 200) {
       await fulfillJson(
         route,
         { detail: "Источник рефералов временно недоступен", code: "referrals_unavailable" },
@@ -1932,44 +2767,22 @@ export async function installAdminApiMock(
       return;
     }
 
-    if (url.pathname === "/api/admin/referrals/pending") {
+    if (url.pathname === "/api/admin/v2/growth/referrals") {
       const wanted = url.searchParams.get("status") || "";
       const rows = (options.revenueScenario === "populated" ? revenueReferrals : []).filter((row) => !wanted || row.status === wanted);
-      await fulfillJson(route, { rows });
+      await fulfillJson(route, operatorV2Envelope({ rows }, [{ authority: "referral_bonus_queue" }]));
       return;
     }
 
     const minimalPayloads: Record<string, unknown> = {
-      "/api/admin/alerts": { alerts: [] },
+      "/api/admin/v2/network/alerts": operatorV2Envelope({ generated_at: generatedAt, items: [], count: 0 }, [{ authority: "ops_alerts" }]),
+      "/api/admin/v2/network/providers": operatorV2Envelope({ generated_at: generatedAt, configs: [], statuses: [] }, [{ authority: "provider_traffic_quotas" }]),
+      "/api/admin/v2/money/free-archive": operatorV2Envelope({ generated_at: generatedAt, summary: { generated_at: generatedAt, free_users: null, sampled_users: null, limit_gb_per_user: null, cycle_days: null, used_gb: null, limit_gb_total: null, remaining_gb: null, used_pct: null, near_cap_users: null, over_cap_users: null, burn_rate_gb_per_day: null, source: null }, facts: { node_pool: null, traffic_limit_gb: null, cycle_days: null, speed_limit_mbps: null, device_limit: null, monthly_reset: null, source: null }, users: [], total: 0 }, [{ authority: "shared_access_matrix" }]),
       "/api/admin/free-tier/users": { users: [] },
       "/api/admin/free-tier/summary": { summary: { generated_at: generatedAt, free_users: null, sampled_users: null, limit_gb_per_user: null, cycle_days: null, used_gb: null, limit_gb_total: null, remaining_gb: null, used_pct: null, near_cap_users: null, over_cap_users: null, burn_rate_gb_per_day: null, source: null }, facts: { node_pool: null, traffic_limit_gb: null, cycle_days: null, speed_limit_mbps: null, device_limit: null, monthly_reset: null, source: null } },
       "/api/admin/nodes/timeseries": { rows: [] },
-      "/api/admin/provider-quotas": { quotas: [] },
-      "/api/admin/provider-quotas/status": { generated_at: generatedAt, nodes: [] },
-      "/api/admin/emergency-network/status": {
-        generated_at: generatedAt,
-        worker: {
-          enabled: false,
-          configuration_state: "disabled",
-          interval_seconds: null,
-          probe_concurrency: null
-        },
-        snapshot_counts: {},
-        active: null,
-        distribution: null,
-        probe_summary: {
-          snapshot_id: null,
-          pending: 0,
-          healthy: 0,
-          unavailable: 0,
-          total: 0
-        },
-        rollback_candidates: [],
-        snapshots: []
-      },
-      "/api/admin/nodes/health": { nodes: options.ruScenario ? nodeRows : [] },
       "/api/admin/nodes/runtime": { ok: true, nodes: [] },
-      "/api/admin/online/users": { ok: true, generated_at: generatedAt, rows: [] },
+      "/api/admin/v2/support/online": operatorV2Envelope({ ok: true, generated_at: generatedAt, rows: [] }),
       "/api/admin/payments/orders": { orders: [] },
       "/api/admin/keys/pressure": { rows: [] },
       "/api/admin/tickets": { tickets: [] },
@@ -1981,10 +2794,10 @@ export async function installAdminApiMock(
         drafts: [{ id: 501, source_name: "Хабр · сетевые технологии", source_url: "https://habr.com/ru/articles/123456/", source_title: "Тестовый заголовок о работе интернета", source_published_at: "2026-07-15T08:00:00Z", status: "pending", live_update_id: null, discovered_at: "2026-07-15T09:00:01Z", reviewed_at: null }],
         freshness_at: "2026-07-15T09:00:01Z"
       },
-      "/api/admin/funnel/summary": { period: { from: null, to: null }, acquisition: { cohort: "first_touch_in_period", totals: {}, stages: [], drop_reasons: [], by_source: [] }, product: { cohort: "known_user_open_in_period", totals: {}, stages: [], drop_reasons: [], observability: {} }, notes: [] },
+      "/api/admin/v2/growth/funnel": operatorV2Envelope({ period: { from: null, to: null }, acquisition: { cohort: "first_touch_in_period", totals: {}, stages: [], drop_reasons: [], by_source: [] }, product: { cohort: "known_user_open_in_period", totals: {}, stages: [], drop_reasons: [], observability: {} }, notes: [] }),
       "/api/admin/users": { page: 1, page_size: 80, total: 0, sort: "created_desc", users: [] },
       "/api/admin/promos": { promos: options.promoRows ?? [] },
-      "/api/admin/referrals/pending": { rows: [] }
+      "/api/admin/v2/growth/referrals": operatorV2Envelope({ rows: [] })
     };
     const payload = minimalPayloads[url.pathname];
     if (payload !== undefined) {

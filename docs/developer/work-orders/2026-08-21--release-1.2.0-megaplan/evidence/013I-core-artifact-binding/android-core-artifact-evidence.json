@@ -1,0 +1,59 @@
+{
+  "schema": "pokrov.core.pre-candidate-artifact-evidence/v1",
+  "lane": "android",
+  "state": "PRE_CANDIDATE_LOCAL",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "promotion_authorized": false,
+  "provenance_status": "UNSIGNED_CI_BUILD_EVIDENCE",
+  "source": {
+    "commit": "fcb3c8bbc6efdeed284417369aacb522722ebfa2",
+    "clean": true
+  },
+  "toolchain": {
+    "go": "go1.25.13",
+    "runner_os": ""
+  },
+  "workflow": {
+    "run_id": "",
+    "run_attempt": ""
+  },
+  "contracts": {
+    "config/release.json": "ce07769cdaa152f2da55220627b5afdd484d8aa76c34c57d2efa16650acb7639",
+    "config/abi-contract.json": "ea4962507e27dd8e46990b88345fcbe7ad1f154a5abd1ba44cc3af42a53375a1",
+    "config/core-event-abi.json": "013bc449984de234ce7fd57154cd28843eec57afee86d97dd63f886a1b1b6bdf",
+    "config/awg2-capability.json": "3beb57eccd8d5e15ce7466496208fe1945f353b3417be58644911d1ded125a83",
+    "go.sum": "99d33cf92233031becfe2648b2cbeb4664faa24ff9218a91404fffc2f93c1aaf",
+    "engine/sing-box/go.sum": "072fa9633a24455c4439bf00d6154dace67253b72fd9b6f68b79c9ed290c87fc"
+  },
+  "reproducibility": {
+    "result": "PASS_BYTE_IDENTICAL_TWO_BUILDS",
+    "file_count": 2,
+    "tree_sha256": "78cbf8dddd6ce2c3311a2ec2167c803ec122a6973efe50d955f26ec1d07c3b13",
+    "files": [
+      {
+        "path": "pokrov-core-sources.jar",
+        "size": 54925,
+        "sha256": "a5f48dd896b5d52893ddc1c287df80bcd18fa75f0a6897239b16c516571d2d69"
+      },
+      {
+        "path": "pokrov-core.aar",
+        "size": 107317530,
+        "sha256": "26a7b9ebcf05065b33cc40848147a66db5172a9655cb9c77a839fa685145bf93"
+      }
+    ]
+  },
+  "sbom": [
+    {
+      "name": "pokrov-core.cdx.json",
+      "size": 311627,
+      "sha256": "18707e43f557d80aceecb112d4907c1295e8a27583af1bf2243d45cf63ba38a0"
+    },
+    {
+      "name": "sing-box.cdx.json",
+      "size": 267255,
+      "sha256": "28925d34046ac0f0a7edec40a032938fcbc59c18bd47b9d5d69b6688ebf6637d"
+    }
+  ],
+  "evidence_ceiling": "LOCAL_OR_HOSTED_PRE_CANDIDATE_CI"
+}

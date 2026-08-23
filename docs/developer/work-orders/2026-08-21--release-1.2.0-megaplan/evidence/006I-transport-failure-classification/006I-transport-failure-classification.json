@@ -1,0 +1,71 @@
+{
+  "schema": "pokrov.release-1.2.0.transport-failure-classification.v1",
+  "generated_at": "2026-08-22T10:13:40Z",
+  "work_order": "WO-006I",
+  "advanced_rows": [
+    "OBS/OBS-050",
+    "REL_GATE/GATE-B"
+  ],
+  "implementation_index": "I3",
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "sources": {
+    "platform_revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "platform_dirty_entries": 337,
+    "client_revision_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+    "client_dirty_entries": 174,
+    "core_revision_before_uncommitted_changes": "69a74545101708e56183c92e31f2b4c7b2509884",
+    "core_dirty_entries": 51
+  },
+  "contracts": {
+    "event_schema_version": "1.0.0",
+    "event_schema_sha256": "3044d28db7e1e047654427bc0c38e5e33e95f2e48ec2c72cbbdf07e01d42ff13",
+    "error_catalog_version": "1.2.0",
+    "error_catalog_sha256": "7d3bf242777d5bf76bbebcf162e5969d3f83d7f68b2787051e1c4fddeadc3dc7",
+    "error_catalog_entries": 121,
+    "core_event_schema": 1,
+    "core_event_abi": 1,
+    "desktop_abi": 2,
+    "added_error_codes": {
+      "TRANSPORT-001": "timeout",
+      "TRANSPORT-002": "connection_refused",
+      "TRANSPORT-003": "authentication_rejected",
+      "TRANSPORT-004": "protocol_negotiation_failed"
+    }
+  },
+  "local_results": {
+    "platform_catalog_validator": "VALID_121_ENTRIES",
+    "platform_support_reference_check": "PASS",
+    "platform_focused_regression": "PASS_75_OF_75",
+    "core_canonical_release_gate_go_1_25_13": "PASS",
+    "core_classification_tables": "PASS_8_CASES_IN_EACH_OF_2_PATHS",
+    "client_observability_contracts": "PASS_3_OF_3",
+    "client_observability_runtime": "PASS_27_OF_27",
+    "android_direct_store_operational_event_tests": "BUILD_SUCCESSFUL",
+    "windows_service_runtime_serial_native_test": "PASS",
+    "gate_b_state_diagnostics_migration": "PASS_24_OF_24",
+    "runtime_engine": "PASS_59_WITH_1_DECLARED_EXACT_OLD_DLL_SKIP",
+    "full_client_cross_repository_gate": "PASS",
+    "ledger_distribution": "I3_268_I2_35_I1_45_I0_29_TOTAL_377",
+    "ledger_at_least_i1": 348,
+    "ledger_below_i3": 109
+  },
+  "diagnostic_runs_not_credited_as_release_gates": {
+    "root_go_test_all": "NOT_PASS_LEGACY_RAY2SING_CMD_SIGNATURE_AND_LEGACY_TUNNELSERVICE_VET_FAILURES",
+    "engine_go_test_all": "NOT_PASS_UPSTREAM_GEOSITE_HOSTS_FIXTURE_AND_TAILSCALE_BUILD_FAILURES",
+    "canonical_core_gate_after_diagnostics": "PASS"
+  },
+  "test_corrections": {
+    "android_initial_assertion": "TEST_TARGET_CORRECTED_FROM_SEQUENCE_FENCE_TO_REAL_PARSER_BOUNDARY_FINAL_PASS",
+    "windows_initial_parallel_invocation": "INVALID_CONCURRENT_TEMP_ROOT_COLLISION_FINAL_SERIAL_NATIVE_PASS"
+  },
+  "manual_or_external": {
+    "exact_candidate": "NOT_CREATED",
+    "android_physical_device": "NOT_RUN",
+    "windows_clean_host": "NOT_RUN",
+    "provider_runtime_observation": "NOT_RUN",
+    "operator_production_readback": "NOT_RUN",
+    "publication": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

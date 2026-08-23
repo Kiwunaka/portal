@@ -1,7 +1,7 @@
 import type { DashboardSnapshot, UserPayload } from "@/lib/api";
 import { getAccessMatrix, getTariffPlan } from "./portal";
 
-type AccessState =
+export type AccessState =
   | "paid_unlimited"
   | "trial_premium"
   | "bonus_premium"
@@ -9,16 +9,64 @@ type AccessState =
   | "free_soft_mode"
   | "expired_or_blocked";
 
+export type SubscriptionPresentation = Readonly<{
+  title: string;
+  actionLabel: string;
+}>;
+
 type TrafficPolicy = NonNullable<DashboardSnapshot["traffic_policy"]>;
 
 const ACCESS_MATRIX = getAccessMatrix();
 const FREE_TIER = ACCESS_MATRIX.free_tier;
+const ACCESS_STATES = new Set<AccessState>([
+  "paid_unlimited",
+  "trial_premium",
+  "bonus_premium",
+  "free_monthly",
+  "free_soft_mode",
+  "expired_or_blocked",
+]);
+const SUBSCRIPTION_PRESENTATIONS: Record<AccessState, SubscriptionPresentation> = {
+  paid_unlimited: {
+    title: "Продлить полный доступ",
+    actionLabel: "Продлить заранее",
+  },
+  trial_premium: {
+    title: "Продолжить после пробного периода",
+    actionLabel: "Выбрать срок",
+  },
+  bonus_premium: {
+    title: "Продолжить после бонуса",
+    actionLabel: "Выбрать срок",
+  },
+  free_monthly: {
+    title: "Перейти на полный доступ",
+    actionLabel: "Снять лимит",
+  },
+  free_soft_mode: {
+    title: "Вернуть полный доступ",
+    actionLabel: "Снять ограничение",
+  },
+  expired_or_blocked: {
+    title: "Восстановить доступ",
+    actionLabel: "Выбрать срок",
+  },
+};
+const UNKNOWN_SUBSCRIPTION_PRESENTATION: SubscriptionPresentation = {
+  title: "Управление доступом",
+  actionLabel: "Выбрать срок",
+};
 
 export function getAccessState(
   dash?: DashboardSnapshot | null,
   user?: UserPayload | null,
 ): AccessState | "" {
-  return String(dash?.access_state || user?.access_state || "") as AccessState | "";
+  const state = String(dash?.access_state || user?.access_state || "").trim();
+  return ACCESS_STATES.has(state as AccessState) ? (state as AccessState) : "";
+}
+
+export function resolveSubscriptionPresentation(state: string): SubscriptionPresentation {
+  return SUBSCRIPTION_PRESENTATIONS[state as AccessState] || UNKNOWN_SUBSCRIPTION_PRESENTATION;
 }
 
 export function getTrafficPolicy(

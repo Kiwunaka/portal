@@ -1,6 +1,7 @@
 ﻿from __future__ import annotations
 
 from datetime import datetime, timezone
+import uuid
 
 from sqlalchemy import (
     BigInteger,
@@ -31,6 +32,10 @@ _RU_PROBE_SNAPSHOT_JSON = JSON().with_variant(JSONB(), "postgresql")
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def _commercial_public_id(prefix: str) -> str:
+    return f"{prefix}_{uuid.uuid4().hex}"
 
 
 def _default_node_access_role(context) -> str:
@@ -306,8 +311,119 @@ class ServiceIncident(Base):
     compensation_completed_at = Column(DateTime, nullable=True)
     impacted_accounts_count = Column(Integer, default=0, nullable=False)
     granted_accounts_count = Column(Integer, default=0, nullable=False)
+    environment = Column(String(32), default="production", index=True, nullable=False)
+    workflow_status = Column(String(24), default="investigating", index=True, nullable=False)
+    workflow_version = Column(Integer, default=1, nullable=False)
+    owner_operator_id = Column(
+        String(36),
+        ForeignKey("admin_operators.id", name="fk_service_incidents_owner_operator", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
+    owner_team = Column(String(48), index=True, nullable=True)
+    impact = Column(String(1000), nullable=True)
+    next_update_at = Column(DateTime, index=True, nullable=True)
+    runbook_url = Column(String(500), nullable=True)
+    communications_summary = Column(String(2000), nullable=True)
+    postmortem_status = Column(String(24), default="not_required", nullable=False)
+    postmortem_url = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class OperatorTask(Base):
+    """Environment-scoped work item used by the Operator Center shift queues."""
+
+    __tablename__ = "operator_tasks"
+    __table_args__ = (
+        CheckConstraint(
+            "status IN ('open', 'in_progress', 'blocked', 'done', 'cancelled')",
+            name="ck_operator_tasks_status",
+        ),
+        CheckConstraint(
+            "priority IN ('critical', 'high', 'normal', 'low')",
+            name="ck_operator_tasks_priority",
+        ),
+        Index("ix_operator_tasks_environment_status", "environment", "status"),
+        Index("ix_operator_tasks_environment_team", "environment", "owner_team"),
+        Index("ix_operator_tasks_linked_entity", "linked_entity_type", "linked_entity_id"),
+    )
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    environment = Column(String(32), index=True, nullable=False)
+    title = Column(String(180), nullable=False)
+    owner_operator_id = Column(
+        String(36),
+        ForeignKey("admin_operators.id", name="fk_operator_tasks_owner_operator", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
+    owner_team = Column(String(48), index=True, nullable=True)
+    status = Column(String(24), default="open", index=True, nullable=False)
+    priority = Column(String(16), default="normal", index=True, nullable=False)
+    due_at = Column(DateTime, index=True, nullable=True)
+    next_action = Column(String(500), nullable=True)
+    source = Column(String(64), index=True, nullable=False)
+    linked_entity_type = Column(String(64), nullable=True)
+    linked_entity_id = Column(String(128), nullable=True)
+    version = Column(Integer, default=1, nullable=False)
+    created_by = Column(BigInteger, nullable=False)
+    updated_by = Column(BigInteger, nullable=False)
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class OperatorIncidentEvent(Base):
+    """Append-only operator timeline for the existing service-incident authority."""
+
+    __tablename__ = "operator_incident_events"
+    __table_args__ = (
+        UniqueConstraint("incident_id", "incident_version", name="uq_operator_incident_event_version"),
+        Index("ix_operator_incident_events_incident_created", "incident_id", "created_at"),
+    )
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    incident_id = Column(
+        String(36),
+        ForeignKey("service_incidents.id", name="fk_operator_incident_events_incident", ondelete="CASCADE"),
+        nullable=False,
+    )
+    environment = Column(String(32), index=True, nullable=False)
+    incident_version = Column(Integer, nullable=False)
+    event_type = Column(String(32), index=True, nullable=False)
+    from_status = Column(String(24), nullable=True)
+    to_status = Column(String(24), nullable=True)
+    note = Column(String(2000), nullable=True)
+    actor_operator_id = Column(String(36), index=True, nullable=True)
+    actor_tg_id = Column(BigInteger, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class OperatorIncidentLink(Base):
+    __tablename__ = "operator_incident_links"
+    __table_args__ = (
+        UniqueConstraint(
+            "incident_id",
+            "entity_type",
+            "entity_id",
+            name="uq_operator_incident_link_entity",
+        ),
+        Index("ix_operator_incident_links_entity", "entity_type", "entity_id"),
+    )
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    incident_id = Column(
+        String(36),
+        ForeignKey("service_incidents.id", name="fk_operator_incident_links_incident", ondelete="CASCADE"),
+        nullable=False,
+    )
+    environment = Column(String(32), index=True, nullable=False)
+    entity_type = Column(String(64), nullable=False)
+    entity_id = Column(String(128), nullable=False)
+    label = Column(String(180), nullable=True)
+    created_by = Column(BigInteger, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
 class DevicePairingCode(Base):
@@ -1019,6 +1135,14 @@ class OpsAlert(Base):
     last_delivery_at = Column(DateTime, nullable=True)
     last_delivery_status = Column(String(64), nullable=True)
     metadata_json = Column(Text, nullable=True)
+    environment = Column(String(32), default="production", index=True, nullable=False)
+    incident_id = Column(
+        String(36),
+        ForeignKey("service_incidents.id", name="fk_ops_alerts_incident", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
+    version = Column(Integer, default=1, nullable=False)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
@@ -1325,6 +1449,103 @@ class AdminAudit(Base):
     created_at = Column(DateTime, default=_utcnow)
 
 
+class AdminOperator(Base):
+    __tablename__ = "admin_operators"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    legacy_actor_tg_id = Column(BigInteger, unique=True, index=True, nullable=True)
+    display_name = Column(String(120), nullable=True)
+    identity_source = Column(String(32), nullable=False, default="legacy_bootstrap")
+    status = Column(String(24), nullable=False, default="active", index=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+    suspended_at = Column(DateTime, nullable=True)
+
+
+class AdminOperatorRole(Base):
+    __tablename__ = "admin_operator_roles"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    operator_id = Column(
+        String(36),
+        ForeignKey("admin_operators.id", name="fk_admin_operator_roles_operator", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    role_code = Column(String(48), nullable=False)
+    environment_scope = Column(String(32), nullable=False)
+    granted_by_operator_id = Column(String(36), nullable=True)
+    granted_at = Column(DateTime, default=_utcnow, nullable=False)
+    grant_kind = Column(String(24), nullable=False, default="standing")
+    grant_reason = Column(String(240), nullable=True)
+    expires_at = Column(DateTime, nullable=True, index=True)
+    review_status = Column(String(24), nullable=False, default="not_required", index=True)
+    reviewed_by_operator_id = Column(String(36), nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    review_note = Column(String(240), nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    revoke_reason = Column(String(96), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "operator_id",
+            "role_code",
+            "environment_scope",
+            name="uq_admin_operator_roles_assignment",
+        ),
+        Index("ix_admin_operator_roles_operator_active", "operator_id", "environment_scope", "revoked_at"),
+    )
+
+
+class AdminOperatorSession(Base):
+    __tablename__ = "admin_operator_sessions"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    operator_id = Column(
+        String(36),
+        ForeignKey("admin_operators.id", name="fk_admin_operator_sessions_operator", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    token_hash = Column(String(64), unique=True, index=True, nullable=False)
+    environment_scope = Column(String(32), nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    last_seen_at = Column(DateTime, default=_utcnow, nullable=False)
+    idle_expires_at = Column(DateTime, nullable=False)
+    absolute_expires_at = Column(DateTime, nullable=False)
+    step_up_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    revoke_reason = Column(String(96), nullable=True)
+
+    __table_args__ = (
+        Index("ix_admin_operator_sessions_operator_created", "operator_id", "created_at"),
+        Index("ix_admin_operator_sessions_expiry", "idle_expires_at", "absolute_expires_at"),
+    )
+
+
+class AdminOperatorAudit(Base):
+    __tablename__ = "admin_operator_audit"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    operator_id = Column(
+        String(36),
+        ForeignKey("admin_operators.id", name="fk_admin_operator_audit_operator", ondelete="RESTRICT"),
+        nullable=False,
+    )
+    session_id = Column(String(36), nullable=True)
+    action = Column(String(96), nullable=False, index=True)
+    result = Column(String(24), nullable=False)
+    reason_code = Column(String(96), nullable=True)
+    environment_scope = Column(String(32), nullable=False)
+    roles_json = Column(Text, nullable=False)
+    permissions_json = Column(Text, nullable=False)
+    trace_id = Column(String(128), nullable=True)
+    resource_type = Column(String(32), nullable=True, index=True)
+    resource_id = Column(String(128), nullable=True, index=True)
+    command_intent_id = Column(String(36), nullable=True, index=True)
+    legacy_audit_id = Column(Integer, nullable=True, index=True)
+    details_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False, index=True)
+
+
 class AdminActionIntent(Base):
     __tablename__ = "admin_action_intents"
 
@@ -1572,18 +1793,321 @@ class IncentiveCampaign(Base):
     __tablename__ = "incentive_campaigns"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
+    public_id = Column(String(36), unique=True, index=True, nullable=True)
     name = Column(String(120), nullable=False)
     campaign_type = Column(String(16), nullable=False)  # promo | gift
     target_value = Column(String(64), nullable=False)   # promo code or gift card type
+    objective = Column(String(32), default="retention", nullable=False)
+    lifecycle_status = Column(String(24), default="draft", nullable=False)
+    revision = Column(Integer, default=1, nullable=False)
+    commercial_revision = Column(String(32), nullable=True)
+    legal_profile_status = Column(String(24), default="missing", nullable=False)
+    channels_json = Column(Text, nullable=True)
+    seller_profile_id = Column(String(64), nullable=True)
+    terms_revision = Column(String(64), nullable=True)
+    paid_cap = Column(Integer, default=0, nullable=False)
+    paid_conversions_count = Column(Integer, default=0, nullable=False)
+    capacity_guard_enabled = Column(Boolean, default=True, nullable=False)
+    capacity_band = Column(String(16), default="unknown", nullable=False)
+    state_reason = Column(String(64), default="draft", nullable=False)
+    last_policy_evaluated_at = Column(DateTime, nullable=True)
+    killed_at = Column(DateTime, nullable=True)
     segment = Column(String(32), default="all_active", nullable=False)
     starts_at = Column(DateTime, nullable=True)
     ends_at = Column(DateTime, nullable=True)
     max_activations = Column(Integer, default=-1, nullable=False)
     activations_count = Column(Integer, default=0, nullable=False)
     auto_disable = Column(Boolean, default=True, nullable=False)
-    is_active = Column(Boolean, default=True, nullable=False)
+    is_active = Column(Boolean, default=False, nullable=False)
     created_by = Column(BigInteger, nullable=True)
     metadata_json = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class CommercialOffer(Base):
+    __tablename__ = "commercial_offers"
+    __table_args__ = (
+        CheckConstraint("base_amount_rub >= 0", name="ck_commercial_offer_base_nonnegative"),
+        CheckConstraint("final_amount_rub >= 0", name="ck_commercial_offer_final_nonnegative"),
+        CheckConstraint("paid_cap >= 0", name="ck_commercial_offer_paid_cap_nonnegative"),
+        CheckConstraint("paid_count >= 0", name="ck_commercial_offer_paid_count_nonnegative"),
+        CheckConstraint("per_subject_paid_cap > 0", name="ck_commercial_offer_subject_cap_positive"),
+        Index("ix_commercial_offers_campaign_plan", "campaign_id", "plan_code"),
+        Index("ix_commercial_offers_status_ends", "status", "ends_at"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    public_id = Column(
+        String(36),
+        unique=True,
+        index=True,
+        default=lambda: _commercial_public_id("off"),
+        nullable=False,
+    )
+    campaign_id = Column(
+        Integer,
+        ForeignKey("incentive_campaigns.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    plan_code = Column(String(32), index=True, nullable=False)
+    status = Column(String(24), default="draft", index=True, nullable=False)
+    commercial_revision = Column(String(32), nullable=False)
+    terms_revision = Column(String(64), nullable=False)
+    currency = Column(String(16), default="RUB", nullable=False)
+    base_amount_rub = Column(Integer, nullable=False)
+    final_amount_rub = Column(Integer, nullable=False)
+    stackable_with_base_savings = Column(Boolean, default=False, nullable=False)
+    paid_cap = Column(Integer, default=0, nullable=False)
+    paid_count = Column(Integer, default=0, nullable=False)
+    per_subject_paid_cap = Column(Integer, default=1, nullable=False)
+    starts_at = Column(DateTime, nullable=False)
+    ends_at = Column(DateTime, index=True, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class CommercialCreative(Base):
+    __tablename__ = "commercial_creatives"
+    __table_args__ = (
+        UniqueConstraint("offer_id", "variant_code", name="uq_commercial_creative_offer_variant"),
+        Index("ix_commercial_creatives_campaign_status", "campaign_id", "status"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    public_id = Column(
+        String(36),
+        unique=True,
+        index=True,
+        default=lambda: _commercial_public_id("crv"),
+        nullable=False,
+    )
+    campaign_id = Column(
+        Integer,
+        ForeignKey("incentive_campaigns.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    offer_id = Column(
+        Integer,
+        ForeignKey("commercial_offers.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    variant_code = Column(String(32), nullable=False)
+    status = Column(String(24), default="draft", nullable=False)
+    channel = Column(String(32), nullable=False)
+    content_revision = Column(String(64), nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class CommercialAssignment(Base):
+    __tablename__ = "commercial_assignments"
+    __table_args__ = (
+        UniqueConstraint(
+            "campaign_id",
+            "offer_id",
+            "subject_hmac",
+            name="uq_commercial_assignment_campaign_offer_subject",
+        ),
+        CheckConstraint("paid_count >= 0", name="ck_commercial_assignment_paid_count_nonnegative"),
+        Index("ix_commercial_assignments_subject_status", "subject_hmac", "status"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    public_id = Column(
+        String(36),
+        unique=True,
+        index=True,
+        default=lambda: _commercial_public_id("asg"),
+        nullable=False,
+    )
+    campaign_id = Column(
+        Integer,
+        ForeignKey("incentive_campaigns.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    offer_id = Column(
+        Integer,
+        ForeignKey("commercial_offers.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    creative_id = Column(
+        Integer,
+        ForeignKey("commercial_creatives.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    subject_hmac = Column(String(64), index=True, nullable=False)
+    status = Column(String(24), default="active", nullable=False)
+    audience_status = Column(String(24), default="blocked", nullable=False)
+    audience_reason = Column(String(64), default="not_evaluated", nullable=False)
+    paid_count = Column(Integer, default=0, nullable=False)
+    assigned_at = Column(DateTime, default=_utcnow, nullable=False)
+    expires_at = Column(DateTime, index=True, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class CommercialReservation(Base):
+    __tablename__ = "commercial_reservations"
+    __table_args__ = (
+        UniqueConstraint("assignment_id", name="uq_commercial_reservation_assignment"),
+        CheckConstraint("base_amount_rub >= 0", name="ck_commercial_reservation_base_nonnegative"),
+        CheckConstraint("final_amount_rub >= 0", name="ck_commercial_reservation_final_nonnegative"),
+        Index("ix_commercial_reservations_campaign_status", "campaign_id", "status"),
+        Index("ix_commercial_reservations_offer_status", "offer_id", "status"),
+        Index("ix_commercial_reservations_status_hold", "status", "hold_expires_at"),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    public_id = Column(
+        String(36),
+        unique=True,
+        index=True,
+        default=lambda: _commercial_public_id("rsv"),
+        nullable=False,
+    )
+    campaign_id = Column(
+        Integer,
+        ForeignKey("incentive_campaigns.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    offer_id = Column(
+        Integer,
+        ForeignKey("commercial_offers.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    creative_id = Column(
+        Integer,
+        ForeignKey("commercial_creatives.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    assignment_id = Column(
+        Integer,
+        ForeignKey("commercial_assignments.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    subject_hmac = Column(String(64), index=True, nullable=False)
+    commercial_revision = Column(String(32), nullable=False)
+    campaign_revision = Column(Integer, nullable=False)
+    status = Column(String(24), default="held", nullable=False)
+    token_version = Column(Integer, default=2, nullable=False)
+    token_sha256 = Column(String(64), nullable=True)
+    impression_public_id = Column(
+        String(36),
+        unique=True,
+        index=True,
+        default=lambda: _commercial_public_id("imp"),
+        nullable=False,
+    )
+    click_public_id = Column(
+        String(36),
+        unique=True,
+        index=True,
+        default=lambda: _commercial_public_id("clk"),
+        nullable=False,
+    )
+    base_amount_rub = Column(Integer, nullable=False)
+    final_amount_rub = Column(Integer, nullable=False)
+    currency = Column(String(16), nullable=False)
+    issued_at = Column(DateTime, nullable=False)
+    hold_expires_at = Column(DateTime, index=True, nullable=False)
+    offer_ends_at = Column(DateTime, nullable=False)
+    bound_order_id = Column(String(128), unique=True, index=True, nullable=True)
+    consumed_at = Column(DateTime, nullable=True)
+    released_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class CommercialConversion(Base):
+    """Identity-free commercial projection; payment/observer owners write it."""
+
+    __tablename__ = "commercial_conversions"
+    __table_args__ = (
+        UniqueConstraint(
+            "provider",
+            "order_id",
+            "stage",
+            name="uq_commercial_conversion_order_stage",
+        ),
+        CheckConstraint(
+            "stage IN ('paid', 'first_verified_connect', 'retained_d7', "
+            "'retained_d30', 'renewal', 'reversed')",
+            name="ck_commercial_conversion_stage",
+        ),
+        CheckConstraint("gross_amount_rub >= 0", name="ck_commercial_conversion_gross_nonnegative"),
+        CheckConstraint("refund_amount_rub >= 0", name="ck_commercial_conversion_refund_nonnegative"),
+        CheckConstraint("capacity_cost_units >= 0", name="ck_commercial_conversion_capacity_nonnegative"),
+        Index("ix_commercial_conversions_campaign_stage_time", "campaign_id", "stage", "occurred_at"),
+        Index("ix_commercial_conversions_order", "provider", "order_id"),
+    )
+
+    id = Column(
+        String(36),
+        primary_key=True,
+        default=lambda: _commercial_public_id("cnv"),
+    )
+    provider = Column(String(32), nullable=False)
+    order_id = Column(String(128), nullable=False)
+    stage = Column(String(32), nullable=False)
+    campaign_id = Column(
+        Integer,
+        ForeignKey("incentive_campaigns.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    offer_id = Column(
+        Integer,
+        ForeignKey("commercial_offers.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    creative_id = Column(
+        Integer,
+        ForeignKey("commercial_creatives.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    assignment_id = Column(
+        Integer,
+        ForeignKey("commercial_assignments.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    reservation_id = Column(
+        Integer,
+        ForeignKey("commercial_reservations.id", ondelete="CASCADE"),
+        index=True,
+        nullable=False,
+    )
+    campaign_public_id = Column(String(36), nullable=False)
+    offer_public_id = Column(String(36), nullable=False)
+    creative_public_id = Column(String(36), nullable=False)
+    variant_code = Column(String(32), nullable=False)
+    assignment_public_id = Column(String(36), nullable=False)
+    reservation_public_id = Column(String(36), nullable=False)
+    impression_public_id = Column(String(36), nullable=False)
+    click_public_id = Column(String(36), nullable=False)
+    commercial_revision = Column(String(32), nullable=False)
+    campaign_revision = Column(Integer, nullable=False)
+    capacity_cost_units = Column(Integer, default=0, nullable=False)
+    currency = Column(String(16), default="RUB", nullable=False)
+    gross_amount_rub = Column(Integer, default=0, nullable=False)
+    refund_amount_rub = Column(Integer, default=0, nullable=False)
+    reversal_kind = Column(String(24), nullable=True)
+    evidence_kind = Column(String(40), nullable=False)
+    evidence_ref = Column(String(64), nullable=False)
+    occurred_at = Column(DateTime, index=True, nullable=False)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
@@ -1605,9 +2129,19 @@ class SupportTicket(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_tg_id = Column(BigInteger, index=True, nullable=False)
     account_id = Column(String(36), index=True, nullable=True)
+    environment = Column(String(32), default="production", index=True, nullable=False)
     status = Column(String(20), default="open", nullable=False)  # open / in_progress / closed
     subject = Column(String(200), nullable=True)
+    priority = Column(String(16), default="normal", index=True, nullable=False)
+    queue = Column(String(48), default="general", index=True, nullable=False)
     assigned_admin_tg_id = Column(BigInteger, nullable=True)
+    assigned_team = Column(String(48), nullable=True)
+    waiting_on = Column(String(24), nullable=True)
+    sla_due_at = Column(DateTime, index=True, nullable=True)
+    escalated_at = Column(DateTime, index=True, nullable=True)
+    incident_id = Column(String(36), index=True, nullable=True)
+    attempt_ref = Column(String(64), index=True, nullable=True)
+    version = Column(Integer, default=1, nullable=False)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
     closed_at = Column(DateTime, nullable=True)
@@ -1631,6 +2165,193 @@ class SupportAttachment(Base):
     created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
+class SupportModePolicy(Base):
+    __tablename__ = "support_mode_policies"
+    __table_args__ = (
+        UniqueConstraint("policy_id", name="uq_support_mode_policy_id"),
+        UniqueConstraint("activation_code_hash", name="uq_support_mode_activation_code_hash"),
+        CheckConstraint(
+            "maximum_bundle_bytes >= 65536 AND maximum_bundle_bytes <= 2097152",
+            name="ck_support_mode_bundle_bytes",
+        ),
+        CheckConstraint(
+            "maximum_total_bytes >= maximum_bundle_bytes AND maximum_total_bytes <= 4194304",
+            name="ck_support_mode_total_bytes",
+        ),
+        CheckConstraint(
+            "maximum_bundles >= 1 AND maximum_bundles <= 2",
+            name="ck_support_mode_bundle_count",
+        ),
+    )
+
+    id = Column(String(36), primary_key=True, nullable=False)
+    policy_id = Column(String(64), nullable=False, index=True)
+    ticket_id = Column(
+        Integer,
+        ForeignKey("support_tickets.id", ondelete="RESTRICT"),
+        nullable=False,
+        index=True,
+    )
+    owner_tg_id = Column(BigInteger, nullable=False, index=True)
+    owner_account_id = Column(String(36), nullable=True, index=True)
+    environment = Column(String(32), nullable=False, index=True)
+    platform = Column(String(16), nullable=False)
+    app_version = Column(String(32), nullable=False)
+    build_number = Column(String(80), nullable=False)
+    allowed_categories_json = Column(Text, nullable=False)
+    allowed_collectors_json = Column(Text, nullable=False)
+    maximum_bundle_bytes = Column(Integer, nullable=False)
+    maximum_total_bytes = Column(Integer, nullable=False)
+    maximum_bundles = Column(Integer, nullable=False)
+    nonce = Column(String(32), nullable=False)
+    activation_code_hash = Column(String(64), nullable=False)
+    status = Column(String(16), default="issued", nullable=False, index=True)
+    created_by_tg_id = Column(BigInteger, nullable=False)
+    issued_at = Column(DateTime, nullable=False)
+    expires_at = Column(DateTime, nullable=False, index=True)
+    redeemed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class SupportBundleUpload(Base):
+    __tablename__ = "support_bundle_uploads"
+    __table_args__ = (
+        UniqueConstraint(
+            "owner_binding_hash",
+            "idempotency_key",
+            name="uq_support_bundle_owner_idempotency",
+        ),
+        UniqueConstraint(
+            "ticket_id",
+            "bundle_id",
+            name="uq_support_bundle_ticket_bundle",
+        ),
+        CheckConstraint(
+            "expected_size_bytes > 0 AND expected_size_bytes <= 2621440",
+            name="ck_support_bundle_expected_size",
+        ),
+        CheckConstraint(
+            "received_size_bytes >= 0 AND received_size_bytes <= expected_size_bytes",
+            name="ck_support_bundle_received_size",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    upload_id = Column(String(36), unique=True, index=True, nullable=False)
+    ticket_id = Column(Integer, ForeignKey("support_tickets.id"), index=True, nullable=False)
+    owner_tg_id = Column(BigInteger, index=True, nullable=False)
+    owner_account_id = Column(String(36), index=True, nullable=True)
+    owner_binding_hash = Column(String(64), index=True, nullable=False)
+    idempotency_key = Column(String(64), nullable=False)
+    bundle_id = Column(String(64), nullable=False)
+    expected_size_bytes = Column(Integer, nullable=False)
+    expected_sha256 = Column(String(64), nullable=False)
+    content_type = Column(String(80), nullable=False)
+    received_size_bytes = Column(Integer, default=0, nullable=False)
+    status = Column(String(24), default="issued", index=True, nullable=False)
+    object_name = Column(String(96), nullable=True)
+    failure_code = Column(String(64), nullable=True)
+    diagnostic_profile = Column(String(16), nullable=True)
+    app_version = Column(String(64), nullable=True)
+    build_number = Column(String(80), nullable=True)
+    platform = Column(String(16), nullable=True)
+    architecture = Column(String(16), nullable=True)
+    last_phase = Column(String(32), nullable=True)
+    last_error_code = Column(String(32), nullable=True)
+    proof_outcome = Column(String(24), nullable=True)
+    observed_attempts = Column(Integer, nullable=True)
+    retention_hold = Column(Boolean, default=False, nullable=False, index=True)
+    retention_hold_reason = Column(String(64), nullable=True)
+    retention_held_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, index=True, nullable=False)
+    completed_at = Column(DateTime, nullable=True)
+    validated_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class SupportBundleChunk(Base):
+    __tablename__ = "support_bundle_chunks"
+    __table_args__ = (
+        UniqueConstraint(
+            "upload_id",
+            "offset_bytes",
+            name="uq_support_bundle_chunk_offset",
+        ),
+        CheckConstraint(
+            "offset_bytes >= 0",
+            name="ck_support_bundle_chunk_offset",
+        ),
+        CheckConstraint(
+            "size_bytes > 0 AND size_bytes <= 262144",
+            name="ck_support_bundle_chunk_size",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    upload_id = Column(Integer, ForeignKey("support_bundle_uploads.id"), index=True, nullable=False)
+    offset_bytes = Column(Integer, nullable=False)
+    size_bytes = Column(Integer, nullable=False)
+    sha256 = Column(String(64), nullable=False)
+    stored_name = Column(String(128), unique=True, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class SupportBundleAccessAudit(Base):
+    __tablename__ = "support_bundle_access_audits"
+    __table_args__ = (
+        UniqueConstraint("grant_id", name="uq_support_bundle_access_grant_id"),
+        UniqueConstraint(
+            "access_token_hash",
+            name="uq_support_bundle_access_token_hash",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    grant_id = Column(String(36), nullable=False)
+    upload_id = Column(String(36), index=True, nullable=False)
+    ticket_id = Column(Integer, index=True, nullable=False)
+    actor_tg_id = Column(BigInteger, index=True, nullable=False)
+    actor_role = Column(String(16), nullable=False)
+    action = Column(String(24), index=True, nullable=False)
+    reason_code = Column(String(32), nullable=False)
+    access_token_hash = Column(String(64), nullable=True)
+    expires_at = Column(DateTime, index=True, nullable=False)
+    used_at = Column(DateTime, nullable=True)
+    retention_hold = Column(Boolean, default=False, nullable=False, index=True)
+    created_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
+
+
+class ReleaseKnownIssue(Base):
+    __tablename__ = "release_known_issues"
+    __table_args__ = (
+        UniqueConstraint(
+            "candidate_label",
+            "issue_code",
+            name="uq_release_known_issue_candidate_code",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    candidate_label = Column(String(64), index=True, nullable=False)
+    issue_code = Column(String(32), nullable=False)
+    app_version = Column(String(64), index=True, nullable=False)
+    build_number = Column(String(32), nullable=True)
+    platform = Column(String(16), index=True, nullable=False)
+    severity = Column(String(16), nullable=False)
+    status = Column(String(16), index=True, nullable=False)
+    title = Column(String(120), nullable=False)
+    safe_summary = Column(String(500), nullable=False)
+    error_code = Column(String(32), nullable=True)
+    incident_ref = Column(String(64), nullable=True)
+    release_ref = Column(String(64), nullable=True)
+    created_by_tg_id = Column(BigInteger, nullable=False)
+    updated_by_tg_id = Column(BigInteger, nullable=False)
+    created_at = Column(DateTime, default=_utcnow, nullable=False)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
 class SupportTicketMessage(Base):
     __tablename__ = "support_ticket_messages"
 
@@ -1638,6 +2359,8 @@ class SupportTicketMessage(Base):
     ticket_id = Column(Integer, index=True, nullable=False)
     sender_tg_id = Column(BigInteger, index=True, nullable=False)
     sender_role = Column(String(20), nullable=False)  # user / admin / assistant
+    visibility = Column(String(16), default="public", index=True, nullable=False)
+    macro_code = Column(String(48), nullable=True)
     body = Column(String(2000), nullable=False)
     media_type = Column(String(32), nullable=True)
     media_file_id = Column(String(256), nullable=True)
@@ -1715,6 +2438,68 @@ class Event(Base):
     created_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
+class ReleaseHealthEvent(Base):
+    """Identity-free aggregate projection of Operational Event Envelope V1."""
+
+    __tablename__ = "release_health_events"
+
+    id = Column(Integer, Identity(), primary_key=True)
+    schema_version = Column(Integer, nullable=False, default=1)
+    event_id = Column(String(36), nullable=False)
+    occurred_at = Column(DateTime(timezone=True), nullable=False)
+    received_at = Column(
+        DateTime(timezone=True),
+        server_default=sql_text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+    component = Column(String(32), nullable=False)
+    subsystem = Column(String(32), nullable=False)
+    stage = Column(String(32), nullable=False)
+    event_name = Column(String(96), nullable=False)
+    severity = Column(String(16), nullable=False)
+    outcome = Column(String(24), nullable=False)
+    app_version = Column(String(64), nullable=False)
+    build_number = Column(String(32), nullable=False)
+    channel = Column(String(16), nullable=False)
+    candidate_label = Column(String(64), nullable=False)
+    git_revision = Column(String(40), nullable=False)
+    core_version = Column(String(64), nullable=True)
+    core_abi = Column(Integer, nullable=True)
+    platform = Column(String(16), nullable=False)
+    architecture = Column(String(32), nullable=False)
+    error_code = Column(String(32), nullable=True)
+    error_origin = Column(String(16), nullable=True)
+    selected_app_count = Column(Integer, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("event_id", name="uq_release_health_events_event_id"),
+        Index("ix_release_health_events_received_at", received_at),
+        Index(
+            "ix_release_health_events_build_platform",
+            app_version,
+            build_number,
+            platform,
+        ),
+        Index("ix_release_health_events_name_outcome", event_name, outcome),
+        Index("ix_release_health_events_error_code", error_code),
+        {"sqlite_autoincrement": True},
+    )
+
+
+class ReleaseHealthIngestCounter(Base):
+    """Payload-free health and quarantine counters for the ingest boundary."""
+
+    __tablename__ = "release_health_ingest_counters"
+
+    reason = Column(String(64), primary_key=True)
+    count = Column(BigInteger, nullable=False, default=0)
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=sql_text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+
+
 class WarpEvent(Base):
     __tablename__ = "warp_events"
 
@@ -1745,6 +2530,29 @@ class WarpMaterial(Base):
     is_active = Column(Boolean, default=True, index=True, nullable=False)
     provisioned_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
     rotation_requested_at = Column(DateTime, nullable=True)
+    revoked_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class Awg2LabMaterial(Base):
+    """Encrypted, device-bound AWG2 endpoint material for the owner lab."""
+
+    __tablename__ = "awg2_lab_materials"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    install_id = Column(String(128), index=True, nullable=False)
+    contract_id = Column(String(64), nullable=False)
+    contract_sha256 = Column(String(64), nullable=False)
+    generation = Column(String(64), index=True, nullable=False)
+    endpoint_revision = Column(String(64), nullable=False)
+    server_record_id = Column(String(64), index=True, nullable=False)
+    node_code = Column(String(64), index=True, nullable=False)
+    endpoint_ciphertext = Column(Text, nullable=False)
+    material_hash = Column(String(64), index=True, nullable=False)
+    state = Column(String(32), default="ready", index=True, nullable=False)
+    is_active = Column(Boolean, default=True, index=True, nullable=False)
+    provisioned_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
     revoked_at = Column(DateTime, nullable=True)
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
@@ -1897,6 +2705,8 @@ class AcquisitionHandoff(Base):
     bound_tg_id = Column(BigInteger, index=True, nullable=True)
     bound_account_id = Column(String(36), index=True, nullable=True)
     bound_order_id = Column(String(128), index=True, nullable=True)
+    impression_public_id = Column(String(36), unique=True, index=True, nullable=True)
+    click_public_id = Column(String(36), unique=True, index=True, nullable=True)
     created_at = Column(DateTime, default=_utcnow, nullable=False)
     expires_at = Column(DateTime, index=True, nullable=False)
     consumed_at = Column(DateTime, nullable=True)
@@ -2063,6 +2873,38 @@ class ExternalPaymentEvent(Base):
             "event_type",
             "external_id",
             name="uq_external_payment_events_provider_type_extid",
+        ),
+    )
+
+
+class PaymentEntitlementOutbox(Base):
+    __tablename__ = "payment_entitlement_outbox"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    idempotency_key = Column(String(220), nullable=False, unique=True, index=True)
+    aggregate_type = Column(String(32), nullable=False, default="payment_entitlement")
+    aggregate_id = Column(String(36), nullable=False, index=True)
+    event_type = Column(String(64), nullable=False, default="payment_entitlement.applied")
+    schema_version = Column(Integer, nullable=False, default=1)
+    payload_json = Column(Text, nullable=False)
+    status = Column(String(24), nullable=False, default="pending", index=True)
+    attempts = Column(Integer, nullable=False, default=0)
+    next_run_at = Column(DateTime, nullable=False, default=_utcnow, index=True)
+    claimed_at = Column(DateTime, nullable=True)
+    claim_token = Column(String(64), nullable=True, index=True)
+    last_error_code = Column(String(64), nullable=True)
+    terminal_reason = Column(String(64), nullable=True)
+    delivered_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=_utcnow)
+    updated_at = Column(DateTime, nullable=False, default=_utcnow)
+
+    __table_args__ = (
+        CheckConstraint("attempts >= 0", name="ck_payment_entitlement_outbox_attempts"),
+        Index(
+            "ix_payment_entitlement_outbox_status_next_id",
+            "status",
+            "next_run_at",
+            "id",
         ),
     )
 

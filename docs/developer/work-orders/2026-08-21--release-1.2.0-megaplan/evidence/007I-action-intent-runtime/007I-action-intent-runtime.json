@@ -1,0 +1,89 @@
+{
+  "candidate_created": false,
+  "date": "2026-08-22",
+  "evidence_ceiling": "I3_VERIFIED_LOCAL",
+  "ledger_advancement": [
+    "REL/ARCH-002 I2 -> I3"
+  ],
+  "ledger_distribution": {
+    "I0": 20,
+    "I1": 45,
+    "I2": 32,
+    "I3": 280,
+    "at_least_i1": 357,
+    "below_i3": 97,
+    "total": 377
+  },
+  "platform_branch": "codex/1.2.0-phase00",
+  "platform_head": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+  "platform_source_dirty": true,
+  "preflight": {
+    "blockers": 7,
+    "candidate_created": false,
+    "ledger_below_i3": 97,
+    "status": "BLOCKED"
+  },
+  "production_evidence": "NOT_RUN_NOT_AUTHORIZED",
+  "promotion_authorized": false,
+  "route_table": {
+    "duplicate_method_path_pairs": 0,
+    "slices": 12,
+    "unique_method_path_pairs": 300
+  },
+  "runtime_boundary": {
+    "domain_owner": "admin_action_intent_service.py",
+    "domain_owner_lines": 6488,
+    "policy_injection_points": 4,
+    "policy_registries_in_runtime": 0,
+    "runtime_imports_domain_owner": false,
+    "runtime_lines": 2034,
+    "runtime_owner": "admin_action_intent_runtime.py"
+  },
+  "source_hashes": {
+    "docs/architecture/system-overview.md": "cc8a3d083ebc5116dfd51d3034e721c586a00145642c838fa1dbda66e3874262",
+    "docs/developer/backend-module-map.md": "0af25ab0def0f271be19eacf36a475d7ef42d44e525a2a19a18bd4027875d385",
+    "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/EXECUTION-INDEX.md": "6e9316643fb5c4386095b7dc8964d34007d9cb01bf692a9a7187d8bf508e58d4",
+    "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/EXECUTION-LEDGER.csv": "03e216130fab13749133ad3958638fed07bf2954b3d8022ab8121a8c5b668a43",
+    "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/INDEX.md": "c86e4abbfb5f5ff8e5578a813047684756df815a0c370eb8d2dd26a48186d63a",
+    "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-007-portal-payment-reliability.md": "477e86b2c61ccd2b116e619c008f5b39227777c118c198daa2b9dbbcf6ce440f",
+    "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-007I-action-intent-runtime.md": "85d5d76a320fbde46e8f387b7c6c85add73de5266ff4d8fec55940a42a2f1dfe",
+    "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013A-local-preflight/013A-candidate-preflight.json": "1db124d891d75144f8048e28f4c2f9beb96c07ed85ffb2cc48961b705034a474",
+    "portal_bot/admin_action_intent_runtime.py": "e6fef333feb087b55ab9688ce79712b36db641d4afa7e257b29839886ada8b95",
+    "portal_bot/admin_action_intent_service.py": "5e87559b5281d44c7a2fd3fe705765597e6c6bc16ba1e4dd3c302cec914eebb8",
+    "tests/test_module_slices.py": "e5bae02e09b90d32b086523eeb42e3480a82b0077064d02d5a13bb767316044d"
+  },
+  "stage_distribution_below_i3": {
+    "candidate": 32,
+    "deferred": 21,
+    "external": 17,
+    "external_pre_candidate": 3,
+    "pre_freeze": 27
+  },
+  "status": "PASS_LOCAL_ARCHITECTURE_WITH_EXTERNAL_GATES_OPEN",
+  "verification": [
+    {
+      "command": "pytest tests/test_module_slices.py tests/test_admin_action_intents.py tests/test_admin_action_policy_coverage.py",
+      "result": "PASS; 33/33; 83.41 seconds"
+    },
+    {
+      "command": "pytest emergency catalog, operator network, backend route gap, operator release, support work and admin ops matrix",
+      "result": "PASS; 68/68; 255.58 seconds"
+    },
+    {
+      "command": "pytest Operator Center manifest and emergency probe adapter/catalog/endpoint matrix",
+      "result": "PASS; 32/32; 18.01 seconds"
+    },
+    {
+      "command": "import api and expand FastAPI methods into method/path pairs",
+      "result": "PASS; twelve slices; 300 unique pairs; no duplicates"
+    },
+    {
+      "command": "py_compile both changed modules; Ruff new runtime/architecture test; focused F401 retained domain service; scoped diff check",
+      "result": "PASS"
+    },
+    {
+      "command": "release_1_2_candidate_preflight.py --expect-blocked",
+      "result": "PASS; honest status BLOCKED; 7 blockers; candidate false"
+    }
+  ]
+}

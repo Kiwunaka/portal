@@ -1,0 +1,119 @@
+{
+  "schema": "pokrov.release-1.2.0.public-release-index-contract.v1",
+  "generated_at": "2026-08-23T02:30:41Z",
+  "work_order": "WO-013J",
+  "status": "COMPLETE_LOCAL_IMPLEMENTATION_UNPUBLISHED_OWNER_KEY_BLOCKED",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "promotion_authorized": false,
+  "public_baseline": {
+    "repository": "Kiwunaka/pokrov",
+    "visibility": "public",
+    "promotion_branch": "main",
+    "revision": "d0bf8e8c70ebeaa241f4c8f5b8a4452fd339ed15",
+    "commit_signature": "UNSIGNED",
+    "tag_kind": "LIGHTWEIGHT",
+    "tracked_files": 1,
+    "current_release": {
+      "version": "1.1.6",
+      "tag": "v1.1.6",
+      "release_id": 373029908,
+      "asset_count": 8,
+      "sha256sums_size": 673,
+      "sha256sums_sha256": "b30c9cd93ea3b4e7c4f030cc7253fe60a8bbd767e4a045130e92e594b13e015b",
+      "windows_manifest_size": 2799,
+      "windows_manifest_sha256": "2e4383b901629aeb1998b7774e7e308a333a77c5233335a4200cf5677803886d",
+      "github_asset_digest_parity": "PASS_8_OF_8",
+      "trust_state": "LEGACY_CHECKSUM_ONLY_NOT_CANDIDATE_ELIGIBLE",
+      "manifest_signature": false,
+      "source_sbom_provenance_binding": false,
+      "windows_publisher_signature": false
+    }
+  },
+  "local_implementation": {
+    "branch": "codex/1.2.0-release-index-v2",
+    "revision": "f07654af496d042fa8dba3d8b2695e987c8e9eb7",
+    "working_tree_state": "clean",
+    "published_to_origin": false,
+    "contract_sha256": "56d255e2116d20be1d2576a7c5a91b383f719eb8e95d6a50b566897c3195b95e",
+    "manifest_schema_sha256": "9342fbe1d3124742dad85d598f6b4aaeab58e5d2057ca3edc7a895ada865fe5e",
+    "keyring_sha256": "5939f4ae1c12d8ded7b6a6f9a4f32dfa2b33b745f0bd4fc583dc0ff4539e7451",
+    "requirements_sha256": "b6906d232a72bee40de84c9f7af2d7a6376fbaeb1ffc84abbff9735dadcc984e",
+    "active_signing_keys": 0,
+    "source_contract": "PASS_BLOCKED_OWNER_SIGNING_KEY",
+    "require_ready": "EXPECTED_FAIL_OWNER_SIGNING_KEY",
+    "unit_tests": "PASS_2_OF_2",
+    "ruff": "PASS",
+    "format": "PASS",
+    "python_compile": "PASS",
+    "json_parse": "PASS",
+    "diff_check": "PASS",
+    "hosted_workflow": "NOT_RUN_UNPUBLISHED"
+  },
+  "preflight": {
+    "platform_revision": "d44bc9c40fe444b34c1d4d59c7158d667ee27db2",
+    "client_revision": "336d5454d47fa33d08b7a6bae79b7980cc6b11b4",
+    "core_revision": "fcb3c8bbc6efdeed284417369aacb522722ebfa2",
+    "release_index_revision": "f07654af496d042fa8dba3d8b2695e987c8e9eb7",
+    "status": "BLOCKED",
+    "candidate_created": false,
+    "core_artifact_binding_verified_exact_local_bytes": true,
+    "source_report_bytes": 45911,
+    "source_report_sha256": "2c964ea96c64627468fade92e0d6216a1484222e26bccc5f53c636f280ac4f24",
+    "blocker_count": 4,
+    "blockers": [
+      {
+        "id": "release_index_revision_unpublished",
+        "status": "BLOCKED_EXTERNAL_PRECONDITION"
+      },
+      {
+        "id": "release_index_signing_key_missing",
+        "status": "BLOCKED_BY_OWNER_DECISION"
+      },
+      {
+        "id": "ledger_pre_freeze_incomplete",
+        "status": "BLOCKED_LOCAL_FREEZE",
+        "rows": 3
+      },
+      {
+        "id": "ledger_external_pre_candidate_incomplete",
+        "status": "BLOCKED_EXTERNAL_PRECONDITION",
+        "rows": 3
+      }
+    ]
+  },
+  "ledger": {
+    "total": 377,
+    "distribution": {
+      "I3": 303,
+      "I2": 20,
+      "I1": 39,
+      "I0": 15
+    },
+    "below_i3": 74,
+    "pending_stage_counts": {
+      "pre_freeze": 3,
+      "candidate": 33,
+      "external": 17,
+      "deferred": 21
+    },
+    "advanced_rows": {
+      "FE/P12-023": "I1_TO_I2"
+    },
+    "unchanged_rows": {
+      "REL/REPO-001": "I2_UNPUBLISHED_UNSIGNED_PUBLIC_REVISION"
+    }
+  },
+  "external_state": {
+    "client_hosted_runs": "NONE",
+    "platform_branch_protection": "BLOCKED_PRIVATE_PLAN_HTTP_403",
+    "client_branch_protection": "BLOCKED_PRIVATE_PLAN_HTTP_403",
+    "core_branch_protection": "NOT_PROTECTED_HTTP_404",
+    "owner_signing_key": "BLOCKED_BY_OWNER_DECISION",
+    "release_index_push_or_pr": "NOT_AUTHORIZED_NOT_RUN",
+    "deployment": "NOT_AUTHORIZED",
+    "publication": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  },
+  "evidence_ceiling": "LOCAL_UNPUBLISHED_RELEASE_INDEX_SOURCE_CONTRACT"
+}

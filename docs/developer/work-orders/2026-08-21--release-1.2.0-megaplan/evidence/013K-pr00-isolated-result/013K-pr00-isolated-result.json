@@ -1,0 +1,64 @@
+{
+  "schema": "pokrov.release-1.2.0.pr00-isolated-result/v2",
+  "recorded_at": "2026-08-23",
+  "state": "PRE_CANDIDATE_LOCAL",
+  "candidate_created": false,
+  "candidate_eligible": false,
+  "promotion_authorized": false,
+  "withdrawn_proof": {
+    "revision": "dcfbbce17886277bd79ee1c9749c15dc64aa6508",
+    "comparison_base": "9567299b1d16a7499cbfb3cd08490deacfaca2ab",
+    "promotion_target": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "promotion_diff_paths": 514,
+    "promotion_diff_visible_ui_paths": 121,
+    "status": "WITHDRAWN_LOCAL_PARENT_ONLY_NOT_PR_READY"
+  },
+  "proof": {
+    "repository": "platform",
+    "branch": "codex/1.2.0-pr00-true",
+    "revision": "1632234bb78d18b09fa83cd02249d27859b1c409",
+    "parent": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "merge_base": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "target_branch": "master",
+    "tree": "3df581814bca498bfab102be0a843f6e741ec4ab",
+    "commit_subject": "release: freeze true PR-00 contracts",
+    "changed_path_count": 9,
+    "visible_ui_paths_changed": 0,
+    "snapshot_count": 4
+  },
+  "validation": {
+    "status": "PASS_RELEASE_BASE_ISOLATED_NO_VISIBLE_UI",
+    "validator_unit_tests": "PASS_3_OF_3",
+    "ruff_check": "PASS",
+    "ruff_format_check": "PASS",
+    "diff_check": "PASS",
+    "validator_stdout_bytes": 1034,
+    "validator_stdout_sha256": "4098f52226694f15787620954b59435a73e89839ef07e338f1ffa0f20eab6a31"
+  },
+  "hosted": {
+    "branch_pushed": false,
+    "pull_request_created": false,
+    "required_checks": "NOT_RUN",
+    "review": "NOT_RUN"
+  },
+  "ledger": {
+    "row": "FE_PR/PR-00",
+    "index": "I2",
+    "index_changed": false,
+    "reason": "The release-base-isolated local commit exists, but hosted review and required checks are still absent.",
+    "distribution": {
+      "I3": 303,
+      "I2": 20,
+      "I1": 39,
+      "I0": 15
+    },
+    "below_i3": 74,
+    "pending_stage_counts": {
+      "pre_freeze": 3,
+      "candidate": 33,
+      "external": 17,
+      "deferred": 21
+    }
+  },
+  "evidence_ceiling": "RELEASE_BASE_ISOLATED_LOCAL_COMMIT_ONLY"
+}

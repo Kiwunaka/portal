@@ -96,8 +96,9 @@ export function NewsPage({ onShellStatus }: { onShellStatus?: (status: OpsShellS
         is_active: true,
         sort_order: 100,
       },
-      endpoint: "/api/admin/live-updates",
+      endpoint: "/api/admin/v2/growth/action-intents",
       method: "POST",
+      workspace: "growth",
     });
     setDialogOpen(true);
   }

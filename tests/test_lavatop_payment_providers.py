@@ -1,10 +1,10 @@
 import asyncio
 import importlib
-import json
 import os
 import sys
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 
 class LavaTopPaymentProviderTests(unittest.TestCase):
@@ -35,10 +35,7 @@ class LavaTopPaymentProviderTests(unittest.TestCase):
         ):
             self._saved_env[key] = os.environ.get(key)
             os.environ.pop(key, None)
-        self._saved_client_session = self.providers.aiohttp.ClientSession
-
     def tearDown(self) -> None:
-        self.providers.aiohttp.ClientSession = self._saved_client_session
         for key, value in self._saved_env.items():
             if value is None:
                 os.environ.pop(key, None)
@@ -108,43 +105,22 @@ class LavaTopPaymentProviderTests(unittest.TestCase):
         os.environ["LAVATOP_BUYER_EMAIL_DOMAIN"] = "customers.example"
         capture: dict[str, object] = {}
 
-        class FakeResponse:
-            status = 201
-
-            async def text(self) -> str:
-                return json.dumps(
-                    {
+        class FakeRegistry:
+            async def post_object(self, **kwargs):
+                capture["url"] = kwargs["url"]
+                capture["headers"] = dict(kwargs.get("headers") or {})
+                capture["json"] = dict(kwargs.get("json_body") or {})
+                return SimpleNamespace(
+                    status=201,
+                    body={
                         "id": "7ea82675-4ded-4133-95a7-a6efbaf165cc",
                         "paymentUrl": "https://checkout.lava.top/pay/contract-1",
-                    }
+                    },
                 )
-
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, exc_type, exc, tb) -> None:
-                return None
-
-        class FakeSession:
-            def __init__(self, *args, **kwargs) -> None:
-                pass
-
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, exc_type, exc, tb) -> None:
-                return None
-
-            def post(self, url: str, *, headers: dict | None = None, json: dict | None = None):
-                capture["url"] = url
-                capture["headers"] = dict(headers or {})
-                capture["json"] = dict(json or {})
-                return FakeResponse()
-
-        self.providers.aiohttp.ClientSession = FakeSession
 
         result = asyncio.run(
             self.providers.create_rub_payment(
+                http_registry=FakeRegistry(),
                 provider="lavatop",
                 order_id="lavatop_site_101_abcd",
                 amount_rub=99,
@@ -192,36 +168,20 @@ class LavaTopPaymentProviderTests(unittest.TestCase):
         os.environ["LAVATOP_DYNAMIC_AMOUNT_ENABLED"] = "true"
         capture: dict[str, object] = {}
 
-        class FakeResponse:
-            status = 201
-
-            async def text(self) -> str:
-                return json.dumps({"id": "invoice-1", "paymentUrl": "https://checkout.lava.top/pay/contract-1"})
-
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, exc_type, exc, tb) -> None:
-                return None
-
-        class FakeSession:
-            def __init__(self, *args, **kwargs) -> None:
-                pass
-
-            async def __aenter__(self):
-                return self
-
-            async def __aexit__(self, exc_type, exc, tb) -> None:
-                return None
-
-            def post(self, url: str, *, headers: dict | None = None, json: dict | None = None):
-                capture["json"] = dict(json or {})
-                return FakeResponse()
-
-        self.providers.aiohttp.ClientSession = FakeSession
+        class FakeRegistry:
+            async def post_object(self, **kwargs):
+                capture["json"] = dict(kwargs.get("json_body") or {})
+                return SimpleNamespace(
+                    status=201,
+                    body={
+                        "id": "invoice-1",
+                        "paymentUrl": "https://checkout.lava.top/pay/contract-1",
+                    },
+                )
 
         asyncio.run(
             self.providers.create_rub_payment(
+                http_registry=FakeRegistry(),
                 provider="lavatop",
                 order_id="lavatop_site_method_abcd",
                 amount_rub=99,

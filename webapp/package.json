@@ -2,6 +2,10 @@
   "name": "pokrov-webapp",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@11.7.0",
+  "engines": {
+    "node": "22.14.x"
+  },
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build && node ./scripts/fix-export-segment-paths.mjs",
@@ -18,25 +22,26 @@
   "dependencies": {
     "@fontsource-variable/golos-text": "5.3.0",
     "@fontsource-variable/jetbrains-mono": "5.3.0",
-    "clsx": "^2.1.1",
-    "framer-motion": "^12.34.2",
-    "lucide-react": "^0.575.0",
-    "next": "16.1.6",
-    "qrcode": "^1.5.4",
+    "clsx": "2.1.1",
+    "framer-motion": "12.34.2",
+    "lucide-react": "0.575.0",
+    "next": "16.3.2",
+    "qrcode": "1.5.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "tailwind-merge": "^3.5.0"
+    "tailwind-merge": "3.5.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.56.1",
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/qrcode": "^1.5.6",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.1.6",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "@playwright/test": "1.61.1",
+    "@tailwindcss/postcss": "4.3.2",
+    "@types/node": "22.19.9",
+    "@types/qrcode": "1.5.6",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "axe-core": "4.11.1",
+    "eslint": "9.39.4",
+    "eslint-config-next": "16.3.2",
+    "tailwindcss": "4.3.2",
+    "typescript": "5.9.3"
   }
 }

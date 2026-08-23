@@ -1,6 +1,6 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-07-17
+Last updated: 2026-08-23
 
 ## Document Status
 
@@ -27,6 +27,137 @@ Use the canonical client repo as the metadata home for every active release hand
 Keep the active `release-handoff.json`, checksums, manifests, and retained
 binaries together in the versioned candidate folder. A bridge-era
 `release-links.env` is compatibility evidence only.
+
+## Release Handoff Contract Versions
+
+The metadata filename and client-owned home do not change during the 1.2.0
+migration. `release-handoff.json` is the only release metadata contract:
+
+- schema v1 is permissive legacy metadata for the already retained release
+  line;
+- schema v1 cannot establish a new 1.2.0 candidate or authorize promotion;
+- schema v2 is strict and rejects unknown fields, malformed digests, incomplete
+  compatibility, contradictory supply evidence, and unproved stable intent;
+- do not add a parallel `release-manifest.json` or another metadata owner.
+
+Schema v2 binds the four repository revisions, app/core/API compatibility,
+governed contract hashes, version-matched release notes, artifact identity and
+digest, signing, SBOM, provenance, manual gates, and same-byte promotion intent.
+Runtime and manual evidence remains candidate-scoped; metadata does not turn a
+missing or manual gate into `PASS`.
+
+Validate metadata offline:
+
+```powershell
+python -B scripts/validate_release_handoff_metadata.py `
+  --metadata-file C:/path/to/release-handoff.json
+```
+
+The validator emits a redacted JSON summary and does not fetch URLs. Exit `0`
+means valid v2. Exit `3` means valid legacy v1 when
+`--allow-legacy-v1` is explicit. Exit `2` means invalid metadata. Release
+automation must accept only exit `0` for a new candidate.
+
+The runtime-sync consumer does not reinterpret v2 as legacy metadata. It
+validates the exact file again, accepts only canonical Android APK and Windows
+setup-EXE identities, and projects version/channel, handoff SHA-256,
+artifact-set SHA-256, release-note summary/URL/publication time and Core
+version/ABI/package into the backend environment. Android and Windows receive
+the same release-note fields from `release.release_notes`; operators must not
+override them with a second runtime source.
+`/api/client/apps` and its public projection expose that bounded manifest
+identity only when the complete v2 tuple is present. This proves source wiring,
+not that any candidate was signed, synced, deployed or promoted.
+
+Release-bound CI is cross-repository and fail-closed:
+
+- platform and client PR/push contract workflows validate the triggering
+  repository revision against the other repositories' promotion lines;
+- the weekly release snapshot checks out platform `master`, client `main`, and
+  Core `main` and does not use `--allow-missing-client-root`;
+- Core CI runs the same client/Core/v2 parity contract for every Core PR and
+  push to `main`;
+- ordinary platform `Guardrails` remains a repository-local quick check and may
+  report the client lane as `BLOCKED_BY_ACCESS`; that result is not release
+  evidence;
+- non-dry-run remote orchestration requires a real strict-v2 metadata file,
+  validates it locally before remote work, and rejects legacy env-only input.
+
+These workflows produce contract evidence only. Until a workflow is observed
+green on the exact committed revisions, its GitHub-hosted result is unclaimed.
+
+The seven audited 1.2.0 STOP-SHIP findings have one machine registry at
+`shared/release-1.2.0-stop-ship-regressions.json`. Validate its permanent test
+anchors and, when authenticated GitHub read access is available, the live
+promotion-branch controls with:
+
+```powershell
+python -B scripts/release_1_2_stop_ship_gate.py `
+  --client-root C:/path/to/POKROV-app `
+  --core-root C:/path/to/POKROV-core `
+  --query-github `
+  --output C:/path/to/stop-ship-gate.json
+```
+
+The command is read-only. A missing branch-protection feature or permission is
+`BLOCKED_BY_ACCESS`; an unprotected branch or missing policy control is
+`NO_GO`. The normal team policy requires strict named checks, one non-author
+approval, stale-review dismissal, Code Owner review, last-push approval, admin
+enforcement, signed commits, linear history, conversation resolution and
+disabled force pushes/deletions. It also verifies that an eligible non-author
+reviewer was selected and that the live `.github/CODEOWNERS` covers both the
+repository root and its own `.github` control surface.
+
+Release 1.2.0 currently uses the explicit `OWNER_SOLO_EXCEPTION` authorized by
+the sole repository owner on `2026-08-23`. This is not an invented approval:
+reports must state `independent_review_performed=false`. It waives only the
+unavailable second-person approval, non-author CODEOWNERS selection and paid
+private-branch-protection feature. A promotion branch without the normal live
+policy is acceptable under this exception only when the gate reads back a pull
+request authored by `Kiwunaka`, binds its exact lowercase 40-hex head revision,
+and observes every named check completed successfully and bound to a GitHub
+App. Supply those exact PR bindings in a non-secret JSON file:
+
+```json
+{
+  "schema": "pokrov.release-1.2.0.owner-solo-pr-evidence.v1",
+  "release": "1.2.0",
+  "owner_login": "Kiwunaka",
+  "observations": [
+    {
+      "repository": "Kiwunaka/portal",
+      "base_branch": "master",
+      "pull_request": 20,
+      "head_sha": "<exact-40-hex-head>"
+    },
+    {
+      "repository": "Kiwunaka/POKROV-app",
+      "base_branch": "main",
+      "pull_request": 21,
+      "head_sha": "<exact-40-hex-head>"
+    },
+    {
+      "repository": "Kiwunaka/pokrov-core",
+      "base_branch": "main",
+      "pull_request": 3,
+      "head_sha": "<exact-40-hex-head>"
+    }
+  ]
+}
+```
+
+The real evidence file must contain exactly one observation for each of
+platform, client and Core promotion branches. Pass it with
+`--solo-evidence C:/path/to/owner-solo-pr-evidence.json --query-github`.
+Missing, stale, failed, unbound or wrong-owner evidence fails closed. PR-only
+promotion, a signed public release index, retained candidate evidence and
+same-byte promotion remain mandatory compensating controls outside the branch
+readback itself. The exception expires when release 1.2.0 is closed; a later
+release must authorize a new exception or return to team review.
+
+WIN-003 remains `NOT_RUN` until the exact Windows candidate passes the
+clean-host TUN/DNS/egress/rollback matrix. A passing source anchor or solo PR
+control never converts that manual gate into `PASS`.
 
 Current focused procedures:
 
@@ -57,7 +188,7 @@ Until store URLs are live, the canonical distribution source is:
 
 - GitHub Releases for Android and Windows binaries
 
-Current public distribution is the stable-direct GitHub release `v1.0.13` in
+Current retained public distribution is the stable-direct GitHub release `v1.1.6` in
 `Kiwunaka/pokrov`. It is public, non-draft and non-prerelease; eight assets
 match the retained staging set by exact size and SHA-256. A later candidate
 still requires a new exact release handoff.
@@ -71,8 +202,17 @@ All public download surfaces must be wired from the same release handoff values:
 - Telegram bot
 - standard operator input: versioned `release-handoff.json` under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/`
 - bridge-era `release-links.env` is a compatibility fallback only
-- optional stable root-orchestrator metadata pointer: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json`
+- stable root-orchestrator metadata pointer: `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json`
+- pointer/rollback owner: `C:/Users/kiwun/Documents/ai/POKROV-app/config/release-rollback-catalog.seed.json`
 - schema reference for the JSON handoff: [release_handoff_metadata.schema.json](C:/Users/kiwun/Documents/ai/VPN/scripts/release_handoff_metadata.schema.json)
+
+Versioned handoffs are immutable. An authorized stable-pointer change must use
+the client `scripts/set-release-stable-pointer.ps1` optimistic lock, atomic
+replacement, external exact backup, non-overwriting receipt and readback. The
+catalog must already bind both current and target handoffs by release identity
+and SHA-256. Local fixture reversal proves the source mechanism only; it is not
+exact-candidate publication, runtime sync, rollback, or origin proof. See
+[Rollback Runbook](rollback-runbook.md#client-stable-pointer-rollback).
 
 Current release brand masters:
 
@@ -124,14 +264,21 @@ Treat `AAB`, `MSIX`, and portable `ZIP` as market/operator artifacts, not first-
 
 Current public user-facing version policy:
 
-- the distributed stable-direct release is `v1.0.13`; Android and Windows are
-  `1.0.13+22`
+- the retained distributed stable-direct release is `v1.1.6`; Android
+  `versionName` and Windows public display version are `1.1.6`, and the retained
+  client package/build line is `1.1.6+29`
+- the working source target is `1.2.0+30`, `PRE_CANDIDATE_LOCAL`, with
+  `candidate_created=false`; it is not a release candidate or public update
 - a later candidate requires exact signed artifacts, public digest proof and a
   synchronized runtime handoff
 - Android `versionName`, Windows display version, cabinet download badges, and
   public changelog copy must stay aligned to the distributed stable line
 - internal build numbers and platform-native version codes may remain numeric or platform-specific and are not the public label
 - inherited upstream display strings such as `2.5.7 dev` must not remain visible on public user-facing surfaces
+
+The client `config/release-handoff.seed.json` owns retained public and
+development version truth. This guide and its tests validate that projection;
+they do not form a second release manifest.
 
 ## Current POKROV-app Client Verification Commands
 
@@ -320,11 +467,14 @@ After every client release:
 
 1. publish the exact GitHub release candidate artifacts
 2. write or update its versioned metadata under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/`
-3. compare every public artifact name, SHA-256, size, version, URL, and beta/manual-gate state in `release-handoff.json` with the retained candidate bundle
-4. prove anonymous public access to both split APKs, the Windows EXE, and every additionally published handoff file with an unauthenticated range request
-5. pass that exact `release-handoff.json` to the runtime sync procedure in [Deployment And Access](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
-6. verify the same links appear in app, bot, and authenticated WebApp surfaces
-7. rebuild and redeploy static marketing outputs if public download URLs changed
+3. add the exact candidate and retained previous stable handoff to the rollback catalog without removing older evidence
+4. compare every public artifact name, SHA-256, size, version, URL, and beta/manual-gate state in `release-handoff.json` with the retained candidate bundle
+5. prove anonymous public access to both split APKs, the Windows EXE, and every additionally published handoff file with an unauthenticated range request
+6. validate and dry-run the stable pointer, then request explicit authority for the atomic apply
+7. pass that exact versioned `release-handoff.json` to the runtime sync procedure in [Deployment And Access](C:/Users/kiwun/Documents/ai/VPN/docs/operations/deployment-and-access.md)
+8. verify the same links appear in app, bot, and authenticated WebApp surfaces
+9. rebuild and redeploy static marketing outputs if public download URLs changed
+10. run the reverse pointer/runtime drill and retain backup, receipt and readback before final go/no-go
 
 ### Exact-Candidate Operations Evidence
 

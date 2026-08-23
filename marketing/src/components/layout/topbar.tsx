@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -94,7 +94,7 @@ export function Topbar({ labels }: { labels: TopbarLabels }) {
 
       <AnimatePresence>
         {menuOpen ? (
-          <motion.nav
+          <m.nav
             aria-label="Мобильная навигация"
             initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -8 }}
             animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
@@ -123,7 +123,7 @@ export function Topbar({ labels }: { labels: TopbarLabels }) {
                 {labels.download}
               </Button>
             </div>
-          </motion.nav>
+          </m.nav>
         ) : null}
       </AnimatePresence>
     </header>

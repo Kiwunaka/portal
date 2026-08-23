@@ -106,7 +106,7 @@ def test_all_routes_and_primary_operator_copy_are_russian() -> None:
         "Тикеты",
         "Платежи",
         "Воронка",
-        "Промо",
+        "Промокоды",
         "Рефералы",
         "Релиз",
         "Рассылка",

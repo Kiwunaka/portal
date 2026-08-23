@@ -58,7 +58,8 @@ function userName(row: AdminUserListRow): string {
   return row.displayName || row.deviceName || `Пользователь ${row.tgId}`;
 }
 
-function deviceLabel(row: AdminUserListRow): string {
+function deviceLabel(row: AdminUserListRow, sensitiveIdentityVisible: boolean): string {
+  if (!sensitiveIdentityVisible) return "Устройство скрыто ролью";
   const device = row.deviceName || row.displayName;
   const platform = row.appPlatform ? row.appPlatform.toUpperCase() : "";
   if (device && platform) return `${device} · ${platform}`;
@@ -71,6 +72,7 @@ export function UserList({
   onlineByTgId,
   onlineSampledAt,
   filters,
+  sensitiveIdentityVisible,
   selected,
   onFiltersChange,
   onSelect,
@@ -81,6 +83,7 @@ export function UserList({
   onlineByTgId: ReadonlyMap<number, AdminOnlineUser>;
   onlineSampledAt: string | null;
   filters: UserListFilters;
+  sensitiveIdentityVisible: boolean;
   selected: number | null;
   onFiltersChange: (patch: Partial<UserListFilters>) => void;
   onSelect: (tgId: number) => void;
@@ -108,7 +111,7 @@ export function UserList({
             name="q"
             type="search"
             defaultValue={filters.q}
-            placeholder="Telegram ID, имя, ID установки, почта"
+            placeholder={sensitiveIdentityVisible ? "Telegram ID, имя, ID установки, почта" : "Telegram ID или имя"}
             className="min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] pl-9 pr-3 text-sm text-[color:var(--atlas-text)] outline-none focus:border-[color:var(--atlas-focus)]"
           />
         </label>
@@ -149,7 +152,7 @@ export function UserList({
 
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[color:var(--atlas-text-soft)]">
         <span>Найдено: {new Intl.NumberFormat("ru-RU").format(total)}</span>
-        <span>Присутствие в сети берётся из отдельного оперативного снимка без исходных IP-адресов.</span>
+        <span>{sensitiveIdentityVisible ? "Присутствие в сети берётся из отдельного оперативного снимка без исходных IP-адресов." : "Установка, устройство и связанные идентификаторы скрыты: требуется support.sensitive.read."}</span>
       </div>
 
       {rows.length ? (
@@ -177,7 +180,7 @@ export function UserList({
                     <td className="px-3 py-2 align-middle">
                       <button type="button" aria-current={isSelected ? "true" : undefined} onClick={() => onSelect(row.tgId)} className="min-h-10 text-left font-semibold text-[color:var(--atlas-text)] hover:underline">
                         {userName(row)}
-                        <span className="block max-w-56 truncate text-[10px] font-normal text-[color:var(--atlas-text-muted)]">{deviceLabel(row)}</span>
+                        <span className="block max-w-56 truncate text-[10px] font-normal text-[color:var(--atlas-text-muted)]">{deviceLabel(row, sensitiveIdentityVisible)}</span>
                         <span className="block font-mono text-[10px] font-normal text-[color:var(--atlas-text-muted)]">TG {row.tgId}</span>
                       </button>
                     </td>

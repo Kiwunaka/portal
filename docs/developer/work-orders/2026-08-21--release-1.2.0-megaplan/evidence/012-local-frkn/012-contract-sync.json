@@ -1,0 +1,19 @@
+{
+  "schema": "pokrov-awg2-contract-sync/v1",
+  "status": "PASS",
+  "contract_id": "pokrov.awg2.endpoint.v1",
+  "contract_sha256": "3beb57eccd8d5e15ce7466496208fe1945f353b3417be58644911d1ded125a83",
+  "core_contract": "C:/Users/kiwun/Documents/ai/POKROV-core-1.2.0-release-v2/config/awg2-capability.json",
+  "consumers": {
+    "platform": {
+      "contract_id": "pokrov.awg2.endpoint.v1",
+      "contract_sha256": "3beb57eccd8d5e15ce7466496208fe1945f353b3417be58644911d1ded125a83"
+    },
+    "client": {
+      "contract_id": "pokrov.awg2.endpoint.v1",
+      "contract_sha256": "3beb57eccd8d5e15ce7466496208fe1945f353b3417be58644911d1ded125a83"
+    }
+  },
+  "evidence_ceiling": "LOCAL_SOURCE_CONTRACT_ONLY",
+  "candidate_proven": false
+}

@@ -1,0 +1,98 @@
+{
+  "schema": "pokrov.release-1.2.0.subscription-checkout-aggregate.v1",
+  "generated_at": "2026-08-22T19:47:59Z",
+  "work_order": "WO-008M",
+  "row_outcomes": {
+    "FE_PR/PR-05": "I3",
+    "FE/P12-012": "I2_UNCHANGED",
+    "FE/P12-013": "I2_UNCHANGED",
+    "FE/P12-014": "I2_UNCHANGED",
+    "MKT/MKT-600": "I2_UNCHANGED"
+  },
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "sources": {
+    "platform_revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "platform_dirty_entries": 366,
+    "client_revision_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+    "client_dirty_entries": 190,
+    "core_revision_before_uncommitted_changes": "69a74545101708e56183c92e31f2b4c7b2509884",
+    "core_dirty_entries": 57
+  },
+  "boundary": {
+    "access_state_authority": "server access_state",
+    "price_offer_authority": "server catalog and signed offer",
+    "provider_capability_authority": "server provider catalog",
+    "return_capability_transport": "versioned sessionStorage outside redirect URL",
+    "return_states": [
+      "processing",
+      "paid",
+      "failed",
+      "cancelled",
+      "manual_review",
+      "expired"
+    ],
+    "payment_truth": "signed callbacks and external orders",
+    "telemetry_is_payment_truth": false,
+    "active_client_price_evaluator": false
+  },
+  "source_sha256": {
+    "payment_return_service": "14a0298e399dd7568a3df947e53819910745f0326537282bd56fa03b8ae3b625",
+    "commercial_order_service": "0aaf14edfbe681f8ce3d0ceba6f87469418e5ef7d03ff280cb84322e91e2069d",
+    "provider_catalog": "716894c2d40502c7422ac147a4aa1d11dd2226928f719ee9fd3523b8696a8c6a",
+    "payment_return_routes": "45436e6b02dc54d54746d1514d23ecc618aa1df61902b1e164d5c38a2d5504bb",
+    "payment_analytics_projection": "30bb0985f7437ce8c24be375bbfa614b8accdb1dbc99dfc4a4ff63e31f46a533",
+    "cabinet_access_policy": "dcd9065946170430c6779004bbc581cbc4ad9e411c10b44648837a07aa02ed92",
+    "cabinet_api": "93b475dd53f4d47a54004137734ac4c3bd364a04119e59d5bcfc7c8b16abad42",
+    "cabinet_subscription": "e0868af0e7e80e1f7f0583068e6a9522e03c3408781682ee0c8493f902f02442",
+    "cabinet_checkout": "7d031b5e5314be9037690061b4c5c881bbb3d94d379cdb368b67c054ad283fda",
+    "cabinet_browser_matrix": "4af38716b85c245aa8105e762ea193c0c9599d7d3622a7ca0f08295d248a7429",
+    "marketing_checkout": "12a4f55e56b43cc69e07c1f7b08a76143edb5b0e8e80c65e6d0398c6ede13b46",
+    "marketing_funnel": "be67f31d5f432c9eb1464fba048edff2fa5bc4d6fa0dee67070d62748bd4ceb3",
+    "active_client_profile": "3d7f26df950d3aa15366d2e3af042c20ccba2985a358a1a7b8d407dafb86826b",
+    "active_client_api": "b02a09d06aec478ad50c72ece7c0b96d73d3b58f01817c646bf3acd838aa7360",
+    "payment_return_tests": "488abffc0778ade07ffd4dc4872c9de73a1342be860fbd52eaaf5eb704551b5d",
+    "commercial_contract_tests": "67fe8ce087ed9506eeba8e23f0453a5b78cfd3fe2b3b4d9fd98ef87d449d5094",
+    "commercial_order_tests": "fba89b561a07de61982dd62b583cbbdb018e9265e2e028818312e9168c3fc2af",
+    "payment_analytics_tests": "a50708b97f831c10855baeadffc455d041b576799689b4c493898ce74ed12a85",
+    "active_client_profile_tests": "a399ee338619498fff1b0f23c299d63621a945d322c65b42b5668dc494e98e01",
+    "active_client_api_tests": "a96e135cb02a26dc7e7c4c14c72384dcade13807a1fb5cf9088272f0625aad31"
+  },
+  "local_results": {
+    "backend_subscription_checkout_aggregate": "PASS_30_OF_30",
+    "active_client_subscription_and_server_price": "PASS_2_OF_2",
+    "webapp_production_build": "PASS_40_STATIC_ROUTES",
+    "webapp_cabinet_and_rewards_playwright": "PASS_69_OF_69",
+    "marketing_lint": "PASS",
+    "marketing_seo": "PASS",
+    "marketing_production_responsive_browser_gate": "PASS",
+    "documentation_and_candidate_preflight_contracts": "PASS_37_OF_37",
+    "platform_context_audit": "PASS",
+    "scoped_diff_check": "PASS",
+    "scoped_secret_scan": "PASS_0_MATCH_FILES",
+    "evidence_json_parse": "PASS",
+    "candidate_preflight": "EXPECTED_BLOCKED_7_BLOCKERS_CANDIDATE_NOT_CREATED",
+    "candidate_preflight_blockers": 7,
+    "candidate_created": false,
+    "ledger_distribution": "I3_303_I2_19_I1_40_I0_15_TOTAL_377",
+    "ledger_below_i3": 74,
+    "pending_stage_counts": {
+      "pre_freeze": 3,
+      "candidate": 33,
+      "external": 17,
+      "deferred": 21
+    }
+  },
+  "manual_or_external": {
+    "live_provider_redirect": "NOT_RUN",
+    "real_payment": "NOT_AUTHORIZED",
+    "postgres_two_connection_concurrency": "NOT_RUN",
+    "physical_android_or_windows_return": "NOT_RUN",
+    "deployed_payment_analytics_readback": "NOT_RUN",
+    "exact_candidate": "NOT_CREATED",
+    "hosted_clean_check": "NOT_RUN",
+    "deployment": "NOT_AUTHORIZED",
+    "publication": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

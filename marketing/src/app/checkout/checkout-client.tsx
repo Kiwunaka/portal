@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
@@ -11,12 +11,12 @@ import { MARKETING_CANONICAL_PATHS } from "../../lib/marketing-site";
 import { mintAcquisitionHandoff } from "../../lib/acquisition";
 import { TELEGRAM_START_PROMISE } from "../../lib/seo-pages";
 import {
+  COMMERCIAL_REVISION,
+  assertCommercialPlanProjection,
   getCheckoutTariffPlans,
-  getPricingPreviewDiscountPercent,
   getPokrovPublicConfig,
   getPromoSlotsCatalog,
   normalizePlanCode,
-  tariffPlanAllowsDiscount,
 } from "../../lib/pokrov";
 
 const INPUT_CLASS =
@@ -34,6 +34,13 @@ type PlanOption = {
 
 type PublicCatalogResponse = {
   catalog_version: string;
+  commercial_revision: string;
+  commercial_contract_sha256: string;
+  effective_from: string;
+  terms_revision: string;
+  price_authority: string;
+  promo_authority: string;
+  legal_launch_ready: boolean;
   commerce_model: {
     primary_purchase_flow: string;
     primary_fulfillment_flow: string;
@@ -94,7 +101,19 @@ type AccessKeyStatusResponse = {
 
 type PaymentProviderState = {
   ok: boolean;
-  providers: Array<{ code?: string; title?: string; label?: string }>;
+  providers: Array<{
+    code?: string;
+    title?: string;
+    label?: string;
+    supported_plan_codes?: string[];
+    payment_methods?: Array<{
+      code: string;
+      label: string;
+      hint?: string;
+      available: boolean;
+      unavailable_reason?: string | null;
+    }>;
+  }>;
   blocked?: boolean;
   blocked_reasons?: string[];
   blocked_reason_texts?: string[];
@@ -106,6 +125,39 @@ type PublicRubOrderResponse = {
   order_id: string;
   payment_url?: string | null;
   status: string;
+  payment_return_token: string;
+};
+
+type CommercialOfferPreviewResponse = {
+  ok: boolean;
+  valid: boolean;
+  reason_code: string;
+  blocking_reasons: string[];
+  plan_code: string;
+  currency: string;
+  base_price_rub: number;
+  final_price_rub: number;
+  benefit_rub: number;
+  benefit_percent: number;
+  server_time: string;
+  offer_ends_at?: string | null;
+  hold_expires_at?: string | null;
+  terms_url: string;
+  commercial_revision: string;
+  offer_token?: string | null;
+};
+
+type PaymentReturnStatusResponse = {
+  ok: boolean;
+  state: "processing" | "paid" | "failed" | "cancelled" | "manual_review" | "expired";
+  reason_code: string;
+  surface: "marketing" | "cabinet";
+  provider: string;
+  server_time: string;
+  next_poll_seconds: number;
+  terminal: boolean;
+  support_required: boolean;
+  can_retry: boolean;
 };
 
 type Start99EligibilityResponse = {
@@ -126,11 +178,17 @@ class CheckoutRequestError extends Error {
   }
 }
 
-const config = getPokrovPublicConfig(process.env as Record<string, string | undefined>);
+const config = getPokrovPublicConfig({
+  NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
+  NEXT_PUBLIC_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_PUBLIC_API_BASE_URL,
+  NEXT_PUBLIC_WEBAPP_URL: process.env.NEXT_PUBLIC_WEBAPP_URL,
+  NEXT_PUBLIC_TELEGRAM_BOT_URL: process.env.NEXT_PUBLIC_TELEGRAM_BOT_URL,
+  NEXT_PUBLIC_HELP_BOT_URL: process.env.NEXT_PUBLIC_HELP_BOT_URL,
+});
 const promoCatalog = getPromoSlotsCatalog();
 type PaymentMethodChoice = "sbp" | "card";
 
-const PAYMENT_METHOD_OPTIONS: Array<{
+const PAYMENT_METHOD_FALLBACKS: Array<{
   code: PaymentMethodChoice;
   label: string;
   hint: string;
@@ -138,6 +196,29 @@ const PAYMENT_METHOD_OPTIONS: Array<{
   { code: "sbp", label: "СБП", hint: "Через приложение банка" },
   { code: "card", label: "Карта", hint: "Банковская карта" },
 ];
+
+const PAYMENT_RETURN_STORAGE_KEY = "pokrov.payment-return.v1";
+
+const OFFER_REASON_TEXT: Record<string, string> = {
+  ready: "Промокод применён сервером.",
+  promo_unknown: "Промокод не найден.",
+  promo_invalid: "Промокод недействителен.",
+  promo_expired: "Срок промокода истёк.",
+  promo_depleted: "Лимит промокода исчерпан.",
+  offer_non_stackable: "Эта скидка не складывается с выбранным тарифом.",
+  legal_blocked: "Предложение временно недоступно по условиям запуска.",
+  capacity_blocked: "Предложение временно недоступно из-за лимита сервиса.",
+  quota_reached: "Лимит предложения исчерпан.",
+};
+
+const RETURN_STATE_TEXT: Record<PaymentReturnStatusResponse["state"], string> = {
+  processing: "Платёж обрабатывается. Статус обновится автоматически.",
+  paid: "Оплата подтверждена. Код доступа готовится на сервере.",
+  failed: "Платёж не подтверждён. Можно повторить попытку.",
+  cancelled: "Оплата отменена. Можно выбрать способ и попробовать снова.",
+  manual_review: "Платёж требует ручной проверки. Напишите в поддержку.",
+  expired: "Платёжная сессия истекла. Создайте новый платёж.",
+};
 
 const PLAN_MONTHS: Record<string, number> = {
   "1_month": 1,
@@ -154,13 +235,12 @@ function deviceCountLabel(count: number): string {
   return `${normalized} устройств`;
 }
 
-function planSupportingText(plan: PlanOption, discountPercent: number): string {
+function planSupportingText(plan: PlanOption): string {
   if (plan.code === "start_99") {
     return `Один раз · ${deviceCountLabel(plan.device_limit)}`;
   }
   const months = PLAN_MONTHS[plan.code] || 0;
-  const discountedTotal = Math.max(1, Math.round(plan.amount_rub * (1 - discountPercent / 100)));
-  const monthly = months > 0 ? Math.round(discountedTotal / months) : 0;
+  const monthly = months > 0 ? Math.round(plan.amount_rub / months) : 0;
   const monthlyText = monthly > 0 ? `${monthly} ₽/мес · ` : "";
   return `${monthlyText}${deviceCountLabel(plan.device_limit)}`;
 }
@@ -202,7 +282,18 @@ async function fetchCatalog(): Promise<PublicCatalogResponse | null> {
     try {
       const response = await fetch(`${base}/api/public/catalog`, { cache: "no-store" });
       if (!response.ok) continue;
-      return (await response.json()) as PublicCatalogResponse;
+      const payload = (await response.json()) as PublicCatalogResponse;
+      const responseRevision = String(response.headers.get("X-Pokrov-Commercial-Revision") || "");
+      if (
+        payload.commercial_revision !== COMMERCIAL_REVISION ||
+        responseRevision !== COMMERCIAL_REVISION ||
+        payload.price_authority !== "server_commercial_contract" ||
+        payload.promo_authority !== "server_offer_preview_only"
+      ) {
+        continue;
+      }
+      assertCommercialPlanProjection(payload.plans);
+      return payload;
     } catch {
       // Try next base.
     }
@@ -240,6 +331,82 @@ async function fetchPaymentProviderState(): Promise<PaymentProviderState | null>
   return null;
 }
 
+async function fetchCommercialOfferPreview(payload: {
+  plan_code: string;
+  promo_code: string;
+  checkout_ticket?: string;
+  acquisition_handle?: string;
+}): Promise<CommercialOfferPreviewResponse | null> {
+  for (const base of candidateApiBases()) {
+    try {
+      const response = await fetch(`${base}/api/public/offers/preview`, {
+        method: "POST",
+        credentials: "omit",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...payload, channel: "owned_web" }),
+      });
+      if (!response.ok) continue;
+      const result = (await response.json()) as CommercialOfferPreviewResponse;
+      if (result.commercial_revision !== COMMERCIAL_REVISION || result.plan_code !== payload.plan_code) continue;
+      return result;
+    } catch {
+      // Try next base.
+    }
+  }
+  return null;
+}
+
+async function fetchPaymentReturnStatus(returnToken: string): Promise<PaymentReturnStatusResponse> {
+  let lastError = "Не удалось проверить статус платежа.";
+  for (const base of candidateApiBases()) {
+    try {
+      const response = await fetch(`${base}/api/payments/orders/status`, {
+        method: "POST",
+        credentials: "omit",
+        cache: "no-store",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ return_token: returnToken }),
+      });
+      if (!response.ok) {
+        lastError = (await response.text()) || `HTTP ${response.status}`;
+        continue;
+      }
+      return (await response.json()) as PaymentReturnStatusResponse;
+    } catch (error) {
+      lastError = String((error as { message?: string })?.message || error || lastError);
+    }
+  }
+  throw new Error(lastError);
+}
+
+function storePaymentReturnToken(token: string): boolean {
+  const normalized = String(token || "").trim();
+  if (!normalized || typeof window === "undefined") return false;
+  try {
+    window.sessionStorage.setItem(PAYMENT_RETURN_STORAGE_KEY, normalized);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function readPaymentReturnToken(): string {
+  try {
+    return String(window.sessionStorage.getItem(PAYMENT_RETURN_STORAGE_KEY) || "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function clearPaymentReturnToken(): void {
+  try {
+    window.sessionStorage.removeItem(PAYMENT_RETURN_STORAGE_KEY);
+  } catch {
+    // The terminal server state is already rendered; storage cleanup is best effort.
+  }
+}
+
 async function createPublicRubOrder(payload: {
   provider: string;
   plan_code: string;
@@ -249,6 +416,7 @@ async function createPublicRubOrder(payload: {
   currency?: string;
   payment_method?: PaymentMethodChoice;
   acquisition_handle?: string;
+  offer_token?: string;
 }): Promise<PublicRubOrderResponse> {
   let lastError = "Не удалось создать платеж.";
   for (const base of candidateApiBases()) {
@@ -266,6 +434,7 @@ async function createPublicRubOrder(payload: {
           currency: payload.currency || "RUB",
           payment_method: payload.payment_method,
           acquisition_handle: payload.acquisition_handle,
+          offer_token: payload.offer_token,
         }),
       });
       if (!response.ok) {
@@ -334,13 +503,20 @@ function describePromoContent(contentId: string): { title: string; body: string 
   };
 }
 
-function formatPrice(price: number, discountPercent: number): string {
-  const total = Math.max(1, Math.round(price * (1 - discountPercent / 100)));
-  return `${total} ₽`;
+function formatPrice(price: number): string {
+  return `${Math.max(1, Math.round(price))} ₽`;
 }
 
-function planDiscountPercent(planCode: string, promoCode: string): number {
-  return tariffPlanAllowsDiscount(planCode) ? getPricingPreviewDiscountPercent(promoCode) : 0;
+function formatServerDeadline(value?: string | null): string {
+  if (!value) return "";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "";
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "2-digit",
+    month: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsed);
 }
 
 function buildRedeemHref(key: string): string {
@@ -410,6 +586,11 @@ export default function CheckoutClient() {
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [start99Eligibility, setStart99Eligibility] = useState<"unknown" | "eligible" | "ineligible">("unknown");
   const [activeCheckoutTicket, setActiveCheckoutTicket] = useState(checkoutTicket);
+  const [acquisitionHandle, setAcquisitionHandle] = useState("");
+  const [offerPreview, setOfferPreview] = useState<CommercialOfferPreviewResponse | null>(null);
+  const [offerPreviewPending, setOfferPreviewPending] = useState(true);
+  const [paymentReturn, setPaymentReturn] = useState<PaymentReturnStatusResponse | null>(null);
+  const [paymentReturnError, setPaymentReturnError] = useState("");
 
   // Fetch the catalog exactly once on mount: plan selection must not refetch.
   // Selection is reconciled through a functional update instead of a dep.
@@ -417,27 +598,36 @@ export default function CheckoutClient() {
     let cancelled = false;
 
     const load = async () => {
-      const nextCatalog = await fetchCatalog();
-      if (!nextCatalog || cancelled) {
-        return;
+      const [catalogResult, providerResult, acquisitionResult] = await Promise.allSettled([
+        fetchCatalog(),
+        fetchPaymentProviderState(),
+        mintAcquisitionHandoff("checkout", undefined, config.apiBaseUrl),
+      ]);
+      if (cancelled) return;
+      const nextCatalog = catalogResult.status === "fulfilled" ? catalogResult.value : null;
+      if (nextCatalog) {
+        const nextPlans = (nextCatalog.plans || [])
+          .filter((plan) => plan?.is_active !== false && Boolean(plan?.code) && Number(plan?.amount_rub || 0) > 0)
+          .map((plan) => ({
+            code: String(plan.code || "").trim().toLowerCase(),
+            label: String(plan.label || plan.code || "").trim(),
+            amount_rub: Number(plan.amount_rub || 0),
+            days: Number(plan.days || 0),
+            device_limit: Number(plan.device_limit || 1),
+            badge: plan.badge || null,
+          }));
+        setCatalog(nextCatalog);
+        if (nextPlans.length) {
+          setPlans(nextPlans);
+          setSelectedPlan((current) =>
+            nextPlans.some((plan) => plan.code === current) ? current : nextPlans[0].code,
+          );
+        }
       }
-      const nextPlans = (nextCatalog.plans || [])
-        .filter((plan) => plan?.is_active !== false && Boolean(plan?.code) && Number(plan?.amount_rub || 0) > 0)
-        .map((plan) => ({
-          code: String(plan.code || "").trim().toLowerCase(),
-          label: String(plan.label || plan.code || "").trim(),
-          amount_rub: Number(plan.amount_rub || 0),
-          days: Number(plan.days || 0),
-          device_limit: Number(plan.device_limit || 1),
-          badge: plan.badge || null,
-        }));
-      setCatalog(nextCatalog);
-      if (nextPlans.length) {
-        setPlans(nextPlans);
-        setSelectedPlan((current) =>
-          nextPlans.some((plan) => plan.code === current) ? current : nextPlans[0].code,
-        );
-      }
+      setProviderState(providerResult.status === "fulfilled" ? providerResult.value : null);
+      setAcquisitionHandle(
+        acquisitionResult.status === "fulfilled" ? String(acquisitionResult.value?.handle || "") : "",
+      );
     };
 
     void load();
@@ -465,18 +655,42 @@ export default function CheckoutClient() {
   }, [checkoutTicket]);
 
   useEffect(() => {
+    if (typeof window === "undefined" || !searchParams.get("payment_return")) return;
+    const returnToken = readPaymentReturnToken();
+    const cleanedUrl = new URL(window.location.href);
+    cleanedUrl.searchParams.delete("payment_return");
+    window.history.replaceState(window.history.state, "", `${cleanedUrl.pathname}${cleanedUrl.search}${cleanedUrl.hash}`);
+    if (!returnToken) {
+      queueMicrotask(() => {
+        setPaymentReturnError("Не найден локальный идентификатор платежа. Напишите в поддержку, если деньги списались.");
+      });
+      return;
+    }
     let cancelled = false;
-
-    void fetchPaymentProviderState().then((payload) => {
-      if (!cancelled) {
-        setProviderState(payload);
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const poll = async (): Promise<void> => {
+      try {
+        const result = await fetchPaymentReturnStatus(returnToken);
+        if (cancelled) return;
+        setPaymentReturn(result);
+        setPaymentReturnError("");
+        if (!result.terminal) {
+          timer = setTimeout(() => void poll(), Math.max(1, result.next_poll_seconds || 2) * 1000);
+        } else {
+          clearPaymentReturnToken();
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setPaymentReturnError(String((error as { message?: string })?.message || error || "Не удалось проверить статус платежа."));
+        }
       }
-    });
-
+    };
+    void poll();
     return () => {
       cancelled = true;
+      if (timer) clearTimeout(timer);
     };
-  }, []);
+  }, [searchParams]);
 
   useEffect(() => {
     const normalized = keyInput.trim().toUpperCase();
@@ -514,25 +728,81 @@ export default function CheckoutClient() {
     setKeyBusy(normalized.length >= 6);
   };
 
-  const activePlan = useMemo(
-    () => plans.find((plan) => plan.code === selectedPlan) || plans[0] || fallbackPlans()[0],
-    [plans, selectedPlan],
-  );
+  const activeProviderCode = String(providerState?.providers?.[0]?.code || "").trim();
+  const activeProvider = providerState?.providers?.find((provider) => provider.code === activeProviderCode);
+  const supportedPlanCodes = activeProvider?.supported_plan_codes || [];
+  const availablePlans = supportedPlanCodes.length
+    ? plans.filter((plan) => supportedPlanCodes.includes(plan.code))
+    : plans;
+  const activePlan = availablePlans.find((plan) => plan.code === selectedPlan)
+    || availablePlans[0]
+    || fallbackPlans()[0];
 
-  const rawDiscountPercent = getPricingPreviewDiscountPercent(promoCode);
-  const discountPercent = planDiscountPercent(activePlan.code, promoCode);
-  const activePlanDiscountBlocked = rawDiscountPercent > 0 && !tariffPlanAllowsDiscount(activePlan.code);
   const redeemHref = keyStatus?.key ? buildRedeemHref(keyStatus.key) : buildRedeemHref(keyInput);
   const marketingPromoIds =
     promoCatalog.slots.find((slot) => slot.id === "marketing.checkout.contextual")?.allowed_content_ids || [];
-  const checkoutReady = Boolean(providerState?.ok && !providerState?.blocked && providerState.providers?.length);
-  const activeProviderCode = String(providerState?.providers?.[0]?.code || "").trim();
+  const paymentMethods = activeProvider?.payment_methods?.length
+    ? activeProvider.payment_methods
+    : PAYMENT_METHOD_FALLBACKS.map((method) => ({ ...method, available: true }));
+  const requestedPaymentMethod = paymentMethods.find((method) => method.code === paymentMethod);
+  const fallbackPaymentMethod = paymentMethods.find(
+    (method) => method.available && (method.code === "sbp" || method.code === "card"),
+  );
+  const effectivePaymentMethod = requestedPaymentMethod?.available
+    ? requestedPaymentMethod.code as PaymentMethodChoice
+    : fallbackPaymentMethod?.code as PaymentMethodChoice | undefined;
+  const selectedPaymentMethod = paymentMethods.find((method) => method.code === effectivePaymentMethod);
+  const previewMatchesPlan = Boolean(
+    offerPreview
+      && offerPreview.plan_code === activePlan.code
+      && offerPreview.commercial_revision === COMMERCIAL_REVISION,
+  );
+  const promoAccepted = !promoCode || Boolean(offerPreview?.valid && offerPreview.offer_token);
+  const infrastructureReady = Boolean(catalog && providerState?.ok && !providerState?.blocked && activeProviderCode);
+  const checkoutReady = Boolean(
+    infrastructureReady
+      && previewMatchesPlan
+      && !offerPreviewPending
+      && promoAccepted
+      && selectedPaymentMethod?.available,
+  );
   const checkoutBlockedReasons = providerState?.blocked_reason_texts?.length
     ? providerState.blocked_reason_texts
     : providerState?.blocked_reasons || [];
   const activePlanMonths = PLAN_MONTHS[activePlan.code] || 0;
-  const activePlanTotal = Math.max(1, Math.round(activePlan.amount_rub * (1 - discountPercent / 100)));
+  const activePlanBase = previewMatchesPlan ? Math.max(1, Math.round(offerPreview?.base_price_rub || 0)) : 0;
+  const activePlanTotal = previewMatchesPlan ? Math.max(1, Math.round(offerPreview?.final_price_rub || 0)) : 0;
   const activePlanMonthly = activePlanMonths > 0 ? Math.round(activePlanTotal / activePlanMonths) : 0;
+  const offerMessage = promoCode && offerPreview && !offerPreview.valid
+    ? OFFER_REASON_TEXT[offerPreview.reason_code] || "Промокод сейчас недоступен."
+    : promoCode && offerPreview?.valid
+      ? OFFER_REASON_TEXT.ready
+      : "";
+
+  useEffect(() => {
+    if (!catalog || !activePlan.code) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      setOfferPreviewPending(true);
+      setOfferPreview(null);
+      void fetchCommercialOfferPreview({
+        plan_code: activePlan.code,
+        promo_code: promoCode,
+        checkout_ticket: activeCheckoutTicket || undefined,
+        acquisition_handle: activeCheckoutTicket ? undefined : acquisitionHandle || undefined,
+      })
+        .then((result) => {
+          if (!cancelled) setOfferPreview(result);
+        })
+        .finally(() => {
+          if (!cancelled) setOfferPreviewPending(false);
+        });
+    }, 250);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [acquisitionHandle, activeCheckoutTicket, activePlan.code, catalog, promoCode]);
 
   const startPublicCheckout = async (): Promise<void> => {
     if (!checkoutReady || !activeProviderCode) return;
@@ -547,20 +817,23 @@ export default function CheckoutClient() {
     setCheckoutBusy(true);
     setCheckoutStatusText("");
     try {
-      const acquisition = await mintAcquisitionHandoff("checkout");
       const order = await createPublicRubOrder({
         provider: activeProviderCode,
         plan_code: activePlan.code,
         buyer_email: activeCheckoutTicket ? undefined : email,
         checkout_ticket: activeCheckoutTicket || undefined,
-        promo_code: discountPercent > 0 ? promoCode : undefined,
+        promo_code: promoCode || undefined,
         currency: "RUB",
-        payment_method: paymentMethod,
-        acquisition_handle: acquisition?.handle,
+        payment_method: effectivePaymentMethod,
+        acquisition_handle: activeCheckoutTicket ? undefined : acquisitionHandle || undefined,
+        offer_token: offerPreview?.valid ? String(offerPreview.offer_token || "") || undefined : undefined,
       });
       const paymentUrl = String(order.payment_url || "").trim();
       if (!paymentUrl) {
         throw new Error("Платежная ссылка не получена.");
+      }
+      if (!storePaymentReturnToken(order.payment_return_token)) {
+        throw new Error("Браузер не сохранил безопасный идентификатор платежа. Разрешите временное хранилище и повторите.");
       }
       window.location.assign(paymentUrl);
     } catch (error) {
@@ -597,11 +870,22 @@ export default function CheckoutClient() {
                 </p>
               </div>
             </div>
-            <Chip tone={checkoutReady ? "brand" : "neutral"}>
-              <span className={cn("size-1.5 rounded-full", checkoutReady ? "bg-status-green" : "bg-ink-muted")} />
-              {checkoutReady ? "Оплата доступна" : "Оплата временно недоступна"}
+            <Chip tone={infrastructureReady ? "brand" : "neutral"}>
+              <span className={cn("size-1.5 rounded-full", infrastructureReady ? "bg-status-green" : "bg-ink-muted")} />
+              {infrastructureReady ? "Оплата доступна" : "Оплата временно недоступна"}
             </Chip>
           </div>
+
+          {paymentReturn || paymentReturnError ? (
+            <div className="border-b border-line bg-surface px-5 py-4 sm:px-8" role="status" aria-live="polite">
+              <p className={cn("text-[0.875rem] font-semibold", paymentReturn?.state === "paid" ? "text-status-green" : paymentReturn?.state === "manual_review" ? "text-brand-strong" : "text-ink") }>
+                {paymentReturn ? RETURN_STATE_TEXT[paymentReturn.state] : paymentReturnError}
+              </p>
+              {paymentReturn?.state === "processing" ? (
+                <p className="mt-1 text-[0.75rem] text-ink-soft">Проверяем подтверждение на сервере…</p>
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="grid lg:grid-cols-[1.08fr_0.92fr]">
             <div className="flex flex-col gap-5 border-b border-line px-5 py-6 sm:px-8 sm:py-8 lg:border-r lg:border-b-0">
@@ -630,18 +914,17 @@ export default function CheckoutClient() {
                         </span>
                       ) : null}
                     </span>
-                    <span className="text-[0.75rem] text-ink-soft">{planSupportingText(activePlan, discountPercent)}</span>
+                    <span className="text-[0.75rem] text-ink-soft">{planSupportingText(activePlan)}</span>
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
-                    <strong className="text-[1.25rem] text-ink">{activePlanTotal} ₽</strong>
+                    <strong className="text-[1.25rem] text-ink">{offerPreviewPending || !previewMatchesPlan ? "—" : `${activePlanTotal} ₽`}</strong>
                     <span aria-hidden="true" className={cn("text-[0.75rem] text-brand-strong transition-transform duration-200", planPickerOpen ? "rotate-180" : "")}>▼</span>
                   </span>
                 </button>
 
                 {planPickerOpen ? (
                   <div id="checkout-plan-picker" className="mt-2 grid grid-cols-2 gap-2 rounded-(--radius-control) border border-line bg-surface p-2 shadow-medium sm:grid-cols-3">
-                    {plans.map((plan) => {
-                      const planPreviewDiscountPercent = planDiscountPercent(plan.code, promoCode);
+                    {availablePlans.map((plan) => {
                       const selected = selectedPlan === plan.code;
                       const disabled = plan.code === "start_99" && start99Eligibility === "ineligible";
                       return (
@@ -672,7 +955,7 @@ export default function CheckoutClient() {
                               <span className="text-[0.625rem] font-semibold text-brand-strong">{planBadgeLabel(plan, true)}</span>
                             ) : null}
                           </span>
-                          <strong className="text-[0.9375rem] text-ink">{formatPrice(plan.amount_rub, planPreviewDiscountPercent)}</strong>
+                          <strong className="text-[0.9375rem] text-ink">{formatPrice(plan.amount_rub)}</strong>
                         </button>
                       );
                     })}
@@ -695,12 +978,13 @@ export default function CheckoutClient() {
                   </p>
                 </div>
                 <div className="text-right">
-                  <strong className="block font-display text-[1.75rem] leading-none text-brand">{activePlanTotal} ₽</strong>
+                  <strong className="block font-display text-[1.75rem] leading-none text-brand">{offerPreviewPending || !previewMatchesPlan ? "—" : `${activePlanTotal} ₽`}</strong>
                   {activePlanMonthly > 0 ? <span className="mt-1 block text-[0.75rem] text-ink-soft">≈ {activePlanMonthly} ₽/мес</span> : null}
+                  {offerPreview?.valid && activePlanTotal < activePlanBase ? <span className="mt-1 block text-[0.75rem] text-ink-soft">было {activePlanBase} ₽</span> : null}
                 </div>
               </div>
 
-              {checkoutReady && !activeCheckoutTicket ? (
+              {infrastructureReady && !activeCheckoutTicket ? (
                 <label className="flex flex-col gap-2 text-[0.875rem] font-medium text-ink" htmlFor="checkout-buyer-email">
                   Email для чека и кода
                   <input
@@ -729,25 +1013,30 @@ export default function CheckoutClient() {
                 </label>
               ) : null}
 
-              {checkoutReady ? (
+              {infrastructureReady ? (
                 <div className="flex flex-col gap-2">
                   <span className="text-[0.875rem] font-medium text-ink">Способ оплаты</span>
                   <div className="grid grid-cols-2 gap-2">
-                    {PAYMENT_METHOD_OPTIONS.map((option) => {
-                      const selected = option.code === paymentMethod;
+                    {paymentMethods.map((option) => {
+                      const selected = option.code === effectivePaymentMethod;
                       return (
                         <button
                           key={option.code}
                           type="button"
-                          onClick={() => setPaymentMethod(option.code)}
+                          onClick={() => setPaymentMethod(option.code as PaymentMethodChoice)}
+                          disabled={!option.available}
                           className={cn(
                             "min-h-11 rounded-(--radius-control) border px-3 py-2 text-left transition-[border-color,background-color] duration-200 ease-(--ease-apple) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand",
-                            selected ? "border-brand bg-brand-soft" : "border-line bg-surface hover:border-line-strong",
+                            !option.available
+                              ? "cursor-not-allowed border-line bg-canvas-alt opacity-55"
+                              : selected
+                                ? "border-brand bg-brand-soft"
+                                : "border-line bg-surface hover:border-line-strong",
                           )}
                           aria-pressed={selected}
                         >
                           <span className="block text-[0.875rem] font-semibold text-ink">{option.label}</span>
-                          <span className="block text-[0.6875rem] text-ink-soft">{option.hint}</span>
+                          <span className="block text-[0.6875rem] text-ink-soft">{option.available ? option.hint : "Временно недоступно"}</span>
                         </button>
                       );
                     })}
@@ -755,9 +1044,9 @@ export default function CheckoutClient() {
                 </div>
               ) : null}
 
-              {checkoutReady ? (
-                <Button onClick={startPublicCheckout} disabled={checkoutBusy} size="lg" className="w-full">
-                  Оплатить {activePlanTotal} ₽
+              {infrastructureReady ? (
+                <Button onClick={startPublicCheckout} disabled={checkoutBusy || !checkoutReady} size="lg" className="w-full">
+                  {offerPreviewPending || !previewMatchesPlan ? "Проверяем сумму…" : `Оплатить ${activePlanTotal} ₽`}
                 </Button>
               ) : (
                 <span aria-disabled="true" className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-canvas-alt px-6 text-[0.9375rem] font-semibold text-ink-muted">
@@ -771,13 +1060,24 @@ export default function CheckoutClient() {
                   : "Разовая оплата · без автосписаний · код на email"}
               </p>
 
+              {offerPreview?.valid && formatServerDeadline(offerPreview.hold_expires_at) ? (
+                <p className="-mt-2 text-center text-[0.75rem] leading-relaxed text-ink-soft">
+                  Сумма зафиксирована сервером до {formatServerDeadline(offerPreview.hold_expires_at)}.
+                </p>
+              ) : null}
+              {offerPreview?.terms_url ? (
+                <a href={offerPreview.terms_url} target="_blank" rel="noreferrer" className="-mt-2 text-center text-[0.75rem] font-semibold text-brand-strong underline-offset-4 hover:underline">
+                  Условия предложения
+                </a>
+              ) : null}
+
               {checkoutStatusText ? (
                 <p role="alert" className="rounded-(--radius-control) bg-canvas-alt px-4 py-3 text-[0.875rem] text-ink">
                   {checkoutStatusText}
                 </p>
               ) : null}
 
-              {!checkoutReady ? (
+              {!infrastructureReady ? (
                 <div className="flex flex-col gap-3">
                   <p className="text-[0.8125rem] leading-relaxed text-ink-soft">
                     {checkoutBlockedReasons.length
@@ -799,7 +1099,7 @@ export default function CheckoutClient() {
                 <details className="group py-3">
                   <summary className="cursor-pointer text-[0.875rem] font-semibold text-ink">Есть промокод?</summary>
                   <label className="mt-3 flex flex-col gap-2 text-[0.8125rem] text-ink-soft" htmlFor="checkout-promo-code">
-                    Введите код — сумма обновится сразу
+                    Введите код — итог проверит сервер перед созданием платежа
                     <input
                       id="checkout-promo-code"
                       value={promoCode}
@@ -808,10 +1108,10 @@ export default function CheckoutClient() {
                       className={INPUT_CLASS}
                     />
                     <span>
-                      {activePlanDiscountBlocked
-                        ? "На приветственные 99 ₽ дополнительная скидка не действует."
-                        : discountPercent > 0
-                        ? `Скидка ${discountPercent}% учтена в сумме.`
+                      {promoCode
+                        ? offerPreviewPending
+                          ? "Проверяем код и сумму на сервере…"
+                          : offerMessage
                         : ""}
                     </span>
                   </label>

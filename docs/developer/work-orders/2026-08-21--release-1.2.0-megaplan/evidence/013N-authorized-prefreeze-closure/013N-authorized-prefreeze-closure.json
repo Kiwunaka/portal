@@ -1,0 +1,144 @@
+{
+  "schema": "pokrov.release-1.2.0.authorized-prefreeze-closure/v1",
+  "recorded_at": "2026-08-23T06:10:51Z",
+  "status": "PASS_THREE_PREFREEZE_ROWS_I3_EXTERNAL_PRECONDITIONS_OPEN",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "promotion_authorized": false,
+  "authorization": {
+    "git_push": true,
+    "pull_requests": true,
+    "actions_secrets": true,
+    "narrow_evidence_merges": true,
+    "production_deploy": false,
+    "payment_action": false,
+    "campaign_launch": false
+  },
+  "public_release_index": {
+    "repository": "Kiwunaka/pokrov",
+    "pull_request": "https://github.com/Kiwunaka/pokrov/pull/1",
+    "base_revision": "d0bf8e8c70ebeaa241f4c8f5b8a4452fd339ed15",
+    "head_revision": "2ba9116b4bc222021c2fbb53a21ff8a6c4043289",
+    "merge_revision": "491436889ef911de868d704e68ba86e77102b0f1",
+    "changed_paths": 9,
+    "pull_request_check_run_id": 32616569598,
+    "post_merge_run": {
+      "run_id": 32616614043,
+      "job_id": 97138291041,
+      "conclusion": "SUCCESS",
+      "url": "https://github.com/Kiwunaka/pokrov/actions/runs/32616614043"
+    },
+    "public_main_readback": "PASS_EXACT",
+    "signing_key": {
+      "id": "pokrov-release-2026-01",
+      "public_key_sha256": "651d1bcfbedecc4e50d21f3ad3bf3cc990a6cfc97ad355f0e0e76972b8ba8024",
+      "private_key_secret_name": "POKROV_RELEASE_SIGNING_KEY_PEM",
+      "private_material_in_git_or_logs": false
+    },
+    "candidate_manifest_signed": false
+  },
+  "pr00": {
+    "pull_request": "https://github.com/Kiwunaka/portal/pull/18",
+    "head_revision": "e26fcb0b3581c8b0261db29812563085b8fb90a9",
+    "merge_revision": "8cef00ace333d9164d7ac9f4a0856eb7fa88f173",
+    "changed_paths": 10,
+    "visible_ui_paths": 0,
+    "checks": {
+      "release_base_isolation_run_id": 32616491039,
+      "repo_guardrails_run_id": 32616491005,
+      "conclusion": "SUCCESS"
+    },
+    "retained_workflow_followup": {
+      "pull_request": "https://github.com/Kiwunaka/portal/pull/19",
+      "head_revision": "01accb70713f48b127e0c88ddd1bd74162307887",
+      "merge_revision": "a25fa8a9ec5fe9e4032a65e152c9852c5c78e45b",
+      "changed_paths": 3,
+      "repo_guardrails_run_id": 32618497517,
+      "conclusion": "SUCCESS"
+    },
+    "non_author_review": "ABSENT_RETAINED_AS_SEPARATE_BRANCH_POLICY_BLOCKER"
+  },
+  "hosted_client_gate": {
+    "pull_request": "https://github.com/Kiwunaka/portal/pull/17",
+    "state": "OPEN",
+    "control_revision": "75a5c4f82c963d81f1c46dcf26a83cf39b8021cf",
+    "target_revision": "a25fa8a9ec5fe9e4032a65e152c9852c5c78e45b",
+    "changed_paths": 6,
+    "visible_ui_paths": 0,
+    "source_tuple": {
+      "platform": "9b9467c7ad788298dd51de2d5c769d13be5a12b3",
+      "client": "66d82be70e32ba3d9650c250c92750ac264cba0f",
+      "core_artifact_bound": "fcb3c8bbc6efdeed284417369aacb522722ebfa2"
+    },
+    "private_checkout_secret_name": "POKROV_RELEASE_CLIENT_DEPLOY_KEY",
+    "private_material_in_git_or_logs": false,
+    "successful_run": {
+      "run_id": 32621490357,
+      "job_id": 97150195041,
+      "head_revision": "75a5c4f82c963d81f1c46dcf26a83cf39b8021cf",
+      "conclusion": "SUCCESS",
+      "url": "https://github.com/Kiwunaka/portal/actions/runs/32621490357",
+      "exact_sha_verification": "PASS",
+      "cross_repository_seed": "PASS",
+      "free_space_before_standard_gate_gb": 11,
+      "app_shell": "PASS_385_OF_385",
+      "runtime_engine": "PASS_59_OF_59_SKIP_1_REAL_DLL_BACKTEST",
+      "android_shell": "PASS_8_OF_8",
+      "windows_shell": "PASS_21_OF_21",
+      "android_gradle": "BUILD_SUCCESSFUL_6M42S",
+      "standard_entrypoint": "PASS"
+    },
+    "platform_guardrails": {
+      "run_id": 32621490362,
+      "conclusion": "SUCCESS"
+    },
+    "retained_failure": {
+      "run_id": 32620758845,
+      "conclusion": "CANCELLED_AFTER_STANDARD_GATE_FAILURE",
+      "failure_class": "HOSTED_RUNNER_DISK_EXHAUSTED_BEFORE_ANDROID_GRADLE_TESTS",
+      "flutter_packages": "PASS",
+      "diagnostic_tail": "CANCELLED_AFTER_ZERO_MB_FREE"
+    }
+  },
+  "supporting_core_ci": {
+    "pull_request": "https://github.com/Kiwunaka/pokrov-core/pull/2",
+    "head_revision": "0e6b0204d764ae6b1d726343f487a7004d13393b",
+    "run_id": 32619396382,
+    "url": "https://github.com/Kiwunaka/pokrov-core/actions/runs/32619396382",
+    "jobs": {
+      "test": "SUCCESS",
+      "release-contract": "SUCCESS",
+      "apple-source-build": "SUCCESS",
+      "android-artifact-reproducibility": "SUCCESS",
+      "windows-artifact-reproducibility": "SUCCESS"
+    },
+    "artifact_bound_candidate_source": false
+  },
+  "ledger": {
+    "advanced_rows": {
+      "REL/TEST-001": "I2_TO_I3",
+      "REL/REPO-001": "I2_TO_I3",
+      "FE_PR/PR-00": "I2_TO_I3"
+    },
+    "unchanged_external_pre_candidate_rows": {
+      "REL/REL-001": "I1_BRANCH_POLICY_AND_REVIEWER_BLOCKED",
+      "REL_DOD/DOD-09": "I1_BRANCH_POLICY_AND_REVIEWER_BLOCKED",
+      "FE/P12-023": "I2_PUBLISHED_HOSTED_NON_AUTHOR_REVIEW_ABSENT"
+    },
+    "distribution": {
+      "I3": 306,
+      "I2": 17,
+      "I1": 39,
+      "I0": 15
+    },
+    "below_i3": 71,
+    "pending_stage_counts": {
+      "pre_freeze": 0,
+      "candidate": 33,
+      "external": 17,
+      "deferred": 21
+    },
+    "external_pre_candidate_rows_below_i3": 3
+  },
+  "evidence_ceiling": "PREFREEZE_I3_WITH_EXACT_PUBLIC_HOSTED_READBACK_NO_CANDIDATE"
+}

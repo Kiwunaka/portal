@@ -31,8 +31,23 @@ SUPPORTED_JOB_TYPES = frozenset(
         "free_to_standard",
         "rotate_access_key",
         "reward_entitlement_sync",
+        "payment_entitlement_sync",
     }
 )
+ENTITLEMENT_SYNC_JOB_TYPES = frozenset(
+    {"reward_entitlement_sync", "payment_entitlement_sync"}
+)
+
+
+def _entitlement_sync_sources(job_type: str) -> frozenset[str]:
+    if job_type == "payment_entitlement_sync":
+        return frozenset({"provider_payment"})
+    return frozenset({"bonus_wheel", "bonus_calendar"})
+
+
+def _entitlement_sync_error(job_type: str, suffix: str) -> str:
+    prefix = "payment_sync" if job_type == "payment_entitlement_sync" else "reward_sync"
+    return f"{prefix}_{suffix}"
 
 
 def _utcnow() -> datetime:
@@ -89,6 +104,61 @@ def enqueue_reward_entitlement_sync(
         account_id=account_key,
         entitlement_grant_id=grant_id,
         job_type="reward_entitlement_sync",
+        status="queued",
+        idempotency_key=key,
+        attempts=0,
+        next_run_at=now,
+        created_at=now,
+        updated_at=now,
+    )
+    session.add(job)
+    session.flush()
+    return job
+
+
+def enqueue_payment_entitlement_sync(
+    session,
+    *,
+    account_id: str,
+    entitlement_grant_id: str,
+    provider: str,
+    order_id: str,
+    now: datetime,
+) -> NodeProvisioningJob:
+    account_key = str(account_id)
+    grant_id = str(entitlement_grant_id)
+    provider_key = str(provider or "").strip().lower()
+    order_key = str(order_id or "").strip()
+    key = f"payment-entitlement-sync:v1:{grant_id}"
+    grant = session.get(EntitlementGrant, grant_id)
+    if (
+        grant is None
+        or str(grant.account_id) != account_key
+        or str(grant.source) != "provider_payment"
+        or str(grant.status) != "active"
+        or str(grant.grant_kind) != "paid_access"
+        or str(grant.provider or "").strip().lower() != provider_key
+        or str(grant.external_order_id or "").strip() != order_key
+    ):
+        raise ProvisioningError("payment_sync_grant_invalid")
+    existing = (
+        session.query(NodeProvisioningJob)
+        .filter_by(idempotency_key=key)
+        .one_or_none()
+    )
+    if existing is not None:
+        if (
+            str(existing.entitlement_grant_id) != grant_id
+            or str(existing.account_id) != account_key
+            or str(existing.job_type) != "payment_entitlement_sync"
+        ):
+            raise ProvisioningError("payment_sync_idempotency_conflict")
+        return existing
+
+    job = NodeProvisioningJob(
+        account_id=account_key,
+        entitlement_grant_id=grant_id,
+        job_type="payment_entitlement_sync",
         status="queued",
         idempotency_key=key,
         attempts=0,
@@ -485,7 +555,7 @@ def _prepare_job(session, claim: ClaimedJob) -> PreparedJob:
     if job.job_type not in SUPPORTED_JOB_TYPES:
         raise ProvisioningError("job_type_unsupported")
 
-    if job.job_type == "reward_entitlement_sync":
+    if job.job_type in ENTITLEMENT_SYNC_JOB_TYPES:
         try:
             account_id = resolve_canonical_account_id(
                 session,
@@ -497,9 +567,16 @@ def _prepare_job(session, claim: ClaimedJob) -> PreparedJob:
         if (
             grant is None
             or str(grant.account_id) != account_id
-            or str(grant.source) not in {"bonus_wheel", "bonus_calendar"}
+            or str(grant.source) not in _entitlement_sync_sources(job.job_type)
+            or (
+                job.job_type == "payment_entitlement_sync"
+                and (
+                    str(grant.status) != "active"
+                    or str(grant.grant_kind) != "paid_access"
+                )
+            )
         ):
-            raise ProvisioningError("reward_sync_grant_invalid")
+            raise ProvisioningError(_entitlement_sync_error(job.job_type, "grant_invalid"))
         reward_tg_ids = tuple(
             int(row[0])
             for row in (
@@ -513,7 +590,7 @@ def _prepare_job(session, claim: ClaimedJob) -> PreparedJob:
             )
         )
         if not reward_tg_ids:
-            raise ProvisioningError("reward_sync_users_missing")
+            raise ProvisioningError(_entitlement_sync_error(job.job_type, "users_missing"))
         return PreparedJob(
             job_id=int(job.id),
             job_type=job.job_type,
@@ -963,7 +1040,7 @@ async def _execute_panel(
         claim_lease.renew()
     if prepared.superseded:
         return "superseded"
-    if prepared.job_type == "reward_entitlement_sync":
+    if prepared.job_type in ENTITLEMENT_SYNC_JOB_TYPES:
         if superseded_check is not None and superseded_check():
             return "superseded"
         for tg_id in prepared.reward_tg_ids:
@@ -977,9 +1054,9 @@ async def _execute_panel(
             except ClaimLostError:
                 raise
             except Exception as exc:
-                raise ProvisioningError("reward_sync_failed") from exc
+                raise ProvisioningError(_entitlement_sync_error(prepared.job_type, "failed")) from exc
             if not updated:
-                raise ProvisioningError("reward_sync_failed")
+                raise ProvisioningError(_entitlement_sync_error(prepared.job_type, "failed"))
         return "synced"
     if prepared.job_type == "rotate_access_key":
         if not prepared.rotation_pooled:
@@ -1109,7 +1186,7 @@ async def _execute_panel(
 
 
 def _claim_was_superseded(session_factory, *, claim: ClaimedJob, prepared: PreparedJob) -> bool:
-    if prepared.job_type == "reward_entitlement_sync":
+    if prepared.job_type in ENTITLEMENT_SYNC_JOB_TYPES:
         with session_factory() as session:
             job = (
                 session.query(NodeProvisioningJob)
@@ -1169,7 +1246,7 @@ def _finalize_success(
     if job is None or job.status != "running" or str(job.lock_token or "") != claim.lock_token:
         return "claim_lost"
 
-    if prepared.job_type == "reward_entitlement_sync":
+    if prepared.job_type in ENTITLEMENT_SYNC_JOB_TYPES:
         try:
             canonical_account_id = resolve_canonical_account_id(
                 session,
@@ -1193,7 +1270,14 @@ def _finalize_success(
         if (
             grant is None
             or str(grant.account_id) != canonical_account_id
-            or str(grant.source) not in {"bonus_wheel", "bonus_calendar"}
+            or str(grant.source) not in _entitlement_sync_sources(prepared.job_type)
+            or (
+                prepared.job_type == "payment_entitlement_sync"
+                and (
+                    str(grant.status) != "active"
+                    or str(grant.grant_kind) != "paid_access"
+                )
+            )
         ):
             return "claim_lost"
     elif prepared.job_type == "rotate_access_key":
@@ -1304,7 +1388,7 @@ def _finalize_success(
                     key.updated_at = now
 
     success_status = (
-        "completed" if prepared.job_type == "reward_entitlement_sync" else "succeeded"
+        "completed" if prepared.job_type in ENTITLEMENT_SYNC_JOB_TYPES else "succeeded"
     )
     job.status = success_status
     job.result_json = _result_json(

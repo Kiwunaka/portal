@@ -1,0 +1,205 @@
+{
+  "candidate_proven": false,
+  "captured_at_utc": "2026-08-22T04:20:26Z",
+  "external_pilot_status": "NOT_AUTHORIZED",
+  "gate_id": "pokrov.release-1.2.marketing-pilot.local",
+  "gate_version": "1.0.0",
+  "local_status": "PASS",
+  "manual_lanes": [
+    {
+      "id": "owner-legal-and-channel-approval",
+      "required_for_external_pilot": true,
+      "status": "BLOCKED_BY_OWNER_DECISION"
+    },
+    {
+      "id": "seller-offer-terms-publication",
+      "required_for_external_pilot": true,
+      "status": "BLOCKED_BY_ACCESS"
+    },
+    {
+      "id": "production-payment-provider",
+      "required_for_external_pilot": true,
+      "status": "BLOCKED_BY_ACCESS"
+    },
+    {
+      "id": "deployed-revision-and-live-capacity",
+      "required_for_external_pilot": true,
+      "status": "BLOCKED_BY_ACCESS"
+    },
+    {
+      "id": "holdout-percentage",
+      "required_for_external_pilot": true,
+      "status": "BLOCKED_BY_OWNER_DECISION"
+    },
+    {
+      "id": "channel-consent-support-and-rollback",
+      "required_for_external_pilot": true,
+      "status": "MANUAL_OWNER_TEST"
+    },
+    {
+      "id": "send-spend-launch",
+      "required_for_external_pilot": true,
+      "status": "NOT_AUTHORIZED"
+    },
+    {
+      "id": "d30-refund-support-incident-outcome",
+      "required_for_external_pilot": true,
+      "status": "NOT_AUTHORIZED"
+    }
+  ],
+  "promotion_status": "NOT_REQUESTED",
+  "schema_version": 1,
+  "scope": "local_worktree_only",
+  "sources": {
+    "client": {
+      "revision": "ba7930ea83487874f47a49199ade89868c5675b3",
+      "working_tree_state": "dirty"
+    },
+    "platform": {
+      "revision": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+      "working_tree_state": "dirty"
+    }
+  },
+  "steps": [
+    {
+      "category": "contract",
+      "duration_seconds": 0.08,
+      "exit_code": 0,
+      "id": "commercial-contract-current",
+      "status": "PASS"
+    },
+    {
+      "category": "contract",
+      "duration_seconds": 0.094,
+      "exit_code": 0,
+      "id": "marketing-governance-current",
+      "status": "PASS"
+    },
+    {
+      "category": "copy-legal",
+      "duration_seconds": 0.233,
+      "exit_code": 0,
+      "id": "marketing-governance-scan",
+      "status": "PASS"
+    },
+    {
+      "category": "contract",
+      "duration_seconds": 0.081,
+      "exit_code": 0,
+      "id": "winback-pilot-current",
+      "status": "PASS"
+    },
+    {
+      "category": "repository",
+      "duration_seconds": 0.559,
+      "exit_code": 0,
+      "id": "script-manifest",
+      "status": "PASS"
+    },
+    {
+      "category": "backend",
+      "duration_seconds": 5.331,
+      "exit_code": 0,
+      "id": "pilot-backend-contracts",
+      "status": "PASS"
+    },
+    {
+      "category": "backend-api",
+      "duration_seconds": 6.044,
+      "exit_code": 0,
+      "id": "pilot-operator-api",
+      "status": "PASS"
+    },
+    {
+      "category": "owned-web",
+      "duration_seconds": 5.174,
+      "exit_code": 0,
+      "id": "marketing-lint",
+      "status": "PASS"
+    },
+    {
+      "category": "owned-web",
+      "duration_seconds": 9.608,
+      "exit_code": 0,
+      "id": "marketing-build",
+      "status": "PASS"
+    },
+    {
+      "category": "owned-web",
+      "duration_seconds": 0.51,
+      "exit_code": 0,
+      "id": "marketing-seo",
+      "status": "PASS"
+    },
+    {
+      "category": "owned-web",
+      "duration_seconds": 33.318,
+      "exit_code": 0,
+      "id": "marketing-responsive",
+      "status": "PASS"
+    },
+    {
+      "category": "owned-cabinet",
+      "duration_seconds": 8.402,
+      "exit_code": 0,
+      "id": "cabinet-lint",
+      "status": "PASS"
+    },
+    {
+      "category": "owned-cabinet",
+      "duration_seconds": 12.779,
+      "exit_code": 0,
+      "id": "cabinet-build",
+      "status": "PASS"
+    },
+    {
+      "category": "operator-center",
+      "duration_seconds": 8.982,
+      "exit_code": 0,
+      "id": "operator-center-lint",
+      "status": "PASS"
+    },
+    {
+      "category": "operator-center",
+      "duration_seconds": 11.934,
+      "exit_code": 0,
+      "id": "operator-center-build",
+      "status": "PASS"
+    },
+    {
+      "category": "owned-app",
+      "duration_seconds": 2.955,
+      "exit_code": 0,
+      "id": "client-promo-analyze",
+      "status": "PASS"
+    },
+    {
+      "category": "owned-app",
+      "duration_seconds": 10.21,
+      "exit_code": 0,
+      "id": "client-promo-tests",
+      "status": "PASS"
+    },
+    {
+      "category": "owned-app",
+      "duration_seconds": 4.192,
+      "exit_code": 0,
+      "id": "client-promo-render-test",
+      "status": "PASS"
+    },
+    {
+      "category": "documentation",
+      "duration_seconds": 0.825,
+      "exit_code": 0,
+      "id": "docs-contract",
+      "status": "PASS"
+    },
+    {
+      "category": "documentation",
+      "duration_seconds": 0.089,
+      "exit_code": 0,
+      "id": "docs-links",
+      "status": "PASS"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # Payment And Access-Key Contract
 
-Last updated: 2026-07-18
+Last updated: 2026-08-21
 
 ## Current Rule
 
@@ -30,6 +30,80 @@ A completed production cutover, mixed-fleet safety, and full migration must not 
 | Failure | Failed, cancelled, refunded, chargeback, and manual-review states do not fulfill access. |
 | Reconciliation | Operators can review provider state without relying on undocumented refund webhooks. |
 
+Marketing and cabinet checkout consume one server contract. Initial catalog,
+provider capability and independent acquisition requests run in parallel;
+offer preview follows the selected plan/promo and is the only source for final
+price, benefit, absolute deadline, terms link and signed hold. A non-empty
+invalid promo blocks order creation. Checkout submits the signed offer token,
+and the server revalidates price/revision/legal/capacity/quota/deadline under
+lock before provider I/O.
+
+The provider capability response owns which methods are enabled. Return from a
+provider is restored from a versioned identity-free token kept in browser
+session storage, never from a token in the URL. Both surfaces strip return hints
+and render only the six server states `processing`, `paid`, `failed`,
+`cancelled`, `manual_review`, and `expired`. They do not calculate price,
+restart an urgency deadline, infer remaining quota, or turn a callback/redirect
+hint into payment or access truth.
+
+The 1.2.0 repository candidate implements order creation as two short local
+transactions separated by provider I/O. The first transaction stores a
+canonical `pokrov-payment-order-intent-v1` record before any network request.
+Its digest binds provider/order, owner, amount, currency, plan, source and the
+entitlement snapshot. Reuse of that provider/order key is accepted only when
+the complete intent still matches; any drift fails closed. The second
+transaction may record only bounded allowlisted provider identifiers/status and
+the fact that a validated checkout URL was returned. It does not persist the
+checkout URL, query parameters, provider request body or raw provider response.
+Provider failure leaves the durable order in non-fulfilling `created` state with
+a closed error code, so the exact intent remains available for idempotent retry
+or reconciliation. This is local candidate proof, not deployed-provider proof.
+
+An optional signed commercial offer upgrades only that order to
+`pokrov-payment-order-intent-v2`. Before provider I/O, one transaction derives
+the subject from server-issued Telegram/acquisition authority, locks the
+campaign/offer/creative/assignment/reservation and revalidates current price,
+revisions, deadlines, legal/channel/capacity policy and finite paid caps. The
+client never supplies authoritative price, discount, IDs or remaining quota.
+The immutable nested v2 lineage retains stable campaign/offer/creative/variant/
+assignment/reservation plus server-issued impression/click IDs, opaque subject
+HMAC, exact price/revisions/deadlines and token SHA-256, not the token or raw
+identity. Exact retry reuses the same order; drift fails closed.
+
+Authenticated payment fulfillment consumes that bound reservation once in the
+same transaction as durable account/access-key fulfillment. A callback cannot
+introduce or repair attribution. Refund/chargeback retains original lineage and
+does not decrement its gross paid counters; later revenue projection must show
+refund/net separately. The payment transaction also inserts one identity-free
+commercial `paid` projection keyed by provider/order/stage. Refund/chargeback
+adds a separate `reversed` projection; verified connection and D7/D30 retention
+can only follow durable observer connection evidence, while renewal requires a
+later provider-payment grant. Client/funnel telemetry cannot create any of
+these authoritative stages. A failed provider checkout may release its reservation
+after the absolute hold without rewriting order truth, while a ready checkout
+keeps the binding for a delayed callback.
+
+Provider I/O is owned by one FastAPI-lifespan registry. Lava.top, Cardlink,
+Pally, Platima and the closed historical FreeKassa operation set use reusable
+provider-policy sessions with bounded total/connect/socket-read time, pool size
+and JSON-object response bytes. The adapter cannot create a session on demand.
+Safe aggregate telemetry contains only provider, closed operation, HTTP status,
+integer latency and result code; URL/query, auth headers, request fields,
+provider body and exception text are forbidden. This local boundary does not
+prove provider availability, deployed pool behavior or production latency.
+
+When an account-owned provider payment first applies or repairs a durable
+`paid_access` grant, the same database transaction inserts one
+`payment_entitlement.applied` outbox row keyed by provider/order/schema. The
+event payload is deliberately minimal: schema, event type, grant ID, provider
+and order ID. It contains no account identifier, Telegram ID, checkout URL,
+provider body or credential. The supervised worker atomically publishes it to
+one idempotent `payment_entitlement_sync` provisioning job. Callback replay,
+outbox replay and provisioning replay converge on the same grant and job;
+outbox or provisioning failure cannot repeat entitlement projection. A reversed
+grant fails closed before panel synchronization. Local worker proof does not
+replace live callback, worker, panel-readback or reconciliation evidence.
+
 ## Open Beta v4 Position
 
 Lava.top is the active enabled RUB provider for the beta checkout path. Redacted live evidence from `2026-05-15` confirms invoice creation, authenticated success callback handling, invalid-auth rejection, order-level idempotency after fulfillment, account extension for the authenticated cabinet path, and paid access-key email delivery probe readiness. Retained evidence: [Paid Checkout Launch Evidence - 2026-05-15](C:/Users/kiwun/Documents/ai/VPN/docs/audit-artifacts/paid-checkout-launch-evidence-brain-2026-05-15.json) and [Live Payment And Email Confirmation - 2026-05-15](C:/Users/kiwun/Documents/ai/VPN/docs/audit-artifacts/live-payment-email-confirmation-2026-05-15.md).
@@ -42,6 +116,12 @@ an exact configured merchant. Even an authenticated callback cannot create local
 order authority: fulfillment requires a pre-existing order whose persisted owner,
 plan, source, amount, currency, and immutable entitlement snapshot match. Unknown
 orders and mismatches remain redacted manual-review evidence with no access effect.
+Provider API response parsing accepts only a provider-supplied checkout URL on
+the exact configured HTTPS payment host. Missing, malformed, non-HTTPS,
+credential-bearing, or cross-host values fail as a provider error. The parser
+never manufactures a zero-amount fallback; the separate signed SCI builder is
+the only local FreeKassa checkout URL path and requires the authoritative
+positive local amount.
 
 Current fulfillment contract:
 
@@ -63,4 +143,16 @@ Current fulfillment contract:
 - provider callbacks never supply or repair authoritative order fields, and new
   orders capture duration/pricing/source as an immutable entitlement snapshot so
   later catalog edits cannot change what a paid order grants;
+- commercial callbacks consume only the reservation already named by immutable
+  order lineage; callback payloads, refunds and chargebacks cannot replace or
+  erase campaign/creative/variant/assignment attribution;
 - access keys must not be returned in public payment API responses or URLs after payment.
+
+Operator Center reads the same authority through
+`GET /api/admin/v2/money/access`: payment claims, entitlement grants and the
+provisioning outbox determine paid access; client telemetry is explicitly
+non-authoritative. Stored gift/access codes are redacted in every list/read
+model. When an authorized L3 operator issues a new code, the full value exists
+only in the successful Action Intent execute response and in the in-memory
+dialog until it is closed; it must not be copied into tickets, notes, URLs or
+later audit/read projections.

@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import sys
 import tempfile
 import unittest
@@ -33,6 +34,9 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
 
         self.assertIn("test -f /var/www/portal/releases/202605070001/webapp/index.html", joined)
         self.assertIn("test -f /var/www/portal/releases/202605070001/adminapp/index.html", joined)
+        self.assertIn("test -f /var/www/portal/releases/202605070001/adminapp/__build.json", joined)
+        self.assertIn("test -f /var/www/portal/releases/202605070001/adminapp/__routes.json", joined)
+        self.assertIn("pokrov-operator-center", joined)
         self.assertIn("test -f /var/www/portal/releases/202605070001/marketing/index.html", joined)
         self.assertIn("test -f /var/www/portal/releases/202605070001/marketing/checkout/index.html", joined)
         self.assertIn("test ! -e /var/www/portal/releases/202605070001/marketing/fk-verify.html", joined)
@@ -52,6 +56,10 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
         self.assertIn("https://pokrov.space/", joined)
         self.assertIn("https://app.pokrov.space/", joined)
         self.assertIn("https://admin.pokrov.space/", joined)
+        self.assertIn("https://admin.pokrov.space/__build.json", joined)
+        self.assertIn("https://admin.pokrov.space/__routes.json", joined)
+        self.assertIn("operator_build_ok", joined)
+        self.assertIn("operator_routes_ok", joined)
         self.assertIn("https://pokrov.space/fk-verify.html", joined)
         self.assertIn("https://pokrov.space/fk-payment-theme.css", joined)
         self.assertIn('[ "$status" = "404" ] || [ "$status" = "410" ]', joined)
@@ -77,6 +85,8 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
 
             self.assertIn(f"missing local static file: {local_webapp / 'index.html'}", failures)
             self.assertIn(f"missing local static file: {local_adminapp / 'index.html'}", failures)
+            self.assertIn(f"missing local static file: {local_adminapp / '__build.json'}", failures)
+            self.assertIn(f"missing local static file: {local_adminapp / '__routes.json'}", failures)
             self.assertIn(f"missing local static file: {local_marketing / 'index.html'}", failures)
             self.assertIn(f"missing local static file: {local_marketing / 'checkout' / 'index.html'}", failures)
 
@@ -85,6 +95,7 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
             (local_marketing / "checkout").mkdir(parents=True)
             (local_webapp / "index.html").write_text("app", encoding="utf-8")
             (local_adminapp / "index.html").write_text("admin", encoding="utf-8")
+            self._write_admin_identity(local_adminapp)
             (local_marketing / "index.html").write_text("marketing", encoding="utf-8")
             (local_marketing / "checkout" / "index.html").write_text("checkout", encoding="utf-8")
             (local_marketing / "fk-verify.html").write_text("legacy", encoding="utf-8")
@@ -122,6 +133,35 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
                 ),
             )
 
+    @staticmethod
+    def _write_admin_identity(local_adminapp: Path) -> None:
+        (local_adminapp / "__build.json").write_text(
+            json.dumps(
+                {
+                    "schema": "pokrov-operator-build-v1",
+                    "app": "pokrov-operator-center",
+                    "canonical_domain": "admin.pokrov.space",
+                    "frontend_commit": "abcdef1",
+                    "expected_api_schema": "admin-v2.1",
+                    "route_manifest_hash": "route-hash",
+                    "cutover_matrix_hash": "cutover-hash",
+                }
+            ),
+            encoding="utf-8",
+        )
+        (local_adminapp / "__routes.json").write_text(
+            json.dumps(
+                {
+                    "schema": "pokrov-operator-route-manifest-v1",
+                    "app": "pokrov-operator-center",
+                    "manifest_hash": "route-hash",
+                    "cutover_matrix_hash": "cutover-hash",
+                    "workspaces": [{"id": f"workspace-{index}"} for index in range(7)],
+                }
+            ),
+            encoding="utf-8",
+        )
+
     def test_plan_only_builds_local_bundles_without_ssh(self) -> None:
         with tempfile.TemporaryDirectory() as temp_root:
             root = Path(temp_root)
@@ -133,6 +173,7 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
             (local_marketing / "checkout").mkdir(parents=True)
             (local_webapp / "index.html").write_text("app", encoding="utf-8")
             (local_adminapp / "index.html").write_text("admin", encoding="utf-8")
+            self._write_admin_identity(local_adminapp)
             (local_marketing / "index.html").write_text("marketing", encoding="utf-8")
             (local_marketing / "checkout" / "index.html").write_text("checkout", encoding="utf-8")
 
@@ -162,6 +203,33 @@ class RemoteDeployBrainStaticSitesTests(unittest.TestCase):
                 else:
                     sys.modules["node_access"] = old_node_access
                 sys.argv = old_argv
+
+    def test_adminapp_rollback_command_is_exact_fingerprint_bound_and_atomic(self) -> None:
+        command = self.module._adminapp_rollback_command(
+            remote_root="/var/www/portal",
+            expected_current_route_hash="a" * 64,
+            expected_current_cutover_hash="b" * 64,
+            expected_rollback_route_hash="c" * 64,
+            expected_rollback_cutover_hash="d" * 64,
+        )
+        self.assertIn("current=$(readlink -f /var/www/portal/adminapp)", command)
+        self.assertIn("rollback=$(readlink -f /var/www/portal/adminapp.rollback)", command)
+        self.assertIn('test "$current" != "$rollback"', command)
+        self.assertIn("/var/www/portal/adminapp.next", command)
+        self.assertIn("/var/www/portal/adminapp.rollback.next", command)
+        self.assertIn("a" * 64, command)
+        self.assertIn("d" * 64, command)
+        self.assertGreaterEqual(command.count("python3 -c"), 3)
+
+    def test_adminapp_rollback_command_rejects_non_exact_hashes(self) -> None:
+        with self.assertRaisesRegex(ValueError, "exact lowercase SHA-256"):
+            self.module._adminapp_rollback_command(
+                remote_root="/var/www/portal",
+                expected_current_route_hash="not-a-hash",
+                expected_current_cutover_hash="b" * 64,
+                expected_rollback_route_hash="c" * 64,
+                expected_rollback_cutover_hash="d" * 64,
+            )
 
 
 if __name__ == "__main__":

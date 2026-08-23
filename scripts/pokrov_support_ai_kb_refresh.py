@@ -123,11 +123,17 @@ JSON_PROJECTIONS: Mapping[str, tuple[str, ...]] = {
     ),
     "shared/tariff-catalog.json": (
         "catalog_version",
+        "commercial_revision",
+        "effective_from",
+        "terms_revision",
         "default_currency",
+        "price_authority",
+        "promo_authority",
+        "campaign_saving_authority",
         "commerce_model",
         "public_surface_policy",
+        "capacity_policy",
         "plan_aliases",
-        "pricing_preview",
         "plans",
     ),
 }

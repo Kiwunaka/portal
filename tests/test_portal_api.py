@@ -433,7 +433,13 @@ class PortalApiTests(unittest.TestCase):
         api = importlib.import_module("api")
         importlib.reload(api)
 
-        user = SimpleNamespace(tg_id=1001, sub_type="PAID", current_plan_code="1_month")
+        user = SimpleNamespace(
+            tg_id=1001,
+            sub_type="PAID",
+            current_plan_code="1_month",
+            is_active=True,
+            expiry_at=api._utcnow() + timedelta(days=30),
+        )
         nodes = [
             SimpleNamespace(code="brain"),
             SimpleNamespace(code="de"),
@@ -472,7 +478,7 @@ class PortalApiTests(unittest.TestCase):
         out = api._nodes_for_user(user, nodes)
         self.assertEqual([n.code for n in out], ["nl", "it"])
 
-    def test_nodes_for_active_legacy_pending_user_use_premium_pool(self) -> None:
+    def test_nodes_for_active_legacy_pending_user_stays_fail_closed(self) -> None:
         import importlib
 
         api = importlib.import_module("api")
@@ -493,7 +499,7 @@ class PortalApiTests(unittest.TestCase):
 
         out = api._nodes_for_user(user, nodes)
 
-        self.assertEqual([n.code for n in out], ["de", "nl"])
+        self.assertEqual(out, [])
 
     def test_nodes_for_expired_legacy_pending_user_stay_fail_closed(self) -> None:
         import importlib

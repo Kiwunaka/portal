@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import argparse
-import os
+import json
 import posixpath
 import re
 import shlex
@@ -20,9 +20,14 @@ DEFAULT_PASSWORDS = REPO_ROOT / "VPN NODE SSH KEYS" / "PASSWORDS.txt"
 REQUIRED_LOCAL_STATIC_FILES = (
     ("webapp", "index.html"),
     ("adminapp", "index.html"),
+    ("adminapp", "__build.json"),
+    ("adminapp", "__routes.json"),
     ("marketing", "index.html"),
     ("marketing", "checkout", "index.html"),
 )
+ADMINAPP_BUILD_SCHEMA = "pokrov-operator-build-v1"
+ADMINAPP_ROUTE_SCHEMA = "pokrov-operator-route-manifest-v1"
+ADMINAPP_IDENTITY = "pokrov-operator-center"
 FORBIDDEN_LEGACY_MARKETING_STATIC_FILES = (
     "fk-verify.html",
     "fk-payment-theme.css",
@@ -146,6 +151,44 @@ def _local_static_output_validation_failures(*, local_webapp: Path, local_admina
         forbidden = local_marketing / file_name
         if forbidden.exists():
             failures.append(f"forbidden legacy payment static file is present: {forbidden}")
+    build_path = local_adminapp / "__build.json"
+    routes_path = local_adminapp / "__routes.json"
+    if build_path.is_file() and routes_path.is_file():
+        try:
+            build = json.loads(build_path.read_text(encoding="utf-8"))
+            routes = json.loads(routes_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError) as exc:
+            failures.append(f"invalid adminapp build identity JSON: {type(exc).__name__}")
+        else:
+            if build.get("schema") != ADMINAPP_BUILD_SCHEMA:
+                failures.append("invalid adminapp build schema")
+            if build.get("app") != ADMINAPP_IDENTITY:
+                failures.append("invalid adminapp application identity")
+            if build.get("canonical_domain") != "admin.pokrov.space":
+                failures.append("invalid adminapp canonical domain")
+            if not str(build.get("frontend_commit") or "").strip():
+                failures.append("missing adminapp frontend commit")
+            expected_api_schema = str(build.get("expected_api_schema") or "")
+            if not re.fullmatch(r"admin-v2\.[0-9]+", expected_api_schema):
+                failures.append("invalid adminapp expected API schema")
+            if routes.get("schema") != ADMINAPP_ROUTE_SCHEMA:
+                failures.append("invalid adminapp route manifest schema")
+            if routes.get("app") != ADMINAPP_IDENTITY:
+                failures.append("invalid adminapp route application identity")
+            if routes.get("manifest_hash") != build.get("route_manifest_hash"):
+                failures.append("adminapp build/route manifest hash mismatch")
+            if not str(build.get("cutover_matrix_hash") or "").strip():
+                failures.append("missing adminapp cutover matrix hash")
+            if routes.get("cutover_matrix_hash") != build.get("cutover_matrix_hash"):
+                failures.append("adminapp build/route cutover matrix hash mismatch")
+            if len(routes.get("workspaces") or []) != 7:
+                failures.append("adminapp route manifest must declare seven workspaces")
+        try:
+            admin_index = (local_adminapp / "index.html").read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            admin_index = ""
+        if "POKROV API superadmin v1" in admin_index:
+            failures.append("forbidden legacy admin shell identity is present")
     for label, root in roots.items():
         for path in sorted(root.rglob("*")):
             if not path.is_file():
@@ -165,6 +208,10 @@ def _release_payload_validation_checks(*, remote_webapp: str, remote_adminapp: s
     checks = [
         f"test -f {remote_webapp}/index.html",
         f"test -f {remote_adminapp}/index.html",
+        f"test -f {remote_adminapp}/__build.json",
+        f"test -f {remote_adminapp}/__routes.json",
+        f"grep -Fq '\"app\": \"{ADMINAPP_IDENTITY}\"' {remote_adminapp}/__build.json",
+        f"grep -Fq '\"schema\": \"{ADMINAPP_ROUTE_SCHEMA}\"' {remote_adminapp}/__routes.json",
         f"test -f {remote_marketing}/index.html",
         f"test -f {remote_marketing}/checkout/index.html",
     ]
@@ -203,6 +250,8 @@ def _post_deploy_smoke_commands(*, web_domain: str, api_domain: str, admin_domai
         resolved_curl(web_domain, "/", "head -c 80 || true"),
         resolved_curl("app.pokrov.space", "/", "head -c 80 || true"),
         resolved_curl(admin_domain, "/", "head -c 80 || true"),
+        resolved_curl(admin_domain, "/__build.json", f"grep -Fq '\"app\": \"{ADMINAPP_IDENTITY}\"' && echo operator_build_ok"),
+        resolved_curl(admin_domain, "/__routes.json", f"grep -Fq '\"schema\": \"{ADMINAPP_ROUTE_SCHEMA}\"' && echo operator_routes_ok"),
         *legacy_checks,
         resolved_curl("pay.pokrov.space", "/checkout/", "head -c 120 || true"),
     ]
@@ -278,6 +327,49 @@ def _release_id() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
 
 
+def _adminapp_rollback_command(
+    *,
+    remote_root: str,
+    expected_current_route_hash: str,
+    expected_current_cutover_hash: str,
+    expected_rollback_route_hash: str,
+    expected_rollback_cutover_hash: str,
+) -> str:
+    hashes = (
+        expected_current_route_hash,
+        expected_current_cutover_hash,
+        expected_rollback_route_hash,
+        expected_rollback_cutover_hash,
+    )
+    if any(not re.fullmatch(r"[0-9a-f]{64}", value or "") for value in hashes):
+        raise ValueError("adminapp rollback requires exact lowercase SHA-256 fingerprints")
+    root = str(remote_root or "").rstrip("/")
+    if not root.startswith("/") or root in {"", "/"}:
+        raise ValueError("adminapp rollback remote root is invalid")
+    releases_root = f"{root}/releases"
+    validate = (
+        "import json,sys; p=json.load(open(sys.argv[1],encoding='utf-8')); "
+        "assert p.get('route_manifest_hash')==sys.argv[2]; "
+        "assert p.get('cutover_matrix_hash')==sys.argv[3]"
+    )
+    return f"""
+set -euo pipefail
+current=$(readlink -f {shlex.quote(root + '/adminapp')})
+rollback=$(readlink -f {shlex.quote(root + '/adminapp.rollback')})
+case "$current" in {shlex.quote(releases_root)}/*/adminapp) ;; *) exit 41 ;; esac
+case "$rollback" in {shlex.quote(releases_root)}/*/adminapp) ;; *) exit 42 ;; esac
+test "$current" != "$rollback"
+python3 -c {shlex.quote(validate)} "$current/__build.json" {shlex.quote(expected_current_route_hash)} {shlex.quote(expected_current_cutover_hash)}
+python3 -c {shlex.quote(validate)} "$rollback/__build.json" {shlex.quote(expected_rollback_route_hash)} {shlex.quote(expected_rollback_cutover_hash)}
+ln -sfn "$rollback" {shlex.quote(root + '/adminapp.next')}
+mv -T {shlex.quote(root + '/adminapp.next')} {shlex.quote(root + '/adminapp')}
+ln -sfn "$current" {shlex.quote(root + '/adminapp.rollback.next')}
+mv -T {shlex.quote(root + '/adminapp.rollback.next')} {shlex.quote(root + '/adminapp.rollback')}
+test "$(readlink -f {shlex.quote(root + '/adminapp')})" = "$rollback"
+python3 -c {shlex.quote(validate)} {shlex.quote(root + '/adminapp/__build.json')} {shlex.quote(expected_rollback_route_hash)} {shlex.quote(expected_rollback_cutover_hash)}
+""".strip()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Deploy marketing/out + webapp/out + adminapp/out to brain and reload Caddy.")
     ap.add_argument("--brain-ip", required=True)
@@ -305,7 +397,47 @@ def main() -> int:
     ap.add_argument("--ssh-port", type=int, default=29374)
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
     ap.add_argument("--plan-only", action="store_true", help="Validate and bundle local static outputs without SSH.")
+    ap.add_argument("--rollback-adminapp", action="store_true", help="Atomically switch adminapp to the retained rollback bundle.")
+    ap.add_argument("--confirm-adminapp-rollback", default="")
+    ap.add_argument("--expected-current-route-hash", default="")
+    ap.add_argument("--expected-current-cutover-hash", default="")
+    ap.add_argument("--expected-rollback-route-hash", default="")
+    ap.add_argument("--expected-rollback-cutover-hash", default="")
     args = ap.parse_args()
+
+    if args.rollback_adminapp:
+        if args.plan_only:
+            raise SystemExit("--rollback-adminapp and --plan-only are mutually exclusive")
+        if args.confirm_adminapp_rollback != "ROLLBACK_ADMINAPP":
+            raise SystemExit("adminapp rollback requires --confirm-adminapp-rollback ROLLBACK_ADMINAPP")
+        try:
+            rollback_command = _adminapp_rollback_command(
+                remote_root="/var/www/portal",
+                expected_current_route_hash=args.expected_current_route_hash,
+                expected_current_cutover_hash=args.expected_current_cutover_hash,
+                expected_rollback_route_hash=args.expected_rollback_route_hash,
+                expected_rollback_cutover_hash=args.expected_rollback_cutover_hash,
+            )
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
+        from node_access import connect_node
+
+        ssh, auth_method = connect_node(
+            code="brain",
+            host=args.brain_ip,
+            user=args.ssh_user,
+            port=args.ssh_port,
+            passwords_path=Path(args.passwords),
+        )
+        try:
+            _safe_print(f"brain auth: {auth_method}")
+            code, out, err = _run(ssh, rollback_command, timeout=120)
+            if code != 0:
+                raise SystemExit(f"Adminapp rollback failed:\n{out}\n{err}")
+            _safe_print("adminapp rollback pointer switched and exact fingerprints revalidated")
+            return 0
+        finally:
+            ssh.close()
 
     local_webapp = REPO_ROOT / "webapp" / "out"
     local_adminapp = REPO_ROOT / "adminapp" / "out"
@@ -402,6 +534,15 @@ if [ -e {remote_root}/marketing ] && [ ! -L {remote_root}/marketing ]; then
 fi
 if [ -e {remote_root}/adminapp ] && [ ! -L {remote_root}/adminapp ]; then
   mv {remote_root}/adminapp {remote_root}/legacy_backups/adminapp-$(date +%s)
+fi
+if [ -L {remote_root}/adminapp ]; then
+  previous_adminapp=$(readlink -f {remote_root}/adminapp)
+  case "$previous_adminapp" in
+    {releases_root}/*)
+      ln -sfn "$previous_adminapp" {remote_root}/adminapp.rollback.next
+      mv -T {remote_root}/adminapp.rollback.next {remote_root}/adminapp.rollback
+      ;;
+  esac
 fi
 
 ln -sfn {remote_webapp} {remote_root}/webapp.next

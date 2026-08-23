@@ -1,5 +1,5 @@
 import type { PlanCatalogRow } from "@/lib/api";
-import { getCheckoutTariffPlans } from "@/lib/portal";
+import { assertCommercialPlanProjection, getCheckoutTariffPlans } from "@/lib/portal";
 
 export const CABINET_PLAN_CODES = [
   "start_99",
@@ -11,8 +11,10 @@ export const CABINET_PLAN_CODES = [
 ] as const;
 
 export function getCabinetFallbackPlans(): PlanCatalogRow[] {
+  const tariffPlans = getCheckoutTariffPlans();
+  assertCommercialPlanProjection(tariffPlans);
   const byCode = new Map<string, PlanCatalogRow>(
-    getCheckoutTariffPlans().map((plan) => [
+    tariffPlans.map((plan) => [
       plan.code,
       {
         code: plan.code,

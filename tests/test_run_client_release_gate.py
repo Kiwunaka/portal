@@ -31,6 +31,8 @@ def _prepare_client_root(root: Path) -> None:
     _write(root / "scripts" / "run-tests.ps1", "Write-Host tests")
     _write(root / "scripts" / "sync-pokrov-core-runtime.ps1", "Write-Host sync")
     _write(root / "scripts" / "build-windows-release.ps1", "Write-Host build")
+    _write(root / "scripts" / "new-release-handoff-v2.ps1", "Write-Host generate")
+    _write(root / "test" / "release-handoff-v2-contract.ps1", "Write-Host contract")
     _write(root / "config" / "product-contract.seed.json", "{}")
     _write(root / "config" / "runtime-profile.seed.json", "{}")
     _write(root / "config" / "runtime-artifacts.seed.json", "{}")
@@ -105,6 +107,17 @@ def test_client_root_resolver_keeps_explicit_override_authoritative() -> None:
     run.assert_not_called()
 
 
+def test_core_root_resolver_keeps_explicit_override_authoritative() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        override = Path(tmp) / "explicit-core"
+        with patch.dict(MODULE.os.environ, {"POKROV_CORE_ROOT": str(override)}, clear=False):
+            with patch.object(MODULE.subprocess, "run") as run:
+                resolved = MODULE._resolve_core_root(Path(tmp) / "platform")
+
+    assert resolved == override.resolve()
+    run.assert_not_called()
+
+
 def test_portal_suite_command_targets_pokrov_app_shells() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         client_root = Path(tmp)
@@ -121,6 +134,34 @@ def test_portal_suite_command_targets_pokrov_app_shells() -> None:
     assert _command_has_suffix(command.steps[2].command, ["test"])
     assert command.steps[3].cwd == client_root / "apps" / "windows_shell"
     assert _command_has_suffix(command.steps[3].command, ["test"])
+
+
+def test_contract_command_passes_explicit_platform_and_core_roots() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        workspace_root = Path(tmp)
+        client_root = workspace_root / "client"
+        platform_root = workspace_root / "platform"
+        core_root = workspace_root / "core"
+        _prepare_client_root(client_root)
+
+        command = MODULE._contract_command(
+            client_root,
+            platform_root=platform_root,
+            core_root=core_root,
+        )
+
+    assert len(command.steps) == 1
+    assert command.steps[0].cwd == client_root
+    assert "validate-seed.ps1" in " ".join(command.steps[0].command)
+    assert _command_has_suffix(
+        command.steps[0].command,
+        [
+            "-PlatformRoot",
+            str(platform_root.resolve()),
+            "-CoreRoot",
+            str(core_root.resolve()),
+        ],
+    )
 
 
 def test_windows_target_declares_expected_release_artifacts() -> None:
@@ -217,6 +258,8 @@ def test_preflight_report_lists_pokrov_app_context() -> None:
     assert "[client-root] android shell:" in report
     assert "[client-root] windows shell:" in report
     assert "[client-root] sync core runtime:" in report
+    assert "[client-root] release-handoff v2 generator:" in report
+    assert "[client-root] release-handoff v2 contract:" in report
     assert "[ok] POKROV-app gate root is present" in report
 
 

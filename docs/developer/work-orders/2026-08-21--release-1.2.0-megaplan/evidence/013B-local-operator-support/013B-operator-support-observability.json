@@ -1,0 +1,94 @@
+{
+  "schema": "pokrov.release-1.2.0.local-operator-support-observability.v1",
+  "generated_at": "2026-08-22T07:23:09Z",
+  "work_orders": [
+    "WO-009E2",
+    "WO-013B"
+  ],
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "source": {
+    "revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "dirty_entries": 311
+  },
+  "closed_rows": [
+    "OBS-061",
+    "OBS-062",
+    "OBS-063",
+    "OBS-064",
+    "OBS-065",
+    "OBS-066"
+  ],
+  "capabilities": {
+    "case_timeline": "PASS_LOCAL",
+    "diagnostic_summary_permission_core_tun_dns_egress": "PASS_LOCAL",
+    "case_bundle_correlation_search": "PASS_LOCAL_SAFE_PROJECTION",
+    "version_scoped_known_issue_match": "PASS_LOCAL",
+    "l1_l2_sre_security_rbac": "PASS_LOCAL",
+    "reasoned_step_up_single_use_bundle_access": "PASS_LOCAL",
+    "grant_and_download_audit": "PASS_LOCAL"
+  },
+  "local_results": {
+    "adminapp_typescript": "PASS",
+    "adminapp_eslint": "PASS",
+    "adminapp_production_build": "PASS_NEXT_16_2_10_30_STATIC_PAGES",
+    "adminapp_cutover": "PASS_28_ROUTES_7_WORKSPACES",
+    "adminapp_playwright": "PASS_75_OF_75",
+    "support_observability_role_frontend_contracts": "PASS_33_OF_33",
+    "new_admin_v2_support_api_integration": "PASS_1_OF_1",
+    "bundle_actor_role_regression": "PASS_4_OF_4",
+    "scoped_ruff": "PASS",
+    "ledger_result": "I3_LOCAL_SOURCE_API_AND_BROWSER_PROOF"
+  },
+  "commands": [
+    {
+      "command": "npx tsc --noEmit",
+      "workdir": "adminapp",
+      "result": "PASS"
+    },
+    {
+      "command": "npm run lint",
+      "workdir": "adminapp",
+      "result": "PASS"
+    },
+    {
+      "command": "npm run build",
+      "workdir": "adminapp",
+      "result": "PASS"
+    },
+    {
+      "command": "npm run verify:cutover",
+      "workdir": "adminapp",
+      "result": "PASS"
+    },
+    {
+      "command": "npm run test:e2e",
+      "workdir": "adminapp",
+      "result": "PASS_75_OF_75"
+    },
+    {
+      "command": "python -m pytest -q tests/test_operator_observability_api.py tests/test_operator_observability_service.py tests/test_support_work_service.py tests/test_operator_center_manifest.py tests/test_adminapp_command_center_contract.py",
+      "result": "PASS_33_OF_33"
+    },
+    {
+      "command": "python -m pytest -q tests/test_admin_ops_api.py -k support_search_and_bundle_download",
+      "result": "PASS_1_OF_1"
+    },
+    {
+      "command": "python -m pytest -q tests/test_operator_observability_service.py tests/test_operator_observability_api.py tests/test_admin_ops_api.py -k \"bundle_access or support_search_and_bundle_download or l1_summary or l2_ciphertext\"",
+      "result": "PASS_4_OF_4_50_DESELECTED"
+    }
+  ],
+  "manual_or_external": {
+    "authenticated_staging": "BLOCKED_BY_ACCESS",
+    "authenticated_production": "BLOCKED_BY_ACCESS",
+    "real_operator_role_review": "NOT_RUN",
+    "real_support_data_readback": "NOT_RUN",
+    "real_bundle_download": "NOT_RUN",
+    "hosted_ci": "NOT_RUN",
+    "clean_frozen_revision": "NOT_CREATED",
+    "exact_candidate": "NOT_CREATED",
+    "deploy": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

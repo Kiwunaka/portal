@@ -13,6 +13,8 @@ EXPECTED_IDS = {
     "payment_beta",
     "ru_origin_not_claimed",
     "android_audit_attested",
+    "linux_not_shipped_1_2_0",
+    "android_oem_background_limits",
     "support_best_effort",
     "apple_readiness_only",
 }
@@ -39,6 +41,7 @@ def test_beta_known_limitations_contract_has_required_ids() -> None:
     ids = {item["id"] for item in limitations}
 
     assert payload["scope"] == "outside-store-public-beta"
+    assert payload["working_target"] == "1.2.0"
     assert EXPECTED_IDS <= ids
 
     for item in limitations:
@@ -51,6 +54,20 @@ def test_beta_known_limitations_contract_has_required_ids() -> None:
         }
         assert item["summary"]
         assert item["operator_note"]
+
+    by_id = {item["id"]: item for item in limitations}
+    assert "NOT_SHIPPED_IN_1.2.0" in by_id["linux_not_shipped_1_2_0"]["summary"]
+    assert by_id["linux_not_shipped_1_2_0"]["contract_refs"] == [
+        "shared/product-facts.json#release_scope",
+        "OBS_PB/PB-09",
+    ]
+    assert by_id["android_oem_background_limits"]["contract_refs"] == [
+        "OBS_PB/PB-08",
+        "AND-BG-001",
+        "AND-BG-002",
+        "AND-BG-003",
+        "AND-VPN-004",
+    ]
 
 
 def test_beta_known_limitations_are_mirrored_in_live_source_docs() -> None:
@@ -84,6 +101,8 @@ def test_beta_known_limitations_preserve_claim_boundaries() -> None:
         "Lava.top-only",
         "best-effort",
         "readiness tracks only",
+        "NOT_SHIPPED_IN_1.2.0",
+        "Do not promise uninterrupted background operation",
     ]
     for phrase in required_boundary_phrases:
         assert phrase in combined

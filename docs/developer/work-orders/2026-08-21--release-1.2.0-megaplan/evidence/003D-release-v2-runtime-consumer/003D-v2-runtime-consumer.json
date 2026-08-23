@@ -1,0 +1,49 @@
+{
+  "schema": "pokrov.release-1.2.0.v2-runtime-consumer.v1",
+  "generated_at": "2026-08-22T08:27:42Z",
+  "work_order": "WO-003D",
+  "advanced_rows": [
+    "REL_DOD/DOD-02",
+    "FE/P12-022"
+  ],
+  "implementation_index": "I2",
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "source": {
+    "platform_revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "platform_dirty_entries": 329
+  },
+  "synthetic_input": {
+    "path": "tests/fixtures/release-handoff/valid-v2.json",
+    "sha256": "b3da356c31dd433be2d02871870145be131c90fcb548efa82e611ef62a116700",
+    "candidate_label": "pokrov-1.2.0-rc.1",
+    "release_channel": "rc",
+    "core_version": "1.1.0",
+    "core_desktop_abi": 2,
+    "core_android_package": "space.pokrov.core"
+  },
+  "local_results": {
+    "v2_projection_and_validator": "PASS_53_OF_53",
+    "client_apps_manifest_identity": "PASS_6_OF_6",
+    "adjacent_api_regression": "PASS_29_TESTS_4_SUBTESTS",
+    "release_orchestration_regression": "PASS_48_TESTS_21_SUBTESTS",
+    "strict_v2_dry_run": "PASS_NO_SSH_NO_REMOTE_WRITE",
+    "python_compile": "PASS",
+    "focused_ruff": "PASS",
+    "webapp_eslint": "PASS",
+    "documentation_contracts": "PASS_26_OF_26",
+    "documentation_links": "PASS",
+    "scoped_diff_check": "PASS"
+  },
+  "manual_or_external": {
+    "real_candidate": "NOT_CREATED",
+    "release_index_revision": "BLOCKED_BY_ACCESS",
+    "manifest_signature": "NOT_CREATED",
+    "signed_artifacts": "NOT_CREATED",
+    "hosted_ci": "NOT_RUN",
+    "runtime_sync": "NOT_AUTHORIZED",
+    "public_readback": "NOT_RUN",
+    "deploy": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "schema": "pokrov.release-1.2.0.windows-sanitized-service-native-proof.v1",
+  "generated_at": "2026-08-22T18:12:27Z",
+  "work_order": "WO-006L",
+  "row_outcomes": {
+    "OBS_DOD/DOD-08": "I3"
+  },
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "sources": {
+    "client_revision_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+    "client_dirty_entries": 185,
+    "platform_dirty_entries": 358
+  },
+  "scope": {
+    "windows_service": "SHIPPED_SCOPE_LOCAL_SOURCE",
+    "linux_daemon": "NOT_SHIPPED_IN_1.2.0",
+    "journal_line_max_bytes": 512,
+    "pending_event_max": 4096,
+    "journal_file_max_bytes": 262144,
+    "journal_files": 2
+  },
+  "toolchain": {
+    "visual_studio_build_tools": "17.12.2",
+    "msvc": "19.42.34435",
+    "windows_sdk": "10.0.22621.0",
+    "configuration": "Debug",
+    "generator": "Ninja"
+  },
+  "source_sha256": {
+    "windows_root_cmake": "97790af5a1f7fa8c3fbe09fb5a1c9d0ed8d50302b022dbf987dec48a10ba8a71",
+    "service_cmake": "6beaece91a09fd701d70a2c650ab01f24daff2d7231d92b6542f6fda2772a7ac",
+    "service_events_header": "b36256a3dc6a153a1227c68eb9c9d2d3995d0c717f3a9f592bae1d50b52e0c6f",
+    "service_events_source": "a474ca52790ed69f12c6cb5c7d9c420bc0862c3c25f704053ef0d41db1f775a6",
+    "service_events_test": "5a2995b4624ce77b5fdd64eea4360ba459a2cd1f94631e8c9cc186500d80bd14",
+    "windows_architecture_owner": "9eda545cf6247287051bf7850bfdcc1c1eee7fb6dd802af066463dd51a40923d",
+    "windows_readiness_owner": "bbe3e7209fa903bfb851be94d7c3483fa1b91e12a81c44bbe57b55d06e7c6b60"
+  },
+  "development_binary_sha256": {
+    "pokrov_service.exe": "506376e37b9182fc63bb2d0b3fb5d069350bd9a34fdf04c87f09816588e152db",
+    "pokrov_service_protocol_test.exe": "307f3ea722cb5f63c41479cf5c72237b3a56db738e52757166d7cc6056b7d04d",
+    "pokrov_service_security_test.exe": "e7b69baab2c0323f820018ac98bc7d6d1034920f1a03fcb553d370e121a801b6",
+    "pokrov_windows_crash_profile_test.exe": "4f9a5a35ccc7f82d7c0f6f8bf104ecef69ac50644aa3dd777eab1bc35de7d264",
+    "pokrov_service_runtime_test.exe": "32859c42bfd1d1cf1f34229d8516cfdad1c142e0f0d780c12594d9e91354a50b",
+    "pokrov_service_events_test.exe": "4adea4b5b4dc3244ea74ba98e1b11c6bab99d7776d8addc834ee55ceeaa6b4fb",
+    "pokrov_service_integration_test.exe": "522a03bee13c1c7a6962d3ffe47ba491622b850c132f9e5377e55d62f27c96e6",
+    "pokrov_activation_protocol_test.exe": "9f75d6da8c84f223dcbf136455b9ea332a8328db38d163a90105da53761ee649"
+  },
+  "development_binary_sizes": {
+    "pokrov_service.exe": 530432,
+    "pokrov_service_protocol_test.exe": 147456,
+    "pokrov_service_security_test.exe": 107520,
+    "pokrov_windows_crash_profile_test.exe": 158720,
+    "pokrov_service_runtime_test.exe": 453632,
+    "pokrov_service_events_test.exe": 492032,
+    "pokrov_service_integration_test.exe": 177664,
+    "pokrov_activation_protocol_test.exe": 122880
+  },
+  "local_results": {
+    "cmake_configure": "PASS",
+    "msvc_native_build": "PASS",
+    "service_ctest": "PASS_6_OF_6",
+    "complete_native_ctest": "PASS_7_OF_7",
+    "immediate_rebuild": "PASS_NO_WORK_TO_DO",
+    "docs_and_candidate_preflight_contracts": "PASS_37_OF_37",
+    "candidate_preflight": "EXPECTED_BLOCKED_7_BLOCKERS_CANDIDATE_NOT_CREATED",
+    "scoped_diff_check": "PASS_WITH_CLIENT_CRLF_WARNING_ONLY",
+    "scoped_secret_scan": "PASS_0_MATCHES_7_FILES",
+    "ledger_distribution": "I3_296_I2_24_I1_40_I0_17_TOTAL_377",
+    "ledger_below_i3": 81,
+    "pending_stage_counts": {
+      "pre_freeze": 11,
+      "candidate": 32,
+      "external": 17,
+      "deferred": 21
+    }
+  },
+  "manual_or_external": {
+    "installed_service": "NOT_RUN",
+    "scm_or_network_mutation": "NOT_RUN",
+    "clean_windows_host": "NOT_RUN",
+    "exact_candidate": "NOT_CREATED",
+    "trusted_signing": "BLOCKED_BY_OWNER",
+    "linux_daemon": "NOT_SHIPPED_IN_1.2.0",
+    "publication": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  },
+  "temporary_outputs": {
+    "repositories_modified_by_build": false,
+    "cleanup": "NOT_PERFORMED_SANDBOX_DENIED_RECURSIVE_DELETE",
+    "release_artifacts": false
+  }
+}

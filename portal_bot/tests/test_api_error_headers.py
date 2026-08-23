@@ -163,7 +163,10 @@ def test_controlled_errors_receive_safe_canonical_auth_header(monkeypatch, tmp_p
     assert cors_response.headers["Access-Control-Allow-Origin"] == "https://client.pokrov.test"
     assert cors_response.headers["X-POKROV-Auth-Error"] == "auth_required"
     assert _header_values(cors_response.headers["Access-Control-Expose-Headers"]) == {
-        "x-pokrov-auth-error"
+        "x-correlation-id",
+        "x-pokrov-auth-error",
+        "x-pokrov-commercial-revision",
+        "x-request-id",
     }
 
 

@@ -1,5 +1,7 @@
 # POKROV Product Analytics, Telegram Entry And Operator UX
 
+Document class: `EVIDENCE`
+
 Status: `COMPLETED`
 
 Last updated: 2026-08-17

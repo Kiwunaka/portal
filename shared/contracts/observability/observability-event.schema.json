@@ -1,0 +1,546 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pokrov.space/schemas/observability-event-v1.schema.json",
+  "title": "POKROV Operational Observability Event",
+  "description": "Secret-free operational event. Product analytics uses the separate Event Envelope V1 contract.",
+  "x-pokrov-contract": {
+    "id": "observability-event",
+    "version": "1.0.0"
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "occurred_at_utc",
+    "component",
+    "subsystem",
+    "stage",
+    "name",
+    "severity",
+    "outcome",
+    "privacy_class",
+    "correlation",
+    "build",
+    "error",
+    "attributes"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "event_id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "occurred_at_utc": {
+      "$ref": "#/$defs/utcTimestamp"
+    },
+    "component": {
+      "enum": [
+        "app",
+        "android_host",
+        "windows_host",
+        "windows_service",
+        "core",
+        "portal",
+        "worker"
+      ]
+    },
+    "subsystem": {
+      "enum": [
+        "bootstrap",
+        "auth",
+        "api",
+        "entitlement",
+        "connection",
+        "core",
+        "tun",
+        "routing",
+        "dns",
+        "egress",
+        "recovery",
+        "update",
+        "windows_service",
+        "android_host",
+        "crash",
+        "performance",
+        "support",
+        "security"
+      ]
+    },
+    "stage": {
+      "enum": [
+        "request",
+        "initialize",
+        "validate",
+        "prepare",
+        "start",
+        "apply",
+        "verify",
+        "commit",
+        "run",
+        "retry",
+        "stop",
+        "rollback",
+        "recover",
+        "build",
+        "preview",
+        "upload",
+        "complete"
+      ]
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*(?:\\.[a-z][a-z0-9_]*){2,5}$",
+      "maxLength": 96
+    },
+    "severity": {
+      "enum": [
+        "trace",
+        "debug",
+        "info",
+        "warn",
+        "error",
+        "fatal"
+      ]
+    },
+    "outcome": {
+      "enum": [
+        "started",
+        "succeeded",
+        "failed",
+        "cancelled",
+        "superseded",
+        "degraded",
+        "blocked",
+        "observed",
+        "not_applicable"
+      ]
+    },
+    "privacy_class": {
+      "enum": [
+        "local_operational",
+        "release_health",
+        "support_bundle",
+        "server_security_audit"
+      ]
+    },
+    "correlation": {
+      "$ref": "#/$defs/correlation"
+    },
+    "build": {
+      "$ref": "#/$defs/buildIdentity"
+    },
+    "error": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/errorIdentity"
+        }
+      ]
+    },
+    "attributes": {
+      "$ref": "#/$defs/attributes"
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "utcTimestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$",
+      "maxLength": 64
+    },
+    "correlation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trace_id",
+        "span_id",
+        "parent_span_id",
+        "run_id",
+        "attempt_id",
+        "generation",
+        "sequence"
+      ],
+      "properties": {
+        "trace_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{32}$"
+        },
+        "span_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        },
+        "parent_span_id": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{16}$"
+            }
+          ]
+        },
+        "run_id": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/uuid"
+            }
+          ]
+        },
+        "attempt_id": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/uuid"
+            }
+          ]
+        },
+        "generation": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "sequence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9223372036854775807
+        }
+      }
+    },
+    "buildIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "app_version",
+        "build_number",
+        "channel",
+        "candidate_label",
+        "git_revision",
+        "core_version",
+        "core_abi",
+        "platform",
+        "architecture"
+      ],
+      "properties": {
+        "app_version": {
+          "$ref": "#/$defs/version"
+        },
+        "build_number": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._+-]{1,32}$"
+        },
+        "channel": {
+          "enum": [
+            "alpha",
+            "beta",
+            "rc",
+            "stable",
+            "local"
+          ]
+        },
+        "candidate_label": {
+          "type": "string",
+          "pattern": "^pokrov-[A-Za-z0-9][A-Za-z0-9._+-]{1,63}$"
+        },
+        "git_revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "core_version": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/version"
+            }
+          ]
+        },
+        "core_abi": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 1
+            }
+          ]
+        },
+        "platform": {
+          "enum": [
+            "android",
+            "windows",
+            "server"
+          ]
+        },
+        "architecture": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,31}$"
+        }
+      }
+    },
+    "errorIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "origin"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9-]{1,23}-[0-9]{3}$"
+        },
+        "origin": {
+          "enum": [
+            "client",
+            "host",
+            "core",
+            "portal",
+            "provider",
+            "os",
+            "security"
+          ]
+        }
+      }
+    },
+    "attributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "maxProperties": 12,
+      "properties": {
+        "phase": {
+          "enum": [
+            "bootstrap",
+            "auth",
+            "profile",
+            "core",
+            "tun",
+            "routes",
+            "dns",
+            "egress",
+            "recovery",
+            "stop",
+            "update",
+            "support"
+          ]
+        },
+        "duration_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400000
+        },
+        "operation": {
+          "enum": [
+            "initialize",
+            "connect",
+            "disconnect",
+            "reconnect",
+            "verify",
+            "install",
+            "upload",
+            "export",
+            "recover",
+            "refresh",
+            "request"
+          ]
+        },
+        "status_class": {
+          "enum": [
+            "success",
+            "client_error",
+            "server_error",
+            "timeout",
+            "cancelled",
+            "unavailable",
+            "rate_limited",
+            "invalid"
+          ]
+        },
+        "network_class": {
+          "enum": [
+            "unknown",
+            "offline",
+            "wifi",
+            "ethernet",
+            "cellular",
+            "vpn"
+          ]
+        },
+        "reason_class": {
+          "enum": [
+            "unknown",
+            "permission",
+            "timeout",
+            "integrity",
+            "compatibility",
+            "policy",
+            "network",
+            "provider",
+            "operating_system",
+            "user",
+            "superseded"
+          ]
+        },
+        "retry_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "retry_after_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400000
+        },
+        "effective_mtu": {
+          "type": "integer",
+          "minimum": 576,
+          "maximum": 9000
+        },
+        "interface_ready": {
+          "type": "boolean"
+        },
+        "routes_ready": {
+          "type": "boolean"
+        },
+        "dns_ready": {
+          "type": "boolean"
+        },
+        "egress_ready": {
+          "type": "boolean"
+        },
+        "bytes_in": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bytes_out": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "queue_depth": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100000
+        },
+        "dropped_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "segment_number": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "selected_app_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 128
+        },
+        "journal_kind": {
+          "enum": [
+            "none",
+            "runtime",
+            "network",
+            "update",
+            "service"
+          ]
+        },
+        "manifest_version": {
+          "$ref": "#/$defs/version"
+        },
+        "contract_version": {
+          "$ref": "#/$defs/version"
+        },
+        "contract_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "core_abi": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "from_version": {
+          "$ref": "#/$defs/version"
+        },
+        "to_version": {
+          "$ref": "#/$defs/version"
+        },
+        "crash_signature": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16,64}$"
+        },
+        "update_channel": {
+          "enum": [
+            "direct",
+            "store",
+            "windows"
+          ]
+        },
+        "artifact_kind": {
+          "enum": [
+            "apk",
+            "aab",
+            "exe",
+            "msix",
+            "zip",
+            "dll"
+          ]
+        },
+        "permission_state": {
+          "enum": [
+            "unknown",
+            "required",
+            "granted",
+            "denied",
+            "revoked"
+          ]
+        },
+        "bundle_item_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "bundle_size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 268435456
+        },
+        "support_mode": {
+          "enum": [
+            "off",
+            "temporary"
+          ]
+        },
+        "retention_days": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 365
+        },
+        "error_count": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}

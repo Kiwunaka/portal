@@ -57,7 +57,6 @@ def test_homepage_navigation_mobile_menu_and_core_sections_have_story_contracts(
             "JsonLd data={buildFaqJsonLd(MARKETING_FAQ)}",
             "Hero",
             "HonestyStrip",
-            "ServicesGrid",
             "Steps",
             "Showcase",
             "Pricing",
@@ -66,6 +65,7 @@ def test_homepage_navigation_mobile_menu_and_core_sections_have_story_contracts(
         ),
         context="homepage page",
     )
+    assert "ServicesGrid" not in page
     _assert_contains(
         hero,
         (
@@ -74,11 +74,12 @@ def test_homepage_navigation_mobile_menu_and_core_sections_have_story_contracts(
             "PlatformDownloadAction",
             "initialAndroidUrl={config.androidApkUrl}",
             "initialWindowsUrl={config.windowsExeUrl}",
-            "YouTube, TikTok и ChatGPT — одной кнопкой",
+            "Проверьте подключение до оплаты",
             'href="/#how-it-works"',
         ),
         context="homepage hero",
     )
+    assert "YouTube, TikTok и ChatGPT — одной кнопкой" not in hero
     _assert_contains(
         pricing,
         (
@@ -197,8 +198,14 @@ def test_marketing_checkout_contract_keeps_provider_fallback_redeem_and_email_fl
             "payment_method",
             "promo_code",
             "getCheckoutTariffPlans",
-            "tariffPlanAllowsDiscount",
-            "PAYMENT_METHOD_OPTIONS",
+            "COMMERCIAL_REVISION",
+            'response.headers.get("X-Pokrov-Commercial-Revision")',
+            'payload.price_authority !== "server_commercial_contract"',
+            'payload.promo_authority !== "server_offer_preview_only"',
+            "assertCommercialPlanProjection(payload.plans)",
+            "Boolean(catalog && providerState?.ok",
+            "paymentMethods.map",
+            "option.available",
             "window.location.assign(paymentUrl)",
             "function buildRedeemHref",
             'url.pathname = "/redeem/"',
@@ -222,13 +229,19 @@ def test_marketing_checkout_contract_keeps_provider_fallback_redeem_and_email_fl
         cabinet_checkout + cabinet_plans,
         (
             "getCheckoutTariffPlans",
-            "tariffPlanAllowsDiscount",
-            "PAYMENT_METHOD_OPTIONS",
+            "paymentMethods.map",
+            "option.available",
             "payment_method: paymentMethod",
-            "promo_code: discountPercent > 0 ? promoCode : undefined",
+            "promo_code: promoCode || undefined",
+            "catalogVerified && providerState?.ok",
+            "Проверяем промокод на сервере…",
+            "Сумма зафиксирована до",
         ),
         context="cabinet checkout client",
     )
+    assert "getPricingPreviewDiscountPercent" not in checkout
+    assert "getPricingPreviewDiscountPercent" not in cabinet_checkout
+    assert "discount_codes" not in tariff_helpers
     _assert_contains(
         tariff_helpers,
         (

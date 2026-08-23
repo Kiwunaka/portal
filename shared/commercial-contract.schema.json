@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pokrov.space/contracts/commercial-contract.schema.json",
+  "title": "POKROV Commercial Contract V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "commercial_revision",
+    "effective_from",
+    "terms_revision",
+    "currency",
+    "catalog_version",
+    "price_authority",
+    "promo_authority",
+    "campaign_saving_authority",
+    "legal",
+    "capacity_policy",
+    "plans",
+    "source_contracts",
+    "source_sha256",
+    "contract_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "pokrov-commercial-contract-v1"},
+    "commercial_revision": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}\\.[1-9][0-9]*$"},
+    "effective_from": {"type": "string", "format": "date-time"},
+    "terms_revision": {"type": "string", "minLength": 1, "maxLength": 64},
+    "currency": {"const": "RUB"},
+    "catalog_version": {"type": "string", "minLength": 1, "maxLength": 128},
+    "price_authority": {"const": "server_commercial_contract"},
+    "promo_authority": {"const": "server_offer_preview_only"},
+    "campaign_saving_authority": {"const": "server_offer_preview_only"},
+    "legal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["offer_path", "privacy_path", "seller_publication_status", "offer_review_status", "rf_advertising_status", "allowed_launch_channels", "launch_ready"],
+      "properties": {
+        "offer_path": {"type": "string", "minLength": 1},
+        "privacy_path": {"type": "string", "minLength": 1},
+        "seller_publication_status": {"type": "string", "minLength": 1},
+        "offer_review_status": {"type": "string", "minLength": 1},
+        "rf_advertising_status": {"type": "string", "minLength": 1},
+        "allowed_launch_channels": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+        "launch_ready": {"type": "boolean"}
+      }
+    },
+    "capacity_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["limit_units", "unit_authority", "acquisition_allowed_bands", "pause_at_ratio", "resume_below_ratio", "renewal_exempt", "bands"],
+      "properties": {
+        "limit_units": {"const": 300},
+        "unit_authority": {"type": "string", "minLength": 1},
+        "acquisition_allowed_bands": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+        "pause_at_ratio": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "resume_below_ratio": {"type": "number", "minimum": 0, "exclusiveMaximum": 1},
+        "renewal_exempt": {"const": true},
+        "bands": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "minimum_ratio", "maximum_ratio"],
+            "properties": {
+              "code": {"type": "string", "minLength": 1, "maxLength": 16},
+              "minimum_ratio": {"type": "number", "minimum": 0},
+              "maximum_ratio": {"type": ["number", "null"], "minimum": 0}
+            }
+          }
+        }
+      }
+    },
+    "plans": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "label", "amount_rub", "duration_days", "device_limit", "base_saving_percent", "temporary_campaign_saving_percent", "capacity_cost_units", "renewal_policy", "is_active", "public_visibility", "sort_order"],
+        "properties": {
+          "code": {"type": "string", "minLength": 1, "maxLength": 32},
+          "label": {"type": "string", "minLength": 1, "maxLength": 128},
+          "amount_rub": {"type": "integer", "minimum": 1},
+          "duration_days": {"type": "integer", "minimum": 1},
+          "device_limit": {"type": "integer", "minimum": 1},
+          "base_saving_percent": {"type": "integer", "minimum": 0},
+          "temporary_campaign_saving_percent": {"const": 0},
+          "capacity_cost_units": {"type": "integer", "minimum": 1},
+          "renewal_policy": {"type": "string", "minLength": 1},
+          "is_active": {"type": "boolean"},
+          "public_visibility": {"type": "string", "minLength": 1},
+          "sort_order": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "source_contracts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["product_facts", "tariff_catalog"],
+      "properties": {
+        "product_facts": {"const": "shared/product-facts.json"},
+        "tariff_catalog": {"const": "shared/tariff-catalog.json"}
+      }
+    },
+    "source_sha256": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["product_facts", "tariff_catalog"],
+      "properties": {
+        "product_facts": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "tariff_catalog": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+      }
+    },
+    "contract_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

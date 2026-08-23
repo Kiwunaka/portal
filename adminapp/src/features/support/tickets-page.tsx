@@ -8,6 +8,7 @@ import type { OpsShellStatus } from "@/components/ops/shell-status";
 import { Badge, Button, Card, MetricCell, MetricStrip, SectionTitle, type Tone } from "@/components/ui";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import type { AdminApiError } from "@/lib/admin-api/client";
+import type { OperatorShellIdentity } from "@/lib/admin-api/identity";
 import { fetchTicketDetail, fetchTickets, type AdminTicket, type TicketPriority, type TicketPriorityFilter, type TicketStatusFilter } from "@/lib/admin-api/support";
 import { formatSourceAge } from "@/lib/ops-status/presentation";
 import { pushUrlState, readUrlState, replaceUrlState, subscribeToUrlState, type UrlStateCodec, type UrlStateCodecs } from "@/lib/url-state";
@@ -17,11 +18,15 @@ import { TicketDetail } from "./ticket-detail";
 
 const TICKET_STATUSES = ["active", "open", "in_progress", "closed"] as const;
 const TICKET_PRIORITIES = ["all", "critical", "high", "normal", "low"] as const;
+const TICKET_QUEUES = ["all", "general", "billing", "connection", "account", "release"] as const;
+const TICKET_ASSIGNMENTS = ["all", "mine", "unassigned"] as const;
 const PRIORITY_RANK: Record<TicketPriority, number> = { critical: 4, high: 3, normal: 2, low: 1 };
 
 type TicketsUrlState = {
   status: TicketStatusFilter;
   priority: TicketPriorityFilter;
+  queue: typeof TICKET_QUEUES[number];
+  assignment: typeof TICKET_ASSIGNMENTS[number];
   selected: number | null;
 };
 
@@ -42,6 +47,8 @@ const positiveIdCodec: UrlStateCodec<number | null> = {
 const TICKETS_URL_CODECS: UrlStateCodecs<TicketsUrlState> = {
   status: cleanEnumCodec<TicketStatusFilter>(TICKET_STATUSES, "active"),
   priority: cleanEnumCodec<TicketPriorityFilter>(TICKET_PRIORITIES, "all"),
+  queue: cleanEnumCodec(TICKET_QUEUES, "all"),
+  assignment: cleanEnumCodec(TICKET_ASSIGNMENTS, "all"),
   selected: positiveIdCodec,
 };
 
@@ -81,7 +88,7 @@ export function sortTicketQueue(rows: readonly AdminTicket[]): AdminTicket[] {
   });
 }
 
-export function TicketsPage({ onShellStatus }: { onShellStatus?: (status: OpsShellStatus) => void }) {
+export function TicketsPage({ identity, onShellStatus }: { identity?: OperatorShellIdentity | null; onShellStatus?: (status: OpsShellStatus) => void }) {
   const [urlState, setUrlState] = useState<TicketsUrlState>(() => readUrlState(TICKETS_URL_CODECS));
   const selected = urlState.selected;
   const listScrollRef = useRef<HTMLDivElement | null>(null);
@@ -89,15 +96,15 @@ export function TicketsPage({ onShellStatus }: { onShellStatus?: (status: OpsShe
 
   useEffect(() => subscribeToUrlState<TicketsUrlState>(TICKETS_URL_CODECS, setUrlState), []);
 
-  const loadTickets = useCallback((signal: AbortSignal) => fetchTickets({ status: urlState.status, limit: 100 }, { signal }), [urlState.status]);
+  const loadTickets = useCallback((signal: AbortSignal) => fetchTickets({ status: urlState.status, priority: urlState.priority, queue: urlState.queue, assignment: urlState.assignment, limit: 100 }, { signal }), [urlState.assignment, urlState.priority, urlState.queue, urlState.status]);
   const loadDetail = useCallback((signal: AbortSignal) => {
     if (selected === null) throw new Error("Тикет не выбран");
     return fetchTicketDetail(selected, { signal });
   }, [selected]);
-  const tickets = useRouteResource(`tickets:${urlState.status}`, loadTickets, { enabled: true });
+  const tickets = useRouteResource(`tickets:${urlState.status}:${urlState.priority}:${urlState.queue}:${urlState.assignment}`, loadTickets, { enabled: true });
   const detail = useRouteResource(`ticket-detail:${selected ?? "none"}`, loadDetail, { enabled: selected !== null });
 
-  const queue = useMemo(() => sortTicketQueue((tickets.data?.tickets || []).filter((ticket) => urlState.priority === "all" || ticket.priority === urlState.priority)), [tickets.data, urlState.priority]);
+  const queue = useMemo(() => tickets.data?.tickets || [], [tickets.data]);
 
   useEffect(() => {
     const errors = [tickets.error, selected !== null ? detail.error : null].filter((error): error is AdminApiError => error !== null);
@@ -172,6 +179,12 @@ export function TicketsPage({ onShellStatus }: { onShellStatus?: (status: OpsShe
                 <option value="normal">Обычный</option>
                 <option value="low">Низкий</option>
               </select>
+              <select aria-label="Очередь поддержки" value={urlState.queue} onChange={(event) => replaceUrlState<TicketsUrlState>({ queue: event.target.value as TicketsUrlState["queue"], selected: null }, TICKETS_URL_CODECS)} className="min-h-10 rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3 text-sm outline-none focus:border-[color:var(--atlas-focus)]">
+                <option value="all">Все очереди</option><option value="general">Общая</option><option value="billing">Оплата</option><option value="connection">Подключение</option><option value="account">Аккаунт</option><option value="release">Релиз</option>
+              </select>
+              <select aria-label="Назначение тикетов" value={urlState.assignment} onChange={(event) => replaceUrlState<TicketsUrlState>({ assignment: event.target.value as TicketsUrlState["assignment"], selected: null }, TICKETS_URL_CODECS)} className="min-h-10 rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3 text-sm outline-none focus:border-[color:var(--atlas-focus)]">
+                <option value="all">Все назначения</option><option value="mine">Мои</option><option value="unassigned">Без оператора</option>
+              </select>
             </div>
 
             <div className="mt-3">
@@ -198,7 +211,7 @@ export function TicketsPage({ onShellStatus }: { onShellStatus?: (status: OpsShe
           {selected !== null ? <Button tone="ghost" className="mb-2 xl:hidden" onClick={backToTickets}><ArrowLeft size={15} /> Назад к очереди</Button> : null}
           {selected !== null && detail.loading && !detail.data ? <LoadingState title="Загружаем полную переписку" description="Очередь остаётся доступна, сообщения запрашиваются отдельно." /> : null}
           {selected !== null && detail.error && !detail.data ? <ErrorState title="Тикет недоступен" description={adminApiErrorText(detail.error, "Повторите загрузку полной переписки.")} action={<Button tone="secondary" onClick={detail.reload}>Повторить загрузку</Button>} /> : null}
-          {selected !== null && detail.data ? <TicketDetail ticket={detail.data} onRefresh={() => { tickets.reload(); detail.reload(); }} /> : null}
+          {selected !== null && detail.data ? <TicketDetail ticket={detail.data} permissions={identity?.session.operator.permissions || []} onRefresh={() => { tickets.reload(); detail.reload(); }} /> : null}
         </section>
       </div>
     </div>

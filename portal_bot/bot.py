@@ -30,6 +30,11 @@ import aiohttp
 import qrcode
 from sqlalchemy.exc import IntegrityError
 from bot_texts import bot_text
+from commercial_contract import commercial_plan_map, commercial_revision
+from commercial_campaign_policy import (
+    active_entitlement_capacity_units,
+    evaluate_campaign_policy,
+)
 from node_policy import (
     canonical_free_node_code,
     free_pool_node_codes,
@@ -40,7 +45,7 @@ from node_policy import (
 )
 from payment_providers import enabled_public_provider_catalog, normalize_provider as normalize_payment_provider
 from public_urls import build_subscription_url as build_public_subscription_url
-from shared_surface_facts import get_access_matrix
+from shared_surface_facts import get_access_matrix, get_product_facts
 from telegram_profile import (
     TELEGRAM_PROFILE_WEBAPP_MENU_TEXT,
     TELEGRAM_PROFILE_WEBAPP_MENU_URL,
@@ -299,6 +304,14 @@ FREE_LIMIT_IP = 1
 PAID_LIMIT_IP = int(os.getenv("PAID_LIMIT_IP", "5"))
 FREE_TOTAL_GB = 5
 _BOT_FREE_TIER_FACTS = dict(get_access_matrix().get("free_tier") or {})
+_BOT_PRODUCT_FACTS = get_product_facts()
+_BOT_TRIAL_FACTS = dict(_BOT_PRODUCT_FACTS.get("trial") or {})
+_BOT_TELEGRAM_REWARD_FACTS = dict(
+    _BOT_PRODUCT_FACTS.get("telegram_reward") or {}
+)
+_BOT_REFERRAL_REWARD_FACTS = dict(
+    _BOT_PRODUCT_FACTS.get("referral_reward") or {}
+)
 FREE_SPEED_MBIT = max(1, int(_BOT_FREE_TIER_FACTS.get("speed_limit_mbps") or 50))
 FREE_SOFT_SPEED_MBIT = max(1, int(_BOT_FREE_TIER_FACTS.get("soft_mode_speed_limit_mbps") or 2))
 FREE_SPEED_LIMIT_KBPS = FREE_SPEED_MBIT * 125
@@ -378,11 +391,13 @@ PAID_CHECKOUT_LAUNCH_APPROVED = _env_bool("PAID_CHECKOUT_LAUNCH_APPROVED", defau
 # Public-beta policy: never create new Telegram Stars checkout. Successful
 # historical payments still pass through the fulfillment handler below.
 TELEGRAM_STARS_CHECKOUT_ENABLED = False
-FRIEND_GIFT_DAYS = 5
+FRIEND_GIFT_DAYS = int(_BOT_TRIAL_FACTS["days"])
 FRIEND_GIFT_CAMPAIGN_KEY = (
     (os.getenv("FRIEND_GIFT_CAMPAIGN_KEY") or f"friend_gift_{FRIEND_GIFT_DAYS}d").strip()[:64]
 )
-CHANNEL_PREMIUM_DAYS = 5
+CHANNEL_PREMIUM_DAYS = int(_BOT_TELEGRAM_REWARD_FACTS["days"])
+REFERRAL_FRIEND_DAYS = int(_BOT_REFERRAL_REWARD_FACTS["friend_days"])
+REFERRAL_HOLD_HOURS = int(_BOT_REFERRAL_REWARD_FACTS["referrer_hold_hours"])
 BONUS_WHEEL_ENABLED = _env_bool("BONUS_WHEEL_ENABLED", default=True)
 BOT_RUB_BUTTON_ENABLED = _env_bool("BOT_RUB_BUTTON_ENABLED", default=False)
 MAIN_CONNECT_CTA_LABELS = {
@@ -1502,6 +1517,16 @@ ACHIEVEMENTS = {
 }
 
 # Tariff definitions (RUB-first in UX; legacy Stars values stay for compatibility).
+BOT_COMMERCIAL_REVISION = commercial_revision()
+_BOT_COMMERCIAL_PLAN_MAP = commercial_plan_map()
+_BOT_PAID_TARIFF_METADATA = {
+    "start_99": {"name": "⚡ Приветственный 30 дней", "subId": "START_99"},
+    "1_month": {"name": "📅 1 Месяц", "subId": "MONTHLY"},
+    "3_months": {"name": "📅 3 Месяца", "subId": "QUARTERLY"},
+    "6_months": {"name": "📅 6 Месяцев", "subId": "HALF_YEAR"},
+    "9_months": {"name": "📅 9 Месяцев", "subId": "NINE_MONTHS"},
+    "12_months": {"name": "📅 12 Месяцев", "subId": "YEARLY"},
+}
 TARIFFS = {
     "trial": {
         # Trial/fallback tier: enforced by subscription JSON allowlist rules (see api.py).
@@ -1510,56 +1535,19 @@ TARIFFS = {
         "days": 5,
         "gb": TRIAL_LIMIT_GB,
         "subId": "TRIAL_5D",
-        "sub_type": "TRIAL"
+        "sub_type": "TRIAL",
     },
-    "start_99": {
-        "name": "⚡ Приветственный 30 дней",
-        "stars": 99,
-        "days": 30,
-        "gb": 0,
-        "subId": "START_99",
-        "sub_type": "PAID"
+    **{
+        code: {
+            "name": str(metadata["name"]),
+            "stars": int(_BOT_COMMERCIAL_PLAN_MAP[code]["amount_rub"]),
+            "days": int(_BOT_COMMERCIAL_PLAN_MAP[code]["duration_days"]),
+            "gb": 0,
+            "subId": str(metadata["subId"]),
+            "sub_type": "PAID",
+        }
+        for code, metadata in _BOT_PAID_TARIFF_METADATA.items()
     },
-    "1_month": {
-        "name": "📅 1 Месяц",
-        "stars": 239,
-        "days": 30,
-        "gb": 0,
-        "subId": "MONTHLY",
-        "sub_type": "PAID"
-    },
-    "3_months": {
-        "name": "📅 3 Месяца",
-        "stars": 669,
-        "days": 91,
-        "gb": 0,
-        "subId": "QUARTERLY",
-        "sub_type": "PAID"
-    },
-    "6_months": {
-        "name": "📅 6 Месяцев",
-        "stars": 1199,
-        "days": 182,
-        "gb": 0,
-        "subId": "HALF_YEAR",
-        "sub_type": "PAID"
-    },
-    "9_months": {
-        "name": "📅 9 Месяцев",
-        "stars": 1699,
-        "days": 273,
-        "gb": 0,
-        "subId": "NINE_MONTHS",
-        "sub_type": "PAID"
-    },
-    "12_months": {
-        "name": "📅 12 Месяцев",
-        "stars": 1999,
-        "days": 365,
-        "gb": 0,
-        "subId": "YEARLY",
-        "sub_type": "PAID"
-    }
 }
 
 # Backward compatibility: older code used different tariff keys.
@@ -1576,7 +1564,7 @@ def normalize_tariff_key(key: str) -> str:
     return TARIFF_KEY_ALIASES.get(key, key)
 
 
-REFERRAL_BONUS_DAYS = int(os.getenv("REFERRAL_BONUS_DAYS", "10"))
+REFERRAL_BONUS_DAYS = int(_BOT_REFERRAL_REWARD_FACTS["referrer_days"])
 
 # Gift card types: {key: {name, stars, days}}
 GIFT_CARD_TYPES = {
@@ -2054,7 +2042,15 @@ def _campaign_lookup(*, session, campaign_type: str, target_value: str, user: Us
         .order_by(IncentiveCampaign.id.desc())
         .all()
     )
+    active_capacity_units = active_entitlement_capacity_units(session, now=now_dt)
     for row in rows:
+        policy = evaluate_campaign_policy(
+            row,
+            active_units=active_capacity_units,
+            now=now_dt,
+        )
+        if not bool(policy.get("activation_allowed")):
+            continue
         if row.starts_at and row.starts_at > now_dt:
             continue
         if row.ends_at and row.ends_at < now_dt:

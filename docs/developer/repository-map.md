@@ -25,8 +25,8 @@ categories, and verification entrypoints. Start task-specific navigation at the
 
 | Path | Responsibility | Start here |
 | --- | --- | --- |
-| portal_bot/ | FastAPI backend, Telegram bots, workers, canonical accounts, device sessions and recovery, anti-abuse, economy, payments, entitlements, private support, and node/control integration | [Backend module map](backend-module-map.md), portal_bot/api.py, portal_bot/bot.py, domain service/repository modules, focused tests |
-| adminapp/ | Primary operator surface for users, nodes, payments, alerts, release, and guarded actions | adminapp/README.md, adminapp/src/, adminapp/e2e/, tests/test_admin_ops_api.py |
+| portal_bot/ | FastAPI backend, Telegram bots, workers, canonical accounts, device sessions and recovery, anti-abuse, economy, payments, entitlements, private support, node/control integration, and modular Admin API v2 BFF | [Backend module map](backend-module-map.md), portal_bot/api.py, portal_bot/admin_v2/, portal_bot/bot.py, domain service/repository modules, focused tests |
+| adminapp/ | Canonical Operator Center; frozen legacy shell and seven-workspace migration oracle, exact static build identity, guarded operator flows | adminapp/README.md, adminapp/operator-center.manifest.json, adminapp/scripts/generate-build-contract.mjs, adminapp/src/, adminapp/e2e/, tests/test_operator_center_manifest.py |
 | webapp/ | User cabinet plus temporary admin parity fallback | webapp/README.md, webapp/src/app/(dashboard)/ for cabinet, webapp/src/app/(admin)/admin/ for fallback, webapp/src/lib/api.ts, webapp/e2e/ |
 | marketing/ | Public acquisition, checkout entry, install help, legal and SEO surfaces | marketing/src/, shared public facts and copy, marketing checks |
 | shared/ and copy/ | Cross-surface product facts, hosts, design tokens, and governed copy | shared/product-facts.json, shared/public-urls.json, shared/design-tokens.json, shared/copy.ts, copy/catalog.ru.json |
@@ -83,6 +83,7 @@ operations owner before changing behavior.
 | Observability and probes | collect_node_metrics.py, verify_brain_ready.py, ru_probe_runner.py, render_ru_probe_report.py |
 | Node/control operations | node_inventory.py, remote_sync_users_to_nodes.py, remote_manage_xui.py |
 | Data and migration | migrate_sqlite_to_postgres.py, migrate_to_nodes.py, seed_nodes_from_facts.py, sync_shared_surface_facts.py |
+| Commercial contract and rollback | generate_commercial_contract.py, commercial_revision_bundle.py |
 | Repository audit | check-links.py, text_integrity.py, agent_context_packet_audit.py, cleanup_inventory.py |
 
 mini is an operator probe/sandbox and opt-in emergency bridge. Scripts that
@@ -96,7 +97,8 @@ target it do not make it a normal delivery node or control-plane host.
 | App-first/API/bots | portal_bot/tests/test_app_first_api.py, tests/test_portal_api.py, tests/test_api_auth_and_tickets.py |
 | Backend composition slices | tests/test_module_slices.py |
 | Payments and entitlements | tests/test_api_payments_callbacks.py, tests/test_lavatop_payment_providers.py |
-| Primary operator surface | tests/test_admin_ops_api.py, adminapp/e2e/ |
+| Commercial authority and capacity | tests/test_commercial_contracts.py, tests/test_commercial_capacity_service.py, tests/test_commercial_revision_bundle.py |
+| Primary operator surface | tests/test_operator_center_manifest.py, tests/test_admin_ops_api.py, adminapp/e2e/ |
 | Cabinet and admin fallback | webapp/e2e/cabinet-flow.spec.ts, webapp/e2e/admin-gate.spec.ts |
 | Marketing and shared copy | tests/test_public_copy_guardrails.py, tests/test_marketing_release_readiness.py |
 | Nodes and observability | tests/test_observer_service.py, tests/test_observer_api.py, tests/test_predeploy_node_readiness.py |
@@ -110,8 +112,12 @@ isolated environment they create themselves. Use the focused commands in the
 
 ## Current Release And Promotion Truth
 
-- Distributed stable-direct client: v1.0.10 (Android and Windows 1.0.10+19).
-- The next candidate is defined only by an exact release handoff.
+- Retained distributed stable-direct client: `v1.1.6`; public package line
+  `1.1.6+29`.
+- Working source target: `1.2.0+30`, `PRE_CANDIDATE_LOCAL`,
+  `candidate_created=false`.
+- The client `config/release-handoff.seed.json` owns both facts. The next
+  candidate is defined only by a generated and validated strict-v2 handoff.
 - Store availability, trusted Windows signing and exact-final Huawei/RU-LTE
   claims remain unproven.
 - Account foundation: implemented in the repository, not

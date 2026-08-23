@@ -1,6 +1,6 @@
 # Payment State Machine
 
-Last updated: 2026-07-22
+Last updated: 2026-08-21
 
 | State | Meaning | Access effect |
 | --- | --- | --- |
@@ -35,6 +35,42 @@ A completed production cutover, mixed-fleet safety, and full migration must not 
 
 For `lavatop`, local order creation stores an `ExternalOrder` before redirect. The provider invoice request is sent to `/api/v3/invoice` with `clientUtm.utm_content=<local order_id>` and optional per-plan `offerId` mapping.
 
+The creation boundary is explicitly two-phase and never carries a database
+session across provider I/O. Before the provider call, the local `created` row
+stores a canonical intent digest over provider/order, owner, amount, currency,
+plan, source and entitlement snapshot. A second short transaction validates the
+same intent before moving `created` to `pending`. Provider checkout URL, query,
+request body and raw response are not durable metadata; only closed allowlisted
+provider identifiers/status and `url_present` may be stored. A provider error
+keeps the order at non-fulfilling `created` with a bounded error code. Repeating
+application for the same order is idempotent only for the exact stored intent,
+and a late paid callback cannot be regressed to `pending` by checkout completion.
+
+When order creation carries a signed commercial `offer_token`, the first local
+transaction additionally locks and revalidates the current campaign, offer,
+creative, assignment and reservation plus server-derived subject, manifest
+price/revisions, deadlines, legal/channel/capacity policy and finite paid caps.
+It never accepts client price, discount, commercial IDs or quota as authority.
+Acceptance binds one unique reservation to one order and stores
+`pokrov-payment-order-intent-v2` with an identity-free commercial lineage and
+token SHA-256. An exact valid retry returns the same order; provider, subject,
+price, revision, deadline, policy, quota or reservation drift stops before the
+provider call.
+
+Commercial retry, callback consume and failed-checkout expiry acquire the
+campaign quota-owner lock before payment-order/reservation locks. This is the
+single PostgreSQL lock order for those paths; local SQLite tests are not a claim
+of live two-connection PostgreSQL concurrency proof.
+
+Provider failure keeps the order `created` and the reservation `bound` until
+its absolute hold. A due reservation may be expired/released only when the
+local order has bounded provider-checkout `error` evidence; a ready checkout is
+kept for a delayed callback. Authenticated paid fulfillment consumes the same
+reservation in the entitlement transaction and advances campaign, offer and
+assignment paid counters once. Callback payloads cannot add commercial fields.
+Refund/chargeback changes payment and entitlement state but retains the original
+intent and consumed lineage.
+
 For the one-time `start_99` plan, order creation must stop before provider invoice creation when the linked user has `first_purchase_done=true` or an existing paid Lava.top order. This guard prevents duplicate one-time offers even if older fulfillment evidence missed the user flag.
 
 Incoming Lava.top result webhooks must pass `X-Api-Key` or Basic webhook authentication before fulfillment. `payment.success` and `subscription.recurring.payment.success` normalize through the provider `status` value, where `completed` grants access. `payment.failed`, recurring payment failures, and `subscription.cancelled` normalize to non-fulfilling states.
@@ -42,6 +78,36 @@ Incoming Lava.top result webhooks must pass `X-Api-Key` or Basic webhook authent
 Before any Lava.top paid callback fulfills, the backend validates local order binding, amount, currency, and plan. Any missing local order, amount mismatch, currency mismatch, or plan mismatch becomes `manual_review` and does not grant access.
 
 For authenticated cabinet and Telegram-bound orders, fulfillment extends the linked account. The cabinet can show the single `connect.pokrov.space` subscription link and QR after access is active; the bot also sends that link after a paid Telegram-bound callback as a beta-stage manual import fallback. Anonymous public orders do not receive links in API responses; they receive one emailed access key after fulfillment.
+
+## Consumer Return Projection
+
+The browser-facing return projection is deliberately smaller than the payment
+ledger. `POST /api/payments/orders/status` maps current local truth to exactly
+six states:
+
+| Consumer state | Source condition | Consumer action |
+| --- | --- | --- |
+| `processing` | durable order is `created`/`pending` and both signed token and any commercial hold remain live | poll at the server delay |
+| `paid` | durable local order is paid | stop; refresh account/access state |
+| `failed` | order failed, was refunded/charged back, or another terminal non-retryable payment failure is authoritative | stop; do not imply access |
+| `cancelled` | durable order is cancelled | stop; allow a fresh checkout only through normal server validation |
+| `manual_review` | local payment truth is ambiguous or requires operator review | stop; show support route |
+| `expired` | signed return capability, pending window, or bound commercial hold expired | stop; start a new server-validated checkout |
+
+This projection is read-only. It never advances an order, consumes/releases a
+reservation, grants/revokes access or interprets callback fields. The signed
+return capability is identity-free and never travels in the provider redirect
+URL. Refund/chargeback intentionally collapse to consumer `failed` while their
+distinct ledger states and reconciliation evidence remain unchanged.
+
+The cabinet renders all six states from this projection. A `paid` response
+triggers an authenticated account refresh before the UI says access is active.
+If payment is paid but the refreshed account is still inactive (or refresh
+fails), the cabinet shows a distinct paid/access-stale recovery with explicit
+`Проверить доступ` and support actions; it does not manufacture entitlement
+from the payment-return response. `processing` alone polls at the server delay.
+`failed`, `cancelled`, and `expired` return to a new server-validated checkout,
+while `manual_review` routes to support.
 
 ## FreeKassa Compatibility Boundary
 
@@ -52,6 +118,9 @@ rollback evidence packet is retained.
 
 FreeKassa SCI handling is fail-closed:
 
+- one provider parser accepts only known top-level/nested response shapes and
+  the exact configured HTTPS checkout host; missing/invalid URL is terminal for
+  that request and never falls back to `oa=0`;
 - the presence of any SCI field requires the complete uppercase
   `MERCHANT_ID`, `AMOUNT`, `MERCHANT_ORDER_ID`, and `SIGN` shape; an incomplete
   SCI payload cannot downgrade to generic HMAC verification;
@@ -79,6 +148,32 @@ app/bot projection reads that same history. Callback and worker replay converge
 to one immediate `+5 day` referred-friend grant and one held `+10 day`
 referrer grant. Admin plan keys, gifts, promos, later renewals,
 and client activity events are not first-payment authority.
+
+An active `paid_access` provider grant and its
+`payment_entitlement.applied` outbox event commit together. The outbox event is
+unique by provider/order/schema and points to the grant without copying account
+or provider payload data. The worker uses an atomic claim token, bounded retry,
+stale-claim recovery and terminal dead-letter state, then creates one
+idempotent `payment_entitlement_sync` provisioning job in the same dispatch
+transaction that marks the event delivered. This downstream path may refresh
+panel traffic/access state but is never payment authority. Invalid payload,
+missing/mismatched grant, reversed grant or exhausted retry cannot grant or
+extend access.
+
+For an order whose immutable v2 intent contains commercial lineage, successful
+reservation consume and the unique `commercial_conversions(stage=paid)` row
+commit in the same authoritative fulfillment transaction. Callback replay
+reuses that row. A refund/chargeback transaction preserves the paid row and
+adds/reuses `stage=reversed` with the original gross amount as refund amount;
+it never decrements or rewrites gross lineage.
+
+Connection stages are outside payment authority but still server-owned. Only a
+durable observer `ConnectionEvidence(evidence_kind=observer_connection)` linked
+through the provider-payment grant may create `first_verified_connect`,
+`retained_d7` in `paid_at+[7d,14d)`, or `retained_d30` in
+`paid_at+[30d,37d)`. A later provider-payment grant may create `renewal` on the
+later order. Browser clicks, funnel events and client-reported success are not
+eligible evidence.
 
 Historical compatibility backfill requires a successful provider/order row or
 per-order Stars fulfillment evidence before creating a `provider_payment` fact.

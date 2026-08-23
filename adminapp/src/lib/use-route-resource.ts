@@ -3,12 +3,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AdminApiError } from "@/lib/admin-api/client";
+import { useRouteRefreshRegistration } from "@/lib/route-refresh";
+
+export type RouteResourceFreshness = "missing" | "fresh" | "stale";
 
 export type RouteResourceState<T> = {
   data: T | null;
   error: AdminApiError | null;
   loading: boolean;
   refreshing: boolean;
+  freshness: RouteResourceFreshness;
   updatedAt: string | null;
   reload: () => void;
 };
@@ -41,6 +45,7 @@ export function useRouteResource<T>(
     error: null,
     loading: enabled,
     refreshing: false,
+    freshness: "missing",
     updatedAt: null
   });
 
@@ -51,6 +56,8 @@ export function useRouteResource<T>(
   const reload = useCallback(() => {
     setReloadVersion((version) => version + 1);
   }, []);
+
+  useRouteRefreshRegistration(reload, enabled);
 
   useEffect(() => {
     const generation = ++generationRef.current;
@@ -66,6 +73,7 @@ export function useRouteResource<T>(
             error: null,
             loading: false,
             refreshing: false,
+            freshness: keepLastSuccess ? current.freshness : "missing",
             updatedAt: keepLastSuccess ? current.updatedAt : null
           };
         });
@@ -85,6 +93,7 @@ export function useRouteResource<T>(
           error: null,
           loading: !canRefresh,
           refreshing: canRefresh,
+          freshness: canRefresh ? current.freshness : "missing",
           updatedAt: canRefresh ? current.updatedAt : null
         };
       });
@@ -99,6 +108,7 @@ export function useRouteResource<T>(
           error: null,
           loading: false,
           refreshing: false,
+          freshness: "fresh",
           updatedAt: new Date().toISOString()
         });
       })
@@ -108,7 +118,8 @@ export function useRouteResource<T>(
           ...current,
           error: asAdminApiError(error),
           loading: false,
-          refreshing: false
+          refreshing: false,
+          freshness: current.data === null ? "missing" : "stale"
         }));
       });
 

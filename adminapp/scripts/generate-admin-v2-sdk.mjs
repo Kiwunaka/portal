@@ -1,0 +1,227 @@
+import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
+const contractPath = resolve(root, "../shared/contracts/admin/admin-v2.openapi.json");
+const outputPath = resolve(root, "src/lib/admin-api/generated/admin-v2.ts");
+const check = process.argv.includes("--check");
+const methods = new Set(["get", "post", "put", "patch", "delete"]);
+
+function identifier(value) {
+  const cleaned = String(value).replace(/[^A-Za-z0-9_$]/g, "_");
+  return /^[A-Za-z_$]/.test(cleaned) ? cleaned : `_${cleaned}`;
+}
+
+function schemaType(schema) {
+  if (!schema || typeof schema !== "object" || Array.isArray(schema)) return "unknown";
+  if (typeof schema.$ref === "string") {
+    return identifier(schema.$ref.split("/").at(-1));
+  }
+  if (Object.hasOwn(schema, "const")) return JSON.stringify(schema.const);
+  if (Array.isArray(schema.enum)) return schema.enum.map((item) => JSON.stringify(item)).join(" | ") || "never";
+  for (const key of ["anyOf", "oneOf"]) {
+    if (Array.isArray(schema[key])) {
+      return [...new Set(schema[key].map(schemaType))].join(" | ");
+    }
+  }
+  if (Array.isArray(schema.allOf)) {
+    return schema.allOf.map(schemaType).join(" & ");
+  }
+  if (Array.isArray(schema.type)) {
+    return [...new Set(schema.type.map((type) => schemaType({ ...schema, type })))].join(" | ");
+  }
+  if (schema.type === "string") return "string";
+  if (schema.type === "integer" || schema.type === "number") return "number";
+  if (schema.type === "boolean") return "boolean";
+  if (schema.type === "null") return "null";
+  if (schema.type === "array") return `Array<${schemaType(schema.items)}>`;
+  if (schema.type === "object" || schema.properties || schema.additionalProperties) {
+    const required = new Set(Array.isArray(schema.required) ? schema.required : []);
+    const properties = schema.properties && typeof schema.properties === "object" ? schema.properties : {};
+    const fields = Object.entries(properties).map(
+      ([name, value]) => `${JSON.stringify(name)}${required.has(name) ? "" : "?"}: ${schemaType(value)};`,
+    );
+    if (schema.additionalProperties) {
+      const valueType = schema.additionalProperties === true ? "unknown" : schemaType(schema.additionalProperties);
+      fields.push(`[key: string]: ${valueType};`);
+    }
+    return fields.length ? `{ ${fields.join(" ")} }` : "Record<string, unknown>";
+  }
+  return "unknown";
+}
+
+function parameterType(parameters, location) {
+  const selected = parameters.filter((item) => item && item.in === location);
+  if (!selected.length) return "Record<string, never>";
+  return `{ ${selected
+    .map((item) => `${JSON.stringify(item.name)}${item.required ? "" : "?"}: ${schemaType(item.schema)};`)
+    .join(" ")} }`;
+}
+
+function requestBodyType(operation) {
+  const content = operation.requestBody?.content;
+  if (!content || typeof content !== "object") return "undefined";
+  const media = content["application/json"] || Object.values(content)[0];
+  return schemaType(media?.schema);
+}
+
+function matcherPattern(path) {
+  const escaped = path.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return `^${escaped.replace(/\\\{[A-Za-z_][A-Za-z0-9_]*\\\}/g, "[^/]+").replaceAll("/", "\\/")}$`;
+}
+
+function operationsFrom(contract) {
+  const operations = [];
+  for (const [path, item] of Object.entries(contract.paths || {})) {
+    for (const [method, operation] of Object.entries(item || {})) {
+      if (!methods.has(method)) continue;
+      const operationId = String(operation.operationId || "");
+      if (!operationId) throw new Error(`operation id missing for ${method.toUpperCase()} ${path}`);
+      const parameters = Array.isArray(operation.parameters) ? operation.parameters : [];
+      const content = operation.responses?.["200"]?.content || {};
+      const responseKind = Object.hasOwn(content, "application/octet-stream") || Object.hasOwn(content, "text/csv")
+        ? "binary"
+        : "json";
+      operations.push({
+        operationId,
+        method: method.toUpperCase(),
+        path,
+        permission: String(operation["x-pokrov-permission"] || ""),
+        csrfRequired: operation["x-pokrov-csrf-required"] === true,
+        responseKind,
+        pathType: parameterType(parameters, "path"),
+        queryType: parameterType(parameters, "query"),
+        bodyType: requestBodyType(operation),
+      });
+    }
+  }
+  operations.sort((left, right) => left.operationId.localeCompare(right.operationId));
+  if (new Set(operations.map((item) => item.operationId)).size !== operations.length) {
+    throw new Error("duplicate operation id");
+  }
+  return operations;
+}
+
+function render(contract) {
+  const operations = operationsFrom(contract);
+  const schemas = Object.entries(contract.components?.schemas || {}).sort(([left], [right]) =>
+    left.localeCompare(right),
+  );
+  const lines = [
+    "// Generated by adminapp/scripts/generate-admin-v2-sdk.mjs. Do not edit.",
+    "",
+    `export const ADMIN_V2_OPENAPI_SHA256 = ${JSON.stringify(contract["x-pokrov-contract-sha256"])} as const;`,
+    `export const ADMIN_V2_OPERATION_COUNT = ${operations.length} as const;`,
+    "",
+    ...schemas.flatMap(([name, schema]) => [
+      `export type ${identifier(name)} = ${schemaType(schema)};`,
+      "",
+    ]),
+    "export type AdminV2SuccessEnvelope<TData = unknown> = Omit<AdminV2SuccessEnvelopeContract, \"data\"> & { data: TData };",
+    "",
+    "export const ADMIN_V2_OPERATIONS = {",
+    ...operations.map(
+      (item) =>
+        `  ${JSON.stringify(item.operationId)}: { method: ${JSON.stringify(item.method)}, path: ${JSON.stringify(item.path)}, permission: ${JSON.stringify(item.permission)}, csrfRequired: ${item.csrfRequired}, responseKind: ${JSON.stringify(item.responseKind)} },`,
+    ),
+    "} as const;",
+    "",
+    "export type AdminV2OperationId = keyof typeof ADMIN_V2_OPERATIONS;",
+    "export type AdminV2HttpMethod = (typeof ADMIN_V2_OPERATIONS)[AdminV2OperationId][\"method\"];",
+    "",
+    "export type AdminV2PathParameters = {",
+    ...operations.map((item) => `  ${JSON.stringify(item.operationId)}: ${item.pathType};`),
+    "};",
+    "",
+    "export type AdminV2QueryParameters = {",
+    ...operations.map((item) => `  ${JSON.stringify(item.operationId)}: ${item.queryType};`),
+    "};",
+    "",
+    "export type AdminV2RequestBodies = {",
+    ...operations.map((item) => `  ${JSON.stringify(item.operationId)}: ${item.bodyType};`),
+    "};",
+    "",
+    "export type AdminV2OperationResponses = {",
+    ...operations.map(
+      (item) =>
+        `  ${JSON.stringify(item.operationId)}: ${item.responseKind === "json" ? "AdminV2SuccessEnvelope<unknown>" : "Blob"};`,
+    ),
+    "};",
+    "",
+    "export type AdminV2RequestArgs<TOperation extends AdminV2OperationId> = {",
+    "  path?: AdminV2PathParameters[TOperation];",
+    "  query?: AdminV2QueryParameters[TOperation];",
+    "  body?: AdminV2RequestBodies[TOperation];",
+    "};",
+    "",
+    "export type BuiltAdminV2Request = { method: AdminV2HttpMethod; path: string; headers: Record<string, string>; body?: string };",
+    "",
+    "export function buildAdminV2Request<TOperation extends AdminV2OperationId>(",
+    "  operationId: TOperation,",
+    "  args: AdminV2RequestArgs<TOperation> = {},",
+    "): BuiltAdminV2Request {",
+    "  const operation = ADMIN_V2_OPERATIONS[operationId];",
+    "  let path = operation.path as string;",
+    "  const pathValues = (args.path || {}) as Record<string, unknown>;",
+    "  path = path.replace(/\\{([A-Za-z_][A-Za-z0-9_]*)\\}/g, (_match, name: string) => {",
+    "    const value = pathValues[name];",
+    "    if (value === undefined || value === null || value === \"\") throw new Error(`Missing Admin API v2 path parameter: ${name}`);",
+    "    return encodeURIComponent(String(value));",
+    "  });",
+    "  const query = new URLSearchParams();",
+    "  for (const [name, raw] of Object.entries((args.query || {}) as Record<string, unknown>)) {",
+    "    if (raw === undefined || raw === null) continue;",
+    "    for (const value of Array.isArray(raw) ? raw : [raw]) query.append(name, String(value));",
+    "  }",
+    "  const suffix = query.toString();",
+    "  if (suffix) path += `?${suffix}`;",
+    "  const headers: Record<string, string> = {};",
+    "  let body: string | undefined;",
+    "  if (args.body !== undefined) { headers[\"Content-Type\"] = \"application/json\"; body = JSON.stringify(args.body); }",
+    "  return { method: operation.method, path, headers, ...(body === undefined ? {} : { body }) };",
+    "}",
+    "",
+    "const ADMIN_V2_MATCHERS: ReadonlyArray<{ operationId: AdminV2OperationId; method: string; pattern: RegExp }> = [",
+    ...operations.map(
+      (item) =>
+        `  { operationId: ${JSON.stringify(item.operationId)}, method: ${JSON.stringify(item.method)}, pattern: /${matcherPattern(item.path)}/ },`,
+    ),
+    "];",
+    "",
+    "export function matchAdminV2Operation(path: string, method: string): AdminV2OperationId | null {",
+    "  const cleanPath = path.split(/[?#]/, 1)[0];",
+    "  const normalizedMethod = method.trim().toUpperCase();",
+    "  return ADMIN_V2_MATCHERS.find((item) => item.method === normalizedMethod && item.pattern.test(cleanPath))?.operationId ?? null;",
+    "}",
+  ];
+  return `${lines.join("\n")}\n`;
+}
+
+function normalizeNewlines(value) {
+  return value.replace(/\r\n/g, "\n");
+}
+
+async function main() {
+  const contract = JSON.parse(await readFile(contractPath, "utf8"));
+  const expectedDigest = String(contract["x-pokrov-contract-sha256"] || "");
+  if (!/^[0-9a-f]{64}$/.test(expectedDigest)) {
+    throw new Error("Admin API v2 OpenAPI digest is invalid");
+  }
+  const generated = render(contract);
+  if (check) {
+    const current = await readFile(outputPath, "utf8").catch(() => null);
+    if (current === null || normalizeNewlines(current) !== normalizeNewlines(generated)) {
+      throw new Error("Generated Admin API v2 SDK is stale");
+    }
+  } else {
+    await mkdir(dirname(outputPath), { recursive: true });
+    await writeFile(outputPath, generated, "utf8");
+  }
+  process.stdout.write(`PASS admin-v2-sdk operations=${contract["x-pokrov-operation-count"]} sha256=${expectedDigest}\n`);
+}
+
+main().catch((error) => {
+  process.stderr.write(`FAIL admin-v2-sdk ${error instanceof Error ? error.message : String(error)}\n`);
+  process.exitCode = 1;
+});

@@ -263,7 +263,7 @@ async function installTelegramWebAppInitHarness(page: Page) {
     const webApp = {
       initData: "query_id=mock",
       platform: "tdesktop",
-      colorScheme: "dark",
+      colorScheme: "dark" as const,
       themeParams: {
         bg_color: "#f2fff7",
         secondary_bg_color: "#e6fff6",
@@ -318,7 +318,7 @@ async function installTelegramWebAppInitHarness(page: Page) {
         },
       },
       HapticFeedback: {
-        impactOccurred(style: string) {
+        impactOccurred(style: "light" | "medium" | "heavy" | "rigid" | "soft") {
           recordHaptic(style);
         },
       },

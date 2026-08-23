@@ -2,172 +2,627 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://pokrov.space/schemas/release_handoff_metadata.schema.json",
   "title": "POKROV Release Handoff Metadata",
-  "type": "object",
-  "additionalProperties": true,
-  "properties": {
-    "schema_version": {
-      "type": "integer",
-      "minimum": 1
+  "description": "Discriminated release-handoff contract. Schema v1 is legacy read-only metadata; schema v2 is the strict candidate contract.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/legacyV1"
     },
-    "client_lane": {
+    {
+      "$ref": "#/$defs/releaseV2"
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[A-Fa-f0-9]{64}$"
+    },
+    "gitRevision": {
+      "type": "string",
+      "pattern": "^[A-Fa-f0-9]{40}$"
+    },
+    "utcTimestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$"
+    },
+    "evidenceStatus": {
       "type": "string",
       "enum": [
-        "bridge",
-        "pokrov-app"
+        "PASS",
+        "FAIL",
+        "MANUAL_OWNER_TEST",
+        "OPERATOR_ATTESTED",
+        "SKIPPED_BY_OWNER",
+        "SKIPPED_BY_OPERATOR",
+        "BLOCKED_BY_ACCESS",
+        "MISSING",
+        "NOT_REQUESTED"
       ]
     },
-    "release_version": {
-      "type": "string",
-      "minLength": 1
-    },
-    "artifact_dir": {
-      "type": "string",
-      "minLength": 1
-    },
-    "downloads": {
+    "sourceRevision": {
       "type": "object",
-      "additionalProperties": true,
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "revision"
+      ],
       "properties": {
-        "android": {
-          "type": "object",
-          "additionalProperties": true,
-          "properties": {
-            "play_url": {
-              "type": "string"
-            },
-            "apk_url": {
-              "type": "string"
-            },
-            "apk_arm64_url": {
-              "type": "string"
-            },
-            "apk_armeabi_v7a_url": {
-              "type": "string"
-            },
-            "apk_x86_64_url": {
-              "type": "string"
-            },
-            "apk_universal_url": {
-              "type": "string"
-            },
-            "apk_variants": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "additionalProperties": true,
-                "properties": {
-                  "abi": {
-                    "type": "string"
-                  },
-                  "url": {
-                    "type": "string"
-                  },
-                  "sha256": {
-                    "type": "string"
-                  },
-                  "size_bytes": {
-                    "type": "integer"
-                  }
-                }
-              }
-            },
-            "mirror_url": {
-              "type": "string"
-            }
-          }
+        "repository": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
         },
-        "windows": {
-          "type": "object",
-          "additionalProperties": true,
-          "properties": {
-            "exe_url": {
-              "type": "string"
-            },
-            "mirror_url": {
-              "type": "string"
-            }
-          }
-        },
-        "docs_url": {
-          "type": "string"
+        "revision": {
+          "$ref": "#/$defs/gitRevision"
         }
       }
     },
-    "runtime_env": {
+    "releaseNotes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "summary",
+        "url"
+      ],
+      "properties": {
+        "summary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://github\\.com/Kiwunaka/pokrov/releases/tag/v[0-9]+\\.[0-9]+\\.[0-9]+[A-Za-z0-9._+-]*$"
+        }
+      }
+    },
+    "contractDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "version",
+        "sha256"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{1,63}$"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "signingEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/evidenceStatus"
+        },
+        "signer_identity": {
+          "type": "string",
+          "pattern": "^sha256:[A-Fa-f0-9]{64}$"
+        },
+        "evidence_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "PASS"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "signer_identity",
+              "evidence_sha256"
+            ]
+          }
+        }
+      ]
+    },
+    "supplyEvidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/evidenceStatus"
+        },
+        "format": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._+-]{1,63}$"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "PASS"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "format",
+              "sha256"
+            ]
+          }
+        }
+      ]
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "platform",
+        "kind",
+        "architecture",
+        "file_name",
+        "public_url",
+        "sha256",
+        "size_bytes",
+        "source_revision",
+        "core_version",
+        "core_abi",
+        "core_artifact_sha256",
+        "signing",
+        "sbom",
+        "provenance"
+      ],
+      "properties": {
+        "platform": {
+          "type": "string",
+          "enum": [
+            "android",
+            "windows",
+            "linux"
+          ]
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "apk",
+            "aab",
+            "exe",
+            "msix",
+            "zip",
+            "appimage",
+            "deb",
+            "rpm"
+          ]
+        },
+        "architecture": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,31}$"
+        },
+        "file_name": {
+          "type": "string",
+          "pattern": "^pokrov-[A-Za-z0-9][A-Za-z0-9._+-]{1,127}$"
+        },
+        "public_url": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https://"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_revision": {
+          "$ref": "#/$defs/gitRevision"
+        },
+        "core_version": {
+          "type": "string",
+          "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$"
+        },
+        "core_abi": {
+          "oneOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "core_artifact_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "signing": {
+          "$ref": "#/$defs/signingEvidence"
+        },
+        "sbom": {
+          "$ref": "#/$defs/supplyEvidence"
+        },
+        "provenance": {
+          "$ref": "#/$defs/supplyEvidence"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "platform": {
+                "const": "android"
+              }
+            },
+            "required": [
+              "platform"
+            ]
+          },
+          "then": {
+            "properties": {
+              "core_abi": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "platform": {
+                "enum": [
+                  "windows",
+                  "linux"
+                ]
+              }
+            },
+            "required": [
+              "platform"
+            ]
+          },
+          "then": {
+            "properties": {
+              "core_abi": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "manualGate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "origin",
+        "status",
+        "required_for_promotion"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_-]{2,63}$"
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "current",
+            "brain",
+            "ru",
+            "owner",
+            "provider"
+          ]
+        },
+        "status": {
+          "$ref": "#/$defs/evidenceStatus"
+        },
+        "required_for_promotion": {
+          "type": "boolean"
+        },
+        "observed_at_utc": {
+          "$ref": "#/$defs/utcTimestamp"
+        },
+        "evidence_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "PASS"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "then": {
+            "required": [
+              "observed_at_utc",
+              "evidence_sha256"
+            ]
+          }
+        }
+      ]
+    },
+    "legacyV1": {
       "type": "object",
       "additionalProperties": true,
+      "required": [
+        "schema_version"
+      ],
       "properties": {
-        "APP_ANDROID_PLAY_URL": {
-          "type": "string"
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        }
+      }
+    },
+    "releaseV2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "release",
+        "sources",
+        "compatibility",
+        "artifacts",
+        "manual_gates",
+        "promotion"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 2
         },
-        "APP_ANDROID_APK_URL": {
-          "type": "string"
+        "release": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "version",
+            "channel",
+            "candidate_label",
+            "created_at_utc",
+            "release_notes"
+          ],
+          "properties": {
+            "version": {
+              "type": "string",
+              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$"
+            },
+            "channel": {
+              "type": "string",
+              "enum": [
+                "alpha",
+                "beta",
+                "rc",
+                "stable"
+              ]
+            },
+            "candidate_label": {
+              "type": "string",
+              "pattern": "^pokrov-[0-9]+\\.[0-9]+\\.[0-9]+[A-Za-z0-9._+-]*$"
+            },
+            "created_at_utc": {
+              "$ref": "#/$defs/utcTimestamp"
+            },
+            "release_notes": {
+              "$ref": "#/$defs/releaseNotes"
+            }
+          }
         },
-        "APP_ANDROID_APK_ARM64_URL": {
-          "type": "string"
+        "sources": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "platform",
+            "client",
+            "core",
+            "release_index"
+          ],
+          "properties": {
+            "platform": {
+              "$ref": "#/$defs/sourceRevision"
+            },
+            "client": {
+              "$ref": "#/$defs/sourceRevision"
+            },
+            "core": {
+              "$ref": "#/$defs/sourceRevision"
+            },
+            "release_index": {
+              "$ref": "#/$defs/sourceRevision"
+            }
+          }
         },
-        "APP_ANDROID_APK_ARMEABI_V7A_URL": {
-          "type": "string"
+        "compatibility": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "core_version",
+            "core_abi",
+            "app_contract_version",
+            "api_contract_version",
+            "contracts"
+          ],
+          "properties": {
+            "core_version": {
+              "type": "string",
+              "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?$"
+            },
+            "core_abi": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "desktop",
+                "android_package"
+              ],
+              "properties": {
+                "desktop": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "android_package": {
+                  "const": "space.pokrov.core"
+                }
+              }
+            },
+            "app_contract_version": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$"
+            },
+            "api_contract_version": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,63}$"
+            },
+            "contracts": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/contractDescriptor"
+              },
+              "allOf": [
+                {
+                  "contains": {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "version",
+                      "sha256"
+                    ],
+                    "properties": {
+                      "id": {
+                        "const": "error-catalog"
+                      },
+                      "version": {
+                        "const": "1.2.0"
+                      },
+                      "sha256": {
+                        "const": "7d3bf242777d5bf76bbebcf162e5969d3f83d7f68b2787051e1c4fddeadc3dc7"
+                      }
+                    }
+                  }
+                },
+                {
+                  "contains": {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "version",
+                      "sha256"
+                    ],
+                    "properties": {
+                      "id": {
+                        "const": "observability-event"
+                      },
+                      "version": {
+                        "const": "1.0.0"
+                      },
+                      "sha256": {
+                        "const": "24ae72442f778d7f1334ae0a4bf4d774738e4de275707b29420ec733af65cc17"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
         },
-        "APP_ANDROID_APK_X86_64_URL": {
-          "type": "string"
+        "artifacts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/artifact"
+          }
         },
-        "APP_ANDROID_APK_UNIVERSAL_URL": {
-          "type": "string"
+        "manual_gates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/manualGate"
+          }
         },
-        "APP_ANDROID_MIRROR_URL": {
-          "type": "string"
-        },
-        "APP_ANDROID_VERSION": {
-          "type": "string"
-        },
-        "APP_ANDROID_SHA256": {
-          "type": "string"
-        },
-        "APP_ANDROID_SIZE_BYTES": {
-          "type": "string"
-        },
-        "APP_ANDROID_ARM64_SHA256": {
-          "type": "string"
-        },
-        "APP_ANDROID_ARM64_SIZE_BYTES": {
-          "type": "string"
-        },
-        "APP_ANDROID_ARMEABI_V7A_SHA256": {
-          "type": "string"
-        },
-        "APP_ANDROID_ARMEABI_V7A_SIZE_BYTES": {
-          "type": "string"
-        },
-        "APP_ANDROID_X86_64_SHA256": {
-          "type": "string"
-        },
-        "APP_ANDROID_X86_64_SIZE_BYTES": {
-          "type": "string"
-        },
-        "APP_ANDROID_UNIVERSAL_SHA256": {
-          "type": "string"
-        },
-        "APP_ANDROID_UNIVERSAL_SIZE_BYTES": {
-          "type": "string"
-        },
-        "APP_WINDOWS_EXE_URL": {
-          "type": "string"
-        },
-        "APP_WINDOWS_MIRROR_URL": {
-          "type": "string"
-        },
-        "APP_WINDOWS_VERSION": {
-          "type": "string"
-        },
-        "APP_WINDOWS_SHA256": {
-          "type": "string"
-        },
-        "APP_WINDOWS_SIZE_BYTES": {
-          "type": "string"
-        },
-        "APP_DOCS_URL": {
-          "type": "string"
+        "promotion": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "target_channel",
+            "same_byte_required",
+            "source_artifact_set_sha256",
+            "observed_status"
+          ],
+          "properties": {
+            "target_channel": {
+              "type": "string",
+              "enum": [
+                "alpha",
+                "beta",
+                "rc",
+                "stable"
+              ]
+            },
+            "same_byte_required": {
+              "const": true
+            },
+            "source_artifact_set_sha256": {
+              "$ref": "#/$defs/sha256"
+            },
+            "observed_status": {
+              "$ref": "#/$defs/evidenceStatus"
+            },
+            "observed_at_utc": {
+              "$ref": "#/$defs/utcTimestamp"
+            },
+            "evidence_sha256": {
+              "$ref": "#/$defs/sha256"
+            }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "observed_status": {
+                    "const": "PASS"
+                  }
+                },
+                "required": [
+                  "observed_status"
+                ]
+              },
+              "then": {
+                "required": [
+                  "observed_at_utc",
+                  "evidence_sha256"
+                ]
+              }
+            }
+          ]
         }
       }
     }

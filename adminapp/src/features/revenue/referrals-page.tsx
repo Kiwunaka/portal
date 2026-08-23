@@ -67,7 +67,7 @@ export function ReferralsPage({ onShellStatus }: { onShellStatus?: (status: OpsS
 
   function reloadAll() { queue.reload(); history.reload(); }
   function processQueue() {
-    setRequest({ action: "referral.process", target: { type: "referral_queue", id: "ready" }, payload: { limit: 100, force_without_activity: forceWithoutActivity }, endpoint: "/api/admin/referrals/process", method: "POST" });
+    setRequest({ action: "referral.process", target: { type: "referral_queue", id: "ready" }, payload: { limit: 100, force_without_activity: forceWithoutActivity }, endpoint: "/api/admin/v2/growth/action-intents", method: "POST", workspace: "growth" });
     setDialogOpen(true);
   }
 

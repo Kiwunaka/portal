@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, m, useReducedMotion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 
@@ -38,7 +38,7 @@ function AccordionRow({ item, defaultOpen = false }: { item: AccordionItem; defa
       </button>
       <AnimatePresence initial={false}>
         {open ? (
-          <motion.div
+          <m.div
             id={regionId}
             role="region"
             initial={reduceMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
@@ -48,7 +48,7 @@ function AccordionRow({ item, defaultOpen = false }: { item: AccordionItem; defa
             className="overflow-hidden"
           >
             <p className="max-w-2xl pb-5 text-[0.9375rem] leading-relaxed text-ink-soft">{item.answer}</p>
-          </motion.div>
+          </m.div>
         ) : null}
       </AnimatePresence>
     </div>

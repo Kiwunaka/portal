@@ -1,6 +1,6 @@
 ﻿/* eslint-disable @typescript-eslint/no-explicit-any */
 import { classifyApiPayload, resolveCandidateApiBases, resolvePrimaryApiBase } from "./api-base.mjs";
-import { getCopyText } from "./portal";
+import { COMMERCIAL_REVISION, assertCommercialPlanProjection, getCopyText } from "./portal";
 import { getInitData } from "./telegram";
 
 const WEB_SESSION_TOKEN_KEY = "portal_web_session_token";
@@ -48,6 +48,22 @@ export type NodeStatus = {
   updated_at?: string | null;
 };
 
+export type ClientAppUpdateInfo = {
+  platform: string;
+  channel: string;
+  latest_version: string;
+  min_supported_version: string;
+  update_policy: "none" | "optional" | "recommended" | "required" | string;
+  url: string;
+  sha256: string;
+  size: number;
+  release_notes: string;
+  release_notes_url: string;
+  published_at: string;
+  rollout_percent: number;
+  force_after?: string | null;
+};
+
 export type ClientPlatformAndroidApps = {
   play_url: string;
   apk_url: string;
@@ -59,18 +75,45 @@ export type ClientPlatformAndroidApps = {
     sha256?: string;
     size?: number;
   }>;
+  version?: string;
+  sha256?: string;
+  size?: number;
+  release_notes?: string;
+  release_notes_url?: string;
+  published_at?: string;
+  update?: ClientAppUpdateInfo;
 };
 
 export type ClientPlatformWindowsApps = {
   exe_url: string;
   mirror_url: string;
+  version?: string;
+  sha256?: string;
+  size?: number;
+  release_notes?: string;
+  release_notes_url?: string;
+  published_at?: string;
+  update?: ClientAppUpdateInfo;
 };
 
 export type ClientAppsPayload = {
   android: ClientPlatformAndroidApps;
   windows: ClientPlatformWindowsApps;
+  release_manifest?: {
+    schema_version: number;
+    candidate_label: string;
+    handoff_sha256: string;
+    artifact_set_sha256: string;
+    core_version: string;
+    core_desktop_abi: number;
+    core_android_package: string;
+  } | null;
   docs_url: string;
   updated_at: string;
+  update_check?: {
+    mode?: string;
+    silent_update?: boolean;
+  };
 };
 
 export type DashboardSnapshot = {
@@ -394,6 +437,15 @@ export type RubCheckoutStartResult = {
   discount_applied?: boolean;
   base_amount_rub?: number | null;
   discount_pct?: number;
+  payment_return_token: string;
+};
+
+export type RubPaymentMethod = {
+  code: "sbp" | "card" | string;
+  label: string;
+  hint?: string;
+  available: boolean;
+  unavailable_reason?: string | null;
 };
 
 export type RubPaymentProvider = {
@@ -405,6 +457,40 @@ export type RubPaymentProvider = {
   supports_webapp?: boolean;
   supports_public?: boolean;
   supported_plan_codes?: string[];
+  payment_methods?: RubPaymentMethod[];
+};
+
+export type CommercialOfferPreviewResult = {
+  ok: boolean;
+  valid: boolean;
+  reason_code: string;
+  blocking_reasons: string[];
+  plan_code: string;
+  currency: string;
+  base_price_rub: number;
+  final_price_rub: number;
+  benefit_rub: number;
+  benefit_percent: number;
+  server_time: string;
+  offer_ends_at?: string | null;
+  hold_expires_at?: string | null;
+  remaining_quota_lower_bound?: number | null;
+  terms_url: string;
+  commercial_revision: string;
+  offer_token?: string | null;
+};
+
+export type PaymentReturnStatusResult = {
+  ok: boolean;
+  state: "processing" | "paid" | "failed" | "cancelled" | "manual_review" | "expired";
+  reason_code: string;
+  surface: "marketing" | "cabinet";
+  provider: string;
+  server_time: string;
+  next_poll_seconds: number;
+  terminal: boolean;
+  support_required: boolean;
+  can_retry: boolean;
 };
 
 export type RubPaymentProvidersResult = {
@@ -455,12 +541,21 @@ export type CampaignLinksBuildResult = {
 };
 
 export type PublicPlansPayload = {
+  commercial_revision: string;
+  commercial_contract_sha256: string;
   plans: PlanCatalogRow[];
   widget_enabled: boolean;
 };
 
 export type PublicCatalogPayload = {
   catalog_version: string;
+  commercial_revision: string;
+  commercial_contract_sha256: string;
+  effective_from: string;
+  terms_revision: string;
+  price_authority: string;
+  promo_authority: string;
+  legal_launch_ready: boolean;
   commerce_model: {
     primary_purchase_flow: string;
     primary_fulfillment_flow: string;
@@ -472,9 +567,6 @@ export type PublicCatalogPayload = {
     pricing_owner: string;
     webapp_mode: string;
     public_platform_scope: string[];
-  };
-  pricing_preview: {
-    discount_codes?: Record<string, number>;
   };
   plans: PlanCatalogRow[];
   free_tier: {
@@ -557,6 +649,26 @@ export type PromoSlotAssignmentPayload = {
   ends_at?: string | null;
   contexts: string[];
   sort_order: number;
+  offer_state?: string | null;
+  reason_code?: string | null;
+  plan_code?: string | null;
+  currency?: string | null;
+  base_price_rub?: number | null;
+  final_price_rub?: number | null;
+  benefit_percent?: number | null;
+  remaining_quota_lower_bound?: number | null;
+  terms_url?: string | null;
+  pilot_id?: string | null;
+  pilot_revision?: string | null;
+  pilot_contract_sha256?: string | null;
+  commercial_revision?: string | null;
+  campaign_id?: string | null;
+  offer_id?: string | null;
+  creative_id?: string | null;
+  variant?: string | null;
+  assignment_id?: string | null;
+  impression_id?: string | null;
+  click_id?: string | null;
 };
 
 export type ClientPromoSlotsPayload = {
@@ -2266,7 +2378,11 @@ async function unauthenticatedJsonPost<T>(path: string, payload: unknown, init?:
   throw lastErr || new Error("API error");
 }
 
-async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<T> {
+async function apiFetch<T>(
+  path: string,
+  init?: ApiRequestInit,
+  validateResponse?: (payload: T, response: Response) => void,
+): Promise<T> {
   const bases = candidateApiBases();
   let lastErr: any = null;
   const { timeoutMs = DEFAULT_API_TIMEOUT_MS, signal, ...requestInit } = init || {};
@@ -2288,7 +2404,9 @@ async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<T> {
         throw new ApiResponseError(info.message || `API error: ${r.status}`, r.status, info.code);
       }
       if (r.status === 204) return {} as T;
-      return await parseJsonResponse<T>(r);
+      const payload = await parseJsonResponse<T>(r);
+      validateResponse?.(payload, r);
+      return payload;
     } catch (e: any) {
       lastErr = managedSignal.abortedByTimeout() ? createTimeoutError(timeoutMs) : e;
       if (managedSignal.abortedByCaller()) {
@@ -2300,7 +2418,8 @@ async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<T> {
         msg.includes("Failed to fetch") ||
         msg.includes("NetworkError") ||
         msg.includes("fetch") ||
-        msg.includes("Received app shell instead of API response")
+        msg.includes("Received app shell instead of API response") ||
+        msg.includes("Commercial contract mismatch")
       ) {
         continue;
       }
@@ -2385,11 +2504,28 @@ export function updateOnboardingStatus(status: OnboardingCompletionStatus): Prom
 }
 
 export function fetchPublicPlans(): Promise<PublicPlansPayload> {
-  return apiFetch<PublicPlansPayload>("/api/public/plans");
+  return apiFetch<PublicPlansPayload>("/api/public/plans", undefined, (payload, response) => {
+    const responseRevision = String(response.headers.get("X-Pokrov-Commercial-Revision") || "");
+    if (payload.commercial_revision !== COMMERCIAL_REVISION || responseRevision !== COMMERCIAL_REVISION) {
+      throw new Error("Commercial contract mismatch");
+    }
+    assertCommercialPlanProjection(payload.plans);
+  });
 }
 
 export function fetchPublicCatalog(): Promise<PublicCatalogPayload> {
-  return apiFetch<PublicCatalogPayload>("/api/public/catalog");
+  return apiFetch<PublicCatalogPayload>("/api/public/catalog", undefined, (payload, response) => {
+    const responseRevision = String(response.headers.get("X-Pokrov-Commercial-Revision") || "");
+    if (
+      payload.commercial_revision !== COMMERCIAL_REVISION ||
+      responseRevision !== COMMERCIAL_REVISION ||
+      payload.price_authority !== "server_commercial_contract" ||
+      payload.promo_authority !== "server_offer_preview_only"
+    ) {
+      throw new Error("Commercial contract mismatch");
+    }
+    assertCommercialPlanProjection(payload.plans);
+  });
 }
 
 export async function fetchPublicLiveUpdates(limit = 3): Promise<LiveUpdateRow[]> {
@@ -2787,6 +2923,8 @@ export function createRubCheckoutOrder(payload: {
   promo_code?: string;
   currency?: string;
   payment_method?: "sbp" | "card";
+  acquisition_handle?: string;
+  offer_token?: string;
 }): Promise<RubCheckoutStartResult> {
   return apiFetch("/api/payments/orders/create", {
     method: "POST",
@@ -2805,6 +2943,8 @@ export function createPublicRubCheckoutOrder(payload: {
   promo_code?: string;
   currency?: string;
   payment_method?: "sbp" | "card";
+  acquisition_handle?: string;
+  offer_token?: string;
 }): Promise<RubCheckoutStartResult> {
   return apiFetch("/api/payments/orders/create-public", {
     method: "POST",
@@ -2815,6 +2955,28 @@ export function createPublicRubCheckoutOrder(payload: {
 
 export function getRubPaymentProviders(): Promise<RubPaymentProvidersResult> {
   return apiFetch("/api/payments/providers");
+}
+
+export function previewCommercialOffer(payload: {
+  plan_code: string;
+  promo_code?: string;
+  offer_id?: string;
+  channel?: string;
+  checkout_ticket?: string;
+  acquisition_handle?: string;
+}): Promise<CommercialOfferPreviewResult> {
+  return apiFetch("/api/public/offers/preview", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    cache: "no-store",
+  });
+}
+
+export function fetchPaymentReturnStatus(returnToken: string): Promise<PaymentReturnStatusResult> {
+  return unauthenticatedJsonPost("/api/payments/orders/status", {
+    return_token: String(returnToken || "").trim(),
+  });
 }
 
 export function checkChannelSubscriberStatus(): Promise<{

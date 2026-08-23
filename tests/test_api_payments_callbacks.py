@@ -12,6 +12,7 @@ from decimal import Decimal
 from pathlib import Path
 from urllib.parse import urlencode
 
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 
@@ -64,6 +65,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             "EMAIL_AUTH_DEBUG_ECHO",
             "EMAIL_DELIVERY_WEBHOOK_URL",
             "EMAIL_DELIVERY_WEBHOOK_SECRET",
+            "COMMERCIAL_OFFER_HMAC_SECRET",
         ):
             self._saved_env[k] = os.environ.get(k)
         os.environ["DATABASE_URL"] = f"sqlite:///{db_uri_path}"
@@ -102,6 +104,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         os.environ["EMAIL_AUTH_DEBUG_ECHO"] = "false"
         os.environ["EMAIL_DELIVERY_WEBHOOK_URL"] = "https://relay.pokrov.test/email/deliver"
         os.environ["EMAIL_DELIVERY_WEBHOOK_SECRET"] = "relay-secret"
+        os.environ["COMMERCIAL_OFFER_HMAC_SECRET"] = "api-commercial-offer-test-secret-at-least-32-bytes"
 
         for module_name in (
             "api",
@@ -115,6 +118,12 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             "points_service",
             "gift_cards_service",
             "payment_providers",
+            "payment_order_service",
+            "commercial_campaign_policy",
+            "commercial_offer_service",
+            "commercial_order_service",
+            "commercial_attribution_service",
+            "payment_return_service",
         ):
             if module_name in sys.modules:
                 sys.modules.pop(module_name, None)
@@ -1221,7 +1230,8 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
 
         calls: list[tuple[str, str, dict]] = []
 
-        async def fake_fk_request(*, source: str, method: str, data: dict):
+        async def fake_fk_request(*, source: str, method: str, data: dict, http_registry=None):
+            del http_registry
             calls.append((source, method, dict(data)))
             if method == "orders/create":
                 return {"location": "https://pay.example/fk/order-1"}
@@ -1348,8 +1358,9 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             row = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 1001, ExternalOrder.provider == "lavatop").first()
             self.assertIsNotNone(row)
             self.assertIn("\"discount_pct\":20", str(row.meta_json or ""))
-            self.assertIn("\"payment_url\":\"https://app.lava.top/pay/pending-discount-test", str(row.meta_json or ""))
             meta = json.loads(row.meta_json or "{}")
+            self.assertTrue(meta.get("provider_checkout", {}).get("url_present"))
+            self.assertNotIn("https://app.lava.top/pay/pending-discount-test", str(row.meta_json or ""))
             self.assertEqual(meta.get("entitlement_snapshot", {}).get("plan_code"), "1_month")
             self.assertEqual(meta.get("entitlement_snapshot", {}).get("duration_days"), 30)
             self.assertEqual(meta.get("entitlement_snapshot", {}).get("amount_rub"), "191.00")
@@ -1507,6 +1518,9 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertEqual(captured["custom"]["payment_method"], "card")
         self.assertEqual(captured["custom"]["lavatop_payment_provider"], "SMART_GLOCAL")
         self.assertEqual(captured["custom"]["lavatop_payment_method"], "CARD")
+        self.assertTrue(str(body.get("payment_return_token") or "").startswith("prt1."))
+        self.assertIn("return_surface=marketing", str(captured["success_url"]))
+        self.assertIn("return_surface=marketing", str(captured["fail_url"]))
 
         s = SessionLocal()
         try:
@@ -1518,6 +1532,404 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.assertEqual(meta.get("pricing", {}).get("direct_discount_pct"), 20)
             self.assertEqual(meta.get("pricing", {}).get("direct_discount_source"), "promo_code")
             self.assertIsNone(s.query(PromoUsage).filter(PromoUsage.promo_code == "WELCOME20").first())
+        finally:
+            s.close()
+
+    def test_commercial_offer_order_binds_consumes_once_and_keeps_lineage_on_refund(self) -> None:
+        import copy
+        from datetime import datetime, timedelta, timezone
+
+        import commercial_offer_service
+        import commercial_order_service
+        from commercial_contract import get_commercial_contract
+        from db import SessionLocal
+        from marketing_pilot_contract import get_winback_pilot_contract
+        from models import (
+            CommercialAssignment,
+            CommercialCreative,
+            CommercialConversion,
+            CommercialOffer,
+            CommercialReservation,
+            EntitlementGrant,
+            ExternalOrder,
+            IncentiveCampaign,
+            PromoCode,
+            User,
+        )
+
+        current = datetime.now(timezone.utc)
+        contract = copy.deepcopy(get_commercial_contract())
+        pilot = get_winback_pilot_contract()
+        contract["legal"].update(
+            {
+                "seller_publication_status": "published",
+                "offer_review_status": "approved",
+                "allowed_launch_channels": ["owned_web"],
+                "launch_ready": True,
+            }
+        )
+        secret = os.environ["COMMERCIAL_OFFER_HMAC_SECRET"]
+        campaign_public_id = "cmp_" + "a" * 32
+        s = SessionLocal()
+        try:
+            user = User(
+                tg_id=7781,
+                username="commercial_order",
+                uuid=str(uuid.uuid4()),
+                email="user_7781",
+                sub_type="FREE",
+                is_active=True,
+                tos_accepted=True,
+                pending_discount_pct=50,
+                pending_discount_code="CLIENT50",
+            )
+            campaign = IncentiveCampaign(
+                public_id=campaign_public_id,
+                name="Atomic commercial order",
+                campaign_type="promo",
+                target_value="WIN10",
+                objective="winback",
+                lifecycle_status="live",
+                revision=3,
+                commercial_revision=contract["commercial_revision"],
+                legal_profile_status="owner_approved",
+                channels_json=json.dumps(["owned_web"]),
+                seller_profile_id="seller-owner-approved-v1",
+                terms_revision=contract["terms_revision"],
+                paid_cap=20,
+                paid_conversions_count=0,
+                capacity_guard_enabled=True,
+                capacity_band="green",
+                state_reason="ready",
+                segment="expired_paid_7_30d",
+                starts_at=current - timedelta(hours=1),
+                ends_at=current + timedelta(hours=71),
+                is_active=True,
+                metadata_json=json.dumps(
+                    {
+                        "marketing_pilot": {
+                            "pilot_revision": pilot["revision"],
+                            "pilot_contract_sha256": pilot["contract_sha256"],
+                            "marketing_governance_revision": pilot[
+                                "marketing_governance_revision"
+                            ],
+                            "marketing_governance_sha256": pilot[
+                                "marketing_governance_sha256"
+                            ],
+                            "commercial_revision": pilot["commercial_revision"],
+                            "commercial_contract_sha256": pilot[
+                                "commercial_contract_sha256"
+                            ],
+                            "pilot_launch_state": "owner_approved_ready",
+                            "approval_record_id": "test-owner-approval",
+                            "holdout_percent": 20,
+                        }
+                    },
+                    sort_keys=True,
+                ),
+                created_at=current,
+                updated_at=current,
+            )
+            promo = PromoCode(
+                code="WIN10",
+                promo_type="discount",
+                value=10,
+                uses_left=1,
+                expires_at=current + timedelta(hours=2),
+                created_at=current,
+            )
+            s.add_all([user, campaign, promo])
+            s.flush()
+            offer = CommercialOffer(
+                public_id="off_" + "b" * 32,
+                campaign_id=campaign.id,
+                plan_code="3_months",
+                status="live",
+                commercial_revision=contract["commercial_revision"],
+                terms_revision=contract["terms_revision"],
+                currency="RUB",
+                base_amount_rub=669,
+                final_amount_rub=602,
+                stackable_with_base_savings=True,
+                paid_cap=1,
+                paid_count=0,
+                per_subject_paid_cap=1,
+                starts_at=current - timedelta(minutes=30),
+                ends_at=current + timedelta(hours=1),
+                created_at=current,
+                updated_at=current,
+            )
+            s.add(offer)
+            s.flush()
+            creative = CommercialCreative(
+                public_id="crv_" + "c" * 32,
+                campaign_id=campaign.id,
+                offer_id=offer.id,
+                variant_code="pilot_a",
+                status="live",
+                channel="owned_web",
+                content_revision="creative-api-test-v1",
+                created_at=current,
+                updated_at=current,
+            )
+            s.add(creative)
+            s.flush()
+            subject = commercial_offer_service.commercial_subject_binding(
+                campaign_public_id=campaign_public_id,
+                subject_kind="telegram",
+                subject_value=str(user.tg_id),
+                secret=secret,
+            )
+            assignment = CommercialAssignment(
+                public_id="asg_" + "d" * 32,
+                campaign_id=campaign.id,
+                offer_id=offer.id,
+                creative_id=creative.id,
+                subject_hmac=subject,
+                status="active",
+                audience_status="eligible",
+                audience_reason="expired_paid_7_30d",
+                paid_count=0,
+                assigned_at=current,
+                expires_at=current + timedelta(hours=1),
+                created_at=current,
+                updated_at=current,
+            )
+            s.add(assignment)
+            s.commit()
+            preview = commercial_offer_service.preview_commercial_offer(
+                s,
+                plan_code="3_months",
+                promo_code="WIN10",
+                channel="owned_web",
+                subject_kind="telegram",
+                subject_value=str(user.tg_id),
+                secret=secret,
+                contract=contract,
+                now=current,
+                hold_ttl_seconds=600,
+            )
+            s.commit()
+        finally:
+            s.close()
+        self.assertTrue(preview["valid"], preview)
+
+        ticket = self.api._create_checkout_ticket(
+            tg_id=7781,
+            plan_code="3_months",
+            promo_code="CLIENT50",
+            campaign_key="client-controlled-campaign",
+            source="site",
+        )
+        captured: list[dict[str, object]] = []
+
+        async def _fake_create_rub_payment(**kwargs):
+            captured.append(dict(kwargs))
+            return {
+                "payment_url": "https://app.lava.top/pay/commercial-order-test",
+                "remote": {"id": "commercial-provider-reference", "status": "new"},
+            }
+
+        old_create = self.api.create_rub_payment
+        old_contract = commercial_order_service.get_commercial_contract
+        try:
+            self.api.create_rub_payment = _fake_create_rub_payment
+            commercial_order_service.get_commercial_contract = lambda: copy.deepcopy(contract)
+            client = TestClient(self.api.app)
+            payload = {
+                "provider": "lavatop",
+                "plan_code": "3_months",
+                "checkout_ticket": ticket,
+                "currency": "RUB",
+                "offer_token": preview["offer_token"],
+            }
+            first = client.post("/api/payments/orders/create-public", json=payload)
+            retry = client.post("/api/payments/orders/create-public", json=payload)
+        finally:
+            self.api.create_rub_payment = old_create
+            commercial_order_service.get_commercial_contract = old_contract
+
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(retry.status_code, 200, retry.text)
+        first_body = first.json()
+        self.assertEqual(first_body["order_id"], retry.json()["order_id"])
+        self.assertEqual(int(first_body["base_amount_rub"]), 669)
+        self.assertEqual(int(first_body["amount_rub"]), 602)
+        self.assertEqual(len(captured), 2)
+        self.assertEqual(int(captured[0]["amount_rub"]), 602)
+        self.assertEqual(captured[0]["custom"]["campaign"], campaign_public_id)
+        self.assertEqual(captured[0]["custom"]["promo_code"], "WIN10")
+
+        s = SessionLocal()
+        try:
+            row = s.query(ExternalOrder).one()
+            reservation = s.query(CommercialReservation).one()
+            original_intent = json.loads(row.meta_json)["order_intent"]
+            self.assertEqual(row.order_id, first_body["order_id"])
+            self.assertEqual(reservation.status, "bound")
+            self.assertEqual(original_intent["schema"], "pokrov-payment-order-intent-v2")
+            self.assertEqual(original_intent["commercial_offer"]["reservation"], reservation.public_id)
+            self.assertNotIn(preview["offer_token"], row.meta_json)
+        finally:
+            s.close()
+
+        s = SessionLocal()
+        try:
+            reservation = s.query(CommercialReservation).one()
+            reservation.status = "released"
+            s.commit()
+        finally:
+            s.close()
+        rejected, rejected_reason = self.api._apply_external_paid_order(
+            provider="lavatop",
+            order_id=first_body["order_id"],
+            payload={},
+        )
+        self.assertFalse(rejected)
+        self.assertEqual(rejected_reason, "commercial_offer_conflict")
+        s = SessionLocal()
+        try:
+            row = s.query(ExternalOrder).one()
+            reservation = s.query(CommercialReservation).one()
+            self.assertEqual(row.status, "manual_review")
+            self.assertIsNone(
+                s.query(EntitlementGrant)
+                .filter(EntitlementGrant.external_order_id == row.order_id)
+                .one_or_none()
+            )
+            reservation.status = "bound"
+            row.status = "created"
+            restored_meta = json.loads(row.meta_json)
+            restored_meta["fulfillment"] = {
+                "mode": "account_extend",
+                "status": "pending_payment",
+            }
+            row.meta_json = self.api._serialize_external_order_meta(restored_meta)
+            s.commit()
+        finally:
+            s.close()
+
+        activated, reason = self.api._apply_external_paid_order(
+            provider="lavatop",
+            order_id=first_body["order_id"],
+            payload={},
+        )
+        self.assertTrue(activated, reason)
+        activated_again, reason_again = self.api._apply_external_paid_order(
+            provider="lavatop",
+            order_id=first_body["order_id"],
+            payload={},
+        )
+        self.assertTrue(activated_again, reason_again)
+
+        s = SessionLocal()
+        try:
+            row = s.query(ExternalOrder).one()
+            reservation = s.query(CommercialReservation).one()
+            campaign = s.query(IncentiveCampaign).one()
+            offer = s.query(CommercialOffer).one()
+            assignment = s.query(CommercialAssignment).one()
+            self.assertEqual(reservation.status, "consumed")
+            self.assertEqual(campaign.paid_conversions_count, 1)
+            self.assertEqual(offer.paid_count, 1)
+            self.assertEqual(assignment.paid_count, 1)
+            self.assertEqual(json.loads(row.meta_json)["order_intent"], original_intent)
+            paid_projection = s.query(CommercialConversion).filter_by(stage="paid").one()
+            self.assertEqual(paid_projection.gross_amount_rub, 602)
+            self.assertEqual(
+                paid_projection.impression_public_id,
+                original_intent["commercial_offer"]["impression"],
+            )
+            self.assertEqual(
+                paid_projection.click_public_id,
+                original_intent["commercial_offer"]["click"],
+            )
+        finally:
+            s.close()
+
+        reversed_ok, reversal_code = self.api._record_payment_reversal_operator_action(
+            provider="lavatop",
+            order_id=first_body["order_id"],
+            event_type="refund",
+            payload={},
+        )
+        self.assertTrue(reversed_ok, reversal_code)
+        s = SessionLocal()
+        try:
+            row = s.query(ExternalOrder).one()
+            reservation = s.query(CommercialReservation).one()
+            self.assertEqual(row.status, "refunded")
+            self.assertEqual(reservation.status, "consumed")
+            self.assertEqual(json.loads(row.meta_json)["order_intent"], original_intent)
+            reversal_projection = (
+                s.query(CommercialConversion).filter_by(stage="reversed").one()
+            )
+            self.assertEqual(reversal_projection.refund_amount_rub, 602)
+            self.assertEqual(reversal_projection.reversal_kind, "refund")
+        finally:
+            s.close()
+
+    def test_provider_failure_keeps_committed_order_non_fulfilling_without_raw_error(self) -> None:
+        client = TestClient(self.api.app)
+
+        from db import SessionLocal
+        from models import ExternalOrder, User
+
+        s = SessionLocal()
+        try:
+            s.add(
+                User(
+                    tg_id=1002,
+                    username="provider_failure",
+                    uuid=str(uuid.uuid4()),
+                    email="user_1002",
+                    sub_type="FREE",
+                    is_active=True,
+                    tos_accepted=True,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        ticket = self.api._create_checkout_ticket(
+            tg_id=1002,
+            plan_code="1_month",
+            promo_code="",
+            campaign_key="provider_failure",
+            source="site",
+        )
+
+        async def _failed_create_rub_payment(**_kwargs):
+            raise HTTPException(status_code=502, detail="RAW-PROVIDER-SECRET")
+
+        old_create = self.api.create_rub_payment
+        try:
+            self.api.create_rub_payment = _failed_create_rub_payment
+            response = client.post(
+                "/api/payments/orders/create-public",
+                json={
+                    "provider": "lavatop",
+                    "plan_code": "1_month",
+                    "checkout_ticket": ticket,
+                    "currency": "RUB",
+                },
+            )
+        finally:
+            self.api.create_rub_payment = old_create
+
+        self.assertEqual(response.status_code, 502, response.text)
+        s = SessionLocal()
+        try:
+            row = s.query(ExternalOrder).filter(ExternalOrder.tg_id == 1002).one()
+            meta = json.loads(row.meta_json or "{}")
+            self.assertEqual(row.status, "created")
+            self.assertEqual(meta.get("provider_checkout", {}).get("status"), "error")
+            self.assertEqual(
+                meta.get("provider_checkout", {}).get("error_code"),
+                "provider_checkout_error",
+            )
+            self.assertNotIn("RAW-PROVIDER-SECRET", str(row.meta_json or ""))
         finally:
             s.close()
 
@@ -1695,6 +2107,121 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             rows[0].get("supported_plan_codes"),
             ["start_99", "1_month", "3_months", "6_months", "9_months", "12_months"],
         )
+        self.assertEqual(
+            rows[0].get("payment_methods"),
+            [
+                {
+                    "code": "sbp",
+                    "label": "СБП",
+                    "hint": "Через приложение банка",
+                    "available": True,
+                    "unavailable_reason": None,
+                },
+                {
+                    "code": "card",
+                    "label": "Карта",
+                    "hint": "Банковская карта",
+                    "available": True,
+                    "unavailable_reason": None,
+                },
+            ],
+        )
+
+    def test_payment_return_status_is_token_bound_read_only_and_closed(self) -> None:
+        from datetime import datetime, timezone
+
+        from db import SessionLocal
+        from models import ExternalOrder
+
+        order_id = f"return-{uuid.uuid4().hex}"
+        s = SessionLocal()
+        try:
+            s.add(
+                ExternalOrder(
+                    provider="lavatop",
+                    order_id=order_id,
+                    plan_code="1_month",
+                    source="site",
+                    amount=239.0,
+                    currency="RUB",
+                    status="pending",
+                    meta_json="{}",
+                    created_at=datetime.now(timezone.utc),
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        token = self.api.issue_payment_return_token(
+            provider="lavatop",
+            order_id=order_id,
+            surface="marketing",
+        )
+        client = TestClient(self.api.app)
+        processing = client.post(
+            "/api/payments/orders/status",
+            json={"return_token": token},
+        )
+        self.assertEqual(processing.status_code, 200, processing.text)
+        self.assertEqual(processing.json().get("state"), "processing")
+        self.assertNotIn("order_id", processing.json())
+        self.assertEqual(processing.headers.get("cache-control"), "no-store, private")
+
+        s = SessionLocal()
+        try:
+            row = s.query(ExternalOrder).filter(ExternalOrder.order_id == order_id).one()
+            row.status = "paid"
+            s.commit()
+        finally:
+            s.close()
+        paid = client.post(
+            "/api/payments/orders/status",
+            json={"return_token": token},
+        )
+        self.assertEqual(paid.status_code, 200, paid.text)
+        self.assertEqual(paid.json().get("state"), "paid")
+        self.assertTrue(paid.json().get("terminal"))
+
+        prefix, payload, signature = token.split(".")
+        tampered = f"{prefix}.{('A' if payload[0] != 'A' else 'B') + payload[1:]}.{signature}"
+        rejected = client.post(
+            "/api/payments/orders/status",
+            json={"return_token": tampered},
+        )
+        self.assertEqual(rejected.status_code, 401, rejected.text)
+
+    def test_provider_capability_disables_method_in_read_and_write_paths(self) -> None:
+        client = TestClient(self.api.app)
+        old_value = os.environ.get("LAVATOP_CARD_ENABLED")
+        try:
+            os.environ["LAVATOP_CARD_ENABLED"] = "false"
+            providers = client.get("/api/payments/providers")
+            create = client.post(
+                "/api/payments/orders/create-public",
+                json={
+                    "provider": "lavatop",
+                    "plan_code": "1_month",
+                    "buyer_email": "capability@pokrov.test",
+                    "currency": "RUB",
+                    "payment_method": "card",
+                },
+            )
+        finally:
+            if old_value is None:
+                os.environ.pop("LAVATOP_CARD_ENABLED", None)
+            else:
+                os.environ["LAVATOP_CARD_ENABLED"] = old_value
+
+        self.assertEqual(providers.status_code, 200, providers.text)
+        card = next(
+            method
+            for method in providers.json()["providers"][0]["payment_methods"]
+            if method["code"] == "card"
+        )
+        self.assertFalse(card["available"])
+        self.assertEqual(card["unavailable_reason"], "temporarily_unavailable")
+        self.assertEqual(create.status_code, 409, create.text)
 
     def test_rub_provider_catalog_reports_blocked_state_when_checkout_disabled(self) -> None:
         client = TestClient(self.api.app)
@@ -3241,14 +3768,26 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         finally:
             s.close()
 
-    def test_parse_freekassa_payment_url_uses_source_shop_fallback(self) -> None:
+    def test_parse_freekassa_payment_url_accepts_only_configured_https_host(self) -> None:
         url = self.api._parse_freekassa_payment_url(
-            {},
+            {"data": {"location": "https://pay.fk.money/checkout/fk_site_order_1"}},
             "fk_site_order_1",
             source="bot",
         )
-        self.assertIn("69963", url)
-        self.assertIn("fk_site_order_1", url)
+        self.assertEqual(url, "https://pay.fk.money/checkout/fk_site_order_1")
+
+        for payload in (
+            {},
+            {"location": "http://pay.fk.money/checkout/fk_site_order_1"},
+            {"location": "https://evil.example/checkout/fk_site_order_1"},
+        ):
+            with self.assertRaises(self.api.HTTPException) as caught:
+                self.api._parse_freekassa_payment_url(
+                    payload,
+                    "fk_site_order_1",
+                    source="bot",
+                )
+            self.assertEqual(caught.exception.status_code, 502)
 
     def test_public_plans_and_admin_plans_crud(self) -> None:
         client = TestClient(self.api.app)

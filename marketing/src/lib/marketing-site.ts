@@ -10,6 +10,7 @@ import {
   CANONICAL_PLATFORM_BRAND,
   CANONICAL_PUBLIC_PLATFORM_SCOPE,
   CANONICAL_SUPPORT_BOT_URL,
+  assertCommercialPlanProjection,
   getTariffPlans,
 } from "./pokrov";
 import {
@@ -62,7 +63,9 @@ export const MARKETING_MACHINE_READABLE_PATHS = {
   pricing: "/pricing.md",
 } as const;
 
-const PUBLIC_TARIFF_PLANS = getTariffPlans()
+const ALL_TARIFF_PLANS = getTariffPlans();
+assertCommercialPlanProjection(ALL_TARIFF_PLANS);
+const PUBLIC_TARIFF_PLANS = ALL_TARIFF_PLANS
   .slice()
   .filter((plan) => Boolean(plan.is_active))
   .sort((left, right) => Number(left.sort_order || 0) - Number(right.sort_order || 0));
@@ -234,8 +237,8 @@ export type MarketingMetadataOptions = {
 };
 
 export function buildMarketingMetadata(
-  title = "POKROV VPN для Android и Windows — 5 дней бесплатно",
-  description = "Быстрый VPN для YouTube, TikTok, ChatGPT и сайтов. 5 дней бесплатно без карты, затем безлимитный трафик от 99 ₽.",
+  title = "POKROV для Android и Windows — проверьте до оплаты",
+  description = "Установите POKROV на Android или Windows и проверьте подключение: 5 дней бесплатно без карты. Первый полный месяц — 99 ₽ один раз, автосписаний нет.",
   options: MarketingMetadataOptions = {},
 ): Metadata {
   const canonical = buildMarketingUrl(options.path || "/");
@@ -316,7 +319,7 @@ export function buildOrganizationJsonLd() {
     url: `${CANONICAL_MARKETING_SITE_URL}/`,
     logo: buildMarketingUrl("/pokrov-logo.svg"),
     description:
-      "POKROV — VPN для быстрого старта на Android и Windows: 5 дней за 0 ₽ без карты, одна кнопка подключения и тарифы от 99 ₽.",
+      "POKROV для Android и Windows: 5 дней бесплатно без карты, понятное подключение и первый полный месяц за 99 ₽ один раз без автосписаний.",
     email: CANONICAL_CONTACT_EMAIL,
     contactPoint: [
       {

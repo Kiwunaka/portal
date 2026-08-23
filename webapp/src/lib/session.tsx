@@ -27,6 +27,7 @@ import {
   telegramAuthRefreshMessage,
 } from "@/lib/telegram-login-refresh";
 import { getTgUser, type TgUser } from "@/lib/telegram";
+import { useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 type PortalSessionContextValue = {
@@ -153,6 +154,7 @@ function readSessionSnapshot(): SessionSnapshot | null {
 }
 
 export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSessionProviderProps) {
+  const router = useRouter();
   const [tgUser] = useState<TgUser | null>(() => getTgUser());
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -419,10 +421,8 @@ export function PortalSessionProvider({ children, mode = "dashboard" }: PortalSe
     setWebLoginBusy(false);
     setRefreshing(false);
     setWebLoginRequired(true);
-    if (typeof window !== "undefined") {
-      window.location.assign("/");
-    }
-  }, []);
+    router.replace("/");
+  }, [router]);
 
   const value = useMemo(
     () => ({

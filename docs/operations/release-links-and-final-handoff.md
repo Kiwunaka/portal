@@ -1,6 +1,6 @@
 # Release Links And Final Handoff
 
-Last updated: 2026-04-23
+Last updated: 2026-08-22
 
 ## Purpose
 
@@ -19,7 +19,9 @@ Metadata rule:
 
 - keep `release-handoff.json` in that versioned folder as the preferred operator input
 - keep any compatibility `release-links.env` and the stamped JSON manifests produced by `release_handoff.ps1` beside it in the same versioned folder
-- keep the stable pointer at `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json` when you intentionally want one canonical handoff source
+- keep the stable pointer at `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/release-handoff.json`
+- bind every pointer target by release identity and SHA-256 in `C:/Users/kiwun/Documents/ai/POKROV-app/config/release-rollback-catalog.seed.json`
+- change the pointer only through the client `scripts/set-release-stable-pointer.ps1` dry-run plus explicitly authorized atomic apply; never hand-edit or overwrite a versioned handoff
 
 ## Stop Immediately If
 
@@ -87,7 +89,14 @@ Compatibility note:
 
 6. If Android or Windows public URLs changed, rebuild and redeploy static `marketing` so `NEXT_PUBLIC_APP_*` matches the same release.
 7. Re-check the download surfaces that read runtime values.
-8. Only then write the final release handoff.
+8. Add the exact candidate and retained previous stable target to the rollback
+   catalog, validate it, and dry-run both the forward and reverse pointer IDs.
+9. After explicit mutation authority, apply the pointer with an external backup
+   and receipt, then verify exact readback. Runtime sync remains a separate
+   authorized operation.
+10. Run the reverse pointer/runtime drill for the same candidate and retain its
+    readback; a local fixture is insufficient.
+11. Only then write the final release handoff.
 
 ## Surface Notes
 

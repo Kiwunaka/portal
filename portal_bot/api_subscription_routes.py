@@ -171,6 +171,12 @@ def _managed_manifest_fallback_order(transport_profile: str) -> list[str]:
     return order
 
 
+def _public_subscription_transport_profile(transport_profile: str | None) -> str:
+    """Keep device-bound AWG2 material out of token subscriptions and exports."""
+    resolved = str(transport_profile or LEGACY_REALITY_FALLBACK).strip() or LEGACY_REALITY_FALLBACK
+    return LEGACY_REALITY_FALLBACK if resolved == AWG2_LAB else resolved
+
+
 def _ru_bridge_outbound(
     *,
     user_uuid: str,
@@ -284,7 +290,7 @@ def _effective_transport_nodes(*, nodes: list[Any], transport_profile: str, roll
         transport_profile=transport_profile,
         apply_exclusions=str(transport_profile or "").strip() != RU_BRIDGE_RELAY,
     )
-    if str(transport_profile or "").strip() == RU_BRIDGE_RELAY:
+    if str(transport_profile or "").strip() in {RU_BRIDGE_RELAY, AWG2_LAB}:
         return [
             node
             for node in filtered
@@ -374,8 +380,24 @@ def _managed_manifest_payload(
     title: str,
     transport_profile: str,
     rollout_config: dict[str, Any] | None = None,
+    session=None,
+    install_id: str = "",
 ) -> tuple[str, dict[str, Any]]:
     effective_rollout_config = normalized_network_rollout_config(rollout_config or {})
+    if str(transport_profile or "").strip() == AWG2_LAB:
+        if session is None:
+            raise HTTPException(status_code=503, detail="AWG2 lab material unavailable")
+        try:
+            config = build_managed_awg2_lab_config(
+                session,
+                tg_id=int(user.tg_id),
+                install_id=str(install_id or "").strip(),
+                rollout_value=effective_rollout_config.get(AWG2_LAB),
+                title=title,
+            )
+        except Awg2LabError:
+            raise HTTPException(status_code=503, detail="AWG2 lab material unavailable") from None
+        return "singbox-json", config
     if str(transport_profile or "").strip() in {OPERATOR_LAB, RESERVE_XHTTP_CDN}:
         return (
             "xray-json",
@@ -1265,6 +1287,7 @@ def _subscription_singbox_config(
     transport_profile: str,
     rollout_config: dict[str, Any],
 ) -> dict[str, Any]:
+    transport_profile = _public_subscription_transport_profile(transport_profile)
     if transport_profile == RU_BRIDGE_RELAY:
         return _singbox_ru_bridge_config(
             user_uuid=user_uuid,
@@ -1527,8 +1550,9 @@ async def client_subscription_preview(
             carrier=_request_carrier_header(x_portal_carrier),
             rollout_config=rollout_config,
         )
-        resolved_profile = str(transport_profile or client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK).strip()
-        resolved_profile = resolved_profile or LEGACY_REALITY_FALLBACK
+        resolved_profile = _public_subscription_transport_profile(
+            str(transport_profile or client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK)
+        )
         nodes = enabled_nodes(s)
         nodes_for_user = _subscription_nodes_for_user(user, nodes, session=s)
         ranked, excluded = _rank_subscription_nodes(
@@ -1583,8 +1607,9 @@ async def admin_subscription_preview(
             carrier=_request_carrier_header(x_portal_carrier),
             rollout_config=rollout_config,
         )
-        resolved_profile = str(transport_profile or client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK).strip()
-        resolved_profile = resolved_profile or LEGACY_REALITY_FALLBACK
+        resolved_profile = _public_subscription_transport_profile(
+            str(transport_profile or client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK)
+        )
         nodes = enabled_nodes(s)
         nodes_for_user = _subscription_nodes_for_user(user, nodes, session=s)
         ranked, excluded = _rank_subscription_nodes(
@@ -1723,7 +1748,9 @@ async def subscription(token: str, request: Request, format: str = Query(default
         "Content-Disposition": 'attachment; filename="POKROV_Subscription"',
     }
     headers = _subscription_no_cache_headers(headers)
-    smart_transport_profile = str(client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK)
+    smart_transport_profile = _public_subscription_transport_profile(
+        str(client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK)
+    )
     ranking_session = SessionLocal()
     try:
         smart_nodes_for_user, smart_excluded_nodes = _rank_subscription_nodes(

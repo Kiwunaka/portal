@@ -249,7 +249,7 @@ export function CampaignSlotsPanel() {
     }
     setUploadError("");
     const payload = { assignments: sanitizeAssignments(assignments) };
-    setRequest({ action: "promo_slots.update", target: { type: "config", id: "promo-slots" }, payload, endpoint: "/api/admin/promo-slots", method: "PUT" });
+    setRequest({ action: "promo_slots.update", target: { type: "config", id: "promo-slots" }, payload, endpoint: "/api/admin/promo-slots", method: "PUT", workspace: "money" });
     setDialogOpen(true);
   }
 

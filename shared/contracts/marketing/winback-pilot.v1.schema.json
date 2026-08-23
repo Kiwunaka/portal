@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pokrov.space/contracts/marketing/winback-pilot.v1.schema.json",
+  "title": "POKROV Winback Pilot V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "pilot_id",
+    "revision",
+    "state",
+    "objective",
+    "legal_profile_id",
+    "channels",
+    "audience",
+    "offer",
+    "creatives",
+    "holdout",
+    "capacity",
+    "suppression",
+    "primary_metric",
+    "guardrails",
+    "decision",
+    "external_gates",
+    "commercial_revision",
+    "commercial_contract_sha256",
+    "marketing_governance_revision",
+    "marketing_governance_sha256",
+    "source_contract",
+    "source_sha256",
+    "contract_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "pokrov-winback-pilot-v1"},
+    "pilot_id": {"const": "release_1_2_winback_paid_7_30d"},
+    "revision": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}\\.[1-9][0-9]*$"},
+    "state": {"const": "draft_blocked"},
+    "objective": {"const": "winback"},
+    "legal_profile_id": {"const": "trust_owned"},
+    "channels": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+    "audience": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["paid_before", "expired_min_days", "expired_max_days", "current_access_required", "refund_dispute_required", "unresolved_payment_required", "unresolved_support_required"],
+      "properties": {
+        "paid_before": {"const": true},
+        "expired_min_days": {"const": 7},
+        "expired_max_days": {"const": 30},
+        "current_access_required": {"const": false},
+        "refund_dispute_required": {"const": false},
+        "unresolved_payment_required": {"const": false},
+        "unresolved_support_required": {"const": false}
+      }
+    },
+    "offer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plans", "discount_percent", "duration_hours", "paid_cap", "per_subject_paid_cap", "stacking_allowed"],
+      "properties": {
+        "plans": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["plan_code", "base_amount_rub", "final_amount_rub", "capacity_cost_units"],
+            "properties": {
+              "plan_code": {"enum": ["3_months", "6_months"]},
+              "base_amount_rub": {"type": "integer", "minimum": 1},
+              "final_amount_rub": {"type": "integer", "minimum": 1},
+              "capacity_cost_units": {"type": "integer", "minimum": 1}
+            }
+          }
+        },
+        "discount_percent": {"const": 10},
+        "duration_hours": {"const": 72},
+        "paid_cap": {"const": 20},
+        "per_subject_paid_cap": {"const": 1},
+        "stacking_allowed": {"const": false}
+      }
+    },
+    "creatives": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["variant", "title_ru", "body_ru"],
+        "properties": {
+          "variant": {"enum": ["a", "b"]},
+          "title_ru": {"type": "string", "minLength": 1},
+          "body_ru": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "holdout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allocation_algorithm", "percentage", "decision_state"],
+      "properties": {
+        "allocation_algorithm": {"const": "hmac_sha256_mod_10000"},
+        "percentage": {"type": "null"},
+        "decision_state": {"const": "blocked_owner_decision_required"}
+      }
+    },
+    "capacity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed_bands", "pause_at_ratio", "resume_below_ratio", "limit_units"],
+      "properties": {
+        "allowed_bands": {"const": ["green", "yellow"]},
+        "pause_at_ratio": {"const": 0.7},
+        "resume_below_ratio": {"const": 0.65},
+        "limit_units": {"const": 300}
+      }
+    },
+    "suppression": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+    "primary_metric": {"const": "net_revenue_30d_per_capacity_unit"},
+    "guardrails": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimum_observation_days", "ctr_can_select_winner", "scale_requires_owner_approval", "maximum_next_paid_cap"],
+      "properties": {
+        "minimum_observation_days": {"const": 30},
+        "ctr_can_select_winner": {"const": false},
+        "scale_requires_owner_approval": {"const": true},
+        "maximum_next_paid_cap": {"const": 50}
+      }
+    },
+    "external_gates": {"type": "array", "minItems": 1, "items": {"type": "string"}, "uniqueItems": true},
+    "commercial_revision": {"type": "string", "minLength": 1},
+    "commercial_contract_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "marketing_governance_revision": {"type": "string", "minLength": 1},
+    "marketing_governance_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "source_contract": {"const": "shared/winback-pilot.source.json"},
+    "source_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "contract_sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

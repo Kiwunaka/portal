@@ -4,31 +4,36 @@ import { installAdminApiMock } from "./fixtures/admin-api";
 
 const routes = [
   ["/", "Главная"],
+  ["/shift", "Моя смена"],
+  ["/support", "Пользователи и поддержка"],
+  ["/network", "Сеть и инциденты"],
+  ["/money", "Деньги и доступ"],
+  ["/growth", "Рост и коммуникации"],
+  ["/releases", "Релизы и клиенты"],
+  ["/governance", "Управление системой"],
   ["/nodes", "Ноды"],
   ["/traffic", "Трафик"],
   ["/alerts", "Алерты"],
+  ["/incidents", "Incident Room"],
   ["/provider-caps", "Лимиты провайдеров"],
   ["/emergency-network", "Экстренная сеть"],
   ["/free-tier", "Архив FREE"],
+  ["/access", "Доступ"],
   ["/users", "Пользователи"],
   ["/online", "Сейчас онлайн"],
   ["/tickets", "Тикеты"],
   ["/payments", "Платежи"],
   ["/funnel", "Воронка"],
-  ["/promos", "Промо"],
+  ["/promos", "Промокоды"],
+  ["/bonuses", "Бонусы"],
+  ["/programs", "Программы"],
   ["/referrals", "Рефералы"],
   ["/release", "Релиз"],
   ["/broadcast", "Рассылка"],
   ["/news", "Новости"]
 ] as const;
 
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
-    window.sessionStorage.setItem("pokrov_admin_session_token", "mock-admin-token");
-  });
-});
-
-test("все 17 маршрутов открываются напрямую с русскими заголовками", async ({ page }) => {
+test("все 28 маршрутов открываются напрямую с русскими заголовками", async ({ page }) => {
   await installAdminApiMock(page);
 
   for (const [path, label] of routes) {
@@ -130,7 +135,7 @@ test("mobile master-detail и desktop layout не создают общий го
     expect(layout.mainLeft).toBeGreaterThanOrEqual(layout.sidebarRight - 1);
     expect(layout.mainRight).toBeLessThanOrEqual(layout.viewportWidth + 1);
     expect(layout.documentWidth).toBeLessThanOrEqual(layout.viewportWidth + 1);
-    const clippedNavigation = await page.locator('header nav[aria-label="Разделы центра управления"]').evaluate((navigation) =>
+    const clippedNavigation = await page.locator('aside nav[aria-label="Рабочие области центра управления"]').evaluate((navigation) =>
       Array.from(navigation.querySelectorAll("a"))
         .filter((link) => {
           const rect = link.getBoundingClientRect();

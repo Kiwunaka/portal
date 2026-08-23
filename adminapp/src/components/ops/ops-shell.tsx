@@ -1,12 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { CommandPalette } from "@/components/ops/command-palette";
-import { MobileNavigation } from "@/components/ops/mobile-navigation";
+import {
+  MobileNavigation,
+  MobilePrimaryNavigation
+} from "@/components/ops/mobile-navigation";
+import { OpsDesktopNavigation } from "@/components/ops/navigation";
 import { EMPTY_OPS_SHELL_STATUS, type OpsShellStatus } from "@/components/ops/shell-status";
 import { OpsTopbar } from "@/components/ops/topbar";
 import { OpsDashboard } from "@/components/ops-dashboard";
+import type { OperatorShellIdentity } from "@/lib/admin-api/identity";
+import {
+  RouteRefreshProvider,
+  useRouteRefreshControls
+} from "@/lib/route-refresh";
 import { opsSectionFromPath, normalizeOpsSection, type OpsSectionId } from "@/lib/sections";
 import { URL_STATE_CHANGE_EVENT } from "@/lib/url-state";
 
@@ -20,12 +29,64 @@ function canonicalRouteHref(href: string): { href: string; section: OpsSectionId
   return { href: `${route.href}${url.search}`, section: route.id };
 }
 
+function OpsWorkspaceFrame({
+  active,
+  sectionLabel,
+  status,
+  identity,
+  onNavigate,
+  onShellStatus,
+  onIdentity,
+  onOpenCommands,
+  onOpenNavigation
+}: {
+  active: OpsSectionId;
+  sectionLabel: string;
+  status: OpsShellStatus;
+  identity: OperatorShellIdentity | null;
+  onNavigate: (href: string) => void;
+  onShellStatus: (status: OpsShellStatus) => void;
+  onIdentity: (identity: OperatorShellIdentity | null) => void;
+  onOpenCommands: () => void;
+  onOpenNavigation: () => void;
+}) {
+  const { canRefresh, refresh } = useRouteRefreshControls();
+
+  return (
+    <>
+      <OpsTopbar
+        sectionLabel={sectionLabel}
+        status={status}
+        identity={identity}
+        canRefresh={canRefresh}
+        onOpenCommands={onOpenCommands}
+        onOpenNavigation={onOpenNavigation}
+        onRefresh={refresh}
+      />
+      <div className="flex min-w-0">
+        <OpsDesktopNavigation active={active} onNavigate={onNavigate} />
+        <main id="ops-main-content" tabIndex={-1} className="min-w-0 flex-1 px-3 pb-20 pt-3 outline-none sm:px-4 md:pb-4 lg:px-5 lg:py-4">
+          <div className="mx-auto max-w-[1800px]">
+            <OpsDashboard
+              section={active}
+              identity={identity}
+              onShellStatus={onShellStatus}
+              onIdentity={onIdentity}
+              onNavigate={onNavigate}
+            />
+          </div>
+        </main>
+      </div>
+    </>
+  );
+}
+
 export function OpsShell({ section }: { section: string }) {
   const [active, setActive] = useState<OpsSectionId>(() => normalizeOpsSection(section));
   const [commandsOpen, setCommandsOpen] = useState(false);
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false);
   const [shellStatus, setShellStatus] = useState<OpsShellStatus>(EMPTY_OPS_SHELL_STATUS);
-  const routeContentRef = useRef<HTMLDivElement>(null);
+  const [identity, setIdentity] = useState<OperatorShellIdentity | null>(null);
 
   const changeCommandsOpen = useCallback((open: boolean) => {
     if (open) setMobileNavigationOpen(false);
@@ -73,17 +134,6 @@ export function OpsShell({ section }: { section: string }) {
     setActive(canonical.section);
   }, []);
 
-  const refresh = useCallback(() => {
-    const refreshControl = Array.from(routeContentRef.current?.querySelectorAll("button") ?? []).find(
-      (button) => button.textContent?.trim() === "Обновить"
-    );
-    if (refreshControl && !refreshControl.disabled) {
-      refreshControl.click();
-      return;
-    }
-    window.location.reload();
-  }, []);
-
   const activeSection = opsSectionFromPath(`/${active === "dashboard" ? "" : active}`);
 
   return (
@@ -94,28 +144,30 @@ export function OpsShell({ section }: { section: string }) {
       >
         К основному содержанию
       </a>
-      <div>
-        <OpsTopbar
-          sectionLabel={activeSection.label}
+      <RouteRefreshProvider scope={active}>
+        <OpsWorkspaceFrame
           active={active}
+          sectionLabel={activeSection.label}
           status={shellStatus}
+          identity={identity}
           onNavigate={navigate}
+          onShellStatus={setShellStatus}
+          onIdentity={setIdentity}
           onOpenCommands={() => changeCommandsOpen(true)}
           onOpenNavigation={() => changeMobileNavigationOpen(true)}
-          onRefresh={refresh}
         />
-        <main id="ops-main-content" tabIndex={-1} className="px-3 py-3 outline-none sm:px-4 lg:px-5 lg:py-4">
-          <div ref={routeContentRef} className="mx-auto max-w-[1800px]">
-            <OpsDashboard section={active} onShellStatus={setShellStatus} onNavigate={navigate} />
-          </div>
-        </main>
-      </div>
+      </RouteRefreshProvider>
 
       <MobileNavigation
         open={mobileNavigationOpen}
         active={active}
         onOpenChange={changeMobileNavigationOpen}
         onNavigate={navigate}
+      />
+      <MobilePrimaryNavigation
+        active={active}
+        onNavigate={navigate}
+        onOpenMore={() => changeMobileNavigationOpen(true)}
       />
       {commandsOpen ? <CommandPalette open onOpenChange={changeCommandsOpen} onNavigate={navigate} /> : null}
     </div>

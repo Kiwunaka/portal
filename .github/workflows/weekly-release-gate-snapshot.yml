@@ -10,44 +10,73 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      POKROV_PLATFORM_ROOT: ${{ github.workspace }}/platform
+      POKROV_APP_ROOT: ${{ github.workspace }}/POKROV-app
+      POKROV_CORE_ROOT: ${{ github.workspace }}/POKROV-core
     steps:
-      - name: Checkout
+      - name: Checkout platform promotion line
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          path: platform
+
+      - name: Checkout active client promotion line
+        uses: actions/checkout@v4
+        with:
+          repository: Kiwunaka/POKROV-app
+          ref: main
+          path: POKROV-app
+          ssh-key: ${{ secrets.POKROV_RELEASE_CLIENT_DEPLOY_KEY }}
+          lfs: true
+          persist-credentials: false
+
+      - name: Checkout Core promotion line
+        uses: actions/checkout@v4
+        with:
+          repository: Kiwunaka/pokrov-core
+          ref: main
+          path: POKROV-core
+          persist-credentials: false
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.12.5"
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "22.14.0"
           cache: "npm"
-          cache-dependency-path: webapp/package-lock.json
+          cache-dependency-path: platform/webapp/package-lock.json
 
       - name: Install dependencies
+        working-directory: platform
         run: |
-          python -m pip install --upgrade pip
-          pip install -r portal_bot/requirements.txt
-          pip install pytest httpx
+          python scripts/check_dependency_contract.py
+          python -m pip install pip==26.1.2
+          python -m pip install --require-hashes -r requirements-test.txt
+          npm install --global npm@11.7.0
           cd webapp
           npm ci
           npx playwright install --with-deps chromium
 
       - name: Run quick gate
-        run: python scripts/release_gate_check.py --quick --allow-missing-client-root
+        working-directory: platform
+        run: python scripts/release_gate_check.py --quick
 
       - name: Validate shared-facts and release-handoff contracts
+        working-directory: platform
         run: python -m unittest tests.test_shared_surface_facts tests.test_remote_brain_apply_release_handoff tests.test_release_orchestrator tests.test_smoke_client_apps
 
       - name: Export weekly snapshot
+        working-directory: platform
         run: python scripts/export_release_gate_snapshot.py
 
       - name: Commit snapshot to reports branch
         shell: bash
+        working-directory: platform
         run: |
           set -euo pipefail
           BRANCH="reports/release-gates-weekly"

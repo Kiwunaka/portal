@@ -1,0 +1,102 @@
+{
+  "schema": "pokrov-operator-center-cutover-v1",
+  "as_of": "2026-08-22",
+  "candidate_id": "NOT_CREATED",
+  "local_parity": {
+    "status": "PASS",
+    "route_count": 28,
+    "workspace_count": 7,
+    "capability_group_count": 7,
+    "legacy_route_state_count": 0,
+    "browser_v2_projection_count": 4,
+    "browser_legacy_read_pattern_count": 5,
+    "direct_domain_dual_write_count": 0
+  },
+  "legacy_runtime": {
+    "mode": "read-only-projections-and-guarded-action-intent-compatibility",
+    "browser_read_patterns": [
+      "/api/admin/users",
+      "/api/admin/users/{tg_id}",
+      "/api/admin/users/{tg_id}/investigation",
+      "/api/admin/search",
+      "/api/admin/promo-slots"
+    ],
+    "staged_media_upload": "/api/admin/promo-media",
+    "write_rule": "stored-action-intent-single-domain-executor-no-dual-write",
+    "new_features_allowed": false
+  },
+  "cutover_gates": {
+    "canonical_redirects": "BLOCKED_BY_EXACT_CANDIDATE_AUTHENTICATED_PROOF",
+    "public_legacy_shell_removal": "BLOCKED_BY_EXACT_CANDIDATE_AUTHENTICATED_PROOF",
+    "authenticated_staging_smoke": "BLOCKED_BY_ACCESS",
+    "authenticated_production_smoke": "BLOCKED_BY_ACCESS",
+    "exact_build_api_fingerprints": "BLOCKED_BY_CANDIDATE",
+    "production_static_rollback": "BLOCKED_BY_CANDIDATE",
+    "local_static_rollback_rehearsal": "READY"
+  },
+  "capabilities": [
+    {
+      "workspace": "shift",
+      "routes": ["/", "/shift"],
+      "reads": ["/api/admin/v2/shift/overview", "/api/admin/v2/shift"],
+      "actions": ["operator_task.create", "operator_task.update"],
+      "action_boundary": "/api/admin/v2/shift/action-intents",
+      "redaction_check": "task and overview projections omit raw customer/provider payloads",
+      "status": "LOCALLY_PROVED"
+    },
+    {
+      "workspace": "support",
+      "routes": ["/support", "/users", "/online", "/tickets"],
+      "reads": ["legacy read-only user projections", "/api/admin/v2/support/online", "/api/admin/v2/support/tickets", "/api/admin/v2/support/users/{tg_id}", "/api/admin/v2/support/attempts", "/api/admin/v2/support/search", "/api/admin/v2/support/known-issues", "/api/admin/v2/support/tickets/{ticket_id}/bundles/{bundle_ref}/content"],
+      "actions": ["ticket.*", "user.*", "support.bundle.download (step-up + one-use grant)"],
+      "action_boundary": "stored action intent; native v2 where migrated, guarded compatibility executor otherwise",
+      "redaction_check": "online omits raw IP/panel email/client UUID; attempt explorer and case search are allowlisted; bundle content requires step-up, a one-use grant and an audited reason",
+      "status": "LOCALLY_PROVED"
+    },
+    {
+      "workspace": "network",
+      "routes": ["/network", "/nodes", "/traffic", "/alerts", "/incidents", "/provider-caps", "/emergency-network"],
+      "reads": ["/api/admin/v2/network/*", "/api/admin/v2/incidents*"],
+      "actions": ["node.*", "provider_quota.*", "alert.*", "incident.*", "emergency_catalog.*"],
+      "action_boundary": "/api/admin/v2/network/action-intents and /api/admin/v2/incidents/action-intents",
+      "redaction_check": "fleet, RU and provider projections expose authority/age without provider secrets",
+      "status": "LOCALLY_PROVED"
+    },
+    {
+      "workspace": "money",
+      "routes": ["/money", "/free-tier", "/access", "/payments", "/promos"],
+      "reads": ["/api/admin/v2/money/*", "legacy read-only promo slot projection"],
+      "actions": ["payment.reconcile", "user.extend", "access_key.issue", "gift_code.create", "promo.*", "promo_slots.update"],
+      "action_boundary": "stored action intent; one-time generated secrets only in successful execute response",
+      "redaction_check": "provider/order/claim/grant/outbox raw payloads and stored codes are omitted",
+      "status": "LOCALLY_PROVED"
+    },
+    {
+      "workspace": "growth",
+      "routes": ["/growth", "/funnel", "/bonuses", "/programs", "/referrals", "/broadcast", "/news"],
+      "reads": ["/api/admin/v2/growth/*"],
+      "actions": ["referral.process", "program_application.review", "user.loyalty_grant", "wheel_config.update", "loyalty_config.update", "broadcast.send", "live_update.*"],
+      "action_boundary": "/api/admin/v2/growth/action-intents",
+      "redaction_check": "delivery omits recipients/raw Telegram responses; referral raw meta is hash-only",
+      "status": "LOCALLY_PROVED"
+    },
+    {
+      "workspace": "releases",
+      "routes": ["/releases", "/release"],
+      "reads": ["/api/admin/v2/releases/*"],
+      "actions": ["release.rollout.*", "release.min_supported.set", "release.health.observe"],
+      "action_boundary": "/api/admin/v2/releases/action-intents",
+      "redaction_check": "adoption and health omit account/install/device/session/IP metadata",
+      "status": "LOCALLY_PROVED"
+    },
+    {
+      "workspace": "governance",
+      "routes": ["/governance"],
+      "reads": ["/api/admin/v2/governance/*"],
+      "actions": ["operator.role.*", "operator.suspend", "operator.activate", "operator.session.revoke", "operator.access.review"],
+      "action_boundary": "/api/admin/v2/governance/action-intents",
+      "redaction_check": "audit/export/sensitive/privacy projections exclude session secrets, HMAC material and raw identities",
+      "status": "LOCALLY_PROVED"
+    }
+  ]
+}

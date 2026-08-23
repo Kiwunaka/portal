@@ -81,7 +81,7 @@ export function Footer() {
           <p className="max-w-xs text-[0.9375rem] leading-relaxed text-ink-soft">
             {getCopyText(
               "marketing.footer.tagline",
-              "Быстрый VPN для Android и Windows: 5 дней бесплатно, затем безлимитный трафик от 99 ₽.",
+              "POKROV для Android и Windows: 5 дней бесплатно без карты. Первый полный месяц — 99 ₽ один раз, автосписаний нет.",
             )}
           </p>
         </div>

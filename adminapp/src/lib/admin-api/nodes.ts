@@ -1,6 +1,7 @@
 "use client";
 
 import { apiFetch, type ApiRequestInit } from "./client";
+import type { AdminV2Envelope } from "./types";
 
 export type NodeLifecycleFilter = "all" | "enabled" | "draining" | "disabled";
 export type NodeFreshnessFilter = "all" | "fresh" | "stale" | "missing";
@@ -331,18 +332,20 @@ function adaptNodeListRow(value: unknown): NodeListRow | null {
 }
 
 export async function fetchNodeList(init?: ApiRequestInit): Promise<NodeListRow[]> {
-  const payload = await apiFetch<{ nodes?: unknown[] }>("/api/admin/nodes/health", init);
-  return Array.isArray(payload.nodes)
-    ? payload.nodes.map(adaptNodeListRow).filter((row): row is NodeListRow => row !== null)
+  const response = await apiFetch<AdminV2Envelope<{ items?: unknown[] }>>("/api/admin/v2/network/fleet", init);
+  return Array.isArray(response.data.items)
+    ? response.data.items.map(adaptNodeListRow).filter((row): row is NodeListRow => row !== null)
     : [];
 }
 
-export function fetchRuLatest(init?: ApiRequestInit): Promise<RuLatest> {
-  return apiFetch<RuLatest>("/api/admin/probes/ru-origin/latest", init);
+export async function fetchRuLatest(init?: ApiRequestInit): Promise<RuLatest> {
+  const response = await apiFetch<AdminV2Envelope<RuLatest>>("/api/admin/v2/network/ru/latest", init);
+  return response.data;
 }
 
-export function fetchNodeObservability(nodeCode: string, init?: ApiRequestInit): Promise<NodeObservability> {
-  return apiFetch<NodeObservability>(`/api/admin/nodes/${encodeURIComponent(nodeCode)}/observability?include_ru_history=false`, init);
+export async function fetchNodeObservability(nodeCode: string, init?: ApiRequestInit): Promise<NodeObservability> {
+  const response = await apiFetch<AdminV2Envelope<NodeObservability>>(`/api/admin/v2/network/nodes/${encodeURIComponent(nodeCode)}?include_ru_history=false`, init);
+  return response.data;
 }
 
 const RANGE_SECONDS: Record<RuHistoryRange, number> = {
@@ -352,15 +355,17 @@ const RANGE_SECONDS: Record<RuHistoryRange, number> = {
   "180d": 180 * 24 * 60 * 60
 };
 
-export function fetchRuHistory(nodeCode: string, range: RuHistoryRange, cursor?: string | null, init?: ApiRequestInit): Promise<RuRunHistory> {
+export async function fetchRuHistory(nodeCode: string, range: RuHistoryRange, cursor?: string | null, init?: ApiRequestInit): Promise<RuRunHistory> {
   const query = new URLSearchParams();
   query.set("node_code", nodeCode);
   query.set("from", new Date(Date.now() - RANGE_SECONDS[range] * 1000).toISOString());
   query.set("limit", "50");
   if (cursor) query.set("cursor", cursor);
-  return apiFetch<RuRunHistory>(`/api/admin/probes/ru-origin/runs?${query.toString()}`, init);
+  const response = await apiFetch<AdminV2Envelope<RuRunHistory>>(`/api/admin/v2/network/ru/runs?${query.toString()}`, init);
+  return response.data;
 }
 
-export function fetchRuUploaderStatus(init?: ApiRequestInit): Promise<RuUploaderStatus> {
-  return apiFetch<RuUploaderStatus>("/api/admin/probes/ru-origin/uploader-status", init);
+export async function fetchRuUploaderStatus(init?: ApiRequestInit): Promise<RuUploaderStatus> {
+  const response = await apiFetch<AdminV2Envelope<RuUploaderStatus>>("/api/admin/v2/network/ru/uploader", init);
+  return response.data;
 }

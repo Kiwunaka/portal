@@ -1,0 +1,19 @@
+{
+  "schema": "pokrov-winback-pilot-vectors-v1",
+  "now": "2026-08-22T12:00:00Z",
+  "vectors": [
+    {"id": "eligible-owned-app", "layer": "audience", "channel": "owned_app", "changes": {}, "expected_reason": "ready"},
+    {"id": "channel-consent", "layer": "audience", "channel": "consented_email", "changes": {"consented_channels": []}, "expected_reason": "channel_consent_missing"},
+    {"id": "current-access", "layer": "audience", "channel": "owned_app", "changes": {"current_access_active": true}, "expected_reason": "current_access_active"},
+    {"id": "expired-window", "layer": "audience", "channel": "owned_app", "changes": {"access_expired_days_ago": 31}, "expected_reason": "expired_window_mismatch"},
+    {"id": "owner-suppressed", "layer": "audience", "channel": "owned_app", "changes": {"owner_suppressed": true}, "expected_reason": "owner_suppressed"},
+    {"id": "payment-consumed", "layer": "audience", "channel": "owned_app", "changes": {"payment_already_consumed": true}, "expected_reason": "payment_already_consumed"},
+    {"id": "refund-dispute", "layer": "audience", "channel": "owned_app", "changes": {"refund_dispute_open": true}, "expected_reason": "refund_dispute_open"},
+    {"id": "unresolved-payment", "layer": "audience", "channel": "owned_app", "changes": {"unresolved_payment": true}, "expected_reason": "unresolved_payment"},
+    {"id": "unresolved-support", "layer": "audience", "channel": "owned_app", "changes": {"unresolved_support": true}, "expected_reason": "unresolved_support"},
+    {"id": "campaign-not-live", "layer": "runtime", "changes": {"campaign_state": "paused"}, "expected_reason": "campaign_not_live"},
+    {"id": "legal-channel-block", "layer": "runtime", "changes": {"legal_profile_state": "pending"}, "expected_reason": "legal_or_channel_blocked"},
+    {"id": "paid-cap", "layer": "runtime", "changes": {"paid_conversions_count": 20}, "expected_reason": "paid_cap_reached"},
+    {"id": "sticky-holdout", "layer": "runtime_holdout", "changes": {}, "expected_reason": "holdout_assignment"}
+  ]
+}

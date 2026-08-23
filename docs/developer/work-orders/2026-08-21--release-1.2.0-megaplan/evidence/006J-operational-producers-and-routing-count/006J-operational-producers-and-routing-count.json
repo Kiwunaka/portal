@@ -1,0 +1,85 @@
+{
+  "schema": "pokrov.release-1.2.0.operational-producers-routing-count.v1",
+  "generated_at": "2026-08-22T15:10:39Z",
+  "work_order": "WO-006J",
+  "row_outcomes": {
+    "OBS/OBS-029": "I3",
+    "OBS_DOD/DOD-08": "I1",
+    "OBS_PB/PB-02": "I3",
+    "OBS_PB/PB-10": "I3",
+    "OBS_PB/PB-12": "I3",
+    "OBS_PB/PB-13": "I3",
+    "OBS_PB/PB-14": "I2_UNCHANGED_STRENGTHENED",
+    "FE_PR/PR-08": "I3"
+  },
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "sources": {
+    "platform_revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "platform_dirty_entries": 343,
+    "client_revision_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+    "client_dirty_entries": 181,
+    "core_revision_before_uncommitted_changes": "69a74545101708e56183c92e31f2b4c7b2509884",
+    "core_dirty_entries": 57
+  },
+  "contracts": {
+    "event_schema_version": "1.0.0",
+    "event_schema_sha256": "24ae72442f778d7f1334ae0a4bf4d774738e4de275707b29420ec733af65cc17",
+    "error_catalog_version": "1.2.0",
+    "error_catalog_sha256": "7d3bf242777d5bf76bbebcf162e5969d3f83d7f68b2787051e1c4fddeadc3dc7",
+    "error_catalog_entries": 121,
+    "core_event_schema": 1,
+    "core_event_abi": 1,
+    "desktop_abi": 2,
+    "remote_android_routing_attribute": {
+      "event_name": "app.routing.selection.finished",
+      "field": "selected_app_count",
+      "minimum": 0,
+      "maximum": 128,
+      "package_identifiers_remote": false
+    }
+  },
+  "source_sha256": {
+    "platform_event_schema": "24ae72442f778d7f1334ae0a4bf4d774738e4de275707b29420ec733af65cc17",
+    "platform_data_inventory": "5b94c4c3cf7dc6bc5d3a1eb65347f6ea248a9688210b49d05b3d70b490b89037",
+    "platform_ingest": "74eb092d4df01b7c9b087622abdf8adc4eefc9d2f81033f4c439d832b8640300",
+    "platform_operator_projection": "e53c07dd57099efef6e4f16f689b066bd4104eae17a62d1c9ca20753407dd6f3",
+    "platform_models": "e8cefd2cff99b953db0ccc7ef21c9081b662c845f726dcdf10e6c6dd081f3114",
+    "platform_migrations": "69bb338e1df18cb7363997d69813522710e7a8ea8cfd4da2a83f934106d7f6b5",
+    "client_release_health": "046f6baa4ddab5de8a497ee7f1d928797228e3185604ac68acddcb4b5722bfae",
+    "client_privacy": "7787439e0d9e8f91acf5e20bcf554ed72b777b3eaefe92929b3d65447631b492",
+    "client_observability": "8728cdaf740a1c01d7f7bb48bc4f20487f99d0de0019eb91c89da042e4a1bd1",
+    "client_shell": "8a1d6bdecb694e50b56b9d86b53d8cd1c0ac536fcb0fd61e5c732930f2837503",
+    "client_support_chat": "f191730f53bdbb8b44e2a822e3313c46aa487fa1c419cc215921bf136dc9c770"
+  },
+  "local_results": {
+    "platform_release_health_operator_contract_handoff_remote_apply": "PASS_118_OF_118",
+    "client_observability_producers": "PASS_3_OF_3",
+    "client_contract_snapshot": "PASS_3_OF_3",
+    "client_runtime_privacy_timeline": "PASS_23_OF_23",
+    "client_support_polling_encrypted_outbox": "PASS_7_OF_7",
+    "client_protection_repair": "PASS_4_OF_4",
+    "client_app_shell_analyzer": "PASS_NO_ISSUES",
+    "platform_observability_validator": "VALID_121_ENTRIES",
+    "platform_client_core_contract_parity": "PASS",
+    "ledger_distribution": "I3_286_I2_28_I1_46_I0_17_TOTAL_377",
+    "ledger_at_least_i1": 360,
+    "ledger_below_i3": 91
+  },
+  "partial_or_uncredited": {
+    "windows_service_sanitized_slice": "SOURCE_BASELINED",
+    "windows_service_current_native_rebuild": "NOT_RUN_CMAKE_UNAVAILABLE",
+    "linux_daemon_sanitized_slice": "NOT_SHIPPED",
+    "mass_incident_signed_manifest_health_stop": "NOT_PROVEN"
+  },
+  "manual_or_external": {
+    "exact_candidate": "NOT_CREATED",
+    "android_physical_device": "NOT_RUN",
+    "windows_clean_host": "NOT_RUN",
+    "linux_daemon": "NOT_SHIPPED",
+    "operator_production_readback": "NOT_RUN",
+    "deployment": "NOT_AUTHORIZED",
+    "publication": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

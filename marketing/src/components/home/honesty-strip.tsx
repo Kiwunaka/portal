@@ -2,7 +2,11 @@ import type { ReactNode } from "react";
 import { Gift, KeyRound, Package, ShieldCheck } from "lucide-react";
 
 import { Stagger } from "../motion/reveal";
-import { CANONICAL_GITHUB_RELEASES_URL, getCopyText } from "../../lib/pokrov";
+import {
+  CANONICAL_GITHUB_RELEASES_URL,
+  getCopyText,
+  getSharedProductFacts,
+} from "../../lib/pokrov";
 
 type HonestyItem = {
   href?: string;
@@ -14,10 +18,15 @@ type HonestyItem = {
 const ICON_PROPS = { size: 18, strokeWidth: 1.8, className: "text-brand", "aria-hidden": true } as const;
 
 export function HonestyStrip() {
+  const facts = getSharedProductFacts();
   const items: HonestyItem[] = [
     {
       icon: <Gift {...ICON_PROPS} />,
-      title: getCopyText("marketing.home.honesty.trial.title", "5 дней за 0 ₽"),
+      title: getCopyText(
+        "marketing.home.honesty.trial.title",
+        `${facts.trial.days} дней за 0 ₽`,
+        { trial_days: facts.trial.days },
+      ),
       text: getCopyText("marketing.home.honesty.trial.text", "Скачиваете, подключаетесь и проверяете свои сервисы до оплаты"),
     },
     {

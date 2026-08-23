@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pokrov.space/schemas/support-signed-envelope-v1.schema.json",
+  "title": "POKROV support signed envelope v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "algorithm",
+    "key_id",
+    "payload_b64",
+    "schema_version",
+    "signature_b64"
+  ],
+  "properties": {
+    "algorithm": {
+      "const": "Ed25519"
+    },
+    "key_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{2,63}$"
+    },
+    "payload_b64": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 21846,
+      "pattern": "^[A-Za-z0-9_-]+$"
+    },
+    "schema_version": {
+      "const": 1
+    },
+    "signature_b64": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{86}$"
+    }
+  }
+}

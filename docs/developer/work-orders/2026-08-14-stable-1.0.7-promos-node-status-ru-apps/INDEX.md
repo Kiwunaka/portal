@@ -1,5 +1,7 @@
 # POKROV 1.0.8 — Promos, Variant Status, RU App Presets And Native Feedback
 
+Document class: `EVIDENCE`
+
 Status: `COMPLETE_PUBLIC_STABLE_1_0_8`
 
 Owner outcome: выпущен прямой стабильный Android/Windows-релиз `1.0.8`, в

@@ -1,0 +1,81 @@
+{
+  "candidate_created": false,
+  "client_branch": "codex/1.2.0-release-v2",
+  "client_head": "ba7930ea83487874f47a49199ade89868c5675b3",
+  "client_source_dirty": true,
+  "date": "2026-08-22",
+  "evidence_ceiling": "I3_LOCAL_SOURCE_AND_REGRESSION_PROOF",
+  "ledger_advancement": [
+    "REL/ARCH-003 I2->I3"
+  ],
+  "ledger_distribution": {
+    "I0": 20,
+    "I1": 45,
+    "I2": 33,
+    "I3": 279,
+    "at_least_i1": 357,
+    "below_i3": 98,
+    "total": 377
+  },
+  "part_ceiling": {
+    "after": 29,
+    "before": 29,
+    "status": "UNCHANGED"
+  },
+  "platform_branch": "codex/1.2.0-phase00",
+  "platform_head": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+  "platform_source_dirty": true,
+  "promotion_authorized": false,
+  "shell_lines": {
+    "after": 6121,
+    "before": 6324,
+    "new_feature_owner": 325
+  },
+  "source_hashes": {
+    "client/DESIGN.md": "cd025abc640ffb2bb3d4de980509e3cbbdc25b7eaf63530a3361d57fb29bb541",
+    "client/packages/app_shell/lib/app_shell.dart": "529569f802a36f8713fbbd60268a1bde08b96795ef5b2f3774787ebbfb248816",
+    "client/packages/app_shell/lib/src/features/update/client_update.dart": "da9bde70793477fae8c8af08a8964efb474028c759bd4cccb10d71e5b63bbcb5",
+    "client/packages/app_shell/lib/src/shell/seed_shell.dart": "f7991c66bd561fa2e1804bc12f32d8950b7d8da64041a7bcaf31e9f635a50c80",
+    "client/packages/app_shell/test/client_update_coordinator_test.dart": "4cabd20cf6f0fee2596998cf31ac6ba857f7596cca7bfe6b44909e449205cb8e",
+    "client/packages/app_shell/test/pokrov_seed_app_test.dart": "f0922c50522e37c8e46496c39a4383faca4b6936f475b3164e0d02e0708b219e",
+    "client/test/client-presentation-boundary.ps1": "9c3cb022c93b1a167778e4bc1240a54efa9463f990c3aa59b8af41aae8b12d76"
+  },
+  "stage_distribution_below_i3": {
+    "candidate": 32,
+    "deferred": 21,
+    "external": 17,
+    "external_pre_candidate": 3,
+    "pre_freeze": 28
+  },
+  "status": "PASS_LOCAL_WITH_DECLARED_LIMITATIONS",
+  "verification": [
+    {
+      "command": "flutter analyze --no-pub in packages/app_shell",
+      "result": "PASS; no issues"
+    },
+    {
+      "command": "flutter test --no-pub test/client_update_coordinator_test.dart",
+      "result": "PASS; 2/2"
+    },
+    {
+      "command": "flutter test --no-pub test/pokrov_seed_app_test.dart --name startup update",
+      "result": "PASS; 2/2"
+    },
+    {
+      "command": "flutter test --no-pub in packages/app_shell",
+      "result": "PASS; 379/379"
+    },
+    {
+      "command": "test/client-presentation-boundary.ps1",
+      "result": "PASS; five coordinators; update owner; 29 parts"
+    },
+    {
+      "command": "scripts/validate-seed.ps1 with explicit active platform/Core roots",
+      "result": "PASS; all cross-repository client source contracts green"
+    },
+    {
+      "command": "client git diff --check",
+      "result": "PASS"
+    }
+  ]
+}

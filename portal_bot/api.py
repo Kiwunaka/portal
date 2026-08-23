@@ -29,7 +29,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Literal
 from urllib.parse import parse_qsl, urlencode, urlparse
 
 import aiohttp
@@ -48,6 +48,31 @@ from sqlalchemy import text as sql_text
 from sqlalchemy.exc import IntegrityError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from request_correlation import (
+    CORRELATION_ID_HEADER,
+    REQUEST_ID_HEADER,
+    bind_request_correlation,
+    build_request_correlation,
+    request_correlation_from_request,
+    reset_request_correlation,
+    response_headers as request_correlation_response_headers,
+)
+from outbound_http import OutboundHttpError, PaymentHttpRegistry
+from payment_db_runtime import payment_db_runtime_snapshot, run_payment_db_use_case
+from payment_callback_application import (
+    PaymentCallbackDependencies,
+    handle_payment_callback,
+)
+from commercial_contract import (
+    COMMERCIAL_REVISION_HEADER,
+    CommercialContractError,
+    assert_plan_projection_matches_contract,
+    commercial_contract_sha256,
+    commercial_health_snapshot,
+    commercial_revision,
+    get_commercial_contract,
+)
+
 # Load env from repo-local file first to avoid cwd-dependent startup behavior.
 load_dotenv(dotenv_path=Path(__file__).resolve().with_name(".env"))
 load_dotenv()
@@ -62,6 +87,7 @@ from models import (
     Achievement,
     AdminAudit,
     AdminActionIntent,
+    AdminOperator,
     AdminBroadcastDeliveryAttempt,
     AppSetting,
     AuthSession,
@@ -126,6 +152,45 @@ from models import (
     WarpEvent,
     WarpMaterial,
 )
+from commercial_campaign_policy import (
+    CAMPAIGN_CHANNELS,
+    CAMPAIGN_LEGAL_PROFILE_STATUSES,
+    CAMPAIGN_LIFECYCLE_STATUSES,
+    CAMPAIGN_OBJECTIVES,
+    CAMPAIGN_STATE_REASONS,
+    active_entitlement_capacity_units,
+    campaign_admin_readback,
+    campaign_policy_authority_snapshot,
+    campaign_record,
+    evaluate_campaign_policy,
+    normalize_campaign_channels,
+)
+from commercial_capacity_service import commercial_capacity_readback
+from commercial_offer_service import (
+    CommercialOfferPreviewError,
+    preview_commercial_offer,
+    resolve_acquisition_offer_context,
+)
+from commercial_order_service import (
+    CommercialOrderBindingError,
+    consume_commercial_reservation_for_paid_order,
+    lock_commercial_campaign_for_order,
+)
+from commercial_attribution_service import (
+    commercial_attribution_read_model,
+    record_commercial_reversal_projection,
+)
+from commercial_promo_surface_service import (
+    commercial_winback_promo_slots,
+    validate_commercial_promo_event_lineage,
+)
+from commercial_pilot_decision_service import winback_pilot_operator_readback
+from payment_return_service import (
+    PaymentReturnTokenError,
+    issue_payment_return_token,
+    payment_return_signing_ready,
+    payment_return_status,
+)
 from payment_providers import (
     PROVIDER_META,
     callback_ids as payment_callback_ids,
@@ -133,8 +198,10 @@ from payment_providers import (
     create_rub_payment,
     enabled_public_provider_catalog,
     normalize_provider as _normalize_checkout_provider,
+    payment_method_capabilities,
     public_provider_is_configured_for_plan,
     provider_is_configured,
+    parse_freekassa_payment_url as _parse_freekassa_payment_url,
     verify_callback_signature as verify_provider_callback_signature,
 )
 from tickets_repo import (
@@ -322,6 +389,12 @@ from network_rollout import (
     transport_node_allowlist,
     transport_node_exclusions,
 )
+from awg2_lab_service import (
+    Awg2LabError,
+    build_managed_awg2_lab_config,
+    replace_awg2_lab_material,
+    safe_awg2_material_summary,
+)
 from public_urls import build_subscription_url, public_connect_base_url, public_connect_host
 from shared_surface_facts import (
     get_access_matrix,
@@ -330,7 +403,16 @@ from shared_surface_facts import (
     get_public_urls,
     get_tariff_catalog,
 )
-from transport_catalog import LEGACY_REALITY_FALLBACK, OPERATOR_LAB, RESERVE_XHTTP_CDN, RU_BRIDGE_RELAY, has_explicit_transport_profile, node_transport_profiles, transport_profile_by_name
+from transport_catalog import (
+    AWG2_LAB,
+    LEGACY_REALITY_FALLBACK,
+    OPERATOR_LAB,
+    RESERVE_XHTTP_CDN,
+    RU_BRIDGE_RELAY,
+    has_explicit_transport_profile,
+    node_transport_profiles,
+    transport_profile_by_name,
+)
 from web_auth_service import (
     SESSION_TTL_SECONDS,
     build_telegram_oidc_authorize_url,
@@ -412,6 +494,7 @@ from release_evidence_service import (
     import_release_evidence,
     list_release_candidates,
 )
+from operator_release_service import OperatorReleaseError, public_client_rollout_policy
 
 
 HIDDIFY_HIDDEN_TAG_SUFFIX = " §hide§"
@@ -429,6 +512,7 @@ _current_request_ctx: contextvars.ContextVar[Request | None] = contextvars.Conte
     "portal_current_request",
     default=None,
 )
+_ADMIN_V2_RUNTIME: Any = None
 
 
 def _utcnow() -> datetime:
@@ -460,6 +544,7 @@ _ACCESS_MATRIX = get_access_matrix()
 _PROMO_SLOTS = get_promo_slots()
 _PUBLIC_URL_FACTS = get_public_urls()
 _TARIFF_CATALOG = get_tariff_catalog()
+COMMERCIAL_REVISION = commercial_revision()
 _PUBLIC_URL_TELEGRAM = _PUBLIC_URL_FACTS.get("telegram", {})
 _ACCESS_PUBLIC_DEFAULTS = _ACCESS_MATRIX.get("public_defaults", {})
 _ACCESS_ENTRY_FLOWS = _ACCESS_MATRIX.get("entry_flows", {})
@@ -505,12 +590,14 @@ SUPPORT_USERNAME = (
 SUPPORT_USERNAME = (os.getenv("SUPPORT_BOT_USERNAME") or SUPPORT_USERNAME).lstrip("@")
 PUBLIC_CHANNEL = (os.getenv("PUBLIC_CHANNEL") or _shared_telegram_username("channel_username", "@pokrov_vpn")).lstrip("@")
 BOT_USERNAME = (os.getenv("BOT_USERNAME") or _shared_telegram_username("bot_username", "@pokrov_vpnbot")).lstrip("@")
-REFERRAL_BONUS_DAYS = env_int("REFERRAL_BONUS_DAYS", 10)
-REFERRAL_ANTIFRAUD_HOURS = max(0, env_int("REFERRAL_ANTIFRAUD_HOURS", 24))
+REFERRAL_BONUS_DAYS = int(_PRODUCT_FACTS["referral_reward"]["referrer_days"])
+REFERRAL_ANTIFRAUD_HOURS = int(
+    _PRODUCT_FACTS["referral_reward"]["referrer_hold_hours"]
+)
 REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS = max(1, env_int("REFERRAL_ANTIFRAUD_MAX_WAIT_HOURS", 168))
-CHANNEL_PREMIUM_DAYS = 5
-APP_TRIAL_DEFAULT_DAYS = 5
-APP_TRIAL_MAX_DAYS = 5
+CHANNEL_PREMIUM_DAYS = int(_PRODUCT_FACTS["telegram_reward"]["days"])
+APP_TRIAL_DEFAULT_DAYS = int(_PRODUCT_FACTS["trial"]["days"])
+APP_TRIAL_MAX_DAYS = int(_PRODUCT_FACTS["trial"]["days"])
 WEB_EMAIL_ACCOUNT_TG_ID_BASE = max(8_000_000_000_000, env_int("WEB_EMAIL_ACCOUNT_TG_ID_BASE", 8_000_000_000_000))
 APP_ACCOUNT_TG_ID_BASE = max(9_000_000_000_000, env_int("APP_ACCOUNT_TG_ID_BASE", 9_000_000_000_000))
 OPENING_PREMIUM_DAYS = max(1, env_int("OPENING_PREMIUM_DAYS", 14))
@@ -810,6 +897,7 @@ def _normalized_wheel_config(payload: dict[str, Any] | None) -> dict[str, Any]:
         "weights": weights,
         "cooldown_hours": config.cooldown_hours,
     }
+
 
 def _fk_shop_configs() -> dict[str, dict[str, str]]:
     out: dict[str, dict[str, str]] = {}
@@ -1183,6 +1271,16 @@ class AdminWarpMaterialPutIn(BaseModel):
     account: dict[str, Any] | None = None
 
 
+class AdminAwg2LabMaterialPutIn(BaseModel):
+    tg_id: int = Field(gt=0)
+    install_id: str = Field(min_length=1, max_length=128)
+    generation: str = Field(min_length=2, max_length=64)
+    endpoint_revision: str = Field(min_length=2, max_length=64)
+    server_record_id: str = Field(min_length=2, max_length=64)
+    node_code: str = Field(min_length=2, max_length=64)
+    endpoint: dict[str, Any] = Field(default_factory=dict)
+
+
 class ReviewCreateIn(BaseModel):
     rating: int = Field(ge=1, le=5)
     text: str = Field(min_length=1, max_length=500)
@@ -1209,11 +1307,19 @@ class AdminBroadcastIn(BaseModel):
 
 
 class AdminTicketReplyIn(TicketMessageIn):
-    pass
+    expected_version: int | None = Field(default=None, ge=1)
+    macro_code: str | None = Field(default=None, min_length=2, max_length=48)
 
 
 class AdminTicketStatusIn(BaseModel):
     status: str = Field(min_length=2, max_length=20)
+    expected_version: int | None = Field(default=None, ge=1)
+
+
+class AdminTicketNoteIn(BaseModel):
+    body: str = Field(min_length=1, max_length=2000)
+    expected_version: int = Field(ge=1)
+    macro_code: str | None = Field(default=None, min_length=2, max_length=48)
 
 
 class AdminNodeSyncIn(BaseModel):
@@ -1407,6 +1513,63 @@ class FreekassaOrderCreateIn(BaseModel):
     currency: str = Field(default="RUB", max_length=8)
     payment_method: str | None = Field(default=None, max_length=16)
     acquisition_handle: str | None = Field(default=None, min_length=32, max_length=160)
+    offer_token: str | None = Field(default=None, min_length=32, max_length=2400)
+
+
+class CommercialOfferPreviewIn(BaseModel):
+    plan_code: str = Field(min_length=2, max_length=32)
+    promo_code: str | None = Field(default=None, max_length=20)
+    offer_id: str | None = Field(default=None, min_length=36, max_length=36)
+    channel: str = Field(default="owned_web", min_length=3, max_length=32)
+    checkout_ticket: str | None = Field(default=None, min_length=16, max_length=1200)
+    acquisition_handle: str | None = Field(default=None, min_length=32, max_length=160)
+
+
+class CommercialOfferPreviewOut(BaseModel):
+    ok: bool = True
+    valid: bool
+    reason_code: str
+    blocking_reasons: list[str] = Field(default_factory=list)
+    plan_code: str
+    currency: str
+    base_price_rub: int
+    final_price_rub: int
+    benefit_rub: int
+    benefit_percent: int
+    server_time: str
+    offer_ends_at: str | None = None
+    hold_expires_at: str | None = None
+    remaining_quota_lower_bound: int | None = None
+    terms_url: str
+    commercial_revision: str
+    campaign_id: str | None = None
+    creative_id: str | None = None
+    variant: str | None = None
+    assignment_id: str | None = None
+    offer_id: str | None = None
+    reservation_id: str | None = None
+    impression_id: str | None = None
+    click_id: str | None = None
+    offer_token: str | None = None
+
+
+class PaymentReturnStatusIn(BaseModel):
+    return_token: str = Field(min_length=32, max_length=1200)
+
+
+class PaymentReturnStatusOut(BaseModel):
+    ok: bool = True
+    state: Literal[
+        "processing", "paid", "failed", "cancelled", "manual_review", "expired"
+    ]
+    reason_code: str
+    surface: Literal["marketing", "cabinet"]
+    provider: str
+    server_time: str
+    next_poll_seconds: int = Field(ge=0, le=60)
+    terminal: bool
+    support_required: bool
+    can_retry: bool
 
 
 class FreekassaPublicOrderCreateIn(BaseModel):
@@ -1415,6 +1578,7 @@ class FreekassaPublicOrderCreateIn(BaseModel):
     currency: str = Field(default="RUB", max_length=8)
     payment_method: str | None = Field(default=None, max_length=16)
     acquisition_handle: str | None = Field(default=None, min_length=32, max_length=160)
+    offer_token: str | None = Field(default=None, min_length=32, max_length=2400)
 
 
 class FreekassaOrderActionOut(BaseModel):
@@ -1431,6 +1595,14 @@ class FreekassaOrderActionOut(BaseModel):
     discount_pct: int = 0
 
 
+class RubPaymentMethodChoiceOut(BaseModel):
+    code: str
+    label: str
+    hint: str = ""
+    available: bool = True
+    unavailable_reason: str | None = None
+
+
 class RubProviderChoiceOut(BaseModel):
     code: str
     label: str
@@ -1440,6 +1612,7 @@ class RubProviderChoiceOut(BaseModel):
     supports_webapp: bool = True
     supports_public: bool = True
     supported_plan_codes: list[str] = Field(default_factory=list)
+    payment_methods: list[RubPaymentMethodChoiceOut] = Field(default_factory=list)
 
 
 class RubProvidersOut(BaseModel):
@@ -1462,6 +1635,7 @@ class RubOrderCreateIn(BaseModel):
     currency: str = Field(default="RUB", max_length=8)
     payment_method: str | None = Field(default=None, max_length=16)
     acquisition_handle: str | None = Field(default=None, min_length=32, max_length=160)
+    offer_token: str | None = Field(default=None, min_length=32, max_length=2400)
 
 
 class RubPublicOrderCreateIn(BaseModel):
@@ -1475,6 +1649,7 @@ class RubPublicOrderCreateIn(BaseModel):
     currency: str = Field(default="RUB", max_length=8)
     payment_method: str | None = Field(default=None, max_length=16)
     acquisition_handle: str | None = Field(default=None, min_length=32, max_length=160)
+    offer_token: str | None = Field(default=None, min_length=32, max_length=2400)
 
 
 class Start99EligibilityIn(BaseModel):
@@ -1483,6 +1658,7 @@ class Start99EligibilityIn(BaseModel):
 
 class RubOrderActionOut(FreekassaOrderActionOut):
     provider_label: str | None = None
+    payment_return_token: str
 
 
 class AdminPaymentReconcileIn(BaseModel):
@@ -1577,7 +1753,6 @@ class AdminCampaignLinksBuildIn(BaseModel):
     campaign_key: str | None = Field(default=None, max_length=64)
     plan_code: str | None = Field(default=None, max_length=32)
     source: str = Field(default="bot", max_length=16)
-
 
 
 class DashboardResponse(BaseModel):
@@ -1689,9 +1864,20 @@ class ClientWindowsApps(BaseModel):
     update: ClientAppUpdateInfo
 
 
+class ClientReleaseManifestIdentity(BaseModel):
+    schema_version: int
+    candidate_label: str
+    handoff_sha256: str
+    artifact_set_sha256: str
+    core_version: str
+    core_desktop_abi: int
+    core_android_package: str
+
+
 class ClientAppsResponse(BaseModel):
     android: ClientAndroidApps
     windows: ClientWindowsApps
+    release_manifest: ClientReleaseManifestIdentity | None = None
     docs_url: str = ""
     updated_at: str
     update_check: dict[str, Any]
@@ -1816,18 +2002,43 @@ class AdminReferralQueueProcessIn(BaseModel):
 class AdminCampaignCreateIn(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     campaign_type: str = Field(min_length=3, max_length=16)  # promo|gift
-    target_value: str = Field(min_length=2, max_length=64)   # promo code or gift card type
+    target_value: str = Field(
+        min_length=2, max_length=64
+    )  # promo code or gift card type
+    objective: str = Field(default="retention", min_length=3, max_length=32)
+    lifecycle_status: str = Field(default="draft", min_length=3, max_length=24)
+    commercial_revision: str = Field(
+        default=COMMERCIAL_REVISION, min_length=1, max_length=32
+    )
+    legal_profile_status: str = Field(default="missing", min_length=3, max_length=24)
+    channels: list[str] = Field(default_factory=list, max_length=16)
+    seller_profile_id: str | None = Field(default=None, max_length=64)
+    terms_revision: str | None = Field(default=None, max_length=64)
+    paid_cap: int = Field(default=0, ge=0, le=1_000_000)
+    capacity_guard_enabled: bool = True
+    state_reason: str | None = Field(default=None, max_length=64)
     segment: str = Field(default="all_active", min_length=2, max_length=32)
     starts_at: str | None = None
     ends_at: str | None = None
     max_activations: int = Field(default=-1, ge=-1, le=1_000_000)
     auto_disable: bool = True
-    is_active: bool = True
+    is_active: bool | None = None
     metadata: dict[str, Any] | None = None
 
 
 class AdminCampaignUpdateIn(BaseModel):
+    expected_revision: int | None = Field(default=None, ge=1)
     name: str | None = Field(default=None, min_length=2, max_length=120)
+    objective: str | None = Field(default=None, min_length=3, max_length=32)
+    lifecycle_status: str | None = Field(default=None, min_length=3, max_length=24)
+    commercial_revision: str | None = Field(default=None, min_length=1, max_length=32)
+    legal_profile_status: str | None = Field(default=None, min_length=3, max_length=24)
+    channels: list[str] | None = Field(default=None, max_length=16)
+    seller_profile_id: str | None = Field(default=None, max_length=64)
+    terms_revision: str | None = Field(default=None, max_length=64)
+    paid_cap: int | None = Field(default=None, ge=0, le=1_000_000)
+    capacity_guard_enabled: bool | None = None
+    state_reason: str | None = Field(default=None, max_length=64)
     segment: str | None = Field(default=None, min_length=2, max_length=32)
     starts_at: str | None = None
     ends_at: str | None = None
@@ -2072,7 +2283,20 @@ def _maybe_downgrade_expired_to_free(s, user: User) -> bool:
     except Exception:
         return False
 
-app = FastAPI(title="POKROV API", version="2.0.0")
+
+@contextlib.asynccontextmanager
+async def _api_lifespan(application: FastAPI):
+    payment_http_registry = PaymentHttpRegistry()
+    await payment_http_registry.start()
+    application.state.payment_http_registry = payment_http_registry
+    try:
+        yield
+    finally:
+        application.state.payment_http_registry = None
+        await payment_http_registry.close()
+
+
+app = FastAPI(title="POKROV API", version="2.0.0", lifespan=_api_lifespan)
 
 
 _AUTH_ERROR_HEADER = "X-POKROV-Auth-Error"
@@ -2169,13 +2393,47 @@ async def add_validation_error_header(
     return response
 
 
+@app.exception_handler(Exception)
+async def map_unhandled_exception(request: Request, _exc: Exception) -> Response:
+    """Return one catalog code without echoing exception or request material."""
+
+    context = request_correlation_from_request(request)
+    logger.error(
+        "api_unhandled_exception request_id=%s correlation_id=%s code=API-007",
+        context.request_id,
+        context.correlation_id,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": {
+                "code": "API-007",
+                "message": "Service temporarily unavailable.",
+            },
+            "request_id": context.request_id,
+        },
+        headers={
+            **request_correlation_response_headers(context),
+            _AUTH_ERROR_HEADER: "service_unavailable",
+        },
+    )
+
+
 @app.middleware("http")
 async def bind_current_request(request: Request, call_next):
-    token = _current_request_ctx.set(request)
+    context = build_request_correlation(request.headers.get(CORRELATION_ID_HEADER))
+    request.state.request_correlation = context
+    request_token = _current_request_ctx.set(request)
+    correlation_token = bind_request_correlation(context)
     try:
-        return await call_next(request)
+        response = await call_next(request)
+        for header, value in request_correlation_response_headers(context).items():
+            response.headers[header] = value
+        response.headers[COMMERCIAL_REVISION_HEADER] = COMMERCIAL_REVISION
+        return response
     finally:
-        _current_request_ctx.reset(token)
+        reset_request_correlation(correlation_token)
+        _current_request_ctx.reset(request_token)
 
 
 app.add_middleware(
@@ -2184,7 +2442,12 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers=[_AUTH_ERROR_HEADER],
+    expose_headers=[
+        _AUTH_ERROR_HEADER,
+        CORRELATION_ID_HEADER,
+        REQUEST_ID_HEADER,
+        COMMERCIAL_REVISION_HEADER,
+    ],
 )
 SUPPORT_UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 PROMO_MEDIA_DIR.mkdir(parents=True, exist_ok=True)
@@ -2266,7 +2529,16 @@ def _checkout_ticket_sign(raw: bytes) -> str:
     return hmac.new(_checkout_secret().encode("utf-8"), raw, hashlib.sha256).hexdigest()
 
 
-def _create_checkout_ticket(*, tg_id: int, plan_code: str = "", promo_code: str = "", campaign_key: str = "", source: str = "bot") -> str:
+def _create_checkout_ticket(
+    *,
+    tg_id: int,
+    plan_code: str = "",
+    promo_code: str = "",
+    campaign_key: str = "",
+    source: str = "bot",
+    impression_public_id: str = "",
+    click_public_id: str = "",
+) -> str:
     promo = _sanitize_deeplink_token(promo_code, max_len=20, uppercase=True)
     campaign = _sanitize_deeplink_token(campaign_key, max_len=64, uppercase=False)
     payload = {
@@ -2275,10 +2547,14 @@ def _create_checkout_ticket(*, tg_id: int, plan_code: str = "", promo_code: str 
         "promo_code": promo,
         "campaign_key": campaign,
         "source": (source or "bot").strip().lower()[:16],
+        "impression_public_id": str(impression_public_id or "").strip().lower()[:36],
+        "click_public_id": str(click_public_id or "").strip().lower()[:36],
         "iat": int(time.time()),
         "exp": int(time.time()) + int(CHECKOUT_TICKET_TTL_SECONDS),
     }
-    raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    raw = json.dumps(
+        payload, ensure_ascii=False, separators=(",", ":"), sort_keys=True
+    ).encode("utf-8")
     sig = _checkout_ticket_sign(raw)
     token = base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
     return f"{token}.{sig}"
@@ -2995,7 +3271,13 @@ def _normalized_promo_slots_config(raw: Any, *, strict: bool = False) -> dict[st
     }
 
 
-def _promo_slots_payload_for_surface(*, s, surface: str, access_state: str) -> dict[str, Any]:
+def _promo_slots_payload_for_surface(
+    *,
+    s,
+    surface: str,
+    access_state: str,
+    user: User | None = None,
+) -> dict[str, Any]:
     slot_map, content_map = _promo_slot_catalog_maps()
     normalized = _normalized_promo_slots_config(
         _get_app_setting_json(s=s, key=PROMO_SLOTS_CONFIG_KEY, default={}),
@@ -3009,6 +3291,19 @@ def _promo_slots_payload_for_surface(*, s, surface: str, access_state: str) -> d
 
     slots: list[dict[str, Any]] = []
     now = _utcnow()
+    normalized_surface = str(surface or "").strip().lower()
+    if normalized_surface in {"app", "webapp"} and user is not None:
+        slots.extend(
+            commercial_winback_promo_slots(
+                s,
+                tg_id=int(user.tg_id),
+                access_state=access_state,
+                surface=normalized_surface,
+                checkout_base_url=_public_checkout_url(),
+                issue_checkout_ticket=_create_checkout_ticket,
+                now=now,
+            )
+        )
     for assignment in list(normalized.get("assignments") or []):
         starts_at = _parse_optional_datetime(assignment.get("starts_at"))
         ends_at = _parse_optional_datetime(assignment.get("ends_at"))
@@ -3056,9 +3351,13 @@ def _promo_slots_payload_for_surface(*, s, surface: str, access_state: str) -> d
                 "text_color": assignment.get("text_color"),
                 "button_color": assignment.get("button_color"),
                 "button_text_color": assignment.get("button_text_color"),
-                "placement": assignment.get("placement") or str(slot_facts.get("placement") or "").strip() or None,
+                "placement": assignment.get("placement")
+                or str(slot_facts.get("placement") or "").strip()
+                or None,
                 "dismissible": bool(assignment.get("dismissible", True)),
-                "whole_card_clickable": bool(assignment.get("whole_card_clickable", True)),
+                "whole_card_clickable": bool(
+                    assignment.get("whole_card_clickable", True)
+                ),
                 "starts_at": assignment.get("starts_at"),
                 "ends_at": assignment.get("ends_at"),
                 "countdown_mode": assignment.get("countdown_mode") or "none",
@@ -3073,8 +3372,11 @@ def _promo_slots_payload_for_surface(*, s, surface: str, access_state: str) -> d
         "surface": str(surface or "").strip(),
         "access_state": str(access_state or "").strip(),
         "server_time": _safe_iso(now),
-        "remote_available": bool(normalized.get("remote_available")),
-        "fallback_behavior": str(normalized.get("fallback_behavior") or "contextual_only_when_remote_unavailable"),
+        "remote_available": bool(normalized.get("remote_available") or slots),
+        "fallback_behavior": str(
+            normalized.get("fallback_behavior")
+            or "contextual_only_when_remote_unavailable"
+        ),
         "mode": str(normalized.get("mode") or "whitelist_slots"),
         "approved_slots": approved_slots,
         "slots": slots,
@@ -3177,18 +3479,36 @@ def _promo_media_path(asset_id: str) -> Path:
 
 
 def _public_catalog_payload(*, s) -> dict[str, Any]:
+    plans = _plan_catalog_payload(s=s, only_active=True)
+    assert_plan_projection_matches_contract(plans)
+    commercial = get_commercial_contract()
     return {
         "catalog_version": str(_TARIFF_CATALOG.get("catalog_version") or ""),
+        "commercial_revision": str(commercial.get("commercial_revision") or ""),
+        "commercial_contract_sha256": str(commercial.get("contract_sha256") or ""),
+        "effective_from": str(commercial.get("effective_from") or ""),
+        "terms_revision": str(commercial.get("terms_revision") or ""),
+        "price_authority": str(commercial.get("price_authority") or ""),
+        "promo_authority": str(commercial.get("promo_authority") or ""),
+        "legal_launch_ready": bool((commercial.get("legal") or {}).get("launch_ready")),
         "commerce_model": dict(_TARIFF_CATALOG.get("commerce_model") or {}),
-        "public_surface_policy": dict(_TARIFF_CATALOG.get("public_surface_policy") or {}),
-        "pricing_preview": dict(_TARIFF_CATALOG.get("pricing_preview") or {}),
-        "plans": _plan_catalog_payload(s=s, only_active=True),
+        "public_surface_policy": dict(
+            _TARIFF_CATALOG.get("public_surface_policy") or {}
+        ),
+        "plans": plans,
         "free_tier": dict(_FREE_TIER_FACTS),
         "public_defaults": dict(_ACCESS_PUBLIC_DEFAULTS),
         "promo_slots": {
             "mode": str(_PROMO_SLOTS.get("mode") or "whitelist_slots"),
-            "fallback_behavior": str(_PROMO_SLOTS.get("fallback_behavior") or "contextual_only_when_remote_unavailable"),
-            "slot_ids": [str(slot.get("id") or "").strip() for slot in list(_PROMO_SLOTS.get("slots") or []) if str(slot.get("id") or "").strip()],
+            "fallback_behavior": str(
+                _PROMO_SLOTS.get("fallback_behavior")
+                or "contextual_only_when_remote_unavailable"
+            ),
+            "slot_ids": [
+                str(slot.get("id") or "").strip()
+                for slot in list(_PROMO_SLOTS.get("slots") or [])
+                if str(slot.get("id") or "").strip()
+            ],
         },
     }
 
@@ -3202,7 +3522,9 @@ def _price_with_pending_discount(*, amount_rub: int, pending_pct: int | None) ->
     return max(1, discounted), pct
 
 
-def _checkout_discount_code_preview_pct(*, s, promo_code: str | None) -> tuple[int, str, str]:
+def _checkout_discount_code_preview_pct(
+    *, s, promo_code: str | None
+) -> tuple[int, str, str]:
     code = str(promo_code or "").strip().upper()[:20]
     if not code:
         return 0, "", ""
@@ -3219,16 +3541,17 @@ def _checkout_discount_code_preview_pct(*, s, promo_code: str | None) -> tuple[i
             and uses_left != 0
             and (not expires_at or expires_at >= _utcnow())
         ):
-            return max(1, min(95, value)), str(getattr(promo, "code", code) or code).strip().upper()[:20], "promo_code"
-        return 0, str(getattr(promo, "code", code) or code).strip().upper()[:20], "promo_code_unavailable"
+            return (
+                max(1, min(95, value)),
+                str(getattr(promo, "code", code) or code).strip().upper()[:20],
+                "promo_code",
+            )
+        return (
+            0,
+            str(getattr(promo, "code", code) or code).strip().upper()[:20],
+            "promo_code_unavailable",
+        )
 
-    preview_codes = ((_TARIFF_CATALOG.get("pricing_preview") or {}).get("discount_codes") or {})
-    try:
-        preview_pct = int(preview_codes.get(code) or 0)
-    except Exception:
-        preview_pct = 0
-    if preview_pct > 0:
-        return max(1, min(95, preview_pct)), code, "catalog_preview"
     return 0, code, ""
 
 
@@ -3778,6 +4101,7 @@ _BETA_RATE_LIMIT_DEFAULTS_PER_MINUTE = {
     "device_pairing_claim": 8,
     "device_pairing_claim_ip": 30,
     "client_diagnostic_event": 30,
+    "release_health_ingest": 30,
     "program_application": 6,
     "ticket_create": 20,
     "ticket_upload": 30,
@@ -4110,25 +4434,32 @@ def _user_origin(user: User) -> str:
     return "telegram"
 
 
-def _apply_admin_user_search(query, q: str):
+def _apply_admin_user_search(
+    query,
+    q: str,
+    *,
+    include_sensitive_identity: bool = True,
+):
     q_norm = str(q or "").strip()
     if not q_norm:
         return query
     filters = [
         User.username.ilike(f"%{q_norm}%"),
         User.display_name.ilike(f"%{q_norm}%"),
-        User.email.ilike(f"%{q_norm}%"),
-        User.linked_telegram_username.ilike(f"%{q_norm}%"),
-        User.app_install_id.ilike(f"%{q_norm}%"),
     ]
-    is_signed_integer = q_norm.isdigit() or (q_norm.startswith("-") and q_norm[1:].isdigit())
-    if is_signed_integer and int(q_norm) != 0:
+    if include_sensitive_identity:
         filters.extend(
             [
-                User.tg_id == int(q_norm),
-                User.linked_telegram_id == int(q_norm),
+                User.email.ilike(f"%{q_norm}%"),
+                User.linked_telegram_username.ilike(f"%{q_norm}%"),
+                User.app_install_id.ilike(f"%{q_norm}%"),
             ]
         )
+    is_signed_integer = q_norm.isdigit() or (q_norm.startswith("-") and q_norm[1:].isdigit())
+    if is_signed_integer and int(q_norm) != 0:
+        filters.append(User.tg_id == int(q_norm))
+        if include_sensitive_identity:
+            filters.append(User.linked_telegram_id == int(q_norm))
     return query.filter(or_(*filters))
 
 
@@ -4351,8 +4682,11 @@ def _auth_user_can_admin_account(*, auth_user: dict[str, Any] | None, user: User
     return any(_is_admin_tg(candidate) for candidate in candidates if candidate)
 
 
-def _require_admin(x_telegram_init_data: str, request: Request | None = None) -> dict[str, Any]:
-    user_data = _require_auth_user(x_telegram_init_data, request=request)
+def _validated_legacy_admin(
+    user_data: dict[str, Any],
+    *,
+    request: Request | None,
+) -> dict[str, Any]:
     if _auth_user_is_recovery_scope(user_data):
         raise _auth_http_exception(
             detail="Recovery-сессия не даёт административных прав.",
@@ -4370,13 +4704,63 @@ def _require_admin(x_telegram_init_data: str, request: Request | None = None) ->
             reason="not_admin",
         )
         raise HTTPException(status_code=403, detail="Admin access required")
-    if request is not None and str(getattr(request, "method", "GET") or "GET").upper() not in {"GET", "HEAD", "OPTIONS"}:
-        _enforce_beta_rate_limit("admin_destructive", request, identity=f"admin:{actor_id}")
+    if request is not None and str(
+        getattr(request, "method", "GET") or "GET"
+    ).upper() not in {"GET", "HEAD", "OPTIONS"}:
+        _enforce_beta_rate_limit(
+            "admin_destructive", request, identity=f"admin:{actor_id}"
+        )
     out = dict(user_data)
     out["account_id"] = account_id
     out["actor_tg_id"] = actor_id
     out["id"] = actor_id
     return out
+
+
+def _require_legacy_admin(
+    x_telegram_init_data: str, request: Request | None = None
+) -> dict[str, Any]:
+    request = request or _current_request_ctx.get()
+    user_data = _require_auth_user(x_telegram_init_data, request=request)
+    return _validated_legacy_admin(user_data, request=request)
+
+
+def _require_admin(
+    x_telegram_init_data: str, request: Request | None = None
+) -> dict[str, Any]:
+    request = request or _current_request_ctx.get()
+    user_data = _optional_auth_user(x_telegram_init_data, request=request)
+    if user_data:
+        return _validated_legacy_admin(user_data, request=request)
+    if request is not None and _ADMIN_V2_RUNTIME is not None:
+        try:
+            operator_actor = _ADMIN_V2_RUNTIME.authenticate_legacy_bridge(request)
+        except Exception as error:
+            try:
+                from .admin_v2.security import AdminV2Error
+            except ImportError:
+                from admin_v2.security import AdminV2Error
+            if isinstance(error, AdminV2Error):
+                raise _auth_http_exception(
+                    detail=error.message,
+                    code=error.code,
+                    status_code=error.status_code,
+                ) from error
+            raise
+        if operator_actor:
+            actor_id = int(
+                operator_actor.get("actor_tg_id") or operator_actor.get("id") or 0
+            )
+            if str(getattr(request, "method", "GET") or "GET").upper() not in {
+                "GET",
+                "HEAD",
+                "OPTIONS",
+            }:
+                _enforce_beta_rate_limit(
+                    "admin_destructive", request, identity=f"admin:{actor_id}"
+                )
+            return operator_actor
+    raise HTTPException(status_code=401, detail="Telegram auth required")
 
 
 def _safe_public_url(value: str) -> str:
@@ -4448,20 +4832,26 @@ def _client_app_update_info(
     release_notes: str,
     release_notes_url: str,
     published_at: str,
+    rollout_percent: int = 100,
 ) -> ClientAppUpdateInfo:
     safe_url = _safe_public_url(url)
+    normalized_rollout_percent = max(0, min(int(rollout_percent or 0), 100))
     return ClientAppUpdateInfo(
         platform=str(platform or "").strip().lower(),
         channel=str(channel or "beta").strip().lower() or "beta",
         latest_version=str(latest_version or "").strip(),
         min_supported_version=str(min_supported_version or "").strip(),
-        update_policy=_client_update_policy(
+        update_policy=(
+            _client_update_policy(
             platform=platform,
             requested_platform=requested_platform,
             current_version=current_version,
             latest_version=latest_version,
             min_supported_version=min_supported_version,
             url=safe_url,
+            )
+            if normalized_rollout_percent > 0
+            else "none"
         ),
         url=safe_url,
         sha256=str(sha256 or "").strip(),
@@ -4469,7 +4859,7 @@ def _client_app_update_info(
         release_notes=str(release_notes or "").strip()[:1000],
         release_notes_url=_safe_public_url(release_notes_url),
         published_at=str(published_at or "").strip(),
-        rollout_percent=100,
+        rollout_percent=normalized_rollout_percent,
         force_after=None,
     )
 
@@ -4563,22 +4953,51 @@ def _checkout_runtime_issues() -> list[tuple[str, str]]:
             )
         )
     if not _checkout_secret():
-        issues.append(("missing_checkout_ticket_secret", "CHECKOUT_TICKET_SECRET is empty"))
+        issues.append(
+            ("missing_checkout_ticket_secret", "CHECKOUT_TICKET_SECRET is empty")
+        )
+    if not payment_return_signing_ready():
+        issues.append(
+            (
+                "missing_payment_return_secret",
+                "PAYMENT_RETURN_HMAC_SECRET or an approved checkout/session fallback is empty",
+            )
+        )
     checkout_url = _public_checkout_url()
     if not checkout_url:
-        issues.append(("missing_checkout_url", "PAY_CHECKOUT_URL or PUBLIC_WEB_DOMAIN is not configured"))
+        issues.append(
+            (
+                "missing_checkout_url",
+                "PAY_CHECKOUT_URL or PUBLIC_WEB_DOMAIN is not configured",
+            )
+        )
     if not _safe_public_url(Settings.PUBLIC_API_BASE_URL):
         issues.append(("missing_public_api_base_url", "PUBLIC_API_BASE_URL is empty"))
-    if not (_safe_public_url(Settings.PAY_SUCCESS_URL) or _safe_public_url(Settings.PUBLIC_API_BASE_URL)):
+    if not (
+        _safe_public_url(Settings.PAY_SUCCESS_URL)
+        or _safe_public_url(Settings.PUBLIC_API_BASE_URL)
+    ):
         issues.append(("missing_pay_success_url", "PAY_SUCCESS_URL is not configured"))
-    if not (_safe_public_url(Settings.PAY_FAIL_URL) or _safe_public_url(Settings.PUBLIC_API_BASE_URL)):
+    if not (
+        _safe_public_url(Settings.PAY_FAIL_URL)
+        or _safe_public_url(Settings.PUBLIC_API_BASE_URL)
+    ):
         issues.append(("missing_pay_fail_url", "PAY_FAIL_URL is not configured"))
     enabled = enabled_public_provider_catalog()
     if not enabled:
-        issues.append(("no_enabled_providers", "No RUB payment providers are configured"))
+        issues.append(
+            ("no_enabled_providers", "No RUB payment providers are configured")
+        )
     email_status = email_delivery_runtime_status()
     if not bool(email_status.get("enabled")):
-        reasons = ", ".join(str(item) for item in (email_status.get("blocked_reasons") or []) if item) or "not_ready"
+        reasons = (
+            ", ".join(
+                str(item)
+                for item in (email_status.get("blocked_reasons") or [])
+                if item
+            )
+            or "not_ready"
+        )
         issues.append(
             (
                 "email_delivery_not_ready",
@@ -4602,8 +5021,13 @@ def _public_checkout_provider_state() -> RubProvidersOut:
             payload["supported_plan_codes"] = [
                 code
                 for code in RUB_PLAN_PRICES
-                if public_provider_is_configured_for_plan(str(row.get("code") or ""), code)
+                if public_provider_is_configured_for_plan(
+                    str(row.get("code") or ""), code
+                )
             ]
+            payload["payment_methods"] = payment_method_capabilities(
+                str(row.get("code") or "")
+            )
             rows.append(RubProviderChoiceOut(**payload))
     if not rows and not blocked:
         issues = [("no_enabled_providers", "No RUB payment providers are configured")]
@@ -4636,26 +5060,32 @@ def _payment_callback_base_url() -> str:
     return _safe_public_url(Settings.PUBLIC_API_BASE_URL) or f"https://{(Settings.PUBLIC_API_DOMAIN or Settings.HOST_DOMAIN or 'api.pokrov.space').strip().strip('/')}"
 
 
-def _pay_success_url(provider: str = "") -> str:
-    base = _safe_public_url(Settings.PAY_SUCCESS_URL) or f"{_payment_callback_base_url().rstrip('/')}/pay/success"
+def _payment_return_url(base: str, *, provider: str, surface: str) -> str:
     provider_code = _normalize_provider(provider)
-    if not provider_code:
-        return base
+    return_surface = str(surface or "").strip().lower()
     parsed = urlparse(base)
     q = dict(parse_qsl(parsed.query, keep_blank_values=True))
-    q["provider"] = provider_code
+    if provider_code:
+        q["provider"] = provider_code
+    if return_surface in {"marketing", "cabinet"}:
+        q["return_surface"] = return_surface
     return parsed._replace(query=urlencode(q)).geturl()
 
 
-def _pay_fail_url(provider: str = "") -> str:
-    base = _safe_public_url(Settings.PAY_FAIL_URL) or f"{_payment_callback_base_url().rstrip('/')}/pay/fail"
-    provider_code = _normalize_provider(provider)
-    if not provider_code:
-        return base
-    parsed = urlparse(base)
-    q = dict(parse_qsl(parsed.query, keep_blank_values=True))
-    q["provider"] = provider_code
-    return parsed._replace(query=urlencode(q)).geturl()
+def _pay_success_url(provider: str = "", *, return_surface: str = "marketing") -> str:
+    base = (
+        _safe_public_url(Settings.PAY_SUCCESS_URL)
+        or f"{_payment_callback_base_url().rstrip('/')}/pay/success"
+    )
+    return _payment_return_url(base, provider=provider, surface=return_surface)
+
+
+def _pay_fail_url(provider: str = "", *, return_surface: str = "marketing") -> str:
+    base = (
+        _safe_public_url(Settings.PAY_FAIL_URL)
+        or f"{_payment_callback_base_url().rstrip('/')}/pay/fail"
+    )
+    return _payment_return_url(base, provider=provider, surface=return_surface)
 
 
 def _provider_result_url(provider: str) -> str:
@@ -5168,6 +5598,27 @@ def _serialize_external_order_meta(meta: dict[str, Any]) -> str:
                 "referral_discount_eligible",
             ),
         ),
+        "order_intent": (
+            2600,
+            (
+                "schema",
+                "order_id",
+                "provider",
+                "tg_id",
+                "plan_code",
+                "source",
+                "amount",
+                "currency",
+                "owner",
+                "entitlement_snapshot",
+                "commercial_offer",
+                "sha256",
+            ),
+        ),
+        "provider_checkout": (
+            700,
+            ("schema", "status", "error_code", "url_present", "remote"),
+        ),
     }
     for key, value in source.items():
         if key == "callback":
@@ -5187,7 +5638,9 @@ def _serialize_external_order_meta(meta: dict[str, Any]) -> str:
         max_serialized=_EXTERNAL_ORDER_META_JSON_LIMIT,
         priority_keys=(
             "fulfillment",
+            "order_intent",
             "entitlement_snapshot",
+            "provider_checkout",
             "reversal",
             "pricing",
             "buyer_email",
@@ -5347,6 +5800,7 @@ _TERMINAL_PAYMENT_FULFILLMENT_CODES = {
     "order_reversed",
     "unsupported_plan",
     "verified_email_mismatch",
+    "commercial_offer_conflict",
 }
 
 _TERMINAL_PAYMENT_REVERSAL_CODES = {
@@ -5767,14 +6221,25 @@ def _external_order_has_reversal_state(row: ExternalOrder, meta: dict[str, Any])
     })
 
 
-def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str]:
+def _apply_external_paid_order(
+    *, provider: str, order_id: str, payload: dict[str, Any]
+) -> tuple[bool, str]:
     s = SessionLocal()
     try:
+        if order_id:
+            lock_commercial_campaign_for_order(
+                s,
+                provider=provider,
+                order_id=order_id,
+            )
         ext_order = None
         if order_id:
             ext_order = (
                 s.query(ExternalOrder)
-                .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+                .filter(
+                    ExternalOrder.provider == str(provider),
+                    ExternalOrder.order_id == str(order_id),
+                )
                 .with_for_update()
                 .first()
             )
@@ -5791,7 +6256,9 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
             return True, "already_applied"
         entitlement_snapshot: dict[str, Any] | None = None
         if _normalize_provider(provider) == "freekassa":
-            entitlement_snapshot, snapshot_reason = _validated_external_order_entitlement_snapshot(ext_order)
+            entitlement_snapshot, snapshot_reason = (
+                _validated_external_order_entitlement_snapshot(ext_order)
+            )
             if entitlement_snapshot is None:
                 return False, snapshot_reason
 
@@ -5805,21 +6272,29 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
             )
             ext_order = (
                 s.query(ExternalOrder)
-                .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+                .filter(
+                    ExternalOrder.provider == str(provider),
+                    ExternalOrder.order_id == str(order_id),
+                )
                 .with_for_update()
                 .populate_existing()
                 .one_or_none()
             )
             if ext_order is None:
                 return False, "order_not_found"
-            refreshed_tg_id = int(ext_order.tg_id) if ext_order.tg_id is not None else None
+            refreshed_tg_id = (
+                int(ext_order.tg_id) if ext_order.tg_id is not None else None
+            )
             if refreshed_tg_id != tg_id:
                 return False, "account_conflict"
             ext_meta = _external_order_meta(ext_order)
             fulfillment = dict(ext_meta.get("fulfillment") or {})
             if _external_order_has_reversal_state(ext_order, ext_meta):
                 return False, "order_reversed"
-            if str(fulfillment.get("status") or "").strip().lower() == "account_extended":
+            if (
+                str(fulfillment.get("status") or "").strip().lower()
+                == "account_extended"
+            ):
                 return True, "already_applied"
             user = s.query(User).filter(User.tg_id == int(tg_id)).first()
             if not user:
@@ -5834,14 +6309,18 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
         days = (
             int(entitlement_snapshot["duration_days"])
             if entitlement_snapshot is not None
-            else max(1, int(plan_cfg.get("days") or plan_cfg.get("duration_days") or 30))
+            else max(
+                1, int(plan_cfg.get("days") or plan_cfg.get("duration_days") or 30)
+            )
         )
 
         now = _utcnow()
         old_sub = (user.sub_type or "").upper().strip()
         referrer_id = int(getattr(user, "referrer_id", 0) or 0)
         new_referral_relationship = False
-        plan_amount_stars = int(plan_cfg.get("amount_stars") or API_PLAN_PRICES.get(plan_code) or 0)
+        plan_amount_stars = int(
+            plan_cfg.get("amount_stars") or API_PLAN_PRICES.get(plan_code) or 0
+        )
         ensure_user_account_foundation(s, user, now=now)
         s.flush()
         if referrer_id > 0:
@@ -5849,9 +6328,11 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
             if referrer is not None:
                 ensure_user_account_foundation(s, referrer, now=now)
                 s.flush()
-                existing_relationship = s.query(ReferralRelationship.id).filter_by(
-                    referred_account_id=str(user.account_id)
-                ).first()
+                existing_relationship = (
+                    s.query(ReferralRelationship.id)
+                    .filter_by(referred_account_id=str(user.account_id))
+                    .first()
+                )
                 create_referral_relationship(
                     s,
                     referred_account_id=str(user.account_id),
@@ -5891,11 +6372,49 @@ def _apply_external_paid_order(*, provider: str, order_id: str, payload: dict[st
             )
             ext_meta["fulfillment"] = fulfillment
             _set_external_order_meta(ext_order, ext_meta)
-            ext_order_id = int(ext_order.id) if getattr(ext_order, "id", None) is not None else None
+            ext_order_id = (
+                int(ext_order.id)
+                if getattr(ext_order, "id", None) is not None
+                else None
+            )
         else:
             ext_order_id = None
+        consume_commercial_reservation_for_paid_order(
+            s,
+            provider=provider,
+            order_id=order_id,
+            now=now,
+        )
         s.commit()
         s.refresh(user)
+    except CommercialOrderBindingError:
+        s.rollback()
+        try:
+            conflict_order = (
+                s.query(ExternalOrder)
+                .filter(
+                    ExternalOrder.provider == str(provider),
+                    ExternalOrder.order_id == str(order_id),
+                )
+                .with_for_update()
+                .one_or_none()
+            )
+            if conflict_order is not None:
+                conflict_meta = _external_order_meta(conflict_order)
+                _mark_payment_order_manual_review(
+                    row=conflict_order,
+                    meta=conflict_meta,
+                    fulfillment=dict(conflict_meta.get("fulfillment") or {}),
+                    error_code="commercial_offer_conflict",
+                )
+                s.commit()
+        except Exception:
+            s.rollback()
+        logger.error(
+            "external order activation failed code=commercial_offer_conflict correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
+        return False, "commercial_offer_conflict"
     except Exception:
         s.rollback()
         logger.error(
@@ -5961,12 +6480,22 @@ def _mark_payment_order_manual_review(
     _set_external_order_meta(row, meta)
 
 
-def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload: dict[str, Any]) -> tuple[bool, str, dict[str, Any]]:
+def _issue_payment_access_key_for_order(
+    *, provider: str, order_id: str, payload: dict[str, Any]
+) -> tuple[bool, str, dict[str, Any]]:
     s = SessionLocal()
     try:
+        lock_commercial_campaign_for_order(
+            s,
+            provider=provider,
+            order_id=order_id,
+        )
         row = (
             s.query(ExternalOrder)
-            .filter(ExternalOrder.provider == str(provider), ExternalOrder.order_id == str(order_id))
+            .filter(
+                ExternalOrder.provider == str(provider),
+                ExternalOrder.order_id == str(order_id),
+            )
             .with_for_update()
             .first()
         )
@@ -5983,7 +6512,10 @@ def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload
             .one_or_none()
         )
         if str(row.status or "").strip().lower() in {"refunded", "chargeback"}:
-            if existing_claim is not None and str(existing_claim.status or "").strip().lower() == "reversed":
+            if (
+                existing_claim is not None
+                and str(existing_claim.status or "").strip().lower() == "reversed"
+            ):
                 return False, "claim_reversed", {}
             return False, "order_reversed", {}
         buyer_email = str(
@@ -6012,9 +6544,14 @@ def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload
             plan_code = str(existing_claim.plan_code or "").strip().lower()
             duration_days = max(1, int(existing_claim.duration_days or 0))
             display_plan = _resolve_plan_config(s=s, code=plan_code) or {}
-            plan_label = _normalize_mojibake(str(display_plan.get("label") or plan_code).strip()) or plan_code
+            plan_label = (
+                _normalize_mojibake(str(display_plan.get("label") or plan_code).strip())
+                or plan_code
+            )
         else:
-            plan_code = str(row.plan_code or _payload_plan_code(payload) or "").strip().lower()
+            plan_code = (
+                str(row.plan_code or _payload_plan_code(payload) or "").strip().lower()
+            )
             normalized_plan = _normalized_plan_payload(
                 _resolve_plan_config(s=s, code=plan_code),
                 fallback_code=plan_code,
@@ -6065,6 +6602,12 @@ def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload
             fulfillment.pop("access_key", None)
             meta["fulfillment"] = fulfillment
             _set_external_order_meta(row, meta)
+            consume_commercial_reservation_for_paid_order(
+                s,
+                provider=provider,
+                order_id=order_id,
+                now=now,
+            )
             s.commit()
             return True, fulfilled.code, {}
 
@@ -6105,7 +6648,9 @@ def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload
         claim = paid_result.claim
         if claim.account_id:
             s.commit()
-            return _issue_payment_access_key_for_order(provider=provider, order_id=order_id, payload=payload)
+            return _issue_payment_access_key_for_order(
+                provider=provider, order_id=order_id, payload=payload
+            )
 
         if claim.fallback_gift_card_id:
             fallback_result = ensure_fallback_gift_card(
@@ -6165,6 +6710,12 @@ def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload
                 )
                 s.commit()
                 return False, "fallback_missing", {}
+            consume_commercial_reservation_for_paid_order(
+                s,
+                provider=provider,
+                order_id=order_id,
+                now=claim.paid_at or _utcnow(),
+            )
             s.commit()
             return True, "claim_fallback_already_durable", delivery_payload
 
@@ -6233,7 +6784,11 @@ def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload
             return False, "fallback_missing", {}
         reason = "access_key_relinked" if existing_key else "access_key_issued"
 
-        prior_delivery_status = str((fulfillment.get("email_delivery") or {}).get("status") or "").strip().lower()
+        prior_delivery_status = (
+            str((fulfillment.get("email_delivery") or {}).get("status") or "")
+            .strip()
+            .lower()
+        )
         already_delivered = bool(
             existing_key
             and (
@@ -6248,6 +6803,12 @@ def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload
             row.plan_code = str(claim.plan_code)
             meta["fulfillment"] = fulfillment
             _set_external_order_meta(row, meta)
+            consume_commercial_reservation_for_paid_order(
+                s,
+                provider=provider,
+                order_id=order_id,
+                now=row.paid_at or _utcnow(),
+            )
             s.commit()
             return True, reason, {}
 
@@ -6265,15 +6826,53 @@ def _issue_payment_access_key_for_order(*, provider: str, order_id: str, payload
         )
         meta["fulfillment"] = fulfillment
         _set_external_order_meta(row, meta)
+        consume_commercial_reservation_for_paid_order(
+            s,
+            provider=provider,
+            order_id=order_id,
+            now=now,
+        )
         s.commit()
-        return True, reason, {
+        return (
+            True,
+            reason,
+            {
             "buyer_email": buyer_email,
             "access_key": key_code,
             "order_id": str(row.order_id),
             "plan_code": str(claim.plan_code),
             "plan_label": plan_label,
             "days": int(claim.duration_days or 0),
-        }
+            },
+        )
+    except CommercialOrderBindingError:
+        s.rollback()
+        try:
+            conflict_order = (
+                s.query(ExternalOrder)
+                .filter(
+                    ExternalOrder.provider == str(provider),
+                    ExternalOrder.order_id == str(order_id),
+                )
+                .with_for_update()
+                .one_or_none()
+            )
+            if conflict_order is not None:
+                conflict_meta = _external_order_meta(conflict_order)
+                _mark_payment_order_manual_review(
+                    row=conflict_order,
+                    meta=conflict_meta,
+                    fulfillment=dict(conflict_meta.get("fulfillment") or {}),
+                    error_code="commercial_offer_conflict",
+                )
+                s.commit()
+        except Exception:
+            s.rollback()
+        logger.error(
+            "payment access key issue failed code=commercial_offer_conflict correlation=%s",
+            _payment_order_correlation(provider=provider, order_id=order_id),
+        )
+        return False, "commercial_offer_conflict", {}
     except Exception:
         s.rollback()
         logger.error(
@@ -6426,15 +7025,26 @@ def _record_payment_reversal_operator_action(
     reason: str = "provider_reversal",
 ) -> tuple[bool, str]:
     normalized_provider = _normalize_provider(provider)
-    normalized_event = re.sub(r"[^a-z_]", "", str(event_type or "").strip().lower())[:32] or "reversal"
+    normalized_event = (
+        re.sub(r"[^a-z_]", "", str(event_type or "").strip().lower())[:32] or "reversal"
+    )
     tg_id: int | None = None
     reconciled = False
     result_code = "order_not_found"
     s = SessionLocal()
     try:
+        reversal_recorded_at = _utcnow()
+        lock_commercial_campaign_for_order(
+            s,
+            provider=normalized_provider,
+            order_id=str(order_id),
+        )
         row = (
             s.query(ExternalOrder)
-            .filter(ExternalOrder.provider == normalized_provider, ExternalOrder.order_id == str(order_id))
+            .filter(
+                ExternalOrder.provider == normalized_provider,
+                ExternalOrder.order_id == str(order_id),
+            )
             .with_for_update()
             .first()
         )
@@ -6444,14 +7054,16 @@ def _record_payment_reversal_operator_action(
             elif str(row.status or "").strip().lower() != "chargeback":
                 row.status = "refunded"
             tg_id = int(row.tg_id) if row.tg_id is not None else None
-            reversal_reason = str(reason or normalized_event or "provider_reversal")[:64]
+            reversal_reason = str(reason or normalized_event or "provider_reversal")[
+                :64
+            ]
             try:
                 reversal = reverse_payment_entitlement_claim(
                     s,
                     provider=normalized_provider,
                     order_id=str(order_id),
                     reason=reversal_reason,
-                    reversed_at=_utcnow(),
+                    reversed_at=reversal_recorded_at,
                 )
                 reconciled = reversal.code in {"reversed", "already_reversed"}
                 result_code = reversal.code
@@ -6468,7 +7080,7 @@ def _record_payment_reversal_operator_action(
                 )
                 if grant is not None:
                     if grant.reversed_at is None:
-                        reversed_at = _utcnow()
+                        reversed_at = reversal_recorded_at
                         grant.status = "reversed"
                         grant.reversed_at = reversed_at
                         grant.reversal_reason = reversal_reason
@@ -6486,7 +7098,9 @@ def _record_payment_reversal_operator_action(
                     result_code = "grant_not_found"
             meta = _external_order_meta(row)
             fulfillment = dict(meta.get("fulfillment") or {})
-            fulfillment["status"] = "reversed" if reconciled else "reversal_pending_operator_action"
+            fulfillment["status"] = (
+                "reversed" if reconciled else "reversal_pending_operator_action"
+            )
             meta["fulfillment"] = fulfillment
             meta["reversal"] = {
                 "event_type": normalized_event,
@@ -6496,9 +7110,19 @@ def _record_payment_reversal_operator_action(
                 "operator_action_required": not reconciled,
                 "reconciliation_status": result_code,
                 "recorded_at": _safe_iso(_utcnow()),
-                "external_id": str(_callback_ids(normalized_provider, payload, b"")[1] or "")[:160],
+                "external_id": str(
+                    _callback_ids(normalized_provider, payload, b"")[1] or ""
+                )[:160],
             }
             _set_external_order_meta(row, meta)
+            record_commercial_reversal_projection(
+                s,
+                order=row,
+                reversal_kind=(
+                    "chargeback" if normalized_event == "chargeback" else "refund"
+                ),
+                occurred_at=reversal_recorded_at,
+            )
             s.commit()
         else:
             s.rollback()
@@ -6516,7 +7140,10 @@ def _record_payment_reversal_operator_action(
         scope="payments",
         subject=f"{normalized_provider}:{str(order_id or '')[:96]}",
         reason=normalized_event,
-        meta={"operator_action_required": not reconciled, "reconciliation_status": result_code},
+        meta={
+            "operator_action_required": not reconciled,
+            "reconciliation_status": result_code,
+        },
     )
     if tg_id:
         track_event(
@@ -6553,293 +7180,86 @@ def _fulfill_external_paid_order(*, provider: str, order_id: str, payload: dict[
     return _issue_payment_access_key_for_order(provider=provider, order_id=order_id, payload=payload)
 
 
-async def _handle_payment_callback(*, provider: str, event_type: str, request: Request) -> dict[str, Any]:
-    p = _normalize_provider(provider)
-    et = re.sub(r"[^a-z_]", "", str(event_type or "").strip().lower())
-    if p not in PAYMENT_PROVIDER_WHITELIST:
-        raise HTTPException(status_code=404, detail="Unsupported provider")
-    if et not in {"result", "refund", "chargeback"}:
-        raise HTTPException(status_code=400, detail="Unsupported event type")
-    _enforce_beta_rate_limit("payment_callback", request, identity=f"{p}:{et}")
+def _payment_callback_dependencies() -> PaymentCallbackDependencies:
+    return PaymentCallbackDependencies(
+        normalize_provider=_normalize_provider,
+        payment_provider_whitelist=frozenset(PAYMENT_PROVIDER_WHITELIST),
+        enforce_beta_rate_limit=_enforce_beta_rate_limit,
+        read_callback_payload=_read_callback_payload,
+        fk_client_ip=_fk_client_ip,
+        is_ip_allowed=_is_ip_allowed,
+        fk_notify_ip_allowlist=tuple(FK_NOTIFY_IP_ALLOWLIST),
+        lavatop_webhook_auth_configured=_lavatop_webhook_auth_configured,
+        request_client_ip=_request_client_ip,
+        is_loopback_ip=_is_loopback_ip,
+        callback_ids=_callback_ids,
+        verify_callback_signature=_verify_callback_signature,
+        status_from_event=_status_from_event,
+        validate_paid_callback_against_order=_validate_paid_callback_against_order,
+        record_external_payment_event=_record_external_payment_event,
+        record_security_event=_record_security_event,
+        payment_callback_tolerant_mode=bool(PAYMENT_CALLBACK_TOLERANT_MODE),
+        record_payment_reversal_operator_action=_record_payment_reversal_operator_action,
+        terminal_payment_reversal_codes=frozenset(_TERMINAL_PAYMENT_REVERSAL_CODES),
+        complete_external_payment_event=_complete_external_payment_event,
+        payment_order_correlation=_payment_order_correlation,
+        fulfill_external_paid_order=_fulfill_external_paid_order,
+        safe_payment_processing_error=_safe_payment_processing_error,
+        terminal_payment_fulfillment_codes=frozenset(
+            _TERMINAL_PAYMENT_FULFILLMENT_CODES
+        ),
+        record_payment_entitlement_retry_error=_record_payment_entitlement_retry_error,
+        deliver_payment_access_key=deliver_payment_access_key,
+        record_access_key_delivery_result=_record_access_key_delivery_result,
+        finalize_paid_event_after_delivery=_finalize_paid_event_after_delivery,
+        sync_user_after_paid_purchase=_sync_user_after_paid_purchase,
+        notify_telegram_paid_access_ready=_notify_telegram_paid_access_ready,
+        logger=logger,
+                    )
 
-    payload, raw = await _read_callback_payload(request)
-    if p == "freekassa":
-        client_ip = _fk_client_ip(request)
-        if not _is_ip_allowed(client_ip, FK_NOTIFY_IP_ALLOWLIST):
-            logger.warning("freekassa callback blocked by ip allowlist: ip=%s", client_ip)
-            raise HTTPException(status_code=403, detail="Callback IP is not allowed")
-    if p == "lavatop":
-        allowlist = [item.strip() for item in (os.getenv("LAVATOP_WEBHOOK_IP_ALLOWLIST") or "").split(",") if item.strip()]
-        client_ip = _request_client_ip(request)
-        if allowlist and not _is_ip_allowed(client_ip, allowlist):
-            if _is_loopback_ip(client_ip) and _lavatop_webhook_auth_configured():
-                logger.warning(
-                    "lavatop callback arrived through local reverse proxy; relying on webhook auth after allowlist miss: ip=%s",
-                    client_ip,
-                )
-            else:
-                logger.warning("lavatop callback blocked by ip allowlist: ip=%s", client_ip)
-                raise HTTPException(status_code=403, detail="Callback IP is not allowed")
-    order_id, external_id = _callback_ids(p, payload, raw)
-    signature_ok, signature_reason = _verify_callback_signature(provider=p, payload=payload, raw=raw, request=request)
-    callback_status = _status_from_event(et, payload, signature_ok=signature_ok, provider=p)
-    validation_reason = ""
-    if signature_ok and et == "result" and callback_status == "paid":
-        callback_valid, validation_reason = _validate_paid_callback_against_order(provider=p, order_id=order_id, payload=payload)
-        if not callback_valid:
-            payload = dict(payload)
-            payload["_pokrov_validation_error"] = validation_reason
-            callback_status = "manual_review"
-    requires_durable_completion = bool(
-        signature_ok
-        and (
-            (et == "result" and callback_status == "paid")
-            or et in {"refund", "chargeback"}
-        )
+
+async def _handle_payment_callback(
+    *,
+    provider: str,
+    event_type: str,
+    request: Request,
+) -> dict[str, Any]:
+    return await handle_payment_callback(
+        dependencies=_payment_callback_dependencies(),
+        provider=provider,
+        event_type=event_type,
+        request=request,
     )
-    processed_ok = bool(
-        signature_ok
-        and callback_status != "pending_verification"
-        and not requires_durable_completion
-    )
-    duplicate, persist_ok = _record_external_payment_event(
-        provider=p,
-        event_type=et,
-        external_id=external_id,
-        order_id=order_id,
-        payload=payload,
-        signature_ok=signature_ok,
-        processed_ok=processed_ok,
-        status=callback_status,
-    )
-    if not persist_ok:
-        raise HTTPException(status_code=503, detail="Payment callback persistence is retryable")
-
-    if not signature_ok:
-        _record_security_event(
-            "payment_callback_invalid_signature",
-            scope="payment_callback",
-            client_ip=_request_client_ip(request),
-            subject=f"{p}:{et}",
-            reason=signature_reason,
-            meta={"order_id": order_id, "external_id": external_id},
-        )
-        _enforce_beta_rate_limit("payment_callback_invalid", request, identity=f"{p}:{signature_reason}")
-        logger.warning(
-            "payment callback signature invalid: provider=%s event=%s reason=%s order_id=%s external_id=%s",
-            p,
-            et,
-            signature_reason,
-            order_id,
-            external_id,
-        )
-        if not PAYMENT_CALLBACK_TOLERANT_MODE:
-            raise HTTPException(status_code=400, detail=f"Invalid signature: {signature_reason}")
-
-    activated = False
-    activation_reason = ""
-    sync_ok = None
-    if (not duplicate) and signature_ok and et in {"refund", "chargeback"}:
-        try:
-            reversed_ok, reversal_code = _record_payment_reversal_operator_action(
-                provider=p,
-                order_id=order_id,
-                event_type=et,
-                payload=payload,
-                reason=callback_status,
-            )
-        except Exception:
-            logger.error(
-                "payment reversal failed code=reversal_persistence_failed correlation=%s",
-                _payment_order_correlation(provider=p, order_id=order_id),
-            )
-            reversed_ok, reversal_code = False, "reversal_persistence_failed"
-        if not reversed_ok:
-            if reversal_code in _TERMINAL_PAYMENT_REVERSAL_CODES:
-                if not _complete_external_payment_event(
-                    provider=p,
-                    event_type=et,
-                    external_id=external_id,
-                    processed_ok=True,
-                    error_code=reversal_code,
-                ):
-                    raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
-                activation_reason = reversal_code
-            else:
-                _complete_external_payment_event(
-                    provider=p,
-                    event_type=et,
-                    external_id=external_id,
-                    processed_ok=False,
-                    error_code=reversal_code,
-                )
-                raise HTTPException(status_code=503, detail="Payment reversal is retryable")
-        elif not _complete_external_payment_event(
-            provider=p,
-            event_type=et,
-            external_id=external_id,
-            processed_ok=True,
-        ):
-            raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
-
-    if (not duplicate) and signature_ok and et == "result" and callback_status == "paid":
-        activated, activation_reason, fulfillment = _fulfill_external_paid_order(provider=p, order_id=order_id, payload=payload)
-        if not activated:
-            safe_reason = _safe_payment_processing_error(activation_reason or "durable_fulfillment_failed")
-            if safe_reason in _TERMINAL_PAYMENT_FULFILLMENT_CODES:
-                if not _complete_external_payment_event(
-                    provider=p,
-                    event_type=et,
-                    external_id=external_id,
-                    processed_ok=True,
-                    error_code=safe_reason,
-                ):
-                    raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
-                activation_reason = safe_reason
-            else:
-                _record_payment_entitlement_retry_error(
-                    provider=p,
-                    order_id=order_id,
-                    error_code=safe_reason,
-                )
-                _complete_external_payment_event(
-                    provider=p,
-                    event_type=et,
-                    external_id=external_id,
-                    processed_ok=False,
-                    error_code=safe_reason,
-                )
-                raise HTTPException(status_code=503, detail="Payment fulfillment is retryable")
-        else:
-            delivery_finalized = False
-            if fulfillment.get("access_key") and fulfillment.get("buyer_email"):
-                try:
-                    delivery = await deliver_payment_access_key(
-                        email=str(fulfillment["buyer_email"]),
-                        access_key=str(fulfillment["access_key"]),
-                        order_id=str(fulfillment.get("order_id") or order_id),
-                        plan_code=str(fulfillment.get("plan_code") or ""),
-                        plan_label=str(fulfillment.get("plan_label") or ""),
-                        days=int(fulfillment.get("days") or 0),
-                    )
-                except Exception:
-                    delivery = {"status": "delivery_error", "mode": "webhook"}
-                evidence_ok = _record_access_key_delivery_result(provider=p, order_id=order_id, delivery=delivery)
-                if not evidence_ok:
-                    _complete_external_payment_event(
-                        provider=p,
-                        event_type=et,
-                        external_id=external_id,
-                        processed_ok=False,
-                        error_code="delivery_evidence_failed",
-                    )
-                    raise HTTPException(status_code=503, detail="Payment delivery evidence is retryable")
-                delivery_ok = str(delivery.get("status") or "").strip().lower() in {"sent", "debug_echo"}
-                completion_ok, completion_reason = _finalize_paid_event_after_delivery(
-                    provider=p,
-                    order_id=order_id,
-                    event_type=et,
-                    external_id=external_id,
-                    delivery_succeeded=delivery_ok,
-                )
-                if not completion_ok:
-                    raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
-                delivery_finalized = True
-                if completion_reason == "claim_reversed":
-                    activated = False
-                    activation_reason = completion_reason
-                    fulfillment = {}
-                elif completion_reason:
-                    raise HTTPException(status_code=503, detail="Payment access delivery is retryable")
-            if (not delivery_finalized) and not _complete_external_payment_event(
-                provider=p,
-                event_type=et,
-                external_id=external_id,
-                processed_ok=True,
-            ):
-                raise HTTPException(status_code=503, detail="Payment callback completion is retryable")
-            if activated and fulfillment.get("access_key") and fulfillment.get("buyer_email"):
-                activation_reason = activation_reason or "access_key_email_sent"
-            tg_id = fulfillment.get("tg_id")
-            if tg_id is not None:
-                try:
-                    sync_ok = bool(await _sync_user_after_paid_purchase(int(tg_id)))
-                except Exception:
-                    sync_ok = False
-                try:
-                    await _notify_telegram_paid_access_ready(
-                        tg_id=int(tg_id),
-                        sync_ok=bool(sync_ok),
-                    )
-                except Exception:
-                    logger.warning(
-                        "telegram paid access notification failed code=telegram_notification_failed correlation=%s",
-                        _payment_order_correlation(provider=p, order_id=order_id),
-                    )
-    elif (not duplicate) and signature_ok and et == "result":
-        activation_reason = validation_reason or callback_status
-
-    return {
-        "ok": bool(signature_ok and persist_ok),
-        "provider": p,
-        "event_type": et,
-        "order_id": order_id or None,
-        "external_id": external_id,
-        "status": callback_status,
-        "signature_ok": bool(signature_ok),
-        "duplicate": bool(duplicate),
-        "activated": bool(activated),
-        "activation_reason": activation_reason or None,
-        "sync_ok": sync_ok,
-    }
 
 
-def _parse_freekassa_payment_url(body: dict[str, Any], fallback_order_id: str) -> str:
-    if not isinstance(body, dict):
-        return ""
-    for key in ("location", "paymentUrl", "url", "redirect_url"):
-        val = body.get(key)
-        if isinstance(val, str) and val.strip():
-            return val.strip()
-    data = body.get("data")
-    if isinstance(data, dict):
-        for key in ("location", "paymentUrl", "url", "redirect_url"):
-            val = data.get(key)
-            if isinstance(val, str) and val.strip():
-                return val.strip()
-    shop = _fk_shop_by_source("site")
-    shop_id = str(shop.get("shop_id") or "")
-    if shop_id and fallback_order_id:
-        return f"{_freekassa_payment_base_url()}/?m={shop_id}&oa=0&o={fallback_order_id}"
-    return ""
-
-
-def _parse_freekassa_payment_url(body: dict[str, Any], fallback_order_id: str, source: str = "site") -> str:
-    if not isinstance(body, dict):
-        return ""
-    for key in ("location", "paymentUrl", "url", "redirect_url"):
-        val = body.get(key)
-        if isinstance(val, str) and val.strip():
-            return val.strip()
-    data = body.get("data")
-    if isinstance(data, dict):
-        for key in ("location", "paymentUrl", "url", "redirect_url"):
-            val = data.get(key)
-            if isinstance(val, str) and val.strip():
-                return val.strip()
-    shop = _fk_shop_by_source(source or "site")
-    shop_id = str(shop.get("shop_id") or "")
-    if shop_id and fallback_order_id:
-        return f"{_freekassa_payment_base_url()}/?m={shop_id}&oa=0&o={fallback_order_id}"
-    return ""
-
-
-async def _freekassa_api_request(*, source: str, method: str, data: dict[str, Any]) -> dict[str, Any]:
+async def _freekassa_api_request(
+    *,
+    source: str,
+    method: str,
+    data: dict[str, Any],
+    http_registry: PaymentHttpRegistry | None = None,
+) -> dict[str, Any]:
     shop = _fk_shop_by_source(source)
     shop_id = str(shop.get("shop_id") or "").strip()
     api_key = str(shop.get("api_key") or "").strip()
     if not shop_id or not api_key:
         raise HTTPException(status_code=500, detail="Freekassa shop is not configured")
+
+    method_key = str(method or "").strip().strip("/")
+    operation_by_method = {
+        "orders/create": "create_order",
+        "orders": "get_order",
+        "orders/refund": "refund_order",
+        "currencies": "list_currencies",
+        "currencies/status": "currency_status",
+    }
+    operation = operation_by_method.get(method_key)
+    if operation is None:
+        raise HTTPException(
+            status_code=400, detail="Freekassa API method is not allowed"
+        )
+    if http_registry is None:
+        raise HTTPException(status_code=503, detail="payment HTTP client unavailable")
 
     nonce = int(time.time() * 1000)
     payload = {"shopId": shop_id, "nonce": nonce}
@@ -6847,36 +7267,40 @@ async def _freekassa_api_request(*, source: str, method: str, data: dict[str, An
         payload[str(key)] = value
     signature = _fk_api_signature(api_key=api_key, payload=payload)
     payload["signature"] = signature
-    fk_base = (getattr(Settings, "FK_API_BASE_URL", "") or os.getenv("FK_API_BASE_URL") or "https://api.fk.life/v1").strip().rstrip("/")
-    url = f"{fk_base}/{method.strip('/')}"
+    fk_base = (
+        (
+            getattr(Settings, "FK_API_BASE_URL", "")
+            or os.getenv("FK_API_BASE_URL")
+            or "https://api.fk.life/v1"
+        )
+        .strip()
+        .rstrip("/")
+    )
+    url = f"{fk_base}/{method_key}"
     headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
         "Sign": signature,
         "Signature": signature,
     }
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
-            url,
+    try:
+        result = await http_registry.post_object(
+            provider="freekassa",
+            operation=operation,
+            url=url,
             headers=headers,
-            data=json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
-            timeout=aiohttp.ClientTimeout(total=25),
-        ) as resp:
-            txt = await resp.text()
-            try:
-                body = json.loads(txt) if txt else {}
-            except Exception:
-                body = {"raw": txt}
-            if resp.status >= 400:
-                logger.error(
-                    "freekassa api error source=%s method=%s status=%s body=%s",
-                    source,
-                    method,
-                    resp.status,
-                    str(txt or "")[:600],
+            json_body=payload,
+        )
+    except OutboundHttpError as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Freekassa API error: {exc.code}",
+        ) from exc
+    if result.status >= 400:
+        raise HTTPException(
+            status_code=502, detail=f"Freekassa API error: {result.status}"
                 )
-                raise HTTPException(status_code=502, detail=f"Freekassa API error: {resp.status}")
-            return body if isinstance(body, dict) else {"data": body}
+    return result.body
 
 
 async def _telegram_send_message(
@@ -6927,19 +7351,29 @@ def _telegram_paid_access_keyboard() -> dict[str, Any]:
     return {"inline_keyboard": rows}
 
 
-async def _notify_telegram_paid_access_ready(*, tg_id: int, sync_ok: bool) -> bool:
+def _paid_access_notification_expiry(tg_id: int) -> str | None:
     s = SessionLocal()
     try:
         user = s.query(User).filter(User.tg_id == int(tg_id)).first()
         if not user:
-            return False
+            return None
         if not str(getattr(user, "sub_token", "") or "").strip():
             user.sub_token = _generate_sub_token()
             s.commit()
             s.refresh(user)
-        expiry = user.expiry_at.strftime("%d.%m.%Y") if user.expiry_at else "—"
+        return user.expiry_at.strftime("%d.%m.%Y") if user.expiry_at else "—"
     finally:
         s.close()
+
+
+async def _notify_telegram_paid_access_ready(*, tg_id: int, sync_ok: bool) -> bool:
+    expiry = await run_payment_db_use_case(
+        "callback_notification_projection",
+        _paid_access_notification_expiry,
+        int(tg_id),
+    )
+    if expiry is None:
+        return False
 
     if sync_ok:
         text = (
@@ -7004,21 +7438,19 @@ async def _is_channel_member(channel_username: str, tg_id: int) -> tuple[bool, s
     return status in {"creator", "administrator", "member", "restricted"}, status or "unknown"
 
 
-async def _sync_user_after_paid_bonus(user: User) -> bool:
+async def _sync_paid_user_identity(*, user_uuid: str, tg_id: int) -> bool:
     try:
         panel = ControlPanel()
         try:
             await panel.login()
-            ok = await panel.enable_client(user.uuid, True)
+            ok = await panel.enable_client(str(user_uuid), True)
             nodes = await panel.refresh()
             free_codes = [
-                (getattr(n, "code", "") or "").strip()
-                for n in nodes
-                if node_is_free(n)
+                (getattr(n, "code", "") or "").strip() for n in nodes if node_is_free(n)
             ]
             if free_codes:
                 await panel.set_existing_user_enabled_on_nodes(
-                    tg_id=int(user.tg_id),
+                    tg_id=int(tg_id),
                     node_codes=free_codes,
                     enable=False,
                 )
@@ -7029,15 +7461,33 @@ async def _sync_user_after_paid_bonus(user: User) -> bool:
         return False
 
 
-async def _sync_user_after_paid_purchase(tg_id: int) -> bool:
+async def _sync_user_after_paid_bonus(user: User) -> bool:
+    return await _sync_paid_user_identity(
+        user_uuid=str(user.uuid),
+        tg_id=int(user.tg_id),
+    )
+
+
+def _paid_user_sync_identity(tg_id: int) -> tuple[str, int] | None:
     s = SessionLocal()
     try:
-        user = s.query(User).filter(User.tg_id == int(tg_id)).first()
-        if not user:
-            return False
-        return await _sync_user_after_paid_bonus(user)
+        row = s.query(User.uuid, User.tg_id).filter(User.tg_id == int(tg_id)).first()
+        if not row:
+            return None
+        return str(row[0]), int(row[1])
     finally:
         s.close()
+
+
+async def _sync_user_after_paid_purchase(tg_id: int) -> bool:
+    identity = await run_payment_db_use_case(
+        "callback_sync_identity",
+        _paid_user_sync_identity,
+        int(tg_id),
+    )
+    if identity is None:
+        return False
+    return await _sync_paid_user_identity(user_uuid=identity[0], tg_id=identity[1])
 
 
 def _ticket_status_title(status: str) -> str:
@@ -7128,6 +7578,8 @@ def _ticket_message_detail_row(msg) -> dict[str, Any]:
         "ticket_id": msg.ticket_id,
         "sender_tg_id": msg.sender_tg_id,
         "sender_role": msg.sender_role,
+        "visibility": str(getattr(msg, "visibility", "public") or "public")[:16],
+        "macro_code": str(getattr(msg, "macro_code", "") or "")[:48] or None,
         "body": str(msg.body or "")[:2000],
         "attachment": _safe_ticket_attachment(msg),
         "created_at": _safe_iso(msg.created_at),
@@ -7159,7 +7611,11 @@ def _ticket_unread_for_user(messages: list | None) -> int:
 def _ticket_summary_row(ticket, messages: list | None = None) -> dict[str, Any]:
     rows = messages if messages is not None else []
     last_message = rows[-1] if rows else None
-    last_message_preview = (str(getattr(last_message, "body", "") or "").strip()[:200] if last_message else "")
+    last_message_preview = (
+        str(getattr(last_message, "body", "") or "").strip()[:200]
+        if last_message
+        else ""
+    )
     has_attachment = bool(last_message and _safe_ticket_attachment(last_message))
     if not last_message_preview and has_attachment:
         last_message_preview = "Вложение"
@@ -7169,6 +7625,21 @@ def _ticket_summary_row(ticket, messages: list | None = None) -> dict[str, Any]:
         "status": ticket.status,
         "status_title": _ticket_status_title(ticket.status),
         "subject": ticket.subject,
+        "environment": str(
+            getattr(ticket, "environment", "production") or "production"
+        )[:32],
+        "priority": str(getattr(ticket, "priority", "normal") or "normal")[:16],
+        "queue": str(getattr(ticket, "queue", "general") or "general")[:48],
+        "assigned_admin_tg_id": int(ticket.assigned_admin_tg_id)
+        if ticket.assigned_admin_tg_id is not None
+        else None,
+        "assigned_team": str(getattr(ticket, "assigned_team", "") or "")[:48] or None,
+        "waiting_on": str(getattr(ticket, "waiting_on", "") or "")[:24] or None,
+        "sla_due_at": _safe_iso(getattr(ticket, "sla_due_at", None)),
+        "escalated_at": _safe_iso(getattr(ticket, "escalated_at", None)),
+        "incident_id": str(getattr(ticket, "incident_id", "") or "")[:36] or None,
+        "attempt_ref": str(getattr(ticket, "attempt_ref", "") or "")[:64] or None,
+        "version": max(1, int(getattr(ticket, "version", 1) or 1)),
         "created_at": _safe_iso(ticket.created_at),
         "updated_at": _safe_iso(ticket.updated_at),
         "closed_at": _safe_iso(ticket.closed_at),
@@ -7177,7 +7648,9 @@ def _ticket_summary_row(ticket, messages: list | None = None) -> dict[str, Any]:
         "operatorPresence": _ticket_operator_presence(ticket),
         "operatorTyping": False,
         "unreadForUser": _ticket_unread_for_user(rows),
-        "slaHint": None if str(ticket.status or "").strip().lower() == STATUS_CLOSED else "support_queue",
+        "slaHint": None
+        if str(ticket.status or "").strip().lower() == STATUS_CLOSED
+        else "support_queue",
     }
 
 
@@ -7189,8 +7662,15 @@ def _ticket_detail_row(ticket, messages: list | None = None) -> dict[str, Any]:
     }
 
 
-def _ticket_row(ticket, messages: list | None = None, *, include_media: bool = True) -> dict[str, Any]:
-    rows = list(messages or [])
+def _ticket_row(
+    ticket, messages: list | None = None, *, include_media: bool = True
+) -> dict[str, Any]:
+    rows = [
+        message
+        for message in list(messages or [])
+        if str(getattr(message, "visibility", "public") or "public").strip().lower()
+        != "internal"
+    ]
     last_message = rows[-1] if rows else None
     return {
         "id": ticket.id,
@@ -7202,12 +7682,19 @@ def _ticket_row(ticket, messages: list | None = None, *, include_media: bool = T
         "created_at": _safe_iso(ticket.created_at),
         "updated_at": _safe_iso(ticket.updated_at),
         "closed_at": _safe_iso(ticket.closed_at),
-        "messages": [_ticket_message_row(message, include_media=include_media) for message in rows],
-        "last_message_preview": ((last_message.body or "").strip()[:200] if last_message else ""),
+        "messages": [
+            _ticket_message_row(message, include_media=include_media)
+            for message in rows
+        ],
+        "last_message_preview": (
+            (last_message.body or "").strip()[:200] if last_message else ""
+        ),
         "operatorPresence": _ticket_operator_presence(ticket),
         "operatorTyping": False,
         "unreadForUser": _ticket_unread_for_user(rows),
-        "slaHint": None if str(ticket.status or "").strip().lower() == STATUS_CLOSED else "support_queue",
+        "slaHint": None
+        if str(ticket.status or "").strip().lower() == STATUS_CLOSED
+        else "support_queue",
     }
 
 
@@ -7360,6 +7847,8 @@ def _support_upload_reject_reason(exc: HTTPException) -> str:
     if "attachment is too large" in detail:
         return "attachment_too_large"
     return f"http_{int(exc.status_code)}"
+
+
 _RU_MANIFEST_PATH = "/api/internal/probes/ru-origin/manifest"
 _RU_RUNS_PATH = "/api/internal/probes/ru-origin/runs"
 _RU_HEARTBEAT_PATH = "/api/internal/probes/ru-origin/heartbeat"
@@ -8317,18 +8806,30 @@ def _campaign_lookup(
         .order_by(IncentiveCampaign.id.desc())
         .all()
     )
+    active_capacity_units = active_entitlement_capacity_units(s, now=now_dt)
     for row in rows:
+        policy = evaluate_campaign_policy(
+            row,
+            active_units=active_capacity_units,
+            now=now_dt,
+        )
+        if not bool(policy.get("activation_allowed")):
+            continue
         if row.starts_at and row.starts_at > now_dt:
             continue
         if row.ends_at and row.ends_at < now_dt:
             if bool(row.auto_disable):
                 row.is_active = False
             continue
-        if int(row.max_activations or -1) >= 0 and int(row.activations_count or 0) >= int(row.max_activations or -1):
+        if int(row.max_activations or -1) >= 0 and int(
+            row.activations_count or 0
+        ) >= int(row.max_activations or -1):
             if bool(row.auto_disable):
                 row.is_active = False
             continue
-        if not _campaign_segment_match(user=user, segment=str(row.segment or "all_active")):
+        if not _campaign_segment_match(
+            user=user, segment=str(row.segment or "all_active")
+        ):
             continue
         return row
     return None
@@ -8652,6 +9153,15 @@ EVENT_WHITELIST = {
     "promo_click",
     "promo_dismiss",
     "promo_expired",
+    "app_first_open",
+    "acquisition_handoff_received",
+    "acquisition_handoff_failed",
+    "trial_start_selected",
+    "existing_access_selected",
+    "vpn_permission_explainer_shown",
+    "vpn_permission_result",
+    "first_home_seen",
+    "first_verified_connect",
 }
 
 FUNNEL_EVENT_WHITELIST = {
@@ -8939,6 +9449,129 @@ async def _get_user_runtime_summary(*, s, user: User, nodes: list[Node] | None =
         "last_online_age_seconds": int(last_online_age_seconds) if last_online_age_seconds is not None else None,
         "status": status,
     }
+
+
+# Admin API v2 installs as a real modular router. Only the compatibility
+# resolver is supplied by this legacy composition root.
+try:
+    from .admin_v2.router import install_admin_v2 as _install_admin_v2
+except ImportError:
+    from admin_v2.router import install_admin_v2 as _install_admin_v2
+
+
+def _admin_v2_legacy_db_executor(
+    session,
+    state,
+    payload,
+    runtime_payload,
+    *,
+    actor_tg_id: int,
+    action: str,
+):
+    executor = globals().get("_execute_admin_client_action_db")
+    if not callable(executor):
+        raise RuntimeError("legacy DB executor is unavailable")
+    return executor(
+        session,
+        state,
+        payload,
+        runtime_payload,
+        actor_tg_id=actor_tg_id,
+        action=action,
+    )
+
+
+async def _admin_v2_legacy_external_executor(context):
+    executor = globals().get("_execute_admin_client_action_external")
+    if not callable(executor):
+        raise RuntimeError("legacy external executor is unavailable")
+    return await executor(context)
+
+
+async def _admin_v2_legacy_post_commit_executor(context):
+    executor = globals().get("_execute_admin_post_commit")
+    if not callable(executor):
+        raise RuntimeError("legacy post-commit executor is unavailable")
+    return await executor(context)
+
+
+async def _admin_v2_legacy_read_executor(context):
+    kind = str((context or {}).get("kind") or "").strip().lower()
+    params = dict((context or {}).get("params") or {})
+    if str((context or {}).get("environment") or "").strip().lower() != "production":
+        raise RuntimeError(
+            "legacy production projection is unavailable in this environment"
+        )
+    if kind == "support.online":
+        reader = globals().get("_admin_online_users_payload")
+        if not callable(reader):
+            raise RuntimeError("online projection is unavailable")
+        only_codes = [
+            part.strip().lower()
+            for part in str(params.get("only") or "").split(",")
+            if part.strip()
+        ]
+        panel = ControlPanel()
+        try:
+            live = await panel.get_node_online_clients(node_codes=only_codes or None)
+        finally:
+            await panel.close()
+        session = SessionLocal()
+        try:
+            return reader(
+                s=session,
+                live_rows=list(live.get("rows") or []),
+                errors=list(live.get("errors") or []),
+                limit=int(params.get("limit") or 200),
+            )
+        finally:
+            session.close()
+    if kind == "shift.overview":
+        reader = globals().get("_admin_ops_overview_payload")
+        if not callable(reader):
+            raise RuntimeError("overview projection is unavailable")
+        session = SessionLocal()
+        try:
+            return reader(s=session)
+        finally:
+            session.close()
+    if kind == "growth.funnel":
+        range_reader = globals().get("_admin_metrics_range")
+        payload_reader = globals().get("_admin_funnel_summary_payload")
+        if not callable(range_reader) or not callable(payload_reader):
+            raise RuntimeError("funnel projection is unavailable")
+        from_dt, to_dt = range_reader(params.get("from"), params.get("to"), max_days=90)
+        session = SessionLocal()
+        try:
+            return payload_reader(s=session, from_dt=from_dt, to_dt=to_dt)
+        finally:
+            session.close()
+    if kind == "growth.referrals":
+        reader = globals().get("_admin_referrals_pending_payload")
+        if not callable(reader):
+            raise RuntimeError("referral projection is unavailable")
+        session = SessionLocal()
+        try:
+            return reader(
+                s=session,
+                limit=int(params.get("limit") or 100),
+                status=str(params.get("status") or ""),
+            )
+        finally:
+            session.close()
+    raise RuntimeError("unknown legacy read projection")
+
+
+_ADMIN_V2_RUNTIME = _install_admin_v2(
+    app,
+    session_factory=SessionLocal,
+    legacy_admin_resolver=_require_legacy_admin,
+    legacy_db_executor=_admin_v2_legacy_db_executor,
+    legacy_external_executor=_admin_v2_legacy_external_executor,
+    legacy_post_commit_executor=_admin_v2_legacy_post_commit_executor,
+    legacy_read_executor=_admin_v2_legacy_read_executor,
+)
+
 # Route implementations live in ordered domain slices. The loader preserves
 # the legacy api.<name> surface and deterministic FastAPI registration.
 try:
@@ -8951,8 +9584,16 @@ _API_SLICE_MODULES = _load_domain_slices(
     globals(),
     (
         f"{_slice_prefix}api_public_routes",
+        f"{_slice_prefix}api_client_routes",
+        f"{_slice_prefix}api_commercial_offer_routes",
+        f"{_slice_prefix}api_payment_routes",
+        f"{_slice_prefix}api_observability_routes",
+        f"{_slice_prefix}api_support_bundle_routes",
+        f"{_slice_prefix}api_operator_observability_routes",
         f"{_slice_prefix}api_surface_routes",
         f"{_slice_prefix}api_admin_routes",
+        f"{_slice_prefix}api_admin_action_routes",
+        f"{_slice_prefix}api_admin_network_routes",
         f"{_slice_prefix}api_subscription_routes",
     ),
 )

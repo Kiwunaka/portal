@@ -98,6 +98,13 @@ class ApiP0ExtensionsTests(unittest.TestCase):
             "APP_WINDOWS_EXE_URL",
             "APP_WINDOWS_MIRROR_URL",
             "APP_DOCS_URL",
+            "APP_RELEASE_SCHEMA_VERSION",
+            "APP_RELEASE_CANDIDATE_LABEL",
+            "APP_RELEASE_HANDOFF_SHA256",
+            "APP_RELEASE_ARTIFACT_SET_SHA256",
+            "APP_RELEASE_CORE_VERSION",
+            "APP_RELEASE_CORE_DESKTOP_ABI",
+            "APP_RELEASE_CORE_ANDROID_PACKAGE",
         ):
             self._saved_env[k] = os.environ.get(k)
 
@@ -127,6 +134,13 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         os.environ["APP_WINDOWS_EXE_URL"] = ""
         os.environ["APP_WINDOWS_MIRROR_URL"] = ""
         os.environ["APP_DOCS_URL"] = ""
+        os.environ["APP_RELEASE_SCHEMA_VERSION"] = "0"
+        os.environ["APP_RELEASE_CANDIDATE_LABEL"] = ""
+        os.environ["APP_RELEASE_HANDOFF_SHA256"] = ""
+        os.environ["APP_RELEASE_ARTIFACT_SET_SHA256"] = ""
+        os.environ["APP_RELEASE_CORE_VERSION"] = ""
+        os.environ["APP_RELEASE_CORE_DESKTOP_ABI"] = "0"
+        os.environ["APP_RELEASE_CORE_ANDROID_PACKAGE"] = ""
 
         for module_name in (
             "api",
@@ -457,6 +471,7 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertEqual(body["windows"]["exe_url"], "")
         self.assertEqual(body["windows"]["mirror_url"], "")
         self.assertEqual(body["docs_url"], "")
+        self.assertIsNone(body["release_manifest"])
         self.assertRegex(body["updated_at"], r"^\d{4}-\d{2}-\d{2}T")
         self.assertTrue(body["updated_at"].endswith("Z"))
 
@@ -638,6 +653,37 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         required = client.get("/api/client/apps?platform=android&current_version=0.8.9", headers=hdrs)
         self.assertEqual(required.status_code, 200, required.text)
         self.assertEqual(required.json()["android"]["update"]["update_policy"], "required")
+
+    def test_client_apps_exposes_only_complete_v2_manifest_identity(self) -> None:
+        self.api.Settings.APP_RELEASE_SCHEMA_VERSION = 2
+        self.api.Settings.APP_RELEASE_CANDIDATE_LABEL = "pokrov-1.2.0-rc.1"
+        self.api.Settings.APP_RELEASE_HANDOFF_SHA256 = "A" * 64
+        self.api.Settings.APP_RELEASE_ARTIFACT_SET_SHA256 = "B" * 64
+        self.api.Settings.APP_RELEASE_CORE_VERSION = "1.1.0"
+        self.api.Settings.APP_RELEASE_CORE_DESKTOP_ABI = 2
+        self.api.Settings.APP_RELEASE_CORE_ANDROID_PACKAGE = "space.pokrov.core"
+        self.api.Settings.APP_ANDROID_VERSION = "1.2.0-rc.1"
+        self.api.Settings.APP_WINDOWS_VERSION = "1.2.0-rc.1"
+        client = TestClient(self.api.app)
+        hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
+
+        body = client.get("/api/client/apps", headers=hdrs).json()
+
+        self.assertEqual(
+            body["release_manifest"],
+            {
+                "schema_version": 2,
+                "candidate_label": "pokrov-1.2.0-rc.1",
+                "handoff_sha256": "a" * 64,
+                "artifact_set_sha256": "b" * 64,
+                "core_version": "1.1.0",
+                "core_desktop_abi": 2,
+                "core_android_package": "space.pokrov.core",
+            },
+        )
+
+        self.api.Settings.APP_RELEASE_HANDOFF_SHA256 = "broken"
+        self.assertIsNone(client.get("/api/client/apps", headers=hdrs).json()["release_manifest"])
 
     def test_public_client_apps_is_anonymous_and_fail_closed_to_approved_release_assets(self) -> None:
         release = "https://github.com/Kiwunaka/pokrov/releases/download/v1.0.4-beta.1"

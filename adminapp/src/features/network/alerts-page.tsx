@@ -1,14 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, BellOff, Check, CircleCheck, ExternalLink, RefreshCw, ShieldAlert } from "lucide-react";
+import { AlertTriangle, BellOff, Check, CircleCheck, ExternalLink, Link2, RefreshCw, ShieldAlert, Siren } from "lucide-react";
 
+import { ActionIntentDialog } from "@/components/ops/action-intent-dialog";
 import { MISSING_DATA_TEXT, MissingData } from "@/components/ops/missing-data";
 import { adminApiErrorText, RouteBoundary } from "@/components/ops/route-boundary";
 import type { OpsShellStatus } from "@/components/ops/shell-status";
-import { Badge, Button, Card, EmptyState, ErrorState, MetricCell, MetricStrip, SectionTitle, type Tone } from "@/components/ui";
+import { Badge, Button, Card, EmptyState, MetricCell, MetricStrip, SectionTitle, type Tone } from "@/components/ui";
 import { AdminApiError } from "@/lib/admin-api/client";
-import { acknowledgeAlert, fetchNetworkAlerts, silenceAlert, type NetworkAlert } from "@/lib/admin-api/network";
+import type { ActionIntentRequest } from "@/lib/admin-api/actions";
+import { fetchNetworkAlerts, type NetworkAlert } from "@/lib/admin-api/network";
+import { fetchIncidents } from "@/lib/admin-api/work";
 import { useRouteResource } from "@/lib/use-route-resource";
 import { pushUrlState, readUrlState, replaceUrlState, subscribeToUrlState, urlCodecs } from "@/lib/url-state";
 
@@ -85,12 +88,14 @@ function isAccessDenied(error: AdminApiError | null): boolean {
 
 export function AlertsPage({ onShellStatus }: { onShellStatus?: (status: OpsShellStatus) => void }) {
   const [urlState, setUrlState] = useState<AlertsUrlState>(() => readUrlState(ALERTS_URL_CODECS));
-  const [actionId, setActionId] = useState<number | null>(null);
-  const [actionError, setActionError] = useState("");
+  const [intentRequest, setIntentRequest] = useState<ActionIntentRequest | null>(null);
+  const [incidentId, setIncidentId] = useState("");
   useEffect(() => subscribeToUrlState<AlertsUrlState>(ALERTS_URL_CODECS, setUrlState), []);
 
   const load = useCallback((signal: AbortSignal) => fetchNetworkAlerts(urlState.status, { signal }), [urlState.status]);
   const resource = useRouteResource(`alerts:${urlState.status}`, load, { enabled: true, pollMs: 60_000 });
+  const loadIncidents = useCallback((signal: AbortSignal) => fetchIncidents({ signal }), []);
+  const incidentResource = useRouteResource("alerts:incident-options", loadIncidents, { enabled: Boolean(urlState.selected), pollMs: 60_000 });
   const alerts = useMemo(() => [...(resource.data?.alerts || [])].sort((left, right) => {
     const rank = (value: string) => value.toLowerCase() === "critical" ? 2 : value.toLowerCase() === "warning" ? 1 : 0;
     return rank(right.severity) - rank(left.severity) || Date.parse(left.first_seen_at || "9999-12-31") - Date.parse(right.first_seen_at || "9999-12-31");
@@ -105,21 +110,64 @@ export function AlertsPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
     });
   }, [alerts, onShellStatus, resource.data, resource.error, resource.loading]);
 
-  const runAction = useCallback(async (alert: NetworkAlert, action: "ack" | "silence") => {
-    setActionId(alert.id);
-    setActionError("");
-    try {
-      if (action === "ack") await acknowledgeAlert(alert.id);
-      else await silenceAlert(alert.id, 60);
-      resource.reload();
-    } catch (error) {
-      setActionError(error instanceof AdminApiError
-        ? adminApiErrorText(error, "Действие с алертом не выполнено.")
-        : "Действие с алертом не выполнено.");
-    } finally {
-      setActionId(null);
-    }
-  }, [resource]);
+  const runSilence = useCallback((alert: NetworkAlert) => {
+    setIntentRequest({
+      action: "alert.silence",
+      target: { type: "alert", id: String(alert.id) },
+      payload: { expected_version: alert.version, minutes: 60 },
+      endpoint: "",
+      workspace: "network",
+    });
+  }, []);
+
+  const alertIntent = useCallback((alert: NetworkAlert, action: "alert.ack" | "alert.false_positive") => {
+    setIntentRequest({
+      action,
+      target: { type: "alert", id: String(alert.id) },
+      payload: { expected_version: alert.version },
+      endpoint: "",
+      workspace: "incidents",
+    });
+  }, []);
+
+  const linkIncident = useCallback((alert: NetworkAlert) => {
+    const incident = incidentResource.data?.find((item) => item.id === incidentId);
+    if (!incident) return;
+    setIntentRequest({
+      action: "alert.link_incident",
+      target: { type: "alert", id: String(alert.id) },
+      payload: {
+        expected_version: alert.version,
+        incident_id: incident.id,
+        expected_incident_version: incident.version,
+      },
+      endpoint: "",
+      workspace: "incidents",
+    });
+  }, [incidentId, incidentResource.data]);
+
+  const createIncident = useCallback((alert: NetworkAlert) => {
+    const now = new Date();
+    const severity = alert.severity === "critical" ? "critical" : alert.severity === "warning" ? "major" : "degraded";
+    setIntentRequest({
+      action: "alert.create_incident",
+      target: { type: "alert", id: String(alert.id) },
+      payload: {
+        expected_version: alert.version,
+        incident_id: crypto.randomUUID(),
+        incident_key: `alert-${alert.id}-${now.getTime()}`,
+        title: alert.title,
+        summary: alert.body || `Инцидент создан из алерта ${alert.id}.`,
+        severity,
+        started_at: alert.first_seen_at || now.toISOString(),
+        affected_node_codes: alert.node_code ? [alert.node_code] : [],
+        compensation_days: 0,
+        impact: `Требует проверки сигнала ${alert.fingerprint}.`,
+      },
+      endpoint: "",
+      workspace: "incidents",
+    });
+  }, []);
 
   return (
     <div className="ops-page space-y-3">
@@ -136,8 +184,6 @@ export function AlertsPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
         </div>
       </div>
 
-      {actionError ? <ErrorState title="Действие не выполнено" description={actionError} className="min-h-0" /> : null}
-
       {resource.data ? (
         <MetricStrip label="Сводка очереди алертов">
           <MetricCell icon={<ShieldAlert aria-hidden="true" size={17} />} label="В текущем представлении" value={alerts.length} detail={urlState.status === "active" ? "Активные и приглушённые" : urlState.status === "resolved" ? "Закрытые" : "Все состояния"} tone={alerts.length ? "warning" : "success"} />
@@ -149,7 +195,7 @@ export function AlertsPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
 
       <div className="ops-workspace lg:grid-cols-[minmax(22rem,0.82fr)_minmax(20rem,1.18fr)]">
         <Card>
-          <SectionTitle title="Очередь реакции" description="Критичные сигналы идут первыми. Подтверждение и приглушение — L1-действия с обычным аудитом, без action intent." />
+          <SectionTitle title="Очередь реакции" description="Подтверждение, false positive, связь с incident и приглушение проходят prepare/confirm/execute." />
           <RouteBoundary loading={resource.loading} refreshing={resource.refreshing} error={resource.error} hasData={resource.data !== null} retryLabel="Повторить загрузку алертов" onRetry={resource.reload}>
             {alerts.length ? <div className="divide-y divide-[color:var(--atlas-border)]">{alerts.map((alert) => (
               <article key={alert.id} className={`py-3 ${selected?.id === alert.id ? "bg-[color:var(--command-surface-raised)]" : ""}`}>
@@ -175,15 +221,45 @@ export function AlertsPage({ onShellStatus }: { onShellStatus?: (status: OpsShel
                   <div className="flex justify-between gap-3 py-2"><dt>Первый сигнал</dt><dd className="text-right font-semibold">{dateText(selected.first_seen_at)}<span className="block font-normal text-[color:var(--atlas-text-muted)]">{selected.first_seen_at ? ageText(selected.first_seen_at) : "Нет данных"}</span></dd></div>
                   <div className="flex justify-between gap-3 py-2"><dt>Последний сигнал</dt><dd className="text-right font-semibold">{dateText(selected.last_seen_at)}<span className="block font-normal text-[color:var(--atlas-text-muted)]">{selected.last_seen_at ? ageText(selected.last_seen_at) : "Нет данных"}</span></dd></div>
                   <div className="flex justify-between gap-3 py-2"><dt>Длительность</dt><dd className="font-semibold">{durationText(selected.first_seen_at, selected.last_seen_at)}</dd></div>
+                  <div className="flex justify-between gap-3 py-2"><dt>Версия</dt><dd className="font-semibold">v{selected.version}</dd></div>
+                  <div className="flex justify-between gap-3 py-2"><dt>Incident</dt><dd className="font-semibold">{selected.incident_id || "—"}</dd></div>
                 </dl>
                 {entityHref(selected) ? <a href={entityHref(selected)!.href} className="mt-4 inline-flex min-h-10 items-center gap-2 rounded-[var(--pokrov-radius-control)] text-xs font-semibold text-[color:var(--atlas-primary)] outline-none hover:underline focus-visible:ring-2 focus-visible:ring-[color:var(--atlas-focus)]"><ExternalLink size={14} /> {entityHref(selected)!.label}</a> : <p className="mt-4 text-xs text-[color:var(--atlas-text-muted)]">Связанная сущность: — · Нет данных</p>}
-                {selected.status !== "resolved" ? <div className="mt-4 flex flex-wrap gap-2"><Button tone="primary" disabled={actionId === selected.id} onClick={() => void runAction(selected, "ack")}><Check size={14} /> Подтвердить</Button><Button tone="secondary" disabled={actionId === selected.id} onClick={() => void runAction(selected, "silence")}><BellOff size={14} /> Приглушить на 1 час</Button></div> : null}
+                {selected.status !== "resolved" && selected.status !== "false_positive" ? (
+                  <div className="mt-4 space-y-3">
+                    <div className="flex flex-wrap gap-2">
+                      <Button tone="primary" onClick={() => alertIntent(selected, "alert.ack")}><Check size={14} /> Подтвердить</Button>
+                      {!selected.incident_id ? <Button tone="danger" onClick={() => alertIntent(selected, "alert.false_positive")}><AlertTriangle size={14} /> False positive</Button> : null}
+                      <Button tone="secondary" onClick={() => runSilence(selected)}><BellOff size={14} /> Приглушить на 1 час</Button>
+                    </div>
+                    {!selected.incident_id ? (
+                      <div className="rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] p-3">
+                        <p className="text-xs font-semibold">Эскалация в Incident Room</p>
+                        <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                          <select aria-label="Связать с инцидентом" value={incidentId} onChange={(event) => setIncidentId(event.target.value)} className="min-h-10 min-w-0 flex-1 rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3 text-xs outline-none focus:border-[color:var(--atlas-focus)]">
+                            <option value="">Выберите активный incident</option>
+                            {(incidentResource.data || []).filter((item) => !["resolved", "cancelled"].includes(item.workflow_status)).map((incident) => <option key={incident.id} value={incident.id}>{incident.key} · {incident.title}</option>)}
+                          </select>
+                          <Button tone="secondary" disabled={!incidentId} onClick={() => linkIncident(selected)}><Link2 size={14} /> Связать</Button>
+                        </div>
+                        <Button className="mt-2" tone="secondary" onClick={() => createIncident(selected)}><Siren size={14} /> Создать новый incident</Button>
+                      </div>
+                    ) : <a href={`/incidents`} className="inline-flex min-h-10 items-center gap-2 text-xs font-semibold text-[color:var(--atlas-primary)] hover:underline"><Siren size={14} /> Открыть Incident Room</a>}
+                  </div>
+                ) : null}
               </div>
             )}
           </Card>
         </aside>
       </div>
       {resource.error && resource.data ? <p className="text-xs text-[color:var(--atlas-text-soft)]">{adminApiErrorText(resource.error, "Повторите загрузку.")}</p> : null}
+      <ActionIntentDialog
+        open={intentRequest !== null}
+        request={intentRequest}
+        onOpenChange={(open) => { if (!open) setIntentRequest(null); }}
+        onKnownOutcome={() => { resource.reload(); incidentResource.reload(); }}
+        onCheckState={() => { resource.reload(); incidentResource.reload(); }}
+      />
     </div>
   );
 }

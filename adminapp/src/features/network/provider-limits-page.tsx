@@ -206,15 +206,16 @@ export function ProviderLimitsPage({ onShellStatus }: { onShellStatus?: (status:
       action: selectedConfig ? "provider_quota.update" : "provider_quota.create",
       target: { type: "provider_quota", id: draft.nodeCode },
       payload: selectedConfig ? basePayload : { node_code: draft.nodeCode, ...basePayload },
-      endpoint: selectedConfig ? `/api/admin/provider-quotas/${encodeURIComponent(draft.nodeCode)}` : "/api/admin/provider-quotas",
+      endpoint: "",
       method: selectedConfig ? "PATCH" : "POST",
+      workspace: "network",
     });
     setDialogOpen(true);
   }
 
   function openDelete() {
     if (!draft || !selectedConfig) return;
-    setRequest({ action: "provider_quota.delete", target: { type: "provider_quota", id: draft.nodeCode }, payload: {}, endpoint: `/api/admin/provider-quotas/${encodeURIComponent(draft.nodeCode)}`, method: "DELETE" });
+    setRequest({ action: "provider_quota.delete", target: { type: "provider_quota", id: draft.nodeCode }, payload: {}, endpoint: "", method: "DELETE", workspace: "network" });
     setDialogOpen(true);
   }
 

@@ -315,6 +315,8 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
   const showActivity = refreshing || routeActivity;
 
   const firstThemeApplyRef = useRef(true);
+  const routeContentRef = useRef<HTMLDivElement | null>(null);
+  const previousPathnameRef = useRef<string | null>(null);
 
   useEffect(() => {
     const apply = () => {
@@ -354,6 +356,19 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
     const frame = window.requestAnimationFrame(() => {
       setDrawerOpen(false);
       setRouteActivity(false);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [pathname]);
+
+  useEffect(() => {
+    const previousPathname = previousPathnameRef.current;
+    previousPathnameRef.current = pathname;
+    if (previousPathname === null || previousPathname === pathname) return;
+    const frame = window.requestAnimationFrame(() => {
+      const heading = routeContentRef.current?.querySelector<HTMLElement>("main h1");
+      if (!heading) return;
+      heading.tabIndex = -1;
+      heading.focus();
     });
     return () => window.cancelAnimationFrame(frame);
   }, [pathname]);
@@ -475,7 +490,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
                   <motion.span
                     layoutId="sidebar-nav-pill"
                     aria-hidden="true"
-                    className="absolute inset-0 rounded-control bg-brand shadow-soft"
+                    className="absolute inset-0 rounded-control bg-brand-strong shadow-soft"
                     transition={reduceMotion ? { duration: 0 } : { type: "spring", stiffness: 480, damping: 40 }}
                   />
                 ) : null}
@@ -577,7 +592,7 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
                 onClick={() => setDrawerOpen(false)}
                 className={cn(
                   "flex items-start gap-3 rounded-control px-3 py-3 transition-colors motion-reduce:transition-none",
-                  active ? "bg-brand text-brand-contrast" : "text-ink-soft hover:bg-nav-hover",
+                  active ? "bg-brand-strong text-brand-contrast" : "text-ink-soft hover:bg-nav-hover",
                 )}
               >
                 <Icon size={20} strokeWidth={2} aria-hidden="true" className="mt-0.5 shrink-0" />
@@ -679,7 +694,9 @@ export default function CabinetShell({ children }: { children: ReactNode }) {
               )}
             </div>
 
-            <RouteTransition>{children}</RouteTransition>
+            <div ref={routeContentRef}>
+              <RouteTransition>{children}</RouteTransition>
+            </div>
           </div>
         </div>
 

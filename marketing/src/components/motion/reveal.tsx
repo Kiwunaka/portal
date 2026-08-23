@@ -28,14 +28,14 @@ type RevealProps = {
  */
 export function Reveal({ as: Tag = "div", children, className, delay = 0, id }: RevealProps) {
   const ref = useRef<HTMLElement | null>(null);
+  const [enhanced, setEnhanced] = useState(false);
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
     const node = ref.current;
     if (!node) return;
     if (typeof IntersectionObserver === "undefined") {
-      const fallbackTimer = window.setTimeout(() => setVisible(true), 0);
-      return () => window.clearTimeout(fallbackTimer);
+      return;
     }
     const observer = new IntersectionObserver(
       (entries) => {
@@ -49,8 +49,14 @@ export function Reveal({ as: Tag = "div", children, className, delay = 0, id }: 
       },
       { threshold: 0.2, rootMargin: "0px 0px -40px 0px" },
     );
-    observer.observe(node);
-    return () => observer.disconnect();
+    const enhancementFrame = window.requestAnimationFrame(() => {
+      setEnhanced(true);
+      observer.observe(node);
+    });
+    return () => {
+      window.cancelAnimationFrame(enhancementFrame);
+      observer.disconnect();
+    };
   }, []);
 
   const style: CSSProperties | undefined = delay ? { transitionDelay: `${delay}ms` } : undefined;
@@ -61,6 +67,7 @@ export function Reveal({ as: Tag = "div", children, className, delay = 0, id }: 
       ref={ref as any}
       id={id}
       className={cn("reveal", visible && "is-visible", className)}
+      data-motion-enhanced={enhanced ? "true" : undefined}
       style={style}
     >
       {children}
@@ -75,13 +82,22 @@ type StaggerProps = {
   step?: number;
 };
 
-/** Wraps each child in a Reveal with an incremental delay. */
+/**
+ * Staggers only compact groups. Delays stay within the motion contract:
+ * <= 60 ms per item and <= 240 ms total. Long lists render together.
+ */
 export function Stagger({ children, className, step = 60 }: StaggerProps) {
   const items = Children.toArray(children);
+  const boundedStep = Math.min(60, Math.max(0, step));
+  const staggerCompactGroup = items.length <= 5;
   return (
     <>
       {items.map((child, index) => (
-        <Reveal key={index} className={className} delay={index * step}>
+        <Reveal
+          key={index}
+          className={className}
+          delay={staggerCompactGroup ? Math.min(index * boundedStep, 240) : 0}
+        >
           {child}
         </Reveal>
       ))}

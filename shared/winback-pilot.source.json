@@ -1,0 +1,89 @@
+{
+  "schema_version": "pokrov-winback-pilot-source-v1",
+  "pilot_id": "release_1_2_winback_paid_7_30d",
+  "revision": "2026-08-22.1",
+  "state": "draft_blocked",
+  "objective": "winback",
+  "legal_profile_id": "trust_owned",
+  "channels": ["consented_email", "owned_app", "owned_cabinet", "owned_telegram", "owned_web"],
+  "audience": {
+    "paid_before": true,
+    "expired_min_days": 7,
+    "expired_max_days": 30,
+    "current_access_required": false,
+    "refund_dispute_required": false,
+    "unresolved_payment_required": false,
+    "unresolved_support_required": false
+  },
+  "offer": {
+    "plan_codes": ["3_months", "6_months"],
+    "discount_percent": 10,
+    "duration_hours": 72,
+    "paid_cap": 20,
+    "per_subject_paid_cap": 1,
+    "stacking_allowed": false
+  },
+  "creatives": [
+    {
+      "variant": "a",
+      "title_ru": "Вернитесь без подписки",
+      "body_ru": "Оплатите один срок. Автосписаний не будет."
+    },
+    {
+      "variant": "b",
+      "title_ru": "Снова подключиться — на 10% дешевле",
+      "body_ru": "Скидка действует 72 часа на 3 и 6 месяцев."
+    }
+  ],
+  "holdout": {
+    "allocation_algorithm": "hmac_sha256_mod_10000",
+    "percentage": null,
+    "decision_state": "blocked_owner_decision_required"
+  },
+  "capacity": {
+    "allowed_bands": ["green", "yellow"],
+    "pause_at_ratio": 0.7,
+    "resume_below_ratio": 0.65,
+    "limit_units": 300
+  },
+  "suppression": [
+    "campaign_not_live",
+    "channel_consent_missing",
+    "current_access_active",
+    "expired_window_mismatch",
+    "holdout_assignment",
+    "legal_or_channel_blocked",
+    "owner_suppressed",
+    "paid_cap_reached",
+    "payment_already_consumed",
+    "refund_dispute_open",
+    "unresolved_payment",
+    "unresolved_support"
+  ],
+  "primary_metric": "net_revenue_30d_per_capacity_unit",
+  "guardrails": [
+    "first_verified_connect",
+    "payment_error",
+    "refund",
+    "support_ticket",
+    "capacity",
+    "incident"
+  ],
+  "decision": {
+    "minimum_observation_days": 30,
+    "ctr_can_select_winner": false,
+    "scale_requires_owner_approval": true,
+    "maximum_next_paid_cap": 50
+  },
+  "external_gates": [
+    "owner_legal_approval",
+    "seller_offer_terms_published",
+    "production_payment_provider",
+    "deployed_revision_readback",
+    "live_capacity_fresh",
+    "holdout_percentage_approved",
+    "channel_consent_evidence",
+    "support_on_call",
+    "kill_and_rollback_rehearsed"
+  ]
+}

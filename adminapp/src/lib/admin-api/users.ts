@@ -1,6 +1,7 @@
 "use client";
 
 import { apiFetch, type ApiRequestInit } from "./client";
+import { fetchSupportUser360, type SupportUser360 } from "./support";
 
 export type UserListStatus = "all" | "active" | "inactive" | "expired" | "blocked" | "manual";
 export type UserListSort = "created_desc" | "created_asc" | "expiry_asc" | "expiry_desc" | "name_asc" | "name_desc";
@@ -29,6 +30,7 @@ export type AdminUsersPage = {
   total: number;
   sort: UserListSort;
   users: AdminUserListRow[];
+  fieldAccess: { sensitiveIdentity: boolean };
 };
 
 export type AdminUserIdentity = AdminUserListRow & {
@@ -185,6 +187,15 @@ export type AdminUserDetail = {
   appEvents: AdminUserAppEvent[];
   observer: AdminUserObserverSummary;
   risk: AdminUserRisk;
+  support360: SupportUser360;
+  fieldAccess: {
+    sensitiveIdentity: boolean;
+    supportDiagnostics: boolean;
+    appEvents: boolean;
+    payments: boolean;
+    adminAudit: boolean;
+    legacyUserActions: boolean;
+  };
 };
 
 function record(value: unknown): Record<string, unknown> {
@@ -226,6 +237,10 @@ function signedUserId(value: unknown): number {
 
 function stringList(value: unknown): string[] {
   return Array.isArray(value) ? value.map(text).filter(Boolean) : [];
+}
+
+function fieldVisible(value: unknown): boolean {
+  return text(record(value).state) !== "redacted";
 }
 
 function mapUserRow(value: unknown): AdminUserListRow {
@@ -427,18 +442,24 @@ export async function fetchUsers(
   query.set("sort", params.sort || "created_desc");
   const payload = await apiFetch<Record<string, unknown>>(`/api/admin/users?${query.toString()}`, init);
   const sort = text(payload.sort) as UserListSort;
+  const fieldAccess = record(payload.field_access);
   return {
     page: Math.max(1, number(payload.page, 1)),
     pageSize: Math.max(1, number(payload.page_size, 80)),
     total: Math.max(0, number(payload.total)),
     sort: ["created_desc", "created_asc", "expiry_asc", "expiry_desc", "name_asc", "name_desc"].includes(sort) ? sort : "created_desc",
     users: records(payload.users).map(mapUserRow).filter((row) => row.tgId !== 0),
+    fieldAccess: { sensitiveIdentity: fieldVisible(fieldAccess.sensitive_identity) },
   };
 }
 
 export async function fetchUserDetail(tgId: number, init?: ApiRequestInit): Promise<AdminUserDetail> {
-  const payload = await apiFetch<Record<string, unknown>>(`/api/admin/users/${encodeURIComponent(String(tgId))}`, init);
+  const [payload, support360] = await Promise.all([
+    apiFetch<Record<string, unknown>>(`/api/admin/users/${encodeURIComponent(String(tgId))}`, init),
+    fetchSupportUser360(tgId, init),
+  ]);
   const keysState = record(payload.keys_state);
+  const fieldAccess = record(payload.field_access);
   const user = mapIdentity(payload.user);
   return {
     user,
@@ -451,6 +472,15 @@ export async function fetchUserDetail(tgId: number, init?: ApiRequestInit): Prom
     appEvents: records(payload.app_events).map(mapAppEvent).filter((item) => item.id > 0 && Boolean(item.eventName)),
     observer: mapObserver(payload.observer),
     risk: mapRisk(payload.risk),
+    support360,
+    fieldAccess: {
+      sensitiveIdentity: fieldVisible(fieldAccess.sensitive_identity),
+      supportDiagnostics: support360.fieldAccess.supportDiagnostics,
+      appEvents: fieldVisible(fieldAccess.app_events),
+      payments: fieldVisible(fieldAccess.payment_orders),
+      adminAudit: fieldVisible(fieldAccess.admin_actions),
+      legacyUserActions: fieldVisible(fieldAccess.legacy_user_actions),
+    },
   };
 }
 

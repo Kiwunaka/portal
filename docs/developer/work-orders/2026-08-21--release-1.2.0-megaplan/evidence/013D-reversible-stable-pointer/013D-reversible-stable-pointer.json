@@ -1,0 +1,80 @@
+{
+  "schema": "pokrov.release-1.2.0.reversible-stable-pointer.v1",
+  "generated_at": "2026-08-22T19:05:55Z",
+  "work_order": "WO-013D",
+  "row_outcomes": {
+    "FE/P12-130": "I3",
+    "REL_DOD/DOD-18": "I0_UNCHANGED"
+  },
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "sources": {
+    "platform_revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "platform_dirty_entries": 365,
+    "client_revision_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+    "client_dirty_entries": 190,
+    "core_revision_before_uncommitted_changes": "69a74545101708e56183c92e31f2b4c7b2509884"
+  },
+  "authority": {
+    "catalog": "config/release-rollback-catalog.seed.json",
+    "stable_pointer": "artifacts/releases/release-handoff.json",
+    "switcher": "scripts/set-release-stable-pointer.ps1",
+    "current_release_id": "1.1.6+20260819",
+    "current_release_version": "1.1.6",
+    "current_handoff_sha256": "477a2314b0eb447fe4e0131ab4fc9aa66891eea25a2969afb2e4dedabf0f251c",
+    "target_platforms": [
+      "android",
+      "windows"
+    ],
+    "working_target_cataloged": false,
+    "working_target": "1.2.0+30",
+    "candidate_created": false
+  },
+  "source_sha256": {
+    "client_rollback_catalog": "48a01b3b7a32551b26b06d3d62a2aaeeb629a895d2c14d164df1102b58850bee",
+    "client_pointer_switcher": "00c04768b4d8907bcc53a905394d4a8a10588e00c6c4524e8487d048163e3944",
+    "client_pointer_contract_test": "de957fa7c56dfeefc3fe1d3ca0b0f993dc9675933bf29e687ed30cca4d7cb174",
+    "client_release_handoff_seed": "8c3aa2ea36e2b61996d112e805683f2b06f60b0034599881ef7c40365c54fdf6",
+    "client_cutover_seed": "b979d1b39e0bec4ad89f5cfdfad0876a65ab50ad1782e3a9a3995edcfb51bf00",
+    "client_app_shell_root": "804fc594de2fbf5c8dbd39de59584594d0e2953d06d4226b37bff742c1e4f08a",
+    "client_ru_plural_library": "aea1b16f0c83cc4b099fb3ff2781e007faf7c85d4145c58b0c591a7c23b92127",
+    "client_cutover_doc": "3b523fdbd8aa0299a783140d8dd658a591827046fa9efedbaf9fdf78d1169d46",
+    "platform_rollback_runbook": "f2e1917643f1472e15536bd77fa932ab40abfa96e1f1ba6620b08f3b3002f214",
+    "platform_publishing_owner": "45ad01133bf140d06d51ea736863009f86d98d37a2c1332d323a6119e8ca8ac7",
+    "platform_download_flow": "62b83d1f2d829b842de124435d2eb392fa320a3026dc3f1f86faeba59d9a29a6",
+    "platform_final_handoff": "87464ce97f1d9fb27c3d4efe14dbaaebcc4dda51e42728a0a54c3fd2275c9f49",
+    "platform_docs_contract_test": "7c66be10fd9f2130ccf31233cbde68722dd0877ae97283ff81203d5906e8e46a"
+  },
+  "local_results": {
+    "retained_pointer_and_synthetic_reversal_contract": "PASS_5_SYNTHETIC_CASES_PLUS_RETAINED_POINTER",
+    "client_release_v2_ci_contract": "PASS",
+    "client_repository_hygiene": "PASS_EFFECTIVE_TRACKED_576_RETAINED_HISTORY_138",
+    "client_presentation_boundary": "PASS_29_PARTS",
+    "client_ru_plural": "PASS_4_OF_4",
+    "client_standard_cross_repository_seed_gate": "PASS",
+    "platform_docs_and_candidate_preflight_contracts": "PASS_41_OF_41",
+    "platform_context_audit": "PASS",
+    "client_retained_release_diff": "EMPTY",
+    "scoped_diff_check": "PASS_WITH_WINDOWS_CRLF_WARNINGS_ONLY",
+    "scoped_secret_scan": "PASS_0_MATCH_FILES",
+    "candidate_preflight": "EXPECTED_BLOCKED_7_BLOCKERS_CANDIDATE_NOT_CREATED",
+    "ledger_distribution": "I3_301_I2_21_I1_40_I0_15_TOTAL_377",
+    "ledger_below_i3": 76,
+    "pending_stage_counts": {
+      "pre_freeze": 5,
+      "candidate": 33,
+      "external": 17,
+      "deferred": 21
+    }
+  },
+  "manual_or_external": {
+    "exact_candidate": "NOT_CREATED",
+    "public_release_index": "BLOCKED_BY_ACCESS",
+    "actual_stable_pointer_apply": "NOT_AUTHORIZED",
+    "runtime_sync": "NOT_AUTHORIZED",
+    "portal_and_client_channel_rollback_drill": "NOT_RUN",
+    "deployment": "NOT_AUTHORIZED",
+    "publication": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

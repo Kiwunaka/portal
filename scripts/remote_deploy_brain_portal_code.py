@@ -278,6 +278,8 @@ def iter_upload_mappings(repo_root: Path) -> list[tuple[Path, str]]:
         "public-urls.json",
         "design-tokens.json",
         "tariff-catalog.json",
+        "commercial-contract.json",
+        "commercial-contract.schema.json",
         "access-matrix.json",
         "promo-slots.json",
         "support-ai-knowledge.json",

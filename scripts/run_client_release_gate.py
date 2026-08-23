@@ -43,7 +43,23 @@ def _resolve_client_root(platform_checkout: Path) -> Path:
     return client_repo
 
 
+def _resolve_core_root(platform_checkout: Path) -> Path:
+    override = os.getenv("POKROV_CORE_ROOT", "").strip()
+    if override:
+        return Path(override).expanduser().resolve()
+
+    common_dir = subprocess.run(
+        ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+        cwd=platform_checkout,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    return Path(common_dir).resolve().parent.parent / "POKROV-core"
+
+
 CLIENT_ROOT = _resolve_client_root(REPO_ROOT)
+CORE_ROOT = _resolve_core_root(REPO_ROOT)
 
 
 @dataclass(frozen=True)
@@ -67,6 +83,8 @@ class ClientGatePreflightStatus:
     run_tests_script: Path
     sync_core_script: Path
     build_windows_script: Path
+    release_handoff_generator: Path
+    release_handoff_contract: Path
     android_shell_root: Path
     windows_shell_root: Path
     product_contract_path: Path
@@ -113,6 +131,8 @@ def _preflight_status(client_root: Path) -> ClientGatePreflightStatus:
     run_tests_script = client_root / "scripts" / "run-tests.ps1"
     sync_core_script = client_root / "scripts" / "sync-pokrov-core-runtime.ps1"
     build_windows_script = client_root / "scripts" / "build-windows-release.ps1"
+    release_handoff_generator = client_root / "scripts" / "new-release-handoff-v2.ps1"
+    release_handoff_contract = client_root / "test" / "release-handoff-v2-contract.ps1"
     android_shell_root = client_root / "apps" / "android_shell"
     windows_shell_root = client_root / "apps" / "windows_shell"
     product_contract_path = client_root / "config" / "product-contract.seed.json"
@@ -126,6 +146,8 @@ def _preflight_status(client_root: Path) -> ClientGatePreflightStatus:
         run_tests_script,
         sync_core_script,
         build_windows_script,
+        release_handoff_generator,
+        release_handoff_contract,
         android_shell_root,
         windows_shell_root,
         product_contract_path,
@@ -142,6 +164,8 @@ def _preflight_status(client_root: Path) -> ClientGatePreflightStatus:
         run_tests_script=run_tests_script,
         sync_core_script=sync_core_script,
         build_windows_script=build_windows_script,
+        release_handoff_generator=release_handoff_generator,
+        release_handoff_contract=release_handoff_contract,
         android_shell_root=android_shell_root,
         windows_shell_root=windows_shell_root,
         product_contract_path=product_contract_path,
@@ -174,6 +198,8 @@ def _render_preflight_report(
         f"[client-root] run tests: {status.run_tests_script}",
         f"[client-root] sync core runtime: {status.sync_core_script}",
         f"[client-root] build windows release: {status.build_windows_script}",
+        f"[client-root] release-handoff v2 generator: {status.release_handoff_generator}",
+        f"[client-root] release-handoff v2 contract: {status.release_handoff_contract}",
     ]
     if status.missing_paths:
         for missing_path in status.missing_paths[:10]:
@@ -233,6 +259,24 @@ def _suite_command(client_root: Path, *, suite: str) -> ClientGateCommand:
             )
         )
     raise ValueError(f"unsupported suite: {suite}")
+
+
+def _contract_command(client_root: Path, *, platform_root: Path, core_root: Path) -> ClientGateCommand:
+    status = _preflight_status(client_root)
+    return ClientGateCommand(
+        steps=(
+            ClientGateStep(
+                command=_powershell_file_command(
+                    status.validate_seed_script,
+                    "-PlatformRoot",
+                    str(platform_root.resolve()),
+                    "-CoreRoot",
+                    str(core_root.resolve()),
+                ),
+                cwd=client_root,
+            ),
+        )
+    )
 
 
 def _android_target_command(client_root: Path, *, target: str) -> ClientGateCommand:
@@ -336,6 +380,10 @@ def main() -> int:
 
     subparsers.add_parser("preflight")
 
+    contract_parser = subparsers.add_parser("contract")
+    contract_parser.add_argument("--client-root", default=str(CLIENT_ROOT))
+    contract_parser.add_argument("--core-root", default=str(CORE_ROOT))
+
     test_parser = subparsers.add_parser("test")
     test_parser.add_argument("--suite", choices=["full", "portal"], required=True)
 
@@ -343,7 +391,9 @@ def main() -> int:
     build_parser.add_argument("--target", choices=["windows", "android-apk", "android-aab"], required=True)
 
     args = parser.parse_args()
-    status = _preflight_status(CLIENT_ROOT)
+    client_root = Path(getattr(args, "client_root", CLIENT_ROOT)).expanduser().resolve()
+    core_root = Path(getattr(args, "core_root", CORE_ROOT)).expanduser().resolve()
+    status = _preflight_status(client_root)
     issue = _preflight_issue_from_status(status)
 
     if args.mode == "preflight":
@@ -355,11 +405,13 @@ def main() -> int:
         return 2
 
     if args.mode == "test":
-        command = _suite_command(CLIENT_ROOT, suite=args.suite)
+        command = _suite_command(client_root, suite=args.suite)
+    elif args.mode == "contract":
+        command = _contract_command(client_root, platform_root=REPO_ROOT, core_root=core_root)
     else:
-        command = _build_target_command(CLIENT_ROOT, target=args.target)
+        command = _build_target_command(client_root, target=args.target)
 
-    return _run(command, client_root=CLIENT_ROOT)
+    return _run(command, client_root=client_root)
 
 
 if __name__ == "__main__":

@@ -20,10 +20,11 @@ import {
   isSoftModeState,
   isTrialPremiumState,
   resolvePlanLabel,
+  resolveSubscriptionPresentation,
 } from "@/lib/access-policy";
-import { fetchPublicPlans, type PlanCatalogRow } from "@/lib/api";
+import { fetchPublicPlans, trackEvent, type PlanCatalogRow, type PromoSlotAssignmentPayload } from "@/lib/api";
 import { getCabinetFallbackPlans, resolveCabinetPlans } from "@/lib/cabinet-plans";
-import { getCopyText, normalizePlanCode } from "@/lib/portal";
+import { normalizePlanCode } from "@/lib/portal";
 import { userFacingErrorMessage } from "@/lib/public-error-messages";
 import { usePortalSession } from "@/lib/session";
 import { formatDays, formatDevicesLimit } from "@/lib/ru-plural";
@@ -44,6 +45,38 @@ function formatDate(value?: string | null): string {
     day: "numeric",
     month: "long",
   }).format(parsed);
+}
+
+function formatDeadline(value?: string | null): string {
+  if (!value) return "срок уточняется";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "срок уточняется";
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsed);
+}
+
+const COMMERCIAL_LINEAGE_KEYS = [
+  "pilot_id",
+  "pilot_revision",
+  "pilot_contract_sha256",
+  "commercial_revision",
+  "campaign_id",
+  "offer_id",
+  "creative_id",
+  "variant",
+  "assignment_id",
+  "impression_id",
+  "click_id",
+] as const;
+
+function commercialLineage(slot: PromoSlotAssignmentPayload): Record<string, string> | null {
+  const entries = COMMERCIAL_LINEAGE_KEYS.map((key) => [key, String(slot[key] || "").trim()] as const);
+  if (entries.some(([, value]) => !value)) return null;
+  return Object.fromEntries(entries);
 }
 
 function planHint(plan: PlanCatalogRow): string {
@@ -156,6 +189,7 @@ export default function SubscriptionPage() {
   }, []);
 
   const accessState = getAccessState(dash, user);
+  const subscriptionPresentation = resolveSubscriptionPresentation(accessState);
   const paidMode = isPaidUnlimitedState(accessState);
   const trialMode = isTrialPremiumState(accessState);
   const freeMode = isFreeMonthlyState(accessState);
@@ -207,21 +241,81 @@ export default function SubscriptionPage() {
   const featuredCode = visiblePlans.length
     ? visiblePlans.reduce((best, plan) => (Number(plan.days || 0) > Number(best.days || 0) ? plan : best), visiblePlans[0]).code
     : "";
+  const winbackSlot = dash?.promo_slots?.slots.find(
+    (slot) => slot.enabled && slot.content_id === "winback_offer" && slot.slot_id === "webapp.subscription.contextual",
+  ) || null;
+  const winbackLineage = winbackSlot ? commercialLineage(winbackSlot) : null;
+
+  useEffect(() => {
+    if (!winbackSlot || !winbackLineage) return;
+    const impressionId = String(winbackSlot.impression_id || "");
+    const storageKey = `pokrov:promo-impression:${impressionId}`;
+    try {
+      if (window.sessionStorage.getItem(storageKey)) return;
+      window.sessionStorage.setItem(storageKey, "1");
+    } catch {
+      // Telemetry is advisory; rendering and checkout must keep working.
+    }
+    void trackEvent("promo_impression", "webapp", winbackLineage);
+  }, [winbackLineage, winbackSlot]);
 
   return (
     <main className="mx-auto flex w-full max-w-[860px] flex-col gap-5">
       <StatusHero
-        title={getCopyText("webapp.subscription.title", "Продлить доступ")}
+        title={subscriptionPresentation.title}
         meta={`${resolvePlanLabel(dash, user)} · ${accessHint}`}
         body={statusBody}
         tone={statusTone}
         icon={dash?.is_active ? ShieldCheck : TriangleAlert}
         action={
           <Button href="/subscription/checkout/" className="w-full sm:w-auto">
-            Оплатить
+            {subscriptionPresentation.actionLabel}
           </Button>
         }
       />
+
+      {winbackSlot ? (
+        <section
+          data-testid="winback-offer"
+          className="rounded-card border border-ok-line bg-ok-bg p-4 shadow-soft"
+        >
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge tone="success">{winbackSlot.badge_label || "Персональное предложение"}</Badge>
+                <span className="text-xs text-ink-soft">до {formatDeadline(winbackSlot.ends_at)}</span>
+              </div>
+              <h2 className="mt-2 text-lg font-bold tracking-tight text-ink">{winbackSlot.title}</h2>
+              {winbackSlot.body ? <p className="mt-1 text-sm leading-6 text-ink-soft">{winbackSlot.body}</p> : null}
+              {typeof winbackSlot.final_price_rub === "number" ? (
+                <p className="mt-2 text-sm font-semibold text-ink">
+                  {typeof winbackSlot.base_price_rub === "number" ? <s className="mr-2 text-ink-muted">{winbackSlot.base_price_rub} ₽</s> : null}
+                  {winbackSlot.final_price_rub} ₽
+                  {typeof winbackSlot.remaining_quota_lower_bound === "number" ? ` · доступно не более ${winbackSlot.remaining_quota_lower_bound}` : ""}
+                </p>
+              ) : null}
+              {winbackSlot.terms_url ? (
+                <a href={winbackSlot.terms_url} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs font-semibold text-brand-strong underline-offset-4 hover:underline">
+                  Условия предложения
+                </a>
+              ) : null}
+            </div>
+            {winbackSlot.cta_href ? (
+              <Button
+                href={winbackSlot.cta_href}
+                hardNavigate
+                className="w-full shrink-0 sm:w-auto"
+                onClick={() => {
+                  if (winbackLineage) void trackEvent("promo_click", "webapp", winbackLineage);
+                }}
+              >
+                {winbackSlot.cta_label || "Вернуться"}
+              </Button>
+            ) : null}
+          </div>
+          <p className="mt-3 text-xs leading-5 text-ink-muted">Без автосписаний. Итоговую сумму и доступность сервер повторно проверит перед оплатой.</p>
+        </section>
+      ) : null}
 
       <section className="flex flex-col gap-2.5">
         <details className="group overflow-hidden rounded-card border border-line bg-surface shadow-soft">

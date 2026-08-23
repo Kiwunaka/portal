@@ -1,0 +1,79 @@
+{
+  "schema": "pokrov.release-1.2.0.signed-temporary-support-mode.v1",
+  "generated_at": "2026-08-22T16:09:41Z",
+  "work_order": "WO-006K",
+  "row_outcomes": {
+    "OBS/OBS-070": "I3",
+    "OBS/OBS-071": "I3",
+    "OBS/OBS-072": "I3",
+    "OBS/OBS-073": "I3",
+    "OBS/OBS-074": "I3"
+  },
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "sources": {
+    "platform_revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "platform_dirty_entries": 345,
+    "client_revision_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+    "client_dirty_entries": 184,
+    "core_revision_before_uncommitted_changes": "69a74545101708e56183c92e31f2b4c7b2509884"
+  },
+  "contracts": {
+    "collection_policy_schema_version": 2,
+    "activation_code_prefix": "PSM1",
+    "diagnostic_code_fixture": "PSD1-6C4Q-J082-00FA-QK8B",
+    "maximum_ttl_minutes": 30,
+    "maximum_bundle_bytes": 2097152,
+    "maximum_total_bytes": 4194304,
+    "maximum_bundles": 2,
+    "manual_export_extension": ".pokrov-support",
+    "plaintext_export_available": false,
+    "remote_commands_available": false
+  },
+  "source_sha256": {
+    "platform_support_mode_service": "93c222f5d42662602d85d2766398eac932a379f9e0a9a071a57c14d3f995896a",
+    "platform_support_actions": "d2c004eb91fcf74258b8b18a1bc0803bd307dedc3503423cbafb2986ded7f716",
+    "platform_client_redeem_route": "c6d20697b48b3189c8c5c40f9bde9ceadb94f082bb4e1fd99efeaa54d04ec09f",
+    "platform_admin_router": "422ebfc96c4b7ba47f89c9d6f753cc1f1e2490821654d84c3b64931ca84baf21",
+    "platform_models": "605a566de01c01ea5cd99538f9861a7cf7e3d9f02d5e5acac6adecd413008d7d",
+    "platform_migrations": "a11c2b409284b3e4284da821bba72b7c0e8fa4080855ab4ecda57b9b83e9185d",
+    "platform_policy_schema": "c533ec66ee67cb843499165527c7786fba30910845a326005a5514979ca7ec95",
+    "client_support_bundle": "2ed7a81a8c2368f1e2abbd73054c0158708f58b30dd146884b9806865fdf3ec8",
+    "client_support_transfer": "b02a09d06aec478ad50c72ece7c0b96d73d3b58f01817c646bf3acd838aa7360",
+    "client_support_mode_controller": "6e344695db336af1aaae1e146dc49f07ae7ac464e35471a6ca490ae3824b1984",
+    "client_diagnostics_ui": "f8bc98ea61146351e831c97320513fb70296ea65869382203e1f629bbff2e679",
+    "client_shell": "7b043902c2828bedc4b929c622b26e72a234e3f5825d993d9e55fb64a04f1a5c",
+    "android_export_host": "28dd27dd7fbac93856fa665f44bf5ae42034231bb0b0df672317145931a689a2"
+  },
+  "local_results": {
+    "platform_service_schema_upload": "PASS_12_OF_12",
+    "platform_operator_issue": "PASS_1_OF_1",
+    "platform_python_compile": "PASS",
+    "client_support_bundle": "PASS_15_OF_15",
+    "client_app_shell_full": "PASS_384_OF_384",
+    "client_app_shell_analyzer": "PASS_NO_ISSUES",
+    "android_host_security_contract": "PASS",
+    "android_direct_debug_build": "PASS",
+    "windows_shell_tests": "PASS_21_OF_21",
+    "windows_debug_build": "PASS",
+    "candidate_preflight": "EXPECTED_BLOCKED",
+    "ledger_distribution": "I3_291_I2_28_I1_41_I0_17_TOTAL_377",
+    "ledger_below_i3": 86,
+    "pending_stage_counts": {
+      "pre_freeze": 16,
+      "candidate": 32,
+      "external": 17,
+      "deferred": 21
+    }
+  },
+  "manual_or_external": {
+    "exact_candidate": "NOT_CREATED",
+    "production_support_signing_key_custody": "NOT_RUN",
+    "production_operator_rbac_audit": "NOT_RUN",
+    "android_physical_saf_export": "NOT_RUN",
+    "windows_clean_host_export": "NOT_RUN",
+    "deployment": "NOT_AUTHORIZED",
+    "publication": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

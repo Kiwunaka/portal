@@ -1,6 +1,7 @@
 {
-  "version": "2026-07-18",
+  "version": "2026-08-22",
   "scope": "outside-store-public-beta",
+  "working_target": "1.2.0",
   "source_docs": [
     "docs/product/beta-known-limitations.md",
     "docs/launch/known-issues.md"
@@ -47,6 +48,20 @@
       "severity": "manual_gate",
       "summary": "Android physical release-build localhost/control-surface audit is owner-attested for beta.",
       "operator_note": "Raw device audit proof, Play/store signing, and stronger Android safety claims remain manual follow-up."
+    },
+    {
+      "id": "linux_not_shipped_1_2_0",
+      "severity": "scope_limit",
+      "summary": "The POKROV Linux client is NOT_SHIPPED_IN_1.2.0; the public release pair remains Android and Windows.",
+      "operator_note": "Do not infer Linux availability from transitive Flutter desktop dependencies, compatibility-client guidance, dormant error codes, or the PB-09 placeholder. No official Linux artifact, daemon, package, support matrix, or release claim exists for 1.2.0.",
+      "contract_refs": ["shared/product-facts.json#release_scope", "OBS_PB/PB-09"]
+    },
+    {
+      "id": "android_oem_background_limits",
+      "severity": "manual_gate",
+      "summary": "Android OEM battery, background, VPN-permission, notification and cached-tile policies can stop or delay connection recovery despite the foreground-service contract.",
+      "operator_note": "Never promise uninterrupted background operation across OEMs. Keep AND-BG-001/002/003 and AND-VPN-004 guidance visible; the exact 1.2.0 candidate still requires a physical OEM matrix for background, screen-off, lockscreen, notification, tile, permission-revoke and reconnect behavior.",
+      "contract_refs": ["OBS_PB/PB-08", "AND-BG-001", "AND-BG-002", "AND-BG-003", "AND-VPN-004"]
     },
     {
       "id": "support_best_effort",

@@ -23,7 +23,10 @@ def _remote_python(source: str, method: str, payload: dict[str, object]) -> str:
         "import asyncio, json\n"
         "import api\n"
         f"payload = json.loads({payload_json!r})\n"
-        f"body = asyncio.run(api._freekassa_api_request(source={source!r}, method={method!r}, data=payload))\n"
+        "async def run():\n"
+        "    async with api.PaymentHttpRegistry() as registry:\n"
+        f"        return await api._freekassa_api_request(source={source!r}, method={method!r}, data=payload, http_registry=registry)\n"
+        "body = asyncio.run(run())\n"
         "print(json.dumps(body, ensure_ascii=False))\n"
         "PY"
     )

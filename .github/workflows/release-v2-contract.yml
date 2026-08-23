@@ -1,0 +1,56 @@
+name: Release v2 Contract
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cross-repository-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout platform candidate
+        uses: actions/checkout@v4
+        with:
+          path: platform
+
+      - name: Checkout active client promotion line
+        uses: actions/checkout@v4
+        with:
+          repository: Kiwunaka/POKROV-app
+          # PR 20 assembles the exact unmerged 1.2.0 tuple. Pushes and every
+          # other PR continue to validate the client promotion line.
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 20 && '879970d9e44f2375f9d00f4f12eebcc9bfc568b7' || 'main' }}
+          path: POKROV-app
+          ssh-key: ${{ secrets.POKROV_RELEASE_CLIENT_DEPLOY_KEY }}
+          lfs: true
+          persist-credentials: false
+
+      - name: Checkout Core promotion line
+        uses: actions/checkout@v4
+        with:
+          repository: Kiwunaka/pokrov-core
+          ref: main
+          path: POKROV-core
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.5"
+
+      - name: Validate dependency contract
+        working-directory: platform
+        run: python scripts/check_dependency_contract.py
+
+      - name: Validate cross-repository release-handoff v2 contract
+        working-directory: platform
+        run: >-
+          python scripts/run_client_release_gate.py contract
+          --client-root "${{ github.workspace }}/POKROV-app"
+          --core-root "${{ github.workspace }}/POKROV-core"

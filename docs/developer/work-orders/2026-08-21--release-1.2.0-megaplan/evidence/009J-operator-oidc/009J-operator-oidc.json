@@ -1,0 +1,87 @@
+{
+  "schema": "pokrov.release-1.2.0.operator-oidc-identity.v1",
+  "generated_at": "2026-08-22T19:36:19Z",
+  "work_order": "WO-009J",
+  "row_outcomes": {
+    "OC/OC-100": "I3"
+  },
+  "candidate_proven": false,
+  "promotion_status": "NOT_REQUESTED",
+  "sources": {
+    "platform_revision_before_uncommitted_changes": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "platform_dirty_entries": 366,
+    "client_revision_before_uncommitted_changes": "ba7930ea83487874f47a49199ade89868c5675b3",
+    "client_dirty_entries": 190,
+    "core_revision_before_uncommitted_changes": "69a74545101708e56183c92e31f2b4c7b2509884",
+    "core_dirty_entries": 57
+  },
+  "boundary": {
+    "provider": "telegram_oidc_authorization_code",
+    "pkce_method": "S256",
+    "public_state_contains_verifier": false,
+    "transaction_cookie": "__Host-pokrov_admin_oidc",
+    "session_cookie": "__Host-pokrov_admin_session",
+    "browser_storage_session_secret": false,
+    "operator_preprovision_required": true,
+    "automatic_role_grant": false,
+    "same_identity_step_up": true,
+    "legacy_disable_flag": "ADMIN_OPERATOR_LEGACY_BOOTSTRAP_ENABLED",
+    "openapi_operations": 75,
+    "openapi_semantic_sha256": "beebbea12e3c5168d0bb54cd96e752aeebf7768df15f5194d5f22bb94669531c"
+  },
+  "source_sha256": {
+    "web_auth_service": "16a31a7c19d099f77809840e6b27911928281baeb595092fdd563e8dab415831",
+    "operator_session_security": "045c42d0368012e696cecb532edcb0ce6058642599d6dd32877323fc46f8e86f",
+    "admin_v2_router": "93ba61af77313ecef391bc761bbdd5452e04734a02b7eb7b179770e9d1a749ca",
+    "openapi_generator": "c90143ba1be79b0252c0da73e7bd3643d50764069257cfb228b3350e68ef6a2f",
+    "openapi_contract": "7b14811fddb5b3e6d76e46af009a3e50a7845729ae824de0e4174ea776157dc4",
+    "generated_typescript": "af473f03c319620179971d147f5ce914e1acfb3ee8b14e3d4e733d002fa91ed3",
+    "adminapp_api_client": "be3ed34d2a32f1d25d9167ea5c26400184f6f572100d55153044aac09de0562a",
+    "adminapp_route_boundary": "0da755f92c7c7c50a63fb3119d56b36f96ae82b806226e3239163039c6eedf9b",
+    "adminapp_action_dialog": "e59a421548fdcdb37e5285877d5038764c23fc7f55945cfe60092b1c35c9df24",
+    "adminapp_api_fixture": "f2af1d72a7d304333e3ca7970a53cdd9ba32b3bcb40fdd6de7f4fe31dfc98c4e",
+    "adminapp_oidc_browser_test": "fc44095d2d9b53a2cb66a795fd9eb3529093547e475745793f309731fa7f760f",
+    "backend_identity_tests": "a50708b97f831c10855baeadffc455d041b576799689b4c493898ce74ed12a85",
+    "openapi_contract_tests": "f9b56249847ca60f223344bb49d909da14478d727d57316db40e065f936b0b24",
+    "operator_manifest_tests": "b2311433a336d966a1366ea2c5fed02b244b87223cbd8cb83d9a67e5c05b0b7e"
+  },
+  "local_results": {
+    "backend_identity_openapi_manifest": "PASS_64_OF_64",
+    "openapi_generation_check": "PASS_75_OPERATIONS",
+    "typescript_generation_check": "PASS",
+    "adminapp_lint": "PASS",
+    "adminapp_production_build": "PASS_30_STATIC_PAGES",
+    "adminapp_playwright": "PASS_78_OF_78",
+    "documentation_and_candidate_preflight_contracts": "PASS_37_OF_37",
+    "platform_context_audit": "PASS",
+    "python_compile": "PASS",
+    "scoped_diff_check": "PASS_WITH_WINDOWS_CRLF_WARNINGS_ONLY",
+    "scoped_secret_scan": "PASS_0_MATCH_FILES",
+    "evidence_json_parse": "PASS",
+    "candidate_preflight": "EXPECTED_BLOCKED_7_BLOCKERS_CANDIDATE_NOT_CREATED",
+    "candidate_preflight_blockers": 7,
+    "candidate_created": false,
+    "ledger_distribution": "I3_302_I2_20_I1_40_I0_15_TOTAL_377",
+    "ledger_below_i3": 75,
+    "pending_stage_counts": {
+      "pre_freeze": 4,
+      "candidate": 33,
+      "external": 17,
+      "deferred": 21
+    }
+  },
+  "manual_or_external": {
+    "botfather_redirect_registration": "NOT_RUN",
+    "live_provider_exchange": "NOT_RUN",
+    "real_operator_migration_and_readback": "NOT_RUN",
+    "legacy_bootstrap_disabled_on_candidate": "NOT_RUN",
+    "passkey_ceremony": "NOT_IMPLEMENTED_NOT_REQUIRED_FOR_LOCAL_TELEGRAM_OIDC_CLOSURE",
+    "frozen_clean_revision": "NOT_CREATED",
+    "hosted_clean_check": "NOT_RUN",
+    "exact_candidate": "NOT_CREATED",
+    "deployment": "NOT_AUTHORIZED",
+    "server_mutation": "NOT_AUTHORIZED",
+    "publication": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

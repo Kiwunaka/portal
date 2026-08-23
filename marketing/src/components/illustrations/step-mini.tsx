@@ -13,7 +13,7 @@ function DownloadMini() {
         </span>
         <span className="flex flex-col">
           <span className="text-[0.6875rem] font-semibold text-ink">pokrov-setup</span>
-          <span className="text-[0.5625rem] text-ink-muted">загружается…</span>
+          <span className="text-[0.5625rem] text-ink-soft">загружается…</span>
         </span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-canvas-alt">
@@ -63,8 +63,8 @@ function AndroidPermissionMini() {
         Разрешить установку из этого источника?
       </span>
       <div className="flex justify-end gap-2">
-        <span className="rounded-full px-2.5 py-1 text-[0.5625rem] font-semibold text-ink-muted">Отмена</span>
-        <span className="rounded-full bg-brand px-2.5 py-1 text-[0.5625rem] font-semibold text-ink-inverse">
+        <span className="rounded-full px-2.5 py-1 text-[0.5625rem] font-semibold text-ink-soft">Отмена</span>
+        <span className="rounded-full bg-brand-strong px-2.5 py-1 text-[0.5625rem] font-semibold text-ink-inverse">
           Разрешить
         </span>
       </div>

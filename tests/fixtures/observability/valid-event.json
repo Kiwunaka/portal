@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "event_id": "018f4f86-6a0b-4d3f-8f14-2c5a8a6391b2",
+  "occurred_at_utc": "2026-08-21T12:00:00Z",
+  "component": "app",
+  "subsystem": "dns",
+  "stage": "verify",
+  "name": "connection.probe.dns.completed",
+  "severity": "error",
+  "outcome": "failed",
+  "privacy_class": "local_operational",
+  "correlation": {
+    "trace_id": "0123456789abcdef0123456789abcdef",
+    "span_id": "0123456789abcdef",
+    "parent_span_id": "fedcba9876543210",
+    "run_id": "018f4f86-6a0b-4d3f-8f14-2c5a8a6391b3",
+    "attempt_id": "018f4f86-6a0b-4d3f-8f14-2c5a8a6391b4",
+    "generation": 7,
+    "sequence": 19
+  },
+  "build": {
+    "app_version": "1.2.0",
+    "build_number": "120",
+    "channel": "local",
+    "candidate_label": "pokrov-1.2.0-local",
+    "git_revision": "1111111111111111111111111111111111111111",
+    "core_version": "1.0.3",
+    "core_abi": 2,
+    "platform": "windows",
+    "architecture": "x64"
+  },
+  "error": {
+    "code": "DNS-002",
+    "origin": "client"
+  },
+  "attributes": {
+    "phase": "dns",
+    "duration_ms": 1803,
+    "dns_ready": false,
+    "network_class": "wifi"
+  }
+}

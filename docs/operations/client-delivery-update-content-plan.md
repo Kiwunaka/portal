@@ -1,6 +1,6 @@
 # Client Delivery, Update Check, And Dynamic Content Plan
 
-Last updated: 2026-08-17
+Last updated: 2026-08-21
 
 Status: active product/operations plan
 
@@ -57,7 +57,7 @@ Canonical asset shape:
 - `pokrov-android-universal.apk` as the larger fallback when ABI is unknown
 - `pokrov-windows-setup-x64.exe`
 - `SHA256SUMS.txt`
-- optional `release-manifest.json`
+- one versioned `release-handoff.json`; do not publish a second manifest truth
 
 Each public asset record should expose:
 
@@ -78,6 +78,14 @@ Current platform contract:
   returns prompt-mode update metadata for the requested platform
 - `config/release-handoff.seed.json` in `POKROV-app` is the repo-owned handoff
   seed for current binary metadata
+- schema v1 remains readable only as legacy metadata for the retained line
+- every new 1.2.0 candidate must use strict schema v2 in the same
+  `release-handoff.json` contract
+- schema v2 binds exact platform/client/core/release-index revisions,
+  compatibility, contract hashes, artifacts, signing, SBOM, provenance, manual
+  gates, and same-byte promotion intent
+- `python -B scripts/validate_release_handoff_metadata.py` is the platform
+  offline validator; only its valid-v2 exit `0` is candidate-eligible
 - unauthenticated GitHub release asset range smoke is required before a URL is
   treated as public-user-ready; use the active seed/versioned metadata and the
   retained evidence links above for the current candidate result
@@ -136,6 +144,13 @@ Suggested update payload fields:
 Current backend env/config fields:
 
 - `APP_RELEASE_CHANNEL`
+- `APP_RELEASE_SCHEMA_VERSION`
+- `APP_RELEASE_CANDIDATE_LABEL`
+- `APP_RELEASE_HANDOFF_SHA256`
+- `APP_RELEASE_ARTIFACT_SET_SHA256`
+- `APP_RELEASE_CORE_VERSION`
+- `APP_RELEASE_CORE_DESKTOP_ABI`
+- `APP_RELEASE_CORE_ANDROID_PACKAGE`
 - `APP_ANDROID_VERSION`
 - `APP_ANDROID_MIN_SUPPORTED_VERSION`
 - `APP_ANDROID_SHA256`

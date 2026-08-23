@@ -38,6 +38,7 @@ from node_observability_sanitizer import (
 from observer_service import observer_stale_after_seconds
 from ru_probe_service import (
     RU_RUN_STALE_AFTER_SECONDS,
+    RuProbeConfigurationError,
     get_latest_ru_status,
     get_ru_run_history,
     get_ru_uploader_status,
@@ -512,6 +513,7 @@ def alert_payload(row: OpsAlert, *, now: datetime | None = None) -> dict[str, An
     effective_status = "silenced" if silenced else str(row.status or "active")
     return {
         "id": int(row.id),
+        "version": int(row.version or 1),
         "fingerprint": str(row.fingerprint or ""),
         "source": str(row.source or ""),
         "severity": str(row.severity or "warning"),
@@ -522,6 +524,7 @@ def alert_payload(row: OpsAlert, *, now: datetime | None = None) -> dict[str, An
         "node_code": str(row.node_code or "") or None,
         "tg_id": int(row.tg_id) if row.tg_id is not None else None,
         "key_id": int(row.key_id) if row.key_id is not None else None,
+        "incident_id": str(row.incident_id) if row.incident_id else None,
         "first_seen_at": safe_iso(row.first_seen_at),
         "last_seen_at": safe_iso(row.last_seen_at),
         "resolved_at": safe_iso(row.resolved_at),
@@ -1135,15 +1138,28 @@ def build_node_observability(
     else:
         observer_status, observer_reason = "ok", "observer_fresh"
 
-    ru_latest = get_latest_ru_status(s, now=normalized_now)
-    ru_node = next(
-        (
-            row
-            for row in list(ru_latest.get("nodes") or [])
-            if str(row.get("node_code") or "").strip().lower() == wanted
-        ),
-        None,
-    )
+    try:
+        ru_latest = get_latest_ru_status(s, now=normalized_now)
+    except RuProbeConfigurationError as error:
+        ru_latest = {"nodes": []}
+        ru_node = {
+            "status": "failed",
+            "sampled_at": None,
+            "age_seconds": None,
+            "threshold_seconds": RU_RUN_STALE_AFTER_SECONDS,
+            "reason_code": "ru_configuration_invalid",
+            "configuration_error_code": str(error.code),
+            "target": None,
+        }
+    else:
+        ru_node = next(
+            (
+                row
+                for row in list(ru_latest.get("nodes") or [])
+                if str(row.get("node_code") or "").strip().lower() == wanted
+            ),
+            None,
+        )
     if ru_node is None:
         ru_node = {
             "status": "missing",
@@ -1266,6 +1282,8 @@ def admin_search_results(
     s,
     q: str,
     limit: int = 20,
+    allowed_kinds: set[str] | frozenset[str] | None = None,
+    include_sensitive_user_filters: bool = True,
 ) -> list[dict[str, str]]:
     query_text = str(q or "").strip()
     if not 2 <= len(query_text) <= 128:
@@ -1280,6 +1298,11 @@ def admin_search_results(
     numeric_like = f"%{escaped_query}%"
     results: list[dict[str, str]] = []
     seen: set[tuple[str, str]] = set()
+    allowed = (
+        {"user", "node", "order", "key"}
+        if allowed_kinds is None
+        else set(allowed_kinds) & {"user", "node", "order", "key"}
+    )
 
     def add(item: dict[str, str]) -> None:
         key = (item["kind"], item["id"])
@@ -1288,19 +1311,27 @@ def admin_search_results(
         seen.add(key)
         results.append(item)
 
-    user_filter = or_(
+    user_filters = [
         func.cast(User.tg_id, String).like(numeric_like, escape="\\"),
         func.lower(func.coalesce(User.username, "")).like(like, escape="\\"),
         func.lower(func.coalesce(User.display_name, "")).like(like, escape="\\"),
-        func.lower(func.coalesce(User.app_install_id, "")).like(like, escape="\\"),
-        func.lower(func.coalesce(User.email, "")).like(like, escape="\\"),
-    )
+    ]
+    if include_sensitive_user_filters:
+        user_filters.extend(
+            [
+                func.lower(func.coalesce(User.app_install_id, "")).like(like, escape="\\"),
+                func.lower(func.coalesce(User.email, "")).like(like, escape="\\"),
+            ]
+        )
+    user_filter = or_(*user_filters)
     users = (
         s.query(User)
         .filter(user_filter)
         .order_by(User.tg_id.asc())
         .limit(normalized_limit)
         .all()
+        if "user" in allowed
+        else []
     )
     matching_devices = (
         s.query(AccountDevice)
@@ -1308,6 +1339,8 @@ def admin_search_results(
         .order_by(AccountDevice.last_seen_at.desc(), AccountDevice.id.asc())
         .limit(normalized_limit)
         .all()
+        if "user" in allowed and include_sensitive_user_filters
+        else []
     )
     account_ids = [
         str(row.account_id)
@@ -1359,6 +1392,8 @@ def admin_search_results(
         .order_by(Node.code.asc())
         .limit(normalized_limit)
         .all()
+        if "node" in allowed
+        else []
     )
     for node in nodes:
         code = str(node.code or "").strip().lower()
@@ -1392,6 +1427,8 @@ def admin_search_results(
         .order_by(ExternalOrder.created_at.desc(), ExternalOrder.id.desc())
         .limit(normalized_limit)
         .all()
+        if "order" in allowed
+        else []
     )
     for order in orders:
         order_id = str(order.order_id or "")
@@ -1408,18 +1445,26 @@ def admin_search_results(
             }
         )
 
-    key_filter = or_(
-        func.lower(AccessKey.key_uuid).like(like, escape="\\"),
-        func.lower(AccessKey.panel_email).like(like, escape="\\"),
+    key_filter_parts = [
         func.cast(AccessKey.id, String).like(numeric_like, escape="\\"),
         func.cast(AccessKey.tg_id, String).like(numeric_like, escape="\\"),
-    )
+    ]
+    if include_sensitive_user_filters:
+        key_filter_parts.extend(
+            [
+                func.lower(AccessKey.key_uuid).like(like, escape="\\"),
+                func.lower(AccessKey.panel_email).like(like, escape="\\"),
+            ]
+        )
+    key_filter = or_(*key_filter_parts)
     keys = (
         s.query(AccessKey)
         .filter(key_filter)
         .order_by(AccessKey.id.asc())
         .limit(normalized_limit)
         .all()
+        if "key" in allowed
+        else []
     )
     for key in keys:
         key_id = str(int(key.id))
@@ -1758,8 +1803,16 @@ def build_alert_candidates(
 
 
 def refresh_ops_alerts(*, s, now: datetime, candidates: list[dict[str, Any]]) -> tuple[list[OpsAlert], list[dict[str, Any]]]:
+    environment = str(
+        os.getenv("ADMIN_OPERATOR_ENVIRONMENT")
+        or os.getenv("POKROV_ENVIRONMENT")
+        or "production"
+    ).strip().lower()
     fingerprints = sorted({str(item.get("fingerprint") or "") for item in candidates if str(item.get("fingerprint") or "")})
-    existing_rows = s.query(OpsAlert).filter(OpsAlert.source.in_(sorted(MANAGED_ALERT_SOURCES))).all()
+    existing_rows = s.query(OpsAlert).filter(
+        OpsAlert.environment == environment,
+        OpsAlert.source.in_(sorted(MANAGED_ALERT_SOURCES)),
+    ).all()
     existing_by_fingerprint = {str(row.fingerprint or ""): row for row in existing_rows}
     seen = set()
     notifications: list[dict[str, Any]] = []
@@ -1777,6 +1830,7 @@ def refresh_ops_alerts(*, s, now: datetime, candidates: list[dict[str, Any]]) ->
                 source=str(item.get("source") or "ops")[:64],
                 severity=str(item.get("severity") or "warning")[:16],
                 status="active",
+                environment=environment,
                 title=str(item.get("title") or fingerprint)[:180],
                 body=str(item.get("body") or "")[:1000] or None,
                 node_code=str(item.get("node_code") or "")[:32] or None,

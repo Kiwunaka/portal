@@ -23,20 +23,35 @@ from models import (
     User,
 )
 from node_policy import free_tier_enabled
+from payment_entitlement_outbox import ensure_payment_entitlement_outbox
+from shared_surface_facts import get_product_facts
+from commercial_attribution_service import (
+    project_commercial_renewal_for_grant,
+    project_commercial_verified_connection,
+)
 
 
-TRIAL_RESERVATION_DAYS = 5
-TRIAL_DURATION_DAYS = 5
+_PRODUCT_FACTS = get_product_facts()
+_TRIAL_FACTS = dict(_PRODUCT_FACTS.get("trial") or {})
+_TELEGRAM_REWARD_FACTS = dict(_PRODUCT_FACTS.get("telegram_reward") or {})
+_REFERRAL_REWARD_FACTS = dict(_PRODUCT_FACTS.get("referral_reward") or {})
+
+TRIAL_RESERVATION_DAYS = int(_TRIAL_FACTS["days"])
+TRIAL_DURATION_DAYS = int(_TRIAL_FACTS["days"])
 TRIAL_PROJECTION_CLOCK_TOLERANCE = timedelta(minutes=5)
 TRIAL_SOURCE = "premium_trial"
 TRIAL_EVIDENCE_KIND = "observer_connection"
-PRE_FIRST_PAYMENT_PREMIUM_CAP_DAYS = 15
-CHANNEL_GRANT_DAYS = 5
-GRANDFATHERED_CHANNEL_GRANT_DAYS = 10
-FRIEND_GRANT_DAYS = 5
-CHANNEL_GRACE_HOURS = 24
-REFERRER_HOLD_HOURS = 72
-REFERRER_GRANT_DAYS = 10
+PRE_FIRST_PAYMENT_PREMIUM_CAP_DAYS = int(
+    _REFERRAL_REWARD_FACTS["pre_first_payment_premium_cap_days"]
+)
+CHANNEL_GRANT_DAYS = int(_TELEGRAM_REWARD_FACTS["days"])
+GRANDFATHERED_CHANNEL_GRANT_DAYS = int(
+    _TELEGRAM_REWARD_FACTS["grandfathered_days"]
+)
+FRIEND_GRANT_DAYS = int(_REFERRAL_REWARD_FACTS["friend_days"])
+CHANNEL_GRACE_HOURS = int(_TELEGRAM_REWARD_FACTS["membership_grace_hours"])
+REFERRER_HOLD_HOURS = int(_REFERRAL_REWARD_FACTS["referrer_hold_hours"])
+REFERRER_GRANT_DAYS = int(_REFERRAL_REWARD_FACTS["referrer_days"])
 
 
 @dataclass(frozen=True)
@@ -238,6 +253,7 @@ def record_connection_evidence(
         raise ValueError("evidence_key is required")
     existing = session.query(ConnectionEvidence).filter_by(evidence_key=stable_key).first()
     if existing is not None:
+        project_commercial_verified_connection(session, evidence=existing)
         return existing
 
     row = ConnectionEvidence(
@@ -256,6 +272,7 @@ def record_connection_evidence(
             session.flush()
     except IntegrityError:
         row = session.query(ConnectionEvidence).filter_by(evidence_key=stable_key).one()
+    project_commercial_verified_connection(session, evidence=row)
     return row
 
 
@@ -1177,6 +1194,31 @@ def record_successful_payment_grant(
     duration_days: int,
     paid_at: datetime,
 ) -> PaymentGrantResult:
+    def result_with_outbox(
+        grant: EntitlementGrant,
+        *,
+        is_first_payment: bool,
+        relationship: ReferralRelationship | None,
+    ) -> PaymentGrantResult:
+        if str(grant.status or "") == "active" and str(grant.grant_kind or "") == "paid_access":
+            ensure_payment_entitlement_outbox(
+                session,
+                grant=grant,
+                provider=provider,
+                order_id=order_id,
+                now=current_paid_at,
+            )
+            project_commercial_renewal_for_grant(
+                session,
+                grant=grant,
+                occurred_at=current_paid_at,
+            )
+        return PaymentGrantResult(
+            grant=grant,
+            is_first_payment=is_first_payment,
+            relationship=relationship,
+        )
+
     current_paid_at = _naive_utc(paid_at)
     account_key = resolve_canonical_account_id(session, account_id=account_id)
     stable_key = _provider_payment_key(provider, order_id)
@@ -1208,7 +1250,7 @@ def record_successful_payment_grant(
                     user.expiry_at = projected_expiry
                     user.is_active = True
                 session.flush()
-                return PaymentGrantResult(
+                return result_with_outbox(
                     grant=existing,
                     is_first_payment=bool(metadata.get("is_first_payment")),
                     relationship=relationship,
@@ -1245,7 +1287,7 @@ def record_successful_payment_grant(
                 user.expiry_at = expires_at
                 user.is_active = True
             session.flush()
-            return PaymentGrantResult(
+            return result_with_outbox(
                 grant=existing,
                 is_first_payment=bool(metadata.get("is_first_payment")),
                 relationship=relationship,
@@ -1267,7 +1309,7 @@ def record_successful_payment_grant(
             now=current_paid_at,
         )
         metadata = _grant_metadata(existing)
-        return PaymentGrantResult(
+        return result_with_outbox(
             grant=existing,
             is_first_payment=bool(metadata.get("is_first_payment")),
             relationship=relationship,
@@ -1332,7 +1374,7 @@ def record_successful_payment_grant(
         user.current_plan_code = str(plan_code or "paid")[:32]
         user.is_active = True
     session.flush()
-    return PaymentGrantResult(grant=grant, is_first_payment=is_first, relationship=relationship)
+    return result_with_outbox(grant, is_first_payment=is_first, relationship=relationship)
 
 
 def grant_channel_bonus(

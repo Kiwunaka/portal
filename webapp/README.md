@@ -86,10 +86,25 @@ Rules:
 - frontend must not treat `https://app.pokrov.space/api/*` HTML fallback as valid API success
 - cabinet entry is continuation-first and must not be documented or styled like a second acquisition surface
 - first-layer cabinet UI guides Android users to the APK, Windows users to the EXE, and Apple users to a separate manual-connection card
+- the downloads hero detects Android, Windows, or Apple only as a default and
+  always exposes an explicit platform selector; an unknown or missing platform
+  never receives an APK/EXE chosen by fallback order
+- an Android or Windows primary download requires the release projection to
+  include its URL, version, channel, publication date, positive size and valid
+  SHA-256 plus release-note summary and URL; missing or partial metadata is
+  rendered explicitly and the download action stays hidden
+- release cards expose format/architecture, version, channel, date, size,
+  release notes and full checksum from `/api/client/apps`; mirror URLs without
+  the same bounded release metadata are not promoted by the cabinet
 - the private connection key and matching QR may appear only inside the authenticated Apple path; Android and Windows user flows must not offer raw subscription import
 - `?format=plain` remains hidden compatibility-only behavior and must stay out of normal cabinet UX
 - `connect.pokrov.space` is for config delivery, not for public acquisition or payment entry
 - cabinet checkout must not drift into a second public paywall or direct raw-link delivery story
+- cabinet payment return renders the server-owned
+  `processing|paid|failed|cancelled|manual_review|expired` projection. `paid`
+  refreshes account state before claiming active access; a paid/inactive or
+  refresh-failed result is an explicit mismatch with refresh and support
+  actions
 - cabinet renewal and checkout keep the shared six-plan catalog (`99`, `239`, `669`, `1199`, `1699`, and `1999` RUB) as the complete local fail-safe; a failed or partial catalog request must not collapse the surface to a stale subset
 - download rows and their secondary APK/file actions keep at least a 44 px touch target on mobile
 - downloads instructions and the six-plan renewal grid stay behind explicit disclosures on narrow screens; the main download or checkout action remains visible first
@@ -119,6 +134,13 @@ Rules:
 - Full-screen loading is reserved for true cold start when no useful session state exists.
 - Internal cabinet navigation keeps the shell mounted, shows page-shaped skeleton or route activity feedback, and must not reset the product frame.
 - Internal links warm their static route payload on hover/focus intent (`app-route-link.tsx`, deduplicated per session); hard-navigation auth flows and external links never prefetch.
+- The custom link wrapper remains justified for three bounded jobs only:
+  intent-prefetch of static internal routes, duplicate left-click suppression,
+  and shell route-activity feedback. Next.js `Link` still owns navigation;
+  auth/external targets use hard navigation and never enter that prefetch path.
+- After a client-side pathname change the shell focuses the new route's main
+  `h1`. Initial loads do not steal focus, and query/hash-only continuations do
+  not pretend to be a new route.
 - Dashboard and user snapshots may be kept only in React memory as last-good state during warm refresh; do not persist dashboard cache to browser storage.
 - Theme follows the system preference by default. Manual light/dark choice is a browser UI preference and should not store account or dashboard data.
 - Mobile cabinet navigation uses the shell drawer as its only navigation surface;
@@ -129,21 +151,38 @@ Rules:
 
 ## Account Onboarding And Motion
 
-- The dashboard reads `experience` from `GET /api/user/*`. First-run display,
+- The dashboard reads `experience` from `GET /api/user/*`. First-run state,
   version, completion, and skip state belong to the account; they are never
   stored in `localStorage`.
-- Completion and skip use `POST /api/account/experience/onboarding`; a failed
-  write keeps the tour open and presents the error inside the dialog.
-- The tour is an app-first four-screen handoff: welcome, download, same-account
-  login, and connect. It does not claim store availability or trusted signing.
+- The four-screen welcome/download/same-account/connect checklist opens only
+  after an explicit user action; pending account state never forces a modal on
+  dashboard load. Completion and skip use
+  `POST /api/account/experience/onboarding`; a failed write keeps the checklist
+  open and presents the error inside the dialog.
 - The main dashboard CTA follows server state: renew inactive access, download
   before app identity exists, reopen connection guidance before first connect,
-  and open devices after connection.
+  open devices after connection, and offer early renewal only when a completed
+  account has seven or fewer days left.
 - `reported` connection state is app-authored UX progress. Only `verified`
   means signed observer evidence exists.
 - Onboarding transitions, counters, status pulses, and route activity honor
   reduced-motion preferences. Animated numbers use tabular figures and spring
   only when their value changes; they are not continuous decorative loops.
+- Escape closes the onboarding dialog and restores focus to the control that
+  opened it. Client-side route changes focus the destination `h1`.
+
+## Accessibility And Visual Gates
+
+- The focused cabinet Playwright pack injects `axe-core` and fails on any
+  serious or critical finding on dashboard, downloads and checkout under a
+  deterministic light/reduced-motion environment.
+- The tracked dashboard matrix contains eight full-page baselines:
+  mobile/desktop x light/dark x normal/reduced motion. Captures hide only the
+  Next.js development portal, disable animations and carets, wait for fonts and
+  compare at CSS scale. Updating snapshots is an explicit review action; the
+  normal gate never updates them.
+- Automated browser proof does not replace keyboard/screen-reader testing on
+  the exact candidate. Those checks remain separately labelled manual evidence.
 
 ## Frontend Environment
 
@@ -218,6 +257,17 @@ npm.cmd run test:e2e:cabinet
 npm.cmd run test:e2e
 npm.cmd run test:e2e:admin  # retained admin parity fallback only
 ```
+
+## Server-owned winback slot
+
+The subscription page may render one `webapp.subscription.contextual`
+`winback_offer` supplied inside the authenticated dashboard snapshot. It never
+computes audience eligibility or price. Rendering requires a complete
+server-issued pilot/campaign/offer/creative/assignment lineage and exposes the
+exact server price, absolute deadline, terms and conservative remaining quota.
+The checkout URL contains a signed one-time context; missing or stale context
+must not block ordinary cabinet access. Impression/click telemetry is advisory
+and cannot choose a winner or authorize scale.
 
 From the repository root, run the shared text guard when visible copy changes:
 

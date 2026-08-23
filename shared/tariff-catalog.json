@@ -1,6 +1,27 @@
 {
   "catalog_version": "2026-08-12-balanced-long-plans-v3",
+  "commercial_revision": "2026-08-21.1",
+  "effective_from": "2026-08-21T00:00:00Z",
+  "terms_revision": "2026-08-21.1-local-unapproved",
   "default_currency": "RUB",
+  "price_authority": "server_commercial_contract",
+  "promo_authority": "server_offer_preview_only",
+  "campaign_saving_authority": "server_offer_preview_only",
+  "capacity_policy": {
+    "limit_units": 300,
+    "unit_authority": "active_entitlement_projection",
+    "acquisition_allowed_bands": ["green", "yellow"],
+    "pause_at_ratio": 0.7,
+    "resume_below_ratio": 0.65,
+    "renewal_exempt": true,
+    "bands": [
+      {"code": "green", "minimum_ratio": 0.0, "maximum_ratio": 0.499999},
+      {"code": "yellow", "minimum_ratio": 0.5, "maximum_ratio": 0.699999},
+      {"code": "orange", "minimum_ratio": 0.7, "maximum_ratio": 0.849999},
+      {"code": "red", "minimum_ratio": 0.85, "maximum_ratio": 0.999999},
+      {"code": "hold", "minimum_ratio": 1.0, "maximum_ratio": null}
+    ]
+  },
   "commerce_model": {
     "primary_purchase_flow": "buy_key",
     "primary_fulfillment_flow": "redeem_key",
@@ -21,14 +42,6 @@
     "pro": "1_month",
     "ultra": "12_months"
   },
-  "pricing_preview": {
-    "discount_codes": {
-      "POKROV10": 10,
-      "PORTAL10": 10,
-      "WELCOME15": 15,
-      "STARTBOOST": 15
-    }
-  },
   "plans": [
     {
       "code": "start_99",
@@ -40,6 +53,10 @@
       "duration_days": 30,
       "amount_rub": 99,
       "amount_stars": 99,
+      "base_saving_percent": 0,
+      "temporary_campaign_saving_percent": 0,
+      "capacity_cost_units": 1,
+      "renewal_policy": "manual_no_auto_renewal",
       "device_limit": 1,
       "node_policy": "managed_premium",
       "access_tier": "managed_premium",
@@ -59,6 +76,10 @@
       "duration_days": 30,
       "amount_rub": 239,
       "amount_stars": 239,
+      "base_saving_percent": 0,
+      "temporary_campaign_saving_percent": 0,
+      "capacity_cost_units": 1,
+      "renewal_policy": "manual_no_auto_renewal",
       "device_limit": 5,
       "node_policy": "managed_premium",
       "access_tier": "managed_premium",
@@ -78,6 +99,10 @@
       "duration_days": 91,
       "amount_rub": 669,
       "amount_stars": 669,
+      "base_saving_percent": 7,
+      "temporary_campaign_saving_percent": 0,
+      "capacity_cost_units": 1,
+      "renewal_policy": "manual_no_auto_renewal",
       "device_limit": 5,
       "node_policy": "managed_premium",
       "access_tier": "managed_premium",
@@ -97,6 +122,10 @@
       "duration_days": 182,
       "amount_rub": 1199,
       "amount_stars": 1199,
+      "base_saving_percent": 16,
+      "temporary_campaign_saving_percent": 0,
+      "capacity_cost_units": 1,
+      "renewal_policy": "manual_no_auto_renewal",
       "device_limit": 5,
       "node_policy": "managed_premium",
       "access_tier": "managed_premium",
@@ -116,6 +145,10 @@
       "duration_days": 273,
       "amount_rub": 1699,
       "amount_stars": 1699,
+      "base_saving_percent": 21,
+      "temporary_campaign_saving_percent": 0,
+      "capacity_cost_units": 1,
+      "renewal_policy": "manual_no_auto_renewal",
       "device_limit": 5,
       "node_policy": "managed_premium",
       "access_tier": "managed_premium",
@@ -135,6 +168,10 @@
       "duration_days": 365,
       "amount_rub": 1999,
       "amount_stars": 1999,
+      "base_saving_percent": 30,
+      "temporary_campaign_saving_percent": 0,
+      "capacity_cost_units": 1,
+      "renewal_policy": "manual_no_auto_renewal",
       "device_limit": 5,
       "node_policy": "managed_premium",
       "access_tier": "managed_premium",

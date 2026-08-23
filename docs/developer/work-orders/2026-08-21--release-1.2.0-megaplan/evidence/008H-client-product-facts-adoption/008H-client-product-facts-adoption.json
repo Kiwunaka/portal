@@ -1,0 +1,97 @@
+{
+  "candidate_created": false,
+  "client_branch": "codex/1.2.0-release-v2",
+  "client_head": "ba7930ea83487874f47a49199ade89868c5675b3",
+  "client_source_dirty": true,
+  "date": "2026-08-22",
+  "evidence_ceiling": "I3_LOCAL_SOURCE_AND_RUNTIME_CONSUMER_PROOF",
+  "ledger_advancement": [
+    "REL/CONTRACT-001 I2->I3"
+  ],
+  "ledger_distribution": {
+    "I0": 20,
+    "I1": 45,
+    "I2": 34,
+    "I3": 278,
+    "at_least_i1": 357,
+    "below_i3": 99,
+    "total": 377
+  },
+  "ledger_unchanged": [
+    "FE/P12-024 remains I2",
+    "ADOPT/ADOPT-07 remains I2"
+  ],
+  "noncanonical_diagnostics": [
+    {
+      "result": "DIAGNOSTIC_CORRECTED_NOT_CREDITED",
+      "summary": "The first generated Dart integration used a part and the existing presentation boundary correctly rejected a 29-to-30 part increase; the projection was changed to an ordinary import and the guard passed at 29 without weakening its ceiling."
+    }
+  ],
+  "platform_branch": "codex/1.2.0-phase00",
+  "platform_head": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+  "platform_source_dirty": true,
+  "product_authority": {
+    "commercial_contract_sha256": "22b7ef26908c23c2bb53322dec959a3bc050a20a6c6d2feff9f78708b45e23cd",
+    "commercial_revision": "2026-08-21.1",
+    "product_facts_sha256": "2c135eeee91adaca52bc35b103ce5839e7f670e557ff7b55970c4375a2916f54",
+    "tariff_catalog_sha256": "0e5acae30601854cee4c44c33af84e84bbdcd24d2788a7da1463bb3ee4a40d43"
+  },
+  "promotion_authorized": false,
+  "server_authority_retained": [
+    "prices",
+    "promo terms",
+    "referral account state",
+    "quota and orders",
+    "payment and entitlement outcomes"
+  ],
+  "source_hashes": {
+    "client/config/product-contract.seed.json": "0739bf6067d948ab6ae94734855ec7d9941461532c4f1b4ca34ddeeda2a1d2db",
+    "client/docs/product/client-product-contract.md": "a293ba4e7238fa755f707f83e0d0fc1b7187d24deb1d11f425c08279f9d5ef1c",
+    "client/packages/app_shell/lib/app_shell.dart": "ae5704d01250b0c64840c87f2b1d991ce9a0315d300d91de760e05b829da1dc7",
+    "client/packages/app_shell/lib/src/seed/platform_product_facts.g.dart": "c50da44dbe47b9c3514d55ddfd3b7bd8d18cca804464968d0fbaa1bde982ecac",
+    "client/packages/app_shell/lib/src/seed/seed_context.dart": "455618f47bd5a3ad1c5c65f1524b62c2afe7c6674fbe5bcbf0dda34b23079326",
+    "client/packages/app_shell/test/pokrov_seed_app_test.dart": "f0922c50522e37c8e46496c39a4383faca4b6936f475b3164e0d02e0708b219e",
+    "client/scripts/validate-seed.ps1": "696a651bac9293024b8bbf45b7ed66f210927e2cd8619cd6dc93a1558f4c0011",
+    "platform/docs/product/portal-vpn-product.md": "3bb757fd75f9d92d5e2f6f5d0df2527821d039249c8fad8d7f26fb0e622902d0",
+    "platform/scripts/sync_shared_surface_facts.py": "1a96c20faf21cadc83e8e37c6fbad868a594e14553a0ccdc4335dc471f58cb70",
+    "platform/tests/test_shared_surface_facts.py": "a35f99f61b7088e9266c081ee197e377765182ce04ce663a4182e4eefe0914e7"
+  },
+  "stage_distribution_below_i3": {
+    "candidate": 32,
+    "deferred": 21,
+    "external": 17,
+    "external_pre_candidate": 3,
+    "pre_freeze": 29
+  },
+  "status": "PASS_LOCAL_WITH_DECLARED_LIMITATIONS",
+  "verification": [
+    {
+      "command": "pytest shared-surface/admin-design/commercial/revision matrix",
+      "result": "PASS; 25/25"
+    },
+    {
+      "command": "ruff check and format --check for synchronizer/tests",
+      "result": "PASS"
+    },
+    {
+      "command": "sync_shared_surface_facts.py --target-lane pokrov-app --check",
+      "result": "PASS; exact active-client projection; negative no-write drift fixture also PASS"
+    },
+    {
+      "command": "client scripts/validate-seed.ps1 with explicit active platform/Core roots",
+      "result": "PASS; product facts and all standard client source contracts green; Core replacement still pending"
+    },
+    {
+      "command": "flutter analyze --no-pub in packages/app_shell",
+      "result": "PASS; no issues"
+    },
+    {
+      "command": "app-first runtime bootstrap plus seed test suite, then exact updated seed-context case",
+      "result": "PASS; 243/243 before final assertion addition and 1/1 exact updated assertion rerun"
+    },
+    {
+      "command": "documentation/context/preflight, links, JSON and diff checks",
+      "result": "PASS"
+    }
+  ]
+}

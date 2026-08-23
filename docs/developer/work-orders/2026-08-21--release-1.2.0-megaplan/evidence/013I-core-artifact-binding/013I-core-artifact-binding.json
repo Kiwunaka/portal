@@ -1,0 +1,155 @@
+{
+  "schema": "pokrov.release-1.2.0.core-artifact-binding.v1",
+  "generated_at": "2026-08-22T23:32:00Z",
+  "work_order": "WO-013I",
+  "status": "COMPLETE_LOCAL_PRE_CANDIDATE_EVIDENCE_NO_LEDGER_ADVANCEMENT",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "promotion_authorized": false,
+  "sources": {
+    "platform": {
+      "branch": "codex/1.2.0-phase00",
+      "revision": "7a15ba2bd5d17617aca28205cd448b6c917929ab",
+      "working_tree_state": "clean"
+    },
+    "client": {
+      "branch": "codex/1.2.0-release-v2",
+      "revision": "336d5454d47fa33d08b7a6bae79b7980cc6b11b4",
+      "binding_revision": "8e12bddd822174db363483e685a0f6bbadc6661e",
+      "working_tree_state": "clean"
+    },
+    "core": {
+      "branch": "codex/1.2.0-release-v2",
+      "revision": "fcb3c8bbc6efdeed284417369aacb522722ebfa2",
+      "version": "1.1.0",
+      "state": "PRE_CANDIDATE_LOCAL",
+      "working_tree_state": "clean"
+    }
+  },
+  "toolchains": {
+    "go": "go1.25.13",
+    "android_sdk": "LOCAL_PINNED_BUILD_ENVIRONMENT",
+    "mingw": "13.2.0",
+    "mingw_archive_sha256": "a05578fab9068c678ce761e7b2e284d23fa7416a2f4f36349e05e506c944e2c7"
+  },
+  "artifacts": {
+    "android": {
+      "entry": "pokrov-core.aar",
+      "size": 107317530,
+      "sha256": "26a7b9ebcf05065b33cc40848147a66db5172a9655cb9c77a839fa685145bf93",
+      "tree_sha256": "78cbf8dddd6ce2c3311a2ec2167c803ec122a6973efe50d955f26ec1d07c3b13",
+      "source_evidence_sha256": "743ac8b5f68a0c779bf6d4043fce9dc45fdcecc7cd610e3b40285aacdd974efc",
+      "reproducibility": "PASS_BYTE_IDENTICAL_TWO_BUILDS",
+      "abis": [
+        "armeabi-v7a",
+        "arm64-v8a",
+        "x86",
+        "x86_64"
+      ]
+    },
+    "windows": {
+      "entry": "pokrov-core.dll",
+      "size": 55352320,
+      "sha256": "10ee475d04417c4317221a85ca4b043a7489294d654fc4ce7a64ec56dcdcdbff",
+      "tree_sha256": "a293a83e1efbd653b7a623b3c832df93f4985a57a50bb693cf4aef75dcfe3b4b",
+      "source_evidence_sha256": "917bad838ed91ccf86544a543fe9e7c8daa3d9e54f8e788006f6ec219f16f17a",
+      "reproducibility": "PASS_BYTE_IDENTICAL_TWO_BUILDS",
+      "required_exports": "PASS_15_OF_15",
+      "proxy_only_start_stop_cycles": "PASS_100_OF_100"
+    },
+    "libcronet": {
+      "entry": "libcronet.dll",
+      "size": 8596992,
+      "sha256": "8ef1f8bbde77f954af1ae47bee1819ac8dc2354bb0e1d4baba3dad9e58d7a6f7"
+    },
+    "sbom": [
+      {
+        "name": "pokrov-core.cdx.json",
+        "size": 311627,
+        "sha256": "18707e43f557d80aceecb112d4907c1295e8a27583af1bf2243d45cf63ba38a0"
+      },
+      {
+        "name": "sing-box.cdx.json",
+        "size": 267255,
+        "sha256": "28925d34046ac0f0a7edec40a032938fcbc59c18bd47b9d5d69b6688ebf6637d"
+      }
+    ]
+  },
+  "local_results": {
+    "android_reproducible_build": "PASS_TWO_BUILDS",
+    "windows_reproducible_build": "PASS_TWO_BUILDS",
+    "windows_initial_environment_attempt": "NOT_CREDITED_ENVIRONMENT_FAILURE",
+    "client_standard_gate": "PASS",
+    "client_app_shell": "PASS_385_OF_385",
+    "client_runtime_engine": "PASS_59_WITH_1_EXPECTED_EXTERNAL_DLL_SKIP",
+    "client_android_shell": "PASS_8_OF_8",
+    "client_windows_shell": "PASS_21_OF_21",
+    "client_android_gradle": "BUILD_SUCCESSFUL_162_TASKS_REPORTED",
+    "client_cross_repository_seed_gate": "PASS",
+    "platform_preflight_regression": "PASS_12_OF_12",
+    "platform_ruff": "PASS",
+    "platform_format": "PASS",
+    "platform_compile": "PASS",
+    "platform_diff_check": "PASS"
+  },
+  "preflight": {
+    "status": "BLOCKED",
+    "evidence_ceiling": "LOCAL_READ_ONLY_PREFLIGHT",
+    "candidate_created": false,
+    "artifact_binding_verified_exact_local_bytes": true,
+    "source_report_bytes": 44597,
+    "source_report_sha256": "227b5f341b166ff0e162fb505dac3a4a44dc68562f49756ef64226499e458947",
+    "blocker_count": 3,
+    "blockers": [
+      {
+        "id": "release_index_missing",
+        "status": "BLOCKED_BY_ACCESS"
+      },
+      {
+        "id": "ledger_pre_freeze_incomplete",
+        "status": "BLOCKED_LOCAL_FREEZE",
+        "rows": 3
+      },
+      {
+        "id": "ledger_external_pre_candidate_incomplete",
+        "status": "BLOCKED_EXTERNAL_PRECONDITION",
+        "rows": 3
+      }
+    ]
+  },
+  "ledger": {
+    "total": 377,
+    "distribution": {
+      "I3": 303,
+      "I2": 19,
+      "I1": 40,
+      "I0": 15
+    },
+    "below_i3": 74,
+    "pending_stage_counts": {
+      "pre_freeze": 3,
+      "candidate": 33,
+      "external": 17,
+      "deferred": 21
+    },
+    "advanced_rows": 0
+  },
+  "limitations": {
+    "artifact_signing": "NOT_RUN",
+    "release_tag": "NOT_CREATED",
+    "public_release_index": "BLOCKED_BY_ACCESS",
+    "hosted_ci": "NOT_RUN_FOR_UPDATED_CLIENT_BINDING",
+    "windows_tun_dns_route_leak": "NOT_PROVED_BY_PROXY_ONLY_BACKTEST",
+    "physical_device_or_clean_vm": "NOT_RUN",
+    "current_brain_ru_origins": "NOT_RUN",
+    "sbom_license_clearance": "NOT_CLAIMED"
+  },
+  "external_or_manual": {
+    "push": "NOT_REQUESTED",
+    "trusted_signing": "NOT_RUN",
+    "provider_or_payment": "NOT_RUN",
+    "deployment": "NOT_AUTHORIZED",
+    "publication": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  }
+}

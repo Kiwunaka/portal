@@ -1,0 +1,120 @@
+{
+  "budget_contract": {
+    "id": "pokrov.performance-budgets",
+    "sha256": "9c2cca66d4675ec863d86fddf58f0772c6f11e0f535d4709a2056d9a3da82378",
+    "version": "1.0.0"
+  },
+  "environment": {
+    "architecture": "AMD64",
+    "artifact_sha256": "a4054c25f67b5dca3436c0a8187cb59b32d3619d58a15cd4e8e7a70773309eae",
+    "build_mode": "release-static-export",
+    "captured_at_utc": "2026-08-22T03:08:52Z",
+    "collector_id": "pokrov.web-static-assets",
+    "collector_version": "1.0.0",
+    "device_model": "local-build-host",
+    "network_profile": "static-export-no-network",
+    "origin": "local",
+    "os_version": "Windows-11-10.0.26100-SP0",
+    "platform": "web",
+    "toolchain": "node@v24.15.0;adminapp:next@16.2.10;marketing:next@^16.1.6;webapp:next@16.1.6"
+  },
+  "measurements": [
+    {
+      "baseline": null,
+      "budget_id": "web.marketing.critical_route_js_gzip_bytes",
+      "samples": [
+        246707
+      ],
+      "state": "MEASURED",
+      "unit": "bytes",
+      "warmup_samples_discarded": 0
+    },
+    {
+      "baseline": null,
+      "budget_id": "web.marketing.export_image_bytes",
+      "samples": [
+        7848431
+      ],
+      "state": "MEASURED",
+      "unit": "bytes",
+      "warmup_samples_discarded": 0
+    },
+    {
+      "baseline": null,
+      "budget_id": "web.marketing.export_font_bytes",
+      "samples": [
+        96848
+      ],
+      "state": "MEASURED",
+      "unit": "bytes",
+      "warmup_samples_discarded": 0
+    },
+    {
+      "baseline": null,
+      "budget_id": "web.webapp.critical_route_js_gzip_bytes",
+      "samples": [
+        302597
+      ],
+      "state": "MEASURED",
+      "unit": "bytes",
+      "warmup_samples_discarded": 0
+    },
+    {
+      "baseline": null,
+      "budget_id": "web.webapp.export_image_bytes",
+      "samples": [
+        5390960
+      ],
+      "state": "MEASURED",
+      "unit": "bytes",
+      "warmup_samples_discarded": 0
+    },
+    {
+      "baseline": null,
+      "budget_id": "web.webapp.export_font_bytes",
+      "samples": [
+        182880
+      ],
+      "state": "MEASURED",
+      "unit": "bytes",
+      "warmup_samples_discarded": 0
+    },
+    {
+      "baseline": null,
+      "budget_id": "web.adminapp.critical_route_js_gzip_bytes",
+      "samples": [
+        455270
+      ],
+      "state": "MEASURED",
+      "unit": "bytes",
+      "warmup_samples_discarded": 0
+    },
+    {
+      "baseline": null,
+      "budget_id": "web.adminapp.export_image_bytes",
+      "samples": [
+        0
+      ],
+      "state": "MEASURED",
+      "unit": "bytes",
+      "warmup_samples_discarded": 0
+    },
+    {
+      "baseline": null,
+      "budget_id": "web.adminapp.export_font_bytes",
+      "samples": [
+        0
+      ],
+      "state": "MEASURED",
+      "unit": "bytes",
+      "warmup_samples_discarded": 0
+    }
+  ],
+  "release": {
+    "candidate_label": "local-working-tree",
+    "source_revision": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "version": "1.2.0",
+    "working_tree_state": "dirty"
+  },
+  "schema_version": 1
+}

@@ -1,5 +1,7 @@
 # POKROV 1.0.6 Stable Release Work Order
 
+Document class: `EVIDENCE`
+
 Status: `COMPLETE`
 
 Owner outcome: выпустить прямой Android APK и Windows-пакет как стабильный

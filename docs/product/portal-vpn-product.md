@@ -1,6 +1,6 @@
 # POKROV Product Overview
 
-Last updated: 2026-07-22
+Last updated: 2026-08-22
 
 ## Document Status
 
@@ -62,6 +62,15 @@ Client-canon note:
 - this document treats only `POKROV-app/main` as the active client lane
 - any surviving `app-next/` or legacy-fork references elsewhere are archival or rollback-only and must not override product truth
 
+Cross-surface machine facts have one platform owner. `shared/product-facts.json`
+owns product/trial/reward/scope/legal-path facts, `shared/public-urls.json` owns
+public destinations, and the generated `shared/commercial-contract.json` binds
+product and tariff inputs to one revision and digest. The active client keeps a
+generated, digest-pinned projection of those owners; its release validation
+runs the synchronizer in read-only mode and rejects config, generated-Dart or
+runtime-consumer drift. Client code remains a consumer, not price, promo,
+referral-account or payment authority.
+
 ## Current Account Foundation Boundary
 
 The repository candidate implements an additive account foundation: UUID `accounts.id` is persisted and `users.account_id` is a nullable projection.
@@ -89,10 +98,10 @@ Production deployment of account foundation is not proven. A completed productio
   linking and confirmed membership in the official channel; trial users are
   eligible, payment is not required, and already-issued `+10 days` grants are
   grandfathered
-- current distributed stable-direct release: `v1.1.5`; Android `1.1.5+28`
-  with ARM64, ARMv7, x86_64 and universal APKs, plus Windows `1.1.5+28`
+- current distributed stable-direct release: `v1.1.6`; Android `1.1.6+29`
+  with ARM64, ARMv7, x86_64 and universal APKs, plus Windows `1.1.6+29`
 - any later candidate requires exact promoted-client and public-asset evidence
-- stable channel: public outside-store `v1.1.5`; this does not claim store
+- stable channel: public outside-store `v1.1.6`; this does not claim store
   availability, trusted Windows signing, exact Huawei/RU-LTE proof or Apple support
 - Russian is a first-class user language
 - recommended public routing mode: `All except RU`
@@ -104,14 +113,14 @@ Production deployment of account foundation is not proven. A completed productio
 
 - release target remains `Android + Windows`
 - next platform after those gates is Linux; Apple platforms follow later only with build/sign/notarization/TestFlight/App Store evidence
-- outside-store stable-direct Android + Windows release `v1.1.5` is public as
+- outside-store stable-direct Android + Windows release `v1.1.6` is public as
   of `2026-08-19`; the retained beta packs remain historical evidence
 - `Windows` remains unsigned and must keep unknown-publisher/SmartScreen warning
   copy visible; stable-direct distribution does not equal trusted publisher signing
 - `Android` uses production-signed direct APKs; store publishing, exact-final
   Huawei endurance and stronger raw-device claims remain separate gates
 - runtime `/api/client/apps`, anonymous `/api/public/client-apps`, GitHub digests
-  and the stable handoff are green for `1.1.5`; a real-user Telegram WebApp
+  and the stable handoff are green for `1.1.6`; a real-user Telegram WebApp
   opening remains a manual owner test
 - marketing and cabinet may describe the stable outside-store Android/Windows
   release only alongside official-source guidance and current limitations
@@ -438,6 +447,13 @@ destination, safe fallback and measurement key before activation. Pausing or
 expiring a campaign must leave the normal site/install path usable; disabling
 an app banner must remove the slot without an empty placeholder or an app
 update.
+
+Acquisition and winback also obey the commercial 300-unit active-entitlement
+limit. The backend auto-pauses them at 70%, does not resume a capacity-paused
+campaign until usage is strictly below 65%, and rechecks legal/channel/offer/
+cap/revision/time policy before resume. Renewal and recovery remain available;
+an owner pause is never mistaken for an automatic capacity pause. Reservation
+and funnel counts are forecast only and cannot create or revoke access.
 
 App campaign measurement is first-party only: `impression`, `click`,
 `dismiss`, and `expired` use the approved slot/content/placement identifiers.
