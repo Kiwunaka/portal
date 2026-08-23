@@ -2506,3 +2506,51 @@ Distribution becomes `I3=307`, `I2=16`, `I1=39`, `I0=15`; 70 rows remain
 below `I3`, and the stage split becomes `0/33/16/21`. Candidate assembly may
 proceed, but no candidate, signature, production deploy, device/origin claim,
 payment action, campaign or stable promotion occurred.
+
+## 2026-08-23 — WO-013P final source promotion
+
+The final 1.2.0 source tuple was promoted through exact owner-authored PRs under
+the authorized `OWNER_SOLO_EXCEPTION`, with
+`independent_review_performed=false` retained. Platform PR 20 head
+`672a245aac1481220d118463a3b65b7d63275790` passed `repo-guardrails` run
+`32654545629` and `cross-repository-contract` run `32654545639`, then merged
+as signed platform `master`
+`2ed944c5eaa667c44a7bc1970d2dd175ff34f8c9`. Its post-merge guard run
+`32655166506` and cross-repository run `32655166477`, attempt 2, pass.
+
+Client PR 10 head `4864e439126263296a68ea8c1ba213f25c57a5fb` passed the
+full hosted gate in run `32655837199`, job `97234316532`, and merged as signed
+client `main` `3904734ce7761cc92c4136f1eaf13e20f2354f72` with the exact same
+Git tree. Client main run `32656692926`, job `97236406043`, repeats the
+cross-repository contract, complete standard client gate and both Android
+flavors successfully. Earlier run `32652910014` remains an `INFRA_FAILURE`
+from GitHub runner disk exhaustion, not a test failure or a pass.
+
+Core PR 2 head `0e6b0204d764ae6b1d726343f487a7004d13393b` passed all five required
+jobs in run `32619396382` and merged as signed Core `main`
+`bdbd97fae35103e705f55908caebf75b4a9ff72f` with the exact same Git tree.
+Core main run `32651975372` passes all five jobs again. That final source
+produces locally byte-identical Android and Windows builds. Final client main
+embeds AAR SHA-256
+`83a5bd740774a2a16117f0c242c3ada4bcbb22a65255c3ee008a751e681c06f0`,
+Core DLL SHA-256
+`ef9672b3ba9983012bfa78abd2e4cd8ef5ef65d8e4b6a49ff89f8c4d0d575040`
+and Cronet SHA-256
+`8ef1f8bbde77f954af1ae47bee1819ac8dc2354bb0e1d4baba3dad9e58d7a6f7`.
+Hosted Linux Android reproducibility is retained separately and is not
+misstated as byte-identical to the Windows-produced embedded AAR.
+
+The final clean live gate binds the three merge commits, passes all seven
+source regression anchors and all three exact owner-solo PR controls. It
+remains correctly `BLOCKED` because exact-candidate Windows 10/11 clean-host
+TUN, DNS, egress and rollback evidence is `NOT_RUN`; `candidate_proven=false`.
+The 8,248-byte report SHA-256 is
+`71512121d6c9b0ccd9c73423056a14707e11a1db7a2027ca851ad04130927109`.
+Three earlier transient API readbacks remained fail-closed and were not
+partially credited.
+
+`REL/REL-001` and `REL_DOD/DOD-09` advance `I1 -> I3`. Distribution becomes
+`I3=309`, `I2=16`, `I1=37`, `I0=15`; 68 rows remain below `I3`, and the stage
+split becomes `0/33/14/21`. Source promotion is complete, but no candidate,
+signature, physical-device/clean-host or origin proof, provider action,
+production deploy, payment, campaign or stable promotion occurred.

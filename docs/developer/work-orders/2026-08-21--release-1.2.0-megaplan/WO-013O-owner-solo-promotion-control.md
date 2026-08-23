@@ -1,10 +1,15 @@
 # WO-013O — Owner-solo promotion control
 
-Status: `OWNER_SOLO_EXCEPTION_AUTHORIZED_CORE_PROTECTED_EXACT_PR_EVIDENCE_PENDING`
+Status: `COMPLETE_POLICY_EXECUTION_CLOSED_BY_WO_013P`
 Phase: `01`, `11`
 Rows: `REL/REL-001`, `REL_DOD/DOD-09`, `FE/P12-023`
 Candidate: `NOT_CREATED`
 Production mutation: `NOT_AUTHORIZED_NOT_RUN`
+
+Subsequent closure: `WO-013P` retains the final platform/client/Core PR heads,
+required app-bound checks, signed promotion commits and post-merge runs. The
+pending state recorded below is the pre-promotion observation preserved by
+this WO; `REL/REL-001` and `REL_DOD/DOD-09` now close at `I3` in `WO-013P`.
 
 ## Outcome
 
