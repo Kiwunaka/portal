@@ -2,6 +2,28 @@
   "schema": "pokrov.release-stop-ship-regressions.v1",
   "release": "1.2.0",
   "source_plan": "POKROV_release_1.2.0_full_audit_with_client_logging_RU.md",
+  "branch_policy": {
+    "require_status_check_app_binding": true,
+    "required_pull_request_reviews": {
+      "dismiss_stale_reviews": true,
+      "require_code_owner_reviews": true,
+      "required_approving_review_count": 1,
+      "require_last_push_approval": true
+    },
+    "enforce_admins": true,
+    "required_linear_history": true,
+    "required_conversation_resolution": true,
+    "required_signatures": true,
+    "allow_force_pushes": false,
+    "allow_deletions": false,
+    "codeowners": {
+      "path": ".github/CODEOWNERS",
+      "excluded_pr_author": "Kiwunaka",
+      "minimum_eligible_non_author_reviewers": 1,
+      "selected_code_owners": [],
+      "selection_state": "BLOCKED_BY_OWNER_DECISION"
+    }
+  },
   "entries": [
     {
       "id": "PAY-001",
@@ -48,7 +70,7 @@
         {
           "repository": "Kiwunaka/portal",
           "branch": "master",
-          "required_checks": ["cross-repository-contract"]
+          "required_checks": ["repo-guardrails", "cross-repository-contract"]
         },
         {
           "repository": "Kiwunaka/POKROV-app",
@@ -58,7 +80,13 @@
         {
           "repository": "Kiwunaka/pokrov-core",
           "branch": "main",
-          "required_checks": ["test", "release-contract"]
+          "required_checks": [
+            "test",
+            "release-contract",
+            "android-artifact-reproducibility",
+            "windows-artifact-reproducibility",
+            "apple-source-build"
+          ]
         }
       ]
     },

@@ -100,10 +100,16 @@ python -B scripts/release_1_2_stop_ship_gate.py `
 ```
 
 The command is read-only. A missing branch-protection feature or permission is
-`BLOCKED_BY_ACCESS`; an unprotected branch or missing strict required check is
-`NO_GO`. WIN-003 remains `NOT_RUN` until the exact Windows candidate passes the
-clean-host TUN/DNS/egress/rollback matrix. A passing source anchor never
-converts either hosted control or the manual clean-host gate into `PASS`.
+`BLOCKED_BY_ACCESS`; an unprotected branch or missing policy control is
+`NO_GO`. The policy check requires strict named checks, one non-author approval,
+stale-review dismissal, Code Owner review, last-push approval, admin
+enforcement, signed commits, linear history, conversation resolution and
+disabled force pushes/deletions. It also verifies that an eligible non-author
+reviewer was selected and that the live `.github/CODEOWNERS` covers both the
+repository root and its own `.github` control surface. WIN-003 remains
+`NOT_RUN` until the exact Windows candidate passes the clean-host
+TUN/DNS/egress/rollback matrix. A passing source anchor never converts either
+hosted control or the manual clean-host gate into `PASS`.
 
 Current focused procedures:
 
