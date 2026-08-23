@@ -810,9 +810,11 @@ def build_report(
     client_root: Path,
     core_root: Path,
     release_index_root: Path | None,
+    ledger_root: Path | None = None,
 ) -> dict[str, Any]:
+    ledger_source_root = ledger_root or platform_root
     ledger_path = (
-        platform_root
+        ledger_source_root
         / "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/EXECUTION-LEDGER.csv"
     )
     rows = _load_ledger(ledger_path)
@@ -825,6 +827,11 @@ def build_report(
         "client": _git_identity(client_root),
         "core": _git_identity(core_root),
     }
+    ledger_source = _git_identity(ledger_source_root)
+    preflight_tool = {
+        **_git_identity(REPO_ROOT),
+        "script_sha256": _sha256_file(Path(__file__).resolve()),
+    }
     blockers: list[dict[str, str]] = []
     for name, value in sources.items():
         if value["working_tree_state"] != "clean":
@@ -835,6 +842,22 @@ def build_report(
                     "detail": "exact candidate identity requires a clean committed revision",
                 }
             )
+    if ledger_source["working_tree_state"] != "clean":
+        blockers.append(
+            {
+                "id": "ledger_worktree_dirty",
+                "status": "BLOCKED_LOCAL_FREEZE",
+                "detail": "execution ledger evidence requires a clean committed revision",
+            }
+        )
+    if preflight_tool["working_tree_state"] != "clean":
+        blockers.append(
+            {
+                "id": "preflight_tool_worktree_dirty",
+                "status": "BLOCKED_LOCAL_FREEZE",
+                "detail": "candidate preflight tool requires a clean committed revision",
+            }
+        )
 
     release_index: dict[str, Any]
     if release_index_root is None or not (release_index_root / ".git").exists():
@@ -984,12 +1007,14 @@ def build_report(
         "candidate_created": False,
         "candidate_proven": False,
         "promotion_authorized": False,
+        "preflight_tool": preflight_tool,
         "sources": sources,
         "release_index": release_index,
         "versions": versions,
         "core": core_state,
         "stage_policy": stage_policy,
         "ledger": {
+            "source": ledger_source,
             "total": len(rows),
             "below_i3": len(pending_rows),
             "pre_freeze_rows_below_i3": stage_counts.get("pre_freeze", 0),
@@ -1009,6 +1034,14 @@ def build_report(
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--platform-root", type=Path, default=REPO_ROOT)
+    parser.add_argument(
+        "--ledger-root",
+        type=Path,
+        help=(
+            "Clean post-freeze evidence checkout that owns EXECUTION-LEDGER.csv; "
+            "defaults to --platform-root."
+        ),
+    )
     parser.add_argument("--client-root", type=Path, required=True)
     parser.add_argument("--core-root", type=Path, required=True)
     parser.add_argument("--release-index-root", type=Path)
@@ -1028,6 +1061,7 @@ def main(argv: list[str] | None = None) -> int:
             platform_root=args.platform_root.resolve(),
             client_root=args.client_root.resolve(),
             core_root=args.core_root.resolve(),
+            ledger_root=args.ledger_root.resolve() if args.ledger_root else None,
             release_index_root=args.release_index_root.resolve()
             if args.release_index_root
             else None,
