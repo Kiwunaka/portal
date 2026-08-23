@@ -1,0 +1,152 @@
+{
+  "schema": "pokrov.release-1.2.0.final-source-promotion/v1",
+  "recorded_at": "2026-08-23T18:22:27.754638Z",
+  "status": "SOURCE_PROMOTION_COMPLETE_CANDIDATE_NOT_CREATED",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "production_promotion_authorized": false,
+  "record_scope": "POST_FREEZE_DOCUMENTATION_EVIDENCE_NOT_PART_OF_FROZEN_SOURCE_TUPLE",
+  "independent_review_performed": false,
+  "review_mode": "OWNER_SOLO_EXCEPTION",
+  "source_tuple": {
+    "platform": {
+      "repository": "Kiwunaka/portal",
+      "branch": "master",
+      "pull_request": 20,
+      "pr_head": "672a245aac1481220d118463a3b65b7d63275790",
+      "pr_tree": "b1af90bd5f7acdfc4d784d68ede4c9c8017af326",
+      "merge_commit": "2ed944c5eaa667c44a7bc1970d2dd175ff34f8c9",
+      "merge_tree": "441e783548319de5eb22b0af7d43620ad91e7833",
+      "merge_verification": "valid",
+      "tree_relation": "MERGE_INCLUDES_CHECKED_PR_HEAD_PLUS_ALREADY_MERGED_PR00_BASE_ADDITIONS"
+    },
+    "client": {
+      "repository": "Kiwunaka/POKROV-app",
+      "branch": "main",
+      "pull_request": 10,
+      "pr_head": "4864e439126263296a68ea8c1ba213f25c57a5fb",
+      "pr_tree": "98463cfa5f259f5036ef76a8865da619faa0b8ce",
+      "merge_commit": "3904734ce7761cc92c4136f1eaf13e20f2354f72",
+      "merge_tree": "98463cfa5f259f5036ef76a8865da619faa0b8ce",
+      "merge_verification": "valid",
+      "tree_relation": "PASS_EXACT_TREE"
+    },
+    "core": {
+      "repository": "Kiwunaka/pokrov-core",
+      "branch": "main",
+      "pull_request": 2,
+      "pr_head": "0e6b0204d764ae6b1d726343f487a7004d13393b",
+      "pr_tree": "6a614a99c51469435a1e856525a0271530772f30",
+      "merge_commit": "bdbd97fae35103e705f55908caebf75b4a9ff72f",
+      "merge_tree": "6a614a99c51469435a1e856525a0271530772f30",
+      "merge_verification": "valid",
+      "tree_relation": "PASS_EXACT_TREE"
+    },
+    "public_release_index": {
+      "repository": "Kiwunaka/pokrov",
+      "branch": "main",
+      "commit": "491436889ef911de868d704e68ba86e77102b0f1",
+      "commit_verification": "valid",
+      "candidate_manifest_created": false
+    }
+  },
+  "exact_pr_controls": [
+    {
+      "repository": "Kiwunaka/portal",
+      "pull_request": 20,
+      "head_sha": "672a245aac1481220d118463a3b65b7d63275790",
+      "result": "PASS",
+      "checks": [
+        {"name": "repo-guardrails", "run_id": 32654545629, "job_id": 97231156363, "result": "PASS", "github_app_id": 15368},
+        {"name": "cross-repository-contract", "run_id": 32654545639, "job_id": 97231156549, "result": "PASS", "github_app_id": 15368}
+      ]
+    },
+    {
+      "repository": "Kiwunaka/POKROV-app",
+      "pull_request": 10,
+      "head_sha": "4864e439126263296a68ea8c1ba213f25c57a5fb",
+      "result": "PASS",
+      "checks": [
+        {"name": "cross-repository-contract", "run_id": 32655837199, "job_id": 97234316532, "result": "PASS", "github_app_id": 15368}
+      ]
+    },
+    {
+      "repository": "Kiwunaka/pokrov-core",
+      "pull_request": 2,
+      "head_sha": "0e6b0204d764ae6b1d726343f487a7004d13393b",
+      "result": "PASS",
+      "checks": [
+        {"name": "test", "run_id": 32619396382, "job_id": 97145111100, "result": "PASS", "github_app_id": 15368},
+        {"name": "release-contract", "run_id": 32619396382, "job_id": 97145111319, "result": "PASS", "github_app_id": 15368},
+        {"name": "android-artifact-reproducibility", "run_id": 32619396382, "job_id": 97145414134, "result": "PASS", "github_app_id": 15368},
+        {"name": "windows-artifact-reproducibility", "run_id": 32619396382, "job_id": 97145414124, "result": "PASS", "github_app_id": 15368},
+        {"name": "apple-source-build", "run_id": 32619396382, "job_id": 97145414091, "result": "PASS", "github_app_id": 15368}
+      ]
+    }
+  ],
+  "post_merge_runs": {
+    "platform": [
+      {"name": "repo-guardrails", "run_id": 32655166506, "attempt": 1, "job_id": 97232627244, "head_sha": "2ed944c5eaa667c44a7bc1970d2dd175ff34f8c9", "result": "PASS"},
+      {"name": "cross-repository-contract", "run_id": 32655166477, "attempt": 2, "job_id": 97236501345, "head_sha": "2ed944c5eaa667c44a7bc1970d2dd175ff34f8c9", "result": "PASS"}
+    ],
+    "client": [
+      {"name": "cross-repository-contract", "run_id": 32656692926, "attempt": 1, "job_id": 97236406043, "head_sha": "3904734ce7761cc92c4136f1eaf13e20f2354f72", "result": "PASS"}
+    ],
+    "core": [
+      {"name": "release", "run_id": 32651975372, "attempt": 1, "head_sha": "bdbd97fae35103e705f55908caebf75b4a9ff72f", "required_jobs": 5, "passed_jobs": 5, "result": "PASS"}
+    ]
+  },
+  "core_artifacts": {
+    "state": "PRE_CANDIDATE_LOCAL",
+    "source_commit": "bdbd97fae35103e705f55908caebf75b4a9ff72f",
+    "android": {
+      "local_reproducibility": "PASS_BYTE_IDENTICAL_TWO_BUILDS",
+      "local_tree_sha256": "565266016cf823b30a36645c37156a8ba69d3f0fd55f8b22df665c321bcfcc90",
+      "embedded_aar_sha256": "83a5bd740774a2a16117f0c242c3ada4bcbb22a65255c3ee008a751e681c06f0",
+      "embedded_aar_size": 107314335,
+      "hosted_linux_reproducibility": "PASS_BYTE_IDENTICAL_TWO_BUILDS_DIFFERENT_FROM_WINDOWS_LOCAL_BYTES"
+    },
+    "windows": {
+      "local_reproducibility": "PASS_BYTE_IDENTICAL_TWO_BUILDS",
+      "local_tree_sha256": "32089d0e133703433f43e4e8041f45fdf931e937bfb9ca10f2a72725a5c24d9f",
+      "embedded_dll_sha256": "ef9672b3ba9983012bfa78abd2e4cd8ef5ef65d8e4b6a49ff89f8c4d0d575040",
+      "embedded_dll_size": 55352320,
+      "embedded_cronet_sha256": "8ef1f8bbde77f954af1ae47bee1819ac8dc2354bb0e1d4baba3dad9e58d7a6f7",
+      "required_exports": "PASS_15_OF_15",
+      "proxy_only_cycles": "PASS_100_OF_100"
+    }
+  },
+  "final_live_gate": {
+    "status": "BLOCKED",
+    "report_bytes": 8248,
+    "report_sha256": "71512121d6c9b0ccd9c73423056a14707e11a1db7a2027ca851ad04130927109",
+    "registry_sha256": "dbe322645bc9d7da9e343f90267675e51dbf12f793eaf470f4a54562e6129e4a",
+    "local_regressions": "PASS_7_OF_7",
+    "owner_solo_pr_controls": "PASS_3_OF_3",
+    "reviewers": "OWNER_SOLO_EXCEPTION_3_OF_3",
+    "independent_review_performed": false,
+    "candidate_proven": false,
+    "manual_win_003": "NOT_RUN",
+    "transient_readback_attempts_before_complete_report": 3,
+    "transient_attempt_disposition": "BLOCKED_BY_ACCESS_FAIL_CLOSED_NOT_CREDITED"
+  },
+  "ledger": {
+    "advanced_rows": {
+      "REL/REL-001": "I1_TO_I3",
+      "REL_DOD/DOD-09": "I1_TO_I3"
+    },
+    "distribution": {"I3": 309, "I2": 16, "I1": 37, "I0": 15},
+    "below_i3": 68,
+    "pending_stage_counts": {"pre_freeze": 0, "candidate": 33, "external": 14, "deferred": 21}
+  },
+  "remaining_release_state": {
+    "candidate": "NOT_CREATED",
+    "signing": "NOT_RUN",
+    "windows_clean_host": "NOT_RUN",
+    "android_physical_device": "NOT_RUN",
+    "origin_matrix": "NOT_RUN",
+    "production_deploy": "NOT_AUTHORIZED_NOT_RUN",
+    "stable_promotion": "NOT_AUTHORIZED_NOT_RUN"
+  },
+  "evidence_ceiling": "FINAL_SIGNED_SOURCE_PROMOTION_WITH_HOSTED_GATES_NO_CANDIDATE_NO_PRODUCTION"
+}

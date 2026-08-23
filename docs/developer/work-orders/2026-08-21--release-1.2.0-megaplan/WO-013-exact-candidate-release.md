@@ -1,6 +1,6 @@
 # WO-013 — Exact 1.2.0 candidate, Gate F and promotion decision
 
-Status: `ACTIVE_LOCAL_PREPARATION`
+Status: `SOURCE_PROMOTION_COMPLETE_CANDIDATE_NOT_CREATED`
 Classification: `ACTIVE_EXECUTION`
 Phase: `11`
 Lanes: platform, active Android/Windows client, Core, public release index,
@@ -35,7 +35,9 @@ Current override: `WO-013N` published the trust root and closed every explicit
 local pre-freeze row. `WO-013O` records the sole-owner exception, protects
 public Core main and advances `FE/P12-023` to `I3`. The older identities and
 counts below are retained as the local-preflight snapshot that led to those
-closures, not current release status.
+closures, not current release status. `WO-013P` subsequently promotes the
+signed final platform/client/Core source tuple and closes `REL/REL-001` and
+`REL_DOD/DOD-09` at `I3`; it still records `candidate_created=false`.
 
 - Platform, client and Core worktrees are clean for the exact-byte-aware local
   preflight at platform `7a15ba2bd5d17617aca28205cd448b6c917929ab`,
@@ -219,15 +221,16 @@ No current instruction authorizes this slice.
 
 ## Current next action
 
-The public release-index source/trust root, PR-00 and exact hosted client gate
-are proved. The sole owner has authorized `OWNER_SOLO_EXCEPTION`; Core main now
-passes the live solo-safe branch policy. Assemble one current
-platform/client/artifact-bound-Core tuple, open its three exact promotion PRs
-and pass `owner-solo-pr-evidence.v1` readback for every named GitHub App check.
-Only that evidence closes `REL/REL-001` and `REL_DOD/DOD-09`.
+`WO-013P` proves the signed final source tuple: platform
+`2ed944c5eaa667c44a7bc1970d2dd175ff34f8c9`, client
+`3904734ce7761cc92c4136f1eaf13e20f2354f72` and Core
+`bdbd97fae35103e705f55908caebf75b4a9ff72f`. All three exact owner-solo PR
+controls and the post-merge promotion runs pass. Candidate creation remains
+`NOT_CREATED` and is not authorized by source promotion alone.
 
-After the exact PR controls pass, construct the immutable candidate input and
-enter `WO-013D..F`. Trusted signing, exact devices/VMs, providers, OIDC, legal,
+Under a separate explicit candidate-stage authorization, construct the
+immutable candidate input from exactly that tuple and enter `WO-013D..F`.
+Trusted signing, exact devices/VMs, providers, OIDC, legal,
 current/brain/RU origins and promotion retain their separate gates. Do not
 label a rebuild or an unbound source tuple as a candidate, and do not deploy or
 promote without the later explicit authority.
