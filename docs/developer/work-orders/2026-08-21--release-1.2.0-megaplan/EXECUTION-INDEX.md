@@ -2407,3 +2407,29 @@ review are absent and were not authorized. Distribution remains `I3=303`,
 `I2=20`, `I1=39`, `I0=15`; 74 rows remain below `I3`, and the stage split
 remains `3/33/17/21`. No credential, candidate, signature, public-index
 publication, device/origin run, deployment or promotion was created.
+
+## 2026-08-23 — WO-013M full branch-policy STOP-SHIP gate
+
+Platform commit `dfa96eb7e1139d7f41833f3cc70fb1b57b12c15e` replaces the
+partial live branch audit with a full fail-closed policy check. A branch no
+longer passes merely because strict check names exist: every required check
+must be app-bound, and the policy must also enforce non-author/Code
+Owner/last-push review, stale dismissal, admins, signed commits, linear
+history, conversation resolution and force-push/deletion bans. Live
+`.github/CODEOWNERS` must cover both the repository root and its own control
+surface.
+
+The clean read-only run binds client `8c6b955...` and Core `fcb3c8b...`. All
+seven permanent source anchors pass, but the live aggregate is `NO_GO`:
+platform/client protection is `BLOCKED_BY_ACCESS`, Core main is
+`FAIL_UNPROTECTED`, WIN-003 is `NOT_RUN`, and all three repositories have zero
+eligible non-author reviewers. No Code Owner is selected, so every reviewer
+control is `BLOCKED_BY_OWNER_DECISION`. The 6,198-byte report has SHA-256
+`b49fff4235a5a7030e88aa209c595826d4f8ce6c0d9c5c5de99a6d94dd7981a8`;
+focused tests pass `13/13` and Ruff/script-manifest/diff checks pass.
+
+`REL/REL-001` and `REL_DOD/DOD-09` remain `I1`; a stronger verifier is not a
+remote setting. Distribution remains `I3=303`, `I2=20`, `I1=39`, `I0=15`; 74
+rows remain below `I3`, and the stage split remains `3/33/17/21`. No
+collaborator invitation, plan/visibility change, CODEOWNERS guess, branch
+mutation, push, PR, candidate, signature, deployment or promotion occurred.

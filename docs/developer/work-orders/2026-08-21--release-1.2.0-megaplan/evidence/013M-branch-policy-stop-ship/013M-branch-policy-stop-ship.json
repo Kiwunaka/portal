@@ -1,0 +1,112 @@
+{
+  "schema": "pokrov.release-1.2.0.branch-policy-stop-ship/v1",
+  "recorded_at": "2026-08-23T03:09:41.287923Z",
+  "status": "PASS_LOCAL_VERIFIER_LIVE_NO_GO",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "promotion_authorized": false,
+  "sources": {
+    "platform": {
+      "revision": "dfa96eb7e1139d7f41833f3cc70fb1b57b12c15e",
+      "working_tree_state": "clean"
+    },
+    "client": {
+      "revision": "8c6b955dced3b018825c53fe5d14cb632271adeb",
+      "working_tree_state": "clean"
+    },
+    "core": {
+      "revision": "fcb3c8bbc6efdeed284417369aacb522722ebfa2",
+      "working_tree_state": "clean"
+    }
+  },
+  "contract": {
+    "registry_sha256": "47dbec986eb788683067e45c55d39632257f758898a457151e77f066441cd589",
+    "strict_status_checks": true,
+    "status_check_app_binding": true,
+    "required_approving_reviews": 1,
+    "dismiss_stale_reviews": true,
+    "require_code_owner_reviews": true,
+    "require_last_push_approval": true,
+    "enforce_admins": true,
+    "required_signatures": true,
+    "required_linear_history": true,
+    "required_conversation_resolution": true,
+    "allow_force_pushes": false,
+    "allow_deletions": false,
+    "selected_code_owner_count": 0,
+    "codeowner_selection_state": "BLOCKED_BY_OWNER_DECISION"
+  },
+  "required_checks": {
+    "Kiwunaka/portal:master": [
+      "repo-guardrails",
+      "cross-repository-contract"
+    ],
+    "Kiwunaka/POKROV-app:main": [
+      "cross-repository-contract"
+    ],
+    "Kiwunaka/pokrov-core:main": [
+      "test",
+      "release-contract",
+      "android-artifact-reproducibility",
+      "windows-artifact-reproducibility",
+      "apple-source-build"
+    ]
+  },
+  "validation": {
+    "local_regressions": "PASS_7_OF_7",
+    "focused_tests": "PASS_13_OF_13",
+    "ruff_check": "PASS",
+    "ruff_format_check": "PASS",
+    "script_manifest": "PASS",
+    "diff_check": "PASS",
+    "live_aggregate": "NO_GO",
+    "report_bytes": 6198,
+    "report_sha256": "b49fff4235a5a7030e88aa209c595826d4f8ce6c0d9c5c5de99a6d94dd7981a8"
+  },
+  "live": {
+    "branch_protection": {
+      "Kiwunaka/portal:master": "BLOCKED_BY_ACCESS",
+      "Kiwunaka/POKROV-app:main": "BLOCKED_BY_ACCESS",
+      "Kiwunaka/pokrov-core:main": "FAIL_UNPROTECTED"
+    },
+    "eligible_non_author_reviewer_count": {
+      "Kiwunaka/portal": 0,
+      "Kiwunaka/POKROV-app": 0,
+      "Kiwunaka/pokrov-core": 0
+    },
+    "reviewer_control": {
+      "Kiwunaka/portal": "BLOCKED_BY_OWNER_DECISION",
+      "Kiwunaka/POKROV-app": "BLOCKED_BY_OWNER_DECISION",
+      "Kiwunaka/pokrov-core": "BLOCKED_BY_OWNER_DECISION"
+    },
+    "win_003_clean_host": "NOT_RUN"
+  },
+  "ledger": {
+    "unchanged_rows": {
+      "REL/REL-001": "I1_OWNER_PLAN_AND_REVIEWER_BLOCKED",
+      "REL_DOD/DOD-09": "I1_OWNER_PLAN_AND_REVIEWER_BLOCKED"
+    },
+    "distribution": {
+      "I3": 303,
+      "I2": 20,
+      "I1": 39,
+      "I0": 15
+    },
+    "below_i3": 74,
+    "pending_stage_counts": {
+      "pre_freeze": 3,
+      "candidate": 33,
+      "external": 17,
+      "deferred": 21
+    }
+  },
+  "external_actions": {
+    "collaborator_invitation": "NOT_AUTHORIZED_NOT_RUN",
+    "plan_or_visibility_change": "NOT_AUTHORIZED_NOT_RUN",
+    "branch_policy_mutation": "NOT_AUTHORIZED_NOT_RUN",
+    "push_or_pr": "NOT_AUTHORIZED_NOT_RUN",
+    "deployment": "NOT_AUTHORIZED",
+    "promotion": "NOT_AUTHORIZED"
+  },
+  "evidence_ceiling": "LOCAL_FULL_POLICY_VERIFIER_AND_READ_ONLY_LIVE_NO_GO"
+}

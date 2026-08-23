@@ -221,8 +221,12 @@ three explicit external pre-candidate rows through owner/access action, then
 rerun the fail-closed preflight before constructing any candidate input.
 
 Live branch protection remains `NO_GO`: platform/client are blocked by the
-current private-repository plan and Core main is unprotected. Hosted frontend
-CI is `NOT_RUN`; trusted signing, exact devices/VMs, providers, OIDC, legal,
-current/brain/RU origins and promotion stay in `WO-013E..G` under their separate
-authority. Do not create or label a candidate while any explicit pre-candidate
-blocker remains.
+current private-repository plan, Core main is unprotected and every repository
+currently has zero eligible non-author write reviewers. `WO-013M` now fails
+closed unless the exact required checks are app-bound and the branch also
+enforces non-author/Code Owner/last-push review, stale dismissal, signatures,
+admins, linear history, conversation resolution and force-push/deletion bans.
+Hosted frontend CI is `NOT_RUN`; trusted signing, exact devices/VMs, providers,
+OIDC, legal, current/brain/RU origins and promotion stay in `WO-013E..G` under
+their separate authority. Do not create or label a candidate while any explicit
+pre-candidate blocker remains.
