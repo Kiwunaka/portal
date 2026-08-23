@@ -1,0 +1,68 @@
+{
+  "schema": "pokrov.release-1.2.0.hosted-client-gate/v1",
+  "state": "PRE_CANDIDATE_LOCAL",
+  "candidate_created": false,
+  "promotion_authorized": false,
+  "control": {
+    "repository": "Kiwunaka/portal",
+    "branch": "codex/1.2.0-hosted-gate-control",
+    "target_branch": "master",
+    "target_revision": "280ed9157f5804d4bc719cb8d6cab471caafb937",
+    "single_commit_required": true
+  },
+  "source_tuple": {
+    "platform": {
+      "repository": "Kiwunaka/portal",
+      "visibility": "private",
+      "revision": "9b9467c7ad788298dd51de2d5c769d13be5a12b3"
+    },
+    "client": {
+      "repository": "Kiwunaka/POKROV-app",
+      "visibility": "private",
+      "revision": "05332bf1b17410610829113fe92748d29f84c597"
+    },
+    "core": {
+      "repository": "Kiwunaka/pokrov-core",
+      "visibility": "public",
+      "revision": "fcb3c8bbc6efdeed284417369aacb522722ebfa2"
+    }
+  },
+  "toolchain": {
+    "runner": "ubuntu-24.04",
+    "python": "3.12",
+    "java_distribution": "temurin",
+    "java": "17",
+    "flutter": "3.38.5"
+  },
+  "private_checkout": {
+    "secret_name": "POKROV_RELEASE_CLIENT_DEPLOY_KEY",
+    "credential_type": "read_only_ssh_deploy_key",
+    "required_repository": "Kiwunaka/POKROV-app",
+    "required_permission": "contents:read",
+    "private_key_or_token_material_in_repository": false
+  },
+  "commands": [
+    "./scripts/validate-seed.ps1 -PlatformRoot <platform> -CoreRoot <core>",
+    "./scripts/run-tests.ps1"
+  ],
+  "isolated_diff": {
+    "allowed_paths": [
+      ".github/workflows/release-1.2.0-hosted-client-gate.yml",
+      "docs/developer/work-orders/2026-08-23--release-1.2.0-hosted-client-gate/HOSTED-CLIENT-GATE.json",
+      "docs/developer/work-orders/2026-08-23--release-1.2.0-hosted-client-gate/README.md",
+      "scripts/validate_release_1_2_hosted_gate_contract.py",
+      "scripts/manifest.yaml",
+      "tests/test_release_1_2_hosted_gate_contract.py"
+    ],
+    "visible_ui_prefixes": [
+      "adminapp/",
+      "marketing/src/",
+      "webapp/",
+      "portal_bot/static/",
+      "portal_bot/templates/"
+    ]
+  },
+  "hosted_execution": "NOT_RUN",
+  "candidate_eligible": false,
+  "evidence_ceiling": "HOSTED_GATE_CONTROL_LOCAL_ONLY"
+}
