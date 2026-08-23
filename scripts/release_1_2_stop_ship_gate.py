@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 from typing import Any
@@ -39,6 +40,22 @@ REQUIRED_TRUE_REVIEW_FIELDS = {
     "require_code_owner_reviews",
     "require_last_push_approval",
 }
+SOLO_EXCEPTION_MODE = "OWNER_SOLO_EXCEPTION"
+SOLO_WAIVED_CONTROLS = {
+    "eligible_non_author_pull_request_approval",
+    "codeowners_non_author_selection",
+    "paid_private_branch_protection",
+}
+SOLO_COMPENSATING_CONTROLS = {
+    "exact_pull_request_head_sha",
+    "required_github_actions_success",
+    "github_app_bound_check_runs",
+    "pull_request_only_promotion",
+    "signed_public_release_index",
+    "retained_candidate_evidence",
+    "same_byte_promotion",
+}
+GIT_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
 def _sha256_file(path: Path) -> str:
@@ -60,6 +77,9 @@ def _read_registry(path: Path) -> dict[str, Any]:
     policy = value.get("branch_policy")
     if not isinstance(policy, dict):
         raise ValueError("STOP-SHIP registry branch_policy must be an object")
+    review_mode = policy.get("review_mode")
+    if review_mode not in {"TEAM_REVIEW", SOLO_EXCEPTION_MODE}:
+        raise ValueError("branch_policy review_mode is invalid")
     if policy.get("require_status_check_app_binding") is not True:
         raise ValueError("branch_policy must bind required checks to a GitHub App")
     for field in REQUIRED_TRUE_BRANCH_POLICY_FIELDS:
@@ -89,7 +109,10 @@ def _read_registry(path: Path) -> dict[str, Any]:
         isinstance(owner, str) and owner.startswith("@") for owner in selected
     ):
         raise ValueError("selected_code_owners must contain GitHub @principals")
-    expected_selection_state = "READY" if selected else "BLOCKED_BY_OWNER_DECISION"
+    if review_mode == SOLO_EXCEPTION_MODE:
+        expected_selection_state = SOLO_EXCEPTION_MODE
+    else:
+        expected_selection_state = "READY" if selected else "BLOCKED_BY_OWNER_DECISION"
     if codeowners.get("selection_state") != expected_selection_state:
         raise ValueError(
             "branch_policy CODEOWNERS selection_state contradicts selected owners"
@@ -97,6 +120,39 @@ def _read_registry(path: Path) -> dict[str, Any]:
     minimum = codeowners.get("minimum_eligible_non_author_reviewers")
     if not isinstance(minimum, int) or minimum < 1:
         raise ValueError("branch_policy requires a non-author reviewer")
+    solo_exception = policy.get("solo_owner_exception")
+    if review_mode == SOLO_EXCEPTION_MODE:
+        if (
+            not isinstance(solo_exception, dict)
+            or solo_exception.get("active") is not True
+        ):
+            raise ValueError("OWNER_SOLO_EXCEPTION must be active and explicit")
+        if solo_exception.get("release") != value["release"]:
+            raise ValueError("OWNER_SOLO_EXCEPTION release scope is invalid")
+        for field in (
+            "owner_login",
+            "authorized_at",
+            "authorization_source",
+            "expires_when",
+        ):
+            if (
+                not isinstance(solo_exception.get(field), str)
+                or not solo_exception[field]
+            ):
+                raise ValueError(f"OWNER_SOLO_EXCEPTION {field} is required")
+        if solo_exception["owner_login"] != codeowners.get("excluded_pr_author"):
+            raise ValueError("OWNER_SOLO_EXCEPTION owner must match excluded PR author")
+        if set(solo_exception.get("waived_controls", [])) != SOLO_WAIVED_CONTROLS:
+            raise ValueError("OWNER_SOLO_EXCEPTION waived controls are invalid")
+        if (
+            set(solo_exception.get("compensating_controls", []))
+            != SOLO_COMPENSATING_CONTROLS
+        ):
+            raise ValueError("OWNER_SOLO_EXCEPTION compensating controls are invalid")
+        if selected:
+            raise ValueError("OWNER_SOLO_EXCEPTION cannot invent a Code Owner")
+    elif solo_exception is not None:
+        raise ValueError("TEAM_REVIEW must not carry an active solo exception")
     entries = value.get("entries")
     if not isinstance(entries, list):
         raise ValueError("STOP-SHIP registry entries must be a list")
@@ -239,20 +295,21 @@ def _evaluate_branch_payload(
                 for name in sorted(set(required_checks) - app_bound)
             )
 
-    reviews = payload.get("required_pull_request_reviews")
-    required_reviews = policy["required_pull_request_reviews"]
-    if not isinstance(reviews, dict):
-        missing.append("required_pull_request_reviews")
-    else:
-        for field in REQUIRED_TRUE_REVIEW_FIELDS:
-            if reviews.get(field) is not True:
-                missing.append(f"review:{field}")
-        actual_count = reviews.get("required_approving_review_count")
-        if (
-            not isinstance(actual_count, int)
-            or actual_count < required_reviews["required_approving_review_count"]
-        ):
-            missing.append("review:required_approving_review_count")
+    if policy["review_mode"] == "TEAM_REVIEW":
+        reviews = payload.get("required_pull_request_reviews")
+        required_reviews = policy["required_pull_request_reviews"]
+        if not isinstance(reviews, dict):
+            missing.append("required_pull_request_reviews")
+        else:
+            for field in REQUIRED_TRUE_REVIEW_FIELDS:
+                if reviews.get(field) is not True:
+                    missing.append(f"review:{field}")
+            actual_count = reviews.get("required_approving_review_count")
+            if (
+                not isinstance(actual_count, int)
+                or actual_count < required_reviews["required_approving_review_count"]
+            ):
+                missing.append("review:required_approving_review_count")
 
     for field in REQUIRED_TRUE_BRANCH_POLICY_FIELDS:
         if _enabled_state(payload.get(field)) is not True:
@@ -405,8 +462,21 @@ def _codeowners_lines(text: str) -> list[tuple[str, set[str]]]:
 def _query_reviewer_control(
     repository: str,
     branch: str,
-    codeowners_contract: dict[str, Any],
+    policy: dict[str, Any],
 ) -> dict[str, Any]:
+    codeowners_contract = policy["codeowners"]
+    if policy["review_mode"] == SOLO_EXCEPTION_MODE:
+        exception = policy["solo_owner_exception"]
+        return {
+            "repository": repository,
+            "branch": branch,
+            "result": SOLO_EXCEPTION_MODE,
+            "owner_login": exception["owner_login"],
+            "authorized_at": exception["authorized_at"],
+            "independent_review_performed": False,
+            "selected_code_owner_count": 0,
+            "eligible_non_author_reviewer_count": 0,
+        }
     selected = set(codeowners_contract["selected_code_owners"])
     reviewer_status, eligible = _query_eligible_reviewers(
         repository,
@@ -444,6 +514,158 @@ def _query_reviewer_control(
     return {**result, "result": "PASS"}
 
 
+def _read_solo_evidence(
+    path: Path,
+    policy: dict[str, Any],
+    hosted_controls: list[dict[str, Any]],
+) -> dict[tuple[str, str], dict[str, Any]]:
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError("solo evidence must be an object")
+    if value.get("schema") != "pokrov.release-1.2.0.owner-solo-pr-evidence.v1":
+        raise ValueError("solo evidence schema is invalid")
+    exception = policy["solo_owner_exception"]
+    if value.get("release") != exception["release"]:
+        raise ValueError("solo evidence release is invalid")
+    if value.get("owner_login") != exception["owner_login"]:
+        raise ValueError("solo evidence owner is invalid")
+    observations = value.get("observations")
+    if not isinstance(observations, list):
+        raise ValueError("solo evidence observations must be a list")
+    expected = {
+        (control["repository"], control["branch"]) for control in hosted_controls
+    }
+    indexed: dict[tuple[str, str], dict[str, Any]] = {}
+    for observation in observations:
+        if not isinstance(observation, dict):
+            raise ValueError("solo evidence observation must be an object")
+        key = (observation.get("repository"), observation.get("base_branch"))
+        if key in indexed:
+            raise ValueError("solo evidence contains a duplicate repository/branch")
+        if key not in expected:
+            raise ValueError("solo evidence contains an unexpected repository/branch")
+        if (
+            not isinstance(observation.get("pull_request"), int)
+            or observation["pull_request"] < 1
+        ):
+            raise ValueError("solo evidence pull_request must be a positive integer")
+        head_sha = observation.get("head_sha")
+        if not isinstance(head_sha, str) or not GIT_SHA_RE.fullmatch(head_sha):
+            raise ValueError(
+                "solo evidence head_sha must be a lowercase 40-hex revision"
+            )
+        indexed[key] = observation
+    if set(indexed) != expected:
+        raise ValueError("solo evidence must cover every promotion repository/branch")
+    return indexed
+
+
+def _gh_api_json(endpoint: str) -> tuple[str, Any]:
+    completed = subprocess.run(
+        ["gh", "api", "-H", "Accept: application/vnd.github+json", endpoint],
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if completed.returncode != 0:
+        return "BLOCKED_BY_ACCESS", None
+    try:
+        return "PASS", json.loads(completed.stdout)
+    except json.JSONDecodeError:
+        return "BLOCKED_BY_ACCESS", None
+
+
+def _query_solo_pr_control(
+    observation: dict[str, Any],
+    required_checks: list[str],
+    owner_login: str,
+) -> dict[str, Any]:
+    repository = observation["repository"]
+    branch = observation["base_branch"]
+    pr_number = observation["pull_request"]
+    head_sha = observation["head_sha"]
+    result: dict[str, Any] = {
+        "repository": repository,
+        "branch": branch,
+        "pull_request": pr_number,
+        "head_sha": head_sha,
+        "required_checks": required_checks,
+    }
+    pr_status, pr = _gh_api_json(f"repos/{repository}/pulls/{pr_number}")
+    if pr_status != "PASS" or not isinstance(pr, dict):
+        return {**result, "result": pr_status}
+    base = pr.get("base")
+    head = pr.get("head")
+    author = pr.get("user")
+    if not isinstance(base, dict) or base.get("ref") != branch:
+        return {**result, "result": "FAIL_PR_BASE_BRANCH"}
+    if not isinstance(head, dict) or head.get("sha") != head_sha:
+        return {**result, "result": "FAIL_PR_HEAD_SHA"}
+    if not isinstance(author, dict) or author.get("login") != owner_login:
+        return {**result, "result": "FAIL_PR_OWNER"}
+    if pr.get("state") not in {"open", "closed"}:
+        return {**result, "result": "FAIL_PR_STATE"}
+    if pr.get("state") == "closed" and not pr.get("merged_at"):
+        return {**result, "result": "FAIL_PR_CLOSED_UNMERGED"}
+
+    checks_status, payload = _gh_api_json(
+        f"repos/{repository}/commits/{head_sha}/check-runs?per_page=100"
+    )
+    if checks_status != "PASS" or not isinstance(payload, dict):
+        return {**result, "result": checks_status}
+    check_runs = payload.get("check_runs")
+    if not isinstance(check_runs, list):
+        return {**result, "result": "BLOCKED_BY_ACCESS"}
+    latest: dict[str, dict[str, Any]] = {}
+    for check in check_runs:
+        if not isinstance(check, dict) or not isinstance(check.get("name"), str):
+            continue
+        current = latest.get(check["name"])
+        if current is None or int(check.get("id", 0)) > int(current.get("id", 0)):
+            latest[check["name"]] = check
+    missing: list[str] = []
+    failed: list[str] = []
+    unbound: list[str] = []
+    for name in required_checks:
+        check = latest.get(name)
+        if check is None:
+            missing.append(name)
+            continue
+        if check.get("status") != "completed" or check.get("conclusion") != "success":
+            failed.append(name)
+        app = check.get("app")
+        if (
+            not isinstance(app, dict)
+            or not isinstance(app.get("id"), int)
+            or app["id"] < 1
+        ):
+            unbound.append(name)
+    if missing or failed or unbound:
+        return {
+            **result,
+            "result": "FAIL_REQUIRED_CHECKS",
+            "missing_checks": sorted(missing),
+            "failed_checks": sorted(failed),
+            "unbound_checks": sorted(unbound),
+        }
+    return {**result, "result": "PASS", "observed_check_count": len(required_checks)}
+
+
+def _effective_hosted_result(
+    branch_result: str,
+    solo_result: str | None,
+) -> str:
+    if branch_result == "PASS":
+        return "PASS"
+    if solo_result == "PASS":
+        return SOLO_EXCEPTION_MODE
+    if isinstance(solo_result, str) and solo_result.startswith("FAIL"):
+        return solo_result
+    return branch_result
+
+
 def build_report(
     *,
     registry_path: Path,
@@ -451,6 +673,7 @@ def build_report(
     client_root: Path,
     core_root: Path,
     query_github: bool,
+    solo_evidence_path: Path | None = None,
 ) -> dict[str, Any]:
     registry = _read_registry(registry_path)
     branch_policy = registry["branch_policy"]
@@ -490,11 +713,11 @@ def build_report(
     reviewer_controls: list[dict[str, Any]] = []
     rel_001 = next(entry for entry in registry["entries"] if entry["id"] == "REL-001")
     for control in rel_001.get("hosted_controls", []):
-        if query_github:
+        if query_github or branch_policy["review_mode"] == SOLO_EXCEPTION_MODE:
             reviewer = _query_reviewer_control(
                 control["repository"],
                 control["branch"],
-                branch_policy["codeowners"],
+                branch_policy,
             )
         else:
             reviewer = {
@@ -504,12 +727,51 @@ def build_report(
             }
         reviewer_controls.append(reviewer)
 
+    solo_controls: list[dict[str, Any]] = []
+    solo_evidence: dict[tuple[str, str], dict[str, Any]] = {}
+    if branch_policy["review_mode"] == SOLO_EXCEPTION_MODE and solo_evidence_path:
+        rel_controls = rel_001.get("hosted_controls", [])
+        solo_evidence = _read_solo_evidence(
+            solo_evidence_path,
+            branch_policy,
+            rel_controls,
+        )
+    if branch_policy["review_mode"] == SOLO_EXCEPTION_MODE:
+        for control in rel_001.get("hosted_controls", []):
+            key = (control["repository"], control["branch"])
+            if query_github and key in solo_evidence:
+                solo = _query_solo_pr_control(
+                    solo_evidence[key],
+                    control["required_checks"],
+                    branch_policy["solo_owner_exception"]["owner_login"],
+                )
+            else:
+                solo = {
+                    "repository": control["repository"],
+                    "branch": control["branch"],
+                    "required_checks": control["required_checks"],
+                    "result": "NOT_RUN",
+                }
+            solo_controls.append(solo)
+
+    solo_by_key = {
+        (control["repository"], control["branch"]): control for control in solo_controls
+    }
+    effective_hosted_results: list[str] = []
+    for control in hosted_controls:
+        solo = solo_by_key.get((control["repository"], control["branch"]))
+        effective_hosted_results.append(
+            _effective_hosted_result(
+                control["result"],
+                solo["result"] if solo else None,
+            )
+        )
+
     local_pass = all(item["result"] == "PASS" for item in regressions)
-    hosted_fail = any(
-        item["result"] in {"FAIL", "FAIL_UNPROTECTED"} for item in hosted_controls
-    )
+    hosted_fail = any(result.startswith("FAIL") for result in effective_hosted_results)
     hosted_incomplete = any(
-        item["result"] in {"BLOCKED_BY_ACCESS", "NOT_RUN"} for item in hosted_controls
+        result in {"BLOCKED_BY_ACCESS", "NOT_RUN"}
+        for result in effective_hosted_results
     )
     reviewer_fail = any(item["result"].startswith("FAIL") for item in reviewer_controls)
     reviewer_incomplete = any(
@@ -521,7 +783,11 @@ def build_report(
     elif hosted_incomplete or reviewer_incomplete or manual_gates:
         status = "BLOCKED"
     else:
-        status = "PASS"
+        status = (
+            "PASS_WITH_OWNER_SOLO_EXCEPTION"
+            if branch_policy["review_mode"] == SOLO_EXCEPTION_MODE
+            else "PASS"
+        )
     return {
         "schema": "pokrov.release-1.2.0.stop-ship-gate.v1",
         "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
@@ -536,6 +802,7 @@ def build_report(
         "local_regressions": regressions,
         "hosted_branch_protection": hosted_controls,
         "hosted_codeowner_reviewers": reviewer_controls,
+        "owner_solo_pr_controls": solo_controls,
         "manual_gates": manual_gates,
     }
 
@@ -547,6 +814,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--client-root", type=Path, required=True)
     parser.add_argument("--core-root", type=Path, required=True)
     parser.add_argument("--query-github", action="store_true")
+    parser.add_argument("--solo-evidence", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--expect-nonpass", action="store_true")
     return parser
@@ -561,6 +829,9 @@ def main(argv: list[str] | None = None) -> int:
             client_root=args.client_root.resolve(),
             core_root=args.core_root.resolve(),
             query_github=args.query_github,
+            solo_evidence_path=args.solo_evidence.resolve()
+            if args.solo_evidence
+            else None,
         )
         output = args.output.resolve()
         output.parent.mkdir(parents=True, exist_ok=True)
@@ -579,6 +850,7 @@ def main(argv: list[str] | None = None) -> int:
                 "local_regressions": len(report["local_regressions"]),
                 "hosted_controls": len(report["hosted_branch_protection"]),
                 "reviewer_controls": len(report["hosted_codeowner_reviewers"]),
+                "solo_pr_controls": len(report["owner_solo_pr_controls"]),
                 "manual_gates": len(report["manual_gates"]),
                 "output": str(output),
             },
@@ -586,8 +858,8 @@ def main(argv: list[str] | None = None) -> int:
         )
     )
     if args.expect_nonpass:
-        return 0 if report["status"] != "PASS" else 1
-    return 0 if report["status"] == "PASS" else 1
+        return 0 if not report["status"].startswith("PASS") else 1
+    return 0 if report["status"].startswith("PASS") else 1
 
 
 if __name__ == "__main__":

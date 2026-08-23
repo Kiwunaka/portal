@@ -1,6 +1,6 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-08-21
+Last updated: 2026-08-23
 
 ## Document Status
 
@@ -101,15 +101,63 @@ python -B scripts/release_1_2_stop_ship_gate.py `
 
 The command is read-only. A missing branch-protection feature or permission is
 `BLOCKED_BY_ACCESS`; an unprotected branch or missing policy control is
-`NO_GO`. The policy check requires strict named checks, one non-author approval,
-stale-review dismissal, Code Owner review, last-push approval, admin
+`NO_GO`. The normal team policy requires strict named checks, one non-author
+approval, stale-review dismissal, Code Owner review, last-push approval, admin
 enforcement, signed commits, linear history, conversation resolution and
 disabled force pushes/deletions. It also verifies that an eligible non-author
 reviewer was selected and that the live `.github/CODEOWNERS` covers both the
-repository root and its own `.github` control surface. WIN-003 remains
-`NOT_RUN` until the exact Windows candidate passes the clean-host
-TUN/DNS/egress/rollback matrix. A passing source anchor never converts either
-hosted control or the manual clean-host gate into `PASS`.
+repository root and its own `.github` control surface.
+
+Release 1.2.0 currently uses the explicit `OWNER_SOLO_EXCEPTION` authorized by
+the sole repository owner on `2026-08-23`. This is not an invented approval:
+reports must state `independent_review_performed=false`. It waives only the
+unavailable second-person approval, non-author CODEOWNERS selection and paid
+private-branch-protection feature. A promotion branch without the normal live
+policy is acceptable under this exception only when the gate reads back a pull
+request authored by `Kiwunaka`, binds its exact lowercase 40-hex head revision,
+and observes every named check completed successfully and bound to a GitHub
+App. Supply those exact PR bindings in a non-secret JSON file:
+
+```json
+{
+  "schema": "pokrov.release-1.2.0.owner-solo-pr-evidence.v1",
+  "release": "1.2.0",
+  "owner_login": "Kiwunaka",
+  "observations": [
+    {
+      "repository": "Kiwunaka/portal",
+      "base_branch": "master",
+      "pull_request": 20,
+      "head_sha": "<exact-40-hex-head>"
+    },
+    {
+      "repository": "Kiwunaka/POKROV-app",
+      "base_branch": "main",
+      "pull_request": 21,
+      "head_sha": "<exact-40-hex-head>"
+    },
+    {
+      "repository": "Kiwunaka/pokrov-core",
+      "base_branch": "main",
+      "pull_request": 3,
+      "head_sha": "<exact-40-hex-head>"
+    }
+  ]
+}
+```
+
+The real evidence file must contain exactly one observation for each of
+platform, client and Core promotion branches. Pass it with
+`--solo-evidence C:/path/to/owner-solo-pr-evidence.json --query-github`.
+Missing, stale, failed, unbound or wrong-owner evidence fails closed. PR-only
+promotion, a signed public release index, retained candidate evidence and
+same-byte promotion remain mandatory compensating controls outside the branch
+readback itself. The exception expires when release 1.2.0 is closed; a later
+release must authorize a new exception or return to team review.
+
+WIN-003 remains `NOT_RUN` until the exact Windows candidate passes the
+clean-host TUN/DNS/egress/rollback matrix. A passing source anchor or solo PR
+control never converts that manual gate into `PASS`.
 
 Current focused procedures:
 

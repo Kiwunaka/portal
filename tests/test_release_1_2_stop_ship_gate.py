@@ -25,11 +25,14 @@ def test_canonical_registry_contains_exact_seven_stop_ship_findings() -> None:
     assert registry["branch_policy"]["required_signatures"] is True
     assert registry["branch_policy"]["require_status_check_app_binding"] is True
     assert registry["branch_policy"]["codeowners"]["selected_code_owners"] == []
+    assert registry["branch_policy"]["review_mode"] == "OWNER_SOLO_EXCEPTION"
 
 
 def test_registry_reviewer_selection_state_is_fail_closed(tmp_path: Path) -> None:
     registry = json.loads(MODULE.DEFAULT_REGISTRY.read_text(encoding="utf-8"))
-    registry["branch_policy"]["codeowners"]["selection_state"] = "READY"
+    registry["branch_policy"]["codeowners"]["selection_state"] = (
+        "BLOCKED_BY_OWNER_DECISION"
+    )
     path = tmp_path / "registry.json"
     path.write_text(json.dumps(registry), encoding="utf-8")
 
@@ -87,6 +90,10 @@ def test_branch_payload_rejects_every_missing_release_policy_control() -> None:
     policy = registry["branch_policy"]
     payload = _complete_branch_payload()
 
+    team_policy = json.loads(json.dumps(policy))
+    team_policy["review_mode"] = "TEAM_REVIEW"
+    team_policy.pop("solo_owner_exception")
+    team_policy["codeowners"]["selection_state"] = "BLOCKED_BY_OWNER_DECISION"
     for field in (
         "enforce_admins",
         "required_linear_history",
@@ -97,7 +104,9 @@ def test_branch_payload_rejects_every_missing_release_policy_control() -> None:
     ):
         mutated = dict(payload)
         mutated[field] = None
-        result, missing = MODULE._evaluate_branch_payload(mutated, ["test"], policy)
+        result, missing = MODULE._evaluate_branch_payload(
+            mutated, ["test"], team_policy
+        )
         assert result == "FAIL"
         assert field in missing
 
@@ -110,7 +119,9 @@ def test_branch_payload_rejects_every_missing_release_policy_control() -> None:
         mutated_reviews = dict(payload["required_pull_request_reviews"])
         mutated_reviews[field] = False
         mutated["required_pull_request_reviews"] = mutated_reviews
-        result, missing = MODULE._evaluate_branch_payload(mutated, ["test"], policy)
+        result, missing = MODULE._evaluate_branch_payload(
+            mutated, ["test"], team_policy
+        )
         assert result == "FAIL"
         assert f"review:{field}" in missing
 
@@ -167,11 +178,13 @@ def test_reviewer_control_blocks_when_no_non_author_reviewer_exists() -> None:
         stdout=json.dumps([[{"login": "Kiwunaka", "permissions": {"admin": True}}]]),
         stderr="",
     )
-    contract = MODULE._read_registry(MODULE.DEFAULT_REGISTRY)["branch_policy"][
-        "codeowners"
-    ]
+    policy = MODULE._read_registry(MODULE.DEFAULT_REGISTRY)["branch_policy"]
+    policy = json.loads(json.dumps(policy))
+    policy["review_mode"] = "TEAM_REVIEW"
+    policy.pop("solo_owner_exception")
+    policy["codeowners"]["selection_state"] = "BLOCKED_BY_OWNER_DECISION"
     with patch.object(MODULE.subprocess, "run", return_value=completed):
-        result = MODULE._query_reviewer_control("Kiwunaka/portal", "master", contract)
+        result = MODULE._query_reviewer_control("Kiwunaka/portal", "master", policy)
 
     assert result["result"] == "BLOCKED_BY_OWNER_DECISION"
     assert result["eligible_non_author_reviewer_count"] == 0
@@ -190,7 +203,11 @@ def test_reviewer_control_requires_eligible_owner_and_secure_coverage() -> None:
         stdout="* @reviewer\n/.github/ @reviewer\n",
         stderr="",
     )
-    contract = {
+    policy = MODULE._read_registry(MODULE.DEFAULT_REGISTRY)["branch_policy"]
+    policy = json.loads(json.dumps(policy))
+    policy["review_mode"] = "TEAM_REVIEW"
+    policy.pop("solo_owner_exception")
+    policy["codeowners"] = {
         "path": ".github/CODEOWNERS",
         "excluded_pr_author": "Kiwunaka",
         "minimum_eligible_non_author_reviewers": 1,
@@ -202,10 +219,91 @@ def test_reviewer_control_requires_eligible_owner_and_secure_coverage() -> None:
         "run",
         side_effect=[collaborators, codeowners],
     ):
-        result = MODULE._query_reviewer_control("Kiwunaka/portal", "master", contract)
+        result = MODULE._query_reviewer_control("Kiwunaka/portal", "master", policy)
 
     assert result["result"] == "PASS"
     assert result["selected_code_owner_count"] == 1
+
+
+def test_solo_reviewer_control_is_explicit_and_never_claims_review() -> None:
+    policy = MODULE._read_registry(MODULE.DEFAULT_REGISTRY)["branch_policy"]
+
+    result = MODULE._query_reviewer_control("Kiwunaka/portal", "master", policy)
+
+    assert result["result"] == "OWNER_SOLO_EXCEPTION"
+    assert result["owner_login"] == "Kiwunaka"
+    assert result["independent_review_performed"] is False
+
+
+def test_solo_pr_control_binds_exact_head_owner_and_successful_app_checks() -> None:
+    head_sha = "a" * 40
+    pr = {
+        "state": "open",
+        "base": {"ref": "master"},
+        "head": {"sha": head_sha},
+        "user": {"login": "Kiwunaka"},
+    }
+    checks = {
+        "check_runs": [
+            {
+                "id": 1,
+                "name": "repo-guardrails",
+                "status": "completed",
+                "conclusion": "success",
+                "app": {"id": 15368},
+            }
+        ]
+    }
+    with patch.object(
+        MODULE, "_gh_api_json", side_effect=[("PASS", pr), ("PASS", checks)]
+    ):
+        result = MODULE._query_solo_pr_control(
+            {
+                "repository": "Kiwunaka/portal",
+                "base_branch": "master",
+                "pull_request": 20,
+                "head_sha": head_sha,
+            },
+            ["repo-guardrails"],
+            "Kiwunaka",
+        )
+
+    assert result["result"] == "PASS"
+    assert result["observed_check_count"] == 1
+
+
+def test_solo_pr_control_fails_closed_on_head_or_check_drift() -> None:
+    head_sha = "a" * 40
+    pr = {
+        "state": "open",
+        "base": {"ref": "master"},
+        "head": {"sha": "b" * 40},
+        "user": {"login": "Kiwunaka"},
+    }
+    with patch.object(MODULE, "_gh_api_json", return_value=("PASS", pr)):
+        result = MODULE._query_solo_pr_control(
+            {
+                "repository": "Kiwunaka/portal",
+                "base_branch": "master",
+                "pull_request": 20,
+                "head_sha": head_sha,
+            },
+            ["repo-guardrails"],
+            "Kiwunaka",
+        )
+
+    assert result["result"] == "FAIL_PR_HEAD_SHA"
+
+
+def test_failed_solo_evidence_cannot_hide_behind_private_plan_block() -> None:
+    assert (
+        MODULE._effective_hosted_result("BLOCKED_BY_ACCESS", "FAIL_PR_HEAD_SHA")
+        == "FAIL_PR_HEAD_SHA"
+    )
+    assert (
+        MODULE._effective_hosted_result("FAIL_UNPROTECTED", "PASS")
+        == "OWNER_SOLO_EXCEPTION"
+    )
 
 
 def test_local_registry_anchors_resolve_without_repository_assumptions(

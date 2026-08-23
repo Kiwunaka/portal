@@ -3,6 +3,7 @@
   "release": "1.2.0",
   "source_plan": "POKROV_release_1.2.0_full_audit_with_client_logging_RU.md",
   "branch_policy": {
+    "review_mode": "OWNER_SOLO_EXCEPTION",
     "require_status_check_app_binding": true,
     "required_pull_request_reviews": {
       "dismiss_stale_reviews": true,
@@ -21,7 +22,29 @@
       "excluded_pr_author": "Kiwunaka",
       "minimum_eligible_non_author_reviewers": 1,
       "selected_code_owners": [],
-      "selection_state": "BLOCKED_BY_OWNER_DECISION"
+      "selection_state": "OWNER_SOLO_EXCEPTION"
+    },
+    "solo_owner_exception": {
+      "active": true,
+      "release": "1.2.0",
+      "owner_login": "Kiwunaka",
+      "authorized_at": "2026-08-23",
+      "authorization_source": "explicit_owner_instruction_in_codex_task",
+      "expires_when": "release_1.2.0_is_closed",
+      "waived_controls": [
+        "eligible_non_author_pull_request_approval",
+        "codeowners_non_author_selection",
+        "paid_private_branch_protection"
+      ],
+      "compensating_controls": [
+        "exact_pull_request_head_sha",
+        "required_github_actions_success",
+        "github_app_bound_check_runs",
+        "pull_request_only_promotion",
+        "signed_public_release_index",
+        "retained_candidate_evidence",
+        "same_byte_promotion"
+      ]
     }
   },
   "entries": [
