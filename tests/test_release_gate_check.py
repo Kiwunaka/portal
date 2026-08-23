@@ -1,8 +1,10 @@
 import importlib.util
+import io
 import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
@@ -69,6 +71,36 @@ class ReleaseGateCheckTests(unittest.TestCase):
         self.assertIn("npx playwright install chromium", workflow)
         self.assertIn("npm run test:e2e", workflow)
         self.assertIn("WebApp Playwright E2E", quick_gate_names)
+
+    def test_adminapp_isolated_build_includes_backend_contract_sources(self) -> None:
+        support_paths = self.module._frontend_build_support_paths(self.module.REPO_ROOT / "adminapp")
+
+        self.assertEqual(
+            tuple(path.name for path in support_paths),
+            ("scripts", "portal_bot"),
+        )
+        self.assertEqual(
+            self.module._frontend_build_support_paths(self.module.REPO_ROOT / "webapp"),
+            (),
+        )
+
+    def test_failure_tails_are_redacted_in_ci_output(self) -> None:
+        result = self.module.GateResult(
+            name="example",
+            command="example",
+            returncode=1,
+            duration_sec=0.1,
+            output_tail="Authorization: Bearer supersecret",
+        )
+        output = io.StringIO()
+
+        with redirect_stdout(output):
+            self.module._print_failure_tails([result])
+
+        rendered = output.getvalue()
+        self.assertIn("[failure-tail] example", rendered)
+        self.assertNotIn("supersecret", rendered)
+        self.assertIn("Bearer <redacted>", rendered)
 
     def test_client_root_resolver_selects_the_main_worktree(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

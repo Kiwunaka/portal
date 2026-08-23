@@ -154,6 +154,12 @@ def _is_frontend_build(command: list[str], cwd: Path) -> bool:
     return len(command) >= 3 and command[0] == _npm_exec() and command[1:3] == ["run", "build"] and (cwd / "package.json").exists()
 
 
+def _frontend_build_support_paths(cwd: Path) -> tuple[Path, ...]:
+    if cwd.resolve() != (REPO_ROOT / "adminapp").resolve():
+        return ()
+    return (REPO_ROOT / "scripts", REPO_ROOT / "portal_bot")
+
+
 def _prepare_frontend_build_copy(cwd: Path) -> Path:
     temp_root = Path(tempfile.mkdtemp(prefix=f"{cwd.name}-gate-"))
     target = temp_root / cwd.name
@@ -170,6 +176,15 @@ def _prepare_frontend_build_copy(cwd: Path) -> Path:
     copy_dst = temp_root / "copy"
     if copy_src.exists():
         shutil.copytree(copy_src, copy_dst, dirs_exist_ok=True)
+    for support_src in _frontend_build_support_paths(cwd):
+        shutil.copytree(
+            support_src,
+            temp_root / support_src.name,
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns(
+                "__pycache__", "*.pyc", ".env", ".env.*", "*.db", "*.sqlite", "*.sqlite3"
+            ),
+        )
     proc = subprocess.run(
         [_npm_exec(), "ci", "--no-audit", "--no-fund"],
         cwd=str(target),
@@ -273,6 +288,14 @@ def _run_cmd(*, name: str, command: list[str], cwd: Path) -> GateResult:
         duration_sec=duration,
         output_tail=tail,
     )
+
+
+def _print_failure_tails(results: list[GateResult]) -> None:
+    for result in results:
+        if result.returncode == 0:
+            continue
+        print(f"[failure-tail] {result.name}")
+        print(_redact_text(result.output_tail) or "(no captured output)")
 
 
 def _status_for_gate(results: list[GateResult], gate_name: str) -> str:
@@ -714,6 +737,7 @@ def main() -> int:
     print(f"[report] {output_path}")
     for r in results:
         print(f"[result] {r.name}: exit={r.returncode} duration={r.duration_sec:.2f}s")
+    _print_failure_tails(results)
 
     return 0 if all(r.returncode == 0 for r in results) else 2
 

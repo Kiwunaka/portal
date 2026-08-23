@@ -198,6 +198,10 @@ function render(contract) {
   return `${lines.join("\n")}\n`;
 }
 
+function normalizeNewlines(value) {
+  return value.replace(/\r\n/g, "\n");
+}
+
 async function main() {
   const contract = JSON.parse(await readFile(contractPath, "utf8"));
   const expectedDigest = String(contract["x-pokrov-contract-sha256"] || "");
@@ -207,7 +211,9 @@ async function main() {
   const generated = render(contract);
   if (check) {
     const current = await readFile(outputPath, "utf8").catch(() => null);
-    if (current !== generated) throw new Error("Generated Admin API v2 SDK is stale");
+    if (current === null || normalizeNewlines(current) !== normalizeNewlines(generated)) {
+      throw new Error("Generated Admin API v2 SDK is stale");
+    }
   } else {
     await mkdir(dirname(outputPath), { recursive: true });
     await writeFile(outputPath, generated, "utf8");

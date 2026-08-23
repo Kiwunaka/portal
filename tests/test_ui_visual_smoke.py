@@ -72,7 +72,7 @@ class UiVisualSmokeTests(unittest.TestCase):
         self.assertIn("/api/payments/providers", checkout_check.must_contain)
         self.assertIn("COMMERCIAL_REVISION", checkout_check.must_contain)
         self.assertIn('response.headers.get("X-Pokrov-Commercial-Revision")', checkout_check.must_contain)
-        self.assertIn("payment_method: paymentMethod", checkout_check.must_contain)
+        self.assertIn("payment_method: effectivePaymentMethod", checkout_check.must_contain)
         self.assertIn("config.connectUrl", checkout_check.must_not_contain)
         self.assertIn("activation key", checkout_check.must_not_contain)
 
@@ -95,9 +95,11 @@ class UiVisualSmokeTests(unittest.TestCase):
         self.assertIn('? "/downloads/"', dashboard_check.must_contain)
         self.assertIn("href={primaryHref}", dashboard_check.must_contain)
         self.assertIn(
-            "onClick={primaryHref ? undefined : () => setTourOpen(true)}",
+            "onClick={primaryHref ? undefined : () => {",
             dashboard_check.must_contain,
         )
+        self.assertIn('setTourError("")', dashboard_check.must_contain)
+        self.assertIn("setTourOpen(true)", dashboard_check.must_contain)
 
 
 if __name__ == "__main__":

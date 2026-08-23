@@ -1909,6 +1909,8 @@ test.describe("Cabinet flow", () => {
   });
 
   test("matches the deterministic cabinet visual matrix", async ({ page }) => {
+    test.skip(process.platform !== "win32", "The committed Chromium visual baseline is Windows-owned.");
+    await page.clock.setFixedTime(new Date("2026-08-22T00:00:00"));
     const viewports = [
       { name: "mobile", width: 390, height: 844 },
       { name: "desktop", width: 1180, height: 820 },
