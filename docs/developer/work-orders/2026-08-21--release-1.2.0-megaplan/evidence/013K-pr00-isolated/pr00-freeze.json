@@ -1,0 +1,157 @@
+{
+  "schema": "pokrov.release-1.2.0.pr00-freeze/v1",
+  "product_version": "1.2.0",
+  "state": "PRE_CANDIDATE_LOCAL",
+  "candidate_created": false,
+  "promotion_authorized": false,
+  "source_plan_acceptance": [
+    "release_branches",
+    "baseline_shas",
+    "flags",
+    "manifest_schema",
+    "product_facts_snapshot",
+    "reason_code_draft",
+    "motion_semantics",
+    "no_visible_ui_change"
+  ],
+  "repositories": {
+    "platform": {
+      "path_role": "platform_root",
+      "promotion_branch": "master",
+      "proof_branch": "codex/1.2.0-pr00-freeze",
+      "diff_base": "9567299b1d16a7499cbfb3cd08490deacfaca2ab"
+    },
+    "client": {
+      "path_role": "client_root",
+      "promotion_branch": "main",
+      "revision": "8c6b955dced3b018825c53fe5d14cb632271adeb"
+    },
+    "core": {
+      "path_role": "core_root",
+      "promotion_branch": "main",
+      "revision": "fcb3c8bbc6efdeed284417369aacb522722ebfa2"
+    },
+    "release_index": {
+      "path_role": "release_index_root",
+      "promotion_branch": "main",
+      "revision": "f07654af496d042fa8dba3d8b2695e987c8e9eb7",
+      "published": false
+    }
+  },
+  "canonical_inputs": [
+    {
+      "repo": "platform",
+      "role": "initial_baseline_shas",
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/BASELINE.json",
+      "size": 2667,
+      "sha256": "bcd1564e7d43ad95f5877f789d77295b619f1c05168b341d2c04bced098339ee"
+    },
+    {
+      "repo": "platform",
+      "role": "manifest_schema",
+      "path": "scripts/release_handoff_metadata.schema.json",
+      "size": 15863,
+      "sha256": "85a88f699c730d9b360b84b26b3fe374fd6a536af9c76c28a06523d201383e62"
+    },
+    {
+      "repo": "platform",
+      "role": "product_facts_snapshot",
+      "path": "shared/product-facts.json",
+      "size": 1683,
+      "sha256": "a2a6eada76e937bc266393239263dc7c20c1e9399e494f33978bf7465dcc6a0c"
+    },
+    {
+      "repo": "platform",
+      "role": "reason_code_draft",
+      "path": "shared/contracts/observability/error-catalog.json",
+      "size": 36832,
+      "sha256": "4615f3a9014a758ae5fd87667ede0b8ea404bd997c6fd0b709b5fc610b376495"
+    },
+    {
+      "repo": "platform",
+      "role": "reason_code_schema",
+      "path": "shared/contracts/observability/error-catalog.schema.json",
+      "size": 2224,
+      "sha256": "f582083d3ced93e8f7ff38e6c1f4a29ac6df83abaf9d80adce4bc9c5dd414063"
+    },
+    {
+      "repo": "platform",
+      "role": "stop_ship_flags",
+      "path": "shared/release-1.2.0-stop-ship-regressions.json",
+      "size": 4149,
+      "sha256": "72f09c725ce0e06d421dae844b49bd0c93228f580b2575c0639088c2c9fde368"
+    },
+    {
+      "repo": "platform",
+      "role": "candidate_stage_flags",
+      "path": "shared/release-1.2.0-candidate-stage-policy.json",
+      "size": 15817,
+      "sha256": "c6cfed020f8432daa2ae746fe1bc85b045302652374d6ce8c8421a6a6e543d23"
+    },
+    {
+      "repo": "client",
+      "role": "release_flags",
+      "path": "config/release-handoff.seed.json",
+      "size": 7938,
+      "sha256": "8c3aa2ea36e2b61996d112e805683f2b06f60b0034599881ef7c40365c54fdf6"
+    },
+    {
+      "repo": "client",
+      "role": "runtime_flags",
+      "path": "config/runtime-artifacts.seed.json",
+      "size": 6206,
+      "sha256": "c89374f211bf02076bf617f9ba760d725aa4688497b70f41c1154d2e28540019"
+    },
+    {
+      "repo": "client",
+      "role": "motion_semantics",
+      "path": "packages/app_shell/lib/src/design_system/pokrov_motion.dart",
+      "size": 3765,
+      "sha256": "12b3f540fd62882c8319938913a52d41b87e00fa23543cee7fd5b50c76fac8c1"
+    },
+    {
+      "repo": "client",
+      "role": "product_facts_projection",
+      "path": "packages/app_shell/lib/src/seed/platform_product_facts.g.dart",
+      "size": 1831,
+      "sha256": "78b1f7e78099829745efab3693daed8c28e7ffe8a5824aaca464bffb4d106ba0"
+    },
+    {
+      "repo": "release_index",
+      "role": "public_manifest_contract",
+      "path": "release-index.contract.json",
+      "size": 1775,
+      "sha256": "56d255e2116d20be1d2576a7c5a91b383f719eb8e95d6a50b566897c3195b95e"
+    }
+  ],
+  "expected_flags": {
+    "product_target": "1.2.0",
+    "platform_build": 30,
+    "client_state": "PRE_CANDIDATE_LOCAL",
+    "core_target": "1.1.0",
+    "core_artifact_state": "exact_local_replacement_bound",
+    "release_index_state": "PRE_CANDIDATE_LOCAL",
+    "candidate_created": false,
+    "promotion_authorized": false,
+    "release_index_published": false,
+    "release_index_active_signing_keys": 0
+  },
+  "isolated_diff": {
+    "allowed_paths": [
+      "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013K-pr00-isolated-freeze.md",
+      "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013K-pr00-isolated/pr00-freeze.json",
+      "scripts/validate_release_1_2_pr00_freeze.py",
+      "tests/test_release_1_2_pr00_freeze.py"
+    ],
+    "visible_ui_prefixes": [
+      "adminapp/",
+      "marketing/src/",
+      "webapp/",
+      "portal_bot/static/",
+      "portal_bot/templates/"
+    ]
+  },
+  "hosted_required_checks": "NOT_RUN",
+  "candidate_eligible": false,
+  "evidence_ceiling": "LOCAL_ISOLATED_NO_VISIBLE_UI_COMMIT"
+}
