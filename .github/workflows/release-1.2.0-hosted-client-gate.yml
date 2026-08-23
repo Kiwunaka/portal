@@ -1,0 +1,155 @@
+name: Release 1.2.0 Exact Hosted Client Gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  exact-client-standard-gate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout gate control
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          path: control
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Fetch promotion base
+        working-directory: control
+        run: git fetch --no-tags origin master:refs/remotes/origin/master
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate control and resolve exact tuple
+        id: tuple
+        working-directory: control
+        env:
+          POKROV_RELEASE_HEAD_REF: ${{ github.head_ref || github.ref_name }}
+        run: >-
+          python -B scripts/validate_release_1_2_hosted_gate_contract.py
+          --base-ref origin/master
+          --emit-github-output "$GITHUB_OUTPUT"
+
+      - name: Require private client read-only deploy key
+        shell: bash
+        env:
+          POKROV_RELEASE_CLIENT_DEPLOY_KEY: ${{ secrets.POKROV_RELEASE_CLIENT_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$POKROV_RELEASE_CLIENT_DEPLOY_KEY" ]]; then
+            echo "::error::POKROV_RELEASE_CLIENT_DEPLOY_KEY is required for the private client checkout."
+            exit 2
+          fi
+
+      - name: Checkout exact platform source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: Kiwunaka/portal
+          ref: ${{ steps.tuple.outputs.platform_revision }}
+          path: platform
+          persist-credentials: false
+
+      - name: Checkout exact private client source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: Kiwunaka/POKROV-app
+          ref: ${{ steps.tuple.outputs.client_revision }}
+          ssh-key: ${{ secrets.POKROV_RELEASE_CLIENT_DEPLOY_KEY }}
+          path: client
+          persist-credentials: false
+          lfs: true
+
+      - name: Checkout exact Core source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: Kiwunaka/pokrov-core
+          ref: ${{ steps.tuple.outputs.core_revision }}
+          path: core
+          persist-credentials: false
+
+      - name: Verify exact checked-out revisions
+        shell: bash
+        env:
+          PLATFORM_REVISION: ${{ steps.tuple.outputs.platform_revision }}
+          CLIENT_REVISION: ${{ steps.tuple.outputs.client_revision }}
+          CORE_REVISION: ${{ steps.tuple.outputs.core_revision }}
+        run: |
+          set -euo pipefail
+          test "$(git -C platform rev-parse HEAD)" = "$PLATFORM_REVISION"
+          test "$(git -C client rev-parse HEAD)" = "$CLIENT_REVISION"
+          test "$(git -C core rev-parse HEAD)" = "$CORE_REVISION"
+
+      - name: Set up Java 17
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Flutter 3.38.5
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          channel: stable
+          flutter-version: "3.38.5"
+          cache: true
+
+      - name: Validate exact cross-repository seed
+        shell: pwsh
+        working-directory: client
+        run: >-
+          ./scripts/validate-seed.ps1
+          -PlatformRoot "${{ github.workspace }}/platform"
+          -CoreRoot "${{ github.workspace }}/core"
+
+      - name: Reclaim verified historical artifact space
+        shell: pwsh
+        run: |
+          $clientRoot = (Resolve-Path -LiteralPath "${{ github.workspace }}/client").Path
+          $targets = @(
+            [IO.Path]::Combine($clientRoot, "artifacts"),
+            [IO.Path]::Combine($clientRoot, ".git", "lfs", "objects")
+          )
+          $requiredPrefix = "$clientRoot$([IO.Path]::DirectorySeparatorChar)"
+          foreach ($target in $targets) {
+            $resolvedTarget = [IO.Path]::GetFullPath($target)
+            if (-not $resolvedTarget.StartsWith(
+              $requiredPrefix,
+              [StringComparison]::Ordinal
+            )) {
+              throw "Refusing to remove path outside exact client checkout: $resolvedTarget"
+            }
+            if (Test-Path -LiteralPath $resolvedTarget) {
+              Remove-Item -LiteralPath $resolvedTarget -Recurse -Force
+            }
+          }
+          & df -h $clientRoot
+
+      - name: Run standard client gate
+        shell: pwsh
+        working-directory: client
+        run: ./scripts/run-tests.ps1
+
+      - name: Regenerate Linux golden diagnostics after failure
+        if: failure()
+        shell: pwsh
+        working-directory: client/packages/app_shell
+        run: >-
+          flutter test test/pokrov_seed_app_test.dart
+          --plain-name "matches deterministic critical-state goldens"
+          --update-goldens
+
+      - name: Retain failed Linux golden diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: client-linux-goldens-${{ github.event.pull_request.head.sha || github.sha }}
+          path: client/packages/app_shell/test/goldens/*.png
+          if-no-files-found: error
+          retention-days: 1

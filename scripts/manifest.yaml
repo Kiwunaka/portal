@@ -149,6 +149,7 @@
     "scripts/text_integrity.py",
     "scripts/validate_android_physical_audit_evidence.py",
     "scripts/validate_release_1_2_pr00.py",
+    "scripts/validate_release_1_2_hosted_gate_contract.py",
     "scripts/generate_private_helper_coverage.py",
     "scripts/generate_defect_fix_retest_ledger.py"
   ],
