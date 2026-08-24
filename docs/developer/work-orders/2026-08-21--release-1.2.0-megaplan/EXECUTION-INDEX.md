@@ -2707,3 +2707,42 @@ promotion, store publication or device/origin proof occurred.
 No row advances. `REL_DOD/DOD-15` remains `I2`. Distribution remains
 `I3=309`, `I2=17`, `I1=37`, `I0=14`; 68 rows remain below `I3`, and stage
 split remains `0/33/14/21`.
+
+## 2026-08-24 — WO-013U owner-approved direct-beta assembly
+
+The sole owner authorized exact Windows 1.2.0 continuation as an unsigned
+direct-download beta with mandatory SmartScreen/unknown-publisher warning and
+no trusted, signed, Store or broad-stable claim. Client PR 14 head
+`f2210ba1f2ab05e8d60b9db7cc6e5f07f9bf9e2c` passed hosted run
+`32678982419`, job `97292161973`, in `12m54s`; it merged under
+`OWNER_SOLO_EXCEPTION` as client `main`
+`f80387aa75fb632bb48d8023f0cba33f1972a144` with the same Git tree
+`d55afa2fe045c1a3569b28af10fb3d59d87b6575`. Post-merge run
+`32679674864`, job `97294012063`, passed in `11m58s`.
+
+The exact merge commit passed cross-repository validation and produced five
+production-signed Android artifacts plus one Windows installer whose manifest
+and Authenticode readback agree on `SKIPPED_BY_OWNER` / `NotSigned`. The
+Windows exception is bounded to `1.2.0`, `outside_store_beta` and
+`direct_download_only`; the required warning is retained and trusted/Store
+claims are false. The support public pin is bound into all six app artifacts
+without reading or exporting private material.
+
+The six-file digest is
+`59408337242f084f9419e2fe2ade229b347ffc117ddc141bee89ca8bb54d29bc`.
+CycloneDX 1.5 SBOM, SLSA v1 provenance, valid strict-v2 beta handoff, final
+bundle and 23/23 checksum validation pass. Read-only preflight binds platform
+`9396428`, client `f80387a`, Core `bdbd97f` and public-index `7d5e402`, reports
+`READY_LOCAL_FREEZE` and has zero pre-candidate blockers.
+
+No candidate, signed public index, GitHub Release, Store upload, stable pointer,
+production deploy or runtime mutation occurred. Ten required promotion gates
+remain below `PASS`: Windows clean-host, Android physical/OEM/signer recovery,
+current-origin, brain-origin, provider payment E2E, Operator OIDC/RBAC,
+legal/commercial approval and rollback. RU-origin remains claim-conditional.
+
+No row advances. `REL_DOD/DOD-15` remains `I2`: current beta supply-chain
+evidence is stronger, but the row's stable/trusted signing, public-index,
+device/origin and same-byte promotion requirements remain open. Distribution
+remains `I3=309`, `I2=17`, `I1=37`, `I0=14`; 68 rows remain below `I3`, and
+stage split remains `0/33/14/21`.
