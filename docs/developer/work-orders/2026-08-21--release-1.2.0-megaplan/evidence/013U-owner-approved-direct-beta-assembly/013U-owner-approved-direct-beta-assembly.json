@@ -1,0 +1,119 @@
+{
+  "schema": "pokrov.release-1.2.0.owner-approved-direct-beta-assembly/v1",
+  "recorded_at": "2026-08-24T01:46:00Z",
+  "status": "DIRECT_BETA_PRE_CANDIDATE_ASSEMBLED_OWNER_EXCEPTION_ACTIVE",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "public_release_created": false,
+  "production_promotion_authorized": false,
+  "production_mutation_performed": false,
+  "owner_control": {
+    "mode": "OWNER_SOLO_EXCEPTION",
+    "independent_review_performed": false,
+    "windows_signing_status": "SKIPPED_BY_OWNER",
+    "decision_code": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0",
+    "authorized_on": "2026-08-24",
+    "version_scope": "1.2.0",
+    "channel_scope": "outside_store_beta",
+    "distribution_scope": "direct_download_only",
+    "smartscreen_warning_required": true,
+    "trusted_claim_allowed": false,
+    "store_claim_allowed": false,
+    "broad_stable_claim_allowed": false,
+    "expires_when_trusted_signing_is_available": true
+  },
+  "source_tuple": {
+    "platform": "93964280836ff511e35b0856ed24ffdf6c5e34c1",
+    "client": "f80387aa75fb632bb48d8023f0cba33f1972a144",
+    "core": "bdbd97fae35103e705f55908caebf75b4a9ff72f",
+    "release_index": "7d5e402c47186fbe2ea1eb30ee1dc8cafdf066b2",
+    "candidate_frozen": false
+  },
+  "client_control": {
+    "repository": "Kiwunaka/POKROV-app",
+    "pr": 14,
+    "pr_url": "https://github.com/Kiwunaka/POKROV-app/pull/14",
+    "head": "f2210ba1f2ab05e8d60b9db7cc6e5f07f9bf9e2c",
+    "merge": "f80387aa75fb632bb48d8023f0cba33f1972a144",
+    "pr_head_tree": "d55afa2fe045c1a3569b28af10fb3d59d87b6575",
+    "merge_tree": "d55afa2fe045c1a3569b28af10fb3d59d87b6575",
+    "same_git_tree": true,
+    "pr_run": 32678982419,
+    "pr_job": 97292161973,
+    "pr_conclusion": "PASS",
+    "pr_duration": "12m54s",
+    "post_merge_run": 32679674864,
+    "post_merge_job": 97294012063,
+    "post_merge_conclusion": "PASS",
+    "post_merge_duration": "11m58s"
+  },
+  "artifacts": [
+    {"name": "pokrov-android-arm64-v8a.apk", "platform": "android", "kind": "apk", "architecture": "arm64-v8a", "size_bytes": 101157042, "sha256": "39fd6b2b4b1c9e3a2888a0e2a1e9bc228d8ed81957253a51d3fe8d4229596c25", "signing": "PASS_PRODUCTION"},
+    {"name": "pokrov-android-armeabi-v7a.apk", "platform": "android", "kind": "apk", "architecture": "armeabi-v7a", "size_bytes": 90620944, "sha256": "83e8a172f38b1283e852029a6c09daf1137a01fe507472e92ba75916451584c7", "signing": "PASS_PRODUCTION"},
+    {"name": "pokrov-android-market.aab", "platform": "android", "kind": "aab", "architecture": "universal", "size_bytes": 126074040, "sha256": "981c2b1bec24e87f860faa3852633afd261f13cb5ac6ed1b8dd1b97f0128c025", "signing": "PASS_PRODUCTION_STORE_NOT_PUBLISHED"},
+    {"name": "pokrov-android-universal.apk", "platform": "android", "kind": "apk", "architecture": "universal", "size_bytes": 294859469, "sha256": "b747f579c9ddba6d093ceef70e4b0f43f0885a580cf058eecaad9dcd53ace256", "signing": "PASS_PRODUCTION"},
+    {"name": "pokrov-android-x86_64.apk", "platform": "android", "kind": "apk", "architecture": "x86_64", "size_bytes": 109801745, "sha256": "b065fdb9bbdb322d80c2638bca38eb88516c2041837e651a2454bd7e130db7bd", "signing": "PASS_PRODUCTION"},
+    {"name": "pokrov-windows-setup-x64.exe", "platform": "windows", "kind": "exe", "architecture": "x64", "size_bytes": 28885125, "sha256": "1ff2b34e26c2ad971b748a029f9ad787a674e8db8e1ad5cca5c11f9cecfcbe5c", "signing": "SKIPPED_BY_OWNER", "authenticode": "NotSigned"}
+  ],
+  "artifact_set_sha256": "59408337242f084f9419e2fe2ade229b347ffc117ddc141bee89ca8bb54d29bc",
+  "android": {
+    "production_signing": "PASS_5_OF_5",
+    "certificate_sha256": "0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500",
+    "store_publication": "NOT_RUN"
+  },
+  "windows": {
+    "build": "PASS_LOCAL_EXACT_MERGE_COMMIT",
+    "required_files": "PASS_8_OF_8",
+    "manifest_sha256": "a3114a55987e52390be551a3bf4f79dc67ec8cfe69c8321951b4d8a5aa648b80",
+    "authenticode_evidence_sha256": "27d9fdd347b23e673b6d136f2b1bdad762ae097b4bd9c1d02cabec24a2c82b83",
+    "authenticode": "NotSigned",
+    "signing_status": "SKIPPED_BY_OWNER",
+    "clean_host_matrix": "MANUAL_OWNER_TEST"
+  },
+  "verification_pins": {
+    "support_public_pin": "PASS_EMBEDDED_6_OF_6",
+    "support_binding_evidence_sha256": "f6ae8d025a113c8675575abff42d95d03ead279592372cf4bd5d5e833a99528e",
+    "support_public_key_sha256": "44aed43310eaf5442b3493cbe566b5f0f620a5660bb84a6bd028832114f48845",
+    "emergency_key_id": "emg-20260815-v1",
+    "emergency_decoded_public_key_sha256": "6eaf0cafd42bf0f1840be7896eb73fc339e735251a1692b114c1d1fd4d768a36",
+    "private_key_value_read_copied_or_exported": false
+  },
+  "supply_chain": {
+    "sbom": {"format": "cyclonedx-1.5-json", "sha256": "14c09ee30944d2126ea7d9c147cd9201654ccb6a46f96b0aeba485c77b02172e", "status": "PASS"},
+    "provenance": {"format": "slsa-v1-json", "sha256": "c627a48ed15b735156632f29a2526f2bc682724e8aae5fb8e20c758f2d095a01", "status": "PASS"},
+    "strict_handoff": {"classification": "valid_v2", "channel": "beta", "sha256": "847f13fa7418df54ed27ab7a5558dda092e0abcf4c579d89c569cac20aa25277", "artifact_count": 6, "blocking_promotion_gate_count": 10},
+    "bundle_sha256": "43847668cc75400e070a1060b33b218f73d8f09982c72783456be218ae0ab5cc",
+    "release_checksums": {"entry_count": 23, "validation": "PASS_23_OF_23", "sha256": "8f01bbaaa925150c8e71ab55c9703fbd86842479441a9358e64f75d9dcda9fed"},
+    "public_signed_release_index": "NOT_CREATED"
+  },
+  "preflight": {
+    "status": "READY_LOCAL_FREEZE",
+    "sha256": "df01bdc66354784b3a01162f8ac8d3e750632710541e2e2e30207b311556323f",
+    "blockers": 0,
+    "pre_freeze_rows_below_i3": 0,
+    "candidate_rows_below_i3": 33,
+    "external_rows_below_i3": 14,
+    "deferred_rows_below_i3": 21,
+    "superseded_probe": "WINDOWS_CRLF_WORKING_COPY_RELEASE_INDEX_HASH_PROBE"
+  },
+  "required_promotion_gates_not_pass": [
+    "BRAIN_ORIGIN",
+    "CURRENT_ORIGIN",
+    "ANDROID_OEM_MATRIX",
+    "ANDROID_PHYSICAL_DEVICE",
+    "ANDROID_SIGNER_RECOVERY",
+    "LEGAL_COMMERCIAL",
+    "OPERATOR_OIDC_RBAC",
+    "ROLLBACK_DRILL",
+    "WIN_003",
+    "PAYMENT_PROVIDER_E2E"
+  ],
+  "ledger": {
+    "advanced_rows": {},
+    "strengthened_rows": ["REL_DOD/DOD-15"],
+    "distribution": {"I3": 309, "I2": 17, "I1": 37, "I0": 14},
+    "below_i3": 68,
+    "pending_stage_counts": {"pre_freeze": 0, "candidate": 33, "external": 14, "deferred": 21}
+  },
+  "evidence_ceiling": "EXACT_LOCAL_DIRECT_BETA_PRE_CANDIDATE_ANDROID_SIGNED_WINDOWS_SKIPPED_BY_OWNER_SMARTSCREEN_REQUIRED_NO_PUBLIC_RELEASE_NO_PRODUCTION_NO_DEVICE_ORIGIN_PROVIDER_OR_ROLLBACK_PROOF"
+}
