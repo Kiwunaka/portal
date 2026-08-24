@@ -1,0 +1,158 @@
+{
+  "schema": "pokrov.release-1.2.0.windows-signing-readiness/v1",
+  "recorded_at": "2026-08-24T00:27:44Z",
+  "status": "READINESS_CONTROL_PROVED_TRUSTED_CERTIFICATE_BLOCKED",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "public_release_created": false,
+  "production_promotion_authorized": false,
+  "production_mutation_performed": false,
+  "owner_control": {
+    "mode": "OWNER_SOLO_EXCEPTION",
+    "independent_review_performed": false
+  },
+  "active_build_tuple": {
+    "platform_runtime_source": "2ed944c5eaa667c44a7bc1970d2dd175ff34f8c9",
+    "platform_evidence_base": "187665f65a7e6d9c6e5f10d2affd2529c9cd5832",
+    "client": "1627fc88da0dece56fdb4be6fd281dac95268be9",
+    "core": "bdbd97fae35103e705f55908caebf75b4a9ff72f",
+    "release_index": "7d5e402c47186fbe2ea1eb30ee1dc8cafdf066b2",
+    "candidate_frozen": false
+  },
+  "client_readiness_control": {
+    "repository": "Kiwunaka/POKROV-app",
+    "pr": 13,
+    "head": "0f2fe25d9a913edfcb9b1b176470afce79e99586",
+    "merge": "1627fc88da0dece56fdb4be6fd281dac95268be9",
+    "pr_head_tree": "48a095d1d92955f3b803dd413bd522bb94ffa671",
+    "merge_tree": "48a095d1d92955f3b803dd413bd522bb94ffa671",
+    "same_git_tree": true,
+    "pr_run": 32675312337,
+    "pr_job": 97282255100,
+    "pr_conclusion": "PASS",
+    "pr_duration": "12m51s",
+    "post_merge_run": 32676034400,
+    "post_merge_job": 97284205083,
+    "post_merge_conclusion": "PASS",
+    "post_merge_duration": "12m28s",
+    "receipt_schema": "pokrov.windows-signing-readiness-receipt.v1",
+    "scope": "local_certificate_store_readiness",
+    "pfx_path_or_password_accepted": false,
+    "artifacts_signed": false,
+    "candidate_created": false,
+    "production_runtime_mutated": false,
+    "private_key_value_exposed": false
+  },
+  "local_store_audit": {
+    "current_user_my_code_signing_count": 2,
+    "local_machine_my_code_signing_count": 0,
+    "certificates": [
+      {
+        "thumbprint_sha1": "8C113EFF1B724EECA2FBC0D520B3E6A6CB1457FF",
+        "certificate_sha256": "5C8EA6BC56C0023C08947926440BD4056AEA606D39B2975CC72027FAF5522753",
+        "subject": "CN=8CB43675-F44B-4AA5-9372-E8727781BDC4",
+        "issuer": "CN=8CB43675-F44B-4AA5-9372-E8727781BDC4",
+        "not_before_utc": "2026-03-18T01:12:04Z",
+        "not_after_utc": "2027-03-18T01:32:04Z",
+        "private_key_present": true,
+        "code_signing_eku": true,
+        "self_signed": true,
+        "chain_trusted": false,
+        "chain_status": ["UntrustedRoot"]
+      },
+      {
+        "thumbprint_sha1": "436C50259F8ABD22F74E46A8605B6E2A514D7280",
+        "certificate_sha256": "C94AC85490C72181027B14C0665709047C4FA0463383D48BFBA7F375F22EEB7A",
+        "subject": "CN=8CB43675-F44B-4AA5-9372-E8727781BDC4",
+        "issuer": "CN=8CB43675-F44B-4AA5-9372-E8727781BDC4",
+        "not_before_utc": "2026-03-18T01:11:32Z",
+        "not_after_utc": "2027-03-18T01:31:32Z",
+        "private_key_present": true,
+        "code_signing_eku": true,
+        "self_signed": true,
+        "chain_trusted": false,
+        "chain_status": ["UntrustedRoot"]
+      }
+    ],
+    "fixture_certificates_remaining": 0,
+    "certificate_or_private_key_removed": false,
+    "certificate_or_private_key_exported": false,
+    "private_key_value_read_or_retained": false
+  },
+  "local_tooling": {
+    "signtool_present": true,
+    "signtool_path": "C:/Program Files (x86)/Windows Kits/10/bin/10.0.22621.0/x64/signtool.exe",
+    "all_signing_environment_inputs_configured": false,
+    "configured_input_count": 0,
+    "required_input_names": [
+      "POKROV_WINDOWS_SIGNING_CERTIFICATE_THUMBPRINT",
+      "POKROV_WINDOWS_SIGNING_EXPECTED_SUBJECT",
+      "POKROV_WINDOWS_SIGNING_TIMESTAMP_URL",
+      "POKROV_WINDOWS_SIGNING_STORE_LOCATION",
+      "POKROV_SIGNTOOL_PATH"
+    ]
+  },
+  "real_identity_negative_probe": {
+    "thumbprint_sha1": "8C113EFF1B724EECA2FBC0D520B3E6A6CB1457FF",
+    "result": "EXPECTED_FAIL_CLOSED",
+    "error": "Self-signed certificates cannot satisfy trusted Windows signing.",
+    "candidate_created": false,
+    "artifacts_signed": false
+  },
+  "github_configuration_audit": {
+    "client_secret_names": ["POKROV_RELEASE_PLATFORM_DEPLOY_KEY"],
+    "client_variable_names": [
+      "POKROV_SUPPORT_SIGNING_KEY_ID",
+      "POKROV_SUPPORT_SIGNING_PUBLIC_KEY_B64"
+    ],
+    "platform_signing_secret_names": [
+      "POKROV_SUPPORT_MODE_SIGNING_PRIVATE_KEY_B64"
+    ],
+    "platform_signing_variable_names": [
+      "POKROV_SUPPORT_MODE_SIGNING_KEY_ID",
+      "POKROV_SUPPORT_MODE_SIGNING_PUBLIC_KEY_B64"
+    ],
+    "windows_authenticode_secret_or_variable_configured": false,
+    "secret_values_read": false
+  },
+  "repository_material_audit": {
+    "roots_scanned": [
+      "platform",
+      "client",
+      "core",
+      "public_release_index"
+    ],
+    "pfx_p12_pvk_private_key_cer_crt_candidate_files": 0,
+    "vendored_core_test_or_public_root_pem_files": 7,
+    "candidate_signing_material_found": false
+  },
+  "windows_signing": {
+    "private_key_material_present_locally": true,
+    "trusted_certificate": "BLOCKED_BY_ACCESS",
+    "positive_readiness_receipt": "NOT_RUN_NO_ELIGIBLE_IDENTITY",
+    "trusted_artifact_signature": "NOT_RUN",
+    "clean_host_trust": "NOT_RUN"
+  },
+  "required_before_candidate_build": [
+    "PROVISION_NON_SELF_SIGNED_TRUSTED_CODE_SIGNING_IDENTITY",
+    "CONFIGURE_EXACT_STORE_THUMBPRINT_SUBJECT_AND_HTTPS_RFC3161_URL",
+    "RUN_READINESS_ONLY_PROBE_TO_PASS"
+  ],
+  "required_after_readiness_pass": [
+    "SIGN_AND_VERIFY_ALL_WINDOWS_TARGETS",
+    "REBUILD_EXACT_ARTIFACT_SET",
+    "REGENERATE_CHECKSUMS",
+    "REGENERATE_SBOM",
+    "REGENERATE_PROVENANCE",
+    "REGENERATE_STRICT_V2_HANDOFF",
+    "GENERATE_AND_VERIFY_SIGNED_CANDIDATE_INDEX"
+  ],
+  "ledger": {
+    "advanced_rows": {},
+    "strengthened_rows": ["REL_DOD/DOD-15"],
+    "distribution": {"I3": 309, "I2": 17, "I1": 37, "I0": 14},
+    "below_i3": 68,
+    "pending_stage_counts": {"pre_freeze": 0, "candidate": 33, "external": 14, "deferred": 21}
+  },
+  "evidence_ceiling": "READINESS_CONTROL_AND_EXACT_SELF_SIGNED_BLOCKER_PROVED_NO_TRUSTED_CERTIFICATE_NO_SIGNED_WINDOWS_ARTIFACT_NO_CANDIDATE_NO_PRODUCTION_OR_PROMOTION_PROOF"
+}

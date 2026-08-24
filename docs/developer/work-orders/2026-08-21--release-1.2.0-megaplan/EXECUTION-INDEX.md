@@ -2669,3 +2669,41 @@ support-key input; `OBS/OBS-072` remains `I3` with hosted source-control
 custody but without deployed RBAC/audit or exact-device activation/replay
 proof. Distribution remains `I3=309`, `I2=17`, `I1=37`, `I0=14`; 68 rows
 remain below `I3`, and stage split remains `0/33/14/21`.
+
+## 2026-08-24 — WO-013T trusted Windows signing readiness
+
+Client PR 13 head `0f2fe25d9a913edfcb9b1b176470afce79e99586`
+adds a readiness-only path over the exact Windows certificate-store resolver.
+It passed the complete hosted release contract in run `32675312337`, job
+`97282255100`, in `12m51s`, and merged under `OWNER_SOLO_EXCEPTION` as client
+`main` `1627fc88da0dece56fdb4be6fd281dac95268be9` with the exact same Git tree
+`48a095d1d92955f3b803dd413bd522bb94ffa671`. Post-merge run
+`32676034400`, job `97284205083`, repeats the complete hosted gate
+successfully in `12m28s`.
+
+The path checks exact thumbprint/subject, private-key presence, Code Signing
+EKU, validity, online entire-chain trust, HTTPS RFC3161 URL shape and SignTool,
+then stops before build/sign/package. Its public receipt cannot claim signed
+bytes or a candidate. Focused readiness negatives, docs/support contracts,
+cross-repository seed validation, parser/JSON checks and diff/artifact-scope
+checks pass.
+
+The local store audit finds two current Code Signing identities with associated
+private keys, not zero private material. Both are self-signed under subject
+`CN=8CB43675-F44B-4AA5-9372-E8727781BDC4` and both fail chain validation with
+`UntrustedRoot`; `LocalMachine/My` has zero Code Signing identities. SignTool
+is installed. GitHub name-only readback finds no Windows/Authenticode/PFX/
+certificate-thumbprint secret or variable, and the active repository trees
+contain no POKROV candidate-signing file. No private value was read, exported,
+removed or committed.
+
+This corrects the blocker description: the owner has two retained development
+private keys, but neither is a publicly trusted release identity. A
+non-self-signed trusted Code Signing certificate must be provisioned before a
+positive readiness receipt or rebuilt candidate set is possible. No purchase,
+candidate, signed Windows artifact, production deploy, GitHub Release, stable
+promotion, store publication or device/origin proof occurred.
+
+No row advances. `REL_DOD/DOD-15` remains `I2`. Distribution remains
+`I3=309`, `I2=17`, `I1=37`, `I0=14`; 68 rows remain below `I3`, and stage
+split remains `0/33/14/21`.
