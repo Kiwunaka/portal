@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-24
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_SUPPORT_SIGNING_CUSTODY_PROVED_WINDOWS_CERTIFICATE_BLOCKED`
+Wave status: `PHASE_11_WINDOWS_SIGNING_READINESS_PROVED_TRUSTED_CERTIFICATE_BLOCKED`
 Release candidate: `NOT_CREATED`
 
 ## Outcome
@@ -35,7 +35,7 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete; exact-candidate performance/manual gates retained | `WO-010` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
 | 10 | FRKN-derived rules; isolated AWG2 PoC, later HY2 decision | Local package complete; exact artifact/device/RU gates open | `WO-012` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013Q retains the historical six-file local pre-candidate set; 013R merges fail-closed Windows Authenticode and deterministic secret-only release-index signing controls; 013S binds the support-mode public pin to client `main` and proves hosted private-key custody without deploying runtime. The trusted Windows certificate and 12 device/origin/provider/owner/rollback gates remain open, so candidate is not created | `WO-013`, `WO-013C`, `WO-013D`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013Q retains the historical six-file local pre-candidate set; 013R merges fail-closed Windows Authenticode and deterministic secret-only release-index signing controls; 013S binds the support-mode public pin to client `main` and proves hosted private-key custody without deploying runtime; 013T proves the readiness-only path and distinguishes two retained self-signed private-key identities from a missing publicly trusted signer. The trusted Windows certificate and 12 device/origin/provider/owner/rollback gates remain open, so candidate is not created | `WO-013`, `WO-013C`, `WO-013D`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S`, `WO-013T` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -104,6 +104,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013Q` | Assemble and retain the exact local pre-candidate app artifacts, SBOM/provenance, checksums and strict handoff | Client/platform release evidence | Partial implementation (`REL_DOD/DOD-15 I2`): Android production signing passes; Windows trusted signing/support key and all candidate/manual/promotion proof remain open | `WO-013P`, frozen source tuple, explicit candidate-preparation authorization |
 | `WO-013R` | Merge fail-closed Windows Authenticode and deterministic secret-only public-index signing controls without manufacturing a candidate | Client/public-index/platform release evidence | Controls merged and hosted source gates pass; no row advances because the trusted Windows certificate, support key, rebuilt artifacts and signed candidate index remain absent | `WO-013Q`, owner-solo PR authorization, explicit release continuation |
 | `WO-013S` | Bind the support-mode public pin to active client source and prove hosted private-key custody without exposing secrets or mutating production | Client/platform support-signing boundary | Source/build input and hosted custody proved; `REL_DOD/DOD-15` remains `I2` and `OBS/OBS-072` remains `I3` because trusted Windows signing, rebuilt candidate artifacts and deployed runtime/device proof remain absent | `WO-013R`, owner-solo PR authorization, hosted repository secrets/variables |
+| `WO-013T` | Prove a non-mutating trusted-Windows-signing readiness path and audit the exact local/hosted custody gap | Client/platform Windows signing boundary | Readiness control and exact self-signed/`UntrustedRoot` blocker proved; `REL_DOD/DOD-15` remains `I2`, candidate remains uncreated | `WO-013S`, client PR 13 hosted gate, local certificate-store and GitHub configuration readback |
 
 ## Current evidence
 
@@ -152,6 +153,10 @@ The row order is a dependency order, not permission for one giant merge. Each im
   binds client public-pin source control, exact PR/merge/check revisions and the
   hosted public custody receipt while retaining the missing Windows signer,
   uncreated candidate and untouched production-runtime boundary.
+- `evidence/013T-windows-signing-readiness/013T-windows-signing-readiness.json`
+  binds the readiness-only control, exact client PR/merge/check revisions, two
+  retained self-signed private-key identities, SignTool and GitHub-config
+  readbacks, and the honest no-trusted-signer/no-candidate ceiling.
 
 ## Collision and promotion gates
 
@@ -165,15 +170,20 @@ The row order is a dependency order, not permission for one giant merge. Each im
 
 All explicit `pre_freeze` and source-promotion rows are now `I3`. The 013Q
 artifact set remains historical evidence and is superseded for promotion by
-client `288c82b52cf3bda32b6c11f5261805aa8842bdc1` and public-index
+client `1627fc88da0dece56fdb4be6fd281dac95268be9` and public-index
 `7d5e402c47186fbe2ea1eb30ee1dc8cafdf066b2`. Platform runtime source remains
 `2ed944c5eaa667c44a7bc1970d2dd175ff34f8c9` and Core remains
 `bdbd97fae35103e705f55908caebf75b4a9ff72f`. Candidate creation is still
 `NOT_CREATED`.
 
 The support-mode public pin and hosted signing custody are proved for the next
-build. The next candidate-preparation slice requires a trusted Windows
-Authenticode certificate. After that input exists, rebuild the exact artifact
+build. The Windows SDK SignTool and readiness-only control are also proved.
+Two local Code Signing identities retain private keys, but both are
+self-signed and fail online chain validation with `UntrustedRoot`; no Windows
+Authenticode secret or variable exists in the inspected GitHub repositories.
+The next candidate-preparation slice therefore requires a non-self-signed
+trusted Windows Authenticode certificate. After that input exists, run the
+readiness probe, then rebuild the exact artifact
 set and regenerate checksums, SBOM/provenance and strict handoff. Only then may
 the deterministic signer create a candidate index for the 33-row candidate
 lane and the physical Android/Windows, current/brain/RU-origin, rollback and
