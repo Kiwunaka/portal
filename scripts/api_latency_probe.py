@@ -8,11 +8,15 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
+from functools import partial
 import hashlib
+from http.client import HTTPConnection, HTTPSConnection
+from ipaddress import ip_address
 import json
 import os
 import platform
 import re
+import socket
 import subprocess
 import sys
 import time
@@ -21,7 +25,14 @@ from pathlib import Path
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlsplit
-from urllib.request import Request, urlopen
+from urllib.request import (
+    HTTPHandler,
+    HTTPSHandler,
+    ProxyHandler,
+    Request,
+    build_opener,
+    urlopen,
+)
 
 from performance_budget_gate import (
     DEFAULT_CONTRACT,
@@ -35,7 +46,7 @@ from performance_budget_gate import (
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 COLLECTOR_ID = "pokrov.api-latency"
-COLLECTOR_VERSION = "1.0.0"
+COLLECTOR_VERSION = "1.1.0"
 ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]{2,63}$")
 MAX_BODY_BYTES = 64 * 1024
 
@@ -133,6 +144,73 @@ def _request_body(path: Path | None, *, required: bool) -> bytes | None:
     return body
 
 
+def _validate_source_address(source_address: str | None) -> str | None:
+    """Validate that an optional literal IP address is assigned locally."""
+
+    if source_address is None:
+        return None
+    try:
+        parsed = ip_address(source_address)
+    except ValueError as exc:
+        raise ContractError(
+            "source address must be a literal IPv4 or IPv6 address"
+        ) from exc
+    if parsed.is_unspecified or parsed.is_multicast:
+        raise ContractError("source address cannot be unspecified or multicast")
+    family = socket.AF_INET6 if parsed.version == 6 else socket.AF_INET
+    normalized = str(parsed)
+    try:
+        with socket.socket(family, socket.SOCK_STREAM) as probe:
+            probe.bind((normalized, 0))
+    except OSError as exc:
+        raise ContractError("source address is not assigned to this host") from exc
+    return normalized
+
+
+class _SourceAddressHTTPHandler(HTTPHandler):
+    """Open direct HTTP connections from one explicit local address."""
+
+    def __init__(self, source_address: str) -> None:
+        super().__init__()
+        self._source_address = source_address
+
+    def http_open(self, request: Request) -> Any:
+        connection = partial(
+            HTTPConnection,
+            source_address=(self._source_address, 0),
+        )
+        return self.do_open(connection, request)
+
+
+class _SourceAddressHTTPSHandler(HTTPSHandler):
+    """Open direct HTTPS connections from one explicit local address."""
+
+    def __init__(self, source_address: str) -> None:
+        super().__init__()
+        self._source_address = source_address
+
+    def https_open(self, request: Request) -> Any:
+        connection = partial(
+            HTTPSConnection,
+            source_address=(self._source_address, 0),
+        )
+        return self.do_open(
+            connection,
+            request,
+            context=self._context,
+        )
+
+
+def _build_source_bound_opener(source_address: str) -> Callable[..., Any]:
+    """Build a proxy-free URL opener bound to one validated local address."""
+
+    return build_opener(
+        ProxyHandler({}),
+        _SourceAddressHTTPHandler(source_address),
+        _SourceAddressHTTPSHandler(source_address),
+    ).open
+
+
 def _sample_once(
     request: Request,
     *,
@@ -160,6 +238,7 @@ def collect(
     base_url: str,
     origin: str,
     network_profile: str,
+    source_address: str | None,
     candidate_label: str,
     release_version: str,
     repo_root: Path,
@@ -170,7 +249,7 @@ def collect(
     timeout_seconds: float,
     sample_count: int | None,
     warmup_count: int | None,
-    opener: Callable[..., Any] = urlopen,
+    opener: Callable[..., Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     contract = _load_json(contract_path)
     budgets = validate_budget_contract(contract)
@@ -191,6 +270,12 @@ def collect(
         authorization_env, required=endpoint.requires_auth
     )
     body = _request_body(body_file, required=endpoint.state_changing)
+    normalized_source_address = _validate_source_address(source_address)
+    request_opener = opener or (
+        _build_source_bound_opener(normalized_source_address)
+        if normalized_source_address is not None
+        else urlopen
+    )
     minimum_samples = int(budget["sampling"]["min_samples"])
     minimum_warmups = int(budget["sampling"]["warmups"])
     samples_required = sample_count if sample_count is not None else minimum_samples
@@ -211,9 +296,17 @@ def collect(
     target = urljoin(normalized_base, endpoint.path.lstrip("/"))
     request = Request(target, data=body, headers=headers, method=endpoint.method)
     for _ in range(warmups_required):
-        _sample_once(request, timeout_seconds=timeout_seconds, opener=opener)
+        _sample_once(
+            request,
+            timeout_seconds=timeout_seconds,
+            opener=request_opener,
+        )
     samples = [
-        _sample_once(request, timeout_seconds=timeout_seconds, opener=opener)
+        _sample_once(
+            request,
+            timeout_seconds=timeout_seconds,
+            opener=request_opener,
+        )
         for _ in range(samples_required)
     ]
 
@@ -233,6 +326,13 @@ def collect(
         "platform": "web",
         "toolchain": f"python@{platform.python_version()}",
     }
+    if normalized_source_address is not None:
+        environment.update(
+            {
+                "proxy_policy": "disabled_for_source_bound_probe",
+                "source_address": normalized_source_address,
+            }
+        )
     evidence = {
         "schema_version": contract["evidence_schema_version"],
         "budget_contract": {
@@ -271,6 +371,13 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--base-url", required=True)
     parser.add_argument("--origin", required=True)
     parser.add_argument("--network-profile", required=True)
+    parser.add_argument(
+        "--source-address",
+        help=(
+            "Optional locally assigned literal IP. The probe disables URL proxy "
+            "discovery and binds every request socket to this address."
+        ),
+    )
     parser.add_argument("--candidate-label", required=True)
     parser.add_argument("--release-version", default="1.2.0")
     parser.add_argument("--repo-root", type=Path, default=REPO_ROOT)
@@ -303,6 +410,7 @@ def main(argv: list[str] | None = None) -> int:
             base_url=args.base_url,
             origin=args.origin,
             network_profile=args.network_profile,
+            source_address=args.source_address,
             candidate_label=args.candidate_label,
             release_version=args.release_version,
             repo_root=args.repo_root.resolve(),

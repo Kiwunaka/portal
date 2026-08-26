@@ -122,6 +122,50 @@ def test_stop_threshold_failure_cannot_be_reported_as_pass() -> None:
     assert outcome.has_budget_failure is True
 
 
+def test_source_bound_environment_is_validated_and_fingerprinted() -> None:
+    direct = _evidence()
+    direct["environment"]["source_address"] = "192.0.2.10"
+    direct["environment"]["proxy_policy"] = "disabled_for_source_bound_probe"
+    ambient = _evidence()
+
+    direct_outcome = MODULE.evaluate_evidence(
+        _contract(),
+        direct,
+        contract_path=CONTRACT_PATH,
+    )
+    ambient_outcome = MODULE.evaluate_evidence(
+        _contract(),
+        ambient,
+        contract_path=CONTRACT_PATH,
+    )
+
+    assert (
+        direct_outcome.summary["environment_fingerprint"]
+        != ambient_outcome.summary["environment_fingerprint"]
+    )
+
+    invalid_address = _evidence()
+    invalid_address["environment"]["source_address"] = "localhost"
+    invalid_address["environment"]["proxy_policy"] = (
+        "disabled_for_source_bound_probe"
+    )
+    with pytest.raises(MODULE.ContractError, match="expected literal IP"):
+        MODULE.evaluate_evidence(
+            _contract(),
+            invalid_address,
+            contract_path=CONTRACT_PATH,
+        )
+
+    missing_policy = _evidence()
+    missing_policy["environment"]["source_address"] = "192.0.2.10"
+    with pytest.raises(MODULE.ContractError, match="must appear together"):
+        MODULE.evaluate_evidence(
+            _contract(),
+            missing_policy,
+            contract_path=CONTRACT_PATH,
+        )
+
+
 def test_insufficient_samples_are_rejected() -> None:
     with pytest.raises(MODULE.ContractError, match="insufficient retained samples"):
         MODULE.evaluate_evidence(
