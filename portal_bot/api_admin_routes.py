@@ -2857,6 +2857,23 @@ async def admin_client_awg2_lab_material_put(
     )
 
 
+@app.put("/api/admin/client/awg31-lab/material")
+async def admin_client_awg31_lab_material_put(
+    payload: AdminAwg31LabMaterialPutIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    actor = int(_require_admin(x_telegram_init_data).get("id", 0))
+    return await _execute_admin_guarded_action(
+        actor_tg_id=actor,
+        action="awg31_lab_material.replace",
+        target_type="awg31_lab_material",
+        target_id=str(payload.tg_id),
+        payload=payload.model_dump(),
+        request=request,
+    )
+
+
 @app.post("/api/admin/referrals/process")
 async def admin_referrals_process(
     payload: AdminReferralQueueProcessIn,

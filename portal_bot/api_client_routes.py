@@ -170,7 +170,7 @@ def _smart_connect_rejection_reason(
     if node_cpu_penalty(node) is None:
         return "cpu_hot"
     transport_value = str(transport_profile or "").strip()
-    is_virtual_transport = transport_value in {RU_BRIDGE_RELAY, AWG2_LAB}
+    is_virtual_transport = transport_value in {RU_BRIDGE_RELAY, AWG2_LAB, AWG31_LAB}
     is_ru_bridge_relay = transport_value == RU_BRIDGE_RELAY
     required_transport = (
         LEGACY_REALITY_FALLBACK if is_virtual_transport else transport_profile
@@ -249,7 +249,7 @@ def _smart_connect_shortlist(
         transport = _node_transport_profile(
             node,
             LEGACY_REALITY_FALLBACK
-            if transport_profile == AWG2_LAB
+            if transport_profile in {AWG2_LAB, AWG31_LAB}
             else transport_profile,
         )
         capacity = node_capacity_status(node, policy=policy_by_code.get(code), now=now)
@@ -261,7 +261,9 @@ def _smart_connect_shortlist(
         )
         probe_payload = (
             {"host": probe_host, "port": probe_port}
-            if transport_profile != AWG2_LAB and probe_host and probe_port > 0
+            if transport_profile not in {AWG2_LAB, AWG31_LAB}
+            and probe_host
+            and probe_port > 0
             else None
         )
         shortlist_payload.append(
@@ -368,13 +370,15 @@ def _client_authenticated_install_id(
     *,
     user: User,
     auth_user: dict[str, Any],
+    require_device: bool = False,
 ) -> str:
     """Resolve the install bound to the authenticated access token.
 
     Device-pairing sessions belong to an ``AccountDevice`` and must never
     inherit the legacy install id stored on whichever User row represents the
     canonical account. Legacy stateless tokens have no device claim and retain
-    the bounded compatibility fallback.
+    the bounded compatibility fallback only for non-secret compatibility
+    surfaces. Secret-bearing managed lab profiles require an active device.
     """
 
     account_id = str(getattr(user, "account_id", "") or "").strip()
@@ -395,6 +399,8 @@ def _client_authenticated_install_id(
             return install_id
         raise HTTPException(status_code=403, detail="Authenticated device is unavailable")
 
+    if require_device:
+        raise HTTPException(status_code=403, detail="Authenticated device is required")
     return str(getattr(user, "app_install_id", "") or "").strip()
 
 
@@ -1926,6 +1932,13 @@ async def client_managed_profile(
             ).strip()
             or LEGACY_REALITY_FALLBACK
         )
+        if transport_profile in {AWG2_LAB, AWG31_LAB}:
+            install_id = _client_authenticated_install_id(
+                s,
+                user=user,
+                auth_user=auth_user,
+                require_device=True,
+            )
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
         requested_node_code = str(selected_node_code or "").strip().lower()

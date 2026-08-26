@@ -86,7 +86,7 @@
             "android",
             "windows"
           ],
-          "source_sha256": "428ccf40411b81c0ba55706a5551e4e6ce2ef126e19f5216f1a3e97e1dcbccb6"
+          "source_sha256": "3df7e7a03bf6a7e62e49e2791641428fb415cdca692a67b4a48fee79a853289e"
         }
       ]
     },
@@ -107,31 +107,31 @@
           "path": "shared/tariff-catalog.json",
           "pointer": "/plans/1/device_limit",
           "equals": 5,
-          "source_sha256": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+          "source_sha256": "85b23b6192e8198fcbb00f097449ccb0c99afb92aca6f16e93fbcada44505514"
         },
         {
           "path": "shared/tariff-catalog.json",
           "pointer": "/plans/2/device_limit",
           "equals": 5,
-          "source_sha256": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+          "source_sha256": "85b23b6192e8198fcbb00f097449ccb0c99afb92aca6f16e93fbcada44505514"
         },
         {
           "path": "shared/tariff-catalog.json",
           "pointer": "/plans/3/device_limit",
           "equals": 5,
-          "source_sha256": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+          "source_sha256": "85b23b6192e8198fcbb00f097449ccb0c99afb92aca6f16e93fbcada44505514"
         },
         {
           "path": "shared/tariff-catalog.json",
           "pointer": "/plans/4/device_limit",
           "equals": 5,
-          "source_sha256": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+          "source_sha256": "85b23b6192e8198fcbb00f097449ccb0c99afb92aca6f16e93fbcada44505514"
         },
         {
           "path": "shared/tariff-catalog.json",
           "pointer": "/plans/5/device_limit",
           "equals": 5,
-          "source_sha256": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+          "source_sha256": "85b23b6192e8198fcbb00f097449ccb0c99afb92aca6f16e93fbcada44505514"
         }
       ]
     },
@@ -152,25 +152,25 @@
           "path": "shared/tariff-catalog.json",
           "pointer": "/plans/0/code",
           "equals": "start_99",
-          "source_sha256": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+          "source_sha256": "85b23b6192e8198fcbb00f097449ccb0c99afb92aca6f16e93fbcada44505514"
         },
         {
           "path": "shared/tariff-catalog.json",
           "pointer": "/plans/0/amount_rub",
           "equals": 99,
-          "source_sha256": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+          "source_sha256": "85b23b6192e8198fcbb00f097449ccb0c99afb92aca6f16e93fbcada44505514"
         },
         {
           "path": "shared/tariff-catalog.json",
           "pointer": "/plans/0/duration_days",
           "equals": 30,
-          "source_sha256": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+          "source_sha256": "85b23b6192e8198fcbb00f097449ccb0c99afb92aca6f16e93fbcada44505514"
         },
         {
           "path": "shared/tariff-catalog.json",
           "pointer": "/plans/0/renewal_policy",
           "equals": "manual_no_auto_renewal",
-          "source_sha256": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+          "source_sha256": "85b23b6192e8198fcbb00f097449ccb0c99afb92aca6f16e93fbcada44505514"
         }
       ]
     },
@@ -191,13 +191,13 @@
           "path": "shared/product-facts.json",
           "pointer": "/trial/days",
           "equals": 5,
-          "source_sha256": "428ccf40411b81c0ba55706a5551e4e6ce2ef126e19f5216f1a3e97e1dcbccb6"
+          "source_sha256": "3df7e7a03bf6a7e62e49e2791641428fb415cdca692a67b4a48fee79a853289e"
         },
         {
           "path": "shared/product-facts.json",
           "pointer": "/trial/payment_card_required",
           "equals": false,
-          "source_sha256": "428ccf40411b81c0ba55706a5551e4e6ce2ef126e19f5216f1a3e97e1dcbccb6"
+          "source_sha256": "3df7e7a03bf6a7e62e49e2791641428fb415cdca692a67b4a48fee79a853289e"
         }
       ]
     },
@@ -218,13 +218,13 @@
           "path": "shared/product-facts.json",
           "pointer": "/trial/days",
           "equals": 5,
-          "source_sha256": "428ccf40411b81c0ba55706a5551e4e6ce2ef126e19f5216f1a3e97e1dcbccb6"
+          "source_sha256": "3df7e7a03bf6a7e62e49e2791641428fb415cdca692a67b4a48fee79a853289e"
         },
         {
           "path": "shared/product-facts.json",
           "pointer": "/trial/payment_card_required",
           "equals": false,
-          "source_sha256": "428ccf40411b81c0ba55706a5551e4e6ce2ef126e19f5216f1a3e97e1dcbccb6"
+          "source_sha256": "3df7e7a03bf6a7e62e49e2791641428fb415cdca692a67b4a48fee79a853289e"
         }
       ]
     }
@@ -331,10 +331,10 @@
   ],
   "source_contract": "shared/marketing-governance.source.json",
   "source_sha256": "2ec7f3698fcfdc7fe085e8ff6ebafd1c59dd5d785ee961130fe752f900651e6a",
-  "copy_catalog_sha256": "e5bde735e38fc1b2eb008753e74e4c99aaaad9c2ef225e202f84b4539995198a",
+  "copy_catalog_sha256": "af380ebeee676cc4186a313110cda969c61ab897620b4093e7fee2c73f50d35d",
   "evidence_source_sha256": {
-    "shared/product-facts.json": "428ccf40411b81c0ba55706a5551e4e6ce2ef126e19f5216f1a3e97e1dcbccb6",
-    "shared/tariff-catalog.json": "79835baf1592391c9b9a707acb29f37b76b9fe44385c9f378a5b4d0b01a5b3b7"
+    "shared/product-facts.json": "3df7e7a03bf6a7e62e49e2791641428fb415cdca692a67b4a48fee79a853289e",
+    "shared/tariff-catalog.json": "85b23b6192e8198fcbb00f097449ccb0c99afb92aca6f16e93fbcada44505514"
   },
-  "contract_sha256": "6cd7f3cc94a2c45367569b88296da817fb3c80d510e5092daa53beb70ff4e97f"
+  "contract_sha256": "934e1af78e98ca03edcd1bb73ae7259a801248fe73c5f3297d4528fbf1a1312a"
 }

@@ -302,6 +302,24 @@ Rollout note:
 - `defaults` normally keep `routing_mode_default=all_except_ru`, `transport_profile=legacy_reality_fallback`, and `dns_policy=ru_direct_split`; incident response may temporarily promote `transport_profile=ru_bridge_relay` with rollback to `legacy_reality_fallback`
 - overrides may only change `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
 - `operator_lab` is allowlist-only and must stay out of public UI and mass session/profile payloads
+- `awg2_lab` and `awg31_lab` are separate, exact-contract operator-lab profiles;
+  neither profile silently upgrades or downgrades to the other
+- both AWG profiles default to disabled with the server-side kill engaged, require
+  an authenticated allowlisted account and device, and expire independently;
+  missing, stale, malformed, digest-mismatched or server-not-ready material fails
+  closed instead of falling back to a public or raw subscription profile
+- compatibility or Telegram account credentials without an active device claim
+  cannot receive a secret-bearing AWG managed profile, even when the legacy
+  account row still has a matching install id
+- AWG lab material is device-bound and encrypted at rest with a dedicated
+  environment secret. Public subscriptions, location payloads, diagnostics,
+  logs and operator summaries expose no private key, pre-shared key, raw config
+  or endpoint payload
+- `awg31_lab` consumes only the pinned official AWG 3.1 dependency through the
+  typed `pokrov.awg31.endpoint.v1` contract. It is not a POKROV cryptographic
+  fork, is not part of the immutable 1.2.0 candidate, and has no production,
+  physical-device, mobile-origin or real-server interoperability claim until
+  those exact checks are run and retained
 
 Smart-connect contract:
 

@@ -172,9 +172,9 @@ def _managed_manifest_fallback_order(transport_profile: str) -> list[str]:
 
 
 def _public_subscription_transport_profile(transport_profile: str | None) -> str:
-    """Keep device-bound AWG2 material out of token subscriptions and exports."""
+    """Keep device-bound AWG material out of token subscriptions and exports."""
     resolved = str(transport_profile or LEGACY_REALITY_FALLBACK).strip() or LEGACY_REALITY_FALLBACK
-    return LEGACY_REALITY_FALLBACK if resolved == AWG2_LAB else resolved
+    return LEGACY_REALITY_FALLBACK if resolved in {AWG2_LAB, AWG31_LAB} else resolved
 
 
 def _ru_bridge_outbound(
@@ -290,7 +290,7 @@ def _effective_transport_nodes(*, nodes: list[Any], transport_profile: str, roll
         transport_profile=transport_profile,
         apply_exclusions=str(transport_profile or "").strip() != RU_BRIDGE_RELAY,
     )
-    if str(transport_profile or "").strip() in {RU_BRIDGE_RELAY, AWG2_LAB}:
+    if str(transport_profile or "").strip() in {RU_BRIDGE_RELAY, AWG2_LAB, AWG31_LAB}:
         return [
             node
             for node in filtered
@@ -397,6 +397,20 @@ def _managed_manifest_payload(
             )
         except Awg2LabError:
             raise HTTPException(status_code=503, detail="AWG2 lab material unavailable") from None
+        return "singbox-json", config
+    if str(transport_profile or "").strip() == AWG31_LAB:
+        if session is None:
+            raise HTTPException(status_code=503, detail="AWG 3.1 lab material unavailable")
+        try:
+            config = build_managed_awg31_lab_config(
+                session,
+                tg_id=int(user.tg_id),
+                install_id=str(install_id or "").strip(),
+                rollout_value=effective_rollout_config.get(AWG31_LAB),
+                title=title,
+            )
+        except Awg31LabError:
+            raise HTTPException(status_code=503, detail="AWG 3.1 lab material unavailable") from None
         return "singbox-json", config
     if str(transport_profile or "").strip() in {OPERATOR_LAB, RESERVE_XHTTP_CDN}:
         return (

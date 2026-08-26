@@ -5,6 +5,16 @@
 - Scope: local architecture and release-wave decision
 - Production/external actions: `NOT_AUTHORIZED`
 
+## 2026-08-26 source-lab amendment
+
+The owner reopened only the AWG 3.1 source-lab slice after the immutable 1.2.0
+pre-candidate was retained. A separate `awg31_lab` typed contract now exists in
+Core, platform and client source and remains disabled and kill-switched by
+default. It uses the pinned official upstream implementation and does not
+replace `awg2_lab`, alter the retained 1.2.0 bytes, create a POKROV cryptographic
+fork, or establish real-server, physical-device, mobile-origin or production
+proof. Hysteria2 remains `NO_GO_FOR_1.2.0` under the original decision below.
+
 ## Decision
 
 Do not add, enable or advertise a Hysteria2 lane in POKROV 1.2.0. Keep it as
@@ -40,7 +50,7 @@ Create a separate future WO only when all of these are true:
 
 | Record | Owner | Observe | Reopen trigger | 1.2.0 action |
 |---|---|---|---|---|
-| `MONITOR-01` AWG 3 and later obfuscation generations | Core owner | Official upstream schema, dependency, license and stable sing-box support | Current pinned AWG2 subset has an owned, measured gap and a compatible typed migration exists | Monitor only; no code/product claim |
+| `MONITOR-01` AWG 3 and later obfuscation generations | Core owner | Official upstream schema, dependency, license and stable sing-box support | Current pinned AWG2 subset has an owned, measured gap and a compatible typed migration exists | AWG 3.1 source lab reopened 2026-08-26; disabled, exact-contract, no release/product claim |
 | `MONITOR-02` HY2 Gecko, Mimic and port hopping | Core + network owner | Official upstream capability and owned test results | Reopen criteria above are satisfied and one bounded selector addresses the measured failure | Monitor only; no implementation |
 | `MONITOR-03` TrustTunnel/fptn | Architecture owner | Maintained upstream, license, security ownership and operational dependency | A concrete production dependency has an accountable owner and beats the existing stack on retained evidence | Monitor only; no dependency/fork |
 | `MONITOR-04` XHTTP, REALITY and AWG blocking trends | Network/operations owner | Sanitized POKROV-owned evidence with current-, brain- and RU-origin kept separate | Repeated exact-candidate failures cross an owner-approved threshold and name the affected ASN/network class | Monitor only; no public effectiveness claim |
@@ -51,7 +61,9 @@ raw provider payload qualifies as evidence for this registry.
 ## Evidence ceiling
 
 - HY2 decision and ownership: `I1 VERIFIED_DEFERRED`.
-- Monitor registry: `I1 VERIFIED_MONITOR_ONLY`.
+- AWG 3.1 source contract: `I3 VERIFIED_LOCAL`; real server, physical device,
+  mobile origin and production remain unproven.
+- Remaining monitor registry: `I1 VERIFIED_MONITOR_ONLY`.
 - HY2 runtime, server, artifact, device, performance and RU-origin proof: not
   implemented or run.
 - Candidate and promotion state: `NOT_REQUESTED`.

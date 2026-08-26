@@ -17,6 +17,7 @@ for root in (SCRIPTS_ROOT, PORTAL_ROOT):
         sys.path.insert(0, str(root))
 
 import generate_winback_pilot as generator  # noqa: E402
+import marketing_pilot_contract as runtime_contract  # noqa: E402
 from commercial_pilot_service import (  # noqa: E402
     WinbackAudienceFacts,
     WinbackRuntimeContext,
@@ -140,6 +141,18 @@ def test_runtime_adapter_validates_dependency_and_source_digests() -> None:
     contract = get_winback_pilot_contract()
     assert contract["schema_version"] == "pokrov-winback-pilot-v1"
     assert contract["contract_sha256"] == _read(generator.OUTPUT_PATH)["contract_sha256"]
+
+
+def test_source_digest_is_stable_across_checkout_line_endings(tmp_path: Path) -> None:
+    lf_path = tmp_path / "source-lf.json"
+    crlf_path = tmp_path / "source-crlf.json"
+    lf_path.write_bytes(b'{"state":"draft_blocked"}\n')
+    crlf_path.write_bytes(b'{"state":"draft_blocked"}\r\n')
+
+    expected = generator._file_digest(lf_path)
+    assert generator._file_digest(crlf_path) == expected
+    assert runtime_contract._file_digest(lf_path) == expected
+    assert runtime_contract._file_digest(crlf_path) == expected
 
 
 @pytest.mark.parametrize(

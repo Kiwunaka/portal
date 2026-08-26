@@ -9,8 +9,14 @@ from awg2_lab_service import (
     default_awg2_lab_config,
     normalize_awg2_lab_config,
 )
+from awg31_lab_service import (
+    awg31_lab_material_ready,
+    awg31_lab_rollout_access,
+    default_awg31_lab_config,
+    normalize_awg31_lab_config,
+)
 from shared_surface_facts import get_product_facts
-from transport_catalog import AWG2_LAB, GRPC_443_PRIMARY, LEGACY_REALITY_FALLBACK, OPERATOR_LAB, RESERVE_XHTTP_CDN, RU_BRIDGE_RELAY
+from transport_catalog import AWG2_LAB, AWG31_LAB, GRPC_443_PRIMARY, LEGACY_REALITY_FALLBACK, OPERATOR_LAB, RESERVE_XHTTP_CDN, RU_BRIDGE_RELAY
 
 
 NETWORK_ROLLOUT_CONFIG_KEY = "network_rollout_config"
@@ -129,6 +135,7 @@ def default_network_rollout_config() -> dict[str, Any]:
             "expires_at": None,
         },
         AWG2_LAB: default_awg2_lab_config(),
+        AWG31_LAB: default_awg31_lab_config(),
         "reserve_xhttp_cdn": {
             "enabled": False,
             "allowlist_node_codes": [],
@@ -184,6 +191,9 @@ def _transport_metadata(transport_profile: str, *, version: str) -> dict[str, st
         engine_hint = "singbox"
     elif profile == AWG2_LAB:
         transport_kind = "awg2"
+        engine_hint = "singbox"
+    elif profile == AWG31_LAB:
+        transport_kind = "awg31"
         engine_hint = "singbox"
     else:
         transport_kind = "reality"
@@ -329,6 +339,7 @@ def normalized_network_rollout_config(payload: Any) -> dict[str, Any]:
         "expires_at": _clean_text((operator_lab_src or {}).get("expires_at")) or None,
     }
     awg2_lab = normalize_awg2_lab_config(src.get(AWG2_LAB))
+    awg31_lab = normalize_awg31_lab_config(src.get(AWG31_LAB))
     reserve_xhttp_src = src.get(RESERVE_XHTTP_CDN)
     reserve_xhttp_cdn = {
         "enabled": _as_bool((reserve_xhttp_src or {}).get("enabled")) if isinstance(reserve_xhttp_src, dict) else False,
@@ -406,6 +417,7 @@ def normalized_network_rollout_config(payload: Any) -> dict[str, Any]:
         "cohort_overrides": cohort_overrides,
         "operator_lab": operator_lab,
         AWG2_LAB: awg2_lab,
+        AWG31_LAB: awg31_lab,
         RESERVE_XHTTP_CDN: reserve_xhttp_cdn,
         RU_BRIDGE_RELAY: ru_bridge_relay,
         "package_catalog_feed": {
@@ -602,12 +614,36 @@ def resolved_client_policy(
         )
         if not material_ready:
             transport_profile = LEGACY_REALITY_FALLBACK
-    if transport_profile not in {LEGACY_REALITY_FALLBACK, GRPC_443_PRIMARY, RESERVE_XHTTP_CDN, RU_BRIDGE_RELAY, OPERATOR_LAB, AWG2_LAB}:
+    if transport_profile == AWG31_LAB:
+        lab_config = dict(config.get(AWG31_LAB) or {})
+        lab_access = awg31_lab_rollout_access(
+            lab_config,
+            install_id=install_value,
+            tg_ids=tg_ids,
+            platform=platform,
+        )
+        material_ready = bool(
+            lab_access
+            and session is not None
+            and user is not None
+            and awg31_lab_material_ready(
+                session,
+                tg_id=int(getattr(user, "tg_id", 0) or 0),
+                install_id=install_value,
+                rollout_value=lab_config,
+            )
+        )
+        if not material_ready:
+            transport_profile = LEGACY_REALITY_FALLBACK
+    if transport_profile not in {LEGACY_REALITY_FALLBACK, GRPC_443_PRIMARY, RESERVE_XHTTP_CDN, RU_BRIDGE_RELAY, OPERATOR_LAB, AWG2_LAB, AWG31_LAB}:
         transport_profile = LEGACY_REALITY_FALLBACK
     transport_meta = _transport_metadata(transport_profile, version=_clean_text(config.get("version"), fallback=_default_rollout_version()))
     if transport_profile == AWG2_LAB:
         generation = _clean_text((config.get(AWG2_LAB) or {}).get("generation"), fallback="unknown")
         transport_meta["profile_revision"] = f"{config['version']}:{AWG2_LAB}:{generation}"
+    if transport_profile == AWG31_LAB:
+        generation = _clean_text((config.get(AWG31_LAB) or {}).get("generation"), fallback="unknown")
+        transport_meta["profile_revision"] = f"{config['version']}:{AWG31_LAB}:{generation}"
 
     versions = product_facts.get("versions", {}) if isinstance(product_facts, dict) else {}
     package_version = _clean_text(
@@ -647,6 +683,9 @@ def resolved_client_policy(
 def transport_node_allowlist(config: dict[str, Any], transport_profile: str) -> list[str]:
     if _clean_text(transport_profile) == AWG2_LAB:
         lab = dict(config.get(AWG2_LAB) or {})
+        return _normalize_string_list(lab.get("allowlist_node_codes"), lower=True)
+    if _clean_text(transport_profile) == AWG31_LAB:
+        lab = dict(config.get(AWG31_LAB) or {})
         return _normalize_string_list(lab.get("allowlist_node_codes"), lower=True)
     if _clean_text(transport_profile) == RESERVE_XHTTP_CDN:
         reserve = dict(config.get(RESERVE_XHTTP_CDN) or {})

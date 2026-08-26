@@ -18,6 +18,9 @@ PORTAL_BOT_DIR = Path(__file__).resolve().parents[1] / "portal_bot"
 if str(PORTAL_BOT_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_BOT_DIR))
 
+from awg2_lab_service import AWG2_CONTRACT_SHA256  # noqa: E402
+from awg31_lab_service import AWG31_CONTRACT_SHA256  # noqa: E402
+
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
@@ -45,6 +48,7 @@ def _load_api(monkeypatch, tmp_path: Path):
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{db_path.as_posix()}")
     monkeypatch.setenv("WEBAPP_SESSION_SECRET", "client-ui-api-secret")
     monkeypatch.setenv("AWG2_LAB_MATERIAL_SECRET", "client-ui-awg2-test-secret")
+    monkeypatch.setenv("AWG31_LAB_MATERIAL_SECRET", "client-ui-awg31-test-secret")
     monkeypatch.setenv("PUBLIC_API_BASE_URL", "https://api.pokrov.test")
     monkeypatch.setenv("PUBLIC_WEB_DOMAIN", "pokrov.test")
     monkeypatch.setenv("PAY_CHECKOUT_URL", "https://pay.pokrov.space/checkout/")
@@ -63,6 +67,8 @@ def _load_api(monkeypatch, tmp_path: Path):
         "api_observability_routes",
         "api_support_bundle_routes",
         "api_operator_observability_routes",
+        "awg2_lab_service",
+        "awg31_lab_service",
         "commercial_campaign_policy",
         "commercial_offer_service",
         "commercial_order_service",
@@ -272,6 +278,49 @@ def _synthetic_awg2_endpoint() -> dict[str, object]:
     }
 
 
+def _synthetic_awg31_endpoint() -> dict[str, object]:
+    return {
+        "useIntegratedTun": False,
+        "contract_id": "pokrov.awg31.endpoint.v1",
+        "private_key": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        "address": ["10.67.0.2/32", "fd67::2/128"],
+        "mtu": 1408,
+        "jc": 6,
+        "jmin": 48,
+        "jmax": 96,
+        "s1": 16,
+        "s2": 16,
+        "s3": 16,
+        "s4": 16,
+        "h1": "1100001-1100099",
+        "h2": "1200001-1200099",
+        "h3": "1300001-1300099",
+        "h4": "1400001-1400099",
+        "i1": "<t><r 16><b 0xdeadbeef>",
+        "i2": "",
+        "i3": "",
+        "i4": "",
+        "i5": "",
+        "header_protection_key": "AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI=",
+        "content_padding_addition": "16-96",
+        "rekey_after_time": "90-150",
+        "rekey_timeout": "4-8",
+        "reject_after_time": "180-240",
+        "keepalive_timeout": "8-14",
+        "max_handshake_attempts": "12-24",
+        "random_trailers": True,
+        "peers": [
+            {
+                "address": "192.0.2.31",
+                "port": 51831,
+                "public_key": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
+                "allowed_ips": ["0.0.0.0/0", "::/0"],
+                "persistent_keepalive_interval_range": "22-30",
+            }
+        ],
+    }
+
+
 def test_awg2_owner_lab_is_device_bound_managed_only_and_kill_rolls_back(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
@@ -294,7 +343,7 @@ def test_awg2_owner_lab_is_device_bound_managed_only_and_kill_rolls_back(monkeyp
         "allowlist_node_codes": ["pl"],
         "allowed_platforms": ["windows"],
         "contract_id": "pokrov.awg2.endpoint.v1",
-        "contract_sha256": "3beb57eccd8d5e15ce7466496208fe1945f353b3417be58644911d1ded125a83",
+        "contract_sha256": AWG2_CONTRACT_SHA256,
         "generation": "awg2-lab-v1",
         "endpoint_revision": "awg2-v1",
         "server_record_id": "pokrov-awg2-pl-01",
@@ -353,6 +402,86 @@ def test_awg2_owner_lab_is_device_bound_managed_only_and_kill_rolls_back(monkeyp
     rollback_body = rolled_back.json()
     assert rollback_body["transport_profile"] == "legacy_reality_fallback"
     assert "endpoints" not in rollback_body["config_payload"]
+
+
+def test_awg31_private_profile_requires_an_active_device_claim(
+    monkeypatch, tmp_path
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    _add_node(api, code="pl", last_health_at=_utcnow())
+    start_body = _start_trial(
+        client, install_id="awg31-owner-device", platform="windows"
+    )
+
+    rollout = _rollout_payload()
+    rollout["cohort_overrides"] = {
+        "awg31-owner-lab": {
+            "install_ids": ["awg31-owner-device"],
+            "platforms": ["windows"],
+            "transport_profile": "awg31_lab",
+        }
+    }
+    rollout["awg31_lab"] = {
+        "enabled": True,
+        "kill_switch_engaged": False,
+        "allowlist_install_ids": ["awg31-owner-device"],
+        "allowlist_tg_ids": [],
+        "allowlist_node_codes": ["pl"],
+        "allowed_platforms": ["windows"],
+        "contract_id": "pokrov.awg31.endpoint.v1",
+        "contract_sha256": AWG31_CONTRACT_SHA256,
+        "generation": "awg31-lab-v1",
+        "endpoint_revision": "awg31-v1",
+        "server_record_id": "pokrov-awg31-pl-01",
+        "server_owner": "pokrov",
+        "server_state": "ready",
+    }
+    session = api.SessionLocal()
+    try:
+        user = (
+            session.query(api.User)
+            .filter(api.User.app_install_id == "awg31-owner-device")
+            .one()
+        )
+        api.replace_awg31_lab_material(
+            session,
+            tg_id=int(user.tg_id),
+            install_id="awg31-owner-device",
+            generation="awg31-lab-v1",
+            endpoint_revision="awg31-v1",
+            server_record_id="pokrov-awg31-pl-01",
+            node_code="pl",
+            endpoint=_synthetic_awg31_endpoint(),
+        )
+        api._set_app_setting_json(
+            s=session, key="network_rollout_config", value=rollout
+        )
+        compatibility_token = api.create_web_session_token(
+            tg_id=int(user.tg_id),
+            username=str(user.username or ""),
+            auth_type="password",
+            auth_origin="password_compatibility",
+            account_id=str(user.account_id or ""),
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    blocked = client.get(
+        "/api/client/profile/managed",
+        headers={"Authorization": f"Bearer {compatibility_token}"},
+    )
+    assert blocked.status_code == 403, blocked.text
+    assert blocked.json()["detail"] == "Authenticated device is required"
+
+    managed = client.get(
+        "/api/client/profile/managed", headers=_auth_headers(start_body)
+    )
+    assert managed.status_code == 200, managed.text
+    endpoint = managed.json()["config_payload"]["endpoints"][0]
+    assert endpoint["contract_id"] == "pokrov.awg31.endpoint.v1"
+    assert endpoint["private_key"] == _synthetic_awg31_endpoint()["private_key"]
 
 
 def test_client_locations_catalog_exposes_searchable_real_node_catalog(monkeypatch, tmp_path) -> None:

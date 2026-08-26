@@ -57,7 +57,11 @@ def _digest(value: Any) -> str:
 
 
 def _file_digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    # The repository stores text as LF while Windows worktrees commonly expose
+    # the same tracked file as CRLF. Bind the contract to text content, not to
+    # the checkout platform's newline conversion.
+    normalized = path.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return hashlib.sha256(normalized).hexdigest()
 
 
 def _closed(value: Mapping[str, Any], keys: set[str], *, field: str) -> None:
