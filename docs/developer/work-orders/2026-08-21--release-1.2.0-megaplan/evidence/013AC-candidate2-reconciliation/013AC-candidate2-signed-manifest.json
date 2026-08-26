@@ -1,0 +1,110 @@
+{
+  "schema": "pokrov.release-1.2.0.signed-candidate-manifest-evidence/v1",
+  "recorded_at": "2026-08-26T22:41:42Z",
+  "status": "SIGNED_CANDIDATE_MANIFEST_ARTIFACT_AND_PRIVATE_CARRIER_PROVED",
+  "candidate_manifest_created": true,
+  "candidate_manifest_proven": true,
+  "private_candidate_carrier_created": true,
+  "public_candidate_release_created": false,
+  "public_assets_uploaded": false,
+  "stable_pointer_mutated": false,
+  "promotion_authorized": false,
+  "deployment_performed": false,
+  "source_contract": {
+    "repository": "Kiwunaka/pokrov",
+    "pull_request": 5,
+    "pull_request_head": "7a1c567fe17da14304ac0736088b634473bbcfbf",
+    "pull_request_run": 33016740287,
+    "pull_request_job": 98336798602,
+    "pull_request_result": "SUCCESS",
+    "main_merge_commit": "4c6d46c10083e68dc5d2032c13f51c4e80a17049",
+    "post_merge_run": 33016796838,
+    "post_merge_job": 98336991206,
+    "post_merge_result": "SUCCESS"
+  },
+  "dispatch": {
+    "workflow": "Prepare signed candidate manifest",
+    "run": 33016840137,
+    "job": 98337138521,
+    "result": "SUCCESS",
+    "head_sha": "4c6d46c10083e68dc5d2032c13f51c4e80a17049",
+    "template_path": "candidate-inputs/1.2.0/pokrov-1.2.0-candidate.2.json",
+    "template_size_bytes": 8368,
+    "template_sha256": "268f874874476a7a1b523d27eb74becf9a25abe227ecfaae9c664c137f08f142",
+    "candidate_id": "pokrov-1.2.0-candidate.2",
+    "private_key_read_or_exported": false
+  },
+  "actions_artifact": {
+    "id": 9624860886,
+    "name": "pokrov-pokrov-1.2.0-candidate.2-signed-manifest-4c6d46c10083e68dc5d2032c13f51c4e80a17049",
+    "archive_size_bytes": 7949,
+    "archive_digest": "sha256:e94a934680dda83ccf5adffdfe2cb18a254f4f646a78137146fb3326ca85f75b",
+    "created_at": "2026-08-26T21:45:59Z",
+    "expires_at": "2026-09-09T21:45:58Z",
+    "expired": false,
+    "download_readback": "PASS"
+  },
+  "outputs": [
+    {
+      "path": "private-carrier/release-index.json",
+      "size_bytes": 6879,
+      "sha256": "1697a1bce4f72314aa1f60cd74a1711f9b8f7d70091c5757e98fbdc09b4ce5e0"
+    },
+    {
+      "path": "private-carrier/release-index.json.sig",
+      "size_bytes": 64,
+      "sha256": "ebf259f1a9d3c9d561e3f39123c12804a178da5f15efcb293aeab47d45308a82"
+    },
+    {
+      "path": "private-carrier/signing-receipt.json",
+      "size_bytes": 588,
+      "sha256": "975eaa3ae2af4bda6e33f73fe48c483a4b6b12d9b8e6219e8211f4e60cc431e0"
+    }
+  ],
+  "independent_validation": {
+    "status": "READY_SIGNED_MANIFEST",
+    "signing_key_id": "pokrov-release-2026-01",
+    "artifact_count": 6,
+    "owner_unsigned_windows_exception_count": 1,
+    "owner_unsigned_windows_artifact": "pokrov-windows-setup-x64.exe",
+    "owner_exception_code": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0",
+    "release_index_commit": "4c6d46c10083e68dc5d2032c13f51c4e80a17049",
+    "receipt_matches_outputs": true,
+    "detached_signature_verified_with_public_keyring": true
+  },
+  "private_carrier": {
+    "repository": "Kiwunaka/POKROV-app",
+    "tag": "pokrov-1.2.0-candidate.2-private-ci",
+    "target_commitish": "e6c29d1201eded0d045a3e75f43beff8ae24bd8f",
+    "draft": false,
+    "prerelease": true,
+    "published_at": "2026-08-26T21:47:08Z",
+    "asset_count": 4,
+    "asset_digest_readback": "PASS",
+    "public_stable_release": false
+  },
+  "source_tuple": {
+    "platform": "c5f3fca5c55d6baa48b54af3bf756ef40cc0e6e1",
+    "client": "e6c29d1201eded0d045a3e75f43beff8ae24bd8f",
+    "core": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "release_index": "4c6d46c10083e68dc5d2032c13f51c4e80a17049"
+  },
+  "contract_binding": {
+    "release_handoff_sha256": "317fa2ab0261f8e6501d3b3a4dd9980bc49f7218e176dd34d7536f64d2292a10",
+    "product_facts_sha256": "3df7e7a03bf6a7e62e49e2791641428fb415cdca692a67b4a48fee79a853289e",
+    "error_catalog_sha256": "7d3bf242777d5bf76bbebcf162e5969d3f83d7f68b2787051e1c4fddeadc3dc7",
+    "observability_schema_sha256": "24ae72442f778d7f1334ae0a4bf4d774738e4de275707b29420ec733af65cc17",
+    "exact_platform_git_object_hash_readback": "PASS"
+  },
+  "required_publication_and_promotion_evidence_absent": [
+    "PUBLIC_V1_2_0_GITHUB_RELEASE",
+    "SIX_PUBLIC_ASSET_UPLOADS",
+    "SAME_BYTE_PUBLIC_PROMOTION",
+    "STABLE_POINTER_SWITCH_AND_ROLLBACK",
+    "EXACT_PHYSICAL_ANDROID_BEELINE_AND_OEM_MATRIX",
+    "WINDOWS_LIVE_TUN_DNS_EGRESS_AND_CONNECTED_ROLLBACK",
+    "AGGREGATE_ORIGIN_PROVIDER_OPERATOR_LEGAL_GATES",
+    "POST_PROMOTION_HEALTH"
+  ],
+  "evidence_ceiling": "SIGNED_CANDIDATE2_AND_PRIVATE_CI_CARRIER_ONLY_NO_PUBLIC_V1_2_0_NO_LIVE_DEVICE_OR_STABLE_PROMOTION"
+}

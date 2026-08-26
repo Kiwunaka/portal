@@ -1,6 +1,6 @@
 # POKROV 1.2.0 Execution Index
 
-Last updated: 2026-08-26
+Last updated: 2026-08-27
 
 ## Item scale
 
@@ -2937,3 +2937,47 @@ tests pass `3/3` and the exact gate returns
 `OBS_PB/PB-14` advances `I2 -> I3`. Current distribution becomes `I4=1`,
 `I3=310`, `I2=15`, `I1=37`, `I0=14`; 311 rows are at or above `I3`, 66 remain
 below `I3`, and stage split becomes `0/31/14/21`.
+
+## 2026-08-27 — WO-013AC candidate.2 reconciliation
+
+Candidate.1 is historical evidence; signed `pokrov-1.2.0-candidate.2` is now
+the current exact release basis. Its Ed25519 manifest/signature/receipt hashes
+are `1697a1bc...` / `ebf259f1...` / `975eaa3a...` and independently validate
+against release-index Git object `4c6d46c...` and active key
+`pokrov-release-2026-01`. The manifest binds platform/client/Core
+`c5f3fca...` / `e6c29d1...` / `344b317...`, five production-signed Android
+artifacts and the exact owner-approved unsigned Windows direct-beta installer
+`4226daa4...`. SBOM/provenance/handoff remain bound by
+`575f6273...` / `a10cfdc1...` / `317fa2ab...`.
+
+The client private prerelease tag
+`pokrov-1.2.0-candidate.2-private-ci` retains the Windows installer and three
+signed outputs with matching GitHub asset digests. It is an evidence carrier,
+not public `v1.2.0`; the public latest release remains `v1.1.6` and no stable
+pointer changed.
+
+Exact candidate platform PR/post-merge Guardrails and Release v2 runs pass.
+Exact candidate client source PR/post-merge Release v2 runs pass. Hosted clean
+Windows run `33017409577` proves machine-wide install, all eight installed
+file hashes, automatic LocalSystem service identity, authenticated UI/service
+IPC, SCM stop/restart, clean uninstall and unchanged idle route/DNS with no
+residual adapter. It explicitly does not prove live TUN, connected DNS/leak,
+authenticated egress, crash/reboot, uninstall while connected or interactive
+SmartScreen.
+
+PB-14 was replayed from candidate.2 bytes. Exact public-key verification passes
+and one identity-free 4030 `UPD-004` blocks observation close, preserves the
+staged state and drives the guarded rollback request/public policy to zero in
+an isolated temporary database. No production cohort or external artifact
+switch occurred, so `OBS_PB/PB-14` remains `I3`.
+
+`REL/REL-002`, `REL/REL-003` and `REL/WIN-002` advance `I3 -> I4` for their
+bounded exact-candidate hosted-gate/service-privilege scopes.
+`REL_DOD/DOD-04` advances only `I0 -> I1`: its exact scope and idle clean-host
+slice are established, while the required live TUN/DNS/rollback matrix remains
+manual. All broad runtime, device, public and promotion rows retain their prior
+index.
+
+Current distribution is `I4=4`, `I3=307`, `I2=15`, `I1=38`, `I0=13`; 311
+rows are at or above `I3`, 66 remain below `I3`, and pending stage split stays
+`0/31/14/21`.

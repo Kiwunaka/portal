@@ -1,0 +1,170 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate2-reconciliation-evidence/v1",
+  "recorded_at": "2026-08-26T22:42:01Z",
+  "status": "CANDIDATE2_SIGNED_PRIVATE_CARRIER_AND_BOUNDED_WINDOWS_CLEAN_HOST_PROVED",
+  "candidate": {
+    "label": "pokrov-1.2.0-candidate.2",
+    "version": "1.2.0",
+    "build": 30,
+    "promotion_authorized": false,
+    "manifest_sha256": "1697a1bce4f72314aa1f60cd74a1711f9b8f7d70091c5757e98fbdc09b4ce5e0",
+    "signature_sha256": "ebf259f1a9d3c9d561e3f39123c12804a178da5f15efcb293aeab47d45308a82",
+    "receipt_sha256": "975eaa3ae2af4bda6e33f73fe48c483a4b6b12d9b8e6219e8211f4e60cc431e0",
+    "source_tuple": {
+      "platform": "c5f3fca5c55d6baa48b54af3bf756ef40cc0e6e1",
+      "client": "e6c29d1201eded0d045a3e75f43beff8ae24bd8f",
+      "core": "344b317a7a09eca7943a93866b193553538bd8f6",
+      "release_index": "4c6d46c10083e68dc5d2032c13f51c4e80a17049"
+    }
+  },
+  "artifacts": [
+    {
+      "id": "android-arm64-v8a",
+      "size_bytes": 101213906,
+      "sha256": "a1ac79a979b3f80036ad9b817790e3c3dd00f8c2483901215b74577381a5cbc9",
+      "signing": "TRUSTED_PRODUCTION_CERTIFICATE"
+    },
+    {
+      "id": "android-armeabi-v7a",
+      "size_bytes": 90677536,
+      "sha256": "50b2ff36bafd2b38aa4c6dbf5981a8547d85937a2039d65fa5a29dec678d942a",
+      "signing": "TRUSTED_PRODUCTION_CERTIFICATE"
+    },
+    {
+      "id": "android-market",
+      "size_bytes": 126150030,
+      "sha256": "b7a633e23e6ce86761c92047f048cf069c8d84d6e430befffc01ad239b6e566f",
+      "signing": "TRUSTED_PRODUCTION_CERTIFICATE"
+    },
+    {
+      "id": "android-universal",
+      "size_bytes": 295018413,
+      "sha256": "799d96e150ac2a658f66c3495347aff9bf3a314969906c2e9a6f0e7315232e2b",
+      "signing": "TRUSTED_PRODUCTION_CERTIFICATE"
+    },
+    {
+      "id": "android-x86-64",
+      "size_bytes": 109862385,
+      "sha256": "b530ff2568d517930a9d8c30bd81cdf3594bb6b64c607f4f6f22b3ce54bc00fc",
+      "signing": "TRUSTED_PRODUCTION_CERTIFICATE"
+    },
+    {
+      "id": "windows-x64-setup",
+      "size_bytes": 28893114,
+      "sha256": "4226daa49975cb25dae5bec8cbcd26299648ee89f5dbff613f62d807be0ac412",
+      "signing": "SKIPPED_BY_OWNER",
+      "owner_exception": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0",
+      "distribution": "DIRECT_DOWNLOAD_ONLY"
+    }
+  ],
+  "supply_chain": {
+    "release_handoff_sha256": "317fa2ab0261f8e6501d3b3a4dd9980bc49f7218e176dd34d7536f64d2292a10",
+    "artifact_set_sha256": "a671bab2bc2a98f0233f6915a6a22ee2efad41307488ebef468ca4c6cb8c2556",
+    "sbom_sha256": "575f6273c490b28635c9c5d20a73e573c306a2a689a6373f1b5606b109293a54",
+    "provenance_sha256": "a10cfdc195e7431c4991babfdb7fa582a6d2d56bb103bfecf1577f1cfa17d1cb"
+  },
+  "hosted_source_gates": {
+    "platform": {
+      "pull_request": 42,
+      "head": "eea96acd7f0cc0718c28626ccf8ff08fef71bbf9",
+      "merge": "c5f3fca5c55d6baa48b54af3bf756ef40cc0e6e1",
+      "pull_request_guardrails_run": 33006615867,
+      "pull_request_release_v2_run": 33006615938,
+      "post_merge_guardrails_run": 33007643338,
+      "post_merge_release_v2_run": 33007643354,
+      "result": "PASS"
+    },
+    "client_candidate_source": {
+      "pull_request": 21,
+      "head": "59c873cc4965cd8806b0e7d01142be343507ef2e",
+      "merge": "e6c29d1201eded0d045a3e75f43beff8ae24bd8f",
+      "pull_request_release_v2_run": 33014464548,
+      "post_merge_release_v2_run": 33015545269,
+      "result": "PASS"
+    },
+    "client_clean_host_control": {
+      "workflow_commit": "2b290a9fdbf1e1673a5178cdc985b1a8e5e9d201",
+      "run": 33017409577,
+      "result": "PASS"
+    },
+    "client_control_merge": {
+      "pull_request": 22,
+      "head": "992d23dc5fe447c2008ff5b381c359cd8e09a24f",
+      "merge": "56e0c63e63b0aec7b95022a830bba2f8346d380b",
+      "manual_run": 33017623964,
+      "pull_request_run": 33017668791,
+      "post_merge_run": 33018527368,
+      "result": "PASS"
+    },
+    "release_index": {
+      "candidate_pull_request": 5,
+      "candidate_merge": "4c6d46c10083e68dc5d2032c13f51c4e80a17049",
+      "candidate_pull_request_run": 33016740287,
+      "candidate_post_merge_run": 33016796838,
+      "signer_run": 33016840137,
+      "evidence_pull_request": 6,
+      "evidence_merge": "64f5350e92685a8f6d7c51ff955fc7dd35f45f10",
+      "evidence_post_merge_run": 33019900704,
+      "result": "PASS"
+    }
+  },
+  "runtime_evidence": {
+    "prior_platform_deployment": {
+      "revision": "c5f3fca5c55d6baa48b54af3bf756ef40cc0e6e1",
+      "status": "PASS_FIVE_PORTAL_UNITS_ACTIVE",
+      "self_hop_guard": "DEPLOYED",
+      "rollback_path": "/root/portal_bot.deploy-backups/20260826T200556Z-28552",
+      "mutation_in_this_reconciliation": false
+    },
+    "windows_clean_host": "PASS_EXACT_PRIVATE_CI_INSTALL_SERVICE_IPC_RESTART_UNINSTALL_IDLE_NETWORK",
+    "windows_live_tun_dns_egress": "MANUAL_OWNER_TEST",
+    "windows_connected_rollback_reboot_crash": "MANUAL_OWNER_TEST",
+    "windows_interactive_smartscreen": "MANUAL_OWNER_TEST",
+    "android_exact_candidate2_physical_beeline": "NOT_RUN",
+    "android_exact_candidate2_oem_matrix": "MANUAL_OWNER_TEST",
+    "candidate2_exact_current_origin_aggregate": "NOT_RUN",
+    "candidate2_exact_brain_origin": "NOT_RUN",
+    "candidate2_exact_ru_origin": "NOT_RUN"
+  },
+  "pb14": {
+    "status": "PASS_LOCAL_EXACT_CANDIDATE_HEALTH_STOP_AND_ROLLBACK_REQUEST",
+    "operational_candidate_id": "ad4dbea106386c9a9d58f29f15b530d5cb386ac4f00fa82534adbe4bba4233bf",
+    "production_mutation": false,
+    "external_artifact_switch": "NOT_PERFORMED",
+    "ledger_index": "I3"
+  },
+  "publication": {
+    "private_prerelease_carrier": "PASS_FOUR_EXACT_ASSET_DIGESTS",
+    "public_v1_2_0_release": "ABSENT",
+    "latest_public_release": "v1.1.6",
+    "stable_pointer_mutated": false,
+    "same_byte_public_promotion": "NOT_RUN"
+  },
+  "ledger": {
+    "advanced_rows": {
+      "REL/REL-002": {"from": "I3", "to": "I4"},
+      "REL/REL-003": {"from": "I3", "to": "I4"},
+      "REL/WIN-002": {"from": "I3", "to": "I4"},
+      "REL_DOD/DOD-04": {"from": "I0", "to": "I1"}
+    },
+    "strengthened_without_advancement": [
+      "REL/REL-001",
+      "REL/WIN-003",
+      "REL/WIN-004",
+      "REL/WIN-005",
+      "REL/SEC-001",
+      "REL/REPO-001",
+      "REL_DOD/DOD-01",
+      "REL_DOD/DOD-15",
+      "OBS_DOD/DOD-29",
+      "OBS_PB/PB-14",
+      "FE/P12-022",
+      "FE/P12-023"
+    ],
+    "distribution": {"I4": 4, "I3": 307, "I2": 15, "I1": 38, "I0": 13},
+    "at_or_above_i3": 311,
+    "below_i3": 66,
+    "pending_stage_counts": {"pre_freeze": 0, "candidate": 31, "external": 14, "deferred": 21}
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE2_SIGNED_PRIVATE_CARRIER_HOSTED_SOURCE_GATES_BOUNDED_WINDOWS_CLEAN_HOST_AND_LOCAL_PB14_ONLY_NO_PUBLIC_V1_2_0_NO_LIVE_TUN_ANDROID_ORIGIN_OR_STABLE_PROOF"
+}

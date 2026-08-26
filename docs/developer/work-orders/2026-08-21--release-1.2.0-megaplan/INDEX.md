@@ -1,9 +1,9 @@
 # POKROV 1.2.0 Megaplan — Wave Index
 
-Last updated: 2026-08-26
+Last updated: 2026-08-27
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_SIGNED_CANDIDATE_MANIFEST_AND_RUNTIME_EVIDENCE_RECORDED`
-Release candidate: `SIGNED_MANIFEST_ARTIFACT_ONLY_PUBLIC_RELEASE_NOT_CREATED`
+Wave status: `PHASE_11_CANDIDATE2_SIGNED_PRIVATE_CARRIER_AND_BOUNDED_WINDOWS_CLEAN_HOST_PROVED`
+Release candidate: `POKROV_1_2_0_CANDIDATE2_PRIVATE_PRERELEASE_PUBLIC_RELEASE_NOT_CREATED`
 
 ## Outcome
 
@@ -35,7 +35,7 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete; exact-candidate performance/manual gates retained | `WO-010` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
 | 10 | FRKN-derived rules; isolated AWG2 PoC, later HY2 decision | Local package complete; exact artifact/device/RU gates open | `WO-012` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013V binds the rebuilt six-file Android/Windows set and byte-identical LDPlayer validation; 013W proves only the direct current-origin API performance slice; 013X adds bounded LDPlayer content reachability with ChatGPT functionality explicitly not passed. 013Y creates and independently proves the detached Ed25519 signed candidate manifest as an Actions artifact only. 013Z retains the distinct Brain pre-candidate slice, and 013AA reconciles exact Core platform/ABI/security proof with the corrected product-identical CI control. Android is production-signed; Windows retains the owner-approved unsigned direct-beta exception. No GitHub Release/public assets/stable pointer exist, and exact physical Beeline/OEM, aggregate origins, provider, Operator, legal and rollback gates remain open | `WO-013`, `WO-013C`, `WO-013D`, `WO-013E`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S`, `WO-013T`, `WO-013U`, `WO-013V`, `WO-013W`, `WO-013X`, `WO-013Y`, `WO-013Z`, `WO-013AA` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013AC makes signed `pokrov-1.2.0-candidate.2` the current exact basis: six hashes/source tuple validate, a private prerelease retains the Windows installer and signed outputs, exact hosted platform/client release gates pass, the bounded Windows clean-host service/IPC/install/uninstall slice passes, and PB-14 is replayed on candidate.2. Android is production-signed; Windows retains the owner-approved unsigned direct-beta exception. No public `v1.2.0`, six public assets or stable pointer exists, and exact physical Beeline/OEM, live Windows TUN/DNS/rollback, aggregate origins, provider, Operator, legal and promotion gates remain open | `WO-013`, `WO-013C`, `WO-013D`, `WO-013E`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S`, `WO-013T`, `WO-013U`, `WO-013V`, `WO-013W`, `WO-013X`, `WO-013Y`, `WO-013Z`, `WO-013AA`, `WO-013AB`, `WO-013AC` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -114,6 +114,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013Z` | Preserve the redacted Brain-origin pre-candidate readiness/delivery slice under a non-colliding work-order identity | Platform operations/release evidence | Clean Brain readiness 23/23, live delivery 7/7 and runtime app/provider 8/8 pass; exact-candidate Brain gate remains open, separate former-free MTProto diagnostic fails and no row advances | `WO-013W`, platform PR 37, owned Brain access, superseded conflicting PR 38 branch evidence |
 | `WO-013AA` | Reconcile the red exact Core aggregate with exact-source product jobs and the corrected product-identical CI control | Core/client/platform release evidence | Exact Core 344b317 product/security/platform jobs pass; old aggregate stays red for missing client LFS checkout; workflow-only control 9b94e0b passes all five jobs and `REL_DOD/DOD-10` reaches `I3` | `WO-013I`, `WO-013Y`, Core PR 4 and runs 32944235783/32946337754/32947422554 |
 | `WO-013AB` | Bind the retained signed candidate to a real local release-health breach and guarded rollout rollback request | Platform observability/release control | Exact manifest signature passes against the c1d6170 keyring; isolated 4030 UPD-004 blocks observation close and drives candidate policy to zero, so `OBS_PB/PB-14` reaches `I3`; external switch and production cohort remain unproved | `WO-006J`, `WO-013Y`, exact signed candidate bytes |
+| `WO-013AC` | Replace candidate.1 as current truth with signed/private-carrier candidate.2 and reconcile hosted source, Windows clean-host and PB-14 evidence | Cross-repository candidate/release evidence | Candidate.2 signature/source/supply/private-carrier digests pass; exact hosted platform/client gates and bounded Windows service/IPC clean-host slice reach candidate proof; PB-14 is replayed; public v1.2.0, live TUN/DNS, physical Android, origins and stable promotion remain open | `WO-013AB`, platform PR 42, client PRs 21/22, release-index PRs 5/6, exact signed candidate.2 bytes |
 
 ## Current evidence
 
@@ -207,6 +208,19 @@ The row order is a dependency order, not permission for one giant merge. Each im
   keyring, binds the signed candidate to one identity-free 4030 health breach
   and proves local observation stop plus guarded zero-distribution rollback
   request. It does not claim an external artifact switch or production cohort.
+- `evidence/013AC-candidate2-reconciliation/013AC-candidate2-signed-manifest.json`
+  replaces candidate.1 as current truth with the independently verified
+  candidate.2 manifest/signature/receipt, exact source tuple, signer run and
+  private prerelease carrier digest readback.
+- `evidence/013AC-candidate2-reconciliation/013AC-windows-clean-host.json`
+  retains the exact hosted Windows install/service/authenticated-IPC/restart/
+  uninstall/idle-network evidence and its explicit live-network/manual ceiling.
+- `evidence/013AC-candidate2-reconciliation/013AC-pb14-candidate2-health-stop.json`
+  replays PB-14 against candidate.2 and proves only the isolated local
+  health-stop/rollback-request control.
+- `evidence/013AC-candidate2-reconciliation/013AC-candidate2-reconciliation.json`
+  binds the complete candidate.2 hashes, hosted runs, supply chain, publication
+  boundary, scoped ledger advances and remaining exact-candidate gates.
 - `evidence/013E-android-mobile-runtime-matrix/013E-android-mobile-runtime-matrix.json`
   binds the newer Android artifact identity, single physical Beeline matrix,
   LDPlayer evidence ceiling, deployed server-chain reconciliation and explicit
@@ -222,55 +236,33 @@ The row order is a dependency order, not permission for one giant merge. Each im
 
 ## Next action
 
-013V binds the rebuilt six-file direct-beta set to platform/client/Core source
-`8bed966e64e23527da982f3fcfb1b9e48ce6f408` /
-`a74d2aea5aed62f5c31d3a0bbc258e408cebe3bd` /
-`344b317a7a09eca7943a93866b193553538bd8f6`. The deployed backend remains the
-healthy runtime code `243dcbe4727041d62cc0a36e7d2fd5a8530c7c25`; the later
-platform delta is release documentation only, so no redundant deploy is
-required. At 013V capture time candidate creation remained `NOT_CREATED`; 013Y
-later produced the signed manifest artifact without a GitHub Release, public
-asset or stable promotion.
+013AC is the current release truth. Signed
+`pokrov-1.2.0-candidate.2` binds platform/client/Core/release-index
+`c5f3fca...` / `e6c29d1...` / `344b317...` / `4c6d46c...`, five
+production-signed Android artifacts and the owner-approved unsigned Windows
+installer `4226daa4...`. Its detached signature validates independently. The
+private client prerelease retains the installer and three signed outputs with
+matching GitHub digests; it is not a public or stable release.
 
-013W separately proves the controlled current-origin API health/catalog slice
-from clean platform `899e5f0` and records why no backend redeploy is required.
-It does not satisfy the aggregate `CURRENT_ORIGIN` promotion gate.
+The exact candidate.2 Windows clean-host run proves machine-wide install,
+eight installed-file hashes, LocalSystem service identity, authenticated
+UI/service IPC, SCM restart, clean uninstall and unchanged idle route/DNS. It
+does not prove live TUN, connected DNS/leak behavior, authenticated egress,
+crash/reboot, uninstall while connected or interactive SmartScreen. PB-14 has
+also been replayed on candidate.2 and remains a local isolated control at
+`I3`, not deployed-cohort evidence.
 
-013X retains the exact 4030 LDPlayer content-reachability slice. Owned health,
-Google connectivity, Gemini and Xbox are reachable at the bounded HTTP level;
-ChatGPT reaches HTTP but returns 403, so ChatGPT functionality is not passed.
-The app was left disconnected and this emulator result advances no ledger row.
+The platform self-hop guard is deployed at candidate-bound `c5f3fca...`.
+SPB remains a dual-role delivery/bridge node, but its own bridge is excluded
+when SPB is the selected destination. The earlier Beeline failure of both SPB
+direct and type 3 is therefore tracked as a shared SPB entry-path/carrier
+failure; it is not exact candidate.2 physical-device proof.
 
-013Y proves the exact signed candidate manifest at public release-index
-`c1d6170` and retains its detached signature and receipt. No GitHub Release or
-public app asset exists yet, so same-byte public readback and all runtime/manual
-gates remain open; stable promotion is still prohibited.
-
-013Z preserves the separate pre-candidate Brain-origin slice from clean signed
-platform `d310ceff`: readiness `23/23`, live enabled VPN delivery `7/7` and
-runtime app/provider policy `8/8` pass. The closed former-free MTProto
-diagnostic remains a separate `NOT_PASS`; none of this is exact-candidate
-Brain-origin evidence.
-
-013AA reconciles candidate Core `344b317a...` without hiding its red aggregate
-run. Exact-source test/security, Android, Windows and Apple jobs pass; the old
-release-contract fails because its workflow omitted client Git LFS. The
-product-identical workflow-only correction `9b94e0b...` passes all five PR and
-post-merge jobs, including bound-source materialization. Therefore
-`REL_DOD/DOD-10` is `I3`, while physical device/origin/public proof remains
-open before `I4`.
-
-013AB advances `OBS_PB/PB-14` to local `I3`: the exact signed manifest now
-drives a reproducible health-regression stop and guarded rollback request
-through the real services. Its temporary cohort is explicitly a local control
-fixture; external artifact rollback and post-promotion health remain open.
-
-Run the exact 4030 APK on the physical Beeline device next, then classify the
-remaining Windows clean-host, signer-recovery, aggregate current-origin,
-exact-candidate Brain-origin, provider, Operator, legal and rollback gates. RU-origin remains a
-distinct `NOT_RUN` gate unless an RU claim is requested. Only after explicit
-owner authorization may these same six hashes be published as a candidate with
-a detached signed index and public asset digest readback. The unsigned Windows
-exception remains direct-beta-only with the mandatory SmartScreen warning;
-AWG 3.1 remains default-off and `BLOCKED_BY_ACCESS` until an isolated owned
-target exists.
+Next execute the exact candidate.2 Android physical Beeline/OEM matrix and the
+Windows live TUN/DNS/egress/connected-rollback matrix. Then retain aggregate
+current-origin, exact-candidate Brain-origin, RU-origin, provider, Operator and
+legal evidence. Public `v1.2.0`, six public assets, same-byte promotion and a
+stable pointer remain prohibited until required STOP-SHIP rows reach `I4` and
+the owner explicitly authorizes publication. The Windows SmartScreen warning
+remains mandatory; AWG 3.1 remains default-off and `BLOCKED_BY_ACCESS` until an
+isolated owned target exists.

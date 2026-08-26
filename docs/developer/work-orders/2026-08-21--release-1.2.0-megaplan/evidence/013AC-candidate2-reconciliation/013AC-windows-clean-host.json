@@ -1,0 +1,98 @@
+{
+  "schema": "pokrov.windows-exact-candidate-clean-host-evidence/v1",
+  "status": "PASS_EXACT_PRIVATE_CI_INSTALL_SERVICE_IPC_RESTART_UNINSTALL_IDLE_NETWORK",
+  "recorded_at_utc": "2026-08-26T21:54:35.8665584Z",
+  "candidate_label": "pokrov-1.2.0-candidate.2",
+  "candidate_manifest_sha256": "1697a1bce4f72314aa1f60cd74a1711f9b8f7d70091c5757e98fbdc09b4ce5e0",
+  "candidate_manifest_signature_sha256": "ebf259f1a9d3c9d561e3f39123c12804a178da5f15efcb293aeab47d45308a82",
+  "candidate_sha256": "4226daa49975cb25dae5bec8cbcd26299648ee89f5dbff613f62d807be0ac412",
+  "candidate_size_bytes": 28893114,
+  "candidate_authenticode": "NotSigned",
+  "owner_exception": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0",
+  "source_tuple": {
+    "client": "e6c29d1201eded0d045a3e75f43beff8ae24bd8f",
+    "core": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "platform": "c5f3fca5c55d6baa48b54af3bf756ef40cc0e6e1",
+    "release_index": "4c6d46c10083e68dc5d2032c13f51c4e80a17049"
+  },
+  "runner": {
+    "environment": "github-hosted",
+    "os": "Windows",
+    "image_os": "win25-vs2026",
+    "image_version": "20260818.207.1",
+    "github_run_id": "33017409577",
+    "github_run_attempt": "1",
+    "workflow_commit": "2b290a9fdbf1e1673a5178cdc985b1a8e5e9d201"
+  },
+  "checks": [
+    {
+      "id": "exact_candidate_identity",
+      "status": "PASS",
+      "detail": "candidate.2 SHA-256, byte size, signed-manifest identity, and source tuple match the reviewed input"
+    },
+    {
+      "id": "unsigned_owner_exception",
+      "status": "SKIPPED_BY_OWNER",
+      "detail": "direct-download 1.2.0 beta only; SmartScreen warning remains mandatory"
+    },
+    {
+      "id": "clean_host_baseline",
+      "status": "PASS",
+      "detail": "service, install directory, registry owner record, and POKROV/Wintun adapter were absent"
+    },
+    {
+      "id": "machine_wide_install",
+      "status": "PASS",
+      "detail": "exact installer completed silently with exit code 0"
+    },
+    {
+      "id": "installed_file_identity",
+      "status": "PASS",
+      "detail": "all 8 manifest-bound installed files match size and SHA-256"
+    },
+    {
+      "id": "service_install_and_identity",
+      "status": "PASS",
+      "detail": "automatic LocalSystem service runs exact installed binary and is bound to the install owner"
+    },
+    {
+      "id": "ui_service_authenticated_ipc",
+      "status": "PASS",
+      "detail": "installed UI stayed alive and the protected service journal recorded an accepted IPC session plus status request"
+    },
+    {
+      "id": "service_stop_restart",
+      "status": "PASS",
+      "detail": "SCM stop and restart completed on the clean runner"
+    },
+    {
+      "id": "clean_uninstall",
+      "status": "PASS",
+      "detail": "uninstaller exited 0 and removed the service, installed files, and owner registry record"
+    },
+    {
+      "id": "idle_network_restoration",
+      "status": "PASS",
+      "detail": "route and DNS fingerprints are unchanged and no POKROV/Wintun adapter remains"
+    },
+    {
+      "id": "service_runtime_data",
+      "status": "OBSERVED",
+      "detail": "bounded service runtime evidence remains under ProgramData; no raw content is exported"
+    }
+  ],
+  "evidence_ceiling": "EXACT_PRIVATE_CI_INSTALL_SERVICE_AUTHENTICATED_IPC_RESTART_UNINSTALL_AND_NO_IDLE_NETWORK_MUTATION_ONLY",
+  "manual_or_blocked_checks": [
+    "MANUAL_OWNER_TEST: live TUN and full-tunnel traffic",
+    "MANUAL_OWNER_TEST: DNS capture and leak protection while connected",
+    "MANUAL_OWNER_TEST: authenticated egress through an owned profile",
+    "MANUAL_OWNER_TEST: sleep, reboot, and crash recovery",
+    "MANUAL_OWNER_TEST: uninstall while connected",
+    "MANUAL_OWNER_TEST: interactive SmartScreen reputation observation"
+  ],
+  "production_mutation_performed": false,
+  "public_release_created": false,
+  "stable_pointer_mutated": false,
+  "failure_stage": null,
+  "failure_code": null
+}
