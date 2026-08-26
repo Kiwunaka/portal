@@ -340,9 +340,10 @@ deterministic `variants` list to every returned city. The first item is always
 `{"id":"direct","label":"Обычный","description":"Прямое подключение"}`.
 Enabled `ru_bridge_relay.endpoints[]` follow in rollout order only when the
 bridge is globally enabled, the endpoint has valid material, the node passes
-bridge allowlist/exclusion rules, and the node's required delivery transport is
-enabled. Each bridge item exposes only stable endpoint `id`, short operator
-label, and the fixed consumer description `Для ограниченных сетей`; it never
+bridge allowlist/exclusion rules, the node's required delivery transport is
+enabled, and the endpoint does not identify that exact delivery node by stable
+id or configured host. Each bridge item exposes only stable endpoint `id`,
+short operator label, and the fixed consumer description `Для ограниченных сетей`; it never
 contains endpoint host/port, Reality keys or short IDs, sing-box tags, or raw
 config. US and any other excluded or non-allowlisted node remain direct-only.
 The additive list and existing `profileRevision` let clients cache the safe

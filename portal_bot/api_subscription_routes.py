@@ -120,6 +120,31 @@ def _filter_nodes_for_transport_profile(
     return out
 
 
+def _ru_bridge_endpoint_targets_node(
+    *,
+    endpoint: dict[str, Any],
+    node: Any,
+    transport_profile: str,
+) -> bool:
+    """Reject a bridge endpoint that resolves to the selected delivery node by identity."""
+
+    endpoint_id = str(endpoint.get("id") or "").strip().lower()
+    node_code = str(getattr(node, "code", "") or "").strip().lower()
+    if endpoint_id and node_code and endpoint_id == node_code:
+        return True
+
+    endpoint_host = str(endpoint.get("endpoint_host") or "").strip().lower().rstrip(".")
+    if not endpoint_host:
+        return False
+    profile = _node_transport_profile(node, transport_profile)
+    delivery_hosts = {
+        str(getattr(node, "host", "") or "").strip().lower().rstrip("."),
+        str(profile.get("host") or "").strip().lower().rstrip("."),
+    }
+    delivery_hosts.discard("")
+    return endpoint_host in delivery_hosts
+
+
 def _ru_bridge_endpoints_for_node(
     *,
     node: Any,
@@ -160,7 +185,15 @@ def _ru_bridge_endpoints_for_node(
         requested_transport = LEGACY_REALITY_FALLBACK
     if not _node_supports_transport_profile(node, requested_transport):
         return []
-    return endpoints
+    return [
+        endpoint
+        for endpoint in endpoints
+        if not _ru_bridge_endpoint_targets_node(
+            endpoint=endpoint,
+            node=node,
+            transport_profile=requested_transport,
+        )
+    ]
 
 
 def _managed_manifest_fallback_order(transport_profile: str) -> list[str]:
