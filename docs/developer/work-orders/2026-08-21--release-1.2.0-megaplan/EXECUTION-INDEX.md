@@ -2850,3 +2850,63 @@ asset-digest readback, candidate runtime or same-byte stable promotion exists.
 Current distribution is `I4=1`, `I3=308`, `I2=17`, `I1=37`, `I0=14`; 309
 rows remain at or above `I3`, 68 remain below `I3`, and stage split remains
 `0/33/14/21`.
+
+## 2026-08-26 — WO-013Z Brain-origin pre-candidate runtime integration
+
+The clean Brain-origin evidence originally retained on platform branch
+`codex/brain-origin-evidence-record` used a conflicting `WO-013X` identity.
+Current master already owns `WO-013X` for the exact LDPlayer content slice, so
+the observation is preserved unchanged under `WO-013Z`; no result is upgraded
+by the rename.
+
+Platform PR 37 head `34f6b2b34f78b0a6b9833d3239faa381c3fd4364`
+passed Release v2 Contract/Guardrails runs `32982213812`/`32982213900` and
+merged as `d310ceffea683f50ebe369ac9a0abee3a9a204c4`. Post-merge runs
+`32983333728`/`32983333723` passed. Clean redacted capture then recorded Brain
+readiness `23/23`, live enabled VPN delivery TCP `7/7`, runtime app/provider
+policy `8/8`, diagnostic manifest `25/25` and no sensitive-pattern match.
+
+The former-free MTProto `9443/tcp` target was closed. That is a separate
+`FAIL_DIAGNOSTIC_SEPARATE` and prohibits an MTProto-readiness claim; it does not
+rewrite the seven-node VPN delivery result. The public catalogs still exposed
+stable `1.1.6` because this capture preceded 013Y. It is not exact-candidate
+Brain evidence and does not authorize a deploy or pointer change.
+
+No row advances. `FE/P12-012` remains `I2`; provider-policy readback is not
+payment-provider E2E. `FRKN_PLAN/W9-02` remains `I1`; current-origin and Brain
+pre-candidate evidence are now retained separately, while exact-candidate and
+RU-origin proof remain absent. Distribution stays `I4=1`, `I3=308`, `I2=17`,
+`I1=37`, `I0=14`; 68 rows remain below `I3`, split `0/33/14/21`.
+
+## 2026-08-26 — WO-013AA candidate Core CI reconciliation
+
+The signed manifest binds Core
+`344b317a7a09eca7943a93866b193553538bd8f6`. Its push run `32944235783`
+remains an aggregate failure after attempt 3 and is not relabeled. The exact
+source nevertheless passed its test/vet/race/reachable-vulnerability/static/
+fuzz/SBOM job, byte-identical Android and Windows builds, four Android ABIs,
+15 DLL exports, 100-cycle Windows backtest and two-build Apple source check.
+
+Only `release-contract` failed. Attempt-3 job `98265239259` checked out the
+private client without Git LFS and correctly rejected the pointer-sized AAR as
+different from the pinned 107,388,169-byte artifact. This is a reproducible
+CI-control failure, not an infrastructure skip; it does not invalidate the
+separately green exact-source product jobs.
+
+Core PR 4 head `ec503cb0738aeba336ac6a0d3438b9d32326ac28`
+adds LFS checkout and explicit bound-Core materialization. The diff through
+merge `9b94e0bda7e454536e8fa9b4519f2281211798e0` changes only
+`.github/workflows/ci.yml` (`29` additions, `1` deletion), so the product
+source and artifact inputs are identical to candidate Core `344b317a...`. PR
+run `32946337754` and post-merge runs `32947194845`/`32947422554` pass; the
+full runs contain all five successful jobs and the release-contract job
+materializes the client-bound Core authority before validation.
+
+`REL_DOD/DOD-10` advances `I2 -> I3`. Exact-source product/platform/security
+jobs plus the product-identical corrected hosted control prove the row's local
+scope. Physical Android/Windows exact-candidate runtime, origins, public asset
+readback and promotion remain required before `I4`.
+
+Current distribution becomes `I4=1`, `I3=309`, `I2=16`, `I1=37`, `I0=14`;
+310 rows are at or above `I3`, 67 remain below `I3`, and stage split becomes
+`0/32/14/21`.

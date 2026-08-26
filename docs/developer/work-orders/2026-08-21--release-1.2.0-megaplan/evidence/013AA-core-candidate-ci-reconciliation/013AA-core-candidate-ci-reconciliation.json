@@ -1,0 +1,72 @@
+{
+  "schema": "pokrov.release-1.2.0.core-candidate-ci-reconciliation/v1",
+  "recorded_at": "2026-08-26T17:50:44Z",
+  "status": "CANDIDATE_CORE_PLATFORM_ABI_SECURITY_PROVED_CROSS_REPO_CONTROL_RECONCILED",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.1",
+    "signed_manifest_sha256": "84695f6e318814bc2d1e9de1c9adc3aa4277015d551c5462b197664e574c28d6",
+    "core_commit": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "client_commit": "a74d2aea5aed62f5c31d3a0bbc258e408cebe3bd",
+    "platform_commit": "8bed966e64e23527da982f3fcfb1b9e48ce6f408",
+    "release_index_commit": "c1d617093692b05d2a12ae8ad8394e5570b0df8a"
+  },
+  "exact_core_run": {
+    "repository": "Kiwunaka/pokrov-core",
+    "run_id": 32944235783,
+    "run_attempt": 3,
+    "head_sha": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "aggregate_conclusion": "FAILURE_RETAINED",
+    "product_jobs": {
+      "test_security_sbom": "SUCCESS",
+      "android_artifact_reproducibility": "SUCCESS",
+      "windows_artifact_reproducibility": "SUCCESS",
+      "apple_source_build": "SUCCESS"
+    },
+    "release_contract": {
+      "job_id_attempt_3": 98265239259,
+      "conclusion": "FAILURE",
+      "classification": "CI_CONTROL_MISSING_CLIENT_LFS_CHECKOUT",
+      "sanitized_error": "Pinned Android Core artifact size does not match runtime-artifacts.seed.json",
+      "artifact_expected_size": 107388169,
+      "artifact_expected_sha256": "da3ea37834b688abac5c276f4ca9c2cdcc8e32b97edf5062913fc4f3fea6aba9"
+    }
+  },
+  "corrected_control": {
+    "pull_request": 4,
+    "pr_head": "ec503cb0738aeba336ac6a0d3438b9d32326ac28",
+    "merge_commit": "9b94e0bda7e454536e8fa9b4519f2281211798e0",
+    "candidate_to_control_diff": {
+      "files": [".github/workflows/ci.yml"],
+      "insertions": 29,
+      "deletions": 1,
+      "product_source_changed": false
+    },
+    "pr_run": {
+      "run_id": 32946337754,
+      "conclusion": "SUCCESS_5_OF_5",
+      "bound_core_materialization": "SUCCESS"
+    },
+    "post_merge_runs": [
+      {"run_id": 32947194845, "conclusion": "SUCCESS"},
+      {"run_id": 32947422554, "conclusion": "SUCCESS_5_OF_5", "bound_core_materialization": "SUCCESS"}
+    ]
+  },
+  "runtime_identity": {
+    "ldplayer_version_name": "1.2.0",
+    "ldplayer_version_code": 4030,
+    "ldplayer_x86_64_apk_sha256": "7d7a22b23a33811326c452fdd23d19bbb02aae0b3f6bd74a6753e38f222675ed",
+    "candidate_manifest_match": true
+  },
+  "ledger": {
+    "advanced_rows": {"REL_DOD/DOD-10": "I2_TO_I3"},
+    "distribution": {"I4": 1, "I3": 309, "I2": 16, "I1": 37, "I0": 14},
+    "at_or_above_i3": 310,
+    "below_i3": 67,
+    "pending_stage_counts": {"pre_freeze": 0, "candidate": 32, "external": 14, "deferred": 21}
+  },
+  "production_runtime_mutated": false,
+  "candidate_artifacts_rebuilt": false,
+  "public_release_created": false,
+  "promotion_authorized": false,
+  "evidence_ceiling": "I3_CORE_PLATFORM_ABI_SECURITY_AND_CORRECTED_HOSTED_CONTROL_ONLY_NO_PHYSICAL_DEVICE_NO_EXACT_ORIGIN_NO_PUBLIC_ASSET_NO_STABLE_PROMOTION"
+}
