@@ -108,6 +108,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013T` | Prove a non-mutating trusted-Windows-signing readiness path and audit the exact local/hosted custody gap | Client/platform Windows signing boundary | Readiness control and exact self-signed/`UntrustedRoot` blocker proved; `REL_DOD/DOD-15` remains `I2`, candidate remains uncreated | `WO-013S`, client PR 13 hosted gate, local certificate-store and GitHub configuration readback |
 | `WO-013U` | Apply the exact owner-approved unsigned Windows 1.2.0 direct-beta exception and rebuild the current artifact/supply-chain set | Client/platform release evidence | Current six-file set, production Android signing, Windows `SKIPPED_BY_OWNER`, embedded support pin, SBOM/provenance, strict handoff and 23/23 checksums proved; `REL_DOD/DOD-15` remains `I2`, candidate/publication remain uncreated | `WO-013T`, client PR 14 and post-merge hosted gates, exact local build tuple |
 | `WO-013V` | Rebuild the exact local pre-candidate set and retain byte-identical LDPlayer/runtime evidence | Client/platform release evidence | Six current artifacts, production Android signing, owner-approved unsigned Windows, strict supply/checksum bundle and exact LDPlayer proof recorded; no ledger advancement, physical/manual/origin gates and candidate remain open | `WO-013E`, `WO-013U`, current clean source tuple |
+| `WO-013W` | Correct and retain the direct current-origin API performance method without manufacturing a deploy or aggregate gate pass | Platform performance/release evidence | Clean source-bound health/catalog p95 pass with real persistent warmups; backend deploy is not required, aggregate current-origin/candidate/device gates remain open and no row advances | `WO-010I`, `WO-013V`, platform PRs 34/35, owned direct-origin evidence |
 
 ## Current evidence
 
@@ -170,6 +171,11 @@ The row order is a dependency order, not permission for one giant merge. Each im
   production Android signer, unsigned-Windows exception, complete 36-entry
   staging manifest and byte-identical LDPlayer install/runtime evidence while
   retaining the physical/manual/origin and no-candidate ceilings.
+- `evidence/013W-current-origin-api-method/013W-current-origin-api-method.json`
+  binds the source-address isolation, corrected persistent warmup method,
+  signed platform merges, clean health/catalog p95 passes, diagnostic manifest
+  and no-deploy decision while retaining the aggregate current-origin,
+  candidate, physical-device, Brain/RU and promotion ceilings.
 - `evidence/013E-android-mobile-runtime-matrix/013E-android-mobile-runtime-matrix.json`
   binds the newer Android artifact identity, single physical Beeline matrix,
   LDPlayer evidence ceiling, deployed server-chain reconciliation and explicit
@@ -194,12 +200,16 @@ platform delta is release documentation only, so no redundant deploy is
 required. Candidate creation remains `NOT_CREATED` and no row advances to
 `I4`.
 
+013W separately proves the controlled current-origin API health/catalog slice
+from clean platform `899e5f0` and records why no backend redeploy is required.
+It does not satisfy the aggregate `CURRENT_ORIGIN` promotion gate.
+
 Run the exact 4030 APK on the physical Beeline device next, then classify the
-remaining Windows clean-host, signer-recovery, current-origin, brain-origin,
-provider, Operator, legal and rollback gates. RU-origin remains a distinct
-`NOT_RUN` gate unless an RU claim is requested. Only after explicit owner
-authorization may these same six hashes be published as a candidate with a
-detached signed index and public asset digest readback. The unsigned Windows
+remaining Windows clean-host, signer-recovery, aggregate current-origin,
+brain-origin, provider, Operator, legal and rollback gates. RU-origin remains a
+distinct `NOT_RUN` gate unless an RU claim is requested. Only after explicit
+owner authorization may these same six hashes be published as a candidate with
+a detached signed index and public asset digest readback. The unsigned Windows
 exception remains direct-beta-only with the mandatory SmartScreen warning;
 AWG 3.1 remains default-off and `BLOCKED_BY_ACCESS` until an isolated owned
 target exists.

@@ -2746,3 +2746,60 @@ evidence is stronger, but the row's stable/trusted signing, public-index,
 device/origin and same-byte promotion requirements remain open. Distribution
 remains `I3=309`, `I2=17`, `I1=37`, `I0=14`; 68 rows remain below `I3`, and
 stage split remains `0/33/14/21`.
+
+## 2026-08-26 — WO-013V exact local pre-candidate and LDPlayer proof
+
+The rebuilt direct-beta set binds client
+`a74d2aea5aed62f5c31d3a0bbc258e408cebe3bd` and exact embedded Core source
+`344b317a7a09eca7943a93866b193553538bd8f6` to five production-signed Android
+outputs and the owner-approved unsigned Windows installer. The six-artifact
+set digest is
+`d9cc602fea31a3ad5ebac1e92dabf84bde7f5e46d7c8c7abea384f1e69cbe89d`;
+SBOM, provenance, strict handoff, bundle and complete 36-entry checksum
+validation pass. Candidate and publication remain uncreated/unauthorized.
+
+The byte-identical x86_64 APK passed the bounded LDPlayer Android 14 slice:
+catalog `7/7`, four Saint Petersburg variants, direct `tun0`/MTU 1280/HTTPS
+204, type-2/type-3 fail-closed diagnostics and DNS/AI/Games persistence. This
+does not replace exact physical Beeline/OEM, current/Brain origin, clean
+Windows, signer recovery, provider, Operator, legal or rollback evidence.
+
+No row advances. `REL_DOD/DOD-15` remains `I2`. Distribution remains
+`I3=309`, `I2=17`, `I1=37`, `I0=14`; 68 rows remain below `I3`, and stage
+split remains `0/33/14/21`.
+
+## 2026-08-26 — WO-013W direct current-origin API method
+
+An active Hiddify `tun0` route made the first workstation measurements invalid
+for direct-origin credit. Platform PR 34 added fail-closed local source-address
+binding without stopping the VPN or mutating routes. Its signed merge
+`583e14a1dea9d5bd97fd964f3aff5115a6bab02a` passed required PR and post-merge
+cross-repository/Guardrails runs.
+
+The resulting direct evidence exposed that `urllib` closed every connection,
+so five declared warmups did not warm any retained sample. Cold health p95
+`126.2867 ms` is retained as `DIAGNOSTIC_ONLY`, not rewritten. PR 35 corrected
+the method to one persistent HTTP/1.1 client, first-response-byte timing and
+body draining without logging. A real loopback test proves 55 requests over
+one accepted connection. Signed merge
+`899e5f01f8317ace7886602c73cd7d7a60f4cd9b` passed the required PR gates and
+post-merge Release v2 Contract/Guardrails runs `32976807912`/`32976807970`.
+
+Clean direct evidence on `899e5f0` records health p95 `39.0546 ms` against the
+`100 ms` stop and public catalog p95 `40.5479 ms` against `200 ms`; both pass
+with 50 retained samples, source binding, disabled proxy discovery and the
+fingerprinted `persistent_http1_keep_alive` method. The 21-file diagnostic
+manifest validates fully with SHA-256
+`3d7499cf3213c86981705B08A62B9D326C47C33D0BCE906F2FFA88DBEACD06DD`.
+
+The deployed backend remains runtime code `243dcbe...`; the later platform
+delta is docs/probe tooling/tests, public endpoints are healthy and a backend
+redeploy would not change relevant runtime bytes. Deployment is therefore
+`NOT_REQUIRED_NOT_RUN`.
+
+No row advances. This strengthens `REL/PERF-001`, `REL_GATE/GATE-E` and
+`REL_DOD/DOD-13`, but the aggregate `CURRENT_ORIGIN` promotion gate remains
+open without the full default/quick candidate-bound and post-promotion proof.
+`REL/PERF-001` and `REL_GATE/GATE-E` remain `I3`; `REL_DOD/DOD-13` remains
+`I1`. Distribution remains `I3=309`, `I2=17`, `I1=37`, `I0=14`; 68 rows
+remain below `I3`, and stage split remains `0/33/14/21`.
