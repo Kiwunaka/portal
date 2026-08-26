@@ -400,6 +400,7 @@ _TASK20_DB_ACTIONS = frozenset(
         "network_rollout_config.update",
         "warp_material.replace",
         "awg2_lab_material.replace",
+        "awg31_lab_material.replace",
         "promo_slots.update",
         "loyalty_config.update",
         "campaign.create",
@@ -661,6 +662,27 @@ def _execute_task20_admin_action_db(
                 message="AWG2 lab material не прошёл проверку.",
             ) from None
         return {"material": safe_awg2_material_summary(row)}
+
+    if action == "awg31_lab_material.replace":
+        try:
+            row = replace_awg31_lab_material(
+                session,
+                tg_id=int(runtime["tg_id"]),
+                install_id=str(runtime["install_id"]),
+                generation=str(runtime["generation"]),
+                endpoint_revision=str(runtime["endpoint_revision"]),
+                server_record_id=str(runtime["server_record_id"]),
+                node_code=str(runtime["node_code"]),
+                endpoint=dict(runtime["endpoint"]),
+            )
+            session.flush()
+        except Awg31LabError:
+            raise ActionIntentError(
+                "invalid_awg31_lab_material",
+                status_code=422,
+                message="AWG 3.1 lab material не прошёл проверку.",
+            ) from None
+        return {"material": safe_awg31_material_summary(row)}
 
     if action in {"campaign.create", "campaign.update", "campaign.delete"}:
         row = state.entity

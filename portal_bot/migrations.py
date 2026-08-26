@@ -4886,6 +4886,47 @@ def run_migrations(engine: Engine) -> None:
             )
         )
 
+        # awg31_lab_materials: separate encrypted AWG 3.1 owner-lab material.
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS awg31_lab_materials (
+                  id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  tg_id BIGINT NOT NULL,
+                  install_id VARCHAR(128) NOT NULL,
+                  contract_id VARCHAR(64) NOT NULL,
+                  contract_sha256 VARCHAR(64) NOT NULL,
+                  generation VARCHAR(64) NOT NULL,
+                  endpoint_revision VARCHAR(64) NOT NULL,
+                  server_record_id VARCHAR(64) NOT NULL,
+                  node_code VARCHAR(64) NOT NULL,
+                  endpoint_ciphertext TEXT NOT NULL,
+                  material_hash VARCHAR(64) NOT NULL,
+                  state VARCHAR(32) DEFAULT 'ready' NOT NULL,
+                  is_active BOOLEAN DEFAULT 1 NOT NULL,
+                  provisioned_at DATETIME NOT NULL,
+                  revoked_at DATETIME,
+                  updated_at DATETIME NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_tg_id ON awg31_lab_materials(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_install_id ON awg31_lab_materials(install_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_generation ON awg31_lab_materials(generation);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_server_record_id ON awg31_lab_materials(server_record_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_node_code ON awg31_lab_materials(node_code);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_material_hash ON awg31_lab_materials(material_hash);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_state ON awg31_lab_materials(state);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_is_active ON awg31_lab_materials(is_active);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_provisioned_at ON awg31_lab_materials(provisioned_at);"))
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_tg_install_active "
+                "ON awg31_lab_materials(tg_id, install_id, is_active);"
+            )
+        )
+
         conn.execute(
             text(
                 """
@@ -6029,6 +6070,45 @@ def _run_postgres_migrations(engine: Engine) -> None:
             text(
                 "CREATE INDEX IF NOT EXISTS ix_awg2_lab_materials_tg_install_active "
                 "ON awg2_lab_materials(tg_id, install_id, is_active);"
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS awg31_lab_materials (
+                  id SERIAL PRIMARY KEY,
+                  tg_id BIGINT NOT NULL,
+                  install_id VARCHAR(128) NOT NULL,
+                  contract_id VARCHAR(64) NOT NULL,
+                  contract_sha256 VARCHAR(64) NOT NULL,
+                  generation VARCHAR(64) NOT NULL,
+                  endpoint_revision VARCHAR(64) NOT NULL,
+                  server_record_id VARCHAR(64) NOT NULL,
+                  node_code VARCHAR(64) NOT NULL,
+                  endpoint_ciphertext TEXT NOT NULL,
+                  material_hash VARCHAR(64) NOT NULL,
+                  state VARCHAR(32) NOT NULL DEFAULT 'ready',
+                  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                  provisioned_at TIMESTAMP NOT NULL,
+                  revoked_at TIMESTAMP,
+                  updated_at TIMESTAMP NOT NULL
+                );
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_tg_id ON awg31_lab_materials(tg_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_install_id ON awg31_lab_materials(install_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_generation ON awg31_lab_materials(generation);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_server_record_id ON awg31_lab_materials(server_record_id);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_node_code ON awg31_lab_materials(node_code);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_material_hash ON awg31_lab_materials(material_hash);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_state ON awg31_lab_materials(state);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_is_active ON awg31_lab_materials(is_active);"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_provisioned_at ON awg31_lab_materials(provisioned_at);"))
+        conn.execute(
+            text(
+                "CREATE INDEX IF NOT EXISTS ix_awg31_lab_materials_tg_install_active "
+                "ON awg31_lab_materials(tg_id, install_id, is_active);"
             )
         )
         conn.execute(

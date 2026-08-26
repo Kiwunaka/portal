@@ -151,6 +151,10 @@ Current truth:
 - do not market RU-special routing as fully shipped until the real strategy layer, DNS split checks, and release smoke are in place
 - `All except RU` subscription profiles should default to tunneled remote DNS; any split-DNS/local direct resolver behavior needs separate client-side implementation evidence and leak-check proof before public claims
 - the public consumer path should stay `TUN`-first; loopback proxy mechanics remain advanced or internal-only
+- the selected-service presets for AI and games route known Gemini, ChatGPT,
+  OpenAI and Xbox/Game Pass domains through the active VPN; they are split-VPN
+  presets, not a claim that changing DNS alone bypasses IP, TLS, account or
+  regional restrictions
 
 ## Current User Surfaces
 
@@ -518,6 +522,17 @@ WARP rule:
   Android and Windows release-build proof covers connect, disconnect, WARP-on,
   WARP-failure fallback, and WARP-off
 - do not make production WARP claims from backend telemetry alone
+
+Transport-lab rule:
+
+- `awg2_lab` and `awg31_lab` remain separate operator-only profiles, disabled
+  and kill-switched by default, outside first-layer UX and public subscription
+  export
+- AWG 3.1 uses a pinned official upstream implementation behind a bounded typed
+  contract; POKROV does not create or advertise its own cryptography
+- source validation or emulator rendering does not prove a live AWG server,
+  mobile-origin reachability, physical-device behavior, battery/thermal impact
+  or production readiness
 
 ## Branding Rules
 

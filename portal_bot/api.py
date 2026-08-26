@@ -395,6 +395,12 @@ from awg2_lab_service import (
     replace_awg2_lab_material,
     safe_awg2_material_summary,
 )
+from awg31_lab_service import (
+    Awg31LabError,
+    build_managed_awg31_lab_config,
+    replace_awg31_lab_material,
+    safe_awg31_material_summary,
+)
 from public_urls import build_subscription_url, public_connect_base_url, public_connect_host
 from shared_surface_facts import (
     get_access_matrix,
@@ -405,6 +411,7 @@ from shared_surface_facts import (
 )
 from transport_catalog import (
     AWG2_LAB,
+    AWG31_LAB,
     LEGACY_REALITY_FALLBACK,
     OPERATOR_LAB,
     RESERVE_XHTTP_CDN,
@@ -1272,6 +1279,16 @@ class AdminWarpMaterialPutIn(BaseModel):
 
 
 class AdminAwg2LabMaterialPutIn(BaseModel):
+    tg_id: int = Field(gt=0)
+    install_id: str = Field(min_length=1, max_length=128)
+    generation: str = Field(min_length=2, max_length=64)
+    endpoint_revision: str = Field(min_length=2, max_length=64)
+    server_record_id: str = Field(min_length=2, max_length=64)
+    node_code: str = Field(min_length=2, max_length=64)
+    endpoint: dict[str, Any] = Field(default_factory=dict)
+
+
+class AdminAwg31LabMaterialPutIn(BaseModel):
     tg_id: int = Field(gt=0)
     install_id: str = Field(min_length=1, max_length=128)
     generation: str = Field(min_length=2, max_length=64)
