@@ -49,7 +49,10 @@ def _canonical_digest(value: Any) -> str:
 
 
 def _file_digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    # Match the generator across LF and Windows CRLF checkouts. The signed
+    # semantic content is unchanged by Git's local newline conversion.
+    normalized = path.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return hashlib.sha256(normalized).hexdigest()
 
 
 def _validated_contract() -> dict[str, Any]:

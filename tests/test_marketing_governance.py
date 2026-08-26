@@ -35,6 +35,15 @@ def test_generated_contract_is_current_and_hash_bound() -> None:
     assert actual["default_campaign_launch_state"].startswith("blocked_")
 
 
+def test_source_digest_is_stable_across_checkout_line_endings(tmp_path: Path) -> None:
+    lf_path = tmp_path / "facts-lf.json"
+    crlf_path = tmp_path / "facts-crlf.json"
+    lf_path.write_bytes(b'{"trial_days":5}\n')
+    crlf_path.write_bytes(b'{"trial_days":5}\r\n')
+
+    assert generator._file_digest(crlf_path) == generator._file_digest(lf_path)
+
+
 def test_claim_evidence_mismatch_fails_closed() -> None:
     source = copy.deepcopy(_source())
     source["claims"][0]["evidence"][0]["equals"] = 6

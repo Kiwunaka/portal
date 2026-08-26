@@ -111,8 +111,8 @@
   "commercial_revision": "2026-08-21.1",
   "commercial_contract_sha256": "22b7ef26908c23c2bb53322dec959a3bc050a20a6c6d2feff9f78708b45e23cd",
   "marketing_governance_revision": "2026-08-22.1",
-  "marketing_governance_sha256": "6cd7f3cc94a2c45367569b88296da817fb3c80d510e5092daa53beb70ff4e97f",
+  "marketing_governance_sha256": "934e1af78e98ca03edcd1bb73ae7259a801248fe73c5f3297d4528fbf1a1312a",
   "source_contract": "shared/winback-pilot.source.json",
   "source_sha256": "e851fab1c8186bcd1a194b799de3a1b8f94145331bce75541a161e1215fc9234",
-  "contract_sha256": "970e4424740a3107f99e511ae57fc57d6b0f82b8ac2f1f4832f1ec9d908e6658"
+  "contract_sha256": "6fe5ae85ffdd3ab6cad8412b9c518611331c59010ad17ce164e1708172fd25b5"
 }

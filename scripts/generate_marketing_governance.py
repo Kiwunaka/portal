@@ -62,7 +62,10 @@ def _digest(value: Any) -> str:
 
 
 def _file_digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    # Keep generated text identities stable when Git checks LF files out as
+    # CRLF on Windows.
+    normalized = path.read_bytes().replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return hashlib.sha256(normalized).hexdigest()
 
 
 def _closed_keys(value: Mapping[str, Any], allowed: set[str], *, field: str) -> None:
