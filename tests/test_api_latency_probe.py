@@ -74,6 +74,7 @@ def test_current_origin_budget_rejects_substitute_origin(
             base_url="https://example.test",
             origin="brain",
             network_profile="controlled",
+            source_address=None,
             candidate_label="candidate",
             release_version="1.2.0",
             repo_root=REPO_ROOT,
@@ -96,6 +97,7 @@ def test_state_changing_probe_requires_explicit_flag() -> None:
             base_url="https://example.test",
             origin="staging",
             network_profile="controlled",
+            source_address=None,
             candidate_label="candidate",
             release_version="1.2.0",
             repo_root=REPO_ROOT,
@@ -126,6 +128,7 @@ def test_public_probe_collects_required_samples_without_payloads(
         base_url="https://health.example.test",
         origin="current",
         network_profile="controlled-wired",
+        source_address=None,
         candidate_label="local-probe",
         release_version="1.2.0",
         repo_root=REPO_ROOT,
@@ -144,4 +147,86 @@ def test_public_probe_collects_required_samples_without_payloads(
     assert "Authorization" not in dict(calls[0][1])
     assert len(evidence["measurements"][0]["samples"]) == 50
     assert summary["results"][0]["sample_count"] == 50
+    assert summary["results"][0]["gate_status"] == "PASS"
+
+
+def test_source_address_validation_is_literal_local_and_bounded() -> None:
+    assert MODULE._validate_source_address("127.0.0.1") == "127.0.0.1"
+    with pytest.raises(MODULE.ContractError, match="literal IPv4 or IPv6"):
+        MODULE._validate_source_address("localhost")
+    with pytest.raises(MODULE.ContractError, match="unspecified or multicast"):
+        MODULE._validate_source_address("0.0.0.0")
+    with pytest.raises(MODULE.ContractError, match="unspecified or multicast"):
+        MODULE._validate_source_address("224.0.0.1")
+
+
+def test_source_bound_https_handler_uses_standard_tls_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    handler = MODULE._SourceAddressHTTPSHandler("127.0.0.1")
+    captured = {}
+
+    def do_open(connection, request, **kwargs):
+        captured["connection"] = connection
+        captured["request"] = request
+        captured["kwargs"] = kwargs
+        return "response"
+
+    monkeypatch.setattr(handler, "do_open", do_open)
+    request = MODULE.Request("https://health.example.test/api/health")
+
+    assert handler.https_open(request) == "response"
+    assert captured["request"] is request
+    assert captured["kwargs"] == {"context": handler._context}
+    assert captured["connection"].keywords == {
+        "source_address": ("127.0.0.1", 0)
+    }
+
+
+def test_source_bound_probe_uses_direct_opener_and_records_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = []
+
+    def opener(request, **kwargs):
+        calls.append((request.full_url, kwargs))
+        return _Response()
+
+    def build_source_bound_opener(source_address: str):
+        assert source_address == "127.0.0.1"
+        return opener
+
+    monkeypatch.setattr(
+        MODULE,
+        "_build_source_bound_opener",
+        build_source_bound_opener,
+    )
+    monkeypatch.setattr(MODULE, "_git_identity", lambda _: ("b" * 40, "clean"))
+
+    evidence, summary = MODULE.collect(
+        contract_path=CONTRACT_PATH,
+        budget_id="api.health.current_origin_ms",
+        base_url="https://health.example.test",
+        origin="current",
+        network_profile="controlled-wired",
+        source_address="127.0.0.1",
+        candidate_label="local-probe",
+        release_version="1.2.0",
+        repo_root=REPO_ROOT,
+        authorization_env=None,
+        body_file=None,
+        allow_state_changing_probe=False,
+        allow_http_localhost=False,
+        timeout_seconds=1,
+        sample_count=None,
+        warmup_count=None,
+    )
+
+    assert len(calls) == 55
+    assert evidence["environment"]["source_address"] == "127.0.0.1"
+    assert (
+        evidence["environment"]["proxy_policy"]
+        == "disabled_for_source_bound_probe"
+    )
+    assert evidence["environment"]["collector_version"] == "1.1.0"
     assert summary["results"][0]["gate_status"] == "PASS"

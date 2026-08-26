@@ -131,6 +131,15 @@ python scripts/api_latency_probe.py `
   --candidate-label <candidate> --output <evidence-dir>\api-health.json
 ```
 
+If an ambient VPN/TUN route would capture a probe that must represent the
+owned direct operator origin, pass a locally assigned literal address with
+`--source-address <IPv4-or-IPv6>`. The collector validates that the address is
+assigned, disables URL proxy discovery and binds every request socket to that
+address without changing the route table or stopping the VPN. Record the
+physical interface and route readback in the handoff. A missing or unassigned
+address fails closed; a source-bound local result still does not prove
+brain-origin, RU-origin or an exact candidate by itself.
+
 No live endpoint was called while establishing this contract.
 
 ## Local aggregate gate

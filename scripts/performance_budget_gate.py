@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+from ipaddress import ip_address
 import json
 import math
 import re
@@ -62,6 +63,8 @@ ENVIRONMENT_FIELDS = frozenset(
         "os_version",
         "platform",
         "power_mode",
+        "proxy_policy",
+        "source_address",
         "toolchain",
     }
 )
@@ -93,6 +96,8 @@ FINGERPRINT_FIELDS = (
     "os_version",
     "platform",
     "power_mode",
+    "proxy_policy",
+    "source_address",
     "toolchain",
 )
 
@@ -411,6 +416,25 @@ def _validate_environment(value: Any) -> dict[str, Any]:
     artifact_sha = value.get("artifact_sha256")
     if artifact_sha is not None and not SHA256_RE.fullmatch(artifact_sha):
         raise ContractError("evidence.environment.artifact_sha256: expected sha256")
+    source_address = value.get("source_address")
+    if source_address is not None:
+        try:
+            parsed_source_address = ip_address(source_address)
+        except ValueError as exc:
+            raise ContractError(
+                "evidence.environment.source_address: expected literal IP"
+            ) from exc
+        if parsed_source_address.is_unspecified or parsed_source_address.is_multicast:
+            raise ContractError(
+                "evidence.environment.source_address: unsupported address"
+            )
+    proxy_policy = value.get("proxy_policy")
+    if proxy_policy is not None and proxy_policy != "disabled_for_source_bound_probe":
+        raise ContractError("evidence.environment.proxy_policy: unsupported policy")
+    if (source_address is None) != (proxy_policy is None):
+        raise ContractError(
+            "evidence.environment: source_address and proxy_policy must appear together"
+        )
     return value
 
 
