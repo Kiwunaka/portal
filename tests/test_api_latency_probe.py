@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import importlib.util
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import sys
 from pathlib import Path
+from threading import Thread
 
 import pytest
 
@@ -34,7 +36,7 @@ CONTRACT_PATH = (
 
 
 class _Response:
-    status = 200
+    status_code = 200
 
     def __enter__(self):
         return self
@@ -42,11 +44,23 @@ class _Response:
     def __exit__(self, *_):
         return False
 
-    def getcode(self) -> int:
-        return self.status
+    def iter_bytes(self):
+        yield b"{}"
 
-    def read(self, _: int) -> bytes:
-        return b"{}"
+
+class _Client:
+    def __init__(self, calls: list[tuple]) -> None:
+        self.calls = calls
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        return False
+
+    def stream(self, method, target, *, content, headers):
+        self.calls.append((method, target, content, dict(headers)))
+        return _Response()
 
 
 def test_base_url_rejects_credentials_and_insecure_remote_http() -> None:
@@ -85,7 +99,7 @@ def test_current_origin_budget_rejects_substitute_origin(
             timeout_seconds=1,
             sample_count=None,
             warmup_count=None,
-            opener=lambda *_args, **_kwargs: _Response(),
+            client_factory=lambda **_kwargs: _Client([]),
         )
 
 
@@ -108,7 +122,7 @@ def test_state_changing_probe_requires_explicit_flag() -> None:
             timeout_seconds=1,
             sample_count=None,
             warmup_count=None,
-            opener=lambda *_args, **_kwargs: _Response(),
+            client_factory=lambda **_kwargs: _Client([]),
         )
 
 
@@ -117,9 +131,7 @@ def test_public_probe_collects_required_samples_without_payloads(
 ) -> None:
     calls = []
 
-    def opener(request, **kwargs):
-        calls.append((request.full_url, dict(request.header_items()), kwargs))
-        return _Response()
+    client = _Client(calls)
 
     monkeypatch.setattr(MODULE, "_git_identity", lambda _: ("a" * 40, "dirty"))
     evidence, summary = MODULE.collect(
@@ -139,12 +151,14 @@ def test_public_probe_collects_required_samples_without_payloads(
         timeout_seconds=1,
         sample_count=None,
         warmup_count=None,
-        opener=opener,
+        client_factory=lambda **_kwargs: client,
     )
 
     assert len(calls) == 55
-    assert calls[0][0] == "https://health.example.test/api/health"
-    assert "Authorization" not in dict(calls[0][1])
+    assert calls[0][0] == "GET"
+    assert calls[0][1] == "https://health.example.test/api/health"
+    assert calls[0][2] is None
+    assert "Authorization" not in calls[0][3]
     assert len(evidence["measurements"][0]["samples"]) == 50
     assert summary["results"][0]["sample_count"] == 50
     assert summary["results"][0]["gate_status"] == "PASS"
@@ -160,46 +174,21 @@ def test_source_address_validation_is_literal_local_and_bounded() -> None:
         MODULE._validate_source_address("224.0.0.1")
 
 
-def test_source_bound_https_handler_uses_standard_tls_context(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    handler = MODULE._SourceAddressHTTPSHandler("127.0.0.1")
-    captured = {}
-
-    def do_open(connection, request, **kwargs):
-        captured["connection"] = connection
-        captured["request"] = request
-        captured["kwargs"] = kwargs
-        return "response"
-
-    monkeypatch.setattr(handler, "do_open", do_open)
-    request = MODULE.Request("https://health.example.test/api/health")
-
-    assert handler.https_open(request) == "response"
-    assert captured["request"] is request
-    assert captured["kwargs"] == {"context": handler._context}
-    assert captured["connection"].keywords == {
-        "source_address": ("127.0.0.1", 0)
-    }
-
-
-def test_source_bound_probe_uses_direct_opener_and_records_environment(
+def test_source_bound_probe_uses_direct_client_and_records_environment(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     calls = []
+    client = _Client(calls)
 
-    def opener(request, **kwargs):
-        calls.append((request.full_url, kwargs))
-        return _Response()
-
-    def build_source_bound_opener(source_address: str):
+    def build_probe_client(*, source_address: str, timeout_seconds: float):
         assert source_address == "127.0.0.1"
-        return opener
+        assert timeout_seconds == 1
+        return client
 
     monkeypatch.setattr(
         MODULE,
-        "_build_source_bound_opener",
-        build_source_bound_opener,
+        "_build_probe_client",
+        build_probe_client,
     )
     monkeypatch.setattr(MODULE, "_git_identity", lambda _: ("b" * 40, "clean"))
 
@@ -228,5 +217,74 @@ def test_source_bound_probe_uses_direct_opener_and_records_environment(
         evidence["environment"]["proxy_policy"]
         == "disabled_for_source_bound_probe"
     )
-    assert evidence["environment"]["collector_version"] == "1.1.0"
+    assert (
+        evidence["environment"]["connection_policy"]
+        == "persistent_http1_keep_alive"
+    )
+    assert evidence["environment"]["collector_version"] == "1.2.0"
+    assert summary["results"][0]["gate_status"] == "PASS"
+
+
+def test_warmups_and_samples_share_one_real_loopback_connection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class CountingServer(ThreadingHTTPServer):
+        daemon_threads = True
+
+        def __init__(self, *args, **kwargs) -> None:
+            super().__init__(*args, **kwargs)
+            self.accepted_connections = 0
+            self.request_count = 0
+
+        def get_request(self):
+            request, address = super().get_request()
+            self.accepted_connections += 1
+            return request, address
+
+    class Handler(BaseHTTPRequestHandler):
+        protocol_version = "HTTP/1.1"
+
+        def do_GET(self) -> None:
+            self.server.request_count += 1
+            body = b"{}"
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Content-Type", "application/json")
+            self.end_headers()
+            self.wfile.write(body)
+
+        def log_message(self, *_args) -> None:
+            return
+
+    server = CountingServer(("127.0.0.1", 0), Handler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    monkeypatch.setattr(MODULE, "_git_identity", lambda _: ("c" * 40, "clean"))
+    try:
+        evidence, summary = MODULE.collect(
+            contract_path=CONTRACT_PATH,
+            budget_id="api.health.current_origin_ms",
+            base_url=f"http://127.0.0.1:{server.server_port}",
+            origin="current",
+            network_profile="loopback-keep-alive",
+            source_address="127.0.0.1",
+            candidate_label="local-probe",
+            release_version="1.2.0",
+            repo_root=REPO_ROOT,
+            authorization_env=None,
+            body_file=None,
+            allow_state_changing_probe=False,
+            allow_http_localhost=True,
+            timeout_seconds=1,
+            sample_count=None,
+            warmup_count=None,
+        )
+    finally:
+        server.shutdown()
+        thread.join(timeout=2)
+        server.server_close()
+
+    assert server.request_count == 55
+    assert server.accepted_connections == 1
+    assert len(evidence["measurements"][0]["samples"]) == 50
     assert summary["results"][0]["gate_status"] == "PASS"

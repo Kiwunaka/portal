@@ -8,9 +8,6 @@ from __future__ import annotations
 
 import argparse
 from datetime import datetime, timezone
-from functools import partial
-import hashlib
-from http.client import HTTPConnection, HTTPSConnection
 from ipaddress import ip_address
 import json
 import os
@@ -23,16 +20,9 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable
-from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlsplit
-from urllib.request import (
-    HTTPHandler,
-    HTTPSHandler,
-    ProxyHandler,
-    Request,
-    build_opener,
-    urlopen,
-)
+
+import httpx
 
 from performance_budget_gate import (
     DEFAULT_CONTRACT,
@@ -46,7 +36,8 @@ from performance_budget_gate import (
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 COLLECTOR_ID = "pokrov.api-latency"
-COLLECTOR_VERSION = "1.1.0"
+COLLECTOR_VERSION = "1.2.0"
+CONNECTION_POLICY = "persistent_http1_keep_alive"
 ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]{2,63}$")
 MAX_BODY_BYTES = 64 * 1024
 
@@ -167,68 +158,62 @@ def _validate_source_address(source_address: str | None) -> str | None:
     return normalized
 
 
-class _SourceAddressHTTPHandler(HTTPHandler):
-    """Open direct HTTP connections from one explicit local address."""
+def _build_probe_client(
+    *, source_address: str | None, timeout_seconds: float
+) -> httpx.Client:
+    """Build one HTTP/1.1 client shared by warmups and retained samples."""
 
-    def __init__(self, source_address: str) -> None:
-        super().__init__()
-        self._source_address = source_address
-
-    def http_open(self, request: Request) -> Any:
-        connection = partial(
-            HTTPConnection,
-            source_address=(self._source_address, 0),
+    if source_address is None:
+        return httpx.Client(
+            follow_redirects=False,
+            http1=True,
+            http2=False,
+            timeout=timeout_seconds,
+            trust_env=True,
         )
-        return self.do_open(connection, request)
-
-
-class _SourceAddressHTTPSHandler(HTTPSHandler):
-    """Open direct HTTPS connections from one explicit local address."""
-
-    def __init__(self, source_address: str) -> None:
-        super().__init__()
-        self._source_address = source_address
-
-    def https_open(self, request: Request) -> Any:
-        connection = partial(
-            HTTPSConnection,
-            source_address=(self._source_address, 0),
-        )
-        return self.do_open(
-            connection,
-            request,
-            context=self._context,
-        )
-
-
-def _build_source_bound_opener(source_address: str) -> Callable[..., Any]:
-    """Build a proxy-free URL opener bound to one validated local address."""
-
-    return build_opener(
-        ProxyHandler({}),
-        _SourceAddressHTTPHandler(source_address),
-        _SourceAddressHTTPSHandler(source_address),
-    ).open
+    transport = httpx.HTTPTransport(
+        http1=True,
+        http2=False,
+        local_address=source_address,
+        retries=0,
+        trust_env=False,
+    )
+    return httpx.Client(
+        follow_redirects=False,
+        timeout=timeout_seconds,
+        transport=transport,
+        trust_env=False,
+    )
 
 
 def _sample_once(
-    request: Request,
+    client: Any,
     *,
-    timeout_seconds: float,
-    opener: Callable[..., Any] = urlopen,
+    method: str,
+    target: str,
+    headers: dict[str, str],
+    body: bytes | None,
 ) -> float:
     started = time.perf_counter_ns()
     try:
-        with opener(request, timeout=timeout_seconds) as response:
-            status = int(getattr(response, "status", response.getcode()))
-            response.read(1)
-    except HTTPError as exc:
-        raise ContractError(f"API probe returned HTTP {exc.code}") from exc
-    except (URLError, TimeoutError, OSError) as exc:
+        with client.stream(
+            method,
+            target,
+            content=body,
+            headers=headers,
+        ) as response:
+            status = int(response.status_code)
+            if status < 200 or status >= 300:
+                raise ContractError(f"API probe returned HTTP {status}")
+            observed_at = None
+            for chunk in response.iter_bytes():
+                if observed_at is None and chunk:
+                    observed_at = time.perf_counter_ns()
+            if observed_at is None:
+                observed_at = time.perf_counter_ns()
+    except (httpx.HTTPError, TimeoutError, OSError) as exc:
         raise ContractError("API probe request failed") from exc
-    if status < 200 or status >= 300:
-        raise ContractError(f"API probe returned HTTP {status}")
-    return (time.perf_counter_ns() - started) / 1_000_000
+    return (observed_at - started) / 1_000_000
 
 
 def collect(
@@ -249,7 +234,7 @@ def collect(
     timeout_seconds: float,
     sample_count: int | None,
     warmup_count: int | None,
-    opener: Callable[..., Any] | None = None,
+    client_factory: Callable[..., Any] | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     contract = _load_json(contract_path)
     budgets = validate_budget_contract(contract)
@@ -271,11 +256,6 @@ def collect(
     )
     body = _request_body(body_file, required=endpoint.state_changing)
     normalized_source_address = _validate_source_address(source_address)
-    request_opener = opener or (
-        _build_source_bound_opener(normalized_source_address)
-        if normalized_source_address is not None
-        else urlopen
-    )
     minimum_samples = int(budget["sampling"]["min_samples"])
     minimum_warmups = int(budget["sampling"]["warmups"])
     samples_required = sample_count if sample_count is not None else minimum_samples
@@ -294,21 +274,29 @@ def collect(
     if body is not None:
         headers["Content-Type"] = "application/json"
     target = urljoin(normalized_base, endpoint.path.lstrip("/"))
-    request = Request(target, data=body, headers=headers, method=endpoint.method)
-    for _ in range(warmups_required):
-        _sample_once(
-            request,
-            timeout_seconds=timeout_seconds,
-            opener=request_opener,
-        )
-    samples = [
-        _sample_once(
-            request,
-            timeout_seconds=timeout_seconds,
-            opener=request_opener,
-        )
-        for _ in range(samples_required)
-    ]
+    build_client = client_factory or _build_probe_client
+    with build_client(
+        source_address=normalized_source_address,
+        timeout_seconds=timeout_seconds,
+    ) as client:
+        for _ in range(warmups_required):
+            _sample_once(
+                client,
+                method=endpoint.method,
+                target=target,
+                headers=headers,
+                body=body,
+            )
+        samples = [
+            _sample_once(
+                client,
+                method=endpoint.method,
+                target=target,
+                headers=headers,
+                body=body,
+            )
+            for _ in range(samples_required)
+        ]
 
     revision, working_tree_state = _git_identity(repo_root)
     environment = {
@@ -319,6 +307,7 @@ def collect(
         .replace("+00:00", "Z"),
         "collector_id": COLLECTOR_ID,
         "collector_version": COLLECTOR_VERSION,
+        "connection_policy": CONNECTION_POLICY,
         "device_model": "api-probe-host",
         "network_profile": network_profile,
         "origin": origin,

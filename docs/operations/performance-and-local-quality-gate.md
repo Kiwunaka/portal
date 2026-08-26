@@ -131,6 +131,16 @@ python scripts/api_latency_probe.py `
   --candidate-label <candidate> --output <evidence-dir>\api-health.json
 ```
 
+One HTTP/1.1 client is shared by the discarded warmups and retained samples.
+This makes the declared warmup method real: the first connection/TLS setup is
+discarded, while retained samples measure request-to-first-response-byte over
+the persistent session used by normal API clients. Each response is drained
+without logging its body so the connection can return to the pool. The client
+may reconnect when the peer closes an idle connection, and any failed sample
+still fails the run. Evidence records `persistent_http1_keep_alive` as the
+connection policy so legacy cold-connection results cannot be compared as the
+same environment.
+
 If an ambient VPN/TUN route would capture a probe that must represent the
 owned direct operator origin, pass a locally assigned literal address with
 `--source-address <IPv4-or-IPv6>`. The collector validates that the address is
