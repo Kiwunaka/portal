@@ -224,23 +224,24 @@ No current instruction authorizes this slice.
 
 ## Current next action
 
-`WO-013P` proves the signed final source tuple: platform
-`2ed944c5eaa667c44a7bc1970d2dd175ff34f8c9`, client
-`3904734ce7761cc92c4136f1eaf13e20f2354f72` and Core
-`bdbd97fae35103e705f55908caebf75b4a9ff72f`. All three exact owner-solo PR
-controls and the post-merge promotion runs pass. Candidate creation remains
-`NOT_CREATED` and is not authorized by source promotion alone.
+`WO-013U` retains the earlier six-file direct-beta pre-candidate set and the
+owner-approved unsigned-Windows/SmartScreen exception. The runtime tuple under
+test advanced to platform `243dcbe4727041d62cc0a36e7d2fd5a8530c7c25`,
+client `a74d2aea5aed62f5c31d3a0bbc258e408cebe3bd` and Core
+`9b94e0bda7e454536e8fa9b4519f2281211798e0` for ABI-safe Android delivery,
+selector correction, AWG 3.1 lab support and deployment/runtime fixes.
 
-`WO-013Q` uses the explicit candidate-preparation authorization to construct
-the immutable local input from exactly that tuple. The preflight is
-`READY_LOCAL_FREEZE`; Android production signing, six artifact identities,
-SBOM/provenance and strict-v2 metadata are retained. Windows remains unsigned,
-the support-mode public key is not embedded and 12 required promotion gates are
-not `PASS`, so this set stays `PRE_CANDIDATE_LOCAL`, not an RC.
+`WO-013E-android-mobile-runtime-matrix.md` records one production-signed
+Android `1.2.0 (4031)` artifact, an in-place physical-device upgrade, the
+partial Beeline route matrix, LDPlayer boundary and current deployed type-2/
+type-3 reconciliation. It is explicitly pre-candidate evidence: no row moves
+to `I4`, RU-origin stays `NOT_RUN` and AWG 3.1 stays lab-only
+`BLOCKED_BY_ACCESS` without an isolated owned target.
 
-Next, provision the support-mode public key and a trusted Windows code-signing
-identity, then regenerate the affected artifact set and handoff. Only those new
-bytes can enter the exact device/VM, provider, OIDC, legal, current/brain and
-rollback matrices. RU-origin stays separate and is required only for an RU
-claim. Publication, deployment and stable promotion still require later
-explicit authority.
+Next, freeze the branch heads after this evidence lands, rebuild the complete
+Android/Windows direct-beta set and regenerate strict handoff, SBOM,
+provenance, checksums and signed release index from those same bytes. Only that
+set can enter the remaining
+exact device/VM, provider, OIDC, legal, current/brain-origin and rollback
+matrix. Candidate creation and public promotion remain `NOT_CREATED`/
+`NOT_RUN` until those gates are retained.
