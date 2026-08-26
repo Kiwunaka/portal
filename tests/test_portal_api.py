@@ -303,6 +303,111 @@ class PortalApiTests(unittest.TestCase):
         self.assertEqual(outbounds["POKROV мост Белые списки тип 2 §hide§"]["server"], "158.255.3.39")
         self.assertEqual(outbounds["POKROV мост Белые списки тип 3 §hide§"]["server"], "193.233.216.73")
 
+    def test_singbox_bridge_omits_endpoint_that_targets_selected_delivery_node(self) -> None:
+        import importlib
+
+        api = importlib.import_module("api")
+        importlib.reload(api)
+
+        nodes = [
+            SimpleNamespace(
+                code="ru",
+                host="ru.test",
+                vless_port=443,
+                reality_sni="sni",
+                reality_pbk="pbk",
+                reality_sid="sid",
+                fingerprint="firefox",
+                flow="xtls-rprx-vision",
+                inbound_id=1,
+            ),
+            SimpleNamespace(
+                code="ru_spb",
+                host="spb.test",
+                vless_port=443,
+                reality_sni="sni",
+                reality_pbk="pbk",
+                reality_sid="sid",
+                fingerprint="firefox",
+                flow="xtls-rprx-vision",
+                inbound_id=1,
+            ),
+        ]
+        rollout_config = api.normalized_network_rollout_config(
+            {
+                "ru_bridge_relay": {
+                    "enabled": True,
+                    "endpoints": [
+                        {
+                            "id": "mini",
+                            "label": "Белые списки",
+                            "endpoint_host": "mini.test",
+                            "reality_public_key": "mini-pbk",
+                            "reality_short_id": "mini-sid",
+                        },
+                        {
+                            "id": "ru",
+                            "label": "Белые списки тип 2",
+                            "endpoint_host": "ru.test",
+                            "reality_public_key": "ru-pbk",
+                            "reality_short_id": "ru-sid",
+                        },
+                        {
+                            "id": "ru_spb",
+                            "label": "Белые списки тип 3",
+                            "endpoint_host": "spb-alias.test",
+                            "reality_public_key": "spb-pbk",
+                            "reality_short_id": "spb-sid",
+                        },
+                    ],
+                }
+            }
+        )
+
+        ru_endpoints = api._ru_bridge_endpoints_for_node(
+            node=nodes[0],
+            rollout_config=rollout_config,
+            transport_profile=api.LEGACY_REALITY_FALLBACK,
+        )
+        spb_endpoints = api._ru_bridge_endpoints_for_node(
+            node=nodes[1],
+            rollout_config=rollout_config,
+            transport_profile=api.LEGACY_REALITY_FALLBACK,
+        )
+
+        self.assertEqual([item["id"] for item in ru_endpoints], ["mini", "ru_spb"])
+        self.assertEqual([item["id"] for item in spb_endpoints], ["mini", "ru"])
+        self.assertTrue(
+            api._ru_bridge_endpoint_targets_node(
+                endpoint={"id": "renamed", "endpoint_host": "RU.TEST."},
+                node=nodes[0],
+                transport_profile=api.LEGACY_REALITY_FALLBACK,
+            )
+        )
+        self.assertEqual(
+            [
+                item["id"]
+                for item in api._client_location_variants(
+                    node=nodes[1],
+                    rollout_config=rollout_config,
+                    transport_profile=api.LEGACY_REALITY_FALLBACK,
+                )
+            ],
+            ["direct", "mini", "ru"],
+        )
+
+        cfg = api._singbox_multi_node_config(
+            user_uuid="11111111-1111-1111-1111-111111111111",
+            nodes=nodes,
+            title="Portal",
+            rollout_config=rollout_config,
+        )
+        selector = next(item for item in cfg["outbounds"] if item.get("tag") == "🌍 Страны")
+        self.assertNotIn("🇷🇺 Россия · Белые списки тип 2", selector["outbounds"])
+        self.assertNotIn("🇷🇺 Россия Spb · Белые списки тип 3", selector["outbounds"])
+        self.assertIn("🇷🇺 Россия · Белые списки тип 3", selector["outbounds"])
+        self.assertIn("🇷🇺 Россия Spb · Белые списки тип 2", selector["outbounds"])
+
     def test_node_label_ru_supports_russia_variants(self) -> None:
         import importlib
 
