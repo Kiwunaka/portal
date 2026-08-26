@@ -55,6 +55,7 @@ ENVIRONMENT_FIELDS = frozenset(
         "captured_at_utc",
         "collector_id",
         "collector_version",
+        "connection_policy",
         "device_model",
         "idle_window_seconds",
         "interaction_scenario",
@@ -89,6 +90,7 @@ FINGERPRINT_FIELDS = (
     "build_mode",
     "collector_id",
     "collector_version",
+    "connection_policy",
     "device_model",
     "interaction_scenario",
     "network_profile",
@@ -434,6 +436,14 @@ def _validate_environment(value: Any) -> dict[str, Any]:
     if (source_address is None) != (proxy_policy is None):
         raise ContractError(
             "evidence.environment: source_address and proxy_policy must appear together"
+        )
+    connection_policy = value.get("connection_policy")
+    if (
+        connection_policy is not None
+        and connection_policy != "persistent_http1_keep_alive"
+    ):
+        raise ContractError(
+            "evidence.environment.connection_policy: unsupported policy"
         )
     return value
 

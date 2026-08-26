@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib.util
-import json
 import sys
 import tempfile
 from pathlib import Path
@@ -126,6 +125,7 @@ def test_source_bound_environment_is_validated_and_fingerprinted() -> None:
     direct = _evidence()
     direct["environment"]["source_address"] = "192.0.2.10"
     direct["environment"]["proxy_policy"] = "disabled_for_source_bound_probe"
+    direct["environment"]["connection_policy"] = "persistent_http1_keep_alive"
     ambient = _evidence()
 
     direct_outcome = MODULE.evaluate_evidence(
@@ -162,6 +162,15 @@ def test_source_bound_environment_is_validated_and_fingerprinted() -> None:
         MODULE.evaluate_evidence(
             _contract(),
             missing_policy,
+            contract_path=CONTRACT_PATH,
+        )
+
+    invalid_connection_policy = _evidence()
+    invalid_connection_policy["environment"]["connection_policy"] = "cold_tls"
+    with pytest.raises(MODULE.ContractError, match="unsupported policy"):
+        MODULE.evaluate_evidence(
+            _contract(),
+            invalid_connection_policy,
             contract_path=CONTRACT_PATH,
         )
 
