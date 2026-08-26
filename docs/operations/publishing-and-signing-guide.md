@@ -244,7 +244,9 @@ Current canonical release artifacts:
 - `pokrov-android-arm64-v8a.apk` = default Android APK
 - `pokrov-android-armeabi-v7a.apk` = legacy ARMv7 APK
 - `pokrov-android-x86_64.apk` = emulator-only APK for LDPlayer and other x86_64 Android environments
-- `pokrov-android-universal.apk` = larger fallback APK when ABI selection is unknown
+- `pokrov-android-universal.apk` = larger fresh-install fallback when ABI
+  selection is unknown; never use it as the updater target over an installed
+  ABI split because its native `versionCode` line is lower than split codes
 - `pokrov-android-market.aab` = market handoff only; no store availability claim
 - `pokrov-windows-setup-x64.exe`
 - `pokrov-windows-setup-x64.msix`

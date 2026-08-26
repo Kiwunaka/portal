@@ -1,6 +1,6 @@
 # Client Downloads Flow
 
-Last updated: 2026-06-07
+Last updated: 2026-08-26
 
 ## Runtime Source
 
@@ -17,17 +17,21 @@ auto-update.
 Current request shape:
 
 ```http
-GET /api/client/apps?platform=android&current_version=1.0.5&channel=stable
+GET /api/client/apps?platform=android&current_version=1.2.0&channel=stable&android_abi=x86_64
 X-Telegram-Init-Data: <redacted>
 ```
 
 The response keeps the legacy URL fields and adds metadata under
 `android.update` / `windows.update` plus a top-level `update_check` summary.
-For Android split APK delivery, `android.apk_url` remains the default
-`arm64-v8a` APK for backward compatibility, while `android.apk_variants[]`
-lists the default `arm64-v8a` file and the legacy `armeabi-v7a` file with URL,
-SHA-256, and size metadata. The backend returns `update_policy: none` unless
-the client sends a matching `platform` and `current_version`.
+For Android split APK delivery, current clients send the first supported native
+ABI as `android_abi`. The response then binds `android.apk_url`, digest, size and
+`android.update` to that exact `arm64-v8a`, `armeabi-v7a`, or `x86_64` artifact.
+Requests from older clients without `android_abi` retain the default
+`arm64-v8a` response for compatibility. Unknown or `universal` ABI values never
+receive an automatic update target. `android.apk_variants[]` remains the manual
+artifact catalog. The universal APK is a fresh-install fallback only: Flutter's
+split APK version codes are ABI-prefixed, so universal bytes must not be offered
+as an in-place update over an installed split build.
 
 The main bot follows the same consumer hierarchy: its primary Android button
 uses `APP_ANDROID_APK_ARM64_URL` when present, then the compatibility
