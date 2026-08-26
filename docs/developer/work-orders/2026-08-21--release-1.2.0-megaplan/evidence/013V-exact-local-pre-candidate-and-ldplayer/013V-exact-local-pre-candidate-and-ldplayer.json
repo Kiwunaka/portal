@@ -1,0 +1,116 @@
+{
+  "schema": "pokrov.release-1.2.0.exact-local-pre-candidate-and-ldplayer/v1",
+  "recorded_at": "2026-08-26T12:30:58Z",
+  "status": "EXACT_LOCAL_PRE_CANDIDATE_ASSEMBLED_LDPLAYER_RECORDED",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "public_release_created": false,
+  "publication_authorized": false,
+  "stable_pointer_mutated": false,
+  "store_upload_performed": false,
+  "source_tuple": {
+    "platform_assembly_source": "8bed966e64e23527da982f3fcfb1b9e48ce6f408",
+    "platform_deployed_runtime_code": "243dcbe4727041d62cc0a36e7d2fd5a8530c7c25",
+    "platform_delta_after_deployed_runtime": "RELEASE_DOCUMENTATION_ONLY",
+    "client": "a74d2aea5aed62f5c31d3a0bbc258e408cebe3bd",
+    "core_embedded_runtime_source": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "core_control_head": "9b94e0bda7e454536e8fa9b4519f2281211798e0",
+    "core_control_delta": "HOSTED_CI_WORKFLOW_ONLY",
+    "release_index": "7d5e402c47186fbe2ea1eb30ee1dc8cafdf066b2",
+    "candidate_frozen": false
+  },
+  "artifacts": [
+    {"name": "pokrov-android-arm64-v8a.apk", "size_bytes": 101213906, "sha256": "4c3d6907741bfce04d1d4196fbf5d2821f93394c45f44bdc6116fcb4ddfbe933", "signing": "PASS_PRODUCTION"},
+    {"name": "pokrov-android-armeabi-v7a.apk", "size_bytes": 90677536, "sha256": "52fa507c3b985a90787ef3f302796edf4192e80b1aa981ce076a3e808f0fabbf", "signing": "PASS_PRODUCTION"},
+    {"name": "pokrov-android-market.aab", "size_bytes": 126149946, "sha256": "4a3b8c8e7b927a685f9e7c27ef8575ca5b2928e6eea294c9291106cd7a8bec4f", "signing": "PASS_PRODUCTION_STORE_NOT_RUN"},
+    {"name": "pokrov-android-universal.apk", "size_bytes": 295018413, "sha256": "c03a5dea38cc031086e15cfabee95b403f1f5fa662583edd7d804be8401f26f2", "signing": "PASS_PRODUCTION"},
+    {"name": "pokrov-android-x86_64.apk", "size_bytes": 109862385, "sha256": "7d7a22b23a33811326c452fdd23d19bbb02aae0b3f6bd74a6753e38f222675ed", "signing": "PASS_PRODUCTION"},
+    {"name": "pokrov-windows-setup-x64.exe", "size_bytes": 28890834, "sha256": "730428bf6ff157502069d79fed3d89e17814bfff4cd023b9cfd404c838a038de", "signing": "SKIPPED_BY_OWNER", "authenticode": "NotSigned"}
+  ],
+  "artifact_set_sha256": "d9cc602fea31a3ad5ebac1e92dabf84bde7f5e46d7c8c7abea384f1e69cbe89d",
+  "supply_chain": {
+    "sbom_sha256": "07ba9b1c8fbc9323b5411d7911dab7cca5458d6fda07b6b76a2e1d708694e7eb",
+    "provenance_sha256": "5534209a93f839f057e0701e8bd3d358db6dfff6a5d1924d3dec608c42e21685",
+    "strict_handoff_sha256": "af83aa0afb26489dc5572aab6f515d5543f3ba50c14b56ed202e2cbd084e9e8d",
+    "strict_handoff_classification": "valid_v2",
+    "pre_candidate_bundle_sha256": "a6f957a9243c4f9be74e7d05744db3927646bebf647897d9ed2098a59e174bc7",
+    "release_checksums_sha256": "46ed2086f696c08dc7b92387bae00e3a9e48d7b2e7817511822341db4a962dd0",
+    "complete_checksums_sha256": "902be7cfc0c2a3d646f606b32951fca72d1a2b8183e1ea74991bace0a8b46480",
+    "complete_checksum_entries": 36,
+    "complete_checksum_validation": "PASS_36_OF_36",
+    "release_notes_sha256": "3f8c5528ef3739aea1e7339acec49ed971f5cb29718e9e3682e2ca6a40c88e3f",
+    "publication_plan_sha256": "f106176895ed7499bfbef2bdb7bceb90546d6dd07f4ba9256c20ad66e173ce2c",
+    "public_signed_release_index": "NOT_CREATED"
+  },
+  "preflight": {
+    "status": "READY_LOCAL_FREEZE",
+    "sha256": "81c62fd7fc11c7f0a2fabe5f9e24f5846988d21912fd893a9fa2068b089d5398",
+    "blockers": 0,
+    "pre_freeze_rows_below_i3": 0,
+    "candidate_rows_below_i3": 33,
+    "external_rows_below_i3": 14,
+    "deferred_rows_below_i3": 21,
+    "superseded_probe": "WINDOWS_CRLF_WORKING_COPY_RELEASE_INDEX_HASH_PROBE"
+  },
+  "ldplayer": {
+    "evidence_sha256": "a5c29813d3909c583d19b4cdff2a55f19fc12c9df726d93d987d9e2f820216a7",
+    "device_kind": "LDPLAYER_EMULATOR_ANDROID_14_X86_64",
+    "package": "space.pokrov.pokrov_android_shell",
+    "version": "1.2.0",
+    "version_code": 4030,
+    "installed_base_apk_byte_identical": true,
+    "clean_install_launch": "PASS",
+    "catalog": "PASS_7_OF_7_LOCATIONS_AND_4_SPB_VARIANTS",
+    "spb_direct": "PASS_TUN0_MTU_1280_HTTPS_204",
+    "spb_type2": "FAIL_CLOSED_DIAGNOSTIC_ONLY",
+    "spb_type3": "FAIL_CLOSED_DIAGNOSTIC_ONLY",
+    "false_connected_ui_observed": false,
+    "crash_buffer_lines": 0,
+    "dns_and_routes_persisted": "PASS_ADGUARD_AI_GAMES",
+    "content_transactions": "NOT_RUN",
+    "dns_only_unblocking_claim_supported": false,
+    "final_state": "APP_INSTALLED_DISCONNECTED_AUTOMATIC_LOCATION"
+  },
+  "labs": {
+    "awg2_exact_embedded_contract": "PASS_DEFAULT_OFF",
+    "awg31_exact_embedded_contract": "PASS_DEFAULT_OFF",
+    "awg31_live_endpoint": "BLOCKED_BY_ACCESS_NO_OWNED_ISOLATED_ENDPOINT",
+    "hysteria2": "DEFERRED_POST_1_2_0"
+  },
+  "runtime": {
+    "backend_redeploy_required": false,
+    "reason": "PLATFORM_HEAD_DELTA_AFTER_DEPLOYED_CODE_IS_RELEASE_DOCUMENTATION_ONLY",
+    "release_runtime_units": "PASS_ACTIVE_ZERO_OBSERVED_RESTARTS",
+    "caddy": "PASS_ACTIVE",
+    "api_health": "PASS_STATUS_OK",
+    "pre_existing_unrelated_failed_units": ["certbot.service", "guarded announcement units"],
+    "trial_entitlement_mutation": "PASS_CREATED_CURRENT_ORIGIN_NO_PAYMENT",
+    "candidate_runtime_sync": "NOT_AUTHORIZED_NOT_RUN"
+  },
+  "required_promotion_gates_not_pass": [
+    "BRAIN_ORIGIN",
+    "CURRENT_ORIGIN",
+    "ANDROID_OEM_MATRIX",
+    "ANDROID_PHYSICAL_DEVICE",
+    "ANDROID_SIGNER_RECOVERY",
+    "LEGAL_COMMERCIAL",
+    "OPERATOR_OIDC_RBAC",
+    "ROLLBACK_DRILL",
+    "WIN_003",
+    "PAYMENT_PROVIDER_E2E"
+  ],
+  "manual_boundaries": {
+    "exact_physical_beeline_bytes": "MANUAL_OWNER_TEST_NOT_RUN",
+    "earlier_physical_beeline_artifact_reused": false,
+    "ru_origin": "NOT_RUN_NO_RU_CLAIM",
+    "windows_trusted_signing": "SKIPPED_BY_OWNER_DIRECT_BETA_ONLY_SMARTSCREEN_REQUIRED"
+  },
+  "ledger": {
+    "advanced_rows": {},
+    "strengthened_rows": ["REL_DOD/DOD-15"],
+    "distribution": {"I3": 309, "I2": 17, "I1": 37, "I0": 14},
+    "below_i3": 68,
+    "pending_stage_counts": {"pre_freeze": 0, "candidate": 33, "external": 14, "deferred": 21}
+  },
+  "evidence_ceiling": "EXACT_LOCAL_DIRECT_BETA_PRE_CANDIDATE_AND_LDPLAYER_PROOF_ONLY_NO_PHYSICAL_EXACT_BYTES_NO_SIGNED_PUBLIC_INDEX_NO_PUBLIC_RELEASE_NO_STABLE_OR_STORE"
+}
