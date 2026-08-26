@@ -493,6 +493,8 @@ Operator-facing rendering rule:
 Operational rule:
 
 - `portal-node-metrics.timer` must stay healthy on every relevant host
+- Brain-origin release evidence must derive the active delivery set from the live enabled `nodes` rows, not from the retained operator inventory. Run `python scripts/remote_brain_network_probe.py --brain-ip <brain> --live-enabled-nodes --json-out <artifact>`; its v2 report retains only node code, configured port and bounded TCP status/error category. Host, IP, SNI and raw exceptions are never returned. The legacy inventory mode remains diagnostic-only; use `--node-code`, `--redact` and `--json-out` for a bounded named-target check.
+- `python scripts/verify_brain_ready.py --brain-ip <brain> --json-out <artifact>` writes a separate secret-free readiness envelope for required services, listener presence, public/static endpoint checks and redacted subscription-sample counts. It is still a Brain-origin/control-plane check, not authenticated client egress, current-origin, RU-origin or exact-candidate proof.
 - collector work is bounded to four concurrent nodes and a 45-second overall deadline per node by default; its systemd unit allows 180 seconds for a multi-node cycle. Blocking dataplane probes run outside the asyncio event loop; a timed-out or collector-exception node atomically records a bounded `collector_timeout` or `collector_exception` failure, preserves its last numeric telemetry as historical data, and is immediately hard-rejected without blocking other node samples
 - `node_dataplane_probe.py` is an unauthenticated edge-reachability diagnostic only: it reports bounded stage/classification/health categories after DNS, TCP, ordinary TLS, and REALITY target-certificate checks. Its stdout, `--out` artifact, and persisted collector records contain no target, SNI, address, certificate-name, or raw-exception material. Its legacy `dataplane_ok` projection must not be treated as proof that a VLESS/REALITY client authenticated or transferred data through the node.
 - when `AUTHENTICATED_EGRESS_ENFORCEMENT_ENABLED=true`, smart-connect eligibility is authorized only by a fresh `authenticated_egress_ok=true`; `false`, missing, expired, or unavailable material is then a hard rejection even when `edge_reachability_ok=true`. With the default rollout value `false`, the collector still records the authenticated result in its dedicated fields but it must not degrade primary node health, score, probe error, or routing eligibility.
@@ -784,6 +786,11 @@ Existing repository helpers:
 
 - [scripts/remote_brain_network_probe.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_brain_network_probe.py)
 - [scripts/release_gate_check.py](C:/Users/kiwun/Documents/ai/VPN/scripts/release_gate_check.py)
+
+For Brain-origin delivery evidence, use `remote_brain_network_probe.py
+--live-enabled-nodes`; retained-inventory output is not the current delivery
+authority. A former-free MTProto `9443/tcp` check remains a separate named
+diagnostic and does not change the VPN delivery verdict.
 
 Repository helper added for reporting:
 

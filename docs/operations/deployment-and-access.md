@@ -1208,7 +1208,8 @@ The documented full release wrapper can currently chain:
 Current contour rule:
 
 - `scripts/release_orchestrator.py` does not publish Android or Windows binaries, does not create final signed artifacts, and does not by itself close the public release handoff
-- `scripts/verify_brain_ready.py` is brain-local verification, not a replacement for separate `current-origin` or `RU-origin` evidence
+- `scripts/verify_brain_ready.py` is brain-local verification, not a replacement for separate `current-origin` or `RU-origin` evidence; use its optional `--json-out` path when a bounded secret-free release artifact is required
+- `scripts/remote_brain_network_probe.py --live-enabled-nodes --json-out <artifact>` probes the configured port of each live enabled delivery row from Brain and returns only redacted node-code/status evidence. Its retained-inventory mode is diagnostic-only and cannot prove the current delivery pool.
 - transport or node rollout helpers can support enablement, but they do not by themselves prove live node enablement unless the runtime pool and smoke evidence are also updated
 
 Current product release scope:
