@@ -1,6 +1,6 @@
 # POKROV 1.2.0 Execution Index
 
-Last updated: 2026-08-23
+Last updated: 2026-08-26
 
 ## Item scale
 
@@ -2803,3 +2803,50 @@ open without the full default/quick candidate-bound and post-promotion proof.
 `REL/PERF-001` and `REL_GATE/GATE-E` remain `I3`; `REL_DOD/DOD-13` remains
 `I1`. Distribution remains `I3=309`, `I2=17`, `I1=37`, `I0=14`; 68 rows
 remain below `I3`, and stage split remains `0/33/14/21`.
+
+## 2026-08-26 — WO-013X exact LDPlayer content reachability
+
+The byte-identical production-signed 1.2.0 (4030) x86_64 APK retained by 013V
+was exercised on LDPlayer Android 14 through Saint Petersburg direct. Android
+reported a validated VPN network, IPv4 default through `tun0` at MTU 1280 and
+no proved IPv6 default. AdGuard, AI and Games/Xbox controls persisted.
+
+Owned health and Google connectivity returned 200/204. Gemini returned 200 and
+Xbox returned 200 after one redirect; both are reachability-only results.
+ChatGPT returned 403, which proves the DNS/TCP/TLS/HTTP path but is explicitly
+`NOT_PASS` for service functionality. The emulator was left disconnected with
+`tun0` absent and an empty crash buffer. No physical phone, account flow,
+origin claim, candidate runtime or deploy is credited.
+
+No row advances. Distribution remains `I3=309`, `I2=17`, `I1=37`, `I0=14`;
+68 rows remain below `I3`, and stage split remains `0/33/14/21`.
+
+## 2026-08-26 — WO-013Y signed candidate manifest artifact
+
+Public release-index PR 4 head `84d320b12dc503e944b6c31d4febde4026c1b8d1`
+passed exact source-contract run `32990609397` and merged as public `main`
+`c1d617093692b05d2a12ae8ad8394e5570b0df8a`. Main replay `32991517919`
+passed. The main-only secret-backed signer then used the exact tracked template
+SHA-256 `ced24a1c48b354af87974a8fa2a73446016260a71753cdc053e4aa8319dc972e`
+and passed run `32991625280`, including output validation without private key
+material and Actions-artifact upload.
+
+Downloaded readback independently validates candidate
+`pokrov-1.2.0-candidate.1`, release-index `c1d6170`, six exact artifacts, key
+`pokrov-release-2026-01` and exactly one bounded owner-approved unsigned
+Windows direct-beta exception. Manifest SHA-256 is
+`84695f6e318814bc2d1e9de1c9adc3aa4277015d551c5462b197664e574c28d6`;
+detached signature SHA-256 is
+`718cc5b8033d1f48d3dcb236561db0c5218b05d9581f472f232dc4f44e3adb56`.
+The retained receipt agrees and `promotion_authorized=false`.
+
+Exact Git-object hashing at bound platform source `8bed966...` reproduces the
+manifest's error-catalog and observability-event schema hashes. Therefore
+`OBS_DOD/DOD-29` advances `I3 -> I4`. No other row advances:
+`REL_DOD/DOD-15` remains `I2`, while `REL/REPO-001`, `FE/P12-022` and
+`FE/P12-023` remain `I3` because no GitHub Release, six public assets, public
+asset-digest readback, candidate runtime or same-byte stable promotion exists.
+
+Current distribution is `I4=1`, `I3=308`, `I2=17`, `I1=37`, `I0=14`; 309
+rows remain at or above `I3`, 68 remain below `I3`, and stage split remains
+`0/33/14/21`.

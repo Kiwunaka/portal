@@ -1,0 +1,104 @@
+{
+  "schema": "pokrov.release-1.2.0.signed-candidate-manifest-evidence/v1",
+  "recorded_at": "2026-08-26T17:03:16Z",
+  "status": "SIGNED_CANDIDATE_MANIFEST_ARTIFACT_PROVED",
+  "candidate_manifest_created": true,
+  "candidate_manifest_proven": true,
+  "public_candidate_release_created": false,
+  "public_assets_uploaded": false,
+  "stable_pointer_mutated": false,
+  "promotion_authorized": false,
+  "deployment_performed": false,
+  "source_contract": {
+    "repository": "Kiwunaka/pokrov",
+    "pull_request": 4,
+    "pull_request_head": "84d320b12dc503e944b6c31d4febde4026c1b8d1",
+    "pull_request_run": 32990609397,
+    "pull_request_job": 98247041758,
+    "pull_request_result": "SUCCESS",
+    "main_merge_commit": "c1d617093692b05d2a12ae8ad8394e5570b0df8a",
+    "post_merge_run": 32991517919,
+    "post_merge_job": 98249932066,
+    "post_merge_result": "SUCCESS"
+  },
+  "dispatch": {
+    "workflow": "Prepare signed candidate manifest",
+    "run": 32991625280,
+    "job": 98250288850,
+    "result": "SUCCESS",
+    "head_sha": "c1d617093692b05d2a12ae8ad8394e5570b0df8a",
+    "template_path": "candidate-inputs/1.2.0/pokrov-1.2.0-candidate.1.json",
+    "template_size_bytes": 8240,
+    "template_sha256": "ced24a1c48b354af87974a8fa2a73446016260a71753cdc053e4aa8319dc972e",
+    "candidate_id": "pokrov-1.2.0-candidate.1",
+    "private_key_read_or_exported": false
+  },
+  "actions_artifact": {
+    "id": 9614812168,
+    "name": "pokrov-pokrov-1.2.0-candidate.1-signed-manifest-c1d617093692b05d2a12ae8ad8394e5570b0df8a",
+    "archive_size_bytes": 7949,
+    "created_at": "2026-08-26T17:00:03Z",
+    "expires_at": "2026-09-09T17:00:02Z",
+    "download_readback": "PASS"
+  },
+  "outputs": [
+    {
+      "path": "evidence/013Y-signed-candidate-manifest/release-index.json",
+      "size_bytes": 6879,
+      "sha256": "84695f6e318814bc2d1e9de1c9adc3aa4277015d551c5462b197664e574c28d6"
+    },
+    {
+      "path": "evidence/013Y-signed-candidate-manifest/release-index.json.sig",
+      "size_bytes": 64,
+      "sha256": "718cc5b8033d1f48d3dcb236561db0c5218b05d9581f472f232dc4f44e3adb56"
+    },
+    {
+      "path": "evidence/013Y-signed-candidate-manifest/signing-receipt.json",
+      "size_bytes": 588,
+      "sha256": "ca6abc0d0f91e1c93ee64ac47cd75e89f8dd7ae04fd438f5ce1642be98eaef28"
+    }
+  ],
+  "independent_validation": {
+    "status": "READY_SIGNED_MANIFEST",
+    "signing_key_id": "pokrov-release-2026-01",
+    "artifact_count": 6,
+    "owner_unsigned_windows_exception_count": 1,
+    "owner_unsigned_windows_artifact": "pokrov-windows-setup-x64.exe",
+    "owner_exception_code": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0",
+    "release_index_commit": "c1d617093692b05d2a12ae8ad8394e5570b0df8a",
+    "receipt_matches_outputs": true,
+    "detached_signature_verified_with_public_keyring": true
+  },
+  "source_tuple": {
+    "platform": "8bed966e64e23527da982f3fcfb1b9e48ce6f408",
+    "client": "a74d2aea5aed62f5c31d3a0bbc258e408cebe3bd",
+    "core": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "release_index": "c1d617093692b05d2a12ae8ad8394e5570b0df8a"
+  },
+  "contract_binding": {
+    "release_handoff_sha256": "af83aa0afb26489dc5572aab6f515d5543f3ba50c14b56ed202e2cbd084e9e8d",
+    "product_facts_sha256": "3df7e7a03bf6a7e62e49e2791641428fb415cdca692a67b4a48fee79a853289e",
+    "error_catalog_sha256": "7d3bf242777d5bf76bbebcf162e5969d3f83d7f68b2787051e1c4fddeadc3dc7",
+    "observability_schema_sha256": "24ae72442f778d7f1334ae0a4bf4d774738e4de275707b29420ec733af65cc17",
+    "exact_platform_git_object_hash_readback": "PASS"
+  },
+  "ledger": {
+    "advanced_rows": {"OBS_DOD/DOD-29": {"from": "I3", "to": "I4"}},
+    "strengthened_rows": ["REL/REL-001", "REL_DOD/DOD-15", "REL/REPO-001", "FE/P12-022", "FE/P12-023"],
+    "distribution": {"I4": 1, "I3": 308, "I2": 17, "I1": 37, "I0": 14},
+    "at_or_above_i3": 309,
+    "below_i3": 68,
+    "pending_stage_counts": {"pre_freeze": 0, "candidate": 33, "external": 14, "deferred": 21}
+  },
+  "required_publication_and_promotion_evidence_absent": [
+    "PUBLIC_GITHUB_RELEASE",
+    "SIX_PUBLIC_ASSET_UPLOADS",
+    "GITHUB_ASSET_DIGEST_READBACK",
+    "SAME_BYTE_PUBLIC_PROMOTION",
+    "STABLE_POINTER_SWITCH_AND_ROLLBACK",
+    "PHYSICAL_DEVICE_AND_CLEAN_WINDOWS",
+    "AGGREGATE_ORIGIN_PROVIDER_OPERATOR_LEGAL_GATES",
+    "POST_PROMOTION_HEALTH"
+  ],
+  "evidence_ceiling": "SIGNED_CANDIDATE_MANIFEST_ACTIONS_ARTIFACT_ONLY_NO_PUBLIC_ASSETS_NO_RUNTIME_OR_STABLE_PROMOTION"
+}
