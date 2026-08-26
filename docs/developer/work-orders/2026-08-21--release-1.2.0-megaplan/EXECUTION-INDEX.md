@@ -2910,3 +2910,30 @@ readback and promotion remain required before `I4`.
 Current distribution becomes `I4=1`, `I3=309`, `I2=16`, `I1=37`, `I0=14`;
 310 rows are at or above `I3`, 67 remain below `I3`, and stage split becomes
 `0/32/14/21`.
+
+## 2026-08-26 — WO-013AB PB-14 exact-candidate health stop
+
+The retained 013Y bytes are revalidated rather than trusted by filename. The
+gate matches manifest/signature/receipt sizes and SHA-256 values, loads the
+public keyring from exact release-index Git object `c1d6170...` and verifies
+the detached Ed25519 signature using active key `pokrov-release-2026-01`.
+This binds operational candidate ID `d65315ac...` to signed manifest SHA-256
+`84695f6e...`, client `a74d2aea...` and exact Android x86_64 candidate SHA-256
+`7d7a22b2...`.
+
+In an isolated temporary SQLite database, the real release-health and guarded
+Action Intent services receive one identity-free Android 4030 `UPD-004`
+failure. Closing the elapsed observation window fails with
+`release_health_gate_failed` and leaves the 10 percent staged state unchanged.
+The subsequent guarded rollback request sets the exact candidate to
+`rollback_requested`/zero distribution, restores the retained control state to
+`current`/100 and makes the public exact-candidate policy return zero.
+
+`external_artifact_switch=NOT_PERFORMED`; no deployed cohort, public asset,
+stable pointer, production runtime or external rollback was touched. Focused
+tests pass `3/3` and the exact gate returns
+`PASS_LOCAL_EXACT_CANDIDATE_HEALTH_STOP_AND_ROLLBACK_REQUEST`.
+
+`OBS_PB/PB-14` advances `I2 -> I3`. Current distribution becomes `I4=1`,
+`I3=310`, `I2=15`, `I1=37`, `I0=14`; 311 rows are at or above `I3`, 66 remain
+below `I3`, and stage split becomes `0/31/14/21`.

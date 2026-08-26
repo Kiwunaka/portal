@@ -683,6 +683,15 @@ Admin ops app wave `2026-07-06`, command-center redesign updated locally on
   configuration must make the public client-app response advertise zero rollout.
   `external_artifact_switch=NOT_PERFORMED` is an operator action result, never
   rollback completion evidence.
+- `python -B scripts/release_1_2_pb14_candidate_gate.py --release-index-root
+  <exact-release-index-checkout> --output <evidence.json>` is the repeatable
+  local PB-14 control. It revalidates the retained manifest and detached
+  signature against the manifest-bound public keyring, injects one
+  identity-free exact-build health regression into an isolated temporary
+  database, and requires observation close to fail plus the guarded rollback
+  request to advertise zero candidate rollout. Its fixture cohort and
+  `external_artifact_switch=NOT_PERFORMED` result are local `I3` evidence only;
+  they are not deployed cohort, public promotion or rollback-completion proof.
 - consumer access has exactly three effective statuses: `TRIAL`, `PAID` and `PENDING`; every current gift, promo-day grant and operator grant is `PAID`, while raw `FREE` values are legacy storage only
 - `/api/admin/free-tier/summary` and `/api/admin/free-tier/users` are retained as `Архив FREE` retirement and historical-observability surfaces; with `FREE_TIER_ENABLED=false` they must show no active delivery keys, mappings, enabled pool membership, or queued/running free-provisioning jobs
 - a node reconciliation is complete only when every `TRIAL`/`PAID` account is enabled on each canonical paid-node group and every `PENDING` account is disabled everywhere; aggregate dry-run/apply/readback evidence must contain no raw Telegram ID, UUID, email or connection material
