@@ -35,7 +35,7 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete; exact-candidate performance/manual gates retained | `WO-010` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
 | 10 | FRKN-derived rules; isolated AWG2 PoC, later HY2 decision | Local package complete; exact artifact/device/RU gates open | `WO-012` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013V supersedes the prior local artifact set with six rebuilt exact Android/Windows files, supply-chain/checksum proof and byte-identical LDPlayer validation. 013W proves only the direct current-origin API performance slice; 013X adds exact LDPlayer DNS/AI/Games state and bounded content reachability, with ChatGPT functionality explicitly not passed. Android is production-signed; Windows retains the owner-approved unsigned direct-beta exception. Exact physical Beeline/OEM, aggregate origins, provider, Operator, legal and rollback gates remain open, so candidate and public release remain uncreated | `WO-013`, `WO-013C`, `WO-013D`, `WO-013E`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S`, `WO-013T`, `WO-013U`, `WO-013V`, `WO-013W`, `WO-013X` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013V binds the rebuilt six-file Android/Windows set and byte-identical LDPlayer validation; 013W proves only the direct current-origin API performance slice; 013X adds bounded LDPlayer content reachability with ChatGPT functionality explicitly not passed. 013Y creates and independently proves the detached Ed25519 signed candidate manifest as an Actions artifact only. Android is production-signed; Windows retains the owner-approved unsigned direct-beta exception. No GitHub Release/public assets/stable pointer exist, and exact physical Beeline/OEM, aggregate origins, provider, Operator, legal and rollback gates remain open | `WO-013`, `WO-013C`, `WO-013D`, `WO-013E`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S`, `WO-013T`, `WO-013U`, `WO-013V`, `WO-013W`, `WO-013X`, `WO-013Y` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -110,6 +110,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013V` | Rebuild the exact local pre-candidate set and retain byte-identical LDPlayer/runtime evidence | Client/platform release evidence | Six current artifacts, production Android signing, owner-approved unsigned Windows, strict supply/checksum bundle and exact LDPlayer proof recorded; no ledger advancement, physical/manual/origin gates and candidate remain open | `WO-013E`, `WO-013U`, current clean source tuple |
 | `WO-013W` | Correct and retain the direct current-origin API performance method without manufacturing a deploy or aggregate gate pass | Platform performance/release evidence | Clean source-bound health/catalog p95 pass with real persistent warmups; backend deploy is not required, aggregate current-origin/candidate/device gates remain open and no row advances | `WO-010I`, `WO-013V`, platform PRs 34/35, owned direct-origin evidence |
 | `WO-013X` | Retain exact LDPlayer 4030 DNS/AI/Games state and bounded content reachability without manufacturing service or physical-device proof | Client/platform release evidence | Saint Petersburg direct VPN path, persisted controls, owned/Google/Gemini/Xbox reachability and final disconnect recorded; ChatGPT returns 403 and remains `NOT_PASS`, no deploy or ledger advancement | `WO-013V`, `WO-013W`, exact installed x86_64 bytes |
+| `WO-013Y` | Sign and independently read back the exact tracked candidate manifest without publishing assets or promoting stable | Public release-index/platform release evidence | PR/post-merge gates and secret-backed signer pass on public main; manifest/signature/receipt are retained and verified, `OBS_DOD/DOD-29` reaches `I4`; public asset, runtime and promotion gates remain open | `WO-013V`, public release-index PR 4, owner solo authorization, exact tracked template |
 
 ## Current evidence
 
@@ -183,6 +184,11 @@ The row order is a dependency order, not permission for one giant merge. Each im
   results and final disconnected state. The paired screenshots are retained by
   size and SHA-256; ChatGPT functionality and all physical/origin gates remain
   explicitly unproved.
+- `evidence/013Y-signed-candidate-manifest/013Y-signed-candidate-manifest.json`
+  binds public release-index PR/main checks, the exact secret-backed signer run,
+  downloaded Actions artifact, independent public-key validation and retained
+  manifest/signature/receipt bytes. It advances only the signed observability
+  contract-hash oracle and preserves the no-public-assets/no-promotion ceiling.
 - `evidence/013E-android-mobile-runtime-matrix/013E-android-mobile-runtime-matrix.json`
   binds the newer Android artifact identity, single physical Beeline matrix,
   LDPlayer evidence ceiling, deployed server-chain reconciliation and explicit
@@ -215,6 +221,11 @@ It does not satisfy the aggregate `CURRENT_ORIGIN` promotion gate.
 Google connectivity, Gemini and Xbox are reachable at the bounded HTTP level;
 ChatGPT reaches HTTP but returns 403, so ChatGPT functionality is not passed.
 The app was left disconnected and this emulator result advances no ledger row.
+
+013Y proves the exact signed candidate manifest at public release-index
+`c1d6170` and retains its detached signature and receipt. No GitHub Release or
+public app asset exists yet, so same-byte public readback and all runtime/manual
+gates remain open; stable promotion is still prohibited.
 
 Run the exact 4030 APK on the physical Beeline device next, then classify the
 remaining Windows clean-host, signer-recovery, aggregate current-origin,
