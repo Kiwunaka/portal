@@ -1501,6 +1501,7 @@ def _build_client_apps_response(
     platform: str,
     current_version: str,
     channel: str,
+    android_abi: str = "",
 ) -> ClientAppsResponse:
     release_channel = str(
         channel or getattr(Settings, "APP_RELEASE_CHANNEL", "stable") or "stable"
@@ -1577,6 +1578,24 @@ def _build_client_apps_response(
         ),
     ]
     android_variants = [variant for variant in android_variants if variant.url]
+    requested_android_abi = str(android_abi or "").strip().lower()
+    selected_android_variant = next(
+        (
+            variant
+            for variant in android_variants
+            if variant.abi
+            == (requested_android_abi or "arm64-v8a")
+            and variant.abi != "universal"
+        ),
+        None,
+    )
+    selected_android_url = selected_android_variant.url if selected_android_variant else ""
+    selected_android_sha256 = selected_android_variant.sha256 if selected_android_variant else ""
+    selected_android_size = selected_android_variant.size if selected_android_variant else 0
+    if not requested_android_abi and not selected_android_url:
+        selected_android_url = android_url or _safe_public_url(Settings.APP_ANDROID_MIRROR_URL)
+        selected_android_sha256 = str(getattr(Settings, "APP_ANDROID_SHA256", "") or "").strip()
+        selected_android_size = max(0, int(getattr(Settings, "APP_ANDROID_SIZE_BYTES", 0) or 0))
     android_update = _client_app_update_info(
         platform="android",
         requested_platform=requested_platform,
@@ -1584,13 +1603,28 @@ def _build_client_apps_response(
         channel=release_channel,
         latest_version=getattr(Settings, "APP_ANDROID_VERSION", ""),
         min_supported_version=str(android_rollout["min_supported_version"]),
-        url=android_url or _safe_public_url(Settings.APP_ANDROID_MIRROR_URL),
-        sha256=getattr(Settings, "APP_ANDROID_SHA256", ""),
-        size=int(getattr(Settings, "APP_ANDROID_SIZE_BYTES", 0) or 0),
+        url=selected_android_url,
+        sha256=selected_android_sha256,
+        size=selected_android_size,
         release_notes=getattr(Settings, "APP_ANDROID_RELEASE_NOTES", ""),
         release_notes_url=getattr(Settings, "APP_ANDROID_RELEASE_NOTES_URL", ""),
         published_at=getattr(Settings, "APP_ANDROID_PUBLISHED_AT", ""),
         rollout_percent=int(android_rollout["rollout_percent"]),
+    )
+    compatibility_android_url = (
+        selected_android_url
+        if requested_android_abi
+        else selected_android_url or android_url
+    )
+    compatibility_android_sha256 = (
+        selected_android_sha256
+        if requested_android_abi or selected_android_url
+        else str(getattr(Settings, "APP_ANDROID_SHA256", "") or "").strip()
+    )
+    compatibility_android_size = (
+        selected_android_size
+        if requested_android_abi or selected_android_url
+        else max(0, int(getattr(Settings, "APP_ANDROID_SIZE_BYTES", 0) or 0))
     )
     windows_update = _client_app_update_info(
         platform="windows",
@@ -1611,12 +1645,12 @@ def _build_client_apps_response(
         android=ClientAndroidApps(
             # Direct distribution is outside app stores; keep the compatibility field empty.
             play_url="",
-            apk_url=android_url,
+            apk_url=compatibility_android_url,
             mirror_url=_safe_public_url(Settings.APP_ANDROID_MIRROR_URL),
             apk_variants=android_variants,
             version=str(getattr(Settings, "APP_ANDROID_VERSION", "") or "").strip(),
-            sha256=str(getattr(Settings, "APP_ANDROID_SHA256", "") or "").strip(),
-            size=max(0, int(getattr(Settings, "APP_ANDROID_SIZE_BYTES", 0) or 0)),
+            sha256=compatibility_android_sha256,
+            size=compatibility_android_size,
             release_notes=str(getattr(Settings, "APP_ANDROID_RELEASE_NOTES", "") or "").strip()[:1000],
             release_notes_url=_safe_public_url(getattr(Settings, "APP_ANDROID_RELEASE_NOTES_URL", "")),
             published_at=str(getattr(Settings, "APP_ANDROID_PUBLISHED_AT", "") or "").strip(),
@@ -1638,6 +1672,7 @@ def _build_client_apps_response(
         updated_at=f"{_utcnow().replace(microsecond=0).isoformat()}Z",
         update_check={
             "requested_platform": requested_platform or None,
+            "android_abi": requested_android_abi or None,
             "current_version": str(current_version or "").strip() or None,
             "channel": release_channel,
             "mode": "prompt",
@@ -1712,7 +1747,11 @@ def _safe_public_release_size(value: int) -> int:
     return size if size <= 10 * 1024 * 1024 * 1024 else 0
 
 
-def _public_client_apps_projection(source: ClientAppsResponse) -> ClientAppsResponse:
+def _public_client_apps_projection(
+    source: ClientAppsResponse,
+    *,
+    android_abi: str = "",
+) -> ClientAppsResponse:
     variants: list[ClientAndroidApkVariant] = []
     for variant in source.android.apk_variants:
         expected_filename = _PUBLIC_CLIENT_ASSET_FILENAMES.get(str(variant.abi))
@@ -1732,7 +1771,16 @@ def _public_client_apps_projection(source: ClientAppsResponse) -> ClientAppsResp
                 size=size,
             )
         )
-    primary = next((variant for variant in variants if variant.abi == "arm64-v8a"), None)
+    requested_android_abi = str(android_abi or "").strip().lower()
+    primary = next(
+        (
+            variant
+            for variant in variants
+            if variant.abi == (requested_android_abi or "arm64-v8a")
+            and variant.abi != "universal"
+        ),
+        None,
+    )
 
     windows_url = _safe_public_client_asset_url(
         source.windows.exe_url,
@@ -1820,10 +1868,16 @@ async def client_apps(
     platform: str = Query(default="", max_length=16),
     current_version: str = Query(default="", max_length=48),
     channel: str = Query(default="", max_length=32),
+    android_abi: str = Query(default="", max_length=16),
     x_telegram_init_data: str = Header(default=""),
 ) -> ClientAppsResponse:
     _require_auth_user(x_telegram_init_data, request=request)
-    return _build_client_apps_response(platform=platform, current_version=current_version, channel=channel)
+    return _build_client_apps_response(
+        platform=platform,
+        current_version=current_version,
+        channel=channel,
+        android_abi=android_abi,
+    )
 
 
 @app.get("/api/public/client-apps")
@@ -1832,10 +1886,17 @@ async def public_client_apps(
     platform: str = Query(default="", max_length=16),
     current_version: str = Query(default="", max_length=48),
     channel: str = Query(default="", max_length=32),
+    android_abi: str = Query(default="", max_length=16),
 ) -> ClientAppsResponse:
     response.headers["Cache-Control"] = "public, max-age=300, stale-if-error=3600"
     return _public_client_apps_projection(
-        _build_client_apps_response(platform=platform, current_version=current_version, channel=channel)
+        _build_client_apps_response(
+            platform=platform,
+            current_version=current_version,
+            channel=channel,
+            android_abi=android_abi,
+        ),
+        android_abi=android_abi,
     )
 
 

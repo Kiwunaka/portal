@@ -741,6 +741,61 @@ class ApiP0ExtensionsTests(unittest.TestCase):
         self.assertEqual(body["android"]["apk_variants"], [])
         self.assertEqual(body["windows"]["exe_url"], "")
 
+    def test_public_client_apps_selects_exact_android_split_for_update(self) -> None:
+        release = "https://github.com/Kiwunaka/pokrov/releases/download/v1.0.4"
+        self.api.Settings.APP_ANDROID_APK_ARM64_URL = f"{release}/pokrov-android-arm64-v8a.apk"
+        self.api.Settings.APP_ANDROID_APK_X86_64_URL = f"{release}/pokrov-android-x86_64.apk"
+        self.api.Settings.APP_ANDROID_APK_UNIVERSAL_URL = f"{release}/pokrov-android-universal.apk"
+        self.api.Settings.APP_ANDROID_ARM64_SHA256 = "a" * 64
+        self.api.Settings.APP_ANDROID_ARM64_SIZE_BYTES = 101
+        self.api.Settings.APP_ANDROID_X86_64_SHA256 = "b" * 64
+        self.api.Settings.APP_ANDROID_X86_64_SIZE_BYTES = 102
+        self.api.Settings.APP_ANDROID_UNIVERSAL_SHA256 = "c" * 64
+        self.api.Settings.APP_ANDROID_UNIVERSAL_SIZE_BYTES = 103
+        self.api.Settings.APP_ANDROID_VERSION = "1.0.4"
+
+        authenticated_projection = self.api._build_client_apps_response(
+            platform="android",
+            current_version="1.0.3",
+            channel="stable",
+            android_abi="x86_64",
+        )
+        self.assertEqual(
+            authenticated_projection.android.apk_url,
+            f"{release}/pokrov-android-x86_64.apk",
+        )
+        self.assertEqual(authenticated_projection.android.sha256, "b" * 64)
+        self.assertEqual(authenticated_projection.android.size, 102)
+        unknown_projection = self.api._build_client_apps_response(
+            platform="android",
+            current_version="1.0.3",
+            channel="stable",
+            android_abi="universal",
+        )
+        self.assertEqual(unknown_projection.android.apk_url, "")
+        self.assertEqual(unknown_projection.android.sha256, "")
+        self.assertEqual(unknown_projection.android.size, 0)
+
+        client = TestClient(self.api.app)
+        x86 = client.get(
+            "/api/public/client-apps?platform=android&current_version=1.0.3&android_abi=x86_64"
+        )
+
+        self.assertEqual(x86.status_code, 200, x86.text)
+        x86_body = x86.json()
+        self.assertEqual(x86_body["android"]["apk_url"], f"{release}/pokrov-android-x86_64.apk")
+        self.assertEqual(x86_body["android"]["sha256"], "B" * 64)
+        self.assertEqual(x86_body["android"]["size"], 102)
+        self.assertEqual(x86_body["android"]["update"]["url"], f"{release}/pokrov-android-x86_64.apk")
+        self.assertEqual(x86_body["update_check"]["android_abi"], "x86_64")
+
+        universal = client.get(
+            "/api/public/client-apps?platform=android&current_version=1.0.3&android_abi=universal"
+        )
+        self.assertEqual(universal.status_code, 200, universal.text)
+        self.assertEqual(universal.json()["android"]["update"]["update_policy"], "none")
+        self.assertEqual(universal.json()["android"]["update"]["url"], "")
+
     def test_client_promo_slots_support_safe_banner_fields(self) -> None:
         from db import SessionLocal
         from models import AppSetting
