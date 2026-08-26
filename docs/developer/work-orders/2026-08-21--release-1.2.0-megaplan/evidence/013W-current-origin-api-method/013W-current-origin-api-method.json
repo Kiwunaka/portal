@@ -1,0 +1,84 @@
+{
+  "schema": "pokrov.release-1.2.0.current-origin-api-method/v1",
+  "recorded_at": "2026-08-26T13:58:31Z",
+  "status": "CURRENT_ORIGIN_API_PERFORMANCE_PASS_AGGREGATE_GATE_OPEN",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "production_runtime_mutated": false,
+  "platform": {
+    "source_bind_merge": "583e14a1dea9d5bd97fd964f3aff5115a6bab02a",
+    "persistent_method_merge": "899e5f01f8317ace7886602c73cd7d7a60f4cd9b",
+    "merges_verified": true,
+    "deployed_backend_runtime": "243dcbe4727041d62cc0a36e7d2fd5a8530c7c25",
+    "backend_redeploy_required": false,
+    "backend_redeploy_performed": false,
+    "runtime_delta_classification": "RELEASE_DOCS_PROBE_TOOLING_AND_TESTS_ONLY"
+  },
+  "method": {
+    "origin": "current",
+    "network_profile": "current-workstation-direct-ethernet2",
+    "physical_interface": "Ethernet 2",
+    "tracked_source_address": "REDACTED_RFC1918",
+    "source_address_validation": "PASS_LOCAL_LITERAL_BIND",
+    "proxy_policy": "disabled_for_source_bound_probe",
+    "connection_policy": "persistent_http1_keep_alive",
+    "warmups": 5,
+    "retained_samples": 50,
+    "statistic": "p95",
+    "measurement_boundary": "REQUEST_TO_FIRST_RESPONSE_BYTE_BODY_DRAINED_NOT_LOGGED"
+  },
+  "superseded_diagnostics": {
+    "ambient_tun_result": "INVALID_FOR_RELEASE_DIRECT_ORIGIN",
+    "cold_method_health_p95_ms": 126.2867,
+    "cold_method_health_gate": "FAIL_DIAGNOSTIC_ONLY",
+    "cold_method_catalog_p95_ms": 125.8498,
+    "cold_method_catalog_gate": "PASS_DIAGNOSTIC_ONLY",
+    "reason": "URLLIB_CONNECTION_CLOSE_LEFT_ALL_RETAINED_SAMPLES_COLD_TLS"
+  },
+  "clean_results": [
+    {
+      "budget_id": "api.health.current_origin_ms",
+      "p95_ms": 39.0546,
+      "stop_lte_ms": 100,
+      "gate": "PASS",
+      "evidence_sha256": "b95602996f40515763a90d43e16c4de6d0a0c6939dbabdd793c3c1c7bec22610",
+      "gate_sha256": "616d302abdb17b0a9a13372f8f4451198dbb662692268f8c26c7dfe284940683"
+    },
+    {
+      "budget_id": "api.public_catalog.current_origin_ms",
+      "p95_ms": 40.5479,
+      "stop_lte_ms": 200,
+      "gate": "PASS",
+      "evidence_sha256": "9e32062dca2fd7ab424b28880df39f17171e27cc066a2d9fda8dec338bc32837",
+      "gate_sha256": "94d84a14fa261defd35fc07c9cd48b3f8bdeedacb95df4fdee731253c167daeb"
+    }
+  ],
+  "diagnostic_manifest": {
+    "entries": 21,
+    "validation": "PASS_21_OF_21",
+    "sha256": "3d7499cf3213c86981705b08a62b9d326c47c33d0bce906f2ffa88dbeacd06dd"
+  },
+  "hosted_checks": {
+    "source_bind_pr_runs": [32973602112, 32973602140],
+    "source_bind_post_merge_runs": [32974597716, 32974597784],
+    "persistent_method_pr_runs": [32975671786, 32975671804],
+    "persistent_method_post_merge_runs": [32976807912, 32976807970],
+    "required_pr_checks": "PASS_4_OF_4",
+    "required_post_merge_checks": "PASS_4_OF_4"
+  },
+  "gate_classification": {
+    "controlled_current_origin_api_performance": "PASS",
+    "current_origin_aggregate": "NOT_PASS_REMAINING_FULL_QUICK_CANDIDATE_AND_POST_PROMOTION_PROOF",
+    "brain_origin": "NOT_RUN_SEPARATE_GATE",
+    "ru_origin": "NOT_RUN_NO_RU_CLAIM",
+    "physical_beeline_exact_bytes": "MANUAL_OWNER_TEST_NOT_RUN_DEVICE_NOT_VISIBLE_IN_ADB"
+  },
+  "ledger": {
+    "advanced_rows": {},
+    "strengthened_rows": ["REL/PERF-001", "REL_GATE/GATE-E", "REL_DOD/DOD-13"],
+    "distribution": {"I3": 309, "I2": 17, "I1": 37, "I0": 14},
+    "below_i3": 68,
+    "pending_stage_counts": {"pre_freeze": 0, "candidate": 33, "external": 14, "deferred": 21}
+  },
+  "evidence_ceiling": "CONTROLLED_CURRENT_ORIGIN_API_PERFORMANCE_ONLY_NO_AGGREGATE_CURRENT_ORIGIN_NO_BRAIN_OR_RU_NO_EXACT_CANDIDATE_NO_DEPLOY_NO_PUBLIC_RELEASE"
+}
