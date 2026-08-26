@@ -128,26 +128,27 @@ Rules:
 Typical use:
 
 ```powershell
-python scripts/remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --restart portal-api,portal-bot,portal-helpbot,portal-feedbackbot
+python scripts/remote_deploy_brain_portal_code.py --brain-ip 82.21.114.104 --restart portal-api,portal-bot,portal-helpbot,portal-feedbackbot,portal-worker
 ```
 
 Repo-side deploy rule:
 
-- the default restart set is `portal-api`, `portal-bot`, `portal-helpbot`, and `portal-feedbackbot`
+- the default restart set is `portal-api`, `portal-bot`, `portal-helpbot`, `portal-feedbackbot`, and `portal-worker`
 - a normal git `push` runs repository guardrails only; production backend/static deploy still requires the manual release workflow in `full` mode or an explicit operator-run deploy command
-- backend code deploy is staged and fail-closed: files upload to `/root/portal_bot.deploy-staging/<release_id>/`, current live files are backed up under `/root/portal_bot.deploy-backups/<release_id>/`, and the script runs remote Python bytecode compilation plus shared JSON validation before promoting staged files into `/root/portal_bot` or `/root/shared`
+- backend code deploy is staged and fail-closed: only tracked runtime files are selected, nested paths are preserved under `/root/portal_bot.deploy-staging/<release_id>/`, current live files are backed up under `/root/portal_bot.deploy-backups/<release_id>/`, and the script runs recursive Python bytecode compilation plus recursive JSON validation before promotion
+- the tracked runtime payload includes production Python modules below `portal_bot/` except `portal_bot/tests/`, the pinned requirements file, the explicit node-probe helpers, all tracked JSON below `shared/`, and `copy/catalog.ru.json`; it does not copy `.env`, uploads, private support bundles, databases, tests, or untracked files
 - promo media is durable runtime data under `PROMO_MEDIA_DIR` (default
   `/root/portal_bot/uploads/promos`), not a code-deploy payload. Staged backend
   promotion must leave that directory untouched. Server migration/backup must
   snapshot it together with the active `promo_slots_config_v1`; an asset is not
   removed while an active or rollback campaign references its content hash
-- staged requirements are installed in a temporary staging venv first; the live venv is updated only after staged syntax/JSON/requirements preflight passes
+- staged requirements are installed in a temporary staging venv first; the live venv is updated only after staged syntax/JSON/requirements preflight and the bounded `admin_v2`/observability import check pass
 - if preflight or requirements installation fails, the script exits before live file promotion and before any `systemctl restart`
-- if a requested unit fails restart or does not report `active`, the script restores the previous backed-up backend/shared files and restarts the requested units on that previous file set
+- each managed restart resets only the systemd failure/restart counter, then the deploy waits 12 seconds and requires every requested unit to remain `active` with `NRestarts=0` plus a successful public API health probe; command failure, crash-loop evidence, or failed health triggers file rollback and the same delayed verification on the previous file set
 - after every successful deploy, only the five newest timestamped directories under `/root/portal_bot.deploy-backups/` are retained; `--backup-retain-count` may set a bounded value from 1 to 50, and pruning never selects nonconforming/manual evidence names
 - `--restart` accepts only systemd-safe unit names; do not use shell fragments or chained commands in the unit list
-- the deploy payload must include the full shared backend truth set under `/root/shared/`: `product-facts.json`, `public-urls.json`, `design-tokens.json`, `tariff-catalog.json`, `access-matrix.json`, `promo-slots.json`, `support-ai-knowledge.json`, and `support-agent-policy.json`
-- the deploy step should be treated as failed if any requested unit does not become `active` after restart
+- the deploy payload must include the full tracked JSON backend truth and contract tree under `/root/shared/`, including nested observability and support contracts rather than only the historical root JSON allowlist
+- the deploy step should be treated as failed until delayed unit stability and public API health both pass
 - support AI is a `portal-api` and `portal-helpbot` runtime feature and remains disabled by default. The exact route table is: `SUPPORT_AI_ENABLED=false` selects local fallback; `SUPPORT_AI_ENABLED=true` with `SUPPORT_AI_AGENT_ENABLED=false` selects the legacy one-call helper; both flags `true` select the code-owned harness. There is no shadow or double call. Immediate rollback from the harness is `SUPPORT_AI_AGENT_ENABLED=false`; disabling all provider use is `SUPPORT_AI_ENABLED=false`.
 - both provider paths use exact OpenRouter `POST /v1/chat/completions`. The facade rejects any other provider URL, model, or reasoning profile before a provider call. The locked profile is canonical `deepseek-v4-flash-0731` (`deepseek/deepseek-v4-flash-0731` on the wire), medium provider-managed reasoning with the private trace excluded, a 45-second provider timeout inside a 50-second total deadline, at most one request per eligible message, and at most two concurrent provider runs. The 45/50-second windows are also the exact-route defaults when their environment values are omitted. The request intentionally omits `max_tokens` for this reasoning model and sends exactly one system message plus one user message with no `tools`, `tool_choice`, retry, or continuation payload.
 - publish only the following secret-free harness configuration; keep the real key solely in the service environment through blank-at-rest `SUPPORT_AI_API_KEY`. `XCODY_API_KEY` remains a legacy compatibility alias only:

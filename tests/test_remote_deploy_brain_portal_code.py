@@ -31,9 +31,13 @@ class RemoteDeployBrainPortalCodeTests(unittest.TestCase):
         self.assertIn("/root/shared/design-tokens.json", targets)
         self.assertIn("/root/shared/support-ai-knowledge.json", targets)
         self.assertIn("/root/shared/support-agent-policy.json", targets)
+        self.assertIn("/root/shared/contracts/observability/error-catalog.json", targets)
+        self.assertIn("/root/copy/catalog.ru.json", targets)
+        self.assertIn("/root/portal_bot/admin_v2/roles.py", targets)
         self.assertIn("/root/portal_bot/authenticated_egress_probe.py", targets)
         self.assertIn("/root/portal_bot/singbox_authenticated_egress_adapter.py", targets)
         self.assertIn("/root/portal_bot/emergency_linux_probe_adapter.py", targets)
+        self.assertFalse(any(target.startswith("/root/portal_bot/tests/") for target in targets))
 
     def test_restart_default_includes_long_running_services(self) -> None:
         module = _load_module()
@@ -52,6 +56,18 @@ class RemoteDeployBrainPortalCodeTests(unittest.TestCase):
             "/root/portal_bot.deploy-staging/20260705T010203Z-1/shared/product-facts.json",
             module._stage_target_for("/root/shared/product-facts.json", stage_root),
         )
+        self.assertEqual(
+            "/root/portal_bot.deploy-staging/20260705T010203Z-1/portal_bot/admin_v2/roles.py",
+            module._stage_target_for("/root/portal_bot/admin_v2/roles.py", stage_root),
+        )
+        self.assertEqual(
+            "/root/portal_bot.deploy-staging/20260705T010203Z-1/shared/contracts/observability/error-catalog.json",
+            module._stage_target_for("/root/shared/contracts/observability/error-catalog.json", stage_root),
+        )
+        self.assertEqual(
+            "/root/portal_bot.deploy-staging/20260705T010203Z-1/copy/catalog.ru.json",
+            module._stage_target_for("/root/copy/catalog.ru.json", stage_root),
+        )
 
     def test_restart_units_reject_shell_metacharacters(self) -> None:
         module = _load_module()
@@ -67,11 +83,16 @@ class RemoteDeployBrainPortalCodeTests(unittest.TestCase):
         mappings = [(Path("api.py"), "/root/portal_bot/api.py"), (Path("product-facts.json"), "/root/shared/product-facts.json")]
 
         preflight = module._build_preflight_command(stage_root)
+        import_preflight = module._build_stage_runtime_import_command(stage_root)
         promote = module._build_promote_command(mappings, stage_root)
         restore = module._build_restore_command([target for _source, target in mappings], backup_root)
 
         self.assertIn("compileall -q", preflight)
+        self.assertIn("root.rglob", preflight)
+        self.assertIn("*.json", preflight)
         self.assertIn("portal_shared_json_preflight.log", preflight)
+        self.assertIn("admin_v2.roles", import_preflight)
+        self.assertIn("operator_observability_service", import_preflight)
         self.assertIn("/root/portal_bot.deploy-staging/20260705T010203Z-1/portal_bot/api.py", promote)
         self.assertIn("install -D -m 0644", promote)
         self.assertIn("/root/portal_bot.deploy-backups/20260705T010203Z-1/root/portal_bot/api.py", restore)
@@ -102,6 +123,30 @@ class RemoteDeployBrainPortalCodeTests(unittest.TestCase):
         with self.assertRaises(SystemExit):
             module._build_backup_prune_command(0)
 
+    def test_prepare_and_delayed_health_checks_cover_nested_payload_and_crash_loops(self) -> None:
+        module = _load_module()
+        stage_root = "/root/portal_bot.deploy-staging/20260705T010203Z-1"
+        backup_root = "/root/portal_bot.deploy-backups/20260705T010203Z-1"
+        mappings = [
+            (Path("roles.py"), "/root/portal_bot/admin_v2/roles.py"),
+            (Path("error-catalog.json"), "/root/shared/contracts/observability/error-catalog.json"),
+        ]
+
+        prepare = module._build_prepare_command(mappings, stage_root, backup_root)
+        verify = module._build_post_restart_verify_command(["portal-api", "portal-worker"])
+
+        self.assertIn(f"{stage_root}/portal_bot/admin_v2", prepare)
+        self.assertIn(f"{stage_root}/shared/contracts/observability", prepare)
+        self.assertIn(f"sleep {module.POST_RESTART_SETTLE_SECONDS}", verify)
+        self.assertIn("NRestarts", verify)
+        self.assertIn("portal-api", verify)
+        self.assertIn("portal-worker", verify)
+        self.assertIn(module.POST_RESTART_HEALTH_URL, verify)
+        self.assertEqual(
+            "systemctl reset-failed portal-api && systemctl restart portal-api",
+            module._build_clean_restart_command("portal-api"),
+        )
+
     def test_main_fails_when_requested_unit_is_not_active_after_restart(self) -> None:
         module = _load_module()
         ssh = MagicMock()
@@ -112,13 +157,14 @@ class RemoteDeployBrainPortalCodeTests(unittest.TestCase):
             (0, "", ""),  # backup live files
             (0, "", ""),  # staged syntax/json preflight
             (0, "", ""),  # staged requirements preflight
+            (0, "", ""),  # staged runtime import preflight
             (0, "", ""),  # live requirements install
             (0, "", ""),  # promote staged files
-            (1, "", "restart failed"),
-            (3, "", "inactive"),
+            (0, "", ""),  # restart command
+            (1, "portal-feedbackbot state=activating restarts=2", ""),  # delayed verification
             (0, "", ""),  # rollback restore
             (0, "", ""),  # rollback restart
-            (0, "active\n", ""),  # rollback status
+            (0, "portal-feedbackbot state=active restarts=0\napi_health=PASS\n", ""),
         ]
 
         with patch.object(module.argparse.ArgumentParser, "parse_args") as parse_args:

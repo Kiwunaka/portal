@@ -5,6 +5,7 @@ import os
 import posixpath
 import re
 import shlex
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -23,12 +24,16 @@ DEFAULT_RESTART_UNITS = (
 )
 REMOTE_PORTAL_ROOT = "/root/portal_bot"
 REMOTE_SHARED_ROOT = "/root/shared"
+REMOTE_COPY_ROOT = "/root/copy"
 REMOTE_STAGE_ROOT = "/root/portal_bot.deploy-staging"
 REMOTE_BACKUP_ROOT = "/root/portal_bot.deploy-backups"
 EXECUTABLE_PORTAL_TARGETS = frozenset(
     {"/root/portal_bot/emergency_linux_probe_adapter.py"}
 )
 DEFAULT_BACKUP_RETENTION_COUNT = 5
+POST_RESTART_SETTLE_SECONDS = 12
+POST_RESTART_HEALTH_ATTEMPTS = 12
+POST_RESTART_HEALTH_URL = "https://api.pokrov.space/api/health"
 SYSTEMD_UNIT_RE = re.compile(r"^[A-Za-z0-9_.@:-]+$")
 if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -94,11 +99,34 @@ def _parse_restart_units(value: str) -> list[str]:
 
 def _stage_target_for(live_target: str, stage_root: str) -> str:
     target = str(live_target)
-    if target.startswith(f"{REMOTE_PORTAL_ROOT}/"):
-        return f"{stage_root}/portal_bot/{posixpath.basename(target)}"
-    if target.startswith(f"{REMOTE_SHARED_ROOT}/"):
-        return f"{stage_root}/shared/{posixpath.basename(target)}"
+    for live_root, stage_name in (
+        (REMOTE_PORTAL_ROOT, "portal_bot"),
+        (REMOTE_SHARED_ROOT, "shared"),
+        (REMOTE_COPY_ROOT, "copy"),
+    ):
+        prefix = f"{live_root}/"
+        if target.startswith(prefix):
+            relative = target[len(prefix) :]
+            if not relative or relative.startswith("../") or "/../" in relative:
+                raise ValueError(f"unsafe deploy target: {live_target}")
+            return f"{stage_root}/{stage_name}/{relative}"
     raise ValueError(f"unsupported deploy target: {live_target}")
+
+
+def _build_prepare_command(
+    mappings: list[tuple[Path, str]],
+    stage_root: str,
+    backup_root: str,
+) -> str:
+    directories = {
+        REMOTE_PORTAL_ROOT,
+        REMOTE_SHARED_ROOT,
+        REMOTE_COPY_ROOT,
+        backup_root,
+    }
+    for _source, target in mappings:
+        directories.add(posixpath.dirname(_stage_target_for(target, stage_root)))
+    return "mkdir -p " + " ".join(_q(path) for path in sorted(directories))
 
 
 def _build_backup_command(targets: list[str], backup_root: str) -> str:
@@ -149,11 +177,10 @@ def _build_backup_prune_command(retain_count: int) -> str:
 
 def _build_preflight_command(stage_root: str) -> str:
     portal_stage = f"{stage_root}/portal_bot"
-    shared_stage = f"{stage_root}/shared"
     json_check = (
         "import json, pathlib; "
-        f"root=pathlib.Path({shared_stage!r}); "
-        "[json.load(p.open(encoding='utf-8')) for p in sorted(root.glob('*.json'))]"
+        f"root=pathlib.Path({stage_root!r}); "
+        "[json.load(p.open(encoding='utf-8')) for p in sorted(root.rglob('*.json'))]"
     )
     return "\n".join(
         [
@@ -181,6 +208,24 @@ def _build_stage_requirements_command(stage_root: str) -> str:
     )
 
 
+def _build_stage_runtime_import_command(stage_root: str) -> str:
+    portal_stage = f"{stage_root}/portal_bot"
+    python = f"{stage_root}/venv/bin/python"
+    import_check = (
+        "import admin_v2.roles; "
+        "import operator_observability_service; "
+        "assert operator_observability_service._KNOWN_ERROR_CODES"
+    )
+    return "\n".join(
+        [
+            "set -e",
+            f"test -x {_q(python)}",
+            f"cd {_q(portal_stage)}",
+            f"PYTHONPATH={_q(portal_stage)} {_q(python)} -c {_q(import_check)}",
+        ]
+    )
+
+
 def _build_live_requirements_command(stage_root: str) -> str:
     requirements = f"{stage_root}/portal_bot/requirements.txt"
     live_python = f"{REMOTE_PORTAL_ROOT}/venv/bin/python"
@@ -198,7 +243,7 @@ def _build_live_requirements_command(stage_root: str) -> str:
 def _build_promote_command(mappings: list[tuple[Path, str]], stage_root: str) -> str:
     lines = [
         "set -e",
-        f"mkdir -p {_q(REMOTE_PORTAL_ROOT)} {_q(REMOTE_SHARED_ROOT)}",
+        f"mkdir -p {_q(REMOTE_PORTAL_ROOT)} {_q(REMOTE_SHARED_ROOT)} {_q(REMOTE_COPY_ROOT)}",
     ]
     for _source, target in mappings:
         stage_target = _stage_target_for(target, stage_root)
@@ -224,6 +269,41 @@ def _build_restore_command(targets: list[str], backup_root: str) -> str:
     return "\n".join(lines)
 
 
+def _build_post_restart_verify_command(restart_units: list[str]) -> str:
+    lines = [
+        "set -e",
+        f"sleep {POST_RESTART_SETTLE_SECONDS}",
+    ]
+    for unit in restart_units:
+        unit_q = _q(unit)
+        lines.extend(
+            [
+                f"state=$(systemctl is-active {unit_q} 2>/dev/null || true)",
+                f"restarts=$(systemctl show {unit_q} -p NRestarts --value 2>/dev/null || true)",
+                f"printf '%s state=%s restarts=%s\\n' {unit_q} \"$state\" \"$restarts\"",
+                'test "$state" = active',
+                'test "$restarts" = 0',
+            ]
+        )
+    lines.extend(
+        [
+            "health_ok=0",
+            f"for attempt in $(seq 1 {POST_RESTART_HEALTH_ATTEMPTS}); do",
+            f"  if curl -fsS --max-time 10 {_q(POST_RESTART_HEALTH_URL)} >/dev/null; then health_ok=1; break; fi",
+            "  sleep 2",
+            "done",
+            'test "$health_ok" = 1',
+            "printf 'api_health=PASS\\n'",
+        ]
+    )
+    return "\n".join(lines)
+
+
+def _build_clean_restart_command(unit: str) -> str:
+    unit_q = _q(unit)
+    return f"systemctl reset-failed {unit_q} && systemctl restart {unit_q}"
+
+
 def _restore_previous_release(
     ssh: paramiko.SSHClient,
     *,
@@ -241,27 +321,39 @@ def _restore_previous_release(
     ):
         return False
 
-    ok = True
     for unit in restart_units:
-        restart_ok = _run_checked(ssh, f"systemctl restart {_q(unit)}", label=f"{unit} rollback restart", timeout=60)
-        code, out, err = _run(ssh, f"systemctl is-active {_q(unit)}", timeout=30)
-        status = (out.strip() or err.strip()).strip()
-        print(f"{unit} rollback: {status}")
-        if not restart_ok or code != 0 or status != "active":
-            if code != 0 or status != "active":
-                _print_remote_result(f"{unit} rollback status", code, out, err)
-            ok = False
-    return ok
+        if not _run_checked(
+            ssh,
+            _build_clean_restart_command(unit),
+            label=f"{unit} rollback restart",
+            timeout=60,
+        ):
+            return False
+    return _run_checked(
+        ssh,
+        _build_post_restart_verify_command(restart_units),
+        label="rollback delayed service verification",
+        timeout=180,
+    )
+
+
+def _tracked_repo_paths(repo_root: Path, *pathspecs: str) -> list[Path]:
+    result = subprocess.run(
+        ["git", "-C", str(repo_root), "ls-files", "-z", "--", *pathspecs],
+        check=True,
+        capture_output=True,
+    )
+    return [repo_root / value.decode("utf-8") for value in result.stdout.split(b"\0") if value]
 
 
 def iter_upload_mappings(repo_root: Path) -> list[tuple[Path, str]]:
     mappings: list[tuple[Path, str]] = []
-    for path in sorted((repo_root / "portal_bot").glob("*.py")):
-        mappings.append((path, f"/root/portal_bot/{path.name}"))
-
-    requirements = repo_root / "portal_bot" / "requirements.txt"
-    if requirements.exists():
-        mappings.append((requirements, "/root/portal_bot/requirements.txt"))
+    for path in _tracked_repo_paths(repo_root, "portal_bot"):
+        relative = path.relative_to(repo_root / "portal_bot")
+        if path.suffix == ".py" and (not relative.parts or relative.parts[0] != "tests"):
+            mappings.append((path, f"{REMOTE_PORTAL_ROOT}/{relative.as_posix()}"))
+        elif relative.as_posix() == "requirements.txt":
+            mappings.append((path, f"{REMOTE_PORTAL_ROOT}/requirements.txt"))
 
     for source_name, target_name in (
         ("authenticated_egress_probe.py", "authenticated_egress_probe.py"),
@@ -273,27 +365,20 @@ def iter_upload_mappings(repo_root: Path) -> list[tuple[Path, str]]:
         if source.exists():
             mappings.append((source, f"/root/portal_bot/{target_name}"))
 
-    for shared_name in (
-        "product-facts.json",
-        "public-urls.json",
-        "design-tokens.json",
-        "tariff-catalog.json",
-        "commercial-contract.json",
-        "commercial-contract.schema.json",
-        "access-matrix.json",
-        "promo-slots.json",
-        "support-ai-knowledge.json",
-        "support-agent-policy.json",
-    ):
-        source = repo_root / "shared" / shared_name
-        if source.exists():
-            mappings.append((source, f"/root/shared/{shared_name}"))
+    for source in _tracked_repo_paths(repo_root, "shared"):
+        if source.suffix == ".json":
+            relative = source.relative_to(repo_root / "shared").as_posix()
+            mappings.append((source, f"{REMOTE_SHARED_ROOT}/{relative}"))
 
-    return mappings
+    copy_catalog = repo_root / "copy" / "catalog.ru.json"
+    if copy_catalog in _tracked_repo_paths(repo_root, "copy/catalog.ru.json"):
+        mappings.append((copy_catalog, f"{REMOTE_COPY_ROOT}/catalog.ru.json"))
+
+    return sorted(mappings, key=lambda item: item[1])
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Deploy portal_bot/*.py to brain and restart portal-api/portal-bot.")
+    ap = argparse.ArgumentParser(description="Deploy the tracked Portal backend runtime payload to brain.")
     ap.add_argument("--brain-ip", required=True)
     ap.add_argument("--ssh-user", default="root")
     ap.add_argument("--ssh-port", type=int, default=29374)
@@ -329,10 +414,7 @@ def main() -> int:
         print(f"brain auth: {auth_method}")
         if not _run_checked(
             ssh,
-            (
-                f"mkdir -p {_q(REMOTE_PORTAL_ROOT)} {_q(REMOTE_SHARED_ROOT)} "
-                f"{_q(f'{stage_root}/portal_bot')} {_q(f'{stage_root}/shared')} {_q(backup_root)}"
-            ),
+            _build_prepare_command(mappings, stage_root, backup_root),
             label="prepare remote dirs",
             timeout=60,
         ):
@@ -370,6 +452,14 @@ def main() -> int:
 
         if not _run_checked(
             ssh,
+            _build_stage_runtime_import_command(stage_root),
+            label="preflight staged runtime imports",
+            timeout=120,
+        ):
+            return 1
+
+        if not _run_checked(
+            ssh,
             _build_live_requirements_command(stage_root),
             label="install portal requirements",
             timeout=1800,
@@ -391,21 +481,34 @@ def main() -> int:
             return 1
 
         for unit in restart_units:
-            restart_ok = _run_checked(ssh, f"systemctl restart {_q(unit)}", label=f"{unit} restart", timeout=60)
-            code, out, err = _run(ssh, f"systemctl is-active {_q(unit)}", timeout=30)
-            status = (out.strip() or err.strip()).strip()
-            print(f"{unit}: {status}")
-            if not restart_ok or code != 0 or status != "active":
-                if code != 0 or status != "active":
-                    _print_remote_result(f"{unit} status", code, out, err)
+            if not _run_checked(
+                ssh,
+                _build_clean_restart_command(unit),
+                label=f"{unit} restart",
+                timeout=60,
+            ):
                 _restore_previous_release(
                     ssh,
                     targets=targets,
                     backup_root=backup_root,
                     restart_units=restart_units,
-                    reason=f"{unit} failed after deploy",
+                    reason=f"{unit} restart command failed after deploy",
                 )
                 return 1
+        if not _run_checked(
+            ssh,
+            _build_post_restart_verify_command(restart_units),
+            label="delayed backend health verification",
+            timeout=180,
+        ):
+            _restore_previous_release(
+                ssh,
+                targets=targets,
+                backup_root=backup_root,
+                restart_units=restart_units,
+                reason="backend failed delayed health verification",
+            )
+            return 1
         _run(ssh, f"rm -rf {_q(stage_root)}", timeout=60)
         print(f"backend backup retained: {backup_root}")
         if not _run_checked(
