@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -88,6 +89,28 @@ class VerifyBrainReadyTests(unittest.TestCase):
         self.assertIn("size", cmd)
         self.assertIn("curl -fsS", cmd)
         self.assertIn("--resolve", cmd)
+
+    def test_json_report_is_bounded_and_subscription_count_is_strict(self) -> None:
+        output = "\n".join(
+            [
+                "sub_fetch_1 user=selected mode=token fmt=plain lines=7 hosts=7 connect_json=1 outbounds=33",
+                "sub_fetch_2 user=selected mode=tg_id_fallback fmt=base64 lines=7 hosts=7 connect_json=1 outbounds=33",
+                "sub_fetch_3 token=must-not-match",
+            ]
+        )
+
+        count = self.module._subscription_sample_count(output)
+        report = self.module._build_json_report(
+            checks=[self.module._result_row("subscription_stability", count == 2, samples_observed=count)],
+            failures=[],
+        )
+
+        self.assertEqual(count, 2)
+        self.assertTrue(report["ok"])
+        encoded = json.dumps(report)
+        self.assertNotIn("must-not-match", encoded)
+        self.assertNotIn("token=", encoded)
+        self.assertEqual(report["checks"][0]["samples_observed"], 2)
 
     def test_caddy_serves_only_owned_singbox_rule_set_paths_before_redirect(self) -> None:
         caddyfile = (Path(__file__).resolve().parents[1] / "infra" / "Caddyfile.internal").read_text(encoding="utf-8")

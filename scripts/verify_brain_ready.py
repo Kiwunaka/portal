@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 """
 Verify brain node is ready to serve production traffic.
 
@@ -9,11 +7,16 @@ Checks:
 - subscription endpoint stability across repeated requests (token not printed)
 """
 
+from __future__ import annotations
+
 import argparse
+import json
 import os
 import re
 import shlex
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import paramiko
 from ssh_host_keys import configure_ssh_host_key_policy
@@ -75,6 +78,37 @@ def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 120) -> tuple[int,
 def _print_result(name: str, out: str, err: str) -> None:
     val = (out.strip() or err.strip()).strip().replace("\ufeff", "")
     print(f"[{name}] {val}")
+
+
+def _result_row(name: str, passed: bool, **details: Any) -> dict[str, Any]:
+    """Build one bounded readiness result without retaining raw responses."""
+    return {"name": name, "status": "PASS" if passed else "FAIL", **details}
+
+
+def _subscription_sample_count(output: str) -> int:
+    """Count successful redacted subscription samples in verifier output."""
+    return sum(
+        1
+        for line in str(output or "").splitlines()
+        if re.fullmatch(
+            r"sub_fetch_\d+ user=selected mode=(?:token|tg_id_fallback) "
+            r"fmt=(?:plain|base64) lines=\d+ hosts=\d+ connect_json=1 outbounds=\d+",
+            line.strip(),
+        )
+    )
+
+
+def _build_json_report(*, checks: list[dict[str, Any]], failures: list[str]) -> dict[str, Any]:
+    """Build the secret-free Brain readiness evidence envelope."""
+    return {
+        "schema_version": "pokrov-brain-readiness-v1",
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "origin": "brain",
+        "checks": checks,
+        "check_count": len(checks),
+        "failure_count": len(failures),
+        "ok": not failures and bool(checks),
+    }
 
 
 def _listener_probe_cmd(ports: tuple[int, ...]) -> str:
@@ -377,6 +411,7 @@ def main() -> int:
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
     ap.add_argument("--repeat", type=int, default=5, help="repeat subscription fetch N times")
     ap.add_argument("--check-legacy-2096", action="store_true", help="also verify legacy :2096 endpoint (optional)")
+    ap.add_argument("--json-out", default="", help="Optional secret-free JSON readiness evidence path.")
     args = ap.parse_args()
 
     pw = os.getenv("NODE_PASS_BRAIN", "").strip() or _parse_passwords(Path(args.passwords)).get("brain", "")
@@ -396,16 +431,20 @@ def main() -> int:
     ssh = _ssh_connect(args.brain_ip, user=args.ssh_user, port=args.ssh_port, password=pw)
     try:
         failures: list[str] = []
+        checks: list[dict[str, Any]] = []
         for unit in DEFAULT_REQUIRED_UNITS:
             name = unit
             cmd = f"systemctl is-active {unit}"
             code, out, err = _run(ssh, cmd, timeout=60)
             _print_result(name, out, err)
-            if code != 0 or (out.strip() or err.strip()).strip() != "active":
+            passed = code == 0 and (out.strip() or err.strip()).strip() == "active"
+            checks.append(_result_row(f"unit:{unit}", passed))
+            if not passed:
                 failures.append(f"{unit} is not active")
 
         code, out, err = _run(ssh, _required_secret_presence_cmd(), timeout=60)
         _print_result("requiredSecrets", out, err)
+        checks.append(_result_row("required_secret_presence", code == 0))
         if code != 0:
             failures.append("DEVICE_PAIRING_HMAC_SECRET is missing or too short")
 
@@ -416,7 +455,16 @@ def main() -> int:
         code, out, err = _run(ssh, listen_cmd, timeout=60)
         _print_result("listen", out, err)
         missing_ports = _listener_missing_ports(out or err, tuple(required_listener_ports))
-        if code != 0 or missing_ports:
+        listener_passed = code == 0 and not missing_ports
+        checks.append(
+            _result_row(
+                "required_listeners",
+                listener_passed,
+                required_ports=required_listener_ports,
+                missing_ports=missing_ports,
+            )
+        )
+        if not listener_passed:
             failures.append(
                 "missing listeners: " + ", ".join(str(port) for port in missing_ports)
                 if missing_ports
@@ -469,6 +517,7 @@ def main() -> int:
         for name, cmd in curl_checks:
             code, out, err = _run(ssh, cmd, timeout=30)
             _print_result(name, out, err)
+            checks.append(_result_row(f"endpoint:{name}", code == 0))
             if code != 0:
                 failures.append(f"{name} probe failed")
 
@@ -489,8 +538,26 @@ def main() -> int:
         code, out, err = _run(ssh, "bash /tmp/verify_subscriptions.sh", timeout=180)
         _run(ssh, "rm -f /tmp/verify_subscriptions.sh", timeout=30)
         print((out.strip() or err.strip()).strip())
-        if code != 0:
+        sample_count = _subscription_sample_count(out)
+        subscription_passed = code == 0 and sample_count == int(args.repeat)
+        checks.append(
+            _result_row(
+                "subscription_stability",
+                subscription_passed,
+                samples_requested=int(args.repeat),
+                samples_observed=sample_count,
+            )
+        )
+        if not subscription_passed:
             failures.append("subscription stability probe failed")
+
+        report = _build_json_report(checks=checks, failures=failures)
+        json_out = str(getattr(args, "json_out", "") or "").strip()
+        if json_out:
+            output_path = Path(json_out)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            print(output_path)
 
         if failures:
             print("[summary] verify failed:")
