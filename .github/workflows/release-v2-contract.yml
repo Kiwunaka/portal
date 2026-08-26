@@ -37,6 +37,7 @@ jobs:
           repository: Kiwunaka/pokrov-core
           ref: main
           path: POKROV-core
+          fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Python
@@ -48,9 +49,35 @@ jobs:
         working-directory: platform
         run: python scripts/check_dependency_contract.py
 
+      - name: Materialize bound Core source authority
+        shell: pwsh
+        run: |
+          $candidateRoot = Join-Path "${{ github.workspace }}" "POKROV-core"
+          $authorityRoot = Join-Path "${{ github.workspace }}" "POKROV-core-authority"
+          $seedPath = Join-Path "${{ github.workspace }}" "POKROV-app/config/runtime-artifacts.seed.json"
+          $boundCore = (Get-Content -Raw -LiteralPath $seedPath | ConvertFrom-Json).core.source_commit
+          if ($boundCore -notmatch "^[0-9a-f]{40}$") {
+            throw "Client runtime seed does not contain a full Core source commit."
+          }
+
+          & git -C $candidateRoot cat-file -e "$boundCore^{commit}"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Bound Core source commit is unavailable in the candidate checkout."
+          }
+
+          & git -C $candidateRoot diff --quiet $boundCore HEAD -- . ":(exclude).github/**"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Core promotion line changed bound source outside .github while client/main still pins $boundCore."
+          }
+
+          & git -C $candidateRoot worktree add --detach $authorityRoot $boundCore
+          if ($LASTEXITCODE -ne 0) {
+            throw "Failed to materialize the bound Core source authority."
+          }
+
       - name: Validate cross-repository release-handoff v2 contract
         working-directory: platform
         run: >-
           python scripts/run_client_release_gate.py contract
           --client-root "${{ github.workspace }}/POKROV-app"
-          --core-root "${{ github.workspace }}/POKROV-core"
+          --core-root "${{ github.workspace }}/POKROV-core-authority"
