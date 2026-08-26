@@ -1,8 +1,8 @@
 # POKROV 1.2.0 Megaplan — Wave Index
 
-Last updated: 2026-08-24
+Last updated: 2026-08-26
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_WINDOWS_SIGNING_READINESS_PROVED_TRUSTED_CERTIFICATE_BLOCKED`
+Wave status: `PHASE_11_PRE_CANDIDATE_ANDROID_MOBILE_RUNTIME_MATRIX_RECORDED`
 Release candidate: `NOT_CREATED`
 
 ## Outcome
@@ -35,7 +35,7 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete; exact-candidate performance/manual gates retained | `WO-010` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
 | 10 | FRKN-derived rules; isolated AWG2 PoC, later HY2 decision | Local package complete; exact artifact/device/RU gates open | `WO-012` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013Q retains the historical six-file local pre-candidate set; 013R merges fail-closed Windows Authenticode and deterministic secret-only release-index signing controls; 013S binds the support-mode public pin to client `main` and proves hosted private-key custody without deploying runtime; 013T proves the readiness-only path and distinguishes two retained self-signed private-key identities from a missing publicly trusted signer; 013U records the exact owner-approved unsigned Windows 1.2.0 direct-beta exception and rebuilds the current six-file Android/Windows set, SBOM, provenance, checksums and strict handoff. Ten device/origin/provider/owner/rollback gates remain open, so candidate and public release are not created | `WO-013`, `WO-013C`, `WO-013D`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S`, `WO-013T`, `WO-013U` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013U retains the prior six-file direct-beta pre-candidate set and unsigned-Windows owner exception. 013E records a newer production-signed Android `1.2.0 (4031)` physical Beeline/LDPlayer slice plus deployed-server reconciliation against the observed platform/client/Core runtime tuple. Because that tuple is newer than 013U, a complete artifact set and exact-candidate matrix must be rebuilt; candidate and public release remain uncreated | `WO-013`, `WO-013C`, `WO-013D`, `WO-013E`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S`, `WO-013T`, `WO-013U` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -92,6 +92,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013A3` | Move PB-14 out of the circular local-freeze lane because its signed-manifest health-stop proof requires an exact candidate | Platform release preflight | Complete locally; no ledger advancement, PB-14 remains unproved | `WO-013A2`, `WO-006J` |
 | `WO-013C` | Make Linux non-shipment and Android OEM background/permission/surface limitations explicit and machine-bound | Platform/client release limitations | Complete locally (`REL_DOD/DOD-17 I3`); exact-candidate release notes and physical OEM proof remain open | `WO-005`, `WO-006`, `WO-013` |
 | `WO-013D` | Make the client stable pointer reversible through an exact rollback catalog, atomic switch contract and retained evidence | Client/platform release rollback | Complete locally (`FE/P12-130 I3`); exact-candidate portal/runtime drill remains `NOT_RUN` | `WO-003`, `WO-013C` |
+| `WO-013E` | Retain the physical Android/Beeline and LDPlayer runtime slice and reconcile mobile failures with deployed type-2/type-3 server evidence | Client/platform/Core runtime evidence | Partial pre-candidate evidence recorded; no ledger advancement, complete OEM/origin matrix and RC remain open | `WO-013`, `WO-012`, `WO-013U`, current deployed/source tuple |
 | `WO-013H` | Freeze clean platform/client/Core source identities and retain honest preflight blockers | Cross-repo release source freeze | Complete local evidence; no ledger advancement, candidate remains uncreated | `WO-013B`, `WO-013C`, `WO-013D` |
 | `WO-013I` | Build Core 1.1.0 Android/Windows artifacts twice, bind exact bytes to the active client and verify them in preflight | Core/client/platform artifact boundary | Closed into final source tuple by 013P: final Core source, locally reproducible bytes and final client embedding are bound; candidate signing/device proof remains open | `WO-013H`, `WO-004B2`, `WO-013P` |
 | `WO-013J` | Audit the real public baseline and implement a fail-closed signed/same-byte release-index source contract | Public release-index/platform preflight | Source/trust-root publication closed by 013N (`REL/REPO-001 I3`); 013O resolves the sole-owner review precondition (`FE/P12-023 I3`); exact signed candidate assets remain `I4` | `WO-003I`, `WO-003J`, `WO-013I`, `WO-013N`, `WO-013O` |
@@ -160,9 +161,13 @@ The row order is a dependency order, not permission for one giant merge. Each im
   readbacks, and the honest no-trusted-signer/no-candidate ceiling.
 - `evidence/013U-owner-approved-direct-beta-assembly/013U-owner-approved-direct-beta-assembly.json`
   binds the exact owner exception, client PR/merge/check revisions, current
-  six-file artifact set, production Android signer, unsigned Windows manifest,
+  retained six-file artifact set, production Android signer, unsigned Windows manifest,
   embedded support pin, SBOM/provenance, strict handoff, checksums and the ten
   remaining gates without claiming a public release or production mutation.
+- `evidence/013E-android-mobile-runtime-matrix/013E-android-mobile-runtime-matrix.json`
+  binds the newer Android artifact identity, single physical Beeline matrix,
+  LDPlayer evidence ceiling, deployed server-chain reconciliation and explicit
+  no-candidate/no-ledger-advancement decision for the observed runtime tuple.
 
 ## Collision and promotion gates
 
@@ -174,25 +179,21 @@ The row order is a dependency order, not permission for one giant merge. Each im
 
 ## Next action
 
-All explicit `pre_freeze` and source-promotion rows are now `I3`. The 013Q
-artifact set remains historical evidence. The current 013U direct-beta set is
-bound to platform `93964280836ff511e35b0856ed24ffdf6c5e34c1`, client
-`f80387aa75fb632bb48d8023f0cba33f1972a144`, Core
-`bdbd97fae35103e705f55908caebf75b4a9ff72f` and public-index
-`7d5e402c47186fbe2ea1eb30ee1dc8cafdf066b2`. Candidate creation is still
-`NOT_CREATED`.
+The runtime tuple exercised by 013E is platform
+`243dcbe4727041d62cc0a36e7d2fd5a8530c7c25`, client
+`a74d2aea5aed62f5c31d3a0bbc258e408cebe3bd` and Core
+`9b94e0bda7e454536e8fa9b4519f2281211798e0`. It is newer than the retained
+013U six-file set. The platform revision is deployed and healthy, while 013E
+binds one production-signed Android APK and the partial physical mobile
+matrix. Candidate creation remains `NOT_CREATED` and no row advances to `I4`.
 
-The exact Windows 1.2.0 direct beta may remain unsigned under
-`OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0` only with the retained
-SmartScreen warning and no trusted, signed, Store or broad-stable claim. A
-trusted Authenticode identity is still required before any stronger Windows
-claim. The support public pin is embedded and its private custody remains
-separate. The next candidate slice must close the ten retained physical
-Android/Windows, current/brain origin, provider, Operator, legal and rollback
-gates, then generate and verify the signed candidate index from the same six
-artifact bytes. Production support-mode runtime configuration is still not
-deployed and remains separate from candidate build readiness.
-The remaining 14 external and 21 deferred rows keep their existing authority
-boundaries. Do not deploy, mutate production, execute a payment, enroll a
-campaign cohort or claim RU/stable readiness without the separate authority
-and exact evidence required by the owning gate.
+After this evidence lands, freeze the then-current branch heads and rebuild the
+complete Android/Windows direct-beta set from that tuple,
+regenerate strict handoff/SBOM/provenance/checksums and verify the signed public
+index against those same bytes. Then repeat the complete physical Android,
+Windows clean-host, current-origin, brain-origin, provider, Operator, legal and
+rollback gates. RU-origin remains a distinct `NOT_RUN` gate. The unsigned
+Windows exception remains limited to direct beta with the mandatory
+SmartScreen warning; it does not authorize a trusted, Store or broad-stable
+claim. AWG 3.1 remains lab-only and `BLOCKED_BY_ACCESS` until an isolated owned
+target exists.

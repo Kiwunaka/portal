@@ -1,0 +1,94 @@
+{
+  "schema": "pokrov.release-1.2.0.android-mobile-runtime-matrix/v1",
+  "recorded_at": "2026-08-26T11:18:37Z",
+  "status": "PRE_CANDIDATE_PARTIAL_RUNTIME_EVIDENCE_RECORDED",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "public_release_created": false,
+  "source_tuple": {
+    "platform": "243dcbe4727041d62cc0a36e7d2fd5a8530c7c25",
+    "client": "a74d2aea5aed62f5c31d3a0bbc258e408cebe3bd",
+    "core": "9b94e0bda7e454536e8fa9b4519f2281211798e0",
+    "candidate_frozen": false,
+    "supersedes_013u_as_current_candidate_basis": true
+  },
+  "android_artifact": {
+    "name": "app-direct-release.apk",
+    "size_bytes": 295018413,
+    "sha256": "1ba37463c9549a6d5ba128850e1bf5825187fe185a621e9f8dc62c7cde1a4158",
+    "package": "space.pokrov.pokrov_android_shell",
+    "version": "1.2.0",
+    "version_code": 4031,
+    "min_sdk": 24,
+    "target_sdk": 36,
+    "native_abis": ["arm64-v8a", "armeabi-v7a", "x86_64"],
+    "signature_scheme_v2": true,
+    "signer_count": 1,
+    "certificate_sha256": "0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500",
+    "debuggable": false,
+    "classification": "PRE_CANDIDATE_LOCAL"
+  },
+  "upgrade": {
+    "from_version": "1.1.6",
+    "from_version_code": 2029,
+    "from_apk_sha256": "6ac6ac33d2fae7041b2d408a2c55b93eeddb7d50825c4068f8c9c6087f0d97ca",
+    "same_certificate": true,
+    "installed_in_place": "PASS",
+    "session_and_data_preserved": "PASS",
+    "temporary_extracted_apk_deleted": true
+  },
+  "physical_android": {
+    "device_count": 1,
+    "serial_retained": false,
+    "carrier": "OPERATOR_ATTESTED_BEELINE",
+    "tests": [
+      {"route": "ru_spb_direct", "result": "UNAVAILABLE_FAIL_CLOSED", "label": "OPERATOR_ATTESTED"},
+      {"route": "whitelist_default", "result": "PASS_VERIFIED_EGRESS", "probe_ms": 396, "label": "OPERATOR_ATTESTED"},
+      {"route": "whitelist_type_2", "result": "PASS_VERIFIED_EGRESS", "probe_ms": 1451, "label": "OPERATOR_ATTESTED"},
+      {"route": "whitelist_type_3", "result": "UNAVAILABLE_FAIL_CLOSED", "label": "OPERATOR_ATTESTED"}
+    ],
+    "ai_games_preferences_persisted": "PASS",
+    "adguard_dns_preference_persisted": "PASS",
+    "content_transaction_proof": "NOT_RUN",
+    "wifi_lte_handover": "NOT_RUN",
+    "full_oem_matrix": "MANUAL_OWNER_TEST"
+  },
+  "ldplayer": {
+    "canonical_apk_restored": true,
+    "canonical_apk_nondebuggable": true,
+    "final_vpn_state": "DISCONNECTED_NOT_PROTECTED",
+    "direct_route": "PASS_VERIFIED_EGRESS",
+    "bridge_results": "DIAGNOSTIC_ONLY_NOT_VALID_AS_DEVICE_PROOF",
+    "temporary_connection_profiles_deleted": true
+  },
+  "server_reconciliation": {
+    "platform_deployed_revision": "243dcbe4727041d62cc0a36e7d2fd5a8530c7c25",
+    "deployment": "PASS",
+    "portal_units_active": 5,
+    "portal_unit_restarts_observed": 0,
+    "caddy_active": true,
+    "health_hosts": 7,
+    "subscription_outbounds": 33,
+    "type_2_full_chain_http_204": "PASS_OWNED_WINDOWS_ORIGIN",
+    "type_3_full_chain_http_204": "PASS_OWNED_WINDOWS_ORIGIN",
+    "android_type_3_profile_matches_rollout": true,
+    "de_node_predeploy": "BLOCKED_BY_ACCESS_TRUSTED_HOST_KEY_ABSENT"
+  },
+  "awg31": {
+    "backend_support_deployed": true,
+    "enabled_by_default": false,
+    "kill_switch_active": true,
+    "isolated_owned_target_available": false,
+    "runtime_test": "BLOCKED_BY_ACCESS"
+  },
+  "release_gates": {
+    "advanced_rows": {},
+    "android_physical_device": "PARTIAL_PRE_CANDIDATE_EVIDENCE_ONLY",
+    "android_oem_matrix": "MANUAL_OWNER_TEST",
+    "current_origin_exact_candidate": "NOT_RUN",
+    "brain_origin_exact_candidate": "NOT_RUN",
+    "ru_origin_exact_candidate": "NOT_RUN",
+    "candidate_artifact_set": "NOT_CREATED"
+  },
+  "evidence_ceiling": "SINGLE_PHYSICAL_ANDROID_BEELINE_AND_LDPLAYER_PRE_CANDIDATE_PROOF_SERVER_CHAIN_RECONCILED_NO_RC_NO_COMPLETE_OEM_OR_ORIGIN_MATRIX"
+}
