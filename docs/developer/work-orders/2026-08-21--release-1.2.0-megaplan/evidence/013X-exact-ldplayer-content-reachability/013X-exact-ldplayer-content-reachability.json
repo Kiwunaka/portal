@@ -1,0 +1,127 @@
+{
+  "schema": "pokrov.release-1.2.0.exact-ldplayer-content-reachability/v1",
+  "recorded_at": "2026-08-26T16:52:32Z",
+  "status": "EXACT_LDPLAYER_CONTENT_REACHABILITY_RECORDED",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "public_release_created": false,
+  "publication_authorized": false,
+  "deployment_performed": false,
+  "physical_device_tested": false,
+  "target": {
+    "adb_serial": "emulator-5560",
+    "kind": "LDPLAYER_EMULATOR_ANDROID_14_X86_64",
+    "model": "V2324A",
+    "package": "space.pokrov.pokrov_android_shell",
+    "version_name": "1.2.0",
+    "version_code": 4030,
+    "min_sdk": 24,
+    "target_sdk": 36,
+    "apk_reinstalled_for_this_slice": false,
+    "installed_base_apk_sha256": "7d7a22b23a33811326c452fdd23d19bbb02aae0b3f6bd74a6753e38f222675ed",
+    "staged_x86_64_apk_byte_identical": true
+  },
+  "vpn_path": {
+    "location": "Saint Petersburg",
+    "country": "Russia",
+    "variant": "direct",
+    "ui_state": "CONNECTED",
+    "tun0": "PRESENT",
+    "tun0_mtu": 1280,
+    "android_vpn_network": "CONNECTED_VALIDATED",
+    "ipv4_default_via_tun0": true,
+    "ipv6_default_reachable": false,
+    "dual_stack_proven": false,
+    "probe_uid_in_vpn_routed_range": true,
+    "vpn_owner_uid_excluded": true
+  },
+  "persisted_controls": {
+    "ai_services": "ENABLED_PERSISTED",
+    "games_xbox": "ENABLED_PERSISTED",
+    "adguard": "ENABLED_PERSISTED",
+    "dns_preset": "AdGuard",
+    "dns_without_vpn_claim_supported": false,
+    "domain_classification_complete_proof": false
+  },
+  "probes": [
+    {
+      "target": "owned_api_health",
+      "http_status": 200,
+      "redirects": 0,
+      "elapsed_seconds": 0.229,
+      "classification": "PASS_BOUNDED_ENDPOINT_REACHABILITY"
+    },
+    {
+      "target": "google_connectivity",
+      "http_status": 204,
+      "redirects": 0,
+      "elapsed_seconds": 0.125,
+      "classification": "PASS_BOUNDED_CONNECTIVITY"
+    },
+    {
+      "target": "chatgpt",
+      "http_status": 403,
+      "redirects": 0,
+      "elapsed_seconds": 0.178,
+      "classification": "NETWORK_PATH_REACHED_SERVICE_FUNCTIONALITY_NOT_PASS",
+      "cause": "NOT_PROVEN_COMPATIBLE_WITH_AUTOMATION_OR_EDGE_POLICY_DENIAL"
+    },
+    {
+      "target": "gemini",
+      "http_status": 200,
+      "redirects": 0,
+      "elapsed_seconds": 0.455,
+      "classification": "PASS_REACHABILITY_ONLY_LOGIN_AND_CHAT_NOT_TESTED"
+    },
+    {
+      "target": "xbox",
+      "http_status": 200,
+      "redirects": 1,
+      "elapsed_seconds": 0.316,
+      "classification": "PASS_REACHABILITY_ONLY_LOGIN_AND_GAMING_NOT_TESTED"
+    }
+  ],
+  "test_hygiene": {
+    "malformed_initial_probe": "DISCARDED_NO_EVIDENCE_CREDIT",
+    "response_bodies_retained": false,
+    "raw_profiles_retained": false,
+    "account_identifiers_retained": false,
+    "physical_beeline_claim": false,
+    "current_origin_claim": false,
+    "brain_origin_claim": false,
+    "ru_origin_claim": false
+  },
+  "screenshots": [
+    {
+      "path": "evidence/013X-exact-ldplayer-content-reachability/connected-spb-direct.png",
+      "size_bytes": 238215,
+      "sha256": "59eddb2a239062310700cac623e9978ae25f8cddf08883e9d32c3f17de471c24",
+      "classification": "CONNECTED_UI_SAINT_PETERSBURG_DIRECT"
+    },
+    {
+      "path": "evidence/013X-exact-ldplayer-content-reachability/final-disconnected.png",
+      "size_bytes": 206315,
+      "sha256": "5995424af858ae74d3e1b8ab6a96d7dae7a1ede87cf07f55a57105562a030ee6",
+      "classification": "FINAL_DISCONNECTED_UI"
+    }
+  ],
+  "final_state": {
+    "ui": "DISCONNECTED_NOT_PROTECTED_CONNECT",
+    "tun0": "ABSENT",
+    "crash_buffer_lines": 0,
+    "selected_location": "SAINT_PETERSBURG_DIRECT"
+  },
+  "runtime": {
+    "deployed_backend_code": "243dcbe4727041d62cc0a36e7d2fd5a8530c7c25",
+    "backend_redeploy_required": false,
+    "reason": "NEWER_RELEVANT_PLATFORM_DELTA_IS_DOCUMENTATION_AND_EVIDENCE_ONLY"
+  },
+  "ledger": {
+    "advanced_rows": {},
+    "strengthened_rows": ["REL_DOD/DOD-15"],
+    "distribution": {"I3": 309, "I2": 17, "I1": 37, "I0": 14},
+    "below_i3": 68,
+    "pending_stage_counts": {"pre_freeze": 0, "candidate": 33, "external": 14, "deferred": 21}
+  },
+  "evidence_ceiling": "EXACT_LDPLAYER_PRE_CANDIDATE_NETWORK_REACHABILITY_ONLY_NO_PHYSICAL_DEVICE_NO_CHATGPT_FUNCTIONAL_PASS_NO_SIGNED_PUBLIC_INDEX_NO_RELEASE"
+}
