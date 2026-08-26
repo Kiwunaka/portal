@@ -2803,3 +2803,31 @@ open without the full default/quick candidate-bound and post-promotion proof.
 `REL/PERF-001` and `REL_GATE/GATE-E` remain `I3`; `REL_DOD/DOD-13` remains
 `I1`. Distribution remains `I3=309`, `I2=17`, `I1=37`, `I0=14`; 68 rows
 remain below `I3`, and stage split remains `0/33/14/21`.
+
+## 2026-08-26 — WO-013X Brain-origin pre-candidate runtime
+
+The retained-inventory network helper produced a false current-pool signal,
+so platform PR 37 added a fail-closed live-enabled-node source and redacted
+JSON outputs for Brain network/readiness evidence. Head `34f6b2b` passed PR
+Release v2 Contract/Guardrails runs `32982213812`/`32982213900`; signed merge
+`d310ceffea683f50ebe369ac9a0abee3a9a204c4` passed post-merge runs
+`32983333728`/`32983333723`.
+
+Clean signed-source reruns prove Brain readiness `23/23`, five stable
+subscription samples, live enabled delivery TCP `7/7` and runtime
+app/provider policy `8/8`. The public runtime remains correctly pinned to
+stable `1.1.6` because no 1.2.0 candidate or release manifest exists. The
+expanded 25-file diagnostic manifest validates fully with SHA-256
+`26018ffb88e3bbcf16a78e941268a92721b6a0c724118f8e0d61ffe132758aef`
+and its Brain artifacts contain no sensitive-pattern match.
+
+The separate former-free MTProto `9443/tcp` diagnostic is closed. It remains a
+non-VPN operational failure and forbids an MTProto-readiness claim; it does not
+rewrite the seven-node VPN delivery result. No deploy, restart, route change,
+payment, pointer switch, candidate or publication occurred.
+
+No row advances. `FE/P12-012` remains `I2` because a provider-policy GET is not
+exact-candidate payment E2E. `FRKN_PLAN/W9-02` remains `I1`: current and Brain
+pre-candidate evidence now exist separately, but exact-candidate and RU-origin
+proof remain absent. Distribution remains `I3=309`, `I2=17`, `I1=37`,
+`I0=14`; 68 rows remain below `I3`, and stage split remains `0/33/14/21`.

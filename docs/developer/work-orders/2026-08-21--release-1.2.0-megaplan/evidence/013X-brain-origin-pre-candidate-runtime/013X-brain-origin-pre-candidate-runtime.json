@@ -1,0 +1,92 @@
+{
+  "schema": "pokrov.release-1.2.0.brain-origin-pre-candidate-runtime/v1",
+  "recorded_at": "2026-08-26T15:12:00Z",
+  "status": "BRAIN_ORIGIN_PRE_CANDIDATE_RUNTIME_PASS_EXACT_CANDIDATE_OPEN",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "production_runtime_mutated": false,
+  "platform": {
+    "probe_pr_head": "34f6b2b34f78b0a6b9833d3239faa381c3fd4364",
+    "probe_merge": "d310ceffea683f50ebe369ac9a0abee3a9a204c4",
+    "evidence_worktree_clean": true,
+    "deployed_backend_runtime": "243dcbe4727041d62cc0a36e7d2fd5a8530c7c25",
+    "backend_redeploy_required": false,
+    "backend_redeploy_performed": false,
+    "runtime_delta_classification": "PROBE_TOOLING_TESTS_AND_DOCUMENTATION_ONLY"
+  },
+  "method": {
+    "origin": "brain",
+    "active_delivery_authority": "LIVE_ENABLED_NODE_ROWS",
+    "retained_inventory_role": "DIAGNOSTIC_ONLY",
+    "retained_fields": ["node_code", "configured_port", "tcp_status", "allowlisted_error_kind"],
+    "forbidden_fields_absent": ["host", "ip", "sni", "raw_exception", "password", "token", "subscription_url"]
+  },
+  "clean_results": {
+    "readiness": {
+      "checked_at": "2026-08-26T15:10:16.085880+00:00",
+      "status": "PASS",
+      "checks": 23,
+      "failures": 0,
+      "subscription_samples": "PASS_5_OF_5",
+      "sha256": "cd902e9381368fb717e426b11152e10de8512e77b9483f57e9c48ae1078f120b"
+    },
+    "live_enabled_delivery": {
+      "checked_at": "2026-08-26T15:10:18.752741+00:00",
+      "status": "PASS",
+      "nodes": ["de", "it", "nl", "pl", "ru", "ru_spb", "us"],
+      "configured_tcp": "PASS_7_OF_7",
+      "sha256": "0a8781d622383566e1012536fd882535e6304dccc795d36f304c8820c4742988"
+    },
+    "runtime_apps_and_provider_policy": {
+      "observed_at": "2026-08-26T15:09:46Z",
+      "status": "PASS",
+      "checks": 8,
+      "stable_android_version": "1.1.6",
+      "stable_windows_version": "1.1.6",
+      "release_manifest_present": false,
+      "stable_pointer_interpretation": "EXPECTED_NO_1_2_0_CANDIDATE_OR_PUBLICATION",
+      "sha256": "b37c980d614a1c77bb057e33f52b6b38b2bb773723c80b7839496eafaecf8501"
+    },
+    "former_free_mtproto": {
+      "checked_at": "2026-08-26T15:10:23.326012+00:00",
+      "status": "FAIL_DIAGNOSTIC_SEPARATE",
+      "target_label": "former_free",
+      "tcp_port": 9443,
+      "tcp_status": "closed",
+      "vpn_delivery_gate_impact": "NONE_SEPARATE_NON_VPN_SERVICE",
+      "claim_impact": "DO_NOT_CLAIM_MTPROTO_READY",
+      "sha256": "888e64924839247555ca31bebad3ca02507d7d8797416b71d4529d7957b4f4f4"
+    }
+  },
+  "diagnostic_manifest": {
+    "entries": 25,
+    "validation": "PASS_25_OF_25",
+    "sensitive_pattern_scan": "PASS_NO_MATCH",
+    "sha256": "26018ffb88e3bbcf16a78e941268a92721b6a0c724118f8e0d61ffe132758aef"
+  },
+  "hosted_checks": {
+    "pr_runs": [32982213812, 32982213900],
+    "post_merge_runs": [32983333728, 32983333723],
+    "required_pr_checks": "PASS_2_OF_2",
+    "required_post_merge_checks": "PASS_2_OF_2"
+  },
+  "gate_classification": {
+    "brain_origin_pre_candidate_runtime": "PASS",
+    "brain_origin_exact_candidate": "NOT_RUN_NO_CANDIDATE",
+    "current_origin_aggregate": "NOT_PASS_REMAINING_FULL_QUICK_CANDIDATE_AND_POST_PROMOTION_PROOF",
+    "ru_origin": "NOT_RUN_NO_RU_CLAIM",
+    "physical_beeline_exact_bytes": "MANUAL_OWNER_TEST_NOT_RUN_DEVICE_NOT_VISIBLE_IN_ADB",
+    "payment_provider_e2e": "NOT_RUN",
+    "operator_oidc_rbac": "NOT_RUN",
+    "legal_commercial": "NOT_RUN",
+    "rollback_drill": "NOT_RUN"
+  },
+  "ledger": {
+    "advanced_rows": {},
+    "strengthened_rows": ["FE/P12-012", "FRKN_PLAN/W9-02"],
+    "distribution": {"I3": 309, "I2": 17, "I1": 37, "I0": 14},
+    "below_i3": 68,
+    "pending_stage_counts": {"pre_freeze": 0, "candidate": 33, "external": 14, "deferred": 21}
+  },
+  "evidence_ceiling": "BRAIN_ORIGIN_PRE_CANDIDATE_RUNTIME_ONLY_NO_EXACT_CANDIDATE_NO_CURRENT_OR_RU_AGGREGATE_NO_PHYSICAL_DEVICE_NO_PAYMENT_E2E_NO_OPERATOR_NO_LEGAL_NO_ROLLBACK_NO_DEPLOY_NO_PUBLIC_RELEASE"
+}

@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-26
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_EXACT_LOCAL_PRE_CANDIDATE_AND_LDPLAYER_RECORDED`
+Wave status: `PHASE_11_BRAIN_ORIGIN_PRE_CANDIDATE_RECORDED`
 Release candidate: `NOT_CREATED`
 
 ## Outcome
@@ -109,6 +109,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013U` | Apply the exact owner-approved unsigned Windows 1.2.0 direct-beta exception and rebuild the current artifact/supply-chain set | Client/platform release evidence | Current six-file set, production Android signing, Windows `SKIPPED_BY_OWNER`, embedded support pin, SBOM/provenance, strict handoff and 23/23 checksums proved; `REL_DOD/DOD-15` remains `I2`, candidate/publication remain uncreated | `WO-013T`, client PR 14 and post-merge hosted gates, exact local build tuple |
 | `WO-013V` | Rebuild the exact local pre-candidate set and retain byte-identical LDPlayer/runtime evidence | Client/platform release evidence | Six current artifacts, production Android signing, owner-approved unsigned Windows, strict supply/checksum bundle and exact LDPlayer proof recorded; no ledger advancement, physical/manual/origin gates and candidate remain open | `WO-013E`, `WO-013U`, current clean source tuple |
 | `WO-013W` | Correct and retain the direct current-origin API performance method without manufacturing a deploy or aggregate gate pass | Platform performance/release evidence | Clean source-bound health/catalog p95 pass with real persistent warmups; backend deploy is not required, aggregate current-origin/candidate/device gates remain open and no row advances | `WO-010I`, `WO-013V`, platform PRs 34/35, owned direct-origin evidence |
+| `WO-013X` | Derive Brain-origin readiness and delivery proof from the live enabled pool with redacted retained artifacts | Platform operations/release evidence | Clean Brain readiness 23/23, live delivery 7/7 and runtime app/provider 8/8 pass; exact-candidate Brain gate remains open, separate former-free MTProto diagnostic fails and no row advances | `WO-013V`, `WO-013W`, platform PR 37, owned Brain access |
 
 ## Current evidence
 
@@ -176,6 +177,10 @@ The row order is a dependency order, not permission for one giant merge. Each im
   signed platform merges, clean health/catalog p95 passes, diagnostic manifest
   and no-deploy decision while retaining the aggregate current-origin,
   candidate, physical-device, Brain/RU and promotion ceilings.
+- `evidence/013X-brain-origin-pre-candidate-runtime/013X-brain-origin-pre-candidate-runtime.json`
+  binds signed redacted probe controls, clean Brain readiness, the live enabled
+  seven-node delivery pool, runtime app/provider readback and the separate
+  closed MTProto diagnostic while retaining all exact-candidate/manual gates.
 - `evidence/013E-android-mobile-runtime-matrix/013E-android-mobile-runtime-matrix.json`
   binds the newer Android artifact identity, single physical Beeline matrix,
   LDPlayer evidence ceiling, deployed server-chain reconciliation and explicit
@@ -204,9 +209,16 @@ required. Candidate creation remains `NOT_CREATED` and no row advances to
 from clean platform `899e5f0` and records why no backend redeploy is required.
 It does not satisfy the aggregate `CURRENT_ORIGIN` promotion gate.
 
+013X separately proves the current pre-candidate Brain runtime on clean signed
+platform `d310ceff`: readiness `23/23`, live enabled delivery `7/7` and runtime
+app/provider policy `8/8` pass. It does not satisfy the exact-candidate
+`BRAIN_ORIGIN` gate. The stable catalog intentionally remains `1.1.6`; the
+former-free MTProto `9443/tcp` diagnostic is closed and must not be advertised
+as ready, but it is not part of the VPN delivery verdict.
+
 Run the exact 4030 APK on the physical Beeline device next, then classify the
 remaining Windows clean-host, signer-recovery, aggregate current-origin,
-brain-origin, provider, Operator, legal and rollback gates. RU-origin remains a
+exact-candidate Brain-origin, provider, Operator, legal and rollback gates. RU-origin remains a
 distinct `NOT_RUN` gate unless an RU claim is requested. Only after explicit
 owner authorization may these same six hashes be published as a candidate with
 a detached signed index and public asset digest readback. The unsigned Windows
