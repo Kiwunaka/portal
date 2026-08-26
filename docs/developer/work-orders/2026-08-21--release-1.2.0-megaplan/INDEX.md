@@ -113,6 +113,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013Y` | Sign and independently read back the exact tracked candidate manifest without publishing assets or promoting stable | Public release-index/platform release evidence | PR/post-merge gates and secret-backed signer pass on public main; manifest/signature/receipt are retained and verified, `OBS_DOD/DOD-29` reaches `I4`; public asset, runtime and promotion gates remain open | `WO-013V`, public release-index PR 4, owner solo authorization, exact tracked template |
 | `WO-013Z` | Preserve the redacted Brain-origin pre-candidate readiness/delivery slice under a non-colliding work-order identity | Platform operations/release evidence | Clean Brain readiness 23/23, live delivery 7/7 and runtime app/provider 8/8 pass; exact-candidate Brain gate remains open, separate former-free MTProto diagnostic fails and no row advances | `WO-013W`, platform PR 37, owned Brain access, superseded conflicting PR 38 branch evidence |
 | `WO-013AA` | Reconcile the red exact Core aggregate with exact-source product jobs and the corrected product-identical CI control | Core/client/platform release evidence | Exact Core 344b317 product/security/platform jobs pass; old aggregate stays red for missing client LFS checkout; workflow-only control 9b94e0b passes all five jobs and `REL_DOD/DOD-10` reaches `I3` | `WO-013I`, `WO-013Y`, Core PR 4 and runs 32944235783/32946337754/32947422554 |
+| `WO-013AB` | Bind the retained signed candidate to a real local release-health breach and guarded rollout rollback request | Platform observability/release control | Exact manifest signature passes against the c1d6170 keyring; isolated 4030 UPD-004 blocks observation close and drives candidate policy to zero, so `OBS_PB/PB-14` reaches `I3`; external switch and production cohort remain unproved | `WO-006J`, `WO-013Y`, exact signed candidate bytes |
 
 ## Current evidence
 
@@ -201,6 +202,11 @@ The row order is a dependency order, not permission for one giant merge. Each im
   missing-LFS release-contract failure and the product-identical workflow-only
   correction whose PR and post-merge runs pass all five jobs. It advances only
   `REL_DOD/DOD-10` to `I3`.
+- `evidence/013AB-pb14-exact-candidate-health-stop/013AB-pb14-exact-candidate-health-stop.json`
+  revalidates the retained manifest/signature/receipt against the exact public
+  keyring, binds the signed candidate to one identity-free 4030 health breach
+  and proves local observation stop plus guarded zero-distribution rollback
+  request. It does not claim an external artifact switch or production cohort.
 - `evidence/013E-android-mobile-runtime-matrix/013E-android-mobile-runtime-matrix.json`
   binds the newer Android artifact identity, single physical Beeline matrix,
   LDPlayer evidence ceiling, deployed server-chain reconciliation and explicit
@@ -253,6 +259,11 @@ product-identical workflow-only correction `9b94e0b...` passes all five PR and
 post-merge jobs, including bound-source materialization. Therefore
 `REL_DOD/DOD-10` is `I3`, while physical device/origin/public proof remains
 open before `I4`.
+
+013AB advances `OBS_PB/PB-14` to local `I3`: the exact signed manifest now
+drives a reproducible health-regression stop and guarded rollback request
+through the real services. Its temporary cohort is explicitly a local control
+fixture; external artifact rollback and post-promotion health remain open.
 
 Run the exact 4030 APK on the physical Beeline device next, then classify the
 remaining Windows clean-host, signer-recovery, aggregate current-origin,
