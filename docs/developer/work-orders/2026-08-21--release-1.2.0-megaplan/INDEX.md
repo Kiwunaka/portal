@@ -35,7 +35,7 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete; exact-candidate performance/manual gates retained | `WO-010` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
 | 10 | FRKN-derived rules; isolated AWG2 PoC, later HY2 decision | Local package complete; exact artifact/device/RU gates open | `WO-012` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013AC makes signed `pokrov-1.2.0-candidate.2` the current exact basis: six hashes/source tuple validate, a private prerelease retains the Windows installer and signed outputs, exact hosted platform/client release gates pass, the bounded Windows clean-host service/IPC/install/uninstall slice passes, and PB-14 is replayed on candidate.2. Android is production-signed; Windows retains the owner-approved unsigned direct-beta exception. No public `v1.2.0`, six public assets or stable pointer exists, and exact physical Beeline/OEM, live Windows TUN/DNS/rollback, aggregate origins, provider, Operator, legal and promotion gates remain open | `WO-013`, `WO-013C`, `WO-013D`, `WO-013E`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S`, `WO-013T`, `WO-013U`, `WO-013V`, `WO-013W`, `WO-013X`, `WO-013Y`, `WO-013Z`, `WO-013AA`, `WO-013AB`, `WO-013AC` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013AC keeps signed `pokrov-1.2.0-candidate.2` as the current exact evidence basis. 013AD proves the SPB dual-role diagnosis, disables only the stale type-3 rollout identity, retains physical Beeline direct/type-1/type-2 proof and merges client stale-variant recovery as `61ce563...`. Because production rollout and client `main` moved after the candidate freeze, a new candidate is required. No public `v1.2.0`, six public assets or stable pointer exists; Windows live TUN/DNS/rollback, full Android OEM/handover, aggregate origins, provider, Operator, legal and promotion gates remain open | `WO-013`, `WO-013C`, `WO-013D`, `WO-013E`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S`, `WO-013T`, `WO-013U`, `WO-013V`, `WO-013W`, `WO-013X`, `WO-013Y`, `WO-013Z`, `WO-013AA`, `WO-013AB`, `WO-013AC`, `WO-013AD` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -115,6 +115,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013AA` | Reconcile the red exact Core aggregate with exact-source product jobs and the corrected product-identical CI control | Core/client/platform release evidence | Exact Core 344b317 product/security/platform jobs pass; old aggregate stays red for missing client LFS checkout; workflow-only control 9b94e0b passes all five jobs and `REL_DOD/DOD-10` reaches `I3` | `WO-013I`, `WO-013Y`, Core PR 4 and runs 32944235783/32946337754/32947422554 |
 | `WO-013AB` | Bind the retained signed candidate to a real local release-health breach and guarded rollout rollback request | Platform observability/release control | Exact manifest signature passes against the c1d6170 keyring; isolated 4030 UPD-004 blocks observation close and drives candidate policy to zero, so `OBS_PB/PB-14` reaches `I3`; external switch and production cohort remain unproved | `WO-006J`, `WO-013Y`, exact signed candidate bytes |
 | `WO-013AC` | Replace candidate.1 as current truth with signed/private-carrier candidate.2 and reconcile hosted source, Windows clean-host and PB-14 evidence | Cross-repository candidate/release evidence | Candidate.2 signature/source/supply/private-carrier digests pass; exact hosted platform/client gates and bounded Windows service/IPC clean-host slice reach candidate proof; PB-14 is replayed; public v1.2.0, live TUN/DNS, physical Android, origins and stable promotion remain open | `WO-013AB`, platform PR 42, client PRs 21/22, release-index PRs 5/6, exact signed candidate.2 bytes |
+| `WO-013AD` | Correct the SPB dual-role/type-3 diagnosis, disable only the stale advertised identity and retain client/device recovery evidence | Platform/client runtime and release evidence | Direct SPB is untouched; stale `ru_spb` type 3 is disabled with rollback snapshot; client PR 23 resets removed saved variants and passes PR/post-merge CI; candidate.2 direct/type 1 plus non-candidate type 2/recovery smoke pass on Beeline; no row advances and a new candidate remains required | `WO-013E`, `WO-013AC`, deployed self-hop guard, client PR 23, owned Brain/SPB/device access |
 
 ## Current evidence
 
@@ -221,6 +222,10 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013AC-candidate2-reconciliation/013AC-candidate2-reconciliation.json`
   binds the complete candidate.2 hashes, hosted runs, supply chain, publication
   boundary, scoped ledger advances and remaining exact-candidate gates.
+- `evidence/013AD-spb-dual-role-runtime-correction/013AD-spb-dual-role-runtime-correction.json`
+  binds the sanitized same-host/separate-identity diagnosis, exact bounded
+  rollout disable, physical Beeline route results, client PR 23 recovery and
+  explicit no-new-candidate/no-ledger-advance boundary.
 - `evidence/013E-android-mobile-runtime-matrix/013E-android-mobile-runtime-matrix.json`
   binds the newer Android artifact identity, single physical Beeline matrix,
   LDPlayer evidence ceiling, deployed server-chain reconciliation and explicit
@@ -236,7 +241,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 
 ## Next action
 
-013AC is the current release truth. Signed
+013AD is the current runtime correction truth while 013AC remains the signed
+candidate identity authority. Signed
 `pokrov-1.2.0-candidate.2` binds platform/client/Core/release-index
 `c5f3fca...` / `e6c29d1...` / `344b317...` / `4c6d46c...`, five
 production-signed Android artifacts and the owner-approved unsigned Windows
@@ -253,13 +259,18 @@ also been replayed on candidate.2 and remains a local isolated control at
 `I3`, not deployed-cohort evidence.
 
 The platform self-hop guard is deployed at candidate-bound `c5f3fca...`.
-SPB remains a dual-role delivery/bridge node, but its own bridge is excluded
-when SPB is the selected destination. The earlier Beeline failure of both SPB
-direct and type 3 is therefore tracked as a shared SPB entry-path/carrier
-failure; it is not exact candidate.2 physical-device proof.
+SPB is a dual-role delivery/bridge server, and its own bridge is correctly
+excluded for SPB destinations. Exact candidate.2 direct SPB and type 1 now
+pass on the physical Beeline device. The separate type-3 identity advertised
+from the same server was stale, so only that rollout endpoint was disabled;
+direct SPB and type 1/type 2 remain active. Client PR 23 merged the required
+stale-variant recovery as `61ce563...`. Candidate.2 is not promoted because
+this client fix and production rollout correction postdate its freeze.
 
-Next execute the exact candidate.2 Android physical Beeline/OEM matrix and the
-Windows live TUN/DNS/egress/connected-rollback matrix. Then retain aggregate
+Next bind current platform/client/Core/release-index heads into a fresh exact
+candidate with the canonical emergency pin, then repeat the physical
+Beeline/OEM/handover matrix on those exact bytes. Separately execute the
+Windows live TUN/DNS/egress/connected-rollback matrix and retain aggregate
 current-origin, exact-candidate Brain-origin, RU-origin, provider, Operator and
 legal evidence. Public `v1.2.0`, six public assets, same-byte promotion and a
 stable pointer remain prohibited until required STOP-SHIP rows reach `I4` and

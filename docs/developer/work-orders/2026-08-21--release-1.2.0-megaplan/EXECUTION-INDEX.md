@@ -2981,3 +2981,31 @@ index.
 Current distribution is `I4=4`, `I3=307`, `I2=15`, `I1=38`, `I0=13`; 311
 rows are at or above `I3`, 66 remain below `I3`, and pending stage split stays
 `0/31/14/21`.
+
+## 2026-08-27 — WO-013AD SPB dual-role runtime correction
+
+Live DNS/SSH host-identity comparison proves the normal SPB delivery profile
+and the advertised `ru_spb` type-3 bridge belong to the same physical server
+but use separate transport identities. The self-hop guard correctly omits
+that bridge when SPB is the destination. The advertised type-3 identity had no
+matching active listener/service, explaining why direct SPB could work while
+foreign type 3 failed closed.
+
+After a protected rollback snapshot, production changed only
+`ru_bridge_relay.endpoints[id=ru_spb].enabled` from true to false. The normal
+SPB delivery path was untouched; active bridge ids remain `mini` and `ru`.
+Client PR 23 merged as `61ce563...`: removed saved bridge variants now reset
+to available direct, compact Android sheets scroll through four or more rows,
+and private variant probes use the owned authenticated-egress marker.
+
+On the physical Beeline device, exact candidate.2 direct SPB and type 1 reach
+the proof-driven protected state. The non-candidate correction smoke also
+proves Frankfurt direct, SPB type 2 and stale-type-3 recovery; its emergency
+pin was a test placeholder, so these are not candidate claims. The smoke APK
+was deleted, the original production-signed `4031` lab APK and Wi-Fi were
+restored, and 2358715588 temporary build bytes were cleaned.
+
+No row advances and the index distribution stays `I4=4`, `I3=307`, `I2=15`,
+`I1=38`, `I0=13`. Candidate.2 remains the current signed identity authority,
+but it is not promoted because the rollout and client source moved after its
+freeze. A fresh candidate and exact device/origin replay are required.
