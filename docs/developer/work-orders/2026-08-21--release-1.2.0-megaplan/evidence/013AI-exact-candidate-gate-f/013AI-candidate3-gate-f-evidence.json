@@ -1,6 +1,6 @@
 {
   "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
-  "recorded_at_utc": "2026-08-27T08:23:54Z",
+  "recorded_at_utc": "2026-08-27T08:49:25Z",
   "candidate": {
     "id": "pokrov-1.2.0-candidate.3",
     "operational_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
@@ -51,7 +51,7 @@
     {
       "id": "GATES_A_E_AND_MANDATORY_ROWS_NOT_ALL_CANDIDATE_PROVEN",
       "status": "MISSING",
-      "detail": "The ledger still contains required rows below exact-candidate I4; local I3 and source proof are not Gate F proof"
+      "detail": "Gate A is now baselined at I1 with a BLOCKED exact-candidate decision, while Gates A-E and mandatory rows are still not all exact-candidate I4; local, source and compensated proof are not Gate F proof"
     },
     {
       "id": "WINDOWS_LIVE_TUN_DNS_EGRESS_RECOVERY",
@@ -155,8 +155,12 @@
       "sha256": "c3691f84be3fb526fec2e3cc56dc9977ec84bc77b1dfb9374228debf8587a769"
     },
     {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AJ-exact-candidate-gate-a/013AJ-gate-a-decision.json",
+      "sha256": "f4441a19521d1d77703f599c1257f620fb048167c3db9ff3a24f2935694f2d01"
+    },
+    {
       "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/EXECUTION-LEDGER.csv",
-      "sha256": "4ec079e29f0b694e8a1622b9e3f8fb1451a42c4c61eccb81d2b7b96ea308c13f"
+      "sha256": "de901f7a26348e09132f83ff35175715bc460ef70c7922f62f0e99b1d5477fbc"
     }
   ],
   "mutation_boundary": {

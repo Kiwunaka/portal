@@ -113,6 +113,10 @@ The fourteen non-PASS checks retain the following boundaries:
 14. Required hosted checks are
     `BLOCKED_BY_ACCESS_GITHUB_BILLING`.
 
+WO-013AJ now gives Gate A an exact-candidate baseline, but its decision is
+`BLOCKED` at `I1`, not `PASS` or candidate proof. That baseline therefore
+remains non-PASS for Gate F and does not change the `5`/`14` split.
+
 ## Hosted-check boundary
 
 The retained platform check readback feeding this rerun is PR `#49` head
@@ -133,18 +137,20 @@ remain unmerged.
 | File | SHA-256 |
 |---|---|
 | `010K-support-transport-reconciliation.json` | `c3691f84be3fb526fec2e3cc56dc9977ec84bc77b1dfb9374228debf8587a769` |
+| `013AJ-gate-a-decision.json` | `f4441a19521d1d77703f599c1257f620fb048167c3db9ff3a24f2935694f2d01` |
 | `013AI-candidate3-ldplayer-recheck.json` | `9cb9a0483aa6714cdd96b3e0f1c6e00007e45089340727deb2b4ae24dfef83a5` |
-| `013AI-candidate3-gate-f-evidence.json` | `2432dcf61e162b70086d59f4fddd49fd0f2c5473bc3a0283c7fd073fc06f513b` |
-| `013AI-candidate3-gate-f-input.json` | `6143bf1b7a4987ef8b3a743e5277f5d5d766cc71c764cbd2bb33ffd397e43394` |
-| `013AI-candidate3-gate-f-decision.json` | `d086c120ccab2e7c9f5371a2b8d3149c5ee115f8ec63edd39c4882c4af73046f` |
-| Current execution ledger after WO-010K | `4ec079e29f0b694e8a1622b9e3f8fb1451a42c4c61eccb81d2b7b96ea308c13f` |
+| `013AI-candidate3-gate-f-evidence.json` | `3c6a0710eda2699f844644a4b5569e8cfb7662768ac4e7ae458e7293e49ce079` |
+| `013AI-candidate3-gate-f-input.json` | `1ef46beb3d06e55ea6d5f9c6c3655add2a5174cca72e6454c753d453ed1d981b` |
+| `013AI-candidate3-gate-f-decision.json` | `3eb6b06dfd345c7df1ef4d5f09cfd354e22e2efeec13abc674930800037c631b` |
+| Current execution ledger after WO-013AJ | `de901f7a26348e09132f83ff35175715bc460ef70c7922f62f0e99b1d5477fbc` |
 
 The decision report directly binds the input digest; the input binds the Gate
 F aggregate; the verifier also re-hashes every listed upstream evidence file.
 
 ## Verification
 
-- release Gate F/preflight/STOP-SHIP tests: `39 passed`;
+- release Gate F/preflight/STOP-SHIP/docs-contract tests: `71 passed`;
+- platform context audit and upstream-evidence hash audit: `PASS`;
 - real candidate invocation: exit `0` only with `--expect-blocked`;
 - Ed25519/candidate validation: `PASS`;
 - evidence validation errors: `0`;
@@ -158,9 +164,9 @@ implemented and verified. Neither row advances to `I4`, because the exact
 candidate decision is `BLOCKED` and non-PASS evidence never becomes candidate
 proof.
 
-After WO-010K reconciles the conditional support-transport row and a fresh
-fail-closed Gate F rehash, distribution is `I4=4`, `I3=312`, `I2=19`,
-`I1=40`, `I0=2`;
+After WO-010K reconciles the conditional support-transport row, WO-013AJ
+baselines Gate A without treating its blockers as pass, and a fresh fail-closed
+Gate F rehash, distribution is `I4=4`, `I3=312`, `I2=19`, `I1=41`, `I0=1`;
 `316` rows are at or above `I3`, `61` remain below. The remaining stage split
 is `pre_freeze=0`, `candidate=28`, `external=14`, `deferred=19`.
 

@@ -1,0 +1,155 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-a-decision/v1",
+  "recorded_at_utc": "2026-08-27T08:44:30Z",
+  "decision": "BLOCKED",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.3",
+    "operational_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
+    "platform_source": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+    "client_source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+    "core_source": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "release_index_source": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2",
+    "manifest_sha256": "a2752b6a3b95faacf13a68edb708c560966a0f5eb8727e109d7f1603fdc81090",
+    "signature_sha256": "926f0b4667a58ba9cc5ace5c4e6c3c8129d1ec3d4d449b3f0831a8c527cd7121",
+    "receipt_sha256": "fb4d0d5dd272b8d3e7ea2303e2ffa93e332f54ac3e92f245400decc6c06e4b53"
+  },
+  "source_plan": {
+    "file": "POKROV_release_1.2.0_full_audit_with_client_logging_RU.md",
+    "section": "18 / Gate A — безопасность релизной линии",
+    "requirements": [
+      "branches and CI",
+      "payment fallback correction",
+      "single manifest",
+      "version and contract validation",
+      "Windows clean-host proof",
+      "release signing and provenance"
+    ]
+  },
+  "requirements": {
+    "branches_and_ci": {
+      "status": "PASS_WITH_OWNER_SOLO_EXCEPTION_AND_FAIL_FIRST_RECONCILIATION",
+      "local_stop_ship_regressions": "PASS_7_OF_7",
+      "owner_solo_pr_controls": "PASS_3_OF_3",
+      "platform_private_branch_protection_api": "BLOCKED_BY_GITHUB_PLAN_COMPENSATED_BY_OWNER_SOLO_PR_CONTROL",
+      "client_private_branch_protection_api": "BLOCKED_BY_GITHUB_PLAN_COMPENSATED_BY_OWNER_SOLO_PR_CONTROL",
+      "core_branch_protection": "PASS",
+      "candidate_platform_hosted_checks": "PASS_2_OF_2",
+      "candidate_client_hosted_check": "PASS_1_OF_1",
+      "candidate_core_exact_source_aggregate": "FAILURE_RETAINED_RELEASE_CONTRACT_MISSING_CLIENT_LFS",
+      "candidate_core_product_jobs": "PASS_4_OF_4",
+      "product_identical_core_ci_control": "PASS_5_OF_5",
+      "replacement_candidate_current_hosted_checks": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+    },
+    "payment_fallback_correction": {
+      "status": "PASS",
+      "exact_platform_tests": "PASS",
+      "free_kassa_enabled": false,
+      "synthetic_zero_amount_fallback": false
+    },
+    "single_manifest": {
+      "status": "PASS",
+      "manifest_signature": "PASS_ED25519",
+      "key_id": "pokrov-release-2026-01",
+      "candidate_source_tuple_bound": true,
+      "artifact_count": 6
+    },
+    "version_and_contract_validation": {
+      "status": "PASS",
+      "exact_source_pytest": "PASS_103_WITH_21_SUBTESTS",
+      "cross_repository_client_core_contract": "PASS",
+      "client_version": "1.2.0+30",
+      "core_version": "1.1.0",
+      "desktop_abi": 2
+    },
+    "windows_clean_host_proof": {
+      "status": "MANUAL_OWNER_TEST",
+      "exact_candidate_partial": "PASS_INSTALL_SERVICE_AUTHENTICATED_IPC_RESTART_UNINSTALL_IDLE_NETWORK",
+      "missing": [
+        "live TUN and full-tunnel traffic",
+        "connected DNS capture and leak protection",
+        "authenticated egress through an owned profile",
+        "connected rollback, sleep, reboot and crash recovery",
+        "uninstall while connected"
+      ]
+    },
+    "release_signing_and_provenance": {
+      "status": "SKIPPED_BY_OWNER",
+      "manifest_signing": "PASS",
+      "android_production_certificate": "PASS",
+      "sbom": "PASS",
+      "provenance": "PASS",
+      "windows_authenticode": "NOT_SIGNED_OWNER_ACCEPTED_DIRECT_BETA_ONLY",
+      "public_or_stable_windows_signing": "NOT_PASS"
+    }
+  },
+  "summary": {
+    "required": 6,
+    "pass_or_compensated": 4,
+    "non_pass": 2,
+    "explicit_fail": 0,
+    "validation_errors": []
+  },
+  "blockers": [
+    {
+      "id": "WINDOWS_LIVE_CLEAN_HOST_NETWORK_MATRIX",
+      "status": "MANUAL_OWNER_TEST",
+      "detail": "Exact candidate install/service/IPC/uninstall and idle restoration pass, but live TUN, DNS, authenticated egress and connected rollback/recovery remain unrun"
+    },
+    {
+      "id": "WINDOWS_PUBLIC_SIGNING",
+      "status": "SKIPPED_BY_OWNER",
+      "detail": "Unsigned Windows is accepted only for the direct beta with SmartScreen warning and cannot prove public or stable signing"
+    },
+    {
+      "id": "REPLACEMENT_CANDIDATE_HOSTED_CHECKS",
+      "status": "BLOCKED_BY_ACCESS_GITHUB_BILLING",
+      "detail": "Current platform PR 49 and client PR 29 required jobs receive zero steps; this does not rewrite the retained candidate.3 checks but blocks a replacement candidate"
+    }
+  ],
+  "local_verification": {
+    "exact_source_tuple_clean": true,
+    "release_payment_manifest_suite": "PASS_103_WITH_21_SUBTESTS",
+    "client_core_release_contract": "PASS",
+    "stop_ship_report": "BLOCKED_EXPECTED_NONPASS",
+    "stop_ship_report_sha256": "d06df26ac9d2ddb20d9e2442cf7748ff0afda3014f94aeea9778f894c22622b1"
+  },
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AJ-exact-candidate-gate-a/013AJ-owner-solo-pr-input.json",
+      "sha256": "2bab756b5d17f17a61f2de30e8b95b1ad5a43c4555b06acd2e9d7681ff2e1604"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AJ-exact-candidate-gate-a/013AJ-stop-ship-exact-source.json",
+      "sha256": "d06df26ac9d2ddb20d9e2442cf7748ff0afda3014f94aeea9778f894c22622b1"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AE-candidate3-reconciliation/013AE-candidate3-reconciliation.json",
+      "sha256": "5664c92c6ee75ab7db57c90bb3c2138b94b6809bd734feca2b7768fff1d0661a"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AE-candidate3-reconciliation/013AE-candidate3-signed-manifest.json",
+      "sha256": "1b87cea99907123c3180d8e948ef0c0a680d7e8d26a4e67a6a98f037201deca6"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AA-core-candidate-ci-reconciliation/013AA-core-candidate-ci-reconciliation.json",
+      "sha256": "e861232ef5fcd9d5877ebf9c389a8d5559facc357b25fc3d719f638cc9d5bfd0"
+    }
+  ],
+  "ledger_transition": {
+    "row": "REL_GATE/GATE-A",
+    "from": "I0",
+    "to": "I1",
+    "status": "BASELINED_EXACT_CANDIDATE_BLOCKED"
+  },
+  "mutation_boundary": {
+    "branch_protection_mutated": false,
+    "payment_action": false,
+    "windows_live_network_run": false,
+    "signing_key_accessed": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE3_GATE_A_BASELINE_AND_EXPECTED_BLOCKED_DECISION_ONLY; NO_WINDOWS_LIVE_NETWORK_NO_PUBLIC_WINDOWS_SIGNING_NO_REPLACEMENT_CANDIDATE_NO_PROMOTION"
+}

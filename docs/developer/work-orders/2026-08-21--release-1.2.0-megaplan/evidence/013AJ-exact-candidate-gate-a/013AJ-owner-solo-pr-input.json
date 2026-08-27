@@ -1,0 +1,25 @@
+{
+  "schema": "pokrov.release-1.2.0.owner-solo-pr-evidence.v1",
+  "release": "1.2.0",
+  "owner_login": "Kiwunaka",
+  "observations": [
+    {
+      "repository": "Kiwunaka/portal",
+      "base_branch": "master",
+      "pull_request": 20,
+      "head_sha": "672a245aac1481220d118463a3b65b7d63275790"
+    },
+    {
+      "repository": "Kiwunaka/POKROV-app",
+      "base_branch": "main",
+      "pull_request": 10,
+      "head_sha": "4864e439126263296a68ea8c1ba213f25c57a5fb"
+    },
+    {
+      "repository": "Kiwunaka/pokrov-core",
+      "base_branch": "main",
+      "pull_request": 2,
+      "head_sha": "0e6b0204d764ae6b1d726343f487a7004d13393b"
+    }
+  ]
+}

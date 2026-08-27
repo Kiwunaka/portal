@@ -1,0 +1,286 @@
+{
+  "candidate_proven": false,
+  "expected_stop_ship_ids": [
+    "PAY-001",
+    "PAY-002",
+    "REL-001",
+    "REL-002",
+    "WIN-001",
+    "WIN-002",
+    "WIN-003"
+  ],
+  "generated_at": "2026-08-27T08:42:46.539648Z",
+  "hosted_branch_protection": [
+    {
+      "branch": "master",
+      "error_class": "feature_or_permission_unavailable",
+      "repository": "Kiwunaka/portal",
+      "required_checks": [
+        "repo-guardrails",
+        "cross-repository-contract"
+      ],
+      "result": "BLOCKED_BY_ACCESS",
+      "stop_ship_id": "REL-001"
+    },
+    {
+      "branch": "main",
+      "error_class": "feature_or_permission_unavailable",
+      "repository": "Kiwunaka/POKROV-app",
+      "required_checks": [
+        "cross-repository-contract"
+      ],
+      "result": "BLOCKED_BY_ACCESS",
+      "stop_ship_id": "REL-001"
+    },
+    {
+      "branch": "main",
+      "missing_policy_requirements": [],
+      "repository": "Kiwunaka/pokrov-core",
+      "required_checks": [
+        "test",
+        "release-contract",
+        "android-artifact-reproducibility",
+        "windows-artifact-reproducibility",
+        "apple-source-build"
+      ],
+      "result": "PASS",
+      "stop_ship_id": "REL-001"
+    }
+  ],
+  "hosted_codeowner_reviewers": [
+    {
+      "authorized_at": "2026-08-23",
+      "branch": "master",
+      "eligible_non_author_reviewer_count": 0,
+      "independent_review_performed": false,
+      "owner_login": "Kiwunaka",
+      "repository": "Kiwunaka/portal",
+      "result": "OWNER_SOLO_EXCEPTION",
+      "selected_code_owner_count": 0
+    },
+    {
+      "authorized_at": "2026-08-23",
+      "branch": "main",
+      "eligible_non_author_reviewer_count": 0,
+      "independent_review_performed": false,
+      "owner_login": "Kiwunaka",
+      "repository": "Kiwunaka/POKROV-app",
+      "result": "OWNER_SOLO_EXCEPTION",
+      "selected_code_owner_count": 0
+    },
+    {
+      "authorized_at": "2026-08-23",
+      "branch": "main",
+      "eligible_non_author_reviewer_count": 0,
+      "independent_review_performed": false,
+      "owner_login": "Kiwunaka",
+      "repository": "Kiwunaka/pokrov-core",
+      "result": "OWNER_SOLO_EXCEPTION",
+      "selected_code_owner_count": 0
+    }
+  ],
+  "local_regressions": [
+    {
+      "checks": [
+        {
+          "missing_anchor_count": 0,
+          "path": "tests/test_payment_provider_boundaries.py",
+          "repository": "platform",
+          "result": "PASS",
+          "sha256": "c32ed8f846bd40823da1ab3eec50276ab0dfd037d3a779ba670ca081693cddbb"
+        }
+      ],
+      "id": "PAY-001",
+      "result": "PASS"
+    },
+    {
+      "checks": [
+        {
+          "missing_anchor_count": 0,
+          "path": "tests/test_payment_provider_boundaries.py",
+          "repository": "platform",
+          "result": "PASS",
+          "sha256": "c32ed8f846bd40823da1ab3eec50276ab0dfd037d3a779ba670ca081693cddbb"
+        }
+      ],
+      "id": "PAY-002",
+      "result": "PASS"
+    },
+    {
+      "checks": [
+        {
+          "missing_anchor_count": 0,
+          "path": "tests/test_release_gate_check.py",
+          "repository": "platform",
+          "result": "PASS",
+          "sha256": "da159d123a7116d8e954e08e8ec56d0e52c65092aa9fae0ebe14c5edca5033a3"
+        }
+      ],
+      "id": "REL-001",
+      "result": "PASS"
+    },
+    {
+      "checks": [
+        {
+          "missing_anchor_count": 0,
+          "path": "test/release-v2-ci-contract.ps1",
+          "repository": "client",
+          "result": "PASS",
+          "sha256": "3de4c14e33cd8b59d3d49c2638ca9c91e465276e3488fe525d76aefa1e5f6ceb"
+        }
+      ],
+      "id": "REL-002",
+      "result": "PASS"
+    },
+    {
+      "checks": [
+        {
+          "missing_anchor_count": 0,
+          "path": "apps/windows_shell/test/windows_release_contract_test.dart",
+          "repository": "client",
+          "result": "PASS",
+          "sha256": "326e7cb0d3e52138e643acd1a5035054aa8790d39e574396bc43b821ad28e01e"
+        }
+      ],
+      "id": "WIN-001",
+      "result": "PASS"
+    },
+    {
+      "checks": [
+        {
+          "missing_anchor_count": 0,
+          "path": "apps/windows_shell/test/windows_release_contract_test.dart",
+          "repository": "client",
+          "result": "PASS",
+          "sha256": "326e7cb0d3e52138e643acd1a5035054aa8790d39e574396bc43b821ad28e01e"
+        }
+      ],
+      "id": "WIN-002",
+      "result": "PASS"
+    },
+    {
+      "checks": [
+        {
+          "missing_anchor_count": 0,
+          "path": "packages/app_shell/test/connection_experience_test.dart",
+          "repository": "client",
+          "result": "PASS",
+          "sha256": "915b790d25ef536523f24dc8ddcd442eb40864e43c831ccaac3a79b03fc5c50c"
+        }
+      ],
+      "id": "WIN-003",
+      "result": "PASS"
+    }
+  ],
+  "manual_gates": [
+    {
+      "gate": "Exact-candidate Windows 10/11 clean-host TUN, DNS, egress and rollback evidence",
+      "result": "NOT_RUN",
+      "stop_ship_id": "WIN-003"
+    }
+  ],
+  "owner_solo_pr_controls": [
+    {
+      "branch": "master",
+      "head_sha": "672a245aac1481220d118463a3b65b7d63275790",
+      "observed_check_count": 2,
+      "pull_request": 20,
+      "repository": "Kiwunaka/portal",
+      "required_checks": [
+        "repo-guardrails",
+        "cross-repository-contract"
+      ],
+      "result": "PASS"
+    },
+    {
+      "branch": "main",
+      "head_sha": "4864e439126263296a68ea8c1ba213f25c57a5fb",
+      "observed_check_count": 1,
+      "pull_request": 10,
+      "repository": "Kiwunaka/POKROV-app",
+      "required_checks": [
+        "cross-repository-contract"
+      ],
+      "result": "PASS"
+    },
+    {
+      "branch": "main",
+      "head_sha": "0e6b0204d764ae6b1d726343f487a7004d13393b",
+      "observed_check_count": 5,
+      "pull_request": 2,
+      "repository": "Kiwunaka/pokrov-core",
+      "required_checks": [
+        "test",
+        "release-contract",
+        "android-artifact-reproducibility",
+        "windows-artifact-reproducibility",
+        "apple-source-build"
+      ],
+      "result": "PASS"
+    }
+  ],
+  "registry": "E:\\POKROV-tools\\worktrees\\VPN-release-1.2.0-gate-a\\shared\\release-1.2.0-stop-ship-regressions.json",
+  "registry_sha256": "dbe322645bc9d7da9e343f90267675e51dbf12f793eaf470f4a54562e6129e4a",
+  "release": "1.2.0",
+  "required_branch_policy": {
+    "allow_deletions": false,
+    "allow_force_pushes": false,
+    "codeowners": {
+      "excluded_pr_author": "Kiwunaka",
+      "minimum_eligible_non_author_reviewers": 1,
+      "path": ".github/CODEOWNERS",
+      "selected_code_owners": [],
+      "selection_state": "OWNER_SOLO_EXCEPTION"
+    },
+    "enforce_admins": true,
+    "require_status_check_app_binding": true,
+    "required_conversation_resolution": true,
+    "required_linear_history": true,
+    "required_pull_request_reviews": {
+      "dismiss_stale_reviews": true,
+      "require_code_owner_reviews": true,
+      "require_last_push_approval": true,
+      "required_approving_review_count": 1
+    },
+    "required_signatures": true,
+    "review_mode": "OWNER_SOLO_EXCEPTION",
+    "solo_owner_exception": {
+      "active": true,
+      "authorization_source": "explicit_owner_instruction_in_codex_task",
+      "authorized_at": "2026-08-23",
+      "compensating_controls": [
+        "exact_pull_request_head_sha",
+        "required_github_actions_success",
+        "github_app_bound_check_runs",
+        "pull_request_only_promotion",
+        "signed_public_release_index",
+        "retained_candidate_evidence",
+        "same_byte_promotion"
+      ],
+      "expires_when": "release_1.2.0_is_closed",
+      "owner_login": "Kiwunaka",
+      "release": "1.2.0",
+      "waived_controls": [
+        "eligible_non_author_pull_request_approval",
+        "codeowners_non_author_selection",
+        "paid_private_branch_protection"
+      ]
+    }
+  },
+  "schema": "pokrov.release-1.2.0.stop-ship-gate.v1",
+  "sources": {
+    "client": {
+      "revision": "ac22825e857a313c9e4eba61030eb548d6346ead",
+      "working_tree_state": "clean"
+    },
+    "core": {
+      "revision": "344b317a7a09eca7943a93866b193553538bd8f6",
+      "working_tree_state": "clean"
+    },
+    "platform": {
+      "revision": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+      "working_tree_state": "clean"
+    }
+  },
+  "status": "BLOCKED"
+}

@@ -3241,3 +3241,31 @@ Current ledger distribution becomes `I4=4`, `I3=312`, `I2=19`, `I1=40`,
 `I0=2`; `316` rows are at or above `I3`, `61` remain below and stage split
 stays `0/28/14/19`. No deploy, entitlement, external message, public artifact,
 stable pointer or Gate G mutation occurred.
+
+## 2026-08-27 — WO-013AJ exact candidate.3 Gate A baseline
+
+The source-plan Gate A aggregate is now evaluated against clean exact platform,
+client and Core sources `eafaca3...` / `ac22825...` / `344b317...`. The focused
+payment/release/manifest suite passes `103` tests plus `21` subtests, and the
+cross-repository client/Core release contract passes.
+
+The existing fail-closed STOP-SHIP verifier reports `BLOCKED`: all seven
+permanent source regressions and all three historical owner-solo PR controls
+pass, Core live branch protection passes, while private platform/client branch
+protection remains plan-blocked and compensated only by the explicit solo
+contract. The exact candidate Core aggregate retains its LFS-control failure;
+four product jobs and the product-identical corrected five-job control pass.
+
+Gate A's payment, one-manifest and version/contracts slices pass. Exact Windows
+install/service/authenticated-IPC/restart/uninstall/idle restoration is only
+partial: live TUN, DNS, owned egress and connected rollback/recovery remain
+`MANUAL_OWNER_TEST`. Windows Authenticode is `SKIPPED_BY_OWNER` for direct beta
+and is not public/stable signing proof. Current replacement PR checks are also
+billing-blocked and are not credited to candidate.3.
+
+`REL_GATE/GATE-A` advances only `I0 -> I1` as
+`BASELINED_EXACT_CANDIDATE_BLOCKED`. Distribution becomes `I4=4`, `I3=312`,
+`I2=19`, `I1=41`, `I0=1`; `316` rows remain at or above `I3`, `61` remain
+below, and stage split stays `0/28/14/19`. No branch setting, payment, signing
+key, live Windows network, deploy, public asset, stable pointer or Gate G
+mutation occurred.

@@ -123,6 +123,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013AG` | Prove whether live Brain backend source is stale without deploying or restarting production | Platform operations/release evidence | Exact candidate.3 platform payload matches 193/193 after CRLF-only normalization; Brain readiness 23/23 and live enabled delivery 7/7 pass; 013AH later supplies the separate current-origin local aggregate, while RU-origin and authenticated client egress remain open; no row advances | `WO-013AE`, `WO-013Z`, owned trusted Brain access |
 | `WO-013AH` | Correct the reproducibility harness and retain an exact candidate.3 current-origin local aggregate without changing candidate bytes | Platform release/performance evidence | Fail-first old harness retained; corrected quick 12/12 and default 13/13 gates pass against exact platform/client/Core, health p95 42.5337 ms and catalog p95 43.3626 ms pass source-bound; GitHub jobs are billing-blocked and PR 48 stays unmerged; RU-origin and authenticated client egress remain open; no row advances | `WO-013AE`, `WO-013AG`, exact source checkouts, harness PR 48 |
 | `WO-013AI` | Emit one cryptographically and digest-bound exact candidate.3 Gate F decision without authorizing promotion | Platform release decision/evidence | Fixed 19-check verifier, upstream digest binding and exact LDPlayer byte/launch plus Support-render recheck pass locally; Gate F returns `BLOCKED` with 5 PASS, 14 non-PASS, 0 FAIL and 0 validation errors; `DOD-20` and `PR-10` remain `I3`, while Gate F and candidate remain below I4 | `WO-013AE`–`WO-013AH`, `WO-010K`, exact signed candidate bytes, LDPlayer-only owner instruction, platform PR 49 and client PR 29 readback |
+| `WO-013AJ` | Baseline source-plan Gate A against exact candidate.3 without turning manual or skipped slices into PASS | Platform release decision/evidence | Exact source tuple, payment/release suite `103 + 21 subtests`, cross-repo contract, STOP-SHIP regressions `7/7` and solo PR controls `3/3` pass; Gate A remains `BLOCKED` by Windows live network/recovery and unsigned public/stable Windows signing, so `GATE-A` reaches only `I1` | source-plan Gate A, `WO-013M`–`WO-013P`, `WO-013AA`, `WO-013AE`, exact source worktrees |
 
 ## Current evidence
 
@@ -262,6 +263,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013AI-exact-candidate-gate-f/` retains the exact installed
   LDPlayer APK byte match, one 19-check candidate-bound evidence bundle, the
   digest-bound Gate F input and the final `BLOCKED` decision.
+- `evidence/013AJ-exact-candidate-gate-a/` retains the exact-source STOP-SHIP
+  replay, owner-solo PR input and six-requirement Gate A `BLOCKED` decision.
 - `evidence/010K-support-transport-reconciliation/010K-support-transport-reconciliation.json`
   binds the conditional no-streaming decision, unmerged adaptive-polling client
   source, complete local gate, zero-step GitHub billing blocker, LDPlayer
