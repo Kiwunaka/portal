@@ -466,13 +466,14 @@ Public connection delivery rule:
 - `connect.pokrov.space` serves the rollout-selected app-managed profile and keeps `legacy_reality_fallback` as the baseline until canary cohorts are explicitly enabled for `grpc_443_primary`
 - `connect.pokrov.space/rules/` serves mirrored sing-box binary rule sets for client configs: `geoip-ru.srs` and `adblock.srs`; clients should not depend on `raw.githubusercontent.com` for these runtime rule downloads
 - legacy `api.pokrov.space/s8Kx2mP7qR4wT/{token}` remains compatibility-only for older imports
-- hidden `?format=happ-ios` delivery is an owner canary, not a public compatibility
-  promise. It stays unavailable unless `HAPP_IOS_SUBSCRIPTION_ENABLED=true` and
-  the resolved account is present in `HAPP_IOS_SUBSCRIPTION_TG_IDS`. An allowed
-  response is a HAPP XRAY JSON array with one complete direct profile and one
-  complete two-outbound RU-bridge profile per currently eligible choice; invalid
-  bridge material is omitted fail-closed. The existing `?format=happ` response
-  and all user-facing link surfaces remain unchanged.
+- hidden HAPP iOS delivery is an owner canary, not a public compatibility promise.
+  It stays unavailable unless `HAPP_IOS_SUBSCRIPTION_ENABLED=true` and the resolved
+  account is present in `HAPP_IOS_SUBSCRIPTION_TG_IDS`. For an allowed account the
+  already-installed explicit `?format=happ` URL, as well as the diagnostic
+  `?format=happ-ios` URL, returns a HAPP XRAY JSON array with one complete direct
+  profile and one complete two-outbound RU-bridge profile per currently eligible
+  choice; invalid bridge material is omitted fail-closed. Other accounts and all
+  user-facing link surfaces remain unchanged.
 - numeric route lookup is a separately gated emergency compatibility path:
   `SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED` defaults to `false`. Production removal
   is not proven until token backfill and panel `subId` reconciliation are complete

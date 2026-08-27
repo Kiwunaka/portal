@@ -4040,19 +4040,27 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.api.HAPP_IOS_SUBSCRIPTION_ENABLED = False
         self.api.HAPP_IOS_SUBSCRIPTION_TG_IDS = frozenset({1001})
         disabled = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=happ-ios")
+        disabled_existing_link = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=happ")
         self.assertEqual(disabled.status_code, 404, disabled.text)
         self.assertEqual(disabled.headers.get("cache-control"), "no-store, no-cache, max-age=0")
+        self.assertIn("text/plain", disabled_existing_link.headers.get("content-type", ""))
+        self.assertIn("#custom-tunnel-config: ", disabled_existing_link.text)
 
         self.api.HAPP_IOS_SUBSCRIPTION_ENABLED = True
         self.api.HAPP_IOS_SUBSCRIPTION_TG_IDS = frozenset({2002})
         not_allowlisted = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=happ-ios")
+        not_allowlisted_existing_link = self.client.get(
+            "/s8Kx2mP7qR4wT/token_1001_secure?format=happ"
+        )
         self.assertEqual(not_allowlisted.status_code, 404, not_allowlisted.text)
+        self.assertIn("text/plain", not_allowlisted_existing_link.headers.get("content-type", ""))
+        self.assertIn("#custom-tunnel-config: ", not_allowlisted_existing_link.text)
 
         self.api.HAPP_IOS_SUBSCRIPTION_TG_IDS = frozenset({1001})
         with patch.object(self.api, "load_network_rollout_config", return_value=rollout_config):
             response = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=happ-ios")
             head = self.client.head("/s8Kx2mP7qR4wT/token_1001_secure?format=happ-ios")
-            legacy_happ = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=happ")
+            existing_happ_link = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=happ")
 
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.headers.get("content-type"), "application/json")
@@ -4080,9 +4088,9 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(head.headers.get("content-type"), "application/json")
         self.assertEqual(head.headers.get("content-disposition"), response.headers.get("content-disposition"))
 
-        self.assertEqual(legacy_happ.status_code, 200, legacy_happ.text)
-        self.assertIn("text/plain", legacy_happ.headers.get("content-type", ""))
-        self.assertIn("#custom-tunnel-config: ", legacy_happ.text)
+        self.assertEqual(existing_happ_link.status_code, 200, existing_happ_link.text)
+        self.assertEqual(existing_happ_link.headers.get("content-type"), "application/json")
+        self.assertEqual(existing_happ_link.json(), profiles)
 
     def test_subscription_endpoint_defaults_to_smart_profile_on_connect_host(self) -> None:
         from db import SessionLocal

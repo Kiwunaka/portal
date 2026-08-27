@@ -1835,6 +1835,12 @@ async def subscription(token: str, request: Request, format: str = Query(default
         is_connect_request=is_connect_request,
         sub_type=str(user.sub_type or ""),
     )
+    # The one-account iOS canary must work with the subscription URL that is
+    # already installed in HAPP.  Once the global switch and account allowlist
+    # both match, upgrade the existing explicit HAPP format to the iOS bridge
+    # renderer.  Everyone else keeps the legacy HAPP payload unchanged.
+    if client_format == "happ" and format_hint == "happ" and _happ_ios_canary_allowed(user):
+        client_format = "happ_ios"
     logger.info(
         "subscription resolved token_fp=%s tg_id=%s lookup_mode=%s client_format=%s format_hint=%s host=%s connect_host=%s",
         token_fp,

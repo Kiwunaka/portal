@@ -595,12 +595,13 @@ Compatibility note:
 
 - `?format=plain` still exists for backend compatibility and advanced/manual recovery
 - `?format=happ` exists for Happ-compatible open subscription delivery; it returns VLESS fallback lines plus Happ `custom-tunnel-config` carrying the same smart sing-box manifest, including `Белые списки` where the client version supports that parameter. For paid manual recovery when smart ranking has no telemetry-eligible node, that embedded config uses the same transport-filtered legacy fallback as its VLESS lines.
-- `?format=happ-ios` is a hidden owner canary only. It is never inferred from
-  `User-Agent`, requires both `HAPP_IOS_SUBSCRIPTION_ENABLED=true` and the
-  resolved Telegram/account ID in `HAPP_IOS_SUBSCRIPTION_TG_IDS`, and otherwise
-  returns a no-store `404`. For an allowed paid account it returns a HAPP XRAY
-  JSON array: each direct row is a complete Reality profile, while every БС row
-  contains both the selected destination outbound and a currently eligible
+- HAPP iOS bridge delivery is a hidden owner canary only. It is never inferred
+  from `User-Agent` and requires both `HAPP_IOS_SUBSCRIPTION_ENABLED=true` and
+  the resolved Telegram/account ID in `HAPP_IOS_SUBSCRIPTION_TG_IDS`. For an
+  allowed paid account the already-installed explicit `?format=happ` URL and the
+  diagnostic `?format=happ-ios` URL return a HAPP XRAY JSON array: each direct
+  row is a complete Reality profile, while every БС row contains both the
+  selected destination outbound and a currently eligible
   RU-bridge outbound linked through Xray `proxySettings`. Invalid destination or
   bridge material is omitted fail-closed, and an empty render returns `503`.
   Cabinet/bot exposure and general support wording remain blocked until a real
@@ -625,7 +626,7 @@ Focused compatibility matrix to run before changing support copy:
 | POKROV | managed app-first delivery | owned client release proof | backend-owned locations | owned connect flow | primary client |
 | Hiddify | default private URL | required proof | required proof | required proof | verified manual fallback |
 | Happ | `?format=happ`; plain VLESS only as no-bridge fallback | required proof | VLESS fallback should render; `Белые списки` require client support for `custom-tunnel-config` | test direct server first, then БС where visible | best-effort with dedicated format |
-| Happ iOS owner canary | hidden `?format=happ-ios`; exact account allowlist | automated shape proof; physical import required | complete XRAY direct/БС rows, no public exposure | physical iPhone/mobile-origin proof required | default-off canary only |
+| Happ iOS owner canary | existing explicit `?format=happ` is upgraded only for the exact allowlisted account; hidden `?format=happ-ios` remains diagnostic | automated shape proof; physical import required | complete XRAY direct/БС rows, no public exposure | physical iPhone/mobile-origin proof required | default-off canary only |
 | v2rayN | `?format=plain`, `?format=vless`, `?format=clash` where supported | required proof | required proof | required proof | advanced/manual fallback |
 
 `Pokrov-client` is an owned open-source source-only lane until it has separate APK/EXE/binary release evidence. Do not present it as an official user-facing binary fallback before that gate.
