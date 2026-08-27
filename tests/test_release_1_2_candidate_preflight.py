@@ -322,14 +322,14 @@ def test_release_index_contract_accepts_exact_ready_source(tmp_path: Path) -> No
 def test_exact_product_and_component_targets_are_accepted() -> None:
     blockers = MODULE._target_contract_blockers(
         versions={
-            "android": "1.2.0+31",
-            "windows": "1.2.0+31",
+            "android": "1.2.0+32",
+            "windows": "1.2.0+32",
             "app_shell": "1.2.0",
         },
         handoff_target={
             "product_version": "1.2.0",
-            "platform_build": 31,
-            "package_version": "1.2.0+31",
+            "platform_build": 32,
+            "package_version": "1.2.0+32",
             "state": "PRE_CANDIDATE_LOCAL",
             "candidate_created": False,
         },
@@ -353,14 +353,14 @@ def test_exact_product_and_component_targets_are_accepted() -> None:
 def test_exact_bound_core_target_is_accepted() -> None:
     blockers = MODULE._target_contract_blockers(
         versions={
-            "android": "1.2.0+31",
-            "windows": "1.2.0+31",
+            "android": "1.2.0+32",
+            "windows": "1.2.0+32",
             "app_shell": "1.2.0",
         },
         handoff_target={
             "product_version": "1.2.0",
-            "platform_build": 31,
-            "package_version": "1.2.0+31",
+            "platform_build": 32,
+            "package_version": "1.2.0+32",
             "state": "PRE_CANDIDATE_LOCAL",
             "candidate_created": False,
         },
@@ -525,14 +525,14 @@ def test_unbound_core_artifact_remains_pending(tmp_path: Path) -> None:
 def test_relabelled_retained_core_or_candidate_state_fails_closed() -> None:
     blockers = MODULE._target_contract_blockers(
         versions={
-            "android": "1.2.0+32",
-            "windows": "1.2.0+31",
+            "android": "1.2.0+33",
+            "windows": "1.2.0+32",
             "app_shell": "1.2.1",
         },
         handoff_target={
             "product_version": "1.2.0",
-            "platform_build": 31,
-            "package_version": "1.2.0+31",
+            "platform_build": 32,
+            "package_version": "1.2.0+32",
             "state": "CANDIDATE",
             "candidate_created": True,
         },
