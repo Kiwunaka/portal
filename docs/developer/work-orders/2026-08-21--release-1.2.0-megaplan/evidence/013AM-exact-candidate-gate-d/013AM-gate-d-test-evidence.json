@@ -1,0 +1,133 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-d-test-evidence/v1",
+  "recorded_at_utc": "2026-08-27T10:34:17Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.3",
+    "operational_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
+    "platform_source": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+    "client_source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+    "core_source": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "release_index_source": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2",
+    "manifest_sha256": "a2752b6a3b95faacf13a68edb708c560966a0f5eb8727e109d7f1603fdc81090"
+  },
+  "exact_source_replay": {
+    "source_worktree": "DETACHED_EXACT_CANDIDATE_PLATFORM_SOURCE",
+    "source_status": "CLEAN",
+    "python": "3.12.5",
+    "payment_http_db_outbox_and_module_matrix": {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_api_payments_callbacks.py tests/test_lavatop_payment_providers.py tests/test_payment_email_readiness_smoke.py tests/test_admin_payments_api.py tests/test_payment_entitlement_claims.py tests/test_payment_bounded_context.py tests/test_payment_db_runtime.py tests/test_payment_return_service.py tests/test_payment_provider_boundaries.py tests/test_payment_order_service.py tests/test_payment_http_registry.py tests/test_payment_entitlement_outbox.py tests/test_module_slices.py -q",
+      "result": "PASS_196_OF_196_PLUS_12_SUBTESTS",
+      "duration_seconds": 618.40,
+      "warning_count": 20,
+      "warning_boundary": "existing datetime/sqlite/httpx deprecations; zero skips and zero failures"
+    },
+    "action_intent_and_router_ownership": {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_admin_action_intents.py tests/test_admin_action_policy_coverage.py -q",
+      "result": "PASS_25_OF_25",
+      "duration_seconds": 95.74
+    }
+  },
+  "requirements": {
+    "payment_bounded_context": {
+      "status": "PASS_EXACT_CANDIDATE_SOURCE",
+      "proved": [
+        "immutable local order before provider I/O",
+        "amount currency plan source owner and entitlement snapshot authority",
+        "strict provider result application",
+        "callback signature freshness provider identity and replay fencing",
+        "idempotent grant and reversal paths",
+        "no synthetic oa=0 checkout URL"
+      ]
+    },
+    "shared_http_clients": {
+      "status": "PASS_EXACT_CANDIDATE_SOURCE",
+      "proved": [
+        "lifespan-owned bounded provider registry",
+        "provider-specific timeout and pool policy",
+        "bounded JSON response parsing",
+        "secret-free aggregate telemetry",
+        "payment adapters contain no per-operation ClientSession owner"
+      ]
+    },
+    "db_transaction_strategy": {
+      "status": "PASS_EXACT_CANDIDATE_SOURCE",
+      "proved": [
+        "complete sync payment use cases execute in bounded threadpool",
+        "session and lazy ORM state do not cross await boundaries",
+        "transaction rollback and session close remain in worker thread",
+        "slow DB use case does not stall an independent coroutine",
+        "health projection contains bounded integer counters"
+      ]
+    },
+    "transactional_outbox": {
+      "status": "PASS_EXACT_CANDIDATE_SOURCE",
+      "proved": [
+        "grant and payment entitlement event share one transaction",
+        "unique provider order and schema idempotency",
+        "bounded claim retry stale recovery and dead-letter state",
+        "callback backfill and worker replay converge",
+        "malformed or reversed events fail closed without access mutation"
+      ]
+    },
+    "router_and_service_slices": {
+      "status": "PASS_EXACT_CANDIDATE_SOURCE",
+      "proved": [
+        "payment transport contains no direct session or provider business authority",
+        "public managed-client and admin routes retain ordered ownership",
+        "Action Intent domain policy is separate from generic persistence and execution",
+        "one ACTION_POLICIES authority and explicit injection",
+        "no second process route table database authority or policy registry"
+      ]
+    }
+  },
+  "upstream_evidence": {
+    "admin_domain_slices": {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/007G-admin-domain-slices/007G-admin-domain-slices.json",
+      "sha256": "49d4137bf953f74bdc47f0b1f9d93fd3ef53b87ebcd76ed1a310d22863fa0c0c"
+    },
+    "public_client_route_slices": {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/007H-public-client-route-slices/007H-public-client-route-slices.json",
+      "sha256": "c7cd40f2de916b299d1504d7f6448cd832e712ca72c5bc379a7738b834c39619"
+    },
+    "action_intent_runtime": {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/007I-action-intent-runtime/007I-action-intent-runtime.json",
+      "sha256": "5f46327b171932bc60e18a2e1e1da7dc195c38ef994b23c4d9e4d40a378cff1e"
+    },
+    "brain_exact_source": {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AG-exact-candidate-brain-origin/013AG-exact-candidate-brain-origin.json",
+      "sha256": "f93c4f988906b85dd2ab6d14b7cdff0af674cbe42c113af183f06df65203eabb",
+      "interpretation": "all 193 deployed payload files match exact candidate platform source after CRLF-to-LF normalization; this proves source identity, not payment runtime behavior"
+    }
+  },
+  "runtime_matrix": {
+    "deployed_exact_candidate_source": "PASS",
+    "brain_readiness": "PASS_23_OF_23",
+    "production_provider_order_and_callback": "MANUAL_OWNER_TEST",
+    "production_postgresql_transaction_and_lock_behavior": "NOT_RUN",
+    "production_db_pool_threadpool_and_latency": "NOT_RUN",
+    "production_outbox_enqueue_claim_delivery_retry_and_dead_letter": "NOT_RUN",
+    "production_entitlement_projection_and_reconciliation": "NOT_RUN",
+    "duplicate_callback_and_worker_replay_on_deployed_stack": "NOT_RUN",
+    "refund_chargeback_and_reversal_drill": "NOT_RUN",
+    "operator_action_intent_execution_and_rollback": "MANUAL_OWNER_TEST"
+  },
+  "interpretation": {
+    "exact_source_tests_close_gate_d_i4": false,
+    "deployed_source_identity_proves_runtime_payment_behavior": false,
+    "missing_live_provider_or_db_evidence_is_a_source_failure": false,
+    "observed_new_candidate_defect": false
+  },
+  "mutation_boundary": {
+    "production_payment_created": false,
+    "provider_callback_sent": false,
+    "entitlement_mutated": false,
+    "database_or_outbox_mutated": false,
+    "operator_action_executed": false,
+    "production_deploy": false,
+    "service_restart": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE3_PLATFORM_SOURCE_PAYMENT_HTTP_DB_OUTBOX_AND_ROUTER_SERVICE_PROOF_PLUS_DEPLOYED_SOURCE_IDENTITY_ONLY; NO_PRODUCTION_PROVIDER_CALLBACK_POSTGRESQL_OUTBOX_WORKER_RECONCILIATION_LOAD_OR_ROLLBACK_PROOF"
+}

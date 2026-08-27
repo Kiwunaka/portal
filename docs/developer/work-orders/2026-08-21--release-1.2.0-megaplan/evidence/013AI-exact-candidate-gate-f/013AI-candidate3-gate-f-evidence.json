@@ -1,6 +1,6 @@
 {
   "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
-  "recorded_at_utc": "2026-08-27T10:08:21Z",
+  "recorded_at_utc": "2026-08-27T10:34:17Z",
   "candidate": {
     "id": "pokrov-1.2.0-candidate.3",
     "operational_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
@@ -57,7 +57,7 @@
     {
       "id": "GATES_A_E_AND_MANDATORY_ROWS_NOT_ALL_CANDIDATE_PROVEN",
       "status": "FAIL",
-      "detail": "Gate A is BLOCKED, Gate B returns exact-candidate NO_GO after a deterministic observability support-reference portability failure, and Gate C is BLOCKED by incomplete Windows live-network plus authenticated physical Android/OEM/store matrices; Gates A-E and mandatory rows are not all exact-candidate I4"
+      "detail": "Gate A is BLOCKED, Gate B returns exact-candidate NO_GO after a deterministic observability support-reference portability failure, Gate C is BLOCKED by incomplete Windows live-network plus authenticated physical Android/OEM/store matrices, and Gate D is BLOCKED by absent production provider/PostgreSQL/outbox/reconciliation/rollback proof; Gates A-E and mandatory rows are not all exact-candidate I4"
     },
     {
       "id": "WINDOWS_LIVE_TUN_DNS_EGRESS_RECOVERY",
@@ -173,8 +173,12 @@
       "sha256": "58aeaf052b6b3bf14051990c4daf41f9bddc97fe3ce2df5b115221fe34bc5988"
     },
     {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AM-exact-candidate-gate-d/013AM-gate-d-decision.json",
+      "sha256": "ca3ebfdabca3dc64a6cf1ac71fdcfa1591082b7a40d413c14a4ddbb85de83091"
+    },
+    {
       "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/EXECUTION-LEDGER.csv",
-      "sha256": "1a8f8f2da4baa1fed08e075835a11b4d93e18f6722b54d981cbef24a97b00c52"
+      "sha256": "c6c49d5e88fcc4c80d6a52da18da6229112211eee4b6586dc97c5e774b80cf4f"
     }
   ],
   "mutation_boundary": {

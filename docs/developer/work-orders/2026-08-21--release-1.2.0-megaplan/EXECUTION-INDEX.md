@@ -3328,3 +3328,27 @@ Gate C therefore returns `BLOCKED` with no new explicit candidate defect and
 `I2=19`, `I1=41`, `I0=1`. No phone install, entitlement/payment action,
 Windows live network run, Linux mutation, deploy, server/AWG change, public
 asset, stable pointer or Gate G authorization occurred.
+
+## 2026-08-27 — WO-013AM exact candidate.3 Gate D BLOCKED
+
+Gate D is replayed against frozen platform source `eafaca3...`. The full
+payment/provider/callback/HTTP/DB/outbox/module matrix passes `196` tests plus
+`12` subtests; Action Intent and policy/router ownership passes `25/25`.
+Immutable order authority, fail-closed provider response handling, bounded
+shared HTTP, worker-thread transaction ownership, transactional outbox and the
+single modular-monolith route/policy authorities are all present in the exact
+candidate source.
+
+Existing Brain evidence proves all `193` deployed payload files match that
+source and readiness passes `23/23`. It does not prove a real provider order or
+callback, production PostgreSQL locking/load, outbox enqueue/claim/delivery/
+retry/dead-letter, reconciliation, reversal or Action Intent rollback. Those
+runtime slices remain `MANUAL_OWNER_TEST` or `NOT_RUN`.
+
+Gate D therefore returns `BLOCKED` with no new explicit candidate defect and
+`REL_GATE/GATE-D` remains `I3` as
+`LOCALLY_PROVED_EXACT_CANDIDATE_RUNTIME_BLOCKED`. Candidate.3 remains overall
+`NO_GO` because Gate B already fails. Distribution remains `I4=4`, `I3=312`,
+`I2=19`, `I1=41`, `I0=1`. No real payment, callback, entitlement, DB/outbox or
+operator mutation, deploy, restart, public asset, stable pointer or Gate G
+authorization occurred.

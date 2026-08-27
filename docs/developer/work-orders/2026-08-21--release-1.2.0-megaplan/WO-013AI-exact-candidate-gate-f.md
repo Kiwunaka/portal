@@ -105,7 +105,9 @@ explicit failure:
    because the frozen platform source fails its observability
    support-reference freshness contract on a normal Windows CRLF checkout;
    Gate C is separately `BLOCKED` by incomplete Windows live-network and
-   authenticated physical Android/OEM/store matrices.
+   authenticated physical Android/OEM/store matrices; Gate D is `BLOCKED` by
+   missing production provider/PostgreSQL/outbox/reconciliation/rollback
+   evidence even though its exact source matrix passes.
 2. Mandatory STOP-SHIP/DoD rows are not all exact-candidate proven.
 3. Absence of every P0/false-green/secret issue cannot yet be asserted across
    the incomplete external matrix.
@@ -126,10 +128,10 @@ explicit failure:
     `BLOCKED_BY_ACCESS_GITHUB_BILLING`.
 
 WO-013AJ gives Gate A an exact-candidate `BLOCKED` baseline. WO-013AK adds the
-first explicit candidate failure at Gate B. WO-013AL records Gate C as
-`BLOCKED` without manufacturing a second candidate defect. The `5`/`14` split
-stays the same, but one of the fourteen non-PASS checks is `FAIL`, forcing
-`NO_GO` rather than `BLOCKED`.
+first explicit candidate failure at Gate B. WO-013AL and WO-013AM record Gates
+C and D as `BLOCKED` without manufacturing more candidate defects. The
+`5`/`14` split stays the same, but one of the fourteen non-PASS checks is
+`FAIL`, forcing `NO_GO` rather than `BLOCKED`.
 
 ## Hosted-check boundary
 
@@ -155,11 +157,13 @@ remain unmerged.
 | `013AK-gate-b-decision.json` | `07d5bcbd5be6631b3648fb10926bb773ccbb4f41fb0d5ba7fbabddad9fe5f21b` |
 | `013AL-gate-c-test-evidence.json` | `51485c2b02487d196ea24f5c7b3e35c7126add9a72e66162f774dd635b2c3347` |
 | `013AL-gate-c-decision.json` | `58aeaf052b6b3bf14051990c4daf41f9bddc97fe3ce2df5b115221fe34bc5988` |
+| `013AM-gate-d-test-evidence.json` | `1125a3fb29f6b4cccd673f9b9855ca5aac6c247d969207abf6a024e0d88dfe90` |
+| `013AM-gate-d-decision.json` | `ca3ebfdabca3dc64a6cf1ac71fdcfa1591082b7a40d413c14a4ddbb85de83091` |
 | `013AI-candidate3-ldplayer-recheck.json` | `9cb9a0483aa6714cdd96b3e0f1c6e00007e45089340727deb2b4ae24dfef83a5` |
-| `013AI-candidate3-gate-f-evidence.json` | `a21a696a0ed8a03885d4861fe2bab0a623fc91c0012698c3c23fe726a159e30f` |
-| `013AI-candidate3-gate-f-input.json` | `250acefd265941a3c7a366b919d100e63f3efcbc8d406045517af6adc79510ff` |
-| `013AI-candidate3-gate-f-decision.json` | `ad3fa74eb861534b42e0d6121ecb0f5bd8ed00e682daf0a1c1f077ab14a94e9b` |
-| Current execution ledger after WO-013AL | `1a8f8f2da4baa1fed08e075835a11b4d93e18f6722b54d981cbef24a97b00c52` |
+| `013AI-candidate3-gate-f-evidence.json` | `3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c` |
+| `013AI-candidate3-gate-f-input.json` | `46166b2446ca9c605d391a1d4d565fa3294563255a7ad25afc46aab6e76a54be` |
+| `013AI-candidate3-gate-f-decision.json` | `634516c296134726eb642c86b9bbfe96184245bf379ff599e0040735ee918ebc` |
+| Current execution ledger after WO-013AM | `c6c49d5e88fcc4c80d6a52da18da6229112211eee4b6586dc97c5e774b80cf4f` |
 
 The decision report directly binds the input digest; the input binds the Gate
 F aggregate; the verifier also re-hashes every listed upstream evidence file.
@@ -182,9 +186,9 @@ candidate decision is `NO_GO` and non-PASS evidence never becomes candidate
 proof.
 
 After WO-010K reconciles the conditional support-transport row, WO-013AJ
-baselines Gate A without treating its blockers as pass, WO-013AK fails Gate B
-and WO-013AL records Gate C as blocked, a fresh fail-closed Gate F rehash keeps
-distribution at `I4=4`, `I3=312`, `I2=19`, `I1=41`, `I0=1`;
+baselines Gate A without treating its blockers as pass, WO-013AK fails Gate B,
+and WO-013AL/013AM record Gates C/D as blocked, a fresh fail-closed Gate F
+rehash keeps distribution at `I4=4`, `I3=312`, `I2=19`, `I1=41`, `I0=1`;
 `316` rows are at or above `I3`, `61` remain below. The remaining stage split
 is `pre_freeze=0`, `candidate=28`, `external=14`, `deferred=19`.
 
