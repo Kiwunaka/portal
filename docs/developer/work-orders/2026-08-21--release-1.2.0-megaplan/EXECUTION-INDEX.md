@@ -3109,6 +3109,43 @@ current-origin aggregate and separately authorized RU-origin results exist.
 Distribution stays `I4=4`, `I3=308`, `I2=15`, `I1=38`, `I0=12`; 312 rows are
 at or above `I3`, 65 remain below, and stage split stays `0/30/14/21`.
 
+## 2026-08-27 — WO-013AI exact candidate.3 Gate F decision
+
+The new fail-closed Gate F verifier revalidates exact candidate.3 Ed25519
+manifest/signature/receipt bytes against the keyring at release-index source
+`6a1afa95...`, binds the operational candidate ID and exact
+platform/client/Core/release-index tuple, then requires a fixed 19-check set.
+Every check resolves through an in-repository evidence path, exact SHA-256,
+status pointer and candidate pointer. The Gate F aggregate also re-hashes all
+upstream evidence. Missing/duplicate checks, path escape, hash/candidate drift,
+unknown labels or invalid signing input produce `NO_GO`.
+
+The installed LDPlayer `base.apk` is pulled and matches signed manifest
+artifact `android-universal` byte-for-byte: SHA-256 `f41c76eb...`, size
+`295051181`. Package `1.2.0 (30)` launches successfully in `1309 ms`, remains
+alive and has zero package crash-buffer lines after a cleared launch. The UI
+correctly shows renewal is required. Exact install/launch rehearsal is `PASS`;
+authenticated catalog/TUN/DNS/egress remains `BLOCKED_BY_ACCESS`, and the
+owner's LDPlayer-only instruction leaves physical Android
+`MANUAL_OWNER_TEST`.
+
+Gate F returns exactly `BLOCKED`: 19 required checks, 5 `PASS`, 14 non-PASS,
+0 explicit `FAIL` and 0 signature/evidence validation errors. Supply chain,
+manifest-bound docs, current-origin, separate Brain-origin and LDPlayer
+rehearsal pass. Gates A–E/mandatory rows, runtime rollback, RU-origin, Windows
+live network, physical Android, entitled egress, provider, Operator, legal,
+device performance and hosted checks remain incomplete. Latest PR 48 checks
+at head `f98de89...` did not start because GitHub billing/spending access is
+blocked; the owner-solo exception does not waive them.
+
+Gate G, public assets and the stable pointer remain unauthorized. A future
+Gate F `GO` still requires a separate owner promotion instruction.
+`REL_DOD/DOD-20` and `FE_PR/PR-10` advance `I0 -> I3` for the locally verified
+evidence-decision and release-hardening mechanisms, but neither advances to
+`I4` because `BLOCKED` is not candidate proof. Distribution becomes `I4=4`,
+`I3=310`, `I2=15`, `I1=38`, `I0=10`; 314 rows are at or above `I3`, 63 remain
+below, and the pending stage split becomes `0/28/14/21`.
+
 ## 2026-08-27 — WO-013AH exact candidate.3 current-origin aggregate
 
 The first exact-source quick run remains a truthful `FAIL`: the invocation

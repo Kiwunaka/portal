@@ -1,0 +1,153 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-08-27T06:43:37Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.3",
+    "operational_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
+    "manifest_sha256": "a2752b6a3b95faacf13a68edb708c560966a0f5eb8727e109d7f1603fdc81090",
+    "signature_sha256": "926f0b4667a58ba9cc5ace5c4e6c3c8129d1ec3d4d449b3f0831a8c527cd7121",
+    "receipt_sha256": "fb4d0d5dd272b8d3e7ea2303e2ffa93e332f54ac3e92f245400decc6c06e4b53",
+    "sources": {
+      "platform": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+      "client": "ac22825e857a313c9e4eba61030eb548d6346ead",
+      "core": "344b317a7a09eca7943a93866b193553538bd8f6",
+      "release_index": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "MISSING",
+    "mandatory_stop_ship_and_dod": "MISSING",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "MISSING",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MISSING",
+    "current_origin": "PASS",
+    "brain_origin": "PASS",
+    "ru_origin": "BLOCKED_BY_ACCESS",
+    "windows_live_network": "MANUAL_OWNER_TEST",
+    "android_ldplayer_rehearsal": "PASS",
+    "android_physical_device": "MANUAL_OWNER_TEST",
+    "authenticated_client_egress": "BLOCKED_BY_ACCESS",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "BLOCKED_BY_OWNER_DECISION",
+    "performance_and_release_health": "MISSING",
+    "hosted_required_checks": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+  },
+  "interpretation": {
+    "known_hard_failures": [],
+    "gate_f_pass_claimed": false,
+    "missing_or_manual_evidence_is_pass": false,
+    "owner_solo_exception_waives_independent_reviewer_only": true,
+    "owner_solo_exception_waives_required_checks": false,
+    "unsigned_windows_direct_beta_exception": "SKIPPED_BY_OWNER",
+    "unsigned_windows_public_or_stable_signing_pass": false,
+    "ldplayer_replaces_physical_android": false,
+    "current_origin_replaces_brain_or_ru_origin": false,
+    "local_rollback_rehearsal_replaces_runtime_rollback": false
+  },
+  "blockers": [
+    {
+      "id": "GATES_A_E_AND_MANDATORY_ROWS_NOT_ALL_CANDIDATE_PROVEN",
+      "status": "MISSING",
+      "detail": "The ledger still contains required rows below exact-candidate I4; local I3 and source proof are not Gate F proof"
+    },
+    {
+      "id": "WINDOWS_LIVE_TUN_DNS_EGRESS_RECOVERY",
+      "status": "MANUAL_OWNER_TEST",
+      "detail": "Clean-host install/service/authenticated IPC passed, but live TUN, DNS, egress, sleep/reboot and connected rollback were not run"
+    },
+    {
+      "id": "ANDROID_PHYSICAL_EXACT_CANDIDATE",
+      "status": "MANUAL_OWNER_TEST",
+      "detail": "Owner removed the phone and instructed LDPlayer-only work; emulator proof is retained separately"
+    },
+    {
+      "id": "AUTHENTICATED_CLIENT_EGRESS",
+      "status": "BLOCKED_BY_ACCESS",
+      "detail": "The LDPlayer account has no active entitlement and the client correctly asks to renew; no entitlement was granted or bypassed"
+    },
+    {
+      "id": "RU_ORIGIN",
+      "status": "BLOCKED_BY_ACCESS",
+      "detail": "No exact-candidate eligible RU-origin run is retained"
+    },
+    {
+      "id": "PAYMENT_OPERATOR_AND_LEGAL_EXTERNAL_GATES",
+      "status": "MANUAL_OWNER_TEST",
+      "detail": "Production provider E2E, Operator Center production OIDC/RBAC/action-intent and legal/commercial approval remain external/manual"
+    },
+    {
+      "id": "COMPARABLE_DEVICE_PERFORMANCE_BASELINES",
+      "status": "MISSING",
+      "detail": "Controlled API p95 passed; exact Android/Windows device performance, battery and recovery baselines remain incomplete"
+    },
+    {
+      "id": "GITHUB_HOSTED_CHECKS_BILLING",
+      "status": "BLOCKED_BY_ACCESS_GITHUB_BILLING",
+      "detail": "PR 48 Guardrails and Release v2 jobs did not start because GitHub reported failed account payments or an insufficient spending limit"
+    }
+  ],
+  "hosted_checks": {
+    "repository": "Kiwunaka/portal",
+    "pull_request": 48,
+    "head": "f98de896e569bad476d257a4309bb91c8a0c5393",
+    "guardrails": {
+      "run_id": 33045480995,
+      "check_id": 98428366246,
+      "job_started": false,
+      "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+    },
+    "release_v2_contract": {
+      "run_id": 33045481090,
+      "check_id": 98428366767,
+      "job_started": false,
+      "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+    }
+  },
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AE-candidate3-reconciliation/013AE-candidate3-reconciliation.json",
+      "sha256": "5664c92c6ee75ab7db57c90bb3c2138b94b6809bd734feca2b7768fff1d0661a"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AE-candidate3-reconciliation/013AE-candidate3-signed-manifest.json",
+      "sha256": "1b87cea99907123c3180d8e948ef0c0a680d7e8d26a4e67a6a98f037201deca6"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AF-exact-candidate-rollback-rehearsal/013AF-candidate3-rollback-rehearsal.json",
+      "sha256": "46c3dfe9d582becc3dfd9d7796bb4cca1337cfdad00609da5c632f20308822cb"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AF-exact-candidate-rollback-rehearsal/013AF-candidate3-release-handoff.json",
+      "sha256": "f56a1888af5f1dc398570d04624c97a4f622d01912d26955c6d30b1fdaf4cffd"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AG-exact-candidate-brain-origin/013AG-exact-candidate-brain-origin.json",
+      "sha256": "f93c4f988906b85dd2ab6d14b7cdff0af674cbe42c113af183f06df65203eabb"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AH-exact-candidate-current-origin/013AH-exact-candidate-current-origin.json",
+      "sha256": "6be140b2b5a4129a94ec50227be679495aa1a66c1e7c389794f086fc86428817"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-ldplayer-recheck.json",
+      "sha256": "4de4b5c3f5d9419adbcbe016c5456baec6cb17ef946cbcbf5b9fe23bd672ce26"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/EXECUTION-LEDGER.csv",
+      "sha256": "eba76f490122bcecccbd275a091e4b5e72e91ca0d04be0a81c28d7f4601427b4"
+    }
+  ],
+  "mutation_boundary": {
+    "physical_device_used": false,
+    "entitlement_mutated": false,
+    "payment_action": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE3_GATE_F_INPUT_EVIDENCE_ONLY; REQUIRED_EXTERNAL_AND_MANUAL_GATES_REMAIN_NON_PASS"
+}

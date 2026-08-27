@@ -1,6 +1,6 @@
 # WO-013 — Exact 1.2.0 candidate, Gate F and promotion decision
 
-Status: `LOCAL_PRE_CANDIDATE_ASSEMBLED_WINDOWS_SIGNING_BLOCKED`
+Status: `EXACT_CANDIDATE3_GATE_F_BLOCKED`
 Classification: `ACTIVE_EXECUTION`
 Phase: `11`
 Lanes: platform, active Android/Windows client, Core, public release index,
@@ -224,24 +224,25 @@ No current instruction authorizes this slice.
 
 ## Current next action
 
-`WO-013U` retains the earlier six-file direct-beta pre-candidate set and the
-owner-approved unsigned-Windows/SmartScreen exception. The runtime tuple under
-test advanced to platform `243dcbe4727041d62cc0a36e7d2fd5a8530c7c25`,
-client `a74d2aea5aed62f5c31d3a0bbc258e408cebe3bd` and Core
-`9b94e0bda7e454536e8fa9b4519f2281211798e0` for ABI-safe Android delivery,
-selector correction, AWG 3.1 lab support and deployment/runtime fixes.
+`WO-013AE` freezes signed `pokrov-1.2.0-candidate.3` at platform/client/Core/
+release-index `eafaca3...` / `ac22825...` / `344b317...` / `6a1afa95...`.
+The client and Core tuple already contains bounded, default-off AWG 3.1 lab
+support; no separate crypto fork or public AWG 3.1 endpoint is claimed.
+WO-013AF–AH retain local rollback rehearsal, Brain-origin and current-origin
+evidence separately.
 
-`WO-013E-android-mobile-runtime-matrix.md` records one production-signed
-Android `1.2.0 (4031)` artifact, an in-place physical-device upgrade, the
-partial Beeline route matrix, LDPlayer boundary and current deployed type-2/
-type-3 reconciliation. It is explicitly pre-candidate evidence: no row moves
-to `I4`, RU-origin stays `NOT_RUN` and AWG 3.1 stays lab-only
-`BLOCKED_BY_ACCESS` without an isolated owned target.
+`WO-013AI` runs the fail-closed Gate F contract. Candidate signing and evidence
+binding validate, but the result is `BLOCKED`: only 5 of 19 required checks are
+PASS. Windows live network, physical Android, legitimately entitled client
+egress, RU-origin, payment/provider, Operator production auth/RBAC/
+action-intent, legal/commercial approval, comparable device performance and
+successful hosted checks remain non-PASS. LDPlayer install/launch matches the
+signed universal APK byte-for-byte but cannot replace the physical-device or
+authenticated-egress gates.
 
-Next, freeze the branch heads after this evidence lands, rebuild the complete
-Android/Windows direct-beta set and regenerate strict handoff, SBOM,
-provenance, checksums and signed release index from those same bytes. Only that
-set can enter the remaining
-exact device/VM, provider, OIDC, legal, current/brain-origin and rollback
-matrix. Candidate creation and public promotion remain `NOT_CREATED`/
-`NOT_RUN` until those gates are retained.
+Restore GitHub Actions billing access and require successful app-bound checks
+before merging PR `#48` and its stacked Gate F follow-up. Continue the named
+manual/external matrix without granting or bypassing commercial entitlement.
+Rerun Gate F after every evidence change. Public/stable promotion remains
+prohibited until Gate F returns `GO` and the owner separately authorizes Gate
+G.

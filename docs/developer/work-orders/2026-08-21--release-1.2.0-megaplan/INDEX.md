@@ -35,7 +35,7 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete; exact-candidate performance/manual gates retained | `WO-010` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
 | 10 | FRKN-derived rules; isolated AWG2 PoC, later HY2 decision | Local package complete; exact artifact/device/RU gates open | `WO-012` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013AE makes signed `pokrov-1.2.0-candidate.3` the current exact evidence basis after the 013AD SPB rollout/client correction. 013AF passes an isolated exact portal/client rollback; 013AG proves the live Brain backend already matches all 193 candidate platform payload files and passes readiness 23/23 plus enabled delivery 7/7 without deploy; 013AH passes the exact target through the corrected quick/default current-origin harness plus source-bound health/catalog p95. Exact Windows clean-host service/IPC and exact LDPlayer upgrade/launch/settings persistence pass; LDPlayer catalog/TUN/DNS/egress is `BLOCKED_BY_ACCESS` and the physical phone is absent. No public `v1.2.0`, production pointer/stable switch or stable promotion occurred; Windows live TUN/DNS, physical Android OEM/handover, RU-origin, authenticated client egress, provider, Operator, legal and authorized production rollback remain open. Harness PR 48 is unmerged because GitHub billing blocked its required jobs before start | `WO-013`, `WO-013C`, `WO-013D`, `WO-013E`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S`, `WO-013T`, `WO-013U`, `WO-013V`, `WO-013W`, `WO-013X`, `WO-013Y`, `WO-013Z`, `WO-013AA`, `WO-013AB`, `WO-013AC`, `WO-013AD`, `WO-013AE`, `WO-013AF`, `WO-013AG`, `WO-013AH` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013AE makes signed `pokrov-1.2.0-candidate.3` the current exact evidence basis after the 013AD SPB rollout/client correction. 013AF passes an isolated exact portal/client rollback; 013AG proves the live Brain backend already matches all 193 candidate platform payload files and passes readiness 23/23 plus enabled delivery 7/7 without deploy; 013AH passes the exact target through the corrected quick/default current-origin harness plus source-bound health/catalog p95. 013AI verifies the Ed25519/candidate/evidence chain and emits one exact Gate F `BLOCKED` decision: 5 of 19 checks pass, 14 remain non-PASS, with zero explicit failures or validation errors. Exact Windows clean-host service/IPC and exact-byte LDPlayer install/launch pass; LDPlayer entitled TUN/DNS/egress is `BLOCKED_BY_ACCESS` and the physical phone is absent. No public `v1.2.0`, production pointer/stable switch or stable promotion occurred; Windows live TUN/DNS, physical Android OEM/handover, RU-origin, authenticated client egress, provider, Operator, legal, comparable performance and authorized production rollback remain open. Harness PR 48 is unmerged because GitHub billing blocked its required jobs before start | `WO-013`, `WO-013C`, `WO-013D`, `WO-013E`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S`, `WO-013T`, `WO-013U`, `WO-013V`, `WO-013W`, `WO-013X`, `WO-013Y`, `WO-013Z`, `WO-013AA`, `WO-013AB`, `WO-013AC`, `WO-013AD`, `WO-013AE`, `WO-013AF`, `WO-013AG`, `WO-013AH`, `WO-013AI` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -87,7 +87,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-011` | Prepare and, only after separate authorization, run the legally qualified capacity-bounded pilot | Platform/client | Local package complete; external execution `NOT_AUTHORIZED` | `WO-008`, `WO-009`, `WO-010` |
 | `WO-011H` | Align the homepage story contract with the governed trust-led surface | Marketing tests/docs | Regression closed locally; no ledger advancement | `WO-011F` |
 | `WO-012` | Evaluate transport diversity without a second client stack | Core/client/platform lab contract | Local package complete; manual/external gates retained | `WO-004`, `WO-006` |
-| `WO-013` | Prove and promote the exact RC | Cross-repo/release | Final source promotion complete; candidate construction, signing and external promotion not authorized or run | All release-bound WOs |
+| `WO-013` | Prove and promote the exact RC | Cross-repo/release | Signed candidate.3 exists; Gate F is exact-evidence `BLOCKED`; Gate G/public/stable promotion remains unauthorized | All release-bound WOs |
 | `WO-013A2` | Replace circular phase/plan preflight logic with an exact fail-safe row-stage policy | Platform release preflight | Complete locally; no ledger advancement | `WO-001`, `WO-013A` |
 | `WO-013A3` | Move PB-14 out of the circular local-freeze lane because its signed-manifest health-stop proof requires an exact candidate | Platform release preflight | Complete locally; no ledger advancement, PB-14 remains unproved | `WO-013A2`, `WO-006J` |
 | `WO-013C` | Make Linux non-shipment and Android OEM background/permission/surface limitations explicit and machine-bound | Platform/client release limitations | Complete locally (`REL_DOD/DOD-17 I3`); exact-candidate release notes and physical OEM proof remain open | `WO-005`, `WO-006`, `WO-013` |
@@ -120,6 +120,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013AF` | Run one exact candidate.3 portal and client-channel rollback rehearsal without touching production or tracked stable state | Platform release operation/evidence | Signed manifest, exact generated handoff, real client pointer and real portal projection pass isolated 1.1.6→1.2.0→1.1.6 rollback; `REL_DOD/DOD-18` reaches `I3`; authorized runtime/origin proof remains open | `WO-013D`, `WO-013AE`, exact platform/client/Core/release-index checkouts |
 | `WO-013AG` | Prove whether live Brain backend source is stale without deploying or restarting production | Platform operations/release evidence | Exact candidate.3 platform payload matches 193/193 after CRLF-only normalization; Brain readiness 23/23 and live enabled delivery 7/7 pass; 013AH later supplies the separate current-origin local aggregate, while RU-origin and authenticated client egress remain open; no row advances | `WO-013AE`, `WO-013Z`, owned trusted Brain access |
 | `WO-013AH` | Correct the reproducibility harness and retain an exact candidate.3 current-origin local aggregate without changing candidate bytes | Platform release/performance evidence | Fail-first old harness retained; corrected quick 12/12 and default 13/13 gates pass against exact platform/client/Core, health p95 42.5337 ms and catalog p95 43.3626 ms pass source-bound; GitHub jobs are billing-blocked and PR 48 stays unmerged; RU-origin and authenticated client egress remain open; no row advances | `WO-013AE`, `WO-013AG`, exact source checkouts, harness PR 48 |
+| `WO-013AI` | Emit one cryptographically and digest-bound exact candidate.3 Gate F decision without authorizing promotion | Platform release decision/evidence | Fixed 19-check verifier, upstream digest binding and exact LDPlayer byte/launch recheck pass locally; Gate F returns `BLOCKED` with 5 PASS, 14 non-PASS, 0 FAIL and 0 validation errors; `DOD-20` and `PR-10` reach `I3`, while Gate F and candidate remain below I4 | `WO-013AE`–`WO-013AH`, exact signed candidate bytes, LDPlayer-only owner instruction, GitHub PR 48 readback |
 
 ## Current evidence
 
@@ -256,6 +257,9 @@ The row order is a dependency order, not permission for one giant merge. Each im
   binds the immutable candidate platform/client/Core tuple to corrected quick
   and default local release gates plus source-bound health/catalog latency,
   while retaining fail-first harness and GitHub billing-block evidence.
+- `evidence/013AI-exact-candidate-gate-f/` retains the exact installed
+  LDPlayer APK byte match, one 19-check candidate-bound evidence bundle, the
+  digest-bound Gate F input and the final `BLOCKED` decision.
 - `evidence/013E-android-mobile-runtime-matrix/013E-android-mobile-runtime-matrix.json`
   binds the newer Android artifact identity, single physical Beeline matrix,
   LDPlayer evidence ceiling, deployed server-chain reconciliation and explicit
@@ -274,7 +278,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 013AE is the current signed candidate identity authority; 013AF is the current
 verified-local rollback authority; 013AG is the current exact-candidate
 Brain-source/control-plane authority; 013AH is the exact-candidate
-current-origin local gate/performance authority; 013AD remains the current SPB
+current-origin local gate/performance authority; 013AI is the current exact
+Gate F decision authority; 013AD remains the current SPB
 runtime-correction authority and 013AC is retained as superseded
 candidate.2 history. Signed `pokrov-1.2.0-candidate.3` binds platform/client/
 Core/release-index `eafaca3...` / `ac22825...` / `344b317...` / `6a1afa95...`,
@@ -321,13 +326,20 @@ the immutable candidate tuple and passes current-origin quick `12/12`, default
 start PR 48 jobs because account billing blocked Actions, so the PR remains
 unmerged and the hosted checks are `BLOCKED_BY_ACCESS`, not `PASS`.
 
+Gate F now returns exactly `BLOCKED`: 5 of 19 checks are PASS and 14 remain
+non-PASS, with zero explicit test failures and zero signature/evidence binding
+errors. This is the required evidence-based decision behavior, not release
+readiness. Gate G remains unauthorized even after a future GO.
+
 Next continue LDPlayer-only work and obtain a valid owned entitlement for its
 retained account before device network testing; do not wipe the login or grant
 production access silently. Separately execute Windows live
 TUN/DNS/egress/connected rollback and retain RU-origin, authenticated client
-egress, provider, Operator and legal evidence. Restore GitHub Actions billing
-access and require successful app-bound checks before merging harness PR 48.
-Public `v1.2.0`, six same-byte public assets and the stable pointer remain prohibited
-until required STOP-SHIP rows reach `I4` and the owner explicitly authorizes
-publication. The Windows SmartScreen warning remains mandatory; AWG 3.1 stays
-default-off and access-blocked until an isolated owned target exists.
+egress, provider, Operator, legal and comparable device-performance evidence.
+Restore GitHub Actions billing access and require successful app-bound checks
+before merging harness PR 48 and its stacked Gate F follow-up. Rerun Gate F
+after each evidence change. Public `v1.2.0`, six same-byte public assets and
+the stable pointer remain prohibited until the final decision is `GO` and the
+owner separately authorizes Gate G. The Windows SmartScreen warning remains
+mandatory; AWG 3.1 stays default-off and access-blocked until an isolated
+owned target exists.
