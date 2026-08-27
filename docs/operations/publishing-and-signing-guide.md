@@ -306,6 +306,9 @@ Notes:
 - `python scripts/run_client_release_gate.py preflight` is the fastest repo-local check that the `POKROV-app` seed workspace, host shells, and wrapper scripts are present before the platform-owned client gates run.
 - `release_gate_check.py` already includes `python scripts/run_client_release_gate.py test --suite full` by default.
 - `release_gate_check.py --quick` swaps that default client suite for `python scripts/run_client_release_gate.py test --suite portal`.
+- frontend production builds and WebApp Playwright E2E run from isolated lockfile-backed copies populated with `npm.cmd ci`; a pre-existing source-tree `node_modules` directory is not release evidence or a gate prerequisite.
+- platform `client_security_smoke.py` pins the active client seed's exact Core `v1.1.0` pre-candidate bytes and provenance; candidate signing and publication status remain owned by the generated strict-v2 handoff rather than that seed-level smoke.
+- a newer reviewed gate harness may verify an immutable platform checkout by setting `POKROV_PLATFORM_ROOT` to that exact checkout; retain both the target platform commit and the harness commit in candidate evidence, and never describe a harness-only fix as a change to signed candidate bytes.
 - add `--client-platform-gates windows,android-apk,android-aab` or set `CLIENT_PLATFORM_GATES` when you want the gate report to include artifact-producing client builds.
 - once `CLIENT_PLATFORM_GATES` includes `android-apk` or `android-aab`, `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL` to point to physical Android hardware; emulator serials stay useful only for adb rehearsal.
 - the wrapper now targets `C:/Users/kiwun/Documents/ai/POKROV-app` by default and fails fast when that workspace is missing or incomplete.

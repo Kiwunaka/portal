@@ -56,13 +56,13 @@ WINDOWS_CORE_PATH = WINDOWS_RUNTIME_ROOT / "pokrov-core.dll"
 WINDOWS_CRONET_PATH = WINDOWS_RUNTIME_ROOT / "libcronet.dll"
 
 POKROV_CORE_REPOSITORY = "Kiwunaka/POKROV-core"
-POKROV_CORE_RELEASE_TAG = "v1.0.3"
-POKROV_CORE_RELEASE_URL = "https://github.com/Kiwunaka/pokrov-core/releases/tag/v1.0.3"
-POKROV_CORE_SOURCE_COMMIT = "69a74545101708e56183c92e31f2b4c7b2509884"
-ANDROID_CORE_SIZE = 106861671
-ANDROID_CORE_SHA256 = "6e6f3b688fe415c9392e19aa4f8660885316897cfc369cf8c3ff3d01100ee14f"
-WINDOWS_CORE_SIZE = 55134208
-WINDOWS_CORE_SHA256 = "7cc83854fc4022b759e9de3d0942b90a24c859cfd51e3231d04e7c7a6b7d5054"
+POKROV_CORE_RELEASE_TAG = "v1.1.0"
+POKROV_CORE_RELEASE_URL = None
+POKROV_CORE_SOURCE_COMMIT = "344b317a7a09eca7943a93866b193553538bd8f6"
+ANDROID_CORE_SIZE = 107388169
+ANDROID_CORE_SHA256 = "da3ea37834b688abac5c276f4ca9c2cdcc8e32b97edf5062913fc4f3fea6aba9"
+WINDOWS_CORE_SIZE = 55401472
+WINDOWS_CORE_SHA256 = "60fe3fad7835ec4d00c1f7168bb0ba01dd6b7ca5d883583340e5e2a86b8b3981"
 WINDOWS_CRONET_SIZE = 8596992
 WINDOWS_CRONET_SHA256 = "8ef1f8bbde77f954af1ae47bee1819ac8dc2354bb0e1d4baba3dad9e58d7a6f7"
 
@@ -165,24 +165,24 @@ def _runtime_artifact_failures(runtime_artifacts: dict[str, object]) -> list[str
         failures.append(f"runtime artifacts must stay pinned to POKROV Core {POKROV_CORE_RELEASE_TAG}")
     if core.get("source_commit") != POKROV_CORE_SOURCE_COMMIT:
         failures.append("runtime artifacts must pin the reviewed POKROV Core source commit")
-    if core.get("activation_state") != "active":
-        failures.append("runtime artifacts must keep POKROV Core active")
+    if core.get("activation_state") != "active_pre_candidate_local":
+        failures.append("runtime artifacts must keep POKROV Core active in the pre-candidate local lane")
 
     provenance = dict(core.get("artifact_provenance") or {})
     reproducible_build = dict(provenance.get("reproducible_build") or {})
     reproducible_android = dict(reproducible_build.get("android") or {})
     reproducible_windows = dict(reproducible_build.get("windows") or {})
     if (
-        provenance.get("status") != "clean_reproducible_release"
+        provenance.get("status") != "clean_reproducible_pre_candidate_local"
         or provenance.get("vcs_stamp") != "disabled_for_reproducible_release_artifacts"
-        or provenance.get("source_identity") != "annotated_release_tag_and_github_release_commit"
+        or provenance.get("source_identity") != "clean_git_commit_without_release_tag_or_publication"
         or provenance.get("release_url") != POKROV_CORE_RELEASE_URL
         or int(reproducible_android.get("size") or 0) != ANDROID_CORE_SIZE
         or reproducible_android.get("sha256") != ANDROID_CORE_SHA256
         or int(reproducible_windows.get("size") or 0) != WINDOWS_CORE_SIZE
         or reproducible_windows.get("sha256") != WINDOWS_CORE_SHA256
         or reproducible_build.get("libcronet_sha256") != WINDOWS_CRONET_SHA256
-        or provenance.get("promotion_rule") != "accept_exact_v1.0.3_release_artifacts"
+        or provenance.get("promotion_rule") != "exact_bytes_require_candidate_signing_manual_gates_and_publication"
     ):
         failures.append("runtime artifacts must pin the clean reproducible POKROV Core release provenance")
 
