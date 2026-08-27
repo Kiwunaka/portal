@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-27
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_CANDIDATE3_SIGNED_PRIVATE_CARRIER_WINDOWS_CLEAN_HOST_AND_LDPLAYER_PREFLIGHT_PROVED`
+Wave status: `PHASE_11_CANDIDATE3_EXACT_LOCAL_PORTAL_CLIENT_ROLLBACK_PROVED`
 Release candidate: `POKROV_1_2_0_CANDIDATE3_PRIVATE_PRERELEASE_PUBLIC_RELEASE_NOT_CREATED`
 
 ## Outcome
@@ -35,7 +35,7 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete; exact-candidate performance/manual gates retained | `WO-010` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
 | 10 | FRKN-derived rules; isolated AWG2 PoC, later HY2 decision | Local package complete; exact artifact/device/RU gates open | `WO-012` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013AE makes signed `pokrov-1.2.0-candidate.3` the current exact evidence basis after the 013AD SPB rollout/client correction. Its source/signature/private-carrier gates pass; exact Windows clean-host service/IPC and exact LDPlayer upgrade/launch/settings persistence pass. LDPlayer catalog/TUN/DNS/egress is `BLOCKED_BY_ACCESS` by the expired account, and the owner removed the physical phone for this run. No public `v1.2.0`, six public assets or stable pointer exists; Windows live TUN/DNS/rollback, physical Android OEM/handover, aggregate origins, provider, Operator, legal and promotion gates remain open | `WO-013`, `WO-013C`, `WO-013D`, `WO-013E`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S`, `WO-013T`, `WO-013U`, `WO-013V`, `WO-013W`, `WO-013X`, `WO-013Y`, `WO-013Z`, `WO-013AA`, `WO-013AB`, `WO-013AC`, `WO-013AD`, `WO-013AE` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013AE makes signed `pokrov-1.2.0-candidate.3` the current exact evidence basis after the 013AD SPB rollout/client correction. 013AF binds it to an exact generated handoff and passes the real portal/client mechanisms through an isolated stable→candidate→stable rollback at `I3`. Exact Windows clean-host service/IPC and exact LDPlayer upgrade/launch/settings persistence pass; LDPlayer catalog/TUN/DNS/egress is `BLOCKED_BY_ACCESS` and the physical phone is absent. No public `v1.2.0`, production pointer/runtime switch or stable promotion occurred; Windows live TUN/DNS, physical Android OEM/handover, aggregate origins, provider, Operator, legal and authorized production rollback remain open | `WO-013`, `WO-013C`, `WO-013D`, `WO-013E`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S`, `WO-013T`, `WO-013U`, `WO-013V`, `WO-013W`, `WO-013X`, `WO-013Y`, `WO-013Z`, `WO-013AA`, `WO-013AB`, `WO-013AC`, `WO-013AD`, `WO-013AE`, `WO-013AF` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -117,6 +117,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013AC` | Replace candidate.1 as current truth with signed/private-carrier candidate.2 and reconcile hosted source, Windows clean-host and PB-14 evidence | Cross-repository candidate/release evidence | Candidate.2 signature/source/supply/private-carrier digests pass; exact hosted platform/client gates and bounded Windows service/IPC clean-host slice reach candidate proof; PB-14 is replayed; public v1.2.0, live TUN/DNS, physical Android, origins and stable promotion remain open | `WO-013AB`, platform PR 42, client PRs 21/22, release-index PRs 5/6, exact signed candidate.2 bytes |
 | `WO-013AD` | Correct the SPB dual-role/type-3 diagnosis, disable only the stale advertised identity and retain client/device recovery evidence | Platform/client runtime and release evidence | Direct SPB is untouched; stale `ru_spb` type 3 is disabled with rollback snapshot; client PR 23 resets removed saved variants and passes PR/post-merge CI; candidate.2 direct/type 1 plus non-candidate type 2/recovery smoke pass on Beeline; no row advances and a new candidate remains required | `WO-013E`, `WO-013AC`, deployed self-hop guard, client PR 23, owned Brain/SPB/device access |
 | `WO-013AE` | Replace candidate.2 as current truth with signed/private-carrier candidate.3 and reconcile exact Windows plus LDPlayer preflight evidence | Cross-repository candidate/release evidence | Candidate.3 binds current platform/client/Core/release-index source; signature, private carrier, hosted source gates and Windows clean-host pass; exact LDPlayer upgrade/launch/settings persistence passes while catalog/TUN/DNS/egress is access-blocked; physical device, live Windows network, origins, public assets and stable promotion remain open; no row advances | `WO-013AD`, platform PR 44, client PRs 25/26, release-index PRs 7/8, exact signed candidate.3 bytes |
+| `WO-013AF` | Run one exact candidate.3 portal and client-channel rollback rehearsal without touching production or tracked stable state | Platform release operation/evidence | Signed manifest, exact generated handoff, real client pointer and real portal projection pass isolated 1.1.6→1.2.0→1.1.6 rollback; `REL_DOD/DOD-18` reaches `I3`; authorized runtime/origin proof remains open | `WO-013D`, `WO-013AE`, exact platform/client/Core/release-index checkouts |
 
 ## Current evidence
 
@@ -238,6 +239,13 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013AE-candidate3-reconciliation/013AE-pb14-candidate3-health-stop.json`
   replays the real local health-stop/action-intent control from candidate.3
   bytes without a deployed cohort or external artifact switch.
+- `evidence/013AF-exact-candidate-rollback-rehearsal/013AF-candidate3-release-handoff.json`
+  is the exact generated strict-v2 candidate.3 runtime handoff bound to the
+  signed source/artifact tuple.
+- `evidence/013AF-exact-candidate-rollback-rehearsal/013AF-candidate3-rollback-rehearsal.json`
+  retains the embedded pointer receipts, exact stable readback, portal
+  byte-identical restoration, signature binding and no-production-mutation
+  ceiling.
 - `evidence/013E-android-mobile-runtime-matrix/013E-android-mobile-runtime-matrix.json`
   binds the newer Android artifact identity, single physical Beeline matrix,
   LDPlayer evidence ceiling, deployed server-chain reconciliation and explicit
@@ -253,8 +261,9 @@ The row order is a dependency order, not permission for one giant merge. Each im
 
 ## Next action
 
-013AE is the current signed candidate identity authority; 013AD remains the
-current SPB runtime-correction authority and 013AC is retained as superseded
+013AE is the current signed candidate identity authority; 013AF is the current
+verified-local rollback authority; 013AD remains the current SPB
+runtime-correction authority and 013AC is retained as superseded
 candidate.2 history. Signed `pokrov-1.2.0-candidate.3` binds platform/client/
 Core/release-index `eafaca3...` / `ac22825...` / `344b317...` / `6a1afa95...`,
 five production-signed Android artifacts and owner-approved unsigned Windows
@@ -281,6 +290,13 @@ Candidate.3 PB-14 local replay passes: an identity-free `UPD-004` blocks
 observation close and drives the guarded rollback request/public policy to
 zero. This is isolated control evidence at `I3`, not a deployed cohort or an
 external artifact switch.
+
+Candidate.3 portal/client rollback rehearsal also passes at `I3`: the signed
+manifest is bound to generated handoff `565a43dd...`; the real client pointer
+and portal consumer complete isolated `1.1.6 -> 1.2.0 -> 1.1.6` restoration
+with embedded receipts and byte-identical final state. Tracked stable/runtime
+state is unchanged, so authorized production rollback and origin readback
+remain open.
 
 Next obtain a valid owned entitlement for the retained LDPlayer account or
 wait for the physical phone before device network testing; do not wipe the

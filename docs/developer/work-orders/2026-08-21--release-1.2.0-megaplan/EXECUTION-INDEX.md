@@ -3060,3 +3060,28 @@ provider, Operator, legal, public-asset and promotion gates remain open.
 Distribution stays `I4=4`, `I3=307`, `I2=15`, `I1=38`, `I0=13`; 311 rows
 are at or above `I3`, 66 remain below `I3`, and the pending stage split stays
 `0/31/14/21`.
+
+## 2026-08-27 — WO-013AF exact candidate.3 rollback rehearsal
+
+The retained candidate.3 manifest/signature/receipt are revalidated against
+release-index source `6a1afa95...` and active Ed25519 key
+`pokrov-release-2026-01`. Exact platform/client/Core checkouts
+`eafaca3...` / `ac22825...` / `344b317...` generate strict-v2 handoff
+`565a43dd...`; its six artifacts and source tuple match the signed manifest.
+
+In one isolated artifact root, the real client stable-pointer switcher
+validates two hash-bound targets, dry-runs without mutation, atomically moves
+`1.1.6+20260819 -> pokrov-1.2.0`, retains backup/receipt evidence, then
+atomically returns to byte-identical stable `563dd478...`. The real portal
+handoff consumer projects candidate Android `e105dc28...` and Windows
+`9962e3e8...` identities, then restores its pre-candidate env byte-for-byte
+while preserving an unrelated setting.
+
+Tracked client pointer/catalog, portal runtime, deployment, public release and
+stable promotion are not mutated. This is exact-candidate verified-local
+evidence, not current/Brain-origin production rollback proof.
+
+`REL_DOD/DOD-18` advances `I0 -> I3`; `FE/P12-130` remains `I3` with stronger
+exact-candidate evidence. Distribution becomes `I4=4`, `I3=308`, `I2=15`,
+`I1=38`, `I0=12`; 312 rows are at or above `I3`, 65 remain below `I3`, and
+the pending stage split becomes `0/30/14/21`.

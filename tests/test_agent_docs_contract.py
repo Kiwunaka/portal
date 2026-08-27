@@ -542,7 +542,7 @@ def test_docs_finalization_rollback_preserves_release_evidence() -> None:
         REPO_ROOT / "docs" / "operations" / "rollback-runbook.md"
     ).read_text(encoding="utf-8")
     lowered = text.casefold()
-    assert "Last updated: 2026-08-22" in text
+    assert "Last updated: 2026-08-27" in text
     assert "remove or blank public download urls" not in lowered
     assert "switch the active pointer to the last verified release handoff" in lowered
     assert (
@@ -555,9 +555,11 @@ def test_docs_finalization_rollback_preserves_release_evidence() -> None:
     assert "scripts/set-release-stable-pointer.ps1" in text
     assert "optimistic lock" in lowered
     assert "external backup" in lowered
-    assert "exact `1.2.0` candidate does not exist yet" in lowered
-    assert "`NOT_AUTHORIZED`" in text
-    assert "`NOT_RUN`" in text
+    assert "`wo-013af`" in lowered
+    assert "manifest\n`a2752b6a...`" in lowered
+    assert "`i3` verified-local evidence only" in lowered
+    assert "were not mutated" in lowered
+    assert "required before `i4/i5`" in lowered
     assert (
         "[Paid Beta Deploy And Rollback Checklist]"
         "(deployment-and-access.md#paid-beta-deploy-and-rollback-checklist)"

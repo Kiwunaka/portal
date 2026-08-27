@@ -1,6 +1,6 @@
 # Rollback Runbook
 
-Last updated: 2026-08-22
+Last updated: 2026-08-27
 
 ## Rollback Triggers
 
@@ -53,9 +53,20 @@ to runtime config, rebuild static download surfaces if URLs changed, and retain
 separate `current-origin`, `brain-origin`, and `RU-origin` results where each is
 claimed.
 
-The current source contract and isolated A→B→A fixture are `PASS_LOCAL`. The
-exact `1.2.0` candidate does not exist yet, pointer/runtime mutation is
-`NOT_AUTHORIZED`, and its rollback drill remains `NOT_RUN`.
+The source contract, synthetic A→B→A fixture and exact signed candidate.3
+isolated rehearsal are `PASS_LOCAL`. `WO-013AF` binds manifest
+`a2752b6a...` to strict-v2 handoff `565a43dd...`, drives the real client
+pointer and portal projection through
+`1.1.6+20260819 -> pokrov-1.2.0 -> 1.1.6+20260819`, and restores both local
+surfaces byte-for-byte. Run it with
+`scripts/release_1_2_candidate_rollback_rehearsal.py` and explicit exact
+platform/client/Core/release-index inputs.
+
+That result is `I3` verified-local evidence only. The tracked stable pointer,
+portal runtime, static surfaces and production services were not mutated.
+The authorized runtime drill plus current/Brain-origin readback remains
+required before `I4/I5`; a local fixture must not be relabeled as production
+rollback proof.
 
 ## Canonical Support Ownership Rollback
 
