@@ -1,6 +1,6 @@
 {
   "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
-  "recorded_at_utc": "2026-08-27T08:49:25Z",
+  "recorded_at_utc": "2026-08-27T09:50:00Z",
   "candidate": {
     "id": "pokrov-1.2.0-candidate.3",
     "operational_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
@@ -15,7 +15,7 @@
     }
   },
   "checks": {
-    "gates_a_e_exact_candidate": "MISSING",
+    "gates_a_e_exact_candidate": "FAIL",
     "mandatory_stop_ship_and_dod": "MISSING",
     "no_open_p0_false_green_or_secret_leak": "MISSING",
     "supply_chain_signature_sbom_provenance": "PASS",
@@ -36,7 +36,13 @@
     "hosted_required_checks": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
   },
   "interpretation": {
-    "known_hard_failures": [],
+    "known_hard_failures": [
+      {
+        "id": "GATE_B_EXACT_CANDIDATE_OBSERVABILITY_REFERENCE_PORTABILITY",
+        "status": "FAIL",
+        "detail": "Candidate.3 platform source fails the checked-in observability support-reference freshness contract on a normal Windows CRLF checkout; the post-candidate normalization fix cannot repair frozen candidate bytes"
+      }
+    ],
     "gate_f_pass_claimed": false,
     "missing_or_manual_evidence_is_pass": false,
     "owner_solo_exception_waives_independent_reviewer_only": true,
@@ -50,8 +56,8 @@
   "blockers": [
     {
       "id": "GATES_A_E_AND_MANDATORY_ROWS_NOT_ALL_CANDIDATE_PROVEN",
-      "status": "MISSING",
-      "detail": "Gate A is now baselined at I1 with a BLOCKED exact-candidate decision, while Gates A-E and mandatory rows are still not all exact-candidate I4; local, source and compensated proof are not Gate F proof"
+      "status": "FAIL",
+      "detail": "Gate A is BLOCKED and Gate B returns exact-candidate NO_GO after a deterministic observability support-reference portability failure; Gates A-E and mandatory rows are not all exact-candidate I4"
     },
     {
       "id": "WINDOWS_LIVE_TUN_DNS_EGRESS_RECOVERY",
@@ -61,7 +67,7 @@
     {
       "id": "ANDROID_PHYSICAL_EXACT_CANDIDATE",
       "status": "MANUAL_OWNER_TEST",
-      "detail": "Owner removed the phone and instructed LDPlayer-only work; emulator proof is retained separately"
+      "detail": "The owner returned the phone, but the installed physical build is post-candidate lab 1.2.0+4031 rather than candidate.3 1.2.0+30; its DNS/AWG readiness observations do not transfer to the frozen candidate"
     },
     {
       "id": "AUTHENTICATED_CLIENT_EGRESS",
@@ -159,12 +165,17 @@
       "sha256": "f4441a19521d1d77703f599c1257f620fb048167c3db9ff3a24f2935694f2d01"
     },
     {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AK-exact-candidate-gate-b/013AK-gate-b-decision.json",
+      "sha256": "07d5bcbd5be6631b3648fb10926bb773ccbb4f41fb0d5ba7fbabddad9fe5f21b"
+    },
+    {
       "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/EXECUTION-LEDGER.csv",
-      "sha256": "de901f7a26348e09132f83ff35175715bc460ef70c7922f62f0e99b1d5477fbc"
+      "sha256": "d7cd58dc1f9a6387acc9bdfc0d31834cc63a1514ec7dfce28be542f4d88775d6"
     }
   ],
   "mutation_boundary": {
-    "physical_device_used": false,
+    "physical_device_used": true,
+    "physical_device_exact_candidate_tested": false,
     "entitlement_mutated": false,
     "payment_action": false,
     "production_deploy": false,
@@ -172,5 +183,5 @@
     "stable_pointer_mutated": false,
     "gate_g_authorized": false
   },
-  "evidence_ceiling": "EXACT_CANDIDATE3_GATE_F_INPUT_EVIDENCE_ONLY; REQUIRED_EXTERNAL_AND_MANUAL_GATES_REMAIN_NON_PASS"
+  "evidence_ceiling": "EXACT_CANDIDATE3_GATE_F_INPUT_EVIDENCE_WITH_ONE EXPLICIT_GATE_B_FAILURE; PHYSICAL_PHONE_IS POST_CANDIDATE_LAB4031_ONLY; REQUIRED_EXTERNAL_AND_MANUAL_GATES_REMAIN_NON_PASS"
 }

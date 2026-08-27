@@ -72,16 +72,16 @@ not rewritten into an exact-source green aggregate.
 | `013AJ-owner-solo-pr-input.json` | `2bab756b5d17f17a61f2de30e8b95b1ad5a43c4555b06acd2e9d7681ff2e1604` |
 | `013AJ-stop-ship-exact-source.json` | `d06df26ac9d2ddb20d9e2442cf7748ff0afda3014f94aeea9778f894c22622b1` |
 | `013AJ-gate-a-decision.json` | `f4441a19521d1d77703f599c1257f620fb048167c3db9ff3a24f2935694f2d01` |
-| Current execution ledger | `de901f7a26348e09132f83ff35175715bc460ef70c7922f62f0e99b1d5477fbc` |
-| Rehashed Gate F decision | `3eb6b06dfd345c7df1ef4d5f09cfd354e22e2efeec13abc674930800037c631b` |
+| Current execution ledger after Gate B | `d7cd58dc1f9a6387acc9bdfc0d31834cc63a1514ec7dfce28be542f4d88775d6` |
+| Rehashed Gate F decision after Gate B | `f29542488e6995c6d487597bc2b792100d129605f75e8ed248b897c44e747c45` |
 
 ## Verification
 
 - exact platform payment/release/manifest suite: `103 passed`, `21 subtests`;
 - exact client/Core release contract: `PASS`;
 - STOP-SHIP command with `--expect-nonpass`: exit `0`, result `BLOCKED`;
-- Gate F replay: exit `0` only with `--expect-blocked`, result remains
-  `5 PASS / 14 non-PASS / 0 FAIL / 0 validation errors`;
+- Gate F replay after Gate B: exit `2`, result `NO_GO` with
+  `5 PASS / 14 non-PASS / 1 FAIL / 0 validation errors`;
 - release/preflight/STOP-SHIP/docs contract suite: `71 passed`;
 - platform context audit and upstream-evidence hash audit: `PASS`;
 - exact source worktrees: clean;

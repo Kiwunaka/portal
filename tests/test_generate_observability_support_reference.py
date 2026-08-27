@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
@@ -27,3 +28,21 @@ def test_generated_reference_contains_every_catalog_entry_once() -> None:
 
 def test_checked_in_reference_is_current() -> None:
     assert MODULE.OUTPUT_PATH.read_text(encoding="utf-8") == MODULE.render_reference()
+
+
+def test_catalog_digest_is_stable_across_line_endings(tmp_path: Path) -> None:
+    canonical = (
+        b'{"schema_version":1,"catalog_version":"test",'
+        b'"entries":[{"code":"TEST-001"}]}\n'
+    )
+    lf_path = tmp_path / "catalog-lf.json"
+    crlf_path = tmp_path / "catalog-crlf.json"
+    cr_path = tmp_path / "catalog-cr.json"
+    lf_path.write_bytes(canonical)
+    crlf_path.write_bytes(canonical.replace(b"\n", b"\r\n"))
+    cr_path.write_bytes(canonical.replace(b"\n", b"\r"))
+
+    expected = hashlib.sha256(canonical).hexdigest()
+    assert MODULE._load_catalog(lf_path)["_sha256"] == expected
+    assert MODULE._load_catalog(crlf_path)["_sha256"] == expected
+    assert MODULE._load_catalog(cr_path)["_sha256"] == expected

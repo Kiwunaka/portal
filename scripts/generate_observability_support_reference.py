@@ -29,7 +29,8 @@ def _load_catalog(path: Path) -> dict[str, Any]:
     codes = [entry.get("code") for entry in entries if isinstance(entry, dict)]
     if len(codes) != len(entries) or len(set(codes)) != len(entries):
         raise ValueError("canonical error catalog has invalid or duplicate codes")
-    return {**payload, "_sha256": hashlib.sha256(raw).hexdigest()}
+    canonical = raw.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+    return {**payload, "_sha256": hashlib.sha256(canonical).hexdigest()}
 
 
 def _cell(value: object) -> str:

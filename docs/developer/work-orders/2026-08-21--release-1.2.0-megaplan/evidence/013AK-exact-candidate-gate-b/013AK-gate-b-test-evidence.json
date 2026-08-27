@@ -1,0 +1,199 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-b-test-evidence/v1",
+  "recorded_at_utc": "2026-08-27T09:13:07Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.3",
+    "operational_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
+    "platform_source": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+    "client_source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+    "core_source": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "release_index_source": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2",
+    "manifest_sha256": "a2752b6a3b95faacf13a68edb708c560966a0f5eb8727e109d7f1603fdc81090",
+    "android_universal_sha256": "f41c76ebf7bf69f6681d7df87e7722dcdccdec383ef950156b69829caee71c51"
+  },
+  "exact_source_replay": {
+    "platform_fail_first": {
+      "source": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_observability_contracts.py tests/test_generate_observability_support_reference.py tests/test_release_handoff_metadata.py -q",
+      "result": "FAIL_1_OF_69_WITH_68_PASS",
+      "failed_test": "tests/test_generate_observability_support_reference.py::test_checked_in_reference_is_current",
+      "working_tree_catalog_sha256": "4615f3a9014a758ae5fd87667ede0b8ea404bd997c6fd0b709b5fc610b376495",
+      "canonical_lf_catalog_sha256": "7d3bf242777d5bf76bbebcf162e5969d3f83d7f68b2787051e1c4fddeadc3dc7",
+      "cause": "support reference generator hashed raw CRLF checkout bytes while the canonical validator and signed manifest use normalized UTF-8 LF identity"
+    },
+    "post_candidate_correction": {
+      "branch": "codex/release-1.2.0-gate-b",
+      "candidate_bytes_changed": false,
+      "candidate_source_tuple_changed": false,
+      "behavior": "normalize CRLF and lone CR to LF before observability contract and generated-reference hashing",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_observability_contracts.py tests/test_generate_observability_support_reference.py tests/test_release_handoff_metadata.py -q",
+      "result": "PASS_70_OF_70",
+      "included_in_candidate3": false
+    },
+    "client_app_state_diagnostics_migrations": {
+      "source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+      "tests": [
+        "connection_experience_test.dart",
+        "diagnostics_coordinator_test.dart",
+        "client_experience_store_test.dart",
+        "app_first_runtime_bootstrap_test.dart"
+      ],
+      "result": "PASS_107_OF_107"
+    },
+    "client_runtime_engine": {
+      "source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+      "exact_windows_core_sha256": "60fe3fad7835ec4d00c1f7168bb0ba01dd6b7ca5d883583340e5e2a86b8b3981",
+      "exact_windows_core_backtest": "PASS_100_START_STOP_CYCLES",
+      "result": "PASS_63_OF_63"
+    },
+    "android_state_lifecycle_error_fencing": {
+      "source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+      "variant": "directDebug",
+      "classes": 8,
+      "result": "PASS_45_OF_45"
+    },
+    "windows_flutter_contract": {
+      "source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+      "result": "PASS_23_OF_23"
+    },
+    "windows_native_recovery_contract": {
+      "source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+      "build": "PASS_DEBUG",
+      "ctest": "PASS_7_OF_7",
+      "scope": "protocol security crash-profile runtime recovery events integration and activation source behavior only"
+    },
+    "core_typed_runtime_and_error_classification": {
+      "source": "344b317a7a09eca7943a93866b193553538bd8f6",
+      "go_version": "1.25.13",
+      "internal_observability": "PASS",
+      "libbox_operational_events": "PASS",
+      "abi_contract": "PASS_DESKTOP_2_DESCRIPTOR_1_EVENTS_1_EXPORTS_15"
+    }
+  },
+  "ldplayer_runtime": {
+    "serial": "emulator-5554",
+    "model": "SM-S9280",
+    "android_release": "9",
+    "package": "space.pokrov.pokrov_android_shell",
+    "version_name": "1.2.0",
+    "version_code": 30,
+    "force_stop_relaunch_ms": 963,
+    "initial_state": "NOT_PROTECTED_RENEW_REQUIRED",
+    "connect_attempt": "TRANSIENT_CONNECTING_THEN_FAIL_CLOSED",
+    "state_after_10_seconds": "NOT_PROTECTED",
+    "safe_error_copy": "Сервис подготовки временно недоступен. Попробуйте ещё раз.",
+    "vpn_transport_present": false,
+    "tun0_present": false,
+    "crash_buffer_lines": 0,
+    "authenticated_entitlement": false,
+    "connected_verified_path_tested": false,
+    "screenshot": {
+      "retention": "OUTSIDE_REPOSITORY",
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate3-gate-b-2026-08-27/ldplayer-fail-closed-state.png",
+      "size": 249740,
+      "sha256": "0f2869cefa40c99e8a0022850df66b149ec9dea184bd63ce6241be011af39ec5"
+    }
+  },
+  "physical_lab_phone": {
+    "candidate3_proof": false,
+    "build_classification": "POST_CANDIDATE_OWNER_LAB",
+    "device": {
+      "manufacturer": "HUAWEI",
+      "model": "ADA-AL00U",
+      "android_release": "12",
+      "api_level": 31,
+      "raw_serial_retained": false
+    },
+    "package": {
+      "name": "space.pokrov.pokrov_android_shell",
+      "version_name": "1.2.0",
+      "version_code": 4031,
+      "apk_sha256": "1ba37463c9549a6d5ba128850e1bf5825187fe185a621e9f8dc62c7cde1a4158",
+      "arm64_core_sha256": "efad582236fc0482533ebeca8543807a6050785080d795b430f99c8d134e5df8"
+    },
+    "mobile_origin": {
+      "carrier": "Beeline",
+      "transport": "LTE",
+      "android_validated": true,
+      "wifi_disabled_during_mobile_attempt": true,
+      "wifi_restored_after_test": true,
+      "wifi_on_readback": 1
+    },
+    "location_and_fail_closed_observation": {
+      "catalog_loaded": true,
+      "spb_visible": true,
+      "spb_selected_variant": "Обычный",
+      "connect_result": "FAIL_CLOSED_BEFORE_VERIFIED_TUNNEL",
+      "safe_error_copy": "POKROV не подтвердил защищенное подключение и отключил системный VPN.",
+      "vpn_transport_present_after_failure": false,
+      "tun_interface_present_after_failure": false,
+      "routes_active_after_failure": false,
+      "crash_buffer_lines": 0,
+      "root_cause_determined": false,
+      "further_spb_retries_stopped_by_owner_priority": true
+    },
+    "dns_and_selected_service_settings": {
+      "cold_restart_persistence": "PASS",
+      "dns_preset": "AdGuard",
+      "dns_scope": "INSIDE_VPN_TUNNEL",
+      "ad_blocking_enabled": true,
+      "local_network_direct_enabled": true,
+      "ai_services_route_enabled": true,
+      "games_route_enabled": true,
+      "available_dns_presets_observed": [
+        "Автоматически",
+        "Cloudflare",
+        "Google",
+        "AdGuard",
+        "Свой DoH"
+      ],
+      "dns_only_without_vpn_claimed": false
+    },
+    "awg_lab_readiness": {
+      "arm64_core_markers": [
+        "AWG2Subset",
+        "AWG31Subset",
+        "pokrov.awg2.endpoint.v1",
+        "pokrov.awg31.endpoint.v1"
+      ],
+      "platform_focused_tests": "PASS_42_OF_42",
+      "client_runtime_tests": "PASS_62_WITH_1_DECLARED_EXACT_DLL_SKIP",
+      "client_dns_routing_tests": "PASS_11_OF_11",
+      "brain_candidate3_source_match": "PASS_193_OF_193_CRLF_TO_LF_ONLY",
+      "live_database": "POSTGRESQL",
+      "live_awg_tables_present": true,
+      "awg2_rollout_configured": false,
+      "awg31_rollout_configured": false,
+      "awg2_material_rows": 0,
+      "awg31_material_rows": 0,
+      "awg2_material_secret_configured": false,
+      "awg31_material_secret_configured": false,
+      "isolated_owned_server_available": false,
+      "live_awg_connect_tested": false,
+      "production_deploy_needed_for_current_source": false
+    }
+  },
+  "interpretation": {
+    "negative_ldplayer_path_proves_false_green_absence_for_observed_attempt": true,
+    "negative_ldplayer_path_proves_connected_verified_path": false,
+    "source_recovery_tests_replace_live_connected_recovery": false,
+    "post_candidate_fix_repairs_candidate3": false,
+    "physical_device_used": true,
+    "physical_device_exact_candidate_tested": false,
+    "physical_lab_build_replaces_candidate3_proof": false,
+    "ldplayer_replaces_physical_device": false
+  },
+  "mutation_boundary": {
+    "entitlement_mutated": false,
+    "payment_action": false,
+    "production_deploy": false,
+    "production_state_read_only_inspected": true,
+    "awg_rollout_mutated": false,
+    "awg_server_mutated": false,
+    "live_windows_network_run": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE3_SOURCE_AND_NEGATIVE_LDPLAYER_STATE_REPLAY; CANDIDATE_SOURCE_GENERATOR_FAILURE_REQUIRES_REPLACEMENT_CANDIDATE; PHYSICAL_ANDROID_EVIDENCE_IS POST_CANDIDATE_LAB4031_ONLY; DNS_SETTINGS_PERSIST_BUT LIVE_AWG_HAS_NO ROLLOUT_MATERIAL_SECRET_OR_ISOLATED_SERVER; NO_AUTHENTICATED_CANDIDATE_CONNECT_NO_LIVE_CONNECTED_RECOVERY_NO_PROMOTION"
+}

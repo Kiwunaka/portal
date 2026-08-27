@@ -35,7 +35,7 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete; exact-candidate performance/manual gates retained | `WO-010` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
 | 10 | FRKN-derived rules; isolated AWG2 PoC, later HY2 decision | Local package complete; exact artifact/device/RU gates open | `WO-012` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013AE makes signed `pokrov-1.2.0-candidate.3` the current exact evidence basis after the 013AD SPB rollout/client correction. 013AF passes an isolated exact portal/client rollback; 013AG proves the live Brain backend already matches all 193 candidate platform payload files and passes readiness 23/23 plus enabled delivery 7/7 without deploy; 013AH passes the exact target through the corrected quick/default current-origin harness plus source-bound health/catalog p95. 013AI verifies the Ed25519/candidate/evidence chain and emits one exact Gate F `BLOCKED` decision: 5 of 19 checks pass, 14 remain non-PASS, with zero explicit failures or validation errors. Exact Windows clean-host service/IPC and exact-byte LDPlayer install/launch plus Support rendering pass; live support polling, LDPlayer entitled TUN/DNS/egress and the physical phone remain unproved. No public `v1.2.0`, production pointer/stable switch or stable promotion occurred; Windows live TUN/DNS, physical Android OEM/handover, RU-origin, authenticated client egress, provider, Operator, legal, comparable performance and authorized production rollback remain open. Platform PR 49 and client polling PR 29 are unmerged because GitHub billing blocked required jobs before start | `WO-013`, `WO-013C`, `WO-013D`, `WO-013E`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S`, `WO-013T`, `WO-013U`, `WO-013V`, `WO-013W`, `WO-013X`, `WO-013Y`, `WO-013Z`, `WO-013AA`, `WO-013AB`, `WO-013AC`, `WO-013AD`, `WO-013AE`, `WO-013AF`, `WO-013AG`, `WO-013AH`, `WO-013AI`, `WO-010K` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013AE makes signed `pokrov-1.2.0-candidate.3` the current exact evidence basis. 013AF passes isolated rollback; 013AG proves all 193 live Brain payload files match; 013AH passes corrected exact current-origin gates. 013AJ baselines Gate A as `BLOCKED`; 013AK finds one deterministic Gate B observability-reference portability failure and returns `NO_GO`. Rehashed 013AI therefore emits Gate F `NO_GO`: 5 of 19 checks pass, 14 remain non-PASS, 1 is explicit `FAIL`, and validation errors are zero. The returned physical phone proves only post-candidate lab4031 DNS persistence and AWG client/Core readiness; no live AWG rollout, material or isolated server exists. No public `v1.2.0`, stable switch or promotion occurred; Windows live network/recovery, exact-candidate physical Android, RU-origin, authenticated egress, provider, Operator, legal and performance gates remain open. Platform PR 49, Gate B correction and client PR 29 need successful hosted checks before a replacement candidate | `WO-013`, `WO-013C`, `WO-013D`, `WO-013E`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S`, `WO-013T`, `WO-013U`, `WO-013V`, `WO-013W`, `WO-013X`, `WO-013Y`, `WO-013Z`, `WO-013AA`, `WO-013AB`, `WO-013AC`, `WO-013AD`, `WO-013AE`, `WO-013AF`, `WO-013AG`, `WO-013AH`, `WO-013AI`, `WO-013AJ`, `WO-013AK`, `WO-010K` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -122,8 +122,9 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013AF` | Run one exact candidate.3 portal and client-channel rollback rehearsal without touching production or tracked stable state | Platform release operation/evidence | Signed manifest, exact generated handoff, real client pointer and real portal projection pass isolated 1.1.6→1.2.0→1.1.6 rollback; `REL_DOD/DOD-18` reaches `I3`; authorized runtime/origin proof remains open | `WO-013D`, `WO-013AE`, exact platform/client/Core/release-index checkouts |
 | `WO-013AG` | Prove whether live Brain backend source is stale without deploying or restarting production | Platform operations/release evidence | Exact candidate.3 platform payload matches 193/193 after CRLF-only normalization; Brain readiness 23/23 and live enabled delivery 7/7 pass; 013AH later supplies the separate current-origin local aggregate, while RU-origin and authenticated client egress remain open; no row advances | `WO-013AE`, `WO-013Z`, owned trusted Brain access |
 | `WO-013AH` | Correct the reproducibility harness and retain an exact candidate.3 current-origin local aggregate without changing candidate bytes | Platform release/performance evidence | Fail-first old harness retained; corrected quick 12/12 and default 13/13 gates pass against exact platform/client/Core, health p95 42.5337 ms and catalog p95 43.3626 ms pass source-bound; GitHub jobs are billing-blocked and PR 48 stays unmerged; RU-origin and authenticated client egress remain open; no row advances | `WO-013AE`, `WO-013AG`, exact source checkouts, harness PR 48 |
-| `WO-013AI` | Emit one cryptographically and digest-bound exact candidate.3 Gate F decision without authorizing promotion | Platform release decision/evidence | Fixed 19-check verifier, upstream digest binding and exact LDPlayer byte/launch plus Support-render recheck pass locally; Gate F returns `BLOCKED` with 5 PASS, 14 non-PASS, 0 FAIL and 0 validation errors; `DOD-20` and `PR-10` remain `I3`, while Gate F and candidate remain below I4 | `WO-013AE`–`WO-013AH`, `WO-010K`, exact signed candidate bytes, LDPlayer-only owner instruction, platform PR 49 and client PR 29 readback |
+| `WO-013AI` | Emit one cryptographically and digest-bound exact candidate.3 Gate F decision without authorizing promotion | Platform release decision/evidence | Fixed 19-check verifier, upstream digest binding and exact LDPlayer byte/launch pass locally; after Gate B replay, Gate F returns `NO_GO` with 5 PASS, 14 non-PASS, 1 FAIL and 0 validation errors; `DOD-20` and `PR-10` remain `I3`, while Gate F and candidate remain below I4 | `WO-013AE`–`WO-013AK`, `WO-010K`, exact signed candidate bytes, platform PR 49 and client PR 29 readback |
 | `WO-013AJ` | Baseline source-plan Gate A against exact candidate.3 without turning manual or skipped slices into PASS | Platform release decision/evidence | Exact source tuple, payment/release suite `103 + 21 subtests`, cross-repo contract, STOP-SHIP regressions `7/7` and solo PR controls `3/3` pass; Gate A remains `BLOCKED` by Windows live network/recovery and unsigned public/stable Windows signing, so `GATE-A` reaches only `I1` | source-plan Gate A, `WO-013M`–`WO-013P`, `WO-013AA`, `WO-013AE`, exact source worktrees |
+| `WO-013AK` | Evaluate source-plan Gate B against exact candidate.3 and retain the replacement fix without transferring lab evidence | Platform/client/Core release decision/evidence | Exact state, ABI and false-green matrices pass; one Windows CRLF support-reference freshness test fails in frozen source, so Gate B stays `I3` as `NO_GO`; the post-candidate normalization fix passes `70/70`; physical lab4031 DNS/AWG readiness is retained separately and live AWG remains unconfigured | source-plan Gate B, `WO-004`, `WO-006I`, `WO-013AE`, exact source worktrees, returned owner phone, read-only Brain access |
 
 ## Current evidence
 
@@ -265,6 +266,9 @@ The row order is a dependency order, not permission for one giant merge. Each im
   digest-bound Gate F input and the final `BLOCKED` decision.
 - `evidence/013AJ-exact-candidate-gate-a/` retains the exact-source STOP-SHIP
   replay, owner-solo PR input and six-requirement Gate A `BLOCKED` decision.
+- `evidence/013AK-exact-candidate-gate-b/` retains the exact-source Gate B
+  replay, one deterministic candidate failure, the post-candidate correction,
+  physical lab4031 DNS/AWG boundary and final Gate B `NO_GO` decision.
 - `evidence/010K-support-transport-reconciliation/010K-support-transport-reconciliation.json`
   binds the conditional no-streaming decision, unmerged adaptive-polling client
   source, complete local gate, zero-step GitHub billing blocker, LDPlayer
@@ -287,8 +291,9 @@ The row order is a dependency order, not permission for one giant merge. Each im
 013AE is the current signed candidate identity authority; 013AF is the current
 verified-local rollback authority; 013AG is the current exact-candidate
 Brain-source/control-plane authority; 013AH is the exact-candidate
-current-origin local gate/performance authority; 013AI is the current exact
-Gate F decision authority; 013AD remains the current SPB
+current-origin local gate/performance authority; 013AJ/013AK are the exact
+Gate A/Gate B authorities and 013AI is the rehashed current exact Gate F
+`NO_GO` authority; 013AD remains the current SPB
 runtime-correction authority and 013AC is retained as superseded
 candidate.2 history. Signed `pokrov-1.2.0-candidate.3` binds platform/client/
 Core/release-index `eafaca3...` / `ac22825...` / `344b317...` / `6a1afa95...`,
@@ -309,9 +314,10 @@ package/version readback, launch/relaunch, Support screen rendering and
 persistence of AI-services and Games routing controls. The retained emulator
 account is expired, so catalog,
 TUN, DNS, owned egress and content reachability are `BLOCKED_BY_ACCESS`. The
-owner removed the physical phone and directed LDPlayer-only work; candidate.3
-physical Beeline/OEM/handover remains unrun and earlier candidate.2/non-
-candidate device evidence is not transferred.
+owner returned the physical phone, but it runs post-candidate lab build
+`1.2.0+4031`; its Beeline, DNS-persistence and AWG-readiness observations are
+not transferred to candidate.3. Exact candidate.3 physical
+Beeline/OEM/handover remains unrun.
 
 Candidate.3 PB-14 local replay passes: an identity-free `UPD-004` blocks
 observation close and drives the guarded rollback request/public policy to
@@ -337,21 +343,25 @@ start platform PR 49 or client polling PR 29 jobs because account billing
 blocked Actions, so both PRs remain unmerged and the hosted checks are
 `BLOCKED_BY_ACCESS`, not `PASS`.
 
-Gate F now returns exactly `BLOCKED`: 5 of 19 checks are PASS and 14 remain
-non-PASS, with zero explicit test failures and zero signature/evidence binding
-errors. This is the required evidence-based decision behavior, not release
-readiness. Gate G remains unauthorized even after a future GO.
+Gate F now returns exactly `NO_GO`: 5 of 19 checks are PASS and 14 remain
+non-PASS, with one explicit Gate B candidate failure and zero
+signature/evidence binding errors. This is the required evidence-based
+decision behavior, not release readiness. Gate G remains unauthorized even
+after a future GO.
 
-Next continue LDPlayer-only work and obtain a valid owned entitlement for its
-retained account before device network testing; do not wipe the login or grant
-production access silently. Separately execute Windows live
+Next merge the Gate B normalization correction and support-polling PR only
+after successful hosted checks, then build a replacement signed candidate.
+Obtain a valid owned entitlement before exact-candidate device network testing;
+do not wipe the login or grant production access silently. Separately execute Windows live
 TUN/DNS/egress/connected rollback and retain RU-origin, authenticated client
 egress, provider, Operator, legal and comparable device-performance evidence.
 Restore GitHub Actions billing access and require successful app-bound checks
 before merging platform PR 49 or client polling PR 29. After PR 29 merges, a
 replacement signed candidate and fresh LDPlayer exact-byte/polling replay are
 required because candidate.3 does not contain that patch. Rerun Gate F
-after each evidence change. Public `v1.2.0`, six same-byte public assets and
+after each evidence change. An AWG canary additionally needs a separate owned
+VPS, material secrets and guarded owner-only provisioning; active paid nodes
+remain untouched. Public `v1.2.0`, six same-byte public assets and
 the stable pointer remain prohibited until the final decision is `GO` and the
 owner separately authorizes Gate G. The Windows SmartScreen warning remains
 mandatory; AWG 3.1 stays default-off and access-blocked until an isolated

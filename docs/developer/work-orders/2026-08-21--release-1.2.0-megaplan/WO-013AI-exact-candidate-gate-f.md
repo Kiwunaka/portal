@@ -1,6 +1,6 @@
 # WO-013AI — Exact candidate.3 Gate F decision
 
-Status: `BLOCKED_EXACT_CANDIDATE_GATE_F`
+Status: `NO_GO_EXACT_CANDIDATE_GATE_F`
 Phase: `11`
 Candidate: `pokrov-1.2.0-candidate.3`
 Rows: `REL_DOD/DOD-20`, `FE_PR/PR-10`
@@ -15,9 +15,9 @@ The decision must validate the Ed25519 manifest binding, exact source tuple,
 candidate-scoped evidence files and their upstream SHA-256 digests before it
 classifies the candidate as `GO`, `NO_GO` or `BLOCKED`.
 
-The owner removed the physical phone and explicitly limited Android work to
-LDPlayer. Emulator evidence therefore remains separate from the mandatory
-physical-device gate and cannot close it.
+The owner later returned the physical phone, but it contains post-candidate
+lab build `1.2.0+4031`, not candidate.3 `1.2.0+30`. Its evidence remains
+separate from the mandatory exact-candidate physical-device gate.
 
 ## Exact candidate binding
 
@@ -48,7 +48,7 @@ validated `BLOCKED` report. It cannot turn `NO_GO` into a successful command.
 Even a future Gate F `GO` leaves Gate G and public/stable mutation explicitly
 unauthorized pending a separate owner instruction.
 
-## LDPlayer-only recheck
+## LDPlayer and physical-lab boundary
 
 LDPlayer `emulator-5554` reports Android 9 and model `SM-S9280`. Installed
 package `space.pokrov.pokrov_android_shell` is `1.2.0 (30)` and uses APK
@@ -68,7 +68,14 @@ primary and AI helper, feedback, diagnostics and the composer rendered without
 a crash. No ticket or message was created, so live support polling is
 `NOT_TESTED`. Install/launch rehearsal remains `PASS`, while authenticated
 entitlement, catalog, TUN/DNS/egress are `BLOCKED_BY_ACCESS`/`NOT_RUN`. No
-entitlement was granted or bypassed. No physical device was used.
+entitlement was granted or bypassed.
+
+The returned physical Huawei phone proves only the lab build boundary: DNS,
+AI/Games settings persist after a cold restart; the ARM64 Core contains the
+separate AWG2/AWG 3.1 contracts; and one Beeline LTE ordinary-profile attempt
+fails closed. It is not candidate.3 evidence. Live Brain inspection also shows
+that no AWG rollout, material secret, material row or isolated server is
+configured, so no live AWG pass is claimed.
 
 System and Android SDK ADB installations reported a daemon-version conflict.
 The retained recheck and Support navigation completed with LDPlayer's own ADB
@@ -79,11 +86,11 @@ failure.
 
 The final report is:
 
-- decision: `BLOCKED`;
+- decision: `NO_GO`;
 - required checks: `19`;
 - `PASS`: `5`;
 - non-PASS: `14`;
-- explicit `FAIL`: `0`;
+- explicit `FAIL`: `1`;
 - structural/signature/evidence validation errors: `0`.
 
 The five passed checks are exact supply-chain signature/SBOM/provenance,
@@ -91,9 +98,12 @@ release-doc/manifest binding, current-origin local aggregate, separate
 Brain-origin control-plane aggregate and exact-byte LDPlayer install/launch
 rehearsal.
 
-The fourteen non-PASS checks retain the following boundaries:
+The fourteen non-PASS checks retain the following boundaries; the first is an
+explicit failure:
 
-1. Gates A–E are not all exact-candidate proven.
+1. Gates A–E are not all exact-candidate proven: Gate B returns `NO_GO`
+   because the frozen platform source fails its observability
+   support-reference freshness contract on a normal Windows CRLF checkout.
 2. Mandatory STOP-SHIP/DoD rows are not all exact-candidate proven.
 3. Absence of every P0/false-green/secret issue cannot yet be asserted across
    the incomplete external matrix.
@@ -113,9 +123,10 @@ The fourteen non-PASS checks retain the following boundaries:
 14. Required hosted checks are
     `BLOCKED_BY_ACCESS_GITHUB_BILLING`.
 
-WO-013AJ now gives Gate A an exact-candidate baseline, but its decision is
-`BLOCKED` at `I1`, not `PASS` or candidate proof. That baseline therefore
-remains non-PASS for Gate F and does not change the `5`/`14` split.
+WO-013AJ gives Gate A an exact-candidate `BLOCKED` baseline. WO-013AK adds the
+first explicit candidate failure at Gate B. The `5`/`14` split stays the same,
+but one of the fourteen non-PASS checks is now `FAIL`, forcing `NO_GO` rather
+than `BLOCKED`.
 
 ## Hosted-check boundary
 
@@ -138,11 +149,12 @@ remain unmerged.
 |---|---|
 | `010K-support-transport-reconciliation.json` | `c3691f84be3fb526fec2e3cc56dc9977ec84bc77b1dfb9374228debf8587a769` |
 | `013AJ-gate-a-decision.json` | `f4441a19521d1d77703f599c1257f620fb048167c3db9ff3a24f2935694f2d01` |
+| `013AK-gate-b-decision.json` | `07d5bcbd5be6631b3648fb10926bb773ccbb4f41fb0d5ba7fbabddad9fe5f21b` |
 | `013AI-candidate3-ldplayer-recheck.json` | `9cb9a0483aa6714cdd96b3e0f1c6e00007e45089340727deb2b4ae24dfef83a5` |
-| `013AI-candidate3-gate-f-evidence.json` | `3c6a0710eda2699f844644a4b5569e8cfb7662768ac4e7ae458e7293e49ce079` |
-| `013AI-candidate3-gate-f-input.json` | `1ef46beb3d06e55ea6d5f9c6c3655add2a5174cca72e6454c753d453ed1d981b` |
-| `013AI-candidate3-gate-f-decision.json` | `3eb6b06dfd345c7df1ef4d5f09cfd354e22e2efeec13abc674930800037c631b` |
-| Current execution ledger after WO-013AJ | `de901f7a26348e09132f83ff35175715bc460ef70c7922f62f0e99b1d5477fbc` |
+| `013AI-candidate3-gate-f-evidence.json` | `1525b414c5be4be6ea8ec10e21912cdb771d323aed11d16dc36b6870a147d518` |
+| `013AI-candidate3-gate-f-input.json` | `ddedde591883843eed83a11d68fea6d6245c6ac928e4591dac6eafddc0ae7cb2` |
+| `013AI-candidate3-gate-f-decision.json` | `f29542488e6995c6d487597bc2b792100d129605f75e8ed248b897c44e747c45` |
+| Current execution ledger after WO-013AK | `d7cd58dc1f9a6387acc9bdfc0d31834cc63a1514ec7dfce28be542f4d88775d6` |
 
 The decision report directly binds the input digest; the input binds the Gate
 F aggregate; the verifier also re-hashes every listed upstream evidence file.
@@ -151,17 +163,17 @@ F aggregate; the verifier also re-hashes every listed upstream evidence file.
 
 - release Gate F/preflight/STOP-SHIP/docs-contract tests: `71 passed`;
 - platform context audit and upstream-evidence hash audit: `PASS`;
-- real candidate invocation: exit `0` only with `--expect-blocked`;
+- real candidate invocation: exit `2` with an honestly retained `NO_GO`;
 - Ed25519/candidate validation: `PASS`;
 - evidence validation errors: `0`;
-- result: `BLOCKED`, promotion not authorized.
+- result: `NO_GO`, promotion not authorized.
 
 ## Ledger decision
 
 `REL_DOD/DOD-20` and `FE_PR/PR-10` advance from `I0` to `I3`: the
 evidence-based decision mechanism and local release-hardening aggregate are
 implemented and verified. Neither row advances to `I4`, because the exact
-candidate decision is `BLOCKED` and non-PASS evidence never becomes candidate
+candidate decision is `NO_GO` and non-PASS evidence never becomes candidate
 proof.
 
 After WO-010K reconciles the conditional support-transport row, WO-013AJ
@@ -170,10 +182,10 @@ Gate F rehash, distribution is `I4=4`, `I3=312`, `I2=19`, `I1=41`, `I0=1`;
 `316` rows are at or above `I3`, `61` remain below. The remaining stage split
 is `pre_freeze=0`, `candidate=28`, `external=14`, `deferred=19`.
 
-The rerun remains exactly `BLOCKED` with `5` PASS, `14` non-PASS and zero
-validation errors. Neither the unmerged client polling correction nor WO-010K
-is part of the signed candidate.3 tuple, so neither turns a Gate F check into a
-pass.
+The rerun is exactly `NO_GO` with `5` PASS, `14` non-PASS, `1` explicit FAIL
+and zero validation errors. Neither the unmerged client polling correction,
+WO-010K nor the post-candidate Gate B fix is part of the signed candidate.3
+tuple.
 
 No deploy, restart, route change, entitlement/payment mutation, public asset,
 stable-pointer change or Gate G authorization occurred.
@@ -181,12 +193,13 @@ stable-pointer change or Gate G authorization occurred.
 ## Next action
 
 Restore GitHub Actions billing access and require successful checks before
-merging platform PR `#49` or client PR `#29`, then land each through the same
-owner-solo control. After PR `#29` merges, build a replacement signed candidate
-and replay exact-byte LDPlayer support polling; candidate.3 cannot inherit the
-patch. Continue LDPlayer-only work without claiming a physical device: use a
-legitimately entitled owned test account before authenticated catalog/TUN/DNS/
-egress or live ticket polling. Separately execute Windows live network,
+merging platform PR `#49`, the Gate B correction or client PR `#29`, then land
+each through the same owner-solo control. Build a replacement signed candidate
+that contains both required corrections and replay Gate B plus exact-byte
+LDPlayer support polling. Use a legitimately entitled owned test account
+before authenticated candidate catalog/TUN/DNS/egress or live ticket polling;
+the current physical lab build cannot substitute for that run. Separately
+execute Windows live network,
 distinct RU-origin, provider/operator/legal and comparable performance gates.
 Rerun Gate F after every retained evidence change. Public/stable promotion
 remains prohibited until the decision is `GO` and the owner separately

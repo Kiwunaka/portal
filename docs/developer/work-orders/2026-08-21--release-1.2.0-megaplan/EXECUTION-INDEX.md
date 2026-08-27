@@ -3269,3 +3269,36 @@ billing-blocked and are not credited to candidate.3.
 below, and stage split stays `0/28/14/19`. No branch setting, payment, signing
 key, live Windows network, deploy, public asset, stable pointer or Gate G
 mutation occurred.
+
+## 2026-08-27 — WO-013AK exact candidate.3 Gate B NO_GO
+
+Gate B is replayed against clean exact platform/client/Core sources
+`eafaca3...` / `ac22825...` / `344b317...`. Exact client state, diagnostics
+and migrations pass `107/107`; Android state/lifecycle/error fencing passes
+`45/45`; runtime engine passes `63/63` with the exact Windows Core and 100
+start/stop cycles; Windows native contracts pass `7/7`. Candidate.3 LDPlayer
+also fails closed without a VPN/tun after its observed negative connect path.
+
+The exact platform checkout exposes one deterministic failure: the
+observability support-reference generator hashes raw Windows CRLF bytes while
+the canonical validator and signed manifest use normalized LF identity. The
+frozen suite is `68 passed, 1 failed`. A minimal post-candidate correction
+normalizes CRLF and lone CR to LF in both paths and passes `70/70`, but it is
+not in candidate.3. Gate B therefore returns `NO_GO`; `REL_GATE/GATE-B` stays
+at `I3` as `LOCALLY_PROVED_EXACT_CANDIDATE_NO_GO`.
+
+The returned Huawei phone is retained only as post-candidate lab4031 evidence.
+AdGuard DNS, ad blocking, local-LAN direct and AI/Games routes persist after a
+cold restart. The extracted ARM64 Core contains separate AWG2 and AWG 3.1
+contracts. Read-only Brain inspection proves current candidate platform source
+and live PostgreSQL AWG tables, but neither AWG lane has rollout configuration,
+material secrets, device material or an isolated server. The disabled `free`
+node is unhealthy and did not answer the bounded preflight; active paid nodes,
+including SPB, were not mutated.
+
+Gate F is rehashed through the Gate B decision and ledger. It now returns
+exactly `NO_GO`: `5` PASS, `14` non-PASS, `1` explicit FAIL and `0` validation
+errors. Distribution remains `I4=4`, `I3=312`, `I2=19`, `I1=41`, `I0=1`.
+No deploy, AWG rollout/server change, entitlement/payment action, public asset,
+stable pointer or Gate G mutation occurred. A replacement signed candidate is
+required after the correction and required hosted checks land.
