@@ -62,14 +62,17 @@ the temporary copy was moved out of the scratch directory.
 
 The exact activity launched with Android status `ok` in `1309 ms`; the process
 survived and the cleared crash buffer contained zero package lines. The UI
-reported `Не защищено` and `Продлите доступ, чтобы подключиться`. Therefore
-install/launch rehearsal is `PASS`, while authenticated entitlement, catalog
-TUN/DNS/egress are `BLOCKED_BY_ACCESS`/`NOT_RUN`. No entitlement was granted or
-bypassed. No physical device was used.
+reported `Не защищено` and `Продлите доступ, чтобы подключиться`. Bounds-derived
+UIAutomator navigation also reached Profile and Support; human chat remained
+primary and AI helper, feedback, diagnostics and the composer rendered without
+a crash. No ticket or message was created, so live support polling is
+`NOT_TESTED`. Install/launch rehearsal remains `PASS`, while authenticated
+entitlement, catalog, TUN/DNS/egress are `BLOCKED_BY_ACCESS`/`NOT_RUN`. No
+entitlement was granted or bypassed. No physical device was used.
 
-Two ADB installations reported a daemon-version conflict. The retained pull,
-package inspection and launch commands all completed against
-`emulator-5554`; this tooling noise is not classified as an application
+System and Android SDK ADB installations reported a daemon-version conflict.
+The retained recheck and Support navigation completed with LDPlayer's own ADB
+against `emulator-5554`; this tooling noise is not classified as an application
 failure.
 
 ## Gate F decision
@@ -112,34 +115,36 @@ The fourteen non-PASS checks retain the following boundaries:
 
 ## Hosted-check boundary
 
-The retained platform check at the original Gate F decision point is PR `#48` head
-`f98de896e569bad476d257a4309bb91c8a0c5393`. Guardrails run `33045480995` /
-check `98428366246` and Release v2 Contract run `33045481090` / check
-`98428366767` both show failure conclusions because GitHub did not start their
-jobs. Check annotations name failed recent account payments or an insufficient
-spending limit. This is retained as `BLOCKED_BY_ACCESS_GITHUB_BILLING`, not a
-test failure and not a pass.
+The retained platform check readback feeding this rerun is PR `#49` head
+`09bea07870708d6ceab54fd84d0bc2d6a1cd18ee`. Guardrails run `33051838866` /
+check `98448998673` and Release v2 Contract run `33051838890` / check
+`98448998491` both contain zero steps. Client support-polling PR `#29` head
+`03a59a7d155ffbbe77a9a0087ff5666b90ac1c92` has the same zero-step boundary in
+run `33053181727` / check `98453413213`. GitHub annotations name failed recent
+account payments or an insufficient spending limit. This is retained as
+`BLOCKED_BY_ACCESS_GITHUB_BILLING`, not a code failure and not a pass.
 
 `OWNER_SOLO_EXCEPTION` waives only an unavailable second human reviewer. It
-does not waive required successful GitHub App checks, so PR `#48` remains
-unmerged.
+does not waive required successful GitHub App checks, so PRs `#49` and `#29`
+remain unmerged.
 
 ## Evidence digests
 
 | File | SHA-256 |
 |---|---|
-| `013AI-candidate3-ldplayer-recheck.json` | `4de4b5c3f5d9419adbcbe016c5456baec6cb17ef946cbcbf5b9fe23bd672ce26` |
-| `013AI-candidate3-gate-f-evidence.json` | `539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8` |
-| `013AI-candidate3-gate-f-input.json` | `7bc6d8b4cb306299e0f00d1a4bd67e66ddf204b3a1c617afc1eada8548358306` |
-| `013AI-candidate3-gate-f-decision.json` | `b18597030e4eab02fd486b42054485dc97138347bf91d47661b268cadfa10e8e` |
-| Current execution ledger after WO-005G | `55a1a08873ac6a4d18462294f4b106c3f3819cd299e5a1cd59269813be34d881` |
+| `010K-support-transport-reconciliation.json` | `c3691f84be3fb526fec2e3cc56dc9977ec84bc77b1dfb9374228debf8587a769` |
+| `013AI-candidate3-ldplayer-recheck.json` | `9cb9a0483aa6714cdd96b3e0f1c6e00007e45089340727deb2b4ae24dfef83a5` |
+| `013AI-candidate3-gate-f-evidence.json` | `2432dcf61e162b70086d59f4fddd49fd0f2c5473bc3a0283c7fd073fc06f513b` |
+| `013AI-candidate3-gate-f-input.json` | `6143bf1b7a4987ef8b3a743e5277f5d5d766cc71c764cbd2bb33ffd397e43394` |
+| `013AI-candidate3-gate-f-decision.json` | `d086c120ccab2e7c9f5371a2b8d3149c5ee115f8ec63edd39c4882c4af73046f` |
+| Current execution ledger after WO-010K | `4ec079e29f0b694e8a1622b9e3f8fb1451a42c4c61eccb81d2b7b96ea308c13f` |
 
 The decision report directly binds the input digest; the input binds the Gate
 F aggregate; the verifier also re-hashes every listed upstream evidence file.
 
 ## Verification
 
-- focused Gate F tests: `10 passed`;
+- release Gate F/preflight/STOP-SHIP tests: `39 passed`;
 - real candidate invocation: exit `0` only with `--expect-blocked`;
 - Ed25519/candidate validation: `PASS`;
 - evidence validation errors: `0`;
@@ -153,14 +158,16 @@ implemented and verified. Neither row advances to `I4`, because the exact
 candidate decision is `BLOCKED` and non-PASS evidence never becomes candidate
 proof.
 
-After the source-only WO-005G ledger update and a fresh fail-closed Gate F
-rehash, distribution is `I4=4`, `I3=312`, `I2=19`, `I1=39`, `I0=3`;
+After WO-010K reconciles the conditional support-transport row and a fresh
+fail-closed Gate F rehash, distribution is `I4=4`, `I3=312`, `I2=19`,
+`I1=40`, `I0=2`;
 `316` rows are at or above `I3`, `61` remain below. The remaining stage split
 is `pre_freeze=0`, `candidate=28`, `external=14`, `deferred=19`.
 
 The rerun remains exactly `BLOCKED` with `5` PASS, `14` non-PASS and zero
-validation errors. WO-005G is not part of the signed candidate.3 tuple and
-therefore does not turn any Gate F check into a pass.
+validation errors. Neither the unmerged client polling correction nor WO-010K
+is part of the signed candidate.3 tuple, so neither turns a Gate F check into a
+pass.
 
 No deploy, restart, route change, entitlement/payment mutation, public asset,
 stable-pointer change or Gate G authorization occurred.
@@ -168,11 +175,13 @@ stable-pointer change or Gate G authorization occurred.
 ## Next action
 
 Restore GitHub Actions billing access and require successful checks before
-merging PR `#48`, then land this stacked Gate F change through the same
-owner-solo control. Continue LDPlayer-only work without claiming a physical
-device: use a legitimately entitled owned test account before authenticated
-catalog/TUN/DNS/egress. Separately execute Windows live network, distinct
-RU-origin, provider/operator/legal and comparable performance gates. Rerun
-Gate F after every retained evidence change. Public/stable promotion remains
-prohibited until the decision is `GO` and the owner separately authorizes
-Gate G.
+merging platform PR `#49` or client PR `#29`, then land each through the same
+owner-solo control. After PR `#29` merges, build a replacement signed candidate
+and replay exact-byte LDPlayer support polling; candidate.3 cannot inherit the
+patch. Continue LDPlayer-only work without claiming a physical device: use a
+legitimately entitled owned test account before authenticated catalog/TUN/DNS/
+egress or live ticket polling. Separately execute Windows live network,
+distinct RU-origin, provider/operator/legal and comparable performance gates.
+Rerun Gate F after every retained evidence change. Public/stable promotion
+remains prohibited until the decision is `GO` and the owner separately
+authorizes Gate G.

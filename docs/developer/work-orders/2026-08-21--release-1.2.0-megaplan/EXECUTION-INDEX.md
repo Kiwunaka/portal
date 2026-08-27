@@ -3213,3 +3213,31 @@ changes. Exact current-origin and Brain-origin are now retained separately;
 `FRKN_PLAN/W9-02` stays `I1` because authorized RU-origin remains absent.
 Distribution stays `I4=4`, `I3=308`, `I2=15`, `I1=38`, `I0=12`; 312 rows are
 at or above `I3`, 65 remain below, and stage split stays `0/30/14/21`.
+
+## 2026-08-27 — WO-010K support transport reconciliation
+
+The frontend source plan and canonical client product contract both make
+SSE/WebSocket conditional on an observed failure of bounded foreground polling.
+No retained polling SLA, battery or backend-load failure satisfies that
+condition. `FE/P12-208` therefore advances `I0 -> I1` as
+`VERIFIED_DEFERRED_NOT_REQUIRED`; no streaming transport or second support
+truth is added.
+
+The audit did find a narrower source-plan gap in `FE/P12-113`. Candidate.3 had
+one-shot background-safe polling and bounded failure backoff, but not the
+one-minute quiet cadence or immediate resume refresh. Client PR `#29` head
+`03a59a7...` adds 8-10 second active, 15-30 second quiet, immediate-resume and
+typed changed/unchanged/failed behavior. Focused tests, app-shell `392/392` and
+the full local client gate pass. Its required hosted job has zero steps because
+GitHub billing is blocked, so the PR remains unmerged.
+
+LDPlayer still runs exact signed candidate.3 `1.2.0+30`; its Support screen
+renders and crash buffer is empty. No ticket/message was created, live polling
+is `NOT_TESTED`, the adaptive branch is not installed and the physical phone is
+absent by owner instruction. Candidate.3 is unchanged; a replacement signed
+candidate is required after PR #29 can merge.
+
+Current ledger distribution becomes `I4=4`, `I3=312`, `I2=19`, `I1=40`,
+`I0=2`; `316` rows are at or above `I3`, `61` remain below and stage split
+stays `0/28/14/19`. No deploy, entitlement, external message, public artifact,
+stable pointer or Gate G mutation occurred.

@@ -1,0 +1,106 @@
+{
+  "schema": "pokrov.release-1.2.0.support-transport-reconciliation/v1",
+  "recorded_at_utc": "2026-08-27T08:23:54Z",
+  "ledger_decision": {
+    "plan": "FE",
+    "id": "P12-208",
+    "previous_index": "I0",
+    "current_index": "I1",
+    "status": "VERIFIED_DEFERRED_NOT_REQUIRED",
+    "streaming_transport_implemented": false,
+    "reason": "The source plan and canonical product contract require measured polling inadequacy before SSE or WebSocket. No retained polling SLA, battery, or backend-load failure meets that condition."
+  },
+  "polling_gap": {
+    "ledger_row": "FE/P12-113",
+    "index": "I3",
+    "candidate3_source_state": "One-shot polling stopped in background and applied jitter plus bounded exponential failure backoff, but did not slow after one unchanged minute, did not refresh immediately on foreground resume, and could schedule an active delay above ten seconds.",
+    "required_contract": {
+      "active_interval_seconds": "8-10",
+      "quiet_after_seconds": 60,
+      "quiet_interval_seconds": "15-30",
+      "foreground_resume": "IMMEDIATE_REFRESH",
+      "background": "STOP",
+      "failure_backoff": "EXPONENTIAL_WITH_JITTER_CAPPED_AT_120_SECONDS"
+    }
+  },
+  "client_change": {
+    "repository": "Kiwunaka/POKROV-app",
+    "branch": "codex/release-1.2.0-support-polling",
+    "commit": "03a59a7d155ffbbe77a9a0087ff5666b90ac1c92",
+    "pull_request": 29,
+    "pull_request_url": "https://github.com/Kiwunaka/POKROV-app/pull/29",
+    "merged": false,
+    "candidate_includes_change": false,
+    "implemented": [
+      "active polling bounded to 8-10 seconds",
+      "15-30 second cadence after one minute without a thread change",
+      "immediate refresh on foreground resume",
+      "typed changed, unchanged, and failed polling results",
+      "deterministic thread version fingerprint",
+      "bounded failure backoff and existing background, eligibility, and dispose cancellation"
+    ]
+  },
+  "local_verification": {
+    "focused_analyze": "PASS_NO_ISSUES",
+    "polling_coordinator_tests": "PASS_6_OF_6",
+    "support_background_resume_widget": "PASS",
+    "support_operator_reply_widget": "PASS",
+    "app_shell": "PASS_392_OF_392",
+    "full_client_runner": "PASS",
+    "runtime_engine": "PASS_62_WITH_1_DECLARED_EXTERNAL_REAL_CORE_SKIP",
+    "android_shell": "PASS_8_OF_8",
+    "windows_shell": "PASS_23_OF_23",
+    "gradle_direct_and_store_unit_tests": "PASS_BUILD_SUCCESSFUL",
+    "seed_validation": "PASS",
+    "docs_contract": "PASS",
+    "release_v2_contract": "PASS",
+    "git_diff_check": "PASS",
+    "release_artifact_delta": false
+  },
+  "hosted_check": {
+    "status": "BLOCKED_BY_ACCESS_GITHUB_BILLING",
+    "run_id": 33053181727,
+    "check_id": 98453413213,
+    "workflow": "Release v2 Contract",
+    "job": "cross-repository-contract",
+    "steps": 0,
+    "runner_assigned": false,
+    "pull_request_merge_state": "UNSTABLE",
+    "owner_solo_exception_waives_check": false
+  },
+  "ldplayer": {
+    "provider": "LDPlayer 9",
+    "adb_serial": "emulator-5554",
+    "physical_device_used": false,
+    "installed_candidate": "pokrov-1.2.0-candidate.3",
+    "installed_version": "1.2.0+30",
+    "installed_universal_apk_sha256": "f41c76ebf7bf69f6681d7df87e7722dcdccdec383ef950156b69829caee71c51",
+    "support_screen": "PASS_RENDER_ONLY",
+    "outgoing_message_or_ticket_created": false,
+    "live_ticket_polling": "NOT_TESTED_NO_EXISTING_TICKET_AND_NO_EXTERNAL_COMMUNICATION_AUTHORIZED",
+    "adaptive_branch_installed": false,
+    "crash_buffer": "EMPTY",
+    "external_capture_path": "E:\\POKROV-tools\\release-evidence\\1.2.0-candidate3-ldplayer-2026-08-27\\ldplayer-smoke-result.json",
+    "external_capture_sha256": "a3fd457af1ae4d521d208fda7a268a8a6c561f9da3032020e7a9f9a03cb4f0ae"
+  },
+  "candidate_boundary": {
+    "candidate": "pokrov-1.2.0-candidate.3",
+    "client_source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+    "unchanged": true,
+    "replacement_candidate_required_after_merge": true,
+    "physical_phone_status": "MANUAL_OWNER_TEST_PHONE_REMOVED_USE_LDPLAYER_ONLY",
+    "authenticated_entitlement": "BLOCKED_BY_ACCESS",
+    "sse_or_websocket": "NOT_IMPLEMENTED_NOT_REQUIRED_WITH_CURRENT_EVIDENCE"
+  },
+  "mutation_boundary": {
+    "external_support_message": false,
+    "ticket_created": false,
+    "entitlement_mutated": false,
+    "physical_device_used": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "LOCAL_UNMERGED_ADAPTIVE_POLLING_SOURCE_PROOF_AND_EXACT_CANDIDATE3_LDPLAYER_SUPPORT_RENDER_ONLY; NO_LIVE_POLLING_NO_PHYSICAL_DEVICE_NO_NEW_CANDIDATE_NO_STREAMING_TRANSPORT_NO_PROMOTION"
+}

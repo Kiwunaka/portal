@@ -957,3 +957,35 @@ and diff checks pass. `REL/ARCH-003` advances `I2 -> I3`; the current
 distribution is `I3=279`, `I2=33`, `I1=45`, `I0=20`, with 98 rows below `I3`.
 Physical installer/accessibility, exact-candidate and public-index evidence
 remain open before `I4`; no artifact or external action is claimed.
+
+### WO-010K follow-up — conditional support transport reconciliation
+
+The source plan requires active support polling every 5-10 seconds, relaxation
+to 15-30 seconds after one unchanged minute, immediate foreground-resume
+refresh, background stop and bounded failure backoff with jitter. It names
+SSE/WebSocket only as a conditional P2 fallback. The canonical product owner
+likewise rejects a streaming transport without an observed polling failure.
+
+Candidate.3 source already had one-shot polling, background cancellation and
+bounded failure backoff, but it did not implement the one-minute quiet cadence
+or immediate resume refresh and its 10-second base plus jitter could reach 12
+seconds. Client PR `#29` head `03a59a7...` closes those source-plan gaps with
+an 8-10 second active cadence, 15-30 second quiet cadence, typed
+changed/unchanged/failed results and immediate resume refresh. Focused polling
+and lifecycle tests, app-shell `392/392`, the complete local client gate, seed,
+docs and release-v2 contracts pass.
+
+No live ticket was created or message sent. LDPlayer proves only exact
+candidate.3 install/launch and Support screen rendering; the adaptive branch is
+not installed there. PR `#29` remains unmerged because required job
+`98453413213` has zero steps under the GitHub billing blocker. Candidate.3 is
+unchanged and cannot inherit this source proof.
+
+`FE/P12-208` advances `I0 -> I1` as
+`VERIFIED_DEFERRED_NOT_REQUIRED`: there is no retained polling failure that
+justifies adding SSE/WebSocket. `FE/P12-113` remains local `I3` with stronger
+source evidence and still needs a merged replacement candidate plus authorized
+live traffic before `I4`. Distribution becomes `I4=4`, `I3=312`, `I2=19`,
+`I1=40`, `I0=2`; 316 rows remain at or above `I3`, 61 remain below, and the
+pending stage split stays `0/28/14/19`. No deploy, ticket, entitlement,
+physical-device action, artifact promotion or public/stable mutation occurred.

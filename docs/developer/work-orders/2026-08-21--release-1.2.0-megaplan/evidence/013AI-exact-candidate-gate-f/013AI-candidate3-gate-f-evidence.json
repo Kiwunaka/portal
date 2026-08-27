@@ -1,6 +1,6 @@
 {
   "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
-  "recorded_at_utc": "2026-08-27T06:43:37Z",
+  "recorded_at_utc": "2026-08-27T08:23:54Z",
   "candidate": {
     "id": "pokrov-1.2.0-candidate.3",
     "operational_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
@@ -86,23 +86,38 @@
     {
       "id": "GITHUB_HOSTED_CHECKS_BILLING",
       "status": "BLOCKED_BY_ACCESS_GITHUB_BILLING",
-      "detail": "PR 48 Guardrails and Release v2 jobs did not start because GitHub reported failed account payments or an insufficient spending limit"
+      "detail": "Platform PR 49 Guardrails and Release v2 jobs plus client PR 29 Release v2 job received zero steps because GitHub reported failed account payments or an insufficient spending limit"
     }
   ],
   "hosted_checks": {
-    "repository": "Kiwunaka/portal",
-    "pull_request": 48,
-    "head": "f98de896e569bad476d257a4309bb91c8a0c5393",
-    "guardrails": {
-      "run_id": 33045480995,
-      "check_id": 98428366246,
-      "job_started": false,
-      "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+    "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING",
+    "platform": {
+      "repository": "Kiwunaka/portal",
+      "pull_request": 49,
+      "head": "09bea07870708d6ceab54fd84d0bc2d6a1cd18ee",
+      "guardrails": {
+        "run_id": 33051838866,
+        "check_id": 98448998673,
+        "job_started": false,
+        "steps": 0,
+        "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+      },
+      "release_v2_contract": {
+        "run_id": 33051838890,
+        "check_id": 98448998491,
+        "job_started": false,
+        "steps": 0,
+        "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+      }
     },
-    "release_v2_contract": {
-      "run_id": 33045481090,
-      "check_id": 98428366767,
+    "client_support_polling": {
+      "repository": "Kiwunaka/POKROV-app",
+      "pull_request": 29,
+      "head": "03a59a7d155ffbbe77a9a0087ff5666b90ac1c92",
+      "run_id": 33053181727,
+      "check_id": 98453413213,
       "job_started": false,
+      "steps": 0,
       "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
     }
   },
@@ -133,11 +148,15 @@
     },
     {
       "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-ldplayer-recheck.json",
-      "sha256": "4de4b5c3f5d9419adbcbe016c5456baec6cb17ef946cbcbf5b9fe23bd672ce26"
+      "sha256": "9cb9a0483aa6714cdd96b3e0f1c6e00007e45089340727deb2b4ae24dfef83a5"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/010K-support-transport-reconciliation/010K-support-transport-reconciliation.json",
+      "sha256": "c3691f84be3fb526fec2e3cc56dc9977ec84bc77b1dfb9374228debf8587a769"
     },
     {
       "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/EXECUTION-LEDGER.csv",
-      "sha256": "55a1a08873ac6a4d18462294f4b106c3f3819cd299e5a1cd59269813be34d881"
+      "sha256": "4ec079e29f0b694e8a1622b9e3f8fb1451a42c4c61eccb81d2b7b96ea308c13f"
     }
   ],
   "mutation_boundary": {
