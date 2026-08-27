@@ -1,0 +1,82 @@
+{
+  "schema": "pokrov.release-1.2.0.exact-candidate-brain-origin/v1",
+  "recorded_at": "2026-08-27T04:17:04Z",
+  "status": "EXACT_CANDIDATE_PLATFORM_SOURCE_AND_BRAIN_CONTROL_PLANE_PASS",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.3",
+    "operational_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
+    "platform_source": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+    "client_source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+    "core_source": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "release_index_source": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2",
+    "manifest_sha256": "a2752b6a3b95faacf13a68edb708c560966a0f5eb8727e109d7f1603fdc81090",
+    "signature_sha256": "926f0b4667a58ba9cc5ace5c4e6c3c8129d1ec3d4d449b3f0831a8c527cd7121",
+    "receipt_sha256": "fb4d0d5dd272b8d3e7ea2303e2ffa93e332f54ac3e92f245400decc6c06e4b53"
+  },
+  "method": {
+    "origin": "brain",
+    "mode": "READ_ONLY_NO_DEPLOY",
+    "probe_script": "scripts/remote_brain_runtime_source_probe.py",
+    "probe_script_sha256": "84e780e78ce1ad6e5dd117e58eb74953b4f1062dadbd81d5956653d8853cbebd",
+    "source_bytes": "EXACT_GIT_BLOBS",
+    "remote_bytes": "SFTP_READ_ONLY_NOT_RETAINED",
+    "accepted_normalization": "CRLF_TO_LF_ONLY",
+    "payload_selection": "SAME_AS_REMOTE_BRAIN_BACKEND_DEPLOY",
+    "host_key_policy": "EXISTING_TRUSTED_KEY_ONLY"
+  },
+  "results": {
+    "brain_readiness": {
+      "status": "PASS",
+      "check_count": 23,
+      "failure_count": 0,
+      "sha256": "980f2e62222f85e54aae6c76deddf3fa0b6081aad444e4724c5c60891b964404"
+    },
+    "live_enabled_delivery": {
+      "status": "PASS",
+      "node_count": 7,
+      "open_count": 7,
+      "node_codes": ["de", "it", "nl", "pl", "ru", "ru_spb", "us"],
+      "sha256": "15732fcbf4b40e43722c98af4fe3d6b1665ae6f0ed3d32cac9efed3d0e18c246"
+    },
+    "runtime_source_identity": {
+      "status": "PASS",
+      "payload_count": 193,
+      "raw_match_count": 4,
+      "crlf_only_difference_count": 189,
+      "normalized_match_count": 193,
+      "mismatch_count": 0,
+      "sha256": "27bba27b529e065b4770467c519e4072d13e0c06ace0382eaac4b2ef40ad8b77"
+    }
+  },
+  "deployment": {
+    "required": false,
+    "performed": false,
+    "service_restart_performed": false,
+    "route_or_pointer_changed": false,
+    "reason": "LIVE_DEPLOY_PAYLOAD_ALREADY_MATCHES_EXACT_SIGNED_CANDIDATE_PLATFORM_SOURCE"
+  },
+  "device_boundary": {
+    "android_target": "LDPLAYER_EMULATOR_5554_ONLY",
+    "exact_candidate_package_installed": true,
+    "catalog_tun_dns_egress": "BLOCKED_BY_ACCESS_NO_ACTIVE_ENTITLEMENT",
+    "physical_phone": "NOT_AVAILABLE_OWNER_REMOVED_DEVICE"
+  },
+  "gate_classification": {
+    "brain_origin_exact_candidate_platform_source": "PASS",
+    "brain_control_plane_readiness": "PASS",
+    "brain_live_enabled_delivery_tcp": "PASS",
+    "authenticated_client_egress": "NOT_RUN",
+    "current_origin_exact_candidate_aggregate": "NOT_RUN",
+    "ru_origin": "NOT_RUN",
+    "public_release_and_stable_pointer": "NOT_RUN"
+  },
+  "ledger": {
+    "advanced_rows": {},
+    "strengthened_rows": ["FRKN_PLAN/W9-02"],
+    "distribution": {"I4": 4, "I3": 308, "I2": 15, "I1": 38, "I0": 12},
+    "at_or_above_i3": 312,
+    "below_i3": 65,
+    "pending_stage_counts": {"pre_freeze": 0, "candidate": 30, "external": 14, "deferred": 21}
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE_PLATFORM_SOURCE_IDENTITY_AND_BRAIN_CONTROL_PLANE_ONLY_NO_AUTHENTICATED_CLIENT_EGRESS_NO_CURRENT_OR_RU_AGGREGATE_NO_PHYSICAL_DEVICE_NO_PUBLIC_RELEASE_NO_STABLE_PROMOTION"
+}

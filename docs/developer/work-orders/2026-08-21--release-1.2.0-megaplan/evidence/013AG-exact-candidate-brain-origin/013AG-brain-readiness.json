@@ -1,0 +1,43 @@
+{
+  "schema_version": "pokrov-brain-readiness-v1",
+  "checked_at": "2026-08-27T04:04:55.406443+00:00",
+  "origin": "brain",
+  "checks": [
+    {"name": "unit:caddy", "status": "PASS"},
+    {"name": "unit:portal-api", "status": "PASS"},
+    {"name": "unit:portal-bot", "status": "PASS"},
+    {"name": "unit:portal-helpbot", "status": "PASS"},
+    {"name": "unit:portal-feedbackbot", "status": "PASS"},
+    {"name": "unit:portal-worker", "status": "PASS"},
+    {"name": "required_secret_presence", "status": "PASS"},
+    {
+      "name": "required_listeners",
+      "status": "PASS",
+      "required_ports": [443, 8444],
+      "missing_ports": []
+    },
+    {"name": "endpoint:health443", "status": "PASS"},
+    {"name": "endpoint:rulesGeoIpRu443", "status": "PASS"},
+    {"name": "endpoint:rulesAdblock443", "status": "PASS"},
+    {"name": "endpoint:webapp443", "status": "PASS"},
+    {"name": "endpoint:webappCache443", "status": "PASS"},
+    {"name": "endpoint:webappDashboardCache443", "status": "PASS"},
+    {"name": "endpoint:webappAdminCache443", "status": "PASS"},
+    {"name": "endpoint:mkt443", "status": "PASS"},
+    {"name": "endpoint:mktCache443", "status": "PASS"},
+    {"name": "endpoint:mktCabinet443", "status": "PASS"},
+    {"name": "endpoint:offer443", "status": "PASS"},
+    {"name": "endpoint:checkout443", "status": "PASS"},
+    {"name": "endpoint:checkoutCache443", "status": "PASS"},
+    {"name": "endpoint:fkverify443", "status": "PASS"},
+    {
+      "name": "subscription_stability",
+      "status": "PASS",
+      "samples_requested": 5,
+      "samples_observed": 5
+    }
+  ],
+  "check_count": 23,
+  "failure_count": 0,
+  "ok": true
+}

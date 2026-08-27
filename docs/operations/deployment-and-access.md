@@ -124,6 +124,23 @@ Rules:
 ### Backend code deploy
 
 - [remote_deploy_brain_portal_code.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_portal_code.py)
+- [remote_brain_runtime_source_probe.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_brain_runtime_source_probe.py)
+
+Before restarting an apparently stale Brain runtime, compare the exact signed
+platform commit with the live deploy payload in read-only mode:
+
+```powershell
+python scripts/remote_brain_runtime_source_probe.py --brain-ip <brain> --source-revision <full-40-character-platform-commit> --json-out <artifact>
+```
+
+The probe uses the same tracked payload selection as the backend deploy, reads
+exact Git blobs rather than working-tree files, and only reads live files over
+SFTP. It never uploads, restarts or changes runtime state and never retains
+remote contents or credentials. The report distinguishes raw byte identity
+from the sole accepted transport normalization, `CRLF_TO_LF_ONLY`; any other
+difference, missing file or unreadable file fails closed. This establishes
+Brain runtime source identity only. It does not prove current-origin,
+RU-origin, authenticated client egress, a stable pointer or public promotion.
 
 Typical use:
 

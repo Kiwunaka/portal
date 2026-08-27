@@ -78,7 +78,7 @@ operations owner before changing behavior.
 
 | Category | Main entrypoints |
 | --- | --- |
-| Deploy and release | release_orchestrator.py, remote_deploy_brain_portal_code.py, remote_deploy_brain_static_sites.py |
+| Deploy and release | release_orchestrator.py, remote_deploy_brain_portal_code.py, remote_brain_runtime_source_probe.py, remote_deploy_brain_static_sites.py |
 | Client verification | run_client_release_gate.py, client_security_smoke.py, android_localhost_audit.py, runtime_app_download_smoke.py |
 | Observability and probes | collect_node_metrics.py, verify_brain_ready.py, ru_probe_runner.py, render_ru_probe_report.py |
 | Node/control operations | node_inventory.py, remote_sync_users_to_nodes.py, remote_manage_xui.py |

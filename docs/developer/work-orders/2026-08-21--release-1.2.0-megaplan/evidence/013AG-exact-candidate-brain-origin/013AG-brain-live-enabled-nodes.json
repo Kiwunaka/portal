@@ -1,0 +1,17 @@
+{
+  "schema_version": "pokrov-brain-network-probe-v2",
+  "checked_at": "2026-08-27T04:05:03.486265+00:00",
+  "origin": "brain",
+  "target_source": "live_enabled_nodes",
+  "node_count": 7,
+  "nodes": [
+    {"node_code": "de", "configured_port": 443, "tcp_status": "open", "error_kind": ""},
+    {"node_code": "it", "configured_port": 443, "tcp_status": "open", "error_kind": ""},
+    {"node_code": "nl", "configured_port": 443, "tcp_status": "open", "error_kind": ""},
+    {"node_code": "pl", "configured_port": 443, "tcp_status": "open", "error_kind": ""},
+    {"node_code": "ru", "configured_port": 443, "tcp_status": "open", "error_kind": ""},
+    {"node_code": "ru_spb", "configured_port": 443, "tcp_status": "open", "error_kind": ""},
+    {"node_code": "us", "configured_port": 443, "tcp_status": "open", "error_kind": ""}
+  ],
+  "ok": true
+}
