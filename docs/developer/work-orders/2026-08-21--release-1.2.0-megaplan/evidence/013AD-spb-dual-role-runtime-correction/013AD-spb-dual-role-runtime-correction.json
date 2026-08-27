@@ -1,0 +1,105 @@
+{
+  "schema_version": "pokrov.release-evidence.v1",
+  "work_order": "WO-013AD",
+  "recorded_at": "2026-08-27",
+  "status": "STALE_TYPE3_DISABLED_CLIENT_RECOVERY_MERGED_NEXT_CANDIDATE_OPEN",
+  "current_signed_candidate": {
+    "id": "pokrov-1.2.0-candidate.2",
+    "client_git": "e6c29d1201eded0d045a3e75f43beff8ae24bd8f",
+    "android_arm64_sha256": "a1ac79a979b3f80036ad9b817790e3c3dd00f8c2483901215b74577381a5cbc9",
+    "android_arm64_bytes": 101213906,
+    "promotion_state": "NOT_PERFORMED"
+  },
+  "diagnosis": {
+    "spb_delivery_and_type3_share_physical_server": true,
+    "self_hop_guard_correctly_excludes_type3_for_spb_destination": true,
+    "advertised_type3_identity_distinct_from_normal_spb_delivery_identity": true,
+    "advertised_type3_identity_had_matching_active_listener": false,
+    "normal_spb_delivery_changed": false
+  },
+  "production_correction": {
+    "performed": true,
+    "scope": "ru_bridge_relay.endpoints[id=ru_spb].enabled",
+    "before": true,
+    "after": false,
+    "endpoint_record_deleted": false,
+    "rollback_snapshot_created": true,
+    "active_endpoint_ids_after": [
+      "mini",
+      "ru"
+    ],
+    "canonical_json_sha256_before": "366a8266f38fc88939b89c2096e9aec5630581e91bdff2e0d71362394c3942e7",
+    "canonical_json_sha256_after": "7cf44878b55d4bba798fbc07baa28fd513db3822a09a36e370a1e386612d7512"
+  },
+  "client_correction": {
+    "pr": 23,
+    "head_git": "86fa4660acf0cf94645250a33a979fc536c7d00c",
+    "merge_git": "61ce563e6c09a3ab7aefbce6c4d292cd7eba5ff4",
+    "pr_gate_run": 33027773832,
+    "pr_gate_result": "PASS",
+    "post_merge_gate_run": 33028498506,
+    "post_merge_gate_result": "PASS",
+    "behaviors": [
+      "removed saved bridge variant resets to available direct",
+      "compact variant sheet scrolls through four or more rows",
+      "variant url-test uses owned authenticated-egress marker"
+    ],
+    "combined_changed_suite": "246/246 PASS",
+    "flutter_analyze": "PASS"
+  },
+  "physical_beeline_evidence": [
+    {
+      "artifact": "candidate.2 android arm64",
+      "route": "saint_petersburg_direct",
+      "result": "PASS"
+    },
+    {
+      "artifact": "candidate.2 android arm64",
+      "route": "saint_petersburg_type1",
+      "result": "PASS"
+    },
+    {
+      "artifact": "local correction smoke",
+      "route": "frankfurt_removed_type3_recovery_to_direct",
+      "result": "PASS_NON_CANDIDATE"
+    },
+    {
+      "artifact": "local correction smoke",
+      "route": "frankfurt_direct",
+      "result": "PASS_NON_CANDIDATE"
+    },
+    {
+      "artifact": "local correction smoke",
+      "route": "saint_petersburg_type2",
+      "result": "PASS_NON_CANDIDATE"
+    },
+    {
+      "artifact": "local correction smoke",
+      "route": "frankfurt_type3_before_disable",
+      "result": "FAIL_CLOSED_ROUTE_UNAVAILABLE"
+    }
+  ],
+  "smoke_artifact": {
+    "sha256": "2e61e2e55f0cffb16f9234549ac8c05cc2c15120c29f7a8024ab4498f8b5e149",
+    "bytes": 101213906,
+    "production_android_certificate": true,
+    "canonical_emergency_pin": false,
+    "candidate": false,
+    "deleted_after_test": true
+  },
+  "device_restoration": {
+    "vpn_disconnected": true,
+    "restored_version_code": 4031,
+    "restored_apk_sha256": "1ba37463c9549a6d5ba128850e1bf5825187fe185a621e9f8dc62c7cde1a4158",
+    "wifi_reenabled": true,
+    "temporary_artifacts_deleted": true,
+    "temporary_build_bytes_removed": 2358715588
+  },
+  "release_decision": {
+    "ledger_rows_advanced": [],
+    "next_candidate_created": false,
+    "public_v1_2_0_created": false,
+    "stable_pointer_changed": false,
+    "type3_state": "DISABLED_PENDING_ISOLATED_REBUILD_AND_MOBILE_PROOF"
+  }
+}
