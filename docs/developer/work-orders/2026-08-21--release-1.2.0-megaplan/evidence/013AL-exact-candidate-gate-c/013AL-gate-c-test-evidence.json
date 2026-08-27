@@ -1,0 +1,182 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-c-test-evidence/v1",
+  "recorded_at_utc": "2026-08-27T10:08:21Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.3",
+    "operational_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
+    "platform_source": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+    "client_source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+    "core_source": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "release_index_source": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2",
+    "manifest_sha256": "a2752b6a3b95faacf13a68edb708c560966a0f5eb8727e109d7f1603fdc81090",
+    "signature_sha256": "926f0b4667a58ba9cc5ace5c4e6c3c8129d1ec3d4d449b3f0831a8c527cd7121",
+    "receipt_sha256": "fb4d0d5dd272b8d3e7ea2303e2ffa93e332f54ac3e92f245400decc6c06e4b53"
+  },
+  "upstream_evidence": {
+    "candidate_signed_manifest": {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AE-candidate3-reconciliation/013AE-candidate3-signed-manifest.json",
+      "sha256": "1b87cea99907123c3180d8e948ef0c0a680d7e8d26a4e67a6a98f037201deca6"
+    },
+    "candidate_reconciliation": {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AE-candidate3-reconciliation/013AE-candidate3-reconciliation.json",
+      "sha256": "5664c92c6ee75ab7db57c90bb3c2138b94b6809bd734feca2b7768fff1d0661a"
+    },
+    "exact_source_and_runtime_replay": {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AK-exact-candidate-gate-b/013AK-gate-b-test-evidence.json",
+      "sha256": "c880dad8e7f01d0079426005695646f8842b78e07f10872313aee550a66a33a3"
+    },
+    "conditional_linux_foundation": {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/005G-linux-beta-foundation/005G-linux-beta-foundation.json",
+      "sha256": "2f54e9466faebc2fd583e7d9755ca193dc2e260b030732a4f3a287bbc6d6d33f"
+    },
+    "windows_clean_host": {
+      "repository": "Kiwunaka/pokrov",
+      "repository_commit": "32f560dd34191a0117f1f60714f35aa1216a2d4a",
+      "path": "candidate-evidence/1.2.0/pokrov-1.2.0-candidate.3-windows-clean-host.json",
+      "working_checkout_sha256": "589fbea76960ec5c5ffe09a6743a70df7d0fbf3e20bf95e8d00595d54f6e660a",
+      "github_run_id": "33033294889"
+    }
+  },
+  "windows": {
+    "implementation": "PASS_EXACT_SOURCE",
+    "artifact": {
+      "name": "pokrov-windows-setup-x64.exe",
+      "sha256": "9962e3e80947dae374619ed388fc08b7322bffda38202a42e5812597c7818021",
+      "authenticode": "NotSigned",
+      "signing_status": "SKIPPED_BY_OWNER",
+      "channel_ceiling": "DIRECT_BETA_ONLY"
+    },
+    "exact_clean_host": {
+      "status": "PASS_PARTIAL",
+      "proved": [
+        "clean host baseline",
+        "machine-wide install",
+        "eight installed-file identities",
+        "LocalSystem service identity",
+        "authenticated UI/service IPC",
+        "service stop and restart",
+        "clean uninstall",
+        "unchanged idle route and DNS fingerprints",
+        "no residual POKROV or Wintun adapter"
+      ]
+    },
+    "required_matrix": {
+      "status": "MANUAL_OWNER_TEST",
+      "missing": [
+        "Windows 10 and Windows 11 live tunnel",
+        "standard, admin and non-owner user matrix",
+        "authenticated full-tunnel egress",
+        "connected DNS and leak protection",
+        "IPv4, IPv6 and dual-stack",
+        "Wi-Fi and Ethernet transition",
+        "sleep, resume and reboot",
+        "Core, UI and service crash recovery",
+        "repeated connect and disconnect",
+        "login startup and second-launch focus",
+        "update and uninstall while connected",
+        "post-failure route, DNS and adapter restoration"
+      ]
+    }
+  },
+  "android": {
+    "implementation": "PASS_EXACT_SOURCE",
+    "source_matrix": {
+      "state_lifecycle_error_fencing": "PASS_45_OF_45",
+      "app_state_diagnostics_migrations": "PASS_107_OF_107",
+      "false_green_negative_path": "PASS_OBSERVED_ATTEMPT"
+    },
+    "artifacts": {
+      "direct_apks_present": true,
+      "market_aab_present": true,
+      "production_certificate_sha256": "0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500",
+      "direct_store_path_status": "PASS_SOURCE_AND_ARTIFACT_IDENTITY_PARTIAL_RUNTIME"
+    },
+    "ldplayer_readback": {
+      "provider": "LDPlayer 9",
+      "serial": "emulator-5554",
+      "reported_model": "SM-S9280",
+      "android_version": "9",
+      "api_level": 28,
+      "package": "space.pokrov.pokrov_android_shell",
+      "version_name": "1.2.0",
+      "version_code": 30,
+      "installed_base_sha256": "f41c76ebf7bf69f6681d7df87e7722dcdccdec383ef950156b69829caee71c51",
+      "signed_manifest_byte_match": true,
+      "launch_status": "PASS",
+      "launch_total_time_ms": 568,
+      "process_alive_after_launch": true,
+      "package_crash_buffer_lines": 0,
+      "vpn_transport_present": false,
+      "tun_interface_present": false,
+      "foreground_state": "NOT_PROTECTED",
+      "authenticated_entitlement": false,
+      "network_tested": false,
+      "ui_tree_sha256": "7781d5cf42b4715638bb7cd52449e8ca5f162de0b4a33ccc2eda89bf81917db4",
+      "screenshot_sha256": "a8bdff704ffadc3ab691d5166ae0bd7224bbba83fc81c754573f1bfded7f6799",
+      "retention": "E:/POKROV-tools/release-evidence/1.2.0-candidate3-gate-c-2026-08-27"
+    },
+    "required_matrix": {
+      "status": "BLOCKED_AND_MANUAL",
+      "blocked_by_access": [
+        "authenticated entitlement for catalog, TUN, DNS and egress"
+      ],
+      "manual_owner_test": [
+        "exact candidate on physical supported API and OEM classes",
+        "direct installer permission and same-signer upgrade",
+        "Play-managed store update path",
+        "Wi-Fi, mobile, captive portal and handover",
+        "IPv6 and Private DNS",
+        "Doze, standby and OEM battery restrictions",
+        "always-on and lockdown",
+        "permission revoke, process kill and reboot",
+        "long session, counters, battery and thermal behavior",
+        "lockscreen, notification and quick-settings privacy"
+      ]
+    },
+    "physical_device_used_for_candidate3": false,
+    "post_candidate_lab_build_transferred": false
+  },
+  "linux": {
+    "candidate3_scope": "NOT_SHIPPED_IN_1.2.0",
+    "candidate3_artifact_present": false,
+    "candidate3_source_present": false,
+    "post_candidate_foundation": "LOCALLY_PROVED_SOURCE_ONLY_CONDITIONAL",
+    "live_connect_supported": false,
+    "signed_package_present": false,
+    "clean_distro_matrix_present": false,
+    "interpretation": "Linux is excluded from the candidate.3 public pair and cannot be credited retroactively. If selected later, a replacement candidate and the signed Ubuntu network/recovery matrix are mandatory."
+  },
+  "core": {
+    "source": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "windows_runtime_engine": "PASS_63_OF_63_WITH_EXACT_CORE",
+    "windows_start_stop_backtest": "PASS_100_CYCLES",
+    "windows_native_contract": "PASS_7_OF_7",
+    "internal_observability": "PASS",
+    "libbox_operational_events": "PASS",
+    "abi_contract": "PASS_DESKTOP_2_DESCRIPTOR_1_EVENTS_1_EXPORTS_15",
+    "android_artifact_abi_bound": true,
+    "windows_artifact_abi_bound": true
+  },
+  "interpretation": {
+    "compilation_or_unit_tests_close_gate_c": false,
+    "windows_partial_clean_host_closes_live_matrix": false,
+    "ldplayer_install_launch_closes_android_network_matrix": false,
+    "expired_entitlement_is_a_transport_failure": false,
+    "post_candidate_linux_source_changes_candidate3": false,
+    "observed_new_platform_defect": false
+  },
+  "mutation_boundary": {
+    "phone_used": false,
+    "ldplayer_package_reinstalled": false,
+    "entitlement_mutated": false,
+    "payment_action": false,
+    "live_windows_network_run": false,
+    "linux_host_or_package_mutated": false,
+    "production_deploy": false,
+    "server_or_awg_mutation": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE3_WINDOWS_PARTIAL_CLEAN_HOST_ANDROID_EXACT_BYTE_LDPLAYER_INSTALL_LAUNCH_AND_CORE_ABI_ONLY; WINDOWS_LIVE_NETWORK_ANDROID_AUTHENTICATED_PHYSICAL_OEM_AND_STORE_RUNTIME_MATRICES_REMAIN_OPEN; LINUX_NOT_IN_CANDIDATE3"
+}

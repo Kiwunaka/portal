@@ -3302,3 +3302,29 @@ errors. Distribution remains `I4=4`, `I3=312`, `I2=19`, `I1=41`, `I0=1`.
 No deploy, AWG rollout/server change, entitlement/payment action, public asset,
 stable pointer or Gate G mutation occurred. A replacement signed candidate is
 required after the correction and required hosted checks land.
+
+## 2026-08-27 — WO-013AL exact candidate.3 Gate C BLOCKED
+
+Gate C is evaluated against the signed candidate.3 tuple without transferring
+current client main, post-candidate Linux or phone-lab proof. The exact Windows
+installer passes its retained clean-host install, service identity,
+authenticated IPC, restart, uninstall and idle-network-restoration slice. The
+exact Android source lifecycle/error matrix passes, and LDPlayer again reports
+the signed universal APK `f41c76eb...` as installed `1.2.0+30`; launch takes
+`568 ms`, the process survives, the crash buffer is empty and no VPN/TUN false
+green exists. Exact Core ABI/runtime contracts also pass.
+
+The full platform evidence is incomplete: Windows live TUN/DNS/egress and
+connected recovery remain `MANUAL_OWNER_TEST`; LDPlayer lacks an active owned
+entitlement; physical Android API/OEM/network/power/privacy and Play-managed
+store update paths remain manual. Linux has no candidate.3 source or artifact
+and remains outside the declared Android/Windows public pair; the later
+fail-closed Linux foundation cannot be credited retroactively.
+
+Gate C therefore returns `BLOCKED` with no new explicit candidate defect and
+`REL_GATE/GATE-C` remains `I2` as
+`EXACT_CANDIDATE_PLATFORM_MATRIX_BLOCKED`. Candidate.3 remains overall
+`NO_GO` because Gate B already fails. Distribution remains `I4=4`, `I3=312`,
+`I2=19`, `I1=41`, `I0=1`. No phone install, entitlement/payment action,
+Windows live network run, Linux mutation, deploy, server/AWG change, public
+asset, stable pointer or Gate G authorization occurred.
