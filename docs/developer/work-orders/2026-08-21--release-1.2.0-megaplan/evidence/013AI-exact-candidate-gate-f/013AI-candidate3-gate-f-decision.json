@@ -1,6 +1,6 @@
 {
   "schema": "pokrov.release-1.2.0.gate-f-decision/v1",
-  "generated_at_utc": "2026-08-27T06:58:55Z",
+  "generated_at_utc": "2026-08-27T07:55:48Z",
   "decision": "BLOCKED",
   "candidate_id": "pokrov-1.2.0-candidate.3",
   "candidate": {
@@ -23,14 +23,14 @@
       "release_index": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2"
     }
   },
-  "gate_f_input_sha256": "d80679146c7918a2fd55adf605fe398b91d3a89f008d4b3b394a8f732d044be4",
+  "gate_f_input_sha256": "7bc6d8b4cb306299e0f00d1a4bd67e66ddf204b3a1c617afc1eada8548358306",
   "checks": [
     {
       "id": "gates_a_e_exact_candidate",
       "status": "MISSING",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/gates_a_e_exact_candidate",
         "candidate_pointer": "/candidate/id"
       }
@@ -40,7 +40,7 @@
       "status": "MISSING",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/mandatory_stop_ship_and_dod",
         "candidate_pointer": "/candidate/id"
       }
@@ -50,7 +50,7 @@
       "status": "MISSING",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/no_open_p0_false_green_or_secret_leak",
         "candidate_pointer": "/candidate/id"
       }
@@ -60,7 +60,7 @@
       "status": "PASS",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/supply_chain_signature_sbom_provenance",
         "candidate_pointer": "/candidate/id"
       }
@@ -70,7 +70,7 @@
       "status": "MISSING",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/target_channel_signing_and_manual_gates",
         "candidate_pointer": "/candidate/id"
       }
@@ -80,7 +80,7 @@
       "status": "PASS",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/release_docs_manifest_binding",
         "candidate_pointer": "/candidate/id"
       }
@@ -90,7 +90,7 @@
       "status": "MISSING",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/rollback_and_kill_controls",
         "candidate_pointer": "/candidate/id"
       }
@@ -100,7 +100,7 @@
       "status": "PASS",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/current_origin",
         "candidate_pointer": "/candidate/id"
       }
@@ -110,7 +110,7 @@
       "status": "PASS",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/brain_origin",
         "candidate_pointer": "/candidate/id"
       }
@@ -120,7 +120,7 @@
       "status": "BLOCKED_BY_ACCESS",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/ru_origin",
         "candidate_pointer": "/candidate/id"
       }
@@ -130,7 +130,7 @@
       "status": "MANUAL_OWNER_TEST",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/windows_live_network",
         "candidate_pointer": "/candidate/id"
       }
@@ -140,7 +140,7 @@
       "status": "PASS",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/android_ldplayer_rehearsal",
         "candidate_pointer": "/candidate/id"
       }
@@ -150,7 +150,7 @@
       "status": "MANUAL_OWNER_TEST",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/android_physical_device",
         "candidate_pointer": "/candidate/id"
       }
@@ -160,7 +160,7 @@
       "status": "BLOCKED_BY_ACCESS",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/authenticated_client_egress",
         "candidate_pointer": "/candidate/id"
       }
@@ -170,7 +170,7 @@
       "status": "MANUAL_OWNER_TEST",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/payment_provider_e2e",
         "candidate_pointer": "/candidate/id"
       }
@@ -180,7 +180,7 @@
       "status": "MANUAL_OWNER_TEST",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/operator_auth_rbac_action_intent",
         "candidate_pointer": "/candidate/id"
       }
@@ -190,7 +190,7 @@
       "status": "BLOCKED_BY_OWNER_DECISION",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/legal_commercial_approval",
         "candidate_pointer": "/candidate/id"
       }
@@ -200,7 +200,7 @@
       "status": "MISSING",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/performance_and_release_health",
         "candidate_pointer": "/candidate/id"
       }
@@ -210,7 +210,7 @@
       "status": "BLOCKED_BY_ACCESS_GITHUB_BILLING",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c",
+        "sha256": "539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8",
         "status_pointer": "/checks/hosted_required_checks",
         "candidate_pointer": "/candidate/id"
       }

@@ -3109,6 +3109,38 @@ current-origin aggregate and separately authorized RU-origin results exist.
 Distribution stays `I4=4`, `I3=308`, `I2=15`, `I1=38`, `I0=12`; 312 rows are
 at or above `I3`, 65 remain below, and stage split stays `0/30/14/21`.
 
+## 2026-08-27 — WO-005G conditional Linux foundation reopened
+
+Client PR `#28` head `5388fd3...` applies one fail-closed Linux beta source
+foundation to current client `main`: a non-root Flutter UI, systemd root daemon,
+typed Unix socket, kernel peer credentials, polkit mutation authorization,
+bounded profile store, closed journald envelope, sanitized daemon snapshot and
+one exact Ubuntu 24.04 amd64 foundation row. The daemon explicitly returns
+`supports_live_connect=false` and rejects connect with
+`linux_live_connect_unavailable`.
+
+The current-main Windows-host standard client gate plus focused Flutter,
+release-v2, docs and seed checks pass. Hosted run `32989022843` passes the
+Linux Go foundation at source `0701806...`; those Linux source paths are
+byte-identical at PR `#28`. The new exact-head job `33050348883` received no
+runner and zero steps because GitHub billing/spending access is blocked. Local
+real-Linux execution is separately `BLOCKED_BY_HOST_CAPABILITY` because WSL
+virtualization is unavailable.
+
+`REL/LNX-001` and `OBS/OBS-046` advance `I0 -> I3`.
+`OBS/OBS-043`, `OBS/OBS-044`, `REL_GATE/GATE-C` and `REL_DOD/DOD-06`
+advance `I0 -> I2`; the polkit path is tested, but OBS-044's D-Bus trace is
+not implemented.
+`OBS/OBS-045` advances `I0 -> I1`: only host ownership/probing exists; no
+NetworkManager, resolved or nft transaction recorder is implemented.
+
+Distribution becomes `I4=4`, `I3=312`, `I2=19`, `I1=39`, `I0=3`; `316` rows
+are at or above `I3` and `61` remain below; the pending stage split is
+`0/28/14/19`. Candidate.3 is unchanged and
+contains no Linux artifact. Signed DEB, clean Ubuntu VM, live Core/TUN,
+network rollback, Fedora/RPM and any public Linux claim remain open. If Linux
+enters 1.2.0, a replacement signed candidate is required.
+
 ## 2026-08-27 — WO-013AI exact candidate.3 Gate F decision
 
 The new fail-closed Gate F verifier revalidates exact candidate.3 Ed25519

@@ -112,7 +112,7 @@ The fourteen non-PASS checks retain the following boundaries:
 
 ## Hosted-check boundary
 
-The latest PR `#48` head is
+The retained platform check at the original Gate F decision point is PR `#48` head
 `f98de896e569bad476d257a4309bb91c8a0c5393`. Guardrails run `33045480995` /
 check `98428366246` and Release v2 Contract run `33045481090` / check
 `98428366767` both show failure conclusions because GitHub did not start their
@@ -129,10 +129,10 @@ unmerged.
 | File | SHA-256 |
 |---|---|
 | `013AI-candidate3-ldplayer-recheck.json` | `4de4b5c3f5d9419adbcbe016c5456baec6cb17ef946cbcbf5b9fe23bd672ce26` |
-| `013AI-candidate3-gate-f-evidence.json` | `ea9df91b52b5e88b935c644cc78d1a8a17281d5ce6824d2880d8e7e9198d1e9c` |
-| `013AI-candidate3-gate-f-input.json` | `d80679146c7918a2fd55adf605fe398b91d3a89f008d4b3b394a8f732d044be4` |
-| `013AI-candidate3-gate-f-decision.json` | `bdf204037c36ba68cb4ee848ea8e70821b7dfab48fab95b1e443dc92955eceda` |
-| Updated execution ledger | `eba76f490122bcecccbd275a091e4b5e72e91ca0d04be0a81c28d7f4601427b4` |
+| `013AI-candidate3-gate-f-evidence.json` | `539dcf2c24b20996ca38758514e6ec2db390f465897e67086ee7290efaa6d9c8` |
+| `013AI-candidate3-gate-f-input.json` | `7bc6d8b4cb306299e0f00d1a4bd67e66ddf204b3a1c617afc1eada8548358306` |
+| `013AI-candidate3-gate-f-decision.json` | `b18597030e4eab02fd486b42054485dc97138347bf91d47661b268cadfa10e8e` |
+| Current execution ledger after WO-005G | `55a1a08873ac6a4d18462294f4b106c3f3819cd299e5a1cd59269813be34d881` |
 
 The decision report directly binds the input digest; the input binds the Gate
 F aggregate; the verifier also re-hashes every listed upstream evidence file.
@@ -153,9 +153,14 @@ implemented and verified. Neither row advances to `I4`, because the exact
 candidate decision is `BLOCKED` and non-PASS evidence never becomes candidate
 proof.
 
-Distribution becomes `I4=4`, `I3=310`, `I2=15`, `I1=38`, `I0=10`;
-`314` rows are at or above `I3`, `63` remain below. The remaining stage split
-is `pre_freeze=0`, `candidate=28`, `external=14`, `deferred=21`.
+After the source-only WO-005G ledger update and a fresh fail-closed Gate F
+rehash, distribution is `I4=4`, `I3=312`, `I2=19`, `I1=39`, `I0=3`;
+`316` rows are at or above `I3`, `61` remain below. The remaining stage split
+is `pre_freeze=0`, `candidate=28`, `external=14`, `deferred=19`.
+
+The rerun remains exactly `BLOCKED` with `5` PASS, `14` non-PASS and zero
+validation errors. WO-005G is not part of the signed candidate.3 tuple and
+therefore does not turn any Gate F check into a pass.
 
 No deploy, restart, route change, entitlement/payment mutation, public asset,
 stable-pointer change or Gate G authorization occurred.
