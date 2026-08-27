@@ -98,6 +98,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
             "OPENING_PREMIUM_DAYS",
             "OPENING_PREMIUM_CAMPAIGN_KEY",
             "SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED",
+            "HAPP_IOS_SUBSCRIPTION_ENABLED",
+            "HAPP_IOS_SUBSCRIPTION_TG_IDS",
             "SUPPORT_UPLOAD_DIR",
             "SUPPORT_AI_ENABLED",
             "SUPPORT_AI_API_KEY",
@@ -119,6 +121,8 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         os.environ["OPENING_PREMIUM_DAYS"] = "14"
         os.environ["OPENING_PREMIUM_CAMPAIGN_KEY"] = "opening_premium_14d"
         os.environ["SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED"] = "true"
+        os.environ["HAPP_IOS_SUBSCRIPTION_ENABLED"] = "false"
+        os.environ["HAPP_IOS_SUBSCRIPTION_TG_IDS"] = ""
         os.environ["SUPPORT_UPLOAD_DIR"] = str((Path(self._tmp.name) / "support_uploads").resolve())
         os.environ["SUPPORT_AI_ENABLED"] = "false"
         os.environ["SUPPORT_AI_API_KEY"] = ""
@@ -3975,6 +3979,110 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(happ_ua.status_code, 200, happ_ua.text)
         self.assertIn("text/plain", happ_ua.headers.get("content-type", ""))
         self.assertIn("#custom-tunnel-config: ", happ_ua.text)
+
+    def test_happ_ios_canary_is_account_allowlisted_and_renders_real_bridge_chain(self) -> None:
+        from db import SessionLocal
+        from models import Node, User
+
+        s = SessionLocal()
+        try:
+            user = s.query(User).filter_by(tg_id=1001).one()
+            user.sub_token = "token_1001_secure"
+            user.sub_type = "PAID"
+            user.current_plan_code = "1_month"
+            user.is_active = True
+            user.expiry_at = _utcnow() + timedelta(days=10)
+            s.add(
+                Node(
+                    code="de",
+                    name="Germany",
+                    host="de.example.test",
+                    vless_port=443,
+                    reality_sni="www.example.test",
+                    reality_pbk="fake-destination-public-key",
+                    reality_sid="fake-destination-short-id",
+                    fingerprint="chrome",
+                    flow="xtls-rprx-vision",
+                    panel_base_url="https://de.example.test:8444",
+                    panel_path="/panel",
+                    panel_user="admin",
+                    panel_pass="pass",
+                    inbound_id=1,
+                    enabled=True,
+                )
+            )
+            s.commit()
+        finally:
+            s.close()
+
+        rollout_config = self.api.normalized_network_rollout_config(
+            {
+                self.api.RU_BRIDGE_RELAY: {
+                    "enabled": True,
+                    "excluded_node_codes": [],
+                    "endpoints": [
+                        {
+                            "id": "mini",
+                            "label": "Белые списки",
+                            "enabled": True,
+                            "endpoint_host": "bridge.example.test",
+                            "endpoint_port": 443,
+                            "tls_server_name": "www.example.test",
+                            "reality_public_key": "fake-bridge-public-key",
+                            "reality_short_id": "fake-bridge-short-id",
+                            "fingerprint": "chrome",
+                        }
+                    ],
+                }
+            }
+        )
+
+        self.api.HAPP_IOS_SUBSCRIPTION_ENABLED = False
+        self.api.HAPP_IOS_SUBSCRIPTION_TG_IDS = frozenset({1001})
+        disabled = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=happ-ios")
+        self.assertEqual(disabled.status_code, 404, disabled.text)
+        self.assertEqual(disabled.headers.get("cache-control"), "no-store, no-cache, max-age=0")
+
+        self.api.HAPP_IOS_SUBSCRIPTION_ENABLED = True
+        self.api.HAPP_IOS_SUBSCRIPTION_TG_IDS = frozenset({2002})
+        not_allowlisted = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=happ-ios")
+        self.assertEqual(not_allowlisted.status_code, 404, not_allowlisted.text)
+
+        self.api.HAPP_IOS_SUBSCRIPTION_TG_IDS = frozenset({1001})
+        with patch.object(self.api, "load_network_rollout_config", return_value=rollout_config):
+            response = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=happ-ios")
+            head = self.client.head("/s8Kx2mP7qR4wT/token_1001_secure?format=happ-ios")
+            legacy_happ = self.client.get("/s8Kx2mP7qR4wT/token_1001_secure?format=happ")
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.headers.get("content-type"), "application/json")
+        self.assertEqual(response.headers.get("profile-title"), "POKROV HAPP iOS")
+        self.assertIn("POKROV_HAPP_iOS.json", response.headers.get("content-disposition", ""))
+        profiles = response.json()
+        self.assertEqual([row["remarks"] for row in profiles], [
+            "🇩🇪 Германия · Обычный",
+            "🇩🇪 Германия · БС",
+        ])
+        bridge_profile = profiles[1]
+        self.assertEqual(
+            bridge_profile["outbounds"][0]["proxySettings"],
+            {"tag": "bridge", "transportLayer": True},
+        )
+        self.assertEqual(
+            bridge_profile["outbounds"][1]["settings"]["vnext"][0]["address"],
+            "bridge.example.test",
+        )
+        self.assertNotIn("custom-tunnel-config", response.text)
+        self.assertNotIn("vless://", response.text)
+
+        self.assertEqual(head.status_code, 200, head.text)
+        self.assertEqual(head.text, "")
+        self.assertEqual(head.headers.get("content-type"), "application/json")
+        self.assertEqual(head.headers.get("content-disposition"), response.headers.get("content-disposition"))
+
+        self.assertEqual(legacy_happ.status_code, 200, legacy_happ.text)
+        self.assertIn("text/plain", legacy_happ.headers.get("content-type", ""))
+        self.assertIn("#custom-tunnel-config: ", legacy_happ.text)
 
     def test_subscription_endpoint_defaults_to_smart_profile_on_connect_host(self) -> None:
         from db import SessionLocal

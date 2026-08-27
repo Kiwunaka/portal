@@ -32,6 +32,11 @@ except ImportError:
         sanitize_transport_health,
     )
 
+try:
+    from .happ_ios_subscription_service import render_happ_ios_profiles
+except ImportError:
+    from happ_ios_subscription_service import render_happ_ios_profiles
+
 def _transport_profiles_payload(node: Any) -> dict[str, dict[str, Any]]:
     out: dict[str, dict[str, Any]] = {}
     for profile in node_transport_profiles(node, include_disabled=True):
@@ -1313,6 +1318,8 @@ def _resolve_subscription_client_format(
         return "clash"
     if hint in {"happ", "happ_plain", "happ-plain"}:
         return "happ"
+    if hint == "happ-ios":
+        return "happ_ios"
     if hint in {"vless", "raw"}:
         return "vless_raw"
     if hint in {"plain", "legacy"}:
@@ -1371,6 +1378,66 @@ def _happ_subscription_text(*, singbox_config: dict[str, Any], vless_links: list
     ]
     lines.extend([line for line in vless_links if str(line or "").strip()])
     return "\n".join(lines) + "\n"
+
+
+def _happ_ios_canary_allowed(user: User) -> bool:
+    return bool(HAPP_IOS_SUBSCRIPTION_ENABLED) and int(user.tg_id) in HAPP_IOS_SUBSCRIPTION_TG_IDS
+
+
+def _happ_ios_destinations(
+    *,
+    nodes: list[Any],
+    rollout_config: dict[str, Any],
+) -> list[dict[str, Any]]:
+    destinations: list[dict[str, Any]] = []
+    for node in nodes:
+        profile = _node_transport_profile(node, LEGACY_REALITY_FALLBACK)
+        bridges: list[dict[str, Any]] = []
+        for endpoint in _ru_bridge_endpoints_for_node(
+            node=node,
+            rollout_config=rollout_config,
+            transport_profile=LEGACY_REALITY_FALLBACK,
+        ):
+            bridges.append(
+                {
+                    "id": str(endpoint.get("id") or "").strip().lower(),
+                    "label": str(endpoint.get("label") or "Белые списки").strip(),
+                    "host": str(endpoint.get("endpoint_host") or "").strip(),
+                    "port": endpoint.get("endpoint_port"),
+                    "tls_server_name": str(endpoint.get("tls_server_name") or "").strip(),
+                    "reality_public_key": str(endpoint.get("reality_public_key") or "").strip(),
+                    "reality_short_id": str(endpoint.get("reality_short_id") or "").strip(),
+                    "fingerprint": str(endpoint.get("fingerprint") or "chrome").strip() or "chrome",
+                    "flow": "xtls-rprx-vision",
+                }
+            )
+        destinations.append(
+            {
+                "code": str(getattr(node, "code", "") or "").strip().lower(),
+                "label": _node_label_ru(
+                    str(getattr(node, "code", "") or ""),
+                    str(getattr(node, "name", "") or ""),
+                ),
+                "host": str(profile.get("host") or getattr(node, "host", "") or "").strip(),
+                "port": profile.get("port") or getattr(node, "vless_port", 443),
+                "tls_server_name": str(
+                    profile.get("tls_server_name") or getattr(node, "reality_sni", "") or ""
+                ).strip(),
+                "reality_public_key": str(
+                    profile.get("reality_public_key") or getattr(node, "reality_pbk", "") or ""
+                ).strip(),
+                "reality_short_id": str(
+                    profile.get("reality_short_id") or getattr(node, "reality_sid", "") or ""
+                ).strip(),
+                "fingerprint": str(
+                    profile.get("fingerprint") or getattr(node, "fingerprint", "") or "chrome"
+                ).strip()
+                or "chrome",
+                "flow": str(profile.get("flow") or getattr(node, "flow", "") or "").strip(),
+                "bridges": bridges,
+            }
+        )
+    return destinations
 
 
 def _subscription_no_cache_headers(headers: dict[str, str]) -> dict[str, str]:
@@ -1795,6 +1862,8 @@ async def subscription(token: str, request: Request, format: str = Query(default
         "Content-Disposition": 'attachment; filename="POKROV_Subscription"',
     }
     headers = _subscription_no_cache_headers(headers)
+    if client_format == "happ_ios" and not _happ_ios_canary_allowed(user):
+        return Response(content="", media_type="application/json", status_code=404, headers=headers)
     smart_transport_profile = _public_subscription_transport_profile(
         str(client_policy.get("transport_profile") or LEGACY_REALITY_FALLBACK)
     )
@@ -1852,6 +1921,38 @@ async def subscription(token: str, request: Request, format: str = Query(default
             request_host=request_host,
             node_codes=[str(getattr(n, "code", "") or "").strip().lower() for n in smart_nodes_for_user],
             excluded_nodes=smart_excluded_nodes,
+            response_status=200,
+            content_text=content_text,
+            profile_revision=str(client_policy.get("profile_revision") or ""),
+        )
+        if request.method == "HEAD":
+            return Response(content="", media_type="application/json", headers=headers)
+        return Response(content=content_text, media_type="application/json", headers=headers)
+
+    if client_format == "happ_ios":
+        if str(user.sub_type or "").upper() == "FREE":
+            return Response(content="", media_type="application/json", status_code=503, headers=headers)
+        rendered = render_happ_ios_profiles(
+            user_uuid=str(user.uuid or ""),
+            destinations=_happ_ios_destinations(
+                nodes=legacy_nodes_for_user,
+                rollout_config=rollout_config,
+            ),
+        )
+        if not rendered.profiles:
+            return Response(content="", media_type="application/json", status_code=503, headers=headers)
+        content_text = json.dumps(rendered.profiles, ensure_ascii=False, separators=(",", ":"))
+        headers["Content-Disposition"] = 'attachment; filename="POKROV_HAPP_iOS.json"'
+        headers["Profile-Title"] = "POKROV HAPP iOS"
+        _record_subscription_render(
+            user=user,
+            token_fp=token_fp,
+            lookup_mode=lookup_mode,
+            client_format=client_format,
+            user_agent=user_agent,
+            request_host=request_host,
+            node_codes=[str(getattr(n, "code", "") or "").strip().lower() for n in legacy_nodes_for_user],
+            excluded_nodes=[*legacy_excluded_nodes, *rendered.exclusions],
             response_status=200,
             content_text=content_text,
             profile_revision=str(client_policy.get("profile_revision") or ""),

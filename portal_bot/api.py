@@ -642,6 +642,12 @@ FREEKASSA_GENERIC_HMAC_COMPAT_ENABLED = env_bool(
     default=False,
 )
 SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED = env_bool("SUBSCRIPTION_NUMERIC_FALLBACK_ENABLED", default=False)
+HAPP_IOS_SUBSCRIPTION_ENABLED = env_bool("HAPP_IOS_SUBSCRIPTION_ENABLED", default=False)
+HAPP_IOS_SUBSCRIPTION_TG_IDS = frozenset(
+    int(token.strip())
+    for token in str(os.getenv("HAPP_IOS_SUBSCRIPTION_TG_IDS", "") or "").split(",")
+    if token.strip().isdigit() and int(token.strip()) > 0
+)
 TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS = max(60, env_int("TELEGRAM_WEB_LOGIN_MAX_AGE_SECONDS", 86400))
 ADMIN_WEB_SESSION_TTL_SECONDS = max(300, env_int("ADMIN_WEB_SESSION_TTL_SECONDS", 3600))
 CABINET_HANDOFF_TTL_SECONDS = max(60, min(120, env_int("CABINET_HANDOFF_TTL_SECONDS", 120)))
