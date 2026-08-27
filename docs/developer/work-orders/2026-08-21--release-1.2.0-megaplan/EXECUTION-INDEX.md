@@ -3009,3 +3009,54 @@ No row advances and the index distribution stays `I4=4`, `I3=307`, `I2=15`,
 `I1=38`, `I0=13`. Candidate.2 remains the current signed identity authority,
 but it is not promoted because the rollout and client source moved after its
 freeze. A fresh candidate and exact device/origin replay are required.
+
+## 2026-08-27 — WO-013AE candidate.3 reconciliation
+
+Candidate.2 becomes retained history. Signed
+`pokrov-1.2.0-candidate.3` is the current exact release identity and binds
+platform/client/Core/release-index `eafaca3...` / `ac22825...` /
+`344b317...` / `6a1afa95...`. Its manifest/signature/receipt hashes are
+`a2752b6a...` / `926f0b46...` / `fb4d0d5d...` and independently validate
+against active key `pokrov-release-2026-01`. Five Android artifacts retain the
+production certificate; Windows installer `9962e3e8...` remains unsigned
+under the owner's direct-beta exception and mandatory SmartScreen warning.
+SBOM/provenance/artifact-set hashes are `a98d9a12...` / `17895205...` /
+`103db0ec...`.
+
+The exact platform source passes hosted Guardrails and Release v2. Client PR
+25 and its post-merge run pass on exact artifact source `ac22825...`. Client
+PR 26 and its post-merge run pass for the clean-host workflow control without
+changing candidate bytes. Release-index PR 7 and signer run `33032397754`
+pass; PR 8 retains the sanitized exact-candidate Windows evidence. Private
+prerelease `pokrov-1.2.0-candidate.3-private-ci` holds the installer and three
+signed outputs with matching GitHub digests. It is not public `v1.2.0` and no
+stable pointer changed.
+
+Hosted Windows run `33033294889` proves exact silent machine-wide install,
+all eight installed-file hashes, automatic LocalSystem service identity,
+authenticated UI/service IPC, SCM stop/restart, clean uninstall and unchanged
+idle route/DNS with no residual adapter. Live TUN, connected DNS/leak,
+authenticated egress, sleep/reboot/crash, uninstall while connected and
+interactive SmartScreen remain `MANUAL_OWNER_TEST`.
+
+Exact universal Android APK `f41c76eb...` passes upgrade install over retained
+same-signer data on LDPlayer 9 `emulator-5554`, package/version readback,
+foreground launch, force-stop/relaunch and persistence of enabled AI services
+(ChatGPT/Gemini) and Games (Xbox) controls. The account is expired, so the app
+withholds the catalog and cannot start VPN. Catalog, TUN, DNS, owned egress and
+content reachability are `BLOCKED_BY_ACCESS`, not `PASS`. The owner removed
+the physical phone and directed LDPlayer-only work; candidate.3 physical
+Beeline/OEM/handover is not run.
+
+PB-14 is replayed from candidate.3 manifest/signature/receipt bytes. Exact
+public-key verification passes and one identity-free `UPD-004` blocks the
+observation close, preserves the staged state and drives the guarded rollback
+request/public policy to zero in an isolated temporary database. No production
+cohort or external artifact switch occurs, so `OBS_PB/PB-14` remains `I3`.
+
+No row advances. The same bounded `REL/REL-002`, `REL/REL-003` and
+`REL/WIN-002` scopes were already `I4`; broad network, device, origin,
+provider, Operator, legal, public-asset and promotion gates remain open.
+Distribution stays `I4=4`, `I3=307`, `I2=15`, `I1=38`, `I0=13`; 311 rows
+are at or above `I3`, 66 remain below `I3`, and the pending stage split stays
+`0/31/14/21`.

@@ -1,0 +1,252 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate3-reconciliation/v1",
+  "work_order": "WO-013AE",
+  "recorded_at_utc": "2026-08-27T02:36:00Z",
+  "status": "CANDIDATE3_SIGNED_PRIVATE_CARRIER_WINDOWS_CLEAN_HOST_AND_LDPLAYER_PREFLIGHT_PROVED",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.3",
+    "version": "1.2.0",
+    "build": 30,
+    "candidate_created": true,
+    "promotion_authorized": false,
+    "manifest_sha256": "a2752b6a3b95faacf13a68edb708c560966a0f5eb8727e109d7f1603fdc81090",
+    "signature_sha256": "926f0b4667a58ba9cc5ace5c4e6c3c8129d1ec3d4d449b3f0831a8c527cd7121",
+    "receipt_sha256": "fb4d0d5dd272b8d3e7ea2303e2ffa93e332f54ac3e92f245400decc6c06e4b53",
+    "signing_key_id": "pokrov-release-2026-01",
+    "source_tuple": {
+      "platform": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+      "client": "ac22825e857a313c9e4eba61030eb548d6346ead",
+      "core": "344b317a7a09eca7943a93866b193553538bd8f6",
+      "release_index": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2"
+    }
+  },
+  "artifacts": [
+    {
+      "id": "android-arm64-v8a",
+      "size_bytes": 101213906,
+      "sha256": "e105dc28bcadba9c063f64fb05652f6d905df373700c3c9d531a10ed0bd5d4d3",
+      "signing": "TRUSTED_PRODUCTION_CERTIFICATE"
+    },
+    {
+      "id": "android-armeabi-v7a",
+      "size_bytes": 90710304,
+      "sha256": "ef8b96bdaef056a138d7bf444909011d8f5ca388180e695bd733e35af7b769b4",
+      "signing": "TRUSTED_PRODUCTION_CERTIFICATE"
+    },
+    {
+      "id": "android-market",
+      "size_bytes": 126171642,
+      "sha256": "50c1db2ef0f7f00c8fb2a60951e2c63226126d5da4a97cdf682c5531562a90da",
+      "signing": "TRUSTED_PRODUCTION_CERTIFICATE"
+    },
+    {
+      "id": "android-universal",
+      "size_bytes": 295051181,
+      "sha256": "f41c76ebf7bf69f6681d7df87e7722dcdccdec383ef950156b69829caee71c51",
+      "signing": "TRUSTED_PRODUCTION_CERTIFICATE"
+    },
+    {
+      "id": "android-x86-64",
+      "size_bytes": 109862385,
+      "sha256": "7e697a2b7ea0fc0b390f7ee1df0a9c5cdce2730612579c3b6958138c35f6eba1",
+      "signing": "TRUSTED_PRODUCTION_CERTIFICATE"
+    },
+    {
+      "id": "windows-x64-setup",
+      "size_bytes": 28898240,
+      "sha256": "9962e3e80947dae374619ed388fc08b7322bffda38202a42e5812597c7818021",
+      "signing": "SKIPPED_BY_OWNER",
+      "authenticode": "NotSigned",
+      "owner_exception": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0",
+      "distribution": "DIRECT_DOWNLOAD_ONLY"
+    }
+  ],
+  "android_signing": {
+    "certificate_sha256": "0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500",
+    "status": "TRUSTED_PRODUCTION_CERTIFICATE"
+  },
+  "supply_chain": {
+    "artifact_set_sha256": "103db0eccc497fd6a419191419bb38fde24047f12275292a84e34bb42e5a2e28",
+    "sbom_sha256": "a98d9a1231f8ccf3b1200e281c8eb55a9047a28b4d3f1b12dd1f33de932c78b7",
+    "provenance_sha256": "1789520595c851ccf5994e2b6ac58a7242998886a4056da8936e27f8726f5cfe",
+    "candidate_input_sha256": "99434da8bbb7254b4863726403fecac500fddf35f32bffca7d334d8b4eb93b23",
+    "release_handoff_sha256": "eba6d4c2f8b2f8c92da4557209fc7b116eea3a68a26a34a258a5141467aa72ee",
+    "windows_manifest_sha256": "6c1b4a11c6b388016d6dbf6ad62cedb664854be8e7288793ebde3f495fce0877"
+  },
+  "hosted_gates": {
+    "platform": {
+      "candidate_source": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+      "post_merge_guardrails_run": 33029917507,
+      "post_merge_release_v2_run": 33029917498,
+      "result": "PASS"
+    },
+    "client_candidate_source": {
+      "pull_request": 25,
+      "pull_request_head": "d3e6d76cd083d7320168f4894d961d2a0d4ce228",
+      "merge": "ac22825e857a313c9e4eba61030eb548d6346ead",
+      "pull_request_run": 33031007292,
+      "post_merge_run": 33032033161,
+      "result": "PASS"
+    },
+    "client_clean_host_control": {
+      "pull_request": 26,
+      "pull_request_head": "14202d639770d4f3a326439368ccce976cf1bda2",
+      "merge": "745c81fcf7c1f4ff524c7174f2b0495b998c7f3e",
+      "pull_request_run": 33032654414,
+      "post_merge_run": 33033052385,
+      "exact_clean_host_run": 33033294889,
+      "result": "PASS"
+    },
+    "release_index": {
+      "candidate_pull_request": 7,
+      "candidate_pull_request_head": "578a6f6831d2768f3af36d7e222a2ab3b1450b95",
+      "candidate_pull_request_run": 33032345273,
+      "candidate_merge": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2",
+      "signer_run": 33032397754,
+      "evidence_pull_request": 8,
+      "evidence_pull_request_head": "ea145179aee3f6964fedc283db5a48ab32980e01",
+      "evidence_pull_request_run": 33033414861,
+      "evidence_merge": "32f560dd34191a0117f1f60714f35aa1216a2d4a",
+      "result": "PASS"
+    }
+  },
+  "private_carrier": {
+    "repository": "Kiwunaka/POKROV-app",
+    "repository_visibility": "private",
+    "tag": "pokrov-1.2.0-candidate.3-private-ci",
+    "target": "ac22825e857a313c9e4eba61030eb548d6346ead",
+    "asset_count": 4,
+    "github_asset_digests_match": true,
+    "public_release": false,
+    "stable": false
+  },
+  "windows_clean_host": {
+    "status": "PASS_EXACT_PRIVATE_CI_INSTALL_SERVICE_IPC_RESTART_UNINSTALL_IDLE_NETWORK",
+    "github_run_id": 33033294889,
+    "workflow_commit": "745c81fcf7c1f4ff524c7174f2b0495b998c7f3e",
+    "runner_os": "Windows",
+    "runner_image": "win25-vs2026",
+    "sanitized_evidence_sha256": "494f0cd7f6409b0eb0fb2f180e31ad78af7b767b1c9ae66186540f0b31a21c62",
+    "passed_checks": [
+      "clean_host_baseline",
+      "machine_wide_install",
+      "installed_file_identity_8_of_8",
+      "service_install_and_identity",
+      "ui_service_authenticated_ipc",
+      "service_stop_restart",
+      "clean_uninstall",
+      "idle_network_restoration"
+    ],
+    "manual_checks": [
+      "live TUN and full-tunnel traffic",
+      "connected DNS capture and leak protection",
+      "authenticated egress through an owned profile",
+      "sleep reboot and crash recovery",
+      "uninstall while connected",
+      "interactive SmartScreen observation"
+    ],
+    "evidence_ceiling": "EXACT_PRIVATE_CI_INSTALL_SERVICE_AUTHENTICATED_IPC_RESTART_UNINSTALL_AND_NO_IDLE_NETWORK_MUTATION_ONLY"
+  },
+  "android_ldplayer": {
+    "status": "PASS_UPGRADE_LAUNCH_AND_SETTINGS_PERSISTENCE_NETWORK_BLOCKED_BY_ACCESS",
+    "provider": "LDPlayer 9",
+    "instance": "tiktok-test",
+    "adb_serial": "emulator-5554",
+    "reported_model": "SM-S9280",
+    "android_version": "9",
+    "android_sdk": 28,
+    "package_name": "space.pokrov.pokrov_android_shell",
+    "version_name": "1.2.0",
+    "version_code": 30,
+    "physical_device_used": false,
+    "passed_checks": [
+      "upgrade_install_preserve_data",
+      "package_identity_after_install",
+      "launch_and_process_survival",
+      "rules_ui_and_persistence_ai_services_and_games"
+    ],
+    "blocked_checks": {
+      "catalog_tunnel_dns_egress": "BLOCKED_BY_ACCESS_EXPIRED_ACCOUNT"
+    },
+    "retained_evidence": {
+      "final_routes_png_sha256": "cf18419e235d5a240a2bf696a829fbd4797b8e0e3ea52ef90d11072964861d1a",
+      "final_routes_xml_sha256": "8c624bf0ed2850822be2bcf0841afaaab9fdc22c43db50e770c0d83c59696380",
+      "persist_home_xml_sha256": "a219c0e6875a23c8e74ddc593930e58a218c75012f40a802d63cf7fb63b84a87"
+    },
+    "evidence_ceiling": "EXACT_LDPLAYER_UPGRADE_LAUNCH_AND_SETTINGS_PERSISTENCE_ONLY_NO_TUNNEL_OR_NETWORK_PROOF"
+  },
+  "physical_android": {
+    "owner_instruction": "PHONE_REMOVED_USE_LDPLAYER_ONLY",
+    "candidate3_physical_device": "NOT_REQUESTED",
+    "candidate3_beeline": "NOT_RUN",
+    "candidate3_oem_handover_doze": "MANUAL_OWNER_TEST",
+    "historical_candidate2_or_smoke_results_promoted_to_candidate3": false
+  },
+  "pb14": {
+    "status": "PASS_LOCAL_EXACT_CANDIDATE_HEALTH_STOP_AND_ROLLBACK_REQUEST",
+    "operational_candidate_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
+    "evidence_sha256": "45147c443f236fe7cd6b1c40fed4185017876bf9922ee538b7cb0e1a1979311d",
+    "production_mutation": false,
+    "external_artifact_switch": "NOT_PERFORMED",
+    "ledger_index": "I3"
+  },
+  "open_exact_candidate_gates": [
+    "WINDOWS_LIVE_TUN_DNS_EGRESS_CONNECTED_ROLLBACK",
+    "ANDROID_CATALOG_TUN_DNS_EGRESS",
+    "ANDROID_PHYSICAL_DEVICE_OEM_HANDOVER_DOZE",
+    "CURRENT_ORIGIN_AGGREGATE",
+    "BRAIN_ORIGIN",
+    "RU_ORIGIN_IF_CLAIMED",
+    "PAYMENT_PROVIDER_E2E",
+    "OPERATOR_OIDC_RBAC",
+    "LEGAL_COMMERCIAL",
+    "PUBLIC_SAME_BYTE_ASSETS_AND_PROMOTION"
+  ],
+  "publication": {
+    "public_v1_2_0_release": "ABSENT",
+    "latest_public_release": "v1.1.6",
+    "public_asset_count": 0,
+    "stable_pointer_mutated": false,
+    "same_byte_public_promotion": "NOT_RUN"
+  },
+  "ledger": {
+    "advanced_rows": [],
+    "identity_refreshed_without_advancement": [
+      "REL/REL-001",
+      "REL/REL-002",
+      "REL/WIN-002",
+      "REL/WIN-003",
+      "REL/REL-003",
+      "REL/WIN-004",
+      "REL/WIN-005",
+      "REL/SEC-001",
+      "REL/REPO-001",
+      "REL_DOD/DOD-01",
+      "REL_DOD/DOD-02",
+      "REL_DOD/DOD-04",
+      "REL_DOD/DOD-05",
+      "REL_DOD/DOD-15",
+      "OBS_DOD/DOD-29",
+      "OBS_PB/PB-14",
+      "FE/P12-022",
+      "FE/P12-023"
+    ],
+    "distribution": {
+      "I4": 4,
+      "I3": 307,
+      "I2": 15,
+      "I1": 38,
+      "I0": 13
+    },
+    "at_or_above_i3": 311,
+    "below_i3": 66,
+    "pending_stage_counts": {
+      "pre_freeze": 0,
+      "candidate": 31,
+      "external": 14,
+      "deferred": 21
+    }
+  },
+  "production_mutation_performed": false,
+  "evidence_ceiling": "EXACT_CANDIDATE3_SIGNED_PRIVATE_CARRIER_HOSTED_SOURCE_WINDOWS_CLEAN_HOST_AND_LDPLAYER_PREFLIGHT_ONLY_NO_LIVE_NETWORK_PHYSICAL_DEVICE_ORIGIN_PUBLIC_ASSET_OR_STABLE_PROOF"
+}
