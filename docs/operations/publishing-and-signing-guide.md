@@ -1,6 +1,6 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-08-23
+Last updated: 2026-08-27
 
 ## Document Status
 
@@ -274,7 +274,7 @@ Current public user-facing version policy:
 - the retained distributed stable-direct release is `v1.1.6`; Android
   `versionName` and Windows public display version are `1.1.6`, and the retained
   client package/build line is `1.1.6+29`
-- the working source target is `1.2.0+30`, `PRE_CANDIDATE_LOCAL`, with
+- the working source target is `1.2.0+31`, `PRE_CANDIDATE_LOCAL`, with
   `candidate_created=false`; it is not a release candidate or public update
 - a later candidate requires exact signed artifacts, public digest proof and a
   synchronized runtime handoff

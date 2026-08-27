@@ -1,6 +1,6 @@
 # Deployment And Access
 
-Last updated: 2026-07-20
+Last updated: 2026-08-27
 
 ## Document Status
 
@@ -1401,7 +1401,7 @@ Current release boundary:
   current cabinet/runtime contract
 - retained distributed release: `v1.1.6`; public client package/build line
   `1.1.6+29`
-- working source target: `1.2.0+30`, `PRE_CANDIDATE_LOCAL`,
+- working source target: `1.2.0+31`, `PRE_CANDIDATE_LOCAL`,
   `candidate_created=false`; it is not deployable release metadata
 - a later candidate exists only after an exact release handoff
 - stable-direct publication does not prove store availability, trusted Windows
