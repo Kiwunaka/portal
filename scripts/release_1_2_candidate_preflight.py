@@ -17,7 +17,7 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TARGET_VERSION = "1.2.0"
-TARGET_BUILD = 30
+TARGET_BUILD = 31
 CORE_TARGET_VERSION = "1.1.0"
 VALID_INDEXES = {f"I{number}" for number in range(6)}
 VALID_STAGES = {"pre_freeze", "candidate", "external", "deferred"}
