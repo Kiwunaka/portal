@@ -1,6 +1,6 @@
 {
   "schema": "pokrov.release-1.2.0.gate-f-decision/v1",
-  "generated_at_utc": "2026-08-27T10:40:27Z",
+  "generated_at_utc": "2026-08-27T10:58:12Z",
   "decision": "NO_GO",
   "candidate_id": "pokrov-1.2.0-candidate.3",
   "candidate": {
@@ -23,14 +23,14 @@
       "release_index": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2"
     }
   },
-  "gate_f_input_sha256": "46166b2446ca9c605d391a1d4d565fa3294563255a7ad25afc46aab6e76a54be",
+  "gate_f_input_sha256": "fb2211684ad57dad8dec06b462c35e150baf59ce7b80f4dfb0871763cdaa304e",
   "checks": [
     {
       "id": "gates_a_e_exact_candidate",
       "status": "FAIL",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/gates_a_e_exact_candidate",
         "candidate_pointer": "/candidate/id"
       }
@@ -40,7 +40,7 @@
       "status": "MISSING",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/mandatory_stop_ship_and_dod",
         "candidate_pointer": "/candidate/id"
       }
@@ -50,7 +50,7 @@
       "status": "MISSING",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/no_open_p0_false_green_or_secret_leak",
         "candidate_pointer": "/candidate/id"
       }
@@ -60,7 +60,7 @@
       "status": "PASS",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/supply_chain_signature_sbom_provenance",
         "candidate_pointer": "/candidate/id"
       }
@@ -70,7 +70,7 @@
       "status": "MISSING",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/target_channel_signing_and_manual_gates",
         "candidate_pointer": "/candidate/id"
       }
@@ -80,7 +80,7 @@
       "status": "PASS",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/release_docs_manifest_binding",
         "candidate_pointer": "/candidate/id"
       }
@@ -90,7 +90,7 @@
       "status": "MISSING",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/rollback_and_kill_controls",
         "candidate_pointer": "/candidate/id"
       }
@@ -100,7 +100,7 @@
       "status": "PASS",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/current_origin",
         "candidate_pointer": "/candidate/id"
       }
@@ -110,7 +110,7 @@
       "status": "PASS",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/brain_origin",
         "candidate_pointer": "/candidate/id"
       }
@@ -120,7 +120,7 @@
       "status": "BLOCKED_BY_ACCESS",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/ru_origin",
         "candidate_pointer": "/candidate/id"
       }
@@ -130,7 +130,7 @@
       "status": "MANUAL_OWNER_TEST",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/windows_live_network",
         "candidate_pointer": "/candidate/id"
       }
@@ -140,7 +140,7 @@
       "status": "PASS",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/android_ldplayer_rehearsal",
         "candidate_pointer": "/candidate/id"
       }
@@ -150,7 +150,7 @@
       "status": "MANUAL_OWNER_TEST",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/android_physical_device",
         "candidate_pointer": "/candidate/id"
       }
@@ -160,7 +160,7 @@
       "status": "BLOCKED_BY_ACCESS",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/authenticated_client_egress",
         "candidate_pointer": "/candidate/id"
       }
@@ -170,7 +170,7 @@
       "status": "MANUAL_OWNER_TEST",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/payment_provider_e2e",
         "candidate_pointer": "/candidate/id"
       }
@@ -180,7 +180,7 @@
       "status": "MANUAL_OWNER_TEST",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/operator_auth_rbac_action_intent",
         "candidate_pointer": "/candidate/id"
       }
@@ -190,7 +190,7 @@
       "status": "BLOCKED_BY_OWNER_DECISION",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/legal_commercial_approval",
         "candidate_pointer": "/candidate/id"
       }
@@ -200,7 +200,7 @@
       "status": "MISSING",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/performance_and_release_health",
         "candidate_pointer": "/candidate/id"
       }
@@ -210,7 +210,7 @@
       "status": "BLOCKED_BY_ACCESS_GITHUB_BILLING",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/hosted_required_checks",
         "candidate_pointer": "/candidate/id"
       }

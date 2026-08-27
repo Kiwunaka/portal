@@ -1,6 +1,6 @@
 {
   "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
-  "recorded_at_utc": "2026-08-27T10:34:17Z",
+  "recorded_at_utc": "2026-08-27T10:51:23Z",
   "candidate": {
     "id": "pokrov-1.2.0-candidate.3",
     "operational_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
@@ -57,7 +57,7 @@
     {
       "id": "GATES_A_E_AND_MANDATORY_ROWS_NOT_ALL_CANDIDATE_PROVEN",
       "status": "FAIL",
-      "detail": "Gate A is BLOCKED, Gate B returns exact-candidate NO_GO after a deterministic observability support-reference portability failure, Gate C is BLOCKED by incomplete Windows live-network plus authenticated physical Android/OEM/store matrices, and Gate D is BLOCKED by absent production provider/PostgreSQL/outbox/reconciliation/rollback proof; Gates A-E and mandatory rows are not all exact-candidate I4"
+      "detail": "Gate A is BLOCKED, Gate B returns exact-candidate NO_GO after a deterministic observability support-reference portability failure, Gate C is BLOCKED by incomplete Windows live-network plus authenticated physical Android/OEM/store matrices, Gate D is BLOCKED by absent production provider/PostgreSQL/outbox/reconciliation/rollback proof, and Gate E is BLOCKED by absent authenticated, physical screen-reader/device, comparable-artifact, browser-lab, RU-origin and post-promotion proof; Gates A-E and mandatory rows are not all exact-candidate I4"
     },
     {
       "id": "WINDOWS_LIVE_TUN_DNS_EGRESS_RECOVERY",
@@ -87,7 +87,7 @@
     {
       "id": "COMPARABLE_DEVICE_PERFORMANCE_BASELINES",
       "status": "MISSING",
-      "detail": "Controlled API p95 passed; exact Android/Windows device performance, battery and recovery baselines remain incomplete"
+      "detail": "Controlled API p95, local static budgets, automated accessibility/responsive checks and fresh exact-source desktop/mobile render smoke passed; exact Android/Windows device performance, physical screen readers/scaling, comparable artifact, browser-lab, authenticated and post-promotion baselines remain incomplete"
     },
     {
       "id": "GITHUB_HOSTED_CHECKS_BILLING",
@@ -177,8 +177,12 @@
       "sha256": "ca3ebfdabca3dc64a6cf1ac71fdcfa1591082b7a40d413c14a4ddbb85de83091"
     },
     {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AN-exact-candidate-gate-e/013AN-gate-e-decision.json",
+      "sha256": "fd27c886e702dacab94410b86b0e86b70efb55ebd13ab4011a050a876f1a9d6f"
+    },
+    {
       "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/EXECUTION-LEDGER.csv",
-      "sha256": "c6c49d5e88fcc4c80d6a52da18da6229112211eee4b6586dc97c5e774b80cf4f"
+      "sha256": "3c1f4c52fecf7dac0cf2185e100e5146de967d8ab39dd21d76932d3372edd5dd"
     }
   ],
   "mutation_boundary": {
@@ -191,5 +195,5 @@
     "stable_pointer_mutated": false,
     "gate_g_authorized": false
   },
-  "evidence_ceiling": "EXACT_CANDIDATE3_GATE_F_INPUT_EVIDENCE_WITH_ONE EXPLICIT_GATE_B_FAILURE; PHYSICAL_PHONE_IS POST_CANDIDATE_LAB4031_ONLY; REQUIRED_EXTERNAL_AND_MANUAL_GATES_REMAIN_NON_PASS"
+  "evidence_ceiling": "EXACT_CANDIDATE3_GATE_F_INPUT_EVIDENCE_THROUGH_GATES_A_E_WITH_ONE_EXPLICIT_GATE_B_FAILURE; GATE_E_LOCAL_AUTOMATED_AND_RENDER_SLICES_DO_NOT_REPLACE_PHYSICAL_DEVICE_BROWSER_LAB_OR_POST_PROMOTION_PROOF; PHYSICAL_PHONE_IS_POST_CANDIDATE_LAB4031_ONLY; REQUIRED_EXTERNAL_AND_MANUAL_GATES_REMAIN_NON_PASS"
 }

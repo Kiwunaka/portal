@@ -18,7 +18,7 @@
       "id": "gates_a_e_exact_candidate",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/gates_a_e_exact_candidate",
         "candidate_pointer": "/candidate/id"
       }
@@ -27,7 +27,7 @@
       "id": "mandatory_stop_ship_and_dod",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/mandatory_stop_ship_and_dod",
         "candidate_pointer": "/candidate/id"
       }
@@ -36,7 +36,7 @@
       "id": "no_open_p0_false_green_or_secret_leak",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/no_open_p0_false_green_or_secret_leak",
         "candidate_pointer": "/candidate/id"
       }
@@ -45,7 +45,7 @@
       "id": "supply_chain_signature_sbom_provenance",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/supply_chain_signature_sbom_provenance",
         "candidate_pointer": "/candidate/id"
       }
@@ -54,7 +54,7 @@
       "id": "target_channel_signing_and_manual_gates",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/target_channel_signing_and_manual_gates",
         "candidate_pointer": "/candidate/id"
       }
@@ -63,7 +63,7 @@
       "id": "release_docs_manifest_binding",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/release_docs_manifest_binding",
         "candidate_pointer": "/candidate/id"
       }
@@ -72,7 +72,7 @@
       "id": "rollback_and_kill_controls",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/rollback_and_kill_controls",
         "candidate_pointer": "/candidate/id"
       }
@@ -81,7 +81,7 @@
       "id": "current_origin",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/current_origin",
         "candidate_pointer": "/candidate/id"
       }
@@ -90,7 +90,7 @@
       "id": "brain_origin",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/brain_origin",
         "candidate_pointer": "/candidate/id"
       }
@@ -99,7 +99,7 @@
       "id": "ru_origin",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/ru_origin",
         "candidate_pointer": "/candidate/id"
       }
@@ -108,7 +108,7 @@
       "id": "windows_live_network",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/windows_live_network",
         "candidate_pointer": "/candidate/id"
       }
@@ -117,7 +117,7 @@
       "id": "android_ldplayer_rehearsal",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/android_ldplayer_rehearsal",
         "candidate_pointer": "/candidate/id"
       }
@@ -126,7 +126,7 @@
       "id": "android_physical_device",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/android_physical_device",
         "candidate_pointer": "/candidate/id"
       }
@@ -135,7 +135,7 @@
       "id": "authenticated_client_egress",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/authenticated_client_egress",
         "candidate_pointer": "/candidate/id"
       }
@@ -144,7 +144,7 @@
       "id": "payment_provider_e2e",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/payment_provider_e2e",
         "candidate_pointer": "/candidate/id"
       }
@@ -153,7 +153,7 @@
       "id": "operator_auth_rbac_action_intent",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/operator_auth_rbac_action_intent",
         "candidate_pointer": "/candidate/id"
       }
@@ -162,7 +162,7 @@
       "id": "legal_commercial_approval",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/legal_commercial_approval",
         "candidate_pointer": "/candidate/id"
       }
@@ -171,7 +171,7 @@
       "id": "performance_and_release_health",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/performance_and_release_health",
         "candidate_pointer": "/candidate/id"
       }
@@ -180,7 +180,7 @@
       "id": "hosted_required_checks",
       "evidence": {
         "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-gate-f-evidence.json",
-        "sha256": "3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c",
+        "sha256": "e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9",
         "status_pointer": "/checks/hosted_required_checks",
         "candidate_pointer": "/candidate/id"
       }

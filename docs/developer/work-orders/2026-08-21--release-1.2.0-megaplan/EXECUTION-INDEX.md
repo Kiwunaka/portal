@@ -3352,3 +3352,33 @@ Gate D therefore returns `BLOCKED` with no new explicit candidate defect and
 `I2=19`, `I1=41`, `I0=1`. No real payment, callback, entitlement, DB/outbox or
 operator mutation, deploy, restart, public asset, stable pointer or Gate G
 authorization occurred.
+
+## 2026-08-27 — WO-013AN exact candidate.3 Gate E BLOCKED
+
+Gate E is evaluated against the frozen platform/client/Core tuple. The
+retained exact current-origin aggregate passes quick `12/12`, default `13/13`,
+release pytest `675 + 38 subtests`, admin/auth `96 + 8 subtests`, production
+frontend builds and Playwright `88/88`. Controlled exact-source API probes pass
+health p95 `42.5337 ms <= 100 ms` and public catalog p95 `43.3626 ms <= 200
+ms`.
+
+A fresh exact-source WebApp build emits `40` static routes. In-app browser
+smokes at `1440x1000` and `390x844` render the meaningful truth-first cabinet
+entry with zero console warnings/errors or framework overlays; the primary
+Telegram control is visible/enabled and the 390-pixel viewport has no
+horizontal overflow. The fresh render uses Node `24.15.0` rather than the
+declared `22.14.x`, so it is visual/interaction evidence only and is not
+credited as comparable performance proof.
+
+Authenticated journeys, exact-device support upload/recovery, physical
+TalkBack/Narrator/OEM/text-scale/OS-scaling, Android/Windows device performance,
+comparable artifact regression, 20-sample browser-lab budgets, RU-origin and
+post-promotion observation remain `BLOCKED_BY_ACCESS`, `MANUAL_OWNER_TEST` or
+`NOT_RUN`. Gate E therefore returns `BLOCKED` with no new candidate defect.
+
+`REL_GATE/GATE-E`, `REL/PERF-001` and `FE_PR/PR-09` remain `I3` with status
+`LOCALLY_PROVED_EXACT_CANDIDATE_DEVICE_BLOCKED`. `FE_PR/PR-10` is corrected to
+`LOCALLY_PROVED_EXACT_CANDIDATE_NO_GO` after the Gate B failure. Distribution
+remains `I4=4`, `I3=312`, `I2=19`, `I1=41`, `I0=1`. No authentication,
+external submission, entitlement/payment, deploy, public asset, stable pointer
+or Gate G mutation occurred.

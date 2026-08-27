@@ -107,7 +107,11 @@ explicit failure:
    Gate C is separately `BLOCKED` by incomplete Windows live-network and
    authenticated physical Android/OEM/store matrices; Gate D is `BLOCKED` by
    missing production provider/PostgreSQL/outbox/reconciliation/rollback
-   evidence even though its exact source matrix passes.
+   evidence even though its exact source matrix passes; Gate E is `BLOCKED`
+   by missing authenticated journeys, physical screen-reader/device,
+   comparable-artifact, browser-lab, RU-origin and post-promotion proof even
+   though its automated local UI/accessibility/responsive/static/API slices
+   pass.
 2. Mandatory STOP-SHIP/DoD rows are not all exact-candidate proven.
 3. Absence of every P0/false-green/secret issue cannot yet be asserted across
    the incomplete external matrix.
@@ -128,8 +132,9 @@ explicit failure:
     `BLOCKED_BY_ACCESS_GITHUB_BILLING`.
 
 WO-013AJ gives Gate A an exact-candidate `BLOCKED` baseline. WO-013AK adds the
-first explicit candidate failure at Gate B. WO-013AL and WO-013AM record Gates
-C and D as `BLOCKED` without manufacturing more candidate defects. The
+first explicit candidate failure at Gate B. WO-013AL, WO-013AM and WO-013AN
+record Gates C, D and E as `BLOCKED` without manufacturing more candidate
+defects. The
 `5`/`14` split stays the same, but one of the fourteen non-PASS checks is
 `FAIL`, forcing `NO_GO` rather than `BLOCKED`.
 
@@ -159,11 +164,13 @@ remain unmerged.
 | `013AL-gate-c-decision.json` | `58aeaf052b6b3bf14051990c4daf41f9bddc97fe3ce2df5b115221fe34bc5988` |
 | `013AM-gate-d-test-evidence.json` | `1125a3fb29f6b4cccd673f9b9855ca5aac6c247d969207abf6a024e0d88dfe90` |
 | `013AM-gate-d-decision.json` | `ca3ebfdabca3dc64a6cf1ac71fdcfa1591082b7a40d413c14a4ddbb85de83091` |
+| `013AN-gate-e-test-evidence.json` | `aea8d5d1949eb36777b2bb0a44cc02785ba345e7710cd8075954f66091a4a695` |
+| `013AN-gate-e-decision.json` | `fd27c886e702dacab94410b86b0e86b70efb55ebd13ab4011a050a876f1a9d6f` |
 | `013AI-candidate3-ldplayer-recheck.json` | `9cb9a0483aa6714cdd96b3e0f1c6e00007e45089340727deb2b4ae24dfef83a5` |
-| `013AI-candidate3-gate-f-evidence.json` | `3dd32f2ef5929b347cdafa968053638bd93232dd345f6fe55658d2a6ec0c602c` |
-| `013AI-candidate3-gate-f-input.json` | `46166b2446ca9c605d391a1d4d565fa3294563255a7ad25afc46aab6e76a54be` |
-| `013AI-candidate3-gate-f-decision.json` | `634516c296134726eb642c86b9bbfe96184245bf379ff599e0040735ee918ebc` |
-| Current execution ledger after WO-013AM | `c6c49d5e88fcc4c80d6a52da18da6229112211eee4b6586dc97c5e774b80cf4f` |
+| `013AI-candidate3-gate-f-evidence.json` | `e24284ed322cfc1c2650298083316750d23aba6605feaae5de30a960f96293c9` |
+| `013AI-candidate3-gate-f-input.json` | `fb2211684ad57dad8dec06b462c35e150baf59ce7b80f4dfb0871763cdaa304e` |
+| `013AI-candidate3-gate-f-decision.json` | `017c0369760029350f95eafa2b7944134f80c54ffdf1ce8265ce66f511a6d1dd` |
+| Current execution ledger after WO-013AN | `3c1f4c52fecf7dac0cf2185e100e5146de967d8ab39dd21d76932d3372edd5dd` |
 
 The decision report directly binds the input digest; the input binds the Gate
 F aggregate; the verifier also re-hashes every listed upstream evidence file.
@@ -187,7 +194,7 @@ proof.
 
 After WO-010K reconciles the conditional support-transport row, WO-013AJ
 baselines Gate A without treating its blockers as pass, WO-013AK fails Gate B,
-and WO-013AL/013AM record Gates C/D as blocked, a fresh fail-closed Gate F
+and WO-013AL/013AM/013AN record Gates C/D/E as blocked, a fresh fail-closed Gate F
 rehash keeps distribution at `I4=4`, `I3=312`, `I2=19`, `I1=41`, `I0=1`;
 `316` rows are at or above `I3`, `61` remain below. The remaining stage split
 is `pre_freeze=0`, `candidate=28`, `external=14`, `deferred=19`.
@@ -210,7 +217,8 @@ LDPlayer support polling. Use a legitimately entitled owned test account
 before authenticated candidate catalog/TUN/DNS/egress or live ticket polling;
 the current physical lab build cannot substitute for that run. Separately
 execute Windows live network,
-distinct RU-origin, provider/operator/legal and comparable performance gates.
+distinct RU-origin, provider/operator/legal, physical screen-reader/device,
+comparable artifact and browser-lab performance gates.
 Rerun Gate F after every retained evidence change. Public/stable promotion
 remains prohibited until the decision is `GO` and the owner separately
 authorizes Gate G.
