@@ -182,6 +182,14 @@
     "candidate3_oem_handover_doze": "MANUAL_OWNER_TEST",
     "historical_candidate2_or_smoke_results_promoted_to_candidate3": false
   },
+  "pb14": {
+    "status": "PASS_LOCAL_EXACT_CANDIDATE_HEALTH_STOP_AND_ROLLBACK_REQUEST",
+    "operational_candidate_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
+    "evidence_sha256": "45147c443f236fe7cd6b1c40fed4185017876bf9922ee538b7cb0e1a1979311d",
+    "production_mutation": false,
+    "external_artifact_switch": "NOT_PERFORMED",
+    "ledger_index": "I3"
+  },
   "open_exact_candidate_gates": [
     "WINDOWS_LIVE_TUN_DNS_EGRESS_CONNECTED_ROLLBACK",
     "ANDROID_CATALOG_TUN_DNS_EGRESS",

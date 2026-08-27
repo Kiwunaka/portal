@@ -1,0 +1,104 @@
+{
+  "schema": "pokrov.release-1.2.0.signed-candidate-manifest-evidence/v1",
+  "recorded_at": "2026-08-27T02:48:00Z",
+  "status": "SIGNED_CANDIDATE_MANIFEST_ARTIFACT_AND_PRIVATE_CARRIER_PROVED",
+  "candidate_manifest_created": true,
+  "candidate_manifest_proven": true,
+  "private_candidate_carrier_created": true,
+  "public_candidate_release_created": false,
+  "public_assets_uploaded": false,
+  "stable_pointer_mutated": false,
+  "promotion_authorized": false,
+  "deployment_performed": false,
+  "source_contract": {
+    "repository": "Kiwunaka/pokrov",
+    "pull_request": 7,
+    "pull_request_head": "578a6f6831d2768f3af36d7e222a2ab3b1450b95",
+    "pull_request_run": 33032345273,
+    "pull_request_result": "SUCCESS",
+    "main_merge_commit": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2"
+  },
+  "dispatch": {
+    "workflow": "Prepare signed candidate manifest",
+    "run": 33032397754,
+    "job": 98387661055,
+    "result": "SUCCESS",
+    "head_sha": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2",
+    "template_path": "candidate-inputs/1.2.0/pokrov-1.2.0-candidate.3.json",
+    "candidate_id": "pokrov-1.2.0-candidate.3",
+    "private_key_read_or_exported": false
+  },
+  "actions_artifact": {
+    "id": 9630725443,
+    "name": "pokrov-pokrov-1.2.0-candidate.3-signed-manifest-6a1afa95fe52da2d559ba7b1da88715cd0344bb2",
+    "archive_size_bytes": 7949,
+    "archive_digest": "sha256:2dc49bae43da2d4692bec3ab2510a13956877094913d87a3e705f89fb44c3812",
+    "created_at": "2026-08-27T02:09:35Z",
+    "expires_at": "2026-09-10T02:09:34Z",
+    "expired": false,
+    "download_readback": "PASS"
+  },
+  "outputs": [
+    {
+      "path": "private-carrier/release-index.json",
+      "size_bytes": 6879,
+      "sha256": "a2752b6a3b95faacf13a68edb708c560966a0f5eb8727e109d7f1603fdc81090"
+    },
+    {
+      "path": "private-carrier/release-index.json.sig",
+      "size_bytes": 64,
+      "sha256": "926f0b4667a58ba9cc5ace5c4e6c3c8129d1ec3d4d449b3f0831a8c527cd7121"
+    },
+    {
+      "path": "private-carrier/signing-receipt.json",
+      "size_bytes": 588,
+      "sha256": "fb4d0d5dd272b8d3e7ea2303e2ffa93e332f54ac3e92f245400decc6c06e4b53"
+    }
+  ],
+  "independent_validation": {
+    "status": "READY_SIGNED_MANIFEST",
+    "signing_key_id": "pokrov-release-2026-01",
+    "artifact_count": 6,
+    "owner_unsigned_windows_exception_count": 1,
+    "owner_unsigned_windows_artifact": "pokrov-windows-setup-x64.exe",
+    "owner_exception_code": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0",
+    "release_index_commit": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2",
+    "receipt_matches_outputs": true,
+    "detached_signature_verified_with_public_keyring": true
+  },
+  "private_carrier": {
+    "repository": "Kiwunaka/POKROV-app",
+    "tag": "pokrov-1.2.0-candidate.3-private-ci",
+    "target_commitish": "ac22825e857a313c9e4eba61030eb548d6346ead",
+    "draft": false,
+    "prerelease": true,
+    "published_at": "2026-08-27T02:13:51Z",
+    "asset_count": 4,
+    "asset_digest_readback": "PASS",
+    "public_stable_release": false
+  },
+  "source_tuple": {
+    "platform": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+    "client": "ac22825e857a313c9e4eba61030eb548d6346ead",
+    "core": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "release_index": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2"
+  },
+  "contract_binding": {
+    "release_handoff_sha256": "eba6d4c2f8b2f8c92da4557209fc7b116eea3a68a26a34a258a5141467aa72ee",
+    "product_facts_sha256": "3df7e7a03bf6a7e62e49e2791641428fb415cdca692a67b4a48fee79a853289e",
+    "error_catalog_sha256": "7d3bf242777d5bf76bbebcf162e5969d3f83d7f68b2787051e1c4fddeadc3dc7",
+    "observability_schema_sha256": "24ae72442f778d7f1334ae0a4bf4d774738e4de275707b29420ec733af65cc17",
+    "exact_platform_git_object_hash_readback": "PASS"
+  },
+  "required_publication_and_promotion_evidence_absent": [
+    "PUBLIC_V1_2_0_GITHUB_RELEASE",
+    "SIX_PUBLIC_ASSET_UPLOADS",
+    "SAME_BYTE_PUBLIC_PROMOTION",
+    "STABLE_POINTER_SWITCH_AND_ROLLBACK",
+    "EXACT_PHYSICAL_ANDROID_BEELINE_AND_OEM_MATRIX",
+    "WINDOWS_LIVE_TUN_DNS_EGRESS_AND_CONNECTED_ROLLBACK",
+    "AGGREGATE_ORIGIN_PROVIDER_OPERATOR_LEGAL_GATES",
+    "POST_PROMOTION_HEALTH"
+  ],
+  "evidence_ceiling": "SIGNED_CANDIDATE3_AND_PRIVATE_CI_CARRIER_ONLY_NO_PUBLIC_V1_2_0_NO_LIVE_DEVICE_OR_STABLE_PROMOTION"
+}

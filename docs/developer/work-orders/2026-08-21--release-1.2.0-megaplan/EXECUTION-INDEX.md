@@ -3048,6 +3048,12 @@ content reachability are `BLOCKED_BY_ACCESS`, not `PASS`. The owner removed
 the physical phone and directed LDPlayer-only work; candidate.3 physical
 Beeline/OEM/handover is not run.
 
+PB-14 is replayed from candidate.3 manifest/signature/receipt bytes. Exact
+public-key verification passes and one identity-free `UPD-004` blocks the
+observation close, preserves the staged state and drives the guarded rollback
+request/public policy to zero in an isolated temporary database. No production
+cohort or external artifact switch occurs, so `OBS_PB/PB-14` remains `I3`.
+
 No row advances. The same bounded `REL/REL-002`, `REL/REL-003` and
 `REL/WIN-002` scopes were already `I4`; broad network, device, origin,
 provider, Operator, legal, public-asset and promotion gates remain open.

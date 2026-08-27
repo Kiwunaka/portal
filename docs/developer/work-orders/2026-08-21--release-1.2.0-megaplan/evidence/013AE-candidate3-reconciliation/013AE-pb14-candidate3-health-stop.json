@@ -1,0 +1,69 @@
+{
+  "schema": "pokrov.release-1.2.0.pb14-candidate-gate-evidence/v1",
+  "recorded_at": "2026-08-27T02:50:28Z",
+  "status": "PASS_LOCAL_EXACT_CANDIDATE_HEALTH_STOP_AND_ROLLBACK_REQUEST",
+  "candidate": {
+    "label": "pokrov-1.2.0-candidate.3",
+    "candidate_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
+    "version": "1.2.0",
+    "manifest_sha256": "a2752b6a3b95faacf13a68edb708c560966a0f5eb8727e109d7f1603fdc81090",
+    "signature_sha256": "926f0b4667a58ba9cc5ace5c4e6c3c8129d1ec3d4d449b3f0831a8c527cd7121",
+    "release_index_revision": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2",
+    "client_revision": "ac22825e857a313c9e4eba61030eb548d6346ead",
+    "android_x86_64_sha256": "7e697a2b7ea0fc0b390f7ee1df0a9c5cdce2730612579c3b6958138c35f6eba1",
+    "android_build_number": "4030",
+    "promotion_authorized": false
+  },
+  "signature_verification": {
+    "status": "PASS",
+    "algorithm": "ed25519",
+    "key_id": "pokrov-release-2026-01",
+    "public_key_sha256": "651d1bcfbedecc4e50d21f3ad3bf3cc990a6cfc97ad355f0e0e76972b8ba8024"
+  },
+  "control": {
+    "database": "TEMPORARY_SQLITE_DESTROYED_AFTER_GATE",
+    "cohort": "ISOLATED_LOCAL_CONTROL_FIXTURE",
+    "candidate_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
+    "rollback_candidate_id": "42b8d50a732918c1d2db2e9a54a30179e63632947d7021319104464da95941b4",
+    "injected_event": {
+      "event_id": "fd5c7489-aa7e-550e-ac07-bc1bf3b7ebdd",
+      "event_name": "update.failed",
+      "error_code": "UPD-004",
+      "app_version": "1.2.0",
+      "build_number": "4030",
+      "platform": "android",
+      "architecture": "x86_64",
+      "identity_fields_retained": false
+    },
+    "promotion_stop": {
+      "status": "PASS",
+      "error_code": "release_health_gate_failed",
+      "staged_state_preserved": true
+    },
+    "rollback_request": {
+      "status": "PASS",
+      "exact_candidate_status": "rollback_requested",
+      "exact_candidate_rollout_percent": 0,
+      "rollback_candidate_status": "current",
+      "rollback_candidate_rollout_percent": 100,
+      "external_artifact_switch": "NOT_PERFORMED"
+    },
+    "public_policy": {
+      "exact_candidate_rollout_percent": 0,
+      "rollback_candidate_rollout_percent": 100
+    }
+  },
+  "mutations": {
+    "production": false,
+    "deployment": false,
+    "public_assets": false,
+    "stable_pointer": false,
+    "external_artifact_switch": false
+  },
+  "ledger": {
+    "row": "OBS_PB/PB-14",
+    "from": "I2",
+    "to": "I3"
+  },
+  "evidence_ceiling": "LOCAL_CONTROL_PROOF_ONLY_NO_RUNTIME_COHORT_NO_PUBLIC_PROMOTION_NO_EXTERNAL_ARTIFACT_ROLLBACK_COMPLETION"
+}

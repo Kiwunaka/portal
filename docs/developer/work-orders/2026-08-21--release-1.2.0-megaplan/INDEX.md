@@ -230,8 +230,14 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013AE-candidate3-reconciliation/013AE-candidate3-reconciliation.json`
   replaces candidate.2 as current truth with the signed candidate.3 source,
   artifact and supply-chain tuple; exact hosted gates, private carrier,
-  Windows clean-host and LDPlayer preflight boundaries; and explicit
+  Windows clean-host, LDPlayer preflight and PB-14 boundaries; and explicit
   access-blocked/manual/public-promotion ceilings without advancing a row.
+- `evidence/013AE-candidate3-reconciliation/013AE-candidate3-signed-manifest.json`
+  retains the exact signer run, downloaded outputs, independent public-key
+  validation and private carrier digest readback.
+- `evidence/013AE-candidate3-reconciliation/013AE-pb14-candidate3-health-stop.json`
+  replays the real local health-stop/action-intent control from candidate.3
+  bytes without a deployed cohort or external artifact switch.
 - `evidence/013E-android-mobile-runtime-matrix/013E-android-mobile-runtime-matrix.json`
   binds the newer Android artifact identity, single physical Beeline matrix,
   LDPlayer evidence ceiling, deployed server-chain reconciliation and explicit
@@ -270,6 +276,11 @@ TUN, DNS, owned egress and content reachability are `BLOCKED_BY_ACCESS`. The
 owner removed the physical phone and directed LDPlayer-only work; candidate.3
 physical Beeline/OEM/handover remains unrun and earlier candidate.2/non-
 candidate device evidence is not transferred.
+
+Candidate.3 PB-14 local replay passes: an identity-free `UPD-004` blocks
+observation close and drives the guarded rollback request/public policy to
+zero. This is isolated control evidence at `I3`, not a deployed cohort or an
+external artifact switch.
 
 Next obtain a valid owned entitlement for the retained LDPlayer account or
 wait for the physical phone before device network testing; do not wipe the

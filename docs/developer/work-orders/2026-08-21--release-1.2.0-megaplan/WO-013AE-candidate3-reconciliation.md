@@ -25,6 +25,12 @@ and persisted AI/Games routing-control smoke. The retained emulator account is
 expired, so the catalog, tunnel, DNS behavior and egress are
 `BLOCKED_BY_ACCESS`; they are not relabeled as a pass.
 
+The real PB-14 release-health/action-intent control was also replayed from the
+candidate.3 signed bytes. One identity-free `UPD-004` blocks observation close
+and drives the guarded exact-candidate rollback request/public policy to zero
+in an isolated temporary database. It does not switch an external artifact or
+prove a deployed cohort.
+
 The owner removed the physical phone and explicitly limited current device
 work to LDPlayer. Candidate.3 physical Beeline/OEM/handover evidence therefore
 remains `MANUAL_OWNER_TEST`/`NOT_REQUESTED` for this run. Earlier candidate.2
@@ -119,6 +125,23 @@ content reachability are therefore `BLOCKED_BY_ACCESS`, not `PASS`.
 The retained screenshot/XML hashes are `cf18419e...`, `8c624bf0...` and
 `a219c0e6...`. No physical device was used after the owner's instruction.
 
+## PB-14 candidate.3 replay
+
+`scripts/release_1_2_pb14_candidate_gate.py` re-hashes the exact manifest,
+signature and receipt, verifies the detached signature against the public
+keyring at release-index revision `6a1afa95...`, and binds operational
+candidate id `51f54f88...` to client `ac22825...`, Android x86_64
+`7e697a2b...` and build `4030`.
+
+In an isolated temporary SQLite control fixture, one identity-free Android
+`UPD-004` failure causes `release_health_gate_failed`; the staged state is
+preserved. The guarded rollback request then sets candidate.3 to
+`rollback_requested`/zero and the retained rollback candidate to
+`current`/100. Production, deployment, public assets, stable pointer and
+external artifact switch are all false/not performed. `OBS_PB/PB-14` remains
+`I3`: the exact current-candidate local control passes, but no deployed cohort
+exists.
+
 ## Ledger decision
 
 No execution-ledger row advances. Candidate.3 replaces stale candidate.2
@@ -140,15 +163,25 @@ There are 311 rows at or above `I3` and 66 below `I3`; pending stages remain
   above.
 - LDPlayer exact-candidate upgrade/launch/settings persistence -> `PASS`;
   catalog/TUN/DNS/egress -> `BLOCKED_BY_ACCESS`.
+- Candidate.3 PB-14 gate and focused tests ->
+  `PASS_LOCAL_EXACT_CANDIDATE_HEALTH_STOP_AND_ROLLBACK_REQUEST`, `3 passed`;
+  no production or external mutation.
 - Public release creation, public asset upload and stable pointer mutation ->
   `NOT_PERFORMED`.
 
 ## Retained evidence
 
+- `evidence/013AE-candidate3-reconciliation/013AE-candidate3-signed-manifest.json`
+  retains signer run/output hashes, independent public-key validation and the
+  exact private-carrier readback.
+- `evidence/013AE-candidate3-reconciliation/013AE-pb14-candidate3-health-stop.json`
+  retains the exact current-candidate local health-stop and guarded rollback
+  request with explicit no-deployed-cohort/no-external-switch ceiling; 2636
+  bytes, SHA-256 `45147c443f236fe7cd6b1c40fed4185017876bf9922ee538b7cb0e1a1979311d`.
 - `evidence/013AE-candidate3-reconciliation/013AE-candidate3-reconciliation.json`
   is the sanitized central binding for candidate identity, artifacts, signing,
-  hosted gates, Windows and LDPlayer boundaries, publication state and the
-  unchanged execution index.
+  hosted gates, Windows, LDPlayer and PB-14 boundaries, publication state and
+  the unchanged execution index.
 - The exact raw Windows and LDPlayer evidence remains in the local candidate
   staging directory; candidate Windows clean-host evidence is also retained on
   public release-index `main` at `32f560dd...`.
