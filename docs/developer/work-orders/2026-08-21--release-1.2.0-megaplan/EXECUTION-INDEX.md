@@ -3085,3 +3085,26 @@ evidence, not current/Brain-origin production rollback proof.
 exact-candidate evidence. Distribution becomes `I4=4`, `I3=308`, `I2=15`,
 `I1=38`, `I0=12`; 312 rows are at or above `I3`, 65 remain below `I3`, and
 the pending stage split becomes `0/30/14/21`.
+
+## 2026-08-27 — WO-013AG exact candidate.3 Brain-origin source
+
+A new read-only runtime-source probe selects the same 193 tracked files as the
+Brain backend deploy, reads exact Git blobs from signed candidate platform
+source `eafaca3...` and compares them with live SFTP reads without retaining
+remote contents. It records raw identity separately and permits only
+`CRLF_TO_LF_ONLY`; every other difference fails closed.
+
+The live Brain payload passes `193/193` after that exact normalization: `4`
+files are raw byte-identical, `189` differ only by CRLF and semantic mismatch
+count is zero. Fresh Brain readiness passes `23/23`, and all seven current
+enabled delivery rows are TCP-open from Brain, including normal `ru_spb:443`.
+This proves exact candidate.3 platform-source identity plus Brain control-plane
+health; it is not authenticated client egress, current-origin aggregate or
+RU-origin proof. The disabled stale `ru_spb` type-3 bridge remains separate.
+
+No deploy, restart, route/pointer change, entitlement grant or public/stable
+mutation occurs because the live backend is already the candidate source.
+`FRKN_PLAN/W9-02` gains exact Brain evidence but remains `I1` until exact
+current-origin aggregate and separately authorized RU-origin results exist.
+Distribution stays `I4=4`, `I3=308`, `I2=15`, `I1=38`, `I0=12`; 312 rows are
+at or above `I3`, 65 remain below, and stage split stays `0/30/14/21`.

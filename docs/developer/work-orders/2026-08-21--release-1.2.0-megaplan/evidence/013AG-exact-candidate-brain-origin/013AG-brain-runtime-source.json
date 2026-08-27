@@ -1,0 +1,20 @@
+{
+  "schema_version": "pokrov-brain-runtime-source-probe-v1",
+  "checked_at": "2026-08-27T04:16:12.942985+00:00",
+  "origin": "brain",
+  "mode": "READ_ONLY_SFTP",
+  "source_revision": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+  "payload_selection": "remote_deploy_brain_portal_code.iter_upload_mappings",
+  "payload_count": 193,
+  "raw_match_count": 4,
+  "crlf_only_difference_count": 189,
+  "normalized_match_count": 193,
+  "normalization_rule": "CRLF_TO_LF_ONLY",
+  "mismatch_count": 0,
+  "mismatches": [],
+  "exact_source_semantic_bytes_match": true,
+  "auth_method": "key",
+  "remote_content_retained": false,
+  "runtime_mutated": false,
+  "ok": true
+}
