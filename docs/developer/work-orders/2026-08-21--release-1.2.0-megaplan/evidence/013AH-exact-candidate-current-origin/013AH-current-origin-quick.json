@@ -1,0 +1,35 @@
+{
+  "schema": "pokrov.release-gate-summary/v1",
+  "recorded_at": "2026-08-27T05:14:54Z",
+  "status": "PASS",
+  "gate_set": "quick",
+  "origin": "current",
+  "target_platform_source": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+  "target_client_source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+  "target_core_source": "344b317a7a09eca7943a93866b193553538bd8f6",
+  "harness_source": "c9b34276fd42b4ef4a670caf4a630a77232271cc",
+  "raw_report_sha256": "e49949bee41c685c83fe7ac570d2702cbca69a78768b1fa3e3a3cff261111a68",
+  "gates": [
+    {"name": "Critical worker regression", "exit_code": 0, "duration_seconds": 91.18},
+    {"name": "Client release-handoff v2 contract", "exit_code": 0, "duration_seconds": 23.82},
+    {"name": "Client security smoke", "exit_code": 0, "duration_seconds": 0.37},
+    {"name": "Client portal Flutter tests", "exit_code": 0, "duration_seconds": 63.95},
+    {"name": "API lifecycle smoke", "exit_code": 0, "duration_seconds": 6.91},
+    {"name": "Public link checks", "exit_code": 0, "duration_seconds": 0.09},
+    {"name": "Marketing production build", "exit_code": 0, "duration_seconds": 27.61},
+    {"name": "AdminApp production build", "exit_code": 0, "duration_seconds": 39.97},
+    {"name": "Admin webapp smoke", "exit_code": 0, "duration_seconds": 0.17},
+    {"name": "WebApp production build", "exit_code": 0, "duration_seconds": 32.07},
+    {"name": "WebApp Playwright E2E", "exit_code": 0, "duration_seconds": 112.43},
+    {"name": "UI visual smoke", "exit_code": 0, "duration_seconds": 0.09}
+  ],
+  "result_counts": {"passed": 12, "failed": 0, "total": 12},
+  "classification": {
+    "current_origin_local_quick": "PASS",
+    "brain_origin": "NOT_IN_SCOPE_SEPARATE_WO_013AG",
+    "ru_origin": "BLOCKED_BY_ACCESS",
+    "android_physical": "BLOCKED_BY_ACCESS",
+    "runtime_app_download": "SKIPPED_NO_LIVE_TOKEN",
+    "client_platform_builds": "NOT_REQUESTED"
+  }
+}

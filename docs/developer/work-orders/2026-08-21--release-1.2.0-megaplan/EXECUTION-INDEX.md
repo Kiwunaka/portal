@@ -3108,3 +3108,39 @@ mutation occurs because the live backend is already the candidate source.
 current-origin aggregate and separately authorized RU-origin results exist.
 Distribution stays `I4=4`, `I3=308`, `I2=15`, `I1=38`, `I0=12`; 312 rows are
 at or above `I3`, 65 remain below, and stage split stays `0/30/14/21`.
+
+## 2026-08-27 — WO-013AH exact candidate.3 current-origin aggregate
+
+The first exact-source quick run remains a truthful `FAIL`: the invocation
+used the wrong Core override name, the platform static smoke still pinned
+retired Core `v1.0.3`, and WebApp E2E assumed source-tree dependencies even
+though production builds used isolated copies. Candidate product code and
+signed bytes were not changed to hide those failures.
+
+Harness commit `c9b3427...` pins the active exact Core `v1.1.0` seed bytes,
+runs frontend builds and Playwright in independent `npm ci` copies and adds an
+explicit immutable platform target. The corrected harness targets signed
+platform/client/Core `eafaca3...` / `ac22825...` / `344b317...`: quick passes
+`12/12`; default passes `13/13`, including release pytest `675 passed + 38
+subtests`, admin/auth `96 passed + 8 subtests`, full Flutter and Playwright
+`88 passed`.
+
+Clean source-bound current-origin API probes disable proxy discovery and bind
+the preferred `Ethernet 2` RFC1918 source. Health p95 is `42.5337 ms <= 100
+ms`; public catalog p95 is `43.3626 ms <= 200 ms`; each uses `50` measured
+samples after `5` warmups. The literal local address remains only in private
+ignored raw evidence.
+
+Platform PR 48 binds harness head `c9b3427...`, but GitHub billing/spending
+limits stopped Guardrails run `33041906127` and Release v2 run `33041906160`
+before either job started. Both are `BLOCKED_BY_ACCESS_GITHUB_BILLING`, not
+test failures and not passes. `OWNER_SOLO_EXCEPTION` does not waive successful
+app-bound checks, so the PR remains unmerged.
+
+No deploy, restart, entitlement grant, route/pointer change, public asset or
+stable mutation occurs. `REL/PERF-001`, `REL_GATE/GATE-E`,
+`REL_DOD/DOD-13` and `FRKN_PLAN/W9-02` gain stronger evidence without level
+changes. Exact current-origin and Brain-origin are now retained separately;
+`FRKN_PLAN/W9-02` stays `I1` because authorized RU-origin remains absent.
+Distribution stays `I4=4`, `I3=308`, `I2=15`, `I1=38`, `I0=12`; 312 rows are
+at or above `I3`, 65 remain below, and stage split stays `0/30/14/21`.

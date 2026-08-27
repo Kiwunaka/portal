@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "contract": {
+    "id": "pokrov.performance-budgets",
+    "sha256": "9edc0b96ee1b7e762342d8ff72f974d61898540fd5c4174ff0cc8d6583d6fca2",
+    "version": "1.0.0"
+  },
+  "overall_status": "PASS",
+  "release": {
+    "candidate_label": "pokrov-1.2.0-candidate.3",
+    "source_revision": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+    "version": "1.2.0",
+    "working_tree_state": "clean"
+  },
+  "method": {
+    "origin": "current",
+    "network_profile": "current-workstation-direct-ethernet2-source-bound",
+    "connection_policy": "persistent_http1_keep_alive",
+    "proxy_policy": "disabled_for_source_bound_probe",
+    "source_address": "REDACTED_RFC1918",
+    "warmup_samples_discarded": 5,
+    "private_raw_sha256": "23687a05744f84d00cd215c7a912e05149dc2f053cb372fa1289ec4530efb074",
+    "collector_gate_sha256": "ad1c2cfb59d311d138e44ca4009aece9c09c694515877cee356a671d49447105"
+  },
+  "result": {
+    "budget_id": "api.public_catalog.current_origin_ms",
+    "gate_status": "PASS",
+    "sample_count": 50,
+    "statistic": "p95",
+    "unit": "ms",
+    "value": 43.3626,
+    "target_lte": 200,
+    "stop_lte": 200,
+    "target_met": true,
+    "stop_met": true
+  }
+}
