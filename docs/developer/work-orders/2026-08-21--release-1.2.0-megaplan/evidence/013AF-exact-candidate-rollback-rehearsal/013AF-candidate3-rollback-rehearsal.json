@@ -1,0 +1,173 @@
+{
+  "schema": "pokrov.release-1.2.0.rollback-rehearsal/v1",
+  "generated_at_utc": "2026-08-27T03:31:49Z",
+  "status": "PASS_LOCAL_EXACT_CANDIDATE_PORTAL_CLIENT_ROLLBACK",
+  "row_outcomes": {
+    "REL_DOD/DOD-18": "I3"
+  },
+  "scope": {
+    "environment": "isolated local fixture",
+    "portal_consumer": "scripts/remote_brain_apply_release_handoff.py",
+    "client_pointer": "scripts/set-release-stable-pointer.ps1",
+    "sequence": [
+      "1.1.6+20260819",
+      "pokrov-1.2.0",
+      "1.1.6+20260819"
+    ]
+  },
+  "signed_candidate": {
+    "candidate_label": "pokrov-1.2.0-candidate.3",
+    "candidate_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
+    "manifest_sha256": "a2752b6a3b95faacf13a68edb708c560966a0f5eb8727e109d7f1603fdc81090",
+    "signature_sha256": "926f0b4667a58ba9cc5ace5c4e6c3c8129d1ec3d4d449b3f0831a8c527cd7121",
+    "signature_verification": {
+      "status": "PASS",
+      "algorithm": "ed25519",
+      "key_id": "pokrov-release-2026-01",
+      "public_key_sha256": "651d1bcfbedecc4e50d21f3ad3bf3cc990a6cfc97ad355f0e0e76972b8ba8024"
+    },
+    "source_revisions": {
+      "platform": {
+        "repository": "Kiwunaka/portal",
+        "revision": "eafaca3e64c0619dea7f58fc9c430682b4520559"
+      },
+      "client": {
+        "repository": "Kiwunaka/POKROV-app",
+        "revision": "ac22825e857a313c9e4eba61030eb548d6346ead"
+      },
+      "core": {
+        "repository": "Kiwunaka/pokrov-core",
+        "revision": "344b317a7a09eca7943a93866b193553538bd8f6"
+      },
+      "release_index": {
+        "repository": "Kiwunaka/pokrov",
+        "revision": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2"
+      }
+    },
+    "handoff_binding": {
+      "classification": "valid_v2",
+      "schema_version": 2,
+      "release_id": "pokrov-1.2.0",
+      "release_version": "1.2.0",
+      "artifact_count": 6,
+      "blocking_gate_count": 10
+    },
+    "candidate_handoff_sha256": "565a43dd8e31444e6154872823bdbfd6a222acdef3c600efec18c23d68c5063b",
+    "candidate_artifact_set_sha256": "a2d650f4820e940028b53e90061a7247eaa54fc030cb6e14adb4ef8d339a55e7"
+  },
+  "retained_stable": {
+    "release_id": "1.1.6+20260819",
+    "release_version": "1.1.6",
+    "handoff_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f"
+  },
+  "portal": {
+    "status": "PASS_LOCAL",
+    "before_sha256": "c4d3ea78d382d6ca6ab7d1d4d5367edc4478a9d96d91527ec2000df80e38ecd7",
+    "forward_sha256": "a290236f1389b4bc6401d35d33723246621689f18f4dcf3ca56747ee6cf4e489",
+    "rollback_sha256": "c4d3ea78d382d6ca6ab7d1d4d5367edc4478a9d96d91527ec2000df80e38ecd7",
+    "rollback_byte_identical": true,
+    "unrelated_setting_preserved": true,
+    "candidate_label": "pokrov-1.2.0",
+    "candidate_handoff_sha256": "565a43dd8e31444e6154872823bdbfd6a222acdef3c600efec18c23d68c5063b",
+    "candidate_artifact_set_sha256": "a2d650f4820e940028b53e90061a7247eaa54fc030cb6e14adb4ef8d339a55e7",
+    "candidate_android_sha256": "e105dc28bcadba9c063f64fb05652f6d905df373700c3c9d531a10ed0bd5d4d3",
+    "candidate_windows_sha256": "9962e3e80947dae374619ed388fc08b7322bffda38202a42e5812597c7818021"
+  },
+  "client_channel": {
+    "status": "PASS_LOCAL",
+    "initial_validation": {
+      "status": "PASS",
+      "stable_release_id": "1.1.6+20260819",
+      "stable_release_version": "1.1.6",
+      "stable_handoff_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+      "rollback_target_count": 2,
+      "applied": false
+    },
+    "dry_run": {
+      "status": "PASS",
+      "from_release_id": "1.1.6+20260819",
+      "from_handoff_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+      "to_release_id": "pokrov-1.2.0",
+      "to_handoff_sha256": "565a43dd8e31444e6154872823bdbfd6a222acdef3c600efec18c23d68c5063b",
+      "pointer_path": "<isolated>/artifacts/releases/release-handoff.json",
+      "applied": false
+    },
+    "forward": {
+      "status": "PASS",
+      "from_release_id": "1.1.6+20260819",
+      "from_handoff_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+      "to_release_id": "pokrov-1.2.0",
+      "to_handoff_sha256": "565a43dd8e31444e6154872823bdbfd6a222acdef3c600efec18c23d68c5063b",
+      "pointer_path": "<isolated>/artifacts/releases/release-handoff.json",
+      "applied": true,
+      "observed_release_id": "pokrov-1.2.0",
+      "observed_handoff_sha256": "565a43dd8e31444e6154872823bdbfd6a222acdef3c600efec18c23d68c5063b",
+      "backup_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+      "applied_at_utc": "2026-08-27T03:31:48Z"
+    },
+    "rollback": {
+      "status": "PASS",
+      "from_release_id": "pokrov-1.2.0",
+      "from_handoff_sha256": "565a43dd8e31444e6154872823bdbfd6a222acdef3c600efec18c23d68c5063b",
+      "to_release_id": "1.1.6+20260819",
+      "to_handoff_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+      "pointer_path": "<isolated>/artifacts/releases/release-handoff.json",
+      "applied": true,
+      "observed_release_id": "1.1.6+20260819",
+      "observed_handoff_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+      "backup_sha256": "565a43dd8e31444e6154872823bdbfd6a222acdef3c600efec18c23d68c5063b",
+      "applied_at_utc": "2026-08-27T03:31:49Z"
+    },
+    "final_validation": {
+      "status": "PASS",
+      "stable_release_id": "1.1.6+20260819",
+      "stable_release_version": "1.1.6",
+      "stable_handoff_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+      "rollback_target_count": 2,
+      "applied": false
+    },
+    "restored_stable_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+    "rollback_byte_identical": true,
+    "forward_backup_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+    "forward_receipt": {
+      "status": "PASS",
+      "from_release_id": "1.1.6+20260819",
+      "from_handoff_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+      "to_release_id": "pokrov-1.2.0",
+      "to_handoff_sha256": "565a43dd8e31444e6154872823bdbfd6a222acdef3c600efec18c23d68c5063b",
+      "pointer_path": "<isolated>/artifacts/releases/release-handoff.json",
+      "applied": true,
+      "observed_release_id": "pokrov-1.2.0",
+      "observed_handoff_sha256": "565a43dd8e31444e6154872823bdbfd6a222acdef3c600efec18c23d68c5063b",
+      "backup_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+      "applied_at_utc": "2026-08-27T03:31:48Z"
+    },
+    "forward_receipt_sha256": "b889a35ffac5dda2b2d36b0eacdf029d2207d07b06caa2e5a46a09e0c9296df3",
+    "rollback_backup_sha256": "565a43dd8e31444e6154872823bdbfd6a222acdef3c600efec18c23d68c5063b",
+    "rollback_receipt": {
+      "status": "PASS",
+      "from_release_id": "pokrov-1.2.0",
+      "from_handoff_sha256": "565a43dd8e31444e6154872823bdbfd6a222acdef3c600efec18c23d68c5063b",
+      "to_release_id": "1.1.6+20260819",
+      "to_handoff_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+      "pointer_path": "<isolated>/artifacts/releases/release-handoff.json",
+      "applied": true,
+      "observed_release_id": "1.1.6+20260819",
+      "observed_handoff_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+      "backup_sha256": "565a43dd8e31444e6154872823bdbfd6a222acdef3c600efec18c23d68c5063b",
+      "applied_at_utc": "2026-08-27T03:31:49Z"
+    },
+    "rollback_receipt_sha256": "bdeec3afdbdd8e3fb9f65485baf048adbe6f69d975809299a2a20d446b3796c1"
+  },
+  "mutation_boundary": {
+    "tracked_client_pointer": "UNCHANGED",
+    "tracked_client_catalog": "UNCHANGED",
+    "portal_runtime": "NOT_MUTATED",
+    "production_deploy": "NOT_AUTHORIZED",
+    "public_release": "NOT_AUTHORIZED",
+    "stable_promotion": "NOT_AUTHORIZED",
+    "physical_device": "NOT_RUN",
+    "android_emulator": "NOT_REQUIRED_FOR_ROLLBACK_REHEARSAL"
+  },
+  "evidence_ceiling": "I3 verified-local exact-candidate rehearsal; I4/I5 still require an authorized runtime pointer rollback plus current/brain-origin readback"
+}

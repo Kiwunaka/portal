@@ -1,0 +1,368 @@
+{
+  "schema_version": 2,
+  "release": {
+    "version": "1.2.0",
+    "channel": "beta",
+    "candidate_label": "pokrov-1.2.0",
+    "created_at_utc": "2026-08-27T02:04:27Z",
+    "release_notes": {
+      "summary": "POKROV 1.2.0 direct beta: production-signed Android and owner-approved unsigned Windows with SmartScreen warning.",
+      "url": "https://github.com/Kiwunaka/pokrov/releases/tag/v1.2.0"
+    }
+  },
+  "sources": {
+    "platform": {
+      "repository": "Kiwunaka/portal",
+      "revision": "eafaca3e64c0619dea7f58fc9c430682b4520559"
+    },
+    "client": {
+      "repository": "Kiwunaka/POKROV-app",
+      "revision": "ac22825e857a313c9e4eba61030eb548d6346ead"
+    },
+    "core": {
+      "repository": "Kiwunaka/pokrov-core",
+      "revision": "344b317a7a09eca7943a93866b193553538bd8f6"
+    },
+    "release_index": {
+      "repository": "Kiwunaka/pokrov",
+      "revision": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2"
+    }
+  },
+  "compatibility": {
+    "core_version": "1.1.0",
+    "core_abi": {
+      "desktop": 2,
+      "android_package": "space.pokrov.core"
+    },
+    "app_contract_version": "2",
+    "api_contract_version": "2",
+    "contracts": [
+      {
+        "id": "admin-v2",
+        "version": "admin-v2.1",
+        "sha256": "7b14811fddb5b3e6d76e46af009a3e50a7845729ae824de0e4174ea776157dc4"
+      },
+      {
+        "id": "commercial-contract",
+        "version": "pokrov-commercial-contract-v1",
+        "sha256": "fca9efda08455ca7591315c648c2328164c947d2d8b219182c39b5751d964594"
+      },
+      {
+        "id": "error-catalog",
+        "version": "1.2.0",
+        "sha256": "7d3bf242777d5bf76bbebcf162e5969d3f83d7f68b2787051e1c4fddeadc3dc7"
+      },
+      {
+        "id": "marketing-governance",
+        "version": "pokrov-marketing-governance-v1",
+        "sha256": "eb2f6f67e8f41754365347ac7b33bf70bd6f562684c9a84a834071046d4578e4"
+      },
+      {
+        "id": "observability-event",
+        "version": "1.0.0",
+        "sha256": "24ae72442f778d7f1334ae0a4bf4d774738e4de275707b29420ec733af65cc17"
+      },
+      {
+        "id": "performance-budgets",
+        "version": "1",
+        "sha256": "9c2cca66d4675ec863d86fddf58f0772c6f11e0f535d4709a2056d9a3da82378"
+      },
+      {
+        "id": "product-facts",
+        "version": "1",
+        "sha256": "3df7e7a03bf6a7e62e49e2791641428fb415cdca692a67b4a48fee79a853289e"
+      },
+      {
+        "id": "release-candidate-stage-policy",
+        "version": "1",
+        "sha256": "b1f66479e5a272de79968319584f8609a2dadc75227ca1ffceba509a00c293e4"
+      },
+      {
+        "id": "release-handoff",
+        "version": "2",
+        "sha256": "eba6d4c2f8b2f8c92da4557209fc7b116eea3a68a26a34a258a5141467aa72ee"
+      },
+      {
+        "id": "release-stop-ship-regressions",
+        "version": "1",
+        "sha256": "982d41833a5678875ddb0ef314fbe94870b55952b0a256efaecb281556ad843d"
+      },
+      {
+        "id": "support-key-set",
+        "version": "1",
+        "sha256": "c9ba4b797820da4c4660427427a941ff19e1c2e20e543431ee570085b23ee4c0"
+      },
+      {
+        "id": "support-signed-envelope",
+        "version": "1",
+        "sha256": "20d39cbb4497fc5c57108be4d048ac72df64df259fb602d38f8f936d1d91d096"
+      }
+    ]
+  },
+  "artifacts": [
+    {
+      "platform": "android",
+      "kind": "aab",
+      "architecture": "universal",
+      "file_name": "pokrov-android-market.aab",
+      "public_url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.2.0/pokrov-android-market.aab",
+      "sha256": "50c1db2ef0f7f00c8fb2a60951e2c63226126d5da4a97cdf682c5531562a90da",
+      "size_bytes": 126171642,
+      "source_revision": "ac22825e857a313c9e4eba61030eb548d6346ead",
+      "core_version": "1.1.0",
+      "core_abi": null,
+      "core_artifact_sha256": "da3ea37834b688abac5c276f4ca9c2cdcc8e32b97edf5062913fc4f3fea6aba9",
+      "signing": {
+        "status": "PASS",
+        "signer_identity": "sha256:0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500",
+        "evidence_sha256": "59f85362c855ba4163ecf1605ebb0c99eed67bf81226c1429f2ebd3f70e8b5af"
+      },
+      "sbom": {
+        "status": "PASS",
+        "format": "cyclonedx-1.5-json",
+        "sha256": "a98d9a1231f8ccf3b1200e281c8eb55a9047a28b4d3f1b12dd1f33de932c78b7"
+      },
+      "provenance": {
+        "status": "PASS",
+        "format": "slsa-v1-json",
+        "sha256": "1789520595c851ccf5994e2b6ac58a7242998886a4056da8936e27f8726f5cfe"
+      }
+    },
+    {
+      "platform": "android",
+      "kind": "apk",
+      "architecture": "arm64-v8a",
+      "file_name": "pokrov-android-arm64-v8a.apk",
+      "public_url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.2.0/pokrov-android-arm64-v8a.apk",
+      "sha256": "e105dc28bcadba9c063f64fb05652f6d905df373700c3c9d531a10ed0bd5d4d3",
+      "size_bytes": 101213906,
+      "source_revision": "ac22825e857a313c9e4eba61030eb548d6346ead",
+      "core_version": "1.1.0",
+      "core_abi": null,
+      "core_artifact_sha256": "da3ea37834b688abac5c276f4ca9c2cdcc8e32b97edf5062913fc4f3fea6aba9",
+      "signing": {
+        "status": "PASS",
+        "signer_identity": "sha256:0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500",
+        "evidence_sha256": "ec7a97ddef8c55cf6b94f7d706fdabd6f48c61c2176bdd7c8104b465c1e43a1e"
+      },
+      "sbom": {
+        "status": "PASS",
+        "format": "cyclonedx-1.5-json",
+        "sha256": "a98d9a1231f8ccf3b1200e281c8eb55a9047a28b4d3f1b12dd1f33de932c78b7"
+      },
+      "provenance": {
+        "status": "PASS",
+        "format": "slsa-v1-json",
+        "sha256": "1789520595c851ccf5994e2b6ac58a7242998886a4056da8936e27f8726f5cfe"
+      }
+    },
+    {
+      "platform": "android",
+      "kind": "apk",
+      "architecture": "armeabi-v7a",
+      "file_name": "pokrov-android-armeabi-v7a.apk",
+      "public_url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.2.0/pokrov-android-armeabi-v7a.apk",
+      "sha256": "ef8b96bdaef056a138d7bf444909011d8f5ca388180e695bd733e35af7b769b4",
+      "size_bytes": 90710304,
+      "source_revision": "ac22825e857a313c9e4eba61030eb548d6346ead",
+      "core_version": "1.1.0",
+      "core_abi": null,
+      "core_artifact_sha256": "da3ea37834b688abac5c276f4ca9c2cdcc8e32b97edf5062913fc4f3fea6aba9",
+      "signing": {
+        "status": "PASS",
+        "signer_identity": "sha256:0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500",
+        "evidence_sha256": "3c949c16d535c9978fc2f0c3335022dccdbc2885b95cd0eba18890fa25611186"
+      },
+      "sbom": {
+        "status": "PASS",
+        "format": "cyclonedx-1.5-json",
+        "sha256": "a98d9a1231f8ccf3b1200e281c8eb55a9047a28b4d3f1b12dd1f33de932c78b7"
+      },
+      "provenance": {
+        "status": "PASS",
+        "format": "slsa-v1-json",
+        "sha256": "1789520595c851ccf5994e2b6ac58a7242998886a4056da8936e27f8726f5cfe"
+      }
+    },
+    {
+      "platform": "android",
+      "kind": "apk",
+      "architecture": "universal",
+      "file_name": "pokrov-android-universal.apk",
+      "public_url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.2.0/pokrov-android-universal.apk",
+      "sha256": "f41c76ebf7bf69f6681d7df87e7722dcdccdec383ef950156b69829caee71c51",
+      "size_bytes": 295051181,
+      "source_revision": "ac22825e857a313c9e4eba61030eb548d6346ead",
+      "core_version": "1.1.0",
+      "core_abi": null,
+      "core_artifact_sha256": "da3ea37834b688abac5c276f4ca9c2cdcc8e32b97edf5062913fc4f3fea6aba9",
+      "signing": {
+        "status": "PASS",
+        "signer_identity": "sha256:0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500",
+        "evidence_sha256": "8442131c0c500a6cec153643f2bac03d08a44f73d5a74bfebcad161de2e8239d"
+      },
+      "sbom": {
+        "status": "PASS",
+        "format": "cyclonedx-1.5-json",
+        "sha256": "a98d9a1231f8ccf3b1200e281c8eb55a9047a28b4d3f1b12dd1f33de932c78b7"
+      },
+      "provenance": {
+        "status": "PASS",
+        "format": "slsa-v1-json",
+        "sha256": "1789520595c851ccf5994e2b6ac58a7242998886a4056da8936e27f8726f5cfe"
+      }
+    },
+    {
+      "platform": "android",
+      "kind": "apk",
+      "architecture": "x86_64",
+      "file_name": "pokrov-android-x86_64.apk",
+      "public_url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.2.0/pokrov-android-x86_64.apk",
+      "sha256": "7e697a2b7ea0fc0b390f7ee1df0a9c5cdce2730612579c3b6958138c35f6eba1",
+      "size_bytes": 109862385,
+      "source_revision": "ac22825e857a313c9e4eba61030eb548d6346ead",
+      "core_version": "1.1.0",
+      "core_abi": null,
+      "core_artifact_sha256": "da3ea37834b688abac5c276f4ca9c2cdcc8e32b97edf5062913fc4f3fea6aba9",
+      "signing": {
+        "status": "PASS",
+        "signer_identity": "sha256:0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500",
+        "evidence_sha256": "70984d7d63fa97fb528fb879d6c335d29c6cb9b01f091d6dba533a1f1adf5d01"
+      },
+      "sbom": {
+        "status": "PASS",
+        "format": "cyclonedx-1.5-json",
+        "sha256": "a98d9a1231f8ccf3b1200e281c8eb55a9047a28b4d3f1b12dd1f33de932c78b7"
+      },
+      "provenance": {
+        "status": "PASS",
+        "format": "slsa-v1-json",
+        "sha256": "1789520595c851ccf5994e2b6ac58a7242998886a4056da8936e27f8726f5cfe"
+      }
+    },
+    {
+      "platform": "windows",
+      "kind": "exe",
+      "architecture": "x64",
+      "file_name": "pokrov-windows-setup-x64.exe",
+      "public_url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.2.0/pokrov-windows-setup-x64.exe",
+      "sha256": "9962e3e80947dae374619ed388fc08b7322bffda38202a42e5812597c7818021",
+      "size_bytes": 28898240,
+      "source_revision": "ac22825e857a313c9e4eba61030eb548d6346ead",
+      "core_version": "1.1.0",
+      "core_abi": 2,
+      "core_artifact_sha256": "60fe3fad7835ec4d00c1f7168bb0ba01dd6b7ca5d883583340e5e2a86b8b3981",
+      "signing": {
+        "status": "SKIPPED_BY_OWNER",
+        "evidence_sha256": "6c1b4a11c6b388016d6dbf6ad62cedb664854be8e7288793ebde3f495fce0877"
+      },
+      "sbom": {
+        "status": "PASS",
+        "format": "cyclonedx-1.5-json",
+        "sha256": "a98d9a1231f8ccf3b1200e281c8eb55a9047a28b4d3f1b12dd1f33de932c78b7"
+      },
+      "provenance": {
+        "status": "PASS",
+        "format": "slsa-v1-json",
+        "sha256": "1789520595c851ccf5994e2b6ac58a7242998886a4056da8936e27f8726f5cfe"
+      }
+    }
+  ],
+  "manual_gates": [
+    {
+      "id": "BRAIN_ORIGIN",
+      "origin": "brain",
+      "status": "NOT_REQUESTED",
+      "required_for_promotion": true
+    },
+    {
+      "id": "CURRENT_ORIGIN",
+      "origin": "current",
+      "status": "NOT_REQUESTED",
+      "required_for_promotion": true
+    },
+    {
+      "id": "ANDROID_OEM_MATRIX",
+      "origin": "owner",
+      "status": "MANUAL_OWNER_TEST",
+      "required_for_promotion": true
+    },
+    {
+      "id": "ANDROID_PHYSICAL_DEVICE",
+      "origin": "owner",
+      "status": "MANUAL_OWNER_TEST",
+      "required_for_promotion": true
+    },
+    {
+      "id": "ANDROID_SIGNER_RECOVERY",
+      "origin": "owner",
+      "status": "MANUAL_OWNER_TEST",
+      "required_for_promotion": true
+    },
+    {
+      "id": "LEGAL_COMMERCIAL",
+      "origin": "owner",
+      "status": "MANUAL_OWNER_TEST",
+      "required_for_promotion": true
+    },
+    {
+      "id": "OPERATOR_OIDC_RBAC",
+      "origin": "owner",
+      "status": "MANUAL_OWNER_TEST",
+      "required_for_promotion": true
+    },
+    {
+      "id": "ROLLBACK_DRILL",
+      "origin": "owner",
+      "status": "NOT_REQUESTED",
+      "required_for_promotion": true
+    },
+    {
+      "id": "SUPPORT_MODE_SIGNING",
+      "origin": "owner",
+      "status": "PASS",
+      "required_for_promotion": true,
+      "observed_at_utc": "2026-08-27T02:04:27Z",
+      "evidence_sha256": "1ea6780120c617514037866d9ed59dce605b6253c883b671d7ff211613739aa7"
+    },
+    {
+      "id": "WIN_003",
+      "origin": "owner",
+      "status": "MANUAL_OWNER_TEST",
+      "required_for_promotion": true
+    },
+    {
+      "id": "WINDOWS_TRUSTED_SIGNING",
+      "origin": "owner",
+      "status": "SKIPPED_BY_OWNER",
+      "required_for_promotion": false,
+      "evidence_sha256": "6c1b4a11c6b388016d6dbf6ad62cedb664854be8e7288793ebde3f495fce0877"
+    },
+    {
+      "id": "WINDOWS_UNSIGNED_BETA_OWNER_EXCEPTION",
+      "origin": "owner",
+      "status": "PASS",
+      "required_for_promotion": true,
+      "observed_at_utc": "2026-08-27T02:04:27Z",
+      "evidence_sha256": "6c1b4a11c6b388016d6dbf6ad62cedb664854be8e7288793ebde3f495fce0877"
+    },
+    {
+      "id": "PAYMENT_PROVIDER_E2E",
+      "origin": "provider",
+      "status": "MANUAL_OWNER_TEST",
+      "required_for_promotion": true
+    },
+    {
+      "id": "RU_ORIGIN_IF_CLAIMED",
+      "origin": "ru",
+      "status": "NOT_REQUESTED",
+      "required_for_promotion": false
+    }
+  ],
+  "promotion": {
+    "target_channel": "beta",
+    "same_byte_required": true,
+    "source_artifact_set_sha256": "a2d650f4820e940028b53e90061a7247eaa54fc030cb6e14adb4ef8d339a55e7",
+    "observed_status": "NOT_REQUESTED"
+  }
+}
