@@ -1,0 +1,58 @@
+{
+  "schema_version": "pokrov-owned-hy2-server-bundle-v1",
+  "state": "source_only_default_off",
+  "contract_id": "pokrov.hy2.outbound.v1",
+  "contract_sha256": "c96b38e58ea33f838f23b80a65f3a9a264e932b7248f206798df9a0b8fa0fb98",
+  "variant": "salamander_v1",
+  "engine": {
+    "name": "pokrov-sing-box",
+    "version": "1.13.0-pokrov-hy2-lab.1",
+    "source_version": "1.13.0",
+    "go_toolchain": "go1.25.13",
+    "goos": "linux",
+    "goarch": "amd64",
+    "cgo_enabled": false,
+    "build_tags": [
+      "with_quic"
+    ]
+  },
+  "runtime": {
+    "listen": "0.0.0.0",
+    "listen_port": 443,
+    "single_port": true,
+    "port_hopping": false,
+    "tls_required": true,
+    "tls_min_version": "1.3",
+    "alpn": [
+      "h3"
+    ],
+    "obfs_type": "salamander",
+    "gecko": false,
+    "mimic": false,
+    "host_tun": false
+  },
+  "runtime_secret_placeholders": [
+    "POKROV_HY2_USER_NAME",
+    "POKROV_HY2_PASSWORD",
+    "POKROV_HY2_OBFS_PASSWORD",
+    "POKROV_HY2_CERTIFICATE_PATH",
+    "POKROV_HY2_KEY_PATH"
+  ],
+  "install": {
+    "release_root": "/opt/pokrov/hy2/releases",
+    "current_pointer": "/opt/pokrov/hy2/current",
+    "config_path": "/etc/pokrov-hy2/config.json",
+    "service_path": "/etc/systemd/system/pokrov-hy2-lab.service",
+    "service_name": "pokrov-hy2-lab.service",
+    "enable_by_default": false
+  },
+  "rollback": {
+    "backup_root": "/root/pokrov-hy2-lab-backups",
+    "requires_exact_previous_receipt": true,
+    "kill_before_pointer_restore": true,
+    "verify_inactive_before_restore": true,
+    "verify_udp_listener_absent_after_stop": true,
+    "retain_failed_release": true
+  },
+  "evidence_ceiling": "immutable_local_server_bundle_only_until_authorized_deploy_and_live_matrix"
+}
