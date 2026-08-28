@@ -3705,3 +3705,44 @@ readiness. The original 377-row source-plan distribution remains `I4=4`,
 `I3` and `58/377` remain below. Including the one derived Smart-DNS row, the
 ledger contains `378` rows and `320` are at or above `I3`. No merge, deploy,
 candidate, public asset or promotion occurred.
+
+## 2026-08-28 — WO-013AU signed candidate.5 and bounded runtime evidence
+
+Promoted platform/client/Core sources `6ea08e9...` / `6b596ce...` /
+`e8eb772...` produced signed `pokrov-1.2.0-candidate.5`. Six canonical
+artifacts, a strict-v2 handoff, 347-component CycloneDX SBOM, six-subject SLSA
+provenance and support-pin evidence are retained. Release-index input
+`1d1b7ee...` passed public source-contract run `33190227686`; signer run
+`33190309331` passed and emitted an Actions-artifact-only manifest, detached
+signature and receipt. `promotion_authorized=false`; no tag, public release,
+store object or stable pointer exists. Windows remains owner-accepted unsigned
+beta with SmartScreen expected.
+
+The owner-authorized bounded Brain deploy passed a fresh `193/193` PLAN, then
+staged, backed up and compiled only `portal_bot/api_client_routes.py`, restarted
+only `portal-api`, passed delayed health and read back the reviewed candidate
+payload at `193/193`. Rollback was not required. This closes the prior
+one-file deployment prerequisite but does not select a lab device or prove a
+tunnel.
+
+The exact production-signed universal APK installed byte-identically on the
+physical Huawei. Ordinary Frankfurt produced an active POKROV service,
+validated Android sing-box VPN transport, DNS/ICMP success for Cloudflare,
+ChatGPT, Gemini and Xbox, and clean disconnect. The external Smart-DNS state
+machine then used public Cloudflare DoH as a control: Amsterdam failed closed
+without residue; a single Frankfurt retry produced validated TUN plus the same
+four DNS/ICMP successes. HTTP service access, resolver-path attribution,
+compatible unblocking behavior, leak/privacy and origin proof were not run.
+Final cold readback restored Frankfurt/ordinary, AdGuard, both DNS labs off,
+AI/Games through VPN and no POKROV service/VPN transport.
+
+The exact Huawei AWG binder PLAN matched the retained install SHA and confirmed
+material availability, but APPLY plus two later PLAN attempts failed at SSH
+protocol-banner/timeout before the remote helper. No policy mutation, endpoint
+delivery, AWG Core start or cryptographic test occurred. Candidate.5 AWG2 is
+therefore `BLOCKED_BY_ACCESS`; AWG3.1 is `NOT_RUN_AFTER_AWG2_BLOCKER`.
+
+`REL/REL-001`, `REL_GATE/GATE-F`, `FRKN_PLAN/W3-02` and
+`FRKN_SMART_DNS/SMARTDNS-01` remain `I3`. Evidence is stronger and now binds
+candidate.5, but no row advances. The 378-row distribution is unchanged.
+Candidate.3 Gate F `NO_GO` is historical; candidate.5 Gate F has not been run.

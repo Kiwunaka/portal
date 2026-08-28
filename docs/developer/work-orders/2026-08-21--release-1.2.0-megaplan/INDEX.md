@@ -2,8 +2,8 @@
 
 Last updated: 2026-08-28
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_CANDIDATE3_NO_GO_REPLACEMENT_PRE_CANDIDATE_LOCALLY_PROVED`
-Release candidate: `POKROV_1_2_0_CANDIDATE3_PRIVATE_PRERELEASE_PUBLIC_RELEASE_NOT_CREATED`
+Wave status: `PHASE_11_CANDIDATE5_SIGNED_RUNTIME_GATES_OPEN`
+Release candidate: `POKROV_1_2_0_CANDIDATE5_ACTIONS_ARTIFACT_ONLY_PUBLIC_RELEASE_NOT_CREATED`
 
 ## Outcome
 
@@ -34,8 +34,8 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 07 | Canonical Operator Center v2 and legacy admin cutover | Local package complete, including the deterministic 75-operation OpenAPI/TypeScript contract, purpose-bound Telegram OIDC Authorization Code plus PKCE login and same-identity step-up for preprovisioned operators, exact retained-bridge permissions and query-suppressed field redaction; live IdP, authenticated exact-candidate readback and cutover/rollback gates remain open | `WO-009`, `WO-009H`, `WO-009I`, `WO-009J` |
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete at `I3`; WO-013AN passes exact-candidate local UI/accessibility/responsive/static/API slices but leaves Gate E `BLOCKED` below I4 on authenticated, physical screen-reader/device, comparable-artifact, browser-lab, RU-origin and post-promotion evidence | `WO-010`, `WO-013AN` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
-| 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | AWG2/AWG3.1 and bounded base HY2 source labs are locally proved and default-off; HY2 has a byte-identical immutable server bundle and guarded remote installer, and its read-only owned-node plan proves a conflict-free `443/udp` target while blocking APPLY on absent Brain kill-switch/runtime material. WO-013AS advances the selective, non-recursive Smart DNS and opaque SNI relay lab to `I3`: exact pushed source, byte-reproducible server bundle, guarded installer source/tests, full client regression, production-signed build-4046 packages and LDPlayer/Huawei default-off/state-machine proof pass. Its dedicated-node PLAN/deploy and live DNS/SNI/access/leak/rollback evidence remain pending. Deploy/handshake and all exact device/RU gates remain open; Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013AE makes signed `pokrov-1.2.0-candidate.3` the current exact-candidate basis. Its Gate F remains `NO_GO`: 5 of 19 checks pass, 14 remain non-PASS and Gate B has one explicit candidate failure. 013AO separately binds the replacement pre-candidate baseline; 013AR adds the default-off managed HY2 source, client/server artifacts and production-signed Android install/launch proof at `I3`; 013AS now adds an `I3` selective Smart-DNS source/artifact/device-state checkpoint without a server deploy or live access claim. None creates a new candidate or live transport/access claim. No public `v1.2.0`, stable switch or promotion occurred; exact-candidate physical Android, Windows live network/recovery, HY2/Smart-DNS server deploy and runtime matrices, RU-origin, authenticated egress, provider/PostgreSQL/outbox runtime, Operator, legal and device/browser performance gates remain open | `WO-013`, `WO-013C`, `WO-013D`, `WO-013E`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S`, `WO-013T`, `WO-013U`, `WO-013V`, `WO-013W`, `WO-013X`, `WO-013Y`, `WO-013Z`, `WO-013AA`, `WO-013AB`, `WO-013AC`, `WO-013AD`, `WO-013AE`, `WO-013AF`, `WO-013AG`, `WO-013AH`, `WO-013AI`, `WO-013AJ`, `WO-013AK`, `WO-013AL`, `WO-013AM`, `WO-013AN`, `WO-013AO`, `WO-013AQ`, `WO-013AR`, `WO-013AS`, `WO-010K` |
+| 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | AWG2/AWG3.1 and bounded base HY2 source labs are locally proved and default-off. WO-013AU deploys the reviewed one-file Brain AWG managed-profile correction with `193/193` postdeploy readback, but the exact candidate.5 Huawei binder is `BLOCKED_BY_ACCESS` before the remote helper and no AWG Core starts. HY2 remains undeployed. Exact candidate.5 Smart-DNS state, validated TUN and bounded DNS/ICMP pass on Frankfurt, while compatible resolver, HTTP service access, attribution, leak, rollback and origin proof remain open. Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AU` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | WO-013AU makes signed `pokrov-1.2.0-candidate.5` the current exact-candidate basis with six immutable artifacts, strict-v2 handoff, SBOM, provenance and hosted release-index signature. Exact physical Android install, ordinary Frankfurt tunnel, bounded Smart-DNS TUN/DNS/ICMP and clean restore pass; AWG binding is access-blocked before Core, Windows live network/recovery and the broader manual/provider/origin matrices remain open. Candidate.3 Gate F `NO_GO` stays historical and has not been rerun for candidate.5. No tag, public `v1.2.0`, store object, stable switch or promotion occurred | `WO-013`, `WO-013AE`, `WO-013AI`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AT`, `WO-013AU` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -89,7 +89,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-011` | Prepare and, only after separate authorization, run the legally qualified capacity-bounded pilot | Platform/client | Local package complete; external execution `NOT_AUTHORIZED` | `WO-008`, `WO-009`, `WO-010` |
 | `WO-011H` | Align the homepage story contract with the governed trust-led surface | Marketing tests/docs | Regression closed locally; no ledger advancement | `WO-011F` |
 | `WO-012` | Evaluate transport diversity without a second client stack | Core/client/platform lab contract | Local package complete; manual/external gates retained | `WO-004`, `WO-006` |
-| `WO-013` | Prove and promote the exact RC | Cross-repo/release | Signed candidate.3 exists; Gate F is exact-evidence `NO_GO`; Gate G/public/stable promotion remains unauthorized | All release-bound WOs |
+| `WO-013` | Prove and promote the exact RC | Cross-repo/release | Signed candidate.5 is the current exact candidate; its Gate F has not been rerun, and candidate.3 `NO_GO` is retained history. Gate G/public/stable promotion remains unauthorized | All release-bound WOs |
 | `WO-013A2` | Replace circular phase/plan preflight logic with an exact fail-safe row-stage policy | Platform release preflight | Complete locally; no ledger advancement | `WO-001`, `WO-013A` |
 | `WO-013A3` | Move PB-14 out of the circular local-freeze lane because its signed-manifest health-stop proof requires an exact candidate | Platform release preflight | Complete locally; no ledger advancement, PB-14 remains unproved | `WO-013A2`, `WO-006J` |
 | `WO-013C` | Make Linux non-shipment and Android OEM background/permission/surface limitations explicit and machine-bound | Platform/client release limitations | Complete locally (`REL_DOD/DOD-17 I3`); exact-candidate release notes and physical OEM proof remain open | `WO-005`, `WO-006`, `WO-013` |
@@ -134,6 +134,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013AR` | Add a managed default-off Hysteria2 owner lab through the existing Core engine without a production claim | Cross-repository transport source/artifact and preflight evidence | Core/platform/client exact contract, encrypted device-bound material, L3 guard, reproducible Android AAR, production-signed build-4046 default-off phone proof, byte-identical immutable Linux server bundle and a no-mutation owned-node PLAN pass; the guarded installer blocks APPLY because deployed Brain has no HY2 kill-switch readback and runtime material is absent; `FRKN_HY2/HY2-01` remains `I3`; server deploy, managed handshake/traffic, performance, origins and candidate remain open | `WO-012G` owner amendment, `WO-013AO`, exact Core/platform/client source and returned physical phone |
 | `WO-013AS` | Add a default-off owned selective Smart DNS and opaque TLS relay lab without a second VPN core or access claim | Platform/client network-lab source and pre-candidate evidence | Exact pushed platform/client source, canonical policy, bounded Go DoH/SNI server, byte-reproducible immutable bundle, guarded remote installer source/tests, `412/412` client regression, production-signed build-4046 APKs and exact-byte LDPlayer/Huawei default-off/state-machine proof advance `SMARTDNS-01` to `I3`; dedicated-node PLAN/deploy, live DNS/SNI/access/leak/lifecycle/rollback/origin evidence and candidate remain open | `WO-013AO`, `WO-013AR`, platform `2d18fd7`, client `75e82b0`, retained local artifacts, returned physical phone and LDPlayer |
 | `WO-013AT` | Retain the owner-free GitHub policy and exact current PR-head local gate without creating a candidate or changing visibility | Cross-repository release policy and pre-candidate evidence | The owner declines paid GitHub and waives private branch protection only under `OWNER_SOLO_EXCEPTION`; exact platform/client/Core product sources pass the local aggregate `15/15`; private platform/client hosted checks remain zero-step `BLOCKED_BY_ACCESS`, Core passes four product jobs and awaits the client-main binding; no visibility, merge, deploy, candidate or ledger change occurs | `WO-013AO`, current PRs 58/33/6, exact local aggregate, future open-source safety audit |
+| `WO-013AU` | Sign candidate.5, deploy the reviewed Brain AWG route and retain bounded exact physical Android runtime evidence | Cross-repository candidate/runtime evidence | Six immutable artifacts, strict-v2 handoff, SBOM/provenance and hosted manifest signature are retained; the one-file Brain route deploy passes `193/193` with only `portal-api` restarted; exact physical ordinary Frankfurt tunnel and bounded Smart-DNS DNS/ICMP pass with clean restore; AWG device binding is `BLOCKED_BY_ACCESS` before the remote helper/Core; Gate F, Windows/provider/origin/manual gates, public assets and stable promotion remain open | `WO-013AT`, promoted platform/client/Core tuple, release-index signer, authorized Brain deploy, returned physical phone |
 
 ## Current evidence
 
@@ -141,6 +142,11 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `EXECUTION-LEDGER.csv` is the machine-readable item register; `(plan,id)` is the primary key.
 - `EXECUTION-INDEX.md` defines the completion index and aggregate reporting rules.
 - `SOURCE-CROSSWALK.md` preserves plan coverage and conflict decisions.
+- `WO-013AU-candidate5-signing-brain-awg-route-and-physical-runtime.md`
+  binds the signed candidate.5 artifact set and hosted signature, exact
+  one-file Brain deploy, bounded physical Android/Smart-DNS runtime proof,
+  access-blocked AWG binder and clean device restore without authorizing
+  public or stable promotion.
 - `evidence/013H-clean-source-freeze/013H-clean-source-freeze.json` binds the
   clean source commits, local gates and five remaining preflight blockers.
 - `evidence/013I-core-artifact-binding/013I-core-artifact-binding.json` binds
@@ -320,9 +326,9 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - Exact runtime/manual gates use the repository labels: `PASS`, `MANUAL_OWNER_TEST`, `OPERATOR_ATTESTED`, `SKIPPED_BY_OWNER`, `SKIPPED_BY_OPERATOR`, `BLOCKED_BY_ACCESS`, `NOT_REQUESTED`.
 - Stable promotion is prohibited while a STOP-SHIP row is below `I4` or any required exact-candidate gate lacks retained evidence.
 
-## Next action
+## Retained candidate.3 and pre-candidate history
 
-013AE is the current signed candidate identity authority; 013AF is the current
+013AE is the retained candidate.3 identity authority; 013AF is its
 verified-local rollback authority; 013AG is the current exact-candidate
 Brain-source/control-plane authority; 013AH is the exact-candidate
 current-origin local gate/performance authority; 013AJ/013AK are the exact
@@ -383,11 +389,12 @@ signature/evidence binding errors. This is the required evidence-based
 decision behavior, not release readiness. Gate G remains unauthorized even
 after a future GO.
 
-WO-013AO is the current replacement pre-candidate source authority. Its clean
+WO-013AO was the replacement pre-candidate source authority. Its clean
 platform/client/Core tuple `e5ef03a...` / `c196dff...` / `f44dbe8...` passes
 the exact Node 22.14 local aggregate `15/15`, and Android Core provenance is
-rebound without a binary delta. It does not replace signed candidate.3 as the
-current exact-candidate authority and does not repair candidate.3's `NO_GO`.
+rebound without a binary delta. At capture time it did not replace signed
+candidate.3 or repair candidate.3's `NO_GO`; WO-013AU now supersedes that
+current-candidate boundary without rewriting this retained history.
 Later exact pushed platform server `2d18fd7...`, guarded operations
 `ca9eb41...` and client `75e82b0...` source add the build-4046 external Smart
 DNS lab. The byte-reproducible server bundle, guarded installer tests, full
@@ -431,3 +438,28 @@ is `GO` and the owner separately authorizes Gate G. The build-4046 external
 Smart DNS client path remains a default-off lab until a compatible resolver and
 live access/leak/rollback evidence exist. Windows SmartScreen remains the
 owner-approved unsigned direct-beta limitation.
+
+## Current next action — candidate.5
+
+WO-013AU is the current signed candidate authority. It binds promoted
+platform/client/Core `6ea08e9...` / `6b596ce...` / `e8eb772...`, release-index
+input `1d1b7ee...`, six immutable artifacts, strict-v2 handoff, SBOM,
+provenance and hosted manifest signature. Output remains
+`ACTIONS_ARTIFACT_ONLY`; no public release or stable pointer exists.
+
+The reviewed Brain AWG route is now deployed with `193/193` postdeploy
+readback and only `portal-api` restarted. Exact Huawei binding is nevertheless
+`BLOCKED_BY_ACCESS` before the remote helper, so AWG2/AWG3.1 Core, tunnel and
+cryptography remain untested for candidate.5. Restore trusted Brain SSH, bind
+AWG2, require managed-profile/TUN/Core/egress/DNS/leak/cleanup proof, then run
+AWG3.1 and return the install to `default`.
+
+Exact physical candidate.5 ordinary Frankfurt TUN and bounded external
+Smart-DNS DNS/ICMP pass with a clean restore. Actual ChatGPT/Gemini/Xbox HTTP
+access, compatible resolver behavior, DNS/SNI attribution, leak/privacy,
+rollback and origin proof remain open. Complete those plus Windows live
+network/recovery, provider/PostgreSQL/outbox, Operator, accessibility,
+performance and distinct current/Brain/RU-origin gates before regenerating
+Gate F. Candidate.3 `NO_GO` is retained history and cannot decide candidate.5.
+Public/stable Gate G remains separately authorized and prohibited until the
+candidate.5 Gate F decision is GO.
