@@ -49,6 +49,8 @@ No runtime mutation occurred in this slice:
 | --- | --- | --- |
 | Current Brain runtime source | `PASS_READ_ONLY_BRAIN_ORIGIN` | Exact source `e5ef03ac7ab013d8810cc9c6ea9ccc40cebd11db` matches all `193/193` tracked deploy-payload files after the sole allowed CRLF normalization. Report SHA-256: `2be21f113a1dab1a26437936e4ca0df9a376cde8baf8f7f1d3d38c1ceb926c6c`. |
 | Corrected runtime delta | `PLAN_READY_ONE_FILE` | Candidate runtime source `716186a…2464c` matches `192/193`; the only content mismatch is `portal_bot/api_client_routes.py`. The read-only report records `runtime_mutated=false`; SHA-256: `410d7cff14b9b96ce4aeffc936cfd91474cc4927f091ac12fab82ca8ee90556a`. |
+| Fresh AWG branch recheck | `PLAN_READY_ONE_FILE` | Exact pushed branch head `83502f1cb9a54ce7ae088a36ed2f9e696c90d841` still matches `192/193`; the only mismatch remains `portal_bot/api_client_routes.py`, `runtime_mutated=false`. Local report SHA-256: `fb396cd9a1de8419faa410495f92a0a23732bc56dff7e244827c210b23c9ceb5`. |
+| Current aggregate branch check | `REJECTED_FOR_BULK_DEPLOY` | Exact platform head `50c9d12254d39c6a007f273497dde49faa4f7b8d` matches only `179/197` because later HY2/observability/Smart-DNS runtime files are also present. Its 18 mismatches are not an AWG-only change window; `runtime_mutated=false`, report SHA-256 `b92f345c3c5b9194c4aa4b16f64cfa1d1246ef44bf4d5cc831594194119df897`. |
 | Deploy/rollback script contract | `PASS_LOCAL` | Focused deploy, source-probe and release-operation suites pass `57` tests plus `25` subtests. Staging, backup, compile/JSON/requirements/import preflight, bounded unit restart, delayed health and automatic restore on promote/restart/health failure are covered. |
 
 The authorized change window is bounded to the standard tracked runtime payload
@@ -59,6 +61,10 @@ postdeploy readback must return `193/193` against the deployed source before any
 device is rebound. A later semantic/device failure keeps the retained backup as
 the rollback anchor in the same authorized window; it is never converted into
 a health PASS.
+
+The aggregate `50c9d12...` branch must not be passed to the standard bulk
+deployer for this AWG test. Only the reviewed `83502f1...` AWG branch preserves
+the one-file semantic delta required by this change window.
 
 Only after source and health readback may the exact LDPlayer identity be bound
 to AWG2, tested for app-owned TUN, server handshake, DNS and egress, and unbound

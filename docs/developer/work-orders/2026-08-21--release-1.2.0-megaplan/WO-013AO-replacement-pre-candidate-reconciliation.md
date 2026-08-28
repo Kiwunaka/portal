@@ -212,6 +212,13 @@ tests pass `57` tests plus `25` subtests. The authorized plan restarts only
 health, automatic rollback on deploy failure and a postdeploy `193/193` source
 readback before any AWG device binding. No deploy or runtime mutation occurred.
 
+A fresh read-only recheck keeps exact AWG branch head `83502f1...` at
+`192/193`, with only `portal_bot/api_client_routes.py` different and report
+SHA-256 `fb396cd9...ceb5`. Current aggregate head `50c9d12...` is explicitly
+rejected for this deploy window: it is only `179/197` and carries 18 later
+HY2/observability/Smart-DNS runtime deltas. Its report SHA-256 is
+`b92f345c...f897`; both reports retain `runtime_mutated=false`.
+
 ## Hosted PR evidence
 
 Exact jobs observed for platform PR `#58` at `34d1551f...` and client PR `#33`
