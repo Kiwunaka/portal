@@ -128,7 +128,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013AL` | Evaluate source-plan Gate C against exact candidate.3 without transferring post-candidate Linux or phone-lab evidence | Platform/client/Core release decision/evidence | Exact Windows service/IPC clean-host and Android exact-byte LDPlayer launch plus Core ABI pass bounded slices; Windows live network/recovery, authenticated physical Android/OEM/store matrices remain open, so Gate C stays `I2` as `BLOCKED`; Linux remains outside candidate.3 | source-plan Gate C, `WO-005`, `WO-005G`, `WO-013AE`, `WO-013AK`, exact source and artifact evidence, LDPlayer |
 | `WO-013AM` | Evaluate source-plan Gate D against exact candidate.3 without running a real provider payment | Platform release decision/evidence | Frozen candidate payment/HTTP/DB/outbox/module matrix passes `196 + 12 subtests` and Action Intent/router ownership passes `25/25`; deployed source identity passes, but provider/PostgreSQL/outbox/reconciliation/rollback runtime proof is absent, so Gate D stays `I3` as `BLOCKED` with no replacement-code defect | source-plan Gate D, `WO-007`, `WO-007G`–`WO-007I`, `WO-013AG`, exact platform source, retained Brain source identity |
 | `WO-013AN` | Evaluate source-plan Gate E against exact candidate.3 without converting automated UI checks into physical-device proof | Platform/client release decision/evidence | Exact quick/default aggregate, Playwright `88/88`, controlled API p95 and fresh desktop/mobile render smoke pass local slices; authenticated journeys, physical screen readers/scaling, device/browser performance, comparable artifacts, support recovery, RU-origin and post-promotion evidence remain open, so Gate E stays `I3` as `BLOCKED` with no replacement-code defect | source-plan Gate E, `WO-010`, `WO-013AH`, `WO-013AL`, exact platform/client/Core sources and private render screenshots |
-| `WO-013AO` | Reconcile the current replacement source tuple, same-byte Android Core provenance, owned AWG/DNS physical slice and exact local aggregate without creating a candidate | Cross-repository pre-candidate/release evidence | Platform/client/Core `e5ef03a...` / `c196dff...` / `f44dbe8...` are clean and pushed; exact Node 22.14 local gate passes `15/15`; owned default-off lab closure advances `FRKN_PLAN/W3-01` to `I3`; platform PR 58 and client PR 33 have zero-step billing-blocked checks, while Core PR 6 passes four product jobs and awaits the client-main binding for its release contract | `WO-013AK`, `WO-013AN`, owned physical pre-candidate evidence, current PR heads |
+| `WO-013AO` | Reconcile the current replacement source tuple, same-byte Android Core provenance, owned AWG/DNS physical slice and exact local aggregate without creating a candidate | Cross-repository pre-candidate/release evidence | Platform/client/Core base tuple `e5ef03a...` / `c196dff...` / `f44dbe8...` is clean and pushed; exact Node 22.14 local gate passes `15/15`; owned default-off lab closure advances `FRKN_PLAN/W3-01` to `I3`; later client `5e78dd9...` adds locally verified external Smart DNS routing and a production-signed build-4046 physical state-machine PASS without resolver/access proof; platform PR 58 and client PR 33 remain zero-step billing-blocked, while Core PR 6 passes four product jobs and awaits the client-main binding | `WO-013AK`, `WO-013AN`, owned physical pre-candidate evidence, current PR heads |
 
 ## Current evidence
 
@@ -366,6 +366,9 @@ platform/client/Core tuple `e5ef03a...` / `c196dff...` / `f44dbe8...` passes
 the exact Node 22.14 local aggregate `15/15`, and Android Core provenance is
 rebound without a binary delta. It does not replace signed candidate.3 as the
 current exact-candidate authority and does not repair candidate.3's `NO_GO`.
+Later client source `5e78dd9...` adds the build-4046 external Smart DNS lab and
+passes source plus physical state-machine checks, but it has no compatible
+resolver or live service-access proof and does not create a candidate.
 
 Restore private Actions billing, or receive a separate explicit owner command
 before changing platform/client repository visibility. Require successful
@@ -381,5 +384,7 @@ The owned AWG lab is still default-off. Beeline reverse UDP is
 touching active paid nodes, but it cannot substitute for the eventual exact
 candidate matrix. Direct DoH is not VPN-free Smart DNS. Public `v1.2.0`, six
 same-byte public assets and the stable pointer remain prohibited until Gate F
-is `GO` and the owner separately authorizes Gate G. Windows SmartScreen remains
-the owner-approved unsigned direct-beta limitation.
+is `GO` and the owner separately authorizes Gate G. The build-4046 external
+Smart DNS client path remains a default-off lab until a compatible resolver and
+live access/leak/rollback evidence exist. Windows SmartScreen remains the
+owner-approved unsigned direct-beta limitation.

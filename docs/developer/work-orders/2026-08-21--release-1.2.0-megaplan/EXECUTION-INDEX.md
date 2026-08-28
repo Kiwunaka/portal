@@ -3514,3 +3514,35 @@ not missing execution. It advances to
 does not prove the replacement candidate. Distribution becomes `I4=4`,
 `I3=314`, `I2=19`, `I1=40`, `I0=0`; `318/377` rows are at or above `I3`, and
 `59/377` remain below.
+
+## 2026-08-28 — build-4046 external Smart DNS physical state control
+
+Exact client source `5e78dd9aef93726d40f44ae6a075c952ba951a6a`
+implements a default-off external Smart DNS lab over the existing direct
+outbound. It requires custom HTTPS DoH, direct DoH transport and an enabled AI
+or Games purpose route. Invalid stored combinations normalize off and invalid
+runtime combinations fail before native staging. AI/Games become direct only
+under the complete valid state; other purpose groups remain VPN-routed and
+explicit user overrides retain priority.
+
+Focused routing tests pass `16/16`, the focused widget flow passes `1/1`, full
+Flutter analysis is clean, complete app-shell tests pass `404/404`, and client
+docs plus cross-repository seed validation pass for working target
+`1.2.0+4046`. A production-signed, release/non-debuggable arm64 APK from the
+exact clean source was built and installed on the physical phone. It is a
+working pre-candidate artifact, not a replacement signed candidate.
+
+The physical UI state machine passed without starting a connection. Custom DoH
+exposed the lab control but kept it disabled until direct DoH was enabled; the
+complete state enabled the control and changed AI/Games explanations to direct
+external Smart DNS while warning that the IP remains visible. The state
+persisted across cold relaunch. AdGuard, DoH-through-VPN and the prior AI/Games
+selection were restored and re-read; final cleanup left the POKROV service
+stopped and no raised TUN interface. This is
+`PASS_4046_PHYSICAL_EXTERNAL_SMART_DNS_STATE_MACHINE`.
+
+No compatible resolver, DNS transaction, ChatGPT/Gemini/Xbox access, tunnel or
+AWG path was exercised. The result therefore proves client configuration and
+truthful fail-closed routing only, not a Smart-DNS product or live access. No
+ledger row advances and distribution remains `I4=4`, `I3=314`, `I2=19`,
+`I1=40`, `I0=0`; no merge, deploy, candidate or promotion occurred.

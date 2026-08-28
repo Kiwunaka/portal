@@ -35,7 +35,7 @@ meaningful risk requires a work order.
 - Retired bootstrap material and bridge bundles are archive or rollback
   evidence, never active development lanes.
 - The retained distributed stable-direct client is `v1.1.6`; its public
-  package line is `1.1.6+29`. The working `1.2.0+4045` line is
+  package line is `1.1.6+29`. The working `1.2.0+4046` line is
   `PRE_CANDIDATE_LOCAL` with `candidate_created=false`. Store publication,
   trusted Windows signing and exact-candidate Huawei/RU-LTE claims remain
   separate manual gates.

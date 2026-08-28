@@ -19,6 +19,7 @@ that evidence into signed `candidate.3` or creating a replacement candidate.
 | Platform AWG managed issuance | `32e444695432531d7a1a517cb0386bb690c73969` | same branch / PR | local source correction; `53/53` focused and `154 + 8 subtests` backend pass; not deployed |
 | Client runtime | `c196dff6bf72c325d5bba675fe19342cd3821f61` | `codex/release-1.2.0-candidate-8-source`, PR `#33` to `main` | locally gated runtime source |
 | Client AWG evidence docs | `2eeee5fa0c09096426e09aeb0eeb865a6aede981` | same branch / PR | docs/seed contracts passed; pushed after the aggregate gate |
+| Client external Smart DNS lab | `5e78dd9aef93726d40f44ae6a075c952ba951a6a` | same branch / PR | source, unit/widget, full app-shell and physical state-machine proof passed; no resolver/access proof |
 | Core | `f44dbe89d6b89954032a1a798c2209d8c0aff90d` | `codex/fix-egress-event-subsystem`, PR `#6` to `main` | clean and pushed |
 
 This tuple is `PRE_CANDIDATE_LOCAL`. It is not signed, promoted, public or
@@ -150,6 +151,46 @@ force-stop/cold relaunch and was restored to its original off state. This is
 `PASS_4045_PHYSICAL_DIRECT_DOH_SETTING_PERSISTENCE`; it proves persisted
 settings only, not a DNS transaction, VPN-free service access or an AWG path.
 
+## Working build 4046 external Smart DNS slice
+
+Client source `5e78dd9aef93726d40f44ae6a075c952ba951a6a` adds a persisted,
+default-off external Smart DNS lab on the existing direct outbound. It can be
+enabled only for a custom HTTPS DoH endpoint, direct DoH transport and at least
+one selected AI or Games purpose route. Selected AI/Games domains then use the
+direct outbound; Video and other purpose groups remain VPN-routed, and exact
+user overrides retain priority. Invalid persisted combinations normalize off,
+while invalid directly constructed combinations fail before native staging.
+
+Focused routing tests pass `16/16`, the focused widget flow passes `1/1`, full
+Flutter analysis is clean and the complete app-shell matrix passes `404/404`.
+The client documentation contract and cross-repository seed validation pass
+with working target `1.2.0+4046`; the exact client worktree is clean and pushed.
+
+The production build script recovered the already trusted public emergency pin
+from build `4045` only after a unique SHA-256 match to retained signing
+evidence; it did not regenerate or rotate a key. All four `4046` APK variants
+then passed version, ABI, release/non-debuggable and production-signature
+verification. The physical arm64 package is `1.2.0+4046`, `101348662` bytes,
+SHA-256 `dd750a9ff6482dc3a953dc6d00c68ca7648ffeb3cd29efde46a22c1977eafed1`.
+It is a working pre-candidate artifact, not an immutable release candidate.
+
+On the returned physical phone the valid state machine was exercised without
+starting a connection. With AdGuard and AI/Games initially selected, choosing
+a custom HTTPS DoH address exposed the new switch but kept it disabled until
+direct DoH was enabled. Once prerequisites were satisfied, the switch enabled
+and the AI/Games explanations changed to direct external Smart DNS with the
+explicit warning that the public IP remains visible. Custom DoH, direct DoH and
+the lab flag persisted across force-stop/cold relaunch. The original AdGuard,
+DoH-through-VPN and AI/Games state was then restored and re-read; final cleanup
+left no POKROV service and no raised TUN interface. Record this as
+`PASS_4046_PHYSICAL_EXTERNAL_SMART_DNS_STATE_MACHINE`.
+
+No DNS query, compatible Smart-DNS resolver, ChatGPT/Gemini/Xbox access,
+POKROV connection, AWG profile or tunnel was exercised. This proves the
+client-side configuration, persistence, fail-closed prerequisites and truthful
+routing labels only. An owned or contracted compatible resolver plus exact
+live service-access, leak, privacy and rollback evidence remains absent.
+
 The full bounded local quality gate was then repeated on exact clean platform
 `9383117794f9ee17b5976204c3b8601732464c17`, client
 `f3d3310f520156cbb07a8993fbe485cf599a174f` and unchanged Core
@@ -217,15 +258,18 @@ rows are at or above `I3`, while `59/377` remain below.
 ## Next action
 
 1. Deploy the locally verified managed-profile correction to an authorized
-   controlled environment, then prove build `4045` creates an app-owned TUN and
+   controlled environment, then prove build `4046` creates an app-owned TUN and
    reaches Core over AWG2 before running AWG3.1 and the bounded DNS/egress/leak
    matrix.
-2. Restore private-repository Actions through Billing & plans, or obtain an
+2. Select an owned or explicitly approved compatible Smart-DNS resolver and
+   run separate DNS, AI/Games access, IP-visibility, leak and rollback proof;
+   the `4046` physical state-machine result is not that proof.
+3. Restore private-repository Actions through Billing & plans, or obtain an
    explicit owner instruction before changing repository visibility.
-3. Require successful platform/client app-bound checks on the exact PR heads.
-4. Merge the client binding under the solo PR control, rerun Core
+4. Require successful platform/client app-bound checks on the exact PR heads.
+5. Merge the client binding under the solo PR control, rerun Core
    `release-contract`, then promote Core and platform only with their required
    checks green.
-5. Freeze and sign a replacement exact candidate from the promoted tuple.
-6. Run the candidate-bound Android/Windows, current/Brain/RU-origin, provider,
+6. Freeze and sign a replacement exact candidate from the promoted tuple.
+7. Run the candidate-bound Android/Windows, current/Brain/RU-origin, provider,
    Operator, legal and performance matrices before any Gate F `GO` or Gate G.

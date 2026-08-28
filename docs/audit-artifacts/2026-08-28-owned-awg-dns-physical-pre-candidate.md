@@ -39,6 +39,7 @@ promotion evidence.
 | Phone cleanup | `PASS_WORKING_SESSION` | POKROV stopped, the exact device was removed from the cohort and both lab allowlists, policy returned to the ordinary fallback, Wi-Fi was restored off and Hiddify was foreground. Temporary phone/local diagnostics were removed. |
 | LDPlayer cleanup | `PASS_WORKING_SESSION` | POKROV stopped, the exact emulator device was removed from the cohort and both lab allowlists, policy returned to the ordinary fallback and temporary emulator diagnostics were removed. |
 | Build 4045 physical direct-DoH setting | `PASS_4045_PHYSICAL_DIRECT_DOH_SETTING_PERSISTENCE` | With Hiddify and POKROV stopped and no active VPN network agent, the direct-DoH lab switch persisted across force-stop/cold relaunch and was restored to its original disabled state. No DNS request, service access, connection or AWG profile was exercised. |
+| Build 4046 external Smart DNS state machine | `PASS_4046_PHYSICAL_EXTERNAL_SMART_DNS_STATE_MACHINE` | Exact production-signed arm64 build `1.2.0+4046` exposed the lab control only for custom DoH, kept it disabled until direct DoH was enabled, then persisted the valid state and truthful AI/Games direct-route warnings across cold relaunch. The original AdGuard/DoH-through-VPN/AI/Games state was restored; final POKROV service and raised-TUN counts were zero. No resolver or service-access request was made. |
 
 ## Managed-Profile Predeploy Readback
 
@@ -80,13 +81,18 @@ material reached the client. The local correction and regressions pass, but it
 is not live evidence until deployed to a controlled environment and repeated.
 
 The direct-DoH control proves only encrypted DNS reachability and valid
-resolution. Current product behavior remains split routing through the VPN for
-AI/Games application traffic. A real Smart-DNS/no-VPN access product would need
-a separate architecture and evidence lane.
+resolution. Builds `4044` and `4045` still route AI/Games application traffic
+through the VPN. Build `4046` adds a default-off client routing path for an
+external compatible Smart-DNS resolver: custom DoH plus selected AI/Games can
+use the existing direct outbound, while other purpose groups remain VPN-routed.
+That client path is not an owned Smart-DNS backend and does not prove live
+service access, IP behavior, leak safety or resolver compatibility.
 
-The later build-4045 physical control proves only UI-to-persisted-state wiring.
-It does not upgrade the DNS reachability record, does not prove
-ChatGPT/Gemini/Xbox access, and leaves VPN-free Smart DNS `NOT_IMPLEMENTED`.
+The later build-4045 physical control proves only UI-to-persisted-state wiring
+for direct DoH at that build. The build-4046 control additionally proves the
+external Smart DNS prerequisite/state/persistence path on the phone. Neither
+control upgrades the DNS reachability record or proves ChatGPT/Gemini/Xbox
+access. A compatible resolver and live access matrix remain `NOT_PROVEN`.
 
 ## Remaining Gates
 
@@ -98,6 +104,9 @@ ChatGPT/Gemini/Xbox access, and leaves VPN-free Smart DNS `NOT_IMPLEMENTED`.
   tunnel DNS, decrypted egress and leak behavior on the exact candidate.
 - Complete Android lifecycle, permission revoke, screen-off, Wi-Fi/LTE handoff,
   per-app modes, blocked UDP 53, MTU, endurance, backup/privacy and OEM checks.
+- Select an owned or explicitly approved compatible Smart-DNS resolver, then
+  prove DNS, AI/Games access, visible-IP truth, leak behavior and rollback on
+  the exact signed candidate.
 - Keep current-origin, Brain-origin and RU-origin results separate.
 
 No row in this file authorizes public publication or promotion.
