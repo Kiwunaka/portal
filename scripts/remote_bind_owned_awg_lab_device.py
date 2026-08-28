@@ -35,6 +35,9 @@ selected_profile = str(payload["profile"]).strip()
 carrier_context = str(payload.get("carrier_context") or "none").strip().lower()
 apply_changes = bool(payload.get("apply"))
 exact_install_id = str(payload.get("exact_install_id") or "").strip()
+extend_target_entitlement_days = int(
+    payload.get("extend_target_entitlement_days") or 0
+)
 confirm_target_install_sha256 = str(
     payload.get("confirm_target_install_sha256") or ""
 ).strip().lower()
@@ -43,11 +46,16 @@ target_confirmation_invalid = bool(confirm_target_install_sha256) and (
     or any(value not in "0123456789abcdef" for value in confirm_target_install_sha256)
 )
 if (
-    not label_fragment
+    (not label_fragment and not confirm_target_install_sha256)
     or candidate_rank < 1
     or candidate_rank > 4
     or selected_profile not in {"default", "awg2_lab", "awg31_lab"}
     or carrier_context not in {"none", "beeline"}
+    or extend_target_entitlement_days not in {0, 1}
+    or (
+        extend_target_entitlement_days
+        and (not exact_install_id or selected_profile == "default")
+    )
     or target_confirmation_invalid
     or (apply_changes and not confirm_target_install_sha256)
 ):
@@ -125,7 +133,7 @@ with SessionLocal() as session:
         device = candidates[0] if candidates else None
         install_id = exact_install_id
         target_selection_mode = "exact_local_install"
-    else:
+    elif label_fragment:
         candidates = (
             session.query(AccountDevice)
             .filter(AccountDevice.label.ilike(f"%{label_fragment}%"))
@@ -145,6 +153,34 @@ with SessionLocal() as session:
         device = candidates[candidate_rank - 1]
         install_id = str(device.install_id or "").strip()
         target_selection_mode = "device_label_rank"
+    else:
+        active_devices = (
+            session.query(AccountDevice)
+            .filter(AccountDevice.install_id.isnot(None))
+            .filter(AccountDevice.state == "active")
+            .filter(AccountDevice.revoked_at.is_(None))
+            .order_by(AccountDevice.last_seen_at.desc(), AccountDevice.id.desc())
+            .limit(1000)
+            .all()
+        )
+        candidates = [
+            row
+            for row in active_devices
+            if str(row.install_id or "").strip()
+            and hmac.compare_digest(
+                hashlib.sha256(str(row.install_id).strip().encode()).hexdigest(),
+                confirm_target_install_sha256,
+            )
+        ]
+        if len(candidates) != 1:
+            blocked(
+                "confirmed_install_hash_resolution",
+                matched_device_count=len(candidates),
+                target_selection_mode="confirmed_install_hash",
+            )
+        device = candidates[0]
+        install_id = str(device.install_id or "").strip()
+        target_selection_mode = "confirmed_install_hash"
     target_install_sha256 = (
         hashlib.sha256(install_id.encode()).hexdigest() if install_id else ""
     )
@@ -253,6 +289,16 @@ with SessionLocal() as session:
         if target_user is None:
             target_user = entitled_user
     elif (
+        extend_target_entitlement_days == 1
+        and target_selection_mode == "exact_local_install"
+        and device is not None
+        and len(global_install_users) == 1
+        and target_user is global_install_users[0]
+        and device_account_matches_global_install_user
+    ):
+        entitled_user = target_user
+        entitlement_resolution = "exact_install_one_day_extension"
+    elif (
         (target_selection_mode == "exact_local_install" or len(candidates) == 1)
         and len(global_install_users) == 1
         and len(runtime_owner_users) == 1
@@ -307,6 +353,15 @@ with SessionLocal() as session:
             entitlement_resolution=entitlement_resolution,
             device_record_present=device is not None,
         )
+    entitlement_extension_needed = bool(
+        entitlement_resolution == "exact_install_one_day_extension"
+    )
+    target_user_currently_entitled = bool(
+        target_user is not None
+        and bool(target_user.is_active)
+        and target_user.expiry_at is not None
+        and target_user.expiry_at > now
+    )
     tg_id = int(entitled_user.tg_id)
     if not install_id or tg_id <= 0:
         blocked(
@@ -383,7 +438,11 @@ with SessionLocal() as session:
         "exact_legacy_install_user_count": len(global_install_users),
         "target_user_resolution": target_user_resolution,
         "entitlement_resolution": entitlement_resolution,
-        "target_user_is_entitled": target_user is entitled_user,
+        "target_user_is_entitled": target_user_currently_entitled,
+        "entitlement_subject_matches_target_user": target_user is entitled_user,
+        "entitlement_extension_requested_days": extend_target_entitlement_days,
+        "entitlement_extension_needed": entitlement_extension_needed,
+        "entitlement_extension_applied": False,
         "target_user_platform": str(target_user.app_platform or "").strip().lower() or None,
         "device_app_version": (
             str(device.app_version or "").strip() or None
@@ -505,6 +564,18 @@ def guarded(action, target_type, target_id, method, path, body):
             "X-Admin-Confirmation-SHA256": hashlib.sha256(challenge.encode()).hexdigest(),
         },
     )
+
+entitlement_extension_applied = False
+if entitlement_extension_needed:
+    guarded(
+        "user.extend",
+        "user",
+        tg_id,
+        "POST",
+        f"/api/admin/users/{tg_id}/manual/extend",
+        {"days": 1, "delta_days": 1, "allow_deactivate": False},
+    )
+    entitlement_extension_applied = True
 
 if selected_profile != "default":
     guarded(
@@ -632,6 +703,12 @@ for name in ("awg2_lab", "awg31_lab"):
     )
 with SessionLocal() as read_session:
     live_user = read_session.query(User).filter(User.tg_id == tg_id).first()
+    live_user_entitled = bool(
+        live_user is not None
+        and bool(live_user.is_active)
+        and live_user.expiry_at is not None
+        and live_user.expiry_at > now
+    )
     resolved_profile = (
         resolved_client_policy(
             session=read_session,
@@ -655,6 +732,7 @@ else:
         and install_id in list(selected.get("install_ids") or [])
         and install_id in list(selected_lab.get("allowlist_install_ids") or [])
         and tg_id in list(selected_lab.get("allowlist_tg_ids") or [])
+        and live_user_entitled
         and resolved_profile == selected_profile
     )
 print(
@@ -669,6 +747,9 @@ print(
             "carrier_context": carrier_context,
             "cohort_identity_present": cohort_identity_present,
             "lab_allowlist_identity_present": lab_allowlist_identity_present,
+            "entitlement_extension_applied": entitlement_extension_applied,
+            "target_user_is_entitled": live_user_entitled,
+            "target_user_entitled_after_apply": live_user_entitled,
             "raw_identifiers_returned": False,
         },
         sort_keys=True,
@@ -684,7 +765,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--brain-ip", default="82.21.114.104")
     parser.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
     parser.add_argument("--known-hosts", required=True)
-    parser.add_argument("--device-label-fragment", required=True)
+    parser.add_argument("--device-label-fragment", default="")
     parser.add_argument("--candidate-rank", type=int, default=1)
     parser.add_argument(
         "--profile",
@@ -699,6 +780,16 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--confirm-device-label-sha256", default="")
     parser.add_argument("--confirm-target-install-sha256", default="")
+    parser.add_argument(
+        "--extend-target-entitlement-days",
+        type=int,
+        choices=(0, 1),
+        default=0,
+        help=(
+            "Optionally grant one test day only to the exact root-verified local "
+            "install before selecting an AWG lab profile."
+        ),
+    )
     parser.add_argument(
         "--adb",
         default="",
@@ -731,11 +822,7 @@ def _emit_result(result: dict[str, Any], raw_output_path: str) -> None:
 def main() -> int:
     args = _parse_args()
     label = str(args.device_label_fragment).strip()
-    label_sha256 = hashlib.sha256(label.encode("utf-8")).hexdigest()
-    if not label or not 1 <= int(args.candidate_rank) <= 4:
-        raise SystemExit("device selector invalid")
-    if str(args.confirm_device_label_sha256).strip().lower() != label_sha256:
-        raise SystemExit("device label confirmation failed")
+    label_sha256 = hashlib.sha256(label.encode("utf-8")).hexdigest() if label else ""
     target_confirmation = str(args.confirm_target_install_sha256).strip().lower()
     target_confirmation_invalid = bool(target_confirmation) and (
         len(target_confirmation) != 64
@@ -743,6 +830,13 @@ def main() -> int:
     )
     if target_confirmation_invalid or (args.apply and not target_confirmation):
         raise SystemExit("target install confirmation is required for apply")
+    if not 1 <= int(args.candidate_rank) <= 4 or (not label and not target_confirmation):
+        raise SystemExit("device selector invalid")
+    if label and str(args.confirm_device_label_sha256).strip().lower() != label_sha256:
+        raise SystemExit("device label confirmation failed")
+    extension_days = int(args.extend_target_entitlement_days)
+    if extension_days and str(args.profile) == "default":
+        raise SystemExit("entitlement extension requires an AWG lab profile")
     exact_install_id = ""
     adb_path = str(args.adb or "").strip()
     if adb_path:
@@ -756,6 +850,8 @@ def main() -> int:
         local_install_sha256 = hashlib.sha256(exact_install_id.encode()).hexdigest()
         if not hmac.compare_digest(target_confirmation, local_install_sha256):
             raise SystemExit("local install identity confirmation failed")
+    if extension_days and not exact_install_id:
+        raise SystemExit("entitlement extension requires exact root-verified local install")
     known_hosts = Path(args.known_hosts).resolve()
     passwords = Path(args.passwords).resolve()
     if not known_hosts.is_file() or not passwords.is_file():
@@ -765,13 +861,14 @@ def main() -> int:
         "mode": "APPLY" if args.apply else "PLAN",
         "profile": str(args.profile),
         "carrier_context": str(args.carrier_context),
-        "device_label_sha256": label_sha256,
+        "device_label_sha256": label_sha256 or None,
         "candidate_rank": int(args.candidate_rank),
         "target_selection_mode": (
             "exact_local_install" if exact_install_id else "device_label_rank"
         ),
         "local_install_confirmation_match": True if exact_install_id else None,
         "raw_identifiers_returned": False,
+        "entitlement_extension_requested_days": extension_days,
     }
     os.environ["POKROV_SSH_KNOWN_HOSTS"] = str(known_hosts)
     brain, _auth = connect_node(
@@ -791,6 +888,7 @@ def main() -> int:
                     "carrier_context": str(args.carrier_context),
                     "exact_install_id": exact_install_id,
                     "confirm_target_install_sha256": target_confirmation,
+                    "extend_target_entitlement_days": extension_days,
                     "apply": bool(args.apply),
                 },
                 separators=(",", ":"),

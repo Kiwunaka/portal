@@ -93,6 +93,20 @@ def test_any_supplied_install_confirmation_is_checked_in_plan_and_apply() -> Non
     assert "local install identity confirmation failed" in source
 
 
+def test_confirmed_install_hash_can_select_without_device_label() -> None:
+    source = SCRIPT.read_text(encoding="utf-8")
+    helper = _remote_helper()
+
+    assert 'parser.add_argument("--device-label-fragment", default="")' in source
+    assert '(not label and not target_confirmation)' in source
+    assert '(not label_fragment and not confirm_target_install_sha256)' in helper
+    assert "AccountDevice.install_id.isnot(None)" in helper
+    assert ".limit(1000)" in helper
+    assert 'target_selection_mode = "confirmed_install_hash"' in helper
+    assert '"confirmed_install_hash_resolution"' in helper
+    assert '"device_label_sha256": label_sha256 or None' in source
+
+
 def test_account_component_resolution_is_unique_and_install_owned() -> None:
     helper = _remote_helper()
 
@@ -102,3 +116,23 @@ def test_account_component_resolution_is_unique_and_install_owned() -> None:
     assert 'entitled_user_owns_install = bool(' in helper
     assert '"entitled_user_install_ownership"' in helper
     assert '"account_user_resolution_unavailable"' in helper
+
+
+def test_exact_local_install_can_receive_one_explicit_test_day() -> None:
+    source = SCRIPT.read_text(encoding="utf-8")
+    helper = _remote_helper()
+
+    assert '"--extend-target-entitlement-days"' in source
+    assert "choices=(0, 1)" in source
+    assert "entitlement extension requires exact root-verified local install" in source
+    assert "extend_target_entitlement_days not in {0, 1}" in helper
+    assert 'selected_profile == "default"' in helper
+    assert 'entitlement_resolution = "exact_install_one_day_extension"' in helper
+    assert "device_account_matches_global_install_user" in helper
+    assert '"user.extend"' in helper
+    assert '{"days": 1, "delta_days": 1, "allow_deactivate": False}' in helper
+    assert '"entitlement_extension_applied": entitlement_extension_applied' in helper
+    assert '"target_user_is_entitled": target_user_currently_entitled' in helper
+    assert '"target_user_is_entitled": live_user_entitled' in helper
+    assert '"entitlement_subject_matches_target_user": target_user is entitled_user' in helper
+    assert "and live_user_entitled" in helper
