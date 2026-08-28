@@ -509,6 +509,34 @@ This is `PASS_LOCAL_CLIENT_RELEASE_V2_GATE`; it does not replace the required
 hosted client check, does not prove a physical-device tunnel and does not
 authorize merge, candidate creation or deployment.
 
+Client hosted run `33174374801` was retried once at the same exact head. Attempt
+`2` again received zero steps and failed in two seconds, so the current client
+PR check remains `BLOCKED_BY_ACCESS_GITHUB_BILLING`; the local pass is not used
+as a waiver.
+
+Platform Guardrails were then decomposed in a temporary clean detached checkout
+at PR head `c2af23e5...`. Dependency, script-manifest and generated-artifact/
+public-copy guards passed before any build output existed. The shared release,
+orchestrator and client-smoke group passed `36/36`, support-signing custody
+passed `11/11`, and eleven of twelve quick-gate constituents passed, including
+worker retention, portal Flutter, API lifecycle, all three production builds,
+WebApp Playwright and visual smoke. The quick wrapper's sole non-pass was its
+local autodiscovery of stale `POKROV-app/main` and `POKROV-core/main`; the same
+contract then passed separately with explicit client `3564023c...` and Core
+product source `e8eb7721...`. The wrapper itself is therefore not relabeled as
+a zero-exit pass.
+
+The canonical adminapp block additionally passed the `75`-operation SDK hash,
+lint, production build, `28`-route/`7`-workspace cutover readback and `78/78`
+Playwright tests. This local host used Node `24.15.0`, not the hosted pin
+`22.14.0`, so exact runner parity still belongs to GitHub. Both temporary Core
+and platform worktrees, their `403` npm packages and generated build output
+were removed. The 3,309-byte sanitized report
+`2026-08-28-local-platform-guardrail-constituents-c2af23e.json` has SHA-256
+`61269a7bc5f456aefe779d4210f083511185e7123594824842db52cc267c0146`.
+This is `PASS_LOCAL_PLATFORM_CONSTITUENT_GATES`, not the required hosted
+`repo-guardrails` check and not candidate or deployment evidence.
+
 The owner solo exception is now enforced without weakening checks on the two
 public repositories. Core `main` requires the strict five-job source/artifact
 matrix, and release-index repository `Kiwunaka/pokrov` `main` now requires the
