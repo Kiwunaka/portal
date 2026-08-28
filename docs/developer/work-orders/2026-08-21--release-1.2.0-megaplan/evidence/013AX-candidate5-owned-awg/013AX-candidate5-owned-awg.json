@@ -1,0 +1,139 @@
+{
+  "schema": "pokrov.candidate-owned-awg-physical-evidence/v1",
+  "recorded_at_utc": "2026-08-28T20:55:00Z",
+  "candidate": {
+    "name": "pokrov-1.2.0-candidate.5",
+    "platform_source": "6ea08e9222dff67c93ffa0bb9585a57c5ffe220c",
+    "client_source": "6b596cefbc043c2da30b31007789cea7e30fc336",
+    "core_source": "e8eb7721fc6eaac6813d3a888ac90d0da1f541a1",
+    "universal_apk_sha256": "2825a832a43404d7f16b42fbaf6f5e1f443505cca6a9ac8bf4e93e5ae46cbebb",
+    "immutability": "UNCHANGED",
+    "promotion_decision": "REJECTED_FOR_REPLACEMENT"
+  },
+  "scope": {
+    "device_class": "owned physical Android",
+    "origin": "Beeline mobile data",
+    "profiles": [
+      "awg2_lab",
+      "awg31_lab"
+    ],
+    "raw_identifiers_retained": false,
+    "raw_endpoints_retained": false,
+    "raw_keys_or_packets_retained": false
+  },
+  "implementation": {
+    "client_and_server_core": "official pinned amneziawg-go/v3 v3.1.20260814",
+    "custom_pokrov_cryptography": false
+  },
+  "results": [
+    {
+      "profile": "awg2_lab",
+      "android_vpn_transport": "STARTED",
+      "outer_40s": {
+        "packets": 29,
+        "inbound": 23,
+        "outbound": 5,
+        "initiation_sized": 5,
+        "response_sized": 5,
+        "received_bytes": 740,
+        "sent_bytes": 460
+      },
+      "latest_handshake_age_seconds": -1,
+      "inner_from_client": 0,
+      "inner_to_client": 0,
+      "dns": "NOT_PROVED",
+      "authenticated_egress": "NOT_PROVED",
+      "verdict": "FAIL_CRYPTOGRAPHIC_SESSION_NOT_ESTABLISHED"
+    },
+    {
+      "profile": "awg31_lab",
+      "android_vpn_transport": "STARTED",
+      "outer_40s": {
+        "packets": 32,
+        "inbound": 27,
+        "outbound": 4,
+        "received_bytes": 592,
+        "sent_bytes": 1083,
+        "size_classification": "NOT_APPLICABLE_RANDOMIZED_TRAILERS"
+      },
+      "latest_handshake_age_seconds": -1,
+      "inner_from_client": 0,
+      "inner_to_client": 0,
+      "dns": "NOT_PROVED",
+      "authenticated_egress": "NOT_PROVED",
+      "verdict": "FAIL_CRYPTOGRAPHIC_SESSION_NOT_ESTABLISHED"
+    }
+  ],
+  "separate_candidate_defect": {
+    "symptom": "saved manual node was applied to an owned lab with smart_connect=null",
+    "candidate_workaround_used_for_test": "owner selected automatic location",
+    "replacement_client_commit": "bbf1de8",
+    "replacement_fix_status": "VERIFIED_LOCAL_REQUIRES_NEW_CANDIDATE"
+  },
+  "binder_correction": {
+    "platform_commit": "f4927c6",
+    "status": "VERIFIED_LOCAL_AND_USED_FOR_PROTECTED_BIND"
+  },
+  "external_evidence": [
+    {
+      "name": "candidate5-current-physical-awg2-bind-apply.json",
+      "sha256": "3c59d8fd449dfb11a95026d4e2c0aee158b3923b1064b0fe945e7f87fb6658f8"
+    },
+    {
+      "name": "candidate5-physical-awg2-auto-outer-count.json",
+      "sha256": "b65b34180653ceaeb719060ef45aa55bb5b9b72d2ed9ac11cd56a4257b7523eb"
+    },
+    {
+      "name": "candidate5-physical-awg2-auto-inner-count.json",
+      "sha256": "ba222b96683165810d1c6f43091644f7bdcf14c067aaa32220866a95e6dab044"
+    },
+    {
+      "name": "candidate5-physical-awg2-auto-post-stats.json",
+      "sha256": "560517c195bfb4e8e6a8cb0b21070979d47ca8a783fbd53e86a240a17a07f264"
+    },
+    {
+      "name": "candidate5-current-physical-awg31-bind-apply.json",
+      "sha256": "434f7de2646579472cb6b4b10de9531ef140f0a6194607005beddf1ce2ed7e96"
+    },
+    {
+      "name": "candidate5-physical-awg31-auto-outer-count.json",
+      "sha256": "6105a8a6ff6f6d51483587d54de1a600bd5466aa59f043a7d390b615d867ebb5"
+    },
+    {
+      "name": "candidate5-physical-awg31-auto-inner-count.json",
+      "sha256": "5b5db895e81c7e3f59d2767265980df4451b2763cedad8b54bb6a330a64bd52e"
+    },
+    {
+      "name": "candidate5-current-awg2-failure-ui.xml",
+      "sha256": "9f9e6464e75dd900de3002f87593dca99bc682389f22578828d09ba4465c9f08"
+    },
+    {
+      "name": "candidate5-physical-awg2-status-details.xml",
+      "sha256": "6e8b781a9c21481487ffb54db894550d66b0ed2e7a4effa466765370667ac8ce"
+    },
+    {
+      "name": "candidate5-physical-awg31-result.xml",
+      "sha256": "0ef13c00969829e2df0c35106b79f9357f3a2f7257002fc36b50a9bb14ad4fc7"
+    },
+    {
+      "name": "candidate5-current-physical-default-cleanup.json",
+      "sha256": "c3e20e873538937b9420defc0f204b0a2461f2b5070d4e68cc5a295a7df4b4e5"
+    }
+  ],
+  "cleanup": {
+    "profile": "default",
+    "resolved_profile": "legacy_reality_fallback",
+    "lab_material_provisioned": false,
+    "lab_membership_present": false,
+    "app_vpn_stopped": true,
+    "wifi_restored": true,
+    "verdict": "PASS"
+  },
+  "release_interpretation": {
+    "gate_f": "BLOCKED",
+    "wo_013av_digest_bound_decision_mutated": false,
+    "stable_release_allowed": false,
+    "new_signed_candidate_required": true,
+    "next_diagnostic_requirement": "bounded privacy-safe Core rejection reason without raw endpoint, key or packet logging"
+  }
+}

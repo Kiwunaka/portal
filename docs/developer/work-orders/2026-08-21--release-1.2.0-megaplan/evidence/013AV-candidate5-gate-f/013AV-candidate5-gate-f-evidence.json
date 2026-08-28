@@ -1,0 +1,123 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-08-28T20:06:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.5",
+    "operational_id": "ff8ab3bf0289f920c70adddbd0d33cf8d2f0d8fd8f5d4896300ab7c410074e2a",
+    "manifest_sha256": "1f8d6ba056f66dc3f8ea76df16e42f5481fc17b111ea759f191eb4ad4af3c263",
+    "signature_sha256": "56ed2afe249491546d4e21f1c66490daa6ee376af9b94b53b7a7ea680cf3e874",
+    "receipt_sha256": "d39ad982b14c55e9e395753f73a9c3d6570ac912e3d8a967a15aac5a0d05060b",
+    "sources": {
+      "platform": "6ea08e9222dff67c93ffa0bb9585a57c5ffe220c",
+      "client": "6b596cefbc043c2da30b31007789cea7e30fc336",
+      "core": "e8eb7721fc6eaac6813d3a888ac90d0da1f541a1",
+      "release_index": "1d1b7eec05f311aad3044249982ed6fa0f3ace0d"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "MANUAL_OWNER_TEST",
+    "mandatory_stop_ship_and_dod": "MANUAL_OWNER_TEST",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "MANUAL_OWNER_TEST",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MANUAL_OWNER_TEST",
+    "current_origin": "PASS",
+    "brain_origin": "PASS",
+    "ru_origin": "MANUAL_OWNER_TEST",
+    "windows_live_network": "MANUAL_OWNER_TEST",
+    "android_ldplayer_rehearsal": "PASS",
+    "android_physical_device": "PASS",
+    "authenticated_client_egress": "NOT_RUN",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "MANUAL_OWNER_TEST",
+    "hosted_required_checks": "SKIPPED_BY_OWNER"
+  },
+  "interpretation": {
+    "known_hard_failures": [],
+    "gate_f_pass_claimed": false,
+    "missing_manual_not_run_not_requested_or_skipped_evidence_is_pass": false,
+    "owner_solo_exception_waives_independent_reviewer_only": true,
+    "github_paid_plan_required": false,
+    "protected_branches_required": false,
+    "github_hosted_checks_required": false,
+    "github_hosted_checks_skipped_is_hosted_pass": false,
+    "exact_local_compensation_may_be_retained_separately": true,
+    "unsigned_windows_direct_beta_exception": "PASS",
+    "unsigned_windows_public_or_stable_trusted_signing_pass": false,
+    "ldplayer_replaces_physical_android": false,
+    "single_physical_huawei_replaces_oem_matrix": false,
+    "brain_route_deploy_replaces_full_brain_origin_gate": false,
+    "full_brain_payload_deploy_plus_197_of_197_source_readback_is_brain_origin_pass": true,
+    "dns_icmp_replaces_authenticated_http_egress": false
+  },
+  "blockers": [
+    {
+      "id": "GATES_A_E_MANUAL_AND_EXTERNAL_ROWS_REMAIN",
+      "status": "MANUAL_OWNER_TEST",
+      "detail": "Exact candidate.5 source replays pass platform release/STOP-SHIP/Gate-F regression, payment/action-intent matrices, client Flutter/Android/Windows matrices, Core full contracts and the 15/15 local quality aggregate. Current-origin and Brain-origin now pass separately. Candidate.3 decisions do not transfer, and Windows live, RU-origin, provider, Operator, legal, comparable-device and post-public-promotion rows remain manual or external."
+    },
+    {
+      "id": "TARGET_CHANNEL_MANUAL_GATES",
+      "status": "MANUAL_OWNER_TEST",
+      "detail": "Android OEM matrix, Android signer recovery, WIN-003, legal/commercial, production Operator OIDC/RBAC/action-intent and production payment-provider E2E remain manual or external."
+    },
+    {
+      "id": "WINDOWS_LIVE_TUN_DNS_EGRESS_RECOVERY",
+      "status": "MANUAL_OWNER_TEST",
+      "detail": "The exact unsigned candidate.5 installer is owner-accepted for direct beta with SmartScreen warning, but exact live TUN, DNS, authenticated egress, sleep/reboot recovery and connected rollback are not yet retained."
+    },
+    {
+      "id": "AUTHENTICATED_HTTP_EGRESS",
+      "status": "NOT_RUN",
+      "detail": "Candidate.5 passed an ordinary physical Android VPN transport plus DNS/ICMP checks, but authenticated HTTP service egress and Smart DNS service access were not captured."
+    },
+    {
+      "id": "PERFORMANCE_AND_RELEASE_HEALTH",
+      "status": "MANUAL_OWNER_TEST",
+      "detail": "The exact candidate.5 local quality aggregate and static web performance gate pass. Post-deploy current-origin health p95 is 51.4514 ms against 100 ms and catalog p95 is 48.1893 ms against 200 ms, but comparable physical Android/Windows measurements and post-public-promotion release health remain absent."
+    }
+  ],
+  "hosted_checks": {
+    "classification": "SKIPPED_BY_OWNER",
+    "policy": "OWNER_SOLO_EXCEPTION_NO_PURCHASE_NO_BRANCH_PROTECTION",
+    "paid_github_plan_required": false,
+    "protected_branches_required": false,
+    "hosted_execution_claimed": false,
+    "local_compensation_claimed_as_hosted_pass": false,
+    "note": "Runs that received zero steps remain non-executed facts; they are outside the owner-selected release policy and are not relabeled PASS."
+  },
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-signed-manifest.json",
+      "sha256": "30d420d67db021445e1a4421c30cf5ea2344331253c5f808a50c3278ca5692a8"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-ldplayer-report.json",
+      "sha256": "f8ce12548f5664942231cb93e9cad024ff17037360c411bf870812d0754c6ccd"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-physical-runtime.json",
+      "sha256": "bb3610272b53cc093953e0a2896634818531b23c8f43a8bcad3a95192de2c74a"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-exact-local-replay.json",
+      "sha256": "148365b6d570e2fcfa6829e11a3425419ca53b5434f1e08f535e8d049868319c"
+    }
+  ],
+  "mutation_boundary": {
+    "physical_device_used": true,
+    "physical_device_exact_candidate_tested": true,
+    "entitlement_mutated": false,
+    "payment_action": false,
+    "production_deploy": true,
+    "production_deploy_scope": "brain full tracked backend candidate.5 payload; retained pre-deploy backup; five canonical services restarted and health-checked",
+    "public_release": false,
+    "repository_visibility_mutated": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE5_SIGNED_MANIFEST_PLUS_EXACT_LOCAL_SOURCE_REPLAY_LDPLAYER_ONE_PHYSICAL_HUAWEI_CURRENT_ORIGIN_AND_BRAIN_ORIGIN; BRAIN_SOURCE_197_OF_197_READINESS_23_OF_23_AND_ENABLED_DELIVERY_7_OF_7; LOCAL_QUALITY_AND_CURRENT_API_BUDGETS_DO_NOT_REPLACE_WINDOWS_LIVE_RU_ORIGIN_PROVIDER_OPERATOR_LEGAL_COMPARABLE_DEVICE_OR_POST_PUBLIC_PROMOTION_PROOF; NO_PUBLIC_RELEASE_OR_STABLE_POINTER"
+}

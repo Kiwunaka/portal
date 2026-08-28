@@ -1,0 +1,112 @@
+{
+  "schema_version": "pokrov-android-physical-candidate-evidence-v1",
+  "recorded_at": "2026-08-28T20:23:18.8142518+03:00",
+  "candidate": "pokrov-1.2.0-candidate.5",
+  "candidate_artifact": {
+    "name": "pokrov-android-universal.apk",
+    "sha256": "2825a832a43404d7f16b42fbaf6f5e1f443505cca6a9ac8bf4e93e5ae46cbebb",
+    "installed_byte_identity": "PASS",
+    "version_name": "1.2.0",
+    "version_code": 4046
+  },
+  "device": {
+    "class": "physical_huawei",
+    "model": "ADA-AL00U",
+    "abi": "arm64-v8a",
+    "android_sdk": 31,
+    "raw_serial_retained": false,
+    "network_context_for_smart_dns": "wifi",
+    "network_context_for_awg_bind_plan": "none"
+  },
+  "brain_managed_profile_route": {
+    "status": "PASS_DEPLOYED_EXACT_ONE_FILE",
+    "target": "portal_bot/api_client_routes.py",
+    "restart_units": [
+      "portal-api"
+    ],
+    "predeploy_normalized_match_count": 193,
+    "prepromote_normalized_match_count": 193,
+    "postdeploy_normalized_match_count": 193,
+    "postdeploy_mismatch_count": 0,
+    "rollback_attempted": false,
+    "apply_report_sha256": "5610826930cb5c84d243dfd019b750bff90d9c40b4f5222a213bd102bdb57038"
+  },
+  "ordinary_profile_baseline": {
+    "location": "Frankfurt",
+    "android_vpn_service": "PASS",
+    "android_vpn_transport": "PASS",
+    "android_vpn_validated": "PASS",
+    "dns_icmp_domains": [
+      "cloudflare.com",
+      "chatgpt.com",
+      "gemini.google.com",
+      "xbox.com"
+    ],
+    "dns_icmp_result": "PASS_4_OF_4",
+    "cleanup": "PASS_NO_POKROV_SERVICE_OR_VPN_TRANSPORT"
+  },
+  "owned_awg": {
+    "public_location_variants": [
+      "ordinary",
+      "whitelist",
+      "whitelist_type_2"
+    ],
+    "public_awg_variant_expected": false,
+    "device_bound_plan": "PASS",
+    "target_install_sha256": "52027bc09d91725fa7431165fbf2596fe11100ebafcf34402c9ce23e8da805ce",
+    "target_install_historical_evidence_match": true,
+    "source_material_available": true,
+    "apply_status": "BLOCKED_BY_ACCESS",
+    "apply_attempts_reaching_remote_helper": 0,
+    "apply_mutation_performed": false,
+    "blocker": "SSH_PROTOCOL_BANNER_OR_TIMEOUT_BEFORE_REMOTE_HELPER",
+    "awg2_core_started": false,
+    "awg31_core_started": false,
+    "crypto_verdict": "NOT_TESTED"
+  },
+  "external_smart_dns": {
+    "resolver_class": "public_cloudflare_doh_control",
+    "custom_doh_url": "https://cloudflare-dns.com/dns-query",
+    "purpose_groups": [
+      "ai",
+      "games"
+    ],
+    "ui_state_machine": "PASS",
+    "amsterdam_attempt": "FAIL_CLOSED_CORE_EGRESS_UNCONFIRMED",
+    "amsterdam_cleanup": "PASS_NO_RESIDUAL_SERVICE_OR_VPN_TRANSPORT",
+    "frankfurt_android_vpn_service": "PASS",
+    "frankfurt_android_vpn_transport": "PASS",
+    "frankfurt_android_vpn_validated": "PASS",
+    "frankfurt_dns_icmp": {
+      "cloudflare.com": "PASS",
+      "chatgpt.com": "PASS",
+      "gemini.google.com": "PASS",
+      "xbox.com": "PASS"
+    },
+    "http_service_access": "NOT_TESTED_NO_HTTP_CLIENT",
+    "resolver_path_attestation": "NOT_AVAILABLE",
+    "compatible_unblocking_resolver": "NOT_PROVEN",
+    "result": "PASS_TUN_DNS_ICMP_ONLY"
+  },
+  "final_restore": {
+    "location": "Frankfurt",
+    "profile_variant": "ordinary",
+    "dns_provider": "AdGuard",
+    "dns_direct_lab_enabled": false,
+    "external_smart_dns_lab_enabled": false,
+    "ai_group_enabled": true,
+    "games_group_enabled": true,
+    "ai_and_games_route": "vpn",
+    "pokrov_vpn_service_active": false,
+    "pokrov_vpn_transport_active": false,
+    "result": "PASS_CLEAN_RESTORE"
+  },
+  "release_classification": {
+    "exact_candidate_install_ui_and_ordinary_tunnel": "PASS",
+    "smart_dns_live_dns_icmp": "PASS_LIMITED",
+    "smart_dns_service_access": "NOT_PROVEN",
+    "awg2_device_matrix": "BLOCKED_BY_ACCESS",
+    "awg31_device_matrix": "NOT_RUN_AFTER_AWG2_BLOCKER",
+    "stable_release_authorized": false
+  }
+}

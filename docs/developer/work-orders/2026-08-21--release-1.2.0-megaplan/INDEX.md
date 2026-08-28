@@ -34,8 +34,8 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 07 | Canonical Operator Center v2 and legacy admin cutover | Local package complete, including the deterministic 75-operation OpenAPI/TypeScript contract, purpose-bound Telegram OIDC Authorization Code plus PKCE login and same-identity step-up for preprovisioned operators, exact retained-bridge permissions and query-suppressed field redaction; live IdP, authenticated exact-candidate readback and cutover/rollback gates remain open | `WO-009`, `WO-009H`, `WO-009I`, `WO-009J` |
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete at `I3`; WO-013AN passes exact-candidate local UI/accessibility/responsive/static/API slices but leaves Gate E `BLOCKED` below I4 on authenticated, physical screen-reader/device, comparable-artifact, browser-lab, RU-origin and post-promotion evidence | `WO-010`, `WO-013AN` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
-| 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | AWG2/AWG3.1 and bounded base HY2 source labs are locally proved and default-off. WO-013AU deploys the reviewed one-file Brain AWG managed-profile correction with `193/193` postdeploy readback, but the exact candidate.5 Huawei binder is `BLOCKED_BY_ACCESS` before the remote helper and no AWG Core starts. HY2 remains undeployed. Exact candidate.5 Smart-DNS state, validated TUN and bounded DNS/ICMP pass on Frankfurt, while compatible resolver, HTTP service access, attribution, leak, rollback and origin proof remain open. Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AU` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | WO-013AU makes signed `pokrov-1.2.0-candidate.5` the current exact-candidate basis with six immutable artifacts, strict-v2 handoff, SBOM, provenance and hosted release-index signature. Exact physical Android install, ordinary Frankfurt tunnel, bounded Smart-DNS TUN/DNS/ICMP and clean restore pass; AWG binding is access-blocked before Core, Windows live network/recovery and the broader manual/provider/origin matrices remain open. Candidate.3 Gate F `NO_GO` stays historical and has not been rerun for candidate.5. No tag, public `v1.2.0`, store object, stable switch or promotion occurred | `WO-013`, `WO-013AE`, `WO-013AI`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AT`, `WO-013AU` |
+| 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | AWG2/AWG3.1 and bounded base HY2 source labs are locally proved and default-off. WO-013AX supersedes the earlier AWG access blocker: on exact candidate.5 physical Android/Beeline, both AWG2 and AWG 3.1 start the app VPN and exchange outer packets, but latest handshake stays absent, inner traffic is zero, and DNS/authenticated egress are unproved. Both exact physical protocol slices are `FAIL`; candidate.5 is rejected for replacement. A separate stale saved-location defect is fixed in verified post-candidate client commit `bbf1de8`. HY2 remains undeployed. Exact candidate.5 Smart-DNS state, validated TUN and bounded DNS/ICMP pass on Frankfurt, while compatible resolver, HTTP service access, attribution, leak, rollback and origin proof remain open. Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AU`, `WO-013AX` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Signed `pokrov-1.2.0-candidate.5` is retained immutably but is no longer promotable. WO-013AV's frozen digest-bound Gate F result remains `BLOCKED` with `6 PASS`, `13 non-PASS`, `0 FAIL`; WO-013AX records later mandatory AWG2 and AWG 3.1 exact-physical `FAIL` results without rewriting that signed decision. A new candidate is required after the client correction and Core interoperability diagnosis/fix. Windows live, RU-origin, authenticated HTTP egress, provider, Operator, legal, comparable-device/post-public-promotion and other manual rows also remain open. Hosted checks are `SKIPPED_BY_OWNER`, not PASS. No tag, public `v1.2.0`, store object, stable switch or promotion occurred | `WO-013`, `WO-013AU`, `WO-013AV`, `WO-013AW`, `WO-013AX` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -135,6 +135,9 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013AS` | Add a default-off owned selective Smart DNS and opaque TLS relay lab without a second VPN core or access claim | Platform/client network-lab source and pre-candidate evidence | Exact pushed platform/client source, canonical policy, bounded Go DoH/SNI server, byte-reproducible immutable bundle, guarded remote installer source/tests, `412/412` client regression, production-signed build-4046 APKs and exact-byte LDPlayer/Huawei default-off/state-machine proof advance `SMARTDNS-01` to `I3`; dedicated-node PLAN/deploy, live DNS/SNI/access/leak/lifecycle/rollback/origin evidence and candidate remain open | `WO-013AO`, `WO-013AR`, platform `2d18fd7`, client `75e82b0`, retained local artifacts, returned physical phone and LDPlayer |
 | `WO-013AT` | Retain the owner-free GitHub policy and exact current PR-head local gate without creating a candidate or changing visibility | Cross-repository release policy and pre-candidate evidence | The owner declines paid GitHub and waives private branch protection only under `OWNER_SOLO_EXCEPTION`; exact platform/client/Core product sources pass the local aggregate `15/15`; private platform/client hosted checks remain zero-step `BLOCKED_BY_ACCESS`, Core passes four product jobs and awaits the client-main binding; no visibility, merge, deploy, candidate or ledger change occurs | `WO-013AO`, current PRs 58/33/6, exact local aggregate, future open-source safety audit |
 | `WO-013AU` | Sign candidate.5, deploy the reviewed Brain AWG route and retain bounded exact physical Android runtime evidence | Cross-repository candidate/runtime evidence | Six immutable artifacts, strict-v2 handoff, SBOM/provenance and hosted manifest signature are retained; the one-file Brain route deploy passes `193/193` with only `portal-api` restarted; exact physical ordinary Frankfurt tunnel and bounded Smart-DNS DNS/ICMP pass with clean restore; AWG device binding is `BLOCKED_BY_ACCESS` before the remote helper/Core; Gate F, Windows/provider/origin/manual gates, public assets and stable promotion remain open | `WO-013AT`, promoted platform/client/Core tuple, release-index signer, authorized Brain deploy, returned physical phone |
+| `WO-013AV` | Correct the candidate.5 release harness, converge Brain to the full exact payload, close current/Brain origins and regenerate Gate F | Platform release decision/runtime evidence | Candidate runtime/artifacts remain immutable; the corrected full release matrix exits zero; Brain fail-first `179/197` becomes postdeploy `197/197`, readiness `23/23` and enabled delivery `7/7`; postdeploy current-origin health/catalog p95 pass; Gate F is `BLOCKED` with `6 PASS`, `13 non-PASS`, `0 FAIL`; no Gate G or public/stable mutation | `WO-013AU`, exact source worktrees, signed candidate.5, authorized Brain deploy |
+| `WO-013AW` | Retain the no-purchase/no-protection solo policy and audit public-repository safety before visibility changes | Cross-repository publication policy/evidence | Core and release index are already public; direct platform/client visibility flips are blocked by unreviewed reachable history, binaries/oversized blobs and missing publication licenses. Publish sanitized source-only successors after rights/license and clean-clone CI proof; no billing, protection, visibility or repository mutation occurred | `WO-013AT`, owner public-source direction, all-reachable-history redacting preflight |
+| `WO-013AX` | Run exact candidate.5 owned AWG2/AWG 3.1 physical interoperability and retain replacement corrections | Cross-repository candidate/protocol/runtime evidence | Protected binds succeed and exact candidate.5 starts Android VPN for both profiles, but outer packet exchange never becomes an authenticated handshake, inner traffic stays zero and DNS/egress are unproved; both slices are `FAIL`. Candidate.5 is immutable and rejected for replacement. Platform binder `f4927c6` and client stale-location fix `bbf1de8` pass focused local verification; privacy-safe Core rejection diagnostics and a new signed candidate are required | `WO-013AU`, `WO-013AV`, exact signed candidate.5, returned physical phone, owned AWG endpoints |
 
 ## Current evidence
 
@@ -143,10 +146,13 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `EXECUTION-INDEX.md` defines the completion index and aggregate reporting rules.
 - `SOURCE-CROSSWALK.md` preserves plan coverage and conflict decisions.
 - `WO-013AU-candidate5-signing-brain-awg-route-and-physical-runtime.md`
+- `WO-013AV-candidate5-gate-f-current-and-brain-origin.md`
+- `WO-013AW-free-publication-preflight.md`
+- `WO-013AX-candidate5-owned-awg-physical-interoperability.md`
   binds the signed candidate.5 artifact set and hosted signature, exact
   one-file Brain deploy, bounded physical Android/Smart-DNS runtime proof,
-  access-blocked AWG binder and clean device restore without authorizing
-  public or stable promotion.
+  later exact AWG2/AWG 3.1 protocol failures, replacement corrections and
+  clean device restore without authorizing public or stable promotion.
 - `evidence/013H-clean-source-freeze/013H-clean-source-freeze.json` binds the
   clean source commits, local gates and five remaining preflight blockers.
 - `evidence/013I-core-artifact-binding/013I-core-artifact-binding.json` binds
@@ -416,50 +422,57 @@ The original source-plan ledger distribution is `I4=4`, `I3=315`, `I2=21`,
 `I1=37` across 377 rows. The derived `FRKN_SMART_DNS/SMARTDNS-01` row is
 separate and now sits at `I3`.
 
-The owner declined paid GitHub. Private platform/client branch protection is
-waived only under `OWNER_SOLO_EXCEPTION`; named hosted checks are not waived
-and remain `BLOCKED_BY_ACCESS`. Do not change visibility in this slice. Audit
-source and history for public-release hazards before a separately authorized
-public conversion. Preserve the promotion order: client binding, Core PR 6
-`release-contract` replay, then Core/platform. Only after the exact promoted
-tuple is green may a replacement candidate be frozen and subjected to the
-candidate-bound device, Windows network, origin, provider, Operator, legal and
-performance matrices.
+The owner declined paid GitHub and branch protection. Hosted jobs are now
+`SKIPPED_BY_OWNER` under `OWNER_SOLO_EXCEPTION`, never PASS. WO-013AW audited
+all fetched reachable history with redacted outputs: Core and the release index
+are already public, while direct visibility flips for the existing platform
+and client repositories remain unsafe because retained history, binaries,
+oversized blobs, rights review and publication licenses are unresolved. The
+approved public-source direction therefore uses sanitized source-only
+successors plus clean-clone public CI; it is not a release prerequisite and no
+visibility mutation occurred here.
 
-The owned AWG and HY2 labs are still default-off. Beeline reverse UDP is
-`BLOCKED_BY_NETWORK_CURRENT_ORIGIN`; another origin can be tested without
-touching active paid nodes, but it cannot substitute for the eventual exact
-candidate matrix. HY2's node preflight is green, but live testing still
-requires the exact HY2-aware control-plane deployed with its kill-switch
-engaged, root-only runtime material, separately authorized exact-bundle install
-and encrypted device material. Direct DoH is not VPN-free Smart DNS. Public `v1.2.0`, six
-same-byte public assets and the stable pointer remain prohibited until Gate F
-is `GO` and the owner separately authorizes Gate G. The build-4046 external
-Smart DNS client path remains a default-off lab until a compatible resolver and
-live access/leak/rollback evidence exist. Windows SmartScreen remains the
-owner-approved unsigned direct-beta limitation.
+The owned AWG and HY2 labs are still default-off. WO-013AX removes the earlier
+Beeline reverse-UDP blocker: exact candidate.5 AWG2 and AWG 3.1 start the
+Android VPN and exchange outer traffic, but neither establishes an
+authenticated handshake or inner traffic. They are protocol `FAIL`, not
+network-blocked. HY2's node preflight is green, but live testing still requires
+the exact HY2-aware control-plane deployed with its kill-switch engaged,
+root-only runtime material, separately authorized exact-bundle install and
+encrypted device material. Direct DoH is not VPN-free Smart DNS. Public
+`v1.2.0`, candidate assets and the stable pointer remain prohibited until a
+replacement candidate reaches Gate F `GO` and the owner separately authorizes
+Gate G. The build-4046 external Smart DNS client path remains a default-off lab
+until a compatible resolver and live access/leak/rollback evidence exist.
+Windows SmartScreen remains the owner-approved unsigned direct-beta
+limitation.
 
-## Current next action — candidate.5
+## Current next action — replace candidate.5
 
-WO-013AU is the current signed candidate authority. It binds promoted
-platform/client/Core `6ea08e9...` / `6b596ce...` / `e8eb772...`, release-index
-input `1d1b7ee...`, six immutable artifacts, strict-v2 handoff, SBOM,
-provenance and hosted manifest signature. Output remains
+WO-013AU remains the signed candidate.5 authority, WO-013AV remains its frozen
+digest-bound Gate F authority, and WO-013AX is the later mandatory AWG runtime
+authority. Candidate runtime and artifact bytes are unchanged. The corrected
+release harness, full Brain source `197/197`, readiness `23/23`, enabled
+delivery `7/7` and current-origin API budgets still pass their exact slices.
+The frozen Gate F result remains `BLOCKED` with `6 PASS`, `13 non-PASS`,
+`0 FAIL`, but later AWG2 and AWG 3.1 physical results are explicit protocol
+`FAIL`. Candidate.5 is therefore `REJECTED_FOR_REPLACEMENT`. Output remains
 `ACTIONS_ARTIFACT_ONLY`; no public release or stable pointer exists.
 
-The reviewed Brain AWG route is now deployed with `193/193` postdeploy
-readback and only `portal-api` restarted. Exact Huawei binding is nevertheless
-`BLOCKED_BY_ACCESS` before the remote helper, so AWG2/AWG3.1 Core, tunnel and
-cryptography remain untested for candidate.5. Restore trusted Brain SSH, bind
-AWG2, require managed-profile/TUN/Core/egress/DNS/leak/cleanup proof, then run
-AWG3.1 and return the install to `default`.
+The next transport priority is bounded, privacy-safe Core rejection diagnostics
+for unsupported/unknown message type, invalid MAC and invalid response without
+raw endpoint, key or packet logging. Use that evidence to correct the official
+pinned client/server implementation, merge binder commit `f4927c6` and client
+stale-location commit `bbf1de8`, then build and sign a replacement candidate.
+Rerun AWG2 and AWG 3.1 on Android before exact Windows parity and a new
+digest-bound Gate F. Do not spend the lane on diagnosing SPB beyond bounded
+evidence. HY2 remains default-off and follows the existing
+kill-switch/material/install guards.
 
-Exact physical candidate.5 ordinary Frankfurt TUN and bounded external
-Smart-DNS DNS/ICMP pass with a clean restore. Actual ChatGPT/Gemini/Xbox HTTP
-access, compatible resolver behavior, DNS/SNI attribution, leak/privacy,
-rollback and origin proof remain open. Complete those plus Windows live
-network/recovery, provider/PostgreSQL/outbox, Operator, accessibility,
-performance and distinct current/Brain/RU-origin gates before regenerating
-Gate F. Candidate.3 `NO_GO` is retained history and cannot decide candidate.5.
-Public/stable Gate G remains separately authorized and prohibited until the
-candidate.5 Gate F decision is GO.
+For Smart DNS, exact physical candidate.5 ordinary Frankfurt TUN and bounded
+DNS/ICMP already pass. The next honest slice is compatible resolver plus actual
+ChatGPT/Gemini/Xbox HTTP access, resolver/DNS-SNI attribution, leak/privacy and
+cleanup. Windows live network/recovery, RU-origin, provider/PostgreSQL/outbox,
+Operator, legal/commercial, accessibility, comparable-device performance and
+post-public-promotion health also remain open before Gate F can become `GO`.
+Public/stable Gate G remains separately authorized and prohibited until then.

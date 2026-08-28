@@ -1,0 +1,113 @@
+{
+  "schema": "pokrov.repository-publication-preflight/v1",
+  "recorded_at_utc": "2026-08-28T18:28:00Z",
+  "owner_policy": {
+    "github_purchase_authorized": false,
+    "branch_protection_required": false,
+    "solo_exception": "OWNER_SOLO_EXCEPTION",
+    "eventual_public_repositories_authorized": true,
+    "unsafe_direct_visibility_change_authorized": false
+  },
+  "scanner": {
+    "path": "<POKROV_TOOLS>/security-tools/git_history_publication_audit.py",
+    "sha256": "8eab1e665ddcc02d4494f7ef34329b68578b4fcf4a6ede5eb7284fbdcbedff48",
+    "coverage": "all reachable objects from all fetched local refs",
+    "redaction": "matched values and source snippets omitted",
+    "limitations": [
+      "Pattern hits are conservative review signals and are not claims that a real credential leaked.",
+      "Low-entropy or custom-format secrets and private operational facts still require manual review.",
+      "Oversized blobs are inventoried but not content-scanned.",
+      "Dependency licensing, generated-asset rights and clean-clone builds are separate gates."
+    ]
+  },
+  "repositories": [
+    {
+      "name": "Kiwunaka/portal",
+      "lane": "platform",
+      "visibility": "PRIVATE",
+      "head": "826112cf18d7b66b19ae43eb6884c594d1adf402",
+      "scan": {
+        "reachable_objects": 18849,
+        "reachable_blobs": 10047,
+        "pattern_blockers_requiring_triage": 157,
+        "review_findings": 144,
+        "oversized_blobs": 11,
+        "external_report_sha256": "24b3dcf3734d6a655ab7cfe90415163258f49dd33897bd8b4fac60cd128f32fb"
+      },
+      "license_file_present": false,
+      "decision": "BLOCK_DIRECT_VISIBILITY_CHANGE",
+      "reason": "The platform contains operational and historical material, unreviewed conservative pattern hits and oversized historical datasets, and has no publication license. Use a separately sanitized public successor unless every retained path and history object is explicitly approved."
+    },
+    {
+      "name": "Kiwunaka/POKROV-app",
+      "lane": "client",
+      "visibility": "PRIVATE",
+      "head": "6b596cefbc043c2da30b31007789cea7e30fc336",
+      "scan": {
+        "reachable_objects": 6787,
+        "reachable_blobs": 3026,
+        "pattern_blockers_requiring_triage": 16,
+        "review_findings": 99,
+        "oversized_blobs": 6,
+        "tracked_artifact_paths": 80,
+        "tracked_artifact_classes": [
+          "APK",
+          "AAB",
+          "EXE",
+          "DLL",
+          "SO",
+          "ZIP"
+        ],
+        "external_report_sha256": "747afe7e99a0795f7aa60d0d58041a74060af0a19b5c9e40d12e96f1087d1614"
+      },
+      "license_file_present": false,
+      "decision": "BLOCK_DIRECT_VISIBILITY_CHANGE",
+      "reason": "The client history contains bundled release binaries and six oversized blobs, conservative test-fixture pattern hits remain to be triaged, and no publication license or brand boundary is present. Publish a sanitized source-only successor first."
+    },
+    {
+      "name": "Kiwunaka/pokrov-core",
+      "lane": "core",
+      "visibility": "PUBLIC",
+      "head": "3dd5b6c1266229efa791f2bbb05ed9632e30cbda",
+      "scan": {
+        "reachable_objects": 4105,
+        "reachable_blobs": 3255,
+        "pattern_blockers_requiring_triage": 5,
+        "review_findings": 13,
+        "oversized_blobs": 0,
+        "external_report_sha256": "86d7a14bd5d1d946b5e71b2c904208abfa8ee54149d40a2e66d82379a7a879d8"
+      },
+      "license_file_present": true,
+      "decision": "ALREADY_PUBLIC_REVIEW_EXISTING_TEST_AND_GENERATOR_MATCHES",
+      "reason": "The conservative matches are in parser, generator and test/testdata paths; the repository is already observable, so triage and rotation policy remain maintenance work rather than a visibility gate."
+    },
+    {
+      "name": "Kiwunaka/pokrov",
+      "lane": "release_index",
+      "visibility": "PUBLIC",
+      "head": "22db1f6002057fc3d27f037295f75ea4f8eed10e",
+      "scan": {
+        "reachable_objects": 152,
+        "reachable_blobs": 61,
+        "pattern_blockers_requiring_triage": 0,
+        "review_findings": 0,
+        "oversized_blobs": 0,
+        "external_report_sha256": "e49cb3fdf87e8e5a17e48182f6367fc6364783186c6f6ba5ce947dc430c7e815"
+      },
+      "decision": "PASS_PATTERN_GATE_ALREADY_PUBLIC"
+    }
+  ],
+  "required_next_steps": [
+    "Keep portal and POKROV-app private while the release candidate proceeds under the free solo policy.",
+    "Create a source-only public client successor with explicit GPL-3.0-or-later and brand/trademark boundaries after dependency and asset-rights review.",
+    "Run clean-clone builds and public CI on the successor before switching official download surfaces.",
+    "Publish a sanitized platform successor later; do not expose the current operational history wholesale."
+  ],
+  "mutation": {
+    "repository_visibility_changed": false,
+    "repository_created": false,
+    "billing_or_plan_changed": false,
+    "branch_protection_changed": false
+  },
+  "overall_decision": "NO_DIRECT_PRIVATE_TO_PUBLIC_VISIBILITY_CHANGE"
+}

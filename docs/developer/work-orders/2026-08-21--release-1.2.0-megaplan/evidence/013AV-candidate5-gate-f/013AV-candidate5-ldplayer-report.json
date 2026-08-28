@@ -1,0 +1,61 @@
+{
+  "schema": "pokrov.candidate-device-evidence/v1",
+  "candidate_id": "pokrov-1.2.0-candidate.5",
+  "candidate_manifest_sha256": "1f8d6ba056f66dc3f8ea76df16e42f5481fc17b111ea759f191eb4ad4af3c263",
+  "source_tuple": {
+    "platform": "6ea08e9222dff67c93ffa0bb9585a57c5ffe220c",
+    "client": "6b596cefbc043c2da30b31007789cea7e30fc336",
+    "core": "e8eb7721fc6eaac6813d3a888ac90d0da1f541a1",
+    "release_index": "1d1b7eec05f311aad3044249982ed6fa0f3ace0d"
+  },
+  "device": {
+    "kind": "LDPlayer Android emulator",
+    "serial": "emulator-5554",
+    "model": "SM_S9280",
+    "abi": "x86_64"
+  },
+  "artifact": {
+    "name": "pokrov-android-x86_64.apk",
+    "size_bytes": 109930165,
+    "sha256": "d6678702b2d9844433e7f1cb2b9342cadf229eb4d8ed10e70788ab9acbf6d4d5",
+    "installed_base_apk_sha256": "d6678702b2d9844433e7f1cb2b9342cadf229eb4d8ed10e70788ab9acbf6d4d5",
+    "byte_identity": "PASS",
+    "signer": "POKROV Android production certificate"
+  },
+  "checks": {
+    "install_and_launch": "PASS_EXACT_CANDIDATE_INSTALL_LAUNCH",
+    "package_readback": "PASS_VERSION_1_2_0_BUILD_4046_MINSDK_24_TARGETSDK_36",
+    "crash_buffer": "PASS_NO_POKROV_CRASH",
+    "home_disconnected_truth": "PASS_NOT_PROTECTED_EXPIRED_ACCESS",
+    "location_catalog": "BLOCKED_BY_EXPIRED_ENTITLEMENT",
+    "location_refresh": "EXECUTED_NO_CATALOG_READBACK",
+    "purpose_groups": "PASS_EXACT_CANDIDATE_UI_READBACK_AI_CHATGPT_GEMINI_GAMES_XBOX",
+    "dns_policy_ui": "PASS_AUTOMATIC_DNS_READBACK_ONLY",
+    "reversible_mode_test": "PASS_ONLY_SELECTED_THEN_RESTORED_RUSSIA_DIRECT",
+    "restore_cold_start": "PASS",
+    "vpn_service_after_test": "ABSENT",
+    "tun_interface_after_test": "ABSENT",
+    "pokrov_vpn_transport_after_test": "ABSENT"
+  },
+  "evidence": {
+    "home_ui_xml_sha256": "f3d9c8d93162ba96dc73ecbb605404b029337806082ef20e985068af3725afba",
+    "home_screenshot_sha256": "f9e674ca7d96cb6c64056654095df882d69ac9d248f2dfcf5814b9f1450f42ae",
+    "locations_refresh_ui_xml_sha256": "430637bac068e1488d816d625c691fbb1b3113b7d41062235926eb863cc59714",
+    "locations_refresh_screenshot_sha256": "506e4cd06d2ffd1109f2ebf5a409a999499d48dd12bb73e8189b3f659ecdb91a",
+    "purpose_groups_ui_xml_sha256": "045bb62347b761a4e9561ec87b57295156fe05a1d29d3a955bdef6eb01666b3b",
+    "purpose_groups_screenshot_sha256": "c23955bc35c27fe8da95dc2d67c486883f92bfa3e44382d161a34f513454ffad",
+    "final_restored_home_ui_xml_sha256": "1565090d3e22c9302c8d77b0c5447fb17f90f370921f8366a9f68081a3304f3c"
+  },
+  "transient_harness_note": "LDPlayer uiautomator temporarily returned null-root/could-not-get-idle-state; app cold start restored UI automation and final state was re-read.",
+  "not_proven": [
+    "live server catalog for this candidate due expired entitlement",
+    "VPN permission and app-owned TUN",
+    "AWG2 server handshake, DNS, egress or leak behavior",
+    "AWG3.1 server handshake, DNS, egress or leak behavior",
+    "Hysteria2 server handshake, DNS, egress or leak behavior",
+    "Smart DNS resolver traffic or ChatGPT/Gemini/Xbox access",
+    "physical-device behavior"
+  ],
+  "result": "PASS_EXACT_LDPLAYER_INSTALL_UI_AND_CLEAN_RESTORE_WITH_ENTITLEMENT_BLOCKER",
+  "observed_at_utc": "2026-08-28T16:46:20.1444906Z"
+}

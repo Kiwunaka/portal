@@ -1,0 +1,189 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-input/v1",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.5",
+    "operational_id": "ff8ab3bf0289f920c70adddbd0d33cf8d2f0d8fd8f5d4896300ab7c410074e2a",
+    "manifest_sha256": "1f8d6ba056f66dc3f8ea76df16e42f5481fc17b111ea759f191eb4ad4af3c263",
+    "signature_sha256": "56ed2afe249491546d4e21f1c66490daa6ee376af9b94b53b7a7ea680cf3e874",
+    "receipt_sha256": "d39ad982b14c55e9e395753f73a9c3d6570ac912e3d8a967a15aac5a0d05060b",
+    "sources": {
+      "platform": "6ea08e9222dff67c93ffa0bb9585a57c5ffe220c",
+      "client": "6b596cefbc043c2da30b31007789cea7e30fc336",
+      "core": "e8eb7721fc6eaac6813d3a888ac90d0da1f541a1",
+      "release_index": "1d1b7eec05f311aad3044249982ed6fa0f3ace0d"
+    }
+  },
+  "checks": [
+    {
+      "id": "gates_a_e_exact_candidate",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/gates_a_e_exact_candidate",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "mandatory_stop_ship_and_dod",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/mandatory_stop_ship_and_dod",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "no_open_p0_false_green_or_secret_leak",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/no_open_p0_false_green_or_secret_leak",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "supply_chain_signature_sbom_provenance",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/supply_chain_signature_sbom_provenance",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "target_channel_signing_and_manual_gates",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/target_channel_signing_and_manual_gates",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "release_docs_manifest_binding",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/release_docs_manifest_binding",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "rollback_and_kill_controls",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/rollback_and_kill_controls",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "current_origin",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/current_origin",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "brain_origin",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/brain_origin",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "ru_origin",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/ru_origin",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "windows_live_network",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/windows_live_network",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "android_ldplayer_rehearsal",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/android_ldplayer_rehearsal",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "android_physical_device",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/android_physical_device",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "authenticated_client_egress",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/authenticated_client_egress",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "payment_provider_e2e",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/payment_provider_e2e",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "operator_auth_rbac_action_intent",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/operator_auth_rbac_action_intent",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "legal_commercial_approval",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/legal_commercial_approval",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "performance_and_release_health",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/performance_and_release_health",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "hosted_required_checks",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AV-candidate5-gate-f/013AV-candidate5-gate-f-evidence.json",
+        "sha256": "56c9267abcece0fd047ff7d884f94c44c40076734d7801ea6bfad953288dfff7",
+        "status_pointer": "/checks/hosted_required_checks",
+        "candidate_pointer": "/candidate/id"
+      }
+    }
+  ]
+}

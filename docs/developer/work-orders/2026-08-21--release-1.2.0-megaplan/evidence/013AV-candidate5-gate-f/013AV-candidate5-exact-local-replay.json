@@ -1,0 +1,202 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate-exact-local-replay/v1",
+  "recorded_at_utc": "2026-08-28T20:06:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.5",
+    "operational_id": "ff8ab3bf0289f920c70adddbd0d33cf8d2f0d8fd8f5d4896300ab7c410074e2a",
+    "sources": {
+      "platform": "6ea08e9222dff67c93ffa0bb9585a57c5ffe220c",
+      "client": "6b596cefbc043c2da30b31007789cea7e30fc336",
+      "core": "e8eb7721fc6eaac6813d3a888ac90d0da1f541a1",
+      "release_index": "1d1b7eec05f311aad3044249982ed6fa0f3ace0d"
+    }
+  },
+  "source_worktrees": {
+    "platform": "<POKROV_TOOLS>/worktrees/VPN-candidate5-platform-source",
+    "client": "<POKROV_TOOLS>/worktrees/POKROV-app-candidate5-client-source",
+    "core": "<POKROV_TOOLS>/worktrees/POKROV-core-candidate5-source",
+    "tracked_status_after_replay": "CLEAN"
+  },
+  "results": [
+    {
+      "id": "platform_gate_b_observability_support_reference",
+      "status": "PASS",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_observability_contracts.py tests/test_generate_observability_support_reference.py tests/test_release_handoff_metadata.py -q",
+      "result": "70 passed"
+    },
+    {
+      "id": "platform_release_preflight_stop_ship_gate_f",
+      "status": "PASS",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_run_client_release_gate.py tests/test_release_gate_check.py tests/test_release_orchestrator.py tests/test_release_handoff_metadata.py tests/test_check_script_manifest.py tests/test_payment_provider_boundaries.py tests/test_release_1_2_candidate_preflight.py tests/test_release_1_2_stop_ship_gate.py tests/test_release_1_2_gate_f.py -q",
+      "result": "163 passed; 21 subtests passed"
+    },
+    {
+      "id": "platform_gate_d_payment_source_matrix",
+      "status": "PASS",
+      "result": "196 passed; 12 subtests passed; 20 warnings"
+    },
+    {
+      "id": "platform_action_intent_policy_matrix",
+      "status": "PASS",
+      "result": "25 passed"
+    },
+    {
+      "id": "client_app_shell",
+      "status": "PASS",
+      "command": "flutter test",
+      "result": "412 passed"
+    },
+    {
+      "id": "client_runtime_engine",
+      "status": "PASS",
+      "command": "flutter test",
+      "result": "67 passed; one declared exact-DLL integration skip covered by the separate real-DLL replay"
+    },
+    {
+      "id": "client_exact_windows_core_proxy_cycles",
+      "status": "PASS",
+      "command": "scripts/test-windows-core-proxy-only.ps1",
+      "result": "100 start/stop cycles passed",
+      "input_dll": {
+        "size": 55403008,
+        "sha256": "73aacd2ccbb3414573284c0c2a253f29c6ed4a56ddf2ff8bb6cc9ae7ca371488"
+      }
+    },
+    {
+      "id": "client_windows_shell",
+      "status": "PASS",
+      "result": "23 passed"
+    },
+    {
+      "id": "client_android_direct_and_store_unit_tests",
+      "status": "PASS",
+      "command": ":app:testDirectDebugUnitTest :app:testStoreDebugUnitTest",
+      "result": "direct 179 passed; store 179 passed; zero failures, errors or skips",
+      "environment": "Gradle 8.11.1; JDK 17"
+    },
+    {
+      "id": "core_full_contract_and_module_suite",
+      "status": "PASS",
+      "command": "scripts/test.ps1 -GoExecutable <POKROV_TOOLS>/go1.25.13/go/bin/go.exe",
+      "result": "POKROV Core tests OK; brand, ABI, observability, AWG2, AWG3.1, Hysteria2, release CI, full Go module, sing-box AWG/daemon/libbox/TLS/uTLS checks passed"
+    },
+    {
+      "id": "exact_local_quality_gate",
+      "status": "PASS",
+      "command": "python scripts/release_1_2_local_quality_gate.py --keep-going with exact candidate source roots",
+      "result": "15 of 15 steps passed",
+      "evidence": [
+        {
+          "path": "<POKROV_TOOLS>/release-candidates/pokrov-1.2.0-candidate.5/gate-f-local-quality/010I-local-quality-gate.json",
+          "sha256": "e6a1f45554a94afc1d36d7de8f85645f3ab50e3c871d625bd6e2cb2913da3d1b"
+        },
+        {
+          "path": "<POKROV_TOOLS>/release-candidates/pokrov-1.2.0-candidate.5/gate-f-local-quality/010I-local-web-performance-evidence.json",
+          "sha256": "1a127d78ea281f54a1a84f0af7243f1ede1d0d46a4cd359583c51bf824cc79aa"
+        },
+        {
+          "path": "<POKROV_TOOLS>/release-candidates/pokrov-1.2.0-candidate.5/gate-f-local-quality/010I-local-web-performance-gate.json",
+          "sha256": "1b199c8f744e524c121ba0de65293e3a795d82eaafac9db73c70c89a69cfb225"
+        }
+      ]
+    },
+    {
+      "id": "current_origin_full_gate_fail_first",
+      "status": "FAIL_THEN_CORRECTED_HARNESS_REPLAY",
+      "command": "python scripts/release_gate_check.py --output ops-local/release-gates/candidate5-current-origin-full.md",
+      "result": "11 of 13 commands passed; the full release pytest matrix exposed two calendar-dependent assertions and the client security smoke exposed stale candidate.3 Core pins",
+      "evidence": {
+        "path": "<POKROV_TOOLS>/worktrees/VPN-candidate5-platform-source/ops-local/release-gates/candidate5-current-origin-full.md",
+        "sha256": "1e77e49001ba8d041b4c572287645b21d661ed50323bd885b697873b5088f6e7"
+      }
+    },
+    {
+      "id": "candidate5_gate_harness_correction",
+      "status": "PASS",
+      "harness_revision": "e1b032a41c15097a620d63597242bc9996183bce",
+      "candidate_runtime_changed": false,
+      "result": "The provider-cycle fixture is date-independent and the client security smoke pins candidate.5 Core e8eb7721 with the exact AAR and DLL hashes. Focused former failures passed; harness contract regression passed 39 tests and 21 subtests; the corrected full release pytest matrix exited 0 at 100 percent.",
+      "candidate_deploy_payload_identity": {
+        "candidate_source": "6ea08e9222dff67c93ffa0bb9585a57c5ffe220c",
+        "selected_paths": 197,
+        "raw_exact": 4,
+        "crlf_only": 193,
+        "semantic_mismatches": 0,
+        "status": "PASS"
+      }
+    },
+    {
+      "id": "brain_origin_fail_first",
+      "status": "FAIL",
+      "result": "The live Brain payload matched 179 of 197 selected candidate files before the full deploy; 18 files differed, were unreadable or were absent. Readiness still passed 23 of 23 and all seven enabled delivery nodes had open configured TCP ports.",
+      "evidence": [
+        {
+          "path": "<POKROV_TOOLS>/release-candidates/pokrov-1.2.0-candidate.5/brain-origin/brain-runtime-source.json",
+          "sha256": "d588ab4fdaf62d94d1787da02a88fbcf9709128c395f49acd036310739429cbb"
+        },
+        {
+          "path": "<POKROV_TOOLS>/release-candidates/pokrov-1.2.0-candidate.5/brain-origin/brain-readiness.json",
+          "sha256": "89714d9a3c3e872de67f9ef487d736bee25f26697c3f61e49a64f0363e53bfcc"
+        },
+        {
+          "path": "<POKROV_TOOLS>/release-candidates/pokrov-1.2.0-candidate.5/brain-origin/brain-live-enabled-nodes.json",
+          "sha256": "dffac6e8d49951aa9c89a640e3c95b8945cc264f921aa14228967d7bec7036ad"
+        }
+      ]
+    },
+    {
+      "id": "brain_origin_exact_candidate_postdeploy",
+      "status": "PASS",
+      "mutation": "Authorized full backend payload deploy with a retained pre-deploy rollback snapshot and automatic restore-on-health-failure controls; no rollback was triggered.",
+      "result": "197 of 197 selected candidate.5 files match under the CRLF-to-LF-only normalization rule; readiness passed 23 of 23; all seven enabled nodes, including ru_spb, had open configured TCP ports from Brain.",
+      "evidence": [
+        {
+          "path": "<POKROV_TOOLS>/release-candidates/pokrov-1.2.0-candidate.5/brain-origin/brain-runtime-source-postdeploy.json",
+          "sha256": "c932114aac2a6c7b314141cdd8922e6f9ce9caa9584e3313e136f2ee3f64ad19"
+        },
+        {
+          "path": "<POKROV_TOOLS>/release-candidates/pokrov-1.2.0-candidate.5/brain-origin/brain-readiness-postdeploy.json",
+          "sha256": "c5d2dd1bb62dd9535ee37f2bba8415e0dedad5a1e2019948ccbdc7da97e3a3ac"
+        },
+        {
+          "path": "<POKROV_TOOLS>/release-candidates/pokrov-1.2.0-candidate.5/brain-origin/brain-live-enabled-nodes-postdeploy.json",
+          "sha256": "df6b9542133accf1e1b49e0cbcac3f004fc78f5c243a7d0fe8944a741d697110"
+        }
+      ]
+    },
+    {
+      "id": "current_origin_postdeploy_api_latency",
+      "status": "PASS",
+      "environment": "current workstation, direct source-bound Ethernet 2, proxy discovery disabled",
+      "result": "Health p95 51.4514 ms against the 100 ms budget; public catalog p95 48.1893 ms against the 200 ms budget; 50 measured samples plus five discarded warmups per endpoint.",
+      "evidence": [
+        {
+          "path": "<POKROV_TOOLS>/release-candidates/pokrov-1.2.0-candidate.5/current-origin/api-health-postdeploy.json",
+          "sha256": "3980f0a1bbd09caf54b1a37bde82ce9313bf9b06513e59be19904c2abef22ad6"
+        },
+        {
+          "path": "<POKROV_TOOLS>/release-candidates/pokrov-1.2.0-candidate.5/current-origin/api-health-postdeploy-gate.json",
+          "sha256": "075e6fd7ea8187c3f5be354b26da06379675eec6c3d76805c1eb0655a28c61ac"
+        },
+        {
+          "path": "<POKROV_TOOLS>/release-candidates/pokrov-1.2.0-candidate.5/current-origin/api-public-catalog-postdeploy.json",
+          "sha256": "55e5e4cf56f3c3853cde25296464571d99dd06105b82a6a8a9bfeb2e7bd17859"
+        },
+        {
+          "path": "<POKROV_TOOLS>/release-candidates/pokrov-1.2.0-candidate.5/current-origin/api-public-catalog-postdeploy-gate.json",
+          "sha256": "6ccb262b5c4146424e850858433b265cc7ec89d4bfd952a640b3a7ff770eb01c"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "The local replay does not become hosted-check PASS.",
+    "The quality aggregate records promotion_status MANUAL_OWNER_TEST and candidate_proven false because manual, device, provider and post-promotion rows remain separate.",
+    "The host used Node 24.15 while package metadata requests Node 22.14.x; the exact source lint, build and E2E steps nevertheless passed.",
+    "No exact Windows live TUN/DNS/authenticated-egress/recovery test is claimed.",
+    "No production provider, full Operator OIDC, legal/commercial, comparable-device performance, RU-origin or post-public-promotion health test is claimed.",
+    "Brain-origin proof is distinct from RU-origin proof, and the Brain TCP delivery probe does not assert end-to-end client protocol success for every transport.",
+    "The newer harness revision changes tests and release pins only; candidate.5 runtime sources and artifact bytes remain immutable."
+  ],
+  "classification": "PASS_EXACT_SOURCE_REPLAY_CURRENT_ORIGIN_AND_BRAIN_ORIGIN_WITH_MANUAL_AND_EXTERNAL_ROWS_REMAINING"
+}

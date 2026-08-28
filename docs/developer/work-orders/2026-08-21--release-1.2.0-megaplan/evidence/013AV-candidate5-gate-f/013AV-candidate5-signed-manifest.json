@@ -1,0 +1,89 @@
+{
+  "schema": "pokrov.release-1.2.0.signed-candidate-manifest-evidence/v1",
+  "recorded_at": "2026-08-28T17:41:22Z",
+  "status": "SIGNED_CANDIDATE_MANIFEST_ACTIONS_ARTIFACT_PROVED",
+  "candidate_manifest_created": true,
+  "candidate_manifest_proven": true,
+  "private_candidate_carrier_created": false,
+  "public_candidate_release_created": false,
+  "public_assets_uploaded": false,
+  "stable_pointer_mutated": false,
+  "promotion_authorized": false,
+  "deployment_performed": false,
+  "source_contract": {
+    "repository": "Kiwunaka/pokrov",
+    "pull_request": 11,
+    "pull_request_head": "ab1e1e438f1ac3b5c34db496c440e1dfe368bee6",
+    "main_merge_commit": "1d1b7eec05f311aad3044249982ed6fa0f3ace0d"
+  },
+  "dispatch": {
+    "workflow": "Prepare signed candidate manifest",
+    "run": 33190309331,
+    "job": 98913813244,
+    "result": "SUCCESS",
+    "head_sha": "1d1b7eec05f311aad3044249982ed6fa0f3ace0d",
+    "template_path": "candidate-inputs/1.2.0/pokrov-1.2.0-candidate.5.json",
+    "candidate_id": "pokrov-1.2.0-candidate.5",
+    "private_key_read_or_exported": false
+  },
+  "actions_artifact": {
+    "id": 9693446260,
+    "name": "pokrov-pokrov-1.2.0-candidate.5-signed-manifest-1d1b7eec05f311aad3044249982ed6fa0f3ace0d",
+    "archive_size_bytes": 7953,
+    "archive_digest": "sha256:4b5207b7a3e954cfe2f81809caf9c1abb3301548c1656cb02160e4a144472412",
+    "created_at": "2026-08-28T16:30:59Z",
+    "expires_at": "2026-09-11T16:30:58Z",
+    "expired": false,
+    "download_readback": "PASS"
+  },
+  "outputs": [
+    {
+      "path": "actions-artifact/release-index.json",
+      "size_bytes": 6883,
+      "sha256": "1f8d6ba056f66dc3f8ea76df16e42f5481fc17b111ea759f191eb4ad4af3c263"
+    },
+    {
+      "path": "actions-artifact/release-index.json.sig",
+      "size_bytes": 64,
+      "sha256": "56ed2afe249491546d4e21f1c66490daa6ee376af9b94b53b7a7ea680cf3e874"
+    },
+    {
+      "path": "actions-artifact/signing-receipt.json",
+      "size_bytes": 588,
+      "sha256": "d39ad982b14c55e9e395753f73a9c3d6570ac912e3d8a967a15aac5a0d05060b"
+    }
+  ],
+  "independent_validation": {
+    "status": "READY_SIGNED_MANIFEST",
+    "signing_key_id": "pokrov-release-2026-01",
+    "artifact_count": 6,
+    "owner_unsigned_windows_exception_count": 1,
+    "owner_unsigned_windows_artifact": "pokrov-windows-setup-x64.exe",
+    "owner_exception_code": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0",
+    "release_index_commit": "1d1b7eec05f311aad3044249982ed6fa0f3ace0d",
+    "receipt_matches_outputs": true,
+    "detached_signature_verified_with_public_keyring": true
+  },
+  "source_tuple": {
+    "platform": "6ea08e9222dff67c93ffa0bb9585a57c5ffe220c",
+    "client": "6b596cefbc043c2da30b31007789cea7e30fc336",
+    "core": "e8eb7721fc6eaac6813d3a888ac90d0da1f541a1",
+    "release_index": "1d1b7eec05f311aad3044249982ed6fa0f3ace0d"
+  },
+  "contract_binding": {
+    "release_handoff_sha256": "93f31532e033244e2082711b245ece5635e891e4cad99d14406017b40584afcd",
+    "product_facts_sha256": "3df7e7a03bf6a7e62e49e2791641428fb415cdca692a67b4a48fee79a853289e",
+    "error_catalog_sha256": "7d3bf242777d5bf76bbebcf162e5969d3f83d7f68b2787051e1c4fddeadc3dc7",
+    "observability_schema_sha256": "24ae72442f778d7f1334ae0a4bf4d774738e4de275707b29420ec733af65cc17"
+  },
+  "required_publication_and_promotion_evidence_absent": [
+    "PUBLIC_V1_2_0_GITHUB_RELEASE",
+    "SIX_PUBLIC_ASSET_UPLOADS",
+    "SAME_BYTE_PUBLIC_PROMOTION",
+    "STABLE_POINTER_SWITCH_AND_ROLLBACK",
+    "WINDOWS_LIVE_TUN_DNS_EGRESS_AND_CONNECTED_ROLLBACK",
+    "AGGREGATE_PROVIDER_OPERATOR_LEGAL_AND_RELEASE_HEALTH_GATES",
+    "POST_PROMOTION_HEALTH"
+  ],
+  "evidence_ceiling": "SIGNED_CANDIDATE5_ACTIONS_ARTIFACT_ONLY_NO_PUBLIC_V1_2_0_NO_STABLE_PROMOTION"
+}

@@ -3746,3 +3746,103 @@ therefore `BLOCKED_BY_ACCESS`; AWG3.1 is `NOT_RUN_AFTER_AWG2_BLOCKER`.
 `FRKN_SMART_DNS/SMARTDNS-01` remain `I3`. Evidence is stronger and now binds
 candidate.5, but no row advances. The 378-row distribution is unchanged.
 Candidate.3 Gate F `NO_GO` is historical; candidate.5 Gate F has not been run.
+
+## 2026-08-28 — WO-013AV candidate.5 Gate F and exact origins
+
+The complete current-origin wrapper first passed `11/13`. Its full release
+pytest matrix retained two fail-first calendar-bound admin-ops assertions, and
+its client security smoke retained candidate.3 Core pins. Harness revision
+`e1b032a...` makes the provider-cycle fixture date-independent and binds
+candidate.5 Core `e8eb772...` plus the exact AAR/DLL digests. The former
+failures, `7/7` client-security tests, `39` release-harness tests plus `21`
+subtests, exact client security smoke and the corrected complete release pytest
+matrix pass. All `197` deploy-selected candidate/harness paths are semantically
+identical (`4` raw exact, `193` CRLF-only), so candidate runtime and artifact
+bytes do not change and no candidate.6 is created.
+
+The full Brain source probe retained a fail-first `179/197` result even though
+readiness was `23/23` and enabled-node TCP delivery was `7/7`. After the
+owner-authorized canonical full-backend deploy from exact platform source
+`6ea08e9...`, the retained rollback snapshot, five clean service restarts and
+delayed health checks passed. Postdeploy Brain source is `197/197`, readiness
+is `23/23`, and enabled delivery is `7/7`. Automatic rollback remained armed
+but was not triggered. The separate source-bound current-origin probe passes
+health p95 `51.4514 ms <= 100 ms` and public-catalog p95
+`48.1893 ms <= 200 ms`, each with 50 samples after five warmups.
+
+Digest-bound candidate.5 Gate F now returns `BLOCKED`: `6/19 PASS`, `13/19`
+non-PASS, `0 FAIL` and zero validation errors. Current-origin and Brain-origin
+are PASS; RU-origin remains separate and open. Windows live network/recovery,
+authenticated HTTP service egress, provider/PostgreSQL/outbox, production
+Operator identity/RBAC/action-intent, legal/commercial, comparable-device
+performance, post-public-promotion health and other manual rows remain
+non-PASS. Hosted jobs are `SKIPPED_BY_OWNER`, not PASS. Decision SHA-256 is
+`e3f2f92f17951e489c5f768ecb9c3898c7728a2c2cd2711b4733007c9cf56cfa`.
+
+At this frozen WO-013AV checkpoint, `REL_GATE/GATE-F` remains `I3` with status
+`SIGNED_CANDIDATE5_GATE_F_BLOCKED_6_PASS_13_NONPASS`. `FRKN_PLAN/W9-05`
+remains `I1` because AWG2/AWG3.1, compatible Smart-DNS HTTP access,
+attribution, comparable transport metrics and required origins remain open.
+No ledger row advances and the 378-row distribution is unchanged. No tag,
+public release, store object, stable pointer or Gate G authorization occurred.
+
+## 2026-08-28 — WO-013AW free GitHub policy and publication preflight
+
+The owner policy is final for this release lane: no paid GitHub plan, no branch
+protection, and `OWNER_SOLO_EXCEPTION`. Hosted zero-step jobs are outside the
+selected policy and remain `SKIPPED_BY_OWNER`, never PASS.
+
+A dedicated redacting local scanner inspected all reachable blobs from all
+fetched refs without retaining matched values or source snippets. The release
+index passes the conservative pattern gate and is already public. Core is
+already public with a license; its remaining conservative matches are in
+parser/generator/test/testdata paths. Direct visibility changes for the current
+private platform and client repositories remain blocked: platform history
+contains unresolved operational/history review surfaces and no publication
+license, while client history retains 80 binary artifact paths, oversized
+blobs and no publication license or brand boundary.
+
+The owner's public-source direction is preserved through sanitized source-only
+successors, explicit license and POKROV brand/trademark boundaries, dependency
+and asset-rights review, and clean-clone public CI. This is separate from
+candidate.5 Gate F. No billing, protection, repository creation, visibility,
+tag, release or stable-pointer mutation occurred. No ledger row advances.
+
+## 2026-08-28 — WO-013AX exact candidate.5 owned AWG interoperability
+
+The protected device binder now succeeds for both default-off lab profiles on
+the exact candidate.5 physical Android install over Beeline. AWG2 and AWG 3.1
+each start the app-owned Android VPN and exchange outer packets with the owned
+server, but neither produces a latest handshake or inner traffic. AWG2 retains
+`29` outer packets with `5` response-sized packets and zero client inner
+packets; AWG 3.1 retains `32` outer packets with `4` outbound packets and zero
+client inner packets. DNS and authenticated egress are unproved. Both exact
+physical protocol slices are `FAIL`, not `BLOCKED_BY_NETWORK_CURRENT_ORIGIN`
+and not tunnel PASS.
+
+The first AWG2 attempt exposed a separate candidate defect: a stale saved
+manual node was validated against a hidden owned lab whose
+`smart_connect=null`. Selecting automatic location allowed the immutable
+candidate test to continue. Verified replacement client commit `bbf1de8`
+ignores that saved node only while materializing owned AWG2/AWG3.1/HY2 labs;
+it passes the full `86/86` bootstrap test file and analyzer. Platform binder
+commit `f4927c6` resolves exactly one entitled device owner, rejects revoked
+rows and unsafe runtime-admin fallback, and passes `18` focused tests plus `6`
+subtests.
+
+Candidate.5 bytes and WO-013AV's digest-bound `6 PASS / 13 non-PASS / 0 FAIL`
+decision remain immutable. The later mandatory AWG failures mean candidate.5
+is `REJECTED_FOR_REPLACEMENT`, Gate F remains `BLOCKED`, and no Gate G or
+public/stable promotion is allowed. `FRKN_PLAN/W3-02`, `W3-03` and `W9-05`,
+plus `FRKN_UNCERTAINTY/UNCERT-02`, remain below `I4` with corrected status and
+no index advancement. The distribution remains unchanged.
+
+The secret-free normalized evidence SHA-256 is
+`bd251c8677d732c49acfa518bddf80983450a0876efec59bcc1ebf2a6ff150e9`.
+
+The next candidate requires bounded, privacy-safe Core rejection diagnostics,
+an interoperability correction that retains official upstream cryptography,
+the verified binder and stale-location fixes, and repeat Android AWG2/AWG3.1
+proof before Windows parity and a new digest-bound Gate F run. The physical
+device was restored to `default`, with lab material and membership removed,
+the app VPN stopped and Wi-Fi restored.
