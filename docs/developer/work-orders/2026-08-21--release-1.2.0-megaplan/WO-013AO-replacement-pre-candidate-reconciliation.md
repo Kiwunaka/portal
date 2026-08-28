@@ -236,6 +236,29 @@ checks pass `76` tests plus `21` subtests. A post-commit read-only Brain PLAN
 again returns `193/193`, `runtime_mutated=false`; report SHA-256 is
 `ff48d40f...34e4b6`. No deploy, restart or policy mutation occurred.
 
+The bounded local quality gate was then run on the exact unified clean tuple:
+platform `01f9a1356d19e247eb8ae136c6ec1685b1a9ea56`, client
+`48c31dfcde48d263bf6a656b1efeef35ef67baaa` and Core
+`e8eb7721fc6eaac6813d3a888ac90d0da1f541a1`. The first invocation honestly
+returned `FAIL` because the new platform worktree had no frontend
+`node_modules`; its retained report SHA-256 is
+`2a238406e68b860d8457034152d0946f8c4f47dee7ea3406c557be11dda44efa`.
+This was an environment-precondition failure, not a product pass and not
+discarded evidence.
+
+After lockfile-only `npm ci` for webapp, marketing and adminapp, the same gate
+was repeated under the package-pinned Node `22.14.0`. All `15/15` steps pass,
+including Flutter `412/412`, cabinet Playwright `69/69`, all three production
+frontend builds and local static performance `9/9`. The 4,608-byte quality
+report SHA-256 is
+`df4b84b5586513556ffadaa068d4dff1e7085da89bb5cc973854e489e831ad46`;
+the performance evidence and gate SHA-256 values are respectively
+`102195f1e9dd9a07ff2aedd3842a7f3f1360b54b177d4f6f6048e63ebfe107b0`
+and `9238f7e2c468a036820ad8e9b75e71a85690a636973a8250438607bf223f829e`.
+The report still records `candidate_proven=false`,
+`promotion_status=MANUAL_OWNER_TEST` and `scope=local_worktree_only`; it does
+not authorize deployment, signing or promotion.
+
 Fresh source/host checks bind platform `50c9d12...`, client `75e82b0...` and
 Core `e8eb772...`: AWG2/AWG3.1 contract sync passes, ten focused Flutter tests,
 thirteen Android direct-release JVM tests and thirty-one Core AWG tests pass.
