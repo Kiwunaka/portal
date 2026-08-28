@@ -199,8 +199,13 @@ class OwnedAwgDeviceEvidenceContractTests(unittest.TestCase):
         self.assertIn("account_component_user_count", helper)
         self.assertIn("runtime_owner_entitled_user_count", helper)
         self.assertIn('"runtime_admin_owner_fallback"', helper)
-        self.assertIn("len(candidates) == 1", helper)
+        self.assertIn(
+            '(target_selection_mode == "exact_local_install" or len(candidates) == 1)',
+            helper,
+        )
         self.assertIn("len(global_install_users) == 1", helper)
+        self.assertIn('"exact_install_device_resolution_ambiguous"', helper)
+        self.assertIn("AccountDevice.install_id == exact_install_id", helper)
         self.assertIn('"target_install_confirmation_failed"', helper)
         self.assertIn("hmac.compare_digest", helper)
         self.assertIn("cleanup_tg_ids = {tg_id, int(target_user.tg_id)}", helper)
