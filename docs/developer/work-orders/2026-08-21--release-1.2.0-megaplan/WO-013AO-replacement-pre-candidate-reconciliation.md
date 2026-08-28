@@ -466,6 +466,29 @@ Later evidence-only platform carriers repeat the same zero-step condition; the
 current PR check rollup is the exact authority for the newest carrier rather
 than a self-referential commit SHA inside this document.
 
+The newest platform carrier narrows that statement. `Guardrails` run
+`33178564672` still received zero steps, and client `Release v2 Contract` run
+`33174374801` remains the same access/billing blocker. Platform `Release v2
+Contract` run `33178564639`, however, executed thirteen steps, checked out the
+cross-repository inputs and failed closed at seed validation. Client `main`
+`95afa078...` still supplies `1.2.0+30`, while the platform owners correctly
+describe the replacement `1.2.0+4046` line. This is
+`FAIL_RELEASE_CONTRACT_CLIENT_MAIN_STALE_VERSION_TRUTH`, not a missing checkout
+key and not a reason to rewrite the replacement owners back to `+30`; the
+client replacement binding must be promoted first under its own green checks.
+
+GitHub secret-slot metadata confirms the remembered release credentials are
+present: the platform-to-client and client-to-platform deploy-key slots, both
+Core deploy-key slots, the release-index manifest-signing slot and the two
+support-mode slots all exist. No secret value was requested or read. The only
+referenced missing slot is `NODE_PASS_BRAIN`, scoped to the manual remote
+release-orchestrator step. It is not needed for the workflow's dry-run, but a
+future hosted `verify-only` or `full` remote run would fail closed without it
+after Actions access is restored. No secret or repository setting was changed.
+The 3,751-byte sanitized readback
+`2026-08-28-github-actions-secret-wiring-readback.json` has SHA-256
+`3ad49b2b7a4f6843983705782873478e4f713d471819677618d2d8e9d6965ef2`.
+
 The owner solo exception is now enforced without weakening checks on the two
 public repositories. Core `main` requires the strict five-job source/artifact
 matrix, and release-index repository `Kiwunaka/pokrov` `main` now requires the
