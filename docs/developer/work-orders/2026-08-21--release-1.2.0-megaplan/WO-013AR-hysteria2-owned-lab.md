@@ -2,7 +2,8 @@
 
 - Date: 2026-08-28
 - Scope: Core, platform and active Android/Windows client source plus local
-  Android pre-candidate and Linux server artifact evidence
+  Android pre-candidate, Linux server artifact and read-only owned-node
+  deployment-preflight evidence
 - Result: `LOCALLY_PROVED_SOURCE_AND_ARTIFACT`
 - Execution index: `I3 VERIFIED_LOCAL`
 - Production/external actions: `NOT_AUTHORIZED_NOT_RUN`
@@ -42,6 +43,7 @@ second TUN owner.
 | --- | --- | --- | --- |
 | Platform | `codex/hy2-owned-lab` | `8d607369e92fbd459ff76c87f491504ea5aa8f43` | managed encrypted material, rollout, migrations, API and L3 guard committed locally |
 | Platform operations | `codex/hy2-owned-lab` | `8a97b538094c49546c35e9c82414178c53d8063b` | deterministic server bundle builder, reviewed template/unit, verify and read-only install/rollback plans committed locally |
+| Platform remote operations | `codex/hy2-owned-lab` | `4c65912e657781e1c20c44f84c6434b91925b65b` | guarded remote PLAN/APPLY/ROLLBACK, strict runtime-config validator, exact receipt binding and automatic rollback committed locally |
 | Client | `codex/hy2-owned-lab` | `850d9e395cb6a0b4a668dfbf67f0239b8f741216` | strict runtime validator and exact Android Core binding committed locally |
 | Core | `codex/hy2-owned-lab` | `e8eb7721fc6eaac6813d3a888ac90d0da1f541a1` | capability/schema, fail-closed converter, tests and Android artifact contract committed locally |
 
@@ -65,6 +67,8 @@ Platform:
 - HY2 plus client API, action-policy and module-slice selection: `37/37 PASS`;
 - network rollout, SQLite/PostgreSQL migrations and action intents: `58/58 PASS`;
 - server bundle focused tests: `4/4 PASS`;
+- guarded remote installer plus bundle/emergency/manifest focused slice:
+  `21/21 PASS`;
 - infrastructure/observability regression: `28/28 PASS`;
 - release-script/manifest regression: `44 PASS`, `21 subtests PASS`;
 - script manifest and dependency contract: `PASS`;
@@ -113,6 +117,25 @@ placeholder-only config, inactive systemd unit, operations note and license
 notices. Its manifest says `deploy_authorized=false`,
 `deployment_performed=false` and `raw_runtime_material_included=false`.
 
+## Read-only owned-node preflight
+
+The guarded installer was executed without `--apply` against owned node `de`
+using strict retained host keys and the exact immutable bundle. The sanitized
+result was `PLAN`, `mutation_performed=false`, with:
+
+- root and required tools ready;
+- UFW installed and active, with no pre-existing HY2 rule;
+- UDP `443` free;
+- no existing HY2 release/current/config/certificate/key/unit target;
+- service inactive and not installed;
+- runtime material not present;
+- raw host and runtime material absent from output.
+
+The deployed Brain does not yet contain the branch-only HY2 rollout field, so
+kill-switch readback is `unavailable`. The installer treats that as information
+in `PLAN` and a hard failure in `APPLY`. No file, service, firewall, pointer,
+Brain setting or client material was changed, and no external handshake ran.
+
 ## Physical Android boundary
 
 The exact arm64 APK upgraded successfully on the returned physical phone.
@@ -132,10 +155,11 @@ service access, battery/thermal behavior or mobile/RU-origin effectiveness.
 `I3 LOCALLY_PROVED_SOURCE_AND_ARTIFACT`. `MONITOR-02` remains `I1` for Gecko,
 Mimic and port hopping. Candidate.3 and every release gate remain unchanged.
 
-Before `I4`, separately authorize installation of the exact immutable server
-bundle, retain its pre-mutation receipt, materialize owner-only TLS/password
-state outside Git, and provision the client endpoint through the guarded
-encrypted-material action. Then run a short bounded exact-build matrix for
+Before `I4`, first deploy the exact HY2-aware platform control-plane while its
+lab remains disabled and kill-switched, then materialize receipt-bound
+root-only TLS/password state outside Git. Separately authorize installation of
+the exact immutable server bundle and provision the client endpoint through
+the guarded encrypted-material action. Then run a short bounded exact-build matrix for
 managed delivery, handshake, traffic, DNS/leak, teardown, current-origin,
 Brain-origin and RU-origin. Do not deploy or restart Brain or delivery-node
 services without a separate explicit owner authorization.
