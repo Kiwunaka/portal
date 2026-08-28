@@ -27,7 +27,7 @@ by encrypted material. It accepts one server port, verified TLS/SNI with ALPN
 raw node-catalog material and a second engine or TUN remain rejected.
 
 This amendment supersedes only the source-implementation deferral. It does not
-alter the retained candidate.3 bytes or prove an owned HY2 server, live
+alter the retained candidate.3 bytes or prove a deployed owned HY2 server, live
 handshake, traffic, performance, mobile/RU origin, production deployment or
 release readiness. Exact evidence and the remaining gates are in
 `WO-013AR-hysteria2-owned-lab.md`.
@@ -77,11 +77,12 @@ raw provider payload qualifies as evidence for this registry.
 
 ## Evidence ceiling
 
-- HY2 Core/platform/client source, reproducible Android Core AAR and signed
-  Android launch/default-off proof: `I3 VERIFIED_LOCAL` under `WO-013AR`.
+- HY2 Core/platform/client source, reproducible Android Core AAR, byte-identical
+  immutable Linux server bundle and signed Android launch/default-off proof:
+  `I3 VERIFIED_LOCAL` under `WO-013AR`.
 - AWG 3.1 source contract: `I3 VERIFIED_LOCAL`; real server, physical device,
   mobile origin and production remain unproven.
 - Remaining monitor registry: `I1 VERIFIED_MONITOR_ONLY`.
-- HY2 owned server artifact/material, live handshake, tunneled traffic,
+- HY2 server deploy/runtime material, live handshake, tunneled traffic,
   performance and distinct current/Brain/RU-origin proof: not run.
 - Candidate and promotion state: `NOT_REQUESTED`.

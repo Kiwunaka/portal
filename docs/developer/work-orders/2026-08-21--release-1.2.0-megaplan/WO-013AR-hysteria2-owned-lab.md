@@ -2,7 +2,7 @@
 
 - Date: 2026-08-28
 - Scope: Core, platform and active Android/Windows client source plus local
-  Android pre-candidate artifact/device evidence
+  Android pre-candidate and Linux server artifact evidence
 - Result: `LOCALLY_PROVED_SOURCE_AND_ARTIFACT`
 - Execution index: `I3 VERIFIED_LOCAL`
 - Production/external actions: `NOT_AUTHORIZED_NOT_RUN`
@@ -41,6 +41,7 @@ second TUN owner.
 | Repository | Branch | Commit | State |
 | --- | --- | --- | --- |
 | Platform | `codex/hy2-owned-lab` | `8d607369e92fbd459ff76c87f491504ea5aa8f43` | managed encrypted material, rollout, migrations, API and L3 guard committed locally |
+| Platform operations | `codex/hy2-owned-lab` | `8a97b538094c49546c35e9c82414178c53d8063b` | deterministic server bundle builder, reviewed template/unit, verify and read-only install/rollback plans committed locally |
 | Client | `codex/hy2-owned-lab` | `850d9e395cb6a0b4a668dfbf67f0239b8f741216` | strict runtime validator and exact Android Core binding committed locally |
 | Core | `codex/hy2-owned-lab` | `e8eb7721fc6eaac6813d3a888ac90d0da1f541a1` | capability/schema, fail-closed converter, tests and Android artifact contract committed locally |
 
@@ -63,6 +64,10 @@ Platform:
 - managed-profile/kill rollback integration: `PASS`;
 - HY2 plus client API, action-policy and module-slice selection: `37/37 PASS`;
 - network rollout, SQLite/PostgreSQL migrations and action intents: `58/58 PASS`;
+- server bundle focused tests: `4/4 PASS`;
+- infrastructure/observability regression: `28/28 PASS`;
+- release-script/manifest regression: `44 PASS`, `21 subtests PASS`;
+- script manifest and dependency contract: `PASS`;
 - Python compile and `git diff --check`: `PASS`.
 
 Client:
@@ -93,6 +98,21 @@ All four APKs passed the existing package/version/non-debuggable/ABI and
 production-certificate verification helper. These are signed local
 pre-candidate artifacts, not release assets.
 
+Immutable Linux/amd64 server bundle built from exact Core source:
+
+| Artifact | Size | SHA-256 |
+| --- | ---: | --- |
+| `pokrov-hy2-server-e8eb772.zip` | `15229012` | `6877d3f1d73cd7d493d8e4a178aeb78e6476715e95bee6791c2210ce05089332` |
+| embedded `pokrov-sing-box-hy2` | `41701524` | `026066be82775af0fef6869f38442775b8737695f48f3bdf26d826a2638fcf5e` |
+
+Two complete ZIP builds and the two Linux binary builds inside each run were
+byte-identical. The builder also compiled a host checker from the same pinned
+source/tag and passed `sing-box check` against a temporary synthetic TLS and
+credential fixture. The retained ZIP contains only the ELF, exact contract,
+placeholder-only config, inactive systemd unit, operations note and license
+notices. Its manifest says `deploy_authorized=false`,
+`deployment_performed=false` and `raw_runtime_material_included=false`.
+
 ## Physical Android boundary
 
 The exact arm64 APK upgraded successfully on the returned physical phone.
@@ -112,9 +132,10 @@ service access, battery/thermal behavior or mobile/RU-origin effectiveness.
 `I3 LOCALLY_PROVED_SOURCE_AND_ARTIFACT`. `MONITOR-02` remains `I1` for Gecko,
 Mimic and port hopping. Candidate.3 and every release gate remain unchanged.
 
-Before `I4`, create an owned immutable HY2 server artifact and lifecycle
-rollback/rotation procedure, provision its endpoint through the guarded
-encrypted-material action, then run a short bounded exact-build matrix for
+Before `I4`, separately authorize installation of the exact immutable server
+bundle, retain its pre-mutation receipt, materialize owner-only TLS/password
+state outside Git, and provision the client endpoint through the guarded
+encrypted-material action. Then run a short bounded exact-build matrix for
 managed delivery, handshake, traffic, DNS/leak, teardown, current-origin,
-Brain-origin and RU-origin. Do not deploy or restart Brain services without a
-separate explicit owner authorization.
+Brain-origin and RU-origin. Do not deploy or restart Brain or delivery-node
+services without a separate explicit owner authorization.

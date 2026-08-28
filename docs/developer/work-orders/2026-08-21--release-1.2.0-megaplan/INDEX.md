@@ -34,8 +34,8 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 07 | Canonical Operator Center v2 and legacy admin cutover | Local package complete, including the deterministic 75-operation OpenAPI/TypeScript contract, purpose-bound Telegram OIDC Authorization Code plus PKCE login and same-identity step-up for preprovisioned operators, exact retained-bridge permissions and query-suppressed field redaction; live IdP, authenticated exact-candidate readback and cutover/rollback gates remain open | `WO-009`, `WO-009H`, `WO-009I`, `WO-009J` |
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete at `I3`; WO-013AN passes exact-candidate local UI/accessibility/responsive/static/API slices but leaves Gate E `BLOCKED` below I4 on authenticated, physical screen-reader/device, comparable-artifact, browser-lab, RU-origin and post-promotion evidence | `WO-010`, `WO-013AN` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
-| 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2 owner labs | AWG2/AWG3.1 and bounded base HY2 source labs are locally proved and default-off; HY2 server/handshake and all exact artifact/device/RU gates remain open; Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013AE makes signed `pokrov-1.2.0-candidate.3` the current exact-candidate basis. Its Gate F remains `NO_GO`: 5 of 19 checks pass, 14 remain non-PASS and Gate B has one explicit candidate failure. 013AO separately binds the replacement pre-candidate baseline; 013AR adds the default-off managed HY2 source/AAR/client slice and production-signed Android install/launch proof at `I3` without creating a new candidate or live HY2 claim. No public `v1.2.0`, stable switch or promotion occurred; exact-candidate physical Android, Windows live network/recovery, HY2 server/handshake, RU-origin, authenticated egress, provider/PostgreSQL/outbox runtime, Operator, legal and device/browser performance gates remain open | `WO-013`, `WO-013C`, `WO-013D`, `WO-013E`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S`, `WO-013T`, `WO-013U`, `WO-013V`, `WO-013W`, `WO-013X`, `WO-013Y`, `WO-013Z`, `WO-013AA`, `WO-013AB`, `WO-013AC`, `WO-013AD`, `WO-013AE`, `WO-013AF`, `WO-013AG`, `WO-013AH`, `WO-013AI`, `WO-013AJ`, `WO-013AK`, `WO-013AL`, `WO-013AM`, `WO-013AN`, `WO-013AO`, `WO-013AQ`, `WO-013AR`, `WO-010K` |
+| 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2 owner labs | AWG2/AWG3.1 and bounded base HY2 source labs are locally proved and default-off; HY2 now has a byte-identical immutable server bundle, but deploy/handshake and all exact device/RU gates remain open; Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | 013AE makes signed `pokrov-1.2.0-candidate.3` the current exact-candidate basis. Its Gate F remains `NO_GO`: 5 of 19 checks pass, 14 remain non-PASS and Gate B has one explicit candidate failure. 013AO separately binds the replacement pre-candidate baseline; 013AR adds the default-off managed HY2 source, client/server artifacts and production-signed Android install/launch proof at `I3` without creating a new candidate or live HY2 claim. No public `v1.2.0`, stable switch or promotion occurred; exact-candidate physical Android, Windows live network/recovery, HY2 server deploy/handshake, RU-origin, authenticated egress, provider/PostgreSQL/outbox runtime, Operator, legal and device/browser performance gates remain open | `WO-013`, `WO-013C`, `WO-013D`, `WO-013E`, `WO-013H`, `WO-013I`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013Q`, `WO-013R`, `WO-013S`, `WO-013T`, `WO-013U`, `WO-013V`, `WO-013W`, `WO-013X`, `WO-013Y`, `WO-013Z`, `WO-013AA`, `WO-013AB`, `WO-013AC`, `WO-013AD`, `WO-013AE`, `WO-013AF`, `WO-013AG`, `WO-013AH`, `WO-013AI`, `WO-013AJ`, `WO-013AK`, `WO-013AL`, `WO-013AM`, `WO-013AN`, `WO-013AO`, `WO-013AQ`, `WO-013AR`, `WO-010K` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -131,7 +131,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013AO` | Reconcile the current replacement source tuple, same-byte Android Core provenance, owned AWG/DNS physical slice and exact local aggregate without creating a candidate | Cross-repository pre-candidate/release evidence | Platform/client/Core base tuple `e5ef03a...` / `c196dff...` / `f44dbe8...` is clean and pushed; exact Node 22.14 local gate passes `15/15`; owned default-off lab closure advances `FRKN_PLAN/W3-01` to `I3`; later client `5e78dd9...` adds locally verified external Smart DNS routing and a production-signed build-4046 physical state-machine PASS without resolver/access proof; platform PR 58 and client PR 33 remain zero-step billing-blocked, while Core PR 6 passes four product jobs and awaits the client-main binding | `WO-013AK`, `WO-013AN`, owned physical pre-candidate evidence, current PR heads |
 | `WO-013AP` | Add closed Linux NetworkManager/resolved/nft checkpoint/apply/rollback events without enabling or claiming live Linux traffic | Client conditional-Linux source and platform execution evidence | Client PR 28 head `583e04a...` adds typed transaction events plus honest unavailable preflight wiring; portable Go, Linux cross-vet/build/test compile, Flutter `4/4`, docs and branch-basis seed checks pass; `OBS-045` advances only to `I2` because Linux execution, real network transactions, journald readback and clean-host restoration are absent | `WO-005G`, Linux PR 28, `OBS-043`–`OBS-046`, branch-basis platform/Core authority |
 | `WO-013AQ` | Add an authenticated same-build release-health comparison without exposing operator aggregates or exact cohort values | Platform/client pre-candidate source and observability evidence | Platform `3e52b73...` adds a weekly k-anonymous, contribution-capped, band-only projection; client `44c9cca...` adds a strict existing-session-only consumer on explicit diagnostics refresh plus the build-4046 `PSD2` support-code correction; platform/client/Core tests and final seed parity pass; `OBS-087` advances only to `I2` because no deploy, runtime cohort, exact candidate or physical comparison exists | `WO-010G3`, observability contracts and inventory, exact platform/client/Core source |
-| `WO-013AR` | Add a managed default-off Hysteria2 owner lab through the existing Core engine without a server or production claim | Cross-repository transport source/artifact evidence | Core/platform/client exact contract, encrypted device-bound material, L3 guard, two byte-identical Android AAR builds and production-signed build-4046 install/launch/default-off teardown pass; `FRKN_HY2/HY2-01` advances to `I3`; owned server, managed handshake/traffic, performance, origins, candidate and deploy remain open | `WO-012G` owner amendment, `WO-013AO`, exact Core/platform/client source and returned physical phone |
+| `WO-013AR` | Add a managed default-off Hysteria2 owner lab through the existing Core engine without a production claim | Cross-repository transport source/artifact evidence | Core/platform/client exact contract, encrypted device-bound material, L3 guard, reproducible Android AAR, production-signed build-4046 default-off phone proof and byte-identical immutable Linux server bundle pass; `FRKN_HY2/HY2-01` is `I3`; server deploy, managed handshake/traffic, performance, origins and candidate remain open | `WO-012G` owner amendment, `WO-013AO`, exact Core/platform/client source and returned physical phone |
 
 ## Current evidence
 
@@ -297,9 +297,10 @@ The row order is a dependency order, not permission for one giant merge. Each im
   strict band-only client consumer and the `OBS-087` `I1 -> I2` ceiling without
   claiming a deploy, runtime cohort, physical comparison or candidate.
 - `WO-013AR-hysteria2-owned-lab.md` binds the exact managed HY2 source tuple,
-  reproducible Android Core AAR, production-signed build-4046 artifacts and
-  physical install/launch/default-off proof while keeping the missing owned
-  server, handshake, traffic, origins, deploy and candidate explicit.
+  reproducible Android Core AAR, byte-identical immutable Linux server bundle,
+  production-signed build-4046 artifacts and physical install/launch/default-off
+  proof while keeping server deploy/material, handshake, traffic, origins and
+  candidate explicit.
 
 ## Collision and promotion gates
 
@@ -382,10 +383,12 @@ passes source plus physical state-machine checks, but it has no compatible
 resolver or live service-access proof and does not create a candidate.
 
 WO-013AR adds the exact default-off HY2 source tuple
-`8d60736...` / `850d9e3...` / `e8eb772...`, two byte-identical Android Core
-AAR builds and production-signed build-4046 install/launch/default-off proof.
-It advances only `FRKN_HY2/HY2-01` to `I3`; there is no owned HY2 server,
-managed handshake, traffic, performance, origin, deploy or candidate proof.
+`8d60736...` + operations `8a97b53...` / `850d9e3...` / `e8eb772...`, two
+byte-identical Android Core AAR builds, a byte-identical immutable Linux server
+bundle and production-signed build-4046 install/launch/default-off proof.
+It advances only `FRKN_HY2/HY2-01` to `I3`; the immutable server bundle now
+exists locally, but there is no server deploy/material, managed handshake,
+traffic, performance, origin or candidate proof.
 The current ledger distribution is `I4=4`, `I3=315`, `I2=21`, `I1=37` across
 377 rows.
 
@@ -401,8 +404,9 @@ provider, Operator, legal and comparable performance matrices.
 The owned AWG and HY2 labs are still default-off. Beeline reverse UDP is
 `BLOCKED_BY_NETWORK_CURRENT_ORIGIN`; another origin can be tested without
 touching active paid nodes, but it cannot substitute for the eventual exact
-candidate matrix. HY2 cannot be tested live until an owned immutable server
-artifact and encrypted device material exist. Direct DoH is not VPN-free Smart DNS. Public `v1.2.0`, six
+candidate matrix. HY2 cannot be tested live until the exact immutable server
+bundle is separately authorized, installed and paired with encrypted device
+material. Direct DoH is not VPN-free Smart DNS. Public `v1.2.0`, six
 same-byte public assets and the stable pointer remain prohibited until Gate F
 is `GO` and the owner separately authorizes Gate G. The build-4046 external
 Smart DNS client path remains a default-off lab until a compatible resolver and
