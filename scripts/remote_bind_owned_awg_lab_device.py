@@ -462,8 +462,24 @@ def _parse_args() -> argparse.Namespace:
         help="Policy carrier context used for exact post-apply readback.",
     )
     parser.add_argument("--confirm-device-label-sha256", default="")
+    parser.add_argument("--json-out", default="")
     parser.add_argument("--apply", action="store_true")
     return parser.parse_args()
+
+
+def _emit_result(result: dict[str, Any], raw_output_path: str) -> None:
+    encoded = json.dumps(result, indent=2, sort_keys=True)
+    output_path = str(raw_output_path or "").strip()
+    if output_path:
+        target = Path(output_path).resolve()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = target.with_name(f".{target.name}.{os.getpid()}.tmp")
+        try:
+            temporary.write_text(encoded + "\n", encoding="utf-8")
+            os.replace(temporary, target)
+        finally:
+            temporary.unlink(missing_ok=True)
+    print(encoded)
 
 
 def main() -> int:
@@ -518,7 +534,7 @@ def main() -> int:
         if result.get("ok") is not True or result.get("raw_identifiers_returned") is not False:
             raise SystemExit("owned AWG device bind readback failed")
         report.update(result)
-        print(json.dumps(report, indent=2, sort_keys=True))
+        _emit_result(report, args.json_out)
         return 0
     finally:
         brain.close()

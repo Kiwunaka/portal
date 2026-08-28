@@ -196,8 +196,24 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--adb", required=True)
     parser.add_argument("--adb-serial", default="emulator-5554")
     parser.add_argument("--confirm-install-sha256", default="")
+    parser.add_argument("--json-out", default="")
     parser.add_argument("--apply", action="store_true")
     return parser.parse_args()
+
+
+def _emit_result(result: dict[str, Any], raw_output_path: str) -> None:
+    encoded = json.dumps(result, indent=2, sort_keys=True)
+    output_path = str(raw_output_path or "").strip()
+    if output_path:
+        target = Path(output_path).resolve()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        temporary = target.with_name(f".{target.name}.{os.getpid()}.tmp")
+        try:
+            temporary.write_text(encoded + "\n", encoding="utf-8")
+            os.replace(temporary, target)
+        finally:
+            temporary.unlink(missing_ok=True)
+    print(encoded)
 
 
 def _run_remote_helper(
@@ -248,7 +264,7 @@ def main() -> int:
         "raw_identifiers_returned": False,
     }
     if not args.apply:
-        print(json.dumps(report, indent=2))
+        _emit_result(report, args.json_out)
         return 0
     os.environ["POKROV_SSH_KNOWN_HOSTS"] = str(known_hosts)
     brain, _auth = connect_node(
@@ -285,7 +301,7 @@ def main() -> int:
         report["ok"] = (
             report["selected_profile"] == args.profile and report["readback_match"]
         )
-        print(json.dumps(report, indent=2))
+        _emit_result(report, args.json_out)
         return 0 if report["ok"] else 1
     finally:
         brain.close()

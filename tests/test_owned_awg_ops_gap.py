@@ -161,5 +161,56 @@ class OwnedAwgCoreInteropContractTests(unittest.TestCase):
         self.assertEqual(stream.getvalue().strip(), retained.strip())
 
 
+class OwnedAwgDeviceEvidenceContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.bind_module = _load_module("remote_bind_owned_awg_lab_device")
+        cls.select_module = _load_module("remote_select_owned_awg_lab")
+
+    def test_bind_result_is_atomically_retained_without_raw_device_identity(self) -> None:
+        result = {
+            "schema_version": "pokrov-owned-awg-device-bind-v1",
+            "mode": "PLAN",
+            "device_label_sha256": "a" * 64,
+            "raw_identifiers_returned": False,
+        }
+        with tempfile.TemporaryDirectory() as raw_temp:
+            output = Path(raw_temp) / "nested" / "bind.json"
+            stream = io.StringIO()
+            with patch("sys.stdout", stream):
+                self.bind_module._emit_result(result, str(output))
+
+            retained = output.read_text(encoding="utf-8")
+            temporary_files = list(output.parent.glob(f".{output.name}.*.tmp"))
+
+        self.assertTrue(retained.endswith("\n"))
+        self.assertIn('"raw_identifiers_returned": false', retained)
+        self.assertEqual(temporary_files, [])
+        self.assertEqual(stream.getvalue().strip(), retained.strip())
+
+    def test_selection_result_is_atomically_retained_without_raw_install_id(self) -> None:
+        result = {
+            "schema_version": "pokrov-owned-awg-lab-selection-v1",
+            "mode": "PLAN",
+            "profile": "awg2_lab",
+            "install_id_sha256": "b" * 64,
+            "raw_identifiers_returned": False,
+        }
+        with tempfile.TemporaryDirectory() as raw_temp:
+            output = Path(raw_temp) / "nested" / "selection.json"
+            stream = io.StringIO()
+            with patch("sys.stdout", stream):
+                self.select_module._emit_result(result, str(output))
+
+            retained = output.read_text(encoding="utf-8")
+            temporary_files = list(output.parent.glob(f".{output.name}.*.tmp"))
+
+        self.assertTrue(retained.endswith("\n"))
+        self.assertIn('"raw_identifiers_returned": false', retained)
+        self.assertNotIn("raw-install-id", retained)
+        self.assertEqual(temporary_files, [])
+        self.assertEqual(stream.getvalue().strip(), retained.strip())
+
+
 if __name__ == "__main__":
     unittest.main()
