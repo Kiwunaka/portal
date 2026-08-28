@@ -1,20 +1,22 @@
-# Open Source Client Rollout Plan
+# Open Source POKROV Repository Rollout Plan
 
-Last updated: 2026-07-10
+Last updated: 2026-08-28
 
 ## Document Status
 
-This is a future rollout plan for publishing the POKROV client app in a
-separate public repository.
+This is a future rollout plan for publishing the POKROV repositories. The
+client remains the first publication lane; platform publication follows only
+after its larger operations and history audit.
 
 It is not a current release promise, not a store-readiness claim, and not a
-change to the active client source of truth. Until the owner promotes a public
-repository, `POKROV-app/main` remains the canonical private development lane.
+change to the active source of truth. Until the owner promotes public
+repositories, `POKROV-app/main` and platform `master` remain the canonical
+private development lanes.
 
 ## Goal
 
-Publish the POKROV client app as an open-source project under a GPL-family
-license while keeping the operational platform private.
+Publish the POKROV client app and, in a later safety-gated phase, the platform
+repositories as open-source projects under compatible licenses.
 
 The public release should make the client inspectable, buildable, forkable, and
 contribution-ready without exposing private backend operations, billing flows,
@@ -26,6 +28,8 @@ history.
 In scope:
 
 - Android and Windows client source code.
+- eventual platform, operations and documentation publication after a separate
+  source/history, secret, license and artifact audit.
 - two public client product tracks:
   - operator / company client for teams that want a client for their own VPN
     service
@@ -39,7 +43,7 @@ In scope:
 - Public release binaries, checksums, and changelog when a public distribution
   repo or delivery surface is ready.
 
-Out of scope:
+Out of scope for the first client publication:
 
 - `portal_bot/`, backend API internals, bots, workers, admin implementation,
   billing internals, deploy scripts, node-management scripts, and operator
@@ -52,8 +56,12 @@ Out of scope:
 
 ## Recommended Repository Model
 
-Create a new public repository instead of opening the current working
-`POKROV-app` repository directly.
+The owner's direction as of 2026-08-28 is eventual public visibility for all
+POKROV repositories without purchasing GitHub Pro. Direct visibility changes
+remain blocked until source and reachable history are safe. When private
+history cannot be proven publishable without destructive rewriting, create a
+clean public successor from a sanitized snapshot instead of exposing that
+history.
 
 Suggested names:
 
@@ -243,17 +251,21 @@ Add a public `BRAND.md` or `TRADEMARKS.md` before launch that explains:
 - security or support claims must not be copied from official builds unless the
   fork has its own evidence
 
-## Phase 0: Private Repo Visibility Decision
+## Phase 0: Repository Visibility Decision
 
 Before public open-source work starts:
 
-1. Keep the root platform repository private.
-2. Keep `POKROV-app` private unless public binary delivery has already moved to
-   a separate public surface.
+1. Do not purchase a GitHub plan solely for private branch protection or
+   Actions capacity; the owner has declined that path.
+2. Keep the root platform and `POKROV-app` private until their tracked source
+   and complete reachable history pass the publication-safety gate.
 3. Treat any previously public repository history as already observable.
 4. Rotate secrets if there is any chance they were committed or exposed.
 5. Check whether current public APK/EXE URLs depend on GitHub Releases from a
    repository that will become private.
+6. Use `OWNER_SOLO_EXCEPTION` instead of claiming unavailable independent
+   review or paid private-branch enforcement. This exception does not turn a
+   blocked or failed named check into a pass.
 
 Gate:
 
@@ -429,10 +441,14 @@ Enable:
 
 - GitHub secret scanning
 - Dependabot or equivalent dependency alerts
-- branch protection
-- required CI checks
+- visible CI checks; exact release policy still decides which results are
+  required for promotion
 - issue labels for `android`, `windows`, `build`, `security`, `docs`,
   `good first issue`, and `help wanted`
+
+Paid GitHub features and GitHub-enforced branch protection are not completion
+requirements. Solo promotion remains evidence-bound and must not claim an
+independent reviewer.
 
 Decide contribution policy:
 
@@ -467,4 +483,6 @@ The first open-source client rollout is complete when:
 - public binary delivery works independently of private repositories
 - official download surfaces point to the intended public artifacts
 - announcement copy is evidence-honest
-- private platform and operational repositories remain private
+- every repository selected for publication has passed its own source/history,
+  secret, license, artifact and clean-clone gate; platform publication is not
+  required for the first client OSS milestone

@@ -136,6 +136,15 @@ class VerifyBrainReadyTests(unittest.TestCase):
         self.assertIn("frame-ancestors https://web.telegram.org https://*.telegram.org", webapp_block)
         self.assertNotIn("frame-ancestors *", webapp_block)
 
+    def test_caddy_proxies_webapp_api_before_static_fallback(self) -> None:
+        caddyfile = (Path(__file__).resolve().parents[1] / "infra" / "Caddyfile.internal").read_text(encoding="utf-8")
+
+        api_route = caddyfile[caddyfile.index("@webapp_api {") : caddyfile.index("@webapp_host host")]
+        self.assertIn("host app.pokrov.space", api_route)
+        self.assertIn("path /api/*", api_route)
+        self.assertIn("reverse_proxy 127.0.0.1:8080", api_route)
+        self.assertLess(caddyfile.index("handle @webapp_api"), caddyfile.index("@webapp_host host"))
+
     def test_main_returns_failure_when_required_service_is_inactive(self) -> None:
         ssh = MagicMock()
         sftp = MagicMock()

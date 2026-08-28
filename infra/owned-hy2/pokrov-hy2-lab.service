@@ -1,0 +1,38 @@
+[Unit]
+Description=POKROV owned Hysteria2 lab
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=pokrov-hy2
+Group=pokrov-hy2
+UMask=0077
+ExecStartPre=/opt/pokrov/hy2/current/bin/pokrov-sing-box-hy2 check -c /etc/pokrov-hy2/config.json
+ExecStart=/opt/pokrov/hy2/current/bin/pokrov-sing-box-hy2 run -c /etc/pokrov-hy2/config.json
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+KillSignal=SIGINT
+LimitNOFILE=1048576
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+StateDirectory=pokrov-hy2
+
+[Install]
+WantedBy=multi-user.target

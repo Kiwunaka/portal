@@ -445,6 +445,20 @@ def _managed_manifest_payload(
         except Awg31LabError:
             raise HTTPException(status_code=503, detail="AWG 3.1 lab material unavailable") from None
         return "singbox-json", config
+    if str(transport_profile or "").strip() == HY2_LAB:
+        if session is None:
+            raise HTTPException(status_code=503, detail="Hysteria2 lab material unavailable")
+        try:
+            config = build_managed_hy2_lab_config(
+                session,
+                tg_id=int(user.tg_id),
+                install_id=str(install_id or "").strip(),
+                rollout_value=effective_rollout_config.get(HY2_LAB),
+                title=title,
+            )
+        except Hy2LabError:
+            raise HTTPException(status_code=503, detail="Hysteria2 lab material unavailable") from None
+        return "singbox-json", config
     if str(transport_profile or "").strip() in {OPERATOR_LAB, RESERVE_XHTTP_CDN}:
         return (
             "xray-json",

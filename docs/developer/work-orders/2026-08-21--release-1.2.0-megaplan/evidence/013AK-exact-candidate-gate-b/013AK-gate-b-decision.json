@@ -1,0 +1,121 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-b-decision/v1",
+  "recorded_at_utc": "2026-08-27T09:48:25Z",
+  "decision": "NO_GO",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.3",
+    "operational_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
+    "platform_source": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+    "client_source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+    "core_source": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "release_index_source": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2",
+    "manifest_sha256": "a2752b6a3b95faacf13a68edb708c560966a0f5eb8727e109d7f1603fdc81090"
+  },
+  "source_plan": {
+    "file": "POKROV_release_1.2.0_full_audit_with_client_logging_RU.md",
+    "section": "Gate B — состояние подключения, runtime contract, recovery, diagnostics and false-green tests",
+    "requirements": [
+      "connection state machine",
+      "typed runtime contract",
+      "idempotent shutdown and recovery",
+      "diagnostics and error catalog",
+      "false-green tests"
+    ]
+  },
+  "requirements": {
+    "connection_state_machine": {
+      "status": "PASS",
+      "exact_client_state_diagnostics_migrations": "PASS_107_OF_107",
+      "exact_android_state_lifecycle_error_fencing": "PASS_45_OF_45",
+      "candidate3_ldplayer_negative_runtime": "PASS_FAIL_CLOSED_NOT_PROTECTED"
+    },
+    "typed_runtime_contract": {
+      "status": "PASS",
+      "exact_runtime_engine": "PASS_63_OF_63",
+      "exact_core_abi": "PASS_DESKTOP_2_DESCRIPTOR_1_EVENTS_1_EXPORTS_15",
+      "exact_windows_native_contract": "PASS_7_OF_7"
+    },
+    "idempotent_shutdown_and_recovery": {
+      "status": "MANUAL_OWNER_TEST",
+      "source_contract": "PASS",
+      "exact_core_100_start_stop_cycles": "PASS",
+      "missing": [
+        "exact-candidate authenticated connected Android recovery",
+        "exact-candidate live Windows TUN/DNS connected rollback and recovery"
+      ]
+    },
+    "diagnostics_and_error_catalog": {
+      "status": "FAIL",
+      "exact_platform_test": "tests/test_generate_observability_support_reference.py::test_checked_in_reference_is_current",
+      "exact_platform_result": "FAIL_1_OF_69_WITH_68_PASS",
+      "failure": "Windows CRLF checkout changes the generated support-reference catalog digest while the canonical validator and signed manifest use LF identity",
+      "candidate3_contains_fix": false,
+      "post_candidate_fix": "PASS_70_OF_70"
+    },
+    "false_green_tests": {
+      "status": "PASS",
+      "exact_source_false_green_matrix": "PASS_14_OF_14",
+      "candidate3_ldplayer_observation": "TRANSIENT_CONNECTING_THEN_NOT_PROTECTED_WITHOUT_VPN_OR_TUN",
+      "physical_lab_observation_transferred_to_candidate3": false
+    }
+  },
+  "summary": {
+    "required": 5,
+    "pass": 3,
+    "non_pass": 2,
+    "explicit_fail": 1,
+    "validation_errors": []
+  },
+  "hard_failures": [
+    {
+      "id": "EXACT_CANDIDATE_OBSERVABILITY_REFERENCE_PORTABILITY",
+      "status": "FAIL",
+      "detail": "The frozen platform source fails its checked-in observability support-reference freshness contract on a normal Windows CRLF checkout; candidate.3 cannot inherit the post-candidate normalization fix"
+    }
+  ],
+  "manual_gaps": [
+    {
+      "id": "EXACT_CONNECTED_RECOVERY",
+      "status": "MANUAL_OWNER_TEST",
+      "detail": "Source and bounded lifecycle tests pass, but authenticated exact-candidate Android recovery and live Windows connected rollback were not executed"
+    }
+  ],
+  "physical_lab_boundary": {
+    "build": "1.2.0+4031",
+    "candidate3": false,
+    "dns_settings_persistence": "PASS",
+    "awg_client_core_contracts": "PASS_LOCAL",
+    "live_awg_rollout": "NOT_CONFIGURED",
+    "live_awg_server": "NOT_AVAILABLE",
+    "candidate_proof_transferred": false
+  },
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AK-exact-candidate-gate-b/013AK-gate-b-test-evidence.json",
+      "sha256": "c880dad8e7f01d0079426005695646f8842b78e07f10872313aee550a66a33a3"
+    }
+  ],
+  "ledger_transition": {
+    "row": "REL_GATE/GATE-B",
+    "from": "I3",
+    "to": "I3",
+    "status": "LOCALLY_PROVED_EXACT_CANDIDATE_NO_GO"
+  },
+  "replacement_candidate_requirement": {
+    "required": true,
+    "minimum_change": "include the canonical line-ending normalization fix and rerun exact Gate B evidence",
+    "candidate3_mutated": false
+  },
+  "mutation_boundary": {
+    "physical_lab_phone_used": true,
+    "exact_candidate_physical_phone_installed": false,
+    "production_state_read_only_inspected": true,
+    "production_deploy": false,
+    "awg_rollout_mutated": false,
+    "awg_server_mutated": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE3_GATE_B_NO_GO_WITH_ONE_DETERMINISTIC_SOURCE_FAILURE; POST_CANDIDATE_FIX_LOCAL_ONLY; PHYSICAL_PHONE_IS LAB4031_NOT_CANDIDATE3; NO_LIVE_AWG_SERVER_NO_AUTHENTICATED_CANDIDATE_RECOVERY_NO_PROMOTION"
+}

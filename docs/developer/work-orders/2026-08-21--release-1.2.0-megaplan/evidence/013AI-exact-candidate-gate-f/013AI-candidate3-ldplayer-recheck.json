@@ -1,0 +1,85 @@
+{
+  "schema": "pokrov.release-1.2.0.exact-candidate-ldplayer-recheck/v1",
+  "recorded_at_utc": "2026-08-27T08:19:08Z",
+  "status": "PASS_EXACT_CANDIDATE_LDPLAYER_INSTALL_AND_LAUNCH_REHEARSAL",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.3",
+    "operational_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
+    "platform_source": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+    "client_source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+    "core_source": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "release_index_source": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2",
+    "manifest_sha256": "a2752b6a3b95faacf13a68edb708c560966a0f5eb8727e109d7f1603fdc81090",
+    "signature_sha256": "926f0b4667a58ba9cc5ace5c4e6c3c8129d1ec3d4d449b3f0831a8c527cd7121",
+    "receipt_sha256": "fb4d0d5dd272b8d3e7ea2303e2ffa93e332f54ac3e92f245400decc6c06e4b53"
+  },
+  "device": {
+    "provider": "LDPlayer 9",
+    "adb_serial": "emulator-5554",
+    "reported_model": "SM-S9280",
+    "android_version": "9",
+    "physical_device_used": false
+  },
+  "installed_package": {
+    "package_name": "space.pokrov.pokrov_android_shell",
+    "version_name": "1.2.0",
+    "version_code": 30,
+    "apk_signing_version": 2,
+    "installed_base_sha256": "f41c76ebf7bf69f6681d7df87e7722dcdccdec383ef950156b69829caee71c51",
+    "installed_base_size_bytes": 295051181,
+    "signed_manifest_artifact_id": "android-universal",
+    "signed_manifest_name": "pokrov-android-universal.apk",
+    "signed_manifest_byte_match": true
+  },
+  "launch": {
+    "activity": "space.pokrov.pokrov_android_shell/.MainActivity",
+    "am_start_status": "ok",
+    "total_time_ms": 1309,
+    "process_alive_after_launch": true,
+    "package_crash_buffer_lines_after_clear_and_launch": 0,
+    "status": "PASS"
+  },
+  "ui": {
+    "foreground_state": "Не защищено",
+    "entitlement_message": "Продлите доступ, чтобы подключиться",
+    "catalog_ui_observed": true,
+    "navigation_method": "UIAutomator hierarchy bounds-derived taps and scrolls",
+    "profile_ui_observed": true,
+    "support_ui_observed": true,
+    "support_status": "PASS_RENDER_ONLY",
+    "support_visible_contract": "Human chat remains primary; AI helper, feedback, diagnostics and composer are visible",
+    "support_outgoing_message_or_ticket_created": false,
+    "support_live_polling": "NOT_TESTED_NO_EXISTING_TICKET_AND_NO_EXTERNAL_COMMUNICATION_AUTHORIZED",
+    "adaptive_polling_branch_installed": false,
+    "status": "PASS"
+  },
+  "network_boundary": {
+    "authenticated_entitlement": "BLOCKED_BY_ACCESS",
+    "catalog_tun_dns_egress": "NOT_RUN",
+    "reason": "LDPlayer account has no active entitlement; no commercial state was granted or bypassed"
+  },
+  "physical_device_boundary": {
+    "owner_instruction": "PHONE_REMOVED_USE_LDPLAYER_ONLY",
+    "status": "MANUAL_OWNER_TEST"
+  },
+  "scratch_capture_digests": {
+    "retention": "DISPOSABLE_LOCAL_SCRATCH_NOT_RELEASE_ARTIFACT",
+    "screen_png_sha256": "b1ec3fff0041f26c6c263f28d3f3a33525db7369690e67847a278cb6652770a4",
+    "ui_xml_sha256": "55e4dd30130b16682c50ce8e3448d3bcc47339b32d3cfb0a982b59c267619f37",
+    "process_logcat_sha256": "68a7b7da480ae2468a876bd3048ca31900d7409a8c76be27c512a99ca966271e",
+    "current_locations_ui_tree_sha256": "5df3848707a3ae2a9d0143aef61cd8d0f8f4bfe841b860d196137b7016b8fcd9",
+    "profile_ui_tree_sha256": "33ebc4b1f06b4ef5602f692854eeec705ba3d427e28ad4446b538a6078550d9f",
+    "profile_scrolled_ui_tree_sha256": "66397cf8535f2712ddbe237a614290671798672d9784a5ed7d866b45db096f2a",
+    "profile_support_section_ui_tree_sha256": "d8dfbc41f7df77fda4eeebd66b6baed5dffe63a556908bcbb246d95ece08c409",
+    "support_ui_tree_sha256": "a2734c0a0107ed1d696ecdc0d73481b939b58a1c56e4a6ed126985e14b7eee08",
+    "external_smoke_result_sha256": "a3fd457af1ae4d521d208fda7a268a8a6c561f9da3032020e7a9f9a03cb4f0ae"
+  },
+  "tooling_note": "C:\\Windows\\adb.exe and Android SDK adb reported a daemon-version conflict; retained recheck and Support navigation used E:\\LDPlayer\\LDPlayer9\\adb.exe against emulator-5554",
+  "retained_installed_apk_copy": {
+    "path": "E:\\POKROV-tools\\release-evidence\\1.2.0-candidate3-ldplayer-2026-08-27\\installed-base.apk",
+    "state": "RETAINED_EXTERNAL_EXACT_DEVICE_PULL",
+    "sha256": "f41c76ebf7bf69f6681d7df87e7722dcdccdec383ef950156b69829caee71c51",
+    "size_bytes": 295051181
+  },
+  "evidence_ceiling": "EXACT_SIGNED_CANDIDATE3_LDPLAYER_INSTALL_LAUNCH_AND_SUPPORT_RENDER_REHEARSAL_ONLY; NO_LIVE_TICKET_POLLING_NO_ADAPTIVE_BRANCH_NO_AUTHENTICATED_TUNNEL_NO_PHYSICAL_DEVICE_NO_STORE_OR_STABLE_PROOF"
+}

@@ -283,6 +283,27 @@ telemetry path has separate rate limiting and cannot authorize payment,
 entitlement, trial activation, compensation, incident creation or support-case
 state.
 
+Authenticated
+`GET /api/client/observability/release-health/baseline` accepts only the exact
+build identity fields from that same closed contract. Its response conforms to
+`release-health-baseline.v1.schema.json`. Accepted events contribute to a
+weekly cohort through `RELEASE_HEALTH_COHORT_SECRET`: the server HMAC maps one
+authenticated account to one of 4096 build-and-week-scoped buckets, then
+discards the account value. It persists no account/install/device/session value
+or stable contributor hash. A bucket is capped at 64 total events and 32 events
+for each crash/connection/update family, so retries and one noisy account cannot
+dominate the client comparison.
+
+The projection returns `insufficient_cohort` until at least ten distinct bucket
+indexes exist and does not reveal the observed subminimum count. Ten buckets
+require at least ten authenticated accounts; collisions only undercount. It
+returns `insufficient_samples` until at least 30 capped observations exist.
+Only then may `baseline` contain closed sample-size and failure-rate bands;
+exact counts, exact rates, bucket indexes and error-code distributions are not
+part of the client contract. Missing/short privacy secret is `503
+baseline_privacy_unavailable`, never a lower threshold. The read is
+observational and cannot mutate release, incident, entitlement or support state.
+
 The repository candidate implements an additive account foundation: UUID `accounts.id`
 is persisted and `users.account_id` is a nullable projection. The
 public numeric `account_id` remains a compatibility projection. Device sessions
@@ -665,6 +686,11 @@ explicitly enables the legacy contour.
   constructing an authenticated `GET /api/client/profile/managed` response.
   The managed response binds `pokrov.awg2.endpoint.v1`, the exact Core contract
   SHA-256, endpoint revision, generation and `useIntegratedTun=false`.
+- Owner-only `awg2_lab` and `awg31_lab` managed issuance bypasses Smart Connect
+  and the ordinary node shortlist because those profiles are backed by typed
+  per-device endpoint material rather than catalog nodes. The response returns
+  `smart_connect: null`, ignores `selected_node_code`, and remains governed by
+  the exact device, rollout, server-record and material gates below.
 - AWG2 issuance requires the disabled-by-default rollout gate to be enabled,
   its kill switch to be clear, exact user/install/platform/node allowlists, a
   current ready POKROV-owned server record and fresh device material. Missing,

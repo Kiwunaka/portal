@@ -1,0 +1,142 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-e-test-evidence/v1",
+  "recorded_at_utc": "2026-08-27T10:51:23Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.3",
+    "operational_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
+    "platform_source": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+    "client_source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+    "core_source": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "release_index_source": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2",
+    "manifest_sha256": "a2752b6a3b95faacf13a68edb708c560966a0f5eb8727e109d7f1603fdc81090"
+  },
+  "retained_exact_candidate_aggregate": {
+    "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AH-exact-candidate-current-origin/013AH-exact-candidate-current-origin.json",
+    "sha256": "6be140b2b5a4129a94ec50227be679495aa1a66c1e7c389794f086fc86428817",
+    "quick_release_gate": "PASS_12_OF_12",
+    "default_release_gate": "PASS_13_OF_13",
+    "release_pytest": "675 passed plus 38 subtests",
+    "admin_auth": "96 passed plus 8 subtests",
+    "playwright": "88 passed",
+    "health_p95_ms": 42.5337,
+    "health_budget_lte_ms": 100,
+    "public_catalog_p95_ms": 43.3626,
+    "public_catalog_budget_lte_ms": 200
+  },
+  "fresh_exact_source_render_smoke": {
+    "source_worktree": "DETACHED_EXACT_CANDIDATE_PLATFORM_SOURCE",
+    "source_status": "CLEAN_WITH_IGNORED_GENERATED_DEPENDENCIES_AND_BUILD_OUTPUT",
+    "dependency_install": "PASS_392_PACKAGES",
+    "production_build": "PASS_40_STATIC_ROUTES",
+    "node_runtime": "24.15.0",
+    "declared_node_runtime": "22.14.x",
+    "runtime_interpretation": "The fresh render smoke is not comparable performance evidence because the local Node runtime differs from the declared engine; retained 013AH exact-candidate build and E2E evidence remains the release aggregate authority",
+    "browser": "CODEX_IN_APP_BROWSER",
+    "surface": "webapp unauthenticated cabinet entry and recovery state",
+    "desktop_viewport": "1440x1000",
+    "mobile_viewport": "390x844",
+    "page_identity": "PASS_POKROV_PERSONAL_CABINET",
+    "meaningful_content": "PASS_LOGIN_AND_RECOVERY_COPY_RENDERED",
+    "framework_overlay": "ABSENT",
+    "console_errors_or_warnings": 0,
+    "primary_button": "VISIBLE_AND_ENABLED",
+    "mobile_horizontal_overflow": false,
+    "mobile_scroll_width": 390,
+    "mobile_inner_width": 390,
+    "local_interaction": "DIRECT_RECOVERY_ROUTE_RENDERED_RECOVERY_HEADING_WITHOUT_EXTERNAL_SUBMISSION",
+    "screenshots": [
+      {
+        "private_path": "E:/POKROV-tools/release-evidence/1.2.0-candidate3-gate-e-2026-08-27/webapp-login-desktop-1440x1000.png",
+        "sha256": "63c8316a7d836a2a353dbbba56a0172087000b912ae850285dd1c97b1a1990a9"
+      },
+      {
+        "private_path": "E:/POKROV-tools/release-evidence/1.2.0-candidate3-gate-e-2026-08-27/webapp-login-mobile-390x844.png",
+        "sha256": "b82df6c526b8b37df5954ed514f5a8d720322662206e6b142ba4a22647ac34aa"
+      }
+    ]
+  },
+  "requirements": {
+    "truth_first_status_and_product_path": {
+      "status": "PASS_EXACT_CANDIDATE_SOURCE_LOCAL",
+      "proved": [
+        "unauthenticated entry reports email login as unavailable instead of presenting a false path",
+        "Telegram entry remains the visible enabled primary path",
+        "critical cabinet state and public-error regressions are included in the exact aggregate"
+      ]
+    },
+    "responsive_desktop_and_mobile": {
+      "status": "PASS_EXACT_CANDIDATE_SOURCE_LOCAL",
+      "proved": [
+        "exact aggregate production builds and responsive suites pass",
+        "fresh 1440x1000 and 390x844 render smoke has no blank page or framework overlay",
+        "390px viewport has no horizontal overflow"
+      ]
+    },
+    "diagnostics_support_and_recovery": {
+      "status": "PASS_EXACT_CANDIDATE_SOURCE_LOCAL_RUNTIME_BLOCKED",
+      "proved": [
+        "exact aggregate retains diagnostics and support source regressions",
+        "recovery state renders without console error",
+        "safe support and redaction contracts remain candidate-bound"
+      ],
+      "not_proved": [
+        "exact-candidate device support upload",
+        "live recovery after authenticated transport failure",
+        "operator support readback"
+      ]
+    },
+    "accessibility_and_motion": {
+      "status": "PASS_AUTOMATED_EXACT_CANDIDATE_SOURCE_MANUAL_DEVICE_BLOCKED",
+      "proved": [
+        "exact WebApp E2E includes critical-route axe checks and reduced-motion visual coverage",
+        "exact marketing responsive gate includes serious/critical axe checks tab keyboard behavior and reduced-motion checks",
+        "fresh semantic snapshot exposes one level-one heading labeled primary button and legal links"
+      ],
+      "not_proved": [
+        "TalkBack on exact physical Android candidate",
+        "Narrator and OS scaling on exact Windows candidate",
+        "physical 200 percent text and OEM rendering matrix"
+      ]
+    },
+    "performance_budgets": {
+      "status": "PARTIAL_EXACT_CANDIDATE_SOURCE",
+      "proved": [
+        "exact current-origin health p95 is 42.5337 ms within 100 ms",
+        "exact current-origin public catalog p95 is 43.3626 ms within 200 ms",
+        "exact local static stop budgets and production build aggregate pass"
+      ],
+      "not_proved": [
+        "Android and Windows candidate-device cold start connect reconnect rollback frame idle CPU and memory budgets",
+        "comparable APK and installer size regression baseline",
+        "20-sample browser-lab LCP CLS TBT and route-content budgets",
+        "authenticated and post-promotion performance"
+      ]
+    }
+  },
+  "runtime_matrix": {
+    "exact_source_automated_ui_quality": "PASS",
+    "fresh_local_webapp_render": "PASS_NON_COMPARABLE_RUNTIME",
+    "authenticated_cabinet_journey": "BLOCKED_BY_ACCESS",
+    "exact_android_physical_accessibility_and_performance": "MANUAL_OWNER_TEST",
+    "exact_windows_narrator_scaling_and_performance": "MANUAL_OWNER_TEST",
+    "browser_lab_performance": "NOT_RUN",
+    "ru_origin": "BLOCKED_BY_ACCESS",
+    "post_promotion": "NOT_RUN"
+  },
+  "interpretation": {
+    "exact_source_local_quality_closes_gate_e_i4": false,
+    "automated_axe_replaces_physical_screen_reader": false,
+    "fresh_render_smoke_is_browser_performance_proof": false,
+    "observed_new_candidate_defect": false
+  },
+  "mutation_boundary": {
+    "authentication_performed": false,
+    "external_form_or_message_submitted": false,
+    "entitlement_mutated": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE3_LOCAL_AUTOMATED_UI_ACCESSIBILITY_RESPONSIVE_STATIC_AND_CONTROLLED_API_PERFORMANCE_PLUS_FRESH_UNAUTHENTICATED_RENDER_SMOKE_ONLY; NO_AUTHENTICATED_JOURNEY_PHYSICAL_SCREEN_READER_DEVICE_PERFORMANCE_COMPARABLE_ARTIFACT_BROWSER_LAB_RU_ORIGIN_OR_POST_PROMOTION_PROOF"
+}

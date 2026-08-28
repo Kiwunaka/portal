@@ -143,6 +143,7 @@ class ReleaseHealthProjection:
 class ReleaseHealthIngestResult:
     accepted: int
     duplicates: int
+    accepted_event_ids: tuple[str, ...] = ()
 
 
 def _repo_root() -> Path:
@@ -654,28 +655,33 @@ def ingest_release_health_batch(
     duplicates += len(existing)
     rows = _event_rows(unique[event_id] for event_id in event_ids if event_id not in existing)
     dialect = str(session.get_bind().dialect.name or "").lower()
-    accepted = 0
+    accepted_ids: tuple[str, ...] = ()
     if rows:
         if dialect == "sqlite":
             result = session.execute(
                 sqlite_insert(ReleaseHealthEvent)
                 .values(rows)
                 .on_conflict_do_nothing(index_elements=["event_id"])
+                .returning(ReleaseHealthEvent.event_id)
             )
-            accepted = max(0, int(result.rowcount or 0))
+            accepted_ids = tuple(str(value) for value in result.scalars().all())
         elif dialect == "postgresql":
             result = session.execute(
                 postgresql_insert(ReleaseHealthEvent)
                 .values(rows)
                 .on_conflict_do_nothing(index_elements=["event_id"])
+                .returning(ReleaseHealthEvent.event_id)
             )
-            accepted = max(0, int(result.rowcount or 0))
+            accepted_ids = tuple(str(value) for value in result.scalars().all())
         else:
             for row in rows:
                 session.add(ReleaseHealthEvent(**row))
             session.flush()
-            accepted = len(rows)
+            accepted_ids = tuple(str(row["event_id"]) for row in rows)
+        accepted = len(accepted_ids)
         duplicates += len(rows) - accepted
+    else:
+        accepted = 0
 
     persisted_rows = {
         row.event_id: row
@@ -695,4 +701,8 @@ def ingest_release_health_batch(
             "duplicate.events": duplicates,
         },
     )
-    return ReleaseHealthIngestResult(accepted=accepted, duplicates=duplicates)
+    return ReleaseHealthIngestResult(
+        accepted=accepted,
+        duplicates=duplicates,
+        accepted_event_ids=accepted_ids,
+    )

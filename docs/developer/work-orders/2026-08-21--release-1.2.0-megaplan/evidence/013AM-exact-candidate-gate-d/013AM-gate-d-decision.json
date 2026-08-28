@@ -1,0 +1,68 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-d-decision/v1",
+  "recorded_at_utc": "2026-08-27T10:34:17Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.3",
+    "operational_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
+    "platform_source": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+    "client_source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+    "core_source": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "release_index_source": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2",
+    "manifest_sha256": "a2752b6a3b95faacf13a68edb708c560966a0f5eb8727e109d7f1603fdc81090"
+  },
+  "gate": "REL_GATE/GATE-D",
+  "decision": "BLOCKED",
+  "explicit_failures": 0,
+  "evidence": {
+    "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AM-exact-candidate-gate-d/013AM-gate-d-test-evidence.json",
+    "sha256": "1125a3fb29f6b4cccd673f9b9855ca5aac6c247d969207abf6a024e0d88dfe90"
+  },
+  "requirements": {
+    "payment_bounded_context": "PASS_EXACT_CANDIDATE_SOURCE",
+    "shared_http_clients": "PASS_EXACT_CANDIDATE_SOURCE",
+    "db_transaction_strategy": "PASS_EXACT_CANDIDATE_SOURCE",
+    "transactional_outbox": "PASS_EXACT_CANDIDATE_SOURCE",
+    "router_and_service_slices": "PASS_EXACT_CANDIDATE_SOURCE"
+  },
+  "blocking_checks": [
+    {
+      "id": "production_provider_order_callback_and_replay",
+      "status": "MANUAL_OWNER_TEST"
+    },
+    {
+      "id": "production_postgresql_transaction_lock_pool_and_latency",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "production_outbox_worker_delivery_retry_dead_letter_and_reconciliation",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "deployed_refund_chargeback_reversal_and_rollback",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "production_operator_action_intent_execution_and_rollback",
+      "status": "MANUAL_OWNER_TEST"
+    }
+  ],
+  "observed_new_candidate_defect": false,
+  "ledger": {
+    "row": "REL_GATE/GATE-D",
+    "previous_index": "I3",
+    "result_index": "I3",
+    "index_advanced": false,
+    "status": "LOCALLY_PROVED_EXACT_CANDIDATE_RUNTIME_BLOCKED"
+  },
+  "release_effect": {
+    "gate_f_state_changed": false,
+    "candidate3_remains_no_go": true,
+    "replacement_candidate_already_required_by_gate_b": true,
+    "replacement_code_required_by_gate_d": false,
+    "promotion_authorized": false
+  },
+  "production_mutation_performed": false,
+  "public_release_created": false,
+  "stable_pointer_mutated": false,
+  "gate_g_authorized": false
+}

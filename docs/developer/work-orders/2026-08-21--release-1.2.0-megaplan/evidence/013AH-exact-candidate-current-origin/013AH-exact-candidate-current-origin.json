@@ -1,0 +1,117 @@
+{
+  "schema": "pokrov.release-1.2.0.exact-candidate-current-origin/v1",
+  "recorded_at": "2026-08-27T06:12:37Z",
+  "status": "EXACT_CANDIDATE_CURRENT_ORIGIN_LOCAL_AGGREGATE_PASS",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.3",
+    "operational_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
+    "platform_source": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+    "client_source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+    "core_source": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "release_index_source": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2",
+    "manifest_sha256": "a2752b6a3b95faacf13a68edb708c560966a0f5eb8727e109d7f1603fdc81090",
+    "signature_sha256": "926f0b4667a58ba9cc5ace5c4e6c3c8129d1ec3d4d449b3f0831a8c527cd7121",
+    "receipt_sha256": "fb4d0d5dd272b8d3e7ea2303e2ffa93e332f54ac3e92f245400decc6c06e4b53"
+  },
+  "harness": {
+    "source": "c9b34276fd42b4ef4a670caf4a630a77232271cc",
+    "target_override": "POKROV_PLATFORM_ROOT",
+    "candidate_bytes_changed": false,
+    "focused_tests": {"passed": 51, "subtests_passed": 21},
+    "fail_first": {
+      "status": "FAIL",
+      "raw_report_sha256": "4f8ae32d9a5ad9c0f03742e6af836cb3d34ab9e214112db066d85ff57757b6e3",
+      "classified_causes": [
+        "WRONG_CORE_OVERRIDE_NAME_IN_INITIAL_INVOCATION",
+        "STALE_PLATFORM_CORE_V1_0_3_STATIC_PIN",
+        "WEBAPP_E2E_SOURCE_TREE_DEPENDENCY_ASSUMPTION"
+      ]
+    }
+  },
+  "results": {
+    "quick_release_gate": {
+      "status": "PASS",
+      "passed": 12,
+      "failed": 0,
+      "evidence": "013AH-current-origin-quick.json"
+    },
+    "default_release_gate": {
+      "status": "PASS",
+      "passed": 13,
+      "failed": 0,
+      "release_pytest": "675 passed, 19 warnings, 38 subtests passed",
+      "admin_auth": "96 passed, 8 subtests passed",
+      "playwright": "88 passed",
+      "evidence": "013AH-current-origin-full.json"
+    },
+    "health_latency": {
+      "status": "PASS",
+      "p95_ms": 42.5337,
+      "target_lte_ms": 100,
+      "sample_count": 50,
+      "evidence": "013AH-health-gate.json"
+    },
+    "catalog_latency": {
+      "status": "PASS",
+      "p95_ms": 43.3626,
+      "target_lte_ms": 200,
+      "sample_count": 50,
+      "evidence": "013AH-catalog-gate.json"
+    }
+  },
+  "hosted_checks": {
+    "pull_request": 48,
+    "head_source": "c9b34276fd42b4ef4a670caf4a630a77232271cc",
+    "guardrails": {
+      "status": "BLOCKED_BY_ACCESS_GITHUB_BILLING",
+      "run_id": 33041906127,
+      "check_id": 98417162613,
+      "job_started": false
+    },
+    "release_v2_contract": {
+      "status": "BLOCKED_BY_ACCESS_GITHUB_BILLING",
+      "run_id": 33041906160,
+      "check_id": 98417162629,
+      "job_started": false
+    },
+    "owner_solo_exception_waives_hosted_checks": false,
+    "merged": false
+  },
+  "device_boundary": {
+    "android_target": "LDPLAYER_EMULATOR_5554_ONLY",
+    "exact_candidate_package_installed": true,
+    "catalog_tun_dns_egress": "BLOCKED_BY_ACCESS_NO_ACTIVE_ENTITLEMENT",
+    "physical_phone": "NOT_AVAILABLE_OWNER_REMOVED_DEVICE",
+    "temporary_entitlement_granted": false
+  },
+  "mutation": {
+    "deployment_performed": false,
+    "service_restart_performed": false,
+    "route_or_pointer_changed": false,
+    "entitlement_granted": false,
+    "public_or_stable_surface_changed": false
+  },
+  "gate_classification": {
+    "current_origin_exact_candidate_local_aggregate": "PASS",
+    "current_origin_authenticated_client_egress": "NOT_RUN",
+    "brain_origin": "PASS_SEPARATE_WO_013AG",
+    "ru_origin": "BLOCKED_BY_ACCESS",
+    "windows_live_network": "MANUAL_OWNER_TEST",
+    "android_physical": "BLOCKED_BY_ACCESS",
+    "public_release_and_stable_pointer": "NOT_RUN"
+  },
+  "ledger": {
+    "advanced_rows": {},
+    "strengthened_rows": [
+      "REL/PERF-001",
+      "REL_GATE/GATE-E",
+      "REL_DOD/DOD-13",
+      "FRKN_PLAN/W9-02"
+    ],
+    "distribution": {"I4": 4, "I3": 308, "I2": 15, "I1": 38, "I0": 12},
+    "at_or_above_i3": 312,
+    "below_i3": 65,
+    "pending_stage_counts": {"pre_freeze": 0, "candidate": 30, "external": 14, "deferred": 21}
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE_CURRENT_ORIGIN_LOCAL_DEFAULT_GATE_AND_CONTROLLED_API_PERFORMANCE_ONLY_NO_AUTHENTICATED_CLIENT_EGRESS_NO_RU_ORIGIN_NO_PHYSICAL_ANDROID_NO_PUBLIC_RELEASE_NO_STABLE_PROMOTION"
+}

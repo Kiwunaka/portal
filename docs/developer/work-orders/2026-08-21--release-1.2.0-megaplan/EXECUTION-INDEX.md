@@ -1,6 +1,49 @@
 # POKROV 1.2.0 Execution Index
 
-Last updated: 2026-08-27
+Last updated: 2026-08-28
+
+## 2026-08-28 — WO-013AT owner-free GitHub and exact PR-head gate
+
+The sole owner declined a paid GitHub plan and waived private platform/client
+branch protection under `OWNER_SOLO_EXCEPTION`. This does not claim an
+independent reviewer and does not waive named hosted checks. Repository
+visibility was not changed; the stated future public-repository direction now
+requires a separate source/history secret and publication-safety audit. The
+canonical rollout plan now covers eventual client/Core/platform publication
+without paid GitHub features. A bounded high-confidence current/history scan
+found only detector, synthetic-test and parser literals, but the dedicated
+redacting scanner, dependency/license, generated-asset and clean-clone gates
+remain open; this is not publication approval.
+
+Clean platform `663890b564e7d25aaa334cf5b66952f9335ba358`, client
+`3564023c8d0e66977043332f2772cfd512489676` and Core product
+`e8eb7721fc6eaac6813d3a888ac90d0da1f541a1` pass the corrected exact local
+aggregate `15/15`. The report SHA-256 is
+`91c474deda3b05233e9a110cf364e7bf5974375a84dad63aab12c78f2f0266d8`.
+It still reports `candidate_proven=false` and
+`promotion_status=MANUAL_OWNER_TEST`.
+
+Platform PR 58 and client PR 33 are mergeable, but their private hosted jobs
+remain zero-step `BLOCKED_BY_ACCESS_GITHUB_BILLING`. Public Core PR 6 passes
+four product/source-artifact jobs; `release-contract` fails closed until client
+`main` adopts the frozen Core product binding. No merge, deploy, visibility
+change, candidate, public asset, stable pointer or promotion occurred. No
+execution-ledger row advances.
+
+## 2026-08-28 owned selective Smart DNS local proof checkpoint
+
+`WO-013AS` adds one derived FRKN laboratory row,
+`FRKN_SMART_DNS/SMARTDNS-01`, now at
+`I3 LOCALLY_PROVED_SOURCE_ARTIFACT_AND_DEVICE_STATE`. The canonical policy
+is byte-identical across platform and client and has SHA-256
+`b6977f6f6a5ee48898116820d1db252b5b670cb7b86959c78f7bdbc7de90e0fa`.
+The owned server is allowlist-only/non-recursive, forwards application TLS only
+by visible allowlisted SNI and remains default-off. Exact pushed source,
+byte-reproducible server bundle, full client aggregate, production-signed
+working APKs and LDPlayer/Huawei default-off state proof pass. The guarded
+installer source/tests are present; a dedicated-node PLAN, live
+DNS/SNI/access/leak/rollback and candidate evidence remain open. This derived
+row does not change any original source-plan aggregate or release gate.
 
 ## Item scale
 
@@ -3108,3 +3151,557 @@ mutation occurs because the live backend is already the candidate source.
 current-origin aggregate and separately authorized RU-origin results exist.
 Distribution stays `I4=4`, `I3=308`, `I2=15`, `I1=38`, `I0=12`; 312 rows are
 at or above `I3`, 65 remain below, and stage split stays `0/30/14/21`.
+
+## 2026-08-27 — WO-005G conditional Linux foundation reopened
+
+Client PR `#28` head `5388fd3...` applies one fail-closed Linux beta source
+foundation to current client `main`: a non-root Flutter UI, systemd root daemon,
+typed Unix socket, kernel peer credentials, polkit mutation authorization,
+bounded profile store, closed journald envelope, sanitized daemon snapshot and
+one exact Ubuntu 24.04 amd64 foundation row. The daemon explicitly returns
+`supports_live_connect=false` and rejects connect with
+`linux_live_connect_unavailable`.
+
+The current-main Windows-host standard client gate plus focused Flutter,
+release-v2, docs and seed checks pass. Hosted run `32989022843` passes the
+Linux Go foundation at source `0701806...`; those Linux source paths are
+byte-identical at PR `#28`. The new exact-head job `33050348883` received no
+runner and zero steps because GitHub billing/spending access is blocked. Local
+real-Linux execution is separately `BLOCKED_BY_HOST_CAPABILITY` because WSL
+virtualization is unavailable.
+
+`REL/LNX-001` and `OBS/OBS-046` advance `I0 -> I3`.
+`OBS/OBS-043`, `OBS/OBS-044`, `REL_GATE/GATE-C` and `REL_DOD/DOD-06`
+advance `I0 -> I2`; the polkit path is tested, but OBS-044's D-Bus trace is
+not implemented.
+`OBS/OBS-045` advances `I0 -> I1`: only host ownership/probing exists; no
+NetworkManager, resolved or nft transaction recorder is implemented.
+
+Distribution becomes `I4=4`, `I3=312`, `I2=19`, `I1=39`, `I0=3`; `316` rows
+are at or above `I3` and `61` remain below; the pending stage split is
+`0/28/14/19`. Candidate.3 is unchanged and
+contains no Linux artifact. Signed DEB, clean Ubuntu VM, live Core/TUN,
+network rollback, Fedora/RPM and any public Linux claim remain open. If Linux
+enters 1.2.0, a replacement signed candidate is required.
+
+## 2026-08-27 — WO-013AI exact candidate.3 Gate F decision
+
+The new fail-closed Gate F verifier revalidates exact candidate.3 Ed25519
+manifest/signature/receipt bytes against the keyring at release-index source
+`6a1afa95...`, binds the operational candidate ID and exact
+platform/client/Core/release-index tuple, then requires a fixed 19-check set.
+Every check resolves through an in-repository evidence path, exact SHA-256,
+status pointer and candidate pointer. The Gate F aggregate also re-hashes all
+upstream evidence. Missing/duplicate checks, path escape, hash/candidate drift,
+unknown labels or invalid signing input produce `NO_GO`.
+
+The installed LDPlayer `base.apk` is pulled and matches signed manifest
+artifact `android-universal` byte-for-byte: SHA-256 `f41c76eb...`, size
+`295051181`. Package `1.2.0 (30)` launches successfully in `1309 ms`, remains
+alive and has zero package crash-buffer lines after a cleared launch. The UI
+correctly shows renewal is required. Exact install/launch rehearsal is `PASS`;
+authenticated catalog/TUN/DNS/egress remains `BLOCKED_BY_ACCESS`, and the
+owner's LDPlayer-only instruction leaves physical Android
+`MANUAL_OWNER_TEST`.
+
+Gate F returns exactly `BLOCKED`: 19 required checks, 5 `PASS`, 14 non-PASS,
+0 explicit `FAIL` and 0 signature/evidence validation errors. Supply chain,
+manifest-bound docs, current-origin, separate Brain-origin and LDPlayer
+rehearsal pass. Gates A–E/mandatory rows, runtime rollback, RU-origin, Windows
+live network, physical Android, entitled egress, provider, Operator, legal,
+device performance and hosted checks remain incomplete. Latest PR 48 checks
+at head `f98de89...` did not start because GitHub billing/spending access is
+blocked; the owner-solo exception does not waive them.
+
+Gate G, public assets and the stable pointer remain unauthorized. A future
+Gate F `GO` still requires a separate owner promotion instruction.
+`REL_DOD/DOD-20` and `FE_PR/PR-10` advance `I0 -> I3` for the locally verified
+evidence-decision and release-hardening mechanisms, but neither advances to
+`I4` because `BLOCKED` is not candidate proof. Distribution becomes `I4=4`,
+`I3=310`, `I2=15`, `I1=38`, `I0=10`; 314 rows are at or above `I3`, 63 remain
+below, and the pending stage split becomes `0/28/14/21`.
+
+## 2026-08-27 — WO-013AH exact candidate.3 current-origin aggregate
+
+The first exact-source quick run remains a truthful `FAIL`: the invocation
+used the wrong Core override name, the platform static smoke still pinned
+retired Core `v1.0.3`, and WebApp E2E assumed source-tree dependencies even
+though production builds used isolated copies. Candidate product code and
+signed bytes were not changed to hide those failures.
+
+Harness commit `c9b3427...` pins the active exact Core `v1.1.0` seed bytes,
+runs frontend builds and Playwright in independent `npm ci` copies and adds an
+explicit immutable platform target. The corrected harness targets signed
+platform/client/Core `eafaca3...` / `ac22825...` / `344b317...`: quick passes
+`12/12`; default passes `13/13`, including release pytest `675 passed + 38
+subtests`, admin/auth `96 passed + 8 subtests`, full Flutter and Playwright
+`88 passed`.
+
+Clean source-bound current-origin API probes disable proxy discovery and bind
+the preferred `Ethernet 2` RFC1918 source. Health p95 is `42.5337 ms <= 100
+ms`; public catalog p95 is `43.3626 ms <= 200 ms`; each uses `50` measured
+samples after `5` warmups. The literal local address remains only in private
+ignored raw evidence.
+
+Platform PR 48 binds harness head `c9b3427...`, but GitHub billing/spending
+limits stopped Guardrails run `33041906127` and Release v2 run `33041906160`
+before either job started. Both are `BLOCKED_BY_ACCESS_GITHUB_BILLING`, not
+test failures and not passes. `OWNER_SOLO_EXCEPTION` does not waive successful
+app-bound checks, so the PR remains unmerged.
+
+No deploy, restart, entitlement grant, route/pointer change, public asset or
+stable mutation occurs. `REL/PERF-001`, `REL_GATE/GATE-E`,
+`REL_DOD/DOD-13` and `FRKN_PLAN/W9-02` gain stronger evidence without level
+changes. Exact current-origin and Brain-origin are now retained separately;
+`FRKN_PLAN/W9-02` stays `I1` because authorized RU-origin remains absent.
+Distribution stays `I4=4`, `I3=308`, `I2=15`, `I1=38`, `I0=12`; 312 rows are
+at or above `I3`, 65 remain below, and stage split stays `0/30/14/21`.
+
+## 2026-08-27 — WO-010K support transport reconciliation
+
+The frontend source plan and canonical client product contract both make
+SSE/WebSocket conditional on an observed failure of bounded foreground polling.
+No retained polling SLA, battery or backend-load failure satisfies that
+condition. `FE/P12-208` therefore advances `I0 -> I1` as
+`VERIFIED_DEFERRED_NOT_REQUIRED`; no streaming transport or second support
+truth is added.
+
+The audit did find a narrower source-plan gap in `FE/P12-113`. Candidate.3 had
+one-shot background-safe polling and bounded failure backoff, but not the
+one-minute quiet cadence or immediate resume refresh. Client PR `#29` head
+`03a59a7...` adds 8-10 second active, 15-30 second quiet, immediate-resume and
+typed changed/unchanged/failed behavior. Focused tests, app-shell `392/392` and
+the full local client gate pass. Its required hosted job has zero steps because
+GitHub billing is blocked, so the PR remains unmerged.
+
+LDPlayer still runs exact signed candidate.3 `1.2.0+30`; its Support screen
+renders and crash buffer is empty. No ticket/message was created, live polling
+is `NOT_TESTED`, the adaptive branch is not installed and the physical phone is
+absent by owner instruction. Candidate.3 is unchanged; a replacement signed
+candidate is required after PR #29 can merge.
+
+Current ledger distribution becomes `I4=4`, `I3=312`, `I2=19`, `I1=40`,
+`I0=2`; `316` rows are at or above `I3`, `61` remain below and stage split
+stays `0/28/14/19`. No deploy, entitlement, external message, public artifact,
+stable pointer or Gate G mutation occurred.
+
+## 2026-08-27 — WO-013AJ exact candidate.3 Gate A baseline
+
+The source-plan Gate A aggregate is now evaluated against clean exact platform,
+client and Core sources `eafaca3...` / `ac22825...` / `344b317...`. The focused
+payment/release/manifest suite passes `103` tests plus `21` subtests, and the
+cross-repository client/Core release contract passes.
+
+The existing fail-closed STOP-SHIP verifier reports `BLOCKED`: all seven
+permanent source regressions and all three historical owner-solo PR controls
+pass, Core live branch protection passes, while private platform/client branch
+protection remains plan-blocked and compensated only by the explicit solo
+contract. The exact candidate Core aggregate retains its LFS-control failure;
+four product jobs and the product-identical corrected five-job control pass.
+
+Gate A's payment, one-manifest and version/contracts slices pass. Exact Windows
+install/service/authenticated-IPC/restart/uninstall/idle restoration is only
+partial: live TUN, DNS, owned egress and connected rollback/recovery remain
+`MANUAL_OWNER_TEST`. Windows Authenticode is `SKIPPED_BY_OWNER` for direct beta
+and is not public/stable signing proof. Current replacement PR checks are also
+billing-blocked and are not credited to candidate.3.
+
+`REL_GATE/GATE-A` advances only `I0 -> I1` as
+`BASELINED_EXACT_CANDIDATE_BLOCKED`. Distribution becomes `I4=4`, `I3=312`,
+`I2=19`, `I1=41`, `I0=1`; `316` rows remain at or above `I3`, `61` remain
+below, and stage split stays `0/28/14/19`. No branch setting, payment, signing
+key, live Windows network, deploy, public asset, stable pointer or Gate G
+mutation occurred.
+
+## 2026-08-27 — WO-013AK exact candidate.3 Gate B NO_GO
+
+Gate B is replayed against clean exact platform/client/Core sources
+`eafaca3...` / `ac22825...` / `344b317...`. Exact client state, diagnostics
+and migrations pass `107/107`; Android state/lifecycle/error fencing passes
+`45/45`; runtime engine passes `63/63` with the exact Windows Core and 100
+start/stop cycles; Windows native contracts pass `7/7`. Candidate.3 LDPlayer
+also fails closed without a VPN/tun after its observed negative connect path.
+
+The exact platform checkout exposes one deterministic failure: the
+observability support-reference generator hashes raw Windows CRLF bytes while
+the canonical validator and signed manifest use normalized LF identity. The
+frozen suite is `68 passed, 1 failed`. A minimal post-candidate correction
+normalizes CRLF and lone CR to LF in both paths and passes `70/70`, but it is
+not in candidate.3. Gate B therefore returns `NO_GO`; `REL_GATE/GATE-B` stays
+at `I3` as `LOCALLY_PROVED_EXACT_CANDIDATE_NO_GO`.
+
+The returned Huawei phone is retained only as post-candidate lab4031 evidence.
+AdGuard DNS, ad blocking, local-LAN direct and AI/Games routes persist after a
+cold restart. The extracted ARM64 Core contains separate AWG2 and AWG 3.1
+contracts. Read-only Brain inspection proves current candidate platform source
+and live PostgreSQL AWG tables, but neither AWG lane has rollout configuration,
+material secrets, device material or an isolated server. The disabled `free`
+node is unhealthy and did not answer the bounded preflight; active paid nodes,
+including SPB, were not mutated.
+
+Gate F is rehashed through the Gate B decision and ledger. It now returns
+exactly `NO_GO`: `5` PASS, `14` non-PASS, `1` explicit FAIL and `0` validation
+errors. Distribution remains `I4=4`, `I3=312`, `I2=19`, `I1=41`, `I0=1`.
+No deploy, AWG rollout/server change, entitlement/payment action, public asset,
+stable pointer or Gate G mutation occurred. A replacement signed candidate is
+required after the correction and required hosted checks land.
+
+## 2026-08-27 — WO-013AL exact candidate.3 Gate C BLOCKED
+
+Gate C is evaluated against the signed candidate.3 tuple without transferring
+current client main, post-candidate Linux or phone-lab proof. The exact Windows
+installer passes its retained clean-host install, service identity,
+authenticated IPC, restart, uninstall and idle-network-restoration slice. The
+exact Android source lifecycle/error matrix passes, and LDPlayer again reports
+the signed universal APK `f41c76eb...` as installed `1.2.0+30`; launch takes
+`568 ms`, the process survives, the crash buffer is empty and no VPN/TUN false
+green exists. Exact Core ABI/runtime contracts also pass.
+
+The full platform evidence is incomplete: Windows live TUN/DNS/egress and
+connected recovery remain `MANUAL_OWNER_TEST`; LDPlayer lacks an active owned
+entitlement; physical Android API/OEM/network/power/privacy and Play-managed
+store update paths remain manual. Linux has no candidate.3 source or artifact
+and remains outside the declared Android/Windows public pair; the later
+fail-closed Linux foundation cannot be credited retroactively.
+
+Gate C therefore returns `BLOCKED` with no new explicit candidate defect and
+`REL_GATE/GATE-C` remains `I2` as
+`EXACT_CANDIDATE_PLATFORM_MATRIX_BLOCKED`. Candidate.3 remains overall
+`NO_GO` because Gate B already fails. Distribution remains `I4=4`, `I3=312`,
+`I2=19`, `I1=41`, `I0=1`. No phone install, entitlement/payment action,
+Windows live network run, Linux mutation, deploy, server/AWG change, public
+asset, stable pointer or Gate G authorization occurred.
+
+## 2026-08-27 — WO-013AM exact candidate.3 Gate D BLOCKED
+
+Gate D is replayed against frozen platform source `eafaca3...`. The full
+payment/provider/callback/HTTP/DB/outbox/module matrix passes `196` tests plus
+`12` subtests; Action Intent and policy/router ownership passes `25/25`.
+Immutable order authority, fail-closed provider response handling, bounded
+shared HTTP, worker-thread transaction ownership, transactional outbox and the
+single modular-monolith route/policy authorities are all present in the exact
+candidate source.
+
+Existing Brain evidence proves all `193` deployed payload files match that
+source and readiness passes `23/23`. It does not prove a real provider order or
+callback, production PostgreSQL locking/load, outbox enqueue/claim/delivery/
+retry/dead-letter, reconciliation, reversal or Action Intent rollback. Those
+runtime slices remain `MANUAL_OWNER_TEST` or `NOT_RUN`.
+
+Gate D therefore returns `BLOCKED` with no new explicit candidate defect and
+`REL_GATE/GATE-D` remains `I3` as
+`LOCALLY_PROVED_EXACT_CANDIDATE_RUNTIME_BLOCKED`. Candidate.3 remains overall
+`NO_GO` because Gate B already fails. Distribution remains `I4=4`, `I3=312`,
+`I2=19`, `I1=41`, `I0=1`. No real payment, callback, entitlement, DB/outbox or
+operator mutation, deploy, restart, public asset, stable pointer or Gate G
+authorization occurred.
+
+## 2026-08-27 — WO-013AN exact candidate.3 Gate E BLOCKED
+
+Gate E is evaluated against the frozen platform/client/Core tuple. The
+retained exact current-origin aggregate passes quick `12/12`, default `13/13`,
+release pytest `675 + 38 subtests`, admin/auth `96 + 8 subtests`, production
+frontend builds and Playwright `88/88`. Controlled exact-source API probes pass
+health p95 `42.5337 ms <= 100 ms` and public catalog p95 `43.3626 ms <= 200
+ms`.
+
+A fresh exact-source WebApp build emits `40` static routes. In-app browser
+smokes at `1440x1000` and `390x844` render the meaningful truth-first cabinet
+entry with zero console warnings/errors or framework overlays; the primary
+Telegram control is visible/enabled and the 390-pixel viewport has no
+horizontal overflow. The fresh render uses Node `24.15.0` rather than the
+declared `22.14.x`, so it is visual/interaction evidence only and is not
+credited as comparable performance proof.
+
+Authenticated journeys, exact-device support upload/recovery, physical
+TalkBack/Narrator/OEM/text-scale/OS-scaling, Android/Windows device performance,
+comparable artifact regression, 20-sample browser-lab budgets, RU-origin and
+post-promotion observation remain `BLOCKED_BY_ACCESS`, `MANUAL_OWNER_TEST` or
+`NOT_RUN`. Gate E therefore returns `BLOCKED` with no new candidate defect.
+
+`REL_GATE/GATE-E`, `REL/PERF-001` and `FE_PR/PR-09` remain `I3` with status
+`LOCALLY_PROVED_EXACT_CANDIDATE_DEVICE_BLOCKED`. `FE_PR/PR-10` is corrected to
+`LOCALLY_PROVED_EXACT_CANDIDATE_NO_GO` after the Gate B failure. Distribution
+remains `I4=4`, `I3=312`, `I2=19`, `I1=41`, `I0=1`. No authentication,
+external submission, entitlement/payment, deploy, public asset, stable pointer
+or Gate G mutation occurred.
+
+## 2026-08-28 — WO-013AO replacement pre-candidate reconciliation
+
+The locally gated replacement runtime tuple is platform/client/Core
+`e5ef03ac...` / `c196dff...` / `f44dbe8...`. Later platform AWG
+operations/evidence `39af0f1...` and client evidence-doc `2eeee5f...` commits
+pass their focused contracts but are not relabeled as another aggregate gate.
+Android Core was rebuilt twice from the exact Core head; both AARs are byte-identical with SHA-256
+`ca391059...` and match the existing client binary because the Core follow-up
+changes tests only. Client source metadata now binds that exact Core revision.
+
+The bounded local quality gate ran under the declared Node `22.14.0` and
+passed all `15/15` steps: performance contract/tests, Flutter analysis and
+`400/400` app-shell tests, client release/docs contracts, WebApp lint/build and
+`69/69` cabinet E2E tests, marketing build/SEO/responsive checks, AdminApp
+build and local static performance `9/9`. Its report remains explicit:
+`candidate_proven=false`, `local_status=PASS` and
+`promotion_status=MANUAL_OWNER_TEST`.
+
+Physical package `1.2.0+4044` remains non-candidate evidence. Owned AWG2 and
+randomized AWG3.1 alignment pass, but physical Beeline controls show server
+receive/echo `3/3` and phone receive `0/3` on both lanes. They remain
+`BLOCKED_BY_NETWORK_CURRENT_ORIGIN`, not cryptographic failures. Later explicit
+no-carrier readback selected AWG2 for exact physical and LDPlayer identities,
+but builds 4044/4043 emitted no AWG traffic and LDPlayer rejected the selected
+Frankfurt location before tunnel start. This is a separate
+`FAIL_WORKING_CLIENT_ACTIVATION` boundary and AWG3.1 was not repeated above the
+same unmet AWG2 precondition. Direct DoH passes only DNS resolution; VPN-free
+Smart DNS is not implemented.
+
+Post-observation source review and platform revision `32e444695...` identified
+and corrected the first common activation blocker: the managed-profile route
+selected the exact device-bound AWG policy but then
+incorrectly required an ordinary Smart Connect/node shortlist before issuing
+typed material. The local platform correction makes `awg2_lab` and
+`awg31_lab` bypass that unrelated catalog, ignore `selected_node_code` and
+return `smart_connect: null` while preserving all exact-device and material
+gates. Focused network tests pass `53/53`, the router-mandated backend suite
+passes `154` tests plus `8` subtests, and docs pass `32/32` with context/diff
+checks. This is `PASS_LOCAL_SOURCE`; it is not deployed and does not upgrade
+the 4044/4043 device observations.
+
+Platform PR `#58` and client PR `#33` are mergeable but their required jobs
+received zero execution steps because private Actions are billing-blocked.
+Core PR `#6` passes four product jobs; its release contract fails closed until
+client `main` carries the exact Core binding. No PR is merged, and no candidate,
+deploy, public asset or stable promotion is created.
+
+`FRKN_PLAN/W3-01` advances `I1 -> I3` because the isolated owned lab now has a
+retained server record, exact alignment readback, default-off policy and
+guarded kill/unbind path. Other existing local evidence becomes stronger, while
+exact signed candidate, hosted, full tunnel, device, origin and promotion proof
+is still absent. Distribution becomes `I4=4`, `I3=313`, `I2=19`, `I1=40`,
+`I0=1`; `317` rows are at or above `I3` and `60` remain below.
+
+The next working correction tuple is platform `34d1551f...`, client runtime
+`51f41c64...` with evidence-doc head `2f47148e...`, and unchanged Core
+`f44dbe89...`. Android Direct/Store unit matrices pass `179/179` each, Flutter
+analysis plus `400/400` app-shell tests pass, cross-repository seed validation
+projects working target `1.2.0+4045`, and the platform documentation contract
+passes `32/32`. Production-signed arm64 and x86_64 build-4045 APKs were
+verified and installed on the physical Huawei and LDPlayer. Both cold starts
+had no app-owned VPN service and reported `Подключить` / `Не защищено`, so the
+stale-running false-green regression is `PASS_4045_DISCONNECTED_HOST_TRUTH`.
+
+A bounded physical connect control then started the POKROV service but did not
+create Android VPN transport after approximately `25` seconds. Post-connect UI,
+DNS and HTTPS were not claimed; cleanup stopped POKROV, confirmed no VPN
+transport, restored Hiddify foreground and preserved disabled Wi-Fi. This is
+`FAIL_4045_PREDEPLOY_ANDROID_ACTIVATION`, before the platform correction is
+deployed, and does not classify AWG cryptography.
+
+LDPlayer independently reached canonical `core_egress_probe_failed` for its
+selected non-AWG outbound. POKROV stopped VPN fail-closed and cleanup left no
+service or transport. Record this as
+`FAIL_4045_LDPLAYER_SELECTED_OUTBOUND_EGRESS`; it confirms truthful failure
+handling but neither proves nor rejects AWG.
+
+The bounded local quality aggregate was repeated on exact clean platform
+`93831177...`, client `f3d3310f...` and Core `f44dbe89...` under Node
+`22.14.0`. All `15/15` steps pass: performance contract/tests, Flutter analyze
+and `400/400` tests, release/docs contracts, WebApp lint/build plus cabinet E2E
+`69/69`, marketing build/SEO/responsive, AdminApp build and static performance
+`9/9`. Report SHA-256 is `57ca9352...f02ed`; it preserves
+`candidate_proven=false`, local `PASS` and promotion `MANUAL_OWNER_TEST`.
+
+Read-only Brain predeploy probes identify the exact runtime boundary. Live
+source `e5ef03ac...` matches `193/193`; corrected runtime `716186a...` matches
+`192/193` with only `portal_bot/api_client_routes.py` different and
+`runtime_mutated=false`. Focused deploy/source-probe/release-op verification
+passes `57` tests plus `25` subtests. The prepared authorized change window
+restarts only `portal-api`, requires staged preflight, retained backup,
+automatic failure rollback, delayed active+zero-restart health and postdeploy
+`193/193` source readback before AWG2 binding. This is `PLAN_READY`, not deploy.
+
+This is not a tunnel PASS. Platform managed-profile issuance is corrected in
+source but remains undeployed; build 4045 has not yet proved an AWG2 or AWG3.1
+handshake, egress or DNS/leak matrix. Exact-head hosted checks for platform PR
+`#58` and client PR `#33` again contain zero execution steps because GitHub
+Billing & plans blocked job startup. No row advances and distribution remains
+`I4=4`, `I3=313`, `I2=19`, `I1=40`, `I0=1`; no merge, deploy, candidate,
+public asset or stable promotion occurred.
+
+## 2026-08-28 — returned-phone build-4045 DNS-state control
+
+The returned physical Android device ran a bounded state-only control over
+Beeline. Hiddify was stopped, and neither the POKROV service nor an active VPN
+network agent was present. AdGuard was selected, direct DoH was initially off,
+and AI/Games remained VPN-route presets. The direct-DoH laboratory switch
+persisted across force-stop and cold relaunch, then the original off state was
+restored and re-read. This is
+`PASS_4045_PHYSICAL_DIRECT_DOH_SETTING_PERSISTENCE`; no DNS request, service
+access, POKROV connection, AWG profile or tunnel was exercised. VPN-free Smart
+DNS therefore remains `NOT_IMPLEMENTED`, and the AWG proof remains gated on
+the undeployed managed-profile correction.
+
+## 2026-08-28 — Gate F ledger reconciliation
+
+WO-013AI already retains a validated fail-closed Gate F decision for the exact
+signed prior candidate. The decision is `NO_GO`: `19` required checks contain
+`5` passes, `14` non-passes, `1` explicit failure and `0` validation errors.
+The decision binds the signed manifest, exact source tuple and retained
+evidence digests; Gate G and public/stable mutation remain unauthorized. Its
+decision-file SHA-256 is `017c0369...d1dd`, and the current focused Gate
+F/preflight/STOP-SHIP/docs suite passes `67/67`.
+
+The prior `REL_GATE/GATE-F` value `CAPTURED/I0` was therefore a stale index,
+not missing execution. It advances to
+`VERIFIED_EXACT_CANDIDATE_NO_GO/I3`. This does not turn `NO_GO` into `PASS` and
+does not prove the replacement candidate. Distribution becomes `I4=4`,
+`I3=314`, `I2=19`, `I1=40`, `I0=0`; `318/377` rows are at or above `I3`, and
+`59/377` remain below.
+
+## 2026-08-28 — build-4046 external Smart DNS physical state control
+
+Exact client source `5e78dd9aef93726d40f44ae6a075c952ba951a6a`
+implements a default-off external Smart DNS lab over the existing direct
+outbound. It requires custom HTTPS DoH, direct DoH transport and an enabled AI
+or Games purpose route. Invalid stored combinations normalize off and invalid
+runtime combinations fail before native staging. AI/Games become direct only
+under the complete valid state; other purpose groups remain VPN-routed and
+explicit user overrides retain priority.
+
+Focused routing tests pass `16/16`, the focused widget flow passes `1/1`, full
+Flutter analysis is clean, complete app-shell tests pass `404/404`, and client
+docs plus cross-repository seed validation pass for working target
+`1.2.0+4046`. A production-signed, release/non-debuggable arm64 APK from the
+exact clean source was built and installed on the physical phone. It is a
+working pre-candidate artifact, not a replacement signed candidate.
+
+The physical UI state machine passed without starting a connection. Custom DoH
+exposed the lab control but kept it disabled until direct DoH was enabled; the
+complete state enabled the control and changed AI/Games explanations to direct
+external Smart DNS while warning that the IP remains visible. The state
+persisted across cold relaunch. AdGuard, DoH-through-VPN and the prior AI/Games
+selection were restored and re-read; final cleanup left the POKROV service
+stopped and no raised TUN interface. This is
+`PASS_4046_PHYSICAL_EXTERNAL_SMART_DNS_STATE_MACHINE`.
+
+No compatible resolver, DNS transaction, ChatGPT/Gemini/Xbox access, tunnel or
+AWG path was exercised. The result therefore proves client configuration and
+truthful fail-closed routing only, not a Smart-DNS product or live access. No
+ledger row advances and distribution remains `I4=4`, `I3=314`, `I2=19`,
+`I1=40`, `I0=0`; no merge, deploy, candidate or promotion occurred.
+
+## 2026-08-28 — WO-013AP Linux network transaction observability
+
+Client PR `#28` head `583e04a...` adds the source-level `OBS-045` event
+contract without enabling Linux traffic. The existing closed Linux journal now
+supports one typed `network_transaction` event with a bounded transaction and
+correlation ID, generation, one of NetworkManager/resolved/nftables, one of
+checkpoint/apply/rollback and only closed outcomes plus stage-specific failure
+codes. Commands, arguments, paths, interfaces, addresses, resolver payloads,
+nft rules, destinations and raw errors have no field.
+
+The current authorized connect path emits exactly three
+`checkpoint/unavailable` preflight records before retaining
+`linux_live_connect_unavailable`; it does not manufacture apply or rollback
+success. Portable Go tests pass, changed files are gofmt-clean, Linux/amd64 vet
+and daemon cross-build pass, and all `9` Linux package test binaries compile.
+The Linux Flutter shell passes analysis and `4/4` tests. Client docs and the
+full branch-basis seed validation pass against matching platform `64d68b0...`
+and Core `344b317...` authority.
+
+Exact-head hosted run `33145424445` completed with `steps=[]`; GitHub did not
+start the job. It is `BLOCKED_BY_ACCESS_GITHUB_BILLING`, not product evidence.
+
+Linux-only tests were compiled but not executed on this Windows host. Actual
+NetworkManager checkpoint, resolved/nft mutation, native journald readback and
+clean Ubuntu route/DNS/nft restoration remain absent. `OBS/OBS-045` therefore
+advances only `I1 -> I2` as `IMPLEMENTED_SOURCE_ONLY`. `OBS-043` remains `I2`
+despite stronger encoder/rejection tests, and `OBS-044` remains `I2` because no
+D-Bus trace was added.
+
+Distribution becomes `I4=4`, `I3=314`, `I2=20`, `I1=39`, `I0=0`; `318/377`
+rows remain at or above `I3` and `59/377` remain below. No merge, signed Linux
+package, candidate, deploy, public claim or runtime network mutation occurred.
+
+## 2026-08-28 — WO-013AQ privacy-bounded client release-health baseline
+
+Platform source `3e52b7314a82758ad11a68e991b5e9f4a8f48a71`
+adds an authenticated exact-build UTC-week baseline without returning the
+existing operator aggregates. One authenticated account maps through a private
+HMAC to one of `4096` cohort buckets. The server stores no account, Telegram,
+install, device, session or stable contributor identifier in that projection,
+caps one bucket at `64` overall and `32` per-family events, requires at least
+`10` occupied buckets and returns only sample/failure-rate bands. Replay event
+IDs cannot inflate the cohort, missing privacy configuration fails closed and
+the rows expire after `14` days.
+
+Client source `44c9cca2503f5280d7a977b46aaebd849b3dee44` adds a
+strict band-only parser and existing-session GET. Local diagnostics remain
+network-independent; the cohort request occurs only after explicit user
+refresh, stays hidden when unavailable and reports an undersized cohort without
+exact numbers. The same full regression exposed and fixed the real build-4046
+support-code overflow by retaining `PSD1` for builds through `255` and adding
+`PSD2` for larger build numbers.
+
+Platform focused tests pass `57`; the broader API regression passes `154` plus
+`8` subtests; observability contracts, inventory and `45` documentation tests
+pass. Client analysis is clean, the full app-shell suite passes `411/411`, the
+focused comparison suite passes `18/18`, support-bundle passes `15/15`, and the
+final cross-repository seed validation passes against platform `3e52b73...`,
+client `44c9cca...` and Core `f44dbe8...`.
+
+No server deploy, cohort secret change, runtime cohort, physical comparison,
+merge, signed candidate or promotion occurred. One returned physical phone
+cannot prove a k-anonymous cohort, so it was not mutated for this slice.
+`OBS/OBS-087` advances only `I1 -> I2` as `IMPLEMENTED_SOURCE_ONLY`.
+Distribution becomes `I4=4`, `I3=314`, `I2=21`, `I1=38`, `I0=0`; `318/377`
+rows remain at or above `I3` and `59/377` remain below.
+
+## 2026-08-28 — WO-013AS immutable Smart-DNS artifact and device closure
+
+Exact pushed platform source
+`2d18fd7641ec6c90286f333ae24a6f1ac794f78a` and client source
+`75e82b061cd3f127ae640733cfb4fc1a6aef2e62` bind the same canonical policy
+bytes at SHA-256
+`b6977f6f6a5ee48898116820d1db252b5b670cb7b86959c78f7bdbc7de90e0fa`.
+Server unit/vet checks, focused platform builder/parity checks, guarded remote
+operation tests `7/7`, Flutter analysis, `17/17` focused and `412/412` complete
+app-shell tests, and the cross-repository seed validator pass. The Go race
+detector remains `NOT_RUN_TOOLCHAIN_MISSING` on the Windows host and is not
+counted as PASS.
+
+Two Linux/amd64, CGO-disabled builds from the exact platform commit produced
+the byte-identical `2911894`-byte
+`pokrov-smart-dns-server-2d18fd7.zip`, SHA-256
+`d7ef558dc071852d942cf3001b16f2c2125c7c777db7a79b575ea0eae06d0195`.
+Both copies pass bundle self-verification. The embedded `7118996`-byte binary
+has SHA-256
+`f0ac013f5a320989cd9696e83bee4a9b83988064bf81081a22a75e3d923248e5`.
+This is an immutable local server artifact, not an installed service.
+
+The exact client commit produced release/non-debuggable, production-signed
+`1.2.0+4046` APKs. The `101346230`-byte arm64 APK SHA-256
+`c7e21ca3aa5baff575e515d22937c1a6b431068afdd0dad5fb6955b966cea6f9`
+was installed and read back byte-identically on the Huawei. The `109930165`-
+byte x86_64 APK SHA-256
+`4beebad0f2efeef03b6c6a9ea7634c7c90515d5ec3f7bcdf4a8b74adcc83cd4b`
+was installed and read back byte-identically on LDPlayer. Both bind production
+certificate SHA-256
+`0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500`.
+
+LDPlayer proved the complete default-off UI state machine and truthful
+visible-IP/compatible-server copy without starting a tunnel. The physical
+phone proved the exact package and safe prerequisite gate without changing its
+existing AdGuard/direct-DNS-off preferences. Final readback found no POKROV
+service on either device and restored the phone's prior Chrome foreground.
+
+No dedicated-node allocation or no-mutation PLAN, server deploy, DNS
+transaction, service-access check, tunnel, leak/lifecycle matrix, rollback
+drill, current-origin, Brain-origin or RU-origin proof occurred. This advances
+`FRKN_SMART_DNS/SMARTDNS-01` from `I2` to
+`I3 LOCALLY_PROVED_SOURCE_ARTIFACT_AND_DEVICE_STATE`, not to live or candidate
+readiness. The original 377-row source-plan distribution remains `I4=4`,
+`I3=315`, `I2=21`, `I1=37`, `I0=0`; `319/377` original rows are at or above
+`I3` and `58/377` remain below. Including the one derived Smart-DNS row, the
+ledger contains `378` rows and `320` are at or above `I3`. No merge, deploy,
+candidate, public asset or promotion occurred.

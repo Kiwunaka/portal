@@ -647,6 +647,19 @@ Admin ops app wave `2026-07-06`, command-center redesign updated locally on
   deleted health rows, bundle rows, accepted objects, quarantine chunks, access
   audits, held skips, missing files, and file errors. Non-zero `file_errors`, a
   persistent backlog, or a stopped worker blocks production retention evidence.
+- Authenticated
+  `GET /api/client/observability/release-health/baseline` is a separate
+  fail-closed client projection. Accepted events contribute through a dedicated
+  deployment secret to one 12-bit bucket scoped to the exact build and aligned
+  UTC week. One authenticated account contributes to one bucket; collisions
+  only undercount. Each bucket is capped at 64 total and 32 per-family events,
+  and bucket rows expire after 14 days. Fewer than ten distinct buckets returns
+  `insufficient_cohort` without an observed count. An available response still
+  exposes only closed sample and failure-rate bands for overall, crash,
+  connection and update health; it contains no exact totals, bucket indexes,
+  account/install/device/session value or stable contributor hash. Missing or
+  invalid `RELEASE_HEALTH_COHORT_SECRET` returns unavailable and never weakens
+  the threshold.
 - L1 support can use the safe bundle summary/timeline but cannot download an
   object. L2/SRE access requires the explicit allowlist, a fixed reason, an
   expiring one-time grant, and retained audit rows. A local RBAC test is not

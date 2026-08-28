@@ -1,0 +1,243 @@
+import importlib.util
+import io
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS_DIR = REPO_ROOT / "scripts"
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+
+def _load_module(name: str):
+    path = SCRIPTS_DIR / f"{name}.py"
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec and spec.loader
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+class OwnedAwgActivationContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.module = _load_module("remote_activate_owned_awg_labs")
+
+    def test_service_unit_pins_owned_userspace_binary_and_quick_wrapper(self) -> None:
+        module = self.module
+        unit = module._unit_content().decode("utf-8")
+
+        self.assertIn(
+            f"Environment=WG_QUICK_USERSPACE_IMPLEMENTATION={module.SERVER_BINARY_TARGET}",
+            unit,
+        )
+        self.assertIn(f"ExecStart={module.AWG_QUICK_TARGET} up %i", unit)
+        self.assertIn(f"ExecReload=/bin/bash -c 'exec {module.AWG_TARGET} syncconf", unit)
+
+    def test_server_preflight_requires_every_target_absent_and_udp_port_free(self) -> None:
+        module = self.module
+        with patch.object(
+            module,
+            "_run_remote",
+            side_effect=["absent"] * 7 + ["free", "free"],
+        ) as run_remote:
+            result = module._server_preflight(MagicMock())
+
+        self.assertEqual(result["occupied_paths"], [])
+        self.assertEqual(result["udp_ports"], {"4500": "free", "3478": "free"})
+        self.assertEqual(run_remote.call_count, 9)
+
+    def test_awg31_variant_is_randomized_and_keeps_distinct_interface(self) -> None:
+        module = self.module
+        awg2, awg31, _server2, _server31 = module._endpoint_material("192.0.2.10")
+
+        self.assertEqual(awg2["peers"][0]["port"], module.AWG2_PORT)
+        self.assertEqual(awg31["peers"][0]["port"], module.AWG31_PORT)
+        self.assertTrue(awg31["random_trailers"])
+        self.assertEqual(awg31["content_padding_addition"], "64-512")
+        self.assertNotEqual(awg2["private_key"], awg31["private_key"])
+
+
+class OwnedAwgUdpPathContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.module = _load_module("remote_probe_owned_awg_udp_path")
+
+    def test_phone_selector_excludes_emulators_and_requires_one_physical_device(self) -> None:
+        module = self.module
+        completed = SimpleNamespace(
+            stdout=(
+                "List of devices attached\n"
+                "emulator-5554 device\n"
+                "2UCUT24716017005 device\n"
+            )
+        )
+        with patch.object(module.subprocess, "run", return_value=completed):
+            self.assertEqual(
+                module._phone_serial(Path("C:/Android/adb.exe")),
+                "2UCUT24716017005",
+            )
+
+        completed.stdout += "SECOND-PHONE device\n"
+        with patch.object(module.subprocess, "run", return_value=completed):
+            with self.assertRaisesRegex(RuntimeError, "exactly one physical phone"):
+                module._phone_serial(Path("C:/Android/adb.exe"))
+
+    def test_phone_sender_cleanup_runs_when_probe_execution_fails(self) -> None:
+        module = self.module
+        calls = [
+            SimpleNamespace(returncode=0),
+            SimpleNamespace(returncode=0),
+            SimpleNamespace(returncode=1),
+            SimpleNamespace(returncode=0),
+        ]
+        with patch.object(module.subprocess, "run", side_effect=calls) as run:
+            with self.assertRaisesRegex(RuntimeError, "sender unavailable"):
+                module._send_phone(
+                    Path("C:/Android/adb.exe"),
+                    "PHONE",
+                    Path("C:/safe/pokrov-udp-probe"),
+                    "192.0.2.10",
+                    module.PROFILE_PORTS["awg2_lab"],
+                )
+
+        self.assertEqual(run.call_count, 4)
+        self.assertEqual(run.call_args_list[-1].args[0][-3:], ["rm", "-f", "/data/local/tmp/pokrov-udp-probe"])
+
+
+class OwnedAwgCoreInteropContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.module = _load_module("remote_run_owned_awg_core_interop")
+
+    def test_interop_failure_classification_keeps_network_boundaries_distinct(self) -> None:
+        module = self.module
+        cases = {
+            "before an outer packet was emitted": "failed_before_outer_packet",
+            "after an outer packet write error": "failed_outer_write",
+            "because no outer response was received": "failed_no_outer_response",
+            "after outer responses were received": "failed_after_outer_response",
+            "owned AWG TLS egress failed": "failed_tls",
+            "owned AWG TCP egress failed": "failed_tcp",
+        }
+        for output, expected in cases.items():
+            with self.subTest(output=output):
+                self.assertEqual(module._classify(output, 1), expected)
+        self.assertEqual(module._classify("", 0), "passed")
+        self.assertEqual(module._classify("unknown", 1), "failed_other")
+
+    def test_remote_helper_accepts_only_owned_profiles(self) -> None:
+        helper = self.module._REMOTE_HELPER
+
+        self.assertIn('{"awg2_lab", "awg31_lab"}', helper)
+        self.assertIn('raise SystemExit("profile invalid")', helper)
+        self.assertIn("Awg2LabMaterial.is_active.is_(True)", helper)
+        self.assertIn("Awg31LabMaterial.is_active.is_(True)", helper)
+
+    def test_secret_free_interop_result_can_be_retained_without_shell_redirect(self) -> None:
+        module = self.module
+        result = {
+            "schema_version": "pokrov-owned-awg-core-interop-v1",
+            "profile": "awg2_lab",
+            "outcome": "failed_no_outer_response",
+            "raw_material_returned": False,
+        }
+        with tempfile.TemporaryDirectory() as raw_temp:
+            output = Path(raw_temp) / "nested" / "interop.json"
+            stream = io.StringIO()
+            with patch("sys.stdout", stream):
+                module._emit_result(result, str(output))
+
+            retained = output.read_text(encoding="utf-8")
+
+        self.assertTrue(retained.endswith("\n"))
+        self.assertIn('"raw_material_returned": false', retained)
+        self.assertEqual(stream.getvalue().strip(), retained.strip())
+
+
+class OwnedAwgDeviceEvidenceContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.bind_module = _load_module("remote_bind_owned_awg_lab_device")
+        cls.select_module = _load_module("remote_select_owned_awg_lab")
+
+    def test_bind_result_is_atomically_retained_without_raw_device_identity(self) -> None:
+        result = {
+            "schema_version": "pokrov-owned-awg-device-bind-v1",
+            "mode": "PLAN",
+            "device_label_sha256": "a" * 64,
+            "raw_identifiers_returned": False,
+        }
+        with tempfile.TemporaryDirectory() as raw_temp:
+            output = Path(raw_temp) / "nested" / "bind.json"
+            stream = io.StringIO()
+            with patch("sys.stdout", stream):
+                self.bind_module._emit_result(result, str(output))
+
+            retained = output.read_text(encoding="utf-8")
+            temporary_files = list(output.parent.glob(f".{output.name}.*.tmp"))
+
+        self.assertTrue(retained.endswith("\n"))
+        self.assertIn('"raw_identifiers_returned": false', retained)
+        self.assertEqual(temporary_files, [])
+        self.assertEqual(stream.getvalue().strip(), retained.strip())
+
+    def test_bind_precondition_failures_are_structured_and_secret_free(self) -> None:
+        helper = self.bind_module._REMOTE_HELPER
+
+        self.assertIn("def blocked(reason, **safe_fields):", helper)
+        self.assertIn('"raw_identifiers_returned": False', helper)
+        self.assertIn('"device_candidate_unavailable"', helper)
+        self.assertIn('"entitled_user_resolution"', helper)
+        self.assertIn("_load_account_component_users", helper)
+        self.assertIn("account_component_user_count", helper)
+        self.assertIn("runtime_owner_entitled_user_count", helper)
+        self.assertIn('"runtime_admin_owner_fallback"', helper)
+        self.assertIn(
+            '(target_selection_mode == "exact_local_install" or len(candidates) == 1)',
+            helper,
+        )
+        self.assertIn("len(global_install_users) == 1", helper)
+        self.assertIn('"exact_install_device_resolution_ambiguous"', helper)
+        self.assertIn("AccountDevice.install_id == exact_install_id", helper)
+        self.assertIn('"target_install_confirmation_failed"', helper)
+        self.assertIn("hmac.compare_digest", helper)
+        self.assertIn("cleanup_tg_ids = {tg_id, int(target_user.tg_id)}", helper)
+        self.assertIn("device_account_matches_global_install_user", helper)
+        self.assertIn('"global_install_user_resolution_ambiguous"', helper)
+        self.assertIn('"account_user_resolution_ambiguous"', helper)
+        self.assertIn('"device_target_identity_incomplete"', helper)
+        self.assertIn('"owned_awg_source_material_unavailable"', helper)
+
+    def test_selection_result_is_atomically_retained_without_raw_install_id(self) -> None:
+        result = {
+            "schema_version": "pokrov-owned-awg-lab-selection-v1",
+            "mode": "PLAN",
+            "profile": "awg2_lab",
+            "install_id_sha256": "b" * 64,
+            "raw_identifiers_returned": False,
+        }
+        with tempfile.TemporaryDirectory() as raw_temp:
+            output = Path(raw_temp) / "nested" / "selection.json"
+            stream = io.StringIO()
+            with patch("sys.stdout", stream):
+                self.select_module._emit_result(result, str(output))
+
+            retained = output.read_text(encoding="utf-8")
+            temporary_files = list(output.parent.glob(f".{output.name}.*.tmp"))
+
+        self.assertTrue(retained.endswith("\n"))
+        self.assertIn('"raw_identifiers_returned": false', retained)
+        self.assertNotIn("raw-install-id", retained)
+        self.assertEqual(temporary_files, [])
+        self.assertEqual(stream.getvalue().strip(), retained.strip())
+
+
+if __name__ == "__main__":
+    unittest.main()

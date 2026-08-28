@@ -1,0 +1,199 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-08-27T10:51:23Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.3",
+    "operational_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
+    "manifest_sha256": "a2752b6a3b95faacf13a68edb708c560966a0f5eb8727e109d7f1603fdc81090",
+    "signature_sha256": "926f0b4667a58ba9cc5ace5c4e6c3c8129d1ec3d4d449b3f0831a8c527cd7121",
+    "receipt_sha256": "fb4d0d5dd272b8d3e7ea2303e2ffa93e332f54ac3e92f245400decc6c06e4b53",
+    "sources": {
+      "platform": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+      "client": "ac22825e857a313c9e4eba61030eb548d6346ead",
+      "core": "344b317a7a09eca7943a93866b193553538bd8f6",
+      "release_index": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "FAIL",
+    "mandatory_stop_ship_and_dod": "MISSING",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "MISSING",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MISSING",
+    "current_origin": "PASS",
+    "brain_origin": "PASS",
+    "ru_origin": "BLOCKED_BY_ACCESS",
+    "windows_live_network": "MANUAL_OWNER_TEST",
+    "android_ldplayer_rehearsal": "PASS",
+    "android_physical_device": "MANUAL_OWNER_TEST",
+    "authenticated_client_egress": "BLOCKED_BY_ACCESS",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "BLOCKED_BY_OWNER_DECISION",
+    "performance_and_release_health": "MISSING",
+    "hosted_required_checks": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+  },
+  "interpretation": {
+    "known_hard_failures": [
+      {
+        "id": "GATE_B_EXACT_CANDIDATE_OBSERVABILITY_REFERENCE_PORTABILITY",
+        "status": "FAIL",
+        "detail": "Candidate.3 platform source fails the checked-in observability support-reference freshness contract on a normal Windows CRLF checkout; the post-candidate normalization fix cannot repair frozen candidate bytes"
+      }
+    ],
+    "gate_f_pass_claimed": false,
+    "missing_or_manual_evidence_is_pass": false,
+    "owner_solo_exception_waives_independent_reviewer_only": true,
+    "owner_solo_exception_waives_required_checks": false,
+    "unsigned_windows_direct_beta_exception": "SKIPPED_BY_OWNER",
+    "unsigned_windows_public_or_stable_signing_pass": false,
+    "ldplayer_replaces_physical_android": false,
+    "current_origin_replaces_brain_or_ru_origin": false,
+    "local_rollback_rehearsal_replaces_runtime_rollback": false
+  },
+  "blockers": [
+    {
+      "id": "GATES_A_E_AND_MANDATORY_ROWS_NOT_ALL_CANDIDATE_PROVEN",
+      "status": "FAIL",
+      "detail": "Gate A is BLOCKED, Gate B returns exact-candidate NO_GO after a deterministic observability support-reference portability failure, Gate C is BLOCKED by incomplete Windows live-network plus authenticated physical Android/OEM/store matrices, Gate D is BLOCKED by absent production provider/PostgreSQL/outbox/reconciliation/rollback proof, and Gate E is BLOCKED by absent authenticated, physical screen-reader/device, comparable-artifact, browser-lab, RU-origin and post-promotion proof; Gates A-E and mandatory rows are not all exact-candidate I4"
+    },
+    {
+      "id": "WINDOWS_LIVE_TUN_DNS_EGRESS_RECOVERY",
+      "status": "MANUAL_OWNER_TEST",
+      "detail": "Clean-host install/service/authenticated IPC passed, but live TUN, DNS, egress, sleep/reboot and connected rollback were not run"
+    },
+    {
+      "id": "ANDROID_PHYSICAL_EXACT_CANDIDATE",
+      "status": "MANUAL_OWNER_TEST",
+      "detail": "The owner returned the phone, but the installed physical build is post-candidate lab 1.2.0+4031 rather than candidate.3 1.2.0+30; its DNS/AWG readiness observations do not transfer to the frozen candidate"
+    },
+    {
+      "id": "AUTHENTICATED_CLIENT_EGRESS",
+      "status": "BLOCKED_BY_ACCESS",
+      "detail": "The LDPlayer account has no active entitlement and the client correctly asks to renew; no entitlement was granted or bypassed"
+    },
+    {
+      "id": "RU_ORIGIN",
+      "status": "BLOCKED_BY_ACCESS",
+      "detail": "No exact-candidate eligible RU-origin run is retained"
+    },
+    {
+      "id": "PAYMENT_OPERATOR_AND_LEGAL_EXTERNAL_GATES",
+      "status": "MANUAL_OWNER_TEST",
+      "detail": "Production provider E2E, Operator Center production OIDC/RBAC/action-intent and legal/commercial approval remain external/manual"
+    },
+    {
+      "id": "COMPARABLE_DEVICE_PERFORMANCE_BASELINES",
+      "status": "MISSING",
+      "detail": "Controlled API p95, local static budgets, automated accessibility/responsive checks and fresh exact-source desktop/mobile render smoke passed; exact Android/Windows device performance, physical screen readers/scaling, comparable artifact, browser-lab, authenticated and post-promotion baselines remain incomplete"
+    },
+    {
+      "id": "GITHUB_HOSTED_CHECKS_BILLING",
+      "status": "BLOCKED_BY_ACCESS_GITHUB_BILLING",
+      "detail": "Platform PR 49 Guardrails and Release v2 jobs plus client PR 29 Release v2 job received zero steps because GitHub reported failed account payments or an insufficient spending limit"
+    }
+  ],
+  "hosted_checks": {
+    "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING",
+    "platform": {
+      "repository": "Kiwunaka/portal",
+      "pull_request": 49,
+      "head": "09bea07870708d6ceab54fd84d0bc2d6a1cd18ee",
+      "guardrails": {
+        "run_id": 33051838866,
+        "check_id": 98448998673,
+        "job_started": false,
+        "steps": 0,
+        "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+      },
+      "release_v2_contract": {
+        "run_id": 33051838890,
+        "check_id": 98448998491,
+        "job_started": false,
+        "steps": 0,
+        "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+      }
+    },
+    "client_support_polling": {
+      "repository": "Kiwunaka/POKROV-app",
+      "pull_request": 29,
+      "head": "03a59a7d155ffbbe77a9a0087ff5666b90ac1c92",
+      "run_id": 33053181727,
+      "check_id": 98453413213,
+      "job_started": false,
+      "steps": 0,
+      "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+    }
+  },
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AE-candidate3-reconciliation/013AE-candidate3-reconciliation.json",
+      "sha256": "5664c92c6ee75ab7db57c90bb3c2138b94b6809bd734feca2b7768fff1d0661a"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AE-candidate3-reconciliation/013AE-candidate3-signed-manifest.json",
+      "sha256": "1b87cea99907123c3180d8e948ef0c0a680d7e8d26a4e67a6a98f037201deca6"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AF-exact-candidate-rollback-rehearsal/013AF-candidate3-rollback-rehearsal.json",
+      "sha256": "46c3dfe9d582becc3dfd9d7796bb4cca1337cfdad00609da5c632f20308822cb"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AF-exact-candidate-rollback-rehearsal/013AF-candidate3-release-handoff.json",
+      "sha256": "f56a1888af5f1dc398570d04624c97a4f622d01912d26955c6d30b1fdaf4cffd"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AG-exact-candidate-brain-origin/013AG-exact-candidate-brain-origin.json",
+      "sha256": "f93c4f988906b85dd2ab6d14b7cdff0af674cbe42c113af183f06df65203eabb"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AH-exact-candidate-current-origin/013AH-exact-candidate-current-origin.json",
+      "sha256": "6be140b2b5a4129a94ec50227be679495aa1a66c1e7c389794f086fc86428817"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AI-exact-candidate-gate-f/013AI-candidate3-ldplayer-recheck.json",
+      "sha256": "9cb9a0483aa6714cdd96b3e0f1c6e00007e45089340727deb2b4ae24dfef83a5"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/010K-support-transport-reconciliation/010K-support-transport-reconciliation.json",
+      "sha256": "c3691f84be3fb526fec2e3cc56dc9977ec84bc77b1dfb9374228debf8587a769"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AJ-exact-candidate-gate-a/013AJ-gate-a-decision.json",
+      "sha256": "f4441a19521d1d77703f599c1257f620fb048167c3db9ff3a24f2935694f2d01"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AK-exact-candidate-gate-b/013AK-gate-b-decision.json",
+      "sha256": "07d5bcbd5be6631b3648fb10926bb773ccbb4f41fb0d5ba7fbabddad9fe5f21b"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AL-exact-candidate-gate-c/013AL-gate-c-decision.json",
+      "sha256": "58aeaf052b6b3bf14051990c4daf41f9bddc97fe3ce2df5b115221fe34bc5988"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AM-exact-candidate-gate-d/013AM-gate-d-decision.json",
+      "sha256": "ca3ebfdabca3dc64a6cf1ac71fdcfa1591082b7a40d413c14a4ddbb85de83091"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AN-exact-candidate-gate-e/013AN-gate-e-decision.json",
+      "sha256": "fd27c886e702dacab94410b86b0e86b70efb55ebd13ab4011a050a876f1a9d6f"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/EXECUTION-LEDGER.csv",
+      "sha256": "3c1f4c52fecf7dac0cf2185e100e5146de967d8ab39dd21d76932d3372edd5dd"
+    }
+  ],
+  "mutation_boundary": {
+    "physical_device_used": true,
+    "physical_device_exact_candidate_tested": false,
+    "entitlement_mutated": false,
+    "payment_action": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE3_GATE_F_INPUT_EVIDENCE_THROUGH_GATES_A_E_WITH_ONE_EXPLICIT_GATE_B_FAILURE; GATE_E_LOCAL_AUTOMATED_AND_RENDER_SLICES_DO_NOT_REPLACE_PHYSICAL_DEVICE_BROWSER_LAB_OR_POST_PROMOTION_PROOF; PHYSICAL_PHONE_IS_POST_CANDIDATE_LAB4031_ONLY; REQUIRED_EXTERNAL_AND_MANUAL_GATES_REMAIN_NON_PASS"
+}

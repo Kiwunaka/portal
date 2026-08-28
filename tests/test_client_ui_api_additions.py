@@ -20,6 +20,7 @@ if str(PORTAL_BOT_DIR) not in sys.path:
 
 from awg2_lab_service import AWG2_CONTRACT_SHA256  # noqa: E402
 from awg31_lab_service import AWG31_CONTRACT_SHA256  # noqa: E402
+from hy2_lab_service import HY2_CONTRACT_SHA256  # noqa: E402
 
 
 def _utcnow() -> datetime:
@@ -49,6 +50,7 @@ def _load_api(monkeypatch, tmp_path: Path):
     monkeypatch.setenv("WEBAPP_SESSION_SECRET", "client-ui-api-secret")
     monkeypatch.setenv("AWG2_LAB_MATERIAL_SECRET", "client-ui-awg2-test-secret")
     monkeypatch.setenv("AWG31_LAB_MATERIAL_SECRET", "client-ui-awg31-test-secret")
+    monkeypatch.setenv("HY2_LAB_MATERIAL_SECRET", "client-ui-hy2-test-secret")
     monkeypatch.setenv("PUBLIC_API_BASE_URL", "https://api.pokrov.test")
     monkeypatch.setenv("PUBLIC_WEB_DOMAIN", "pokrov.test")
     monkeypatch.setenv("PAY_CHECKOUT_URL", "https://pay.pokrov.space/checkout/")
@@ -69,6 +71,7 @@ def _load_api(monkeypatch, tmp_path: Path):
         "api_operator_observability_routes",
         "awg2_lab_service",
         "awg31_lab_service",
+        "hy2_lab_service",
         "commercial_campaign_policy",
         "commercial_offer_service",
         "commercial_order_service",
@@ -321,10 +324,29 @@ def _synthetic_awg31_endpoint() -> dict[str, object]:
     }
 
 
+def _synthetic_hy2_endpoint() -> dict[str, object]:
+    return {
+        "server": "hy2.example.invalid",
+        "server_port": 443,
+        "password": "synthetic-password",
+        "up_mbps": 10,
+        "down_mbps": 50,
+        "obfs": {
+            "type": "salamander",
+            "password": "synthetic-obfs-password",
+        },
+        "tls": {
+            "enabled": True,
+            "server_name": "hy2.example.invalid",
+            "insecure": False,
+            "alpn": ["h3"],
+        },
+    }
+
+
 def test_awg2_owner_lab_is_device_bound_managed_only_and_kill_rolls_back(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
-    _add_node(api, code="pl", last_health_at=_utcnow())
     start_body = _start_trial(client, install_id="awg2-owner-device", platform="windows")
 
     rollout = _rollout_payload()
@@ -368,7 +390,10 @@ def test_awg2_owner_lab_is_device_bound_managed_only_and_kill_rolls_back(monkeyp
     finally:
         session.close()
 
-    managed = client.get("/api/client/profile/managed", headers=_auth_headers(start_body))
+    managed = client.get(
+        "/api/client/profile/managed?selected_node_code=not-an-awg-selector",
+        headers=_auth_headers(start_body),
+    )
 
     assert managed.status_code == 200, managed.text
     body = managed.json()
@@ -380,8 +405,9 @@ def test_awg2_owner_lab_is_device_bound_managed_only_and_kill_rolls_back(monkeyp
     assert body["config_payload"]["endpoints"][0]["type"] == "awg"
     assert body["config_payload"]["endpoints"][0]["useIntegratedTun"] is False
     assert body["config_payload"]["_meta"]["transport_contract"]["sha256"] == rollout["awg2_lab"]["contract_sha256"]
-    assert body["smart_connect"]["shortlist"][0]["probe"] is None
+    assert body["smart_connect"] is None
 
+    _add_node(api, code="pl", last_health_at=_utcnow())
     subscription_path = urlsplit(str(start_body["subscription_url"])).path
     subscription = client.get(f"{subscription_path}?format=singbox")
     assert subscription.status_code == 200, subscription.text
@@ -409,7 +435,6 @@ def test_awg31_private_profile_requires_an_active_device_claim(
 ) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
-    _add_node(api, code="pl", last_health_at=_utcnow())
     start_body = _start_trial(
         client, install_id="awg31-owner-device", platform="windows"
     )
@@ -476,12 +501,105 @@ def test_awg31_private_profile_requires_an_active_device_claim(
     assert blocked.json()["detail"] == "Authenticated device is required"
 
     managed = client.get(
-        "/api/client/profile/managed", headers=_auth_headers(start_body)
+        "/api/client/profile/managed?selected_node_code=missing-catalog-node",
+        headers=_auth_headers(start_body),
     )
     assert managed.status_code == 200, managed.text
-    endpoint = managed.json()["config_payload"]["endpoints"][0]
+    body = managed.json()
+    assert body["smart_connect"] is None
+    endpoint = body["config_payload"]["endpoints"][0]
     assert endpoint["contract_id"] == "pokrov.awg31.endpoint.v1"
     assert endpoint["private_key"] == _synthetic_awg31_endpoint()["private_key"]
+
+
+def test_hy2_owner_lab_issues_only_managed_device_profile_and_kill_rolls_back(
+    monkeypatch, tmp_path
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    start_body = _start_trial(
+        client, install_id="hy2-owner-device", platform="android"
+    )
+
+    rollout = _rollout_payload()
+    rollout["cohort_overrides"] = {
+        "hy2-owner-lab": {
+            "install_ids": ["hy2-owner-device"],
+            "platforms": ["android"],
+            "transport_profile": "hy2_lab",
+        }
+    }
+    rollout["hy2_lab"] = {
+        "enabled": True,
+        "kill_switch_engaged": False,
+        "allowlist_install_ids": ["hy2-owner-device"],
+        "allowlist_tg_ids": [],
+        "allowlist_node_codes": ["lab"],
+        "allowed_platforms": ["android"],
+        "contract_id": "pokrov.hy2.outbound.v1",
+        "contract_sha256": HY2_CONTRACT_SHA256,
+        "generation": "hy2-lab-v1",
+        "endpoint_revision": "hy2-v1",
+        "server_record_id": "pokrov-hy2-lab-01",
+        "server_owner": "pokrov",
+        "server_state": "ready",
+    }
+    session = api.SessionLocal()
+    try:
+        user = (
+            session.query(api.User)
+            .filter(api.User.app_install_id == "hy2-owner-device")
+            .one()
+        )
+        api.replace_hy2_lab_material(
+            session,
+            tg_id=int(user.tg_id),
+            install_id="hy2-owner-device",
+            generation="hy2-lab-v1",
+            endpoint_revision="hy2-v1",
+            server_record_id="pokrov-hy2-lab-01",
+            node_code="lab",
+            endpoint=_synthetic_hy2_endpoint(),
+        )
+        api._set_app_setting_json(
+            s=session, key="network_rollout_config", value=rollout
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    managed = client.get(
+        "/api/client/profile/managed?selected_node_code=ignored",
+        headers=_auth_headers(start_body),
+    )
+    assert managed.status_code == 200, managed.text
+    body = managed.json()
+    assert body["transport_profile"] == "hy2_lab"
+    assert body["transport_kind"] == "hysteria2"
+    assert body["engine_hint"] == "singbox"
+    assert body["fallback_order"] == ["hy2_lab", "legacy_reality_fallback"]
+    assert body["config_format"] == "singbox-json"
+    assert body["config_payload"]["outbounds"][0]["type"] == "hysteria2"
+    assert body["config_payload"]["outbounds"][0]["tls"]["insecure"] is False
+    assert "server_ports" not in body["config_payload"]["outbounds"][0]
+    assert body["smart_connect"] is None
+
+    _add_node(api, code="lab", last_health_at=_utcnow())
+    rollout["hy2_lab"]["kill_switch_engaged"] = True
+    session = api.SessionLocal()
+    try:
+        api._set_app_setting_json(
+            s=session, key="network_rollout_config", value=rollout
+        )
+        session.commit()
+    finally:
+        session.close()
+
+    rolled_back = client.get(
+        "/api/client/profile/managed", headers=_auth_headers(start_body)
+    )
+    assert rolled_back.status_code == 200, rolled_back.text
+    assert rolled_back.json()["transport_profile"] == "legacy_reality_fallback"
 
 
 def test_client_locations_catalog_exposes_searchable_real_node_catalog(monkeypatch, tmp_path) -> None:

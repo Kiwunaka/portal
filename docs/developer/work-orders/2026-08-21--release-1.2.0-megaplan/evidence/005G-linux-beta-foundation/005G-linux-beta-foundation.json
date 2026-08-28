@@ -1,0 +1,78 @@
+{
+  "schema": "pokrov.release-1.2.0.linux-beta-foundation-evidence/v1",
+  "recorded_at": "2026-08-27",
+  "scope": "SOURCE_ONLY_CONDITIONAL_BETA_FOUNDATION",
+  "client": {
+    "repository": "Kiwunaka/POKROV-app",
+    "branch": "codex/linux-beta-foundation-current",
+    "pull_request": 28,
+    "head": "5388fd3197e46170c88db59078758fe053af5bcd",
+    "foundation_commit": "eebc75e20e33f04be6d73e4f1206a89b8cd606d4",
+    "ci_contract_fix_commit": "5388fd3197e46170c88db59078758fe053af5bcd",
+    "base_main": "95afa0785633b40fe7ad94c014997ad9afd1d0fc"
+  },
+  "implementation": {
+    "non_root_flutter_ui": true,
+    "root_systemd_daemon": true,
+    "typed_unix_socket": "/run/pokrov/pokrov-linuxd.sock",
+    "kernel_peer_credentials": true,
+    "polkit_action": "space.pokrov.linux.manage",
+    "bounded_profile_store": true,
+    "closed_secret_free_journald_envelope": true,
+    "sanitized_daemon_snapshot_to_ui": true,
+    "foundation_matrix": "ubuntu-24.04-amd64",
+    "fedora": "PENDING_PACKAGE_AND_RUNTIME_PROOF",
+    "supports_live_connect": false,
+    "connect_result": "linux_live_connect_unavailable",
+    "network_manager_checkpoint_rollback": "NOT_IMPLEMENTED",
+    "resolved_transactions": "NOT_IMPLEMENTED",
+    "nftables_transactions": "NOT_IMPLEMENTED",
+    "package_signing": "NOT_IMPLEMENTED",
+    "clean_vm_matrix": "NOT_RUN"
+  },
+  "verification": {
+    "current_main_windows_standard_gate": "PASS",
+    "release_v2_ci_contract": "PASS",
+    "docs_contract": "PASS",
+    "seed_layout_cross_repository": "PASS",
+    "linux_shell_flutter_analyze": "PASS",
+    "linux_shell_flutter_test": "PASS_3_OF_3",
+    "runtime_engine_flutter_analyze": "PASS",
+    "runtime_engine_flutter_test": "PASS_65_PLUS_1_DECLARED_EXTERNAL_ARTIFACT_SKIP",
+    "current_head_diff_check": "PASS",
+    "real_linux_local_go_execution": "BLOCKED_BY_HOST_CAPABILITY_WSL_VIRTUALIZATION_UNAVAILABLE",
+    "hosted_linux_source_run": {
+      "status": "PASS",
+      "run": 32989022843,
+      "job": 98241915434,
+      "head": "0701806153048325bf35599709bdfe04ef63efe0",
+      "step": "Validate conditional Linux daemon foundation",
+      "source_equivalence": "PASS_NO_DIFF_FOR_APPS_LINUX_SHELL_AND_LINUX_DAEMON_RUNTIME"
+    },
+    "current_pr_hosted_run": {
+      "status": "BLOCKED_BY_ACCESS_GITHUB_BILLING",
+      "run": 33050348883,
+      "job": 98444036229,
+      "runner_id": 0,
+      "steps_started": 0,
+      "annotation": "Recent account payments failed or the spending limit needs to be increased."
+    }
+  },
+  "ledger": {
+    "REL/LNX-001": "I3",
+    "OBS/OBS-043": "I2",
+    "OBS/OBS-044": "I2",
+    "OBS/OBS-045": "I1",
+    "OBS/OBS-046": "I3",
+    "REL_GATE/GATE-C": "I2",
+    "REL_DOD/DOD-06": "I2"
+  },
+  "release_boundary": {
+    "candidate_3_contains_linux": false,
+    "candidate_3_replacement_required_if_linux_enters_1_2_0": true,
+    "public_linux_artifact": "NOT_CREATED",
+    "public_linux_availability": "NOT_SHIPPED_IN_1.2.0",
+    "candidate_proof_ceiling": "I3_SOURCE_ONLY"
+  },
+  "contains_secrets": false
+}

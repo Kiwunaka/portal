@@ -34,6 +34,13 @@ class ReleaseGateCheckTests(unittest.TestCase):
         self.assertIn("Client Flutter tests", names)
         self.assertIn("Client release-handoff v2 contract", names)
 
+    def test_platform_root_can_target_an_exact_candidate_checkout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict(self.module.os.environ, {"POKROV_PLATFORM_ROOT": tmp}, clear=False):
+                resolved = self.module._resolve_platform_root()
+
+        self.assertEqual(resolved, Path(tmp).resolve())
+
     def test_platform_release_v2_workflow_is_strict_and_cross_repository(self) -> None:
         workflow = (self.module.REPO_ROOT / ".github" / "workflows" / "release-v2-contract.yml").read_text(
             encoding="utf-8"
@@ -82,6 +89,16 @@ class ReleaseGateCheckTests(unittest.TestCase):
         self.assertEqual(
             self.module._frontend_build_support_paths(self.module.REPO_ROOT / "webapp"),
             (),
+        )
+
+    def test_webapp_e2e_uses_isolated_dependency_copy(self) -> None:
+        webapp_root = self.module.REPO_ROOT / "webapp"
+
+        self.assertTrue(
+            self.module._is_frontend_verification(
+                [self.module._npm_exec(), "run", "test:e2e"],
+                webapp_root,
+            )
         )
 
     def test_failure_tails_are_redacted_in_ci_output(self) -> None:

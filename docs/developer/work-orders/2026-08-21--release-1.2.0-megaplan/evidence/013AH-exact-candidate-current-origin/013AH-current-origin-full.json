@@ -1,0 +1,36 @@
+{
+  "schema": "pokrov.release-gate-summary/v1",
+  "recorded_at": "2026-08-27T06:09:56Z",
+  "status": "PASS",
+  "gate_set": "default",
+  "origin": "current",
+  "target_platform_source": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+  "target_client_source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+  "target_core_source": "344b317a7a09eca7943a93866b193553538bd8f6",
+  "harness_source": "c9b34276fd42b4ef4a670caf4a630a77232271cc",
+  "raw_report_sha256": "5bcbcb8cbfe69c9249257d7c571e8e47a94c882c9afc5a86872fb0334874e2a8",
+  "gates": [
+    {"name": "Release pytest matrix", "exit_code": 0, "duration_seconds": 2238.56, "summary": "675 passed, 19 warnings, 38 subtests passed"},
+    {"name": "Admin/auth regressions", "exit_code": 0, "duration_seconds": 448.21, "summary": "96 passed, 8 subtests passed"},
+    {"name": "Client release-handoff v2 contract", "exit_code": 0, "duration_seconds": 24.85},
+    {"name": "Client security smoke", "exit_code": 0, "duration_seconds": 0.38},
+    {"name": "Client Flutter tests", "exit_code": 0, "duration_seconds": 223.24},
+    {"name": "API lifecycle smoke", "exit_code": 0, "duration_seconds": 7.14},
+    {"name": "Public link checks", "exit_code": 0, "duration_seconds": 0.09},
+    {"name": "Marketing production build", "exit_code": 0, "duration_seconds": 30.95},
+    {"name": "AdminApp production build", "exit_code": 0, "duration_seconds": 37.88},
+    {"name": "Admin webapp smoke", "exit_code": 0, "duration_seconds": 0.18},
+    {"name": "WebApp production build", "exit_code": 0, "duration_seconds": 35.65},
+    {"name": "WebApp Playwright E2E", "exit_code": 0, "duration_seconds": 117.88, "summary": "88 passed"},
+    {"name": "UI visual smoke", "exit_code": 0, "duration_seconds": 0.09}
+  ],
+  "result_counts": {"passed": 13, "failed": 0, "total": 13},
+  "classification": {
+    "current_origin_local_default": "PASS",
+    "brain_origin": "NOT_IN_SCOPE_SEPARATE_WO_013AG",
+    "ru_origin": "BLOCKED_BY_ACCESS",
+    "android_physical": "BLOCKED_BY_ACCESS",
+    "runtime_app_download": "SKIPPED_NO_LIVE_TOKEN",
+    "client_platform_builds": "NOT_REQUESTED"
+  }
+}

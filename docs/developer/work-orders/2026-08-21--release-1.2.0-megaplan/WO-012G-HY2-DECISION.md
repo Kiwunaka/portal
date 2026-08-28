@@ -15,7 +15,24 @@ replace `awg2_lab`, alter the retained 1.2.0 bytes, create a POKROV cryptographi
 fork, or establish real-server, physical-device, mobile-origin or production
 proof. Hysteria2 remains `NO_GO_FOR_1.2.0` under the original decision below.
 
-## Decision
+## 2026-08-28 Hysteria2 owner-lab amendment
+
+The owner explicitly reopened the bounded Hysteria2 source-lab slice. Core,
+platform and client source now implement one managed `hy2_lab` contract through
+the already embedded official sing-box `1.13.0` QUIC implementation. The lane
+is disabled and kill-switched by default, device-bound, allowlisted and backed
+by encrypted material. It accepts one server port, verified TLS/SNI with ALPN
+`h3`, bounded bandwidth and optional Salamander obfuscation. Raw
+`hysteria2://` / `hy2://` conversion, port hopping, Gecko, Mimic, insecure TLS,
+raw node-catalog material and a second engine or TUN remain rejected.
+
+This amendment supersedes only the source-implementation deferral. It does not
+alter the retained candidate.3 bytes or prove a deployed owned HY2 server, live
+handshake, traffic, performance, mobile/RU origin, production deployment or
+release readiness. Exact evidence and the remaining gates are in
+`WO-013AR-hysteria2-owned-lab.md`.
+
+## Original 2026-08-22 decision
 
 Do not add, enable or advertise a Hysteria2 lane in POKROV 1.2.0. Keep it as
 a future bounded selector/fallback candidate, never as the sole bootstrap.
@@ -51,7 +68,7 @@ Create a separate future WO only when all of these are true:
 | Record | Owner | Observe | Reopen trigger | 1.2.0 action |
 |---|---|---|---|---|
 | `MONITOR-01` AWG 3 and later obfuscation generations | Core owner | Official upstream schema, dependency, license and stable sing-box support | Current pinned AWG2 subset has an owned, measured gap and a compatible typed migration exists | AWG 3.1 source lab reopened 2026-08-26; disabled, exact-contract, no release/product claim |
-| `MONITOR-02` HY2 Gecko, Mimic and port hopping | Core + network owner | Official upstream capability and owned test results | Reopen criteria above are satisfied and one bounded selector addresses the measured failure | Monitor only; no implementation |
+| `MONITOR-02` HY2 Gecko, Mimic and port hopping | Core + network owner | Official upstream capability and owned test results | A measured gap requires one extension and its typed, owned rollback/evidence contract is approved | Base HY2 source lab implemented; Gecko, Mimic and port hopping remain monitor only |
 | `MONITOR-03` TrustTunnel/fptn | Architecture owner | Maintained upstream, license, security ownership and operational dependency | A concrete production dependency has an accountable owner and beats the existing stack on retained evidence | Monitor only; no dependency/fork |
 | `MONITOR-04` XHTTP, REALITY and AWG blocking trends | Network/operations owner | Sanitized POKROV-owned evidence with current-, brain- and RU-origin kept separate | Repeated exact-candidate failures cross an owner-approved threshold and name the affected ASN/network class | Monitor only; no public effectiveness claim |
 
@@ -60,10 +77,12 @@ raw provider payload qualifies as evidence for this registry.
 
 ## Evidence ceiling
 
-- HY2 decision and ownership: `I1 VERIFIED_DEFERRED`.
+- HY2 Core/platform/client source, reproducible Android Core AAR, byte-identical
+  immutable Linux server bundle and signed Android launch/default-off proof:
+  `I3 VERIFIED_LOCAL` under `WO-013AR`.
 - AWG 3.1 source contract: `I3 VERIFIED_LOCAL`; real server, physical device,
   mobile origin and production remain unproven.
 - Remaining monitor registry: `I1 VERIFIED_MONITOR_ONLY`.
-- HY2 runtime, server, artifact, device, performance and RU-origin proof: not
-  implemented or run.
+- HY2 server deploy/runtime material, live handshake, tunneled traffic,
+  performance and distinct current/Brain/RU-origin proof: not run.
 - Candidate and promotion state: `NOT_REQUESTED`.

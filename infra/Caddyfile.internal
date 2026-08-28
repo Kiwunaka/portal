@@ -82,6 +82,17 @@ pokrov.space:8444, www.pokrov.space:8444, app.pokrov.space:8444, www.app.pokrov.
     }
   }
 
+  # Android may use the cabinet origin when the canonical API hostname is
+  # filtered by the current network. Route this before static `try_files` can
+  # rewrite the API path to the webapp index.
+  @webapp_api {
+    host app.pokrov.space
+    path /api/*
+  }
+  handle @webapp_api {
+    reverse_proxy 127.0.0.1:8080
+  }
+
   @webapp_host host app.pokrov.space
   handle @webapp_host {
     header {

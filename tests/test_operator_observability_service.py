@@ -478,6 +478,22 @@ def test_retention_deletes_only_eligible_unheld_rows_and_exact_owned_files(
             outcome="failed",
         )
     )
+    session.add(
+        models.ReleaseHealthCohortBucket(
+            cohort_fingerprint="a" * 64,
+            window_started_at=old,
+            bucket_index=7,
+            event_count=1,
+            failure_count=0,
+            crash_event_count=0,
+            crash_failure_count=0,
+            connect_event_count=1,
+            connect_failure_count=0,
+            update_event_count=0,
+            update_failure_count=0,
+            updated_at=old,
+        )
+    )
 
     accepted_upload = _upload(session, payload=b"old accepted", age_days=40)
     (accepted / accepted_upload.object_name).write_bytes(b"old accepted")
@@ -516,6 +532,7 @@ def test_retention_deletes_only_eligible_unheld_rows_and_exact_owned_files(
         quarantine_root=quarantine,
         accepted_root=accepted,
         release_health_days=90,
+        release_health_cohort_days=14,
         accepted_bundle_days=30,
         rejected_bundle_days=7,
         incomplete_grace_days=1,
@@ -525,6 +542,7 @@ def test_retention_deletes_only_eligible_unheld_rows_and_exact_owned_files(
 
     assert counters == {
         "release_health_events_deleted": 1,
+        "release_health_cohort_buckets_deleted": 1,
         "bundle_rows_deleted": 2,
         "accepted_objects_deleted": 1,
         "quarantine_chunks_deleted": 1,

@@ -401,6 +401,12 @@ from awg31_lab_service import (
     replace_awg31_lab_material,
     safe_awg31_material_summary,
 )
+from hy2_lab_service import (
+    Hy2LabError,
+    build_managed_hy2_lab_config,
+    replace_hy2_lab_material,
+    safe_hy2_material_summary,
+)
 from public_urls import build_subscription_url, public_connect_base_url, public_connect_host
 from shared_surface_facts import (
     get_access_matrix,
@@ -412,6 +418,7 @@ from shared_surface_facts import (
 from transport_catalog import (
     AWG2_LAB,
     AWG31_LAB,
+    HY2_LAB,
     LEGACY_REALITY_FALLBACK,
     OPERATOR_LAB,
     RESERVE_XHTTP_CDN,
@@ -1289,6 +1296,16 @@ class AdminAwg2LabMaterialPutIn(BaseModel):
 
 
 class AdminAwg31LabMaterialPutIn(BaseModel):
+    tg_id: int = Field(gt=0)
+    install_id: str = Field(min_length=1, max_length=128)
+    generation: str = Field(min_length=2, max_length=64)
+    endpoint_revision: str = Field(min_length=2, max_length=64)
+    server_record_id: str = Field(min_length=2, max_length=64)
+    node_code: str = Field(min_length=2, max_length=64)
+    endpoint: dict[str, Any] = Field(default_factory=dict)
+
+
+class AdminHy2LabMaterialPutIn(BaseModel):
     tg_id: int = Field(gt=0)
     install_id: str = Field(min_length=1, max_length=128)
     generation: str = Field(min_length=2, max_length=64)
@@ -4119,6 +4136,7 @@ _BETA_RATE_LIMIT_DEFAULTS_PER_MINUTE = {
     "device_pairing_claim_ip": 30,
     "client_diagnostic_event": 30,
     "release_health_ingest": 30,
+    "release_health_baseline": 30,
     "program_application": 6,
     "ticket_create": 20,
     "ticket_upload": 30,

@@ -1,0 +1,73 @@
+{
+  "candidate_proven": false,
+  "captured_at_utc": "2026-08-28T15:44:01Z",
+  "gate_id": "pokrov.release-1.2.owner-free-github-exact-pr-head",
+  "hosted_readback": {
+    "client_pr_33": {
+      "head": "3564023c8d0e66977043332f2772cfd512489676",
+      "mergeable": true,
+      "release_contract": "BLOCKED_BY_ACCESS_GITHUB_BILLING_ZERO_STEP"
+    },
+    "core_pr_6": {
+      "head": "4fa9accf01a7bed717f739d3f57eb27a65593e3c",
+      "mergeable": true,
+      "passed_jobs": [
+        "test",
+        "android-artifact-reproducibility",
+        "windows-artifact-reproducibility",
+        "apple-source-build"
+      ],
+      "release_contract": "FAIL_CLIENT_MAIN_STALE_CORE_BINDING"
+    },
+    "platform_pr_58": {
+      "head": "663890b564e7d25aaa334cf5b66952f9335ba358",
+      "mergeable": true,
+      "release_base_isolation": "SKIPPED",
+      "release_contract": "BLOCKED_BY_ACCESS_GITHUB_BILLING_ZERO_STEP",
+      "repo_guardrails": "BLOCKED_BY_ACCESS_GITHUB_BILLING_ZERO_STEP"
+    }
+  },
+  "ledger_rows_advanced": [],
+  "local_aggregate": {
+    "candidate_proven": false,
+    "passed_steps": 15,
+    "promotion_status": "MANUAL_OWNER_TEST",
+    "report_sha256": "91c474deda3b05233e9a110cf364e7bf5974375a84dad63aab12c78f2f0266d8",
+    "status": "PASS",
+    "total_steps": 15,
+    "web_performance_evidence_sha256": "fcd2442d529bd9aa351f5f407fbe11d733e1f6b04296a4762fc3da3a2ec4a381",
+    "web_performance_gate_sha256": "f4295697c181e55ac65e8fc6a3fcf6de228eb1a04ab6d7db4bbabde82a9a57fb"
+  },
+  "owner_policy": {
+    "hosted_checks": "NOT_WAIVED",
+    "independent_review": "UNAVAILABLE_NOT_CLAIMED",
+    "paid_github_plan": "DECLINED_BY_OWNER",
+    "private_branch_protection": "WAIVED_BY_OWNER_SOLO_EXCEPTION",
+    "repository_visibility_change": "NOT_RUN_SEPARATE_PUBLICATION_SAFETY_GATE"
+  },
+  "publication_preflight": {
+    "client_high_confidence_match_files": 1,
+    "core_high_confidence_match_files": 1,
+    "full_redacting_scanner": "NOT_RUN_TOOL_MISSING",
+    "platform_high_confidence_match_files": 8,
+    "result": "PRECHECK_NO_REAL_SECRET_IDENTIFIED_FULL_AUDIT_REQUIRED",
+    "visibility_change_authorized_by_preflight": false
+  },
+  "promotion_mutations": {
+    "candidate_created": false,
+    "deployed": false,
+    "merged": false,
+    "public_assets_created": false,
+    "repository_visibility_changed": false,
+    "stable_pointer_changed": false
+  },
+  "schema_version": 1,
+  "sources": {
+    "client": "3564023c8d0e66977043332f2772cfd512489676",
+    "core_product": "e8eb7721fc6eaac6813d3a888ac90d0da1f541a1",
+    "core_pr_carrier": "4fa9accf01a7bed717f739d3f57eb27a65593e3c",
+    "platform_product": "e6ae46e33b74029ec30626a216cd947c8c131ba3",
+    "platform_pr_carrier": "663890b564e7d25aaa334cf5b66952f9335ba358"
+  },
+  "status": "PRE_CANDIDATE_LOCAL_PASS_HOSTED_BLOCKED"
+}

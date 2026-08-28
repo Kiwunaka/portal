@@ -2486,6 +2486,76 @@ class ReleaseHealthEvent(Base):
     )
 
 
+class ReleaseHealthCohortBucket(Base):
+    """Unlinkable, contribution-capped bucket for client baseline privacy."""
+
+    __tablename__ = "release_health_cohort_buckets"
+
+    id = Column(Integer, Identity(), primary_key=True)
+    cohort_fingerprint = Column(String(64), nullable=False)
+    window_started_at = Column(DateTime(timezone=True), nullable=False)
+    bucket_index = Column(Integer, nullable=False)
+    event_count = Column(Integer, nullable=False, default=0)
+    failure_count = Column(Integer, nullable=False, default=0)
+    crash_event_count = Column(Integer, nullable=False, default=0)
+    crash_failure_count = Column(Integer, nullable=False, default=0)
+    connect_event_count = Column(Integer, nullable=False, default=0)
+    connect_failure_count = Column(Integer, nullable=False, default=0)
+    update_event_count = Column(Integer, nullable=False, default=0)
+    update_failure_count = Column(Integer, nullable=False, default=0)
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=sql_text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "cohort_fingerprint",
+            "window_started_at",
+            "bucket_index",
+            name="uq_release_health_cohort_window_bucket",
+        ),
+        CheckConstraint(
+            "bucket_index >= 0 AND bucket_index < 4096",
+            name="ck_release_health_cohort_bucket_index",
+        ),
+        CheckConstraint(
+            "event_count >= 0 AND event_count <= 64",
+            name="ck_release_health_cohort_event_count",
+        ),
+        CheckConstraint(
+            "failure_count >= 0 AND failure_count <= event_count",
+            name="ck_release_health_cohort_failure_count",
+        ),
+        CheckConstraint(
+            "crash_event_count >= 0 AND crash_event_count <= 32 "
+            "AND crash_failure_count >= 0 "
+            "AND crash_failure_count <= crash_event_count",
+            name="ck_release_health_cohort_crash_counts",
+        ),
+        CheckConstraint(
+            "connect_event_count >= 0 AND connect_event_count <= 32 "
+            "AND connect_failure_count >= 0 "
+            "AND connect_failure_count <= connect_event_count",
+            name="ck_release_health_cohort_connect_counts",
+        ),
+        CheckConstraint(
+            "update_event_count >= 0 AND update_event_count <= 32 "
+            "AND update_failure_count >= 0 "
+            "AND update_failure_count <= update_event_count",
+            name="ck_release_health_cohort_update_counts",
+        ),
+        Index(
+            "ix_release_health_cohort_window",
+            cohort_fingerprint,
+            window_started_at,
+        ),
+        Index("ix_release_health_cohort_updated_at", updated_at),
+        {"sqlite_autoincrement": True},
+    )
+
+
 class ReleaseHealthIngestCounter(Base):
     """Payload-free health and quarantine counters for the ingest boundary."""
 
@@ -2561,6 +2631,29 @@ class Awg31LabMaterial(Base):
     """Encrypted, device-bound AWG 3.1 endpoint material for the owner lab."""
 
     __tablename__ = "awg31_lab_materials"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    install_id = Column(String(128), index=True, nullable=False)
+    contract_id = Column(String(64), nullable=False)
+    contract_sha256 = Column(String(64), nullable=False)
+    generation = Column(String(64), index=True, nullable=False)
+    endpoint_revision = Column(String(64), nullable=False)
+    server_record_id = Column(String(64), index=True, nullable=False)
+    node_code = Column(String(64), index=True, nullable=False)
+    endpoint_ciphertext = Column(Text, nullable=False)
+    material_hash = Column(String(64), index=True, nullable=False)
+    state = Column(String(32), default="ready", index=True, nullable=False)
+    is_active = Column(Boolean, default=True, index=True, nullable=False)
+    provisioned_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
+    revoked_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
+class Hy2LabMaterial(Base):
+    """Encrypted, device-bound Hysteria2 endpoint material for the owner lab."""
+
+    __tablename__ = "hy2_lab_materials"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     tg_id = Column(BigInteger, index=True, nullable=False)

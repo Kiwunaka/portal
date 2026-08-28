@@ -167,6 +167,7 @@ Reference-lane note:
 - app-managed session/profile payloads resolve their transport profile from rollout policy, while manual/export compatibility links stay on `legacy_reality_fallback` until a separate share-link parity wave
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint and returns `version`, `profile_revision`, `transport_profile`, `transport_kind`, `engine_hint`, `config_format`, `config_payload`, `fallback_order`, `support_context`, `smart_connect`, and managed-profile `warp_policy`
 - `smart_connect` contains a rollout-compatible shortlist, internal probe targets, capacity/scoring hints, rejection counters, and stickiness metadata so the client can combine real RTT with backend health, dataplane, and network-pressure signals without guessing
+- device-bound `awg2_lab` and `awg31_lab` managed profiles are the bounded exception: they use typed per-device material instead of catalog nodes, ignore `selected_node_code`, bypass the ordinary shortlist and return `smart_connect: null` while their own rollout/material gates remain fail-closed
 - `client_policy.warp_policy` remains sanitized; the default WARP path is
   client-local through Hiddify core, so the backend must not require
   server-managed WireGuard material before the client can set
@@ -1144,6 +1145,16 @@ event; selected package identifiers never cross the device boundary. Duplicate
 event UUIDs are ignored by the unique ingest boundary.
 Rejected payloads create only bounded reason counters; telemetry cannot create
 or change payments, entitlement, incidents, compensation or support cases.
+
+`release_health_baseline_service.py` owns the authenticated client aggregate
+boundary. It converts the in-memory authenticated account identity into a
+secret-keyed 12-bit bucket scoped to one exact build and UTC week, persists only
+that bucket plus capped counters, and returns no baseline below ten buckets or
+30 events. Available responses contain bands rather than exact counts/rates.
+Bucket collisions undercount, weekly/build domain separation prevents stable
+cross-scope linkage, and the 14-day retention window removes expired buckets.
+The baseline endpoint remains unavailable when its dedicated deployment secret
+is absent or invalid.
 
 `operator_observability_service.py` projects those rows into version/build/
 platform crash, connection, and update counts plus previous-window deltas. It

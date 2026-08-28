@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "contract": {
+    "id": "pokrov.performance-budgets",
+    "sha256": "9edc0b96ee1b7e762342d8ff72f974d61898540fd5c4174ff0cc8d6583d6fca2",
+    "version": "1.0.0"
+  },
+  "overall_status": "PASS",
+  "release": {
+    "candidate_label": "pokrov-1.2.0-candidate.3",
+    "source_revision": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+    "version": "1.2.0",
+    "working_tree_state": "clean"
+  },
+  "method": {
+    "origin": "current",
+    "network_profile": "current-workstation-direct-ethernet2-source-bound",
+    "connection_policy": "persistent_http1_keep_alive",
+    "proxy_policy": "disabled_for_source_bound_probe",
+    "source_address": "REDACTED_RFC1918",
+    "warmup_samples_discarded": 5,
+    "private_raw_sha256": "5c458195a4188bb0573304c7a9ae672f847c7f232893be60c73fc3a0b819c2bc",
+    "collector_gate_sha256": "694925e5a550687e526d4a3778a83fc22e473a0ee2fd58d970aab03558a3bc22"
+  },
+  "result": {
+    "budget_id": "api.health.current_origin_ms",
+    "gate_status": "PASS",
+    "sample_count": 50,
+    "statistic": "p95",
+    "unit": "ms",
+    "value": 42.5337,
+    "target_lte": 100,
+    "stop_lte": 100,
+    "target_met": true,
+    "stop_met": true
+  }
+}

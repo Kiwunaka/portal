@@ -13,7 +13,17 @@ from datetime import datetime
 from pathlib import Path
 
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+HARNESS_ROOT = Path(__file__).resolve().parents[1]
+
+
+def _resolve_platform_root() -> Path:
+    override = os.getenv("POKROV_PLATFORM_ROOT", "").strip()
+    if override:
+        return Path(override).expanduser().resolve()
+    return HARNESS_ROOT
+
+
+REPO_ROOT = _resolve_platform_root()
 PYTEST_BASETEMP_ROOT = REPO_ROOT / ".tmp" / "pytest-basetemp"
 RELEASE_PYTEST_ARGS = [
     "tests/test_account_foundation.py",
@@ -150,8 +160,14 @@ def _redact_text(text: str) -> str:
     return redacted
 
 
-def _is_frontend_build(command: list[str], cwd: Path) -> bool:
-    return len(command) >= 3 and command[0] == _npm_exec() and command[1:3] == ["run", "build"] and (cwd / "package.json").exists()
+def _is_frontend_verification(command: list[str], cwd: Path) -> bool:
+    return (
+        len(command) >= 3
+        and command[0] == _npm_exec()
+        and command[1] == "run"
+        and (command[2] == "build" or command[2].startswith("test:e2e"))
+        and (cwd / "package.json").exists()
+    )
 
 
 def _frontend_build_support_paths(cwd: Path) -> tuple[Path, ...]:
@@ -160,7 +176,7 @@ def _frontend_build_support_paths(cwd: Path) -> tuple[Path, ...]:
     return (REPO_ROOT / "scripts", REPO_ROOT / "portal_bot")
 
 
-def _prepare_frontend_build_copy(cwd: Path) -> Path:
+def _prepare_frontend_verification_copy(cwd: Path) -> Path:
     temp_root = Path(tempfile.mkdtemp(prefix=f"{cwd.name}-gate-"))
     target = temp_root / cwd.name
     shutil.copytree(
@@ -258,8 +274,8 @@ def _run_cmd(*, name: str, command: list[str], cwd: Path) -> GateResult:
     run_cwd = cwd
     cleanup_paths: list[Path] = []
     prepared_command = command
-    if _is_frontend_build(command, cwd):
-        run_cwd = _prepare_frontend_build_copy(cwd)
+    if _is_frontend_verification(command, cwd):
+        run_cwd = _prepare_frontend_verification_copy(cwd)
         cleanup_paths.append(run_cwd.parent)
     prepared_command, pytest_basetemp = _prepare_pytest_command(prepared_command)
     if pytest_basetemp is not None:
@@ -517,7 +533,7 @@ def _release_pytest_gate() -> tuple[str, list[str], Path]:
 def _client_security_smoke_gate() -> tuple[str, list[str], Path]:
     return (
         "Client security smoke",
-        [sys.executable, "scripts/client_security_smoke.py"],
+        [sys.executable, str(HARNESS_ROOT / "scripts" / "client_security_smoke.py")],
         REPO_ROOT,
     )
 

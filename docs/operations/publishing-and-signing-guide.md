@@ -1,6 +1,6 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-08-23
+Last updated: 2026-08-27
 
 ## Document Status
 
@@ -57,6 +57,15 @@ The validator emits a redacted JSON summary and does not fetch URLs. Exit `0`
 means valid v2. Exit `3` means valid legacy v1 when
 `--allow-legacy-v1` is explicit. Exit `2` means invalid metadata. Release
 automation must accept only exit `0` for a new candidate.
+
+The non-mutating `scripts/prepare_github_release_plan.py` consumes that same
+strict-v2 file before it prints any `gh release create` command. For every
+planned Android APK and Windows EXE it requires an exact handoff artifact with
+the same SHA-256, byte size, architecture, canonical asset name and public URL
+for the requested prerelease tag; extra handoff artifacts that are absent from
+the plan also fail closed. A legacy handoff remains compatibility input only.
+`--skip-release-handoff-check` is preparation for a brand-new tag without
+metadata and cannot establish candidate or publication readiness.
 
 The runtime-sync consumer does not reinterpret v2 as legacy metadata. It
 validates the exact file again, accepts only canonical Android APK and Windows
@@ -274,7 +283,7 @@ Current public user-facing version policy:
 - the retained distributed stable-direct release is `v1.1.6`; Android
   `versionName` and Windows public display version are `1.1.6`, and the retained
   client package/build line is `1.1.6+29`
-- the working source target is `1.2.0+30`, `PRE_CANDIDATE_LOCAL`, with
+- the working source target is `1.2.0+4046`, `PRE_CANDIDATE_LOCAL`, with
   `candidate_created=false`; it is not a release candidate or public update
 - a later candidate requires exact signed artifacts, public digest proof and a
   synchronized runtime handoff
@@ -286,6 +295,13 @@ Current public user-facing version policy:
 The client `config/release-handoff.seed.json` owns retained public and
 development version truth. This guide and its tests validate that projection;
 they do not form a second release manifest.
+
+The platform candidate preflight reads the positive numeric development build
+from that client-owned target and requires the Android and Windows package
+versions to match it exactly. It does not pin a historical build number in the
+preflight implementation. Newly added execution-ledger rows are also assigned
+by the checked-in stage policy (defaulting to `pre_freeze`) instead of being
+rejected by a stale total-row constant.
 
 ## Current POKROV-app Client Verification Commands
 
@@ -306,6 +322,9 @@ Notes:
 - `python scripts/run_client_release_gate.py preflight` is the fastest repo-local check that the `POKROV-app` seed workspace, host shells, and wrapper scripts are present before the platform-owned client gates run.
 - `release_gate_check.py` already includes `python scripts/run_client_release_gate.py test --suite full` by default.
 - `release_gate_check.py --quick` swaps that default client suite for `python scripts/run_client_release_gate.py test --suite portal`.
+- frontend production builds and WebApp Playwright E2E run from isolated lockfile-backed copies populated with `npm.cmd ci`; a pre-existing source-tree `node_modules` directory is not release evidence or a gate prerequisite.
+- platform `client_security_smoke.py` pins the active client seed's exact Core `v1.1.0` pre-candidate bytes and provenance; candidate signing and publication status remain owned by the generated strict-v2 handoff rather than that seed-level smoke.
+- a newer reviewed gate harness may verify an immutable platform checkout by setting `POKROV_PLATFORM_ROOT` to that exact checkout; retain both the target platform commit and the harness commit in candidate evidence, and never describe a harness-only fix as a change to signed candidate bytes.
 - add `--client-platform-gates windows,android-apk,android-aab` or set `CLIENT_PLATFORM_GATES` when you want the gate report to include artifact-producing client builds.
 - once `CLIENT_PLATFORM_GATES` includes `android-apk` or `android-aab`, `release_gate_check.py` requires `ANDROID_AUDIT_SERIAL` to point to physical Android hardware; emulator serials stay useful only for adb rehearsal.
 - the wrapper now targets `C:/Users/kiwun/Documents/ai/POKROV-app` by default and fails fast when that workspace is missing or incomplete.

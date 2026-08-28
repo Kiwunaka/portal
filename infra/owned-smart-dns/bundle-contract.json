@@ -1,0 +1,50 @@
+{
+  "schema_version": "pokrov-owned-smart-dns-server-bundle-v1",
+  "state": "source_only_default_off",
+  "policy_schema": "pokrov-smart-dns-policy-v1",
+  "policy_sha256": "b6977f6f6a5ee48898116820d1db252b5b670cb7b86959c78f7bdbc7de90e0fa",
+  "engine": {
+    "name": "pokrov-smart-dns",
+    "version": "1.0.0-lab.1",
+    "go_toolchain": "go1.25.13",
+    "goos": "linux",
+    "goarch": "amd64",
+    "cgo_enabled": false
+  },
+  "runtime": {
+    "dedicated_public_ipv4_required": true,
+    "listen_protocol": "tcp",
+    "listen_port": 443,
+    "doh_path": "/dns-query",
+    "recursive_dns": false,
+    "application_tls": "opaque_passthrough",
+    "origin_port": 443,
+    "origin_resolution": "fixed_authenticated_dot",
+    "ech": "fail_closed_without_visible_allowed_sni",
+    "enabled_by_default": false
+  },
+  "runtime_material_excluded": [
+    "public_listener_address",
+    "doh_hostname",
+    "tls_certificate",
+    "tls_private_key",
+    "upstream_dot_address",
+    "upstream_dot_server_name"
+  ],
+  "install": {
+    "release_root": "/opt/pokrov/smart-dns/releases",
+    "current_pointer": "/opt/pokrov/smart-dns/current",
+    "config_path": "/etc/pokrov-smart-dns/config.json",
+    "service_path": "/etc/systemd/system/pokrov-smart-dns-lab.service",
+    "service_name": "pokrov-smart-dns-lab.service",
+    "enable_by_default": false
+  },
+  "rollback": {
+    "backup_root": "/root/pokrov-smart-dns-lab-backups",
+    "requires_exact_previous_receipt": true,
+    "requires_exact_applied_digest": true,
+    "verify_listener_absent_after_stop": true,
+    "retain_failed_release": true
+  },
+  "evidence_ceiling": "immutable_local_server_bundle_only_until_authorized_dedicated_node_deploy_and_live_matrix"
+}

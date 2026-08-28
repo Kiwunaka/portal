@@ -1,0 +1,68 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-c-decision/v1",
+  "recorded_at_utc": "2026-08-27T10:08:21Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.3",
+    "operational_id": "51f54f889279c49354b822aea9d188af46346e4ed380c73c3a700bd5911f253b",
+    "platform_source": "eafaca3e64c0619dea7f58fc9c430682b4520559",
+    "client_source": "ac22825e857a313c9e4eba61030eb548d6346ead",
+    "core_source": "344b317a7a09eca7943a93866b193553538bd8f6",
+    "release_index_source": "6a1afa95fe52da2d559ba7b1da88715cd0344bb2",
+    "manifest_sha256": "a2752b6a3b95faacf13a68edb708c560966a0f5eb8727e109d7f1603fdc81090"
+  },
+  "gate": "REL_GATE/GATE-C",
+  "decision": "BLOCKED",
+  "explicit_failures": 0,
+  "evidence": {
+    "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013AL-exact-candidate-gate-c/013AL-gate-c-test-evidence.json",
+    "sha256": "51485c2b02487d196ea24f5c7b3e35c7126add9a72e66162f774dd635b2c3347"
+  },
+  "requirements": {
+    "windows_service_and_helper": "PASS_PARTIAL_EXACT_CANDIDATE",
+    "android_service_split": "PASS_SOURCE_AND_INSTALL_PARTIAL_RUNTIME",
+    "direct_and_store_flavors": "PASS_SOURCE_AND_ARTIFACT_PARTIAL_RUNTIME",
+    "conditional_linux_daemon_and_ui_beta": "NOT_SHIPPED_IN_CANDIDATE3",
+    "core_abi_and_platform_matrix": "PASS_EXACT_CANDIDATE_SOURCE_AND_ARTIFACT"
+  },
+  "blocking_checks": [
+    {
+      "id": "windows_live_network_and_recovery_matrix",
+      "status": "MANUAL_OWNER_TEST"
+    },
+    {
+      "id": "android_authenticated_catalog_tun_dns_egress",
+      "status": "BLOCKED_BY_ACCESS"
+    },
+    {
+      "id": "android_physical_api_oem_network_power_privacy_matrix",
+      "status": "MANUAL_OWNER_TEST"
+    },
+    {
+      "id": "android_play_managed_store_update_path",
+      "status": "MANUAL_OWNER_TEST"
+    }
+  ],
+  "linux_scope": {
+    "status": "NOT_SHIPPED_IN_1.2.0",
+    "blocks_candidate3_public_pair": false,
+    "replacement_candidate_required_if_selected": true
+  },
+  "observed_new_candidate_defect": false,
+  "ledger": {
+    "row": "REL_GATE/GATE-C",
+    "previous_index": "I2",
+    "result_index": "I2",
+    "index_advanced": false,
+    "status": "EXACT_CANDIDATE_PLATFORM_MATRIX_BLOCKED"
+  },
+  "release_effect": {
+    "gate_f_state_changed": false,
+    "candidate3_remains_no_go": true,
+    "replacement_candidate_already_required_by_gate_b": true,
+    "promotion_authorized": false
+  },
+  "production_mutation_performed": false,
+  "public_release_created": false,
+  "stable_pointer_mutated": false,
+  "gate_g_authorized": false
+}
