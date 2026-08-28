@@ -31,6 +31,11 @@ contract identity is stable across Windows and Linux checkouts.
   release-health, known-issue, encrypted-upload and privileged-access table.
   `validate_observability_data_inventory.py --check` compares the inventory to
   the JSON schema and live SQLAlchemy model columns and fails on any drift.
+- `release-health-baseline.v1.schema.json` is the authenticated client read
+  contract. It exposes only exact-build scope, an aligned UTC-week window and
+  closed sample/failure-rate bands after at least ten unlinkable contributor
+  buckets. A contributor is capped at 64 events per week; subminimum counts,
+  bucket indexes and exact event/failure totals are never returned.
 
 The active client generator derives both descriptors from these files. It does
 not accept caller-supplied values for them. Client and Core keep hash snapshots
@@ -49,6 +54,13 @@ The sole release-health attribute in 1.2.0 is
 `app.routing.selection.finished` event. It is an integer from `0` through
 `128`. Package names, executable names, selected-app lists and other routing
 identifiers remain device-local and are rejected by the remote ingest.
+
+Client baseline contributions use a dedicated deployment secret to map one
+authenticated account into a 12-bit bucket scoped to one exact build and one
+UTC week. Only that bucket index and capped aggregate counters are persisted;
+the account/install/device/session value and its hash are not. Collisions can
+only reduce the observed cohort and delay projection availability. Missing or
+invalid secret configuration leaves the projection unavailable.
 
 Run `python -B scripts/validate_observability_contracts.py` after any schema or
 catalog edit. A contract change also requires updating the client and Core hash

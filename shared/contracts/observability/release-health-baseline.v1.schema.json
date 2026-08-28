@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pokrov.space/contracts/observability/release-health-baseline.v1.schema.json",
+  "title": "POKROV authenticated client release-health baseline v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "state",
+    "scope",
+    "window",
+    "privacy",
+    "baseline"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "state": {
+      "enum": ["available", "insufficient_cohort", "insufficient_samples"]
+    },
+    "scope": { "$ref": "#/$defs/scope" },
+    "window": { "$ref": "#/$defs/window" },
+    "privacy": { "$ref": "#/$defs/privacy" },
+    "baseline": {
+      "oneOf": [
+        { "type": "null" },
+        { "$ref": "#/$defs/baseline" }
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "state": { "const": "available" } },
+        "required": ["state"]
+      },
+      "then": {
+        "properties": {
+          "baseline": { "$ref": "#/$defs/baseline" },
+          "privacy": {
+            "properties": { "minimum_satisfied": { "const": true } }
+          }
+        }
+      },
+      "else": { "properties": { "baseline": { "type": "null" } } }
+    },
+    {
+      "if": {
+        "properties": { "state": { "const": "insufficient_cohort" } },
+        "required": ["state"]
+      },
+      "then": {
+        "properties": {
+          "privacy": {
+            "properties": { "minimum_satisfied": { "const": false } }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "app_version",
+        "build_number",
+        "channel",
+        "candidate_label",
+        "git_revision",
+        "core_abi",
+        "platform",
+        "architecture"
+      ],
+      "properties": {
+        "app_version": {
+          "type": "string",
+          "pattern": "^[0-9A-Za-z.+-]{1,64}$"
+        },
+        "build_number": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._+-]{1,32}$"
+        },
+        "channel": { "enum": ["alpha", "beta", "rc", "stable", "local"] },
+        "candidate_label": {
+          "type": "string",
+          "pattern": "^pokrov-[A-Za-z0-9][A-Za-z0-9._+-]{1,63}$"
+        },
+        "git_revision": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        },
+        "core_abi": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "integer", "minimum": 1, "maximum": 2147483647 }
+          ]
+        },
+        "platform": { "enum": ["android", "windows", "server"] },
+        "architecture": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._+-]{0,31}$"
+        }
+      }
+    },
+    "window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "started_at", "ends_at"],
+      "properties": {
+        "kind": { "const": "utc_week" },
+        "started_at": { "type": "string", "format": "date-time" },
+        "ends_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimum_contributors",
+        "minimum_satisfied",
+        "contribution_cap_per_window"
+      ],
+      "properties": {
+        "minimum_contributors": { "const": 10 },
+        "minimum_satisfied": { "type": "boolean" },
+        "contribution_cap_per_window": { "const": 64 }
+      }
+    },
+    "metric": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "sample_band", "failure_rate_band"],
+      "properties": {
+        "state": { "enum": ["available", "insufficient_samples"] },
+        "sample_band": {
+          "oneOf": [
+            { "type": "null" },
+            { "enum": ["10_to_29", "30_to_99", "100_to_499", "500_plus"] }
+          ]
+        },
+        "failure_rate_band": {
+          "oneOf": [
+            { "type": "null" },
+            {
+              "enum": [
+                "none_observed",
+                "below_1_percent",
+                "1_to_below_5_percent",
+                "5_to_below_20_percent",
+                "20_percent_or_more"
+              ]
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "state": { "const": "available" } },
+            "required": ["state"]
+          },
+          "then": {
+            "properties": {
+              "sample_band": { "type": "string" },
+              "failure_rate_band": { "type": "string" }
+            }
+          },
+          "else": {
+            "properties": {
+              "sample_band": { "type": "null" },
+              "failure_rate_band": { "type": "null" }
+            }
+          }
+        }
+      ]
+    },
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["overall", "families"],
+      "properties": {
+        "overall": { "$ref": "#/$defs/metric" },
+        "families": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["crash", "connect", "update"],
+          "properties": {
+            "crash": { "$ref": "#/$defs/metric" },
+            "connect": { "$ref": "#/$defs/metric" },
+            "update": { "$ref": "#/$defs/metric" }
+          }
+        }
+      }
+    }
+  }
+}

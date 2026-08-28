@@ -4119,6 +4119,7 @@ _BETA_RATE_LIMIT_DEFAULTS_PER_MINUTE = {
     "device_pairing_claim_ip": 30,
     "client_diagnostic_event": 30,
     "release_health_ingest": 30,
+    "release_health_baseline": 30,
     "program_application": 6,
     "ticket_create": 20,
     "ticket_upload": 30,

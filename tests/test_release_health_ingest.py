@@ -119,6 +119,7 @@ def test_projection_is_identity_free_and_persists_only_closed_fields(session) ->
 
     assert result.accepted == 1
     assert result.duplicates == 0
+    assert result.accepted_event_ids == (str(event["event_id"]),)
     stored = session.query(models.ReleaseHealthEvent).one()
     assert stored.event_id == event["event_id"]
     assert stored.event_name == "client.connection.verify"
@@ -357,6 +358,7 @@ def test_migration_bootstraps_release_health_tables_without_metadata(tmp_path: P
     engine = create_engine(f"sqlite:///{(tmp_path / 'legacy.db').as_posix()}")
     models.Base.metadata.create_all(engine)
     with engine.begin() as connection:
+        connection.execute(text("DROP TABLE release_health_cohort_buckets"))
         connection.execute(text("DROP TABLE release_health_ingest_counters"))
         connection.execute(text("DROP TABLE release_health_events"))
         connection.execute(text("DROP TABLE release_known_issues"))
@@ -369,6 +371,7 @@ def test_migration_bootstraps_release_health_tables_without_metadata(tmp_path: P
                     "SELECT name FROM sqlite_master "
                     "WHERE type='table' AND "
                     "name IN ('release_health_events', "
+                    "'release_health_cohort_buckets', "
                     "'release_health_ingest_counters', 'release_known_issues')"
                 )
             )
@@ -376,6 +379,7 @@ def test_migration_bootstraps_release_health_tables_without_metadata(tmp_path: P
     engine.dispose()
     assert names == {
         "release_health_events",
+        "release_health_cohort_buckets",
         "release_health_ingest_counters",
         "release_known_issues",
     }
@@ -460,6 +464,10 @@ def _load_api(monkeypatch, tmp_path: Path):
     monkeypatch.setenv("PUBLIC_WEB_DOMAIN", "pokrov.test")
     monkeypatch.setenv("ANTIABUSE_HMAC_SECRET", "observability-antiabuse-test-secret")
     monkeypatch.setenv("ANTIABUSE_HMAC_VERSION", "2")
+    monkeypatch.setenv(
+        "RELEASE_HEALTH_COHORT_SECRET",
+        "release-health-api-test-secret-v1",
+    )
     for name in [
         "api",
         "api_observability_routes",
@@ -506,6 +514,19 @@ def _authenticated_client(api) -> tuple[TestClient, dict[str, str]]:
     return client, {"Authorization": f"Bearer {started.json()['session_token']}"}
 
 
+def _baseline_params() -> dict[str, object]:
+    return {
+        "app_version": "1.2.0",
+        "build_number": "45",
+        "channel": "beta",
+        "candidate_label": "pokrov-1.2.0-beta.45",
+        "git_revision": "a" * 40,
+        "core_abi": 2,
+        "platform": "windows",
+        "architecture": "x86_64",
+    }
+
+
 def test_api_authenticates_correlates_and_deduplicates(monkeypatch, tmp_path: Path) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client, auth = _authenticated_client(api)
@@ -540,6 +561,62 @@ def test_api_authenticates_correlates_and_deduplicates(monkeypatch, tmp_path: Pa
     }
     with api.SessionLocal() as session:
         assert session.query(api.ReleaseHealthEvent).count() == 1
+        bucket = session.query(api.release_health_baseline_service.ReleaseHealthCohortBucket).one()
+        assert bucket.event_count == 1
+
+
+def test_authenticated_client_baseline_hides_subminimum_cohort(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client, auth = _authenticated_client(api)
+    accepted = client.post(
+        "/api/client/observability/release-health/batches",
+        headers={**auth, "Content-Type": "application/json"},
+        content=_batch(_event()),
+    )
+    response = client.get(
+        "/api/client/observability/release-health/baseline",
+        headers=auth,
+        params=_baseline_params(),
+    )
+
+    assert accepted.status_code == 202
+    assert response.status_code == 200
+    assert response.json()["state"] == "insufficient_cohort"
+    assert response.json()["baseline"] is None
+    assert response.json()["privacy"] == {
+        "minimum_contributors": 10,
+        "minimum_satisfied": False,
+        "contribution_cap_per_window": 64,
+    }
+
+
+def test_client_baseline_requires_auth_and_configured_privacy_secret(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client, auth = _authenticated_client(api)
+    unauthenticated = client.get(
+        "/api/client/observability/release-health/baseline",
+        params=_baseline_params(),
+    )
+    monkeypatch.delenv("RELEASE_HEALTH_COHORT_SECRET", raising=False)
+    unconfigured = client.get(
+        "/api/client/observability/release-health/baseline",
+        headers=auth,
+        params=_baseline_params(),
+    )
+
+    assert unauthenticated.status_code == 401
+    assert unconfigured.status_code == 503
+    assert unconfigured.json()["detail"] == {
+        "code": "API-007",
+        "message": "Release-health baseline unavailable.",
+        "reason": "baseline_privacy_unavailable",
+    }
 
 
 def test_api_replaces_unsafe_correlation_and_never_echoes_rejected_payload(

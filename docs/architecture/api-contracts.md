@@ -283,6 +283,27 @@ telemetry path has separate rate limiting and cannot authorize payment,
 entitlement, trial activation, compensation, incident creation or support-case
 state.
 
+Authenticated
+`GET /api/client/observability/release-health/baseline` accepts only the exact
+build identity fields from that same closed contract. Its response conforms to
+`release-health-baseline.v1.schema.json`. Accepted events contribute to a
+weekly cohort through `RELEASE_HEALTH_COHORT_SECRET`: the server HMAC maps one
+authenticated account to one of 4096 build-and-week-scoped buckets, then
+discards the account value. It persists no account/install/device/session value
+or stable contributor hash. A bucket is capped at 64 total events and 32 events
+for each crash/connection/update family, so retries and one noisy account cannot
+dominate the client comparison.
+
+The projection returns `insufficient_cohort` until at least ten distinct bucket
+indexes exist and does not reveal the observed subminimum count. Ten buckets
+require at least ten authenticated accounts; collisions only undercount. It
+returns `insufficient_samples` until at least 30 capped observations exist.
+Only then may `baseline` contain closed sample-size and failure-rate bands;
+exact counts, exact rates, bucket indexes and error-code distributions are not
+part of the client contract. Missing/short privacy secret is `503
+baseline_privacy_unavailable`, never a lower threshold. The read is
+observational and cannot mutate release, incident, entitlement or support state.
+
 The repository candidate implements an additive account foundation: UUID `accounts.id`
 is persisted and `users.account_id` is a nullable projection. The
 public numeric `account_id` remains a compatibility projection. Device sessions

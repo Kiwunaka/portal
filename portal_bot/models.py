@@ -2486,6 +2486,76 @@ class ReleaseHealthEvent(Base):
     )
 
 
+class ReleaseHealthCohortBucket(Base):
+    """Unlinkable, contribution-capped bucket for client baseline privacy."""
+
+    __tablename__ = "release_health_cohort_buckets"
+
+    id = Column(Integer, Identity(), primary_key=True)
+    cohort_fingerprint = Column(String(64), nullable=False)
+    window_started_at = Column(DateTime(timezone=True), nullable=False)
+    bucket_index = Column(Integer, nullable=False)
+    event_count = Column(Integer, nullable=False, default=0)
+    failure_count = Column(Integer, nullable=False, default=0)
+    crash_event_count = Column(Integer, nullable=False, default=0)
+    crash_failure_count = Column(Integer, nullable=False, default=0)
+    connect_event_count = Column(Integer, nullable=False, default=0)
+    connect_failure_count = Column(Integer, nullable=False, default=0)
+    update_event_count = Column(Integer, nullable=False, default=0)
+    update_failure_count = Column(Integer, nullable=False, default=0)
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=sql_text("CURRENT_TIMESTAMP"),
+        nullable=False,
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "cohort_fingerprint",
+            "window_started_at",
+            "bucket_index",
+            name="uq_release_health_cohort_window_bucket",
+        ),
+        CheckConstraint(
+            "bucket_index >= 0 AND bucket_index < 4096",
+            name="ck_release_health_cohort_bucket_index",
+        ),
+        CheckConstraint(
+            "event_count >= 0 AND event_count <= 64",
+            name="ck_release_health_cohort_event_count",
+        ),
+        CheckConstraint(
+            "failure_count >= 0 AND failure_count <= event_count",
+            name="ck_release_health_cohort_failure_count",
+        ),
+        CheckConstraint(
+            "crash_event_count >= 0 AND crash_event_count <= 32 "
+            "AND crash_failure_count >= 0 "
+            "AND crash_failure_count <= crash_event_count",
+            name="ck_release_health_cohort_crash_counts",
+        ),
+        CheckConstraint(
+            "connect_event_count >= 0 AND connect_event_count <= 32 "
+            "AND connect_failure_count >= 0 "
+            "AND connect_failure_count <= connect_event_count",
+            name="ck_release_health_cohort_connect_counts",
+        ),
+        CheckConstraint(
+            "update_event_count >= 0 AND update_event_count <= 32 "
+            "AND update_failure_count >= 0 "
+            "AND update_failure_count <= update_event_count",
+            name="ck_release_health_cohort_update_counts",
+        ),
+        Index(
+            "ix_release_health_cohort_window",
+            cohort_fingerprint,
+            window_started_at,
+        ),
+        Index("ix_release_health_cohort_updated_at", updated_at),
+        {"sqlite_autoincrement": True},
+    )
+
+
 class ReleaseHealthIngestCounter(Base):
     """Payload-free health and quarantine counters for the ingest boundary."""
 

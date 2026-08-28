@@ -1146,6 +1146,16 @@ event UUIDs are ignored by the unique ingest boundary.
 Rejected payloads create only bounded reason counters; telemetry cannot create
 or change payments, entitlement, incidents, compensation or support cases.
 
+`release_health_baseline_service.py` owns the authenticated client aggregate
+boundary. It converts the in-memory authenticated account identity into a
+secret-keyed 12-bit bucket scoped to one exact build and UTC week, persists only
+that bucket plus capped counters, and returns no baseline below ten buckets or
+30 events. Available responses contain bands rather than exact counts/rates.
+Bucket collisions undercount, weekly/build domain separation prevents stable
+cross-scope linkage, and the 14-day retention window removes expired buckets.
+The baseline endpoint remains unavailable when its dedicated deployment secret
+is absent or invalid.
+
 `operator_observability_service.py` projects those rows into version/build/
 platform crash, connection, and update counts plus previous-window deltas. It
 also sums the Android routing count and event count without retaining or

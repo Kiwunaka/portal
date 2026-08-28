@@ -18,6 +18,7 @@ from sqlalchemy import or_
 
 try:
     from .models import (
+        ReleaseHealthCohortBucket,
         ReleaseHealthEvent,
         ReleaseKnownIssue,
         SupportBundleAccessAudit,
@@ -26,6 +27,7 @@ try:
     )
 except ImportError:
     from models import (
+        ReleaseHealthCohortBucket,
         ReleaseHealthEvent,
         ReleaseKnownIssue,
         SupportBundleAccessAudit,
@@ -574,6 +576,7 @@ def run_operator_retention_once(
     quarantine_root: Path | None,
     accepted_root: Path | None,
     release_health_days: int = 90,
+    release_health_cohort_days: int = 14,
     accepted_bundle_days: int = 30,
     rejected_bundle_days: int = 7,
     incomplete_grace_days: int = 1,
@@ -583,6 +586,7 @@ def run_operator_retention_once(
     limit = max(1, min(int(batch_limit), 1000))
     counters = {
         "release_health_events_deleted": 0,
+        "release_health_cohort_buckets_deleted": 0,
         "bundle_rows_deleted": 0,
         "accepted_objects_deleted": 0,
         "quarantine_chunks_deleted": 0,
@@ -607,6 +611,25 @@ def run_operator_retention_once(
         counters["release_health_events_deleted"] = int(
             session.query(ReleaseHealthEvent)
             .filter(ReleaseHealthEvent.id.in_(health_ids))
+            .delete(synchronize_session=False)
+            or 0
+        )
+
+    cohort_ids = [
+        row[0]
+        for row in session.query(ReleaseHealthCohortBucket.id)
+        .filter(
+            ReleaseHealthCohortBucket.window_started_at
+            < now - timedelta(days=max(7, int(release_health_cohort_days)))
+        )
+        .order_by(ReleaseHealthCohortBucket.id.asc())
+        .limit(limit)
+        .all()
+    ]
+    if cohort_ids:
+        counters["release_health_cohort_buckets_deleted"] = int(
+            session.query(ReleaseHealthCohortBucket)
+            .filter(ReleaseHealthCohortBucket.id.in_(cohort_ids))
             .delete(synchronize_session=False)
             or 0
         )

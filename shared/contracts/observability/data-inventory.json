@@ -148,6 +148,31 @@
     },
     {
       "fields": [
+        "bucket_index",
+        "cohort_fingerprint",
+        "connect_event_count",
+        "connect_failure_count",
+        "crash_event_count",
+        "crash_failure_count",
+        "event_count",
+        "failure_count",
+        "id",
+        "update_event_count",
+        "update_failure_count",
+        "updated_at",
+        "window_started_at"
+      ],
+      "group": "privacy_bounded_client_baseline",
+      "modes": [
+        "aggregate_release_health"
+      ],
+      "owner": "release_observability",
+      "purpose": "Enforce a ten-contributor minimum and capped exact-build baseline without retaining contributor identity or a stable hash.",
+      "retention": "14_days",
+      "surface": "release_health_cohort_buckets"
+    },
+    {
+      "fields": [
         "app_version",
         "architecture",
         "build_number",
@@ -328,6 +353,7 @@
     ],
     "forbidden_assets": [
       "account_or_device_identity_in_release_health",
+      "stable_contributor_hash_or_cross_scope_cohort_linkage",
       "credentials_tokens_private_keys_or_raw_profiles",
       "destination_domains_ips_urls_or_selected_app_names",
       "plaintext_support_bundle_content"

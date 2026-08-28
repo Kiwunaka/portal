@@ -3150,6 +3150,47 @@ def _ensure_release_health_domain_sqlite(conn) -> None:
     conn.execute(
         text(
             """
+            CREATE TABLE IF NOT EXISTS release_health_cohort_buckets (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              cohort_fingerprint VARCHAR(64) NOT NULL,
+              window_started_at DATETIME NOT NULL,
+              bucket_index INTEGER NOT NULL,
+              event_count INTEGER NOT NULL DEFAULT 0,
+              failure_count INTEGER NOT NULL DEFAULT 0,
+              crash_event_count INTEGER NOT NULL DEFAULT 0,
+              crash_failure_count INTEGER NOT NULL DEFAULT 0,
+              connect_event_count INTEGER NOT NULL DEFAULT 0,
+              connect_failure_count INTEGER NOT NULL DEFAULT 0,
+              update_event_count INTEGER NOT NULL DEFAULT 0,
+              update_failure_count INTEGER NOT NULL DEFAULT 0,
+              updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT uq_release_health_cohort_window_bucket
+                UNIQUE (cohort_fingerprint, window_started_at, bucket_index),
+              CONSTRAINT ck_release_health_cohort_bucket_index
+                CHECK (bucket_index >= 0 AND bucket_index < 4096),
+              CONSTRAINT ck_release_health_cohort_event_count
+                CHECK (event_count >= 0 AND event_count <= 64),
+              CONSTRAINT ck_release_health_cohort_failure_count
+                CHECK (failure_count >= 0 AND failure_count <= event_count),
+              CONSTRAINT ck_release_health_cohort_crash_counts
+                CHECK (crash_event_count >= 0 AND crash_event_count <= 32
+                  AND crash_failure_count >= 0
+                  AND crash_failure_count <= crash_event_count),
+              CONSTRAINT ck_release_health_cohort_connect_counts
+                CHECK (connect_event_count >= 0 AND connect_event_count <= 32
+                  AND connect_failure_count >= 0
+                  AND connect_failure_count <= connect_event_count),
+              CONSTRAINT ck_release_health_cohort_update_counts
+                CHECK (update_event_count >= 0 AND update_event_count <= 32
+                  AND update_failure_count >= 0
+                  AND update_failure_count <= update_event_count)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
             CREATE TABLE IF NOT EXISTS release_health_ingest_counters (
               reason VARCHAR(64) PRIMARY KEY,
               count BIGINT NOT NULL DEFAULT 0,
@@ -3189,6 +3230,8 @@ def _ensure_release_health_domain_sqlite(conn) -> None:
         "CREATE INDEX IF NOT EXISTS ix_release_health_events_build_platform ON release_health_events(app_version, build_number, platform);",
         "CREATE INDEX IF NOT EXISTS ix_release_health_events_name_outcome ON release_health_events(event_name, outcome);",
         "CREATE INDEX IF NOT EXISTS ix_release_health_events_error_code ON release_health_events(error_code);",
+        "CREATE INDEX IF NOT EXISTS ix_release_health_cohort_window ON release_health_cohort_buckets(cohort_fingerprint, window_started_at);",
+        "CREATE INDEX IF NOT EXISTS ix_release_health_cohort_updated_at ON release_health_cohort_buckets(updated_at);",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_release_known_issue_candidate_code ON release_known_issues(candidate_label, issue_code);",
         "CREATE INDEX IF NOT EXISTS ix_release_known_issues_candidate_label ON release_known_issues(candidate_label);",
         "CREATE INDEX IF NOT EXISTS ix_release_known_issues_app_version ON release_known_issues(app_version);",
@@ -3239,6 +3282,47 @@ def _ensure_release_health_domain_postgres(conn) -> None:
     conn.execute(
         text(
             """
+            CREATE TABLE IF NOT EXISTS release_health_cohort_buckets (
+              id SERIAL PRIMARY KEY,
+              cohort_fingerprint VARCHAR(64) NOT NULL,
+              window_started_at TIMESTAMPTZ NOT NULL,
+              bucket_index INTEGER NOT NULL,
+              event_count INTEGER NOT NULL DEFAULT 0,
+              failure_count INTEGER NOT NULL DEFAULT 0,
+              crash_event_count INTEGER NOT NULL DEFAULT 0,
+              crash_failure_count INTEGER NOT NULL DEFAULT 0,
+              connect_event_count INTEGER NOT NULL DEFAULT 0,
+              connect_failure_count INTEGER NOT NULL DEFAULT 0,
+              update_event_count INTEGER NOT NULL DEFAULT 0,
+              update_failure_count INTEGER NOT NULL DEFAULT 0,
+              updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              CONSTRAINT uq_release_health_cohort_window_bucket
+                UNIQUE (cohort_fingerprint, window_started_at, bucket_index),
+              CONSTRAINT ck_release_health_cohort_bucket_index
+                CHECK (bucket_index >= 0 AND bucket_index < 4096),
+              CONSTRAINT ck_release_health_cohort_event_count
+                CHECK (event_count >= 0 AND event_count <= 64),
+              CONSTRAINT ck_release_health_cohort_failure_count
+                CHECK (failure_count >= 0 AND failure_count <= event_count),
+              CONSTRAINT ck_release_health_cohort_crash_counts
+                CHECK (crash_event_count >= 0 AND crash_event_count <= 32
+                  AND crash_failure_count >= 0
+                  AND crash_failure_count <= crash_event_count),
+              CONSTRAINT ck_release_health_cohort_connect_counts
+                CHECK (connect_event_count >= 0 AND connect_event_count <= 32
+                  AND connect_failure_count >= 0
+                  AND connect_failure_count <= connect_event_count),
+              CONSTRAINT ck_release_health_cohort_update_counts
+                CHECK (update_event_count >= 0 AND update_event_count <= 32
+                  AND update_failure_count >= 0
+                  AND update_failure_count <= update_event_count)
+            );
+            """
+        )
+    )
+    conn.execute(
+        text(
+            """
             CREATE TABLE IF NOT EXISTS release_health_ingest_counters (
               reason VARCHAR(64) PRIMARY KEY,
               count BIGINT NOT NULL DEFAULT 0,
@@ -3278,6 +3362,8 @@ def _ensure_release_health_domain_postgres(conn) -> None:
         "CREATE INDEX IF NOT EXISTS ix_release_health_events_build_platform ON release_health_events(app_version, build_number, platform);",
         "CREATE INDEX IF NOT EXISTS ix_release_health_events_name_outcome ON release_health_events(event_name, outcome);",
         "CREATE INDEX IF NOT EXISTS ix_release_health_events_error_code ON release_health_events(error_code);",
+        "CREATE INDEX IF NOT EXISTS ix_release_health_cohort_window ON release_health_cohort_buckets(cohort_fingerprint, window_started_at);",
+        "CREATE INDEX IF NOT EXISTS ix_release_health_cohort_updated_at ON release_health_cohort_buckets(updated_at);",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_release_known_issue_candidate_code ON release_known_issues(candidate_label, issue_code);",
         "CREATE INDEX IF NOT EXISTS ix_release_known_issues_candidate_label ON release_known_issues(candidate_label);",
         "CREATE INDEX IF NOT EXISTS ix_release_known_issues_app_version ON release_known_issues(app_version);",

@@ -199,6 +199,32 @@ GROUPS = [
         owner="release_observability",
     ),
     _group(
+        "release_health_cohort_buckets",
+        "privacy_bounded_client_baseline",
+        [
+            "bucket_index",
+            "cohort_fingerprint",
+            "connect_event_count",
+            "connect_failure_count",
+            "crash_event_count",
+            "crash_failure_count",
+            "event_count",
+            "failure_count",
+            "id",
+            "update_event_count",
+            "update_failure_count",
+            "updated_at",
+            "window_started_at",
+        ],
+        purpose=(
+            "Enforce a ten-contributor minimum and capped exact-build baseline "
+            "without retaining contributor identity or a stable hash."
+        ),
+        modes=["aggregate_release_health"],
+        retention="14_days",
+        owner="release_observability",
+    ),
+    _group(
         "release_health_ingest_counters",
         "payload_free_counters",
         ["count", "reason", "updated_at"],
@@ -312,6 +338,7 @@ GROUPS = [
 
 
 MODEL_SURFACES = {
+    "release_health_cohort_buckets": models.ReleaseHealthCohortBucket,
     "release_health_events": models.ReleaseHealthEvent,
     "release_health_ingest_counters": models.ReleaseHealthIngestCounter,
     "release_known_issues": models.ReleaseKnownIssue,
@@ -374,6 +401,7 @@ def build_inventory() -> dict[str, Any]:
         "threat_model": {
             "forbidden_assets": [
                 "account_or_device_identity_in_release_health",
+                "stable_contributor_hash_or_cross_scope_cohort_linkage",
                 "credentials_tokens_private_keys_or_raw_profiles",
                 "destination_domains_ips_urls_or_selected_app_names",
                 "plaintext_support_bundle_content",
