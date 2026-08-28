@@ -165,6 +165,18 @@ candidate `193/193` readback, and automatically restores the baseline file and
 rechecks the old `193/193` payload on failure. The confirmation argument is an
 execution guard, not deploy authorization by itself.
 
+Authorized runtime record, 2026-08-28: candidate.5 PLAN passed the frozen
+baseline at `193/193`, then APPLY promoted only
+`portal_bot/api_client_routes.py`, restarted only `portal-api`, passed delayed
+health and read back the reviewed candidate payload at `193/193`. Rollback was
+not required. The sanitized PLAN/APPLY report SHA-256 values are
+`f9d04a3885504f7eaf0b855f66dffd326869bcaff3c6aebe41749192a4a35219` and
+`5610826930cb5c84d243dfd019b750bff90d9c40b4f5222a213bd102bdb57038`.
+This is exact Brain source and service-health evidence only. A later exact
+Huawei bind attempt did not reach the remote helper because SSH failed at the
+protocol-banner/timeout boundary; no device policy mutation or AWG Core start
+occurred, so the candidate.5 device matrix remains `BLOCKED_BY_ACCESS`.
+
 Typical use:
 
 ```powershell
