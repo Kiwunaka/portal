@@ -111,6 +111,7 @@ with SessionLocal() as session:
             session.query(AccountDevice)
             .filter(AccountDevice.install_id == exact_install_id)
             .filter(AccountDevice.state == "active")
+            .filter(AccountDevice.revoked_at.is_(None))
             .order_by(AccountDevice.last_seen_at.desc(), AccountDevice.id.desc())
             .limit(2)
             .all()
@@ -129,6 +130,7 @@ with SessionLocal() as session:
             session.query(AccountDevice)
             .filter(AccountDevice.label.ilike(f"%{label_fragment}%"))
             .filter(AccountDevice.state == "active")
+            .filter(AccountDevice.revoked_at.is_(None))
             .order_by(AccountDevice.last_seen_at.desc(), AccountDevice.id.desc())
             .limit(4)
             .all()
@@ -197,9 +199,12 @@ with SessionLocal() as session:
     elif len(target_users) == 1:
         target_user = target_users[0]
         target_user_resolution = "account_single_user"
+    elif target_users:
+        target_user = None
+        target_user_resolution = "account_component_entitled"
     else:
         blocked(
-            "account_user_resolution_ambiguous",
+            "account_user_resolution_unavailable",
             candidate_rank=candidate_rank,
             matched_device_count=len(candidates),
             target_install_sha256=(
@@ -212,7 +217,7 @@ with SessionLocal() as session:
         )
     account_component_users = _load_account_component_users(
         session,
-        [int(target_user.tg_id)],
+        [int(row.tg_id) for row in (target_users or global_install_users)],
     )
     entitled = [
         row
@@ -245,6 +250,8 @@ with SessionLocal() as session:
     if len(entitled) == 1:
         entitled_user = entitled[0]
         entitlement_resolution = "device_account_component"
+        if target_user is None:
+            target_user = entitled_user
     elif (
         (target_selection_mode == "exact_local_install" or len(candidates) == 1)
         and len(global_install_users) == 1
@@ -275,6 +282,30 @@ with SessionLocal() as session:
                 if device is not None
                 else None
             ),
+        )
+    entitled_user_owns_install = bool(
+        install_id == str(entitled_user.app_install_id or "").strip()
+        or (
+            device is not None
+            and str(device.account_id or "")
+            and str(device.account_id or "") == str(entitled_user.account_id or "")
+        )
+    )
+    if not entitled_user_owns_install:
+        blocked(
+            "entitled_user_install_ownership",
+            candidate_rank=candidate_rank,
+            matched_device_count=len(candidates),
+            target_install_sha256=(
+                hashlib.sha256(install_id.encode()).hexdigest()
+                if install_id
+                else None
+            ),
+            account_user_count=len(target_users),
+            account_component_user_count=len(account_component_users),
+            global_install_user_count=len(global_install_users),
+            entitlement_resolution=entitlement_resolution,
+            device_record_present=device is not None,
         )
     tg_id = int(entitled_user.tg_id)
     if not install_id or tg_id <= 0:

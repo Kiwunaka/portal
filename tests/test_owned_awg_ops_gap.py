@@ -211,7 +211,9 @@ class OwnedAwgDeviceEvidenceContractTests(unittest.TestCase):
         self.assertIn("cleanup_tg_ids = {tg_id, int(target_user.tg_id)}", helper)
         self.assertIn("device_account_matches_global_install_user", helper)
         self.assertIn('"global_install_user_resolution_ambiguous"', helper)
-        self.assertIn('"account_user_resolution_ambiguous"', helper)
+        self.assertIn('"account_user_resolution_unavailable"', helper)
+        self.assertIn('"account_component_entitled"', helper)
+        self.assertIn('"entitled_user_install_ownership"', helper)
         self.assertIn('"device_target_identity_incomplete"', helper)
         self.assertIn('"owned_awg_source_material_unavailable"', helper)
 

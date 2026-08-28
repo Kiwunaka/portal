@@ -91,3 +91,14 @@ def test_any_supplied_install_confirmation_is_checked_in_plan_and_apply() -> Non
     assert "target_confirmation_invalid = bool(confirm_target_install_sha256)" in helper
     assert "target_confirmation_invalid = bool(target_confirmation)" in source
     assert "local install identity confirmation failed" in source
+
+
+def test_account_component_resolution_is_unique_and_install_owned() -> None:
+    helper = _remote_helper()
+
+    assert 'target_user_resolution = "account_component_entitled"' in helper
+    assert '[int(row.tg_id) for row in (target_users or global_install_users)]' in helper
+    assert 'AccountDevice.revoked_at.is_(None)' in helper
+    assert 'entitled_user_owns_install = bool(' in helper
+    assert '"entitled_user_install_ownership"' in helper
+    assert '"account_user_resolution_unavailable"' in helper
