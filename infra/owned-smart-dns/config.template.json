@@ -1,0 +1,25 @@
+{
+  "listen": "0.0.0.0:443",
+  "doh_hostname": "${POKROV_SMART_DNS_DOH_HOSTNAME}",
+  "proxy_ipv4": "${POKROV_SMART_DNS_PROXY_IPV4}",
+  "policy_path": "/opt/pokrov/smart-dns/current/share/smart-dns-policy.v1.json",
+  "tls_certificate_path": "/etc/pokrov-smart-dns/tls/fullchain.pem",
+  "tls_private_key_path": "/etc/pokrov-smart-dns/tls/privkey.pem",
+  "upstream_dot": {
+    "address": "${POKROV_SMART_DNS_UPSTREAM_DOT_IP}:853",
+    "server_name": "${POKROV_SMART_DNS_UPSTREAM_DOT_SERVER_NAME}"
+  },
+  "limits": {
+    "max_concurrent_connections": 2048,
+    "max_connections_per_ip": 24,
+    "max_doh_requests_per_minute": 120,
+    "max_tracked_source_ips": 16384,
+    "max_dns_message_bytes": 4096,
+    "max_client_hello_bytes": 65535,
+    "handshake_timeout_seconds": 5,
+    "connect_timeout_seconds": 5,
+    "idle_timeout_seconds": 90,
+    "max_connection_seconds": 3600,
+    "max_bytes_per_direction": 536870912
+  }
+}

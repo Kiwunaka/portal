@@ -8,6 +8,8 @@
     "scripts/api_latency_probe.py",
     "scripts/backup_portal_db.py",
     "scripts/build_owned_hy2_server_bundle.py",
+    "scripts/build_owned_smart_dns_server_bundle.py",
+    "scripts/check_smart_dns_policy_parity.py",
     "scripts/check-links.py",
     "scripts/check_dependency_contract.py",
     "scripts/audit_story_test_evidence.py",

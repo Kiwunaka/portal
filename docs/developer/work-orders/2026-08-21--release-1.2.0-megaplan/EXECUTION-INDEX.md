@@ -2,6 +2,19 @@
 
 Last updated: 2026-08-28
 
+## 2026-08-28 owned selective Smart DNS source checkpoint
+
+`WO-013AS` adds one derived FRKN laboratory row,
+`FRKN_SMART_DNS/SMARTDNS-01`, at `I2 IMPLEMENTED_SOURCE`. The canonical policy
+is byte-identical across platform and client and has SHA-256
+`b6977f6f6a5ee48898116820d1db252b5b670cb7b86959c78f7bdbc7de90e0fa`.
+The owned server is allowlist-only/non-recursive, forwards application TLS only
+by visible allowlisted SNI and remains source-only/default-off. Focused Go,
+Python and Flutter checks pass, but exact clean revisions, immutable bundle,
+full client aggregate, APK/device readback, guarded installer, dedicated node,
+live DNS/SNI/access/leak/rollback and candidate evidence remain open. This row
+does not change any original source-plan aggregate or release gate.
+
 ## Item scale
 
 | Index | Meaning | Required evidence |

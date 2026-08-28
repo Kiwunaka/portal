@@ -1,0 +1,38 @@
+[Unit]
+Description=POKROV owned Smart DNS laboratory
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=pokrov-smart-dns
+Group=pokrov-smart-dns
+UMask=0077
+ExecStartPre=/opt/pokrov/smart-dns/current/bin/pokrov-smart-dns -config /etc/pokrov-smart-dns/config.json -check
+ExecStart=/opt/pokrov/smart-dns/current/bin/pokrov-smart-dns -config /etc/pokrov-smart-dns/config.json
+Restart=on-failure
+RestartSec=3
+TimeoutStopSec=20
+LimitNOFILE=65536
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectClock=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
