@@ -39,6 +39,31 @@ promotion evidence.
 | Phone cleanup | `PASS_WORKING_SESSION` | POKROV stopped, the exact device was removed from the cohort and both lab allowlists, policy returned to the ordinary fallback, Wi-Fi was restored off and Hiddify was foreground. Temporary phone/local diagnostics were removed. |
 | LDPlayer cleanup | `PASS_WORKING_SESSION` | POKROV stopped, the exact emulator device was removed from the cohort and both lab allowlists, policy returned to the ordinary fallback and temporary emulator diagnostics were removed. |
 
+## Managed-Profile Predeploy Readback
+
+No runtime mutation occurred in this slice:
+
+| Check | Result | Evidence boundary |
+| --- | --- | --- |
+| Current Brain runtime source | `PASS_READ_ONLY_BRAIN_ORIGIN` | Exact source `e5ef03ac7ab013d8810cc9c6ea9ccc40cebd11db` matches all `193/193` tracked deploy-payload files after the sole allowed CRLF normalization. Report SHA-256: `2be21f113a1dab1a26437936e4ca0df9a376cde8baf8f7f1d3d38c1ceb926c6c`. |
+| Corrected runtime delta | `PLAN_READY_ONE_FILE` | Candidate runtime source `716186a…2464c` matches `192/193`; the only content mismatch is `portal_bot/api_client_routes.py`. The read-only report records `runtime_mutated=false`; SHA-256: `410d7cff14b9b96ce4aeffc936cfd91474cc4927f091ac12fab82ca8ee90556a`. |
+| Deploy/rollback script contract | `PASS_LOCAL` | Focused deploy, source-probe and release-operation suites pass `57` tests plus `25` subtests. Staging, backup, compile/JSON/requirements/import preflight, bounded unit restart, delayed health and automatic restore on promote/restart/health failure are covered. |
+
+The authorized change window is bounded to the standard tracked runtime payload
+with only `portal-api` restarted because the changed slice is loaded solely by
+the API composition root. The script retains a timestamped predeploy backup and
+must finish with the unit active, zero restarts and public API health. Immediate
+postdeploy readback must return `193/193` against the deployed source before any
+device is rebound. A later semantic/device failure keeps the retained backup as
+the rollback anchor in the same authorized window; it is never converted into
+a health PASS.
+
+Only after source and health readback may the exact LDPlayer identity be bound
+to AWG2, tested for app-owned TUN, server handshake, DNS and egress, and unbound
+in `finally`. AWG3.1 follows only after AWG2 crosses that precondition. No
+deploy, restart, device binding or server policy mutation occurred while this
+plan was prepared.
+
 ## Interpretation
 
 The Beeline result remains a reverse-UDP current-origin block: both profiles

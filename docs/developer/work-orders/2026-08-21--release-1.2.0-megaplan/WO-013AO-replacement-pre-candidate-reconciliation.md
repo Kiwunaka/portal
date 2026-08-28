@@ -153,6 +153,16 @@ It explicitly records `candidate_proven=false`, `local_status=PASS` and
 `promotion_status=MANUAL_OWNER_TEST`; it does not convert the predeploy device
 failure or any external/manual lane to PASS.
 
+Read-only Brain source probes now bind the exact change window. Current live
+runtime `e5ef03ac...` matches `193/193` deploy-payload files; report SHA-256 is
+`2be21f11...26c6c`. Corrected runtime source `716186a...` matches `192/193` and
+differs only at `portal_bot/api_client_routes.py`; report SHA-256 is
+`410d7cff...556a` with `runtime_mutated=false`. Deploy/source-probe/release-op
+tests pass `57` tests plus `25` subtests. The authorized plan restarts only
+`portal-api`, requires staging/backup/preflight, delayed active+zero-restart
+health, automatic rollback on deploy failure and a postdeploy `193/193` source
+readback before any AWG device binding. No deploy or runtime mutation occurred.
+
 ## Hosted PR evidence
 
 Exact jobs observed for platform PR `#58` at `34d1551f...` and client PR `#33`

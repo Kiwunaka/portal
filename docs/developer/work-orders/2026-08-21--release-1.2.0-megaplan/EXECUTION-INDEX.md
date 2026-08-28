@@ -3468,6 +3468,15 @@ and `400/400` tests, release/docs contracts, WebApp lint/build plus cabinet E2E
 `9/9`. Report SHA-256 is `57ca9352...f02ed`; it preserves
 `candidate_proven=false`, local `PASS` and promotion `MANUAL_OWNER_TEST`.
 
+Read-only Brain predeploy probes identify the exact runtime boundary. Live
+source `e5ef03ac...` matches `193/193`; corrected runtime `716186a...` matches
+`192/193` with only `portal_bot/api_client_routes.py` different and
+`runtime_mutated=false`. Focused deploy/source-probe/release-op verification
+passes `57` tests plus `25` subtests. The prepared authorized change window
+restarts only `portal-api`, requires staged preflight, retained backup,
+automatic failure rollback, delayed active+zero-restart health and postdeploy
+`193/193` source readback before AWG2 binding. This is `PLAN_READY`, not deploy.
+
 This is not a tunnel PASS. Platform managed-profile issuance is corrected in
 source but remains undeployed; build 4045 has not yet proved an AWG2 or AWG3.1
 handshake, egress or DNS/leak matrix. Exact-head hosted checks for platform PR
