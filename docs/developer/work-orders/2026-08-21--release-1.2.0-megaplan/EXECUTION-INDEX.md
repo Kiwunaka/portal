@@ -3454,6 +3454,14 @@ transport, restored Hiddify foreground and preserved disabled Wi-Fi. This is
 `FAIL_4045_PREDEPLOY_ANDROID_ACTIVATION`, before the platform correction is
 deployed, and does not classify AWG cryptography.
 
+The bounded local quality aggregate was repeated on exact clean platform
+`93831177...`, client `f3d3310f...` and Core `f44dbe89...` under Node
+`22.14.0`. All `15/15` steps pass: performance contract/tests, Flutter analyze
+and `400/400` tests, release/docs contracts, WebApp lint/build plus cabinet E2E
+`69/69`, marketing build/SEO/responsive, AdminApp build and static performance
+`9/9`. Report SHA-256 is `57ca9352...f02ed`; it preserves
+`candidate_proven=false`, local `PASS` and promotion `MANUAL_OWNER_TEST`.
+
 This is not a tunnel PASS. Platform managed-profile issuance is corrected in
 source but remains undeployed; build 4045 has not yet proved an AWG2 or AWG3.1
 handshake, egress or DNS/leak matrix. Exact-head hosted checks for platform PR

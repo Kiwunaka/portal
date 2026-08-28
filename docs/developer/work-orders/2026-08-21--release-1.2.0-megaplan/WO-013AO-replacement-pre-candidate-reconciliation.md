@@ -135,6 +135,17 @@ transport, foregrounded Hiddify and preserved disabled Wi-Fi. Record this as
 `FAIL_4045_PREDEPLOY_ANDROID_ACTIVATION`; it still precedes deployment of the
 managed-profile correction and is not an AWG cryptographic verdict.
 
+The full bounded local quality gate was then repeated on exact clean platform
+`9383117794f9ee17b5976204c3b8601732464c17`, client
+`f3d3310f520156cbb07a8993fbe485cf599a174f` and unchanged Core
+`f44dbe89d6b89954032a1a798c2209d8c0aff90d` under declared Node `22.14.0`.
+All `15/15` steps pass, including Flutter `400/400`, cabinet E2E `69/69` and
+local static performance `9/9`. Private report SHA-256 is
+`57ca935298957ec88f86f118441acc8611fe1a044af879c0038b3074964f02ed`.
+It explicitly records `candidate_proven=false`, `local_status=PASS` and
+`promotion_status=MANUAL_OWNER_TEST`; it does not convert the predeploy device
+failure or any external/manual lane to PASS.
+
 ## Hosted PR evidence
 
 Exact jobs observed for platform PR `#58` at `34d1551f...` and client PR `#33`
