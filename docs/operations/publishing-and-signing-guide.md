@@ -126,11 +126,16 @@ Release 1.2.0 currently uses the explicit `OWNER_SOLO_EXCEPTION` authorized by
 the sole repository owner on `2026-08-23`. This is not an invented approval:
 reports must state `independent_review_performed=false`. It waives only the
 unavailable second-person approval, non-author CODEOWNERS selection and paid
-private-branch-protection feature. A promotion branch without the normal live
-policy is acceptable under this exception only when the gate reads back a pull
-request authored by `Kiwunaka`, binds its exact lowercase 40-hex head revision,
-and observes every named check completed successfully and bound to a GitHub
-App. Supply those exact PR bindings in a non-secret JSON file:
+private-branch-protection feature. On `2026-08-28` the owner additionally
+declined GitHub purchases and accepted the absence of branch protection for
+the 1.2.0 solo lane. A workflow that GitHub terminates with `steps=[]` because
+of account billing remains `BLOCKED_BY_ACCESS`, never PASS. It may be
+compensated for this one release only by the exact PR/head binding, the full
+documented local equivalent gate on that same head, a secret-free retained
+report, and the signed public release-index manifest. A real executed hosted
+failure, a stale head or a failed local equivalent remains `NO_GO`.
+
+Supply exact PR bindings in a non-secret JSON file:
 
 ```json
 {
@@ -163,11 +168,14 @@ App. Supply those exact PR bindings in a non-secret JSON file:
 The real evidence file must contain exactly one observation for each of
 platform, client and Core promotion branches. Pass it with
 `--solo-evidence C:/path/to/owner-solo-pr-evidence.json --query-github`.
-Missing, stale, failed, unbound or wrong-owner evidence fails closed. PR-only
-promotion, a signed public release index, retained candidate evidence and
-same-byte promotion remain mandatory compensating controls outside the branch
-readback itself. The exception expires when release 1.2.0 is closed; a later
-release must authorize a new exception or return to team review.
+Missing, stale, unbound or wrong-owner evidence fails closed. When named jobs
+execute, each must pass. When GitHub returns `steps=[]`, preserve that result
+as `BLOCKED_BY_ACCESS` and bind the exact local substitute separately; do not
+rewrite it as a successful hosted check. PR-only promotion, a signed public
+release index, retained candidate evidence and same-byte promotion remain
+mandatory compensating controls outside the branch readback itself. The
+exception expires when release 1.2.0 is closed; a later release must authorize
+a new exception or return to team review.
 
 WIN-003 remains `NOT_RUN` until the exact Windows candidate passes the
 clean-host TUN/DNS/egress/rollback matrix. A passing source anchor or solo PR
@@ -283,10 +291,17 @@ Current public user-facing version policy:
 - the retained distributed stable-direct release is `v1.1.6`; Android
   `versionName` and Windows public display version are `1.1.6`, and the retained
   client package/build line is `1.1.6+29`
-- the working source target is `1.2.0+4046`, `PRE_CANDIDATE_LOCAL`, with
-  `candidate_created=false`; it is not a release candidate or public update
-- a later candidate requires exact signed artifacts, public digest proof and a
-  synchronized runtime handoff
+- the client seed still describes the development source line as
+  `1.2.0+4046` / `PRE_CANDIDATE_LOCAL` with `candidate_created=false`; that
+  seed is not candidate authority and does not contradict the separately
+  generated immutable strict-v2 candidate handoff
+- generated strict-v2 `pokrov-1.2.0-candidate.5` is now the current signed
+  exact candidate: six immutable artifacts, SBOM/provenance and hosted
+  release-index signature are retained, while its output remains
+  `ACTIONS_ARTIFACT_ONLY` with `promotion_authorized=false`
+- candidate.5 is not the distributed public update: no tag, GitHub Release,
+  public asset, store object or stable pointer exists, and Gate F has not been
+  rerun for it
 - Android `versionName`, Windows display version, cabinet download badges, and
   public changelog copy must stay aligned to the distributed stable line
 - internal build numbers and platform-native version codes may remain numeric or platform-specific and are not the public label
@@ -441,12 +456,19 @@ Current runtime-surface note:
 
 - Microsoft Store is the preferred public listing path for Windows.
 - Direct signed installer distribution remains the default until the Store listing is live.
+- Exact candidate.5 has the owner exception
+  `OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0`: its unsigned EXE may be used
+  only for the explicitly labeled direct beta with a SmartScreen warning. It
+  is not trusted-signing, stable or Microsoft Store evidence, and any rebuilt
+  byte sequence requires a new signing result or owner exception.
 
 ### Cost note
 
 - Microsoft Store individual registration may be free or low-friction depending on current Microsoft program terms.
 - Code signing certificates are usually paid unless already provisioned through existing signing material.
-- Unsigned Windows installers should be treated only as smoke artifacts, not public release artifacts.
+- Unsigned Windows installers are smoke artifacts unless an exact
+  candidate/hash owner exception exists. Such an exception permits only the
+  named direct beta path and never establishes trusted or stable status.
 
 ## Apple Readiness Only
 
@@ -599,11 +621,13 @@ Minimum publishing verification:
   URLs, version, release channel, and manual gates
 - anonymous GitHub Releases range checks pass before runtime sync
 - Android and Windows builds install successfully
-- the recorded signing state matches the exact candidate metadata; the published
-  `1.0.0-beta` Windows artifact retains its owner-accepted unsigned state as
-  exact-candidate historical evidence only, while every rebuild, replacement,
-  runtime re-sync, or later public candidate requires trusted Windows signing
-  `PASS`; unsigned outputs are non-public engineering smoke
+- the recorded signing state matches the exact candidate metadata; candidate.5
+  Windows EXE SHA-256
+  `81c2a86ec3234162e85399ac348e36fcea413ee87e33b71b260533bdc1e6277f`
+  carries `OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0` and may be distributed
+  only as the labeled direct beta with an explicit SmartScreen warning. It is
+  not trusted/stable/store proof; any rebuilt or replacement bytes require a
+  new signing result or owner exception
 - download links resolve from every runtime-driven public surface, and static marketing exports are rebuilt when URLs changed
 - store metadata matches current `POKROV` public naming policy, and Windows package identity or installer metadata does not leak legacy `POKROV VPN`, `Pokrov.Vpn`, or `hiddify` residue
 - Apple surfaces, if any, are clearly labeled as upcoming or waitlist-only
