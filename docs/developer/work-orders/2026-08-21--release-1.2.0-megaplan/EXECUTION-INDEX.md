@@ -1,6 +1,22 @@
 # POKROV 1.2.0 Execution Index
 
-Last updated: 2026-08-28
+Last updated: 2026-08-29
+
+## 2026-08-29 — WO-013AZ AWG bind contract and negative runtime recheck
+
+Core `6b8ddca...` fixes a reproduced `conn.Bind.Open(0)` contract defect:
+the replacement now reports the allocated UDP port, requests it for IPv6,
+closes partial state and fails when neither address family opens. Focused AWG
+tests and the full Core gate pass. Production-signed replacement AAR/APKs were
+built from exact Core `6b8ddca...` and client `7a633a8...`.
+
+The LDPlayer result did not improve. AWG2 and AWG 3.1 each created an Android
+VPN, stayed non-green at `handshake_retry #4`, passed literal-IP ICMP and failed
+DNS-name ICMP plus literal-IP/DNS-name HTTPS. Current-origin Core interop also
+received no outer response for either profile. The guarded cleanup restored
+`default`/`legacy_reality_fallback`, removed lab membership and left no active
+POKROV VPN. No row advances, candidate.5 remains immutable and rejected, and
+physical/mobile-origin replacement proof remains `MANUAL_OWNER_TEST`.
 
 ## 2026-08-28 — WO-013AT owner-free GitHub and exact PR-head gate
 

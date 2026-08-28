@@ -1,0 +1,148 @@
+{
+  "schema": "pokrov.awg-bind-contract-rehearsal/v1",
+  "recorded_at_utc": "2026-08-28T22:47:57Z",
+  "classification": "PRODUCTION_SIGNED_DIAGNOSTIC_PRE_CANDIDATE_NOT_RELEASE",
+  "candidate_5": {
+    "immutability": "UNCHANGED",
+    "promotion_decision": "REJECTED_FOR_REPLACEMENT",
+    "gate_f_mutated": false
+  },
+  "replacement_source": {
+    "platform_commit_before_record": "63241eb8743ecedce9fc80a4e6ee9f696548aece",
+    "client_commit": "7a633a83ca6605df9d06b8bf17a7c36240824bbb",
+    "core_commit": "6b8ddcadeec6c261220f2f2a2e996c6179081634",
+    "client_version": "1.2.0+4046"
+  },
+  "bind_contract": {
+    "pre_fix_regression_observed": "FAIL_ACTUAL_PORT_ZERO",
+    "allocated_port_returned": true,
+    "allocated_port_requested_for_ipv6": true,
+    "partial_ipv4_state_closed_on_ipv6_failure": true,
+    "no_address_family_fails_eafnosupport": true,
+    "cryptography_changed": false
+  },
+  "verification": {
+    "focused_awg_package": "PASS",
+    "focused_awg_transport_and_protocol": "PASS",
+    "full_core_gate": "PASS",
+    "production_android_builder": "PASS",
+    "client_tracked_aar_restored": true,
+    "core_worktree_clean": true,
+    "client_worktree_clean": true
+  },
+  "artifacts": [
+    {
+      "name": "pokrov-core.aar",
+      "bytes": 107408874,
+      "sha256": "b42a548910b7369f64fcd484c5acf74180583d77299629ce4d2f9156fc598007"
+    },
+    {
+      "name": "app-arm64-v8a-direct-release.apk",
+      "bytes": 101357398,
+      "sha256": "930aec975927c1c40a87440f62f67b25295a12920e85876adca297b715426058"
+    },
+    {
+      "name": "app-x86_64-direct-release.apk",
+      "bytes": 109942293,
+      "sha256": "8f6f1e96ad019774c071ffee6b089696068f1c7655ad012efca41dcadb15fd49"
+    }
+  ],
+  "android_signing": {
+    "certificate_sha256": "0A0602A7DF5D96A0B427909D004F3DDF26DEF86587634BF16694DA8D654B2500",
+    "production_certificate_continuity": "MATCH",
+    "private_material_retained": false
+  },
+  "ldplayer": {
+    "device_class": "OWNED_ANDROID_9_X86_64_EMULATOR",
+    "origin": "CURRENT_ORIGIN_EMULATOR_REHEARSAL",
+    "raw_identifiers_retained": false,
+    "additional_entitlement_days_granted": 0,
+    "results": [
+      {
+        "profile": "awg2_lab",
+        "android_vpn_transport": "PRESENT_AND_ANDROID_VALIDATED",
+        "client_state": "CHECKING_REQUIRES_ATTENTION",
+        "safe_core_diagnostic": "handshake_retry",
+        "safe_core_occurrence": 4,
+        "literal_ip_ping": "PASS",
+        "dns_name_ping": "FAIL",
+        "literal_ip_https": "FAIL",
+        "dns_name_https": "FAIL",
+        "authenticated_egress": "FAIL_NOT_PROVED",
+        "verdict": "FAIL_HANDSHAKE_AND_EGRESS_UNCHANGED"
+      },
+      {
+        "profile": "awg31_lab",
+        "android_vpn_transport": "PRESENT_AND_ANDROID_VALIDATED",
+        "client_state": "CHECKING_REQUIRES_ATTENTION",
+        "safe_core_diagnostic": "handshake_retry",
+        "safe_core_occurrence": 4,
+        "literal_ip_ping": "PASS",
+        "dns_name_ping": "FAIL",
+        "literal_ip_https": "FAIL",
+        "dns_name_https": "FAIL",
+        "authenticated_egress": "FAIL_NOT_PROVED",
+        "verdict": "FAIL_HANDSHAKE_AND_EGRESS_UNCHANGED"
+      }
+    ],
+    "cleanup": {
+      "app_force_stopped": true,
+      "active_pokrov_vpn": false,
+      "selected_profile": "default",
+      "resolved_profile": "legacy_reality_fallback",
+      "lab_membership_present": false
+    }
+  },
+  "current_origin_core_interop": [
+    {
+      "profile": "awg2_lab",
+      "outcome": "failed_no_outer_response",
+      "passed": false,
+      "report_sha256": "4a3be826fb55e91063d77220885dbecea2b0b691a01cb02eb53d887ea639be2b"
+    },
+    {
+      "profile": "awg31_lab",
+      "outcome": "failed_no_outer_response",
+      "passed": false,
+      "report_sha256": "5b96864a6b0adaa7f670606873c2e7394f883c1ad1c23e1362eda99c0c25cc6a"
+    }
+  ],
+  "external_evidence": [
+    {
+      "name": "ldplayer-awg2-bind-apply.json",
+      "sha256": "afb97adccbf463db03d8500deedd151ef9d976cf4c975a336991206782cde1b7"
+    },
+    {
+      "name": "ldplayer-awg31-bind-apply.json",
+      "sha256": "1e8047ccade9560c49c37ac955cfc8d3316d918e9e4f03463fe25d1c892b565e"
+    },
+    {
+      "name": "ldplayer-awg2-diagnostics-screen.xml",
+      "sha256": "435ff742f6e04fa5a99bdab0650dcf5b2295409509248c617437f83757e9c218"
+    },
+    {
+      "name": "ldplayer-awg31-diagnostics-screen.xml",
+      "sha256": "4081d4c3df750a99d23a000c56ebf0b925f5d6a640a93f0d1bb00d7bfbc90b9d"
+    },
+    {
+      "name": "ldplayer-awg2-network-smoke.json",
+      "sha256": "e2b3278299564cf42c4b0f00a2111ad3e7532fb6ca24f8050e584aeb538203ed"
+    },
+    {
+      "name": "ldplayer-awg31-network-smoke.json",
+      "sha256": "d71713fe9d4a3f2506d6f7e77e5a5c92e6f5a35ee442758bd0a55f717735d641"
+    },
+    {
+      "name": "ldplayer-default-cleanup-apply.json",
+      "sha256": "44f953550f4287c74a16d379d67da65e1cd4eccacf90c10b62a70109100b41d4"
+    }
+  ],
+  "release_interpretation": {
+    "row_advances": [],
+    "replacement_candidate_created": false,
+    "physical_device_proof": "MANUAL_OWNER_TEST",
+    "beeline_origin_proof": "NOT_RUN_FOR_REPLACEMENT_BYTES",
+    "ru_origin_proof": "NOT_RUN",
+    "stable_promotion_authorized": false
+  }
+}
