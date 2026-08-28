@@ -466,6 +466,19 @@ Later evidence-only platform carriers repeat the same zero-step condition; the
 current PR check rollup is the exact authority for the newest carrier rather
 than a self-referential commit SHA inside this document.
 
+At current platform carrier `2c08d542...`, `Guardrails` run `33181469536`, job
+`98883458057`, and `Release v2 Contract` run `33181469508`, job `98883449576`,
+each failed in two to three seconds with zero steps and no downloadable job
+log. Authenticated GitHub UI readback of the current Guardrails job exposes one
+pre-runner annotation: GitHub did not start the job because recent account
+payments failed or the account spending limit must be increased. Repository
+Actions are enabled, all actions are allowed and both jobs use the standard
+`ubuntu-latest` label. Client run `33174374801`, attempt `2`, has the same
+zero-step/no-log shape. This directly supports
+`BLOCKED_BY_ACCESS_GITHUB_BILLING`; changing workflow code or treating a local
+run as hosted proof would be a false green. No billing, visibility, runner or
+repository setting was changed during this readback.
+
 The newest platform carrier narrows that statement. `Guardrails` run
 `33178564672` still received zero steps, and client `Release v2 Contract` run
 `33174374801` remains the same access/billing blocker. Platform `Release v2
