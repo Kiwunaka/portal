@@ -1414,7 +1414,7 @@ Current release boundary:
   current cabinet/runtime contract
 - retained distributed release: `v1.1.6`; public client package/build line
   `1.1.6+29`
-- working source target: `1.2.0+4044`, `PRE_CANDIDATE_LOCAL`,
+- working source target: `1.2.0+4045`, `PRE_CANDIDATE_LOCAL`,
   `candidate_created=false`; it is not deployable release metadata
 - a later candidate exists only after an exact release handoff
 - stable-direct publication does not prove store availability, trusted Windows
