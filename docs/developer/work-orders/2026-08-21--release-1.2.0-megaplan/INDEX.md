@@ -34,8 +34,8 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 07 | Canonical Operator Center v2 and legacy admin cutover | Local package complete, including the deterministic 75-operation OpenAPI/TypeScript contract, purpose-bound Telegram OIDC Authorization Code plus PKCE login and same-identity step-up for preprovisioned operators, exact retained-bridge permissions and query-suppressed field redaction; live IdP, authenticated exact-candidate readback and cutover/rollback gates remain open | `WO-009`, `WO-009H`, `WO-009I`, `WO-009J` |
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete at `I3`; WO-013AN passes exact-candidate local UI/accessibility/responsive/static/API slices but leaves Gate E `BLOCKED` below I4 on authenticated, physical screen-reader/device, comparable-artifact, browser-lab, RU-origin and post-promotion evidence | `WO-010`, `WO-013AN` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
-| 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | AWG2/AWG3.1 and bounded base HY2 source labs are locally proved and default-off. WO-013AX supersedes the earlier AWG access blocker: on exact candidate.5 physical Android/Beeline, both AWG2 and AWG 3.1 start the app VPN and exchange outer packets, but latest handshake stays absent, inner traffic is zero, and DNS/authenticated egress are unproved. Both exact physical protocol slices are `FAIL`; candidate.5 is rejected for replacement. WO-013AY adds bounded safe diagnostics. WO-013AZ fixes a reproduced Core bind-port/partial-cleanup contract defect, but exact production-signed replacement bytes repeat `handshake_retry #4` and failed DNS/HTTPS for both profiles on LDPlayer, so root cause and physical proof remain open. HY2 remains undeployed. Exact candidate.5 Smart-DNS state, validated TUN and bounded DNS/ICMP pass on Frankfurt, while compatible resolver, HTTP service access, attribution, leak, rollback and origin proof remain open. Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AU`, `WO-013AX`, `WO-013AY`, `WO-013AZ` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Signed `pokrov-1.2.0-candidate.5` is retained immutably but is no longer promotable. WO-013AV's frozen digest-bound Gate F result remains `BLOCKED` with `6 PASS`, `13 non-PASS`, `0 FAIL`; WO-013AX records later mandatory AWG2 and AWG 3.1 exact-physical `FAIL` results without rewriting that signed decision. WO-013AY provides bounded replacement diagnostics; WO-013AZ proves the bind correction does not repair runtime handshake/egress. Parameter-level interoperability correction and repeated physical proof are still required before a new candidate. Windows live, RU-origin, authenticated HTTP egress, provider, Operator, legal, comparable-device/post-public-promotion and other manual rows also remain open. Hosted checks are `SKIPPED_BY_OWNER`, not PASS. No tag, public `v1.2.0`, store object, stable switch or promotion occurred | `WO-013`, `WO-013AU`, `WO-013AV`, `WO-013AW`, `WO-013AX`, `WO-013AY`, `WO-013AZ` |
+| 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | AWG2/AWG3.1 and bounded base HY2 source labs are locally proved and default-off. WO-013AX supersedes the earlier AWG access blocker: on exact candidate.5 physical Android/Beeline, both AWG2 and AWG 3.1 start the app VPN and exchange outer packets, but latest handshake stays absent, inner traffic is zero, and DNS/authenticated egress are unproved. Both exact physical protocol slices are `FAIL`; candidate.5 is rejected for replacement. WO-013AY adds bounded safe diagnostics. WO-013AZ fixes a reproduced Core bind-port/partial-cleanup contract defect, but exact production-signed replacement bytes repeat `handshake_retry #4` and failed DNS/HTTPS for both profiles on LDPlayer. WO-013BA then proves both bounded profiles complete authenticated handshake and exact inner TCP exchange from the corrected POKROV bind path to a direct pinned official peer over real loopback UDP, narrowing but not closing the physical failure. HY2 remains undeployed. Exact candidate.5 Smart-DNS state, validated TUN and bounded DNS/ICMP pass on Frankfurt, while compatible resolver, HTTP service access, attribution, leak, rollback and origin proof remain open. Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AU`, `WO-013AX`, `WO-013AY`, `WO-013AZ`, `WO-013BA` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Signed `pokrov-1.2.0-candidate.5` is retained immutably but is no longer promotable. WO-013AV's frozen digest-bound Gate F result remains `BLOCKED` with `6 PASS`, `13 non-PASS`, `0 FAIL`; WO-013AX records later mandatory AWG2 and AWG 3.1 exact-physical `FAIL` results without rewriting that signed decision. WO-013AY provides bounded replacement diagnostics; WO-013AZ proves the bind correction does not repair LDPlayer runtime handshake/egress; WO-013BA proves corrected local POKROV-to-pinned-peer interoperability but does not replace physical or production proof. Exact owned-endpoint/mobile-origin classification and repeated physical proof are still required before a new candidate. Windows live, RU-origin, authenticated HTTP egress, provider, Operator, legal, comparable-device/post-public-promotion and other manual rows also remain open. Hosted checks are `SKIPPED_BY_OWNER`, not PASS. No tag, public `v1.2.0`, store object, stable switch or promotion occurred | `WO-013`, `WO-013AU`, `WO-013AV`, `WO-013AW`, `WO-013AX`, `WO-013AY`, `WO-013AZ`, `WO-013BA` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -140,6 +140,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013AX` | Run exact candidate.5 owned AWG2/AWG 3.1 physical interoperability and retain replacement corrections | Cross-repository candidate/protocol/runtime evidence | Protected binds succeed and exact candidate.5 starts Android VPN for both profiles, but outer packet exchange never becomes an authenticated handshake, inner traffic stays zero and DNS/egress are unproved; both slices are `FAIL`. Candidate.5 is immutable and rejected for replacement. Platform binder `f4927c6` and client stale-location fix `bbf1de8` pass focused local verification; privacy-safe Core rejection diagnostics and a new signed candidate are required | `WO-013AU`, `WO-013AV`, exact signed candidate.5, returned physical phone, owned AWG endpoints |
 | `WO-013AY` | Bridge bounded AWG diagnostics into the Android diagnostics screen and isolate the replacement failure on LDPlayer | Cross-repository replacement source/artifact/runtime evidence | Core `b057ff3...`, client `7a633a8...` and platform operator `b0affe4` pass full/focused gates. Production-signed diagnostic build 4046 shows `handshake_retry #4` for both AWG2 and AWG 3.1 with failed DNS-name and HTTPS egress, then clean default restore. This is emulator pre-candidate failure evidence, not root-cause correction or physical/candidate proof | `WO-013AX`, replacement Core/client source, owned LDPlayer, default-off AWG endpoints |
 | `WO-013AZ` | Correct the AWG bind allocated-port/partial-cleanup contract and recheck both replacement profiles | Core/client/platform replacement runtime evidence | Core `6b8ddca...` passes focused/full gates and exact signed replacement APKs build, but AWG2/AWG3.1 both repeat `handshake_retry #4` plus failed DNS/HTTPS on LDPlayer. Bind fix retained; handshake remains failed; default cleanup passes; no candidate or row advance | `WO-013AY`, exact replacement source, owned LDPlayer, default-off AWG endpoints |
+| `WO-013BA` | Prove the corrected POKROV AWG bind path against a direct peer from the exact pinned official engine | Core local source interoperability evidence | Core `3c2b114...` passes deterministic AWG2 and AWG 3.1 real-loopback-UDP authenticated handshake plus exact inner TCP echo against the direct pinned peer; focused/full gates pass; no production material, physical proof, candidate or row advance | `WO-013AZ`, Core `6b8ddca...`, pinned official `amneziawg-go/v3 v3.1.20260814` |
 
 ## Current evidence
 
@@ -153,6 +154,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `WO-013AX-candidate5-owned-awg-physical-interoperability.md`
 - `WO-013AY-replacement-awg-bounded-diagnostics.md`
 - `WO-013AZ-awg-bind-contract-and-runtime-recheck.md`
+- `WO-013BA-pinned-awg-peer-local-interop.md`
   binds the signed candidate.5 artifact set and hosted signature, exact
   one-file Brain deploy, bounded physical Android/Smart-DNS runtime proof,
   later exact AWG2/AWG 3.1 protocol failures, replacement corrections and
@@ -161,7 +163,10 @@ The row order is a dependency order, not permission for one giant merge. Each im
   hashes, LDPlayer failure categories and clean lab restore without transferring
   emulator evidence into a candidate or physical gate. WO-013AZ adds the
   reproduced bind-contract correction and proves with later signed bytes that
-  the handshake/egress failure remains unchanged.
+  the handshake/egress failure remains unchanged. WO-013BA proves the corrected
+  client bind path can complete both bounded protocol handshakes and inner TCP
+  exchange with a direct pinned official peer, without converting that local
+  result into physical, endpoint, carrier or candidate proof.
 - `evidence/013H-clean-source-freeze/013H-clean-source-freeze.json` binds the
   clean source commits, local gates and five remaining preflight blockers.
 - `evidence/013I-core-artifact-binding/013I-core-artifact-binding.json` binds
@@ -469,10 +474,13 @@ The frozen Gate F result remains `BLOCKED` with `6 PASS`, `13 non-PASS`,
 `ACTIONS_ARTIFACT_ONLY`; no public release or stable pointer exists.
 
 Bounded privacy-safe Core rejection diagnostics, the exact binder and the
-stale-location correction are now implemented. Core `6b8ddca...` also fixes
-the allocated-port/partial-cleanup bind contract, but signed replacement bytes
-still reach only `handshake_retry #4` for AWG2 and AWG 3.1 on LDPlayer. The
-next transport slice is the exact physical mobile-origin parser-boundary
+stale-location correction are now implemented. Core `6b8ddca...` fixes the
+allocated-port/partial-cleanup bind contract, and Core `3c2b114...` proves both
+bounded protocols complete authenticated handshake plus inner TCP exchange
+against a direct pinned official peer over real loopback UDP. Signed
+replacement bytes still reach only `handshake_retry #4` for AWG2 and AWG 3.1
+on LDPlayer, so exact owned endpoint/mobile-path uncertainty remains. The next
+transport slice is the exact physical mobile-origin parser-boundary
 classification using the already allowlisted unknown-type/MAC/response codes;
 the phone is not currently online in ADB. Do not assemble a new candidate until
 that evidence identifies and corrects official pinned client/server

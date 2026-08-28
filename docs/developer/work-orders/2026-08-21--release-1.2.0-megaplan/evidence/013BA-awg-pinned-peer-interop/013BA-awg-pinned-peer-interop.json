@@ -1,0 +1,57 @@
+{
+  "schema": "pokrov.awg-pinned-peer-interop/v1",
+  "recorded_at_utc": "2026-08-28T22:59:37Z",
+  "classification": "LOCAL_SOURCE_INTEROP_NOT_CANDIDATE_OR_RELEASE",
+  "source": {
+    "platform_commit_before_record": "2bd234473968ca6db44799eefddc23ea43f8fa46",
+    "core_commit": "3c2b1147c1b42e39026231525c08558a50bc3d0f",
+    "core_bind_fix_commit": "6b8ddcadeec6c261220f2f2a2e996c6179081634",
+    "go_toolchain": "go1.25.13",
+    "pinned_peer_module": "github.com/amnezia-vpn/amneziawg-go/v3 v3.1.20260814",
+    "pinned_peer_module_sum": "h1:l2AhBD+sFycU8Im81n/bZORMxW7fWtlZJEuJ4Hh0+z0="
+  },
+  "boundary": {
+    "client": "POKROV_DEVICE_BIND_ADAPTER_AND_UPSTREAM_NETSTACK",
+    "peer": "DIRECT_PINNED_DEVICE_STD_NET_BIND_AND_UPSTREAM_NETSTACK",
+    "outer_transport": "REAL_OS_IPV4_UDP_LOOPBACK_DYNAMIC_PORT",
+    "inner_transport": "NETSTACK_TCP_EXACT_BIDIRECTIONAL_ECHO",
+    "ephemeral_keys_generated_in_memory": true,
+    "private_material_retained": false,
+    "production_endpoint_material_used": false,
+    "cryptography_forked_or_modified": false
+  },
+  "results": [
+    {
+      "profile": "BOUNDED_AWG2",
+      "authenticated_handshake_path": "PASS",
+      "inner_tcp_write": "PASS",
+      "inner_tcp_exact_echo_read": "PASS",
+      "verdict": "PASS_LOCAL_PINNED_PEER_INTEROP"
+    },
+    {
+      "profile": "BOUNDED_AWG31",
+      "header_protection_and_instruction_chain_exercised": true,
+      "authenticated_handshake_path": "PASS",
+      "inner_tcp_write": "PASS",
+      "inner_tcp_exact_echo_read": "PASS",
+      "verdict": "PASS_LOCAL_PINNED_PEER_INTEROP"
+    }
+  ],
+  "verification": {
+    "focused_interop_test": "PASS_2_OF_2",
+    "transport_and_protocol_packages": "PASS",
+    "full_core_gate": "PASS",
+    "core_worktree_clean_after_commit": true
+  },
+  "release_interpretation": {
+    "candidate_5_immutability": "UNCHANGED",
+    "candidate_5_promotion_decision": "REJECTED_FOR_REPLACEMENT",
+    "row_advances": [],
+    "replacement_candidate_created": false,
+    "physical_device_proof": "MANUAL_OWNER_TEST",
+    "beeline_origin_proof": "NOT_RUN_FOR_REPLACEMENT_BYTES",
+    "ru_origin_proof": "NOT_RUN",
+    "production_authenticated_egress": "NOT_PROVED",
+    "stable_promotion_authorized": false
+  }
+}

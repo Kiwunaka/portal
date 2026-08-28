@@ -2,6 +2,21 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BA pinned AWG peer local interop
+
+Core `3c2b114...` adds a deterministic real-socket regression between the
+POKROV `bind_adapter` client path and a direct peer from the exact pinned
+official `amneziawg-go/v3 v3.1.20260814` module. Both bounded AWG2 and AWG 3.1
+establish an authenticated local handshake and exchange an exact inner TCP
+payload bidirectionally. Focused transport/protocol tests and the full Core
+gate pass under Go 1.25.13; no production material is used or retained.
+
+This narrows the replacement failure: the corrected generic bind/engine path
+is interoperable, while exact owned endpoint parameters/state, protected
+delivery and the mobile carrier path remain unproved. The physical phone was
+not online in ADB. No row advances, no candidate is created and candidate.5
+remains immutable and rejected.
+
 ## 2026-08-29 — WO-013AZ AWG bind contract and negative runtime recheck
 
 Core `6b8ddca...` fixes a reproduced `conn.Bind.Open(0)` contract defect:
