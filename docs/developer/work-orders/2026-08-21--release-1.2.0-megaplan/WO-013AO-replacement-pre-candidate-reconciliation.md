@@ -226,6 +226,17 @@ unit `portal-api`, postdeploy full-source readback and automatic baseline
 restore/readback. PLAN report SHA-256 is `73dcc150...b835f` and records
 `runtime_mutated=false`; apply was neither authorized nor run.
 
+Fresh source/host checks bind platform `50c9d12...`, client `75e82b0...` and
+Core `e8eb772...`: AWG2/AWG3.1 contract sync passes, ten focused Flutter tests,
+thirteen Android direct-release JVM tests and thirty-one Core AWG tests pass.
+The separate live Core interop from the current Windows origin fails after the
+outer write for both profiles. For AWG2, a concurrent address-free server
+capture counts `34` inbound and `8` outbound packets, including `8` initiation
+and `8` response-sized packets, with no handshake. That exact slice is
+`BLOCKED_BY_NETWORK_CURRENT_WINDOWS_ORIGIN_REVERSE_UDP`; AWG3.1 remains the
+narrower `FAIL_NO_OUTER_RESPONSE_CURRENT_WINDOWS_ORIGIN` because its packet
+capture was not repeated. No server setting, rollout or device binding changed.
+
 ## Hosted PR evidence
 
 Exact jobs observed for platform PR `#58` at `34d1551f...` and client PR `#33`

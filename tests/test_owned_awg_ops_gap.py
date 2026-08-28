@@ -1,5 +1,7 @@
 import importlib.util
+import io
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -137,6 +139,26 @@ class OwnedAwgCoreInteropContractTests(unittest.TestCase):
         self.assertIn('raise SystemExit("profile invalid")', helper)
         self.assertIn("Awg2LabMaterial.is_active.is_(True)", helper)
         self.assertIn("Awg31LabMaterial.is_active.is_(True)", helper)
+
+    def test_secret_free_interop_result_can_be_retained_without_shell_redirect(self) -> None:
+        module = self.module
+        result = {
+            "schema_version": "pokrov-owned-awg-core-interop-v1",
+            "profile": "awg2_lab",
+            "outcome": "failed_no_outer_response",
+            "raw_material_returned": False,
+        }
+        with tempfile.TemporaryDirectory() as raw_temp:
+            output = Path(raw_temp) / "nested" / "interop.json"
+            stream = io.StringIO()
+            with patch("sys.stdout", stream):
+                module._emit_result(result, str(output))
+
+            retained = output.read_text(encoding="utf-8")
+
+        self.assertTrue(retained.endswith("\n"))
+        self.assertIn('"raw_material_returned": false', retained)
+        self.assertEqual(stream.getvalue().strip(), retained.strip())
 
 
 if __name__ == "__main__":
