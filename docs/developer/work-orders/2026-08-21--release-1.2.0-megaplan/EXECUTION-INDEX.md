@@ -3412,8 +3412,9 @@ Frankfurt location before tunnel start. This is a separate
 same unmet AWG2 precondition. Direct DoH passes only DNS resolution; VPN-free
 Smart DNS is not implemented.
 
-Post-observation source review identified the first common activation blocker:
-the managed-profile route selected the exact device-bound AWG policy but then
+Post-observation source review and platform revision `32e444695...` identified
+and corrected the first common activation blocker: the managed-profile route
+selected the exact device-bound AWG policy but then
 incorrectly required an ordinary Smart Connect/node shortlist before issuing
 typed material. The local platform correction makes `awg2_lab` and
 `awg31_lab` bypass that unrelated catalog, ignore `selected_node_code` and

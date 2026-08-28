@@ -16,6 +16,7 @@ that evidence into signed `candidate.3` or creating a replacement candidate.
 | --- | --- | --- | --- |
 | Platform runtime | `e5ef03ac7ab013d8810cc9c6ea9ccc40cebd11db` | `codex/awg-owned-lab-deploy`, PR `#58` to `master` | locally gated runtime source |
 | Platform AWG operations/evidence | `39af0f1d3a01209bd46dcd0661cabef5de679efe` | same branch / PR | focused checks passed; pushed after the aggregate gate |
+| Platform AWG managed issuance | `32e444695432531d7a1a517cb0386bb690c73969` | same branch / PR | local source correction; `53/53` focused and `154 + 8 subtests` backend pass; not deployed |
 | Client runtime | `c196dff6bf72c325d5bba675fe19342cd3821f61` | `codex/release-1.2.0-candidate-8-source`, PR `#33` to `main` | locally gated runtime source |
 | Client AWG evidence docs | `2eeee5fa0c09096426e09aeb0eeb865a6aede981` | same branch / PR | docs/seed contracts passed; pushed after the aggregate gate |
 | Core | `f44dbe89d6b89954032a1a798c2209d8c0aff90d` | `codex/fix-egress-event-subsystem`, PR `#6` to `main` | clean and pushed |
