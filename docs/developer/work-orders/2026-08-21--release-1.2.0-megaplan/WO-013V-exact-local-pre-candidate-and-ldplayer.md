@@ -110,7 +110,9 @@ Observed on these exact bytes:
   remains an active-VPN routing feature rather than DNS-only unblocking;
 - AWG2 and AWG 3.1 exact embedded runtime contracts pass default-off. AWG 3.1
   live proof is `BLOCKED_BY_ACCESS` because no isolated owned endpoint exists;
-  Hysteria2 remains deferred after 1.2.0.
+  Hysteria2 was still deferred for this exact 4030 evidence tuple. The later
+  owner-authorized default-off source lab is tracked separately by `WO-013AR`
+  and does not alter or upgrade this retained result.
 
 The emulator was left with the exact app installed, VPN disconnected and
 automatic location selected. A current-origin free-trial entitlement was
