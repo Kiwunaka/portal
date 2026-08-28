@@ -83,8 +83,11 @@ inactive and non-root with only the low-port bind capability.
 Source identity:
 
 - platform commit `2d18fd7641ec6c90286f333ae24a6f1ac794f78a`;
+- guarded operations/evidence commit
+  `ca9eb415369a7975b0ff9ba748686252572c7334`;
 - client commit `75e82b061cd3f127ae640733cfb4fc1a6aef2e62`;
-- both commits are pushed to their separate `codex/hy2-owned-lab` branches;
+- all three commits are pushed to their separate `codex/hy2-owned-lab`
+  branches;
 - Core is unchanged for this slice.
 
 | Check | Result | Ceiling |

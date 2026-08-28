@@ -383,8 +383,9 @@ platform/client/Core tuple `e5ef03a...` / `c196dff...` / `f44dbe8...` passes
 the exact Node 22.14 local aggregate `15/15`, and Android Core provenance is
 rebound without a binary delta. It does not replace signed candidate.3 as the
 current exact-candidate authority and does not repair candidate.3's `NO_GO`.
-Later exact pushed platform `2d18fd7...` and client `75e82b0...` source add the
-build-4046 external Smart DNS lab. The byte-reproducible server bundle, full
+Later exact pushed platform server `2d18fd7...`, guarded operations
+`ca9eb41...` and client `75e82b0...` source add the build-4046 external Smart
+DNS lab. The byte-reproducible server bundle, guarded installer tests, full
 client regression, production-signed working APKs and LDPlayer/Huawei
 default-off state checks pass, but there is no installed resolver or live
 service-access proof and no candidate is created.
