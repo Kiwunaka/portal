@@ -3447,6 +3447,13 @@ verified and installed on the physical Huawei and LDPlayer. Both cold starts
 had no app-owned VPN service and reported `Подключить` / `Не защищено`, so the
 stale-running false-green regression is `PASS_4045_DISCONNECTED_HOST_TRUTH`.
 
+A bounded physical connect control then started the POKROV service but did not
+create Android VPN transport after approximately `25` seconds. Post-connect UI,
+DNS and HTTPS were not claimed; cleanup stopped POKROV, confirmed no VPN
+transport, restored Hiddify foreground and preserved disabled Wi-Fi. This is
+`FAIL_4045_PREDEPLOY_ANDROID_ACTIVATION`, before the platform correction is
+deployed, and does not classify AWG cryptography.
+
 This is not a tunnel PASS. Platform managed-profile issuance is corrected in
 source but remains undeployed; build 4045 has not yet proved an AWG2 or AWG3.1
 handshake, egress or DNS/leak matrix. Exact-head hosted checks for platform PR

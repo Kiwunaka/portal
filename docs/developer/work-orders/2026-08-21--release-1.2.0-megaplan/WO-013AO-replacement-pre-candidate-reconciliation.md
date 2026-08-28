@@ -127,10 +127,19 @@ false-green regression only. It does not prove AWG2/AWG3.1 handshake, tunnel
 egress, DNS/leak behavior, endurance or release readiness, and the paired
 platform managed-profile correction is still not deployed.
 
+A subsequent bounded physical connect control started the POKROV service but
+produced no Android VPN transport after approximately `25` seconds. The UI
+tree was unavailable before a post-connect label could be retained, so DNS and
+HTTPS were not run. Exact cleanup stopped POKROV, confirmed no Android VPN
+transport, foregrounded Hiddify and preserved disabled Wi-Fi. Record this as
+`FAIL_4045_PREDEPLOY_ANDROID_ACTIVATION`; it still precedes deployment of the
+managed-profile correction and is not an AWG cryptographic verdict.
+
 ## Hosted PR evidence
 
-Platform PR `#58` at `34d1551f...` and client PR `#33` at `2f47148e...` are
-mergeable, but their required jobs received zero execution steps. GitHub
+Exact jobs observed for platform PR `#58` at `34d1551f...` and client PR `#33`
+at `2f47148e...` received zero execution steps although both PRs were
+mergeable. GitHub
 reports failed account payments or a spending-limit block. They are
 `BLOCKED_BY_ACCESS_GITHUB_BILLING`, not product test failures and not passes.
 `OWNER_SOLO_EXCEPTION` does not waive them.
