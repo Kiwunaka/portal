@@ -435,9 +435,10 @@ PnP and ADB during this follow-up.
 
 ## Hosted PR evidence
 
-The existing PR branches were fast-forwarded without force or merge to the
-current converged heads: platform PR `#58` to `0971b9b6...`, client PR `#33`
-to `3564023c...`, and Core PR `#6` to `4fa9accf...`. The Core PR head differs
+The existing PR branches were fast-forwarded without force or merge. Platform
+runtime/release source is frozen at `e6ae46e3...`; platform changes after that
+revision are confined to this retained work order. Client PR `#33` is at
+`3564023c...`, and Core PR `#6` is at `4fa9accf...`. The Core PR head differs
 from frozen product Core `e8eb7721...` only in `.github/workflows/ci.yml`; no
 runtime, build input, release contract or product documentation changed after
 the exact Core artifact freeze.
@@ -447,6 +448,9 @@ again received zero execution steps and failed within two or three seconds.
 GitHub reports failed account payments or a spending-limit block. They remain
 `BLOCKED_BY_ACCESS_GITHUB_BILLING`, not product failures and not passes.
 `OWNER_SOLO_EXCEPTION` does not waive required checks.
+Later evidence-only platform carriers repeat the same zero-step condition; the
+current PR check rollup is the exact authority for the newest carrier rather
+than a self-referential commit SHA inside this document.
 
 Core run `33176149420` at exact CI head `4fa9accf...` passes the complete
 `test` job plus Android artifact reproducibility, Windows artifact
