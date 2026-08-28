@@ -3546,3 +3546,36 @@ AWG path was exercised. The result therefore proves client configuration and
 truthful fail-closed routing only, not a Smart-DNS product or live access. No
 ledger row advances and distribution remains `I4=4`, `I3=314`, `I2=19`,
 `I1=40`, `I0=0`; no merge, deploy, candidate or promotion occurred.
+
+## 2026-08-28 — WO-013AP Linux network transaction observability
+
+Client PR `#28` head `583e04a...` adds the source-level `OBS-045` event
+contract without enabling Linux traffic. The existing closed Linux journal now
+supports one typed `network_transaction` event with a bounded transaction and
+correlation ID, generation, one of NetworkManager/resolved/nftables, one of
+checkpoint/apply/rollback and only closed outcomes plus stage-specific failure
+codes. Commands, arguments, paths, interfaces, addresses, resolver payloads,
+nft rules, destinations and raw errors have no field.
+
+The current authorized connect path emits exactly three
+`checkpoint/unavailable` preflight records before retaining
+`linux_live_connect_unavailable`; it does not manufacture apply or rollback
+success. Portable Go tests pass, changed files are gofmt-clean, Linux/amd64 vet
+and daemon cross-build pass, and all `9` Linux package test binaries compile.
+The Linux Flutter shell passes analysis and `4/4` tests. Client docs and the
+full branch-basis seed validation pass against matching platform `64d68b0...`
+and Core `344b317...` authority.
+
+Exact-head hosted run `33145424445` completed with `steps=[]`; GitHub did not
+start the job. It is `BLOCKED_BY_ACCESS_GITHUB_BILLING`, not product evidence.
+
+Linux-only tests were compiled but not executed on this Windows host. Actual
+NetworkManager checkpoint, resolved/nft mutation, native journald readback and
+clean Ubuntu route/DNS/nft restoration remain absent. `OBS/OBS-045` therefore
+advances only `I1 -> I2` as `IMPLEMENTED_SOURCE_ONLY`. `OBS-043` remains `I2`
+despite stronger encoder/rejection tests, and `OBS-044` remains `I2` because no
+D-Bus trace was added.
+
+Distribution becomes `I4=4`, `I3=314`, `I2=20`, `I1=39`, `I0=0`; `318/377`
+rows remain at or above `I3` and `59/377` remain below. No merge, signed Linux
+package, candidate, deploy, public claim or runtime network mutation occurred.
