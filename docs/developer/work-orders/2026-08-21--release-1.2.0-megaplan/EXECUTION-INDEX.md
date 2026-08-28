@@ -2,18 +2,20 @@
 
 Last updated: 2026-08-28
 
-## 2026-08-28 owned selective Smart DNS source checkpoint
+## 2026-08-28 owned selective Smart DNS local proof checkpoint
 
 `WO-013AS` adds one derived FRKN laboratory row,
-`FRKN_SMART_DNS/SMARTDNS-01`, at `I2 IMPLEMENTED_SOURCE`. The canonical policy
+`FRKN_SMART_DNS/SMARTDNS-01`, now at
+`I3 LOCALLY_PROVED_SOURCE_ARTIFACT_AND_DEVICE_STATE`. The canonical policy
 is byte-identical across platform and client and has SHA-256
 `b6977f6f6a5ee48898116820d1db252b5b670cb7b86959c78f7bdbc7de90e0fa`.
 The owned server is allowlist-only/non-recursive, forwards application TLS only
-by visible allowlisted SNI and remains source-only/default-off. Focused Go,
-Python and Flutter checks pass, but exact clean revisions, immutable bundle,
-full client aggregate, APK/device readback, guarded installer, dedicated node,
-live DNS/SNI/access/leak/rollback and candidate evidence remain open. This row
-does not change any original source-plan aggregate or release gate.
+by visible allowlisted SNI and remains default-off. Exact pushed source,
+byte-reproducible server bundle, full client aggregate, production-signed
+working APKs and LDPlayer/Huawei default-off state proof pass. The guarded
+installer source/tests are present; a dedicated-node PLAN, live
+DNS/SNI/access/leak/rollback and candidate evidence remain open. This derived
+row does not change any original source-plan aggregate or release gate.
 
 ## Item scale
 
@@ -3626,3 +3628,52 @@ cannot prove a k-anonymous cohort, so it was not mutated for this slice.
 `OBS/OBS-087` advances only `I1 -> I2` as `IMPLEMENTED_SOURCE_ONLY`.
 Distribution becomes `I4=4`, `I3=314`, `I2=21`, `I1=38`, `I0=0`; `318/377`
 rows remain at or above `I3` and `59/377` remain below.
+
+## 2026-08-28 — WO-013AS immutable Smart-DNS artifact and device closure
+
+Exact pushed platform source
+`2d18fd7641ec6c90286f333ae24a6f1ac794f78a` and client source
+`75e82b061cd3f127ae640733cfb4fc1a6aef2e62` bind the same canonical policy
+bytes at SHA-256
+`b6977f6f6a5ee48898116820d1db252b5b670cb7b86959c78f7bdbc7de90e0fa`.
+Server unit/vet checks, focused platform builder/parity checks, guarded remote
+operation tests `7/7`, Flutter analysis, `17/17` focused and `412/412` complete
+app-shell tests, and the cross-repository seed validator pass. The Go race
+detector remains `NOT_RUN_TOOLCHAIN_MISSING` on the Windows host and is not
+counted as PASS.
+
+Two Linux/amd64, CGO-disabled builds from the exact platform commit produced
+the byte-identical `2911894`-byte
+`pokrov-smart-dns-server-2d18fd7.zip`, SHA-256
+`d7ef558dc071852d942cf3001b16f2c2125c7c777db7a79b575ea0eae06d0195`.
+Both copies pass bundle self-verification. The embedded `7118996`-byte binary
+has SHA-256
+`f0ac013f5a320989cd9696e83bee4a9b83988064bf81081a22a75e3d923248e5`.
+This is an immutable local server artifact, not an installed service.
+
+The exact client commit produced release/non-debuggable, production-signed
+`1.2.0+4046` APKs. The `101346230`-byte arm64 APK SHA-256
+`c7e21ca3aa5baff575e515d22937c1a6b431068afdd0dad5fb6955b966cea6f9`
+was installed and read back byte-identically on the Huawei. The `109930165`-
+byte x86_64 APK SHA-256
+`4beebad0f2efeef03b6c6a9ea7634c7c90515d5ec3f7bcdf4a8b74adcc83cd4b`
+was installed and read back byte-identically on LDPlayer. Both bind production
+certificate SHA-256
+`0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500`.
+
+LDPlayer proved the complete default-off UI state machine and truthful
+visible-IP/compatible-server copy without starting a tunnel. The physical
+phone proved the exact package and safe prerequisite gate without changing its
+existing AdGuard/direct-DNS-off preferences. Final readback found no POKROV
+service on either device and restored the phone's prior Chrome foreground.
+
+No dedicated-node allocation or no-mutation PLAN, server deploy, DNS
+transaction, service-access check, tunnel, leak/lifecycle matrix, rollback
+drill, current-origin, Brain-origin or RU-origin proof occurred. This advances
+`FRKN_SMART_DNS/SMARTDNS-01` from `I2` to
+`I3 LOCALLY_PROVED_SOURCE_ARTIFACT_AND_DEVICE_STATE`, not to live or candidate
+readiness. The original 377-row source-plan distribution remains `I4=4`,
+`I3=315`, `I2=21`, `I1=37`, `I0=0`; `319/377` original rows are at or above
+`I3` and `58/377` remain below. Including the one derived Smart-DNS row, the
+ledger contains `378` rows and `320` are at or above `I3`. No merge, deploy,
+candidate, public asset or promotion occurred.

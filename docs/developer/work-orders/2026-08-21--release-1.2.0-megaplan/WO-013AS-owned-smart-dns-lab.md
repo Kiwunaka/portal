@@ -1,12 +1,12 @@
 # WO-013AS — Owned selective Smart DNS laboratory
 
-Status: `IMPLEMENTED_SOURCE; LOCAL_ARTIFACT_AND_DEVICE_PROOF_PENDING`
+Status: `I3 LOCALLY_PROVED_SOURCE_ARTIFACT_AND_DEVICE_STATE`
 
 Date: 2026-08-28
 
-Release effect: none. This work order does not create a candidate, deploy a
-resolver/relay, change production routing, publish an artifact, or advance any
-row beyond local source evidence.
+Release effect: local pre-candidate evidence only. This work order does not
+create a candidate, deploy a resolver/relay, change production routing, publish
+a public artifact, or prove live DNS/service access.
 
 ## Outcome
 
@@ -49,8 +49,10 @@ The public SNI relay has no safe per-client authentication channel in the
 current client contract. It is therefore a bounded public owner-lab relay, not
 an authenticated production proxy. Exact allowlists, public-address rejection
 and resource limits reduce abuse surface but do not create client identity.
-Deployment remains forbidden until a dedicated owned IPv4, guarded installer,
-rollback receipt, live limits and an explicit owner authorization exist.
+Deployment remains forbidden until a dedicated owned IPv4, a successful
+no-mutation installer PLAN, receipt-bound runtime material and an explicit
+owner authorization exist. Live limits and rollback still require separate
+runtime proof.
 
 ## Exact source contract
 
@@ -64,6 +66,8 @@ rollback receipt, live limits and an explicit owner authorization exist.
 - server implementation: Go `1.25.13`, `github.com/miekg/dns v1.1.72`,
   Linux/amd64, CGO disabled for the retained bundle;
 - build/verify owner: `scripts/build_owned_smart_dns_server_bundle.py`;
+- guarded remote operation owner:
+  `scripts/remote_install_owned_smart_dns_lab.py`;
 - cross-repository byte-parity owner:
   `scripts/check_smart_dns_policy_parity.py`;
 - active client copy: `POKROV-app/config/smart-dns-policy.v1.json`;
@@ -74,7 +78,14 @@ The bundle excludes runtime listener address, DoH hostname, certificate,
 private key and upstream resolver coordinates. The systemd unit is packaged
 inactive and non-root with only the low-port bind capability.
 
-## Local evidence retained before commit
+## Exact local evidence
+
+Source identity:
+
+- platform commit `2d18fd7641ec6c90286f333ae24a6f1ac794f78a`;
+- client commit `75e82b061cd3f127ae640733cfb4fc1a6aef2e62`;
+- both commits are pushed to their separate `codex/hy2-owned-lab` branches;
+- Core is unchanged for this slice.
 
 | Check | Result | Ceiling |
 |---|---|---|
@@ -85,34 +96,70 @@ inactive and non-root with only the low-port bind capability.
 | focused Ruff check | `PASS` | Python source only |
 | platform/client policy parity | `PASS`, exact SHA above | source bytes only |
 | app-shell focused routing tests | `17/17 PASS` | client materialization/persistence only |
+| complete app-shell tests | `412/412 PASS` | exact client source regression only |
+| Flutter analysis | `PASS` | exact client source only |
+| cross-repository release-seed validation | `PASS` with explicit platform/client/Core roots | pre-candidate source consistency only |
+| deterministic Linux/amd64 bundle build | `PASS`, two builds byte-identical | local server artifact only |
+| bundle self-verification | `PASS_LOCAL_IMMUTABLE_BUNDLE` twice | no server install or runtime claim |
+| guarded remote installer tests | `7/7 PASS` | PLAN/APPLY/ROLLBACK source contract only; no SSH or mutation |
+| Android production package verification | `PASS` for universal and three split APKs | working pre-candidate artifacts only |
+| LDPlayer install/readback and Smart-DNS state machine | `PASS_4046_LDPLAYER_EXTERNAL_SMART_DNS_STATE_MACHINE` | no DNS transaction, tunnel or access claim |
+| physical Huawei install/readback and default-off gate | `PASS_4046_PHYSICAL_EXTERNAL_SMART_DNS_DEFAULT_OFF` | no setting mutation, DNS transaction, tunnel or access claim |
 | Go race detector | `NOT_RUN_TOOLCHAIN_MISSING` | Windows host has no C compiler; never counted as PASS |
 
-These results are working-tree evidence. Exact source revisions, immutable
-bundle identity, full client aggregate, Android package/signature and device
-readback are intentionally pending until the scoped diffs are reviewed and
-committed.
+Retained server artifact:
+
+- ZIP: `pokrov-smart-dns-server-2d18fd7.zip`, `2911894` bytes;
+- ZIP SHA-256:
+  `d7ef558dc071852d942cf3001b16f2c2125c7c777db7a79b575ea0eae06d0195`;
+- embedded Linux/amd64 binary: `7118996` bytes, SHA-256
+  `f0ac013f5a320989cd9696e83bee4a9b83988064bf81081a22a75e3d923248e5`;
+- bundle policy SHA-256 matches the canonical/client value above;
+- two independent builds from the exact platform commit produced the same ZIP
+  SHA-256 and both passed bundle verification.
+
+Retained working Android artifacts from the exact client commit:
+
+| ABI | Size | APK SHA-256 | Device readback |
+|---|---:|---|---|
+| universal | `295299185` | `4beff678b2e0d5fcad8d84cc94b50ac56e48e44d87e95000e032593b0dbbd10e` | package verification only |
+| arm64-v8a | `101346230` | `c7e21ca3aa5baff575e515d22937c1a6b431068afdd0dad5fb6955b966cea6f9` | exact bytes installed/read back on Huawei `ADA_AL00U` |
+| armeabi-v7a | `90760708` | `db0805e4ccd6c80e5dbea02c2d6e3911ca86989e095ce50586756cb3463ce60a` | package verification only |
+| x86_64 | `109930165` | `4beebad0f2efeef03b6c6a9ea7634c7c90515d5ec3f7bcdf4a8b74adcc83cd4b` | exact bytes installed/read back on LDPlayer |
+
+Every APK is release/non-debuggable, package
+`space.pokrov.pokrov_android_shell`, version `1.2.0+4046`, and signed by
+certificate SHA-256
+`0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500`.
+The production build bound public emergency key ID `emg-20260815-v1`; no
+private key was copied into the repository or retained evidence.
+
+LDPlayer proved the complete UI gate without starting a connection: Smart DNS
+was unavailable before custom exact-path DoH plus direct DNS were selected,
+remained off by default when prerequisites became valid, could then be enabled,
+showed the explicit visible-IP/compatible-server warning, and returned to
+automatic DNS/off. The physical phone proved exact APK installation and the
+existing safe default-off gate with AdGuard/direct DNS off; no preference was
+changed. Cleanup left no POKROV service on either device and returned the phone
+to its prior Chrome foreground.
 
 ## Required next evidence
 
-1. commit and push the platform and client source lanes independently;
-2. from the exact clean platform commit, build twice and verify the deterministic
-   Linux bundle, then retain bundle/binary/member SHA-256 values;
-3. complete the guarded PLAN/APPLY/ROLLBACK installer contract without choosing
-   or mutating an active delivery node;
-4. run the full app-shell and release-seed checks on the exact client revision;
-5. build the production-signed `1.2.0+4046` APK and verify install, signer,
-   default-off persistence and safe invalid-endpoint behavior first on LDPlayer,
-   then on the returned owner phone;
-6. separately authorize a dedicated-node install and retain DoH/SNI/limits/
+1. allocate a separate owned public IPv4, stage receipt-bound root-only runtime
+   material and retain a sanitized, no-mutation installer PLAN;
+2. separately authorize that exact dedicated-node install and retain
+   DoH/SNI/limits/
    rollback evidence before any service-access test;
-7. keep service-access, DNS leak, lifecycle, current-origin, Brain-origin and
+3. keep service-access, DNS leak, lifecycle, current-origin, Brain-origin and
    RU-origin evidence distinct; none may be inferred from source or install.
 
 ## Completion index
 
-- `FRKN_SMART_DNS/SMARTDNS-01`: `I2 IMPLEMENTED_SOURCE` in this worktree;
-- `I3` requires exact clean commits, immutable bundle verification, full client
-  regression and package/device default-off proof;
+- `FRKN_SMART_DNS/SMARTDNS-01`:
+  `I3 LOCALLY_PROVED_SOURCE_ARTIFACT_AND_DEVICE_STATE`;
+- `I3` is satisfied by exact pushed source commits, reproducible immutable
+  server artifact, full client regression, production-signed working packages
+  and two-device default-off/state-machine proof;
 - `I4` requires exact-candidate dedicated-node DNS/SNI/rollback and required
   physical/origin matrices;
 - `I5` requires separately authorized immutable promotion and observation.

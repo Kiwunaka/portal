@@ -122,6 +122,7 @@
     "scripts/remote_install_feedbackbot_service.py",
     "scripts/remote_install_emergency_runtime.py",
     "scripts/remote_install_owned_hy2_lab.py",
+    "scripts/remote_install_owned_smart_dns_lab.py",
     "scripts/remote_prepare_emergency_catalog_env.py",
     "scripts/remote_install_free_per_ip_limiter.py",
     "scripts/remote_install_mtproto_proxy.py",
