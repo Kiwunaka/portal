@@ -1,0 +1,154 @@
+{
+  "schema": "pokrov.replacement-awg-bounded-diagnostics/v1",
+  "recorded_at_utc": "2026-08-28T22:08:58Z",
+  "classification": "PRODUCTION_SIGNED_DIAGNOSTIC_PRE_CANDIDATE_NOT_RELEASE",
+  "candidate_5": {
+    "immutability": "UNCHANGED",
+    "promotion_decision": "REJECTED_FOR_REPLACEMENT",
+    "wo_013av_decision_mutated": false
+  },
+  "replacement_source": {
+    "platform_operator_commit": "b0affe4",
+    "client_commit": "7a633a83ca6605df9d06b8bf17a7c36240824bbb",
+    "core_commit": "b057ff3f68b8fd8ddb057f3ef6e4bcd4fde54390",
+    "client_version": "1.2.0+4046"
+  },
+  "diagnostic_contract": {
+    "raw_upstream_arguments_forwarded_in_production": false,
+    "allowed_codes": [
+      "receive_unknown_type",
+      "receive_invalid_mac1",
+      "receive_invalid_response",
+      "receive_decode_response",
+      "receive_handshake_response",
+      "send_handshake_initiation",
+      "handshake_give_up",
+      "handshake_retry",
+      "receive_error",
+      "send_handshake_error",
+      "upstream_error"
+    ],
+    "maximum_occurrences_per_code_per_device_attempt": 4,
+    "client_storage": "IN_MEMORY_RUNTIME_SNAPSHOT_ONLY",
+    "client_surface": "DEDICATED_DIAGNOSTICS_ONLY",
+    "android_logcat_written": false
+  },
+  "artifacts": [
+    {
+      "name": "pokrov-core.aar",
+      "bytes": 107402105,
+      "sha256": "80fd68ee55defdf60d5e40b807c9dc962319d6ce11079a88b7aef47b223cb514"
+    },
+    {
+      "name": "app-arm64-v8a-direct-release.apk",
+      "bytes": 101355190,
+      "sha256": "8939570a182d4916dfc2ecade27cdd8503c62dc6ef8fcac3d5c533a1d094eab2"
+    },
+    {
+      "name": "app-x86_64-direct-release.apk",
+      "bytes": 109939317,
+      "sha256": "7279c6bc00b17fe5fc2f1edbacc87ce635649bab615fc84e3aef5b4df7749b6a"
+    }
+  ],
+  "android_signing": {
+    "certificate_sha256": "0A0602A7DF5D96A0B427909D004F3DDF26DEF86587634BF16694DA8D654B2500",
+    "production_certificate_continuity": "MATCH",
+    "private_key_retained_in_evidence": false
+  },
+  "ldplayer_scope": {
+    "device_class": "OWNED_ANDROID_9_X86_64_EMULATOR",
+    "origin": "CURRENT_ORIGIN_EMULATOR_REHEARSAL",
+    "raw_device_or_account_identifiers_retained": false,
+    "entitlement": {
+      "exact_local_install_confirmed": true,
+      "device_account_owner_matched": true,
+      "one_day_extension_applied": true,
+      "runtime_owner_entitlement_transferred": false
+    }
+  },
+  "results": [
+    {
+      "profile": "awg2_lab",
+      "android_vpn_transport": "CONNECTED",
+      "ui_protection_state": "CHECKING",
+      "safe_core_diagnostic_code": "handshake_retry",
+      "safe_core_diagnostic_occurrence": 4,
+      "ui_tunnel": "CONFIRMED_PLATFORM_BOUNDARY_ONLY",
+      "ui_routes": "CONFIRMED_PLATFORM_BOUNDARY_ONLY",
+      "ui_dns": "CONFIRMED_BY_CLIENT_DIAGNOSTIC",
+      "ui_authenticated_egress": "REQUIRES_ATTENTION",
+      "shell_ip_literal_reachability": "PASS",
+      "shell_dns_resolution_and_reachability": "FAIL",
+      "shell_https_egress": "FAIL",
+      "verdict": "FAIL_AWG_HANDSHAKE_RETRY_DNS_AND_HTTPS_EGRESS"
+    },
+    {
+      "profile": "awg31_lab",
+      "android_vpn_transport": "CONNECTED",
+      "ui_protection_state": "CHECKING",
+      "safe_core_diagnostic_code": "handshake_retry",
+      "safe_core_diagnostic_occurrence": 4,
+      "ui_tunnel": "CONFIRMED_PLATFORM_BOUNDARY_ONLY",
+      "ui_routes": "CONFIRMED_PLATFORM_BOUNDARY_ONLY",
+      "ui_dns": "CONFIRMED_BY_CLIENT_DIAGNOSTIC",
+      "ui_authenticated_egress": "REQUIRES_ATTENTION",
+      "shell_ip_literal_reachability": "PASS",
+      "shell_dns_resolution_and_reachability": "FAIL",
+      "shell_https_egress": "FAIL",
+      "verdict": "FAIL_AWG_HANDSHAKE_RETRY_DNS_AND_HTTPS_EGRESS"
+    }
+  ],
+  "external_evidence": [
+    {
+      "name": "ldplayer-awg2-bind-plan.json",
+      "sha256": "62dec87c6199e5d89d8814fa3d83581e5f3329e99fab253d565f89ecdc74f47a"
+    },
+    {
+      "name": "ldplayer-awg2-bind-apply.json",
+      "sha256": "e28373546e5fb4e1d7a548188639449f091e9dff94b0be1b08a2556e3ac2c988"
+    },
+    {
+      "name": "ldplayer-ui-diagnostics-awg2-refresh.xml",
+      "sha256": "a7f137eacebd81cf9dab8fad3aba5793a06190992c7afd03ff6b94e0e690bcec"
+    },
+    {
+      "name": "ldplayer-awg31-bind-apply.json",
+      "sha256": "f36165020147118174706d047172790e09508f77892b5c407ddc6526a43ec339"
+    },
+    {
+      "name": "ldplayer-ui-diagnostics-awg31.xml",
+      "sha256": "4175a0f47b031ff609b6c5704342ad02ad9de9f4cc162236cc493034e1b3fa9e"
+    },
+    {
+      "name": "ldplayer-default-cleanup-apply.json",
+      "sha256": "6f08953b8d50127043307d219ba685643061222d28fabbe72247d4769d37e2ed"
+    }
+  ],
+  "verification": {
+    "core_full_test_script": "PASS",
+    "client_full_test_script": "PASS",
+    "client_release_source_logging_gate": "PASS",
+    "platform_operator_tests": "48_PASS_6_SUBTESTS",
+    "platform_link_check": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "cleanup": {
+    "app_vpn_stopped": true,
+    "profile": "default",
+    "resolved_profile": "legacy_reality_fallback",
+    "lab_membership_present": false,
+    "verdict": "PASS"
+  },
+  "limitations": {
+    "physical_phone_state": "ABSENT_FROM_ADB",
+    "physical_mobile_origin_retest": "NOT_RUN",
+    "emulator_result_is_release_candidate_proof": false,
+    "root_cause_identified": false,
+    "current_narrowing": "NO_ACCEPTED_HANDSHAKE_BEFORE_BOUNDED_RETRY_LIMIT"
+  },
+  "release_interpretation": {
+    "new_candidate_created": false,
+    "stable_release_allowed": false,
+    "next_action": "TRACE_CLIENT_AND_SERVER_PARAMETER_PARITY_WITHOUT_CUSTOM_CRYPTOGRAPHY_THEN_RETEST_PHYSICAL_ANDROID"
+  }
+}

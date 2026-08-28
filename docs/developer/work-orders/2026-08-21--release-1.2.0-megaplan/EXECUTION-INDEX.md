@@ -3846,3 +3846,31 @@ the verified binder and stale-location fixes, and repeat Android AWG2/AWG3.1
 proof before Windows parity and a new digest-bound Gate F run. The physical
 device was restored to `default`, with lab material and membership removed,
 the app VPN stopped and Wi-Fi restored.
+
+## 2026-08-28 — WO-013AY bounded replacement AWG diagnostics
+
+Replacement Core `b057ff3...` now forwards only canonical, allowlisted and
+occurrence-capped AWG diagnostic categories through the existing callback;
+production never forwards upstream format strings or arguments. Replacement
+client `7a633a8...` accepts only that grammar, keeps code/count in the in-memory
+runtime snapshot, writes no Android Logcat and exposes the result only on the
+dedicated diagnostics screen. Platform operator `b0affe4` additionally permits
+one explicit test day only for an exact root-verified owned emulator install;
+it rejects owner mismatch and never transfers the runtime admin entitlement.
+
+A production-signed x86_64 diagnostic build 4046 exercised both default-off
+owned profiles on LDPlayer. AWG2 and AWG 3.1 each created the Android VPN
+transport but stayed `Проверяем…` and emitted `handshake_retry #4`. Literal-IP
+ICMP remained reachable, while separate DNS-name and HTTPS egress checks failed
+for both profiles. The safe conclusion is
+`FAIL_AWG_HANDSHAKE_RETRY_DNS_AND_HTTPS_EGRESS`; Android TUN creation is not an
+authenticated tunnel PASS. Cleanup stopped the VPN, restored `default`, read
+back `legacy_reality_fallback` and removed lab membership. The physical phone
+was absent from ADB, so physical/mobile-origin proof is `NOT_RUN`.
+
+Core and client full gates pass; the platform operator/docs slice passes `48`
+tests plus `6` subtests, link check and diff check. Normalized evidence SHA-256
+is `ef2dce80c330f699effee11cc0dc99b3dcd98620a6e9000a6611ffca6b4e56c2`.
+Candidate.5 and WO-013AV remain immutable. No ledger row advances, no new
+candidate exists, and the next required step is parameter-level client/server
+interop correction followed by LDPlayer and physical Android retest.
