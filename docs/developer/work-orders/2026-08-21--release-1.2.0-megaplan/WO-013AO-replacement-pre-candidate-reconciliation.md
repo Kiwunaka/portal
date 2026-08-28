@@ -226,6 +226,16 @@ unit `portal-api`, postdeploy full-source readback and automatic baseline
 restore/readback. PLAN report SHA-256 is `73dcc150...b835f` and records
 `runtime_mutated=false`; apply was neither authorized nor run.
 
+Aggregate merge head `9bbb7c9...` combines those AWG operations with later
+OBS-087, HY2 and Smart-DNS work without widening the deploy window. The
+deployer now digest-pins the exact 193-path mapping owned by both frozen
+revisions; four aggregate-only runtime entries absent from both are ignored,
+while one-sided shape or remote-target drift fails closed. The combined
+contract suite passes `166` tests plus `6` subtests; release/docs/manifest
+checks pass `76` tests plus `21` subtests. A post-commit read-only Brain PLAN
+again returns `193/193`, `runtime_mutated=false`; report SHA-256 is
+`ff48d40f...34e4b6`. No deploy, restart or policy mutation occurred.
+
 Fresh source/host checks bind platform `50c9d12...`, client `75e82b0...` and
 Core `e8eb772...`: AWG2/AWG3.1 contract sync passes, ten focused Flutter tests,
 thirteen Android direct-release JVM tests and thirty-one Core AWG tests pass.
