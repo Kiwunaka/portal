@@ -188,6 +188,28 @@ class OwnedAwgDeviceEvidenceContractTests(unittest.TestCase):
         self.assertEqual(temporary_files, [])
         self.assertEqual(stream.getvalue().strip(), retained.strip())
 
+    def test_bind_precondition_failures_are_structured_and_secret_free(self) -> None:
+        helper = self.bind_module._REMOTE_HELPER
+
+        self.assertIn("def blocked(reason, **safe_fields):", helper)
+        self.assertIn('"raw_identifiers_returned": False', helper)
+        self.assertIn('"device_candidate_unavailable"', helper)
+        self.assertIn('"entitled_user_resolution"', helper)
+        self.assertIn("_load_account_component_users", helper)
+        self.assertIn("account_component_user_count", helper)
+        self.assertIn("runtime_owner_entitled_user_count", helper)
+        self.assertIn('"runtime_admin_owner_fallback"', helper)
+        self.assertIn("len(candidates) == 1", helper)
+        self.assertIn("len(global_install_users) == 1", helper)
+        self.assertIn('"target_install_confirmation_failed"', helper)
+        self.assertIn("hmac.compare_digest", helper)
+        self.assertIn("cleanup_tg_ids = {tg_id, int(target_user.tg_id)}", helper)
+        self.assertIn("device_account_matches_global_install_user", helper)
+        self.assertIn('"global_install_user_resolution_ambiguous"', helper)
+        self.assertIn('"account_user_resolution_ambiguous"', helper)
+        self.assertIn('"device_target_identity_incomplete"', helper)
+        self.assertIn('"owned_awg_source_material_unavailable"', helper)
+
     def test_selection_result_is_atomically_retained_without_raw_install_id(self) -> None:
         result = {
             "schema_version": "pokrov-owned-awg-lab-selection-v1",

@@ -32,12 +32,22 @@ candidate_rank = int(payload["candidate_rank"])
 selected_profile = str(payload["profile"]).strip()
 carrier_context = str(payload.get("carrier_context") or "none").strip().lower()
 apply_changes = bool(payload.get("apply"))
+confirm_target_install_sha256 = str(
+    payload.get("confirm_target_install_sha256") or ""
+).strip().lower()
 if (
     not label_fragment
     or candidate_rank < 1
     or candidate_rank > 4
     or selected_profile not in {"default", "awg2_lab", "awg31_lab"}
     or carrier_context not in {"none", "beeline"}
+    or (
+        apply_changes
+        and (
+            len(confirm_target_install_sha256) != 64
+            or any(value not in "0123456789abcdef" for value in confirm_target_install_sha256)
+        )
+    )
 ):
     raise SystemExit("device selector invalid")
 
@@ -62,12 +72,38 @@ os.chdir("/root/portal_bot")
 sys.path.insert(0, "/root/portal_bot")
 from awg2_lab_service import _decrypt_endpoint as decrypt_awg2
 from awg31_lab_service import _decrypt_endpoint as decrypt_awg31
+from account_foundation_service import _load_account_component_users
 from db import SessionLocal
 from models import AccountDevice, Awg2LabMaterial, Awg31LabMaterial, Event, User
 from network_rollout import resolved_client_policy
 
+def blocked(reason, **safe_fields):
+    print(
+        json.dumps(
+            {
+                "ok": False,
+                "blocker": str(reason),
+                **safe_fields,
+                "raw_identifiers_returned": False,
+            },
+            sort_keys=True,
+        )
+    )
+    raise SystemExit(0)
+
 now = datetime.now(timezone.utc).replace(tzinfo=None)
 with SessionLocal() as session:
+    runtime_owner_users = (
+        session.query(User)
+        .filter(User.tg_id == int(admin_id))
+        .order_by(User.tg_id.asc())
+        .all()
+    )
+    runtime_owner_entitled_users = [
+        row
+        for row in runtime_owner_users
+        if bool(row.is_active) and row.expiry_at is not None and row.expiry_at > now
+    ]
     candidates = (
         session.query(AccountDevice)
         .filter(AccountDevice.label.ilike(f"%{label_fragment}%"))
@@ -77,8 +113,36 @@ with SessionLocal() as session:
         .all()
     )
     if len(candidates) < candidate_rank:
-        raise SystemExit("device candidate unavailable")
+        blocked(
+            "device_candidate_unavailable",
+            candidate_rank=candidate_rank,
+            matched_device_count=len(candidates),
+        )
     device = candidates[candidate_rank - 1]
+    install_id = str(device.install_id or "").strip()
+    target_install_sha256 = (
+        hashlib.sha256(install_id.encode()).hexdigest() if install_id else ""
+    )
+    if apply_changes and not hmac.compare_digest(
+        confirm_target_install_sha256,
+        target_install_sha256,
+    ):
+        blocked(
+            "target_install_confirmation_failed",
+            candidate_rank=candidate_rank,
+            matched_device_count=len(candidates),
+            target_install_sha256=target_install_sha256 or None,
+            target_install_confirmation_match=False,
+        )
+    global_install_users = (
+        session.query(User)
+        .filter(User.app_install_id == install_id)
+        .filter(User.tg_id > 0)
+        .order_by(User.tg_id.asc())
+        .all()
+        if install_id
+        else []
+    )
     target_users = (
         session.query(User)
         .filter(User.account_id == device.account_id)
@@ -86,26 +150,109 @@ with SessionLocal() as session:
         .order_by(User.tg_id.asc())
         .all()
     )
+    if len(global_install_users) > 1:
+        blocked(
+            "global_install_user_resolution_ambiguous",
+            candidate_rank=candidate_rank,
+            matched_device_count=len(candidates),
+            target_install_sha256=hashlib.sha256(install_id.encode()).hexdigest(),
+            account_user_count=len(target_users),
+            global_install_user_count=len(global_install_users),
+        )
+    if global_install_users:
+        target_user = global_install_users[0]
+        target_user_resolution = "exact_install_global"
+    elif len(target_users) == 1:
+        target_user = target_users[0]
+        target_user_resolution = "account_single_user"
+    else:
+        blocked(
+            "account_user_resolution_ambiguous",
+            candidate_rank=candidate_rank,
+            matched_device_count=len(candidates),
+            target_install_sha256=(
+                hashlib.sha256(install_id.encode()).hexdigest()
+                if install_id
+                else None
+            ),
+            account_user_count=len(target_users),
+            global_install_user_count=len(global_install_users),
+        )
+    account_component_users = _load_account_component_users(
+        session,
+        [int(target_user.tg_id)],
+    )
     entitled = [
         row
-        for row in target_users
+        for row in account_component_users
         if bool(row.is_active) and row.expiry_at is not None and row.expiry_at > now
     ]
-    if len(entitled) != 1:
-        raise SystemExit("device account does not resolve to one entitled user")
-    install_id = str(device.install_id or "").strip()
-    exact_install_users = [
-        row
-        for row in target_users
-        if str(row.app_install_id or "").strip() == install_id
-    ]
-    if len(exact_install_users) > 1 or not target_users:
-        raise SystemExit("device account user resolution is ambiguous")
-    target_user = exact_install_users[0] if exact_install_users else target_users[0]
-    entitled_user = entitled[0]
-    tg_id = int(target_user.tg_id)
+    if len(entitled) > 1:
+        blocked(
+            "entitled_user_resolution_ambiguous",
+            candidate_rank=candidate_rank,
+            matched_device_count=len(candidates),
+            target_install_sha256=(
+                hashlib.sha256(install_id.encode()).hexdigest()
+                if install_id
+                else None
+            ),
+            account_user_count=len(target_users),
+            account_component_user_count=len(account_component_users),
+            entitled_user_count=len(entitled),
+            runtime_owner_user_count=len(runtime_owner_users),
+            runtime_owner_entitled_user_count=len(runtime_owner_entitled_users),
+            global_install_user_count=len(global_install_users),
+            device_account_matches_global_install_user=(
+                len(global_install_users) == 1
+                and str(global_install_users[0].account_id or "")
+                == str(device.account_id or "")
+            ),
+            device_app_version=str(device.app_version or "").strip() or None,
+        )
+    if len(entitled) == 1:
+        entitled_user = entitled[0]
+        entitlement_resolution = "device_account_component"
+    elif (
+        len(candidates) == 1
+        and len(global_install_users) == 1
+        and len(runtime_owner_users) == 1
+        and len(runtime_owner_entitled_users) == 1
+    ):
+        entitled_user = runtime_owner_entitled_users[0]
+        entitlement_resolution = "runtime_admin_owner_fallback"
+    else:
+        blocked(
+            "entitled_user_resolution",
+            candidate_rank=candidate_rank,
+            matched_device_count=len(candidates),
+            target_install_sha256=(
+                hashlib.sha256(install_id.encode()).hexdigest()
+                if install_id
+                else None
+            ),
+            account_user_count=len(target_users),
+            account_component_user_count=len(account_component_users),
+            entitled_user_count=len(entitled),
+            runtime_owner_user_count=len(runtime_owner_users),
+            runtime_owner_entitled_user_count=len(runtime_owner_entitled_users),
+            global_install_user_count=len(global_install_users),
+            device_account_matches_global_install_user=(
+                len(global_install_users) == 1
+                and str(global_install_users[0].account_id or "")
+                == str(device.account_id or "")
+            ),
+            device_app_version=str(device.app_version or "").strip() or None,
+        )
+    tg_id = int(entitled_user.tg_id)
     if not install_id or tg_id <= 0:
-        raise SystemExit("device target identity incomplete")
+        blocked(
+            "device_target_identity_incomplete",
+            candidate_rank=candidate_rank,
+            matched_device_count=len(candidates),
+            install_identity_present=bool(install_id),
+            positive_user_identity_present=tg_id > 0,
+        )
 
     awg2_row = (
         session.query(Awg2LabMaterial)
@@ -123,7 +270,15 @@ with SessionLocal() as session:
     )
     source_material_available = awg2_row is not None and awg31_row is not None
     if selected_profile != "default" and not source_material_available:
-        raise SystemExit("owned AWG source material unavailable")
+        blocked(
+            "owned_awg_source_material_unavailable",
+            candidate_rank=candidate_rank,
+            matched_device_count=len(candidates),
+            target_install_sha256=hashlib.sha256(install_id.encode()).hexdigest(),
+            target_tg_id_sha256=hashlib.sha256(str(tg_id).encode()).hexdigest(),
+            awg2_source_material_available=awg2_row is not None,
+            awg31_source_material_available=awg31_row is not None,
+        )
 
     recent_events = (
         session.query(Event)
@@ -150,10 +305,17 @@ with SessionLocal() as session:
         "candidate_rank": candidate_rank,
         "matched_device_count": len(candidates),
         "target_install_sha256": hashlib.sha256(install_id.encode()).hexdigest(),
+        "target_install_confirmation_match": (
+            hmac.compare_digest(confirm_target_install_sha256, target_install_sha256)
+            if apply_changes
+            else None
+        ),
         "target_tg_id_sha256": hashlib.sha256(str(tg_id).encode()).hexdigest(),
         "account_user_count": len(target_users),
-        "exact_legacy_install_user_count": len(exact_install_users),
-        "target_user_resolution": "exact_install" if exact_install_users else "account_first_tg",
+        "account_component_user_count": len(account_component_users),
+        "exact_legacy_install_user_count": len(global_install_users),
+        "target_user_resolution": target_user_resolution,
+        "entitlement_resolution": entitlement_resolution,
         "target_user_is_entitled": target_user is entitled_user,
         "target_user_platform": str(target_user.app_platform or "").strip().lower() or None,
         "device_app_version": str(device.app_version or "").strip() or None,
@@ -313,17 +475,20 @@ expires_at = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat().repl
 )
 cohorts = dict(current.get("cohort_overrides") or {})
 if selected_profile == "default":
+    cleanup_tg_ids = {tg_id, int(target_user.tg_id)}
     cohort = dict(cohorts.get("candidate4-awg-lab") or {})
     cohort["install_ids"] = [
         value for value in list(cohort.get("install_ids") or []) if value != install_id
     ]
     cohort["tg_ids"] = [
-        value for value in list(cohort.get("tg_ids") or []) if int(value) != tg_id
+        value
+        for value in list(cohort.get("tg_ids") or [])
+        if int(value) not in cleanup_tg_ids
     ]
     cohort["linked_tg_ids"] = [
         value
         for value in list(cohort.get("linked_tg_ids") or [])
-        if int(value) not in {tg_id, int(entitled_user.tg_id)}
+        if int(value) not in cleanup_tg_ids
     ]
     if not any(
         list(cohort.get(field) or [])
@@ -337,7 +502,7 @@ else:
         "transport_profile": selected_profile,
         "install_ids": [install_id],
         "tg_ids": [tg_id],
-        "linked_tg_ids": [] if target_user is entitled_user else [int(entitled_user.tg_id)],
+        "linked_tg_ids": [],
         "platforms": [],
     }
 current["cohort_overrides"] = cohorts
@@ -352,7 +517,7 @@ for name in ("awg2_lab", "awg31_lab"):
         lab["allowlist_tg_ids"] = [
             value
             for value in list(lab.get("allowlist_tg_ids") or [])
-            if int(value) != tg_id
+            if int(value) not in cleanup_tg_ids
         ]
     else:
         lab.update(
@@ -462,6 +627,7 @@ def _parse_args() -> argparse.Namespace:
         help="Policy carrier context used for exact post-apply readback.",
     )
     parser.add_argument("--confirm-device-label-sha256", default="")
+    parser.add_argument("--confirm-target-install-sha256", default="")
     parser.add_argument("--json-out", default="")
     parser.add_argument("--apply", action="store_true")
     return parser.parse_args()
@@ -490,6 +656,12 @@ def main() -> int:
         raise SystemExit("device selector invalid")
     if str(args.confirm_device_label_sha256).strip().lower() != label_sha256:
         raise SystemExit("device label confirmation failed")
+    target_confirmation = str(args.confirm_target_install_sha256).strip().lower()
+    if args.apply and (
+        len(target_confirmation) != 64
+        or any(value not in "0123456789abcdef" for value in target_confirmation)
+    ):
+        raise SystemExit("target install confirmation is required for apply")
     known_hosts = Path(args.known_hosts).resolve()
     passwords = Path(args.passwords).resolve()
     if not known_hosts.is_file() or not passwords.is_file():
@@ -519,6 +691,7 @@ def main() -> int:
                     "candidate_rank": int(args.candidate_rank),
                     "profile": str(args.profile),
                     "carrier_context": str(args.carrier_context),
+                    "confirm_target_install_sha256": target_confirmation,
                     "apply": bool(args.apply),
                 },
                 separators=(",", ":"),
@@ -531,11 +704,11 @@ def main() -> int:
         if code != 0:
             raise SystemExit((error or "owned AWG device bind failed")[:300])
         result = json.loads(output)
-        if result.get("ok") is not True or result.get("raw_identifiers_returned") is not False:
+        if result.get("raw_identifiers_returned") is not False:
             raise SystemExit("owned AWG device bind readback failed")
         report.update(result)
         _emit_result(report, args.json_out)
-        return 0
+        return 0 if report.get("ok") is True else 1
     finally:
         brain.close()
 
