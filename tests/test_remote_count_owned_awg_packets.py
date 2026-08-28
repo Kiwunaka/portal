@@ -9,7 +9,7 @@ import pytest
 SCRIPTS = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS))
 
-from remote_count_owned_awg_packets import _outer_size_classifier  # noqa: E402
+from remote_count_owned_awg_packets import _emit_result, _outer_size_classifier  # noqa: E402
 
 
 def test_awg2_keeps_fixed_size_classification() -> None:
@@ -34,3 +34,21 @@ def test_randomized_awg31_uses_direction_counts_without_false_fixed_sizes() -> N
 def test_unknown_profile_fails_closed() -> None:
     with pytest.raises(ValueError, match="unknown owned AWG profile"):
         _outer_size_classifier("unknown")
+
+
+def test_secret_free_packet_result_can_be_retained_without_shell_redirect(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    output = tmp_path / "nested" / "packet-count.json"
+    result = {
+        "schema_version": "pokrov-owned-awg-packet-count-v1",
+        "profile": "awg2_lab",
+        "raw_addresses_returned": False,
+    }
+
+    _emit_result(result, str(output))
+
+    assert output.read_text(encoding="utf-8").endswith("\n")
+    assert '"raw_addresses_returned": false' in output.read_text(encoding="utf-8")
+    assert capsys.readouterr().out.strip() == output.read_text(encoding="utf-8").strip()

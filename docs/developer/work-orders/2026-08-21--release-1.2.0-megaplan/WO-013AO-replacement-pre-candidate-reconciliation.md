@@ -212,6 +212,31 @@ tests pass `57` tests plus `25` subtests. The authorized plan restarts only
 health, automatic rollback on deploy failure and a postdeploy `193/193` source
 readback before any AWG device binding. No deploy or runtime mutation occurred.
 
+A fresh read-only recheck keeps exact AWG branch head `83502f1...` at
+`192/193`, with only `portal_bot/api_client_routes.py` different and report
+SHA-256 `fb396cd9...ceb5`. Current aggregate head `50c9d12...` is explicitly
+rejected for this deploy window: it is only `179/197` and carries 18 later
+HY2/observability/Smart-DNS runtime deltas. Its report SHA-256 is
+`b92f345c...f897`; both reports retain `runtime_mutated=false`.
+
+The dedicated guarded deploy entrypoint then passed a fresh read-only PLAN
+against Brain at `193/193`. It pins live source `e5ef03ac...`, reviewed AWG
+source `83502f1...`, the sole target `portal_bot/api_client_routes.py`, restart
+unit `portal-api`, postdeploy full-source readback and automatic baseline
+restore/readback. PLAN report SHA-256 is `73dcc150...b835f` and records
+`runtime_mutated=false`; apply was neither authorized nor run.
+
+Fresh source/host checks bind platform `50c9d12...`, client `75e82b0...` and
+Core `e8eb772...`: AWG2/AWG3.1 contract sync passes, ten focused Flutter tests,
+thirteen Android direct-release JVM tests and thirty-one Core AWG tests pass.
+The separate live Core interop from the current Windows origin fails after the
+outer write for both profiles. For AWG2, a concurrent address-free server
+capture counts `34` inbound and `8` outbound packets, including `8` initiation
+and `8` response-sized packets, with no handshake. That exact slice is
+`BLOCKED_BY_NETWORK_CURRENT_WINDOWS_ORIGIN_REVERSE_UDP`; AWG3.1 remains the
+narrower `FAIL_NO_OUTER_RESPONSE_CURRENT_WINDOWS_ORIGIN` because its packet
+capture was not repeated. No server setting, rollout or device binding changed.
+
 ## Hosted PR evidence
 
 Exact jobs observed for platform PR `#58` at `34d1551f...` and client PR `#33`

@@ -124,6 +124,7 @@ Rules:
 ### Backend code deploy
 
 - [remote_deploy_brain_portal_code.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_portal_code.py)
+- [remote_deploy_brain_awg_route_fix.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_awg_route_fix.py)
 - [remote_brain_runtime_source_probe.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_brain_runtime_source_probe.py)
 
 Before restarting an apparently stale Brain runtime, compare the exact signed
@@ -141,6 +142,28 @@ from the sole accepted transport normalization, `CRLF_TO_LF_ONLY`; any other
 difference, missing file or unreadable file fails closed. This establishes
 Brain runtime source identity only. It does not prove current-origin,
 RU-origin, authenticated client egress, a stable pointer or public promotion.
+
+For the bounded owned-AWG activation repair, use the dedicated one-file entrypoint
+instead of the bulk backend deployer:
+
+```powershell
+python scripts/remote_deploy_brain_awg_route_fix.py --json-out <plan-artifact>
+```
+
+Its default mode is read-only `PLAN`. It pins the current Brain baseline to
+`e5ef03ac7ab013d8810cc9c6ea9ccc40cebd11db`, the reviewed AWG source to
+`83502f1cb9a54ce7ae088a36ed2f9e696c90d841`, requires the full tracked runtime
+to match `193/193`, and proves that the only semantic delta is
+`portal_bot/api_client_routes.py`. It never reads deployment bytes from the
+working tree. The exact 193-path live/candidate mapping is digest-pinned;
+runtime entries added only by later aggregate work are excluded from this
+frozen change window, while a path present in only one reviewed revision or a
+mapping-target drift fails closed. An authorized apply additionally requires
+`--apply --confirm AWG_ONE_FILE_83502F1_PORTAL_API`; it stages and backs up only
+that file, restarts only `portal-api`, requires delayed health plus exact
+candidate `193/193` readback, and automatically restores the baseline file and
+rechecks the old `193/193` payload on failure. The confirmation argument is an
+execution guard, not deploy authorization by itself.
 
 Typical use:
 
@@ -1043,10 +1066,11 @@ Transport policy rule:
 - Every active delivery node currently has TCP/443 ownership, so Smart DNS must not be overlaid onto those frontends. A separate owned public IPv4 and explicit owner authorization are prerequisites before running APPLY. Source, bundle, package/device-state or future DNS-answer evidence is not by itself a live service-access, leak, gameplay, RU-origin or release proof.
 - Only authenticated `GET /api/client/profile/managed` may return decrypted typed owner-lab endpoints. Token subscriptions, previews, Happ/Clash/manual exports, location choices and public UI force `legacy_reality_fallback` and never contain owned lab material.
 - Owned AWG node activation is incomplete until UFW admits both declared UDP listeners. The guarded live ports are `4500/udp` for AWG2 and `3478/udp` for AWG3.1. Run `scripts/remote_ensure_owned_awg_firewall.py` without `--apply` first, then use `--apply --confirm-node de`; it fails if UFW is inactive. `scripts/remote_rebind_owned_awg_lab_ports.py` owns the guarded old-to-new listener/material migration. Socket/service readback alone is not ingress proof.
-- Use `scripts/remote_audit_owned_awg_alignment.py` for v2 key, peer, address, S/H, header-protection, content-padding and randomized-trailer alignment; `scripts/remote_probe_owned_awg_udp_path.py` for fixed-size non-secret one-way probes; `scripts/remote_count_owned_awg_packets.py` for address-free direction and tunnel counts; and `scripts/remote_run_owned_awg_core_interop.py` for exact-Core handshakes. AWG3.1 randomized trailers make fixed-size handshake classification inapplicable, so direction counts and live handshake state are authoritative for that variant.
+- Use `scripts/remote_audit_owned_awg_alignment.py` for v2 key, peer, address, S/H, header-protection, content-padding and randomized-trailer alignment; `scripts/remote_probe_owned_awg_udp_path.py` for fixed-size non-secret one-way probes; `scripts/remote_count_owned_awg_packets.py` for address-free direction and tunnel counts; and `scripts/remote_run_owned_awg_core_interop.py` for exact-Core handshakes. The counter and Core interop entrypoints accept optional `--json-out` paths so secret-free local evidence can be retained without shell redirection. AWG3.1 randomized trailers make fixed-size handshake classification inapplicable, so direction counts and live handshake state are authoritative for that variant.
 - `scripts/remote_set_owned_awg31_variant.py` applies only the reviewed `randomized_trailers_v1` server drop-in and matching encrypted material after backup and exact readback. It does not promote AWG3.1 outside the owner-only lab.
 - `scripts/remote_probe_owned_awg_udp_roundtrip.py --apply` temporarily stops exactly one confirmed lab service, runs a bounded plain-UDP echo on its owned port and restores/readbacks the service in `finally`. A roundtrip is `PASS` only when the server received every probe, the phone received a valid echo and the service was restored. Server receive plus missing phone echo is a network-path failure, never `ok=true`.
-- `scripts/remote_bind_owned_awg_lab_device.py` requires a confirmed device-label digest and ranks matching active devices by freshness. Run PLAN immediately before APPLY and compare only its sanitized `last_seen_age_seconds` plus OS/locale/time-zone digests; raw device identifiers are never returned. Set `--carrier-context none` for Wi-Fi/emulator policy readback or `beeline` for that cellular context. A successful binder readback proves control-plane selection, not client profile fetch, Core activation or tunnel traffic.
+- `scripts/remote_select_owned_awg_lab.py` selects or removes the exact rooted Android test install from the owner-only cohort after install-identity digest confirmation. PLAN is non-mutating; APPLY must be followed by the matching `default` cleanup. `--json-out` atomically retains the sanitized selection/readback and never writes the raw install ID.
+- `scripts/remote_bind_owned_awg_lab_device.py` requires a confirmed device-label digest and normally ranks matching active devices by freshness. Run PLAN immediately before APPLY and compare only its sanitized `last_seen_age_seconds` plus OS/locale/time-zone digests; raw device identifiers are never returned. For a root-capable emulator, pass `--adb` and `--adb-serial` together with the locally computed `--confirm-target-install-sha256`: the binder reads the exact app-first install identity locally, verifies its digest, sends the raw value only through SSH stdin and selects that install even when Brain has no fresh `AccountDevice` card. Any supplied target-install confirmation is checked during PLAN; APPLY always requires it and Brain checks it before decrypting material or mutating state. Precondition failures return a nonzero status plus a structured blocker containing only counts, booleans and permitted digests. A stale legacy install-user may resolve to the runtime owner only when the selector is exact-local or exactly one device matches the confirmed label, the install-user is globally unique, `ADMIN_ID` resolves to exactly one active entitled user and the direct account component has zero entitled users; every ambiguous case fails closed. Cleanup removes both the delivery-owner and stale legacy target identities. Set `--carrier-context none` for Wi-Fi/emulator policy readback or `beeline` for that cellular context. `--json-out` atomically retains the sanitized PLAN/APPLY readback without shell redirection. A successful binder readback proves control-plane selection, not client profile fetch, Core activation or tunnel traffic.
 - On `2026-08-28`, live alignment v2 passed for AWG2 and randomized-trailer AWG3.1. Physical build `1.2.0+4044` reached both listeners from Beeline, but each guarded UDP roundtrip had server receive/echo `3/3` and phone receive `0/3`. Record this as `BLOCKED_BY_NETWORK_CURRENT_ORIGIN`: reverse UDP is dropped on that path. A later no-carrier readback selected AWG2 for the exact physical and LDPlayer devices, but build 4044 on Wi-Fi and build 4043 on LDPlayer emitted no AWG traffic; the emulator also rejected the selected Frankfurt location. Record this second boundary as `FAIL_WORKING_CLIENT_ACTIVATION`, before cryptography. Direct cellular DoH separately returned valid responses for all three bounded AI/Games queries, while normal WARP plus IP and DNS egress passed after exact lab unbind. The retained [physical pre-candidate evidence](../audit-artifacts/2026-08-28-owned-awg-dns-physical-pre-candidate.md) does not create a release candidate or clear the final Android matrix.
 - app-managed session and profile delivery should use the rollout-selected transport profile, while manual/export compatibility links stay on `legacy_reality_fallback` until the share-link parity wave lands
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint; `subscription_url` stays manual/import fallback only

@@ -77,6 +77,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--brain-ip", default="82.21.114.104")
     parser.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
     parser.add_argument("--known-hosts", required=True)
+    parser.add_argument("--json-out", default="")
     return parser.parse_args()
 
 
@@ -114,6 +115,16 @@ def _classify(output: str, returncode: int) -> str:
         if marker in output:
             return category
     return "failed_other"
+
+
+def _emit_result(result: dict[str, Any], raw_output_path: str) -> None:
+    encoded = json.dumps(result, sort_keys=True)
+    output_path = str(raw_output_path or "").strip()
+    if output_path:
+        target = Path(output_path).resolve()
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(encoded + "\n", encoding="utf-8")
+    print(encoded)
 
 
 def main() -> int:
@@ -169,18 +180,16 @@ def main() -> int:
         for index in range(len(material)):
             material[index] = 0
 
-    print(
-        json.dumps(
-            {
-                "schema_version": "pokrov-owned-awg-core-interop-v1",
-                "profile": str(args.profile),
-                "outcome": outcome,
-                "passed": completed.returncode == 0,
-                "material_sha256": material_sha256,
-                "raw_material_returned": False,
-            },
-            sort_keys=True,
-        )
+    _emit_result(
+        {
+            "schema_version": "pokrov-owned-awg-core-interop-v1",
+            "profile": str(args.profile),
+            "outcome": outcome,
+            "passed": completed.returncode == 0,
+            "material_sha256": material_sha256,
+            "raw_material_returned": False,
+        },
+        args.json_out,
     )
     return 0 if completed.returncode == 0 else 1
 
