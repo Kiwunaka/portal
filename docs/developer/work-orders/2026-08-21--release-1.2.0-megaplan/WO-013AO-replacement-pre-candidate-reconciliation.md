@@ -379,6 +379,41 @@ It records `candidate_created=false`, `candidate_proven=false` and
 `promotion_authorized=false`. This checkpoint authorizes no deploy, server
 policy mutation, release creation, publication or promotion.
 
+### Post-packet LDPlayer DNS and deploy-plan follow-up
+
+The exact staged x86_64 build `4046` exposed all seven current catalog
+locations on LDPlayer: Frankfurt, Amsterdam, Warsaw, Milan, Moscow,
+Saint Petersburg and New York. This is catalog/UI readback only; the displayed
+availability and synthetic host latency do not prove a successful tunnel or
+the mobile-origin reachability of any location.
+
+The external Smart DNS state machine was then exercised with the public
+token-free `https://cloudflare-dns.com/dns-query` endpoint. The external lab
+toggle stayed disabled while direct DoH was off, became available only after
+direct DoH was enabled, showed the required compatible-server/public-IP
+warning when enabled, and preserved the valid state across a force-stop/cold
+launch. One bounded Frankfurt connect then ended with the canonical
+`core_egress_probe_failed`; POKROV removed its system VPN fail-closed and left
+no app service, VPN transport or TUN link. Site-address, VPN-egress and route
+checks remained unrun because connection proof never passed. This is
+`PASS_4046_LDPLAYER_SMART_DNS_STATE_AND_CLEANUP` plus
+`FAIL_4046_LDPLAYER_SELECTED_OUTBOUND_EGRESS`, not DNS service-access or AWG
+evidence. The original `Автоматически` DNS state was restored, both lab
+toggles were disabled, and the clean state persisted across another cold
+launch.
+
+A fresh guarded Brain `PLAN` against the owned managed-profile route reports
+`193/193` predeploy baseline matches, zero mismatches and the sole target
+`portal_bot/api_client_routes.py`; only `portal-api` would restart. The plan
+retains `runtime_mutated=false`, uses key authentication and did not stage,
+upload, restart or alter policy. Its 932-byte report
+`2026-08-28-brain-awg-route-plan-post4046.json` has SHA-256
+`05199f7ccb3814ac231880eaf06fe6acd8b378c47e4c3f8883126ea5c2653360`.
+AWG2/AWG3.1 device proof still requires separately authorized APPLY followed
+by managed-profile readback and a bounded handshake, egress, DNS/leak and
+cleanup matrix. The physical Huawei was still absent from both Windows USB
+PnP and ADB during this follow-up.
+
 ## Hosted PR evidence
 
 Exact jobs observed for platform PR `#58` at `34d1551f...` and client PR `#33`
