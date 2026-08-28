@@ -58,11 +58,11 @@ WINDOWS_CRONET_PATH = WINDOWS_RUNTIME_ROOT / "libcronet.dll"
 POKROV_CORE_REPOSITORY = "Kiwunaka/POKROV-core"
 POKROV_CORE_RELEASE_TAG = "v1.1.0"
 POKROV_CORE_RELEASE_URL = None
-POKROV_CORE_SOURCE_COMMIT = "344b317a7a09eca7943a93866b193553538bd8f6"
-ANDROID_CORE_SIZE = 107388169
-ANDROID_CORE_SHA256 = "da3ea37834b688abac5c276f4ca9c2cdcc8e32b97edf5062913fc4f3fea6aba9"
-WINDOWS_CORE_SIZE = 55401472
-WINDOWS_CORE_SHA256 = "60fe3fad7835ec4d00c1f7168bb0ba01dd6b7ca5d883583340e5e2a86b8b3981"
+POKROV_CORE_SOURCE_COMMIT = "e8eb7721fc6eaac6813d3a888ac90d0da1f541a1"
+ANDROID_CORE_SIZE = 107390782
+ANDROID_CORE_SHA256 = "7c392883ee8a09c15e414a0e9d70a4d4d3cb259032e51c5481cd14a571950745"
+WINDOWS_CORE_SIZE = 55403008
+WINDOWS_CORE_SHA256 = "73aacd2ccbb3414573284c0c2a253f29c6ed4a56ddf2ff8bb6cc9ae7ca371488"
 WINDOWS_CRONET_SIZE = 8596992
 WINDOWS_CRONET_SHA256 = "8ef1f8bbde77f954af1ae47bee1819ac8dc2354bb0e1d4baba3dad9e58d7a6f7"
 
@@ -175,14 +175,15 @@ def _runtime_artifact_failures(runtime_artifacts: dict[str, object]) -> list[str
     if (
         provenance.get("status") != "clean_reproducible_pre_candidate_local"
         or provenance.get("vcs_stamp") != "disabled_for_reproducible_release_artifacts"
-        or provenance.get("source_identity") != "clean_git_commit_without_release_tag_or_publication"
+        or provenance.get("source_identity") != "exact_single_source_commit_without_release_tag_or_publication"
         or provenance.get("release_url") != POKROV_CORE_RELEASE_URL
         or int(reproducible_android.get("size") or 0) != ANDROID_CORE_SIZE
         or reproducible_android.get("sha256") != ANDROID_CORE_SHA256
         or int(reproducible_windows.get("size") or 0) != WINDOWS_CORE_SIZE
         or reproducible_windows.get("sha256") != WINDOWS_CORE_SHA256
         or reproducible_build.get("libcronet_sha256") != WINDOWS_CRONET_SHA256
-        or provenance.get("promotion_rule") != "exact_bytes_require_candidate_signing_manual_gates_and_publication"
+        or provenance.get("promotion_rule")
+        != "exact_bytes_require_platform_source_convergence_candidate_signing_manual_gates_and_publication"
     ):
         failures.append("runtime artifacts must pin the clean reproducible POKROV Core release provenance")
 

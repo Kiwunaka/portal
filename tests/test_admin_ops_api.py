@@ -332,7 +332,7 @@ def _seed_ops_fixture(api, *, now: datetime) -> None:
             ProviderTrafficQuota(
                 node_code="de",
                 included_bytes=_gb(10.0),
-                reset_day=28,
+                reset_day=(now - timedelta(days=6)).day,
                 timezone="UTC",
                 warning_ratio=0.5,
                 critical_ratio=0.8,

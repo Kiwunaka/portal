@@ -151,7 +151,7 @@ class ClientSecuritySmokeTests(unittest.TestCase):
                 "artifact_provenance": {
                     "status": "clean_reproducible_pre_candidate_local",
                     "vcs_stamp": "disabled_for_reproducible_release_artifacts",
-                    "source_identity": "clean_git_commit_without_release_tag_or_publication",
+                    "source_identity": "exact_single_source_commit_without_release_tag_or_publication",
                     "release_url": self.module.POKROV_CORE_RELEASE_URL,
                     "reproducible_build": {
                         "android": {
@@ -164,7 +164,7 @@ class ClientSecuritySmokeTests(unittest.TestCase):
                         },
                         "libcronet_sha256": self.module.WINDOWS_CRONET_SHA256,
                     },
-                    "promotion_rule": "exact_bytes_require_candidate_signing_manual_gates_and_publication",
+                    "promotion_rule": "exact_bytes_require_platform_source_convergence_candidate_signing_manual_gates_and_publication",
                 },
                 "desktop_abi": {
                     "name": "pokrov-core",
