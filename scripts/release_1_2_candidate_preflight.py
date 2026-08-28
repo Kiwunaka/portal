@@ -382,11 +382,19 @@ def _core_artifact_binding(
         "assets.android",
     )
     require(
+        str(android.get("source_commit") or "").lower() == core_revision,
+        "assets.android.source_commit",
+    )
+    require(
         windows.get("entry") == "pokrov-core.dll"
         and windows.get("sync_destination")
         == "apps/windows_shell/windows/runner/resources/runtime"
         and windows.get("sync_policy") == "exact_pre_candidate_build",
         "assets.windows",
+    )
+    require(
+        str(windows.get("source_commit") or "").lower() == core_revision,
+        "assets.windows.source_commit",
     )
     require(
         windows.get("runtime_dependencies") == ["libcronet.dll"],
@@ -430,6 +438,14 @@ def _core_artifact_binding(
         android_evidence = {}
     if not isinstance(windows_evidence, dict):
         windows_evidence = {}
+
+    for value, field in (
+        (android_build.get("source_commit"), "reproducible_build.android.source_commit"),
+        (windows_build.get("source_commit"), "reproducible_build.windows.source_commit"),
+        (android_evidence.get("source_commit"), "artifact_evidence.android.source_commit"),
+        (windows_evidence.get("source_commit"), "artifact_evidence.windows.source_commit"),
+    ):
+        require(str(value or "").lower() == core_revision, field)
 
     require(
         android_evidence.get("result") == "PASS_BYTE_IDENTICAL_TWO_BUILDS",

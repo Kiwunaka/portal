@@ -489,19 +489,21 @@ def _bound_runtime_seed(client_root: Path, core_revision: str) -> dict[str, obje
             "candidate_created": False,
             "promotion_authorized": False,
             "reproducible_build": {
-                "android": android,
-                "windows": windows,
+                "android": {**android, "source_commit": core_revision},
+                "windows": {**windows, "source_commit": core_revision},
                 "libcronet_sha256": cronet["sha256"],
             },
             "artifact_evidence": {
                 "android": {
                     "result": "PASS_BYTE_IDENTICAL_TWO_BUILDS",
+                    "source_commit": core_revision,
                     "tree_sha256": proof_hash,
                     "evidence_sha256": proof_hash,
                     "abis": ["armeabi-v7a", "arm64-v8a", "x86", "x86_64"],
                 },
                 "windows": {
                     "result": "PASS_BYTE_IDENTICAL_TWO_BUILDS",
+                    "source_commit": core_revision,
                     "tree_sha256": proof_hash,
                     "evidence_sha256": proof_hash,
                     "required_exports": 15,
@@ -525,12 +527,14 @@ def _bound_runtime_seed(client_root: Path, core_revision: str) -> dict[str, obje
         "assets": {
             "android": {
                 "entry": "pokrov-core.aar",
+                "source_commit": core_revision,
                 **android,
                 "sync_destination": "apps/android_shell/android/app/libs",
                 "sync_policy": "exact_pre_candidate_build",
             },
             "windows": {
                 "entry": "pokrov-core.dll",
+                "source_commit": core_revision,
                 **windows,
                 "runtime_dependencies": ["libcronet.dll"],
                 "runtime_dependency_size": {"libcronet.dll": cronet["size"]},
@@ -570,6 +574,32 @@ def test_bound_core_artifacts_require_exact_local_bytes(tmp_path: Path) -> None:
     assert {blocker["id"] for blocker in blockers} == {
         "core_artifact_binding_bytes_invalid"
     }
+
+
+def test_bound_core_artifacts_reject_a_mixed_source_tuple(tmp_path: Path) -> None:
+    core_revision = "f" * 40
+    runtime_seed = _bound_runtime_seed(tmp_path, core_revision)
+    runtime_seed["assets"]["windows"]["source_commit"] = "e" * 40
+    runtime_seed["artifact_provenance"]["reproducible_build"]["windows"][
+        "source_commit"
+    ] = "e" * 40
+    runtime_seed["artifact_provenance"]["artifact_evidence"]["windows"][
+        "source_commit"
+    ] = "e" * 40
+
+    summary, blockers = MODULE._core_artifact_binding(
+        client_root=tmp_path,
+        runtime_seed=runtime_seed,
+        core_revision=core_revision,
+    )
+
+    assert summary["verified_exact_local_bytes"] is False
+    assert [blocker["id"] for blocker in blockers] == [
+        "core_artifact_binding_metadata_invalid"
+    ]
+    assert "assets.windows.source_commit" in blockers[0]["detail"]
+    assert "reproducible_build.windows.source_commit" in blockers[0]["detail"]
+    assert "artifact_evidence.windows.source_commit" in blockers[0]["detail"]
 
 
 def test_unbound_core_artifact_remains_pending(tmp_path: Path) -> None:
