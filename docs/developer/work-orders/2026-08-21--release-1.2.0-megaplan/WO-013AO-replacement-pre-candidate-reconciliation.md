@@ -421,6 +421,20 @@ This is the expected pre-APPLY boundary, not an AWG client failure: AWG2 and
 AWG3.1 are authenticated, device-bound managed profiles rather than raw
 consumer location variants.
 
+A bounded `OBS-079` airplane-mode attempt on the same LDPlayer installation
+could not reach the app action: LDPlayer kept its ADB transport enumerated but
+stopped returning every Android guest-shell command immediately after the
+mutation. The instance and ADB daemon were restarted, after which airplane
+mode was off, Wi-Fi and internet were restored, build `1.2.0+4046` remained
+installed and no POKROV service, VPN transport or TUN link existed. A cold
+launch then showed that the owned entitlement had expired, so no replacement
+connect attempt was made. The 1,861-byte sanitized report
+`2026-08-28-ldplayer-network-mutation-blocker.json` has SHA-256
+`6676ac587a5a82c0befb7ecc63311a4b257ae808b7045f50b2492554850b6b3a`.
+This is `BLOCKED_BY_EMULATOR_CONTROL_PLANE_AND_ENTITLEMENT` plus clean recovery
+readback; it is neither an app PASS nor an app failure and does not advance
+`OBS-079` or the AWG device matrix.
+
 A fresh guarded Brain `PLAN` against the owned managed-profile route reports
 `193/193` predeploy baseline matches, zero mismatches and the sole target
 `portal_bot/api_client_routes.py`; only `portal-api` would restart. The plan
@@ -451,6 +465,22 @@ GitHub reports failed account payments or a spending-limit block. They remain
 Later evidence-only platform carriers repeat the same zero-step condition; the
 current PR check rollup is the exact authority for the newest carrier rather
 than a self-referential commit SHA inside this document.
+
+The owner solo exception is now enforced without weakening checks on the two
+public repositories. Core `main` requires the strict five-job source/artifact
+matrix, and release-index repository `Kiwunaka/pokrov` `main` now requires the
+GitHub Actions `source-contract` check. Both protect admins, require linear
+history and resolved conversations, require zero independent approvals, and
+forbid force-push and branch deletion. The release-index branch policy was the
+only external setting changed in this slice; repository visibility and code
+were unchanged. Private platform and client branch-protection APIs return the
+exact GitHub `403` requirement to upgrade to Pro or make the repository
+public, so equivalent enforcement remains `BLOCKED_BY_GITHUB_PLAN_403`. The
+3,015-byte sanitized readback
+`2026-08-28-github-solo-branch-protection-readback.json` has SHA-256
+`d37f0fdc40143141c9024250cb0295813b224ab513142211bd27746a73fda696`.
+This is partial Gate A progress; it does not waive the two private-repository
+checks and no repository was made public.
 
 Core run `33176149420` at exact CI head `4fa9accf...` passes the complete
 `test` job plus Android artifact reproducibility, Windows artifact
