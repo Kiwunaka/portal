@@ -137,6 +137,23 @@ certificate SHA-256
 The production build bound public emergency key ID `emg-20260815-v1`; no
 private key was copied into the repository or retained evidence.
 
+### Current aggregate replay
+
+The clean pushed aggregate platform head
+`50c9d12254d39c6a007f273497dde49faa4f7b8d` was replayed on `2026-08-28`
+after the guarded installer landed. Two independent Go `1.25.13`
+Linux/amd64 builds were byte-identical and each passed embedded bundle
+verification. The current-head ZIP is `2911895` bytes with SHA-256
+`a0e04ef86f0cd041759951f9e93d6e3ef6c407726b69b3a6dd92fba976dc7e7c`;
+its policy SHA-256 remains
+`b6977f6f6a5ee48898116820d1db252b5b670cb7b86959c78f7bdbc7de90e0fa`.
+`go test ./...`, `go vet ./...`, platform/client policy parity, `11` focused
+builder/installer/parity tests and focused Ruff checks passed from clean
+worktrees. Both rebuilt ZIPs remain machine-local under
+`E:/POKROV-tools/smart-dns-evidence/`; they are not a release candidate or a
+published artifact. No node was contacted, installed or mutated during this
+replay.
+
 LDPlayer proved the complete UI gate without starting a connection: Smart DNS
 was unavailable before custom exact-path DoH plus direct DNS were selected,
 remained off by default when prerequisites became valid, could then be enabled,
