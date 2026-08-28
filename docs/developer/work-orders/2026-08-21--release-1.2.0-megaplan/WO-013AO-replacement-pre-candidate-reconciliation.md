@@ -402,6 +402,25 @@ evidence. The original `Автоматически` DNS state was restored, both
 toggles were disabled, and the clean state persisted across another cold
 launch.
 
+The exact build also exposes the bounded purpose groups in the Android Rules
+surface: AI names ChatGPT and Gemini, while Games names Xbox; Video, Social and
+RU-direct remain separate groups. No toggle was changed during this readback.
+The 9,238-byte accessibility-tree evidence
+`2026-08-28-ldplayer-ai-games-purpose-groups.xml` has SHA-256
+`c33191fcc408cbed172bffcd52c005d155a23cefefe7bebe824946a0814052b2`.
+This proves exact-build UI availability only. It does not prove that DNS alone
+unblocks those services, a compatible Smart-DNS server, live name resolution,
+traffic routing or service access.
+
+The live Amsterdam variant sheet currently returns only `Обычный`, `Белые
+списки` and `Белые списки тип 2`; neither owned AWG lab is exposed by the live
+managed-profile policy. The 8,181-byte accessibility-tree evidence
+`2026-08-28-ldplayer-amsterdam-live-variants.xml` has SHA-256
+`486a5c9c7766d02283a7e1c5e53cc7ef6bd4d487d1daae67ece499a44da6126f`.
+This is the expected pre-APPLY boundary, not an AWG client failure: AWG2 and
+AWG3.1 are authenticated, device-bound managed profiles rather than raw
+consumer location variants.
+
 A fresh guarded Brain `PLAN` against the owned managed-profile route reports
 `193/193` predeploy baseline matches, zero mismatches and the sole target
 `portal_bot/api_client_routes.py`; only `portal-api` would restart. The plan
@@ -416,17 +435,43 @@ PnP and ADB during this follow-up.
 
 ## Hosted PR evidence
 
-Exact jobs observed for platform PR `#58` at `34d1551f...` and client PR `#33`
-at `2f47148e...` received zero execution steps although both PRs were
-mergeable. GitHub
-reports failed account payments or a spending-limit block. They are
-`BLOCKED_BY_ACCESS_GITHUB_BILLING`, not product test failures and not passes.
-`OWNER_SOLO_EXCEPTION` does not waive them.
+The existing PR branches were fast-forwarded without force or merge to the
+current converged heads: platform PR `#58` to `0971b9b6...`, client PR `#33`
+to `3564023c...`, and Core PR `#6` to `4fa9accf...`. The Core PR head differs
+from frozen product Core `e8eb7721...` only in `.github/workflows/ci.yml`; no
+runtime, build input, release contract or product documentation changed after
+the exact Core artifact freeze.
 
-Core PR `#6` passes `test`, Android artifact reproducibility, Windows artifact
-reproducibility and Apple source build. Its `release-contract` job fails
-closed because client `main` still binds the prior Core source; the current
-client PR contains the exact `f44dbe89...` binding but is not merged.
+Platform runs `33174372410` and `33174372409` and client run `33174374801`
+again received zero execution steps and failed within two or three seconds.
+GitHub reports failed account payments or a spending-limit block. They remain
+`BLOCKED_BY_ACCESS_GITHUB_BILLING`, not product failures and not passes.
+`OWNER_SOLO_EXCEPTION` does not waive required checks.
+
+Core run `33176149420` at exact CI head `4fa9accf...` passes the complete
+`test` job plus Android artifact reproducibility, Windows artifact
+reproducibility with the 100-cycle client backtest, and Apple source build.
+All five first-party Core checkouts passed an explicit source-authority guard,
+and the three retained artifact reports now record clean source
+`4fa9accf01a7bed717f739d3f57eb27a65593e3c` rather than GitHub's temporary PR
+merge commit. Their evidence SHA-256 values are:
+
+- Android: `533a14315aafdff378feae7c7b81bce1a54741a2f52ab979b016bc5beb6f1040`;
+- Windows: `5a6e7cc0e394b7034531c0b939170c41584eebe1cffa168b66be92abe9c93bbc`;
+- Apple: `47c2fe57bd49f8b2958b9c523ef471aa99d9927161ab526ed62ec915ccd6a50b`.
+
+The hosted source SBOM SHA-256 values remain
+`b559d5b91c0c2f5ea054051a453b9890ba645dc6e298d741644db4589d5d3b8b`
+and `cff200645059adab34f72aa66a097fa1cb1fb7c2f3017cfb4afc7a0530aae617`.
+This is hosted pre-candidate reproducibility evidence only; hosted bytes are
+not relabeled as the local packet or an immutable candidate.
+
+The same run's `release-contract` job fails closed with the exact message that
+client `main` still pins Core
+`344b317a7a09eca7943a93866b193553538bd8f6`. Client PR `#33` contains the frozen
+`e8eb7721...` product binding but is not merged. The overall run is therefore
+honestly `FAIL_RELEASE_CONTRACT_CLIENT_MAIN_STALE` despite the four passing
+Core jobs.
 
 No PR is merged while these required checks are unresolved. No deploy,
 candidate creation, public asset, stable pointer or production mutation occurs
