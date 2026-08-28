@@ -38,6 +38,7 @@ promotion evidence.
 | Restored settings | `PASS_WORKING_4044` | DNS transport returned to VPN default; AdGuard, AI and Games remained enabled; runtime had no AWG final endpoint. |
 | Phone cleanup | `PASS_WORKING_SESSION` | POKROV stopped, the exact device was removed from the cohort and both lab allowlists, policy returned to the ordinary fallback, Wi-Fi was restored off and Hiddify was foreground. Temporary phone/local diagnostics were removed. |
 | LDPlayer cleanup | `PASS_WORKING_SESSION` | POKROV stopped, the exact emulator device was removed from the cohort and both lab allowlists, policy returned to the ordinary fallback and temporary emulator diagnostics were removed. |
+| Build 4045 physical direct-DoH setting | `PASS_4045_PHYSICAL_DIRECT_DOH_SETTING_PERSISTENCE` | With Hiddify and POKROV stopped and no active VPN network agent, the direct-DoH lab switch persisted across force-stop/cold relaunch and was restored to its original disabled state. No DNS request, service access, connection or AWG profile was exercised. |
 
 ## Managed-Profile Predeploy Readback
 
@@ -82,6 +83,10 @@ The direct-DoH control proves only encrypted DNS reachability and valid
 resolution. Current product behavior remains split routing through the VPN for
 AI/Games application traffic. A real Smart-DNS/no-VPN access product would need
 a separate architecture and evidence lane.
+
+The later build-4045 physical control proves only UI-to-persisted-state wiring.
+It does not upgrade the DNS reachability record, does not prove
+ChatGPT/Gemini/Xbox access, and leaves VPN-free Smart DNS `NOT_IMPLEMENTED`.
 
 ## Remaining Gates
 

@@ -142,6 +142,14 @@ There was no VPN-permission prompt, residual POKROV service or VPN transport
 after cleanup. No AWG policy was bound and no server policy was mutated, so
 this is `FAIL_4045_LDPLAYER_SELECTED_OUTBOUND_EGRESS`, not AWG tunnel evidence.
 
+A returned-phone state control then inspected build `4045` over Beeline without
+starting a connection. With Hiddify stopped and no POKROV service or active VPN
+network agent, AdGuard was selected, direct DoH was off, and AI/Games remained
+VPN-route presets. The direct-DoH laboratory switch persisted after app
+force-stop/cold relaunch and was restored to its original off state. This is
+`PASS_4045_PHYSICAL_DIRECT_DOH_SETTING_PERSISTENCE`; it proves persisted
+settings only, not a DNS transaction, VPN-free service access or an AWG path.
+
 The full bounded local quality gate was then repeated on exact clean platform
 `9383117794f9ee17b5976204c3b8601732464c17`, client
 `f3d3310f520156cbb07a8993fbe485cf599a174f` and unchanged Core
@@ -192,7 +200,19 @@ The tuple also strengthens existing `I3` local evidence for `REL/PERF-001`,
 `UNCERT-02` boundary without advancing it. Exact signed candidate,
 device/origin matrix and promotion evidence required for `I4/I5` are absent.
 
-Distribution becomes `I4=4`, `I3=313`, `I2=19`, `I1=40`, `I0=1`.
+WO-013AI already retains a complete fail-closed Gate F decision for the exact
+signed prior candidate: `19` required checks, `5` passes, `14` non-passes, `1`
+explicit failure and `0` validation errors. It binds the signed manifest,
+source tuple and upstream evidence and returns `NO_GO`; Gate G and
+public/stable mutation remain unauthorized. The retained decision SHA-256 is
+`017c0369760029350f95eafa2b7944134f80c54ffdf1ce8265ce66f511a6d1dd`,
+and the current focused Gate F/preflight/STOP-SHIP/docs suite passes `67/67`.
+`REL_GATE/GATE-F` therefore advances from the stale `CAPTURED/I0` entry to
+`VERIFIED_EXACT_CANDIDATE_NO_GO/I3`. This proves that the prior Gate F ran and
+rejected its candidate; it is not candidate proof or a release pass.
+
+Distribution becomes `I4=4`, `I3=314`, `I2=19`, `I1=40`, `I0=0`; `318/377`
+rows are at or above `I3`, while `59/377` remain below.
 
 ## Next action
 

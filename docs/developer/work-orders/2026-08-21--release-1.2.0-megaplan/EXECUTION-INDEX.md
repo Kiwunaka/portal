@@ -3484,3 +3484,33 @@ handshake, egress or DNS/leak matrix. Exact-head hosted checks for platform PR
 Billing & plans blocked job startup. No row advances and distribution remains
 `I4=4`, `I3=313`, `I2=19`, `I1=40`, `I0=1`; no merge, deploy, candidate,
 public asset or stable promotion occurred.
+
+## 2026-08-28 — returned-phone build-4045 DNS-state control
+
+The returned physical Android device ran a bounded state-only control over
+Beeline. Hiddify was stopped, and neither the POKROV service nor an active VPN
+network agent was present. AdGuard was selected, direct DoH was initially off,
+and AI/Games remained VPN-route presets. The direct-DoH laboratory switch
+persisted across force-stop and cold relaunch, then the original off state was
+restored and re-read. This is
+`PASS_4045_PHYSICAL_DIRECT_DOH_SETTING_PERSISTENCE`; no DNS request, service
+access, POKROV connection, AWG profile or tunnel was exercised. VPN-free Smart
+DNS therefore remains `NOT_IMPLEMENTED`, and the AWG proof remains gated on
+the undeployed managed-profile correction.
+
+## 2026-08-28 — Gate F ledger reconciliation
+
+WO-013AI already retains a validated fail-closed Gate F decision for the exact
+signed prior candidate. The decision is `NO_GO`: `19` required checks contain
+`5` passes, `14` non-passes, `1` explicit failure and `0` validation errors.
+The decision binds the signed manifest, exact source tuple and retained
+evidence digests; Gate G and public/stable mutation remain unauthorized. Its
+decision-file SHA-256 is `017c0369...d1dd`, and the current focused Gate
+F/preflight/STOP-SHIP/docs suite passes `67/67`.
+
+The prior `REL_GATE/GATE-F` value `CAPTURED/I0` was therefore a stale index,
+not missing execution. It advances to
+`VERIFIED_EXACT_CANDIDATE_NO_GO/I3`. This does not turn `NO_GO` into `PASS` and
+does not prove the replacement candidate. Distribution becomes `I4=4`,
+`I3=314`, `I2=19`, `I1=40`, `I0=0`; `318/377` rows are at or above `I3`, and
+`59/377` remain below.
