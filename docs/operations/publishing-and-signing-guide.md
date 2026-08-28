@@ -58,6 +58,15 @@ means valid v2. Exit `3` means valid legacy v1 when
 `--allow-legacy-v1` is explicit. Exit `2` means invalid metadata. Release
 automation must accept only exit `0` for a new candidate.
 
+The non-mutating `scripts/prepare_github_release_plan.py` consumes that same
+strict-v2 file before it prints any `gh release create` command. For every
+planned Android APK and Windows EXE it requires an exact handoff artifact with
+the same SHA-256, byte size, architecture, canonical asset name and public URL
+for the requested prerelease tag; extra handoff artifacts that are absent from
+the plan also fail closed. A legacy handoff remains compatibility input only.
+`--skip-release-handoff-check` is preparation for a brand-new tag without
+metadata and cannot establish candidate or publication readiness.
+
 The runtime-sync consumer does not reinterpret v2 as legacy metadata. It
 validates the exact file again, accepts only canonical Android APK and Windows
 setup-EXE identities, and projects version/channel, handoff SHA-256,

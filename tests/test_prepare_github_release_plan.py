@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import sys
 import tempfile
 import unittest
@@ -223,6 +224,132 @@ class PrepareGithubReleasePlanTests(unittest.TestCase):
         message = str(raised.exception)
         self.assertIn("Windows EXE SHA256 does not match release handoff", message)
         self.assertIn("0000000000000000000000000000000000000000000000000000000000000000", message)
+
+    def test_build_plan_accepts_exact_strict_v2_handoff(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_root:
+            root = Path(temp_root)
+            sources = {
+                ("android", "apk", "arm64-v8a"): root / "arm64.apk",
+                ("android", "apk", "armeabi-v7a"): root / "armv7.apk",
+                ("android", "apk", "x86_64"): root / "x86.apk",
+                ("android", "apk", "universal"): root / "universal.apk",
+                ("windows", "exe", "x64"): root / "setup.exe",
+            }
+            canonical_names = {
+                ("android", "apk", "arm64-v8a"): "pokrov-android-arm64-v8a.apk",
+                ("android", "apk", "armeabi-v7a"): "pokrov-android-armeabi-v7a.apk",
+                ("android", "apk", "x86_64"): "pokrov-android-x86_64.apk",
+                ("android", "apk", "universal"): "pokrov-android-universal.apk",
+                ("windows", "exe", "x64"): "pokrov-windows-setup-x64.exe",
+            }
+            for index, source in enumerate(sources.values()):
+                source.write_bytes(f"artifact-{index}".encode())
+            notes = root / "notes.md"
+            notes.write_text("release notes", encoding="utf-8")
+            tag = "v1.2.0-beta.4046"
+            handoff = root / "release-handoff-v2.json"
+            handoff.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 2,
+                        "release": {"version": "1.2.0"},
+                        "artifacts": [
+                            {
+                                "platform": key[0],
+                                "kind": key[1],
+                                "architecture": key[2],
+                                "file_name": canonical_names[key],
+                                "public_url": (
+                                    f"https://github.com/Kiwunaka/pokrov/releases/download/"
+                                    f"{tag}/{canonical_names[key]}"
+                                ),
+                                "sha256": self.module._sha256(source),
+                                "size_bytes": source.stat().st_size,
+                            }
+                            for key, source in sources.items()
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            plan = self.module._build_plan(
+                repo="Kiwunaka/pokrov",
+                tag=tag,
+                title="POKROV 1.2.0-beta.4046",
+                android_apk=sources[("android", "apk", "arm64-v8a")],
+                android_armeabi_v7a_apk=sources[("android", "apk", "armeabi-v7a")],
+                android_x86_64_apk=sources[("android", "apk", "x86_64")],
+                android_universal_apk=sources[("android", "apk", "universal")],
+                windows_exe=sources[("windows", "exe", "x64")],
+                notes_file=notes,
+                docs_url="https://pokrov.space/install/",
+                release_handoff=handoff,
+            )
+
+        self.assertEqual(5, len(plan["artifacts"]))
+
+    def test_build_plan_rejects_strict_v2_hash_and_public_url_mismatch(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_root:
+            root = Path(temp_root)
+            apk = root / "arm64.apk"
+            exe = root / "setup.exe"
+            notes = root / "notes.md"
+            handoff = root / "release-handoff-v2.json"
+            apk.write_bytes(b"apk")
+            exe.write_bytes(b"exe")
+            notes.write_text("release notes", encoding="utf-8")
+            handoff.write_text(
+                json.dumps(
+                    {
+                        "schema_version": 2,
+                        "release": {"version": "1.2.0"},
+                        "artifacts": [
+                            {
+                                "platform": "android",
+                                "kind": "apk",
+                                "architecture": "arm64-v8a",
+                                "file_name": "pokrov-android-arm64-v8a.apk",
+                                "public_url": (
+                                    "https://github.com/Kiwunaka/pokrov/releases/download/"
+                                    "v1.2.0/pokrov-android-arm64-v8a.apk"
+                                ),
+                                "sha256": "0" * 64,
+                                "size_bytes": apk.stat().st_size,
+                            },
+                            {
+                                "platform": "windows",
+                                "kind": "exe",
+                                "architecture": "x64",
+                                "file_name": "pokrov-windows-setup-x64.exe",
+                                "public_url": (
+                                    "https://github.com/Kiwunaka/pokrov/releases/download/"
+                                    "v1.2.0-beta.4046/pokrov-windows-setup-x64.exe"
+                                ),
+                                "sha256": self.module._sha256(exe),
+                                "size_bytes": exe.stat().st_size,
+                            },
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(SystemExit) as raised:
+                self.module._build_plan(
+                    repo="Kiwunaka/pokrov",
+                    tag="v1.2.0-beta.4046",
+                    title="POKROV 1.2.0-beta.4046",
+                    android_apk=apk,
+                    windows_exe=exe,
+                    notes_file=notes,
+                    docs_url="https://pokrov.space/install/",
+                    release_handoff=handoff,
+                )
+
+        message = str(raised.exception)
+        self.assertIn("Android arm64-v8a APK SHA256 does not match strict-v2", message)
+        self.assertIn("Android arm64-v8a APK public URL does not match planned tag", message)
 
     def test_build_plan_reports_missing_github_cli_without_failing_plan(self) -> None:
         with tempfile.TemporaryDirectory() as temp_root:

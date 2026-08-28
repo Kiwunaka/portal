@@ -68,6 +68,7 @@ def _normalize_sha256(value: object) -> str:
 def _release_handoff_failures(
     release_handoff: Path | None,
     *,
+    repo: str,
     tag: str,
     android_apk: Path,
     windows_exe: Path,
@@ -82,6 +83,102 @@ def _release_handoff_failures(
         payload = json.loads(path.read_text(encoding="utf-8"))
     except Exception as exc:
         return [f"release handoff could not be parsed: {path}: {exc}"]
+
+    if isinstance(payload, dict) and payload.get("schema_version") == 2:
+        release = payload.get("release")
+        artifacts = payload.get("artifacts")
+        if not isinstance(release, dict) or not isinstance(artifacts, list):
+            return [f"strict-v2 release handoff is malformed: {path}"]
+
+        failures: list[str] = []
+        release_version = str(release.get("version") or "").strip()
+        tag_version = str(tag or "").strip().removeprefix("v").split("-", 1)[0]
+        if not release_version or release_version != tag_version:
+            failures.append(
+                f"strict-v2 release version does not match release tag {tag}: "
+                f"expected {tag_version}, got {release_version or '<missing>'} from {path}"
+            )
+
+        planned: dict[tuple[str, str, str], tuple[str, Path, str]] = {
+            ("android", "apk", "arm64-v8a"): (
+                "Android arm64-v8a APK",
+                Path(android_apk),
+                CANONICAL_ANDROID_APK_NAME,
+            ),
+            ("windows", "exe", "x64"): (
+                "Windows x64 EXE",
+                Path(windows_exe),
+                CANONICAL_WINDOWS_EXE_NAME,
+            ),
+        }
+        variant_names = {
+            "armeabi-v7a": CANONICAL_ANDROID_ARMEABI_V7A_APK_NAME,
+            "x86_64": CANONICAL_ANDROID_X86_64_APK_NAME,
+            "universal": CANONICAL_ANDROID_UNIVERSAL_APK_NAME,
+        }
+        for abi, source in (android_variants or {}).items():
+            planned[("android", "apk", abi)] = (
+                f"Android {abi} APK",
+                Path(source),
+                variant_names[abi],
+            )
+
+        declared: dict[tuple[str, str, str], dict[str, object]] = {}
+        for index, artifact in enumerate(artifacts):
+            if not isinstance(artifact, dict):
+                failures.append(f"strict-v2 artifact #{index} is not an object in {path}")
+                continue
+            key = (
+                str(artifact.get("platform") or "").strip(),
+                str(artifact.get("kind") or "").strip(),
+                str(artifact.get("architecture") or "").strip(),
+            )
+            if key in declared:
+                failures.append(f"strict-v2 release handoff has duplicate artifact {key} in {path}")
+                continue
+            declared[key] = artifact
+
+        for key, (label, source, canonical_name) in planned.items():
+            artifact = declared.get(key)
+            if artifact is None:
+                failures.append(f"{label} is missing from strict-v2 release handoff {path}")
+                continue
+            expected_sha = _normalize_sha256(artifact.get("sha256"))
+            actual_sha = _sha256(source)
+            if len(expected_sha) != 64 or expected_sha != actual_sha:
+                failures.append(
+                    f"{label} SHA256 does not match strict-v2 release handoff for {tag}: "
+                    f"expected {expected_sha or '<missing>'} from {path}, got {actual_sha} from {source}"
+                )
+            try:
+                expected_size = int(artifact.get("size_bytes"))
+            except (TypeError, ValueError):
+                expected_size = -1
+            actual_size = source.stat().st_size
+            if expected_size != actual_size:
+                failures.append(
+                    f"{label} size does not match strict-v2 release handoff for {tag}: "
+                    f"expected {expected_size} from {path}, got {actual_size} from {source}"
+                )
+            declared_name = str(artifact.get("file_name") or "").strip()
+            if declared_name != canonical_name:
+                failures.append(
+                    f"{label} filename does not match canonical release asset: "
+                    f"expected {canonical_name}, got {declared_name or '<missing>'} from {path}"
+                )
+            expected_url = f"https://github.com/{str(repo).strip()}/releases/download/{tag}/{canonical_name}"
+            declared_url = str(artifact.get("public_url") or "").strip()
+            if declared_url != expected_url:
+                failures.append(
+                    f"{label} public URL does not match planned tag {tag}: "
+                    f"expected {expected_url}, got {declared_url or '<missing>'} from {path}"
+                )
+
+        for key in declared.keys() - planned.keys():
+            failures.append(
+                f"strict-v2 release handoff artifact {key} is not included in the GitHub release plan"
+            )
+        return failures
 
     handoff_tag = str(((payload.get("github_release") or {}) if isinstance(payload, dict) else {}).get("tag") or "").strip()
     if handoff_tag and handoff_tag != str(tag or "").strip():
@@ -232,6 +329,7 @@ def _build_plan(
         failures.extend(
             _release_handoff_failures(
                 release_handoff,
+                repo=repo,
                 tag=tag,
                 android_apk=Path(android_apk),
                 windows_exe=Path(windows_exe),
