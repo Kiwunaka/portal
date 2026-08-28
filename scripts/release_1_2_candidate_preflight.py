@@ -17,7 +17,6 @@ from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 TARGET_VERSION = "1.2.0"
-TARGET_BUILD = 32
 CORE_TARGET_VERSION = "1.1.0"
 VALID_INDEXES = {f"I{number}" for number in range(6)}
 VALID_STAGES = {"pre_freeze", "candidate", "external", "deferred"}
@@ -588,8 +587,8 @@ def _load_ledger(path: Path) -> list[dict[str, str]]:
         keys.add(key)
         if row["index"] not in VALID_INDEXES:
             raise ValueError(f"invalid index for {key}: {row['index']}")
-    if len(rows) != 377:
-        raise ValueError(f"expected 377 ledger rows, got {len(rows)}")
+    if not rows:
+        raise ValueError("execution ledger must contain at least one row")
     return rows
 
 
@@ -759,19 +758,37 @@ def _target_contract_blockers(
             "client_target_version_stale",
             f"active client packages must target {TARGET_VERSION}",
         )
-    expected_package = f"{TARGET_VERSION}+{TARGET_BUILD}"
+    handoff_product = str(handoff_target.get("product_version") or "")
+    handoff_build = handoff_target.get("platform_build")
+    handoff_package = str(handoff_target.get("package_version") or "")
+    valid_handoff_build = (
+        isinstance(handoff_build, int)
+        and not isinstance(handoff_build, bool)
+        and handoff_build > 0
+    )
+    expected_package = (
+        f"{TARGET_VERSION}+{handoff_build}" if valid_handoff_build else None
+    )
     if (
-        versions["android"] != expected_package
-        or versions["windows"] != expected_package
+        versions["android"] != versions["windows"]
+        or (
+            expected_package is not None
+            and (
+                versions["android"] != expected_package
+                or versions["windows"] != expected_package
+            )
+        )
     ):
         add(
             "client_build_number_drift",
-            f"active shells must use exact package version {expected_package}",
+            "active Android and Windows shells must match the exact package "
+            "version owned by release-handoff.seed.json",
         )
     if (
-        str(handoff_target.get("product_version") or "") != TARGET_VERSION
-        or handoff_target.get("platform_build") != TARGET_BUILD
-        or str(handoff_target.get("package_version") or "") != expected_package
+        handoff_product != TARGET_VERSION
+        or not valid_handoff_build
+        or expected_package is None
+        or handoff_package != expected_package
         or str(handoff_target.get("state") or "") != "PRE_CANDIDATE_LOCAL"
         or handoff_target.get("candidate_created") is not False
     ):

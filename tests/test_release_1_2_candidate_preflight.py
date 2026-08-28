@@ -93,10 +93,10 @@ def test_stage_policy_is_exact_and_defaults_unknown_work_to_pre_freeze() -> None
         "sha256": summary["sha256"],
         "default_stage": "pre_freeze",
         "override_count": 71,
-        "ledger_row_count": 377,
+        "ledger_row_count": len(rows),
     }
     assert len(summary["sha256"]) == 64
-    assert len(assignments) == 377
+    assert len(assignments) == len(rows)
     assert assignments[("FE", "P12-130")]["stage"] == "pre_freeze"
     assert assignments[("OBS", "OBS-070")]["stage"] == "pre_freeze"
     assert assignments[("REL_GATE", "GATE-F")]["stage"] == "candidate"
@@ -348,6 +348,73 @@ def test_exact_product_and_component_targets_are_accepted() -> None:
         },
     )
     assert blockers == []
+
+
+def test_current_high_build_number_is_owned_by_handoff_target() -> None:
+    blockers = MODULE._target_contract_blockers(
+        versions={
+            "android": "1.2.0+4046",
+            "windows": "1.2.0+4046",
+            "app_shell": "1.2.0",
+        },
+        handoff_target={
+            "product_version": "1.2.0",
+            "platform_build": 4046,
+            "package_version": "1.2.0+4046",
+            "state": "PRE_CANDIDATE_LOCAL",
+            "candidate_created": False,
+        },
+        core_release={
+            "version": "1.1.0",
+            "state": "PRE_CANDIDATE_LOCAL",
+            "candidate_created": False,
+        },
+        core_target={
+            "required_for_product": "1.2.0",
+            "version": "1.1.0",
+            "release_tag": "v1.1.0",
+            "state": "PRE_CANDIDATE_LOCAL",
+            "candidate_created": False,
+            "artifact_state": "pending",
+        },
+    )
+
+    assert blockers == []
+
+
+@pytest.mark.parametrize("platform_build", [None, True, 0, -1, "4046"])
+def test_handoff_build_must_be_a_positive_integer(platform_build: object) -> None:
+    blockers = MODULE._target_contract_blockers(
+        versions={
+            "android": "1.2.0+4046",
+            "windows": "1.2.0+4046",
+            "app_shell": "1.2.0",
+        },
+        handoff_target={
+            "product_version": "1.2.0",
+            "platform_build": platform_build,
+            "package_version": "1.2.0+4046",
+            "state": "PRE_CANDIDATE_LOCAL",
+            "candidate_created": False,
+        },
+        core_release={
+            "version": "1.1.0",
+            "state": "PRE_CANDIDATE_LOCAL",
+            "candidate_created": False,
+        },
+        core_target={
+            "required_for_product": "1.2.0",
+            "version": "1.1.0",
+            "release_tag": "v1.1.0",
+            "state": "PRE_CANDIDATE_LOCAL",
+            "candidate_created": False,
+            "artifact_state": "pending",
+        },
+    )
+
+    assert "client_handoff_target_invalid" in {
+        blocker["id"] for blocker in blockers
+    }
 
 
 def test_exact_bound_core_target_is_accepted() -> None:

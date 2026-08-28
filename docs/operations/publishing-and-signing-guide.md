@@ -287,6 +287,13 @@ The client `config/release-handoff.seed.json` owns retained public and
 development version truth. This guide and its tests validate that projection;
 they do not form a second release manifest.
 
+The platform candidate preflight reads the positive numeric development build
+from that client-owned target and requires the Android and Windows package
+versions to match it exactly. It does not pin a historical build number in the
+preflight implementation. Newly added execution-ledger rows are also assigned
+by the checked-in stage policy (defaulting to `pre_freeze`) instead of being
+rejected by a stale total-row constant.
+
 ## Current POKROV-app Client Verification Commands
 
 Run from the repository root:
