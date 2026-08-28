@@ -3385,9 +3385,11 @@ or Gate G mutation occurred.
 
 ## 2026-08-28 — WO-013AO replacement pre-candidate reconciliation
 
-The clean replacement source tuple is platform/client/Core
-`e5ef03ac...` / `c196dff...` / `f44dbe8...`. Android Core was rebuilt twice
-from the exact Core head; both AARs are byte-identical with SHA-256
+The locally gated replacement runtime tuple is platform/client/Core
+`e5ef03ac...` / `c196dff...` / `f44dbe8...`. Later platform AWG
+operations/evidence `39af0f1...` and client evidence-doc `2eeee5f...` commits
+pass their focused contracts but are not relabeled as another aggregate gate.
+Android Core was rebuilt twice from the exact Core head; both AARs are byte-identical with SHA-256
 `ca391059...` and match the existing client binary because the Core follow-up
 changes tests only. Client source metadata now binds that exact Core revision.
 

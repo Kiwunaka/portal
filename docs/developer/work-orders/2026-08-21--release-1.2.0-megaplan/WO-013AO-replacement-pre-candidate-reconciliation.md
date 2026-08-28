@@ -10,12 +10,14 @@ Reconcile the current post-candidate source line after the Gate B correction,
 owned AWG/DNS lab work and Android Core rebinding without transferring any of
 that evidence into signed `candidate.3` or creating a replacement candidate.
 
-## Exact source tuple
+## Exact implementation and evidence tuple
 
 | Lane | Revision | Branch / PR | State |
 | --- | --- | --- | --- |
-| Platform | `e5ef03ac7ab013d8810cc9c6ea9ccc40cebd11db` | `codex/awg-owned-lab-deploy`, PR `#58` to `master` | clean and pushed |
-| Client | `c196dff6bf72c325d5bba675fe19342cd3821f61` | `codex/release-1.2.0-candidate-8-source`, PR `#33` to `main` | clean and pushed |
+| Platform runtime | `e5ef03ac7ab013d8810cc9c6ea9ccc40cebd11db` | `codex/awg-owned-lab-deploy`, PR `#58` to `master` | locally gated runtime source |
+| Platform AWG operations/evidence | `39af0f1d3a01209bd46dcd0661cabef5de679efe` | same branch / PR | focused checks passed; pushed after the aggregate gate |
+| Client runtime | `c196dff6bf72c325d5bba675fe19342cd3821f61` | `codex/release-1.2.0-candidate-8-source`, PR `#33` to `main` | locally gated runtime source |
+| Client AWG evidence docs | `2eeee5fa0c09096426e09aeb0eeb865a6aede981` | same branch / PR | docs/seed contracts passed; pushed after the aggregate gate |
 | Core | `f44dbe89d6b89954032a1a798c2209d8c0aff90d` | `codex/fix-egress-event-subsystem`, PR `#6` to `main` | clean and pushed |
 
 This tuple is `PRE_CANDIDATE_LOCAL`. It is not signed, promoted, public or
@@ -36,8 +38,9 @@ Windows remains bound to its separately declared Core revision and artifact.
 
 ## Current local quality evidence
 
-The aggregate local gate ran with exact Node `22.14.0` and the clean tuple
-above. All `15/15` steps passed:
+The aggregate local gate ran with exact Node `22.14.0` against platform runtime
+`e5ef03ac...`, client runtime `c196dff...` and Core `f44dbe89...`. All `15/15`
+steps passed:
 
 - performance contract and `30/30` contract tests;
 - Flutter analysis and `400/400` app-shell tests;
@@ -53,6 +56,12 @@ It explicitly records `candidate_proven=false`, `local_status=PASS` and
 `promotion_status=MANUAL_OWNER_TEST`. Exact candidate/device performance,
 artifact comparison, selected browser lab, authenticated controlled-origin
 API work and signing/device/origin proof remain non-PASS manual lanes.
+
+The later AWG operations/evidence commits do not change platform or client
+runtime behavior. They pass `47/47` focused AWG/smart-connect tests, `32/32`
+platform documentation tests, platform-context audit, client seed validation,
+client docs contract and both diff/secret checks. The full aggregate gate was
+not relabeled or rerun against those documentation/operations heads.
 
 ## Owned AWG and DNS physical slice
 
