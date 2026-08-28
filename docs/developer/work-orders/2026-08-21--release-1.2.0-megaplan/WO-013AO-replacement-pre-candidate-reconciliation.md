@@ -2,7 +2,7 @@
 
 Date: `2026-08-28`
 
-Status: `LOCALLY_PROVED_PRE_CANDIDATE / HOSTED_CHECKS_BLOCKED`
+Status: `READY_LOCAL_FREEZE / HOSTED_CHECKS_BLOCKED`
 
 ## Objective
 
@@ -270,6 +270,45 @@ and `8` response-sized packets, with no handshake. That exact slice is
 narrower `FAIL_NO_OUTER_RESPONSE_CURRENT_WINDOWS_ORIGIN` because its packet
 capture was not repeated. No server setting, rollout or device binding changed.
 
+## Single-source Core and local-freeze checkpoint
+
+The active pre-candidate tuple now binds platform
+`8c7496a70fbc1c918ff8e89a4a458e98aef6a01f`, client
+`3564023c8d0e66977043332f2772cfd512489676` and Core
+`e8eb7721fc6eaac6813d3a888ac90d0da1f541a1`. Android and Windows artifacts
+were rebuilt twice from that one Core revision and are byte-identical:
+
+- Android AAR: `107390782` bytes, SHA-256
+  `7c392883ee8a09c15e414a0e9d70a4d4d3cb259032e51c5481cd14a571950745`;
+  evidence-tree SHA-256
+  `aafd5f0eb2a83f7c438affb32c946af17b77593e9e0f5105b7f7b1d293e2f8f3`;
+- Windows DLL: `55403008` bytes, SHA-256
+  `73aacd2ccbb3414573284c0c2a253f29c6ed4a56ddf2ff8bb6cc9ae7ca371488`;
+  evidence-tree SHA-256
+  `25405fd108405f56c08c5a24f88a2b45a6936ff14eae4f113b2e7e71f08eb78c`;
+- deterministic source SBOM SHA-256 values:
+  `d40547fa3ba28c84bf377e6cb8d174546ea75f41287028ca2e97931cd7ebfb9b`
+  and `83bc11b4b90e267346647670f6ce4003d9586ed4519b7bca076e84c3127ce542`.
+
+The replacement DLL passed the exact ABI check and `100/100` proxy-only
+start/stop cycles without route mutation. The complete client gate then passed:
+Flutter app shell `412/412`, runtime engine `67` passes with its standard
+real-DLL case skipped as designed and proved separately, Android shell Flutter
+`8/8`, Windows shell Flutter `24/24`, and both Android direct/store Gradle unit
+matrices (`162` successful tasks overall). Seed validation, cross-repository
+parity, observability, release-v2, docs and repository-hygiene contracts also
+pass.
+
+The strict read-only replacement preflight reports `READY_LOCAL_FREEZE` with
+`0` blockers, `0` pre-freeze rows below `I3`, `27` candidate rows below `I3`,
+`13` external rows, `18` deferred rows and `58` total ledger rows below `I3`.
+Its 38,467-byte report
+`2026-08-28-replacement-preflight-8c7496a-3564023.json` has SHA-256
+`6a8d84d5eb51375340de0a377a2448c33622ee28c27de2c671f717dae8a35b00`.
+It explicitly records `candidate_created=false`; this closes the local freeze
+prerequisites only and does not claim signing, hosted CI, physical-device,
+clean-host, origin, deployment or promotion proof.
+
 ## Hosted PR evidence
 
 Exact jobs observed for platform PR `#58` at `34d1551f...` and client PR `#33`
@@ -315,19 +354,22 @@ rows are at or above `I3`, while `59/377` remain below.
 
 ## Next action
 
-1. Deploy the locally verified managed-profile correction to an authorized
+1. Retain the local-freeze tuple and obtain explicit authorization before
+   creating or signing a replacement candidate; `READY_LOCAL_FREEZE` is not a
+   candidate and not a release.
+2. Deploy the locally verified managed-profile correction to an authorized
    controlled environment, then prove build `4046` creates an app-owned TUN and
    reaches Core over AWG2 before running AWG3.1 and the bounded DNS/egress/leak
    matrix.
-2. Select an owned or explicitly approved compatible Smart-DNS resolver and
+3. Select an owned or explicitly approved compatible Smart-DNS resolver and
    run separate DNS, AI/Games access, IP-visibility, leak and rollback proof;
    the `4046` physical state-machine result is not that proof.
-3. Restore private-repository Actions through Billing & plans, or obtain an
+4. Restore private-repository Actions through Billing & plans, or obtain an
    explicit owner instruction before changing repository visibility.
-4. Require successful platform/client app-bound checks on the exact PR heads.
-5. Merge the client binding under the solo PR control, rerun Core
+5. Require successful platform/client app-bound checks on the exact PR heads.
+6. Merge the client binding under the solo PR control, rerun Core
    `release-contract`, then promote Core and platform only with their required
    checks green.
-6. Freeze and sign a replacement exact candidate from the promoted tuple.
-7. Run the candidate-bound Android/Windows, current/Brain/RU-origin, provider,
+7. Freeze and sign a replacement exact candidate from the promoted tuple.
+8. Run the candidate-bound Android/Windows, current/Brain/RU-origin, provider,
    Operator, legal and performance matrices before any Gate F `GO` or Gate G.
