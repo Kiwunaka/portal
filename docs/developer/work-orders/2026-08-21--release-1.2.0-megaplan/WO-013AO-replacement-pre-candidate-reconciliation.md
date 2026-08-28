@@ -99,12 +99,41 @@ pass `32/32` with platform-context and diff checks. This is
 `PASS_LOCAL_SOURCE`, not deployed-device proof, and does not relabel the
 retained 4044/4043 failures.
 
+## Working build 4045 correction slice
+
+Client runtime source `51f41c646796e506d9d329ce54e8cc15fb7dfa7b`
+demotes an Android `running` snapshot when the app-owned TUN is absent. It
+preserves the staged configuration for retry, clears stale Core egress truth
+and records `service_destroyed`. Direct and Store Android unit matrices pass
+`179/179` each, Flutter analysis is clean, app-shell tests pass `400/400`, the
+client docs contract passes and cross-repository seed validation projects
+`1.2.0+4045` consistently into platform head
+`34d1551f9c732ed879629a768d8825cc694f435c`.
+
+Production-signed working APKs from that exact client source were verified and
+installed without declaring a candidate:
+
+- arm64 `1.2.0+4045`, SHA-256
+  `8e3c45df8db2582f1a29a1f49776f45da5a0420391f584b892f66e4a7947eddf`,
+  installed on the physical Huawei;
+- x86_64 `1.2.0+4045`, SHA-256
+  `0d76ee15fb9b1519cb8f92940cce315fbe3a1b485aaa44625a8f75623f1cc786`,
+  installed on LDPlayer.
+
+Both hosts cold-started without the app-owned VPN service and reported
+`Подключить` / `Не защищено`; the physical Wi-Fi state remained disabled.
+This is `PASS_4045_DISCONNECTED_HOST_TRUTH`. It closes the stale-running
+false-green regression only. It does not prove AWG2/AWG3.1 handshake, tunnel
+egress, DNS/leak behavior, endurance or release readiness, and the paired
+platform managed-profile correction is still not deployed.
+
 ## Hosted PR evidence
 
-Platform PR `#58` and client PR `#33` are mergeable, but their required jobs
-received zero execution steps. GitHub reports failed account payments or a
-spending-limit block. They are `BLOCKED_BY_ACCESS_GITHUB_BILLING`, not product
-test failures and not passes. `OWNER_SOLO_EXCEPTION` does not waive them.
+Platform PR `#58` at `34d1551f...` and client PR `#33` at `2f47148e...` are
+mergeable, but their required jobs received zero execution steps. GitHub
+reports failed account payments or a spending-limit block. They are
+`BLOCKED_BY_ACCESS_GITHUB_BILLING`, not product test failures and not passes.
+`OWNER_SOLO_EXCEPTION` does not waive them.
 
 Core PR `#6` passes `test`, Android artifact reproducibility, Windows artifact
 reproducibility and Apple source build. Its `release-contract` job fails
@@ -130,11 +159,12 @@ Distribution becomes `I4=4`, `I3=313`, `I2=19`, `I1=40`, `I0=1`.
 
 ## Next action
 
-1. Restore private-repository Actions through Billing & plans, or obtain an
+1. Deploy the locally verified managed-profile correction to an authorized
+   controlled environment, then prove build `4045` creates an app-owned TUN and
+   reaches Core over AWG2 before running AWG3.1 and the bounded DNS/egress/leak
+   matrix.
+2. Restore private-repository Actions through Billing & plans, or obtain an
    explicit owner instruction before changing repository visibility.
-2. Deploy the locally verified managed-profile correction to an authorized
-   controlled environment and prove AWG2 reaches Core on the current
-   pre-candidate line before freezing replacement bytes.
 3. Require successful platform/client app-bound checks on the exact PR heads.
 4. Merge the client binding under the solo PR control, rerun Core
    `release-contract`, then promote Core and platform only with their required

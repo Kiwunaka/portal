@@ -3436,3 +3436,21 @@ guarded kill/unbind path. Other existing local evidence becomes stronger, while
 exact signed candidate, hosted, full tunnel, device, origin and promotion proof
 is still absent. Distribution becomes `I4=4`, `I3=313`, `I2=19`, `I1=40`,
 `I0=1`; `317` rows are at or above `I3` and `60` remain below.
+
+The next working correction tuple is platform `34d1551f...`, client runtime
+`51f41c64...` with evidence-doc head `2f47148e...`, and unchanged Core
+`f44dbe89...`. Android Direct/Store unit matrices pass `179/179` each, Flutter
+analysis plus `400/400` app-shell tests pass, cross-repository seed validation
+projects working target `1.2.0+4045`, and the platform documentation contract
+passes `32/32`. Production-signed arm64 and x86_64 build-4045 APKs were
+verified and installed on the physical Huawei and LDPlayer. Both cold starts
+had no app-owned VPN service and reported `Подключить` / `Не защищено`, so the
+stale-running false-green regression is `PASS_4045_DISCONNECTED_HOST_TRUTH`.
+
+This is not a tunnel PASS. Platform managed-profile issuance is corrected in
+source but remains undeployed; build 4045 has not yet proved an AWG2 or AWG3.1
+handshake, egress or DNS/leak matrix. Exact-head hosted checks for platform PR
+`#58` and client PR `#33` again contain zero execution steps because GitHub
+Billing & plans blocked job startup. No row advances and distribution remains
+`I4=4`, `I3=313`, `I2=19`, `I1=40`, `I0=1`; no merge, deploy, candidate,
+public asset or stable promotion occurred.
