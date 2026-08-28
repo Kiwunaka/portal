@@ -66,6 +66,11 @@ it as a candidate.
   echoed `3/3`, while the phone received `0/3`. Both handshakes therefore stay
   `BLOCKED_BY_NETWORK_CURRENT_ORIGIN`; this is not a cryptographic failure or
   universal transport verdict.
+- Explicit no-carrier readback selected AWG2 for the exact physical and
+  LDPlayer identities, but build 4044 on Wi-Fi and build 4043 on LDPlayer
+  emitted no AWG traffic. LDPlayer also rejected the selected Frankfurt
+  location before tunnel start. This is `FAIL_WORKING_CLIENT_ACTIVATION` and
+  blocks another AWG3.1 device loop until the common client path is fixed.
 - Direct HTTPS DoH returned valid responses for the bounded AI/Games set.
   Product routes still require the VPN, so DNS-only ChatGPT/Gemini/Xbox access
   remains `NOT_IMPLEMENTED` and would be a separate Smart-DNS architecture.
@@ -104,10 +109,12 @@ Distribution becomes `I4=4`, `I3=313`, `I2=19`, `I1=40`, `I0=1`.
 
 1. Restore private-repository Actions through Billing & plans, or obtain an
    explicit owner instruction before changing repository visibility.
-2. Require successful platform/client app-bound checks on the exact PR heads.
-3. Merge the client binding under the solo PR control, rerun Core
+2. Fix the Android managed-profile activation/fallback gap and prove AWG2 on
+   the current pre-candidate line before freezing replacement bytes.
+3. Require successful platform/client app-bound checks on the exact PR heads.
+4. Merge the client binding under the solo PR control, rerun Core
    `release-contract`, then promote Core and platform only with their required
    checks green.
-4. Freeze and sign a replacement exact candidate from the promoted tuple.
-5. Run the candidate-bound Android/Windows, current/Brain/RU-origin, provider,
+5. Freeze and sign a replacement exact candidate from the promoted tuple.
+6. Run the candidate-bound Android/Windows, current/Brain/RU-origin, provider,
    Operator, legal and performance matrices before any Gate F `GO` or Gate G.

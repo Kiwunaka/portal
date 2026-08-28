@@ -40,3 +40,23 @@ def test_default_profile_removes_only_the_resolved_device_from_lab_scope() -> No
     assert 'not cohort_identity_present' in helper
     assert 'not lab_allowlist_identity_present' in helper
     assert 'resolved_profile not in {"awg2_lab", "awg31_lab"}' in helper
+
+
+def test_plan_exposes_only_sanitized_device_recency() -> None:
+    helper = _remote_helper()
+
+    assert '"last_seen_age_seconds"' in helper
+    assert "now - device.last_seen_at" in helper
+    assert '"device_os_version_sha256"' in helper
+    assert '"device_locale_sha256"' in helper
+    assert '"device_time_zone_sha256"' in helper
+    assert '"raw_identifiers_returned": False' in helper
+
+
+def test_apply_readback_uses_explicit_carrier_context() -> None:
+    helper = _remote_helper()
+
+    assert 'carrier_context = str(payload.get("carrier_context") or "none")' in helper
+    assert 'carrier=None if carrier_context == "none" else carrier_context' in helper
+    assert 'carrier="beeline"' not in helper
+    assert '"carrier_context": carrier_context' in helper

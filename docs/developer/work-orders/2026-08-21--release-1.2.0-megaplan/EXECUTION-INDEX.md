@@ -3402,8 +3402,13 @@ build and local static performance `9/9`. Its report remains explicit:
 Physical package `1.2.0+4044` remains non-candidate evidence. Owned AWG2 and
 randomized AWG3.1 alignment pass, but physical Beeline controls show server
 receive/echo `3/3` and phone receive `0/3` on both lanes. They remain
-`BLOCKED_BY_NETWORK_CURRENT_ORIGIN`, not cryptographic failures. Direct DoH
-passes only DNS resolution; VPN-free Smart DNS is not implemented.
+`BLOCKED_BY_NETWORK_CURRENT_ORIGIN`, not cryptographic failures. Later explicit
+no-carrier readback selected AWG2 for exact physical and LDPlayer identities,
+but builds 4044/4043 emitted no AWG traffic and LDPlayer rejected the selected
+Frankfurt location before tunnel start. This is a separate
+`FAIL_WORKING_CLIENT_ACTIVATION` boundary and AWG3.1 was not repeated above the
+same unmet AWG2 precondition. Direct DoH passes only DNS resolution; VPN-free
+Smart DNS is not implemented.
 
 Platform PR `#58` and client PR `#33` are mergeable but their required jobs
 received zero execution steps because private Actions are billing-blocked.

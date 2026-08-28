@@ -30,12 +30,14 @@ payload = json.loads(sys.stdin.read())
 label_fragment = str(payload["device_label_fragment"]).strip()
 candidate_rank = int(payload["candidate_rank"])
 selected_profile = str(payload["profile"]).strip()
+carrier_context = str(payload.get("carrier_context") or "none").strip().lower()
 apply_changes = bool(payload.get("apply"))
 if (
     not label_fragment
     or candidate_rank < 1
     or candidate_rank > 4
     or selected_profile not in {"default", "awg2_lab", "awg31_lab"}
+    or carrier_context not in {"none", "beeline"}
 ):
     raise SystemExit("device selector invalid")
 
@@ -155,6 +157,26 @@ with SessionLocal() as session:
         "target_user_is_entitled": target_user is entitled_user,
         "target_user_platform": str(target_user.app_platform or "").strip().lower() or None,
         "device_app_version": str(device.app_version or "").strip() or None,
+        "device_os_version_sha256": (
+            hashlib.sha256(str(device.os_version).strip().encode()).hexdigest()
+            if str(device.os_version or "").strip()
+            else None
+        ),
+        "device_locale_sha256": (
+            hashlib.sha256(str(device.locale).strip().encode()).hexdigest()
+            if str(device.locale or "").strip()
+            else None
+        ),
+        "device_time_zone_sha256": (
+            hashlib.sha256(str(device.time_zone).strip().encode()).hexdigest()
+            if str(device.time_zone or "").strip()
+            else None
+        ),
+        "last_seen_age_seconds": (
+            None
+            if device.last_seen_at is None
+            else max(0, int((now - device.last_seen_at).total_seconds()))
+        ),
         "recent_safe_events": safe_recent_events,
         "source_material_available": source_material_available,
         "raw_identifiers_returned": False,
@@ -379,7 +401,7 @@ with SessionLocal() as read_session:
             session=read_session,
             user=live_user,
             install_id=install_id,
-            carrier="beeline",
+            carrier=None if carrier_context == "none" else carrier_context,
             rollout_config=readback,
         ).get("transport_profile")
         if live_user is not None
@@ -408,6 +430,7 @@ print(
             "awg31_material_provisioned": selected_profile != "default",
             "selected_profile": selected_profile,
             "resolved_profile": resolved_profile,
+            "carrier_context": carrier_context,
             "cohort_identity_present": cohort_identity_present,
             "lab_allowlist_identity_present": lab_allowlist_identity_present,
             "raw_identifiers_returned": False,
@@ -432,6 +455,12 @@ def _parse_args() -> argparse.Namespace:
         choices=("default", "awg2_lab", "awg31_lab"),
         default="awg31_lab",
     )
+    parser.add_argument(
+        "--carrier-context",
+        choices=("none", "beeline"),
+        default="none",
+        help="Policy carrier context used for exact post-apply readback.",
+    )
     parser.add_argument("--confirm-device-label-sha256", default="")
     parser.add_argument("--apply", action="store_true")
     return parser.parse_args()
@@ -453,6 +482,7 @@ def main() -> int:
         "schema_version": "pokrov-owned-awg-device-bind-v1",
         "mode": "APPLY" if args.apply else "PLAN",
         "profile": str(args.profile),
+        "carrier_context": str(args.carrier_context),
         "device_label_sha256": label_sha256,
         "candidate_rank": int(args.candidate_rank),
         "raw_identifiers_returned": False,
@@ -472,6 +502,7 @@ def main() -> int:
                     "device_label_fragment": label,
                     "candidate_rank": int(args.candidate_rank),
                     "profile": str(args.profile),
+                    "carrier_context": str(args.carrier_context),
                     "apply": bool(args.apply),
                 },
                 separators=(",", ":"),
