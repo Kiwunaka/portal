@@ -133,6 +133,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013AQ` | Add an authenticated same-build release-health comparison without exposing operator aggregates or exact cohort values | Platform/client pre-candidate source and observability evidence | Platform `3e52b73...` adds a weekly k-anonymous, contribution-capped, band-only projection; client `44c9cca...` adds a strict existing-session-only consumer on explicit diagnostics refresh plus the build-4046 `PSD2` support-code correction; platform/client/Core tests and final seed parity pass; `OBS-087` advances only to `I2` because no deploy, runtime cohort, exact candidate or physical comparison exists | `WO-010G3`, observability contracts and inventory, exact platform/client/Core source |
 | `WO-013AR` | Add a managed default-off Hysteria2 owner lab through the existing Core engine without a production claim | Cross-repository transport source/artifact and preflight evidence | Core/platform/client exact contract, encrypted device-bound material, L3 guard, reproducible Android AAR, production-signed build-4046 default-off phone proof, byte-identical immutable Linux server bundle and a no-mutation owned-node PLAN pass; the guarded installer blocks APPLY because deployed Brain has no HY2 kill-switch readback and runtime material is absent; `FRKN_HY2/HY2-01` remains `I3`; server deploy, managed handshake/traffic, performance, origins and candidate remain open | `WO-012G` owner amendment, `WO-013AO`, exact Core/platform/client source and returned physical phone |
 | `WO-013AS` | Add a default-off owned selective Smart DNS and opaque TLS relay lab without a second VPN core or access claim | Platform/client network-lab source and pre-candidate evidence | Exact pushed platform/client source, canonical policy, bounded Go DoH/SNI server, byte-reproducible immutable bundle, guarded remote installer source/tests, `412/412` client regression, production-signed build-4046 APKs and exact-byte LDPlayer/Huawei default-off/state-machine proof advance `SMARTDNS-01` to `I3`; dedicated-node PLAN/deploy, live DNS/SNI/access/leak/lifecycle/rollback/origin evidence and candidate remain open | `WO-013AO`, `WO-013AR`, platform `2d18fd7`, client `75e82b0`, retained local artifacts, returned physical phone and LDPlayer |
+| `WO-013AT` | Retain the owner-free GitHub policy and exact current PR-head local gate without creating a candidate or changing visibility | Cross-repository release policy and pre-candidate evidence | The owner declines paid GitHub and waives private branch protection only under `OWNER_SOLO_EXCEPTION`; exact platform/client/Core product sources pass the local aggregate `15/15`; private platform/client hosted checks remain zero-step `BLOCKED_BY_ACCESS`, Core passes four product jobs and awaits the client-main binding; no visibility, merge, deploy, candidate or ledger change occurs | `WO-013AO`, current PRs 58/33/6, exact local aggregate, future open-source safety audit |
 
 ## Current evidence
 
@@ -306,6 +307,10 @@ The row order is a dependency order, not permission for one giant merge. Each im
   opaque allowlisted-SNI architecture, platform/client policy parity, bounded
   server source and current `I2` evidence ceiling. It does not claim an
   immutable bundle, APK/device proof, dedicated node, deploy or service access.
+- `WO-013AT-owner-free-github-exact-pr-head-gate.md` retains the owner's
+  no-purchase/solo-protection policy and the exact `15/15` current product-source
+  local aggregate while keeping private hosted checks, publication, candidate
+  and promotion explicitly open.
 
 ## Collision and promotion gates
 
@@ -404,14 +409,15 @@ The original source-plan ledger distribution is `I4=4`, `I3=315`, `I2=21`,
 `I1=37` across 377 rows. The derived `FRKN_SMART_DNS/SMARTDNS-01` row is
 separate and now sits at `I3`.
 
-Restore private Actions billing, or receive a separate explicit owner command
-before changing platform/client repository visibility. Require successful
-app-bound checks on platform PR 58 and client PR 33. After the exact client
-binding merges, rerun Core PR 6 `release-contract`; merge Core and platform
-only with their required checks green. Then freeze and sign a replacement
-candidate and repeat the candidate-bound LDPlayer/physical Android, Windows
-live TUN/DNS/egress/rollback, current/Brain/RU-origin, authenticated client,
-provider, Operator, legal and comparable performance matrices.
+The owner declined paid GitHub. Private platform/client branch protection is
+waived only under `OWNER_SOLO_EXCEPTION`; named hosted checks are not waived
+and remain `BLOCKED_BY_ACCESS`. Do not change visibility in this slice. Audit
+source and history for public-release hazards before a separately authorized
+public conversion. Preserve the promotion order: client binding, Core PR 6
+`release-contract` replay, then Core/platform. Only after the exact promoted
+tuple is green may a replacement candidate be frozen and subjected to the
+candidate-bound device, Windows network, origin, provider, Operator, legal and
+performance matrices.
 
 The owned AWG and HY2 labs are still default-off. Beeline reverse UDP is
 `BLOCKED_BY_NETWORK_CURRENT_ORIGIN`; another origin can be tested without

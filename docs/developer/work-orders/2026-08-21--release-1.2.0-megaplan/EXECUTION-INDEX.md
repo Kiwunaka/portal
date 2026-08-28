@@ -2,6 +2,34 @@
 
 Last updated: 2026-08-28
 
+## 2026-08-28 — WO-013AT owner-free GitHub and exact PR-head gate
+
+The sole owner declined a paid GitHub plan and waived private platform/client
+branch protection under `OWNER_SOLO_EXCEPTION`. This does not claim an
+independent reviewer and does not waive named hosted checks. Repository
+visibility was not changed; the stated future public-repository direction now
+requires a separate source/history secret and publication-safety audit. The
+canonical rollout plan now covers eventual client/Core/platform publication
+without paid GitHub features. A bounded high-confidence current/history scan
+found only detector, synthetic-test and parser literals, but the dedicated
+redacting scanner, dependency/license, generated-asset and clean-clone gates
+remain open; this is not publication approval.
+
+Clean platform `663890b564e7d25aaa334cf5b66952f9335ba358`, client
+`3564023c8d0e66977043332f2772cfd512489676` and Core product
+`e8eb7721fc6eaac6813d3a888ac90d0da1f541a1` pass the corrected exact local
+aggregate `15/15`. The report SHA-256 is
+`91c474deda3b05233e9a110cf364e7bf5974375a84dad63aab12c78f2f0266d8`.
+It still reports `candidate_proven=false` and
+`promotion_status=MANUAL_OWNER_TEST`.
+
+Platform PR 58 and client PR 33 are mergeable, but their private hosted jobs
+remain zero-step `BLOCKED_BY_ACCESS_GITHUB_BILLING`. Public Core PR 6 passes
+four product/source-artifact jobs; `release-contract` fails closed until client
+`main` adopts the frozen Core product binding. No merge, deploy, visibility
+change, candidate, public asset, stable pointer or promotion occurred. No
+execution-ledger row advances.
+
 ## 2026-08-28 owned selective Smart DNS local proof checkpoint
 
 `WO-013AS` adds one derived FRKN laboratory row,

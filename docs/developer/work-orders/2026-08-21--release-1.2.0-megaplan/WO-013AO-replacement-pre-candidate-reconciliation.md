@@ -632,8 +632,10 @@ rows are at or above `I3`, while `59/377` remain below.
 3. Select an owned or explicitly approved compatible Smart-DNS resolver and
    run separate DNS, AI/Games access, IP-visibility, leak and rollback proof;
    the `4046` physical state-machine result is not that proof.
-4. Restore private-repository Actions through Billing & plans, or obtain an
-   explicit owner instruction before changing repository visibility.
+4. The owner declined a paid GitHub plan and waived private branch protection
+   under `OWNER_SOLO_EXCEPTION`. Keep private hosted checks
+   `BLOCKED_BY_ACCESS` in this slice; repository visibility requires a separate
+   publication-safety audit and mutation.
 5. Require successful platform/client app-bound checks on the exact PR heads.
 6. Merge the client binding under the solo PR control, rerun Core
    `release-contract`, then promote Core and platform only with their required
