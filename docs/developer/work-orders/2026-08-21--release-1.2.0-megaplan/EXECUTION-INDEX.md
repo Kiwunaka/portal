@@ -3412,6 +3412,17 @@ Frankfurt location before tunnel start. This is a separate
 same unmet AWG2 precondition. Direct DoH passes only DNS resolution; VPN-free
 Smart DNS is not implemented.
 
+Post-observation source review identified the first common activation blocker:
+the managed-profile route selected the exact device-bound AWG policy but then
+incorrectly required an ordinary Smart Connect/node shortlist before issuing
+typed material. The local platform correction makes `awg2_lab` and
+`awg31_lab` bypass that unrelated catalog, ignore `selected_node_code` and
+return `smart_connect: null` while preserving all exact-device and material
+gates. Focused network tests pass `53/53`, the router-mandated backend suite
+passes `154` tests plus `8` subtests, and docs pass `32/32` with context/diff
+checks. This is `PASS_LOCAL_SOURCE`; it is not deployed and does not upgrade
+the 4044/4043 device observations.
+
 Platform PR `#58` and client PR `#33` are mergeable but their required jobs
 received zero execution steps because private Actions are billing-blocked.
 Core PR `#6` passes four product jobs; its release contract fails closed until

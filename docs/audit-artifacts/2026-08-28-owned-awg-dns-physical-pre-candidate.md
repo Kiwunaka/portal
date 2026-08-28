@@ -31,6 +31,7 @@ promotion evidence.
 | AWG2 physical Wi-Fi activation | `FAIL_WORKING_4044_CLIENT_ACTIVATION` | Internet and DNS passed outside a VPN, but a bounded outer capture retained no handshake and zero AWG receive/send bytes. The app returned to disconnected state and Android exposed no VPN transport. |
 | AWG2 LDPlayer activation | `FAIL_WORKING_4043_CLIENT_ACTIVATION` | After exact device-rank refresh and no-carrier lab readback, automatic connect showed connected without Android VPN transport and emitted no AWG traffic; explicit Frankfurt selection then failed as unavailable before tunnel start. |
 | AWG3.1 Wi-Fi / LDPlayer repetition | `NOT_RUN_DUE_TO_PRECONDITION` | AWG2 never reached the cryptographic path in either control. Repeating the parallel profile would not distinguish AWG3.1 behavior until client managed-profile activation is fixed. |
+| AWG managed-issuance source correction | `PASS_LOCAL_SOURCE` | The platform now bypasses ordinary Smart Connect/node-shortlist gating for device-bound `awg2_lab` and `awg31_lab`, ignores manual node selection and returns `smart_connect: null`. Both profiles issue with an empty ordinary node catalog in API tests; node-backed profiles retain their existing `503` fail-closed behavior. This source change is not deployed and does not relabel either observed device failure. |
 | Direct HTTPS DoH | `PASS_CURRENT_ORIGIN` | Persisted state and runtime selected direct DoH; all `3/3` bounded AI/Games DNS queries returned valid DNS messages over HTTPS. |
 | DNS-only service access claim | `NOT_IMPLEMENTED` | AI/Games application routes still target the active VPN. DNS success does not prove ChatGPT, Gemini or Xbox access without VPN. |
 | Normal WARP after lab unbind | `PASS_WORKING_4044` | Exact device was absent from cohort and both lab allowlists; policy resolved the ordinary fallback, UI connected and independent IP plus DNS+egress probes passed. |
@@ -45,8 +46,12 @@ reached the server, while their guarded echoes did not return to the phone. The
 later Wi-Fi/no-carrier controls expose a separate earlier failure boundary.
 Policy readback selected AWG2 for both exact devices, but neither installed
 client emitted AWG traffic; LDPlayer also exposed a selected-location rejection.
-That is a client managed-profile activation/fallback gap, not evidence about
-AWG2 or AWG3.1 cryptography. It must be fixed before another protocol loop.
+That is a managed-profile activation/fallback gap, not evidence about AWG2 or
+AWG3.1 cryptography. Source review found the first common blocker in the
+platform: device-bound AWG issuance incorrectly passed through the ordinary
+Smart Connect shortlist and could return `503 No eligible nodes` before typed
+material reached the client. The local correction and regressions pass, but it
+is not live evidence until deployed to a controlled environment and repeated.
 
 The direct-DoH control proves only encrypted DNS reachability and valid
 resolution. Current product behavior remains split routing through the VPN for
@@ -55,9 +60,9 @@ a separate architecture and evidence lane.
 
 ## Remaining Gates
 
-- Fix and retain the Android managed-profile activation path so an exact
-  no-carrier lab selection reaches Core without cached legacy fallback or a
-  selected-location rejection.
+- Deploy the locally verified managed-issuance correction to an authorized
+  controlled environment, then prove an exact no-carrier lab selection reaches
+  Core without cached legacy fallback or a selected-location rejection.
 - Build and bind the exact strict-v2 replacement candidate.
 - Re-run AWG2 on an origin that returns UDP, then AWG3.1, and prove handshake,
   tunnel DNS, decrypted egress and leak behavior on the exact candidate.

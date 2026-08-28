@@ -324,7 +324,6 @@ def _synthetic_awg31_endpoint() -> dict[str, object]:
 def test_awg2_owner_lab_is_device_bound_managed_only_and_kill_rolls_back(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
-    _add_node(api, code="pl", last_health_at=_utcnow())
     start_body = _start_trial(client, install_id="awg2-owner-device", platform="windows")
 
     rollout = _rollout_payload()
@@ -368,7 +367,10 @@ def test_awg2_owner_lab_is_device_bound_managed_only_and_kill_rolls_back(monkeyp
     finally:
         session.close()
 
-    managed = client.get("/api/client/profile/managed", headers=_auth_headers(start_body))
+    managed = client.get(
+        "/api/client/profile/managed?selected_node_code=not-an-awg-selector",
+        headers=_auth_headers(start_body),
+    )
 
     assert managed.status_code == 200, managed.text
     body = managed.json()
@@ -380,8 +382,9 @@ def test_awg2_owner_lab_is_device_bound_managed_only_and_kill_rolls_back(monkeyp
     assert body["config_payload"]["endpoints"][0]["type"] == "awg"
     assert body["config_payload"]["endpoints"][0]["useIntegratedTun"] is False
     assert body["config_payload"]["_meta"]["transport_contract"]["sha256"] == rollout["awg2_lab"]["contract_sha256"]
-    assert body["smart_connect"]["shortlist"][0]["probe"] is None
+    assert body["smart_connect"] is None
 
+    _add_node(api, code="pl", last_health_at=_utcnow())
     subscription_path = urlsplit(str(start_body["subscription_url"])).path
     subscription = client.get(f"{subscription_path}?format=singbox")
     assert subscription.status_code == 200, subscription.text
@@ -409,7 +412,6 @@ def test_awg31_private_profile_requires_an_active_device_claim(
 ) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
-    _add_node(api, code="pl", last_health_at=_utcnow())
     start_body = _start_trial(
         client, install_id="awg31-owner-device", platform="windows"
     )
@@ -476,10 +478,13 @@ def test_awg31_private_profile_requires_an_active_device_claim(
     assert blocked.json()["detail"] == "Authenticated device is required"
 
     managed = client.get(
-        "/api/client/profile/managed", headers=_auth_headers(start_body)
+        "/api/client/profile/managed?selected_node_code=missing-catalog-node",
+        headers=_auth_headers(start_body),
     )
     assert managed.status_code == 200, managed.text
-    endpoint = managed.json()["config_payload"]["endpoints"][0]
+    body = managed.json()
+    assert body["smart_connect"] is None
+    endpoint = body["config_payload"]["endpoints"][0]
     assert endpoint["contract_id"] == "pokrov.awg31.endpoint.v1"
     assert endpoint["private_key"] == _synthetic_awg31_endpoint()["private_key"]
 

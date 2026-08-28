@@ -1932,7 +1932,8 @@ async def client_managed_profile(
             ).strip()
             or LEGACY_REALITY_FALLBACK
         )
-        if transport_profile in {AWG2_LAB, AWG31_LAB}:
+        is_owned_awg_lab = transport_profile in {AWG2_LAB, AWG31_LAB}
+        if is_owned_awg_lab:
             install_id = _client_authenticated_install_id(
                 s,
                 user=user,
@@ -1942,16 +1943,20 @@ async def client_managed_profile(
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
         requested_node_code = str(selected_node_code or "").strip().lower()
-        smart_connect = _smart_connect_shortlist(
-            session=s,
-            user=user,
-            nodes=nodes_for_user,
-            transport_profile=transport_profile,
-            rollout_config=rollout_config,
-            profile_revision=str(client_policy.get("profile_revision") or ""),
-            install_id=install_id,
-            preferred_node_code=requested_node_code,
-        )
+        smart_connect = None
+        if is_owned_awg_lab:
+            requested_node_code = ""
+        else:
+            smart_connect = _smart_connect_shortlist(
+                session=s,
+                user=user,
+                nodes=nodes_for_user,
+                transport_profile=transport_profile,
+                rollout_config=rollout_config,
+                profile_revision=str(client_policy.get("profile_revision") or ""),
+                install_id=install_id,
+                preferred_node_code=requested_node_code,
+            )
         sync_ok = await _sync_control_panel_access(user=user)
         if not sync_ok:
             logger.warning(
@@ -1967,40 +1972,43 @@ async def client_managed_profile(
             used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0),
             source="managed_profile_runtime",
         )
-        effective_nodes = _effective_transport_nodes(
-            nodes=nodes_for_user,
-            rollout_config=rollout_config,
-            transport_profile=transport_profile,
-        )
-        effective_by_code = _nodes_by_code(effective_nodes)
-        shortlist_codes = [
-            str(item.get("code") or "").strip().lower()
-            for item in smart_connect.get("shortlist") or []
-            if str(item.get("code") or "").strip()
-        ]
-        effective_nodes = [
-            effective_by_code[code]
-            for code in shortlist_codes
-            if code in effective_by_code
-        ]
-        if not effective_nodes:
-            raise HTTPException(status_code=503, detail="No eligible nodes")
-        if requested_node_code not in set(shortlist_codes):
-            requested_node_code = ""
-        ranked_effective_nodes = rank_nodes_for_app(
-            effective_nodes,
-            policy_by_code=_node_capacity_policy_by_code(s),
-            now=_utcnow(),
-        )
-        effective_nodes = _prefer_smart_connect_node_order(
-            nodes=ranked_effective_nodes,
-            preferred_node_code=requested_node_code
-            or str(
-                (smart_connect.get("stickiness") or {}).get("preferred_node_code") or ""
-            ),
-        )
-        if requested_node_code:
-            smart_connect["selected_node_code"] = requested_node_code
+        effective_nodes = []
+        if not is_owned_awg_lab:
+            effective_nodes = _effective_transport_nodes(
+                nodes=nodes_for_user,
+                rollout_config=rollout_config,
+                transport_profile=transport_profile,
+            )
+            effective_by_code = _nodes_by_code(effective_nodes)
+            shortlist_codes = [
+                str(item.get("code") or "").strip().lower()
+                for item in smart_connect.get("shortlist") or []
+                if str(item.get("code") or "").strip()
+            ]
+            effective_nodes = [
+                effective_by_code[code]
+                for code in shortlist_codes
+                if code in effective_by_code
+            ]
+            if not effective_nodes:
+                raise HTTPException(status_code=503, detail="No eligible nodes")
+            if requested_node_code not in set(shortlist_codes):
+                requested_node_code = ""
+            ranked_effective_nodes = rank_nodes_for_app(
+                effective_nodes,
+                policy_by_code=_node_capacity_policy_by_code(s),
+                now=_utcnow(),
+            )
+            effective_nodes = _prefer_smart_connect_node_order(
+                nodes=ranked_effective_nodes,
+                preferred_node_code=requested_node_code
+                or str(
+                    (smart_connect.get("stickiness") or {}).get("preferred_node_code")
+                    or ""
+                ),
+            )
+            if requested_node_code:
+                smart_connect["selected_node_code"] = requested_node_code
         config_format, config_payload = _managed_manifest_payload(
             user=user,
             nodes=effective_nodes,

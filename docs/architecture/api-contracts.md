@@ -665,6 +665,11 @@ explicitly enables the legacy contour.
   constructing an authenticated `GET /api/client/profile/managed` response.
   The managed response binds `pokrov.awg2.endpoint.v1`, the exact Core contract
   SHA-256, endpoint revision, generation and `useIntegratedTun=false`.
+- Owner-only `awg2_lab` and `awg31_lab` managed issuance bypasses Smart Connect
+  and the ordinary node shortlist because those profiles are backed by typed
+  per-device endpoint material rather than catalog nodes. The response returns
+  `smart_connect: null`, ignores `selected_node_code`, and remains governed by
+  the exact device, rollout, server-record and material gates below.
 - AWG2 issuance requires the disabled-by-default rollout gate to be enabled,
   its kill switch to be clear, exact user/install/platform/node allowlists, a
   current ready POKROV-owned server record and fresh device material. Missing,

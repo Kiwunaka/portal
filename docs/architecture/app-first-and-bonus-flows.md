@@ -323,7 +323,8 @@ Rollout note:
 
 Smart-connect contract:
 
-- `GET /api/client/profile/managed` returns a shortlist revision plus `smart_connect.shortlist`; its material contains only those shortlisted nodes and returns `503 No eligible nodes` when the shortlist is empty
+- For node-backed transports, `GET /api/client/profile/managed` returns a shortlist revision plus `smart_connect.shortlist`; its material contains only those shortlisted nodes and returns `503 No eligible nodes` when the shortlist is empty
+- Device-bound `awg2_lab` and `awg31_lab` are not node-backed: managed issuance bypasses Smart Connect and the ordinary node shortlist, ignores `selected_node_code`, and returns `smart_connect: null`. The typed per-device material and its own rollout/material gates remain fail-closed
 - premium users can receive up to `SMART_CONNECT_SHORTLIST_LIMIT` eligible non-free nodes, default `8`; expired users receive no delivery shortlist
 - the shortlist rejects disabled, draining, unhealthy, stale, missing or dataplane-down, saturated, high-loss/retransmit, `cpu_percent >= SMART_CONNECT_CPU_REJECT_PERCENT`, transport-incompatible, and rollout-blocked nodes while `CAPACITY_AWARE_NODE_SELECTION=true`; neither explicit selection nor automatic selection may fall back to a rejected node
 - shortlist items expose canonical `outbound_tag`, `health_score`, `cpu_percent`, `panel_latency_ms`, `backend_penalty`, `cpu_penalty`, `capacity_state`, `capacity_score`, `tx_ratio`, `tx_mbps`, `provisioned_clients_count`, `online_connections_hint`, and an internal `probe.host` / `probe.port` target for app-side RTT checks; `outbound_tag` identifies the unique direct proxy that must belong to the returned final selector
