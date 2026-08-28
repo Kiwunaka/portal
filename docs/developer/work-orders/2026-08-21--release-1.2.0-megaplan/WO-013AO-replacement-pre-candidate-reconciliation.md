@@ -489,6 +489,26 @@ The 3,751-byte sanitized readback
 `2026-08-28-github-actions-secret-wiring-readback.json` has SHA-256
 `3ad49b2b7a4f6843983705782873478e4f713d471819677618d2d8e9d6965ef2`.
 
+The client workflow was also reproduced locally against the exact replacement
+tuple instead of the stale promotion lines. Client `3564023c...` validated
+against platform PR carrier `be3a969b...` (unchanged product source
+`e6ae46e3...`) and a temporary detached Core product-source checkout at
+`e8eb7721...`. Cross-repository version, product-fact, observability,
+release-handoff, rollback, source-logging and repository-hygiene contracts all
+passed for `1.2.0+4046`. The standard client gate then passed foundation
+analysis, `563` Flutter tests, both Android Gradle flavors and the signing
+source contracts. Its single declared skip was the client-local real-Core DLL
+backtest; exact hosted Core Windows evidence separately retains the passing
+100-cycle run. The temporary Core worktree was removed, and neither tracked
+client files nor `artifacts/releases/**` changed.
+
+The 2,912-byte sanitized report
+`2026-08-28-local-client-release-v2-gate-3564023.json` has SHA-256
+`ee9f3b9def349d0d22521705770d33aea9faf58032715e7fc2985b7034486b6e`.
+This is `PASS_LOCAL_CLIENT_RELEASE_V2_GATE`; it does not replace the required
+hosted client check, does not prove a physical-device tunnel and does not
+authorize merge, candidate creation or deployment.
+
 The owner solo exception is now enforced without weakening checks on the two
 public repositories. Core `main` requires the strict five-job source/artifact
 matrix, and release-index repository `Kiwunaka/pokrov` `main` now requires the
