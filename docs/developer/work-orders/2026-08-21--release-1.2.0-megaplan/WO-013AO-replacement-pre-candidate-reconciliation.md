@@ -135,6 +135,13 @@ transport, foregrounded Hiddify and preserved disabled Wi-Fi. Record this as
 `FAIL_4045_PREDEPLOY_ANDROID_ACTIVATION`; it still precedes deployment of the
 managed-profile correction and is not an AWG cryptographic verdict.
 
+An independent LDPlayer connect control reached canonical
+`core_egress_probe_failed`: the selected outbound did not pass internet proof,
+so POKROV stopped the system VPN fail-closed and exposed the safe retry state.
+There was no VPN-permission prompt, residual POKROV service or VPN transport
+after cleanup. No AWG policy was bound and no server policy was mutated, so
+this is `FAIL_4045_LDPLAYER_SELECTED_OUTBOUND_EGRESS`, not AWG tunnel evidence.
+
 The full bounded local quality gate was then repeated on exact clean platform
 `9383117794f9ee17b5976204c3b8601732464c17`, client
 `f3d3310f520156cbb07a8993fbe485cf599a174f` and unchanged Core

@@ -3454,6 +3454,12 @@ transport, restored Hiddify foreground and preserved disabled Wi-Fi. This is
 `FAIL_4045_PREDEPLOY_ANDROID_ACTIVATION`, before the platform correction is
 deployed, and does not classify AWG cryptography.
 
+LDPlayer independently reached canonical `core_egress_probe_failed` for its
+selected non-AWG outbound. POKROV stopped VPN fail-closed and cleanup left no
+service or transport. Record this as
+`FAIL_4045_LDPLAYER_SELECTED_OUTBOUND_EGRESS`; it confirms truthful failure
+handling but neither proves nor rejects AWG.
+
 The bounded local quality aggregate was repeated on exact clean platform
 `93831177...`, client `f3d3310f...` and Core `f44dbe89...` under Node
 `22.14.0`. All `15/15` steps pass: performance contract/tests, Flutter analyze
