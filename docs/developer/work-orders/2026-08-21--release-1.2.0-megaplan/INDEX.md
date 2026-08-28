@@ -130,6 +130,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013AN` | Evaluate source-plan Gate E against exact candidate.3 without converting automated UI checks into physical-device proof | Platform/client release decision/evidence | Exact quick/default aggregate, Playwright `88/88`, controlled API p95 and fresh desktop/mobile render smoke pass local slices; authenticated journeys, physical screen readers/scaling, device/browser performance, comparable artifacts, support recovery, RU-origin and post-promotion evidence remain open, so Gate E stays `I3` as `BLOCKED` with no replacement-code defect | source-plan Gate E, `WO-010`, `WO-013AH`, `WO-013AL`, exact platform/client/Core sources and private render screenshots |
 | `WO-013AO` | Reconcile the current replacement source tuple, same-byte Android Core provenance, owned AWG/DNS physical slice and exact local aggregate without creating a candidate | Cross-repository pre-candidate/release evidence | Platform/client/Core base tuple `e5ef03a...` / `c196dff...` / `f44dbe8...` is clean and pushed; exact Node 22.14 local gate passes `15/15`; owned default-off lab closure advances `FRKN_PLAN/W3-01` to `I3`; later client `5e78dd9...` adds locally verified external Smart DNS routing and a production-signed build-4046 physical state-machine PASS without resolver/access proof; platform PR 58 and client PR 33 remain zero-step billing-blocked, while Core PR 6 passes four product jobs and awaits the client-main binding | `WO-013AK`, `WO-013AN`, owned physical pre-candidate evidence, current PR heads |
 | `WO-013AP` | Add closed Linux NetworkManager/resolved/nft checkpoint/apply/rollback events without enabling or claiming live Linux traffic | Client conditional-Linux source and platform execution evidence | Client PR 28 head `583e04a...` adds typed transaction events plus honest unavailable preflight wiring; portable Go, Linux cross-vet/build/test compile, Flutter `4/4`, docs and branch-basis seed checks pass; `OBS-045` advances only to `I2` because Linux execution, real network transactions, journald readback and clean-host restoration are absent | `WO-005G`, Linux PR 28, `OBS-043`–`OBS-046`, branch-basis platform/Core authority |
+| `WO-013AQ` | Add an authenticated same-build release-health comparison without exposing operator aggregates or exact cohort values | Platform/client pre-candidate source and observability evidence | Platform `3e52b73...` adds a weekly k-anonymous, contribution-capped, band-only projection; client `44c9cca...` adds a strict existing-session-only consumer on explicit diagnostics refresh plus the build-4046 `PSD2` support-code correction; platform/client/Core tests and final seed parity pass; `OBS-087` advances only to `I2` because no deploy, runtime cohort, exact candidate or physical comparison exists | `WO-010G3`, observability contracts and inventory, exact platform/client/Core source |
 
 ## Current evidence
 
@@ -290,6 +291,10 @@ The row order is a dependency order, not permission for one giant merge. Each im
   clean replacement tuple, same-byte Android Core provenance, private local
   aggregate report digest, owned AWG/DNS physical boundary and zero-step
   GitHub billing blocker without treating the tuple as a candidate.
+- `WO-013AQ-client-release-health-baseline.md` binds the platform/client source
+  implementation of an exact-build weekly privacy-bounded comparison, the
+  strict band-only client consumer and the `OBS-087` `I1 -> I2` ceiling without
+  claiming a deploy, runtime cohort, physical comparison or candidate.
 
 ## Collision and promotion gates
 

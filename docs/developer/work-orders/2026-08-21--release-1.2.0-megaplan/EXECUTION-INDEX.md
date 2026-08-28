@@ -3579,3 +3579,37 @@ D-Bus trace was added.
 Distribution becomes `I4=4`, `I3=314`, `I2=20`, `I1=39`, `I0=0`; `318/377`
 rows remain at or above `I3` and `59/377` remain below. No merge, signed Linux
 package, candidate, deploy, public claim or runtime network mutation occurred.
+
+## 2026-08-28 — WO-013AQ privacy-bounded client release-health baseline
+
+Platform source `3e52b7314a82758ad11a68e991b5e9f4a8f48a71`
+adds an authenticated exact-build UTC-week baseline without returning the
+existing operator aggregates. One authenticated account maps through a private
+HMAC to one of `4096` cohort buckets. The server stores no account, Telegram,
+install, device, session or stable contributor identifier in that projection,
+caps one bucket at `64` overall and `32` per-family events, requires at least
+`10` occupied buckets and returns only sample/failure-rate bands. Replay event
+IDs cannot inflate the cohort, missing privacy configuration fails closed and
+the rows expire after `14` days.
+
+Client source `44c9cca2503f5280d7a977b46aaebd849b3dee44` adds a
+strict band-only parser and existing-session GET. Local diagnostics remain
+network-independent; the cohort request occurs only after explicit user
+refresh, stays hidden when unavailable and reports an undersized cohort without
+exact numbers. The same full regression exposed and fixed the real build-4046
+support-code overflow by retaining `PSD1` for builds through `255` and adding
+`PSD2` for larger build numbers.
+
+Platform focused tests pass `57`; the broader API regression passes `154` plus
+`8` subtests; observability contracts, inventory and `45` documentation tests
+pass. Client analysis is clean, the full app-shell suite passes `411/411`, the
+focused comparison suite passes `18/18`, support-bundle passes `15/15`, and the
+final cross-repository seed validation passes against platform `3e52b73...`,
+client `44c9cca...` and Core `f44dbe8...`.
+
+No server deploy, cohort secret change, runtime cohort, physical comparison,
+merge, signed candidate or promotion occurred. One returned physical phone
+cannot prove a k-anonymous cohort, so it was not mutated for this slice.
+`OBS/OBS-087` advances only `I1 -> I2` as `IMPLEMENTED_SOURCE_ONLY`.
+Distribution becomes `I4=4`, `I3=314`, `I2=21`, `I1=38`, `I0=0`; `318/377`
+rows remain at or above `I3` and `59/377` remain below.
