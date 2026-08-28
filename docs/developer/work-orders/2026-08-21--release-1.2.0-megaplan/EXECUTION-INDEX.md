@@ -1,6 +1,6 @@
 # POKROV 1.2.0 Execution Index
 
-Last updated: 2026-08-27
+Last updated: 2026-08-28
 
 ## Item scale
 
@@ -3382,3 +3382,38 @@ post-promotion observation remain `BLOCKED_BY_ACCESS`, `MANUAL_OWNER_TEST` or
 remains `I4=4`, `I3=312`, `I2=19`, `I1=41`, `I0=1`. No authentication,
 external submission, entitlement/payment, deploy, public asset, stable pointer
 or Gate G mutation occurred.
+
+## 2026-08-28 — WO-013AO replacement pre-candidate reconciliation
+
+The clean replacement source tuple is platform/client/Core
+`e5ef03ac...` / `c196dff...` / `f44dbe8...`. Android Core was rebuilt twice
+from the exact Core head; both AARs are byte-identical with SHA-256
+`ca391059...` and match the existing client binary because the Core follow-up
+changes tests only. Client source metadata now binds that exact Core revision.
+
+The bounded local quality gate ran under the declared Node `22.14.0` and
+passed all `15/15` steps: performance contract/tests, Flutter analysis and
+`400/400` app-shell tests, client release/docs contracts, WebApp lint/build and
+`69/69` cabinet E2E tests, marketing build/SEO/responsive checks, AdminApp
+build and local static performance `9/9`. Its report remains explicit:
+`candidate_proven=false`, `local_status=PASS` and
+`promotion_status=MANUAL_OWNER_TEST`.
+
+Physical package `1.2.0+4044` remains non-candidate evidence. Owned AWG2 and
+randomized AWG3.1 alignment pass, but physical Beeline controls show server
+receive/echo `3/3` and phone receive `0/3` on both lanes. They remain
+`BLOCKED_BY_NETWORK_CURRENT_ORIGIN`, not cryptographic failures. Direct DoH
+passes only DNS resolution; VPN-free Smart DNS is not implemented.
+
+Platform PR `#58` and client PR `#33` are mergeable but their required jobs
+received zero execution steps because private Actions are billing-blocked.
+Core PR `#6` passes four product jobs; its release contract fails closed until
+client `main` carries the exact Core binding. No PR is merged, and no candidate,
+deploy, public asset or stable promotion is created.
+
+`FRKN_PLAN/W3-01` advances `I1 -> I3` because the isolated owned lab now has a
+retained server record, exact alignment readback, default-off policy and
+guarded kill/unbind path. Other existing local evidence becomes stronger, while
+exact signed candidate, hosted, full tunnel, device, origin and promotion proof
+is still absent. Distribution becomes `I4=4`, `I3=313`, `I2=19`, `I1=40`,
+`I0=1`; `317` rows are at or above `I3` and `60` remain below.
