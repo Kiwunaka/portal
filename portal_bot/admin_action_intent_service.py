@@ -49,10 +49,12 @@ from models import (
     ProviderTrafficQuota,
     Awg2LabMaterial,
     Awg31LabMaterial,
+    Hy2LabMaterial,
     WarpMaterial,
 )
 from awg2_lab_service import Awg2LabError, validate_awg2_endpoint
 from awg31_lab_service import Awg31LabError, validate_awg31_endpoint
+from hy2_lab_service import Hy2LabError, validate_hy2_endpoint
 from node_policy import (
     canonical_free_node_code,
     node_is_free,
@@ -5283,6 +5285,62 @@ def _normalize_awg31_lab_material_payload(payload: Mapping[str, Any]) -> dict[st
     }
 
 
+def _normalize_hy2_lab_material_runtime(payload: Mapping[str, Any]) -> dict[str, Any]:
+    _reject_extra_payload_fields(
+        payload,
+        {
+            "tg_id",
+            "install_id",
+            "generation",
+            "endpoint_revision",
+            "server_record_id",
+            "node_code",
+            "endpoint",
+        },
+    )
+    tg_id = _normalize_promo_integer(payload.get("tg_id"), field="tg_id", minimum=1, maximum=2**63 - 1)
+    install_id = _bounded_text(payload.get("install_id"), field="install_id", minimum=1, maximum=128)
+    generation = _bounded_text(payload.get("generation"), field="generation", minimum=2, maximum=64)
+    endpoint_revision = _bounded_text(
+        payload.get("endpoint_revision"), field="endpoint_revision", minimum=2, maximum=64
+    )
+    server_record_id = _bounded_text(
+        payload.get("server_record_id"), field="server_record_id", minimum=2, maximum=64
+    )
+    node_code = _bounded_text(payload.get("node_code"), field="node_code", minimum=2, maximum=64)
+    endpoint = _normalize_json_object(payload.get("endpoint") or {}, field="endpoint", maximum_bytes=100_000)
+    try:
+        endpoint = validate_hy2_endpoint(endpoint)
+    except Hy2LabError:
+        raise ActionIntentError(
+            "invalid_hy2_lab_material",
+            status_code=422,
+            message="Hysteria2 lab material не прошёл проверку.",
+        ) from None
+    return {
+        "tg_id": tg_id,
+        "install_id": install_id,
+        "generation": generation,
+        "endpoint_revision": endpoint_revision,
+        "server_record_id": server_record_id,
+        "node_code": node_code,
+        "endpoint": endpoint,
+    }
+
+
+def _normalize_hy2_lab_material_payload(payload: Mapping[str, Any]) -> dict[str, Any]:
+    runtime = _normalize_hy2_lab_material_runtime(payload)
+    return {
+        "tg_id": int(runtime["tg_id"]),
+        "install_id": _redacted_text(str(runtime["install_id"])),
+        "generation": str(runtime["generation"]),
+        "endpoint_revision": str(runtime["endpoint_revision"]),
+        "server_record_id": str(runtime["server_record_id"]),
+        "node_code": str(runtime["node_code"]),
+        "endpoint": _json_fingerprint("admin-hy2-lab-endpoint", runtime["endpoint"]),
+    }
+
+
 def _user_owns_active_install(
     session,
     *,
@@ -5419,6 +5477,67 @@ def _awg31_lab_material_state(session, target_id: str, payload: Mapping[str, Any
         "server_record_id": str(payload["server_record_id"]),
         "node_code": str(payload["node_code"]),
         "endpoint": _json_fingerprint("admin-awg31-lab-endpoint", payload["endpoint"]),
+    }
+    return EntityState(
+        entity=user,
+        version_snapshot={"user_active": bool(user.is_active), **before},
+        public_snapshot=before,
+        context={"mode": "replace", "after_snapshot": after, "challenge": str(tg_id), "tg_id": tg_id},
+    )
+
+
+def _hy2_lab_material_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
+    tg_id = _integer_target(target_id, positive=True)
+    if int(payload.get("tg_id") or 0) != tg_id:
+        raise ActionIntentError("invalid_target", status_code=422, message="Цель должна совпадать с tg_id материала.")
+    user = _row_for_update(session.query(User).filter(User.tg_id == tg_id), session, for_update)
+    if user is None:
+        raise ActionIntentError("target_not_found", status_code=404, message="Пользователь не найден.")
+    install_id = str(payload.get("install_id") or "").strip()
+    if not _user_owns_active_install(
+        session,
+        user=user,
+        install_id=install_id,
+        for_update=for_update,
+    ):
+        raise ActionIntentError(
+            "invalid_target",
+            status_code=422,
+            message="install_id должен совпадать с активным устройством пользователя.",
+        )
+    query = session.query(Hy2LabMaterial).filter(
+        Hy2LabMaterial.tg_id == tg_id,
+        Hy2LabMaterial.install_id == install_id,
+        Hy2LabMaterial.is_active.is_(True),
+    )
+    if for_update and str(session.get_bind().dialect.name) == "postgresql":
+        query = query.with_for_update()
+    materials = query.order_by(Hy2LabMaterial.id.asc()).all()
+    before = {
+        "tg_id": tg_id,
+        "install_id_sha256": _semantic_hash("admin-hy2-lab-install", install_id),
+        "active_materials": [
+            {
+                "id": int(row.id),
+                "material_hash": str(row.material_hash),
+                "generation": str(row.generation),
+                "endpoint_revision": str(row.endpoint_revision),
+                "server_record_id": str(row.server_record_id),
+                "node_code": str(row.node_code),
+                "state": str(row.state),
+                "updated_at": _safe_iso(row.updated_at),
+            }
+            for row in materials
+        ],
+    }
+    after = {
+        "tg_id": tg_id,
+        "install_id_sha256": before["install_id_sha256"],
+        "generation": str(payload["generation"]),
+        "endpoint_revision": str(payload["endpoint_revision"]),
+        "server_record_id": str(payload["server_record_id"]),
+        "node_code": str(payload["node_code"]),
+        "endpoint": _json_fingerprint("admin-hy2-lab-endpoint", payload["endpoint"]),
     }
     return EntityState(
         entity=user,
@@ -5594,6 +5713,42 @@ def _sanitize_awg31_lab_material_result(result: Mapping[str, Any]) -> dict[str, 
     if "install_id_sha256" not in safe["material"]:
         safe["material"]["install_id_sha256"] = (
             _semantic_hash("admin-awg31-lab-install", str(install_id))
+            if isinstance(install_id, str) and install_id
+            else None
+        )
+    return safe
+
+
+def _sanitize_hy2_lab_material_result(result: Mapping[str, Any]) -> dict[str, Any]:
+    safe = _result_envelope(result)
+    material = result.get("material")
+    if not isinstance(material, Mapping):
+        raise ActionIntentError(
+            "invalid_executor_result",
+            status_code=500,
+            message="Исполнитель Hysteria2 lab вернул некорректный результат.",
+        )
+    safe["material"] = {
+        key: material[key]
+        for key in (
+            "id",
+            "tg_id",
+            "generation",
+            "endpoint_revision",
+            "server_record_id",
+            "node_code",
+            "material_hash",
+            "state",
+            "is_active",
+            "provisioned_at",
+            "install_id_sha256",
+        )
+        if key in material
+    }
+    install_id = material.get("install_id")
+    if "install_id_sha256" not in safe["material"]:
+        safe["material"]["install_id_sha256"] = (
+            _semantic_hash("admin-hy2-lab-install", str(install_id))
             if isinstance(install_id, str) and install_id
             else None
         )
@@ -6382,6 +6537,21 @@ ACTION_POLICIES.update(
             audit_target_builder=_audit_warp_target,
             result_sanitizer=_sanitize_awg31_lab_material_result,
         ),
+        "hy2_lab_material.replace": ActionPolicy(
+            action="hy2_lab_material.replace",
+            target_type="hy2_lab_material",
+            risk_level="L3",
+            payload_normalizer=_normalize_hy2_lab_material_payload,
+            runtime_payload_normalizer=_normalize_hy2_lab_material_runtime,
+            entity_state_builder=_hy2_lab_material_state,
+            preview_builder=_model_change_preview,
+            challenge_kind="exact_tg_id",
+            challenge_builder=_context_target_challenge,
+            executor_kind="db",
+            audit_action="admin_hy2_lab_material_put",
+            audit_target_builder=_audit_warp_target,
+            result_sanitizer=_sanitize_hy2_lab_material_result,
+        ),
         "promo_slots.update": ActionPolicy(
             action="promo_slots.update",
             target_type="config",
@@ -6572,6 +6742,7 @@ ACTION_POLICY_ROUTES: dict[str, tuple[tuple[str, str], ...]] = {
     "warp_material.replace": (("PUT", "/api/admin/client/warp/material"),),
     "awg2_lab_material.replace": (("PUT", "/api/admin/client/awg2-lab/material"),),
     "awg31_lab_material.replace": (("PUT", "/api/admin/client/awg31-lab/material"),),
+    "hy2_lab_material.replace": (("PUT", "/api/admin/client/hy2-lab/material"),),
     "promo_slots.update": (("PUT", "/api/admin/promo-slots"),),
     "referral.process": (("POST", "/api/admin/referrals/process"),),
     "loyalty_config.update": (("PUT", "/api/admin/loyalty-config"),),

@@ -127,6 +127,7 @@ def test_remaining_write_families_have_exact_l2_l3_contracts() -> None:
         "start_link.delete": "exact_start_link_id",
         "warp_material.replace": "exact_tg_id",
         "awg2_lab_material.replace": "exact_tg_id",
+        "hy2_lab_material.replace": "exact_tg_id",
         "campaign.delete": "exact_campaign_id",
         "template.delete": "exact_template_key",
         "access_key.issue": "exact_plan_code",

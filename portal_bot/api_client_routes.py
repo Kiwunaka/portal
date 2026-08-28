@@ -170,7 +170,7 @@ def _smart_connect_rejection_reason(
     if node_cpu_penalty(node) is None:
         return "cpu_hot"
     transport_value = str(transport_profile or "").strip()
-    is_virtual_transport = transport_value in {RU_BRIDGE_RELAY, AWG2_LAB, AWG31_LAB}
+    is_virtual_transport = transport_value in {RU_BRIDGE_RELAY, AWG2_LAB, AWG31_LAB, HY2_LAB}
     is_ru_bridge_relay = transport_value == RU_BRIDGE_RELAY
     required_transport = (
         LEGACY_REALITY_FALLBACK if is_virtual_transport else transport_profile
@@ -249,7 +249,7 @@ def _smart_connect_shortlist(
         transport = _node_transport_profile(
             node,
             LEGACY_REALITY_FALLBACK
-            if transport_profile in {AWG2_LAB, AWG31_LAB}
+            if transport_profile in {AWG2_LAB, AWG31_LAB, HY2_LAB}
             else transport_profile,
         )
         capacity = node_capacity_status(node, policy=policy_by_code.get(code), now=now)
@@ -261,7 +261,7 @@ def _smart_connect_shortlist(
         )
         probe_payload = (
             {"host": probe_host, "port": probe_port}
-            if transport_profile not in {AWG2_LAB, AWG31_LAB}
+            if transport_profile not in {AWG2_LAB, AWG31_LAB, HY2_LAB}
             and probe_host
             and probe_port > 0
             else None
@@ -1932,8 +1932,8 @@ async def client_managed_profile(
             ).strip()
             or LEGACY_REALITY_FALLBACK
         )
-        is_owned_awg_lab = transport_profile in {AWG2_LAB, AWG31_LAB}
-        if is_owned_awg_lab:
+        is_owned_transport_lab = transport_profile in {AWG2_LAB, AWG31_LAB, HY2_LAB}
+        if is_owned_transport_lab:
             install_id = _client_authenticated_install_id(
                 s,
                 user=user,
@@ -1944,7 +1944,7 @@ async def client_managed_profile(
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
         requested_node_code = str(selected_node_code or "").strip().lower()
         smart_connect = None
-        if is_owned_awg_lab:
+        if is_owned_transport_lab:
             requested_node_code = ""
         else:
             smart_connect = _smart_connect_shortlist(
@@ -1973,7 +1973,7 @@ async def client_managed_profile(
             source="managed_profile_runtime",
         )
         effective_nodes = []
-        if not is_owned_awg_lab:
+        if not is_owned_transport_lab:
             effective_nodes = _effective_transport_nodes(
                 nodes=nodes_for_user,
                 rollout_config=rollout_config,

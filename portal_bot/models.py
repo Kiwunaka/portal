@@ -2650,6 +2650,29 @@ class Awg31LabMaterial(Base):
     updated_at = Column(DateTime, default=_utcnow, nullable=False)
 
 
+class Hy2LabMaterial(Base):
+    """Encrypted, device-bound Hysteria2 endpoint material for the owner lab."""
+
+    __tablename__ = "hy2_lab_materials"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    tg_id = Column(BigInteger, index=True, nullable=False)
+    install_id = Column(String(128), index=True, nullable=False)
+    contract_id = Column(String(64), nullable=False)
+    contract_sha256 = Column(String(64), nullable=False)
+    generation = Column(String(64), index=True, nullable=False)
+    endpoint_revision = Column(String(64), nullable=False)
+    server_record_id = Column(String(64), index=True, nullable=False)
+    node_code = Column(String(64), index=True, nullable=False)
+    endpoint_ciphertext = Column(Text, nullable=False)
+    material_hash = Column(String(64), index=True, nullable=False)
+    state = Column(String(32), default="ready", index=True, nullable=False)
+    is_active = Column(Boolean, default=True, index=True, nullable=False)
+    provisioned_at = Column(DateTime, default=_utcnow, index=True, nullable=False)
+    revoked_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=_utcnow, nullable=False)
+
+
 class EmergencyCatalogSnapshot(Base):
     __tablename__ = "emergency_catalog_snapshots"
 

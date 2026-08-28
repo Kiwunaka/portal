@@ -11,6 +11,7 @@ RU_BRIDGE_RELAY = "ru_bridge_relay"
 OPERATOR_LAB = "operator_lab"
 AWG2_LAB = "awg2_lab"
 AWG31_LAB = "awg31_lab"
+HY2_LAB = "hy2_lab"
 
 _PROFILE_ORDER = {
     LEGACY_REALITY_FALLBACK: 0,
@@ -20,6 +21,7 @@ _PROFILE_ORDER = {
     OPERATOR_LAB: 4,
     AWG2_LAB: 5,
     AWG31_LAB: 6,
+    HY2_LAB: 7,
 }
 
 
@@ -89,9 +91,9 @@ def _normalize_profile(node: Any, profile: dict[str, Any]) -> dict[str, Any] | N
     name = _clean_text(profile.get("name"))
     if not name:
         return None
-    # AWG lab material is device-bound and encrypted in generation-specific
+    # Owner-lab material is device-bound and encrypted in transport-specific
     # tables. It must never be accepted from the shared node transport catalog.
-    if name in {AWG2_LAB, AWG31_LAB}:
+    if name in {AWG2_LAB, AWG31_LAB, HY2_LAB}:
         return None
 
     legacy = _legacy_transport_profile(node)
