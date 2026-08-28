@@ -219,6 +219,13 @@ rejected for this deploy window: it is only `179/197` and carries 18 later
 HY2/observability/Smart-DNS runtime deltas. Its report SHA-256 is
 `b92f345c...f897`; both reports retain `runtime_mutated=false`.
 
+The dedicated guarded deploy entrypoint then passed a fresh read-only PLAN
+against Brain at `193/193`. It pins live source `e5ef03ac...`, reviewed AWG
+source `83502f1...`, the sole target `portal_bot/api_client_routes.py`, restart
+unit `portal-api`, postdeploy full-source readback and automatic baseline
+restore/readback. PLAN report SHA-256 is `73dcc150...b835f` and records
+`runtime_mutated=false`; apply was neither authorized nor run.
+
 ## Hosted PR evidence
 
 Exact jobs observed for platform PR `#58` at `34d1551f...` and client PR `#33`

@@ -78,11 +78,11 @@ operations owner before changing behavior.
 
 | Category | Main entrypoints |
 | --- | --- |
-| Deploy and release | release_orchestrator.py, remote_deploy_brain_portal_code.py, remote_brain_runtime_source_probe.py, remote_deploy_brain_static_sites.py |
+| Deploy and release | release_orchestrator.py, remote_deploy_brain_portal_code.py, remote_deploy_brain_awg_route_fix.py, remote_brain_runtime_source_probe.py, remote_deploy_brain_static_sites.py |
 | Client verification | run_client_release_gate.py, client_security_smoke.py, android_localhost_audit.py, runtime_app_download_smoke.py |
 | Observability and probes | collect_node_metrics.py, verify_brain_ready.py, ru_probe_runner.py, render_ru_probe_report.py |
 | Node/control operations | node_inventory.py, remote_sync_users_to_nodes.py, remote_manage_xui.py |
-| Owned AWG lab operations | remote_activate_owned_awg_labs.py, remote_rebind_owned_awg_lab_ports.py, remote_ensure_owned_awg_firewall.py, remote_bind_owned_awg_lab_device.py, remote_select_owned_awg_lab.py, remote_set_owned_awg31_variant.py, remote_audit_owned_awg_alignment.py, remote_probe_owned_awg_udp_path.py, remote_probe_owned_awg_udp_roundtrip.py, remote_count_owned_awg_packets.py, remote_run_owned_awg_core_interop.py |
+| Owned AWG lab operations | remote_deploy_brain_awg_route_fix.py, remote_activate_owned_awg_labs.py, remote_rebind_owned_awg_lab_ports.py, remote_ensure_owned_awg_firewall.py, remote_bind_owned_awg_lab_device.py, remote_select_owned_awg_lab.py, remote_set_owned_awg31_variant.py, remote_audit_owned_awg_alignment.py, remote_probe_owned_awg_udp_path.py, remote_probe_owned_awg_udp_roundtrip.py, remote_count_owned_awg_packets.py, remote_run_owned_awg_core_interop.py |
 | Data and migration | migrate_sqlite_to_postgres.py, migrate_to_nodes.py, seed_nodes_from_facts.py, sync_shared_surface_facts.py |
 | Commercial contract and rollback | generate_commercial_contract.py, commercial_revision_bundle.py |
 | Repository audit | check-links.py, text_integrity.py, agent_context_packet_audit.py, cleanup_inventory.py |

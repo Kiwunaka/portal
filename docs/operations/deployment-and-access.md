@@ -124,6 +124,7 @@ Rules:
 ### Backend code deploy
 
 - [remote_deploy_brain_portal_code.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_portal_code.py)
+- [remote_deploy_brain_awg_route_fix.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_awg_route_fix.py)
 - [remote_brain_runtime_source_probe.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_brain_runtime_source_probe.py)
 
 Before restarting an apparently stale Brain runtime, compare the exact signed
@@ -141,6 +142,25 @@ from the sole accepted transport normalization, `CRLF_TO_LF_ONLY`; any other
 difference, missing file or unreadable file fails closed. This establishes
 Brain runtime source identity only. It does not prove current-origin,
 RU-origin, authenticated client egress, a stable pointer or public promotion.
+
+For the bounded owned-AWG activation repair, use the dedicated one-file entrypoint
+instead of the bulk backend deployer:
+
+```powershell
+python scripts/remote_deploy_brain_awg_route_fix.py --json-out <plan-artifact>
+```
+
+Its default mode is read-only `PLAN`. It pins the current Brain baseline to
+`e5ef03ac7ab013d8810cc9c6ea9ccc40cebd11db`, the reviewed AWG source to
+`83502f1cb9a54ce7ae088a36ed2f9e696c90d841`, requires the full tracked runtime
+to match `193/193`, and proves that the only semantic delta is
+`portal_bot/api_client_routes.py`. It never reads deployment bytes from the
+working tree. An authorized apply additionally requires
+`--apply --confirm AWG_ONE_FILE_83502F1_PORTAL_API`; it stages and backs up only
+that file, restarts only `portal-api`, requires delayed health plus exact
+candidate `193/193` readback, and automatically restores the baseline file and
+rechecks the old `193/193` payload on failure. The confirmation argument is an
+execution guard, not deploy authorization by itself.
 
 Typical use:
 
