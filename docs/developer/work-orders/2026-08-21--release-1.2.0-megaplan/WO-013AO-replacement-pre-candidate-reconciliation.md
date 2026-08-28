@@ -309,6 +309,76 @@ It explicitly records `candidate_created=false`; this closes the local freeze
 prerequisites only and does not claim signing, hosted CI, physical-device,
 clean-host, origin, deployment or promotion proof.
 
+## Direct-beta 4046 replacement packet checkpoint
+
+The current local direct-beta packet binds platform release tooling
+`e6ae46e33b74029ec30626a216cd947c8c131ba3`, client
+`3564023c8d0e66977043332f2772cfd512489676`, Core
+`e8eb7721fc6eaac6813d3a888ac90d0da1f541a1` and release index
+`863968ec7ea28df08692b354d622de97c9cc5990`. The platform revision fixes a
+false-green in the GitHub release-plan helper: strict-v2 handoff input must now
+match the complete planned artifact set, roles, architectures, sizes, hashes,
+canonical filenames and prerelease URLs. The focused helper suite passes
+`9/9`; release/orchestrator/manifest and documentation regressions also pass.
+
+Five exact `1.2.0+4046` local artifacts were assembled without creating a
+GitHub release or immutable candidate:
+
+- Android arm64, `101346230` bytes, SHA-256
+  `a046408731fc6a9306b1d500a1187d6d16cc92cdff66c8acccfa1df68f17761f`;
+- Android armeabi-v7a, `90760708` bytes, SHA-256
+  `2a28a15479570fd8b948b5d757787d5475d76bfe78e4743214bd6352bdbeceef`;
+- Android x86_64, `109930165` bytes, SHA-256
+  `9807a0e84d1b4a64f63629152c76cbaba9e23b52ce3bc2d6482e0a45778f5623`;
+- Android universal, `295299185` bytes, SHA-256
+  `f4f930c589d08cd440ee25806d9f02b3531026bd744efa20e406af9e723de5e2`;
+- Windows x64 installer, `28919231` bytes, SHA-256
+  `6cbb4e95c780b79c2bcc744cac421a1a12884acd923c1de86dd5090562902e80`.
+
+All four APKs are non-debuggable and pass production self-managed signature
+verification with certificate SHA-256
+`0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500`.
+The Windows installer is intentionally `NotSigned` under the owner's direct
+beta exception: its signature gate is `SKIPPED_BY_OWNER`, SmartScreen warning
+is expected and no trusted-signing or Store claim is made.
+
+The five-artifact set SHA-256 is
+`e85009d7af7951e96db0c4de3b5aef6162d131d92e921b28f82221b52603dd1e`.
+Its CycloneDX SBOM and provenance SHA-256 values are respectively
+`1f0d52ac29603b775b882084318461c2f4fe262075785747cb190595b7b9e7f1`
+and `f96793cad98e06da8565d84ed8d2d6682f1e864475446ef2ddc721f40605acbf`.
+The strict-v2 handoff is `valid_v2`, lists five artifacts and retains ten
+blocking candidate gates; its SHA-256 is
+`7eb411f8363d849af669825e9a2365f2ba0ec3e685ea99b92c3aae5efdcd6bb2`.
+The complete `20/20` checksum inventory verifies with checksum-file SHA-256
+`1e13433e98e31f19cc8be838cd016a9484e2853cdf579e26bfdbd2010744f7ca`.
+
+The corrected publishing helper accepted that exact strict-v2 handoff and
+produced a `plan_only` prerelease plan for `v1.2.0-beta.4046`, five artifacts
+and canonical public filenames. The 6,515-byte plan has SHA-256
+`1804dfc056a1cc382ecb46d2a4a80ac50074aa4d11751270209ee1b6d5afe369`.
+It created no staging directory and ran no `gh release create` command.
+
+LDPlayer installed the exact x86_64 APK; installed `base.apk` matches the
+staged SHA-256 byte-for-byte, and package readback reports version `1.2.0`,
+code `4046`. The retained disconnected state shows no POKROV VPN service, VPN
+transport, TUN link or always-on VPN. This is
+`PASS_EXACT_PRE_CANDIDATE_INSTALL_AND_DISCONNECTED_HOST_TRUTH` only; AWG2,
+AWG3.1, DNS, HTTPS egress, leak behavior and rollback were not exercised.
+The returned Huawei remained absent from Windows PnP and ADB, including as
+Huawei, Android, MTP or ADB hardware, so physical-device candidate testing is
+`BLOCKED_BY_DEVICE_ENUMERATION`, not a client failure or pass.
+
+The exact read-only replacement preflight now reports `READY_LOCAL_FREEZE`
+with `0` blockers and `0` pre-freeze rows below `I3` across `378` ledger rows.
+There remain `27` candidate, `18` deferred and `13` external rows below `I3`.
+The 38,467-byte report
+`2026-08-28-replacement-preflight-e6ae46e-3564023.json` has SHA-256
+`7057c195a956c250d8656df739984b2057d254a00a31f73b296a624f4ab94fa1`.
+It records `candidate_created=false`, `candidate_proven=false` and
+`promotion_authorized=false`. This checkpoint authorizes no deploy, server
+policy mutation, release creation, publication or promotion.
+
 ## Hosted PR evidence
 
 Exact jobs observed for platform PR `#58` at `34d1551f...` and client PR `#33`
