@@ -2668,14 +2668,16 @@ def test_awg2_lab_material_intent_and_result_never_persist_endpoint_or_install(
     tmp_path: Path,
 ) -> None:
     api = _load_api(monkeypatch, tmp_path)
-    from models import AdminActionIntent, Awg2LabMaterial, User
+    from models import AccountDevice, AdminActionIntent, Awg2LabMaterial, User
 
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     session = api.SessionLocal()
     try:
-        session.add(
-            User(
+        session.add_all(
+            [
+                User(
                 tg_id=7351,
+                account_id="00000000-0000-4000-8000-000000007350",
                 uuid="00000000-0000-4000-8000-000000007351",
                 email="awg2-guard@example.test",
                 sub_type="PAID",
@@ -2683,9 +2685,35 @@ def test_awg2_lab_material_intent_and_result_never_persist_endpoint_or_install(
                 expiry_at=now + timedelta(days=30),
                 is_active=True,
                 sub_token="awg2-guard-token",
-                app_install_id="install-awg2-7351",
+                app_install_id="legacy-install-awg2-7351",
                 app_platform="windows",
-            )
+                ),
+                AccountDevice(
+                    id="00000000-0000-4000-8000-000000007352",
+                    account_id="00000000-0000-4000-8000-000000007350",
+                    install_id="install-awg2-7351",
+                    label="Guarded AWG device",
+                    platform="windows",
+                    state="active",
+                    first_seen_at=now,
+                    last_seen_at=now,
+                    created_at=now,
+                    updated_at=now,
+                ),
+                AccountDevice(
+                    id="00000000-0000-4000-8000-000000007353",
+                    account_id="00000000-0000-4000-8000-000000007350",
+                    install_id="revoked-install-awg2-7351",
+                    label="Revoked AWG device",
+                    platform="windows",
+                    state="revoked",
+                    revoked_at=now,
+                    first_seen_at=now,
+                    last_seen_at=now,
+                    created_at=now,
+                    updated_at=now,
+                ),
+            ]
         )
         session.commit()
     finally:
@@ -2728,6 +2756,17 @@ def test_awg2_lab_material_intent_and_result_never_persist_endpoint_or_install(
         },
     }
     client = TestClient(api.app)
+    revoked_payload = {**payload, "install_id": "revoked-install-awg2-7351"}
+    revoked = _prepare(
+        client,
+        action="awg2_lab_material.replace",
+        target_type="awg2_lab_material",
+        target_id="7351",
+        payload=revoked_payload,
+    )
+    assert revoked.status_code == 422
+    assert _detail_code(revoked) == "invalid_target"
+
     prepared = _prepare(
         client,
         action="awg2_lab_material.replace",

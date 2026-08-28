@@ -20,6 +20,7 @@ from admin_ops_service import (
 )
 from models import (
     AccessKey,
+    AccountDevice,
     AdminActionIntent,
     AdminBroadcastDeliveryAttempt,
     AdminBroadcastRecipientPlan,
@@ -5282,6 +5283,29 @@ def _normalize_awg31_lab_material_payload(payload: Mapping[str, Any]) -> dict[st
     }
 
 
+def _user_owns_active_install(
+    session,
+    *,
+    user: User,
+    install_id: str,
+    for_update: bool,
+) -> bool:
+    if install_id == str(getattr(user, "app_install_id", "") or "").strip():
+        return True
+    account_id = str(getattr(user, "account_id", "") or "").strip()
+    if not account_id:
+        return False
+    query = session.query(AccountDevice).filter(
+        AccountDevice.account_id == account_id,
+        AccountDevice.install_id == install_id,
+        AccountDevice.state == "active",
+        AccountDevice.revoked_at.is_(None),
+    )
+    if for_update and str(session.get_bind().dialect.name) == "postgresql":
+        query = query.with_for_update()
+    return query.first() is not None
+
+
 def _awg2_lab_material_state(session, target_id: str, payload: Mapping[str, Any], for_update: bool) -> EntityState:
     tg_id = _integer_target(target_id, positive=True)
     if int(payload.get("tg_id") or 0) != tg_id:
@@ -5290,7 +5314,12 @@ def _awg2_lab_material_state(session, target_id: str, payload: Mapping[str, Any]
     if user is None:
         raise ActionIntentError("target_not_found", status_code=404, message="Пользователь не найден.")
     install_id = str(payload.get("install_id") or "").strip()
-    if install_id != str(getattr(user, "app_install_id", "") or "").strip():
+    if not _user_owns_active_install(
+        session,
+        user=user,
+        install_id=install_id,
+        for_update=for_update,
+    ):
         raise ActionIntentError(
             "invalid_target",
             status_code=422,
@@ -5346,7 +5375,12 @@ def _awg31_lab_material_state(session, target_id: str, payload: Mapping[str, Any
     if user is None:
         raise ActionIntentError("target_not_found", status_code=404, message="Пользователь не найден.")
     install_id = str(payload.get("install_id") or "").strip()
-    if install_id != str(getattr(user, "app_install_id", "") or "").strip():
+    if not _user_owns_active_install(
+        session,
+        user=user,
+        install_id=install_id,
+        for_update=for_update,
+    ):
         raise ActionIntentError(
             "invalid_target",
             status_code=422,

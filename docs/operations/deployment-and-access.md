@@ -1016,10 +1016,10 @@ The transport rollout stays additive: the current Reality path remains in place 
 
 Transport policy rule:
 
-- `nodes.transport_profiles_json` is the canonical per-node transport catalog for rollout and should carry the fixed profile set `legacy_reality_fallback`, `grpc_443_primary`, `reserve_xhttp_cdn`, and `operator_lab`; `ru_bridge_relay` lives in `network_rollout_config` because it is a cross-node RU bridge, not a node-local delivery inbound. `awg2_lab` is explicitly rejected from this catalog because its material is device-bound and encrypted separately.
+- `nodes.transport_profiles_json` is the canonical per-node transport catalog for rollout and should carry the fixed profile set `legacy_reality_fallback`, `grpc_443_primary`, `reserve_xhttp_cdn`, and `operator_lab`; `ru_bridge_relay` lives in `network_rollout_config` because it is a cross-node RU bridge, not a node-local delivery inbound. `awg2_lab` and `awg31_lab` are explicitly rejected from this catalog because their material is device-bound and encrypted separately.
 - legacy node fields such as `inbound_id`, `vless_port`, and `reality_*` remain compatibility input and should synthesize `legacy_reality_fallback` when the transport catalog is empty
 - `AppSetting.network_rollout_config` is the operator-controlled rollout source of truth for `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
-- `network_rollout_config` is a JSON policy blob with `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `reserve_xhttp_cdn`, `ru_bridge_relay`, `operator_lab`, `awg2_lab`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
+- `network_rollout_config` is a JSON policy blob with `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `reserve_xhttp_cdn`, `ru_bridge_relay`, `operator_lab`, `awg2_lab`, `awg31_lab`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
 - old node-inventory markdown moved to `docs/archive/flat-docs/08-node-inventory.md`; `scripts/node_inventory.py` keeps legacy bootstrap, DNS, and remote-maintenance helpers compatible with that retained IP snapshot, but live deployment decisions must still use Postgres/admin API state, rollout config, and current probe evidence
 - `defaults` normally pin `routing_mode_default=all_except_ru`, `transport_profile=legacy_reality_fallback`, and `dns_policy=ru_direct_split`; live incident response may temporarily set `transport_profile=ru_bridge_relay`
 - `carrier_overrides` and `cohort_overrides` may only change `transport_profile`, `dns_policy`, `routing_mode_default`, and `ip_version_preference`
@@ -1030,7 +1030,13 @@ Transport policy rule:
 - `operator_lab` remains allowlist-only, carries `enabled`, `allowlist_install_ids`, `allowlist_tg_ids`, `allowlist_node_codes`, and `expires_at`, and must stay hidden from public UI and mass session/profile payloads
 - `awg2_lab` is a separate owner-only sing-box endpoint lane. Source defaults are `enabled=false` and `kill_switch_engaged=true`. Selection additionally requires the exact `pokrov.awg2.endpoint.v1` ID/SHA, `awg2-v1` endpoint revision, current generation, Windows/Android platform, install/user and node allowlists, a ready POKROV-owned `server_record_id`, and a current encrypted row in `awg2_lab_materials` for that exact device.
 - AWG2 endpoint material is provisioned only through the L3 guarded `PUT /api/admin/client/awg2-lab/material`; intent, preview, audit and result retain fingerprints and safe generation/server/node state, never the endpoint, keys or raw install ID. `AWG2_LAB_MATERIAL_SECRET` must come from the secret manager and must not be committed.
-- Only authenticated `GET /api/client/profile/managed` may return the decrypted typed endpoint. Token subscriptions, previews, Happ/Clash/manual exports, location choices and public UI force `legacy_reality_fallback` and never contain AWG2 material.
+- `awg31_lab` is the parallel owner-only AWG 3.1 lane. It has the same fail-closed allowlist, device-bound encrypted-material and managed-profile boundaries as AWG2, plus the reviewed AWG 3.1 timing/header-protection contract. `AWG31_LAB_MATERIAL_SECRET` is runtime-only secret-manager input.
+- Only authenticated `GET /api/client/profile/managed` may return either decrypted typed endpoint. Token subscriptions, previews, Happ/Clash/manual exports, location choices and public UI force `legacy_reality_fallback` and never contain owned AWG material.
+- Owned AWG node activation is incomplete until UFW admits both declared UDP listeners. The guarded live ports are `4500/udp` for AWG2 and `3478/udp` for AWG3.1. Run `scripts/remote_ensure_owned_awg_firewall.py` without `--apply` first, then use `--apply --confirm-node de`; it fails if UFW is inactive. `scripts/remote_rebind_owned_awg_lab_ports.py` owns the guarded old-to-new listener/material migration. Socket/service readback alone is not ingress proof.
+- Use `scripts/remote_audit_owned_awg_alignment.py` for v2 key, peer, address, S/H, header-protection, content-padding and randomized-trailer alignment; `scripts/remote_probe_owned_awg_udp_path.py` for fixed-size non-secret one-way probes; `scripts/remote_count_owned_awg_packets.py` for address-free direction and tunnel counts; and `scripts/remote_run_owned_awg_core_interop.py` for exact-Core handshakes. AWG3.1 randomized trailers make fixed-size handshake classification inapplicable, so direction counts and live handshake state are authoritative for that variant.
+- `scripts/remote_set_owned_awg31_variant.py` applies only the reviewed `randomized_trailers_v1` server drop-in and matching encrypted material after backup and exact readback. It does not promote AWG3.1 outside the owner-only lab.
+- `scripts/remote_probe_owned_awg_udp_roundtrip.py --apply` temporarily stops exactly one confirmed lab service, runs a bounded plain-UDP echo on its owned port and restores/readbacks the service in `finally`. A roundtrip is `PASS` only when the server received every probe, the phone received a valid echo and the service was restored. Server receive plus missing phone echo is a network-path failure, never `ok=true`.
+- On `2026-08-28`, live alignment v2 passed for AWG2 and randomized-trailer AWG3.1. Physical build `1.2.0+4044` reached both listeners from Beeline, but each guarded UDP roundtrip had server receive/echo `3/3` and phone receive `0/3`. Record this as `BLOCKED_BY_NETWORK_CURRENT_ORIGIN`: reverse UDP is dropped on that path. It is not evidence of a cryptographic mismatch or a universal AWG failure. Direct cellular DoH separately returned valid responses for all three bounded AI/Games queries, while normal WARP plus IP and DNS egress passed after exact lab unbind. The retained [physical pre-candidate evidence](../audit-artifacts/2026-08-28-owned-awg-dns-physical-pre-candidate.md) does not create a release candidate or clear the final Android matrix.
 - app-managed session and profile delivery should use the rollout-selected transport profile, while manual/export compatibility links stay on `legacy_reality_fallback` until the share-link parity wave lands
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint; `subscription_url` stays manual/import fallback only
 - capacity-aware app routing uses `GET /api/client/nodes/candidates`, `POST /api/client/nodes/select`, and optional `selected_node_code` on `GET /api/client/profile/managed`; `POST /api/client/nodes/latency-samples` remains compatibility telemetry
@@ -1257,6 +1263,10 @@ At minimum, verify:
 - `portal-daily-healthcheck.timer` status and latest daily panel/node health report when checking control-plane/node drift
 - `verify_brain_ready.py` should fail the repo-side handoff if any required control-plane unit is inactive, if required brain-local listeners on `443` or internal Caddy `8444` are missing, or if the built-in HTTP and subscription probes fail; this does not authorize public UFW exposure for `8444`
 - public HTTPS checks for `pokrov.space`, `app.pokrov.space`, and `api.pokrov.space` should confirm that responses no longer advertise `Alt-Svc: h3=":8444"`; expected incident-recovery state is `Alt-Svc: clear` plus `200`/healthy status over standard HTTPS
+- control-plane readback must separately require JSON from both
+  `app.pokrov.space/api/health` and `api.pokrov.space/api/health`, plus an
+  authenticated-path JSON error such as `401` from the app ingress. A `200`
+  HTML webapp fallback on `/api/*` is a failed ingress check
 - marketing and checkout probes should use route/function markers such as `Android + Windows`, `app.pokrov.space`, `checkout-shell`, `ключ доступа`, and canonical URLs, not old hero copy that can change without a deploy failure
 - transport rollout verification on the canary node with `scripts/remote_apply_node_qdisc.py show`
 - transport front verification with `scripts/remote_transport_front_smoke.py`
@@ -1349,8 +1359,10 @@ Hostname role policy:
 
 Web runtime rule:
 
-- `https://api.pokrov.space/` is the canonical API base for browser flows
-- `app.pokrov.space` may host the UI, but it must not be treated as an API origin when it returns HTML
+- `https://api.pokrov.space/` remains the canonical dedicated public API host
+- `https://app.pokrov.space/api/*` is the owned same-origin client fallback and
+  must proxy to the API before the webapp static fallback; an API path that
+  returns HTML is a deployment failure, while non-API paths still serve the UI
 
 Migration-only legacy note:
 
@@ -1401,7 +1413,7 @@ Current release boundary:
   current cabinet/runtime contract
 - retained distributed release: `v1.1.6`; public client package/build line
   `1.1.6+29`
-- working source target: `1.2.0+32`, `PRE_CANDIDATE_LOCAL`,
+- working source target: `1.2.0+4044`, `PRE_CANDIDATE_LOCAL`,
   `candidate_created=false`; it is not deployable release metadata
 - a later candidate exists only after an exact release handoff
 - stable-direct publication does not prove store availability, trusted Windows
