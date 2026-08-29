@@ -1,0 +1,53 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate8-signed-runtime-binding/v1",
+  "candidate_id": "pokrov-1.2.0-candidate.8",
+  "sources": {
+    "platform": "241a83b4dca00799b39696a4ae0c3c97e087ec39",
+    "client": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+    "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+    "release_index": "b242e0a3060b04f9b71641a0524bf251a75ce2a8"
+  },
+  "outputs": [
+    {
+      "path": "actions-artifact/release-index.json",
+      "size_bytes": 6883,
+      "sha256": "f0006cec90c84e401e9920d9098102c7f50ab5ace5242e0d7683c3df709a6fbc"
+    },
+    {
+      "path": "actions-artifact/release-index.json.sig",
+      "size_bytes": 64,
+      "sha256": "5fcae0675ea45e79baf495859fd170661f5d6dd3a8535275acd4d62680d324f6"
+    },
+    {
+      "path": "actions-artifact/signing-receipt.json",
+      "size_bytes": 588,
+      "sha256": "4109bb3417b32a780604300055f5308acf7dc810e7ea9c547075e1da41cc21fc"
+    }
+  ],
+  "independent_validation": {
+    "status": "READY_SIGNED_MANIFEST",
+    "signing_key_id": "pokrov-release-2026-01",
+    "artifact_count": 6,
+    "owner_unsigned_windows_exception_count": 1,
+    "owner_unsigned_windows_artifact": "pokrov-windows-setup-x64.exe",
+    "release_index_commit": "b242e0a3060b04f9b71641a0524bf251a75ce2a8",
+    "receipt_matches_outputs": true,
+    "detached_signature_verified_with_public_keyring": true,
+    "promotion_authorized": false
+  },
+  "physical_phone_install_binding": {
+    "package_version": "1.2.0+4046",
+    "arm64_artifact_sha256": "9278c09fd8fa5768d3260cf796b4230db5acb0a092187aae00c441d717cfc572",
+    "installed_base_apk_sha256": "9278c09fd8fa5768d3260cf796b4230db5acb0a092187aae00c441d717cfc572",
+    "arm64_artifact_sha256_match": true,
+    "device_serial_retained": false,
+    "physical_runtime_pass_claimed": true
+  },
+  "interpretation": {
+    "candidate8_uses_rebuilt_exact_sources": true,
+    "signed_manifest_is_actions_artifact_only": true,
+    "windows_authenticode_status": "NotSigned",
+    "owner_unsigned_windows_direct_beta_exception": true,
+    "public_or_stable_promotion_authorized": false
+  }
+}
