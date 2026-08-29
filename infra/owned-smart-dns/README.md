@@ -34,6 +34,14 @@ connect, idle, and lifetime limits are mandatory. Runtime logs contain startup
 state and the policy digest only; request names, SNI, source addresses, and raw
 payloads are not logged.
 
+Application origin connections leave directly from the machine running this
+service. There is no outbound proxy, WARP, VPN, or foreign-hop option in the
+current contract. The deploy target is therefore also the application egress:
+an RU-hosted instance is not a valid geo/access bypass merely because its DoH
+answer and TLS relay work. The preferred access topology is a colocated foreign
+owned frontend and loopback backend; any alternate egress chain needs a
+separate source, trust-boundary, lifecycle, rollback, and live-access proof.
+
 Local verification from this directory uses the pinned Go module:
 
 ```powershell
@@ -65,7 +73,8 @@ or a reviewed SNI-mux migration on an existing owned frontend, plus an exact
 candidate bundle, guarded PLAN/APPLY/ROLLBACK tooling, runtime material and
 owner authorization. Brain is not an automatic target: control-plane and
 data-plane risk must be reviewed before choosing a frontend. DNS reachability
-is not proof that ChatGPT, Gemini, Xbox, or a game works end to end.
+and a verified TLS handshake are not proof that ChatGPT, Gemini, Xbox, or a
+game works end to end.
 
 The guarded PLAN reports only sanitized bind-scope facts: whether TCP/443 is
 free, wildcard-bound, bound to the expected owned IPv4, or bound only to
