@@ -1,0 +1,86 @@
+{
+  "schema": "pokrov.release-1.2.0.smart-dns-frontend-migration-plan/v1",
+  "recorded_at": "2026-08-29T15:16:07.3184467+03:00",
+  "source": {
+    "platform_commit": "99d0715e8792280a7eb34650e6aa37bc8a44638c",
+    "migration_script_sha256": "3919574461f288258ccf511397dd121ae5ede33f8916661d61310b6c78fc464c",
+    "previous_service_sha256": "e7e4aa3f52b5b33a1214c0bf8f2dd1dd3b78e39a93d2b77ef9f501bbb55573fb",
+    "candidate_service_sha256": "75d06686d9baece4c0ee301b746e8a93207c48eff2d205dfc827308575ebf4ef",
+    "policy_sha256": "b6977f6f6a5ee48898116820d1db252b5b670cb7b86959c78f7bdbc7de90e0fa"
+  },
+  "guard_contract": {
+    "default_mode": "PLAN",
+    "strict_host_keys": true,
+    "effective_uid_root_required": true,
+    "exact_config_and_service_digests": true,
+    "exact_release_and_node_confirmation": true,
+    "client_selection_disabled_confirmation": true,
+    "remote_haproxy_validation": true,
+    "root_only_nonsymlink_receipt": true,
+    "receipt_backup_digest_validation": true,
+    "apply_compare_and_swap": true,
+    "automatic_rollback_compare_and_swap": true,
+    "explicit_rollback_requires_applied_receipt": true,
+    "raw_runtime_material_returned": false
+  },
+  "verification": {
+    "focused_ruff": "PASS",
+    "python_compile": "PASS",
+    "focused_pytest": "28_PASS",
+    "diff_check": "PASS",
+    "initial_security_reportable_findings": 0,
+    "initial_correctness_blockers_found": 2,
+    "initial_correctness_blockers_corrected": 2,
+    "focused_recovery_findings_found": 4,
+    "focused_recovery_findings_corrected": 4,
+    "final_focused_recheck_remaining_findings": 0
+  },
+  "remote_plan": {
+    "nodes_requested": 7,
+    "nodes_completed": 7,
+    "exit_zero": 7,
+    "mutation_performed": false,
+    "root_preflight_passed": 7,
+    "frontend_not_applicable": [
+      "de",
+      "us",
+      "pl",
+      "it",
+      "nl"
+    ],
+    "frontend_candidate_valid_backend_missing": [
+      "ru",
+      "ru_spb"
+    ],
+    "selected_node": null,
+    "brain_selected": false,
+    "spb_auto_selected": false,
+    "smart_dns_active_count": 0,
+    "smart_dns_fronted_config_valid_count": 0,
+    "smart_dns_loopback_listener_count": 0,
+    "raw_host_returned": false,
+    "raw_config_returned": false,
+    "raw_runtime_material_returned": false
+  },
+  "release_interpretation": {
+    "ledger_row": "FRKN_SMART_DNS/SMARTDNS-01",
+    "completion_level": "I3",
+    "status": "POST_CANDIDATE_FRONTEND_MIGRATION_SOURCE_AND_ALL_NODE_PLAN_PROVED_BACKEND_MISSING",
+    "candidate": "pokrov-1.2.0-candidate.6",
+    "candidate_bytes_changed": false,
+    "successor_candidate_required": true,
+    "gate_f": "4_PASS_15_NONPASS_0_FAIL",
+    "gate_f_regenerated": false,
+    "frontend_deployed": false,
+    "smart_dns_deployed": false,
+    "live_access_claim": false,
+    "rollback_runtime_claim": false,
+    "origin_claim": false
+  },
+  "pi4_followup": {
+    "role": "TERMINAL_ONLY_ARM64_RU_ORIGIN_PROBE",
+    "trusted_ssh_profile_present": false,
+    "test_executed": false,
+    "replaces_android_or_windows_proof": false
+  }
+}

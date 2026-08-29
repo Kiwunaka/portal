@@ -2,6 +2,29 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BW Smart DNS frontend migration and all-node PLAN
+
+Post-candidate platform `99d0715...` adds the previously missing receipt-bound
+frontend PLAN/APPLY/ROLLBACK operation. It validates canonical exact/child SNI
+routes through remote `haproxy -c`, retains exact root-only config/unit backups,
+binds apply and rollback to config, unit, release and node digests, validates
+before HAProxy `USR2`, and refuses automatic rollback across unknown concurrent
+state. The exact previous unit remains the rollback fixture.
+
+The corrected all-seven read-only PLAN exits zero for every active node and
+returns `mutation_performed=false`. Five nodes do not own this HAProxy frontend.
+`ru` and `ru_spb` have an active valid frontend and valid candidate render, but
+Smart DNS is inactive, not fronted and has no loopback backend listener. No node
+is selected; Brain and automatic SPB selection remain excluded.
+
+Ruff, compile, `28` focused tests and diff checks pass. The first independent
+review's two fail-closed correctness blockers were fixed and now have online
+APPLY plus already-fronted rollback orchestration coverage. SMARTDNS-01 remains
+`I3` with stronger source/PLAN evidence; candidate.6 and Gate F remain unchanged
+at `4 PASS / 15 non-PASS / 0 FAIL`. A fronted server install, runtime material,
+explicit target decision and separately authorized APPLY/rollback/access/origin
+matrix remain required.
+
 ## 2026-08-29 — WO-013BV Smart DNS shared-443 fronted source proof
 
 Post-candidate platform `06e4a4ab...` removes the source-level need for a new
