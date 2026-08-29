@@ -1,0 +1,189 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-input/v1",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.7",
+    "operational_id": "81b5fc35a975384a84f62e20c3c1f31f2f3807ff77fb1daf334c97211fea8f03",
+    "manifest_sha256": "fb1d7049deaf3047456377e675c45a2177c76c51f8792703886ca2bcca5490ce",
+    "signature_sha256": "2b20ed7881c36f72b0777aa8c2a571e192895df15eb598165d5e93ae68418abf",
+    "receipt_sha256": "ff93d33bf0ef4b0e1b036ee1be5b83f769791295d0e1cfcde0a1f854b2799b04",
+    "sources": {
+      "platform": "af259f377ec7a3cd757f0f43762154dd25e09f94",
+      "client": "b2497af7704d0aa6901541e175ce154b0eab05d7",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "f6917c8264015aee72fe51126943b08191e85b07"
+    }
+  },
+  "checks": [
+    {
+      "id": "gates_a_e_exact_candidate",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/gates_a_e_exact_candidate",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "mandatory_stop_ship_and_dod",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/mandatory_stop_ship_and_dod",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "no_open_p0_false_green_or_secret_leak",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/no_open_p0_false_green_or_secret_leak",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "supply_chain_signature_sbom_provenance",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/supply_chain_signature_sbom_provenance",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "target_channel_signing_and_manual_gates",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/target_channel_signing_and_manual_gates",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "release_docs_manifest_binding",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/release_docs_manifest_binding",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "rollback_and_kill_controls",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/rollback_and_kill_controls",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "current_origin",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/current_origin",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "brain_origin",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/brain_origin",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "ru_origin",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/ru_origin",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "windows_live_network",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/windows_live_network",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "android_ldplayer_rehearsal",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/android_ldplayer_rehearsal",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "android_physical_device",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/android_physical_device",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "authenticated_client_egress",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/authenticated_client_egress",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "payment_provider_e2e",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/payment_provider_e2e",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "operator_auth_rbac_action_intent",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/operator_auth_rbac_action_intent",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "legal_commercial_approval",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/legal_commercial_approval",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "performance_and_release_health",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/performance_and_release_health",
+        "candidate_pointer": "/candidate/id"
+      }
+    },
+    {
+      "id": "hosted_required_checks",
+      "evidence": {
+        "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json",
+        "sha256": "41199847011421f69fdd1b845b4bc251256da9a64ee0956fd2103110e823ea7e",
+        "status_pointer": "/checks/hosted_required_checks",
+        "candidate_pointer": "/candidate/id"
+      }
+    }
+  ]
+}

@@ -2,8 +2,8 @@
 
 Last updated: 2026-08-29
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_CANDIDATE6_GATE_F_BLOCKED_4_PASS_15_NONPASS_RUNTIME_GATES_OPEN`
-Release candidate: `POKROV_1_2_0_CANDIDATE6_ACTIONS_ARTIFACT_ONLY_PUBLIC_RELEASE_NOT_CREATED`
+Wave status: `PHASE_11_CANDIDATE7_GATE_F_BLOCKED_4_PASS_15_NONPASS_RUNTIME_GATES_OPEN`
+Release candidate: `POKROV_1_2_0_CANDIDATE7_SIGNED_PRIVATE_ACTIONS_ARTIFACT_ONLY_PUBLIC_RELEASE_NOT_CREATED`
 
 ## Outcome
 
@@ -40,9 +40,12 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 Active Phase 10/11 supersession: WO-013BY creates signed private candidate.7
 from platform `af259f3...` with the same exact client/Core build `4046` bytes,
 corrected SBOM/provenance and a passing fail-closed supply-chain validator.
-Candidate.6 and its `4 PASS / 15 non-PASS` Gate F remain immutable history;
-candidate.7 device/origin/manual evidence and its first Gate F are still open.
-No phase or ledger item advances to `I4`.
+WO-013BZ then binds fresh current- and Brain-origin PASS, exact candidate.7
+LDPlayer AWG2/AWG3.1 formation with a common emulator-origin block and clean
+restore, plus a direct terminal-only Pi RU baseline. The first candidate.7
+Gate F is `BLOCKED` at `4 PASS / 15 non-PASS / 0 FAIL`; Pi baseline is not
+promoted into exact-candidate RU-origin PASS. Candidate.6 remains immutable
+history. No phase or ledger item advances to `I4`.
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -172,6 +175,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013BW` | Implement the guarded shared-443 frontend operation and run the corrected all-node PLAN | Post-candidate Smart DNS frontend source/PLAN evidence | Receipt/CAS-bound PLAN/APPLY/ROLLBACK source, exact previous unit and `28` focused tests pass. Read-only PLAN exits zero on all seven nodes with no mutation: five are not applicable; RU and RU-SPB render valid candidates but lack the active fronted backend. No target, deploy or access claim exists | `WO-013BV`, post-candidate platform source; fronted server install/runtime material, explicit target/APPLY and successor candidate still required |
 | `WO-013BX` | Add guarded fronted server install mode and prove the exact immutable artifact with RU install PLANs | Post-candidate Smart DNS server source/artifact/PLAN evidence | Fronted mode is exact loopback TCP/18443 plus PROXY v2 and UFW-neutral receipt-bound rollback. `49` focused tests, Go/Ruff/parity, two byte-identical bundles and a zero-finding ten-surface security scan pass. Read-only PLAN on RU and RU-SPB reports free backend listener, absent runtime material and zero mutation; RU is proposed but not selected, SPB/Brain remain unselected. Pi 4 is a later terminal ARM64/RU-origin probe, not compatible with the current amd64 bundle | `WO-013BW`, exact post-candidate platform source; trusted Pi SSH target, runtime material, separately authorized server/frontend APPLY and successor candidate still required |
 | `WO-013BY` | Correct the full-product supply-chain evidence and sign candidate.7 without rebuilding unchanged binaries | Cross-repository candidate/source/signing evidence | Exact tuple `af259f3.../b2497af.../a45d69e...` passes `15/15`; fail-closed validation passes `6/6` artifacts and `8/8` Windows runtime files with a corrected 349-component SBOM and six-subject provenance. Release-index PRs `15/16` and signer run `33256988566` pass; public-key readback returns `READY_SIGNED_MANIFEST`. Exact candidate.7 runtime and Gate F remain open; no public/stable mutation | `WO-013BX`, exact candidate.7 metadata and same-byte artifact set; returned physical phone, LDPlayer, isolated Windows host and trusted Pi SSH target still required |
+| `WO-013BZ` | Bind candidate.7 current/Brain origins, exact LDPlayer AWG rehearsal, direct Pi RU baseline and first Gate F | Candidate runtime/origin/decision evidence | Exact current-origin health/catalog and Brain source/readiness/delivery pass. AWG2/AWG3.1 form service/TUN/DNS on the hash-matched x86_64 artifact but remain blocked by the common LDPlayer egress boundary; cleanup restores default/no TUN/no AWG. Pi proves direct RU DNS/DoH/HTTP baseline and a ChatGPT HTTP 403 above DNS, but no candidate or Smart DNS runtime. Gate F validates `19/19` pointers and returns `BLOCKED` at `4/15/0` | `WO-013BY`, exact candidate.7 signed outputs, owned LDPlayer and trusted Pi/Brain SSH; physical Android, Windows, exact RU client, Smart DNS runtime and manual external gates remain required |
 
 ## Current evidence
 
@@ -210,6 +214,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `WO-013BW-smart-dns-frontend-migration-plan.md`
 - `WO-013BX-smart-dns-fronted-server-install-plan.md`
 - `WO-013BY-candidate7-corrected-supply-chain-and-signing.md`
+- `WO-013BZ-candidate7-runtime-ru-pi-and-gate-f.md`
 
   Together these work orders bind the signed candidate.5 artifact set and
   hosted signature, exact
@@ -297,6 +302,14 @@ The row order is a dependency order, not permission for one giant merge. Each im
   binds the final candidate.7 source tuple, same-byte six-artifact set,
   corrected offline supply-chain PASS, hosted signature/receipt and explicit
   device/origin/promotion evidence ceiling.
+- `evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-runtime-evidence.json`
+- `evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-evidence.json`
+- `evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-input.json`
+- `evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-gate-f-decision.json`
+- `evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-signed-runtime-binding.json`
+  bind candidate.7 current/Brain PASS, exact LDPlayer origin-block/restore,
+  direct Pi RU baseline and the validated `4/15/0` Gate F decision without
+  retaining device, host, network or credential identifiers.
 - `evidence/013BL-candidate6-gate-f/013BL-candidate6-gate-f-decision.json`
   binds the exact signed candidate identity, all 19 evidence pointers and the
   current `BLOCKED` decision; the adjacent evidence files retain the sanitized
@@ -627,19 +640,23 @@ the exact HY2-aware control-plane deployed with its kill-switch engaged,
 root-only runtime material, separately authorized exact-bundle install and
 encrypted device material. Direct DoH is not VPN-free Smart DNS. Public
 `v1.2.0`, candidate assets and the stable pointer remain prohibited until
-candidate.6 reaches Gate F `GO` and the owner separately authorizes
+candidate.7 reaches Gate F `GO` and the owner separately authorizes
 Gate G. The build-4046 external Smart DNS client path remains a default-off lab
 until a compatible resolver and live access/leak/rollback evidence exist.
 Windows SmartScreen remains the owner-approved unsigned direct-beta
 limitation.
 
-## Current next action — validate candidate.7
+## Current next action — close candidate.7 physical, Windows and live-access gates
 
-WO-013BY is the active candidate authority. It signs the same six build
+WO-013BY is the active signed-candidate authority. It signs the same six build
 `1.2.0+4046` bytes against final platform `af259f3...` and corrected
-SBOM/provenance. Candidate.6 remains signed immutable history, including its
-last `4 PASS / 15 non-PASS` Gate F result; none of that runtime/origin evidence
-is silently transferred to candidate.7.
+SBOM/provenance. WO-013BZ is the active runtime/decision authority: fresh
+current- and Brain-origin checks pass, exact candidate.7 AWG2/AWG3.1 formation
+on LDPlayer remains blocked by the common emulator egress boundary and restores
+cleanly, and the Pi establishes a direct RU terminal baseline without executing
+the candidate. Candidate.7 Gate F is `BLOCKED` at `4 PASS`, `15 non-PASS`,
+`0 FAIL`. Candidate.6 remains signed immutable history; none of its runtime or
+origin results is silently transferred.
 
 WO-013AU remains the signed candidate.5 authority, WO-013AV remains its frozen
 digest-bound Gate F authority, and WO-013AX remains its later mandatory AWG
@@ -716,19 +733,22 @@ origin block and restoring default/WARP-off/no-material state. WO-013BQ then
 confirms that the exact IPv4-only TUN has no IPv6 lane and, without an
 `allowFamily` call, follows Android's fail-closed family contract. The exact
 candidate.6 ARM64 package identity remains retained as historical phone
-evidence, while candidate.7 uses the same byte and requires a new
-candidate-bound runtime record. The next transport slice is exact candidate.7
-physical Android AWG2/AWG3.1 plus
+evidence. Candidate.7 binds the same exact installed ARM64/x86_64 bytes, and
+WO-013BZ now supplies its bounded LDPlayer runtime record plus first Gate F.
+The next transport slice is exact candidate.7 physical Android AWG2/AWG3.1 plus
 WARP/per-app/network-change/OEM/lifecycle/leak, and live Windows app/service/
 TUN parity for AWG2 and AWG3.1 with DNS/egress/leak and cleanup readback on an
 isolated host. Complete compatible Smart DNS access/attribution proof when a
-safe endpoint exists. Generate candidate.7 Gate F after the next new exact evidence;
+safe endpoint exists. Regenerate candidate.7 Gate F only after a required row
+gains new exact evidence;
 do not transfer pre-candidate proof into `I4`. Do not
 spend the lane on SPB beyond bounded evidence. HY2 remains default-off and
 follows the existing kill-switch/material/install guards.
 
 For Smart DNS, exact physical candidate.5 ordinary Frankfurt TUN and bounded
-DNS/ICMP already pass. The next honest slice is compatible resolver plus actual
+DNS/ICMP already pass. WO-013BZ adds a direct Pi RU baseline: DNS and public
+DoH work, while ChatGPT reaches an HTTP `403` edge denial above DNS. The next
+honest slice is an owned compatible resolver/fronted route plus actual
 ChatGPT/Gemini/Xbox HTTP access, resolver/DNS-SNI attribution, leak/privacy and
 cleanup. Windows live network/recovery, RU-origin, provider/PostgreSQL/outbox,
 Operator, legal/commercial, accessibility, comparable-device performance and

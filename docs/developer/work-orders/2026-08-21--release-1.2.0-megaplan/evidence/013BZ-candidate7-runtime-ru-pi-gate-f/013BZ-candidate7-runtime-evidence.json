@@ -1,0 +1,209 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate7-runtime-ru-pi-evidence/v1",
+  "recorded_at_utc": "2026-08-29T14:53:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.7",
+    "operational_id": "81b5fc35a975384a84f62e20c3c1f31f2f3807ff77fb1daf334c97211fea8f03",
+    "manifest_sha256": "fb1d7049deaf3047456377e675c45a2177c76c51f8792703886ca2bcca5490ce",
+    "signature_sha256": "2b20ed7881c36f72b0777aa8c2a571e192895df15eb598165d5e93ae68418abf",
+    "receipt_sha256": "ff93d33bf0ef4b0e1b036ee1be5b83f769791295d0e1cfcde0a1f854b2799b04",
+    "sources": {
+      "platform": "af259f377ec7a3cd757f0f43762154dd25e09f94",
+      "client": "b2497af7704d0aa6901541e175ce154b0eab05d7",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "f6917c8264015aee72fe51126943b08191e85b07"
+    },
+    "binary_rebuild_from_candidate6": false,
+    "android_x86_64_sha256": "3d95d82d8290150fadd13600b79eca26326792407532f571909d8df224df6fa4"
+  },
+  "current_origin": {
+    "status": "PASS",
+    "captured_at_utc": "2026-08-29T14:49:59Z",
+    "source_revision": "af259f377ec7a3cd757f0f43762154dd25e09f94",
+    "working_tree_state": "clean",
+    "network_profile": "current-workstation-direct-ethernet2-source-bound",
+    "health": {
+      "samples": 50,
+      "warmups": 5,
+      "p95_ms": 65.5636,
+      "budget_ms": 100,
+      "report_sha256": "ede9f8144604509d2400cc0d3732e8f8201f597b63d39588dc7f4ae0696c2dec",
+      "gate_sha256": "26095dddace1ef55bb4697f7c1ad1bd13ca14c643c64fde405ddfb376dd9f42d"
+    },
+    "public_catalog": {
+      "samples": 50,
+      "warmups": 5,
+      "p95_ms": 67.4524,
+      "budget_ms": 200,
+      "report_sha256": "4cbf80b29e8c196b509809afcc167fbd03fc7a3ca4bed1819054ea16c44e8952",
+      "gate_sha256": "bbcbede9570f8a24b48b0859cc0a3732fb08b01e7f7b139fb6f016e964367eee"
+    },
+    "runtime_mutated": false
+  },
+  "brain_origin": {
+    "status": "PASS",
+    "captured_at_utc": "2026-08-29T14:51:25Z",
+    "source_revision": "af259f377ec7a3cd757f0f43762154dd25e09f94",
+    "connection_mode": "OWNER_TRUSTED_SSH_CONFIG_READ_ONLY",
+    "source_probe": {
+      "payload_count": 197,
+      "raw_match_count": 4,
+      "crlf_only_difference_count": 193,
+      "normalized_match_count": 197,
+      "mismatch_count": 0,
+      "report_sha256": "16b71998b227b3bfa2089ef57d208068cc654764d91a4b4cac26841126ff4a53"
+    },
+    "readiness": {
+      "check_count": 23,
+      "failure_count": 0,
+      "report_sha256": "51638723f88c43a5e4237dcb6b4ad5339fd135d00909b8cd26964fa12d6d1ae6"
+    },
+    "enabled_delivery": {
+      "node_count": 7,
+      "open_count": 7,
+      "report_sha256": "3539d786df717fd7e783488b124b7bced48e0076f8b30c7bc6073ff34330a62a"
+    },
+    "ssh_alias_retained": false,
+    "remote_content_retained": false,
+    "runtime_mutated": false
+  },
+  "android_ldplayer": {
+    "status": "BLOCKED_BY_ACCESS",
+    "classification": "BLOCKED_BY_LDPLAYER_NETWORK_CURRENT_ORIGIN",
+    "observed_at_utc": "2026-08-29T14:52:46Z",
+    "model_retained": false,
+    "device_serial_retained": false,
+    "apk": {
+      "version": "1.2.0",
+      "build_number": 4046,
+      "sha256": "3d95d82d8290150fadd13600b79eca26326792407532f571909d8df224df6fa4",
+      "matches_candidate": true
+    },
+    "awg2": {
+      "bind_plan_ok": true,
+      "bind_apply_ok": true,
+      "selected_profile": "awg2_lab",
+      "vpn_service_created": true,
+      "tun_established": true,
+      "selected_endpoint_type": "awg",
+      "peer_count": 1,
+      "managed_dns_server_count": 3,
+      "core_egress_probe": "failed",
+      "protocol_pass_claimed": false,
+      "protocol_failure_claimed": false,
+      "plan_sha256": "124f9b017a716d48abdea69c30003a9c900cea9e96d1c4ffd9d281ad3d0aa200",
+      "apply_sha256": "f6a552dc117522f0217f22fd45231331ddd8e7b79b9742f22c19e5616b9ceae3",
+      "ui_sha256": "772ea4aad0cdeaf3cfaa66cb68b3776ed3895f00c73a7ca6b3c3dfc48eb0e76f"
+    },
+    "awg31": {
+      "bind_plan_ok": true,
+      "bind_apply_ok": true,
+      "selected_profile": "awg31_lab",
+      "vpn_service_created": true,
+      "tun_established": true,
+      "selected_endpoint_type": "awg",
+      "peer_count": 1,
+      "managed_dns_server_count": 3,
+      "core_egress_probe": "stalled",
+      "protocol_pass_claimed": false,
+      "protocol_failure_claimed": false,
+      "plan_sha256": "f67abe5ce4a9a1eeab7adef3d817153eefd16fed96cfa7bfb18db2722fe2272f",
+      "apply_sha256": "0148cebe2235139537cd88b0724f4627e541cd583790748831f43bf4245072a1",
+      "ui_sha256": "772ea4aad0cdeaf3cfaa66cb68b3776ed3895f00c73a7ca6b3c3dfc48eb0e76f"
+    },
+    "crash_scan": {
+      "fatal_exception_count": 0,
+      "anr_count": 0,
+      "native_fatal_signal_count": 0,
+      "security_exception_count": 0,
+      "raw_log_retained": false
+    },
+    "final_restore": {
+      "bind_plan_ok": true,
+      "bind_apply_ok": true,
+      "selected_profile": "default",
+      "resolved_profile": "legacy_reality_fallback",
+      "cohort_identity_present": false,
+      "lab_allowlist_identity_present": false,
+      "tun_present": false,
+      "vpn_service_present": false,
+      "managed_profile_has_awg": false,
+      "encrypted_server_material_rows_deleted_claimed": false,
+      "plan_sha256": "2e0c6cff45878c8d9fc079f282c90caf751528e2ffa127a08955c5a40be15bb4",
+      "apply_sha256": "a804d9aa123ef295220630143102cffa41bf0169f454eb13b5933c9060d520bf",
+      "ui_sha256": "e68dfd8f5f3fb4c1be6ff07fd76ea62b53b102ac8d1a92f9021cf166d073b78c"
+    }
+  },
+  "pi_ru_origin": {
+    "status": "PASS_BASELINE_ONLY",
+    "observed_at_utc": "2026-08-29T14:44:06Z",
+    "environment": {
+      "architecture": "aarch64",
+      "os": "debian",
+      "os_version": "13",
+      "access_mode": "OWNER_TRUSTED_SSH_CONFIG_READ_ONLY",
+      "route_class": "direct",
+      "country": "RU",
+      "resolver_count": 2
+    },
+    "system_dns": {
+      "chatgpt": true,
+      "openai_api": true,
+      "gemini": true,
+      "xbox": true,
+      "pokrov": true
+    },
+    "http_status": {
+      "chatgpt": 403,
+      "openai_api_without_credentials": 401,
+      "gemini": 200,
+      "google_genai_without_credentials": 403,
+      "xbox": 307,
+      "pokrov": 200
+    },
+    "public_doh_status": {
+      "cloudflare_chatgpt": 200,
+      "google_gemini": 200
+    },
+    "interpretation": {
+      "plain_dns_failure_observed": false,
+      "chatgpt_edge_denial_observed": true,
+      "plain_resolver_change_is_sufficient_for_chatgpt_claimed": false,
+      "smart_access_proxy_or_fronted_route_still_required": true,
+      "smart_dns_runtime_deployed": false,
+      "exact_candidate_client_executed": false,
+      "gate_f_ru_origin_pass_claimed": false
+    },
+    "address_retained": false,
+    "hostname_retained": false,
+    "ssh_alias_retained": false,
+    "raw_remote_payload_retained": false,
+    "runtime_mutated": false
+  },
+  "interpretation": {
+    "candidate6_runtime_evidence_transferred": false,
+    "candidate7_same_byte_identity_used": true,
+    "ldplayer_replaces_physical_android": false,
+    "pi_replaces_android_or_windows": false,
+    "pi_baseline_is_exact_candidate_ru_runtime": false,
+    "awg_protocol_pass_claimed": false,
+    "awg_protocol_failure_claimed": false,
+    "smart_dns_live_access_claimed": false,
+    "public_or_stable_release_claimed": false
+  },
+  "mutation_boundary": {
+    "physical_device_used": false,
+    "ldplayer_used": true,
+    "brain_ssh_read_only": true,
+    "pi_ssh_read_only": true,
+    "temporary_owner_lab_policy_mutation": true,
+    "temporary_owner_lab_policy_restored": true,
+    "entitlement_extension_applied": false,
+    "payment_action": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "CANDIDATE7_CURRENT_AND_BRAIN_ORIGIN_PASS; EXACT_X86_LDPLAYER_AWG2_AWG31_FORM_TUN_BUT_REMAIN_BLOCKED_BY_COMMON_EMULATOR_EGRESS; DEFAULT_RESTORED; PI_DIRECT_RU_DNS_DOH_HTTP_BASELINE_PASS_WITH_CHATGPT_EDGE_403; NO_EXACT_CANDIDATE_RU_CLIENT_OR_SMART_DNS_RUNTIME_PASS"
+}
