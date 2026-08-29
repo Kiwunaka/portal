@@ -2,6 +2,25 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BV Smart DNS shared-443 fronted source proof
+
+Post-candidate platform `06e4a4ab...` removes the source-level need for a new
+public IPv4 by adding a strict loopback-only PROXY-v2 listener and validated
+HAProxy exact/child-SNI plus `send-proxy-v2` rendering. Original client source
+addresses remain visible to both connection and DoH rate limiters. Direct,
+missing, malformed, non-TCP and TLV-bearing proxy headers fail closed.
+
+Go test/vet, `30` focused platform tests, `4` script-manifest tests, Ruff,
+Python compile and diff checks pass. Two clean source builds are byte-identical:
+`2916119` bytes, SHA-256 `2f713b63...e5a5eb`; the embedded ELF is
+`05a4b663...38bb5e`. The canonical policy stays unchanged.
+
+This remains `I3` source/artifact proof. The current installer deliberately
+rejects fronted APPLY, no frontend or Brain target is selected, no remote PLAN
+or mutation ran and candidate.6 bytes remain unchanged. A separate guarded
+frontend migration/rollback and successor candidate are required before live
+DNS/SNI/access evidence. Gate F stays `4 PASS / 15 non-PASS / 0 FAIL`.
+
 ## 2026-08-29 — WO-013BU candidate.6 RU-origin bundle and install PLAN
 
 WO-013BS's remote result remains valid for the nine paths it checked, but the

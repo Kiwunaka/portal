@@ -1,0 +1,67 @@
+{
+  "schema": "pokrov.release-1.2.0.smart-dns-shared-443-fronted-source-proof/v1",
+  "recorded_at": "2026-08-29T14:18:57.3889148+03:00",
+  "relationship_to_release": {
+    "candidate": "pokrov-1.2.0-candidate.6",
+    "candidate_platform_source": "5713324c1c0c2566befadf527bc09ec0ecf84a4e",
+    "post_candidate_platform_source": "06e4a4abfb2b105eaaff4f819203f1b43e74788d",
+    "candidate_bytes_changed": false,
+    "successor_candidate_required": true,
+    "gate_f_before": "4_PASS_15_NONPASS_0_FAIL",
+    "gate_f_after": "4_PASS_15_NONPASS_0_FAIL",
+    "gate_f_regenerated": false
+  },
+  "fronted_source_contract": {
+    "listen_scope": "EXPLICIT_LOOPBACK_UNPRIVILEGED_PORT",
+    "proxy_protocol": "REQUIRED_V2_TCP_IPV4_OR_IPV6_EXACT_BASE_HEADER_NO_TLVS",
+    "original_source_restored_for_connection_limiter": true,
+    "original_source_restored_for_doh_limiter": true,
+    "direct_connection_to_fronted_listener_fails_closed": true,
+    "haproxy_exact_sni_supported": true,
+    "haproxy_exact_or_child_suffix_sni_supported": true,
+    "haproxy_send_proxy_v2_supported": true,
+    "existing_default_routes_changed": false,
+    "current_installer_fronted_apply_supported": false
+  },
+  "artifact": {
+    "retained_location": "EXTERNAL_LOCAL_RELEASE_ARTIFACT",
+    "member_count": 11,
+    "bundle_size_bytes": 2916119,
+    "bundle_sha256": "2f713b638bbbd70a3ea1a7c40bee3c25011668a04ea19c7404b6b30e86e5a5eb",
+    "binary_sha256": "05a4b6635be25c471b16ae1782d6d393d4b14ea49f3ba9b0f3706e251b38bb5e",
+    "policy_sha256": "b6977f6f6a5ee48898116820d1db252b5b670cb7b86959c78f7bdbc7de90e0fa",
+    "independent_repeat_byte_identical": true,
+    "verification": "PASS_LOCAL_IMMUTABLE_BUNDLE",
+    "runtime_material_included": false,
+    "deployment_performed": false
+  },
+  "verification": {
+    "go_test": "PASS",
+    "go_vet": "PASS",
+    "focused_pytest": "30_PASS",
+    "script_manifest_pytest": "4_PASS",
+    "focused_ruff": "PASS",
+    "python_compile": "PASS",
+    "diff_check": "PASS"
+  },
+  "runtime_boundary": {
+    "frontend_selected": false,
+    "brain_selected": false,
+    "remote_plan_executed": false,
+    "runtime_material_present": false,
+    "server_mutated": false,
+    "dns_or_sni_live": false,
+    "service_access_run": false,
+    "leak_or_origin_matrix_run": false,
+    "raw_endpoint_returned": false,
+    "raw_runtime_material_returned": false
+  },
+  "release_interpretation": {
+    "ledger_row": "FRKN_SMART_DNS/SMARTDNS-01",
+    "completion_level": "I3",
+    "status": "POST_CANDIDATE_FRONTED_SOURCE_AND_IMMUTABLE_BUNDLE_PROVED_NO_MIGRATION_PLAN",
+    "candidate_claim": false,
+    "live_endpoint_claim": false,
+    "access_claim": false
+  }
+}
