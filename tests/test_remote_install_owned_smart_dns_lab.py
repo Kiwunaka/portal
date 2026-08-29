@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import shlex
+import subprocess
 import sys
 from pathlib import Path
 
@@ -52,6 +54,12 @@ def test_local_bundle_is_exact_and_derives_receipt_bound_paths(tmp_path: Path) -
     assert f"{MODULE.RELEASE_ROOT}/{digest}".endswith(digest)
     assert f"{MODULE.RUNTIME_STAGE_ROOT}/{digest}".endswith(digest)
 
+    for listener_mode in MODULE.LISTENER_MODES:
+        _path, _manifest, _contents, mode_digest = MODULE._validated_local_bundle(
+            path, listener_mode
+        )
+        assert mode_digest == digest
+
 
 def test_canonical_node_codes_are_safe_components() -> None:
     assert MODULE._safe_component("RU_SPB", label="node_code") == "ru_spb"
@@ -85,6 +93,88 @@ def test_plan_probe_is_read_only_and_never_returns_runtime_material() -> None:
     assert "runtime_contract_valid" in command
     assert "python3" in command
     assert "cat " not in command
+
+    fronted = MODULE._preflight_command(
+        release_dir=f"{MODULE.RELEASE_ROOT}/{'a' * 64}",
+        runtime_material_dir=f"{MODULE.RUNTIME_STAGE_ROOT}/{'a' * 64}",
+        expected_proxy_ipv4="1.1.1.1",
+        listener_mode=MODULE.FRONTED_LISTENER_MODE,
+    )
+    assert "sport = :18443" in fronted
+    assert "ufw allow" not in fronted
+    assert "systemctl start" not in fronted
+
+
+def _runtime_config(listener_mode: str) -> dict[str, object]:
+    template_name = (
+        "config.fronted.template.json"
+        if listener_mode == MODULE.FRONTED_LISTENER_MODE
+        else "config.template.json"
+    )
+    config = json.loads(
+        (ROOT / "infra" / "owned-smart-dns" / template_name).read_text(
+            encoding="utf-8"
+        )
+    )
+    rendered = json.dumps(config)
+    rendered = rendered.replace("${POKROV_SMART_DNS_DOH_HOSTNAME}", "dns.example.com")
+    rendered = rendered.replace("${POKROV_SMART_DNS_PROXY_IPV4}", "1.1.1.1")
+    rendered = rendered.replace("${POKROV_SMART_DNS_UPSTREAM_DOT_IP}", "8.8.8.8")
+    rendered = rendered.replace(
+        "${POKROV_SMART_DNS_UPSTREAM_DOT_SERVER_NAME}", "dns.google"
+    )
+    return json.loads(rendered)
+
+
+def _run_runtime_contract(command: str) -> subprocess.CompletedProcess[str]:
+    parts = shlex.split(command)
+    assert parts[0] == "python3"
+    return subprocess.run(
+        [sys.executable, *parts[1:]],
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+
+
+def test_fronted_runtime_contract_requires_exact_loopback_proxy_v2(
+    tmp_path: Path,
+) -> None:
+    config = _runtime_config(MODULE.FRONTED_LISTENER_MODE)
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps(config), encoding="utf-8")
+    command = MODULE._runtime_contract_check(
+        str(path), "1.1.1.1", MODULE.FRONTED_LISTENER_MODE
+    )
+    assert _run_runtime_contract(command).returncode == 0
+
+    config["listen"] = "0.0.0.0:443"
+    path.write_text(json.dumps(config), encoding="utf-8")
+    assert _run_runtime_contract(command).returncode != 0
+
+
+def test_dedicated_runtime_contract_accepts_public_443_without_proxy_v2(
+    tmp_path: Path,
+) -> None:
+    config = _runtime_config(MODULE.DEDICATED_LISTENER_MODE)
+    path = tmp_path / "config.json"
+    path.write_text(json.dumps(config), encoding="utf-8")
+    command = MODULE._runtime_contract_check(
+        str(path), "1.1.1.1", MODULE.DEDICATED_LISTENER_MODE
+    )
+
+    assert _run_runtime_contract(command).returncode == 0
+
+    config["listen"] = "127.0.0.1:18443"
+    config["accept_proxy_protocol_v2"] = True
+    path.write_text(json.dumps(config), encoding="utf-8")
+    assert _run_runtime_contract(command).returncode != 0
+
+    config["listen"] = "127.0.0.1:18443"
+    config["accept_proxy_protocol_v2"] = False
+    path.write_text(json.dumps(config), encoding="utf-8")
+    assert _run_runtime_contract(command).returncode != 0
 
 
 def test_address_availability_helper_returns_only_sanitized_facts() -> None:
@@ -139,14 +229,77 @@ def test_apply_commands_are_digest_bound_secret_safe_and_rollback_armed(
     assert "https://$doh_host/dns-query" in install
     assert "${POKROV_" not in install
     assert "privkey.pem" in install
+    assert "printf 'applied\\n'" in install
+    assert "installed" not in install
     assert "disable --now pokrov-smart-dns-lab.service" in rollback
     assert "ufw --force delete allow 443/tcp" in rollback
     assert rollback.index("listener_after_stop=free") < rollback.index("rm -f")
     assert rollback.rindex("listener_after_stop") > rollback.index("rm -f")
     assert digest in rollback
     assert "readlink -f /opt/pokrov/smart-dns/current" in rollback
+    assert "grep -qx applied" in rollback
     assert "rm -rf" not in rollback
     assert f"test -d {release}" in rollback
+
+    automatic = MODULE._rollback_command(
+        backup_dir=backup,
+        bundle_sha256=digest,
+        node_code="dns-lab",
+        release_dir=release,
+        require_current_release=False,
+    )
+    assert "prepared|applied" in automatic
+    assert "grep -qx applied" not in automatic
+
+
+def test_fronted_apply_and_rollback_are_loopback_only_and_firewall_neutral(
+    tmp_path: Path,
+) -> None:
+    _path, manifest, _contents, digest = MODULE._validated_local_bundle(
+        _synthetic_bundle(tmp_path), MODULE.FRONTED_LISTENER_MODE
+    )
+    receipt_id = "20260828T120000Z-7-" + digest[:12]
+    backup = f"{MODULE.BACKUP_ROOT}/{receipt_id}"
+    stage = f"{MODULE.STAGE_ROOT}/{receipt_id}"
+    release = f"{MODULE.RELEASE_ROOT}/{digest}"
+    runtime = f"{MODULE.RUNTIME_STAGE_ROOT}/{digest}"
+
+    receipt = MODULE._backup_command(
+        backup_dir=backup,
+        bundle_sha256=digest,
+        node_code="dns-lab",
+        listener_mode=MODULE.FRONTED_LISTENER_MODE,
+    )
+    install = MODULE._install_command(
+        stage_dir=stage,
+        release_dir=release,
+        runtime_material_dir=runtime,
+        backup_dir=backup,
+        manifest=manifest,
+        listener_mode=MODULE.FRONTED_LISTENER_MODE,
+    )
+    rollback = MODULE._rollback_command(
+        backup_dir=backup,
+        bundle_sha256=digest,
+        node_code="dns-lab",
+        release_dir=release,
+        require_current_release=True,
+        listener_mode=MODULE.FRONTED_LISTENER_MODE,
+    )
+
+    assert "not_managed" in receipt
+    assert "ufw status" not in receipt
+    assert "listener-mode" in receipt
+    assert "sport = :18443" in install
+    assert "127.0.0.1:18443" in install
+    assert "ufw allow" not in install
+    assert "ufw --force" not in rollback
+    assert "sport = :18443" in rollback
+    assert "listener-mode" in rollback
+    assert "PROXY" not in install
+    assert "python3 -c" in install
+    assert "192.0.2.10" in MODULE._FRONTED_DOH_PROBE_HELPER
+    assert "HTTP/1.1 400" in MODULE._FRONTED_DOH_PROBE_HELPER
 
 
 def test_fresh_install_rejects_port_path_firewall_or_material_conflicts() -> None:
@@ -173,6 +326,31 @@ def test_fresh_install_rejects_port_path_firewall_or_material_conflicts() -> Non
     for override in cases:
         with pytest.raises(MODULE.SmartDNSRemoteOperationError):
             MODULE._assert_fresh_install_preflight({**ready, **override})
+
+
+def test_fronted_fresh_install_ignores_public_443_and_ufw_but_requires_loopback() -> None:
+    ready = {
+        "root": True,
+        "required_tools": True,
+        "ufw_installed": False,
+        "ufw_active": False,
+        "ufw_rule_present": True,
+        "tcp_443": "busy",
+        "loopback_tcp_18443": "free",
+        "occupied_targets": [],
+        "service_state": "inactive",
+        "runtime_material_ready": True,
+    }
+    MODULE._assert_fresh_install_preflight(ready, MODULE.FRONTED_LISTENER_MODE)
+
+    with pytest.raises(
+        MODULE.SmartDNSRemoteOperationError,
+        match="fronted_loopback_listener_occupied",
+    ):
+        MODULE._assert_fresh_install_preflight(
+            {**ready, "loopback_tcp_18443": "busy"},
+            MODULE.FRONTED_LISTENER_MODE,
+        )
 
 
 def test_probe_parser_rejects_unbounded_remote_output() -> None:
@@ -287,3 +465,20 @@ def test_plan_and_report_contract_return_no_endpoint_or_runtime_secrets(
     assert "password" not in serialized
     assert "doh_hostname" not in serialized
     assert "proxy_ipv4" not in serialized
+
+
+def test_fronted_plan_is_explicit_and_keeps_frontend_separate() -> None:
+    plan = MODULE._plan(
+        operation="install",
+        node_code="dns-lab",
+        listener_mode=MODULE.FRONTED_LISTENER_MODE,
+    )
+
+    assert plan["listener_mode"] == MODULE.FRONTED_LISTENER_MODE
+    assert "retain_loopback_only_firewall_unchanged_then_enable_service" in plan[
+        "ordered_actions"
+    ]
+    assert "start_and_verify_proxy_v2_tls_doh_before_frontend_migration" in plan[
+        "ordered_actions"
+    ]
+    assert "open_tcp_443_then_enable_service" not in plan["ordered_actions"]
