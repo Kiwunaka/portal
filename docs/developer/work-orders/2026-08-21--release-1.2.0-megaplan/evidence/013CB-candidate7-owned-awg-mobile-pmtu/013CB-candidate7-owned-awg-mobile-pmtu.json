@@ -1,0 +1,141 @@
+{
+  "schema": "pokrov-candidate7-owned-awg-mobile-pmtu-v1",
+  "recorded_at_utc": "2026-08-29T16:53:19Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.7",
+    "version": "1.2.0",
+    "build": 4046,
+    "android_arm64_sha256": "b583205db9e197c6de873264821319ef1108a2786f1ee5466501712568147296",
+    "exact_installed_apk_hash_matched": true
+  },
+  "environment": {
+    "device_class": "owner_physical_android",
+    "origin": "beeline_mobile",
+    "wifi_enabled": false,
+    "mobile_data_enabled": true,
+    "private_dns_mode": "off",
+    "raw_device_identifiers_retained": false,
+    "raw_network_identifiers_retained": false,
+    "raw_material_retained": false
+  },
+  "fail_first": {
+    "authority": "WO-013CA",
+    "result": "FAIL_AUTHENTICATED_EGRESS_NOT_CONFIRMED",
+    "rewritten": false
+  },
+  "diagnosis": {
+    "server_reply_policy_missing": true,
+    "server_reply_policy_corrected_and_cycle_read_back": true,
+    "source_server_and_material_mtu": 1408,
+    "measured_mobile_inner_ceiling": 1280,
+    "awg2_tls_failed_above_mobile_ceiling": true,
+    "awg31_legacy_content_padding": "64-512",
+    "awg31_legacy_padding_black_holed_tls": true,
+    "cryptography_reimplemented": false,
+    "official_pinned_awg_cryptography_retained": true
+  },
+  "correction": {
+    "server_and_material_mtu": 1280,
+    "awg31_variant": "randomized_trailers_mobile_safe_v2",
+    "awg31_generation": "awg31-lab-v4-mobile-safe-trailers",
+    "awg31_server_record": "de-awg31-20260829-04-mobile-safe-trailers",
+    "header_protection_retained": true,
+    "randomized_trailers_retained": true,
+    "data_content_padding": "0",
+    "first_variant_apply": "FAILED_READBACK_AND_ROLLED_BACK",
+    "first_variant_apply_cause": "ZERO_VALUE_OMITTED_FROM_LIVE_UAPI_SHOWCONF",
+    "readback_correction": "ABSENT_LIVE_FIELD_EQUALS_ZERO_ONLY_WITH_PERSISTED_EXPLICIT_RESET_AND_FULL_VARIANT_CHECKS",
+    "final_variant_apply": "PASS",
+    "final_alignment_awg2": "PASS_11_OF_11",
+    "final_alignment_awg31": "PASS_11_OF_11",
+    "final_reply_policy": "PASS_PERSISTED_BOTH_PROFILES"
+  },
+  "verification": {
+    "awg2_core_interop": "PASS",
+    "awg2_physical_tun": true,
+    "awg2_physical_dns": true,
+    "awg2_physical_authenticated_egress": true,
+    "awg2_app_state": "PROTECTION_WORKS_TUN_DNS_EGRESS_CONFIRMED",
+    "awg31_core_interop": "PASS",
+    "awg31_physical_tun": true,
+    "awg31_physical_dns": true,
+    "awg31_physical_tcp_443": true,
+    "awg31_physical_tls": true,
+    "awg31_physical_http_status": 204,
+    "awg31_authenticated_marker": true,
+    "awg31_app_state": "PROTECTION_WORKS_TUN_DNS_EGRESS_CONFIRMED",
+    "warm_session_after_live_rewrites": "STALE_DIAGNOSTIC_NOT_FINAL",
+    "cold_process_repeat": "PASS"
+  },
+  "final_state": {
+    "selected_profile": "default",
+    "resolved_profile": "legacy_reality_fallback",
+    "lab_cohort_identity_present": false,
+    "lab_allowlist_identity_present": false,
+    "awg2_material_provisioned": false,
+    "awg31_material_provisioned": false,
+    "vpn_or_tun_present": false,
+    "ui_state": "NOT_PROTECTED",
+    "warp_enabled": false,
+    "wifi_enabled": false,
+    "mobile_data_enabled": true,
+    "private_dns_mode": "off",
+    "result": "PASS_CLEAN_RESTORE"
+  },
+  "evidence_files": [
+    {
+      "path": "physical-candidate7-owned-awg-mtu-plan.json",
+      "sha256": "94cef6d0cd8fb9d2e2b371d50665e4138630816204d123443bb3bd54948f0621"
+    },
+    {
+      "path": "physical-candidate7-owned-awg-mtu-apply.json",
+      "sha256": "662b055ee0dd04adf35f809f9169838ce276d3b0eb7ae3979d2fb9d784694f3e"
+    },
+    {
+      "path": "physical-candidate7-awg2-postfix-core-interop.json",
+      "sha256": "8bc09c39361416719c6f0f3f6c6ab41032b9fb50ee5689c83eab4253f0419a99"
+    },
+    {
+      "path": "physical-candidate7-awg2-mobile-safe-recheck-bind-plan.json",
+      "sha256": "624a6c81626b329caafc910473e1be128c2dd56921b8cc8ab16569e63db501a9"
+    },
+    {
+      "path": "physical-candidate7-awg2-mobile-safe-recheck-bind-apply.json",
+      "sha256": "87623b5962a368f6f78468d1c2ebe38ef58b86c69344cca8faa782289ab4577a"
+    },
+    {
+      "path": "physical-candidate7-awg2-mobile-safe-cold-details.xml",
+      "sha256": "d8dbf402340754602bc4abd0f674bd10287d03802f597feaa24035a2ee343c7c"
+    },
+    {
+      "path": "physical-candidate7-awg31-mobile-safe-core-interop.json",
+      "sha256": "cf5f74cbc963ad6353777b955712a86d877c79e184dc45d393333a45a8951e2a"
+    },
+    {
+      "path": "physical-candidate7-awg31-mobile-safe-cold-details.xml",
+      "sha256": "d8dbf402340754602bc4abd0f674bd10287d03802f597feaa24035a2ee343c7c"
+    },
+    {
+      "path": "physical-candidate7-final-default-restore-plan.json",
+      "sha256": "d039f85c958328c7ae9294b6bdca955cd6f0c477b8cb008c3231c181bd4d547a"
+    },
+    {
+      "path": "physical-candidate7-final-default-restore-apply.json",
+      "sha256": "369ca120d02c6e2bd50449c7c3250a565d98d4c35a7651c0cc401dbcd624a014"
+    },
+    {
+      "path": "physical-candidate7-final-default-postfix.xml",
+      "sha256": "ac9dc90de598819b0e48753f144253f7b980ec6e9d23003dd4c6cba4201c237f"
+    }
+  ],
+  "release_disposition": {
+    "candidate7_original_gate_f_rewritten": false,
+    "candidate7_android_bytes_physically_proven_for_both_awg_profiles": true,
+    "successor_candidate_required": true,
+    "reason": "PLATFORM_PROVISIONING_AND_ANDROID_FALSE_GREEN_SOURCE_CHANGED_AFTER_SIGNED_TUPLE",
+    "windows_awg_parity_complete": false,
+    "full_android_leak_lifecycle_matrix_complete": false,
+    "public_or_stable_promotion_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE7_ARM64_PHYSICAL_BEELINE_AWG2_AND_AWG31_TUN_DNS_AUTHENTICATED_EGRESS_PASS_AFTER_GUARDED_LIVE_SERVER_CORRECTION; CLEAN_DEFAULT_RESTORE_PASS; SUCCESSOR_SOURCE_CANDIDATE_AND_REMAINING_ANDROID_WINDOWS_MATRIX_REQUIRED"
+}

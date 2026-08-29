@@ -148,6 +148,7 @@
     "scripts/remote_run_owned_awg_core_interop.py",
     "scripts/remote_schedule_release_announcement.py",
     "scripts/remote_select_owned_awg_lab.py",
+    "scripts/remote_set_owned_awg_mtu.py",
     "scripts/remote_set_owned_awg31_variant.py",
     "scripts/remote_setup_pl_free_8443.py",
     "scripts/remote_start_brain_bot.py",

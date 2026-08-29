@@ -1,0 +1,158 @@
+{
+  "schema": "pokrov-candidate7-physical-awg-differential-v1",
+  "recorded_at_utc": "2026-08-29T15:26:36Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.7",
+    "version": "1.2.0",
+    "build": 4046,
+    "android_arm64_sha256": "b583205db9e197c6de873264821319ef1108a2786f1ee5466501712568147296",
+    "exact_installed_apk_hash_matched": true
+  },
+  "environment": {
+    "device_class": "owner_physical_android",
+    "origin": "beeline_mobile",
+    "wifi_enabled": false,
+    "mobile_data_enabled": true,
+    "private_dns_mode": "off",
+    "warp_enabled": false,
+    "raw_device_identifiers_retained": false,
+    "raw_network_identifiers_retained": false
+  },
+  "baseline": {
+    "vpn_present": false,
+    "app_vpn_service_present": false,
+    "ui_state": "NOT_PROTECTED",
+    "result": "PASS"
+  },
+  "profiles": {
+    "awg2_lab": {
+      "bind_plan": "PASS",
+      "bind_apply": "PASS",
+      "target_install_confirmation_match": true,
+      "selected_profile": "awg2_lab",
+      "resolved_profile": "awg2_lab",
+      "android_vpn_transport_connected": true,
+      "android_vpn_transport_validated": true,
+      "tun_interface_present": true,
+      "managed_dns_ready": true,
+      "routes_assigned_ipv4": 1,
+      "routes_assigned_ipv6": 0,
+      "selected_exit_confirmed": false,
+      "app_tunnel_state": "REQUIRES_ATTENTION",
+      "fatal_exception_anr_or_native_fatal_observed": false,
+      "result": "FAIL_AUTHENTICATED_EGRESS_NOT_CONFIRMED"
+    },
+    "awg31_lab": {
+      "bind_plan": "PASS",
+      "bind_apply": "PASS",
+      "target_install_confirmation_match": true,
+      "selected_profile": "awg31_lab",
+      "resolved_profile": "awg31_lab",
+      "android_vpn_transport_connected": true,
+      "android_vpn_transport_validated": true,
+      "tun_interface_present": true,
+      "managed_dns_ready": true,
+      "routes_assigned_ipv4": 1,
+      "routes_assigned_ipv6": 0,
+      "selected_exit_confirmed": false,
+      "app_tunnel_state": "REQUIRES_ATTENTION",
+      "fatal_exception_anr_or_native_fatal_observed": false,
+      "result": "FAIL_AUTHENTICATED_EGRESS_NOT_CONFIRMED"
+    },
+    "default": {
+      "bind_plan": "PASS",
+      "bind_apply": "PASS",
+      "target_install_confirmation_match": true,
+      "selected_profile": "default",
+      "resolved_profile": "legacy_reality_fallback",
+      "lab_cohort_identity_present": false,
+      "lab_allowlist_identity_present": false,
+      "awg2_material_provisioned": false,
+      "awg31_material_provisioned": false,
+      "android_vpn_transport_connected": true,
+      "android_vpn_transport_validated": true,
+      "tun_interface_present": true,
+      "app_notification_state": "PROTECTION_ENABLED",
+      "result": "PASS_PHYSICAL_MOBILE_CONTROL"
+    }
+  },
+  "differential": {
+    "same_candidate": true,
+    "same_device": true,
+    "same_mobile_origin": true,
+    "ordinary_control_passed": true,
+    "awg2_passed": false,
+    "awg31_passed": false,
+    "common_client_or_mobile_origin_failure_supported": false,
+    "awg_server_transport_path_failure_supported": true,
+    "classification": "EXACT_CANDIDATE7_PHYSICAL_AWG2_AWG31_EGRESS_FAILURE_WITH_DEFAULT_CONTROL_PASS",
+    "candidate_disposition": "REJECTED_FOR_REPLACEMENT"
+  },
+  "final_state": {
+    "selected_profile": "default",
+    "resolved_profile": "legacy_reality_fallback",
+    "lab_cohort_identity_present": false,
+    "lab_allowlist_identity_present": false,
+    "awg_material_access_present": false,
+    "vpn_present": false,
+    "app_vpn_service_present": false,
+    "ui_state": "NOT_PROTECTED",
+    "wifi_enabled": false,
+    "mobile_data_enabled": true,
+    "private_dns_mode": "off",
+    "warp_enabled": false,
+    "result": "PASS_CLEAN_RESTORE"
+  },
+  "evidence_files": [
+    {
+      "path": "physical-candidate7-baseline.xml",
+      "sha256": "bd136b2907d2992e7e2a6f51fb87a03844bb51a406989605f51b0b973f47a4a1"
+    },
+    {
+      "path": "physical-candidate7-awg2-bind-plan.json",
+      "sha256": "85327c89778d4a5a87e2b1d2e24f7c3627ee8419b20b53b09d72eb6e812ebec7"
+    },
+    {
+      "path": "physical-candidate7-awg2-bind-apply.json",
+      "sha256": "9229e3be95e2e32b6985921bfff9985a18fd76d43d5d751f6d25d02200c4efd0"
+    },
+    {
+      "path": "physical-candidate7-awg2-details-expanded.xml",
+      "sha256": "514601c07f9d453ffccbeb658bb88cfef8eaecc8055eba79524cbe0b6fea8c79"
+    },
+    {
+      "path": "physical-candidate7-awg31-bind-plan.json",
+      "sha256": "2c2ea274e10e57d864630c88f8f3f20ea92e06b0ff9cdb6c7dc8534094e5cf06"
+    },
+    {
+      "path": "physical-candidate7-awg31-bind-apply.json",
+      "sha256": "fe4caf974f49aea595cfae3e37e36c02de678fb56692e7fc0ad3e7be0e947c43"
+    },
+    {
+      "path": "physical-candidate7-awg31-details-expanded.xml",
+      "sha256": "e53ab019814cc66a87d840d51f6fe542decfde63030543b2b8adb67b153d31f1"
+    },
+    {
+      "path": "physical-candidate7-default-bind-plan.json",
+      "sha256": "60e618217409fa783c23bbcdf7e6536df708b5a1316a72adb518932a78716370"
+    },
+    {
+      "path": "physical-candidate7-default-bind-apply.json",
+      "sha256": "030056dcca1fcdc04847d10fc8030c52e814c7ae1d81729ff72b8e05b1201493"
+    },
+    {
+      "path": "physical-candidate7-final-default.xml",
+      "sha256": "c1b5fbae668780de6afb62179c84d27dabc4a1d1c5e21b00bb722d1caf868ebf"
+    }
+  ],
+  "interpretation": {
+    "android_validated_vpn_alone_is_protocol_pass": false,
+    "dns_ready_alone_is_authenticated_egress_pass": false,
+    "ordinary_control_pass_exonerates_every_carrier_condition": false,
+    "failed_awg_slice_is_complete_android_matrix": false,
+    "failed_awg_slice_is_stop_ship_for_candidate": true,
+    "existing_gate_f_snapshot_rewritten": false,
+    "public_or_stable_promotion_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE7_ARM64_PHYSICAL_BEELINE_DEFAULT_CONTROL_PASS; AWG2_AND_AWG31_TUN_DNS_FORM_BUT_AUTHENTICATED_EGRESS_FAIL; CLEAN_DEFAULT_RESTORE_PASS; REMAINING_ANDROID_MATRIX_NOT_RUN; CANDIDATE7_REJECTED_FOR_REPLACEMENT"
+}

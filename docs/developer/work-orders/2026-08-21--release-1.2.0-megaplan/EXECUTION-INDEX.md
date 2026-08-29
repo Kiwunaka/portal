@@ -2,6 +2,73 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013CB candidate.7 owned AWG mobile PMTU correction
+
+WO-013CA's fail-first result was traced to server reply-source policy, a
+mobile inner packet ceiling near `1280`, and the old AWG 3.1 variant adding
+`64-512` bytes of content padding after packet sizing. The guarded reply-policy
+operator remains persistent. A new guarded MTU operator moved both live
+interfaces and encrypted materials from `1408` to `1280` with backup, service
+restart and exact readback. AWG 3.1 now uses
+`randomized_trailers_mobile_safe_v2`: official pinned cryptography, header
+protection and randomized handshake trailers remain; data-packet padding is
+explicitly `0`.
+
+One fail-first AWG 3.1 APPLY rolled back correctly because the live UAPI omits
+zero-valued content-padding output. Bounded readback now treats absence as zero
+only with the persisted explicit reset and the complete variant checks. Final
+server alignment passes `11/11` for each profile, reply policy survives service
+cycles and exact Core interop passes both profiles.
+
+The exact signed candidate.7 ARM64 APK then reaches the app's green terminal
+state over physical Beeline for AWG2 and AWG 3.1: TUN, managed DNS and
+authenticated egress are all confirmed. AWG 3.1 also passes independent TCP,
+TLS and owned HTTP `204` marker checks. A warm-session stale yellow diagnostic
+after the live rewrites remains recorded; a process-cold repeat is the final
+PASS.
+
+Cleanup returns the exact install to `default` /
+`legacy_reality_fallback`, removes both lab materials and membership, and
+leaves no VPN/TUN with WARP off, Wi-Fi off, mobile data on and Private DNS
+`off`. The candidate.7 APK proof is retained, but the full signed tuple is not
+promoted because platform provisioning and Android false-green notification
+source changed after signing. A successor candidate and new Gate F are
+required; WO-013BZ's `4/15/0` snapshot is immutable.
+
+`FRKN_UNCERTAINTY/UNCERT-02` advances from `I1` to `I3`; no row reaches `I4`.
+The original 377-row distribution is now `I4=4`, `I3=316`, `I2=21`, `I1=36`,
+`I0=0`; 320 rows are at or above `I3` and 57 are below. Including the derived
+Smart-DNS row, the ledger remains 378 rows and 321 are at or above `I3`.
+
+## 2026-08-29 — WO-013CA candidate.7 physical AWG differential
+
+The exact signed candidate.7 ARM64 package (`1.2.0+4046`, SHA-256
+`b583205d...7296`) ran on the owner's physical Android device over Beeline.
+Initial state was Wi-Fi off, mobile data on, Private DNS `off`, WARP off and no
+VPN/TUN.
+
+Guarded PLAN/APPLY passes for `awg2_lab` and `awg31_lab` each confirmed the
+exact install and entitled owner without extending entitlement. Both profiles
+created an Android-validated VPN transport, `tun0`, one IPv4 route and ready
+managed DNS. POKROV nevertheless reported that the tunnel required attention
+and the selected exit was not confirmed. Both exact physical slices are
+`FAIL_AUTHENTICATED_EGRESS_NOT_CONFIRMED`.
+
+The same package/device/mobile-origin ordinary control resolves to
+`legacy_reality_fallback`, creates an Android-validated VPN and reports
+`Защита включена`. This removes the common LDPlayer-origin explanation and
+narrows the active defect to the owned AWG server/transport path. Candidate.7
+is `REJECTED_FOR_REPLACEMENT`.
+
+Final guarded default readback removes lab cohort/allowlist access and both AWG
+materials for the selected install. The phone ends with no VPN/TUN, default
+profile, WARP off, Wi-Fi off, mobile data on and Private DNS `off`. No deploy,
+restart, entitlement extension or public/stable mutation occurred. The
+immutable WO-013BZ Gate F snapshot remains `BLOCKED` at `4/15/0`; no ledger
+level advances. The next slice is bounded server/transport diagnosis, a
+verified correction and a replacement candidate before the remaining Android
+and Windows matrices.
+
 ## 2026-08-29 — WO-013BZ candidate.7 runtime, Pi RU baseline and Gate F
 
 Fresh exact candidate.7 current-origin probes pass: health p95 is

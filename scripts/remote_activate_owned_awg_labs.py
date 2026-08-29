@@ -31,11 +31,13 @@ AWG2_INTERFACE = "pokrovawg2"
 AWG31_INTERFACE = "pokrovawg31"
 AWG2_PORT = 4500
 AWG31_PORT = 3478
+OWNED_AWG_MTU = 1280
 AWG2_SERVER_RECORD = "de-awg2-20260827-01"
-AWG31_SERVER_RECORD = "de-awg31-20260828-03-randomized-trailers"
-AWG31_GENERATION = "awg31-lab-v3-randomized-trailers"
+AWG31_SERVER_RECORD = "de-awg31-20260829-04-mobile-safe-trailers"
+AWG31_GENERATION = "awg31-lab-v4-mobile-safe-trailers"
 AWG31_ENDPOINT_REVISION = "awg31-v1"
-AWG31_VARIANT = "randomized_trailers_v1"
+AWG31_VARIANT = "randomized_trailers_mobile_safe_v2"
+AWG31_CONTENT_PADDING = "0"
 AWG31_VARIANT_DROPIN = (
     f"/etc/systemd/system/pokrov-awg-lab@{AWG31_INTERFACE}.service.d/variant.conf"
 )
@@ -213,7 +215,7 @@ def _endpoint_material(
         "useIntegratedTun": False,
         "private_key": awg2_client_private,
         "address": ["10.203.20.2/32"],
-        "mtu": 1408,
+        "mtu": OWNED_AWG_MTU,
         "jc": 4,
         "jmin": 40,
         "jmax": 70,
@@ -240,7 +242,7 @@ def _endpoint_material(
         "contract_id": "pokrov.awg31.endpoint.v1",
         "private_key": awg31_client_private,
         "address": ["10.203.31.2/32"],
-        "mtu": 1408,
+        "mtu": OWNED_AWG_MTU,
         "jc": 6,
         "jmin": 48,
         "jmax": 96,
@@ -258,9 +260,10 @@ def _endpoint_material(
         "i4": "",
         "i5": "",
         "header_protection_key": header_key,
-        # Randomized trailers vary the handshake-response length. Content
-        # padding varies transport packets after the handshake completes.
-        "content_padding_addition": "64-512",
+        # Randomized trailers vary handshake-response length. Data-packet
+        # padding stays disabled: the physical Beeline PMTU gate measured an
+        # inner ceiling near 1280 and larger padding black-holed TLS records.
+        "content_padding_addition": AWG31_CONTENT_PADDING,
         "rekey_after_time": "120",
         "rekey_timeout": "5",
         "reject_after_time": "180",
@@ -332,7 +335,7 @@ def _server_config(
 PrivateKey = {private_key}
 Address = {address}
 ListenPort = {port}
-MTU = 1408
+MTU = {OWNED_AWG_MTU}
 Table = off
 {fields}
 PostUp = iptables -C FORWARD -i %i -o eth0 -j ACCEPT || iptables -A FORWARD -i %i -o eth0 -j ACCEPT
@@ -402,7 +405,7 @@ WantedBy=multi-user.target
 
 def _awg31_variant_dropin_content() -> bytes:
     return f"""[Service]
-ExecStartPost={AWG_TARGET} set %i content-padding-addition 64-512 random-trailers on
+ExecStartPost={AWG_TARGET} set %i content-padding-addition {AWG31_CONTENT_PADDING} random-trailers on
 """.encode("utf-8")
 
 
@@ -809,9 +812,9 @@ guarded(
     {
         "tg_id": tg_id,
         "install_id": install_id,
-        "generation": "awg31-lab-v3-randomized-trailers",
+        "generation": "awg31-lab-v4-mobile-safe-trailers",
         "endpoint_revision": "awg31-v1",
-        "server_record_id": "de-awg31-20260828-03-randomized-trailers",
+        "server_record_id": "de-awg31-20260829-04-mobile-safe-trailers",
         "node_code": "de",
         "endpoint": awg31,
     },
@@ -853,9 +856,9 @@ current["awg31_lab"] = {
     "expires_at": expires_at,
     "contract_id": "pokrov.awg31.endpoint.v1",
     "contract_sha256": "1bb49b61549ba7c4a3c2d56df445e919ebb1ed12d42e04b0cb3c915d23240818",
-    "generation": "awg31-lab-v3-randomized-trailers",
+    "generation": "awg31-lab-v4-mobile-safe-trailers",
     "endpoint_revision": "awg31-v1",
-    "server_record_id": "de-awg31-20260828-03-randomized-trailers",
+    "server_record_id": "de-awg31-20260829-04-mobile-safe-trailers",
     "server_owner": "pokrov",
     "server_state": "ready",
     "material_max_age_hours": 168,
@@ -870,7 +873,7 @@ print(json.dumps({
     "awg2_material_provisioned": True,
     "awg31_material_provisioned": True,
     "selected_profile": "awg31_lab",
-    "awg31_variant": "randomized_trailers_v1",
+    "awg31_variant": "randomized_trailers_mobile_safe_v2",
     "rollout_expires_at": expires_at,
 }))
 """

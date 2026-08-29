@@ -10,7 +10,12 @@ from pathlib import Path
 from typing import Any
 
 from node_access import DEFAULT_PASSWORDS, connect_node
-from remote_activate_owned_awg_labs import _load_emulator_identity
+from remote_activate_owned_awg_labs import (
+    AWG31_ENDPOINT_REVISION,
+    AWG31_GENERATION,
+    AWG31_SERVER_RECORD,
+    _load_emulator_identity,
+)
 
 
 _REMOTE_HELPER = r'''
@@ -638,9 +643,9 @@ if selected_profile != "default":
         {
             "tg_id": tg_id,
             "install_id": install_id,
-            "generation": "awg31-lab-v3-randomized-trailers",
-            "endpoint_revision": "awg31-v1",
-            "server_record_id": "de-awg31-20260828-03-randomized-trailers",
+            "generation": "__POKROV_AWG31_GENERATION__",
+            "endpoint_revision": "__POKROV_AWG31_ENDPOINT_REVISION__",
+            "server_record_id": "__POKROV_AWG31_SERVER_RECORD__",
             "node_code": "de",
             "endpoint": awg31_endpoint,
         },
@@ -791,6 +796,12 @@ print(
     )
 )
 '''
+
+_REMOTE_HELPER = (
+    _REMOTE_HELPER.replace("__POKROV_AWG31_GENERATION__", AWG31_GENERATION)
+    .replace("__POKROV_AWG31_ENDPOINT_REVISION__", AWG31_ENDPOINT_REVISION)
+    .replace("__POKROV_AWG31_SERVER_RECORD__", AWG31_SERVER_RECORD)
+)
 
 
 def _parse_args() -> argparse.Namespace:
