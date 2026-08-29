@@ -26,7 +26,7 @@ except ImportError:  # pragma: no cover - package import for tests
     from .node_access import DEFAULT_PASSWORDS, connect_node
 
 
-REPORT_SCHEMA = "pokrov-owned-smart-dns-remote-operation-v2"
+REPORT_SCHEMA = "pokrov-owned-smart-dns-remote-operation-v3"
 SERVICE_NAME = "pokrov-smart-dns-lab.service"
 SERVICE_PATH = "/etc/systemd/system/pokrov-smart-dns-lab.service"
 RELEASE_ROOT = "/opt/pokrov/smart-dns/releases"
@@ -217,6 +217,89 @@ def _address_reuse_followup(*, bind_scope: str, expected_ipv4_assigned: bool) ->
     return "BLOCKED_CURRENT_BIND_SCOPE"
 
 
+_ADDRESS_AVAILABILITY_HELPER = r"""
+import ipaddress
+import json
+import subprocess
+import sys
+
+expected = ipaddress.ip_address(sys.argv[1]).compressed
+if not ipaddress.ip_address(expected).is_global:
+    raise SystemExit(2)
+
+def run(*args):
+    return subprocess.run(
+        args,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    ).stdout
+
+rows = json.loads(run("ip", "-j", "-4", "addr", "show", "scope", "global"))
+assigned = {
+    ipaddress.ip_address(info["local"]).compressed
+    for row in rows
+    for info in row.get("addr_info", [])
+    if info.get("family") == "inet"
+    and info.get("scope") == "global"
+    and ipaddress.ip_address(info["local"]).is_global
+}
+
+def local_endpoints(raw):
+    for line in raw.splitlines():
+        parts = line.split()
+        if len(parts) >= 4:
+            yield parts[3]
+
+wildcard = False
+for local in local_endpoints(run("ss", "-H", "-ltn", "sport = :443")):
+    address, separator, port = local.rpartition(":")
+    if separator == ":" and port == "443" and address in {
+        "*", "0.0.0.0", "[::]", "::"
+    }:
+        wildcard = True
+
+bound = set()
+for local in local_endpoints(run("ss", "-H", "-ltn4", "sport = :443")):
+    address, separator, port = local.rpartition(":")
+    if separator != ":" or port != "443" or address in {"*", "0.0.0.0"}:
+        continue
+    try:
+        candidate = ipaddress.ip_address(address).compressed
+    except ValueError:
+        continue
+    if candidate in assigned:
+        bound.add(candidate)
+
+unclaimed = set() if wildcard else assigned - bound
+bucket = "none" if not unclaimed else "one" if len(unclaimed) == 1 else "multiple"
+print("tcp_wildcard_busy=" + ("yes" if wildcard else "no"))
+print("tcp_expected_ipv4_busy=" + ("yes" if expected in bound else "no"))
+print("expected_ipv4_assigned=" + ("yes" if expected in assigned else "no"))
+print("global_ipv4_multiple=" + ("yes" if len(assigned) > 1 else "no"))
+print("unclaimed_global_ipv4=" + bucket)
+""".strip()
+
+
+def _address_availability_command(expected_proxy_ipv4: str) -> str:
+    try:
+        expected = ipaddress.ip_address(expected_proxy_ipv4).compressed
+    except ValueError as exc:
+        raise SmartDNSRemoteOperationError("expected_proxy_ipv4_invalid") from exc
+    if not ipaddress.ip_address(expected).is_global:
+        raise SmartDNSRemoteOperationError("expected_proxy_ipv4_not_public")
+    encoded = base64.b64encode(
+        _ADDRESS_AVAILABILITY_HELPER.encode("utf-8")
+    ).decode("ascii")
+    return (
+        "python3 -c "
+        + _q(f"import base64;exec(base64.b64decode('{encoded}'))")
+        + " "
+        + _q(expected)
+    )
+
+
 def _runtime_contract_check(config_path: str, expected_proxy_ipv4: str) -> str:
     validator = f"""
 import ipaddress
@@ -311,20 +394,7 @@ def _preflight_command(
         "emit_bool ufw_active \"ufw status 2>/dev/null | grep -q '^Status: active$'\"",
         f"emit_bool ufw_rule_present \"ufw status 2>/dev/null | grep -Eq '^[[:space:]]*{LISTEN_PORT}/tcp[[:space:]]+ALLOW'\"",
         f"emit_bool tcp_busy \"ss -H -ltn 'sport = :{LISTEN_PORT}' 2>/dev/null | grep -q .\"",
-        f"emit_bool tcp_wildcard_busy \"ss -H -ltn 'sport = :{LISTEN_PORT}' 2>/dev/null | grep -Eq '[[:space:]](0\\.0\\.0\\.0|\\*|\\[::\\]|::):{LISTEN_PORT}[[:space:]]'\"",
-        f"emit_bool tcp_expected_ipv4_busy \"ss -H -ltn 'sport = :{LISTEN_PORT}' 2>/dev/null | grep -Fq {_q(expected_proxy_ipv4 + ':' + str(LISTEN_PORT))}\"",
-        "emit_bool expected_ipv4_assigned \"ip -o -4 addr show scope global 2>/dev/null | grep -Fq "
-        + _q(f" {expected_proxy_ipv4}/")
-        + "\"",
-        "emit_bool global_ipv4_multiple 'test \"$(ip -o -4 addr show scope global 2>/dev/null | wc -l)\" -gt 1'",
-        "unclaimed_global_ipv4_count=0",
-        f"if ! ss -H -ltn 'sport = :{LISTEN_PORT}' 2>/dev/null | grep -Eq '[[:space:]](0\\.0\\.0\\.0|\\*|\\[::\\]|::):{LISTEN_PORT}[[:space:]]'; then",
-        "  for address in $(ip -o -4 addr show scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1); do",
-        f"    if ! ss -H -ltn4 'sport = :{LISTEN_PORT}' 2>/dev/null | grep -Fq \"$address:{LISTEN_PORT}\"; then unclaimed_global_ipv4_count=$((unclaimed_global_ipv4_count + 1)); fi",
-        "  done",
-        "fi",
-        "case \"$unclaimed_global_ipv4_count\" in 0) unclaimed_global_ipv4=none ;; 1) unclaimed_global_ipv4=one ;; *) unclaimed_global_ipv4=multiple ;; esac",
-        "printf 'unclaimed_global_ipv4=%s\\n' \"$unclaimed_global_ipv4\"",
+        _address_availability_command(expected_proxy_ipv4),
     ]
     for label, path in targets.items():
         lines.append(

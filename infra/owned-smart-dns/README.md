@@ -52,9 +52,10 @@ game works end to end.
 The guarded PLAN reports only sanitized bind-scope facts: whether TCP/443 is
 free, wildcard-bound, bound to the expected owned IPv4, or bound only to
 another address; whether the expected IPv4 is assigned; and whether the node
-has multiple global IPv4 addresses. It also reports only a `none`/`one`/
-`multiple` bucket for assigned global IPv4 addresses not covered by the current
-TCP/443 bind scope. A result of `other_address_only` or an unclaimed-address
-bucket is only a lead for a separate address-specific design and rollback
-review. It never authorizes APPLY, changes the conservative existing-port
-rejection, or returns an address, listener owner or process name.
+has multiple global IPv4 addresses. A strict Python helper parses structured
+`ip` data and `ss` listener rows, then reports only a `none`/`one`/`multiple`
+bucket for assigned global IPv4 addresses not covered by the current TCP/443
+bind scope. A result of `other_address_only` or an unclaimed-address bucket is
+only a lead for a separate address-specific design and rollback review. It
+never authorizes APPLY, changes the conservative existing-port rejection, or
+returns an address, listener owner or process name.

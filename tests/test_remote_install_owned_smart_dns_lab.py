@@ -79,18 +79,30 @@ def test_plan_probe_is_read_only_and_never_returns_runtime_material() -> None:
     )
     assert not any(token in command for token in prohibited)
     assert "ss -H -ltn" in command
-    assert "tcp_wildcard_busy" in command
-    assert "tcp_expected_ipv4_busy" in command
-    assert "expected_ipv4_assigned" in command
-    assert "global_ipv4_multiple" in command
-    assert "unclaimed_global_ipv4" in command
-    assert "unclaimed_global_ipv4_count" in command
-    assert "printf 'unclaimed_global_ipv4=%s\\n'" in command
-    assert "printf '%s' \"$address\"" not in command
+    assert "python3 -c" in command
+    assert "1.1.1.1" in command
     assert "runtime_placeholders_absent" in command
     assert "runtime_contract_valid" in command
     assert "python3" in command
     assert "cat " not in command
+
+
+def test_address_availability_helper_returns_only_sanitized_facts() -> None:
+    helper = MODULE._ADDRESS_AVAILABILITY_HELPER
+
+    assert 'run("ip", "-j", "-4", "addr", "show", "scope", "global")' in helper
+    assert 'run("ss", "-H", "-ltn", "sport = :443")' in helper
+    assert 'run("ss", "-H", "-ltn4", "sport = :443")' in helper
+    assert "unclaimed_global_ipv4=" in helper
+    assert "print(expected" not in helper
+    assert "print(candidate" not in helper
+    assert "print(address" not in helper
+
+    with pytest.raises(
+        MODULE.SmartDNSRemoteOperationError,
+        match="expected_proxy_ipv4_not_public",
+    ):
+        MODULE._address_availability_command("192.0.2.1")
 
 
 def test_apply_commands_are_digest_bound_secret_safe_and_rollback_armed(
