@@ -9,7 +9,14 @@ import (
 
 func TestPolicyUsesExactOrChildDomainMatching(t *testing.T) {
 	policy := loadTestPolicy(t)
-	for _, name := range []string{"openai.com", "api.openai.com.", "XBOX.COM"} {
+	for _, name := range []string{
+		"openai.com",
+		"api.openai.com.",
+		"gemini.google.com",
+		"preview.gemini.google.com.",
+		"XBOX.COM",
+		"presence-heartbeat.xboxlive.com",
+	} {
 		if !policy.Allows(name) {
 			t.Fatalf("expected %q to be allowed", name)
 		}

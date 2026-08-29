@@ -12,13 +12,19 @@ import (
 
 func TestDoHReturnsProxyOnlyForAllowlistedAQuestion(t *testing.T) {
 	handler := testDoHHandler(t)
-	allowed := exchangeDoH(t, handler, "api.openai.com.", dns.TypeA)
-	if allowed.Rcode != dns.RcodeSuccess || len(allowed.Answer) != 1 {
-		t.Fatalf("unexpected allowed response: rcode=%d answers=%d", allowed.Rcode, len(allowed.Answer))
-	}
-	record, ok := allowed.Answer[0].(*dns.A)
-	if !ok || record.A.String() != "8.8.8.8" {
-		t.Fatalf("unexpected synthetic answer: %#v", allowed.Answer)
+	for _, name := range []string{
+		"api.openai.com.",
+		"gemini.google.com.",
+		"presence-heartbeat.xboxlive.com.",
+	} {
+		allowed := exchangeDoH(t, handler, name, dns.TypeA)
+		if allowed.Rcode != dns.RcodeSuccess || len(allowed.Answer) != 1 {
+			t.Fatalf("unexpected allowed response for %s: rcode=%d answers=%d", name, allowed.Rcode, len(allowed.Answer))
+		}
+		record, ok := allowed.Answer[0].(*dns.A)
+		if !ok || record.A.String() != "8.8.8.8" {
+			t.Fatalf("unexpected synthetic answer for %s: %#v", name, allowed.Answer)
+		}
 	}
 
 	refused := exchangeDoH(t, handler, "evilopenai.com.", dns.TypeA)
