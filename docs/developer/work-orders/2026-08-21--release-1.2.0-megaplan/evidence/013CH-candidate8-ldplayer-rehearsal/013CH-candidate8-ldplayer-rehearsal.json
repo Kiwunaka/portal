@@ -1,0 +1,268 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate8-ldplayer-rehearsal/v1",
+  "recorded_at_utc": "2026-08-29T21:47:06Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.8",
+    "operational_id": "eeedbaf8540a83649a7143d6c7097336429e466118ed4f9ca2b732b7e6e2195a",
+    "manifest_sha256": "f0006cec90c84e401e9920d9098102c7f50ab5ace5242e0d7683c3df709a6fbc",
+    "signature_sha256": "5fcae0675ea45e79baf495859fd170661f5d6dd3a8535275acd4d62680d324f6",
+    "receipt_sha256": "4109bb3417b32a780604300055f5308acf7dc810e7ea9c547075e1da41cc21fc",
+    "sources": {
+      "platform": "241a83b4dca00799b39696a4ae0c3c97e087ec39",
+      "client": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "b242e0a3060b04f9b71641a0524bf251a75ce2a8"
+    }
+  },
+  "checks": {
+    "android_ldplayer_rehearsal": "PASS"
+  },
+  "environment": {
+    "kind": "LDPLAYER_EMULATOR",
+    "android_release": "9",
+    "api_level": 28,
+    "abi": "x86_64",
+    "adb_target_was_explicit": true,
+    "serial_retained": false,
+    "physical_device_touched": false,
+    "ui_method": "ADB_UI_HIERARCHY_BOUNDS_AND_EXACT_COORDINATES"
+  },
+  "artifact": {
+    "file_name": "pokrov-android-x86_64.apk",
+    "package": "space.pokrov.pokrov_android_shell",
+    "version_name": "1.2.0",
+    "version_code": 4046,
+    "size_bytes": 109952213,
+    "source_sha256": "ec07ba17e9a5c697fcf46ccd193970fa3666eeeb3b9e345876aa8ee1d45a2627",
+    "installed_base_sha256": "ec07ba17e9a5c697fcf46ccd193970fa3666eeeb3b9e345876aa8ee1d45a2627",
+    "installed_base_byte_identical": true,
+    "release_non_debuggable": true,
+    "signature_scheme_v2": true,
+    "certificate_sha256": "0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500"
+  },
+  "catalog": {
+    "status": "PASS",
+    "location_count": 7,
+    "locations": [
+      "Frankfurt",
+      "Milan",
+      "Amsterdam",
+      "Warsaw",
+      "Moscow",
+      "Saint Petersburg",
+      "New York"
+    ],
+    "saint_petersburg_visible": true
+  },
+  "profiles": {
+    "ordinary_control": {
+      "profile": "legacy_reality_fallback",
+      "result": "PASS_FAIL_CLOSED_CURRENT_ORIGIN_EGRESS_NOT_CONFIRMED",
+      "tun_formed_before_failure": true,
+      "selected_egress_confirmed": false,
+      "false_green_observed": false,
+      "system_vpn_stopped_after_failure": true,
+      "protocol_failure_claimed": false
+    },
+    "awg2_lab": {
+      "bind_plan": "PASS",
+      "bind_apply": "PASS",
+      "entitlement_extended": false,
+      "connected_ui": true,
+      "tun_confirmed": true,
+      "dns_confirmed": true,
+      "selected_egress_confirmed": true,
+      "server_alignment_checks": "PASS_11_OF_11",
+      "tun_rx_bytes_observed": 3247,
+      "tun_tx_bytes_observed": 2602,
+      "outer_capture": {
+        "duration_seconds": 12,
+        "packet_count": 10,
+        "inbound_packets": 7,
+        "outbound_packets": 2,
+        "latest_handshake_age_seconds": 1,
+        "raw_addresses_returned": false
+      },
+      "independent_inner_payload_capture": "NOT_PROVEN_IDLE_CAPTURE_ONLY"
+    },
+    "awg31_lab": {
+      "variant": "randomized_trailers_mobile_safe_v2",
+      "official_pinned_cryptography": true,
+      "custom_cryptography": false,
+      "bind_plan": "PASS",
+      "bind_apply": "PASS",
+      "entitlement_extended": false,
+      "connected_ui": true,
+      "tun_confirmed": true,
+      "dns_confirmed": true,
+      "selected_egress_confirmed": true,
+      "server_alignment_checks": "PASS_11_OF_11",
+      "tun_rx_bytes_observed": 690,
+      "tun_tx_bytes_observed": 546,
+      "outer_capture": {
+        "duration_seconds": 12,
+        "packet_count": 2,
+        "inbound_packets": 0,
+        "outbound_packets": 1,
+        "latest_handshake_age_seconds": 73,
+        "packet_size_classification": "NOT_APPLICABLE_RANDOMIZED_TRAILERS",
+        "raw_addresses_returned": false
+      }
+    }
+  },
+  "restore": {
+    "plan": "PASS",
+    "apply": "PASS",
+    "selected_profile": "default",
+    "resolved_profile": "legacy_reality_fallback",
+    "awg2_material_provisioned": false,
+    "awg31_material_provisioned": false,
+    "cohort_identity_present": false,
+    "lab_allowlist_identity_present": false,
+    "entitlement_extended": false,
+    "warp_enabled": false,
+    "tun0_present": false,
+    "ui": "DISCONNECTED_NOT_PROTECTED_CONNECT",
+    "app_process_present": true
+  },
+  "external_evidence": {
+    "root": "E:/POKROV-tools/evidence",
+    "artifacts": [
+      {
+        "file": "candidate8-ldplayer-20260830-installed-base.apk",
+        "size_bytes": 109952213,
+        "sha256": "ec07ba17e9a5c697fcf46ccd193970fa3666eeeb3b9e345876aa8ee1d45a2627"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-locations-after-refresh-summary.txt",
+        "size_bytes": 2744,
+        "sha256": "abbd1944fc64f34e256d591d8e1a825ede6a4808a9c5db5f54ee2a2c581c7570"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-locations-page2-summary.txt",
+        "size_bytes": 3640,
+        "sha256": "57825330f7a8e0f243d32efdafc571e0256373674d4f3eaa0c1b476533f05a5a"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-locations-page3-summary.txt",
+        "size_bytes": 3043,
+        "sha256": "382e539111d35e52185fcfb4587acff90618cfce1d70099c92aa48990bf39f96"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-ordinary-result.png",
+        "size_bytes": 224513,
+        "sha256": "b7500f13a9485745af27867998c1616907fc2f0eac6312278ea60a0ab4d4af2c"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-ordinary-result-summary.txt",
+        "size_bytes": 1822,
+        "sha256": "2abb9b3f54d43bc863f1da6460321f4e35022c88c28a48bc428970365f43b8d7"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-ordinary-details-expanded-summary.txt",
+        "size_bytes": 2102,
+        "sha256": "b4fb419a9442c746146f40799094fe734e5ee256eae2504c1a2ac451a2581342"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-awg2-bind-plan.json",
+        "size_bytes": 1743,
+        "sha256": "7a76f79fde814a9f80daa6979c9621b9255dcac1e6a702e3e460ebff8b8b3aa3"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-awg2-bind-apply.json",
+        "size_bytes": 2015,
+        "sha256": "3ec70585a09b82d4508428c09056357c7cb6cde72150dd1653ff9b234656397b"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-awg2-result.png",
+        "size_bytes": 208243,
+        "sha256": "f35af28b0dc51df14fe61f1f79693c6733913dc3d19d3d876ae4db48292c9ec3"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-awg2-details-page1-summary.txt",
+        "size_bytes": 1997,
+        "sha256": "37eb143687433368b9f454c9b69bfa54bf4ffb69f700d1628cfeecca4d85a2eb"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-awg2-details-page2-summary.txt",
+        "size_bytes": 2326,
+        "sha256": "735d1d6f7395f008b859941183db5873b399fa786d2176ee412661d4dd441c6c"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-awg2-outer-count.json",
+        "size_bytes": 522,
+        "sha256": "3ba44c306a15c6f5896d0e8cb72ea6ae840ec0d0e5d30760a596c32ad4d91315"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-awg31-bind-plan.json",
+        "size_bytes": 1940,
+        "sha256": "5f55090afbaff8cdc13685e821591fe560eb661532d88c6c57e12eb8b3e30d94"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-awg31-bind-apply.json",
+        "size_bytes": 2214,
+        "sha256": "cc9fc8b7d232352ebfc7acd21e41d231744b45612582872080f40e5cdaf12885"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-awg31-result.png",
+        "size_bytes": 221802,
+        "sha256": "261d2454a97374429a0fde7680af659825af20aca99187de25efc0ae51a9d859"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-awg31-details-summary.txt",
+        "size_bytes": 1304,
+        "sha256": "bdcfbc109be60d3b8eaf71372e5bdc1f0842aa0ef8b52c0318c112af481fe2af"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-awg31-outer-count.json",
+        "size_bytes": 545,
+        "sha256": "26f1bd12541bfbdef26878d1959eeea9613c4c4fed41cf3387fa29fc585ea428"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-default-restore-plan.json",
+        "size_bytes": 1742,
+        "sha256": "ec441c7cac2bad7fa1f7c65b64ed3ab25feb8a27d4fd9c8c909a7cfe287d245c"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-default-restore-apply.json",
+        "size_bytes": 2032,
+        "sha256": "1b3fe10e4f9a5360be475f7551d7a7380625c1faa8c0bc0776aa0d7102ce25cd"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-final-default.png",
+        "size_bytes": 179480,
+        "sha256": "1c6c7a92283477213bb5a10dd57066ca5944f83806ea2260ab0903a78622853f"
+      },
+      {
+        "file": "candidate8-ldplayer-20260830-final-default-summary.txt",
+        "size_bytes": 1678,
+        "sha256": "087e697871aa095722badbe8f3bf7f0b22d4470d2b4983101ae02b808b57fec1"
+      }
+    ]
+  },
+  "client_evidence": {
+    "commit": "0aa9b1e7915aa8bbc3179aeedc26e1091b184b63",
+    "candidate_source_unchanged": true
+  },
+  "mutation_boundary": {
+    "temporary_owned_lab_binding": true,
+    "entitlement_extension": false,
+    "lab_binding_restored": true,
+    "production_deploy": false,
+    "candidate_artifact_mutated": false,
+    "physical_device_touched": false,
+    "public_release": false,
+    "store_upload": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "non_claims": {
+    "ldplayer_replaces_physical_device": false,
+    "ordinary_emulator_egress_pass": false,
+    "independent_inner_payload_capture_pass": false,
+    "active_warp_traffic_pass": false,
+    "external_ipv6_leak_pass": false,
+    "public_or_stable_release_pass": false
+  },
+  "evidence_ceiling": "PASS_EXACT_CANDIDATE8_LDPLAYER_REHEARSAL_ONLY; PHYSICAL_ANDROID_AND_OTHER_GATE_F_ROWS_REMAIN_SEPARATE; NO_PROMOTION"
+}

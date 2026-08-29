@@ -1,0 +1,69 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-08-29T21:47:06Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.8",
+    "operational_id": "eeedbaf8540a83649a7143d6c7097336429e466118ed4f9ca2b732b7e6e2195a",
+    "manifest_sha256": "f0006cec90c84e401e9920d9098102c7f50ab5ace5242e0d7683c3df709a6fbc",
+    "signature_sha256": "5fcae0675ea45e79baf495859fd170661f5d6dd3a8535275acd4d62680d324f6",
+    "receipt_sha256": "4109bb3417b32a780604300055f5308acf7dc810e7ea9c547075e1da41cc21fc",
+    "sources": {
+      "platform": "241a83b4dca00799b39696a4ae0c3c97e087ec39",
+      "client": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "b242e0a3060b04f9b71641a0524bf251a75ce2a8"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "MANUAL_OWNER_TEST",
+    "mandatory_stop_ship_and_dod": "MANUAL_OWNER_TEST",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "MANUAL_OWNER_TEST",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MANUAL_OWNER_TEST",
+    "current_origin": "PASS",
+    "brain_origin": "PASS",
+    "ru_origin": "MANUAL_OWNER_TEST",
+    "windows_live_network": "MANUAL_OWNER_TEST",
+    "android_ldplayer_rehearsal": "PASS",
+    "android_physical_device": "MANUAL_OWNER_TEST",
+    "authenticated_client_egress": "PASS",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "MANUAL_OWNER_TEST",
+    "hosted_required_checks": "SKIPPED_BY_OWNER"
+  },
+  "facts": {
+    "android_ldplayer_rehearsal": "Exact release/non-debuggable candidate.8 x86_64 APK installs and reads back byte-identically; seven locations display; ordinary current-origin control fails closed without false green; AWG2 and AWG3.1 each confirm tunnel, DNS and selected egress; guarded default restore removes lab material and membership and leaves no TUN.",
+    "separate_gate_boundaries": "LDPlayer does not replace physical Android, ordinary emulator egress, active WARP, external IPv6/leak, Windows live network, RU origin or any external manual gate."
+  },
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CC-candidate8-signed-physical-awg/013CC-candidate8-gate-f-evidence.json",
+      "sha256": "6e2fb2e78f6a7c753b5c8fa3c9b7257524461f3869c75b4a15fe68602b575a32"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CF-candidate8-brain-ru-windows-evidence/013CF-candidate8-gate-f-evidence.json",
+      "sha256": "28bd75b78b079bcc31c27fb70228048542c8f33ba3ba3549a1fdf35d85628bb1"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CH-candidate8-ldplayer-rehearsal/013CH-candidate8-ldplayer-rehearsal.json",
+      "sha256": "622f5c88b284e3ede569b5195e21bf9d8c1e9a9fd328c648645e0a4b5ac93693"
+    }
+  ],
+  "mutation_boundary": {
+    "temporary_owned_lab_binding": true,
+    "entitlement_extension": false,
+    "lab_binding_restored": true,
+    "physical_device_touched": false,
+    "candidate_artifact_mutated": false,
+    "production_deploy": false,
+    "public_release": false,
+    "store_upload": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "ANDROID_LDPLAYER_REHEARSAL_PASS_ONLY; GATE_F_REMAINS_BLOCKED; NO_GATE_G_OR_PUBLIC_PROMOTION"
+}
