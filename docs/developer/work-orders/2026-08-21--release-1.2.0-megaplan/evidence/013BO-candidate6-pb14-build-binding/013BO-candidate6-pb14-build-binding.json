@@ -1,0 +1,72 @@
+{
+  "schema": "pokrov.release-1.2.0.pb14-build-binding-evidence/v1",
+  "recorded_at_utc": "2026-08-29T08:11:56Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.6",
+    "operational_id": "62526fdbf0f86c2a7083eb9d2cff4f8645949a31c59032fa593dad9bc68cae05",
+    "manifest_sha256": "8aac2458f8c43c0ef2955719dcede44f495d60acf681bc804bd6bf9828ee9054",
+    "signature_sha256": "2307906a920fb9b4dcd4c0025bf7628972668905d13897c553ddf27a81592dfa",
+    "client_revision": "b2497af7704d0aa6901541e175ce154b0eab05d7",
+    "android_x86_64_sha256": "3d95d82d8290150fadd13600b79eca26326792407532f571909d8df224df6fa4",
+    "package_version": "1.2.0+4046",
+    "android_build_number": "4046"
+  },
+  "defect": {
+    "classification": "RELEASE_HARNESS_FALSE_EXACT_BUILD_IDENTITY",
+    "before": "PB-14 used a fixed historical Android build number instead of candidate-bound signed evidence.",
+    "risk": "A later signed candidate could be reported as exact while the injected incident carried an older build identity.",
+    "runtime_or_candidate_bytes_affected": false
+  },
+  "fix": {
+    "commit": "a12a0a84212167ae579c6274d9e0308effe710cd",
+    "merge_commit": "c4788f78b8eb8baa11a21ebaeb1caf1ae4195a17",
+    "pull_request": 65,
+    "behavior": "Derive the Android build from the exact hash-matched physical install package_version in required signed evidence, verify the product version and fail closed on missing or mismatched identity.",
+    "candidate_artifacts_rebuilt": false,
+    "candidate_signature_changed": false
+  },
+  "invalid_intermediate": {
+    "classification": "INVALID_HARDCODED_4030_NOT_RELEASE_EVIDENCE",
+    "sha256": "c62f82c61425ae3bec1b7dda72040cf4c45bcaa15867e49e70786a43fd2613f1",
+    "retained_external_only": true,
+    "counted_as_pass": false
+  },
+  "corrected_run": {
+    "status": "PASS_LOCAL_EXACT_CANDIDATE_HEALTH_STOP_AND_ROLLBACK_REQUEST",
+    "candidate_build_number": "4046",
+    "injected_event_build_number": "4046",
+    "signature_verification": "PASS",
+    "promotion_stop": "PASS",
+    "rollback_request": "PASS",
+    "staged_state_preserved_on_stop": true,
+    "candidate_rollout_after_request_percent": 0,
+    "rollback_target_rollout_percent": 100,
+    "identity_fields_retained": false,
+    "external_artifact_switch": "NOT_PERFORMED",
+    "external_report_sha256": "2b23408d7d04a40ba6dc7b8f90961dc675c6602a7954b997d9263cd53685a028"
+  },
+  "verification": {
+    "focused_tests": "5/5 PASS",
+    "ruff": "PASS",
+    "compileall": "PASS",
+    "hosted_guardrails": "ZERO_STEPS_SKIPPED_BY_OWNER",
+    "hosted_contract": "ZERO_STEPS_SKIPPED_BY_OWNER",
+    "independent_review_performed": false,
+    "policy": "OWNER_SOLO_EXCEPTION_NO_PURCHASE_NO_BRANCH_PROTECTION"
+  },
+  "mutation_boundary": {
+    "temporary_sqlite_fixture_destroyed": true,
+    "production": false,
+    "deployment": false,
+    "public_assets": false,
+    "stable_pointer": false,
+    "external_artifact_switch": false,
+    "physical_device_mutated": false
+  },
+  "row_outcomes": {
+    "OBS_PB/PB-14": "I3_STRONGER_EXACT_CANDIDATE6_LOCAL_EVIDENCE",
+    "OBS_DOD/DOD-23": "I3_STRONGER_EXACT_CANDIDATE6_LOCAL_EVIDENCE",
+    "REL_GATE/GATE-F": "I3_UNCHANGED_POST_PROMOTION_RUNTIME_HEALTH_AND_EXTERNAL_ROLLBACK_OPEN"
+  },
+  "evidence_ceiling": "PASS_LOCAL_EXACT_CANDIDATE6_BUILD4046_HEALTH_STOP_AND_ROLLBACK_REQUEST; NO_RUNTIME_COHORT_NO_PUBLIC_PROMOTION_NO_EXTERNAL_ARTIFACT_ROLLBACK; NO_GATE_F_ADVANCE"
+}
