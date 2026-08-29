@@ -34,8 +34,8 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 07 | Canonical Operator Center v2 and legacy admin cutover | Local package complete, including the deterministic 75-operation OpenAPI/TypeScript contract, purpose-bound Telegram OIDC Authorization Code plus PKCE login and same-identity step-up for preprovisioned operators, exact retained-bridge permissions and query-suppressed field redaction; live IdP, authenticated exact-candidate readback and cutover/rollback gates remain open | `WO-009`, `WO-009H`, `WO-009I`, `WO-009J` |
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete at `I3`; WO-013AN passes exact-candidate local UI/accessibility/responsive/static/API slices but leaves Gate E `BLOCKED` below I4 on authenticated, physical screen-reader/device, comparable-artifact, browser-lab, RU-origin and post-promotion evidence | `WO-010`, `WO-013AN` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
-| 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | AWG2/AWG3.1 and bounded base HY2 source labs are locally proved and default-off. Candidate.5's exact physical AWG failures remain immutable history. WO-013AY/013AZ add bounded diagnostics and the Core bind correction; WO-013BA proves direct pinned-peer local interoperability. WO-013BB then identifies the multi-address owned-node reply-routing defect, adds guarded port-scoped policy routing without changing cryptography, and proves production-signed replacement build 4046 completes both authenticated handshakes plus bidirectional inner traffic on physical Beeline. WO-013BC binds byte-reproducible Android/Windows Core artifacts from that same corrected source and assembles an exact unsigned Windows pre-candidate setup, but live Windows app/service/TUN/DNS/AWG execution remains open. Phase 10 remains `I3`, not `I4`. HY2 remains undeployed. Candidate.5 Smart-DNS state and bounded DNS/ICMP pass on Frankfurt, while compatible resolver, full service-access/leak/rollback/origin proof remain open. Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AU`, `WO-013AX`, `WO-013AY`, `WO-013AZ`, `WO-013BA`, `WO-013BB`, `WO-013BC` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Signed `pokrov-1.2.0-candidate.5` is retained immutably but is no longer promotable. WO-013AV's frozen digest-bound Gate F result remains `BLOCKED` with `6 PASS`, `13 non-PASS`, `0 FAIL`; later candidate.5 failures are not rewritten. WO-013BB clears the diagnosed owned-endpoint/mobile reverse path only for exact production-signed replacement bytes, not an immutable candidate. WO-013BC proves clean single-source Android/Windows artifact convergence, a host-safe 100-cycle DLL slice, exact unsigned Windows setup assembly and a clean local aggregate `15/15`; it still states `candidate_proven=false`. A new digest-bound candidate, exact-candidate Android repeat, Windows live app/service/TUN/DNS/AWG parity, RU-origin, DNS/leak, provider, Operator, legal, comparable-device/post-public-promotion and other manual rows remain open. Hosted checks are `SKIPPED_BY_OWNER`, not PASS. No tag, public `v1.2.0`, store object, stable switch or promotion occurred | `WO-013`, `WO-013AU`, `WO-013AV`, `WO-013AW`, `WO-013AX`, `WO-013AY`, `WO-013AZ`, `WO-013BA`, `WO-013BB`, `WO-013BC` |
+| 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | AWG2/AWG3.1 and bounded base HY2 source labs are locally proved and default-off. Candidate.5's exact physical AWG failures remain immutable history. WO-013AY/013AZ add bounded diagnostics and the Core bind correction; WO-013BA proves direct pinned-peer local interoperability. WO-013BB then identifies the multi-address owned-node reply-routing defect, adds guarded port-scoped policy routing without changing cryptography, and proves production-signed replacement build 4046 completes both authenticated handshakes plus bidirectional inner traffic on physical Beeline. WO-013BC binds byte-reproducible Android/Windows Core artifacts from that same corrected source. WO-013BD repeats the exact security-fixed Core on physical Beeline: both AWG2 and AWG3.1 pass handshake plus bidirectional TCP/UDP payload, while Android selected-endpoint verification still fails `EGRESS-001`; IPv4-only DNS is correct but not the root-cause fix. Phase 10 remains `I3`, not `I4`. HY2 remains undeployed. Candidate.5 Smart-DNS state and bounded DNS/ICMP pass on Frankfurt, while compatible resolver, full service-access/leak/rollback/origin proof remain open. Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AU`, `WO-013AX`, `WO-013AY`, `WO-013AZ`, `WO-013BA`, `WO-013BB`, `WO-013BC`, `WO-013BD` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Signed `pokrov-1.2.0-candidate.5` is retained immutably but is no longer promotable. WO-013AV's frozen digest-bound Gate F result remains `BLOCKED` with `6 PASS`, `13 non-PASS`, `0 FAIL`; later candidate.5 failures are not rewritten. WO-013BB clears the diagnosed owned-endpoint/mobile reverse path only for exact production-signed replacement bytes, not an immutable candidate. WO-013BC proves clean single-source Android/Windows artifact convergence, a host-safe 100-cycle DLL slice, exact unsigned Windows setup assembly and a clean local aggregate `15/15`. WO-013BD adds exact active-Core hosted CI and physical proof but retains an Android `EGRESS-001` failure above the working AWG data plane; it still states `candidate_created=false`. A new digest-bound candidate, corrected Android endpoint egress proof, Windows live app/service/TUN/DNS/AWG parity, RU-origin, DNS/leak, provider, Operator, legal, comparable-device/post-public-promotion and other manual rows remain open. Platform/client hosted access stops remain non-PASS; Core hosted CI passes all five jobs. No tag, public `v1.2.0`, store object, stable switch or promotion occurred | `WO-013`, `WO-013AU`, `WO-013AV`, `WO-013AW`, `WO-013AX`, `WO-013AY`, `WO-013AZ`, `WO-013BA`, `WO-013BB`, `WO-013BC`, `WO-013BD` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -143,6 +143,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013BA` | Prove the corrected POKROV AWG bind path against a direct peer from the exact pinned official engine | Core local source interoperability evidence | Core `3c2b114...` passes deterministic AWG2 and AWG 3.1 real-loopback-UDP authenticated handshake plus exact inner TCP echo against the direct pinned peer; focused/full gates pass; no production material, physical proof, candidate or row advance | `WO-013AZ`, Core `6b8ddca...`, pinned official `amneziawg-go/v3 v3.1.20260814` |
 | `WO-013BB` | Correct the multi-address owned-node AWG reply route and repeat both profiles on physical Beeline | Platform server operator plus cross-repository pre-candidate runtime evidence | Platform `f79974c...` applies exact source-port policy routes plus bounded SNAT with backup/readback/service-cycle proof. Production-signed Android `1.2.0+4046` completes fresh AWG2/AWG 3.1 handshakes and bidirectional inner traffic on physical Beeline; post-cycle Core interop passes both; clean `default` restore passes. Phase 10 stays `I3`; no candidate or Gate F advance | `WO-013BA`, exact replacement client/Core, owned default-off AWG endpoint, returned physical phone |
 | `WO-013BC` | Converge exact Android/Windows Core artifacts and retain the unsigned Windows pre-candidate assembly | Cross-repository artifact/reproducibility and local release evidence | Core `3c2b114...` produces byte-identical AAR/DLL rebuilds; client `75aabd9...` binds both and `55e7d5c...` records the owner-approved unsigned setup. Exact DLL proxy cycles pass `100/100` and the clean aggregate passes `15/15`, but Windows app/service/TUN/DNS/AWG and all candidate-bound gates remain open; no candidate or Gate F advance | `WO-013BB`, exact clean Core/client/platform tuple, owner unsigned-Windows exception |
+| `WO-013BD` | Repeat both owned AWG profiles on physical Beeline with the exact security-fixed Core and separate transport truth from client egress truth | Cross-repository pre-candidate runtime and hosted-CI evidence | Production-signed client `064fcd0...` with Core `547f096...` installs/readbacks exactly. Core hosted CI passes five jobs; ordinary Frankfurt passes on the same phone. AWG2/AWG3.1 each pass fresh handshake and bidirectional TCP/UDP payload, but Android selected-endpoint proof remains `EGRESS-001`. IPv4-only DNS is deployed and correct for the routed prefix but does not fix the failure. Clean default restore passes; no candidate, row or Gate F advance | `WO-013BC`, exact active client/Core bytes, owned default-off endpoints, returned physical phone, controlled Brain deploy |
 
 ## Current evidence
 
@@ -159,6 +160,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `WO-013BA-pinned-awg-peer-local-interop.md`
 - `WO-013BB-owned-awg-reply-routing-and-physical-recheck.md`
 - `WO-013BC-core-artifact-convergence-and-windows-assembly.md`
+- `WO-013BD-security-fixed-core-physical-awg-egress.md`
   binds the signed candidate.5 artifact set and hosted signature, exact
   one-file Brain deploy, bounded physical Android/Smart-DNS runtime proof,
   later exact AWG2/AWG 3.1 protocol failures, replacement corrections and
@@ -175,6 +177,9 @@ The row order is a dependency order, not permission for one giant merge. Each im
   corrected Core source into byte-reproducible Android/Windows artifacts,
   retains the unsigned Windows pre-candidate setup and clean local `15/15`
   aggregate, while keeping Windows live TUN/DNS/AWG and candidate gates open.
+  WO-013BD then repeats both profiles with the exact security-fixed Core on
+  physical Beeline, proving handshake and bidirectional payload but retaining
+  the common Android selected-endpoint `EGRESS-001` failure and a clean restore.
 - `evidence/013H-clean-source-freeze/013H-clean-source-freeze.json` binds the
   clean source commits, local gates and five remaining preflight blockers.
 - `evidence/013I-core-artifact-binding/013I-core-artifact-binding.json` binds
@@ -496,13 +501,23 @@ passes the exact DLL host-safe proxy lifecycle `100/100`. The clean converged
 platform/client/Core local aggregate also passes `15/15`, but explicitly says
 `candidate_proven=false`.
 
-The next transport slice is live Windows app/service/TUN parity for AWG2 and
-AWG 3.1, including DNS/egress/leak and cleanup readback in an isolated host.
-After that, assemble a new digest-bound replacement candidate from the exact
-committed tuple and repeat both profiles on exact-candidate Android. Then rerun
-Gate F; do not transfer pre-candidate proof into `I4`. Do not spend the lane on
-SPB beyond bounded evidence. HY2 remains default-off and follows the existing
-kill-switch/material/install guards.
+WO-013BD moves the active security-fixed Core repeat from open to measured:
+client `064fcd0...` plus Core `547f096...` installs exactly on physical Beeline,
+ordinary Frankfurt passes, and both owned AWG profiles complete fresh
+handshakes plus bidirectional TCP/UDP payload. Both still fail the Android
+selected-endpoint URL test as `EGRESS-001`. IPv4-only managed DNS matches the
+IPv4-only endpoint route but did not remove the failure. Core hosted CI passes
+all five jobs; the client hosted run remains a zero-step access stop.
+
+The next transport slice is the exact Android/Core selected-endpoint URL-test
+failure, with a focused correction that preserves fail-closed green-state
+semantics. After that passes on source-bound Android bytes, run live Windows
+app/service/TUN parity for AWG2 and AWG 3.1, including DNS/egress/leak and
+cleanup readback in an isolated host. Then assemble a new digest-bound
+replacement candidate and repeat both profiles on exact-candidate Android.
+Rerun Gate F only then; do not transfer pre-candidate proof into `I4`. Do not
+spend the lane on SPB beyond bounded evidence. HY2 remains default-off and
+follows the existing kill-switch/material/install guards.
 
 For Smart DNS, exact physical candidate.5 ordinary Frankfurt TUN and bounded
 DNS/ICMP already pass. The next honest slice is compatible resolver plus actual

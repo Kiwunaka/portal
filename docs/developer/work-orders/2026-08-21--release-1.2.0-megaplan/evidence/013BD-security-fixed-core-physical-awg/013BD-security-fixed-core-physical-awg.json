@@ -1,0 +1,148 @@
+{
+  "schema_version": "pokrov-wo-013bd-evidence-v1",
+  "observed_at_utc": "2026-08-29T02:34:00Z",
+  "scope": "security_fixed_core_physical_android_beeline_pre_candidate",
+  "source": {
+    "platform_base_commit": "25eda3c2b8445c3d0561bc156cdb0f465de82819",
+    "client_commit": "064fcd018d259210761406d224b00d20bebb5599",
+    "core_commit": "547f09670fad1eeffa94897fb36b12ec5e7818cd",
+    "core_aar_sha256": "7895b2f7d6e5fe00cc74d3ff85b961f4110b551eb2cf9860fba5e1337ef01a63"
+  },
+  "android_artifact": {
+    "name": "app-arm64-v8a-direct-release.apk",
+    "version_name": "1.2.0",
+    "version_code": 4046,
+    "size_bytes": 101364310,
+    "sha256": "7d1d409368fe8c14c0a5064e0104e10ab0d7c798ff96ca5a65e2b65af6958ee5",
+    "production_self_managed_signing": true,
+    "debuggable": false,
+    "device_install_readback_exact": true,
+    "embedded_core_matches_bound_aar_entry": true
+  },
+  "device_class": {
+    "manufacturer_family": "Huawei",
+    "architecture": "arm64-v8a",
+    "android_api": 31,
+    "origin": "physical_beeline_mobile",
+    "raw_device_identifier_retained": false,
+    "raw_account_identifier_retained": false
+  },
+  "hosted_core_ci": {
+    "run_id": 33227157016,
+    "head_sha_matches": true,
+    "conclusion": "PASS",
+    "jobs": {
+      "test": "PASS",
+      "release_contract": "PASS",
+      "apple_source_build": "PASS",
+      "android_artifact_reproducibility": "PASS",
+      "windows_artifact_reproducibility": "PASS"
+    }
+  },
+  "hosted_client_ci": {
+    "run_id": 33227155356,
+    "head_sha_matches": true,
+    "job_count": 1,
+    "executed_step_count": 0,
+    "classification": "BLOCKED_BY_ACCESS",
+    "counted_as_pass": false
+  },
+  "same_device_control": {
+    "profile": "ordinary_default",
+    "location_class": "frankfurt",
+    "vpn_transport_present": true,
+    "verified_connected_ui": true,
+    "result": "PASS"
+  },
+  "awg2": {
+    "profile_bind": "PASS",
+    "authenticated_handshake": "PASS",
+    "outer": {
+      "packet_count": 118,
+      "inbound_packets": 66,
+      "outbound_packets": 51,
+      "latest_handshake_age_seconds": 15
+    },
+    "inner": {
+      "packet_count": 118,
+      "from_client_packets": 70,
+      "to_client_packets": 47,
+      "tcp_packets": 112,
+      "udp_packets": 5,
+      "tcp_payload_packets": 57,
+      "from_client_payload_packets": 35,
+      "to_client_payload_packets": 22,
+      "reset_packets": 0
+    },
+    "exact_core_owned_endpoint_interop": "PASS",
+    "android_selected_egress_probe": "FAIL_EGRESS_001",
+    "overall": "FAIL_CLIENT_EGRESS_VERIFICATION_AFTER_TRANSPORT_PASS"
+  },
+  "awg31": {
+    "profile_bind": "PASS",
+    "authenticated_handshake": "PASS",
+    "randomized_trailers_observed": true,
+    "outer": {
+      "packet_count": 125,
+      "inbound_packets": 75,
+      "outbound_packets": 49,
+      "latest_handshake_age_seconds": 21
+    },
+    "inner": {
+      "packet_count": 117,
+      "from_client_packets": 69,
+      "to_client_packets": 47,
+      "tcp_packets": 108,
+      "udp_packets": 8,
+      "tcp_payload_packets": 50,
+      "from_client_payload_packets": 25,
+      "to_client_payload_packets": 25,
+      "reset_packets": 0
+    },
+    "exact_core_owned_endpoint_interop": "PASS",
+    "android_selected_egress_probe": "FAIL_EGRESS_001",
+    "overall": "FAIL_CLIENT_EGRESS_VERIFICATION_AFTER_TRANSPORT_PASS"
+  },
+  "ipv4_only_dns_correction": {
+    "reason": "owned AWG endpoint routes only IPv4 prefixes",
+    "deployed_to_brain_portal_api": true,
+    "deployment_health": "PASS",
+    "rollback_backup_retained": true,
+    "physical_recheck_result": "NO_CHANGE_EGRESS_001",
+    "classified_as_root_cause_fix": false
+  },
+  "cleanup": {
+    "default_profile_restored": true,
+    "awg2_material_provisioned": false,
+    "awg31_material_provisioned": false,
+    "lab_allowlist_identity_present": false,
+    "cohort_identity_present": false,
+    "pokrov_vpn_service_present": false,
+    "wifi_enabled": true,
+    "temporary_screenshots_removed": false,
+    "temporary_screenshot_cleanup": "BLOCKED_BY_LOCAL_TOOL_POLICY",
+    "result": "PASS_DEVICE_AND_SERVER_STATE_WITH_LOCAL_TEMP_CLEANUP_BLOCKED"
+  },
+  "retained_external_evidence_sha256": {
+    "awg2_bind": "1a4589ed6c043c2d3396acbf8bf4e3372fd282979196db765f284bfdeb842e20",
+    "awg2_outer": "5a3fae66bf277130ce061f30726d270db0c764d347aa36abb4b08525931eb065",
+    "awg2_inner": "4a0d298cefbf6e0d3e2db90352b38cc833b1bee8524972527f6603d1ff3f908b",
+    "awg31_bind": "dfedc9d06cfa4d7d90422b82b67c7172623cede39ae4b8409eaea0e6929e6377",
+    "awg31_outer": "edf43e411d93d449aadb7707a01bb60cfe855f18d57f1ec1fecb46904d49e06a",
+    "awg31_inner": "28c10d543d570540beb235e71aefebbc020750231f502a9efea13b97064f9109",
+    "awg2_core_interop": "8bc09c39361416719c6f0f3f6c6ab41032b9fb50ee5689c83eab4253f0419a99",
+    "awg31_core_interop": "66e45d96f7fc79bf903017f344b9608741aef554d1f4261f76e854de3a26ba8a",
+    "predeploy_source_probe": "917281410809b5e8c2369a812e6bf538bfb0a610dae372b2a21996f0fac27b0a",
+    "cleanup_default_bind": "a330aa6f92bbb9eb04888f21495690dbff0e546c8ba8ac6acf9a124adc679ffd"
+  },
+  "release": {
+    "candidate_created": false,
+    "candidate_5_reclassified": false,
+    "gate_f_advanced": false,
+    "phase_10_index": "I3",
+    "promotion_authorized": false
+  },
+  "raw_addresses_returned": false,
+  "raw_keys_returned": false,
+  "raw_material_returned": false
+}

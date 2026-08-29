@@ -197,6 +197,7 @@ def test_separate_encrypted_material_can_issue_exact_managed_profile(db_session)
     assert policy["profile_revision"] == "2026-08-26:awg31_lab:awg31-lab-v1"
     assert config["endpoints"][0]["contract_id"] == AWG31_CONTRACT_ID
     assert config["endpoints"][0]["header_protection_key"] == _endpoint()["header_protection_key"]
+    assert config["dns"]["strategy"] == "ipv4_only"
     assert config["_meta"]["transport_contract"] == {
         "id": AWG31_CONTRACT_ID,
         "sha256": AWG31_CONTRACT_SHA256,

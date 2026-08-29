@@ -691,6 +691,9 @@ explicitly enables the legacy contour.
   per-device endpoint material rather than catalog nodes. The response returns
   `smart_connect: null`, ignores `selected_node_code`, and remains governed by
   the exact device, rollout, server-record and material gates below.
+- Both owned AWG profiles currently route only `0.0.0.0/0`; their managed DNS
+  strategy is therefore `ipv4_only`. An IPv6 answer must not be selected until
+  the endpoint contract also owns and proves an IPv6 routed prefix.
 - AWG2 issuance requires the disabled-by-default rollout gate to be enabled,
   its kill switch to be clear, exact user/install/platform/node allowlists, a
   current ready POKROV-owned server record and fresh device material. Missing,

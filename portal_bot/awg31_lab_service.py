@@ -617,6 +617,7 @@ def build_managed_awg31_lab_config(
     return {
         "log": {"level": "warn", "timestamp": True},
         "dns": {
+            "strategy": "ipv4_only",
             "servers": [
                 {"tag": "bootstrap", "address": "local"},
                 {

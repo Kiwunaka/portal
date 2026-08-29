@@ -338,6 +338,22 @@ with SessionLocal() as session:
         )
     )
     if not entitled_user_owns_install:
+        target_user_is_currently_entitled = bool(
+            target_user is not None
+            and bool(target_user.is_active)
+            and target_user.expiry_at is not None
+            and target_user.expiry_at > now
+        )
+        target_user_matches_runtime_owner = bool(
+            target_user is not None and int(target_user.tg_id) == int(admin_id)
+        )
+        device_account_matches_runtime_owner = bool(
+            device is not None
+            and len(runtime_owner_users) == 1
+            and str(device.account_id or "")
+            and str(device.account_id or "")
+            == str(runtime_owner_users[0].account_id or "")
+        )
         blocked(
             "entitled_user_install_ownership",
             candidate_rank=candidate_rank,
@@ -352,6 +368,25 @@ with SessionLocal() as session:
             global_install_user_count=len(global_install_users),
             entitlement_resolution=entitlement_resolution,
             device_record_present=device is not None,
+            device_account_matches_global_install_user=(
+                device_account_matches_global_install_user
+            ),
+            device_account_matches_runtime_owner=device_account_matches_runtime_owner,
+            target_user_resolution=target_user_resolution,
+            target_user_is_currently_entitled=target_user_is_currently_entitled,
+            target_user_matches_runtime_owner=target_user_matches_runtime_owner,
+            runtime_owner_user_count=len(runtime_owner_users),
+            runtime_owner_entitled_user_count=len(runtime_owner_entitled_users),
+            device_app_version=(
+                str(device.app_version or "").strip() or None
+                if device is not None
+                else None
+            ),
+            last_seen_age_seconds=(
+                None
+                if device is None or device.last_seen_at is None
+                else max(0, int((now - device.last_seen_at).total_seconds()))
+            ),
         )
     entitlement_extension_needed = bool(
         entitlement_resolution == "exact_install_one_day_extension"

@@ -63,12 +63,19 @@ def _inner_capture_command(interface: str, duration: int) -> str:
         'if (to_client($0)) to_count += 1; '
         'if ($0 ~ /Flags \\[S\\]/) syn += 1; '
         'if ($0 ~ /Flags \\[S\\.\\]/) syn_ack += 1; '
+        'if ($0 ~ /Flags \\[F/) fin += 1; '
+        'if ($0 ~ /Flags \\[P/) psh += 1; '
         'if ($0 ~ /Flags \\[R/) reset += 1; '
+        'if ($0 ~ /Flags \\[/ && $0 ~ /length [1-9][0-9]*/) { '
+        'payload += 1; '
+        'if (from_client($0)) from_payload += 1; '
+        'if (to_client($0)) to_payload += 1 } '
         'if ($0 ~ /ICMP/) icmp += 1; '
         'if ($0 ~ / UDP,/) udp += 1; '
         'if ($0 ~ /Flags \\[/) tcp += 1 } '
         'END { print NR+0, from_count+0, to_count+0, syn+0, '
-        'syn_ack+0, reset+0, icmp+0, tcp+0, udp+0 }'
+        'syn_ack+0, fin+0, psh+0, reset+0, payload+0, '
+        'from_payload+0, to_payload+0, icmp+0, tcp+0, udp+0 }'
     )
     return (
         "client4=$(/usr/local/bin/awg show "
@@ -150,7 +157,7 @@ def main() -> int:
                 _inner_capture_command(interface, duration),
                 timeout=duration + 20,
             ).split()
-            if len(safe_counts) != 9:
+            if len(safe_counts) != 14:
                 raise RuntimeError("remote inner packet classification failed")
             (
                 packet_count,
@@ -158,7 +165,12 @@ def main() -> int:
                 to_client_packets,
                 syn_packets,
                 syn_ack_packets,
+                fin_packets,
+                psh_packets,
                 reset_packets,
+                tcp_payload_packets,
+                from_client_payload_packets,
+                to_client_payload_packets,
                 icmp_packets,
                 tcp_packets,
                 udp_packets,
@@ -220,7 +232,12 @@ def main() -> int:
                     "to_client_packets": to_client_packets,
                     "syn_packets": syn_packets,
                     "syn_ack_packets": syn_ack_packets,
+                    "fin_packets": fin_packets,
+                    "psh_packets": psh_packets,
                     "reset_packets": reset_packets,
+                    "tcp_payload_packets": tcp_payload_packets,
+                    "from_client_payload_packets": from_client_payload_packets,
+                    "to_client_payload_packets": to_client_payload_packets,
                     "icmp_packets": icmp_packets,
                     "tcp_packets": tcp_packets,
                     "udp_packets": udp_packets,

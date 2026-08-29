@@ -205,6 +205,7 @@ def test_device_material_is_encrypted_and_exact_contract_can_issue_managed_profi
     assert policy["profile_revision"] == "2026-08-22:awg2_lab:awg2-lab-v1"
     assert config["endpoints"][0]["type"] == "awg"
     assert config["endpoints"][0]["useIntegratedTun"] is False
+    assert config["dns"]["strategy"] == "ipv4_only"
     assert config["_meta"]["transport_contract"] == {
         "id": AWG2_CONTRACT_ID,
         "sha256": AWG2_CONTRACT_SHA256,

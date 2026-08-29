@@ -2,6 +2,31 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BD security-fixed Core physical AWG egress split
+
+Production-signed client `064fcd0...` with security-fixed Core `547f096...`
+installed and read back byte-identically on physical Huawei/Android 12. The
+ordinary Frankfurt profile reached verified green on the same APK, phone and
+Beeline path. Core hosted run `33227157016` passed all five jobs, including
+test/vet/race/security/static/fuzz/SBOM, release-contract and reproducible
+Apple/Android/Windows artifacts. The exact client hosted run executed zero
+steps and remains `BLOCKED_BY_ACCESS`, not PASS.
+
+AWG2 and closed AWG 3.1 each completed a fresh authenticated handshake and
+exchanged bidirectional inner TCP/UDP payload without reset. Exact operator
+Core interop against the same owned material also passed authenticated
+TLS/HTTP egress for both profiles. Android nevertheless failed the selected-
+endpoint URL test as `EGRESS-001`, so the end-to-end result remains FAIL above
+the working data plane. IPv4-only managed DNS now matches the labs' IPv4-only
+routed prefix; the controlled Brain portal-api deploy and health checks passed,
+but the physical repeat proved this was not the remaining root-cause fix.
+
+Cleanup restored `default`, removed both lab materials and membership, stopped
+POKROV and restored Wi-Fi. Phase 10 remains `I3`; no ledger row, candidate or
+Gate F status advances. The next bounded transport slice is the Android/Core
+selected-endpoint URL-test failure, followed by live Windows TUN/DNS/AWG parity
+and only then a replacement candidate.
+
 ## 2026-08-29 — WO-013BC Core artifact convergence and Windows assembly
 
 Clean Core `3c2b114...` now produces two byte-identical Android AAR builds and

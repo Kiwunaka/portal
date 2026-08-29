@@ -538,6 +538,7 @@ def build_managed_awg2_lab_config(
     return {
         "log": {"level": "warn", "timestamp": True},
         "dns": {
+            "strategy": "ipv4_only",
             "servers": [
                 {"tag": "bootstrap", "address": "local"},
                 {"tag": "google", "address": "8.8.8.8", "detour": AWG2_ENDPOINT_TAG},
