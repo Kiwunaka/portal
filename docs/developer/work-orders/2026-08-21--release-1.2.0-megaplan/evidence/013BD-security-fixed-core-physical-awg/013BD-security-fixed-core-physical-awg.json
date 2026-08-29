@@ -4,6 +4,7 @@
   "scope": "security_fixed_core_physical_android_beeline_pre_candidate",
   "source": {
     "platform_base_commit": "25eda3c2b8445c3d0561bc156cdb0f465de82819",
+    "platform_runtime_commit": "d5fa133cb71694a99d799803ce5573674620fd2a",
     "client_commit": "064fcd018d259210761406d224b00d20bebb5599",
     "core_commit": "547f09670fad1eeffa94897fb36b12ec5e7818cd",
     "core_aar_sha256": "7895b2f7d6e5fe00cc74d3ff85b961f4110b551eb2cf9860fba5e1337ef01a63"
@@ -133,6 +134,7 @@
     "awg2_core_interop": "8bc09c39361416719c6f0f3f6c6ab41032b9fb50ee5689c83eab4253f0419a99",
     "awg31_core_interop": "66e45d96f7fc79bf903017f344b9608741aef554d1f4261f76e854de3a26ba8a",
     "predeploy_source_probe": "917281410809b5e8c2369a812e6bf538bfb0a610dae372b2a21996f0fac27b0a",
+    "postdeploy_source_probe": "79b4d3de33c27be38fe6217e5f2f4a473b4e0a297f378979eb20b6c87ba61182",
     "cleanup_default_bind": "a330aa6f92bbb9eb04888f21495690dbff0e546c8ba8ac6acf9a124adc679ffd"
   },
   "release": {

@@ -95,6 +95,12 @@ compile, restart and delayed health, and changed only the reviewed managed-
 config builders from the deployed base. Both physical lab tests were repeated
 after this change and still returned `EGRESS-001`.
 
+After commit `d5fa133cb71694a99d799803ce5573674620fd2a` reached platform
+`master`, a fresh read-only Brain probe matched all `197/197` deploy-selected
+files semantically (`4` exact bytes, `193` CRLF-only differences, `0`
+mismatches). Its retained report SHA-256 is
+`79b4d3de33c27be38fe6217e5f2f4a473b4e0a297f378979eb20b6c87ba61182`.
+
 The IPv4-only policy is retained as the correct route-family contract. It is
 explicitly not classified as the root-cause fix for the remaining failure.
 
