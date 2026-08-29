@@ -2,6 +2,26 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BC Core artifact convergence and Windows assembly
+
+Clean Core `3c2b114...` now produces two byte-identical Android AAR builds and
+two byte-identical Windows DLL builds. Client `75aabd9...` binds both exact
+artifacts from the same source; its current documented head is `55e7d5c...`.
+The production-signed Android replacement used in WO-013BB embeds the exact
+ARM64 library from this AAR, preserving the physical AWG2/AWG 3.1 evidence
+chain without turning it into candidate proof.
+
+The exact Windows DLL passes `100/100` proxy-only start/stop cycles. An unsigned
+`1.2.0+4046` pre-candidate setup is retained with an eight-file exact manifest,
+owner exception and mandatory SmartScreen warning. Installation, Windows
+service/TUN/DNS/AWG, authenticated egress/leak and recovery remain manual.
+
+The clean converged platform/client/Core local aggregate passes `15/15`, with
+all `9/9` static performance stops passing. Its report explicitly records
+`candidate_proven=false` and promotion `MANUAL_OWNER_TEST`. Candidate.5 remains
+immutable and rejected, Phase 10 remains `I3`, Gate F does not advance and no
+new candidate, tag, upload, deploy or stable switch exists.
+
 ## 2026-08-29 — WO-013BB owned AWG reply routing and physical recheck
 
 The exact owned endpoint was multi-addressed: normal route selection emitted

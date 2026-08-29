@@ -1,0 +1,129 @@
+{
+  "schema_version": "pokrov-wo-013bc-evidence-v1",
+  "captured_at_utc": "2026-08-29T00:59:22Z",
+  "work_order": "WO-013BC",
+  "candidate": null,
+  "candidate_status": "PRE_CANDIDATE_ARTIFACT_CONVERGENCE",
+  "candidate_5_status": "REJECTED_FOR_REPLACEMENT_IMMUTABLE",
+  "exact_sources": {
+    "platform_commit": "882f287a0e4900f3da0b1992c7e153bd2a588cdbb",
+    "client_artifact_binding_commit": "75aabd9819b0e2dfd36efa3ddf7a8d7aa63a562c",
+    "client_documented_head": "55e7d5c8b653b16d850e0d55b797d65f11893988",
+    "core_commit": "3c2b1147c1b42e39026231525c08558a50bc3d0f"
+  },
+  "core_artifacts": {
+    "android_aar": {
+      "size_bytes": 107408874,
+      "sha256": "b42a548910b7369f64fcd484c5acf74180583d77299629ce4d2f9156fc598007",
+      "builds_compared": 2,
+      "byte_identical": true,
+      "required_abis_present": 4,
+      "tree_sha256": "c0860173aa4a18d2e1864ecb8595ed809e38d6f394b781a6572299534e893d30",
+      "evidence_sha256": "077e0dd9b1c0349ae065434e38b0110cc17ea547cd251623fcd743ed15ee39e5"
+    },
+    "windows_dll": {
+      "size_bytes": 55417856,
+      "sha256": "58e329eaddb2dd1f40c1663b380a03a0c7c34c5a3e8506eb2c692611234ac082",
+      "builds_compared": 2,
+      "byte_identical": true,
+      "required_exports_present": 15,
+      "tree_sha256": "25feb38570f049d4053f8632826fb8b2a254665db3b771a84878b7e013312dde",
+      "evidence_sha256": "98b984109a3df227262179d1c3cbf46c8f0abbde0049187fb83db088a444e9c6"
+    },
+    "windows_cronet": {
+      "size_bytes": 8596992,
+      "sha256": "8ef1f8bbde77f954af1ae47bee1819ac8dc2354bb0e1d4baba3dad9e58d7a6f7",
+      "changed": false
+    },
+    "sbom": {
+      "core_cyclonedx_sha256": "d6847ac8ba97675d62b7021a8d2d89ce5dc6a38a58c0c1afb82321fca121d30a",
+      "sing_box_cyclonedx_sha256": "338c18be688ee0892851b93e2a5c659b79660d868af4a1f0070a80d0fc23096b",
+      "legal_clearance_claimed": false
+    }
+  },
+  "android_same_source_proof": {
+    "production_signed_replacement_version": "1.2.0+4046",
+    "production_signed_replacement_apk_sha256": "930aec975927c1c40a87440f62f67b25295a12920e85876adca297b715426058",
+    "embedded_arm64_matches_aar_entry": true,
+    "physical_awg2_pre_candidate": "PASS",
+    "physical_awg31_pre_candidate": "PASS"
+  },
+  "windows_pre_candidate_setup": {
+    "filename": "pokrov-windows-x64-1.2.0+4046-setup.exe",
+    "size_bytes": 28928829,
+    "sha256": "f12dc8da726aa621834d630eca7b625388553dd131e7e71f7ff165724a26e6fa",
+    "build_manifest_sha256": "442597ca283dcb40cc4e9c3dde5a572f2cc780f6f0a0af62f62d36bcc7a32946",
+    "required_manifest_files": 8,
+    "core_dll_matches_binding": true,
+    "authenticode_status": "NotSigned",
+    "signing_status": "SKIPPED_BY_OWNER",
+    "owner_exception": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0",
+    "smartscreen_warning_required": true,
+    "external_evidence_sha256": "9abfea4d8b64d50e60f2c64aa3eba59c49c045f642e8b194d2d81906ac11b0c3",
+    "candidate_artifact": false
+  },
+  "windows_proxy_only_runtime": {
+    "start_stop_cycles": 100,
+    "cycles_passed": 100,
+    "dll_loading_and_abi": "PASS",
+    "local_proxy_start_and_teardown": "PASS",
+    "system_routes_mutated": false,
+    "tun_dns_leak_exercised": false,
+    "claim_ceiling": "HOST_SAFE_PROXY_ONLY"
+  },
+  "client_verification": {
+    "app_shell": "413/413 PASS",
+    "runtime_engine": "67 PASS, 1 intentional standard-suite skip; exact DLL test PASS separately",
+    "android_shell": "8/8 PASS",
+    "windows_shell": "23/23 PASS",
+    "observability_contracts": "3/3 PASS",
+    "observability_runtime": "29/29 PASS",
+    "diagnostics": "6/6 PASS",
+    "support_bundle": "15/15 PASS",
+    "flutter_analyze": "PASS",
+    "android_direct_and_store_unit_builds": "PASS",
+    "seed_handoff_docs_hygiene": "PASS"
+  },
+  "local_aggregate": {
+    "report_sha256": "ca84626431041a0d29bef42d7d7132475baf066a16f900ed8a8149fc3e27dd26",
+    "local_status": "PASS",
+    "steps_passed": 15,
+    "steps_total": 15,
+    "static_performance_passed": 9,
+    "static_performance_total": 9,
+    "candidate_proven": false,
+    "promotion_status": "MANUAL_OWNER_TEST",
+    "node_version": "22.14.0",
+    "source_worktrees_clean": true,
+    "first_attempt_retained_as_environment_setup_failure": true
+  },
+  "platform_documentation_verification": {
+    "agent_docs_context_candidate_preflight_and_manifest_tests": "59/59 PASS",
+    "performance_contract_and_local_gate_tests": "23/23 PASS",
+    "platform_context_audit": "PASS",
+    "link_check": "PASS",
+    "script_manifest": "PASS",
+    "diff_check": "PASS"
+  },
+  "release_interpretation": {
+    "single_source_android_windows_binding": "PASS_LOCAL_PRE_CANDIDATE",
+    "frkn_phase_index": "I3",
+    "new_candidate_created": false,
+    "gate_f_advanced": false,
+    "windows_artifact_assembled": true,
+    "windows_live_app_service_tun_dns_awg_open": true,
+    "exact_candidate_android_repeat_open": true,
+    "dns_leak_and_origin_matrix_open": true,
+    "stable_promotion_authorized": false
+  },
+  "external_mutations": {
+    "deploy_performed": false,
+    "upload_performed": false,
+    "tag_created": false,
+    "public_release_created": false,
+    "stable_pointer_changed": false
+  },
+  "raw_secrets_retained": false,
+  "raw_addresses_retained": false,
+  "raw_device_identifiers_retained": false
+}

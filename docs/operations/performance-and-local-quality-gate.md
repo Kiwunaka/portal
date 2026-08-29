@@ -2,7 +2,7 @@
 
 - Status: active for release `1.2.0`
 - Contract version: `1.0.0`
-- Last reconciled: 2026-08-22
+- Last reconciled: 2026-08-29
 
 This document owns the platform performance method and the bounded local
 quality gate. It does not own Android/Windows runtime implementation or turn a
@@ -180,6 +180,15 @@ critical-route JS/images/fonts were `246707`/`7848431`/`96848` bytes; webapp
 adminapp route-JS targets plus marketing/webapp image targets remain unmet and
 are recorded as `target_met=false`. This run is local `I3` evidence, not a
 clean baseline or candidate proof.
+
+The 2026-08-29 clean pre-candidate convergence rerun also passed all `15/15`
+steps against platform `882f287...`, client `55e7d5c...` and Core
+`3c2b114...`, using pinned Node `22.14.0` and lockfile-exact frontend
+dependencies. Static stops passed `9/9`; several optimization targets remain
+honestly `target_met=false`. The report SHA-256 is
+`ca84626431041a0d29bef42d7d7132475baf066a16f900ed8a8149fc3e27dd26`.
+It retains `candidate_proven=false` and promotion `MANUAL_OWNER_TEST`, so this
+clean run closes only the local source-quality slice.
 
 ## Phase 11 handoff
 
