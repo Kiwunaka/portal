@@ -79,6 +79,10 @@ def test_plan_probe_is_read_only_and_never_returns_runtime_material() -> None:
     )
     assert not any(token in command for token in prohibited)
     assert "ss -H -ltn" in command
+    assert "tcp_wildcard_busy" in command
+    assert "tcp_expected_ipv4_busy" in command
+    assert "expected_ipv4_assigned" in command
+    assert "global_ipv4_multiple" in command
     assert "runtime_placeholders_absent" in command
     assert "runtime_contract_valid" in command
     assert "python3" in command
@@ -162,6 +166,60 @@ def test_probe_parser_rejects_unbounded_remote_output() -> None:
     }
     with pytest.raises(MODULE.SmartDNSRemoteOperationError):
         MODULE._parse_probe("host=198.51.100.1/path")
+
+
+def test_tcp_443_bind_scope_is_sanitized_and_fail_closed() -> None:
+    assert MODULE._tcp_443_bind_scope(
+        {
+            "tcp_busy": "no",
+            "tcp_wildcard_busy": "no",
+            "tcp_expected_ipv4_busy": "no",
+        }
+    ) == "free"
+    assert MODULE._tcp_443_bind_scope(
+        {
+            "tcp_busy": "yes",
+            "tcp_wildcard_busy": "yes",
+            "tcp_expected_ipv4_busy": "no",
+        }
+    ) == "wildcard"
+    assert MODULE._tcp_443_bind_scope(
+        {
+            "tcp_busy": "yes",
+            "tcp_wildcard_busy": "no",
+            "tcp_expected_ipv4_busy": "yes",
+        }
+    ) == "expected_address"
+    assert MODULE._tcp_443_bind_scope(
+        {
+            "tcp_busy": "yes",
+            "tcp_wildcard_busy": "no",
+            "tcp_expected_ipv4_busy": "no",
+        }
+    ) == "other_address_only"
+    with pytest.raises(
+        MODULE.SmartDNSRemoteOperationError,
+        match="remote_preflight_tcp_scope_invalid",
+    ):
+        MODULE._tcp_443_bind_scope(
+            {
+                "tcp_busy": "no",
+                "tcp_wildcard_busy": "yes",
+                "tcp_expected_ipv4_busy": "no",
+            }
+        )
+
+
+def test_address_reuse_followup_never_authorizes_apply() -> None:
+    assert MODULE._address_reuse_followup(
+        bind_scope="other_address_only", expected_ipv4_assigned=True
+    ) == "POTENTIAL_REQUIRES_SEPARATE_ADDRESS_SPECIFIC_GUARD"
+    assert MODULE._address_reuse_followup(
+        bind_scope="expected_address", expected_ipv4_assigned=True
+    ) == "BLOCKED_CURRENT_BIND_SCOPE"
+    assert MODULE._address_reuse_followup(
+        bind_scope="free", expected_ipv4_assigned=False
+    ) == "BLOCKED_EXPECTED_IPV4_NOT_ASSIGNED"
 
 
 def test_public_ipv4_resolution_is_unique_and_global(monkeypatch: pytest.MonkeyPatch) -> None:

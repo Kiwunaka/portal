@@ -48,3 +48,11 @@ Deployment therefore requires a separate or deliberately freed owned public
 IPv4, an exact candidate bundle, guarded PLAN/APPLY/ROLLBACK tooling, and owner
 authorization. DNS reachability is not proof that ChatGPT, Gemini, Xbox, or a
 game works end to end.
+
+The guarded PLAN reports only sanitized bind-scope facts: whether TCP/443 is
+free, wildcard-bound, bound to the expected owned IPv4, or bound only to
+another address; whether the expected IPv4 is assigned; and whether the node
+has multiple global IPv4 addresses. A result of `other_address_only` is only a
+lead for a separate address-specific design and rollback review. It never
+authorizes APPLY, changes the conservative existing-port rejection, or returns
+an address, listener owner or process name.

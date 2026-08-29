@@ -26,7 +26,7 @@ except ImportError:  # pragma: no cover - package import for tests
     from .node_access import DEFAULT_PASSWORDS, connect_node
 
 
-REPORT_SCHEMA = "pokrov-owned-smart-dns-remote-operation-v1"
+REPORT_SCHEMA = "pokrov-owned-smart-dns-remote-operation-v2"
 SERVICE_NAME = "pokrov-smart-dns-lab.service"
 SERVICE_PATH = "/etc/systemd/system/pokrov-smart-dns-lab.service"
 RELEASE_ROOT = "/opt/pokrov/smart-dns/releases"
@@ -190,6 +190,33 @@ def _parse_probe(raw: str) -> dict[str, str]:
     return parsed
 
 
+def _tcp_443_bind_scope(values: Mapping[str, str]) -> str:
+    busy = values.get("tcp_busy") == "yes"
+    wildcard = values.get("tcp_wildcard_busy") == "yes"
+    expected = values.get("tcp_expected_ipv4_busy") == "yes"
+    if not busy:
+        if wildcard or expected:
+            raise SmartDNSRemoteOperationError("remote_preflight_tcp_scope_invalid")
+        return "free"
+    if wildcard and expected:
+        return "wildcard_and_expected_address"
+    if wildcard:
+        return "wildcard"
+    if expected:
+        return "expected_address"
+    return "other_address_only"
+
+
+def _address_reuse_followup(*, bind_scope: str, expected_ipv4_assigned: bool) -> str:
+    if not expected_ipv4_assigned:
+        return "BLOCKED_EXPECTED_IPV4_NOT_ASSIGNED"
+    if bind_scope == "other_address_only":
+        return "POTENTIAL_REQUIRES_SEPARATE_ADDRESS_SPECIFIC_GUARD"
+    if bind_scope == "free":
+        return "NOT_NEEDED_PORT_FREE"
+    return "BLOCKED_CURRENT_BIND_SCOPE"
+
+
 def _runtime_contract_check(config_path: str, expected_proxy_ipv4: str) -> str:
     validator = f"""
 import ipaddress
@@ -275,6 +302,7 @@ def _preflight_command(
         "emit_bool root 'test \"$(id -u)\" = 0'",
         "emit_bool systemd 'command -v systemctl >/dev/null 2>&1'",
         "emit_bool ss 'command -v ss >/dev/null 2>&1'",
+        "emit_bool ip 'command -v ip >/dev/null 2>&1'",
         "emit_bool sha256sum 'command -v sha256sum >/dev/null 2>&1'",
         "emit_bool runuser 'command -v runuser >/dev/null 2>&1'",
         "emit_bool python3 'command -v python3 >/dev/null 2>&1'",
@@ -283,6 +311,12 @@ def _preflight_command(
         "emit_bool ufw_active \"ufw status 2>/dev/null | grep -q '^Status: active$'\"",
         f"emit_bool ufw_rule_present \"ufw status 2>/dev/null | grep -Eq '^[[:space:]]*{LISTEN_PORT}/tcp[[:space:]]+ALLOW'\"",
         f"emit_bool tcp_busy \"ss -H -ltn 'sport = :{LISTEN_PORT}' 2>/dev/null | grep -q .\"",
+        f"emit_bool tcp_wildcard_busy \"ss -H -ltn 'sport = :{LISTEN_PORT}' 2>/dev/null | grep -Eq '[[:space:]](0\\.0\\.0\\.0|\\*|\\[::\\]|::):{LISTEN_PORT}[[:space:]]'\"",
+        f"emit_bool tcp_expected_ipv4_busy \"ss -H -ltn 'sport = :{LISTEN_PORT}' 2>/dev/null | grep -Fq {_q(expected_proxy_ipv4 + ':' + str(LISTEN_PORT))}\"",
+        "emit_bool expected_ipv4_assigned \"ip -o -4 addr show scope global 2>/dev/null | grep -Fq "
+        + _q(f" {expected_proxy_ipv4}/")
+        + "\"",
+        "emit_bool global_ipv4_multiple 'test \"$(ip -o -4 addr show scope global 2>/dev/null | wc -l)\" -gt 1'",
     ]
     for label, path in targets.items():
         lines.append(
@@ -331,8 +365,10 @@ def _remote_preflight(
         )
     )
     required = {
-        "root", "systemd", "ss", "sha256sum", "runuser", "python3", "curl",
+        "root", "systemd", "ss", "ip", "sha256sum", "runuser", "python3", "curl",
         "ufw_installed", "ufw_active", "ufw_rule_present", "tcp_busy",
+        "tcp_wildcard_busy", "tcp_expected_ipv4_busy",
+        "expected_ipv4_assigned", "global_ipv4_multiple",
         "release_present", "current_present", "config_root_present",
         "tls_root_present", "config_present", "cert_present", "key_present",
         "unit_present", "service_state", "service_enabled",
@@ -363,16 +399,27 @@ def _remote_preflight(
             "runtime_final_paths_bound", "runtime_contract_valid",
         )
     )
+    bind_scope = _tcp_443_bind_scope(values)
+    expected_ipv4_assigned = values["expected_ipv4_assigned"] == "yes"
     return {
         "root": values["root"] == "yes",
         "required_tools": all(
             values[key] == "yes"
-            for key in ("systemd", "ss", "sha256sum", "runuser", "python3", "curl")
+            for key in (
+                "systemd", "ss", "ip", "sha256sum", "runuser", "python3", "curl"
+            )
         ),
         "ufw_installed": values["ufw_installed"] == "yes",
         "ufw_active": values["ufw_active"] == "yes",
         "ufw_rule_present": values["ufw_rule_present"] == "yes",
         "tcp_443": "busy" if values["tcp_busy"] == "yes" else "free",
+        "tcp_443_bind_scope": bind_scope,
+        "expected_ipv4_assigned": expected_ipv4_assigned,
+        "multiple_global_ipv4_assigned": values["global_ipv4_multiple"] == "yes",
+        "address_reuse_followup": _address_reuse_followup(
+            bind_scope=bind_scope,
+            expected_ipv4_assigned=expected_ipv4_assigned,
+        ),
         "occupied_targets": occupied,
         "service_state": values["service_state"],
         "service_enabled": values["service_enabled"],
