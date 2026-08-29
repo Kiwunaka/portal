@@ -2,6 +2,35 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BL candidate.6 Gate F and LDPlayer differential
+
+The exact signed candidate.6 x86_64 artifact was reinstalled on LDPlayer and
+bound separately to the default-off AWG2 and AWG3.1 labs. Both profiles
+materialized the expected AWG endpoint and passed app-service, TUN, routes and
+managed-DNS formation, but failed egress. An ordinary default control without
+AWG reproduced the same boundary, so the retained conclusion is
+`BLOCKED_BY_LDPLAYER_NETWORK_CURRENT_ORIGIN`, not an AWG protocol failure or
+tunnel PASS. Final readback restored `default` / `legacy_reality_fallback`, no
+AWG material, stopped service and no TUN.
+
+A fresh candidate.6 digest-bound Gate F validates the trusted manifest,
+signature, receipt, exact source tuple and all 19 evidence pointers with zero
+validation errors. It returns `BLOCKED`: `2/19 PASS`, `17/19 non-PASS`,
+`0 FAIL`. Only supply-chain signature/SBOM/provenance and release-doc/manifest
+binding pass. The physical exact ARM64 install remains behind owner keyguard;
+Windows clean-host, current/Brain/RU and authenticated-client origins,
+provider, Operator, legal/commercial, comparable performance and
+post-promotion health remain non-PASS. Hosted checks are `SKIPPED_BY_OWNER`,
+not PASS.
+
+`REL_GATE/GATE-F` remains `I3` with status
+`SIGNED_CANDIDATE6_GATE_F_BLOCKED_2_PASS_17_NONPASS` and
+`FRKN_PLAN/W9-05` remains `I1`. No row advances; the 378-row distribution is
+unchanged. Decision SHA-256 is
+`d1de4f6a1e2a2624fbcd5f3858827f55781bb5e684775b2b5b67341987565698`.
+No tag, public release, store object, stable pointer, deploy or Gate G
+authorization occurred.
+
 ## 2026-08-29 — WO-013BK signed candidate.6 assembly
 
 Exact platform/client/Core tuple `5713324.../b2497af.../a45d69e...` passes the

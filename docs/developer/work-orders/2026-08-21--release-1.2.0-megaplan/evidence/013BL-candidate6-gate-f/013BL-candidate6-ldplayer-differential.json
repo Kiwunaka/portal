@@ -1,0 +1,122 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate6-ldplayer-differential/v1",
+  "recorded_at_utc": "2026-08-29T07:30:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.6",
+    "manifest_sha256": "8aac2458f8c43c0ef2955719dcede44f495d60acf681bc804bd6bf9828ee9054",
+    "x86_64_apk": {
+      "version": "1.2.0+4046",
+      "size_bytes": 109952213,
+      "sha256": "3d95d82d8290150fadd13600b79eca26326792407532f571909d8df224df6fa4",
+      "installed_sha256_match": true
+    }
+  },
+  "environment": {
+    "kind": "LDPlayer",
+    "adb_root_used_for_exact_owned_install_selection": true,
+    "device_serial_retained": false,
+    "raw_install_or_account_identifier_retained": false,
+    "network_origin_classification": "BLOCKED_BY_LDPLAYER_NETWORK_CURRENT_ORIGIN"
+  },
+  "owned_profile_binding": {
+    "awg2": {
+      "plan_ok": true,
+      "apply_ok": true,
+      "selected_profile": "awg2_lab",
+      "resolved_profile": "awg2_lab",
+      "source_material_available": true,
+      "target_install_confirmation_match": true,
+      "raw_identifiers_returned": false,
+      "plan_sha256": "336ab143b10d1817d440a621590e97ca90cdfb3fdc55c20ba6b644709863cf36",
+      "apply_sha256": "da60e8c1a8a14dab4a7bad9ec58a12c887bdf4af65bde9bddc36af7f25a5fd15"
+    },
+    "awg31": {
+      "plan_ok": true,
+      "apply_ok": true,
+      "selected_profile": "awg31_lab",
+      "resolved_profile": "awg31_lab",
+      "source_material_available": true,
+      "target_install_confirmation_match": true,
+      "raw_identifiers_returned": false,
+      "plan_sha256": "714b5d084b8b4b72ca9e60d80220d819e6ae193b655c292c1ccb602a6579d3fe",
+      "apply_sha256": "d5061578bf90b5d3bb186e0d2217d1c4828af4d5e0b6720df68d54b36a86a2be"
+    },
+    "restore": {
+      "plan_ok": true,
+      "apply_ok": true,
+      "selected_profile": "default",
+      "resolved_profile": "legacy_reality_fallback",
+      "raw_identifiers_returned": false,
+      "plan_sha256": "f82875149c26f25469e149013e15c5fd60b3c0ae9a6851304b34d05d5a9d1c09",
+      "apply_sha256": "e4602014f189784ae964ff76fa6219cb553354b31a93b03f9e2d15dbb06985ad"
+    }
+  },
+  "runtime_results": {
+    "awg2": {
+      "endpoint_type": "awg",
+      "endpoint_tag": "pokrov-awg2-lab",
+      "core_phase": "PASS",
+      "profile_phase": "PASS",
+      "tun_phase": "PASS",
+      "vpn_service_seen": true,
+      "tun0_present": true,
+      "interface_ready": true,
+      "routes_ready": true,
+      "dns_ready": true,
+      "egress_ready": false,
+      "proof_outcome": "degraded",
+      "result": "BLOCKED_BY_LDPLAYER_NETWORK_CURRENT_ORIGIN"
+    },
+    "awg31": {
+      "endpoint_type": "awg",
+      "endpoint_tag": "pokrov-awg31-lab",
+      "core_phase": "PASS",
+      "profile_phase": "PASS",
+      "tun_phase": "PASS",
+      "vpn_service_seen": true,
+      "tun0_present": true,
+      "interface_ready": true,
+      "routes_ready": true,
+      "dns_ready": true,
+      "egress_ready": false,
+      "proof_outcome": "degraded",
+      "result": "BLOCKED_BY_LDPLAYER_NETWORK_CURRENT_ORIGIN"
+    },
+    "ordinary_control": {
+      "awg_endpoint_present": false,
+      "interface_ready": true,
+      "routes_ready": true,
+      "dns_ready": true,
+      "egress_ready": false,
+      "proof_outcome": "degraded",
+      "auto_stopped_after_terminal_egress": true,
+      "result": "SAME_ENVIRONMENT_BLOCKER_AS_AWG2_AND_AWG31"
+    }
+  },
+  "differential_interpretation": {
+    "awg_specific_failure_proven": false,
+    "common_ldplayer_origin_blocker_proven": true,
+    "candidate_runtime_pass_claimed": false,
+    "physical_android_substituted": false,
+    "spb_investigation_performed": false
+  },
+  "final_restore": {
+    "owned_profile": "default",
+    "managed_config_contains_awg": false,
+    "vpn_service_seen": false,
+    "tun0_present": false
+  },
+  "external_snapshot_digests": {
+    "awg2_ui_sha256": "772ea4aad0cdeaf3cfaa66cb68b3776ed3895f00c73a7ca6b3c3dfc48eb0e76f",
+    "awg31_connect_ui_sha256": "358c1f78f9a45776a64067a8ae6f6ddc235d35c34e12dc65b969dfc5ced245c8",
+    "ordinary_control_ui_sha256": "358c1f78f9a45776a64067a8ae6f6ddc235d35c34e12dc65b969dfc5ced245c8"
+  },
+  "privacy": {
+    "address_or_hostname_present": false,
+    "credential_or_private_key_present": false,
+    "raw_config_present": false,
+    "device_serial_present": false,
+    "raw_install_or_account_identifier_present": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE6_LDPLAYER_AWG2_AWG31_AND_ORDINARY_DIFFERENTIAL_ONLY; COMMON_EGRESS_BLOCKER; NO_PHYSICAL_DEVICE_OR_RELEASE_GATE_PASS"
+}
