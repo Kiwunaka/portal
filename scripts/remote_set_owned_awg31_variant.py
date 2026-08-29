@@ -13,11 +13,11 @@ from node_access import DEFAULT_PASSWORDS, connect_node
 from remote_activate_owned_awg_labs import (
     AWG31_ENDPOINT_REVISION,
     AWG31_GENERATION,
+    AWG31_CONTENT_PADDING,
     AWG31_SERVER_RECORD,
     AWG31_VARIANT,
     AWG31_VARIANT_DROPIN,
     AWG_TARGET,
-    CONFIG_ROOT,
     NODE_CODE,
     _activate_control_plane,
     _awg31_variant_dropin_content,
@@ -35,7 +35,8 @@ from remote_run_owned_awg_core_interop import _load_material
 PROFILE = "awg31_lab"
 INTERFACE = "pokrovawg31"
 PORT = 3478
-CONTENT_PADDING = "64-512"
+CONTENT_PADDING = AWG31_CONTENT_PADDING
+LEGACY_CONTENT_PADDING = "64-512"
 _FIELD_RE = re.compile(r"(?mi)^(?P<name>[A-Za-z][A-Za-z0-9]*)\s*=\s*(?P<value>[^\r\n]*)$")
 
 
@@ -86,7 +87,19 @@ def _server_is_randomized(raw: bytes | bytearray) -> bool:
     return (
         all(_single_field(values, f"s{index}") == "16" for index in range(1, 5))
         and _single_field(values, "headerprotectionkey") not in (None, "")
-        and _single_field(values, "contentpaddingaddition") == CONTENT_PADDING
+        # The server UAPI omits a zero-valued range from showconf, while the
+        # persisted drop-in intentionally carries the explicit reset.
+        and _single_field(values, "contentpaddingaddition") in (None, CONTENT_PADDING)
+        and (_single_field(values, "randomtrailers") or "").lower() in {"true", "on"}
+    )
+
+
+def _server_is_legacy_randomized(raw: bytes | bytearray) -> bool:
+    values = _fields(raw)
+    return (
+        all(_single_field(values, f"s{index}") == "16" for index in range(1, 5))
+        and _single_field(values, "headerprotectionkey") not in (None, "")
+        and _single_field(values, "contentpaddingaddition") == LEGACY_CONTENT_PADDING
         and (_single_field(values, "randomtrailers") or "").lower() in {"true", "on"}
     )
 
@@ -106,9 +119,19 @@ def _server_is_minimal(raw: bytes | bytearray) -> bool:
 def _replace_server_variant(raw: bytes | bytearray) -> bytes:
     if _server_is_randomized(raw):
         return bytes(raw)
-    if not _server_is_minimal(raw):
+    if not _server_is_minimal(raw) and not _server_is_legacy_randomized(raw):
         raise VariantError("AWG 3.1 server variant precondition failed")
     text = bytes(raw).decode("ascii")
+    text = re.sub(
+        r"(?mi)^ContentPaddingAddition\s*=\s*[^\r\n]+\r?\n?",
+        "",
+        text,
+    )
+    text = re.sub(
+        r"(?mi)^RandomTrailers\s*=\s*[^\r\n]+\r?\n?",
+        "",
+        text,
+    )
     header = re.search(r"(?mi)^HeaderProtectionKey\s*=\s*[^\r\n]+$", text)
     if header is None:
         raise VariantError("AWG 3.1 header protection key is missing")
@@ -145,8 +168,9 @@ def _material_with_randomized_variant(raw: bytes | bytearray) -> dict[str, Any]:
         return endpoint
     if (
         endpoint.get("contract_id") != "pokrov.awg31.endpoint.v1"
-        or endpoint.get("content_padding_addition") not in (None, "0")
-        or endpoint.get("random_trailers") not in (None, False)
+        or endpoint.get("content_padding_addition")
+        not in (None, "0", LEGACY_CONTENT_PADDING)
+        or endpoint.get("random_trailers") not in (None, False, True)
         or not bool(endpoint.get("header_protection_key"))
         or not all(int(endpoint.get(f"s{index}", 0)) >= 12 for index in range(1, 5))
     ):

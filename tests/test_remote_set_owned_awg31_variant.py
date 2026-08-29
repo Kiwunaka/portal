@@ -58,9 +58,12 @@ def test_server_variant_transform_is_bounded_and_idempotent() -> None:
     transformed = _replace_server_variant(MINIMAL_CONFIG)
     assert _server_is_randomized(transformed)
     assert _replace_server_variant(transformed) == transformed
-    assert b"ContentPaddingAddition = 64-512" in transformed
+    assert b"ContentPaddingAddition = 0" in transformed
     assert b"RandomTrailers = true" in transformed
     assert _server_is_randomized(transformed.replace(b"true", b"on"))
+    assert _server_is_randomized(
+        transformed.replace(b"ContentPaddingAddition = 0\n", b"")
+    )
 
 
 def test_server_variant_rejects_unexpected_existing_value() -> None:
@@ -75,9 +78,29 @@ def test_server_variant_rejects_unexpected_existing_value() -> None:
 def test_material_variant_transform_is_bounded_and_idempotent() -> None:
     transformed = _material_with_randomized_variant(json.dumps(endpoint()).encode())
     assert _material_is_randomized(transformed)
-    assert transformed["content_padding_addition"] == "64-512"
+    assert transformed["content_padding_addition"] == "0"
     assert transformed["random_trailers"] is True
     assert _material_with_randomized_variant(json.dumps(transformed).encode()) == transformed
+
+
+def test_legacy_randomized_variant_migrates_to_mobile_safe_padding() -> None:
+    legacy_config = _replace_server_variant(MINIMAL_CONFIG).replace(
+        b"ContentPaddingAddition = 0",
+        b"ContentPaddingAddition = 64-512",
+    )
+    legacy_endpoint = endpoint()
+    legacy_endpoint["content_padding_addition"] = "64-512"
+    legacy_endpoint["random_trailers"] = True
+
+    transformed_config = _replace_server_variant(legacy_config)
+    transformed_endpoint = _material_with_randomized_variant(
+        json.dumps(legacy_endpoint).encode()
+    )
+
+    assert _server_is_randomized(transformed_config)
+    assert b"ContentPaddingAddition = 0" in transformed_config
+    assert transformed_endpoint["content_padding_addition"] == "0"
+    assert transformed_endpoint["random_trailers"] is True
 
 
 def test_material_variant_rejects_unknown_contract() -> None:

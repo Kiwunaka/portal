@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-29
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_CANDIDATE7_GATE_F_BLOCKED_4_PASS_15_NONPASS_RUNTIME_GATES_OPEN`
+Wave status: `PHASE_11_CANDIDATE7_REJECTED_PHYSICAL_AWG_EGRESS_FAILURE_REPLACEMENT_REQUIRED`
 Release candidate: `POKROV_1_2_0_CANDIDATE7_SIGNED_PRIVATE_ACTIONS_ARTIFACT_ONLY_PUBLIC_RELEASE_NOT_CREATED`
 
 ## Outcome
@@ -44,8 +44,17 @@ WO-013BZ then binds fresh current- and Brain-origin PASS, exact candidate.7
 LDPlayer AWG2/AWG3.1 formation with a common emulator-origin block and clean
 restore, plus a direct terminal-only Pi RU baseline. The first candidate.7
 Gate F is `BLOCKED` at `4 PASS / 15 non-PASS / 0 FAIL`; Pi baseline is not
-promoted into exact-candidate RU-origin PASS. Candidate.6 remains immutable
-history. No phase or ledger item advances to `I4`.
+promoted into exact-candidate RU-origin PASS. WO-013CA then runs the exact
+ARM64 package on physical Beeline: the ordinary profile passes, while AWG2 and
+AWG3.1 form validated VPN/TUN/DNS state but fail selected-exit proof. The
+physical differential rejects candidate.7 for replacement without rewriting
+the earlier Gate F snapshot. WO-013CB then corrects the live reply-policy,
+mobile MTU and AWG3.1 content-padding boundaries without changing official
+cryptography. Both exact candidate.7 Android profiles reach green tunnel, DNS
+and authenticated egress on physical Beeline and restore cleanly. The changed
+platform provisioning and Android notification source still require
+candidate.8 and a new Gate F. Candidate.6 remains immutable history. No phase
+or ledger item advances to `I4`.
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -176,6 +185,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013BX` | Add guarded fronted server install mode and prove the exact immutable artifact with RU install PLANs | Post-candidate Smart DNS server source/artifact/PLAN evidence | Fronted mode is exact loopback TCP/18443 plus PROXY v2 and UFW-neutral receipt-bound rollback. `49` focused tests, Go/Ruff/parity, two byte-identical bundles and a zero-finding ten-surface security scan pass. Read-only PLAN on RU and RU-SPB reports free backend listener, absent runtime material and zero mutation; RU is proposed but not selected, SPB/Brain remain unselected. Pi 4 is a later terminal ARM64/RU-origin probe, not compatible with the current amd64 bundle | `WO-013BW`, exact post-candidate platform source; trusted Pi SSH target, runtime material, separately authorized server/frontend APPLY and successor candidate still required |
 | `WO-013BY` | Correct the full-product supply-chain evidence and sign candidate.7 without rebuilding unchanged binaries | Cross-repository candidate/source/signing evidence | Exact tuple `af259f3.../b2497af.../a45d69e...` passes `15/15`; fail-closed validation passes `6/6` artifacts and `8/8` Windows runtime files with a corrected 349-component SBOM and six-subject provenance. Release-index PRs `15/16` and signer run `33256988566` pass; public-key readback returns `READY_SIGNED_MANIFEST`. Exact candidate.7 runtime and Gate F remain open; no public/stable mutation | `WO-013BX`, exact candidate.7 metadata and same-byte artifact set; returned physical phone, LDPlayer, isolated Windows host and trusted Pi SSH target still required |
 | `WO-013BZ` | Bind candidate.7 current/Brain origins, exact LDPlayer AWG rehearsal, direct Pi RU baseline and first Gate F | Candidate runtime/origin/decision evidence | Exact current-origin health/catalog and Brain source/readiness/delivery pass. AWG2/AWG3.1 form service/TUN/DNS on the hash-matched x86_64 artifact but remain blocked by the common LDPlayer egress boundary; cleanup restores default/no TUN/no AWG. Pi proves direct RU DNS/DoH/HTTP baseline and a ChatGPT HTTP 403 above DNS, but no candidate or Smart DNS runtime. Gate F validates `19/19` pointers and returns `BLOCKED` at `4/15/0` | `WO-013BY`, exact candidate.7 signed outputs, owned LDPlayer and trusted Pi/Brain SSH; physical Android, Windows, exact RU client, Smart DNS runtime and manual external gates remain required |
+| `WO-013CA` | Compare exact candidate.7 physical AWG2/AWG3.1 against the ordinary mobile control and restore default state | Exact-candidate physical Android runtime evidence | Exact ARM64 candidate.7 on Beeline passes ordinary `legacy_reality_fallback`. Both owned AWG profiles create Android-validated VPN/TUN, IPv4 route and managed DNS but fail selected-exit proof. Both slices are `FAIL_AUTHENTICATED_EGRESS_NOT_CONFIRMED`; candidate.7 is rejected for replacement. Final default/no-lab/no-VPN restore passes; remaining Android and Windows matrices stay open | `WO-013BZ`, exact candidate.7 ARM64 package, returned physical phone and guarded owner-only profile binding; server/transport diagnosis and replacement candidate required |
+| `WO-013CB` | Correct owned AWG reply policy, physical mobile MTU and AWG3.1 packet growth, then repeat exact candidate.7 physical proof | Platform operations and exact-candidate physical Android evidence | Both live/material MTUs move `1408 -> 1280`; AWG3.1 keeps header protection/random trailers and disables data content padding. Alignment and Core interop pass. Exact ARM64 candidate.7 reaches green tunnel/DNS/authenticated egress for AWG2 and AWG3.1 on Beeline, then restores default/no-material/no-TUN. Platform/client source changes still require candidate.8; Windows and remaining matrices stay open | `WO-013CA`, guarded owned-node access, exact candidate.7 ARM64 package and returned physical phone |
 
 ## Current evidence
 
@@ -215,6 +226,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `WO-013BX-smart-dns-fronted-server-install-plan.md`
 - `WO-013BY-candidate7-corrected-supply-chain-and-signing.md`
 - `WO-013BZ-candidate7-runtime-ru-pi-and-gate-f.md`
+- `WO-013CA-candidate7-physical-awg-differential.md`
+- `WO-013CB-candidate7-owned-awg-mobile-pmtu.md`
 
   Together these work orders bind the signed candidate.5 artifact set and
   hosted signature, exact
@@ -734,16 +747,20 @@ confirms that the exact IPv4-only TUN has no IPv6 lane and, without an
 `allowFamily` call, follows Android's fail-closed family contract. The exact
 candidate.6 ARM64 package identity remains retained as historical phone
 evidence. Candidate.7 binds the same exact installed ARM64/x86_64 bytes, and
-WO-013BZ now supplies its bounded LDPlayer runtime record plus first Gate F.
-The next transport slice is exact candidate.7 physical Android AWG2/AWG3.1 plus
-WARP/per-app/network-change/OEM/lifecycle/leak, and live Windows app/service/
-TUN parity for AWG2 and AWG3.1 with DNS/egress/leak and cleanup readback on an
-isolated host. Complete compatible Smart DNS access/attribution proof when a
-safe endpoint exists. Regenerate candidate.7 Gate F only after a required row
-gains new exact evidence;
-do not transfer pre-candidate proof into `I4`. Do not
-spend the lane on SPB beyond bounded evidence. HY2 remains default-off and
-follows the existing kill-switch/material/install guards.
+WO-013BZ supplies its bounded LDPlayer runtime record plus first Gate F.
+WO-013CA supplies the exact candidate.7 physical differential: ordinary
+Beeline control passes while AWG2/AWG3.1 fail selected-exit proof, so
+candidate.7 is rejected for replacement. WO-013CB closes that server/transport
+diagnosis: persisted reply-source policy, MTU `1280` and the mobile-safe AWG3.1
+randomized-trailer variant make both exact candidate.7 ARM64 profiles pass the
+app's tunnel/DNS/authenticated-egress state over Beeline. The next action is to
+bind the changed platform provisioning and Android false-green notification
+fix into candidate.8, then run its Gate F plus WARP/per-app/network-change/OEM/
+lifecycle/leak and isolated Windows app/service/TUN parity. Complete compatible
+Smart DNS access/attribution proof when a safe endpoint exists. Do not transfer
+candidate.7 runtime proof into candidate.8 `I4`. Do not spend the lane on SPB
+beyond bounded evidence. HY2 remains default-off and follows the existing
+kill-switch/material/install guards.
 
 For Smart DNS, exact physical candidate.5 ordinary Frankfurt TUN and bounded
 DNS/ICMP already pass. WO-013BZ adds a direct Pi RU baseline: DNS and public

@@ -67,9 +67,8 @@ def test_root_adb_mode_selects_the_exact_local_install_without_reporting_it() ->
     source = SCRIPT.read_text(encoding="utf-8")
     helper = _remote_helper()
 
-    assert (
-        "from remote_activate_owned_awg_labs import _load_emulator_identity" in source
-    )
+    assert "from remote_activate_owned_awg_labs import (" in source
+    assert "_load_emulator_identity," in source
     assert 'parser.add_argument("--adb-serial", default="emulator-5554")' in source
     assert '"exact_install_id": exact_install_id' in source
     assert (

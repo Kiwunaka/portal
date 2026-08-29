@@ -64,8 +64,18 @@ class OwnedAwgActivationContractTests(unittest.TestCase):
         self.assertEqual(awg2["peers"][0]["port"], module.AWG2_PORT)
         self.assertEqual(awg31["peers"][0]["port"], module.AWG31_PORT)
         self.assertTrue(awg31["random_trailers"])
-        self.assertEqual(awg31["content_padding_addition"], "64-512")
+        self.assertEqual(awg31["content_padding_addition"], "0")
         self.assertNotEqual(awg2["private_key"], awg31["private_key"])
+
+    def test_new_owned_lab_material_uses_mobile_safe_mtu(self) -> None:
+        module = self.module
+        awg2, awg31, server2, server31 = module._endpoint_material("192.0.2.10")
+
+        self.assertEqual(module.OWNED_AWG_MTU, 1280)
+        self.assertEqual(awg2["mtu"], module.OWNED_AWG_MTU)
+        self.assertEqual(awg31["mtu"], module.OWNED_AWG_MTU)
+        self.assertIn(f"MTU = {module.OWNED_AWG_MTU}", server2)
+        self.assertIn(f"MTU = {module.OWNED_AWG_MTU}", server31)
 
     def test_server_configs_pin_outer_udp_replies_to_the_endpoint_address(self) -> None:
         module = self.module
@@ -97,6 +107,15 @@ class OwnedAwgActivationContractTests(unittest.TestCase):
                 )
                 self.assertIn("PostUp = iptables -t nat -C POSTROUTING", config)
                 self.assertIn("PostDown = iptables -t nat -D POSTROUTING", config)
+
+    def test_activation_helper_uses_current_mobile_safe_awg31_metadata(self) -> None:
+        helper = self.module._REMOTE_ADMIN_HELPER
+
+        self.assertIn(self.module.AWG31_GENERATION, helper)
+        self.assertIn(self.module.AWG31_SERVER_RECORD, helper)
+        self.assertIn(self.module.AWG31_VARIANT, helper)
+        self.assertNotIn("awg31-lab-v3-randomized-trailers", helper)
+        self.assertNotIn("de-awg31-20260828-03-randomized-trailers", helper)
 
 
 class OwnedAwgUdpPathContractTests(unittest.TestCase):
@@ -183,6 +202,42 @@ class OwnedAwgReplySourceContractTests(unittest.TestCase):
 
         with self.assertRaisesRegex(RuntimeError, "conflicting"):
             module._updated_config(conflicting, "pokrovawg2", 4500, "192.0.2.10")
+
+
+class OwnedAwgMtuUpdateContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.module = _load_module("remote_set_owned_awg_mtu")
+
+    def test_server_mtu_transform_is_exact_and_idempotent(self) -> None:
+        module = self.module
+        original = b"[Interface]\nMTU = 1408\nListenPort = 4500\n"
+
+        updated = module._replace_server_mtu(original, target=1280)
+        repeated = module._replace_server_mtu(updated, target=1280)
+
+        self.assertEqual(module._server_mtu(updated), 1280)
+        self.assertEqual(updated, repeated)
+
+    def test_server_mtu_transform_rejects_unowned_or_duplicate_values(self) -> None:
+        module = self.module
+        with self.assertRaisesRegex(RuntimeError, "outside the owned contract"):
+            module._replace_server_mtu(b"[Interface]\nMTU = 1500\n", target=1280)
+        with self.assertRaisesRegex(RuntimeError, "precondition"):
+            module._replace_server_mtu(
+                b"[Interface]\nMTU = 1408\nMTU = 1408\n",
+                target=1280,
+            )
+
+    def test_material_mtu_transform_preserves_other_fields(self) -> None:
+        module = self.module
+        endpoint = module._material_with_mtu(
+            b'{"mtu":1408,"private_key":"kept-in-memory-only","peers":[]}',
+            target=1280,
+        )
+
+        self.assertEqual(endpoint["mtu"], 1280)
+        self.assertEqual(endpoint["private_key"], "kept-in-memory-only")
 
 
 class OwnedAwgCoreInteropContractTests(unittest.TestCase):
@@ -278,6 +333,16 @@ class OwnedAwgDeviceEvidenceContractTests(unittest.TestCase):
         self.assertIn("_load_account_component_users", helper)
         self.assertIn("account_component_user_count", helper)
         self.assertIn("runtime_owner_entitled_user_count", helper)
+
+    def test_bind_helper_uses_current_awg31_metadata(self) -> None:
+        helper = self.bind_module._REMOTE_HELPER
+        activation = _load_module("remote_activate_owned_awg_labs")
+
+        self.assertIn(activation.AWG31_GENERATION, helper)
+        self.assertIn(activation.AWG31_ENDPOINT_REVISION, helper)
+        self.assertIn(activation.AWG31_SERVER_RECORD, helper)
+        self.assertNotIn("awg31-lab-v3-randomized-trailers", helper)
+        self.assertNotIn("de-awg31-20260828-03-randomized-trailers", helper)
         self.assertIn('"runtime_admin_owner_fallback"', helper)
         self.assertIn(
             '(target_selection_mode == "exact_local_install" or len(candidates) == 1)',
