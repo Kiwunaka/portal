@@ -90,6 +90,33 @@ def test_detached_signature_rejects_manifest_drift() -> None:
         raise AssertionError("manifest drift must fail signature verification")
 
 
+def test_signed_android_build_number_uses_exact_install_binding() -> None:
+    evidence = {
+        "physical_phone_install_binding": {
+            "package_version": "1.2.0+4046",
+            "arm64_artifact_sha256_match": True,
+        }
+    }
+
+    assert MODULE._signed_android_build_number(evidence, "1.2.0") == "4046"
+
+
+def test_signed_android_build_number_rejects_version_drift() -> None:
+    evidence = {
+        "physical_phone_install_binding": {
+            "package_version": "1.1.9+4046",
+            "arm64_artifact_sha256_match": True,
+        }
+    }
+
+    try:
+        MODULE._signed_android_build_number(evidence, "1.2.0")
+    except MODULE.Pb14GateError as exc:
+        assert "does not match candidate" in str(exc)
+    else:  # pragma: no cover - assertion guard
+        raise AssertionError("package-version drift must fail closed")
+
+
 def test_isolated_exact_candidate_breach_stops_close_and_fails_closed() -> None:
     descriptor = {
         "component": "client",
@@ -104,7 +131,7 @@ def test_isolated_exact_candidate_breach_stops_close_and_fails_closed() -> None:
         "manifest_sha256": "b" * 64,
         "client_revision": "a" * 40,
         "core_version": "1.1.0",
-        "android_build_number": "4030",
+        "android_build_number": "4046",
         "version": "1.2.0",
         "rollback_target": "1.1.6",
     }
@@ -118,6 +145,7 @@ def test_isolated_exact_candidate_breach_stops_close_and_fails_closed() -> None:
         "error_code": "release_health_gate_failed",
         "staged_state_preserved": True,
     }
+    assert result["injected_event"]["build_number"] == "4046"
     assert result["rollback_request"]["status"] == "PASS"
     assert result["rollback_request"]["exact_candidate_status"] == "rollback_requested"
     assert result["rollback_request"]["exact_candidate_rollout_percent"] == 0

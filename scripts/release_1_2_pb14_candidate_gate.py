@@ -59,6 +59,9 @@ EVIDENCE_ROOT = (
 )
 SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 GIT_REVISION_RE = re.compile(r"[0-9a-f]{40}\Z")
+PACKAGE_VERSION_RE = re.compile(
+    r"(?P<version>[0-9]+\.[0-9]+\.[0-9]+)\+(?P<build>[1-9][0-9]*)\Z"
+)
 ACTOR_TG_ID = 1200
 
 
@@ -87,6 +90,19 @@ def _read_json_bytes(path: Path) -> tuple[dict[str, Any], bytes]:
     if not isinstance(value, dict):
         raise Pb14GateError(f"JSON root must be an object: {path}")
     return value, raw
+
+
+def _signed_android_build_number(
+    signed_evidence: Mapping[str, Any], product_version: str
+) -> str:
+    install = signed_evidence.get("physical_phone_install_binding")
+    if not isinstance(install, Mapping) or install.get("arm64_artifact_sha256_match") is not True:
+        raise Pb14GateError("exact installed Android build identity is absent")
+    package_version = str(install.get("package_version") or "")
+    match = PACKAGE_VERSION_RE.fullmatch(package_version)
+    if match is None or match.group("version") != product_version:
+        raise Pb14GateError("installed Android package version does not match candidate")
+    return match.group("build")
 
 
 def _git_keyring(release_index_root: Path, revision: str) -> dict[str, Any]:
@@ -283,6 +299,7 @@ def _validate_retained_candidate(
     rollback_target = str(promotion.get("rollback_target") or "")
     if version != "1.2.0" or not rollback_target:
         raise Pb14GateError("candidate product or rollback target is invalid")
+    android_build_number = _signed_android_build_number(signed_evidence, version)
     descriptor = {
         "component": "client",
         "version": version,
@@ -302,7 +319,7 @@ def _validate_retained_candidate(
             (manifest.get("compatibility") or {}).get("core_version") or ""
         ),
         "android_x86_64_sha256": str(x86_artifact["sha256"]).lower(),
-        "android_build_number": "4030",
+        "android_build_number": android_build_number,
         "version": version,
         "rollback_target": rollback_target,
     }
