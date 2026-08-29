@@ -75,6 +75,7 @@
     "scripts/validate_observability_data_inventory.py",
     "scripts/validate_observability_contracts.py",
     "scripts/validate_release_handoff_metadata.py",
+    "scripts/validate_release_candidate_supply_chain.py",
     "scripts/verify_awg2_contract_sync.py",
     "scripts/verify_awg31_contract_sync.py",
     "scripts/verify_support_signing_custody.py",
