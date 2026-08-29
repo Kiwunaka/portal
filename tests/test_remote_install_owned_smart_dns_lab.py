@@ -53,6 +53,15 @@ def test_local_bundle_is_exact_and_derives_receipt_bound_paths(tmp_path: Path) -
     assert f"{MODULE.RUNTIME_STAGE_ROOT}/{digest}".endswith(digest)
 
 
+def test_canonical_node_codes_are_safe_components() -> None:
+    assert MODULE._safe_component("RU_SPB", label="node_code") == "ru_spb"
+    assert MODULE._safe_component("dns-lab", label="node_code") == "dns-lab"
+
+    for value in ("../ru", "ru spb", "ru'spb", "-ru", "ru/spb"):
+        with pytest.raises(MODULE.SmartDNSRemoteOperationError, match="node_code_invalid"):
+            MODULE._safe_component(value, label="node_code")
+
+
 def test_plan_probe_is_read_only_and_never_returns_runtime_material() -> None:
     command = MODULE._preflight_command(
         release_dir=f"{MODULE.RELEASE_ROOT}/{'a' * 64}",

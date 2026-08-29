@@ -40,7 +40,7 @@ BACKUP_ROOT = "/root/pokrov-smart-dns-lab-backups"
 STAGE_ROOT = "/root/pokrov-smart-dns-lab-staging"
 RUNTIME_STAGE_ROOT = "/root/pokrov-smart-dns-runtime-staging"
 LISTEN_PORT = 443
-SAFE_COMPONENT_RE = re.compile(r"[a-z0-9][a-z0-9-]{0,31}")
+SAFE_COMPONENT_RE = re.compile(r"[a-z0-9][a-z0-9_-]{0,31}")
 SAFE_RECEIPT_RE = re.compile(r"[0-9]{8}T[0-9]{6}Z-[0-9]+-[0-9a-f]{12}")
 
 
