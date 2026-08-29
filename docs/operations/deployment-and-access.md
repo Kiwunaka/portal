@@ -980,6 +980,7 @@ Retained evidence: [Paid Checkout Launch Evidence - 2026-05-15](C:/Users/kiwun/D
 ### External RU probe runner
 
 - [ru_probe_runner.py](C:/Users/kiwun/Documents/ai/VPN/scripts/ru_probe_runner.py)
+- [build_ru_origin_probe_bundle.py](C:/Users/kiwun/Documents/ai/VPN/scripts/build_ru_origin_probe_bundle.py)
 
 Typical use from the external RU host:
 
@@ -988,7 +989,14 @@ python scripts/ru_probe_runner.py --reserve-host rf1.pokrov.space --probe-host m
 python scripts/render_ru_probe_report.py --input ops-local/ru-probe.json
 ```
 
-Current SSH note for running the probe remotely: `mini` is reachable as `kiwunaka@176.123.166.119:22`. Do not copy the password into docs or reports; use the retained local password bundle or an approved secret channel.
+Для candidate.6 сначала соберите и проверьте неизменяемый source/unit bundle из
+точного platform commit `5713324c1c0c2566befadf527bc09ec0ecf84a4e`.
+Канонический пакет имеет SHA-256
+`e7eb8ec20693f9626d6e7697c7845fa165e77fc1daa7df580ef0618248be345b` и не
+содержит runtime secrets. Доступ к RU-host берётся только из утверждённого
+inventory/SSH config; адреса, пароли и ключи в документацию или отчёты не
+копируются. Установка, ручной run, upload, heartbeat и admin readback остаются
+отдельными авторизуемыми действиями и доказательствами.
 
 ### RF Reserve Note
 

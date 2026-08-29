@@ -7,6 +7,7 @@
     "scripts/api_lifecycle_smoke.py",
     "scripts/api_latency_probe.py",
     "scripts/backup_portal_db.py",
+    "scripts/build_ru_origin_probe_bundle.py",
     "scripts/build_owned_hy2_server_bundle.py",
     "scripts/build_owned_smart_dns_server_bundle.py",
     "scripts/check_smart_dns_policy_parity.py",

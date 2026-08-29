@@ -1,6 +1,6 @@
 # RU-Origin Probe Handoff
 
-Last updated: 2026-07-17
+Last updated: 2026-08-29
 
 ## Document Status
 
@@ -54,7 +54,8 @@ Runner запускается по UTC в `00:00`, `06:00`, `12:00` и `18:00`; 
   местом;
 - Python runtime и точную версию `scripts/ru_probe_runner.py`,
   `scripts/ru_probe_uploader.py`, `scripts/internal_hmac_client.py`,
-  `scripts/node_dataplane_probe.py` и `portal_bot/ru_probe_contract.py`;
+  `portal_bot/internal_request_auth.py`, `scripts/node_dataplane_probe.py` и
+  `portal_bot/ru_probe_contract.py`;
 - redacted `probe.env` и `uploader.env` с API base URL, key id и host id, но
   без HMAC-значения в handoff;
 - HMAC secret file, переданный через утверждённый секретный канал, с правами
@@ -103,6 +104,26 @@ python -B -m pytest -p no:cacheprovider tests/test_internal_request_auth.py test
 Ожидается `PASS`. Этот результат подтверждает код и фикстуры конкретного
 локального commit, но не подтверждает сеть РФ, production ingest, установку
 unit или актуальность живого HMAC key record.
+
+### Неизменяемый пакет candidate.6
+
+Точный набор исходников для RU-host строится из Git objects, а не из текущего
+рабочего дерева:
+
+```powershell
+python scripts/build_ru_origin_probe_bundle.py build --source-revision 5713324c1c0c2566befadf527bc09ec0ecf84a4e --output <private-artifact-path>/pokrov-ru-origin-candidate6-5713324.zip
+python scripts/build_ru_origin_probe_bundle.py verify --bundle <private-artifact-path>/pokrov-ru-origin-candidate6-5713324.zip
+python scripts/build_ru_origin_probe_bundle.py plan --bundle <private-artifact-path>/pokrov-ru-origin-candidate6-5713324.zip --operation install
+```
+
+Зафиксированный пакет candidate.6 содержит 10 source/unit members, имеет размер
+`47702` байта и SHA-256
+`e7eb8ec20693f9626d6e7697c7845fa165e77fc1daa7df580ef0618248be345b`.
+Повторная независимая сборка дала те же байты. Пакет не содержит `probe.env`,
+`uploader.env`, `hmac.key` или `profiles.json` и ничего не устанавливает сам.
+Его успешная сборка/проверка — только локальное evidence уровня immutable bundle,
+не доказательство живой RU-origin среды, запуска, ingest, heartbeat или admin
+readback.
 
 ## Ручная приёмка владельцем
 

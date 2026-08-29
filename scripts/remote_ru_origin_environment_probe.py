@@ -31,6 +31,7 @@ SOURCE_MAPPINGS = (
     ("scripts/ru_probe_runner.py", "/opt/pokrov/scripts/ru_probe_runner.py"),
     ("scripts/ru_probe_uploader.py", "/opt/pokrov/scripts/ru_probe_uploader.py"),
     ("scripts/internal_hmac_client.py", "/opt/pokrov/scripts/internal_hmac_client.py"),
+    ("portal_bot/internal_request_auth.py", "/opt/pokrov/portal_bot/internal_request_auth.py"),
     ("scripts/node_dataplane_probe.py", "/opt/pokrov/scripts/node_dataplane_probe.py"),
     ("portal_bot/ru_probe_contract.py", "/opt/pokrov/portal_bot/ru_probe_contract.py"),
     ("infra/pokrov-ru-probe.service", "/etc/systemd/system/pokrov-ru-probe.service"),
