@@ -1,0 +1,180 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate8-android-physical-matrix/v1",
+  "recorded_at_utc": "2026-08-29T19:39:26Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.8",
+    "operational_id": "eeedbaf8540a83649a7143d6c7097336429e466118ed4f9ca2b732b7e6e2195a",
+    "manifest_sha256": "f0006cec90c84e401e9920d9098102c7f50ab5ace5242e0d7683c3df709a6fbc",
+    "signature_sha256": "5fcae0675ea45e79baf495859fd170661f5d6dd3a8535275acd4d62680d324f6",
+    "sources": {
+      "platform": "241a83b4dca00799b39696a4ae0c3c97e087ec39",
+      "client_artifact": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+      "client_evidence_docs": "6ee1c2612965e621f10bdb91fca472f4ddff95bf",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "b242e0a3060b04f9b71641a0524bf251a75ce2a8"
+    },
+    "android_arm64": {
+      "version": "1.2.0+4046",
+      "size_bytes": 101366934,
+      "artifact_sha256": "9278c09fd8fa5768d3260cf796b4230db5acb0a092187aae00c441d717cfc572",
+      "installed_base_apk_sha256_match": true,
+      "production_signing_verified": true
+    }
+  },
+  "environment": {
+    "device_class": "physical_huawei_android_12",
+    "initial_uplink": "owner_mobile_beeline",
+    "secondary_uplink": "owner_wifi_redacted",
+    "device_unlocked_for_terminal_ui_readback": true,
+    "device_serial_retained": false,
+    "network_identifiers_retained": false,
+    "raw_runtime_material_retained": false
+  },
+  "warp": {
+    "status": "PASS_EXACT_CANDIDATE_FALLBACK_PATH",
+    "active_warp_traffic": "NOT_PROVEN",
+    "observed_attempt_count": 3,
+    "unintended_extra_reenable_attempt_count": 1,
+    "all_attempts_same_terminal_result": true,
+    "terminal_mode": "PAUSED_ORDINARY_FALLBACK",
+    "representative_fallback_settle_seconds": 36,
+    "fallback_was_explicit_in_ui_history": true,
+    "baseline_tunnel_dns_and_selected_egress_confirmed": true,
+    "consent_revoke_cleared_enabled_state": true,
+    "warp_disabled_ordinary_control": "PASS",
+    "final_warp_enabled": false
+  },
+  "network_and_lifecycle": {
+    "uplink_sequence": [
+      "mobile",
+      "wifi",
+      "mobile",
+      "wifi"
+    ],
+    "connected_after_every_uplink_leg": true,
+    "screen_off_seconds": 15,
+    "vpn_service_survived_screen_off": true,
+    "connected_after_screen_wake": true,
+    "quick_settings_stop": "PASS",
+    "quick_settings_start_and_verified_reconnect": "PASS",
+    "notification_disconnect": "PASS",
+    "forced_deep_doze": {
+      "before": "ACTIVE",
+      "during": "IDLE",
+      "seconds": 10,
+      "vpn_service_survived": true,
+      "after_restore": "ACTIVE",
+      "connected_after_restore": true
+    },
+    "forced_app_standby": {
+      "before": false,
+      "during": true,
+      "seconds": 8,
+      "vpn_service_survived": true,
+      "after_restore": false,
+      "connected_after_restore": true
+    }
+  },
+  "per_app_routing": {
+    "status": "PASS_SELECTED_APP_TRAFFIC_AND_BYPASS",
+    "selected_app_identity_retained": false,
+    "selected_app_count": 1,
+    "vpn_uid_range_matches_selected_app_uid": true,
+    "vpn_uid_range_excludes_pokrov_host_uid": true,
+    "idle_window_seconds": 6,
+    "idle_tun_rx_delta_bytes": 0,
+    "idle_tun_tx_delta_bytes": 0,
+    "selected_app_tun_rx_delta_bytes": 2391111,
+    "selected_app_tun_tx_delta_bytes": 2485252,
+    "excluded_control_internet_success": true,
+    "excluded_control_tun_rx_delta_bytes": 0,
+    "excluded_control_tun_tx_delta_bytes": 0,
+    "excluded_apps_mode": "NOT_RUN"
+  },
+  "dns_and_ip_families": {
+    "strict_private_dns_interaction": "PASS",
+    "private_dns_test_resolver_retained": false,
+    "tunnel_dns_and_selected_egress_confirmed_under_strict_private_dns": true,
+    "vpn_on_ipv4": true,
+    "vpn_on_ipv6": false,
+    "vpn_off_same_wifi_ipv4": true,
+    "vpn_off_same_wifi_ipv6": false,
+    "ipv6_classification": "BLOCKED_NO_UNDERLYING_IPV6",
+    "external_ipv6_leak_pass_claimed": false,
+    "blocked_udp_53": "NOT_RUN",
+    "external_mtu": "NOT_RUN"
+  },
+  "privacy": {
+    "user_facing_diagnostics_review": "PASS_BOUNDED",
+    "endpoint_hostname_exposed": false,
+    "address_exposed": false,
+    "key_exposed": false,
+    "raw_profile_exposed": false,
+    "subscription_url_exposed": false,
+    "token_exposed": false,
+    "screenshots_retained": false,
+    "ui_dumps_retained": false
+  },
+  "final_restore": {
+    "route_mode": "all_device",
+    "selected_app_count": 0,
+    "warp_enabled": false,
+    "vpn_service_running": false,
+    "wifi_enabled": false,
+    "mobile_data_enabled": true,
+    "private_dns_mode": "off",
+    "private_dns_prior_specifier_preserved": true,
+    "animation_scales": [
+      1.0,
+      1.0,
+      1.0
+    ],
+    "stay_on_while_plugged_in": 2,
+    "deep_idle_state": "ACTIVE",
+    "app_standby_inactive": false,
+    "remote_test_temp_count": 0,
+    "local_personal_screenshot_temp_count": 0
+  },
+  "hosted_evidence_docs": {
+    "client_pr": 35,
+    "client_pr_state": "MERGED_OWNER_SOLO_EXCEPTION",
+    "client_pr_head": "e26650a9f126613310338336c2efe036c9561f57",
+    "client_pr_merge": "6ee1c2612965e621f10bdb91fca472f4ddff95bf",
+    "private_check_run": 33271351440,
+    "private_check_steps": 0,
+    "private_check_classification": "SKIPPED_BY_OWNER_GITHUB_BILLING",
+    "private_check_claimed_as_pass": false
+  },
+  "remaining_android_matrix": [
+    "active WARP traffic",
+    "external IPv6 and leak behavior",
+    "blocked UDP 53",
+    "external MTU",
+    "excluded-app mode",
+    "multi-OEM coverage",
+    "100-cycle and battery endurance",
+    "backup and exposed-port review",
+    "public and store delivery"
+  ],
+  "gate_f_effect": {
+    "android_physical_device_status": "MANUAL_OWNER_TEST",
+    "reason": "The bounded exact-device slice advances named subchecks but the full Android release matrix remains incomplete.",
+    "decision": "BLOCKED",
+    "pass": 4,
+    "non_pass": 15,
+    "fail": 0,
+    "gate_g_authorized": false
+  },
+  "mutation_boundary": {
+    "apk_changed": false,
+    "backend_changed": false,
+    "server_changed": false,
+    "production_deploy": false,
+    "payment_action": false,
+    "public_release": false,
+    "repository_visibility_mutated": false,
+    "stable_pointer_mutated": false,
+    "store_submission": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE8_PHYSICAL_WARP_FALLBACK_PER_APP_HANDOFF_LIFECYCLE_PRIVATE_DNS_AND_RESTORE_PASS; ACTIVE_WARP_IPV6_LEAK_UDP53_EXTERNAL_MTU_EXCLUDED_MODE_MULTI_OEM_ENDURANCE_BACKUP_PUBLIC_STORE_AND_PROMOTION_OPEN"
+}
