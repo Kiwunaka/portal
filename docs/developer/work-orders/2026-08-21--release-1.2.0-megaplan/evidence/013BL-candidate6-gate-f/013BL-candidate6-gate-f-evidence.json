@@ -1,0 +1,141 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-08-29T07:34:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.6",
+    "operational_id": "62526fdbf0f86c2a7083eb9d2cff4f8645949a31c59032fa593dad9bc68cae05",
+    "manifest_sha256": "8aac2458f8c43c0ef2955719dcede44f495d60acf681bc804bd6bf9828ee9054",
+    "signature_sha256": "2307906a920fb9b4dcd4c0025bf7628972668905d13897c553ddf27a81592dfa",
+    "receipt_sha256": "85dd34504d876086aa8bfe3533ad4db964e4f0a9106f9085657dc08c2c7afcaa",
+    "sources": {
+      "platform": "5713324c1c0c2566befadf527bc09ec0ecf84a4e",
+      "client": "b2497af7704d0aa6901541e175ce154b0eab05d7",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "8d09ae5e8ec0c8347bcd4e2659944bdf7c9c9db3"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "MANUAL_OWNER_TEST",
+    "mandatory_stop_ship_and_dod": "MANUAL_OWNER_TEST",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "MANUAL_OWNER_TEST",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MANUAL_OWNER_TEST",
+    "current_origin": "NOT_RUN",
+    "brain_origin": "NOT_RUN",
+    "ru_origin": "NOT_RUN",
+    "windows_live_network": "NOT_RUN",
+    "android_ldplayer_rehearsal": "BLOCKED_BY_ACCESS",
+    "android_physical_device": "MANUAL_OWNER_TEST",
+    "authenticated_client_egress": "NOT_RUN",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "MANUAL_OWNER_TEST",
+    "hosted_required_checks": "SKIPPED_BY_OWNER"
+  },
+  "interpretation": {
+    "known_hard_failures": [],
+    "gate_f_pass_claimed": false,
+    "missing_manual_not_run_skipped_or_blocked_evidence_is_pass": false,
+    "candidate_5_gate_f_transferred": false,
+    "pre_candidate_device_pass_transferred": false,
+    "owner_solo_exception_waives_independent_reviewer_only": true,
+    "github_hosted_zero_step_runs_are_pass": false,
+    "unsigned_windows_direct_beta_exception": "PASS",
+    "unsigned_windows_public_or_stable_trusted_signing_pass": false,
+    "ldplayer_replaces_physical_android": false,
+    "ldplayer_common_egress_block_is_awg_failure": false,
+    "smart_dns_source_contract_is_live_access": false,
+    "exact_phone_install_identity_is_runtime_pass": false
+  },
+  "blockers": [
+    {
+      "id": "GATES_A_E_EXACT_RUNTIME_AND_EXTERNAL_ROWS_REMAIN",
+      "status": "MANUAL_OWNER_TEST",
+      "detail": "Candidate.6 exact sources pass the 15/15 local aggregate and the six artifacts are signed/bound. Exact candidate migrations, device/browser/accessibility, provider, Operator, legal and other manual Gate A-E rows are not all retained."
+    },
+    {
+      "id": "NO_OPEN_P0_FALSE_GREEN_OR_SECRET_LEAK_ATTESTATION",
+      "status": "MISSING",
+      "detail": "No candidate.6 aggregate owner attestation yet proves the absence of open P0, false-green and secret-leak stop conditions across all required live gates."
+    },
+    {
+      "id": "LDPLAYER_COMMON_NETWORK_ORIGIN",
+      "status": "BLOCKED_BY_ACCESS",
+      "detail": "Exact x86_64 candidate.6 produced AWG2 and AWG3.1 endpoints, TUN, routes and DNS, but egress stayed false. An ordinary non-AWG control produced the same egress result, so the bounded classification is BLOCKED_BY_LDPLAYER_NETWORK_CURRENT_ORIGIN rather than an AWG-specific failure."
+    },
+    {
+      "id": "PHYSICAL_ANDROID_OWNER_UNLOCK",
+      "status": "MANUAL_OWNER_TEST",
+      "detail": "The exact ARM64 candidate.6 package is installed and hash-matched, but secure keyguard prevents the AWG2/AWG3.1, WARP, per-app, Private DNS/IPv6, OEM/Doze, leak and cleanup matrix."
+    },
+    {
+      "id": "WINDOWS_CLEAN_HOST_LIVE_MATRIX",
+      "status": "NOT_RUN",
+      "detail": "The unsigned candidate.6 installer and 8/8 runtime bundle are exact, but no isolated Windows 10/11 host is available for install, SCM, authenticated IPC, TUN, DNS, egress, recovery and uninstall."
+    },
+    {
+      "id": "CURRENT_BRAIN_RU_ORIGINS",
+      "status": "NOT_RUN",
+      "detail": "Candidate.6 current-origin, Brain-origin and optional RU-ready origin evidence have not been regenerated for this signed candidate."
+    },
+    {
+      "id": "SMART_DNS_LIVE_ACCESS",
+      "status": "NOT_RUN",
+      "detail": "The selected ChatGPT/OpenAI, Gemini and Xbox source contract is bound, but no owned resolver endpoint is deployed and no live DNS/SNI/access/leak/rollback proof exists."
+    },
+    {
+      "id": "PROVIDER_OPERATOR_LEGAL_AND_RELEASE_HEALTH",
+      "status": "MANUAL_OWNER_TEST",
+      "detail": "Production payment provider E2E, Operator OIDC/RBAC/action intent, legal/commercial approval, comparable device performance and post-public-promotion health remain external or manual."
+    }
+  ],
+  "hosted_checks": {
+    "classification": "SKIPPED_BY_OWNER",
+    "policy": "OWNER_SOLO_EXCEPTION_NO_PURCHASE_NO_BRANCH_PROTECTION",
+    "release_index_source_contract": "PASS",
+    "release_index_signer": "PASS",
+    "platform_private_runs": "ZERO_STEPS_BLOCKED_BY_ACCESS",
+    "platform_private_runs_claimed_as_pass": false,
+    "paid_github_plan_required": false,
+    "protected_branches_required": false
+  },
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BK-candidate6-signed-assembly/013BK-candidate6-signed-assembly.json",
+      "sha256": "4fd43f8a83519f17b407ee32ff55840439c7b84a69ad75c8aea577e9e98eeacb"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BL-candidate6-gate-f/013BL-candidate6-ldplayer-differential.json",
+      "sha256": "a7e6b2633a86f8ee4b77ebfcc2d1ad8e6bba45b5e42e76cc26a9c4c66f70ab47"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BE-awg-default-resolver-physical/013BE-awg-default-resolver-physical.json",
+      "sha256": "276ca83625957de8e2357b8eb20bd3086043e776693abc7100055b54105cfe07"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BG-android-warp-lifecycle-preflight/013BG-android-warp-lifecycle-preflight.json",
+      "sha256": "eab077cc30a01b580e709bf7c1af627c49ad8ace785396f6c338e3b469573243"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BJ-smart-dns-ai-gaming-contract/013BJ-smart-dns-ai-gaming-contract.json",
+      "sha256": "a3a11b7a5a52621f0b338e27fe972b49c031e3fd1abe28d1b2be9cb33530f747"
+    }
+  ],
+  "mutation_boundary": {
+    "physical_device_used": false,
+    "ldplayer_used": true,
+    "owned_device_profile_binding_mutated": true,
+    "owned_device_profile_restored_to_default": true,
+    "entitlement_mutated": false,
+    "payment_action": false,
+    "production_deploy": false,
+    "public_release": false,
+    "repository_visibility_mutated": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "SIGNED_CANDIDATE6_SUPPLY_CHAIN_AND_RELEASE_DOC_BINDING_PASS; LDPLAYER_COMMON_NETWORK_ORIGIN_BLOCKED; PHYSICAL_ANDROID_WINDOWS_ORIGINS_PROVIDER_OPERATOR_LEGAL_HEALTH_AND_ROLLBACK_OPEN; NO_PUBLIC_RELEASE_OR_STABLE_POINTER"
+}
