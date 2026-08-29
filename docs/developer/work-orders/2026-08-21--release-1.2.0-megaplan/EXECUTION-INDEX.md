@@ -2,6 +2,35 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BY candidate.7 corrected supply chain and signing
+
+Exact platform/client/Core tuple `af259f3.../b2497af.../a45d69e...` binds the
+same six build `1.2.0+4046` bytes as candidate.6. No client/Core input changed
+and no binary rebuild occurred. The final local source gate passes `15/15`,
+and preflight returns `READY_LOCAL_FREEZE` with zero blockers.
+
+The new offline fail-closed verifier rejects candidate.6's stale SBOM and
+passes candidate.7 at `6/6` artifacts plus `8/8` Windows runtime files.
+Candidate.7 carries a corrected `349`-component CycloneDX 1.5 SBOM and
+six-subject SLSA provenance bound to the final source tuple and exact Core
+AAR/DLL. Handoff/SBOM/provenance hashes are respectively
+`06e94a9f...e831` / `5951587d...633e` / `8cddf4ea...f876`.
+
+Release-index PR `15` passed and merged under `OWNER_SOLO_EXCEPTION` as
+`f6917c8...`. Main-only signer run `33256988566` emitted manifest/signature/
+receipt hashes `fb1d7049...90ce` / `2b20ed78...8abf` /
+`ff93d33b...9b04`; independent public-key validation returns
+`READY_SIGNED_MANIFEST`. Receipt PR `16` passed and advanced release-index
+`main` to `9e5b7bd...`.
+
+Candidate.7 is a signed private Actions artifact only with
+`promotion_authorized=false`. No device evidence is relabelled from an older
+candidate. Exact physical Android, LDPlayer, isolated Windows, current/Brain/RU
+origins, manual gates and a fresh Gate F remain open. The local Pi 4 is accepted
+as a terminal-only direct-RU probe once its trusted SSH target is supplied.
+No tag, public assets, store object, stable pointer, deploy or promotion was
+created. `REL-001`, `GATE-F` and `W1-03` remain `I3`; `W9-05` remains `I1`.
+
 ## 2026-08-29 — WO-013BX Smart DNS fronted server install and RU PLAN
 
 Post-candidate platform `650dc3f...` adds a guarded `fronted` mode to the
