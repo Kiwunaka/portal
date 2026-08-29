@@ -1,0 +1,185 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate7-corrected-supply-chain-and-signing-evidence/v1",
+  "recorded_at": "2026-08-29T14:17:26Z",
+  "status": "SIGNED_CANDIDATE7_ACTIONS_ARTIFACT_SUPPLY_CHAIN_PROVED_RUNTIME_GATES_OPEN",
+  "candidate_id": "pokrov-1.2.0-candidate.7",
+  "candidate_manifest_created": true,
+  "candidate_manifest_proven": true,
+  "exact_candidate_runtime_proven": false,
+  "public_candidate_release_created": false,
+  "public_assets_uploaded": false,
+  "store_submission_created": false,
+  "stable_pointer_mutated": false,
+  "promotion_authorized": false,
+  "deployment_performed": false,
+  "binary_rebuild_performed": false,
+  "artifact_reuse": {
+    "source_candidate_id": "pokrov-1.2.0-candidate.6",
+    "reason": "client and Core revisions are unchanged; the platform-only change adds the exact supply-chain verifier",
+    "same_byte_verified": true
+  },
+  "candidate_source_tuple": {
+    "platform": "af259f377ec7a3cd757f0f43762154dd25e09f94",
+    "client": "b2497af7704d0aa6901541e175ce154b0eab05d7",
+    "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+    "signed_manifest_release_index": "f6917c8264015aee72fe51126943b08191e85b07"
+  },
+  "supply_chain_assembly_release_index_base": "8a7add68ef629e01d005c7a1cb21a2b412b1bc85",
+  "receipt_record_release_index_main": "9e5b7bd3be3b8468e733bb30da829c7f91f6235a",
+  "local_source_gate": {
+    "status": "PASS",
+    "passed": 15,
+    "total": 15,
+    "candidate_proven": false,
+    "report_sha256": "62fa7189cf6ebfb103de21a80c74c5808e13e03c1119d3b66f2759f833f9ecd6",
+    "preflight_status": "READY_LOCAL_FREEZE",
+    "preflight_blockers": 0,
+    "preflight_sha256": "5e0b5313e3df7a934924499e0092b09ac373d0978e93e4f08b14b90d67f1edd7"
+  },
+  "artifact_set": {
+    "artifact_count": 6,
+    "all_name_size_sha256_bindings": "PASS",
+    "descriptor_set_sha256": "85dc98079544392d82eacec45d1be99608664584422982eab8105d39b514992b",
+    "artifacts": [
+      {
+        "name": "pokrov-android-arm64-v8a.apk",
+        "size_bytes": 101366934,
+        "sha256": "b583205db9e197c6de873264821319ef1108a2786f1ee5466501712568147296"
+      },
+      {
+        "name": "pokrov-android-armeabi-v7a.apk",
+        "size_bytes": 90779172,
+        "sha256": "6a1140109c55f79a30c94bb29caa5fa541953cf1c2f2c4ac14795dc2dd9ee408"
+      },
+      {
+        "name": "pokrov-android-market.aab",
+        "size_bytes": 126269864,
+        "sha256": "676ee2b1f5480d0bd66e58662399b758466ad1472862db5c87a145d2d44e05c1"
+      },
+      {
+        "name": "pokrov-android-universal.apk",
+        "size_bytes": 295370385,
+        "sha256": "3e3e27eb48f4351b9f8bf3f6bd386faf05ae058322de29ee8b3c94d53ef996d6"
+      },
+      {
+        "name": "pokrov-android-x86_64.apk",
+        "size_bytes": 109952213,
+        "sha256": "3d95d82d8290150fadd13600b79eca26326792407532f571909d8df224df6fa4"
+      },
+      {
+        "name": "pokrov-windows-setup-x64.exe",
+        "size_bytes": 28931862,
+        "sha256": "18a0b4293930959b31dfb41df55b94caad87ce2d574b4dfa2d12832e80307643"
+      }
+    ],
+    "android_signing": "TRUSTED_PRODUCTION_CERTIFICATE",
+    "windows_signing": "SKIPPED_BY_OWNER",
+    "windows_exception_code": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0"
+  },
+  "supply_chain": {
+    "validator_status": "PASS",
+    "validator_report_sha256": "56396f64812614bfab961e9c7bec795b6abde2be97bd503a5aff20325e7ea6c2",
+    "release_handoff_sha256": "06e94a9f6a8821e41f7acb36eed33dbb09da8ba39b9e4fcdef6feac42861e831",
+    "sbom_format": "CycloneDX 1.5 JSON",
+    "sbom_component_count": 349,
+    "sbom_sha256": "5951587d47aecb0719839ad9f3c169da038f79d649b9ab4083c5b6a5e6e4633e",
+    "provenance_format": "in-toto Statement v1 / SLSA provenance v1",
+    "provenance_subject_count": 6,
+    "provenance_sha256": "8cddf4ea90d1a30f71068d027bb78462a5f5008e0a42ebb56647587b1a12f876",
+    "support_signing_sha256": "c738296f2c49445d4380a6a17536942863f5fa729a8783a8a65f71097d6a495e",
+    "stale_flutter_displaymode_removed": true,
+    "exact_core_android_aar_sha256": "ce82f54b073645fbd7ea0cc7ba576597456627cb5d0c7d80926afaa1dba154dd",
+    "exact_core_windows_dll_sha256": "53b5e82a9c7bc20055c0889a1c8fabb5137f52ad09d38b23cf86477184474652"
+  },
+  "windows_bundle": {
+    "runtime_manifest_sha256": "8facd602fb8eacb7077aa7ca122a261028526cf2871a7bf5ccda1af6e3b331f2",
+    "required_files_passed": 8,
+    "required_files_total": 8,
+    "installer_manifest_binding": "PASS",
+    "live_install_test": "NOT_RUN_NO_ISOLATED_WINDOWS_HOST"
+  },
+  "source_contract": {
+    "repository": "Kiwunaka/pokrov",
+    "pull_request": 15,
+    "pull_request_head": "5a85fa30de197ba2df5d07a31ea887e7ef7f7faa",
+    "main_merge_commit": "f6917c8264015aee72fe51126943b08191e85b07",
+    "source_contract_check_run": 33256936721,
+    "source_contract_check": "PASS",
+    "owner_policy": "OWNER_SOLO_EXCEPTION",
+    "independent_review_performed": false,
+    "branch_protection_claimed": false
+  },
+  "dispatch": {
+    "workflow": "Prepare signed candidate manifest",
+    "run": 33256988566,
+    "job": 99112353886,
+    "result": "SUCCESS",
+    "head_sha": "f6917c8264015aee72fe51126943b08191e85b07",
+    "template_path": "candidate-inputs/1.2.0/pokrov-1.2.0-candidate.7.json",
+    "template_sha256": "1d35fb07a0b77b4d6fc847c9a0ee7a3aff1e6331263ca88df3228efcb9a1a3ba",
+    "private_key_read_or_exported": false
+  },
+  "actions_artifact": {
+    "id": 9716103932,
+    "name": "pokrov-pokrov-1.2.0-candidate.7-signed-manifest-f6917c8264015aee72fe51126943b08191e85b07",
+    "archive_size_bytes": 7953,
+    "archive_digest": "sha256:bb924c00a31bd2ddd8869fb51be04017bac61bdf5eaa02b1d7bc8f4fcb90032c",
+    "created_at": "2026-08-29T14:12:57Z",
+    "expires_at": "2026-09-12T14:12:56Z",
+    "expired": false,
+    "download_readback": "PASS"
+  },
+  "outputs": [
+    {
+      "path": "actions-artifact/release-index.json",
+      "size_bytes": 6883,
+      "sha256": "fb1d7049deaf3047456377e675c45a2177c76c51f8792703886ca2bcca5490ce"
+    },
+    {
+      "path": "actions-artifact/release-index.json.sig",
+      "size_bytes": 64,
+      "sha256": "2b20ed7881c36f72b0777aa8c2a571e192895df15eb598165d5e93ae68418abf"
+    },
+    {
+      "path": "actions-artifact/signing-receipt.json",
+      "size_bytes": 588,
+      "sha256": "ff93d33bf0ef4b0e1b036ee1be5b83f769791295d0e1cfcde0a1f854b2799b04"
+    }
+  ],
+  "independent_validation": {
+    "status": "READY_SIGNED_MANIFEST",
+    "signing_key_id": "pokrov-release-2026-01",
+    "artifact_count": 6,
+    "owner_unsigned_windows_exception_count": 1,
+    "owner_unsigned_windows_artifact": "pokrov-windows-setup-x64.exe",
+    "release_index_commit": "f6917c8264015aee72fe51126943b08191e85b07",
+    "receipt_matches_outputs": true,
+    "detached_signature_verified_with_public_keyring": true,
+    "promotion_authorized": false
+  },
+  "receipt_record": {
+    "pull_request": 16,
+    "source_contract_check_run": 33257072685,
+    "source_contract_check": "PASS",
+    "main_merge_commit": "9e5b7bd3be3b8468e733bb30da829c7f91f6235a"
+  },
+  "manual_gate_summary": {
+    "required_non_pass": 10,
+    "physical_android": "MANUAL_OWNER_TEST",
+    "ldplayer": "NOT_REBOUND_TO_CANDIDATE7",
+    "windows_clean_host": "MANUAL_OWNER_TEST",
+    "ru_origin_pi4": "SSH_TARGET_REQUIRED_NOT_RUN",
+    "gate_f": "NOT_REGENERATED_FOR_CANDIDATE7"
+  },
+  "required_runtime_and_promotion_evidence_absent": [
+    "CANDIDATE7_ANDROID_AWG2_AWG31_WARP_PER_APP_OEM_LEAK_MATRIX",
+    "CANDIDATE7_WINDOWS_CLEAN_HOST_INSTALL_SERVICE_TUN_DNS_EGRESS_RECOVERY_UNINSTALL",
+    "SMART_DNS_LIVE_OWNED_RESOLVER_ACCESS_ATTRIBUTION_LEAK_ROLLBACK",
+    "CANDIDATE7_CURRENT_BRAIN_RU_ORIGIN_AND_GATE_F_DECISION",
+    "PROVIDER_OPERATOR_LEGAL_AND_COMPARABLE_DEVICE_GATES",
+    "PUBLIC_V1_2_0_GITHUB_RELEASE_AND_SIX_PUBLIC_ASSETS",
+    "SAME_BYTE_STABLE_PROMOTION_AND_ROLLBACK",
+    "POST_PROMOTION_HEALTH"
+  ],
+  "evidence_ceiling": "SIGNED_CANDIDATE7_ACTIONS_ARTIFACT_ONLY_SUPPLY_CHAIN_PASS_NO_EXACT_RUNTIME_GATE_NO_PUBLIC_V1_2_0_NO_STABLE_PROMOTION"
+}

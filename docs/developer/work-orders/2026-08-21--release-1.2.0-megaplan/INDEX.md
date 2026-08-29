@@ -37,6 +37,13 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | AWG2/AWG3.1 and bounded base HY2 source labs are locally proved and default-off. Candidate.5's exact physical AWG failures remain immutable history. WO-013AY/013AZ add bounded diagnostics and the Core bind correction; WO-013BA proves direct pinned-peer local interoperability. WO-013BB fixes the owned-node reply route without changing cryptography, WO-013BC binds byte-reproducible Android/Windows artifacts, and WO-013BD separates working transport from the common Android endpoint DNS failure. WO-013BE corrects the AWG endpoint's default-resolver boundary in Core `a45d69e...`; exact production-signed build 4046 passes AWG2 and AWG3.1 selected-endpoint green state on LDPlayer and physical Beeline. WO-013BF packages the same exact Windows DLL into setup `81268d7e...` with an `8/8` manifest readback. WO-013BG records an LDPlayer WARP/control pair blocked by the shared emulator egress boundary and a partial physical host-lifecycle pass without promoting WARP proof. WO-013BH proves a portable immutable Smart-DNS bundle and all-seven active-node no-mutation PLAN matrix. WO-013BI rejects an intermediate false spare-address lead and proves with strict report-v3 parsing that `de` has exact binds on both globally routable addresses while the other six nodes use wildcard/dual-stack binds; no safe zero-purchase deploy target exists without a separate guarded migration. WO-013BJ binds the canonical ChatGPT/OpenAI, Gemini and Xbox policy to server exact/child DoH behavior and the client routing copy as source-only proof. WO-013BK binds those source changes and the corrected AWG Core into signed candidate.6. WO-013BV adds the post-candidate zero-purchase shared-443 source path: strict loopback PROXY v2 plus validated HAProxy exact/child-SNI rendering, while leaving the current installer dedicated-only and every live frontend unchanged. WO-013BW closes the separate frontend-operation source gap with exact receipt/CAS-bound PLAN/APPLY/ROLLBACK and a corrected all-seven no-mutation PLAN; RU and RU-SPB render valid candidates but both lack the required fronted Smart-DNS backend, so neither is selected. WO-013BX closes the matching guarded fronted-server installer source gap and proves no-mutation install PLAN readiness on RU and RU-SPB; runtime material remains absent, RU is only a proposed canary, and SPB/Brain remain unselected. WO-013BL's post-signing LDPlayer AWG2/AWG3.1/default comparison reaches the same egress boundary for all three and is classified as an emulator-origin block, not a protocol PASS or FAIL. WO-013BP adds exact-candidate selected/excluded-app config, force-stop cleanup and WARP endpoint/TUN materialization on LDPlayer, with the same origin block and clean restore. WO-013BQ proves the IPv4-only Android TUN structurally blocks unconfigured IPv6 on the exact candidate.6 LDPlayer path without claiming an external leak PASS. Phase 10 remains `I3`, not `I4`, because physical candidate.6 and Windows live parity plus required origins are open. HY2 remains undeployed. Smart-DNS runtime material/deploy, live service access, attribution, leak/runtime-rollback/origin proof remain open. Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AU`, `WO-013AX`, `WO-013AY`, `WO-013AZ`, `WO-013BA`, `WO-013BB`, `WO-013BC`, `WO-013BD`, `WO-013BE`, `WO-013BF`, `WO-013BG`, `WO-013BH`, `WO-013BI`, `WO-013BJ`, `WO-013BK`, `WO-013BL`, `WO-013BP`, `WO-013BQ`, `WO-013BV`, `WO-013BW`, `WO-013BX` |
 | 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Signed `pokrov-1.2.0-candidate.5` remains immutable rejected history. WO-013BK creates signed `pokrov-1.2.0-candidate.6` from exact platform/client/Core sources after a `15/15` local source gate, binds six artifacts, strict-v2 handoff, SBOM/provenance and the owner-approved unsigned Windows exception, and verifies the trusted detached signature. WO-013BL runs the first digest-bound candidate.6 Gate F at `2/19 PASS`. WO-013BM adds exact current-origin health/catalog PASS and the historical access-blocked Brain result, then validates Gate F at `3/19 PASS`. WO-013BN repeats the exact candidate.6 isolated portal/client rollback byte-identically but retains runtime rollback as a manual Gate F row. WO-013BO corrects PB-14's false historical build identity and proves a local candidate.6 build-4046 promotion stop/rollback request without changing candidate bytes or advancing Gate F. WO-013BP proves exact candidate.6 LDPlayer per-app config, WARP materialization and process-stop cleanup but explicitly does not replace physical Android evidence. WO-013BQ narrows the Android IPv6 leak risk to a structural family-block PASS while retaining the external and physical leak rows as non-PASS. WO-013BR corrects the SSH-config harness blind spot, proves exact Brain source `197/197`, readiness `23/23` and enabled delivery `7/7`, then regenerates Gate F at `BLOCKED`: `4/19 PASS`, `15/19 non-PASS`, `0 FAIL`, zero validation errors. WO-013BS proves the canonical RU sandbox is key-reachable and NTP-synchronized but the exact RU runner/uploader contour is not installed. WO-013BU corrects the dependency map to `10/10`, binds a byte-reproducible candidate.6 source/unit bundle and proves a guarded key-plus-`sudo -n` install PLAN with `0/14` occupied targets, but runtime material, install, run/upload/heartbeat/readback remain absent; RU stays `MANUAL_OWNER_TEST_ENVIRONMENT_NOT_INSTALLED` and Gate F stays `4/15/0`. Exact candidate.6 ARM64 install identity is retained for the phone, but its runtime matrix remains unexecuted and ADB still sees only the emulator. Windows live app/service/TUN/DNS/AWG parity, the remaining physical Android AWG/WARP/per-app/OEM/lifecycle/leak/endurance matrix, Smart-DNS fronted server install/access/attribution/runtime rollback, RU-origin execution/readback, provider, Operator, legal, comparable-device/post-public-promotion and other manual rows remain open. Platform/client hosted access stops remain non-PASS under the no-purchase owner-solo policy. No tag, public `v1.2.0`, store object, stable switch or promotion occurred | `WO-013`, `WO-013AU`, `WO-013AV`, `WO-013AW`, `WO-013AX`, `WO-013AY`, `WO-013AZ`, `WO-013BA`, `WO-013BB`, `WO-013BC`, `WO-013BD`, `WO-013BE`, `WO-013BF`, `WO-013BG`, `WO-013BH`, `WO-013BI`, `WO-013BJ`, `WO-013BK`, `WO-013BL`, `WO-013BM`, `WO-013BN`, `WO-013BO`, `WO-013BP`, `WO-013BQ`, `WO-013BR`, `WO-013BS`, `WO-013BU` |
 
+Active Phase 10/11 supersession: WO-013BY creates signed private candidate.7
+from platform `af259f3...` with the same exact client/Core build `4046` bytes,
+corrected SBOM/provenance and a passing fail-closed supply-chain validator.
+Candidate.6 and its `4 PASS / 15 non-PASS` Gate F remain immutable history;
+candidate.7 device/origin/manual evidence and its first Gate F are still open.
+No phase or ledger item advances to `I4`.
+
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
 ## Queue
@@ -164,6 +171,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013BV` | Prove a no-purchase shared-443 Smart DNS source path without migrating a live frontend | Post-candidate Smart DNS source/artifact evidence | Strict loopback PROXY v2 restores original source addresses; validated HAProxy exact/child-SNI and `send-proxy-v2` rendering pass. Two inactive bundles are byte-identical. Current installer remains dedicated-only; no frontend/Brain target, remote PLAN, mutation, live access or candidate claim exists | `WO-013BI`, `WO-013BJ`, post-candidate platform source; guarded frontend migration/rollback and successor candidate still required |
 | `WO-013BW` | Implement the guarded shared-443 frontend operation and run the corrected all-node PLAN | Post-candidate Smart DNS frontend source/PLAN evidence | Receipt/CAS-bound PLAN/APPLY/ROLLBACK source, exact previous unit and `28` focused tests pass. Read-only PLAN exits zero on all seven nodes with no mutation: five are not applicable; RU and RU-SPB render valid candidates but lack the active fronted backend. No target, deploy or access claim exists | `WO-013BV`, post-candidate platform source; fronted server install/runtime material, explicit target/APPLY and successor candidate still required |
 | `WO-013BX` | Add guarded fronted server install mode and prove the exact immutable artifact with RU install PLANs | Post-candidate Smart DNS server source/artifact/PLAN evidence | Fronted mode is exact loopback TCP/18443 plus PROXY v2 and UFW-neutral receipt-bound rollback. `49` focused tests, Go/Ruff/parity, two byte-identical bundles and a zero-finding ten-surface security scan pass. Read-only PLAN on RU and RU-SPB reports free backend listener, absent runtime material and zero mutation; RU is proposed but not selected, SPB/Brain remain unselected. Pi 4 is a later terminal ARM64/RU-origin probe, not compatible with the current amd64 bundle | `WO-013BW`, exact post-candidate platform source; trusted Pi SSH target, runtime material, separately authorized server/frontend APPLY and successor candidate still required |
+| `WO-013BY` | Correct the full-product supply-chain evidence and sign candidate.7 without rebuilding unchanged binaries | Cross-repository candidate/source/signing evidence | Exact tuple `af259f3.../b2497af.../a45d69e...` passes `15/15`; fail-closed validation passes `6/6` artifacts and `8/8` Windows runtime files with a corrected 349-component SBOM and six-subject provenance. Release-index PRs `15/16` and signer run `33256988566` pass; public-key readback returns `READY_SIGNED_MANIFEST`. Exact candidate.7 runtime and Gate F remain open; no public/stable mutation | `WO-013BX`, exact candidate.7 metadata and same-byte artifact set; returned physical phone, LDPlayer, isolated Windows host and trusted Pi SSH target still required |
 
 ## Current evidence
 
@@ -201,6 +209,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `WO-013BV-smart-dns-shared-443-fronted-source-proof.md`
 - `WO-013BW-smart-dns-frontend-migration-plan.md`
 - `WO-013BX-smart-dns-fronted-server-install-plan.md`
+- `WO-013BY-candidate7-corrected-supply-chain-and-signing.md`
 
   Together these work orders bind the signed candidate.5 artifact set and
   hosted signature, exact
@@ -284,6 +293,10 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013BK-candidate6-signed-assembly/013BK-candidate6-signed-assembly.json`
   binds the exact source/artifact tuple, local gate, hosted signature, exact
   phone install identity and remaining runtime/promotion evidence ceiling.
+- `evidence/013BY-candidate7-corrected-supply-chain-and-signing/013BY-candidate7-corrected-supply-chain-and-signing.json`
+  binds the final candidate.7 source tuple, same-byte six-artifact set,
+  corrected offline supply-chain PASS, hosted signature/receipt and explicit
+  device/origin/promotion evidence ceiling.
 - `evidence/013BL-candidate6-gate-f/013BL-candidate6-gate-f-decision.json`
   binds the exact signed candidate identity, all 19 evidence pointers and the
   current `BLOCKED` decision; the adjacent evidence files retain the sanitized
@@ -620,7 +633,13 @@ until a compatible resolver and live access/leak/rollback evidence exist.
 Windows SmartScreen remains the owner-approved unsigned direct-beta
 limitation.
 
-## Current next action — validate candidate.6
+## Current next action — validate candidate.7
+
+WO-013BY is the active candidate authority. It signs the same six build
+`1.2.0+4046` bytes against final platform `af259f3...` and corrected
+SBOM/provenance. Candidate.6 remains signed immutable history, including its
+last `4 PASS / 15 non-PASS` Gate F result; none of that runtime/origin evidence
+is silently transferred to candidate.7.
 
 WO-013AU remains the signed candidate.5 authority, WO-013AV remains its frozen
 digest-bound Gate F authority, and WO-013AX remains its later mandatory AWG
@@ -696,13 +715,14 @@ endpoint/TUN formation on that same emulator, again ending at the common
 origin block and restoring default/WARP-off/no-material state. WO-013BQ then
 confirms that the exact IPv4-only TUN has no IPv6 lane and, without an
 `allowFamily` call, follows Android's fail-closed family contract. The exact
-candidate.6 ARM64 package identity remains retained for the physical phone,
-but its runtime matrix is unexecuted and the device was absent at the final
-WO-013BP readback. The next transport slice remains physical Android AWG2/AWG3.1 plus
+candidate.6 ARM64 package identity remains retained as historical phone
+evidence, while candidate.7 uses the same byte and requires a new
+candidate-bound runtime record. The next transport slice is exact candidate.7
+physical Android AWG2/AWG3.1 plus
 WARP/per-app/network-change/OEM/lifecycle/leak, and live Windows app/service/
 TUN parity for AWG2 and AWG3.1 with DNS/egress/leak and cleanup readback on an
 isolated host. Complete compatible Smart DNS access/attribution proof when a
-safe endpoint exists. Regenerate candidate.6 Gate F after the next new exact evidence;
+safe endpoint exists. Generate candidate.7 Gate F after the next new exact evidence;
 do not transfer pre-candidate proof into `I4`. Do not
 spend the lane on SPB beyond bounded evidence. HY2 remains default-off and
 follows the existing kill-switch/material/install guards.
