@@ -31,6 +31,13 @@ E:\path\to\go.exe test ./...
 E:\path\to\go.exe build ./cmd/pokrov-smart-dns
 ```
 
+The bundle builder canonicalizes every packaged text member as UTF-8 with LF
+line endings. Windows CRLF checkouts therefore produce the same policy digest
+and archive bytes as Linux checkouts. UTF-8 BOMs, undecodable bytes and lone
+carriage returns fail closed instead of entering the signed supply chain. The
+cross-repository policy-parity checker applies the same canonicalization before
+byte comparison and reports that same canonical digest.
+
 `config.template.json` is not a runtime file. Render its placeholders outside
 Git into `/etc/pokrov-smart-dns/config.json`, retain it with owner/group-only
 permissions, and validate it with `-check` before any separately authorized

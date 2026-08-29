@@ -24,6 +24,18 @@ def test_matching_bytes_pass(tmp_path: Path) -> None:
     assert len(digest) == 64
 
 
+def test_lf_and_windows_crlf_share_canonical_digest(tmp_path: Path) -> None:
+    platform = tmp_path / "platform.json"
+    client = tmp_path / "client.json"
+    lf = MODULE.PLATFORM_POLICY.read_bytes().replace(b"\r\n", b"\n")
+    platform.write_bytes(lf)
+    client.write_bytes(lf.replace(b"\n", b"\r\n"))
+
+    digest = MODULE.check_policy_parity(platform, client)
+
+    assert digest == MODULE.hashlib.sha256(lf).hexdigest()
+
+
 def test_semantic_or_byte_drift_fails_closed(tmp_path: Path) -> None:
     platform = tmp_path / "platform.json"
     client = tmp_path / "client.json"
@@ -44,3 +56,23 @@ def test_semantic_or_byte_drift_fails_closed(tmp_path: Path) -> None:
     )
     with pytest.raises(MODULE.PolicyParityError, match="documents differ"):
         MODULE.check_policy_parity(platform, client)
+
+
+@pytest.mark.parametrize(
+    ("payload", "error"),
+    [
+        (b"{\r}\n", "lone carriage return"),
+        (b"\xef\xbb\xbf{}\n", "BOM forbidden"),
+        (b"\xff\xfe", "must be UTF-8"),
+    ],
+)
+def test_noncanonical_policy_bytes_fail_closed(
+    tmp_path: Path,
+    payload: bytes,
+    error: str,
+) -> None:
+    policy = tmp_path / "policy.json"
+    policy.write_bytes(payload)
+
+    with pytest.raises(MODULE.PolicyParityError, match=error):
+        MODULE._load_policy(policy)

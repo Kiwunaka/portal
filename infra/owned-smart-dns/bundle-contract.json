@@ -1,6 +1,7 @@
 {
   "schema_version": "pokrov-owned-smart-dns-server-bundle-v1",
   "state": "source_only_default_off",
+  "source_text_normalization": "utf8_crlf_to_lf",
   "policy_schema": "pokrov-smart-dns-policy-v1",
   "policy_sha256": "b6977f6f6a5ee48898116820d1db252b5b670cb7b86959c78f7bdbc7de90e0fa",
   "engine": {

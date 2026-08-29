@@ -48,6 +48,20 @@ def _canonical_json(value: Mapping[str, Any]) -> bytes:
     return (json.dumps(dict(value), ensure_ascii=True, indent=2, sort_keys=True) + "\n").encode("utf-8")
 
 
+def _canonical_text_member(path: Path) -> bytes:
+    raw = path.read_bytes()
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raise SmartDNSBundleError("bundle_text_member_utf8_bom_forbidden")
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise SmartDNSBundleError("bundle_text_member_not_utf8") from exc
+    normalized = text.replace("\r\n", "\n")
+    if "\r" in normalized:
+        raise SmartDNSBundleError("bundle_text_member_lone_cr_forbidden")
+    return normalized.encode("utf-8")
+
+
 def _run(command: list[str], *, cwd: Path, env: Mapping[str, str] | None = None) -> str:
     result = subprocess.run(
         command,
@@ -158,13 +172,14 @@ def _zip_timestamp(source_epoch: int) -> tuple[int, int, int, int, int, int]:
 
 
 def _manifest(*, binary: bytes, provenance: Mapping[str, Any]) -> tuple[dict[str, Any], dict[str, bytes]]:
-    members = {name: path.read_bytes() for name, path in STATIC_MEMBERS.items()}
+    members = {name: _canonical_text_member(path) for name, path in STATIC_MEMBERS.items()}
     members[BINARY_MEMBER] = binary
     contract = json.loads(members["contract/bundle-contract.json"])
     policy_digest = _sha256(members["share/smart-dns-policy.v1.json"])
     if (
         contract.get("schema_version") != BUNDLE_SCHEMA
         or contract.get("state") != "source_only_default_off"
+        or contract.get("source_text_normalization") != "utf8_crlf_to_lf"
         or contract.get("policy_sha256") != policy_digest
         or (contract.get("runtime") or {}).get("recursive_dns") is not False
         or (contract.get("runtime") or {}).get("enabled_by_default") is not False

@@ -19,18 +19,32 @@ class PolicyParityError(ValueError):
     pass
 
 
+def _canonical_policy_bytes(raw: bytes, *, path: Path) -> bytes:
+    if raw.startswith(b"\xef\xbb\xbf"):
+        raise PolicyParityError(f"policy UTF-8 BOM forbidden: {path}")
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise PolicyParityError(f"policy must be UTF-8: {path}") from exc
+    normalized = text.replace("\r\n", "\n")
+    if "\r" in normalized:
+        raise PolicyParityError(f"policy contains lone carriage return: {path}")
+    return normalized.encode("utf-8")
+
+
 def _load_policy(path: Path) -> tuple[bytes, dict[str, Any]]:
     try:
         raw = path.read_bytes()
     except OSError as exc:
         raise PolicyParityError(f"policy file unavailable: {path}") from exc
+    canonical = _canonical_policy_bytes(raw, path=path)
     try:
-        document = json.loads(raw)
+        document = json.loads(canonical)
     except json.JSONDecodeError as exc:
         raise PolicyParityError(f"policy JSON invalid: {path}") from exc
     if not isinstance(document, dict):
         raise PolicyParityError(f"policy root must be an object: {path}")
-    return raw, document
+    return canonical, document
 
 
 def check_policy_parity(platform_policy: Path, client_policy: Path) -> str:

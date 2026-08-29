@@ -54,3 +54,30 @@ def test_tampered_member_fails_closed(tmp_path: Path) -> None:
             output.writestr(replacement, content, compress_type=ZIP_DEFLATED)
     with pytest.raises(MODULE.SmartDNSBundleError, match="digest_mismatch"):
         MODULE.verify_bundle(target)
+
+
+def test_text_members_canonicalize_windows_crlf(tmp_path: Path) -> None:
+    source = tmp_path / "member.json"
+    source.write_bytes(b'{\r\n  "state": "safe"\r\n}\r\n')
+
+    assert MODULE._canonical_text_member(source) == b'{\n  "state": "safe"\n}\n'
+
+
+@pytest.mark.parametrize(
+    ("payload", "error"),
+    [
+        (b"unsafe\rlone-cr\n", "lone_cr"),
+        (b"\xef\xbb\xbf{}\n", "utf8_bom"),
+        (b"\xff\xfe", "not_utf8"),
+    ],
+)
+def test_text_members_reject_noncanonical_bytes(
+    tmp_path: Path,
+    payload: bytes,
+    error: str,
+) -> None:
+    source = tmp_path / "member.txt"
+    source.write_bytes(payload)
+
+    with pytest.raises(MODULE.SmartDNSBundleError, match=error):
+        MODULE._canonical_text_member(source)
