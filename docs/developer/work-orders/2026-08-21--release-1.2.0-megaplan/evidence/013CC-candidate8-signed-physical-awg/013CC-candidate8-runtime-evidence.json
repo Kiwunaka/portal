@@ -1,0 +1,175 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate8-runtime-evidence/v1",
+  "recorded_at_utc": "2026-08-29T18:30:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.8",
+    "operational_id": "eeedbaf8540a83649a7143d6c7097336429e466118ed4f9ca2b732b7e6e2195a",
+    "manifest_sha256": "f0006cec90c84e401e9920d9098102c7f50ab5ace5242e0d7683c3df709a6fbc",
+    "signature_sha256": "5fcae0675ea45e79baf495859fd170661f5d6dd3a8535275acd4d62680d324f6",
+    "receipt_sha256": "4109bb3417b32a780604300055f5308acf7dc810e7ea9c547075e1da41cc21fc",
+    "sources": {
+      "platform": "241a83b4dca00799b39696a4ae0c3c97e087ec39",
+      "client": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "b242e0a3060b04f9b71641a0524bf251a75ce2a8"
+    }
+  },
+  "local_source_gate": {
+    "status": "PASS",
+    "step_count": 15,
+    "pass_count": 15,
+    "client_widget_test_count": 413,
+    "cabinet_e2e_test_count": 69,
+    "report_sha256": "3884c583d547c59ac39cdd82379c0df96a550794fb87aa8ada9da013d338d086",
+    "candidate_proven": false,
+    "promotion_status": "MANUAL_OWNER_TEST",
+    "toolchain_note": "All web checks passed under the declared Node 22.14.0 and npm 11.7.0 toolchain."
+  },
+  "preflight": {
+    "status": "READY_LOCAL_FREEZE",
+    "blocker_count": 0,
+    "exact_platform_revision": "241a83b4dca00799b39696a4ae0c3c97e087ec39",
+    "harness_revision": "0d3c003418500c721e9ab7e02cad7683817f9364",
+    "signed_release_index_is_published_ancestor": true,
+    "report_sha256": "71d0d7a59f7a5a300b1eb3f883102fd48b49bb0031ce3d196e86ec37d71565ca"
+  },
+  "supply_chain": {
+    "status": "PASS",
+    "artifact_count": 6,
+    "windows_runtime_file_count": 8,
+    "release_handoff_sha256": "af98956b4154254b5c210730966dc157969bb9d576568d6cbfe661e6d934ea24",
+    "sbom_sha256": "72d7639294383c929f2fe2c5640ffae0718caca227fee2ebce6fae0574d1c7c3",
+    "provenance_sha256": "9532fe29fb7c246700e4ac9895dd467d8d99e27a69169fa4d43bc7baab52a85c",
+    "windows_manifest_sha256": "93814e564c88cfe9acea7cf53038230f95903b5f3451bb255481232a3bac17da",
+    "validation_report_sha256": "495d7675d9e1d9025b47565d9c1e0b2366d343cbe841c3bdc1a2f73685e126b6"
+  },
+  "artifacts": [
+    {
+      "name": "pokrov-android-universal.apk",
+      "size_bytes": 295370385,
+      "sha256": "cd0f6edea8f362a0b3e1b4db5896bc862157b5ce84549284480f55737875a183",
+      "signing": "PASS"
+    },
+    {
+      "name": "pokrov-android-arm64-v8a.apk",
+      "size_bytes": 101366934,
+      "sha256": "9278c09fd8fa5768d3260cf796b4230db5acb0a092187aae00c441d717cfc572",
+      "signing": "PASS"
+    },
+    {
+      "name": "pokrov-android-armeabi-v7a.apk",
+      "size_bytes": 90779172,
+      "sha256": "0caa4fc7c46e560e7a6239a2bddf9d66e06547bbb65a08209728d16738fd3758",
+      "signing": "PASS"
+    },
+    {
+      "name": "pokrov-android-x86_64.apk",
+      "size_bytes": 109952213,
+      "sha256": "ec07ba17e9a5c697fcf46ccd193970fa3666eeeb3b9e345876aa8ee1d45a2627",
+      "signing": "PASS"
+    },
+    {
+      "name": "pokrov-android-market.aab",
+      "size_bytes": 126269104,
+      "sha256": "719f76d9cd9033e871c4422842a85f015c2428446301b097cb53b9250e1b40e2",
+      "signing": "PASS"
+    },
+    {
+      "name": "pokrov-windows-setup-x64.exe",
+      "size_bytes": 28929376,
+      "sha256": "26ec26d8989d61415f07cbf9707f336ebba0b947fa4ba0ee93d3078fa3984668",
+      "signing": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_DIRECT_BETA_ONLY"
+    }
+  ],
+  "release_index_signing": {
+    "source_contract_run": 33267112810,
+    "signer_run": 33267152760,
+    "receipt_source_run": 33267250415,
+    "all_release_index_action_steps_passed": true,
+    "signing_key_id": "pokrov-release-2026-01",
+    "manifest_sha256": "f0006cec90c84e401e9920d9098102c7f50ab5ace5242e0d7683c3df709a6fbc",
+    "signature_sha256": "5fcae0675ea45e79baf495859fd170661f5d6dd3a8535275acd4d62680d324f6",
+    "receipt_sha256": "4109bb3417b32a780604300055f5308acf7dc810e7ea9c547075e1da41cc21fc",
+    "receipt_main_revision": "b9945274bccdca48f32ef09e43b854c37a8dae66",
+    "promotion_authorized": false
+  },
+  "current_origin": {
+    "status": "PASS",
+    "source_revision": "241a83b4dca00799b39696a4ae0c3c97e087ec39",
+    "network_profile": "current-workstation-direct-ethernet",
+    "health": {
+      "samples": 50,
+      "warmups": 5,
+      "p95_ms": 66.9959,
+      "budget_ms": 100,
+      "report_sha256": "154c5ceb5d6370f5310060756bd11ac7f8b0f46140273a022738849f7fccef38",
+      "gate_sha256": "1b4582b26d265c8c8ae5ddd2389f488103904aee0c4b4be5db9604a5e5890c18"
+    },
+    "public_catalog": {
+      "samples": 50,
+      "warmups": 5,
+      "p95_ms": 68.7012,
+      "budget_ms": 200,
+      "report_sha256": "59a1a30faeb43e87aa661c6016517e6b6dc69d65c0712c0623457a561380b6f5",
+      "gate_sha256": "9021ffa8011b12f837c10d41b5bb19ba4d1aa9c3922966268c2d082d04f02a45"
+    },
+    "runtime_mutated": false
+  },
+  "brain_origin": {
+    "status": "NOT_RUN",
+    "reason": "Exact platform revision is not deployed; candidate.7 Brain evidence was not transferred."
+  },
+  "ru_origin": {
+    "status": "NOT_RUN",
+    "carried_pi_baseline": "PASS_BASELINE_ONLY",
+    "carried_evidence_sha256": "c6527e4d29e2076b662ffa8fbde381fe7080b1a2f8b917aa1e9a4471d9e23269",
+    "exact_candidate_client_executed_from_ru": false,
+    "smart_dns_runtime_deployed": false
+  },
+  "android_physical": {
+    "bounded_slice_status": "PASS",
+    "environment": "physical_android_beeline_mobile_warp_off",
+    "exact_arm64_artifact_match": true,
+    "ordinary_control": "PASS_NOTIFICATION_CONNECTING_THEN_CONNECTED_AFTER_EGRESS",
+    "awg2_lab": "PASS",
+    "awg31_lab": "PASS",
+    "awg31_variant": "randomized_trailers_mobile_safe_v2",
+    "custom_cryptography": false,
+    "core_interop_awg2": "PASS",
+    "core_interop_awg31": "PASS",
+    "consolidated_evidence_sha256": "0d38d8c418940b27f740691d6bd00a29545b753160c457f02e25b0ef642a5fea",
+    "remaining_manual_matrix": [
+      "WARP runtime",
+      "per-app routing",
+      "Private DNS interaction",
+      "IPv6 and leak matrix",
+      "OEM/Doze lifecycle and endurance"
+    ],
+    "final_restore": {
+      "selected_profile": "default",
+      "resolved_profile": "legacy_reality_fallback",
+      "lab_material_provisioned": false,
+      "lab_allowlist_identity_present": false,
+      "vpn_service_running": false,
+      "warp_enabled": false
+    }
+  },
+  "windows": {
+    "local_release_script": "PASS",
+    "authenticode": "NotSigned",
+    "owner_exception": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_DIRECT_BETA_ONLY",
+    "isolated_clean_host_live_matrix": "NOT_RUN",
+    "store_or_trusted_signing_claimed": false
+  },
+  "mutation_boundary": {
+    "physical_device_used": true,
+    "device_serial_retained": false,
+    "raw_runtime_material_retained": false,
+    "production_deploy": false,
+    "public_release": false,
+    "store_submission": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "SIGNED_CANDIDATE8_LOCAL_SOURCE_AND_SUPPLY_PASS; CURRENT_ORIGIN_PASS; PHYSICAL_ANDROID_ORDINARY_AWG2_AWG31_EGRESS_PASS; FINAL_RESTORE_PASS; WINDOWS_LOCAL_UNSIGNED_ONLY; BRAIN_EXACT_RU_SMART_DNS_AND_REMAINING_DEVICE_MATRICES_OPEN; NO_PUBLIC_PROMOTION"
+}

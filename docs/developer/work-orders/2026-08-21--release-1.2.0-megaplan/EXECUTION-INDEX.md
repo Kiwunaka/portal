@@ -2,6 +2,46 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013CC candidate.8 signed, physical AWG and Gate F
+
+Exact platform/client/Core tuple
+`241a83b.../3459438.../a45d69e...` produces six new build `1.2.0+4046`
+artifacts. The local source gate passes `15/15`; the offline supply-chain
+validator passes all six artifacts and all eight Windows runtime files. The
+349-component CycloneDX SBOM, six-subject SLSA provenance and strict-v2
+handoff bind the exact tuple. Android artifacts carry the retained production
+certificate. The Windows installer remains `NotSigned` under the owner's
+direct-beta SmartScreen exception and has no trusted/Store/stable claim.
+
+Public release-index runs `33267112810`, `33267152760` and `33267250415`
+pass their real source, signing and receipt steps. Manifest/signature/receipt
+hashes are `f0006cec...a6fbc`, `5fcae067...24f6` and
+`4109bb34...1fc`. The signed source `b242e0a...` is a proven published
+ancestor of receipt-bearing main `b994527...`; the clean preflight harness
+fix accepts only that Git ancestry and returns `READY_LOCAL_FREEZE` with zero
+blockers. Private platform/client hosted runs remain zero-step billing blocks,
+not PASS, under the owner's no-purchase solo exception.
+
+Fresh exact-source current-origin health and catalog measurements pass at
+`66.9959 ms` and `68.7012 ms` p95. The exact ARM64 APK is installed and
+hash-matched on physical Android over Beeline. Ordinary control proves the
+notification transitions through connecting before connected egress truth.
+AWG2 and `randomized_trailers_mobile_safe_v2` AWG3.1 both reach app-confirmed
+tunnel, DNS and authenticated egress, and both pass independent Core interop.
+AWG3.1 retains official pinned cryptography and uses no custom cryptography.
+Cleanup restores `default` / `legacy_reality_fallback`, removes lab material
+and membership, stops VPN and leaves WARP off.
+
+Candidate.8 Gate F validates `19/19` pointers and returns `BLOCKED` at
+`4 PASS`, `15 non-PASS`, `0 FAIL`, zero validation errors. The exact Brain and
+RU rows are `NOT_RUN`; the carried Pi trace remains baseline-only. Isolated
+Windows, Android WARP/per-app/Private-DNS/IPv6-leak/OEM/endurance, live Smart
+DNS, provider, Operator, legal and release-health evidence remain open. No
+ledger level advances: original 377 rows remain `I4=4`, `I3=316`, `I2=21`,
+`I1=36`, `I0=0`; including the derived Smart-DNS row, 321 of 378 are at or
+above `I3`. No public release, store object, stable pointer or Gate G
+authorization occurred.
+
 ## 2026-08-29 — WO-013CB candidate.7 owned AWG mobile PMTU correction
 
 WO-013CA's fail-first result was traced to server reply-source policy, a
