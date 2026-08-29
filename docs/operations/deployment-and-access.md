@@ -981,6 +981,7 @@ Retained evidence: [Paid Checkout Launch Evidence - 2026-05-15](C:/Users/kiwun/D
 
 - [ru_probe_runner.py](C:/Users/kiwun/Documents/ai/VPN/scripts/ru_probe_runner.py)
 - [build_ru_origin_probe_bundle.py](C:/Users/kiwun/Documents/ai/VPN/scripts/build_ru_origin_probe_bundle.py)
+- [remote_install_ru_origin_probe.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_install_ru_origin_probe.py)
 
 Typical use from the external RU host:
 
@@ -997,6 +998,11 @@ python scripts/render_ru_probe_report.py --input ops-local/ru-probe.json
 inventory/SSH config; адреса, пароли и ключи в документацию или отчёты не
 копируются. Установка, ручной run, upload, heartbeat и admin readback остаются
 отдельными авторизуемыми действиями и доказательствами.
+
+`remote_install_ru_origin_probe.py` без `--apply` выполняет только secret-free
+read-only PLAN. APPLY/ROLLBACK защищены точными confirmations и receipt, а rollback
+никогда не удаляет probe spool. Наличие инструмента или успешный PLAN не является
+доказательством установки либо RU-origin PASS.
 
 ### RF Reserve Note
 
