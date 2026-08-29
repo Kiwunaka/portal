@@ -2,6 +2,30 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BK signed candidate.6 assembly
+
+Exact platform/client/Core tuple `5713324.../b2497af.../a45d69e...` passes the
+local aggregate `15/15` and read-only preflight `READY_LOCAL_FREEZE`. Six
+rebuilt artifacts match their candidate template by name, size and SHA-256;
+the Windows bundle also matches `8/8` required runtime files. Strict-v2
+handoff, CycloneDX SBOM and SLSA provenance are bound without rewriting
+candidate.5.
+
+Release-index PR `13` passed and merged under `OWNER_SOLO_EXCEPTION` as
+`8d09ae5...`. Main-only signer run `33239993242` produced manifest/signature/
+receipt hashes `8aac2458.../2307906a.../85dd3450...`. Independent validation
+returns `READY_SIGNED_MANIFEST`, six artifacts, trusted key
+`pokrov-release-2026-01`, one bounded owner-approved unsigned Windows artifact
+and `promotion_authorized=false`.
+
+The physical phone contains the exact candidate.6 ARM64 APK and reports
+`1.2.0+4046`, but keyguard prevented runtime capture. Candidate.6 therefore
+exists as a signed Actions artifact only; Android AWG/WARP/per-app/OEM/leak,
+clean-host Windows, Smart-DNS live access, origin/manual Gate F and promotion
+proof remain open. `REL-001`, `GATE-F` and `SMARTDNS-01` stay `I3`; `W9-05`
+stays `I1`. No tag, public assets, store object, stable pointer, deploy or
+promotion was created.
+
 ## 2026-08-29 — WO-013BJ Smart DNS AI/gaming contract coverage
 
 Platform `84f16dd...` closes the source-proof gap between the canonical Smart
