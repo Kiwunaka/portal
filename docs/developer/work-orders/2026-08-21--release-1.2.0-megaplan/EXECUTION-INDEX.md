@@ -2,6 +2,27 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BO candidate.6 PB-14 exact build binding
+
+The first candidate.6 PB-14 execution exposed a false-exact harness defect:
+the injected update incident carried historical Android build `4030` while
+signed candidate.6 binds build `4046`. That output is retained only as
+`INVALID_HARDCODED_4030_NOT_RELEASE_EVIDENCE` and never counts as PASS.
+
+The corrected harness derives build identity from required signed
+physical-install evidence after exact ARM64 artifact hash and product-version
+validation. The repeated isolated run binds `4046` on both sides and passes
+signature verification, promotion stop, staged-state preservation and the
+guarded rollback request. Focused regression passes `5/5`; Ruff and compileall
+pass. No candidate bytes or signature changed.
+
+`OBS_PB/PB-14` and `OBS_DOD/DOD-23` remain `I3` with stronger exact
+candidate.6 local evidence. Gate F remains WO-013BM's
+`3 PASS / 16 non-PASS / 0 FAIL` because no live cohort, public promotion,
+external artifact rollback or post-promotion health was exercised. Normalized
+evidence SHA-256 is
+`439cbdc53fc9eec36825535d414af5113bcad5db24b9fa68db9addbacd602266`.
+
 ## 2026-08-29 — WO-013BN candidate.6 isolated rollback rehearsal
 
 Signed candidate.6 passes the isolated real portal/client rollback sequence
