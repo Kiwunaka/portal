@@ -1,0 +1,129 @@
+{
+  "schema_version": "pokrov-wo-013bb-evidence-v1",
+  "captured_at_utc": "2026-08-29T00:10:33Z",
+  "work_order": "WO-013BB",
+  "candidate": null,
+  "candidate_status": "PRE_CANDIDATE_REPLACEMENT_PROOF",
+  "candidate_5_status": "REJECTED_FOR_REPLACEMENT_IMMUTABLE",
+  "exact_sources": {
+    "platform_implementation_commit": "f79974c99adc4f00d6fa31f736d40c2cc10d0ee6",
+    "client_commit": "7a633a83ca6605df9d06b8bf17a7c36240824bbb",
+    "core_commit": "3c2b1147c1b42e39026231525c08558a50bc3d0f"
+  },
+  "android_artifact": {
+    "version": "1.2.0+4046",
+    "abi": "arm64-v8a",
+    "sha256": "930aec975927c1c40a87440f62f67b25295a12920e85876adca297b715426058",
+    "production_certificate_match": true
+  },
+  "origin": {
+    "kind": "physical_android_cellular",
+    "carrier": "beeline",
+    "wifi_disabled_during_protocol_runs": true,
+    "raw_device_identity_retained": false
+  },
+  "root_cause": {
+    "classification": "MULTI_ADDRESS_REPLY_POLICY_ROUTING",
+    "cryptographic_material_alignment_passed": true,
+    "route_selected_source_matches_ingress": false,
+    "late_snat_alone_passed": false,
+    "source_port_policy_route_passed": true,
+    "cryptography_changed": false
+  },
+  "bounded_udp_diagnostics": {
+    "route_selected_reply": {
+      "awg2_lab": {
+        "server_received": "3/3",
+        "phone_received": "0/3"
+      },
+      "awg31_lab": {
+        "server_received": "3/3",
+        "phone_received": "0/3"
+      }
+    },
+    "ingress_pinned_reply": {
+      "awg2_lab": "3/3_BIDIRECTIONAL_PASS",
+      "awg31_lab": "3/3_BIDIRECTIONAL_PASS"
+    },
+    "snat_only_reply": {
+      "awg2_lab": {
+        "server_received": "3/3",
+        "phone_received": "0/3"
+      }
+    },
+    "source_port_policy_reply": {
+      "awg2_lab": "3/3_BIDIRECTIONAL_PASS"
+    }
+  },
+  "owned_node_apply": {
+    "node_code": "de",
+    "target_address_sha256": "5a8735db03a9b7134a66eca92a6d2e56f20b0eac54acbb9230024804539500fc",
+    "backup_created": true,
+    "configuration_matches": true,
+    "managed_snat_rule_count_per_profile": 1,
+    "policy_route_present_per_profile": true,
+    "policy_rule_present_per_profile": true,
+    "service_cycle_pass": true,
+    "rollback_required": false,
+    "raw_addresses_returned": false,
+    "raw_material_returned": false
+  },
+  "physical_runtime": {
+    "awg2_lab": {
+      "authenticated_handshake": "PASS",
+      "outer_inbound_packets": 177,
+      "outer_outbound_packets": 277,
+      "latest_handshake_age_seconds_at_outer_readback": 10,
+      "inner_from_client_packets": 3,
+      "inner_to_client_packets": 3,
+      "inner_bidirectional": true
+    },
+    "awg31_lab": {
+      "authenticated_handshake": "PASS",
+      "outer_inbound_packets": 67,
+      "outer_outbound_packets": 76,
+      "latest_handshake_age_seconds_at_outer_readback": 15,
+      "owned_site_browser_probe_requested": true,
+      "inner_from_client_packets": 6,
+      "inner_to_client_packets": 7,
+      "inner_bidirectional": true
+    }
+  },
+  "post_cycle_core_interop": {
+    "awg2_lab": {
+      "outcome": "passed",
+      "material_sha256": "04ec01d7cc79c38ac1b8869a0137698538c9119930b47e28403080599e697527"
+    },
+    "awg31_lab": {
+      "outcome": "passed",
+      "material_sha256": "5466c1f4d0837b1f1e6e6997970eb902c29d365eca9c8527ae8ab9e43ca2d9f3"
+    }
+  },
+  "verification": {
+    "focused_release_and_awg_tests": "66 passed, 29 subtests passed",
+    "ruff": "PASS",
+    "script_manifest": "PASS",
+    "diff_check": "PASS"
+  },
+  "cleanup": {
+    "pokrov_vpn_disconnected": true,
+    "selected_profile": "default",
+    "lab_allowlist_identity_present": false,
+    "owned_awg_material_provisioned": false,
+    "wifi_restored": true,
+    "prior_vpn_app_reopened": true
+  },
+  "release_interpretation": {
+    "awg2_physical_pre_candidate": "PASS",
+    "awg31_physical_pre_candidate": "PASS",
+    "frkn_phase_index": "I3",
+    "new_candidate_created": false,
+    "gate_f_advanced": false,
+    "windows_parity_open": true,
+    "dns_leak_and_origin_matrix_open": true,
+    "stable_promotion_authorized": false
+  },
+  "raw_secrets_retained": false,
+  "raw_addresses_retained": false,
+  "raw_device_identifiers_retained": false
+}

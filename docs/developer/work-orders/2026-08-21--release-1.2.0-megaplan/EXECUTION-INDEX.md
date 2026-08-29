@@ -2,6 +2,26 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BB owned AWG reply routing and physical recheck
+
+The exact owned endpoint was multi-addressed: normal route selection emitted
+AWG replies from a different source than the endpoint address. Ingress-pinned
+plain UDP passed `3/3` in both directions while normal routing and late SNAT
+did not. Platform `f79974c...` adds guarded, port-scoped policy routing plus a
+narrow final SNAT for only the default-off AWG2 and AWG 3.1 listeners. Backup,
+readback and service-cycle persistence pass without changing cryptography.
+
+Production-signed replacement Android `1.2.0+4046` then completes fresh
+authenticated AWG2 and randomized-trailer AWG 3.1 handshakes on physical
+Beeline and exchanges inner traffic in both directions. Exact current-origin
+Core interop passes both profiles again after the service cycle. The phone is
+cleanly rebound to `default`, lab material is absent and Wi-Fi is restored.
+
+This closes the diagnosed owned-endpoint/mobile reverse-path defect only as
+physical pre-candidate proof. Candidate.5 remains immutable and rejected;
+Phase 10 remains `I3`. A new digest-bound candidate, exact-candidate Android
+repeat, Windows parity, DNS/leak/origin work and Gate F remain open.
+
 ## 2026-08-29 — WO-013BA pinned AWG peer local interop
 
 Core `3c2b114...` adds a deterministic real-socket regression between the
