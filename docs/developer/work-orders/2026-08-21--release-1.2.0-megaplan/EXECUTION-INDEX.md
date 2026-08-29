@@ -2,6 +2,35 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BR candidate.6 Brain-origin and Gate F
+
+The candidate.6 Brain access block was a release-harness blind spot: the old
+Paramiko path did not use the owner's working SSH configuration. A bounded
+OpenSSH adapter now requires batch mode and strict host-key checking, disables
+forwarding/TTY and retains no alias, address, key or remote content.
+
+Exact platform source `5713324...` matches live Brain at `197/197` after the
+existing CRLF-only normalization rule: four files are raw exact, 193 differ
+only by CRLF and zero mismatch semantically. Fresh readiness passes `23/23` and
+all seven enabled delivery nodes pass configured-port TCP reachability from
+Brain. The first readiness attempt is retained as fail-first `22/23`: Windows
+text-mode stdin introduced CRLF. Byte-mode LF transport fixes the harness and
+the repeated test passes. No deploy or restart occurred.
+
+The successor digest-bound candidate.6 Gate F validates all 19 evidence
+pointers with zero errors and returns `BLOCKED`: `4/19 PASS`, `15/19 non-PASS`,
+`0 FAIL`. Supply chain, release-doc binding, current-origin and Brain-origin
+pass. RU-origin, physical Android, isolated Windows, authenticated client
+egress, provider, Operator, legal/commercial, performance/health and the other
+manual rows remain non-PASS. `REL_GATE/GATE-F` stays `I3` with status
+`SIGNED_CANDIDATE6_GATE_F_BLOCKED_4_PASS_15_NONPASS`; `FRKN_PLAN/W9-02` stays
+`I1` until separate RU-origin proof. No ledger row advances. Decision SHA-256
+is `c1ca2f016556272d17088493ec6ba67ce9c94f72856508702bf5a2387e48da9f`.
+
+After the owner reported the phone returned, both local ADB servers still saw
+only the emulator and no physical-like device. The physical Android matrix
+therefore remains manual; no serial was retained.
+
 ## 2026-08-29 — WO-013BQ candidate.6 LDPlayer IPv6 family block
 
 The exact signed candidate.6 LDPlayer install ran on a host with two global

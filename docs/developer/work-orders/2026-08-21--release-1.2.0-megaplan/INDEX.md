@@ -2,7 +2,7 @@
 
 Last updated: 2026-08-29
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_CANDIDATE6_GATE_F_BLOCKED_RUNTIME_GATES_OPEN`
+Wave status: `PHASE_11_CANDIDATE6_GATE_F_BLOCKED_4_PASS_15_NONPASS_RUNTIME_GATES_OPEN`
 Release candidate: `POKROV_1_2_0_CANDIDATE6_ACTIONS_ARTIFACT_ONLY_PUBLIC_RELEASE_NOT_CREATED`
 
 ## Outcome
@@ -35,7 +35,7 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete at `I3`; WO-013AN passes exact-candidate local UI/accessibility/responsive/static/API slices but leaves Gate E `BLOCKED` below I4 on authenticated, physical screen-reader/device, comparable-artifact, browser-lab, RU-origin and post-promotion evidence | `WO-010`, `WO-013AN` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
 | 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | AWG2/AWG3.1 and bounded base HY2 source labs are locally proved and default-off. Candidate.5's exact physical AWG failures remain immutable history. WO-013AY/013AZ add bounded diagnostics and the Core bind correction; WO-013BA proves direct pinned-peer local interoperability. WO-013BB fixes the owned-node reply route without changing cryptography, WO-013BC binds byte-reproducible Android/Windows artifacts, and WO-013BD separates working transport from the common Android endpoint DNS failure. WO-013BE corrects the AWG endpoint's default-resolver boundary in Core `a45d69e...`; exact production-signed build 4046 passes AWG2 and AWG3.1 selected-endpoint green state on LDPlayer and physical Beeline. WO-013BF packages the same exact Windows DLL into setup `81268d7e...` with an `8/8` manifest readback. WO-013BG records an LDPlayer WARP/control pair blocked by the shared emulator egress boundary and a partial physical host-lifecycle pass without promoting WARP proof. WO-013BH proves a portable immutable Smart-DNS bundle and all-seven active-node no-mutation PLAN matrix. WO-013BI rejects an intermediate false spare-address lead and proves with strict report-v3 parsing that `de` has exact binds on both globally routable addresses while the other six nodes use wildcard/dual-stack binds; no safe zero-purchase deploy target exists without a separate guarded migration. WO-013BJ binds the canonical ChatGPT/OpenAI, Gemini and Xbox policy to server exact/child DoH behavior and the client routing copy as source-only proof. WO-013BK binds those source changes and the corrected AWG Core into signed candidate.6. WO-013BL's post-signing LDPlayer AWG2/AWG3.1/default comparison reaches the same egress boundary for all three and is classified as an emulator-origin block, not a protocol PASS or FAIL. WO-013BP adds exact-candidate selected/excluded-app config, force-stop cleanup and WARP endpoint/TUN materialization on LDPlayer, with the same origin block and clean restore. WO-013BQ proves the IPv4-only Android TUN structurally blocks unconfigured IPv6 on the exact candidate.6 LDPlayer path without claiming an external leak PASS. Phase 10 remains `I3`, not `I4`, because physical candidate.6 and Windows live parity plus required origins are open. HY2 remains undeployed. Smart-DNS live service access, attribution, leak/rollback/origin proof remain open. Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AU`, `WO-013AX`, `WO-013AY`, `WO-013AZ`, `WO-013BA`, `WO-013BB`, `WO-013BC`, `WO-013BD`, `WO-013BE`, `WO-013BF`, `WO-013BG`, `WO-013BH`, `WO-013BI`, `WO-013BJ`, `WO-013BK`, `WO-013BL`, `WO-013BP`, `WO-013BQ` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Signed `pokrov-1.2.0-candidate.5` remains immutable rejected history. WO-013BK creates signed `pokrov-1.2.0-candidate.6` from exact platform/client/Core sources after a `15/15` local source gate, binds six artifacts, strict-v2 handoff, SBOM/provenance and the owner-approved unsigned Windows exception, and verifies the trusted detached signature. WO-013BL runs the first digest-bound candidate.6 Gate F at `2/19 PASS`. WO-013BM adds exact current-origin health/catalog PASS, keeps Brain `BLOCKED_BY_ACCESS` and RU `NOT_RUN`, then validates the successor Gate F at `BLOCKED`: `3/19 PASS`, `16/19 non-PASS`, `0 FAIL`, zero validation errors. WO-013BN repeats the exact candidate.6 isolated portal/client rollback byte-identically but retains runtime rollback as a manual Gate F row. WO-013BO corrects PB-14's false historical build identity and proves a local candidate.6 build-4046 promotion stop/rollback request without changing candidate bytes or advancing Gate F. WO-013BP proves exact candidate.6 LDPlayer per-app config, WARP materialization and process-stop cleanup but explicitly does not replace physical Android evidence. WO-013BQ narrows the Android IPv6 leak risk to a structural family-block PASS while retaining the external and physical leak rows as non-PASS. Exact candidate.6 ARM64 install identity is retained for the phone, but its runtime matrix remains unexecuted and the device was absent at the final WO-013BQ readback. Windows live app/service/TUN/DNS/AWG parity, the remaining physical Android AWG/WARP/per-app/OEM/lifecycle/leak/endurance matrix, Smart-DNS dedicated-address/access/attribution, provider, Operator, legal, comparable-device/post-public-promotion and other manual rows remain open. Platform/client hosted access stops remain non-PASS under the no-purchase owner-solo policy. No tag, public `v1.2.0`, store object, stable switch or promotion occurred | `WO-013`, `WO-013AU`, `WO-013AV`, `WO-013AW`, `WO-013AX`, `WO-013AY`, `WO-013AZ`, `WO-013BA`, `WO-013BB`, `WO-013BC`, `WO-013BD`, `WO-013BE`, `WO-013BF`, `WO-013BG`, `WO-013BH`, `WO-013BI`, `WO-013BJ`, `WO-013BK`, `WO-013BL`, `WO-013BM`, `WO-013BN`, `WO-013BO`, `WO-013BP`, `WO-013BQ` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Signed `pokrov-1.2.0-candidate.5` remains immutable rejected history. WO-013BK creates signed `pokrov-1.2.0-candidate.6` from exact platform/client/Core sources after a `15/15` local source gate, binds six artifacts, strict-v2 handoff, SBOM/provenance and the owner-approved unsigned Windows exception, and verifies the trusted detached signature. WO-013BL runs the first digest-bound candidate.6 Gate F at `2/19 PASS`. WO-013BM adds exact current-origin health/catalog PASS and the historical access-blocked Brain result, then validates Gate F at `3/19 PASS`. WO-013BN repeats the exact candidate.6 isolated portal/client rollback byte-identically but retains runtime rollback as a manual Gate F row. WO-013BO corrects PB-14's false historical build identity and proves a local candidate.6 build-4046 promotion stop/rollback request without changing candidate bytes or advancing Gate F. WO-013BP proves exact candidate.6 LDPlayer per-app config, WARP materialization and process-stop cleanup but explicitly does not replace physical Android evidence. WO-013BQ narrows the Android IPv6 leak risk to a structural family-block PASS while retaining the external and physical leak rows as non-PASS. WO-013BR corrects the SSH-config harness blind spot, proves exact Brain source `197/197`, readiness `23/23` and enabled delivery `7/7`, then regenerates Gate F at `BLOCKED`: `4/19 PASS`, `15/19 non-PASS`, `0 FAIL`, zero validation errors. Exact candidate.6 ARM64 install identity is retained for the phone, but its runtime matrix remains unexecuted and ADB still sees only the emulator. Windows live app/service/TUN/DNS/AWG parity, the remaining physical Android AWG/WARP/per-app/OEM/lifecycle/leak/endurance matrix, Smart-DNS dedicated-address/access/attribution, RU-origin, provider, Operator, legal, comparable-device/post-public-promotion and other manual rows remain open. Platform/client hosted access stops remain non-PASS under the no-purchase owner-solo policy. No tag, public `v1.2.0`, store object, stable switch or promotion occurred | `WO-013`, `WO-013AU`, `WO-013AV`, `WO-013AW`, `WO-013AX`, `WO-013AY`, `WO-013AZ`, `WO-013BA`, `WO-013BB`, `WO-013BC`, `WO-013BD`, `WO-013BE`, `WO-013BF`, `WO-013BG`, `WO-013BH`, `WO-013BI`, `WO-013BJ`, `WO-013BK`, `WO-013BL`, `WO-013BM`, `WO-013BN`, `WO-013BO`, `WO-013BP`, `WO-013BQ`, `WO-013BR` |
 
 The row order is a dependency order, not permission for one giant merge. Each implementation WO must stay repository-scoped and independently reviewable.
 
@@ -89,7 +89,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-011` | Prepare and, only after separate authorization, run the legally qualified capacity-bounded pilot | Platform/client | Local package complete; external execution `NOT_AUTHORIZED` | `WO-008`, `WO-009`, `WO-010` |
 | `WO-011H` | Align the homepage story contract with the governed trust-led surface | Marketing tests/docs | Regression closed locally; no ledger advancement | `WO-011F` |
 | `WO-012` | Evaluate transport diversity without a second client stack | Core/client/platform lab contract | Local package complete; manual/external gates retained | `WO-004`, `WO-006` |
-| `WO-013` | Prove and promote the exact RC | Cross-repo/release | Signed candidate.6 is current; successor digest-bound Gate F is `BLOCKED` at `3/19 PASS`, `16/19 non-PASS`, `0 FAIL`. Gate G/public/stable promotion remains unauthorized | All release-bound WOs |
+| `WO-013` | Prove and promote the exact RC | Cross-repo/release | Signed candidate.6 is current; successor digest-bound Gate F is `BLOCKED` at `4/19 PASS`, `15/19 non-PASS`, `0 FAIL`. Gate G/public/stable promotion remains unauthorized | All release-bound WOs |
 | `WO-013A2` | Replace circular phase/plan preflight logic with an exact fail-safe row-stage policy | Platform release preflight | Complete locally; no ledger advancement | `WO-001`, `WO-013A` |
 | `WO-013A3` | Move PB-14 out of the circular local-freeze lane because its signed-manifest health-stop proof requires an exact candidate | Platform release preflight | Complete locally; no ledger advancement, PB-14 remains unproved | `WO-013A2`, `WO-006J` |
 | `WO-013C` | Make Linux non-shipment and Android OEM background/permission/surface limitations explicit and machine-bound | Platform/client release limitations | Complete locally (`REL_DOD/DOD-17 I3`); exact-candidate release notes and physical OEM proof remain open | `WO-005`, `WO-006`, `WO-013` |
@@ -157,6 +157,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013BO` | Bind PB-14 incident identity to the exact candidate.6 Android build and reject historical hardcoding | Exact-candidate release-health control evidence | Historical build `4030` output is invalid and excluded. The fixed fail-closed harness derives hash-matched signed build `4046`; corrected isolated promotion stop and rollback request pass. PB-14 and DOD-23 stay `I3`; no candidate rebuild, external switch or Gate F advance | `WO-013BK`, signed physical-install binding, isolated Action Intent fixture |
 | `WO-013BP` | Exercise exact candidate.6 per-app directions, WARP materialization and process-stop cleanup on LDPlayer | Exact-candidate Android emulator runtime evidence | Selected/excluded app configs, count-only journal, service/TUN force-stop cleanup and native WARP endpoint/TUN formation pass their bounded slices. All transport attempts retain the common LDPlayer origin egress block; final default/WARP-off/no-material restore passes. Four rows gain stronger `I3`; Gate C and Gate F do not advance | `WO-013BL`, exact signed x86_64 candidate.6, owned LDPlayer; physical phone and Windows host still required |
 | `WO-013BQ` | Prove whether exact candidate.6's IPv4-only Android TUN releases or blocks unconfigured IPv6 on LDPlayer | Exact-candidate Android source/runtime evidence | IPv6-capable LDPlayer forms an IPv4-only WARP TUN with no IPv6 address/default route. Exact source has no `allowFamily` call and matches Android's default family-block contract. Structural fail-closed slice passes; external/physical leak tests and Gate C/F remain open | `WO-013BP`, exact signed x86_64 candidate.6, exact client source, official Android VpnService contract; physical phone still required |
+| `WO-013BR` | Close candidate.6 Brain-origin through the owner's trusted SSH configuration and regenerate Gate F | Candidate decision/origin evidence | Exact Brain source `197/197`, readiness `23/23` and enabled delivery `7/7` pass without deploy or restart. Successor Gate F is `BLOCKED` with `4 PASS`, `15 non-PASS`, `0 FAIL` and zero validation errors; RU and physical/Windows/manual lanes remain open | `WO-013BM`, `WO-013BQ`, exact signed candidate.6, owner-trusted SSH configuration |
 
 ## Current evidence
 
@@ -187,6 +188,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `WO-013BO-candidate6-pb14-build-binding.md`
 - `WO-013BP-candidate6-ldplayer-per-app-warp-lifecycle.md`
 - `WO-013BQ-candidate6-ldplayer-ipv6-family-block.md`
+- `WO-013BR-candidate6-brain-origin-and-gate-f.md`
 
   Together these work orders bind the signed candidate.5 artifact set and
   hosted signature, exact
@@ -244,7 +246,10 @@ The row order is a dependency order, not permission for one giant merge. Each im
   default state without converting the emulator-origin block into device PASS.
   WO-013BQ then binds the observed IPv4-only TUN to Android's default
   family-block contract and records a structural IPv6 fail-closed PASS without
-  converting it into an external or physical leak PASS.
+  converting it into an external or physical leak PASS. WO-013BR then closes
+  the false Brain access block through the owner's trusted SSH configuration,
+  retaining exact source `197/197`, readiness `23/23`, enabled delivery `7/7`
+  and the successor `4/15/0` Gate F without any runtime mutation.
 - `evidence/013BH-smart-dns-zero-purchase-plan/013BH-smart-dns-zero-purchase-plan.json`
   binds the exact source/bundle/policy identities, seven sanitized PLAN report
   digests, zero-mutation result and no-safe-current-target decision without
@@ -265,6 +270,10 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013BM-candidate6-current-origin-and-gate-f/013BM-candidate6-gate-f-decision.json`
   binds exact current-origin PASS, Brain access failure, separate RU status and
   the successor `3 PASS / 16 non-PASS / 0 FAIL` candidate.6 decision.
+- `evidence/013BR-candidate6-brain-origin-and-gate-f/013BR-candidate6-gate-f-decision.json`
+  binds exact candidate.6 Brain source/readiness/delivery PASS, retains RU as
+  separate `NOT_RUN` evidence and records the current
+  `4 PASS / 15 non-PASS / 0 FAIL` decision.
 - `evidence/013BN-candidate6-local-rollback/013BN-candidate6-local-rollback.json`
   binds the exact strict-v2 handoff, byte-identical client/portal rollback,
   fail-closed invalid invocation and unchanged runtime/public boundaries.
@@ -587,15 +596,17 @@ The frozen Gate F result remains `BLOCKED` with `6 PASS`, `13 non-PASS`,
 `ACTIONS_ARTIFACT_ONLY`; no public release or stable pointer exists. WO-013BK
 supersedes only the active candidate boundary with signed candidate.6, and
 WO-013BL supplies candidate.6's first digest-bound Gate F result. WO-013BM adds
-exact current-origin PASS and supplies the successor `BLOCKED` result with
-`3 PASS`, `16 non-PASS`, `0 FAIL` and zero validation errors. None of these
+exact current-origin PASS and its historical access-blocked Brain result.
+WO-013BR closes that harness blind spot and supplies the current `BLOCKED`
+result with `4 PASS`, `15 non-PASS`, `0 FAIL` and zero validation errors. None of these
 work orders rewrites candidate.5 evidence or inherits candidate.5's result.
 WO-013BN adds exact local portal/client rollback proof, and WO-013BO adds the
 corrected candidate-bound build-4046 PB-14 stop/request proof; both remain at
 `I3` and leave the Gate F count unchanged. WO-013BP then proves the bounded
 candidate.6 LDPlayer per-app/WARP/force-stop slice. WO-013BQ proves the
-structural Android IPv6 family block for the observed IPv4-only TUN but leaves
-external/physical DNS/IPv6 leak and Gate F unchanged.
+structural Android IPv6 family block for the observed IPv4-only TUN. WO-013BR
+then advances only the Brain-origin Gate F row; external/physical DNS/IPv6
+leak, RU-origin and the other 15 Gate F rows remain non-PASS.
 
 Bounded privacy-safe Core diagnostics, the exact binder and the stale-location
 correction remain retained. Core `6b8ddca...` fixes the bind contract and Core
@@ -643,7 +654,7 @@ WO-013BP readback. The next transport slice remains physical Android AWG2/AWG3.1
 WARP/per-app/network-change/OEM/lifecycle/leak, and live Windows app/service/
 TUN parity for AWG2 and AWG3.1 with DNS/egress/leak and cleanup readback on an
 isolated host. Complete compatible Smart DNS access/attribution proof when a
-safe endpoint exists. Regenerate candidate.6 Gate F after new exact evidence;
+safe endpoint exists. Regenerate candidate.6 Gate F after the next new exact evidence;
 do not transfer pre-candidate proof into `I4`. Do not
 spend the lane on SPB beyond bounded evidence. HY2 remains default-off and
 follows the existing kill-switch/material/install guards.
