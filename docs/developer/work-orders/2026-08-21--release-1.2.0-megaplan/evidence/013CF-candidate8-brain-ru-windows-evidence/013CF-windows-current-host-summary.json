@@ -1,0 +1,56 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate8-windows-current-host-summary/v1",
+  "recorded_at_utc": "2026-08-29T20:39:51Z",
+  "candidate": "pokrov-1.2.0-candidate.8",
+  "status": "MANUAL_OWNER_TEST",
+  "artifact": {
+    "name": "pokrov-windows-setup-x64.exe",
+    "sha256": "26ec26d8989d61415f07cbf9707f336ebba0b947fa4ba0ee93d3078fa3984668",
+    "size_bytes": 28929376,
+    "authenticode": "NotSigned",
+    "owner_exception": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0"
+  },
+  "runner": {
+    "environment": "owner-current-host",
+    "host_cleanliness_claim": "clean_app_state_only_not_clean_os_or_vm"
+  },
+  "passed_slice": [
+    "exact_candidate_identity",
+    "current_host_clean_app_state_baseline",
+    "machine_wide_install",
+    "installed_file_identity_8_of_8",
+    "localsystem_service_install_and_identity",
+    "ui_service_authenticated_ipc",
+    "service_stop_restart",
+    "clean_uninstall",
+    "idle_route_and_dns_restoration",
+    "no_remaining_pokrov_or_wintun_adapter"
+  ],
+  "independent_postcheck": {
+    "service_absent": true,
+    "install_directory_absent": true,
+    "owner_registry_record_absent": true,
+    "pokrov_or_wintun_adapter_count": 0,
+    "protected_service_runtime_evidence_retained": true
+  },
+  "open_live_matrix": [
+    "live_tun_and_full_tunnel_traffic",
+    "dns_capture_and_connected_leak_protection",
+    "authenticated_owned_profile_egress",
+    "sleep_reboot_and_crash_recovery",
+    "uninstall_while_connected",
+    "interactive_smartscreen_reputation",
+    "clean_windows_10_or_11_vm"
+  ],
+  "client_evidence_commit": "21e15d6bece744eaef51cd59986fd24768768ed1",
+  "client_pr": 36,
+  "client_main_merge": "5bfc96fb81ee9a7f4003ffb698e3f0c8041f1b35",
+  "hosted_run": {"id": 33273837482, "classification": "SKIPPED_BY_OWNER", "steps_executed": 0},
+  "external_evidence": [
+    {"label": "candidate8-windows-current-host-smoke", "retained_location": "EXTERNAL_LOCAL_RELEASE_EVIDENCE", "sha256": "2a0f8f71041614a340dfa4e7d5779b61099be7141e52a79dba6bd24cc78f6b85"}
+  ],
+  "production_mutation_performed": false,
+  "public_release_created": false,
+  "stable_pointer_mutated": false,
+  "evidence_ceiling": "EXACT_CANDIDATE_CURRENT_HOST_CLEAN_APP_STATE_INSTALL_SERVICE_AUTHENTICATED_IPC_RESTART_UNINSTALL_AND_IDLE_NETWORK_RESTORE_ONLY; WINDOWS_LIVE_NETWORK_ROW_REMAINS_MANUAL"
+}

@@ -1,0 +1,51 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-08-29T20:39:51Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.8",
+    "operational_id": "eeedbaf8540a83649a7143d6c7097336429e466118ed4f9ca2b732b7e6e2195a",
+    "manifest_sha256": "f0006cec90c84e401e9920d9098102c7f50ab5ace5242e0d7683c3df709a6fbc",
+    "signature_sha256": "5fcae0675ea45e79baf495859fd170661f5d6dd3a8535275acd4d62680d324f6",
+    "receipt_sha256": "4109bb3417b32a780604300055f5308acf7dc810e7ea9c547075e1da41cc21fc",
+    "sources": {
+      "platform": "241a83b4dca00799b39696a4ae0c3c97e087ec39",
+      "client": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "b242e0a3060b04f9b71641a0524bf251a75ce2a8"
+    }
+  },
+  "checks": {
+    "brain_origin": "PASS",
+    "ru_origin": "MANUAL_OWNER_TEST",
+    "windows_live_network": "MANUAL_OWNER_TEST"
+  },
+  "facts": {
+    "brain_origin": "Exact source semantic bytes 197/197, readiness 23/23 and enabled delivery 7/7 pass read-only.",
+    "ru_origin": "Four transient RU-terminal samples prove 3/3 owned public surfaces each time and RU-SPB 4/4, but the canonical exact-candidate probe contour is not installed; NL is intermittent.",
+    "windows_live_network": "Exact installer current-host clean-app-state install, 8/8 files, LocalSystem service, authenticated IPC, restart, uninstall and idle network restoration pass; connected TUN/DNS/egress/recovery and clean-VM evidence remain manual."
+  },
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CF-candidate8-brain-ru-windows-evidence/013CF-brain-origin-summary.json",
+      "sha256": "70c5798740c5e6139ecfa2e365b71ace59d050cfd8369555240d874f25006ae1"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CF-candidate8-brain-ru-windows-evidence/013CF-ru-origin-summary.json",
+      "sha256": "e2e33e523372bad5f92f872f25f8dcfd82187974ba731c6d5683a5ec5980b02d"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CF-candidate8-brain-ru-windows-evidence/013CF-windows-current-host-summary.json",
+      "sha256": "7c83a9cb1e47f5362459c7ec003f8831331a296b83549417d16647240abd350c"
+    }
+  ],
+  "mutation_boundary": {
+    "brain_runtime_mutated": false,
+    "ru_runtime_mutated": false,
+    "windows_current_host_mutated_then_uninstalled": true,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "BRAIN_ORIGIN_PASS; RU_SUPPORTING_REACHABILITY_AND_WINDOWS_CURRENT_HOST_CLEAN_APP_STATE_PROVEN_BUT_BOTH_GATE_ROWS_REMAIN_MANUAL; NO_PUBLIC_PROMOTION"
+}

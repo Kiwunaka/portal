@@ -1,0 +1,44 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate8-ru-origin-summary/v1",
+  "recorded_at_utc": "2026-08-29T20:39:51Z",
+  "candidate": "pokrov-1.2.0-candidate.8",
+  "platform_source_revision": "241a83b4dca00799b39696a4ae0c3c97e087ec39",
+  "origin": "ru",
+  "status": "MANUAL_OWNER_TEST",
+  "classification": "MANUAL_OWNER_TEST_CANONICAL_PROBE_CONTOUR_NOT_INSTALLED",
+  "origin_basis": "OPERATOR_ATTESTED_DIRECT_RU_TERMINAL_HOST",
+  "environment": {
+    "required_source_members": 10,
+    "installed_source_members": 0,
+    "required_systemd_units": 4,
+    "installed_systemd_units": 0,
+    "runtime_configuration_present": false,
+    "spool_present": false,
+    "ntp_synchronized": true
+  },
+  "transient_read_only_samples": {
+    "retained": 4,
+    "pokrov_public_passed_per_sample": [3, 3, 3, 3],
+    "pokrov_public_required_per_sample": 3,
+    "enabled_delivery_node_passed_per_sample": [6, 7, 7, 6],
+    "enabled_delivery_node_required_per_sample": 7,
+    "stable_nodes": ["de", "it", "pl", "ru", "ru_spb", "us"],
+    "nl_passed_samples": 2,
+    "ru_spb_passed_samples": 4,
+    "telegram_diagnostic_passed_per_sample": [0, 0, 0, 0],
+    "telegram_diagnostic_required_per_sample": 2,
+    "telegram_is_excluded_from_pokrov_owned_verdict": true
+  },
+  "finding": "RU-SPB is reachable in every retained RU-terminal sample; the earlier mobile failure is not evidence of a general RU-SPB outage. NL is intermittent from this origin.",
+  "external_evidence": [
+    {"label": "ru-canonical-environment", "retained_location": "EXTERNAL_LOCAL_RELEASE_EVIDENCE", "sha256": "5d27de73fc92469fa7ccbd44b7ec3d741e72855424ec484973a113f5612ad4f9"},
+    {"label": "ru-oneshot-preliminary", "retained_location": "EXTERNAL_LOCAL_RELEASE_EVIDENCE", "sha256": "2ef4394f17e7451147edc401a02e178653e3efbace34b846032a0e9bbdc74374"},
+    {"label": "ru-oneshot-series1", "retained_location": "EXTERNAL_LOCAL_RELEASE_EVIDENCE", "sha256": "e075c4cc0c1eacd530db5246ce12d3da44d4e1915270b8bc1819aa90cc55b76f"},
+    {"label": "ru-oneshot-series2", "retained_location": "EXTERNAL_LOCAL_RELEASE_EVIDENCE", "sha256": "9123cad8c532012411ba71b7c1cc20c3d39e0723337661cc5e371809242089e8"},
+    {"label": "ru-oneshot-series3", "retained_location": "EXTERNAL_LOCAL_RELEASE_EVIDENCE", "sha256": "62a64f93a83b6e2cfd36ef9d807236fb657a1578e784f897b91fb649d2fe2ffd"}
+  ],
+  "remote_files_written": false,
+  "runtime_mutated": false,
+  "raw_endpoint_material_retained": false,
+  "evidence_ceiling": "DIRECT_RU_TERMINAL_SUPPORTING_REACHABILITY_ONLY; CANONICAL_EXACT_CANDIDATE_PROBE_EXECUTION_UPLOAD_AND_READBACK_NOT_PROVEN"
+}
