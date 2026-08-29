@@ -2,6 +2,30 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BT candidate.6 HY2 artifact and remote PLAN
+
+The old HY2 builder correctly rejected candidate.6 Core as a revision mismatch.
+Release tooling now binds the immutable server artifact to exact security-fixed
+Core `a45d69e...` and a distinct `1.13.0-pokrov-hy2-lab.2` binary identity.
+Two complete Go `1.25.13` builds are byte-identical; the verified bundle is
+`15232131` bytes with SHA-256
+`fe9f082f3ad7e7e2a45db8257fc1fec202c63fe0ce43e0b25fc4620c827bd93e`.
+It contains no runtime material and does not change signed candidate bytes.
+
+The exact bundle then passes the guarded owned-node `PLAN` without `--apply`.
+Brain and node key authentication, engaged Brain HY2 kill-switch, root/tools,
+active UFW, free UDP port and absent targets pass. The service is absent and
+runtime TLS/password/obfs material is intentionally not ready. No host/address,
+secret or raw config is retained; no runtime mutation or handshake occurs.
+
+`FRKN_HY2/HY2-01` remains `I3` with stronger status
+`CANDIDATE6_EXACT_ARTIFACT_REMOTE_PLAN_READY_RUNTIME_MATERIAL_MISSING`. Gate F
+is not regenerated and remains `4 PASS / 15 non-PASS / 0 FAIL`. Explicit owner
+authorization is required before generating receipt-bound runtime material and
+running guarded APPLY plus the device/origin/rollback matrix. Normalized
+evidence SHA-256 is
+`3c693e4b6ed9cc96d5416c01d42f2153052f0a3f2950e8257a3e935b5a8e4b6f`.
+
 ## 2026-08-29 — WO-013BS candidate.6 RU-origin environment preflight
 
 A new source-bound read-only harness checks the canonical RU sandbox without
