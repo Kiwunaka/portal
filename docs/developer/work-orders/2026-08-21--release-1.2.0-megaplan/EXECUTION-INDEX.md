@@ -2,6 +2,28 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BE AWG default-resolver physical pass
+
+Core `a45d69e...` corrects the common AWG selected-endpoint failure without
+changing Amnezia cryptography: the inner FQDN now uses the configured default
+resolver, while TLS hostname authentication, official upstream protocol code
+and fail-closed green-state semantics remain intact. Two Android AAR builds and
+two Windows DLL builds are byte-identical. Client `68779c4...` binds those exact
+artifacts; client documentation head `f500728...` records the retained proof.
+
+Production-signed `1.2.0+4046` APKs install and read back byte-identically.
+AWG2 and closed AWG 3.1 each retain the canonical protected green state after
+the probe window on LDPlayer and on physical Huawei/Android 12 over Beeline;
+the prior common `egress_probe_dns_lookup`/`EGRESS-001` failure does not recur.
+This is selected-endpoint proof, not broad location or RU-origin proof.
+
+Both devices were restored to `default`, POKROV was stopped and the phone's
+original Wi-Fi/mobile state was restored. The exact clean platform/client/Core
+tuple `9281b40.../f500728.../a45d69e...` passes the refreshed local aggregate
+`15/15`. Phase 10 remains `I3`; no new candidate, Gate F advance, tag, upload,
+deploy or stable switch occurred. Windows live app/service/TUN/DNS/AWG parity,
+the remaining Android matrix and compatible Smart-DNS access proof are next.
+
 ## 2026-08-29 — WO-013BD security-fixed Core physical AWG egress split
 
 Production-signed client `064fcd0...` with security-fixed Core `547f096...`

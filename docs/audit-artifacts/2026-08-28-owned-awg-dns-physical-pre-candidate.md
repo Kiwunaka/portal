@@ -122,3 +122,25 @@ access. A compatible resolver and live access matrix remain `NOT_PROVEN`.
 - Keep current-origin, Brain-origin and RU-origin results separate.
 
 No row in this file authorizes public publication or promotion.
+
+## 2026-08-29 Active-Source Correction
+
+The earlier `EGRESS-001` result remains immutable evidence for its exact
+client/Core bytes. WO-013BE corrects the diagnosed common boundary in Core
+`a45d69e...`: AWG inner-FQDN resolution now uses the configured default
+resolver while preserving authenticated hostname verification, official
+upstream cryptography and fail-closed green-state behavior.
+
+Client `68779c4...` binds byte-reproducible Android and Windows Core artifacts.
+Its production-signed `1.2.0+4046` APKs installed and read back byte-identically.
+AWG2 and closed AWG 3.1 each retained the canonical protected green state after
+the probe window on exact LDPlayer and physical Huawei/Android 12 over Beeline;
+the prior common DNS lookup failure did not recur. This is selected-endpoint
+proof only, not broad location, current-origin or RU-origin proof.
+
+Cleanup restored `default`, stopped POKROV and returned the phone's original
+Wi-Fi/mobile state. The clean tuple
+`9281b40.../f500728.../a45d69e...` passes the local aggregate `15/15` with
+`candidate_proven=false`. Phase 10 remains `I3`; Windows live parity, the
+remaining Android matrix, compatible Smart-DNS service access, a replacement
+candidate and Gate F remain open.
