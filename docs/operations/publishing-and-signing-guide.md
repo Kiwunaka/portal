@@ -526,6 +526,22 @@ After every client release:
 
 ### Exact-Candidate Operations Evidence
 
+Before a candidate input is committed or signed, validate the complete local
+artifact directory with `scripts/validate_release_candidate_supply_chain.py`.
+The offline verifier recomputes every artifact hash and size, requires the
+strict-v2 handoff source tuple, verifies the CycloneDX artifact and Windows
+runtime components against the exact Windows bundle manifest, and requires the
+SLSA subjects, source dependencies and SBOM byproduct to match. A signed hash
+of an internally stale SBOM or provenance file is a STOP-SHIP failure even when
+the APK/EXE bytes themselves are correct.
+
+The invocation also supplies the independently read Android Core AAR and
+Windows Core DLL SHA-256 values. The verifier requires the fixed six-artifact
+1.2.0 set, exact artifact descriptors, exact release-owned SBOM namespaces,
+exact Git source dependencies, and the strict-v2/CycloneDX 1.5/in-toto SLSA v1
+document discriminators. Mutually matching candidate metadata is not an
+independent Core digest authority.
+
 Operational readiness is attached to an exact candidate, not to a branch name,
 working directory, latest tag, or visually similar build. The normalized
 candidate descriptor contains only:
