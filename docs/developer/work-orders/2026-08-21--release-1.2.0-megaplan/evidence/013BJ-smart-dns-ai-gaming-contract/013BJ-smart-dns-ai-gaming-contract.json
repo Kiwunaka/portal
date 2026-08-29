@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "work_order": "WO-013BJ",
+  "captured_at_utc": "2026-08-29T06:27:51.965Z",
+  "scope": "smart_dns_ai_gaming_source_contract_coverage",
+  "sources": {
+    "platform": "84f16dd37ad406905c12de0425bdef7b95e77ed4",
+    "client": "b2497af7704d0aa6901541e175ce154b0eab05d7",
+    "core_changed": false
+  },
+  "policy": {
+    "schema": "pokrov-smart-dns-policy-v1",
+    "sha256": "b6977f6f6a5ee48898116820d1db252b5b670cb7b86959c78f7bdbc7de90e0fa",
+    "cross_repository_parity": "PASS",
+    "ai_suffix_count": 11,
+    "gaming_service_suffix_count": 8,
+    "matching": "exact_or_child_domain",
+    "recursive_dns": false
+  },
+  "source_contract_proof": {
+    "representative_a_queries": [
+      "openai_child",
+      "gemini_exact",
+      "xbox_service_child"
+    ],
+    "synthetic_owned_proxy_ipv4": "PASS",
+    "outside_lookalike_refused": "PASS",
+    "alternate_address_and_https_hints_nodata": "PASS",
+    "client_selected_ai_and_games_direct_to_external_smart_dns": "PASS",
+    "client_policy_materialization_matches_canonical_copy": "PASS"
+  },
+  "verification": {
+    "go_version": "go1.25.13 windows/amd64",
+    "go_test": "PASS",
+    "go_vet": "PASS",
+    "focused_platform_pytest": "23/23 PASS",
+    "client_flutter_version": "3.38.5",
+    "client_dart_version": "3.10.4",
+    "client_routing_preferences_test": "17/17 PASS",
+    "policy_parity": "PASS"
+  },
+  "bundle": {
+    "build_count": 2,
+    "byte_identical": true,
+    "status": "PASS_LOCAL_IMMUTABLE_BUNDLE",
+    "size_bytes": 2912450,
+    "sha256": "93d4a743666d231c41530ae751386983f7f995b3a295d8915321e58f7e31166a",
+    "published": false,
+    "runtime_material_included": false
+  },
+  "release_interpretation": {
+    "classification": "PASS_SOURCE_CONTRACT_ONLY",
+    "index": "I3",
+    "candidate_created": false,
+    "candidate_proven": false,
+    "backend_or_production_mutation": false,
+    "live_dns_or_sni_relay_proven": false,
+    "chatgpt_gemini_or_xbox_access_proven": false,
+    "leak_lifecycle_or_origin_proven": false,
+    "rollback_executed": false,
+    "public_artifact_or_stable_promotion": false
+  },
+  "topology_dependency": {
+    "authority": "WO-013BI",
+    "safe_zero_purchase_target_found": false,
+    "next_action": "SEPARATELY_REVIEWED_FRONTEND_MIGRATION_AND_ROLLBACK_OR_LEAVE_UNDEPLOYED"
+  },
+  "privacy": {
+    "raw_ipv4_or_hostname_present": false,
+    "raw_credential_or_private_key_present": false,
+    "raw_runtime_material_present": false,
+    "customer_or_provider_payload_present": false
+  }
+}

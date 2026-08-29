@@ -2,6 +2,25 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BJ Smart DNS AI/gaming contract coverage
+
+Platform `84f16dd...` closes the source-proof gap between the canonical Smart
+DNS policy and the owned resolver tests. Representative OpenAI, Gemini and Xbox
+exact/child names now receive the synthetic owned-proxy `A` response in the
+server suite; an outside lookalike remains refused and `AAAA`, `HTTPS`, `SVCB`
+and other types remain NOERROR/NODATA. The client retains the exact same policy
+copy and direct external-Smart-DNS materialization for selected AI/Games.
+
+Go test/vet pass, the focused platform suite passes `23/23`, client routing
+passes `17/17` and policy parity passes at SHA-256 `b6977f6f...90e0fa`. Two
+exact-source inactive bundles are byte-identical at `2912450` bytes and SHA-256
+`93d4a743...31166a`.
+
+`FRKN_SMART_DNS/SMARTDNS-01` remains `I3`. This is
+`PASS_SOURCE_CONTRACT_ONLY`: no domain expansion, deploy, live resolver/SNI,
+ChatGPT/Gemini/Xbox access, leak, rollback, origin, candidate or promotion
+proof is created. `WO-013BI` remains the live-topology authority.
+
 ## 2026-08-29 — WO-013BI strict Smart DNS address topology
 
 An intermediate report-v2 shell counter produced a false lead that the
