@@ -13,17 +13,27 @@
     "cgo_enabled": false
   },
   "runtime": {
-    "dedicated_public_ipv4_required": true,
-    "current_installer_listener_mode": "dedicated_public_tcp_443",
-    "source_only_fronted_listener_mode": {
-      "listen_scope": "explicit_loopback_unprivileged_port",
-      "proxy_protocol": "required_v2_tcp_ipv4_or_ipv6_without_tlvs",
-      "public_frontend": "reviewed_owned_haproxy_tcp_443_sni_mux",
-      "frontend_backend_transport": "send-proxy-v2",
-      "deploy_supported_by_current_installer": false
+    "proxy_ipv4_requires_unique_owned_public_ipv4": true,
+    "listener_modes": {
+      "dedicated": {
+        "listen_scope": "wildcard_or_expected_owned_public_ipv4",
+        "listen_port": 443,
+        "proxy_protocol_v2": false,
+        "firewall": "managed_ufw_allow_tcp_443",
+        "deploy_supported_by_current_installer": true
+      },
+      "fronted": {
+        "listen_scope": "explicit_loopback_unprivileged_port",
+        "listen_host": "127.0.0.1",
+        "listen_port": 18443,
+        "proxy_protocol_v2": true,
+        "firewall": "not_managed",
+        "public_frontend": "reviewed_owned_haproxy_tcp_443_sni_mux",
+        "frontend_backend_transport": "send-proxy-v2",
+        "deploy_supported_by_current_installer": true
+      }
     },
     "listen_protocol": "tcp",
-    "listen_port": 443,
     "doh_path": "/dns-query",
     "recursive_dns": false,
     "application_tls": "opaque_passthrough",

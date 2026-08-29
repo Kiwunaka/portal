@@ -26,7 +26,7 @@ except ImportError:  # pragma: no cover - package import for tests
     from .node_access import DEFAULT_PASSWORDS, connect_node
 
 
-REPORT_SCHEMA = "pokrov-owned-smart-dns-remote-operation-v3"
+REPORT_SCHEMA = "pokrov-owned-smart-dns-remote-operation-v4"
 SERVICE_NAME = "pokrov-smart-dns-lab.service"
 SERVICE_PATH = "/etc/systemd/system/pokrov-smart-dns-lab.service"
 RELEASE_ROOT = "/opt/pokrov/smart-dns/releases"
@@ -39,7 +39,14 @@ KEY_PATH = f"{TLS_ROOT}/privkey.pem"
 BACKUP_ROOT = "/root/pokrov-smart-dns-lab-backups"
 STAGE_ROOT = "/root/pokrov-smart-dns-lab-staging"
 RUNTIME_STAGE_ROOT = "/root/pokrov-smart-dns-runtime-staging"
-LISTEN_PORT = 443
+DEDICATED_LISTENER_MODE = "dedicated"
+FRONTED_LISTENER_MODE = "fronted"
+LISTENER_MODES = (DEDICATED_LISTENER_MODE, FRONTED_LISTENER_MODE)
+DEDICATED_LISTEN_PORT = 443
+FRONTED_LISTEN_HOST = "127.0.0.1"
+FRONTED_LISTEN_PORT = 18443
+# Retained for callers that still name the original dedicated listener constant.
+LISTEN_PORT = DEDICATED_LISTEN_PORT
 SAFE_COMPONENT_RE = re.compile(r"[a-z0-9][a-z0-9_-]{0,31}")
 SAFE_RECEIPT_RE = re.compile(r"[0-9]{8}T[0-9]{6}Z-[0-9]+-[0-9a-f]{12}")
 
@@ -70,6 +77,27 @@ def _safe_component(value: str, *, label: str) -> str:
 def _release_id(bundle_sha256: str) -> str:
     now = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     return f"{now}-{os.getpid()}-{bundle_sha256[:12]}"
+
+
+def _listener_spec(listener_mode: str) -> dict[str, Any]:
+    mode = str(listener_mode or "").strip().lower()
+    if mode == DEDICATED_LISTENER_MODE:
+        return {
+            "mode": mode,
+            "listen": f"0.0.0.0:{DEDICATED_LISTEN_PORT}",
+            "port": DEDICATED_LISTEN_PORT,
+            "accept_proxy_protocol_v2": False,
+            "firewall_managed": True,
+        }
+    if mode == FRONTED_LISTENER_MODE:
+        return {
+            "mode": mode,
+            "listen": f"{FRONTED_LISTEN_HOST}:{FRONTED_LISTEN_PORT}",
+            "port": FRONTED_LISTEN_PORT,
+            "accept_proxy_protocol_v2": True,
+            "firewall_managed": False,
+        }
+    raise SmartDNSRemoteOperationError("listener_mode_invalid")
 
 
 def _run(ssh: Any, command: str, *, label: str, timeout: int = 180) -> str:
@@ -144,7 +172,9 @@ def _connect_owned(*, code: str, host: str, passwords: Path) -> tuple[Any, str]:
 
 def _validated_local_bundle(
     raw_path: str | Path,
+    listener_mode: str = DEDICATED_LISTENER_MODE,
 ) -> tuple[Path, dict[str, Any], dict[str, bytes], str]:
+    _listener_spec(listener_mode)
     try:
         path = Path(raw_path).resolve(strict=True)
     except OSError as exc:
@@ -157,8 +187,13 @@ def _validated_local_bundle(
             if name != bundle_contract.MANIFEST_NAME
         }
     contract = json.loads(contents["contract/bundle-contract.json"])
+    dedicated_template = json.loads(contents["config/config.template.json"])
+    fronted_template = json.loads(contents["config/config.fronted.template.json"])
     install = contract.get("install") or {}
     runtime = contract.get("runtime") or {}
+    listener_modes = runtime.get("listener_modes") or {}
+    dedicated_contract = listener_modes.get(DEDICATED_LISTENER_MODE) or {}
+    fronted_contract = listener_modes.get(FRONTED_LISTENER_MODE) or {}
     if (
         install.get("service_name") != SERVICE_NAME
         or install.get("service_path") != SERVICE_PATH
@@ -167,10 +202,31 @@ def _validated_local_bundle(
         or install.get("config_path") != CONFIG_PATH
         or install.get("enable_by_default") is not False
         or runtime.get("listen_protocol") != "tcp"
-        or runtime.get("listen_port") != LISTEN_PORT
+        or runtime.get("proxy_ipv4_requires_unique_owned_public_ipv4") is not True
         or runtime.get("doh_path") != "/dns-query"
         or runtime.get("recursive_dns") is not False
         or runtime.get("application_tls") != "opaque_passthrough"
+        or set(listener_modes) != set(LISTENER_MODES)
+        or dedicated_contract.get("listen_scope")
+        != "wildcard_or_expected_owned_public_ipv4"
+        or dedicated_contract.get("listen_port") != DEDICATED_LISTEN_PORT
+        or dedicated_contract.get("proxy_protocol_v2") is not False
+        or dedicated_contract.get("firewall") != "managed_ufw_allow_tcp_443"
+        or dedicated_contract.get("deploy_supported_by_current_installer") is not True
+        or fronted_contract.get("listen_scope") != "explicit_loopback_unprivileged_port"
+        or fronted_contract.get("listen_host") != FRONTED_LISTEN_HOST
+        or fronted_contract.get("listen_port") != FRONTED_LISTEN_PORT
+        or fronted_contract.get("proxy_protocol_v2") is not True
+        or fronted_contract.get("firewall") != "not_managed"
+        or fronted_contract.get("public_frontend")
+        != "reviewed_owned_haproxy_tcp_443_sni_mux"
+        or fronted_contract.get("frontend_backend_transport") != "send-proxy-v2"
+        or fronted_contract.get("deploy_supported_by_current_installer") is not True
+        or dedicated_template.get("listen") != f"0.0.0.0:{DEDICATED_LISTEN_PORT}"
+        or dedicated_template.get("accept_proxy_protocol_v2") is not False
+        or fronted_template.get("listen")
+        != f"{FRONTED_LISTEN_HOST}:{FRONTED_LISTEN_PORT}"
+        or fronted_template.get("accept_proxy_protocol_v2") is not True
     ):
         raise SmartDNSRemoteOperationError("bundle_remote_install_contract_mismatch")
     return path, manifest, contents, _sha256_file(path)
@@ -300,7 +356,17 @@ def _address_availability_command(expected_proxy_ipv4: str) -> str:
     )
 
 
-def _runtime_contract_check(config_path: str, expected_proxy_ipv4: str) -> str:
+def _runtime_contract_check(
+    config_path: str,
+    expected_proxy_ipv4: str,
+    listener_mode: str = DEDICATED_LISTENER_MODE,
+) -> str:
+    listener = _listener_spec(listener_mode)
+    allowed_listens = (
+        [f"0.0.0.0:{DEDICATED_LISTEN_PORT}", f"{expected_proxy_ipv4}:{DEDICATED_LISTEN_PORT}"]
+        if listener_mode == DEDICATED_LISTENER_MODE
+        else [str(listener["listen"])]
+    )
     validator = f"""
 import ipaddress
 import json
@@ -316,7 +382,7 @@ def public(value):
 
 def domain(value):
     text = str(value or "")
-    return bool(len(text) <= 253 and re.fullmatch(r"(?i)(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{{0,61}}[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]{{0,61}}[a-z0-9])?", text))
+    return bool(len(text) <= 253 and re.fullmatch(r"(?i)(?=.{{1,253}}$)(?:[a-z0-9](?:[a-z0-9-]{{0,61}}[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]{{0,61}}[a-z0-9])?", text))
 
 try:
     with open(sys.argv[1], encoding="utf-8") as handle:
@@ -326,8 +392,8 @@ try:
     upstream_ip, separator, upstream_port = str((upstream or {{}}).get("address") or "").rpartition(":")
     ok = (
         set(config) == {{"listen", "accept_proxy_protocol_v2", "doh_hostname", "proxy_ipv4", "policy_path", "tls_certificate_path", "tls_private_key_path", "upstream_dot", "limits"}}
-        and config.get("listen") in ("0.0.0.0:{LISTEN_PORT}", "{expected_proxy_ipv4}:{LISTEN_PORT}")
-        and config.get("accept_proxy_protocol_v2") is False
+        and config.get("listen") in {allowed_listens!r}
+        and config.get("accept_proxy_protocol_v2") is {listener["accept_proxy_protocol_v2"]!r}
         and domain(config.get("doh_hostname"))
         and config.get("proxy_ipv4") == "{expected_proxy_ipv4}"
         and public(config.get("proxy_ipv4"))
@@ -368,8 +434,13 @@ raise SystemExit(0 if ok else 1)
 
 
 def _preflight_command(
-    *, release_dir: str, runtime_material_dir: str, expected_proxy_ipv4: str
+    *,
+    release_dir: str,
+    runtime_material_dir: str,
+    expected_proxy_ipv4: str,
+    listener_mode: str = DEDICATED_LISTENER_MODE,
 ) -> str:
+    _listener_spec(listener_mode)
     targets = {
         "release": release_dir,
         "current": CURRENT_POINTER,
@@ -393,8 +464,9 @@ def _preflight_command(
         "emit_bool curl 'command -v curl >/dev/null 2>&1'",
         "emit_bool ufw_installed 'command -v ufw >/dev/null 2>&1'",
         "emit_bool ufw_active \"ufw status 2>/dev/null | grep -q '^Status: active$'\"",
-        f"emit_bool ufw_rule_present \"ufw status 2>/dev/null | grep -Eq '^[[:space:]]*{LISTEN_PORT}/tcp[[:space:]]+ALLOW'\"",
-        f"emit_bool tcp_busy \"ss -H -ltn 'sport = :{LISTEN_PORT}' 2>/dev/null | grep -q .\"",
+        f"emit_bool ufw_rule_present \"ufw status 2>/dev/null | grep -Eq '^[[:space:]]*{DEDICATED_LISTEN_PORT}/tcp[[:space:]]+ALLOW'\"",
+        f"emit_bool tcp_busy \"ss -H -ltn 'sport = :{DEDICATED_LISTEN_PORT}' 2>/dev/null | grep -q .\"",
+        f"emit_bool fronted_tcp_busy \"ss -H -ltn 'sport = :{FRONTED_LISTEN_PORT}' 2>/dev/null | grep -q .\"",
         _address_availability_command(expected_proxy_ipv4),
     ]
     for label, path in targets.items():
@@ -418,7 +490,7 @@ def _preflight_command(
             f"emit_bool runtime_secrets_private \"! find {_q(runtime_material_dir + '/config.json')} {_q(runtime_material_dir + '/privkey.pem')} -perm /077 -print -quit 2>/dev/null | grep -q .\"",
             f"emit_bool runtime_placeholders_absent \"! grep -Fq 'POKROV_' {_q(runtime_material_dir + '/config.json')} 2>/dev/null\"",
             f"emit_bool runtime_final_paths_bound \"grep -Fq {_q(CURRENT_POINTER + '/share/smart-dns-policy.v1.json')} {_q(runtime_material_dir + '/config.json')} 2>/dev/null && grep -Fq {_q(CERT_PATH)} {_q(runtime_material_dir + '/config.json')} 2>/dev/null && grep -Fq {_q(KEY_PATH)} {_q(runtime_material_dir + '/config.json')} 2>/dev/null\"",
-            f"emit_bool runtime_contract_valid {_q(_runtime_contract_check(runtime_material_dir + '/config.json', expected_proxy_ipv4))}",
+            f"emit_bool runtime_contract_valid {_q(_runtime_contract_check(runtime_material_dir + '/config.json', expected_proxy_ipv4, listener_mode))}",
         ]
     )
     return "\n".join(lines)
@@ -430,7 +502,9 @@ def _remote_preflight(
     release_dir: str,
     runtime_material_dir: str,
     expected_proxy_ipv4: str,
+    listener_mode: str = DEDICATED_LISTENER_MODE,
 ) -> dict[str, Any]:
+    listener = _listener_spec(listener_mode)
     values = _parse_probe(
         _run(
             node,
@@ -438,6 +512,7 @@ def _remote_preflight(
                 release_dir=release_dir,
                 runtime_material_dir=runtime_material_dir,
                 expected_proxy_ipv4=expected_proxy_ipv4,
+                listener_mode=listener_mode,
             ),
             label="remote_preflight",
             timeout=90,
@@ -446,6 +521,7 @@ def _remote_preflight(
     required = {
         "root", "systemd", "ss", "ip", "sha256sum", "runuser", "python3", "curl",
         "ufw_installed", "ufw_active", "ufw_rule_present", "tcp_busy",
+        "fronted_tcp_busy",
         "tcp_wildcard_busy", "tcp_expected_ipv4_busy",
         "expected_ipv4_assigned", "global_ipv4_multiple",
         "unclaimed_global_ipv4",
@@ -485,25 +561,57 @@ def _remote_preflight(
     )
     bind_scope = _tcp_443_bind_scope(values)
     expected_ipv4_assigned = values["expected_ipv4_assigned"] == "yes"
+    required_tool_keys = (
+        "systemd",
+        "ss",
+        "ip",
+        "sha256sum",
+        "runuser",
+        "python3",
+        *(
+            ("curl",)
+            if listener_mode == DEDICATED_LISTENER_MODE
+            else ()
+        ),
+    )
+    dedicated_listener_state = "busy" if values["tcp_busy"] == "yes" else "free"
+    fronted_listener_state = (
+        "busy" if values["fronted_tcp_busy"] == "yes" else "free"
+    )
+    selected_listener_state = (
+        dedicated_listener_state
+        if listener_mode == DEDICATED_LISTENER_MODE
+        else fronted_listener_state
+    )
     return {
+        "listener_mode": listener_mode,
+        "listener_contract": (
+            "dedicated_public_tcp_443"
+            if listener_mode == DEDICATED_LISTENER_MODE
+            else "fronted_loopback_proxy_v2_tcp_18443"
+        ),
+        "selected_listener": selected_listener_state,
+        "selected_listener_port": listener["port"],
         "root": values["root"] == "yes",
         "required_tools": all(
-            values[key] == "yes"
-            for key in (
-                "systemd", "ss", "ip", "sha256sum", "runuser", "python3", "curl"
-            )
+            values[key] == "yes" for key in required_tool_keys
         ),
         "ufw_installed": values["ufw_installed"] == "yes",
         "ufw_active": values["ufw_active"] == "yes",
         "ufw_rule_present": values["ufw_rule_present"] == "yes",
-        "tcp_443": "busy" if values["tcp_busy"] == "yes" else "free",
+        "tcp_443": dedicated_listener_state,
+        "loopback_tcp_18443": fronted_listener_state,
         "tcp_443_bind_scope": bind_scope,
         "expected_ipv4_assigned": expected_ipv4_assigned,
         "multiple_global_ipv4_assigned": values["global_ipv4_multiple"] == "yes",
         "unclaimed_global_ipv4": values["unclaimed_global_ipv4"],
-        "address_reuse_followup": _address_reuse_followup(
-            bind_scope=bind_scope,
-            expected_ipv4_assigned=expected_ipv4_assigned,
+        "address_reuse_followup": (
+            _address_reuse_followup(
+                bind_scope=bind_scope,
+                expected_ipv4_assigned=expected_ipv4_assigned,
+            )
+            if listener_mode == DEDICATED_LISTENER_MODE
+            else "NOT_APPLICABLE_FRONTED_MODE"
         ),
         "occupied_targets": occupied,
         "service_state": values["service_state"],
@@ -513,15 +621,22 @@ def _remote_preflight(
     }
 
 
-def _assert_fresh_install_preflight(preflight: Mapping[str, Any]) -> None:
+def _assert_fresh_install_preflight(
+    preflight: Mapping[str, Any],
+    listener_mode: str = DEDICATED_LISTENER_MODE,
+) -> None:
+    _listener_spec(listener_mode)
     if not preflight.get("root") or not preflight.get("required_tools"):
         raise SmartDNSRemoteOperationError("install_host_requirements_not_met")
-    if not preflight.get("ufw_installed") or not preflight.get("ufw_active"):
-        raise SmartDNSRemoteOperationError("install_requires_active_ufw")
-    if preflight.get("ufw_rule_present"):
-        raise SmartDNSRemoteOperationError("install_tcp_firewall_rule_already_present")
-    if preflight.get("tcp_443") != "free":
-        raise SmartDNSRemoteOperationError("install_tcp_443_occupied")
+    if listener_mode == DEDICATED_LISTENER_MODE:
+        if not preflight.get("ufw_installed") or not preflight.get("ufw_active"):
+            raise SmartDNSRemoteOperationError("install_requires_active_ufw")
+        if preflight.get("ufw_rule_present"):
+            raise SmartDNSRemoteOperationError("install_tcp_firewall_rule_already_present")
+        if preflight.get("tcp_443") != "free":
+            raise SmartDNSRemoteOperationError("install_tcp_443_occupied")
+    elif preflight.get("loopback_tcp_18443") != "free":
+        raise SmartDNSRemoteOperationError("install_fronted_loopback_listener_occupied")
     if preflight.get("occupied_targets"):
         raise SmartDNSRemoteOperationError("install_target_already_present")
     if preflight.get("service_state") not in {"inactive", "unknown"}:
@@ -583,7 +698,14 @@ def _stage_bundle(
     _run(node, "\n".join(checks), label="stage_digest_readback", timeout=240)
 
 
-def _backup_command(*, backup_dir: str, bundle_sha256: str, node_code: str) -> str:
+def _backup_command(
+    *,
+    backup_dir: str,
+    bundle_sha256: str,
+    node_code: str,
+    listener_mode: str = DEDICATED_LISTENER_MODE,
+) -> str:
+    listener = _listener_spec(listener_mode)
     targets = {
         "current": CURRENT_POINTER,
         "config": CONFIG_PATH,
@@ -596,11 +718,16 @@ def _backup_command(*, backup_dir: str, bundle_sha256: str, node_code: str) -> s
         f"install -d -m 0700 {_q(backup_dir)}",
         f"printf '%s\\n' {_q(bundle_sha256)} > {_q(backup_dir + '/bundle-sha256')}",
         f"printf '%s\\n' {_q(node_code)} > {_q(backup_dir + '/node-code')}",
+        f"printf '%s\\n' {_q(listener_mode)} > {_q(backup_dir + '/listener-mode')}",
         f"systemctl is-active {_q(SERVICE_NAME)} > {_q(backup_dir + '/service-active')} 2>/dev/null || printf 'inactive\\n' > {_q(backup_dir + '/service-active')}",
         f"systemctl is-enabled {_q(SERVICE_NAME)} > {_q(backup_dir + '/service-enabled')} 2>/dev/null || printf 'disabled\\n' > {_q(backup_dir + '/service-enabled')}",
         f"if id -u pokrov-smart-dns >/dev/null 2>&1; then printf 'present\\n' > {_q(backup_dir + '/user-state')}; else printf 'missing\\n' > {_q(backup_dir + '/user-state')}; fi",
         f"if getent group pokrov-smart-dns >/dev/null 2>&1; then printf 'present\\n' > {_q(backup_dir + '/group-state')}; else printf 'missing\\n' > {_q(backup_dir + '/group-state')}; fi",
-        f"if ufw status 2>/dev/null | grep -Eq '^[[:space:]]*{LISTEN_PORT}/tcp[[:space:]]+ALLOW'; then printf 'present\\n' > {_q(backup_dir + '/ufw-rule-state')}; else printf 'missing\\n' > {_q(backup_dir + '/ufw-rule-state')}; fi",
+        (
+            f"if ufw status 2>/dev/null | grep -Eq '^[[:space:]]*{DEDICATED_LISTEN_PORT}/tcp[[:space:]]+ALLOW'; then printf 'present\\n' > {_q(backup_dir + '/ufw-rule-state')}; else printf 'missing\\n' > {_q(backup_dir + '/ufw-rule-state')}; fi"
+            if listener["firewall_managed"]
+            else f"printf 'not_managed\\n' > {_q(backup_dir + '/ufw-rule-state')}"
+        ),
     ]
     for name, target in targets.items():
         saved = f"{backup_dir}/{name}"
@@ -623,6 +750,76 @@ def _backup_command(*, backup_dir: str, bundle_sha256: str, node_code: str) -> s
     return "\n".join(lines)
 
 
+_FRONTED_DOH_PROBE_HELPER = r"""
+import json
+import socket
+import ssl
+import struct
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    hostname = json.load(handle)["doh_hostname"]
+
+signature = b"\r\n\r\n\x00\r\nQUIT\n"
+header = struct.pack(
+    "!12sBBH4s4sHH",
+    signature,
+    0x21,
+    0x11,
+    12,
+    socket.inet_aton("192.0.2.10"),
+    socket.inet_aton("127.0.0.1"),
+    54321,
+    18443,
+)
+raw = socket.create_connection(("127.0.0.1", 18443), timeout=10)
+try:
+    raw.sendall(header)
+    context = ssl.create_default_context()
+    with context.wrap_socket(raw, server_hostname=hostname) as connection:
+        connection.settimeout(10)
+        request = (
+            "GET /dns-query HTTP/1.1\r\n"
+            f"Host: {hostname}\r\n"
+            "Connection: close\r\n\r\n"
+        ).encode("ascii")
+        connection.sendall(request)
+        response = connection.recv(128)
+finally:
+    raw.close()
+
+if not response.startswith((b"HTTP/1.1 400 ", b"HTTP/2 400 ")):
+    raise SystemExit(1)
+""".strip()
+
+
+def _fronted_doh_probe_command() -> str:
+    encoded = base64.b64encode(_FRONTED_DOH_PROBE_HELPER.encode("utf-8")).decode(
+        "ascii"
+    )
+    return (
+        "python3 -c "
+        + _q(f"import base64;exec(base64.b64decode('{encoded}'))")
+        + " "
+        + _q(CONFIG_PATH)
+    )
+
+
+def _listener_started_commands(listener_mode: str) -> list[str]:
+    if listener_mode == DEDICATED_LISTENER_MODE:
+        return [
+            f"ss -H -ltn 'sport = :{DEDICATED_LISTEN_PORT}' | grep -q .",
+            f"doh_host=$(python3 -c {_q('import json;print(json.load(open(\"' + CONFIG_PATH + '\",encoding=\"utf-8\"))[\"doh_hostname\"])')})",
+            f"test \"$(curl --silent --show-error --output /dev/null --write-out '%{{http_code}}' --http1.1 --resolve \"$doh_host:{DEDICATED_LISTEN_PORT}:127.0.0.1\" \"https://$doh_host/dns-query\")\" = 400",
+        ]
+    _listener_spec(listener_mode)
+    return [
+        f"test \"$(ss -H -ltn 'sport = :{FRONTED_LISTEN_PORT}' | wc -l)\" = 1",
+        f"ss -H -ltn4 'sport = :{FRONTED_LISTEN_PORT}' | awk '$4 == \"{FRONTED_LISTEN_HOST}:{FRONTED_LISTEN_PORT}\" {{ found = 1 }} END {{ exit(found ? 0 : 1) }}'",
+        _fronted_doh_probe_command(),
+    ]
+
+
 def _install_command(
     *,
     stage_dir: str,
@@ -630,7 +827,9 @@ def _install_command(
     runtime_material_dir: str,
     backup_dir: str,
     manifest: Mapping[str, Any],
+    listener_mode: str = DEDICATED_LISTENER_MODE,
 ) -> str:
+    listener = _listener_spec(listener_mode)
     lines = [
         "set -e",
         "getent group pokrov-smart-dns >/dev/null 2>&1 || groupadd --system pokrov-smart-dns",
@@ -659,14 +858,18 @@ def _install_command(
             f"runuser -u pokrov-smart-dns -- {_q(release_dir + '/' + bundle_contract.BINARY_MEMBER)} -config {_q(CONFIG_PATH)} -check >/dev/null",
             f"systemctl start {_q(SERVICE_NAME)}",
             f"test \"$(systemctl is-active {_q(SERVICE_NAME)})\" = active",
-            f"ss -H -ltn 'sport = :{LISTEN_PORT}' | grep -q .",
-            f"doh_host=$(python3 -c {_q('import json;print(json.load(open(\"' + CONFIG_PATH + '\",encoding=\"utf-8\"))[\"doh_hostname\"])')})",
-            f"test \"$(curl --silent --show-error --output /dev/null --write-out '%{{http_code}}' --http1.1 --resolve \"$doh_host:{LISTEN_PORT}:127.0.0.1\" \"https://$doh_host/dns-query\")\" = 400",
-            f"ufw allow {LISTEN_PORT}/tcp comment 'POKROV Smart DNS lab' >/dev/null",
+            *_listener_started_commands(listener_mode),
+            *(
+                [
+                    f"ufw allow {DEDICATED_LISTEN_PORT}/tcp comment 'POKROV Smart DNS lab' >/dev/null"
+                ]
+                if listener["firewall_managed"]
+                else []
+            ),
             f"systemctl enable {_q(SERVICE_NAME)} >/dev/null",
             f"test \"$(systemctl is-enabled {_q(SERVICE_NAME)})\" = enabled",
             f"test \"$(readlink -f {_q(CURRENT_POINTER)})\" = {_q(release_dir)}",
-            f"printf 'installed\\n' > {_q(backup_dir + '/receipt-state')}",
+            f"printf 'applied\\n' > {_q(backup_dir + '/receipt-state')}",
         ]
     )
     return "\n".join(lines)
@@ -688,21 +891,40 @@ def _rollback_command(
     node_code: str,
     release_dir: str,
     require_current_release: bool = False,
+    listener_mode: str = DEDICATED_LISTENER_MODE,
 ) -> str:
+    listener = _listener_spec(listener_mode)
+    listen_port = int(listener["port"])
     lines = [
         "set -e",
         f"test -d {_q(backup_dir)}",
         f"test \"$(stat -c %u {_q(backup_dir)})\" = 0",
         f"grep -qx {_q(bundle_sha256)} {_q(backup_dir + '/bundle-sha256')}",
         f"grep -qx {_q(node_code)} {_q(backup_dir + '/node-code')}",
+        f"grep -qx {_q(listener_mode)} {_q(backup_dir + '/listener-mode')}",
     ]
     if require_current_release:
-        lines.append(f"test \"$(readlink -f {_q(CURRENT_POINTER)})\" = {_q(release_dir)}")
+        lines.extend(
+            [
+                f"grep -qx applied {_q(backup_dir + '/receipt-state')}",
+                f"test \"$(readlink -f {_q(CURRENT_POINTER)})\" = {_q(release_dir)}",
+            ]
+        )
+    else:
+        lines.append(
+            f"grep -Eq '^(prepared|applied)$' {_q(backup_dir + '/receipt-state')}"
+        )
     lines.extend(
         [
             f"systemctl disable --now {_q(SERVICE_NAME)} >/dev/null 2>&1 || true",
-            f"listener_after_stop=free; if ss -H -ltn 'sport = :{LISTEN_PORT}' | grep -q .; then listener_after_stop=busy; fi",
-            f"if grep -qx missing {_q(backup_dir + '/ufw-rule-state')}; then ufw --force delete allow {LISTEN_PORT}/tcp >/dev/null 2>&1 || true; fi",
+            f"listener_after_stop=free; if ss -H -ltn 'sport = :{listen_port}' | grep -q .; then listener_after_stop=busy; fi",
+            *(
+                [
+                    f"if grep -qx missing {_q(backup_dir + '/ufw-rule-state')}; then ufw --force delete allow {DEDICATED_LISTEN_PORT}/tcp >/dev/null 2>&1 || true; fi"
+                ]
+                if listener["firewall_managed"]
+                else [f"grep -qx not_managed {_q(backup_dir + '/ufw-rule-state')}"]
+            ),
         ]
     )
     for name, target in (
@@ -719,7 +941,7 @@ def _rollback_command(
             f"if grep -qx active {_q(backup_dir + '/service-active')}; then systemctl start {_q(SERVICE_NAME)}; fi",
             f"if grep -qx missing {_q(backup_dir + '/user-state')}; then userdel pokrov-smart-dns >/dev/null 2>&1 || true; fi",
             f"if grep -qx missing {_q(backup_dir + '/group-state')}; then groupdel pokrov-smart-dns >/dev/null 2>&1 || true; fi",
-            f"if ! grep -qx active {_q(backup_dir + '/service-active')}; then test \"$listener_after_stop\" = free; ! ss -H -ltn 'sport = :{LISTEN_PORT}' | grep -q .; fi",
+            f"if ! grep -qx active {_q(backup_dir + '/service-active')}; then test \"$listener_after_stop\" = free; ! ss -H -ltn 'sport = :{listen_port}' | grep -q .; fi",
             f"printf 'rolled_back\\n' > {_q(backup_dir + '/receipt-state')}",
             f"test -d {_q(release_dir)} || true",
         ]
@@ -727,21 +949,37 @@ def _rollback_command(
     return "\n".join(lines)
 
 
-def _plan(*, operation: str, node_code: str) -> dict[str, Any]:
+def _plan(
+    *,
+    operation: str,
+    node_code: str,
+    listener_mode: str = DEDICATED_LISTENER_MODE,
+) -> dict[str, Any]:
+    _listener_spec(listener_mode)
+    install_verification = (
+        [
+            "start_and_verify_local_tls_doh_before_firewall_open",
+            "open_tcp_443_then_enable_service",
+        ]
+        if listener_mode == DEDICATED_LISTENER_MODE
+        else [
+            "start_and_verify_proxy_v2_tls_doh_before_frontend_migration",
+            "retain_loopback_only_firewall_unchanged_then_enable_service",
+        ]
+    )
     actions = (
         [
             "verify_exact_bundle_and_runtime_contract",
             "retain_root_only_pre_mutation_receipt",
             "stage_and_digest_read_back_bundle",
             "install_immutable_release_and_root_owned_runtime_material",
-            "start_and_verify_local_tls_doh_before_firewall_open",
-            "open_tcp_443_then_enable_service",
+            *install_verification,
         ]
         if operation == "install"
         else [
             "require_client_selection_disabled",
             "bind_exact_receipt_and_current_release",
-            "stop_service_and_verify_tcp_443_absent",
+            "stop_service_and_verify_selected_listener_absent",
             "restore_receipt_bound_targets_and_firewall",
             "retain_failed_immutable_release",
         ]
@@ -749,6 +987,7 @@ def _plan(*, operation: str, node_code: str) -> dict[str, Any]:
     return {
         "operation": operation,
         "node_code": node_code,
+        "listener_mode": listener_mode,
         "ordered_actions": actions,
         "mutation_performed": False,
         "secrets_returned": False,
@@ -775,6 +1014,9 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--known-hosts", required=True)
     parser.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
     parser.add_argument("--operation", choices=("install", "rollback"), default="install")
+    parser.add_argument(
+        "--listener-mode", choices=LISTENER_MODES, default=DEDICATED_LISTENER_MODE
+    )
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--runtime-material-dir", default="")
     parser.add_argument("--receipt-id", default="")
@@ -782,6 +1024,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--confirm-source-revision", default="")
     parser.add_argument("--confirm-node-code", default="")
     parser.add_argument("--confirm-dedicated-node", default="")
+    parser.add_argument("--confirm-fronted-listener", default="")
     parser.add_argument("--confirm-client-selection-disabled", default="")
     parser.add_argument("--confirm-runtime-material-ready", default="")
     parser.add_argument("--json-out", default="")
@@ -790,9 +1033,19 @@ def _parser() -> argparse.ArgumentParser:
 
 def main() -> int:
     args = _parser().parse_args()
+    failure_context: dict[str, Any] = {
+        "receipt_id": "",
+        "receipt_created": False,
+        "mutation_attempted": False,
+        "automatic_rollback_status": "NOT_ARMED",
+    }
     try:
         node_code = _safe_component(args.node_code, label="node_code")
-        bundle_path, manifest, contents, bundle_sha256 = _validated_local_bundle(args.bundle)
+        listener_mode = str(args.listener_mode)
+        _listener_spec(listener_mode)
+        bundle_path, manifest, contents, bundle_sha256 = _validated_local_bundle(
+            args.bundle, listener_mode
+        )
         source_revision = str((manifest.get("created_from") or {}).get("revision") or "").lower()
         if not re.fullmatch(r"[0-9a-f]{40}", source_revision):
             raise SmartDNSRemoteOperationError("bundle_source_revision_invalid")
@@ -825,12 +1078,14 @@ def main() -> int:
                 release_dir=release_dir,
                 runtime_material_dir=runtime_material_dir,
                 expected_proxy_ipv4=expected_proxy_ipv4,
+                listener_mode=listener_mode,
             )
             report: dict[str, Any] = {
                 "schema_version": REPORT_SCHEMA,
                 "mode": "APPLY" if args.apply else "PLAN",
                 "operation": args.operation,
                 "node_code": node_code,
+                "listener_mode": listener_mode,
                 "bundle_sha256": bundle_sha256,
                 "bundle_size_bytes": bundle_path.stat().st_size,
                 "source_revision": source_revision,
@@ -847,7 +1102,11 @@ def main() -> int:
                 "external_service_access": "NOT_RUN",
             }
             if not args.apply:
-                report["plan"] = _plan(operation=args.operation, node_code=node_code)
+                report["plan"] = _plan(
+                    operation=args.operation,
+                    node_code=node_code,
+                    listener_mode=listener_mode,
+                )
                 _write_report(report, args.json_out)
                 print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
                 return 0
@@ -858,8 +1117,21 @@ def main() -> int:
                 raise SmartDNSRemoteOperationError("confirm_source_revision_mismatch")
             if str(args.confirm_node_code).strip().lower() != node_code:
                 raise SmartDNSRemoteOperationError("confirm_node_code_mismatch")
-            if str(args.confirm_dedicated_node).strip() != "DEDICATED_SMART_DNS_NODE":
-                raise SmartDNSRemoteOperationError("dedicated_node_confirmation_missing")
+            if listener_mode == DEDICATED_LISTENER_MODE:
+                if (
+                    str(args.confirm_dedicated_node).strip()
+                    != "DEDICATED_SMART_DNS_NODE"
+                ):
+                    raise SmartDNSRemoteOperationError(
+                        "dedicated_node_confirmation_missing"
+                    )
+            elif (
+                str(args.confirm_fronted_listener).strip()
+                != "FRONTED_LOOPBACK_PROXY_V2"
+            ):
+                raise SmartDNSRemoteOperationError(
+                    "fronted_listener_confirmation_missing"
+                )
             if (
                 str(args.confirm_client_selection_disabled).strip()
                 != "SMART_DNS_CLIENT_SELECTION_DISABLED"
@@ -869,12 +1141,14 @@ def main() -> int:
             if args.operation == "install":
                 if str(args.confirm_runtime_material_ready).strip() != "RUNTIME_MATERIAL_READY":
                     raise SmartDNSRemoteOperationError("runtime_material_confirmation_missing")
-                _assert_fresh_install_preflight(preflight)
+                _assert_fresh_install_preflight(preflight, listener_mode)
                 receipt_id = _release_id(bundle_sha256)
+                failure_context["receipt_id"] = receipt_id
                 backup_dir = f"{BACKUP_ROOT}/{receipt_id}"
                 stage_dir = f"{STAGE_ROOT}/{receipt_id}"
                 backup_ready = False
                 try:
+                    failure_context["mutation_attempted"] = True
                     _stage_bundle(node, stage_dir=stage_dir, manifest=manifest, contents=contents)
                     _run(
                         node,
@@ -882,10 +1156,13 @@ def main() -> int:
                             backup_dir=backup_dir,
                             bundle_sha256=bundle_sha256,
                             node_code=node_code,
+                            listener_mode=listener_mode,
                         ),
                         label="receipt_backup",
                     )
                     backup_ready = True
+                    failure_context["receipt_created"] = True
+                    failure_context["automatic_rollback_status"] = "ARMED"
                     _run(
                         node,
                         _install_command(
@@ -894,24 +1171,31 @@ def main() -> int:
                             runtime_material_dir=runtime_material_dir,
                             backup_dir=backup_dir,
                             manifest=manifest,
+                            listener_mode=listener_mode,
                         ),
                         label="install_apply",
                         timeout=300,
                     )
                 except Exception:
                     if backup_ready:
-                        _run(
-                            node,
-                            _rollback_command(
-                                backup_dir=backup_dir,
-                                bundle_sha256=bundle_sha256,
-                                node_code=node_code,
-                                release_dir=release_dir,
-                                require_current_release=False,
-                            ),
-                            label="automatic_rollback",
-                            timeout=240,
-                        )
+                        try:
+                            _run(
+                                node,
+                                _rollback_command(
+                                    backup_dir=backup_dir,
+                                    bundle_sha256=bundle_sha256,
+                                    node_code=node_code,
+                                    release_dir=release_dir,
+                                    require_current_release=False,
+                                    listener_mode=listener_mode,
+                                ),
+                                label="automatic_rollback",
+                                timeout=240,
+                            )
+                            failure_context["automatic_rollback_status"] = "PASS"
+                        except Exception:
+                            failure_context["automatic_rollback_status"] = "FAIL"
+                            raise
                     raise
                 finally:
                     _run_allow_failure(node, f"rm -rf -- {_q(stage_dir)}", timeout=90)
@@ -921,7 +1205,15 @@ def main() -> int:
                         "receipt_id": receipt_id,
                         "service_active": True,
                         "service_enabled": True,
-                        "tcp_443_listener": True,
+                        "selected_listener": True,
+                        "selected_listener_contract": (
+                            "dedicated_public_tcp_443"
+                            if listener_mode == DEDICATED_LISTENER_MODE
+                            else "fronted_loopback_proxy_v2_tcp_18443"
+                        ),
+                        "public_firewall_mutated": (
+                            listener_mode == DEDICATED_LISTENER_MODE
+                        ),
                         "local_tls_doh_probe": "PASS_HTTP_400_INVALID_DNS",
                         "automatic_rollback_armed": True,
                     }
@@ -930,6 +1222,8 @@ def main() -> int:
                 receipt_id = str(args.receipt_id or "").strip()
                 if not SAFE_RECEIPT_RE.fullmatch(receipt_id):
                     raise SmartDNSRemoteOperationError("receipt_id_invalid")
+                failure_context["receipt_id"] = receipt_id
+                failure_context["mutation_attempted"] = True
                 backup_dir = f"{BACKUP_ROOT}/{receipt_id}"
                 _run(
                     node,
@@ -939,6 +1233,7 @@ def main() -> int:
                         node_code=node_code,
                         release_dir=release_dir,
                         require_current_release=True,
+                        listener_mode=listener_mode,
                     ),
                     label="explicit_rollback",
                     timeout=240,
@@ -958,12 +1253,45 @@ def main() -> int:
             if node is not None:
                 node.close()
             brain.close()
-    except SmartDNSRemoteOperationError as exc:
-        print(f"owned Smart DNS remote operation failed: {exc}", file=sys.stderr)
-        return 1
     except Exception as exc:
+        code = (
+            str(exc).split(":", 1)[0][:160]
+            if isinstance(exc, SmartDNSRemoteOperationError)
+            else type(exc).__name__
+        )
+        failure_report = {
+            "schema_version": REPORT_SCHEMA,
+            "mode": "ERROR",
+            "operation": str(getattr(args, "operation", "unknown")),
+            "listener_mode": str(getattr(args, "listener_mode", "unknown")),
+            "error_code": code,
+            "receipt_id": failure_context["receipt_id"] or None,
+            "receipt_created": failure_context["receipt_created"],
+            "mutation_attempted": failure_context["mutation_attempted"],
+            "automatic_rollback_status": failure_context[
+                "automatic_rollback_status"
+            ],
+            "raw_host_returned": False,
+            "raw_runtime_material_returned": False,
+        }
+        try:
+            _write_report(
+                failure_report, str(getattr(args, "json_out", "") or "")
+            )
+        except Exception:
+            pass
+        receipt_suffix = (
+            f" receipt_id={failure_context['receipt_id']}"
+            if failure_context["receipt_id"]
+            else ""
+        )
+        rollback_suffix = (
+            " automatic_rollback_status="
+            + str(failure_context["automatic_rollback_status"])
+        )
         print(
-            f"owned Smart DNS remote operation failed: {type(exc).__name__}",
+            f"owned Smart DNS remote operation failed: {type(exc).__name__}: "
+            f"{code}{receipt_suffix}{rollback_suffix}",
             file=sys.stderr,
         )
         return 1

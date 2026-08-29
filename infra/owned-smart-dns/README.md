@@ -4,15 +4,15 @@ This directory contains source for a default-off, source-only Smart DNS
 laboratory. It is not deployed and contains no runtime host, certificate,
 private key, token, or retained DNS/SNI data.
 
-The proven bundle installer still owns one dedicated TCP/443 listener. The
-server source also has a post-candidate, default-off fronted mode for sharing an
-already owned HAProxy TCP/443 frontend without buying another address. That
-mode binds only to an explicit loopback unprivileged port, requires one strict
-PROXY protocol v2 TCP IPv4/IPv6 header without TLVs, and restores the original
-source address before applying per-source limits. Missing, direct, malformed,
-non-TCP, TLV-bearing, or non-loopback listener combinations fail closed. The
-current guarded installer deliberately does not APPLY this mode; frontend
-migration and rollback need their own reviewed operation.
+The guarded bundle installer supports two explicit, default-off listener
+modes. `dedicated` owns one public TCP/443 listener and its UFW rule. `fronted`
+shares an already owned HAProxy TCP/443 frontend without buying another address
+and binds only to `127.0.0.1:18443`; it never changes the public firewall. The
+fronted mode requires one strict PROXY protocol v2 TCP IPv4/IPv6 header without
+TLVs and restores the original source address before applying per-source
+limits. Missing, direct, malformed, non-TCP, TLV-bearing, or non-loopback
+listener combinations fail closed. Server install and frontend migration
+remain separate guarded operations with separate receipts and rollback.
 
 In both modes, TLS for the exact DoH hostname is terminated locally at
 `/dns-query`; other ClientHello records are accepted only when the normalized
@@ -52,9 +52,12 @@ byte comparison and reports that same canonical digest.
 Render one template's placeholders outside Git into
 `/etc/pokrov-smart-dns/config.json`, retain it with owner/group-only
 permissions, and validate it with `-check` before any separately authorized
-install. The TLS private key stays outside the release bundle. The current
-guarded installer accepts only the dedicated template; the fronted template is
-source/bundle proof for a separate migration plan, not deployment authority.
+install. The TLS private key stays outside the release bundle. Select the
+matching installer mode explicitly. A fronted install requires
+`FRONTED_LOOPBACK_PROXY_V2`, proves the loopback listener and a local
+PROXY-v2/TLS/DoH probe, and leaves public TCP/443 and UFW untouched. It does not
+authorize the separate HAProxy frontend migration. Both modes still require
+one unique owned public IPv4 for the synthetic `A` answer.
 
 No active POKROV delivery node currently has an unclaimed TCP/443 listener.
 Deployment therefore requires either a deliberately freed owned public IPv4
