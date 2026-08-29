@@ -57,14 +57,19 @@ class OpenSshConfigSession:
                 command,
             ]
         )
-        return subprocess.run(
+        input_bytes = None
+        if input_text is not None:
+            input_bytes = input_text.replace("\r\n", "\n").replace("\r", "\n").encode("utf-8")
+        result = subprocess.run(
             argv,
-            input=input_text,
+            input=input_bytes,
             check=False,
             capture_output=True,
-            text=True,
             timeout=timeout,
         )
+        stdout = result.stdout.decode("utf-8", errors="replace") if isinstance(result.stdout, bytes) else result.stdout
+        stderr = result.stderr.decode("utf-8", errors="replace") if isinstance(result.stderr, bytes) else result.stderr
+        return subprocess.CompletedProcess(result.args, result.returncode, stdout, stderr)
 
     def close(self) -> None:
         """Match the Paramiko session lifecycle without persistent state."""

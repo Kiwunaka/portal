@@ -17,14 +17,17 @@ def test_open_ssh_config_session_enforces_noninteractive_trusted_connection() ->
     with mock.patch("ssh_host_keys.subprocess.run", return_value=completed) as run:
         result = OpenSshConfigSession("pokrov-brain").run("printf ok", input_text="request", timeout=17)
 
-    assert result is completed
+    assert result.returncode == 0
+    assert result.stdout == "ok\n"
+    assert result.stderr == ""
     argv = run.call_args.args[0]
     assert "BatchMode=yes" in argv
     assert "StrictHostKeyChecking=yes" in argv
     assert "ClearAllForwardings=yes" in argv
     assert "RequestTTY=no" in argv
     assert argv[-2:] == ["pokrov-brain", "printf ok"]
-    assert run.call_args.kwargs["input"] == "request"
+    assert run.call_args.kwargs["input"] == b"request"
+    assert "text" not in run.call_args.kwargs
     assert run.call_args.kwargs["timeout"] == 17
 
 
@@ -37,3 +40,13 @@ def test_open_ssh_config_session_rejects_unsafe_alias(alias: str) -> None:
 def test_open_ssh_config_session_requires_existing_explicit_config(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="readable file"):
         OpenSshConfigSession("pokrov-brain", tmp_path / "missing")
+
+
+def test_open_ssh_config_session_normalizes_windows_newlines_before_stdin() -> None:
+    completed = mock.Mock(returncode=0, stdout=b"ok\n", stderr=b"")
+    with mock.patch("ssh_host_keys.subprocess.run", return_value=completed) as run:
+        result = OpenSshConfigSession("pokrov-brain").run("bash -s", input_text="one\r\ntwo\rthree\n")
+
+    assert run.call_args.kwargs["input"] == b"one\ntwo\nthree\n"
+    assert result.stdout == "ok\n"
+    assert result.stderr == ""
