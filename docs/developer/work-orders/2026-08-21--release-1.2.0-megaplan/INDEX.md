@@ -159,6 +159,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013BQ` | Prove whether exact candidate.6's IPv4-only Android TUN releases or blocks unconfigured IPv6 on LDPlayer | Exact-candidate Android source/runtime evidence | IPv6-capable LDPlayer forms an IPv4-only WARP TUN with no IPv6 address/default route. Exact source has no `allowFamily` call and matches Android's default family-block contract. Structural fail-closed slice passes; external/physical leak tests and Gate C/F remain open | `WO-013BP`, exact signed x86_64 candidate.6, exact client source, official Android VpnService contract; physical phone still required |
 | `WO-013BR` | Close candidate.6 Brain-origin through the owner's trusted SSH configuration and regenerate Gate F | Candidate decision/origin evidence | Exact Brain source `197/197`, readiness `23/23` and enabled delivery `7/7` pass without deploy or restart. Successor Gate F is `BLOCKED` with `4 PASS`, `15 non-PASS`, `0 FAIL` and zero validation errors; RU and physical/Windows/manual lanes remain open | `WO-013BM`, `WO-013BQ`, exact signed candidate.6, owner-trusted SSH configuration |
 | `WO-013BS` | Determine whether the canonical RU-origin sandbox is ready for an exact candidate.6 run without changing it | Candidate origin/environment evidence | Trusted key access and NTP pass, but `9/9` source paths, `4/4` systemd units, `4/4` configuration records and the spool are absent. RU becomes `MANUAL_OWNER_TEST_ENVIRONMENT_NOT_INSTALLED`; Gate F remains `4 PASS`, `15 non-PASS`, `0 FAIL` | `WO-013BR`, exact platform source, canonical RU sandbox, separate owner authorization required before install/run/upload |
+| `WO-013BT` | Replace the stale HY2 server artifact with an exact candidate.6 Core build and repeat the owned-node PLAN | Cross-repository exact-Core artifact and owned-node preflight evidence | Two complete Go builds produce the same verified `a45d69e...` bundle. Brain HY2 kill-switch, owned-node root/tools/UFW and free UDP port pass read-only; runtime material is absent and no mutation/handshake occurs. HY2 remains `I3`; Gate F stays `4/15/0` | `WO-013AR`, `WO-013BR`, exact candidate.6 Core, explicit authorization and owner-only runtime material still required before APPLY |
 
 ## Current evidence
 
@@ -191,6 +192,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `WO-013BQ-candidate6-ldplayer-ipv6-family-block.md`
 - `WO-013BR-candidate6-brain-origin-and-gate-f.md`
 - `WO-013BS-candidate6-ru-origin-environment-preflight.md`
+- `WO-013BT-candidate6-hy2-artifact-and-plan.md`
 
   Together these work orders bind the signed candidate.5 artifact set and
   hosted signature, exact
@@ -254,6 +256,9 @@ The row order is a dependency order, not permission for one giant merge. Each im
   and the successor `4/15/0` Gate F without any runtime mutation. WO-013BS
   then proves the canonical RU sandbox is accessible but the exact probe
   contour is not installed, preserving RU as non-PASS and Gate F at `4/15/0`.
+  WO-013BT replaces the stale HY2 server artifact with an exact candidate.6
+  Core build and proves the guarded remote PLAN is ready except for deliberate
+  owner-only runtime material, without deployment or Gate F advancement.
 - `evidence/013BH-smart-dns-zero-purchase-plan/013BH-smart-dns-zero-purchase-plan.json`
   binds the exact source/bundle/policy identities, seven sanitized PLAN report
   digests, zero-mutation result and no-safe-current-target decision without
@@ -282,6 +287,10 @@ The row order is a dependency order, not permission for one giant merge. Each im
   binds exact candidate.6/platform and post-candidate harness identities,
   key-reachable/NTP-synchronized read-only preflight, the fully absent RU
   runner contour and the unchanged `4 PASS / 15 non-PASS / 0 FAIL` boundary.
+- `evidence/013BT-candidate6-hy2-artifact-and-plan/013BT-candidate6-hy2-artifact-and-plan.json`
+  binds exact candidate.6 Core, byte-identical lab.2 server bundles, verified
+  Brain kill-switch/owned-node preconditions, missing runtime material and the
+  explicit no-deploy/no-handshake/no-Gate-F-advance ceiling.
 - `evidence/013BN-candidate6-local-rollback/013BN-candidate6-local-rollback.json`
   binds the exact strict-v2 handoff, byte-identical client/portal rollback,
   fail-closed invalid invocation and unchanged runtime/public boundaries.
@@ -610,6 +619,9 @@ result with `4 PASS`, `15 non-PASS`, `0 FAIL` and zero validation errors.
 WO-013BS then narrows RU-origin from `NOT_RUN` to
 `MANUAL_OWNER_TEST_ENVIRONMENT_NOT_INSTALLED`: access and NTP pass, but the
 runner/uploader contour is wholly absent and no run/upload/readback occurred.
+WO-013BT separately refreshes the HY2 server bundle to exact candidate.6 Core
+and proves the no-mutation install PLAN is ready except for owner-only runtime
+material; HY2 remains undeployed and no live transport claim is made.
 None of these
 work orders rewrites candidate.5 evidence or inherits candidate.5's result.
 WO-013BN adds exact local portal/client rollback proof, and WO-013BO adds the

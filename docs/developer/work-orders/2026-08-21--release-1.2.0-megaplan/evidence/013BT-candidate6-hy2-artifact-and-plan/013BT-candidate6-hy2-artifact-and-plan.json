@@ -1,0 +1,80 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate6-hy2-artifact-and-plan/v1",
+  "recorded_at": "2026-08-29T13:18:54.3238678+03:00",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.6",
+    "version": "1.2.0+4046",
+    "operational_id": "62526fdbf0f86c2a7083eb9d2cff4f8645949a31c59032fa593dad9bc68cae05",
+    "manifest_sha256": "8aac2458f8c43c0ef2955719dcede44f495d60acf681bc804bd6bf9828ee9054",
+    "signature_sha256": "2307906a920fb9b4dcd4c0025bf7628972668905d13897c553ddf27a81592dfa",
+    "receipt_sha256": "85dd34504d876086aa8bfe3533ad4db964e4f0a9106f9085657dc08c2c7afcaa",
+    "sources": {
+      "platform": "5713324c1c0c2566befadf527bc09ec0ecf84a4e",
+      "client": "b2497af7704d0aa6901541e175ce154b0eab05d7",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "8d09ae5e8ec0c8347bcd4e2659944bdf7c9c9db3"
+    }
+  },
+  "tooling": {
+    "revision": "40e49e56a4d0da9198fee9c508a0ba0d2e08eee0",
+    "relationship_to_candidate": "POST_CANDIDATE_ARTIFACT_AND_READ_ONLY_PLAN_TOOLING",
+    "fail_first": "OLD_BUILDER_REJECTED_CANDIDATE6_CORE_REVISION",
+    "binary_version": "1.13.0-pokrov-hy2-lab.2",
+    "go_toolchain": "go1.25.13"
+  },
+  "artifact": {
+    "retained_location": "EXTERNAL_LOCAL_RELEASE_ARTIFACT",
+    "source_revision": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+    "bundle_size_bytes": 15232131,
+    "bundle_sha256": "fe9f082f3ad7e7e2a45db8257fc1fec202c63fe0ce43e0b25fc4620c827bd93e",
+    "binary_sha256": "e877237c919cb7c0b12df1ccd6a358eb206dbeefe3516e9a7d421e199d352901",
+    "contract_sha256": "c96b38e58ea33f838f23b80a65f3a9a264e932b7248f206798df9a0b8fa0fb98",
+    "independent_repeat_byte_identical": true,
+    "verification": "PASS",
+    "raw_runtime_material_included": false,
+    "deployment_performed": false
+  },
+  "remote_plan": {
+    "report_sha256": "249a1c8fd4cf32a6d454f3a5cf6aa0ae620ed70c1f7d898794d2f81c79908aa5",
+    "mode": "PLAN",
+    "operation": "install",
+    "brain_auth_method": "key",
+    "node_auth_method": "key",
+    "brain_hy2_kill_switch": "engaged",
+    "root": true,
+    "required_tools": true,
+    "ufw_installed": true,
+    "ufw_active": true,
+    "ufw_rule_present": false,
+    "udp_443": "free",
+    "occupied_target_count": 0,
+    "service_state": "inactive",
+    "service_enabled": "not-found",
+    "runtime_material_ready": false,
+    "external_handshake": "NOT_RUN",
+    "mutation_performed": false,
+    "raw_host_returned": false,
+    "raw_runtime_material_returned": false
+  },
+  "release_interpretation": {
+    "frkn_hy2_level": "I3",
+    "status": "CANDIDATE6_EXACT_ARTIFACT_REMOTE_PLAN_READY_RUNTIME_MATERIAL_MISSING",
+    "hy2_live_pass_claimed": false,
+    "physical_or_emulator_handshake_claimed": false,
+    "gate_f_before": "4_PASS_15_NONPASS_0_FAIL",
+    "gate_f_after": "4_PASS_15_NONPASS_0_FAIL",
+    "gate_f_regenerated": false,
+    "candidate_bytes_changed": false,
+    "server_or_brain_mutated": false
+  },
+  "next_required_action": {
+    "authorization": "EXPLICIT_OWNER_AUTHORIZATION_REQUIRED",
+    "runtime_material": "RECEIPT_BOUND_OWNER_ONLY_TLS_PASSWORD_AND_OPTIONAL_OBFS_INPUTS",
+    "sequence": [
+      "Generate runtime material outside Git and retained reports.",
+      "Run guarded APPLY with exact bundle, source, node and material confirmations while the Brain kill-switch remains engaged.",
+      "Provision encrypted device-bound material and execute bounded candidate.6 handshake, traffic, DNS/leak, teardown and current/Brain/RU origin evidence.",
+      "Rollback by exact receipt if any post-start check fails."
+    ]
+  }
+}

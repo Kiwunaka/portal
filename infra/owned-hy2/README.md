@@ -17,8 +17,8 @@ python -B scripts/build_owned_hy2_server_bundle.py plan --bundle E:\safe\pokrov-
 python -B scripts/build_owned_hy2_server_bundle.py plan --bundle E:\safe\pokrov-hy2-server.zip --operation rollback --node-code de
 ```
 
-The build requires clean Core commit
-`e8eb7721fc6eaac6813d3a888ac90d0da1f541a1`, compiles the pinned embedded
+The build requires clean candidate.6 Core commit
+`a45d69e40ed7d892619a2b5c4592a527f630665e`, compiles the pinned embedded
 sing-box source twice for Linux amd64, requires byte-identical binaries and
 runs `sing-box check` on a temporary synthetic configuration using the same
 source and build tag. The deterministic ZIP retains the GPL license and exact
