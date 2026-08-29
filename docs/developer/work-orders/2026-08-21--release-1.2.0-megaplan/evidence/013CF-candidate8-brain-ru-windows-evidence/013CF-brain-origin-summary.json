@@ -1,0 +1,30 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate8-brain-origin-summary/v1",
+  "recorded_at_utc": "2026-08-29T20:39:51Z",
+  "candidate": "pokrov-1.2.0-candidate.8",
+  "platform_source_revision": "241a83b4dca00799b39696a4ae0c3c97e087ec39",
+  "origin": "brain",
+  "status": "PASS",
+  "mode": "READ_ONLY_TRUSTED_SSH",
+  "results": {
+    "readiness": {"passed": 23, "required": 23, "failures": 0},
+    "enabled_delivery_nodes": {"passed": 7, "required": 7},
+    "runtime_source": {
+      "normalized_match": 197,
+      "required": 197,
+      "raw_match": 4,
+      "crlf_only_difference": 193,
+      "mismatch": 0,
+      "normalization_rule": "CRLF_TO_LF_ONLY"
+    }
+  },
+  "external_evidence": [
+    {"label": "brain-readiness", "retained_location": "EXTERNAL_LOCAL_RELEASE_EVIDENCE", "sha256": "4976478316197cdca060b3b87ff26f8c7b0c6fa0525f4319d043c894ca6e9fbd"},
+    {"label": "brain-live-enabled-nodes", "retained_location": "EXTERNAL_LOCAL_RELEASE_EVIDENCE", "sha256": "2d4b255010cd50e17c3b568b0ca409da6f89ec7aa56080a2811a9ddbd2e47199"},
+    {"label": "brain-runtime-source", "retained_location": "EXTERNAL_LOCAL_RELEASE_EVIDENCE", "sha256": "1bac006a01d002b9950ca26167341dfbb03217639d35cbf8aa3d3a79ce765705"}
+  ],
+  "runtime_mutated": false,
+  "production_deploy_performed": false,
+  "service_restart_performed": false,
+  "evidence_ceiling": "EXACT_PLATFORM_SOURCE_READINESS_ENABLED_NODE_DELIVERY_AND_SEMANTIC_RUNTIME_SOURCE_PASS"
+}
