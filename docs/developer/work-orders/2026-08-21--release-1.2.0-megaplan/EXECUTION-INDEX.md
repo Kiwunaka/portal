@@ -1,6 +1,35 @@
 # POKROV 1.2.0 Execution Index
 
-Last updated: 2026-08-29
+Last updated: 2026-08-30
+
+## 2026-08-30 — WO-013CG Smart DNS foreign first-frontend PLAN
+
+Post-candidate platform `c2ffc48285088129be507ac5bc3d9b8555225326`
+adds the missing guarded bootstrap for the preferred colocated foreign Smart
+DNS topology. Its legacy-only HAProxy config preserves all existing
+Xray/Reality traffic through one default loopback TCP/10443 backend and adds no
+Smart DNS route. PLAN is read-only. APPLY/ROLLBACK are exact node, inbound,
+config, unit and invariant-digest bound; they create a root-only receipt before
+mutation, use one-row SQLite compare-and-swap, distinguish automatic rollback
+PASS/FAIL and never remove a pre-existing HAProxy package.
+
+Read-only inventory finds no existing owned HAProxy frontend on `de`, `it`,
+`nl`, `pl` or `us`. The selected PLAN canary `it` has one enabled wildcard
+VLESS/Reality inbound on public TCP/443 owned by Xray, free loopback TCP/10443
+and TCP/18443, no frontend files or HAProxy binary, and an available apt
+candidate. The sanitized report SHA-256 is `72d768dd...fb83`; it returns
+`bootstrap_applicable=true`, `mutation_performed=false` and no raw host,
+configuration or runtime material.
+
+The focused transport-front/Smart-DNS suite passes `68/68`; Ruff, compile,
+manifest and diff checks pass. `FRKN_SMART_DNS/SMARTDNS-01` remains `I3` at
+`POST_CANDIDATE_FOREIGN_FRONTEND_BOOTSTRAP_SOURCE_AND_IT_PLAN_READY_APPLY_NOT_AUTHORIZED`.
+Candidate.8 is unchanged and Gate F remains `BLOCKED` at
+`5 PASS / 14 non-PASS / 0 FAIL`. The next state-changing slice requires an
+explicit `it` maintenance APPLY decision, immediate existing-transport and
+rollback proof, then separate runtime-material and Smart DNS route decisions.
+No deploy, DNS publication, candidate, public release or stable mutation
+occurred.
 
 ## 2026-08-29 — WO-013CC candidate.8 signed, physical AWG and Gate F
 
