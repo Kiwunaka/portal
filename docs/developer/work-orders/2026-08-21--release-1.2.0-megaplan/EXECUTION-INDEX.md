@@ -2,6 +2,25 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BQ candidate.6 LDPlayer IPv6 family block
+
+The exact signed candidate.6 LDPlayer install ran on a host with two global
+IPv6 addresses and 25 IPv6 default-route entries across policy tables. During
+the owner-UI WARP attempt, POKROV service and TUN formed with an IPv4 address
+and IPv4 default route but no IPv6 TUN address or IPv6 default route.
+
+Exact client source contains no `VpnService.Builder.allowFamily(...)` call,
+and its route planner adds a default route only for an address family present
+on the TUN. Android's official builder contract blocks an unconfigured family
+by default. The bounded result is
+`PASS_STRUCTURAL_ANDROID_IPV6_FAMILY_BLOCK`, not an external leak PASS.
+
+The common LDPlayer egress block remains. Final restore is WARP off, stopped
+service and no TUN; the physical phone was absent from ADB. Gate C remains
+`I2`, Gate F remains `3 PASS / 16 non-PASS / 0 FAIL`, and no ledger row
+advances. Normalized evidence SHA-256 is
+`01909f43b9bd7dfcf52f14488b3c7a7ab92628caee2a7c562a1887a2188a356e`.
+
 ## 2026-08-29 — WO-013BP candidate.6 LDPlayer per-app/WARP lifecycle
 
 Exact signed candidate.6 `1.2.0+4046` materializes both Android per-app

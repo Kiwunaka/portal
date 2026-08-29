@@ -1,0 +1,82 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate6-ldplayer-ipv6-family-block/v1",
+  "recorded_at_utc": "2026-08-29T09:03:23Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.6",
+    "operational_id": "62526fdbf0f86c2a7083eb9d2cff4f8645949a31c59032fa593dad9bc68cae05",
+    "manifest_sha256": "8aac2458f8c43c0ef2955719dcede44f495d60acf681bc804bd6bf9828ee9054",
+    "client_revision": "b2497af7704d0aa6901541e175ce154b0eab05d7",
+    "x86_64_apk_sha256": "3d95d82d8290150fadd13600b79eca26326792407532f571909d8df224df6fa4",
+    "installed_version": "1.2.0+4046",
+    "installed_identity_source": "WO-013BP"
+  },
+  "environment": {
+    "kind": "LDPlayer",
+    "physical_device_substituted": false,
+    "physical_phone_visible_to_adb": false,
+    "device_serial_retained": false,
+    "network_origin_classification": "BLOCKED_BY_LDPLAYER_NETWORK_CURRENT_ORIGIN"
+  },
+  "pre_vpn_ipv6_capability": {
+    "global_ipv6_address_count": 2,
+    "ipv6_default_route_count_all_policy_tables": 25,
+    "system_ipv6_disabled": false,
+    "android_private_dns_mode": "platform_default"
+  },
+  "active_warp_tun": {
+    "owner_ui_path_used": true,
+    "vpn_service_seen": true,
+    "tun_seen": true,
+    "tun_ipv4_address_seen": true,
+    "tun_ipv6_address_seen": false,
+    "ipv4_default_route_via_tun_seen": true,
+    "ipv6_default_route_via_tun_seen": false,
+    "authenticated_egress_proven": false
+  },
+  "source_contract": {
+    "vpn_service_source_sha256": "611ec5e941eef84345e1c6f19178dce570ead0c830dfac3e3f5d936701e32aff",
+    "route_planner_source_sha256": "26d246b412fb9123540650c67479ea9fba60066ab209574cb13cd1e48245fcfd",
+    "allow_family_call_count": 0,
+    "default_route_requires_same_family_tun_address": true,
+    "ipv4_only_route_planner_test_present": true,
+    "official_android_contract": "https://developer.android.com/reference/android/net/VpnService.Builder#allowFamily(int)",
+    "official_semantics": "An unconfigured address family is blocked unless explicitly allowed."
+  },
+  "classification": {
+    "structural_ipv6_family_block": "PASS",
+    "external_ipv6_leak_test": "NOT_RUN",
+    "physical_carrier_ipv6_leak_test": "NOT_RUN",
+    "dns_sni_attribution": "NOT_RUN",
+    "warp_protocol_result": "BLOCKED_BY_LDPLAYER_NETWORK_CURRENT_ORIGIN"
+  },
+  "verification": {
+    "android_route_planner_direct_release_test": "PASS",
+    "platform_docs_contract_tests": "32/32_PASS",
+    "execution_ledger_rows": 378,
+    "execution_ledger_duplicate_keys": 0,
+    "execution_ledger_invalid_indexes": 0,
+    "context_audit": "PASS",
+    "public_link_check": "PASS",
+    "new_evidence_secret_pattern_matches": 0,
+    "new_evidence_raw_ipv4_matches": 0,
+    "git_diff_check": "PASS"
+  },
+  "final_restore": {
+    "warp_enabled": false,
+    "vpn_service_present": false,
+    "tun_present": false,
+    "physical_device_mutated": false
+  },
+  "row_outcomes": {
+    "REL_GATE/GATE-C": "I2_STRONGER_EXACT_CANDIDATE6_STRUCTURAL_IPV6_FAIL_CLOSED_PHYSICAL_AND_WINDOWS_OPEN",
+    "REL_GATE/GATE-F": "I3_UNCHANGED_3_PASS_16_NONPASS_0_FAIL"
+  },
+  "privacy": {
+    "raw_address_retained": false,
+    "runtime_endpoint_hostname_retained": false,
+    "device_serial_retained": false,
+    "raw_config_or_journal_retained": false,
+    "external_probe_target_used": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE6_LDPLAYER_STRUCTURAL_ANDROID_IPV6_FAMILY_BLOCK_ONLY; NO_EXTERNAL_LEAK_PASS_NO_PHYSICAL_DEVICE_NO_GATE_ADVANCE"
+}
