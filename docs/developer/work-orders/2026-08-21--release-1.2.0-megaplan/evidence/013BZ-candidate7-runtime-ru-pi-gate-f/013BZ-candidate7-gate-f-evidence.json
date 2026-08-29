@@ -1,0 +1,216 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-08-29T14:54:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.7",
+    "operational_id": "81b5fc35a975384a84f62e20c3c1f31f2f3807ff77fb1daf334c97211fea8f03",
+    "manifest_sha256": "fb1d7049deaf3047456377e675c45a2177c76c51f8792703886ca2bcca5490ce",
+    "signature_sha256": "2b20ed7881c36f72b0777aa8c2a571e192895df15eb598165d5e93ae68418abf",
+    "receipt_sha256": "ff93d33bf0ef4b0e1b036ee1be5b83f769791295d0e1cfcde0a1f854b2799b04",
+    "sources": {
+      "platform": "af259f377ec7a3cd757f0f43762154dd25e09f94",
+      "client": "b2497af7704d0aa6901541e175ce154b0eab05d7",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "f6917c8264015aee72fe51126943b08191e85b07"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "MANUAL_OWNER_TEST",
+    "mandatory_stop_ship_and_dod": "MANUAL_OWNER_TEST",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "MANUAL_OWNER_TEST",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MANUAL_OWNER_TEST",
+    "current_origin": "PASS",
+    "brain_origin": "PASS",
+    "ru_origin": "NOT_RUN",
+    "windows_live_network": "NOT_RUN",
+    "android_ldplayer_rehearsal": "BLOCKED_BY_ACCESS",
+    "android_physical_device": "MANUAL_OWNER_TEST",
+    "authenticated_client_egress": "NOT_RUN",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "MANUAL_OWNER_TEST",
+    "hosted_required_checks": "SKIPPED_BY_OWNER"
+  },
+  "current_origin": {
+    "status": "PASS",
+    "source_revision": "af259f377ec7a3cd757f0f43762154dd25e09f94",
+    "health_p95_ms": 65.5636,
+    "health_budget_ms": 100,
+    "public_catalog_p95_ms": 67.4524,
+    "public_catalog_budget_ms": 200,
+    "sample_count_each": 50,
+    "runtime_mutated": false
+  },
+  "brain_origin": {
+    "status": "PASS",
+    "source_revision": "af259f377ec7a3cd757f0f43762154dd25e09f94",
+    "source_payload_match": "197/197",
+    "readiness": "23/23",
+    "enabled_delivery": "7/7",
+    "connection_mode": "OWNER_TRUSTED_SSH_CONFIG_READ_ONLY",
+    "ssh_alias_retained": false,
+    "remote_content_retained": false,
+    "runtime_mutated": false
+  },
+  "ru_origin_boundary": {
+    "gate_f_status": "NOT_RUN",
+    "pi_direct_ru_baseline_status": "PASS_BASELINE_ONLY",
+    "pi_architecture": "aarch64",
+    "system_dns_targets_resolved": "5/5",
+    "public_doh_targets_reachable": "2/2",
+    "chatgpt_http_status": 403,
+    "smart_dns_runtime_deployed": false,
+    "exact_candidate_client_executed": false,
+    "pi_baseline_promoted_to_gate_f_pass": false
+  },
+  "android_ldplayer_boundary": {
+    "status": "BLOCKED_BY_ACCESS",
+    "classification": "BLOCKED_BY_LDPLAYER_NETWORK_CURRENT_ORIGIN",
+    "exact_candidate_x86_64_hash_matched": true,
+    "awg2_service_tun_dns_materialized": true,
+    "awg31_service_tun_dns_materialized": true,
+    "authenticated_egress_passed": false,
+    "protocol_failure_claimed": false,
+    "crash_or_anr_observed": false,
+    "final_profile": "legacy_reality_fallback",
+    "final_lab_allowlist_identity_present": false,
+    "final_tun_present": false,
+    "final_vpn_service_present": false,
+    "final_managed_profile_has_awg": false,
+    "physical_device_replaced": false
+  },
+  "interpretation": {
+    "known_hard_failures": [],
+    "gate_f_pass_claimed": false,
+    "missing_manual_not_run_skipped_or_blocked_evidence_is_pass": false,
+    "candidate6_gate_f_transferred": false,
+    "candidate6_device_runtime_transferred": false,
+    "same_byte_identity_allows_exact_installed_apk_match": true,
+    "owner_solo_exception_waives_independent_reviewer_only": true,
+    "github_hosted_zero_step_runs_are_pass": false,
+    "unsigned_windows_direct_beta_exception": "PASS",
+    "unsigned_windows_public_or_stable_trusted_signing_pass": false,
+    "ldplayer_replaces_physical_android": false,
+    "ldplayer_common_egress_block_is_awg_failure": false,
+    "pi_direct_ru_baseline_is_candidate_ru_origin": false,
+    "plain_dns_success_is_smart_dns_live_access": false,
+    "chatgpt_http_403_is_dns_failure": false,
+    "smart_dns_source_contract_is_live_access": false,
+    "brain_source_readback_authorizes_deploy": false
+  },
+  "blockers": [
+    {
+      "id": "GATES_A_E_EXACT_RUNTIME_AND_EXTERNAL_ROWS_REMAIN",
+      "status": "MANUAL_OWNER_TEST",
+      "detail": "Candidate.7 exact sources pass the 15/15 local aggregate and its six artifacts are signed and supply-chain validated. Exact candidate migrations, physical device/browser/accessibility, provider, Operator, legal and other manual Gate A-E rows are not all retained."
+    },
+    {
+      "id": "NO_OPEN_P0_FALSE_GREEN_OR_SECRET_LEAK_ATTESTATION",
+      "status": "MISSING",
+      "detail": "No candidate.7 aggregate owner attestation yet proves the absence of open P0, false-green and secret-leak stop conditions across every required live gate."
+    },
+    {
+      "id": "RU_ORIGIN_EXACT_CANDIDATE_NOT_RUN",
+      "status": "NOT_RUN",
+      "detail": "The local Pi proves a direct RU terminal baseline only. It did not execute the candidate client, owned Smart DNS runtime or the canonical RU runner/upload/readback contour, so Gate F RU-origin remains NOT_RUN."
+    },
+    {
+      "id": "LDPLAYER_COMMON_NETWORK_ORIGIN",
+      "status": "BLOCKED_BY_ACCESS",
+      "detail": "Exact x86_64 candidate.7 materialized AWG2 and AWG3.1 endpoints, the app VPN service, TUN and managed DNS, but did not reach authenticated Core egress. The same binary bytes previously reproduced the boundary on an ordinary default control; this remains an emulator-origin block, not an AWG protocol PASS or FAIL."
+    },
+    {
+      "id": "PHYSICAL_ANDROID_RUNTIME_MATRIX",
+      "status": "MANUAL_OWNER_TEST",
+      "detail": "The exact ARM64 artifact identity is retained, but candidate.7 AWG2/AWG3.1, WARP, per-app, Wi-Fi/LTE, Private DNS/IPv6, OEM/Doze, leak, endurance and cleanup remain unexecuted on the returned phone."
+    },
+    {
+      "id": "WINDOWS_CLEAN_HOST_LIVE_MATRIX",
+      "status": "NOT_RUN",
+      "detail": "The unsigned candidate.7 installer and 8/8 runtime bundle are exact, but no isolated Windows 10/11 host evidence covers install, SCM, authenticated IPC, TUN, DNS, egress, recovery and uninstall."
+    },
+    {
+      "id": "SMART_DNS_LIVE_ACCESS",
+      "status": "NOT_RUN",
+      "detail": "The Pi baseline proves direct DNS and public DoH while ChatGPT reaches an HTTP 403 edge denial. No owned Smart DNS endpoint is deployed and no live proxy/fronted DNS-SNI attribution, leak, lifecycle or rollback proof exists."
+    },
+    {
+      "id": "PROVIDER_OPERATOR_LEGAL_AND_RELEASE_HEALTH",
+      "status": "MANUAL_OWNER_TEST",
+      "detail": "Production payment provider E2E, Operator OIDC/RBAC/action intent, legal/commercial approval, comparable device performance and post-public-promotion health remain external or manual."
+    }
+  ],
+  "hosted_checks": {
+    "classification": "SKIPPED_BY_OWNER",
+    "policy": "OWNER_SOLO_EXCEPTION_NO_PURCHASE_NO_BRANCH_PROTECTION",
+    "release_index_source_contract": "PASS",
+    "release_index_signer": "PASS",
+    "platform_private_runs": "ZERO_STEPS_BLOCKED_BY_ACCESS",
+    "latest_platform_pr": 77,
+    "latest_platform_guardrail_steps": 0,
+    "latest_platform_contract_steps": 0,
+    "platform_private_runs_claimed_as_pass": false,
+    "paid_github_plan_required": false,
+    "protected_branches_required": false
+  },
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BY-candidate7-corrected-supply-chain-and-signing/013BY-candidate7-corrected-supply-chain-and-signing.json",
+      "sha256": "08a1477aaa4306d2811b98aec242b3bdd0cf918f5ca2d9beddffb7c2cf510d39"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013BZ-candidate7-runtime-ru-pi-gate-f/013BZ-candidate7-runtime-evidence.json",
+      "sha256": "c6527e4d29e2076b662ffa8fbde381fe7080b1a2f8b917aa1e9a4471d9e23269"
+    }
+  ],
+  "external_evidence": [
+    {
+      "label": "candidate7-current-origin-health",
+      "retained_location": "EXTERNAL_LOCAL_RELEASE_EVIDENCE",
+      "sha256": "ede9f8144604509d2400cc0d3732e8f8201f597b63d39588dc7f4ae0696c2dec"
+    },
+    {
+      "label": "candidate7-current-origin-public-catalog",
+      "retained_location": "EXTERNAL_LOCAL_RELEASE_EVIDENCE",
+      "sha256": "4cbf80b29e8c196b509809afcc167fbd03fc7a3ca4bed1819054ea16c44e8952"
+    },
+    {
+      "label": "candidate7-brain-runtime-source",
+      "retained_location": "EXTERNAL_LOCAL_RELEASE_EVIDENCE",
+      "sha256": "16b71998b227b3bfa2089ef57d208068cc654764d91a4b4cac26841126ff4a53"
+    },
+    {
+      "label": "candidate7-brain-readiness",
+      "retained_location": "EXTERNAL_LOCAL_RELEASE_EVIDENCE",
+      "sha256": "51638723f88c43a5e4237dcb6b4ad5339fd135d00909b8cd26964fa12d6d1ae6"
+    },
+    {
+      "label": "candidate7-brain-live-enabled-nodes",
+      "retained_location": "EXTERNAL_LOCAL_RELEASE_EVIDENCE",
+      "sha256": "3539d786df717fd7e783488b124b7bced48e0076f8b30c7bc6073ff34330a62a"
+    }
+  ],
+  "mutation_boundary": {
+    "physical_device_used": false,
+    "ldplayer_used": true,
+    "brain_ssh_attempted": true,
+    "brain_authenticated": true,
+    "pi_ssh_attempted": true,
+    "pi_authenticated": true,
+    "owner_inventory_or_secret_material_mutated": false,
+    "temporary_owner_lab_policy_mutation": true,
+    "temporary_owner_lab_policy_restored": true,
+    "entitlement_mutated": false,
+    "payment_action": false,
+    "production_deploy": false,
+    "public_release": false,
+    "repository_visibility_mutated": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "SIGNED_CANDIDATE7_CURRENT_AND_BRAIN_ORIGINS_SUPPLY_CHAIN_AND_RELEASE_DOC_BINDING_PASS; LDPLAYER_COMMON_ORIGIN_BLOCKED_AND_RESTORED; PI_DIRECT_RU_BASELINE_ONLY; PHYSICAL_ANDROID_WINDOWS_EXACT_RU_PROVIDER_OPERATOR_LEGAL_HEALTH_AND_ROLLBACK_OPEN; NO_PUBLIC_RELEASE_OR_STABLE_POINTER"
+}

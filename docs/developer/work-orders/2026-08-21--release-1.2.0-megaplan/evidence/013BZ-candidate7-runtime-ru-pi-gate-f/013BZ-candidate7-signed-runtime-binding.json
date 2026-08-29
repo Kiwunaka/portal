@@ -1,0 +1,52 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate7-signed-runtime-binding/v1",
+  "candidate_id": "pokrov-1.2.0-candidate.7",
+  "sources": {
+    "platform": "af259f377ec7a3cd757f0f43762154dd25e09f94",
+    "client": "b2497af7704d0aa6901541e175ce154b0eab05d7",
+    "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+    "release_index": "f6917c8264015aee72fe51126943b08191e85b07"
+  },
+  "outputs": [
+    {
+      "path": "actions-artifact/release-index.json",
+      "size_bytes": 6883,
+      "sha256": "fb1d7049deaf3047456377e675c45a2177c76c51f8792703886ca2bcca5490ce"
+    },
+    {
+      "path": "actions-artifact/release-index.json.sig",
+      "size_bytes": 64,
+      "sha256": "2b20ed7881c36f72b0777aa8c2a571e192895df15eb598165d5e93ae68418abf"
+    },
+    {
+      "path": "actions-artifact/signing-receipt.json",
+      "size_bytes": 588,
+      "sha256": "ff93d33bf0ef4b0e1b036ee1be5b83f769791295d0e1cfcde0a1f854b2799b04"
+    }
+  ],
+  "independent_validation": {
+    "status": "READY_SIGNED_MANIFEST",
+    "signing_key_id": "pokrov-release-2026-01",
+    "artifact_count": 6,
+    "owner_unsigned_windows_exception_count": 1,
+    "owner_unsigned_windows_artifact": "pokrov-windows-setup-x64.exe",
+    "release_index_commit": "f6917c8264015aee72fe51126943b08191e85b07",
+    "receipt_matches_outputs": true,
+    "detached_signature_verified_with_public_keyring": true,
+    "promotion_authorized": false
+  },
+  "physical_phone_install_binding": {
+    "package_version": "1.2.0+4046",
+    "arm64_artifact_sha256": "b583205db9e197c6de873264821319ef1108a2786f1ee5466501712568147296",
+    "installed_base_apk_sha256": "b583205db9e197c6de873264821319ef1108a2786f1ee5466501712568147296",
+    "arm64_artifact_sha256_match": true,
+    "device_serial_retained": false,
+    "physical_runtime_pass_claimed": false
+  },
+  "interpretation": {
+    "candidate6_binding_transferred": false,
+    "candidate7_uses_same_arm64_bytes": true,
+    "installed_identity_is_runtime_pass": false,
+    "public_or_stable_promotion_authorized": false
+  }
+}

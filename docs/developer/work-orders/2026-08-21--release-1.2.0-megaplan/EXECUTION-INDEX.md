@@ -2,6 +2,37 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BZ candidate.7 runtime, Pi RU baseline and Gate F
+
+Fresh exact candidate.7 current-origin probes pass: health p95 is
+`65.5636 ms` against `100 ms`, and public catalog p95 is `67.4524 ms`
+against `200 ms`, each from 50 retained samples and a clean platform
+`af259f3...` checkout. Read-only Brain evidence also passes exact runtime
+source `197/197`, readiness `23/23` and enabled delivery `7/7`.
+
+The installed LDPlayer package hash matches signed candidate.7 x86_64 exactly.
+Separate AWG2 and AWG3.1 owner-lab binds each materialize an AWG endpoint,
+service, TUN and three managed DNS servers. AWG2 egress fails and AWG3.1 stalls
+at the same emulator boundary; neither is promoted to protocol PASS or FAIL.
+Cleanup restores `legacy_reality_fallback`, removes cohort/allowlist membership
+and AWG from the managed profile, and leaves service/TUN stopped.
+
+The trusted local Raspberry Pi 4 is Debian 13 `aarch64` with a direct non-VPN
+RU exit. System DNS resolves all five selected targets and public DoH returns
+`200` for both probes. Gemini is `200`, Xbox `307`, OpenAI API without
+credentials `401`, and ChatGPT `403`. The last result is an HTTP edge refusal
+above working DNS; a plain resolver change is not an honest fix. No owned Smart
+DNS runtime or exact candidate client ran on the Pi, so Gate F RU-origin stays
+`NOT_RUN`.
+
+The first candidate.7 Gate F validates all 19 pointers with zero validation
+errors and returns `BLOCKED`: `4 PASS`, `15 non-PASS`, `0 FAIL`. Supply chain,
+release-doc binding, current-origin and Brain-origin pass. Physical Android,
+isolated Windows, exact-candidate RU, live Smart DNS, provider, Operator, legal,
+comparable performance and other manual gates remain open. No level advances,
+public release, store object, stable mutation, deploy or Gate G authorization
+occurred.
+
 ## 2026-08-29 — WO-013BY candidate.7 corrected supply chain and signing
 
 Exact platform/client/Core tuple `af259f3.../b2497af.../a45d69e...` binds the
