@@ -1,6 +1,6 @@
 # RU-Origin Probe Handoff
 
-Last updated: 2026-07-17
+Last updated: 2026-08-29
 
 ## Document Status
 
@@ -54,7 +54,8 @@ Runner запускается по UTC в `00:00`, `06:00`, `12:00` и `18:00`; 
   местом;
 - Python runtime и точную версию `scripts/ru_probe_runner.py`,
   `scripts/ru_probe_uploader.py`, `scripts/internal_hmac_client.py`,
-  `scripts/node_dataplane_probe.py` и `portal_bot/ru_probe_contract.py`;
+  `portal_bot/internal_request_auth.py`, `scripts/node_dataplane_probe.py` и
+  `portal_bot/ru_probe_contract.py`;
 - redacted `probe.env` и `uploader.env` с API base URL, key id и host id, но
   без HMAC-значения в handoff;
 - HMAC secret file, переданный через утверждённый секретный канал, с правами
@@ -103,6 +104,46 @@ python -B -m pytest -p no:cacheprovider tests/test_internal_request_auth.py test
 Ожидается `PASS`. Этот результат подтверждает код и фикстуры конкретного
 локального commit, но не подтверждает сеть РФ, production ingest, установку
 unit или актуальность живого HMAC key record.
+
+### Неизменяемый пакет candidate.6
+
+Точный набор исходников для RU-host строится из Git objects, а не из текущего
+рабочего дерева:
+
+```powershell
+python scripts/build_ru_origin_probe_bundle.py build --source-revision 5713324c1c0c2566befadf527bc09ec0ecf84a4e --output <private-artifact-path>/pokrov-ru-origin-candidate6-5713324.zip
+python scripts/build_ru_origin_probe_bundle.py verify --bundle <private-artifact-path>/pokrov-ru-origin-candidate6-5713324.zip
+python scripts/build_ru_origin_probe_bundle.py plan --bundle <private-artifact-path>/pokrov-ru-origin-candidate6-5713324.zip --operation install
+python scripts/remote_install_ru_origin_probe.py --bundle <private-artifact-path>/pokrov-ru-origin-candidate6-5713324.zip --ssh-config-alias <trusted-ru-alias> --operation install
+```
+
+Зафиксированный пакет candidate.6 содержит 10 source/unit members, имеет размер
+`47702` байта и SHA-256
+`e7eb8ec20693f9626d6e7697c7845fa165e77fc1daa7df580ef0618248be345b`.
+Повторная независимая сборка дала те же байты. Пакет не содержит `probe.env`,
+`uploader.env`, `hmac.key` или `profiles.json` и ничего не устанавливает сам.
+Его успешная сборка/проверка — только локальное evidence уровня immutable bundle,
+не доказательство живой RU-origin среды, запуска, ingest, heartbeat или admin
+readback.
+
+Последняя команда по умолчанию выполняет только удалённый `PLAN`: проверяет
+host requirements, число занятых install targets, состояния unit и агрегированные
+spool counts, но не передаёт файлы и не меняет runtime. `APPLY` дополнительно
+требует приватный каталог ровно из `probe.env`, `uploader.env`, `hmac.key` и
+`profiles.json`, точные подтверждения bundle/revision/node, отдельное подтверждение
+внешней мутации, сохранения spool и активации timer. Значения и даже hashes
+runtime-material в JSON-отчёт не попадают.
+
+Root-login не обязателен: допустима непривилегированная trusted-key сессия только
+при успешном `sudo -n`. Инструмент не принимает sudo-пароль и не выводит его;
+если passwordless privilege отсутствует, APPLY закрывается до staging/mutation.
+
+В candidate.6 `EnvironmentFile` обязан существовать, но runner/uploader используют
+скомпилированные канонические defaults. Поэтому установщик принимает в обоих env
+файлах только `POKROV_API_BASE_URL=https://api.pokrov.space`,
+`POKROV_KEY_ID=ru-mini-v1` и `POKROV_PROBE_HOST_ID=mini`; это receipt metadata,
+а не поддержка runtime override. Изменяемые endpoint/key/host параметры потребуют
+нового кандидата с явной передачей CLI arguments и отдельной проверкой.
 
 ## Ручная приёмка владельцем
 
@@ -157,8 +198,9 @@ Rollback выполняет владелец без удаления доказ�
 6. Возобновляет schedule только после локальной проверки и нового
    `MANUAL_OWNER_TEST`.
 
-Этот чек-лист намеренно не содержит команд для изменения живого хоста или
-значений секретов.
+Этот чек-лист намеренно не содержит готовой команды `--apply` или значений
+секретов. Защищённый инструмент существует, но изменение живого хоста всё равно
+требует отдельной авторизации владельца и всех точных подтверждений CLI.
 
 ## Шаблон итогового доказательства
 

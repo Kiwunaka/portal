@@ -2,6 +2,32 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BU candidate.6 RU-origin bundle and install PLAN
+
+WO-013BS's remote result remains valid for the nine paths it checked, but the
+source map omitted `portal_bot/internal_request_auth.py`, which is required by
+the HMAC client. The successor map is `10/10`; the canonical RU sandbox has
+none of those ten source/unit members, none of the four runtime records and no
+spool.
+
+An exact platform-`5713324...` ZIP built twice from Git objects is byte-identical:
+10 members, `47702` bytes, SHA-256
+`e7eb8ec20693f9626d6e7697c7845fa165e77fc1daa7df580ef0618248be345b`.
+It contains no runtime material and performs no deployment. The guarded remote
+installer passes secret-free PLAN through retained key access and passwordless
+`sudo -n`: required tools pass, `0/14` install targets exist, all four units are
+inactive/not-found, and runtime user/group/material/spool are absent. No address,
+alias, credential, key, raw config or runtime value/hash is retained.
+
+APPLY/ROLLBACK are exact bundle/source/node/receipt-bound, require separate
+mutation/material/spool/timer confirmations and preserve every spool state.
+Neither mode ran. `FRKN_PLAN/W9-02` remains `I1` as
+`CANDIDATE6_CURRENT_BRAIN_PASS_RU_EXACT_INSTALL_PLAN_READY_RUNTIME_MATERIAL_MISSING`;
+Gate F remains `4 PASS / 15 non-PASS / 0 FAIL`. Explicit owner authorization and
+the four-file runtime material are required before install, manual run/upload,
+heartbeat/admin readback and scheduled-run proof. Normalized evidence SHA-256 is
+`63a4d7f52311bd3a4b740be87a8273fa6a0b593ea7ebda29b4bf4eeb5a98c0e5`.
+
 ## 2026-08-29 — WO-013BT candidate.6 HY2 artifact and remote PLAN
 
 The old HY2 builder correctly rejected candidate.6 Core as a revision mismatch.

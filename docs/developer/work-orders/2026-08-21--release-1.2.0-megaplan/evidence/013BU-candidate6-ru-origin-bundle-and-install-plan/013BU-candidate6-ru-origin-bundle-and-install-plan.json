@@ -1,0 +1,92 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate6-ru-origin-bundle-and-install-plan/v1",
+  "recorded_at": "2026-08-29T13:54:40.8451814+03:00",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.6",
+    "version": "1.2.0+4046",
+    "operational_id": "62526fdbf0f86c2a7083eb9d2cff4f8645949a31c59032fa593dad9bc68cae05",
+    "manifest_sha256": "8aac2458f8c43c0ef2955719dcede44f495d60acf681bc804bd6bf9828ee9054",
+    "signature_sha256": "2307906a920fb9b4dcd4c0025bf7628972668905d13897c553ddf27a81592dfa",
+    "receipt_sha256": "85dd34504d876086aa8bfe3533ad4db964e4f0a9106f9085657dc08c2c7afcaa",
+    "sources": {
+      "platform": "5713324c1c0c2566befadf527bc09ec0ecf84a4e",
+      "client": "b2497af7704d0aa6901541e175ce154b0eab05d7",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "8d09ae5e8ec0c8347bcd4e2659944bdf7c9c9db3"
+    }
+  },
+  "tooling": {
+    "builder_revision": "5561628d95cc77f6b652317a3bf04d434b1f0831",
+    "installer_revision": "66297aec17c29f36279fcb9118f11d99cf14bbee",
+    "relationship_to_candidate": "POST_CANDIDATE_EXACT_SOURCE_BUNDLE_AND_GUARDED_REMOTE_TOOLING",
+    "historical_dependency_map": "TRUTHFUL_9_OF_9_ABSENT_BUT_INCOMPLETE",
+    "corrected_dependency_map": "10_OF_10_REQUIRED_SOURCE_AND_UNIT_MEMBERS"
+  },
+  "artifact": {
+    "retained_location": "EXTERNAL_LOCAL_RELEASE_ARTIFACT",
+    "source_revision": "5713324c1c0c2566befadf527bc09ec0ecf84a4e",
+    "member_count": 10,
+    "bundle_size_bytes": 47702,
+    "bundle_sha256": "e7eb8ec20693f9626d6e7697c7845fa165e77fc1daa7df580ef0618248be345b",
+    "independent_repeat_byte_identical": true,
+    "verification": "PASS",
+    "raw_runtime_material_included": false,
+    "deployment_performed": false
+  },
+  "remote_plan": {
+    "report_sha256": "c10c19bb00c6b81028b42bae253cdee0638d794e984a162ac635c9996c96bb69",
+    "mode": "PLAN",
+    "operation": "install",
+    "auth_method": "key",
+    "root": false,
+    "sudo_nopasswd": true,
+    "privileged": true,
+    "required_tools": true,
+    "installed_target_count": 0,
+    "required_target_count": 14,
+    "unit_count": 4,
+    "units_active": 0,
+    "units_enabled": 0,
+    "runtime_user_present": false,
+    "runtime_group_present": false,
+    "spool_present": false,
+    "runtime_material_supplied": false,
+    "manual_runner_uploader_heartbeat_admin_readback": "NOT_RUN",
+    "mutation_performed": false,
+    "raw_host_returned": false,
+    "raw_runtime_material_returned": false,
+    "runtime_material_hashes_returned": false
+  },
+  "guard_contract": {
+    "exact_bundle_source_node_confirmations_required": true,
+    "separate_external_mutation_confirmation_required": true,
+    "separate_runtime_material_confirmation_required": true,
+    "separate_spool_preservation_confirmation_required": true,
+    "separate_timer_activation_confirmation_required": true,
+    "automatic_receipt_bound_rollback_armed_on_apply": true,
+    "rollback_deletes_spool": false,
+    "rollback_deletes_pending_blocked_quarantine_archive": false,
+    "environment_override_claimed": false
+  },
+  "release_interpretation": {
+    "frkn_plan_w9_02_level": "I1",
+    "status": "CANDIDATE6_CURRENT_BRAIN_PASS_RU_EXACT_INSTALL_PLAN_READY_RUNTIME_MATERIAL_MISSING",
+    "ru_environment_installed": false,
+    "ru_origin_passed": false,
+    "gate_f_before": "4_PASS_15_NONPASS_0_FAIL",
+    "gate_f_after": "4_PASS_15_NONPASS_0_FAIL",
+    "gate_f_regenerated": false,
+    "candidate_bytes_changed": false,
+    "server_mutated": false
+  },
+  "next_required_action": {
+    "authorization": "EXPLICIT_OWNER_AUTHORIZATION_REQUIRED",
+    "runtime_material": "FOUR_FILE_OWNER_ONLY_INPUT_OUTSIDE_GIT_AND_REPORTS",
+    "sequence": [
+      "Validate the exact runtime material and remote adapter executables.",
+      "Run guarded APPLY with exact bundle, source, node, mutation, material, spool and timer confirmations.",
+      "Execute one manual runner and uploader and bind the same run through heartbeat and authenticated admin readback.",
+      "Observe one scheduled run and use the exact receipt for rollback on any failed post-start check."
+    ]
+  }
+}
