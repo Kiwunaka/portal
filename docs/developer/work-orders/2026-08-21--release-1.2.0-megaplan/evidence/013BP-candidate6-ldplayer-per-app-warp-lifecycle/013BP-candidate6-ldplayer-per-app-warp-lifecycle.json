@@ -1,0 +1,157 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate6-ldplayer-per-app-warp-lifecycle/v1",
+  "recorded_at_utc": "2026-08-29T08:40:36Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.6",
+    "operational_id": "62526fdbf0f86c2a7083eb9d2cff4f8645949a31c59032fa593dad9bc68cae05",
+    "manifest_sha256": "8aac2458f8c43c0ef2955719dcede44f495d60acf681bc804bd6bf9828ee9054",
+    "client_revision": "b2497af7704d0aa6901541e175ce154b0eab05d7",
+    "x86_64_apk_sha256": "3d95d82d8290150fadd13600b79eca26326792407532f571909d8df224df6fa4",
+    "installed_version": "1.2.0+4046",
+    "installed_sha256_match": true
+  },
+  "environment": {
+    "kind": "LDPlayer",
+    "root_used_for_owned_exact_candidate_inspection": true,
+    "emulator_process_remained_alive_and_responsive": true,
+    "adb_transport_reconnected_during_full_tunnel": true,
+    "device_serial_retained": false,
+    "physical_device_substituted": false,
+    "physical_phone_present_at_final_readback": false,
+    "network_origin_classification": "BLOCKED_BY_LDPLAYER_NETWORK_CURRENT_ORIGIN"
+  },
+  "baseline": {
+    "route_mode": "russia_direct",
+    "selected_app_count": 0,
+    "warp_enabled": false,
+    "vpn_service_seen": false,
+    "tun_present": false
+  },
+  "per_app_selected": {
+    "route_mode": "selected_apps",
+    "selected_test_app_class": "system_browser",
+    "retained_package_identifier": false,
+    "managed_profile_sha256": "e51fc0d7b3a0d54c4a7cb4d0fc26114d95aeec6c7b03520f34e10c59519fb9c4",
+    "tun_inbound_count": 1,
+    "tun_stack": "mixed",
+    "include_package_count": 1,
+    "selected_test_app_included": true,
+    "exclude_package_count": 0,
+    "managed_dns_server_count": 3,
+    "managed_dns_rule_count": 2,
+    "tun_ipv4_address_present": true,
+    "tun_ipv6_address_present": false,
+    "vpn_service_seen": true,
+    "tun_established_in_private_journal": true,
+    "authenticated_egress_proven": false
+  },
+  "force_stop_recovery": {
+    "vpn_service_and_tun_seen_before_force_stop": true,
+    "one_second_service_present": false,
+    "one_second_tun_present": false,
+    "five_second_service_present": false,
+    "five_second_tun_present": false,
+    "relaunch_false_green_present": false,
+    "relaunch_service_present": false,
+    "relaunch_tun_present": false,
+    "relaunch_ui_state": "not_protected"
+  },
+  "per_app_excluded": {
+    "route_mode": "excluded_apps",
+    "selected_test_app_class": "system_browser",
+    "retained_package_identifier": false,
+    "managed_profile_sha256": "02e73ddbb9d53364c2b2a19ae8182b5b971ceae4a76fa6df76de6885978de7f1",
+    "tun_inbound_count": 1,
+    "tun_stack": "mixed",
+    "include_package_count": 0,
+    "exclude_package_count": 2,
+    "selected_test_app_excluded": true,
+    "self_package_excluded": true,
+    "managed_dns_server_count": 3,
+    "managed_dns_rule_count": 2,
+    "tun_ipv4_address_present": true,
+    "tun_ipv6_address_present": false,
+    "vpn_service_seen": true,
+    "tun_established_in_private_journal": true,
+    "core_egress_probe": "failed",
+    "service_stopped": true,
+    "service_destroyed": true,
+    "authenticated_egress_proven": false
+  },
+  "warp": {
+    "owner_consent_enabled_then_revoked": true,
+    "managed_profile_sha256": "7b0db0d1d1dba509ed4677bdf5b1669857d97c451feb853b45c53c973e7b4500",
+    "endpoint_types": [
+      "warp"
+    ],
+    "awg_endpoint_present": false,
+    "tun_inbound_count": 1,
+    "tun_stack": "mixed",
+    "self_package_excluded": true,
+    "managed_dns_server_count": 3,
+    "managed_dns_rule_count": 6,
+    "tun_ipv4_address_present": true,
+    "tun_ipv6_address_present": false,
+    "vpn_service_seen": true,
+    "tun_seen": true,
+    "core_egress_probe": "failed",
+    "service_stopped": true,
+    "service_destroyed": true,
+    "result": "BLOCKED_BY_LDPLAYER_NETWORK_CURRENT_ORIGIN",
+    "warp_protocol_pass_claimed": false
+  },
+  "privacy_observability": {
+    "android_private_journal_sha256": "3855fcb3b1ecbed5ed9ea17be4da3a11aacb53b3cb706102614f2624dfdf5716",
+    "client_operational_journal_sha256": "76adeceff8280164683d5fa0c8cd6127ba56a2fab0c7af8c2ca10972da031101",
+    "selected_app_count_only_observed": true,
+    "observed_selected_app_count_values": [
+      0,
+      1
+    ],
+    "package_identifier_present_in_android_private_journal": false,
+    "package_identifier_present_in_client_operational_journal": false,
+    "raw_config_or_journal_retained": false
+  },
+  "dns_ipv6_ceiling": {
+    "android_private_dns_mode": "platform_default",
+    "android_private_dns_specifier_present": false,
+    "system_ipv6_disabled": false,
+    "managed_dns_config_present_in_all_profiles": true,
+    "tun_ipv6_address_present": false,
+    "dns_access_or_leak_pass_claimed": false,
+    "ipv6_leak_pass_claimed": false
+  },
+  "final_restore": {
+    "route_mode": "russia_direct",
+    "selected_app_count": 0,
+    "warp_enabled": false,
+    "managed_profile_sha256": "a75973d77563d44aefcd1733f04d57201548678d6576adb3b1b535cbf74fb338",
+    "managed_profile_warp_endpoint_present": false,
+    "managed_profile_awg_endpoint_present": false,
+    "include_package_count": 0,
+    "exclude_package_count": 1,
+    "self_package_excluded": true,
+    "managed_dns_server_count": 3,
+    "vpn_service_seen": false,
+    "tun_present": false,
+    "final_ui_sha256": "1975646727ee0fc9de61f19f9f85ff1cd51dcd551c4b0a30e83ec669f452c062"
+  },
+  "row_outcomes": {
+    "REL/AND-004": "I3_STRONGER_EXACT_CANDIDATE6_LDPLAYER_FORCE_STOP_RECOVERY",
+    "OBS/OBS-029": "I3_STRONGER_EXACT_CANDIDATE6_COUNT_ONLY_RUNTIME",
+    "OBS_PB/PB-08": "I3_STRONGER_EXACT_CANDIDATE6_LDPLAYER_CLEANUP",
+    "FRKN_PLAN/W6-02": "I3_STRONGER_EXACT_CANDIDATE6_OUTER_ROUTE_CONFIG",
+    "REL_GATE/GATE-C": "I2_STRONGER_EXACT_CANDIDATE6_LDPLAYER_EVIDENCE_PHYSICAL_AND_WINDOWS_OPEN",
+    "REL_GATE/GATE-F": "I3_UNCHANGED_PHYSICAL_ANDROID_AND_OTHER_MANUAL_GATES_OPEN"
+  },
+  "mutation_boundary": {
+    "production": false,
+    "deployment": false,
+    "public_assets": false,
+    "stable_pointer": false,
+    "physical_device": false,
+    "emulator_preferences_restored": true,
+    "emulator_service_and_tun_stopped": true
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE6_LDPLAYER_PER_APP_CONFIG_FORCE_STOP_WARP_MATERIALIZATION_AND_CLEAN_RESTORE; COMMON_EMULATOR_ORIGIN_EGRESS_BLOCK; NO_PHYSICAL_ANDROID_NO_DNS_OR_IPV6_LEAK_PASS_NO_GATE_F_ADVANCE"
+}
