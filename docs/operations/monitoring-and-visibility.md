@@ -142,6 +142,7 @@ Visibility rule:
 - if a failure is provider- or family-specific, fail over by `hoster_family` and then by country label; endpoint-derived subnet data is not retained
 - release and incident reports must keep `current-origin check`, `brain-origin check`, and `RU-origin check` as separate evidence lines
 - do not collapse those origins into a single verdict because each origin answers a different question
+- a fronted Smart DNS lab must expose frontend route readiness, loopback backend health and service state as separate bounded fields; never retain client addresses, queried names, application SNI or payloads, and never turn source/bundle readiness into live access proof
 
 ## Subscription Truth And Smart-Connect Visibility
 

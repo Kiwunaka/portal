@@ -151,6 +151,15 @@ func (s *Server) Run(ctx context.Context) error {
 }
 
 func (s *Server) handle(connection net.Conn) {
+	if s.config.AcceptProxyProtocolV2 {
+		proxied, err := acceptProxyProtocolV2(connection, s.config.Limits.handshakeTimeout())
+		if err != nil {
+			<-s.global
+			_ = connection.Close()
+			return
+		}
+		connection = proxied
+	}
 	source := remoteHost(connection.RemoteAddr().String())
 	if source == "" || !s.limiter.acquireConnection(source, s.config.Limits.MaxConnectionsPerIP) {
 		<-s.global

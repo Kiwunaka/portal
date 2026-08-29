@@ -63,15 +63,56 @@ func TestPublicAddressRejectsPrivateAndDocumentationRanges(t *testing.T) {
 }
 
 func TestConfigRejectsSelfReferencedDoTEndpoint(t *testing.T) {
-	config := Config{
-		Listen:             "0.0.0.0:443",
-		DoHHostname:        "dns.example.com",
-		ProxyIPv4:          "1.1.1.1",
-		PolicyPath:         filepath.Join(t.TempDir(), "policy.json"),
-		TLSCertificatePath: filepath.Join(t.TempDir(), "cert.pem"),
-		TLSPrivateKeyPath:  filepath.Join(t.TempDir(), "key.pem"),
+	config := validTestConfig(t)
+	config.UpstreamDoT.Address = "1.1.1.1:853"
+	if err := config.validate(); err == nil {
+		t.Fatal("DoT upstream equal to the proxy IP must fail closed")
+	}
+}
+
+func TestConfigAcceptsFrontedLoopbackProxyV2Listener(t *testing.T) {
+	config := validTestConfig(t)
+	config.Listen = "127.0.0.1:18443"
+	config.AcceptProxyProtocolV2 = true
+	if err := config.validate(); err != nil {
+		t.Fatalf("fronted loopback listener must be accepted: %v", err)
+	}
+}
+
+func TestConfigRejectsUnsafeListenerModeCombinations(t *testing.T) {
+	for name, mutate := range map[string]func(*Config){
+		"direct loopback": func(config *Config) { config.Listen = "127.0.0.1:443" },
+		"fronted public": func(config *Config) {
+			config.Listen = "0.0.0.0:18443"
+			config.AcceptProxyProtocolV2 = true
+		},
+		"fronted privileged": func(config *Config) {
+			config.Listen = "127.0.0.1:443"
+			config.AcceptProxyProtocolV2 = true
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			config := validTestConfig(t)
+			mutate(&config)
+			if err := config.validate(); err == nil {
+				t.Fatal("unsafe listener mode must fail closed")
+			}
+		})
+	}
+}
+
+func validTestConfig(t *testing.T) Config {
+	t.Helper()
+	return Config{
+		Listen:                "0.0.0.0:443",
+		AcceptProxyProtocolV2: false,
+		DoHHostname:           "dns.example.com",
+		ProxyIPv4:             "1.1.1.1",
+		PolicyPath:            filepath.Join(t.TempDir(), "policy.json"),
+		TLSCertificatePath:    filepath.Join(t.TempDir(), "cert.pem"),
+		TLSPrivateKeyPath:     filepath.Join(t.TempDir(), "key.pem"),
 		UpstreamDoT: UpstreamConfig{
-			Address:    "1.1.1.1:853",
+			Address:    "8.8.8.8:853",
 			ServerName: "cloudflare-dns.com",
 		},
 		Limits: Limits{
@@ -87,9 +128,6 @@ func TestConfigRejectsSelfReferencedDoTEndpoint(t *testing.T) {
 			MaxConnectionSeconds:     30,
 			MaxBytesPerDirection:     1 << 20,
 		},
-	}
-	if err := config.validate(); err == nil {
-		t.Fatal("DoT upstream equal to the proxy IP must fail closed")
 	}
 }
 

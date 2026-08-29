@@ -1,6 +1,4 @@
 #!/usr/bin/env python3
-from __future__ import annotations
-
 """
 Install or render the node-local :443 transport front mux.
 
@@ -9,9 +7,12 @@ turn it into a general-purpose proxy hop. It only forwards SNI-matched traffic
 to local listeners that already exist on the node.
 """
 
+from __future__ import annotations
+
 import argparse
 import ipaddress
 import json
+import re
 import shlex
 import subprocess
 import sys
@@ -26,7 +27,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from node_access import DEFAULT_PASSWORDS, connect_node
+from node_access import DEFAULT_PASSWORDS, connect_node  # noqa: E402
 
 
 DEFAULT_UNIT_NAME = "portal-transport-front"
@@ -34,6 +35,8 @@ DEFAULT_REMOTE_CONFIG_PATH = "/etc/portal-transport-front.cfg"
 DEFAULT_REMOTE_SERVICE_PATH = f"/etc/systemd/system/{DEFAULT_UNIT_NAME}.service"
 DEFAULT_BIND_ADDRESS = ":443"
 DEFAULT_ROUTE_NAME = "legacy_reality_fallback"
+ROUTE_NAME_RE = re.compile(r"[a-z][a-z0-9_]{0,63}")
+DOMAIN_LABEL_RE = re.compile(r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?")
 DEFAULT_ROUTES = [
     {
         "name": "legacy_reality_fallback",
@@ -64,6 +67,8 @@ def _clean_text(value: Any, *, lower: bool = False) -> str:
 
 
 def _normalize_server_names(values: Any) -> list[str]:
+    if values is None:
+        return []
     if isinstance(values, str):
         values = [item for item in values.split(",")]
     if not isinstance(values, list):
@@ -72,16 +77,30 @@ def _normalize_server_names(values: Any) -> list[str]:
     out: list[str] = []
     seen: set[str] = set()
     for item in values:
-        server_name = _clean_text(item, lower=True)
+        server_name = _normalize_server_name(item)
         if not server_name:
             continue
         if server_name in seen:
             continue
         seen.add(server_name)
         out.append(server_name)
-    if not out:
-        raise ValueError("transport front route requires at least one server_name")
     return out
+
+
+def _normalize_server_name(value: Any) -> str:
+    server_name = _clean_text(value, lower=True).rstrip(".")
+    if not server_name or len(server_name) > 253:
+        raise ValueError("transport front server name is empty or too long")
+    try:
+        ipaddress.ip_address(server_name)
+    except ValueError:
+        pass
+    else:
+        raise ValueError("transport front server name must be a DNS name")
+    labels = server_name.split(".")
+    if len(labels) < 2 or any(not DOMAIN_LABEL_RE.fullmatch(label) for label in labels):
+        raise ValueError(f"transport front server name is invalid: {server_name}")
+    return server_name
 
 
 def _normalize_backend_host(value: Any) -> str:
@@ -114,14 +133,24 @@ def normalize_transport_front_route(raw: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("transport front route must be an object")
 
     name = _clean_text(raw.get("name"))
-    if not name:
-        raise ValueError("transport front route requires name")
+    if not ROUTE_NAME_RE.fullmatch(name):
+        raise ValueError("transport front route requires a safe lowercase name")
+
+    server_names = _normalize_server_names(raw.get("server_names"))
+    server_name_suffixes = _normalize_server_names(raw.get("server_name_suffixes"))
+    if not server_names and not server_name_suffixes:
+        raise ValueError("transport front route requires a server name or suffix")
+    send_proxy_v2 = raw.get("send_proxy_v2", False)
+    if not isinstance(send_proxy_v2, bool):
+        raise ValueError("transport front send_proxy_v2 must be a boolean")
 
     return {
         "name": name,
-        "server_names": _normalize_server_names(raw.get("server_names")),
+        "server_names": server_names,
+        "server_name_suffixes": server_name_suffixes,
         "backend_host": _normalize_backend_host(raw.get("backend_host")),
         "backend_port": _normalize_backend_port(raw.get("backend_port")),
+        "send_proxy_v2": send_proxy_v2,
     }
 
 
@@ -157,8 +186,23 @@ def render_transport_front_config(
         raise ValueError("transport front requires at least one route")
 
     names = [str(route["name"]) for route in normalized_routes]
+    if len(names) != len(set(names)):
+        raise ValueError("transport front route names must be unique")
     if default_route_name not in names:
         raise ValueError(f"default route {default_route_name!r} is not defined")
+
+    owned_matches: dict[tuple[str, str], str] = {}
+    for route in normalized_routes:
+        for match_type, values in (
+            ("exact", route["server_names"]),
+            ("suffix", route["server_name_suffixes"]),
+        ):
+            for value in values:
+                key = (match_type, value)
+                previous = owned_matches.get(key)
+                if previous is not None and previous != route["name"]:
+                    raise ValueError(f"transport front SNI match {value!r} is assigned to multiple routes")
+                owned_matches[key] = route["name"]
 
     lines = [
         "global",
@@ -183,16 +227,20 @@ def render_transport_front_config(
         backend_name = f"be_{route['name']}"
         for server_name in route["server_names"]:
             lines.append(f"    use_backend {backend_name} if {{ req.ssl_sni -i {server_name} }}")
+        for suffix in route["server_name_suffixes"]:
+            lines.append(f"    use_backend {backend_name} if {{ req.ssl_sni -i {suffix} }}")
+            lines.append(f"    use_backend {backend_name} if {{ req.ssl_sni -m end -i .{suffix} }}")
     lines.append(f"    default_backend be_{default_route_name}")
 
     for route in normalized_routes:
+        proxy_protocol = " send-proxy-v2" if route["send_proxy_v2"] else ""
         lines.extend(
             [
                 "",
                 f"backend be_{route['name']}",
                 "    mode tcp",
                 "    option tcp-check",
-                f"    server {route['name']} {route['backend_host']}:{route['backend_port']} check",
+                f"    server {route['name']} {route['backend_host']}:{route['backend_port']} check{proxy_protocol}",
             ]
         )
 
@@ -220,9 +268,9 @@ def build_apply_commands(
     return [
         f"haproxy -c -f {quoted_config}",
         "systemctl daemon-reload",
-        f"systemctl enable {unit_name}",
-        f"systemctl restart {unit_name}",
-        f"systemctl status --no-pager {unit_name}",
+        f"systemctl enable {unit}",
+        f"systemctl restart {unit}",
+        f"systemctl status --no-pager {unit}",
         "ss -tlnp | grep -E '(^|[[:space:]])LISTEN.*:443([[:space:]]|$)' || true",
     ]
 

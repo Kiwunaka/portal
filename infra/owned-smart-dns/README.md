@@ -4,12 +4,22 @@ This directory contains source for a default-off, source-only Smart DNS
 laboratory. It is not deployed and contains no runtime host, certificate,
 private key, token, or retained DNS/SNI data.
 
-The service owns one dedicated TCP/443 listener. TLS for the exact DoH hostname
-is terminated locally at `/dns-query`; other ClientHello records are accepted
-only when the normalized SNI matches the canonical AI or gaming-service suffix
-policy. Application TLS is passed through without certificate replacement or
-decryption. Missing, malformed, ambiguous, ECH-concealed, or non-allowlisted
-SNI is closed before any origin connection.
+The proven bundle installer still owns one dedicated TCP/443 listener. The
+server source also has a post-candidate, default-off fronted mode for sharing an
+already owned HAProxy TCP/443 frontend without buying another address. That
+mode binds only to an explicit loopback unprivileged port, requires one strict
+PROXY protocol v2 TCP IPv4/IPv6 header without TLVs, and restores the original
+source address before applying per-source limits. Missing, direct, malformed,
+non-TCP, TLV-bearing, or non-loopback listener combinations fail closed. The
+current guarded installer deliberately does not APPLY this mode; frontend
+migration and rollback need their own reviewed operation.
+
+In both modes, TLS for the exact DoH hostname is terminated locally at
+`/dns-query`; other ClientHello records are accepted only when the normalized
+SNI matches the canonical AI or gaming-service suffix policy. Application TLS
+is passed through without certificate replacement or decryption. Missing,
+malformed, ambiguous, ECH-concealed, or non-allowlisted SNI is closed before
+any origin connection.
 
 The DoH endpoint is deliberately not recursive. An allowlisted `A` question
 receives the owned proxy IPv4, `AAAA`, `HTTPS`, `SVCB`, and other allowed types
@@ -38,16 +48,21 @@ carriage returns fail closed instead of entering the signed supply chain. The
 cross-repository policy-parity checker applies the same canonicalization before
 byte comparison and reports that same canonical digest.
 
-`config.template.json` is not a runtime file. Render its placeholders outside
-Git into `/etc/pokrov-smart-dns/config.json`, retain it with owner/group-only
+`config.template.json` and `config.fronted.template.json` are not runtime files.
+Render one template's placeholders outside Git into
+`/etc/pokrov-smart-dns/config.json`, retain it with owner/group-only
 permissions, and validate it with `-check` before any separately authorized
-install. The TLS private key stays outside the release bundle.
+install. The TLS private key stays outside the release bundle. The current
+guarded installer accepts only the dedicated template; the fronted template is
+source/bundle proof for a separate migration plan, not deployment authority.
 
 No active POKROV delivery node currently has an unclaimed TCP/443 listener.
-Deployment therefore requires a separate or deliberately freed owned public
-IPv4, an exact candidate bundle, guarded PLAN/APPLY/ROLLBACK tooling, and owner
-authorization. DNS reachability is not proof that ChatGPT, Gemini, Xbox, or a
-game works end to end.
+Deployment therefore requires either a deliberately freed owned public IPv4
+or a reviewed SNI-mux migration on an existing owned frontend, plus an exact
+candidate bundle, guarded PLAN/APPLY/ROLLBACK tooling, runtime material and
+owner authorization. Brain is not an automatic target: control-plane and
+data-plane risk must be reviewed before choosing a frontend. DNS reachability
+is not proof that ChatGPT, Gemini, Xbox, or a game works end to end.
 
 The guarded PLAN reports only sanitized bind-scope facts: whether TCP/443 is
 free, wildcard-bound, bound to the expected owned IPv4, or bound only to

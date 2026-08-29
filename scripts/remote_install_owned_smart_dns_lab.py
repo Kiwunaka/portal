@@ -325,8 +325,9 @@ try:
     limits = config.get("limits")
     upstream_ip, separator, upstream_port = str((upstream or {{}}).get("address") or "").rpartition(":")
     ok = (
-        set(config) == {{"listen", "doh_hostname", "proxy_ipv4", "policy_path", "tls_certificate_path", "tls_private_key_path", "upstream_dot", "limits"}}
+        set(config) == {{"listen", "accept_proxy_protocol_v2", "doh_hostname", "proxy_ipv4", "policy_path", "tls_certificate_path", "tls_private_key_path", "upstream_dot", "limits"}}
         and config.get("listen") in ("0.0.0.0:{LISTEN_PORT}", "{expected_proxy_ipv4}:{LISTEN_PORT}")
+        and config.get("accept_proxy_protocol_v2") is False
         and domain(config.get("doh_hostname"))
         and config.get("proxy_ipv4") == "{expected_proxy_ipv4}"
         and public(config.get("proxy_ipv4"))
