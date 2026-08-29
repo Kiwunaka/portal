@@ -92,6 +92,7 @@
     "scripts/remote_brain_inspect_xui_files.py",
     "scripts/remote_brain_network_probe.py",
     "scripts/remote_brain_runtime_source_probe.py",
+    "scripts/remote_ru_origin_environment_probe.py",
     "scripts/remote_brain_nodes_sanity.py",
     "scripts/remote_brain_patch_caddy_webapp_api_proxy.py",
     "scripts/remote_brain_promo_grant_premium_days.py",
