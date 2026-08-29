@@ -6,7 +6,7 @@
   "variant": "salamander_v1",
   "engine": {
     "name": "pokrov-sing-box",
-    "version": "1.13.0-pokrov-hy2-lab.1",
+    "version": "1.13.0-pokrov-hy2-lab.2",
     "source_version": "1.13.0",
     "go_toolchain": "go1.25.13",
     "goos": "linux",

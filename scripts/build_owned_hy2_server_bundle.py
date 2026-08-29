@@ -7,7 +7,6 @@ import argparse
 import hashlib
 import json
 import os
-import shutil
 import subprocess
 import tempfile
 import zipfile
@@ -25,12 +24,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = REPO_ROOT / "infra" / "owned-hy2"
 BUNDLE_SCHEMA = "pokrov-owned-hy2-server-bundle-v1"
 MANIFEST_NAME = "owned-hy2-server-bundle.json"
-EXPECTED_CORE_REVISION = "e8eb7721fc6eaac6813d3a888ac90d0da1f541a1"
+EXPECTED_CORE_REVISION = "a45d69e40ed7d892619a2b5c4592a527f630665e"
 EXPECTED_CONTRACT_ID = "pokrov.hy2.outbound.v1"
 EXPECTED_CONTRACT_SHA256 = "c96b38e58ea33f838f23b80a65f3a9a264e932b7248f206798df9a0b8fa0fb98"
 EXPECTED_GO_VERSION = "go1.25.13"
 SOURCE_ENGINE_VERSION = "1.13.0"
-BINARY_VERSION = "1.13.0-pokrov-hy2-lab.1"
+BINARY_VERSION = "1.13.0-pokrov-hy2-lab.2"
 BUILD_TAGS = ("with_quic",)
 BINARY_MEMBER = "bin/pokrov-sing-box-hy2"
 STATIC_MEMBERS = {
