@@ -37,8 +37,7 @@ AWG31_GENERATION = "awg31-lab-v3-randomized-trailers"
 AWG31_ENDPOINT_REVISION = "awg31-v1"
 AWG31_VARIANT = "randomized_trailers_v1"
 AWG31_VARIANT_DROPIN = (
-    "/etc/systemd/system/"
-    f"pokrov-awg-lab@{AWG31_INTERFACE}.service.d/variant.conf"
+    f"/etc/systemd/system/pokrov-awg-lab@{AWG31_INTERFACE}.service.d/variant.conf"
 )
 PACKAGE_NAME = "space.pokrov.pokrov_android_shell"
 SERVER_BINARY_TARGET = f"/usr/local/libexec/pokrov/amneziawg-go-{SERVER_GO_TAG}"
@@ -119,9 +118,7 @@ def _load_emulator_identity(adb: Path, serial: str) -> tuple[str, str]:
     ).stdout.strip()
     if state != "device":
         raise ActivationError(f"ADB target {serial} is not ready")
-    remote_state = (
-        f"/data/user/0/{PACKAGE_NAME}/files/app-first-session-android.json"
-    )
+    remote_state = f"/data/user/0/{PACKAGE_NAME}/files/app-first-session-android.json"
     result = subprocess.run(
         [
             str(adb),
@@ -203,7 +200,9 @@ def _private_and_public_key() -> tuple[str, str]:
     )
 
 
-def _endpoint_material(node_address: str) -> tuple[dict[str, Any], dict[str, Any], str, str]:
+def _endpoint_material(
+    node_address: str,
+) -> tuple[dict[str, Any], dict[str, Any], str, str]:
     awg2_server_private, awg2_server_public = _private_and_public_key()
     awg2_client_private, awg2_client_public = _private_and_public_key()
     awg31_server_private, awg31_server_public = _private_and_public_key()
@@ -285,6 +284,7 @@ def _endpoint_material(node_address: str) -> tuple[dict[str, Any], dict[str, Any
         address="10.203.20.1/24",
         client_address="10.203.20.2/32",
         port=AWG2_PORT,
+        reply_source=node_address,
         fields=(
             "Jc = 0\nJmin = 0\nJmax = 0\nS1 = 0\nS2 = 0\nS3 = 0\nS4 = 0\n"
             "H1 = 1000001\nH2 = 1000002\nH3 = 1000003\nH4 = 1000004"
@@ -297,6 +297,7 @@ def _endpoint_material(node_address: str) -> tuple[dict[str, Any], dict[str, Any
         address="10.203.31.1/24",
         client_address="10.203.31.2/32",
         port=AWG31_PORT,
+        reply_source=node_address,
         fields=(
             "Jc = 0\nJmin = 0\nJmax = 0\nS1 = 16\nS2 = 16\nS3 = 16\nS4 = 16\n"
             "H1 = 1100001-1100099\nH2 = 1200001-1200099\n"
@@ -315,8 +316,18 @@ def _server_config(
     address: str,
     client_address: str,
     port: int,
+    reply_source: str,
     fields: str,
 ) -> str:
+    reply_post_up, reply_post_down = _reply_source_policy_lines(
+        interface, port, reply_source
+    )
+    reply_lines = "\n".join(
+        [
+            *(f"PostUp = {line}" for line in reply_post_up),
+            *(f"PostDown = {line}" for line in reply_post_down),
+        ]
+    )
     return f"""[Interface]
 PrivateKey = {private_key}
 Address = {address}
@@ -326,15 +337,48 @@ Table = off
 {fields}
 PostUp = iptables -C FORWARD -i %i -o eth0 -j ACCEPT || iptables -A FORWARD -i %i -o eth0 -j ACCEPT
 PostUp = iptables -C FORWARD -i eth0 -o %i -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT || iptables -A FORWARD -i eth0 -o %i -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
-PostUp = iptables -t nat -C POSTROUTING -s {address.rsplit('.', 1)[0]}.0/24 -o eth0 -j MASQUERADE || iptables -t nat -A POSTROUTING -s {address.rsplit('.', 1)[0]}.0/24 -o eth0 -j MASQUERADE
+PostUp = iptables -t nat -C POSTROUTING -s {address.rsplit(".", 1)[0]}.0/24 -o eth0 -j MASQUERADE || iptables -t nat -A POSTROUTING -s {address.rsplit(".", 1)[0]}.0/24 -o eth0 -j MASQUERADE
+{reply_lines}
 PostDown = iptables -D FORWARD -i %i -o eth0 -j ACCEPT 2>/dev/null || true
 PostDown = iptables -D FORWARD -i eth0 -o %i -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || true
-PostDown = iptables -t nat -D POSTROUTING -s {address.rsplit('.', 1)[0]}.0/24 -o eth0 -j MASQUERADE 2>/dev/null || true
+PostDown = iptables -t nat -D POSTROUTING -s {address.rsplit(".", 1)[0]}.0/24 -o eth0 -j MASQUERADE 2>/dev/null || true
 
 [Peer]
 PublicKey = {client_public_key}
 AllowedIPs = {client_address}
 """
+
+
+def _reply_source_policy_lines(
+    interface: str, port: int, reply_source: str
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    reply_comment = f"POKROV owned {interface} reply source"
+    reply_rule = (
+        f"iptables -t nat -C POSTROUTING -o eth0 -p udp -m udp --sport {port} "
+        f"-m comment --comment '{reply_comment}' -j SNAT --to-source {reply_source}"
+    )
+    reply_add = reply_rule.replace(" -C POSTROUTING ", " -I POSTROUTING 1 ")
+    reply_delete = reply_rule.replace(" -C POSTROUTING ", " -D POSTROUTING ")
+    priority = 10_000 + port
+    table = 20_000 + port
+    gateway = (
+        "$(ip -4 route show table main default | awk 'NR==1 { "
+        'for(i=1;i<=NF;i++) if($i=="via") { print $(i+1); exit } }\')'
+    )
+    route_up = (
+        f'gateway={gateway}; test -n "$gateway"; ip -4 route replace table {table} '
+        f'default via "$gateway" dev eth0 src {reply_source}'
+    )
+    rule_up = (
+        f"ip -4 rule show | grep -Eq '^{priority}:.*ipproto udp.*sport {port}.*lookup {table}' "
+        f"|| ip -4 rule add priority {priority} ipproto udp sport {port} lookup {table}"
+    )
+    rule_down = f"ip -4 rule del priority {priority} 2>/dev/null || true"
+    route_down = f"ip -4 route flush table {table}; ip -4 route flush cache"
+    return (
+        (route_up, rule_up, f"{reply_rule} || {reply_add}"),
+        (f"{reply_delete} 2>/dev/null || true", rule_down, route_down),
+    )
 
 
 def _unit_content() -> bytes:
@@ -373,7 +417,10 @@ def _server_preflight(node: Any) -> dict[str, Any]:
         f"{CONFIG_ROOT}/{AWG2_INTERFACE}.conf",
         f"{CONFIG_ROOT}/{AWG31_INTERFACE}.conf",
     ):
-        state = _run_remote(node, f"if test -e {shlex.quote(path)}; then printf present; else printf absent; fi")
+        state = _run_remote(
+            node,
+            f"if test -e {shlex.quote(path)}; then printf present; else printf absent; fi",
+        )
         if state == "present":
             occupied.append(path)
     ports = {
@@ -419,7 +466,9 @@ def _deploy_node(
 ) -> dict[str, Any]:
     release_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     stage = f"/root/pokrov-awg-lab-staging/{release_id}-{os.getpid()}"
-    _run_remote(node, f"install -d -m 0700 {shlex.quote(stage)} {shlex.quote(stage + '/tools')}")
+    _run_remote(
+        node, f"install -d -m 0700 {shlex.quote(stage)} {shlex.quote(stage + '/tools')}"
+    )
     try:
         return _deploy_node_staged(
             node,
@@ -491,8 +540,7 @@ def _deploy_node_staged(
     )
     _run_remote(
         node,
-        "install -d -m 0755 "
-        + shlex.quote(AWG31_VARIANT_DROPIN.rsplit("/", 1)[0]),
+        "install -d -m 0755 " + shlex.quote(AWG31_VARIANT_DROPIN.rsplit("/", 1)[0]),
     )
     sftp = node.open_sftp()
     try:
@@ -571,7 +619,9 @@ def _ensure_brain_material_secrets(brain: Any) -> str:
         lines = text.splitlines()
         changed = False
         for name in ("AWG2_LAB_MATERIAL_SECRET", "AWG31_LAB_MATERIAL_SECRET"):
-            secret = base64.urlsafe_b64encode(os.urandom(48)).decode("ascii").rstrip("=")
+            secret = (
+                base64.urlsafe_b64encode(os.urandom(48)).decode("ascii").rstrip("=")
+            )
             matched = False
             for index, line in enumerate(lines):
                 if line.startswith(name + "="):
@@ -614,13 +664,15 @@ def _ensure_brain_material_secrets(brain: Any) -> str:
             raise ActivationError("portal-api did not load AWG material secrets")
     except Exception:
         if backup_path:
-            _run_remote_allow_failure(brain, f"cp -f {shlex.quote(backup_path)} {shlex.quote(env_path)}")
+            _run_remote_allow_failure(
+                brain, f"cp -f {shlex.quote(backup_path)} {shlex.quote(env_path)}"
+            )
             _run_remote_allow_failure(brain, "systemctl restart portal-api")
         raise
     return backup_path
 
 
-_REMOTE_ADMIN_HELPER = r'''
+_REMOTE_ADMIN_HELPER = r"""
 import hashlib
 import hmac
 import json
@@ -821,7 +873,7 @@ print(json.dumps({
     "awg31_variant": "randomized_trailers_v1",
     "rollout_expires_at": expires_at,
 }))
-'''
+"""
 
 
 def _activate_control_plane(
@@ -833,12 +885,11 @@ def _activate_control_plane(
     awg2_endpoint: dict[str, Any],
     awg31_endpoint: dict[str, Any],
 ) -> dict[str, Any]:
-    encoded_helper = base64.b64encode(_REMOTE_ADMIN_HELPER.encode("utf-8")).decode("ascii")
-    command = (
-        "python3 -c "
-        + shlex.quote(
-            "import base64;exec(base64.b64decode(" + repr(encoded_helper) + "))"
-        )
+    encoded_helper = base64.b64encode(_REMOTE_ADMIN_HELPER.encode("utf-8")).decode(
+        "ascii"
+    )
+    command = "python3 -c " + shlex.quote(
+        "import base64;exec(base64.b64decode(" + repr(encoded_helper) + "))"
     )
     stdin, stdout, stderr = brain.exec_command(command, timeout=420)
     request = {
@@ -920,20 +971,29 @@ def main() -> int:
     tools_sha256 = _sha256_file(tools_archive)
     expected_server = str(args.server_binary_sha256).strip().lower()
     expected_tools = str(args.tools_archive_sha256).strip().lower()
-    if not SAFE_SHA256_RE.fullmatch(expected_server) or server_sha256 != expected_server:
+    if (
+        not SAFE_SHA256_RE.fullmatch(expected_server)
+        or server_sha256 != expected_server
+    ):
         raise SystemExit("server binary SHA-256 confirmation failed")
     if not SAFE_SHA256_RE.fullmatch(expected_tools) or tools_sha256 != expected_tools:
         raise SystemExit("tools archive SHA-256 confirmation failed")
-    head = subprocess.run(
-        ["git", "rev-parse", "HEAD"],
-        cwd=REPO_ROOT,
-        check=True,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-    ).stdout.strip().lower()
+    head = (
+        subprocess.run(
+            ["git", "rev-parse", "HEAD"],
+            cwd=REPO_ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        .stdout.strip()
+        .lower()
+    )
     if head != SOURCE_REVISION:
-        raise SystemExit("operator script must run from the exact candidate.4 platform base")
+        raise SystemExit(
+            "operator script must run from the exact candidate.4 platform base"
+        )
 
     install_id, _account_id = _load_emulator_identity(adb, str(args.adb_serial))
     install_sha256 = hashlib.sha256(install_id.encode("utf-8")).hexdigest()
@@ -968,8 +1028,12 @@ def main() -> int:
             "known_hosts_sha256": _sha256_file(known_hosts),
             "adb_target_supplied": bool(str(args.adb_serial).strip()),
             "install_id_sha256": install_sha256,
-            "brain_auth_method": "key" if str(brain_auth).startswith("key") else "password",
-            "node_auth_method": "key" if str(node_auth).startswith("key") else "password",
+            "brain_auth_method": "key"
+            if str(brain_auth).startswith("key")
+            else "password",
+            "node_auth_method": "key"
+            if str(node_auth).startswith("key")
+            else "password",
             "preflight": preflight,
             "secrets_retained_in_report": False,
             "raw_identifiers_returned": False,
@@ -1035,7 +1099,10 @@ def main() -> int:
             # A successful dataplane remains isolated if a later guarded API step
             # fails because the rollout update is deliberately last.
             pass
-        print(f"owned AWG lab activation failed: {type(exc).__name__}: {str(exc)[:600]}", file=sys.stderr)
+        print(
+            f"owned AWG lab activation failed: {type(exc).__name__}: {str(exc)[:600]}",
+            file=sys.stderr,
+        )
         return 1
     finally:
         if node is not None:

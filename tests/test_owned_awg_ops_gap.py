@@ -38,9 +38,13 @@ class OwnedAwgActivationContractTests(unittest.TestCase):
             unit,
         )
         self.assertIn(f"ExecStart={module.AWG_QUICK_TARGET} up %i", unit)
-        self.assertIn(f"ExecReload=/bin/bash -c 'exec {module.AWG_TARGET} syncconf", unit)
+        self.assertIn(
+            f"ExecReload=/bin/bash -c 'exec {module.AWG_TARGET} syncconf", unit
+        )
 
-    def test_server_preflight_requires_every_target_absent_and_udp_port_free(self) -> None:
+    def test_server_preflight_requires_every_target_absent_and_udp_port_free(
+        self,
+    ) -> None:
         module = self.module
         with patch.object(
             module,
@@ -63,13 +67,46 @@ class OwnedAwgActivationContractTests(unittest.TestCase):
         self.assertEqual(awg31["content_padding_addition"], "64-512")
         self.assertNotEqual(awg2["private_key"], awg31["private_key"])
 
+    def test_server_configs_pin_outer_udp_replies_to_the_endpoint_address(self) -> None:
+        module = self.module
+        endpoint = "192.0.2.10"
+        _awg2, _awg31, server2, server31 = module._endpoint_material(endpoint)
+
+        for interface, port, config in (
+            (module.AWG2_INTERFACE, module.AWG2_PORT, server2),
+            (module.AWG31_INTERFACE, module.AWG31_PORT, server31),
+        ):
+            with self.subTest(interface=interface):
+                self.assertIn(
+                    f"-o eth0 -p udp -m udp --sport {port}",
+                    config,
+                )
+                self.assertIn(
+                    f"--comment 'POKROV owned {interface} reply source'",
+                    config,
+                )
+                self.assertIn(f"-j SNAT --to-source {endpoint}", config)
+                self.assertIn(
+                    f"ip -4 rule add priority {10_000 + port} ipproto udp "
+                    f"sport {port} lookup {20_000 + port}",
+                    config,
+                )
+                self.assertIn(
+                    f"ip -4 route replace table {20_000 + port} default",
+                    config,
+                )
+                self.assertIn("PostUp = iptables -t nat -C POSTROUTING", config)
+                self.assertIn("PostDown = iptables -t nat -D POSTROUTING", config)
+
 
 class OwnedAwgUdpPathContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.module = _load_module("remote_probe_owned_awg_udp_path")
 
-    def test_phone_selector_excludes_emulators_and_requires_one_physical_device(self) -> None:
+    def test_phone_selector_excludes_emulators_and_requires_one_physical_device(
+        self,
+    ) -> None:
         module = self.module
         completed = SimpleNamespace(
             stdout=(
@@ -108,7 +145,44 @@ class OwnedAwgUdpPathContractTests(unittest.TestCase):
                 )
 
         self.assertEqual(run.call_count, 4)
-        self.assertEqual(run.call_args_list[-1].args[0][-3:], ["rm", "-f", "/data/local/tmp/pokrov-udp-probe"])
+        self.assertEqual(
+            run.call_args_list[-1].args[0][-3:],
+            ["rm", "-f", "/data/local/tmp/pokrov-udp-probe"],
+        )
+
+
+class OwnedAwgReplySourceContractTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.module = _load_module("remote_ensure_owned_awg_reply_source")
+
+    def test_config_injection_is_idempotent_and_bound_to_one_lab_port(self) -> None:
+        module = self.module
+        original = b"""[Interface]\nListenPort = 4500\nPostUp = true\nPostDown = true\n\n[Peer]\nAllowedIPs = 10.0.0.2/32\n"""
+
+        updated, changed = module._updated_config(
+            original, "pokrovawg2", 4500, "192.0.2.10"
+        )
+        repeated, changed_again = module._updated_config(
+            updated, "pokrovawg2", 4500, "192.0.2.10"
+        )
+
+        self.assertTrue(changed)
+        self.assertFalse(changed_again)
+        self.assertEqual(updated, repeated)
+        text = updated.decode("utf-8")
+        self.assertEqual(text.count("POKROV owned pokrovawg2 reply source"), 3)
+        self.assertIn("--sport 4500", text)
+        self.assertIn("--to-source 192.0.2.10", text)
+        self.assertIn("sport 4500 lookup 24500", text)
+        self.assertIn("route replace table 24500 default", text)
+
+    def test_config_injection_rejects_a_conflicting_managed_rule(self) -> None:
+        module = self.module
+        conflicting = b"""[Interface]\nListenPort = 4500\nPostUp = echo 'POKROV owned pokrovawg2 reply source'\nPostDown = true\n\n[Peer]\n"""
+
+        with self.assertRaisesRegex(RuntimeError, "conflicting"):
+            module._updated_config(conflicting, "pokrovawg2", 4500, "192.0.2.10")
 
 
 class OwnedAwgCoreInteropContractTests(unittest.TestCase):
@@ -116,7 +190,9 @@ class OwnedAwgCoreInteropContractTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.module = _load_module("remote_run_owned_awg_core_interop")
 
-    def test_interop_failure_classification_keeps_network_boundaries_distinct(self) -> None:
+    def test_interop_failure_classification_keeps_network_boundaries_distinct(
+        self,
+    ) -> None:
         module = self.module
         cases = {
             "before an outer packet was emitted": "failed_before_outer_packet",
@@ -140,7 +216,9 @@ class OwnedAwgCoreInteropContractTests(unittest.TestCase):
         self.assertIn("Awg2LabMaterial.is_active.is_(True)", helper)
         self.assertIn("Awg31LabMaterial.is_active.is_(True)", helper)
 
-    def test_secret_free_interop_result_can_be_retained_without_shell_redirect(self) -> None:
+    def test_secret_free_interop_result_can_be_retained_without_shell_redirect(
+        self,
+    ) -> None:
         module = self.module
         result = {
             "schema_version": "pokrov-owned-awg-core-interop-v1",
@@ -167,7 +245,9 @@ class OwnedAwgDeviceEvidenceContractTests(unittest.TestCase):
         cls.bind_module = _load_module("remote_bind_owned_awg_lab_device")
         cls.select_module = _load_module("remote_select_owned_awg_lab")
 
-    def test_bind_result_is_atomically_retained_without_raw_device_identity(self) -> None:
+    def test_bind_result_is_atomically_retained_without_raw_device_identity(
+        self,
+    ) -> None:
         result = {
             "schema_version": "pokrov-owned-awg-device-bind-v1",
             "mode": "PLAN",
@@ -223,7 +303,9 @@ class OwnedAwgDeviceEvidenceContractTests(unittest.TestCase):
         self.assertIn('"device_target_identity_incomplete"', helper)
         self.assertIn('"owned_awg_source_material_unavailable"', helper)
 
-    def test_selection_result_is_atomically_retained_without_raw_install_id(self) -> None:
+    def test_selection_result_is_atomically_retained_without_raw_install_id(
+        self,
+    ) -> None:
         result = {
             "schema_version": "pokrov-owned-awg-lab-selection-v1",
             "mode": "PLAN",
