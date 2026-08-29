@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "work_order": "WO-013BF",
+  "captured_at_utc": "2026-08-29T05:02:55.338Z",
+  "scope": "active_source_windows_pre_candidate_setup",
+  "sources": {
+    "platform_revision": "1bb7b75e76ca6c88485cdef63222c5d53ef34f0e",
+    "client_revision": "f500728ce1fef54a32573263999652383cd86ad2",
+    "core_revision": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+    "version": "1.2.0+4046"
+  },
+  "artifacts": {
+    "setup": {
+      "size_bytes": 28932687,
+      "sha256": "81268d7e6db144c2944bde4be359e188b42b0bbad427d4f5a438510d9523723c",
+      "authenticode": "NotSigned"
+    },
+    "manifest": {
+      "sha256": "d2a7a9001280fee45af669a81d8e8aa753b246faef3818405494affc563d4805",
+      "required_file_count": 8,
+      "missing_or_mismatched_required_files": 0
+    },
+    "bundle": {
+      "tree_sha256": "26e2e63b0c6d89bfe6c0b7078aa38cf77a13c676af73b69fa51b6e5bc729fbf7",
+      "retained_file_count": 302,
+      "ui_authenticode": "NotSigned",
+      "service_authenticode": "NotSigned"
+    },
+    "core_dll": {
+      "size_bytes": 55426048,
+      "sha256": "53b5e82a9c7bc20055c0889a1c8fabb5137f52ad09d38b23cf86477184474652",
+      "matches_exact_reproducible_core_artifact": true
+    },
+    "external_retained_evidence_sha256": "6e33ca7781d5bb20020776aec79beccaf4f2ff7eb087b14a3b86b2bde95f2733"
+  },
+  "verification": {
+    "seed_and_cross_repository_contracts": "PASS",
+    "manifest_readback": "PASS_8_OF_8",
+    "exact_local_quality_gate_reused": "PASS_15_OF_15",
+    "analyze_or_tests_relabelled_as_new_run": false,
+    "public_verification_keys_redacted_from_build_log": true,
+    "private_signing_key_used": false
+  },
+  "signing": {
+    "status": "SKIPPED_BY_OWNER",
+    "blocker_code": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0",
+    "smartscreen_warning_required": true,
+    "trusted_or_store_claim_allowed": false
+  },
+  "runtime": {
+    "isolated_windows_runtime_available_on_build_host": false,
+    "setup_installed": false,
+    "main_host_network_mutated": false,
+    "live_scm_tun_dns_awg_egress": "MANUAL_OWNER_TEST"
+  },
+  "release_interpretation": {
+    "phase_10_index": "I3",
+    "candidate_created": false,
+    "candidate_proven": false,
+    "gate_f_regenerated": false,
+    "published": false,
+    "promoted": false
+  }
+}

@@ -2,6 +2,19 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BF active Windows setup
+
+Clean client `f500728...` packages exact resolver-corrected Core
+`a45d69e...` into unsigned outside-store setup `81268d7e...723c`. All eight
+required files match manifest `d2a7a900...4805`; bundled DLL
+`53b5e82a...4652` matches the two-build reproducible Core artifact.
+
+The owner exception remains `SKIPPED_BY_OWNER` with a mandatory SmartScreen
+warning and no trusted/Store claim. No isolated Windows runtime is available on
+the build host, so the setup was not installed and the main host network was
+not mutated. Phase 10 remains `I3`; SCM/service/TUN/DNS/AWG/egress/recovery,
+replacement-candidate and Gate F proof remain open.
+
 ## 2026-08-29 — WO-013BE AWG default-resolver physical pass
 
 Core `a45d69e...` corrects the common AWG selected-endpoint failure without
