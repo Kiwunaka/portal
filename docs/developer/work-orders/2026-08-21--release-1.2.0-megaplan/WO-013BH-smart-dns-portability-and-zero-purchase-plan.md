@@ -1,5 +1,10 @@
 # WO-013BH — Smart DNS portability and zero-purchase topology PLAN
 
+Current-status note: this remains the immutable portability/initial PLAN
+checkpoint. `WO-013BI` is the current address bind-scope authority; it rejects
+an intermediate v2 spare-address false lead and retains the same no-safe-target
+conclusion under strict report-v3 evidence.
+
 ## Outcome
 
 Make the owned Smart DNS bundle portable across the Windows release worktree

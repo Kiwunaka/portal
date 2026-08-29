@@ -2,6 +2,28 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BI strict Smart DNS address topology
+
+An intermediate report-v2 shell counter produced a false lead that the
+multi-address node might have spare public addresses. An independent structured
+replay contradicted it before any mutation. Platform `ff7e653...` replaces the
+counter with strict structured `ip -j -4` and `ss` parsing, filters globally
+routable IPv4 only and advances reports to v3. The invalid v2 result is
+`INVALID_INTERMEDIATE_NOT_RELEASE_EVIDENCE`.
+
+Focused tests pass `23/23`; Ruff, Python compile, script manifest, Go test/vet
+and policy parity pass. Two current-source bundles are byte-identical at
+`2912449` bytes and SHA-256 `79cf040a...0de8c`. Exact v3 PLANs show `de` has
+two globally routable assigned addresses and two exact TCP/443 binds. The other
+six active nodes have wildcard/dual-stack TCP/443 binds. All seven have zero
+unclaimed public addresses outside the current bind scope, no runtime material
+and zero mutation.
+
+`FRKN_SMART_DNS/SMARTDNS-01` remains `I3`. Under the no-purchase policy the lab
+requires a separately reviewed frontend migration that deliberately frees an
+existing address, or remains undeployed. No candidate, service, DNS/SNI,
+access, leak, rollback, origin or promotion proof is created.
+
 ## 2026-08-29 — WO-013BH Smart DNS portability and zero-purchase PLAN
 
 Platform `64982d9.../8bdc21f...` makes the Smart DNS bundle contract portable

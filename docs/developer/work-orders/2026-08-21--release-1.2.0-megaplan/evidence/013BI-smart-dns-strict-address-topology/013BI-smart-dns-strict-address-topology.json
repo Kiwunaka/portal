@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "work_order": "WO-013BI",
+  "captured_at_utc": "2026-08-29T06:17:11.506Z",
+  "scope": "smart_dns_strict_address_topology_correction",
+  "sources": {
+    "platform": "ff7e653bf8266488be2db04aadd5f28eb90cf0aa",
+    "bind_scope_v2_source": "d86f90d7dd10be59864f1d6549e45862b7a0ee14",
+    "invalid_intermediate_unclaimed_counter_source": "43cfabfa1378959d800c0b4f370ebcd035826e16",
+    "client_policy_truth": "b2497af7704d0aa6901541e175ce154b0eab05d7",
+    "core_changed": false
+  },
+  "correction": {
+    "invalid_report_schema": "pokrov-owned-smart-dns-remote-operation-v2",
+    "invalid_result_classification": "INVALID_INTERMEDIATE_NOT_RELEASE_EVIDENCE",
+    "invalid_result_used_for_apply": false,
+    "invalid_result_used_for_mutation": false,
+    "current_report_schema": "pokrov-owned-smart-dns-remote-operation-v3",
+    "current_parser": "structured_ip_json_and_strict_ss_listener_rows",
+    "globally_routable_filter": true,
+    "raw_address_output": false
+  },
+  "policy": {
+    "sha256": "b6977f6f6a5ee48898116820d1db252b5b670cb7b86959c78f7bdbc7de90e0fa",
+    "cross_repository_parity": "PASS"
+  },
+  "bundle": {
+    "build_count": 2,
+    "byte_identical": true,
+    "status": "PASS_LOCAL_IMMUTABLE_BUNDLE",
+    "size_bytes": 2912449,
+    "sha256": "79cf040a6725cfb35f232242fefc8dfc61fd472448bb3d14b443a7472db0de8c",
+    "published": false,
+    "runtime_material_included": false
+  },
+  "verification": {
+    "focused_pytest": "23/23 PASS",
+    "focused_ruff": "PASS",
+    "python_compile": "PASS",
+    "script_manifest": "PASS",
+    "go_version": "go1.25.13 windows/amd64",
+    "go_test": "PASS",
+    "go_vet": "PASS"
+  },
+  "active_node_plan": {
+    "operation": "install",
+    "mode": "PLAN_NO_MUTATION",
+    "node_codes": [
+      "de",
+      "us",
+      "ru",
+      "ru_spb",
+      "pl",
+      "it",
+      "nl"
+    ],
+    "node_count": 7,
+    "tcp_443_busy_count": 7,
+    "expected_address_bind_count": 1,
+    "wildcard_or_dual_stack_bind_count": 6,
+    "nodes_with_unclaimed_global_ipv4_count": 0,
+    "runtime_material_ready_count": 0,
+    "mutation_count": 0,
+    "results_by_node": {
+      "de": {
+        "bind_scope": "expected_address",
+        "multiple_global_ipv4_assigned": true,
+        "unclaimed_global_ipv4": "none"
+      },
+      "us": {
+        "bind_scope": "wildcard",
+        "multiple_global_ipv4_assigned": false,
+        "unclaimed_global_ipv4": "none"
+      },
+      "ru": {
+        "bind_scope": "wildcard",
+        "multiple_global_ipv4_assigned": false,
+        "unclaimed_global_ipv4": "none"
+      },
+      "ru_spb": {
+        "bind_scope": "wildcard",
+        "multiple_global_ipv4_assigned": false,
+        "unclaimed_global_ipv4": "none"
+      },
+      "pl": {
+        "bind_scope": "wildcard",
+        "multiple_global_ipv4_assigned": false,
+        "unclaimed_global_ipv4": "none"
+      },
+      "it": {
+        "bind_scope": "wildcard",
+        "multiple_global_ipv4_assigned": false,
+        "unclaimed_global_ipv4": "none"
+      },
+      "nl": {
+        "bind_scope": "wildcard",
+        "multiple_global_ipv4_assigned": false,
+        "unclaimed_global_ipv4": "none"
+      }
+    },
+    "report_sha256_by_node": {
+      "de": "a9898ec643a1cbca6437ca2d254b6223a90c19d86869a5b383c31f0b24ac1164",
+      "us": "a053efea6047ea599b3c721d1ad2fe8537a84235b161ffe73f54e0cdd7242bc4",
+      "ru": "8f551aba7318791dbc6b048a89e190bb56da15af7e04dcbd87870d8d7c1c7fc2",
+      "ru_spb": "a7b9755f54c2d8874f86fc2018a11afbdec8ff2e1d65ae15247b80acc7f3c1da",
+      "pl": "8ef5cd9b5c3c940b5e799433f1aeb6342b84ce217869ffa2299055ea493c706c",
+      "it": "b0d23647d5b5518e40e6fc8f08246082238740181964f391a9fece58d66f2268",
+      "nl": "a4c5b27bc47a554ae09069b4dee133e1fd6faf6e13ce89a9ffa8fa5ad8a252db"
+    }
+  },
+  "independent_de_replay": {
+    "assigned_global_ipv4_count": 2,
+    "tcp_443_exact_bound_assigned_count": 2,
+    "tcp_443_unclaimed_count": 0,
+    "active_awg_endpoint_address_count": 1,
+    "raw_address_returned": false,
+    "raw_material_returned": false,
+    "mutation_performed": false
+  },
+  "decision": {
+    "owner_policy": "NO_PURCHASE",
+    "safe_zero_purchase_target_found": false,
+    "classification": "NO_SAFE_ZERO_PURCHASE_TARGET_CURRENT_TOPOLOGY",
+    "safe_remaining_path": "DELIBERATELY_FREE_EXISTING_OWNED_IPV4_UNDER_SEPARATE_FRONTEND_MIGRATION_AND_ROLLBACK_OR_LEAVE_UNDEPLOYED",
+    "index_advanced": false
+  },
+  "release_interpretation": {
+    "candidate_created": false,
+    "candidate_proven": false,
+    "backend_or_production_mutation": false,
+    "public_artifact_or_stable_promotion": false,
+    "live_dns_or_sni_relay_proven": false,
+    "service_access_proven": false,
+    "leak_or_origin_proven": false,
+    "rollback_executed": false
+  },
+  "privacy": {
+    "raw_ipv4_or_hostname_present": false,
+    "raw_credential_or_private_key_present": false,
+    "raw_runtime_material_present": false,
+    "customer_or_provider_payload_present": false,
+    "plan_reports_raw_host_returned": false,
+    "plan_reports_raw_runtime_material_returned": false
+  }
+}

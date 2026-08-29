@@ -185,6 +185,16 @@ only after a separate guarded frontend-migration and rollback plan proves it
 can be deliberately freed. No deployment, DNS answer, SNI relay, service
 access, candidate or index advance is claimed.
 
+`WO-013BI` tightens this conclusion. An intermediate v2 shell counter briefly
+suggested a possible unclaimed address on the multi-address node, but an
+independent structured replay contradicted it before any mutation. Current
+platform `ff7e653...` replaces that parser, advances the report schema to v3
+and reproduces the strict result across all seven active nodes: `de` has two
+globally routable assigned addresses and two exact TCP/443 binds; the other six
+nodes have wildcard/dual-stack binds. No active node has an unclaimed global
+IPv4 outside its current TCP/443 scope. The invalid v2 output is explicitly not
+release evidence.
+
 ## Required next evidence
 
 1. prove that an already owned public IPv4 can be deliberately freed under a
