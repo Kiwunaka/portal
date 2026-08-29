@@ -2,6 +2,38 @@
 
 Last updated: 2026-08-30
 
+## 2026-08-30 — WO-013CH candidate.8 LDPlayer rehearsal and Gate F
+
+The exact candidate.8 x86_64 APK SHA-256 `ec07ba17...2627`, size
+`109952213`, installs and reads back byte-identically as release/non-debuggable
+`1.2.0+4046` on the explicit LDPlayer Android 9/API 28 target. APK Signature
+Scheme v2 and the expected production certificate pass. All seven active
+locations render, including Saint Petersburg. The physical phone was not
+touched.
+
+The ordinary Frankfurt control forms TUN but does not confirm selected egress;
+POKROV stops system VPN and shows an explicit retry state without false green.
+Separate guarded AWG2 and AWG3.1 PLAN/APPLY runs extend no entitlement and
+each reach app-confirmed tunnel, DNS and selected egress plus `11/11` server
+alignment. AWG3.1 keeps official pinned cryptography and uses no custom
+cryptography. Count-only packet evidence returns no raw addresses; an idle
+AWG2 inner capture is not promoted to independent payload proof.
+
+Guarded default restore resolves `legacy_reality_fallback`, removes both lab
+materials, cohort and allowlist membership, leaves WARP off, no TUN and the UI
+disconnected/not protected. Client PR `37` merges exact readiness
+reconciliation as `e3ae08bc...e9c7`; hosted run `33277235236` executes zero
+steps and remains `SKIPPED_BY_OWNER`, not PASS.
+
+Only `android_ldplayer_rehearsal` advances from `NOT_RUN` to `PASS`. The
+successor digest-bound Gate F validates `19/19` pointers and returns `BLOCKED`
+at `6 PASS / 13 non-PASS / 0 FAIL / 0 validation errors`. Decision SHA-256 is
+`389793c48fd5da17eac79f90f12e1c5f04f6069048a7c9ddb02b57ee2c49e599`.
+`REL_GATE/GATE-F` remains `I3`; LDPlayer does not replace physical Android or
+any other gate. LF attributes now make 013CF/013CH raw evidence digests stable
+on Windows checkouts. No candidate rebuild, deploy, payment action, public
+release, Store object, stable pointer or Gate G authorization occurred.
+
 ## 2026-08-30 — WO-013CG Smart DNS foreign first-frontend PLAN
 
 Post-candidate platform `c2ffc48285088129be507ac5bc3d9b8555225326`
