@@ -2,6 +2,33 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BX Smart DNS fronted server install and RU PLAN
+
+Post-candidate platform `650dc3f...` adds a guarded `fronted` mode to the
+server installer while preserving the existing `dedicated` path. Fronted mode
+binds exactly to loopback TCP/18443, requires PROXY v2, performs no UFW
+mutation and requires its own APPLY confirmation. Exact bundle/node/mode
+receipts, closed rollback states and the PROXY-v2/TLS/DoH health probe remain
+fail-closed. Server install and public HAProxy migration are still separate
+operations.
+
+Compile, Ruff, `49` focused tests, Go test/vet, policy parity and diff checks
+pass. Two exact-source Linux/amd64 bundles are byte-identical: `2916305` bytes,
+SHA-256 `cda97da...0225`. A completed security diff scan covers ten surfaces and
+reports zero findings.
+
+Read-only exact-bundle PLAN exits zero with no mutation on `ru` and `ru_spb`.
+Both retain busy public TCP/443, free loopback TCP/18443, inactive Smart DNS,
+missing runtime material and zero occupied install targets. `ru` is proposed
+for a later separately authorized canary; it is not selected or deployed.
+`ru_spb` and Brain remain unselected.
+
+SMARTDNS-01 remains `I3` with stronger fronted-server source/PLAN evidence.
+Candidate.6 and Gate F remain unchanged at `4 PASS / 15 non-PASS / 0 FAIL`.
+The local Pi 4 is registered as a terminal-only ARM64/RU-origin probe once its
+trusted SSH target is supplied; the current amd64 server bundle cannot run on
+it and it does not replace Android or Windows proof.
+
 ## 2026-08-29 — WO-013BW Smart DNS frontend migration and all-node PLAN
 
 Post-candidate platform `99d0715...` adds the previously missing receipt-bound

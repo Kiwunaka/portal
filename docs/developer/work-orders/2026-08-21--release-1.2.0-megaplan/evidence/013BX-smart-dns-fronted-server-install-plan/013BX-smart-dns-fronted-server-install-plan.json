@@ -1,0 +1,120 @@
+{
+  "schema": "pokrov.release-1.2.0.smart-dns-fronted-server-install-plan/v1",
+  "recorded_at": "2026-08-29T16:06:54.5882215+03:00",
+  "source": {
+    "platform_commit": "650dc3fab8053736cfb976d4a34ea1f2f0b40349",
+    "base_commit": "a1da8d6b809d926fd0da52ff6eaa3243af45bbed",
+    "installer_sha256": "21581e26ccf9d4cdff5c55d45e9fd20cdf2e82c3b0c91530e1d5986094d99619",
+    "bundle_contract_sha256": "ca93d6c2399b06f20913f0a904ddb2f121bd23f445e4828451dcd855185c1743",
+    "policy_sha256": "b6977f6f6a5ee48898116820d1db252b5b670cb7b86959c78f7bdbc7de90e0fa",
+    "post_candidate": true
+  },
+  "fronted_install_contract": {
+    "default_mode": "PLAN",
+    "listener_mode": "fronted",
+    "listener_scope": "exact_loopback",
+    "listener_port": 18443,
+    "proxy_protocol_v2_required": true,
+    "public_firewall_managed": false,
+    "apply_confirmation_required": true,
+    "apply_confirmation_value": "FRONTED_LOOPBACK_PROXY_V2",
+    "strict_host_keys": true,
+    "exact_bundle_and_runtime_contract": true,
+    "root_only_receipt": true,
+    "explicit_rollback_requires_applied_receipt_and_exact_current_release": true,
+    "automatic_rollback_states": [
+      "prepared",
+      "applied"
+    ],
+    "server_install_and_frontend_migration_separate": true,
+    "raw_runtime_material_returned": false
+  },
+  "artifact": {
+    "goos": "linux",
+    "goarch": "amd64",
+    "builds_compared": 2,
+    "byte_identical": true,
+    "size_bytes": 2916305,
+    "sha256": "cda97da16a892c1a8563bd20434cd749a2174c192ba722147091a3e1c14a0225",
+    "runtime_material_included": false,
+    "externally_signed": false
+  },
+  "verification": {
+    "python_compile": "PASS",
+    "focused_ruff": "PASS",
+    "focused_pytest": "49_PASS",
+    "go_test": "PASS",
+    "go_vet": "PASS",
+    "policy_parity": "PASS",
+    "diff_check": "PASS",
+    "security_scan_id": "c4b8e173-6dda-4d51-913e-5afcdebd50e2",
+    "security_scan_report_sha256": "3b79fab2161c488e40ca5706e208aa262ee9a0c665e99e787b80ed4281013bd0",
+    "security_surfaces_reviewed": 10,
+    "security_reportable_findings": 0,
+    "tac_advisory_status_verified": false
+  },
+  "remote_plan": {
+    "operation": "install",
+    "listener_mode": "fronted",
+    "nodes_requested": [
+      "ru",
+      "ru_spb"
+    ],
+    "nodes_completed": 2,
+    "exit_zero": 2,
+    "mutation_performed": false,
+    "root_preflight_passed": 2,
+    "required_tools_passed": 2,
+    "public_tcp_443_busy": 2,
+    "loopback_tcp_18443_free": 2,
+    "selected_listener_free": 2,
+    "service_inactive": 2,
+    "runtime_material_ready": 0,
+    "occupied_target_count": 0,
+    "selected_node": null,
+    "proposed_canary": "ru",
+    "proposal_is_authorization": false,
+    "brain_selected": false,
+    "spb_selected": false,
+    "raw_host_returned": false,
+    "raw_config_returned": false,
+    "raw_runtime_material_returned": false
+  },
+  "pi4_followup": {
+    "role": "TERMINAL_ONLY_ARM64_RU_ORIGIN_PROBE",
+    "use_cases": [
+      "dns_and_doh",
+      "routing_and_access",
+      "api_and_node_reachability",
+      "leak_observation",
+      "arm64_portability_followup"
+    ],
+    "current_server_bundle_compatible": false,
+    "current_server_bundle_arch": "linux_amd64",
+    "trusted_ssh_profile_present": false,
+    "test_executed": false,
+    "replaces_android_or_windows_proof": false
+  },
+  "release_interpretation": {
+    "ledger_row": "FRKN_SMART_DNS/SMARTDNS-01",
+    "completion_level": "I3",
+    "status": "POST_CANDIDATE_FRONTED_SERVER_INSTALL_SOURCE_AND_RU_PLAN_READY_RUNTIME_MATERIAL_MISSING",
+    "candidate": "pokrov-1.2.0-candidate.6",
+    "candidate_bytes_changed": false,
+    "successor_candidate_required": true,
+    "gate_f": "4_PASS_15_NONPASS_0_FAIL",
+    "gate_f_regenerated": false,
+    "server_deployed": false,
+    "frontend_deployed": false,
+    "live_dns_claim": false,
+    "live_access_claim": false,
+    "rollback_runtime_claim": false,
+    "origin_claim": false,
+    "physical_device_claim": false
+  },
+  "documentation_boundary": {
+    "component_owner_updated": true,
+    "canonical_operations_docs_updated": false,
+    "canonical_operations_docs_reason": "concurrent_dirty_owner_worktree_overlap"
+  }
+}
