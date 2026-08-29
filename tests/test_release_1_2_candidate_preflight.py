@@ -4,6 +4,7 @@ import base64
 import importlib.util
 import hashlib
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -46,6 +47,46 @@ def test_parser_accepts_separate_post_freeze_ledger_root(tmp_path: Path) -> None
 
     assert args.platform_root == REPO_ROOT
     assert args.ledger_root == tmp_path
+
+
+def test_git_publication_accepts_exact_main_or_published_ancestor(tmp_path: Path) -> None:
+    subprocess.run(["git", "init", "-q", "-b", "main"], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "config", "user.email", "release-test@invalid"],
+        cwd=tmp_path,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Release Test"],
+        cwd=tmp_path,
+        check=True,
+    )
+    marker = tmp_path / "marker.txt"
+    marker.write_text("signed source\n", encoding="utf-8")
+    subprocess.run(["git", "add", "marker.txt"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "signed source"], cwd=tmp_path, check=True)
+    signed_source = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    marker.write_text("signed source\nreceipt\n", encoding="utf-8")
+    subprocess.run(["git", "add", "marker.txt"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-q", "-m", "receipt"], cwd=tmp_path, check=True)
+    published_main = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+    assert MODULE._git_is_ancestor(tmp_path, published_main, published_main)
+    assert MODULE._git_is_ancestor(tmp_path, signed_source, published_main)
+    assert not MODULE._git_is_ancestor(tmp_path, published_main, signed_source)
 
 
 def test_pending_lane_preserves_non_pass_labels() -> None:

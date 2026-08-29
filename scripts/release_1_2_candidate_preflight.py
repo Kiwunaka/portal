@@ -88,6 +88,19 @@ def _git_optional(repo_root: Path, *args: str) -> str | None:
     return value if result.returncode == 0 and value else None
 
 
+def _git_is_ancestor(repo_root: Path, ancestor: str, descendant: str) -> bool:
+    result = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", ancestor, descendant],
+        cwd=repo_root,
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    return result.returncode == 0
+
+
 def _release_index_contract(
     release_index_root: Path,
 ) -> tuple[dict[str, Any], list[dict[str, str]]]:
@@ -923,6 +936,14 @@ def build_report(
         release_index["head_is_published_main"] = (
             published_revision == release_index["revision"]
         )
+        release_index["head_is_published_ancestor"] = bool(
+            published_revision
+            and _git_is_ancestor(
+                release_index_root,
+                release_index["revision"],
+                published_revision,
+            )
+        )
         normalized_remote = (remote_url or "").lower().removesuffix(".git")
         if normalized_remote not in {
             "https://github.com/kiwunaka/pokrov",
@@ -935,12 +956,12 @@ def build_report(
                     "detail": "release-index checkout does not bind Kiwunaka/pokrov",
                 }
             )
-        if published_revision != release_index["revision"]:
+        if not release_index["head_is_published_ancestor"]:
             blockers.append(
                 {
                     "id": "release_index_revision_unpublished",
                     "status": "BLOCKED_EXTERNAL_PRECONDITION",
-                    "detail": "release-index HEAD is not the fetched public origin/main revision",
+                    "detail": "release-index HEAD is not published in the fetched public origin/main history",
                 }
             )
         release_index_contract, release_index_blockers = _release_index_contract(

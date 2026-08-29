@@ -318,6 +318,12 @@ preflight implementation. Newly added execution-ledger rows are also assigned
 by the checked-in stage policy (defaulting to `pre_freeze`) instead of being
 rejected by a stale total-row constant.
 
+For the public release index, the preflight accepts either the fetched
+`origin/main` revision itself or a clean revision proven by Git ancestry to be
+already published in that history. This preserves the exact signed-manifest
+source after a later receipt-only commit advances `main`; an unrelated or
+unpublished local revision still fails closed.
+
 ## Current POKROV-app Client Verification Commands
 
 Run from the repository root:
