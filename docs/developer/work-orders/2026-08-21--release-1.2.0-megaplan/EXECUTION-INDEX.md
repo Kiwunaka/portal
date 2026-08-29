@@ -2,6 +2,25 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BN candidate.6 isolated rollback rehearsal
+
+Signed candidate.6 passes the isolated real portal/client rollback sequence
+`1.1.6 -> candidate.6 -> 1.1.6`. The strict-v2 handoff binds all six signed
+artifacts; client dry-run, forward switch, reverse switch and final validation
+pass, while the portal environment returns byte-identically and preserves an
+unrelated setting. Focused regression passes `5/5`.
+
+An initial invocation with the public candidate JSON instead of the prepared
+handoff input failed closed before mutation and is retained only as operator
+input error, not candidate failure or PASS evidence. The valid rehearsal did
+not touch tracked client state, production, public release or stable pointer.
+
+`REL_DOD/DOD-18` and `FE/P12-130` remain `I3` with stronger exact candidate.6
+local evidence. Gate F remains WO-013BM's `3 PASS / 16 non-PASS / 0 FAIL`:
+authorized runtime pointer/kill rollback, Brain readback and post-rollback
+health remain open. Normalized evidence SHA-256 is
+`a118b5a9b41baef63cbbbf62c1cac53508a3d09246625f14a7cdb8dc0c63ab71`.
+
 ## 2026-08-29 — WO-013BM candidate.6 current-origin and Gate F
 
 Two source-bound current-origin probes from exact clean platform `5713324...`
