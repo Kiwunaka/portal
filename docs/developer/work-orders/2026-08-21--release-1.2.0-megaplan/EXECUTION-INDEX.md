@@ -2,6 +2,28 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BP candidate.6 LDPlayer per-app/WARP lifecycle
+
+Exact signed candidate.6 `1.2.0+4046` materializes both Android per-app
+directions correctly. `selected_apps` produces one include entry; the inverse
+mode produces two excludes for the test app and POKROV self-bypass. Each has a
+mixed TUN inbound and managed DNS. Operational evidence retains only
+`selected_app_count` values `0/1`, never the package identifier.
+
+A live service/TUN pair survives long enough for a controlled process
+force-stop; service and TUN are absent at one and five seconds, and relaunch is
+not protected rather than false-green. WARP consent produces a native `warp`
+endpoint plus service/TUN, then reaches the same LDPlayer current-origin
+`EGRESS-001` boundary and cleans up. Emulator processes remain alive while its
+ADB transport reconnects under full tunnel.
+
+Final restore is `russia_direct`, zero selected apps, WARP off, no AWG/WARP
+endpoint, stopped service and no TUN. Android Private DNS stayed at platform
+default; TUN IPv6 and DNS/leak proof remain open. Four rows gain stronger `I3`
+evidence, Gate C stays `I2`, and Gate F remains
+`3 PASS / 16 non-PASS / 0 FAIL`. Normalized evidence SHA-256 is
+`166e2cc4167c8d0d1e43955a451810bdd9d38c1e9136f98de4f1203732134603`.
+
 ## 2026-08-29 — WO-013BO candidate.6 PB-14 exact build binding
 
 The first candidate.6 PB-14 execution exposed a false-exact harness defect:
