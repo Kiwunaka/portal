@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import subprocess
 import sys
 import unittest
 from pathlib import Path
@@ -42,6 +43,36 @@ class VerifyBrainReadyTests(unittest.TestCase):
 
     def test_required_units_include_worker(self) -> None:
         self.assertIn("portal-worker", self.module.DEFAULT_REQUIRED_UNITS)
+
+    def test_run_supports_noninteractive_ssh_config_session(self) -> None:
+        session = self.module.OpenSshConfigSession("pokrov-brain")
+        completed = subprocess.CompletedProcess(
+            args=["ssh"],
+            returncode=0,
+            stdout="active\n",
+            stderr="",
+        )
+
+        with patch.object(self.module.OpenSshConfigSession, "run", return_value=completed) as run:
+            result = self.module._run(session, "systemctl is-active portal-api", timeout=19)
+
+        self.assertEqual(result, (0, "active\n", ""))
+        run.assert_called_once_with("systemctl is-active portal-api", timeout=19)
+
+    def test_subscription_script_uses_stdin_for_ssh_config_session(self) -> None:
+        session = self.module.OpenSshConfigSession("pokrov-brain")
+        completed = subprocess.CompletedProcess(
+            args=["ssh"],
+            returncode=0,
+            stdout="redacted metrics\n",
+            stderr="",
+        )
+
+        with patch.object(self.module.OpenSshConfigSession, "run", return_value=completed) as run:
+            result = self.module._run_subscription_script(session, "printf metrics")
+
+        self.assertEqual(result, (0, "redacted metrics\n", ""))
+        run.assert_called_once_with("bash -s", timeout=180, input_text="printf metrics")
 
     def test_listener_probe_uses_ere_compatible_grouping(self) -> None:
         cmd = self.module._listener_probe_cmd((443, 8444))
@@ -189,11 +220,14 @@ class VerifyBrainReadyTests(unittest.TestCase):
                 connect_domain="connect.pokrov.space",
                 domain="",
                 brain_ip="82.21.114.104",
+                ssh_config_alias="",
+                ssh_config="",
                 ssh_user="root",
                 ssh_port=29374,
                 passwords="C:/tmp/PASSWORDS.txt",
                 repeat=1,
                 check_legacy_2096=False,
+                json_out="",
             )
             with patch.object(self.module, "_parse_passwords", return_value={"brain": "secret"}):
                 with patch.object(self.module, "_ssh_connect", return_value=ssh):

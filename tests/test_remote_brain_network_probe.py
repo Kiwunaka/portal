@@ -1,10 +1,12 @@
 import importlib.util
 import json
+import subprocess
 import sys
 import tempfile
 import textwrap
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -24,6 +26,22 @@ def _load_module():
 
 
 class RemoteBrainNetworkProbeTests(unittest.TestCase):
+    def test_run_supports_noninteractive_ssh_config_session(self) -> None:
+        module = _load_module()
+        session = module.OpenSshConfigSession("pokrov-brain")
+        completed = subprocess.CompletedProcess(
+            args=["ssh"],
+            returncode=0,
+            stdout="open\n",
+            stderr="",
+        )
+
+        with mock.patch.object(module.OpenSshConfigSession, "run", return_value=completed) as run:
+            result = module._run(session, "printf open", timeout=11)
+
+        self.assertEqual(result, (0, "open\n", ""))
+        run.assert_called_once_with("printf open", timeout=11)
+
     def test_parse_inventory_uses_named_ip_column(self) -> None:
         module = _load_module()
         inventory_text = textwrap.dedent(
