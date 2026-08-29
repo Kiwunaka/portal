@@ -1,0 +1,75 @@
+{
+  "schema": "pokrov.release-1.2.0.smart-dns-foreign-frontend-bootstrap/v1",
+  "recorded_at_utc": "2026-08-29T21:11:40Z",
+  "scope": {
+    "state": "POST_CANDIDATE_DEFAULT_OFF_LAB",
+    "production_mutation": false,
+    "foreign_plan_canary": "it",
+    "deployment_target_selected": false,
+    "smart_dns_installed": false,
+    "runtime_material_created": false,
+    "dns_published": false
+  },
+  "source": {
+    "implementation_commit": "c2ffc48285088129be507ac5bc3d9b8555225326",
+    "legacy_front_config_canonical_sha256": "e7097ec42d41d06533cb535d8a0ef8234f852e11cf01cbfbce837c6b83317239",
+    "service_canonical_sha256": "75d06686d9baece4c0ee301b746e8a93207c48eff2d205dfc827308575ebf4ef",
+    "smart_dns_included": false,
+    "custom_cryptography_included": false
+  },
+  "foreign_inventory": {
+    "nodes_checked": ["de", "it", "nl", "pl", "us"],
+    "public_443_busy_on_all": true,
+    "owned_haproxy_frontend_present_on_any": false,
+    "loopback_smart_dns_present_on_any": false,
+    "mutation_performed": false
+  },
+  "it_plan": {
+    "report_sha256": "72d768dd20633b8caab80173d8b985359b012c90b0f9aa72b98e9b319b63fb83",
+    "mode": "PLAN",
+    "bootstrap_applicable": true,
+    "xui_active": true,
+    "single_enabled_public_443_inbound": true,
+    "inbound_protocol": "VLESS_REALITY",
+    "public_443_owner": "XRAY",
+    "backend_10443_free": true,
+    "smart_dns_18443_free": true,
+    "haproxy_present": false,
+    "haproxy_package_candidate": true,
+    "inbound_invariant_digest_bound": true,
+    "raw_host_returned": false,
+    "raw_config_returned": false,
+    "raw_runtime_material_returned": false,
+    "mutation_performed": false
+  },
+  "guards": {
+    "plan_read_only": true,
+    "explicit_apply_confirmation_required": true,
+    "exact_node_inbound_config_service_and_invariant_confirmation_required": true,
+    "root_only_receipt_before_mutation": true,
+    "sqlite_compare_and_swap": true,
+    "automatic_rollback_with_outcome_state": true,
+    "explicit_rollback_recovers_fronted_state_on_race": true,
+    "preexisting_haproxy_never_removed": true
+  },
+  "verification": {
+    "focused_transport_smart_dns_tests": "68/68 PASS",
+    "ruff": "PASS",
+    "python_compile": "PASS",
+    "script_manifest": "PASS",
+    "diff_check": "PASS"
+  },
+  "release_effect": {
+    "smartdns_01_index": "I3",
+    "candidate": "pokrov-1.2.0-candidate.8",
+    "candidate_bytes_changed": false,
+    "gate_f": {
+      "decision": "BLOCKED",
+      "pass": 5,
+      "non_pass": 14,
+      "fail": 0
+    },
+    "public_release_created": false,
+    "stable_pointer_changed": false
+  }
+}
