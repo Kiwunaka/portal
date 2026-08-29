@@ -2,6 +2,26 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BM candidate.6 current-origin and Gate F
+
+Two source-bound current-origin probes from exact clean platform `5713324...`
+pass: health p95 is `65.3908 ms <= 100 ms` and public-catalog p95 is
+`67.553 ms <= 200 ms`, each from 50 samples after five warmups. The temporary
+detached worktree was removed and the raw reports remain external by digest.
+
+The separate read-only Brain source probe could not authenticate with either
+address candidate from the owner inventory using the previously trusted key or
+retained password candidates. No remote report, deploy, restart or mutation
+occurred. Brain-origin is `BLOCKED_BY_ACCESS`; RU-origin remains `NOT_RUN`.
+
+The successor digest-bound Gate F validates all 19 pointers with zero errors
+and returns `BLOCKED`: `3/19 PASS`, `16/19 non-PASS`, `0 FAIL`. Supply chain,
+release-doc binding and current-origin pass. `REL_GATE/GATE-F` remains `I3`;
+`FRKN_PLAN/W9-02` and `W9-05` remain `I1`. No row advances, and no tag, public
+release, store object, stable pointer, deploy or Gate G authorization occurred.
+Decision SHA-256 is
+`21d959959332678a0dd05ac2aa14b8fcf05b33fcc541735a5b0ae1b868641cdf`.
+
 ## 2026-08-29 — WO-013BL candidate.6 Gate F and LDPlayer differential
 
 The exact signed candidate.6 x86_64 artifact was reinstalled on LDPlayer and
