@@ -30,6 +30,8 @@ class RemoteApplyTransportFrontTests(unittest.TestCase):
         self.assertEqual(by_name["reserve_xhttp_cdn"]["server_names"], ["cdn.connect.pokrov.space"])
         self.assertEqual(by_name["reserve_xhttp_cdn"]["backend_host"], "127.0.0.1")
         self.assertEqual(by_name["reserve_xhttp_cdn"]["backend_port"], 12443)
+        self.assertEqual(by_name["reserve_xhttp_cdn"]["server_name_suffixes"], [])
+        self.assertFalse(by_name["reserve_xhttp_cdn"]["send_proxy_v2"])
 
     def test_normalize_transport_front_route_accepts_loopback_targets_only(self) -> None:
         module = _load_module()
@@ -50,6 +52,23 @@ class RemoteApplyTransportFrontTests(unittest.TestCase):
         )
         self.assertEqual(normalized["backend_host"], "127.0.0.1")
         self.assertEqual(normalized["backend_port"], 11443)
+
+    def test_normalize_transport_front_route_rejects_config_injection(self) -> None:
+        module = _load_module()
+
+        for field, value in (
+            ("name", "smart_dns\nbackend injected"),
+            ("server_names", ["safe.example\nbackend injected"]),
+        ):
+            route = {
+                "name": "smart_dns",
+                "server_names": ["safe.example"],
+                "backend_host": "127.0.0.1",
+                "backend_port": 18443,
+            }
+            route[field] = value
+            with self.assertRaises(ValueError):
+                module.normalize_transport_front_route(route)
 
     def test_normalize_transport_front_route_rejects_non_loopback_backends(self) -> None:
         module = _load_module()
@@ -117,6 +136,35 @@ class RemoteApplyTransportFrontTests(unittest.TestCase):
         self.assertIn("server legacy_reality_fallback 127.0.0.1:10443 check", rendered)
         self.assertIn("server grpc_443_primary 127.0.0.1:11443 check", rendered)
         self.assertIn("server reserve_xhttp_cdn 127.0.0.1:12443 check", rendered)
+
+    def test_render_transport_front_config_supports_fronted_smart_dns_with_proxy_v2(self) -> None:
+        module = _load_module()
+
+        rendered = module.render_transport_front_config(
+            [
+                {
+                    "name": "legacy_reality_fallback",
+                    "server_names": ["connect.pokrov.space"],
+                    "backend_host": "127.0.0.1",
+                    "backend_port": 10443,
+                },
+                {
+                    "name": "smart_dns",
+                    "server_names": ["dns.pokrov.space"],
+                    "server_name_suffixes": ["openai.com", "xbox.com"],
+                    "backend_host": "127.0.0.1",
+                    "backend_port": 18443,
+                    "send_proxy_v2": True,
+                },
+            ],
+            default_route_name="legacy_reality_fallback",
+        )
+
+        self.assertIn("use_backend be_smart_dns if { req.ssl_sni -i dns.pokrov.space }", rendered)
+        self.assertIn("use_backend be_smart_dns if { req.ssl_sni -i openai.com }", rendered)
+        self.assertIn("use_backend be_smart_dns if { req.ssl_sni -m end -i .openai.com }", rendered)
+        self.assertIn("use_backend be_smart_dns if { req.ssl_sni -i xbox.com }", rendered)
+        self.assertIn("server smart_dns 127.0.0.1:18443 check send-proxy-v2", rendered)
 
     def test_build_apply_commands_reloads_systemd_and_checks_listener(self) -> None:
         module = _load_module()

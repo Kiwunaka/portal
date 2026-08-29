@@ -1,6 +1,6 @@
 {
-  "listen": "0.0.0.0:443",
-  "accept_proxy_protocol_v2": false,
+  "listen": "127.0.0.1:18443",
+  "accept_proxy_protocol_v2": true,
   "doh_hostname": "${POKROV_SMART_DNS_DOH_HOSTNAME}",
   "proxy_ipv4": "${POKROV_SMART_DNS_PROXY_IPV4}",
   "policy_path": "/opt/pokrov/smart-dns/current/share/smart-dns-policy.v1.json",

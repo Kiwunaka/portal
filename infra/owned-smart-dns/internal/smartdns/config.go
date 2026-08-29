@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -20,14 +21,15 @@ import (
 const policySchemaVersion = "pokrov-smart-dns-policy-v1"
 
 type Config struct {
-	Listen             string         `json:"listen"`
-	DoHHostname        string         `json:"doh_hostname"`
-	ProxyIPv4          string         `json:"proxy_ipv4"`
-	PolicyPath         string         `json:"policy_path"`
-	TLSCertificatePath string         `json:"tls_certificate_path"`
-	TLSPrivateKeyPath  string         `json:"tls_private_key_path"`
-	UpstreamDoT        UpstreamConfig `json:"upstream_dot"`
-	Limits             Limits         `json:"limits"`
+	Listen                string         `json:"listen"`
+	AcceptProxyProtocolV2 bool           `json:"accept_proxy_protocol_v2"`
+	DoHHostname           string         `json:"doh_hostname"`
+	ProxyIPv4             string         `json:"proxy_ipv4"`
+	PolicyPath            string         `json:"policy_path"`
+	TLSCertificatePath    string         `json:"tls_certificate_path"`
+	TLSPrivateKeyPath     string         `json:"tls_private_key_path"`
+	UpstreamDoT           UpstreamConfig `json:"upstream_dot"`
+	Limits                Limits         `json:"limits"`
 }
 
 type UpstreamConfig struct {
@@ -138,13 +140,28 @@ func loadConfig(path string) (Config, error) {
 
 func (c *Config) validate() error {
 	host, port, err := net.SplitHostPort(c.Listen)
-	if err != nil || port != "443" {
-		return errors.New("listen must be an explicit address on port 443")
+	if err != nil {
+		return errors.New("listen must be an explicit TCP address")
 	}
-	if host != "0.0.0.0" && host != "::" {
+	portNumber, err := strconv.Atoi(port)
+	if err != nil {
+		return errors.New("listen port must be numeric")
+	}
+	if portNumber < 1 || portNumber > 65535 {
+		return errors.New("listen port is out of range")
+	}
+	if c.AcceptProxyProtocolV2 {
+		addr, parseErr := netip.ParseAddr(host)
+		if parseErr != nil || !addr.IsLoopback() || portNumber < 1024 {
+			return errors.New("PROXY protocol v2 listener must use an explicit loopback address and unprivileged port")
+		}
+	} else if port != "443" {
+		return errors.New("direct listener must use port 443")
+	}
+	if !c.AcceptProxyProtocolV2 && host != "0.0.0.0" && host != "::" {
 		addr, parseErr := netip.ParseAddr(host)
 		if parseErr != nil || addr.IsLoopback() || addr.IsUnspecified() {
-			return errors.New("listen host must be a concrete IP or an unspecified address")
+			return errors.New("direct listen host must be a concrete non-loopback IP or an unspecified address")
 		}
 	}
 	normalizedHost, err := normalizeDomain(c.DoHHostname)

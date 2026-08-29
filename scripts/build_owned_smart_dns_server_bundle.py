@@ -26,6 +26,7 @@ BINARY_MEMBER = "bin/pokrov-smart-dns"
 STATIC_MEMBERS = {
     "contract/bundle-contract.json": SOURCE_ROOT / "bundle-contract.json",
     "config/config.template.json": SOURCE_ROOT / "config.template.json",
+    "config/config.fronted.template.json": SOURCE_ROOT / "config.fronted.template.json",
     "systemd/pokrov-smart-dns-lab.service": SOURCE_ROOT / "pokrov-smart-dns-lab.service",
     "share/smart-dns-policy.v1.json": POLICY_PATH,
     "LICENSES/miekg-dns-BSD-3-Clause.txt": SOURCE_ROOT / "LICENSES" / "miekg-dns-BSD-3-Clause.txt",
@@ -195,7 +196,7 @@ def _manifest(*, binary: bytes, provenance: Mapping[str, Any]) -> tuple[dict[str
             name: {"sha256": _sha256(content), "size": len(content)}
             for name, content in sorted(members.items())
         },
-        "evidence_ceiling": "immutable_local_server_bundle_only_until_authorized_dedicated_node_deploy_and_live_matrix",
+        "evidence_ceiling": "immutable_local_server_bundle_only_until_authorized_listener_deploy_and_live_matrix",
     }
     return manifest, members
 
