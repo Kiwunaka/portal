@@ -3,6 +3,7 @@ import json
 import subprocess
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -101,6 +102,86 @@ class RemoteBrainRuntimeSourceProbeTests(unittest.TestCase):
         encoded = json.dumps(report)
         self.assertNotIn("password#1", encoded)
         self.assertNotIn("remote_bytes", encoded)
+
+    def test_ssh_config_hash_probe_returns_only_comparisons(self) -> None:
+        module = _load_module()
+        source_payload = [
+            ("portal_bot/api.py", "/root/portal_bot/api.py", b"secret-source\n"),
+            ("shared/product-facts.json", "/root/shared/product-facts.json", b"one\ntwo\n"),
+        ]
+        response = {
+            "schema": module.REMOTE_HASH_SCHEMA,
+            "rows": [
+                {
+                    "index": 0,
+                    "readable": True,
+                    "raw_sha256": module._sha256(b"secret-source\n"),
+                    "normalized_sha256": module._sha256(b"secret-source\n"),
+                },
+                {
+                    "index": 1,
+                    "readable": True,
+                    "raw_sha256": module._sha256(b"one\r\ntwo\r\n"),
+                    "normalized_sha256": module._sha256(b"one\ntwo\n"),
+                },
+            ],
+        }
+        completed = subprocess.CompletedProcess(
+            args=["ssh"],
+            returncode=0,
+            stdout=json.dumps(response),
+            stderr="",
+        )
+
+        with mock.patch.object(module.OpenSshConfigSession, "run", return_value=completed) as run:
+            rows = module._probe_via_ssh_config_alias(
+                alias="pokrov-brain",
+                source_payload=source_payload,
+            )
+
+        self.assertEqual([row["classification"] for row in rows], ["EXACT_BYTES", "CRLF_ONLY_DIFFERENCE"])
+        request = run.call_args.kwargs["input_text"]
+        self.assertNotIn("secret-source", request)
+        self.assertIn(module._sha256(b"secret-source\n"), request)
+
+    def test_ssh_config_hash_probe_rejects_unsafe_alias_and_incomplete_rows(self) -> None:
+        module = _load_module()
+        payload = [("portal_bot/api.py", "/root/portal_bot/api.py", b"value")]
+
+        with self.assertRaises(ValueError):
+            module._probe_via_ssh_config_alias(alias="-unsafe", source_payload=payload)
+
+        completed = subprocess.CompletedProcess(
+            args=["ssh"],
+            returncode=0,
+            stdout=json.dumps({"schema": module.REMOTE_HASH_SCHEMA, "rows": []}),
+            stderr="",
+        )
+        with mock.patch.object(module.OpenSshConfigSession, "run", return_value=completed):
+            with self.assertRaises(RuntimeError):
+                module._probe_via_ssh_config_alias(alias="pokrov-brain", source_payload=payload)
+
+    def test_report_preserves_ssh_config_mode_without_alias_or_content(self) -> None:
+        module = _load_module()
+        report = module._build_report(
+            source_revision="a" * 40,
+            auth_method="ssh_config",
+            rows=[
+                {
+                    "source_path": "portal_bot/api.py",
+                    "remote_target": "/root/portal_bot/api.py",
+                    "raw_match": True,
+                    "crlf_normalized_match": True,
+                    "classification": "EXACT_BYTES",
+                }
+            ],
+            mode="READ_ONLY_SSH_HASHES",
+        )
+
+        self.assertTrue(report["ok"])
+        self.assertEqual(report["auth_method"], "ssh_config")
+        self.assertEqual(report["mode"], "READ_ONLY_SSH_HASHES")
+        self.assertNotIn("alias", json.dumps(report))
 
 
 if __name__ == "__main__":

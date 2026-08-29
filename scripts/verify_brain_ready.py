@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any
 
 import paramiko
-from ssh_host_keys import configure_ssh_host_key_policy
+from ssh_host_keys import OpenSshConfigSession, configure_ssh_host_key_policy
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -67,7 +67,10 @@ def _ssh_connect(ip: str, *, user: str, port: int, password: str) -> paramiko.SS
     return cli
 
 
-def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 120) -> tuple[int, str, str]:
+def _run(ssh: paramiko.SSHClient | OpenSshConfigSession, cmd: str, *, timeout: int = 120) -> tuple[int, str, str]:
+    if isinstance(ssh, OpenSshConfigSession):
+        result = ssh.run(cmd, timeout=timeout)
+        return result.returncode, result.stdout, result.stderr
     stdin, stdout, stderr = ssh.exec_command(cmd, timeout=timeout)
     code = stdout.channel.recv_exit_status()
     out = stdout.read().decode(errors="replace")
@@ -405,7 +408,10 @@ def main() -> int:
     ap.add_argument("--api-domain", default="api.pokrov.space", help="Public API domain for /api/health and subscription checks")
     ap.add_argument("--connect-domain", default="connect.pokrov.space", help="Canonical connect host for smart subscription checks")
     ap.add_argument("--domain", default="", help="Deprecated alias for --web-domain")
-    ap.add_argument("--brain-ip", required=True)
+    connection = ap.add_mutually_exclusive_group(required=True)
+    connection.add_argument("--brain-ip")
+    connection.add_argument("--ssh-config-alias")
+    ap.add_argument("--ssh-config", default="")
     ap.add_argument("--ssh-user", default="root")
     ap.add_argument("--ssh-port", type=int, default=29374)
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
@@ -413,10 +419,6 @@ def main() -> int:
     ap.add_argument("--check-legacy-2096", action="store_true", help="also verify legacy :2096 endpoint (optional)")
     ap.add_argument("--json-out", default="", help="Optional secret-free JSON readiness evidence path.")
     args = ap.parse_args()
-
-    pw = os.getenv("NODE_PASS_BRAIN", "").strip() or _parse_passwords(Path(args.passwords)).get("brain", "")
-    if not pw:
-        raise SystemExit("Missing brain password (set NODE_PASS_BRAIN or add to PASSWORDS.txt).")
 
     web_domain = (args.domain or "").strip() or (args.web_domain or "").strip()
     api_domain = (args.api_domain or "").strip()
@@ -428,7 +430,19 @@ def main() -> int:
     if not connect_domain:
         raise SystemExit("Missing --connect-domain")
 
-    ssh = _ssh_connect(args.brain_ip, user=args.ssh_user, port=args.ssh_port, password=pw)
+    if args.ssh_config_alias:
+        try:
+            ssh = OpenSshConfigSession(
+                alias=args.ssh_config_alias,
+                config_path=Path(args.ssh_config).expanduser() if args.ssh_config else None,
+            )
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
+    else:
+        pw = os.getenv("NODE_PASS_BRAIN", "").strip() or _parse_passwords(Path(args.passwords)).get("brain", "")
+        if not pw:
+            raise SystemExit("Missing brain password (set NODE_PASS_BRAIN or add to PASSWORDS.txt).")
+        ssh = _ssh_connect(args.brain_ip, user=args.ssh_user, port=args.ssh_port, password=pw)
     try:
         failures: list[str] = []
         checks: list[dict[str, Any]] = []

@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import os
+import re
+import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
 import paramiko
@@ -8,6 +11,63 @@ import paramiko
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_KNOWN_HOSTS = REPO_ROOT / "VPN NODE SSH KEYS" / "known_hosts"
+SSH_CONFIG_ALIAS_RE = re.compile(r"^[A-Za-z0-9_.@:-]+$")
+
+
+@dataclass(frozen=True)
+class OpenSshConfigSession:
+    """Run bounded commands through an already trusted OpenSSH config alias."""
+
+    alias: str
+    config_path: Path | None = None
+
+    def __post_init__(self) -> None:
+        alias = str(self.alias or "").strip()
+        if not SSH_CONFIG_ALIAS_RE.fullmatch(alias) or alias.startswith("-"):
+            raise ValueError("SSH config alias must be a safe configured alias")
+        object.__setattr__(self, "alias", alias)
+        if self.config_path is not None:
+            config_path = Path(self.config_path).expanduser()
+            if not config_path.is_file():
+                raise ValueError("SSH config path must name a readable file")
+            object.__setattr__(self, "config_path", config_path)
+
+    def run(
+        self,
+        command: str,
+        *,
+        timeout: int = 120,
+        input_text: str | None = None,
+    ) -> subprocess.CompletedProcess[str]:
+        argv = ["ssh"]
+        if self.config_path is not None:
+            argv.extend(["-F", str(self.config_path)])
+        argv.extend(
+            [
+                "-T",
+                "-o",
+                "BatchMode=yes",
+                "-o",
+                "StrictHostKeyChecking=yes",
+                "-o",
+                "ClearAllForwardings=yes",
+                "-o",
+                "RequestTTY=no",
+                self.alias,
+                command,
+            ]
+        )
+        return subprocess.run(
+            argv,
+            input=input_text,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+
+    def close(self) -> None:
+        """Match the Paramiko session lifecycle without persistent state."""
 
 
 def _env_bool(name: str, default: bool = False) -> bool:

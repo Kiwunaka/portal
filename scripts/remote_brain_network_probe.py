@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import paramiko
-from ssh_host_keys import configure_ssh_host_key_policy
+from ssh_host_keys import OpenSshConfigSession, configure_ssh_host_key_policy
 
 from node_inventory import DEFAULT_INVENTORY, inventory_ipv4_map
 
@@ -50,7 +50,10 @@ def _parse_brain_password(path: Path) -> str:
     return ""
 
 
-def _run(ssh: paramiko.SSHClient, cmd: str, *, timeout: int = 120) -> tuple[int, str, str]:
+def _run(ssh: paramiko.SSHClient | OpenSshConfigSession, cmd: str, *, timeout: int = 120) -> tuple[int, str, str]:
+    if isinstance(ssh, OpenSshConfigSession):
+        result = ssh.run(cmd, timeout=timeout)
+        return result.returncode, result.stdout, result.stderr
     stdin, stdout, stderr = ssh.exec_command(cmd, timeout=timeout)
     code = stdout.channel.recv_exit_status()
     out = stdout.read().decode(errors="replace")
@@ -190,7 +193,10 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Probe worker-node ports from brain node.")
     ap.add_argument("--inventory", default=str(DEFAULT_INVENTORY))
     ap.add_argument("--passwords", default=str(DEFAULT_PASSWORDS))
-    ap.add_argument("--brain-ip", default="", help="Override brain IP (optional)")
+    connection = ap.add_mutually_exclusive_group()
+    connection.add_argument("--brain-ip", default="", help="Override brain IP (optional)")
+    connection.add_argument("--ssh-config-alias")
+    ap.add_argument("--ssh-config", default="")
     ap.add_argument("--ssh-user", default="root")
     ap.add_argument("--ssh-port", type=int, default=29374)
     ap.add_argument("--ports", default="443,8443,29374")
@@ -218,12 +224,6 @@ def main() -> int:
 
     inv = _parse_inventory(Path(args.inventory))
     brain_ip = (args.brain_ip or "").strip() or inv.get("brain", "")
-    if not brain_ip:
-        raise SystemExit("Brain IP is missing.")
-
-    pw = os.getenv("NODE_PASS_BRAIN", "").strip() or _parse_brain_password(Path(args.passwords))
-    if not pw:
-        raise SystemExit("Missing brain password.")
 
     ports = [int(p.strip()) for p in str(args.ports).split(",") if p.strip()]
     selected_codes = {str(code or "").strip().lower() for code in args.node_code if str(code or "").strip()}
@@ -236,17 +236,31 @@ def main() -> int:
         if key != "brain" and (not selected_codes or key in selected_codes)
     }
 
-    ssh = paramiko.SSHClient()
-    configure_ssh_host_key_policy(ssh)
-    ssh.connect(
-        brain_ip,
-        port=args.ssh_port,
-        username=args.ssh_user,
-        password=pw,
-        timeout=30,
-        banner_timeout=30,
-        auth_timeout=30,
-    )
+    if args.ssh_config_alias:
+        try:
+            ssh = OpenSshConfigSession(
+                alias=args.ssh_config_alias,
+                config_path=Path(args.ssh_config).expanduser() if args.ssh_config else None,
+            )
+        except ValueError as exc:
+            raise SystemExit(str(exc)) from exc
+    else:
+        if not brain_ip:
+            raise SystemExit("Brain IP is missing.")
+        pw = os.getenv("NODE_PASS_BRAIN", "").strip() or _parse_brain_password(Path(args.passwords))
+        if not pw:
+            raise SystemExit("Missing brain password.")
+        ssh = paramiko.SSHClient()
+        configure_ssh_host_key_policy(ssh)
+        ssh.connect(
+            brain_ip,
+            port=args.ssh_port,
+            username=args.ssh_user,
+            password=pw,
+            timeout=30,
+            banner_timeout=30,
+            auth_timeout=30,
+        )
     try:
         if args.live_enabled_nodes:
             try:
