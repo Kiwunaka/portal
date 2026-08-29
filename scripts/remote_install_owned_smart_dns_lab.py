@@ -317,6 +317,14 @@ def _preflight_command(
         + _q(f" {expected_proxy_ipv4}/")
         + "\"",
         "emit_bool global_ipv4_multiple 'test \"$(ip -o -4 addr show scope global 2>/dev/null | wc -l)\" -gt 1'",
+        "unclaimed_global_ipv4_count=0",
+        f"if ! ss -H -ltn 'sport = :{LISTEN_PORT}' 2>/dev/null | grep -Eq '[[:space:]](0\\.0\\.0\\.0|\\*|\\[::\\]|::):{LISTEN_PORT}[[:space:]]'; then",
+        "  for address in $(ip -o -4 addr show scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1); do",
+        f"    if ! ss -H -ltn4 'sport = :{LISTEN_PORT}' 2>/dev/null | grep -Fq \"$address:{LISTEN_PORT}\"; then unclaimed_global_ipv4_count=$((unclaimed_global_ipv4_count + 1)); fi",
+        "  done",
+        "fi",
+        "case \"$unclaimed_global_ipv4_count\" in 0) unclaimed_global_ipv4=none ;; 1) unclaimed_global_ipv4=one ;; *) unclaimed_global_ipv4=multiple ;; esac",
+        "printf 'unclaimed_global_ipv4=%s\\n' \"$unclaimed_global_ipv4\"",
     ]
     for label, path in targets.items():
         lines.append(
@@ -369,6 +377,7 @@ def _remote_preflight(
         "ufw_installed", "ufw_active", "ufw_rule_present", "tcp_busy",
         "tcp_wildcard_busy", "tcp_expected_ipv4_busy",
         "expected_ipv4_assigned", "global_ipv4_multiple",
+        "unclaimed_global_ipv4",
         "release_present", "current_present", "config_root_present",
         "tls_root_present", "config_present", "cert_present", "key_present",
         "unit_present", "service_state", "service_enabled",
@@ -379,9 +388,13 @@ def _remote_preflight(
     }
     if set(values) != required:
         raise SmartDNSRemoteOperationError("remote_preflight_fields_invalid")
-    bool_keys = required - {"service_state", "service_enabled"}
+    bool_keys = required - {
+        "service_state", "service_enabled", "unclaimed_global_ipv4"
+    }
     if any(values[key] not in {"yes", "no"} for key in bool_keys):
         raise SmartDNSRemoteOperationError("remote_preflight_boolean_invalid")
+    if values["unclaimed_global_ipv4"] not in {"none", "one", "multiple"}:
+        raise SmartDNSRemoteOperationError("remote_preflight_address_bucket_invalid")
     occupied = [
         label
         for label in (
@@ -416,6 +429,7 @@ def _remote_preflight(
         "tcp_443_bind_scope": bind_scope,
         "expected_ipv4_assigned": expected_ipv4_assigned,
         "multiple_global_ipv4_assigned": values["global_ipv4_multiple"] == "yes",
+        "unclaimed_global_ipv4": values["unclaimed_global_ipv4"],
         "address_reuse_followup": _address_reuse_followup(
             bind_scope=bind_scope,
             expected_ipv4_assigned=expected_ipv4_assigned,

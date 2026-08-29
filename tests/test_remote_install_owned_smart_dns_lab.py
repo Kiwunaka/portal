@@ -83,6 +83,10 @@ def test_plan_probe_is_read_only_and_never_returns_runtime_material() -> None:
     assert "tcp_expected_ipv4_busy" in command
     assert "expected_ipv4_assigned" in command
     assert "global_ipv4_multiple" in command
+    assert "unclaimed_global_ipv4" in command
+    assert "unclaimed_global_ipv4_count" in command
+    assert "printf 'unclaimed_global_ipv4=%s\\n'" in command
+    assert "printf '%s' \"$address\"" not in command
     assert "runtime_placeholders_absent" in command
     assert "runtime_contract_valid" in command
     assert "python3" in command
@@ -166,6 +170,10 @@ def test_probe_parser_rejects_unbounded_remote_output() -> None:
     }
     with pytest.raises(MODULE.SmartDNSRemoteOperationError):
         MODULE._parse_probe("host=198.51.100.1/path")
+
+    assert MODULE._parse_probe("unclaimed_global_ipv4=one") == {
+        "unclaimed_global_ipv4": "one"
+    }
 
 
 def test_tcp_443_bind_scope_is_sanitized_and_fail_closed() -> None:
