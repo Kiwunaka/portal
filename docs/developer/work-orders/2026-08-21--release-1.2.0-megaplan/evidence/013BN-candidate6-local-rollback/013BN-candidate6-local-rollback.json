@@ -1,0 +1,74 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate-rollback-evidence/v1",
+  "recorded_at_utc": "2026-08-29T08:03:26Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.6",
+    "operational_id": "62526fdbf0f86c2a7083eb9d2cff4f8645949a31c59032fa593dad9bc68cae05",
+    "manifest_sha256": "8aac2458f8c43c0ef2955719dcede44f495d60acf681bc804bd6bf9828ee9054",
+    "signature_sha256": "2307906a920fb9b4dcd4c0025bf7628972668905d13897c553ddf27a81592dfa",
+    "source_revisions": {
+      "platform": "5713324c1c0c2566befadf527bc09ec0ecf84a4e",
+      "client": "b2497af7704d0aa6901541e175ce154b0eab05d7",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "8d09ae5e8ec0c8347bcd4e2659944bdf7c9c9db3"
+    }
+  },
+  "invalid_intermediate": {
+    "classification": "OPERATOR_INPUT_ERROR_NOT_RELEASE_EVIDENCE",
+    "detail": "The first invocation supplied the public release-index candidate JSON where the harness requires the prepared strict-v2 handoff input. It failed closed before pointer or portal mutation and produced no output artifact.",
+    "candidate_metadata_defect": false,
+    "runtime_mutated": false,
+    "retained_as_pass": false
+  },
+  "valid_run": {
+    "status": "PASS_LOCAL_EXACT_CANDIDATE_PORTAL_CLIENT_ROLLBACK",
+    "sequence": [
+      "1.1.6+20260819",
+      "pokrov-1.2.0",
+      "1.1.6+20260819"
+    ],
+    "candidate_handoff_sha256": "49d3db6d27c4e174d759808255146380111203f49dc1489572485726b37597ca",
+    "candidate_artifact_set_sha256": "85dc98079544392d82eacec45d1be99608664584422982eab8105d39b514992b",
+    "retained_stable_handoff_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+    "portal": {
+      "status": "PASS_LOCAL",
+      "candidate_projection_applied": true,
+      "rollback_byte_identical": true,
+      "unrelated_setting_preserved": true
+    },
+    "client_channel": {
+      "status": "PASS_LOCAL",
+      "initial_validation": "PASS",
+      "dry_run": "PASS_NO_APPLY",
+      "forward_switch": "PASS",
+      "rollback_switch": "PASS",
+      "final_stable_validation": "PASS",
+      "rollback_byte_identical": true
+    },
+    "external_report_sha256": "8c390d7e68f27bf5c82e9b585bdd34855d47e5eed9278ec225b7ba7882313d1f"
+  },
+  "verification": {
+    "focused_tests": "5/5 PASS",
+    "exact_source_worktree_removed_after_capture": true,
+    "client_worktree_clean_after_capture": true,
+    "core_worktree_clean_after_capture": true,
+    "platform_release_worktree_clean_after_capture": true
+  },
+  "mutation_boundary": {
+    "environment": "ISOLATED_LOCAL_FIXTURE",
+    "tracked_client_pointer": "UNCHANGED",
+    "tracked_client_catalog": "UNCHANGED",
+    "portal_runtime": "NOT_MUTATED",
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer": "NOT_MUTATED",
+    "physical_device": "NOT_RUN",
+    "brain_origin": "BLOCKED_BY_ACCESS"
+  },
+  "row_outcomes": {
+    "REL_DOD/DOD-18": "I3_STRONGER_EXACT_CANDIDATE6_LOCAL_EVIDENCE",
+    "FE/P12-130": "I3_STRONGER_EXACT_CANDIDATE6_LOCAL_EVIDENCE",
+    "REL_GATE/GATE-F": "I3_UNCHANGED_RUNTIME_ROLLBACK_STILL_MANUAL_OWNER_TEST"
+  },
+  "evidence_ceiling": "PASS_LOCAL_EXACT_CANDIDATE6_PORTAL_CLIENT_ROLLBACK; AUTHORIZED_RUNTIME_POINTER_KILL_ROLLBACK_AND_BRAIN_READBACK_REMAIN_OPEN; NO_GATE_F_ADVANCE"
+}
