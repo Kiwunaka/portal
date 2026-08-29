@@ -1,0 +1,93 @@
+{
+  "schema": "pokrov.release-1.2.0.ru-origin-environment-preflight/v1",
+  "recorded_at": "2026-08-29T13:03:15.096793+03:00",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.6",
+    "version": "1.2.0+4046",
+    "operational_id": "62526fdbf0f86c2a7083eb9d2cff4f8645949a31c59032fa593dad9bc68cae05",
+    "manifest_sha256": "8aac2458f8c43c0ef2955719dcede44f495d60acf681bc804bd6bf9828ee9054",
+    "signature_sha256": "2307906a920fb9b4dcd4c0025bf7628972668905d13897c553ddf27a81592dfa",
+    "receipt_sha256": "85dd34504d876086aa8bfe3533ad4db964e4f0a9106f9085657dc08c2c7afcaa",
+    "sources": {
+      "platform": "5713324c1c0c2566befadf527bc09ec0ecf84a4e",
+      "client": "b2497af7704d0aa6901541e175ce154b0eab05d7",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "8d09ae5e8ec0c8347bcd4e2659944bdf7c9c9db3"
+    }
+  },
+  "harness": {
+    "revision": "b0665b8aa46b15557d57d0f92c8da859fd618375",
+    "relationship_to_candidate": "POST_CANDIDATE_READ_ONLY_RELEASE_TOOLING",
+    "source_revision_checked": "5713324c1c0c2566befadf527bc09ec0ecf84a4e",
+    "mode": "READ_ONLY_REMOTE_HASHES_AND_STATE",
+    "local_contract_tests": {
+      "status": "PASS",
+      "passed": 455,
+      "duration_seconds": 240.66
+    }
+  },
+  "ru_origin_environment": {
+    "classification": "MANUAL_OWNER_TEST_ENVIRONMENT_NOT_INSTALLED",
+    "probe_completed": true,
+    "ready_for_manual_owner_run": false,
+    "ru_origin_passed": false,
+    "source_paths": {
+      "required": 9,
+      "normalized_match_count": 0,
+      "not_installed_count": 9,
+      "mismatch_or_unreadable_count": 0
+    },
+    "systemd_units": {
+      "required": 4,
+      "not_found_count": 4,
+      "active_count": 0,
+      "enabled_count": 0
+    },
+    "configuration": {
+      "required": 4,
+      "present_count": 0,
+      "probe_env_present": false,
+      "uploader_env_present": false,
+      "hmac_key_present": false,
+      "profiles_present": false
+    },
+    "spool_present": false,
+    "ntp_synchronized": "yes",
+    "server_readback_performed": false,
+    "heartbeat_readback_performed": false,
+    "runtime_mutated": false
+  },
+  "external_evidence": {
+    "label": "candidate6-ru-origin-environment-preflight",
+    "retained_location": "EXTERNAL_LOCAL_RELEASE_EVIDENCE",
+    "sha256": "2277a1ac93cae3853c5e7b6f551325ea832d12ef08dd229a2368a50b983121b3",
+    "remote_content_retained": false,
+    "address_hostname_alias_or_secret_retained": false
+  },
+  "release_interpretation": {
+    "gate_f_before": {
+      "pass": 4,
+      "non_pass": 15,
+      "fail": 0
+    },
+    "gate_f_after": {
+      "pass": 4,
+      "non_pass": 15,
+      "fail": 0
+    },
+    "gate_f_regenerated": false,
+    "ledger_level_advanced": false,
+    "environment_absence_is_runtime_failure": false,
+    "environment_preflight_is_ru_origin_pass": false,
+    "current_or_brain_origin_transferred_to_ru": false,
+    "deploy_install_restart_probe_run_upload_or_production_mutation_occurred": false
+  },
+  "next_required_action": {
+    "authorization": "OWNER_AUTHORIZATION_REQUIRED_FOR_RU_CONTOUR_INSTALL_AND_SECRET_RECORDS",
+    "steps": [
+      "Install the exact source-bound runner, uploader, contract, dataplane probe and four systemd units on the canonical RU sandbox.",
+      "Provision the environment, HMAC key record and profiles without retaining secret material in release evidence.",
+      "Execute a fresh manual RU-origin run, upload it, and retain server heartbeat and admin readback evidence for the same candidate."
+    ]
+  }
+}

@@ -2,6 +2,31 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BS candidate.6 RU-origin environment preflight
+
+A new source-bound read-only harness checks the canonical RU sandbox without
+retaining address, hostname, SSH alias, credential, key, raw configuration or
+remote content. It is post-candidate tooling at `b0665b8...` and checks exact
+candidate.6 platform source `5713324...`; candidate bytes are unchanged. The
+canonical local RU contract suite passes `455/455`.
+
+Trusted key access and NTP synchronization pass. The exact probe environment
+does not exist: all nine runner/uploader/support source paths are absent, all
+four required systemd units are `not-found`, all four environment/key/profile
+records are absent, and no spool exists. The bounded classification is
+`MANUAL_OWNER_TEST_ENVIRONMENT_NOT_INSTALLED`, not access failure, runtime
+failure or RU-origin PASS. No install, deploy, restart, probe run, upload,
+heartbeat/admin readback or runtime mutation occurred.
+
+Gate F is not regenerated because no evidence row advances to PASS. It remains
+`BLOCKED` at `4/19 PASS`, `15/19 non-PASS`, `0 FAIL`, and `REL_GATE/GATE-F`
+stays `I3`. `FRKN_PLAN/W9-02` stays `I1` with current- and Brain-origin PASS
+kept separate from the uninstalled RU contour; `FRKN_PLAN/W9-05` stays `I1`.
+The next RU step requires owner authorization to install the exact contour and
+provision its secret/config records, followed by a fresh run, upload, heartbeat
+and admin readback. Normalized evidence SHA-256 is
+`e34d6fc84e29bef7f4722adec4fc4c9cc0df0a2025987977cfbd4cc92961ddf7`.
+
 ## 2026-08-29 — WO-013BR candidate.6 Brain-origin and Gate F
 
 The candidate.6 Brain access block was a release-harness blind spot: the old
