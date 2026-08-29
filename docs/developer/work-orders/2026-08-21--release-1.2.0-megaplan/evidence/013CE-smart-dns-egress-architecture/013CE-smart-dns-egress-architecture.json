@@ -1,0 +1,95 @@
+{
+  "schema": "pokrov.release-1.2.0.smart-dns-egress-architecture/v1",
+  "recorded_at_utc": "2026-08-29T20:00:23Z",
+  "scope": {
+    "state": "POST_CANDIDATE_DEFAULT_OFF_LAB",
+    "production_mutation": false,
+    "node_selected": false,
+    "runtime_material_created": false,
+    "dns_published": false
+  },
+  "sources": {
+    "platform_head": "a7fedcedaff390ff495ba980c86fedd8c7d93d0f",
+    "smart_dns_component_source": "650dc3fab8053736cfb976d4a34ea1f2f0b40349",
+    "client_main": "6ee1c2612965e621f10bdb91fca472f4ddff95bf",
+    "core_main": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+    "server_go_sha256": "39dca679a383c65a6fa7f36c25dbe98eefb0fc3b6e419e51ba3af226ba70df9c",
+    "resolver_go_sha256": "4975a8c891157af1a79d8871e5a37c0481bf112fba38a3ae2c7974ee51189197"
+  },
+  "bundle": {
+    "format": "linux_amd64_zip",
+    "size_bytes": 2916305,
+    "sha256": "cda97da16a892c1a8563bd20434cd749a2174c192ba722147091a3e1c14a0225",
+    "runtime_material_included": false
+  },
+  "warp_topology": {
+    "endpoint_implementation": "CLIENT_LOCAL_CORE",
+    "mode": "warp_over_proxy",
+    "logical_path": "CLIENT_TO_POKROV_NODE_TO_WARP_TO_DESTINATION",
+    "server_installed_warp": false,
+    "available_to_dns_only_clients_without_pokrov_tunnel": false
+  },
+  "smart_dns_source_architecture": {
+    "origin_resolution": "FIXED_AUTHENTICATED_DOT",
+    "application_origin_dial": "DIRECT_RESOLVED_PUBLIC_IPV4_TCP_443",
+    "configurable_outbound_proxy_or_tunnel": false,
+    "tls_mode": "OPAQUE_PASSTHROUGH",
+    "ru_install_changes_destination_egress_country": false
+  },
+  "isolated_fixture": {
+    "fixture_sha256": "710c04e24338c43d1381f25f5c6acdfd12a38415cb2963bf3a6b92871ba3d6df",
+    "target_class": "OWNER_TRUSTED_TERMINAL_HOST",
+    "origin_status": "OPERATOR_ATTESTED_RU_ORIGIN",
+    "observed_architecture": "x86_64",
+    "arm64_claim": false,
+    "bundle_config_check": true,
+    "fronted_loopback_listener": true,
+    "missing_proxy_v2_rejected": true,
+    "proxy_v2_tls_doh_status": 200,
+    "selected_query_answer_count": 1,
+    "selected_query_answer_matches_configured_proxy": true,
+    "application_tls_passthrough": true,
+    "application_probe_results": {
+      "ai_chat": {
+        "tls_verified": true,
+        "http_status": 403
+      },
+      "ai_assistant": {
+        "tls_verified": true,
+        "http_status": 200
+      },
+      "gaming": {
+        "tls_verified": true,
+        "http_status": 301
+      }
+    },
+    "service_access_proven": false,
+    "runtime_material_ephemeral": true,
+    "listener_cleanup": true,
+    "remote_temp_cleanup": true,
+    "raw_hostname_retained": false,
+    "raw_address_retained": false,
+    "production_mutation": false
+  },
+  "decision": {
+    "ru_fronted_direct_egress": "NO_GO_FOR_DNS_ONLY_GEO_ACCESS_BYPASS",
+    "preferred_topology": "COLOCATED_FOREIGN_OWNED_FRONTEND_AND_SMART_DNS_BACKEND",
+    "foreign_target_selected": false,
+    "ru_frontend_remote_backend": "DEFERRED_NEW_INTER_NODE_TRUST_BOUNDARY",
+    "ru_process_specific_warp": "DEFERRED_NEW_NAMESPACE_ROUTING_LIFECYCLE_BOUNDARY",
+    "android_system_private_dns": "NOT_PROVEN_CURRENT_SERVER_IS_DOH_ONLY"
+  },
+  "release_effect": {
+    "smartdns_01_index": "I3",
+    "candidate": "pokrov-1.2.0-candidate.8",
+    "candidate_bytes_changed": false,
+    "gate_f": {
+      "decision": "BLOCKED",
+      "pass": 4,
+      "non_pass": 15,
+      "fail": 0
+    },
+    "public_release_created": false,
+    "stable_pointer_changed": false
+  }
+}
