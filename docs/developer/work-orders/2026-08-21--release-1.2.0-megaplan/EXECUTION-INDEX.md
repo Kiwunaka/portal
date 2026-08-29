@@ -2,6 +2,25 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BG Android WARP and lifecycle preflight
+
+Exact production x86_64 `1.2.0+4046` on LDPlayer created TUN for a WARP
+attempt and its automatic ordinary fallback; both failed required Core egress
+with terminal `EGRESS-001`. A separate WARP-disabled ordinary control created
+TUN and failed with the same code. WARP was restored off and service/TUN were
+absent. Classification is `BLOCKED_BY_LDPLAYER_NETWORK_CURRENT_ORIGIN`, not a
+WARP-specific failure and not physical proof.
+
+The exact physical working APK separately kept its service and TUN across one
+Wi-Fi/LTE/Wi-Fi sequence, forced Doze and app standby. Network, Doze and
+standby state were restored and the app was stopped without residual service
+or TUN. Secure keyguard prevented protected-egress and terminal WARP UI
+readback, and the WARP preference still awaits owner-unlocked restoration.
+
+No ledger row advances. Candidate.5 remains immutable/rejected, no replacement
+candidate exists, and physical WARP/per-app/OEM/leak/endurance plus Windows and
+Smart-DNS live gates remain open.
+
 ## 2026-08-29 — WO-013BF active Windows setup
 
 Clean client `f500728...` packages exact resolver-corrected Core

@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "work_order": "WO-013BG",
+  "captured_at_utc": "2026-08-29T05:33:24.784Z",
+  "scope": "pre_candidate_android_warp_and_host_lifecycle_preflight",
+  "sources": {
+    "platform_release_truth": "bb1ebbaf47ddf4c77b9c7cb14d7802ff401c5c55",
+    "client_release_truth": "b2497af7704d0aa6901541e175ce154b0eab05d7",
+    "client_runtime_binding": "68779c4dc806c2153d415ca8ca186c9130502f21",
+    "core": "a45d69e40ed7d892619a2b5c4592a527f630665e"
+  },
+  "ldplayer": {
+    "platform": "Android 9 API 28 x86_64",
+    "app_version": "1.2.0+4046",
+    "apk_size_bytes": 109952213,
+    "apk_sha256": "3d95d82d8290150fadd13600b79eca26326792407532f571909d8df224df6fa4",
+    "warp_attempt": {
+      "started_at_utc": "2026-08-29T05:18:36.130Z",
+      "finished_at_utc": "2026-08-29T05:18:47.465Z",
+      "warp_tun_established": true,
+      "warp_core_egress": "FAIL",
+      "ordinary_fallback_tun_established": true,
+      "ordinary_fallback_core_egress": "FAIL",
+      "terminal_error_code": "EGRESS-001"
+    },
+    "warp_disabled_control": {
+      "started_at_utc": "2026-08-29T05:22:44.763Z",
+      "finished_at_utc": "2026-08-29T05:22:50.340Z",
+      "tun_established": true,
+      "core_egress": "FAIL",
+      "terminal_error_code": "EGRESS-001"
+    },
+    "classification": "BLOCKED_BY_LDPLAYER_NETWORK_CURRENT_ORIGIN",
+    "warp_specific_failure_proven": false,
+    "cleanup": {
+      "warp_enabled": false,
+      "vpn_service_running": false,
+      "tun0_present": false
+    }
+  },
+  "physical_android": {
+    "platform": "Huawei Android 12",
+    "network_origin": "owner_attested_beeline_mobile",
+    "app_version": "1.2.0+4046",
+    "apk_size_bytes": 101366934,
+    "apk_sha256": "b583205db9e197c6de873264821319ef1108a2786f1ee5466501712568147296",
+    "host_lifecycle": {
+      "wifi_to_lte_to_wifi_service_tun_continuity": "PASS_HOST_LIFECYCLE_ONLY",
+      "forced_doze_service_tun_continuity": "PASS_HOST_LIFECYCLE_ONLY",
+      "app_standby_service_tun_continuity": "PASS_HOST_LIFECYCLE_ONLY",
+      "final_wifi_restored": true,
+      "final_mobile_data_enabled": true,
+      "final_doze_active": true,
+      "final_app_standby_idle": false,
+      "final_vpn_service_running": false,
+      "final_tun0_present": false
+    },
+    "warp_egress_and_ui_terminal_state": "NOT_OBSERVED_SECURE_KEYGUARD",
+    "warp_preference_restore": "BLOCKED_BY_SECURE_KEYGUARD_OWNER_UNLOCK"
+  },
+  "release_interpretation": {
+    "candidate_created": false,
+    "candidate_proven": false,
+    "index_advanced": false,
+    "backend_or_production_mutation": false,
+    "public_release_or_stable_promotion": false
+  },
+  "privacy": {
+    "raw_endpoint_or_address_present": false,
+    "raw_key_or_config_present": false,
+    "device_serial_present": false,
+    "install_or_account_identifier_present": false,
+    "raw_ui_or_journal_payload_present": false,
+    "screenshot_present": false
+  }
+}
