@@ -78,6 +78,29 @@ def _run(ssh: paramiko.SSHClient | OpenSshConfigSession, cmd: str, *, timeout: i
     return code, out, err
 
 
+def _run_subscription_script(
+    ssh: paramiko.SSHClient | OpenSshConfigSession,
+    script: str,
+) -> tuple[int, str, str]:
+    if isinstance(ssh, OpenSshConfigSession):
+        result = ssh.run("bash -s", timeout=180, input_text=script)
+        return result.returncode, result.stdout, result.stderr
+
+    sftp = ssh.open_sftp()
+    try:
+        remote = "/tmp/verify_subscriptions.sh"
+        with sftp.file(remote, "w") as remote_file:
+            remote_file.write(script)
+        sftp.chmod(remote, 0o700)
+    finally:
+        sftp.close()
+
+    try:
+        return _run(ssh, "bash /tmp/verify_subscriptions.sh", timeout=180)
+    finally:
+        _run(ssh, "rm -f /tmp/verify_subscriptions.sh", timeout=30)
+
+
 def _print_result(name: str, out: str, err: str) -> None:
     val = (out.strip() or err.strip()).strip().replace("\ufeff", "")
     print(f"[{name}] {val}")
@@ -540,17 +563,7 @@ def main() -> int:
             connect_domain=connect_domain,
             repeat=args.repeat,
         )
-        sftp = ssh.open_sftp()
-        try:
-            remote = "/tmp/verify_subscriptions.sh"
-            with sftp.file(remote, "w") as f:
-                f.write(sub_check)
-            sftp.chmod(remote, 0o700)
-        finally:
-            sftp.close()
-
-        code, out, err = _run(ssh, "bash /tmp/verify_subscriptions.sh", timeout=180)
-        _run(ssh, "rm -f /tmp/verify_subscriptions.sh", timeout=30)
+        code, out, err = _run_subscription_script(ssh, sub_check)
         print((out.strip() or err.strip()).strip())
         sample_count = _subscription_sample_count(out)
         subscription_passed = code == 0 and sample_count == int(args.repeat)

@@ -59,6 +59,21 @@ class VerifyBrainReadyTests(unittest.TestCase):
         self.assertEqual(result, (0, "active\n", ""))
         run.assert_called_once_with("systemctl is-active portal-api", timeout=19)
 
+    def test_subscription_script_uses_stdin_for_ssh_config_session(self) -> None:
+        session = self.module.OpenSshConfigSession("pokrov-brain")
+        completed = subprocess.CompletedProcess(
+            args=["ssh"],
+            returncode=0,
+            stdout="redacted metrics\n",
+            stderr="",
+        )
+
+        with patch.object(self.module.OpenSshConfigSession, "run", return_value=completed) as run:
+            result = self.module._run_subscription_script(session, "printf metrics")
+
+        self.assertEqual(result, (0, "redacted metrics\n", ""))
+        run.assert_called_once_with("bash -s", timeout=180, input_text="printf metrics")
+
     def test_listener_probe_uses_ere_compatible_grouping(self) -> None:
         cmd = self.module._listener_probe_cmd((443, 8444))
         self.assertIn("python3 -", cmd)
