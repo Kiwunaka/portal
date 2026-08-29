@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "work_order": "WO-013BH",
+  "captured_at_utc": "2026-08-29T05:54:13Z",
+  "scope": "smart_dns_portability_and_zero_purchase_active_node_plan",
+  "sources": {
+    "platform_bundle_source": "8bdc21f9b89f4db037754ce6287dbfe21a1cc84f",
+    "platform_text_canonicalization_fix": "64982d94dcbc71c39d685c2a5710438a5db3ad4f",
+    "client_policy_truth": "b2497af7704d0aa6901541e175ce154b0eab05d7",
+    "core_changed": false
+  },
+  "policy": {
+    "sha256": "b6977f6f6a5ee48898116820d1db252b5b670cb7b86959c78f7bdbc7de90e0fa",
+    "cross_repository_parity": "PASS",
+    "text_normalization": "utf8_crlf_to_lf",
+    "bom_invalid_utf8_or_lone_cr": "FAIL_CLOSED"
+  },
+  "bundle": {
+    "build_count": 2,
+    "byte_identical": true,
+    "status": "PASS_LOCAL_IMMUTABLE_BUNDLE",
+    "size_bytes": 2912132,
+    "sha256": "dbd39d758b16ba433d6557e163cb3a538e19d40ad5145b1e4871a6a659f7afef",
+    "published": false,
+    "runtime_material_included": false
+  },
+  "verification": {
+    "focused_pytest": "20/20 PASS",
+    "focused_ruff": "PASS",
+    "go_version": "go1.25.13 windows/amd64",
+    "go_test": "PASS",
+    "go_vet": "PASS"
+  },
+  "active_node_plan": {
+    "operation": "install",
+    "mode": "PLAN_NO_MUTATION",
+    "node_codes": [
+      "de",
+      "us",
+      "ru",
+      "ru_spb",
+      "pl",
+      "it",
+      "nl"
+    ],
+    "node_count": 7,
+    "unique_owned_public_ipv4_count": 7,
+    "ufw_active_count": 7,
+    "tcp_443_busy_count": 7,
+    "tcp_443_free_count": 0,
+    "runtime_material_ready_count": 0,
+    "occupied_smart_dns_target_count": 0,
+    "mutation_count": 0,
+    "report_sha256_by_node": {
+      "de": "889695061449585438c5f9b0fa06510036cfa4d4016d14ce7c9bc12d5f386863",
+      "us": "7085e7e9e6c1b2823729d2b2b00e0b5f30dcb10c8c6a3b0a3bd64f55f6d96b04",
+      "ru": "146a563a2917a9ccf6b0d761c6de46ae61fc74c215697449b18a18be0e88e56b",
+      "ru_spb": "cada374e4b82dc49861adb57abf1e2613a14a8be21e6632bf046f48e47779438",
+      "pl": "3a4027539d0d4c485c347978592b643cdaf2b8a51a47a7207265b7e7d29d6f0e",
+      "it": "56411c9c8f1eccb9c5005aecdbabd379a47e9ac5f3caa9c779eaf2fa116dcfe8",
+      "nl": "2e85c0868da55d4a93a4ddd5f1a6464c5df76183d1ba3c5d1b191662f345b9a5"
+    }
+  },
+  "decision": {
+    "owner_policy": "NO_PURCHASE",
+    "safe_zero_purchase_target_found": false,
+    "classification": "NO_SAFE_ZERO_PURCHASE_TARGET_CURRENT_TOPOLOGY",
+    "safe_remaining_path": "DELIBERATELY_FREE_ALREADY_OWNED_DISTINCT_IPV4_UNDER_SEPARATE_GUARDED_MIGRATION_AND_ROLLBACK",
+    "unsafe_frontend_overlay_rejected": true,
+    "index_advanced": false
+  },
+  "release_interpretation": {
+    "candidate_created": false,
+    "candidate_proven": false,
+    "backend_or_production_mutation": false,
+    "public_artifact_or_stable_promotion": false,
+    "live_dns_or_sni_relay_proven": false,
+    "service_access_proven": false,
+    "leak_or_origin_proven": false,
+    "rollback_executed": false
+  },
+  "privacy": {
+    "raw_ipv4_or_hostname_present": false,
+    "raw_credential_or_private_key_present": false,
+    "raw_runtime_material_present": false,
+    "customer_or_provider_payload_present": false,
+    "plan_reports_raw_host_returned": false,
+    "plan_reports_raw_runtime_material_returned": false
+  }
+}

@@ -163,14 +163,39 @@ existing safe default-off gate with AdGuard/direct DNS off; no preference was
 changed. Cleanup left no POKROV service on either device and returned the phone
 to its prior Chrome foreground.
 
+## 2026-08-29 portability and zero-purchase topology checkpoint
+
+`WO-013BH` supersedes the current-bundle/PLAN unknown without rewriting the
+original 2026-08-28 proof. Platform commits `64982d94...` and `8bdc21f9...`
+canonicalize packaged policy/text bytes across LF/CRLF worktrees and allow the
+canonical `ru_spb` node code in the guarded installer. Focused tests pass
+`20/20`; Go test/vet, Ruff and cross-repository policy parity pass.
+
+Two builds from exact source `8bdc21f9...` produce the same inactive
+`2912132`-byte ZIP at SHA-256
+`dbd39d758b16ba433d6557e163cb3a538e19d40ad5145b1e4871a6a659f7afef`.
+Read-only installer PLANs then checked all seven active nodes. Every node has
+one owned public IPv4 and active UFW, but every TCP/443 endpoint is already
+owned; runtime material is absent and all seven reports retain
+`mutation_performed=false`.
+
+Under the owner's no-purchase policy, there is therefore no safe deployment
+target in the current active topology. An already owned address may be used
+only after a separate guarded frontend-migration and rollback plan proves it
+can be deliberately freed. No deployment, DNS answer, SNI relay, service
+access, candidate or index advance is claimed.
+
 ## Required next evidence
 
-1. allocate a separate owned public IPv4, stage receipt-bound root-only runtime
-   material and retain a sanitized, no-mutation installer PLAN;
-2. separately authorize that exact dedicated-node install and retain
+1. prove that an already owned public IPv4 can be deliberately freed under a
+   separate frontend-migration rollback plan, or leave the lab undeployed
+   under the no-purchase policy;
+2. stage receipt-bound root-only runtime material and retain a fresh sanitized,
+   no-mutation installer PLAN for that exact free address;
+3. separately authorize that exact dedicated-address install and retain
    DoH/SNI/limits/
    rollback evidence before any service-access test;
-3. keep service-access, DNS leak, lifecycle, current-origin, Brain-origin and
+4. keep service-access, DNS leak, lifecycle, current-origin, Brain-origin and
    RU-origin evidence distinct; none may be inferred from source or install.
 
 ## Completion index

@@ -2,6 +2,26 @@
 
 Last updated: 2026-08-29
 
+## 2026-08-29 — WO-013BH Smart DNS portability and zero-purchase PLAN
+
+Platform `64982d9.../8bdc21f...` makes the Smart DNS bundle contract portable
+across LF/CRLF worktrees and accepts the canonical `ru_spb` node code without
+weakening path validation. Focused tests pass `20/20`; Go test/vet, Ruff and
+cross-repository policy parity pass. Two exact-source Linux/amd64 builds are
+byte-identical at `2912132` bytes and SHA-256 `dbd39d75...f7afef`.
+
+The guarded installer contacted all seven active nodes in read-only PLAN mode.
+Each resolved one owned public IPv4, had active UFW and no occupied Smart DNS
+targets; all seven had TCP/443 already owned and lacked runtime material. All
+reports retain `mutation_performed=false`. Under the owner's no-purchase
+policy, no safe target exists in the current active topology. The remaining
+path is a separately reviewed migration/rollback that deliberately frees an
+already owned address, or leaving the lab undeployed.
+
+`FRKN_SMART_DNS/SMARTDNS-01` remains `I3`. No deploy, candidate, DNS/SNI
+service, access, leak, rollback, origin, purchase, visibility or promotion
+claim is created.
+
 ## 2026-08-29 — WO-013BG Android WARP and lifecycle preflight
 
 Exact production x86_64 `1.2.0+4046` on LDPlayer created TUN for a WARP
