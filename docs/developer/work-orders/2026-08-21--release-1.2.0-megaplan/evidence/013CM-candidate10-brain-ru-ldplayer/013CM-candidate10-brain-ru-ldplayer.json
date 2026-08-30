@@ -1,0 +1,222 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate10-brain-ru-ldplayer/v1",
+  "recorded_at": "2026-08-30T07:49:37+03:00",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.10",
+    "version": "1.2.0+4046",
+    "manifest_sha256": "0711546b0da4b811fba42e1ad543797494e4104bd95251c9e8e8011ac04dff83",
+    "signature_sha256": "6f96f8932e388f221cf7d5e10dc1680fbcbb62f87efe00410439eb9f62e42799",
+    "receipt_sha256": "094a42f3c0d9be3957b3065344e5bfce4880c2899833fed3b4d211d8d453a89c",
+    "promotion_authorized": false,
+    "sources": {
+      "platform": "209b8f40c36d95f2bbc67caa52a41ecb09f46720",
+      "client": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index_signed_source": "fc00b26d402b167260e495eb33397115bef1c317",
+      "release_index_receipt_merge": "09fefd419013b1a0c052d93574a32ef87c2d9154"
+    },
+    "android_x86_64_apk": {
+      "size_bytes": 109952213,
+      "sha256": "ec07ba17e9a5c697fcf46ccd193970fa3666eeeb3b9e345876aa8ee1d45a2627"
+    },
+    "windows_setup_sha256": "26ec26d8989d61415f07cbf9707f336ebba0b947fa4ba0ee93d3078fa3984668"
+  },
+  "supply_and_signing": {
+    "offline_validator": "PASS",
+    "artifact_count": 6,
+    "windows_runtime_file_count": 8,
+    "signer_run": 33292070137,
+    "output_kind": "ACTIONS_ARTIFACT_ONLY",
+    "tag_created": false,
+    "public_release_created": false,
+    "stable_pointer_mutated": false
+  },
+  "brain_origin": {
+    "predeploy_source_match": {
+      "matched": 194,
+      "selected": 197,
+      "status": "FAIL_EXACT_SOURCE_MISMATCH"
+    },
+    "guarded_exact_source_deploy": {
+      "authorized": true,
+      "backup_retained": true,
+      "automatic_rollback_armed": true,
+      "automatic_rollback_triggered": false,
+      "service_restart_and_delayed_health": "PASS"
+    },
+    "postdeploy_source_match": {
+      "matched": 197,
+      "selected": 197,
+      "status": "PASS"
+    },
+    "readiness": {
+      "passed": 23,
+      "total": 23,
+      "status": "PASS"
+    },
+    "enabled_delivery_network": {
+      "passed": 7,
+      "total": 7,
+      "status": "PASS"
+    },
+    "verdict": "PASS",
+    "external_evidence": {
+      "runtime_source_predeploy_sha256": "92b482828b07f4a6efd4ad4ef59a81cb4d46586b5443395211b4817c84083968",
+      "runtime_source_postdeploy_sha256": "cd788239d309c53ed61b06f2a856bff707a8a284ba667eb10a23cdbb499cc90c",
+      "readiness_postdeploy_sha256": "d0e5d443a3158741fb5b8775a61bdc363573e532028f095a0625b7dda8610148",
+      "network_postdeploy_sha256": "9be6d3c6c77135530a54805c5bd0413888d183b1783b2339b7584bbb53966ecc"
+    }
+  },
+  "ru_origin": {
+    "host_class": "trusted_owned_pi4_direct_ru_terminal",
+    "candidate9_receipt_bound_rollback": {
+      "receipt_id": "20260830T034618Z-238760-a887cf4ad193",
+      "plan": "PASS",
+      "apply": "PASS",
+      "spool_preserved": true
+    },
+    "candidate10_install": {
+      "receipt_id": "20260830T042736Z-240736-0108ccc4595f",
+      "plan": "PASS",
+      "apply": "PASS",
+      "bundle_size_bytes": 47930,
+      "bundle_sha256": "0108ccc4595ff2f424b4e5169d19fc539e21cc1eaed79cb92ccbacf04ce85e22",
+      "member_count": 10,
+      "timers_enabled": true,
+      "timers_active_after_manual_run": false,
+      "runtime_secret_copy_retained_locally": false
+    },
+    "manual_pipeline": {
+      "runner_service": "PASS_SUCCESS_EXIT_0",
+      "uploader_service": "PASS_SUCCESS_EXIT_0",
+      "admin_http_readback": "PASS_3_OF_3_HTTP_200",
+      "runner_version": "2.0",
+      "environment_verdict": "available",
+      "current_eligible": true,
+      "release_verdict": "fail",
+      "target_count": 13,
+      "pass_count": 10,
+      "fail_count": 3,
+      "passed_targets": [
+        "canonical_api",
+        "canonical_app",
+        "canonical_marketing",
+        "environment_google",
+        "node_de",
+        "node_it",
+        "node_pl",
+        "node_ru",
+        "node_ru_spb",
+        "node_us"
+      ],
+      "failed_targets": [
+        {
+          "target": "node_brain",
+          "detail_code": "tls_handshake_failed"
+        },
+        {
+          "target": "node_free",
+          "detail_code": "reality_target_mismatch"
+        },
+        {
+          "target": "node_nl",
+          "detail_code": "tcp_connect_timeout"
+        }
+      ],
+      "uploader": {
+        "heartbeat": "fresh",
+        "pending_count": 0,
+        "blocked_count": 0,
+        "quarantine_count": 0,
+        "archive_write_ok": true
+      },
+      "candidate9_false_failures_absent": [
+        "forbidden_address_family",
+        "fixed_65536_body_threshold"
+      ]
+    },
+    "verdict": "FAIL_10_PASS_3_FAIL",
+    "external_evidence": {
+      "candidate9_rollback_apply_sha256": "9c1d3fa1b5f2c83d2401a0454eba26b1e04262aa09a96004070c7b38da534fb3",
+      "candidate10_install_apply_sha256": "53e564eaa0742f57a7686d56ba5ab15599b23411384b31de567022d6117f474a",
+      "candidate10_post_manual_plan_sha256": "e5b85e939e7507b7591183a724ef0d8a4d35f80c870b4a6ec53a8c91f0e1adf0",
+      "latest_redacted_artifact_sha256": "4b13aff5dcac8ebff22900f5f1f00b5b3b00e83de6900ae5835039ee080a0064",
+      "admin_readback_sha256": "cdfa75bfaa4c3afb7d12d67cbb439d52dfdc49526ade0b4fac91c48bfde2e9a8"
+    }
+  },
+  "android_ldplayer": {
+    "device_class": "owned_ldplayer_android_9_api_28_x86_64",
+    "physical_phone_used": false,
+    "installed_apk_byte_match": true,
+    "version_name": "1.2.0",
+    "version_code": 4046,
+    "min_sdk": 24,
+    "target_sdk": 36,
+    "ordinary_control": {
+      "status": "PASS_FAIL_CLOSED_ENTITLEMENT_EXPIRED",
+      "tunnel_started": false,
+      "protocol_failure_claimed": false
+    },
+    "bounded_test_entitlement": {
+      "days": 1,
+      "exact_install_only": true,
+      "owner_transfer": false
+    },
+    "awg2_lab": {
+      "status": "PASS_TUNNEL_DNS_AUTHENTICATED_EGRESS_ROUTES",
+      "crash_count": 0
+    },
+    "awg31_lab": {
+      "status": "PASS_TUNNEL_DNS_AUTHENTICATED_EGRESS_ROUTES",
+      "crash_count": 0,
+      "cryptography": "official_pinned_no_custom_cryptography"
+    },
+    "final_restore": {
+      "selected_profile": "default",
+      "resolved_profile": "legacy_reality_fallback",
+      "awg2_material_provisioned": false,
+      "awg31_material_provisioned": false,
+      "lab_membership_present": false,
+      "vpn_active": false,
+      "warp_enabled": false
+    },
+    "physical_android": "MANUAL_OWNER_TEST_DEVICE_UNAVAILABLE",
+    "external_evidence": {
+      "installed_apk_sha256": "ec07ba17e9a5c697fcf46ccd193970fa3666eeeb3b9e345876aa8ee1d45a2627",
+      "awg2_bind_apply_sha256": "43f9645d7a18ecd8cc6b70c87330de3014c3005e7dd91af10b63f2a6a8b59c1a",
+      "awg2_details_screenshot_sha256": "e4d6e951f1a09c9f306082053746eb1f2a948524f40edc027a8cfc6e1ce05d1a",
+      "awg2_redacted_log_sha256": "2f363f169a66ba343aa14c98dad02017da337ff21dc191a662345de9c390dc25",
+      "awg31_bind_apply_sha256": "9ec7922ebaa958ec24ced69928b01992165dee8323a78c90990032ba377f11fa",
+      "awg31_details_screenshot_sha256": "f93d22972ada0161e15c885e05d0abb12ca1fce0fa074d086d80fe7a4624429e",
+      "awg31_redacted_log_sha256": "569d798e9e0412292afd61e950afa9341f60e0abd1a486bf9c4a1a7e148f45db",
+      "default_restore_apply_sha256": "40b0895dc6b60690665302a7d00b32b3fe1d84326a1689b5a169da3634a23749",
+      "final_default_ui_sha256": "8c44bf6e2a7704eeacc682396608dc846d18c92a8b8cc3582ee1d4401cbdab80"
+    }
+  },
+  "smart_dns": {
+    "checked_at": "2026-08-30T04:49:37.2082367Z",
+    "public_name": "dns.pokrov.space",
+    "authoritative_server_count": 4,
+    "authoritative_servers_with_a_record": 0,
+    "expected_frontend_match_count": 0,
+    "certificate_issued": false,
+    "smart_dns_server_deployed": false,
+    "status": "WAITING_FOR_AUTHORITATIVE_DNS_RECORD"
+  },
+  "release_decision": {
+    "candidate10_gate_f_regenerated": false,
+    "latest_digest_bound_gate_f_candidate": "pokrov-1.2.0-candidate.8",
+    "latest_digest_bound_gate_f_status": "BLOCKED_6_PASS_13_NON_PASS_0_FAIL",
+    "candidate10_ru_origin": "FAIL",
+    "candidate10_public_promotion": "NOT_AUTHORIZED"
+  },
+  "privacy": {
+    "raw_endpoint_retained": false,
+    "raw_ip_retained": false,
+    "raw_device_identifier_retained": false,
+    "raw_install_identifier_retained": false,
+    "raw_runtime_secret_or_hash_retained": false,
+    "customer_data_retained": false
+  },
+  "evidence_ceiling": "CANDIDATE10_BRAIN_PASS_RU_FAIL_10_OF_13_LDPLAYER_AWG2_AWG31_PASS_DEFAULT_RESTORED; PHYSICAL_ANDROID_MANUAL_OWNER_TEST; SMART_DNS_DNS_RECORD_ABSENT; GATE_F_NOT_REGENERATED; NO_PUBLIC_PROMOTION"
+}
