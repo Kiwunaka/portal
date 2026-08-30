@@ -149,6 +149,7 @@ def test_preflight_is_read_only_and_sanitized() -> None:
     assert "installed_target_count=" in command
     assert "spool_pending_count=" in command
     assert "sudo -n true" in command
+    assert "test -x /usr/sbin/runuser" in command
 
 
 def test_install_verifies_before_timer_activation_and_preserves_spool(
@@ -163,7 +164,7 @@ def test_install_verifies_before_timer_activation_and_preserves_spool(
         manifest=manifest,
     )
 
-    assert "runuser -u pokrov-ru-probe" in command
+    assert "/usr/sbin/runuser -u pokrov-ru-probe" in command
     assert "ru_probe_runner.py --help" in command
     assert "ru_probe_uploader.py --help" in command
     assert command.index("systemd-analyze verify") < command.index("systemctl enable")
