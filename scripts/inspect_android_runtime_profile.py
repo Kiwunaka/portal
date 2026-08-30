@@ -3,10 +3,13 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
+import shlex
 import subprocess
+import threading
 import time
 import xml.etree.ElementTree as ET
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 
@@ -17,6 +20,17 @@ PROFILE_FINAL_TAGS = {
 SUPPORTED_PROFILES = ("default", "awg2_lab", "awg31_lab")
 DEFAULT_PACKAGE = "space.pokrov.pokrov_android_shell"
 PREFERENCES_FILE = "pokrov_runtime_profile.xml"
+MAX_PREFERENCES_BYTES = 64 * 1024
+MAX_RUNTIME_CONFIG_BYTES = 64 * 1024
+MAX_ADB_STDERR_BYTES = 64 * 1024
+_PACKAGE_PATTERN = re.compile(
+    r"^[A-Za-z][A-Za-z0-9_]*(?:\.[A-Za-z][A-Za-z0-9_]*)+$"
+)
+_DEVICE_PATH_PATTERN = re.compile(r"^/[A-Za-z0-9._/-]+$")
+
+
+class RuntimeProfileBoundaryError(RuntimeError):
+    pass
 
 
 def _parse_args() -> argparse.Namespace:
@@ -44,19 +58,141 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _run_adb(adb: Path, serial: str, *arguments: str) -> str:
-    completed = subprocess.run(
+def _run_bounded_process(
+    command: list[str],
+    *,
+    stdout_limit: int,
+    stderr_limit: int,
+    timeout: int,
+) -> tuple[int, bytes, bytes]:
+    try:
+        process = subprocess.Popen(
+            command,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+    except OSError as exc:
+        raise RuntimeError("ADB runtime-profile process could not start") from exc
+
+    overflow = threading.Event()
+    stdout_chunks: list[bytes] = []
+    stderr_chunks: list[bytes] = []
+
+    def _read_bounded(
+        stream: Any,
+        limit: int,
+        chunks: list[bytes],
+    ) -> None:
+        total = 0
+        while True:
+            chunk = stream.read(8192)
+            if not chunk:
+                return
+            remaining = limit - total
+            if remaining > 0:
+                retained = chunk[:remaining]
+                chunks.append(retained)
+                total += len(retained)
+            if len(chunk) > remaining:
+                overflow.set()
+                try:
+                    process.kill()
+                except OSError:
+                    pass
+                return
+
+    assert process.stdout is not None and process.stderr is not None
+    readers = (
+        threading.Thread(
+            target=_read_bounded,
+            args=(process.stdout, stdout_limit, stdout_chunks),
+            daemon=True,
+        ),
+        threading.Thread(
+            target=_read_bounded,
+            args=(process.stderr, stderr_limit, stderr_chunks),
+            daemon=True,
+        ),
+    )
+    for reader in readers:
+        reader.start()
+
+    timed_out = False
+    try:
+        process.wait(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        timed_out = True
+        process.kill()
+        process.wait(timeout=2)
+    finally:
+        for reader in readers:
+            reader.join(timeout=2)
+        process.stdout.close()
+        process.stderr.close()
+
+    if any(reader.is_alive() for reader in readers):
+        raise RuntimeError("ADB runtime-profile output drain timed out")
+    if overflow.is_set():
+        raise RuntimeProfileBoundaryError("ADB runtime-profile output exceeded its limit")
+    if timed_out:
+        raise RuntimeError("ADB runtime-profile readback timed out")
+    return process.returncode, b"".join(stdout_chunks), b"".join(stderr_chunks)
+
+
+def _run_adb(
+    adb: Path,
+    serial: str,
+    *arguments: str,
+    stdout_limit: int,
+    boundary_returncodes: frozenset[int] = frozenset(),
+) -> bytes:
+    returncode, stdout, _stderr = _run_bounded_process(
         [str(adb), "-s", serial, *arguments],
-        check=False,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        errors="replace",
+        stdout_limit=stdout_limit,
+        stderr_limit=MAX_ADB_STDERR_BYTES,
         timeout=20,
     )
-    if completed.returncode != 0:
+    if returncode in boundary_returncodes:
+        raise RuntimeProfileBoundaryError("ADB runtime-profile boundary validation failed")
+    if returncode != 0:
         raise RuntimeError("ADB runtime-profile readback failed")
-    return completed.stdout
+    return stdout
+
+
+def _valid_package(package: str) -> bool:
+    return _PACKAGE_PATTERN.fullmatch(package) is not None
+
+
+def _runtime_root(package: str) -> str:
+    if not _valid_package(package):
+        raise RuntimeProfileBoundaryError("Android package is invalid")
+    return f"/data/user/0/{package}/files/pokrov-runtime"
+
+
+def _validated_runtime_path(path: str, package: str) -> str:
+    runtime_root = PurePosixPath(_runtime_root(package))
+    if (
+        not path
+        or _DEVICE_PATH_PATTERN.fullmatch(path) is None
+        or "//" in path
+        or any(part in {"", ".", ".."} for part in path.split("/")[1:])
+    ):
+        raise RuntimeProfileBoundaryError(
+            "Android runtime-profile path is outside the app runtime"
+        )
+    candidate = PurePosixPath(path)
+    try:
+        relative = candidate.relative_to(runtime_root)
+    except ValueError as exc:
+        raise RuntimeProfileBoundaryError(
+            "Android runtime-profile path is outside the app runtime"
+        ) from exc
+    if relative == PurePosixPath("."):
+        raise RuntimeProfileBoundaryError(
+            "Android runtime-profile path is outside the app runtime"
+        )
+    return str(candidate)
 
 
 def _runtime_config_path(preferences_xml: str, package: str) -> str:
@@ -71,11 +207,58 @@ def _runtime_config_path(preferences_xml: str, package: str) -> str:
     ]
     if len(matches) != 1 or not matches[0]:
         raise ValueError("Android runtime-profile path is unavailable")
-    path = matches[0]
-    expected_prefix = f"/data/user/0/{package}/files/pokrov-runtime/"
-    if not path.startswith(expected_prefix) or path.endswith("/"):
-        raise ValueError("Android runtime-profile path is outside the app runtime")
-    return path
+    return _validated_runtime_path(matches[0], package)
+
+
+def _read_remote_file(
+    adb: Path,
+    serial: str,
+    path: str,
+    canonical_root: str,
+    maximum_bytes: int,
+    *,
+    exact_target: bool,
+) -> str:
+    if (
+        _DEVICE_PATH_PATTERN.fullmatch(path) is None
+        or _DEVICE_PATH_PATTERN.fullmatch(canonical_root) is None
+    ):
+        raise RuntimeProfileBoundaryError("Android runtime-profile device path is invalid")
+    alternate_root = canonical_root.replace("/data/user/0/", "/data/data/", 1)
+    if alternate_root == canonical_root:
+        raise RuntimeProfileBoundaryError("Android runtime-profile root is invalid")
+    target_guard = (
+        f'[ "$target_real" = "$root_real/{shlex.quote(PurePosixPath(path).name)}" ] || exit 61; '
+        if exact_target
+        else 'case "$target_real" in "$root_real"/*) ;; *) exit 61 ;; esac; '
+    )
+    remote_script = (
+        "set -eu; "
+        f"root={shlex.quote(canonical_root)}; "
+        f"alternate_root={shlex.quote(alternate_root)}; "
+        f"target={shlex.quote(path)}; "
+        'root_real="$(toybox realpath "$root")" || exit 10; '
+        'case "$root_real" in "$root"|"$alternate_root") ;; *) exit 61 ;; esac; '
+        'exec 3<"$target" || exit 1; '
+        'target_real="$(toybox realpath "/proc/$$/fd/3")" || exit 61; '
+        + target_guard
+        + '[ -f "/proc/$$/fd/3" ] || exit 61; '
+        + f"toybox head -c {maximum_bytes + 1} <&3"
+    )
+    raw = _run_adb(
+        adb,
+        serial,
+        "shell",
+        f"su 0 sh -c {shlex.quote(remote_script)}",
+        stdout_limit=maximum_bytes + 1,
+        boundary_returncodes=frozenset({61, 126, 127}),
+    )
+    if len(raw) > maximum_bytes:
+        raise RuntimeProfileBoundaryError("Android runtime-profile file exceeded its limit")
+    try:
+        return raw.decode("utf-8", "strict")
+    except UnicodeDecodeError as exc:
+        raise ValueError("Android runtime-profile file is not UTF-8") from exc
 
 
 def _profile_kind(config: dict[str, Any]) -> tuple[str, bool]:
@@ -169,30 +352,32 @@ def _load_runtime_config(
     deadline = time.monotonic() + wait_seconds
     while True:
         try:
-            preferences = _run_adb(
+            preferences = _read_remote_file(
                 adb,
                 serial,
-                "shell",
-                "su",
-                "0",
-                "cat",
-                f"/data/data/{package}/shared_prefs/{PREFERENCES_FILE}",
+                f"/data/user/0/{package}/shared_prefs/{PREFERENCES_FILE}",
+                f"/data/user/0/{package}/shared_prefs",
+                MAX_PREFERENCES_BYTES,
+                exact_target=True,
             )
             config_path = _runtime_config_path(preferences, package)
-            raw_config = _run_adb(
+            raw_config = _read_remote_file(
                 adb,
                 serial,
-                "shell",
-                "su",
-                "0",
-                "cat",
                 config_path,
+                _runtime_root(package),
+                MAX_RUNTIME_CONFIG_BYTES,
+                exact_target=False,
             )
             config = json.loads(raw_config)
             if not isinstance(config, dict):
                 raise ValueError("Android runtime profile root is invalid")
             return config
-        except (RuntimeError, ValueError, json.JSONDecodeError):
+        except RuntimeProfileBoundaryError:
+            raise SystemExit(
+                "Android runtime profile failed containment or size validation"
+            ) from None
+        except (RuntimeError, ValueError, UnicodeDecodeError, json.JSONDecodeError):
             if time.monotonic() >= deadline:
                 raise SystemExit(
                     "Android runtime profile was not staged before the bounded deadline"
@@ -207,7 +392,7 @@ def main() -> int:
         raise SystemExit("adb is missing")
     serial = str(args.adb_serial).strip()
     package = str(args.package).strip()
-    if not serial or not package or any(value.isspace() for value in package):
+    if not serial or not _valid_package(package):
         raise SystemExit("ADB serial or Android package is invalid")
     wait_seconds = int(args.wait_seconds)
     if wait_seconds < 0 or wait_seconds > 30:

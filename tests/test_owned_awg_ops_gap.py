@@ -1,5 +1,8 @@
 import importlib.util
 import io
+import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -263,6 +266,319 @@ class OwnedAwgCoreInteropContractTests(unittest.TestCase):
         self.assertEqual(module._classify("", 0), "passed")
         self.assertEqual(module._classify("unknown", 1), "failed_other")
 
+    def test_zero_exit_requires_the_exact_interop_test_pass_marker(self) -> None:
+        module = self.module
+        passed_output = (
+            "=== RUN   TestOwnedAWGLabAuthenticatedEgress\n"
+            "--- PASS: TestOwnedAWGLabAuthenticatedEgress (0.01s)\n"
+        )
+
+        self.assertEqual(module._interop_outcome(passed_output, 0), ("passed", True))
+        self.assertEqual(
+            module._interop_outcome("testing: warning: no tests to run\nPASS\n", 0),
+            ("failed_test_not_observed", False),
+        )
+        self.assertEqual(
+            module._interop_outcome(
+                "=== RUN   TestOwnedAWGLabAuthenticatedEgress\n"
+                "--- SKIP: TestOwnedAWGLabAuthenticatedEgress (0.00s)\n",
+                0,
+            ),
+            ("failed_test_not_observed", False),
+        )
+
+    def test_local_interop_executes_only_the_prebuilt_binary(self) -> None:
+        module = self.module
+        completed = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=(
+                "=== RUN   TestOwnedAWGLabAuthenticatedEgress\n"
+                "--- PASS: TestOwnedAWGLabAuthenticatedEgress (0.01s)\n"
+            ),
+            stderr="",
+        )
+        binary = Path(sys.executable).resolve()
+        with patch.object(module, "_run_process", return_value=completed) as run:
+            outcome, passed, _details = module._run_local_interop(
+                binary,
+                module._file_sha256(binary),
+                bytearray(b"secret-safe-fixture"),
+            )
+
+        self.assertEqual((outcome, passed), ("passed", True))
+        command = run.call_args.args[0]
+        self.assertEqual(command[0], str(binary))
+        self.assertNotIn("go", [part.lower() for part in command])
+        self.assertIn("-test.v", command)
+
+    def test_go_build_environment_disables_ambient_toolchain_and_network(self) -> None:
+        module = self.module
+        go_executable = Path(sys.executable).resolve()
+        environment = module._go_build_environment(go_executable, target="local")
+
+        self.assertEqual(environment["GOWORK"], "off")
+        self.assertEqual(environment["GOENV"], "off")
+        self.assertEqual(environment["GOTOOLCHAIN"], "local")
+        self.assertEqual(environment["GOPROXY"], "off")
+        self.assertEqual(environment["GOFLAGS"], "-buildvcs=false -mod=readonly")
+        self.assertEqual(environment["CGO_ENABLED"], "0")
+        self.assertEqual(environment["PATH"], str(go_executable.parent))
+
+    def test_exact_core_snapshot_excludes_untracked_and_ignored_module_inputs(
+        self,
+    ) -> None:
+        module = self.module
+        git_raw = shutil.which("git.exe") or shutil.which("git")
+        self.assertIsNotNone(git_raw)
+        git_executable = Path(str(git_raw)).resolve()
+        with tempfile.TemporaryDirectory() as raw_temp, tempfile.TemporaryDirectory() as raw_snapshot:
+            root = Path(raw_temp)
+            module_root = root / "engine" / "sing-box"
+            module_root.mkdir(parents=True)
+            (module_root / "go.mod").write_text("module example.invalid/exact\n", encoding="utf-8")
+            (root / ".gitignore").write_text(
+                "engine/sing-box/ignored.go\n", encoding="utf-8"
+            )
+            subprocess.run(
+                [str(git_executable), "init", "-q", str(root)],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                [str(git_executable), "-C", str(root), "add", "."],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                [
+                    str(git_executable),
+                    "-C",
+                    str(root),
+                    "-c",
+                    "user.name=POKROV Test",
+                    "-c",
+                    "user.email=test@pokrov.invalid",
+                    "commit",
+                    "-qm",
+                    "fixture",
+                ],
+                check=True,
+                capture_output=True,
+            )
+
+            expected_revision = subprocess.run(
+                [str(git_executable), "-C", str(root), "rev-parse", "HEAD"],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            revision = module._exact_core_revision(
+                git_executable, root, expected_revision
+            )
+            self.assertRegex(revision, r"^[0-9a-f]{40}$")
+            with self.assertRaisesRegex(RuntimeError, "confirmation mismatch"):
+                module._exact_core_revision(git_executable, root, "0" * 40)
+
+            (module_root / "untracked.go").write_text(
+                "package exact\nfunc init() {}\n", encoding="utf-8"
+            )
+            (module_root / "ignored.go").write_text(
+                "package exact\nfunc init() {}\n", encoding="utf-8"
+            )
+            self.assertEqual(
+                module._exact_core_revision(git_executable, root, expected_revision),
+                expected_revision,
+            )
+            snapshot_module = module._materialize_core_module(
+                git_executable,
+                root,
+                expected_revision,
+                Path(raw_snapshot),
+            )
+            self.assertFalse((snapshot_module / "untracked.go").exists())
+            self.assertFalse((snapshot_module / "ignored.go").exists())
+
+    def test_repo_local_fsmonitor_is_never_executed(self) -> None:
+        module = self.module
+        git_raw = shutil.which("git.exe") or shutil.which("git")
+        self.assertIsNotNone(git_raw)
+        git_executable = Path(str(git_raw)).resolve()
+        with tempfile.TemporaryDirectory() as raw_repo, tempfile.TemporaryDirectory() as raw_snapshot:
+            root = Path(raw_repo)
+            module_root = root / "engine" / "sing-box"
+            module_root.mkdir(parents=True)
+            (module_root / "go.mod").write_text(
+                "module example.invalid/fsmonitor\n", encoding="utf-8"
+            )
+            subprocess.run(
+                [str(git_executable), "init", "-q", str(root)],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                [str(git_executable), "-C", str(root), "add", "."],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                [
+                    str(git_executable),
+                    "-C",
+                    str(root),
+                    "-c",
+                    "user.name=POKROV Test",
+                    "-c",
+                    "user.email=test@pokrov.invalid",
+                    "commit",
+                    "-qm",
+                    "fixture",
+                ],
+                check=True,
+                capture_output=True,
+            )
+            revision = subprocess.run(
+                [str(git_executable), "-C", str(root), "rev-parse", "HEAD"],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            sentinel = root / "fsmonitor-executed"
+            if os.name == "nt":
+                hook = root / "malicious-fsmonitor.cmd"
+                hook.write_text(f"@echo owned>{sentinel}\r\n", encoding="utf-8")
+            else:
+                hook = root / "malicious-fsmonitor.sh"
+                hook.write_text(f"#!/bin/sh\nprintf owned > '{sentinel}'\n", encoding="utf-8")
+                hook.chmod(0o700)
+            subprocess.run(
+                [
+                    str(git_executable),
+                    "-C",
+                    str(root),
+                    "config",
+                    "core.fsmonitor",
+                    str(hook),
+                ],
+                check=True,
+                capture_output=True,
+            )
+
+            self.assertEqual(
+                module._exact_core_revision(git_executable, root, revision),
+                revision,
+            )
+            module._materialize_core_module(
+                git_executable,
+                root,
+                revision,
+                Path(raw_snapshot),
+            )
+            self.assertFalse(sentinel.exists())
+
+    def test_executable_identity_requires_an_absolute_existing_file(self) -> None:
+        module = self.module
+        self.assertEqual(
+            module._validated_executable(str(Path(sys.executable).resolve()), "Python"),
+            Path(sys.executable).resolve(),
+        )
+        with self.assertRaisesRegex(RuntimeError, "must be absolute"):
+            module._validated_executable("ssh.exe", "SSH")
+
+    def test_confirmed_snapshot_ignores_assume_unchanged_worktree_content(self) -> None:
+        module = self.module
+        git_raw = shutil.which("git.exe") or shutil.which("git")
+        self.assertIsNotNone(git_raw)
+        git_executable = Path(str(git_raw)).resolve()
+        with tempfile.TemporaryDirectory() as raw_repo, tempfile.TemporaryDirectory() as raw_snapshot:
+            root = Path(raw_repo)
+            module_root = root / "engine" / "sing-box"
+            module_root.mkdir(parents=True)
+            go_mod = module_root / "go.mod"
+            go_mod.write_text("module example.invalid/original\n", encoding="utf-8")
+            subprocess.run(
+                [str(git_executable), "init", "-q", str(root)],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                [str(git_executable), "-C", str(root), "add", "."],
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                [
+                    str(git_executable),
+                    "-C",
+                    str(root),
+                    "-c",
+                    "user.name=POKROV Test",
+                    "-c",
+                    "user.email=test@pokrov.invalid",
+                    "commit",
+                    "-qm",
+                    "fixture",
+                ],
+                check=True,
+                capture_output=True,
+            )
+            revision = subprocess.run(
+                [str(git_executable), "-C", str(root), "rev-parse", "HEAD"],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            subprocess.run(
+                [
+                    str(git_executable),
+                    "-C",
+                    str(root),
+                    "update-index",
+                    "--assume-unchanged",
+                    "engine/sing-box/go.mod",
+                ],
+                check=True,
+                capture_output=True,
+            )
+            go_mod.write_text("module example.invalid/tampered\n", encoding="utf-8")
+
+            self.assertEqual(
+                module._exact_core_revision(git_executable, root, revision),
+                revision,
+            )
+            snapshot_module = module._materialize_core_module(
+                git_executable,
+                root,
+                revision,
+                Path(raw_snapshot),
+            )
+
+            self.assertEqual(
+                (snapshot_module / "go.mod").read_text(encoding="utf-8"),
+                "module example.invalid/original\n",
+            )
+
+    def test_local_replace_cannot_escape_confirmed_snapshot(self) -> None:
+        module = self.module
+        completed = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout='{"Replace":[{"New":{"Path":"../../outside"}}]}',
+            stderr="",
+        )
+        with tempfile.TemporaryDirectory() as raw_temp:
+            snapshot = Path(raw_temp) / "source"
+            module_root = snapshot / "engine" / "sing-box"
+            module_root.mkdir(parents=True)
+            with patch.object(module, "_run_process", return_value=completed):
+                with self.assertRaisesRegex(RuntimeError, "escapes"):
+                    module._validate_local_replacements(
+                        Path(sys.executable),
+                        module_root,
+                        snapshot,
+                        {},
+                    )
+
     def test_remote_helper_accepts_only_owned_profiles(self) -> None:
         helper = self.module._REMOTE_HELPER
 
@@ -321,15 +637,29 @@ class OwnedAwgCoreInteropContractTests(unittest.TestCase):
             root = Path(raw_temp)
             config = root / "config"
             known_hosts = root / "known_hosts"
+            ssh_executable = root / "ssh.exe"
             config.write_text("Host owned-pi\n", encoding="utf-8")
             known_hosts.write_text("safe-placeholder\n", encoding="utf-8")
+            ssh_executable.write_bytes(b"test-only-open-ssh-placeholder")
 
-            command = module._ssh_base("owned-pi", config, known_hosts)
+            command = module._ssh_base(
+                ssh_executable, "owned-pi", config, known_hosts
+            )
+            self.assertEqual(command[0], str(ssh_executable))
             self.assertEqual(command[-1], "owned-pi")
             self.assertIn("BatchMode=yes", command)
             self.assertIn("StrictHostKeyChecking=yes", command)
+            scp_command = module._scp_base(
+                ssh_executable,
+                ssh_executable,
+                config,
+                known_hosts,
+            )
+            self.assertEqual(scp_command[1:3], ["-S", str(ssh_executable)])
             with self.assertRaisesRegex(RuntimeError, "alias"):
-                module._ssh_base("owned-pi; whoami", config, known_hosts)
+                module._ssh_base(
+                    ssh_executable, "owned-pi; whoami", config, known_hosts
+                )
 
 
 class OwnedAwgDeviceEvidenceContractTests(unittest.TestCase):
