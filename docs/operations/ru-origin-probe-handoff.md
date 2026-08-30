@@ -148,7 +148,7 @@ Backend HMAC registry готовится отдельно через
 `scripts/remote_prepare_ru_origin_auth.py`. Его `PLAN` только проверяет
 `portal-api`, целевые paths и текущий process environment. `APPLY` принимает
 локальный private secret file, но не возвращает ни значение, ни hash; создаёт
-ровно один key `ru-mini-v1` с subject/origin `mini` и scopes
+ровно один key `ru-mini-v1` с subject `mini`, origin `ru` и scopes
 `ru_probe:manifest`, `ru_probe:ingest`, `ru_probe:heartbeat`, сохраняет root-only
 absent-state receipt, ставит отдельный systemd drop-in, перезапускает
 `portal-api` и обязан доказать подписанное чтение manifest. Ошибка после начала

@@ -46,7 +46,7 @@ def test_registry_has_one_exact_scoped_key_without_extra_truth() -> None:
             {
                 "enabled": True,
                 "key_id": "ru-mini-v1",
-                "origins": ["mini"],
+                "origins": ["ru"],
                 "scopes": [
                     "ru_probe:heartbeat",
                     "ru_probe:ingest",
@@ -112,3 +112,22 @@ def test_install_preflight_fails_closed_on_existing_targets() -> None:
 
     with pytest.raises(MODULE.RuOriginAuthError, match="target_already_present"):
         MODULE._assert_install_preflight(values)
+
+
+def test_signed_manifest_reports_bounded_http_failure(monkeypatch, tmp_path: Path) -> None:
+    secret = tmp_path / "secret.key"
+    secret.write_bytes(b"C" * 32)
+    response = MODULE.internal_hmac_client.InternalResponse(
+        status=403,
+        body=b'{"code":"key_scope_forbidden","correlation_id":"redacted"}',
+        headers={},
+    )
+    monkeypatch.setattr(
+        MODULE.internal_hmac_client, "signed_request", lambda **_kwargs: response
+    )
+
+    with pytest.raises(
+        MODULE.RuOriginAuthError,
+        match="signed_manifest_http_403_key_scope_forbidden",
+    ):
+        MODULE._signed_manifest(secret)
