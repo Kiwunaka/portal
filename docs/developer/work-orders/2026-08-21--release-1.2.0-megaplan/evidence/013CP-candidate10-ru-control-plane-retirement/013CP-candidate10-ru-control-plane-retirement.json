@@ -1,0 +1,174 @@
+{
+  "schema": "pokrov.candidate10-ru-control-plane-retirement-evidence/v1",
+  "recorded_at_utc": "2026-08-30T06:29:58Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.10",
+    "operational_id": "1de7182d9c82759acc36eb7a336d1fef2362e8f69505f3b4880e595f79020454",
+    "manifest_sha256": "0711546b0da4b811fba42e1ad543797494e4104bd95251c9e8e8011ac04dff83",
+    "signature_sha256": "6f96f8932e388f221cf7d5e10dc1680fbcbb62f87efe00410439eb9f62e42799",
+    "receipt_sha256": "094a42f3c0d9be3957b3065344e5bfce4880c2899833fed3b4d211d8d453a89c",
+    "sources": {
+      "platform": "209b8f40c36d95f2bbc67caa52a41ecb09f46720",
+      "client": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "fc00b26d402b167260e495eb33397115bef1c317"
+    }
+  },
+  "control_plane_retirements": {
+    "brain": {
+      "result": "PASS",
+      "before": "disabled_draining_stale_14_client_metric",
+      "after": "disabled_not_draining_zero_current_client_counters",
+      "consumer_mappings": 0,
+      "access_keys": 0,
+      "nonterminal_jobs": 0,
+      "enabled_pool_memberships": 0,
+      "delivery_runtime_stopped": true,
+      "stale_metric_age_seconds": 17004413,
+      "updated_rows": 1,
+      "backup_size_bytes": 125041679,
+      "backup_restore_test": "NOT_RUN"
+    },
+    "free": {
+      "result": "PASS_CONTROL_PLANE_ONLY",
+      "before": "disabled_draining",
+      "after": "disabled_not_draining",
+      "consumer_mappings": 0,
+      "access_keys_total": 3,
+      "access_keys_non_revoked": 0,
+      "nonterminal_jobs": 0,
+      "enabled_pool_memberships": 0,
+      "stale_user_profile_references": 3,
+      "profile_reference_active_free_keys": 0,
+      "updated_rows": 1,
+      "backup_size_bytes": 125047166,
+      "backup_restore_test": "NOT_RUN",
+      "external_runtime_shutdown": "BLOCKED_BY_ACCESS"
+    }
+  },
+  "ru_origin": {
+    "status": "FAIL",
+    "initial_required_targets": 13,
+    "current_required_targets": 11,
+    "retired_targets_removed": [
+      "brain",
+      "free"
+    ],
+    "fresh_runs": [
+      {
+        "run_id": "d31f3a0a-ac16-4feb-b025-38ba8184612b",
+        "manifest_revision": "9d8e7420508cefefa825fb15519431ce4520ce173366ddd0ced2398176235152",
+        "pass": 9,
+        "fail": 2
+      },
+      {
+        "run_id": "7a7adba8-c4a2-450b-8189-7a36c54d5ccf",
+        "pass": 9,
+        "fail": 2
+      }
+    ],
+    "current_failures": {
+      "nl": "tcp_connect_timeout_before_server_ingress_observed",
+      "ru_spb": "tcp_connect_timeout_repeated_after_earlier_candidate10_pass"
+    },
+    "runner_service": "PASS",
+    "uploader_service": "PASS",
+    "raw_addresses_retained": false
+  },
+  "nl_classification": {
+    "brain_origin": "PASS",
+    "dns_resolves_to_owned_node": true,
+    "xray_tcp_443_listener": true,
+    "pi_source_in_fail2ban": false,
+    "port_443_local_drop_or_rate_limit_rules": 0,
+    "bounded_capture_packets": 0,
+    "temporary_capture_retained": false,
+    "classification": "RU_TO_NL_PATH_FAILURE_BEFORE_OBSERVED_SERVER_INGRESS"
+  },
+  "smart_dns": {
+    "hostname": "dns.pokrov.space",
+    "authoritative_nameservers": 4,
+    "authoritative_a_pass": 0,
+    "status": "BLOCKED_DNS_RECORD_ABSENT",
+    "certificate_apply": "NOT_RUN",
+    "server_apply": "NOT_RUN",
+    "frontend_route_apply": "NOT_RUN"
+  },
+  "physical_android": "MANUAL_OWNER_TEST_DEVICE_UNAVAILABLE",
+  "external_evidence": [
+    {
+      "path": "node-reference-audit.json",
+      "sha256": "5925ced0402fcb82d3753f269daaf83612b1e79f7399d3035d0e08abacdde924"
+    },
+    {
+      "path": "brain-drain-finalize-plan.json",
+      "sha256": "d865a5a461d3897d844d58bc1602fc781c3fbbf561e4a1df0a76b8061325a071"
+    },
+    {
+      "path": "brain-drain-finalize-backup.json",
+      "sha256": "73330f22a1ba54603708322a67d15a7312cca259df834f064fafa49af7ebe693"
+    },
+    {
+      "path": "brain-drain-finalize-apply.json",
+      "sha256": "4c1d8c821189a119cc9277b9c5e0d4aa70a8bef8fbe949a972d46b4abf2087fb"
+    },
+    {
+      "path": "free-reference-classification.json",
+      "sha256": "43536dfe24f38eb9f46cb49204bc074c9c1bc6a6bf490666d2244f8eead1d81d"
+    },
+    {
+      "path": "free-drain-finalize-plan.json",
+      "sha256": "8d609d28901fa31568eaf0fc44cfbaf9505a8f5867b1bdb58f64ce60513a319b"
+    },
+    {
+      "path": "free-drain-finalize-backup.json",
+      "sha256": "cb34119f8acaceda08a4edcd9d15e77160007e6a04c912559628c162558c13cd"
+    },
+    {
+      "path": "free-drain-finalize-apply.json",
+      "sha256": "22d443cba8eab75ae0794e6449c024deef61bd626c030a15ee89f15e56223292"
+    },
+    {
+      "path": "pi-post-retirements-redacted.json",
+      "sha256": "5f821a51e6e01721b08feb90aa9b18768fcd9905e143a71a5e58c6fdb56a79f3"
+    },
+    {
+      "path": "pi-path-diagnostic-run-redacted.json",
+      "sha256": "946d5293fa2df26837963f46067b2da667c78a3db635fba95faa81bc3a578d23"
+    },
+    {
+      "path": "nl-path-controls.json",
+      "sha256": "cebdbca5079434a36706898cb6511ef7f0721447ecfdf48720c6b0326b4ada04"
+    },
+    {
+      "path": "pi-nl-fail2ban-membership.json",
+      "sha256": "fa7411b8242188d21e31d18b3625c8e9922bfb3dcd1148e0ee2831d95a934819"
+    },
+    {
+      "path": "pi-nl-dns-target-match.json",
+      "sha256": "ee286153e7129d5a8f0bb24d9a560e790c56aea465f60c4942b5bb794e58beba"
+    },
+    {
+      "path": "pi-nl-packet-path-classification.json",
+      "sha256": "221713afb19ceb14879bc84a75e087c09c0a498cd62199282b1c1f84334ae313"
+    },
+    {
+      "path": "smart-dns-authoritative-check.json",
+      "sha256": "3c06371470f74b3f9f300b01d4a64a14f597360ce7d2f5639b5e7d59a123136d"
+    }
+  ],
+  "mutation_boundary": {
+    "database_control_plane_rows_updated": 2,
+    "candidate_artifact_mutated": false,
+    "candidate_source_mutated": false,
+    "node_runtime_mutated": false,
+    "physical_phone_used": false,
+    "payment_or_provider_action": false,
+    "smart_dns_or_acme_mutation": false,
+    "public_release": false,
+    "store_upload": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "POST_CANDIDATE10_CONTROL_PLANE_RETIREMENT_PASS; RU_ORIGIN_FAIL_9_OF_11_ON_NL_AND_RU_SPB; SMART_DNS_BLOCKED_AUTHORITATIVE_DNS_0_OF_4; PRIOR_GATE_F_REMAINS_NO_GO"
+}
