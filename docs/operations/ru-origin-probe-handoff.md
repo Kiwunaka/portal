@@ -168,6 +168,11 @@ Local и remote validators обязаны одинаково принимать 
 точным `automatic_rollback_status`; успешный rollback не превращает исходную
 ошибку в PASS.
 
+`hmac.key` остаётся root-owned `0640` и читается только primary/supplementary
+группой `pokrov-ru-probe`. Shared HMAC client допускает этот один POSIX-вариант
+group access; world bits, group write/execute, не-root owner или чужая группа
+закрываются с `secret_file_permissions`. Owner-only `0600` остаётся допустимым.
+
 В candidate.6 `EnvironmentFile` обязан существовать, но runner/uploader используют
 скомпилированные канонические defaults. Поэтому установщик принимает в обоих env
 файлах только `POKROV_API_BASE_URL=https://api.pokrov.space`,
