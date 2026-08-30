@@ -27,6 +27,7 @@
     "scripts/create_reality_inbounds.py",
     "scripts/export_manual_user_links.py",
     "scripts/export_release_gate_snapshot.py",
+    "scripts/exact_git_snapshot.py",
     "scripts/free_soft_inbound_shaper.py",
     "scripts/generate_code_function_inventory.py",
     "scripts/commercial_revision_bundle.py",

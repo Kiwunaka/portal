@@ -9,12 +9,12 @@ import re
 import shlex
 import stat
 import subprocess
-import tarfile
 import tempfile
 import uuid
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 from typing import Any
 
+from exact_git_snapshot import ExactGitSnapshotError, materialize_paths
 from node_access import DEFAULT_PASSWORDS, connect_node
 
 
@@ -348,41 +348,19 @@ def _materialize_core_module(
     revision: str,
     destination: Path,
 ) -> Path:
-    archive_path = destination / "confirmed-core-module.tar"
     source_root = destination / "source"
-    with archive_path.open("wb") as archive_stream:
-        archived = subprocess.run(
-            _git_command(
-                git_executable,
-                "archive",
-                "--format=tar",
-                "--prefix=source/",
-                revision,
-                "engine/sing-box",
-            ),
-            cwd=core_worktree,
-            stdout=archive_stream,
-            stderr=subprocess.PIPE,
-            env=_git_environment(),
-            timeout=120,
-            check=False,
-        )
-    if archived.returncode != 0 or not archive_path.is_file():
-        raise RuntimeError("confirmed Core module snapshot could not be created")
     try:
-        with tarfile.open(archive_path, mode="r:") as archive:
-            for member in archive.getmembers():
-                member_path = PurePosixPath(member.name)
-                if (
-                    member_path.is_absolute()
-                    or ".." in member_path.parts
-                    or not member_path.parts
-                    or member_path.parts[0] != "source"
-                ):
-                    raise RuntimeError("confirmed Core module snapshot is unsafe")
-            archive.extractall(destination, filter="data")
-    finally:
-        archive_path.unlink(missing_ok=True)
+        materialize_paths(
+            git_executable,
+            core_worktree,
+            revision,
+            source_root,
+            ("engine/sing-box",),
+        )
+    except ExactGitSnapshotError as exc:
+        raise RuntimeError(
+            "confirmed Core module snapshot could not be created"
+        ) from exc
     module_root = source_root / "engine" / "sing-box"
     if not (module_root / "go.mod").is_file():
         raise RuntimeError("confirmed Core module snapshot is incomplete")
