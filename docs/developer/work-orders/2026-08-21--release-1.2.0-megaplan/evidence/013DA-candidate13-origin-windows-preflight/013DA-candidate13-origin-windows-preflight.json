@@ -1,0 +1,146 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate13-origin-windows-preflight/v1",
+  "recorded_at_utc": "2026-08-30T16:17:11Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.13",
+    "version": "1.2.0+4049",
+    "sources": {
+      "platform": "7d983c0ab52e9c01f94da8916a6bca6a0039be8d",
+      "client": "ce2581dd16d276d20eace7a56f0337c4b9319168",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "440f3be1a5f3ae5c6c78c62036858884e5bc3c94"
+    },
+    "manifest_sha256": "b8a10cf8fbc1683cc9a1540edf74f29fd417f422bc3d2be97f4deae85075190c"
+  },
+  "current_origin": {
+    "status": "PASS",
+    "method": "SOURCE_BOUND_DIRECT_ETHERNET_PERSISTENT_HTTP1",
+    "source_revision": "7d983c0ab52e9c01f94da8916a6bca6a0039be8d",
+    "working_tree_state": "clean",
+    "proxy_policy": "disabled_for_source_bound_probe",
+    "health": {
+      "budget_id": "api.health.current_origin_ms",
+      "samples": 50,
+      "warmups": 5,
+      "statistic": "p95",
+      "value_ms": 39.7521,
+      "stop_lte_ms": 100,
+      "gate_status": "PASS"
+    },
+    "public_catalog": {
+      "budget_id": "api.public_catalog.current_origin_ms",
+      "samples": 50,
+      "warmups": 5,
+      "statistic": "p95",
+      "value_ms": 40.4278,
+      "stop_lte_ms": 200,
+      "gate_status": "PASS"
+    },
+    "raw_source_address_retained_in_git": false
+  },
+  "brain_origin": {
+    "status": "PASS",
+    "runtime_source": {
+      "mode": "READ_ONLY_SSH_HASHES",
+      "payload_count": 197,
+      "normalized_match_count": 197,
+      "mismatch_count": 0,
+      "normalization_rule": "CRLF_TO_LF_ONLY",
+      "exact_source_semantic_bytes_match": true
+    },
+    "readiness": {
+      "passed": 23,
+      "required": 23,
+      "failures": 0,
+      "subscription_stability_samples": 5
+    },
+    "runtime_mutated": false,
+    "remote_content_retained": false
+  },
+  "ru_origin": {
+    "status": "MANUAL_OWNER_TEST",
+    "classification": "MANUAL_OWNER_TEST_ENVIRONMENT_INCOMPLETE",
+    "mode": "READ_ONLY_REMOTE_HASHES_AND_STATE",
+    "source_files": {
+      "normalized_match_count": 10,
+      "required": 10,
+      "mismatch_or_unreadable_count": 0
+    },
+    "units": {
+      "required": 4,
+      "loaded": 4,
+      "timers_active": 2
+    },
+    "runtime_material": {
+      "probe_env": false,
+      "uploader_env": false,
+      "hmac_key": false,
+      "profiles": false
+    },
+    "latest_archive_available": false,
+    "ready_for_manual_owner_run": false,
+    "runtime_mutated": false,
+    "server_readback_performed": false,
+    "heartbeat_readback_performed": false,
+    "next_action_requires_separate_external_apply_authorization": true
+  },
+  "windows_isolation_preflight": {
+    "status": "BLOCKED_BY_ENVIRONMENT",
+    "host_os": "Windows 11 Pro build 26100",
+    "candidate_setup_sha256": "0afaf6e1d73a7e72762d945557f48793646a9bdbf12bb8ca2e843d4b94df276c",
+    "windows_sandbox": "ABSENT",
+    "virtualbox": "ABSENT",
+    "vmware": "ABSENT",
+    "qemu": "ABSENT",
+    "hypervisor_present": false,
+    "active_owner_tunnel_preserved": true,
+    "current_host_install_or_network_mutation_performed": false,
+    "clean_vm_claim": false
+  },
+  "external_evidence": [
+    {
+      "path": "brain-runtime-source.json",
+      "sha256": "82bd9ecf256feade9c8c04b3cd6fd17f577b97bc506a76c1bd093b6dea9e8d0e"
+    },
+    {
+      "path": "brain-readiness.json",
+      "sha256": "0ffe74a84de4800fc6995b9ecd78749ce408a1980ea9fcf5e8059fd7a87040e7"
+    },
+    {
+      "path": "current-health.json",
+      "sha256": "5a145619bff02a31778516221a2a6031678ed857b6602e6d0317cb0914af407f"
+    },
+    {
+      "path": "current-health-gate.json",
+      "sha256": "7881c0cd720727882e8d88d8a0809c536f21b8331d279696c1e221bbe2ef0902"
+    },
+    {
+      "path": "current-catalog.json",
+      "sha256": "0230eef8d7f3cb654e8806ae6a45e008ff9efd9d83e220ecb700115ff05a631b"
+    },
+    {
+      "path": "current-catalog-gate.json",
+      "sha256": "a78156c586bcbfe3085cbcd6338505fe82a13ae7975c8a6a72ab60c23acb876a"
+    },
+    {
+      "path": "ru-origin-environment.json",
+      "sha256": "67f09ecabd3b118713d602a62ca83dc15f670fa3614c65e39517affe3f8b5126"
+    }
+  ],
+  "mutation_boundary": {
+    "production_deploy": false,
+    "remote_runtime_mutated": false,
+    "windows_runtime_mutated": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "physical_android": "NOT_RUN",
+    "ldplayer": "NOT_RUN"
+  },
+  "row_outcomes": {
+    "REL_GATE/GATE-E": "I3_STRONGER_EXACT_CANDIDATE13_CURRENT_ORIGIN_PASS",
+    "REL_GATE/GATE-F": "I3_UNCHANGED_NOT_RUN_ARM64_AND_OTHER_MANUAL_GATES_OPEN",
+    "FRKN_PLAN/W9-02": "I1_TO_I2_CURRENT_AND_BRAIN_PASS_RU_MANUAL",
+    "FRKN_PLAN/W9-05": "I1_UNCHANGED_GATE_F_NOT_RUN"
+  },
+  "evidence_ceiling": "CURRENT_ORIGIN_PASS; BRAIN_ORIGIN_PASS; RU_ORIGIN_MANUAL_OWNER_TEST_ENVIRONMENT_INCOMPLETE; WINDOWS_BLOCKED_BY_ENVIRONMENT; NO_GATE_F_OR_PROMOTION_ADVANCE"
+}
