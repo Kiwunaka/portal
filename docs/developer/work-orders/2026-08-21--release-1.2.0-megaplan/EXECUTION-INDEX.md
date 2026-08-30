@@ -4987,3 +4987,39 @@ becomes `I4=4`, `I3=318`, `I2=21`, `I1=35`, `I0=0` across `378` rows.
 
 The physical phone is unavailable and untouched. Smart DNS remains
 authoritative `0/4 NXDOMAIN`, so its APPLY sequence is still `NOT_RUN`.
+
+## 2026-08-30 — WO-013CW candidate.11 LDPlayer AWG runtime and quarantine fix
+
+Exact signed candidate.11 binds platform `01cf5de...`, client `348de30...`,
+Core `cd8f0f4...` and signed release-index source `8c314a1...`. Its
+production-signed universal APK `706c546e...e1a`, `295370161` bytes, is
+installed byte-identically on LDPlayer 9 `emulator-5554` as `1.2.0+4047`.
+
+Fresh, separately identified AWG3.1 and AWG2 profiles each establish the
+Android TUN and mandatory verified Core egress. Address-free 60-second server
+captures count bidirectional inner TCP payload: AWG3.1 `117` packets
+(`68/48` directions, `48` payload) and AWG2 `63` packets (`37/25`, `19`
+payload). A fresh ordinary Auto profile independently passes TUN and egress.
+These are exact emulator/current-origin passes, not physical, Windows, RU
+mobile, leak, handover, OEM or endurance proof.
+
+The server binder alone is not accepted as runtime identity. Platform PR 113
+adds a sanitized exact-profile verifier and proves that a cached default
+profile fails an AWG3.1 expectation. A later candidate.11 repeat then exposes
+a real release blocker: an ordinary Auto node quarantine is incorrectly
+applied before an owner-lab profile is returned. Two AWG3.1 retries fail before
+staging with `NO_AVAILABLE_AUTOMATIC_LOCATION`/`API-008` and zero attributable
+client inner packets. This is before cryptography.
+
+Client PR 41 merges the successor correction as `afcdcde...`: AWG2, AWG3.1
+and HY2 owner-lab envelopes clear and bypass Smart Connect. The full bootstrap
+file passes `86/86`, analyzer and exact cross-repository seed/docs contracts
+pass locally. Hosted jobs contain zero steps and remain `SKIPPED_BY_OWNER`.
+
+Candidate.11 is `REJECTED_FOR_REPLACEMENT`; Gate F is not run for it and no
+Gate G/public/stable action occurs. `W3-02` and `W3-03` remain `I3` with
+stronger exact-candidate evidence, `HY2-01` stays `I3` without runtime proof,
+and `W9-05` stays `I1`. The 378-row distribution is unchanged. Final cleanup
+restores `default`, removes lab material/membership and all test-created
+profile backups, and leaves LDPlayer disconnected with no Android VPN. The
+physical phone is untouched.
