@@ -67,6 +67,18 @@ PROXY-v2/TLS/DoH probe, and leaves public TCP/443 and UFW untouched. It does not
 authorize the separate HAProxy frontend migration. Both modes still require
 one unique owned public IPv4 for the synthetic `A` answer.
 
+`scripts/remote_prepare_owned_smart_dns_runtime.py` provides the guarded
+server-side path for the fronted runtime material. Its default `PLAN` verifies
+the exact bundle, owned node, public DNS match, free HTTP-01 listener, fixed DoT
+upstream and collision-free targets without mutation. `APPLY` requires exact
+digest, source, node, DNS and ACME confirmations; it installs Certbot only when
+absent, keeps the private key on the selected node, writes the bundle-bound
+runtime stage with root-only permissions and installs a renewal deploy hook.
+The caller must separately verify the authoritative DNS answer before giving
+the DNS confirmation. Certificate/runtime preparation does not install the
+Smart DNS service or migrate the shared TCP/443 frontend; those remain the two
+separate receipt-bound operations described above.
+
 No active POKROV delivery node currently has an unclaimed TCP/443 listener.
 Deployment therefore requires either a deliberately freed owned public IPv4
 or a reviewed SNI-mux migration on an existing owned frontend, plus an exact
