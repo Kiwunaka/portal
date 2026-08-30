@@ -4803,3 +4803,37 @@ is `ef2dce80c330f699effee11cc0dc99b3dcd98620a6e9000a6611ffca6b4e56c2`.
 Candidate.5 and WO-013AV remain immutable. No ledger row advances, no new
 candidate exists, and the next required step is parameter-level client/server
 interop correction followed by LDPlayer and physical Android retest.
+
+## 2026-08-30 — WO-013CP candidate.10 RU control-plane retirement
+
+Read-only reference audits classify the three original candidate.10 RU
+failures independently. Brain was a disabled/draining control-server row with
+zero consumer references and a 196-day stale `active_clients=14` metric; its
+`x-ui`/Xray runtime, process and listeners are stopped. Free was also disabled
+and draining with zero mappings, zero non-revoked keys, zero nonterminal jobs
+and a disabled pool. Three stale profile markers remain, but no active Free key
+or current route uses them. Free node-side shutdown remains
+`BLOCKED_BY_ACCESS`.
+
+Separate `pg_dump -Fc` backups were retained before each serializable,
+advisory-locked compare-and-set. Restore was `NOT_RUN`. Exactly two node rows
+changed from disabled/draining to disabled/not-draining; Brain's stale current
+client counters were also cleared after current stopped-runtime proof. No
+candidate source/artifact or node runtime was changed.
+
+The canonical Pi manifest consequently shrinks from `13` to `11` required
+targets. Two fresh runner/uploader cycles agree at `FAIL 9/11`: NL and RU-SPB
+time out. NL resolves to the owned server, Xray listens on TCP/443, the Pi
+source is not banned and no local TCP/443 drop/rate-limit rule is present. A
+bounded capture observes no matching ingress packet and is deleted, supporting
+`RU_TO_NL_PATH_FAILURE_BEFORE_OBSERVED_SERVER_INGRESS`. Further NL/SPB looping
+is deferred until new route/provider evidence exists.
+
+Direct queries to all four delegated authoritative servers still find no A
+record for `dns.pokrov.space` (`0/4`). ACME, Smart DNS server and frontend route
+APPLY remain `NOT_RUN`. The physical phone is unavailable and untouched.
+
+`FRKN_PLAN/W9-02` and `W9-05` remain `I1`; `SMARTDNS-01` remains `I3`. The
+latest exact candidate.10 Gate F remains the WO-013CO `NO_GO 6/13/1` decision
+and is not regenerated while RU is still `FAIL`. Gate G, tag, public release,
+Store object and stable pointer remain unauthorized and unchanged.
