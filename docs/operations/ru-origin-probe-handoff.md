@@ -110,21 +110,23 @@ unit или актуальность живого HMAC key record.
 Точный набор исходников для RU-host строится из Git objects, а не из текущего
 рабочего дерева. Builder принимает только явно allowlisted подписанные platform
 revision; произвольный commit закрывается до чтения source members. Для текущего
-candidate.9:
+candidate.10:
 
 ```powershell
-python scripts/build_ru_origin_probe_bundle.py build --source-revision 84687875916bbb35c0e28e0c2a8c7ea276753f31 --output <private-artifact-path>/pokrov-ru-origin-candidate9-8468787.zip
-python scripts/build_ru_origin_probe_bundle.py verify --bundle <private-artifact-path>/pokrov-ru-origin-candidate9-8468787.zip
-python scripts/build_ru_origin_probe_bundle.py plan --bundle <private-artifact-path>/pokrov-ru-origin-candidate9-8468787.zip --operation install
-python scripts/remote_install_ru_origin_probe.py --bundle <private-artifact-path>/pokrov-ru-origin-candidate9-8468787.zip --ssh-config-alias <trusted-ru-alias> --operation install
+python scripts/build_ru_origin_probe_bundle.py build --source-revision 209b8f40c36d95f2bbc67caa52a41ecb09f46720 --output <private-artifact-path>/pokrov-ru-origin-candidate10-209b8f4.zip
+python scripts/build_ru_origin_probe_bundle.py verify --bundle <private-artifact-path>/pokrov-ru-origin-candidate10-209b8f4.zip
+python scripts/build_ru_origin_probe_bundle.py plan --bundle <private-artifact-path>/pokrov-ru-origin-candidate10-209b8f4.zip --operation install
+python scripts/remote_install_ru_origin_probe.py --bundle <private-artifact-path>/pokrov-ru-origin-candidate10-209b8f4.zip --ssh-config-alias <trusted-ru-alias> --operation install
 ```
 
-Candidate.9 package содержит 10 source/unit members, имеет размер `47886` байт
+Candidate.10 package содержит 10 source/unit members, имеет размер `47930` байт
 и SHA-256
-`a887cf4ad193a73ceabebbff476e5264c52c8694ab6f246bd81c6a6aeff6b4e8`.
-Повторная независимая сборка дала те же байты. Candidate.8 revision
-`241a83b4...` и candidate.6 revision `5713324c...` остаются allowlisted
-историческими входами; их ранее зафиксированные пакеты имеют SHA-256
+`0108ccc4595ff2f424b4e5169d19fc539e21cc1eaed79cb92ccbacf04ce85e22`.
+Повторная независимая сборка дала те же байты. Candidate.9 revision
+`8468787...`, candidate.8 revision `241a83b4...` и candidate.6 revision
+`5713324c...` остаются allowlisted историческими входами; их ранее
+зафиксированные пакеты имеют SHA-256
+`a887cf4ad193a73ceabebbff476e5264c52c8694ab6f246bd81c6a6aeff6b4e8`,
 `7bc2ec16971a23fb16ce54d2f2e1dae4f3a228bca13527a71099396e532a8707`
 и
 `e7eb8ec20693f9626d6e7697c7845fa165e77fc1daa7df580ef0618248be345b`.
@@ -153,6 +155,9 @@ runner ошибочно требовал удалённый raw connected IP и 
 безопасный `connected_family`, уважает подписанный `min_body_bytes` и задаёт
 service-specific HTTP paths/thresholds. Оно требует нового immutable candidate
 и bundle; candidate.9 не патчится на месте и не получает ложный RU `PASS`.
+Подписанный candidate.10 и его детерминированный bundle теперь готовы к новому
+точному backend/Pi прогону; до этого прогона RU-origin остаётся
+`MANUAL_OWNER_TEST`, а не `PASS`.
 
 Root-login не обязателен: допустима непривилегированная trusted-key сессия только
 при успешном `sudo -n`. Инструмент не принимает sudo-пароль и не выводит его;
