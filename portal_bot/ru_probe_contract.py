@@ -372,7 +372,7 @@ def _validate_endpoint(value: object, *, path: str) -> dict[str, object]:
         nullable=True,
     )
     if mode in {"google_https", "canonical_https_large_body"}:
-        if http_path is None or min_body is None or min_body < 65536:
+        if http_path is None or min_body is None:
             _fail("invalid_http_probe", path)
         if local_profile is not None:
             _fail("unexpected_probe_profile", f"{path}.local_probe_profile_id")

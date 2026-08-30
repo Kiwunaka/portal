@@ -298,6 +298,44 @@ def test_delivery_attempts_each_requested_family_and_reports_actual_outcome(
     assert result["stages"]["tls"]["status"] == "pass"
 
 
+def test_delivery_accepts_redacted_connected_family(runner) -> None:
+    target = _target()
+    target["endpoint"]["address_families"] = ["ipv4"]
+    target["endpoint_fingerprint"] = endpoint_fingerprint(target["endpoint"])
+    public_result = _passing_dataplane_result()
+    public_result.pop("connected_ip")
+    public_result.pop("resolved_ips")
+    public_result["connected_family"] = "ipv4"
+    with (
+        mock.patch.object(
+            runner.dataplane_probe,
+            "_resolve_dns",
+            return_value={
+                "resolved_ips": ["203.0.113.20"],
+                "resolved_ipv4": ["203.0.113.20"],
+                "resolved_ipv6": [],
+            },
+        ),
+        mock.patch.object(
+            runner.dataplane_probe,
+            "probe_node_endpoint",
+            return_value=public_result,
+        ),
+    ):
+        result = runner.run_manifest_target(
+            target,
+            timeout_sec=5.0,
+            profile_registry={},
+        )
+
+    assert result["address_family_status"] == {
+        "ipv4": "pass",
+        "ipv6": "not_applicable",
+    }
+    assert result["stages"]["tcp"]["status"] == "pass"
+    assert result["stages"]["tls"]["status"] == "pass"
+
+
 def test_udp_send_without_valid_protocol_response_is_not_hysteria_pass(runner) -> None:
     result = runner.transport_stage_from_adapter(
         "hysteria_handshake",
@@ -789,6 +827,43 @@ def test_large_body_probe_uses_get_and_reads_at_least_65536_bytes(runner) -> Non
     assert request_args[0] == "GET"
     assert "HEAD" not in request_args
     assert result["body_bytes"] >= 65536
+    assert result["stages"]["http_large_body"]["status"] == "pass"
+
+
+def test_https_probe_respects_small_manifest_body_minimum(runner) -> None:
+    response = mock.Mock(status=200)
+    response.read.side_effect = [b"x"]
+    connection = mock.Mock()
+    connection.getresponse.return_value = response
+    with (
+        mock.patch.object(
+            runner.socket,
+            "getaddrinfo",
+            return_value=[
+                (
+                    socket.AF_INET,
+                    socket.SOCK_STREAM,
+                    socket.IPPROTO_TCP,
+                    "",
+                    ("203.0.113.20", 443),
+                )
+            ],
+        ),
+        mock.patch.object(
+            runner, "_verified_https_connection", return_value=connection
+        ),
+    ):
+        result = runner.probe_https_large_body(
+            host="environment.example.net",
+            port=443,
+            sni="environment.example.net",
+            path="/",
+            min_body_bytes=1,
+            address_families=["ipv4"],
+            timeout_sec=5.0,
+        )
+
+    assert result["body_bytes"] == 1
     assert result["stages"]["http_large_body"]["status"] == "pass"
 
 

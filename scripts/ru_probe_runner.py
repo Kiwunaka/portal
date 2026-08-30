@@ -531,7 +531,7 @@ def _probe_https_address(
                 code="http_status_unaccepted",
             )
             return result
-        required_bytes = max(65536, int(min_body_bytes))
+        required_bytes = max(1, int(min_body_bytes))
         body_bytes = 0
         http_started = time.perf_counter()
         while body_bytes < required_bytes:
@@ -919,7 +919,9 @@ def _probe_delivery_families(
                 timeout_sec=timeout_sec,
             )
             connected_ip = str(payload.get("connected_ip") or "")
-            connected_family = _family_for_ip(connected_ip)
+            connected_family = str(
+                payload.get("connected_family") or _family_for_ip(connected_ip) or ""
+            ).strip().lower()
             reached_connection = (
                 bool(payload.get("ok"))
                 or payload.get("latency_ms") is not None

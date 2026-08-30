@@ -93,6 +93,7 @@ class NodeDataplaneProbeTests(unittest.TestCase):
         self.assertNotIn("sni", result)
         self.assertNotIn("resolved_ips", result)
         self.assertNotIn("connected_ip", result)
+        self.assertEqual(result["connected_family"], "ipv4")
         self.assertEqual(result["probe_classification"], "healthy")
         self.assertEqual(result["ipv4_health"], "healthy")
         self.assertEqual(result["ipv6_health"], "unavailable")

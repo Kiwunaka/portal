@@ -1458,7 +1458,7 @@ def test_admin_command_center_and_ru_probe_owners_are_cross_linked() -> None:
     ):
         assert required.casefold() in combined_ru.casefold()
     assert "retention_hold=true" in monitoring
-    assert "не содержит команд для изменения живого хоста" in handoff
+    assert "намеренно не содержит готовой команды `--apply`" in handoff
 
     release_owners = publishing + "\n" + deployment
     for required in (

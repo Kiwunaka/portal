@@ -397,7 +397,7 @@ def test_manifest_has_exact_google_and_default_canonical_targets_without_secrets
         "transport_profile": "https",
         "probe_mode": "google_https",
         "http_path": "/",
-        "min_body_bytes": 65536,
+        "min_body_bytes": 1,
         "local_probe_profile_id": None,
     }
     assert google["required_stages"] == ["dns", "tcp", "tls", "http_large_body"]
@@ -409,6 +409,10 @@ def test_manifest_has_exact_google_and_default_canonical_targets_without_secrets
         for key in targets
         if key.startswith("canonical:")
     } == {"pokrov.space", "app.pokrov.space", "api.pokrov.space"}
+    assert targets["canonical:pokrov.space"]["endpoint"]["min_body_bytes"] == 65536
+    assert targets["canonical:app.pokrov.space"]["endpoint"]["min_body_bytes"] == 1
+    assert targets["canonical:api.pokrov.space"]["endpoint"]["min_body_bytes"] == 1
+    assert targets["canonical:api.pokrov.space"]["endpoint"]["http_path"] == "/api/health"
     serialized = json.dumps(manifest, ensure_ascii=False).lower()
     for forbidden in (
         "secret-pbk",
