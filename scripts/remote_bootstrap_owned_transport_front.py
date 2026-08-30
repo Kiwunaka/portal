@@ -471,6 +471,22 @@ db.close()
 '''.strip()
 
 
+_WAIT_LISTENER_OWNER = [
+    "wait_listener_owner() {",
+    "  wait_unit=$1",
+    "  wait_port=$2",
+    "  wait_owner=$3",
+    "  wait_attempt=0",
+    "  while test \"$wait_attempt\" -lt 30; do",
+    "    if systemctl is-active --quiet \"$wait_unit\" && ss -H -ltnp \"sport = :$wait_port\" | grep -qi \"$wait_owner\"; then return 0; fi",
+    "    wait_attempt=$((wait_attempt + 1))",
+    "    sleep 1",
+    "  done",
+    "  return 1",
+    "}",
+]
+
+
 def _embedded_python_command(source: str, *arguments: str) -> str:
     encoded = base64.b64encode(source.encode("utf-8")).decode("ascii")
     suffix = " ".join(_q(value) for value in arguments)
@@ -516,6 +532,7 @@ def _apply_command(
     return "\n".join(
         [
             "set -eu",
+            *_WAIT_LISTENER_OWNER,
             f"stage_config={_q(stage_config)}",
             f"stage_service={_q(stage_service)}",
             f"receipt={_q(receipt_path)}",
@@ -526,12 +543,11 @@ def _apply_command(
             "  rc=$?",
             "  trap - EXIT INT TERM HUP",
             "  rollback_ok=yes",
-            f"  systemctl disable --now {_q(SERVICE_NAME)} >/dev/null 2>&1 || rollback_ok=no",
+            f"  if test \"$front_files\" = yes; then systemctl disable --now {_q(SERVICE_NAME)} >/dev/null 2>&1 || rollback_ok=no; fi",
             f"  if test \"$moved\" = yes; then {cas_rollback} >/dev/null 2>&1 || rollback_ok=no; systemctl restart {_q(XUI_SERVICE)} >/dev/null 2>&1 || rollback_ok=no; fi",
             f"  if test \"$front_files\" = yes; then rm -f -- {_q(CONFIG_PATH)} {_q(SERVICE_PATH)} || rollback_ok=no; systemctl daemon-reload >/dev/null 2>&1 || rollback_ok=no; fi",
-            f"  if test \"$installed\" = yes; then DEBIAN_FRONTEND=noninteractive apt-get remove -y haproxy >/dev/null 2>&1 || rollback_ok=no; systemctl unmask {_q(DEFAULT_HAPROXY_SERVICE)} >/dev/null 2>&1 || rollback_ok=no; fi",
-            f"  systemctl is-active --quiet {_q(XUI_SERVICE)} || rollback_ok=no",
-            f"  ss -H -ltnp 'sport = :{PUBLIC_PORT}' | grep -qi xray || rollback_ok=no",
+            f"  if test \"$installed\" = yes; then systemctl disable --now {_q(DEFAULT_HAPROXY_SERVICE)} >/dev/null 2>&1 || true; DEBIAN_FRONTEND=noninteractive apt-get purge -y haproxy >/dev/null 2>&1 || rollback_ok=no; systemctl unmask {_q(DEFAULT_HAPROXY_SERVICE)} >/dev/null 2>&1 || true; systemctl daemon-reload >/dev/null 2>&1 || rollback_ok=no; fi",
+            f"  wait_listener_owner {_q(XUI_SERVICE)} {PUBLIC_PORT} xray || rollback_ok=no",
             "  rollback_state=automatic_rollback_pass",
             "  if test \"$rollback_ok\" != yes; then rollback_state=automatic_rollback_fail; fi",
             "  ROLLBACK_STATE=\"$rollback_state\" python3 - \"$receipt\" <<'PY' || rollback_ok=no",
@@ -556,18 +572,16 @@ def _apply_command(
             f"{cas_apply}",
             "moved=yes",
             f"systemctl restart {_q(XUI_SERVICE)}",
-            f"systemctl is-active --quiet {_q(XUI_SERVICE)}",
-            f"ss -H -ltnp | grep -E '127\\.0\\.0\\.1:{BACKEND_PORT}([[:space:]]|$)' | grep -qi xray",
+            f"wait_listener_owner {_q(XUI_SERVICE)} {BACKEND_PORT} xray",
             f"if ss -H -ltn 'sport = :{PUBLIC_PORT}' | grep -q .; then exit 45; fi",
             "front_files=yes",
             f"install -o root -g root -m 0644 \"$stage_config\" {_q(CONFIG_PATH)}",
             f"install -o root -g root -m 0644 \"$stage_service\" {_q(SERVICE_PATH)}",
             "systemctl daemon-reload",
             f"systemctl enable --now {_q(SERVICE_NAME)}",
-            f"systemctl is-active --quiet {_q(SERVICE_NAME)}",
             f"haproxy -c -f {_q(CONFIG_PATH)} >/dev/null",
-            f"ss -H -ltnp 'sport = :{PUBLIC_PORT}' | grep -qi haproxy",
-            f"ss -H -ltnp 'sport = :{BACKEND_PORT}' | grep -qi xray",
+            f"wait_listener_owner {_q(SERVICE_NAME)} {PUBLIC_PORT} haproxy",
+            f"wait_listener_owner {_q(XUI_SERVICE)} {BACKEND_PORT} xray",
             "python3 - \"$receipt\" <<'PY'",
             "import json,os,sys,tempfile",
             "p=sys.argv[1]; d=json.load(open(p,encoding='utf-8')); d['state']='applied'",
@@ -639,6 +653,7 @@ def _rollback_command(
     )
     lines = [
         "set -eu",
+        *_WAIT_LISTENER_OWNER,
         "direct_db=no",
         "recover_fronted() {",
         "  rc=$?",
@@ -646,8 +661,8 @@ def _rollback_command(
         "  recovery_ok=yes",
         f"  if test \"$direct_db\" = yes; then {cas_fronted} >/dev/null 2>&1 || recovery_ok=no; systemctl restart {_q(XUI_SERVICE)} >/dev/null 2>&1 || recovery_ok=no; fi",
         f"  systemctl enable --now {_q(SERVICE_NAME)} >/dev/null 2>&1 || recovery_ok=no",
-        f"  systemctl is-active --quiet {_q(SERVICE_NAME)} || recovery_ok=no",
-        f"  ss -H -ltnp 'sport = :{PUBLIC_PORT}' | grep -qi haproxy || recovery_ok=no",
+        f"  wait_listener_owner {_q(SERVICE_NAME)} {PUBLIC_PORT} haproxy || recovery_ok=no",
+        f"  wait_listener_owner {_q(XUI_SERVICE)} {BACKEND_PORT} xray || recovery_ok=no",
         "  recovery_state=rollback_failed_front_restored",
         "  if test \"$recovery_ok\" != yes; then recovery_state=rollback_failed_unknown; fi",
         f"  RECOVERY_STATE=\"$recovery_state\" python3 - {_q(receipt_path)} <<'PY' || true",
@@ -665,8 +680,7 @@ def _rollback_command(
         "direct_db=yes",
         f"systemctl disable --now {_q(SERVICE_NAME)}",
         f"systemctl restart {_q(XUI_SERVICE)}",
-        f"systemctl is-active --quiet {_q(XUI_SERVICE)}",
-        f"ss -H -ltnp 'sport = :{PUBLIC_PORT}' | grep -qi xray",
+        f"wait_listener_owner {_q(XUI_SERVICE)} {PUBLIC_PORT} xray",
         "trap - EXIT INT TERM HUP",
         "cleanup_ok=yes",
         f"rm -f -- {_q(CONFIG_PATH)} {_q(SERVICE_PATH)} || cleanup_ok=no",
@@ -675,8 +689,10 @@ def _rollback_command(
     if remove_haproxy:
         lines.extend(
             [
-                "DEBIAN_FRONTEND=noninteractive apt-get remove -y haproxy >/dev/null || cleanup_ok=no",
+                f"systemctl disable --now {_q(DEFAULT_HAPROXY_SERVICE)} >/dev/null 2>&1 || true",
+                "DEBIAN_FRONTEND=noninteractive apt-get purge -y haproxy >/dev/null || cleanup_ok=no",
                 f"systemctl unmask {_q(DEFAULT_HAPROXY_SERVICE)} >/dev/null 2>&1 || true",
+                "systemctl daemon-reload >/dev/null 2>&1 || cleanup_ok=no",
             ]
         )
     lines.extend(
