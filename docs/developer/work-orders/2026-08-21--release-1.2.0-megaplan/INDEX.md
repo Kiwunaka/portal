@@ -63,6 +63,13 @@ Linux remains source-only and outside candidate.10: live connect, network
 mutation/rollback, signed packaging and the exact Ubuntu 24.04 VM matrix stay
 open. Authoritative Smart DNS is still `0/4 NXDOMAIN`.
 
+WO-013CT adds a separate source-exact AWG RU-origin slice without the physical
+phone. One digest-verified ARM64 binary from candidate.10 Core runs AWG2 and
+randomized-trailer AWG3.1 on an owned Raspberry Pi 4 direct fixed-network path;
+both reach verified authenticated egress and clean all temporary state. This
+advances only `AWG-10` to partial `I2`. It does not replace candidate.10
+Android/Windows, multi-ASN or the still-failing general RU manifest.
+
 The candidate.7 history below remains retained context: WO-013BY creates signed
 private candidate.7
 from platform `af259f3...` with the same exact client/Core build `4046` bytes,
@@ -314,6 +321,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013CQ` | Replay the exact candidate.10 Smart-DNS client configuration on LDPlayer and restore its prior state | Exact-candidate Android emulator and Smart-DNS evidence | The installed x86_64 APK matches candidate.10 bytes. Custom DoH, direct DoH, external Smart DNS and selected AI/Gaming purposes survive force-stop/relaunch; visible copy warns that application traffic is direct and the IP is not hidden. Cleanup returns to Automatic/VPN DNS, clears lab state and leaves no TUN/VPN. Live DoH/service access is `NOT_RUN` because authoritative DNS is still `0/4`; physical Android remains unavailable | `WO-013CP`, exact candidate.10 APK and owned LDPlayer; publish authoritative DNS, install the guarded resolver and run live access/attribution/leak/rollback plus physical-device matrices |
 | `WO-013CR` | Close obsolete release PRs, preserve active work and recheck authoritative Smart-DNS DNS | Cross-repository release governance and DNS readiness evidence | Thirteen already-promoted, old-tuple or explicitly superseded PRs close with zero merges and zero branch deletions. Platform HAPP PR 57, client Linux PR 28 and Core AWG lifecycle PR 5 remain open with explicit release boundaries. All four delegated servers return `NXDOMAIN`, so authoritative DNS remains `0/4` and ACME/server/frontend APPLY remain `NOT_RUN` | `WO-013CQ`, current platform/client/Core promotion refs and GitHub PR metadata; publish the authorized A record in the delegated Timeweb zone, then execute the existing guarded Smart-DNS sequence. Adopt retained active PRs only on their declared release lines |
 | `WO-013CS` | Refresh, natively prove and adopt the conditional Linux beta foundation on current client main without changing candidate.10 | Client conditional-Linux successor source and platform evidence | PR 28 head `646e944...` resolves cleanly on current main and merges as `30ccf4f...`. Full client/seed/docs gates, Linux Flutter `4/4`, runtime engine `70` plus one expected skip, and native Linux gofmt/test/vet/build pass. Hosted zero-step job is `SKIPPED_BY_OWNER`. `LNX-001` remains `I3`; actual live connect/network rollback/package/Ubuntu 24.04 proof stays open and Linux remains outside 1.2.0 | `WO-005G`, `WO-013AP`, `WO-013CR`, owner-approved solo exception; implement and retain live Core/network/recovery/package/VM evidence before I4 or a Linux claim |
+| `WO-013CT` | Run candidate.10 Core AWG2/AWG3.1 interop from an owned Raspberry Pi 4 direct RU fixed-network path | Exact-Core protocol and bounded RU-origin evidence | Guarded platform `8dfaeab...` cross-builds exact Core `a45d69e...` to one digest-verified Linux ARM64 test binary. AWG2 and randomized-trailer AWG3.1 both pass tunneled TCP, verified TLS and authenticated-egress marker; remote temp/process cleanup is `0/0`, no raw material returns and no server/runtime mutates. `AWG-10` advances only `I1 -> I2`; candidate Android/Windows and multi-ASN coverage remain open | `WO-013CC`, `WO-013CM`, `WO-013CS`, owned Pi/Brain/AWG lab access; repeat on candidate.10 physical Android, isolated Windows and distinct mobile/fixed RU networks before I3/I4 |
 
 ## Current evidence
 
@@ -378,6 +386,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013CR-candidate10-pr-hygiene/`
 - `WO-013CS-linux-current-main-native-proof.md`
 - `evidence/013CS-linux-current-main-native-proof/`
+- `WO-013CT-candidate10-core-ru-pi-awg-interop.md`
+- `evidence/013CT-candidate10-core-ru-pi-awg/`
 - `WO-013BS-candidate6-ru-origin-environment-preflight.md`
 - `WO-013BT-candidate6-hy2-artifact-and-plan.md`
 - `WO-013BU-candidate6-ru-origin-bundle-and-install-plan.md`

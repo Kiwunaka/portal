@@ -1,0 +1,66 @@
+{
+  "schema": "pokrov-release-1.2.0-work-order-evidence-v1",
+  "work_order": "WO-013CT",
+  "observed_at": "2026-08-30T08:02:54Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.10",
+    "core_source": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+    "client_source": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+    "client_executed": false,
+    "changed": false
+  },
+  "operation": {
+    "platform_source": "8dfaeab61f26f66f61bec485336093e737cd22cb",
+    "execution_origin": "ru",
+    "execution_host_class": "owned_raspberry_pi_4",
+    "execution_architecture": "linux_arm64",
+    "origin_physical_location": "OPERATOR_ATTESTED_RU",
+    "direct_default_route_preflight": "PASS",
+    "binary_sha256": "c17386c0d11f7505dfce0b9bf51b969f3168ba4621ecc61a6478db024b4027e4",
+    "runtime_mutated": false,
+    "server_mutated": false,
+    "raw_material_returned": false,
+    "temporary_remote_state_removed": true,
+    "post_run_temporary_root_count": 0,
+    "post_run_test_process_count": 0
+  },
+  "profiles": [
+    {
+      "profile": "awg2_lab",
+      "status": "PASS",
+      "outcome": "passed",
+      "material_sha256": "07ae6a2f8bdbfc3bd78bb6fabf105db5380f1bf9a0989efed7a8330d0f7648a9",
+      "authenticated_egress_marker": "PASS",
+      "temporary_remote_state_removed": true
+    },
+    {
+      "profile": "awg31_lab",
+      "status": "PASS",
+      "outcome": "passed",
+      "material_sha256": "7effbffdbab9013e682f60832c89d488ef0ecfe0829c4e8acb788918bbfaea50",
+      "authenticated_egress_marker": "PASS",
+      "temporary_remote_state_removed": true
+    }
+  ],
+  "completion_index": {
+    "FRKN_AWG/AWG-10": {
+      "before": "I1",
+      "after": "I2",
+      "status": "PARTIAL_RU_FIXED_CORE_INTEROP"
+    },
+    "FRKN_PLAN/W9-02": {
+      "after": "I1",
+      "general_ru_status": "FAIL_9_OF_11"
+    },
+    "REL_GATE/GATE-C": "I3_BLOCKED",
+    "REL_GATE/GATE-F": "I3_NO_GO_6_PASS_13_NONPASS_1_FAIL"
+  },
+  "smart_dns": {
+    "authoritative_a_present": 0,
+    "authoritative_total": 4,
+    "answer": "NXDOMAIN",
+    "apply": "NOT_RUN"
+  },
+  "physical_phone": "UNAVAILABLE_UNTOUCHED",
+  "release_effect": "NONE"
+}

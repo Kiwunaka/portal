@@ -4920,3 +4920,29 @@ rollback and journald readback remain absent. Linux stays outside release
 1.2.0 and candidate.10. The physical phone is unavailable and untouched;
 Smart DNS remains blocked at authoritative `0/4 NXDOMAIN`, with APPLY
 `NOT_RUN`.
+
+## 2026-08-30 — WO-013CT candidate.10 Core RU-Pi AWG interoperability
+
+Guarded platform source `8dfaeab61f26f66f61bec485336093e737cd22cb`
+cross-builds the clean exact candidate.10 Core source
+`a45d69e40ed7d892619a2b5c4592a527f630665e` into one Linux ARM64 interop
+binary. The explicitly confirmed owned Raspberry Pi 4 passes aarch64 plus
+direct-default-route preflight. Endpoint material moves only through SSH stdin
+into process environment; no raw key, endpoint, host, output or temporary path
+is retained.
+
+From the owner-attested RU fixed-network location, AWG2 and randomized-trailer
+AWG3.1 each pass real outer exchange, tunneled TCP, verified TLS and the exact
+authenticated-egress `204` marker. Both runs report no server/runtime mutation
+and successful temporary cleanup. Independent post-run readback returns zero
+operation temp roots and zero test processes.
+
+`FRKN_AWG/AWG-10` advances `I1 -> I2` as partial fixed-network RU Core
+interop. Physical candidate.10 Android, isolated Windows and distinct
+mobile/fixed multi-ASN/regional coverage remain open. `W9-02` stays `I1`
+because the separate general candidate.10 RU manifest remains `FAIL 9/11`;
+Gate C stays `BLOCKED/I3` and Gate F stays `NO_GO 6/13/1`. Ledger distribution
+becomes `I4=4`, `I3=318`, `I2=21`, `I1=35`, `I0=0` across `378` rows.
+
+The physical phone is unavailable and untouched. Smart DNS remains
+authoritative `0/4 NXDOMAIN`, so its APPLY sequence is still `NOT_RUN`.
