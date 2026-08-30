@@ -1,0 +1,248 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate8-gates-a-e/v1",
+  "recorded_at_utc": "2026-08-29T22:29:28Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.8",
+    "operational_id": "eeedbaf8540a83649a7143d6c7097336429e466118ed4f9ca2b732b7e6e2195a",
+    "manifest_sha256": "f0006cec90c84e401e9920d9098102c7f50ab5ace5242e0d7683c3df709a6fbc",
+    "signature_sha256": "5fcae0675ea45e79baf495859fd170661f5d6dd3a8535275acd4d62680d324f6",
+    "receipt_sha256": "4109bb3417b32a780604300055f5308acf7dc810e7ea9c547075e1da41cc21fc",
+    "sources": {
+      "platform": "241a83b4dca00799b39696a4ae0c3c97e087ec39",
+      "client": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "b242e0a3060b04f9b71641a0524bf251a75ce2a8"
+    }
+  },
+  "source_and_hosted_replay": {
+    "candidate_preflight": {
+      "status": "READY_LOCAL_FREEZE",
+      "blockers": 0,
+      "pre_freeze_rows_below_i3": 0,
+      "candidate_proven": false,
+      "promotion_authorized": false,
+      "target_platform_revision": "241a83b4dca00799b39696a4ae0c3c97e087ec39",
+      "harness_revision": "dfaaf04bf8e10acf7825b9cc5ee09f781bb72619",
+      "external_evidence_sha256": "f0c7d070fdf5f8a1c9454bf9d5b952f2168ad1374ba285c4f4db4f5637d8a9f8"
+    },
+    "stop_ship": {
+      "status": "BLOCKED",
+      "local_regressions": "PASS_7_OF_7",
+      "owner_solo_controls": "PASS_3_OF_3_HISTORICAL_CONTROL",
+      "independent_review_performed": false,
+      "branch_protection": "OWNER_SOLO_NO_PURCHASE_EXCEPTION",
+      "windows_live_manual_gate": "NOT_RUN",
+      "external_evidence_sha256": "3dc8cc4d3146e4e096b6eac0f4e8f3ff55fde6526aaef3d2e819be251702b643"
+    },
+    "core_hosted_ci": {
+      "repository": "Kiwunaka/pokrov-core",
+      "run_id": 33232348126,
+      "attempt": 2,
+      "head_sha": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "conclusion": "PASS",
+      "jobs": {
+        "test": "PASS",
+        "release-contract": "PASS",
+        "android-artifact-reproducibility": "PASS",
+        "windows-artifact-reproducibility": "PASS",
+        "apple-source-build": "PASS"
+      },
+      "release_contract_job_id": 99167889066
+    },
+    "platform_and_client_hosted_boundary": [
+      {
+        "repository": "Kiwunaka/portal",
+        "head_sha": "241a83b4dca00799b39696a4ae0c3c97e087ec39",
+        "run_id": 33265183520,
+        "job": "cross-repository-contract",
+        "steps_executed": 0,
+        "status": "SKIPPED_BY_OWNER"
+      },
+      {
+        "repository": "Kiwunaka/portal",
+        "head_sha": "241a83b4dca00799b39696a4ae0c3c97e087ec39",
+        "run_id": 33265183534,
+        "job": "repo-guardrails",
+        "steps_executed": 0,
+        "status": "SKIPPED_BY_OWNER"
+      },
+      {
+        "repository": "Kiwunaka/POKROV-app",
+        "head_sha": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+        "run_id": 33265183348,
+        "job": "cross-repository-contract",
+        "steps_executed": 0,
+        "status": "SKIPPED_BY_OWNER"
+      }
+    ],
+    "focused_tests": [
+      {
+        "gate": "B",
+        "source": "platform",
+        "command": "python -B -m pytest -p no:cacheprovider tests/test_observability_contracts.py tests/test_generate_observability_support_reference.py tests/test_release_handoff_metadata.py -q",
+        "result": "PASS_70_OF_70",
+        "duration_seconds": 0.74
+      },
+      {
+        "gate": "B",
+        "source": "client",
+        "command": "flutter test test/connection_experience_test.dart test/diagnostics_coordinator_test.dart test/client_experience_store_test.dart test/app_first_runtime_bootstrap_test.dart",
+        "result": "PASS_111_OF_111"
+      },
+      {
+        "gate": "D",
+        "source": "platform",
+        "command": "python -B -m pytest -p no:cacheprovider tests/test_api_payments_callbacks.py tests/test_lavatop_payment_providers.py tests/test_payment_email_readiness_smoke.py tests/test_admin_payments_api.py tests/test_payment_entitlement_claims.py tests/test_payment_bounded_context.py tests/test_payment_db_runtime.py tests/test_payment_return_service.py tests/test_payment_provider_boundaries.py tests/test_payment_order_service.py tests/test_payment_http_registry.py tests/test_payment_entitlement_outbox.py tests/test_module_slices.py -q",
+        "result": "PASS_196_OF_196_PLUS_12_SUBTESTS",
+        "duration_seconds": 648.65,
+        "warnings": "20_EXISTING_DEPRECATIONS"
+      },
+      {
+        "gate": "D",
+        "source": "platform",
+        "command": "python -B -m pytest -p no:cacheprovider tests/test_admin_action_intents.py tests/test_admin_action_policy_coverage.py -q",
+        "result": "PASS_25_OF_25",
+        "duration_seconds": 92.48
+      }
+    ],
+    "exact_local_quality": {
+      "status": "PASS_15_OF_15",
+      "candidate_proven": false,
+      "promotion_status": "MANUAL_OWNER_TEST",
+      "report_sha256": "3884c583d547c59ac39cdd82379c0df96a550794fb87aa8ada9da013d338d086"
+    },
+    "static_performance": {
+      "status": "PASS_9_OF_9",
+      "required_scope": "local_static",
+      "gate_sha256": "f276e58253fca7544e4daccb7d6fcfabb9a92920a92d52fa4bf95e3ce57e3742",
+      "evidence_sha256": "de80e5ddfb5642e18dc5d3da3393a05f31e69df7fcf1e30e303f0c7d4afd2592"
+    }
+  },
+  "gates": {
+    "A": {
+      "decision": "BLOCKED",
+      "index": "I1",
+      "requirements": {
+        "branches_and_ci": "OWNER_SOLO_EXCEPTION_CORE_HOSTED_PASS_PLATFORM_CLIENT_SKIPPED_BY_OWNER",
+        "payment_fallback": "PASS",
+        "single_manifest": "PASS",
+        "version_and_contracts": "PASS",
+        "windows_clean_host": "MANUAL_OWNER_TEST",
+        "signing_and_provenance": "SKIPPED_BY_OWNER_WINDOWS_DIRECT_BETA_ONLY"
+      },
+      "new_candidate_defect": false,
+      "blocker": "Exact connected Windows TUN/DNS/egress/recovery and trusted public or Store signing remain non-PASS."
+    },
+    "B": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "requirements": {
+        "connection_state_machine": "PASS",
+        "typed_runtime_contract": "PASS",
+        "idempotent_shutdown_and_recovery": "MANUAL_OWNER_TEST",
+        "diagnostics_and_error_catalog": "PASS",
+        "false_green": "PASS"
+      },
+      "candidate3_defect_replaced": true,
+      "new_candidate_defect": false,
+      "blocker": "Exact Windows connected recovery remains manual; source tests and Android fail-closed runtime do not replace it."
+    },
+    "C": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "index_change": "I2_TO_I3",
+      "requirements": {
+        "windows_service_and_helper": "PASS_PARTIAL_EXACT_CANDIDATE_CURRENT_HOST",
+        "android_service_and_runtime": "PASS_PARTIAL_EXACT_CANDIDATE_PHYSICAL_AND_LDPLAYER",
+        "direct_and_store_flavors": "PASS_ARTIFACT_PARTIAL_RUNTIME",
+        "conditional_linux_beta": "NOT_SHIPPED_IN_CANDIDATE8",
+        "core_abi_and_ci": "PASS"
+      },
+      "new_candidate_defect": false,
+      "blocker": "Windows live network/clean-VM and remaining Android external IPv6, UDP53, MTU, excluded-app, broader OEM, endurance, accessibility and Store delivery are open."
+    },
+    "D": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "requirements": {
+        "payment_bounded_context": "PASS_EXACT_CANDIDATE_SOURCE",
+        "shared_http_clients": "PASS_EXACT_CANDIDATE_SOURCE",
+        "db_transaction_strategy": "PASS_EXACT_CANDIDATE_SOURCE",
+        "transactional_outbox": "PASS_EXACT_CANDIDATE_SOURCE",
+        "router_services_and_action_intent": "PASS_EXACT_CANDIDATE_SOURCE"
+      },
+      "brain_source_identity": "PASS_197_OF_197",
+      "new_candidate_defect": false,
+      "blocker": "Production provider callback, PostgreSQL locking/load, outbox worker/reconciliation/reversal and real operator action rollback remain manual."
+    },
+    "E": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "requirements": {
+        "truth_first_product_path": "PASS_EXACT_CANDIDATE_SOURCE_LOCAL",
+        "responsive_desktop_and_mobile": "PASS_EXACT_CANDIDATE_SOURCE_LOCAL",
+        "diagnostics_support_and_recovery": "PASS_SOURCE_RUNTIME_MANUAL",
+        "accessibility_and_motion": "PASS_AUTOMATED_MANUAL_DEVICE",
+        "performance_budgets": "PASS_LOCAL_STATIC_AND_CURRENT_ORIGIN_MANUAL_DEVICE"
+      },
+      "current_origin": {
+        "health_p95_ms": 66.9959,
+        "health_budget_ms": 100,
+        "public_catalog_p95_ms": 68.7012,
+        "public_catalog_budget_ms": 200
+      },
+      "new_candidate_defect": false,
+      "blocker": "Authenticated journeys, physical TalkBack/Narrator/scaling, comparable device/artifact/browser-lab performance, support recovery, canonical RU and post-promotion evidence remain open."
+    }
+  },
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CC-candidate8-signed-physical-awg/013CC-candidate8-signed-runtime-binding.json",
+      "sha256": "83f4abc9193b6f137664a0c2fef7f5df93c38dab3625342f9edb7c0ff373d8e9"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CC-candidate8-signed-physical-awg/013CC-candidate8-runtime-evidence.json",
+      "sha256": "83387ecfc028f2944bac9c618ee9042d98b374f698fc46df038ec4080c3be15a"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CD-candidate8-android-physical-matrix/013CD-candidate8-android-physical-matrix.json",
+      "sha256": "dbb964663fa8760f3ea40ddfcebcffbab4b1e81787df9d69a3798f23f0e18e6c"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CF-candidate8-brain-ru-windows-evidence/013CF-brain-origin-summary.json",
+      "sha256": "70c5798740c5e6139ecfa2e365b71ace59d050cfd8369555240d874f25006ae1"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CF-candidate8-brain-ru-windows-evidence/013CF-ru-origin-summary.json",
+      "sha256": "e2e33e523372bad5f92f872f25f8dcfd82187974ba731c6d5683a5ec5980b02d"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CF-candidate8-brain-ru-windows-evidence/013CF-windows-current-host-summary.json",
+      "sha256": "7c83a9cb1e47f5362459c7ec003f8831331a296b83549417d16647240abd350c"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CH-candidate8-ldplayer-rehearsal/013CH-candidate8-ldplayer-rehearsal.json",
+      "sha256": "622f5c88b284e3ede569b5195e21bf9d8c1e9a9fd328c648645e0a4b5ac93693"
+    }
+  ],
+  "aggregate": {
+    "decision": "BLOCKED",
+    "evaluated_gates": 5,
+    "explicit_failures": 0,
+    "candidate_replacement_required_by_source_defect": false,
+    "gate_f_status": "MANUAL_OWNER_TEST",
+    "gate_g_authorized": false
+  },
+  "mutation_boundary": {
+    "production_deploy": false,
+    "payment_or_provider_action": false,
+    "database_or_outbox_mutation": false,
+    "operator_action_executed": false,
+    "device_or_runtime_mutated_in_this_replay": false,
+    "public_release": false,
+    "store_submission": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE8_GATES_A_E_SOURCE_HOSTED_AND_RETAINED_RUNTIME_REPLAY; ALL_FIVE_DECISIONS_BLOCKED_WITH_ZERO_EXPLICIT_FAILURES; NO_LIVE_WINDOWS_PROVIDER_OPERATOR_LEGAL_DEVICE_PERFORMANCE_CANONICAL_RU_OR_POST_PROMOTION_PROOF"
+}

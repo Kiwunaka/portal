@@ -2,6 +2,34 @@
 
 Last updated: 2026-08-30
 
+## 2026-08-30 — WO-013CI candidate.8 Gates A–E replay and Gate F
+
+The stale candidate.3 Gate A–E decision layer is replaced by one replay bound
+to signed `pokrov-1.2.0-candidate.8`: platform `241a83b...`, client
+`3459438...`, Core `a45d69e...`, signed release-index source `b242e0a...` and
+manifest SHA-256 `f0006cec...fbc`. Exact Core Actions run `33232348126`,
+attempt `2`, passes all five hosted jobs. Platform/client private hosted jobs
+still execute zero steps and remain `SKIPPED_BY_OWNER` under the no-purchase
+solo exception.
+
+Gate B's old deterministic CRLF defect is absent: exact platform tests pass
+`70/70` on a normal Windows checkout and exact client state/diagnostics/
+migration/bootstrap passes `111/111`. Gate D exact source passes `196/196`
+plus `12` subtests and Action Intent/policy passes `25/25`; exact Brain retains
+`197/197`, `23/23`, `7/7`. Gate E retains exact local quality `15/15`, static
+performance `9/9`, and current-origin health/catalog p95 PASS. Prior physical
+Android, LDPlayer and Windows current-host evidence remains bound to the same
+candidate.
+
+All Gates A–E remain `BLOCKED` because required live/manual boundaries are
+open; the replay finds zero explicit candidate.8 failures. Gate C advances
+`I2 -> I3`, changing the 378-row distribution to `I4=4, I3=318, I2=20,
+I1=36`. The successor Gate F validates `19/19` pointers and remains `BLOCKED`
+at `6 PASS / 13 non-PASS / 0 FAIL / 0 validation errors`; decision SHA-256 is
+`682f133b2d5c7840f6f73fbc2c185f6992df2b61679bb940e6db2b9f22c13b8b`.
+Gate G, tag, public release, Store object and stable pointer remain
+unauthorized.
+
 ## 2026-08-30 — WO-013CH candidate.8 LDPlayer rehearsal and Gate F
 
 The exact candidate.8 x86_64 APK SHA-256 `ec07ba17...2627`, size
