@@ -1,0 +1,67 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate-rollback-evidence/v1",
+  "recorded_at_utc": "2026-08-30T00:10:55Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.8",
+    "operational_id": "eeedbaf8540a83649a7143d6c7097336429e466118ed4f9ca2b732b7e6e2195a",
+    "manifest_sha256": "f0006cec90c84e401e9920d9098102c7f50ab5ace5242e0d7683c3df709a6fbc",
+    "signature_sha256": "5fcae0675ea45e79baf495859fd170661f5d6dd3a8535275acd4d62680d324f6",
+    "source_revisions": {
+      "platform": "241a83b4dca00799b39696a4ae0c3c97e087ec39",
+      "client": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "b242e0a3060b04f9b71641a0524bf251a75ce2a8"
+    }
+  },
+  "valid_run": {
+    "status": "PASS_LOCAL_EXACT_CANDIDATE_PORTAL_CLIENT_ROLLBACK",
+    "sequence": [
+      "1.1.6+20260819",
+      "pokrov-1.2.0",
+      "1.1.6+20260819"
+    ],
+    "candidate_handoff_sha256": "53c9f8529fb92231f2f8ee312252de1170369ea6ab5464b15fe67d9defbe9c01",
+    "candidate_artifact_set_sha256": "f3f64e4eeb137969b4bce23e6d980192c71243b4505a571062ad3d2e4e3c5164",
+    "retained_stable_handoff_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+    "portal": {
+      "status": "PASS_LOCAL",
+      "candidate_projection_applied": true,
+      "rollback_byte_identical": true,
+      "unrelated_setting_preserved": true
+    },
+    "client_channel": {
+      "status": "PASS_LOCAL",
+      "initial_validation": "PASS",
+      "dry_run": "PASS_NO_APPLY",
+      "forward_switch": "PASS",
+      "rollback_switch": "PASS",
+      "final_stable_validation": "PASS",
+      "rollback_byte_identical": true
+    },
+    "external_report_sha256": "d1fa472aa1a0f2425c0281b42b9fb9011d452509814810d956b8dc579b6fecea"
+  },
+  "verification": {
+    "focused_tests": "5/5 PASS",
+    "client_worktree_clean_after_capture": true,
+    "core_worktree_clean_after_capture": true,
+    "platform_exact_worktree_clean_after_capture": true,
+    "release_index_worktree_clean_after_capture": true
+  },
+  "mutation_boundary": {
+    "environment": "ISOLATED_LOCAL_FIXTURE",
+    "tracked_client_pointer": "UNCHANGED",
+    "tracked_client_catalog": "UNCHANGED",
+    "portal_runtime": "NOT_MUTATED",
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer": "NOT_MUTATED",
+    "physical_device": "NOT_RUN",
+    "brain_origin": "NOT_RUN"
+  },
+  "row_outcomes": {
+    "REL_DOD/DOD-18": "I3_STRONGER_EXACT_CANDIDATE8_LOCAL_EVIDENCE",
+    "FE/P12-130": "I3_STRONGER_EXACT_CANDIDATE8_LOCAL_EVIDENCE",
+    "REL_GATE/GATE-F": "I3_UNCHANGED_RUNTIME_ROLLBACK_STILL_MANUAL_OWNER_TEST"
+  },
+  "evidence_ceiling": "PASS_LOCAL_EXACT_CANDIDATE8_PORTAL_CLIENT_ROLLBACK; AUTHORIZED_RUNTIME_POINTER_KILL_ROLLBACK_AND_CURRENT_AND_BRAIN_READBACK_REMAIN_OPEN; NO_GATE_F_ADVANCE"
+}

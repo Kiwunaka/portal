@@ -2,6 +2,28 @@
 
 Last updated: 2026-08-30
 
+## 2026-08-30 — WO-013CJ candidate.8 isolated rollback rehearsal
+
+The signed candidate.8 tuple passes the real portal projection and client
+stable-pointer mechanisms inside an isolated fixture. Exact platform
+`241a83b...`, client `3459438...`, Core `a45d69e...` and release-index
+`b242e0a...` produce candidate handoff SHA-256 `53c9f852...9c01` and bind
+artifact-set SHA-256 `f3f64e4e...5164`.
+
+The sequence `1.1.6+20260819 -> pokrov-1.2.0 -> 1.1.6+20260819` passes client
+initial validation, dry-run, forward/reverse atomic switch and final stable
+readback. The client pointer returns byte-identically to retained stable SHA-256
+`563dd478...69f`; the portal projection also restores byte-identically and
+preserves an unrelated setting. Focused harness regression is `5/5 PASS`.
+
+`REL_DOD/DOD-18` and `FE/P12-130` remain `I3` with stronger exact candidate.8
+local evidence. `REL_GATE/GATE-F` remains `BLOCKED/I3` at `6 PASS / 13
+non-PASS / 0 FAIL`: no real runtime pointer/kill rollback, external backup/
+receipt, current/Brain readback or post-rollback health proof was run. Tracked
+pointer/catalog, portal runtime, production, public release and stable pointer
+were unchanged. Normalized evidence SHA-256 is
+`cc42f91908fdf52f37211577900b2b2d5eeb5e45fa927d5a09c3ff8a4198be3a`.
+
 ## 2026-08-30 — WO-013CI candidate.8 Gates A–E replay and Gate F
 
 The stale candidate.3 Gate A–E decision layer is replaced by one replay bound
