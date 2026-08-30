@@ -1,0 +1,68 @@
+{
+  "schema": "pokrov-release-1.2.0-work-order-evidence-v1",
+  "work_order": "WO-013CS",
+  "observed_at": "2026-08-30T07:48:10Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.10",
+    "client_source": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+    "changed": false
+  },
+  "client": {
+    "repository": "Kiwunaka/POKROV-app",
+    "pull_request": 28,
+    "refresh_base": "f14d48b50f3369720dc89a4c17dab23391174ae7",
+    "pull_request_head": "646e94430fbf3e5c41486fe8c5cf202ae87a213f",
+    "main_merge": "30ccf4f1030e60f38617904a611b1ec392a2ead1",
+    "release_artifact_diff": false,
+    "source_only": true,
+    "candidate10_member": false
+  },
+  "verification": {
+    "full_client_gate": "PASS",
+    "seed_validation": "PASS",
+    "linux_shell_analyze": "PASS",
+    "linux_shell_tests": {
+      "status": "PASS",
+      "passed": 4
+    },
+    "runtime_engine_analyze": "PASS",
+    "runtime_engine_tests": {
+      "status": "PASS",
+      "passed": 70,
+      "expected_host_skips": 1
+    },
+    "native_linux": {
+      "status": "PASS",
+      "host": "owned Ubuntu 22.04 x86_64 compile host",
+      "support_matrix_proof": false,
+      "go_version": "1.25.13",
+      "gofmt": "PASS",
+      "go_test": "PASS",
+      "go_vet": "PASS",
+      "go_build_trimpath": "PASS",
+      "temporary_remote_state_removed": true
+    },
+    "github_hosted": {
+      "status": "SKIPPED_BY_OWNER",
+      "run_id": 33299917136,
+      "job_id": 99225988231,
+      "steps": 0,
+      "runner_id": 0
+    }
+  },
+  "completion_index": {
+    "REL/LNX-001": "I3",
+    "OBS/OBS-043": "I2",
+    "OBS/OBS-044": "I2",
+    "OBS/OBS-045": "I2",
+    "OBS/OBS-046": "I3"
+  },
+  "smart_dns": {
+    "authoritative_a_present": 0,
+    "authoritative_total": 4,
+    "answer": "NXDOMAIN",
+    "apply": "NOT_RUN"
+  },
+  "physical_phone": "UNAVAILABLE_UNTOUCHED",
+  "release_effect": "NONE"
+}
