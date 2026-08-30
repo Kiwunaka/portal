@@ -1,0 +1,132 @@
+{
+  "schema": "pokrov-release-1.2.0-work-order-evidence-v1",
+  "work_order": "WO-013CX",
+  "observed_at": "2026-08-30T15:05:46Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.13",
+    "version": "1.2.0+4049",
+    "platform_source": "7d983c0ab52e9c01f94da8916a6bca6a0039be8d",
+    "client_source": "ce2581dd16d276d20eace7a56f0337c4b9319168",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "signed_release_index_source": "440f3be1a5f3ae5c6c78c62036858884e5bc3c94",
+    "receipt_release_index_source": "289e887c7ba0463ecdf357bd5e7fd531ace9de8f",
+    "strict_handoff_sha256": "32abc15c05e7b94f61047300e03b64b7c0e2834bb1d0feefcd2bf87c95fc2e9c",
+    "signed_manifest_sha256": "b8a10cf8fbc1683cc9a1540edf74f29fd417f422bc3d2be97f4deae85075190c",
+    "detached_signature_sha256": "ede7844c2b2a94b0d89b7aa72b75c5ff3eec5e5662ec907c0b181ff08d5c0e4d",
+    "signing_receipt_sha256": "fc3b1319812df374c27e34c9698af8bcf9a67b66ada95bb4e1be1906d82bb295",
+    "signing_key_id": "pokrov-release-2026-01",
+    "candidate_created": true,
+    "promotion_authorized": false,
+    "output_kind": "ACTIONS_ARTIFACT_ONLY",
+    "artifact_count": 6
+  },
+  "supply_chain": {
+    "android_signing": "PASS_PRODUCTION_CERTIFICATE",
+    "windows_signing": "SKIPPED_BY_OWNER_UNSIGNED_DIRECT_BETA",
+    "support_signing_sha256": "6feecaebbcf1243cd82152e18b445bced1d543f46c6f7128e13ab8217e33ad50",
+    "sbom_component_count": 349,
+    "sbom_sha256": "0980c89c9df3c0728073161fca61c5030542b63e56941895d2d35f8bce969ccc",
+    "provenance_subject_count": 6,
+    "provenance_sha256": "734e575f68e1b56fce0d565e2e9de0e5512244fb95f7405b32fbf2dc46a927ef",
+    "offline_validation": "PASS_6_OF_6_ARTIFACTS_AND_8_OF_8_WINDOWS_RUNTIME_FILES"
+  },
+  "artifacts": [
+    {
+      "id": "android-arm64-v8a",
+      "sha256": "9bcdbe00fe8f8ed029894a65d531614f4fb912dda27e5fb1bb088c5b7516cc74",
+      "size_bytes": 101366678
+    },
+    {
+      "id": "android-armeabi-v7a",
+      "sha256": "6308dcdec7ca5f360b1a3726690fca3e80da330906c3d2fe3457e26f44bbd68e",
+      "size_bytes": 90778788
+    },
+    {
+      "id": "android-market",
+      "sha256": "5cddb0d264a05db59c099af8a26f26dd3094746632222e1527e9c0a129801e42",
+      "size_bytes": 126265693
+    },
+    {
+      "id": "android-universal",
+      "sha256": "960712643013ce8f2383ae3068d562c9971cc69184477f650972d0153a1409d4",
+      "size_bytes": 295370161
+    },
+    {
+      "id": "android-x86-64",
+      "sha256": "73c43e21dfc984c474941e14800c551f9545fe423b8f11458f6d41b8cb9af5ff",
+      "size_bytes": 109951989
+    },
+    {
+      "id": "windows-x64-setup",
+      "sha256": "0afaf6e1d73a7e72762d945557f48793646a9bdbf12bb8ca2e843d4b94df276c",
+      "size_bytes": 28932793,
+      "signing": "SKIPPED_BY_OWNER",
+      "exception": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0"
+    }
+  ],
+  "ldplayer": {
+    "device_class": "LDPlayer Android 9 x86_64 emulator",
+    "exact_serial_bound": true,
+    "exact_x86_64_artifact_installed": true,
+    "installed_artifact_sha256": "73c43e21dfc984c474941e14800c551f9545fe423b8f11458f6d41b8cb9af5ff",
+    "result": "PASS_EXACT_CANDIDATE_LDPLAYER_BOUNDED",
+    "aggregate_evidence_sha256": "22dbd83bb0267ecd55bfa8b15284d149f5465270edf11bd1f0f9122e21ddb195",
+    "awg31": {
+      "control_plane_selected": true,
+      "runtime_profile_match": true,
+      "tunnel_dns_egress_green": true
+    },
+    "awg2_warm_after_awg31": {
+      "control_plane_selected": true,
+      "runtime_profile_match": true,
+      "tunnel_dns_egress_green": true,
+      "process_preserved": true
+    },
+    "default_warm_after_awg2": {
+      "runtime_profile": "default",
+      "vless_outbound_count": 33,
+      "tunnel_dns_egress_green": true,
+      "process_preserved": true
+    },
+    "environment_observation": "TWO_SHORT_EXACT_SERIAL_ADB_RECONNECTS_DURING_VPN_TEARDOWN_RECOVERED_IMMEDIATELY_WITH_UNCHANGED_APP_PROCESS",
+    "final_state": {
+      "disconnected": true,
+      "default_selected": true,
+      "lab_binding_absent": true,
+      "lab_material_absent": true,
+      "vpn_service_active": false,
+      "vpn_interface_active": false
+    },
+    "physical_device_touched": false
+  },
+  "release_gates": {
+    "gate_f": "NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING",
+    "gate_f_reason": "The current verifier requires an exact physical Android install binding to the candidate ARM64 artifact; no physical device was authorized or touched in this slice.",
+    "physical_android": "MANUAL_OWNER_TEST",
+    "clean_windows": "MANUAL_OWNER_TEST",
+    "current_origin": "NOT_REQUESTED",
+    "brain_origin": "NOT_REQUESTED",
+    "ru_origin": "NOT_REQUESTED",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_oidc_rbac": "MANUAL_OWNER_TEST",
+    "legal_commercial": "MANUAL_OWNER_TEST",
+    "rollback_drill": "NOT_REQUESTED",
+    "gate_g": "NOT_AUTHORIZED"
+  },
+  "completion_index": {
+    "REL_CANDIDATE": "I4_SIGNED_SUPPLY_AND_LDPLAYER_BOUNDED",
+    "FRKN_PLAN/W3-02": "I4_CANDIDATE13_LDPLAYER_AWG31_WARM_SWITCH_PASS",
+    "FRKN_PLAN/W3-03": "I4_CANDIDATE13_EMULATOR_TRAFFIC_PROOF",
+    "FRKN_HY2/HY2-01": "I3_DEFAULT_OFF_POST_RELEASE_LAB",
+    "REL_GATE/GATE-F": "NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING",
+    "REL_GATE/GATE-G": "NOT_AUTHORIZED"
+  },
+  "publication": {
+    "tag_created": false,
+    "github_release_created": false,
+    "public_assets_created": false,
+    "store_submission_created": false,
+    "stable_pointer_changed": false
+  },
+  "release_effect": "CANDIDATE13_SIGNED_LDPLAYER_BOUNDED_PASS_PROMOTION_BLOCKED"
+}

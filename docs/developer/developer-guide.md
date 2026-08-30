@@ -1,6 +1,6 @@
 # Developer Guide
 
-Last updated: 2026-08-27
+Last updated: 2026-08-30
 
 ## Purpose
 
@@ -35,10 +35,12 @@ meaningful risk requires a work order.
 - Retired bootstrap material and bridge bundles are archive or rollback
   evidence, never active development lanes.
 - The retained distributed stable-direct client is `v1.1.6`; its public
-  package line is `1.1.6+29`. The working `1.2.0+4049` line is
-  `PRE_CANDIDATE_LOCAL` with `candidate_created=false`. Store publication,
-  trusted Windows signing and exact-candidate Huawei/RU-LTE claims remain
-  separate manual gates.
+  package line is `1.1.6+29`. The source seed remains `1.2.0+4049` /
+  `PRE_CANDIDATE_LOCAL` with `candidate_created=false`, while the separately
+  generated strict-v2 handoff and signed public-index receipt own immutable
+  private `pokrov-1.2.0-candidate.13`. It is artifact-only and not public or
+  promoted. Store publication, trusted Windows signing and exact-candidate
+  physical Android/RU-mobile claims remain separate manual gates.
 - Public and development version truth is owned by the client
   `config/release-handoff.seed.json`; a generated strict-v2 handoff owns a new
   exact candidate. This platform guide is a validated projection, not another
