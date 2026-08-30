@@ -1,0 +1,72 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-08-30T04:58:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.10",
+    "operational_id": "1de7182d9c82759acc36eb7a336d1fef2362e8f69505f3b4880e595f79020454",
+    "manifest_sha256": "0711546b0da4b811fba42e1ad543797494e4104bd95251c9e8e8011ac04dff83",
+    "signature_sha256": "6f96f8932e388f221cf7d5e10dc1680fbcbb62f87efe00410439eb9f62e42799",
+    "receipt_sha256": "094a42f3c0d9be3957b3065344e5bfce4880c2899833fed3b4d211d8d453a89c",
+    "sources": {
+      "platform": "209b8f40c36d95f2bbc67caa52a41ecb09f46720",
+      "client": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "fc00b26d402b167260e495eb33397115bef1c317"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "NOT_RUN",
+    "mandatory_stop_ship_and_dod": "MANUAL_OWNER_TEST",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "MANUAL_OWNER_TEST",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MANUAL_OWNER_TEST",
+    "current_origin": "NOT_RUN",
+    "brain_origin": "PASS",
+    "ru_origin": "FAIL",
+    "windows_live_network": "MANUAL_OWNER_TEST",
+    "android_ldplayer_rehearsal": "PASS",
+    "android_physical_device": "MANUAL_OWNER_TEST",
+    "authenticated_client_egress": "PASS",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "NOT_RUN",
+    "hosted_required_checks": "SKIPPED_BY_OWNER"
+  },
+  "facts": {
+    "exact_candidate": "Signed candidate.10 passes the fail-closed six-artifact and eight-file supply validator; the public manifest, detached signature and receipt match the retained signer output and public keyring.",
+    "brain_origin": "Owner-authorized guarded exact-source deploy and readback pass 197/197 selected source members, readiness 23/23 and enabled delivery 7/7.",
+    "ru_origin": "The canonical Pi runner/uploader/ingest/archive/heartbeat/admin pipeline is current and healthy, but the required release verdict is FAIL: 10/13 targets pass while Brain TLS, free REALITY target and NL TCP fail independently.",
+    "android_ldplayer": "The byte-matched x86_64 APK passes AWG2 and AWG3.1 tunnel, DNS, authenticated egress and routes with zero crashes, then restores default/no-lab/no-VPN/WARP-off state.",
+    "physical_android": "The physical phone is unavailable in this slice. Candidate.8 physical evidence is immutable history and is not transferred to candidate.10.",
+    "source_plan_gates": "Gates A-E and current-origin were not replayed for exact platform source 209b8f4 in this slice and are NOT_RUN rather than inherited from candidate.8.",
+    "smart_dns": "The authoritative dns.pokrov.space A record is absent on all four delegated nameservers, so ACME and Smart DNS server/route APPLY remain unrun.",
+    "hosted_boundary": "Release-index candidate source, signer and receipt workflows executed successfully. Private platform PR jobs for candidate.10 source and evidence executed zero steps under the no-purchase solo policy and remain SKIPPED_BY_OWNER, not PASS.",
+    "decision_boundary": "One explicit required RU-origin FAIL forces NO_GO even though other checks remain manual, missing, skipped or not run. Gate G stays unauthorized."
+  },
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CM-candidate10-brain-ru-ldplayer/013CM-candidate10-brain-ru-ldplayer.json",
+      "sha256": "15d435bb15475495b43e44e3537738f9a3bc6937b4859e4d5a6c0318fede7b59"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CN-candidate10-gate-f/013CN-candidate10-signed-runtime-binding.json",
+      "sha256": "3c2ea5fc08690149db9b11d1c9596ac7751d122bed1be2a3abdba461e20b86bb"
+    }
+  ],
+  "mutation_boundary": {
+    "gate_generation_mutated_runtime": false,
+    "upstream_runtime_mutation_bound_in_013cm": true,
+    "candidate_artifact_mutated": false,
+    "payment_or_provider_action": false,
+    "database_or_outbox_mutation": false,
+    "operator_action_executed": false,
+    "public_release": false,
+    "store_upload": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE10_GATE_F_NO_GO_FROM_RU_ORIGIN_FAIL; 5_PASS_14_NON_PASS_INCLUDING_1_FAIL; NO_GATE_G_PUBLIC_STORE_STABLE_OR_PRODUCTION_PROMOTION"
+}
