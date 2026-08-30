@@ -1,0 +1,68 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-08-29T22:29:28Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.8",
+    "operational_id": "eeedbaf8540a83649a7143d6c7097336429e466118ed4f9ca2b732b7e6e2195a",
+    "manifest_sha256": "f0006cec90c84e401e9920d9098102c7f50ab5ace5242e0d7683c3df709a6fbc",
+    "signature_sha256": "5fcae0675ea45e79baf495859fd170661f5d6dd3a8535275acd4d62680d324f6",
+    "receipt_sha256": "4109bb3417b32a780604300055f5308acf7dc810e7ea9c547075e1da41cc21fc",
+    "sources": {
+      "platform": "241a83b4dca00799b39696a4ae0c3c97e087ec39",
+      "client": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "b242e0a3060b04f9b71641a0524bf251a75ce2a8"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "MANUAL_OWNER_TEST",
+    "mandatory_stop_ship_and_dod": "MANUAL_OWNER_TEST",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "MANUAL_OWNER_TEST",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MANUAL_OWNER_TEST",
+    "current_origin": "PASS",
+    "brain_origin": "PASS",
+    "ru_origin": "MANUAL_OWNER_TEST",
+    "windows_live_network": "MANUAL_OWNER_TEST",
+    "android_ldplayer_rehearsal": "PASS",
+    "android_physical_device": "MANUAL_OWNER_TEST",
+    "authenticated_client_egress": "PASS",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "MANUAL_OWNER_TEST",
+    "hosted_required_checks": "SKIPPED_BY_OWNER"
+  },
+  "facts": {
+    "gates_a_e_replay": "All five source-plan gates are now evaluated against signed candidate.8. Gates A-E are BLOCKED with zero explicit candidate failures; the candidate.3 Gate B CRLF defect is replaced by 70/70 exact-platform tests and 111/111 exact-client tests.",
+    "gate_c_index": "Gate C advances I2 to I3 because exact Android physical/LDPlayer runtime, Windows install/service/authenticated IPC and exact Core CI are locally verified; required live Windows and remaining Android/store matrices still block I4.",
+    "gate_d": "Exact payment/HTTP/DB/outbox source matrix passes 196 tests plus 12 subtests and Action Intent policy ownership passes 25 tests. Provider, production PostgreSQL/outbox and real operator rollback remain manual.",
+    "gate_e": "Exact local quality passes 15/15 and static budgets 9/9; current-origin API budgets pass. Physical accessibility, comparable device/browser performance, canonical RU and post-promotion evidence remain manual.",
+    "hosted_boundary": "Exact Core CI run 33232348126 attempt 2 passes all five jobs. Exact platform/client hosted jobs contain zero steps and remain SKIPPED_BY_OWNER under the no-purchase solo exception.",
+    "no_open_p0_boundary": "Known permanent regressions pass 7/7 and observed Android ordinary/AWG fail-closed paths expose no false green, but unexecuted live/manual gates prevent a broad no-open-P0, false-green or secret-leak PASS."
+  },
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CH-candidate8-ldplayer-rehearsal/013CH-candidate8-gate-f-evidence.json",
+      "sha256": "f50daf50089954997cb6b44544afb652bf6f6272f3fcb5d8c61cbc109862b253"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CI-candidate8-gates-a-e/013CI-candidate8-gates-a-e.json",
+      "sha256": "6fbaacdceb80b97b82dfa1e1f96699acc35c3f3f939d673d3dfc2fbbfb7bcbae"
+    }
+  ],
+  "mutation_boundary": {
+    "candidate_artifact_mutated": false,
+    "production_deploy": false,
+    "payment_or_provider_action": false,
+    "database_or_outbox_mutation": false,
+    "operator_action_executed": false,
+    "public_release": false,
+    "store_upload": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE8_GATES_A_E_REPLAY_AND_GATE_F_REHASH; GATE_F_REMAINS_BLOCKED; NO_GATE_G_PUBLIC_STORE_STABLE_OR_PRODUCTION_PROMOTION"
+}
