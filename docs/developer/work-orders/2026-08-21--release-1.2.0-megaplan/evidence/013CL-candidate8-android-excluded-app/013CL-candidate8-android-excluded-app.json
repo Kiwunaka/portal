@@ -1,0 +1,113 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate8-android-excluded-app/v1",
+  "recorded_at": "2026-08-30T04:42:47+03:00",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.8",
+    "operational_id": "eeedbaf8540a83649a7143d6c7097336429e466118ed4f9ca2b732b7e6e2195a",
+    "manifest_sha256": "f0006cec90c84e401e9920d9098102c7f50ab5ace5242e0d7683c3df709a6fbc",
+    "signature_sha256": "5fcae0675ea45e79baf495859fd170661f5d6dd3a8535275acd4d62680d324f6",
+    "receipt_sha256": "4109bb3417b32a780604300055f5308acf7dc810e7ea9c547075e1da41cc21fc",
+    "sources": {
+      "platform": "241a83b4dca00799b39696a4ae0c3c97e087ec39",
+      "client": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "b242e0a3060b04f9b71641a0524bf251a75ce2a8"
+    }
+  },
+  "installed_android": {
+    "device_class": "physical_huawei_android_12",
+    "version": "1.2.0+4046",
+    "base_apk_size_bytes": 101366934,
+    "base_apk_sha256": "9278c09fd8fa5768d3260cf796b4230db5acb0a092187aae00c441d717cfc572",
+    "candidate_artifact_sha256_match": true,
+    "apksigner_verified": true,
+    "production_certificate_sha256_match": true,
+    "temporary_apk_deleted": true
+  },
+  "test_environment": {
+    "uplink": "owner_wifi_redacted",
+    "private_dns_mode": "off",
+    "warp_enabled": false,
+    "ordinary_profile": "legacy_reality_fallback",
+    "selected_exit": "foreign_ordinary_redacted",
+    "control_app_identity_retained": false,
+    "device_identifier_retained": false,
+    "network_identifier_retained": false
+  },
+  "excluded_app_mode": {
+    "status": "PASS_EXACT_CANDIDATE_EXCLUDED_APP_TRAFFIC_AND_BYPASS",
+    "route_mode": "excluded_apps",
+    "initial_structure": {
+      "pokrov_host_uid_in_vpn_range": false,
+      "control_app_uid_in_vpn_range": true,
+      "vpn_service_active": true
+    },
+    "included_control": {
+      "idle_window_seconds": 6,
+      "idle_tun_rx_delta_bytes": 208,
+      "idle_tun_tx_delta_bytes": 208,
+      "traffic_window_seconds": 10,
+      "tun_rx_delta_bytes": 380962,
+      "tun_tx_delta_bytes": 379884,
+      "bidirectional_tun_activity": true
+    },
+    "excluded_structure": {
+      "control_app_uid_in_vpn_range": false,
+      "pokrov_host_uid_in_vpn_range": false,
+      "vpn_service_active": true
+    },
+    "excluded_control": {
+      "traffic_window_seconds": 12,
+      "public_benign_page_loaded": true,
+      "tun_rx_delta_bytes": 776,
+      "tun_tx_delta_bytes": 776,
+      "bounded_background_threshold_bytes": 10000,
+      "direct_bypass_with_low_tun": true
+    },
+    "interpretation": "The same control app first produced bidirectional VPN TUN traffic, then left the Android VPN UID ranges after explicit exclusion and loaded a public benign page with only bounded background TUN traffic."
+  },
+  "discarded_probe": {
+    "classification": "NOT_EVIDENCE_UI_COMMAND_MARKER_NOT_CREATED",
+    "credited": false,
+    "network_result_claimed": false,
+    "temporary_marker_removed": true
+  },
+  "privacy": {
+    "raw_uid_ranges_retained": false,
+    "raw_package_names_retained": false,
+    "raw_terminal_history_retained": false,
+    "raw_runtime_material_retained": false,
+    "screenshots_retained": false,
+    "ui_dumps_retained": false,
+    "temporary_local_files_present": false,
+    "temporary_device_files_present": false
+  },
+  "final_restore": {
+    "route_mode": "all_device",
+    "selected_app_count": 0,
+    "warp_enabled": false,
+    "pokrov_vpn_service_running": false,
+    "tun_interface_count": 0,
+    "wifi_enabled": false,
+    "mobile_data_enabled": true,
+    "private_dns_mode": "off",
+    "hiddify_foreground": true
+  },
+  "gate_f_effect": {
+    "android_excluded_app_subcheck": "PASS",
+    "android_physical_device_status": "MANUAL_OWNER_TEST",
+    "gate_f_status": "BLOCKED",
+    "gate_f_counts": "6_PASS_13_NON_PASS_0_FAIL",
+    "reason": "The exact physical excluded-app mode closes one named Android subcheck. External IPv6/leak, blocked UDP53, external MTU, broader OEM, endurance, backup/exposed-port and public/store delivery remain open."
+  },
+  "mutation_boundary": {
+    "candidate_changed": false,
+    "server_changed": false,
+    "production_deploy": false,
+    "payment_action": false,
+    "public_release": false,
+    "store_submission": false,
+    "stable_pointer_mutated": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE8_PHYSICAL_EXCLUDED_APP_TRAFFIC_AND_BYPASS_PASS; ANDROID_PHYSICAL_ROW_AND_GATE_F_REMAIN_BLOCKED"
+}

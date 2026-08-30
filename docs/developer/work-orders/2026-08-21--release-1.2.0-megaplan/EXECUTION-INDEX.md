@@ -2,6 +2,24 @@
 
 Last updated: 2026-08-30
 
+## 2026-08-30 — WO-013CL candidate.8 Android excluded-app physical proof
+
+Exact signed candidate.8 ARM64 bytes pass the inverse excluded-app differential
+on one physical Android 12 device. The same redacted control application first
+produces `380962/379884` RX/TX TUN bytes while included, then leaves the Android
+VPN UID ranges after explicit exclusion and loads a benign public page with only
+`776/776` bounded background TUN bytes. The exact package digest, production
+certificate and clean restore are re-read; no raw application, device, network
+or runtime identifiers are retained.
+
+Client PR `38` merges the canonical client audit as `85a84df...`. Its hosted
+private job executes zero steps and remains `SKIPPED_BY_OWNER`; the exact local
+seeded validation and docs contract pass. Sanitized evidence SHA-256 is
+`2d8f57bfe9ba99285c691c39ece6428836ea6cf4e5065c91e26f4a6fa77a19c8`.
+The named excluded-app subcheck passes, but Android remains `MATRIX_OPEN`, Gate
+C stays `BLOCKED/I3` and Gate F stays `BLOCKED` at `6 PASS / 13 non-PASS / 0
+FAIL`. Candidate.8, public release and stable state are unchanged.
+
 ## 2026-08-30 — WO-013CK Smart DNS `it` live frontend canary
 
 Post-candidate platform `9dee549...` corrects exclusive SFTP staging and
