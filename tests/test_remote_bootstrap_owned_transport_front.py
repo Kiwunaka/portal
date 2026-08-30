@@ -256,6 +256,63 @@ def test_receipt_contains_only_safe_digest_bound_rollback_state() -> None:
     assert "private" not in payload
 
 
+def test_remote_stage_write_is_exclusive_and_writable_with_paramiko() -> None:
+    class Handle:
+        def __init__(self) -> None:
+            self.pipelined = False
+            self.content = b""
+            self.flushed = False
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args) -> None:
+            return None
+
+        def set_pipelined(self, value: bool) -> None:
+            self.pipelined = value
+
+        def write(self, value: bytes) -> None:
+            self.content += value
+
+        def flush(self) -> None:
+            self.flushed = True
+
+    class SFTP:
+        def __init__(self) -> None:
+            self.handle = Handle()
+            self.opened = None
+            self.chmod_call = None
+            self.closed = False
+
+        def file(self, path: str, mode: str):
+            self.opened = (path, mode)
+            return self.handle
+
+        def chmod(self, path: str, mode: int) -> None:
+            self.chmod_call = (path, mode)
+
+        def close(self) -> None:
+            self.closed = True
+
+    class SSH:
+        def __init__(self, sftp: SFTP) -> None:
+            self.sftp = sftp
+
+        def open_sftp(self) -> SFTP:
+            return self.sftp
+
+    sftp = SFTP()
+    MODULE._remote_write(SSH(sftp), "/root/stage", b"payload", 0o600)
+
+    assert sftp.opened == ("/root/stage", "x+b")
+    assert sftp.handle.pipelined is True
+    assert sftp.handle.content == b"payload"
+    assert sftp.handle.flushed is True
+    assert sftp.chmod_call == ("/root/stage", 0o600)
+    assert sftp.closed is True
+
+
 def test_rollback_removes_package_only_when_receipt_owns_it() -> None:
     retained = MODULE._rollback_command(
         inbound_id=1,

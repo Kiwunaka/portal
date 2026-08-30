@@ -410,7 +410,10 @@ def _assert_fronted_preflight(
 def _remote_write(ssh: Any, path: str, content: bytes, mode: int) -> None:
     sftp = ssh.open_sftp()
     try:
-        with sftp.file(path, "xb") as remote:
+        # Paramiko only adds SSH_FXF_WRITE when the mode contains ``w``, ``a``
+        # or ``+``.  Plain ``xb`` therefore creates exclusively without a
+        # write flag on Paramiko 4.x and fails before the first byte is sent.
+        with sftp.file(path, "x+b") as remote:
             remote.set_pipelined(True)
             remote.write(content)
             remote.flush()
@@ -843,6 +846,7 @@ def main() -> int:
             receipt_path = f"{receipt_dir}/receipt.json"
             stage_config = f"{receipt_dir}/candidate.cfg"
             stage_service = f"{receipt_dir}/candidate.service"
+            failure["mutation_attempted"] = True
             _run(
                 node,
                 f"install -d -o root -g root -m 0700 {_q(RECEIPT_ROOT)}; test ! -e {_q(receipt_dir)}; install -d -o root -g root -m 0700 {_q(receipt_dir)}",
@@ -862,7 +866,6 @@ def main() -> int:
                 )
                 _remote_write(node, receipt_path, receipt_payload, 0o600)
                 failure["receipt_created"] = True
-                failure["mutation_attempted"] = True
                 failure["automatic_rollback_status"] = "ARMED"
                 _run(
                     node,
