@@ -1,0 +1,192 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate10-gates-a-e/v1",
+  "recorded_at_utc": "2026-08-30T05:34:29Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.10",
+    "operational_id": "1de7182d9c82759acc36eb7a336d1fef2362e8f69505f3b4880e595f79020454",
+    "manifest_sha256": "0711546b0da4b811fba42e1ad543797494e4104bd95251c9e8e8011ac04dff83",
+    "signature_sha256": "6f96f8932e388f221cf7d5e10dc1680fbcbb62f87efe00410439eb9f62e42799",
+    "receipt_sha256": "094a42f3c0d9be3957b3065344e5bfce4880c2899833fed3b4d211d8d453a89c",
+    "sources": {
+      "platform": "209b8f40c36d95f2bbc67caa52a41ecb09f46720",
+      "client": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "fc00b26d402b167260e495eb33397115bef1c317"
+    }
+  },
+  "source_and_runtime_replay": {
+    "worktrees": {
+      "exact_platform": "CLEAN_DETACHED_AT_MANIFEST_SOURCE",
+      "exact_client": "CLEAN_DETACHED_AT_MANIFEST_SOURCE",
+      "exact_core": "CLEAN_MAIN_AT_MANIFEST_SOURCE",
+      "release_index": "CLEAN_DETACHED_CONTAINS_SIGNED_SOURCE",
+      "evidence_harness_revision": "099be5a9ef94ce30718872f234eb4c11b75417e8"
+    },
+    "candidate_preflight": {
+      "status": "READY_LOCAL_FREEZE",
+      "blockers": 0,
+      "pre_freeze_rows_below_i3": 0,
+      "candidate_proven": false,
+      "promotion_authorized": false,
+      "external_evidence_sha256": "975ac0f5eff733fd70112331326d586251e0955adc4d4f152141ee4c378c9a7a"
+    },
+    "stop_ship": {
+      "status": "BLOCKED",
+      "local_regressions": "PASS_7_OF_7",
+      "owner_solo_exception": true,
+      "independent_review_performed": false,
+      "hosted_private_checks": "SKIPPED_BY_OWNER",
+      "windows_live_manual_gate": "NOT_RUN",
+      "external_evidence_sha256": "d4ebd8b70a8d09ea279fad3221ad44840f41f530a3de0eb4ebaf22ba28e88d0c"
+    },
+    "core_hosted_ci": {
+      "repository": "Kiwunaka/pokrov-core",
+      "run_id": 33232348126,
+      "attempt": 2,
+      "head_sha": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "conclusion": "PASS",
+      "jobs": {
+        "test": "PASS",
+        "release-contract": "PASS",
+        "android-artifact-reproducibility": "PASS",
+        "windows-artifact-reproducibility": "PASS",
+        "apple-source-build": "PASS"
+      },
+      "reuse_basis": "EXACT_SAME_CORE_COMMIT_AS_CANDIDATE8"
+    },
+    "focused_tests": [
+      {
+        "gate": "B",
+        "source": "platform",
+        "result": "PASS_70_OF_70",
+        "duration_seconds": 0.81
+      },
+      {
+        "gate": "B",
+        "source": "client",
+        "result": "PASS_111_OF_111"
+      },
+      {
+        "gate": "D",
+        "source": "platform",
+        "result": "PASS_196_OF_196_PLUS_12_SUBTESTS",
+        "duration_seconds": 746.57,
+        "warnings": "20_EXISTING_DEPRECATIONS"
+      },
+      {
+        "gate": "D",
+        "source": "platform",
+        "result": "PASS_25_OF_25",
+        "duration_seconds": 115.63
+      }
+    ],
+    "exact_local_quality": {
+      "fail_first": {
+        "status": "FAIL",
+        "classification": "MISSING_NODE_DEPENDENCIES_IN_NEW_DETACHED_WORKTREE_NOT_SOURCE_DEFECT",
+        "report_sha256": "a498b29c6f1fec69595c49f262e51cadb4720ef6f2c9e3557872fbff99563fcc"
+      },
+      "after_npm_ci": {
+        "status": "PASS_15_OF_15",
+        "candidate_proven": false,
+        "promotion_status": "MANUAL_OWNER_TEST",
+        "report_sha256": "5c242cd68d117802e4d28154ea96416b5c5741d329de718673a3928023d3d8a4"
+      },
+      "toolchain_observation": "NODE_24_15_0_USED_WHILE_PACKAGE_ENGINES_REQUEST_22_14_X",
+      "npm_audit": "ZERO_VULNERABILITIES_WEBAPP_MARKETING_ADMINAPP"
+    },
+    "static_performance": {
+      "status": "PASS_9_OF_9",
+      "required_scope": "local_static",
+      "evidence_sha256": "f94fdc879d3467225e267385c71cf8d94d620e375db36c1389b20f27eaaf2619",
+      "gate_sha256": "3c580209d9d1e88b3ef4ff33061e17b7eddf3851530b5947cbe080fe6989549f"
+    },
+    "current_origin": {
+      "status": "PASS",
+      "method": "DIRECT_SOURCE_BOUND_ETHERNET2_PERSISTENT_HTTP1_KEEP_ALIVE",
+      "health": {
+        "sample_count": 50,
+        "warmups": 5,
+        "p95_ms": 36.8219,
+        "stop_lte_ms": 100,
+        "raw_sha256": "ba74d5cc2e34a6cd4d2648768660806589e4132b505f40a24374417412da19c5",
+        "gate_sha256": "5744c431a54911f8f6e23cae350ee5c741f8c74fbab2d09d1a1a7da99a598542"
+      },
+      "public_catalog": {
+        "sample_count": 50,
+        "warmups": 5,
+        "p95_ms": 46.127,
+        "stop_lte_ms": 200,
+        "raw_sha256": "471ba110d5b13b9156cf06db10f9e7e110b2d2d846441ff458d63f28b1e185dd",
+        "gate_sha256": "fad3fc66c5fce31b7e1288525f1709e5bf8d1a0b4a4f58466bb46fca5dee9e31"
+      },
+      "raw_source_address_retained": false,
+      "candidate_proven": false
+    }
+  },
+  "gates": {
+    "A": {
+      "decision": "BLOCKED",
+      "index": "I1",
+      "new_candidate_source_defect": false,
+      "blocker": "Exact connected clean-VM Windows network/recovery, hosted private platform/client execution and trusted signing remain non-PASS."
+    },
+    "B": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "new_candidate_source_defect": false,
+      "blocker": "Exact Windows connected stop/recovery and the broad live false-green boundary remain manual."
+    },
+    "C": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "new_candidate_source_defect": false,
+      "blocker": "Candidate.10 physical Android is unavailable; isolated Windows live networking, remaining Android leak/device/OEM/accessibility and Store delivery stay open."
+    },
+    "D": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "new_candidate_source_defect": false,
+      "brain_source_identity": "PASS_197_OF_197_READINESS_23_OF_23_DELIVERY_7_OF_7",
+      "blocker": "Real provider, PostgreSQL load/locking, outbox/reconciliation/reversal and Operator prepare/execute/rollback remain manual."
+    },
+    "E": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "new_candidate_source_defect": false,
+      "current_origin": "PASS_HEALTH_36_8219MS_CATALOG_46_127MS",
+      "blocker": "Authenticated journeys, physical accessibility/device performance, browser lab, support recovery, RU-origin and post-promotion evidence remain non-PASS."
+    }
+  },
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CM-candidate10-brain-ru-ldplayer/013CM-candidate10-brain-ru-ldplayer.json",
+      "sha256": "15d435bb15475495b43e44e3537738f9a3bc6937b4859e4d5a6c0318fede7b59"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CN-candidate10-gate-f/013CN-candidate10-gate-f-decision.json",
+      "sha256": "40daab1330ed4ac6beee9c1e98bc97dadef94633e2e206bf800438ae1f8d36f1"
+    }
+  ],
+  "aggregate": {
+    "decision": "BLOCKED",
+    "evaluated_gates": 5,
+    "explicit_source_defects": 0,
+    "candidate_replacement_required_by_source_defect": false,
+    "gate_f_status": "MANUAL_OWNER_TEST",
+    "gate_g_authorized": false
+  },
+  "mutation_boundary": {
+    "production_deploy": false,
+    "payment_or_provider_action": false,
+    "database_or_outbox_mutation": false,
+    "operator_action_executed": false,
+    "device_or_runtime_mutated_in_this_replay": false,
+    "physical_phone_used": false,
+    "public_release": false,
+    "store_submission": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE10_GATES_A_E_AND_CURRENT_ORIGIN_REPLAY; ALL_FIVE_GATES_BLOCKED_WITH_ZERO_NEW_SOURCE_DEFECTS; CURRENT_ORIGIN_PASS; RU_ORIGIN_FAIL; PHYSICAL_PHONE_UNAVAILABLE; NO_GATE_G_PUBLIC_STORE_STABLE_OR_PRODUCTION_PROMOTION"
+}
