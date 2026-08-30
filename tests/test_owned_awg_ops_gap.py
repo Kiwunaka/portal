@@ -293,6 +293,44 @@ class OwnedAwgCoreInteropContractTests(unittest.TestCase):
         self.assertIn('"raw_material_returned": false', retained)
         self.assertEqual(stream.getvalue().strip(), retained.strip())
 
+    def test_ru_pi_remote_root_is_narrow_and_randomized(self) -> None:
+        module = self.module
+        first = module._remote_root()
+        second = module._remote_root()
+
+        self.assertRegex(first, module._REMOTE_ROOT_PATTERN)
+        self.assertRegex(second, module._REMOTE_ROOT_PATTERN)
+        self.assertNotEqual(first, second)
+        for unsafe in ("/tmp", "/", "/tmp/pokrov-awg-ru-pi-", "/var/tmp/test"):
+            self.assertIsNone(module._REMOTE_ROOT_PATTERN.fullmatch(unsafe))
+
+    def test_ru_pi_preflight_requires_pi4_arm64_and_direct_default_route(self) -> None:
+        module = self.module
+        preflight = module._RU_PI_PREFLIGHT
+
+        self.assertIn('"$(uname -m)" = "aarch64"', preflight)
+        self.assertIn('"Raspberry Pi 4"', preflight)
+        self.assertIn("ip route show default", preflight)
+        for tunneled_default in (" dev tun", " dev wg", " dev awg", " dev warp", " dev tailscale"):
+            self.assertIn(tunneled_default, preflight)
+        self.assertNotRegex(preflight, r"\b(?:\d{1,3}\.){3}\d{1,3}\b")
+
+    def test_ru_pi_ssh_boundary_rejects_unsafe_alias(self) -> None:
+        module = self.module
+        with tempfile.TemporaryDirectory() as raw_temp:
+            root = Path(raw_temp)
+            config = root / "config"
+            known_hosts = root / "known_hosts"
+            config.write_text("Host owned-pi\n", encoding="utf-8")
+            known_hosts.write_text("safe-placeholder\n", encoding="utf-8")
+
+            command = module._ssh_base("owned-pi", config, known_hosts)
+            self.assertEqual(command[-1], "owned-pi")
+            self.assertIn("BatchMode=yes", command)
+            self.assertIn("StrictHostKeyChecking=yes", command)
+            with self.assertRaisesRegex(RuntimeError, "alias"):
+                module._ssh_base("owned-pi; whoami", config, known_hosts)
+
 
 class OwnedAwgDeviceEvidenceContractTests(unittest.TestCase):
     @classmethod
