@@ -387,7 +387,7 @@ def _google_target() -> dict[str, object]:
             transport_profile="https",
             probe_mode="google_https",
             http_path="/",
-            min_body_bytes=65536,
+            min_body_bytes=1,
             local_probe_profile_id=None,
         ),
         required_stages=["dns", "tcp", "tls", "http_large_body"],
@@ -398,8 +398,24 @@ def _canonical_config_targets() -> list[dict[str, object]]:
     configured = _strict_config_rows(_CANONICAL_CONFIG_ENV)
     if configured is None:
         configured = [
-            {"target_id": f"canonical:{host}", "host": host}
-            for host in ("pokrov.space", "app.pokrov.space", "api.pokrov.space")
+            {
+                "target_id": "canonical:pokrov.space",
+                "host": "pokrov.space",
+                "http_path": "/",
+                "min_body_bytes": 65536,
+            },
+            {
+                "target_id": "canonical:app.pokrov.space",
+                "host": "app.pokrov.space",
+                "http_path": "/",
+                "min_body_bytes": 1,
+            },
+            {
+                "target_id": "canonical:api.pokrov.space",
+                "host": "api.pokrov.space",
+                "http_path": "/api/health",
+                "min_body_bytes": 1,
+            },
         ]
     targets: list[dict[str, object]] = []
     for index, item in enumerate(configured):
@@ -427,7 +443,11 @@ def _canonical_config_targets() -> list[dict[str, object]]:
         )
         http_path = _safe_path(item.get("http_path", "/"), path=f"{path}.http_path")
         min_body = item.get("min_body_bytes", 65536)
-        if min_body != 65536:
+        if (
+            isinstance(min_body, bool)
+            or not isinstance(min_body, int)
+            or not 1 <= min_body <= 16 * 1024 * 1024
+        ):
             _config_fail("invalid_body_size", f"{path}.min_body_bytes")
         targets.append(
             _target(
@@ -443,7 +463,7 @@ def _canonical_config_targets() -> list[dict[str, object]]:
                     transport_profile=profile,
                     probe_mode="canonical_https_large_body",
                     http_path=http_path,
-                    min_body_bytes=65536,
+                    min_body_bytes=min_body,
                     local_probe_profile_id=None,
                 ),
                 required_stages=["dns", "tcp", "tls", "http_large_body"],

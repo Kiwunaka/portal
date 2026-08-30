@@ -265,11 +265,13 @@ def _public_probe_payload(payload: dict) -> dict:
     family_states = {"healthy", "degraded", "unavailable", "unknown"}
     ipv4_health = str(payload.get("ipv4_health") or "unknown")
     ipv6_health = str(payload.get("ipv6_health") or "unknown")
+    connected_family = str(payload.get("connected_family") or "").strip().lower()
     return {
         "probe_kind": "edge_reachability",
         "ok": bool(payload.get("ok")),
         "edge_reachability_ok": bool(payload.get("edge_reachability_ok")),
         "latency_ms": latency_ms,
+        "connected_family": connected_family if connected_family in {"ipv4", "ipv6"} else "",
         "target_check_available": bool(payload.get("target_check_available")),
         "target_ok": bool(payload.get("target_ok")),
         "stage": stage,

@@ -1,6 +1,6 @@
 # RU-Origin Probe Handoff
 
-Last updated: 2026-08-29
+Last updated: 2026-08-30
 
 ## Document Status
 
@@ -141,6 +141,18 @@ spool counts, но не передаёт файлы и не меняет runtime
 `profiles.json`, точные подтверждения bundle/revision/node, отдельное подтверждение
 внешней мутации, сохранения spool и активации timer. Значения и даже hashes
 runtime-material в JSON-отчёт не попадают.
+
+Первый живой запуск candidate.9 на `mini` подтвердил установку, чтение
+root-owned `0640` HMAC credential назначенной service group, signed manifest,
+runner, ingest, archive, fresh heartbeat и три admin read endpoint (`HTTP 200`).
+При этом итог RU-origin честно остался `FAIL`: Google прошёл DNS/TCP/TLS, но
+обычная короткая страница была ошибочно проверена как обязательное тело
+`65536` байт; redacted dataplane result сохранял только факт соединения, а
+runner ошибочно требовал удалённый raw connected IP и помечал разрешённые
+семейства как `forbidden_address_family`. Исправление сохраняет только
+безопасный `connected_family`, уважает подписанный `min_body_bytes` и задаёт
+service-specific HTTP paths/thresholds. Оно требует нового immutable candidate
+и bundle; candidate.9 не патчится на месте и не получает ложный RU `PASS`.
 
 Root-login не обязателен: допустима непривилегированная trusted-key сессия только
 при успешном `sudo -n`. Инструмент не принимает sudo-пароль и не выводит его;
