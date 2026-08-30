@@ -2,6 +2,30 @@
 
 Last updated: 2026-08-30
 
+## 2026-08-30 — WO-013CK Smart DNS `it` live frontend canary
+
+Post-candidate platform `9dee549...` corrects exclusive SFTP staging and
+bounded listener-readiness/rollback handling discovered by two fail-closed
+attempts. The corrected guarded sequence on foreign canary `it` passes frontend
+APPLY, current- and Brain-origin TCP/443, explicit receipt-bound rollback,
+post-rollback reachability and guarded re-APPLY. The final current state is
+HAProxy on public TCP/443, the exact legacy Xray/Reality default backend on
+loopback TCP/10443 and free loopback TCP/18443.
+
+Exact Smart DNS source `650dc3f...` rebuilds byte-identically at `2916305`
+bytes and SHA-256 `cda97da...0225`. Its fronted install PLAN passes node and
+listener readiness with zero mutation, but runtime material, public DoH name
+and trusted certificate are absent; Smart DNS is not installed and no DNS or
+service-access claim exists.
+
+An exact candidate.8 physical Beeline whitelist differential passes carrier
+and allowed-RU controls while POKROV control/API and `ru_spb` TCP/443 time out
+before VPN/TLS. This is a bounded carrier-path classification, not an AWG
+failure or general whitelist proof. Direct `it` does not bootstrap that specific
+filtered path. Phase 10 remains `I3`; candidate.8 is unchanged and Gate F stays
+`BLOCKED` at `6 PASS / 13 non-PASS / 0 FAIL`. Normalized evidence SHA-256 is
+`2d8eaca8acceb13461381c5643e45c408a75140a9f79cf554e0e7391d9226516`.
+
 ## 2026-08-30 — WO-013CJ candidate.8 isolated rollback rehearsal
 
 The signed candidate.8 tuple passes the real portal projection and client
