@@ -38,7 +38,7 @@ RECEIPT_SCHEMA = "pokrov-ru-origin-auth-receipt-v1"
 KEY_ID = "ru-mini-v1"
 SUBJECT = "mini"
 SCOPES = ("ru_probe:heartbeat", "ru_probe:ingest", "ru_probe:manifest")
-ORIGINS = ("mini",)
+ORIGINS = ("ru",)
 REGISTRY_PATH = "/etc/pokrov/internal-hmac-keys.json"
 DROPIN_PATH = "/etc/systemd/system/portal-api.service.d/40-pokrov-internal-hmac.conf"
 RECEIPT_ROOT = "/root/pokrov-ru-origin-auth-receipts"
@@ -263,7 +263,7 @@ if not isinstance(entry, dict) or set(entry) != {"enabled", "key_id", "origins",
     raise SystemExit(4)
 if entry.get("key_id") != expected["key_id"] or entry.get("subject") != expected["subject"]:
     raise SystemExit(5)
-if entry.get("enabled") is not True or entry.get("origins") != ["mini"]:
+if entry.get("enabled") is not True or entry.get("origins") != ["ru"]:
     raise SystemExit(6)
 if entry.get("scopes") != ["ru_probe:heartbeat", "ru_probe:ingest", "ru_probe:manifest"]:
     raise SystemExit(7)
@@ -303,11 +303,23 @@ def _signed_manifest(secret_file: Path) -> dict[str, Any]:
             raw_body=b"",
             timeout_sec=20,
         )
-        payload = json.loads(response.body.decode("utf-8"))
     except Exception as exc:
-        raise RuOriginAuthError("signed_manifest_probe_failed") from exc
-    if response.status != 200 or not isinstance(payload, dict):
-        raise RuOriginAuthError("signed_manifest_probe_not_ok")
+        raise RuOriginAuthError("signed_manifest_transport_failed") from exc
+    try:
+        payload = json.loads(response.body.decode("utf-8"))
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise RuOriginAuthError("signed_manifest_response_invalid") from exc
+    if response.status != 200:
+        error_code = payload.get("code") if isinstance(payload, dict) else None
+        safe_code = (
+            error_code
+            if isinstance(error_code, str)
+            and re.fullmatch(r"[a-z][a-z0-9_]{0,63}", error_code)
+            else "unknown"
+        )
+        raise RuOriginAuthError(f"signed_manifest_http_{response.status}_{safe_code}")
+    if not isinstance(payload, dict):
+        raise RuOriginAuthError("signed_manifest_response_invalid")
     targets = payload.get("targets")
     if not isinstance(targets, list) or not targets:
         raise RuOriginAuthError("signed_manifest_targets_missing")
