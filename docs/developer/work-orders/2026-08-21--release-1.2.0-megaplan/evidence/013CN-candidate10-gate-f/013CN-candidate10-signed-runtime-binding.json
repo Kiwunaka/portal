@@ -1,0 +1,67 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate10-signed-runtime-binding/v1",
+  "candidate_id": "pokrov-1.2.0-candidate.10",
+  "sources": {
+    "platform": "209b8f40c36d95f2bbc67caa52a41ecb09f46720",
+    "client": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+    "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+    "release_index": "fc00b26d402b167260e495eb33397115bef1c317"
+  },
+  "outputs": [
+    {
+      "path": "actions-artifact/release-index.json",
+      "size_bytes": 6884,
+      "sha256": "0711546b0da4b811fba42e1ad543797494e4104bd95251c9e8e8011ac04dff83"
+    },
+    {
+      "path": "actions-artifact/release-index.json.sig",
+      "size_bytes": 64,
+      "sha256": "6f96f8932e388f221cf7d5e10dc1680fbcbb62f87efe00410439eb9f62e42799"
+    },
+    {
+      "path": "actions-artifact/signing-receipt.json",
+      "size_bytes": 589,
+      "sha256": "094a42f3c0d9be3957b3065344e5bfce4880c2899833fed3b4d211d8d453a89c"
+    }
+  ],
+  "independent_validation": {
+    "status": "READY_SIGNED_MANIFEST",
+    "signing_key_id": "pokrov-release-2026-01",
+    "artifact_count": 6,
+    "owner_unsigned_windows_exception_count": 1,
+    "owner_unsigned_windows_artifact": "pokrov-windows-setup-x64.exe",
+    "release_index_commit": "fc00b26d402b167260e495eb33397115bef1c317",
+    "receipt_matches_outputs": true,
+    "detached_signature_verified_with_public_keyring": true,
+    "source_contract_run": 33292027904,
+    "signer_run": 33292070137,
+    "receipt_contract_run": 33292156330,
+    "promotion_authorized": false
+  },
+  "ldplayer_install_binding": {
+    "package_version": "1.2.0+4046",
+    "x86_64_artifact_sha256": "ec07ba17e9a5c697fcf46ccd193970fa3666eeeb3b9e345876aa8ee1d45a2627",
+    "installed_base_apk_sha256": "ec07ba17e9a5c697fcf46ccd193970fa3666eeeb3b9e345876aa8ee1d45a2627",
+    "artifact_sha256_match": true,
+    "device_identifier_retained": false,
+    "emulator_runtime_pass_claimed": true,
+    "physical_runtime_pass_claimed": false
+  },
+  "physical_phone_install_binding": {
+    "package_version": "1.2.0+4046",
+    "arm64_artifact_sha256": "9278c09fd8fa5768d3260cf796b4230db5acb0a092187aae00c441d717cfc572",
+    "installed_base_apk_sha256": "9278c09fd8fa5768d3260cf796b4230db5acb0a092187aae00c441d717cfc572",
+    "arm64_artifact_sha256_match": true,
+    "same_byte_install_observed_under_candidate8": true,
+    "candidate10_physical_runtime_pass_claimed": false,
+    "device_serial_retained": false
+  },
+  "interpretation": {
+    "candidate10_reuses_byte_identical_client_and_core_artifacts": true,
+    "candidate10_platform_source_is_new": true,
+    "signed_manifest_is_actions_artifact_only": true,
+    "windows_authenticode_status": "NotSigned",
+    "owner_unsigned_windows_direct_beta_exception": true,
+    "public_or_stable_promotion_authorized": false
+  }
+}

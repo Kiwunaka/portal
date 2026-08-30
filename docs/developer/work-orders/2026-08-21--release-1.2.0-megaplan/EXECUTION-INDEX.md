@@ -2,6 +2,23 @@
 
 Last updated: 2026-08-30
 
+## 2026-08-30 — WO-013CN exact candidate.10 Gate F NO_GO
+
+The fail-closed Gate F verifier validates candidate.10's signed manifest,
+detached Ed25519 signature, receipt, public keyring, exact source tuple, all
+`19/19` evidence pointers and both upstream evidence digests. Candidate.8
+source-plan/current-origin/physical runtime credit is not transferred merely
+because client/Core artifact bytes are unchanged.
+
+The exact decision is `NO_GO`: `5 PASS / 14 non-PASS`, including `1 FAIL`,
+with zero validation errors. Supply/signing, release-doc binding, exact Brain,
+LDPlayer and authenticated client egress pass. Canonical RU-origin is the one
+explicit FAIL at `10/13`; eight checks remain manual, three are not run, the
+broad no-open-P0 attestation is missing and private hosted checks remain
+`SKIPPED_BY_OWNER`. Physical candidate.10 stays `MANUAL_OWNER_TEST` because
+the phone is unavailable. Gate F stays `I3`; Gate G and every public/stable
+mutation remain unauthorized.
+
 ## 2026-08-30 — WO-013CM candidate.10 Brain, RU and LDPlayer evidence
 
 Signed immutable candidate.10 binds platform `209b8f4...`, unchanged client
