@@ -9,6 +9,7 @@ import os
 import re
 import shlex
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Mapping
@@ -45,6 +46,9 @@ RECEIPT_ROOT = "/root/pokrov-ru-origin-auth-receipts"
 STAGE_ROOT = "/root/pokrov-ru-origin-auth-staging"
 API_BASE_URL = "https://api.pokrov.space"
 MANIFEST_PATH = "/api/internal/probes/ru-origin/manifest"
+MANIFEST_ATTEMPTS = 10
+MANIFEST_TIMEOUT_SECONDS = 5
+MANIFEST_RETRY_SECONDS = 1.5
 SAFE_RECEIPT_RE = re.compile(r"[0-9]{8}T[0-9]{6}Z-[0-9]+\Z")
 
 
@@ -292,24 +296,44 @@ if dropin != '# Managed by scripts/remote_prepare_ru_origin_auth.py\n[Service]\n
     )
 
 
-def _signed_manifest(secret_file: Path) -> dict[str, Any]:
-    try:
-        response = internal_hmac_client.signed_request(
-            api_base_url=API_BASE_URL,
-            method="GET",
-            path=MANIFEST_PATH,
-            key_id=KEY_ID,
-            secret_file=secret_file,
-            raw_body=b"",
-            timeout_sec=20,
-        )
-    except Exception as exc:
-        raise RuOriginAuthError("signed_manifest_transport_failed") from exc
-    try:
-        payload = json.loads(response.body.decode("utf-8"))
-    except (UnicodeError, json.JSONDecodeError) as exc:
-        raise RuOriginAuthError("signed_manifest_response_invalid") from exc
-    if response.status != 200:
+def _signed_manifest(
+    secret_file: Path,
+    *,
+    attempts: int = MANIFEST_ATTEMPTS,
+    retry_seconds: float = MANIFEST_RETRY_SECONDS,
+    sleep_fn: Any = time.sleep,
+) -> dict[str, Any]:
+    if not 1 <= attempts <= MANIFEST_ATTEMPTS or not 0 <= retry_seconds <= 5:
+        raise RuOriginAuthError("signed_manifest_retry_contract_invalid")
+    response = None
+    payload: object = None
+    for attempt in range(1, attempts + 1):
+        try:
+            response = internal_hmac_client.signed_request(
+                api_base_url=API_BASE_URL,
+                method="GET",
+                path=MANIFEST_PATH,
+                key_id=KEY_ID,
+                secret_file=secret_file,
+                raw_body=b"",
+                timeout_sec=MANIFEST_TIMEOUT_SECONDS,
+            )
+        except Exception as exc:
+            if attempt == attempts:
+                raise RuOriginAuthError("signed_manifest_transport_failed") from exc
+            sleep_fn(retry_seconds)
+            continue
+        try:
+            payload = json.loads(response.body.decode("utf-8"))
+        except (UnicodeError, json.JSONDecodeError) as exc:
+            if response.status >= 500 and attempt < attempts:
+                sleep_fn(retry_seconds)
+                continue
+            raise RuOriginAuthError(
+                f"signed_manifest_http_{response.status}_non_json"
+            ) from exc
+        if response.status == 200:
+            break
         error_code = payload.get("code") if isinstance(payload, dict) else None
         safe_code = (
             error_code
@@ -317,8 +341,11 @@ def _signed_manifest(secret_file: Path) -> dict[str, Any]:
             and re.fullmatch(r"[a-z][a-z0-9_]{0,63}", error_code)
             else "unknown"
         )
+        if response.status >= 500 and attempt < attempts:
+            sleep_fn(retry_seconds)
+            continue
         raise RuOriginAuthError(f"signed_manifest_http_{response.status}_{safe_code}")
-    if not isinstance(payload, dict):
+    if response is None or response.status != 200 or not isinstance(payload, dict):
         raise RuOriginAuthError("signed_manifest_response_invalid")
     targets = payload.get("targets")
     if not isinstance(targets, list) or not targets:
@@ -335,6 +362,7 @@ def _signed_manifest(secret_file: Path) -> dict[str, Any]:
     )
     return {
         "http_status": response.status,
+        "readiness_attempts": attempt,
         "target_count": len(targets),
         "release_required_count": sum(
             1
