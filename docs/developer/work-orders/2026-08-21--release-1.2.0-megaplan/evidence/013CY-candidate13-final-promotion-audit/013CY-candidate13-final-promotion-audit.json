@@ -1,0 +1,66 @@
+{
+  "schema": "pokrov-release-1.2.0-work-order-evidence-v1",
+  "work_order": "WO-013CY",
+  "observed_at": "2026-08-30T15:43:51Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.13",
+    "version": "1.2.0+4049",
+    "platform_source": "7d983c0ab52e9c01f94da8916a6bca6a0039be8d",
+    "client_source": "ce2581dd16d276d20eace7a56f0337c4b9319168",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "strict_handoff_sha256": "32abc15c05e7b94f61047300e03b64b7c0e2834bb1d0feefcd2bf87c95fc2e9c",
+    "signed_manifest_sha256": "b8a10cf8fbc1683cc9a1540edf74f29fd417f422bc3d2be97f4deae85075190c",
+    "detached_signature_sha256": "ede7844c2b2a94b0d89b7aa72b75c5ff3eec5e5662ec907c0b181ff08d5c0e4d",
+    "signing_receipt_sha256": "fc3b1319812df374c27e34c9698af8bcf9a67b66ada95bb4e1be1906d82bb295"
+  },
+  "promotion_heads": {
+    "platform": "713079389b4056e8be89e4fea63925c787654d1a",
+    "platform_delta_from_candidate": "DOCS_EVIDENCE_ONLY",
+    "client": "75ba7e721cfee486f7189edd51de97aba2746722",
+    "client_delta_from_candidate": "DOCS_EVIDENCE_ONLY",
+    "core": "c1185faa998c69fd5164af415249c96c68ab61bd",
+    "core_tree_delta_from_candidate": "NONE",
+    "release_index": "289e887c7ba0463ecdf357bd5e7fd531ace9de8f"
+  },
+  "revalidation": {
+    "signed_manifest_validation": "PASS",
+    "release_index_unit_tests": "PASS_7_OF_7",
+    "supply_chain": "PASS_6_ARTIFACTS_8_WINDOWS_RUNTIME_FILES",
+    "supply_chain_report_sha256": "18d6facff3dc6a168d73dcc61c041b0907a4a113bdc918f9bf701694a562c5f3",
+    "source_preflight": "READY_LOCAL_FREEZE",
+    "source_preflight_blockers": 0,
+    "source_preflight_report_sha256": "9c6fcc7a170c45b7bc09e37cf3dbacacab55f9dab084d758fa7a79c831c90f4e",
+    "source_seed_candidate_created": false,
+    "source_seed_interpretation": "EXPECTED_PRE_CANDIDATE_SOURCE_STATE_NOT_SIGNED_CANDIDATE_AUTHORITY"
+  },
+  "release_gates": {
+    "gate_f": "NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING",
+    "physical_android": "MANUAL_OWNER_TEST",
+    "clean_windows": "MANUAL_OWNER_TEST",
+    "current_origin": "NOT_REQUESTED_FOR_FINAL_MATRIX",
+    "brain_origin": "NOT_REQUESTED_FOR_CANDIDATE13",
+    "ru_origin": "NOT_REQUESTED_FOR_CANDIDATE13",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_oidc_rbac": "MANUAL_OWNER_TEST",
+    "legal_commercial": "MANUAL_OWNER_TEST",
+    "rollback_drill": "NOT_REQUESTED",
+    "comparable_performance": "NOT_RUN",
+    "gate_g": "NOT_AUTHORIZED"
+  },
+  "ledger_reconciliation": {
+    "historical_results_transferred": false,
+    "FRKN_PLAN/W3-02": "I4_CANDIDATE13_LDPLAYER_AWG31_WARM_SWITCH_PASS",
+    "FRKN_PLAN/W3-03": "I4_CANDIDATE13_EMULATOR_TRAFFIC_PROOF",
+    "REL_GATE/GATE-F": "NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING"
+  },
+  "publication": {
+    "tag_created": false,
+    "github_release_created": false,
+    "public_assets_created": false,
+    "store_submission_created": false,
+    "runtime_handoff_changed": false,
+    "stable_pointer_changed": false
+  },
+  "decision": "PROMOTION_BLOCKED_GATE_F_NOT_RUN",
+  "promotion_authorized": false
+}
