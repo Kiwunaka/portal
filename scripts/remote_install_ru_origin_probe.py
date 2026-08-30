@@ -564,7 +564,7 @@ try:
     with open(sys.argv[1], encoding="utf-8") as handle:
         payload=json.load(handle)
     profiles=payload.get("profiles") if isinstance(payload,dict) and set(payload)=={"profiles"} else payload
-    ok=isinstance(profiles,dict) and 1 <= len(profiles) <= 128
+    ok=isinstance(profiles,dict) and len(profiles) <= 128
     if ok:
         for entry in profiles.values():
             if not isinstance(entry,dict) or set(entry)!={"executable","argv"}:
@@ -776,6 +776,30 @@ def _write_report(report: Mapping[str, Any], raw_path: str) -> None:
     )
 
 
+def _failure_report(
+    *,
+    operation: str,
+    error: Exception,
+    context: Mapping[str, Any],
+) -> dict[str, Any]:
+    return {
+        "schema_version": REPORT_SCHEMA,
+        "mode": "ERROR",
+        "operation": str(operation or "")[:16],
+        "error_code": str(error).split(":", 1)[0][:160],
+        "receipt_id": context.get("receipt_id"),
+        "receipt_created": bool(context.get("receipt_created")),
+        "mutation_attempted": bool(context.get("mutation_attempted")),
+        "automatic_rollback_status": str(
+            context.get("automatic_rollback_status") or "NOT_ARMED"
+        ),
+        "spool_preserved": context.get("automatic_rollback_status") == "PASS",
+        "raw_host_returned": False,
+        "raw_runtime_material_returned": False,
+        "runtime_material_hashes_returned": False,
+    }
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--bundle", required=True)
@@ -806,6 +830,12 @@ def _parser() -> argparse.ArgumentParser:
 def main() -> int:
     args = _parser().parse_args()
     session: Any | None = None
+    failure_context: dict[str, Any] = {
+        "receipt_id": None,
+        "receipt_created": False,
+        "mutation_attempted": False,
+        "automatic_rollback_status": "NOT_ARMED",
+    }
     try:
         node_code = _safe_component(args.node_code, label="node_code")
         bundle_path, manifest, contents, bundle_sha256 = _validated_local_bundle(args.bundle)
@@ -860,10 +890,12 @@ def main() -> int:
             _assert_fresh_install_preflight(preflight)
             use_sudo = not bool(preflight.get("root"))
             receipt_id = _receipt_id(bundle_sha256)
+            failure_context["receipt_id"] = receipt_id
             backup_dir = f"{BACKUP_ROOT}/{receipt_id}"
             stage_dir = f"{STAGE_ROOT}/{receipt_id}"
             backup_ready = False
             try:
+                failure_context["mutation_attempted"] = True
                 _stage_payload(
                     session,
                     stage_dir=stage_dir,
@@ -885,6 +917,8 @@ def main() -> int:
                     label="receipt_backup",
                 )
                 backup_ready = True
+                failure_context["receipt_created"] = True
+                failure_context["automatic_rollback_status"] = "ARMED"
                 _run(
                     session,
                     _as_root(
@@ -900,20 +934,27 @@ def main() -> int:
                 )
             except Exception:
                 if backup_ready:
-                    _run(
-                        session,
-                        _as_root(
-                            _rollback_command(
-                                backup_dir=backup_dir,
-                                bundle_sha256=bundle_sha256,
-                                source_revision=source_revision,
-                                node_code=node_code,
+                    try:
+                        _run(
+                            session,
+                            _as_root(
+                                _rollback_command(
+                                    backup_dir=backup_dir,
+                                    bundle_sha256=bundle_sha256,
+                                    source_revision=source_revision,
+                                    node_code=node_code,
+                                ),
+                                use_sudo=use_sudo,
                             ),
-                            use_sudo=use_sudo,
-                        ),
-                        label="automatic_rollback",
-                        timeout=300,
-                    )
+                            label="automatic_rollback",
+                            timeout=300,
+                        )
+                        failure_context["automatic_rollback_status"] = "PASS"
+                    except Exception as rollback_exc:
+                        failure_context["automatic_rollback_status"] = "FAIL"
+                        raise RuProbeRemoteOperationError(
+                            "automatic_rollback_failed"
+                        ) from rollback_exc
                 raise
             finally:
                 _run_allow_failure(session, _cleanup_stage_command(stage_dir), timeout=120)
@@ -925,6 +966,7 @@ def main() -> int:
                     "timers_active": True,
                     "spool_preserved": True,
                     "automatic_rollback_armed": True,
+                    "automatic_rollback_status": "NOT_NEEDED",
                 }
             )
         else:
@@ -960,9 +1002,31 @@ def main() -> int:
         print(json.dumps(report, ensure_ascii=False, indent=2, sort_keys=True))
         return 0
     except RuProbeRemoteOperationError as exc:
+        try:
+            _write_report(
+                _failure_report(
+                    operation=str(getattr(args, "operation", "")),
+                    error=exc,
+                    context=failure_context,
+                ),
+                str(getattr(args, "json_out", "") or ""),
+            )
+        except Exception:
+            pass
         print(f"RU-origin remote operation failed: {exc}", file=sys.stderr)
         return 1
     except Exception as exc:
+        try:
+            _write_report(
+                _failure_report(
+                    operation=str(getattr(args, "operation", "")),
+                    error=exc,
+                    context=failure_context,
+                ),
+                str(getattr(args, "json_out", "") or ""),
+            )
+        except Exception:
+            pass
         print(f"RU-origin remote operation failed: {type(exc).__name__}", file=sys.stderr)
         return 1
     finally:

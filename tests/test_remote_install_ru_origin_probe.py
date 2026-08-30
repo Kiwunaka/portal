@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import inspect
 import json
 from pathlib import Path
 import sys
@@ -161,6 +162,34 @@ def test_runtime_material_accepts_empty_profile_registry(tmp_path: Path) -> None
     _root, _values, summary = MODULE._validated_runtime_material(subscription)
 
     assert summary["profile_count"] == 0
+
+
+def test_remote_profile_validator_accepts_empty_registry() -> None:
+    command = MODULE._profile_remote_validator("/etc/pokrov-ru-probe/profiles.json")
+    source = inspect.getsource(MODULE._profile_remote_validator)
+
+    assert "len(profiles) <= 128" in source
+    assert "1 <= len(profiles)" not in source
+    assert "/etc/pokrov-ru-probe/profiles.json" in command
+
+
+def test_failure_report_retains_rollback_truth_without_runtime_material() -> None:
+    report = MODULE._failure_report(
+        operation="install",
+        error=MODULE.RuProbeRemoteOperationError("install_apply_failed_exit_1"),
+        context={
+            "receipt_id": "20260830T000000Z-1-7bc2ec16971a",
+            "receipt_created": True,
+            "mutation_attempted": True,
+            "automatic_rollback_status": "PASS",
+        },
+    )
+
+    assert report["mode"] == "ERROR"
+    assert report["error_code"] == "install_apply_failed_exit_1"
+    assert report["automatic_rollback_status"] == "PASS"
+    assert report["spool_preserved"] is True
+    assert "secret" not in json.dumps(report).lower()
 
 
 def test_install_verifies_before_timer_activation_and_preserves_spool(

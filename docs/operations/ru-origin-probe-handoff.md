@@ -163,6 +163,10 @@ transport/`5xx` и временного non-JSON от frontend; любой `4xx`
 фиктивного executable. Если manifest требует хотя бы один profile, APPLY должен
 остановиться до установки, пока для каждого ID не подготовлен проверенный
 allowlisted executable/argv.
+Local и remote validators обязаны одинаково принимать этот пустой registry.
+Любой failed APPLY пишет redacted JSON с `mutation_attempted`, receipt state и
+точным `automatic_rollback_status`; успешный rollback не превращает исходную
+ошибку в PASS.
 
 В candidate.6 `EnvironmentFile` обязан существовать, но runner/uploader используют
 скомпилированные канонические defaults. Поэтому установщик принимает в обоих env
