@@ -130,4 +130,42 @@ def test_signed_manifest_reports_bounded_http_failure(monkeypatch, tmp_path: Pat
         MODULE.RuOriginAuthError,
         match="signed_manifest_http_403_key_scope_forbidden",
     ):
-        MODULE._signed_manifest(secret)
+        MODULE._signed_manifest(secret, attempts=1, retry_seconds=0)
+
+
+def test_signed_manifest_retries_transient_non_json_502(monkeypatch, tmp_path: Path) -> None:
+    secret = tmp_path / "secret.key"
+    secret.write_bytes(b"D" * 32)
+    responses = iter(
+        [
+            MODULE.internal_hmac_client.InternalResponse(
+                status=502, body=b"temporary upstream gap", headers={}
+            ),
+            MODULE.internal_hmac_client.InternalResponse(
+                status=200,
+                body=(
+                    b'{"targets":[{"scope":"release_required","endpoint":'
+                    b'{"local_probe_profile_id":null}}]}'
+                ),
+                headers={},
+            ),
+        ]
+    )
+    sleeps: list[float] = []
+    monkeypatch.setattr(
+        MODULE.internal_hmac_client,
+        "signed_request",
+        lambda **_kwargs: next(responses),
+    )
+
+    report = MODULE._signed_manifest(
+        secret,
+        attempts=2,
+        retry_seconds=0.25,
+        sleep_fn=sleeps.append,
+    )
+
+    assert report["http_status"] == 200
+    assert report["readiness_attempts"] == 2
+    assert report["target_count"] == 1
+    assert sleeps == [0.25]

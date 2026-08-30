@@ -154,6 +154,9 @@ absent-state receipt, ставит отдельный systemd drop-in, пере�
 `portal-api` и обязан доказать подписанное чтение manifest. Ошибка после начала
 мутации удаляет только operation-owned registry/drop-in и возвращает API в
 активное состояние. `ROLLBACK` требует точный receipt и managed markers.
+После restart signed read использует ограниченный readiness retry только для
+transport/`5xx` и временного non-JSON от frontend; любой `4xx` остаётся
+немедленным fail-closed.
 
 `profiles.json` может быть `{"profiles":{}}`, когда текущий server manifest не
 содержит `local_probe_profile_id`: native TCP/TLS/HTTP stages не требуют
