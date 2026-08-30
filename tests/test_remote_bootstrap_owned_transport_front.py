@@ -193,14 +193,17 @@ def test_apply_command_arms_trap_uses_sql_cas_and_verifies_owners() -> None:
 
     assert command.index("trap rollback EXIT") < command.index("apt-get install")
     assert command.index("apt-get install") < command.rindex("systemctl restart x-ui.service")
+    assert "wait_listener_owner x-ui.service 10443 xray" in command
+    assert "wait_listener_owner portal-transport-front.service 443 haproxy" in command
+    assert "wait_listener_owner x-ui.service 443 xray || rollback_ok=no" in command
+    assert "if test \"$front_files\" = yes; then systemctl disable --now portal-transport-front.service" in command
     assert "update inbounds set listen=?,port=?" not in command
     decoded_helper = MODULE._SQL_CAS_HELPER
     assert "coalesce(listen,'')='' and port=?" in decoded_helper
     assert "listen=? and port=?" in decoded_helper
     assert "cur.rowcount != 1" in decoded_helper
     assert "expected_invariant" in decoded_helper
-    assert "grep -qi xray" in command
-    assert "grep -qi haproxy" in command
+    assert 'grep -qi "$wait_owner"' in command
     assert "automatic_rollback_pass" in command
     assert "automatic_rollback_fail" in command
     assert "rollback_ok=yes" in command
@@ -221,7 +224,8 @@ def test_apply_does_not_remove_preexisting_haproxy_on_rollback() -> None:
     )
 
     assert "installed=no" in command
-    assert 'if test "$installed" = yes; then DEBIAN_FRONTEND=noninteractive apt-get remove' in command
+    assert 'if test "$installed" = yes; then systemctl disable --now haproxy.service' in command
+    assert "apt-get purge -y haproxy" in command
 
 
 def test_receipt_contains_only_safe_digest_bound_rollback_state() -> None:
@@ -313,7 +317,7 @@ def test_remote_stage_write_is_exclusive_and_writable_with_paramiko() -> None:
     assert sftp.closed is True
 
 
-def test_rollback_removes_package_only_when_receipt_owns_it() -> None:
+def test_rollback_purges_package_only_when_receipt_owns_it() -> None:
     retained = MODULE._rollback_command(
         inbound_id=1,
         receipt_path="/root/x/receipt.json",
@@ -327,10 +331,12 @@ def test_rollback_removes_package_only_when_receipt_owns_it() -> None:
         remove_haproxy=True,
     )
 
-    assert "apt-get remove" not in retained
-    assert "apt-get remove -y haproxy" in owned
+    assert "apt-get purge" not in retained
+    assert "apt-get purge -y haproxy" in owned
     assert owned.index("direct_db=yes") < owned.index("disable --now")
     assert owned.index("disable --now") < owned.rindex("systemctl restart x-ui.service")
+    assert "wait_listener_owner x-ui.service 443 xray" in owned
+    assert "wait_listener_owner portal-transport-front.service 443 haproxy" in owned
     assert "rollback_failed_front_restored" in owned
     assert "rollback_failed_unknown" in owned
     assert "rolled_back_cleanup_pending" in owned
