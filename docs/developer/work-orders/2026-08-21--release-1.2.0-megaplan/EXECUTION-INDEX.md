@@ -2,6 +2,27 @@
 
 Last updated: 2026-08-30
 
+## 2026-08-30 — WO-013CU candidate.10 bounded platform security scan
+
+Exact candidate.10 platform `209b8f4...` completes one read-only, source-only
+security scan over nine release-critical trust boundaries. The sealed scan
+`c31fb013-2058-417d-b929-ea98ecd39f87` reports zero validated findings and no
+validated P0/P1 in the reviewed authentication, Operator, payment, support,
+internal-ingest, outbound HTTP, SSH/release, frontend-storage/injection and
+high-signal credential-pattern surfaces.
+
+Coverage remains explicitly `partial`: no application/runtime execution,
+production security-posture validation, dependency vulnerability lookup,
+Git-history scan, exhaustive 2744-file review or independent delegated
+baseline occurred. TAC was unverified because its connector was not
+authenticated. The broad Gate F no-open-P0 attestation therefore stays
+`MISSING`, Gate F stays `NO_GO 6/13/1`, and no Gate G or promotion is
+authorized.
+
+At `2026-08-30T08:36:46Z`, every delegated Timeweb server still returns
+`NXDOMAIN` for the authorized DoH name and both common mis-entry forms. ACME
+and Smart DNS runtime APPLY remain `NOT_RUN`.
+
 ## 2026-08-30 — WO-013CO candidate.10 Gates A–E, current-origin and Gate F
 
 Exact candidate.10 platform `209b8f4...`, client `3459438...`, Core
