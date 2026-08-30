@@ -2,6 +2,33 @@
 
 Last updated: 2026-08-30
 
+## 2026-08-30 — WO-013DA candidate.13 origin and Windows preflight
+
+Read-only candidate.13 current-origin and Brain evidence now pass against exact
+platform source `7d983c0...`. Source-bound direct wired probes disable proxy
+discovery and pass health/catalog p95 at `39.7521/40.4278 ms` over 50 retained
+samples after five warmups. Brain runtime hashes match `197/197` exact semantic
+bytes and readiness passes `23/23` with five stable subscription samples. No
+remote runtime or service changes.
+
+The RU Pi is kept separate. Its exact candidate.13 probe source matches
+`10/10`; all four units are loaded and both timers are active. Probe/uploader
+env, HMAC key, profiles and a latest archive are absent after prior cleanup, so
+the verdict is `MANUAL_OWNER_TEST_ENVIRONMENT_INCOMPLETE`. No external APPLY
+or canonical RU run occurs without separate authorization.
+
+Windows Sandbox, VirtualBox, VMware and QEMU are absent, the hypervisor is not
+active, and the owner host has an active unrelated tunnel. Candidate.13 setup
+is not installed or connected on that host. Clean-VM TUN/DNS/recovery/uninstall
+therefore stays `BLOCKED_BY_ENVIRONMENT`.
+
+`FRKN_PLAN/W9-02` advances `I1 -> I2`; Gate E stays `I3` with stronger exact
+current-origin evidence. Gate F remains
+`NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING`; RU, clean Windows and the other
+manual rows remain open. Distribution becomes `I4=6`, `I3=316`, `I2=22`,
+`I1=34`, `I0=0` across `378` rows. Normalized evidence SHA-256 is
+`50742ff0b752b9915ccade8b3d59987f3d2debb08637d7e1989e3375706a31fc`.
+
 ## 2026-08-30 — WO-013CZ candidate.13 isolated rollback rehearsal
 
 Exact signed candidate.13 passes the real portal projection and client
