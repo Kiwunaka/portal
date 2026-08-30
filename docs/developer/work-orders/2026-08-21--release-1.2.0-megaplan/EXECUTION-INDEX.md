@@ -2,6 +2,30 @@
 
 Last updated: 2026-08-30
 
+## 2026-08-30 — WO-013CM candidate.10 Brain, RU and LDPlayer evidence
+
+Signed immutable candidate.10 binds platform `209b8f4...`, unchanged client
+`3459438...`, Core `a45d69e...` and build `1.2.0+4046`. Its offline supply
+validator passes `6/6` artifacts and `8/8` Windows runtime files; public signer
+run `33292070137` returns artifact-only output with promotion disabled.
+
+After a fail-first `194/197` source readback, the authorized guarded Brain
+deploy reaches exact source `197/197`, readiness `23/23` and enabled delivery
+`7/7`. Exact candidate.9 Pi rollback and candidate.10 bundle install pass with
+spool preservation. The real runner/uploader/ingest/archive/heartbeat/admin
+pipeline is healthy, but canonical RU-origin is `FAIL`: `10/13` targets pass;
+`brain` fails TLS handshake, `free` reports REALITY target mismatch and `nl`
+times out at TCP. `ru_spb` passes. Candidate.9's false body/family failures are
+absent.
+
+The byte-matched x86_64 APK passes AWG2 and AWG3.1 tunnel, DNS, authenticated
+egress and route readback on owned LDPlayer with zero crashes, then restores
+default/no-lab/no-VPN/WARP-off state. The physical phone is unavailable and
+remains `MANUAL_OWNER_TEST`. Authoritative DNS for `dns.pokrov.space` is still
+absent on `4/4` delegated servers, so ACME and Smart DNS server APPLY remain
+unrun. No completion row reaches `I4`. Candidate.10 Gate F is not regenerated;
+the latest digest-bound decision remains candidate.8 `BLOCKED 6/13/0`.
+
 ## 2026-08-30 — WO-013CL candidate.8 Android excluded-app physical proof
 
 Exact signed candidate.8 ARM64 bytes pass the inverse excluded-app differential

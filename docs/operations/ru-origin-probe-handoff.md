@@ -153,11 +153,24 @@ runner, ingest, archive, fresh heartbeat и три admin read endpoint (`HTTP 20
 runner ошибочно требовал удалённый raw connected IP и помечал разрешённые
 семейства как `forbidden_address_family`. Исправление сохраняет только
 безопасный `connected_family`, уважает подписанный `min_body_bytes` и задаёт
-service-specific HTTP paths/thresholds. Оно требует нового immutable candidate
-и bundle; candidate.9 не патчится на месте и не получает ложный RU `PASS`.
-Подписанный candidate.10 и его детерминированный bundle теперь готовы к новому
-точному backend/Pi прогону; до этого прогона RU-origin остаётся
-`MANUAL_OWNER_TEST`, а не `PASS`.
+service-specific HTTP paths/thresholds. Candidate.9 не патчился на месте и не
+получил ложный RU `PASS`.
+
+Candidate.9 затем был снят точным receipt-bound rollback с сохранением spool.
+Подписанный candidate.10 установлен из детерминированного bundle на том же
+trusted RU-host. Ручные runner и uploader завершились успешно; manifest,
+ingest, archive, fresh heartbeat и три admin read endpoint прошли. Latest run
+имеет доступную среду и текущий eligible artifact, а uploader показывает
+`pending=0`, `blocked=0`, `quarantine=0`, `archive_write_ok=true`.
+
+Итог candidate.10 RU-origin остаётся `FAIL`, а не `PASS`: из `13` обязательных
+targets прошли `10`. Canonical web/API, environment control и delivery-ноды
+`de`, `it`, `pl`, `ru`, `ru_spb`, `us` проходят. `brain` падает на TLS
+handshake, `free` — на REALITY target mismatch, `nl` — на TCP timeout. Старые
+ложные ошибки body threshold и `forbidden_address_family` отсутствуют. Таймеры
+после детерминированного ручного запуска оставлены inactive, но enabled.
+Подробный secret-free record хранится в `WO-013CM`; три независимые ошибки не
+сводятся к одной SPB-проблеме и не разрешают promotion.
 
 Root-login не обязателен: допустима непривилегированная trusted-key сессия только
 при успешном `sudo -n`. Инструмент не принимает sudo-пароль и не выводит его;
