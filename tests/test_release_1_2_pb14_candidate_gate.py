@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import importlib.util
 import sys
 from pathlib import Path
@@ -115,6 +116,39 @@ def test_signed_android_build_number_rejects_version_drift() -> None:
         assert "does not match candidate" in str(exc)
     else:  # pragma: no cover - assertion guard
         raise AssertionError("package-version drift must fail closed")
+
+
+def test_manifest_android_build_number_uses_signed_product_identity() -> None:
+    product = {
+        "version": "1.2.0",
+        "build": 4049,
+        "package_version": "1.2.0+4049",
+    }
+
+    assert MODULE._manifest_android_build_number(product, "1.2.0") == "4049"
+
+
+def test_manifest_android_build_number_rejects_inconsistent_build() -> None:
+    product = {
+        "version": "1.2.0",
+        "build": 4048,
+        "package_version": "1.2.0+4049",
+    }
+
+    try:
+        MODULE._manifest_android_build_number(product, "1.2.0")
+    except MODULE.Pb14GateError as exc:
+        assert "build number is inconsistent" in str(exc)
+    else:  # pragma: no cover - assertion guard
+        raise AssertionError("signed manifest build drift must fail closed")
+
+
+def test_retained_candidate_keeps_physical_binding_strict_by_default() -> None:
+    parameter = inspect.signature(MODULE._validate_retained_candidate).parameters[
+        "require_physical_phone_install_binding"
+    ]
+
+    assert parameter.default is True
 
 
 def test_isolated_exact_candidate_breach_stops_close_and_fails_closed() -> None:

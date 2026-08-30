@@ -105,6 +105,18 @@ def _signed_android_build_number(
     return match.group("build")
 
 
+def _manifest_android_build_number(
+    product: Mapping[str, Any], product_version: str
+) -> str:
+    package_version = str(product.get("package_version") or "")
+    match = PACKAGE_VERSION_RE.fullmatch(package_version)
+    if match is None or match.group("version") != product_version:
+        raise Pb14GateError("signed manifest package version does not match candidate")
+    if int(match.group("build")) != int(product.get("build") or -1):
+        raise Pb14GateError("signed manifest build number is inconsistent")
+    return match.group("build")
+
+
 def _git_keyring(release_index_root: Path, revision: str) -> dict[str, Any]:
     if GIT_REVISION_RE.fullmatch(revision) is None:
         raise Pb14GateError("release-index revision is invalid")
@@ -190,6 +202,7 @@ def _validate_retained_candidate(
     receipt_path: Path,
     signed_evidence_path: Path,
     release_index_root: Path,
+    require_physical_phone_install_binding: bool = True,
 ) -> dict[str, Any]:
     manifest, manifest_bytes = _read_json_bytes(manifest_path)
     receipt, receipt_bytes = _read_json_bytes(receipt_path)
@@ -299,7 +312,11 @@ def _validate_retained_candidate(
     rollback_target = str(promotion.get("rollback_target") or "")
     if version != "1.2.0" or not rollback_target:
         raise Pb14GateError("candidate product or rollback target is invalid")
-    android_build_number = _signed_android_build_number(signed_evidence, version)
+    android_build_number = (
+        _signed_android_build_number(signed_evidence, version)
+        if require_physical_phone_install_binding
+        else _manifest_android_build_number(product, version)
+    )
     descriptor = {
         "component": "client",
         "version": version,
