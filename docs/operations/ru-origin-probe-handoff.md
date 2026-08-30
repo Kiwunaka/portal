@@ -110,21 +110,23 @@ unit или актуальность живого HMAC key record.
 Точный набор исходников для RU-host строится из Git objects, а не из текущего
 рабочего дерева. Builder принимает только явно allowlisted подписанные platform
 revision; произвольный commit закрывается до чтения source members. Для текущего
-candidate.8:
+candidate.9:
 
 ```powershell
-python scripts/build_ru_origin_probe_bundle.py build --source-revision 241a83b4dca00799b39696a4ae0c3c97e087ec39 --output <private-artifact-path>/pokrov-ru-origin-candidate8-241a83b.zip
-python scripts/build_ru_origin_probe_bundle.py verify --bundle <private-artifact-path>/pokrov-ru-origin-candidate8-241a83b.zip
-python scripts/build_ru_origin_probe_bundle.py plan --bundle <private-artifact-path>/pokrov-ru-origin-candidate8-241a83b.zip --operation install
-python scripts/remote_install_ru_origin_probe.py --bundle <private-artifact-path>/pokrov-ru-origin-candidate8-241a83b.zip --ssh-config-alias <trusted-ru-alias> --operation install
+python scripts/build_ru_origin_probe_bundle.py build --source-revision 84687875916bbb35c0e28e0c2a8c7ea276753f31 --output <private-artifact-path>/pokrov-ru-origin-candidate9-8468787.zip
+python scripts/build_ru_origin_probe_bundle.py verify --bundle <private-artifact-path>/pokrov-ru-origin-candidate9-8468787.zip
+python scripts/build_ru_origin_probe_bundle.py plan --bundle <private-artifact-path>/pokrov-ru-origin-candidate9-8468787.zip --operation install
+python scripts/remote_install_ru_origin_probe.py --bundle <private-artifact-path>/pokrov-ru-origin-candidate9-8468787.zip --ssh-config-alias <trusted-ru-alias> --operation install
 ```
 
-Candidate.8 package содержит 10 source/unit members, имеет размер `47702` байта
+Candidate.9 package содержит 10 source/unit members, имеет размер `47886` байт
 и SHA-256
-`7bc2ec16971a23fb16ce54d2f2e1dae4f3a228bca13527a71099396e532a8707`.
-Повторная независимая сборка дала те же байты. Retained candidate.6 revision
-`5713324c...` остаётся вторым allowlisted историческим входом; его ранее
-зафиксированный пакет имеет SHA-256
+`a887cf4ad193a73ceabebbff476e5264c52c8694ab6f246bd81c6a6aeff6b4e8`.
+Повторная независимая сборка дала те же байты. Candidate.8 revision
+`241a83b4...` и candidate.6 revision `5713324c...` остаются allowlisted
+историческими входами; их ранее зафиксированные пакеты имеют SHA-256
+`7bc2ec16971a23fb16ce54d2f2e1dae4f3a228bca13527a71099396e532a8707`
+и
 `e7eb8ec20693f9626d6e7697c7845fa165e77fc1daa7df580ef0618248be345b`.
 Ни один пакет не содержит `probe.env`, `uploader.env`, `hmac.key` или
 `profiles.json` и ничего не устанавливает сам. Успешная сборка/проверка —

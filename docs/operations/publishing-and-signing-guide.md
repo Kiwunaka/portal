@@ -295,13 +295,15 @@ Current public user-facing version policy:
   `1.2.0+4046` / `PRE_CANDIDATE_LOCAL` with `candidate_created=false`; that
   seed is not candidate authority and does not contradict the separately
   generated immutable strict-v2 candidate handoff
-- generated strict-v2 `pokrov-1.2.0-candidate.8` is now the current signed
-  exact candidate: six immutable artifacts, SBOM/provenance and hosted
-  release-index signature are retained, while its output remains
+- generated strict-v2 `pokrov-1.2.0-candidate.9` is now the current signed
+  exact candidate: six immutable artifacts shared byte-for-byte with
+  candidate.8, regenerated SBOM/provenance, and hosted release-index signature
+  are retained, while its output remains
   `ACTIONS_ARTIFACT_ONLY` with `promotion_authorized=false`
-- candidate.8 is not the distributed public update: no tag, GitHub Release,
-  public asset, store object or stable pointer exists; its exact Gate F is
-  `BLOCKED` at `4 PASS / 15 non-PASS / 0 FAIL`
+- candidate.9 is not the distributed public update: no tag, GitHub Release,
+  public asset, store object or stable pointer exists; its exact Gate F has not
+  yet been regenerated after the platform-only RU-origin fix, so promotion
+  remains blocked
 - Android `versionName`, Windows display version, cabinet download badges, and
   public changelog copy must stay aligned to the distributed stable line
 - internal build numbers and platform-native version codes may remain numeric or platform-specific and are not the public label
@@ -462,7 +464,7 @@ Current runtime-surface note:
 
 - Microsoft Store is the preferred public listing path for Windows.
 - Direct signed installer distribution remains the default until the Store listing is live.
-- Exact candidate.8 has the owner exception
+- Exact candidate.9 retains the owner exception for the unchanged EXE bytes
   `OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0`: its unsigned EXE may be used
   only for the explicitly labeled direct beta with a SmartScreen warning. It
   is not trusted-signing, stable or Microsoft Store evidence, and any rebuilt
@@ -643,7 +645,7 @@ Minimum publishing verification:
   URLs, version, release channel, and manual gates
 - anonymous GitHub Releases range checks pass before runtime sync
 - Android and Windows builds install successfully
-- the recorded signing state matches the exact candidate metadata; candidate.8
+- the recorded signing state matches the exact candidate metadata; candidate.9
   Windows EXE SHA-256
   `26ec26d8989d61415f07cbf9707f336ebba0b947fa4ba0ee93d3078fa3984668`
   carries `OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0` and may be distributed

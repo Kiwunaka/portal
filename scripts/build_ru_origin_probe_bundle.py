@@ -19,9 +19,11 @@ BUNDLE_SCHEMA = "pokrov-ru-origin-probe-bundle-v1"
 MANIFEST_NAME = "ru-origin-probe-bundle.json"
 CANDIDATE6_SOURCE_REVISION = "5713324c1c0c2566befadf527bc09ec0ecf84a4e"
 CANDIDATE8_SOURCE_REVISION = "241a83b4dca00799b39696a4ae0c3c97e087ec39"
+CANDIDATE9_SOURCE_REVISION = "84687875916bbb35c0e28e0c2a8c7ea276753f31"
 APPROVED_SOURCE_REVISIONS = {
     CANDIDATE6_SOURCE_REVISION: "pokrov-1.2.0-candidate.6",
     CANDIDATE8_SOURCE_REVISION: "pokrov-1.2.0-candidate.8",
+    CANDIDATE9_SOURCE_REVISION: "pokrov-1.2.0-candidate.9",
 }
 # Compatibility alias for older callers and retained candidate.6 fixtures.
 EXPECTED_SOURCE_REVISION = CANDIDATE6_SOURCE_REVISION
