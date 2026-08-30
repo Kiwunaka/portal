@@ -305,6 +305,26 @@ def test_sparse_repository_materializes_and_rechecks_exact_lfs_object(
         )
 
 
+@pytest.mark.parametrize(
+    "pointer",
+    (
+        b"version https://git-lfs.github.com/spec/v1\r\n"
+        b"oid sha256:" + (b"a" * 64) + b"\r\nsize 1\r\n",
+        b"version https://git-lfs.github.com/spec/v1\n"
+        b"oid sha256:" + (b"a" * 64) + b"\nsize 1",
+        b"version https://git-lfs.github.com/spec/v1\n"
+        b"oid sha256:" + (b"A" * 64) + b"\nsize 1\n",
+        b"version https://git-lfs.github.com/spec/v1\n"
+        b"oid sha256:" + (b"a" * 64) + b"\nsize +1\n",
+        b"version https://git-lfs.github.com/spec/v1\n"
+        b"oid sha256:" + (b"a" * 64) + b"\nsize 01\n",
+    ),
+)
+def test_lfs_pointer_parser_rejects_noncanonical_forms(pointer: bytes) -> None:
+    with pytest.raises(ExactGitSnapshotError, match="LFS pointer is invalid"):
+        exact_snapshot._parse_lfs_pointer(pointer)
+
+
 def test_materializer_rejects_symlink_mode_without_touching_target(
     tmp_path: Path,
 ) -> None:

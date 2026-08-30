@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
-import hashlib
 import stat
 import subprocess
 import tempfile
@@ -15,7 +15,11 @@ from typing import Iterable, Mapping, Sequence
 
 GIT_REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
 GIT_OBJECT_RE = re.compile(r"^[0-9a-f]{40}$")
-LFS_OBJECT_RE = re.compile(r"^[0-9a-f]{64}$")
+LFS_POINTER_RE = re.compile(
+    rb"version https://git-lfs.github.com/spec/v1\n"
+    rb"oid sha256:([0-9a-f]{64})\n"
+    rb"size (0|[1-9][0-9]*)\n"
+)
 MAX_TREE_LIST_BYTES = 8 * 1024 * 1024
 MAX_SNAPSHOT_FILES = 10_000
 MAX_BLOB_BYTES = 128 * 1024 * 1024
@@ -231,28 +235,15 @@ def _read_verified_object(
 
 
 def _parse_lfs_pointer(value: bytes) -> tuple[str, int]:
-    try:
-        text = value.decode("ascii")
-    except UnicodeError as exc:
-        raise ExactGitSnapshotError("exact Git LFS pointer is invalid") from exc
-    lines = text.splitlines()
-    if (
-        len(lines) != 3
-        or lines[0] != "version https://git-lfs.github.com/spec/v1"
-        or not lines[1].startswith("oid sha256:")
-        or not lines[2].startswith("size ")
-    ):
+    match = LFS_POINTER_RE.fullmatch(value)
+    if match is None:
         raise ExactGitSnapshotError("exact Git LFS pointer is invalid")
-    object_id = lines[1].removeprefix("oid sha256:").lower()
+    object_id = match.group(1).decode("ascii")
     try:
-        size = int(lines[2].removeprefix("size "))
+        size = int(match.group(2))
     except ValueError as exc:
         raise ExactGitSnapshotError("exact Git LFS pointer is invalid") from exc
-    if (
-        LFS_OBJECT_RE.fullmatch(object_id) is None
-        or size < 0
-        or size > MAX_BLOB_BYTES
-    ):
+    if size > MAX_BLOB_BYTES:
         raise ExactGitSnapshotError("exact Git LFS pointer is invalid")
     return object_id, size
 
