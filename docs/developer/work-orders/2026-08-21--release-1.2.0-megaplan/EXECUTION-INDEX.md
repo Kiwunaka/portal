@@ -2,6 +2,36 @@
 
 Last updated: 2026-08-30
 
+## 2026-08-30 — WO-013CO candidate.10 Gates A–E, current-origin and Gate F
+
+Exact candidate.10 platform `209b8f4...`, client `3459438...`, Core
+`a45d69e...` and signed release-index source `fc00b26...` are replayed from
+clean manifest-bound worktrees. The preflight is `READY_LOCAL_FREEZE` with
+zero blockers but explicitly keeps `candidate_proven=false` and promotion
+unauthorized. The stop-ship aggregate remains `BLOCKED`: local anchors pass
+`7/7`, while Windows live networking and private hosted execution remain
+non-PASS under the no-purchase solo policy.
+
+Gate B exact source passes `70/70 + 111/111`; exact Core hosted CI remains
+`5/5`. Gate D passes `196/196 + 12` and `25/25`, and Brain remains
+`197/197 + 23/23 + 7/7`. A fail-first local-quality run retains the fresh
+worktree's missing Node dependencies. After `npm ci`, all `15/15` quality
+steps and all `9/9` static budgets pass with zero npm vulnerabilities. The
+runner used Node `24.15.0` while package engines request `22.14.x`; this is
+retained as a toolchain mismatch rather than hidden.
+
+Direct source-bound current-origin health and catalog pass 50 retained samples
+after five warmups at p95 `36.8219 ms <= 100 ms` and `46.127 ms <= 200 ms`.
+No source address or response body is tracked. Gates A–E all stay `BLOCKED`
+at `I1/I3/I3/I3/I3` because required live/manual boundaries remain open;
+zero new candidate source defects are found. The physical phone is unavailable
+and untouched, and candidate.8 physical evidence is not transferred.
+
+The successor Gate F validates all `19/19` pointers and returns `NO_GO` at
+`6 PASS / 13 non-PASS`, including the existing one RU-origin FAIL, with zero
+validation errors. Current-origin is the added PASS. Gate F stays `I3`; Gate G,
+tag, public release, Store object and stable pointer remain unauthorized.
+
 ## 2026-08-30 — WO-013CN exact candidate.10 Gate F NO_GO
 
 The fail-closed Gate F verifier validates candidate.10's signed manifest,

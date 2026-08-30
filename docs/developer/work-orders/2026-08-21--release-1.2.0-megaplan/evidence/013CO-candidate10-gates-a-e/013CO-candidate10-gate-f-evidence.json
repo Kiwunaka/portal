@@ -1,0 +1,73 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-08-30T05:34:29Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.10",
+    "operational_id": "1de7182d9c82759acc36eb7a336d1fef2362e8f69505f3b4880e595f79020454",
+    "manifest_sha256": "0711546b0da4b811fba42e1ad543797494e4104bd95251c9e8e8011ac04dff83",
+    "signature_sha256": "6f96f8932e388f221cf7d5e10dc1680fbcbb62f87efe00410439eb9f62e42799",
+    "receipt_sha256": "094a42f3c0d9be3957b3065344e5bfce4880c2899833fed3b4d211d8d453a89c",
+    "sources": {
+      "platform": "209b8f40c36d95f2bbc67caa52a41ecb09f46720",
+      "client": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+      "core": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+      "release_index": "fc00b26d402b167260e495eb33397115bef1c317"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "MANUAL_OWNER_TEST",
+    "mandatory_stop_ship_and_dod": "MANUAL_OWNER_TEST",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "MANUAL_OWNER_TEST",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MANUAL_OWNER_TEST",
+    "current_origin": "PASS",
+    "brain_origin": "PASS",
+    "ru_origin": "FAIL",
+    "windows_live_network": "MANUAL_OWNER_TEST",
+    "android_ldplayer_rehearsal": "PASS",
+    "android_physical_device": "MANUAL_OWNER_TEST",
+    "authenticated_client_egress": "PASS",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "MANUAL_OWNER_TEST",
+    "hosted_required_checks": "SKIPPED_BY_OWNER"
+  },
+  "facts": {
+    "exact_candidate": "Candidate.10 exact platform/client/Core/release-index tuple is clean and immutable; candidate preflight is READY_LOCAL_FREEZE with zero blockers but candidate_proven and promotion_authorized remain false.",
+    "gates_a_e": "All five source-plan gates were replayed. Exact local source checks expose zero new candidate source defects, but every gate remains BLOCKED on required live or manual boundaries and therefore the aggregate row is MANUAL_OWNER_TEST rather than PASS.",
+    "current_origin": "Direct source-bound current-origin health and public catalog each pass 50 retained samples after five warmups at p95 36.8219 ms and 46.127 ms. The local source address is not retained.",
+    "brain_origin": "Owner-authorized guarded exact-source deploy and readback pass 197/197 selected source members, readiness 23/23 and enabled delivery 7/7.",
+    "ru_origin": "The canonical Pi pipeline is current and healthy, but required release verdict is FAIL at 10/13: Brain TLS, free REALITY target and NL TCP fail independently while ru_spb passes.",
+    "android_ldplayer": "Byte-matched x86_64 APK passes AWG2 and AWG3.1 tunnel, DNS, authenticated egress and routes with zero crashes, then restores default/no-lab/no-VPN/WARP-off state.",
+    "physical_android": "The physical phone is unavailable. Candidate.8 physical evidence is immutable history and does not become candidate.10 PASS.",
+    "local_quality": "The new detached platform worktree first failed because node_modules were absent. After npm ci, all 15 local quality steps and all nine static performance budgets pass. Node 24.15.0 differs from the requested 22.14.x engine and is retained as a toolchain observation, not hidden.",
+    "hosted_boundary": "Exact Core commit hosted CI passes five jobs. Private platform/client required checks remain SKIPPED_BY_OWNER under the no-purchase solo policy, not PASS.",
+    "decision_boundary": "Current-origin adds one PASS, but exact Gates A-E and performance remain manual as aggregate release rows, and the required RU-origin FAIL still forces NO_GO. Gate G stays unauthorized."
+  },
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CN-candidate10-gate-f/013CN-candidate10-gate-f-evidence.json",
+      "sha256": "77535b0b2f556d628cdc217fb7f1b6c44509afbd8c67a689cb4e765b1b8af56b"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013CO-candidate10-gates-a-e/013CO-candidate10-gates-a-e.json",
+      "sha256": "a62610aa65e18ef57bd0e4c5bc0f3bff4c54e9efe157584fddbf55abf27f33aa"
+    }
+  ],
+  "mutation_boundary": {
+    "gate_generation_mutated_runtime": false,
+    "candidate_artifact_mutated": false,
+    "physical_phone_used": false,
+    "payment_or_provider_action": false,
+    "database_or_outbox_mutation": false,
+    "operator_action_executed": false,
+    "public_release": false,
+    "store_upload": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE10_GATE_F_NO_GO_AFTER_GATES_A_E_AND_CURRENT_ORIGIN_REPLAY; 6_PASS_13_NON_PASS_INCLUDING_1_FAIL; NO_GATE_G_PUBLIC_STORE_STABLE_OR_PRODUCTION_PROMOTION"
+}
