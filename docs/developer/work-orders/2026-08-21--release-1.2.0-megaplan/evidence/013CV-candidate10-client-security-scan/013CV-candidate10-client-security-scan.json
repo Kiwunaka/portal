@@ -1,0 +1,48 @@
+{
+  "schema_version": "pokrov.release-evidence.v1",
+  "work_order": "WO-013CV",
+  "candidate_id": "pokrov-1.2.0-candidate.10",
+  "observed_at": "2026-08-30T08:58:12Z",
+  "candidate_unchanged": true,
+  "platform_revision": "209b8f40c36d95f2bbc67caa52a41ecb09f46720",
+  "client_revision": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+  "core_revision": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+  "security_scan": {
+    "scan_id": "1ea1b1de-8f30-460a-9874-3e8bd8a47329",
+    "status": "completed",
+    "mode": "standard_source_only",
+    "coverage": "partial",
+    "tracked_files": 735,
+    "surfaces_reviewed": 8,
+    "validated_findings": 0,
+    "validated_p0_p1": 0,
+    "runtime_status": "NOT_REQUESTED",
+    "independent_baseline": "UNAVAILABLE",
+    "manifest_sha256": "f5faddef506f42b946a4080eef1eddf67d67d337c5f447aa382638058392b600",
+    "findings_sha256": "9057af461dafff0fdc019572d2aeb0f01bcad1819055f407e5427e0b082abe71",
+    "coverage_sha256": "2bc5a74ebd39cc609d7c7a99739bd343a94e42230d5c116ec95b6dcfcc4bb23e",
+    "report_sha256": "10767892b3d133ce745effefaa45f242f15c8e5d6987a16aad9687961ecafa13",
+    "sarif_sha256": "97a57dee72ffb7488c9d8468aa24d08c5fc4d5b9ec68e08f770efa41239757ce"
+  },
+  "deferred": [
+    "android_custom_scheme_backend_semantics",
+    "packaged_binary_runtime_validation",
+    "third_party_dependency_cve_inventory",
+    "git_history_secret_scan"
+  ],
+  "gate_effect": {
+    "no_open_p0": "MISSING",
+    "gate_f": "NO_GO_6_PASS_13_NONPASS_1_FAIL",
+    "gate_f_regenerated": false,
+    "gate_g_authorized": false
+  },
+  "smart_dns_authoritative_recheck": {
+    "servers_queried": 4,
+    "dns.pokrov.space": "NXDOMAIN_4_OF_4",
+    "acme": "NOT_RUN",
+    "runtime_apply": "NOT_RUN"
+  },
+  "secrets_retained": false,
+  "runtime_mutated": false,
+  "public_release_created": false
+}

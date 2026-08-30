@@ -2,6 +2,26 @@
 
 Last updated: 2026-08-30
 
+## 2026-08-30 — WO-013CV candidate.10 bounded client security scan
+
+Exact candidate.10 client `3459438...` completes one read-only, source-only
+security scan over eight Android/Windows release-critical trust boundaries.
+The sealed scan `1ea1b1de-8f30-460a-9874-3e8bd8a47329` reports zero validated
+findings and no validated P0/P1 in secure session migration, Android exported
+components/VPN/false-green/update paths, Windows privileged IPC/runtime,
+managed routing/direct DoH and encrypted diagnostics.
+
+Coverage remains explicitly `partial`: no application, test, binary, device,
+emulator, VM or production execution; dependency vulnerability lookup, SBOM,
+Git-history review or independent delegated baseline occurred. The Android
+custom-scheme handoff is deferred pending backend ownership/single-use proof.
+The broad Gate F no-open-P0 attestation therefore stays `MISSING`, Gate F stays
+`NO_GO 6/13/1`, and candidate.10 is unchanged.
+
+At `2026-08-30T08:58:12Z`, every delegated Timeweb server still returns
+`NXDOMAIN` for `dns.pokrov.space`. ACME and Smart DNS runtime APPLY remain
+`NOT_RUN`.
+
 ## 2026-08-30 — WO-013CU candidate.10 bounded platform security scan
 
 Exact candidate.10 platform `209b8f4...` completes one read-only, source-only
