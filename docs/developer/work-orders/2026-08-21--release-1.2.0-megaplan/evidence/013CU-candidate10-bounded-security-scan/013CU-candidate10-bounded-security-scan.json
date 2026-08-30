@@ -1,0 +1,44 @@
+{
+  "schema_version": "pokrov.release-evidence.v1",
+  "work_order": "WO-013CU",
+  "candidate_id": "pokrov-1.2.0-candidate.10",
+  "observed_at": "2026-08-30T08:36:46Z",
+  "candidate_unchanged": true,
+  "platform_revision": "209b8f40c36d95f2bbc67caa52a41ecb09f46720",
+  "client_revision": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+  "core_revision": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+  "security_scan": {
+    "scan_id": "c31fb013-2058-417d-b929-ea98ecd39f87",
+    "status": "completed",
+    "mode": "standard_source_only",
+    "coverage": "partial",
+    "tracked_files": 2744,
+    "surfaces_reviewed": 9,
+    "validated_findings": 0,
+    "validated_p0_p1": 0,
+    "runtime_status": "NOT_REQUESTED",
+    "independent_baseline": "UNAVAILABLE",
+    "tac_status": "UNVERIFIED_CONNECTOR_NOT_AUTHENTICATED",
+    "manifest_sha256": "3a34d041754e4bedcc0afeae9387ce7bddc10cbb3da51b968ac3cf8f6a9458e2",
+    "findings_sha256": "e48621ecb1efe2d724954b28e9ad9aba913170f98f057ef60a0dffac73d94ee3",
+    "coverage_sha256": "0d93e1b472a303ae4f17b4aaa2b7bf690484bc0168c54d6b9ce93547d0f16976",
+    "report_sha256": "cac2193fa5565eb015c147711d3826c95d17bdc5eb53a9f7f9725309f7b85d4c"
+  },
+  "gate_effect": {
+    "no_open_p0": "MISSING",
+    "gate_f": "NO_GO_6_PASS_13_NONPASS_1_FAIL",
+    "gate_f_regenerated": false,
+    "gate_g_authorized": false
+  },
+  "smart_dns_authoritative_recheck": {
+    "servers_queried": 4,
+    "dns.pokrov.space": "NXDOMAIN_4_OF_4",
+    "dns.pokrov.space.pokrov.space": "NXDOMAIN_4_OF_4",
+    "dns.dns.pokrov.space": "NXDOMAIN_4_OF_4",
+    "acme": "NOT_RUN",
+    "runtime_apply": "NOT_RUN"
+  },
+  "secrets_retained": false,
+  "runtime_mutated": false,
+  "public_release_created": false
+}
