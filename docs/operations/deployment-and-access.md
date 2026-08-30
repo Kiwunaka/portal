@@ -1485,8 +1485,11 @@ Current release boundary:
 - retained distributed release: `v1.1.6`; public client package/build line
   `1.1.6+29`
 - working source target: `1.2.0+4049`, `PRE_CANDIDATE_LOCAL`,
-  `candidate_created=false`; it is not deployable release metadata
-- a later candidate exists only after an exact release handoff
+  `candidate_created=false`; the seed is not deployable release metadata
+- a separate exact strict-v2 handoff and signed public-index receipt define
+  private `pokrov-1.2.0-candidate.13`; it remains artifact-only with
+  `promotion_authorized=false`, and no runtime sync, tag, public assets, Store
+  object or stable pointer has occurred
 - stable-direct publication does not prove store availability, trusted Windows
   signing, exact-final Huawei/RU-LTE evidence or Apple readiness
 - artifact creation, signing, and candidate publication are owned by [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md); this guide owns runtime application and deploy access

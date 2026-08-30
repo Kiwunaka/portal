@@ -1,6 +1,6 @@
 # Repository Map
 
-Last updated: 2026-08-27
+Last updated: 2026-08-30
 
 ## Purpose
 
@@ -117,8 +117,11 @@ isolated environment they create themselves. Use the focused commands in the
   `1.1.6+29`.
 - Working source target: `1.2.0+4049`, `PRE_CANDIDATE_LOCAL`,
   `candidate_created=false`.
-- The client `config/release-handoff.seed.json` owns both facts. The next
-  candidate is defined only by a generated and validated strict-v2 handoff.
+- The client `config/release-handoff.seed.json` owns those source facts. The
+  separately generated and validated strict-v2 handoff plus signed
+  public-index receipt own private `pokrov-1.2.0-candidate.13`; its output is
+  `ACTIONS_ARTIFACT_ONLY`, `promotion_authorized=false`, with no public tag,
+  assets, Store object or stable pointer.
 - Store availability, trusted Windows signing and exact-final Huawei/RU-LTE
   claims remain unproven.
 - Account foundation: implemented in the repository, not
