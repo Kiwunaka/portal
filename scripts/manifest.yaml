@@ -109,6 +109,7 @@
     "scripts/remote_activate_owned_awg_labs.py",
     "scripts/remote_audit_owned_awg_alignment.py",
     "scripts/remote_bind_owned_awg_lab_device.py",
+    "scripts/inspect_android_runtime_profile.py",
     "scripts/remote_ensure_owned_awg_reply_source.py",
     "scripts/remote_brain_apply_release_handoff.py",
     "scripts/remote_audit_inactive_users.py",
