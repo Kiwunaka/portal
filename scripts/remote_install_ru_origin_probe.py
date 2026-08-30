@@ -179,7 +179,7 @@ def _validate_profile_registry(value: bytes) -> int:
         if set(payload) == {"profiles"} and isinstance(payload.get("profiles"), dict)
         else payload
     )
-    if not isinstance(profiles, dict) or not 1 <= len(profiles) <= 128:
+    if not isinstance(profiles, dict) or len(profiles) > 128:
         raise RuProbeRemoteOperationError("runtime_profiles_invalid")
     forbidden = ("\x00", "\n", "\r", ";", "&&", "||", "`", "$(", "://")
     for profile_id, entry in profiles.items():

@@ -138,6 +138,7 @@
     "scripts/remote_install_node_metrics_timer.py",
     "scripts/remote_install_node_observer.py",
     "scripts/remote_install_ru_origin_probe.py",
+    "scripts/remote_prepare_ru_origin_auth.py",
     "scripts/remote_install_xui_service.py",
     "scripts/remote_manage_xui.py",
     "scripts/remote_node_qdisc_smoke.py",

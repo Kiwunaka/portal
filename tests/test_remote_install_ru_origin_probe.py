@@ -152,6 +152,17 @@ def test_preflight_is_read_only_and_sanitized() -> None:
     assert "test -x /usr/sbin/runuser" in command
 
 
+def test_runtime_material_accepts_empty_profile_registry(tmp_path: Path) -> None:
+    subscription = _runtime_material(tmp_path)
+    (subscription / "profiles.json").write_text(
+        '{"profiles":{}}\n', encoding="utf-8"
+    )
+
+    _root, _values, summary = MODULE._validated_runtime_material(subscription)
+
+    assert summary["profile_count"] == 0
+
+
 def test_install_verifies_before_timer_activation_and_preserves_spool(
     tmp_path: Path,
 ) -> None:

@@ -144,6 +144,23 @@ Root-login не обязателен: допустима непривилеги�
 при успешном `sudo -n`. Инструмент не принимает sudo-пароль и не выводит его;
 если passwordless privilege отсутствует, APPLY закрывается до staging/mutation.
 
+Backend HMAC registry готовится отдельно через
+`scripts/remote_prepare_ru_origin_auth.py`. Его `PLAN` только проверяет
+`portal-api`, целевые paths и текущий process environment. `APPLY` принимает
+локальный private secret file, но не возвращает ни значение, ни hash; создаёт
+ровно один key `ru-mini-v1` с subject/origin `mini` и scopes
+`ru_probe:manifest`, `ru_probe:ingest`, `ru_probe:heartbeat`, сохраняет root-only
+absent-state receipt, ставит отдельный systemd drop-in, перезапускает
+`portal-api` и обязан доказать подписанное чтение manifest. Ошибка после начала
+мутации удаляет только operation-owned registry/drop-in и возвращает API в
+активное состояние. `ROLLBACK` требует точный receipt и managed markers.
+
+`profiles.json` может быть `{"profiles":{}}`, когда текущий server manifest не
+содержит `local_probe_profile_id`: native TCP/TLS/HTTP stages не требуют
+фиктивного executable. Если manifest требует хотя бы один profile, APPLY должен
+остановиться до установки, пока для каждого ID не подготовлен проверенный
+allowlisted executable/argv.
+
 В candidate.6 `EnvironmentFile` обязан существовать, но runner/uploader используют
 скомпилированные канонические defaults. Поэтому установщик принимает в обоих env
 файлах только `POKROV_API_BASE_URL=https://api.pokrov.space`,
