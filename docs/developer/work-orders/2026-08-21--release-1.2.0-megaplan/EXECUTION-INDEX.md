@@ -4866,3 +4866,28 @@ steps, so it remains `SKIPPED_BY_OWNER`/non-PASS.
 `FRKN_SMART_DNS/SMARTDNS-01` remains `I3` with stronger exact-candidate client
 evidence. Gate C, Gate F `NO_GO 6/13/1`, Gate G and every public/stable pointer
 remain unchanged.
+
+## 2026-08-30 — WO-013CR candidate.10 pull-request hygiene
+
+Cross-repository ancestry and PR metadata distinguish obsolete open state from
+genuinely unmerged work. Eight platform candidate-chain PR heads are already
+ancestors of current `master`; three client build/AWG-DNS PR heads are already
+ancestors of current `main`. Those eleven duplicate PRs close without merging
+or deleting branches. The old exact-tuple hosted gate and the original Linux
+foundation also close: the former is historical candidate evidence, and the
+latter is explicitly superseded by the current-main Linux PR.
+
+Three PRs remain open deliberately. Platform PR 57 is post-1.2 HAPP iOS work;
+client PR 28 is the active but conflicting source-only Linux beta line; Core PR
+5 is a useful AWG2/AWG3.1 lifecycle test whose focused job passed but whose
+release-contract fails because it changes the frozen Core source identity.
+None is merged into candidate.10, and no source SHA or artifact changes.
+
+A fresh direct authoritative check distinguishes the DNS blocker from TTL or a
+local resolver error: all four delegated Timeweb servers return `NXDOMAIN` for
+`dns.pokrov.space` (`0/4`). ACME, resolver material, server APPLY and frontend
+route APPLY remain `NOT_RUN`.
+
+No ledger row advances. `SMARTDNS-01` stays `I3`, candidate.10 Gate F remains
+`NO_GO 6/13/1`, and Gate G/tag/public/stable promotion remain unauthorized.
+The physical phone is unavailable and untouched.

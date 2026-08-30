@@ -1,0 +1,84 @@
+{
+  "schema_version": "pokrov-release-pr-hygiene-v1",
+  "checked_at_utc": "2026-08-30T07:15:20Z",
+  "candidate": "pokrov-1.2.0-candidate.10",
+  "candidate_source": {
+    "platform": "209b8f40c36d95f2bbc67caa52a41ecb09f46720",
+    "client": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+    "core": "a45d69e40ed7d892619a2b5c4592a527f630665e"
+  },
+  "audit_bases": {
+    "platform_master": "030b671079d61c3b0a44df20abe591b1d1ed7ed4",
+    "client_main": "f14d48b50f3369720dc89a4c17dab23391174ae7",
+    "core_main": "a45d69e40ed7d892619a2b5c4592a527f630665e"
+  },
+  "closed": {
+    "count": 13,
+    "branch_deletions": 0,
+    "merges": 0,
+    "platform_head_already_ancestor_of_master": [
+      {"number": 49, "head": "d22de1ed5aa9ab2f1bd5c787279e0e3506ee1bfc"},
+      {"number": 50, "head": "f9ec5da279a598976c54678375f3072f5f8cfdad"},
+      {"number": 51, "head": "e38c4fad7c2aa4012b6adca4f1c411ccbbcc433d"},
+      {"number": 52, "head": "e71be9111e93375096ba46ca269efcb5e09a48c0"},
+      {"number": 53, "head": "7e46d15490b8206c08e4674c2b726307c7780da4"},
+      {"number": 54, "head": "6e3b5db639d8bcc8533d6aebe74df4541d33a7e1"},
+      {"number": 55, "head": "384febd59321d8f8ea68d15645da0ccee015c2a3"},
+      {"number": 56, "head": "01ce413ad55758345fe1e4ab5c4a44ce3b03b6c2"}
+    ],
+    "client_head_already_ancestor_of_main": [
+      {"number": 30, "head": "47d5f6cdda0a0bbd03e687ebaf9a66bfa58a7493"},
+      {"number": 31, "head": "dbc6876bdcbc561734c7e1704c36c28f7c5573f5"},
+      {"number": 32, "head": "64ac51e98825d55f00db6941cadbfcacc5310fb4"}
+    ],
+    "historical_old_tuple": [
+      {"repository": "platform", "number": 17, "head": "75a5c4f82c963d81f1c46dcf26a83cf39b8021cf"}
+    ],
+    "explicitly_superseded": [
+      {"repository": "client", "number": 18, "head": "0701806153048325bf35599709bdfe04ef63efe0", "superseded_by": 28}
+    ]
+  },
+  "retained_open": [
+    {
+      "repository": "platform",
+      "number": 57,
+      "head": "221f43f22fb27abdeef0d85f74cb0cc04299863a",
+      "classification": "POST_1_2_DEFERRED_HAPP_IOS_CANARY"
+    },
+    {
+      "repository": "client",
+      "number": 28,
+      "head": "583e04a63c6511ea42f24394c185d11dc9a9d76b",
+      "classification": "ACTIVE_SOURCE_ONLY_LINUX_BETA_CONFLICTING_CURRENT_MAIN"
+    },
+    {
+      "repository": "core",
+      "number": 5,
+      "head": "b3f09c3cc200b15018ad0d3297d10bb35f310ec9",
+      "classification": "SOURCE_ONLY_AWG_LIFECYCLE_TEST_SUCCESSOR_TUPLE_REQUIRED"
+    }
+  ],
+  "authoritative_dns": {
+    "hostname": "dns.pokrov.space",
+    "nameserver_count": 4,
+    "pass_count": 0,
+    "statuses": [
+      {"nameserver": "ns1.timeweb.ru", "status": "NXDOMAIN"},
+      {"nameserver": "ns2.timeweb.ru", "status": "NXDOMAIN"},
+      {"nameserver": "ns3.timeweb.org", "status": "NXDOMAIN"},
+      {"nameserver": "ns4.timeweb.org", "status": "NXDOMAIN"}
+    ],
+    "raw_addresses_retained": false,
+    "acme_apply": "NOT_RUN",
+    "server_apply": "NOT_RUN",
+    "frontend_route_apply": "NOT_RUN"
+  },
+  "release_effect": {
+    "source_changed": false,
+    "candidate_changed": false,
+    "ledger_index_advanced": false,
+    "gate_f": "NO_GO_6_PASS_13_NONPASS_1_FAIL",
+    "gate_g": "NOT_AUTHORIZED",
+    "physical_android": "UNAVAILABLE_UNTOUCHED"
+  }
+}
