@@ -292,7 +292,7 @@ Current public user-facing version policy:
   `versionName` and Windows public display version are `1.1.6`, and the retained
   client package/build line is `1.1.6+29`
 - the client seed still describes the development source line as
-  `1.2.0+4047` / `PRE_CANDIDATE_LOCAL` with `candidate_created=false`; that
+  `1.2.0+4048` / `PRE_CANDIDATE_LOCAL` with `candidate_created=false`; that
   seed is not candidate authority and does not contradict the separately
   generated immutable strict-v2 candidate handoff
 - generated strict-v2 `pokrov-1.2.0-candidate.10` is now the current signed
