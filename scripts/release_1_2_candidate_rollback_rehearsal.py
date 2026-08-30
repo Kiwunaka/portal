@@ -12,7 +12,12 @@ from __future__ import annotations
 import argparse
 import copy
 import hashlib
+import importlib
+import importlib.abc
+import importlib.machinery
+import importlib.util
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -27,13 +32,125 @@ SCRIPTS_ROOT = REPO_ROOT / "scripts"
 if str(SCRIPTS_ROOT) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_ROOT))
 
-import release_1_2_pb14_candidate_gate as candidate_gate  # noqa: E402
-import remote_brain_apply_release_handoff as portal_handoff  # noqa: E402
-import validate_release_handoff_metadata as handoff_validator  # noqa: E402
-
 
 class RollbackRehearsalError(RuntimeError):
     """Raised when an exact-candidate rollback invariant fails."""
+
+
+candidate_gate: Any = None
+portal_handoff: Any = None
+handoff_validator: Any = None
+ExactGitSnapshotError: Any = None
+GIT_REVISION_RE: Any = None
+assert_sparse_repository_clean: Any = None
+canonical_requested_paths: Any = None
+confirm_repository_revision: Any = None
+git_command: Any = None
+git_environment: Any = None
+materialize_sparse_repository: Any = None
+read_blob: Any = None
+
+
+class _VerifiedRepoSourceLoader(importlib.abc.Loader):
+    def __init__(self, path: Path, object_id: str, git_executable: Path) -> None:
+        self.path = path
+        self.object_id = object_id
+        self.git_executable = git_executable
+
+    def create_module(self, spec: importlib.machinery.ModuleSpec) -> None:
+        return None
+
+    def exec_module(self, module: Any) -> None:
+        try:
+            observed = self.path.read_bytes()
+        except OSError as exc:
+            raise ImportError("rollback harness source is unavailable") from exc
+        committed = _bootstrap_exact_blob(self.git_executable, self.object_id)
+        if not _python_source_bytes_match(observed, committed):
+            raise ImportError("rollback harness source differs from HEAD")
+        code = compile(committed, str(self.path), "exec", dont_inherit=True)
+        exec(code, module.__dict__)
+
+
+class _VerifiedRepoSourceFinder(importlib.abc.MetaPathFinder):
+    def __init__(
+        self,
+        expected_sources: Mapping[str, str],
+        git_executable: Path,
+    ) -> None:
+        self.expected_sources = dict(expected_sources)
+        self.git_executable = git_executable
+
+    def find_spec(
+        self,
+        fullname: str,
+        path: Sequence[str] | None,
+        target: Any = None,
+    ) -> importlib.machinery.ModuleSpec | None:
+        del target
+        discovered = importlib.machinery.PathFinder.find_spec(fullname, path)
+        if discovered is None or discovered.origin is None:
+            return discovered
+        try:
+            source = Path(discovered.origin).resolve(strict=True)
+            relative = source.relative_to(REPO_ROOT).as_posix()
+        except (OSError, ValueError):
+            return discovered
+        if source.suffix.casefold() != ".py":
+            raise ImportError("rollback harness local module is not source-backed")
+        object_id = self.expected_sources.get(relative)
+        if object_id is None:
+            raise ImportError("rollback harness local source is not committed")
+        package_paths = discovered.submodule_search_locations
+        return importlib.util.spec_from_file_location(
+            fullname,
+            source,
+            loader=_VerifiedRepoSourceLoader(
+                source,
+                object_id,
+                self.git_executable,
+            ),
+            submodule_search_locations=(
+                list(package_paths) if package_paths is not None else None
+            ),
+        )
+
+
+_CLIENT_SNAPSHOT_PATHS = (
+    "scripts/new-release-handoff-v2.ps1",
+    "scripts/set-release-stable-pointer.ps1",
+    "scripts/validate-observability-contracts.ps1",
+    "scripts/check-client-version-parity.ps1",
+    "config/runtime-artifacts.seed.json",
+    "config/observability-contracts.seed.json",
+    "config/release-handoff.seed.json",
+    "config/windows-release.seed.json",
+    "packages/observability_contracts/lib/observability_contracts.dart",
+    "apps/android_shell/pubspec.yaml",
+    "apps/windows_shell/pubspec.yaml",
+    "packages/app_shell/pubspec.yaml",
+)
+_PLATFORM_SNAPSHOT_PATHS = (
+    "scripts/validate_observability_contracts.py",
+    "scripts/validate_release_handoff_metadata.py",
+    "shared/contracts/observability/error-catalog.json",
+    "shared/contracts/observability/error-catalog.schema.json",
+    "shared/contracts/observability/observability-event.schema.json",
+)
+_CORE_SNAPSHOT_PATHS = (
+    "config/release.json",
+    "config/observability-contracts.json",
+    "scripts/verify-observability-contracts.ps1",
+    "v2/hcore/grpc_server.go",
+    "platform/desktop/custom.go",
+)
+_HARNESS_PATHS = (
+    "scripts/release_1_2_candidate_rollback_rehearsal.py",
+    "scripts/release_1_2_pb14_candidate_gate.py",
+    "scripts/remote_brain_apply_release_handoff.py",
+    "scripts/validate_release_handoff_metadata.py",
+    "scripts/exact_git_snapshot.py",
+)
 
 
 def _utcnow() -> str:
@@ -53,8 +170,9 @@ def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 def _read_json(path: Path) -> dict[str, Any]:
     try:
+        raw = path.read_bytes()
         value = json.loads(
-            path.read_text(encoding="utf-8"),
+            raw.decode("utf-8"),
             object_pairs_hook=_reject_duplicate_keys,
         )
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
@@ -104,7 +222,7 @@ def _source_tuple(manifest: Mapping[str, Any]) -> dict[str, dict[str, str]]:
             raise RollbackRehearsalError(f"signed manifest source is missing: {name}")
         repository = str(raw.get("repository") or "")
         revision = str(raw.get("commit") or "").lower()
-        if not repository or candidate_gate.GIT_REVISION_RE.fullmatch(revision) is None:
+        if not repository or GIT_REVISION_RE.fullmatch(revision) is None:
             raise RollbackRehearsalError(f"signed manifest source is invalid: {name}")
         result[name] = {"repository": repository, "revision": revision}
     return result
@@ -341,16 +459,429 @@ def portal_round_trip(
     }
 
 
-def _powershell_executable() -> str:
-    executable = shutil.which("pwsh") or shutil.which("powershell")
-    if executable is None:
+def _powershell_executable() -> Path:
+    raw_executable = shutil.which("pwsh") or shutil.which("powershell")
+    if raw_executable is None:
+        raise RollbackRehearsalError("PowerShell is required for the client pointer")
+    try:
+        executable = Path(raw_executable).resolve(strict=True)
+    except OSError as exc:
+        raise RollbackRehearsalError(
+            "PowerShell is required for the client pointer"
+        ) from exc
+    if not executable.is_file():
         raise RollbackRehearsalError("PowerShell is required for the client pointer")
     return executable
 
 
-def _git_revision(root: Path) -> str:
+def _git_executable() -> Path:
+    raw_executable = shutil.which("git.exe") or shutil.which("git")
+    if raw_executable is None:
+        raise RollbackRehearsalError("Git is required for exact source snapshots")
+    try:
+        executable = Path(raw_executable).resolve(strict=True)
+    except OSError as exc:
+        raise RollbackRehearsalError(
+            "Git is required for exact source snapshots"
+        ) from exc
+    if not executable.is_file():
+        raise RollbackRehearsalError("Git is required for exact source snapshots")
+    return executable
+
+
+def _bootstrap_git_environment() -> dict[str, str]:
+    environment = {
+        key: value
+        for key, value in os.environ.items()
+        if not key.upper().startswith("GIT_")
+    }
+    environment.update(
+        {
+            "GIT_ATTR_NOSYSTEM": "1",
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_NO_REPLACE_OBJECTS": "1",
+            "GIT_OPTIONAL_LOCKS": "0",
+        }
+    )
+    return environment
+
+
+def _bootstrap_git_command(git_executable: Path, *arguments: str) -> list[str]:
+    return [
+        str(git_executable),
+        "-c",
+        "core.fsmonitor=false",
+        "-c",
+        f"core.hooksPath={os.devnull}",
+        *arguments,
+    ]
+
+
+def _bootstrap_git(
+    git_executable: Path,
+    *arguments: str,
+    timeout: int = 120,
+) -> subprocess.CompletedProcess[bytes]:
+    try:
+        return subprocess.run(
+            _bootstrap_git_command(git_executable, *arguments),
+            cwd=REPO_ROOT,
+            env=_bootstrap_git_environment(),
+            check=False,
+            capture_output=True,
+            timeout=timeout,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise RollbackRehearsalError(
+            "rollback harness bootstrap failed"
+        ) from exc
+
+
+def _bootstrap_exact_blob(git_executable: Path, object_id: str) -> bytes:
+    completed = _bootstrap_git(
+        git_executable,
+        "cat-file",
+        "blob",
+        object_id,
+    )
+    digest = hashlib.sha1(usedforsecurity=False)
+    digest.update(f"blob {len(completed.stdout)}\0".encode("ascii"))
+    digest.update(completed.stdout)
+    if completed.returncode != 0 or digest.hexdigest() != object_id:
+        raise RollbackRehearsalError(
+            "rollback harness source object integrity check failed"
+        )
+    return completed.stdout
+
+
+def _python_source_bytes_match(observed: bytes, committed: bytes) -> bool:
+    if observed == committed:
+        return True
+    normalized_observed = observed.replace(b"\r\n", b"\n")
+    normalized_committed = committed.replace(b"\r\n", b"\n")
+    return (
+        b"\r" not in normalized_observed
+        and b"\r" not in normalized_committed
+        and normalized_observed == normalized_committed
+    )
+
+
+def _bootstrap_verified_imports(git_executable: Path) -> None:
+    current_source = Path(__file__).resolve(strict=True)
+    for module in tuple(sys.modules.values()):
+        raw_origin = getattr(module, "__file__", None)
+        if not raw_origin:
+            continue
+        try:
+            origin = Path(raw_origin).resolve(strict=True)
+            origin.relative_to(REPO_ROOT)
+        except (OSError, ValueError):
+            continue
+        if origin != current_source:
+            raise RollbackRehearsalError(
+                "rollback harness local module loaded before source verification"
+            )
+
+    top_level = _bootstrap_git(git_executable, "rev-parse", "--show-toplevel")
+    head = _bootstrap_git(git_executable, "rev-parse", "HEAD")
+    try:
+        actual_root = Path(top_level.stdout.decode("utf-8").strip()).resolve(
+            strict=True
+        )
+        revision = head.stdout.decode("ascii").strip().lower()
+    except (OSError, UnicodeError) as exc:
+        raise RollbackRehearsalError(
+            "rollback harness revision is unavailable"
+        ) from exc
+    if (
+        top_level.returncode != 0
+        or head.returncode != 0
+        or actual_root != REPO_ROOT
+        or len(revision) != 40
+        or any(character not in "0123456789abcdef" for character in revision)
+    ):
+        raise RollbackRehearsalError("rollback harness revision is unavailable")
+
+    checked = _bootstrap_git(
+        git_executable,
+        "fsck",
+        "--strict",
+        "--no-reflogs",
+        "--no-dangling",
+        revision,
+        timeout=300,
+    )
+    if checked.returncode != 0:
+        raise RollbackRehearsalError(
+            "rollback harness Git object integrity check failed"
+        )
+    inventory = _bootstrap_git(
+        git_executable,
+        "ls-tree",
+        "-r",
+        "-z",
+        "--full-tree",
+        revision,
+    )
+    if inventory.returncode != 0 or len(inventory.stdout) > 64 * 1024 * 1024:
+        raise RollbackRehearsalError(
+            "rollback harness source inventory is unavailable"
+        )
+    expected_sources: dict[str, str] = {}
+    for raw_entry in inventory.stdout.split(b"\0"):
+        if not raw_entry:
+            continue
+        header, separator, raw_path = raw_entry.partition(b"\t")
+        fields = header.split()
+        if not separator or len(fields) != 3:
+            raise RollbackRehearsalError(
+                "rollback harness source inventory is invalid"
+            )
+        try:
+            mode = fields[0].decode("ascii")
+            object_type = fields[1].decode("ascii")
+            object_id = fields[2].decode("ascii").lower()
+            relative = raw_path.decode("utf-8")
+        except UnicodeError as exc:
+            raise RollbackRehearsalError(
+                "rollback harness source inventory is invalid"
+            ) from exc
+        if not relative.endswith(".py"):
+            continue
+        if (
+            mode not in {"100644", "100755"}
+            or object_type != "blob"
+            or len(object_id) != 40
+            or any(character not in "0123456789abcdef" for character in object_id)
+            or relative in expected_sources
+        ):
+            raise RollbackRehearsalError(
+                "rollback harness source inventory is invalid"
+            )
+        expected_sources[relative] = object_id
+
+    current_relative = current_source.relative_to(REPO_ROOT).as_posix()
+    required_sources = (*_HARNESS_PATHS, current_relative)
+    for relative in required_sources:
+        object_id = expected_sources.get(relative)
+        source = REPO_ROOT.joinpath(*relative.split("/"))
+        if object_id is None:
+            raise RollbackRehearsalError(
+                f"rollback harness source is unavailable: {relative}"
+            )
+        try:
+            observed = source.read_bytes()
+        except OSError as exc:
+            raise RollbackRehearsalError(
+                f"rollback harness source is unavailable: {relative}"
+            ) from exc
+        committed = _bootstrap_exact_blob(git_executable, object_id)
+        if not _python_source_bytes_match(observed, committed):
+            raise RollbackRehearsalError(
+                f"rollback harness source differs from HEAD: {relative}"
+            )
+
+    finder = _VerifiedRepoSourceFinder(expected_sources, git_executable)
+    sys.meta_path.insert(0, finder)
+    try:
+        exact_snapshot = importlib.import_module("exact_git_snapshot")
+        loaded_candidate_gate = importlib.import_module(
+            "release_1_2_pb14_candidate_gate"
+        )
+        loaded_portal_handoff = importlib.import_module(
+            "remote_brain_apply_release_handoff"
+        )
+        loaded_handoff_validator = importlib.import_module(
+            "validate_release_handoff_metadata"
+        )
+    except (ImportError, OSError, SyntaxError) as exc:
+        raise RollbackRehearsalError(
+            "rollback harness verified source import failed"
+        ) from exc
+    globals().update(
+        {
+            "candidate_gate": loaded_candidate_gate,
+            "portal_handoff": loaded_portal_handoff,
+            "handoff_validator": loaded_handoff_validator,
+            "ExactGitSnapshotError": exact_snapshot.ExactGitSnapshotError,
+            "GIT_REVISION_RE": exact_snapshot.GIT_REVISION_RE,
+            "assert_sparse_repository_clean": exact_snapshot.assert_sparse_repository_clean,
+            "canonical_requested_paths": exact_snapshot.canonical_requested_paths,
+            "confirm_repository_revision": exact_snapshot.confirm_repository_revision,
+            "git_command": exact_snapshot.git_command,
+            "git_environment": exact_snapshot.git_environment,
+            "materialize_sparse_repository": exact_snapshot.materialize_sparse_repository,
+            "read_blob": exact_snapshot.read_blob,
+            "_verified_source_finder": finder,
+        }
+    )
+
+
+def _read_exact_json_blob(
+    *,
+    git_executable: Path,
+    repository: Path,
+    revision: str,
+    path: str,
+) -> dict[str, Any]:
+    try:
+        raw = read_blob(
+            git_executable,
+            repository,
+            revision,
+            path,
+        )
+        value = json.loads(raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys)
+    except (ExactGitSnapshotError, UnicodeError, json.JSONDecodeError) as exc:
+        raise RollbackRehearsalError(
+            f"exact source JSON is invalid: {path}"
+        ) from exc
+    if not isinstance(value, dict):
+        raise RollbackRehearsalError(f"exact source JSON is invalid: {path}")
+    return value
+
+
+def _runtime_asset_paths(runtime_artifacts: Mapping[str, Any]) -> tuple[str, ...]:
+    core = runtime_artifacts.get("core")
+    assets = core.get("assets") if isinstance(core, Mapping) else None
+    if not isinstance(assets, Mapping):
+        raise RollbackRehearsalError("exact client runtime assets are invalid")
+    paths: list[str] = []
+    for platform in ("android", "windows"):
+        asset = assets.get(platform)
+        if not isinstance(asset, Mapping):
+            raise RollbackRehearsalError("exact client runtime assets are invalid")
+        destination = str(asset.get("sync_destination") or "")
+        entry = str(asset.get("entry") or "")
+        paths.append(f"{destination}/{entry}")
+    try:
+        return canonical_requested_paths(paths)
+    except ExactGitSnapshotError as exc:
+        raise RollbackRehearsalError("exact client runtime assets are invalid") from exc
+
+
+def _core_abi_path(core_release: Mapping[str, Any]) -> str:
+    raw_path = str(core_release.get("abi_contract") or "")
+    try:
+        return canonical_requested_paths((raw_path,))[0]
+    except ExactGitSnapshotError as exc:
+        raise RollbackRehearsalError("exact Core ABI contract is invalid") from exc
+
+
+def _materialize_release_source_snapshots(
+    *,
+    git_executable: Path,
+    client_root: Path,
+    platform_root: Path,
+    core_root: Path,
+    source_revisions: Mapping[str, Mapping[str, str]],
+    destination: Path,
+) -> tuple[
+    dict[str, Path],
+    dict[str, tuple[str, ...]],
+    dict[str, tuple[str, ...]],
+]:
+    client_revision = source_revisions["client"]["revision"]
+    platform_revision = source_revisions["platform"]["revision"]
+    core_revision = source_revisions["core"]["revision"]
+    runtime_artifacts = _read_exact_json_blob(
+        git_executable=git_executable,
+        repository=client_root,
+        revision=client_revision,
+        path="config/runtime-artifacts.seed.json",
+    )
+    core_release = _read_exact_json_blob(
+        git_executable=git_executable,
+        repository=core_root,
+        revision=core_revision,
+        path="config/release.json",
+    )
+    client_lfs_paths = _runtime_asset_paths(runtime_artifacts)
+    client_paths = canonical_requested_paths(
+        (*_CLIENT_SNAPSHOT_PATHS, *client_lfs_paths)
+    )
+    platform_paths = canonical_requested_paths(_PLATFORM_SNAPSHOT_PATHS)
+    core_paths = canonical_requested_paths(
+        (*_CORE_SNAPSHOT_PATHS, _core_abi_path(core_release))
+    )
+    snapshots = {
+        "client": destination / "client",
+        "platform": destination / "platform",
+        "core": destination / "core",
+    }
+    snapshot_paths = {
+        "client": client_paths,
+        "platform": platform_paths,
+        "core": core_paths,
+    }
+    snapshot_lfs_paths = {
+        "client": client_lfs_paths,
+        "platform": (),
+        "core": (),
+    }
+    try:
+        materialize_sparse_repository(
+            git_executable,
+            client_root,
+            client_revision,
+            snapshots["client"],
+            client_paths,
+            client_lfs_paths,
+        )
+        materialize_sparse_repository(
+            git_executable,
+            platform_root,
+            platform_revision,
+            snapshots["platform"],
+            platform_paths,
+        )
+        materialize_sparse_repository(
+            git_executable,
+            core_root,
+            core_revision,
+            snapshots["core"],
+            core_paths,
+        )
+    except ExactGitSnapshotError as exc:
+        raise RollbackRehearsalError(
+            "exact release source snapshot could not be created"
+        ) from exc
+    return snapshots, snapshot_paths, snapshot_lfs_paths
+
+
+def _snapshot_process_environment(
+    git_executable: Path,
+    powershell_executable: Path,
+) -> dict[str, str]:
+    environment = git_environment()
+    for key in tuple(environment):
+        if key in {"PYTHONHOME", "PYTHONPATH", "PYTHONSTARTUP"}:
+            environment.pop(key, None)
+    executable_directories = {
+        str(git_executable.parent),
+        str(powershell_executable.parent),
+        str(Path(sys.executable).resolve().parent),
+    }
+    environment.update(
+        {
+            "PATH": os.pathsep.join(sorted(executable_directories)),
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PYTHONNOUSERSITE": "1",
+            "PYTHONUTF8": "1",
+        }
+    )
+    return environment
+
+
+def _harness_identity(
+    git_executable: Path,
+    powershell_executable: Path,
+) -> dict[str, Any]:
     completed = subprocess.run(
-        ["git", "-C", str(root), "rev-parse", "HEAD"],
+        git_command(git_executable, "rev-parse", "HEAD"),
+        cwd=REPO_ROOT,
+        env=git_environment(),
         check=False,
         capture_output=True,
         text=True,
@@ -358,20 +889,59 @@ def _git_revision(root: Path) -> str:
         errors="replace",
     )
     revision = completed.stdout.strip().lower()
-    if completed.returncode != 0 or candidate_gate.GIT_REVISION_RE.fullmatch(
-        revision
-    ) is None:
-        raise RollbackRehearsalError(f"could not resolve Git revision: {root}")
-    return revision
+    if (
+        completed.returncode != 0
+        or GIT_REVISION_RE.fullmatch(revision) is None
+    ):
+        raise RollbackRehearsalError("rollback harness revision is unavailable")
+    try:
+        confirm_repository_revision(git_executable, REPO_ROOT, revision)
+    except ExactGitSnapshotError as exc:
+        raise RollbackRehearsalError("rollback harness revision is unavailable") from exc
+
+    file_hashes: dict[str, str] = {}
+    for path in _HARNESS_PATHS:
+        try:
+            committed = read_blob(
+                git_executable,
+                REPO_ROOT,
+                revision,
+                path,
+            )
+        except ExactGitSnapshotError as exc:
+            raise RollbackRehearsalError(
+                f"rollback harness source is unavailable: {path}"
+            ) from exc
+        local_path = REPO_ROOT.joinpath(*path.split("/"))
+        try:
+            observed = local_path.read_bytes()
+        except OSError as exc:
+            raise RollbackRehearsalError(
+                f"rollback harness source is unavailable: {path}"
+            ) from exc
+        if not _python_source_bytes_match(observed, committed):
+            raise RollbackRehearsalError(
+                f"rollback harness source differs from HEAD: {path}"
+            )
+        file_hashes[path] = _sha256_bytes(committed)
+    return {
+        "revision": revision,
+        "files": file_hashes,
+        "git_executable_sha256": _sha256_file(git_executable),
+        "powershell_executable_sha256": _sha256_file(powershell_executable),
+        "python_executable_sha256": _sha256_file(Path(sys.executable).resolve()),
+    }
 
 
 def _generate_candidate_handoff(
     *,
+    powershell_executable: Path,
     client_root: Path,
     platform_root: Path,
     core_root: Path,
     generator_input: Mapping[str, Any],
     temporary_root: Path,
+    process_environment: Mapping[str, str],
 ) -> Path:
     generator = client_root / "scripts" / "new-release-handoff-v2.ps1"
     if not generator.is_file():
@@ -380,7 +950,7 @@ def _generate_candidate_handoff(
     output_path = temporary_root / "candidate-release-handoff.json"
     input_path.write_bytes(_json_bytes(generator_input))
     command = [
-        _powershell_executable(),
+        str(powershell_executable),
         "-NoProfile",
         "-ExecutionPolicy",
         "Bypass",
@@ -399,6 +969,7 @@ def _generate_candidate_handoff(
         command,
         check=False,
         capture_output=True,
+        env=dict(process_environment),
         text=True,
         encoding="utf-8",
         errors="replace",
@@ -409,9 +980,15 @@ def _generate_candidate_handoff(
     return output_path
 
 
-def _run_pointer(script: Path, arguments: Sequence[str]) -> dict[str, Any]:
+def _run_pointer(
+    script: Path,
+    arguments: Sequence[str],
+    *,
+    powershell_executable: Path,
+    process_environment: Mapping[str, str],
+) -> dict[str, Any]:
     command = [
-        _powershell_executable(),
+        str(powershell_executable),
         "-NoProfile",
         "-ExecutionPolicy",
         "Bypass",
@@ -423,6 +1000,7 @@ def _run_pointer(script: Path, arguments: Sequence[str]) -> dict[str, Any]:
         command,
         check=False,
         capture_output=True,
+        env=dict(process_environment),
         text=True,
         encoding="utf-8",
         errors="replace",
@@ -443,6 +1021,8 @@ def _run_pointer(script: Path, arguments: Sequence[str]) -> dict[str, Any]:
 
 def _client_pointer_round_trip(
     *,
+    powershell_executable: Path,
+    process_environment: Mapping[str, str],
     client_script: Path,
     catalog_path: Path,
     pointer_path: Path,
@@ -461,7 +1041,10 @@ def _client_pointer_round_trip(
     stable_sha = _sha256_file(stable_path)
     candidate_sha = _sha256_file(candidate_path)
     validation = _run_pointer(
-        client_script, ["-CatalogPath", str(catalog_path), "-ValidateOnly"]
+        client_script,
+        ["-CatalogPath", str(catalog_path), "-ValidateOnly"],
+        powershell_executable=powershell_executable,
+        process_environment=process_environment,
     )
     dry_run = _run_pointer(
         client_script,
@@ -473,6 +1056,8 @@ def _client_pointer_round_trip(
             "-TargetReleaseId",
             candidate_id,
         ],
+        powershell_executable=powershell_executable,
+        process_environment=process_environment,
     )
     if _sha256_file(pointer_path) != stable_sha or dry_run.get("applied") is not False:
         raise RollbackRehearsalError("client pointer dry-run changed the pointer")
@@ -494,6 +1079,8 @@ def _client_pointer_round_trip(
             str(forward_receipt),
             "-Apply",
         ],
+        powershell_executable=powershell_executable,
+        process_environment=process_environment,
     )
     if _sha256_file(pointer_path) != candidate_sha or _sha256_file(
         forward_backup
@@ -517,13 +1104,18 @@ def _client_pointer_round_trip(
             str(reverse_receipt),
             "-Apply",
         ],
+        powershell_executable=powershell_executable,
+        process_environment=process_environment,
     )
     if _sha256_file(pointer_path) != stable_sha or _sha256_file(
         reverse_backup
     ) != candidate_sha:
         raise RollbackRehearsalError("client rollback exact-byte check failed")
     final_validation = _run_pointer(
-        client_script, ["-CatalogPath", str(catalog_path), "-ValidateOnly"]
+        client_script,
+        ["-CatalogPath", str(catalog_path), "-ValidateOnly"],
+        powershell_executable=powershell_executable,
+        process_environment=process_environment,
     )
     retained_forward_receipt = retained(_read_json(forward_receipt))
     retained_rollback_receipt = retained(_read_json(reverse_receipt))
@@ -550,6 +1142,9 @@ def _client_pointer_round_trip(
 
 
 def run_rehearsal(args: argparse.Namespace) -> dict[str, Any]:
+    git_executable = _git_executable()
+    _bootstrap_verified_imports(git_executable)
+    powershell_executable = _powershell_executable()
     inputs = [
         args.candidate_input,
         args.manifest,
@@ -561,6 +1156,11 @@ def run_rehearsal(args: argparse.Namespace) -> dict[str, Any]:
     for path in inputs:
         if not path.is_file():
             raise RollbackRehearsalError(f"required input is missing: {path}")
+    harness_identity = _harness_identity(git_executable, powershell_executable)
+    process_environment = _snapshot_process_environment(
+        git_executable,
+        powershell_executable,
+    )
     binding = candidate_gate._validate_retained_candidate(
         manifest_path=args.manifest,
         signature_path=args.signature,
@@ -569,33 +1169,68 @@ def run_rehearsal(args: argparse.Namespace) -> dict[str, Any]:
         release_index_root=args.release_index_root,
         require_physical_phone_install_binding=False,
     )
-    signed_manifest = _read_json(args.manifest)
-    candidate_input = _read_json(args.candidate_input)
+    try:
+        manifest_bytes = args.manifest.read_bytes()
+        candidate_input_bytes = args.candidate_input.read_bytes()
+        stable_handoff_bytes = args.stable_handoff.read_bytes()
+        signed_manifest = json.loads(
+            manifest_bytes.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys
+        )
+        candidate_input = json.loads(
+            candidate_input_bytes.decode("utf-8"),
+            object_pairs_hook=_reject_duplicate_keys,
+        )
+        stable_payload = json.loads(
+            stable_handoff_bytes.decode("utf-8"),
+            object_pairs_hook=_reject_duplicate_keys,
+        )
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise RollbackRehearsalError("candidate rehearsal input changed") from exc
+    if not all(
+        isinstance(value, dict)
+        for value in (signed_manifest, candidate_input, stable_payload)
+    ) or _sha256_bytes(manifest_bytes) != binding["manifest_sha256"]:
+        raise RollbackRehearsalError("candidate rehearsal input changed")
     signed_sources = _source_tuple(signed_manifest)
-    for name, root in (
-        ("client", args.client_root),
-        ("platform", args.platform_root),
-        ("core", args.core_root),
-    ):
-        if not root.is_dir():
-            raise RollbackRehearsalError(f"exact {name} checkout is missing: {root}")
-        if _git_revision(root) != signed_sources[name]["revision"]:
-            raise RollbackRehearsalError(f"exact {name} checkout revision drift")
-    client_script = args.client_root / "scripts" / "set-release-stable-pointer.ps1"
-    if not client_script.is_file():
-        raise RollbackRehearsalError(f"client pointer script is missing: {client_script}")
     generator_input = prepare_generator_input(candidate_input, signed_manifest)
-    stable_payload = _read_json(args.stable_handoff)
     stable_identity = _handoff_identity(stable_payload)
 
-    with tempfile.TemporaryDirectory(prefix="pokrov-candidate-rollback-") as raw_root:
+    temporary_parent = args.temporary_root
+    if temporary_parent is not None:
+        try:
+            temporary_parent = temporary_parent.resolve(strict=True)
+        except OSError as exc:
+            raise RollbackRehearsalError(
+                "rollback temporary root is unavailable"
+            ) from exc
+        if not temporary_parent.is_dir():
+            raise RollbackRehearsalError("rollback temporary root is unavailable")
+    with tempfile.TemporaryDirectory(
+        prefix="pokrov-candidate-rollback-",
+        dir=temporary_parent,
+    ) as raw_root:
         root = Path(raw_root)
+        snapshots, snapshot_paths, snapshot_lfs_paths = (
+            _materialize_release_source_snapshots(
+                git_executable=git_executable,
+                client_root=args.client_root,
+                platform_root=args.platform_root,
+                core_root=args.core_root,
+                source_revisions=signed_sources,
+                destination=root / "source-snapshots",
+            )
+        )
+        client_script = (
+            snapshots["client"] / "scripts" / "set-release-stable-pointer.ps1"
+        )
         generated_handoff = _generate_candidate_handoff(
-            client_root=args.client_root,
-            platform_root=args.platform_root,
-            core_root=args.core_root,
+            powershell_executable=powershell_executable,
+            client_root=snapshots["client"],
+            platform_root=snapshots["platform"],
+            core_root=snapshots["core"],
             generator_input=generator_input,
             temporary_root=root,
+            process_environment=process_environment,
         )
         candidate_handoff = _read_json(generated_handoff)
         handoff_binding = bind_candidate_handoff(
@@ -618,7 +1253,7 @@ def run_rehearsal(args: argparse.Namespace) -> dict[str, Any]:
         evidence_root.mkdir(parents=True)
         stable_target.parent.mkdir(parents=True)
         candidate_target.parent.mkdir(parents=True)
-        shutil.copyfile(args.stable_handoff, stable_target)
+        stable_target.write_bytes(stable_handoff_bytes)
         shutil.copyfile(stable_target, pointer_path)
         shutil.copyfile(generated_handoff, candidate_target)
         catalog = build_isolated_catalog(
@@ -633,6 +1268,8 @@ def run_rehearsal(args: argparse.Namespace) -> dict[str, Any]:
 
         portal = portal_round_trip(stable_target, candidate_target)
         client = _client_pointer_round_trip(
+            powershell_executable=powershell_executable,
+            process_environment=process_environment,
             client_script=client_script,
             catalog_path=catalog_path,
             pointer_path=pointer_path,
@@ -643,6 +1280,19 @@ def run_rehearsal(args: argparse.Namespace) -> dict[str, Any]:
             evidence_root=evidence_root,
         )
         handoff_bytes = candidate_target.read_bytes()
+        for name, snapshot in snapshots.items():
+            try:
+                assert_sparse_repository_clean(
+                    git_executable,
+                    snapshot,
+                    signed_sources[name]["revision"],
+                    snapshot_paths[name],
+                    snapshot_lfs_paths[name],
+                )
+            except ExactGitSnapshotError as exc:
+                raise RollbackRehearsalError(
+                    f"exact {name} source snapshot changed during rehearsal"
+                ) from exc
 
     handoff_sha = _sha256_bytes(handoff_bytes)
     if portal["candidate_handoff_sha256"] != handoff_sha:
@@ -675,10 +1325,11 @@ def run_rehearsal(args: argparse.Namespace) -> dict[str, Any]:
                 "source_artifact_set_sha256"
             ],
         },
+        "harness": harness_identity,
         "retained_stable": {
             "release_id": stable_identity[0],
             "release_version": stable_identity[1],
-            "handoff_sha256": _sha256_file(args.stable_handoff),
+            "handoff_sha256": _sha256_bytes(stable_handoff_bytes),
         },
         "portal": portal,
         "client_channel": client,
@@ -718,6 +1369,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--platform-root", type=Path, required=True)
     parser.add_argument("--core-root", type=Path, required=True)
     parser.add_argument("--release-index-root", type=Path, required=True)
+    parser.add_argument(
+        "--temporary-root",
+        type=Path,
+        help="Existing private parent for disposable exact-source snapshots.",
+    )
     parser.add_argument("--handoff-output", type=Path)
     parser.add_argument("--output", type=Path)
     return parser
@@ -726,7 +1382,13 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     try:
         result = run_rehearsal(build_parser().parse_args(argv))
-    except (RollbackRehearsalError, candidate_gate.Pb14GateError) as exc:
+    except RollbackRehearsalError as exc:
+        print(f"FAIL: {exc}", file=sys.stderr)
+        return 2
+    except Exception as exc:
+        gate_module = globals().get("candidate_gate")
+        if gate_module is None or not isinstance(exc, gate_module.Pb14GateError):
+            raise
         print(f"FAIL: {exc}", file=sys.stderr)
         return 2
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import copy
+import importlib
 import importlib.util
 import json
+import shutil
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -14,6 +17,114 @@ SPEC = importlib.util.spec_from_file_location("candidate_rollback_rehearsal", MO
 assert SPEC is not None and SPEC.loader is not None
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
+EXACT_SNAPSHOT = importlib.import_module("exact_git_snapshot")
+MODULE.candidate_gate = importlib.import_module("release_1_2_pb14_candidate_gate")
+MODULE.portal_handoff = importlib.import_module("remote_brain_apply_release_handoff")
+MODULE.handoff_validator = importlib.import_module(
+    "validate_release_handoff_metadata"
+)
+for _name in (
+    "ExactGitSnapshotError",
+    "GIT_REVISION_RE",
+    "assert_sparse_repository_clean",
+    "canonical_requested_paths",
+    "confirm_repository_revision",
+    "git_command",
+    "git_environment",
+    "materialize_sparse_repository",
+    "read_blob",
+):
+    setattr(MODULE, _name, getattr(EXACT_SNAPSHOT, _name))
+
+
+def _git() -> Path:
+    raw = shutil.which("git.exe") or shutil.which("git")
+    assert raw is not None
+    return Path(raw).resolve()
+
+
+def test_verified_source_loader_compiles_only_hash_bound_source(tmp_path: Path) -> None:
+    git = _git()
+    relative = "scripts/validate_release_handoff_metadata.py"
+    object_id = subprocess.run(
+        [str(git), "-C", str(REPO_ROOT), "rev-parse", f"HEAD:{relative}"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    committed = subprocess.run(
+        [str(git), "-C", str(REPO_ROOT), "cat-file", "blob", object_id],
+        check=True,
+        capture_output=True,
+    ).stdout
+    source = tmp_path / "verified_module.py"
+    source.write_bytes(committed.replace(b"\n", b"\r\n"))
+    loader = MODULE._VerifiedRepoSourceLoader(source, object_id, git)
+    spec = importlib.util.spec_from_file_location("verified_module", source, loader=loader)
+    assert spec is not None
+    loaded = importlib.util.module_from_spec(spec)
+    MODULE.sys.modules[spec.name] = loaded
+    try:
+        loader.exec_module(loaded)
+        assert loaded.EXIT_INVALID == 2
+
+        source.write_bytes(committed + b"\nCHANGED = True\n")
+        with pytest.raises(ImportError, match="differs from HEAD"):
+            loader.exec_module(loaded)
+    finally:
+        MODULE.sys.modules.pop(spec.name, None)
+
+
+def _commit_tree(root: Path, files: dict[str, bytes]) -> str:
+    git = _git()
+    for relative, value in files.items():
+        path = root.joinpath(*relative.split("/"))
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(value)
+    subprocess.run(
+        [str(git), "init", "-q", str(root)], check=True, capture_output=True
+    )
+    subprocess.run(
+        [str(git), "-C", str(root), "add", "."], check=True, capture_output=True
+    )
+    subprocess.run(
+        [
+            str(git),
+            "-C",
+            str(root),
+            "-c",
+            "user.name=POKROV Test",
+            "-c",
+            "user.email=test@pokrov.invalid",
+            "commit",
+            "-qm",
+            "fixture",
+        ],
+        check=True,
+        capture_output=True,
+    )
+    return subprocess.run(
+        [str(git), "-C", str(root), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+
+
+def _lfs_pointer(value: bytes) -> tuple[bytes, str]:
+    object_id = MODULE.hashlib.sha256(value).hexdigest()
+    pointer = (
+        "version https://git-lfs.github.com/spec/v1\n"
+        f"oid sha256:{object_id}\n"
+        f"size {len(value)}\n"
+    ).encode("ascii")
+    return pointer, object_id
+
+
+def _install_lfs_object(root: Path, object_id: str, value: bytes) -> None:
+    path = root / ".git" / "lfs" / "objects" / object_id[:2] / object_id[2:4] / object_id
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(value)
 
 
 def _candidate_inputs() -> tuple[dict, dict, dict]:
@@ -139,3 +250,89 @@ def test_isolated_catalog_hash_binds_both_targets(tmp_path: Path) -> None:
         "candidate-b",
     ]
     assert result["mutation_policy"]["exact_candidate_gate_required"] is True
+
+
+def test_release_source_snapshots_use_commit_objects_not_mutable_worktrees(
+    tmp_path: Path,
+) -> None:
+    client_root = tmp_path / "client"
+    platform_root = tmp_path / "platform"
+    core_root = tmp_path / "core"
+    client_root.mkdir()
+    platform_root.mkdir()
+    core_root.mkdir()
+    runtime_artifacts = {
+        "core": {
+            "assets": {
+                "android": {
+                    "sync_destination": "runtime/android",
+                    "entry": "core.aar",
+                },
+                "windows": {
+                    "sync_destination": "runtime/windows",
+                    "entry": "core.dll",
+                },
+            }
+        }
+    }
+    client_files = {path: b"fixture\n" for path in MODULE._CLIENT_SNAPSHOT_PATHS}
+    client_files["config/runtime-artifacts.seed.json"] = json.dumps(
+        runtime_artifacts
+    ).encode()
+    android_value = b"exact-android"
+    windows_value = b"exact-windows"
+    android_pointer, android_object_id = _lfs_pointer(android_value)
+    windows_pointer, windows_object_id = _lfs_pointer(windows_value)
+    client_files["runtime/android/core.aar"] = android_pointer
+    client_files["runtime/windows/core.dll"] = windows_pointer
+    client_files["not-selected.txt"] = b"must stay absent"
+    core_files = {path: b"fixture\n" for path in MODULE._CORE_SNAPSHOT_PATHS}
+    core_files["config/release.json"] = json.dumps(
+        {"abi_contract": "config/abi.json"}
+    ).encode()
+    core_files["config/abi.json"] = b"{}\n"
+    platform_files = {
+        path: b"fixture\n" for path in MODULE._PLATFORM_SNAPSHOT_PATHS
+    }
+    client_revision = _commit_tree(client_root, client_files)
+    _install_lfs_object(client_root, android_object_id, android_value)
+    _install_lfs_object(client_root, windows_object_id, windows_value)
+    platform_revision = _commit_tree(platform_root, platform_files)
+    core_revision = _commit_tree(core_root, core_files)
+    generator = client_root / "scripts/new-release-handoff-v2.ps1"
+    generator.write_bytes(b"mutable worktree bytes\n")
+
+    snapshots, snapshot_paths, snapshot_lfs_paths = (
+        MODULE._materialize_release_source_snapshots(
+            git_executable=_git(),
+            client_root=client_root,
+            platform_root=platform_root,
+            core_root=core_root,
+            source_revisions={
+                "client": {"revision": client_revision},
+                "platform": {"revision": platform_revision},
+                "core": {"revision": core_revision},
+            },
+            destination=tmp_path / "snapshots",
+        )
+    )
+
+    assert (
+        snapshots["client"] / "scripts/new-release-handoff-v2.ps1"
+    ).read_bytes() == b"fixture\n"
+    assert not (snapshots["client"] / "not-selected.txt").exists()
+    assert (snapshots["client"] / "runtime/android/core.aar").read_bytes() == (
+        b"exact-android"
+    )
+    for name, revision in (
+        ("client", client_revision),
+        ("platform", platform_revision),
+        ("core", core_revision),
+    ):
+        MODULE.assert_sparse_repository_clean(
+            _git(),
+            snapshots[name],
+            revision,
+            snapshot_paths[name],
+            snapshot_lfs_paths[name],
+        )
