@@ -4837,3 +4837,32 @@ APPLY remain `NOT_RUN`. The physical phone is unavailable and untouched.
 latest exact candidate.10 Gate F remains the WO-013CO `NO_GO 6/13/1` decision
 and is not regenerated while RU is still `FAIL`. Gate G, tag, public release,
 Store object and stable pointer remain unauthorized and unchanged.
+
+## 2026-08-30 — WO-013CQ candidate.10 LDPlayer Smart-DNS replay
+
+The installed LDPlayer package reads back as release `1.2.0+4046`; its
+device-side SHA-256 exactly matches the signed candidate.10 x86_64 APK already
+bound by WO-013CM. The physical phone is unavailable and untouched.
+
+Starting from no connected VPN, no `tun`, `DNS Автоматически` and the prior
+`Настроено: 2` state, the visible Rules flow accepts the allowlisted custom DoH
+hostname/path, direct-DoH lab and external Smart-DNS lab. Existing
+`AI-сервисы` and `Игровые сервисы` purposes remain selected, and the UI states
+that service traffic is direct and the external IP is not hidden.
+
+The custom DoH, direct transport, external Smart DNS and both purposes survive
+force-stop/relaunch with an empty crash buffer. No connection or DoH request is
+attempted: all four delegated authoritative servers still return no A record,
+and the resolver/server APPLY remains `NOT_RUN`. ChatGPT, Gemini and Xbox
+access therefore remain `NOT_RUN`, not failed or passed.
+
+Cleanup returns the client to Automatic/VPN DNS, clears the custom URL and
+external Smart-DNS state, restores `Настроено: 2`, leaves no connected VPN or
+`tun`, force-stops POKROV and removes emulator-side temporary files. Client PR
+39 is merged under the owner-authorized solo exception after the local full
+seed/contract/hygiene suite passes; its sole hosted job had no runner and zero
+steps, so it remains `SKIPPED_BY_OWNER`/non-PASS.
+
+`FRKN_SMART_DNS/SMARTDNS-01` remains `I3` with stronger exact-candidate client
+evidence. Gate C, Gate F `NO_GO 6/13/1`, Gate G and every public/stable pointer
+remain unchanged.

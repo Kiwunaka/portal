@@ -1,0 +1,83 @@
+{
+  "schema": "pokrov.candidate10-ldplayer-smart-dns-platform-evidence/v1",
+  "recorded_at_utc": "2026-08-30T06:51:37Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.10",
+    "client_source": "3459438f02bd774e722b1b858e7f7f16d57a9f5c",
+    "version": "1.2.0+4046",
+    "installed_apk_sha256": "ec07ba17e9a5c697fcf46ccd193970fa3666eeeb3b9e345876aa8ee1d45a2627",
+    "installed_apk_byte_match": true
+  },
+  "client_evidence": {
+    "commit": "89d89c7",
+    "merge_commit": "f14d48b50f3369720dc89a4c17dab23391174ae7",
+    "pull_request": 39,
+    "local_seed_and_contracts": "PASS",
+    "hosted_cross_repository_contract": "SKIPPED_BY_OWNER_EMPTY_RUNNER_ZERO_STEPS",
+    "artifacts_releases_delta": false
+  },
+  "environment": {
+    "kind": "LDPlayer Android emulator",
+    "physical_device_used": false,
+    "physical_device_status": "MANUAL_OWNER_TEST_DEVICE_UNAVAILABLE"
+  },
+  "initial_state": {
+    "dns_preset": "automatic",
+    "advanced_configured_count": 2,
+    "connected_vpn": false,
+    "tun_interface_present": false,
+    "app_crash_buffer_entries": 0
+  },
+  "ui_flow": {
+    "status": "PASS_CONFIG_AND_PERSISTENCE_ONLY",
+    "custom_doh_hostname": "dns.pokrov.space",
+    "custom_doh_path": "/dns-query",
+    "direct_doh_enabled": true,
+    "external_smart_dns_enabled": true,
+    "selected_purposes": [
+      "AI services",
+      "Gaming services"
+    ],
+    "ui_warns_external_ip_not_hidden": true,
+    "force_stop_relaunch_persistence": "PASS",
+    "app_crash_buffer_entries": 0
+  },
+  "server_boundary": {
+    "authoritative_nameservers": 4,
+    "authoritative_a_pass": 0,
+    "certificate_apply": "NOT_RUN",
+    "runtime_material_apply": "NOT_RUN",
+    "server_apply": "NOT_RUN",
+    "frontend_route_apply": "NOT_RUN"
+  },
+  "live_access": {
+    "connection_attempted": false,
+    "doh_request_attempted": false,
+    "chatgpt_access": "NOT_RUN",
+    "gemini_access": "NOT_RUN",
+    "xbox_access": "NOT_RUN"
+  },
+  "cleanup": {
+    "status": "PASS",
+    "dns_preset": "automatic",
+    "custom_doh_url_cleared": true,
+    "dns_transport": "vpn",
+    "external_smart_dns_enabled": false,
+    "advanced_configured_count": 2,
+    "connected_vpn": false,
+    "tun_interface_present": false,
+    "app_force_stopped": true,
+    "device_temp_artifacts_remaining": 0
+  },
+  "external_normalized_evidence_sha256": "f1dd9f7dc8e4f549ee993f26c037e06cd97e16a76c8a7fda0ff3a8964c2e3ea2",
+  "mutation_boundary": {
+    "candidate_artifact_mutated": false,
+    "client_source_mutated": false,
+    "server_or_dns_zone_mutated": false,
+    "physical_phone_used": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "PASS_EXACT_CANDIDATE10_LDPLAYER_SMART_DNS_CONFIG_PERSISTENCE_AND_CLEANUP; LIVE_DOH_AND_SERVICE_ACCESS_NOT_RUN; SMARTDNS_01_REMAINS_I3"
+}

@@ -43,6 +43,12 @@ but its A record is
 still absent on all four delegated authoritative servers. Runtime material,
 certificate and Smart DNS service remain absent.
 
+WO-013CQ adds an exact candidate.10 LDPlayer client replay without changing
+that server boundary. The installed APK matches the signed candidate bytes;
+custom DoH, direct DoH, external Smart DNS and the AI/Gaming purposes persist
+across force-stop/relaunch and restore cleanly. No DoH request or service access
+ran while authoritative DNS remained `0/4`, so `SMARTDNS-01` stays `I3`.
+
 The candidate.7 history below remains retained context: WO-013BY creates signed
 private candidate.7
 from platform `af259f3...` with the same exact client/Core build `4046` bytes,
@@ -291,6 +297,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013CN` | Generate a fail-closed Gate F decision for exact signed candidate.10 without inheriting stale candidate.8 results | Exact-candidate release-decision evidence | Signed manifest/keyring/source tuple and all `19/19` pointers validate. Gate F returns `NO_GO`: `5 PASS / 14 non-PASS`, including one explicit RU-origin FAIL, with zero validation errors. Eight checks remain manual, three not run, one missing and hosted private checks skipped by owner. Gate F stays `I3`; Gate G remains unauthorized | `WO-013CM`, exact signed candidate.10 outputs and public release-index keyring; fix/reject RU failures and complete exact/manual gates before any new Gate F |
 | `WO-013CO` | Replay exact candidate.10 Gates A–E and direct current-origin, then regenerate Gate F | Exact-candidate source, origin, performance and release-decision evidence | Gate B passes `70/70 + 111/111`, Gate D passes `196/196 + 12` and `25/25`, local quality passes `15/15`, static performance `9/9`, and current-origin p95 health/catalog pass at `36.8219/46.127 ms`. All five gates remain `BLOCKED` on live/manual boundaries with zero new source defects. Gate F validates `19/19` and remains `NO_GO` at `6/13/1`; the physical phone is unavailable and untouched | `WO-013CN`, exact candidate.10 source worktrees and current-origin authorization; classify three RU failures, then complete physical Windows/Android and remaining manual gates |
 | `WO-013CP` | Retire stale disabled Brain/Free delivery targets, repeat candidate.10 RU-origin and bound the remaining path failures | Post-signing candidate runtime/control-plane and origin evidence | Separate guarded backups plus compare-and-set operations clear two stale drain flags only after zero-route checks. Brain runtime is stopped; Free external shutdown remains `BLOCKED_BY_ACCESS`. Two fresh canonical Pi runs agree at `FAIL 9/11` on NL and RU-SPB timeouts. NL DNS/listener/firewall/ban checks pass locally while no Pi packet is observed at server ingress. Smart DNS remains blocked at authoritative DNS `0/4`; physical phone remains unavailable | `WO-013CM`–`WO-013CO`, owner-authorized control-plane retirement and direct-RU Pi; fix authoritative DNS, pursue new RU route/provider evidence and complete remaining manual gates before a new Gate F |
+| `WO-013CQ` | Replay the exact candidate.10 Smart-DNS client configuration on LDPlayer and restore its prior state | Exact-candidate Android emulator and Smart-DNS evidence | The installed x86_64 APK matches candidate.10 bytes. Custom DoH, direct DoH, external Smart DNS and selected AI/Gaming purposes survive force-stop/relaunch; visible copy warns that application traffic is direct and the IP is not hidden. Cleanup returns to Automatic/VPN DNS, clears lab state and leaves no TUN/VPN. Live DoH/service access is `NOT_RUN` because authoritative DNS is still `0/4`; physical Android remains unavailable | `WO-013CP`, exact candidate.10 APK and owned LDPlayer; publish authoritative DNS, install the guarded resolver and run live access/attribution/leak/rollback plus physical-device matrices |
 
 ## Current evidence
 
@@ -349,6 +356,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013CO-candidate10-gates-a-e/`
 - `WO-013CP-candidate10-ru-control-plane-retirement.md`
 - `evidence/013CP-candidate10-ru-control-plane-retirement/`
+- `WO-013CQ-candidate10-ldplayer-smart-dns.md`
+- `evidence/013CQ-candidate10-ldplayer-smart-dns/`
 - `WO-013BS-candidate6-ru-origin-environment-preflight.md`
 - `WO-013BT-candidate6-hy2-artifact-and-plan.md`
 - `WO-013BU-candidate6-ru-origin-bundle-and-install-plan.md`
