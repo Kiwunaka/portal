@@ -115,7 +115,7 @@ isolated environment they create themselves. Use the focused commands in the
 
 - Retained distributed stable-direct client: `v1.1.6`; public package line
   `1.1.6+29`.
-- Working source target: `1.2.0+4046`, `PRE_CANDIDATE_LOCAL`,
+- Working source target: `1.2.0+4047`, `PRE_CANDIDATE_LOCAL`,
   `candidate_created=false`.
 - The client `config/release-handoff.seed.json` owns both facts. The next
   candidate is defined only by a generated and validated strict-v2 handoff.
