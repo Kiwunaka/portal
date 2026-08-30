@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build, verify, and plan the exact candidate.6 RU-origin probe bundle."""
+"""Build, verify, and plan an allowlisted exact-candidate RU-origin bundle."""
 
 from __future__ import annotations
 
@@ -17,7 +17,14 @@ from typing import Any, Mapping
 REPO_ROOT = Path(__file__).resolve().parents[1]
 BUNDLE_SCHEMA = "pokrov-ru-origin-probe-bundle-v1"
 MANIFEST_NAME = "ru-origin-probe-bundle.json"
-EXPECTED_SOURCE_REVISION = "5713324c1c0c2566befadf527bc09ec0ecf84a4e"
+CANDIDATE6_SOURCE_REVISION = "5713324c1c0c2566befadf527bc09ec0ecf84a4e"
+CANDIDATE8_SOURCE_REVISION = "241a83b4dca00799b39696a4ae0c3c97e087ec39"
+APPROVED_SOURCE_REVISIONS = {
+    CANDIDATE6_SOURCE_REVISION: "pokrov-1.2.0-candidate.6",
+    CANDIDATE8_SOURCE_REVISION: "pokrov-1.2.0-candidate.8",
+}
+# Compatibility alias for older callers and retained candidate.6 fixtures.
+EXPECTED_SOURCE_REVISION = CANDIDATE6_SOURCE_REVISION
 REVISION_RE = re.compile(r"[0-9a-f]{40}\Z")
 SHA256_RE = re.compile(r"[0-9a-f]{64}\Z")
 
@@ -90,9 +97,14 @@ def _validate_source_revision(value: str) -> str:
     revision = str(value or "").strip().lower()
     if REVISION_RE.fullmatch(revision) is None:
         raise RuProbeBundleError("source_revision_invalid")
-    if revision != EXPECTED_SOURCE_REVISION:
-        raise RuProbeBundleError("source_revision_not_candidate6")
+    if revision not in APPROVED_SOURCE_REVISIONS:
+        raise RuProbeBundleError("source_revision_not_approved_candidate")
     return revision
+
+
+def _candidate_id(source_revision: str) -> str:
+    revision = _validate_source_revision(source_revision)
+    return APPROVED_SOURCE_REVISIONS[revision]
 
 
 def _run_git(repo_root: Path, *args: str) -> bytes:
@@ -356,6 +368,9 @@ def _report(*, path: Path, manifest: Mapping[str, Any], mode: str) -> dict[str, 
         "schema_version": BUNDLE_SCHEMA,
         "mode": mode,
         "ok": True,
+        "candidate_id": _candidate_id(
+            str((manifest.get("source") or {}).get("revision") or "")
+        ),
         "source_revision": (manifest.get("source") or {}).get("revision"),
         "member_count": len(SOURCE_MEMBERS),
         "bundle_size_bytes": path.stat().st_size,

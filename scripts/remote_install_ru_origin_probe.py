@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Guarded PLAN/APPLY/ROLLBACK for the exact candidate.6 RU-origin probe."""
+"""Guarded PLAN/APPLY/ROLLBACK for an allowlisted exact-candidate RU probe."""
 
 from __future__ import annotations
 
@@ -31,6 +31,7 @@ except ImportError:  # pragma: no cover - package import for tests
 REPORT_SCHEMA = "pokrov-ru-origin-probe-remote-operation-v1"
 DEFAULT_NODE_CODE = "mini"
 RUNTIME_USER = "pokrov-ru-probe"
+RUNUSER_PATH = "/usr/sbin/runuser"
 CONFIG_ROOT = "/etc/pokrov-ru-probe"
 SPOOL_ROOT = "/var/lib/pokrov-ru-probe"
 BACKUP_ROOT = "/root/pokrov-ru-probe-backups"
@@ -110,7 +111,7 @@ def _validated_local_bundle(
     digest = _sha256_file(path)
     if (
         str((manifest.get("source") or {}).get("revision") or "")
-        != bundle_contract.EXPECTED_SOURCE_REVISION
+        not in bundle_contract.APPROVED_SOURCE_REVISIONS
         or set(contents) != set(bundle_contract.SOURCE_MEMBERS)
     ):
         raise RuProbeRemoteOperationError("bundle_remote_install_contract_mismatch")
@@ -355,7 +356,7 @@ def _preflight_command() -> str:
         "emit_bool python3 'command -v python3 >/dev/null 2>&1'",
         "emit_bool sha256sum 'command -v sha256sum >/dev/null 2>&1'",
         "emit_bool install 'command -v install >/dev/null 2>&1'",
-        "emit_bool runuser 'command -v runuser >/dev/null 2>&1'",
+        f"emit_bool runuser 'test -x {_q(RUNUSER_PATH)}'",
         f"emit_bool user_present 'id -u {_q(RUNTIME_USER)} >/dev/null 2>&1'",
         f"emit_bool group_present 'getent group {_q(RUNTIME_USER)} >/dev/null 2>&1'",
         f"emit_bool spool_present 'test -d {_q(SPOOL_ROOT)} && ! test -L {_q(SPOOL_ROOT)}'",
@@ -632,8 +633,8 @@ def _install_command(
             f"test \"$(stat -c %G {_q(CONFIG_ROOT + '/hmac.key')})\" = {_q(RUNTIME_USER)}",
             f"test \"$(stat -c %a {_q(SPOOL_ROOT)})\" = 700",
             _profile_remote_validator(f"{CONFIG_ROOT}/profiles.json"),
-            f"runuser -u {_q(RUNTIME_USER)} -- env PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 -B /opt/pokrov/scripts/ru_probe_runner.py --help >/dev/null",
-            f"runuser -u {_q(RUNTIME_USER)} -- env PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 -B /opt/pokrov/scripts/ru_probe_uploader.py --help >/dev/null",
+            f"{_q(RUNUSER_PATH)} -u {_q(RUNTIME_USER)} -- env PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 -B /opt/pokrov/scripts/ru_probe_runner.py --help >/dev/null",
+            f"{_q(RUNUSER_PATH)} -u {_q(RUNTIME_USER)} -- env PYTHONDONTWRITEBYTECODE=1 /usr/bin/python3 -B /opt/pokrov/scripts/ru_probe_uploader.py --help >/dev/null",
         ]
     )
     for timer in TIMER_NAMES:
@@ -828,6 +829,7 @@ def main() -> int:
             "node_code": node_code,
             "bundle_sha256": bundle_sha256,
             "bundle_size_bytes": bundle_path.stat().st_size,
+            "candidate_id": bundle_contract._candidate_id(source_revision),
             "source_revision": source_revision,
             "auth_method": auth_method,
             "preflight": preflight,

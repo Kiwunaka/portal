@@ -94,8 +94,18 @@ def test_tampered_member_fails_closed(tmp_path: Path) -> None:
 
 
 def test_wrong_source_revision_is_rejected() -> None:
-    with pytest.raises(MODULE.RuProbeBundleError, match="not_candidate6"):
+    with pytest.raises(MODULE.RuProbeBundleError, match="not_approved_candidate"):
         MODULE._validate_source_revision("a" * 40)
+
+
+def test_signed_candidate8_source_revision_is_explicitly_allowlisted() -> None:
+    assert (
+        MODULE._validate_source_revision(MODULE.CANDIDATE8_SOURCE_REVISION)
+        == MODULE.CANDIDATE8_SOURCE_REVISION
+    )
+    assert MODULE._candidate_id(MODULE.CANDIDATE8_SOURCE_REVISION) == (
+        "pokrov-1.2.0-candidate.8"
+    )
 
 
 def test_missing_runtime_dependency_is_rejected() -> None:

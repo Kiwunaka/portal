@@ -105,24 +105,30 @@ python -B -m pytest -p no:cacheprovider tests/test_internal_request_auth.py test
 локального commit, но не подтверждает сеть РФ, production ingest, установку
 unit или актуальность живого HMAC key record.
 
-### Неизменяемый пакет candidate.6
+### Неизменяемые пакеты точных кандидатов
 
 Точный набор исходников для RU-host строится из Git objects, а не из текущего
-рабочего дерева:
+рабочего дерева. Builder принимает только явно allowlisted подписанные platform
+revision; произвольный commit закрывается до чтения source members. Для текущего
+candidate.8:
 
 ```powershell
-python scripts/build_ru_origin_probe_bundle.py build --source-revision 5713324c1c0c2566befadf527bc09ec0ecf84a4e --output <private-artifact-path>/pokrov-ru-origin-candidate6-5713324.zip
-python scripts/build_ru_origin_probe_bundle.py verify --bundle <private-artifact-path>/pokrov-ru-origin-candidate6-5713324.zip
-python scripts/build_ru_origin_probe_bundle.py plan --bundle <private-artifact-path>/pokrov-ru-origin-candidate6-5713324.zip --operation install
-python scripts/remote_install_ru_origin_probe.py --bundle <private-artifact-path>/pokrov-ru-origin-candidate6-5713324.zip --ssh-config-alias <trusted-ru-alias> --operation install
+python scripts/build_ru_origin_probe_bundle.py build --source-revision 241a83b4dca00799b39696a4ae0c3c97e087ec39 --output <private-artifact-path>/pokrov-ru-origin-candidate8-241a83b.zip
+python scripts/build_ru_origin_probe_bundle.py verify --bundle <private-artifact-path>/pokrov-ru-origin-candidate8-241a83b.zip
+python scripts/build_ru_origin_probe_bundle.py plan --bundle <private-artifact-path>/pokrov-ru-origin-candidate8-241a83b.zip --operation install
+python scripts/remote_install_ru_origin_probe.py --bundle <private-artifact-path>/pokrov-ru-origin-candidate8-241a83b.zip --ssh-config-alias <trusted-ru-alias> --operation install
 ```
 
-Зафиксированный пакет candidate.6 содержит 10 source/unit members, имеет размер
-`47702` байта и SHA-256
+Candidate.8 package содержит 10 source/unit members, имеет размер `47702` байта
+и SHA-256
+`7bc2ec16971a23fb16ce54d2f2e1dae4f3a228bca13527a71099396e532a8707`.
+Повторная независимая сборка дала те же байты. Retained candidate.6 revision
+`5713324c...` остаётся вторым allowlisted историческим входом; его ранее
+зафиксированный пакет имеет SHA-256
 `e7eb8ec20693f9626d6e7697c7845fa165e77fc1daa7df580ef0618248be345b`.
-Повторная независимая сборка дала те же байты. Пакет не содержит `probe.env`,
-`uploader.env`, `hmac.key` или `profiles.json` и ничего не устанавливает сам.
-Его успешная сборка/проверка — только локальное evidence уровня immutable bundle,
+Ни один пакет не содержит `probe.env`, `uploader.env`, `hmac.key` или
+`profiles.json` и ничего не устанавливает сам. Успешная сборка/проверка —
+только локальное evidence уровня immutable bundle,
 не доказательство живой RU-origin среды, запуска, ingest, heartbeat или admin
 readback.
 
