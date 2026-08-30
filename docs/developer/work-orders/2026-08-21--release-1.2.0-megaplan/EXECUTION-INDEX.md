@@ -4891,3 +4891,8 @@ route APPLY remain `NOT_RUN`.
 No ledger row advances. `SMARTDNS-01` stays `I3`, candidate.10 Gate F remains
 `NO_GO 6/13/1`, and Gate G/tag/public/stable promotion remain unauthorized.
 The physical phone is unavailable and untouched.
+
+Platform PR 107 carries the record under the solo exception. Its first two
+hosted jobs have no runner and `steps: []`; they are retained as
+`SKIPPED_BY_OWNER`, not PASS. Local documentation/context, link, JSON,
+secret/address and diff checks pass.

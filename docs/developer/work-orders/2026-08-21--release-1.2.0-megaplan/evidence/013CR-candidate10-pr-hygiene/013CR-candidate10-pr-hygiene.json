@@ -80,5 +80,28 @@
     "gate_f": "NO_GO_6_PASS_13_NONPASS_1_FAIL",
     "gate_g": "NOT_AUTHORIZED",
     "physical_android": "UNAVAILABLE_UNTOUCHED"
+  },
+  "documentation_promotion": {
+    "pull_request": 107,
+    "solo_exception": true,
+    "local_verification": "PASS",
+    "hosted": [
+      {
+        "run": 33298855455,
+        "job": 99223111474,
+        "name": "cross-repository-contract",
+        "runner_name_present": false,
+        "step_count": 0,
+        "classification": "SKIPPED_BY_OWNER"
+      },
+      {
+        "run": 33298855457,
+        "job": 99223111559,
+        "name": "repo-guardrails",
+        "runner_name_present": false,
+        "step_count": 0,
+        "classification": "SKIPPED_BY_OWNER"
+      }
+    ]
   }
 }

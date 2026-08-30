@@ -75,5 +75,13 @@ latest exact candidate.10 Gate F remains `NO_GO 6 PASS / 13 non-PASS / 1 FAIL`.
 Gate G, tag, public release and stable pointer remain unauthorized. The
 physical phone is unavailable and untouched.
 
+Platform PR `107` carries this documentation-only record under the
+owner-authorized solo exception. Its first hosted cross-repository and
+guardrails jobs each ended after two seconds with an empty runner name and
+`steps: []`. Runs `33298855455` and `33298855457` are therefore retained as
+`SKIPPED_BY_OWNER`, not test failures and not PASS. The local `32/32`
+documentation/context tests, context audit, link check, JSON parse, scoped
+secret/address scan and diff check pass.
+
 The normalized record is
 `evidence/013CR-candidate10-pr-hygiene/013CR-candidate10-pr-hygiene.json`.
