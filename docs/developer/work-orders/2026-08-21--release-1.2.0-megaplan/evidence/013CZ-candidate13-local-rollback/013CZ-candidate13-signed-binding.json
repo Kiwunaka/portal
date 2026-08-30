@@ -1,0 +1,41 @@
+{
+  "schema": "pokrov.release-1.2.0.signed-candidate-binding-evidence/v1",
+  "recorded_at_utc": "2026-08-30T16:00:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.13",
+    "release_index_source_revision": "440f3be1a5f3ae5c6c78c62036858884e5bc3c94",
+    "signer_workflow_run": "Kiwunaka/pokrov/actions/runs/33318660441",
+    "signer_artifact_id": 9734226935,
+    "signer_artifact_name": "pokrov-pokrov-1.2.0-candidate.13-signed-manifest-440f3be1a5f3ae5c6c78c62036858884e5bc3c94"
+  },
+  "outputs": [
+    {
+      "path": "release-index.json",
+      "sha256": "b8a10cf8fbc1683cc9a1540edf74f29fd417f422bc3d2be97f4deae85075190c",
+      "size_bytes": 6884
+    },
+    {
+      "path": "release-index.json.sig",
+      "sha256": "ede7844c2b2a94b0d89b7aa72b75c5ff3eec5e5662ec907c0b181ff08d5c0e4d",
+      "size_bytes": 64
+    },
+    {
+      "path": "signing-receipt.json",
+      "sha256": "fc3b1319812df374c27e34c9698af8bcf9a67b66ada95bb4e1be1906d82bb295",
+      "size_bytes": 589
+    }
+  ],
+  "independent_validation": {
+    "status": "READY_SIGNED_MANIFEST",
+    "receipt_matches_outputs": true,
+    "detached_signature_verified_with_public_keyring": true,
+    "method": "Local byte readback and detached Ed25519 verification against the manifest-bound trusted release-index keyring",
+    "promotion_authorized": false
+  },
+  "mutation_boundary": {
+    "signing_private_key_accessed_locally": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false
+  }
+}

@@ -567,6 +567,7 @@ def run_rehearsal(args: argparse.Namespace) -> dict[str, Any]:
         receipt_path=args.receipt,
         signed_evidence_path=args.signed_evidence,
         release_index_root=args.release_index_root,
+        require_physical_phone_install_binding=False,
     )
     signed_manifest = _read_json(args.manifest)
     candidate_input = _read_json(args.candidate_input)

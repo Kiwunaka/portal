@@ -1,0 +1,77 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate-rollback-evidence/v1",
+  "recorded_at_utc": "2026-08-30T16:03:22Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.13",
+    "operational_id": "9e132b693852d3da89a805cc7fa0f1214e4654117068a83885593b00779802c0",
+    "manifest_sha256": "b8a10cf8fbc1683cc9a1540edf74f29fd417f422bc3d2be97f4deae85075190c",
+    "signature_sha256": "ede7844c2b2a94b0d89b7aa72b75c5ff3eec5e5662ec907c0b181ff08d5c0e4d",
+    "receipt_sha256": "fc3b1319812df374c27e34c9698af8bcf9a67b66ada95bb4e1be1906d82bb295",
+    "source_revisions": {
+      "platform": "7d983c0ab52e9c01f94da8916a6bca6a0039be8d",
+      "client": "ce2581dd16d276d20eace7a56f0337c4b9319168",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "440f3be1a5f3ae5c6c78c62036858884e5bc3c94"
+    },
+    "handoff_input_sha256": "67206cecb96f0ed437cdbd19eab3571a4f0f451e78e885b4438829f15b43e8cf",
+    "signed_binding_evidence_sha256": "08eaf570b6c97620fc45d34b8b07b7c76ec3cdd5465d26a07605fe5fc2906d6e"
+  },
+  "valid_run": {
+    "status": "PASS_LOCAL_EXACT_CANDIDATE_PORTAL_CLIENT_ROLLBACK",
+    "sequence": [
+      "1.1.6+20260819",
+      "pokrov-1.2.0",
+      "1.1.6+20260819"
+    ],
+    "candidate_handoff_sha256": "6d65772d00cca27610a95e2eea285b489f54b08a34ce6f88d711cc2f3d8fa6e9",
+    "candidate_artifact_set_sha256": "d9bba178d184958f9577ac39e3e736ef081677297cc67dc5bcffcb327edb4f69",
+    "retained_stable_handoff_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+    "portal": {
+      "status": "PASS_LOCAL",
+      "candidate_projection_applied": true,
+      "rollback_byte_identical": true,
+      "unrelated_setting_preserved": true
+    },
+    "client_channel": {
+      "status": "PASS_LOCAL",
+      "initial_validation": "PASS",
+      "dry_run": "PASS_NO_APPLY",
+      "forward_switch": "PASS",
+      "rollback_switch": "PASS",
+      "final_stable_validation": "PASS",
+      "rollback_byte_identical": true
+    },
+    "external_report_sha256": "d068d061159f4ab98726782806be983d9ba888e41a8175ace9b0301e4a2e038f"
+  },
+  "fail_closed_correction": {
+    "initial_status": "BLOCKED_BY_UNRELATED_PHYSICAL_INSTALL_COUPLING",
+    "correction": "The shared signed-candidate validator now keeps physical-phone binding mandatory by default for PB-14 and Gate F while allowing the isolated rollback harness to use the internally consistent signed manifest package/build identity.",
+    "release_gate_weakened": false,
+    "physical_install_evidence_fabricated": false
+  },
+  "verification": {
+    "focused_tests": "13/13 PASS",
+    "client_worktree_clean_after_capture": true,
+    "core_worktree_clean_after_capture": true,
+    "platform_exact_worktree_clean_after_capture": true,
+    "release_index_worktree_clean_after_capture": true
+  },
+  "mutation_boundary": {
+    "environment": "ISOLATED_LOCAL_FIXTURE",
+    "tracked_client_pointer": "UNCHANGED",
+    "tracked_client_catalog": "UNCHANGED",
+    "portal_runtime": "NOT_MUTATED",
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer": "NOT_MUTATED",
+    "physical_device": "NOT_RUN",
+    "android_emulator": "NOT_REQUIRED",
+    "brain_origin": "NOT_RUN"
+  },
+  "row_outcomes": {
+    "REL_DOD/DOD-18": "I3_STRONGER_EXACT_CANDIDATE13_LOCAL_EVIDENCE",
+    "FE/P12-130": "I3_STRONGER_EXACT_CANDIDATE13_LOCAL_EVIDENCE",
+    "REL_GATE/GATE-F": "I3_UNCHANGED_NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING"
+  },
+  "evidence_ceiling": "PASS_LOCAL_EXACT_CANDIDATE13_PORTAL_CLIENT_ROLLBACK; AUTHORIZED_RUNTIME_POINTER_KILL_ROLLBACK_AND_CURRENT_AND_BRAIN_READBACK_REMAIN_OPEN; NO_GATE_F_ADVANCE"
+}

@@ -2,6 +2,36 @@
 
 Last updated: 2026-08-30
 
+## 2026-08-30 — WO-013CZ candidate.13 isolated rollback rehearsal
+
+Exact signed candidate.13 passes the real portal projection and client
+stable-pointer mechanisms inside an isolated fixture. Detached signature,
+receipt, manifest-bound public keyring, source tuple and six-artifact binding
+pass. The post-sign handoff SHA-256 is `6d65772d...a6e9`, with exact signed
+release-index source `440f3be...`; its artifact-set SHA-256 is
+`d9bba178...f69`.
+
+The sequence `1.1.6+20260819 -> pokrov-1.2.0 -> 1.1.6+20260819` passes client
+initial validation, dry-run, forward/reverse atomic switch and final stable
+readback. The client pointer returns byte-identically to stable SHA-256
+`563dd478...69f`; the portal projection also restores byte-identically and
+preserves an unrelated setting. PB-14 plus rollback focused tests pass
+`13/13`.
+
+The first attempt failed closed on an unrelated physical-install coupling.
+The shared validator remains physical-binding-strict by default for PB-14 and
+Gate F; only the isolated rollback path uses the internally consistent signed
+manifest package/build identity. No physical proof is invented and Gate F is
+not weakened.
+
+`REL_DOD/DOD-18` and `FE/P12-130` remain `I3` with stronger exact candidate.13
+local evidence. Gate F remains
+`NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING`. No tracked pointer/catalog,
+portal runtime, physical device, emulator, production, public release or
+stable state changes. Distribution remains `I4=6`, `I3=316`, `I2=21`,
+`I1=35`, `I0=0` across `378` rows. Normalized evidence SHA-256 is
+`25a511c8218eb867d8082311853c50a195165ff52f234a734ed1ce3d7289343b`.
+
 ## 2026-08-30 — WO-013CV candidate.10 bounded client security scan
 
 Exact candidate.10 client `3459438...` completes one read-only, source-only
