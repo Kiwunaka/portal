@@ -56,6 +56,13 @@ foundation and the source-only AWG lifecycle test remain open with explicit
 boundaries. A fresh direct check still returns `NXDOMAIN` on all four delegated
 servers, so Smart DNS APPLY remains `NOT_RUN`.
 
+WO-013CS resolves that retained Linux beta branch against current client
+`main`, proves the exact merge-result source with the full client gate and a
+real owned Linux compile host, then merges PR 28 under the solo exception.
+Linux remains source-only and outside candidate.10: live connect, network
+mutation/rollback, signed packaging and the exact Ubuntu 24.04 VM matrix stay
+open. Authoritative Smart DNS is still `0/4 NXDOMAIN`.
+
 The candidate.7 history below remains retained context: WO-013BY creates signed
 private candidate.7
 from platform `af259f3...` with the same exact client/Core build `4046` bytes,
@@ -306,6 +313,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013CP` | Retire stale disabled Brain/Free delivery targets, repeat candidate.10 RU-origin and bound the remaining path failures | Post-signing candidate runtime/control-plane and origin evidence | Separate guarded backups plus compare-and-set operations clear two stale drain flags only after zero-route checks. Brain runtime is stopped; Free external shutdown remains `BLOCKED_BY_ACCESS`. Two fresh canonical Pi runs agree at `FAIL 9/11` on NL and RU-SPB timeouts. NL DNS/listener/firewall/ban checks pass locally while no Pi packet is observed at server ingress. Smart DNS remains blocked at authoritative DNS `0/4`; physical phone remains unavailable | `WO-013CM`–`WO-013CO`, owner-authorized control-plane retirement and direct-RU Pi; fix authoritative DNS, pursue new RU route/provider evidence and complete remaining manual gates before a new Gate F |
 | `WO-013CQ` | Replay the exact candidate.10 Smart-DNS client configuration on LDPlayer and restore its prior state | Exact-candidate Android emulator and Smart-DNS evidence | The installed x86_64 APK matches candidate.10 bytes. Custom DoH, direct DoH, external Smart DNS and selected AI/Gaming purposes survive force-stop/relaunch; visible copy warns that application traffic is direct and the IP is not hidden. Cleanup returns to Automatic/VPN DNS, clears lab state and leaves no TUN/VPN. Live DoH/service access is `NOT_RUN` because authoritative DNS is still `0/4`; physical Android remains unavailable | `WO-013CP`, exact candidate.10 APK and owned LDPlayer; publish authoritative DNS, install the guarded resolver and run live access/attribution/leak/rollback plus physical-device matrices |
 | `WO-013CR` | Close obsolete release PRs, preserve active work and recheck authoritative Smart-DNS DNS | Cross-repository release governance and DNS readiness evidence | Thirteen already-promoted, old-tuple or explicitly superseded PRs close with zero merges and zero branch deletions. Platform HAPP PR 57, client Linux PR 28 and Core AWG lifecycle PR 5 remain open with explicit release boundaries. All four delegated servers return `NXDOMAIN`, so authoritative DNS remains `0/4` and ACME/server/frontend APPLY remain `NOT_RUN` | `WO-013CQ`, current platform/client/Core promotion refs and GitHub PR metadata; publish the authorized A record in the delegated Timeweb zone, then execute the existing guarded Smart-DNS sequence. Adopt retained active PRs only on their declared release lines |
+| `WO-013CS` | Refresh, natively prove and adopt the conditional Linux beta foundation on current client main without changing candidate.10 | Client conditional-Linux successor source and platform evidence | PR 28 head `646e944...` resolves cleanly on current main and merges as `30ccf4f...`. Full client/seed/docs gates, Linux Flutter `4/4`, runtime engine `70` plus one expected skip, and native Linux gofmt/test/vet/build pass. Hosted zero-step job is `SKIPPED_BY_OWNER`. `LNX-001` remains `I3`; actual live connect/network rollback/package/Ubuntu 24.04 proof stays open and Linux remains outside 1.2.0 | `WO-005G`, `WO-013AP`, `WO-013CR`, owner-approved solo exception; implement and retain live Core/network/recovery/package/VM evidence before I4 or a Linux claim |
 
 ## Current evidence
 
@@ -368,6 +376,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013CQ-candidate10-ldplayer-smart-dns/`
 - `WO-013CR-candidate10-pr-hygiene.md`
 - `evidence/013CR-candidate10-pr-hygiene/`
+- `WO-013CS-linux-current-main-native-proof.md`
+- `evidence/013CS-linux-current-main-native-proof/`
 - `WO-013BS-candidate6-ru-origin-environment-preflight.md`
 - `WO-013BT-candidate6-hy2-artifact-and-plan.md`
 - `WO-013BU-candidate6-ru-origin-bundle-and-install-plan.md`

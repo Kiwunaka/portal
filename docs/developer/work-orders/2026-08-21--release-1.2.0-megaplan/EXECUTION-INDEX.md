@@ -4896,3 +4896,27 @@ Platform PR 107 carries the record under the solo exception. Its first two
 hosted jobs have no runner and `steps: []`; they are retained as
 `SKIPPED_BY_OWNER`, not PASS. Local documentation/context, link, JSON,
 secret/address and diff checks pass.
+
+## 2026-08-30 — WO-013CS Linux current-main adoption and native proof
+
+Client PR 28 is refreshed by a normal merge of current `main`; its exact head
+`646e94430fbf3e5c41486fe8c5cf202ae87a213f` has no
+`artifacts/releases/**` delta and merges to client `main` as
+`30ccf4f1030e60f38617904a611b1ec392a2ead1`. The local client `main` is then
+fast-forwarded to the same commit. Signed candidate.10 and its source/artifact
+tuple are unchanged.
+
+The merge-result tree passes the full client, seed, docs and hygiene gates,
+Linux Flutter `4/4`, runtime engine `70` with one expected host skip, and an
+LF-preserving native Linux Go `gofmt`/test/vet/build run on an owned Ubuntu
+22.04 x86_64 compile host. That host is not the declared Ubuntu 24.04 support
+matrix, and no package or live network proof is claimed. Hosted run
+`33299917136`, job `99225988231`, has no runner and zero steps, so it remains
+`SKIPPED_BY_OWNER` under the solo/no-purchase exception.
+
+`REL/LNX-001` remains `I3` with stronger current-main evidence. `OBS-045`
+remains `I2` because real NetworkManager/resolved/nft mutations, partial-fault
+rollback and journald readback remain absent. Linux stays outside release
+1.2.0 and candidate.10. The physical phone is unavailable and untouched;
+Smart DNS remains blocked at authoritative `0/4 NXDOMAIN`, with APPLY
+`NOT_RUN`.
