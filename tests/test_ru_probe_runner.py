@@ -1863,6 +1863,54 @@ def test_secret_reader_contains_posix_nofollow_guard() -> None:
     assert "O_NOFOLLOW" in source
 
 
+def test_secret_permissions_allow_root_owned_group_read_for_service_group(
+    hmac_client,
+) -> None:
+    metadata = SimpleNamespace(st_mode=stat.S_IFREG | 0o640, st_uid=0, st_gid=991)
+
+    assert hmac_client._posix_secret_permissions_allowed(
+        metadata,
+        effective_gid=991,
+        supplementary_groups=set(),
+    )
+
+
+@pytest.mark.parametrize(
+    ("mode", "owner", "group", "effective_group", "supplementary", "allowed"),
+    [
+        (0o600, 1000, 1000, 1000, set(), True),
+        (0o640, 0, 991, 1000, {991}, True),
+        (0o640, 0, 991, 1000, set(), False),
+        (0o640, 1000, 991, 991, set(), False),
+        (0o660, 0, 991, 991, set(), False),
+        (0o644, 0, 991, 991, set(), False),
+    ],
+)
+def test_secret_permissions_reject_unsafe_or_unreadable_group_modes(
+    hmac_client,
+    mode: int,
+    owner: int,
+    group: int,
+    effective_group: int,
+    supplementary: set[int],
+    allowed: bool,
+) -> None:
+    metadata = SimpleNamespace(
+        st_mode=stat.S_IFREG | mode,
+        st_uid=owner,
+        st_gid=group,
+    )
+
+    assert (
+        hmac_client._posix_secret_permissions_allowed(
+            metadata,
+            effective_gid=effective_group,
+            supplementary_groups=supplementary,
+        )
+        is allowed
+    )
+
+
 def test_secret_reader_handles_bounded_partial_descriptor_reads(
     hmac_client,
     tmp_path: Path,

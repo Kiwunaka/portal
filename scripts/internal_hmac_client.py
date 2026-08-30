@@ -145,6 +145,25 @@ def _open_secret_descriptor(path: Path) -> int:
     return os.open(path, flags)
 
 
+def _posix_secret_permissions_allowed(
+    metadata,
+    *,
+    effective_gid: int,
+    supplementary_groups: set[int],
+) -> bool:
+    mode = stat.S_IMODE(metadata.st_mode)
+    if mode & 0o007:
+        return False
+    group_bits = mode & 0o070
+    if group_bits == 0:
+        return True
+    return (
+        group_bits == 0o040
+        and int(metadata.st_uid) == 0
+        and int(metadata.st_gid) in ({int(effective_gid)} | supplementary_groups)
+    )
+
+
 def read_secret_file(secret_file: str | Path) -> bytes:
     path = Path(secret_file)
     descriptor: int | None = None
@@ -153,7 +172,11 @@ def read_secret_file(secret_file: str | Path) -> bytes:
         metadata = os.fstat(descriptor)
         if not stat.S_ISREG(metadata.st_mode):
             raise InternalHmacClientError("secret_file_not_regular")
-        if os.name != "nt" and stat.S_IMODE(metadata.st_mode) & 0o077:
+        if os.name != "nt" and not _posix_secret_permissions_allowed(
+            metadata,
+            effective_gid=os.getegid(),
+            supplementary_groups={int(value) for value in os.getgroups()},
+        ):
             raise InternalHmacClientError("secret_file_permissions")
         chunks: list[bytes] = []
         remaining = MAX_SECRET_BYTES + 1
