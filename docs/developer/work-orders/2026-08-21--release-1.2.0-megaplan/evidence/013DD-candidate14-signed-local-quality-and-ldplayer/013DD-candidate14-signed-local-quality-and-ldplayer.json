@@ -1,0 +1,184 @@
+{
+  "schema": "pokrov-release-1.2.0-work-order-evidence-v1",
+  "work_order": "WO-013DD",
+  "observed_at": "2026-08-31T09:20:59Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.14",
+    "version": "1.2.0+4049",
+    "platform_source": "6f694d003934731045b5d02dccff1d61fecc1380",
+    "client_source": "75ba7e721cfee486f7189edd51de97aba2746722",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "signed_release_index_source": "ef084ae2f8550b7aa488fc1a7de492e706812821",
+    "receipt_release_index_source": "93975850f39955fd7a55ce53d6cee603aa44dc7a",
+    "strict_handoff_sha256": "8682fc6c04fc74241fc045eea19ded11909ea4faa399b4afddd3fad69d8dbaae",
+    "handoff_input_sha256": "34f8a786070a958f18d3da2c12da59598c52e62584a1a323aad39bc5889db148",
+    "signed_manifest_sha256": "e847bb33c9d7004cb74f0baf311b1b7bf7cd9ab20d72bfe88d3a6c9c8656bc07",
+    "detached_signature_sha256": "86a76642ecfde2855914be03240c17f2757921a6467bae2ef7a65971eb0ed10f",
+    "signing_receipt_sha256": "7b616beadbb0aa225d6b2efc2388ec3799df02692835ae1fe6165cea2828c2a1",
+    "signing_template_sha256": "e9e8c5bfe0797e4ec402c4e32febf89541d0e06a401bd93ecaa5bd4f31da07d5",
+    "signing_key_id": "pokrov-release-2026-01",
+    "signing_run": 33359918180,
+    "actions_artifact_digest": "sha256:bd060147872d1b0b2810099d87d51f7f05bdf4c24dc55df50a4c162831562110",
+    "candidate_created": true,
+    "promotion_authorized": false,
+    "output_kind": "ACTIONS_ARTIFACT_ONLY",
+    "artifact_count": 6
+  },
+  "supply_chain": {
+    "preflight": "READY_LOCAL_FREEZE",
+    "preflight_blocker_count": 0,
+    "android_signing": "PASS_PRODUCTION_CERTIFICATE",
+    "windows_signing": "SKIPPED_BY_OWNER_UNSIGNED_DIRECT_BETA",
+    "support_signing_sha256": "a403ffee79189e911633408639bcd5ff6cbb0be0b0993fb550a1bd8582b0a8a8",
+    "sbom_component_count": 349,
+    "sbom_sha256": "8079c5c67ce7eadde5e8065773642f591de8605e2c62a5cfe9f6b45360ca466d",
+    "provenance_subject_count": 6,
+    "provenance_sha256": "84f20b4935f3e14febb57120d1f11f2894e385149e97839fc5c1bded3c57c03e",
+    "artifact_set_sha256": "e0dd97e50c255b1e5efe8aa808e0bfb67b5a05be9a079c9c5d8c8a5e7f83a361",
+    "windows_runtime_manifest_sha256": "74e8d512b0c0f403d1bbf90251b7799a0ca086d8d0df51f13860c2e7d3d16051",
+    "offline_validation": "PASS_6_OF_6_ARTIFACTS_AND_8_OF_8_WINDOWS_RUNTIME_FILES",
+    "signed_index_validation": "READY_SIGNED_MANIFEST",
+    "dependency_contract": "PASS_EXACT_LOCKS_ZERO_KNOWN_FINDINGS",
+    "focused_dependency_tests": "PASS_55"
+  },
+  "artifacts": [
+    {
+      "id": "android-arm64-v8a",
+      "sha256": "9bcdbe00fe8f8ed029894a65d531614f4fb912dda27e5fb1bb088c5b7516cc74",
+      "size_bytes": 101366678
+    },
+    {
+      "id": "android-armeabi-v7a",
+      "sha256": "6308dcdec7ca5f360b1a3726690fca3e80da330906c3d2fe3457e26f44bbd68e",
+      "size_bytes": 90778788
+    },
+    {
+      "id": "android-market",
+      "sha256": "5cddb0d264a05db59c099af8a26f26dd3094746632222e1527e9c0a129801e42",
+      "size_bytes": 126265693
+    },
+    {
+      "id": "android-universal",
+      "sha256": "960712643013ce8f2383ae3068d562c9971cc69184477f650972d0153a1409d4",
+      "size_bytes": 295370161
+    },
+    {
+      "id": "android-x86-64",
+      "sha256": "73c43e21dfc984c474941e14800c551f9545fe423b8f11458f6d41b8cb9af5ff",
+      "size_bytes": 109951989
+    },
+    {
+      "id": "windows-x64-setup",
+      "sha256": "0afaf6e1d73a7e72762d945557f48793646a9bdbf12bb8ca2e843d4b94df276c",
+      "size_bytes": 28932793,
+      "signing": "SKIPPED_BY_OWNER",
+      "exception": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0"
+    }
+  ],
+  "local_quality": {
+    "report_sha256": "1bf20e3efedf4bb53c71ea7886c1db201bc27d64171d2f864dae4dfa6ea0d09c",
+    "web_performance_evidence_sha256": "4a884a7307d166b8d8aeffb36c8a53727dc786d64cc9d62538a2189cfd389af0",
+    "local_status": "PASS",
+    "steps_passed": 15,
+    "steps_total": 15,
+    "candidate_proven": false,
+    "promotion_status": "MANUAL_OWNER_TEST",
+    "client_analyze": "PASS",
+    "client_widget_tests": "PASS_413",
+    "cabinet_e2e": "PASS_69_OF_69",
+    "static_performance": "PASS_9_OF_9"
+  },
+  "ldplayer": {
+    "device_class": "LDPlayer Android 9 API 28 x86_64 emulator",
+    "serial": "emulator-5554",
+    "exact_x86_64_artifact_installed": true,
+    "installed_artifact_sha256": "73c43e21dfc984c474941e14800c551f9545fe423b8f11458f6d41b8cb9af5ff",
+    "installed_version": "1.2.0+4049",
+    "install": "PASS",
+    "cold_launch": "PASS",
+    "crash_buffer": "EMPTY",
+    "exact_install_identity_sha256": "d0be39313a1e22b3eda1c280a4cdfb465609098a8e4c23e0b0995ec6d9f17f1e",
+    "one_day_test_entitlement_extension_applied": true,
+    "default_profile": {
+      "runtime_profile": "default",
+      "vless_outbound_count": 33,
+      "vpn_service": "PASS",
+      "tunnel_interface": "PASS",
+      "managed_dns": "PASS",
+      "authenticated_vpn_egress": "PASS"
+    },
+    "awg31": {
+      "control_plane_selected": true,
+      "material_provisioned_for_test": true,
+      "runtime_profile": "default",
+      "result": "FAIL_MANAGED_PROFILE_ACTIVATION_CACHED_DEFAULT",
+      "protocol_engine_proven": false,
+      "runtime_profile_evidence_sha256": "efaec247d3db59372f043f3ab132d8e6516b07a1027bac9874f1de0899f3dd83"
+    },
+    "awg2": {
+      "control_plane_selected": true,
+      "material_provisioned_for_test": true,
+      "runtime_profile": "default",
+      "result": "FAIL_MANAGED_PROFILE_ACTIVATION_CACHED_DEFAULT",
+      "protocol_engine_proven": false,
+      "runtime_profile_evidence_sha256": "1c129e2225ce4a576076e6a0eae8d552553261c870a08ac3ea4b4deae6974971"
+    },
+    "repair_flow": "DID_NOT_STAGE_REQUESTED_LAB_PROFILE",
+    "owned_node_alignment": "BLOCKED_BY_ACCESS_CURRENT_RUN",
+    "final_state": {
+      "disconnected": true,
+      "default_selected": true,
+      "lab_binding_absent": true,
+      "lab_material_absent": true,
+      "vpn_service_active": false,
+      "vpn_interface_active": false,
+      "app_remains_installed": true,
+      "cold_relaunch": "PASS"
+    },
+    "physical_device_touched": false,
+    "evidence_hashes": {
+      "home_xml": "da87aee61fecef92a218b987da46fc8323ef4ad282552da2033d2456cbefba73",
+      "home_png": "36c2f90a34bf65243e7f6ea863d1756797fea8d5c7009ab0b06fd9e1d4dc0bf1",
+      "awg31_bind_apply": "a75da1ea68ff0a7e9cea266da44d728cc6c2b63e23db0dd545d65bb35d134448",
+      "awg31_details_xml": "eb6d9253bb6ce0017caac0793680cf1ba107f0dc1d514c7b319c875f80b54892",
+      "awg2_bind_apply": "96de350ec4b7dcc0786b7af8b95ab3c3ae14ef6db2a33d3904afee5a89e62b61",
+      "awg2_repair_30s_xml": "db7ec919505af159328cf70d319c31116310581483641c304fd47199cb9644bc",
+      "default_cleanup_apply": "d399be1db2a6ae847f806f15778280e2387b9d3ef34706f2e5290d60531735bb",
+      "final_relaunch_xml": "3791403f827f0e339903f03c9111f4c086c2c5c16c8649a2aea9fe74eb2e6645",
+      "final_relaunch_png": "601132910db41e92b94d45fd16e6f94389408e918d336470d096045ff3cb8349"
+    }
+  },
+  "release_gates": {
+    "gate_a": "SIGNED_SUPPLY_PASS_WINDOWS_UNSIGNED_OWNER_EXCEPTION_CLEAN_HOST_OPEN",
+    "gate_b": "DEFAULT_LIFECYCLE_PASS_LAB_PROFILE_ACTIVATION_FAIL_WINDOWS_OPEN",
+    "gate_c": "EXACT_EMULATOR_INSTALL_PASS_LAB_PROFILE_ACTIVATION_FAIL_PHYSICAL_WINDOWS_OPEN",
+    "gate_e": "LOCAL_QUALITY_PASS_DEVICE_AND_AUTHENTICATED_JOURNEYS_OPEN",
+    "gate_f": "NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING",
+    "physical_android": "MANUAL_OWNER_TEST",
+    "clean_windows": "MANUAL_OWNER_TEST",
+    "ru_origin": "MANUAL_OWNER_TEST",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_oidc_rbac": "MANUAL_OWNER_TEST",
+    "legal_commercial": "MANUAL_OWNER_TEST",
+    "runtime_rollback": "MANUAL_OWNER_TEST",
+    "gate_g": "NOT_AUTHORIZED"
+  },
+  "completion_index": {
+    "REL_CANDIDATE": "I4_SIGNED_SUPPLY_ONLY",
+    "REL/DEP-001": "I4_EXACT_CANDIDATE_LOCKS_PROVEN",
+    "FE_PR/PR-09": "I3_LOCAL_QUALITY_PASS_EXTERNAL_GATES_OPEN",
+    "FRKN_PLAN/W3-02": "I3_CURRENT_CANDIDATE_LAB_PROFILE_ACTIVATION_FAIL",
+    "FRKN_PLAN/W3-03": "I3_CURRENT_CANDIDATE_DEFAULT_TRAFFIC_ONLY",
+    "REL_GATE/GATE-F": "NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING",
+    "REL_GATE/GATE-G": "NOT_AUTHORIZED"
+  },
+  "publication": {
+    "tag_created": false,
+    "github_release_created": false,
+    "public_assets_created": false,
+    "store_submission_created": false,
+    "stable_pointer_changed": false,
+    "runtime_sync_performed": false
+  },
+  "release_effect": "CANDIDATE14_SIGNED_LOCAL_QUALITY_PASS_LAB_PROFILE_ACTIVATION_FAIL_PROMOTION_BLOCKED"
+}

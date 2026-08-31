@@ -295,16 +295,16 @@ Current public user-facing version policy:
   `1.2.0+4049` / `PRE_CANDIDATE_LOCAL` with `candidate_created=false`; that
   seed is not candidate authority and does not contradict the separately
   generated immutable strict-v2 candidate handoff
-- generated strict-v2 `pokrov-1.2.0-candidate.13` is now the current signed
-  exact candidate: six immutable build-4049 artifacts, regenerated
-  SBOM/provenance, and the hosted release-index signature are retained, while
-  its output remains
+- generated strict-v2 `pokrov-1.2.0-candidate.14` is now the current signed
+  exact candidate: six immutable build-4049 artifacts, refreshed platform
+  dependency locks, regenerated SBOM/provenance, and the hosted release-index
+  signature are retained, while its output remains
   `ACTIONS_ARTIFACT_ONLY` with `promotion_authorized=false`
-- candidate.13 is not the distributed public update: no tag, GitHub Release,
-  public asset, store object or stable pointer exists; bounded LDPlayer
-  AWG 3.1 -> AWG2 -> default/Auto proof passes, but exact Gate F was not
-  generated because the required exact ARM64 physical-install binding is
-  absent, so promotion remains blocked
+- candidate.14 is not the distributed public update: no tag, GitHub Release,
+  public asset, store object or stable pointer exists; exact LDPlayer install
+  and default tunnel/DNS/egress pass, while AWG 3.1 and AWG2 requested profiles
+  remain cached default and are non-PASS. Gate F was not generated because the
+  required exact ARM64 physical-install binding is absent
 - Android `versionName`, Windows display version, cabinet download badges, and
   public changelog copy must stay aligned to the distributed stable line
 - internal build numbers and platform-native version codes may remain numeric or platform-specific and are not the public label
@@ -467,7 +467,7 @@ Current runtime-surface note:
 
 - Microsoft Store is the preferred public listing path for Windows.
 - Direct signed installer distribution remains the default until the Store listing is live.
-- Exact candidate.13 retains the owner exception for the EXE bytes
+- Exact candidate.14 retains the owner exception for the EXE bytes
   `OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0`: its unsigned EXE may be used
   only for the explicitly labeled direct beta with a SmartScreen warning. It
   is not trusted-signing, stable or Microsoft Store evidence, and any rebuilt
@@ -648,7 +648,7 @@ Minimum publishing verification:
   URLs, version, release channel, and manual gates
 - anonymous GitHub Releases range checks pass before runtime sync
 - Android and Windows builds install successfully
-- the recorded signing state matches the exact candidate metadata; candidate.13
+- the recorded signing state matches the exact candidate metadata; candidate.14
   Windows EXE SHA-256
   `0afaf6e1d73a7e72762d945557f48793646a9bdbf12bb8ca2e843d4b94df276c`
   carries `OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0` and may be distributed
