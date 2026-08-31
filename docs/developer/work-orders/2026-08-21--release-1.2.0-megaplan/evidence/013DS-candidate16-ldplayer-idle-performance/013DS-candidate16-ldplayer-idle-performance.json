@@ -1,0 +1,98 @@
+{
+  "schema": "pokrov.release-1.2.0.ldplayer-idle-performance/v1",
+  "recorded_at_utc": "2026-08-31T23:50:26Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.16",
+    "version_name": "1.2.0",
+    "version_code": 4049,
+    "platform_source": "719e23dc49407beb9ae30d98d17d4b73d18ae37c",
+    "client_source": "75ba7e721cfee486f7189edd51de97aba2746722",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "signed_x86_64_apk_sha256": "73c43e21dfc984c474941e14800c551f9545fe423b8f11458f6d41b8cb9af5ff",
+    "installed_apk_matches_signed_artifact": true
+  },
+  "environment": {
+    "device_class": "ldplayer_android_9_x86_64",
+    "adb_version": "1.0.41",
+    "adb_build": "37.0.0-14910828",
+    "authorized_emulator_count": 1,
+    "authorized_physical_device_count": 0,
+    "raw_device_identifiers_retained": false,
+    "raw_package_path_retained": false
+  },
+  "precondition": {
+    "application_process": "PRESENT_FROM_PRIOR_STATE",
+    "runtime_profile_staged": false,
+    "tun0_present": false,
+    "tun0_addresses": 0,
+    "routes_via_tun0": 0,
+    "application_launched_by_slice": false,
+    "vpn_started_by_slice": false
+  },
+  "idle_process": {
+    "status": "PASS_BOUNDED_IDLE_SAMPLE",
+    "sample_count": 12,
+    "elapsed_seconds": 56.35,
+    "pid_stable": true,
+    "rss_mib": {
+      "minimum": 119.95,
+      "p50": 119.95,
+      "p95": 119.95,
+      "maximum": 119.95
+    },
+    "total_pss_mib_single_post_sample": 82.08,
+    "threads": {
+      "minimum": 40,
+      "maximum": 40
+    },
+    "process_cpu_percent_over_interval": 0.0,
+    "resource_budget_contract_available": false,
+    "budget_classification": "BASELINE_ONLY_NO_DECLARED_ANDROID_IDLE_RSS_PSS_THREAD_LIMIT"
+  },
+  "direct_public_api_performance": {
+    "status": "PASS_BOUNDED_LDPLAYER_OS_PATH",
+    "method": "ONE_CURL_PROCESS_PERSISTENT_HTTP1",
+    "connection_context": "DIRECT_LDPLAYER_OS_NO_POKROV_VPN",
+    "warmup_count_per_endpoint": 5,
+    "health": {
+      "sample_count": 50,
+      "all_http_200": true,
+      "p95_ms": 73.985,
+      "maximum_ms": 77.922,
+      "budget_lte_ms": 100,
+      "budget_pass": true
+    },
+    "public_catalog": {
+      "sample_count": 50,
+      "all_http_200": true,
+      "p95_ms": 97.756,
+      "maximum_ms": 120.793,
+      "budget_lte_ms": 200,
+      "budget_pass": true
+    },
+    "nonpersistent_process_per_sample_discovery_retained_as_gate_evidence": false
+  },
+  "decision": {
+    "status": "PASS_EXACT_CANDIDATE16_LDPLAYER_IDLE_AND_DIRECT_OS_API_SLICE",
+    "performance_completion_index_promoted": false,
+    "gate_f_regenerated": false,
+    "gate_g_authorized": false,
+    "android_physical_device": "NOT_VISIBLE_TO_CURRENT_ADB_SESSION",
+    "authenticated_client_egress": "NOT_RUN",
+    "client_vpn_runtime": "NOT_RUN"
+  },
+  "limitations": [
+    "The process was already present; this is not a cold-start measurement.",
+    "No declared Android idle RSS, PSS or thread budget exists, so resource values are a baseline rather than a threshold PASS.",
+    "The API measurements use the emulator operating-system path without a POKROV VPN or authenticated client session.",
+    "LDPlayer is not physical Android, Windows, RU mobile, OEM, battery, thermal, endurance or post-promotion evidence."
+  ],
+  "mutation_boundary": {
+    "screen_or_input_control_used": false,
+    "application_launched": false,
+    "vpn_or_device_setting_changed": false,
+    "server_or_dns_changed": false,
+    "public_release_or_stable_pointer_changed": false
+  },
+  "evidence_ceiling": "PASS_EXACT_CANDIDATE16_X86_64_INSTALLED_BYTE_BINDING_BOUNDED_IDLE_BASELINE_AND_DIRECT_LDPLAYER_OS_PUBLIC_API_P95; NO_COLD_START_CONNECT_AUTHENTICATED_SESSION_PHYSICAL_DEVICE_OR_GATE_F_CREDIT"
+}
