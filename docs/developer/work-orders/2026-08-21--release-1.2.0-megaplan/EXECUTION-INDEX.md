@@ -2,6 +2,31 @@
 
 Last updated: 2026-08-31
 
+## 2026-08-31 — WO-013DF candidate.16 AWG 3.1 and AWG2 LDPlayer result
+
+The exact signed candidate.16 x86_64 bytes independently close candidate.14's
+cached-default activation defect. Guarded bind PLAN/APPLY passes for both labs,
+and sanitized runtime readback observes the requested internally consistent
+`awg31_lab` and `awg2_lab` profiles rather than `default`.
+
+Both profiles start Android VPN service, create `tun0`, assign the IPv4 route
+and reach managed-DNS-ready state. Neither confirms authenticated egress through
+the selected transport. The UI remains attention-required and reports that the
+test address did not open through the selected location. Both exact results are
+`FAIL_EGRESS_NOT_CONFIRMED_AFTER_EXACT_PROFILE_ACTIVATION`, now below the
+control-plane/profile boundary but not narrowed further by the two optional
+remote diagnostics, which timed out with no result.
+
+Each failed connection removes the system VPN. Final default PLAN/APPLY clears
+the lab cohort and material, a fresh ordinary connection reaches connected
+state, and final disconnect leaves no `tun0` with an empty crash buffer. No
+physical phone was touched.
+
+`W3-02/W3-03` remain `I3` with stronger failing current-candidate evidence.
+Gates B/C/E remain `I3`; Gate F remains not run on both the missing exact ARM64
+binding and current lab egress failure. Distribution stays `I4=5`, `I3=317`,
+`I2=22`, `I1=34`, `I0=0` across `378` rows. No public or stable state changed.
+
 ## 2026-08-31 — WO-013DE candidate.16 readiness correction, signed supply and default-path proof
 
 Signed internal `pokrov-1.2.0-candidate.16` supersedes candidate.14 as current

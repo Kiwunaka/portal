@@ -1,0 +1,96 @@
+{
+  "schema": "pokrov-release-1.2.0-work-order-evidence-v1",
+  "work_order": "WO-013DF",
+  "observed_at": "2026-08-31T15:55:14Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.16",
+    "version": "1.2.0+4049",
+    "platform_source": "719e23dc49407beb9ae30d98d17d4b73d18ae37c",
+    "client_source": "75ba7e721cfee486f7189edd51de97aba2746722",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "x86_64_apk_sha256": "73c43e21dfc984c474941e14800c551f9545fe423b8f11458f6d41b8cb9af5ff"
+  },
+  "device": {
+    "class": "LDPlayer Android 9 API 28 x86_64 emulator",
+    "serial": "emulator-5554",
+    "install_identity_sha256": "d0be39313a1e22b3eda1c280a4cdfb465609098a8e4c23e0b0995ec6d9f17f1e",
+    "installed_apk_matches_candidate": true,
+    "physical_device_touched": false
+  },
+  "awg31": {
+    "bind_plan": "PASS",
+    "bind_apply": "PASS_RESOLVED_PROFILE_AWG31_LAB",
+    "runtime_profile": "PASS_AWG31_LAB_INTERNALLY_CONSISTENT",
+    "android_vpn_service": "PASS",
+    "tun0": "PASS_CREATED",
+    "managed_dns": "PASS_READY",
+    "routes": "PASS_ASSIGNED_IPV4_ONLY",
+    "authenticated_egress": "FAIL_NOT_CONFIRMED",
+    "ui_result": "FAIL_PROTECTION_REQUIRES_ATTENTION",
+    "fail_closed_disconnect": "PASS_TUN_REMOVED",
+    "protocol_result": "FAIL_EGRESS_NOT_CONFIRMED_AFTER_EXACT_PROFILE_ACTIVATION"
+  },
+  "awg2": {
+    "bind_plan": "PASS",
+    "bind_apply": "PASS_RESOLVED_PROFILE_AWG2_LAB",
+    "runtime_profile": "PASS_AWG2_LAB_INTERNALLY_CONSISTENT",
+    "android_vpn_service": "PASS",
+    "tun0": "PASS_CREATED",
+    "managed_dns": "PASS_READY",
+    "routes": "PASS_ASSIGNED_IPV4_ONLY",
+    "authenticated_egress": "FAIL_NOT_CONFIRMED",
+    "ui_result": "FAIL_PROTECTION_REQUIRES_ATTENTION",
+    "fail_closed_disconnect": "PASS_TUN_REMOVED",
+    "protocol_result": "FAIL_EGRESS_NOT_CONFIRMED_AFTER_EXACT_PROFILE_ACTIVATION"
+  },
+  "diagnostic_boundary": {
+    "remote_alignment": "NOT_RUN_TIMEOUT_NO_RESULT",
+    "remote_packet_counter": "NOT_RUN_TIMEOUT_NO_RESULT",
+    "credit_transferred_from_older_candidate": false
+  },
+  "cleanup": {
+    "default_plan": "PASS",
+    "default_apply": "PASS",
+    "selected_profile": "default",
+    "lab_allowlist_identity_present": false,
+    "cohort_identity_present": false,
+    "awg2_material_provisioned": false,
+    "awg31_material_provisioned": false,
+    "final_runtime_profile": "PASS_DEFAULT",
+    "final_default_connection": "PASS_CONNECTED",
+    "final_disconnect": "PASS",
+    "final_tun0": "ABSENT",
+    "crash_buffer": "EMPTY"
+  },
+  "release_gates": {
+    "gate_b": "EXACT_PROFILE_ACTIVATION_PASS_LAB_EGRESS_FAIL_WINDOWS_OPEN",
+    "gate_c": "EXACT_EMULATOR_PROFILE_RUNTIME_PASS_LAB_EGRESS_FAIL_PHYSICAL_WINDOWS_OPEN",
+    "gate_e": "DEFAULT_FUNCTIONAL_PASS_LABS_FAIL_EXTERNAL_DEVICE_GATES_OPEN",
+    "gate_f": "NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING_AND_LAB_EGRESS_FAIL",
+    "gate_g": "NOT_AUTHORIZED"
+  },
+  "completion_index": {
+    "FRKN_PLAN/W3-02": "I3_EXACT_PROFILE_ACTIVATION_PASS_PROTOCOL_EGRESS_FAIL",
+    "FRKN_PLAN/W3-03": "I3_DNS_ROUTES_PASS_AUTHENTICATED_EGRESS_FAIL",
+    "FRKN_UNCERTAINTY/UNCERT-02": "I3_CURRENT_CANDIDATE_RUNTIME_FAIL_WINDOWS_OPEN",
+    "REL_GATE/GATE-F": "NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING_AND_LAB_EGRESS_FAIL"
+  },
+  "evidence_sha256": {
+    "external_result": "970f2fb7fc79b07be10eeaffa0cbd7413304bb39b06f6d5d091f8ea0cd945fd8",
+    "awg31_bind_plan": "04192f5230fdceb3d003abc98bb9cb6f0b3b465c0d33730724f3c2b1b38e7197",
+    "awg31_bind_apply": "c5926a7116b7f8f3e8d65048132654639b57b6eb5d0f149ee70336ce1da51c3f",
+    "awg31_runtime": "a3501ac9225d1dd017a3051ecda7c91ece9a93c09c52456b4cb3f2819fade87c",
+    "awg31_details": "de17d6d01c1fbc77d7f62f0d74e1d39e867fa3d38f4ffdce3228e737d4799b88",
+    "awg31_disconnected": "638d53d0efe721ce5b07172ace6b4779c02a42ad3ecf066239101835b34bfd06",
+    "awg2_bind_plan": "59b9601e9afec698827c1aa02f210973a3212a4cfc78d7fc0b595aa885852dfd",
+    "awg2_bind_apply": "c681a15081d2e856ee0c8c5ba554618efb777a2fa8b96b72c2c919d5da6c0b3d",
+    "awg2_runtime": "bcc981057f7711b99e9ef9f6ec45475edf05ac3e6ecea7783e3b6ae14f6d5f09",
+    "awg2_details": "5e2bac8f1d846a08ef9f8a9b422db41166c167b9573482e148bd892e153589ba",
+    "awg2_disconnected": "638d53d0efe721ce5b07172ace6b4779c02a42ad3ecf066239101835b34bfd06",
+    "default_cleanup_apply": "3f51292ebb1cf9910519f054cb98156498c1e45ff6b71c5393ae2890500d7943",
+    "final_default_runtime": "9c884d74d7fa7369cf150aabd884070de867d93e41654c797fe4d2085974dce7",
+    "final_default_connected_ui": "10523f64d35ffbdd2d129be0213fea36d640e513cfd32a16d8a98974bcc1795d",
+    "final_disconnected_ui": "7b445ad434f61f2ffdd7905cc5c55c3f57da6afc1c659793e67779d264c2a10b"
+  },
+  "release_effect": "CURRENT_CANDIDATE_LABS_ACTIVATE_EXACT_PROFILE_BUT_FAIL_AUTHENTICATED_EGRESS_PROMOTION_BLOCKED"
+}
