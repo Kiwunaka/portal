@@ -1,0 +1,123 @@
+{
+  "schema": "pokrov-release-1.2.0-work-order-evidence-v1",
+  "work_order": "WO-013DG",
+  "observed_at": "2026-08-31T17:46:27Z",
+  "release_context": {
+    "candidate": "pokrov-1.2.0-candidate.16",
+    "version": "1.2.0+4049",
+    "candidate_platform_source": "719e23dc49407beb9ae30d98d17d4b73d18ae37c",
+    "current_platform_source": "6ab381aafa9ea0564aa41399272331f0474c67f4",
+    "candidate_binding": false,
+    "promotion_authorized": false
+  },
+  "bundle": {
+    "source_revision": "650dc3fab8053736cfb976d4a34ea1f2f0b40349",
+    "sha256": "cda97da16a892c1a8563bd20434cd749a2174c192ba722147091a3e1c14a0225",
+    "size_bytes": 2916305,
+    "policy_sha256": "b6977f6f6a5ee48898116820d1db252b5b670cb7b86959c78f7bdbc7de90e0fa"
+  },
+  "authorization": {
+    "dns_record": "OPERATOR_ATTESTED_AUTHORIZED",
+    "certificate_and_runtime": "OPERATOR_ATTESTED_AUTHORIZED",
+    "backend_and_frontend_apply": "OPERATOR_ATTESTED_AUTHORIZED",
+    "rollback_drill": "OPERATOR_ATTESTED_AUTHORIZED",
+    "client_rollout": "NOT_AUTHORIZED",
+    "release_promotion": "NOT_AUTHORIZED"
+  },
+  "authoritative_dns": {
+    "hostname": "dns.pokrov.space",
+    "delegated_nameservers_checked": 4,
+    "all_four_match_owned_node": true
+  },
+  "runtime": {
+    "node_code": "it",
+    "listener_mode": "fronted_loopback_proxy_v2_tcp_18443",
+    "certificate_server_side": true,
+    "certificate_valid_at_least_14_days": true,
+    "renewal_hook_installed": true,
+    "runtime_material_ready": true,
+    "private_key_returned": false,
+    "receipt_id": "20260831T170628Z-458712-cda97da16a89"
+  },
+  "backend": {
+    "service_active": true,
+    "service_enabled": true,
+    "loopback_listener": true,
+    "nonloopback_listener": false,
+    "proxy_protocol": "v2",
+    "public_firewall_mutated": false,
+    "local_tls_doh_probe": "PASS_HTTP_400_INVALID_DNS",
+    "final_receipt_id": "20260831T174516Z-461080-cda97da16a89"
+  },
+  "frontend": {
+    "public_tcp_443_listening": true,
+    "frontend_active": true,
+    "route_present": true,
+    "candidate_config_sha256": "1b5b0be8ab45b2ca8d5a3ea39f8c1dbfefbe5eea85b8b822a956e0c569cf1eac",
+    "application_suffix_count": 19,
+    "exact_sni_route_count": 20,
+    "child_sni_route_count": 19,
+    "final_receipt_id": "20260831T174557Z-459908-1b5b0be8ab45"
+  },
+  "rollback": {
+    "frontend_receipt_bound_rollback": "PASS",
+    "backend_receipt_bound_rollback": "PASS",
+    "postrollback_service_inactive": true,
+    "postrollback_loopback_listener_free": true,
+    "immutable_release_retained": true,
+    "exact_release_reverified_before_reuse": true,
+    "backend_reapply": "PASS",
+    "frontend_reapply": "PASS",
+    "final_rollback_plan": "PASS_READY"
+  },
+  "live_probe": {
+    "origins": [
+      "current-origin",
+      "brain-origin",
+      "ru-origin"
+    ],
+    "all_origins_match": true,
+    "invalid_doh_get": "HTTP_400",
+    "allowed_a": "HTTP_200_DNS_NOERROR_ONE_OWNED_PROXY_ANSWER",
+    "allowed_aaaa": "HTTP_200_DNS_NOERROR_NODATA",
+    "outside_a": "HTTP_200_DNS_REFUSED",
+    "chatgpt": "TLS13_VERIFIED_HTTP_403_ORIGIN_POLICY_RESPONSE",
+    "gemini": "TLS13_VERIFIED_HTTP_200",
+    "xbox": "TLS13_VERIFIED_HTTP_301"
+  },
+  "ordinary_it_health": {
+    "enabled": true,
+    "healthy": true,
+    "capacity": "healthy",
+    "edge_reachability_ok": true,
+    "dataplane_ok": true
+  },
+  "operation_corrections": {
+    "platform_pull_requests": [
+      132,
+      133,
+      134,
+      135
+    ],
+    "focused_tests": "PASS_80_OF_80",
+    "hosted_checks": "HOSTED_CHECK_BLOCKED_BY_BILLING_ZERO_EXECUTABLE_STEPS",
+    "merge_exception": "OWNER_SOLO_EXCEPTION"
+  },
+  "completion_index": {
+    "FRKN_SMART_DNS/SMARTDNS-01": "I3_LIVE_CURRENT_RUNTIME_PROVEN_CANDIDATE16_BINDING_OPEN",
+    "REL_GATE/GATE-F": "UNCHANGED_NOT_RUN",
+    "gate_g": "NOT_AUTHORIZED"
+  },
+  "evidence_sha256": {
+    "authoritative_dns": "d53f57cb5f3fbfaf224e8b4e8aec4a5f17c6a72c63050a7bbb2b5682d79a5939",
+    "runtime_apply": "0ee584b42c05acc4d744fe93ae21753258ddc13294a234bc5f2643c9190e39e3",
+    "backend_reapply": "ab4302f8f6642a9d61cbb2ed66f6834b9fa037aaa4a8e1644ea0468b7f92f79a",
+    "frontend_reapply": "5ca48f5fb25fc923a76114ea3284d9dab1c9212cd728a3ff8ec8175d6a101c1e",
+    "final_rollback_plan": "c6ded1261cfd4e75c980d694cf4971ec287df8b8a8b2f5facdda30485c3b7a66",
+    "current_origin_final": "0770af3e3088c1f29ea93b076a37e28c80c92fba1c0e058b56206d013810a6fc",
+    "brain_origin_final": "75df7d1eae47431ecdbe28bad0f526e5deddf522194344ee6efa4cefbdccb99d",
+    "ru_origin_final": "ff00a7bd8f09d40e83b3d971313df31cdb97b8e3ec6f16c34d5293c3e4b43254",
+    "node_health": "c960578c7f18562495424c5479aa43a535a0ce0a337feece196ef0967ae5b82b"
+  },
+  "release_effect": "LIVE_DEFAULT_OFF_LAB_PROVEN_CURRENT_RUNTIME_CANDIDATE16_AND_PUBLIC_PROMOTION_UNCHANGED"
+}
