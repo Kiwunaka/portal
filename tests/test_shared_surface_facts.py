@@ -125,9 +125,24 @@ def test_sync_shared_surface_facts_builds_pokrov_app_seed_updates_from_shared_tr
     public_urls_sha256 = sync_shared_surface_facts._shared_sha256("public-urls.json")
 
     commercial = sync_shared_surface_facts._read_json("commercial-contract.json")
+    copy_catalog = sync_shared_surface_facts._read_object(
+        sync_shared_surface_facts.COPY_CATALOG_PATH
+    )
+    marketing_governance = sync_shared_surface_facts._read_object(
+        sync_shared_surface_facts.MARKETING_GOVERNANCE_PATH
+    )
+    copy_catalog_sha256 = sync_shared_surface_facts._canonical_text_sha256(
+        sync_shared_surface_facts.COPY_CATALOG_PATH
+    )
 
     updates = sync_shared_surface_facts.build_pokrov_app_updates(
-        product, public_urls, commercial, public_urls_sha256
+        product,
+        public_urls,
+        commercial,
+        copy_catalog,
+        marketing_governance,
+        public_urls_sha256,
+        copy_catalog_sha256,
     )
 
     assert updates["product_contract"]["brand"] == "POKROV"
@@ -166,6 +181,15 @@ def test_sync_shared_surface_facts_builds_pokrov_app_seed_updates_from_shared_tr
         == commercial["source_sha256"]["tariff_catalog"]
     )
     assert authority["commercial_contract_sha256"] == commercial["contract_sha256"]
+    assert authority["copy_catalog_version"] == copy_catalog["catalog_version"]
+    assert authority["copy_catalog_sha256"] == copy_catalog_sha256
+    assert (
+        authority["marketing_governance_revision"] == marketing_governance["revision"]
+    )
+    assert (
+        authority["marketing_governance_contract_sha256"]
+        == marketing_governance["contract_sha256"]
+    )
 
     dart = sync_shared_surface_facts.build_pokrov_app_product_facts_dart(
         product, public_urls, commercial, public_urls_sha256
@@ -186,6 +210,30 @@ def test_sync_shared_surface_facts_builds_pokrov_app_seed_updates_from_shared_tr
     assert f"static const offerUrl = '{public_urls['legal']['offer']}';" in dart
     assert f"static const privacyUrl = '{public_urls['legal']['privacy']}';" in dart
     assert public_urls["releases"]["github_releases"] in dart
+
+    document = sync_shared_surface_facts.build_pokrov_app_copy_contract_document(
+        commercial,
+        copy_catalog,
+        marketing_governance,
+        public_urls_sha256,
+        copy_catalog_sha256,
+    )
+    assert "# Generated Platform Copy Contract" in document
+    namespaces = {key.split(".", 1)[0] for key in copy_catalog["items"]}
+    assert namespaces == {
+        "admin",
+        "app",
+        "bot",
+        "cabinet",
+        "marketing",
+        "retention",
+        "webapp",
+    }
+    assert all(f"| `{namespace}` |" in document for namespace in namespaces)
+    assert "`app.nav.protection`" in document
+    assert "second source" in document
+    assert commercial["contract_sha256"] in document
+    assert marketing_governance["contract_sha256"] in document
 
 
 def test_shared_surface_fact_hash_is_stable_across_line_endings(tmp_path):
