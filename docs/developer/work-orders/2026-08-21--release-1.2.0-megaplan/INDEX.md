@@ -70,6 +70,14 @@ This is `PROVIDER_RECOVERY_INCOMPLETE`, not a protocol FAIL or PASS. AWG-10
 stays `I2`, W3-02/W3-03 stay `I3`, and exact-Core retry waits for real node
 health.
 
+WO-013DI supersedes candidate.13-only local rollback evidence. The exact
+candidate.16 signed tuple passes the disposable portal and client sequence
+`1.1.6 -> candidate.16 -> 1.1.6`; portal state and the stable pointer restore
+byte-identically, receipts validate and unrelated fixture state survives.
+Tracked/runtime/public/stable state and devices remain untouched. `DOD-18` and
+`P12-130` stay `I3` because the separately authorized runtime pointer/kill
+rollback plus current/Brain readback and post-rollback health remain open.
+
 Candidate.16's release-index signer output is `ACTIONS_ARTIFACT_ONLY`,
 `promotion_authorized=false`. The strict-v2 handoff and signed receipt are the
 candidate authority. Gate F is
@@ -392,6 +400,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013DF` | Repeat candidate.16 AWG 3.1 and AWG2 on LDPlayer and retain exact fail-closed truth | Exact candidate Android emulator and transport evidence | Both guarded binds and exact runtime profile activations pass; each creates VPN/tun0, managed DNS and IPv4 routes, then fails authenticated egress without false green. Each removes the VPN. Final default cleanup/reconnect/disconnect passes. `W3-02/W3-03` stay `I3`; Gate F remains not run | `WO-013DE`, exact candidate.16 x86_64 artifact and owned LDPlayer; isolate the shared egress boundary, then complete physical Android and Windows without transferring older proof |
 | `WO-013DG` | Deploy the exact Smart DNS bundle on `it`, prove bounded live behavior and execute receipt-bound rollback/re-apply | Current platform runtime, owned-node and three-origin evidence | DNS is authoritative `4/4`; trusted runtime, backend and HAProxy route APPLY pass; real frontend/backend rollback, exact-release verification and re-APPLY pass; current/Brain/RU DoH and TLS/SNI probes agree; ordinary `it` health remains green. The service stays client-disabled/default-off and postdates candidate.16, so `SMARTDNS-01` remains `I3` and release gates do not advance | `WO-013CK`, `WO-013DB`, exact `650dc3f...` bundle and owner-authorized `it` runtime; bind to a successor candidate only if shipping Smart DNS in 1.2.0 |
 | `WO-013DH` | Classify the candidate.16 AWG no-response result against DE provider state and guard the retry boundary | Exact candidate Core, RU Pi and owned-node availability evidence | Exact AWG2/AWG3.1 Core runners cleanly return no outer response; material fingerprints match older passing inputs, but no PASS transfers. Owner attests Datalix was unpaid; current/RU recovery checks find partial TCP acceptance with no SSH banner or service readback. Result is provider recovery incomplete, protocol not run. `AWG-10` stays `I2`, `W3-02/W3-03` stay `I3`, Gate F unchanged | `WO-013DF`, exact candidate.16 Core and owned RU Pi; wait for DE SSH plus ordinary service readback, then alignment, exact-Core retry and only then LDPlayer |
+| `WO-013DI` | Rehearse signed candidate.16 portal/client rollback in a disposable local fixture | Exact signed tuple, portal projection and client stable-pointer evidence | Manifest/signature/receipt and exact four-repository tuple validate; `1.1.6 -> candidate.16 -> 1.1.6` passes; portal and pointer restore byte-identically; backups/receipts and unrelated-state preservation pass; focused suite `16/16`. Tracked/runtime/public/stable state and devices remain unchanged. `DOD-18/P12-130` stay `I3` | `WO-013DE`, exact signed candidate.16 and retained stable handoff; real runtime pointer/kill rollback with backup, current/Brain readback and health remains required before I4 |
 
 ## Current evidence
 
@@ -486,6 +495,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013DG-smart-dns-it-live-and-rollback/`
 - `WO-013DH-candidate16-de-provider-outage.md`
 - `evidence/013DH-candidate16-de-provider-outage/`
+- `WO-013DI-candidate16-local-rollback.md`
+- `evidence/013DI-candidate16-local-rollback/`
 - `WO-013BS-candidate6-ru-origin-environment-preflight.md`
 - `WO-013BT-candidate6-hy2-artifact-and-plan.md`
 - `WO-013BU-candidate6-ru-origin-bundle-and-install-plan.md`
@@ -954,8 +965,8 @@ not repair candidate.16 or add a Gate F pass. Gate F still requires the exact
 ARM64 physical install binding. The remaining release work includes physical
 Android, isolated
 connected Windows TUN/DNS/recovery/uninstall, candidate.16 Brain/RU origins,
-candidate.16 isolated and runtime rollback, and the provider, Operator, legal
-and device-performance rows. Public/stable Gate G remains separately
+candidate.16 runtime pointer/kill rollback after WO-013DI's isolated PASS, and
+the provider, Operator, legal and device-performance rows. Public/stable Gate G remains separately
 authorized and has not run.
 
 ### Historical candidate.5–10 context
