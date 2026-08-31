@@ -5314,3 +5314,26 @@ and `W9-05` stays `I1`. The 378-row distribution is unchanged. Final cleanup
 restores `default`, removes lab material/membership and all test-created
 profile backups, and leaves LDPlayer disconnected with no Android VPN. The
 physical phone is untouched.
+
+## 2026-08-31 — WO-013DK generated copy-contract documentation
+
+The existing platform product-facts synchronizer now binds the active client
+to the current copy-catalog version/SHA and marketing-governance revision/SHA
+beside its product, public-URL, tariff and commercial digests. It generates one
+read-only authority map covering `admin`, `app`, `bot`, `cabinet`, `marketing`,
+`retention` and `webapp`, with the ten `app.*` entries retained as review
+baselines rather than a bulk runtime import.
+
+Platform implementation `f8a3b3369a16b37494f910a31ac39fcf5ba70ab4`
+and client PR 48 / `main` merge
+`9b52d6a7d461fcebe4c2225dfe5655f6cc8aa02d` pass the exact-Core client
+seed/docs gate, read-only regeneration, platform copy/commercial/shared-facts
+matrix `41/41`, docs/context `32/32`, candidate-preflight `24/24`, context
+audit, link and diff checks. The client hosted job has zero steps and remains
+`HOSTED_CHECK_BLOCKED_BY_BILLING`; the authorized solo merge is not a hosted
+PASS.
+
+`FE/P12-210` advances `I2 -> I3`. Distribution becomes `I4=5`, `I3=319`,
+`I2=20`, `I1=34`, `I0=0` across 378 rows. Signed candidate.16, runtime copy,
+legal/campaign state, provider behavior, deploy, public release and stable
+pointer are unchanged.

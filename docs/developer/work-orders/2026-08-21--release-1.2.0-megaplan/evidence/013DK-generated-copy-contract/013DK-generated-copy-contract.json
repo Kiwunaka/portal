@@ -1,0 +1,96 @@
+{
+  "schema": "pokrov.release-1.2.0.generated-copy-contract/v1",
+  "recorded_at_utc": "2026-08-31T19:59:29Z",
+  "work_order": "WO-013DK",
+  "signed_candidate": {
+    "id": "pokrov-1.2.0-candidate.16",
+    "platform_source": "719e23dc49407beb9ae30d98d17d4b73d18ae37c",
+    "client_source": "75ba7e721cfee486f7189edd51de97aba2746722",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "changed": false
+  },
+  "platform_successor": {
+    "base": "1c4ddda322207ff75d70ae8e29dff2f029ca4582",
+    "implementation_head": "f8a3b3369a16b37494f910a31ac39fcf5ba70ab4",
+    "generator": "scripts/sync_shared_surface_facts.py",
+    "owner_document": "docs/product/portal-vpn-product.md",
+    "generated_platform_truth_created": false
+  },
+  "client_successor": {
+    "pull_request": 48,
+    "head": "0429213e846ab06261fd5a489a5ffc8f78f3128c",
+    "main_merge": "9b52d6a7d461fcebe4c2225dfe5655f6cc8aa02d",
+    "seed": "config/product-contract.seed.json",
+    "seed_sha256": "b24aecf994a7207d7af32a244ac18cc9e68213720f5e32595e12e32e3124461e",
+    "generated_document": "docs/generated/platform-copy-contract.md",
+    "generated_document_sha256": "f9b53041831a94ffff548e2e875eab3d4c38e9b8c70aff75d4b235c94cfe17eb",
+    "runtime_code_changed": false,
+    "release_artifact_delta": false
+  },
+  "source_authorities": {
+    "product_facts_sha256": "2c135eeee91adaca52bc35b103ce5839e7f670e557ff7b55970c4375a2916f54",
+    "public_urls_sha256": "022f7ba577714bdc0bffd3cc00254309af346ef0c8fc62fe9c52e40d72a0de67",
+    "commercial_revision": "2026-08-21.1",
+    "commercial_contract_sha256": "22b7ef26908c23c2bb53322dec959a3bc050a20a6c6d2feff9f78708b45e23cd",
+    "copy_catalog_version": "2026-07-23-competitor-style-v2",
+    "copy_catalog_sha256": "af380ebeee676cc4186a313110cda969c61ab897620b4093e7fee2c73f50d35d",
+    "marketing_governance_revision": "2026-08-22.1",
+    "marketing_governance_contract_sha256": "934e1af78e98ca03edcd1bb73ae7259a801248fe73c5f3297d4528fbf1a1312a",
+    "legal_launch_ready": false,
+    "campaign_launch_state": "blocked_owner_approval_required",
+    "catalog_namespaces": {
+      "admin": {"entries": 16, "public_entries": 0},
+      "app": {"entries": 10, "public_entries": 0},
+      "bot": {"entries": 31, "public_entries": 0},
+      "cabinet": {"entries": 19, "public_entries": 0},
+      "marketing": {"entries": 134, "public_entries": 134},
+      "retention": {"entries": 6, "public_entries": 0},
+      "webapp": {"entries": 29, "public_entries": 29}
+    }
+  },
+  "verification": {
+    "platform_copy_contract_matrix": "PASS_41_OF_41",
+    "platform_docs_contract": "PASS_32_OF_32",
+    "candidate_preflight_contract": "PASS_24_OF_24",
+    "platform_context_audit": "PASS",
+    "platform_link_check": "PASS",
+    "cross_repository_generator_check": "PASS_READ_ONLY",
+    "client_validate_seed_exact_core": "PASS",
+    "client_docs_contract": "PASS",
+    "core_source_for_client_gate": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "github_hosted": {
+      "status": "HOSTED_CHECK_BLOCKED_BY_BILLING",
+      "run_id": 33433077192,
+      "job_id": 99622895055,
+      "steps": 0,
+      "owner_solo_exception": true
+    }
+  },
+  "authority_boundary": {
+    "client_bulk_imports_platform_copy": false,
+    "client_calculates_authoritative_prices": false,
+    "generated_document_is_source_truth": false,
+    "client_operational_copy_remains_client_owned": true,
+    "server_commercial_responses_remain_authoritative": true
+  },
+  "mutation_boundary": {
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_changed": false,
+    "candidate_rebuilt": false,
+    "legal_or_campaign_approval_changed": false,
+    "physical_android": "NOT_RUN"
+  },
+  "completion_index": {
+    "FE/P12-210": "I2_TO_I3_GENERATED_COPY_AUTHORITY_MAP_LOCALLY_PROVED",
+    "distribution": {
+      "I4": 5,
+      "I3": 319,
+      "I2": 20,
+      "I1": 34,
+      "I0": 0,
+      "total": 378
+    }
+  },
+  "evidence_ceiling": "I3_CURRENT_SUCCESSOR_SOURCE_GENERATOR_AND_ACTIVE_CLIENT_DRIFT_GATE_PROVEN; SIGNED_CANDIDATE16_UNCHANGED; DEPLOYED_PUBLIC_LEGAL_PROVIDER_AND_EXACT_CANDIDATE_PROOF_NOT_CLAIMED"
+}
