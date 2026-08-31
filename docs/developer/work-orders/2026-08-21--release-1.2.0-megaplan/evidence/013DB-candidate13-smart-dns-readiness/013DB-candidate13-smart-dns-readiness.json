@@ -1,0 +1,110 @@
+{
+  "schema": "pokrov-release-1.2.0-work-order-evidence-v1",
+  "work_order": "WO-013DB",
+  "observed_at": "2026-08-31T00:38:21Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.13",
+    "platform_source": "7d983c0ab52e9c01f94da8916a6bca6a0039be8d",
+    "current_platform_verification_source": "a895033279b175ea885d2df5996ca6f90b5f7cc2",
+    "artifacts_changed": false,
+    "promotion_authorized": false
+  },
+  "smart_dns_bundle": {
+    "source_revision": "650dc3fab8053736cfb976d4a34ea1f2f0b40349",
+    "sha256": "cda97da16a892c1a8563bd20434cd749a2174c192ba722147091a3e1c14a0225",
+    "size_bytes": 2916305,
+    "immutable_verifier": "PASS_LOCAL_IMMUTABLE_BUNDLE",
+    "fresh_go_test": "NOT_RUN_MISSING_LOCAL_GO_EXECUTABLE",
+    "prior_independent_build_evidence_reused_as_current_pass": false
+  },
+  "focused_tests": {
+    "result": "PASS_53_OF_53",
+    "suites": [
+      "test_build_owned_smart_dns_server_bundle.py",
+      "test_remote_prepare_owned_smart_dns_runtime.py",
+      "test_remote_migrate_owned_smart_dns_frontend.py",
+      "test_remote_install_owned_smart_dns_lab.py",
+      "test_check_smart_dns_policy_parity.py"
+    ]
+  },
+  "runtime_plan": {
+    "node_code": "it",
+    "doh_hostname": "dns.pokrov.space",
+    "listener_mode": "fronted",
+    "mode": "PLAN",
+    "mutation_performed": false,
+    "dns_a_unique": false,
+    "dns_a_matches_owned_node": false,
+    "runtime_material_ready": false,
+    "preflight": {
+      "effective_uid_root": true,
+      "tcp_80_free": true,
+      "ufw_active": true,
+      "ufw_tcp_80_rule_present": false,
+      "upstream_dot_reachable": true,
+      "certbot_present": false,
+      "live_cert_present": false,
+      "live_key_present": false,
+      "smart_dns_service_present": false
+    },
+    "private_key_returned": false,
+    "raw_host_returned": false,
+    "raw_proxy_ipv4_returned": false,
+    "raw_runtime_material_returned": false,
+    "sanitized_report_sha256": "b9785f1c4d579e663f70bca6b75ab9c03cbf7edbc8923190f26906a36ecd1f37"
+  },
+  "frontend_plan": {
+    "node_code": "it",
+    "operation": "install",
+    "mode": "PLAN",
+    "mutation_performed": false,
+    "backend_port": 18443,
+    "proxy_protocol": "v2",
+    "candidate_config_valid": true,
+    "preflight": {
+      "frontend_state": "active",
+      "frontend_enabled": "enabled",
+      "frontend_config_valid": true,
+      "public_443_listening": true,
+      "smart_dns_route_present": false,
+      "smart_dns_loopback_listener": false,
+      "smart_dns_state": "inactive",
+      "smart_dns_release_sha256": "missing"
+    },
+    "raw_config_returned": false,
+    "raw_host_returned": false,
+    "raw_runtime_material_returned": false,
+    "sanitized_report_sha256": "afb102b24321e9c1460f37b26303ab56494195032bdcef3bd91a6f65fc337594"
+  },
+  "authoritative_dns": {
+    "delegated_nameservers_checked": 4,
+    "dns.pokrov.space": "A_ABSENT_0_OF_4",
+    "dns.pokrov.space.pokrov.space": "A_ABSENT_0_OF_4",
+    "dns.dns.pokrov.space": "A_ABSENT_0_OF_4",
+    "soa_serials": [
+      2026082102,
+      2026082102,
+      2026082102,
+      2026082102
+    ],
+    "classification": "AUTHORITATIVE_ZONE_NOT_UPDATED_NOT_TTL_PROPAGATION"
+  },
+  "decision": {
+    "status": "PASS_READ_ONLY_PLAN_BLOCKED_BY_AUTHORITATIVE_DNS",
+    "FRKN_SMART_DNS/SMARTDNS-01": "I3_UNCHANGED",
+    "runtime_certificate_apply": "NOT_RUN",
+    "server_install_apply": "NOT_RUN",
+    "frontend_apply": "NOT_RUN",
+    "live_doh": "NOT_RUN",
+    "external_access": "NOT_RUN",
+    "candidate13_gate_f": "NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING",
+    "gate_g": "NOT_AUTHORIZED"
+  },
+  "privacy": {
+    "raw_hosts_retained": false,
+    "raw_addresses_retained": false,
+    "credentials_retained": false,
+    "runtime_material_retained": false,
+    "device_identifiers_retained": false
+  }
+}
