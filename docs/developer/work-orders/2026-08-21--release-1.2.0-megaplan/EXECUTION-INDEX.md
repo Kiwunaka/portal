@@ -2,6 +2,24 @@
 
 Last updated: 2026-09-01
 
+## 2026-09-01 — WO-013DP background Android Smart-DNS reachability
+
+Background-only ADB shell readback confirms exact `1.2.0+4049` on the owner
+physical Android 12/ARM64 device and LDPlayer Android 9/x86_64 without
+launching POKROV or starting a VPN. Both resolve `dns.pokrov.space` and pass a
+hostname ICMP control. The phone has no POKROV process or `tun0`; direct DoH is
+`NOT_RUN_TOOL_ABSENT` because only system `ping` is available.
+
+LDPlayer has no `tun0` and directly reaches the DoH endpoint over trusted TLS.
+The outside-policy control returns `REFUSED/0 answers`; ChatGPT, Gemini and
+Xbox each return `NOERROR/1 answer`; malformed DoH returns HTTP 400. No answer
+address or raw device identifier is retained and no screen control is used.
+
+This advances no index: `SMARTDNS-01` stays `I3`, candidate.16 client setting
+and authenticated sessions remain unrun, and Gate F remains `NO_GO 2/17/2`.
+Distribution remains `I4=5`, `I3=319`, `I2=20`, `I1=34`, `I0=0` across `378`
+rows.
+
 ## 2026-09-01 — WO-013DO candidate.16 physical ARM64 binding and Gate F
 
 The exact production-signed candidate.16 ARM64 APK installs on the owner's
