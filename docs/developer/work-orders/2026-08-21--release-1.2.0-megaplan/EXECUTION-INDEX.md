@@ -5468,3 +5468,30 @@ ID, neither available locally. Current DE probes produce no complete SSH
 banner and no trusted match; no key is accepted and `known_hosts` is unchanged.
 Gate F remains `NO_GO 2/17/2`, the 378-row distribution remains
 `I4=5`, `I3=319`, `I2=20`, `I1=34`, `I0=0`, and Gate G remains unauthorized.
+
+## 2026-09-01 — WO-013DR candidate.16 bounded static artifact privacy
+
+All six immutable candidate.16 Android/Windows distributions match the sizes
+and SHA-256 values in the signed release index. The five Android archives
+expose `1891` entries after extraction. Their strict binary scan returns zero
+complete private-key blocks, populated authorization values, credential
+assignments, high-confidence connection URIs or known live-token shapes.
+
+The exact Windows installer returns the same zero-result direct scan and
+matches both signed and build manifests. All `8/8` required files in the
+manifest-declared staging tree match their sizes and hashes; all `300` staged
+files return zero definite findings. The available extractor does not support
+this exact installer loader revision, so no independent full unpacking credit
+is claimed.
+
+Broad discovery matches are limited to Core parser/dispatcher literals. The
+strict WireGuard candidate pass requires valid base64 or base64url plus
+decoded private-key or endpoint semantics; none qualifies. No matched value,
+raw local path, device setting, runtime, server, public asset or stable pointer
+is retained or changed.
+
+`OBS-005`, `OBS-006`, `OBS-010`, `FRKN_AWG/AWG-01` and Gate F gain stronger
+exact-candidate static evidence without index promotion. Static inspection is
+not physical Android, connected Windows, deployed ingest or aggregate owner
+proof. Gate F therefore remains `NO_GO 2/17/2`; the 378-row distribution stays
+`I4=5`, `I3=319`, `I2=20`, `I1=34`, `I0=0`, and Gate G stays unauthorized.
