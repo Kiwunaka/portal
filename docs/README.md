@@ -26,6 +26,7 @@ This registry classifies important platform documents and the active client poin
 | `CANONICAL` | payment and access | `docs/product/payment-and-access-key-contract.md` | `RECONCILED` |
 | `CANONICAL` | generated commercial revision, base-price, legal-gate and capacity binding | `shared/commercial-contract.json`, `shared/commercial-contract.schema.json`, `docs/generated/commercial-contract.md` | `RECONCILED` |
 | `CANONICAL` | marketing claim governance and bounded winback pilot | `shared/contracts/marketing/marketing-governance.v1.json`, `shared/contracts/marketing/winback-pilot.v1.json`, `docs/generated/marketing-governance.md`, `docs/generated/winback-pilot.md`, `docs/operations/marketing-governance-and-winback-pilot.md` | `RECONCILED` |
+| `EVIDENCE` | generated active-client copy authority projection | `C:/Users/kiwun/Documents/ai/POKROV-app/docs/generated/platform-copy-contract.md` | `RECONCILED` |
 | `HISTORICAL_REFERENCE` | dated platform availability snapshot | `docs/archive/flat-docs/platform-availability-2026-05-26.md` | `RECONCILED` |
 | `HISTORICAL_REFERENCE` | 2026-07 Telegram VPN and censorship research | `docs/archive/competitive/telegram-vpn-2026-07-12/` | `RECONCILED` |
 | `CANONICAL` | known limitations | `docs/product/beta-known-limitations.md` | `RECONCILED` |

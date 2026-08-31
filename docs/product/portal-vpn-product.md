@@ -68,8 +68,13 @@ public destinations, and the generated `shared/commercial-contract.json` binds
 product and tariff inputs to one revision and digest. The active client keeps a
 generated, digest-pinned projection of those owners; its release validation
 runs the synchronizer in read-only mode and rejects config, generated-Dart or
-runtime-consumer drift. Client code remains a consumer, not price, promo,
-referral-account or payment authority.
+runtime-consumer drift. The same synchronizer generates the active-client
+`docs/generated/platform-copy-contract.md` authority map from product facts,
+public URLs, commercial truth, the platform copy catalog and marketing
+governance. That reference documents every copy namespace and the `app.*`
+review baseline without bulk-importing platform copy into the client. Client
+code remains a consumer, not price, promo, referral-account or payment
+authority.
 
 ## Current Account Foundation Boundary
 
