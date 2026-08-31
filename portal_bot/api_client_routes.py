@@ -2023,31 +2023,69 @@ async def client_managed_profile(
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
         requested_node_code = str(selected_node_code or "").strip().lower()
         smart_connect = None
+        profile_nodes = nodes_for_user
         if is_owned_transport_lab:
             requested_node_code = ""
-        else:
-            smart_connect = _smart_connect_shortlist(
-                session=s,
-                user=user,
-                nodes=nodes_for_user,
-                transport_profile=transport_profile,
-                rollout_config=rollout_config,
-                profile_revision=str(client_policy.get("profile_revision") or ""),
-                install_id=install_id,
-                preferred_node_code=requested_node_code,
-            )
         sync_ok, runtime = await _managed_profile_panel_state(
             s=s,
             user=user,
             nodes=nodes_for_user,
             panel_required=not is_owned_transport_lab,
         )
+        if is_owned_transport_lab:
+            readiness_source = "owned_transport_material"
+        elif sync_ok:
+            readiness_source = "live_sync"
+        else:
+            readiness_source = "pending_sync"
+        ready_from_confirmed_mapping = False
         if not sync_ok:
             logger.warning(
                 "managed profile panel sync returned false tg_id=%s plan=%s sub_type=%s",
                 int(user.tg_id),
                 str(getattr(user, "current_plan_code", "") or ""),
                 str(getattr(user, "sub_type", "") or ""),
+            )
+            if not is_owned_transport_lab:
+                confirmed_codes = _provisioned_node_codes_for_user(
+                    s,
+                    user,
+                    nodes_for_user,
+                )
+                confirmed_nodes = [
+                    node
+                    for node in nodes_for_user
+                    if str(getattr(node, "code", "") or "").strip().lower()
+                    in confirmed_codes
+                ]
+                if confirmed_nodes:
+                    confirmed_smart_connect = _smart_connect_shortlist(
+                        session=s,
+                        user=user,
+                        nodes=confirmed_nodes,
+                        transport_profile=transport_profile,
+                        rollout_config=rollout_config,
+                        profile_revision=str(
+                            client_policy.get("profile_revision") or ""
+                        ),
+                        install_id=install_id,
+                        preferred_node_code=requested_node_code,
+                    )
+                    if confirmed_smart_connect.get("shortlist"):
+                        profile_nodes = confirmed_nodes
+                        smart_connect = confirmed_smart_connect
+                        ready_from_confirmed_mapping = True
+                        readiness_source = "confirmed_mapping"
+        if not is_owned_transport_lab and smart_connect is None:
+            smart_connect = _smart_connect_shortlist(
+                session=s,
+                user=user,
+                nodes=profile_nodes,
+                transport_profile=transport_profile,
+                rollout_config=rollout_config,
+                profile_revision=str(client_policy.get("profile_revision") or ""),
+                install_id=install_id,
+                preferred_node_code=requested_node_code,
             )
         access_policy = _build_reconciled_access_policy(
             session=s,
@@ -2058,7 +2096,7 @@ async def client_managed_profile(
         effective_nodes = []
         if not is_owned_transport_lab:
             effective_nodes = _effective_transport_nodes(
-                nodes=nodes_for_user,
+                nodes=profile_nodes,
                 rollout_config=rollout_config,
                 transport_profile=transport_profile,
             )
@@ -2147,8 +2185,13 @@ async def client_managed_profile(
                 user=user, nodes=nodes_for_user, client_policy=client_policy
             ),
             "provisioning": {
-                "status": "ready" if sync_ok else "pending_sync",
+                "status": (
+                    "ready"
+                    if sync_ok or ready_from_confirmed_mapping
+                    else "pending_sync"
+                ),
                 "sync_ok": bool(sync_ok),
+                "readiness_source": readiness_source,
                 "managed_profile_path": "/api/client/profile/managed",
             },
         }

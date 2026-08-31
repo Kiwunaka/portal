@@ -697,11 +697,18 @@ explicitly enables the legacy contour.
 - Node-backed `GET /api/client/profile/managed` runs independent panel sync and
   runtime reads concurrently inside a shared eight-second budget. Panel sync
   gets a seven-second sub-budget so its own timeout can settle before the outer
-  request budget. Sync timeout
-  keeps `provisioning.status=pending_sync`; runtime-read timeout uses a zeroed
-  unknown-state fallback without downgrading a completed sync. Neither creates
-  connection evidence. Device-bound `awg2_lab`, `awg31_lab`, and `hy2_lab`
-  skip this unrelated legacy panel path entirely.
+  request budget. After a sync timeout, the endpoint may return
+  `provisioning.status=ready`, `sync_ok=false`, and
+  `readiness_source=confirmed_mapping` only when at least one currently
+  eligible shortlisted node also has durable `UserNode` or active `AccessKey`
+  provisioning evidence for that user; both the manifest and Smart Connect are
+  then restricted to that confirmed subset. Without such a node the status
+  stays `pending_sync`. A successful live sync uses `readiness_source=live_sync`
+  and restores the current product pool, so historical mappings do not become
+  a permanent premium allowlist. Runtime-read timeout uses a zeroed unknown-
+  state fallback without downgrading either readiness path. None of these
+  states creates connection evidence. Device-bound `awg2_lab`, `awg31_lab`,
+  and `hy2_lab` skip this unrelated legacy panel path entirely.
 - Both owned AWG profiles currently route only `0.0.0.0/0`; their managed DNS
   strategy is therefore `ipv4_only`. An IPv6 answer must not be selected until
   the endpoint contract also owns and proves an IPv6 routed prefix.

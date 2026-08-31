@@ -169,11 +169,15 @@ Reference-lane note:
 - node-backed managed-profile issuance runs independent panel synchronization
   and runtime reads concurrently under one eight-second response budget. Panel
   sync gets a seven-second sub-budget so it can settle before the outer request
-  budget. A sync
-  timeout yields the existing truthful `pending_sync` state; a runtime-read
-  timeout uses a zeroed unknown-state fallback without downgrading a completed
-  sync. Neither path holds the client through its retry window, and a timeout
-  is not readiness evidence
+  budget. A sync timeout normally yields the truthful `pending_sync` state. If
+  the user already has durable provisioning evidence on a currently eligible
+  shortlisted node, issuance can instead return only that confirmed subset as
+  `ready` with `sync_ok=false` and `readiness_source=confirmed_mapping`; it
+  never treats the timeout itself as evidence. A successful live sync returns
+  the current product pool with `readiness_source=live_sync`, so the confirmed
+  subset is only a bounded retry fallback. A runtime-read timeout uses a zeroed
+  unknown-state fallback without downgrading either readiness path. Neither
+  path holds the client through its retry window or creates connection evidence
 - first-trial panel synchronization uses the same four-second operation budget
   and returns `pending_sync` when convergence is incomplete; session and trial
   authority remain committed independently of that retryable panel result
