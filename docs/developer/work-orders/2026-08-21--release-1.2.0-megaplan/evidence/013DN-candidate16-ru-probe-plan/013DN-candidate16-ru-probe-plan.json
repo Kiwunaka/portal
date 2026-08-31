@@ -1,0 +1,70 @@
+{
+  "schema": "pokrov.release-evidence.candidate-ru-probe-plan/v1",
+  "work_order": "WO-013DN",
+  "observed_at": "2026-09-01T00:22:26.024306+03:00",
+  "candidate": {
+    "label": "pokrov-1.2.0-candidate.16",
+    "platform_commit": "719e23dc49407beb9ae30d98d17d4b73d18ae37c"
+  },
+  "source_change": {
+    "candidate_revision_allowlisted": true,
+    "runtime_behavior_changed": false,
+    "focused_tests": {
+      "passed": 29,
+      "failed": 0
+    }
+  },
+  "bundle": {
+    "member_count": 10,
+    "size_bytes": 47927,
+    "sha256": "e09808e40809c7a2e9bb0c3b10d428eb7af524bec43e6dea873fcbce08b471a4",
+    "two_builds_byte_identical": true,
+    "verify_status": "PASS",
+    "local_plan_status": "PASS",
+    "raw_runtime_material_included": false
+  },
+  "owned_ru_pi_environment": {
+    "mode": "READ_ONLY_REMOTE_HASHES_AND_STATE",
+    "classification": "MANUAL_OWNER_TEST_ENVIRONMENT_INCOMPLETE",
+    "source_files_required": 10,
+    "source_files_matching_candidate16": 6,
+    "source_files_mismatched": 4,
+    "installed_target_count": 10,
+    "runtime_user_present": true,
+    "runtime_group_present": true,
+    "sudo_nopasswd": true,
+    "spool_present": true,
+    "spool_private": true,
+    "spool_counts": {
+      "pending": 0,
+      "blocked": 0,
+      "quarantine": 0,
+      "archive": 0
+    },
+    "probe_service_state": "failed",
+    "probe_timer_state": "inactive_enabled",
+    "uploader_service_state": "inactive",
+    "uploader_timer_state": "inactive_enabled",
+    "runtime_material_present": false,
+    "latest_archive_present": false,
+    "ntp_synchronized": true,
+    "environment_evidence_sha256": "13c68d3e8cd885c21afaac44466fdb41a5570aee5d177d4d485026c1679a494d"
+  },
+  "remote_install_plan": {
+    "mode": "PLAN",
+    "operation": "install",
+    "candidate_id": "pokrov-1.2.0-candidate.16",
+    "mutation_performed": false,
+    "runtime_material_supplied": false,
+    "manual_runner_uploader_heartbeat_admin_readback": "NOT_RUN",
+    "ru_origin_verdict": "MANUAL_OWNER_TEST",
+    "plan_evidence_sha256": "89fcdfb88b1b910f76f554f8188d92ac9ab60fbfa88484594d7aec9080e6e586"
+  },
+  "release_effect": {
+    "ru_origin_passed": false,
+    "gate_f_advanced": false,
+    "gate_g_authorized": false,
+    "server_mutated": false,
+    "production_mutated": false
+  }
+}
