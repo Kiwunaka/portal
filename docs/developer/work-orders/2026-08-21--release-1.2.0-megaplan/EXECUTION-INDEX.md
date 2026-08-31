@@ -5495,3 +5495,32 @@ exact-candidate static evidence without index promotion. Static inspection is
 not physical Android, connected Windows, deployed ingest or aggregate owner
 proof. Gate F therefore remains `NO_GO 2/17/2`; the 378-row distribution stays
 `I4=5`, `I3=319`, `I2=20`, `I1=34`, `I0=0`, and Gate G stays unauthorized.
+
+## 2026-09-01 — WO-013DS candidate.16 LDPlayer idle performance
+
+Android SDK ADB confirms the installed LDPlayer APK hash matches the signed
+candidate.16 x86_64 artifact and the package reports `1.2.0` / code `4049`.
+The process is already present from prior state, but no runtime profile is
+staged and no TUN address or route exists. The slice does not launch the app,
+start a VPN, inject input or touch the screen.
+
+Twelve `/proc` samples over `56.35` seconds retain one PID, RSS
+`119.95 MiB` min/p50/p95/max, `40` threads and `0.0%` process CPU. A separate
+post-sample read reports `82.08 MiB` total PSS. These are baseline values, not
+a resource-budget PASS, because the current contract defines no Android idle
+RSS, PSS or thread limits.
+
+The direct no-VPN LDPlayer operating-system path then runs one persistent
+HTTP/1.1 process per endpoint with five warmups and fifty measured requests.
+Health p95 is `73.985 ms <= 100 ms`; public-catalog p95 is
+`97.756 ms <= 200 ms`; every response is HTTP `200`. A process-per-request
+discovery includes repeated resolver/TLS setup and is excluded from gate
+evidence.
+
+`PERF-001`, `DOD-13`, Gate E and Gate F gain stronger exact-candidate emulator
+evidence without index promotion. This is not cold-start/connect,
+authenticated client, physical Android, connected Windows, comparable
+hardware, battery/thermal/endurance or post-promotion proof. The physical
+phone is not visible to the current ADB session and is untouched. Gate F stays
+`NO_GO 2/17/2`; the 378-row distribution remains `I4=5`, `I3=319`, `I2=20`,
+`I1=34`, `I0=0`, and Gate G remains unauthorized.
