@@ -1,0 +1,69 @@
+{
+  "schema": "pokrov.release-1.2.0.signed-candidate-binding-evidence/v1",
+  "recorded_at_utc": "2026-08-31T22:06:06Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.16",
+    "release_index_source_revision": "54cfa03502ffafa5e4fb230a2cbdb0c0572c429f",
+    "platform_source_revision": "719e23dc49407beb9ae30d98d17d4b73d18ae37c",
+    "client_source_revision": "75ba7e721cfee486f7189edd51de97aba2746722",
+    "core_source_revision": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "signer_workflow_run": "Kiwunaka/pokrov/actions/runs/33402507136",
+    "signer_artifact_id": 9761790067,
+    "signer_artifact_name": "pokrov-pokrov-1.2.0-candidate.16-signed-manifest-54cfa03502ffafa5e4fb230a2cbdb0c0572c429f"
+  },
+  "outputs": [
+    {
+      "path": "release-index.json",
+      "sha256": "ae1906e68df755b1e0ce6a77d6ede8256f923e72fe11da57f1cae89a82c4ffe6",
+      "size_bytes": 6884
+    },
+    {
+      "path": "release-index.json.sig",
+      "sha256": "f5df63578d56db84a48eac1c68f1192e81462e8b407b1b6ff877c2b415507a9a",
+      "size_bytes": 64
+    },
+    {
+      "path": "signing-receipt.json",
+      "sha256": "1231ab6988746ca0e9725296826de2a9696a9a78600aa5e7f0b0c1b8c5782de4",
+      "size_bytes": 589
+    }
+  ],
+  "independent_validation": {
+    "status": "READY_SIGNED_MANIFEST",
+    "receipt_matches_outputs": true,
+    "detached_signature_verified_with_public_keyring": true,
+    "method": "Hosted signer plus local byte readback and detached Ed25519 verification against the manifest-bound trusted release-index keyring",
+    "promotion_authorized": false
+  },
+  "physical_phone_install_binding": {
+    "status": "PASS_EXACT_CANDIDATE16_ARM64_PHYSICAL_INSTALL_READBACK",
+    "device_class": "owner_physical_android_12_arm64",
+    "raw_identifier_retained": false,
+    "package_version": "1.2.0+4049",
+    "arm64_artifact_name": "pokrov-android-arm64-v8a.apk",
+    "arm64_artifact_sha256": "9bcdbe00fe8f8ed029894a65d531614f4fb912dda27e5fb1bb088c5b7516cc74",
+    "arm64_artifact_size_bytes": 101366678,
+    "installed_base_sha256": "9bcdbe00fe8f8ed029894a65d531614f4fb912dda27e5fb1bb088c5b7516cc74",
+    "installed_base_size_bytes": 101366678,
+    "arm64_artifact_sha256_match": true,
+    "app_launched": false,
+    "pokrov_process_after_install": "absent",
+    "tun0_after_install": "absent",
+    "network_test_run": false,
+    "screen_control_used": false,
+    "client_evidence_sha256": "8a7af4360debd2f33bd0b0a0af4e745e7a9c86f6f7092d9c66e9740e7d7b80ea",
+    "client_evidence_pr": 50,
+    "client_evidence_merge_commit": "1125d2767a94f1a80a1433f37093107e7ff59756"
+  },
+  "mutation_boundary": {
+    "app_launched": false,
+    "vpn_or_network_runtime_test": false,
+    "screen_control": false,
+    "signing_private_key_accessed_locally": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE16_SIGNED_OUTPUTS_AND_ARM64_PHYSICAL_INSTALL_IDENTITY_ONLY; PHYSICAL_RUNTIME_AND_REMAINING_GATE_F_CHECKS_STAY_SEPARATE"
+}

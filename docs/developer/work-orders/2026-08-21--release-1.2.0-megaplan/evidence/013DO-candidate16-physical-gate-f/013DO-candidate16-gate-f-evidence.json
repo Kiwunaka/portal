@@ -1,0 +1,81 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-08-31T22:06:06Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.16",
+    "operational_id": "d9081b8e77bc82512079affc952ce7c7aa82af5eccc843f6a3636b3269094b4f",
+    "manifest_sha256": "ae1906e68df755b1e0ce6a77d6ede8256f923e72fe11da57f1cae89a82c4ffe6",
+    "signature_sha256": "f5df63578d56db84a48eac1c68f1192e81462e8b407b1b6ff877c2b415507a9a",
+    "receipt_sha256": "1231ab6988746ca0e9725296826de2a9696a9a78600aa5e7f0b0c1b8c5782de4",
+    "sources": {
+      "platform": "719e23dc49407beb9ae30d98d17d4b73d18ae37c",
+      "client": "75ba7e721cfee486f7189edd51de97aba2746722",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "54cfa03502ffafa5e4fb230a2cbdb0c0572c429f"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "MANUAL_OWNER_TEST",
+    "mandatory_stop_ship_and_dod": "MANUAL_OWNER_TEST",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "SKIPPED_BY_OWNER",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MANUAL_OWNER_TEST",
+    "current_origin": "NOT_RUN",
+    "brain_origin": "MANUAL_OWNER_TEST",
+    "ru_origin": "MANUAL_OWNER_TEST",
+    "windows_live_network": "MANUAL_OWNER_TEST",
+    "android_ldplayer_rehearsal": "FAIL",
+    "android_physical_device": "MANUAL_OWNER_TEST",
+    "authenticated_client_egress": "FAIL",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "MANUAL_OWNER_TEST",
+    "hosted_required_checks": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+  },
+  "facts": {
+    "physical_android_install": "The exact production-signed ARM64 APK installs and reads back byte-identically as 1.2.0+4049 on the owner's Android 12 ARM64 device. The app was not launched, no process or tun0 remained and no screen control was used.",
+    "physical_android_runtime": "Install identity closes only the mandatory signed-candidate binding. Default, AWG, WARP, per-app, leak, UDP53, MTU, handoff, Doze, OEM and endurance runtime checks remain manual.",
+    "signed_supply": "The immutable six-artifact candidate.16 manifest, detached Ed25519 signature, receipt, trusted keyring, SBOM, provenance and exact four-source tuple validate. Promotion remains false.",
+    "ldplayer": "The exact x86_64 candidate passes the ordinary default path. AWG 3.1 and AWG2 each activate the selected profile and form TUN, managed DNS and routes, then fail authenticated egress without false green and remove the VPN.",
+    "windows": "Exact setup install, 8/8 files, LocalSystem service and owner binding, authenticated IPC, restart, uninstall and idle route/DNS restoration pass on the current host. Connected network, recovery and clean Windows 10/11 remain manual.",
+    "rollback": "Exact candidate.16 passes isolated portal and client 1.1.6 to candidate.16 to 1.1.6 reversal with byte-identical restoration. Live pointer and kill rollback with current and Brain readback remains manual.",
+    "ru_origin": "The exact candidate.16 RU bundle reproduces and local plus owned-Pi install PLAN pass without mutation. Four installed sources differ, runtime material and archive are absent, timers are inactive and the retained runner state failed; no run, upload, heartbeat or admin readback exists.",
+    "provider_boundary": "Datalix payment is owner-attested as restored, but strict SSH stops on a changed host identity. The identity was not accepted and candidate.16 DE alignment plus exact-Core AWG retries remain not run.",
+    "current_and_brain": "The ordinary LDPlayer path and bounded Brain source/readiness correction pass, but a complete exact Gate F current-origin and Brain-origin client matrix was not retained and is not promoted to PASS.",
+    "hosted_boundary": "Exact Core and release-index signer jobs execute and pass. Platform and client required jobs terminate with an empty runner and steps=[] because of GitHub billing, so they remain blocked rather than PASS.",
+    "decision_boundary": "The ARM64 install prerequisite is closed, so Gate F can run. Two exact candidate.16 AWG egress failures force NO_GO; all remaining manual, missing, not-run, skipped and billing-blocked rows stay non-PASS. Gate G and every public or stable mutation remain unauthorized."
+  },
+  "source_records": [
+    "WO-013DE-candidate16-managed-profile-readiness-signing-local-quality.md",
+    "WO-013DF-candidate16-awg-ldplayer.md",
+    "WO-013DI-candidate16-local-rollback.md",
+    "WO-013DL-candidate16-windows-current-host.md",
+    "WO-013DM-candidate16-de-host-identity.md",
+    "WO-013DN-candidate16-ru-probe-plan.md",
+    "POKROV-app PR 50 exact physical install binding"
+  ],
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013DO-candidate16-physical-gate-f/013DO-candidate16-signed-binding.json",
+      "sha256": "2c87c2cf67446a57beb591ad544b2fb28b266fd6e4fd33eac40d5909a69b85be"
+    }
+  ],
+  "mutation_boundary": {
+    "gate_generation_mutated_runtime": false,
+    "candidate_artifact_mutated": false,
+    "physical_app_launched": false,
+    "physical_network_test_run": false,
+    "screen_control_used": false,
+    "payment_or_provider_action": false,
+    "database_or_outbox_mutation": false,
+    "operator_action_executed": false,
+    "public_release": false,
+    "store_upload": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE16_GATE_F_NO_GO_AFTER_ARM64_INSTALL_BINDING; 2_PASS_17_NON_PASS_INCLUDING_2_FAIL; PHYSICAL_RUNTIME_AND_EXTERNAL_MANUAL_GATES_OPEN; NO_GATE_G_PUBLIC_STORE_STABLE_OR_PRODUCTION_PROMOTION"
+}
