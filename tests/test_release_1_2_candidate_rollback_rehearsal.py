@@ -6,6 +6,7 @@ import importlib.util
 import json
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -41,6 +42,30 @@ def _git() -> Path:
     raw = shutil.which("git.exe") or shutil.which("git")
     assert raw is not None
     return Path(raw).resolve()
+
+
+def test_cli_does_not_import_sibling_module_before_source_bootstrap(
+    tmp_path: Path,
+) -> None:
+    script = tmp_path / MODULE_PATH.name
+    script.write_bytes(MODULE_PATH.read_bytes())
+    marker = tmp_path / "sibling-module-loaded.txt"
+    (tmp_path / "argparse.py").write_text(
+        "with open(" + repr(str(marker)) + ", 'w', encoding='utf-8') as handle:\n"
+        "    handle.write('loaded')\n"
+        "raise RuntimeError('sibling module must not load')\n",
+        encoding="utf-8",
+    )
+
+    completed = subprocess.run(
+        [sys.executable, str(script), "--help"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert not marker.exists()
 
 
 def test_verified_source_loader_compiles_only_hash_bound_source(tmp_path: Path) -> None:
