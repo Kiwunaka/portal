@@ -269,6 +269,123 @@ class ControlPanelFreeFallbackTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(calls, ["brain", "nl", "nl-alt"])
         self.assertEqual(result, {"brain": True, "nl": True, "nl-alt": True})
 
+    async def test_ensure_user_on_all_nodes_bounds_independent_node_concurrency(self) -> None:
+        from control_panel import ControlPanel
+
+        cp = ControlPanel(concurrency=3)
+        nodes = [self._node("brain"), self._node("nl"), self._node("pl")]
+        active = 0
+        max_active = 0
+
+        class _FakeClient:
+            async def ensure_client(self, **_kwargs):
+                nonlocal active, max_active
+                active += 1
+                max_active = max(max_active, active)
+                try:
+                    await __import__("asyncio").sleep(0.05)
+                    return True
+                finally:
+                    active -= 1
+
+        async def fake_refresh():
+            return nodes
+
+        class _FakeQuery:
+            def filter_by(self, **_kwargs):
+                return self
+
+            def first(self):
+                return None
+
+        class _FakeSession:
+            def query(self, *_args, **_kwargs):
+                return _FakeQuery()
+
+            def add(self, *_args, **_kwargs):
+                return None
+
+            def commit(self):
+                return None
+
+            def close(self):
+                return None
+
+        cp.refresh = fake_refresh
+        cp._clients = {node.code: _FakeClient() for node in nodes}
+
+        import control_panel as cp_mod
+
+        old_session_local = cp_mod.SessionLocal
+        cp_mod.SessionLocal = lambda: _FakeSession()
+        try:
+            result = await cp.ensure_user_on_all_nodes(
+                tg_id=123,
+                client_uuid="uuid",
+                email="email",
+                sub_id="token",
+                enable=True,
+            )
+        finally:
+            cp_mod.SessionLocal = old_session_local
+
+        self.assertEqual(max_active, 3)
+        self.assertEqual(result, {"brain": True, "nl": True, "pl": True})
+
+    async def test_ensure_user_on_all_nodes_isolates_one_failed_node_group(self) -> None:
+        from control_panel import ControlPanel
+
+        nodes = [self._node("brain"), self._node("nl")]
+
+        class _FailedClient:
+            async def ensure_client(self, **_kwargs):
+                raise TimeoutError("synthetic panel timeout")
+
+        class _ReadyClient:
+            async def ensure_client(self, **_kwargs):
+                return True
+
+        class _FakeQuery:
+            def filter_by(self, **_kwargs):
+                return self
+
+            def first(self):
+                return None
+
+        class _FakeSession:
+            def query(self, *_args, **_kwargs):
+                return _FakeQuery()
+
+            def add(self, *_args, **_kwargs):
+                return None
+
+            def commit(self):
+                return None
+
+            def close(self):
+                return None
+
+        cp = ControlPanel(concurrency=2)
+        cp.refresh = lambda: _async_result(nodes)
+        cp._clients = {"brain": _FailedClient(), "nl": _ReadyClient()}
+
+        import control_panel as cp_mod
+
+        old_session_local = cp_mod.SessionLocal
+        cp_mod.SessionLocal = lambda: _FakeSession()
+        try:
+            result = await cp.ensure_user_on_all_nodes(
+                tg_id=123,
+                client_uuid="uuid",
+                email="email",
+                sub_id="token",
+                enable=True,
+            )
+        finally:
+            cp_mod.SessionLocal = old_session_local
+
+        self.assertEqual(result, {"brain": False, "nl": True})
+
     async def test_rotate_pooled_key_updates_existing_copies_only(self) -> None:
         from control_panel import ControlPanel
 

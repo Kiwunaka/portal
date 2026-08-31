@@ -11,6 +11,79 @@ except ImportError:
 
 bootstrap_slice(globals())
 SMART_CONNECT_LATENCY_EVENT_NAME = "smart_connect_latency_sample"
+MANAGED_PROFILE_PANEL_BUDGET_SECONDS = 4.0
+
+
+def _managed_profile_runtime_fallback(*, panel_state: str, panel_error: str | None) -> dict[str, Any]:
+    return {
+        "panel_state": panel_state,
+        "panel_error": panel_error,
+        "known_nodes": 0,
+        "active_nodes": 0,
+        "enabled_nodes": 0,
+        "active_connections": 0,
+        "active_connections_source": "none",
+        "active_users_estimate": 0,
+        "active_users_source": "none",
+        "traffic_up_bytes": 0,
+        "traffic_down_bytes": 0,
+        "traffic_total_bytes": 0,
+        "last_online_at": None,
+        "last_online_age_seconds": None,
+        "status": "unknown",
+    }
+
+
+async def _managed_profile_panel_state(
+    *,
+    s,
+    user: User,
+    nodes: list[Node],
+    panel_required: bool,
+) -> tuple[bool, dict[str, Any]]:
+    if not panel_required:
+        return True, _managed_profile_runtime_fallback(
+            panel_state="not_required",
+            panel_error=None,
+        )
+
+    sync_task = asyncio.create_task(_sync_control_panel_access(user=user))
+    runtime_task = asyncio.create_task(
+        _get_user_runtime_summary(s=s, user=user, nodes=nodes)
+    )
+    tasks = {sync_task, runtime_task}
+    done, pending = await asyncio.wait(
+        tasks,
+        timeout=max(0.1, float(MANAGED_PROFILE_PANEL_BUDGET_SECONDS)),
+    )
+    for task in pending:
+        task.cancel()
+    if pending:
+        await asyncio.gather(*pending, return_exceptions=True)
+
+    sync_ok = False
+    if sync_task in done and not sync_task.cancelled():
+        try:
+            sync_ok = bool(sync_task.result())
+        except Exception:
+            sync_ok = False
+
+    runtime = _managed_profile_runtime_fallback(
+        panel_state="timeout" if runtime_task in pending else "error",
+        panel_error=(
+            "panel_runtime_timeout"
+            if runtime_task in pending
+            else "panel_runtime_failed"
+        ),
+    )
+    if runtime_task in done and not runtime_task.cancelled():
+        try:
+            candidate = runtime_task.result()
+        except Exception:
+            candidate = None
+        if isinstance(candidate, dict):
+            runtime = candidate
+    return sync_ok, runtime
 
 
 class NodeLatencyPointIn(BaseModel):
@@ -1957,7 +2030,12 @@ async def client_managed_profile(
                 install_id=install_id,
                 preferred_node_code=requested_node_code,
             )
-        sync_ok = await _sync_control_panel_access(user=user)
+        sync_ok, runtime = await _managed_profile_panel_state(
+            s=s,
+            user=user,
+            nodes=nodes_for_user,
+            panel_required=not is_owned_transport_lab,
+        )
         if not sync_ok:
             logger.warning(
                 "managed profile panel sync returned false tg_id=%s plan=%s sub_type=%s",
@@ -1965,7 +2043,6 @@ async def client_managed_profile(
                 str(getattr(user, "current_plan_code", "") or ""),
                 str(getattr(user, "sub_type", "") or ""),
             )
-        runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
         access_policy = _build_reconciled_access_policy(
             session=s,
             user=user,

@@ -1,6 +1,6 @@
 # App-First And Bonus Flows
 
-Last updated: 2026-08-17
+Last updated: 2026-08-31
 
 ## Document Status
 
@@ -166,6 +166,9 @@ Contract rule:
   canonical account ID, so post-merge/different-batch replay remains one row
 - panel provisioning stays retryable and outside the irreversible ledger
   decision; panel failure does not create connection evidence
+- initial panel convergence is limited to four seconds. A timeout returns the
+  existing `pending_sync` contract without rolling back the committed account,
+  device, session, or trial reservation
 - the backend must return the same `client_policy` contract from `start-trial`, `user`, and `dashboard` flows so the app can reconcile defaults without guessing
 
 ### Account Experience And First Connection
@@ -296,6 +299,12 @@ Rollout note:
 - allowlisted carrier or cohort overrides may switch app-managed flows to `ru_bridge_relay` during a RU reachability incident; that manifest keeps countries as the top-level choice, nests `Обычный` and configured `Белые списки` bridge endpoint choices under non-US countries, and leaves US as direct-only. The legacy top-level single-bridge fields continue to describe the primary `mini` bridge for older readers, while `ru_bridge_relay.endpoints[]` can add RU/RU-SPB type 2/type 3 choices by stable `id`.
 - the native `GET /api/client/locations` catalog mirrors those choices through an additive per-city `variants` list: stable `direct` / `Обычный` is always present, and each usable bridge endpoint contributes only its stable id, short label, and short consumer description. Bridge variants are omitted when rollout is disabled, endpoint material is invalid, the city is excluded or outside a non-empty allowlist, its required transport is unavailable, or the endpoint identifies the same exact delivery node by stable id/configured host; no host, port, Reality key/short id, hidden outbound tag, or raw config enters this projection.
 - managed provisioning now also returns a `smart_connect` contract with shortlist candidates, fallback metadata, rejection counts, and scoring hints
+- node-backed managed provisioning gives panel synchronization and runtime reads
+  one shared four-second budget and runs them concurrently. Incomplete sync
+  stays `pending_sync`; incomplete runtime read uses an unknown/zero fallback
+  without changing a completed sync into failure. Neither timeout becomes a
+  connection claim, and the manifest no longer waits through the client's full
+  retry window
 - manual/export compatibility links stay on `legacy_reality_fallback` until a separate share-link parity wave
 - `subscription_url` remains a compatibility and recovery artifact for manual import, legacy browser-visible delivery, and fallback when the managed manifest cannot be fetched
 - `network_rollout_config` carries `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `reserve_xhttp_cdn`, `ru_bridge_relay`, `operator_lab`, `warp_policy`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
@@ -325,6 +334,9 @@ Smart-connect contract:
 
 - For node-backed transports, `GET /api/client/profile/managed` returns a shortlist revision plus `smart_connect.shortlist`; its material contains only those shortlisted nodes and returns `503 No eligible nodes` when the shortlist is empty
 - Device-bound `awg2_lab` and `awg31_lab` are not node-backed: managed issuance bypasses Smart Connect and the ordinary node shortlist, ignores `selected_node_code`, and returns `smart_connect: null`. The typed per-device material and its own rollout/material gates remain fail-closed
+- device-bound `awg2_lab`, `awg31_lab`, and `hy2_lab` do not call the legacy
+  catalog-panel synchronization/runtime path during issuance; those unrelated
+  panel calls cannot delay or authorize lab material
 - premium users can receive up to `SMART_CONNECT_SHORTLIST_LIMIT` eligible non-free nodes, default `8`; expired users receive no delivery shortlist
 - the shortlist rejects disabled, draining, unhealthy, stale, missing or dataplane-down, saturated, high-loss/retransmit, `cpu_percent >= SMART_CONNECT_CPU_REJECT_PERCENT`, transport-incompatible, and rollout-blocked nodes while `CAPACITY_AWARE_NODE_SELECTION=true`; neither explicit selection nor automatic selection may fall back to a rejected node
 - shortlist items expose canonical `outbound_tag`, `health_score`, `cpu_percent`, `panel_latency_ms`, `backend_penalty`, `cpu_penalty`, `capacity_state`, `capacity_score`, `tx_ratio`, `tx_mbps`, `provisioned_clients_count`, `online_connections_hint`, and an internal `probe.host` / `probe.port` target for app-side RTT checks; `outbound_tag` identifies the unique direct proxy that must belong to the returned final selector

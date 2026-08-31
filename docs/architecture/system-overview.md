@@ -1,6 +1,6 @@
 # POKROV System Overview
 
-Last updated: 2026-08-21
+Last updated: 2026-08-31
 
 ## Document Status
 
@@ -166,8 +166,21 @@ Reference-lane note:
 - `operator_lab` stays allowlist-only and carries `enabled`, `allowlist_install_ids`, `allowlist_tg_ids`, `allowlist_node_codes`, and `expires_at`
 - app-managed session/profile payloads resolve their transport profile from rollout policy, while manual/export compatibility links stay on `legacy_reality_fallback` until a separate share-link parity wave
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint and returns `version`, `profile_revision`, `transport_profile`, `transport_kind`, `engine_hint`, `config_format`, `config_payload`, `fallback_order`, `support_context`, `smart_connect`, and managed-profile `warp_policy`
+- node-backed managed-profile issuance runs independent panel synchronization
+  and runtime reads concurrently under one four-second response budget. A sync
+  timeout yields the existing truthful `pending_sync` state; a runtime-read
+  timeout uses a zeroed unknown-state fallback without downgrading a completed
+  sync. Neither path holds the client through its retry window, and a timeout
+  is not readiness evidence
+- first-trial panel synchronization uses the same four-second operation budget
+  and returns `pending_sync` when convergence is incomplete; session and trial
+  authority remain committed independently of that retryable panel result
 - `smart_connect` contains a rollout-compatible shortlist, internal probe targets, capacity/scoring hints, rejection counters, and stickiness metadata so the client can combine real RTT with backend health, dataplane, and network-pressure signals without guessing
 - device-bound `awg2_lab` and `awg31_lab` managed profiles are the bounded exception: they use typed per-device material instead of catalog nodes, ignore `selected_node_code`, bypass the ordinary shortlist and return `smart_connect: null` while their own rollout/material gates remain fail-closed
+- device-bound `awg2_lab`, `awg31_lab`, and `hy2_lab` issuance also bypasses
+  legacy panel synchronization and runtime reads. Their readiness comes only
+  from the authenticated device, rollout, server-record and encrypted-material
+  gates, not from unrelated node-catalog panel state
 - `client_policy.warp_policy` remains sanitized; the default WARP path is
   client-local through Hiddify core, so the backend must not require
   server-managed WireGuard material before the client can set
@@ -212,6 +225,8 @@ Reference-lane note:
 - `GET /api/user/*` exposes account experience state, while `POST /api/account/experience/onboarding` persists cabinet/app onboarding completion or skip without touching entitlement state
 - additive `client_policy` fields `transport_kind`, `engine_hint`, and `profile_revision` let the client apply the right engine/runtime without guessing
 - one logical client is synchronized across all enabled inbounds in a node's transport catalog, while public UI still exposes only the rollout-selected app-managed path
+- synchronization of independent paid-node groups is concurrency-bounded rather
+  than serial; candidate fallbacks inside one logical group remain ordered
 - `reserve_xhttp_cdn` is prepared as a hidden reserve profile; when explicitly selected it resolves to `transport_kind=xhttp` with `engine_hint=xray`, while the normal consumer baseline stays `sing-box`
 - `ru_bridge_relay` resolves to `transport_kind=ru_bridge` with `engine_hint=singbox`; it is not a normal delivery-node pool and does not make `mini` a control-plane host
 
