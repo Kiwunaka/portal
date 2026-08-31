@@ -21,44 +21,44 @@ one-test-per-private-helper coverage.
 
 | Metric | Count |
 | --- | ---: |
-| Private helper rows | 294 |
-| Accepted Q-001 policy rows | 294 |
+| Private helper rows | 953 |
+| Accepted Q-001 policy rows | 953 |
 | Rows needing Q-001 owner decision | 0 |
-| High risk rows | 4 |
-| Medium risk rows | 64 |
-| Low risk rows | 226 |
+| High risk rows | 5 |
+| Medium risk rows | 177 |
+| Low risk rows | 771 |
 
 ### By Private Helper Area
 
 | Label | Count |
 | --- | ---: |
-| `client_desktop_host_helper` | 4 |
-| `client_feature_copy_or_logic_helper` | 56 |
-| `client_private_ui_helper` | 25 |
-| `private_implementation_helper` | 183 |
-| `webapp_private_ui_helper` | 26 |
+| `client_desktop_host_helper` | 5 |
+| `client_feature_copy_or_logic_helper` | 152 |
+| `client_private_ui_helper` | 32 |
+| `private_implementation_helper` | 739 |
+| `webapp_private_ui_helper` | 25 |
 
 ### By Risk Tier
 
 | Label | Count |
 | --- | ---: |
-| `high` | 4 |
-| `low` | 226 |
-| `medium` | 64 |
+| `high` | 5 |
+| `low` | 771 |
+| `medium` | 177 |
 
 ### By Language
 
 | Label | Count |
 | --- | ---: |
-| `dart` | 97 |
-| `python` | 160 |
+| `dart` | 309 |
+| `python` | 607 |
 | `tsx` | 37 |
 
 ### By Current Status
 
 | Label | Count |
 | --- | ---: |
-| `source_inventory_only` | 294 |
+| `source_inventory_only` | 953 |
 
 ## Completion Rule
 

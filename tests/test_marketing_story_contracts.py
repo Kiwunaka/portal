@@ -1,7 +1,40 @@
+import os
 from pathlib import Path
+import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _resolve_client_root(platform_checkout: Path) -> Path:
+    override = os.environ.get("POKROV_CLIENT_ROOT", "").strip()
+    if override:
+        return Path(override).expanduser().resolve()
+
+    completed = subprocess.run(
+        ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"],
+        cwd=platform_checkout,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    platform_root = Path(completed.stdout.strip()).resolve().parent
+    client_repo = platform_root.parent / "POKROV-app"
+    if not client_repo.is_dir():
+        return client_repo
+
+    worktrees = subprocess.run(
+        ["git", "worktree", "list", "--porcelain"],
+        cwd=client_repo,
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout
+    for block in worktrees.strip().split("\n\n"):
+        fields = dict(line.split(" ", 1) for line in block.splitlines() if " " in line)
+        if fields.get("branch") == "refs/heads/main" and fields.get("worktree"):
+            return Path(fields["worktree"]).resolve()
+    return client_repo
 
 
 def _read(relative_path: str) -> str:
@@ -314,7 +347,7 @@ def test_vpn_selection_search_surface_is_proof_first_without_absolute_claims() -
 
 
 def test_active_release_surfaces_have_no_advertising_sdk_or_vendor_tracker() -> None:
-    client_root = ROOT.parent / "POKROV-app"
+    client_root = _resolve_client_root(ROOT)
     assert client_root.is_dir()
     forbidden = (
         "firebase_analytics",

@@ -2,6 +2,32 @@
 
 Last updated: 2026-08-31
 
+## 2026-08-31 — WO-013DC candidate.13 successor dependency refresh
+
+Candidate.13 and current platform base carry byte-identical Python dependency
+locks. Fresh audit finds `3 packages / 4 records` in the production lock and
+`6 packages / 31 records` in the test lock, so candidate.13 remains immutable
+but is not promotable. The successor refresh updates six direct pins and
+regenerates both universal Python 3.12 hash locks.
+
+Fresh audits return zero known findings over `27` production and `60` test
+dependencies. No-op recompilation returns `delta=0` for both retained locks.
+An isolated Python 3.12.7 environment installs the exact test lock and passes
+`544` focused tests plus `20` subtests across auth, Operator Center, payments,
+support, observability, rollback and release gates. The complete `3632`-test
+collection is also covered by a file-partitioned Windows run: `3622 passed`,
+`10 skipped`, `274 subtests passed`, zero unresolved failures. Script manifest
+and diff checks pass.
+
+Paramiko 5 also passes two real read-only PLANs through the owned Brain/`it`
+paths. Runtime/DoT and HAProxy candidate validation pass with
+`mutation_performed=false`; authoritative DNS remains absent and no service
+APPLY occurs.
+
+`REL/DEP-001` stays `I3` with stronger current evidence. A successor signed
+candidate is required before a new Gate F. Candidate.13, Gate G, Store,
+public release and stable pointers remain unchanged.
+
 ## 2026-08-31 — WO-013DB candidate.13 Smart DNS `it` readiness
 
 Current platform `a895033...` passes the focused Smart DNS bundle, runtime,

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -167,6 +167,7 @@ def test_awg2_endpoint_validation_fails_closed(
 def test_device_material_is_encrypted_and_exact_contract_can_issue_managed_profile(
     db_session,
 ) -> None:
+    material_now = datetime.now(timezone.utc).replace(tzinfo=None)
     row = replace_awg2_lab_material(
         db_session,
         tg_id=1001,
@@ -176,7 +177,7 @@ def test_device_material_is_encrypted_and_exact_contract_can_issue_managed_profi
         server_record_id="pokrov-awg2-pl-01",
         node_code="pl",
         endpoint=_endpoint(),
-        now=datetime(2026, 8, 22, 10, 0, 0),
+        now=material_now,
     )
     db_session.commit()
     rollout = _rollout()
@@ -196,7 +197,7 @@ def test_device_material_is_encrypted_and_exact_contract_can_issue_managed_profi
         install_id="owner-device",
         rollout_value=rollout[AWG2_LAB],
         title="POKROV",
-        now=datetime(2026, 8, 22, 10, 1, 0),
+        now=material_now + timedelta(minutes=1),
     )
 
     assert policy["transport_profile"] == AWG2_LAB

@@ -1,0 +1,98 @@
+{
+  "schema_version": "pokrov-release-dependency-refresh-evidence-v1",
+  "work_order": "WO-013DC",
+  "observed_at": "2026-08-31T01:26:17Z",
+  "base_platform_revision": "f10cec0de9fb10140ca29316d58e53c3a1761b32",
+  "candidate_13_platform_revision": "7d983c0ab52e9c01f94da8916a6bca6a0039be8d",
+  "candidate_13_dependency_paths_match_base": true,
+  "candidate_13_mutated": false,
+  "before": {
+    "production": {
+      "affected_packages": 3,
+      "advisory_records": 4
+    },
+    "test": {
+      "affected_packages": 6,
+      "advisory_records": 31
+    }
+  },
+  "direct_pins": {
+    "aiohttp": "3.14.3",
+    "cryptography": "50.0.1",
+    "paramiko": "5.0.0",
+    "requests": "2.34.2",
+    "pytest": "9.1.1",
+    "python-dotenv": "1.2.3"
+  },
+  "explicit_test_inputs_added": {
+    "httpx": "0.28.1",
+    "httpx2": "2.10.0",
+    "jsonschema": "4.26.0",
+    "pytest-asyncio": "1.4.0"
+  },
+  "locks": {
+    "production": {
+      "path": "requirements-ops.txt",
+      "sha256": "f3ead265d884c66f58536ea71955c715f9294346cc8ffab98170448956c171ac",
+      "size_bytes": 58698,
+      "dependency_count": 27,
+      "known_findings": 0,
+      "noop_recompile_delta": 0
+    },
+    "test": {
+      "path": "requirements-test.txt",
+      "sha256": "c50dbbef6bdb74b5b967c1766dc0cf270f6518ba5a0a666b2f9b8fa364209223",
+      "size_bytes": 144005,
+      "dependency_count": 60,
+      "known_findings": 0,
+      "noop_recompile_delta": 0
+    }
+  },
+  "isolated_environment": {
+    "python": "3.12.7",
+    "exact_test_lock_installed": true,
+    "production_environment_mutated": false
+  },
+  "verification": {
+    "pytest_passed": 544,
+    "subtests_passed": 20,
+    "pytest_failed": 0,
+    "full_collection": {
+      "collected": 3632,
+      "passed": 3622,
+      "skipped": 10,
+      "subtests_passed": 274,
+      "unresolved_failures": 0,
+      "execution": "FILE_PARTITIONED_WINDOWS_RUN_WITH_SERIALIZED_ORDER_DEPENDENT_FIXTURE_AND_OBSERVABILITY_CHECKS"
+    },
+    "generated_source_inventory": {
+      "symbols": 11660,
+      "reproducibility_test": "PASS"
+    },
+    "payment_deprecation_warnings": 19,
+    "script_manifest": "PASS",
+    "git_diff_check": "PASS",
+    "production_dependency_audit": "PASS_ZERO_KNOWN_FINDINGS",
+    "test_dependency_audit": "PASS_ZERO_KNOWN_FINDINGS"
+  },
+  "paramiko_5_read_only_plans": {
+    "runtime": {
+      "result": "PASS",
+      "sha256": "b9785f1c4d579e663f70bca6b75ab9c03cbf7edbc8923190f26906a36ecd1f37",
+      "mutation_performed": false
+    },
+    "frontend": {
+      "result": "PASS",
+      "sha256": "afb102b24321e9c1460f37b26303ab56494195032bdcef3bd91a6f65fc337594",
+      "mutation_performed": false
+    },
+    "raw_runtime_material_returned": false
+  },
+  "release_decision": {
+    "candidate_13": "IMMUTABLE_RETAINED_NOT_PROMOTABLE",
+    "successor_candidate_required": true,
+    "rel_dep_001": "I3",
+    "gate_f": "NOT_RUN_FOR_SUCCESSOR",
+    "public_or_stable_mutation": false
+  }
+}

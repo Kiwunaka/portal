@@ -74,8 +74,16 @@ def test_marketing_home_uses_current_redesign_structure() -> None:
     pricing = _read("components", "home", "pricing.tsx")
     footer = _read("components", "layout", "footer.tsx")
 
-    for component in ("<Hero />", "<ServicesGrid />", "<Steps />", "<Pricing />", "<FinalCta />"):
+    for component in (
+        "<Hero />",
+        "<Steps />",
+        "<Showcase />",
+        "<Pricing />",
+        "<Faq />",
+        "<FinalCta />",
+    ):
         assert component in page
+    assert "ServicesGrid" not in page
     assert '<main id="main-content"' in shell
     assert "MarketingBrandLogo" in topbar
     assert "AnimatePresence" in topbar

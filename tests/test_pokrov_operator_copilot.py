@@ -50,11 +50,11 @@ def test_read_canonical_doc_excerpt_returns_matching_lines() -> None:
 
     result = module.execute_tool(
         "pokrov_read_canonical_doc_excerpt",
-        {"path_key": "product", "query": "outside-store public beta", "max_chars": 3000},
+        {"path_key": "product", "query": "outside-store stable-direct", "max_chars": 3000},
     )
 
     assert result["path"] == "docs/product/portal-vpn-product.md"
-    assert "outside-store public beta" in result["excerpt"]
+    assert "outside-store stable-direct" in result["excerpt"]
 
 
 def test_origin_handoff_keeps_origin_verdicts_separate() -> None:

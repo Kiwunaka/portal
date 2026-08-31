@@ -21,32 +21,32 @@ It closes the literal "each function/class/method" tracking gap without pretendi
 
 | Coverage tier | Count |
 | --- | ---: |
-| Story source file | 3717 |
-| Story dependency source file | 2054 |
-| Entrypoint mapped | 457 |
-| Direct token test ref | 525 |
-| Module test ref | 124 |
-| Private inventory only | 294 |
-| Client platform host manual gate | 86 |
-| Entrypoint route test ref | 64 |
+| Story source file | 4358 |
+| Story dependency source file | 3234 |
+| Entrypoint mapped | 452 |
+| Direct token test ref | 1634 |
+| Module test ref | 552 |
+| Private inventory only | 953 |
+| Client platform host manual gate | 75 |
+| Entrypoint route test ref | 190 |
 | Operator tooling inventory | 5 |
 | Next route boundary inventory | 7 |
-| Client desktop tray manual gate | 4 |
+| Client desktop tray manual gate | 5 |
 | QA tooling inventory | 1 |
 | Script CLI deprecated | 2 |
 | Telegram WebApp bootstrap inventory | 1 |
-| Entrypoint story source ref | 21 |
-| Client package public API review | 8 |
-| Entrypoint needs mapping review | 0 |
-| Public symbol review | 51 |
+| Entrypoint story source ref | 20 |
+| Client package public API review | 39 |
+| Entrypoint needs mapping review | 2 |
+| Public symbol review | 54 |
 
 ### Manual Gate Reference Counts
 
 | Label | Count |
 | --- | ---: |
-| OWNER-GATE-ANDROID-PHYSICAL-INSTALL-CONNECT | 39 |
-| OWNER-GATE-WINDOWS-INSTALL-CONNECT | 27 |
-| NOT_CURRENT_PUBLIC_BETA_TARGET | 24 |
+| OWNER-GATE-ANDROID-PHYSICAL-INSTALL-CONNECT | 3 |
+| OWNER-GATE-WINDOWS-INSTALL-CONNECT | 62 |
+| NOT_CURRENT_PUBLIC_BETA_TARGET | 15 |
 
 ## Interpretation
 
@@ -62,7 +62,7 @@ It closes the literal "each function/class/method" tracking gap without pretendi
 - `client_desktop_tray_manual_gate` means Windows shell tray callbacks are tracked as desktop-host behavior that needs Windows shell smoke or manual owner evidence before runtime claims.
 - `manual_gate_refs` links those manual-tier symbols to the relevant owner gate (`OWNER-GATE-ANDROID-PHYSICAL-INSTALL-CONNECT`, `OWNER-GATE-WINDOWS-INSTALL-CONNECT`) or to `NOT_CURRENT_PUBLIC_BETA_TARGET` for iOS/macOS host code that is inventoried but not part of the current public beta target.
 - Any `OWNER-GATE-*` value in `manual_gate_refs` must resolve to `pokrov-owner-gated-scenarios.csv`; this keeps low-level symbol scope synchronized with the Q-004 manual scenario ledger instead of a hard-coded side list.
-- `client_package_public_api_review` means a public Flutter/Dart package API exists without a direct story/test signal in the root audit; current count is `8`.
+- `client_package_public_api_review` means a public Flutter/Dart package API exists without a direct story/test signal in the root audit; current count is `39`.
 - `next_route_boundary_inventory` means a Next.js `layout`, `error`, `not-found`, or similar route boundary component is invoked by framework convention and should be covered through route/e2e behavior.
 - `telegram_webapp_bootstrap_inventory` means the Telegram WebApp root-layout integration component is app-wide bootstrap glue, not an ordinary helper.
 - `qa_tooling_inventory` and `operator_tooling_inventory` keep QA/operator-only tools visible without treating them as public user stories.
@@ -73,12 +73,12 @@ It closes the literal "each function/class/method" tracking gap without pretendi
 ## Current Open Review Buckets
 
 - `script_cli_manifest_review`: 0.
-- `script_cli_active_without_workflow_mapping`: 10.
-- `public_symbol_review`: 51.
-- `client_package_public_api_review`: 8.
-- Manual-gate buckets remain evidence honest: `client_platform_host_manual_gate` 86, `client_desktop_tray_manual_gate` 4, and `telegram_webapp_bootstrap_inventory` 1. Platform/tray manual-tier rows carry `manual_gate_refs`; Telegram bootstrap inventory is tracked through browser/Telegram WebApp integration evidence rather than the platform owner-gate matrix.
-- `entrypoint_needs_mapping_review`: 0.
-- `private_inventory_only` public/entrypoint leakage: 0; current private inventory-only rows: 294.
+- `script_cli_active_without_workflow_mapping`: 76.
+- `public_symbol_review`: 54.
+- `client_package_public_api_review`: 39.
+- Manual-gate buckets remain evidence honest: `client_platform_host_manual_gate` 75, `client_desktop_tray_manual_gate` 5, and `telegram_webapp_bootstrap_inventory` 1. Platform/tray manual-tier rows carry `manual_gate_refs`; Telegram bootstrap inventory is tracked through browser/Telegram WebApp integration evidence rather than the platform owner-gate matrix.
+- `entrypoint_needs_mapping_review`: 2.
+- `private_inventory_only` public/entrypoint leakage: 0; current private inventory-only rows: 953.
 
 ## Latest Fixes
 
