@@ -2,6 +2,26 @@
 
 Last updated: 2026-09-01
 
+## 2026-09-01 — WO-013DN candidate.16 RU-probe bundle and owned-Pi PLAN
+
+The signed candidate.16 platform revision is added to the exact RU bundle
+allowlist. Two independent builds produce the same ten-member, `47,927`-byte
+package with SHA-256 `e09808e4...`; verify and local install PLAN pass and no
+runtime material is included.
+
+A read-only owned Raspberry Pi 4 comparison finds `6/10` exact source/unit
+files, four content mismatches, no runtime material, no archive, inactive
+enabled timers and a retained failed runner-service state. NTP, the process
+user/group, private empty spool, required tools and passwordless privilege
+boundary are present. The guarded remote install PLAN passes with
+`mutation_performed=false`; runner, uploader, heartbeat and admin readback
+remain `NOT_RUN`.
+
+`FRKN_PLAN/W9-02` remains `I2` as
+`CANDIDATE16_RU_ENVIRONMENT_INCOMPLETE_PLAN_READY`. RU-origin is still
+`MANUAL_OWNER_TEST`; no gate or ledger row advances. Distribution stays
+`I4=5`, `I3=319`, `I2=20`, `I1=34`, `I0=0` across `378` rows.
+
 ## 2026-09-01 — WO-013DM DE billing restored, host identity still manual
 
 The owner attests that the Datalix account is paid. The latest strict SSH
