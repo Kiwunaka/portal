@@ -301,11 +301,15 @@ Rollout note:
 - managed provisioning now also returns a `smart_connect` contract with shortlist candidates, fallback metadata, rejection counts, and scoring hints
 - node-backed managed provisioning gives panel synchronization and runtime reads
   one shared eight-second budget, gives panel sync a seven-second sub-budget,
-  and runs them concurrently. Incomplete sync
-  stays `pending_sync`; incomplete runtime read uses an unknown/zero fallback
-  without changing a completed sync into failure. Neither timeout becomes a
-  connection claim, and the manifest no longer waits through the client's full
-  retry window
+  and runs them concurrently. Incomplete sync stays `pending_sync` unless a
+  currently eligible shortlisted node already has durable provisioning
+  evidence for that user. In that bounded case the manifest and Smart Connect
+  contain only the confirmed subset and return `ready` with `sync_ok=false` and
+  `readiness_source=confirmed_mapping`; successful live sync returns the current product
+  pool with `readiness_source=live_sync`. Incomplete runtime read uses an
+  unknown/zero fallback without changing either ready state into failure.
+  Neither timeout becomes a connection claim, and the manifest no longer waits
+  through the client's full retry window
 - manual/export compatibility links stay on `legacy_reality_fallback` until a separate share-link parity wave
 - `subscription_url` remains a compatibility and recovery artifact for manual import, legacy browser-visible delivery, and fallback when the managed manifest cannot be fetched
 - `network_rollout_config` carries `version`, `defaults`, `carrier_overrides`, `cohort_overrides`, `reserve_xhttp_cdn`, `ru_bridge_relay`, `operator_lab`, `warp_policy`, `package_catalog_feed`, `routing_rules_feed`, and `support_recovery_order`
@@ -344,7 +348,10 @@ Smart-connect contract:
 - the client asks `GET /api/client/nodes/candidates`, performs best-effort RTT probes, posts the result to `POST /api/client/nodes/select`, and promotes the selected `outbound_tag` inside the already authorized managed profile before materialization; one bounded `GET /api/client/profile/managed?selected_node_code=...` refetch is allowed only when local identity mapping cannot be proven
 - the selection score is capacity-aware: `effective_score = rtt_ms + dataplane_rtt + cpu_penalty + backend_penalty + network_pressure`, with lower scores preferred; low `health_score` adds backend penalty but does not by itself hard-reject a node while dataplane and explicit capacity checks remain healthy
 - stickiness stays active with a default `20%` threshold so the app does not flap between nodes on tiny wins
-- explicit `UserNode` mappings are provisioning/history state; they must not trap premium-grade users on one or two old nodes or reduce the candidate pool
+- explicit `UserNode` mappings are provisioning/history state; they may bound
+  a timeout response to a currently eligible confirmed subset, but successful
+  successful live synchronization must restore the current product pool so premium-grade
+  users are not permanently trapped on one or two old nodes
 - `POST /api/client/nodes/latency-samples` remains compatibility telemetry and must not be the only node-selection API
 - `GET /api/client/subscription/preview` is an authenticated, raw-config-free support/debug view of resolved subscription format, node order, and excluded-node reasons
 - the follow-up upload paths store `install_id`, `carrier`, `platform`, accepted RTT samples, selected node, previous node, and whether stickiness was applied without exposing raw telemetry in consumer UI

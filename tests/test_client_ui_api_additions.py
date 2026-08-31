@@ -226,6 +226,26 @@ def _add_node(
         s.close()
 
 
+def _add_user_node_mapping(api, *, install_id: str, node_code: str) -> None:
+    from models import Node, User, UserNode
+
+    s = api.SessionLocal()
+    try:
+        user = s.query(User).filter(User.app_install_id == install_id).one()
+        node = s.query(Node).filter(Node.code == node_code).one()
+        s.add(
+            UserNode(
+                tg_id=int(user.tg_id),
+                node_id=int(node.id),
+                client_uuid=str(user.uuid),
+                panel_email=str(user.email),
+            )
+        )
+        s.commit()
+    finally:
+        s.close()
+
+
 def _seed_rollout(api) -> None:
     s = api.SessionLocal()
     try:
@@ -494,8 +514,88 @@ def test_managed_profile_bounds_slow_panel_work_and_reports_pending(monkeypatch,
     assert managed.json()["provisioning"] == {
         "status": "pending_sync",
         "sync_ok": False,
+        "readiness_source": "pending_sync",
         "managed_profile_path": "/api/client/profile/managed",
     }
+
+
+def test_managed_profile_uses_only_confirmed_healthy_nodes_while_full_sync_is_pending(
+    monkeypatch, tmp_path
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    _seed_rollout(api)
+    _add_node(api, code="pl", last_health_at=_utcnow())
+    _add_node(api, code="de", last_health_at=_utcnow())
+    install_id = "managed-confirmed-fallback-device"
+    start_body = _start_trial(client, install_id=install_id)
+    _add_user_node_mapping(api, install_id=install_id, node_code="pl")
+
+    sync_cancelled = False
+
+    async def stalled_sync(*, user, timeout_seconds=None):
+        nonlocal sync_cancelled
+        try:
+            await asyncio.sleep(60)
+        finally:
+            sync_cancelled = True
+
+    monkeypatch.setattr(api, "MANAGED_PROFILE_PANEL_BUDGET_SECONDS", 0.05)
+    monkeypatch.setattr(api, "_sync_control_panel_access", stalled_sync)
+
+    managed = client.get(
+        "/api/client/profile/managed?selected_node_code=de",
+        headers=_auth_headers(start_body),
+    )
+
+    assert managed.status_code == 200, managed.text
+    assert sync_cancelled is True
+    body = managed.json()
+    assert body["provisioning"] == {
+        "status": "ready",
+        "sync_ok": False,
+        "readiness_source": "confirmed_mapping",
+        "managed_profile_path": "/api/client/profile/managed",
+    }
+    assert [item["code"] for item in body["smart_connect"]["shortlist"]] == ["pl"]
+    assert body["smart_connect"].get("selected_node_code") != "de"
+    vless_outbounds = [
+        item
+        for item in body["config_payload"]["outbounds"]
+        if item.get("type") == "vless"
+    ]
+    assert len(vless_outbounds) == 1
+
+
+def test_managed_profile_does_not_promote_an_unhealthy_confirmed_mapping(
+    monkeypatch, tmp_path
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    _seed_rollout(api)
+    _add_node(api, code="pl", is_healthy=False, last_health_at=_utcnow())
+    _add_node(api, code="de", last_health_at=_utcnow())
+    install_id = "managed-unhealthy-confirmed-device"
+    start_body = _start_trial(client, install_id=install_id)
+    _add_user_node_mapping(api, install_id=install_id, node_code="pl")
+
+    async def stalled_sync(*, user, timeout_seconds=None):
+        await asyncio.sleep(60)
+
+    monkeypatch.setattr(api, "MANAGED_PROFILE_PANEL_BUDGET_SECONDS", 0.05)
+    monkeypatch.setattr(api, "_sync_control_panel_access", stalled_sync)
+
+    managed = client.get(
+        "/api/client/profile/managed",
+        headers=_auth_headers(start_body),
+    )
+
+    assert managed.status_code == 200, managed.text
+    body = managed.json()
+    assert body["provisioning"]["status"] == "pending_sync"
+    assert body["provisioning"]["sync_ok"] is False
+    assert body["provisioning"]["readiness_source"] == "pending_sync"
+    assert [item["code"] for item in body["smart_connect"]["shortlist"]] == ["de"]
 
 
 def test_managed_profile_keeps_completed_sync_when_runtime_read_times_out(monkeypatch, tmp_path) -> None:
@@ -537,6 +637,7 @@ def test_managed_profile_keeps_completed_sync_when_runtime_read_times_out(monkey
     assert runtime_cancelled is True
     assert managed.json()["provisioning"]["status"] == "ready"
     assert managed.json()["provisioning"]["sync_ok"] is True
+    assert managed.json()["provisioning"]["readiness_source"] == "live_sync"
 
 
 def test_start_trial_bounds_slow_panel_sync_and_reports_pending(monkeypatch, tmp_path) -> None:
