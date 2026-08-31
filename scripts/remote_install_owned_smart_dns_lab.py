@@ -624,6 +624,8 @@ def _remote_preflight(
 def _assert_fresh_install_preflight(
     preflight: Mapping[str, Any],
     listener_mode: str = DEDICATED_LISTENER_MODE,
+    *,
+    allow_retained_exact_release: bool = False,
 ) -> None:
     _listener_spec(listener_mode)
     if not preflight.get("root") or not preflight.get("required_tools"):
@@ -637,7 +639,10 @@ def _assert_fresh_install_preflight(
             raise SmartDNSRemoteOperationError("install_tcp_443_occupied")
     elif preflight.get("loopback_tcp_18443") != "free":
         raise SmartDNSRemoteOperationError("install_fronted_loopback_listener_occupied")
-    if preflight.get("occupied_targets"):
+    occupied_targets = list(preflight.get("occupied_targets") or [])
+    if occupied_targets and not (
+        allow_retained_exact_release and occupied_targets == ["release"]
+    ):
         raise SmartDNSRemoteOperationError("install_target_already_present")
     if preflight.get("service_state") not in {"inactive", "unknown"}:
         raise SmartDNSRemoteOperationError("install_service_not_inactive")
@@ -696,6 +701,48 @@ def _stage_bundle(
             f"test \"$(sha256sum {_q(remote_path)} | awk '{{print $1}}')\" = {_q(str(record['sha256']))}"
         )
     _run(node, "\n".join(checks), label="stage_digest_readback", timeout=240)
+
+
+def _retained_release_verification_command(
+    *, release_dir: str, manifest: Mapping[str, Any]
+) -> str:
+    members = manifest["members"]
+    checks = [
+        "set -e",
+        f"test -d {_q(release_dir)}",
+        f"test ! -L {_q(release_dir)}",
+        f"test \"$(stat -c %u {_q(release_dir)})\" = 0",
+        f"! find {_q(release_dir)} -type d -perm /022 -print -quit | grep -q .",
+        f"! find {_q(release_dir)} -mindepth 1 ! -type d ! -type f -print -quit | grep -q .",
+        f"test \"$(find {_q(release_dir)} -type f | wc -l)\" = {_q(str(len(members)))}",
+    ]
+    for member, record in sorted(members.items()):
+        target = f"{release_dir}/{member}"
+        mode = "755" if member == bundle_contract.BINARY_MEMBER else "644"
+        checks.extend(
+            [
+                f"test -f {_q(target)}",
+                f"test ! -L {_q(target)}",
+                f"test \"$(stat -c %u {_q(target)})\" = 0",
+                f"test \"$(stat -c %a {_q(target)})\" = {_q(mode)}",
+                f"test \"$(stat -c %s {_q(target)})\" = {_q(str(record['size']))}",
+                f"test \"$(sha256sum {_q(target)} | awk '{{print $1}}')\" = {_q(str(record['sha256']))}",
+            ]
+        )
+    return "\n".join(checks)
+
+
+def _verify_retained_exact_release(
+    node: Any, *, release_dir: str, manifest: Mapping[str, Any]
+) -> None:
+    _run(
+        node,
+        _retained_release_verification_command(
+            release_dir=release_dir, manifest=manifest
+        ),
+        label="retained_release_verification",
+        timeout=240,
+    )
 
 
 def _backup_command(
@@ -832,6 +879,7 @@ def _install_command(
     listener = _listener_spec(listener_mode)
     lines = [
         "set -e",
+        f"printf 'install_started\\n' > {_q(backup_dir + '/install-step')}",
         "getent group pokrov-smart-dns >/dev/null 2>&1 || groupadd --system pokrov-smart-dns",
         "id -u pokrov-smart-dns >/dev/null 2>&1 || useradd --system --gid pokrov-smart-dns --home-dir /nonexistent --shell /usr/sbin/nologin pokrov-smart-dns",
         f"install -d -o root -g root -m 0755 {_q(release_dir)}",
@@ -847,18 +895,24 @@ def _install_command(
     next_pointer = f"{CURRENT_POINTER}.next-{os.getpid()}"
     lines.extend(
         [
+            f"printf 'release_verified\\n' > {_q(backup_dir + '/install-step')}",
             f"ln -s {_q(release_dir)} {_q(next_pointer)}",
             f"mv -Tf {_q(next_pointer)} {_q(CURRENT_POINTER)}",
+            f"printf 'current_pointer_set\\n' > {_q(backup_dir + '/install-step')}",
             f"install -d -o root -g pokrov-smart-dns -m 0750 {_q(CONFIG_ROOT)} {_q(TLS_ROOT)}",
             f"install -o root -g pokrov-smart-dns -m 0640 {_q(runtime_material_dir + '/config.json')} {_q(CONFIG_PATH)}",
             f"install -o root -g pokrov-smart-dns -m 0644 {_q(runtime_material_dir + '/fullchain.pem')} {_q(CERT_PATH)}",
             f"install -o root -g pokrov-smart-dns -m 0640 {_q(runtime_material_dir + '/privkey.pem')} {_q(KEY_PATH)}",
             f"install -o root -g root -m 0644 {_q(stage_dir + '/systemd/pokrov-smart-dns-lab.service')} {_q(SERVICE_PATH)}",
             "systemctl daemon-reload",
+            f"printf 'runtime_material_staged\\n' > {_q(backup_dir + '/install-step')}",
             f"runuser -u pokrov-smart-dns -- {_q(release_dir + '/' + bundle_contract.BINARY_MEMBER)} -config {_q(CONFIG_PATH)} -check >/dev/null",
+            f"printf 'runtime_check_passed\\n' > {_q(backup_dir + '/install-step')}",
             f"systemctl start {_q(SERVICE_NAME)}",
             f"test \"$(systemctl is-active {_q(SERVICE_NAME)})\" = active",
+            f"printf 'service_active\\n' > {_q(backup_dir + '/install-step')}",
             *_listener_started_commands(listener_mode),
+            f"printf 'local_probe_passed\\n' > {_q(backup_dir + '/install-step')}",
             *(
                 [
                     f"ufw allow {DEDICATED_LISTEN_PORT}/tcp comment 'POKROV Smart DNS lab' >/dev/null"
@@ -868,7 +922,9 @@ def _install_command(
             ),
             f"systemctl enable {_q(SERVICE_NAME)} >/dev/null",
             f"test \"$(systemctl is-enabled {_q(SERVICE_NAME)})\" = enabled",
+            f"printf 'service_enabled\\n' > {_q(backup_dir + '/install-step')}",
             f"test \"$(readlink -f {_q(CURRENT_POINTER)})\" = {_q(release_dir)}",
+            f"printf 'final_readback_passed\\n' > {_q(backup_dir + '/install-step')}",
             f"printf 'applied\\n' > {_q(backup_dir + '/receipt-state')}",
         ]
     )
@@ -1027,6 +1083,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--confirm-fronted-listener", default="")
     parser.add_argument("--confirm-client-selection-disabled", default="")
     parser.add_argument("--confirm-runtime-material-ready", default="")
+    parser.add_argument("--confirm-retained-release-reuse", default="")
     parser.add_argument("--json-out", default="")
     return parser
 
@@ -1141,7 +1198,26 @@ def main() -> int:
             if args.operation == "install":
                 if str(args.confirm_runtime_material_ready).strip() != "RUNTIME_MATERIAL_READY":
                     raise SmartDNSRemoteOperationError("runtime_material_confirmation_missing")
-                _assert_fresh_install_preflight(preflight, listener_mode)
+                occupied_targets = list(preflight.get("occupied_targets") or [])
+                retained_release_reuse = occupied_targets == ["release"]
+                reuse_confirmation = str(args.confirm_retained_release_reuse).strip()
+                if retained_release_reuse:
+                    if reuse_confirmation != "RETAINED_EXACT_RELEASE_REUSE":
+                        raise SmartDNSRemoteOperationError(
+                            "retained_release_reuse_confirmation_missing"
+                        )
+                    _verify_retained_exact_release(
+                        node, release_dir=release_dir, manifest=manifest
+                    )
+                elif reuse_confirmation:
+                    raise SmartDNSRemoteOperationError(
+                        "retained_release_reuse_confirmation_unexpected"
+                    )
+                _assert_fresh_install_preflight(
+                    preflight,
+                    listener_mode,
+                    allow_retained_exact_release=retained_release_reuse,
+                )
                 receipt_id = _release_id(bundle_sha256)
                 failure_context["receipt_id"] = receipt_id
                 backup_dir = f"{BACKUP_ROOT}/{receipt_id}"
@@ -1216,6 +1292,7 @@ def main() -> int:
                         ),
                         "local_tls_doh_probe": "PASS_HTTP_400_INVALID_DNS",
                         "automatic_rollback_armed": True,
+                        "retained_exact_release_reused": retained_release_reuse,
                     }
                 )
             else:
