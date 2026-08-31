@@ -362,6 +362,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013CY` | Revalidate candidate.13 against current promotion heads and reconcile the final ledger | Final release audit and decision evidence | Signed supply revalidates, platform/client deltas are docs-only, Core tree is unchanged, and stale candidate references are corrected. Decision is `PROMOTION_BLOCKED_GATE_F_NOT_RUN`; no publication mutation occurs | `WO-013CX`, current platform/client/Core/release-index heads and exact retained artifacts |
 | `WO-013CZ` | Repeat exact candidate.13 portal/client rollback without touching tracked or runtime state | Exact-candidate rollback evidence | Signed candidate.13 post-sign handoff generation, client initial/dry-run/forward/reverse/final validation and portal byte-identical rollback pass in an isolated fixture. DOD-18 and P12-130 remain `I3`; runtime pointer/kill rollback and current/Brain post-rollback readback remain open. Gate F is still not run because the exact ARM64 physical binding is absent | `WO-013CY`, exact platform/client/Core, signed candidate.13 and retained stable handoff |
 | `WO-013DA` | Refresh exact candidate.13 current/Brain/RU origins and inspect Windows isolation without mutation | Candidate origin and environment evidence | Source-bound current health/catalog p95 and exact Brain source/readiness pass. RU exact source/units are present but runtime material/archive are absent, so RU stays `MANUAL_OWNER_TEST`. No isolated Windows target exists and the owner tunnel is preserved. W9-02 advances only `I1 -> I2`; Gate F remains not run | `WO-013CZ`, exact candidate.13 source, owned current/Brain/Pi read-only access; separate authorization is required for RU APPLY and a separate Windows target is required |
+| `WO-013DB` | Refresh candidate.13 Smart DNS `it` readiness without mutation | Current source, immutable bundle, authoritative DNS and owned-node PLAN evidence | Focused tests pass `53/53`; the exact bundle verifies; runtime and frontend PLANs reach the owned node and remain mutation-free. Authoritative DNS is absent `0/4` with unchanged SOA, so ACME/service/frontend/live access remain `NOT_RUN` and `SMARTDNS-01` stays `I3` | `WO-013CK`, exact Smart DNS bundle, current platform master, owned `it` read-only access; owner must publish the DNS-only A record before APPLY |
 
 ## Current evidence
 
@@ -442,6 +443,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013CZ-candidate13-local-rollback/`
 - `WO-013DA-candidate13-origin-and-windows-preflight.md`
 - `evidence/013DA-candidate13-origin-windows-preflight/`
+- `WO-013DB-candidate13-smart-dns-readiness.md`
+- `evidence/013DB-candidate13-smart-dns-readiness/`
 - `WO-013BS-candidate6-ru-origin-environment-preflight.md`
 - `WO-013BT-candidate6-hy2-artifact-and-plan.md`
 - `WO-013BU-candidate6-ru-origin-bundle-and-install-plan.md`
@@ -893,7 +896,10 @@ candidate.13 portal/client rollback in an isolated fixture and restores stable
 byte-identically. WO-013DA passes exact source-bound current-origin health and
 catalog plus Brain source/readiness. RU remains manual because its runtime
 material was not reinstalled, and no isolated Windows target is available.
-The current next release work is the exact ARM64 physical install binding
+WO-013DB confirms mutation-free Smart DNS readiness on `it`, while the absent
+authoritative A record keeps ACME, service and frontend APPLY closed. The
+current next release work is publication and `4/4` readback of that DNS record,
+the exact ARM64 physical install binding
 required by Gate F, an isolated connected Windows TUN/DNS/recovery/uninstall
 run, an authorized RU-origin run, and the remaining provider, Operator, legal,
 authorized runtime rollback and performance rows. Public/stable Gate G remains

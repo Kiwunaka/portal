@@ -1,6 +1,31 @@
 # POKROV 1.2.0 Execution Index
 
-Last updated: 2026-08-30
+Last updated: 2026-08-31
+
+## 2026-08-31 — WO-013DB candidate.13 Smart DNS `it` readiness
+
+Current platform `a895033...` passes the focused Smart DNS bundle, runtime,
+frontend, installer and policy suite `53/53`. Exact source `650dc3f...` bundle
+SHA-256 `cda97da...0225` passes the immutable verifier. A fresh Go rebuild is
+`NOT_RUN_MISSING_LOCAL_GO_EXECUTABLE`; the earlier independent byte-identical
+builds remain retained evidence and are not relabeled as this run.
+
+Fresh read-only PLANs reach the owned `it` node with pinned host identity.
+Root/tools, free TCP/80, active UFW, reachable upstream DoT, active HAProxy on
+public TCP/443 and a valid candidate route to loopback TCP/18443 pass. No
+certificate, runtime material, Smart DNS release, service, listener or route
+is installed. Both PLANs report `mutation_performed=false` and return no raw
+host, address, credential, key, config or runtime material.
+
+All four delegated Timeweb nameservers still return no A record for
+`dns.pokrov.space`; both common mistaken names also return no A record. Their
+unchanged SOA serial `2026082102` classifies this as an unpublished zone edit,
+not TTL propagation. The fail-closed runtime prerequisite therefore remains
+correct.
+
+`FRKN_SMART_DNS/SMARTDNS-01` stays `I3`. ACME/runtime APPLY, service install,
+frontend APPLY, live DoH and external/client access remain `NOT_RUN`.
+Candidate.13, Gate F, Gate G and all public/stable state remain unchanged.
 
 ## 2026-08-30 — WO-013DA candidate.13 origin and Windows preflight
 
