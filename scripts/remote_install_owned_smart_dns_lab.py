@@ -852,16 +852,26 @@ def _fronted_doh_probe_command() -> str:
     )
 
 
+def _bounded_listener_ready_command(port: int) -> str:
+    return (
+        "listener_attempt=0; listener_count=0; "
+        f"while test \"$listener_attempt\" -lt 50; do listener_count=$(ss -H -ltn 'sport = :{port}' | wc -l); "
+        "case \"$listener_count\" in 1) break ;; 0) ;; *) exit 1 ;; esac; "
+        "listener_attempt=$((listener_attempt + 1)); sleep 0.2; done; "
+        "test \"$listener_count\" = 1"
+    )
+
+
 def _listener_started_commands(listener_mode: str) -> list[str]:
     if listener_mode == DEDICATED_LISTENER_MODE:
         return [
-            f"ss -H -ltn 'sport = :{DEDICATED_LISTEN_PORT}' | grep -q .",
+            _bounded_listener_ready_command(DEDICATED_LISTEN_PORT),
             f"doh_host=$(python3 -c {_q('import json;print(json.load(open(\"' + CONFIG_PATH + '\",encoding=\"utf-8\"))[\"doh_hostname\"])')})",
             f"test \"$(curl --silent --show-error --output /dev/null --write-out '%{{http_code}}' --http1.1 --resolve \"$doh_host:{DEDICATED_LISTEN_PORT}:127.0.0.1\" \"https://$doh_host/dns-query\")\" = 400",
         ]
     _listener_spec(listener_mode)
     return [
-        f"test \"$(ss -H -ltn 'sport = :{FRONTED_LISTEN_PORT}' | wc -l)\" = 1",
+        _bounded_listener_ready_command(FRONTED_LISTEN_PORT),
         f"ss -H -ltn4 'sport = :{FRONTED_LISTEN_PORT}' | awk '$4 == \"{FRONTED_LISTEN_HOST}:{FRONTED_LISTEN_PORT}\" {{ found = 1 }} END {{ exit(found ? 0 : 1) }}'",
         _fronted_doh_probe_command(),
     ]
