@@ -9,6 +9,14 @@ It never writes the tracked client catalog/pointer or a remote runtime.
 
 from __future__ import annotations
 
+import sys
+
+# Direct execution normally places this mutable scripts directory at sys.path[0].
+# Remove it before importing the standard library; verified repository modules are
+# made available later by _bootstrap_verified_imports().
+if __name__ == "__main__" and sys.path:
+    del sys.path[0]
+
 import argparse
 import copy
 import hashlib
@@ -20,7 +28,6 @@ import json
 import os
 import shutil
 import subprocess
-import sys
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
