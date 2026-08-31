@@ -25,32 +25,30 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 | Phase | Architectural outcome | State | Primary WO |
 |---|---|---|---|
 | 00 | Baseline, authority map, complete execution ledger | Locally proved (`I3`) | `WO-001` |
-| 01 | Release manifest, version/provenance contract, CI and stop-ship controls | Release-v2, client adoption, release-bound CI, reproducible dependencies, shared catalog and cross-repository truth are proved; the public-index source/trust root is on public main, PR-00 is merged, and `OWNER_SOLO_EXCEPTION` replaces the unavailable second reviewer without claiming independent review. WO-013DC makes candidate.13 immutable non-promotable history and proves a clean successor lock set. WO-013DD binds those exact locks and current source to signed artifact-only candidate.14, whose six-artifact validation, SBOM/provenance, public-index signer and dependency checks pass. `DEP-001` reaches `I4`; aggregate release controls remain below promotion readiness | `WO-002`, `WO-003`, `WO-003B`, `WO-003C`, `WO-003D`, `WO-003E`, `WO-003F`, `WO-003G`, `WO-003H`, `WO-003I`, `WO-003J`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013CX`, `WO-013DC`, `WO-013DD` |
-| 02 | Typed connection state, proof-driven green state, core ABI and migrations | Aggregate Gate B remains `BLOCKED/I3`. Candidate.13's warm AWG lifecycle is retained history. WO-013DD passes the full exact-source candidate.14 quality gate and default-profile lifecycle, but requested AWG3.1/AWG2 profiles remain cached default despite successful control-plane selection. Current-candidate lab activation, Windows connected recovery and exact physical-device boundaries remain open; ABI v3 stays deferred until after 1.2.0 | `WO-004`, `WO-004A2`, `WO-004B2`, `WO-004D`, `WO-006I`, `WO-013CX`, `WO-013DD` |
-| 03 | Windows/Android runtime boundaries; conditional Linux beta foundation | Gate C stays `BLOCKED/I3`. Older physical and candidate.13 emulator evidence remains immutable history and is not transferred. Exact candidate.14 x86_64 install/launch/default traffic passes on LDPlayer, but AWG3.1/AWG2 profile activation fails above protocol execution. Connected clean-VM Windows, exact candidate.14 ARM64 physical Android, leak/UDP53/MTU/OEM/endurance/accessibility and Store delivery remain open. Linux is deliberately not shipped | `WO-005`, `WO-005C4`, `WO-005D4`, `WO-005G`, `WO-013CC`–`WO-013CO`, `WO-013CX`, `WO-013DD` |
+| 01 | Release manifest, version/provenance contract, CI and stop-ship controls | Release-v2, client adoption, release-bound CI, reproducible dependencies, shared catalog and cross-repository truth are proved; the public-index source/trust root is on public main, PR-00 is merged, and `OWNER_SOLO_EXCEPTION` replaces the unavailable second reviewer without claiming independent review. WO-013DE binds the current corrected platform, client and Core tuple to signed artifact-only candidate.16. Six-artifact validation, SBOM/provenance, public-index hosted signer/receipt, support pin and dependency checks pass. `DEP-001` retains `I4`; aggregate release controls remain below promotion readiness | `WO-002`, `WO-003`, `WO-003B`, `WO-003C`, `WO-003D`, `WO-003E`, `WO-003F`, `WO-003G`, `WO-003H`, `WO-003I`, `WO-003J`, `WO-013J`, `WO-013K`, `WO-013L`, `WO-013M`, `WO-013N`, `WO-013O`, `WO-013P`, `WO-013CX`, `WO-013DC`, `WO-013DD`, `WO-013DE` |
+| 02 | Typed connection state, proof-driven green state, core ABI and migrations | Aggregate Gate B remains `BLOCKED/I3`. Candidate.13's warm AWG lifecycle and candidate.14's cached-default lab failure are retained history. WO-013DE corrects false managed-profile readiness, deploys that bounded correction with Brain source readback `197/197`, passes the exact-source candidate.16 quality gate and proves a fresh default-profile lifecycle. Candidate.16 AWG3.1/AWG2 labs, Windows connected recovery and exact physical-device boundaries remain open; ABI v3 stays deferred until after 1.2.0 | `WO-004`, `WO-004A2`, `WO-004B2`, `WO-004D`, `WO-006I`, `WO-013CX`, `WO-013DD`, `WO-013DE` |
+| 03 | Windows/Android runtime boundaries; conditional Linux beta foundation | Gate C stays `BLOCKED/I3`. Older physical, candidate.13 emulator and candidate.14 lab evidence remains immutable history and is not transferred. Exact candidate.16 x86_64 install/launch/default traffic passes on LDPlayer; its AWG3.1/AWG2 labs are not run. Connected clean-VM Windows, exact candidate.16 ARM64 physical Android, leak/UDP53/MTU/OEM/endurance/accessibility and Store delivery remain open. Linux is deliberately not shipped | `WO-005`, `WO-005C4`, `WO-005D4`, `WO-005G`, `WO-013CC`–`WO-013CO`, `WO-013CX`, `WO-013DD`, `WO-013DE` |
 | 04 | Observability, error catalog, redacted bundle and support pipeline | Locally complete (`I3`) for shipped Android/Windows scope, including four-class safe transport failures, active operational producers, Android count-only routing, no-upload short code, signed temporary support mode, encrypted-only manual export and a current 7/7 MSVC native proof for the bounded Windows service journal; 013S proves the active public pin and hosted source-control custody, while deployed runtime/RBAC/audit and exact-candidate device evidence remain open; Linux remains explicitly not shipped | `WO-006`, `WO-006I`, `WO-006J`, `WO-006K`, `WO-006L`, `WO-013S` |
 | 05 | Portal bounded contexts, payments, HTTP/DB/outbox reliability | Locally complete (`GATE-D` and `ARCH-002` at `I3`); 007G–007I split admin, public/client and Action Intent domain/runtime owners. WO-013CO replays exact candidate.10 source at `196/196 + 12` and `25/25`, plus Brain `197/197`, `23/23`, `7/7`; Gate D remains `BLOCKED` below I4 until production provider/PostgreSQL/outbox/reconciliation/operator/rollback proof exists | `WO-007`, `WO-007G`, `WO-007H`, `WO-007I`, `WO-013CI`, `WO-013CO` |
 | 06 | Product facts, subscriptions, checkout, offers and attribution | Local source packages: 008A–008G commercial package at `I2`; 008H–008M close active-client generation, copy/public truth, whole-client product facts, subscription state presentation, no-waterfall loading and the complete local subscription/checkout aggregate at `I3`; deployed provider, broad commercial-consistency and exact-candidate gates stay open | `WO-008`, `WO-008H`, `WO-008I`, `WO-008J`, `WO-008K`, `WO-008L`, `WO-008M` |
 | 07 | Canonical Operator Center v2 and legacy admin cutover | Local package complete, including the deterministic 75-operation OpenAPI/TypeScript contract, purpose-bound Telegram OIDC Authorization Code plus PKCE login and same-identity step-up for preprovisioned operators, exact retained-bridge permissions and query-suppressed field redaction; live IdP, authenticated exact-candidate readback and cutover/rollback gates remain open | `WO-009`, `WO-009H`, `WO-009I`, `WO-009J` |
-| 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete at `I3`. WO-013DD runs the complete exact candidate.14 source gate with Playwright/Chromium and passes `15/15`, including `413` client widgets, cabinet `69/69` and static performance `9/9`; the report remains `candidate_proven=false`. Gate E stays `BLOCKED` below I4 on authenticated journeys, physical accessibility/OEM/scaling, comparable artifact/device performance, support, RU-origin and post-promotion evidence | `WO-010`, `WO-013AN`, `WO-013CI`, `WO-013CO`, `WO-013DA`, `WO-013DD` |
+| 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete at `I3`. WO-013DE runs the complete exact candidate.16 source gate under Node `22.14.0` with Playwright/Chromium and passes `15/15`, including `413` client widgets, cabinet `69/69` and static performance `9/9`; the report remains `candidate_proven=false`. Gate E stays `BLOCKED` below I4 on authenticated journeys, physical accessibility/OEM/scaling, comparable artifact/device performance, support, RU-origin and post-promotion evidence | `WO-010`, `WO-013AN`, `WO-013CI`, `WO-013CO`, `WO-013DA`, `WO-013DD`, `WO-013DE` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
 | 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | AWG2/AWG3.1 and bounded base HY2 source labs are locally proved and default-off. Candidate.5's exact physical AWG failures remain immutable history. WO-013AY/013AZ add bounded diagnostics and the Core bind correction; WO-013BA proves direct pinned-peer local interoperability. WO-013BB fixes the owned-node reply route without changing cryptography, WO-013BC binds byte-reproducible Android/Windows artifacts, and WO-013BD separates working transport from the common Android endpoint DNS failure. WO-013BE corrects the AWG endpoint's default-resolver boundary in Core `a45d69e...`; exact production-signed build 4046 passes AWG2 and AWG3.1 selected-endpoint green state on LDPlayer and physical Beeline. WO-013BF packages the same exact Windows DLL into setup `81268d7e...` with an `8/8` manifest readback. WO-013BG records an LDPlayer WARP/control pair blocked by the shared emulator egress boundary and a partial physical host-lifecycle pass without promoting WARP proof. WO-013BH proves a portable immutable Smart-DNS bundle and all-seven active-node no-mutation PLAN matrix. WO-013BI rejects an intermediate false spare-address lead and proves with strict report-v3 parsing that `de` has exact binds on both globally routable addresses while the other six nodes use wildcard/dual-stack binds; no safe zero-purchase deploy target exists without a separate guarded migration. WO-013BJ binds the canonical ChatGPT/OpenAI, Gemini and Xbox policy to server exact/child DoH behavior and the client routing copy as source-only proof. WO-013BK binds those source changes and the corrected AWG Core into signed candidate.6. WO-013BV adds the post-candidate zero-purchase shared-443 source path: strict loopback PROXY v2 plus validated HAProxy exact/child-SNI rendering, while leaving the current installer dedicated-only and every live frontend unchanged. WO-013BW closes the separate frontend-operation source gap with exact receipt/CAS-bound PLAN/APPLY/ROLLBACK and a corrected all-seven no-mutation PLAN; RU and RU-SPB render valid candidates but both lack the required fronted Smart-DNS backend, so neither is selected. WO-013BX closes the matching guarded fronted-server installer source gap and proves no-mutation install PLAN readiness on RU and RU-SPB; runtime material remains absent and no node is selected. WO-013CE proves the exact fronted bundle's DoH and application TLS passthrough in an isolated `x86_64` owner-terminal fixture, then rejects RU direct egress for DNS-only geo/access bypass and selects no production target. WO-013CG adds the missing receipt/CAS first-frontend bootstrap and proves an exact no-mutation PLAN on the foreign `it` canary while leaving live transport unchanged. WO-013CK corrects two fail-closed operation defects, then proves guarded `it` frontend APPLY, current/Brain reachability, receipt-bound rollback and re-APPLY; Smart DNS itself remains uninstalled without runtime material, DNS name or certificate. WO-013BL's post-signing LDPlayer AWG2/AWG3.1/default comparison reaches the same egress boundary for all three and is classified as an emulator-origin block, not a protocol PASS or FAIL. WO-013BP adds exact-candidate selected/excluded-app config, force-stop cleanup and WARP endpoint/TUN materialization on LDPlayer, with the same origin block and clean restore. WO-013BQ proves the IPv4-only Android TUN structurally blocks unconfigured IPv6 on the exact candidate.6 LDPlayer path without claiming an external leak PASS. Phase 10 remains `I3`, not `I4`, because Windows live parity plus required origins and service-access matrices are open. HY2 remains undeployed. Smart-DNS runtime material/deploy, live service access, attribution, leak/runtime-rollback/origin proof remain open. Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AU`, `WO-013AX`, `WO-013AY`, `WO-013AZ`, `WO-013BA`, `WO-013BB`, `WO-013BC`, `WO-013BD`, `WO-013BE`, `WO-013BF`, `WO-013BG`, `WO-013BH`, `WO-013BI`, `WO-013BJ`, `WO-013BK`, `WO-013BL`, `WO-013BP`, `WO-013BQ`, `WO-013BV`, `WO-013BW`, `WO-013BX`, `WO-013CE`, `WO-013CG`, `WO-013CK` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Candidates 5–13 remain immutable history. WO-013DD binds exact platform `6f694d0...`, client `75ba7e7...` and Core `cd8f0f4...` to signed private candidate.14. Six-artifact supply, SBOM/provenance, hosted public-index signer, exact dependency locks and complete local quality pass. Exact LDPlayer install/default traffic passes, but AWG3.1/AWG2 requested profiles remain cached default, so current-candidate lab runtime is non-PASS and prior candidate.13 success is not transferred. Signed supply and `DEP-001` reach bounded `I4`; Gate F is not generated because exact ARM64 physical binding is absent. Clean Windows, physical Android, RU origin, provider/Operator/legal, candidate.14 rollback and device performance remain non-PASS. No tag, public `v1.2.0`, Store object, stable switch or promotion occurred | `WO-013`, `WO-013BK`–`WO-013DD` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Candidates 5–15 remain immutable history. WO-013DE binds exact platform `719e23d...`, client `75ba7e7...` and Core `cd8f0f4...` to signed private candidate.16. Six-artifact supply, SBOM/provenance, hosted public-index signer/receipt, exact dependency locks and complete local quality pass. Exact LDPlayer install/default traffic passes after the managed-profile readiness correction. Candidate.16 AWG3.1/AWG2 labs are not run; prior success/failure is not transferred. Signed supply and `DEP-001` retain bounded `I4`; Gate F is not generated because exact ARM64 physical binding is absent. Clean Windows, physical Android, RU origin, provider/Operator/legal, candidate.16 rollback and device performance remain non-PASS. No tag, public `v1.2.0`, Store object, stable switch or promotion occurred | `WO-013`, `WO-013BK`–`WO-013DE` |
 
-Active Phase 10/11 supersession: WO-013DD is the current signed-candidate
-authority. Candidate.13 retains the corrected warm AWG lifecycle as immutable
-history, but its success is not transferred. Candidate.14 carries the refreshed
-platform dependency locks, passes exact signed supply and the complete local
-quality gate, and installs byte-exactly on LDPlayer. Its default profile passes
-tunnel, managed DNS and authenticated egress. AWG 3.1 and AWG2 control-plane
-selection succeeds, but every runtime readback remains cached `default`; both
-current-candidate lab activations are non-PASS above protocol execution. Final
-cleanup restores default/no-lab/no-VPN state. The physical phone remains
-`MANUAL_OWNER_TEST` and untouched in this slice.
+Active Phase 10/11 supersession: WO-013DE is the current signed-candidate
+authority. Candidate.13's corrected warm AWG lifecycle and candidate.14's
+cached-default activation failure remain immutable history; neither transfers
+to candidate.16. The current candidate includes the merged readiness
+correction, passes exact signed supply and the complete local quality gate, and
+installs byte-exactly on LDPlayer. A fresh ordinary default connection passes
+tunnel, managed DNS and authenticated egress, then disconnects cleanly.
+Candidate.16 AWG 3.1 and AWG2 labs are `NOT_RUN`. The physical phone remains
+`MANUAL_OWNER_TEST` and was not touched in this slice.
 
-Candidate.14's release-index signer output is
-`ACTIONS_ARTIFACT_ONLY`, `promotion_authorized=false`. The source seed remains
-`PRE_CANDIDATE_LOCAL`; the strict-v2 handoff and signed receipt are the
+Candidate.16's release-index signer output is `ACTIONS_ARTIFACT_ONLY`,
+`promotion_authorized=false`. The strict-v2 handoff and signed receipt are the
 candidate authority. Gate F is
 `NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING`, not an inherited older-candidate
 result. Gate G is `NOT_AUTHORIZED`. XHTTP and HY2 remain post-1.2.0 bounded
@@ -259,7 +257,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-011` | Prepare and, only after separate authorization, run the legally qualified capacity-bounded pilot | Platform/client | Local package complete; external execution `NOT_AUTHORIZED` | `WO-008`, `WO-009`, `WO-010` |
 | `WO-011H` | Align the homepage story contract with the governed trust-led surface | Marketing tests/docs | Regression closed locally; no ledger advancement | `WO-011F` |
 | `WO-012` | Evaluate transport diversity without a second client stack | Core/client/platform lab contract | Local package complete; manual/external gates retained | `WO-004`, `WO-006` |
-| `WO-013` | Prove and promote the exact RC | Cross-repo/release | Signed candidate.14 is current. Signed supply and exact dependency locks have bounded `I4`; full local quality passes, but AWG managed-profile activation is non-PASS and `W3-02/W3-03` are `I3`. Gate F is `NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING`, and Gate G/public/stable promotion remains unauthorized | All release-bound WOs |
+| `WO-013` | Prove and promote the exact RC | Cross-repo/release | Signed candidate.16 is current. Signed supply and exact dependency locks have bounded `I4`; full local quality and the corrected ordinary LDPlayer path pass. Candidate.16 AWG labs are not run and `W3-02/W3-03` remain `I3`. Gate F is `NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING`, and Gate G/public/stable promotion remains unauthorized | All release-bound WOs |
 | `WO-013A2` | Replace circular phase/plan preflight logic with an exact fail-safe row-stage policy | Platform release preflight | Complete locally; no ledger advancement | `WO-001`, `WO-013A` |
 | `WO-013A3` | Move PB-14 out of the circular local-freeze lane because its signed-manifest health-stop proof requires an exact candidate | Platform release preflight | Complete locally; no ledger advancement, PB-14 remains unproved | `WO-013A2`, `WO-006J` |
 | `WO-013C` | Make Linux non-shipment and Android OEM background/permission/surface limitations explicit and machine-bound | Platform/client release limitations | Complete locally (`REL_DOD/DOD-17 I3`); exact-candidate release notes and physical OEM proof remain open | `WO-005`, `WO-006`, `WO-013` |
@@ -366,6 +364,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013DB` | Refresh candidate.13 Smart DNS `it` readiness without mutation | Current source, immutable bundle, authoritative DNS and owned-node PLAN evidence | Focused tests pass `53/53`; the exact bundle verifies; runtime and frontend PLANs reach the owned node and remain mutation-free. Authoritative DNS is absent `0/4` with unchanged SOA, so ACME/service/frontend/live access remain `NOT_RUN` and `SMARTDNS-01` stays `I3` | `WO-013CK`, exact Smart DNS bundle, current platform master, owned `it` read-only access; owner must publish the DNS-only A record before APPLY |
 | `WO-013DC` | Refresh affected candidate.13 Python locks and prove the successor dependency set | Current platform dependency and release-gate evidence | Six direct pins and both universal hash locks refresh. Fresh audits return zero known findings across 27 production and 60 test dependencies; no-op lock recompilation is stable; the complete 3632-test collection is covered with 3622 passed, 10 skipped and zero unresolved failures; two Paramiko 5 read-only owned-node PLANs pass. Candidate.13 stays immutable but becomes explicitly non-promotable; `DEP-001` remains `I3` until a successor is frozen and hosted-proved | `WO-003C`, `WO-013CX`–`WO-013DB`, current platform master; merge the refresh, assemble/sign the successor and rerun exact-candidate gates before promotion |
 | `WO-013DD` | Sign dependency-refresh candidate.14, run the complete local quality gate and retain exact LDPlayer truth | Exact candidate supply, quality and Android emulator evidence | Six-artifact signed supply, refreshed dependency locks and local quality `15/15` pass. Exact x86_64 install/default tunnel/DNS/egress pass, but AWG3.1/AWG2 requested profiles remain cached default; current-candidate lab activation is non-PASS and candidate.13 success is not transferred. Cleanup passes. `DEP-001` reaches `I4`; `W3-02/W3-03` return to `I3`; Gate F remains not run | `WO-013DC`, exact platform/client/Core/release-index sources, signed candidate.14 artifacts and LDPlayer; correct managed-profile staging before repeating lab and device gates |
+| `WO-013DE` | Sign candidate.16 after correcting managed-profile readiness, prove the bounded Brain deploy, exact local quality and ordinary LDPlayer path | Exact candidate supply, platform runtime, quality and Android emulator evidence | The confirmed-node/key fallback rejects false ready state; Brain `portal-api` source readback passes `197/197`; signed six-artifact supply and local quality `15/15` pass; exact x86_64 default tunnel/DNS/egress passes. Candidate.16 AWG3.1/AWG2 labs are `NOT_RUN`; `DEP-001` retains `I4`, `W3-02/W3-03` stay `I3`, and Gate F remains not run | `WO-013DD`, platform PR 129, exact platform/client/Core/release-index sources, signed candidate.16 artifacts and LDPlayer; run current-candidate labs, exact physical Android and isolated Windows before Gate F |
 
 ## Current evidence
 
@@ -452,6 +451,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013DC-release-dependency-refresh/`
 - `WO-013DD-candidate14-signed-local-quality-and-ldplayer.md`
 - `evidence/013DD-candidate14-signed-local-quality-and-ldplayer/`
+- `WO-013DE-candidate16-managed-profile-readiness-signing-local-quality.md`
+- `evidence/013DE-candidate16-managed-profile-readiness-signing-local-quality/`
 - `WO-013BS-candidate6-ru-origin-environment-preflight.md`
 - `WO-013BT-candidate6-hy2-artifact-and-plan.md`
 - `WO-013BU-candidate6-ru-origin-bundle-and-install-plan.md`
@@ -887,30 +888,28 @@ the exact HY2-aware control-plane deployed with its kill-switch engaged,
 root-only runtime material, separately authorized exact-bundle install and
 encrypted device material. Direct DoH is not VPN-free Smart DNS. Public
 `v1.2.0`, candidate assets and the stable pointer remain prohibited until
-candidate.14 reaches Gate F `GO` and the owner separately authorizes
+candidate.16 reaches Gate F `GO` and the owner separately authorizes
 Gate G. The build-4046 external Smart DNS client path remains a default-off lab
 until a compatible resolver and live access/leak/rollback evidence exist.
 Windows SmartScreen remains the owner-approved unsigned direct-beta
 limitation.
 
-## Current next action — correct candidate.14 profile activation, then close device gates
+## Current next action — run candidate.16 labs, then close device gates
 
-WO-013DD is the active signed-candidate authority. Candidate.14 supply,
-dependency locks and full local quality pass. Its exact x86_64 package installs
-and proves the ordinary default tunnel, managed DNS and authenticated egress on
-LDPlayer. AWG 3.1 and AWG2 selection succeeds in the control plane, but the app
-continues with cached `default`; this managed-profile activation boundary must
-be corrected before any current-candidate AWG credit or broader protocol work.
-Cleanup has restored default/no-lab/no-VPN state.
+WO-013DE is the active signed-candidate authority. Candidate.16 supply,
+dependency locks and full local quality pass. The managed-profile readiness
+boundary is corrected and deployed with exact Brain source readback. Its exact
+x86_64 package proves the fresh ordinary default tunnel, managed DNS and
+authenticated egress on LDPlayer, then disconnects cleanly.
 
-Candidate.13's isolated rollback and current/Brain evidence remain history and
-must be repeated where candidate identity matters. Gate F still requires the
-exact ARM64 physical install binding. After profile activation, the next
-release work is candidate.14 LDPlayer reproof, physical Android, isolated
-connected Windows TUN/DNS/recovery/uninstall, candidate.14 Brain/RU origins,
-candidate.14 rollback, and the remaining provider, Operator, legal and device
-performance rows. Public/stable Gate G remains separately authorized and has
-not run.
+Candidate.16 AWG 3.1 and AWG2 runtime paths are not yet run. Repeat those
+guarded labs on LDPlayer without transferring candidate.13 success or
+candidate.14 failure. Gate F still requires the exact ARM64 physical install
+binding. The remaining release work includes physical Android, isolated
+connected Windows TUN/DNS/recovery/uninstall, candidate.16 Brain/RU origins,
+candidate.16 isolated and runtime rollback, and the provider, Operator, legal
+and device-performance rows. Public/stable Gate G remains separately
+authorized and has not run.
 
 ### Historical candidate.5–10 context
 
@@ -1036,13 +1035,13 @@ Do not spend the lane on SPB beyond bounded evidence; `ru_spb` passes the
 canonical candidate.10 run. HY2 remains default-off and follows the existing
 kill-switch/material/install guards.
 
-WO-013DD supersedes that active state with candidate.14. Its signed supply,
-refreshed dependency locks and complete local quality gate pass. Exact LDPlayer
-install/default traffic passes, while AWG3.1/AWG2 requested profiles remain
-cached default and receive no current-candidate runtime credit. Candidate.13's
-AWG lifecycle, rollback and current/Brain results remain history and are not
-transferred. Gate F is not run because the exact ARM64 physical-install binding
-is missing.
+WO-013DE supersedes that active state with candidate.16. Its signed supply,
+refreshed dependency locks, complete local quality gate, managed-profile
+readiness correction and fresh LDPlayer default traffic pass. Candidate.16
+AWG3.1/AWG2 labs are `NOT_RUN` and receive no current-candidate runtime credit.
+Candidate.13's AWG lifecycle and candidate.14's cached-default failure remain
+history and are not transferred. Gate F is not run because the exact ARM64
+physical-install binding is missing.
 
 For Smart DNS, WO-013CE proves the exact fronted Linux/amd64 bundle's strict
 PROXY-v2, DoH and application TLS passthrough on the observed `x86_64` trusted
@@ -1059,7 +1058,7 @@ leak/privacy, lifecycle and origin evidence. The same work order classifies the
 bounded Beeline whitelist path: control/API and `ru_spb` are filtered before
 VPN/TLS, so direct `it` is not the emergency bootstrap for that condition.
 Android system Private DNS stays open because the current server is DoH-only.
-Windows live network/recovery, candidate.14 origin proof, provider/PostgreSQL/outbox,
+Windows live network/recovery, candidate.16 origin proof, provider/PostgreSQL/outbox,
 Operator, legal/commercial, accessibility, comparable-device performance and
 post-public-promotion health also remain open before Gate F can become `GO`.
 Public/stable Gate G remains separately authorized and prohibited until then.
