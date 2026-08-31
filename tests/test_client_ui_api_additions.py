@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import hmac
 import importlib
 import json
 import sys
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -390,12 +392,31 @@ def test_awg2_owner_lab_is_device_bound_managed_only_and_kill_rolls_back(monkeyp
     finally:
         session.close()
 
-    managed = client.get(
-        "/api/client/profile/managed?selected_node_code=not-an-awg-selector",
-        headers=_auth_headers(start_body),
-    )
+    panel_calls: list[str] = []
+
+    async def forbidden_sync(*, user):
+        panel_calls.append("sync")
+        raise AssertionError("owned lab must not use legacy panel sync")
+
+    async def forbidden_runtime(*, s, user, nodes):
+        panel_calls.append("runtime")
+        raise AssertionError("owned lab must not use legacy panel runtime")
+
+    original_sync = api._sync_control_panel_access
+    original_runtime = api._get_user_runtime_summary
+    monkeypatch.setattr(api, "_sync_control_panel_access", forbidden_sync)
+    monkeypatch.setattr(api, "_get_user_runtime_summary", forbidden_runtime)
+    try:
+        managed = client.get(
+            "/api/client/profile/managed?selected_node_code=not-an-awg-selector",
+            headers=_auth_headers(start_body),
+        )
+    finally:
+        monkeypatch.setattr(api, "_sync_control_panel_access", original_sync)
+        monkeypatch.setattr(api, "_get_user_runtime_summary", original_runtime)
 
     assert managed.status_code == 200, managed.text
+    assert panel_calls == []
     body = managed.json()
     assert body["transport_profile"] == "awg2_lab"
     assert body["transport_kind"] == "awg2"
@@ -428,6 +449,115 @@ def test_awg2_owner_lab_is_device_bound_managed_only_and_kill_rolls_back(monkeyp
     rollback_body = rolled_back.json()
     assert rollback_body["transport_profile"] == "legacy_reality_fallback"
     assert "endpoints" not in rollback_body["config_payload"]
+
+
+def test_managed_profile_bounds_slow_panel_work_and_reports_pending(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    _seed_rollout(api)
+    _add_node(api, code="pl", last_health_at=_utcnow())
+    start_body = _start_trial(client, install_id="managed-panel-budget-device")
+
+    started: set[str] = set()
+    cancelled: set[str] = set()
+
+    async def stalled_sync(*, user):
+        started.add("sync")
+        try:
+            await asyncio.sleep(60)
+        finally:
+            cancelled.add("sync")
+
+    async def stalled_runtime(*, s, user, nodes):
+        started.add("runtime")
+        try:
+            await asyncio.sleep(60)
+        finally:
+            cancelled.add("runtime")
+
+    monkeypatch.setattr(api, "MANAGED_PROFILE_PANEL_BUDGET_SECONDS", 0.05)
+    monkeypatch.setattr(api, "_sync_control_panel_access", stalled_sync)
+    monkeypatch.setattr(api, "_get_user_runtime_summary", stalled_runtime)
+
+    started_at = time.perf_counter()
+    managed = client.get(
+        "/api/client/profile/managed",
+        headers=_auth_headers(start_body),
+    )
+    elapsed = time.perf_counter() - started_at
+
+    assert managed.status_code == 200, managed.text
+    assert elapsed < 1.0
+    assert started == {"sync", "runtime"}
+    assert cancelled == {"sync", "runtime"}
+    assert managed.json()["provisioning"] == {
+        "status": "pending_sync",
+        "sync_ok": False,
+        "managed_profile_path": "/api/client/profile/managed",
+    }
+
+
+def test_managed_profile_keeps_completed_sync_when_runtime_read_times_out(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    _seed_rollout(api)
+    _add_node(api, code="pl", last_health_at=_utcnow())
+    start_body = _start_trial(client, install_id="managed-runtime-budget-device")
+    runtime_cancelled = False
+
+    async def ready_sync(*, user):
+        return True
+
+    async def stalled_runtime(*, s, user, nodes):
+        nonlocal runtime_cancelled
+        try:
+            await asyncio.sleep(60)
+        finally:
+            runtime_cancelled = True
+
+    monkeypatch.setattr(api, "MANAGED_PROFILE_PANEL_BUDGET_SECONDS", 0.05)
+    monkeypatch.setattr(api, "_sync_control_panel_access", ready_sync)
+    monkeypatch.setattr(api, "_get_user_runtime_summary", stalled_runtime)
+
+    managed = client.get(
+        "/api/client/profile/managed",
+        headers=_auth_headers(start_body),
+    )
+
+    assert managed.status_code == 200, managed.text
+    assert runtime_cancelled is True
+    assert managed.json()["provisioning"]["status"] == "ready"
+    assert managed.json()["provisioning"]["sync_ok"] is True
+
+
+def test_start_trial_bounds_slow_panel_sync_and_reports_pending(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    cancelled = False
+
+    class _StalledPanel:
+        async def add_client(self, **_kwargs):
+            nonlocal cancelled
+            try:
+                await asyncio.sleep(60)
+            finally:
+                cancelled = True
+
+        async def close(self):
+            return None
+
+    monkeypatch.setattr(api, "ControlPanel", _StalledPanel)
+    monkeypatch.setattr(api, "PANEL_ACCESS_SYNC_BUDGET_SECONDS", 0.05)
+    client = TestClient(api.app)
+
+    started_at = time.perf_counter()
+    start_body = _start_trial(client, install_id="start-trial-panel-budget-device")
+    elapsed = time.perf_counter() - started_at
+
+    assert elapsed < 1.0
+    assert cancelled is True
+    assert start_body["sync_ok"] is False
+    assert start_body["provisioning"]["status"] == "pending_sync"
+    assert start_body["provisioning"]["sync_ok"] is False
 
 
 def test_awg31_private_profile_requires_an_active_device_claim(

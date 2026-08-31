@@ -9,6 +9,7 @@ POKROV API for Telegram WebApp and Subscription endpoint.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import contextlib
 import contextvars
@@ -2891,24 +2892,33 @@ def _apply_access_key_to_user(*, user: User, meta: dict[str, Any], now: datetime
     }
 
 
+PANEL_ACCESS_SYNC_BUDGET_SECONDS = 4.0
+
+
 async def _sync_control_panel_access(*, user: User) -> bool:
     sync_ok = False
     panel = ControlPanel()
     try:
         sync_ok = bool(
-            await panel.add_client(
-                user_uuid=str(user.uuid or ""),
-                email=str(user.email or f"User_{int(user.tg_id)}"),
-                sub_type=str(user.sub_type or "FREE"),
-                total_gb=int(user.total_gb or 0),
-                tg_id=int(user.tg_id),
-                sub_token=str(user.sub_token or ""),
+            await asyncio.wait_for(
+                panel.add_client(
+                    user_uuid=str(user.uuid or ""),
+                    email=str(user.email or f"User_{int(user.tg_id)}"),
+                    sub_type=str(user.sub_type or "FREE"),
+                    total_gb=int(user.total_gb or 0),
+                    tg_id=int(user.tg_id),
+                    sub_token=str(user.sub_token or ""),
+                ),
+                timeout=max(0.1, float(PANEL_ACCESS_SYNC_BUDGET_SECONDS)),
             )
         )
     except Exception:
         sync_ok = False
     finally:
-        await panel.close()
+        try:
+            await panel.close()
+        except Exception:
+            pass
     return sync_ok
 
 

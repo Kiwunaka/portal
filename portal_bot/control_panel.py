@@ -249,25 +249,39 @@ class ControlPanel:
         if not groups:
             return {}
 
+        semaphore = asyncio.Semaphore(max(1, int(self._concurrency or 1)))
+
+        async def _ensure_group(candidates: list) -> tuple[dict[str, bool], object | None]:
+            group_results: dict[str, bool] = {}
+            async with semaphore:
+                for node in candidates:
+                    try:
+                        ok = await self._clients[node.code].ensure_client(
+                            tg_id=tg_id,
+                            client_uuid=client_uuid,
+                            email=email,
+                            sub_id=sub_id,
+                            enable=enable,
+                        )
+                    except Exception:
+                        ok = False
+                    group_results[node.code] = ok
+                    if ok:
+                        return group_results, node
+            if candidates:
+                group_results[candidates[0].code] = False
+            return group_results, None
+
+        grouped_results = await asyncio.gather(
+            *[_ensure_group(candidates) for _group_key, candidates in groups],
+            return_exceptions=False,
+        )
         results: dict[str, bool] = {}
         chosen_nodes: list = []
-        for _group_key, candidates in groups:
-            success = False
-            for node in candidates:
-                ok = await self._clients[node.code].ensure_client(
-                    tg_id=tg_id,
-                    client_uuid=client_uuid,
-                    email=email,
-                    sub_id=sub_id,
-                    enable=enable,
-                )
-                results[node.code] = ok
-                if ok:
-                    chosen_nodes.append(node)
-                    success = True
-                    break
-            if not success and candidates:
-                results[candidates[0].code] = False
+        for group_results, chosen_node in grouped_results:
+            results.update(group_results)
+            if chosen_node is not None:
+                chosen_nodes.append(chosen_node)
 
         # Persist mapping for observability/debug (best-effort)
         s = SessionLocal()

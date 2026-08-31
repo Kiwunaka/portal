@@ -1,6 +1,6 @@
 # API Contracts
 
-Last updated: 2026-08-21
+Last updated: 2026-08-31
 
 This page captures release-critical API contract expectations for the current
 repository candidate. It is also a concise router to the canonical domain
@@ -506,6 +506,9 @@ TTL after the final issuance before routing app access back to the old revision.
   `trial_reserved` signal with canonical account, device and session IDs. Raw
   `install_id` is not copied into the ledger; it is represented by a
   domain-separated HMAC.
+- Its independent panel convergence is limited to four seconds. Incomplete
+  convergence returns `provisioning.status=pending_sync`; it does not roll back
+  the committed trial/session authority or become connection evidence.
 - API security events retain the compatibility `security_events` audit row and
   write a matching `antiabuse_events` signal in the same transaction. Metadata
   keys that indicate tokens, secrets, passwords or authorization material are
@@ -691,6 +694,12 @@ explicitly enables the legacy contour.
   per-device endpoint material rather than catalog nodes. The response returns
   `smart_connect: null`, ignores `selected_node_code`, and remains governed by
   the exact device, rollout, server-record and material gates below.
+- Node-backed `GET /api/client/profile/managed` runs independent panel sync and
+  runtime reads concurrently inside a shared four-second budget. Sync timeout
+  keeps `provisioning.status=pending_sync`; runtime-read timeout uses a zeroed
+  unknown-state fallback without downgrading a completed sync. Neither creates
+  connection evidence. Device-bound `awg2_lab`, `awg31_lab`, and `hy2_lab`
+  skip this unrelated legacy panel path entirely.
 - Both owned AWG profiles currently route only `0.0.0.0/0`; their managed DNS
   strategy is therefore `ipv4_only`. An IPv6 answer must not be selected until
   the endpoint contract also owns and proves an IPv6 routed prefix.

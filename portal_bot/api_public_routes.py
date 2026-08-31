@@ -1574,37 +1574,14 @@ async def client_start_trial(payload: AppStartTrialIn, request: Request) -> dict
     if not session_token:
         raise HTTPException(status_code=500, detail="App session is not configured")
 
-    sync_ok = False
-    panel = ControlPanel()
-    try:
-        sync_ok = bool(
-            await panel.add_client(
-                user_uuid=str(user.uuid),
-                email=str(user.email),
-                sub_type=str(user.sub_type or "FREE"),
-                total_gb=int(user.total_gb or 0),
-                tg_id=int(user.tg_id),
-                sub_token=str(user.sub_token or ""),
-            )
-        )
-        if not sync_ok:
-            logger.warning(
-                "app start-trial panel sync returned false tg_id=%s plan=%s sub_type=%s",
-                int(user.tg_id),
-                str(getattr(user, "current_plan_code", "") or ""),
-                str(getattr(user, "sub_type", "") or ""),
-            )
-    except Exception as exc:
-        logger.exception(
-            "app start-trial panel sync failed tg_id=%s plan=%s sub_type=%s err=%s",
+    sync_ok = await _sync_control_panel_access(user=user)
+    if not sync_ok:
+        logger.warning(
+            "app start-trial panel sync returned false tg_id=%s plan=%s sub_type=%s",
             int(user.tg_id),
             str(getattr(user, "current_plan_code", "") or ""),
             str(getattr(user, "sub_type", "") or ""),
-            exc,
         )
-        sync_ok = False
-    finally:
-        await panel.close()
 
     start_trial_parts = app_first_service.build_start_trial_response_parts(
         user=user,
