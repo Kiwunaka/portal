@@ -11,7 +11,8 @@ except ImportError:
 
 bootstrap_slice(globals())
 SMART_CONNECT_LATENCY_EVENT_NAME = "smart_connect_latency_sample"
-MANAGED_PROFILE_PANEL_BUDGET_SECONDS = 4.0
+MANAGED_PROFILE_SYNC_BUDGET_SECONDS = 7.0
+MANAGED_PROFILE_PANEL_BUDGET_SECONDS = 8.0
 
 
 def _managed_profile_runtime_fallback(*, panel_state: str, panel_error: str | None) -> dict[str, Any]:
@@ -47,7 +48,12 @@ async def _managed_profile_panel_state(
             panel_error=None,
         )
 
-    sync_task = asyncio.create_task(_sync_control_panel_access(user=user))
+    sync_task = asyncio.create_task(
+        _sync_control_panel_access(
+            user=user,
+            timeout_seconds=MANAGED_PROFILE_SYNC_BUDGET_SECONDS,
+        )
+    )
     runtime_task = asyncio.create_task(
         _get_user_runtime_summary(s=s, user=user, nodes=nodes)
     )

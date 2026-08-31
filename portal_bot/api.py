@@ -2895,8 +2895,17 @@ def _apply_access_key_to_user(*, user: User, meta: dict[str, Any], now: datetime
 PANEL_ACCESS_SYNC_BUDGET_SECONDS = 4.0
 
 
-async def _sync_control_panel_access(*, user: User) -> bool:
+async def _sync_control_panel_access(
+    *,
+    user: User,
+    timeout_seconds: float | None = None,
+) -> bool:
     sync_ok = False
+    timeout_budget = (
+        float(PANEL_ACCESS_SYNC_BUDGET_SECONDS)
+        if timeout_seconds is None
+        else max(0.1, float(timeout_seconds))
+    )
     panel = ControlPanel()
     try:
         sync_ok = bool(
@@ -2909,7 +2918,7 @@ async def _sync_control_panel_access(*, user: User) -> bool:
                     tg_id=int(user.tg_id),
                     sub_token=str(user.sub_token or ""),
                 ),
-                timeout=max(0.1, float(PANEL_ACCESS_SYNC_BUDGET_SECONDS)),
+                timeout=timeout_budget,
             )
         )
     except Exception:

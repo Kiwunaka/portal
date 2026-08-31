@@ -167,7 +167,9 @@ Reference-lane note:
 - app-managed session/profile payloads resolve their transport profile from rollout policy, while manual/export compatibility links stay on `legacy_reality_fallback` until a separate share-link parity wave
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint and returns `version`, `profile_revision`, `transport_profile`, `transport_kind`, `engine_hint`, `config_format`, `config_payload`, `fallback_order`, `support_context`, `smart_connect`, and managed-profile `warp_policy`
 - node-backed managed-profile issuance runs independent panel synchronization
-  and runtime reads concurrently under one four-second response budget. A sync
+  and runtime reads concurrently under one eight-second response budget. Panel
+  sync gets a seven-second sub-budget so it can settle before the outer request
+  budget. A sync
   timeout yields the existing truthful `pending_sync` state; a runtime-read
   timeout uses a zeroed unknown-state fallback without downgrading a completed
   sync. Neither path holds the client through its retry window, and a timeout

@@ -461,7 +461,8 @@ def test_managed_profile_bounds_slow_panel_work_and_reports_pending(monkeypatch,
     started: set[str] = set()
     cancelled: set[str] = set()
 
-    async def stalled_sync(*, user):
+    async def stalled_sync(*, user, timeout_seconds=None):
+        assert timeout_seconds == api.MANAGED_PROFILE_SYNC_BUDGET_SECONDS
         started.add("sync")
         try:
             await asyncio.sleep(60)
@@ -504,8 +505,14 @@ def test_managed_profile_keeps_completed_sync_when_runtime_read_times_out(monkey
     _add_node(api, code="pl", last_health_at=_utcnow())
     start_body = _start_trial(client, install_id="managed-runtime-budget-device")
     runtime_cancelled = False
+    configured_panel_budget = api.MANAGED_PROFILE_PANEL_BUDGET_SECONDS
+    assert configured_panel_budget > api.MANAGED_PROFILE_SYNC_BUDGET_SECONDS
 
-    async def ready_sync(*, user):
+    observed_sync_budget = None
+
+    async def ready_sync(*, user, timeout_seconds=None):
+        nonlocal observed_sync_budget
+        observed_sync_budget = timeout_seconds
         return True
 
     async def stalled_runtime(*, s, user, nodes):
@@ -525,6 +532,8 @@ def test_managed_profile_keeps_completed_sync_when_runtime_read_times_out(monkey
     )
 
     assert managed.status_code == 200, managed.text
+    assert observed_sync_budget == api.MANAGED_PROFILE_SYNC_BUDGET_SECONDS
+    assert configured_panel_budget > observed_sync_budget
     assert runtime_cancelled is True
     assert managed.json()["provisioning"]["status"] == "ready"
     assert managed.json()["provisioning"]["sync_ok"] is True

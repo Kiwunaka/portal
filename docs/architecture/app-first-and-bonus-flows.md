@@ -300,7 +300,8 @@ Rollout note:
 - the native `GET /api/client/locations` catalog mirrors those choices through an additive per-city `variants` list: stable `direct` / `Обычный` is always present, and each usable bridge endpoint contributes only its stable id, short label, and short consumer description. Bridge variants are omitted when rollout is disabled, endpoint material is invalid, the city is excluded or outside a non-empty allowlist, its required transport is unavailable, or the endpoint identifies the same exact delivery node by stable id/configured host; no host, port, Reality key/short id, hidden outbound tag, or raw config enters this projection.
 - managed provisioning now also returns a `smart_connect` contract with shortlist candidates, fallback metadata, rejection counts, and scoring hints
 - node-backed managed provisioning gives panel synchronization and runtime reads
-  one shared four-second budget and runs them concurrently. Incomplete sync
+  one shared eight-second budget, gives panel sync a seven-second sub-budget,
+  and runs them concurrently. Incomplete sync
   stays `pending_sync`; incomplete runtime read uses an unknown/zero fallback
   without changing a completed sync into failure. Neither timeout becomes a
   connection claim, and the manifest no longer waits through the client's full

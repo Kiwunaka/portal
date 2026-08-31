@@ -695,7 +695,9 @@ explicitly enables the legacy contour.
   `smart_connect: null`, ignores `selected_node_code`, and remains governed by
   the exact device, rollout, server-record and material gates below.
 - Node-backed `GET /api/client/profile/managed` runs independent panel sync and
-  runtime reads concurrently inside a shared four-second budget. Sync timeout
+  runtime reads concurrently inside a shared eight-second budget. Panel sync
+  gets a seven-second sub-budget so its own timeout can settle before the outer
+  request budget. Sync timeout
   keeps `provisioning.status=pending_sync`; runtime-read timeout uses a zeroed
   unknown-state fallback without downgrading a completed sync. Neither creates
   connection evidence. Device-bound `awg2_lab`, `awg31_lab`, and `hy2_lab`
