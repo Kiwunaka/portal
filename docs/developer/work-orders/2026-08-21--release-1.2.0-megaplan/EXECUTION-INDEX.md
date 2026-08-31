@@ -2,6 +2,27 @@
 
 Last updated: 2026-08-31
 
+## 2026-08-31 — WO-013DI candidate.16 isolated rollback rehearsal
+
+The signed candidate.16 manifest, receipt, detached Ed25519 signature and exact
+platform/client/Core/release-index tuple validate. A post-sign operational
+handoff is generated from those exact sources, then the real portal projection
+and client stable-pointer mechanisms execute inside a disposable fixture:
+`1.1.6+20260819 -> candidate.16 -> 1.1.6+20260819`.
+
+Portal forward/rollback passes with byte-identical restoration and an unrelated
+setting preserved. Client initial validation, no-apply dry-run, forward switch,
+reverse switch and final validation all pass. Stable and candidate backups
+match exactly, both receipts validate and the final pointer SHA-256 equals the
+initial retained stable handoff. The focused rollback/PB-14 suite passes
+`16/16`; all four exact source worktrees remain clean.
+
+`DOD-18` and `P12-130` remain `I3`, now with exact candidate.16 local evidence.
+Tracked pointers, portal runtime, production, public assets, stable state and
+devices remain unchanged. Runtime pointer/kill rollback with external backup,
+current/Brain readback and post-rollback health remains open, so Gate F/G and
+the 378-row distribution do not advance.
+
 ## 2026-08-31 — WO-013DH candidate.16 DE provider outage boundary
 
 Exact candidate.16 Core `cd8f0f4...` is cross-built into separate digest-bound
