@@ -2,6 +2,30 @@
 
 Last updated: 2026-09-01
 
+## 2026-09-01 — WO-013DO candidate.16 physical ARM64 binding and Gate F
+
+The exact production-signed candidate.16 ARM64 APK installs on the owner's
+Android 12 ARM64 device and reads back byte-identically as `1.2.0+4049`,
+`101366678` bytes, SHA-256 `9bcdbe00...cc74`. The application is not launched;
+the POKROV process and `tun0` remain absent, no network test runs and no screen
+control is used. Client PR 50 records sanitized evidence and merges as
+`1125d276...`; its zero-step hosted job is
+`HOSTED_CHECK_BLOCKED_BY_BILLING`, while local docs and full seed validation
+pass.
+
+The physical install prerequisite is therefore closed, not the physical
+runtime matrix. Gate F validates the signed manifest, receipt, detached
+Ed25519 signature, manifest-bound keyring, exact platform/client/Core/
+release-index tuple, all `19/19` pointers and the upstream binding digest with
+zero validation errors. It returns `NO_GO`: `2 PASS / 17 non-PASS`, including
+`2 FAIL` for the exact LDPlayer AWG rehearsal and authenticated egress. Gate G,
+public assets, Store state and the stable pointer remain unauthorized.
+
+`REL_GATE/GATE-F` stays `I3` and advances from not run to exact candidate.16
+`NO_GO 2/17/2`. `REL/REL-001` remains `I3` with candidate.16 as current signed
+owner-solo authority. No completion index changes; distribution remains
+`I4=5`, `I3=319`, `I2=20`, `I1=34`, `I0=0` across `378` rows.
+
 ## 2026-09-01 — WO-013DN candidate.16 RU-probe bundle and owned-Pi PLAN
 
 The signed candidate.16 platform revision is added to the exact RU bundle
