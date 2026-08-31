@@ -5432,3 +5432,39 @@ PASS.
 `I2=20`, `I1=34`, `I0=0` across 378 rows. Signed candidate.16, runtime copy,
 legal/campaign state, provider behavior, deploy, public release and stable
 pointer are unchanged.
+
+## 2026-09-01 — WO-013DQ candidate.16 background current-origin slice
+
+Without taking screen or input control, the exact clean candidate.16
+platform/client/Core tuple reruns the permanent STOP-SHIP registry at `7/7`
+local PASS. GitHub reports zero open organization issues carrying either the
+`P0` label or `P0` in the title. The aggregate remains `NO_GO`: hosted branch
+controls are two access-blocked plus one unprotected, one live manual gate is
+open, and the no-open-P0/false-green/secret-leak aggregate attestation remains
+missing.
+
+Exact-source privacy gates also pass: platform release-health/bundle
+ingest/upload `53/53`, client release logging over 145 production files plus
+four negative fixtures, observability runtime `29/29`, and support bundle
+`15/15`. These strengthen DOD-12 and the matching OBS rows without replacing
+physical/runtime/deployed evidence or the aggregate owner attestation.
+
+The current workstation's ambient default route is tunnel-like, so the API
+collector binds a physical Ethernet IPv4 source and disables proxy discovery.
+Exact candidate.16 health and public-catalog measurements each retain 50
+samples and pass p95 budgets at `37.8716 ms <= 100 ms` and
+`48.2119 ms <= 200 ms`. This strengthens `PERF-001`, `DOD-13` and Gate E but
+does not prove authenticated client egress or device performance.
+
+Passive ADB confirms exact `1.2.0+4049` on the physical Android and LDPlayer,
+with no `tun0` and no test-triggered launch. LDPlayer and the trusted Pi return
+the expected empty-DoH HTTP `400`. Windows general DNS/HTTPS passes while its
+current resolver does not return the Smart-DNS hostname; simultaneous
+LDPlayer/Pi success classifies this as a Windows resolver-context issue, not a
+global service outage. No cache, adapter or DNS setting changes.
+
+Datalix's official background console requires a provider token plus service
+ID, neither available locally. Current DE probes produce no complete SSH
+banner and no trusted match; no key is accepted and `known_hosts` is unchanged.
+Gate F remains `NO_GO 2/17/2`, the 378-row distribution remains
+`I4=5`, `I3=319`, `I2=20`, `I1=34`, `I0=0`, and Gate G remains unauthorized.

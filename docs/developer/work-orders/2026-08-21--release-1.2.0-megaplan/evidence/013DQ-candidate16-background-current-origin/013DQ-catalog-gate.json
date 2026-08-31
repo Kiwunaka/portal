@@ -1,0 +1,48 @@
+{
+  "contract": {
+    "id": "pokrov.performance-budgets",
+    "sha256": "9edc0b96ee1b7e762342d8ff72f974d61898540fd5c4174ff0cc8d6583d6fca2",
+    "version": "1.0.0"
+  },
+  "counts": {
+    "baseline_recorded": 0,
+    "failed": 0,
+    "measured": 1,
+    "non_measured": 0,
+    "passed": 1,
+    "total": 1
+  },
+  "environment_fingerprint": "9a94902f446bcc4fc5bbc0007ae4d5f25e452f2a50d76f897000975bfd0fc57c",
+  "missing_required_budget_ids": [],
+  "nonpassing_required_budget_ids": [],
+  "overall_status": "PASS",
+  "release": {
+    "candidate_label": "pokrov-1.2.0-candidate.16",
+    "source_revision": "719e23dc49407beb9ae30d98d17d4b73d18ae37c",
+    "version": "1.2.0",
+    "working_tree_state": "clean"
+  },
+  "required_scopes": [],
+  "results": [
+    {
+      "baseline_compared": false,
+      "budget_id": "api.public_catalog.current_origin_ms",
+      "environment_fingerprint": "9a94902f446bcc4fc5bbc0007ae4d5f25e452f2a50d76f897000975bfd0fc57c",
+      "gate_status": "PASS",
+      "max_regression_percent": 10,
+      "regression_met": true,
+      "regression_percent": null,
+      "sample_count": 50,
+      "scope": "controlled_origin",
+      "state": "MEASURED",
+      "statistic": "p95",
+      "stop_lte": 200,
+      "stop_met": true,
+      "target_lte": 200,
+      "target_met": true,
+      "unit": "ms",
+      "value": 48.2119
+    }
+  ],
+  "schema_version": 1
+}
