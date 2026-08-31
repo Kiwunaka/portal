@@ -2,6 +2,28 @@
 
 Last updated: 2026-08-31
 
+## 2026-08-31 — WO-013DH candidate.16 DE provider outage boundary
+
+Exact candidate.16 Core `cd8f0f4...` is cross-built into separate digest-bound
+Linux ARM64 AWG2 and AWG3.1 runners and executed from the owned RU Pi with a
+direct default route. Both return `failed_no_outer_response`, remove all exact
+temporary state, return no raw material and mutate neither runtime nor server.
+Their material fingerprints match the older passing candidate.10 Core inputs;
+that narrows configuration drift but transfers no PASS.
+
+The owner attests the Datalix account was unpaid during the shared DE outage
+and began correcting payment. A later current-origin check observes partial
+TCP acceptance, but neither DE address emits an SSH banner. The owned RU Pi
+independently sees no SSH banner from either address, and the guarded alignment
+cannot reach a completed service readback. The classification is
+`PROVIDER_RECOVERY_INCOMPLETE`; candidate.16 protocol interoperability is
+`NOT_RUN_AFTER_PROVIDER_OUTAGE_CLASSIFICATION`, not FAIL and not PASS.
+
+`AWG-10` remains `I2`; `W3-02/W3-03` remain `I3`. Gates B/C/E/F, the 378-row
+distribution and Gate G remain unchanged. Resume with ordinary DE health,
+alignment and exact-Core retry before another LDPlayer run. No physical phone
+was touched and no protocol parameter changed.
+
 ## 2026-08-31 — WO-013DG Smart DNS `it` live deployment and rollback proof
 
 All four delegated Timeweb nameservers now return the authorized
