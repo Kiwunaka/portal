@@ -156,6 +156,45 @@ def test_domains_and_addresses_fail_closed() -> None:
         MODULE._public_ipv4("127.0.0.1", label="upstream")
 
 
+def test_dns_resolution_uses_brain_origin_and_requires_one_public_ipv4(monkeypatch) -> None:
+    calls: list[tuple[object, str, str, int]] = []
+
+    def fake_run(ssh, command: str, *, label: str, timeout: int = 180) -> str:
+        calls.append((ssh, command, label, timeout))
+        return json.dumps(["151.241.215.84"])
+
+    brain = object()
+    monkeypatch.setattr(MODULE, "_run", fake_run)
+
+    assert MODULE._resolve_unique_public_ipv4(brain, "dns.pokrov.space") == "151.241.215.84"
+    assert calls == [
+        (
+            brain,
+            calls[0][1],
+            "doh_dns_resolve",
+            30,
+        )
+    ]
+    assert calls[0][1].startswith("python3 -c ")
+    assert shlex.split(calls[0][1])[-1] == "dns.pokrov.space"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    (
+        "not-json",
+        json.dumps([]),
+        json.dumps(["127.0.0.1"]),
+        json.dumps(["151.241.215.84", "151.241.215.85"]),
+        json.dumps([15124121584]),
+    ),
+)
+def test_brain_origin_dns_resolution_fails_closed(monkeypatch, payload: str) -> None:
+    monkeypatch.setattr(MODULE, "_run", lambda *args, **kwargs: payload)
+    with pytest.raises(MODULE.SmartDNSRuntimePreparationError):
+        MODULE._resolve_unique_public_ipv4(object(), "dns.pokrov.space")
+
+
 def test_parser_rejects_duplicate_and_unbounded_probe_values() -> None:
     with pytest.raises(MODULE.SmartDNSRuntimePreparationError):
         MODULE._parse_probe("root=yes\nroot=no")
