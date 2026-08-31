@@ -1,0 +1,196 @@
+{
+  "schema": "pokrov-release-1.2.0-work-order-evidence-v1",
+  "work_order": "WO-013DE",
+  "observed_at": "2026-08-31T15:07:31Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.16",
+    "version": "1.2.0+4049",
+    "platform_source": "719e23dc49407beb9ae30d98d17d4b73d18ae37c",
+    "client_source": "75ba7e721cfee486f7189edd51de97aba2746722",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "signed_release_index_source": "54cfa03502ffafa5e4fb230a2cbdb0c0572c429f",
+    "receipt_release_index_source": "f321a8ce9bb7913774ac49eefe1da0f4d2d0cfaa",
+    "strict_handoff_sha256": "e604410e7dce9e39a22c8b54f8863216c3df71311b9d6639189ef4bc09aa2ac3",
+    "handoff_input_sha256": "5134cda9728cd123cdfc0deb61ff133382f9514f52306a70e903f454de02a89b",
+    "signed_manifest_sha256": "ae1906e68df755b1e0ce6a77d6ede8256f923e72fe11da57f1cae89a82c4ffe6",
+    "detached_signature_sha256": "f5df63578d56db84a48eac1c68f1192e81462e8b407b1b6ff877c2b415507a9a",
+    "signing_receipt_sha256": "1231ab6988746ca0e9725296826de2a9696a9a78600aa5e7f0b0c1b8c5782de4",
+    "signing_key_id": "pokrov-release-2026-01",
+    "signing_run": 33402507136,
+    "signing_job": 99522007988,
+    "actions_artifact_id": 9761790067,
+    "actions_artifact_digest": "sha256:aba50268ad4acffc3fcc360d11dcd026590c3fae1635729a0378588d95c52b8d",
+    "candidate_created": true,
+    "promotion_authorized": false,
+    "output_kind": "ACTIONS_ARTIFACT_ONLY",
+    "artifact_count": 6
+  },
+  "hosted_release_index": {
+    "input_pr": 33,
+    "input_run": 33402297476,
+    "input_job": 99521307086,
+    "input_checks": "PASS_REAL_STEPS",
+    "signer_checks": "PASS_REAL_STEPS",
+    "receipt_pr": 34,
+    "receipt_run": 33403011941,
+    "receipt_job": 99523669145,
+    "receipt_checks": "PASS_REAL_STEPS",
+    "independent_review_performed": false,
+    "review_policy": "OWNER_SOLO_EXCEPTION"
+  },
+  "supply_chain": {
+    "preflight": "READY_LOCAL_FREEZE",
+    "preflight_blocker_count": 0,
+    "preflight_sha256": "92e660a9bdbf0309b1a70378f0a8c34165c92e75f824e8e9be31239c38fe01a2",
+    "android_signing": "PASS_PRODUCTION_CERTIFICATE",
+    "windows_signing": "SKIPPED_BY_OWNER_UNSIGNED_DIRECT_BETA",
+    "support_signing": "PASS_EXACT_CANDIDATE_SUPPORT_PIN_EMBEDDED",
+    "support_signing_sha256": "1af65938e425dd1caf7ac3088a03be65742ff85495e24b1f807b407e9c05a9a0",
+    "support_artifact_build_source": "ce2581dd16d276d20eace7a56f0337c4b9319168",
+    "support_candidate_source": "75ba7e721cfee486f7189edd51de97aba2746722",
+    "support_source_delta": "DOCUMENTATION_ONLY_NO_BUILD_INPUT_CHANGE",
+    "sbom_component_count": 349,
+    "sbom_sha256": "47785d3b6a4745141cb3ad93cbf8c99e4d6e16d419531d31dc3c44bfa143cb7a",
+    "provenance_subject_count": 6,
+    "provenance_sha256": "844fcda1ee6c6ba3aed76ccc57a08daa39e779d65945b5e74f5b14308de2864c",
+    "artifact_set_sha256": "d9bba178d184958f9577ac39e3e736ef081677297cc67dc5bcffcb327edb4f69",
+    "windows_runtime_manifest_sha256": "74e8d512b0c0f403d1bbf90251b7799a0ca086d8d0df51f13860c2e7d3d16051",
+    "offline_validation": "PASS_6_OF_6_ARTIFACTS_AND_8_OF_8_WINDOWS_RUNTIME_FILES",
+    "supply_validation": "PASS",
+    "supply_validation_sha256": "1be3cd19aedd04537a4eeeb5c2c5c62d5f82b80623658628ece143039b6342e0",
+    "signed_index_validation": "READY_SIGNED_MANIFEST",
+    "dependency_contract": "PASS_EXACT_LOCKS_ZERO_KNOWN_FINDINGS"
+  },
+  "artifacts": [
+    {
+      "id": "android-arm64-v8a",
+      "sha256": "9bcdbe00fe8f8ed029894a65d531614f4fb912dda27e5fb1bb088c5b7516cc74",
+      "size_bytes": 101366678
+    },
+    {
+      "id": "android-armeabi-v7a",
+      "sha256": "6308dcdec7ca5f360b1a3726690fca3e80da330906c3d2fe3457e26f44bbd68e",
+      "size_bytes": 90778788
+    },
+    {
+      "id": "android-market",
+      "sha256": "5cddb0d264a05db59c099af8a26f26dd3094746632222e1527e9c0a129801e42",
+      "size_bytes": 126265693
+    },
+    {
+      "id": "android-universal",
+      "sha256": "960712643013ce8f2383ae3068d562c9971cc69184477f650972d0153a1409d4",
+      "size_bytes": 295370161
+    },
+    {
+      "id": "android-x86-64",
+      "sha256": "73c43e21dfc984c474941e14800c551f9545fe423b8f11458f6d41b8cb9af5ff",
+      "size_bytes": 109951989
+    },
+    {
+      "id": "windows-x64-setup",
+      "sha256": "0afaf6e1d73a7e72762d945557f48793646a9bdbf12bb8ca2e843d4b94df276c",
+      "size_bytes": 28932793,
+      "signing": "SKIPPED_BY_OWNER",
+      "exception": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0"
+    }
+  ],
+  "managed_profile_readiness": {
+    "problem": "PENDING_LIVE_SYNC_COULD_FALSELY_REPORT_READY_WITHOUT_A_DURABLE_NODE_MAPPING",
+    "correction_commit": "20d7da7eeab56da8cdd1c7e851153367e796eac4",
+    "correction_pr": 129,
+    "merged_platform_source": "719e23dc49407beb9ae30d98d17d4b73d18ae37c",
+    "behavior": "CONFIRMED_USER_NODE_AND_ACTIVE_ACCESS_KEY_INTERSECTED_WITH_CURRENT_ELIGIBLE_POOL",
+    "false_sync_ok_blocked": true,
+    "focused_tests": "PASS",
+    "production_component": "portal-api",
+    "production_deploy_authorized": true,
+    "production_source_readback": "PASS_197_OF_197",
+    "public_api_health": "PASS_HTTP_200",
+    "predeploy_probe_sha256": "6f7b958b7f20d02d6a8f5350c4709d6ecbc2d4607e7cc0cacdf2f70e5022d9cb",
+    "postdeploy_probe_sha256": "83227b30cb58d7d1415a3232e69771ebafa080471502c31b3b81af1f1ecb18f8",
+    "public_api_health_sha256": "fc7c225728b543bea708a8829dcafcb8d405fb102dded7e772a0c69e185c50ed",
+    "hosted_platform_checks": "SKIPPED_BY_OWNER_ZERO_STEP_PRIVATE_REPOSITORY_WORKFLOW",
+    "release_claim_effect": "DEFAULT_PROFILE_READINESS_AND_SYNC_TRUTH_ONLY"
+  },
+  "local_quality": {
+    "runtime": "Node 22.14.0 / npm 11.7.0 / Playwright 1.61.1",
+    "report_sha256": "37004c7e1afb2728b63bc11d39ecce5f99de09db3cce25c4453d3637535c3000",
+    "web_performance_evidence_sha256": "1e2ab7d328777cb54e8bee9a297c8cab4fa5d1f2317052efd809d000933c8f05",
+    "local_status": "PASS",
+    "steps_passed": 15,
+    "steps_total": 15,
+    "candidate_proven": false,
+    "promotion_status": "MANUAL_OWNER_TEST",
+    "client_analyze": "PASS",
+    "client_widget_tests": "PASS_413",
+    "cabinet_e2e": "PASS_69_OF_69",
+    "static_performance": "PASS_9_OF_9"
+  },
+  "ldplayer": {
+    "device_class": "LDPlayer Android 9 API 28 x86_64 emulator",
+    "serial": "emulator-5554",
+    "exact_x86_64_artifact_installed": true,
+    "installed_artifact_sha256": "73c43e21dfc984c474941e14800c551f9545fe423b8f11458f6d41b8cb9af5ff",
+    "installed_version": "1.2.0+4049",
+    "fresh_default_after_readiness_correction": "PASS",
+    "runtime_profile": "default",
+    "vpn_service": "PASS",
+    "tunnel_interface": "PASS",
+    "managed_dns": "PASS",
+    "authenticated_vpn_egress": "PASS",
+    "sanitized_outbounds": {
+      "vless": 28,
+      "selector": 2,
+      "direct": 1,
+      "block": 1,
+      "urltest": 1
+    },
+    "final_state": "DISCONNECTED_CLEANLY",
+    "awg31_current_candidate": "NOT_RUN",
+    "awg2_current_candidate": "NOT_RUN",
+    "physical_device_touched": false,
+    "evidence_hashes": {
+      "plan": "5317334f83247dea6ba3c3ae7958371cb9c71a9176dbc9cd9ccb6153b39d7013",
+      "connect_xml": "98d5884a7705d9649a7b4fbd7e91ab2c8449639f1353ba8d44d945e39e15e244",
+      "details_xml": "eb6d9253bb6ce0017caac0793680cf1ba107f0dc1d514c7b319c875f80b54892",
+      "connected_screenshot": "40ca96d4305fc14371264043d167fc4ea524b08a060089f7bd55dcf59ad663a3",
+      "settled_xml": "10523f64d35ffbdd2d129be0213fea36d640e513cfd32a16d8a98974bcc1795d",
+      "disconnected_xml": "7b445ad434f61f2ffdd7905cc5c55c3f57da6afc1c659793e67779d264c2a10b"
+    }
+  },
+  "release_gates": {
+    "gate_a": "SIGNED_SUPPLY_PASS_WINDOWS_UNSIGNED_OWNER_EXCEPTION_CLEAN_HOST_OPEN",
+    "gate_b": "DEFAULT_LIFECYCLE_AND_READINESS_CORRECTION_PASS_LABS_WINDOWS_OPEN",
+    "gate_c": "EXACT_EMULATOR_DEFAULT_PASS_PHYSICAL_WINDOWS_AND_LABS_OPEN",
+    "gate_d": "LOCAL_SOURCE_PROOF_ONLY_PROVIDER_AND_OPERATOR_RUNTIME_OPEN",
+    "gate_e": "LOCAL_QUALITY_AND_DEFAULT_FUNCTIONAL_PASS_DEVICE_AND_AUTHENTICATED_JOURNEYS_OPEN",
+    "gate_f": "NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING",
+    "physical_android": "MANUAL_OWNER_TEST",
+    "clean_windows": "MANUAL_OWNER_TEST",
+    "ru_origin": "MANUAL_OWNER_TEST",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_oidc_rbac": "MANUAL_OWNER_TEST",
+    "legal_commercial": "MANUAL_OWNER_TEST",
+    "runtime_rollback": "MANUAL_OWNER_TEST",
+    "gate_g": "NOT_AUTHORIZED"
+  },
+  "completion_index": {
+    "REL_CANDIDATE": "I4_SIGNED_SUPPLY_ONLY",
+    "REL/DEP-001": "I4_EXACT_CANDIDATE_LOCKS_PROVEN",
+    "FE_PR/PR-09": "I3_LOCAL_QUALITY_PASS_EXTERNAL_GATES_OPEN",
+    "FRKN_PLAN/W3-02": "I3_CURRENT_CANDIDATE_LAB_NOT_RUN",
+    "FRKN_PLAN/W3-03": "I3_CURRENT_CANDIDATE_LAB_TRAFFIC_NOT_RUN",
+    "FRKN_PLAN/W9-02": "I2_CURRENT_ORIGIN_DEFAULT_AND_BRAIN_SOURCE_READBACK_ONLY_RU_OPEN",
+    "REL_GATE/GATE-F": "NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING",
+    "REL_GATE/GATE-G": "NOT_AUTHORIZED"
+  },
+  "publication": {
+    "tag_created": false,
+    "github_release_created": false,
+    "public_assets_created": false,
+    "store_submission_created": false,
+    "stable_pointer_changed": false
+  },
+  "release_effect": "CANDIDATE16_SIGNED_LOCAL_QUALITY_AND_DEFAULT_READINESS_PASS_PROMOTION_BLOCKED"
+}

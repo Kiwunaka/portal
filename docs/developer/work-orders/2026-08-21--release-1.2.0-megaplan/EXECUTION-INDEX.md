@@ -2,6 +2,35 @@
 
 Last updated: 2026-08-31
 
+## 2026-08-31 — WO-013DE candidate.16 readiness correction, signed supply and default-path proof
+
+Signed internal `pokrov-1.2.0-candidate.16` supersedes candidate.14 as current
+authority: platform `719e23d...`, client `75ba7e7...`, Core `cd8f0f4...`,
+release-index source `54cfa03...`, six exact build-4049 artifacts,
+349-component SBOM and six-subject provenance. Release-index PR `#33`, signer
+run `33402507136` and receipt PR `#34` execute real hosted steps successfully.
+Output remains `ACTIONS_ARTIFACT_ONLY`, `promotion_authorized=false`, under the
+explicit owner-solo exception.
+
+Platform PR `#129` rejects false managed-profile readiness and permits pending
+live sync only from a durable confirmed node/key mapping intersected with the
+current eligible pool. The owner-authorized Brain `portal-api` deployment
+passes semantic source readback `197/197` and public health HTTP 200. Platform
+jobs exposing zero executable steps remain `SKIPPED_BY_OWNER`, not PASS.
+
+The complete exact-source local gate passes `15/15` under Node `22.14.0`,
+including `413` client widgets, cabinet `69/69` and static performance `9/9`.
+The exact x86_64 candidate bytes then pass a fresh LDPlayer default-profile
+connection with VPN service, tunnel, managed DNS and authenticated egress, and
+disconnect cleanly. No physical phone was touched.
+
+Candidate.16 AWG 3.1 and AWG2 labs are `NOT_RUN`; candidate.13 success and
+candidate.14 cached-default failure remain history. `W3-02/W3-03` therefore
+stay `I3`. Signed supply and `DEP-001` retain bounded `I4`; Gate F remains
+`NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING`, and Gate G is unauthorized.
+Distribution stays `I4=5`, `I3=317`, `I2=22`, `I1=34`, `I0=0` across `378`
+rows. No tag, public asset, Store object or stable pointer changed.
+
 ## 2026-08-31 — WO-013DD candidate.14 signed supply, local quality and LDPlayer truth
 
 The dependency-refresh successor is now bound to signed internal
