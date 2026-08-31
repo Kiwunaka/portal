@@ -88,13 +88,13 @@ def test_package_windows_script_writes_bundle_manifest() -> None:
     assert 'Write-Host "Windows bundle ready."' in script
 
 
-def test_package_windows_script_builds_unsigned_installer_exe_with_iexpress() -> None:
+def test_package_windows_script_builds_installer_exe_with_inno_setup() -> None:
     script = SCRIPT_PATH.read_text(encoding="utf-8")
 
-    assert "iexpress.exe" in script
-    assert "install-pokrov.ps1" in script
-    assert "Expand-Archive -Path `$zipPath" in script
-    assert "Programs\\\\POKROV" in script
+    assert "Inno Setup 6 (ISCC.exe) is required" in script
+    assert "PrivilegesRequired=admin" in script
+    assert 'Source: "$stagedBundleDirectory\\*"; DestDir: "{app}"' in script
+    assert "DefaultDirName={autopf}\\POKROV" in script
 
 
 def test_package_windows_script_is_documented_as_active_client_release_step() -> None:
@@ -104,8 +104,8 @@ def test_package_windows_script_is_documented_as_active_client_release_step() ->
 
     assert "python scripts/run_client_release_gate.py build --target windows" in deployment_text
     assert "C:/Users/kiwun/Documents/ai/POKROV-app/docs/" in developer_text
-    assert "apps/windows_shell/build/release_bundle/" in cutover_text
-    assert "Windows release state: `unsigned outside-store beta setup EXE refreshed for 1.0.0-beta; live install/app-session smoke remains manual`" in cutover_text
-    assert "public cutover approval: `blocked for a new candidate`" in cutover_text
-    assert "public Windows release approval: `blocked pending trusted-signing PASS for the exact candidate`" in cutover_text
-    assert "repo-backed alpha or beta archive: `allowed`" in cutover_text
+    assert "Windows direct unsigned beta with mandatory SmartScreen warning" in cutover_text
+    assert "`PASS_EXACT_CANDIDATE_13_PACKAGE_IDENTITY`; signing `SKIPPED_BY_OWNER`" in cutover_text
+    assert "The unsigned direct-beta SmartScreen exception does not permit trusted/Store/broad-stable claims" in cutover_text
+    assert "public release/store/stable pointer remain absent" in cutover_text
+    assert "exact host runtime remains manual" in cutover_text

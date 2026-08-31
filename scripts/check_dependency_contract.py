@@ -13,6 +13,13 @@ INSTALL_WORKFLOWS = {
     ".github/workflows/release-orchestrator-manual.yml",
     ".github/workflows/weekly-release-gate-snapshot.yml",
 }
+REQUIRED_TEST_PACKAGES = (
+    "httpx",
+    "httpx2",
+    "jsonschema",
+    "pytest",
+    "pytest-asyncio",
+)
 
 
 def _load_json(path: Path) -> dict:
@@ -135,7 +142,7 @@ def validate_repository(repo_root: Path) -> list[str]:
     test_lock = (repo_root / "requirements-test.txt").read_text(
         encoding="utf-8-sig", errors="replace"
     ).lower()
-    for package in ("httpx2", "pytest"):
+    for package in REQUIRED_TEST_PACKAGES:
         if not re.search(rf"(?m)^{package}==", test_lock):
             problems.append(f"requirements-test.txt: missing pinned {package}")
 

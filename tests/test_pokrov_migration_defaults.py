@@ -182,8 +182,15 @@ def test_client_lane_docs_point_to_pokrov_app_as_development_truth() -> None:
         "Use history to answer why. Never let archive, completed plans, generated "
         "references, or old decisions determine what to implement now."
     ) in app_readme
-    assert "| Target state | `PRE_CANDIDATE_LOCAL` |" in app_cutover
-    assert "| Candidate created | `false` |" in app_cutover
+    assert (
+        "| Continuing source target | `PRE_CANDIDATE_LOCAL` on `POKROV-app/main` |"
+        in app_cutover
+    )
+    assert (
+        "Signed release-index `true`; source seed remains `false`; "
+        "public release/store/stable pointer remain absent"
+        in app_cutover
+    )
     assert "| New public cutover | `BLOCKED` |" in app_cutover
     assert (
         "The existing `1.1.6` publication does not approve new `1.2.0` bytes."

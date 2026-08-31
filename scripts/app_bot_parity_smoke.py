@@ -72,6 +72,7 @@ def build_report(root: str | Path, client_root: str | Path) -> dict[str, Any]:
         portal_bot_path,
         (
             "api.py",
+            "api_client_routes.py",
             "api_public_routes.py",
             "api_surface_routes.py",
             "api_admin_routes.py",

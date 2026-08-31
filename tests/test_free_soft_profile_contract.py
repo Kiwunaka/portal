@@ -21,6 +21,21 @@ if str(PORTAL_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_DIR))
 
 
+@pytest.fixture(autouse=True)
+def _isolate_portal_module_graph(monkeypatch):
+    for module_name in (
+        "api",
+        "config",
+        "db",
+        "free_cycle_service",
+        "models",
+        "node_policy",
+        "node_provisioning_service",
+        "nodes_repo",
+    ):
+        monkeypatch.delitem(sys.modules, module_name, raising=False)
+
+
 def _node(
     code: str,
     role: str,

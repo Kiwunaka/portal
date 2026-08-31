@@ -22,17 +22,17 @@ Canonical inputs:
 - Every non-manual story row has direct automated file evidence.
 - Every active source symbol is listed in `pokrov-code-function-inventory.csv`.
 - Every active source symbol has a tier in `pokrov-symbol-coverage-audit.csv`.
-- Current source-symbol review buckets remain open: `public_symbol_review = 51`,
-  `client_package_public_api_review = 8`, `script_cli_manifest_review = 0`, and
-  `script_cli_active_without_workflow_mapping = 10`.
+- Current source-symbol review buckets remain open: `public_symbol_review = 54`,
+  `client_package_public_api_review = 39`, `script_cli_manifest_review = 0`, and
+  `script_cli_active_without_workflow_mapping = 76`.
 - The dedicated entrypoint-story ledger reports `needs_story_mapping_review = 0`.
   Separately, the source-symbol audit reports
-  `entrypoint_needs_mapping_review = 0`; the dedicated zero does not close the
+  `entrypoint_needs_mapping_review = 2`; the dedicated zero does not close the
   four source-symbol review buckets above.
 - `private_inventory_only` is guarded so it only contains private non-entrypoint
   symbols.
-- `pokrov-private-helper-coverage.csv` currently has 294 private-inventory rows:
-  226 low-risk, 64 medium-risk, and 4 high-risk. It has 294 accepted-policy rows and
+- `pokrov-private-helper-coverage.csv` currently has 953 private-inventory rows:
+  771 low-risk, 177 medium-risk, and 5 high-risk. It has 953 accepted-policy rows and
   0 owner-decision rows under `accepted_story_and_symbol_tiers_q001`; they stay
   tracked as source-inventory-only helpers unless the owner later asks for
   stricter one-test-per-private-helper coverage.
@@ -76,8 +76,8 @@ Use the existing baseline artifact first:
 `docs/developer/pokrov-private-helper-coverage.csv`
 
 It records each private-only symbol with expected behavior, risk, proof status,
-and next action. The current matrix contains 294 rows: 226 low-risk, 64
-medium-risk, and 4 high-risk. Before future implementation under this strict policy, extend it
+and next action. The current matrix contains 953 rows: 771 low-risk, 177
+medium-risk, and 5 high-risk. Before future implementation under this strict policy, extend it
 or create a paired execution ledger:
 
 `docs/developer/pokrov-private-helper-test-matrix.csv`

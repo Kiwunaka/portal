@@ -25,16 +25,111 @@ def _call_name(node: ast.AST) -> str:
     return ""
 
 
+def _is_verified_repo_loader_exec(
+    *,
+    relative_path: str,
+    node: ast.Call,
+    parents: dict[ast.AST, ast.AST],
+) -> bool:
+    if relative_path != "scripts/release_1_2_candidate_rollback_rehearsal.py":
+        return False
+    if len(node.args) != 2 or node.keywords:
+        return False
+    code_arg, namespace_arg = node.args
+    if not isinstance(code_arg, ast.Name) or code_arg.id != "code":
+        return False
+    if not (
+        isinstance(namespace_arg, ast.Attribute)
+        and namespace_arg.attr == "__dict__"
+        and isinstance(namespace_arg.value, ast.Name)
+        and namespace_arg.value.id == "module"
+    ):
+        return False
+
+    scopes: list[str] = []
+    current: ast.AST = node
+    while current in parents:
+        current = parents[current]
+        if isinstance(current, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
+            scopes.append(current.name)
+    return tuple(reversed(scopes)) == (
+        "_VerifiedRepoSourceLoader",
+        "exec_module",
+    )
+
+
+def _synthetic_call(source: str) -> tuple[ast.Call, dict[ast.AST, ast.AST]]:
+    tree = ast.parse(source)
+    parents = {
+        child: parent
+        for parent in ast.walk(tree)
+        for child in ast.iter_child_nodes(parent)
+    }
+    call = next(node for node in ast.walk(tree) if isinstance(node, ast.Call))
+    return call, parents
+
+
+def test_verified_repo_loader_exec_exception_is_exact() -> None:
+    call, parents = _synthetic_call(
+        "class _VerifiedRepoSourceLoader:\n"
+        "    def exec_module(self, module):\n"
+        "        exec(code, module.__dict__)\n"
+    )
+    assert _is_verified_repo_loader_exec(
+        relative_path="scripts/release_1_2_candidate_rollback_rehearsal.py",
+        node=call,
+        parents=parents,
+    )
+
+
+def test_verified_repo_loader_exec_exception_rejects_near_misses() -> None:
+    wrong_scope, wrong_scope_parents = _synthetic_call(
+        "def exec_module(module):\n"
+        "    exec(code, module.__dict__)\n"
+    )
+    assert not _is_verified_repo_loader_exec(
+        relative_path="scripts/release_1_2_candidate_rollback_rehearsal.py",
+        node=wrong_scope,
+        parents=wrong_scope_parents,
+    )
+
+    wrong_args, wrong_args_parents = _synthetic_call(
+        "class _VerifiedRepoSourceLoader:\n"
+        "    def exec_module(self, module):\n"
+        "        exec(unverified, module.__dict__)\n"
+    )
+    assert not _is_verified_repo_loader_exec(
+        relative_path="scripts/release_1_2_candidate_rollback_rehearsal.py",
+        node=wrong_args,
+        parents=wrong_args_parents,
+    )
+
+
 def test_runtime_python_sources_do_not_use_obvious_rce_primitives() -> None:
+    root = Path(__file__).resolve().parents[1]
     findings: list[str] = []
     for path in _python_sources():
         tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
+        relative_path = path.relative_to(root).as_posix()
+        parents = {
+            child: parent
+            for parent in ast.walk(tree)
+            for child in ast.iter_child_nodes(parent)
+        }
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):
                 continue
             name = _call_name(node.func)
             if name in {"eval", "exec"}:
-                findings.append(f"{path}:{node.lineno}: forbidden {name}()")
+                if not (
+                    name == "exec"
+                    and _is_verified_repo_loader_exec(
+                        relative_path=relative_path,
+                        node=node,
+                        parents=parents,
+                    )
+                ):
+                    findings.append(f"{path}:{node.lineno}: forbidden {name}()")
             if name in {"pickle.load", "pickle.loads"}:
                 findings.append(f"{path}:{node.lineno}: forbidden {name}()")
             if name == "yaml.load":
