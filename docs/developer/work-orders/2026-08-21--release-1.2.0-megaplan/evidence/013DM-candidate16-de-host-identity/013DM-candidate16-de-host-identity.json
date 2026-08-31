@@ -1,0 +1,36 @@
+{
+  "schema": "pokrov.release-evidence.owned-node-identity-boundary/v1",
+  "work_order": "WO-013DM",
+  "observed_date": "2026-09-01",
+  "node": "owned-de",
+  "provider": "Datalix",
+  "owner_attestation": {
+    "billing_restored": true,
+    "runtime_health_attested": false,
+    "host_identity_attested": false
+  },
+  "latest_strict_ssh_observation": {
+    "status": "HOST_KEY_CHANGED",
+    "exit_code": 255,
+    "strict_host_key_checking": true,
+    "known_hosts_mutated": false,
+    "remote_command_executed": false
+  },
+  "automatic_recovery_actions": {
+    "new_key_accepted": false,
+    "old_key_removed": false,
+    "strict_checking_disabled": false,
+    "server_mutated": false
+  },
+  "required_owner_console_check": {
+    "command": "ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub -E sha256",
+    "result": "MANUAL_OWNER_TEST",
+    "acceptance": "The provider-console fingerprint must exactly match the separately retained expected fingerprint before known_hosts is changed."
+  },
+  "protocol_effect": {
+    "candidate16_awg2_retest": "NOT_RUN",
+    "candidate16_awg31_retest": "NOT_RUN",
+    "prior_protocol_result_changed": false,
+    "ledger_index_advanced": false
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "schema": "pokrov.release-evidence.windows-current-host/v1",
+  "work_order": "WO-013DL",
+  "observed_at_utc": "2026-08-31T20:43:45.3356028Z",
+  "candidate": {
+    "label": "pokrov-1.2.0-candidate.16",
+    "build": "1.2.0+4049",
+    "platform_commit": "719e23dc49407beb9ae30d98d17d4b73d18ae37c",
+    "client_commit": "75ba7e721cfee486f7189edd51de97aba2746722",
+    "core_commit": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_commit": "54cfa03502ffafa5e4fb230a2cbdb0c0572c429f",
+    "signed_manifest_sha256": "ae1906e68df755b1e0ce6a77d6ede8256f923e72fe11da57f1cae89a82c4ffe6",
+    "detached_signature_sha256": "f5df63578d56db84a48eac1c68f1192e81462e8b407b1b6ff877c2b415507a9a"
+  },
+  "windows_installer": {
+    "sha256": "0afaf6e1d73a7e72762d945557f48793646a9bdbf12bb8ca2e843d4b94df276c",
+    "size_bytes": 28932793,
+    "authenticode": "NotSigned",
+    "signing_result": "SKIPPED_BY_OWNER",
+    "owner_exception": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0"
+  },
+  "client_release_gate_change": {
+    "pull_request": "Kiwunaka/POKROV-app#49",
+    "implementation_commit": "cbc4a1209da005d5e062d0a02bb7df766fd2c4b5",
+    "main_merge_commit": "8f41214fa346bd71701f7b9b7633631c33acac93",
+    "hosted_run_id": 33438226147,
+    "hosted_job_id": 99639770629,
+    "hosted_steps_count": 0,
+    "hosted_result": "HOSTED_CHECK_BLOCKED_BY_BILLING",
+    "merge_authority": "OWNER_SOLO_EXCEPTION"
+  },
+  "validation_only": {
+    "status": "PASS_VALIDATION_ONLY",
+    "evidence_sha256": "9ec141eacb95378b34fd5959dc02fe16ea50f5ca344c4c27d62440c0712745bd"
+  },
+  "current_host_idle_slice": {
+    "status": "PASS_EXACT_CANDIDATE_CURRENT_HOST_CLEAN_APP_STATE_INSTALL_SERVICE_IPC_RESTART_UNINSTALL_IDLE_NETWORK",
+    "host_claim": "clean_app_state_only_not_clean_os_or_vm",
+    "checks": [
+      "exact installer identity",
+      "clean POKROV application-state baseline",
+      "machine-wide install",
+      "8/8 installed-file identity",
+      "automatic LocalSystem service and install-owner binding",
+      "authenticated installed UI/service IPC and status request",
+      "SCM stop and restart",
+      "clean uninstall",
+      "unchanged idle route and DNS fingerprints",
+      "zero residual POKROV/Wintun adapter"
+    ],
+    "evidence_sha256": "42d39bf86801ac5d4af50be1a32fa4172b69bc13025a19ab26970a956d1e0db1"
+  },
+  "connected_attempt": {
+    "status": "NOT_PROVED_CURRENT_HOST_ACCOUNT_NOT_READY",
+    "interactive_observation": "The installed app reported that account preparation was incomplete and did not enter connected state.",
+    "connected_probe": null,
+    "harness_result": "FAIL_CONNECTED_CONFIRMATION_ABORTED",
+    "cleanup": {
+      "service_absent": true,
+      "install_directory_absent": true,
+      "registry_absent": true,
+      "tunnel_adapter_count": 0,
+      "route_restored": true,
+      "dns_restored": true
+    },
+    "evidence_sha256": "0193b11d8b914643f3e27bc2dcadbdd81d529b9162c8664e92afb729f1916e32"
+  },
+  "remaining_checks": [
+    "isolated clean Windows 10/11 host",
+    "live TUN and full-tunnel traffic",
+    "connected DNS capture and leak protection",
+    "authenticated egress through an owned profile",
+    "sleep, reboot and crash recovery",
+    "uninstall while connected",
+    "interactive SmartScreen reputation observation"
+  ],
+  "release_effect": {
+    "public_release_created": false,
+    "stable_pointer_mutated": false,
+    "production_mutated": false,
+    "gate_f_advanced": false,
+    "gate_g_authorized": false
+  }
+}
