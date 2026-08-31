@@ -1,0 +1,91 @@
+{
+  "schema": "pokrov.release-1.2.0.linux-journald-native-proof/v1",
+  "recorded_at_utc": "2026-08-31T19:05:00Z",
+  "work_order": "WO-013DJ",
+  "signed_candidate": {
+    "id": "pokrov-1.2.0-candidate.16",
+    "client_source": "75ba7e721cfee486f7189edd51de97aba2746722",
+    "changed": false,
+    "linux_artifact_present": false
+  },
+  "client_successor": {
+    "pull_request": 47,
+    "head": "f191e70724e93ccb3167a06b5ea8c0a169644cde",
+    "main_merge": "6470d760a12c26e2c5f01354e83f20e89185711b",
+    "base": "75ba7e721cfee486f7189edd51de97aba2746722",
+    "production_behavior_changed": false,
+    "added_proof": [
+      "native_unix_datagram_delivery",
+      "missing_socket_closed_fallback",
+      "opt_in_owned_host_live_journald_probe"
+    ]
+  },
+  "verification": {
+    "go_version": "go1.25.13",
+    "windows_journal_and_daemon_tests": "PASS",
+    "linux_arm64_cross_vet_build": "PASS",
+    "owned_linux_host": {
+      "model": "Raspberry Pi 4 Model B Rev 1.2",
+      "os": "debian-13",
+      "architecture": "aarch64",
+      "systemd_version": 257,
+      "test_binary_sha256": "87607b7fa95d19cb431d2afba459c27010006c174429b1615f33f26e6339b394",
+      "native_socket_test": "PASS",
+      "real_missing_socket_fallback_test": "PASS",
+      "live_journald_write": "PASS",
+      "sanitized_journalctl_readback": "PASS",
+      "event_time_utc": "2026-08-31T18:52:39.4490000Z",
+      "safe_fields": {
+        "schema": "pokrov-linux-operational-v1",
+        "event": "request",
+        "outcome": "pass",
+        "correlation_id": "obs043-live-probe",
+        "generation": "43",
+        "syslog_identifier": "pokrov-linuxd",
+        "transport": "journal"
+      },
+      "temporary_remote_state_removed": true
+    },
+    "full_client_gate": "PASS",
+    "android_direct_store_gradle": "PASS",
+    "release_artifact_delta": false,
+    "github_hosted": {
+      "status": "HOSTED_CHECK_BLOCKED_BY_BILLING",
+      "run_id": 33428507999,
+      "job_id": 99607867109,
+      "steps": 0,
+      "owner_solo_exception": true
+    }
+  },
+  "mutation_boundary": {
+    "one_safe_probe_event_emitted": true,
+    "service_installed": false,
+    "systemd_unit_changed": false,
+    "service_restarted": false,
+    "network_state_changed": false,
+    "journal_rotation_forced": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_changed": false,
+    "physical_android": "NOT_RUN"
+  },
+  "completion_index": {
+    "OBS/OBS-043": "I2_TO_I3_NATIVE_JOURNAL_PROVEN_CURRENT_SUCCESSOR_SOURCE",
+    "OBS/OBS-045": "I2_UNCHANGED",
+    "REL/LNX-001": "I3_UNCHANGED",
+    "REL_GATE/GATE-C": "I3_UNCHANGED",
+    "distribution": {
+      "I4": 5,
+      "I3": 318,
+      "I2": 21,
+      "I1": 34,
+      "I0": 0,
+      "total": 378
+    }
+  },
+  "external_evidence": {
+    "path": "E:\\POKROV-tools\\release-evidence\\1.2.0-successor-linux-journald-2026-08-31\\obs043-linux-journald-live.json",
+    "sha256": "465ed2f41b57b23307bdcf0f6427c73a6d737448d1954e0f16284dbf597814a3"
+  },
+  "evidence_ceiling": "I3_CURRENT_SUCCESSOR_SOURCE_NATIVE_JOURNAL_PROVEN; SIGNED_CANDIDATE16_UNCHANGED; UBUNTU24_SIGNED_PACKAGE_INSTALL_SERVICE_LIFECYCLE_RETENTION_ROTATION_AND_CLEAN_HOST_PROOF_OPEN"
+}

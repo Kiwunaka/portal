@@ -2,6 +2,31 @@
 
 Last updated: 2026-08-31
 
+## 2026-08-31 — WO-013DJ Linux native journald proof
+
+Client PR 47, derived from candidate.16 client source `75ba7e7...`, keeps the
+production Linux journal behavior unchanged while adding a package-private
+native socket seam, one Unix-datagram delivery test, a real missing-socket
+fallback test and an opt-in owned-host live probe. The PR head `f191e70...`
+merges to client `main` as `6470d76...`.
+
+Go `1.25.13` journal/full-daemon tests and Linux/ARM64 cross-vet/build pass.
+The exact ARM64 test binary then passes native-socket and closed-fallback tests
+on the owner's Raspberry Pi 4. One bounded event is written through the real
+journald socket and sanitized `journalctl` readback returns only the expected
+`pokrov-linux-operational-v1` fields with `transport=journal`. Temporary remote
+state is removed; no daemon installation, service restart, network change or
+host-wide journal rotation occurs. The full client gate, including Android
+direct/store Gradle lanes, also passes.
+
+Hosted run `33428507999`, job `99607867109`, ends with zero steps because of
+GitHub billing and is `HOSTED_CHECK_BLOCKED_BY_BILLING`; the authorized solo
+exception is not reported as hosted PASS. `OBS/OBS-043` advances `I2 -> I3` for
+current successor source. Candidate.16 and Linux release scope are unchanged;
+signed Ubuntu 24.04 package/lifecycle/retention/rotation proof remains I4 work.
+The distribution becomes `I4=5`, `I3=318`, `I2=21`, `I1=34`, `I0=0` across
+`378` rows.
+
 ## 2026-08-31 — WO-013DI candidate.16 isolated rollback rehearsal
 
 The signed candidate.16 manifest, receipt, detached Ed25519 signature and exact
