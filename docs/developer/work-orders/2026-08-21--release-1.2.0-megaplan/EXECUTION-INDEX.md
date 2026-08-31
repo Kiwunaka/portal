@@ -1,6 +1,39 @@
 # POKROV 1.2.0 Execution Index
 
-Last updated: 2026-08-31
+Last updated: 2026-09-01
+
+## 2026-09-01 — WO-013DM DE billing restored, host identity still manual
+
+The owner attests that the Datalix account is paid. The latest strict SSH
+observation still stops with `HOST_KEY_CHANGED` and exit code `255`, while the
+local `known_hosts` file remains unchanged. No new key is accepted, no old
+entry is removed, strict checking is not disabled and no remote command runs.
+
+Provider payment is not host-identity or runtime-health proof. The owner must
+compare the ED25519 host-key fingerprint from the provider console with the
+separately retained expected value before trust is updated. `AWG-10` stays
+`I2`; `W3-02/W3-03` stay `I3`; candidate.16 AWG2/AWG3.1 retry remains
+`NOT_RUN`. No gate or ledger row advances and the distribution stays
+`I4=5`, `I3=319`, `I2=20`, `I1=34`, `I0=0` across `378` rows.
+
+## 2026-08-31 — WO-013DL candidate.16 Windows current-host exact install proof
+
+The exact unsigned candidate.16 setup `0afaf6e...` validates against the signed
+manifest and source tuple, then passes a bounded owner-current-host run from a
+clean POKROV application-state baseline. Install succeeds; all `8/8` files
+match; the automatic LocalSystem service and install-owner binding are exact;
+authenticated UI/service IPC plus a status request are observed; SCM restart,
+uninstall and unchanged idle route/DNS fingerprints pass with no residual
+adapter.
+
+This is not a clean OS or VM claim. The app reports incomplete account
+preparation and never enters connected state, so the connected harness is
+aborted and clean rollback is retained rather than reporting TUN/DNS/egress.
+Client PR 49 merges the guarded candidate.16 gate as `8f41214...`; hosted run
+`33438226147` has `steps=[]` and remains
+`HOSTED_CHECK_BLOCKED_BY_BILLING` under the solo exception. No row advances;
+the distribution stays `I4=5`, `I3=319`, `I2=20`, `I1=34`, `I0=0` across
+`378` rows. Live connected Windows and clean Windows 10/11 remain open.
 
 ## 2026-08-31 — WO-013DJ Linux native journald proof
 

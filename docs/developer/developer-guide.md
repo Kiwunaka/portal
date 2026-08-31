@@ -38,7 +38,7 @@ meaningful risk requires a work order.
   package line is `1.1.6+29`. The source seed remains `1.2.0+4049` /
   `PRE_CANDIDATE_LOCAL` with `candidate_created=false`, while the separately
   generated strict-v2 handoff and signed public-index receipt own immutable
-  private `pokrov-1.2.0-candidate.13`. It is artifact-only and not public or
+  private `pokrov-1.2.0-candidate.16`. It is artifact-only and not public or
   promoted. Store publication, trusted Windows signing and exact-candidate
   physical Android/RU-mobile claims remain separate manual gates.
 - Public and development version truth is owned by the client
