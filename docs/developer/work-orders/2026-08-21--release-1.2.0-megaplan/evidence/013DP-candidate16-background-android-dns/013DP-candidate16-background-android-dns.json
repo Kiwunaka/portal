@@ -1,0 +1,84 @@
+{
+  "schema": "pokrov.release-1.2.0.background-android-dns-evidence/v1",
+  "recorded_at_utc": "2026-08-31T22:37:34Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.16",
+    "package_version": "1.2.0+4049",
+    "physical_arm64_artifact_sha256": "9bcdbe00fe8f8ed029894a65d531614f4fb912dda27e5fb1bb088c5b7516cc74",
+    "ldplayer_x86_64_artifact_sha256": "73c43e21dfc984c474941e14800c551f9545fe423b8f11458f6d41b8cb9af5ff"
+  },
+  "adb": {
+    "implementation": "Android SDK platform-tools",
+    "authorized_device_count": 2,
+    "raw_identifiers_retained": false
+  },
+  "physical_android": {
+    "device_class": "owner_physical_android_12_arm64",
+    "installed_version": "1.2.0+4049",
+    "pokrov_process": "absent",
+    "tun0": "absent",
+    "public_dns_name_resolution": "PASS_DNS_AND_ICMP",
+    "direct_doh_probe": "NOT_RUN_TOOL_ABSENT",
+    "app_launched_by_test": false,
+    "screen_control_used": false,
+    "evidence_ceiling": "OS_HOSTNAME_REACHABILITY_ONLY"
+  },
+  "ldplayer": {
+    "device_class": "ldplayer_android_9_x86_64",
+    "installed_version": "1.2.0+4049",
+    "pokrov_process_before_probe": "present_from_prior_state",
+    "tun0": "absent",
+    "public_dns_name_resolution": "PASS_DNS_AND_ICMP",
+    "empty_doh_request_http_status": 400,
+    "valid_doh_queries": [
+      {
+        "query_class": "outside_policy_control",
+        "http_status": 200,
+        "dns_status": "REFUSED",
+        "answer_count": 0
+      },
+      {
+        "query_class": "chatgpt",
+        "http_status": 200,
+        "dns_status": "NOERROR",
+        "answer_count": 1
+      },
+      {
+        "query_class": "gemini",
+        "http_status": 200,
+        "dns_status": "NOERROR",
+        "answer_count": 1
+      },
+      {
+        "query_class": "xbox",
+        "http_status": 200,
+        "dns_status": "NOERROR",
+        "answer_count": 1
+      }
+    ],
+    "app_launched_by_test": false,
+    "vpn_runtime_test_run": false,
+    "screen_control_used": false,
+    "evidence_ceiling": "DIRECT_ANDROID_EMULATOR_DOH_TLS_AND_POLICY_RESPONSE_ONLY"
+  },
+  "classification": {
+    "smart_dns_direct_ldplayer_transport": "PASS",
+    "smart_dns_policy_shape": "PASS_BOUNDED_CHATGPT_GEMINI_XBOX_WITH_OUTSIDE_POLICY_REFUSED",
+    "physical_phone_doh": "NOT_RUN_TOOL_ABSENT",
+    "client_setting_or_vpn_integration": "NOT_RUN",
+    "authenticated_application_session": "NOT_RUN",
+    "leak_privacy_load_lifecycle": "NOT_RUN",
+    "gate_f_effect": "NONE_RETAINS_NO_GO_2_PASS_17_NON_PASS_2_FAIL",
+    "completion_index_effect": "NONE_SMARTDNS_01_REMAINS_I3"
+  },
+  "mutation_boundary": {
+    "app_launched": false,
+    "vpn_started": false,
+    "device_setting_changed": false,
+    "screen_control": false,
+    "server_or_dns_mutation": false,
+    "public_release": false,
+    "stable_pointer_mutated": false
+  },
+  "evidence_ceiling": "PASS_LDPLAYER_DIRECT_DOH_TLS_AND_BOUNDED_POLICY_RESPONSE; PHYSICAL_OS_DNS_REACHABILITY_PASS; NO_CLIENT_INTEGRATION_PHYSICAL_DOH_GATE_F_OR_PROMOTION_CREDIT"
+}
