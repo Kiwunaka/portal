@@ -300,6 +300,30 @@ def test_fronted_apply_and_rollback_are_loopback_only_and_firewall_neutral(
     assert "python3 -c" in install
     assert "192.0.2.10" in MODULE._FRONTED_DOH_PROBE_HELPER
     assert "HTTP/1.1 400" in MODULE._FRONTED_DOH_PROBE_HELPER
+    assert "install-step" in install
+    assert "local_probe_passed" in install
+    assert "final_readback_passed" in install
+
+
+def test_retained_release_reuse_requires_exact_immutable_member_contract(
+    tmp_path: Path,
+) -> None:
+    _path, manifest, _contents, digest = MODULE._validated_local_bundle(
+        _synthetic_bundle(tmp_path), MODULE.FRONTED_LISTENER_MODE
+    )
+    release = f"{MODULE.RELEASE_ROOT}/{digest}"
+    command = MODULE._retained_release_verification_command(
+        release_dir=release, manifest=manifest
+    )
+
+    assert "sha256sum" in command
+    assert "stat -c %s" in command
+    assert "stat -c %a" in command
+    assert "! -type d ! -type f" in command
+    assert not any(line.startswith("rm ") for line in command.splitlines())
+    for member, record in manifest["members"].items():
+        assert f"{release}/{member}" in command
+        assert record["sha256"] in command
 
 
 def test_fresh_install_rejects_port_path_firewall_or_material_conflicts() -> None:
@@ -342,6 +366,20 @@ def test_fronted_fresh_install_ignores_public_443_and_ufw_but_requires_loopback(
         "runtime_material_ready": True,
     }
     MODULE._assert_fresh_install_preflight(ready, MODULE.FRONTED_LISTENER_MODE)
+
+    retained = {**ready, "occupied_targets": ["release"]}
+    with pytest.raises(
+        MODULE.SmartDNSRemoteOperationError,
+        match="install_target_already_present",
+    ):
+        MODULE._assert_fresh_install_preflight(
+            retained, MODULE.FRONTED_LISTENER_MODE
+        )
+    MODULE._assert_fresh_install_preflight(
+        retained,
+        MODULE.FRONTED_LISTENER_MODE,
+        allow_retained_exact_release=True,
+    )
 
     with pytest.raises(
         MODULE.SmartDNSRemoteOperationError,
