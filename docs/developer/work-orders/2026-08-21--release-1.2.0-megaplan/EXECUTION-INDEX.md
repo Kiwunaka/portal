@@ -2,6 +2,37 @@
 
 Last updated: 2026-08-31
 
+## 2026-08-31 — WO-013DD candidate.14 signed supply, local quality and LDPlayer truth
+
+The dependency-refresh successor is now bound to signed internal
+`pokrov-1.2.0-candidate.14`: exact platform `6f694d0...`, client `75ba7e7...`,
+Core `cd8f0f4...`, six build-4049 artifacts, 349-component SBOM, six-subject
+provenance and the hosted Ed25519 receipt. Output remains
+`ACTIONS_ARTIFACT_ONLY` with `promotion_authorized=false`. The exact refreshed
+locks install and audit clean, and `REL/DEP-001` advances `I3 -> I4`.
+
+The complete exact-source local quality gate passes `15/15`: client analysis,
+`413` widget tests, cabinet Playwright `69/69`, marketing/admin builds and
+static performance `9/9`. Its own verdict remains honest:
+`local_status=PASS`, `candidate_proven=false`,
+`promotion_status=MANUAL_OWNER_TEST`.
+
+LDPlayer installs the exact candidate.14 x86_64 bytes and passes cold launch,
+default-profile VPN service, tunnel, managed DNS and authenticated egress. The
+guarded AWG 3.1 and AWG2 control-plane selections succeed, but neither requested
+runtime profile is staged: every sanitized readback remains cached `default`,
+including after reconnect and repair. Both current-candidate lab outcomes are
+`FAIL_MANAGED_PROFILE_ACTIVATION_CACHED_DEFAULT`; this does not prove a
+protocol-engine result. Cleanup restores default/no-lab/disconnected state.
+
+Candidate.13's successful emulator result remains immutable history and is not
+transferred. `FRKN_PLAN/W3-02` and `W3-03` return `I4 -> I3` for the current
+candidate. Distribution becomes `I4=5`, `I3=317`, `I2=22`, `I1=34`, `I0=0`
+across `378` rows. Gate F remains
+`NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING`; clean Windows, physical Android,
+RU origin, provider/Operator/legal/runtime rollback/performance rows remain
+open. No public or stable mutation occurred.
+
 ## 2026-08-31 — WO-013DC candidate.13 successor dependency refresh
 
 Candidate.13 and current platform base carry byte-identical Python dependency
