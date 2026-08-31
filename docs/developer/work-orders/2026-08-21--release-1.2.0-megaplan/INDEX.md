@@ -60,6 +60,16 @@ because the bundle and operator corrections postdate immutable candidate.16
 and client selection remains disabled; no Gate F/G or public-release credit is
 transferred.
 
+WO-013DH classifies the shared candidate.16 AWG egress boundary without
+changing protocol parameters. Exact candidate.16 Core runners for AWG2 and
+AWG3.1 on the owned RU Pi both receive no outer response while using the same
+material fingerprints as older passing Core runs. The owner attests the
+Datalix account was unpaid; a later current/RU recovery check finds partial TCP
+acceptance but no SSH banner or ordinary service readback on either DE address.
+This is `PROVIDER_RECOVERY_INCOMPLETE`, not a protocol FAIL or PASS. AWG-10
+stays `I2`, W3-02/W3-03 stay `I3`, and exact-Core retry waits for real node
+health.
+
 Candidate.16's release-index signer output is `ACTIONS_ARTIFACT_ONLY`,
 `promotion_authorized=false`. The strict-v2 handoff and signed receipt are the
 candidate authority. Gate F is
@@ -381,6 +391,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013DE` | Sign candidate.16 after correcting managed-profile readiness, prove the bounded Brain deploy, exact local quality and ordinary LDPlayer path | Exact candidate supply, platform runtime, quality and Android emulator evidence | The confirmed-node/key fallback rejects false ready state; Brain `portal-api` source readback passes `197/197`; signed six-artifact supply and local quality `15/15` pass; exact x86_64 default tunnel/DNS/egress passes. Candidate.16 AWG3.1/AWG2 labs are `NOT_RUN`; `DEP-001` retains `I4`, `W3-02/W3-03` stay `I3`, and Gate F remains not run | `WO-013DD`, platform PR 129, exact platform/client/Core/release-index sources, signed candidate.16 artifacts and LDPlayer; run current-candidate labs, exact physical Android and isolated Windows before Gate F |
 | `WO-013DF` | Repeat candidate.16 AWG 3.1 and AWG2 on LDPlayer and retain exact fail-closed truth | Exact candidate Android emulator and transport evidence | Both guarded binds and exact runtime profile activations pass; each creates VPN/tun0, managed DNS and IPv4 routes, then fails authenticated egress without false green. Each removes the VPN. Final default cleanup/reconnect/disconnect passes. `W3-02/W3-03` stay `I3`; Gate F remains not run | `WO-013DE`, exact candidate.16 x86_64 artifact and owned LDPlayer; isolate the shared egress boundary, then complete physical Android and Windows without transferring older proof |
 | `WO-013DG` | Deploy the exact Smart DNS bundle on `it`, prove bounded live behavior and execute receipt-bound rollback/re-apply | Current platform runtime, owned-node and three-origin evidence | DNS is authoritative `4/4`; trusted runtime, backend and HAProxy route APPLY pass; real frontend/backend rollback, exact-release verification and re-APPLY pass; current/Brain/RU DoH and TLS/SNI probes agree; ordinary `it` health remains green. The service stays client-disabled/default-off and postdates candidate.16, so `SMARTDNS-01` remains `I3` and release gates do not advance | `WO-013CK`, `WO-013DB`, exact `650dc3f...` bundle and owner-authorized `it` runtime; bind to a successor candidate only if shipping Smart DNS in 1.2.0 |
+| `WO-013DH` | Classify the candidate.16 AWG no-response result against DE provider state and guard the retry boundary | Exact candidate Core, RU Pi and owned-node availability evidence | Exact AWG2/AWG3.1 Core runners cleanly return no outer response; material fingerprints match older passing inputs, but no PASS transfers. Owner attests Datalix was unpaid; current/RU recovery checks find partial TCP acceptance with no SSH banner or service readback. Result is provider recovery incomplete, protocol not run. `AWG-10` stays `I2`, `W3-02/W3-03` stay `I3`, Gate F unchanged | `WO-013DF`, exact candidate.16 Core and owned RU Pi; wait for DE SSH plus ordinary service readback, then alignment, exact-Core retry and only then LDPlayer |
 
 ## Current evidence
 
@@ -473,6 +484,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013DF-candidate16-awg-ldplayer/`
 - `WO-013DG-smart-dns-it-live-and-rollback.md`
 - `evidence/013DG-smart-dns-it-live-and-rollback/`
+- `WO-013DH-candidate16-de-provider-outage.md`
+- `evidence/013DH-candidate16-de-provider-outage/`
 - `WO-013BS-candidate6-ru-origin-environment-preflight.md`
 - `WO-013BT-candidate6-hy2-artifact-and-plan.md`
 - `WO-013BU-candidate6-ru-origin-bundle-and-install-plan.md`
@@ -925,12 +938,15 @@ authenticated egress on LDPlayer, then disconnects cleanly.
 WO-013DF proves that both current AWG profiles now activate exactly and create
 tunnel, DNS and routes, closing the cached-default defect. Both fail the
 authenticated-egress check and remove the VPN without false green. The owner
-now attests that the Datalix DE provider account was unpaid during the shared
-endpoint outage. Treat this as the leading provider-state explanation, not a
-protocol result: after payment and provider recovery, first prove ordinary DE
-reachability, then rerun exact-Core AWG2 and AWG3.1 from the owned RU Pi and
-only then repeat candidate.16 on LDPlayer. Do not spend the release lane on
-SPB or alter protocol parameters while the node itself is unavailable.
+attests that the Datalix DE provider account was unpaid during the shared
+endpoint outage. WO-013DH adds exact candidate.16 Core no-response results and
+a current/RU recovery check: TCP acceptance has partly returned, but neither
+DE address emits an SSH banner or supplies ordinary service readback. Treat
+this as `PROVIDER_RECOVERY_INCOMPLETE`, not a protocol result. After full
+provider recovery, first prove ordinary DE health, then rerun alignment and
+exact-Core AWG2/AWG3.1 from the owned RU Pi, and only then repeat candidate.16
+on LDPlayer. Do not spend the release lane on SPB or alter protocol parameters
+while the node itself is unavailable.
 
 WO-013DG independently closes the current-runtime Smart DNS server/rollback
 slice. The live service remains client-disabled and post-candidate, so it does

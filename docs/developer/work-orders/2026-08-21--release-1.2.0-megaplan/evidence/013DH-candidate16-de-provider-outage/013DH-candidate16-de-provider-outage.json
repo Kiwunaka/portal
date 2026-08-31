@@ -1,0 +1,71 @@
+{
+  "schema": "pokrov-release-1.2.0-work-order-evidence-v1",
+  "work_order": "WO-013DH",
+  "observed_at": {
+    "exact_core_start": "2026-08-31T16:22:15Z",
+    "provider_recovery_check": "2026-08-31T18:16:59Z"
+  },
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.16",
+    "version": "1.2.0+4049",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d"
+  },
+  "execution": {
+    "origin": "ru-origin",
+    "host_class": "owned_raspberry_pi_4",
+    "architecture": "linux_arm64",
+    "direct_default_route_preflight": true,
+    "server_mutated": false,
+    "runtime_mutated": false,
+    "raw_material_returned": false,
+    "temporary_remote_state_removed": true
+  },
+  "awg2": {
+    "binary_sha256": "2fc69b97c198c35d8c2995a564d6ef81bd3ecd2d8b4b128bda79609164033ae0",
+    "material_sha256": "07ae6a2f8bdbfc3bd78bb6fabf105db5380f1bf9a0989efed7a8330d0f7648a9",
+    "outcome": "failed_no_outer_response",
+    "protocol_result": "NOT_RUN_PROVIDER_OUTAGE"
+  },
+  "awg31": {
+    "binary_sha256": "9f5f53bd755d06ddac384b104be3d4a3659feaf6a25095477eba08e896a1bb7c",
+    "material_sha256": "7effbffdbab9013e682f60832c89d488ef0ecfe0829c4e8acb788918bbfaea50",
+    "outcome": "failed_no_outer_response",
+    "protocol_result": "NOT_RUN_PROVIDER_OUTAGE"
+  },
+  "material_comparison": {
+    "candidate10_awg2_material_match": true,
+    "candidate10_awg31_material_match": true,
+    "older_pass_transferred": false
+  },
+  "provider": {
+    "name": "datalix",
+    "owner_attestation": "ACCOUNT_WAS_UNPAID_PAYMENT_CORRECTION_IN_PROGRESS",
+    "recovery_state": "INCOMPLETE",
+    "current_origin_primary_tcp_accept": true,
+    "current_origin_primary_ssh_banner": false,
+    "current_origin_secondary_ssh_banner": false,
+    "ru_origin_primary_ssh_banner": false,
+    "ru_origin_secondary_ssh_banner": false,
+    "ordinary_service_readback": "NOT_RUN_NODE_UNRESPONSIVE",
+    "alignment": "NOT_RUN_TO_COMPLETION_NODE_UNRESPONSIVE"
+  },
+  "classification": {
+    "shared_owned_endpoint_outage": true,
+    "candidate16_protocol_interop": "NOT_RUN_AFTER_PROVIDER_OUTAGE_CLASSIFICATION",
+    "ldplayer_egress_failure_converted_to_pass": false,
+    "physical_device_touched": false
+  },
+  "completion_index": {
+    "FRKN_AWG/AWG-10": "I2_CANDIDATE16_RU_FIXED_ATTEMPT_PROVIDER_OUTAGE_PROTOCOL_OPEN",
+    "FRKN_PLAN/W3-02": "I3_EXACT_PROFILE_ACTIVATION_PASS_PROVIDER_OUTAGE_PROTOCOL_OPEN",
+    "FRKN_PLAN/W3-03": "I3_DNS_ROUTES_PASS_PROVIDER_OUTAGE_TRAFFIC_MATRIX_OPEN",
+    "REL_GATE/GATE-F": "UNCHANGED_NOT_RUN",
+    "gate_g": "NOT_AUTHORIZED"
+  },
+  "evidence_sha256": {
+    "candidate16_awg2_core_interop_ru_pi": "1928f39d91ee1dd1ff871b94c0cd88fd8e9cc92ca63eba065264d767a3d2515e",
+    "candidate16_awg31_core_interop_ru_pi": "58bc1df0d61bd132b4a6085d33c20c335d636ed79256d3871bc29a31cf870084",
+    "de_provider_recovery_check": "09871d66b90dc841e5a12f397d64ac191833d10bbea91023faca8d89fa2508fa"
+  },
+  "next_condition": "DE_SSH_AND_ORDINARY_SERVICE_READBACK_PASS_BEFORE_ALIGNMENT_AND_EXACT_CORE_RETRY"
+}
