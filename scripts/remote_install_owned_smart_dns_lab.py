@@ -877,6 +877,15 @@ def _install_command(
     listener_mode: str = DEDICATED_LISTENER_MODE,
 ) -> str:
     listener = _listener_spec(listener_mode)
+    listener_checks: list[str] = []
+    for index, command in enumerate(_listener_started_commands(listener_mode), 1):
+        passed = f"listener_check_{index}_passed"
+        failed = f"listener_check_{index}_failed"
+        listener_checks.append(
+            f"if {command}; then printf '{passed}\\n' > "
+            f"{_q(backup_dir + '/install-step')}; else printf '{failed}\\n' > "
+            f"{_q(backup_dir + '/install-step')}; exit 1; fi"
+        )
     lines = [
         "set -e",
         f"printf 'install_started\\n' > {_q(backup_dir + '/install-step')}",
@@ -911,7 +920,7 @@ def _install_command(
             f"systemctl start {_q(SERVICE_NAME)}",
             f"test \"$(systemctl is-active {_q(SERVICE_NAME)})\" = active",
             f"printf 'service_active\\n' > {_q(backup_dir + '/install-step')}",
-            *_listener_started_commands(listener_mode),
+            *listener_checks,
             f"printf 'local_probe_passed\\n' > {_q(backup_dir + '/install-step')}",
             *(
                 [

@@ -301,6 +301,9 @@ def test_fronted_apply_and_rollback_are_loopback_only_and_firewall_neutral(
     assert "192.0.2.10" in MODULE._FRONTED_DOH_PROBE_HELPER
     assert "HTTP/1.1 400" in MODULE._FRONTED_DOH_PROBE_HELPER
     assert "install-step" in install
+    assert "listener_check_1_failed" in install
+    assert "listener_check_2_failed" in install
+    assert "listener_check_3_failed" in install
     assert "local_probe_passed" in install
     assert "final_readback_passed" in install
 
