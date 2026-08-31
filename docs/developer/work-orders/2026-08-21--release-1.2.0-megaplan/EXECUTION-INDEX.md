@@ -2,6 +2,36 @@
 
 Last updated: 2026-08-31
 
+## 2026-08-31 — WO-013DG Smart DNS `it` live deployment and rollback proof
+
+All four delegated Timeweb nameservers now return the authorized
+`dns.pokrov.space` owned-node A record. The guarded runtime APPLY issues a
+server-side trusted certificate, installs renewal support and leaves private
+material on the node. The exact `650dc3f...` bundle
+`cda97da...0225` starts behind the owned HAProxy frontend on loopback
+TCP/18443 with mandatory PROXY v2, client selection disabled and no
+public-firewall mutation.
+
+Three initial backend attempts fail closed and restore safe state. Platform
+PRs 132–135 correct authenticated-origin DNS resolution, exact retained-release
+retry and bounded listener-readiness evidence. The final focused pack passes
+`80/80`; hosted jobs expose zero executable steps because of GitHub billing
+and remain `HOSTED_CHECK_BLOCKED_BY_BILLING`, with merges performed under the
+authorized `OWNER_SOLO_EXCEPTION`.
+
+A real receipt-bound drill rolls back the frontend and backend, proves the
+service inactive and listener free with only the immutable release retained,
+then reverifies and re-applies both layers. Fresh current-, Brain- and RU-origin
+probes agree: malformed DoH returns 400, allowlisted A returns one owned-proxy
+answer, AAAA returns NODATA, outside policy returns REFUSED, and TLS 1.3 reaches
+ChatGPT, Gemini and Xbox origins. Ordinary `it` health remains green.
+
+`FRKN_SMART_DNS/SMARTDNS-01` remains `I3` as
+`LIVE_CURRENT_RUNTIME_PROVEN_CANDIDATE16_BINDING_OPEN`. The live bundle and
+operation corrections postdate immutable candidate.16 and client selection is
+still default-off, so Gate F, Gate G, public assets, Store state and the stable
+pointer do not advance. The 378-row distribution is unchanged.
+
 ## 2026-08-31 — WO-013DF candidate.16 AWG 3.1 and AWG2 LDPlayer result
 
 The exact signed candidate.16 x86_64 bytes independently close candidate.14's

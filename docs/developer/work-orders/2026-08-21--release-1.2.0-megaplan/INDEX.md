@@ -1,9 +1,9 @@
 # POKROV 1.2.0 Megaplan — Wave Index
 
-Last updated: 2026-08-30
+Last updated: 2026-08-31
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_CANDIDATE13_SIGNED_LDPLAYER_I4_GATE_F_NOT_RUN_PHYSICAL_WINDOWS_ORIGINS_MANUAL`
-Release candidate: `POKROV_1_2_0_CANDIDATE13_SIGNED_PRIVATE_ACTIONS_ARTIFACT_ONLY_PROMOTION_NOT_AUTHORIZED`
+Wave status: `PHASE_11_CANDIDATE16_SIGNED_DEFAULT_PASS_AWG_EGRESS_FAIL_GATE_F_NOT_RUN_PHYSICAL_WINDOWS_ORIGINS_MANUAL`
+Release candidate: `POKROV_1_2_0_CANDIDATE16_SIGNED_PRIVATE_ACTIONS_ARTIFACT_ONLY_PROMOTION_NOT_AUTHORIZED`
 
 ## Outcome
 
@@ -49,6 +49,17 @@ tunnel, DNS and IPv4 routes, but neither confirms authenticated egress. The app
 stays non-green and removes the VPN. Final default cleanup and reconnection
 pass. The physical phone remains `MANUAL_OWNER_TEST` and was not touched.
 
+WO-013DG supersedes the Phase 10 row's earlier uninstalled Smart DNS boundary.
+The owner-authorized `dns.pokrov.space` record is authoritative `4/4`; the exact
+`650dc3f...` bundle is live default-off on the foreign `it` canary behind the
+owned HAProxy frontend. Certificate/runtime, backend and route APPLY pass. A
+real receipt-bound frontend/backend rollback, retained-release re-verification
+and re-APPLY pass, followed by matching current-, Brain- and owned-RU-origin
+DoH/TLS probes. Ordinary `it` health remains green. `SMARTDNS-01` stays `I3`,
+because the bundle and operator corrections postdate immutable candidate.16
+and client selection remains disabled; no Gate F/G or public-release credit is
+transferred.
+
 Candidate.16's release-index signer output is `ACTIONS_ARTIFACT_ONLY`,
 `promotion_authorized=false`. The strict-v2 handoff and signed receipt are the
 candidate authority. Gate F is
@@ -56,11 +67,12 @@ candidate authority. Gate F is
 inherited older-candidate result. Gate G is `NOT_AUTHORIZED`. XHTTP and HY2 remain post-1.2.0 bounded
 lanes; neither is required to promote the base protocol line.
 
-Active Phase 10/11 supersession: WO-013CP supersedes the older Phase 10 wording
-about an undecided DNS name. `dns.pokrov.space` is now the authorized hostname,
-but its A record is
-still absent on all four delegated authoritative servers. Runtime material,
-certificate and Smart DNS service remain absent.
+Historical Phase 10 state: WO-013CP superseded the older wording about an
+undecided DNS name. At that candidate.10 checkpoint, `dns.pokrov.space` was the
+authorized hostname but its A record was absent on all four delegated
+authoritative servers, and runtime material, certificate and service were
+absent. WO-013DG is the current supersession and closes those server-side
+boundaries without transferring candidate credit.
 
 WO-013CQ adds an exact candidate.10 LDPlayer client replay without changing
 that server boundary. The installed APK matches the signed candidate bytes;
@@ -368,6 +380,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013DD` | Sign dependency-refresh candidate.14, run the complete local quality gate and retain exact LDPlayer truth | Exact candidate supply, quality and Android emulator evidence | Six-artifact signed supply, refreshed dependency locks and local quality `15/15` pass. Exact x86_64 install/default tunnel/DNS/egress pass, but AWG3.1/AWG2 requested profiles remain cached default; current-candidate lab activation is non-PASS and candidate.13 success is not transferred. Cleanup passes. `DEP-001` reaches `I4`; `W3-02/W3-03` return to `I3`; Gate F remains not run | `WO-013DC`, exact platform/client/Core/release-index sources, signed candidate.14 artifacts and LDPlayer; correct managed-profile staging before repeating lab and device gates |
 | `WO-013DE` | Sign candidate.16 after correcting managed-profile readiness, prove the bounded Brain deploy, exact local quality and ordinary LDPlayer path | Exact candidate supply, platform runtime, quality and Android emulator evidence | The confirmed-node/key fallback rejects false ready state; Brain `portal-api` source readback passes `197/197`; signed six-artifact supply and local quality `15/15` pass; exact x86_64 default tunnel/DNS/egress passes. Candidate.16 AWG3.1/AWG2 labs are `NOT_RUN`; `DEP-001` retains `I4`, `W3-02/W3-03` stay `I3`, and Gate F remains not run | `WO-013DD`, platform PR 129, exact platform/client/Core/release-index sources, signed candidate.16 artifacts and LDPlayer; run current-candidate labs, exact physical Android and isolated Windows before Gate F |
 | `WO-013DF` | Repeat candidate.16 AWG 3.1 and AWG2 on LDPlayer and retain exact fail-closed truth | Exact candidate Android emulator and transport evidence | Both guarded binds and exact runtime profile activations pass; each creates VPN/tun0, managed DNS and IPv4 routes, then fails authenticated egress without false green. Each removes the VPN. Final default cleanup/reconnect/disconnect passes. `W3-02/W3-03` stay `I3`; Gate F remains not run | `WO-013DE`, exact candidate.16 x86_64 artifact and owned LDPlayer; isolate the shared egress boundary, then complete physical Android and Windows without transferring older proof |
+| `WO-013DG` | Deploy the exact Smart DNS bundle on `it`, prove bounded live behavior and execute receipt-bound rollback/re-apply | Current platform runtime, owned-node and three-origin evidence | DNS is authoritative `4/4`; trusted runtime, backend and HAProxy route APPLY pass; real frontend/backend rollback, exact-release verification and re-APPLY pass; current/Brain/RU DoH and TLS/SNI probes agree; ordinary `it` health remains green. The service stays client-disabled/default-off and postdates candidate.16, so `SMARTDNS-01` remains `I3` and release gates do not advance | `WO-013CK`, `WO-013DB`, exact `650dc3f...` bundle and owner-authorized `it` runtime; bind to a successor candidate only if shipping Smart DNS in 1.2.0 |
 
 ## Current evidence
 
@@ -458,6 +471,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013DE-candidate16-managed-profile-readiness-signing-local-quality/`
 - `WO-013DF-candidate16-awg-ldplayer.md`
 - `evidence/013DF-candidate16-awg-ldplayer/`
+- `WO-013DG-smart-dns-it-live-and-rollback.md`
+- `evidence/013DG-smart-dns-it-live-and-rollback/`
 - `WO-013BS-candidate6-ru-origin-environment-preflight.md`
 - `WO-013BT-candidate6-hy2-artifact-and-plan.md`
 - `WO-013BU-candidate6-ru-origin-bundle-and-install-plan.md`
@@ -899,7 +914,7 @@ until a compatible resolver and live access/leak/rollback evidence exist.
 Windows SmartScreen remains the owner-approved unsigned direct-beta
 limitation.
 
-## Current next action — isolate candidate.16 AWG egress, then close device gates
+## Current next action — restore DE provider state, rerun AWG, then close device gates
 
 WO-013DE is the active signed-candidate authority. Candidate.16 supply,
 dependency locks and full local quality pass. The managed-profile readiness
@@ -909,11 +924,19 @@ authenticated egress on LDPlayer, then disconnects cleanly.
 
 WO-013DF proves that both current AWG profiles now activate exactly and create
 tunnel, DNS and routes, closing the cached-default defect. Both fail the
-authenticated-egress check and remove the VPN without false green. The next
-bounded lab slice must distinguish the shared owned-endpoint/reply-path boundary
-from the client engine without spending the release lane on one location.
-Gate F still requires the exact ARM64 physical install binding. The remaining
-release work includes physical Android, isolated
+authenticated-egress check and remove the VPN without false green. The owner
+now attests that the Datalix DE provider account was unpaid during the shared
+endpoint outage. Treat this as the leading provider-state explanation, not a
+protocol result: after payment and provider recovery, first prove ordinary DE
+reachability, then rerun exact-Core AWG2 and AWG3.1 from the owned RU Pi and
+only then repeat candidate.16 on LDPlayer. Do not spend the release lane on
+SPB or alter protocol parameters while the node itself is unavailable.
+
+WO-013DG independently closes the current-runtime Smart DNS server/rollback
+slice. The live service remains client-disabled and post-candidate, so it does
+not repair candidate.16 or add a Gate F pass. Gate F still requires the exact
+ARM64 physical install binding. The remaining release work includes physical
+Android, isolated
 connected Windows TUN/DNS/recovery/uninstall, candidate.16 Brain/RU origins,
 candidate.16 isolated and runtime rollback, and the provider, Operator, legal
 and device-performance rows. Public/stable Gate G remains separately
@@ -1057,15 +1080,16 @@ terminal host, then records `NO_GO` for RU direct egress as a DNS-only access
 bypass. WO-013CG closes the no-mutation inventory and guarded first-frontend
 source/PLAN for the foreign `it` canary. WO-013CK then corrects two fail-closed
 operator defects and proves guarded frontend APPLY, current/Brain transport,
-receipt-bound rollback and guarded re-APPLY. Smart DNS is still not installed:
-the public DoH name is authorized, but its A record is absent on all four
-delegated authoritative servers. The next honest slice requires authoritative
-DNS `4/4`, a trusted certificate and root-only runtime material before separate
-server/route APPLY and actual ChatGPT/Gemini/Xbox session access, resolver/DNS-SNI attribution,
-leak/privacy, lifecycle and origin evidence. The same work order classifies the
-bounded Beeline whitelist path: control/API and `ru_spb` are filtered before
-VPN/TLS, so direct `it` is not the emergency bootstrap for that condition.
-Android system Private DNS stays open because the current server is DoH-only.
+receipt-bound rollback and guarded re-APPLY. WO-013DG then makes the public DoH
+name authoritative `4/4`, installs trusted root-only runtime material and the
+exact backend, applies the SNI route, executes a full receipt-bound
+frontend/backend rollback and re-apply, and proves bounded DoH plus TLS/SNI
+behavior from current, Brain and owned-RU origins. Client selection remains
+disabled, and authenticated application sessions, broad leak/privacy/load and
+exact candidate device matrices remain open. The earlier Beeline work still
+classifies control/API and `ru_spb` as filtered before VPN/TLS; direct `it` is
+not an emergency bootstrap for that condition. Android system Private DNS
+stays open because the current server is DoH-only.
 Windows live network/recovery, candidate.16 origin proof, provider/PostgreSQL/outbox,
 Operator, legal/commercial, accessibility, comparable-device performance and
 post-public-promotion health also remain open before Gate F can become `GO`.
