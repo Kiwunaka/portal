@@ -10,7 +10,6 @@ import json
 import os
 import re
 import shlex
-import socket
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -70,13 +69,30 @@ def _public_ipv4(value: str, *, label: str) -> str:
     return address.compressed
 
 
-def _resolve_unique_public_ipv4(hostname: str) -> str:
+def _resolve_unique_public_ipv4(ssh: Any, hostname: str) -> str:
+    program = (
+        "import json,socket,sys;"
+        "print(json.dumps(sorted({row[4][0] for row in "
+        "socket.getaddrinfo(sys.argv[1],None,socket.AF_INET)})))"
+    )
     try:
+        output = _run(
+            ssh,
+            "python3 -c " + _q(program) + " " + _q(hostname),
+            label="doh_dns_resolve",
+            timeout=30,
+        )
+        payload = json.loads(output)
+        if not isinstance(payload, list) or len(payload) > 16:
+            raise ValueError("resolved_address_payload_invalid")
         addresses = {
-            _public_ipv4(item[4][0], label="resolved_address")
-            for item in socket.getaddrinfo(hostname, None, socket.AF_INET)
+            _public_ipv4(item, label="resolved_address")
+            for item in payload
+            if isinstance(item, str)
         }
-    except (OSError, SmartDNSRuntimePreparationError) as exc:
+        if len(addresses) != len(payload):
+            raise ValueError("resolved_address_payload_invalid")
+    except (SmartDNSRuntimePreparationError, json.JSONDecodeError, ValueError) as exc:
         raise SmartDNSRuntimePreparationError("doh_hostname_public_ipv4_unavailable") from exc
     if len(addresses) != 1:
         raise SmartDNSRuntimePreparationError("doh_hostname_public_ipv4_not_unique")
@@ -468,7 +484,7 @@ def main() -> int:
         dns_a_unique = False
         dns_matches_node = False
         try:
-            dns_ipv4 = _resolve_unique_public_ipv4(doh_hostname)
+            dns_ipv4 = _resolve_unique_public_ipv4(brain, doh_hostname)
             dns_a_unique = True
             dns_matches_node = dns_ipv4 == expected_proxy_ipv4
         except SmartDNSRuntimePreparationError:
