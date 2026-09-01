@@ -51,7 +51,45 @@ def _node_transport_profile(node: Any, transport_profile: str | None) -> dict[st
     )
 
 
-def _node_outbound_from_transport_profile(*, user_uuid: str, node: Any, tag: str, transport_profile: str | None) -> dict[str, Any]:
+def _node_delivery_endpoints(node: Any, transport_profile: str | None) -> list[dict[str, str]]:
+    profile = _node_transport_profile(node, transport_profile)
+    fallback_host = str(profile.get("host") or getattr(node, "host", "") or "").strip()
+    fallback_label = _node_label_ru(
+        str(getattr(node, "code", "") or ""),
+        str(getattr(node, "name", "") or ""),
+    )
+    endpoints: list[dict[str, str]] = []
+    seen_labels: set[str] = set()
+    for index, raw in enumerate(profile.get("delivery_endpoints") or [], start=1):
+        if not isinstance(raw, dict):
+            continue
+        host = str(raw.get("host") or "").strip()
+        if not host:
+            continue
+        label = str(raw.get("label") or "").strip()
+        if not label or label == fallback_label or label.casefold() in seen_labels:
+            label = f"{fallback_label} {index}"
+        endpoints.append(
+            {
+                "id": str(raw.get("id") or "").strip(),
+                "host": host,
+                "label": label,
+            }
+        )
+        seen_labels.add(label.casefold())
+    if endpoints:
+        return endpoints
+    return [{"id": "primary", "host": fallback_host, "label": fallback_label}]
+
+
+def _node_outbound_from_transport_profile(
+    *,
+    user_uuid: str,
+    node: Any,
+    tag: str,
+    transport_profile: str | None,
+    delivery_endpoint: dict[str, str] | None = None,
+) -> dict[str, Any]:
     profile = _node_transport_profile(node, transport_profile)
     kind = str(profile.get("kind") or "reality").strip().lower()
     tls: dict[str, Any] = {
@@ -65,7 +103,12 @@ def _node_outbound_from_transport_profile(*, user_uuid: str, node: Any, tag: str
     outbound: dict[str, Any] = {
         "type": "vless",
         "tag": tag,
-        "server": str(profile.get("host") or getattr(node, "host", "") or ""),
+        "server": str(
+            (delivery_endpoint or {}).get("host")
+            or profile.get("host")
+            or getattr(node, "host", "")
+            or ""
+        ),
         "server_port": int(profile.get("port") or getattr(node, "vless_port", 443) or 443),
         "uuid": user_uuid,
         "tls": tls,
@@ -140,6 +183,10 @@ def _ru_bridge_endpoint_targets_node(
     delivery_hosts = {
         str(getattr(node, "host", "") or "").strip().lower().rstrip("."),
         str(profile.get("host") or "").strip().lower().rstrip("."),
+        *{
+            str(item.get("host") or "").strip().lower().rstrip(".")
+            for item in _node_delivery_endpoints(node, transport_profile)
+        },
     }
     delivery_hosts.discard("")
     return endpoint_host in delivery_hosts
@@ -364,32 +411,33 @@ def _xray_multi_node_config(*, user_uuid: str, nodes: list, title: str, transpor
     selector_tag = "pokrov-selector"
     for node in nodes:
         profile = _node_transport_profile(node, transport_profile)
-        tag = str(getattr(node, "code", "") or getattr(node, "name", "") or "node").strip() or "node"
-        outbounds.append(
-            {
-                "tag": tag,
-                "protocol": "vless",
-                "settings": {
-                    "vnext": [
-                        {
-                            "address": str(profile.get("host") or getattr(node, "host", "") or ""),
-                            "port": int(profile.get("port") or getattr(node, "vless_port", 443) or 443),
-                            "users": [{"id": user_uuid, "encryption": "none"}],
-                        }
-                    ]
-                },
-                "streamSettings": {
-                    "network": "xhttp",
-                    "security": "tls",
-                    "tlsSettings": {
-                        "serverName": str(profile.get("tls_server_name") or getattr(node, "reality_sni", "") or ""),
+        for endpoint in _node_delivery_endpoints(node, transport_profile):
+            tag = str(endpoint.get("label") or getattr(node, "code", "") or getattr(node, "name", "") or "node").strip() or "node"
+            outbounds.append(
+                {
+                    "tag": tag,
+                    "protocol": "vless",
+                    "settings": {
+                        "vnext": [
+                            {
+                                "address": str(endpoint.get("host") or profile.get("host") or getattr(node, "host", "") or ""),
+                                "port": int(profile.get("port") or getattr(node, "vless_port", 443) or 443),
+                                "users": [{"id": user_uuid, "encryption": "none"}],
+                            }
+                        ]
                     },
-                    "xhttpSettings": {
-                        "path": str(profile.get("xhttp_path") or "/").strip() or "/",
+                    "streamSettings": {
+                        "network": "xhttp",
+                        "security": "tls",
+                        "tlsSettings": {
+                            "serverName": str(profile.get("tls_server_name") or getattr(node, "reality_sni", "") or ""),
+                        },
+                        "xhttpSettings": {
+                            "path": str(profile.get("xhttp_path") or "/").strip() or "/",
+                        },
                     },
-                },
-            }
-        )
+                }
+            )
 
     return {
         "log": {"loglevel": "warning"},
@@ -503,7 +551,13 @@ def _managed_manifest_payload(
     )
 
 
-def _generate_vless_link(*, user_uuid: str, node, name: str) -> str:
+def _generate_vless_link(
+    *,
+    user_uuid: str,
+    node,
+    name: str,
+    delivery_endpoint: dict[str, str] | None = None,
+) -> str:
     import urllib.parse
 
     profile = _node_transport_profile(node, LEGACY_REALITY_FALLBACK)
@@ -519,7 +573,12 @@ def _generate_vless_link(*, user_uuid: str, node, name: str) -> str:
     }
     query = "&".join([f"{k}={urllib.parse.quote(str(v), safe='')}" for k, v in params.items()])
     safe_name = urllib.parse.quote(name)
-    host = str(profile.get("host") or getattr(node, "host", "") or "")
+    host = str(
+        (delivery_endpoint or {}).get("host")
+        or profile.get("host")
+        or getattr(node, "host", "")
+        or ""
+    )
     port = int(profile.get("port") or getattr(node, "vless_port", 443) or 443)
     return f"vless://{user_uuid}@{host}:{port}?{query}#{safe_name}"
 
@@ -709,6 +768,7 @@ def _singbox_multi_node_config(
         tag = _node_label_ru(getattr(n, "code", ""), getattr(n, "name", ""))
         code = str(getattr(n, "code", "") or "").strip().lower()
         base = _node_code_base(code)
+        delivery_endpoints = _node_delivery_endpoints(n, transport_profile)
         node_bridge_endpoints = _ru_bridge_endpoints_for_node(
             node=n,
             rollout_config=rollout_config or {},
@@ -720,28 +780,46 @@ def _singbox_multi_node_config(
             or code in RU_BRIDGE_SELECTOR_DIRECT_CODES
             or base in RU_BRIDGE_SELECTOR_DIRECT_CODES
         )
-        if keep_direct_visible:
-            selector_opts.append(tag)
-        direct_outbound = _node_outbound_from_transport_profile(
-            user_uuid=user_uuid,
-            node=n,
-            tag=tag,
-            transport_profile=transport_profile,
-        )
-        outbounds.append(direct_outbound)
-        if base == "ru":
-            ru_torrent_outbounds.append(tag)
+        node_selector_opts: list[str] = []
+        for delivery_endpoint in delivery_endpoints:
+            endpoint_tag = str(delivery_endpoint.get("label") or tag).strip() or tag
+            direct_outbound = _node_outbound_from_transport_profile(
+                user_uuid=user_uuid,
+                node=n,
+                tag=endpoint_tag,
+                transport_profile=transport_profile,
+                delivery_endpoint=delivery_endpoint,
+            )
+            outbounds.append(direct_outbound)
+            if keep_direct_visible:
+                node_selector_opts.append(endpoint_tag)
+            if base == "ru":
+                ru_torrent_outbounds.append(endpoint_tag)
 
-        if has_bridge_choice:
-            for idx, endpoint in enumerate(node_bridge_endpoints):
-                bridge_label = str(endpoint.get("label") or ("Белые списки" if idx == 0 else f"Белые списки тип {idx + 1}")).strip()
-                bridge_node_tag = f"{tag} · {bridge_label}"
-                bridged_outbound = dict(direct_outbound)
-                bridged_outbound["tag"] = bridge_node_tag
-                bridged_outbound["detour"] = _ru_bridge_endpoint_tag(idx, endpoint)
-                outbounds.append(bridged_outbound)
-                selector_opts.append(bridge_node_tag)
-                used_bridge_endpoints_by_id.setdefault(str(endpoint.get("id") or ""), endpoint)
+            if has_bridge_choice:
+                for idx, endpoint in enumerate(node_bridge_endpoints):
+                    bridge_label = str(endpoint.get("label") or ("Белые списки" if idx == 0 else f"Белые списки тип {idx + 1}")).strip()
+                    bridge_node_tag = f"{endpoint_tag} · {bridge_label}"
+                    bridged_outbound = dict(direct_outbound)
+                    bridged_outbound["tag"] = bridge_node_tag
+                    bridged_outbound["detour"] = _ru_bridge_endpoint_tag(idx, endpoint)
+                    outbounds.append(bridged_outbound)
+                    node_selector_opts.append(bridge_node_tag)
+                    used_bridge_endpoints_by_id.setdefault(str(endpoint.get("id") or ""), endpoint)
+
+        if len(delivery_endpoints) > 1:
+            node_default = node_selector_opts[0] if node_selector_opts else "direct"
+            outbounds.append(
+                {
+                    "type": "selector",
+                    "tag": tag,
+                    "outbounds": node_selector_opts,
+                    "default": node_default,
+                }
+            )
+            selector_opts.append(tag)
+        else:
+            selector_opts.extend(node_selector_opts)
 
     selector_default = selector_opts[0] if selector_opts else "direct"
     torrent_outbound_tag = ""
@@ -842,48 +920,43 @@ def _singbox_ru_bridge_config(
         selector_opts.append(label)
 
         country_opts: list[str] = []
-        normal_tag = f"{label} · Обычный"
-        direct_outbound = _node_outbound_from_transport_profile(
-            user_uuid=user_uuid,
-            node=n,
-            tag=normal_tag,
-            transport_profile=LEGACY_REALITY_FALLBACK,
-        )
-        outbounds.append(direct_outbound)
-        country_opts.append(normal_tag)
-        if base == "ru":
-            ru_torrent_outbounds.append(normal_tag)
+        delivery_endpoints = _node_delivery_endpoints(n, LEGACY_REALITY_FALLBACK)
         node_bridge_endpoints = _ru_bridge_endpoints_for_node(
             node=n,
             rollout_config=rollout_config,
             transport_profile=RU_BRIDGE_RELAY,
         )
-        if not node_bridge_endpoints:
-            outbounds.append(
-                {
-                    "type": "selector",
-                    "tag": label,
-                    "outbounds": country_opts,
-                    "default": normal_tag,
-                }
+        for delivery_endpoint in delivery_endpoints:
+            endpoint_label = str(delivery_endpoint.get("label") or label).strip() or label
+            direct_label = endpoint_label if len(delivery_endpoints) > 1 else label
+            normal_tag = f"{direct_label} · Обычный"
+            direct_outbound = _node_outbound_from_transport_profile(
+                user_uuid=user_uuid,
+                node=n,
+                tag=normal_tag,
+                transport_profile=LEGACY_REALITY_FALLBACK,
+                delivery_endpoint=delivery_endpoint,
             )
-            continue
+            outbounds.append(direct_outbound)
+            country_opts.append(normal_tag)
+            if base == "ru":
+                ru_torrent_outbounds.append(normal_tag)
 
-        for idx, endpoint in enumerate(node_bridge_endpoints):
-            bridge_label = str(endpoint.get("label") or ("Белые списки" if idx == 0 else f"Белые списки тип {idx + 1}")).strip()
-            bridge_node_tag = f"{label} · {bridge_label}"
-            bridged_outbound = dict(direct_outbound)
-            bridged_outbound["tag"] = bridge_node_tag
-            bridged_outbound["detour"] = _ru_bridge_endpoint_tag(idx, endpoint)
-            outbounds.append(bridged_outbound)
-            country_opts.append(bridge_node_tag)
-            used_bridge_endpoints_by_id.setdefault(str(endpoint.get("id") or ""), endpoint)
+            for idx, endpoint in enumerate(node_bridge_endpoints):
+                bridge_label = str(endpoint.get("label") or ("Белые списки" if idx == 0 else f"Белые списки тип {idx + 1}")).strip()
+                bridge_node_tag = f"{direct_label} · {bridge_label}"
+                bridged_outbound = dict(direct_outbound)
+                bridged_outbound["tag"] = bridge_node_tag
+                bridged_outbound["detour"] = _ru_bridge_endpoint_tag(idx, endpoint)
+                outbounds.append(bridged_outbound)
+                country_opts.append(bridge_node_tag)
+                used_bridge_endpoints_by_id.setdefault(str(endpoint.get("id") or ""), endpoint)
         outbounds.append(
             {
                 "type": "selector",
                 "tag": label,
                 "outbounds": country_opts,
-                "default": normal_tag,
+                "default": country_opts[0] if country_opts else "direct",
             }
         )
 
@@ -967,17 +1040,33 @@ def _singbox_free_allowlist_config(
     selector_tag = "🌍 Страны"
 
     outbounds = []
+    selector_opts: list[str] = []
     for n in nodes:
-        outbounds.append(
+        node_tag = _node_label_ru(n.code, n.name)
+        endpoints = _node_delivery_endpoints(n, transport_profile)
+        node_outbounds = [
             _node_outbound_from_transport_profile(
                 user_uuid=user_uuid,
                 node=n,
-                tag=_node_label_ru(n.code, n.name),
+                tag=str(endpoint.get("label") or node_tag).strip() or node_tag,
                 transport_profile=transport_profile,
+                delivery_endpoint=endpoint,
             )
-        )
-
-    selector_opts = [o["tag"] for o in outbounds]
+            for endpoint in endpoints
+        ]
+        outbounds.extend(node_outbounds)
+        if len(node_outbounds) > 1:
+            outbounds.append(
+                {
+                    "type": "selector",
+                    "tag": node_tag,
+                    "outbounds": [item["tag"] for item in node_outbounds],
+                    "default": node_outbounds[0]["tag"],
+                }
+            )
+            selector_opts.append(node_tag)
+        elif node_outbounds:
+            selector_opts.append(node_outbounds[0]["tag"])
     selector_default = selector_opts[0] if selector_opts else "direct"
     outbounds.append(
         {
@@ -1473,26 +1562,27 @@ def _clash_subscription_config(*, user_uuid: str, nodes: list[Any], title: str, 
         code = str(getattr(node, "code", "") or getattr(node, "name", "") or "node").strip()
         if not code:
             continue
-        name = _node_label_ru(code, str(getattr(node, "name", "") or code))
-        proxy_names.append(name)
         profile = _node_transport_profile(node, transport_profile)
-        lines.extend(
-            [
-                f"  - name: {json.dumps(name, ensure_ascii=False)}",
-                "    type: vless",
-                f"    server: {json.dumps(str(profile.get('host') or getattr(node, 'host', '') or ''), ensure_ascii=False)}",
-                f"    port: {int(profile.get('port') or getattr(node, 'vless_port', 443) or 443)}",
-                f"    uuid: {json.dumps(user_uuid, ensure_ascii=False)}",
-                "    udp: true",
-                "    tls: true",
-                f"    servername: {json.dumps(str(profile.get('tls_server_name') or getattr(node, 'reality_sni', '') or ''), ensure_ascii=False)}",
-                f"    flow: {json.dumps(str(profile.get('flow') or getattr(node, 'flow', '') or ''), ensure_ascii=False)}",
-                f"    client-fingerprint: {json.dumps(str(profile.get('fingerprint') or getattr(node, 'fingerprint', '') or 'firefox'), ensure_ascii=False)}",
-                "    reality-opts:",
-                f"      public-key: {json.dumps(str(profile.get('reality_public_key') or getattr(node, 'reality_pbk', '') or ''), ensure_ascii=False)}",
-                f"      short-id: {json.dumps(str(profile.get('reality_short_id') or getattr(node, 'reality_sid', '') or ''), ensure_ascii=False)}",
-            ]
-        )
+        for endpoint in _node_delivery_endpoints(node, transport_profile):
+            name = str(endpoint.get("label") or _node_label_ru(code, str(getattr(node, "name", "") or code))).strip()
+            proxy_names.append(name)
+            lines.extend(
+                [
+                    f"  - name: {json.dumps(name, ensure_ascii=False)}",
+                    "    type: vless",
+                    f"    server: {json.dumps(str(endpoint.get('host') or profile.get('host') or getattr(node, 'host', '') or ''), ensure_ascii=False)}",
+                    f"    port: {int(profile.get('port') or getattr(node, 'vless_port', 443) or 443)}",
+                    f"    uuid: {json.dumps(user_uuid, ensure_ascii=False)}",
+                    "    udp: true",
+                    "    tls: true",
+                    f"    servername: {json.dumps(str(profile.get('tls_server_name') or getattr(node, 'reality_sni', '') or ''), ensure_ascii=False)}",
+                    f"    flow: {json.dumps(str(profile.get('flow') or getattr(node, 'flow', '') or ''), ensure_ascii=False)}",
+                    f"    client-fingerprint: {json.dumps(str(profile.get('fingerprint') or getattr(node, 'fingerprint', '') or 'firefox'), ensure_ascii=False)}",
+                    "    reality-opts:",
+                    f"      public-key: {json.dumps(str(profile.get('reality_public_key') or getattr(node, 'reality_pbk', '') or ''), ensure_ascii=False)}",
+                    f"      short-id: {json.dumps(str(profile.get('reality_short_id') or getattr(node, 'reality_sid', '') or ''), ensure_ascii=False)}",
+                ]
+            )
     lines.extend(["proxy-groups:", f"  - name: {json.dumps(title, ensure_ascii=False)}", "    type: select", "    proxies:"])
     for name in proxy_names:
         lines.append(f"      - {json.dumps(name, ensure_ascii=False)}")
@@ -1878,7 +1968,15 @@ async def subscription(token: str, request: Request, format: str = Query(default
     if (user.sub_type or "").upper() == "FREE" and not legacy_nodes_for_user:
         return Response(content="", media_type="text/plain", status_code=503)
     for n in legacy_nodes_for_user:
-        links.append(_generate_vless_link(user_uuid=user.uuid, node=n, name=_node_label_ru(n.code, n.name)))
+        for endpoint in _node_delivery_endpoints(n, LEGACY_REALITY_FALLBACK):
+            links.append(
+                _generate_vless_link(
+                    user_uuid=user.uuid,
+                    node=n,
+                    name=str(endpoint.get("label") or _node_label_ru(n.code, n.name)),
+                    delivery_endpoint=endpoint,
+                )
+            )
     raw = "\n".join(links)
     if client_format == "happ":
         if (user.sub_type or "").upper() == "FREE" and not smart_nodes_for_user:
