@@ -2,6 +2,25 @@
 
 Last updated: 2026-09-01
 
+## 2026-09-01 — WO-013DW candidate.18 isolated rollback rehearsal
+
+The signed candidate.18 manifest, detached signature, receipt and exact
+platform/client/Core/release-index tuple validate. The real portal projection
+and client pointer tools then pass the disposable sequence
+`1.1.6+20260819 -> candidate.18 -> 1.1.6+20260819`.
+
+Portal and stable-handoff bytes restore exactly, forward and rollback receipts
+validate, and unrelated fixture state survives. The focused rollback/PB-14
+suite passes `16/16`; all exact-source worktrees remain clean and the fixture
+is removed. No tracked pointer, runtime, public asset, device, emulator or
+Windows VM is changed.
+
+`REL_DOD/DOD-18` and `FE/P12-130` remain `I3` with current candidate.18 local
+evidence. A separately guarded runtime pointer/kill rollback, current/Brain
+readback and post-rollback health remain open. Candidate.18 Gate F stays
+`NOT_RUN`; Gate G remains unauthorized. Distribution stays `I4=5`, `I3=319`,
+`I2=20`, `I1=34`, `I0=0` across `378` rows.
+
 ## 2026-09-01 — WO-013DV candidate.18 Windows replacement and signing
 
 Candidate.17 is retained as rejected evidence. Its exact Windows setup contains
