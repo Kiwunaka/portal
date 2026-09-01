@@ -1,0 +1,170 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate20-gates-a-e-offline/v1",
+  "recorded_at_utc": "2026-09-01T17:06:53Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.20",
+    "sources": {
+      "platform": "d6898e63c5c9ab7dd267b9d5150b54196f99d967",
+      "client": "8ab9815ab98f111140c0c8ce4e289555652d56e8",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "61ad0b0e0780775b8f95f1a567e94d75d198a483"
+    },
+    "signed_manifest_sha256": "046d331274da76ba524f824debb17c4abc080657456c41099246589cc3c1770a",
+    "signature_sha256": "f5e81d310fa18b464421afe4c0da010e3b9c112c9affba64e7d1631b4f6890ea",
+    "receipt_sha256": "47429c2cb3b77520257bb63e7a41652d3744e0a4f710589bf4c20eec289b9479"
+  },
+  "exact_source_state": {
+    "platform": "CLEAN_DETACHED_HEAD",
+    "client": "CLEAN_DETACHED_HEAD",
+    "core": "CLEAN_DETACHED_HEAD"
+  },
+  "environment_chain": [
+    {
+      "attempt": 1,
+      "classification": "ENVIRONMENT_DEPENDENCIES_ABSENT",
+      "result": "FAIL",
+      "detail": "Frontend steps could not resolve eslint, next and axe-core before local package materialization.",
+      "report_sha256": "47b2c64aa7c37909dfca07b6811bc435f06e346214d8bc87a34c1d59ecf800b9"
+    },
+    {
+      "attempt": 2,
+      "classification": "PLAYWRIGHT_RUNTIME_ABSENT",
+      "result": "FAIL",
+      "detail": "All non-browser steps passed; cabinet and marketing responsive launches failed because the required Chromium headless-shell revision 1228 was absent.",
+      "report_sha256": "1821422982e7307dab26d3ce7b938fb83f2184e63da8bf4eb35ea906e2f5bec2"
+    },
+    {
+      "attempt": 3,
+      "classification": "DIAGNOSTIC_NONCANONICAL_NODE",
+      "result": "PASS_15_OF_15",
+      "node": "24.15.0",
+      "detail": "The complete matrix passed after installing the exact Playwright Chromium revision, but Node 24 is outside the declared 22.14.x engine and is not the final authority.",
+      "report_sha256": "58fafdd3c18e543b7ed5fdd408fdd2c36ae5560d674b47e6b439dde8e84ef6a6"
+    },
+    {
+      "attempt": 4,
+      "classification": "AUTHORITATIVE_DECLARED_TOOLCHAIN",
+      "result": "PASS_15_OF_15",
+      "node": "22.14.0",
+      "npm": "10.9.2",
+      "playwright": "1.61.1",
+      "chromium_revision": 1228,
+      "report_sha256": "1bbe6d799d020b1ac483422a7acac80421a34bf38592c52a0900add0846508be"
+    }
+  ],
+  "focused_tests": [
+    {
+      "gate": "B",
+      "source": "platform",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_observability_contracts.py tests/test_generate_observability_support_reference.py tests/test_release_handoff_metadata.py -q",
+      "result": "PASS_70_OF_70",
+      "duration_seconds": 0.60
+    },
+    {
+      "gate": "B",
+      "source": "client",
+      "command": "flutter test test/connection_experience_test.dart test/diagnostics_coordinator_test.dart test/client_experience_store_test.dart test/app_first_runtime_bootstrap_test.dart",
+      "result": "PASS_111_OF_111"
+    },
+    {
+      "gate": "D",
+      "source": "platform",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_api_payments_callbacks.py tests/test_lavatop_payment_providers.py tests/test_payment_email_readiness_smoke.py tests/test_admin_payments_api.py tests/test_payment_entitlement_claims.py tests/test_payment_bounded_context.py tests/test_payment_db_runtime.py tests/test_payment_return_service.py tests/test_payment_provider_boundaries.py tests/test_payment_order_service.py tests/test_payment_http_registry.py tests/test_payment_entitlement_outbox.py tests/test_module_slices.py -q",
+      "result": "PASS_196_OF_196_PLUS_12_SUBTESTS",
+      "duration_seconds": 1013.39,
+      "warnings": "20_EXISTING_DEPRECATIONS"
+    },
+    {
+      "gate": "D",
+      "source": "platform",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_admin_action_intents.py tests/test_admin_action_policy_coverage.py -q",
+      "result": "PASS_25_OF_25",
+      "duration_seconds": 94.45
+    }
+  ],
+  "exact_local_quality": {
+    "status": "PASS_15_OF_15",
+    "candidate_proven": false,
+    "promotion_status": "MANUAL_OWNER_TEST",
+    "client_analyze": "PASS",
+    "client_widget_tests": "PASS_413_OF_413",
+    "webapp_lint_and_build": "PASS",
+    "webapp_cabinet_e2e": "PASS_69_OF_69",
+    "marketing_build_seo_responsive_reduced_motion": "PASS",
+    "adminapp_build": "PASS",
+    "report_sha256": "1bbe6d799d020b1ac483422a7acac80421a34bf38592c52a0900add0846508be"
+  },
+  "static_performance": {
+    "status": "PASS_9_OF_9",
+    "required_scope": "local_static",
+    "environment_fingerprint": "d427c84f1627238a4419e6e88ee26e9fd8ce1781900ef32c642d9c30900adb63",
+    "evidence_sha256": "04429a425ab2eda8b4aa0a4eff27544d4f839b54a6de2e51aef14502e159c2e2",
+    "gate_sha256": "c3d3ce72eed6d8e5e4b7d881efe7a62148619b51b80464c7395f2319cdb888c1"
+  },
+  "gates": {
+    "A": {
+      "decision": "BLOCKED",
+      "index": "I1",
+      "new_candidate_defect": false,
+      "basis": "WO-013EA signed candidate and Windows default-path proof plus WO-013EB source controls remain current.",
+      "blocker": "Branch policy, trusted Windows signing, physical Android and final live aggregate remain non-PASS."
+    },
+    "B": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "new_candidate_defect": false,
+      "source_result": "PASS_70_OF_70_PLUS_111_OF_111",
+      "blocker": "Exact connected recovery and remaining physical false-green/device boundaries remain manual."
+    },
+    "C": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "new_candidate_defect": false,
+      "source_result": "PASS_LOCAL_QUALITY_AND_CROSS_REPOSITORY_CONTRACTS",
+      "blocker": "Candidate 20 physical Android, Windows 10/non-default/recovery and Store delivery remain open."
+    },
+    "D": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "new_candidate_defect": false,
+      "source_result": "PASS_196_OF_196_PLUS_12_SUBTESTS_AND_25_OF_25",
+      "blocker": "Production provider callback, PostgreSQL locking/load, outbox delivery/reconciliation/reversal and real Operator rollback remain manual."
+    },
+    "E": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "new_candidate_defect": false,
+      "source_result": "PASS_15_OF_15_AND_STATIC_PERFORMANCE_9_OF_9",
+      "blocker": "Authenticated journeys, physical accessibility/OEM/scaling, comparable artifact/device/browser-lab performance, support, named RU-origin and post-promotion evidence remain open."
+    }
+  },
+  "aggregate": {
+    "decision": "BLOCKED",
+    "evaluated_gates": 5,
+    "explicit_source_failures": 0,
+    "candidate_replacement_required_by_source_defect": false,
+    "gate_f_status": "NOT_RUN",
+    "gate_g_authorized": false,
+    "ledger_distribution": {
+      "I4": 7,
+      "I3": 320,
+      "I2": 19,
+      "I1": 32,
+      "I0": 0,
+      "total": 378
+    }
+  },
+  "mutation_boundary": {
+    "host_vpn_route_or_dns_changed": false,
+    "vm_ldplayer_or_phone_used": false,
+    "production_deploy": false,
+    "payment_or_provider_action": false,
+    "database_or_outbox_mutation": false,
+    "operator_action_executed": false,
+    "public_release": false,
+    "store_submission": false,
+    "stable_pointer_mutated": false,
+    "gate_f_generated": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE20_OFFLINE_SOURCE_AND_LOCAL_QUALITY_REPLAY; ALL_FIVE_GATES_BLOCKED_WITH_ZERO_EXPLICIT_SOURCE_FAILURES; NO_DEVICE_NETWORK_PROVIDER_OPERATOR_OR_PROMOTION_PROOF"
+}
