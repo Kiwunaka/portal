@@ -2,6 +2,33 @@
 
 Last updated: 2026-09-01
 
+## 2026-09-01 — WO-013ED candidate.20 offline Gates A–E replay
+
+The clean exact candidate.20 tuple `d6898e6.../8ab9815.../cd8f0f4...` passes
+the focused Gate B source matrices at `70/70 + 111/111` and Gate D at
+`196/196 + 12 subtests` plus `25/25`. No real provider, payment, production
+database/outbox or Operator mutation runs.
+
+The complete local-quality gate passes `15/15` on the declared Node `22.14.0`
+toolchain: Flutter analyze and `413/413` client tests, cross-repository/version/
+logging/rollback contracts, webapp lint/build, cabinet Playwright `69/69`,
+marketing build/SEO/responsive/reduced-motion, adminapp build and static
+performance `9/9` all pass.
+
+Fail-first evidence is retained. The first attempt lacked materialized frontend
+packages; the second lacked Playwright Chromium revision `1228`. After exact
+browser materialization the matrix passed on Node 24, but that noncanonical
+engine result is kept only as diagnostic evidence. The final authority is the
+separate Node 22 replay. Exact platform/client/Core worktrees remain clean.
+
+Gates A–E all remain `BLOCKED` with zero explicit source failures. Physical
+Android, remaining Windows recovery/protocol coverage, live provider/
+PostgreSQL/outbox/Operator, authenticated origins, physical accessibility,
+comparable device/browser performance, guarded candidate rollback and final
+aggregate attestation remain non-PASS. Distribution stays `I4=7`, `I3=320`,
+`I2=19`, `I1=32`, `I0=0` across `378` rows. Gate F remains `I3/NOT_RUN`; no
+host network, device, production, public, Store or stable mutation occurs.
+
 ## 2026-09-01 — WO-013EC candidate.20 bounded static artifact privacy
 
 All six immutable candidate.20 distributions match their signed release-index
