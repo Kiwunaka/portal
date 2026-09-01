@@ -1,0 +1,125 @@
+{
+  "schema": "pokrov.release-1.2.0.client-linux-network-transaction-participants/v1",
+  "recorded_at_utc": "2026-09-01T20:30:22Z",
+  "platform_master_before": "a16d8b514364b4cbe48d1a7b30802fd599658bd9",
+  "client": {
+    "repository": "Kiwunaka/POKROV-app",
+    "pull_request": 58,
+    "source_commit": "9fa8c7615179cbcf97400a863c1cbcc8eb2766e6",
+    "main_merge_commit": "7ae2427026ef811e65e948e3a37262693e1d1f9e",
+    "owner_solo_exception": true,
+    "independent_review_performed": false
+  },
+  "implementation": {
+    "product_connect_enabled": false,
+    "transaction_reachable_from_product_path": false,
+    "typed_plan": {
+      "owned_tunnel_interface_pattern": "pokrov*",
+      "requires_nonzero_core_routing_mark": true,
+      "resolver_address_minimum": 1,
+      "resolver_address_maximum": 4,
+      "raw_ipc_command_input": false
+    },
+    "checkpoint_order": [
+      "network_manager",
+      "resolved",
+      "nftables"
+    ],
+    "apply_order": [
+      "resolved",
+      "nftables",
+      "network_manager"
+    ],
+    "rollback_order": [
+      "nftables",
+      "resolved",
+      "network_manager"
+    ],
+    "network_manager": {
+      "transport": "system_dbus_via_busctl",
+      "checkpoint_timeout_seconds": 90,
+      "checkpoint_flags_decimal": 38,
+      "returned_object_path_validated": true,
+      "commit_is_last_apply_stage": true
+    },
+    "resolved": {
+      "scope": "owned_tunnel_link_only",
+      "routing_domain": "~.",
+      "default_route": true,
+      "rollback": "per_link_revert"
+    },
+    "nftables": {
+      "family": "inet",
+      "table": "pokrov",
+      "atomic_check_before_apply": true,
+      "global_ruleset_flush_or_restore": false,
+      "rollback": "delete_owned_table_only"
+    },
+    "command_boundary": {
+      "shell_used": false,
+      "fixed_absolute_paths": true,
+      "timeout_seconds_per_command": 5,
+      "stdout_limit_bytes": 65536,
+      "stderr_retained": false
+    },
+    "fault_contract": {
+      "checkpoint_failure": true,
+      "partial_apply_failure": true,
+      "reverse_rollback": true,
+      "rollback_continues_after_failure": true,
+      "failed_owner_retry": true,
+      "repeated_restore_idempotent": true
+    }
+  },
+  "verification": {
+    "local_portable_go_test": "PASS",
+    "local_portable_go_vet": "PASS",
+    "local_linux_amd64_vet": "PASS",
+    "local_linux_amd64_daemon_cross_build": "PASS",
+    "full_client_gate": "PASS",
+    "docs_contract": "PASS",
+    "seed_validation_with_explicit_platform_and_core_roots": "PASS",
+    "client_pr_run": {
+      "id": 33552898076,
+      "head_sha": "9fa8c7615179cbcf97400a863c1cbcc8eb2766e6",
+      "conclusion": "SUCCESS",
+      "linux_step_number": 14,
+      "linux_step_name": "Validate conditional Linux daemon foundation",
+      "linux_step_conclusion": "SUCCESS",
+      "networktxn_package": "PASS"
+    },
+    "client_post_merge_run": {
+      "id": 33554337590,
+      "head_sha": "7ae2427026ef811e65e948e3a37262693e1d1f9e",
+      "conclusion": "SUCCESS",
+      "linux_step_conclusion": "SUCCESS"
+    },
+    "native_network_mutation_and_restoration": "NOT_RUN"
+  },
+  "ledger_effect": {
+    "changed_rows": [
+      "OBS/OBS-045"
+    ],
+    "level_changes": 0,
+    "ledger_distribution": {
+      "I4": 7,
+      "I3": 320,
+      "I2": 19,
+      "I1": 32,
+      "I0": 0,
+      "total": 378
+    }
+  },
+  "mutation_boundary": {
+    "host_vpn_route_or_dns_changed": false,
+    "vm_ldplayer_phone_or_pi_used": false,
+    "production_deploy": false,
+    "public_release": false,
+    "store_submission": false,
+    "stable_pointer_mutated": false,
+    "candidate20_artifacts_changed": false,
+    "gate_f_generated": false
+  },
+  "remaining_boundary": "Bind the exact Linux Core/TUN interface, routing mark and DNS plan with durable restart and suspend recovery, then retain clean Ubuntu 24.04 D-Bus and journald plus route, DNS and nftables partial-fault and exact restoration evidence before I3 or I4.",
+  "evidence_ceiling": "CLIENT_MAIN_SOURCE_AND_HOSTED_UBUNTU_BUILD_TEST; NO_NATIVE_NETWORK_PACKAGE_CANDIDATE_OR_RELEASE_CREDIT"
+}
