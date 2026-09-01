@@ -5524,3 +5524,24 @@ hardware, battery/thermal/endurance or post-promotion proof. The physical
 phone is not visible to the current ADB session and is untouched. Gate F stays
 `NO_GO 2/17/2`; the 378-row distribution remains `I4=5`, `I3=319`, `I2=20`,
 `I1=34`, `I0=0`, and Gate G remains unauthorized.
+
+## 2026-09-01 — WO-013DT candidate.16 Brain-origin refresh
+
+The exact detached candidate.16 platform source matches the live Brain payload
+semantically at `197/197`: four files match raw bytes and 193 differ only by
+the declared CRLF-to-LF normalization. Fresh read-only runtime readiness passes
+`23/23`, including five stable subscription samples.
+
+Enabled delivery does not meet the historical Brain-origin threshold. Three
+independent redacted samples each return `6/7`; only node code `de` is non-open,
+while all other enabled nodes, including `ru_spb`, are open each time. This
+rules out stale Brain source/readiness and avoids treating Saint Petersburg as
+the active blocker.
+
+The result matches the existing Datalix identity boundary. No host key is
+accepted, no `known_hosts` entry changes, and no deploy, restart, repair,
+screen/input control or runtime mutation occurs. `FRKN_PLAN/W9-02` and
+`REL_GATE/GATE-F` gain stronger exact evidence without level change. Brain
+remains non-PASS, the current Gate F decision remains `NO_GO 2/17/2` without
+regeneration, the 378-row distribution stays `I4=5`, `I3=319`, `I2=20`,
+`I1=34`, `I0=0`, and Gate G remains unauthorized.

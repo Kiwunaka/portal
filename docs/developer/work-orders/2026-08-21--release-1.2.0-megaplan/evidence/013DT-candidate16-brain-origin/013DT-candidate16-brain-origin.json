@@ -1,0 +1,82 @@
+{
+  "schema": "pokrov.release-1.2.0.brain-origin/v1",
+  "recorded_at_utc": "2026-09-01T00:09:29Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.16",
+    "version": "1.2.0+4049",
+    "platform_source": "719e23dc49407beb9ae30d98d17d4b73d18ae37c",
+    "client_source": "75ba7e721cfee486f7189edd51de97aba2746722",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "54cfa03502ffafa5e4fb230a2cbdb0c0572c429f",
+    "manifest_sha256": "ae1906e68df755b1e0ce6a77d6ede8256f923e72fe11da57f1cae89a82c4ffe6",
+    "signature_sha256": "f5df63578d56db84a48eac1c68f1192e81462e8b407b1b6ff877c2b415507a9a",
+    "receipt_sha256": "1231ab6988746ca0e9725296826de2a9696a9a78600aa5e7f0b0c1b8c5782de4"
+  },
+  "brain_source": {
+    "status": "PASS",
+    "payload_count": 197,
+    "raw_match_count": 4,
+    "crlf_only_difference_count": 193,
+    "normalized_match_count": 197,
+    "mismatch_count": 0,
+    "normalization_rule": "CRLF_TO_LF_ONLY",
+    "source_revision": "719e23dc49407beb9ae30d98d17d4b73d18ae37c",
+    "runtime_mutated": false,
+    "remote_content_retained": false,
+    "external_report_sha256": "539c0b7a03b72629ad39d1b2e74d53a39c4f3bd9c0d73f3618b666ec9747c136"
+  },
+  "brain_readiness": {
+    "status": "PASS",
+    "check_count": 23,
+    "failure_count": 0,
+    "subscription_sample_count": 5,
+    "external_report_sha256": "cda74184fcccfaf2c428a61fdd42324be357e664823e50f1ac6e1dabe38889ba"
+  },
+  "enabled_delivery": {
+    "status": "FAIL",
+    "sample_count": 3,
+    "required_node_count": 7,
+    "open_count_per_sample": [
+      6,
+      6,
+      6
+    ],
+    "non_open_node_codes_per_sample": [
+      [
+        "de"
+      ],
+      [
+        "de"
+      ],
+      [
+        "de"
+      ]
+    ],
+    "all_other_enabled_nodes_open_per_sample": true,
+    "external_report_sha256": [
+      "f842e2c40082f2a689342704993ae17acba5a04bd2fdc3c247e1c370d6753341",
+      "a0235b97dfb037d840232e9c9f3ba4a260058ef820094672cb859fd5a602b5b6",
+      "ae69a98031fe96257caf7a5b4405f61b27e3f6b1aa13875f63b1666c8ad7f939"
+    ]
+  },
+  "decision": {
+    "brain_origin": "NON_PASS_ENABLED_DELIVERY_6_OF_7",
+    "source_or_readiness_stale": false,
+    "datalix_identity_confirmation": "BLOCKED_BY_ACCESS",
+    "gate_f_regenerated": false,
+    "gate_f_current_decision": "NO_GO_2_PASS_17_NON_PASS_2_FAIL",
+    "completion_index_promoted": false,
+    "gate_g_authorized": false
+  },
+  "mutation_boundary": {
+    "connection_mode": "OWNER_TRUSTED_SSH_CONFIG_READ_ONLY",
+    "brain_runtime_mutated": false,
+    "delivery_nodes_mutated": false,
+    "known_hosts_mutated": false,
+    "screen_or_input_control_used": false,
+    "production_deploy": false,
+    "public_release_or_stable_pointer_changed": false,
+    "raw_address_hostname_credential_key_or_remote_content_retained": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE16_BRAIN_SOURCE_197_OF_197_AND_READINESS_23_OF_23_PASS; ENABLED_DELIVERY_REPEATED_6_OF_7_FAIL_ON_DE_ONLY; BRAIN_ORIGIN_NON_PASS; NO_GATE_F_REGENERATION_OR_PUBLIC_PROMOTION"
+}
