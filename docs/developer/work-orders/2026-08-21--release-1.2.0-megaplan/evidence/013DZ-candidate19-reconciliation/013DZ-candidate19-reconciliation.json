@@ -1,0 +1,156 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate19-reconciliation/v1",
+  "recorded_at_utc": "2026-09-01T09:15:33Z",
+  "status": "CANDIDATE19_SIGNED_PRIVATE_FOUNDATION_PASS_NETWORK_GATES_OPEN",
+  "candidate18": {
+    "decision": "NO_GO_IMMUTABLE",
+    "source_revision_client": "820ca1016bdfef0f44a1d217e3804adb9b365ca5",
+    "failure": "non-elevated Windows UI could not authenticate the LocalSystem service through process-token access; the client rejected the correct server and the service exited with code 5",
+    "reproduction_evidence_sha256": "4042ad57ab0280e59b8b65a990831ed8f0d8d38d08d18455dff9e6cec90cfba8"
+  },
+  "candidate19": {
+    "label": "pokrov-1.2.0-candidate.19",
+    "version": "1.2.0+4049",
+    "promotion_authorized": false,
+    "sources": {
+      "platform": "d6898e63c5c9ab7dd267b9d5150b54196f99d967",
+      "client": "10f5516648fd40d6c94eb7a7ca0d05be161d393c",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "signed_release_index": "43fc20fd25342f314554a89ef75e1122f00aee01",
+      "release_index_receipt_merge": "fd00eb38ad9c3906bfd3ba5ec1210136c224d76f"
+    },
+    "artifacts": [
+      {
+        "file_name": "pokrov-android-arm64-v8a.apk",
+        "sha256": "0d6aa17ef8bf5f6e279f15211816bc1d703a16285773f75cb034393346159310",
+        "size_bytes": 101366678,
+        "signing": "PASS"
+      },
+      {
+        "file_name": "pokrov-android-armeabi-v7a.apk",
+        "sha256": "e0b58a200b2f74a090e34276607174936e577767239005ef58cfdd6b52f69dd4",
+        "size_bytes": 90778788,
+        "signing": "PASS"
+      },
+      {
+        "file_name": "pokrov-android-universal.apk",
+        "sha256": "0d6e70f9a7177eff702f56f7c99f318277aefad193de2621eee658f27bdd71ca",
+        "size_bytes": 295370161,
+        "signing": "PASS"
+      },
+      {
+        "file_name": "pokrov-android-x86_64.apk",
+        "sha256": "a0afffdc62800c525ebea96904550a2fd24a91cb4de565652618bddca378fee4",
+        "size_bytes": 109951989,
+        "signing": "PASS"
+      },
+      {
+        "file_name": "pokrov-android-market.aab",
+        "sha256": "01982515d342348d7bdf8f86e07f195c9eae0d9922b07f88e0ffd605a9bfd2d7",
+        "size_bytes": 126265618,
+        "signing": "PASS"
+      },
+      {
+        "file_name": "pokrov-windows-setup-x64.exe",
+        "sha256": "0782152d3a992b1b6320043b9b8ccedb2944b76dcbf939bf7a6ebdad9759f8ff",
+        "size_bytes": 29129601,
+        "signing": "SKIPPED_BY_OWNER"
+      }
+    ],
+    "supply": {
+      "windows_manifest_sha256": "a3dd305ccc50dc8687196a9ce028a66d956f593ae7c23b1d2b6688e055aaa02c",
+      "windows_required_file_count": 11,
+      "sbom_sha256": "d494b4f96ce122cfc67cd34005039da8d52e5202afae49fea2d6e423301e7818",
+      "sbom_component_count": 352,
+      "provenance_sha256": "99956e5118a7d66a9a8ff805dbc0967380bc3ba65ebc8b9a9f05f722c20851ad",
+      "provenance_subject_count": 6,
+      "release_handoff_sha256": "ac372450fb98245cd3aa8b34700f94fbf6a6fc48a2de9687df4c49167e4ec317",
+      "artifact_set_sha256": "0640a329c479a12dc3b600e0313ea164c2b6cb511fca98e5575fa2da41d9c709"
+    },
+    "signed_manifest": {
+      "manifest_sha256": "bb78970700d8dc51b6b31caabb76a9b4ca6c94da2f8eef82f1c99ab61b5e6a87",
+      "signature_sha256": "1d39b7bb7b20481bd165348abc1321ccd9ef4131021505c4054a8c22f6c24e38",
+      "receipt_sha256": "12b2de4a89eb2fa48e359bc740b39c924941a725d97009387b6343a047094f84",
+      "signer_run": 33489470612,
+      "signer_artifact_id": 9793146917,
+      "signer_artifact_digest": "sha256:f57e5949b25570b2179d75c5bc2ef14049bcdb6aebdf85f307d591a110f037ea",
+      "validation": "READY_SIGNED_MANIFEST"
+    },
+    "hosted_exact_source_replay": {
+      "run": 33489959772,
+      "status": "PASS",
+      "head_sha": "10f5516648fd40d6c94eb7a7ca0d05be161d393c"
+    },
+    "windows_vm": {
+      "status": "PASS_EXACT_CANDIDATE19_WINDOWS_FOUNDATION",
+      "non_elevated_ipc_sha256": "1659c98e083bd5d28999ba2025cd985241ff981ceea3b7e8e05bb8ca5cbbbfa1",
+      "protected_journal_ipc_sha256": "a3d855e11caae4556d08a73258006bd67d15f995427c9f06adb0f65fab2b9490",
+      "clean_uninstall_sha256": "ad4ead523b76f4bcc2fe22c8e435a11a264e5e6874447e66794f8c1cc9ee7105",
+      "public_1_1_6_migration_sha256": "3286b0c3c6e9657c90df51b042bdbb166e44d3d2047b5566b4dc8d8377c00b35",
+      "aggregate_sha256": "949754060cf4386ab961bbf323c60120f6350e4ecf7f15dadcfa9ac36fcbdc5e",
+      "connected_tun_dns_egress_recovery": "NOT_RUN"
+    },
+    "rollback": {
+      "status": "PASS_LOCAL_EXACT_CANDIDATE_PORTAL_CLIENT_ROLLBACK",
+      "signed_binding_sha256": "1b8881efd8560e768e461712c54a426c9f52cbe058c26eb57d042f1b2698e3a7",
+      "generated_handoff_sha256": "be28a49a31a2aea936aad21906e76ba42b1fc25f3fadc7c68efb972754030823",
+      "rehearsal_sha256": "9ac2f0a4eb4bbdd46ae7a5f812d930e3e14d99ae8b8ac1cb6fb9ec55ad3038df",
+      "stable_restored_byte_identical": true,
+      "runtime_pointer_mutated": false
+    },
+    "brain_origin": {
+      "source": "197/197 PASS",
+      "readiness": "23/23 PASS",
+      "subscription_samples": "5/5 PASS",
+      "delivery_samples": [
+        "6/7 NONPASS de remote_exec_error",
+        "7/7 PASS",
+        "6/7 NONPASS it remote_exec_error",
+        "7/7 PASS",
+        "7/7 PASS",
+        "7/7 PASS"
+      ],
+      "decision": "PASS_WITH_RETAINED_TRANSIENT_MANAGEMENT_SAMPLES",
+      "source_evidence_sha256": "56911db90be5962859d79f27d12b20e7b8afa2e78902a04e17c82ae947695977",
+      "readiness_evidence_sha256": "152c758f677706fe8a7ed0f387f4c657917314c9332396ad50f6501f0cdd0316"
+    },
+    "current_origin": {
+      "health_p95_ms": 38.1649,
+      "health_gate_sha256": "f283a0a3bbfce834cc86633f5dcf750cb1071fee1929ae2306cb8f6003360fc0",
+      "catalog_p95_ms": 42.2156,
+      "catalog_gate_sha256": "723df9de4b41d95b3f33db2f35654bcbc08c6dfdf9983f965597092938b0eac8",
+      "stop_ship_local_regressions": "7/7 PASS",
+      "stop_ship_status": "BLOCKED",
+      "stop_ship_sha256": "722b324187221ac996985b3e47b8a53c01b5f65c32a8a89bbf3312d5bdb6a5d9",
+      "authenticated_client_egress": "NOT_RUN"
+    },
+    "ldplayer": {
+      "status": "PASS_INSTALL_LAUNCH_ONLY",
+      "installed_base_apk_byte_match": true,
+      "evidence_sha256": "d6cc17223324377e9a0fcb5b99a94c3c18b7295282734b3673e457b5e368cfd6",
+      "network_credit": "EXCLUDED_HOST_HIDDIFY_TUN",
+      "nested_emulator": "NOT_RUN"
+    }
+  },
+  "open_gates": [
+    "physical Android ARM64 Wi-Fi runtime",
+    "physical Android ARM64 Beeline runtime",
+    "connected Windows TUN/DNS/egress/recovery",
+    "authenticated current-origin client egress",
+    "RU-origin",
+    "provider/payment and PostgreSQL/outbox",
+    "Operator OIDC/RBAC",
+    "legal/commercial",
+    "comparable device performance and accessibility/OEM/endurance",
+    "guarded runtime rollback with origin readback",
+    "final no-open-P0 false-green and privacy attestation"
+  ],
+  "decision": {
+    "gate_f": "NOT_RUN",
+    "gate_g": "NOT_AUTHORIZED",
+    "tag": "NOT_RUN",
+    "github_release": "NOT_RUN",
+    "store_upload": "NOT_RUN",
+    "stable_pointer": "NOT_RUN"
+  }
+}
