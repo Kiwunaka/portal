@@ -1,0 +1,93 @@
+{
+  "schema": "pokrov.release-1.2.0.client-linux-dbus-observability/v1",
+  "recorded_at_utc": "2026-09-01T18:57:43Z",
+  "platform_master_before": "5e5ceef03dd162b3fa1e79bd414c0f14f8bd99cc",
+  "client": {
+    "repository": "Kiwunaka/POKROV-app",
+    "pull_request": 57,
+    "source_commit": "943b029179632bd14096518bb51291578dae452c",
+    "main_merge_commit": "eceb130cc89c06c3a5e2f6448b5fecf2d7d8fd06",
+    "owner_solo_exception": true,
+    "independent_review_performed": false
+  },
+  "implementation": {
+    "authorization_backends": [
+      "peer_credential",
+      "polkit_dbus"
+    ],
+    "closed_decisions": [
+      "authorized",
+      "denied",
+      "agent_unavailable",
+      "dismissed",
+      "timeout",
+      "unavailable",
+      "invalid_subject"
+    ],
+    "polkit_subject": "pid,starttime,uid",
+    "polkit_action": "space.pokrov.linux.manage",
+    "authorization_budget_seconds": 60,
+    "request_read_timeout_seconds": 12,
+    "response_write_timeout_seconds": 5,
+    "one_authorization_event_per_mutation": true,
+    "caller_error_detail": "linux_authorization_denied",
+    "journal_excludes": [
+      "pid",
+      "uid",
+      "process_tuple",
+      "action_detail",
+      "stdout",
+      "stderr",
+      "raw_dbus_error"
+    ],
+    "linux_live_connect_enabled": false
+  },
+  "verification": {
+    "local_windows_runnable_go_suites": "PASS",
+    "local_linux_amd64_cross_compile": "PASS",
+    "flutter_analyze": "PASS",
+    "linux_shell_contract_tests": "PASS_5_OF_5",
+    "seed_validation_with_explicit_platform_and_core_roots": "PASS",
+    "client_pr_run": {
+      "id": 33544192198,
+      "head_sha": "943b029179632bd14096518bb51291578dae452c",
+      "conclusion": "SUCCESS",
+      "linux_step_number": 14,
+      "linux_step_name": "Validate conditional Linux daemon foundation",
+      "linux_step_conclusion": "SUCCESS"
+    },
+    "client_post_merge_run": {
+      "id": 33545657698,
+      "head_sha": "eceb130cc89c06c3a5e2f6448b5fecf2d7d8fd06",
+      "conclusion": "SUCCESS",
+      "linux_step_conclusion": "SUCCESS"
+    }
+  },
+  "ledger_effect": {
+    "changed_rows": [
+      "REL_DOD/DOD-06",
+      "OBS/OBS-044"
+    ],
+    "level_changes": 0,
+    "ledger_distribution": {
+      "I4": 7,
+      "I3": 320,
+      "I2": 19,
+      "I1": 32,
+      "I0": 0,
+      "total": 378
+    }
+  },
+  "mutation_boundary": {
+    "host_vpn_route_or_dns_changed": false,
+    "vm_ldplayer_phone_or_pi_used": false,
+    "production_deploy": false,
+    "public_release": false,
+    "store_submission": false,
+    "stable_pointer_mutated": false,
+    "candidate20_artifacts_changed": false,
+    "gate_f_generated": false
+  },
+  "remaining_boundary": "Run the exact source or later signed Linux package in a clean Ubuntu desktop session and retain allow, deny, dismissed, missing-agent and timeout D-Bus plus journald readback before I3 or I4.",
+  "evidence_ceiling": "CLIENT_MAIN_SOURCE_AND_HOSTED_UBUNTU_BUILD_TEST_PROOF; NO_DESKTOP_SESSION_RUNTIME_PACKAGE_OR_RELEASE_CREDIT"
+}
