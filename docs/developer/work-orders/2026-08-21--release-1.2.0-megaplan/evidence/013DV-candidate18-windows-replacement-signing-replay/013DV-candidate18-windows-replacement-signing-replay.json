@@ -1,0 +1,149 @@
+{
+  "schema": "pokrov-release-1.2.0-work-order-evidence-v1",
+  "work_order": "WO-013DV",
+  "observed_at": "2026-09-01T06:12:00Z",
+  "rejected_predecessor": {
+    "candidate_id": "pokrov-1.2.0-candidate.17",
+    "status": "REJECTED_WINDOWS_RUNTIME_PACKAGING",
+    "windows_setup_sha256": "0afaf6e1d73a7e72762d945557f48793646a9bdbf12bb8ca2e843d4b94df276c",
+    "windows_manifest_required_file_count": 8,
+    "missing_required_runtime_files": [
+      "msvcp140.dll",
+      "vcruntime140.dll",
+      "vcruntime140_1.dll"
+    ],
+    "isolated_windows_result": "SERVICE_START_FAIL_INSTALLER_FALSE_SUCCESS",
+    "publication_allowed": false
+  },
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.18",
+    "version": "1.2.0+4049",
+    "platform_source": "d6898e63c5c9ab7dd267b9d5150b54196f99d967",
+    "client_source": "820ca1016bdfef0f44a1d217e3804adb9b365ca5",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "handoff_release_index_base": "ae416c2a411580b9b7b6b4d66da99db2049f6d77",
+    "signed_release_index_source": "5dc25bdde2ce146c65c37c08bf96afebe722f759",
+    "receipt_release_index_source": "d8fb1cbcc420a933e9ffc8cd7a430cff56903467",
+    "strict_handoff_sha256": "c780b5f25deba1fc58f53cce2b460cfa78aca1b0a3bf637fed0781fd1d261086",
+    "signed_manifest_sha256": "d686238265e19b7a63759b735e18a49d8910f1885098dc923c5f1c51130f9a56",
+    "detached_signature_sha256": "a5584da629e4562b2ec6d79824f5d121e691f8b7e3ce0a83475f6a00464b6324",
+    "signing_receipt_sha256": "42a4c7381dc8dab6cdb226476f0ab316222bd96f16994d75e10f22f0436fe83d",
+    "signing_key_id": "pokrov-release-2026-01",
+    "candidate_created": true,
+    "promotion_authorized": false,
+    "output_kind": "ACTIONS_ARTIFACT_ONLY",
+    "artifact_count": 6
+  },
+  "hosted": {
+    "client_fix_pr": 53,
+    "client_fix_pr_head": "c6a042995f28d5682874923155d09bad245faf2b",
+    "client_fix_merge": "820ca1016bdfef0f44a1d217e3804adb9b365ca5",
+    "client_fix_run": 33471290095,
+    "client_fix_job": 99741402523,
+    "client_fix_checks": "PASS_REAL_STEPS",
+    "release_index_input_pr": 37,
+    "release_index_input_run": 33475255402,
+    "release_index_input_job": 99753053336,
+    "release_index_signer_run": 33475398520,
+    "release_index_signer_job": 99753483181,
+    "release_index_receipt_pr": 38,
+    "release_index_receipt_run": 33475602234,
+    "release_index_receipt_job": 99754090172,
+    "signed_actions_artifact_id": 9787972110,
+    "signed_actions_artifact_digest": "sha256:b997c61e2f6adbc958a34bed1f3b068f4ae7add8070beb5ed0a4e511d7b5fcc8",
+    "exact_source_replay_run": 33475733478,
+    "exact_source_replay_job": 99754497745,
+    "exact_source_replay_result": "PASS_REAL_STEPS",
+    "independent_review_performed": false,
+    "review_policy": "OWNER_SOLO_EXCEPTION"
+  },
+  "supply_chain": {
+    "android_signing": "PASS_PRODUCTION_CERTIFICATE",
+    "windows_signing": "SKIPPED_BY_OWNER_UNSIGNED_DIRECT_BETA",
+    "sbom_component_count": 352,
+    "sbom_sha256": "60499706a642cfe38ef696f41d2a6955373b112943ed5a982f4b6eb0b2f57f55",
+    "provenance_subject_count": 6,
+    "provenance_sha256": "9417e86a3da9675dc39df0895a74e4d8bf2d50bf48f931c3efe5c431b498c8f1",
+    "windows_runtime_manifest_sha256": "1b53d5ed42d74eff295db1036a342703e43979db64994349bb24cbd07ef12627",
+    "windows_runtime_file_count": 11,
+    "supply_validation": "PASS",
+    "supply_validation_sha256": "b56ba8a23341f8237c24ccd3da07b120372b52a48e9d2bb759d73063d8e8b460"
+  },
+  "artifacts": [
+    {
+      "id": "android-arm64-v8a",
+      "sha256": "4983209204ba4a1090483ffb3c6f6741261d80215ff1a2703e951093c5166297",
+      "size_bytes": 101366678
+    },
+    {
+      "id": "android-armeabi-v7a",
+      "sha256": "9f6e67e3e8a4bad81f4c80c32653cc5b4849b73cd26f82a29a19096e453d5a22",
+      "size_bytes": 90778788
+    },
+    {
+      "id": "android-market",
+      "sha256": "188ec02eda345a1a821e91d2908c73a8b4a385fcf640de3f38719cbdeeafebd1",
+      "size_bytes": 126265673
+    },
+    {
+      "id": "android-universal",
+      "sha256": "428fa89f12a3079a90123711161d7b66f7c1c5e545c5db9248be0443a639e91d",
+      "size_bytes": 295370161
+    },
+    {
+      "id": "android-x86-64",
+      "sha256": "ed0917660ab00e3258308b1cb53c9106b5d292bc8f1a0f24c13a169f32c2b9f0",
+      "size_bytes": 109951989
+    },
+    {
+      "id": "windows-x64-setup",
+      "sha256": "21dca69a4cffe9648bf9788c1279606896c798b32617dd88fa0d9c1e9c1bf2d3",
+      "size_bytes": 29127743,
+      "signing": "SKIPPED_BY_OWNER",
+      "exception": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0"
+    }
+  ],
+  "windows": {
+    "installer_manifest_sha256": "1b53d5ed42d74eff295db1036a342703e43979db64994349bb24cbd07ef12627",
+    "required_file_count": 11,
+    "app_local_runtime": {
+      "msvcp140.dll": "9057d39b36b6c7d054865ee2bf9cde7a490fe3b01ec4e82514687e24f576269f",
+      "vcruntime140.dll": "da72e6677bd1bcd01c453c1998aaa19aeaf6659f4774cf6848409da8232a95b2",
+      "vcruntime140_1.dll": "26e470b29bed3d873e0c328186e53f95e9edbfe0b0fd0cda44743a0b1a04a828"
+    },
+    "vm_environment": "WINDOWS_11_X64_ISOLATED_VM_CLEAN_APP_STATE",
+    "install_service_ipc_restart_uninstall_result": "PASS",
+    "windows_vm_evidence_sha256": "c2294976dde96a615993f08fd0b5223d0907ba75592ab2264553edaa2b47d31e",
+    "public_1_1_6_migration_result": "PASS_PUBLIC_1_1_6_PER_USER_TO_1_2_0_MACHINE_MIGRATION_AND_CLEAN_UNINSTALL",
+    "migration_evidence_sha256": "b19cc046d1673de1c0d0a4773ed1dd585aee0d0a71c0357e2df82c6c173c727c",
+    "evidence_ceiling": "CLEAN_APP_STATE_NOT_CLEAN_OS_LIVE_TUN_DNS_EGRESS_SLEEP_REBOOT_CRASH_CONNECTED_UNINSTALL_AND_INTERACTIVE_SMARTSCREEN_OPEN"
+  },
+  "android": {
+    "ldplayer_exact_x86_64_install": "PASS_BYTE_IDENTICAL",
+    "ldplayer_launch": "PASS_NO_ANDROID_RUNTIME_FATAL",
+    "ldplayer_network_evidence": "NOT_CREDITED_HOST_TUN_CONTAMINATED",
+    "nested_windows_vm_emulator": "NOT_RUN_INVALID_RELEASE_EVIDENCE_BOUNDARY",
+    "physical_arm64_wifi": "MANUAL_OWNER_TEST",
+    "physical_arm64_beeline": "MANUAL_OWNER_TEST"
+  },
+  "release_decision": {
+    "candidate_18_is_current_signed_candidate": true,
+    "candidate_17_rejected": true,
+    "candidate_16_gate_f_is_historical": true,
+    "candidate_18_gate_f": "NOT_RUN",
+    "public_release_created": false,
+    "store_submission_performed": false,
+    "stable_pointer_mutated": false,
+    "production_mutation_performed": false,
+    "promotion_authorized": false,
+    "ledger_advancement": [],
+    "ledger_distribution": {
+      "I4": 5,
+      "I3": 319,
+      "I2": 20,
+      "I1": 34,
+      "I0": 0,
+      "total": 378
+    }
+  }
+}

@@ -2,6 +2,35 @@
 
 Last updated: 2026-09-01
 
+## 2026-09-01 — WO-013DV candidate.18 Windows replacement and signing
+
+Candidate.17 is retained as rejected evidence. Its exact Windows setup contains
+eight manifest-bound files, omits the three required VC143 app-local runtime
+DLLs and fails to start the service on the isolated Windows 11 VM while the old
+installer can return exit code `0`.
+
+Client PR 53 fixes the package and transactional installer, merges as
+`820ca101...`, and passes real hosted checks. Candidate.18 binds platform
+`d6898e63...`, client `820ca101...` and Core `cd8f0f41...` to six build-4049
+artifacts, a 352-component SBOM, six-subject provenance and an 11-file Windows
+manifest. The exact setup `21dca69a...` passes isolated Windows 11
+clean-app-state install, file identity, LocalSystem service, authenticated IPC,
+restart, uninstall, idle route/DNS restoration and public per-user 1.1.6
+migration.
+
+Release-index PRs 37/38 and main-only signer run `33475398520` pass. Signed
+manifest/signature/receipt hashes are `d6862382...`, `a5584da6...` and
+`42a4c738...`; promotion remains false. Exact-source replay run `33475733478`
+passes handoff v2, client unit/Android flavor tests and the conditional Linux
+foundation.
+
+LDPlayer contributes only byte-identical x86_64 install and launch evidence.
+Its network output is excluded because host Windows already uses another
+tunnel. Candidate.18 physical Wi-Fi/Beeline, AWG, Smart-DNS, connected Windows
+and named-origin gates are not run. Candidate.16 Gate F remains immutable
+history; candidate.18 Gate F is `NOT_RUN`. No row advances. Distribution stays
+`I4=5`, `I3=319`, `I2=20`, `I1=34`, `I0=0` across `378` rows.
+
 ## 2026-09-01 — WO-013DP background Android Smart-DNS reachability
 
 Background-only ADB shell readback confirms exact `1.2.0+4049` on the owner
