@@ -5545,3 +5545,33 @@ screen/input control or runtime mutation occurs. `FRKN_PLAN/W9-02` and
 remains non-PASS, the current Gate F decision remains `NO_GO 2/17/2` without
 regeneration, the 378-row distribution stays `I4=5`, `I3=319`, `I2=20`,
 `I1=34`, `I0=0`, and Gate G remains unauthorized.
+
+## 2026-09-01 — WO-013DU DE dual-delivery recovery
+
+The owner clarified that the two restored provider addresses belong to one DE
+VM and requested both as VPN choices. Platform PR 149 implements bounded
+`delivery_endpoints[]` under one transport profile instead of introducing a
+duplicate node. Local catalog, Smart Connect/RU-bridge, backend and docs suites
+pass; hosted cross-repository and guardrail jobs pass before the owner-solo
+merge at platform `a68280f38124a5aad7b8e481d54d5637e0d393a7`.
+
+The DE VM now persistently owns the secondary address and source route. The
+adjacent private-chat listener is stopped with restart disabled and retained
+for rollback; x-ui/Xray owns TCP/443 on both addresses. AWG2 and AWG3.1 server
+units, UDP sockets and firewall rules are active. Independent Brain-origin
+checks return both DNS names open in three repeats, and an exact-Core temporary
+client proves authenticated VLESS/Reality HTTP `204` egress through each before
+complete cleanup.
+
+The merged backend deploy retains a root-only rollback snapshot and matches
+the exact source semantically at `197/197`. A row-lock plus exact preimage CAS
+updates only the DE canonical VPN host and two endpoint entries, retaining a
+root-only row preimage. Live Hiddify/sing-box, Happ, Clash and raw VLESS renders
+all pass with two DE choices and one user mapping.
+
+This is current-runtime proof after signed candidate.16. Candidate.16 and its
+Gate F `NO_GO 2/17/2` remain immutable; no row changes level and the 378-row
+distribution stays `I4=5`, `I3=319`, `I2=20`, `I1=34`, `I0=0`. A successor
+signed candidate must bind the new platform and repeat exact Android, Windows,
+AWG and origin evidence before Gate F is regenerated. Gate G remains
+unauthorized.
