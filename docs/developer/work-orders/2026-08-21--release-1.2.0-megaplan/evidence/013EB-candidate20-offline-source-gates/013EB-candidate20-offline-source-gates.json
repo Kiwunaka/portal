@@ -1,0 +1,91 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate20-offline-source-gates/v1",
+  "recorded_at_utc": "2026-09-01T15:30:42Z",
+  "status": "CANDIDATE20_EXACT_SOURCE_STOP_SHIP_AND_PRIVACY_PASS_BRANCH_AND_LIVE_AGGREGATE_OPEN",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.20",
+    "version": "1.2.0+4049",
+    "platform_source": "d6898e63c5c9ab7dd267b9d5150b54196f99d967",
+    "client_source": "8ab9815ab98f111140c0c8ce4e289555652d56e8",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "source_worktrees_clean_before_and_after": true
+  },
+  "stop_ship_and_p0": {
+    "verifier_status": "BLOCKED",
+    "verifier_generated_at_utc": "2026-09-01T15:22:23.530446Z",
+    "verifier_report_sha256": "784f63ee034248280061d246e16eb7f01c012a004b6c977f8fa0924e71f79fea",
+    "registry_sha256": "dbe322645bc9d7da9e343f90267675e51dbf12f793eaf470f4a54562e6129e4a",
+    "permanent_regressions": {
+      "status": "PASS",
+      "passed": 7,
+      "failed": 0
+    },
+    "owner_solo_pr_controls": {
+      "status": "PASS",
+      "passed": 3,
+      "independent_review_performed": false
+    },
+    "hosted_branch_protection": {
+      "blocked_by_access": 2,
+      "fail_unprotected": 1,
+      "accepted_owner_policy_is_not_technical_pass": true
+    },
+    "github_open_p0_label_count": 0,
+    "github_open_p0_title_count": 0,
+    "generic_manual_gate": "WIN-003_NOT_RUN_IN_SOURCE_ONLY_VERIFIER",
+    "candidate_runtime_reconciliation": "WO-013EA separately proves exact candidate20 Windows 11 default TUN DNS authenticated egress rollback and migration; it does not rewrite the source-only verifier or prove the remaining Windows matrix",
+    "aggregate_no_open_p0_false_green_privacy_attestation": "MISSING_LIVE_DEVICE_AND_REMAINING_MANUAL_GATES"
+  },
+  "exact_source_privacy": {
+    "platform_release_health_and_support_pipeline": {
+      "status": "PASS",
+      "passed": 75,
+      "failed": 0,
+      "duration_seconds": 118.25,
+      "test_file_count": 8
+    },
+    "client_release_source_logging": {
+      "status": "PASS",
+      "production_files_scanned": 145,
+      "negative_fixtures_rejected": 4
+    },
+    "client_observability_runtime": {
+      "status": "PASS",
+      "passed": 29,
+      "failed": 0
+    },
+    "client_support_bundle": {
+      "status": "PASS",
+      "passed": 15,
+      "failed": 0
+    },
+    "dependency_materialization": "FLUTTER_PUB_GET_OFFLINE_FROM_EXISTING_CACHE",
+    "aggregate_live_secret_leak_attestation": "MISSING"
+  },
+  "ledger_effect": {
+    "REL_DOD/DOD-01": "I2_TO_I3_EXACT_CANDIDATE20_PERMANENT_REGRESSIONS_VERIFIED_LOCAL",
+    "REL_DOD/DOD-12": "I3_RETAINED_WITH_CANDIDATE20_EXACT_SOURCE_REPLACEMENT_EVIDENCE",
+    "REL_GATE/GATE-F": "I3_UNCHANGED_LIVE_AGGREGATE_AND_OTHER_MANUAL_GATES_OPEN",
+    "distribution": {
+      "I4": 7,
+      "I3": 320,
+      "I2": 19,
+      "I1": 32,
+      "I0": 0,
+      "rows": 378
+    }
+  },
+  "mutation_boundary": {
+    "host_vpn_route_or_dns_command_executed": false,
+    "vm_ldplayer_or_phone_used": false,
+    "application_or_vpn_runtime_started": false,
+    "server_dns_provider_payment_or_entitlement_changed": false,
+    "public_release_store_or_stable_pointer_changed": false
+  },
+  "decision": {
+    "gate_f_regenerated": false,
+    "gate_g_authorized": false,
+    "promotion_authorized": false,
+    "evidence_ceiling": "PASS_EXACT_CANDIDATE20_LOCAL_SOURCE_REGRESSIONS_AND_PRIVACY_CONTRACTS; BRANCH_POLICY_REMAINS_NON_PASS; NO_LIVE_ANDROID_REMAINING_WINDOWS_OR_FINAL_AGGREGATE_CREDIT"
+  }
+}
