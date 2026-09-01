@@ -2,6 +2,23 @@
 
 Last updated: 2026-09-01
 
+## 2026-09-01 — WO-013DX candidate.18 Brain-origin read-only refresh
+
+Exact candidate.18 platform source passes `197/197` semantic file matches on
+Brain. An isolated readiness retry passes `23/23` with five stable
+subscription samples, and all seven enabled delivery nodes are open in three
+redacted samples.
+
+The first readiness attempt retains one management-SSH timeout as non-PASS;
+the remaining checks and subscription samples completed. No server, database,
+trusted host state, release pointer or user screen/input is changed.
+
+Candidate.18 Brain-origin passes its source/readiness/delivery boundary.
+Current-origin authenticated client and RU-origin remain open, so
+`FRKN_PLAN/W9-02` stays `I2`; `GATE-D/GATE-F` do not advance and Gate F remains
+`NOT_RUN`. Distribution stays `I4=5`, `I3=319`, `I2=20`, `I1=34`, `I0=0`
+across `378` rows.
+
 ## 2026-09-01 — WO-013DW candidate.18 isolated rollback rehearsal
 
 The signed candidate.18 manifest, detached signature, receipt and exact

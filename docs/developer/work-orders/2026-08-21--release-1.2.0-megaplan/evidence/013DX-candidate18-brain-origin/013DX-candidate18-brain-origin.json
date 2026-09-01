@@ -1,0 +1,89 @@
+{
+  "schema": "pokrov.release-1.2.0.brain-origin/v1",
+  "recorded_at_utc": "2026-09-01T06:47:23Z",
+  "work_order": "WO-013DX",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.18",
+    "version": "1.2.0+4049",
+    "platform_source": "d6898e63c5c9ab7dd267b9d5150b54196f99d967",
+    "client_source": "820ca1016bdfef0f44a1d217e3804adb9b365ca5",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "5dc25bdde2ce146c65c37c08bf96afebe722f759",
+    "manifest_sha256": "d686238265e19b7a63759b735e18a49d8910f1885098dc923c5f1c51130f9a56",
+    "signature_sha256": "a5584da629e4562b2ec6d79824f5d121e691f8b7e3ce0a83475f6a00464b6324",
+    "receipt_sha256": "42a4c7381dc8dab6cdb226476f0ab316222bd96f16994d75e10f22f0436fe83d"
+  },
+  "brain_source": {
+    "status": "PASS",
+    "payload_count": 197,
+    "raw_match_count": 4,
+    "crlf_only_difference_count": 193,
+    "normalized_match_count": 197,
+    "mismatch_count": 0,
+    "normalization_rule": "CRLF_TO_LF_ONLY",
+    "source_revision": "d6898e63c5c9ab7dd267b9d5150b54196f99d967",
+    "runtime_mutated": false,
+    "remote_content_retained": false,
+    "external_report_sha256": "f36036b2e089f3ad77f85e0ebd6f5908e150fc09f5d62056fbe819913e63bbfa"
+  },
+  "brain_readiness": {
+    "initial_attempt": {
+      "status": "NON_PASS_MANAGEMENT_SSH_TIMEOUT",
+      "check_count": 23,
+      "failure_count": 1,
+      "subscription_sample_count": 5,
+      "external_report_sha256": "b58d4587116da78a0157189c1cb661102016ab29bd33310093f9084afe1a8601"
+    },
+    "isolated_retry": {
+      "status": "PASS",
+      "check_count": 23,
+      "failure_count": 0,
+      "subscription_sample_count": 5,
+      "external_report_sha256": "1ae22aa504556d2675f75fffe1b4d22f2f17f5c36e94210e9ef4376a3000a80b"
+    }
+  },
+  "enabled_delivery": {
+    "status": "PASS",
+    "sample_count": 3,
+    "required_node_count": 7,
+    "open_count_per_sample": [
+      7,
+      7,
+      7
+    ],
+    "non_open_node_codes_per_sample": [
+      [],
+      [],
+      []
+    ],
+    "all_enabled_nodes_open_per_sample": true,
+    "external_report_sha256": [
+      "376fb7a4303aa89cc5770341fbe82078b3c5888b3e8f6fa98f5947530304c37f",
+      "03e45ea6d9b1ea1f788b2091d18c1eeb0b8a8c02ca9986b22479f3ce5e233dce",
+      "e834db29ee1d58053807dd3c45f586d24215fe7e3150a5b7960f231978f31f04"
+    ]
+  },
+  "decision": {
+    "brain_origin": "PASS_EXACT_SOURCE_READINESS_AND_ENABLED_DELIVERY",
+    "candidate_16_non_pass_superseded": true,
+    "candidate_18_gate_f_regenerated": false,
+    "completion_index_promoted": false,
+    "gate_g_authorized": false
+  },
+  "mutation_boundary": {
+    "connection_mode": "OWNER_TRUSTED_SSH_CONFIG_READ_ONLY",
+    "brain_runtime_mutated": false,
+    "delivery_nodes_mutated": false,
+    "known_hosts_mutated": false,
+    "screen_or_input_control_used": false,
+    "production_deploy": false,
+    "public_release_or_stable_pointer_changed": false,
+    "raw_address_hostname_credential_key_token_or_remote_content_retained": false
+  },
+  "row_outcomes": {
+    "REL_GATE/GATE-D": "I3_EXACT_CANDIDATE18_BRAIN_SOURCE_AND_READINESS_PASS_PROVIDER_E2E_OPEN",
+    "REL_GATE/GATE-F": "I3_SIGNED_CANDIDATE18_BRAIN_ORIGIN_PASS_OTHER_ROWS_OPEN_GATE_NOT_RUN",
+    "FRKN_PLAN/W9-02": "I2_BRAIN_ORIGIN_PASS_CURRENT_AUTHENTICATED_AND_RU_ORIGINS_OPEN"
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE18_BRAIN_SOURCE_197_OF_197_READINESS_23_OF_23_AND_ENABLED_DELIVERY_7_OF_7_X3_PASS; CURRENT_AUTHENTICATED_AND_RU_ORIGINS_REMAIN_OPEN; NO_GATE_F_REGENERATION_OR_PUBLIC_PROMOTION"
+}
