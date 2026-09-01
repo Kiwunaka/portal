@@ -2,6 +2,40 @@
 
 Last updated: 2026-09-01
 
+## 2026-09-01 — WO-013EA candidate.20 Windows 11 default-path proof
+
+Candidate.19 is retained as immutable `NO_GO`: the service-relocated managed
+profile still referenced ordinary-user AppData rule-set files, Core returned
+`CORE-005`, and rollback completed without connected state.
+
+Client PR 55 moves bounded binary rule-set materialization into the existing
+authenticated Windows service boundary and merges as `8ab9815...`. Exact
+candidate.20 binds platform `d6898e6...`, that client source and Core
+`cd8f0f4...` to six build-4049 artifacts, a 352-component SBOM, six-subject
+provenance and an eleven-file Windows manifest. Release-index PRs 41/42 and
+main-only signer run `33509003189` pass; `promotion_authorized=false` remains
+authoritative. The earlier signer dispatch fails closed on a template-byte
+mismatch and produces no artifact.
+
+On the isolated Windows 11 VM the exact setup `330b87cb...` passes `11/11`
+installed identity, ordinary UI/LocalSystem service IPC, four service-owned rule
+sets, default Germany connect, TUN, managed DNS, authenticated DE egress,
+disconnect restoration, clean uninstall and public-1.1.6 migration. The VM
+retained authorized user-level app state while prior machine installation,
+service and owner registry were absent; this is not called a fresh user
+profile. Sanitized evidence retains no raw profile, connection material or open
+egress IP.
+
+`REL/WIN-003` and `REL_DOD/DOD-04` advance `I1 -> I4` for this exact Windows 11
+default-path slice. Windows 10, AWG 3.1/AWG2, reboot/crash, connected uninstall,
+IPv6/leak, interactive SmartScreen and trusted signing remain separate
+non-PASS checks. Exact candidate.20 post-build source replay run `33511744299`
+passes the handoff-v2 contract, client unit/Android-flavor suites and
+conditional Linux foundation. Candidate.20 Android runtime, named origins,
+candidate rollback and aggregate attestations remain open. Gate F is `NOT_RUN`;
+Gate G and public/stable promotion remain unauthorized. Distribution becomes
+`I4=7`, `I3=319`, `I2=20`, `I1=32`, `I0=0` across `378` rows.
+
 ## 2026-09-01 — WO-013DY candidate.18 current-origin API and STOP-SHIP
 
 Source-bound current-origin health and public catalog pass 50-sample p95

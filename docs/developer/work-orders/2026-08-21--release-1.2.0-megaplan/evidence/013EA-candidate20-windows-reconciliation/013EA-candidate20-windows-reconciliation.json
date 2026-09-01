@@ -1,0 +1,170 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate20-windows-reconciliation/v1",
+  "recorded_at_utc": "2026-09-01T12:50:00Z",
+  "status": "CANDIDATE20_SIGNED_WINDOWS11_DEFAULT_WIN003_PASS_ANDROID_GATES_OPEN",
+  "candidate19": {
+    "decision": "NO_GO_IMMUTABLE",
+    "source_revision_client": "10f5516648fd40d6c94eb7a7ca0d05be161d393c",
+    "failure": "managed profile retained ordinary-user AppData paths for local binary rule sets after the service relocated only the profile JSON; Core returned CORE-005 and rollback completed without connected state"
+  },
+  "candidate20": {
+    "label": "pokrov-1.2.0-candidate.20",
+    "version": "1.2.0+4049",
+    "promotion_authorized": false,
+    "sources": {
+      "platform": "d6898e63c5c9ab7dd267b9d5150b54196f99d967",
+      "client": "8ab9815ab98f111140c0c8ce4e289555652d56e8",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "signed_release_index": "61ad0b0e0780775b8f95f1a567e94d75d198a483",
+      "release_index_receipt_merge": "493c4b936bbe1002c1b6ea573860e7306ed46703"
+    },
+    "artifacts": [
+      {
+        "file_name": "pokrov-android-arm64-v8a.apk",
+        "sha256": "8dfca42e13eb4d64c9d627f377d8a201ad2a74fa0ca64c11e45c914d9a89056c",
+        "size_bytes": 101366678,
+        "signing": "PASS"
+      },
+      {
+        "file_name": "pokrov-android-armeabi-v7a.apk",
+        "sha256": "7d41ed5b4856443033203ce4c889377926fb16d1ccc84f47bd39121269e63b6d",
+        "size_bytes": 90778788,
+        "signing": "PASS"
+      },
+      {
+        "file_name": "pokrov-android-universal.apk",
+        "sha256": "927270b36ceedc34caa6feaf22c548094fda759d4ed211bdc7b017330f3f48a8",
+        "size_bytes": 295370161,
+        "signing": "PASS"
+      },
+      {
+        "file_name": "pokrov-android-x86_64.apk",
+        "sha256": "d8ae790d93a956e31c40778b769f7af69e6658d1e10f346d68096e7e764264b1",
+        "size_bytes": 109951989,
+        "signing": "PASS"
+      },
+      {
+        "file_name": "pokrov-android-market.aab",
+        "sha256": "96af83cf988d26dab876f6e09a3862b6a6d568b29931dc5f2f76fbc914eee115",
+        "size_bytes": 126263352,
+        "signing": "PASS"
+      },
+      {
+        "file_name": "pokrov-windows-setup-x64.exe",
+        "sha256": "330b87cb074a04f43cb7004e4c03cdd0c692b54397acbc223f25dd6e0be8587f",
+        "size_bytes": 29140987,
+        "signing": "SKIPPED_BY_OWNER"
+      }
+    ],
+    "supply": {
+      "artifact_set_sha256": "77eeeafe793433b17f78db294f915e132446b4fc1028d1f5512f8e47ed9a8d7b",
+      "windows_manifest_sha256": "57687e95bd3368e43d71025c5d607a60456abfcaf869cf37c6bf84ff297afbd7",
+      "windows_required_file_count": 11,
+      "sbom_sha256": "afd0abf6da411027892953b6c5724748061a132b2e5de6656952f04edac34959",
+      "sbom_component_count": 352,
+      "provenance_sha256": "f6b4bb3c32c5fbc6906e65cef5c72ba82fc309964454413160be25a037e10bd2",
+      "provenance_subject_count": 6,
+      "release_handoff_sha256": "a8720ce0dd52dba2377c25e9d698ca74a45a277d73a5d7461ef8fad98dfc081d",
+      "supply_validation_sha256": "e3a817b20e91b29caa9591d9cb50efa353f8502700e048ed7bcbcc47d5f78b99",
+      "preflight_sha256": "7a4ec44a7195ccb27b66a69d7c2f2acd29bf78740e72f333e13b02fb955877c9",
+      "preflight_status": "READY_LOCAL_FREEZE"
+    },
+    "signed_manifest": {
+      "manifest_sha256": "046d331274da76ba524f824debb17c4abc080657456c41099246589cc3c1770a",
+      "signature_sha256": "f5e81d310fa18b464421afe4c0da010e3b9c112c9affba64e7d1631b4f6890ea",
+      "receipt_sha256": "47429c2cb3b77520257bb63e7a41652d3744e0a4f710589bf4c20eec289b9479",
+      "template_sha256": "fce339212ded41f2878148edccf8209aab96d38703dd04907a782deb8536bc6e",
+      "signer_run": 33509003189,
+      "signer_artifact_id": 9800807994,
+      "signer_artifact_digest": "sha256:8c38f1e92eb3996e4c7b7a01f088e073e8003e79f90ed49ebad1e1ecb2d39fdc",
+      "failed_closed_template_mismatch_run": 33508836174,
+      "validation": "READY_SIGNED_MANIFEST"
+    },
+    "hosted_controls": {
+      "client_rule_set_correction_pr_run": 33503907082,
+      "release_index_input_pr_run": 33508726731,
+      "release_index_receipt_pr_run": 33509374495,
+      "status": "PASS",
+      "exact_candidate20_post_build_source_replay": {
+        "status": "PASS_REAL_STEPS",
+        "run": 33511744299,
+        "job": 99868854293,
+        "workflow_head_revision": "9f8de86e3a94557bc89f797684615c1ce844db13",
+        "validated_sources": {
+          "platform": "d6898e63c5c9ab7dd267b9d5150b54196f99d967",
+          "client": "8ab9815ab98f111140c0c8ce4e289555652d56e8",
+          "core": "cd8f0f4169d570d693992a959d81d17c2c44884d"
+        },
+        "passed_steps": [
+          "strict release-handoff v2 contract",
+          "client unit and Android flavor tests",
+          "conditional Linux daemon foundation"
+        ]
+      }
+    },
+    "windows_vm": {
+      "status": "PASS_EXACT_CANDIDATE20_WINDOWS11_VM_DEFAULT_CONNECT_DISCONNECT_MIGRATION",
+      "win_003": "PASS",
+      "foundation_sha256": "525987f45ceb88197745b0e738fc2ccb4b5aaf969ad5253c22ad2a2091678d04",
+      "rule_set_materialization_sha256": "9873b108afc1bc2e19e7d41d39a903140f3f02349fd749eab43c3d1cd350df6a",
+      "connected_network_sha256": "eec3eaefa772f94c3af9988c7a50c608d406754a1b456a96ffb6fe4db96cdef5",
+      "restored_network_sha256": "77c0c28519b99261d652cc04941d42ab31c7c973c83c8968771b5b8c965bed07",
+      "connected_service_events_sha256": "5f024fa61037404d023c428218bde8fe2bdee37974174cc243dd265924db81ca",
+      "restored_service_events_sha256": "01edd91e1fa5608aaaa8e834b83cb4d24f9b7daa0280028a1c45d46d202a3839",
+      "public_1_1_6_migration_sha256": "7506a74494772ec556f53222d289cf3d4b0d54a7296edfcb338b442946f91ebc",
+      "installed_file_identity": "11/11 PASS",
+      "service_owned_rule_sets": "4/4 PASS",
+      "default_connect": "PASS",
+      "tun": "PASS",
+      "dns": "PASS",
+      "authenticated_de_egress": "PASS",
+      "disconnect_rollback": "PASS",
+      "clean_uninstall": "PASS",
+      "user_profile_ceiling": "authorized user-level app state retained; machine installation, service and owner registry were absent before candidate20 install",
+      "not_proved": [
+        "Windows 10",
+        "AWG 3.1 or AWG2 through the Windows app/service boundary",
+        "sleep reboot or crash recovery",
+        "connected uninstall",
+        "IPv6 or broad leak matrix",
+        "interactive SmartScreen",
+        "trusted Authenticode"
+      ]
+    },
+    "android": {
+      "artifact_signing": "PASS",
+      "ldplayer_install_launch": "NOT_RUN",
+      "ldplayer_network_credit": "EXCLUDED_HOST_HIDDIFY_TUN",
+      "nested_emulator": "NOT_RUN",
+      "physical_arm64_wifi": "MANUAL_OWNER_TEST",
+      "physical_arm64_beeline": "MANUAL_OWNER_TEST"
+    },
+    "manual_gates": {
+      "blocking_count_after_win_003": 9,
+      "gate_f": "NOT_RUN",
+      "gate_g": "NOT_AUTHORIZED"
+    }
+  },
+  "open_gates": [
+    "candidate20 LDPlayer install launch and byte identity",
+    "physical Android ARM64 Wi-Fi runtime",
+    "physical Android ARM64 Beeline runtime",
+    "Windows 10 and non-default protocol recovery matrix",
+    "authenticated current-origin client egress",
+    "Brain-origin and RU-origin candidate20 binding",
+    "provider payment and PostgreSQL outbox",
+    "Operator OIDC and RBAC",
+    "legal and commercial approval",
+    "comparable device performance and accessibility OEM endurance",
+    "candidate20 guarded runtime pointer rollback with origin readback",
+    "final no-open-P0 false-green and privacy attestation"
+  ],
+  "decision": {
+    "gate_f": "NOT_RUN",
+    "gate_g": "NOT_AUTHORIZED",
+    "tag": "NOT_RUN",
+    "github_release": "NOT_RUN",
+    "store_upload": "NOT_RUN",
+    "stable_pointer": "NOT_RUN"
+  }
+}
