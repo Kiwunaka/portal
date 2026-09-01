@@ -2,6 +2,32 @@
 
 Last updated: 2026-09-01
 
+## 2026-09-01 — WO-013EG client Linux network transaction participants
+
+Client PR 58 source `9fa8c76...` merges as `main` `7ae2427...`. The conditional
+Linux daemon now contains a dormant typed transaction that creates a bounded
+NetworkManager system-D-Bus checkpoint, applies per-link resolved DNS and
+default-route ownership, atomically installs only the dedicated `inet pokrov`
+nftables table, and commits the NetworkManager checkpoint last.
+
+Checkpoint and partial-apply faults trigger reverse rollback. A failed
+rollback does not stop the remaining owners and only the dirty owner is retried.
+The plan accepts only a daemon-owned `pokrov*` link, non-zero Core routing mark
+and validated IP resolvers. Commands use fixed absolute paths without a shell,
+bounded time/output and discarded diagnostic output; nft never flushes the
+host ruleset. Focused Go tests, the full local client gate, Linux/amd64
+vet/build, client PR run `33552898076` and its real Ubuntu Linux step pass.
+Post-merge run `33554337590` on exact client `main` `7ae2427...` also passes,
+including Linux step 14.
+
+The product path is unchanged: `connect` still emits only unavailable
+preflight records and returns `linux_live_connect_unavailable`. No host network,
+device, VM, package, candidate or production surface was used. `OBS-045`
+therefore stays `I2`; clean Ubuntu native D-Bus/journald plus route/DNS/nft
+mutation, injected system fault and exact restoration proof remain required.
+Distribution remains `I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0` across `378`
+rows.
+
 ## 2026-09-01 — WO-013EF client Linux polkit/D-Bus observability
 
 Client PR 57 is merged as `main` `eceb130...`. The conditional Linux daemon
