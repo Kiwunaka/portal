@@ -1,0 +1,87 @@
+{
+  "schema": "pokrov.release-1.2.0.current-origin-stop-ship/v1",
+  "recorded_at_utc": "2026-09-01T06:55:57Z",
+  "work_order": "WO-013DY",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.18",
+    "version": "1.2.0+4049",
+    "platform_source": "d6898e63c5c9ab7dd267b9d5150b54196f99d967",
+    "client_source": "820ca1016bdfef0f44a1d217e3804adb9b365ca5",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "source_worktrees_clean": true
+  },
+  "current_origin_performance": {
+    "source_binding": "ASSIGNED_PHYSICAL_ETHERNET_IPV4_WITH_PROXY_DISCOVERY_DISABLED",
+    "ambient_default_route": "TUNNEL_LIKE_EXCLUDED_FROM_EVIDENCE_PATH",
+    "environment_fingerprint": "9a94902f446bcc4fc5bbc0007ae4d5f25e452f2a50d76f897000975bfd0fc57c",
+    "health": {
+      "status": "PASS",
+      "sample_count": 50,
+      "warmup_count": 5,
+      "p95_ms": 43.5854,
+      "limit_ms": 100,
+      "gate_sha256": "e28107e244c9d0e0453dccc116394bb01db615d7318ae4c98265f6c19b7e38b8",
+      "private_samples_sha256": "93ec118835980920e58dd16956bb3d5b4d5f3b80d41ebf5d6b882c2b5cd0e9d6"
+    },
+    "public_catalog": {
+      "status": "PASS",
+      "sample_count": 50,
+      "warmup_count": 5,
+      "p95_ms": 43.7925,
+      "limit_ms": 200,
+      "gate_sha256": "90b93e4e95fcffaf4dfed097c304cf4db80f0a0d19d4ddc21451d9381faad986",
+      "private_samples_sha256": "352241e4e4e1ea79f782aee89c33c0142c6a6f51d3ca1e191ffa5431b9299cd5"
+    },
+    "authenticated_client_egress": "NOT_RUN"
+  },
+  "stop_ship_and_p0": {
+    "status": "BLOCKED",
+    "exact_source_regressions": {
+      "status": "PASS",
+      "passed": 7,
+      "failed": 0
+    },
+    "hosted_branch_controls": {
+      "blocked_by_access": 2,
+      "fail_unprotected": 1
+    },
+    "review_controls": {
+      "owner_solo_exception": 3,
+      "independent_review_performed": false
+    },
+    "owner_solo_pr_controls": {
+      "passed": 3,
+      "failed": 0
+    },
+    "manual_gates": 1,
+    "github_open_p0_label_count": 0,
+    "github_open_p0_title_count": 0,
+    "aggregate_no_open_p0_false_green_secret_leak_attestation": "MISSING",
+    "external_report_sha256": "c77a45085cff744b0f2e1c728175743b49d2bf89acae55a3f9b8c101b69d0a1b"
+  },
+  "gate_effect": {
+    "current_origin_public_api_performance": "PASS",
+    "current_origin_aggregate": "NON_PASS_AUTHENTICATED_CLIENT_EGRESS_OPEN",
+    "mandatory_stop_ship_and_dod": "NON_PASS_HOSTED_AND_MANUAL_CONTROLS_OPEN",
+    "gate_f_regenerated": false,
+    "gate_g_authorized": false
+  },
+  "mutation_boundary": {
+    "client_or_vpn_runtime_changed": false,
+    "device_setting_changed": false,
+    "route_or_dns_changed": false,
+    "server_or_provider_changed": false,
+    "screen_or_input_control_used": false,
+    "payment_or_entitlement_changed": false,
+    "public_release_or_stable_pointer_changed": false,
+    "raw_source_address_retained_in_git": false
+  },
+  "row_outcomes": {
+    "REL/PERF-001": "I3_CANDIDATE18_CURRENT_ORIGIN_PUBLIC_API_PASS_DEVICE_BASELINES_OPEN",
+    "REL_DOD/DOD-01": "I2_CANDIDATE18_STOP_SHIP_REGRESSIONS_PASS_MANUAL_AGGREGATE_OPEN",
+    "REL_DOD/DOD-13": "I1_CANDIDATE18_CURRENT_ORIGIN_API_PASS_PHYSICAL_WINDOWS_BASELINES_OPEN",
+    "REL_GATE/GATE-E": "I3_CANDIDATE18_PUBLIC_API_PERFORMANCE_PASS_AUTHENTICATED_DEVICE_GATES_OPEN",
+    "REL_GATE/GATE-F": "I3_SIGNED_CANDIDATE18_PUBLIC_API_AND_LOCAL_STOP_SHIP_PASS_GATE_NOT_RUN"
+  },
+  "evidence_ceiling": "PASS_EXACT_CANDIDATE18_CURRENT_ORIGIN_PUBLIC_API_PERFORMANCE_AND_LOCAL_STOP_SHIP_REGRESSIONS; NO_AUTHENTICATED_CLIENT_OR_FINAL_LIVE_NO_OPEN_P0_FALSE_GREEN_SECRET_LEAK_ATTESTATION; NO_GATE_F_REGENERATION_OR_PUBLIC_PROMOTION"
+}

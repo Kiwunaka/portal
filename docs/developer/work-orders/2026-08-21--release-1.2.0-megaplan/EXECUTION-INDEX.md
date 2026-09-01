@@ -2,6 +2,24 @@
 
 Last updated: 2026-09-01
 
+## 2026-09-01 — WO-013DY candidate.18 current-origin API and STOP-SHIP
+
+Source-bound current-origin health and public catalog pass 50-sample p95
+budgets at `43.5854 ms <= 100 ms` and `43.7925 ms <= 200 ms`. Proxy discovery
+is disabled and the ambient tunnel-like default route is excluded without
+changing host routing or DNS.
+
+Exact candidate.18 permanent regressions pass `7/7`; owner-solo PR controls
+pass `3/3`; queried open P0 label/title counts are zero. Aggregate STOP-SHIP is
+still `BLOCKED`: two hosted controls are inaccessible, the owner's no-paid-
+protection policy leaves one branch explicitly unprotected, and one manual
+live gate remains open.
+
+Authenticated client egress and the final live no-open-P0/false-green/privacy
+attestation remain non-PASS. Gate F stays `NOT_RUN`; no row advances.
+Distribution remains `I4=5`, `I3=319`, `I2=20`, `I1=34`, `I0=0` across `378`
+rows.
+
 ## 2026-09-01 — WO-013DX candidate.18 Brain-origin read-only refresh
 
 Exact candidate.18 platform source passes `197/197` semantic file matches on
