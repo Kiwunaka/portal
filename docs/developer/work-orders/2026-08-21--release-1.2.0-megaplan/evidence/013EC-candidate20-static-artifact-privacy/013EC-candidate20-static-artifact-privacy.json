@@ -1,0 +1,181 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate20-static-artifact-privacy/v1",
+  "recorded_at_utc": "2026-09-01T16:04:33Z",
+  "status": "PASS_BOUNDED_STATIC_ARTIFACT_PRIVACY_SCAN_ANDROID_RUNTIME_AND_FINAL_AGGREGATE_OPEN",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.20",
+    "version": "1.2.0+4049",
+    "platform_source": "d6898e63c5c9ab7dd267b9d5150b54196f99d967",
+    "client_source": "8ab9815ab98f111140c0c8ce4e289555652d56e8",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "61ad0b0e0780775b8f95f1a567e94d75d198a483"
+  },
+  "artifact_binding": {
+    "signed_manifest_sha256": "046d331274da76ba524f824debb17c4abc080657456c41099246589cc3c1770a",
+    "artifact_count": 6,
+    "size_and_sha256_verified": 6,
+    "all_size_and_sha256_checks_passed": true,
+    "artifacts": [
+      {
+        "name": "pokrov-android-arm64-v8a.apk",
+        "bytes": 101366678,
+        "sha256": "8dfca42e13eb4d64c9d627f377d8a201ad2a74fa0ca64c11e45c914d9a89056c"
+      },
+      {
+        "name": "pokrov-android-armeabi-v7a.apk",
+        "bytes": 90778788,
+        "sha256": "7d41ed5b4856443033203ce4c889377926fb16d1ccc84f47bd39121269e63b6d"
+      },
+      {
+        "name": "pokrov-android-market.aab",
+        "bytes": 126263352,
+        "sha256": "96af83cf988d26dab876f6e09a3862b6a6d568b29931dc5f2f76fbc914eee115"
+      },
+      {
+        "name": "pokrov-android-universal.apk",
+        "bytes": 295370161,
+        "sha256": "927270b36ceedc34caa6feaf22c548094fda759d4ed211bdc7b017330f3f48a8"
+      },
+      {
+        "name": "pokrov-android-x86_64.apk",
+        "bytes": 109951989,
+        "sha256": "d8ae790d93a956e31c40778b769f7af69e6658d1e10f346d68096e7e764264b1"
+      },
+      {
+        "name": "pokrov-windows-setup-x64.exe",
+        "bytes": 29140987,
+        "sha256": "330b87cb074a04f43cb7004e4c03cdd0c692b54397acbc223f25dd6e0be8587f"
+      }
+    ]
+  },
+  "scan_contract": {
+    "streaming_binary_mode": true,
+    "archive_extracted_to_disk": false,
+    "chunk_overlap_bytes": 65536,
+    "matched_values_retained": false,
+    "raw_local_paths_retained_in_normalized_record": false,
+    "definite_categories": [
+      "complete_private_key_block",
+      "authorization_literal",
+      "credential_assignment",
+      "high_confidence_proxy_uri",
+      "known_live_token"
+    ],
+    "known_live_token_policy": "provider-specific high-confidence shapes",
+    "broad_token_shape_policy": "fingerprint-only triage; not counted as a definite finding"
+  },
+  "android_payload_scan": {
+    "archives_streamed": 5,
+    "archive_entries_scanned": 1895,
+    "uncompressed_bytes_scanned": 976326012,
+    "archive_details": [
+      {
+        "name": "pokrov-android-arm64-v8a.apk",
+        "archive_entries": 374,
+        "uncompressed_bytes_scanned": 104072562
+      },
+      {
+        "name": "pokrov-android-armeabi-v7a.apk",
+        "archive_entries": 374,
+        "uncompressed_bytes_scanned": 93471054
+      },
+      {
+        "name": "pokrov-android-market.aab",
+        "archive_entries": 393,
+        "uncompressed_bytes_scanned": 368127180
+      },
+      {
+        "name": "pokrov-android-universal.apk",
+        "archive_entries": 380,
+        "uncompressed_bytes_scanned": 298005966
+      },
+      {
+        "name": "pokrov-android-x86_64.apk",
+        "archive_entries": 374,
+        "uncompressed_bytes_scanned": 112649250
+      }
+    ],
+    "definite_findings": {
+      "complete_private_key_block": 0,
+      "authorization_literal": 0,
+      "credential_assignment": 0,
+      "high_confidence_proxy_uri": 0,
+      "known_live_token": 0
+    },
+    "result": "PASS_BOUNDED_STATIC_SCAN"
+  },
+  "broad_match_triage": {
+    "initial_discovery_status": "NON_PASS_REQUIRES_TRIAGE",
+    "loose_shape_occurrences": 12,
+    "unique_value_fingerprints": 1,
+    "match_length": 39,
+    "family": "numeric_colon_shape",
+    "strict_provider_shape_matches": 0,
+    "native_libflutter_occurrences": 9,
+    "aab_libflutter_symbol_occurrences": 3,
+    "exact_project_text_source_matching_files": {
+      "platform": 0,
+      "client": 0,
+      "core": 0
+    },
+    "value_sha256": "12a50a79e024ceeb0963ead525792e2a801cdc477f2427bf6de9f8e14e615f6e",
+    "matched_value_retained": false,
+    "classification": "ABI_DUPLICATED_FLUTTER_RUNTIME_AND_SYMBOL_STRING_NOT_A_PROVIDER_TOKEN_FORMAT"
+  },
+  "windows_payload_scan": {
+    "build_manifest_sha256": "57687e95bd3368e43d71025c5d607a60456abfcaf869cf37c6bf84ff297afbd7",
+    "installer_matches_signed_and_build_manifests": true,
+    "installer_raw_bytes_scanned": 29140987,
+    "installer_raw_definite_findings": 0,
+    "exact_client_source": "8ab9815ab98f111140c0c8ce4e289555652d56e8",
+    "exact_client_worktree_clean": true,
+    "manifest_required_files": 11,
+    "required_file_size_and_sha256_verified": 11,
+    "staged_tree_files_scanned": 302,
+    "staged_tree_bytes_scanned": 99269281,
+    "staged_tree_definite_findings": {
+      "complete_private_key_block": 0,
+      "authorization_literal": 0,
+      "credential_assignment": 0,
+      "high_confidence_proxy_uri": 0,
+      "known_live_token": 0
+    },
+    "result": "PASS_BOUND_STAGING_STATIC_SCAN"
+  },
+  "private_reports": {
+    "initial_broad_discovery_sha256": "64fcc12c6e342c1f1016e3bd91502553e80cb37b4c078cc7cb5b770c4fc00b3d",
+    "strict_six_artifact_report_sha256": "e9d09c37e054be503130c7b006a145a4e093e3561373a575110c4a25fd1e5407",
+    "fingerprint_only_triage_report_sha256": "adb6e5363e2540fb919ab79c9567a8c95bf093f6fe3d47462a736febcc763ca4",
+    "windows_staging_report_sha256": "2d710bb828a7d88e04b332e57c466dafcab1bb54b4dbce04ea3f2147d1b77ebe"
+  },
+  "ledger_effect": {
+    "OBS-005": "I3_RETAINED_WITH_CANDIDATE20_STATIC_REPLACEMENT_EVIDENCE",
+    "OBS-006": "I3_RETAINED_WITH_CANDIDATE20_STATIC_REPLACEMENT_EVIDENCE",
+    "OBS-010": "I3_RETAINED_WITH_CANDIDATE20_STATIC_REPLACEMENT_EVIDENCE",
+    "DOD-12": "I3_RETAINED_WITH_CANDIDATE20_STATIC_REPLACEMENT_EVIDENCE",
+    "AWG-01": "I3_RETAINED_WITH_CANDIDATE20_STATIC_REPLACEMENT_EVIDENCE",
+    "GATE-F": "I3_UNCHANGED_AND_NOT_RUN"
+  },
+  "decision": {
+    "status": "PASS_BOUNDED_STATIC_ARTIFACT_PRIVACY_SCAN",
+    "release_index_promotion": false,
+    "gate_f_regenerated": false,
+    "gate_g_authorized": false,
+    "aggregate_live_secret_leak_attestation": "MISSING"
+  },
+  "limitations": [
+    "Static byte-pattern coverage is not proof of every possible secret format.",
+    "The Windows installer is scanned as raw bytes; independent decompression is not claimed.",
+    "Only the 11 Windows required files are individually bound by the build manifest; the remaining staged files are tied to the preserved clean exact-client build tree.",
+    "Static inspection does not replace installed Android, connected Windows, deployed ingest or final aggregate owner evidence.",
+    "No candidate index advancement follows from this bounded I3 evidence."
+  ],
+  "mutation_boundary": {
+    "host_vpn_route_or_dns_changed": false,
+    "application_installer_vm_ldplayer_or_phone_used": false,
+    "archive_extracted_to_disk": false,
+    "server_dns_provider_payment_or_entitlement_changed": false,
+    "public_release_store_or_stable_pointer_changed": false
+  },
+  "evidence_ceiling": "PASS_EXACT_CANDIDATE20_SIX_ARTIFACT_SIZE_AND_HASH_BINDING_ANDROID_STREAM_SCAN_AND_MANIFEST_BOUND_WINDOWS_STAGING_SCAN; NO_LIVE_ANDROID_REMAINING_WINDOWS_DEPLOYED_INGEST_OR_FINAL_AGGREGATE_CREDIT"
+}

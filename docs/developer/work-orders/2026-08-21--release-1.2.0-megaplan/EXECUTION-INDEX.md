@@ -2,6 +2,36 @@
 
 Last updated: 2026-09-01
 
+## 2026-09-01 — WO-013EC candidate.20 bounded static artifact privacy
+
+All six immutable candidate.20 distributions match their signed release-index
+sizes and SHA-256 values. Five Android archives are streamed without disk
+extraction: `1895` entries and `976326012` uncompressed bytes return zero
+complete private-key blocks, populated authorization values, credential
+assignments, high-confidence connection URIs or provider-specific live-token
+shapes.
+
+The loose discovery pass stops at twelve occurrences. They collapse to one
+39-byte fingerprint repeated nine times in ABI-specific `libflutter.so`
+payloads and three times in the matching AAB symbol entries. It matches no
+text-source file in the exact platform, client or Core trees and does not meet
+a strict provider-token format. The initial non-PASS discovery record and the
+fingerprint-only triage remain retained; no matched value is stored.
+
+The raw Windows installer also returns zero definite findings and matches both
+the signed index and build manifest. Under the preserved clean exact client
+source, all `11/11` required files pass size/SHA binding and all `302` staged
+files / `99269281` bytes return zero definite findings. Independent installer
+decompression is not claimed, and only the eleven required files are
+individually build-manifest-bound.
+
+`OBS-005`, `OBS-006`, `OBS-010`, `DOD-12`, `AWG-01` and Gate F gain current
+candidate replacement evidence without level promotion. Distribution remains
+`I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0` across `378` rows. Gate F remains
+`I3/NOT_RUN`; Android/device runtime, remaining Windows, deployed ingest and
+the final live aggregate attestation remain open. No host network, device,
+runtime, public release or stable pointer is changed.
+
 ## 2026-09-01 — WO-013EB candidate.20 offline source gates
 
 The clean exact candidate.20 tuple `d6898e6.../8ab9815.../cd8f0f4...`
