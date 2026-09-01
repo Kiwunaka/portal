@@ -177,9 +177,13 @@ mandatory compensating controls outside the branch readback itself. The
 exception expires when release 1.2.0 is closed; a later release must authorize
 a new exception or return to team review.
 
-WIN-003 remains `NOT_RUN` until the exact Windows candidate passes the
-clean-host TUN/DNS/egress/rollback matrix. A passing source anchor or solo PR
-control never converts that manual gate into `PASS`.
+WIN-003 is `PASS` only for exact candidate.20 on the isolated Windows 11
+default path. Setup `330b87cb…587f` proves the ordinary UI/LocalSystem service,
+four service-owned rule sets, TUN, managed DNS, authenticated DE egress and
+disconnect rollback, followed by clean uninstall and public-1.1.6 migration.
+This does not transfer to Windows 10, AWG 3.1/AWG2, reboot/crash, connected
+uninstall, interactive SmartScreen or trusted signing. A source anchor or solo
+PR control alone still cannot convert a manual gate into `PASS`.
 
 Current focused procedures:
 
@@ -295,18 +299,24 @@ Current public user-facing version policy:
   `1.2.0+4049` / `PRE_CANDIDATE_LOCAL` with `candidate_created=false`; that
   seed is not candidate authority and does not contradict the separately
   generated immutable strict-v2 candidate handoff
-- generated strict-v2 `pokrov-1.2.0-candidate.16` is the current signed exact
-  candidate: six immutable build-4049 artifacts, refreshed platform dependency
-  locks, regenerated SBOM/provenance, the managed-readiness correction and the
-  hosted release-index signature are retained, while its output remains
-  `ACTIONS_ARTIFACT_ONLY` with `promotion_authorized=false`
-- candidate.16 is not the distributed public update: no tag, GitHub Release,
-  public asset, store object or stable pointer exists; exact LDPlayer install
-  and default tunnel/DNS/egress pass, while AWG 3.1 and AWG2 activate their
-  selected profiles but fail authenticated egress without false green. The
-  exact physical ARM64 install identity passes without an app launch; physical
-  runtime remains manual. Gate F validates `19/19` checks and returns
-  `NO_GO 2/17/2`; Gate G remains unauthorized
+- generated strict-v2 `pokrov-1.2.0-candidate.20` is the current signed exact
+  candidate: six rebuilt build-4049 artifacts, a 352-component SBOM,
+  six-subject provenance, an eleven-file Windows manifest and the bounded
+  service-owned rule-set correction are retained. Main-only signer run
+  `33509003189` passes from release-index source `61ad0b0…a483`; output remains
+  `ACTIONS_ARTIFACT_ONLY` with `promotion_authorized=false`. Exact candidate
+  source replay run `33511744299` also passes the guarded source-ref checkout,
+  handoff-v2 contract, client unit/Android-flavor suites and conditional Linux
+  foundation
+- candidate.20 is not the distributed public update: no tag, GitHub Release,
+  public asset, Store object or stable pointer exists. Exact Windows 11 default
+  TUN/DNS/authenticated-egress/rollback and public-1.1.6 migration pass within
+  the bounded `WIN-003` ceiling. Candidate.20 LDPlayer and physical ARM64
+  runtime are not yet run; Windows 10/non-default/recovery, named origins,
+  provider/Operator/legal, candidate rollback and aggregate attestations remain
+  non-PASS. Candidate.19 is immutable `NO_GO`; candidate.16 Gate F
+  `NO_GO 2/17/2` is retained history and is not transferred. A new candidate.20
+  Gate F has not run; Gate G remains unauthorized
 - Android `versionName`, Windows display version, cabinet download badges, and
   public changelog copy must stay aligned to the distributed stable line
 - internal build numbers and platform-native version codes may remain numeric or platform-specific and are not the public label
