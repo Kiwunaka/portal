@@ -2,6 +2,27 @@
 
 Last updated: 2026-09-01
 
+## 2026-09-01 — WO-013EF client Linux polkit/D-Bus observability
+
+Client PR 57 is merged as `main` `eceb130...`. The conditional Linux daemon
+now emits one validated, bounded authorization journal decision per mutation
+for the `peer_credential` or `polkit_dbus` backend. Allow, deny, missing-agent,
+dismissed, timeout, unavailable and invalid-subject outcomes remain closed;
+the caller receives only the generic authorization error and the journal omits
+peer identity, process tuple, command output and raw D-Bus detail.
+
+Separate request-read, interactive-authorization and response-write deadlines
+close the inherited socket-deadline defect. Local validation and client PR run
+`33544192198`, including its real Ubuntu Linux step, pass. Post-merge run
+`33545657698` on the exact merge is `SUCCESS`; its Linux step is `SUCCESS`.
+
+`DOD-06` and `OBS-044` stay `I2`: no clean Ubuntu desktop-session
+allow/deny/dismiss/missing-agent/timeout D-Bus plus journald readback and no
+signed package exist. Candidate 20 and its artifacts are unchanged; Linux
+remains outside 1.2.0. Distribution remains `I4=7`, `I3=320`, `I2=19`,
+`I1=32`, `I0=0` across `378` rows. Host networking and all device/runtime
+surfaces are untouched.
+
 ## 2026-09-01 — WO-013EE candidate.20 active-ledger reconciliation
 
 The post-WO-013ED audit keeps all `378` ledger rows and the unchanged
