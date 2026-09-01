@@ -2,6 +2,28 @@
 
 Last updated: 2026-09-01
 
+## 2026-09-01 — WO-013EB candidate.20 offline source gates
+
+The clean exact candidate.20 tuple `d6898e6.../8ab9815.../cd8f0f4...`
+passes the canonical permanent STOP-SHIP registry `7/7`, all three retained
+owner-solo PR/check bindings and fresh GitHub open-P0 label/title queries
+`0/0`. The verifier remains honestly `BLOCKED`: two branch policies are
+`BLOCKED_BY_ACCESS`, Core is `FAIL_UNPROTECTED`, and its generic source-only
+WIN-003 input stays `NOT_RUN`. WO-013EA's separate exact Windows 11 default-path
+PASS is retained without rewriting that generic report.
+
+Exact-source privacy replacement evidence passes platform release-health and
+support-pipeline tests `75/75`, client release logging over `145` production
+files plus four negative fixtures, observability runtime `29/29` and support
+bundle `15/15`. No host VPN/route/DNS, VM, emulator, phone or runtime action is
+part of the slice.
+
+`REL_DOD/DOD-01` advances `I2 -> I3`; `DOD-12` remains `I3` with candidate.20
+evidence. Distribution becomes `I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0`
+across `378` rows. Gate F remains `I3/NOT_RUN`; live Android, remaining Windows,
+origins, provider/Operator/legal, rollback, performance and final aggregate
+attestation remain non-PASS.
+
 ## 2026-09-01 — WO-013EA candidate.20 Windows 11 default-path proof
 
 Candidate.19 is retained as immutable `NO_GO`: the service-relocated managed
