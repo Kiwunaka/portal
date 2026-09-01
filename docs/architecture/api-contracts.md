@@ -370,6 +370,17 @@ config. US and any other excluded or non-allowlisted node remain direct-only.
 The additive list and existing `profileRevision` let clients cache the safe
 catalog without breaking readers that ignore unknown fields.
 
+Within `nodes.transport_profiles_json`, a node transport may optionally include
+`delivery_endpoints[]`. Each accepted entry contains only a stable lowercase
+`id`, a DNS `host`, and a non-empty bounded consumer `label`; duplicate ids,
+hosts, or case-insensitive labels,
+malformed entries, and entries after the eighth are ignored. These are alternate
+public addresses for the same node, panel inbound, port, TLS/Reality identity,
+and provisioned client. Sing-box keeps one logical node selector and places the
+address choices below it, while Happ, Clash, and raw VLESS compatibility output
+one labeled entry per address. The node code remains the only Smart Connect,
+capacity, health, and provisioning identity.
+
 ### Device Sessions
 
 The repository candidate implements the following Android/Windows session

@@ -133,6 +133,46 @@ class TransportCatalogTests(unittest.TestCase):
         self.assertEqual(by_name["operator_lab"]["xhttp_path"], "/lab-front")
         self.assertNotIn("grpc_service_name", by_name["operator_lab"])
 
+    def test_node_transport_profiles_normalize_delivery_endpoints(self) -> None:
+        node = SimpleNamespace(
+            host="primary.example.test",
+            vless_port=443,
+            reality_sni="sni.example.test",
+            reality_pbk="pbk",
+            reality_sid="sid",
+            fingerprint="firefox",
+            flow="xtls-rprx-vision",
+            inbound_id=7,
+            transport_profiles_json=json.dumps(
+                [
+                    {
+                        "name": "legacy_reality_fallback",
+                        "enabled": True,
+                        "kind": "reality",
+                        "inbound_id": 7,
+                        "delivery_endpoints": [
+                            {"id": "de1", "host": "DE-ONE.EXAMPLE.TEST.", "label": "  Германия   1  "},
+                            {"id": "de2", "host": "de-two.example.test", "label": "Германия 2"},
+                            {"id": "duplicate", "host": "de-two.example.test", "label": "Duplicate"},
+                            {"id": "duplicate-label", "host": "de-three.example.test", "label": "германия 2"},
+                            {"id": "missing-label", "host": "de-four.example.test", "label": ""},
+                            {"id": "bad", "host": "https://bad.example.test", "label": "Bad"},
+                        ],
+                    }
+                ]
+            ),
+        )
+
+        profile = self.transport_catalog.node_transport_profiles(node)[0]
+
+        self.assertEqual(
+            profile["delivery_endpoints"],
+            [
+                {"id": "de1", "host": "de-one.example.test", "label": "Германия 1"},
+                {"id": "de2", "host": "de-two.example.test", "label": "Германия 2"},
+            ],
+        )
+
     def test_generate_vless_link_uses_legacy_profile_from_catalog(self) -> None:
         node = SimpleNamespace(
             host="compat-fields.example.test",
@@ -269,3 +309,63 @@ class TransportCatalogTests(unittest.TestCase):
         self.assertEqual(outbound["transport"]["type"], "grpc")
         self.assertEqual(outbound["transport"]["service_name"], "pokrov-grpc")
         self.assertNotIn("reality", outbound["tls"])
+
+    def test_subscription_renderers_expand_one_node_into_two_delivery_endpoints(self) -> None:
+        node = SimpleNamespace(
+            code="de",
+            name="Germany",
+            host="de-one.example.test",
+            vless_port=443,
+            reality_sni="sni.example.test",
+            reality_pbk="pbk",
+            reality_sid="sid",
+            fingerprint="firefox",
+            flow="xtls-rprx-vision",
+            inbound_id=7,
+            transport_profiles_json=json.dumps(
+                [
+                    {
+                        "name": "legacy_reality_fallback",
+                        "enabled": True,
+                        "kind": "reality",
+                        "inbound_id": 7,
+                        "host": "de-one.example.test",
+                        "port": 443,
+                        "tls_server_name": "sni.example.test",
+                        "reality_public_key": "pbk",
+                        "reality_short_id": "sid",
+                        "delivery_endpoints": [
+                            {"id": "de1", "host": "de-one.example.test", "label": "🇩🇪 Германия 1"},
+                            {"id": "de2", "host": "de-two.example.test", "label": "🇩🇪 Германия 2"},
+                        ],
+                    }
+                ]
+            ),
+        )
+
+        cfg = self.api._singbox_multi_node_config(
+            user_uuid="11111111-1111-1111-1111-111111111111",
+            nodes=[node],
+            title="Portal",
+            transport_profile="legacy_reality_fallback",
+        )
+        outbounds = {item["tag"]: item for item in cfg["outbounds"]}
+
+        self.assertEqual(outbounds["🇩🇪 Германия 1"]["server"], "de-one.example.test")
+        self.assertEqual(outbounds["🇩🇪 Германия 2"]["server"], "de-two.example.test")
+        self.assertEqual(
+            outbounds["🇩🇪 Германия"]["outbounds"],
+            ["🇩🇪 Германия 1", "🇩🇪 Германия 2"],
+        )
+        self.assertEqual(outbounds["🌍 Страны"]["outbounds"], ["🇩🇪 Германия"])
+
+        clash = self.api._clash_subscription_config(
+            user_uuid="11111111-1111-1111-1111-111111111111",
+            nodes=[node],
+            title="Portal",
+            transport_profile="legacy_reality_fallback",
+        )
+        self.assertIn('name: "🇩🇪 Германия 1"', clash)
+        self.assertIn('server: "de-one.example.test"', clash)
+        self.assertIn('name: "🇩🇪 Германия 2"', clash)
+        self.assertIn('server: "de-two.example.test"', clash)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 
@@ -12,6 +13,8 @@ OPERATOR_LAB = "operator_lab"
 AWG2_LAB = "awg2_lab"
 AWG31_LAB = "awg31_lab"
 HY2_LAB = "hy2_lab"
+
+MAX_DELIVERY_ENDPOINTS = 8
 
 _PROFILE_ORDER = {
     LEGACY_REALITY_FALLBACK: 0,
@@ -70,6 +73,34 @@ def _normalize_path(value: Any, *, fallback: str = "/") -> str:
     return path
 
 
+def _normalize_delivery_endpoints(value: Any) -> list[dict[str, str]]:
+    if not isinstance(value, list):
+        return []
+
+    endpoints: list[dict[str, str]] = []
+    seen_ids: set[str] = set()
+    seen_hosts: set[str] = set()
+    seen_labels: set[str] = set()
+    for raw in value:
+        if len(endpoints) >= MAX_DELIVERY_ENDPOINTS or not isinstance(raw, dict):
+            continue
+        endpoint_id = _clean_text(raw.get("id")).lower()
+        host = _clean_text(raw.get("host")).lower().rstrip(".")
+        label = " ".join(_clean_text(raw.get("label")).split())[:64].strip()
+        if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{0,63}", endpoint_id):
+            continue
+        if not re.fullmatch(r"[a-z0-9][a-z0-9.-]{0,252}", host) or not label:
+            continue
+        label_key = label.casefold()
+        if endpoint_id in seen_ids or host in seen_hosts or label_key in seen_labels:
+            continue
+        endpoints.append({"id": endpoint_id, "host": host, "label": label})
+        seen_ids.add(endpoint_id)
+        seen_hosts.add(host)
+        seen_labels.add(label_key)
+    return endpoints
+
+
 def _legacy_transport_profile(node: Any) -> dict[str, Any]:
     inbound_id = _as_int(getattr(node, "inbound_id", 0), fallback=0)
     return {
@@ -113,6 +144,9 @@ def _normalize_profile(node: Any, profile: dict[str, Any]) -> dict[str, Any] | N
         "fingerprint": _clean_text(profile.get("fingerprint"), fallback=legacy["fingerprint"]),
         "flow": _clean_text(profile.get("flow"), fallback=(legacy["flow"] if kind == "reality" else "")),
     }
+    delivery_endpoints = _normalize_delivery_endpoints(profile.get("delivery_endpoints"))
+    if delivery_endpoints:
+        normalized["delivery_endpoints"] = delivery_endpoints
     if kind == "reality":
         normalized["reality_public_key"] = _clean_text(profile.get("reality_public_key"), fallback=legacy["reality_public_key"])
         normalized["reality_short_id"] = _clean_text(profile.get("reality_short_id"), fallback=legacy["reality_short_id"])
