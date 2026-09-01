@@ -1,0 +1,55 @@
+{
+  "schema": "pokrov.release-1.2.0.signed-candidate-binding-evidence/v1",
+  "recorded_at_utc": "2026-09-01T17:40:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.20",
+    "release_index_source_revision": "61ad0b0e0780775b8f95f1a567e94d75d198a483",
+    "platform_source_revision": "d6898e63c5c9ab7dd267b9d5150b54196f99d967",
+    "client_source_revision": "8ab9815ab98f111140c0c8ce4e289555652d56e8",
+    "core_source_revision": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "signer_workflow_run": "Kiwunaka/pokrov/actions/runs/33509003189",
+    "signer_artifact_id": 9800807994,
+    "signer_artifact_name": "pokrov-pokrov-1.2.0-candidate.20-signed-manifest-61ad0b0e0780775b8f95f1a567e94d75d198a483"
+  },
+  "outputs": [
+    {
+      "path": "release-index.json",
+      "sha256": "046d331274da76ba524f824debb17c4abc080657456c41099246589cc3c1770a",
+      "size_bytes": 6884
+    },
+    {
+      "path": "release-index.json.sig",
+      "sha256": "f5e81d310fa18b464421afe4c0da010e3b9c112c9affba64e7d1631b4f6890ea",
+      "size_bytes": 64
+    },
+    {
+      "path": "signing-receipt.json",
+      "sha256": "47429c2cb3b77520257bb63e7a41652d3744e0a4f710589bf4c20eec289b9479",
+      "size_bytes": 589
+    }
+  ],
+  "independent_validation": {
+    "status": "READY_SIGNED_MANIFEST",
+    "receipt_matches_outputs": true,
+    "detached_signature_verified_with_public_keyring": true,
+    "method": "WO-013EA hosted signer plus local exact-byte readback and detached Ed25519 verification against the manifest-bound release-index keyring",
+    "promotion_authorized": false
+  },
+  "physical_phone_install_binding": {
+    "status": "NOT_RUN",
+    "arm64_artifact_sha256_match": false,
+    "reason": "No exact candidate.20 physical Android install identity has been retained."
+  },
+  "mutation_boundary": {
+    "app_launched": false,
+    "vpn_or_network_runtime_test": false,
+    "screen_control": false,
+    "host_vpn_route_or_dns_changed": false,
+    "signing_private_key_accessed_locally": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE20_SIGNED_OUTPUTS_ONLY; PHYSICAL_ANDROID_INSTALL_BINDING_ABSENT; PB14_AND_GATE_F_MUST_FAIL_CLOSED"
+}

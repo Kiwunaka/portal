@@ -2,6 +2,25 @@
 
 Last updated: 2026-09-01
 
+## 2026-09-01 — WO-013EE candidate.20 active-ledger reconciliation
+
+The post-WO-013ED audit keeps all `378` ledger rows and the unchanged
+distribution `I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0`. Of the `51` rows
+below `I3`, thirty receive current candidate.20 status/evidence or corrected
+active instructions. Historical candidate 6/16/18 evidence remains history;
+active next-action references to pre-candidate-20 builds fall from `23` to `0`.
+No row changes level.
+
+The exact candidate.20 manifest, signature, receipt and public keyring are read
+back through the PB-14 physical-device boundary. With the physical installed
+Android identity explicitly `NOT_RUN`, PB-14 returns the expected fail-closed
+exit `1`: `exact installed Android build identity is absent`. The focused
+PB-14/rollback harness passes `16/16`; no incident or rollback is staged.
+
+Physical candidate.20 installation and hash binding remain required before
+PB-14, guarded candidate rollback or Gate F can pass. Host VPN/routes/DNS, VM,
+LDPlayer, phone, production, public release and stable pointers are untouched.
+
 ## 2026-09-01 — WO-013ED candidate.20 offline Gates A–E replay
 
 The clean exact candidate.20 tuple `d6898e6.../8ab9815.../cd8f0f4...` passes
