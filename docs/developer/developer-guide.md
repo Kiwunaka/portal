@@ -38,7 +38,7 @@ meaningful risk requires a work order.
   package line is `1.1.6+29`. The source seed remains `1.2.0+4050` /
   `PRE_CANDIDATE_LOCAL` with `candidate_created=false`, while the separately
   generated strict-v2 handoff and signed public-index receipt own immutable
-  private `pokrov-1.2.0-candidate.20` at retained build `4049`. It is
+  private `pokrov-1.2.0-candidate.20` at retained package `1.2.0+4049`. It is
   artifact-only, not public or promoted, and rejected after exact Windows
   service-restart recovery failed. Candidate.21 artifacts do not yet exist.
   Store publication, trusted Windows signing and exact-candidate physical

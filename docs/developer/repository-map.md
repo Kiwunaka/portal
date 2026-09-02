@@ -120,7 +120,7 @@ isolated environment they create themselves. Use the focused commands in the
 - The client `config/release-handoff.seed.json` owns those source facts. The
   separately generated and validated strict-v2 handoff plus signed
   public-index receipt own private `pokrov-1.2.0-candidate.20` at retained
-  build `4049`; its output is `ACTIONS_ARTIFACT_ONLY`,
+  package `1.2.0+4049`; its output is `ACTIONS_ARTIFACT_ONLY`,
   `promotion_authorized=false`, and immutable `NO_GO` after the Windows
   service-restart recovery failure, with no public tag, assets, Store object
   or stable pointer. Candidate.21 artifacts do not yet exist.

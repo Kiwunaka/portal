@@ -300,7 +300,7 @@ Current public user-facing version policy:
   seed is not candidate authority and does not contradict the separately
   generated immutable strict-v2 candidate handoff
 - generated strict-v2 `pokrov-1.2.0-candidate.20` is the current signed exact
-  candidate: six rebuilt build-4049 artifacts, a 352-component SBOM,
+  candidate: six rebuilt `1.2.0+4049` artifacts, a 352-component SBOM,
   six-subject provenance, an eleven-file Windows manifest and the bounded
   service-owned rule-set correction are retained. Main-only signer run
   `33509003189` passes from release-index source `61ad0b0…a483`; output remains

@@ -1492,7 +1492,7 @@ Current release boundary:
 - working source target: `1.2.0+4050`, `PRE_CANDIDATE_LOCAL`,
   `candidate_created=false`; the seed is not deployable release metadata
 - a separate exact strict-v2 handoff and signed public-index receipt define
-  private `pokrov-1.2.0-candidate.20`, retained at build `4049`; it remains
+  private `pokrov-1.2.0-candidate.20`, retained as `1.2.0+4049`; it remains
   artifact-only with `promotion_authorized=false` and is immutable `NO_GO`
   after exact Windows service-restart recovery failed. The merged successor
   source is preparing build `4050`, but no candidate.21 artifacts exist; no
