@@ -2,6 +2,27 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013EN candidate.21 offline Gates A–E replay
+
+Exact signed candidate.21 platform/client/Core source passes Gate B
+`70/70 + 111/111`, Gate D `196/196 + 12` and `25/25`, and the complete declared
+Node `22.14.0` local-quality gate `15/15`. The latter includes client
+`413/413`, cabinet `69/69`, the 75-operation admin contract/build and static
+performance `9/9`.
+
+A separate fresh dependency audit reports zero findings for webapp and one
+high finding each for adminapp and marketing. Both counts are the same two
+2026-09-01 advisories on transitive development-only `browserslist` `4.28.4`;
+no application import, static-export, candidate-SBOM or Android/Windows
+distributed component is observed. The warning remains recorded and the two
+active development locks require a separate patch; immutable candidate.21 is
+not rewritten.
+
+Gates A–E remain `BLOCKED`, Gate F stays `NOT_RUN`, and no level changes.
+Distribution remains `I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0` across `378`
+rows. No host-network, VM, device, runtime, provider, database, Operator,
+public, Store or stable mutation occurs.
+
 ## 2026-09-02 — WO-013EM candidate.21 isolated rollback rehearsal
 
 The exact signed candidate.21 manifest, detached signature, receipt and

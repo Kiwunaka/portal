@@ -1,0 +1,188 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate21-gates-a-e-offline/v1",
+  "recorded_at_utc": "2026-09-02T06:05:49Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.21",
+    "version": "1.2.0+4050",
+    "sources": {
+      "platform": "e2608130e85d9a0f8fa4b920f46cf3d7679332c3",
+      "client": "1e164586d741484b5ae8fb2ee267ef5dd813cadb",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "cae911e506d95eb72c1364b847992e30cbf9baf9"
+    },
+    "signed_manifest_sha256": "ce0b8586d4d9b5b625bbcd2c93b03fd783f89b4958a7fd79e58ef65b52c3dc6b",
+    "signature_sha256": "ef474e6e1e147093b8b15c3cdc29bd35b5779249854a63ef7d6535d2588c7a58",
+    "receipt_sha256": "aaa027cc5d71fd567c6f3c0b8a9e3b0e965a67760fd02d1769eb3d54062926f8",
+    "strict_supply_handoff_sha256_prefix": "07e0009c",
+    "signer_run_id": 33586752995
+  },
+  "exact_source_state": {
+    "platform": "CLEAN_DETACHED_HEAD",
+    "client": "CLEAN_DETACHED_HEAD",
+    "core": "CLEAN_DETACHED_HEAD",
+    "release_index": "CLEAN_DETACHED_HEAD"
+  },
+  "focused_tests": [
+    {
+      "gate": "B",
+      "source": "platform",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_observability_contracts.py tests/test_generate_observability_support_reference.py tests/test_release_handoff_metadata.py -q",
+      "result": "PASS_70_OF_70",
+      "duration_seconds": 0.75
+    },
+    {
+      "gate": "B",
+      "source": "client",
+      "command": "flutter test test/connection_experience_test.dart test/diagnostics_coordinator_test.dart test/client_experience_store_test.dart test/app_first_runtime_bootstrap_test.dart",
+      "result": "PASS_111_OF_111",
+      "flutter": "3.38.5",
+      "dart": "3.10.4"
+    },
+    {
+      "gate": "D",
+      "source": "platform",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_api_payments_callbacks.py tests/test_lavatop_payment_providers.py tests/test_payment_email_readiness_smoke.py tests/test_admin_payments_api.py tests/test_payment_entitlement_claims.py tests/test_payment_bounded_context.py tests/test_payment_db_runtime.py tests/test_payment_return_service.py tests/test_payment_provider_boundaries.py tests/test_payment_order_service.py tests/test_payment_http_registry.py tests/test_payment_entitlement_outbox.py tests/test_module_slices.py -q",
+      "result": "PASS_196_OF_196_PLUS_12_SUBTESTS",
+      "duration_seconds": 654.67,
+      "warnings": "20_EXISTING_DEPRECATIONS"
+    },
+    {
+      "gate": "D",
+      "source": "platform",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_admin_action_intents.py tests/test_admin_action_policy_coverage.py -q",
+      "result": "PASS_25_OF_25",
+      "duration_seconds": 111.43
+    }
+  ],
+  "exact_local_quality": {
+    "captured_at_utc": "2026-09-02T05:58:44Z",
+    "status": "PASS_15_OF_15",
+    "candidate_proven": false,
+    "promotion_status": "MANUAL_OWNER_TEST",
+    "toolchain": {
+      "node": "22.14.0",
+      "npm": "10.9.2",
+      "flutter": "3.38.5",
+      "dart": "3.10.4"
+    },
+    "client_analyze": "PASS",
+    "client_widget_tests": "PASS_413_OF_413",
+    "webapp_lint_and_build": "PASS",
+    "webapp_cabinet_e2e": "PASS_69_OF_69",
+    "marketing_build_seo_responsive_reduced_motion": "PASS",
+    "adminapp_api_sdk_operations": "PASS_75_OF_75",
+    "adminapp_build": "PASS",
+    "report_sha256": "5b7b5d9ea0631ee53e78916b7a008f9f3f26d26a661aad0783a9a2cc3cb9a5fc"
+  },
+  "static_performance": {
+    "status": "PASS_9_OF_9",
+    "required_scope": "local_static",
+    "environment_fingerprint": "d427c84f1627238a4419e6e88ee26e9fd8ce1781900ef32c642d9c30900adb63",
+    "evidence_sha256": "4528e430ca5ed381535852705cdb536fed7003806cbbcee3d37ad43a955894ab",
+    "gate_sha256": "64fbce8fbedfe215fd59267cbaaed671411203d1e17af2eeb9d6d79b0c463f0d"
+  },
+  "build_dependency_audit": {
+    "recorded_at_utc": "2026-09-02T06:00:23Z",
+    "record_sha256": "8db74c8dd946c38dd0ba8921bd47598f0fc55f784e8d70462a1dcb4d1ff84653",
+    "webapp": {
+      "audit_total": 0,
+      "browserslist_version": "4.28.8"
+    },
+    "adminapp": {
+      "audit_total": 1,
+      "audit_high": 1,
+      "package": "browserslist",
+      "version": "4.28.4"
+    },
+    "marketing": {
+      "audit_total": 1,
+      "audit_high": 1,
+      "package": "browserslist",
+      "version": "4.28.4"
+    },
+    "advisories": [
+      "GHSA-c83g-rgw3-j3cx",
+      "GHSA-73wf-gq98-2v4g"
+    ],
+    "dependency_path": "eslint-config-next > eslint-plugin-react-hooks > @babel/core > @babel/helper-compilation-targets > browserslist",
+    "first_patched": "4.28.7",
+    "direct_dependency": false,
+    "dev_dependency_path_only": true,
+    "application_source_imports": false,
+    "static_export_contains_package_reference": false,
+    "candidate_sbom_component_count": 0,
+    "distributed_android_or_windows_component": false,
+    "classification": "BUILD_TIME_DEV_DEPENDENCY_ONLY_NO_DISTRIBUTED_RUNTIME_EXPOSURE_OBSERVED",
+    "runtime_security_failure": false,
+    "lock_patch_recommended": true,
+    "warning_absent_claimed": false
+  },
+  "gates": {
+    "A": {
+      "decision": "BLOCKED",
+      "index": "I1",
+      "new_candidate_runtime_defect": false,
+      "basis": "WO-013EI signed candidate supply remains current; the fresh build-dependency audit is retained separately from functional local quality.",
+      "build_dependency_finding": "ADMINAPP_AND_MARKETING_TRANSITIVE_DEV_LOCK_BROWERSLIST_4_28_4_HIGH_PATCH_RECOMMENDED",
+      "blocker": "Two access-blocked branch policies, accepted unprotected Core main, trusted Windows signing, physical Android, the active development-line lock patch and final live aggregate remain non-PASS."
+    },
+    "B": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "new_candidate_defect": false,
+      "source_result": "PASS_70_OF_70_PLUS_111_OF_111_AND_413_OF_413",
+      "blocker": "Fresh in-place Windows service-restart recovery and remaining physical false-green/device boundaries remain open."
+    },
+    "C": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "new_candidate_defect": false,
+      "source_result": "PASS_LOCAL_QUALITY_AND_CROSS_REPOSITORY_CONTRACTS",
+      "blocker": "Candidate.21 physical Android, Windows 10/non-default/in-place lifecycle, packaged AWG, in-app Smart DNS and Store delivery remain open."
+    },
+    "D": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "new_candidate_defect": false,
+      "source_result": "PASS_196_OF_196_PLUS_12_SUBTESTS_AND_25_OF_25",
+      "blocker": "Production provider callback, PostgreSQL locking/load, outbox delivery/reconciliation/reversal and real Operator rollback remain open."
+    },
+    "E": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "new_candidate_defect": false,
+      "source_result": "PASS_15_OF_15_AND_STATIC_PERFORMANCE_9_OF_9_WITH_CURRENT_PUBLIC_API_HISTORY",
+      "blocker": "Authenticated journeys, physical accessibility/OEM/scaling, comparable artifact/device/browser-lab performance, support, general RU-origin and post-promotion evidence remain open."
+    }
+  },
+  "aggregate": {
+    "decision": "BLOCKED",
+    "evaluated_gates": 5,
+    "explicit_source_failures": 0,
+    "candidate_replacement_required_by_observed_runtime_exposure": false,
+    "active_development_lock_patch_recommended": true,
+    "gate_f_status": "NOT_RUN",
+    "gate_g_authorized": false,
+    "ledger_distribution": {
+      "I4": 7,
+      "I3": 320,
+      "I2": 19,
+      "I1": 32,
+      "I0": 0,
+      "total": 378
+    }
+  },
+  "mutation_boundary": {
+    "host_vpn_route_or_dns_changed": false,
+    "vm_ldplayer_or_phone_used": false,
+    "production_deploy": false,
+    "payment_or_provider_action": false,
+    "database_or_outbox_mutation": false,
+    "operator_action_executed": false,
+    "public_release": false,
+    "store_submission": false,
+    "stable_pointer_mutated": false,
+    "gate_f_generated": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE21_OFFLINE_SOURCE_AND_LOCAL_QUALITY_REPLAY_WITH_RETAINED_BUILD_DEPENDENCY_FINDING; ALL_FIVE_GATES_BLOCKED; NO_DEVICE_NETWORK_PROVIDER_OPERATOR_OR_PROMOTION_PROOF"
+}
