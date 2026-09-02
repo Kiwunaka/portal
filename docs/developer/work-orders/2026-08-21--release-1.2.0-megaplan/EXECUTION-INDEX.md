@@ -2,6 +2,27 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013EI candidate.21 signed private supply
+
+WO-013EI closes the supply-chain gap left by WO-013EH for the same six
+build-4050 bytes. Exact platform `e2608130...`, client `1e164586...`, Core
+`cd8f0f4...` and release-index signing source `cae911e...` bind strict-v2
+handoff `07e0009c...`, refreshed SBOM `c01234bf...`, provenance `b6e63ae0...`
+and trusted manifest/signature/receipt `ce0b8586...` / `ef474e6e...` /
+`aaa027cc...`.
+
+Release-index input PR 43, signer run `33586752995` and receipt PR 44 pass.
+The signer output is `ACTIONS_ARTIFACT_ONLY`, expires on 2026-09-16 and keeps
+`promotion_authorized=false`. Windows remains owner-except unsigned
+direct-beta only. No tag, public asset, GitHub Release, Store object, stable
+pointer or promotion exists.
+
+Supply-related ledger rows receive current exact evidence without level
+changes. Distribution remains `I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0`
+across `378` unique rows. Android runtime, fresh in-place Windows recovery,
+AWG/Smart-DNS live matrices, named origins, rollback, provider/Operator/legal,
+performance and aggregate Gate F evidence remain open.
+
 ## 2026-09-02 — WO-013EH candidate.21 private assembly and Windows runtime
 
 Candidate.20 is immutable `NO_GO`: after an exact forced service termination,

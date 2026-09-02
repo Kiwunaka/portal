@@ -8,6 +8,12 @@ Production/public mutation: `NONE`
 
 ## Outcome
 
+Current supply supersession: WO-013EI later binds these same six candidate.21
+bytes to strict-v2 handoff `07e0009c...`, refreshed SBOM/provenance and signed
+manifest `ce0b8586...`. The statements below preserve the boundary observed by
+WO-013EH before that signing run; its normalized evidence record and SHA-256
+remain unchanged.
+
 Candidate.20 is immutable `NO_GO`. Its default Windows 11 connect/disconnect,
 public-1.1.6 migration and connected reboot remain valid bounded evidence, but
 a forced service termination left the durable recovery journal at `committed`
