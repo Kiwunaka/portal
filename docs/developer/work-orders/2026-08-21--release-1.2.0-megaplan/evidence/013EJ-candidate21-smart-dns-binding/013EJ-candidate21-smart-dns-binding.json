@@ -1,0 +1,106 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate21-smart-dns-binding/v1",
+  "work_order": "WO-013EJ",
+  "recorded_at_utc": "2026-09-02T04:20:00Z",
+  "status": "CANDIDATE21_SIGNED_SOURCE_AND_LIVE_DIRECT_SMART_DNS_CONTRACT_PASS_IN_APP_MATRIX_OPEN",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.21",
+    "version": "1.2.0+4050",
+    "candidate_created": true,
+    "private": true,
+    "promotion_authorized": false,
+    "sources": {
+      "platform": "e2608130e85d9a0f8fa4b920f46cf3d7679332c3",
+      "client": "1e164586d741484b5ae8fb2ee267ef5dd813cadb",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d"
+    },
+    "signed_manifest_sha256": "ce0b8586d4d9b5b625bbcd2c93b03fd783f89b4958a7fd79e58ef65b52c3dc6b",
+    "signature_sha256": "ef474e6e1e147093b8b15c3cdc29bd35b5779249854a63ef7d6535d2588c7a58",
+    "signing_receipt_sha256": "aaa027cc5d71fd567c6f3c0b8a9e3b0e965a67760fd02d1769eb3d54062926f8"
+  },
+  "server_source_binding": {
+    "live_bundle_source": "650dc3fab8053736cfb976d4a34ea1f2f0b40349",
+    "live_bundle_source_is_candidate_platform_ancestor": true,
+    "live_bundle_sha256": "cda97da16a892c1a8563bd20434cd749a2174c192ba722147091a3e1c14a0225",
+    "candidate21_rebuilt_bundle_sha256": "2b6f1782641022f591fd6f00db0fee5ad3934396c611d03389c1643d3a9e1b46",
+    "candidate21_rebuild_count": 2,
+    "candidate21_rebuilds_byte_identical": true,
+    "entry_count": 11,
+    "runtime_contract_entries_matching_live": 9,
+    "source_bound_entries_different": [
+      "owned-smart-dns-server-bundle.json",
+      "README.md"
+    ],
+    "runtime_binary_sha256": "05a4b6635be25c471b16ae1782d6d393d4b14ea49f3ba9b0f3706e251b38bb5e",
+    "policy_sha256": "b6977f6f6a5ee48898116820d1db252b5b670cb7b86959c78f7bdbc7de90e0fa",
+    "runtime_binary_policy_config_unit_and_license_entries_match_live": true
+  },
+  "live_node_readback": {
+    "mode": "PLAN",
+    "mutation_performed": false,
+    "node_code": "it",
+    "listener_mode": "fronted_loopback_proxy_v2_tcp_18443",
+    "service_state": "active",
+    "service_enabled": true,
+    "runtime_material_ready": true,
+    "loopback_listener": true,
+    "nonloopback_listener": false,
+    "live_release_sha256": "cda97da16a892c1a8563bd20434cd749a2174c192ba722147091a3e1c14a0225"
+  },
+  "frontend_readback": {
+    "mode": "RECEIPT_BOUND_ROLLBACK_PLAN",
+    "mutation_performed": false,
+    "receipt_state": "applied",
+    "current_candidate_config_matches": true,
+    "current_candidate_service_matches": true,
+    "frontend_state": "active",
+    "public_tcp_443_listening": true,
+    "smart_dns_route_present": true,
+    "smart_dns_state": "active",
+    "candidate_config_sha256": "1b5b0be8ab45b2ca8d5a3ea39f8c1dbfefbe5eea85b8b822a956e0c569cf1eac",
+    "receipt_backup_config_valid": true
+  },
+  "authoritative_dns": {
+    "delegated_nameservers_checked": 4,
+    "matching_a_records": 4,
+    "unique_owned_frontend": true
+  },
+  "isolated_windows11_vm": {
+    "observed_at_utc": "2026-09-02T04:16:55.3539829Z",
+    "origin": "isolated-windows11-vm-direct-ru",
+    "status": "PASS_EXACT_WINDOWS_VM_LIVE_SMART_DNS_CONTRACT",
+    "raw_external_evidence_sha256": "4146e4a61e866aa9ec9e41ada2d5c4535405cd6799814960ca2e9840e87f1ad3",
+    "vpn_started": false,
+    "client_selection_exercised": false,
+    "invalid_doh": "HTTP_400",
+    "allowed_a": "HTTP_200_DNS_NOERROR_ONE_FRONTEND_ANSWER",
+    "allowed_aaaa": "HTTP_200_DNS_NOERROR_NODATA",
+    "outside_policy_a": "HTTP_200_DNS_REFUSED",
+    "smart_access": {
+      "chatgpt": "TLS_VERIFIED_HTTP_403_ORIGIN_POLICY_RESPONSE",
+      "gemini": "TLS_VERIFIED_HTTP_200",
+      "xbox": "TLS_VERIFIED_HTTP_301"
+    }
+  },
+  "completion_index": {
+    "FRKN_SMART_DNS/SMARTDNS-01": "I3_CANDIDATE21_SIGNED_SOURCE_AND_LIVE_DIRECT_CONTRACT_PASS_IN_APP_MATRIX_OPEN",
+    "REL_GATE/GATE-F": "UNCHANGED_NOT_RUN",
+    "gate_g": "NOT_AUTHORIZED",
+    "level_changes": 0
+  },
+  "remaining": [
+    "exact candidate21 in-app Smart DNS selection",
+    "physical-phone DoH and Wi-Fi/Beeline matrix",
+    "authenticated ChatGPT, Gemini and Xbox sessions",
+    "attribution, leak/privacy, load and lifecycle rollback",
+    "fresh named current-origin, Brain-origin and RU-origin aggregate gate evidence"
+  ],
+  "evidence_safety": {
+    "credentials_exported": false,
+    "private_keys_exported": false,
+    "raw_runtime_material_exported": false,
+    "connection_material_exported": false,
+    "device_identifiers_exported": false,
+    "dns_answer_addresses_exported": false
+  }
+}
