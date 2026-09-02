@@ -184,12 +184,12 @@ def test_client_lane_docs_point_to_pokrov_app_as_development_truth() -> None:
         "| Continuing source target | `PRE_CANDIDATE_LOCAL` on `POKROV-app/main` |"
         in app_cutover
     )
+    assert "its `candidate_created=false` describes continuing `main`" in app_cutover
     assert (
-        "Signed release-index `true`; source seed remains `false`; "
-        "public release/store/stable pointer remain absent"
+        "| New public cutover | `BLOCKED_NO_PROMOTABLE_CANDIDATE`; "
+        "build-4051 successor not created |"
         in app_cutover
     )
-    assert "| New public cutover | `BLOCKED` |" in app_cutover
     assert (
         "The existing `1.1.6` publication does not approve new `1.2.0` bytes."
         in app_cutover
