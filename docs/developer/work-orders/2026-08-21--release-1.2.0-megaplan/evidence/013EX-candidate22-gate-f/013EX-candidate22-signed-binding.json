@@ -1,0 +1,55 @@
+{
+  "schema": "pokrov.release-1.2.0.signed-candidate-binding-evidence/v1",
+  "recorded_at_utc": "2026-09-02T17:25:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.22",
+    "version": "1.2.0+4051",
+    "release_index_source_revision": "d45b5035e135130cbdec3968e712201e5bc78230",
+    "platform_source_revision": "d16087d5da509e17163bdd7293bec5711aa7eedc",
+    "client_source_revision": "0aad6bbb3a8baf9bd9e2436ed9e57f7c6fbbafed",
+    "core_source_revision": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "signer_workflow_run": "Kiwunaka/pokrov/actions/runs/33656388958",
+    "signer_artifact_id": 9856878942,
+    "signer_artifact_name": "pokrov-pokrov-1.2.0-candidate.22-signed-manifest-d45b5035e135130cbdec3968e712201e5bc78230"
+  },
+  "outputs": [
+    {
+      "path": "pokrov-1.2.0-candidate.22.release-index.json",
+      "sha256": "81c56e9fcf7478c50d5881538d26fd72459f05a04d9cce403ec99d8ecdcc7d59",
+      "size_bytes": 6884
+    },
+    {
+      "path": "pokrov-1.2.0-candidate.22.release-index.json.sig",
+      "sha256": "b230a4423064f5b45813fec6eb88a956b820cb6603ad2986b641f2bdd4a8a387",
+      "size_bytes": 64
+    },
+    {
+      "path": "pokrov-1.2.0-candidate.22.signing-receipt.json",
+      "sha256": "6512351934514fd63347ddd7f40e83c5ab56148a8e5e1eb899ac22ed12812124",
+      "size_bytes": 589
+    }
+  ],
+  "independent_validation": {
+    "status": "READY_SIGNED_MANIFEST",
+    "receipt_matches_outputs": true,
+    "detached_signature_verified_with_public_keyring": true,
+    "method": "Hosted signer plus local byte readback and detached Ed25519 verification against the manifest-bound trusted release-index keyring",
+    "promotion_authorized": false
+  },
+  "physical_phone_install_binding": {
+    "status": "NOT_RUN",
+    "gate_f_check": "android_physical_device",
+    "candidate_signature_validation_depends_on_this_status": false
+  },
+  "mutation_boundary": {
+    "candidate_artifact_mutated": false,
+    "phone_install_or_runtime_test": false,
+    "screen_or_input_control_used": false,
+    "signing_private_key_accessed_locally": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE22_SIGNED_OUTPUTS_ONLY; PHYSICAL_INSTALL_AND_RUNTIME_ARE_SEPARATE_NON_PASS_GATE_F_CHECKS"
+}

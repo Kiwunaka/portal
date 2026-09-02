@@ -1,0 +1,89 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-09-02T17:30:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.22",
+    "operational_id": "e1ea7f6c88b476d6f3fc0e866cad6a498d6be17d59f5f06800c0e2a1e9d58887",
+    "manifest_sha256": "81c56e9fcf7478c50d5881538d26fd72459f05a04d9cce403ec99d8ecdcc7d59",
+    "signature_sha256": "b230a4423064f5b45813fec6eb88a956b820cb6603ad2986b641f2bdd4a8a387",
+    "receipt_sha256": "6512351934514fd63347ddd7f40e83c5ab56148a8e5e1eb899ac22ed12812124",
+    "sources": {
+      "platform": "d16087d5da509e17163bdd7293bec5711aa7eedc",
+      "client": "0aad6bbb3a8baf9bd9e2436ed9e57f7c6fbbafed",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "d45b5035e135130cbdec3968e712201e5bc78230"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "MANUAL_OWNER_TEST",
+    "mandatory_stop_ship_and_dod": "MANUAL_OWNER_TEST",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "SKIPPED_BY_OWNER",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MANUAL_OWNER_TEST",
+    "current_origin": "MANUAL_OWNER_TEST",
+    "brain_origin": "MANUAL_OWNER_TEST",
+    "ru_origin": "MANUAL_OWNER_TEST",
+    "windows_live_network": "MANUAL_OWNER_TEST",
+    "android_ldplayer_rehearsal": "NOT_RUN",
+    "android_physical_device": "MANUAL_OWNER_TEST",
+    "authenticated_client_egress": "NOT_RUN",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "MANUAL_OWNER_TEST",
+    "hosted_required_checks": "PASS"
+  },
+  "facts": {
+    "gates_a_e": "Candidate.22 source, hosted, supply and focused lab contracts are bound, but the complete exact-candidate Gates A-E aggregate has not been replayed. The broad Gate F row remains non-PASS.",
+    "signed_supply": "The exact six-artifact private candidate.22 manifest, detached Ed25519 signature, receipt, manifest-bound public keyring, SBOM, provenance and exact four-source tuple validate. Promotion remains false.",
+    "privacy": "Bounded source/artifact precursor scans are clean. Deployed ingest, installed Android behavior and final live no-open-P0, false-green and privacy attestation remain open.",
+    "windows": "Exact Windows 11 install identity, rejected/successor IPC continuity, ordinary UI/service, default TUN/DNS/egress restoration, connected in-place service restart and connected reboot pass. Windows 10, sleep/resume, connected uninstall, packaged AWG, IPv6/leak and interactive SmartScreen remain open, so the complete Windows row is not PASS.",
+    "smart_dns": "The direct isolated-Windows endpoint/TLS contract and exact client source routing/UI tests pass. In-app selection, authenticated target sessions, physical DoH, attribution, leak/privacy/load/lifecycle and named-origin proof remain open.",
+    "awg": "Exact candidate.22 platform control-plane and client typed materialization tests pass. Packaged Android/Windows AWG3.1 and AWG2 traffic plus physical Wi-Fi/Beeline coverage remain open.",
+    "current_origin": "No fresh candidate.22 authenticated current-origin aggregate is retained.",
+    "brain_origin": "No fresh candidate.22 Brain source/readiness/delivery aggregate is retained.",
+    "ru_origin": "No fresh candidate.22 general RU runner/uploader/ingest/readback sequence is retained.",
+    "rollback": "Candidate.21 isolated rollback history is not transferred. Candidate.22 guarded runtime pointer/kill rollback and current/Brain readback remain manual.",
+    "device_and_client": "Candidate.22 Android LDPlayer and physical-device runtime are not run. Windows default egress alone does not replace the cross-platform authenticated-client aggregate.",
+    "provider_operator_legal_performance": "Provider/PostgreSQL/outbox/reversal, authenticated Operator RBAC/action-intent, legal/commercial approval and comparable device/browser performance remain manual.",
+    "hosted_boundary": "All ten GitHub Actions check runs attached to the exact platform, client, Core and release-index source SHAs are completed SUCCESS: 2/2, 1/1, 5/5 and 2/2. Paid branch protection remains owner-declined and independent review is not claimed.",
+    "decision_boundary": "Three checks are PASS and sixteen remain non-PASS with no explicit exact-candidate failure. Gate F is therefore BLOCKED, not GO or NO_GO. Gate G and every public, Store or stable mutation remain unauthorized."
+  },
+  "source_records": [
+    "WO-013EW-candidate22-signed-windows-runtime.md",
+    "013EX-candidate22-signed-binding.json",
+    "013EX-candidate22-hosted-checks.json"
+  ],
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013EX-candidate22-gate-f/013EX-candidate22-signed-binding.json",
+      "sha256": "777ed3d734c5f052d37d04e2adc294102a298f3372fbee053400f2ed0ada0c3b"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013EW-candidate22-signed-windows-runtime/013EW-candidate22-signed-windows-runtime.json",
+      "sha256": "8d0bf1d91df172ae3f53cac146b2d0bc089320408c01f45cbc22ad9bf0fee9c3"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013EX-candidate22-gate-f/013EX-candidate22-hosted-checks.json",
+      "sha256": "f0716721b82eccaa20b3d44884cbdc1d8b42922a178213e64c7dd8b841825dfb"
+    }
+  ],
+  "mutation_boundary": {
+    "gate_generation_mutated_runtime": false,
+    "candidate_artifact_mutated": false,
+    "phone_or_emulator_test_run": false,
+    "vpn_runtime_started": false,
+    "screen_or_input_control_used": false,
+    "credential_or_private_key_exported": false,
+    "payment_or_provider_action": false,
+    "database_or_outbox_mutation": false,
+    "operator_action_executed": false,
+    "public_release": false,
+    "store_upload": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE22_GATE_F_BLOCKED_3_PASS_16_NON_PASS_0_FAIL; LIVE_ANDROID_AWG_SMART_DNS_ORIGINS_PROVIDER_OPERATOR_LEGAL_PERFORMANCE_ROLLBACK_AND_FINAL_ATTESTATIONS_OPEN; NO_GATE_G_PUBLIC_STORE_STABLE_OR_PRODUCTION_PROMOTION"
+}

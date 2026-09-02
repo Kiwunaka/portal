@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-02
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_PRIVATE_CANDIDATE22_SIGNED_WINDOWS11_SERVICE_AND_REBOOT_PASS_AGGREGATE_GATES_OPEN`
+Wave status: `PHASE_11_PRIVATE_CANDIDATE22_GATE_F_BLOCKED_3_16_0`
 Release candidate: `POKROV_1_2_0_CANDIDATE22_PRIVATE_SIGNED_NOT_PROMOTED`
 
 ## Outcome
@@ -48,7 +48,8 @@ tests pass, as do the direct Windows Smart DNS endpoint/TLS and client routing/
 UI contracts. Packaged AWG traffic, in-app Smart DNS authenticated sessions,
 physical Android Wi-Fi/Beeline, remaining Windows platforms/lifecycle, named
 origins, provider/Operator/legal, guarded rollback, comparable performance and
-final aggregate evidence remain open. Gate F for candidate.22 is `NOT_RUN`.
+final aggregate evidence remain open. Gate F for candidate.22 is now exact
+`BLOCKED 3 PASS / 16 non-PASS / 0 FAIL` with zero validation errors.
 No tag, public asset, Store object, stable pointer or promotion exists. Phase
 rows below retain earlier acquisition history; this section plus WO-013EW
 supersedes wording that calls candidate.22 a pre-candidate.
@@ -68,13 +69,14 @@ supersedes wording that calls candidate.22 a pre-candidate.
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete at `I3`. WO-013EN replaces the local source layer with exact candidate.21 under declared Node `22.14.0`: `15/15`, including `413/413` client widgets, cabinet `69/69`, responsive/reduced-motion, the admin contract/build and static performance `9/9`. Its separate audit retains one high finding each for candidate.21 adminapp/marketing from the same transitive development-only `browserslist` lock; no distributed runtime exposure is observed. WO-013EO patches both active development locks to `4.28.8`, passes audit/lint/build and requires a successor candidate for release credit. WO-013EL retains current-public API budgets. Gate E stays `BLOCKED` below I4 on authenticated journeys, physical accessibility/OEM/scaling, comparable artifact/device/browser performance, support, general RU-origin and post-promotion evidence | `WO-010`, `WO-013AN`, `WO-013CI`, `WO-013CO`, `WO-013DA`, `WO-013DD`, `WO-013DE`, `WO-013DQ`, `WO-013DS`, `WO-013EL`, `WO-013EN`, `WO-013EO` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
 | 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | AWG2/AWG3.1 and bounded base HY2 source labs are locally proved and default-off. Candidate.5's exact physical AWG failures remain immutable history. WO-013AY/013AZ add bounded diagnostics and the Core bind correction; WO-013BA proves direct pinned-peer local interoperability. WO-013BB fixes the owned-node reply route without changing cryptography, WO-013BC binds byte-reproducible Android/Windows artifacts, and WO-013BD separates working transport from the common Android endpoint DNS failure. WO-013BE corrects the AWG endpoint's default-resolver boundary in Core `a45d69e...`; exact production-signed build 4046 passes AWG2 and AWG3.1 selected-endpoint green state on LDPlayer and physical Beeline. WO-013BF packages the same exact Windows DLL into setup `81268d7e...` with an `8/8` manifest readback. WO-013BG records an LDPlayer WARP/control pair blocked by the shared emulator egress boundary and a partial physical host-lifecycle pass without promoting WARP proof. WO-013BH proves a portable immutable Smart-DNS bundle and all-seven active-node no-mutation PLAN matrix. WO-013BI rejects an intermediate false spare-address lead and proves with strict report-v3 parsing that `de` has exact binds on both globally routable addresses while the other six nodes use wildcard/dual-stack binds; no safe zero-purchase deploy target exists without a separate guarded migration. WO-013BJ binds the canonical ChatGPT/OpenAI, Gemini and Xbox policy to server exact/child DoH behavior and the client routing copy as source-only proof. WO-013BK binds those source changes and the corrected AWG Core into signed candidate.6. WO-013BV adds the post-candidate zero-purchase shared-443 source path: strict loopback PROXY v2 plus validated HAProxy exact/child-SNI rendering, while leaving the current installer dedicated-only and every live frontend unchanged. WO-013BW closes the separate frontend-operation source gap with exact receipt/CAS-bound PLAN/APPLY/ROLLBACK and a corrected all-seven no-mutation PLAN; RU and RU-SPB render valid candidates but both lack the required fronted Smart-DNS backend, so neither is selected. WO-013BX closes the matching guarded fronted-server installer source gap and proves no-mutation install PLAN readiness on RU and RU-SPB; runtime material remains absent and no node is selected. WO-013CE proves the exact fronted bundle's DoH and application TLS passthrough in an isolated `x86_64` owner-terminal fixture, then rejects RU direct egress for DNS-only geo/access bypass and selects no production target. WO-013CG adds the missing receipt/CAS first-frontend bootstrap and proves an exact no-mutation PLAN on the foreign `it` canary while leaving live transport unchanged. WO-013CK corrects two fail-closed operation defects, then proves guarded `it` frontend APPLY, current/Brain reachability, receipt-bound rollback and re-APPLY. WO-013DG installs the exact default-off Smart-DNS runtime and certificate, proves authoritative DNS, three-origin policy behavior and receipt-bound rollback/re-apply. WO-013DP adds direct LDPlayer DoH/TLS policy response and physical Android hostname reachability without app launch or screen control. WO-013DU restores both provider addresses on one DE node, proves authenticated Reality egress through each, and brings both owned AWG listeners back to active server readiness without claiming a new client handshake. WO-013EJ binds the live Smart-DNS binary/policy/config/unit contract to signed candidate.21 source and repeats the direct DoH/TLS policy from isolated Windows 11; client selection is still open. WO-013BL's post-signing LDPlayer AWG2/AWG3.1/default comparison reaches the same egress boundary for all three and is classified as an emulator-origin block, not a protocol PASS or FAIL. WO-013BP adds exact-candidate selected/excluded-app config, force-stop cleanup and WARP endpoint/TUN materialization on LDPlayer, with the same origin block and clean restore. WO-013BQ proves the IPv4-only Android TUN structurally blocks unconfigured IPv6 on the exact candidate.6 LDPlayer path without claiming an external leak PASS. Phase 10 remains `I3`, not `I4`, because successor-candidate AWG client selection, authenticated sessions, physical DoH, attribution, leak/privacy/load/lifecycle and Windows live parity remain open. HY2 remains undeployed. Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AU`, `WO-013AX`, `WO-013AY`, `WO-013AZ`, `WO-013BA`, `WO-013BB`, `WO-013BC`, `WO-013BD`, `WO-013BE`, `WO-013BF`, `WO-013BG`, `WO-013BH`, `WO-013BI`, `WO-013BJ`, `WO-013BK`, `WO-013BL`, `WO-013BP`, `WO-013BQ`, `WO-013BV`, `WO-013BW`, `WO-013BX`, `WO-013CE`, `WO-013CG`, `WO-013CK`, `WO-013DG`, `WO-013DP`, `WO-013DU`, `WO-013EJ` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Candidates 5–21 remain immutable failure history. WO-013EW binds private candidate.22 build `4051` to six artifacts, strict-v2 supply and trusted release-index signing. Exact Windows 11 install/pre-hello continuity, default TUN/DNS/egress restoration, connected service restart and connected reboot pass on those bytes. `WIN-003` and `DOD-04` retain `I4` with current candidate.22 evidence; AWG/Smart DNS device paths and the remaining Android/origin/provider/Operator/legal/rollback/performance/final aggregate rows stay open. Candidate.22 Gate F is `NOT_RUN`; no tag, public `v1.2.0`, Store object, stable switch or promotion occurred | `WO-013`, `WO-013BK`–`WO-013EW` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Candidates 5–21 remain immutable failure history. WO-013EW binds private candidate.22 build `4051` to six artifacts, strict-v2 supply and trusted release-index signing. Exact Windows 11 install/pre-hello continuity, default TUN/DNS/egress restoration, connected service restart and connected reboot pass on those bytes. WO-013EX validates the signed tuple, `19/19` pointers and hosted `10/10`, producing Gate F `BLOCKED 3 PASS / 16 non-PASS / 0 FAIL`. `WIN-003` and `DOD-04` retain `I4`; AWG/Smart DNS device paths and the remaining Android/origin/provider/Operator/legal/rollback/performance/final rows stay open. No tag, public `v1.2.0`, Store object, stable switch or promotion occurred | `WO-013`, `WO-013BK`–`WO-013EX` |
 
 Active Phase 10/11 supersession: WO-013EW is the current private signed-supply
 and Windows 11 runtime authority for candidate.22. It replaces candidate.21's
 signed-supply and Windows currentness without transferring unrerun Android,
-AWG, Smart DNS, origin, rollback or aggregate credit. Candidate.22 Gate F is
-`NOT_RUN`; Gate G and publication remain unauthorized.
+AWG, Smart DNS, origin or rollback credit. WO-013EX is the current Gate F
+authority at exact `BLOCKED 3/16/0`; Gate G and publication remain
+unauthorized.
 
 WO-013EJ/013EK retain candidate.21 Smart DNS and exact-Core RU fixed-network
 AWG history; candidate.22 binds only their current source contracts, not their
@@ -695,6 +697,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013EU` | Bind exact candidate.21 source revisions to completed hosted checks and refresh Gate F without rerunning workflows | Ten exact-SHA GitHub Actions job conclusions plus 13 digest-bound upstream records | All `10/10` required hosted jobs are `success`; signed identity and all `19/19` Gate F evidence pointers validate. Gate F is `BLOCKED 5 PASS / 14 non-PASS / 0 FAIL` with zero validation errors. Branch protection and independent review remain separate non-PASS controls; Gate G remains unauthorized | Close the 14 non-PASS exact-candidate rows, then regenerate Gate F; public/Store/stable promotion still requires separate authorization |
 | `WO-013EV` | Reject candidate.21 for the exact Windows rejected-session service-availability defect and project build 4051 | Exact candidate.21 source, corrected native regression and hosted client CI | Candidate.21 becomes immutable `NO_GO`; corrected client source merges and passes hosted CI. Candidate.22 is still pre-candidate at this checkpoint | Build and bind candidate.22 without rewriting candidate.21 history |
 | `WO-013EW` | Assemble and sign private candidate.22, then prove exact Windows 11 service and reboot recovery | Six exact build-4051 artifacts, strict-v2 supply, signed release-index chain and isolated Windows 11 evidence | Candidate.22 signed supply validates. Rejected/successor IPC, ordinary UI/service, default TUN/DNS/egress restoration, connected service restart and connected reboot pass on exact bytes. Gate F is `NOT_RUN`; no public/stable promotion exists | Prioritize exact Android packaged AWG3.1/AWG2 and in-app Smart DNS, then close remaining candidate.22 Gate F rows |
+| `WO-013EX` | Generate candidate.22's first exact Gate F decision | Immutable manifest/signature/receipt/keyring, exact four-source tuple, WO-013EW and 10 attached hosted checks | Signed identity, all `19/19` pointers and all upstream hashes validate. Gate F is `BLOCKED 3 PASS / 16 non-PASS / 0 FAIL` with zero validation errors. Gate G remains unauthorized | Close the 16 non-PASS exact-candidate rows, prioritizing Android/AWG/Smart DNS, then regenerate Gate F |
 
 ## Current evidence
 
@@ -712,6 +715,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013EU-candidate21-hosted-checks-gate-f/`
 - `WO-013EW-candidate22-signed-windows-runtime.md`
 - `evidence/013EW-candidate22-signed-windows-runtime/`
+- `WO-013EX-candidate22-gate-f-snapshot.md`
+- `evidence/013EX-candidate22-gate-f/`
 - `WO-013EP-candidate21-static-artifact-privacy.md`
 - `evidence/013EP-candidate21-static-artifact-privacy/`
 - `WO-013EO-frontend-build-lock-refresh.md`
@@ -1276,7 +1281,9 @@ SBOM/provenance and a trusted signed release-index manifest. Candidate.22 is
 installed in the isolated Windows 11 VM and passes rejected-session continuity,
 default TUN/DNS/egress restoration, connected service restart and connected
 reboot. Candidate.21 remains immutable `NO_GO`; its Gate F history is not
-rewritten or transferred.
+rewritten or transferred. WO-013EX validates the new signed tuple and all
+`19/19` evidence pointers as exact `BLOCKED 3/16/0`; this is the current
+aggregate baseline.
 
 Prioritize exact candidate.22 Android install and packaged AWG3.1 then AWG2.
 Use an isolated emulator only when its network path is not inherited from the
@@ -1290,8 +1297,8 @@ Then retain the remaining Windows 10/sleep/uninstall/AWG/IPv6/leak slices,
 separate current/Brain/RU-origin evidence, guarded runtime pointer/kill
 rollback, provider/PostgreSQL/outbox, Operator, legal/commercial,
 accessibility, comparable performance/endurance and final no-open-P0,
-false-green and privacy attestations. Generate candidate.22's own 19-row Gate
-F snapshot as the next aggregate checkpoint. Only Gate F `GO` may allow a
+false-green and privacy attestations. Regenerate the 19-row Gate F snapshot
+after each material evidence slice. Only Gate F `GO` may allow a
 separately authorized Gate G. No public tag, release, Store upload or stable
 pointer exists.
 
