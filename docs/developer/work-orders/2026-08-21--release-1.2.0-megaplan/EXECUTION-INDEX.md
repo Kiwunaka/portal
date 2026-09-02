@@ -2,6 +2,25 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013EM candidate.21 isolated rollback rehearsal
+
+The exact signed candidate.21 manifest, detached signature, receipt and
+platform/client/Core/release-index tuple validate. The real portal projection
+and client pointer tools then pass the disposable sequence
+`1.1.6+20260819 -> candidate.21 -> 1.1.6+20260819`.
+
+Portal and stable-handoff bytes restore exactly, forward and rollback receipts
+validate, and unrelated fixture state survives. The focused rollback/PB-14
+suite passes `16/16`; all exact-source worktrees remain clean and the fixture
+is removed. No tracked pointer, runtime, public asset, device, emulator or
+Windows VM is changed.
+
+`REL_DOD/DOD-18` and `FE/P12-130` remain `I3` with current candidate.21 local
+evidence. A separately guarded runtime pointer/kill rollback, current/Brain
+readback and post-rollback health remain open. Candidate.21 Gate F stays
+`NOT_RUN`; Gate G remains unauthorized. Distribution stays `I4=7`, `I3=320`,
+`I2=19`, `I1=32`, `I0=0` across `378` rows.
+
 ## 2026-09-02 — WO-013EL candidate.21 current/Brain read-only origins
 
 Exact candidate.21 platform `e2608130...` matches the deployed Brain payload

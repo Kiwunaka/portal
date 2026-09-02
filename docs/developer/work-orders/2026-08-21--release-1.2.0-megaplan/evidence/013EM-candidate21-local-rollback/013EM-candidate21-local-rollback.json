@@ -1,0 +1,84 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate-rollback-evidence/v1",
+  "recorded_at_utc": "2026-09-02T05:12:07Z",
+  "work_order": "WO-013EM",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.21",
+    "version": "1.2.0+4050",
+    "operational_id": "6a62437f7d060c5f37098cc5f96000f55d7c9ff4123c8248e2b6a9b098e503e7",
+    "manifest_sha256": "ce0b8586d4d9b5b625bbcd2c93b03fd783f89b4958a7fd79e58ef65b52c3dc6b",
+    "signature_sha256": "ef474e6e1e147093b8b15c3cdc29bd35b5779249854a63ef7d6535d2588c7a58",
+    "receipt_sha256": "aaa027cc5d71fd567c6f3c0b8a9e3b0e965a67760fd02d1769eb3d54062926f8",
+    "source_revisions": {
+      "platform": "e2608130e85d9a0f8fa4b920f46cf3d7679332c3",
+      "client": "1e164586d741484b5ae8fb2ee267ef5dd813cadb",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "cae911e506d95eb72c1364b847992e30cbf9baf9"
+    },
+    "signature_verification": "PASS_ED25519_MANIFEST_BOUND_PUBLIC_KEYRING",
+    "candidate_handoff_sha256": "e4893b871a0e64b09a61c1140c00a81aed3a1f515a9f24f44aaaed4ddb18a91b",
+    "candidate_artifact_set_sha256": "165f053dc75fcccfe6e56f137ef20d99c097ba875f7f2ee5c747de055648409d"
+  },
+  "rehearsal": {
+    "status": "PASS_LOCAL_EXACT_CANDIDATE_PORTAL_CLIENT_ROLLBACK",
+    "sequence": [
+      "1.1.6+20260819",
+      "pokrov-1.2.0",
+      "1.1.6+20260819"
+    ],
+    "retained_stable_handoff_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+    "portal": {
+      "status": "PASS_LOCAL",
+      "candidate_projection_applied": true,
+      "rollback_byte_identical": true,
+      "before_sha256": "c4d3ea78d382d6ca6ab7d1d4d5367edc4478a9d96d91527ec2000df80e38ecd7",
+      "rollback_sha256": "c4d3ea78d382d6ca6ab7d1d4d5367edc4478a9d96d91527ec2000df80e38ecd7",
+      "unrelated_setting_preserved": true,
+      "candidate_android_sha256": "d5dd9905bafdc30809a1199dde5961129680a03513b60a6e46f323a6a583693c",
+      "candidate_windows_sha256": "87f90be11a927c271c84e8042f17e052ee1070a1ac4923fa3949d6e19c00dff3"
+    },
+    "client_channel": {
+      "status": "PASS_LOCAL",
+      "initial_validation": "PASS",
+      "dry_run": "PASS_NO_APPLY",
+      "forward_switch": "PASS",
+      "rollback_switch": "PASS",
+      "final_stable_validation": "PASS",
+      "rollback_byte_identical": true,
+      "forward_receipt_sha256": "98fd2fe791f81d01f780a426d861e77e2e3945e2e4eba33b121402e2b89a346e",
+      "rollback_receipt_sha256": "17186a04b6fbc6a2b2e081b36d0fe66c257a959e971163513d1eb47209c0c563"
+    }
+  },
+  "verification": {
+    "focused_tests": "PASS_16_OF_16",
+    "platform_worktree_clean": true,
+    "client_worktree_clean": true,
+    "core_worktree_clean": true,
+    "release_index_worktree_clean": true,
+    "disposable_fixture_removed": true
+  },
+  "mutation_boundary": {
+    "environment": "ISOLATED_LOCAL_FIXTURE",
+    "tracked_client_pointer": "UNCHANGED",
+    "tracked_client_catalog": "UNCHANGED",
+    "portal_runtime": "NOT_MUTATED",
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer": "NOT_MUTATED",
+    "physical_device": "NOT_RUN",
+    "android_emulator": "NOT_REQUIRED",
+    "windows_vm": "NOT_MUTATED"
+  },
+  "row_outcomes": {
+    "REL_DOD/DOD-18": "I3_EXACT_CANDIDATE21_LOCAL_ROLLBACK_PASS_RUNTIME_OPEN",
+    "FE/P12-130": "I3_EXACT_CANDIDATE21_LOCAL_POINTER_ROLLBACK_PASS_RUNTIME_PUBLIC_OPEN",
+    "REL_GATE/GATE-F": "UNCHANGED_NOT_RUN",
+    "REL_GATE/GATE-G": "NOT_AUTHORIZED"
+  },
+  "evidence_sha256": {
+    "signed_binding": "e124680698ae71413a2479d6a2b4d227b234102aad15af3685d88475c042455a",
+    "generated_handoff": "e4893b871a0e64b09a61c1140c00a81aed3a1f515a9f24f44aaaed4ddb18a91b",
+    "rollback_report": "ff1228cf37a0fab2c08b05c65adc6b3fba66799a30d1dffad741783943ca3a6d"
+  },
+  "evidence_ceiling": "I3_VERIFIED_LOCAL_EXACT_CANDIDATE21; RUNTIME_POINTER_KILL_ROLLBACK_AND_CURRENT_BRAIN_READBACK_REMAIN_OPEN"
+}
