@@ -2,6 +2,31 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013EY candidate.22 Windows in-app Smart DNS
+
+The exact installed candidate.22 Windows UI enables custom direct DoH,
+external Smart DNS and the AI/Games routes through the guarded user-visible
+path. All five preferences survive an app relaunch. With the ordinary Germany
+profile connected, the service, TUN/default route and selected-gateway session
+are active; independent general traffic uses the Germany exit.
+
+OpenAI, ChatGPT, Gemini and Xbox receive the owned Smart-DNS answer through the
+Windows system resolver and complete certificate-valid HTTPS through that
+proxy. The dedicated endpoint returns `RCODE=0` with one answer for those four
+allowlisted targets and refuses the outside control with `RCODE=5`; ordinary
+system DNS keeps that outside target away from the Smart-DNS proxy. The crash
+buffer stays empty. Authenticated target sessions and physical Android remain
+`NOT_RUN`, so the 403 target responses are reachability evidence, not access
+claims.
+
+Disconnect removes the TUN and the VM is restored to Automatic/VPN DNS,
+Smart DNS off and zero purpose routes. A connected Home rendering retained
+after headless display wake until tab navigation remains a physical-input
+manual check. `FRKN_SMART_DNS/SMARTDNS-01` stays `I3` with stronger exact
+Windows evidence. Gate F remains the immutable WO-013EX `BLOCKED 3/16/0`;
+distribution stays `I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0` across 378
+rows, and no public or production mutation occurs.
+
 ## 2026-09-02 — WO-013EX candidate.22 exact Gate F snapshot
 
 The exact candidate.22 manifest, signature, receipt, manifest-bound keyring and

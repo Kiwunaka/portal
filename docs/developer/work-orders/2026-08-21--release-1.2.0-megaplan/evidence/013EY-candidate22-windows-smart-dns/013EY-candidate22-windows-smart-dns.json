@@ -1,0 +1,153 @@
+{
+  "schema": "pokrov.windows-vm-candidate22-smart-dns/v1",
+  "observed_at_utc": "2026-09-02T18:03:17.0231330Z",
+  "candidate_id": "pokrov-1.2.0-candidate.22",
+  "version": "1.2.0+4051",
+  "environment": "VirtualBox Windows 11 x64",
+  "status": "PASS_EXACT_CANDIDATE22_WINDOWS_SMART_DNS_SPLIT_PATH",
+  "production_mutation": "NONE",
+  "exact_identity": {
+    "status": "PASS",
+    "installed": {
+      "ui_sha256": "40ce4cc4520709aa4714737776aea2ada4a2043d7a346ce3d708a07160b7d66c",
+      "service_sha256": "18191f195309460b9d72a4a91a3fc817f3b3610d32891858a0ddddedaae11fb6",
+      "core_sha256": "f284fa8841f1a45271874a7a05ed6093fb0e3efbdd03e00001edd046be708204"
+    }
+  },
+  "preferences": {
+    "status": "PASS",
+    "route_scope": "allExceptRu",
+    "dns_preset": "custom",
+    "dns_transport": "direct",
+    "external_smart_dns_enabled": true,
+    "purpose_routes": [
+      "ai",
+      "games"
+    ],
+    "persisted_after_ui_relaunch": true
+  },
+  "resolver_contract": {
+    "status": "PASS",
+    "allowed": {
+      "openai.com": {
+        "http_status": 200,
+        "content_type": "application/dns-message",
+        "tls_verified": true,
+        "curl_exit": 0,
+        "dns_rcode": 0,
+        "answer_count": 1
+      },
+      "chatgpt.com": {
+        "http_status": 200,
+        "content_type": "application/dns-message",
+        "tls_verified": true,
+        "curl_exit": 0,
+        "dns_rcode": 0,
+        "answer_count": 1
+      },
+      "gemini.google.com": {
+        "http_status": 200,
+        "content_type": "application/dns-message",
+        "tls_verified": true,
+        "curl_exit": 0,
+        "dns_rcode": 0,
+        "answer_count": 1
+      },
+      "xbox.com": {
+        "http_status": 200,
+        "content_type": "application/dns-message",
+        "tls_verified": true,
+        "curl_exit": 0,
+        "dns_rcode": 0,
+        "answer_count": 1
+      },
+      "example.com": {
+        "http_status": 200,
+        "content_type": "application/dns-message",
+        "tls_verified": true,
+        "curl_exit": 0,
+        "dns_rcode": 5,
+        "answer_count": 0
+      }
+    },
+    "outside_allowlist_refused": true
+  },
+  "connected_runtime": {
+    "status": "PASS",
+    "service_running": true,
+    "tun_up": true,
+    "tun_default_route": true,
+    "selected_gateway_session": true,
+    "general_control_uses_selected_germany_exit": true,
+    "system_dns_selected_routes": {
+      "openai.com": {
+        "answer_count": 1,
+        "uses_owned_smart_dns_proxy": true
+      },
+      "chatgpt.com": {
+        "answer_count": 1,
+        "uses_owned_smart_dns_proxy": true
+      },
+      "gemini.google.com": {
+        "answer_count": 1,
+        "uses_owned_smart_dns_proxy": true
+      },
+      "xbox.com": {
+        "answer_count": 1,
+        "uses_owned_smart_dns_proxy": true
+      }
+    },
+    "outside_dns_avoids_smart_proxy": true,
+    "https_selected_routes": {
+      "openai.com": {
+        "http_status": 403,
+        "tls_verified": true,
+        "curl_exit": 0,
+        "uses_owned_smart_dns_proxy": true
+      },
+      "chatgpt.com": {
+        "http_status": 403,
+        "tls_verified": true,
+        "curl_exit": 0,
+        "uses_owned_smart_dns_proxy": true
+      },
+      "gemini.google.com": {
+        "http_status": 200,
+        "tls_verified": true,
+        "curl_exit": 0,
+        "uses_owned_smart_dns_proxy": true
+      },
+      "xbox.com": {
+        "http_status": 301,
+        "tls_verified": true,
+        "curl_exit": 0,
+        "uses_owned_smart_dns_proxy": true
+      }
+    }
+  },
+  "crash_buffer": {
+    "status": "PASS",
+    "file_count": 0
+  },
+  "disconnect_ui_refresh": {
+    "status": "MANUAL_OWNER_TEST",
+    "runtime_disconnect": "PASS",
+    "observation": "HEADLESS_DISPLAY_WAKE_RETAINED_CONNECTED_HOME_UNTIL_TAB_NAVIGATION",
+    "physical_input_reproduction": "NOT_RUN"
+  },
+  "cleanup": {
+    "status": "PASS",
+    "dns_preset": "automatic",
+    "dns_transport": "vpn",
+    "external_smart_dns_enabled": false,
+    "purpose_route_count": 0,
+    "tun_present": false,
+    "service_running": true,
+    "crash_file_count": 0
+  },
+  "authenticated_target_sessions": "NOT_RUN",
+  "physical_device": "NOT_RUN",
+  "raw_addresses_exported": false,
+  "connection_material_exported": false,
+  "credentials_exported": false
+}
