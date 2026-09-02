@@ -1,0 +1,133 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-09-02T08:49:21Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.21",
+    "operational_id": "6a62437f7d060c5f37098cc5f96000f55d7c9ff4123c8248e2b6a9b098e503e7",
+    "manifest_sha256": "ce0b8586d4d9b5b625bbcd2c93b03fd783f89b4958a7fd79e58ef65b52c3dc6b",
+    "signature_sha256": "ef474e6e1e147093b8b15c3cdc29bd35b5779249854a63ef7d6535d2588c7a58",
+    "receipt_sha256": "aaa027cc5d71fd567c6f3c0b8a9e3b0e965a67760fd02d1769eb3d54062926f8",
+    "sources": {
+      "platform": "e2608130e85d9a0f8fa4b920f46cf3d7679332c3",
+      "client": "1e164586d741484b5ae8fb2ee267ef5dd813cadb",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "cae911e506d95eb72c1364b847992e30cbf9baf9"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "MANUAL_OWNER_TEST",
+    "mandatory_stop_ship_and_dod": "MANUAL_OWNER_TEST",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "SKIPPED_BY_OWNER",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MANUAL_OWNER_TEST",
+    "current_origin": "PASS",
+    "brain_origin": "PASS",
+    "ru_origin": "MANUAL_OWNER_TEST",
+    "windows_live_network": "MANUAL_OWNER_TEST",
+    "android_ldplayer_rehearsal": "NOT_RUN",
+    "android_physical_device": "MANUAL_OWNER_TEST",
+    "authenticated_client_egress": "NOT_RUN",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "MANUAL_OWNER_TEST",
+    "hosted_required_checks": "SKIPPED_BY_OWNER"
+  },
+  "facts": {
+    "gates_a_e": "Exact candidate.21 source/local replay passes Gate B platform 70/70 and client 111/111, Gate D 196/196 plus 12 subtests and 25/25, and local-quality Gate E 15/15. All five aggregate decisions remain blocked on external, device, provider, branch-policy or live proof, so the broad Gate F row is not PASS.",
+    "signed_supply": "The exact six-artifact private candidate.21 manifest, detached Ed25519 signature, receipt, manifest-bound public keyring, SBOM, provenance and exact four-source tuple validate. Promotion remains false.",
+    "privacy": "Exact source checks and bounded scans of all six candidate.21 artifacts pass with zero definite findings. Deployed ingest, live device behavior and final no-open-P0, false-green and privacy attestation remain open.",
+    "windows": "Exact Windows 11 upgrade/startup recovery, ordinary-user UI/service and default connect/disconnect with DE egress plus DNS/route restoration pass. Fresh in-place forced service termination and SCM restart, Windows 10, sleep/resume, connected reboot/uninstall, packaged AWG, IPv6/leak and trusted signing remain open.",
+    "smart_dns": "The live default-off server contract is bound to candidate.21 source and a direct isolated Windows 11 DoH/TLS policy matrix passes. In-app selection, authenticated target sessions, leak/lifecycle and named-origin proof remain open.",
+    "awg": "Exact candidate.21 Core passes AWG2 and AWG3.1 interoperability from the owned direct-RU fixed-network Pi. Packaged Android/Windows selection and physical mobile multi-ASN coverage remain open.",
+    "current_origin": "Source-bound current-origin public health and catalog budgets pass 50 retained samples each without retaining the local source address.",
+    "brain_origin": "Exact deployed Brain semantic source, readiness and enabled delivery readback pass without mutation.",
+    "ru_origin": "The exact candidate.21 RU bundle reproduces and guarded local plus owned-Pi install PLAN pass. Existing Brain key metadata and drop-in match, but credential transfer, Pi APPLY, runner, uploader, ingest, archive, heartbeat and admin readback are not run.",
+    "rollback": "Isolated 1.1.6 to candidate.21 to 1.1.6 portal/client reversal passes with byte-identical stable restoration. Runtime pointer, kill control and current/Brain readback remain manual.",
+    "device_and_client": "Candidate.21 Android LDPlayer and physical-device runtime are not run. The bounded Windows default path does not replace the cross-platform authenticated-client aggregate.",
+    "provider_operator_legal_performance": "Provider/PostgreSQL/outbox/reversal, authenticated Operator RBAC/action-intent, legal/commercial approval and comparable device/browser performance remain manual.",
+    "hosted_boundary": "The release-index candidate, signer and receipt jobs pass. The owner-solo exception is retained without independent review; the owner declined paid branch protection and hosted aggregate credit remains skipped rather than PASS.",
+    "decision_boundary": "Four checks are PASS and fifteen remain non-PASS with no explicit exact-candidate failure. Gate F is therefore BLOCKED, not GO or NO_GO. Gate G and every public, Store or stable mutation remain unauthorized."
+  },
+  "source_records": [
+    "WO-013EH-candidate21-private-windows-runtime.md",
+    "WO-013EI-candidate21-signed-supply.md",
+    "WO-013EJ-candidate21-smart-dns-binding.md",
+    "WO-013EK-candidate21-core-ru-pi-awg-interop.md",
+    "WO-013EL-candidate21-current-brain-origin.md",
+    "WO-013EM-candidate21-local-rollback.md",
+    "WO-013EN-candidate21-gates-a-e-offline-replay.md",
+    "WO-013EP-candidate21-static-artifact-privacy.md",
+    "WO-013EQ-candidate21-source-privacy.md",
+    "WO-013ER-candidate21-ru-bundle-plan.md",
+    "WO-013ES-candidate21-ru-auth-contract-plan.md"
+  ],
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013ET-candidate21-gate-f/013ET-candidate21-signed-binding.json",
+      "sha256": "a96d349d0b0e182f2c1f09df345e3be6edc318bca98e424e08b08d02791243c6"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013EH-candidate21-private-windows-runtime/013EH-candidate21-private-windows-runtime.json",
+      "sha256": "c87107719941a3a880113f0d7ffe6bf87e54cca5ae412d903e9208bd4e6d0651"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013EI-candidate21-signed-supply/013EI-candidate21-signed-supply.json",
+      "sha256": "dd189a5b83644c53b6f42ad5946ea2152416b9049ec077823db23e38c0301ca2"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013EJ-candidate21-smart-dns-binding/013EJ-candidate21-smart-dns-binding.json",
+      "sha256": "9ec4a36ae4b1be8d27701f5733ae6aa42846f82fe479c601fd21eff95278d6ca"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013EK-candidate21-core-ru-pi-awg/013EK-candidate21-core-ru-pi-awg.json",
+      "sha256": "af3cdbb305cd4f9c2ede4743211d1b19d126bdd3080b35e86aac517161cfed35"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013EL-candidate21-current-brain-origin/013EL-candidate21-current-brain-origin.json",
+      "sha256": "b54f079274875ce0389cc026ac5514ed8238b4f670367f3a06b579b74544fad5"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013EM-candidate21-local-rollback/013EM-candidate21-local-rollback.json",
+      "sha256": "9e0d79bd255534eabd85ca26f16ffee26d9ca245462edde3c5bb26d81db257de"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013EN-candidate21-gates-a-e/013EN-candidate21-gates-a-e.json",
+      "sha256": "4ff278c00b20db1aed2e28da7257296be5c95a34f68ebc487fd00a50873e3da2"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013EP-candidate21-static-artifact-privacy/013EP-candidate21-static-artifact-privacy.json",
+      "sha256": "b906b81d901a13413dc386f0f3dc91af4f7aa111f6547bafa3b259fff3109d53"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013EQ-candidate21-source-privacy/013EQ-candidate21-source-privacy.json",
+      "sha256": "27dd7a823300462465eb194175c4dbad1888b0129ea61dde6b6272e078a96a19"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013ER-candidate21-ru-bundle-plan/013ER-candidate21-ru-bundle-plan.json",
+      "sha256": "7e98e5d112f18ad61d3291a91e73ab698d5aade32ba6250ddd22c13189478a73"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013ES-candidate21-ru-auth-contract-plan/013ES-candidate21-ru-auth-contract-plan.json",
+      "sha256": "df43da9c7cdbdf251eff273340fe5dd99b2d672008587c49930fcff980478dfc"
+    }
+  ],
+  "mutation_boundary": {
+    "gate_generation_mutated_runtime": false,
+    "candidate_artifact_mutated": false,
+    "phone_or_emulator_test_run": false,
+    "vpn_runtime_started": false,
+    "screen_or_input_control_used": false,
+    "credential_or_private_key_exported": false,
+    "payment_or_provider_action": false,
+    "database_or_outbox_mutation": false,
+    "operator_action_executed": false,
+    "public_release": false,
+    "store_upload": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE21_GATE_F_BLOCKED_4_PASS_15_NON_PASS_0_FAIL; LIVE_DEVICE_PROVIDER_OPERATOR_LEGAL_PERFORMANCE_ROLLBACK_RU_AND_FINAL_ATTESTATIONS_OPEN; NO_GATE_G_PUBLIC_STORE_STABLE_OR_PRODUCTION_PROMOTION"
+}

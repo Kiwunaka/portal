@@ -2,6 +2,27 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013ET candidate.21 exact Gate F snapshot
+
+Gate F now validates the immutable candidate.21 manifest, signature, receipt,
+manifest-bound public keyring and exact four-source tuple before evaluating the
+separate physical-phone row. The PB-14 validator remains strict by default;
+only the aggregate opts out of making phone install a prerequisite for signed
+candidate validation. Focused and release-route verification passes `63 tests
++ 21 subtests`.
+
+All `19/19` evidence pointers and `12` upstream records rehash successfully.
+The exact result is `BLOCKED 4 PASS / 15 non-PASS / 0 FAIL`, with zero
+validation errors. Signed supply, docs-manifest binding, current-origin public
+budgets and Brain readiness/delivery are PASS. Device, remaining Windows,
+authenticated client, general RU, provider/Operator/legal, runtime rollback,
+comparable performance and final live attestations remain non-PASS.
+
+`REL_GATE/GATE-F` stays `I3` but advances from candidate.21 `NOT_RUN` to the
+digest-bound `BLOCKED 4/15/0` result. Distribution remains `I4=7`, `I3=320`,
+`I2=19`, `I1=32`, `I0=0` across `378` rows. No runtime, candidate, public,
+Store, stable or production state changes; Gate G remains unauthorized.
+
 ## 2026-09-02 — WO-013ES candidate.21 existing RU-auth contract PLAN
 
 The Brain-side RU-auth preflight now validates the exact safe metadata of the

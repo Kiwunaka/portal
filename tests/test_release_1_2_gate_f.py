@@ -125,6 +125,46 @@ def test_all_required_exact_candidate_checks_produce_go(
     assert report["promotion"]["gate_g_authorized"] is False
 
 
+def test_gate_f_validates_signed_candidate_before_physical_phone_gate(
+    tmp_path: Path, monkeypatch
+) -> None:
+    expected = _candidate()
+    args = _args(tmp_path, tmp_path / "input.json")
+    captured: dict[str, object] = {}
+
+    def validate_retained_candidate(**kwargs: object) -> dict[str, object]:
+        captured.update(kwargs)
+        return {
+            "candidate_label": expected["id"],
+            "candidate_id": expected["operational_id"],
+            "manifest_sha256": expected["manifest_sha256"],
+            "signature_sha256": expected["signature_sha256"],
+            "signing": {"status": "PASS"},
+        }
+
+    monkeypatch.setattr(
+        MODULE.candidate_gate,
+        "_validate_retained_candidate",
+        validate_retained_candidate,
+    )
+    monkeypatch.setattr(
+        MODULE,
+        "_read_json",
+        lambda _path: {
+            "sources": {
+                name: {"commit": revision}
+                for name, revision in expected["sources"].items()
+            }
+        },
+    )
+    monkeypatch.setattr(MODULE, "_sha256_file", lambda _path: "4" * 64)
+
+    result = MODULE._validate_signed_candidate(args=args, expected=expected)
+
+    assert result["status"] == "PASS"
+    assert captured["require_physical_phone_install_binding"] is False
+
+
 def test_manual_or_access_gate_produces_blocked(
     tmp_path: Path, monkeypatch
 ) -> None:

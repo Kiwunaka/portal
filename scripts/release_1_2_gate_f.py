@@ -222,6 +222,7 @@ def _validate_signed_candidate(
         receipt_path=args.receipt,
         signed_evidence_path=args.signed_evidence,
         release_index_root=args.release_index_root,
+        require_physical_phone_install_binding=False,
     )
     manifest = _read_json(args.manifest)
     receipt_hash = _sha256_file(args.receipt)
