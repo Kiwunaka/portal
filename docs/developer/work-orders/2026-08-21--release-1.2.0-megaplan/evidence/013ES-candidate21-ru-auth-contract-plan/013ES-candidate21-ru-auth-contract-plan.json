@@ -1,0 +1,72 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate21-ru-auth-contract-plan/v1",
+  "observed_at_utc": "2026-09-02T08:16:04Z",
+  "outcome": "EXISTING_BRAIN_RU_AUTH_CONTRACT_PLAN_PASS_SECRET_TRANSFER_NOT_RUN",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.21",
+    "version": "1.2.0+4050",
+    "platform_source": "e2608130e85d9a0f8fa4b920f46cf3d7679332c3",
+    "ru_bundle_sha256": "56218e199fff95bdf7ce2b5b29f019a24863c21f7aef99a5e54c122b5412279e"
+  },
+  "tooling": {
+    "base_revision": "78b35efb1794832436ab6a47135c3d3b0edbb1d7",
+    "preflight_reports_exact_registry_metadata_contract": true,
+    "preflight_reports_exact_dropin_contract": true,
+    "focused_test_command": "python -B -m pytest -p no:cacheprovider tests/test_remote_prepare_ru_origin_auth.py -q",
+    "focused_test_result": "PASS_10_OF_10"
+  },
+  "brain_plan": {
+    "report_sha256": "3b9b656ffa894eb7ebb101599c6bb4d4d3c7ec0aed26618e9b62bc7473aec3d6",
+    "mode": "PLAN",
+    "operation": "install",
+    "auth_method": "key",
+    "effective_uid_root": true,
+    "python3_present": true,
+    "install_present": true,
+    "systemctl_present": true,
+    "portal_api_active": true,
+    "registry_present": true,
+    "dropin_present": true,
+    "registry_env_configured": true,
+    "registry_contract_match": true,
+    "dropin_contract_match": true,
+    "expected_key_id": "ru-mini-v1",
+    "expected_subject": "mini",
+    "expected_origins": [
+      "ru"
+    ],
+    "expected_scopes": [
+      "ru_probe:heartbeat",
+      "ru_probe:ingest",
+      "ru_probe:manifest"
+    ],
+    "secret_supplied": false,
+    "secret_returned": false,
+    "secret_hash_returned": false,
+    "raw_host_returned": false,
+    "mutation_performed": false
+  },
+  "decision": {
+    "key_rotation_required_by_current_evidence": false,
+    "existing_key_reuse_possible_after_approved_secret_transfer": true,
+    "secret_transfer": "NOT_RUN",
+    "pi_install_apply": "NOT_RUN",
+    "manual_runner_uploader_heartbeat_admin_readback": "NOT_RUN",
+    "ru_origin_verdict": "MANUAL_OWNER_TEST"
+  },
+  "release_effect": {
+    "completion_index_changes": 0,
+    "gate_f": "NOT_RUN",
+    "gate_g": "NOT_AUTHORIZED",
+    "public_or_stable_mutation": false,
+    "production_runtime_mutation": false,
+    "ru_origin_pass_claimed": false
+  },
+  "privacy": {
+    "credential_value_read_locally": false,
+    "credential_value_retained": false,
+    "credential_hash_retained": false,
+    "raw_host_retained": false,
+    "customer_or_provider_payload_retained": false
+  }
+}

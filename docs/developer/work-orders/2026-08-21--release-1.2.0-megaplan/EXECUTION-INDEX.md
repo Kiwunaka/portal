@@ -2,6 +2,23 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013ES candidate.21 existing RU-auth contract PLAN
+
+The Brain-side RU-auth preflight now validates the exact safe metadata of the
+single managed key and compares the systemd drop-in byte-for-byte without
+returning the credential or its hash. The focused suite passes `10/10`.
+
+The live read-only PLAN proves the existing `ru-mini-v1`/`mini`/`ru`/three-scope
+registry, managed drop-in, active `portal-api` process environment and required
+host tools all match. No mutation occurs. Current evidence therefore does not
+require key rotation, but credential transfer, Pi APPLY, runner/uploader,
+ingest, archive, heartbeat and admin readback remain `NOT_RUN`.
+
+No completion-index level changes. General RU-origin remains
+`MANUAL_OWNER_TEST`; Gate F stays `NOT_RUN`; distribution remains `I4=7`,
+`I3=320`, `I2=19`, `I1=32`, `I0=0` across `378` rows. Candidate, Brain/Pi,
+public and stable state are unchanged.
+
 ## 2026-09-02 — WO-013ER candidate.21 RU bundle and owned-Pi PLAN
 
 The fail-closed RU bundle builder now explicitly recognizes signed

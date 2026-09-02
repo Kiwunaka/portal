@@ -192,7 +192,9 @@ Root-login не обязателен: допустима непривилеги�
 
 Backend HMAC registry готовится отдельно через
 `scripts/remote_prepare_ru_origin_auth.py`. Его `PLAN` только проверяет
-`portal-api`, целевые paths и текущий process environment. `APPLY` принимает
+`portal-api`, целевые paths, текущий process environment, точный безопасный
+metadata-контракт единственного ключа и побайтовое совпадение managed drop-in.
+Значение ключа при этом не возвращается и не хешируется. `APPLY` принимает
 локальный private secret file, но не возвращает ни значение, ни hash; создаёт
 ровно один key `ru-mini-v1` с subject `mini`, origin `ru` и scopes
 `ru_probe:manifest`, `ru_probe:ingest`, `ru_probe:heartbeat`, сохраняет root-only
