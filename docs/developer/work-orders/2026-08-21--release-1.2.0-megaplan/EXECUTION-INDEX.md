@@ -2,6 +2,26 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013EX candidate.22 exact Gate F snapshot
+
+The exact candidate.22 manifest, signature, receipt, manifest-bound keyring and
+four-source tuple validate. All three upstream records and all `19/19` evidence
+pointers rehash successfully. Hosted execution is `10/10 SUCCESS`: platform
+`2/2`, client `1/1`, Core `5/5` and release index `2/2` at the exact signed
+source revisions.
+
+Gate F is `BLOCKED 3 PASS / 16 non-PASS / 0 FAIL`, with zero validation errors.
+Signed supply, release-document binding and hosted checks pass. Android,
+packaged AWG/Smart DNS, complete Windows, current/Brain/RU origins, guarded
+rollback, provider/Operator/legal/performance and final live attestations stay
+non-PASS. Owner-skipped Windows trusted signing and paid branch protection are
+not converted to PASS.
+
+`REL_GATE/GATE-F` stays `I3` but advances from candidate.22 `NOT_RUN` to the
+digest-bound `BLOCKED 3/16/0` result. Distribution remains `I4=7`, `I3=320`,
+`I2=19`, `I1=32`, `I0=0` across `378` rows. No runtime, candidate, public,
+Store, stable or production state changes; Gate G remains unauthorized.
+
 ## 2026-09-02 — WO-013EW candidate.22 signed supply and Windows recovery
 
 Exact clean platform `d16087d…bec`, client `0aad6bb…fed` and Core
