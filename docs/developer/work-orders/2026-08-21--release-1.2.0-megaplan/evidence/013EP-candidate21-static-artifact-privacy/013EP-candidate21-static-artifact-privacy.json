@@ -1,0 +1,194 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate21-static-artifact-privacy/v1",
+  "recorded_at_utc": "2026-09-02T06:52:35Z",
+  "status": "PASS_BOUNDED_STATIC_ARTIFACT_PRIVACY_SCAN_ANDROID_RUNTIME_AND_FINAL_AGGREGATE_OPEN",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.21",
+    "version": "1.2.0+4050",
+    "platform_source": "e2608130e85d9a0f8fa4b920f46cf3d7679332c3",
+    "client_source": "1e164586d741484b5ae8fb2ee267ef5dd813cadb",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "cae911e506d95eb72c1364b847992e30cbf9baf9",
+    "signed_manifest_sha256": "ce0b8586d4d9b5b625bbcd2c93b03fd783f89b4958a7fd79e58ef65b52c3dc6b",
+    "signature_sha256": "ef474e6e1e147093b8b15c3cdc29bd35b5779249854a63ef7d6535d2588c7a58",
+    "receipt_sha256": "aaa027cc5d71fd567c6f3c0b8a9e3b0e965a67760fd02d1769eb3d54062926f8"
+  },
+  "exact_source_state": {
+    "platform": "CLEAN_DETACHED_HEAD",
+    "client": "CLEAN_DETACHED_HEAD",
+    "core": "CLEAN_DETACHED_HEAD",
+    "release_index": "CLEAN_DETACHED_HEAD"
+  },
+  "artifact_binding": {
+    "artifact_count": 6,
+    "size_and_sha256_verified": 6,
+    "all_size_and_sha256_checks_passed": true,
+    "artifacts": [
+      {
+        "name": "pokrov-android-arm64-v8a.apk",
+        "bytes": 101366678,
+        "sha256": "d5dd9905bafdc30809a1199dde5961129680a03513b60a6e46f323a6a583693c"
+      },
+      {
+        "name": "pokrov-android-armeabi-v7a.apk",
+        "bytes": 90778788,
+        "sha256": "f39eaa0dabe4a6cd87113506e5ffc954623f6e82d3f684252639c035d898d2f5"
+      },
+      {
+        "name": "pokrov-android-market.aab",
+        "bytes": 126263297,
+        "sha256": "fdd8e1df6a0e52ae1f48234f9c049c071d3fb2a946498c125a3d8c43f188cfcd"
+      },
+      {
+        "name": "pokrov-android-universal.apk",
+        "bytes": 295370161,
+        "sha256": "396e8aca2b3b77d727c66ce1287430bdbb550619cd36618c8be1daed07351578"
+      },
+      {
+        "name": "pokrov-android-x86_64.apk",
+        "bytes": 109951989,
+        "sha256": "fc6da2ca396d3e81c4bff1dc3bf7f40700fbf5fdc7bf0d76742e5d80984751e5"
+      },
+      {
+        "name": "pokrov-windows-setup-x64.exe",
+        "bytes": 29143633,
+        "sha256": "87f90be11a927c271c84e8042f17e052ee1070a1ac4923fa3949d6e19c00dff3"
+      }
+    ]
+  },
+  "scan_contract": {
+    "streaming_binary_mode": true,
+    "archive_extracted_to_disk": false,
+    "chunk_overlap_bytes": 65536,
+    "matched_values_retained": false,
+    "raw_local_paths_retained_in_normalized_record": false,
+    "definite_categories": [
+      "complete_private_key_block",
+      "authorization_literal",
+      "credential_assignment",
+      "high_confidence_proxy_uri",
+      "known_live_token"
+    ],
+    "known_live_token_policy": "provider-specific high-confidence shapes",
+    "broad_token_shape_policy": "fingerprint-only triage; not counted as a definite finding"
+  },
+  "android_payload_scan": {
+    "recorded_at_utc": "2026-09-02T06:49:01Z",
+    "archives_streamed": 5,
+    "archive_entries_scanned": 1895,
+    "uncompressed_bytes_scanned": 976326012,
+    "archive_details": [
+      {
+        "name": "pokrov-android-arm64-v8a.apk",
+        "archive_entries": 374,
+        "uncompressed_bytes_scanned": 104072562
+      },
+      {
+        "name": "pokrov-android-armeabi-v7a.apk",
+        "archive_entries": 374,
+        "uncompressed_bytes_scanned": 93471054
+      },
+      {
+        "name": "pokrov-android-market.aab",
+        "archive_entries": 393,
+        "uncompressed_bytes_scanned": 368127180
+      },
+      {
+        "name": "pokrov-android-universal.apk",
+        "archive_entries": 380,
+        "uncompressed_bytes_scanned": 298005966
+      },
+      {
+        "name": "pokrov-android-x86_64.apk",
+        "archive_entries": 374,
+        "uncompressed_bytes_scanned": 112649250
+      }
+    ],
+    "definite_findings": {
+      "complete_private_key_block": 0,
+      "authorization_literal": 0,
+      "credential_assignment": 0,
+      "high_confidence_proxy_uri": 0,
+      "known_live_token": 0
+    },
+    "result": "PASS_BOUNDED_STATIC_SCAN"
+  },
+  "broad_match_triage": {
+    "recorded_at_utc": "2026-09-02T06:50:35Z",
+    "loose_shape_occurrences": 12,
+    "unique_value_fingerprints": 1,
+    "match_length": 39,
+    "family": "numeric_colon_shape",
+    "strict_high_confidence_occurrences": 0,
+    "native_library_occurrences": 9,
+    "other_archive_entry_occurrences": 3,
+    "value_sha256": "12a50a79e024ceeb0963ead525792e2a801cdc477f2427bf6de9f8e14e615f6e",
+    "matched_value_retained": false,
+    "raw_entry_names_retained": false,
+    "classification": "ABI_DUPLICATED_FLUTTER_RUNTIME_AND_SYMBOL_STRING_NOT_A_PROVIDER_TOKEN_FORMAT"
+  },
+  "windows_payload_scan": {
+    "recorded_at_utc": "2026-09-02T06:50:18Z",
+    "build_manifest_sha256": "665f77f096a54b9fe5ec375149ebadae4e0871165dcba8f19c3fe6fbf6be2919",
+    "installer_matches_signed_and_build_manifests": true,
+    "installer_raw_bytes_scanned": 29143633,
+    "installer_raw_definite_findings": 0,
+    "exact_client_source": "1e164586d741484b5ae8fb2ee267ef5dd813cadb",
+    "exact_client_worktree_clean": true,
+    "staged_root_within_exact_client_worktree": true,
+    "manifest_required_files": 11,
+    "required_file_size_and_sha256_verified": 11,
+    "staged_tree_files_scanned": 302,
+    "staged_tree_bytes_scanned": 99269281,
+    "staged_tree_definite_findings": {
+      "complete_private_key_block": 0,
+      "authorization_literal": 0,
+      "credential_assignment": 0,
+      "high_confidence_proxy_uri": 0,
+      "known_live_token": 0
+    },
+    "result": "PASS_BOUND_STAGING_STATIC_SCAN"
+  },
+  "method_provenance": {
+    "strict_scan_source_sha256": "7901c6d21fa8f1ab2af7ea2ab1bba480ee0003d9d5916e836303e14369b311ac",
+    "triage_source_sha256": "851230884fd3f4f2680772b0db022a94e052c6b65f2ae2a267873fd5d2bdf6ba",
+    "windows_scan_source_sha256": "a7b1f127784461e3d55073f0a67b7b9b2c3198a7ff301d904b5dc6f6d0bf9148",
+    "candidate_assertions_substituted_in_memory_only": true,
+    "scan_logic_changed": false
+  },
+  "private_reports": {
+    "strict_six_artifact_report_sha256": "bb8939475b8dfa86c2e922b0a55e0beab44e23d9a206925f7132f2eea6911dc7",
+    "fingerprint_only_triage_report_sha256": "a31d681e6bf3870e541cf4c7b3c47bf3ceb63d4f5a7ba5e75fba18a9ee844e43",
+    "windows_staging_report_sha256": "5a86773a6cea4b6f924887a45bae23ef2d9be5e1ea373b7384daf03e3580aec5"
+  },
+  "ledger_effect": {
+    "OBS-005": "I3_RETAINED_WITH_CANDIDATE21_STATIC_REPLACEMENT_EVIDENCE",
+    "OBS-006": "I3_RETAINED_WITH_CANDIDATE21_STATIC_REPLACEMENT_EVIDENCE",
+    "OBS-010": "I3_RETAINED_WITH_CANDIDATE21_STATIC_REPLACEMENT_EVIDENCE",
+    "DOD-12": "I3_RETAINED_WITH_CANDIDATE21_STATIC_REPLACEMENT_EVIDENCE",
+    "AWG-01": "I3_RETAINED_WITH_CANDIDATE21_STATIC_REPLACEMENT_EVIDENCE",
+    "GATE-F": "I3_UNCHANGED_AND_NOT_RUN"
+  },
+  "decision": {
+    "status": "PASS_BOUNDED_STATIC_ARTIFACT_PRIVACY_SCAN",
+    "release_index_promotion": false,
+    "gate_f_regenerated": false,
+    "gate_g_authorized": false,
+    "aggregate_live_privacy_attestation": "MISSING"
+  },
+  "limitations": [
+    "Static byte-pattern coverage is not proof of every possible sensitive format.",
+    "The Windows installer is scanned as raw bytes; independent decompression is not claimed.",
+    "Only the 11 Windows required files are individually bound by the build manifest; the remaining staged files are tied to the preserved clean exact-client build tree.",
+    "Static inspection does not replace installed Android, connected Windows, deployed ingest or final aggregate owner evidence.",
+    "No candidate index advancement follows from this bounded I3 evidence."
+  ],
+  "mutation_boundary": {
+    "host_vpn_route_or_dns_changed": false,
+    "application_installer_vm_ldplayer_or_phone_used": false,
+    "archive_extracted_to_disk": false,
+    "server_dns_provider_payment_or_entitlement_changed": false,
+    "public_release_store_or_stable_pointer_changed": false
+  },
+  "evidence_ceiling": "PASS_EXACT_CANDIDATE21_SIX_ARTIFACT_SIZE_AND_HASH_BINDING_ANDROID_STREAM_SCAN_AND_MANIFEST_BOUND_WINDOWS_STAGING_SCAN; NO_LIVE_ANDROID_REMAINING_WINDOWS_DEPLOYED_INGEST_OR_FINAL_AGGREGATE_CREDIT"
+}
