@@ -2,6 +2,28 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013EL candidate.21 current/Brain read-only origins
+
+Exact candidate.21 platform `e2608130...` matches the deployed Brain payload
+at `197/197` semantic bytes, Brain readiness passes `23/23` with `5/5` stable
+subscription samples, and three enabled-delivery samples each pass `7/7`.
+Separately, proxy-disabled physical-source-bound current-origin health and
+public-catalog probes pass 50-sample p95 budgets at `35.6952/41.3740 ms`.
+
+The exact clean candidate tuple passes permanent STOP-SHIP regressions `7/7`
+and owner-solo PR controls `3/3`; P0 label/title queries return `0/0` in each
+of the three release repositories. Aggregate STOP-SHIP remains `BLOCKED` on
+two access-blocked branch policies, the accepted unprotected Core branch and
+one manual live gate. Independent review and final live attestation are not
+claimed.
+
+`FRKN_PLAN/W9-02` stays `I2`: authenticated current-client egress, general
+RU-origin and physical multi-ASN coverage remain open. Gates D/E/F, `DOD-01`
+and `DOD-13` receive current replacement evidence without level changes. Gate
+F stays `I3/NOT_RUN`; distribution remains `I4=7`, `I3=320`, `I2=19`,
+`I1=32`, `I0=0` across `378` unique rows. No runtime, host-network, database,
+device, public or stable mutation occurs.
+
 ## 2026-09-02 — WO-013EK candidate.21 Core AWG2/AWG3.1 RU-Pi interop
 
 Exact signed candidate.21 Core `cd8f0f4...` is exported from a clean detached

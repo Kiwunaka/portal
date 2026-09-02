@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-02
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_CANDIDATE20_NO_GO_CANDIDATE21_SIGNED_PRIVATE_WINDOWS11_UPGRADE_DEFAULT_SMARTDNS_DIRECT_AND_CORE_RU_FIXED_AWG_PASS_PACKAGED_CLIENT_ORIGIN_ROLLBACK_AGGREGATE_GATES_OPEN_GATE_F_NOT_RUN`
+Wave status: `PHASE_11_CANDIDATE20_NO_GO_CANDIDATE21_SIGNED_PRIVATE_WINDOWS11_SMARTDNS_CORE_RU_FIXED_AWG_CURRENT_PUBLIC_AND_BRAIN_PASS_PACKAGED_CLIENT_GENERAL_RU_ROLLBACK_AGGREGATE_GATES_OPEN_GATE_F_NOT_RUN`
 Release candidate: `POKROV_1_2_0_CANDIDATE21_SIGNED_PRIVATE_BUILD4050_PROMOTION_NOT_AUTHORIZED`
 
 ## Outcome
@@ -38,13 +38,15 @@ connect/disconnect restoration pass. WO-013EJ binds the already live
 default-off Smart DNS runtime to the exact candidate.21 source and repeats its
 direct DoH/TLS contract from the isolated Windows 11 VM without client
 selection. WO-013EK passes both AWG2 and AWG3.1 through the exact candidate.21
-Core from the owned direct-RU fixed-network Pi. Android runtime, fresh in-place
-Windows service-restart recovery, packaged Android/Windows AWG selection,
-in-app Smart DNS selection, named origins,
+Core from the owned direct-RU fixed-network Pi. WO-013EL passes exact-source
+Brain readiness/delivery and the source-bound current-origin public API
+budgets. Android runtime, fresh in-place Windows service-restart recovery,
+packaged Android/Windows AWG selection, authenticated current client, general
+RU-origin, in-app Smart DNS selection and named physical origins,
 rollback and aggregate gates remain open. No tag, public asset, Store object,
 stable pointer or promotion exists. Phase rows below retain acquisition
-history; this section plus WO-013EH/013EI/013EJ/013EK supersedes older wording
-that calls candidate.20 current.
+history; this section plus WO-013EH/013EI/013EJ/013EK/013EL supersedes older
+wording that calls candidate.20 current.
 
 ## Execution order
 
@@ -68,6 +70,8 @@ Windows runtime authority, WO-013EI is the current signed-supply authority and
 WO-013EJ is the current candidate-bound Smart DNS direct-contract authority.
 WO-013EK is the current exact-Core RU fixed-network AWG authority; it does not
 replace packaged-client or multi-ASN proof.
+WO-013EL is the current candidate-bound current-public/Brain read-only origin
+authority; authenticated client and general RU-origin evidence stay separate.
 WO-013EA remains the rejected signed-index predecessor authority; WO-013EB is
 its exact offline source-gate authority; WO-013EC is its
 exact static artifact privacy authority; WO-013ED is its exact offline Gates
@@ -98,6 +102,12 @@ service-restart recovery, Windows 10/non-default paths, packaged Android/
 Windows AWG selection, in-app Smart DNS selection, named origins,
 rollback and aggregate Gate F evidence remain open. Host-tunneled LDPlayer
 network output remains excluded and no nested emulator is used.
+
+WO-013EL additionally binds this exact candidate to the deployed Brain payload
+at `197/197`, readiness `23/23`, subscription stability `5/5`, enabled delivery
+`7/7` three times and current-origin public API p95 `35.6952/41.3740 ms`.
+Authenticated client egress and general RU-origin remain open; the aggregate
+STOP-SHIP result stays `BLOCKED` and Gate F is not generated.
 
 WO-013DG supersedes the Phase 10 row's earlier uninstalled Smart DNS boundary.
 The owner-authorized `dns.pokrov.space` record is authoritative `4/4`; the exact
@@ -620,6 +630,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013EI` | Bind the exact candidate.21 bytes to strict-v2 handoff, refreshed SBOM/provenance and a trusted private release-index manifest | Exact four-repository tuple, offline supply validation, GitHub input/signer/receipt chain and retained Actions-only signed output | Handoff `07e0009c...`, SBOM `c01234bf...`, provenance `b6e63ae0...`, manifest/signature/receipt `ce0b8586...` / `ef474e6e...` / `aaa027cc...` validate. Signer run `33586752995`, input PR 43 and receipt PR 44 pass. `promotion_authorized=false`; no public asset, tag, Store object or stable pointer exists. No level changes; Gate F remains not run | Complete exact Android/AWG/Smart-DNS, fresh Windows lifecycle, named-origin, rollback, provider/Operator/legal/performance and aggregate gates before Gate F |
 | `WO-013EJ` | Bind the live default-off Smart DNS contract to exact signed candidate.21 source and repeat the direct Windows 11 policy path | Deterministic candidate-source bundle, live backend/frontend read-only PLANs, authoritative DNS and isolated Windows VM DoH/TLS evidence | Two exact-source builds match; nine runtime entries match the live bundle, while only source-bound manifest/README differ. Live service/route/receipt readback passes with zero mutation, and the signed-candidate Windows VM direct contract returns expected `NOERROR`/`NODATA`/`REFUSED` plus trusted ChatGPT/Gemini/Xbox TLS/HTTP. `SMARTDNS-01` stays `I3`; Gate F stays not run | Run exact candidate.21 in-app/physical authenticated-session, attribution, leak/privacy/load/lifecycle and fresh named-origin aggregate matrices |
 | `WO-013EK` | Run exact candidate.21 Core AWG2/AWG3.1 from the owned direct-RU fixed-network Raspberry Pi | Signed candidate tuple, clean exact-Core snapshot, digest-bound Linux ARM64 binaries and secret-safe RU-Pi runtime evidence | AWG2 and AWG3.1 both pass outer exchange, tunneled TCP, verified TLS and authenticated egress; temporary roots/executables return to zero and no server or client setting changes. `AWG-10` stays `I2` because packaged Android/Windows and distinct mobile/fixed multi-ASN evidence remain open; Gate F stays not run | Run exact candidate.21 packaged Android and isolated-Windows AWG selection, then physical Wi-Fi/Beeline and additional named RU-origin ASN canaries |
+| `WO-013EL` | Refresh exact candidate.21 current-public and Brain read-only origin evidence | Exact clean source tuple, Brain source/readiness/delivery reports, controlled current-origin API budgets and current STOP-SHIP/P0 queries | Brain `197/197`, readiness `23/23`, subscriptions `5/5` and delivery `7/7 x3` pass; current health/catalog p95 `35.6952/41.3740 ms` pass. Permanent regressions and solo controls pass, but aggregate STOP-SHIP remains blocked and authenticated-client/general-RU evidence remains open. No level changes; Gate F stays not run | Complete authenticated current-client, general RU-origin, physical multi-ASN, provider/Operator/legal/rollback/performance and final live aggregate gates |
 
 ## Current evidence
 
@@ -627,6 +638,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `EXECUTION-LEDGER.csv` is the machine-readable item register; `(plan,id)` is the primary key.
 - `EXECUTION-INDEX.md` defines the completion index and aggregate reporting rules.
 - `SOURCE-CROSSWALK.md` preserves plan coverage and conflict decisions.
+- `WO-013EL-candidate21-current-brain-origin.md`
+- `evidence/013EL-candidate21-current-brain-origin/`
 - `WO-013EK-candidate21-core-ru-pi-awg-interop.md`
 - `evidence/013EK-candidate21-core-ru-pi-awg/`
 - `WO-013AU-candidate5-signing-brain-awg-route-and-physical-runtime.md`
@@ -1184,11 +1197,13 @@ upgrade/default path passes. Output remains private `ACTIONS_ARTIFACT_ONLY` and
 
 Next execute fresh in-place candidate.21 service-restart recovery and exact
 Android install/launch. Exact Core AWG2/AWG3.1 already passes on the owned RU
-Pi; the next AWG boundary is packaged Android/isolated-Windows selection,
-followed by physical Wi-Fi/Beeline and additional ASN coverage. Continue
-in-app Smart DNS session/leak/lifecycle proof. Keep current-, Brain- and
-RU-origin results separate. Host-tunneled LDPlayer network output is excluded;
-do not spend this lane on SPB beyond bounded evidence.
+Pi; exact-source Brain and current-public API contours also pass. The next AWG
+boundary is packaged Android/isolated-Windows selection, followed by physical
+Wi-Fi/Beeline and additional ASN coverage. Complete authenticated current-
+client and general RU-origin evidence, then continue in-app Smart DNS
+session/leak/lifecycle proof. Keep every origin separate. Host-tunneled
+LDPlayer network output is excluded; do not spend this lane on SPB beyond
+bounded evidence.
 
 After the device/runtime slice, retain guarded candidate rollback and origin
 readback, provider/PostgreSQL/outbox, Operator, legal/commercial,
