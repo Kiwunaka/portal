@@ -1,0 +1,150 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate21-current-brain-origin/v1",
+  "work_order": "WO-013EL",
+  "recorded_at_utc": "2026-09-02T04:58:59.8753816Z",
+  "status": "PASS_CURRENT_PUBLIC_API_AND_BRAIN_SOURCE_READINESS_DELIVERY_AUTHENTICATED_CLIENT_RU_AGGREGATE_OPEN",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.21",
+    "version": "1.2.0+4050",
+    "private": true,
+    "promotion_authorized": false,
+    "sources": {
+      "platform": "e2608130e85d9a0f8fa4b920f46cf3d7679332c3",
+      "client": "1e164586d741484b5ae8fb2ee267ef5dd813cadb",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d"
+    },
+    "signed_manifest_sha256": "ce0b8586d4d9b5b625bbcd2c93b03fd783f89b4958a7fd79e58ef65b52c3dc6b"
+  },
+  "brain_origin": {
+    "status": "PASS_EXACT_SOURCE_READINESS_AND_ENABLED_DELIVERY",
+    "source": {
+      "status": "PASS",
+      "observed_at_utc": "2026-09-02T04:49:31.643645+00:00",
+      "payload_count": 197,
+      "raw_match_count": 4,
+      "crlf_only_difference_count": 193,
+      "normalized_match_count": 197,
+      "mismatch_count": 0,
+      "normalization_rule": "CRLF_TO_LF_ONLY",
+      "external_report_sha256": "b1dcf9785f074958244b5f19e905be1709c0f88b7734071208f3a092116e6651"
+    },
+    "readiness": {
+      "status": "PASS",
+      "observed_at_utc": "2026-09-02T04:49:49.643709+00:00",
+      "check_count": 23,
+      "failure_count": 0,
+      "subscription_samples_requested": 5,
+      "subscription_samples_observed": 5,
+      "external_report_sha256": "2f0eafbae2013223ed0c9eb89f7b31a72544fe76df51c8f3c0c87f1cd607b806"
+    },
+    "enabled_delivery": {
+      "status": "PASS",
+      "sample_count": 3,
+      "required_node_count": 7,
+      "open_count_per_sample": [
+        7,
+        7,
+        7
+      ],
+      "non_open_node_codes_per_sample": [
+        [],
+        [],
+        []
+      ],
+      "external_report_sha256": [
+        "1ac0066f4e55401cef5c5493c6be93a04386786491433728857b01671e9a0c67",
+        "4edd416dec29ddc0269c3cdf14005b3b191898663942110f1ad39fd5cd631810",
+        "ea55a4ff8486b35cf9b870c278fd229680a687eead81fc7a48de34fcf066e943"
+      ]
+    }
+  },
+  "current_origin": {
+    "status": "PASS_PUBLIC_API_BUDGETS",
+    "method": "PROXY_DISABLED_PHYSICAL_SOURCE_BOUND",
+    "environment_fingerprint": "9a94902f446bcc4fc5bbc0007ae4d5f25e452f2a50d76f897000975bfd0fc57c",
+    "source_address_retained_in_tracked_evidence": false,
+    "health": {
+      "status": "PASS",
+      "p95_ms": 35.6952,
+      "threshold_ms": 100,
+      "sample_count": 50,
+      "warmup_count": 5,
+      "gate_report_sha256": "d0c922ef9f6842d5d1b3be0677b80736cdf5f518fdc642762f27ec25ad51384a",
+      "private_sample_report_sha256": "ffc60c346528645d353005152762686d0b3794d3aedde05db06f762f5bfcc396"
+    },
+    "public_catalog": {
+      "status": "PASS",
+      "p95_ms": 41.374,
+      "threshold_ms": 200,
+      "sample_count": 50,
+      "warmup_count": 5,
+      "gate_report_sha256": "75639f1bc0f68b202870f1ace03b4a9ace1d182684bf093f68e4dca2f15f3595",
+      "private_sample_report_sha256": "c050be01afab3edc5818fe5a8776a82963e55fc1a6fe730e50007d2dfeae167c"
+    },
+    "authenticated_client_egress": "NOT_RUN"
+  },
+  "stop_ship": {
+    "aggregate_status": "BLOCKED",
+    "candidate_proven": false,
+    "permanent_regressions": {
+      "passed": 7,
+      "total": 7
+    },
+    "owner_solo_pr_controls": {
+      "passed": 3,
+      "total": 3,
+      "independent_review_claimed": false
+    },
+    "hosted_branch_policy": {
+      "blocked_by_access": 2,
+      "accepted_unprotected": 1
+    },
+    "manual_live_gates": {
+      "not_run": 1,
+      "total": 1
+    },
+    "open_p0_queries": {
+      "repositories_checked": 3,
+      "label_count_per_repository": [0, 0, 0],
+      "title_count_per_repository": [0, 0, 0],
+      "final_live_attestation_replaced": false
+    },
+    "external_report_sha256": "9b3183c8639543dd8a1c45b0e08f43c6a42c7fcdb1821d0c275bb13e321db673"
+  },
+  "completion_index": {
+    "FRKN_PLAN/W9-02": "I2_CANDIDATE21_CURRENT_PUBLIC_AND_BRAIN_PASS_AUTHENTICATED_CLIENT_GENERAL_RU_OPEN",
+    "REL_GATE/GATE-D": "UNCHANGED_I3_PROVIDER_E2E_OPEN",
+    "REL_GATE/GATE-E": "UNCHANGED_I3_PHYSICAL_AND_COMPARABLE_PERFORMANCE_OPEN",
+    "REL_GATE/GATE-F": "UNCHANGED_I3_NOT_RUN",
+    "REL_DOD/DOD-01": "UNCHANGED_I3_FINAL_LIVE_ATTESTATION_OPEN",
+    "REL_DOD/DOD-13": "UNCHANGED_I1_COMPARABLE_DEVICE_BASELINES_OPEN",
+    "level_changes": 0
+  },
+  "remaining": [
+    "exact candidate21 authenticated current-origin client egress",
+    "general RU-origin manifest and authenticated client proof",
+    "physical mobile and fixed multi-ASN origin coverage",
+    "live provider, PostgreSQL, outbox and reconciliation proof",
+    "physical and comparable-device performance",
+    "final live no-open-P0, false-green and privacy attestation"
+  ],
+  "mutation_boundary": {
+    "brain_runtime_mutated": false,
+    "database_mutated": false,
+    "delivery_nodes_mutated": false,
+    "host_network_mutated": false,
+    "client_tunnel_started": false,
+    "screen_or_input_control_used": false,
+    "public_release_or_stable_pointer_changed": false
+  },
+  "evidence_safety": {
+    "credentials_exported": false,
+    "private_keys_exported": false,
+    "tokens_exported": false,
+    "remote_content_exported": false,
+    "response_bodies_exported": false,
+    "raw_addresses_or_hosts_exported": false,
+    "local_source_address_exported": false,
+    "device_identifiers_exported": false
+  }
+}
