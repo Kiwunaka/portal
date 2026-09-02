@@ -32,9 +32,37 @@ def test_preflight_is_read_only_and_reports_exact_target_state() -> None:
     assert "systemctl is-active --quiet portal-api" in command
     assert MODULE.REGISTRY_PATH in command
     assert MODULE.DROPIN_PATH in command
+    assert "registry_contract_match" in command
+    assert "dropin_contract_match" in command
+    assert "metadata==expected" in command
+    assert "actual==expected" in command
     assert "systemctl restart" not in command
     assert "install -D" not in command
     assert "rm -f" not in command
+
+
+def test_preflight_parser_requires_safe_contract_match_results() -> None:
+    lines = [
+        "effective_uid_root=yes",
+        "python3_present=yes",
+        "install_present=yes",
+        "systemctl_present=yes",
+        "portal_api_active=yes",
+        "registry_present=yes",
+        "dropin_present=yes",
+        "registry_contract_match=yes",
+        "dropin_contract_match=yes",
+        "registry_env_configured=yes",
+    ]
+    report = MODULE._parse_probe("\n".join(lines))
+
+    assert report["registry_contract_match"] is True
+    assert report["dropin_contract_match"] is True
+
+    with pytest.raises(MODULE.RuOriginAuthError, match="preflight_keys_invalid"):
+        MODULE._parse_probe(
+            "\n".join(line for line in lines if not line.startswith("dropin_contract_match="))
+        )
 
 
 def test_registry_has_one_exact_scoped_key_without_extra_truth() -> None:

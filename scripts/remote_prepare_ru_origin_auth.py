@@ -141,6 +141,8 @@ def _parse_probe(raw: str) -> dict[str, bool]:
         "registry_present",
         "dropin_present",
         "registry_env_configured",
+        "registry_contract_match",
+        "dropin_contract_match",
     }
     if set(values) != required:
         raise RuOriginAuthError("remote_preflight_keys_invalid")
@@ -149,6 +151,34 @@ def _parse_probe(raw: str) -> dict[str, bool]:
 
 def _preflight_command() -> str:
     registry_marker = "INTERNAL_HMAC_KEYS_FILE=" + REGISTRY_PATH
+    expected_registry_metadata = {
+        "enabled": True,
+        "key_id": KEY_ID,
+        "origins": list(ORIGINS),
+        "scopes": list(SCOPES),
+        "subject": SUBJECT,
+    }
+    registry_probe = ";".join(
+        [
+            "import json,pathlib,sys",
+            f"payload=json.loads(pathlib.Path({REGISTRY_PATH!r}).read_text(encoding='utf-8'))",
+            "keys=payload.get('keys') if isinstance(payload,dict) and set(payload)=={'keys'} else None",
+            "entry=keys[0] if isinstance(keys,list) and len(keys)==1 and isinstance(keys[0],dict) else None",
+            f"expected=json.loads({json.dumps(expected_registry_metadata, sort_keys=True, separators=(',', ':'))!r})",
+            "metadata={key:value for key,value in entry.items() if key!='secret'} if entry is not None else None",
+            "secret=entry.get('secret') if entry is not None else None",
+            "secret_bytes=secret.encode('utf-8') if isinstance(secret,str) else b''",
+            "sys.exit(0 if metadata==expected and 16<=len(secret_bytes)<=512 and all(0x21<=byte<=0x7e for byte in secret_bytes) else 1)",
+        ]
+    )
+    dropin_probe = ";".join(
+        [
+            "import pathlib,sys",
+            f"expected={_dropin().decode('utf-8')!r}",
+            f"actual=pathlib.Path({DROPIN_PATH!r}).read_text(encoding='utf-8')",
+            "sys.exit(0 if actual==expected else 1)",
+        ]
+    )
     return "\n".join(
         [
             "set -u",
@@ -160,6 +190,8 @@ def _preflight_command() -> str:
             "emit_bool portal_api_active 'systemctl is-active --quiet portal-api'",
             f"emit_bool registry_present 'test -e {_q(REGISTRY_PATH)}'",
             f"emit_bool dropin_present 'test -e {_q(DROPIN_PATH)}'",
+            "emit_bool registry_contract_match " + _q("python3 -c " + _q(registry_probe)),
+            "emit_bool dropin_contract_match " + _q("python3 -c " + _q(dropin_probe)),
             "emit_bool registry_env_configured 'pid=$(systemctl show portal-api --property MainPID --value); "
             "test -n \"$pid\"; test \"$pid\" != 0; tr \"\\000\" \"\\n\" < /proc/$pid/environ | "
             + "grep -Fxq "
