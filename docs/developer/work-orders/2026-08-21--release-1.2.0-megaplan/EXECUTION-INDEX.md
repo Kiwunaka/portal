@@ -2,6 +2,23 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013EK candidate.21 Core AWG2/AWG3.1 RU-Pi interop
+
+Exact signed candidate.21 Core `cd8f0f4...` is exported from a clean detached
+worktree, cross-built as two Linux ARM64 interop binaries and executed on the
+owned Raspberry Pi 4 over its direct RU fixed-network route. `awg2_lab` and
+`awg31_lab` both pass outer exchange, tunneled TCP, verified TLS and the exact
+authenticated-egress marker. The server and client settings are unchanged;
+raw material is not retained, and post-run readback returns zero temporary
+roots and zero matching executables.
+
+This supersedes the candidate.16 provider-outage result only for the bounded
+Core/RU-Pi slice. `FRKN_AWG/AWG-10` remains `I2` because the packaged
+candidate.21 Android/Windows paths, physical Beeline/Wi-Fi and distinct
+mobile/fixed multi-ASN canaries remain open. Gate F stays `I3/NOT_RUN`; no tag,
+public asset, Store object, stable pointer or promotion exists. Distribution
+remains `I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0` across `378` unique rows.
+
 ## 2026-09-02 — WO-013EJ candidate.21 Smart DNS direct binding
 
 The already live default-off Smart DNS lab is rebound to the exact signed
