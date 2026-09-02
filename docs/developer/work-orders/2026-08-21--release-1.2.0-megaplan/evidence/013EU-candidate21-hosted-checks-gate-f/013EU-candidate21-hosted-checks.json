@@ -1,0 +1,176 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate21-hosted-checks/v1",
+  "recorded_at_utc": "2026-09-02T09:21:12Z",
+  "status": "PASS_EXACT_CANDIDATE21_ATTACHED_HOSTED_CHECKS_10_OF_10",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.21",
+    "version": "1.2.0+4050",
+    "sources": {
+      "platform": "e2608130e85d9a0f8fa4b920f46cf3d7679332c3",
+      "client": "1e164586d741484b5ae8fb2ee267ef5dd813cadb",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "cae911e506d95eb72c1364b847992e30cbf9baf9"
+    }
+  },
+  "repositories": [
+    {
+      "repository": "Kiwunaka/portal",
+      "head_sha": "e2608130e85d9a0f8fa4b920f46cf3d7679332c3",
+      "attached_check_count": 2,
+      "checks": [
+        {
+          "name": "cross-repository-contract",
+          "workflow": "Release v2 Contract",
+          "run_id": 33575453809,
+          "job_id": 100078311718,
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "completed_at_utc": "2026-09-02T00:30:57Z"
+        },
+        {
+          "name": "repo-guardrails",
+          "workflow": "Guardrails",
+          "run_id": 33575453765,
+          "job_id": 100078311590,
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "completed_at_utc": "2026-09-02T00:40:04Z"
+        }
+      ]
+    },
+    {
+      "repository": "Kiwunaka/POKROV-app",
+      "head_sha": "1e164586d741484b5ae8fb2ee267ef5dd813cadb",
+      "attached_check_count": 1,
+      "checks": [
+        {
+          "name": "cross-repository-contract",
+          "workflow": "Release v2 Contract",
+          "run_id": 33576468801,
+          "job_id": 100081431673,
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "completed_at_utc": "2026-09-02T00:56:43Z"
+        }
+      ]
+    },
+    {
+      "repository": "Kiwunaka/pokrov-core",
+      "head_sha": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "attached_check_count": 5,
+      "checks": [
+        {
+          "name": "test",
+          "workflow": "CI",
+          "run_id": 33303561763,
+          "job_id": 99239337643,
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "completed_at_utc": "2026-08-30T09:17:37Z"
+        },
+        {
+          "name": "apple-source-build",
+          "workflow": "CI",
+          "run_id": 33303561763,
+          "job_id": 99239337828,
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "completed_at_utc": "2026-08-30T09:22:17Z"
+        },
+        {
+          "name": "windows-artifact-reproducibility",
+          "workflow": "CI",
+          "run_id": 33303561763,
+          "job_id": 99239350126,
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "completed_at_utc": "2026-08-30T09:22:44Z"
+        },
+        {
+          "name": "android-artifact-reproducibility",
+          "workflow": "CI",
+          "run_id": 33303561763,
+          "job_id": 99239352003,
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "completed_at_utc": "2026-08-30T09:22:51Z"
+        },
+        {
+          "name": "release-contract",
+          "workflow": "CI",
+          "run_id": 33303561763,
+          "job_id": 99239336924,
+          "event": "pull_request",
+          "status": "completed",
+          "conclusion": "success",
+          "completed_at_utc": "2026-08-30T09:46:22Z"
+        }
+      ]
+    },
+    {
+      "repository": "Kiwunaka/pokrov",
+      "head_sha": "cae911e506d95eb72c1364b847992e30cbf9baf9",
+      "attached_check_count": 2,
+      "checks": [
+        {
+          "name": "source-contract",
+          "workflow": "Release index contract",
+          "run_id": 33586728089,
+          "job_id": 100112330698,
+          "event": "push",
+          "status": "completed",
+          "conclusion": "success",
+          "completed_at_utc": "2026-09-02T03:21:47Z"
+        },
+        {
+          "name": "prepare-signed-candidate",
+          "workflow": "Prepare signed candidate manifest",
+          "run_id": 33586752995,
+          "job_id": 100112403938,
+          "event": "workflow_dispatch",
+          "status": "completed",
+          "conclusion": "success",
+          "completed_at_utc": "2026-09-02T03:22:13Z"
+        }
+      ]
+    }
+  ],
+  "aggregate": {
+    "repository_count": 4,
+    "attached_check_count": 10,
+    "completed_success_count": 10,
+    "pending_count": 0,
+    "failure_count": 0,
+    "cancelled_count": 0,
+    "head_sha_mismatch_count": 0,
+    "check_app": "github-actions"
+  },
+  "boundary": {
+    "api_operation": "READ_ONLY",
+    "workflow_dispatched_by_this_evidence_run": false,
+    "check_rerun_requested": false,
+    "branch_protection_verified": false,
+    "branch_protection_status": "OWNER_DECLINED_PAID_PROTECTION",
+    "independent_review_performed": false,
+    "owner_solo_exception_retained": true,
+    "hosted_execution_pass_does_not_equal_branch_enforcement": true,
+    "promotion_authorized": false,
+    "public_release_mutated": false,
+    "stable_pointer_mutated": false
+  },
+  "evidence_safety": {
+    "credentials_exported": false,
+    "tokens_exported": false,
+    "private_keys_exported": false,
+    "logs_or_artifact_payloads_exported": false,
+    "customer_or_provider_data_exported": false
+  },
+  "evidence_ceiling": "PASS_ALL_10_GITHUB_ACTIONS_CHECK_RUNS_ATTACHED_TO_THE_EXACT_FOUR_CANDIDATE21_SOURCE_SHAS; NO_BRANCH_PROTECTION_INDEPENDENT_REVIEW_GATE_G_OR_PROMOTION_CREDIT"
+}
