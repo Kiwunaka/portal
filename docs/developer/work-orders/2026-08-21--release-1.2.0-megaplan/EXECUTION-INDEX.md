@@ -2,6 +2,21 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013EO frontend build-lock refresh
+
+The active adminapp and marketing development locks now resolve transitive
+`browserslist` `4.28.8`, above the first patched `4.28.7`. Both manifests are
+unchanged; no direct or production dependency is added. Fresh Node `22.14.0`
+materialization, lint, production build and npm audit pass for both surfaces;
+admin API/SDK stays `75/75`, marketing export repair creates 30 copies, and the
+focused platform suite passes `28/28`.
+
+This closes the active-line patch action without rewriting WO-013EN or signed
+candidate.21. A successor candidate is required to consume the new locks.
+Gates A/E keep their levels, Gate F stays `NOT_RUN`, and distribution remains
+`I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0` across `378` rows. No runtime,
+device, provider, public, Store or stable mutation occurs.
+
 ## 2026-09-02 — WO-013EN candidate.21 offline Gates A–E replay
 
 Exact signed candidate.21 platform/client/Core source passes Gate B

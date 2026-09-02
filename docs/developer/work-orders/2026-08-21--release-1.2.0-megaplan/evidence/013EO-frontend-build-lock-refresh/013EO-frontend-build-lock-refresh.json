@@ -1,0 +1,92 @@
+{
+  "schema": "pokrov.release-1.2.0.frontend-build-lock-refresh/v1",
+  "recorded_at_utc": "2026-09-02T06:30:39Z",
+  "scope": "ACTIVE_PLATFORM_DEVELOPMENT_LINE_ONLY",
+  "repository": "Kiwunaka/portal",
+  "base_revision": "95ef968a67304de9000eb6d46799c8f8437a5e7a",
+  "lock_change_revision": "677c874",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.21",
+    "mutated": false,
+    "replacement_created": false,
+    "gate_f_generated": false
+  },
+  "toolchain": {
+    "node": "22.14.0",
+    "npm": "10.9.2"
+  },
+  "changes": {
+    "files": [
+      "adminapp/package-lock.json",
+      "marketing/package-lock.json"
+    ],
+    "package_json_changed": false,
+    "production_dependency_changed": false,
+    "direct_dependency_added": false,
+    "target": "browserslist",
+    "before": "4.28.4",
+    "after": "4.28.8",
+    "first_patched": "4.28.7",
+    "resolved_transitive_metadata": {
+      "baseline-browser-mapping": "2.11.20",
+      "caniuse-lite": "1.0.30001810",
+      "electron-to-chromium": "1.5.420",
+      "node-releases": "2.0.54",
+      "update-browserslist-db": "1.3.2"
+    }
+  },
+  "surfaces": {
+    "adminapp": {
+      "package_json_sha256": "daa8ab382bac479ba45d1b4294e01dd4d980507ad1e7c624164cf15a2b114301",
+      "package_lock_before_sha256": "d36f87f00339919e10ed41fca23b35002b82c92d9662ee55294aef4280af69d0",
+      "package_lock_after_sha256": "ce55397a7e036ddf6e29c1e0a0754c71e8f636f2b96a0bf7b2f5ebe36c29cf6a",
+      "npm_ci": "PASS",
+      "lint": "PASS",
+      "api_sdk_operations": "PASS_75_OF_75",
+      "build": "PASS",
+      "npm_audit_total": 0,
+      "npm_audit_high": 0,
+      "npm_audit_critical": 0
+    },
+    "marketing": {
+      "package_json_sha256": "536f0ee3f2c46c20d46b2b035b95b16282adb701d24bed9b1d5ba4e61841b567",
+      "package_lock_before_sha256": "307793603468d16e70080ba9b153d07d75be04857534f21e4b6e6e804fee1bb7",
+      "package_lock_after_sha256": "b7545ef35566448fc6e7794fc6c094fb31fd9b982f869631a1d19e5d2269452d",
+      "npm_ci": "PASS",
+      "lint": "PASS",
+      "build": "PASS",
+      "export_segment_fix": "PASS_30_COPIES",
+      "npm_audit_total": 0,
+      "npm_audit_high": 0,
+      "npm_audit_critical": 0
+    }
+  },
+  "focused_tests": {
+    "command": "python -B -m pytest -p no:cacheprovider -q tests/test_dependency_contract.py tests/test_release_1_2_local_quality_gate.py tests/test_adminapp_command_center_contract.py tests/test_marketing_release_readiness.py",
+    "result": "PASS_28_OF_28",
+    "duration_seconds": 0.94
+  },
+  "finding_reconciliation": {
+    "source_audit_record_sha256": "8db74c8dd946c38dd0ba8921bd47598f0fc55f784e8d70462a1dcb4d1ff84653",
+    "advisories": [
+      "GHSA-c83g-rgw3-j3cx",
+      "GHSA-73wf-gq98-2v4g"
+    ],
+    "result": "ACTIVE_DEVELOPMENT_LOCKS_PATCHED_AUDIT_ZERO",
+    "candidate21_history_rewritten": false,
+    "candidate21_audit_warning_erased": false,
+    "successor_candidate_required_to_consume_patch": true
+  },
+  "mutation_boundary": {
+    "runtime": false,
+    "host_network": false,
+    "vm": false,
+    "device": false,
+    "provider": false,
+    "database": false,
+    "operator": false,
+    "public_release": false,
+    "stable_pointer": false
+  },
+  "evidence_ceiling": "ACTIVE_DEVELOPMENT_LOCK_PATCH_AND_LOCAL_BUILD_AUDIT_PROOF_ONLY; IMMUTABLE_CANDIDATE21_UNCHANGED; SUCCESSOR_CANDIDATE_NOT_BUILT"
+}
