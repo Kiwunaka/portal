@@ -2,6 +2,34 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013EW candidate.22 signed supply and Windows recovery
+
+Exact clean platform `d16087d…bec`, client `0aad6bb…fed` and Core
+`cd8f0f4…84d` are rebuilt as private `pokrov-1.2.0-candidate.22`, app
+`1.2.0+4051`. Six artifacts bind to strict-v2 handoff `6fd9cb56…`, SBOM
+`be462e77…`, provenance `13bf8799…` and trusted manifest/signature/receipt
+`81c56e9f…` / `b230a442…` / `65123519…`. Release-index PRs 45/46 and signer
+run `33656388958` pass. Output remains `ACTIONS_ARTIFACT_ONLY`, Windows trusted
+signing remains `SKIPPED_BY_OWNER` and `promotion_authorized=false`.
+
+The exact Windows setup `effc6a8e…` passes `11/11` installed-file identity,
+rejected-pre-hello and successor-session service continuity, and ordinary
+non-elevated UI against the automatic LocalSystem service. Connected in-place
+service restart changes the process, completes startup recovery, permits
+ordinary-UI restage/reconnect/disconnect and restores the exact RU route/DNS/
+egress baseline. A later connected full Windows reboot on the same signed bytes
+repeats clean recovery, UI reconnect and exact final restoration. VM login and
+control are headless; the host mouse is not used.
+
+`REL/REL-001`, `REL/DEP-001`, `REL/WIN-003` and `REL_DOD/DOD-04` are rebound
+to current candidate.22 evidence without level changes. `FRKN_PLAN/W3-02`
+stays `I3`: AWG2/AWG3.1 source materialization passes, but packaged live
+traffic is unrun. Candidate.22 Gate F is `NOT_RUN/I3`. Distribution remains
+`I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0` across `378` rows. Android,
+packaged AWG/Smart DNS, remaining Windows/origin/rollback/provider/Operator/
+legal/performance and final live evidence remain open; no public, Store,
+stable or production promotion occurs.
+
 ## 2026-09-02 — WO-013EV candidate.21 service availability NO_GO
 
 Exact candidate.21 client `1e164586…cadb` contains a production Windows pipe

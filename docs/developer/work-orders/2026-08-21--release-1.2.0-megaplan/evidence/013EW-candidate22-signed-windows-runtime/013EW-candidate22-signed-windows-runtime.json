@@ -1,0 +1,213 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate22-signed-windows-runtime/v1",
+  "recorded_at_utc": "2026-09-02T17:07:34.3623554Z",
+  "status": "PRIVATE_CANDIDATE22_SIGNED_SUPPLY_WINDOWS11_SERVICE_AND_REBOOT_PASS_AGGREGATE_GATES_OPEN",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.22",
+    "version": "1.2.0+4051",
+    "candidate_created": true,
+    "private": true,
+    "promotion_authorized": false,
+    "published": false,
+    "artifact_set_sha256": "692e007b776977e8c295f559ef8633d7b63336a1f9451306910cd6c05cc87e27",
+    "sources": {
+      "platform": "d16087d5da509e17163bdd7293bec5711aa7eedc",
+      "client": "0aad6bbb3a8baf9bd9e2436ed9e57f7c6fbbafed",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index_signing_source": "d45b5035e135130cbdec3968e712201e5bc78230",
+      "release_index_receipt_main": "5728034df053b7d2397af6bf49a524b3f6e86726"
+    },
+    "artifacts": [
+      {
+        "name": "pokrov-android-arm64-v8a.apk",
+        "size": 101366674,
+        "sha256": "77bfcaa298d7b9ef4ccf36f179daa715eb619aade8247299dc65075a9b9a6bf4",
+        "signing": "TRUSTED"
+      },
+      {
+        "name": "pokrov-android-armeabi-v7a.apk",
+        "size": 90778784,
+        "sha256": "3f3505f9535a306cf30855bb5e6f3a67826139c3c2298fc1f96e5d701e26036c",
+        "signing": "TRUSTED"
+      },
+      {
+        "name": "pokrov-android-market.aab",
+        "size": 126263361,
+        "sha256": "fe075bb328133a0da762248ae5364c101853fc72200644d6d21597aad0c875bf",
+        "signing": "TRUSTED"
+      },
+      {
+        "name": "pokrov-android-universal.apk",
+        "size": 295370157,
+        "sha256": "f6dd81ec42c5eabf9c56ce1c11663518a14e904735cb1b045a352137eb1720f7",
+        "signing": "TRUSTED"
+      },
+      {
+        "name": "pokrov-android-x86_64.apk",
+        "size": 109951985,
+        "sha256": "31962adcc276eb517c1807b7c2ceb8be28d8d4c86755f69924d3ded8a9cfc181",
+        "signing": "TRUSTED"
+      },
+      {
+        "name": "pokrov-windows-setup-x64.exe",
+        "size": 29137688,
+        "sha256": "effc6a8ed7ccfa943986aca93f4d1d846d66c8d42730ea0b77854b48f77bf409",
+        "signing": "SKIPPED_BY_OWNER",
+        "distribution": "DIRECT_DOWNLOAD_ONLY",
+        "warning_required": true
+      }
+    ],
+    "android_certificate_sha256": "0A0602A7DF5D96A0B427909D004F3DDF26DEF86587634BF16694DA8D654B2500"
+  },
+  "supply": {
+    "creation_manifest_sha256": "852172b64c5f733e285472ced24150ff842a0bf29979fee2fb187f9f891d81bc",
+    "readiness_receipt_sha256": "15249bf94d318ccde562f2591be4ea8c5965956b7e17773ddb37a556448996ab",
+    "sbom_sha256": "be462e77e4d5ea03b85dfc1bdcd3b9681c1d3023414c8781c56c9e7f3d53f19e",
+    "provenance_sha256": "13bf87993cdcd7dc7cb80791ccbc15ef6b886d390d1ef563c5cd3718229b5ee7",
+    "handoff_input_sha256": "8ffc9b584fb1a4cbc678a285b59948346628fdceb31af6802a1200b6af379b0d",
+    "strict_v2_handoff_sha256": "6fd9cb567e286b322133c5ec60e830e196acaf363a502fb5413d77ecdb58e566",
+    "offline_validation_sha256": "b899e136df829852a4f303eb3f0b8237fdfa5afea5cc24d1e09299dd48c996d1",
+    "offline_validation": "PASS_6_ARTIFACTS_11_WINDOWS_RUNTIME_FILES_EXACT_SOURCE_TUPLE"
+  },
+  "release_index": {
+    "candidate_input": {
+      "template_sha256": "0fc0ae1a9f3c5aaa388e6c7541ae8a2fb3e9fd18e7be3c9ab1a15bac0d4bb0ac",
+      "pull_request": 45,
+      "head": "6d18f71be100623061e951a263e4f80578c999db",
+      "check_run": 33656227301,
+      "check_conclusion": "success",
+      "merge_commit": "d45b5035e135130cbdec3968e712201e5bc78230"
+    },
+    "signer": {
+      "run_id": 33656388958,
+      "head": "d45b5035e135130cbdec3968e712201e5bc78230",
+      "conclusion": "success",
+      "signing_key_id": "pokrov-release-2026-01",
+      "manifest_sha256": "81c56e9fcf7478c50d5881538d26fd72459f05a04d9cce403ec99d8ecdcc7d59",
+      "signature_sha256": "b230a4423064f5b45813fec6eb88a956b820cb6603ad2986b641f2bdd4a8a387",
+      "receipt_sha256": "6512351934514fd63347ddd7f40e83c5ab56148a8e5e1eb899ac22ed12812124",
+      "validation": "READY_SIGNED_MANIFEST",
+      "artifact_count": 6,
+      "owner_unsigned_windows_exception_count": 1,
+      "output_kind": "ACTIONS_ARTIFACT_ONLY",
+      "actions_artifact": {
+        "id": 9856878942,
+        "digest": "sha256:c41c82689af24facab3e4f753c5eed7c72ab2ea358ac66df4aff905dae2db6ed"
+      }
+    },
+    "receipt_record": {
+      "pull_request": 46,
+      "head": "2bdde7bb81a281407e41ec2d36ee90c913722d46",
+      "check_run": 33656734045,
+      "check_conclusion": "success",
+      "merge_commit": "5728034df053b7d2397af6bf49a524b3f6e86726"
+    }
+  },
+  "windows_vm": {
+    "environment": "isolated Windows 11 VirtualBox VM",
+    "headless_login": true,
+    "host_mouse_used": false,
+    "installer_sha256": "effc6a8ed7ccfa943986aca93f4d1d846d66c8d42730ea0b77854b48f77bf409",
+    "windows_manifest_sha256": "fbf08cf5437c64826bc66f1950292547e6b1b31a26af788074d6063db684c527",
+    "required_file_count": 11,
+    "service_binary_sha256": "18191f195309460b9d72a4a91a3fc817f3b3610d32891858a0ddddedaae11fb6",
+    "test_controller_sha256": "7449e24860fe1c6d5ba83741b14a8780f4516c80443f4460067a8e4bbd6ba596",
+    "install_ipc_ui": {
+      "status": "PASS_EXACT_CANDIDATE22_INSTALL_PIPE_AND_NON_ELEVATED_UI",
+      "evidence_sha256": "f5ec0e77b97c09534821ecdec875c4d66ab112cae74d1193123f077b25591864",
+      "caller_is_non_elevated": true,
+      "rejected_prehello_kept_same_service_process": true,
+      "successor_session_kept_same_service_process": true,
+      "ui_alive": true,
+      "service_running": true
+    },
+    "connected_service_restart": {
+      "status": "PASS_EXACT_CANDIDATE22_INPLACE_SERVICE_RESTART_RECOVERY",
+      "evidence_sha256": "2b8c7d251d69a9447521fac13737878108de894f963300eaaec544c25f9e9dbd",
+      "process_id_changed": true,
+      "startup_recovery_reached_clean": true,
+      "ordinary_ui_profile_restage_present": true,
+      "ordinary_ui_reconnect_present": true,
+      "ordinary_ui_disconnect_present": true,
+      "baseline_route_restored": true,
+      "baseline_dns_restored": true,
+      "final_tunnel_adapter_count": 0,
+      "final_egress_country": "RU"
+    },
+    "connected_reboot": {
+      "status": "PASS_EXACT_SIGNED_CANDIDATE22_CONNECTED_REBOOT_RECOVERY",
+      "evidence_sha256": "f88efbcf727067dec03c7e921aa2a67d7cffb3188428cfa2c9a2f6450f9facb5",
+      "stage1_sha256": "d2d602db188bfb7a9583b181c546977968f993bddee143deb17dbd9ec2815f67",
+      "stage2_sha256": "5f29eccda23a5b112cd63869be77f2901a3b1118d3ef33ae21f1376378fb1036",
+      "stage3_sha256": "17650eed5cde70ec7d3cb798c52bd3b6dbb1aed5e749be3990945ef649e485e3",
+      "initial_harness_error_sha256": "d272ae8fbb3e851b3047c35dc748cd8ac7c79c90e835358d48065424e8e1ae3e",
+      "initial_harness_correction": "accepted documented clean lazy artifact_ready state in addition to initialized; product code unchanged; reboot not rerun",
+      "connected_reboot_reached_clean": true,
+      "ordinary_ui_profile_restage_present": true,
+      "ordinary_ui_reconnect_present": true,
+      "ordinary_ui_disconnect_present": true,
+      "post_boot_route_restored": true,
+      "post_boot_dns_restored": true,
+      "final_tunnel_adapter_count": 0,
+      "final_egress_country": "RU"
+    },
+    "not_proved": [
+      "Windows 10",
+      "sleep or resume",
+      "connected uninstall",
+      "packaged AWG2 or AWG3.1 live Windows transport",
+      "IPv6 or broad leak matrix",
+      "interactive SmartScreen",
+      "trusted Authenticode"
+    ]
+  },
+  "source_and_lab_contracts": {
+    "smart_dns_windows_endpoint": "PASS_EXACT_WINDOWS_VM_LIVE_SMART_DNS_CONTRACT",
+    "smart_dns_client_routing": "18/18 PASS_SOURCE_ONLY",
+    "smart_dns_client_ui": "2/2 PASS_SOURCE_ONLY",
+    "awg_control_plane": "72/72 PASS_SOURCE_ONLY",
+    "awg_client_materialization": "2/2 PASS_SOURCE_ONLY",
+    "packaged_awg_live_transport": "NOT_RUN",
+    "in_app_smart_dns_authenticated_sessions": "NOT_RUN"
+  },
+  "publication": {
+    "tag": "NOT_RUN",
+    "github_release": "NOT_RUN",
+    "public_assets": "NOT_RUN",
+    "store_upload": "NOT_RUN",
+    "stable_pointer": "NOT_RUN",
+    "promotion": "NOT_AUTHORIZED"
+  },
+  "index_effect": {
+    "row_count": 378,
+    "unique_row_count": 378,
+    "level_changes": 0,
+    "levels": {
+      "I4": 7,
+      "I3": 320,
+      "I2": 19,
+      "I1": 32,
+      "I0": 0
+    },
+    "current_rebindings": [
+      "REL/REL-001",
+      "REL/DEP-001",
+      "REL/WIN-003",
+      "REL_DOD/DOD-04"
+    ],
+    "still_open": [
+      "FRKN_PLAN/W3-02",
+      "REL_GATE/GATE-F"
+    ]
+  },
+  "evidence_safety": {
+    "credentials_exported": false,
+    "private_keys_exported": false,
+    "connection_material_exported": false,
+    "raw_routes_exported": false,
+    "raw_dns_servers_exported": false,
+    "public_egress_addresses_exported": false,
+    "device_identifiers_exported": false,
+    "customer_or_provider_payload_exported": false
+  }
+}
