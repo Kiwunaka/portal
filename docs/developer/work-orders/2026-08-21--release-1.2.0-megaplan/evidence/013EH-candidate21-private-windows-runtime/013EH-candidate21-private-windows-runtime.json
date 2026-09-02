@@ -1,0 +1,190 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate21-private-windows-runtime/v1",
+  "recorded_at_utc": "2026-09-02T02:12:00Z",
+  "status": "PRIVATE_CANDIDATE21_WINDOWS11_UPGRADE_DEFAULT_RUNTIME_PASS_SIGNED_INDEX_ANDROID_AND_AGGREGATE_GATES_OPEN",
+  "candidate20": {
+    "label": "pokrov-1.2.0-candidate.20",
+    "decision": "NO_GO_IMMUTABLE",
+    "bounded_passes_retained": [
+      "signed supply",
+      "default Windows 11 connect/disconnect",
+      "public-1.1.6 migration",
+      "connected reboot"
+    ],
+    "release_blocker": "forced service termination left the durable recovery journal committed after SCM restart; startup rollback did not resume and the ordinary UI reported runtime unavailable",
+    "safe_evidence_sha256": {
+      "reboot_network_restored": "da811db3b973f06d9848a6d28c991e703deb44c49c5efc22a629c94936623612",
+      "service_restart_network_restored": "d0b39fbafa0712a13ca4fec52e24834f0deb4c2618ab44e23e514101dcf0a746",
+      "service_restart_recovery_stage": "5bb0263e60b78f97713c2d794f5c0cd5d4288cc4c8f4d67a709cea5637c28e1d"
+    }
+  },
+  "candidate21": {
+    "label": "pokrov-1.2.0-candidate.21",
+    "version": "1.2.0+4050",
+    "candidate_created": true,
+    "private_local": true,
+    "promotion_authorized": false,
+    "published": false,
+    "signed_release_index": "NOT_CREATED",
+    "strict_v2_handoff": "NOT_CREATED",
+    "sbom_provenance_refresh": "NOT_CREATED",
+    "sources": {
+      "platform": "e2608130e85d9a0f8fa4b920f46cf3d7679332c3",
+      "client": "1e164586d741484b5ae8fb2ee267ef5dd813cadb",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d"
+    },
+    "hosted_ci": {
+      "repository": "Kiwunaka/POKROV-app",
+      "run_id": 33576468801,
+      "head_sha": "1e164586d741484b5ae8fb2ee267ef5dd813cadb",
+      "conclusion": "success"
+    },
+    "artifacts": [
+      {
+        "name": "pokrov-android-arm64-v8a.apk",
+        "size": 101366678,
+        "sha256": "d5dd9905bafdc30809a1199dde5961129680a03513b60a6e46f323a6a583693c",
+        "signing": "PASS"
+      },
+      {
+        "name": "pokrov-android-armeabi-v7a.apk",
+        "size": 90778788,
+        "sha256": "f39eaa0dabe4a6cd87113506e5ffc954623f6e82d3f684252639c035d898d2f5",
+        "signing": "PASS"
+      },
+      {
+        "name": "pokrov-android-market.aab",
+        "size": 126263297,
+        "sha256": "fdd8e1df6a0e52ae1f48234f9c049c071d3fb2a946498c125a3d8c43f188cfcd",
+        "signing": "PASS"
+      },
+      {
+        "name": "pokrov-android-universal.apk",
+        "size": 295370161,
+        "sha256": "396e8aca2b3b77d727c66ce1287430bdbb550619cd36618c8be1daed07351578",
+        "signing": "PASS"
+      },
+      {
+        "name": "pokrov-android-x86_64.apk",
+        "size": 109951989,
+        "sha256": "fc6da2ca396d3e81c4bff1dc3bf7f40700fbf5fdc7bf0d76742e5d80984751e5",
+        "signing": "PASS"
+      },
+      {
+        "name": "pokrov-windows-setup-x64.exe",
+        "size": 29143633,
+        "sha256": "87f90be11a927c271c84e8042f17e052ee1070a1ac4923fa3949d6e19c00dff3",
+        "signing": "SKIPPED_BY_OWNER"
+      }
+    ],
+    "android_certificate_sha256": "0A0602A7DF5D96A0B427909D004F3DDF26DEF86587634BF16694DA8D654B2500",
+    "private_creation_manifest_sha256": "c79eb481c3ce0402edaf72c2a5083027481b5a8bc34511c1a694cb972f5331d6",
+    "precursor_readiness_sha256": "59a411809fe3d49958c086306d18d75b6a1604a3b24c80f05a0ae4eb43ba087b",
+    "windows_build_manifest_sha256": "665f77f096a54b9fe5ec375149ebadae4e0871165dcba8f19c3fe6fbf6be2919",
+    "windows_required_file_count": 11,
+    "windows_native_ctest": "7/7 PASS",
+    "bounded_artifact_scan": "PASS_ZERO_DEFINITE_FINDINGS",
+    "windows_staging_scan": "PASS_ZERO_DEFINITE_FINDINGS",
+    "token_shape_triage": "PASS_NO_HIGH_CONFIDENCE_MATCH"
+  },
+  "windows_vm": {
+    "environment": "isolated Windows 11 VirtualBox VM",
+    "upgrade_recovery": {
+      "status": "PASS_UPGRADE_AND_STARTUP_RECOVERY",
+      "evidence_sha256": "45a1349a3a09fe56537462978cbf8e686815f58a8c980ba5e3eab80186e5a960",
+      "preinstall_recovery_stage": "committed",
+      "preinstall_network_state_present": true,
+      "installer_exit_code": 0,
+      "postinstall_service_state": "Running",
+      "postinstall_recovery_stage": "clean",
+      "postinstall_network_state_present": false,
+      "postinstall_pending_file_present": false,
+      "required_files": "11/11 PASS",
+      "service_binary_sha256": "4c48913e5392bad97ff111c139ed2b828069f4e00916825b06b24b6224df7d38"
+    },
+    "non_elevated_ui_service": {
+      "status": "PASS_EXACT_CANDIDATE21_NON_ELEVATED_UI_SERVICE",
+      "evidence_sha256": "453b1fa08d0b5571d167e81a429dbf6e4cee083e9d1b7f4f9faeb557d78b60dc",
+      "caller_is_non_elevated": true,
+      "installed_file_identity": true,
+      "service_running_before_ui": true,
+      "service_running_after_ui": true,
+      "service_auto": true,
+      "service_local_system": true,
+      "service_binary_matches": true,
+      "ui_alive": true,
+      "mismatch_count": 0
+    },
+    "default_connect_disconnect": {
+      "status": "PASS_EXACT_CANDIDATE21_WINDOWS11_DEFAULT_EGRESS_DNS_RESTORE",
+      "before_sha256": "e7e7686ab7d6b5276cb0719747ddc69a4438fd6d995982b3b9a7bb9a826603d3",
+      "connected_sha256": "44da58ed9b43bc3673dcfc6d5c9cd3745c8d58814c33a64c50688a3e5fa99cf9",
+      "restored_sha256": "bf46957d4dd3478f38512a64fe75b3967f857a4314d4cffe0a20bb0828090049",
+      "before_country": "RU",
+      "connected_country": "DE",
+      "restored_country": "RU",
+      "connected_tunnel_adapter_count": 1,
+      "restored_tunnel_adapter_count": 0,
+      "connected_route_dns_distinct_from_baseline": true,
+      "restored_egress_route_dns_and_counts_match_baseline": true
+    },
+    "evidence_safety": {
+      "identifiers_exported": false,
+      "raw_routes_exported": false,
+      "raw_dns_servers_exported": false,
+      "connection_material_exported": false
+    },
+    "not_proved": [
+      "fresh in-place candidate21 forced service termination and SCM restart",
+      "sleep or resume",
+      "connected reboot",
+      "Windows 10",
+      "connected uninstall",
+      "AWG2 or AWG3.1 live Windows transport",
+      "IPv6 or broad leak matrix",
+      "interactive SmartScreen",
+      "trusted Authenticode"
+    ]
+  },
+  "source_and_lab_contracts": {
+    "stop_ship_local_regressions": "7/7 PASS",
+    "owner_solo_controls": "3/3 PASS",
+    "branch_protection": "BLOCKED_EXPECTED_OWNER_DECLINED_PAID_PROTECTION",
+    "smart_dns_windows_endpoint": "PASS_EXACT_WINDOWS_VM_LIVE_SMART_DNS_CONTRACT",
+    "smart_dns_client_routing": "18/18 PASS_SOURCE_ONLY",
+    "smart_dns_client_ui": "2/2 PASS_SOURCE_ONLY",
+    "awg_control_plane": "72/72 PASS_SOURCE_ONLY",
+    "awg_client_materialization": "2/2 PASS_SOURCE_ONLY"
+  },
+  "index_effect": {
+    "row_count": 378,
+    "unique_row_count": 378,
+    "levels_before": {
+      "I4": 7,
+      "I3": 320,
+      "I2": 19,
+      "I1": 32,
+      "I0": 0
+    },
+    "levels_after": {
+      "I4": 7,
+      "I3": 320,
+      "I2": 19,
+      "I1": 32,
+      "I0": 0
+    },
+    "level_changes": 0,
+    "current_rebindings": [
+      "REL/WIN-003",
+      "REL_DOD/DOD-04"
+    ]
+  },
+  "decision": {
+    "gate_f": "NOT_RUN",
+    "gate_g": "NOT_AUTHORIZED",
+    "tag": "NOT_RUN",
+    "github_release": "NOT_RUN",
+    "store_upload": "NOT_RUN",
+    "stable_pointer": "NOT_RUN"
+  }
+}
