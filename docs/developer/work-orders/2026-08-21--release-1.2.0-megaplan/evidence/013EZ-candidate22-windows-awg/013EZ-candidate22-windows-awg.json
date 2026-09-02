@@ -1,0 +1,148 @@
+{
+  "schema": "pokrov.windows-vm-candidate22-awg/v1",
+  "observed_at_utc": "2026-09-02T18:52:37.5915325Z",
+  "candidate_id": "pokrov-1.2.0-candidate.22",
+  "version": "1.2.0+4051",
+  "environment": "VirtualBox Windows 11 x64",
+  "origin": "current-origin Windows VM through host NAT",
+  "status": "PASS_EXACT_CANDIDATE22_WINDOWS_PACKAGED_AWG31_AWG2",
+  "production_mutation": "TEMPORARY_GUARDED_OWNER_LAB_BIND_RESTORED",
+  "exact_identity": {
+    "status": "PASS",
+    "upstream_evidence": {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013EW-candidate22-signed-windows-runtime/013EW-candidate22-signed-windows-runtime.json",
+      "sha256": "8d0bf1d91df172ae3f53cac146b2d0bc089320408c01f45cbc22ad9bf0fee9c3"
+    },
+    "installed": {
+      "ui_sha256": "40ce4cc4520709aa4714737776aea2ada4a2043d7a346ce3d708a07160b7d66c",
+      "service_sha256": "18191f195309460b9d72a4a91a3fc817f3b3610d32891858a0ddddedaae11fb6",
+      "core_sha256": "f284fa8841f1a45271874a7a05ed6093fb0e3efbdd03e00001edd046be708204"
+    }
+  },
+  "target_binding": {
+    "install_id_sha256": "789cb9c719f286a5f319f45632d18e9e7a7d84e06c49925b0f3be0411276c982",
+    "target_selection_mode": "confirmed_install_hash",
+    "matched_device_count": 1,
+    "target_user_platform": "windows",
+    "target_user_entitled": true,
+    "source_material_available": true,
+    "raw_identifiers_returned": false,
+    "awg31_apply": {
+      "status": "PASS",
+      "resolved_profile": "awg31_lab",
+      "cohort_identity_present": true,
+      "lab_allowlist_identity_present": true,
+      "external_receipt_sha256": "74dbc4eb7e16051d4e74a79af304985f2145676d098583889815ebd3889ce233"
+    },
+    "awg2_apply": {
+      "status": "PASS",
+      "resolved_profile": "awg2_lab",
+      "cohort_identity_present": true,
+      "lab_allowlist_identity_present": true,
+      "external_receipt_sha256": "488ffe7ea0d27f1296b6d8284a8194fb2458e7774cb1fd9cd68bed5ed5cb7ce9"
+    },
+    "default_cleanup": {
+      "status": "PASS",
+      "resolved_profile": "legacy_reality_fallback",
+      "cohort_identity_present": false,
+      "lab_allowlist_identity_present": false,
+      "external_receipt_sha256": "910a6f9c85994c6cd42bb9cdf84ef63360ae785b76ffef6470bd404fccdd8c90"
+    }
+  },
+  "transport_runs": {
+    "awg31_lab": {
+      "status": "PASS",
+      "profile_revision": "2026-06-01-direct-default-recovery:awg31_lab:awg31-lab-v4-mobile-safe-trailers",
+      "connected_at_utc": "2026-09-02T18:28:23.035096Z",
+      "ui_connected": true,
+      "service_running": true,
+      "tun_up": true,
+      "tun_default_route_present": true,
+      "core_start": "PASS",
+      "route_apply": "PASS",
+      "dns_gate": "PASS",
+      "egress_gate": "PASS",
+      "dns": {
+        "api.pokrov.space": 1,
+        "openai.com": 2,
+        "gemini.google.com": 8,
+        "xbox.com": 5
+      },
+      "https": {
+        "api.pokrov.space": 404,
+        "www.cloudflare.com": 200,
+        "openai.com": 403,
+        "gemini.google.com": 200,
+        "www.xbox.com": 307
+      },
+      "tls_verified_for_all_http_responses": true,
+      "icmp_1_1_1_1": true,
+      "exit_country": "DE",
+      "exit_ip_sha256": "66624e15725d946c4321da789698aff1d98a64de1af16bb4dc43f2bff20bea67"
+    },
+    "awg2_lab": {
+      "status": "PASS",
+      "profile_revision": "2026-06-01-direct-default-recovery:awg2_lab:awg2-lab-v1",
+      "connected_at_utc": "2026-09-02T18:34:40.522912Z",
+      "ui_connected": true,
+      "service_running": true,
+      "tun_up": true,
+      "core_start": "PASS",
+      "route_apply": "PASS",
+      "dns_gate": "PASS",
+      "egress_gate": "PASS",
+      "dns": {
+        "api.pokrov.space": 1,
+        "openai.com": 2,
+        "gemini.google.com": 8,
+        "xbox.com": 5
+      },
+      "https": {
+        "api.pokrov.space": 404,
+        "www.cloudflare.com": 200,
+        "openai.com": 403,
+        "gemini.google.com": 200,
+        "www.xbox.com": 307
+      },
+      "tls_verified_for_all_http_responses": true,
+      "icmp_1_1_1_1": true,
+      "exit_country": "DE",
+      "exit_ip_sha256": "66624e15725d946c4321da789698aff1d98a64de1af16bb4dc43f2bff20bea67"
+    }
+  },
+  "profile_refresh_boundary": {
+    "status": "OBSERVED_NOT_COUNTED_AS_AWG2",
+    "hot_control_plane_switch_reused_previous_profile": "awg31_lab",
+    "required_action": "application_relaunch",
+    "post_relaunch_profile": "awg2_lab",
+    "release_blocker": false,
+    "reason": "The transition is an owner-lab control-plane operation, not an end-user transport selector. The incorrectly labelled attempt was excluded from AWG2 evidence."
+  },
+  "server_packet_capture": {
+    "status": "BLOCKED_BY_ACCESS",
+    "reason": "The current database-selected DE address has no trusted local known_hosts entry for the service port. No host key was accepted and no server-side packet result is claimed.",
+    "client_runtime_pass_not_relabelled_as_server_capture": true
+  },
+  "cleanup": {
+    "status": "PASS",
+    "control_plane_profile": "legacy_reality_fallback",
+    "ordinary_profile_reconnect": "PASS",
+    "ordinary_exit_country": "DE",
+    "final_tun_up": false,
+    "ethernet_dns_restored_to_dhcp_router": true,
+    "service_running": true,
+    "pokrov_crash_dump_count": 0
+  },
+  "remaining": {
+    "candidate22_android_packaged_awg": "NOT_RUN",
+    "physical_android_wifi_beeline": "NOT_RUN",
+    "direct_udp_matrix": "NOT_RUN",
+    "ipv6_matrix": "NOT_RUN",
+    "mtu_forced_failure": "NOT_RUN",
+    "sleep_resume_and_endurance": "NOT_RUN",
+    "authenticated_target_sessions": "NOT_RUN"
+  },
+  "raw_addresses_exported": false,
+  "connection_material_exported": false,
+  "credentials_exported": false
+}
