@@ -64,6 +64,9 @@ def test_android_release_bundle_is_root_orchestrated_from_pokrov_app() -> None:
     assert "cwd=status.android_shell_root" in client_gate_text
     assert "raw Android wrapper artifacts are produced under `C:/Users/kiwun/Documents/ai/POKROV-app/apps/android_shell/build/app/outputs/...`" in deployment_text
     assert "store the active client-lane bundle under `C:/Users/kiwun/Documents/ai/POKROV-app/artifacts/releases/pokrov-app/<version>/`" in deployment_text
-    assert "| New public cutover | `BLOCKED` |" in cutover_text
-    assert "private internal candidate, artifact-only and promotion false" in cutover_text
-    assert "| Final go/no-go | `GATE_F_NOT_RUN_MISSING_EXACT_ARM64_INSTALL_BINDING` |" in cutover_text
+    assert "| New public cutover | `BLOCKED_NO_PROMOTABLE_CANDIDATE`;" in cutover_text
+    assert "build-4051 successor not created" in cutover_text
+    assert (
+        "| Final go/no-go | `NO_GO_EXACT_CANDIDATE_21_SERVICE_AVAILABILITY` |"
+        in cutover_text
+    )

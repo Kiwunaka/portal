@@ -175,9 +175,7 @@ def test_client_lane_docs_point_to_pokrov_app_as_development_truth() -> None:
         "`POKROV-app/main` is the active client-development\n"
         "and client-documentation line; retained bridge bundles are archive evidence."
     ) in repo_readme
-    assert (
-        "`POKROV-app/main` owns client implementation and client release-readiness."
-    ) in app_readme
+    assert "`POKROV-app/main` owns client code and release readiness." in app_readme
     assert (
         "Use history to answer why. Never let archive, completed plans, generated "
         "references, or old decisions determine what to implement now."

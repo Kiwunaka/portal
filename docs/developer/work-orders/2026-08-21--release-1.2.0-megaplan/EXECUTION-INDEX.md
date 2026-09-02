@@ -2,6 +2,24 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013EV candidate.21 service availability NO_GO
+
+Exact candidate.21 client `1e164586…cadb` contains a production Windows pipe
+loop that returns an error to the SCM entrypoint when a client is rejected or
+disconnects before a valid request completes. The corrected loop and a
+rejected-first/valid-second native regression are merged at client
+`8cf428f…8886`; hosted run `33617842048`, job `100207721061`, passes.
+
+The earlier candidate.21 Windows upgrade/default-path PASS and signed supply
+remain valid only for their narrow immutable slices. They do not neutralize the
+availability defect. Candidate.21 is now `NO_GO`; its last Gate F snapshot is
+retained as `BLOCKED 5/14/0` rather than rewritten with a fabricated count.
+
+The working source target advances to `1.2.0+4051`; candidate.22 is
+`PRE_CANDIDATE_LOCAL`, not built, signed or installed. `REL_GATE/GATE-F` stays
+`I3`; distribution remains `I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0` across
+`378` rows. No runtime, public, Store, stable or production mutation occurs.
+
 ## 2026-09-02 — WO-013EU candidate.21 hosted checks and Gate F refresh
 
 Read-only GitHub API inspection proves all `10/10` Actions check runs attached
