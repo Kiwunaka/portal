@@ -2,6 +2,35 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013EZ candidate.22 packaged Windows AWG3.1/AWG2
+
+The exact installed candidate.22 Windows UI/service/Core bytes are bound to
+one uniquely resolved, entitled Windows install through the guarded default-off
+owner lab. AWG3.1 revision `awg31-lab-v4-mobile-safe-trailers` and AWG2
+revision `awg2-lab-v1` each separately start one `tun0`, complete Core/route/
+DNS/egress gates, render connected and pass independent IPv4 DNS, TLS/HTTP,
+ICMP and DE-exit controls.
+
+The first hot server-policy switch is excluded because the still-running app
+reused its previous AWG3.1 profile. Relaunch fetches the correct AWG2 revision,
+and only that attempt is counted. Guarded cleanup removes the exact install and
+user from the cohort and both lab allowlists; readback resolves the ordinary
+fallback. Its reconnect passes, final disconnect leaves zero TUN, restores the
+DHCP resolver, keeps the service running and produces zero crash dumps.
+
+Strict server packet capture is `BLOCKED_BY_ACCESS` because the current
+database-selected DE address lacks a local `known_hosts` entry for the service
+port. No host key is accepted and no Windows PASS is relabelled as server-side
+packet proof. Packaged Android, physical Wi-Fi/Beeline, direct UDP, IPv6, MTU
+forced failure, network/power/endurance and authenticated target sessions stay
+open.
+
+`WIN-003` and `DOD-04` retain `I4`; AWG/FRKN rows gain exact candidate.22
+Windows evidence without a level change. Gate F remains the immutable
+WO-013EX `BLOCKED 3/16/0`; distribution stays `I4=7`, `I3=320`, `I2=19`,
+`I1=32`, `I0=0` across 378 rows. The temporary owner-lab selection is fully
+restored; no public asset, Store object, stable pointer or promotion changes.
+
 ## 2026-09-02 — WO-013EY candidate.22 Windows in-app Smart DNS
 
 The exact installed candidate.22 Windows UI enables custom direct DoH,
