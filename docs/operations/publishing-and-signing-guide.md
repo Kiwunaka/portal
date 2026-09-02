@@ -300,7 +300,7 @@ Current public user-facing version policy:
   `versionName` and Windows public display version are `1.1.6`, and the retained
   client package/build line is `1.1.6+29`
 - the client seed describes the development source line as
-  `1.2.0+4052` / `PRE_CANDIDATE_LOCAL` with `candidate_created=false`; that
+  `1.2.0+4053` / `PRE_CANDIDATE_LOCAL` with `candidate_created=false`; that
   seed is not candidate authority and does not contradict the separately
   generated immutable strict-v2 candidate handoff
 - generated strict-v2 `pokrov-1.2.0-candidate.20` is retained signed history:
@@ -315,18 +315,20 @@ Current public user-facing version policy:
   is immutable `NO_GO`
 - candidate.21 at `1.2.0+4050` remains immutable signed `NO_GO` history after
   its exact rejected-session service-availability defect
-- exact platform `d16087d...`, client `0aad6bbb...`, Core `cd8f0f4...` and
-  release-index signing source `d45b5035...` own signed private
-  `pokrov-1.2.0-candidate.22` at `1.2.0+4051`. Its six exact artifacts bind to
-  strict-v2 handoff `6fd9cb56...`, refreshed SBOM `be462e77...`, provenance
-  `13bf8799...` and trusted manifest/signature/receipt
-  `81c56e9f...` / `b230a442...` / `65123519...`. Main-only signer run
-  `33656388958` passes; output remains `ACTIONS_ARTIFACT_ONLY` with
-  `promotion_authorized=false`. The isolated Windows 11 default,
-  service-restart/reboot, Smart-DNS and packaged AWG slices pass. Connected
-  uninstall leaves the running UI and 13 loaded binaries, so candidate.22 is
-  immutable `NO_GO`; the build-4052 working branch contains the correction
-  and requires a new candidate. Earlier candidate decisions remain immutable history; Gate G is
+- candidate.20's package line is `1.2.0+4049`; both older package lines remain
+  historical evidence only
+- exact platform `5ba4dba...`, client `df9ed85...`, Core `cd8f0f4...` and
+  release-index signing source `95f9f03...` own signed private
+  `pokrov-1.2.0-candidate.23` at `1.2.0+4052`. Its six exact artifacts bind to
+  strict-v2 handoff `457bbf71...`, refreshed SBOM `0c789b50...`, provenance
+  `71f2d6ec...` and trusted manifest/signature/receipt
+  `5073c201...` / `92027334...` / `d11e24ac...`. Main-only signer run
+  `33690078543` passes; output remains `ACTIONS_ARTIFACT_ONLY` with
+  `promotion_authorized=false`. The exact Windows package installs and reaches
+  an initial authenticated connection, but valid service requests can fail
+  under serial-pipe contention while the service remains running. Candidate.23
+  is immutable `NO_GO`; the build-4053 working branch contains the bounded
+  retry and requires a new candidate. Earlier candidate decisions remain immutable history; Gate G is
   unauthorized
 - Android `versionName`, Windows display version, cabinet download badges, and
   public changelog copy must stay aligned to the distributed stable line

@@ -1489,20 +1489,19 @@ Current release boundary:
   current cabinet/runtime contract
 - retained distributed release: `v1.1.6`; public client package/build line
   `1.1.6+29`
-- private candidates.20 and .21 remain immutable `NO_GO` history at
-  `1.2.0+4049` and `1.2.0+4050`; their bounded evidence is not current release
-  authority
-- working source target: `1.2.0+4052`, `PRE_CANDIDATE_LOCAL`,
+- private candidates.20 through .22 remain immutable `NO_GO` history. The
+  candidate.20 and .21 package lines are `1.2.0+4049` and `1.2.0+4050`; their
+  bounded evidence is not current release authority
+- working source target: `1.2.0+4053`, `PRE_CANDIDATE_LOCAL`,
   `candidate_created=false`; the seed is not deployable release metadata
-- exact platform `d16087d...`, client `0aad6bbb...` and Core `cd8f0f4...`
-  define local private `pokrov-1.2.0-candidate.22` at `1.2.0+4051`. Six
-  artifacts and bounded Windows 11 default/recovery/Smart-DNS/AWG evidence
-  exist, and strict-v2 handoff, refreshed SBOM/provenance plus signed
-  release-index manifest/signature/receipt validate. Connected uninstall
-  restores RU egress and removes the service/tunnel but leaves the running UI
-  and 13 loaded binaries, so candidate.22 is immutable `NO_GO`; the current
-  build-4052 working branch contains the correction, but no successor candidate
-  exists yet
+- exact platform `5ba4dba...`, client `df9ed85...` and Core `cd8f0f4...`
+  define local private `pokrov-1.2.0-candidate.23` at `1.2.0+4052`. Six
+  artifacts, strict-v2 handoff, refreshed SBOM/provenance and signed
+  release-index manifest/signature/receipt validate. The exact Windows package
+  installs and initially connects, but valid requests can fail under
+  serial-pipe contention while the service remains running. Candidate.23 is
+  immutable `NO_GO`; the current build-4053 working branch contains the bounded
+  retry, but no successor candidate exists yet
 - no runtime sync, tag, public asset, Store object or stable pointer exists;
   `promotion_authorized=false`
 - stable-direct publication does not prove store availability, trusted Windows

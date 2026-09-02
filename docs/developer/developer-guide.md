@@ -34,22 +34,23 @@ meaningful risk requires a work order.
   POKROV-app/main is the client promotion line.
 - Retired bootstrap material and bridge bundles are archive or rollback
   evidence, never active development lanes.
-- Private candidates.20 and .21 remain immutable `NO_GO` history at
-  `1.2.0+4049` and `1.2.0+4050`; their bounded evidence is not current release
-  authority.
+- Private candidates.20 through .22 remain immutable `NO_GO` history. The
+  candidate.20 and .21 package lines are `1.2.0+4049` and `1.2.0+4050`; their
+  bounded evidence is not current release authority.
 - The retained distributed stable-direct client is `v1.1.6`; its public
-  package line is `1.1.6+29`. The source seed is `1.2.0+4052` /
+  package line is `1.1.6+29`. The source seed is `1.2.0+4053` /
   `PRE_CANDIDATE_LOCAL` with `candidate_created=false`; it is not candidate
-  authority. Exact platform `d16087d...`, client `0aad6bbb...`, Core
-  `cd8f0f4...` and release-index source `d45b5035...` own signed private
-  `pokrov-1.2.0-candidate.22` at `1.2.0+4051`: six artifacts, strict-v2
-  handoff `6fd9cb56...`, refreshed SBOM/provenance and trusted manifest
-  `81c56e9f...` plus signature `b230a442...` validate. Signer run
-  `33656388958` retained output as `ACTIONS_ARTIFACT_ONLY` with
-  `promotion_authorized=false`. Its bounded Windows 11 default, recovery,
-  Smart-DNS and AWG slices pass, but connected uninstall leaves the running UI
-  and 13 loaded binaries. Candidate.22 is immutable `NO_GO`; the build-4052
-  working branch contains the correction and requires a new candidate. No
+  authority. Exact platform `5ba4dba...`, client `df9ed85...`, Core
+  `cd8f0f4...` and release-index source `95f9f03...` own signed private
+  `pokrov-1.2.0-candidate.23` at `1.2.0+4052`: six artifacts, strict-v2
+  handoff `457bbf71...`, refreshed SBOM/provenance and trusted manifest
+  `5073c201...` plus signature `92027334...` validate. Signer run
+  `33690078543` retained output as `ACTIONS_ARTIFACT_ONLY` with
+  `promotion_authorized=false`. Its exact Windows package installs and reaches
+  an initial authenticated connection, but later valid service requests can
+  report `CORE-001` while the service remains running. Candidate.23 is
+  immutable `NO_GO`; the build-4053 working branch contains the bounded pipe
+  retry and requires a new candidate. No
   public asset or promotion exists. Store publication, exact-candidate
   Android/AWG/origin/rollback proof and trusted Windows signing remain
   separate gates.
