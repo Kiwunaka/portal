@@ -88,6 +88,6 @@ Wi-Fi/Beeline and additional named RU-origin/ASN canaries.
 - normalized record:
   `evidence/013EK-candidate21-core-ru-pi-awg/013EK-candidate21-core-ru-pi-awg.json`;
 - normalized record SHA-256:
-  `16e56cc2abf61f60ef52d88bafd8d19c2918b9059f36ce6919e024bc17c3c9de`;
+  `d0f7ba4148bde455a484c8d9ff19cf00c1e4b1683504c99b0b47c2cb35044789`;
 - secret-free raw records:
   `E:/POKROV-tools/release-evidence/1.2.0-candidate21-awg-core-interop-2026-09-02/`.
