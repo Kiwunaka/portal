@@ -1,0 +1,111 @@
+{
+  "schema": "pokrov.windows-vm-candidate22-connected-uninstall/v1",
+  "observed_at_utc": "2026-09-02T20:48:00.0269388Z",
+  "environment": "VirtualBox Windows 11 x64",
+  "origin": "current-origin Windows VM through host NAT",
+  "status": "CANDIDATE22_IMMUTABLE_NO_GO_BUILD4052_PREFLIGHT_PASS_CANDIDATE23_PENDING",
+  "production_mutation": "NONE",
+  "candidate22": {
+    "id": "pokrov-1.2.0-candidate.22",
+    "version": "1.2.0+4051",
+    "setup_sha256": "effc6a8ed7ccfa943986aca93f4d1d846d66c8d42730ea0b77854b48f77bf409",
+    "setup_size_bytes": 29137688,
+    "platform_source": "d16087d5da509e17163bdd7293bec5711aa7eedc",
+    "client_source": "0aad6bbb3a8baf9bd9e2436ed9e57f7c6fbbafed",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "d45b5035e135130cbdec3968e712201e5bc78230",
+    "precondition": {
+      "installed_identity": "PASS_11_OF_11",
+      "ui_running": true,
+      "service_running": true,
+      "tun_count": 1,
+      "authenticated_exit_country": "DE"
+    },
+    "connected_uninstall": {
+      "uninstaller_exit_code": 0,
+      "service_present_after": false,
+      "service_process_count_after": 0,
+      "tun_count_after": 0,
+      "ordinary_exit_country_after": "RU",
+      "uninstall_registry_count_after": 0,
+      "ui_process_present_after": true,
+      "install_root_present_after": true,
+      "remaining_file_count": 13,
+      "remaining_files": [
+        "file_selector_windows_plugin.dll",
+        "flutter_secure_storage_windows_plugin.dll",
+        "flutter_windows.dll",
+        "msvcp140.dll",
+        "pokrov_service.exe",
+        "pokrov_windows.exe",
+        "pokrov-core.dll",
+        "screen_retriever_windows_plugin.dll",
+        "tray_manager_plugin.dll",
+        "url_launcher_windows_plugin.dll",
+        "vcruntime140.dll",
+        "vcruntime140_1.dll",
+        "window_manager_plugin.dll"
+      ],
+      "setup_force_close_flag_retry": "SAME_RESULT",
+      "classification": "FAIL_EXACT_CANDIDATE22_RESIDUAL_UI_AND_LOADED_BINARIES",
+      "candidate_decision": "NO_GO"
+    }
+  },
+  "successor_source": {
+    "target_version": "1.2.0+4052",
+    "client_branch_commit": "0a1ae312aed840174f3867357bb7ecfac5264f3b",
+    "client_pull_request": 67,
+    "merge_state_at_observation": "OPEN_CHECKS_RUNNING",
+    "controls": {
+      "close_configured_ui_before_uninstall": true,
+      "abort_on_unexpected_ui_close_failure": true,
+      "wait_for_service_stopped_seconds": 30,
+      "remove_install_root_only_when_empty": true,
+      "static_packaging_contract": "PASS"
+    }
+  },
+  "pre_candidate4052_vm_preflight": {
+    "credit": "PASS_PRE_CANDIDATE_ONLY",
+    "candidate23_credit": false,
+    "setup_sha256": "9aa6b0fd7e43338786a25c7f14b0bd06e04aed01e92e5f21869eb334b5973152",
+    "setup_size_bytes": 29145411,
+    "manifest_sha256": "04db1bd7313e622914738f3abf2aab7cb0caec7fc5440f5113bbaddb0bebdd91",
+    "installer_script_sha256": "2e405ddc469039183e9aff5f71c715484045930c555753a3bb15bbeddb9f2eb0",
+    "precondition": {
+      "ui_running": true,
+      "service_running": true,
+      "tun_count": 1
+    },
+    "postcondition": {
+      "service_present": false,
+      "service_process_count": 0,
+      "ui_process_count": 0,
+      "tun_count": 0,
+      "install_root_present": false,
+      "remaining_file_count": 0,
+      "uninstall_registry_count": 0,
+      "ordinary_exit_country": "RU"
+    },
+    "status": "PASS_CONNECTED_UNINSTALL"
+  },
+  "environment_boundaries": {
+    "sleep_resume": "BLOCKED_BY_ENVIRONMENT",
+    "sleep_resume_reason": "VirtualBox guest exposes no usable sleep transition",
+    "ipv6": "BLOCKED_NO_IPV6_PATH",
+    "ipv6_reason": "Guest has no global IPv6 address or IPv6 default route",
+    "windows10": "NOT_RUN",
+    "interactive_smartscreen": "NOT_RUN"
+  },
+  "release_boundary": {
+    "candidate22_rewritten": false,
+    "candidate23_created": false,
+    "gate_f_regenerated": false,
+    "gate_g_authorized": false,
+    "public_assets_created": false,
+    "store_object_created": false,
+    "stable_pointer_mutated": false
+  },
+  "raw_addresses_exported": false,
+  "connection_material_exported": false,
+  "credentials_exported": false
+}
