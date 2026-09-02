@@ -115,13 +115,15 @@ isolated environment they create themselves. Use the focused commands in the
 
 - Retained distributed stable-direct client: `v1.1.6`; public package line
   `1.1.6+29`.
-- Working source target: `1.2.0+4049`, `PRE_CANDIDATE_LOCAL`,
+- Working source target: `1.2.0+4050`, `PRE_CANDIDATE_LOCAL`,
   `candidate_created=false`.
 - The client `config/release-handoff.seed.json` owns those source facts. The
   separately generated and validated strict-v2 handoff plus signed
-  public-index receipt own private `pokrov-1.2.0-candidate.13`; its output is
-  `ACTIONS_ARTIFACT_ONLY`, `promotion_authorized=false`, with no public tag,
-  assets, Store object or stable pointer.
+  public-index receipt own private `pokrov-1.2.0-candidate.20` at retained
+  package `1.2.0+4049`; its output is `ACTIONS_ARTIFACT_ONLY`,
+  `promotion_authorized=false`, and immutable `NO_GO` after the Windows
+  service-restart recovery failure, with no public tag, assets, Store object
+  or stable pointer. Candidate.21 artifacts do not yet exist.
 - Store availability, trusted Windows signing and exact-final Huawei/RU-LTE
   claims remain unproven.
 - Account foundation: implemented in the repository, not

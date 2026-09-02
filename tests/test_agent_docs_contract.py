@@ -1264,6 +1264,7 @@ def test_active_release_owners_name_public_github_stable_direct() -> None:
         assert "v1.1.6" in text, relative_path
         assert "1.1.6+29" in text, relative_path
         assert "1.2.0+4049" in text, relative_path
+        assert "1.2.0+4050" in text, relative_path
         assert "candidate_created=false" in text, relative_path
         assert "config/release-handoff.seed.json" in text, relative_path
         assert "v1.0.10" not in text, relative_path
