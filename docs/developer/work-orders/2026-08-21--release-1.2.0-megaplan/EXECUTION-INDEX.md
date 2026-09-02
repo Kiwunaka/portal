@@ -2,6 +2,24 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013EU candidate.21 hosted checks and Gate F refresh
+
+Read-only GitHub API inspection proves all `10/10` Actions check runs attached
+to the four exact candidate.21 source SHAs are completed `success`: platform
+`2/2`, client `1/1`, Core `5/5` and release-index `2/2`. A second live query
+matches every retained job ID, name, head SHA, status, conclusion and app.
+
+`hosted_required_checks` advances to `PASS`; branch enforcement remains the
+separate owner-skipped paid-protection boundary and independent review is not
+claimed. Gate F revalidates the signed tuple, `19/19` pointers and `13`
+upstream hashes as `BLOCKED 5 PASS / 14 non-PASS / 0 FAIL`, with zero
+validation errors.
+
+`REL_GATE/GATE-F` stays `I3`; distribution remains `I4=7`, `I3=320`,
+`I2=19`, `I1=32`, `I0=0` across `378` rows. No workflow rerun, runtime,
+candidate, public, Store, stable or production mutation occurs; Gate G remains
+unauthorized.
+
 ## 2026-09-02 — WO-013ET candidate.21 exact Gate F snapshot
 
 Gate F now validates the immutable candidate.21 manifest, signature, receipt,
