@@ -2,6 +2,24 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013EQ candidate.21 exact-source privacy
+
+The clean exact candidate.21 platform/client/Core tuple passes platform
+release-health and support-pipeline tests `75/75`, client release logging over
+`145` production files plus four negative fixtures, observability runtime
+`29/29` and support bundle `15/15`. Both Dart package workspaces materialize
+offline from the existing cache and all exact source worktrees remain clean.
+
+Fresh STOP-SHIP replay also retains `7/7` permanent regressions, `3/3`
+owner-solo PR controls and open-P0 label/title queries `0/0`. Its aggregate is
+still `BLOCKED` on two inaccessible branch policies, one accepted unprotected
+branch and the generic manual input. This is source replacement evidence, not
+physical-device, deployed-ingest or final live privacy proof.
+
+Affected rows retain their levels, Gate F stays `NOT_RUN`, and distribution
+remains `I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0` across `378` rows. No VM,
+emulator, phone, network, runtime, public, Store or stable state is changed.
+
 ## 2026-09-02 — WO-013EP candidate.21 static artifact privacy
 
 All six signed candidate.21 distribution files pass exact size/SHA binding.
