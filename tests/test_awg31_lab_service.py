@@ -15,6 +15,7 @@ PORTAL_BOT_DIR = Path(__file__).resolve().parents[1] / "portal_bot"
 if str(PORTAL_BOT_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_BOT_DIR))
 
+import awg31_lab_service as awg31_lab_service_module  # noqa: E402
 from awg31_lab_service import (  # noqa: E402
     AWG31_CONTRACT_ID,
     AWG31_CONTRACT_SHA256,
@@ -118,6 +119,11 @@ def _rollout(*, enabled: bool = True, killed: bool = False, digest: str = AWG31_
 @pytest.fixture()
 def db_session(monkeypatch):
     monkeypatch.setenv("AWG31_LAB_MATERIAL_SECRET", "synthetic-awg31-lab-test-secret")
+    monkeypatch.setattr(
+        awg31_lab_service_module,
+        "_utcnow",
+        lambda: datetime(2026, 8, 26, 10, 1, 0),
+    )
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine)()
