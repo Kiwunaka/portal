@@ -115,22 +115,22 @@ isolated environment they create themselves. Use the focused commands in the
 
 - Retained distributed stable-direct client: `v1.1.6`; public package line
   `1.1.6+29`.
-- Private candidates.20 and .21 remain immutable `NO_GO` history at
-  `1.2.0+4049` and `1.2.0+4050`; their bounded evidence is not current release
-  authority.
-- Working source target: `1.2.0+4052`, `PRE_CANDIDATE_LOCAL`,
+- Private candidates.20 through .22 remain immutable `NO_GO` history. The
+  candidate.20 and .21 package lines are `1.2.0+4049` and `1.2.0+4050`; their
+  bounded evidence is not current release authority.
+- Working source target: `1.2.0+4053`, `PRE_CANDIDATE_LOCAL`,
   `candidate_created=false`; the seed describes source and is not candidate
   authority.
 - The client `config/release-handoff.seed.json` owns those continuing source
   facts; private candidate creation is a separate exact contract.
 - The latest signed public-index snapshot is private
-  `pokrov-1.2.0-candidate.22` at `1.2.0+4051`. Exact platform `d16087d...`,
-  client `0aad6bbb...` and Core `cd8f0f4...` bind six artifacts, bounded
-  Windows 11 default/recovery/Smart-DNS/AWG runtime, strict-v2 handoff,
-  refreshed SBOM/provenance and signed public-index evidence. Connected
-  uninstall restores the network and removes the service but leaves the UI and
-  13 loaded binaries, so candidate.22 is immutable `NO_GO`; the build-4052
-  working branch contains the correction and requires a new candidate. Public tag/assets, Store object,
+  `pokrov-1.2.0-candidate.23` at `1.2.0+4052`. Exact platform `5ba4dba...`,
+  client `df9ed85...` and Core `cd8f0f4...` bind six artifacts, strict-v2
+  handoff, refreshed SBOM/provenance and signed public-index evidence. The exact
+  Windows package installs and initially connects, but valid requests can fail
+  under serial-pipe contention while the service remains running. Candidate.23
+  is immutable `NO_GO`; the build-4053 working branch contains a bounded retry
+  and requires a new candidate. Public tag/assets, Store object,
   stable pointer and promotion remain absent.
 - Store availability, trusted Windows signing and exact-final Huawei/RU-LTE
   claims remain unproven.
