@@ -1,0 +1,96 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate21-source-privacy/v1",
+  "recorded_at_utc": "2026-09-02T07:12:53Z",
+  "status": "CANDIDATE21_EXACT_SOURCE_PRIVACY_PASS_BRANCH_AND_LIVE_AGGREGATE_OPEN",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.21",
+    "version": "1.2.0+4050",
+    "platform_source": "e2608130e85d9a0f8fa4b920f46cf3d7679332c3",
+    "client_source": "1e164586d741484b5ae8fb2ee267ef5dd813cadb",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "source_worktrees_clean_before_and_after": true
+  },
+  "toolchain": {
+    "python": "3.12.5",
+    "flutter": "3.38.5",
+    "dart_packages_materialized": "FLUTTER_PUB_GET_OFFLINE_FROM_EXISTING_CACHE"
+  },
+  "stop_ship_and_p0": {
+    "verifier_status": "BLOCKED",
+    "verifier_generated_at_utc": "2026-09-02T07:07:23.772587Z",
+    "verifier_report_sha256": "35d659c9abec551ccfb07f957295954ca30581d703714326e1bb48c951556753",
+    "registry_sha256": "dbe322645bc9d7da9e343f90267675e51dbf12f793eaf470f4a54562e6129e4a",
+    "permanent_regressions": {
+      "status": "PASS",
+      "passed": 7,
+      "failed": 0
+    },
+    "owner_solo_pr_controls": {
+      "status": "PASS",
+      "passed": 3,
+      "independent_review_performed": false
+    },
+    "hosted_branch_protection": {
+      "blocked_by_access": 2,
+      "fail_unprotected": 1,
+      "accepted_owner_policy_is_not_technical_pass": true
+    },
+    "github_open_p0_label_count": 0,
+    "github_open_p0_title_count": 0,
+    "generic_manual_gate": "WIN-003_NOT_RUN_IN_SOURCE_ONLY_VERIFIER",
+    "candidate_runtime_reconciliation": "WO-013EH separately owns exact candidate21 Windows 11 default-path runtime evidence; source-only verification does not replace remaining Windows or Android runtime",
+    "aggregate_no_open_p0_false_green_privacy_attestation": "MISSING_LIVE_DEVICE_AND_REMAINING_MANUAL_GATES"
+  },
+  "exact_source_privacy": {
+    "platform_release_health_and_support_pipeline": {
+      "status": "PASS",
+      "passed": 75,
+      "failed": 0,
+      "duration_seconds": 116.60,
+      "test_file_count": 8
+    },
+    "client_release_source_logging": {
+      "status": "PASS",
+      "production_files_scanned": 145,
+      "negative_fixtures_rejected": 4
+    },
+    "client_observability_runtime": {
+      "status": "PASS",
+      "passed": 29,
+      "failed": 0
+    },
+    "client_support_bundle": {
+      "status": "PASS",
+      "passed": 15,
+      "failed": 0
+    },
+    "aggregate_live_secret_leak_attestation": "MISSING"
+  },
+  "ledger_effect": {
+    "REL_DOD/DOD-01": "I3_UNCHANGED_SAME_EXACT_CANDIDATE21_STOP_SHIP_RESULT_ALREADY_BOUND_BY_WO_013EL",
+    "REL_DOD/DOD-12": "I3_RETAINED_WITH_CANDIDATE21_EXACT_SOURCE_AND_STATIC_REPLACEMENT_EVIDENCE",
+    "OBS/OBS-005_OBS-006_OBS-010_OBS-075_OBS-076": "I3_RETAINED_WITH_CANDIDATE21_EXACT_SOURCE_REPLACEMENT_EVIDENCE",
+    "REL_GATE/GATE-F": "I3_UNCHANGED_LIVE_AGGREGATE_AND_OTHER_MANUAL_GATES_OPEN",
+    "distribution": {
+      "I4": 7,
+      "I3": 320,
+      "I2": 19,
+      "I1": 32,
+      "I0": 0,
+      "rows": 378
+    }
+  },
+  "mutation_boundary": {
+    "host_vpn_route_or_dns_command_executed": false,
+    "vm_ldplayer_or_phone_used": false,
+    "application_or_vpn_runtime_started": false,
+    "server_dns_provider_payment_or_entitlement_changed": false,
+    "public_release_store_or_stable_pointer_changed": false
+  },
+  "decision": {
+    "gate_f_regenerated": false,
+    "gate_g_authorized": false,
+    "promotion_authorized": false,
+    "evidence_ceiling": "PASS_EXACT_CANDIDATE21_LOCAL_SOURCE_PRIVACY_AND_REGRESSIONS; STATIC_ARTIFACT_PRIVACY_IS_SEPARATE_WO_013EP; BRANCH_POLICY_AND_LIVE_AGGREGATE_REMAIN_NON_PASS"
+  }
+}
