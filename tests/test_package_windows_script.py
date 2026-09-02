@@ -93,7 +93,15 @@ def test_package_windows_script_builds_installer_exe_with_inno_setup() -> None:
 
     assert "Inno Setup 6 (ISCC.exe) is required" in script
     assert "PrivilegesRequired=admin" in script
-    assert 'Source: "$stagedBundleDirectory\\*"; DestDir: "{app}"' in script
+    assert (
+        'Source: "$stagedBundleDirectory\\*"; '
+        'Excludes: "\\$($windowsReleaseConfig.runtime.service_binary)"; '
+        'DestDir: "{app}"'
+    ) in script
+    assert (
+        'Source: "$stagedBundleDirectory\\$($windowsReleaseConfig.runtime.service_binary)"; '
+        'DestDir: "{app}"; Flags: ignoreversion; AfterInstall: InstallAndStartService'
+    ) in script
     assert "DefaultDirName={autopf}\\POKROV" in script
 
 
@@ -105,7 +113,10 @@ def test_package_windows_script_is_documented_as_active_client_release_step() ->
     assert "python scripts/run_client_release_gate.py build --target windows" in deployment_text
     assert "C:/Users/kiwun/Documents/ai/POKROV-app/docs/" in developer_text
     assert "Windows direct unsigned beta with mandatory SmartScreen warning" in cutover_text
-    assert "`PASS_EXACT_CANDIDATE_13_PACKAGE_IDENTITY`; signing `SKIPPED_BY_OWNER`" in cutover_text
-    assert "The unsigned direct-beta SmartScreen exception does not permit trusted/Store/broad-stable claims" in cutover_text
-    assert "public release/store/stable pointer remain absent" in cutover_text
-    assert "exact host runtime remains manual" in cutover_text
+    assert (
+        "`PASS_EXACT_CANDIDATE_21_PRIVATE_UPGRADE_DEFAULT_RUNTIME`; "
+        "signing `SKIPPED_BY_OWNER`"
+    ) in cutover_text
+    assert "SmartScreen warning is mandatory" in cutover_text
+    assert "Gate G, public release, Store object and stable pointer are unauthorized" in cutover_text
+    assert "corrected build-4051 successor is not yet an exact candidate" in cutover_text

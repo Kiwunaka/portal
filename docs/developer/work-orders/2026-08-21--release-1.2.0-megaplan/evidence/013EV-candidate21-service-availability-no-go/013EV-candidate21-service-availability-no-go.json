@@ -1,0 +1,69 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate21-service-availability-no-go/v1",
+  "observed_at_utc": "2026-09-02T10:37:23.3497949Z",
+  "scope": "exact candidate.21 source boundary and corrected successor source; no runtime, candidate, publication or production mutation",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.21",
+    "package_version": "1.2.0+4050",
+    "platform_revision": "e2608130e85d9a0f8fa4b920f46cf3d7679332c3",
+    "client_revision": "1e164586d741484b5ae8fb2ee267ef5dd813cadb",
+    "core_revision": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_revision": "cae911e506d95eb72c1364b847992e30cbf9baf9",
+    "promotion_authorized": false,
+    "last_gate_f_snapshot": {
+      "decision": "BLOCKED",
+      "pass": 5,
+      "non_pass": 14,
+      "fail": 0,
+      "validation_errors": 0
+    }
+  },
+  "source_boundary": {
+    "path": "apps/windows_shell/windows/service/service_server.cpp",
+    "candidate21": {
+      "git_blob_oid": "4db409af313eea8159beab4cdd15152056374094",
+      "sha256": "7b296a3edfc37f2968ad611535438c72d782c6585c8ee853bfd635614d5e0e1b",
+      "production_behavior": "RunPipeServer returns an error to the SCM service entrypoint when a client is rejected or ends the session before a valid request completes"
+    },
+    "corrected": {
+      "fix_revision": "55461b5b9ca75217e94768360b6517dbe17ecf6f",
+      "merged_main_revision": "8cf428fe4fa8fbc391b42683bdd73e6eb6e88886",
+      "git_blob_oid": "f71ec4668f8b7561d797e8f89ea972c79ea5f456",
+      "sha256": "601275d93f045dd57a0fa78b60ad7991a1d76638ba776ebe541c30f894c18171",
+      "production_behavior": "rejected, pre-hello and malformed client sessions are isolated with continue; only the SCM stop event ends the unbounded production loop",
+      "regression_shape": "debug-only two-session run rejects the first pre-hello connection and serves the second authenticated connection"
+    },
+    "ancestry": {
+      "candidate21_is_ancestor_of_corrected_main": true,
+      "fix_is_ancestor_of_corrected_main": true,
+      "candidate21_bytes_unchanged": true
+    }
+  },
+  "hosted_verification": {
+    "repository": "Kiwunaka/POKROV-app",
+    "run_id": 33617842048,
+    "job_id": 100207721061,
+    "name": "cross-repository-contract",
+    "head_sha": "55461b5b9ca75217e94768360b6517dbe17ecf6f",
+    "status": "completed",
+    "conclusion": "success",
+    "completed_at_utc": "2026-09-02T10:20:51Z"
+  },
+  "runtime_observation": {
+    "environment": "isolated Windows 11 VM",
+    "candidate21_service_state": "STOPPED",
+    "scm_win32_exit_code": 5,
+    "protected_recovery_result_present": false,
+    "attribution": "CONSISTENT_WITH_REJECTED_SESSION_PATH_BUT_PROTECTED_SEQUENCE_NOT_PROVEN",
+    "decision_dependency": "NONE_SOURCE_DEFECT_IS_SUFFICIENT_TO_REJECT_EXACT_BYTES"
+  },
+  "decision": {
+    "candidate21": "IMMUTABLE_NO_GO_SERVICE_AVAILABILITY",
+    "reason": "the exact signed candidate contains the production loop that can end the SCM service after a rejected client session; later source proof cannot alter signed bytes",
+    "successor_package_version": "1.2.0+4051",
+    "successor_candidate_id": "pokrov-1.2.0-candidate.22",
+    "successor_state": "PRE_CANDIDATE_LOCAL_NOT_BUILT_NOT_SIGNED_NOT_INSTALLED",
+    "gate_g_authorized": false,
+    "public_or_stable_mutation": false
+  }
+}

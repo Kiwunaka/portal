@@ -1258,6 +1258,15 @@ def test_active_release_owners_name_public_github_stable_direct() -> None:
         "docs/developer/developer-guide.md",
         "docs/developer/repository-map.md",
     )
+    deployment_text = (REPO_ROOT / owner_paths[0]).read_text(encoding="utf-8")
+    working_match = re.search(
+        r"working source target:\s*`(1\.2\.0\+\d+)`",
+        deployment_text,
+        flags=re.IGNORECASE,
+    )
+    assert working_match is not None
+    working_package = working_match.group(1)
+
     for relative_path in owner_paths:
         text = (REPO_ROOT / relative_path).read_text(encoding="utf-8")
         assert "stable-direct" in text.casefold(), relative_path
@@ -1265,6 +1274,7 @@ def test_active_release_owners_name_public_github_stable_direct() -> None:
         assert "1.1.6+29" in text, relative_path
         assert "1.2.0+4049" in text, relative_path
         assert "1.2.0+4050" in text, relative_path
+        assert working_package in text, relative_path
         assert "candidate_created=false" in text, relative_path
         assert "config/release-handoff.seed.json" in text, relative_path
         assert "v1.0.10" not in text, relative_path

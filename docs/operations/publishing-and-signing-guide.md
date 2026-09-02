@@ -299,8 +299,8 @@ Current public user-facing version policy:
 - the retained distributed stable-direct release is `v1.1.6`; Android
   `versionName` and Windows public display version are `1.1.6`, and the retained
   client package/build line is `1.1.6+29`
-- the client seed still describes the development source line as
-  `1.2.0+4050` / `PRE_CANDIDATE_LOCAL` with `candidate_created=false`; that
+- the client seed describes the development source line as
+  `1.2.0+4051` / `PRE_CANDIDATE_LOCAL` with `candidate_created=false`; that
   seed is not candidate authority and does not contradict the separately
   generated immutable strict-v2 candidate handoff
 - generated strict-v2 `pokrov-1.2.0-candidate.20` is retained signed history:
@@ -322,10 +322,11 @@ Current public user-facing version policy:
   `33586752995` passes; output remains `ACTIONS_ARTIFACT_ONLY` with
   `promotion_authorized=false`. The isolated Windows 11
   upgrade/startup-recovery and default connect/disconnect slice passes. The
-  candidate is not published or promoted; Android runtime, fresh in-place
-  Windows recovery, AWG/Smart-DNS, named origins, guarded rollback and final
-  aggregate gates remain open. Candidate.20, candidate.19 and candidate.16
-  decisions remain immutable history; Gate G is unauthorized
+  candidate is not published or promoted. Its exact production pipe loop can
+  terminate after a rejected pre-hello client session, so candidate.21 is
+  immutable `NO_GO`; corrected client `main` requires a new build-4051
+  candidate. Candidate.20, candidate.19 and candidate.16 decisions remain
+  immutable history; Gate G is unauthorized
 - Android `versionName`, Windows display version, cabinet download badges, and
   public changelog copy must stay aligned to the distributed stable line
 - internal build numbers and platform-native version codes may remain numeric or platform-specific and are not the public label

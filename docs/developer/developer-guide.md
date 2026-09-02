@@ -35,7 +35,7 @@ meaningful risk requires a work order.
 - Retired bootstrap material and bridge bundles are archive or rollback
   evidence, never active development lanes.
 - The retained distributed stable-direct client is `v1.1.6`; its public
-  package line is `1.1.6+29`. The source seed remains `1.2.0+4050` /
+  package line is `1.1.6+29`. The source seed is `1.2.0+4051` /
   `PRE_CANDIDATE_LOCAL` with `candidate_created=false`; it is not candidate
   authority. Immutable private `pokrov-1.2.0-candidate.20` at `1.2.0+4049`
   is rejected after exact Windows service-restart recovery failed. Exact
@@ -46,9 +46,12 @@ meaningful risk requires a work order.
   `ce0b8586...` plus signature `ef474e6e...` validate. Signer run
   `33586752995` retained output as `ACTIONS_ARTIFACT_ONLY` with
   `promotion_authorized=false`. The isolated Windows 11 upgrade/default
-  connect/disconnect slice passes, but no public asset or promotion exists.
-  Store publication, exact-candidate Android/AWG/origin/rollback proof and
-  trusted Windows signing remain separate gates.
+  connect/disconnect slice passes, but its production service can terminate
+  after a rejected pre-hello client session. Candidate.21 is immutable
+  `NO_GO`; corrected client `main` requires a new build-4051 candidate. No
+  public asset or promotion exists. Store publication, exact-candidate
+  Android/AWG/origin/rollback proof and trusted Windows signing remain
+  separate gates.
 - Public and development version truth is owned by the client
   `config/release-handoff.seed.json`; a generated strict-v2 handoff owns a new
   exact candidate. This platform guide is a validated projection, not another
