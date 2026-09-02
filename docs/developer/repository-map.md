@@ -116,14 +116,18 @@ isolated environment they create themselves. Use the focused commands in the
 - Retained distributed stable-direct client: `v1.1.6`; public package line
   `1.1.6+29`.
 - Working source target: `1.2.0+4050`, `PRE_CANDIDATE_LOCAL`,
-  `candidate_created=false`.
-- The client `config/release-handoff.seed.json` owns those source facts. The
-  separately generated and validated strict-v2 handoff plus signed
-  public-index receipt own private `pokrov-1.2.0-candidate.20` at retained
-  package `1.2.0+4049`; its output is `ACTIONS_ARTIFACT_ONLY`,
-  `promotion_authorized=false`, and immutable `NO_GO` after the Windows
-  service-restart recovery failure, with no public tag, assets, Store object
-  or stable pointer. Candidate.21 artifacts do not yet exist.
+  `candidate_created=false`; the seed describes source and is not candidate
+  authority.
+- The client `config/release-handoff.seed.json` owns those continuing source
+  facts; private candidate creation is a separate exact contract.
+- The latest signed public-index snapshot is private
+  `pokrov-1.2.0-candidate.20` at `1.2.0+4049`; it is immutable `NO_GO` after
+  the Windows service-restart recovery failure. Exact platform `e2608130...`,
+  client `1e164586...` and Core `cd8f0f4...` own local private
+  `pokrov-1.2.0-candidate.21` at `1.2.0+4050`. Six artifacts and bounded
+  Windows 11 upgrade/default runtime evidence exist, while strict-v2 handoff,
+  refreshed SBOM/provenance, signed public-index manifest, public tag/assets,
+  Store object, stable pointer and promotion remain absent.
 - Store availability, trusted Windows signing and exact-final Huawei/RU-LTE
   claims remain unproven.
 - Account foundation: implemented in the repository, not

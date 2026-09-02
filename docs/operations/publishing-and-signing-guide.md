@@ -177,13 +177,17 @@ mandatory compensating controls outside the branch readback itself. The
 exception expires when release 1.2.0 is closed; a later release must authorize
 a new exception or return to team review.
 
-WIN-003 is `PASS` only for exact candidate.20 on the isolated Windows 11
-default path. Setup `330b87cb…587f` proves the ordinary UI/LocalSystem service,
-four service-owned rule sets, TUN, managed DNS, authenticated DE egress and
-disconnect rollback, followed by clean uninstall and public-1.1.6 migration.
-This does not transfer to Windows 10, AWG 3.1/AWG2, reboot/crash, connected
-uninstall, interactive SmartScreen or trusted signing. A source anchor or solo
-PR control alone still cannot convert a manual gate into `PASS`.
+WIN-003 is `PASS` for exact private candidate.21 on the isolated Windows 11
+default path. Setup `87f90be1…dff3` proves exact installed identity, ordinary
+UI/LocalSystem service, upgrade-time startup recovery from candidate.20's
+committed journal, TUN, route/DNS change, authenticated DE egress and exact RU
+baseline restoration after disconnect. Candidate.20's earlier default path,
+migration and connected-reboot slices remain bounded history, but the failed
+service-restart recovery makes that candidate immutable `NO_GO`. Candidate.21
+still lacks an in-place forced-termination/SCM-restart proof, Windows 10,
+AWG 3.1/AWG2, connected uninstall, interactive SmartScreen and trusted
+signing. A source anchor or solo PR control alone cannot convert a manual gate
+into `PASS`.
 
 Current focused procedures:
 
@@ -299,8 +303,8 @@ Current public user-facing version policy:
   `1.2.0+4050` / `PRE_CANDIDATE_LOCAL` with `candidate_created=false`; that
   seed is not candidate authority and does not contradict the separately
   generated immutable strict-v2 candidate handoff
-- generated strict-v2 `pokrov-1.2.0-candidate.20` is the current signed exact
-  candidate: six rebuilt `1.2.0+4049` artifacts, a 352-component SBOM,
+- generated strict-v2 `pokrov-1.2.0-candidate.20` is the latest signed-index
+  snapshot: six rebuilt `1.2.0+4049` artifacts, a 352-component SBOM,
   six-subject provenance, an eleven-file Windows manifest and the bounded
   service-owned rule-set correction are retained. Main-only signer run
   `33509003189` passes from release-index source `61ad0b0…a483`; output remains
@@ -313,9 +317,14 @@ Current public user-facing version policy:
   TUN/DNS/authenticated-egress/rollback, public-1.1.6 migration and connected
   reboot pass within their bounded ceilings. A forced service termination
   leaves the durable journal at `committed` after SCM restart, so candidate.20
-  is immutable `NO_GO`. The merged successor source prepares build `4050`, but
-  no candidate.21 artifacts or exact runtime evidence exist. Candidate.19 and
-  candidate.16 Gate F `NO_GO 2/17/2` remain history; Gate G is unauthorized
+  is immutable `NO_GO`
+- exact platform `e2608130...`, client `1e164586...` and Core `cd8f0f4...`
+  own local private `pokrov-1.2.0-candidate.21` at `1.2.0+4050`. Six exact
+  artifacts exist; the isolated Windows 11 upgrade/startup-recovery and
+  default connect/disconnect slice passes. The candidate has no strict-v2
+  handoff, refreshed SBOM/provenance or signed public-index manifest and is not
+  published or promoted. Candidate.19 and candidate.16 Gate F `NO_GO 2/17/2`
+  remain history; Gate G is unauthorized
 - Android `versionName`, Windows display version, cabinet download badges, and
   public changelog copy must stay aligned to the distributed stable line
 - internal build numbers and platform-native version codes may remain numeric or platform-specific and are not the public label

@@ -1,6 +1,34 @@
 # POKROV 1.2.0 Execution Index
 
-Last updated: 2026-09-01
+Last updated: 2026-09-02
+
+## 2026-09-02 — WO-013EH candidate.21 private assembly and Windows runtime
+
+Candidate.20 is immutable `NO_GO`: after an exact forced service termination,
+SCM restart did not resume its committed recovery journal. Its signed supply,
+default Windows 11 path, public-1.1.6 migration and connected-reboot results
+remain bounded predecessor evidence and are not transferred as current PASS.
+
+Exact platform `e2608130...`, client `1e164586...` and Core `cd8f0f4...` produce
+six local private candidate.21 build-4050 artifacts. Five Android artifacts
+retain the production certificate lineage; Windows trusted signing remains
+`SKIPPED_BY_OWNER`. The candidate is not published or promoted and has no
+strict-v2 handoff, refreshed SBOM/provenance or signed release-index manifest.
+
+On the isolated Windows 11 VM, exact setup `87f90be1...` upgrades from the
+retained candidate.20 failure state, restores the recovery journal to `clean`,
+validates `11/11` installed files and starts the automatic LocalSystem service.
+The ordinary non-elevated UI then passes default Germany connect: `sing-tun`,
+route/DNS change and DE egress appear; disconnect returns egress, route, DNS,
+default-route, DNS-interface and active-adapter fingerprints/counts exactly to
+the RU baseline. Fresh in-place candidate.21 forced termination/SCM restart,
+Android runtime, AWG live transport, in-app Smart DNS, named origins, rollback
+and aggregate gates remain open.
+
+`REL/WIN-003` and `REL_DOD/DOD-04` stay `I4` and are rebound to the exact
+candidate.21 default Windows slice. No row changes level. Distribution remains
+`I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0` across `378` unique rows. Gate F
+remains `NOT_RUN`; no tag, Store object, public asset or stable pointer exists.
 
 ## 2026-09-01 — WO-013EG client Linux network transaction participants
 

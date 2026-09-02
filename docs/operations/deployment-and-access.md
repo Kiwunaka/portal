@@ -1491,13 +1491,15 @@ Current release boundary:
   `1.1.6+29`
 - working source target: `1.2.0+4050`, `PRE_CANDIDATE_LOCAL`,
   `candidate_created=false`; the seed is not deployable release metadata
-- a separate exact strict-v2 handoff and signed public-index receipt define
-  private `pokrov-1.2.0-candidate.20`, retained as `1.2.0+4049`; it remains
-  artifact-only with `promotion_authorized=false` and is immutable `NO_GO`
-  after exact Windows service-restart recovery failed. The merged successor
-  source is preparing build `4050`, but no candidate.21 artifacts exist; no
-  candidate runtime sync, tag, public assets, Store object or stable pointer
-  has occurred
+- the latest signed public-index receipt defines private
+  `pokrov-1.2.0-candidate.20`, retained as `1.2.0+4049`; it is immutable
+  `NO_GO` after exact Windows service-restart recovery failed
+- exact platform `e2608130...`, client `1e164586...` and Core `cd8f0f4...`
+  define local private `pokrov-1.2.0-candidate.21` at `1.2.0+4050`. Six
+  artifacts and bounded Windows 11 upgrade/default runtime evidence exist,
+  but no strict-v2 handoff, refreshed SBOM/provenance, signed release index,
+  runtime sync, tag, public assets, Store object or stable pointer exists;
+  `promotion_authorized=false`
 - stable-direct publication does not prove store availability, trusted Windows
   signing, exact-final Huawei/RU-LTE evidence or Apple readiness
 - artifact creation, signing, and candidate publication are owned by [Publishing And Signing Guide](C:/Users/kiwun/Documents/ai/VPN/docs/operations/publishing-and-signing-guide.md); this guide owns runtime application and deploy access
