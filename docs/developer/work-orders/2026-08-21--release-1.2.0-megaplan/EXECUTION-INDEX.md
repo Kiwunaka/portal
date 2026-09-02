@@ -2,6 +2,25 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013EP candidate.21 static artifact privacy
+
+All six signed candidate.21 distribution files pass exact size/SHA binding.
+Five Android archives are streamed without extraction: `1895` entries and
+`976326012` uncompressed bytes return zero definite findings. Fingerprint-only
+triage retains `12` ABI-duplicated occurrences, one value hash and zero strict
+provider-shape matches; no matched value is stored.
+
+The raw Windows installer and exact clean client staging tree also pass: the
+installer matches signed/build manifests, `11/11` required files bind, and all
+`302` staged files / `99269281` bytes return zero definite findings. This is
+bounded static replacement evidence, not installed-device, connected-runtime,
+deployed-ingest or final live privacy proof.
+
+Affected rows retain their levels, Gate F stays `NOT_RUN`, and distribution
+remains `I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0` across `378` rows. No app,
+installer, VM, emulator, phone, network, runtime, public, Store or stable state
+is changed.
+
 ## 2026-09-02 — WO-013EO frontend build-lock refresh
 
 The active adminapp and marketing development locks now resolve transitive
