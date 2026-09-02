@@ -1489,18 +1489,20 @@ Current release boundary:
   current cabinet/runtime contract
 - retained distributed release: `v1.1.6`; public client package/build line
   `1.1.6+29`
-- working source target: `1.2.0+4051`, `PRE_CANDIDATE_LOCAL`,
+- private candidates.20 and .21 remain immutable `NO_GO` history at
+  `1.2.0+4049` and `1.2.0+4050`; their bounded evidence is not current release
+  authority
+- working source target: `1.2.0+4052`, `PRE_CANDIDATE_LOCAL`,
   `candidate_created=false`; the seed is not deployable release metadata
-- retained candidate.20 uses `1.2.0+4049` and remains immutable `NO_GO` after
-  its exact Windows service-restart recovery failure
-- exact platform `e2608130...`, client `1e164586...` and Core `cd8f0f4...`
-  define local private `pokrov-1.2.0-candidate.21` at `1.2.0+4050`. Six
-  artifacts and bounded Windows 11 upgrade/default runtime evidence exist,
-  and strict-v2 handoff, refreshed SBOM/provenance plus signed release-index
-  manifest/signature/receipt validate. The exact production service loop can
-  terminate after a rejected pre-hello client session, so candidate.21 is
-  immutable `NO_GO`; current client `main` contains the correction, but no
-  build-4051 successor exists yet
+- exact platform `d16087d...`, client `0aad6bbb...` and Core `cd8f0f4...`
+  define local private `pokrov-1.2.0-candidate.22` at `1.2.0+4051`. Six
+  artifacts and bounded Windows 11 default/recovery/Smart-DNS/AWG evidence
+  exist, and strict-v2 handoff, refreshed SBOM/provenance plus signed
+  release-index manifest/signature/receipt validate. Connected uninstall
+  restores RU egress and removes the service/tunnel but leaves the running UI
+  and 13 loaded binaries, so candidate.22 is immutable `NO_GO`; the current
+  build-4052 working branch contains the correction, but no successor candidate
+  exists yet
 - no runtime sync, tag, public asset, Store object or stable pointer exists;
   `promotion_authorized=false`
 - stable-direct publication does not prove store availability, trusted Windows

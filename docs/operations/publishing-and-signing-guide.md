@@ -300,7 +300,7 @@ Current public user-facing version policy:
   `versionName` and Windows public display version are `1.1.6`, and the retained
   client package/build line is `1.1.6+29`
 - the client seed describes the development source line as
-  `1.2.0+4051` / `PRE_CANDIDATE_LOCAL` with `candidate_created=false`; that
+  `1.2.0+4052` / `PRE_CANDIDATE_LOCAL` with `candidate_created=false`; that
   seed is not candidate authority and does not contradict the separately
   generated immutable strict-v2 candidate handoff
 - generated strict-v2 `pokrov-1.2.0-candidate.20` is retained signed history:
@@ -313,20 +313,21 @@ Current public user-facing version policy:
   reboot pass within their bounded ceilings. A forced service termination
   leaves the durable journal at `committed` after SCM restart, so candidate.20
   is immutable `NO_GO`
-- exact platform `e2608130...`, client `1e164586...`, Core `cd8f0f4...` and
-  release-index signing source `cae911e...` own signed private
-  `pokrov-1.2.0-candidate.21` at `1.2.0+4050`. Its six exact artifacts bind to
-  strict-v2 handoff `07e0009c...`, refreshed SBOM `c01234bf...`, provenance
-  `b6e63ae0...` and trusted manifest/signature/receipt
-  `ce0b8586...` / `ef474e6e...` / `aaa027cc...`. Main-only signer run
-  `33586752995` passes; output remains `ACTIONS_ARTIFACT_ONLY` with
-  `promotion_authorized=false`. The isolated Windows 11
-  upgrade/startup-recovery and default connect/disconnect slice passes. The
-  candidate is not published or promoted. Its exact production pipe loop can
-  terminate after a rejected pre-hello client session, so candidate.21 is
-  immutable `NO_GO`; corrected client `main` requires a new build-4051
-  candidate. Candidate.20, candidate.19 and candidate.16 decisions remain
-  immutable history; Gate G is unauthorized
+- candidate.21 at `1.2.0+4050` remains immutable signed `NO_GO` history after
+  its exact rejected-session service-availability defect
+- exact platform `d16087d...`, client `0aad6bbb...`, Core `cd8f0f4...` and
+  release-index signing source `d45b5035...` own signed private
+  `pokrov-1.2.0-candidate.22` at `1.2.0+4051`. Its six exact artifacts bind to
+  strict-v2 handoff `6fd9cb56...`, refreshed SBOM `be462e77...`, provenance
+  `13bf8799...` and trusted manifest/signature/receipt
+  `81c56e9f...` / `b230a442...` / `65123519...`. Main-only signer run
+  `33656388958` passes; output remains `ACTIONS_ARTIFACT_ONLY` with
+  `promotion_authorized=false`. The isolated Windows 11 default,
+  service-restart/reboot, Smart-DNS and packaged AWG slices pass. Connected
+  uninstall leaves the running UI and 13 loaded binaries, so candidate.22 is
+  immutable `NO_GO`; the build-4052 working branch contains the correction
+  and requires a new candidate. Earlier candidate decisions remain immutable history; Gate G is
+  unauthorized
 - Android `versionName`, Windows display version, cabinet download badges, and
   public changelog copy must stay aligned to the distributed stable line
 - internal build numbers and platform-native version codes may remain numeric or platform-specific and are not the public label

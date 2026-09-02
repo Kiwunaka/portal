@@ -34,21 +34,22 @@ meaningful risk requires a work order.
   POKROV-app/main is the client promotion line.
 - Retired bootstrap material and bridge bundles are archive or rollback
   evidence, never active development lanes.
+- Private candidates.20 and .21 remain immutable `NO_GO` history at
+  `1.2.0+4049` and `1.2.0+4050`; their bounded evidence is not current release
+  authority.
 - The retained distributed stable-direct client is `v1.1.6`; its public
-  package line is `1.1.6+29`. The source seed is `1.2.0+4051` /
+  package line is `1.1.6+29`. The source seed is `1.2.0+4052` /
   `PRE_CANDIDATE_LOCAL` with `candidate_created=false`; it is not candidate
-  authority. Immutable private `pokrov-1.2.0-candidate.20` at `1.2.0+4049`
-  is rejected after exact Windows service-restart recovery failed. Exact
-  platform `e2608130...`, client `1e164586...`, Core `cd8f0f4...` and
-  release-index signing source `cae911e...` now own signed private
-  `pokrov-1.2.0-candidate.21` at `1.2.0+4050`: six artifacts, strict-v2
-  handoff `07e0009c...`, refreshed SBOM/provenance and trusted manifest
-  `ce0b8586...` plus signature `ef474e6e...` validate. Signer run
-  `33586752995` retained output as `ACTIONS_ARTIFACT_ONLY` with
-  `promotion_authorized=false`. The isolated Windows 11 upgrade/default
-  connect/disconnect slice passes, but its production service can terminate
-  after a rejected pre-hello client session. Candidate.21 is immutable
-  `NO_GO`; corrected client `main` requires a new build-4051 candidate. No
+  authority. Exact platform `d16087d...`, client `0aad6bbb...`, Core
+  `cd8f0f4...` and release-index source `d45b5035...` own signed private
+  `pokrov-1.2.0-candidate.22` at `1.2.0+4051`: six artifacts, strict-v2
+  handoff `6fd9cb56...`, refreshed SBOM/provenance and trusted manifest
+  `81c56e9f...` plus signature `b230a442...` validate. Signer run
+  `33656388958` retained output as `ACTIONS_ARTIFACT_ONLY` with
+  `promotion_authorized=false`. Its bounded Windows 11 default, recovery,
+  Smart-DNS and AWG slices pass, but connected uninstall leaves the running UI
+  and 13 loaded binaries. Candidate.22 is immutable `NO_GO`; the build-4052
+  working branch contains the correction and requires a new candidate. No
   public asset or promotion exists. Store publication, exact-candidate
   Android/AWG/origin/rollback proof and trusted Windows signing remain
   separate gates.

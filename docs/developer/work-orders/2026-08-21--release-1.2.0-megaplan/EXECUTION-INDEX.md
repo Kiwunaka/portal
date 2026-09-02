@@ -2,6 +2,31 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013FA candidate.22 connected-uninstall NO_GO
+
+Exact candidate.22 enters connected uninstall with the ordinary UI,
+LocalSystem service, one TUN and authenticated Germany egress. The uninstaller
+returns `0`, removes the service/TUN and uninstall registry entry, and restores
+ordinary RU egress, but it leaves the running UI and 13 loaded EXE/DLL files in
+the application directory. Repeating with the setup-only force-close switch
+does not change the result. Candidate.22 is immutable `NO_GO`; its earlier
+bounded PASS slices remain evidence only.
+
+Client build-4052 source closes the configured UI before uninstall, waits up
+to 30 seconds for the service to reach `Stopped`, and removes the installation
+directory only when empty. Static packaging tests, the complete local client
+suite and exact local setup `9aa6b0fd...` pass. In the isolated Windows 11 VM,
+connected uninstall leaves zero UI/service processes, registrations, TUNs,
+files, install directory and uninstall registry entries, with RU egress
+restored. This is `PASS_PRE_CANDIDATE`, not candidate.23 evidence.
+
+Sleep/resume is `BLOCKED_BY_ENVIRONMENT`; IPv6 is
+`BLOCKED_NO_IPV6_PATH`. Completion levels and distribution stay unchanged at
+`I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0` across 378 rows. WO-013EX remains
+the retained candidate.22 Gate F snapshot at `BLOCKED 3/16/0`; it is not
+regenerated after rejection. Candidate.23 has not been created, and Gate G,
+public assets, Store upload and stable promotion remain unauthorized.
+
 ## 2026-09-02 — WO-013EZ candidate.22 packaged Windows AWG3.1/AWG2
 
 The exact installed candidate.22 Windows UI/service/Core bytes are bound to
