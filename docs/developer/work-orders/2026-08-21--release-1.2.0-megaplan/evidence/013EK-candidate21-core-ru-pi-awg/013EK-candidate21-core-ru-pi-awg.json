@@ -1,0 +1,89 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate21-core-ru-pi-awg/v1",
+  "work_order": "WO-013EK",
+  "observed_at_utc": {
+    "first": "2026-09-02T04:36:25.6566667Z",
+    "last": "2026-09-02T04:38:06.3894555Z"
+  },
+  "status": "PASS_EXACT_CORE_FIXED_RU_PARTIAL_PACKAGED_CLIENT_MATRIX_OPEN",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.21",
+    "version": "1.2.0+4050",
+    "private": true,
+    "promotion_authorized": false,
+    "sources": {
+      "platform": "e2608130e85d9a0f8fa4b920f46cf3d7679332c3",
+      "client": "1e164586d741484b5ae8fb2ee267ef5dd813cadb",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d"
+    },
+    "signed_manifest_sha256": "ce0b8586d4d9b5b625bbcd2c93b03fd783f89b4958a7fd79e58ef65b52c3dc6b",
+    "client_executed": false
+  },
+  "execution": {
+    "runner_platform_source": "e2608130e85d9a0f8fa4b920f46cf3d7679332c3",
+    "origin": "ru",
+    "origin_network_class": "fixed",
+    "origin_physical_location": "OPERATOR_ATTESTED_RU",
+    "host_class": "owned_raspberry_pi_4",
+    "architecture": "linux_arm64",
+    "direct_default_route_preflight": "PASS",
+    "runtime_mutated": false,
+    "server_mutated": false,
+    "client_settings_mutated": false,
+    "raw_material_returned": false,
+    "temporary_remote_state_removed": true,
+    "post_run_temporary_root_count": 0,
+    "post_run_test_executable_count": 0
+  },
+  "profiles": [
+    {
+      "profile": "awg2_lab",
+      "status": "PASS",
+      "outcome": "passed",
+      "binary_sha256": "20e403f1acb00baaf157ff2332020c2e35c27d87b6a352480d9c6ec6f7a71527",
+      "material_sha256": "07ae6a2f8bdbfc3bd78bb6fabf105db5380f1bf9a0989efed7a8330d0f7648a9",
+      "raw_record_sha256": "1690a9bb760ead7df6d10f8f7da376d9d68ea44e0135a6f24139cbd15ff2ef08",
+      "outer_exchange": "PASS",
+      "tunneled_tcp": "PASS",
+      "verified_tls": "PASS",
+      "authenticated_egress_marker": "PASS",
+      "temporary_remote_state_removed": true
+    },
+    {
+      "profile": "awg31_lab",
+      "status": "PASS",
+      "outcome": "passed",
+      "binary_sha256": "e55d79585af166d8cf7d6a3b0c0f6727aab34689e63946dddce67ced465188ec",
+      "material_sha256": "7effbffdbab9013e682f60832c89d488ef0ecfe0829c4e8acb788918bbfaea50",
+      "raw_record_sha256": "6415cb90b23ceca62629b72a6ec86967b92c316b005b17960ae8d8dae769b35b",
+      "outer_exchange": "PASS",
+      "tunneled_tcp": "PASS",
+      "verified_tls": "PASS",
+      "authenticated_egress_marker": "PASS",
+      "temporary_remote_state_removed": true
+    }
+  ],
+  "completion_index": {
+    "FRKN_AWG/AWG-10": "I2_CANDIDATE21_EXACT_CORE_RU_FIXED_AWG2_AWG31_PASS_PACKAGED_CLIENT_MULTI_ASN_OPEN",
+    "FRKN_PLAN/W9-02": "UNCHANGED_I2",
+    "REL_GATE/GATE-F": "UNCHANGED_I3_NOT_RUN",
+    "gate_g": "NOT_AUTHORIZED",
+    "level_changes": 0
+  },
+  "remaining": [
+    "exact candidate21 packaged Android AWG2 and AWG3.1 selection",
+    "exact candidate21 isolated Windows AWG2 and AWG3.1 selection",
+    "physical Android Wi-Fi and Beeline AWG matrix",
+    "additional named RU-origin fixed and mobile ASN canaries",
+    "external leak, UDP53, MTU, lifecycle and endurance matrix"
+  ],
+  "evidence_safety": {
+    "credentials_exported": false,
+    "private_keys_exported": false,
+    "raw_runtime_material_exported": false,
+    "connection_material_exported": false,
+    "endpoint_exported": false,
+    "device_identifiers_exported": false
+  },
+  "release_effect": "NONE"
+}
