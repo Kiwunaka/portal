@@ -2,6 +2,29 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013EJ candidate.21 Smart DNS direct binding
+
+The already live default-off Smart DNS lab is rebound to the exact signed
+candidate.21 tuple without server, DNS, client-setting or release mutation.
+Live bundle source `650dc3f...` is an ancestor of candidate.21 platform
+`e2608130...`. Two exact-source builds are byte-identical; their executable,
+policy, configurations, service unit, contract, notices and licenses match the
+live bundle byte-for-byte. Only the source-bound manifest and README differ.
+
+Fresh read-only backend and receipt-bound frontend PLANs prove the exact live
+release, active/enabled loopback PROXY-v2 service, active public route and
+valid applied receipt. All four authoritative nameservers agree. A fresh
+isolated Windows 11 probe bound to the signed candidate.21 manifest passes the
+DoH `NOERROR`/`NODATA`/`REFUSED` policy and trusted ChatGPT/Gemini/Xbox TLS/HTTP
+paths without VPN, desktop login or setting changes.
+
+`FRKN_SMART_DNS/SMARTDNS-01` remains `I3`: client selection, physical DoH,
+authenticated application sessions, attribution, leak/privacy/load,
+lifecycle rollback and the fresh named-origin aggregate remain open. Gate F
+stays `NOT_RUN`; no tag, public asset, Store object, stable pointer or
+promotion exists. Distribution remains `I4=7`, `I3=320`, `I2=19`, `I1=32`,
+`I0=0` across `378` unique rows.
+
 ## 2026-09-02 — WO-013EI candidate.21 signed private supply
 
 WO-013EI closes the supply-chain gap left by WO-013EH for the same six
