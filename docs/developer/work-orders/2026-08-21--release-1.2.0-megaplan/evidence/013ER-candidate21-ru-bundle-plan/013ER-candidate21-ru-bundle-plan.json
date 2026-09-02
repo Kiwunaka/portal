@@ -1,0 +1,75 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate21-ru-bundle-plan/v1",
+  "observed_at_utc": "2026-09-02T07:49:23Z",
+  "outcome": "BUNDLE_AND_REMOTE_PLAN_PASS_APPLY_AND_MANUAL_RUN_NOT_RUN",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.21",
+    "version": "1.2.0+4050",
+    "platform_source": "e2608130e85d9a0f8fa4b920f46cf3d7679332c3",
+    "client_source": "1e164586d741484b5ae8fb2ee267ef5dd813cadb",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "signed_manifest_sha256": "ce0b8586d4d9b5b625bbcd2c93b03fd783f89b4958a7fd79e58ef65b52c3dc6b",
+    "signing_receipt_sha256": "aaa027cc5d71fd567c6f3c0b8a9e3b0e965a67760fd02d1769eb3d54062926f8"
+  },
+  "tooling": {
+    "base_revision": "45f21c7cf7b56e57edad43af81384a93ced4f11c",
+    "candidate21_allowlist_binding_added": true,
+    "arbitrary_revisions_still_rejected": true,
+    "focused_test_command": "python -B -m pytest -p no:cacheprovider tests/test_build_ru_origin_probe_bundle.py -q",
+    "focused_test_result": "PASS_11_OF_11"
+  },
+  "environment_preflight": {
+    "report_sha256": "6118d3b8896a04da5674c1456a2d29b1ea40aa185599767dec088e5a01b11da3",
+    "classification": "MANUAL_OWNER_TEST_ENVIRONMENT_INCOMPLETE",
+    "source_required_count": 10,
+    "source_normalized_match_count": 6,
+    "source_mismatch_or_unreadable_count": 4,
+    "runtime_material_present_count": 0,
+    "ready_for_manual_owner_run": false,
+    "runtime_mutated": false
+  },
+  "bundle": {
+    "build_count": 2,
+    "byte_identical": true,
+    "sha256": "56218e199fff95bdf7ce2b5b29f019a24863c21f7aef99a5e54c122b5412279e",
+    "size_bytes": 47928,
+    "member_count": 10,
+    "verify": "PASS",
+    "local_plan": "PASS",
+    "raw_runtime_material_included": false,
+    "deployment_performed": false
+  },
+  "remote_plan": {
+    "host_class": "owned_raspberry_pi_4_direct_ru_fixed",
+    "mode": "PLAN",
+    "operation": "install",
+    "status": "PASS",
+    "installed_target_count": 10,
+    "required_tools": true,
+    "runtime_user_present": true,
+    "runtime_group_present": true,
+    "spool_present": true,
+    "spool_private": true,
+    "sudo_nopasswd": true,
+    "raw_host_returned": false,
+    "raw_runtime_material_returned": false,
+    "runtime_material_supplied": false,
+    "mutation_performed": false,
+    "manual_runner_uploader_heartbeat_admin_readback": "NOT_RUN",
+    "ru_origin_verdict": "MANUAL_OWNER_TEST"
+  },
+  "release_effect": {
+    "completion_index_changes": 0,
+    "gate_f": "NOT_RUN",
+    "gate_g": "NOT_AUTHORIZED",
+    "public_or_stable_mutation": false,
+    "ru_origin_pass_claimed": false
+  },
+  "privacy": {
+    "credentials_retained": false,
+    "runtime_material_retained": false,
+    "raw_host_retained": false,
+    "raw_paths_retained": false,
+    "customer_or_provider_payload_retained": false
+  }
+}

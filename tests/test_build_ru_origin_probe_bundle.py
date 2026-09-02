@@ -138,6 +138,16 @@ def test_signed_candidate16_source_revision_is_explicitly_allowlisted() -> None:
     )
 
 
+def test_signed_candidate21_source_revision_is_explicitly_allowlisted() -> None:
+    assert (
+        MODULE._validate_source_revision(MODULE.CANDIDATE21_SOURCE_REVISION)
+        == MODULE.CANDIDATE21_SOURCE_REVISION
+    )
+    assert MODULE._candidate_id(MODULE.CANDIDATE21_SOURCE_REVISION) == (
+        "pokrov-1.2.0-candidate.21"
+    )
+
+
 def test_missing_runtime_dependency_is_rejected() -> None:
     members = _members()
     members["scripts/internal_hmac_client.py"] = b"VALUE = 1\n"
