@@ -119,4 +119,8 @@ def test_package_windows_script_is_documented_as_active_client_release_step() ->
     ) in cutover_text
     assert "SmartScreen warning is mandatory" in cutover_text
     assert "Gate G, public release, Store object and stable pointer are unauthorized" in cutover_text
-    assert "corrected build-4051 successor is not yet an exact candidate" in cutover_text
+    assert (
+        "| New public cutover | `BLOCKED_NO_PROMOTABLE_CANDIDATE`; "
+        "build-4051 successor not created |"
+        in cutover_text
+    )
