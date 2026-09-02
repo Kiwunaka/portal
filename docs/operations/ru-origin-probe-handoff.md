@@ -110,23 +110,25 @@ unit или актуальность живого HMAC key record.
 Точный набор исходников для RU-host строится из Git objects, а не из текущего
 рабочего дерева. Builder принимает только явно allowlisted подписанные platform
 revision; произвольный commit закрывается до чтения source members. Для текущего
-candidate.16:
+candidate.21:
 
 ```powershell
-python scripts/build_ru_origin_probe_bundle.py build --source-revision 719e23dc49407beb9ae30d98d17d4b73d18ae37c --output <private-artifact-path>/pokrov-ru-origin-candidate16-719e23d.zip
-python scripts/build_ru_origin_probe_bundle.py verify --bundle <private-artifact-path>/pokrov-ru-origin-candidate16-719e23d.zip
-python scripts/build_ru_origin_probe_bundle.py plan --bundle <private-artifact-path>/pokrov-ru-origin-candidate16-719e23d.zip --operation install
-python scripts/remote_install_ru_origin_probe.py --bundle <private-artifact-path>/pokrov-ru-origin-candidate16-719e23d.zip --ssh-config-alias <trusted-ru-alias> --operation install
+python scripts/build_ru_origin_probe_bundle.py build --repo-root <exact-candidate-platform-worktree> --source-revision e2608130e85d9a0f8fa4b920f46cf3d7679332c3 --output <private-artifact-path>/pokrov-ru-origin-candidate21-e260813.zip
+python scripts/build_ru_origin_probe_bundle.py verify --bundle <private-artifact-path>/pokrov-ru-origin-candidate21-e260813.zip
+python scripts/build_ru_origin_probe_bundle.py plan --bundle <private-artifact-path>/pokrov-ru-origin-candidate21-e260813.zip --operation install
+python scripts/remote_install_ru_origin_probe.py --bundle <private-artifact-path>/pokrov-ru-origin-candidate21-e260813.zip --ssh-config-alias <trusted-ru-alias> --operation install
 ```
 
-Candidate.16 package содержит 10 source/unit members, имеет размер `47927`
+Candidate.21 package содержит 10 source/unit members, имеет размер `47928`
 байт и SHA-256
-`e09808e40809c7a2e9bb0c3b10d428eb7af524bec43e6dea873fcbce08b471a4`.
+`56218e199fff95bdf7ce2b5b29f019a24863c21f7aef99a5e54c122b5412279e`.
 Повторная независимая сборка дала те же байты; verify и локальный PLAN проходят.
-Candidate.10 revision `209b8f4...`, candidate.9 revision `8468787...`,
-candidate.8 revision `241a83b4...` и candidate.6 revision `5713324c...`
+Candidate.16 revision `719e23d...`, candidate.10 revision `209b8f4...`,
+candidate.9 revision `8468787...`, candidate.8 revision `241a83b4...` и
+candidate.6 revision `5713324c...`
 остаются allowlisted историческими входами; их ранее зафиксированные пакеты
-имеют SHA-256
+имеют SHA-256, начиная с candidate.16,
+`e09808e40809c7a2e9bb0c3b10d428eb7af524bec43e6dea873fcbce08b471a4`,
 `0108ccc4595ff2f424b4e5169d19fc539e21cc1eaed79cb92ccbacf04ce85e22`,
 `a887cf4ad193a73ceabebbff476e5264c52c8694ab6f246bd81c6a6aeff6b4e8`,
 `7bc2ec16971a23fb16ce54d2f2e1dae4f3a228bca13527a71099396e532a8707`
@@ -146,12 +148,12 @@ spool counts, но не передаёт файлы и не меняет runtime
 внешней мутации, сохранения spool и активации timer. Значения и даже hashes
 runtime-material в JSON-отчёт не попадают.
 
-Read-only проверка выбранной owned Raspberry Pi 4 для candidate.16 возвращает
+Read-only проверка выбранной owned Raspberry Pi 4 для candidate.21 возвращает
 `MANUAL_OWNER_TEST_ENVIRONMENT_INCOMPLETE`: `6/10` установленных source/unit
 файлов совпадают, четыре source-файла отличаются, runtime-конфиги отсутствуют,
 свежего archive нет, оба timer inactive/enabled, а runner service хранит
 предыдущий failed state. NTP, process user/group, private spool, required tools,
-`sudo -n` и все десять install targets присутствуют. Удалённый candidate.16
+`sudo -n` и все десять install targets присутствуют. Удалённый candidate.21
 install PLAN проходит с `mutation_performed=false`; runtime material не
 передавался, runner/uploader/heartbeat/admin readback не запускались. Это не
 RU-origin PASS и не разрешение на APPLY.

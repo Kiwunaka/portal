@@ -2,6 +2,26 @@
 
 Last updated: 2026-09-02
 
+## 2026-09-02 — WO-013ER candidate.21 RU bundle and owned-Pi PLAN
+
+The fail-closed RU bundle builder now explicitly recognizes signed
+candidate.21 platform `e2608130...` while continuing to reject arbitrary
+revisions. Its focused suite passes `11/11`. Two builds from the clean exact
+source are byte-identical: 10 members, `47928` bytes and SHA-256
+`56218e199fff95bdf7ce2b5b29f019a24863c21f7aef99a5e54c122b5412279e`.
+Verify and local install PLAN pass.
+
+The guarded remote install PLAN on the owned direct-RU Raspberry Pi 4 also
+passes with all ten targets present and `mutation_performed=false`. The current
+host still matches only `6/10` source/unit files and has none of the four
+runtime-material inputs. Install, runner, uploader, ingest, archive, heartbeat
+and admin readback remain `NOT_RUN`; general RU-origin stays
+`MANUAL_OWNER_TEST`, not `PASS`.
+
+No completion-index level changes. Gate F stays `NOT_RUN`; distribution remains
+`I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0` across `378` rows. No candidate,
+device, public, stable or production runtime state changes.
+
 ## 2026-09-02 — WO-013EQ candidate.21 exact-source privacy
 
 The clean exact candidate.21 platform/client/Core tuple passes platform
