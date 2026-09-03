@@ -72,6 +72,11 @@ provider/Operator/legal, comparable performance and final aggregate evidence
 remain open. No tag, public asset, Store object, stable pointer or promotion
 exists.
 
+WO-013FI adds a fresh candidate.25 exact-Core AWG3.1-then-AWG2 PASS from the
+owned Raspberry Pi 4 over its direct RU fixed-network path. It is supplemental
+source-level Core evidence only: packaged Android/Windows, mobile and
+multi-ASN rows remain open, and Gate F stays `BLOCKED 5/14/0`.
+
 ## Execution order
 
 | Phase | Architectural outcome | State | Primary WO |
@@ -86,7 +91,7 @@ exists.
 | 07 | Canonical Operator Center v2 and legacy admin cutover | Local package complete, including the deterministic 75-operation OpenAPI/TypeScript contract, purpose-bound Telegram OIDC Authorization Code plus PKCE login and same-identity step-up for preprovisioned operators, exact retained-bridge permissions and query-suppressed field redaction; live IdP, authenticated exact-candidate readback and cutover/rollback gates remain open | `WO-009`, `WO-009H`, `WO-009I`, `WO-009J` |
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete at `I3`. Candidate.25 incorporates the WO-013FG development-lock correction; fresh webapp/adminapp/marketing audits are zero and full local quality passes `15/15`, including client `413/413`, cabinet `69/69` and static performance `9/9`. Current-public health/catalog p95 is `48.8176/51.3052 ms`. Gate E stays `BLOCKED` below I4 on authenticated journeys, physical accessibility/OEM/scaling, comparable artifact/device/browser performance, support, general RU-origin and post-promotion evidence | `WO-010`, `WO-013AN`, `WO-013CI`, `WO-013CO`, `WO-013DA`, `WO-013DD`, `WO-013DE`, `WO-013DQ`, `WO-013DS`, `WO-013EL`, `WO-013EN`, `WO-013EO`, `WO-013FD`–`WO-013FH` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
-| 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | AWG2/AWG3.1 and bounded HY2/Smart-DNS source labs are locally proved and default-off; immutable earlier candidate failures and corrections remain in their WOs. Candidate.22 packaged Windows AWG3.1/AWG2 and Smart-DNS results remain bounded history. Candidate.25 exact client artifacts retain the materialization contracts and a fresh full CLI rebuild passes, but installed packaged transport/DNS runtime is not run. Phase 10 remains `I3`, not `I4`, because candidate.25 Android/Windows, mobile/fixed multi-ASN, independent server packet capture, authenticated sessions, UDP/IPv6/MTU, leak/privacy/load/lifecycle and platform parity are open. HY2 remains undeployed; Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AU`, `WO-013AX`–`WO-013BL`, `WO-013BP`, `WO-013BQ`, `WO-013BV`–`WO-013BX`, `WO-013CE`, `WO-013CG`, `WO-013CK`, `WO-013DG`, `WO-013DP`, `WO-013DU`, `WO-013EJ`, `WO-013EY`, `WO-013EZ`, `WO-013FB`–`WO-013FH` |
+| 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | AWG2/AWG3.1 and bounded HY2/Smart-DNS source labs are locally proved and default-off; immutable earlier candidate failures and corrections remain in their WOs. Candidate.22 packaged Windows AWG3.1/AWG2 and Smart-DNS results remain bounded history. Candidate.25 exact client artifacts retain the materialization contracts and a fresh full CLI rebuild passes. WO-013FI freshly proves candidate.25 exact Core AWG3.1 and AWG2 from one direct RU fixed-network Pi path, but installed packaged transport/DNS runtime is not run. Phase 10 remains `I3`, not `I4`, because candidate.25 Android/Windows, mobile/fixed multi-ASN, independent server packet capture, authenticated sessions, UDP/IPv6/MTU, leak/privacy/load/lifecycle and platform parity are open. HY2 remains undeployed; Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AU`, `WO-013AX`–`WO-013BL`, `WO-013BP`, `WO-013BQ`, `WO-013BV`–`WO-013BX`, `WO-013CE`, `WO-013CG`, `WO-013CK`, `WO-013DG`, `WO-013DP`, `WO-013DU`, `WO-013EJ`, `WO-013EY`, `WO-013EZ`, `WO-013FB`–`WO-013FI` |
 | 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Candidates 5–23 are immutable failure history and candidate.24 is immutable signed predecessor history. WO-013FH binds corrected private candidate.25 signed supply, exact current/Brain origins, ten hosted jobs and all `19/19` pointers; Gate F is `BLOCKED 5 PASS / 14 non-PASS / 0 FAIL`. Exact installed Windows/Android, authenticated/general-RU origins, provider/Operator/legal, runtime rollback, comparable performance and final rows remain open. `WIN-003` and `DOD-04` retain `I4` only for bounded predecessor network slices. No tag, public `v1.2.0`, Store object, stable switch or promotion occurred | `WO-013`, `WO-013BK`–`WO-013FH` |
 
 Active Phase 10/11 supersession: WO-013FH is the current private signed-supply
@@ -102,6 +107,10 @@ refresh. WO-013FH binds that correction into candidate.25, validates signed
 identity and all `19/19` pointers, and records exact `BLOCKED 5/14/0` without
 transferring predecessor runtime credit. Gate G and publication remain
 unauthorized.
+
+WO-013FI is the current candidate.25 exact-Core RU fixed-network AWG
+supplement. It records AWG3.1 and AWG2 PASS without changing packaged-client,
+multi-ASN, Gate F or promotion state; WO-013FH remains Gate F authority.
 
 WO-013EW/013EY/013EZ retain candidate.22 signed supply, Windows lifecycle,
 Smart DNS and packaged AWG history; WO-013FA records its later connected-
@@ -735,6 +744,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013FF` | Regenerate candidate.24 Gate F with current/Brain origin evidence | Immutable signed identity, exact four-source tuple, all `19/19` pointers, WO-013FD/013FE and portable LF-bound JSON evidence | Current-origin and Brain-origin advance to PASS. Gate F is `BLOCKED 5 PASS / 14 non-PASS / 0 FAIL` with zero validation errors; Gate G remains unauthorized | Close the 14 explicit non-PASS candidate.24 rows, then regenerate Gate F; no public/Store/stable promotion before exact GO |
 | `WO-013FG` | Patch the successor webapp development lock without rewriting candidate.24 | Lock-only `@humanfs/node 0.16.8` refresh, exact Node 22/npm 10 audits and complete local-quality replay | Webapp/adminapp/marketing audits are zero; webapp lint/build, cabinet `69/69`, client `413/413`, full quality `15/15` and static performance `9/9` pass. Status is `PASS_PRE_CANDIDATE_LOCAL`; candidate.24 stays immutable at Gate F `BLOCKED 5/14/0` and no levels change | Merge through hosted checks, then build/sign a successor candidate before assigning release credit or repeating exact installed-device gates |
 | `WO-013FH` | Bind the merged development-lock correction into signed private candidate.25 and regenerate Gate F | Exact four-source tuple, six-artifact strict-v2 supply, signer receipt, ten hosted jobs, headless CLI rehearsal, exact guest file identity and fresh current/Brain read-only origins | Signed identity and all `19/19` pointers validate. Candidate.25 Gate F is `BLOCKED 5 PASS / 14 non-PASS / 0 FAIL`; the exact installer hash matches in the VM but installation is `NOT_RUN`. No public/stable promotion or level change | Complete candidate.25 installed Windows/Android, authenticated/general-RU, provider/Operator/legal, runtime rollback, comparable performance and final live rows before regenerating Gate F |
+| `WO-013FI` | Refresh candidate.25 exact-Core AWG3.1 and AWG2 evidence from the owned direct-RU Pi | Candidate.25 manifest/Core identity, candidate-matching guarded runner, ARM64 binary hashes and secret-free cleaned execution records | AWG3.1 and AWG2 both pass authenticated egress from one direct RU fixed-network path; runtime/server/client settings remain unchanged and temporary state is removed. `AWG-10` and Phase 10 keep their levels; Gate F remains `BLOCKED 5/14/0` | Run exact packaged Android and Windows AWG3.1/AWG2, physical Wi-Fi/Beeline and additional named fixed/mobile ASN canaries before advancing AWG-10 or regenerating Gate F |
 
 ## Current evidence
 
@@ -774,6 +784,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013FG-successor-webapp-development-lock/`
 - `WO-013FH-candidate25-signed-supply-and-gate-f.md`
 - `evidence/013FH-candidate25-signed-gate-f/`
+- `WO-013FI-candidate25-core-ru-pi-awg-interop.md`
+- `evidence/013FI-candidate25-core-ru-pi-awg/`
 - `WO-013EP-candidate21-static-artifact-privacy.md`
 - `evidence/013EP-candidate21-static-artifact-privacy/`
 - `WO-013EO-frontend-build-lock-refresh.md`
@@ -1338,6 +1350,11 @@ the exact four-source tuple and validates all `19/19` pointers at
 `BLOCKED 5/14/0`; signed supply, release docs, hosted checks, current-origin
 and Brain-origin pass while the other 14 rows remain non-PASS. Candidate.24
 and earlier decisions remain immutable predecessor history.
+
+WO-013FI freshly proves the same candidate.25 Core's AWG3.1 and AWG2
+interoperability from one direct RU fixed-network Pi path. This narrows the
+transport uncertainty but does not close packaged-client, mobile/multi-ASN or
+general RU-origin rows.
 
 Obtain a non-interactive elevated path inside the isolated Windows VM, install
 and hash-bind the exact candidate.25 setup, then
