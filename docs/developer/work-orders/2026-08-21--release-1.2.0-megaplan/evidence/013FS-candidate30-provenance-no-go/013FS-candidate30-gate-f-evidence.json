@@ -1,0 +1,94 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-09-03T16:17:55Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.30",
+    "operational_id": "79d275f28b3aa8b96252112ead3ef72b307ad40216542b5c0cc3fc622fd53ec3",
+    "manifest_sha256": "33ceb44b445dd5f66d5b10e0e1c90da03d9a6efe3d1c4966dd2be72bf955230c",
+    "signature_sha256": "61169e29d521524663637c1747d7d5b70de6140332d4056b8d5c71f694c6f510",
+    "receipt_sha256": "2628ec258322c6a884f60b1ca9f6533eae0a68c1d170cf971c6051e82777bba0",
+    "sources": {
+      "platform": "7c4133343871ed52257a850e829e906608412753",
+      "client": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "b06fe143a83aca49c1779962ad526c54e2162e42"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "MANUAL_OWNER_TEST",
+    "mandatory_stop_ship_and_dod": "FAIL",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "FAIL",
+    "target_channel_signing_and_manual_gates": "SKIPPED_BY_OWNER",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MANUAL_OWNER_TEST",
+    "current_origin": "NOT_RUN",
+    "brain_origin": "NOT_RUN",
+    "ru_origin": "MANUAL_OWNER_TEST",
+    "windows_live_network": "MANUAL_OWNER_TEST",
+    "android_ldplayer_rehearsal": "NOT_RUN",
+    "android_physical_device": "NOT_RUN",
+    "authenticated_client_egress": "NOT_RUN",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "MANUAL_OWNER_TEST",
+    "hosted_required_checks": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+  },
+  "facts": {
+    "gates_a_e": "Candidate.30 binds the exact platform, client, Core and signed release-index source tuple. Full headless CLI builds and bounded Windows VM checks passed, but exact-candidate Gates A-E were not all rerun and retained as one consolidated PASS record.",
+    "stop_ship": "The retained CycloneDX root identifies candidate.29, carries a different artifact-set digest, and the SLSA provenance invocationId also does not bind the exact candidate.30 artifact set. Provenance internal parameters retain predecessor references. These are mandatory supply-chain stop-ship failures and make the immutable candidate NO_GO.",
+    "signed_supply": "The detached Ed25519 signature, receipt, public keyring and all six artifact hashes validate. The exact ordered artifact-set SHA-256 is 5076e81d795927e7432eeeea9cde5093e8bed71e1a2bf2e6d670eeb2520069d1. The SBOM root instead names candidate.29 and stores 79517b5c1e771be88851ad3b3644e49bfce1c619831db8db17de8a604fa89e87; provenance stores invocation digest 8fe2ccb751694a0448ece6aec900b898ae7843223112b8f3033fb503eff20a79.",
+    "validator": "Platform master 7e3c57ec390d8ebfa95c617e53f999e31a96b306, merged by PRs 198 and 199, now validates canonical SBOM root identity, the ordered artifact-set property, current-candidate provenance references and invocation binding. Exact candidate.30 replay fails first with sbom_root_bom_ref_mismatch; the remaining mismatches are retained by exact-field inspection.",
+    "cli_build": "All application artifacts were assembled and checked headlessly. The current client test sets, both Android production flavors and the Windows package build passed without taking host input focus or changing host networking.",
+    "core_reproducibility": "Two fresh Windows Core builds using the CI-pinned Go 1.25.13 and MinGW GCC 13.2.0 reproduced the candidate DLL exactly at SHA-256 f284fa8841f1a45271874a7a05ed6093fb0e3efbdd03e00001edd046be708204 and size 55426048. A GCC 16.1.0 build differed and was rejected before candidate creation. One hundred proxy start/stop cycles passed.",
+    "windows": "The exact candidate.30 setup installed in the isolated Windows 11 VM. Installed identities passed 11/11, the service passed, a secret-free direct TUN/DNS session passed, and connected reboot restoration passed. Managed-node and complete network matrices remain manual.",
+    "android": "No physical Android device was visible to ADB during the headless availability check. No phone install or runtime test was performed. LDPlayer was also not run for this exact candidate.",
+    "hosted_boundary": "Seven of ten authoritative GitHub Actions jobs attached to the exact candidate.30 source SHAs passed. Two platform jobs and one client job ended before runner steps and remain BLOCKED_BY_ACCESS_GITHUB_BILLING.",
+    "immutable_candidate": "Candidate.30 manifest, signature, receipt and artifacts are retained unchanged as rejected release history. A successor must regenerate SBOM, provenance and handoff metadata from the exact tuple, pass strict supply validation, and receive a new hosted signature.",
+    "decision_boundary": "Gate F is NO_GO because mandatory_stop_ship_and_dod and supply_chain_signature_sbom_provenance are explicit FAIL rows. No Gate G, deploy, public release, Store submission or stable-pointer mutation is authorized."
+  },
+  "source_records": [
+    "013FS-candidate30-signed-binding.json",
+    "013FS-candidate30-hosted-checks.json",
+    "013FS-candidate30-provenance-stop-ship.json",
+    "core-windows-mingw13-reproducibility.json"
+  ],
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FS-candidate30-provenance-no-go/013FS-candidate30-signed-binding.json",
+      "sha256": "291955e5e64287fe653b022e839415193a602a979f13ed5bd44b3f0e8735147b"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FS-candidate30-provenance-no-go/013FS-candidate30-hosted-checks.json",
+      "sha256": "ae4ca956b0745385af19e4fe51afe1ba035af97d9523862ffd659eec80b101c9"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FS-candidate30-provenance-no-go/013FS-candidate30-provenance-stop-ship.json",
+      "sha256": "5b8a85759663bb6814ff7f8f68d05b5f40417753dabb06c2ac33aac4ab6a8c9b"
+    }
+  ],
+  "external_evidence": [
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate30-all-platform-2026-09-03/core-windows-mingw13-reproducibility.json",
+      "sha256": "063c6cfa202815a15b7dab615bb9c02831ffc4db8a2ab497542382c3d61e987a"
+    },
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate30-all-platform-2026-09-03/summary.json",
+      "sha256": "e1a10c28eed88bd2c1e66171f60e0968d522d8d3b7ad4a430ff18677ea78052d"
+    }
+  ],
+  "mutation_boundary": {
+    "candidate_artifact_mutated": false,
+    "phone_install_or_runtime_test": false,
+    "windows_vm_used_headlessly": true,
+    "screen_or_input_control_used": false,
+    "host_network_mutated": false,
+    "signing_private_key_accessed_locally": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE30_GATE_F_NO_GO; IMMUTABLE_REJECTED_HISTORY; SBOM_ROOT_CANDIDATE_AND_ARTIFACT_SET_MISMATCH; PROVENANCE_INTERNAL_CANDIDATE_AND_INVOCATION_ARTIFACT_SET_MISMATCH; SIGNATURE_AND_ARTIFACT_BYTES_VALIDATE_BUT_SUPPLY_CHAIN_BINDING_FAILS; CLI_AND_BOUNDED_WINDOWS_VM_PASS; PHYSICAL_ANDROID_LDPLAYER_AUTHENTICATED_EGRESS_ORIGINS_PROVIDER_OPERATOR_LEGAL_PERFORMANCE_ROLLBACK_AND_FINAL_ATTESTATIONS_OPEN; HOSTED_PLATFORM_CLIENT_CHECKS_BLOCKED_BY_ACCESS; NO_GATE_G_DEPLOY_PUBLIC_STORE_STABLE_OR_PRODUCTION_PROMOTION"
+}
