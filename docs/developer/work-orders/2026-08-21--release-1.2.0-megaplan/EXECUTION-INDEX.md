@@ -2,6 +2,28 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013GC successor Android production precursor PASS
+
+Client PR 74 closes a release-tooling gap: the canonical production helper now
+builds and fail-closed verifies all five Android files in one CLI path instead
+of leaving the market AAB to a manual side command. Merged client `main`
+`2d6adfc...` produces four production-signed APKs and one production-signed
+market-only AAB; two successive runs yield the same five hashes. The AAB JAR
+signature, production certificate and Core `armeabi-v7a` / `arm64-v8a` /
+`x86_64` entries pass independent replay.
+
+The retained Windows setup is reused only across an exact four-file
+Android-tooling/docs/test delta and is not mislabelled as a new Windows build.
+The GitHub client job runs zero steps with `runner_id=0` and remains
+`BLOCKED_BY_ACCESS_GITHUB_BILLING`; the owner-solo merge relies on the passing
+local helper, docs contract and exact-root seed gate.
+
+This remains pre-candidate supply evidence. Store submission is
+`NOT_REQUESTED`; `candidate_created=false`; no candidate.32 metadata, SBOM,
+provenance, handoff, release-index signature, deploy, public asset or stable
+pointer exists. Candidate.31 Gate F stays immutable `NO_GO 2/17/1`; no ledger
+index changes.
+
 ## 2026-09-04 — WO-013GB successor-main local freeze preflight READY
 
 The read-only candidate preflight binds clean platform `6af24e9...`, client
