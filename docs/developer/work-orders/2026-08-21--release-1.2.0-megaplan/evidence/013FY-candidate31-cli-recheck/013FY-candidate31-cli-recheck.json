@@ -1,0 +1,219 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate31-cli-recheck/v1",
+  "work_order": "WO-013FY",
+  "recorded_at_utc": "2026-09-03T19:41:17Z",
+  "status": "FRESH_EXACT_SOURCE_BUILD_PASS_NOT_SAME_BYTES_VM_IPC_PASS_GATE_UNCHANGED_NO_GO",
+  "scope": "HEADLESS_CLI_BUILD_STATIC_COMPARISON_AND_VM_IPC",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.31",
+    "version": "1.2.0+4053",
+    "operational_id": "4ee73886c1a285526baf3b666d5845b426754d8bee9f48365d1550a6ece1dd79",
+    "private": true,
+    "promotion_authorized": false,
+    "sources": {
+      "platform": "84837ce68a028f0c81580a5f1beefddba584de6d",
+      "client": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "6de47f0320c9262a5bd2d454f3edb83d557f33a4"
+    },
+    "signed_manifest_sha256": "dd4e99166ac3ec2c566e7d44ee93324f15ae7b3b92df6b35ff35de7053691f9a",
+    "candidate_bytes_changed": false,
+    "new_candidate_created": false
+  },
+  "build_source": {
+    "client_head": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+    "client_worktree_initially_clean": true,
+    "core_head": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "core_worktree_clean": true,
+    "platform_projection_root_head": "372baee235974d48b29a406dd672f92c11cce121",
+    "platform_projection_paths_match_candidate31": true,
+    "platform_projection_paths": [
+      "shared",
+      "scripts/sync_shared_surface_facts.py"
+    ],
+    "production_or_release_pointer_mutated": false
+  },
+  "preflight_history": {
+    "first_attempt": {
+      "status": "FAIL_BEFORE_BUILD",
+      "classification": "TEMP_WORKTREE_PLATFORM_ROOT_AUTODISCOVERY_MISS",
+      "client_core_version_parity": "PASS",
+      "artifact_created": false
+    },
+    "corrected_attempt": {
+      "status": "PASS",
+      "correction": "explicit POKROV_PLATFORM_ROOT with candidate31-identical projection paths"
+    }
+  },
+  "toolchain": {
+    "flutter": "3.38.5",
+    "dart": "3.10.4",
+    "msvc": "14.42.34433",
+    "inno_setup_major": 6,
+    "windows_signing": "SKIPPED_BY_OWNER"
+  },
+  "verification": {
+    "seed_and_cross_repository_contracts": "PASS",
+    "repository_hygiene": "PASS",
+    "presentation_and_performance_contracts": "PASS",
+    "flutter_analyze": "PASS",
+    "observability_contracts": "3/3 PASS",
+    "observability_runtime": "29/29 PASS",
+    "diagnostics_collectors": "6/6 PASS",
+    "support_bundle": "15/15 PASS",
+    "app_shell": "413/413 PASS",
+    "runtime_engine": "72 PASS; 1 exact-DLL backtest SKIPPED_BY_ENVIRONMENT",
+    "android_flutter": "8/8 PASS",
+    "linux_flutter": "5/5 PASS",
+    "windows_flutter": "23/23 PASS",
+    "android_gradle": "BUILD SUCCESSFUL; 162 tasks; 156 executed; 6 up-to-date",
+    "windows_native_release_ctest": "7/7 PASS",
+    "windows_release_build": "PASS"
+  },
+  "fresh_artifacts": {
+    "setup": {
+      "path": "pokrov-windows-x64-1.2.0+4053-setup.exe",
+      "size": 29142035,
+      "sha256": "4e685a7f45d31cd67937fcb286d5cb104752c62a0b18733b6f0a06efc4a18062"
+    },
+    "manifest": {
+      "path": "pokrov-windows-x64-1.2.0+4053.manifest.json",
+      "size": 6034,
+      "sha256": "cc4a66b60d9acf02e150bd195ed941c967749edb238dd7987374b48bbeb02733"
+    },
+    "status_probe": {
+      "path": "pokrov_status_probe.exe",
+      "size": 221184,
+      "sha256": "f485d301d7b8e6ea957f5e28dd3a77bfd10fd4b1c071de3168a924fbf135e43b",
+      "source_sha256": "21c9893311089dd39593ac71e5c1aad476dfbbc6f6a1b72c17aaf1190ddd0548",
+      "forced_include_sha256": "ce02a77fcbdcc82117b11f55a2d9ecffea8407646678a106ac3d13e7c68de61d"
+    }
+  },
+  "candidate31_comparison": {
+    "candidate31_setup_size": 29147936,
+    "candidate31_setup_sha256": "a6512bb6bbac328c62497ebad234b97a2794cb178a1949d35362e919f0d6adf0",
+    "candidate31_bundle_manifest_sha256": "b73b48f584d8d7e436d2801447a3cf0ab0c13eee652a82c9464377c8ab94e6ee",
+    "same_setup_bytes": false,
+    "same_manifest_bytes": false,
+    "same_required_file_bytes": "8/11",
+    "same_required_files": [
+      "data/icudtl.dat",
+      "flutter_windows.dll",
+      "libcronet.dll",
+      "msvcp140.dll",
+      "pokrov-core.dll",
+      "pokrov_tray.ico",
+      "vcruntime140.dll",
+      "vcruntime140_1.dll"
+    ],
+    "different_required_files": [
+      {
+        "path": "pokrov_windows.exe",
+        "same_size": true,
+        "candidate31_sha256": "b81bb66887f1e09d8bf2fe58aa07803ae01a2add44d829f43e5f65f0ddde989a",
+        "rebuild_sha256": "9634a784c40621387dd614f01c2d7dcb344eaa7668fd5977666328909f5de861",
+        "text_section_sha256": "84f077ccf4fc9af53d3ac7c3c2750a266b1e579197398e24ec6d45cee2c8b050",
+        "text_section_exact_match": true,
+        "observed_difference": "PE timestamp and build/debug metadata"
+      },
+      {
+        "path": "pokrov_service.exe",
+        "same_size": true,
+        "candidate31_sha256": "f8daab49b259edc7b09bf8277e753a094489c0429fa1d2e64b4cab46fb645871",
+        "rebuild_sha256": "3a1cab3525f00ce665f3bee84c491aa7dbf483d8e0974a67bd7f747e560f4670",
+        "text_section_sha256": "1382a8e1990562366e6c3d370b48e2838001361dde86915cb6e1ebc80eaca756",
+        "text_section_exact_match": true,
+        "observed_difference": "PE timestamp and build/debug metadata"
+      },
+      {
+        "path": "data/app.so",
+        "same_size": true,
+        "candidate31_sha256": "a45e1682adb840ec7ba351f18348967ec3fc6d19630f1e621400e362792d5451",
+        "rebuild_sha256": "dace7e2dc07542a036207393810250a6cd7e7ebe3b325c0a1f1b02190d66372a",
+        "text_section_sha256": "bf7128ac48beb62635981d04b48d611dacd168b5bb29c84a05fa990e9078e8af",
+        "text_section_exact_match": true,
+        "observed_difference": "ELF rodata, dynamic-symbol, unwind and build-id metadata"
+      }
+    ],
+    "classification": "FUNCTIONAL_BUILD_PASS_WITHOUT_SAME_BYTE_REPRODUCIBILITY_CREDIT",
+    "release_credit": "NO_NEW_CANDIDATE_OR_SAME_BYTE_CREDIT"
+  },
+  "headless_vm": {
+    "os": "Windows 11 Enterprise Evaluation",
+    "service": "POKROVService",
+    "installed_candidate31_identity": "11/11 PASS",
+    "installed_service": "Running/Automatic/LocalSystem",
+    "ipc_concurrency": "32/32 PASS",
+    "ipc_probe_sha256": "f485d301d7b8e6ea957f5e28dd3a77bfd10fd4b1c071de3168a924fbf135e43b",
+    "fresh_rebuild_installed": false,
+    "screen_or_host_input_used": false,
+    "host_network_mutated": false,
+    "guest_network_mutated": false,
+    "guest_tunnel_started": false,
+    "guest_temp_removed": true
+  },
+  "gate_f_effect": {
+    "decision": "NO_GO",
+    "required": 19,
+    "pass": 2,
+    "non_pass": 17,
+    "fail": 1,
+    "validation_errors": 0,
+    "changed": false,
+    "reason": "fresh build and IPC evidence do not close managed network, physical Android, origin, provider, rollback or final rows"
+  },
+  "hosted_pr": {
+    "url": "https://github.com/Kiwunaka/portal/pull/207",
+    "head": "0813cc93549b42da2df6dd820ea0ba2964468f08",
+    "repo_guardrails": {
+      "run_id": 33798843754,
+      "job_id": 100793012336,
+      "runner_id": 0,
+      "step_count": 0,
+      "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+    },
+    "cross_repository_contract": {
+      "run_id": 33798843643,
+      "job_id": 100793011709,
+      "runner_id": 0,
+      "step_count": 0,
+      "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+    },
+    "release_base_isolation": "SKIPPED",
+    "owner_solo_exception_authorized": true,
+    "hosted_failure_claimed_as_test_failure": false
+  },
+  "cleanup": {
+    "temporary_client_worktree_removed": true,
+    "temporary_worktree_removed_gb": 5.94,
+    "comparison_copy_removed": true,
+    "compiler_intermediates_removed": true,
+    "headless_vm_gracefully_powered_off": true,
+    "retained_evidence_size_mb": 28.02
+  },
+  "external_evidence": {
+    "directory": "E:/POKROV-tools/release-evidence/1.2.0-candidate31-cli-recheck-2026-09-03/",
+    "report_sha256": "cdfb27a88dbcea2b0a823fa135fa3e9c925db36765b9057158a5230b0b4f8cf8",
+    "retained_files": [
+      "candidate31-cli-recheck.json",
+      "pokrov_status_probe.exe",
+      "pokrov-windows-x64-1.2.0+4053-setup.exe",
+      "pokrov-windows-x64-1.2.0+4053.manifest.json"
+    ]
+  },
+  "mutation_boundary": {
+    "production_runtime_mutated": false,
+    "database_mutated": false,
+    "delivery_nodes_mutated": false,
+    "host_network_configuration_mutated": false,
+    "screen_or_input_control_used": false,
+    "deploy_or_restart_performed": false,
+    "public_release_or_stable_pointer_changed": false
+  },
+  "remaining": [
+    "investigate and remove nondeterministic Windows UI, service and app.so metadata before claiming full client same-byte reproducibility",
+    "run exact candidate31 managed Windows default, AWG3.1, AWG2 and Smart DNS without host UI takeover",
+    "run exact physical Android Wi-Fi and Beeline matrices when the device is available",
+    "close the explicit origin, provider, rollback and final Gate F rows"
+  ]
+}
