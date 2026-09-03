@@ -1,0 +1,99 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate31-ru-pi-awg-dns/v1",
+  "work_order": "WO-013FW",
+  "recorded_at_utc": "2026-09-03T18:11:50Z",
+  "status": "EXACT_CORE_AWG31_AWG2_AND_LIVE_SMART_DNS_RU_FIXED_PASS",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.31",
+    "version": "1.2.0+4053",
+    "operational_id": "4ee73886c1a285526baf3b666d5845b426754d8bee9f48365d1550a6ece1dd79",
+    "sources": {
+      "platform": "84837ce68a028f0c81580a5f1beefddba584de6d",
+      "client": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "6de47f0320c9262a5bd2d454f3edb83d557f33a4"
+    },
+    "promotion_authorized": false
+  },
+  "execution": {
+    "host_class": "owned_raspberry_pi_4",
+    "architecture": "linux_arm64",
+    "origin": "ru_fixed_operator_attested",
+    "direct_default_route_preflight": true,
+    "strict_ssh_host_key_checking": true,
+    "host_screen_or_input_used": false,
+    "owner_workstation_network_mutated": false
+  },
+  "awg": {
+    "core_revision": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "order": ["awg31_lab", "awg2_lab"],
+    "awg31_lab": {
+      "status": "PASS",
+      "outcome": "passed",
+      "binary_sha256": "9596183b207e03e831778e01b7420d6fa8620aceb26ab3bd06745e8f699b915f",
+      "material_sha256": "7effbffdbab9013e682f60832c89d488ef0ecfe0829c4e8acb788918bbfaea50",
+      "external_report_sha256": "38c287c5fb4d51f2de687e1c2fc4848c1f918eeba2b6abf5b0dfcc757c5ba836"
+    },
+    "awg2_lab": {
+      "status": "PASS",
+      "outcome": "passed",
+      "binary_sha256": "5a868a9683a126aea9948be07c8aaa43944dd533d4ff3eab72fe262f73186eba",
+      "material_sha256": "07ae6a2f8bdbfc3bd78bb6fabf105db5380f1bf9a0989efed7a8330d0f7648a9",
+      "external_report_sha256": "b385a8055e7559f8ca246df79acce5a5f1ee638920929b94e769ba265fcf1817"
+    },
+    "raw_material_returned": false,
+    "runtime_mutated": false,
+    "server_mutated": false,
+    "temporary_remote_state_removed": true,
+    "local_temp_children_after_run": 0
+  },
+  "smart_dns": {
+    "status": "PASS_LIVE_RU_FIXED_TRANSPORT_AND_POLICY",
+    "candidate31_server_binding": false,
+    "client_selection": "DEFAULT_OFF",
+    "observed_at_utc": "2026-09-03T18:11:49.401072Z",
+    "probe_sha256": "37fa5ee0c518f829b6348e87661ed7e200fe1cf43473d74ad8dbbdf71774a5ed",
+    "invalid_doh_get": "HTTP_400",
+    "allowed_a": {
+      "http_status": 200,
+      "rcode": "NOERROR",
+      "answer_count": 1,
+      "answer_matches_owned_proxy": true
+    },
+    "allowed_aaaa": {
+      "http_status": 200,
+      "rcode": "NOERROR",
+      "answer_count": 0
+    },
+    "outside_policy_a": {
+      "http_status": 200,
+      "rcode": "REFUSED",
+      "answer_count": 0
+    },
+    "application_tls": {
+      "chatgpt.com": {"tls_verified": true, "http_status": 403, "classification": "APPLICATION_POLICY_RESPONSE"},
+      "gemini.google.com": {"tls_verified": true, "http_status": 200},
+      "xbox.com": {"tls_verified": true, "http_status": 301}
+    },
+    "authenticated_application_session": "NOT_RUN",
+    "temporary_remote_probe_removed": true,
+    "remaining_remote_probe_count": 0
+  },
+  "release_effect": {
+    "frkn_awg_evidence": "PASS_EXACT_CORE_RU_FIXED_SOURCE_LEVEL",
+    "frkn_smart_dns_evidence": "PASS_LIVE_RU_FIXED_DEFAULT_OFF_LAB",
+    "packaged_windows_or_android_awg": "NOT_PROVEN_BY_THIS_SLICE",
+    "candidate31_smart_dns_client_binding": "NOT_PROVEN_BY_THIS_SLICE",
+    "general_ru_origin_gate": "UNCHANGED_MANUAL_OWNER_TEST",
+    "gate_f": "UNCHANGED_NO_GO_2_PASS_17_NON_PASS_1_FAIL",
+    "gate_g_authorized": false
+  },
+  "evidence_safety": {
+    "credentials_exported": false,
+    "private_keys_exported": false,
+    "raw_awg_material_exported": false,
+    "raw_addresses_exported": false,
+    "response_bodies_exported": false,
+    "device_identifiers_exported": false
+  }
+}
