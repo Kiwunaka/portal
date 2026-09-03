@@ -386,6 +386,72 @@ class ControlPanelFreeFallbackTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(result, {"brain": False, "nl": True})
 
+    async def test_ensure_user_on_all_nodes_persists_fast_node_before_global_timeout(self) -> None:
+        import asyncio
+        from dataclasses import replace
+
+        from control_panel import ControlPanel
+
+        fast = replace(self._node("nl"), id=11)
+        slow = replace(self._node("ru_spb"), id=12)
+        persisted = []
+
+        class _FastClient:
+            async def ensure_client(self, **_kwargs):
+                return True
+
+        class _SlowClient:
+            async def ensure_client(self, **_kwargs):
+                await asyncio.Event().wait()
+
+        class _FakeQuery:
+            def filter_by(self, **_kwargs):
+                return self
+
+            def first(self):
+                return None
+
+        class _FakeSession:
+            def query(self, *_args, **_kwargs):
+                return _FakeQuery()
+
+            def add(self, row):
+                persisted.append((row.tg_id, row.node_id, row.client_uuid, row.panel_email))
+
+            def commit(self):
+                return None
+
+            def rollback(self):
+                return None
+
+            def close(self):
+                return None
+
+        cp = ControlPanel(concurrency=2)
+        cp.refresh = lambda: _async_result([fast, slow])
+        cp._clients = {"nl": _FastClient(), "ru_spb": _SlowClient()}
+
+        import control_panel as cp_mod
+
+        old_session_local = cp_mod.SessionLocal
+        cp_mod.SessionLocal = lambda: _FakeSession()
+        try:
+            with self.assertRaises(asyncio.TimeoutError):
+                await asyncio.wait_for(
+                    cp.ensure_user_on_all_nodes(
+                        tg_id=123,
+                        client_uuid="uuid",
+                        email="email",
+                        sub_id="token",
+                        enable=True,
+                    ),
+                    timeout=0.1,
+                )
+        finally:
+            cp_mod.SessionLocal = old_session_local
+
+        self.assertEqual(persisted, [(123, 11, "uuid", "email")])
+
     async def test_rotate_pooled_key_updates_existing_copies_only(self) -> None:
         from control_panel import ControlPanel
 
