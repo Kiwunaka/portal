@@ -161,6 +161,20 @@ def _fixture(tmp_path: Path) -> dict[str, Any]:
     sbom_path = tmp_path / "candidate7.cdx.json"
     sbom_digest = _write_json(sbom_path, sbom)
 
+    provenance_artifact_order = (
+        "pokrov-android-arm64-v8a.apk",
+        "pokrov-android-armeabi-v7a.apk",
+        "pokrov-android-market.aab",
+        "pokrov-android-universal.apk",
+        "pokrov-android-x86_64.apk",
+        "pokrov-windows-setup-x64.exe",
+    )
+    artifact_set_text = "".join(
+        f"{name}|{len(artifact_data[name])}|{artifact_digests[name]}\n"
+        for name in provenance_artifact_order
+    )
+    artifact_set_sha256 = _digest(artifact_set_text.encode("utf-8"))
+
     provenance = {
         "_type": "https://in-toto.io/Statement/v1",
         "subject": [
@@ -186,6 +200,9 @@ def _fixture(tmp_path: Path) -> dict[str, Any]:
                 ],
             },
             "runDetails": {
+                "metadata": {
+                    "invocationId": f"{CANDIDATE_ID}/{artifact_set_sha256}"
+                },
                 "byproducts": [
                     {"name": sbom_path.name, "digest": {"sha256": sbom_digest}}
                 ]
@@ -510,6 +527,21 @@ def test_stale_provenance_source_revision_fails_closed(tmp_path: Path) -> None:
         _validate(fixture)
 
     assert exc.value.code == "provenance_source_revision_mismatch"
+
+
+def test_stale_provenance_invocation_artifact_set_fails_closed(
+    tmp_path: Path,
+) -> None:
+    fixture = _fixture(tmp_path)
+    fixture["provenance"]["predicate"]["runDetails"]["metadata"][
+        "invocationId"
+    ] = f"{CANDIDATE_ID}/{'0' * 64}"
+    _rewrite_supply_refs(fixture)
+
+    with pytest.raises(validator.SupplyChainIssue) as exc:
+        _validate(fixture)
+
+    assert exc.value.code == "provenance_invocation_artifact_set_mismatch"
 
 
 def test_extra_provenance_source_fails_closed(tmp_path: Path) -> None:

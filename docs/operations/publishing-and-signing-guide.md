@@ -567,8 +567,10 @@ artifact directory with `scripts/validate_release_candidate_supply_chain.py`.
 The offline verifier recomputes every artifact hash and size, requires the
 strict-v2 handoff source tuple, verifies the CycloneDX artifact and Windows
 runtime components against the exact Windows bundle manifest, and requires the
-SLSA subjects, source dependencies and SBOM byproduct to match. A signed hash
-of an internally stale SBOM or provenance file is a STOP-SHIP failure even when
+SLSA subjects, source dependencies, SBOM byproduct, and provenance invocation
+ID to match. The invocation ID must contain the candidate ID and the verifier's
+own SHA-256 of the ordered six-artifact name/size/digest set. A signed hash of
+an internally stale SBOM or provenance file is a STOP-SHIP failure even when
 the APK/EXE bytes themselves are correct.
 
 The invocation also supplies the independently read Android Core AAR and
