@@ -1,0 +1,33 @@
+{
+  "schema": "pokrov.windows-candidate31-ipc-harness-history/v1",
+  "candidate_id": "pokrov-1.2.0-candidate.31",
+  "tool_sha256": "e398c7e8626e3594774d36ad146a61fcd1e095a9ace4a558650739d9b5a3ad87",
+  "attempts": [
+    {
+      "recorded_at_utc": "2026-09-03T17:29:49.1105339Z",
+      "reported_status": "FAIL",
+      "classification": "INVALID_HARNESS_RESULT",
+      "reason": "START_PROCESS_EXIT_CODE_NOT_RETAINED",
+      "requested_clients": 32,
+      "reported_passed_clients": 0,
+      "reported_failed_clients": 32,
+      "source_capture_sha256": "1822f88f75f1888e608d56f7adeae56b89f20117e128e43e0becbbb2f0dd25fc"
+    },
+    {
+      "recorded_at_utc": "2026-09-03T17:32:36.4091286Z",
+      "reported_status": "FAIL",
+      "classification": "INVALID_HARNESS_RESULT",
+      "reason": "START_PROCESS_EXIT_CODE_NOT_RETAINED",
+      "requested_clients": 32,
+      "reported_passed_clients": 0,
+      "reported_failed_clients": 32,
+      "reported_zero_exit_clients": 0,
+      "parsed_clients": 32,
+      "available_clients": 32,
+      "accepted_clients": 32,
+      "source_capture_sha256": "a90a29b7d9868478e5de535c03637e19a996337effaaea21e3f7b8c30d96f455"
+    }
+  ],
+  "screen_or_host_input_used": false,
+  "host_network_mutated": false
+}

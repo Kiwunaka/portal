@@ -1,0 +1,20 @@
+{
+  "schema": "pokrov.windows-candidate31-ipc-concurrency/v1",
+  "recorded_at_utc": "2026-09-03T17:33:31.3145679Z",
+  "status": "PASS",
+  "candidate_id": "pokrov-1.2.0-candidate.31",
+  "requested_clients": 32,
+  "passed_clients": 32,
+  "failed_clients": 0,
+  "zero_exit_clients": 32,
+  "parsed_clients": 32,
+  "available_clients": 32,
+  "accepted_clients": 32,
+  "stderr_empty_clients": 32,
+  "service_before": "Running",
+  "service_after": "Running",
+  "tool_sha256": "e398c7e8626e3594774d36ad146a61fcd1e095a9ace4a558650739d9b5a3ad87",
+  "screen_or_host_input_used": false,
+  "host_network_mutated": false,
+  "source_capture_sha256": "e4f1a53e18f77dc0056239af873d8e9739c11f788457a942ad7791ff9cc62c4d"
+}

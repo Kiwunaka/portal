@@ -1,0 +1,42 @@
+{
+  "schema": "pokrov.windows-candidate31-installed-identity/v1",
+  "recorded_at_utc": "2026-09-03T17:27:55.2589703Z",
+  "status": "PASS_EXACT_SAME_BYTE_INSTALLED_IDENTITY",
+  "candidate_id": "pokrov-1.2.0-candidate.31",
+  "package_version": "1.2.0+4053",
+  "installer_sha256": "a6512bb6bbac328c62497ebad234b97a2794cb178a1949d35362e919f0d6adf0",
+  "expected_installer_sha256": "a6512bb6bbac328c62497ebad234b97a2794cb178a1949d35362e919f0d6adf0",
+  "expected_files": 11,
+  "present_files": 11,
+  "size_matches": 11,
+  "hash_matches": 11,
+  "service": {
+    "present": true,
+    "state": "Running",
+    "start_mode": "Auto",
+    "account": "LocalSystem"
+  },
+  "active_pokrov_adapter_count": 0,
+  "installer_attempt": {
+    "status": "NOT_CREDITED",
+    "exit_code": 1,
+    "log_created": false,
+    "classification": "NONINTERACTIVE_GUEST_INSTALL_ATTEMPT_ENDED_BEFORE_INSTALLER_LOG"
+  },
+  "checks": [
+    {"path": "pokrov_windows.exe", "present": true, "size_match": true, "hash_match": true},
+    {"path": "pokrov_service.exe", "present": true, "size_match": true, "hash_match": true},
+    {"path": "flutter_windows.dll", "present": true, "size_match": true, "hash_match": true},
+    {"path": "pokrov-core.dll", "present": true, "size_match": true, "hash_match": true},
+    {"path": "libcronet.dll", "present": true, "size_match": true, "hash_match": true},
+    {"path": "msvcp140.dll", "present": true, "size_match": true, "hash_match": true},
+    {"path": "vcruntime140.dll", "present": true, "size_match": true, "hash_match": true},
+    {"path": "vcruntime140_1.dll", "present": true, "size_match": true, "hash_match": true},
+    {"path": "pokrov_tray.ico", "present": true, "size_match": true, "hash_match": true},
+    {"path": "data/app.so", "present": true, "size_match": true, "hash_match": true},
+    {"path": "data/icudtl.dat", "present": true, "size_match": true, "hash_match": true}
+  ],
+  "screen_or_host_input_used": false,
+  "host_network_mutated": false,
+  "source_capture_sha256": "974e11496e8710739cce913e239c7e19dd8b68b2a16cda1e0f36479fe3db839c"
+}
