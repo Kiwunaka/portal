@@ -1,0 +1,149 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate25-windows-hosted-clean-host/v1",
+  "work_order": "WO-013FJ",
+  "observed_at_utc": {
+    "hosted_first": "2026-09-03T05:00:52Z",
+    "hosted_last": "2026-09-03T05:01:45Z"
+  },
+  "status": "PASS_EXACT_PRIVATE_CI_INSTALL_SERVICE_IPC_RESTART_UNINSTALL_IDLE_NETWORK",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.25",
+    "version": "1.2.0+4053",
+    "private": true,
+    "promotion_authorized": false,
+    "sources": {
+      "platform": "883cd1038a087fbf9f570cffcbfdfd5f5197ffd4",
+      "client": "54259b0f84e16c58e2d1f5f04b369af4fd0834b2",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "18d9cb4c5541481c5e60713376904f962ec19a7c"
+    },
+    "signed_manifest_sha256": "7161bae715d590fac0623561d147e4d9ee069da14a5e3645001cc4c39aa329b6",
+    "manifest_signature_sha256": "f83cf5acbfa8aa55a45a73f03a2f4e829661215a788f68e8b7b36764b1ff3d14",
+    "setup_sha256": "ffc9b07c59f75372b48c5c1e94551d6d9af710ac0287cd1352142b0964707fb3",
+    "setup_size_bytes": 29139238,
+    "windows_bundle_manifest_sha256": "344b842cd0222aa642115c00f42810bf922492394435271d43d9837169f187c0",
+    "authenticode": "NotSigned",
+    "unsigned_owner_exception": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0"
+  },
+  "fresh_cli_rehearsal": {
+    "status": "PASS_REHEARSAL_ONLY",
+    "candidate_credit": false,
+    "client_source": "54259b0f84e16c58e2d1f5f04b369af4fd0834b2",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "platform_validation_source": "c6007d1c35778171e730003edce11a386b465285",
+    "setup_sha256": "337fe374fa7015386ae187d11708c4a85e11ff0709dfcee1624457c18be30bcc",
+    "setup_size_bytes": 29142988,
+    "bundle_manifest_sha256": "54fbc7473185677d9fd23821405e40c4ba3cc3dfce2e1428186894e17883120f",
+    "manifest_files_verified": "11_OF_11",
+    "checks": {
+      "release_contracts": "PASS",
+      "app_shell": "PASS_413_OF_413",
+      "runtime_engine": "PASS_72_OF_72_WITH_1_DECLARED_SKIP",
+      "windows_widget": "PASS_23_OF_23",
+      "android_gradle_unit": "PASS_DIRECT_AND_STORE",
+      "native_debug_ctest": "PASS_8_OF_8",
+      "native_release_ctest_without_debug_only_integration": "PASS_7_OF_7"
+    },
+    "release_ctest_observation": "NON_GATE_CONFIGURATION_ISSUE_DEBUG_ONLY_SERVICE_INTEGRATION_IS_SCHEDULED_BY_UNFILTERED_RELEASE_CTEST",
+    "immutable_candidate_overwritten": false,
+    "installer_executed": false,
+    "ui_launched": false,
+    "service_installed": false,
+    "network_mutated": false,
+    "main_desktop_control_used": false,
+    "source_record_sha256": "2fb85a04f3eb85a6b1f52c5edd19de33af8a1ac189125ecda3412e2308cc6266"
+  },
+  "private_carrier": {
+    "repository_visibility": "PRIVATE",
+    "release_kind": "PRIVATE_PRERELEASE_CI_CARRIER_ONLY",
+    "tag": "pokrov-1.2.0-candidate.25-private-ci",
+    "target_commit": "934924d1082ea4964ae21f835695e23dcb8245d8",
+    "asset": "pokrov-windows-setup-x64.exe",
+    "asset_service_digest": "sha256:ffc9b07c59f75372b48c5c1e94551d6d9af710ac0287cd1352142b0964707fb3",
+    "authenticated_readback_identity": "PASS",
+    "public_release": false,
+    "stable_release": false
+  },
+  "hosted_execution": {
+    "workflow": "Windows Exact Candidate Clean Host",
+    "workflow_source_commit": "934924d1082ea4964ae21f835695e23dcb8245d8",
+    "run_id": "33717151777",
+    "run_conclusion": "success",
+    "runner": "github_hosted_ephemeral_windows",
+    "image_os": "win25-vs2026",
+    "image_version": "20260824.214.3",
+    "sanitized_source_record_sha256": "c6ec9d18366289d02fcf6e9c8fe168227a3a9a1a5a19457703120c6a9582bfcd",
+    "checks": [
+      {
+        "id": "exact_candidate_identity",
+        "status": "PASS"
+      },
+      {
+        "id": "unsigned_owner_exception",
+        "status": "SKIPPED_BY_OWNER"
+      },
+      {
+        "id": "clean_host_baseline",
+        "status": "PASS"
+      },
+      {
+        "id": "machine_wide_install",
+        "status": "PASS"
+      },
+      {
+        "id": "installed_file_identity_11_of_11",
+        "status": "PASS"
+      },
+      {
+        "id": "localsystem_service_install_and_identity",
+        "status": "PASS"
+      },
+      {
+        "id": "ordinary_ui_authenticated_service_ipc",
+        "status": "PASS"
+      },
+      {
+        "id": "service_stop_restart",
+        "status": "PASS"
+      },
+      {
+        "id": "clean_uninstall",
+        "status": "PASS"
+      },
+      {
+        "id": "idle_route_dns_and_adapter_restoration",
+        "status": "PASS"
+      },
+      {
+        "id": "bounded_service_runtime_data",
+        "status": "OBSERVED"
+      }
+    ]
+  },
+  "evidence_ceiling": "EXACT_PRIVATE_CI_INSTALL_11_FILE_SERVICE_AUTHENTICATED_IPC_RESTART_UNINSTALL_AND_NO_IDLE_NETWORK_MUTATION_ONLY",
+  "manual_or_open_checks": [
+    "MANUAL_OWNER_TEST: connected TUN and full-tunnel traffic",
+    "MANUAL_OWNER_TEST: connected DNS capture and leak protection",
+    "MANUAL_OWNER_TEST: authenticated egress through an owned profile",
+    "MANUAL_OWNER_TEST: sleep, reboot, and crash recovery",
+    "MANUAL_OWNER_TEST: uninstall while connected",
+    "MANUAL_OWNER_TEST: interactive SmartScreen reputation observation"
+  ],
+  "completion_index": {
+    "phase_03": "UNCHANGED_I3_BOUNDED_EXACT_WINDOWS_CLEAN_HOST_LIFECYCLE_PASS_CONNECTED_MATRIX_OPEN",
+    "REL_GATE/GATE-F": "UNCHANGED_I3_BLOCKED_5_14_0",
+    "gate_g": "NOT_AUTHORIZED",
+    "level_changes": 0
+  },
+  "evidence_safety": {
+    "credentials_exported": false,
+    "private_keys_exported": false,
+    "raw_service_data_exported": false,
+    "connection_material_exported": false
+  },
+  "production_mutation_performed": false,
+  "current_host_runtime_mutation_performed": false,
+  "public_release_created": false,
+  "stable_pointer_mutated": false,
+  "release_effect": "NONE"
+}
