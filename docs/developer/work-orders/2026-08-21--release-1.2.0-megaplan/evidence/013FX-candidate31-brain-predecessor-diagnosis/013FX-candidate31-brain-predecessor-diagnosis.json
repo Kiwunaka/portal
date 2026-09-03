@@ -1,0 +1,126 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate31-brain-predecessor-diagnosis/v1",
+  "work_order": "WO-013FX",
+  "recorded_at_utc": "2026-09-03T19:13:13Z",
+  "status": "BRAIN_SINGLE_FILE_EXACT_PREDECESSOR_IDENTIFIED_GATE_F_UNCHANGED_NO_GO",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.31",
+    "version": "1.2.0+4053",
+    "operational_id": "4ee73886c1a285526baf3b666d5845b426754d8bee9f48365d1550a6ece1dd79",
+    "private": true,
+    "promotion_authorized": false,
+    "sources": {
+      "platform": "84837ce68a028f0c81580a5f1beefddba584de6d",
+      "client": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "6de47f0320c9262a5bd2d454f3edb83d557f33a4"
+    },
+    "signed_manifest_sha256": "dd4e99166ac3ec2c566e7d44ee93324f15ae7b3b92df6b35ff35de7053691f9a"
+  },
+  "correction": {
+    "supersedes_claim_in": "WO-013FV",
+    "prior_claim": "live portal_bot/control_panel.py matches no known Git file version",
+    "corrected_claim": "after CRLF-to-LF normalization, the live file uniquely matches known predecessor revision 1207b63f1574a15569594c5fdbb79e4c8dff553f",
+    "diagnosed_comparison_error": "RAW_REMOTE_SHA_WAS_COMPARED_WITH_NORMALIZED_GIT_BLOB_SHA",
+    "historical_work_order_rewritten": false
+  },
+  "candidate31_payload_probe": {
+    "source_revision": "84837ce68a028f0c81580a5f1beefddba584de6d",
+    "payload_count": 197,
+    "normalized_match_count": 196,
+    "mismatch_count": 1,
+    "mismatch_paths": [
+      "portal_bot/control_panel.py"
+    ],
+    "status": "FAIL"
+  },
+  "control_panel_identity": {
+    "path": "portal_bot/control_panel.py",
+    "normalization_rule": "CRLF_TO_LF_ONLY",
+    "unique_git_versions_scanned": 21,
+    "live": {
+      "raw_sha256": "cc3d0f0cb6f20e35b65b5a16ce29e4b98a7ea33b6627127e2e18c20a1f05aa0a",
+      "normalized_sha256": "95491d3c4272c24bab38e81545b6c131572ea2b37240f89793f99ba1bb18e454",
+      "raw_size": 63738,
+      "normalized_size": 62104,
+      "normalized_line_count": 1634
+    },
+    "unique_live_match": {
+      "revision": "1207b63f1574a15569594c5fdbb79e4c8dff553f",
+      "subject": "fix(api): bound managed profile panel work",
+      "normalized_sha256": "95491d3c4272c24bab38e81545b6c131572ea2b37240f89793f99ba1bb18e454",
+      "normalized_size": 62104,
+      "normalized_line_count": 1634
+    },
+    "candidate31_expected_blob": {
+      "introduced_by_revision": "ca2aa1d300dd9ea90cfaf904df95c7b75dd412dc",
+      "subject": "fix first-run panel progress persistence",
+      "candidate_platform_revision": "84837ce68a028f0c81580a5f1beefddba584de6d",
+      "normalized_sha256": "1444ea0342b68a3c724e9ac62a4f3bbfd2af849584f97d4c23d6c050a2474ebc",
+      "normalized_size": 62739,
+      "normalized_line_count": 1647,
+      "matches_live": false
+    },
+    "revision_relationships": {
+      "live_match_is_ancestor_of_expected_blob_revision": true,
+      "expected_blob_revision_is_ancestor_of_candidate_platform": true
+    }
+  },
+  "predecessor_whole_payload_probe": {
+    "source_revision": "1207b63f1574a15569594c5fdbb79e4c8dff553f",
+    "payload_count": 197,
+    "normalized_match_count": 193,
+    "mismatch_count": 4,
+    "mismatch_paths": [
+      "portal_bot/api.py",
+      "portal_bot/api_client_routes.py",
+      "portal_bot/api_subscription_routes.py",
+      "portal_bot/transport_catalog.py"
+    ],
+    "status": "FAIL"
+  },
+  "diagnosis": {
+    "classification": "MIXED_KNOWN_GIT_DEPLOY_STATE",
+    "candidate31_file_count": 196,
+    "exact_predecessor_file_count": 1,
+    "unknown_manual_file_count": 0,
+    "candidate_bytes_changed": false,
+    "new_candidate_required_by_diagnosis": false,
+    "production_reconciliation_required": true
+  },
+  "gate_f_effect": {
+    "decision": "NO_GO",
+    "required": 19,
+    "pass": 2,
+    "non_pass": 17,
+    "fail": 1,
+    "validation_errors": 0,
+    "changed_by_diagnosis": false
+  },
+  "external_reports": {
+    "candidate31_payload_probe_sha256": "a512a7ebf4d3fda5443d161059e4095250927afd5646ed82cca2d367136f8cf4",
+    "predecessor_whole_payload_probe_sha256": "0b5854f74e5e3f749707a905ff8e004c5352907c30cbfc3f4567ceef62f61698"
+  },
+  "mutation_boundary": {
+    "brain_runtime_mutated": false,
+    "database_mutated": false,
+    "delivery_nodes_mutated": false,
+    "host_network_configuration_mutated": false,
+    "screen_or_input_control_used": false,
+    "deploy_or_restart_performed": false,
+    "public_release_or_stable_pointer_changed": false
+  },
+  "evidence_safety": {
+    "credentials_exported": false,
+    "private_keys_exported": false,
+    "tokens_exported": false,
+    "remote_content_exported": false,
+    "response_bodies_exported": false,
+    "raw_addresses_or_hosts_exported": false
+  },
+  "remaining": [
+    "under separate production authorization, deploy the exact candidate31 platform payload to Brain",
+    "repeat the exact candidate31 source, readiness and enabled-delivery probes",
+    "regenerate Gate F only from the new exact evidence"
+  ]
+}
