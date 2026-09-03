@@ -1,0 +1,98 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-09-03T17:12:11Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.31",
+    "operational_id": "4ee73886c1a285526baf3b666d5845b426754d8bee9f48365d1550a6ece1dd79",
+    "manifest_sha256": "dd4e99166ac3ec2c566e7d44ee93324f15ae7b3b92df6b35ff35de7053691f9a",
+    "signature_sha256": "959328f891a5dfa5c7c5c3f1cf2463b77137d5a7ca0812bab0b746e0a9c5c01a",
+    "receipt_sha256": "8e47f3e9f298aa8e67c5d07ff5ad2be976f09091863aa42cd49c3e0ff8e8ff89",
+    "sources": {
+      "platform": "84837ce68a028f0c81580a5f1beefddba584de6d",
+      "client": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "6de47f0320c9262a5bd2d454f3edb83d557f33a4"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "MANUAL_OWNER_TEST",
+    "mandatory_stop_ship_and_dod": "MISSING",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "SKIPPED_BY_OWNER",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MANUAL_OWNER_TEST",
+    "current_origin": "NOT_RUN",
+    "brain_origin": "NOT_RUN",
+    "ru_origin": "MANUAL_OWNER_TEST",
+    "windows_live_network": "MANUAL_OWNER_TEST",
+    "android_ldplayer_rehearsal": "NOT_RUN",
+    "android_physical_device": "NOT_RUN",
+    "authenticated_client_egress": "NOT_RUN",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "MANUAL_OWNER_TEST",
+    "hosted_required_checks": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+  },
+  "facts": {
+    "gates_a_e": "Exact candidate31 source, signature and supply bindings pass, but Gates A-E were not rerun as one consolidated exact-candidate record.",
+    "stop_ship": "The candidate30 supply defect is absent. Final no-open-P0 and DoD attestations are still missing, so mandatory closure rows remain non-PASS rather than FAIL.",
+    "signed_supply": "Detached Ed25519 signature, receipt, six artifact identities, eleven Windows runtime files, CycloneDX root/property and SLSA invocation/internal references pass. Canonical artifact-set SHA-256 is dce1c4e43aa1729e87f6620da9f655482dd3a6113bb67006e319c090e0b02b9e.",
+    "artifact_reuse": "Candidate31 application bytes exactly match the retained CLI-built and verified predecessor bytes. Candidate31 regenerates all candidate-bound supply metadata and does not inherit the rejected metadata files.",
+    "windows": "The same Windows setup bytes retain headless Windows 11 11/11 install, service, synthetic direct TUN/DNS and connected-reboot evidence. Exact candidate31 managed transports and broader lifecycle tests remain manual.",
+    "android": "ADB listed no devices in this CLI session. No current phone or LDPlayer install/runtime test was performed.",
+    "hosted_boundary": "Seven of ten exact-source hosted jobs pass. Three platform/client jobs executed zero steps and remain BLOCKED_BY_ACCESS_GITHUB_BILLING.",
+    "decision_boundary": "Gate F is BLOCKED with no explicit FAIL rows. No Gate G, deploy, public release, Store submission or stable-pointer mutation is authorized."
+  },
+  "source_records": [
+    "013FT-candidate31-signed-binding.json",
+    "013FT-candidate31-hosted-checks.json",
+    "013FT-candidate30-artifact-set-correction.json"
+  ],
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FT-candidate31-corrected-supply-gate-f/013FT-candidate31-signed-binding.json",
+      "sha256": "70e71cc65b5e9f40bf92fa2b1f0b1039ff5bc4d178e779f720e822b324edfde6"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FT-candidate31-corrected-supply-gate-f/013FT-candidate31-hosted-checks.json",
+      "sha256": "dbfb375973b6ce38a4493880e257bc1079442aa84e39c27e67291175639d84a0"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FT-candidate31-corrected-supply-gate-f/013FT-candidate30-artifact-set-correction.json",
+      "sha256": "955c5e6b6961464a286e83e8b0b476f5b34f431991d51b5663662334d576dee7"
+    }
+  ],
+  "external_evidence": [
+    {
+      "path": "E:/POKROV-tools/release-candidates/pokrov-1.2.0-candidate.31/pokrov-1.2.0-candidate.31.supply-validation.json",
+      "sha256": "f2b19ef1e01ca6db7152c44002c62c162d62547d022a8ffb8302e9319a899343"
+    },
+    {
+      "path": "E:/POKROV-tools/release-candidates/pokrov-1.2.0-candidate.31/pokrov-1.2.0-candidate.31.release-handoff.json",
+      "sha256": "095af12c8b335e86b8e8590259946a33cec5c356eaaacc9e93f2e09698193a48"
+    },
+    {
+      "path": "E:/POKROV-tools/release-candidates/pokrov-1.2.0-candidate.31/pokrov-1.2.0-candidate.31.cdx.json",
+      "sha256": "e5d9eb85bacb778e225d5d909832cd3e7d42c9d19fa1ebc44092456ec9da56a5"
+    },
+    {
+      "path": "E:/POKROV-tools/release-candidates/pokrov-1.2.0-candidate.31/pokrov-1.2.0-candidate.31.provenance.json",
+      "sha256": "1075c286fea33b7ddc5451d3d3da47e63f9c9077d4543dd7e0b498c830ad8dc0"
+    }
+  ],
+  "mutation_boundary": {
+    "candidate_artifact_mutated": false,
+    "phone_install_or_runtime_test": false,
+    "windows_vm_used_in_this_slice": false,
+    "screen_or_input_control_used": false,
+    "host_network_mutated": false,
+    "signing_private_key_accessed_locally": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT CANDIDATE31 SIGNED SUPPLY PASS; GATE_F BLOCKED WITH RUNTIME, ORIGIN, PROVIDER, OPERATOR, LEGAL, PERFORMANCE, ROLLBACK AND FINAL ATTESTATIONS OPEN; HOSTED PLATFORM AND CLIENT CHECKS ACCESS-BLOCKED; NO GATE_G OR PROMOTION"
+}
