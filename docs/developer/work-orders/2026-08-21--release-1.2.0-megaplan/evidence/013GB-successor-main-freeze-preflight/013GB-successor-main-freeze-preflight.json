@@ -1,0 +1,133 @@
+{
+  "schema": "pokrov.release-1.2.0.successor-main-freeze-preflight/v1",
+  "work_order": "WO-013GB",
+  "recorded_at_utc": "2026-09-03T22:11:47Z",
+  "status": "READY_LOCAL_FREEZE",
+  "scope": "READ_ONLY_EXACT_SOURCE_CANDIDATE_PREFLIGHT",
+  "sources": {
+    "platform": {
+      "revision": "6af24e9aaeee372526bf02e1af98497f5d83ea78",
+      "working_tree_state": "clean"
+    },
+    "client": {
+      "revision": "ad2a33d14335a5974e089f50946367e8e02372b8",
+      "working_tree_state": "clean"
+    },
+    "core": {
+      "revision": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "working_tree_state": "clean"
+    },
+    "release_index": {
+      "revision": "4de2e9f8620b5aac2f538dc8a052a44ad2a563a5",
+      "branch": "main",
+      "working_tree_state": "clean",
+      "published_main": true
+    }
+  },
+  "versions": {
+    "target": "1.2.0",
+    "app_shell": "1.2.0",
+    "android": "1.2.0+4053",
+    "windows": "1.2.0+4053",
+    "core": "1.1.0"
+  },
+  "preflight": {
+    "status": "READY_LOCAL_FREEZE",
+    "blocker_count": 0,
+    "candidate_created": false,
+    "candidate_proven": false,
+    "promotion_authorized": false,
+    "evidence_ceiling": "LOCAL_READ_ONLY_PREFLIGHT",
+    "report_sha256": "dde4246b6de3cbce3ef106ba1bc4943b653d85f9baca996039abefb09e6c8e6f",
+    "tool_script_sha256": "7a000395377e58e4747a8afa73408e758efdbea796cfa0eb86afb91cd2391b39"
+  },
+  "release_index_contract": {
+    "status": "CONTRACT_READY_PRE_CANDIDATE",
+    "candidate_created": false,
+    "promotion_authorized": false,
+    "active_signing_keys": 1,
+    "contract_sha256": "f58c67af89238af2a126de3150ed60e24b10bdcd7a2bae40bde8cff8bb5a5486",
+    "manifest_schema_sha256": "d3724fb84f9ce12b2d3f305205827caca0bd770b025901b02926143e90b05e7c"
+  },
+  "core_artifact_binding": {
+    "status": "PASS_EXACT_LOCAL_REPLACEMENT_BOUND",
+    "activation_state": "active_pre_candidate_local",
+    "android_aar": {
+      "size": 107419397,
+      "sha256": "2a9677d9e24ed7ef66d4e98f90e7033eb5450c9a2755f0fe6b8bba58036c6a69",
+      "declared_matches_actual": true
+    },
+    "windows_dll": {
+      "size": 55426048,
+      "sha256": "f284fa8841f1a45271874a7a05ed6093fb0e3efbdd03e00001edd046be708204",
+      "declared_matches_actual": true
+    },
+    "libcronet_dll": {
+      "size": 8596992,
+      "sha256": "8ef1f8bbde77f954af1ae47bee1819ac8dc2354bb0e1d4baba3dad9e58d7a6f7",
+      "declared_matches_actual": true
+    }
+  },
+  "stage_policy": {
+    "schema": "pokrov.release-1.2.0.row-stage-policy/v1",
+    "ledger_row_count": 378,
+    "override_count": 71,
+    "sha256": "c6cfed020f8432daa2ae746fe1bc85b045302652374d6ce8c8421a6a6e543d23"
+  },
+  "ledger": {
+    "total": 378,
+    "below_i3": 51,
+    "pre_freeze_rows_below_i3": 0,
+    "candidate_rows_below_i3": 22,
+    "deferred_rows_below_i3": 16,
+    "external_rows_below_i3": 13,
+    "pending_stage_counts": {
+      "candidate": 22,
+      "deferred": 16,
+      "external": 13
+    },
+    "pending_lane_counts": {
+      "local_closure_or_candidate_dependency": 36,
+      "phase_11_local_or_candidate": 5,
+      "manual_owner_test": 2,
+      "deferred": 2,
+      "monitor_only": 4,
+      "not_authorized": 2
+    }
+  },
+  "fail_first": {
+    "status": "BLOCKED",
+    "blocker": "release_index_missing",
+    "classification": "BLOCKED_BY_ACCESS",
+    "reason": "The first read-only invocation intentionally omitted the release-index checkout; providing authoritative clean main removed the sole blocker without creating a candidate.",
+    "report_sha256": "38de8e4dd8f00eabd83a21aad775154426371e476936d5f1f65fc9c2667227701"
+  },
+  "release_effect": {
+    "candidate32_created": false,
+    "candidate31_changed": false,
+    "gate_f_changed": false,
+    "gate_f_decision": "NO_GO",
+    "gate_f_pass": 2,
+    "gate_f_non_pass": 17,
+    "gate_f_fail": 1,
+    "execution_ledger_changed": false,
+    "promotion_authorized": false
+  },
+  "cleanup": {
+    "temporary_client_worktree_removed": true,
+    "external_reports_retained": true,
+    "owner_untracked_objects_preserved": 4
+  },
+  "mutation_boundary": {
+    "read_only": true,
+    "screen_or_input_control_used": false,
+    "host_network_mutated": false,
+    "candidate_created": false,
+    "release_index_mutated": false,
+    "production_runtime_mutated": false,
+    "database_mutated": false,
+    "delivery_nodes_mutated": false,
+    "deploy_or_restart_performed": false,
+    "public_release_or_stable_pointer_changed": false
+  }
+}
