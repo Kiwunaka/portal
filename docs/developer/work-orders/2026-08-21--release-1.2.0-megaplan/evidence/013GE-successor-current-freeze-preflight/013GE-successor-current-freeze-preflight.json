@@ -1,0 +1,93 @@
+{
+  "schema": "pokrov.release-1.2.0.successor-current-freeze-preflight/v1",
+  "recorded_at_utc": "2026-09-03T23:09:17Z",
+  "status": "READY_LOCAL_FREEZE",
+  "source": {
+    "platform": "9d92889fd606df3a4ee8999d32447adf1d60157b",
+    "ledger": "9d92889fd606df3a4ee8999d32447adf1d60157b",
+    "client": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+    "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index": "4de2e9f8620b5aac2f538dc8a052a44ad2a563a5"
+  },
+  "source_state": {
+    "platform": "clean",
+    "ledger": "clean",
+    "client": "clean",
+    "core": "clean",
+    "release_index": "clean",
+    "release_index_head_is_published_main": true
+  },
+  "versions": {
+    "application": "1.2.0+4053",
+    "product": "1.2.0",
+    "core": "1.1.0",
+    "state": "PRE_CANDIDATE_LOCAL"
+  },
+  "candidate": {
+    "candidate_id": null,
+    "candidate_created": false,
+    "candidate_proven": false,
+    "promotion_authorized": false,
+    "public_release_created": false,
+    "evidence_ceiling": "LOCAL_READ_ONLY_PREFLIGHT"
+  },
+  "preflight": {
+    "status": "READY_LOCAL_FREEZE",
+    "blocker_count": 0,
+    "ledger_rows": 378,
+    "ledger_rows_below_i3": 51,
+    "pre_freeze_rows_below_i3": 0,
+    "candidate_rows_below_i3": 22,
+    "deferred_rows_below_i3": 16,
+    "external_rows_below_i3": 13,
+    "external_pre_candidate_rows_below_i3": 0,
+    "stage_policy_override_count": 71,
+    "stage_policy_sha256": "c6cfed020f8432daa2ae746fe1bc85b045302652374d6ce8c8421a6a6e543d23"
+  },
+  "release_index": {
+    "status": "AVAILABLE",
+    "contract_status": "CONTRACT_READY_PRE_CANDIDATE",
+    "contract_sha256": "f58c67af89238af2a126de3150ed60e24b10bdcd7a2bae40bde8cff8bb5a5486",
+    "manifest_schema_sha256": "d3724fb84f9ce12b2d3f305205827caca0bd770b025901b02926143e90b05e7c",
+    "active_signing_keys": 1,
+    "candidate_created": false,
+    "promotion_authorized": false
+  },
+  "core_artifacts": {
+    "verified_exact_local_bytes": true,
+    "android_aar": {
+      "size_bytes": 107419397,
+      "sha256": "2a9677d9e24ed7ef66d4e98f90e7033eb5450c9a2755f0fe6b8bba58036c6a69",
+      "declared_matches_actual": true
+    },
+    "windows_dll": {
+      "size_bytes": 55426048,
+      "sha256": "f284fa8841f1a45271874a7a05ed6093fb0e3efbdd03e00001edd046be708204",
+      "declared_matches_actual": true
+    },
+    "windows_libcronet_dll": {
+      "size_bytes": 8596992,
+      "sha256": "8ef1f8bbde77f954af1ae47bee1819ac8dc2354bb0e1d4baba3dad9e58d7a6f7",
+      "declared_matches_actual": true
+    }
+  },
+  "execution": {
+    "mode": "LOCAL_READ_ONLY_CLI",
+    "host_ui_used": false,
+    "host_network_configuration_mutated": false,
+    "device_used": false,
+    "installer_used": false,
+    "production_runtime_mutated": false,
+    "release_index_mutated": false
+  },
+  "evidence_sha256": {
+    "external_preflight_report": "1da6afff9d8ba379ff10cf7baca6f232433cc0ed1e85c763cc1e734ca565170d"
+  },
+  "limits": [
+    "READY_LOCAL_FREEZE is not candidate, release, deployment, device, origin, provider, rollback or promotion proof.",
+    "All 51 rows below I3 remain open under their declared candidate, deferred or external stage policy.",
+    "No candidate number, release-index template, signed release manifest, deployment or public publication was created.",
+    "Candidate.31 and its immutable Gate F NO_GO 2/17/1 are unchanged.",
+    "Candidate.32 assembly requires separate explicit authorization."
+  ]
+}

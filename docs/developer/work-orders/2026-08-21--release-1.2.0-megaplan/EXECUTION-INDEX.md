@@ -2,6 +2,21 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013GE successor-current local freeze preflight READY
+
+The read-only preflight binds clean platform/ledger `9d92889...`, exact merged
+client `2d6adfc...`, Core `cd8f0f4...` and clean published release-index
+`main` `4de2e9f...`. The contract, exact Core artifacts and stage policy pass;
+blockers are `0` and pre-freeze rows below `I3` are `0`. The exact result is
+`READY_LOCAL_FREEZE`.
+
+This supersedes WO-013GB only as the latest source tuple. It remains local
+read-only evidence: `candidate_created=false`, `candidate_proven=false` and
+`promotion_authorized=false`. All `51` rows below `I3` remain open: `22`
+candidate, `16` deferred and `13` external. Candidate.31 Gate F stays immutable
+`NO_GO 2/17/1`; no candidate.32, signing, deploy, public asset, stable pointer
+or ledger-index change occurs.
+
 ## 2026-09-04 — WO-013GD successor Windows exact-main CLI rebuild PASS
 
 The exact merged client `main` `2d6adfc...` completes the canonical headless
