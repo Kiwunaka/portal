@@ -193,6 +193,12 @@ payload matches only `196/197` candidate.31 platform files. Current-origin is
 blocked by the untouched owner tunnel. Gate F is therefore exact `NO_GO
 2/17/1`; no production reconciliation or promotion is performed.
 
+WO-013FW adds fresh direct-RU Raspberry Pi exact-Core evidence. AWG3.1 and AWG2
+pass in that order, and the existing default-off Smart DNS live policy plus
+ChatGPT/Gemini/Xbox TLS paths pass from the same origin. This is source-level
+Core and live-lab proof, not packaged candidate runtime or authenticated client
+egress; Gate F remains `NO_GO 2/17/1`.
+
 ## Execution order
 
 | Phase | Architectural outcome | State | Primary WO |
@@ -207,8 +213,8 @@ blocked by the untouched owner tunnel. Gate F is therefore exact `NO_GO
 | 07 | Canonical Operator Center v2 and legacy admin cutover | Local package complete, including the deterministic 75-operation OpenAPI/TypeScript contract, purpose-bound Telegram OIDC Authorization Code plus PKCE login and same-identity step-up for preprovisioned operators, exact retained-bridge permissions and query-suppressed field redaction; live IdP, authenticated exact-candidate readback and cutover/rollback gates remain open | `WO-009`, `WO-009H`, `WO-009I`, `WO-009J` |
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete at `I3`. Candidate.25's retained source audits and `15/15` local quality remain history. Exact candidate.31 current-origin measurement is `BLOCKED_BY_ACCESS` because the owner's active tunnel is left untouched, and Brain has one exact-source mismatch. Gate E stays `BLOCKED` below I4 on source reconciliation, authenticated journeys, physical accessibility/OEM/scaling, comparable artifact/device/browser performance, support, general RU-origin and post-promotion evidence | `WO-010`, `WO-013AN`, `WO-013CI`, `WO-013CO`, `WO-013DA`, `WO-013DD`, `WO-013DE`, `WO-013DQ`, `WO-013DS`, `WO-013EL`, `WO-013EN`, `WO-013EO`, `WO-013FD`–`WO-013FH`, `WO-013FV` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
-| 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | AWG2/AWG3.1 and bounded HY2/Smart-DNS source labs remain locally proved and default-off. Candidate.31 packages the current client/Core contracts and has valid supply metadata, but exact managed-path runs remain open. Candidate.29's packaged Windows and direct-RU Pi AWG failures remain immutable predecessor evidence and are not transferred. Phase 10 remains `I3`, not `I4`, pending exact repeats, physical Android, multi-ASN, UDP/IPv6/MTU, leak/privacy/load/lifecycle and authenticated-session evidence. HY2 remains undeployed; Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AU`, `WO-013AX`–`WO-013BL`, `WO-013BP`, `WO-013BQ`, `WO-013BV`–`WO-013BX`, `WO-013CE`, `WO-013CG`, `WO-013CK`, `WO-013DG`, `WO-013DP`, `WO-013DU`, `WO-013EJ`, `WO-013EY`, `WO-013EZ`, `WO-013FB`–`WO-013FT` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Candidate.31 is the current private signed candidate. Its exact supply, signature, same-byte installed Windows identity and local IPC contention pass, but live Brain exact-source identity fails `196/197`; Gate F is `NO_GO 2/17/1` with zero validation errors. Candidate.30 and candidate.29 remain immutable rejected history. Physical Android, managed Windows AWG/Smart DNS, general-RU origin, provider/Operator/legal, runtime rollback, comparable performance and final rows remain open. No public `v1.2.0`, Store object, stable switch or promotion occurred | `WO-013`, `WO-013BK`–`WO-013FV` |
+| 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | Candidate.31 exact Core now passes AWG3.1 then AWG2 from the direct-RU Raspberry Pi, and the existing default-off Smart DNS policy/TLS contour passes from the same origin. Candidate.29 failures remain immutable predecessor evidence. Phase 10 remains `I3`, not `I4`: packaged candidate.31 Android/Windows, multi-ASN, UDP/IPv6/MTU, leak/privacy/load/lifecycle and authenticated-session evidence remain open. HY2 remains undeployed; Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AU`, `WO-013AX`–`WO-013BL`, `WO-013BP`, `WO-013BQ`, `WO-013BV`–`WO-013BX`, `WO-013CE`, `WO-013CG`, `WO-013CK`, `WO-013DG`, `WO-013DP`, `WO-013DU`, `WO-013EJ`, `WO-013EY`, `WO-013EZ`, `WO-013FB`–`WO-013FW` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Candidate.31 is the current private signed candidate. Its exact supply, signature, same-byte installed Windows identity, local IPC and direct-RU exact-Core AWG pass, but live Brain exact-source identity fails `196/197`; Gate F is `NO_GO 2/17/1` with zero validation errors. The Pi evidence is not packaged-client or general-RU Gate F proof. Candidate.30 and candidate.29 remain immutable rejected history. Physical Android, managed Windows AWG/Smart DNS, general-RU origin, provider/Operator/legal, runtime rollback, comparable performance and final rows remain open. No public `v1.2.0`, Store object, stable switch or promotion occurred | `WO-013`, `WO-013BK`–`WO-013FW` |
 
 Active Phase 10/11 supersession: WO-013FT is the current signed-candidate
 authority, while WO-013FV is the current Gate F authority. Candidate.31's
@@ -224,6 +230,9 @@ rerun is not credited and no managed connection row advances.
 WO-013FV adds current/Brain-origin truth: current-origin is access-blocked by
 the untouched owner tunnel; Brain readiness and delivery pass, but live source
 drift is one explicit FAIL. Production reconciliation needs separate approval.
+WO-013FW is supplemental candidate.31 source-level and live-lab evidence:
+direct-RU Pi AWG3.1/AWG2 and Smart DNS policy/TLS pass, while packaged-client,
+authenticated-session and general-RU Gate F rows remain open.
 WO-013FO is the earlier private signed-supply and bounded direct-Windows
 authority for candidate.29. WO-013FP/013FQ are its exact Gate F authorities,
 ending at `NO_GO 2/17/1`. WO-013FR is the later managed
@@ -900,6 +909,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013FT` | Create and sign candidate.31 with corrected candidate-bound supply metadata, then regenerate Gate F | Six same-byte application artifacts, fresh SBOM/provenance/handoff, strict supply PASS, hosted Ed25519 signature/receipt, candidate.30 append-only digest correction and all `19/19` Gate F pointers | Candidate.31 is current private signed supply. Strict validation passes `6/6` artifacts and `11/11` Windows files; Gate F is `BLOCKED 2 PASS / 17 non-PASS / 0 FAIL`. ADB sees no device; managed Windows/Android/origin/approval rows remain open. Three zero-step hosted jobs remain `BLOCKED_BY_ACCESS_GITHUB_BILLING`; no deploy or promotion occurs | Run exact candidate.31 managed Windows default/AWG3.1/AWG2/Smart-DNS and Android physical/emulator matrices without host UI takeover, then refresh origins, rollback and remaining Gate F rows |
 | `WO-013FU` | Verify candidate.31 same-byte installed Windows identity and corrected local IPC contention in the headless VM | Exact setup/manifest hashes, `11/11` installed files, automatic LocalSystem service, two retained invalid harness attempts and corrected 32-client CLI result | Installed identity and service pass; corrected local IPC passes `32/32`. The noninteractive installer rerun is `NOT_CREDITED`; no managed connection is exercised and Gate F remains `BLOCKED 2/17/0`. Host input and host networking remain untouched; VM ends powered off | Resume exact candidate.31 managed default/AWG3.1/AWG2/Smart-DNS and connected-uninstall checks inside an isolated device, then physical Android when available |
 | `WO-013FV` | Refresh exact candidate.31 current/Brain origins and regenerate Gate F | Exact source hash replay, three retained readiness attempts, six delivery samples, read-only owner-route inventory and all `19/19` Gate F pointers | Brain final readiness is `23/23`, subscription is `5/5` and final delivery is `7/7 x3`, but deployed source is `196/197` with one non-Git content mismatch. Current-origin is blocked by the untouched owner tunnel. Gate F is exact `NO_GO 2/17/1`; no server or host mutation occurs | Under separate production authorization, reconcile Brain to exact committed source; then rerun exact source/readiness/delivery and use a tunnel-free independent current-origin |
+| `WO-013FW` | Repeat exact candidate.31 Core AWG3.1/AWG2 and live Smart DNS from the owned direct-RU Raspberry Pi | Exact Core snapshot/tool identities, bounded owned lab material, ARM64 runners, strict SSH, direct route, temp cleanup and Smart DNS DoH/TLS probe | AWG3.1 and AWG2 pass in order; default-off Smart DNS policy and ChatGPT/Gemini/Xbox TLS pass. No raw material returns and all temp state is removed. This is source-level/live-lab evidence, not packaged client or authenticated-session proof; Gate F remains `NO_GO 2/17/1` | Reconcile Brain source separately, then run packaged candidate.31 AWG/Smart DNS on Android and isolated Windows plus authenticated sessions and multi-ASN coverage |
 
 ## Current evidence
 
@@ -967,6 +977,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013FU-candidate31-headless-windows-cli/`
 - `WO-013FV-candidate31-origin-no-go.md`
 - `evidence/013FV-candidate31-origin-no-go/`
+- `WO-013FW-candidate31-ru-pi-awg-dns.md`
+- `evidence/013FW-candidate31-ru-pi-awg-dns/`
 - `WO-013EP-candidate21-static-artifact-privacy.md`
 - `evidence/013EP-candidate21-static-artifact-privacy/`
 - `WO-013EO-frontend-build-lock-refresh.md`
@@ -1595,6 +1607,9 @@ WO-013FV then refreshes current/Brain origins. Final Brain readiness and three
 delivery samples pass, but live source matches only `196/197` candidate.31
 files, while current-origin is blocked by the untouched owner tunnel. The
 current Gate F result is therefore exact `NO_GO 2/17/1`.
+WO-013FW adds fresh direct-RU Pi proof: exact-Core AWG3.1/AWG2 and current live
+Smart DNS policy/TLS pass. Packaged client, authenticated sessions and the
+general-RU Gate F row remain open, so the aggregate is unchanged.
 
 The exact UI still opens at first-run onboarding. No trial/account or
 entitlement is created without action-time owner confirmation. A managed
