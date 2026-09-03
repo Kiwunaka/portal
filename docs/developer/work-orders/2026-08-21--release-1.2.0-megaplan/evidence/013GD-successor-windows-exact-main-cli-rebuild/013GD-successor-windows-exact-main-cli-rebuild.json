@@ -1,0 +1,89 @@
+{
+  "schema": "pokrov.release-1.2.0.successor-windows-exact-main-cli-rebuild/v1",
+  "recorded_at_utc": "2026-09-03T23:00:07Z",
+  "status": "PASS_LOCAL_PRE_CANDIDATE_WINDOWS_302_OF_302_CANDIDATE_NOT_CREATED",
+  "source": {
+    "platform_product": "3018fd27be57bfa590aac0bc55df949f8a7415ef",
+    "platform_ledger_head": "d690448096e5d73b787d02b1bba1dd25a59f681a",
+    "client": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+    "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_current": "4de2e9f8620b5aac2f538dc8a052a44ad2a563a5"
+  },
+  "version": "1.2.0+4053",
+  "candidate": {
+    "candidate_id": null,
+    "candidate_created": false,
+    "candidate_manifest_created": false,
+    "signed_release_index_created": false,
+    "promotion_authorized": false,
+    "public_release_created": false
+  },
+  "execution": {
+    "mode": "CLI_ONLY",
+    "host_ui_used": false,
+    "host_network_configuration_mutated": false,
+    "device_used": false,
+    "installer_launched": false,
+    "full_cli_build": "PASS",
+    "native_ctest_release": "PASS_7_OF_7",
+    "bundle_identity": "PASS_302_OF_302_EXACT_AGAINST_PREVIOUS_REBUILD",
+    "bundle_line_diff_count": 0,
+    "windows_signing": "SKIPPED_BY_OWNER",
+    "setup_authenticode": "NotSigned",
+    "ui_authenticode": "NotSigned",
+    "service_authenticode": "NotSigned",
+    "deployment": "NOT_REQUESTED",
+    "publication": "NOT_REQUESTED"
+  },
+  "artifacts": [
+    {
+      "name": "pokrov-windows-x64-1.2.0+4053-setup.exe",
+      "platform": "windows",
+      "kind": "exe",
+      "size_bytes": 29154647,
+      "sha256": "22689e3e61be82f90b1ba9530cba37628ec546022338fc87018b2d460c020574",
+      "signing": "SKIPPED_BY_OWNER"
+    },
+    {
+      "name": "pokrov-windows-x64-1.2.0+4053.manifest.json",
+      "platform": "windows",
+      "kind": "manifest",
+      "size_bytes": 5884,
+      "sha256": "43bd310e2fb287d2ada339d8938fbe2304261fe23c9d8608124417d05af9e7dd"
+    },
+    {
+      "name": "windows-cli-rebuild-bundle.sha256",
+      "platform": "windows",
+      "kind": "bundle_hash_list",
+      "file_count": 302,
+      "size_bytes": 36654,
+      "sha256": "69cec9aba4bd18436d905e4d5ab4bf1e103b11795e9d418c5f71bbfc39929cf1"
+    }
+  ],
+  "verification": {
+    "seed_and_cross_repository_contracts": "PASS",
+    "app_shell_flutter_tests": "PASS_413_OF_413",
+    "android_gradle": "BUILD_SUCCESSFUL",
+    "windows_flutter_analyze": "PASS",
+    "windows_release_compilation": "PASS",
+    "native_ctest_release": "PASS_7_OF_7",
+    "staged_bundle_comparison": "PASS_302_OF_302",
+    "first_ctest_without_canonical_mapping": "ENV_SETUP_MISS_RETAINED",
+    "canonical_mapping_removed": true,
+    "worktree_clean_after_build": true,
+    "artifacts_releases_delta": "NONE"
+  },
+  "evidence_sha256": {
+    "external_verification_report": "398cb95aa94479d26b8a336659f78eeb53e83c37b2352fb0f91e8036fa7a8965",
+    "build_log": "e831a864e14e63218fcd9044a612889a88ba8f7563cb043c7d5f64c101036287",
+    "ctest_log": "0422579575900efee1b0244391d5e44cb293ffa73bebd4bd2853c813fe01d19c",
+    "first_ctest_setup_miss": "538e11007cad98d879553d7e715f3251222b832ad0b3d84e1cc5581ede6429e8"
+  },
+  "limits": [
+    "No candidate number, release-index template, signed release manifest, deployment or public publication was created.",
+    "The installer was not launched and no connected or physical-device runtime credit is assigned.",
+    "The exact reproducibility claim covers the complete 302-file staged product bundle, not the Inno Setup container bytes.",
+    "Trusted Windows signing remains SKIPPED_BY_OWNER; the SmartScreen and unknown-publisher warning remains mandatory.",
+    "Candidate-bound SBOM, provenance and strict-v2 handoff require separate candidate creation authorization."
+  ]
+}
