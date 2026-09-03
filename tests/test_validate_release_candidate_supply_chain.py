@@ -86,6 +86,19 @@ def _fixture(tmp_path: Path) -> dict[str, Any]:
     artifact_digests = {
         name: _digest(data) for name, data in artifact_data.items()
     }
+    provenance_artifact_order = (
+        "pokrov-android-arm64-v8a.apk",
+        "pokrov-android-armeabi-v7a.apk",
+        "pokrov-android-market.aab",
+        "pokrov-android-universal.apk",
+        "pokrov-android-x86_64.apk",
+        "pokrov-windows-setup-x64.exe",
+    )
+    artifact_set_text = "".join(
+        f"{name}|{len(artifact_data[name])}|{artifact_digests[name]}\n"
+        for name in provenance_artifact_order
+    )
+    artifact_set_sha256 = _digest(artifact_set_text.encode("utf-8"))
     runtime_bytes = b"exact-runtime"
     runtime_digest = _digest(runtime_bytes)
     android_core = "1" * 64
@@ -116,9 +129,13 @@ def _fixture(tmp_path: Path) -> dict[str, Any]:
                 "type": "application",
                 "name": "POKROV 1.2.0 candidate 7",
                 "version": PACKAGE_VERSION,
-                "bom-ref": "candidate:7",
+                "bom-ref": "pkg:generic/pokrov-release-candidate@1.2.0%2B4046?candidate=7",
                 "properties": [
                     {"name": "pokrov:candidate-id", "value": CANDIDATE_ID},
+                    {
+                        "name": "pokrov:artifact-set-sha256",
+                        "value": artifact_set_sha256,
+                    },
                     {"name": "pokrov:platform-commit", "value": PLATFORM},
                     {"name": "pokrov:client-commit", "value": CLIENT},
                     {"name": "pokrov:core-commit", "value": CORE},
@@ -160,20 +177,6 @@ def _fixture(tmp_path: Path) -> dict[str, Any]:
     }
     sbom_path = tmp_path / "candidate7.cdx.json"
     sbom_digest = _write_json(sbom_path, sbom)
-
-    provenance_artifact_order = (
-        "pokrov-android-arm64-v8a.apk",
-        "pokrov-android-armeabi-v7a.apk",
-        "pokrov-android-market.aab",
-        "pokrov-android-universal.apk",
-        "pokrov-android-x86_64.apk",
-        "pokrov-windows-setup-x64.exe",
-    )
-    artifact_set_text = "".join(
-        f"{name}|{len(artifact_data[name])}|{artifact_digests[name]}\n"
-        for name in provenance_artifact_order
-    )
-    artifact_set_sha256 = _digest(artifact_set_text.encode("utf-8"))
 
     provenance = {
         "_type": "https://in-toto.io/Statement/v1",
@@ -505,6 +508,33 @@ def test_duplicate_sbom_source_component_fails_closed(tmp_path: Path) -> None:
     assert exc.value.code == "duplicate_sbom_source_component"
 
 
+def test_stale_sbom_root_bom_ref_fails_closed(tmp_path: Path) -> None:
+    fixture = _fixture(tmp_path)
+    fixture["sbom"]["metadata"]["component"]["bom-ref"] = (
+        "pkg:generic/pokrov-release-candidate@1.2.0%2B4046?candidate=6"
+    )
+    _rewrite_supply_refs(fixture)
+
+    with pytest.raises(validator.SupplyChainIssue) as exc:
+        _validate(fixture)
+
+    assert exc.value.code == "sbom_root_bom_ref_mismatch"
+
+
+def test_stale_sbom_artifact_set_property_fails_closed(tmp_path: Path) -> None:
+    fixture = _fixture(tmp_path)
+    properties = fixture["sbom"]["metadata"]["component"]["properties"]
+    next(
+        item for item in properties if item["name"] == "pokrov:artifact-set-sha256"
+    )["value"] = "0" * 64
+    _rewrite_supply_refs(fixture)
+
+    with pytest.raises(validator.SupplyChainIssue) as exc:
+        _validate(fixture)
+
+    assert exc.value.code == "sbom_artifact_set_digest_mismatch"
+
+
 def test_stale_provenance_subject_fails_closed(tmp_path: Path) -> None:
     fixture = _fixture(tmp_path)
     fixture["provenance"]["subject"][0]["digest"]["sha256"] = "0" * 64
@@ -542,6 +572,23 @@ def test_stale_provenance_invocation_artifact_set_fails_closed(
         _validate(fixture)
 
     assert exc.value.code == "provenance_invocation_artifact_set_mismatch"
+
+
+def test_stale_provenance_internal_candidate_reference_fails_closed(
+    tmp_path: Path,
+) -> None:
+    fixture = _fixture(tmp_path)
+    fixture["provenance"]["predicate"]["buildDefinition"][
+        "internalParameters"
+    ] = {
+        "client_hosted_ci_run": "NOT_RUN_EXACT_CANDIDATE6",
+    }
+    _rewrite_supply_refs(fixture)
+
+    with pytest.raises(validator.SupplyChainIssue) as exc:
+        _validate(fixture)
+
+    assert exc.value.code == "provenance_internal_candidate_reference_mismatch"
 
 
 def test_extra_provenance_source_fails_closed(tmp_path: Path) -> None:

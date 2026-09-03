@@ -10,6 +10,7 @@ import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Sequence
+from urllib.parse import quote
 
 
 EXIT_VALID = 0
@@ -18,6 +19,7 @@ MAX_JSON_BYTES = 8 * 1024 * 1024
 SHA256_PATTERN = re.compile(r"^[a-f0-9]{64}$")
 REVISION_PATTERN = re.compile(r"^[a-f0-9]{40}$")
 CANDIDATE_ID_PATTERN = re.compile(r"^pokrov-1\.2\.0-candidate\.[1-9][0-9]*$")
+CANDIDATE_REFERENCE_PATTERN = re.compile(r"candidate[._-]?([1-9][0-9]*)", re.IGNORECASE)
 EXPECTED_REPOSITORIES = {
     "platform": "Kiwunaka/portal",
     "client": "Kiwunaka/POKROV-app",
@@ -180,6 +182,54 @@ def _provenance_artifact_set_sha256(artifacts: dict[str, JsonObject]) -> str:
         digest = _sha256(artifact.get("sha256"), f"artifact.{name}.sha256")
         lines.append(f"{name}|{size}|{digest}\n")
     return hashlib.sha256("".join(lines).encode("utf-8")).hexdigest()
+
+
+def _candidate_ordinal(candidate_id: str) -> str:
+    return candidate_id.rsplit(".", maxsplit=1)[1]
+
+
+def _sbom_root_bom_ref(expected: ExpectedIdentity) -> str:
+    package_version = quote(expected.package_version, safe="")
+    return (
+        f"pkg:generic/pokrov-release-candidate@{package_version}"
+        f"?candidate={_candidate_ordinal(expected.candidate_id)}"
+    )
+
+
+def _validate_candidate_references(
+    value: Any,
+    *,
+    expected_ordinal: str,
+    path: str,
+) -> None:
+    if isinstance(value, dict):
+        for index, (key, child) in enumerate(value.items()):
+            _validate_candidate_references(
+                key,
+                expected_ordinal=expected_ordinal,
+                path=f"{path}.key[{index}]",
+            )
+            _validate_candidate_references(
+                child,
+                expected_ordinal=expected_ordinal,
+                path=f"{path}.value[{index}]",
+            )
+        return
+    if isinstance(value, list):
+        for index, child in enumerate(value):
+            _validate_candidate_references(
+                child,
+                expected_ordinal=expected_ordinal,
+                path=f"{path}[{index}]",
+            )
+        return
+    if not isinstance(value, str):
+        return
+    if any(match != expected_ordinal for match in CANDIDATE_REFERENCE_PATTERN.findall(value)):
+        raise SupplyChainIssue(
+            "provenance_internal_candidate_reference_mismatch",
+            path,
+        )
 
 
 def _require_under_root(path: Path, root: Path, label: str) -> Path:
@@ -356,7 +406,13 @@ def _validate_sbom(
     root_component = _object(metadata.get("component"), "sbom.metadata.component")
     if _string(root_component.get("version"), "sbom.metadata.component.version") != expected.package_version:
         raise SupplyChainIssue("sbom_package_version_mismatch", "sbom.metadata.component")
+    if (
+        _string(root_component.get("bom-ref"), "sbom.metadata.component.bom-ref")
+        != _sbom_root_bom_ref(expected)
+    ):
+        raise SupplyChainIssue("sbom_root_bom_ref_mismatch", "sbom.metadata.component.bom-ref")
     root_properties = _property_map(root_component.get("properties"), "sbom.metadata.component.properties")
+    artifact_set_sha256 = _provenance_artifact_set_sha256(artifacts)
     expected_properties = {
         "pokrov:candidate-id": expected.candidate_id,
         "pokrov:platform-commit": expected.platform_revision,
@@ -366,6 +422,11 @@ def _validate_sbom(
     for name, value in expected_properties.items():
         if root_properties.get(name) != value:
             raise SupplyChainIssue("sbom_source_revision_mismatch", name)
+    if root_properties.get("pokrov:artifact-set-sha256") != artifact_set_sha256:
+        raise SupplyChainIssue(
+            "sbom_artifact_set_digest_mismatch",
+            "pokrov:artifact-set-sha256",
+        )
 
     by_name, by_ref = _component_index(sbom)
     artifact_references = {
@@ -504,6 +565,13 @@ def _validate_provenance(
         raise SupplyChainIssue("provenance_candidate_id_mismatch", "provenance.externalParameters")
     if _string(external.get("product_version"), "provenance.externalParameters.product_version") != expected.package_version:
         raise SupplyChainIssue("provenance_package_version_mismatch", "provenance.externalParameters")
+    internal = build.get("internalParameters")
+    if internal is not None:
+        _validate_candidate_references(
+            _object(internal, "provenance.internalParameters"),
+            expected_ordinal=_candidate_ordinal(expected.candidate_id),
+            path="provenance.internalParameters",
+        )
 
     dependencies = _array(build.get("resolvedDependencies"), "provenance.resolvedDependencies")
     dependency_uri_list = [
