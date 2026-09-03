@@ -1,0 +1,130 @@
+{
+  "schema": "pokrov.release-1.2.0.windows-main-reproducibility/v1",
+  "work_order": "WO-013FZ",
+  "recorded_at_utc": "2026-09-03T21:13:03.170248Z",
+  "status": "SUCCESSOR_CLIENT_MAIN_REPRODUCIBILITY_PASS_PRE_CANDIDATE_LOCAL_GATE_UNCHANGED_NO_GO",
+  "scope": "HEADLESS_CLI_BUILD_SAME_BYTE_COMPARISON_AND_LOCAL_VALIDATION",
+  "candidate31": {
+    "id": "pokrov-1.2.0-candidate.31",
+    "version": "1.2.0+4053",
+    "operational_id": "4ee73886c1a285526baf3b666d5845b426754d8bee9f48365d1550a6ece1dd79",
+    "sources": {
+      "platform": "84837ce68a028f0c81580a5f1beefddba584de6d",
+      "client": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d"
+    },
+    "bytes_changed": false,
+    "new_candidate_created": false,
+    "gate_f": {
+      "decision": "NO_GO",
+      "required": 19,
+      "pass": 2,
+      "non_pass": 17,
+      "fail": 1,
+      "validation_errors": 0,
+      "changed": false
+    }
+  },
+  "successor_source": {
+    "correction_commit": "1847c7191401a09e6e92de42d4eadd7a0b9159bb",
+    "main_merge_commit": "ad2a33d14335a5974e089f50946367e8e02372b8",
+    "source_tree": "b7fe9cbd2125dce8a962eca192fd78a4c55ce6b9",
+    "core_head": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "platform_validation_root": "1eddf8c792c4f1b588ea7505b30cd92205f68f11",
+    "client_pr": "https://github.com/Kiwunaka/POKROV-app/pull/73",
+    "client_pr_merged_at": "2026-09-03T21:02:07Z",
+    "classification": "PRE_CANDIDATE_LOCAL"
+  },
+  "reproducibility": {
+    "canonical_drive": "P:",
+    "independent_reference_worktrees": 2,
+    "merged_main_validation_worktrees": 1,
+    "reference_file_count": 302,
+    "merged_main_file_count": 302,
+    "missing": 0,
+    "extra": 0,
+    "changed": 0,
+    "reference_hash_list_sha256": "a0af6445ce9c59a3ca1cfe72bdbbd964057861a0e6abe54fca1f2df2fc253ed1",
+    "critical_files": {
+      "pokrov_windows.exe": "611208b20b68b333d81655b0d6dbd7ada3a213fbfd9a82b6af71b01b3bdf15a2",
+      "pokrov_service.exe": "b962d3d0c369e24a5d927a4b024148a3b8ceaed0e78efb6aef454f537d4c326b",
+      "data/app.so": "4ce463e640259e419c74426fe446547d366ae0e935585482ca15a878eeb2c339"
+    },
+    "result": "PASS",
+    "candidate_credit": false
+  },
+  "verification": {
+    "version_and_core_parity": "PASS",
+    "cross_repository_contracts": "PASS",
+    "repository_hygiene": "PASS",
+    "presentation_and_performance_contracts": "PASS",
+    "observability_contracts": "3/3 PASS",
+    "observability_runtime": "29/29 PASS",
+    "diagnostics_collectors": "6/6 PASS",
+    "support_bundle": "15/15 PASS",
+    "app_shell": "413/413 PASS",
+    "runtime_engine_aggregate": "72 PASS; exact-DLL case separated",
+    "exact_core_dll_100_cycles": "PASS",
+    "android_flutter": "8/8 PASS",
+    "linux_flutter": "5/5 PASS",
+    "windows_flutter": "24/24 PASS",
+    "android_gradle": "BUILD SUCCESSFUL; 162 tasks",
+    "windows_analyze": "PASS; no issues",
+    "windows_native_release_ctest": "7/7 PASS",
+    "windows_release_build": "PASS"
+  },
+  "local_artifacts": {
+    "setup": {
+      "path": "pokrov-windows-x64-1.2.0+4053-setup.exe",
+      "size": 29154662,
+      "sha256": "03fb9b6b6e3794721b9ca2305a15d125ce49c5ea9d1748783a9186a5a353eeec",
+      "authenticode": "NotSigned",
+      "signing_status": "SKIPPED_BY_OWNER",
+      "installed": false
+    },
+    "manifest": {
+      "path": "pokrov-windows-x64-1.2.0+4053.manifest.json",
+      "size": 5884,
+      "sha256": "5d07c323613cb3ec1b28d9700a89a91c3ca4ff183bdcab0b826511e667ef6bf1",
+      "installer_sha256_matches": true
+    }
+  },
+  "hosted_client_pr": {
+    "url": "https://github.com/Kiwunaka/POKROV-app/pull/73",
+    "state": "MERGED",
+    "merge_commit": "ad2a33d14335a5974e089f50946367e8e02372b8",
+    "cross_repository_contract": {
+      "run_id": 33805592345,
+      "job_id": 100815165787,
+      "runner_id": 0,
+      "step_count": 0,
+      "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+    },
+    "owner_solo_exception_authorized": true,
+    "local_replacement_evidence": "PASS"
+  },
+  "cleanup": {
+    "temporary_drive_removed": true,
+    "old_duplicate_worktree_removed": true,
+    "old_duplicate_worktree_size_gb": 6.1,
+    "merged_main_build_retained": true,
+    "free_space_e_gb_after_cleanup": 240.32
+  },
+  "external_evidence": {
+    "directory": "E:/POKROV-tools/release-evidence/1.2.0-windows-reproducibility-2026-09-03/",
+    "final_result_sha256": "607bbbc7bfe6ccfcc2408981c0ffdf2743e0058e613cae6bbd5a5142a7da97a7",
+    "reference_hash_list_sha256": "a0af6445ce9c59a3ca1cfe72bdbbd964057861a0e6abe54fca1f2df2fc253ed1",
+    "reference_manifest_sha256": "f89eb3238a7fd556d2231d991248f37230b9f8123289f5b49568ddf7b76ca014"
+  },
+  "mutation_boundary": {
+    "screen_or_input_control_used": false,
+    "host_network_mutated": false,
+    "installer_launched": false,
+    "installer_installed": false,
+    "production_runtime_mutated": false,
+    "database_mutated": false,
+    "delivery_nodes_mutated": false,
+    "deploy_or_restart_performed": false,
+    "public_release_or_stable_pointer_changed": false
+  }
+}
