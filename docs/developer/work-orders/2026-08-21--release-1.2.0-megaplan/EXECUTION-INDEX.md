@@ -2,6 +2,24 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013GA successor-main local quality and CLI rebuild PASS
+
+The exact clean tuple platform `3018fd27...`, client `ad2a33d...` and Core
+`cd8f0f4...` completes the current local quality contour at `15/15 PASS`.
+That includes client analyze and `413/413` widget tests, cabinet E2E `69/69`,
+all three production frontend builds, marketing SEO/responsive checks and
+static performance `9/9`. The first missing-`node_modules` attempt is retained
+as `ENV_SETUP_MISS`; lockfile installs on Node `22.14.0` / npm `11.7.0` report
+zero vulnerabilities before the passing replay.
+
+The separately requested headless Windows CLI rebuild also passes its full
+client contour, Android Gradle build and Release CTest `7/7`. The staged bundle
+matches the retained merged-main reference at `302/302` files with zero
+missing, extra or changed bytes. The setup remains unsigned under the owner
+exception and is not installed. No candidate.32, deployment or public change
+is created; `candidate_proven=false`, Gate F remains `NO_GO 2/17/1`, and the
+378-row distribution remains `I4=5`, `I3=319`, `I2=20`, `I1=34`, `I0=0`.
+
 ## 2026-09-04 — WO-013FZ successor Windows main reproducibility PASS
 
 The Windows nondeterminism retained by WO-013FY is corrected and merged to

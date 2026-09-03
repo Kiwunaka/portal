@@ -1,0 +1,159 @@
+{
+  "schema": "pokrov.release-1.2.0.successor-main-local-quality/v1",
+  "work_order": "WO-013GA",
+  "recorded_at_utc": "2026-09-03T21:54:54.9869820Z",
+  "status": "SUCCESSOR_SOURCE_LOCAL_QUALITY_PASS_PRE_CANDIDATE_GATE_UNCHANGED_NO_GO",
+  "scope": "CLEAN_SOURCE_LOCAL_QUALITY_AND_HEADLESS_WINDOWS_CLI_REBUILD",
+  "sources": {
+    "platform": "3018fd27be57bfa590aac0bc55df949f8a7415ef",
+    "client": "ad2a33d14335a5974e089f50946367e8e02372b8",
+    "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "working_tree_state": "clean"
+  },
+  "local_quality": {
+    "status": "PASS",
+    "step_count": 15,
+    "pass_count": 15,
+    "candidate_proven": false,
+    "promotion_status": "MANUAL_OWNER_TEST",
+    "toolchain": {
+      "node": "22.14.0",
+      "npm": "11.7.0",
+      "lockfile_installs": [
+        "webapp npm ci: PASS; 0 vulnerabilities",
+        "adminapp npm ci: PASS; 0 vulnerabilities",
+        "marketing npm ci: PASS; 0 vulnerabilities"
+      ]
+    },
+    "steps": {
+      "performance_contract": "PASS",
+      "performance_contract_tests": "PASS; 30/30",
+      "client_analyze": "PASS",
+      "client_widget_suite": "PASS; 413/413",
+      "client_seed_contract": "PASS",
+      "client_docs_contract": "PASS",
+      "webapp_lint": "PASS",
+      "webapp_build": "PASS",
+      "webapp_cabinet_e2e": "PASS; 69/69",
+      "marketing_build": "PASS",
+      "marketing_seo": "PASS",
+      "marketing_responsive_reduced_motion": "PASS",
+      "adminapp_build_for_static_budget": "PASS",
+      "web_static_performance_collect": "PASS",
+      "web_static_performance_gate": "PASS; 9/9 measured budgets"
+    },
+    "first_attempt": {
+      "classification": "ENV_SETUP_MISS_RETAINED",
+      "reason": "The clean platform worktree did not yet contain lockfile-installed node_modules; frontend commands could not resolve their declared tools.",
+      "product_failure": false,
+      "report_sha256": "b48b8f90b661682ba59f40c3d072643a6f8bd94ae9b1aa1cb45537f98092da50"
+    },
+    "report_sha256": "aa7ce47f6e5bbaa042ba3fd521fbc637924a1cdbaa6489690f5024ef3d0074ec",
+    "web_performance_evidence_sha256": "f1f716bd5424c676d3b6a5f99ce21fa0f9c9d52ab8b88f003722f340095f38fa"
+  },
+  "windows_cli_rebuild": {
+    "status": "PASS",
+    "mode": "CLI_ONLY",
+    "version": "1.2.0+4053",
+    "full_client_gate": "PASS",
+    "app_shell_tests": "PASS; 413/413",
+    "android_gradle": "BUILD SUCCESSFUL",
+    "native_release_ctest": "PASS; 7/7",
+    "bundle_identity": {
+      "status": "PASS",
+      "expected_files": 302,
+      "actual_files": 302,
+      "missing": 0,
+      "extra": 0,
+      "changed": 0,
+      "hash_list_sha256": "69cec9aba4bd18436d905e4d5ab4bf1e103b11795e9d418c5f71bbfc39929cf1",
+      "critical_sha256": {
+        "pokrov_windows.exe": "611208b20b68b333d81655b0d6dbd7ada3a213fbfd9a82b6af71b01b3bdf15a2",
+        "pokrov_service.exe": "b962d3d0c369e24a5d927a4b024148a3b8ceaed0e78efb6aef454f537d4c326b",
+        "data/app.so": "4ce463e640259e419c74426fe446547d366ae0e935585482ca15a878eeb2c339",
+        "pokrov-core.dll": "f284fa8841f1a45271874a7a05ed6093fb0e3efbdd03e00001edd046be708204"
+      }
+    },
+    "installer": {
+      "size": 29154644,
+      "sha256": "c66817238d49e366d143de0580513167b38656c78044f8abc9a7313d67c721ab",
+      "manifest_sha256": "c3f546af9d72499be36fdff05137649d9619ca58ef092d9af89b84eb8cecf649",
+      "required_files": 11,
+      "authenticode": "NotSigned",
+      "signing_status": "SKIPPED_BY_OWNER",
+      "installed": false
+    },
+    "fail_first": {
+      "build": {
+        "classification": "ENV_SETUP_MISS_RETAINED",
+        "reason": "The stable P: path requires an explicit platform root for cross-repository seed validation.",
+        "log_sha256": "941832d5894988782358b72c8bfaeee1af41f9ab76f6759bb190670ee57ac50f"
+      },
+      "ctest": {
+        "classification": "ENV_SETUP_MISS_RETAINED",
+        "reason": "The generated CTest tree uses the canonical P: source path and requires the same temporary mapping during execution.",
+        "log_sha256": "15b030cbb4a210572adc89072d5ab5016155eb54a287fbc42692793387fff438"
+      }
+    },
+    "verification_report_sha256": "1b3e8efc671d0dd086417e5e394cf98831e60bec2090abc6b983f859c86e0d25",
+    "build_log_sha256": "fe27e7f24b54c503f4a1e4149d2d5a076244aa5752c903b8a447c1a8539903c9",
+    "ctest_log_sha256": "3b7b227b365927ff6850c13bff2a252275e382f9282d300af13598e88ce9502a"
+  },
+  "manual_lanes": [
+    {
+      "id": "candidate-device-performance",
+      "status": "MANUAL_OWNER_TEST"
+    },
+    {
+      "id": "candidate-artifact-size-regression",
+      "status": "MANUAL_OWNER_TEST"
+    },
+    {
+      "id": "browser-lab-page-performance",
+      "status": "MANUAL_OWNER_TEST"
+    },
+    {
+      "id": "controlled-origin-api-performance",
+      "status": "BLOCKED_BY_ACCESS"
+    },
+    {
+      "id": "exact-candidate-signing-device-origin",
+      "status": "MANUAL_OWNER_TEST"
+    }
+  ],
+  "release_effect": {
+    "candidate32_created": false,
+    "candidate31_changed": false,
+    "gate_f_changed": false,
+    "gate_f_decision": "NO_GO",
+    "gate_f_pass": 2,
+    "gate_f_non_pass": 17,
+    "gate_f_fail": 1,
+    "execution_ledger_changed": false,
+    "index_distribution": {
+      "I4": 5,
+      "I3": 319,
+      "I2": 20,
+      "I1": 34,
+      "I0": 0
+    }
+  },
+  "cleanup": {
+    "temporary_drive_removed": true,
+    "client_build_worktree_removed": true,
+    "client_build_worktree_size_gb": 6.0,
+    "external_evidence_retained": true,
+    "owner_untracked_objects_preserved": 4
+  },
+  "mutation_boundary": {
+    "screen_or_input_control_used": false,
+    "host_network_mutated": false,
+    "installer_launched": false,
+    "installer_installed": false,
+    "production_runtime_mutated": false,
+    "database_mutated": false,
+    "delivery_nodes_mutated": false,
+    "deploy_or_restart_performed": false,
+    "public_release_or_stable_pointer_changed": false
+  }
+}
