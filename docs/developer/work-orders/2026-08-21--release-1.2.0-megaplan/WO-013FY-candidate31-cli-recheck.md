@@ -116,6 +116,14 @@ fail=1
 validation_errors=0
 ```
 
+Platform PR 207 carries this append-only record. Its `repo-guardrails` and
+`cross-repository-contract` jobs each finish with `runner_id=0`, zero executed
+steps and the GitHub annotation that the job did not start because of account
+payment or spending-limit state. They are therefore
+`BLOCKED_BY_ACCESS_GITHUB_BILLING`, not test failures. Release-base isolation is
+`SKIPPED`; local replacement evidence is the passing contract suite listed
+above. The already authorized `OWNER_SOLO_EXCEPTION` applies to review/merge.
+
 The temporary 5.94 GB client worktree, comparison copy and compiler
 intermediates were removed after their resolved paths were checked. About
 28.02 MB of diagnostic evidence is retained under
@@ -136,7 +144,7 @@ physical Android matrices without taking over the owner's active desktop.
 
 | File | SHA-256 |
 |---|---|
-| `013FY-candidate31-cli-recheck.json` | `537ef4b247d38fb4867bebe1c91131487532a6f6ba13e3b64a55eaa99c22d26a` |
+| `013FY-candidate31-cli-recheck.json` | `f7c010a0f33ce8ebbed35df68cf19d555fab56f69da18a25fb03f66093e30c03` |
 | external `candidate31-cli-recheck.json` | `cdfb27a88dbcea2b0a823fa135fa3e9c925db36765b9057158a5230b0b4f8cf8` |
 
 The tracked record retains no secret, private key, token, raw connection

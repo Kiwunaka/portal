@@ -162,6 +162,27 @@
     "changed": false,
     "reason": "fresh build and IPC evidence do not close managed network, physical Android, origin, provider, rollback or final rows"
   },
+  "hosted_pr": {
+    "url": "https://github.com/Kiwunaka/portal/pull/207",
+    "head": "0813cc93549b42da2df6dd820ea0ba2964468f08",
+    "repo_guardrails": {
+      "run_id": 33798843754,
+      "job_id": 100793012336,
+      "runner_id": 0,
+      "step_count": 0,
+      "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+    },
+    "cross_repository_contract": {
+      "run_id": 33798843643,
+      "job_id": 100793011709,
+      "runner_id": 0,
+      "step_count": 0,
+      "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+    },
+    "release_base_isolation": "SKIPPED",
+    "owner_solo_exception_authorized": true,
+    "hosted_failure_claimed_as_test_failure": false
+  },
   "cleanup": {
     "temporary_client_worktree_removed": true,
     "temporary_worktree_removed_gb": 5.94,
