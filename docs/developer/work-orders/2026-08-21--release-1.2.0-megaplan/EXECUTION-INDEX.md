@@ -1,6 +1,27 @@
 # POKROV 1.2.0 Execution Index
 
-Last updated: 2026-09-03
+Last updated: 2026-09-04
+
+## 2026-09-04 — WO-013FZ successor Windows main reproducibility PASS
+
+The Windows nondeterminism retained by WO-013FY is corrected and merged to
+`POKROV-app/main`. Two independent clean worktrees at correction commit
+`1847c719...` and a third clean build from merged main `ad2a33d...` share the
+same source tree and produce `302/302` staged Windows bundle files byte for
+byte. The previously unstable UI, service and `data/app.so` hashes are now
+exact.
+
+The merged-main headless CLI run passes cross-repository/release contracts,
+the complete bounded Flutter and Android contour, Windows analyze, Release
+native CTest `7/7` and the exact Core DLL `100`-cycle backtest. Its local
+unsigned installer is retained under the existing owner exception and is not
+launched or installed. Client PR 73 is merged; its zero-step hosted job is
+`BLOCKED_BY_ACCESS_GITHUB_BILLING`, with the authorized solo exception backed
+by the complete local evidence.
+
+This is successor `PRE_CANDIDATE_LOCAL` proof only. Candidate.31 remains
+immutable at Gate F `NO_GO 2/17/1`; no new candidate, deploy, public asset,
+Store object or stable pointer exists. No completion-index level changes.
 
 ## 2026-09-03 — WO-013FR candidate.29 managed egress and RU-Pi AWG NO_GO
 
