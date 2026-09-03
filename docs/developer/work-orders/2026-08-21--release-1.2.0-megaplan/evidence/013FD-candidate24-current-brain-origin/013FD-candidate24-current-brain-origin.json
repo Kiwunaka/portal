@@ -1,0 +1,133 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate24-current-brain-origin/v1",
+  "work_order": "WO-013FD",
+  "recorded_at_utc": "2026-09-03T00:54:41Z",
+  "status": "PASS_CURRENT_PUBLIC_API_AND_BRAIN_SOURCE_READINESS_DELIVERY_AUTHENTICATED_CLIENT_RU_AGGREGATE_OPEN",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.24",
+    "version": "1.2.0+4053",
+    "private": true,
+    "promotion_authorized": false,
+    "sources": {
+      "platform": "06b932b48ffcb92c8ec024b8892aaa9c36359673",
+      "client": "54259b0f84e16c58e2d1f5f04b369af4fd0834b2",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d"
+    },
+    "signed_manifest_sha256": "bdd51f2c428298e3178fd94d9befaf79aa442445a384f52882995ffd5d9ddeed"
+  },
+  "brain_origin": {
+    "status": "PASS_EXACT_SOURCE_READINESS_AND_ENABLED_DELIVERY",
+    "source": {
+      "status": "PASS",
+      "observed_at": "2026-09-03T03:53:30.771696+03:00",
+      "payload_count": 197,
+      "raw_match_count": 4,
+      "crlf_only_difference_count": 193,
+      "normalized_match_count": 197,
+      "mismatch_count": 0,
+      "normalization_rule": "CRLF_TO_LF_ONLY",
+      "external_report_sha256": "1dbc4f493f31ee2b492b967a2ea6166ee18f6b1d5f5072a7579617eb9957a472"
+    },
+    "readiness": {
+      "status": "PASS",
+      "observed_at": "2026-09-03T03:53:50.735479+03:00",
+      "check_count": 23,
+      "failure_count": 0,
+      "subscription_samples_requested": 5,
+      "subscription_samples_observed": 5,
+      "external_report_sha256": "1881d51f43d8044a08cfbc08f432ca77ea1d4c340ebe6a39611cafccb36172d1"
+    },
+    "enabled_delivery": {
+      "status": "PASS",
+      "sample_count": 3,
+      "required_node_count": 7,
+      "open_count_per_sample": [7, 7, 7],
+      "non_open_node_codes_per_sample": [[], [], []],
+      "external_report_sha256": [
+        "adabec6971f73c305f211cdf43141203ab1ac223c7a2e272fc8662985ae79c44",
+        "fa15cde9ac72c35cdc4fb95d3945aadcacd41812f786f8c463debc29ef62b158",
+        "0d516c78ec7e8db20c95e1eb92a5aee430da4eef58cd89849a9ea323215589a4"
+      ]
+    }
+  },
+  "current_origin": {
+    "status": "PASS_PUBLIC_API_BUDGETS",
+    "method": "PROXY_DISABLED_PHYSICAL_SOURCE_BOUND",
+    "environment_fingerprint": "9a94902f446bcc4fc5bbc0007ae4d5f25e452f2a50d76f897000975bfd0fc57c",
+    "source_address_retained_in_tracked_evidence": false,
+    "health": {
+      "status": "PASS",
+      "p95_ms": 36.2096,
+      "threshold_ms": 100,
+      "sample_count": 50,
+      "warmup_count": 5,
+      "gate_report_sha256": "a434c4727919bb9c5ee6f893fe4c15cad06ba4e1222d40f62f965040c4bfac68",
+      "private_sample_report_sha256": "3b504c142d1a35cf0300f9400d4bfeb76b518192751faa84bca167a7da83477a"
+    },
+    "public_catalog": {
+      "status": "PASS",
+      "p95_ms": 49.9565,
+      "threshold_ms": 200,
+      "sample_count": 50,
+      "warmup_count": 5,
+      "gate_report_sha256": "6d6b3daa8d7750602ee826c91c46883df1cce68cb893a1ac04ed0bcd43599dee",
+      "private_sample_report_sha256": "40f8064b87a5ebe2ed6023860cffc2fe5a3b54c9ad7e1002dab19d51fd23c88c"
+    },
+    "authenticated_client_egress": "NOT_RUN"
+  },
+  "stop_ship": {
+    "aggregate_status": "BLOCKED",
+    "candidate_proven": false,
+    "permanent_regressions": {"passed": 7, "total": 7},
+    "owner_solo_pr_controls": {
+      "passed": 3,
+      "total": 3,
+      "independent_review_claimed": false
+    },
+    "hosted_branch_policy": {"blocked_by_access": 2, "accepted_unprotected": 1},
+    "manual_live_gates": {"not_run": 1, "total": 1},
+    "open_p0_queries": {
+      "repositories_checked": 3,
+      "label_count_per_repository": [0, 0, 0],
+      "title_count_per_repository": [0, 0, 0],
+      "final_live_attestation_replaced": false
+    },
+    "external_report_sha256": "9f74876a2d4b413a6c60dc2825d52f856154c12dbe9c43608414ccb34be4014e"
+  },
+  "completion_index": {
+    "FRKN_PLAN/W9-02": "I2_CANDIDATE24_CURRENT_PUBLIC_AND_BRAIN_PASS_AUTHENTICATED_CLIENT_GENERAL_RU_OPEN",
+    "REL_GATE/GATE-D": "UNCHANGED_I3_PROVIDER_E2E_OPEN",
+    "REL_GATE/GATE-E": "UNCHANGED_I3_PHYSICAL_AND_COMPARABLE_PERFORMANCE_OPEN",
+    "REL_GATE/GATE-F": "UNCHANGED_I3_BLOCKED_REFRESH_PENDING",
+    "REL_DOD/DOD-01": "UNCHANGED_I3_FINAL_LIVE_ATTESTATION_OPEN",
+    "REL_DOD/DOD-13": "UNCHANGED_I1_COMPARABLE_DEVICE_BASELINES_OPEN",
+    "level_changes": 0
+  },
+  "remaining": [
+    "exact candidate24 authenticated current-origin client egress",
+    "general RU-origin manifest and authenticated client proof",
+    "physical mobile and fixed multi-ASN origin coverage",
+    "live provider, PostgreSQL, outbox and reconciliation proof",
+    "physical and comparable-device performance",
+    "final live no-open-P0, false-green and privacy attestation"
+  ],
+  "mutation_boundary": {
+    "brain_runtime_mutated": false,
+    "database_mutated": false,
+    "delivery_nodes_mutated": false,
+    "host_network_configuration_mutated": false,
+    "client_tunnel_started": false,
+    "screen_or_input_control_used": false,
+    "public_release_or_stable_pointer_changed": false
+  },
+  "evidence_safety": {
+    "credentials_exported": false,
+    "private_keys_exported": false,
+    "tokens_exported": false,
+    "remote_content_exported": false,
+    "response_bodies_exported": false,
+    "raw_addresses_or_hosts_exported": false,
+    "local_source_address_exported": false,
+    "device_identifiers_exported": false
+  }
+}
