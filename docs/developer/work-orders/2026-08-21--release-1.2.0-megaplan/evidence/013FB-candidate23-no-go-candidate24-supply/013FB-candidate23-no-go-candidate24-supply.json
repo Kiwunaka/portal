@@ -1,0 +1,85 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate23-no-go-candidate24-supply/v1",
+  "recorded_at_utc": "2026-09-03T00:18:00Z",
+  "candidate_23": {
+    "id": "pokrov-1.2.0-candidate.23",
+    "version": "1.2.0+4052",
+    "sources": {
+      "platform": "5ba4dba3db0f900466d2f36d84d981a0a9c9fe68",
+      "client": "df9ed85bb0e7fd7bf1e1c43d033825212c2f6354",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "95f9f03ae80eb291d7138df1b3996054f9a05336"
+    },
+    "signed_identity": {
+      "manifest_sha256": "5073c201541be70be124ab305203f830fd3c531725ad4f6632115e2e738301a1",
+      "signature_sha256": "92027334651409cdf5e8efe7f53e0992bff54bffb2381ae382263e00b6d78863",
+      "receipt_sha256": "d11e24ac84846231a52f42a2dc0f64576d3b7a04a8e005794210457c35828ba6"
+    },
+    "headless_windows_pipe_contention": {
+      "status": "FAIL",
+      "environment": "isolated Windows 11 VirtualBox guest with exact candidate.23 service installed",
+      "observed_at_utc": "2026-09-03T00:17:30.6867929Z",
+      "attempted_clients": 32,
+      "accepted_clients": 9,
+      "rejected_clients": 23,
+      "service_status_after_probe": "Running",
+      "non_empty_client_error_count": 0,
+      "probe_executable_sha256": "9cdfb28282d1b27047bc5eb1f6ffc542954c78a655b2b2ec2c8b7cd1e00a4fea",
+      "screen_or_input_control_used": false
+    },
+    "decision": "IMMUTABLE_NO_GO_NAMED_PIPE_CONTENTION"
+  },
+  "candidate_24": {
+    "id": "pokrov-1.2.0-candidate.24",
+    "version": "1.2.0+4053",
+    "sources": {
+      "platform": "06b932b48ffcb92c8ec024b8892aaa9c36359673",
+      "client": "54259b0f84e16c58e2d1f5f04b369af4fd0834b2",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "a2fb1067adc4f2881299b45929a0d46736f74fff"
+    },
+    "correction": {
+      "status": "IMPLEMENTED_AND_SOURCE_VERIFIED",
+      "behavior": "bounded named-pipe connection retries for service clients",
+      "regression_scope": "32 concurrent client connection attempts",
+      "client_pull_request": 68,
+      "client_hosted_run": 33694432737,
+      "client_hosted_conclusion": "success"
+    },
+    "signed_supply": {
+      "status": "PASS",
+      "artifact_count": 6,
+      "windows_runtime_file_count": 11,
+      "manifest_sha256": "bdd51f2c428298e3178fd94d9befaf79aa442445a384f52882995ffd5d9ddeed",
+      "signature_sha256": "ef47e339cafe23bd994844e70fe8263902a0d62f03312a35b10536913e7ac0bc",
+      "receipt_sha256": "1ff20e15adda261dff182c1166a276270a05721f3770f5cc4df1d77b61153343",
+      "sbom_sha256": "3fbfb3e5e1d33b942cac82714955d27ff46fcad1608d0bfaa694dd6c91893f3d",
+      "provenance_sha256": "7b89514a782f092e406e7d5c2fab166bbbe62997101fcde12f75ae3f0326adf4",
+      "release_handoff_sha256": "87c688ffdd2f71363aa8cf4ca7bf99147d6109cc21d9d5887bc4f025f2fd2b63",
+      "supply_validation_sha256": "0261e6833a3272d5df587d0a73ed73576620cbfd83675ee2a2645e5059e0d36a",
+      "signer_run": 33698144521,
+      "signer_artifact_id": 9872522824,
+      "signer_artifact_digest": "sha256:09d407e22916f347c4e466ef098966c8f21a5aeb1cadd5c30e9741938f5e6656"
+    },
+    "windows_local": {
+      "debug_native_ctest": "PASS_8_OF_8",
+      "ctest_junit_sha256": "d919ab468457e319dc8a23061815af42c6d292ea52436f0ba71091c496a9661b",
+      "installer_sha256": "ffc9b07c59f75372b48c5c1e94551d6d9af710ac0287cd1352142b0964707fb3",
+      "installer_size_bytes": 29139238,
+      "headless_vm_file_identity": "PASS",
+      "headless_vm_install": "NOT_RUN_NON_ELEVATED_GUEST_SESSION",
+      "screen_or_input_control_used": false
+    },
+    "bounded_scans": {
+      "artifact_scan_status": "PASS_ZERO_DEFINITE_FINDINGS",
+      "artifact_scan_sha256": "588b48a124431d27cdef7ac12c4a9afa9ef10d858d027c8524ef82357b55aa40",
+      "windows_staging_status": "PASS_ZERO_DEFINITE_FINDINGS",
+      "windows_staging_scan_sha256": "1f7cbe4f8f8126f549a05b19d0c47a37a9be5f485adb967869e1f4f95253a7d7"
+    },
+    "promotion_authorized": false,
+    "public_release": false,
+    "store_upload": false,
+    "stable_pointer_mutated": false
+  },
+  "evidence_ceiling": "CANDIDATE23_EXACT_WINDOWS_PIPE_CONTENTION_FAIL_AND_IMMUTABLE_NO_GO; CANDIDATE24_SIGNED_SUPPLY_AND_SOURCE_TESTS_PASS; EXACT_CANDIDATE24_WINDOWS_INSTALL_AND_DEVICE_RUNTIME_REMAIN_NON_PASS"
+}
