@@ -1,0 +1,77 @@
+{
+  "schema": "pokrov.release-1.2.0.windows-ctest-configuration-correction/v1",
+  "work_order": "WO-013FK",
+  "recorded_at_utc": "2026-09-03T05:34:40.7353705Z",
+  "status": "PASS_LOCAL_TEST_HARNESS_CORRECTION_HOSTED_BLOCKED_BY_BILLING",
+  "scope": "WINDOWS_NATIVE_TEST_REGISTRATION_ONLY",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.25",
+    "version": "1.2.0+4053",
+    "candidate_source_client": "54259b0f84e16c58e2d1f5f04b369af4fd0834b2",
+    "candidate_bytes_changed": false,
+    "candidate_credit_changed": false,
+    "gate_f": "UNCHANGED_BLOCKED_5_14_0"
+  },
+  "successor_client": {
+    "pull_request": 71,
+    "change_commit": "f59373b313b8d4e7805c8aa4703489a8ff01758e",
+    "merge_commit": "ed74928a88ead8053a845f9d8e294d1298b83a6a",
+    "promotion_line": "main",
+    "runtime_product_source_changed": false,
+    "release_artifacts_changed": false,
+    "documentation_updated": "docs/operations/windows-release-readiness.md"
+  },
+  "cause": {
+    "cmake_version": "3.29.5-msvc4",
+    "invalid_form": "set_tests_properties(pokrov_service_integration PROPERTIES CONFIGURATIONS Debug)",
+    "finding": "CONFIGURATIONS_IS_AN_ADD_TEST_OPTION_NOT_A_TEST_PROPERTY",
+    "observed_effect": "UNFILTERED_RELEASE_CTEST_ATTEMPTED_DEBUG_ONLY_SCM_SERVICE_INTEGRATION_AND_RECEIVED_SCM_1063"
+  },
+  "correction": {
+    "form": "add_test(NAME pokrov_service_integration COMMAND pokrov_service_integration_test CONFIGURATIONS Debug)",
+    "effect": "DEBUG_INCLUDES_INTEGRATION_RELEASE_EXCLUDES_INTEGRATION"
+  },
+  "local_verification": {
+    "fresh_cmake_configure": "PASS",
+    "debug_enumeration": "8_TESTS_INCLUDING_INTEGRATION",
+    "release_enumeration": "7_TESTS_EXCLUDING_INTEGRATION",
+    "debug_ctest": "PASS_8_OF_8",
+    "release_ctest": "PASS_7_OF_7",
+    "docs_contract": "PASS",
+    "validate_seed_pwsh_core_exact_roots": "PASS",
+    "git_diff_check": "PASS",
+    "artifacts_releases_delta": "NONE",
+    "temporary_binary_outputs_cleaned": true,
+    "retained_cmake_configuration_bytes": 1463609,
+    "main_desktop_control_used": false
+  },
+  "hosted_ci": {
+    "run_id": "33719302139",
+    "status": "BLOCKED_BY_ACCESS",
+    "runner_allocated": false,
+    "executed_steps": 0,
+    "reason": "GITHUB_ACCOUNT_PAYMENT_OR_SPENDING_LIMIT",
+    "pass_claimed": false,
+    "purchase_performed": false
+  },
+  "review": {
+    "independent_reviewer": false,
+    "policy": "OWNER_SOLO_EXCEPTION",
+    "local_evidence_recorded_before_merge": true
+  },
+  "completion_index": {
+    "phase_03": "UNCHANGED_I3_TEST_HARNESS_CORRECTION_LOCAL",
+    "REL_GATE/GATE-F": "UNCHANGED_I3_BLOCKED_5_14_0",
+    "gate_g": "NOT_AUTHORIZED",
+    "level_changes": 0
+  },
+  "remaining": [
+    "restore hosted Actions capacity or use a separately approved runner path before claiming successor hosted CI",
+    "run exact candidate25 connected Windows TUN, DNS, authenticated egress, recovery and connected-uninstall matrices",
+    "run exact packaged Android and physical Wi-Fi and Beeline matrices"
+  ],
+  "production_mutation_performed": false,
+  "public_release_created": false,
+  "stable_pointer_mutated": false,
+  "release_effect": "NONE"
+}
