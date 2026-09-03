@@ -1,6 +1,36 @@
 # POKROV 1.2.0 Execution Index
 
-Last updated: 2026-09-02
+Last updated: 2026-09-03
+
+## 2026-09-03 — WO-013FC candidate.24 exact Gate F snapshot
+
+Candidate.24 signed identity, receipt, detached Ed25519 signature, exact
+four-source tuple, three upstream records and all `19/19` evidence pointers
+validate. The first exact candidate.24 Gate F decision is `BLOCKED 3 PASS / 16
+non-PASS / 0 FAIL` with zero validation errors. Signed supply, release-document
+binding and `10/10` attached hosted checks pass. Installed candidate.24
+Windows/Android runtime, origins, rollback, provider, Operator,
+legal/commercial, comparable performance and the final live attestation remain
+non-PASS. Gate G and every public/Store/stable mutation remain unauthorized.
+
+No completion-index row advances. Distribution stays `I4=7`, `I3=320`,
+`I2=19`, `I1=32`, `I0=0` across `378` rows.
+
+## 2026-09-03 — WO-013FB candidate.23 NO_GO and candidate.24 signed supply
+
+The exact installed candidate.23 Windows service remains `Running`, but a
+headless 32-client contention probe accepts `9` requests and rejects `23`.
+Candidate.23 is therefore immutable `NO_GO`. The merged client correction adds
+bounded pipe-connection retries and a 32-client regression.
+
+Candidate.24 binds build `1.2.0+4053` to platform `06b932b...`, client
+`54259b0...`, Core `cd8f0f4...` and signed release-index `a2fb106...`. Six
+artifacts, `11/11` Windows runtime files, SBOM, provenance, strict-v2 handoff,
+manifest/signature/receipt and local public-key verification pass. The exact
+installer file identity passes inside the headless Windows guest and native
+Debug CTest passes `8/8`; candidate.24 installation is `NOT_RUN` because the
+available guestcontrol token is non-elevated. No mouse or screen input, public
+release, Store upload, stable pointer or promotion was used.
 
 ## 2026-09-02 — WO-013FA candidate.22 connected-uninstall NO_GO
 

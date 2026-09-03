@@ -1,0 +1,61 @@
+{
+  "schema": "pokrov.release-1.2.0.signed-candidate-binding-evidence/v1",
+  "recorded_at_utc": "2026-09-03T00:19:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.24",
+    "version": "1.2.0+4053",
+    "release_index_source_revision": "a2fb1067adc4f2881299b45929a0d46736f74fff",
+    "platform_source_revision": "06b932b48ffcb92c8ec024b8892aaa9c36359673",
+    "client_source_revision": "54259b0f84e16c58e2d1f5f04b369af4fd0834b2",
+    "core_source_revision": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "signer_workflow_run": "Kiwunaka/pokrov/actions/runs/33698144521",
+    "signer_artifact_id": 9872522824,
+    "signer_artifact_name": "pokrov-pokrov-1.2.0-candidate.24-signed-manifest-a2fb1067adc4f2881299b45929a0d46736f74fff"
+  },
+  "outputs": [
+    {
+      "path": "pokrov-1.2.0-candidate.24.release-index.json",
+      "sha256": "bdd51f2c428298e3178fd94d9befaf79aa442445a384f52882995ffd5d9ddeed",
+      "size_bytes": 6884
+    },
+    {
+      "path": "pokrov-1.2.0-candidate.24.release-index.json.sig",
+      "sha256": "ef47e339cafe23bd994844e70fe8263902a0d62f03312a35b10536913e7ac0bc",
+      "size_bytes": 64
+    },
+    {
+      "path": "pokrov-1.2.0-candidate.24.signing-receipt.json",
+      "sha256": "1ff20e15adda261dff182c1166a276270a05721f3770f5cc4df1d77b61153343",
+      "size_bytes": 589
+    }
+  ],
+  "independent_validation": {
+    "status": "READY_SIGNED_MANIFEST",
+    "receipt_matches_outputs": true,
+    "detached_signature_verified_with_public_keyring": true,
+    "method": "Hosted main-only signer plus local exact-byte readback and detached Ed25519 verification against the manifest-bound public keyring",
+    "promotion_authorized": false
+  },
+  "physical_phone_install_binding": {
+    "status": "NOT_RUN",
+    "gate_f_check": "android_physical_device",
+    "candidate_signature_validation_depends_on_this_status": false
+  },
+  "windows_vm_binding": {
+    "installer_file_identity": "PASS",
+    "installation_status": "NOT_RUN_NON_ELEVATED_GUEST_SESSION",
+    "screen_or_input_control_used": false
+  },
+  "mutation_boundary": {
+    "candidate_artifact_mutated": false,
+    "phone_install_or_runtime_test": false,
+    "windows_install_or_runtime_test": false,
+    "screen_or_input_control_used": false,
+    "signing_private_key_accessed_locally": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE24_SIGNED_OUTPUTS_AND_HEADLESS_WINDOWS_FILE_IDENTITY_ONLY; INSTALLED_WINDOWS_AND_PHYSICAL_ANDROID_RUNTIME_ARE_SEPARATE_NON_PASS_GATE_F_CHECKS"
+}
