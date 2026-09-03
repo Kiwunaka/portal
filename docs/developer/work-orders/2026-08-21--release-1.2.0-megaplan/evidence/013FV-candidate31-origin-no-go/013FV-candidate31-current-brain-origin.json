@@ -1,0 +1,136 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate31-current-brain-origin/v1",
+  "work_order": "WO-013FV",
+  "recorded_at_utc": "2026-09-03T17:52:10Z",
+  "status": "CURRENT_ORIGIN_BLOCKED_ACTIVE_HOST_TUNNEL_BRAIN_SOURCE_DRIFT",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.31",
+    "version": "1.2.0+4053",
+    "operational_id": "4ee73886c1a285526baf3b666d5845b426754d8bee9f48365d1550a6ece1dd79",
+    "private": true,
+    "promotion_authorized": false,
+    "sources": {
+      "platform": "84837ce68a028f0c81580a5f1beefddba584de6d",
+      "client": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "6de47f0320c9262a5bd2d454f3edb83d557f33a4"
+    },
+    "signed_manifest_sha256": "dd4e99166ac3ec2c566e7d44ee93324f15ae7b3b92df6b35ff35de7053691f9a"
+  },
+  "brain_origin": {
+    "status": "FAIL_EXACT_PLATFORM_SOURCE_DRIFT",
+    "source": {
+      "status": "FAIL",
+      "observed_at": "2026-09-03T17:46:09.823606+00:00",
+      "payload_count": 197,
+      "raw_match_count": 4,
+      "crlf_only_difference_count": 192,
+      "normalized_match_count": 196,
+      "mismatch_count": 1,
+      "mismatch_paths": ["portal_bot/control_panel.py"],
+      "normalization_rule": "CRLF_TO_LF_ONLY",
+      "known_git_file_versions_scanned": 21,
+      "live_file_matches_known_git_version": false,
+      "remote_content_retained": false,
+      "external_report_sha256": "a512a7ebf4d3fda5443d161059e4095250927afd5646ed82cca2d367136f8cf4"
+    },
+    "readiness": {
+      "status": "PASS_AFTER_RETAINED_TRANSIENT_SSH_FAILURES",
+      "final_observed_at": "2026-09-03T17:52:09.532103+00:00",
+      "final_check_count": 23,
+      "final_failure_count": 0,
+      "subscription_samples_requested": 5,
+      "subscription_samples_observed": 5,
+      "attempts": [
+        {
+          "status": "FAIL",
+          "failure_names": ["endpoint:checkout443"],
+          "classification": "TRANSIENT_ADMIN_SSH_TIMEOUT",
+          "external_report_sha256": "6026e50193fea5dcdaebffa2eabef9cefc771d4137b7965dcae61066441ceaa2"
+        },
+        {
+          "status": "FAIL",
+          "failure_names": ["unit:caddy", "unit:portal-api"],
+          "classification": "TRANSIENT_ADMIN_SSH_TIMEOUT",
+          "external_report_sha256": "7caae40a1e2fb53b07a6f268b4be93af3a9e635cbf24fe16a77d7703bc762fe3"
+        },
+        {
+          "status": "PASS",
+          "failure_names": [],
+          "classification": "COMPLETE_READINESS_SAMPLE",
+          "external_report_sha256": "126dcbc9fa0a69f78f700af9a4b5196f44f08b5002456a1fab2a68fa2d5b51d6"
+        }
+      ]
+    },
+    "enabled_delivery": {
+      "status": "PASS_THREE_CONSECUTIVE_COMPLETE_SAMPLES",
+      "required_node_count": 7,
+      "final_sample_count": 3,
+      "open_count_per_final_sample": [7, 7, 7],
+      "non_open_node_codes_per_final_sample": [[], [], []],
+      "final_external_report_sha256": [
+        "7899778a84e50b4f5cb1dc891c35fe3570b529f2e2a5014fe24d2969f324b255",
+        "1207101cee6b5cd2613adf8db9516fbeeadd0374f877c0e52c463c0f4dcec028",
+        "da3ade90672a9a19a7d82bb1390d1663faf576cf7e52538fb2521b23e4a5cae4"
+      ],
+      "retained_preliminary_samples": {
+        "transient_probe_failure_count": 1,
+        "complete_pass_count": 2,
+        "external_report_sha256": [
+          "b9ccba812fbe161a52e97a76553f937ddd63306f79dca507d5eb26816d19777d",
+          "83c8dc93882c107a0ad918f0241e4b90f179cddb6dad633897a0c33fbb58fb79",
+          "5b03f0a841513bfa1717f0a46f195c955d8da448690908224753e76880d7dbc0"
+        ]
+      }
+    }
+  },
+  "current_origin": {
+    "status": "BLOCKED_BY_ACTIVE_HOST_TUNNEL",
+    "method": "READ_ONLY_ADAPTER_AND_DEFAULT_ROUTE_INVENTORY",
+    "active_tunnel_like_adapter_count": 2,
+    "sing_tun_default_route_observed": true,
+    "origin_credit_awarded": false,
+    "owner_host_tunnel_mutated": false,
+    "latency_measurement": "NOT_RUN_NO_HONEST_ORIGIN_ATTRIBUTION",
+    "authenticated_client_egress": "NOT_RUN"
+  },
+  "checks": {
+    "current_origin": "BLOCKED_BY_ACCESS",
+    "brain_origin": "FAIL"
+  },
+  "gate_f_effect": {
+    "current_origin": "BLOCKED_BY_ACCESS",
+    "brain_origin": "FAIL",
+    "decision": "NO_GO",
+    "pass": 2,
+    "non_pass": 17,
+    "fail": 1
+  },
+  "remaining": [
+    "reconcile the live Brain portal_bot/control_panel.py to an exact committed candidate source under separate production authorization",
+    "repeat current-origin on a tunnel-free independent source without mutating the owner workstation",
+    "exact candidate31 authenticated client egress",
+    "general RU-origin manifest and authenticated client proof",
+    "physical Android and managed Windows runtime matrices",
+    "provider, Operator, legal, rollback, performance and final aggregate evidence"
+  ],
+  "mutation_boundary": {
+    "brain_runtime_mutated": false,
+    "database_mutated": false,
+    "delivery_nodes_mutated": false,
+    "host_network_configuration_mutated": false,
+    "client_tunnel_started": false,
+    "screen_or_input_control_used": false,
+    "public_release_or_stable_pointer_changed": false
+  },
+  "evidence_safety": {
+    "credentials_exported": false,
+    "private_keys_exported": false,
+    "tokens_exported": false,
+    "remote_content_exported": false,
+    "response_bodies_exported": false,
+    "raw_addresses_or_hosts_exported": false,
+    "local_source_address_exported": false,
+    "device_identifiers_exported": false
+  }
+}
