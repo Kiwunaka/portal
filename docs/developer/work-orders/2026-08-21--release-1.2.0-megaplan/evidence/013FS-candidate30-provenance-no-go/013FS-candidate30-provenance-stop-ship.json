@@ -1,0 +1,78 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate30-supply-stop-ship/v1",
+  "recorded_at_utc": "2026-09-03T14:43:54Z",
+  "status": "FAIL_STOP_SHIP",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.30",
+    "operational_id": "79d275f28b3aa8b96252112ead3ef72b307ad40216542b5c0cc3fc622fd53ec3",
+    "manifest_sha256": "33ceb44b445dd5f66d5b10e0e1c90da03d9a6efe3d1c4966dd2be72bf955230c",
+    "sbom_sha256": "f0e2d8a337dc219f709abbbc1c5723b2cc734c5693127ad1eb25602f39de74b7",
+    "provenance_sha256": "ffe0abf35423684a43853ff412c689ebc5cd2a829320c221e7dd9942782be45e"
+  },
+  "artifact_set": {
+    "expected_sha256": "5076e81d795927e7432eeeea9cde5093e8bed71e1a2bf2e6d670eeb2520069d1",
+    "algorithm": "SHA-256 of six ordered UTF-8 lines: name|size_bytes|sha256 plus LF"
+  },
+  "findings": [
+    {
+      "code": "sbom_root_bom_ref_mismatch",
+      "path": "sbom.metadata.component.bom-ref",
+      "retained": "pkg:generic/pokrov-release-candidate@1.2.0%2B4053?candidate=29",
+      "expected": "pkg:generic/pokrov-release-candidate@1.2.0%2B4053?candidate=30"
+    },
+    {
+      "code": "sbom_artifact_set_digest_mismatch",
+      "path": "sbom.metadata.component.properties.pokrov:artifact-set-sha256",
+      "retained": "79517b5c1e771be88851ad3b3644e49bfce1c619831db8db17de8a604fa89e87",
+      "expected": "5076e81d795927e7432eeeea9cde5093e8bed71e1a2bf2e6d670eeb2520069d1"
+    },
+    {
+      "code": "provenance_invocation_artifact_set_mismatch",
+      "path": "provenance.metadata.invocationId",
+      "retained": "pokrov-1.2.0-candidate.30/8fe2ccb751694a0448ece6aec900b898ae7843223112b8f3033fb503eff20a79",
+      "expected": "pokrov-1.2.0-candidate.30/5076e81d795927e7432eeeea9cde5093e8bed71e1a2bf2e6d670eeb2520069d1"
+    },
+    {
+      "code": "provenance_internal_candidate_reference_mismatch",
+      "path": "provenance.predicate.buildDefinition.internalParameters",
+      "stale_fields": [
+        "platform_change_scope names candidate29",
+        "client_hosted_ci_run is NOT_RUN_EXACT_CANDIDATE29",
+        "candidate25_creation_readiness_sha256 names candidate25",
+        "candidate_creation_manifest_sha256 belongs to predecessor generation"
+      ]
+    }
+  ],
+  "validator": {
+    "platform_revision": "7e3c57ec390d8ebfa95c617e53f999e31a96b306",
+    "pull_requests": [
+      "https://github.com/Kiwunaka/portal/pull/198",
+      "https://github.com/Kiwunaka/portal/pull/199"
+    ],
+    "focused_tests": "39 PASS",
+    "release_operations_tests": "154 PASS",
+    "documentation_contract_tests": "40 PASS",
+    "exact_candidate30_first_result": "FAIL sbom_root_bom_ref_mismatch",
+    "ordered_latent_findings_confirmed_by_exact_field_inspection": true
+  },
+  "retained_external_evidence": [
+    {"name": "pokrov-1.2.0-candidate.30.creation.json", "sha256": "1a94f779d1b78898d3b24a2821492dec0b719489ff03dc55afa165255f238d18"},
+    {"name": "candidate30-artifact-seal.json", "sha256": "7a1a602edc14698eca6fac7d37ed09682c1e21df59cebecae7d29ef815804c9e"},
+    {"name": "candidate30-cli-build-evidence.json", "sha256": "e1a10c28eed88bd2c1e66171f60e0968d522d8d3b7ad4a430ff18677ea78052d"},
+    {"name": "core-windows-mingw13-reproducibility.json", "sha256": "063c6cfa202815a15b7dab615bb9c02831ffc4db8a2ab497542382c3d61e987a"},
+    {"name": "candidate30-vm-install-result.json", "sha256": "368b0d0f6c092434637bb32ca0f8df806b72a4704c2e1a1fe633b3335002e4c4"},
+    {"name": "candidate30-direct-tun-evidence.json", "sha256": "3cb4ad42c838a8b0d25f5f438c3ebbae4112fb8dcbaa9594e8c82d3877047f2b"},
+    {"name": "candidate30-reboot-pre.json", "sha256": "72dfcf680803ec5c3ec3827657914e89f067d8efa89c4ef999302be6f4a2669c"},
+    {"name": "candidate30-reboot-post.json", "sha256": "c42452eecac1d566ce67452ca8f9c43b7408236c31e5a7c7ece1a970e738df46"}
+  ],
+  "decision": {
+    "candidate30": "IMMUTABLE_NO_GO_REJECTED_FOR_REPLACEMENT",
+    "artifact_bytes_may_be_reused": true,
+    "required_successor_change": "Regenerate SBOM/provenance/handoff from the exact current tuple, validate canonical SBOM root identity and artifact-set digest, validate current-candidate provenance references and invocation binding, then create a new signed candidate.",
+    "gate_g_authorized": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false
+  },
+  "evidence_ceiling": "CANDIDATE30 ARTIFACT BYTES AND DETACHED SIGNATURE REMAIN VALID BUT ITS SBOM AND PROVENANCE CANDIDATE BINDINGS ARE FALSE; NO PROMOTION CREDIT"
+}

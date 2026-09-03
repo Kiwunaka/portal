@@ -1,0 +1,86 @@
+{
+  "schema": "pokrov.release-1.2.0.signed-candidate-binding-evidence/v1",
+  "recorded_at_utc": "2026-09-03T14:43:54Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.30",
+    "version": "1.2.0+4053",
+    "release_index_source_revision": "b06fe143a83aca49c1779962ad526c54e2162e42",
+    "platform_source_revision": "7c4133343871ed52257a850e829e906608412753",
+    "client_source_revision": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+    "core_source_revision": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "signer_workflow_run": "Kiwunaka/pokrov/actions/runs/33765307625",
+    "signer_artifact_id": 9897220950,
+    "signer_artifact_name": "pokrov-pokrov-1.2.0-candidate.30-signed-manifest-b06fe143a83aca49c1779962ad526c54e2162e42",
+    "signer_artifact_digest": "sha256:6bf7e98d189a3436b48eba95286ad3ae960627cf261955299c71bf9bfe001c6c",
+    "signer_artifact_expires_at_utc": "2026-09-17T14:10:45Z"
+  },
+  "outputs": [
+    {
+      "path": "pokrov-1.2.0-candidate.30.release-index.json",
+      "sha256": "33ceb44b445dd5f66d5b10e0e1c90da03d9a6efe3d1c4966dd2be72bf955230c",
+      "size_bytes": 6884
+    },
+    {
+      "path": "pokrov-1.2.0-candidate.30.release-index.json.sig",
+      "sha256": "61169e29d521524663637c1747d7d5b70de6140332d4056b8d5c71f694c6f510",
+      "size_bytes": 64
+    },
+    {
+      "path": "pokrov-1.2.0-candidate.30.signing-receipt.json",
+      "sha256": "2628ec258322c6a884f60b1ca9f6533eae0a68c1d170cf971c6051e82777bba0",
+      "size_bytes": 589
+    }
+  ],
+  "supply_chain": {
+    "status": "FAIL_SBOM_AND_PROVENANCE_CANDIDATE_BINDING",
+    "artifact_count": 6,
+    "windows_runtime_file_count": 11,
+    "artifact_bytes_changed_by_finding": false,
+    "sbom_sha256": "f0e2d8a337dc219f709abbbc1c5723b2cc734c5693127ad1eb25602f39de74b7",
+    "provenance_sha256": "ffe0abf35423684a43853ff412c689ebc5cd2a829320c221e7dd9942782be45e",
+    "expected_sbom_root_bom_ref": "pkg:generic/pokrov-release-candidate@1.2.0%2B4053?candidate=30",
+    "retained_sbom_root_bom_ref": "pkg:generic/pokrov-release-candidate@1.2.0%2B4053?candidate=29",
+    "retained_sbom_artifact_set_sha256": "79517b5c1e771be88851ad3b3644e49bfce1c619831db8db17de8a604fa89e87",
+    "expected_invocation_artifact_set_sha256": "5076e81d795927e7432eeeea9cde5093e8bed71e1a2bf2e6d670eeb2520069d1",
+    "retained_invocation_artifact_set_sha256": "8fe2ccb751694a0448ece6aec900b898ae7843223112b8f3033fb503eff20a79"
+  },
+  "independent_validation": {
+    "status": "READY_SIGNED_MANIFEST",
+    "receipt_matches_outputs": true,
+    "detached_signature_verified_with_public_keyring": true,
+    "promotion_authorized": false,
+    "note": "The signature is valid for the retained manifest; valid signing does not override the SBOM and provenance STOP-SHIP failures."
+  },
+  "cli_build": {
+    "status": "PASS_EXACT_CANDIDATE_BYTES",
+    "full_client_cli_gate": "PASS",
+    "core_windows_reproducibility": "PASS_2_OF_2_EXACT_CANDIDATE_BYTES",
+    "windows_native_release": "PASS_7_OF_7",
+    "windows_native_debug": "PASS_8_OF_8",
+    "android_apk_signing": "PASS_4_OF_4",
+    "android_aab_integrity": "PASS"
+  },
+  "windows_vm_binding": {
+    "installation_status": "PASS_EXACT_CANDIDATE30_HEADLESS_UPGRADE",
+    "installed_runtime_files": "11/11 PASS",
+    "direct_tun_dns_lifecycle": "PASS_SYNTHETIC_DIRECT_ONLY",
+    "connected_guest_reboot_restore": "PASS_SYNTHETIC_DIRECT_ONLY",
+    "managed_node_awg_smart_dns": "NOT_RUN",
+    "post_test_vm_state": "poweroff"
+  },
+  "physical_phone_install_binding": {
+    "status": "NOT_RUN",
+    "gate_f_check": "android_physical_device"
+  },
+  "mutation_boundary": {
+    "candidate_artifact_mutated": false,
+    "phone_install_or_runtime_test": false,
+    "screen_or_input_control_used": false,
+    "host_network_mutated": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE30_SIGNATURE_AND_ARTIFACT_BYTES_VALIDATE; SBOM_ROOT_IDENTIFIES_CANDIDATE29_AND_BINDS_A_DIFFERENT_ARTIFACT_SET; PROVENANCE_INVOCATION_BINDS_A_DIFFERENT_ARTIFACT_SET_AND_RETAINS_PREDECESSOR_REFERENCES; CANDIDATE30_IS_IMMUTABLE_NO_GO_AND_NOT_PROMOTABLE"
+}
