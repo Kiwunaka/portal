@@ -6,10 +6,17 @@ Last updated: 2026-09-03
 
 Exact candidate.29 completes a fresh first launch in the isolated Windows 11
 VM and passes service trust, compatibility, authenticated IPC and Core
-readiness. AWG3.1, AWG2 and the ordinary Reality fallback each resolve and
-stage, then fail the authenticated egress probe and roll back cleanly. Direct
-guest health and public probe controls pass, so the shared failure is inside
-the managed route rather than public API reachability.
+readiness. AWG3.1 and AWG2 resolve and stage, then fail the authenticated
+egress probe and roll back cleanly. A later fresh ordinary Reality control
+does not stage Core: it remains at `pending_sync`. The earlier ordinary
+Core-egress classification is withdrawn.
+
+Read-only Brain evidence finds the fresh client on six authenticated panels;
+only `ru_spb` disconnects. No successful `UserNode` confirmation was retained
+because the aggregate managed-profile timeout cancelled the all-node wait
+before its post-gather persistence step. This isolated platform-source defect
+requires a successor candidate and is independent of the AWG server-path
+failures.
 
 The same exact Core revision is cross-built as Linux ARM64 and run on the owned
 direct-RU Pi 4. AWG3.1 and AWG2 both return
@@ -21,10 +28,10 @@ trust or server action is used.
 The WO-013FQ Gate F snapshot remains immutable `NO_GO 2/17/1`. Subsequent exact
 evidence makes `windows_live_network` and `authenticated_client_egress`
 explicit FAIL rows, so a regenerated aggregate would be `NO_GO 2/17/3`.
-Regeneration waits for restoration of the shared live path. Candidate.29 is
-not replaced because no source or artifact defect is isolated. Default profile
-and zero lab membership/material are restored, no TUN remains, and host input
-and network state are untouched. No completion-index level changes.
+The ordinary provisioning defect is an additional P0 and is not counted as a
+third transport attempt. Candidate.29 is rejected for replacement. Default
+profile and zero lab membership/material are restored, no TUN remains, and
+host input and network state are untouched. No completion-index level changes.
 
 ## 2026-09-03 — WO-013FQ candidate.29 current/Brain origin NO_GO
 

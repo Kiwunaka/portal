@@ -169,6 +169,11 @@ Contract rule:
 - initial panel convergence is limited to four seconds. A timeout returns the
   existing `pending_sync` contract without rolling back the committed account,
   device, session, or trial reservation
+- each successfully converged node records its `UserNode` confirmation before
+  the aggregate wait reaches a slower peer. A later managed-profile request may
+  use only that confirmed healthy subset while the unavailable node remains
+  pending; one slow node must not erase completed provisioning evidence or turn
+  the whole first run into a false total failure
 - the backend must return the same `client_policy` contract from `start-trial`, `user`, and `dashboard` flows so the app can reconcile defaults without guessing
 
 ### Account Experience And First Connection

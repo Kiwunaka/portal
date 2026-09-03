@@ -249,6 +249,34 @@ class ControlPanel:
         if not groups:
             return {}
 
+        def _persist_confirmed_mapping(node) -> None:
+            node_id = getattr(node, "id", None)
+            if node_id is None:
+                # A legacy env-only node has no durable DB identity.
+                return
+            s = SessionLocal()
+            try:
+                exists = s.query(UserNode).filter_by(tg_id=tg_id, node_id=node_id).first()
+                if not exists:
+                    s.add(
+                        UserNode(
+                            tg_id=tg_id,
+                            node_id=node_id,
+                            client_uuid=client_uuid,
+                            panel_email=email,
+                        )
+                    )
+                s.commit()
+            except Exception as exc:
+                s.rollback()
+                logger.warning(
+                    "user_nodes persist failed node=%s error_kind=%s",
+                    str(getattr(node, "code", "") or ""),
+                    type(exc).__name__,
+                )
+            finally:
+                s.close()
+
         semaphore = asyncio.Semaphore(max(1, int(self._concurrency or 1)))
 
         async def _ensure_group(candidates: list) -> tuple[dict[str, bool], object | None]:
@@ -267,6 +295,12 @@ class ControlPanel:
                         ok = False
                     group_results[node.code] = ok
                     if ok:
+                        # Commit each confirmed node before awaiting slower peers.
+                        # The caller may enforce a short global budget; retaining
+                        # completed progress lets the managed-profile fallback use
+                        # the healthy subset instead of reporting a false total
+                        # provisioning failure.
+                        _persist_confirmed_mapping(node)
                         return group_results, node
             if candidates:
                 group_results[candidates[0].code] = False
@@ -277,29 +311,8 @@ class ControlPanel:
             return_exceptions=False,
         )
         results: dict[str, bool] = {}
-        chosen_nodes: list = []
-        for group_results, chosen_node in grouped_results:
+        for group_results, _chosen_node in grouped_results:
             results.update(group_results)
-            if chosen_node is not None:
-                chosen_nodes.append(chosen_node)
-
-        # Persist mapping for observability/debug (best-effort)
-        s = SessionLocal()
-        try:
-            for n in chosen_nodes:
-                if not results.get(n.code):
-                    continue
-                if n.id is None:
-                    # legacy node has no DB id
-                    continue
-                exists = s.query(UserNode).filter_by(tg_id=tg_id, node_id=n.id).first()
-                if not exists:
-                    s.add(UserNode(tg_id=tg_id, node_id=n.id, client_uuid=client_uuid, panel_email=email))
-            s.commit()
-        except Exception as e:
-            logger.warning("user_nodes persist failed error_kind=%s", type(e).__name__)
-        finally:
-            s.close()
 
         return results
 

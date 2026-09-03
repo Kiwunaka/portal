@@ -1,8 +1,10 @@
 {
-  "schema": "pokrov.release-1.2.0.candidate29-managed-egress/v1",
+  "schema": "pokrov.release-1.2.0.candidate29-managed-egress/v2",
   "work_order": "WO-013FR",
   "recorded_at_utc": "2026-09-03T12:10:10Z",
-  "status": "EXACT_CANDIDATE29_WINDOWS_MANAGED_EGRESS_FAIL_RU_PI_AWG_NO_OUTER_RESPONSE",
+  "status": "CORRECTED_EXACT_CANDIDATE29_AWG_EGRESS_FAIL_ORDINARY_PROVISIONING_FAIL_RU_PI_AWG_NO_OUTER_RESPONSE",
+  "corrected_at_utc": "2026-09-03T13:05:11Z",
+  "correction": "Fresh ordinary-node control proved provisioning pending before Core staging; the earlier ordinary core-egress classification is withdrawn.",
   "candidate": {
     "id": "pokrov-1.2.0-candidate.29",
     "version": "1.2.0+4053",
@@ -18,16 +20,17 @@
   },
   "windows_vm": {
     "environment": "isolated_windows_11_virtual_machine",
-    "first_launch_trial_home": "PASS",
+    "first_launch_trial_home": "UI_PASS_PROVISIONING_FAIL",
     "service_trust_and_compatibility": "PASS",
     "service_state_after_tests": "Running",
     "service_start_mode": "Auto",
     "managed_attempts": {
       "awg31_lab": "FAIL_CORE_EGRESS_PROBE",
       "awg2_lab": "FAIL_CORE_EGRESS_PROBE",
-      "legacy_reality_fallback": "FAIL_CORE_EGRESS_PROBE"
+      "legacy_reality_fallback": "FAIL_FIRST_RUN_PROVISIONING_PENDING_CORE_NOT_ATTEMPTED"
     },
     "common_observation": {
+      "scope": ["awg31_lab", "awg2_lab"],
       "profile_resolved": true,
       "configuration_staged": true,
       "core_ready": true,
@@ -51,7 +54,20 @@
       "pairing_temp_count": 0,
       "prior_app_data_retained_for_rollback": true
     },
-    "external_summary_sha256": "3a0194e14fd11fec5bf1d97d84b2acee770b8c8a4f55ee7276e2599ab156772a"
+    "external_summary_sha256": "e7b6b49c0d12b3d98aad0da20661a76d674779d0a2674b8f54ee80358ae6219a",
+    "fresh_trial_provisioning": {
+      "status": "FAIL_PARTIAL_PANEL_SUCCESS_NOT_PERSISTED",
+      "panel_client_present_count": 6,
+      "panel_auth_ok_count": 6,
+      "panel_auth_fail_count": 1,
+      "failed_node_code": "ru_spb",
+      "mapped_enabled_node_count": 0,
+      "provisioning_job_count": 0,
+      "root_cause": "healthy node mappings were committed only after the aggregate all-node wait and were lost to the managed-profile timeout",
+      "fresh_initial_report_sha256": "ef02b1db7506def4407cc495856798095fd742b2f0773ba69b91fb29f5243a73",
+      "fresh_latest_report_sha256": "71c44d9135ba32d7606de1f5e442530756688b1a60c6247bbf27599915fdc8ea",
+      "panel_diagnostic_sha256": "a228e2e700faa0cc955bab7ac4489d7877e2e9626a8fed353f578b17c349e8fd"
+    }
   },
   "ru_pi_core_interop": {
     "environment": "owned_raspberry_pi_4_linux_arm64_direct_default_route",
@@ -89,8 +105,8 @@
     "authenticated_client_egress": "FAIL",
     "ru_origin": "MANUAL_OWNER_TEST",
     "awg_specific_client_defect_proven": false,
-    "candidate_source_or_artifact_replacement_required": false,
-    "reason": "Three Windows managed profiles share the same egress failure, while both exact-Core AWG variants independently receive no outer response from the direct-RU Pi"
+    "candidate_source_or_artifact_replacement_required": true,
+    "reason": "AWG3.1 and AWG2 fail authenticated egress, while ordinary Reality is blocked earlier by the isolated partial-success persistence defect; the missing ordinary Core attempt cannot be used as an AWG differential"
   },
   "gate_f_effect": {
     "prior_decision": "NO_GO",
