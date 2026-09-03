@@ -2,6 +2,25 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013GD successor Windows exact-main CLI rebuild PASS
+
+The exact merged client `main` `2d6adfc...` completes the canonical headless
+Windows release helper against platform ledger `d690448...` and Core
+`cd8f0f4...`. Seed/contracts, the full bounded test contour, Android Gradle,
+Windows analyze and Release compilation pass. Independent native Release CTest
+passes `7/7`.
+
+The fresh staged product bundle matches the preceding successor rebuild at
+`302/302` with zero differing hash-list lines. This replaces WO-013GC's narrow
+Windows-reuse note with a fresh exact-main compilation. The Inno Setup
+container is recorded separately and receives no same-byte installer claim;
+Authenticode remains `NotSigned` / `SKIPPED_BY_OWNER` under the direct-beta
+exception.
+
+The build is CLI-only. No UI, host network setting, installer execution,
+candidate.32 input, deploy, public asset or stable pointer is created.
+Candidate.31 Gate F stays immutable `NO_GO 2/17/1`; no ledger index changes.
+
 ## 2026-09-04 — WO-013GC successor Android production precursor PASS
 
 Client PR 74 closes a release-tooling gap: the canonical production helper now
