@@ -2,6 +2,26 @@
 
 Last updated: 2026-09-03
 
+## 2026-09-03 — WO-013FP candidate.29 exact Gate F snapshot
+
+Candidate.29 signed identity and exact platform `efb05e0...`, client
+`7e3e771...`, Core `cd8f0f4...` and release-index `71e2c71...` tuple validate.
+All `19/19` Gate F evidence pointers resolve with zero validation errors. The
+decision is exact `BLOCKED 2 PASS / 17 non-PASS / 0 FAIL`.
+
+Signed supply and manifest-bound release documentation are PASS. The bounded
+Windows 11 direct TUN/DNS/reboot slice remains non-PASS for the full Windows
+matrix. Current, Brain and RU origins, Android, authenticated egress,
+provider, Operator, legal/commercial, runtime rollback, comparable
+performance and final aggregate proof remain open. Seven exact-SHA hosted jobs
+pass; three platform/client jobs fail before runner allocation with zero steps
+and are retained as `BLOCKED_BY_ACCESS_GITHUB_BILLING`.
+
+Gate G, public tag/assets, Store submission, production deploy and stable
+promotion remain unauthorized. No completion-index level changes;
+distribution remains `I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0` across `378`
+rows.
+
 ## 2026-09-03 — WO-013FO candidate.29 signed CLI build and Windows VM
 
 Private candidate.29 is the exact successor required by WO-013FN. It binds
