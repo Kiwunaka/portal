@@ -1,0 +1,28 @@
+{
+    "schema":  "pokrov.windows-candidate25-direct-connected-reboot-post.v1",
+    "recorded_at_utc":  "2026-09-03T07:24:41.3920072Z",
+    "status":  "PASS_CONNECTED_GUEST_REBOOT_RECOVERY_AND_NETWORK_RESTORE",
+    "candidate_label":  "pokrov-1.2.0-candidate.25",
+    "test_scope":  "EXACT_INSTALLED_SERVICE_CORE_DIRECT_ONLY_SYNTHETIC_PROFILE",
+    "service_present":  true,
+    "service_running":  true,
+    "service_automatic":  true,
+    "service_localsystem":  true,
+    "service_snapshot":  "phase=artifact_ready;core_ready=0;can_initialize=1;can_connect=0;running=0;core_egress_validated=0;dns_ready=0;failure=none",
+    "recovery_clean":  true,
+    "runtime_lazy_after_clean_shutdown":  true,
+    "tunnel_absent":  true,
+    "route_restored":  true,
+    "dns_restored":  true,
+    "api_dns_ok":  true,
+    "api_health_status":  200,
+    "network":  {
+                    "route_sha256":  "93d12295b4a2e26126de8cedb2e3a7f1e0ae6bff078cce5fcb4fe1a4ba702b6f",
+                    "dns_sha256":  "9312245588c8463a2b051f1b59086742a3335d14676ab91b3d489d685800fc43",
+                    "tunnel_adapter_count":  0
+                },
+    "raw_connection_material_retained":  false,
+    "production_mutation_performed":  false,
+    "main_host_input_used":  false,
+    "main_host_network_mutated":  false
+}

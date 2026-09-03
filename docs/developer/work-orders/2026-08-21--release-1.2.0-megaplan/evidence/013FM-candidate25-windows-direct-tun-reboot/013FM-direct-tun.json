@@ -1,0 +1,85 @@
+{
+    "schema":  "pokrov.windows-candidate25-direct-tun-cli-evidence.v1",
+    "recorded_at_utc":  "2026-09-03T07:20:32.9480328Z",
+    "status":  "PASS_EXACT_CANDIDATE25_DIRECT_TUN_DNS_LIFECYCLE",
+    "candidate_label":  "pokrov-1.2.0-candidate.25",
+    "candidate_installed_snapshot":  "candidate25-clean-installed-ipc-20260903",
+    "test_scope":  "EXACT_INSTALLED_SERVICE_CORE_DIRECT_ONLY_SYNTHETIC_PROFILE_NOT_MANAGED_NODE",
+    "profile_sha256":  "b829c67b06339fc5ae2671ad7b1818964a8063d9c114b4b0acd0ea840da16272",
+    "profile_size_bytes":  1364,
+    "contains_connection_material":  false,
+    "baseline":  {
+                     "route_sha256":  "93d12295b4a2e26126de8cedb2e3a7f1e0ae6bff078cce5fcb4fe1a4ba702b6f",
+                     "dns_sha256":  "9312245588c8463a2b051f1b59086742a3335d14676ab91b3d489d685800fc43",
+                     "tunnel_adapter_count":  0,
+                     "ipv4_default_route_count":  1
+                 },
+    "initialize":  null,
+    "stage":  {
+                  "schema":  "pokrov.windows-service-cli.v1",
+                  "recorded_at_utc":  "2026-09-03T07:20:25.5629192Z",
+                  "command":  "stageprofile",
+                  "service_authenticated":  true,
+                  "protocol_v1":  true,
+                  "runtime_control":  true,
+                  "status_code":  1,
+                  "command_accepted":  true,
+                  "snapshot":  "phase=config_staged;core_ready=1;can_initialize=1;can_connect=1;running=0;core_egress_validated=0;dns_ready=0;failure=none"
+              },
+    "connect":  {
+                    "schema":  "pokrov.windows-service-cli.v1",
+                    "recorded_at_utc":  "2026-09-03T07:20:27.2262157Z",
+                    "command":  "connect",
+                    "service_authenticated":  true,
+                    "protocol_v1":  true,
+                    "runtime_control":  true,
+                    "status_code":  1,
+                    "command_accepted":  true,
+                    "snapshot":  "phase=running;core_ready=1;can_initialize=1;can_connect=0;running=1;core_egress_validated=1;dns_ready=1;failure=none"
+                },
+    "connected":  {
+                      "network":  {
+                                      "route_sha256":  "c5a3a2c29d2b9f46ef162daa12820d2ba3c4bc990abd204a3a0f0d0fe950a6ad",
+                                      "dns_sha256":  "771b1048b16e31cc7ccdfe7a627e502242a0226e790132e19b81520bc6163409",
+                                      "tunnel_adapter_count":  1,
+                                      "ipv4_default_route_count":  2
+                                  },
+                      "tunnel_present":  true,
+                      "route_changed":  true,
+                      "dns_changed":  true,
+                      "dns_resolution_ok":  true,
+                      "api_health_status":  200,
+                      "public_egress_observed_before":  true,
+                      "public_egress_observed_connected":  true,
+                      "public_egress_unchanged":  true,
+                      "raw_public_egress_retained":  false,
+                      "service_snapshot":  "phase=running;core_ready=1;can_initialize=1;can_connect=0;running=1;core_egress_validated=1;dns_ready=1;failure=none"
+                  },
+    "disconnect":  {
+                       "schema":  "pokrov.windows-service-cli.v1",
+                       "recorded_at_utc":  "2026-09-03T07:20:29.8535360Z",
+                       "command":  "disconnect",
+                       "service_authenticated":  true,
+                       "protocol_v1":  true,
+                       "runtime_control":  true,
+                       "status_code":  1,
+                       "command_accepted":  true,
+                       "snapshot":  "phase=config_staged;core_ready=1;can_initialize=1;can_connect=1;running=0;core_egress_validated=0;dns_ready=0;failure=none"
+                   },
+    "cleanup":  {
+                    "network":  {
+                                    "route_sha256":  "93d12295b4a2e26126de8cedb2e3a7f1e0ae6bff078cce5fcb4fe1a4ba702b6f",
+                                    "dns_sha256":  "9312245588c8463a2b051f1b59086742a3335d14676ab91b3d489d685800fc43",
+                                    "tunnel_adapter_count":  0,
+                                    "ipv4_default_route_count":  1
+                                },
+                    "tunnel_absent":  true,
+                    "route_restored":  true,
+                    "dns_restored":  true,
+                    "service_running":  true
+                },
+    "failure_code":  null,
+    "production_mutation_performed":  false,
+    "main_host_network_mutated":  false,
+    "main_host_input_used":  false
+}

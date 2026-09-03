@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-03
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_CANDIDATE25_PRIVATE_SIGNED_GATE_F_BLOCKED_5_14_0`
+Wave status: `PHASE_11_CANDIDATE25_PRIVATE_NONPROMOTABLE_SUCCESSOR_REQUIRED_GATE_F_BLOCKED_5_14_0`
 Release candidate: `POKROV_1_2_0_CANDIDATE25_PRIVATE_SIGNED`
 
 ## Outcome
@@ -96,30 +96,51 @@ Windows-only `candidate.26-precursor` passes the complete client tests, Debug
 `8/8`, Release `7/7`, `11/11` staged and installed file identity, ordinary-UI
 authenticated service IPC and post-reboot automatic LocalSystem service. It is
 not a created or signed multi-platform candidate. Connected TUN/DNS/egress is
-`NOT_RUN` because the rollback baseline already has no `tun0` and cannot
-resolve `portal.pokrov.space`; candidate.25 and Gate F `5/14/0` remain current.
+`NOT_RUN` because no managed profile or connect action is supplied. Its failed
+`portal.pokrov.space` sentinel is non-canonical and receives no blocker credit.
+
+WO-013FM corrects that sentinel to `api.pokrov.space` and exercises exact
+candidate.25 through a secret-free direct-only profile in the isolated Windows
+11 VM. Authenticated IPC, Core, TUN, route/DNS ownership, health, disconnect
+rollback and connected guest-reboot restoration pass. The ordinary UI remains
+at first-run onboarding and no trial/account is created, so managed DE/AWG/
+Smart-DNS and connected-uninstall gates remain open. Gate F stays `5/14/0`.
+
+WO-013FN rejects the next Windows CLI build as `candidate.27-precursor`: its
+first direct upgrade from the retained candidate.23 VM reproducibly aborts
+before replacement when the installer cannot re-resolve the installation
+owner. The second attempt receives no credit. Client PR 72 merges the bounded
+correction: only an existing machine installation may reuse its protected,
+exactly validated owner SID; clean install remains fail-closed. The resulting
+`candidate.28-precursor` passes the full CLI build, native `7/7 + 8/8`, bounded
+static scan, first-pass `11/11` upgrade, direct TUN/DNS lifecycle and connected
+guest reboot. It is not a created candidate. Candidate.25 remains immutable
+and Gate F remains `5/14/0`, but promotion now requires a new exact successor.
 
 ## Execution order
 
 | Phase | Architectural outcome | State | Primary WO |
 |---|---|---|---|
 | 00 | Baseline, authority map, complete execution ledger | Locally proved (`I3`) | `WO-001` |
-| 01 | Release manifest, version/provenance contract, CI and stop-ship controls | Release-v2, client adoption, release-bound CI, reproducible dependencies, shared catalog and cross-repository truth are proved; `OWNER_SOLO_EXCEPTION` replaces unavailable independent review without claiming it. Candidates.21–23 remain immutable `NO_GO`; candidate.24 remains immutable signed predecessor history. WO-013FH binds private candidate.25 build `4053` to strict-v2 handoff, SBOM/provenance and trusted manifest/signature/receipt after incorporating the WO-013FG development-lock correction. Its ten attached hosted jobs pass and WO-013FJ adds an exact private hosted Windows gate without creating a public product release. Later GitHub jobs are `BLOCKED_BY_ACCESS` by the account Billing/spending limit and are not PASS. Windows trusted signing remains owner-skipped direct-beta; branch protection and final live aggregate remain non-PASS. `DEP-001` retains `I4`; no public asset or promotion exists | `WO-002`, `WO-003`, `WO-003B`–`WO-003J`, `WO-013J`–`WO-013P`, `WO-013CX`, `WO-013DC`–`WO-013DE`, `WO-013EA`, `WO-013EB`, `WO-013EH`, `WO-013EI`, `WO-013EV`–`WO-013FK` |
-| 02 | Typed connection state, proof-driven green state, core ABI and migrations | Aggregate Gate B remains `BLOCKED/I3`. Earlier candidate results remain exact history only. Candidate.25 retains the bounded named-pipe connection retries and 32-client regression in the exact client artifact set. A fresh full CLI rebuild passes client widgets `413/413` and runtime engine `72 PASS`. Exact installed candidate.25 now passes bounded LocalSystem service identity, ordinary-UI authenticated IPC and SCM restart on a clean hosted machine, but connected runtime remains unrun. ABI v3 stays deferred until after 1.2.0 | `WO-004`, `WO-004A2`, `WO-004B2`, `WO-004D`, `WO-006I`, `WO-013CX`, `WO-013DD`–`WO-013DF`, `WO-013EN`, `WO-013EV`, `WO-013EW`, `WO-013FB`–`WO-013FJ` |
-| 03 | Windows/Android runtime boundaries; conditional Linux beta foundation | Gate C stays `BLOCKED/I3`. Candidate.22/23 Windows defects remain immutable `NO_GO` history. Candidate.25 exact installer identity passes in a headless Windows 11 guest. WO-013FJ then proves exact machine install, `11/11` files, LocalSystem service, ordinary-UI authenticated IPC, SCM restart, clean uninstall and idle network restoration on ephemeral hosted Windows Server 2025. WO-013FK corrects only the successor CMake test registration and freshly passes Debug `8/8` and Release `7/7`; hosted successor CI is `BLOCKED_BY_ACCESS`. Connected TUN/DNS/egress, connected uninstall, Windows 10/11 device behavior, interactive SmartScreen, reboot/sleep/crash and IPv6 remain open or environment-blocked. Android runtime is unrun and host-tunneled emulator network output stays excluded. Linux native runtime/packaging remains open and deliberately unshipped | `WO-005`, `WO-005C4`, `WO-005D4`, `WO-005G`, `WO-013CC`–`WO-013CO`, `WO-013CX`, `WO-013DD`–`WO-013DF`, `WO-013DJ`, `WO-013DL`, `WO-013DO`, `WO-013EA`, `WO-013EF`, `WO-013EG`, `WO-013EV`–`WO-013FK` |
-| 04 | Observability, error catalog, redacted bundle and support pipeline | Locally complete (`I3`) for shipped Android/Windows scope, including four-class safe transport failures, active operational producers, Android count-only routing, no-upload short code, signed temporary support mode, encrypted-only manual export and native Windows service journal proof. Candidate.25 supply and Windows staging scans report zero definite findings and exact SBOM/provenance bind all six artifacts and `11/11` runtime files. WO-013FJ observes bounded exact installed service data without exporting raw content. Deployed runtime/RBAC/audit, connected candidate.25 device evidence and final live privacy attestation remain open | `WO-006`, `WO-006I`, `WO-006J`, `WO-006K`, `WO-006L`, `WO-013S`, `WO-013DJ`, `WO-013DQ`, `WO-013DR`, `WO-013EP`, `WO-013EQ`, `WO-013FB`, `WO-013FH`, `WO-013FJ` |
+| 01 | Release manifest, version/provenance contract, CI and stop-ship controls | Release-v2, client adoption, release-bound CI, reproducible dependencies, shared catalog and cross-repository truth are proved; `OWNER_SOLO_EXCEPTION` replaces unavailable independent review without claiming it. Candidates.21–23 remain immutable `NO_GO`; candidate.24 remains immutable signed predecessor history. WO-013FH binds private candidate.25 build `4053` to strict-v2 handoff, SBOM/provenance and trusted manifest/signature/receipt after incorporating the WO-013FG development-lock correction. Its ten attached hosted jobs pass and WO-013FJ adds an exact private hosted Windows gate without creating a public product release. WO-013FN records the merged client source correction in PR 72; its hosted run executes zero steps and is `BLOCKED_BY_ACCESS` by the account Billing/spending limit, not PASS. Windows trusted signing remains owner-skipped direct-beta; branch protection and final live aggregate remain non-PASS. `DEP-001` retains `I4`; no public asset or promotion exists | `WO-002`, `WO-003`, `WO-003B`–`WO-003J`, `WO-013J`–`WO-013P`, `WO-013CX`, `WO-013DC`–`WO-013DE`, `WO-013EA`, `WO-013EB`, `WO-013EH`, `WO-013EI`, `WO-013EV`–`WO-013FN` |
+| 02 | Typed connection state, proof-driven green state, core ABI and migrations | Aggregate Gate B remains `BLOCKED/I3`. Earlier candidate results remain exact history only. Candidate.25 retains the bounded named-pipe connection retries and 32-client regression in the exact client artifact set. Its exact installed service now passes direct-only TUN/DNS, disconnect restoration and connected-reboot restoration. WO-013FN rejects candidate.27's broken first upgrade and proves the merged correction in candidate.28 precursor, but no exact all-platform successor candidate exists. ABI v3 stays deferred until after 1.2.0 | `WO-004`, `WO-004A2`, `WO-004B2`, `WO-004D`, `WO-006I`, `WO-013CX`, `WO-013DD`–`WO-013DF`, `WO-013EN`, `WO-013EV`, `WO-013EW`, `WO-013FB`–`WO-013FN` |
+| 03 | Windows/Android runtime boundaries; conditional Linux beta foundation | Gate C stays `BLOCKED/I3`. Candidate.22/23 Windows defects remain immutable `NO_GO` history. Candidate.25 exact installer identity and hosted clean-host lifecycle pass; WO-013FM adds its direct-only TUN/DNS and connected-reboot substrate. WO-013FN rejects candidate.27 precursor for a reproducible first-upgrade owner-resolution failure, merges the constrained correction and proves candidate.28 precursor first-pass `11/11` upgrade, LocalSystem service, direct TUN/DNS and connected reboot. No successor exact candidate exists. Managed egress, connected uninstall, Windows 10, interactive SmartScreen, sleep/crash and IPv6 remain open or environment-blocked. Android runtime is unrun and host-tunneled emulator network output stays excluded. Linux native runtime/packaging remains open and deliberately unshipped | `WO-005`, `WO-005C4`, `WO-005D4`, `WO-005G`, `WO-013CC`–`WO-013CO`, `WO-013CX`, `WO-013DD`–`WO-013DF`, `WO-013DJ`, `WO-013DL`, `WO-013DO`, `WO-013EA`, `WO-013EF`, `WO-013EG`, `WO-013EV`–`WO-013FN` |
+| 04 | Observability, error catalog, redacted bundle and support pipeline | Locally complete (`I3`) for shipped Android/Windows scope, including four-class safe transport failures, active operational producers, Android count-only routing, no-upload short code, signed temporary support mode, encrypted-only manual export and native Windows service journal proof. Candidate.25 supply and Windows staging scans report zero definite findings and exact SBOM/provenance bind all six artifacts and `11/11` runtime files. WO-013FJ observes bounded exact installed service data without exporting raw content. WO-013FN scans candidate.28 precursor's 303 staged files / 99,269,838 bytes and raw setup with zero definite findings; this gives no candidate credit. Deployed runtime/RBAC/audit, connected managed device evidence and final live privacy attestation remain open | `WO-006`, `WO-006I`, `WO-006J`, `WO-006K`, `WO-006L`, `WO-013S`, `WO-013DJ`, `WO-013DQ`, `WO-013DR`, `WO-013EP`, `WO-013EQ`, `WO-013FB`, `WO-013FH`, `WO-013FJ`, `WO-013FN` |
 | 05 | Portal bounded contexts, payments, HTTP/DB/outbox reliability | Locally complete (`GATE-D` and `ARCH-002` at `I3`); 007G–007I split admin, public/client and Action Intent domain/runtime owners. Candidate.25 exact platform contains the candidate.24 source-proved domain/runtime behavior plus the isolated development-lock correction. Fresh Brain source/readiness/subscription/delivery passes `197/197`, `23/23`, `5/5` and `7/7 x3`. Gate D stays `BLOCKED` below I4 until production provider/PostgreSQL/outbox/reconciliation/operator/runtime-rollback proof exists | `WO-007`, `WO-007G`, `WO-007H`, `WO-007I`, `WO-013CI`, `WO-013CO`, `WO-013EL`, `WO-013EN`, `WO-013FD`, `WO-013FE`, `WO-013FH` |
 | 06 | Product facts, subscriptions, checkout, offers and attribution | Local source packages: 008A–008G commercial package at `I2`; 008H–008M close active-client generation, copy/public truth, whole-client product facts, subscription state presentation, no-waterfall loading and the complete local subscription/checkout aggregate at `I3`. WO-013DK completes the generated copy-authority map and active-client drift gate at `I3`. WO-013DU adds current-runtime proof that one logical DE node renders two public address choices in sing-box, Happ, Clash and raw VLESS without duplicating provisioning. Deployed provider, broad commercial-consistency and successor exact-candidate gates stay open | `WO-008`, `WO-008H`, `WO-008I`, `WO-008J`, `WO-008K`, `WO-008L`, `WO-008M`, `WO-013DK`, `WO-013DU` |
 | 07 | Canonical Operator Center v2 and legacy admin cutover | Local package complete, including the deterministic 75-operation OpenAPI/TypeScript contract, purpose-bound Telegram OIDC Authorization Code plus PKCE login and same-identity step-up for preprovisioned operators, exact retained-bridge permissions and query-suppressed field redaction; live IdP, authenticated exact-candidate readback and cutover/rollback gates remain open | `WO-009`, `WO-009H`, `WO-009I`, `WO-009J` |
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete at `I3`. Candidate.25 incorporates the WO-013FG development-lock correction; fresh webapp/adminapp/marketing audits are zero and full local quality passes `15/15`, including client `413/413`, cabinet `69/69` and static performance `9/9`. Current-public health/catalog p95 is `48.8176/51.3052 ms`. Gate E stays `BLOCKED` below I4 on authenticated journeys, physical accessibility/OEM/scaling, comparable artifact/device/browser performance, support, general RU-origin and post-promotion evidence | `WO-010`, `WO-013AN`, `WO-013CI`, `WO-013CO`, `WO-013DA`, `WO-013DD`, `WO-013DE`, `WO-013DQ`, `WO-013DS`, `WO-013EL`, `WO-013EN`, `WO-013EO`, `WO-013FD`–`WO-013FH` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
 | 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | AWG2/AWG3.1 and bounded HY2/Smart-DNS source labs are locally proved and default-off; immutable earlier candidate failures and corrections remain in their WOs. Candidate.22 packaged Windows AWG3.1/AWG2 and Smart-DNS results remain bounded history. Candidate.25 exact client artifacts retain the materialization contracts and a fresh full CLI rebuild passes. WO-013FI freshly proves candidate.25 exact Core AWG3.1 and AWG2 from one direct RU fixed-network Pi path. WO-013FJ proves only the exact package's idle install/service lifecycle; packaged connected transport/DNS runtime is not run. Phase 10 remains `I3`, not `I4`, because candidate.25 Android/Windows, mobile/fixed multi-ASN, independent server packet capture, authenticated sessions, UDP/IPv6/MTU, leak/privacy/load/lifecycle and platform parity are open. HY2 remains undeployed; Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AU`, `WO-013AX`–`WO-013BL`, `WO-013BP`, `WO-013BQ`, `WO-013BV`–`WO-013BX`, `WO-013CE`, `WO-013CG`, `WO-013CK`, `WO-013DG`, `WO-013DP`, `WO-013DU`, `WO-013EJ`, `WO-013EY`, `WO-013EZ`, `WO-013FB`–`WO-013FJ` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Candidates 5–23 are immutable failure history and candidate.24 is immutable signed predecessor history. WO-013FH binds corrected private candidate.25 signed supply, exact current/Brain origins, ten hosted jobs and all `19/19` pointers; Gate F is `BLOCKED 5 PASS / 14 non-PASS / 0 FAIL`. WO-013FJ adds bounded exact hosted Windows install/service/IPC/restart/uninstall and idle restoration, but does not satisfy connected `windows_live_network`. WO-013FK is a local successor test-harness correction only; its hosted job is `BLOCKED_BY_ACCESS`, not PASS. Android, connected Windows, authenticated/general-RU origins, provider/Operator/legal, runtime rollback, comparable performance and final rows remain open. `WIN-003` and `DOD-04` retain `I4` only for bounded predecessor network slices. No public `v1.2.0`, Store object, stable switch or promotion occurred | `WO-013`, `WO-013BK`–`WO-013FK` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Candidates 5–23 are immutable failure history and candidate.24 is immutable signed predecessor history. WO-013FH binds private candidate.25 signed supply and Gate F `BLOCKED 5 PASS / 14 non-PASS / 0 FAIL`. WO-013FJ/FM add bounded clean-host and direct-only Windows evidence. WO-013FN rejects candidate.27 precursor, merges the upgrade-owner correction and proves candidate.28 precursor, but creates no candidate and transfers no PASS to candidate.25. Candidate.25 is therefore immutable and non-promotable; a new exact successor must be assembled before device/runtime gates continue. Android, managed Windows, authenticated/general-RU origins, provider/Operator/legal, runtime rollback, comparable performance and final rows remain open. No public `v1.2.0`, Store object, stable switch or promotion occurred | `WO-013`, `WO-013BK`–`WO-013FN` |
 
-Active Phase 10/11 supersession: WO-013FH is the current private signed-supply
-and Gate F authority for candidate.25; WO-013FJ is its bounded exact Windows
-clean-host authority. WO-013FB remains the rejection authority
-for candidate.23 and predecessor signed-supply authority for candidate.24.
+Active Phase 10/11 supersession: WO-013FH remains the exact private
+signed-supply and Gate F authority for candidate.25; WO-013FJ/013FM retain its
+bounded clean-host and direct-only Windows evidence. WO-013FN is the current
+successor-source authority: it rejects candidate.27 precursor and proves the
+merged correction only as candidate.28 precursor. No successor exact candidate
+exists. WO-013FB remains the rejection authority for candidate.23 and
+predecessor signed-supply authority for candidate.24.
 Candidate.23's exact installed Windows service remains `Running` but rejects
 `23/32` simultaneous status clients, so those bytes are immutable `NO_GO`.
 Candidate.24 contains the bounded retry correction and source/native regression
@@ -140,9 +161,9 @@ Smart DNS and packaged AWG history; WO-013FA records its later connected-
 uninstall failure. WO-013EJ/013EK retain candidate.21 Smart DNS and exact-Core
 RU fixed-network AWG history. WO-013EL–WO-013EU retain candidate.21 origin,
 rollback, Gates A–E, privacy, RU planning and `BLOCKED 5/14/0` Gate F history.
-Fresh candidate.25 installed Windows/Android AWG, Smart DNS, authenticated and
-general RU origins, runtime rollback and aggregate evidence is required before
-promotion.
+Candidate.25 remains immutable and non-promotable. A new exact successor needs
+its own installed Windows/Android AWG, Smart DNS, authenticated and general
+RU-origin, runtime rollback and aggregate evidence before promotion.
 
 WO-013EA remains the rejected signed-index predecessor authority; WO-013EB is
 its exact offline source-gate authority; WO-013EC is its
@@ -771,6 +792,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013FJ` | Rebuild the Windows release path headlessly and exercise immutable candidate.25 on a clean hosted Windows machine | Exact private setup/signature/source tuple, private prerelease carrier, ephemeral Windows Server 2025 run and sanitized CLI/hosted evidence | Fresh CLI build passes without candidate credit. Exact install, `11/11` files, LocalSystem service, authenticated IPC, SCM restart, clean uninstall and idle network restoration pass. Connected traffic/DNS/egress/recovery/connected-uninstall/SmartScreen remain manual; Gate F stays `BLOCKED 5/14/0` | Run exact connected Windows default/AWG3.1/AWG2/Smart-DNS, DNS/leak/egress, reboot and connected-uninstall matrices on a suitable isolated device without using the owner's active desktop |
 | `WO-013FK` | Correct the Debug-only Windows service integration registration exposed by the fresh CLI rehearsal | CMake command authority, successor client source, fresh Debug/Release generations and executable CTest matrices | Debug enumerates and passes `8/8`; Release excludes the Debug-only SCM integration and passes `7/7`. Runtime/package source and candidate.25 bytes do not change. Hosted run executes zero steps and is `BLOCKED_BY_ACCESS` by GitHub Billing/spending limit; Gate F remains `5/14/0` | Keep candidate.25 immutable; restore an approved hosted runner path separately, and continue the exact connected Windows/Android matrices without assigning this test-only correction candidate credit |
 | `WO-013FL` | Build the merged CTest successor source entirely by CLI and exercise its exact setup in the isolated Windows 11 VM | Exact client/Core/platform tuple, full client tests, Windows setup/manifest, static scan, Debug/Release JUnit and sanitized upgrade/IPC/reboot evidence | Windows-only candidate.26 precursor passes full build, Debug `8/8`, Release `7/7`, staged and installed `11/11`, ordinary-UI IPC and automatic service recovery after guest reboot. It is not a signed multi-platform candidate; connected runtime is `NOT_RUN`; Gate F remains `5/14/0` | Assemble a new signed all-platform candidate only after deciding to replace candidate.25, then repeat connected Windows and exact Android device matrices on those exact bytes |
+| `WO-013FM` | Exercise exact installed candidate.25 TUN/DNS and connected reboot entirely inside the isolated Windows 11 VM | Candidate.25 installed snapshot, authenticated production IPC, secret-free direct-only profile, route/DNS fingerprints and real guest reboot | Exact candidate.25 service/Core passes direct-only TUN, DNS, health, disconnect restoration and connected-reboot restoration. Managed-node/AWG/Smart-DNS/connected-uninstall remain unrun; the initial too-strict post-check is retained and corrected; Gate F stays `5/14/0` | Complete first-run with an owner-approved existing activation code, then run managed default/AWG3.1/AWG2/Smart-DNS and connected-uninstall without creating an unapproved trial |
+| `WO-013FN` | Reject the candidate.27 Windows precursor, correct in-place upgrade owner resolution and prove the candidate.28 precursor | Two exact CLI builds, retained candidate.23 VM ancestor, first-pass direct installer logs, manifest identity, native tests, static scan and direct TUN/DNS/reboot evidence | Candidate.27 is `NO_GO_PRECURSOR` after reproducible first-upgrade abort and `8/11` hashes. Client PR 72 merges exact validated existing-owner reuse. Candidate.28 precursor passes full build, native `7/7 + 8/8`, static scan, first-pass `11/11` upgrade, direct TUN/DNS and connected reboot. It is not a candidate; candidate.25 Gate F stays `5/14/0` | Assemble a new exact all-platform successor candidate from merged client `7e3e771…`, then repeat its own Windows managed/default/AWG/Smart-DNS/uninstall and Android physical matrices |
 
 ## Current evidence
 
@@ -816,6 +839,12 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013FJ-candidate25-windows-hosted-clean-host-pass/`
 - `WO-013FK-windows-ctest-configuration-correction.md`
 - `evidence/013FK-windows-ctest-configuration-correction/`
+- `WO-013FL-candidate26-cli-vm-upgrade.md`
+- `evidence/013FL-candidate26-cli-vm/`
+- `WO-013FM-candidate25-windows-direct-tun-reboot.md`
+- `evidence/013FM-candidate25-windows-direct-tun-reboot/`
+- `WO-013FN-windows-upgrade-owner-fix.md`
+- `evidence/013FN-windows-upgrade-owner-fix/`
 - `WO-013EP-candidate21-static-artifact-privacy.md`
 - `evidence/013EP-candidate21-static-artifact-privacy/`
 - `WO-013EO-frontend-build-lock-refresh.md`
@@ -1372,7 +1401,7 @@ until a compatible resolver and live access/leak/rollback evidence exist.
 Windows SmartScreen remains the owner-approved unsigned direct-beta
 limitation.
 
-## Current next action — candidate.25 connected runtime and device gates
+## Current next action — assemble a successor after the Windows upgrade fix
 
 WO-013FH is the exact private signed-supply and Gate F authority for
 candidate.25. It incorporates the WO-013FG development-lock correction, binds
@@ -1403,16 +1432,46 @@ guest, matches `11/11`, completes ordinary-UI authenticated service IPC and
 restores the automatic LocalSystem service after a real guest reboot. This
 removes the local CTest/build uncertainty but does not create candidate.26,
 does not replace candidate.25 and does not satisfy connected
-`windows_live_network`. The VM baseline cannot resolve the portal and has no
-active TUN before the upgrade, so connected behavior remains a separate gate.
+`windows_live_network`. Its `portal.pokrov.space` DNS sentinel was not the
+canonical client endpoint and is superseded by WO-013FM's endpoint check.
 
-On a suitable isolated Windows device, run the corrected 32-client contention,
+WO-013FM now proves exact candidate.25's direct-only Windows dataplane through
+authenticated production IPC: Core initializes, a secret-free profile stages,
+TUN and DNS/routes form, the fixed API egress proof and health pass, disconnect
+restores the baseline, and a real connected guest reboot returns to the same
+route/DNS hashes with the automatic LocalSystem service safely lazy at
+`artifact_ready`. The first verifier incorrectly required `initialized`; its
+false harness FAIL and corrected PASS are both retained. This slice does not
+use or retain raw IPs or connection material and never touches the host tunnel.
+
+WO-013FN then proves that the next current-source candidate.27 precursor cannot
+replace candidate.25: its first in-place upgrade reproducibly aborts before
+file replacement because installation-owner resolution fails. The second-pass
+success is diagnostic only. The constrained correction is now merged in client
+`main` `7e3e771…`; candidate.28 precursor passes the first upgrade with
+`11/11`, the full CLI build, native matrices, bounded static scan, direct
+TUN/DNS lifecycle and connected reboot. Hosted PR run `33734564011` executes
+zero steps and remains `BLOCKED_BY_ACCESS`; local and VM evidence is explicit.
+
+Candidate.28 is not a created candidate and does not inherit candidate.25's
+signed supply. Candidate.25 remains the latest exact private signed artifact,
+but is not promotable after this source correction. The next release action is
+to assemble one new exact all-platform successor from client `7e3e771…`, the
+current reviewed platform and exact Core, then regenerate its own signed
+supply and Gate F.
+
+The exact UI still opens at first-run onboarding. No trial/account or
+entitlement is created without action-time owner confirmation. A managed
+profile through an existing activation code is therefore still required for
+the successor's default/AWG/Smart-DNS/connected-uninstall matrix.
+
+On the new exact successor and a suitable isolated Windows device, run the corrected 32-client contention,
 default connection, connected DNS/leak/egress, service restart/reboot,
 connected uninstall, AWG3.1/AWG2, Smart DNS and clean restoration matrices.
 Do not use interactive UAC or host input while the owner is using the
 workstation.
 
-In parallel, prioritize exact candidate.25 Android install and packaged
+In parallel, prioritize the new successor's exact Android install and packaged
 AWG3.1 then AWG2.
 Use an isolated emulator only when its network path is not inherited from the
 host tunnel; otherwise wait for the physical phone and retain separate Wi-Fi

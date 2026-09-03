@@ -66,6 +66,9 @@ The powered-off rollback snapshot
 freshly booted baseline has the older UI/service hashes, a running LocalSystem
 service, no `tun0`, successful control DNS and failed
 `portal.pokrov.space` DNS. The latter two facts predate the new installer.
+WO-013FM later establishes that `portal.pokrov.space` was a non-canonical
+harness sentinel, not a client control-plane prerequisite; the active client
+uses `api.pokrov.space`, which resolves and returns healthy inside the same VM.
 
 The exact precursor setup then passes:
 
@@ -81,9 +84,11 @@ The exact precursor setup then passes:
   file still matches the precursor manifest.
 
 Connected TUN/DNS/egress receives no credit. `tun0` was absent before the
-upgrade and remains absent after UI launch, while the portal DNS failure is an
-environment/control-plane prerequisite. No connection state is manufactured
-from an idle predecessor snapshot.
+upgrade and remains absent after UI launch because no managed profile or
+connect action is supplied. No connection state is manufactured from an idle
+predecessor snapshot. WO-013FM separately proves candidate.25's exact
+direct-only TUN/DNS/disconnect and connected-reboot lifecycle after correcting
+the hostname, without transferring managed-node or candidate.26 credit.
 
 ## Cleanup and release effect
 

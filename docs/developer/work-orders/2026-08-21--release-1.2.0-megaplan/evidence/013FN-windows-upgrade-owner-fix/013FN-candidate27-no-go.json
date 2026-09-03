@@ -1,0 +1,28 @@
+{
+  "schema": "pokrov.windows-candidate27-final-assessment.v1",
+  "recorded_at_utc": "2026-09-03T08:37:47.9652676Z",
+  "status": "NO_GO_PRECURSOR_FIRST_UPGRADE_OWNER_RESOLUTION_FAILED",
+  "candidate_label": "pokrov-1.2.0-candidate.27-precursor",
+  "candidate_created": false,
+  "initial_cli_build_result": "PASS",
+  "first_direct_upgrade": {
+    "ancestor": "candidate23-retained-before-candidate25-20260903",
+    "status": "FAIL",
+    "installed_file_presence": "11/11",
+    "installed_file_sizes": "10/11",
+    "installed_file_hashes": "8/11",
+    "mismatch_paths": [
+      "pokrov_windows.exe",
+      "pokrov_service.exe",
+      "data/app.so"
+    ],
+    "service_running": true,
+    "installer_log_closed": true,
+    "installer_log_succeeded": false,
+    "root_cause": "PrepareToInstall could not resolve installation owner before file replacement"
+  },
+  "second_attempt_credit": false,
+  "corrected_by_client_main": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+  "main_host_input_used": false,
+  "main_host_network_mutated": false
+}

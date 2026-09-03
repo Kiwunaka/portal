@@ -1,0 +1,52 @@
+{
+  "schema": "pokrov.windows-candidate28-owner-upgrade-evidence.v1",
+  "recorded_at_utc": "2026-09-03T08:37:47.9652676Z",
+  "status": "PASS_PRE_CANDIDATE_WINDOWS_OWNER_UPGRADE_DIRECT_RUNTIME",
+  "candidate_label": "pokrov-1.2.0-candidate.28-precursor",
+  "candidate_created": false,
+  "candidate_credit": false,
+  "source": {
+    "client_base_sha": "ed74928a88ead8053a845f9d8e294d1298b83a6a",
+    "source_diff_sha256": "1341da36b7c2bbb2b19a073c84e1bfb0a206cd96b55e1ffd191ce276002f2888",
+    "merged_client_main_sha": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+    "core_sha": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "platform_validation_sha": "4d6cd0024ef3a4b58a08adf94e59e8850c3f151a"
+  },
+  "build": {
+    "result": "PASS",
+    "version": "1.2.0+4053",
+    "setup_sha256": "7986a2b31e14b11d3765e4d988a6b4f897c05752acfc381f07ab1dd360e88182",
+    "setup_size_bytes": 29141384,
+    "manifest_sha256": "1ff59b17f72fa63ece302872eb730bdb173d93604a34480a5ae13121f625cfef",
+    "manifest_files_verified": "11_OF_11",
+    "authenticode": "SKIPPED_BY_OWNER_NOT_SIGNED"
+  },
+  "tests": {
+    "full_cli_release_build": "PASS",
+    "windows_contract": "PASS_7_OF_7",
+    "native_release_ctest": "PASS_7_OF_7",
+    "native_debug_ctest": "PASS_8_OF_8",
+    "bounded_static_scan": "PASS_ZERO_DEFINITE_FINDINGS_303_FILES_99269838_BYTES",
+    "vm_first_pass_upgrade": "PASS_EXACT_CLI_PRECURSOR_DIRECT_INSTALL_REPRO_11_OF_11",
+    "exact_direct_tun_dns_lifecycle": "PASS_EXACT_CANDIDATE28_PRECURSOR_DIRECT_TUN_DNS_LIFECYCLE",
+    "connected_guest_reboot": "PASS_EXACT_CANDIDATE28_PRECURSOR_CONNECTED_REBOOT_RECOVERY"
+  },
+  "fix_contract": {
+    "existing_machine_install_only": true,
+    "stored_owner_sid_requires_exact_validation": true,
+    "fresh_install_remains_fail_closed": true
+  },
+  "hosted_check": "BLOCKED_BY_ACCESS_ZERO_STEPS_RUN_33734564011",
+  "release_effect": {
+    "public_release_created": false,
+    "stable_pointer_mutated": false,
+    "production_mutated": false,
+    "gate_f": "UNCHANGED_BLOCKED_5_PASS_14_NON_PASS_0_FAIL",
+    "next": "CREATE_NEW_EXACT_SUCCESSOR_CANDIDATE"
+  },
+  "system_effects": {
+    "main_host_input_used": false,
+    "main_host_network_mutated": false,
+    "vm_powered_off_after_test": true
+  }
+}
