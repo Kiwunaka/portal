@@ -12,6 +12,7 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT_PATH = REPO_ROOT / "scripts" / "validate_release_candidate_supply_chain.py"
+HANDOFF_SCRIPT_PATH = REPO_ROOT / "scripts" / "validate_release_handoff_metadata.py"
 
 
 def _load_module() -> Any:
@@ -27,6 +28,21 @@ def _load_module() -> Any:
 
 
 validator = _load_module()
+
+
+def _load_handoff_module() -> Any:
+    spec = importlib.util.spec_from_file_location(
+        "validate_release_handoff_metadata_for_supply_tests",
+        HANDOFF_SCRIPT_PATH,
+    )
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+handoff_validator = _load_handoff_module()
 
 PLATFORM = "a" * 40
 CLIENT = "b" * 40
@@ -86,23 +102,28 @@ def _fixture(tmp_path: Path) -> dict[str, Any]:
     artifact_digests = {
         name: _digest(data) for name, data in artifact_data.items()
     }
-    provenance_artifact_order = (
-        "pokrov-android-arm64-v8a.apk",
-        "pokrov-android-armeabi-v7a.apk",
-        "pokrov-android-market.aab",
-        "pokrov-android-universal.apk",
-        "pokrov-android-x86_64.apk",
-        "pokrov-windows-setup-x64.exe",
-    )
-    artifact_set_text = "".join(
-        f"{name}|{len(artifact_data[name])}|{artifact_digests[name]}\n"
-        for name in provenance_artifact_order
-    )
-    artifact_set_sha256 = _digest(artifact_set_text.encode("utf-8"))
     runtime_bytes = b"exact-runtime"
     runtime_digest = _digest(runtime_bytes)
     android_core = "1" * 64
     windows_core = runtime_digest
+    artifact_records = {
+        name: {
+            "platform": platform,
+            "kind": kind,
+            "architecture": architecture,
+            "file_name": name,
+            "size_bytes": len(artifact_data[name]),
+            "sha256": artifact_digests[name],
+            "core_abi": None if platform == "android" else 2,
+            "core_artifact_sha256": (
+                android_core if platform == "android" else windows_core
+            ),
+        }
+        for name, platform, kind, architecture in artifact_specs
+    }
+    artifact_set_sha256 = validator._canonical_artifact_set_sha256(
+        artifact_records
+    )
     for name, data in artifact_data.items():
         (tmp_path / name).write_bytes(data)
 
@@ -229,21 +250,16 @@ def _fixture(tmp_path: Path) -> dict[str, Any]:
         },
         "artifacts": [
             {
-                "platform": platform,
-                "kind": kind,
-                "architecture": architecture,
-                "file_name": name,
-                "size_bytes": len(artifact_data[name]),
-                "sha256": artifact_digests[name],
+                **artifact_records[name],
                 "source_revision": CLIENT,
-                "core_artifact_sha256": (
-                    android_core if platform == "android" else windows_core
-                ),
                 "sbom": {"status": "PASS", "sha256": sbom_digest},
                 "provenance": {"status": "PASS", "sha256": provenance_digest},
             }
             for name, platform, kind, architecture in artifact_specs
         ],
+        "promotion": {
+            "source_artifact_set_sha256": artifact_set_sha256,
+        },
     }
     handoff_path = tmp_path / "release-handoff.json"
     _write_json(handoff_path, handoff)
@@ -310,6 +326,43 @@ def test_exact_candidate_supply_chain_passes(tmp_path: Path) -> None:
     assert summary.artifact_count == 6
     assert summary.windows_runtime_file_count == 1
     assert summary.source_revisions["platform"] == PLATFORM
+
+
+def test_artifact_set_digest_matches_release_handoff_authority(tmp_path: Path) -> None:
+    fixture = _fixture(tmp_path)
+    artifacts = fixture["handoff"]["artifacts"]
+    by_name = {artifact["file_name"]: artifact for artifact in artifacts}
+    descriptors = [
+        {
+            key: artifact[key]
+            for key in (
+                "architecture",
+                "core_abi",
+                "core_artifact_sha256",
+                "file_name",
+                "kind",
+                "platform",
+                "sha256",
+                "size_bytes",
+            )
+        }
+        for artifact in artifacts
+    ]
+
+    assert validator._canonical_artifact_set_sha256(by_name) == (
+        handoff_validator.compute_artifact_set_sha256(descriptors)
+    )
+
+
+def test_stale_handoff_artifact_set_digest_fails_closed(tmp_path: Path) -> None:
+    fixture = _fixture(tmp_path)
+    fixture["handoff"]["promotion"]["source_artifact_set_sha256"] = "0" * 64
+    _write_json(fixture["handoff_path"], fixture["handoff"])
+
+    with pytest.raises(validator.SupplyChainIssue) as exc:
+        _validate(fixture)
+
+    assert exc.value.code == "handoff_artifact_set_digest_mismatch"
 
 
 def test_changed_candidate_artifact_fails_closed(tmp_path: Path) -> None:

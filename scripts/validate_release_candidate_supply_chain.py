@@ -34,14 +34,6 @@ EXPECTED_ARTIFACTS = {
     "pokrov-android-x86_64.apk": ("android", "apk", "x86_64"),
     "pokrov-windows-setup-x64.exe": ("windows", "exe", "x64"),
 }
-PROVENANCE_ARTIFACT_ORDER = (
-    "pokrov-android-arm64-v8a.apk",
-    "pokrov-android-armeabi-v7a.apk",
-    "pokrov-android-market.aab",
-    "pokrov-android-universal.apk",
-    "pokrov-android-x86_64.apk",
-    "pokrov-windows-setup-x64.exe",
-)
 EXPECTED_SBOM_FORMAT = "CycloneDX"
 EXPECTED_SBOM_SPEC_VERSION = "1.5"
 EXPECTED_PROVENANCE_TYPE = "https://in-toto.io/Statement/v1"
@@ -174,14 +166,54 @@ def _file_sha256(path: Path) -> str:
     return algorithm.hexdigest()
 
 
-def _provenance_artifact_set_sha256(artifacts: dict[str, JsonObject]) -> str:
-    lines: list[str] = []
-    for name in PROVENANCE_ARTIFACT_ORDER:
-        artifact = artifacts[name]
-        size = _positive_int(artifact.get("size_bytes"), f"artifact.{name}.size_bytes")
-        digest = _sha256(artifact.get("sha256"), f"artifact.{name}.sha256")
-        lines.append(f"{name}|{size}|{digest}\n")
-    return hashlib.sha256("".join(lines).encode("utf-8")).hexdigest()
+def _canonical_artifact_set_sha256(artifacts: dict[str, JsonObject]) -> str:
+    descriptors: list[JsonObject] = []
+    for name, artifact in artifacts.items():
+        platform = _string(artifact.get("platform"), f"artifact.{name}.platform")
+        core_abi = artifact.get("core_abi")
+        if platform == "android":
+            if core_abi is not None:
+                raise SupplyChainIssue("artifact_descriptor_mismatch", name)
+        else:
+            core_abi = _positive_int(core_abi, f"artifact.{name}.core_abi")
+        descriptors.append(
+            {
+                "architecture": _string(
+                    artifact.get("architecture"),
+                    f"artifact.{name}.architecture",
+                ),
+                "core_abi": core_abi,
+                "core_artifact_sha256": _sha256(
+                    artifact.get("core_artifact_sha256"),
+                    f"artifact.{name}.core_artifact_sha256",
+                ),
+                "file_name": name,
+                "kind": _string(artifact.get("kind"), f"artifact.{name}.kind"),
+                "platform": platform,
+                "sha256": _sha256(
+                    artifact.get("sha256"),
+                    f"artifact.{name}.sha256",
+                ),
+                "size_bytes": _positive_int(
+                    artifact.get("size_bytes"),
+                    f"artifact.{name}.size_bytes",
+                ),
+            }
+        )
+    canonical = json.dumps(
+        sorted(
+            descriptors,
+            key=lambda item: (
+                str(item["platform"]),
+                str(item["kind"]),
+                str(item["architecture"]),
+            ),
+        ),
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
 
 
 def _candidate_ordinal(candidate_id: str) -> str:
@@ -412,7 +444,7 @@ def _validate_sbom(
     ):
         raise SupplyChainIssue("sbom_root_bom_ref_mismatch", "sbom.metadata.component.bom-ref")
     root_properties = _property_map(root_component.get("properties"), "sbom.metadata.component.properties")
-    artifact_set_sha256 = _provenance_artifact_set_sha256(artifacts)
+    artifact_set_sha256 = _canonical_artifact_set_sha256(artifacts)
     expected_properties = {
         "pokrov:candidate-id": expected.candidate_id,
         "pokrov:platform-commit": expected.platform_revision,
@@ -595,7 +627,7 @@ def _validate_provenance(
     run_details = _object(predicate.get("runDetails"), "provenance.predicate.runDetails")
     metadata = _object(run_details.get("metadata"), "provenance.runDetails.metadata")
     expected_invocation_id = (
-        f"{expected.candidate_id}/{_provenance_artifact_set_sha256(artifacts)}"
+        f"{expected.candidate_id}/{_canonical_artifact_set_sha256(artifacts)}"
     )
     if (
         _string(metadata.get("invocationId"), "provenance.metadata.invocationId")
@@ -668,6 +700,16 @@ def validate_candidate(
         raise SupplyChainIssue("product_version_mismatch", "release_handoff.release")
     sources = _source_revisions(handoff, expected)
     artifacts, sbom_refs, provenance_refs = _artifact_map(handoff, root, expected)
+    promotion = _object(handoff.get("promotion"), "release_handoff.promotion")
+    recorded_artifact_set = _sha256(
+        promotion.get("source_artifact_set_sha256"),
+        "release_handoff.promotion.source_artifact_set_sha256",
+    )
+    if recorded_artifact_set != _canonical_artifact_set_sha256(artifacts):
+        raise SupplyChainIssue(
+            "handoff_artifact_set_digest_mismatch",
+            "release_handoff.promotion.source_artifact_set_sha256",
+        )
 
     sbom_digest = _file_sha256(paths["sbom"])
     provenance_digest = _file_sha256(paths["provenance"])
