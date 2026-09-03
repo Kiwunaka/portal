@@ -1,0 +1,86 @@
+{
+  "schema": "pokrov.windows-vm-cli-precursor-evidence.v1",
+  "recorded_at_utc": "2026-09-03T06:52:33.7186144Z",
+  "status": "PASS_BOUNDED_UPGRADE_INSTALL_IPC_REBOOT",
+  "candidate_label": "pokrov-1.2.0-candidate.26-precursor",
+  "candidate_created": false,
+  "artifact": {
+    "version": "1.2.0+4053",
+    "client_sha": "ed74928a88ead8053a845f9d8e294d1298b83a6a",
+    "core_sha": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "setup_sha256": "1e84ca5fbc110c0199e4625b7b13fc0db8206afd32074bab28647ec5e6b9b8f0",
+    "setup_size_bytes": 29140784,
+    "manifest_sha256": "ba06d031723e0d83014baae6f6dc335205e7addc9ed8db17cda678f562ba5c72"
+  },
+  "environment": {
+    "vm": "POKROV-Win11-Test",
+    "os": "Windows 11",
+    "transport": "VirtualBox Guest Additions and VM-only console consent",
+    "ancestor_snapshot": "candidate23-retained-before-candidate25-20260903",
+    "ancestor_snapshot_uuid": "57037849-8233-417b-9322-bcb22f246f34",
+    "main_host_input_used": false,
+    "main_host_ui_launched": false,
+    "main_host_service_installed": false,
+    "main_host_network_mutated": false
+  },
+  "pre_upgrade_baseline": {
+    "older_install_present": true,
+    "older_ui_sha256": "b7a61dbe2bf7f8844ecab5fb47fd0fe6a50594d3a32a25445f58bb2e2b8ca9f9",
+    "older_service_sha256": "9b064f88bcbad7db543f7dc85507b3ac7137baa80321b082a7393f1d251c6ee2",
+    "service_running": true,
+    "service_localsystem": true,
+    "tun0_present": false,
+    "dns_control_resolved": true,
+    "portal_pokrov_space_resolved": false
+  },
+  "upgrade_install": {
+    "installer_exit": 0,
+    "installed_files_present": "11_OF_11",
+    "installed_files_size_match": "11_OF_11",
+    "installed_files_hash_match": "11_OF_11",
+    "service_present": true,
+    "service_running": true,
+    "service_automatic": true,
+    "service_localsystem": true,
+    "raw_installer_log_exported": false
+  },
+  "ordinary_ui_and_ipc": {
+    "ui_processes": 1,
+    "ui_session": 1,
+    "service_path_exact": true,
+    "owner_sid_matches_user": true,
+    "journal_present": true,
+    "ipc_session_accepted": true,
+    "status_requested": true,
+    "raw_journal_exported": false
+  },
+  "guest_reboot": {
+    "last_boot_utc": "2026-09-03T06:18:08.5000000Z",
+    "service_present_after_reboot": true,
+    "service_running_after_reboot": true,
+    "service_automatic_after_reboot": true,
+    "service_localsystem_after_reboot": true,
+    "installed_ui_hash_match_after_reboot": true,
+    "interactive_users_during_check": 0
+  },
+  "connected_runtime": {
+    "status": "NOT_RUN",
+    "reason": "TUN was already absent before the upgrade and portal.pokrov.space DNS failed in the clean baseline; no connected state was manufactured or credited.",
+    "tun0_present_after_ui_launch": false,
+    "dns_control_resolved_after_ui_launch": true,
+    "portal_pokrov_space_resolved_after_ui_launch": false,
+    "connected_pass_claimed": false
+  },
+  "cleanup": {
+    "vm_powered_off": true,
+    "new_snapshot_created": false,
+    "retained_raw_connection_material": false
+  },
+  "release_effect": {
+    "candidate_credit": false,
+    "public_release_created": false,
+    "stable_pointer_mutated": false,
+    "production_mutated": false,
+    "gate_f": "UNCHANGED_BLOCKED_5_PASS_14_NON_PASS_0_FAIL"
+  }
+}

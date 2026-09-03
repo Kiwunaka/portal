@@ -90,6 +90,15 @@ test-harness source only and gives candidate.25 no new runtime credit. GitHub
 run `33719302139` executes zero steps and is `BLOCKED_BY_ACCESS` by the account
 Billing/spending limit, not represented as a hosted PASS.
 
+WO-013FL takes the merged WO-013FK successor client source through another
+full headless CLI build and an isolated Windows 11 upgrade/reboot. The new
+Windows-only `candidate.26-precursor` passes the complete client tests, Debug
+`8/8`, Release `7/7`, `11/11` staged and installed file identity, ordinary-UI
+authenticated service IPC and post-reboot automatic LocalSystem service. It is
+not a created or signed multi-platform candidate. Connected TUN/DNS/egress is
+`NOT_RUN` because the rollback baseline already has no `tun0` and cannot
+resolve `portal.pokrov.space`; candidate.25 and Gate F `5/14/0` remain current.
+
 ## Execution order
 
 | Phase | Architectural outcome | State | Primary WO |
@@ -761,6 +770,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013FI` | Refresh candidate.25 exact-Core AWG3.1 and AWG2 evidence from the owned direct-RU Pi | Candidate.25 manifest/Core identity, candidate-matching guarded runner, ARM64 binary hashes and secret-free cleaned execution records | AWG3.1 and AWG2 both pass authenticated egress from one direct RU fixed-network path; runtime/server/client settings remain unchanged and temporary state is removed. `AWG-10` and Phase 10 keep their levels; Gate F remains `BLOCKED 5/14/0` | Run exact packaged Android and Windows AWG3.1/AWG2, physical Wi-Fi/Beeline and additional named fixed/mobile ASN canaries before advancing AWG-10 or regenerating Gate F |
 | `WO-013FJ` | Rebuild the Windows release path headlessly and exercise immutable candidate.25 on a clean hosted Windows machine | Exact private setup/signature/source tuple, private prerelease carrier, ephemeral Windows Server 2025 run and sanitized CLI/hosted evidence | Fresh CLI build passes without candidate credit. Exact install, `11/11` files, LocalSystem service, authenticated IPC, SCM restart, clean uninstall and idle network restoration pass. Connected traffic/DNS/egress/recovery/connected-uninstall/SmartScreen remain manual; Gate F stays `BLOCKED 5/14/0` | Run exact connected Windows default/AWG3.1/AWG2/Smart-DNS, DNS/leak/egress, reboot and connected-uninstall matrices on a suitable isolated device without using the owner's active desktop |
 | `WO-013FK` | Correct the Debug-only Windows service integration registration exposed by the fresh CLI rehearsal | CMake command authority, successor client source, fresh Debug/Release generations and executable CTest matrices | Debug enumerates and passes `8/8`; Release excludes the Debug-only SCM integration and passes `7/7`. Runtime/package source and candidate.25 bytes do not change. Hosted run executes zero steps and is `BLOCKED_BY_ACCESS` by GitHub Billing/spending limit; Gate F remains `5/14/0` | Keep candidate.25 immutable; restore an approved hosted runner path separately, and continue the exact connected Windows/Android matrices without assigning this test-only correction candidate credit |
+| `WO-013FL` | Build the merged CTest successor source entirely by CLI and exercise its exact setup in the isolated Windows 11 VM | Exact client/Core/platform tuple, full client tests, Windows setup/manifest, static scan, Debug/Release JUnit and sanitized upgrade/IPC/reboot evidence | Windows-only candidate.26 precursor passes full build, Debug `8/8`, Release `7/7`, staged and installed `11/11`, ordinary-UI IPC and automatic service recovery after guest reboot. It is not a signed multi-platform candidate; connected runtime is `NOT_RUN`; Gate F remains `5/14/0` | Assemble a new signed all-platform candidate only after deciding to replace candidate.25, then repeat connected Windows and exact Android device matrices on those exact bytes |
 
 ## Current evidence
 
@@ -1386,6 +1396,15 @@ WO-013FK corrects the resulting Debug-only CTest registration issue in
 successor client source and passes fresh local Debug `8/8` plus Release `7/7`.
 It changes no runtime/package source and grants candidate.25 no credit. Its
 hosted job is `BLOCKED_BY_ACCESS` by the GitHub account limit with zero steps.
+
+WO-013FL now proves that the merged successor client source builds fully by CLI
+and that its exact Windows-only precursor upgrades the isolated Windows 11
+guest, matches `11/11`, completes ordinary-UI authenticated service IPC and
+restores the automatic LocalSystem service after a real guest reboot. This
+removes the local CTest/build uncertainty but does not create candidate.26,
+does not replace candidate.25 and does not satisfy connected
+`windows_live_network`. The VM baseline cannot resolve the portal and has no
+active TUN before the upgrade, so connected behavior remains a separate gate.
 
 On a suitable isolated Windows device, run the corrected 32-client contention,
 default connection, connected DNS/leak/egress, service restart/reboot,

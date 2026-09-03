@@ -1,0 +1,74 @@
+{
+  "schema": "pokrov.windows-cli-build-evidence.v1",
+  "recorded_at_utc": "2026-09-03T06:06:21.5910348Z",
+  "status": "PASS_PRE_CANDIDATE_WINDOWS_BUILD",
+  "candidate_label": "pokrov-1.2.0-candidate.26-precursor",
+  "candidate_created": false,
+  "candidate_credit": false,
+  "source": {
+    "client_sha": "ed74928a88ead8053a845f9d8e294d1298b83a6a",
+    "core_sha": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "platform_validation_sha": "2e8f6540132bd4080b8ba56de9da018d712e7c63",
+    "source_clean_before_build": true
+  },
+  "build": {
+    "command_surface": "scripts/build-windows-release.ps1 -SyncRuntime -CoreRoot <exact-core>",
+    "result": "PASS",
+    "version": "1.2.0+4053",
+    "setup_file": "pokrov-windows-x64-1.2.0+4053-setup.exe",
+    "setup_sha256": "1e84ca5fbc110c0199e4625b7b13fc0db8206afd32074bab28647ec5e6b9b8f0",
+    "setup_size_bytes": 29140784,
+    "manifest_file": "pokrov-windows-x64-1.2.0+4053.manifest.json",
+    "manifest_sha256": "ba06d031723e0d83014baae6f6dc335205e7addc9ed8db17cda678f562ba5c72",
+    "manifest_files_verified": "11_OF_11",
+    "authenticode": "SKIPPED_BY_OWNER_NOT_SIGNED",
+    "smartscreen_warning_required": true
+  },
+  "tests": {
+    "release_and_repository_contracts": "PASS",
+    "app_shell": "PASS_413_OF_413",
+    "runtime_engine": "PASS_72_OF_72_WITH_1_DECLARED_OPTIONAL_SKIP",
+    "android_shell_flutter": "PASS_8_OF_8",
+    "windows_widget": "PASS_23_OF_23",
+    "android_gradle_unit": "PASS_DIRECT_AND_STORE",
+    "windows_analyze": "PASS",
+    "native_debug_ctest": "PASS_8_OF_8",
+    "native_release_ctest": "PASS_7_OF_7"
+  },
+  "static_privacy": {
+    "staged_files_scanned": 303,
+    "staged_bytes_scanned": 99269838,
+    "raw_installer_bytes_scanned": 29140784,
+    "complete_private_key_block": 0,
+    "authorization_literal": 0,
+    "credential_assignment": 0,
+    "high_confidence_proxy_uri": 0,
+    "known_live_token": 0,
+    "matched_values_retained": false,
+    "result": "PASS_BOUNDED_STATIC_SCAN"
+  },
+  "initial_preflight": {
+    "status": "STOPPED_BEFORE_BUILD",
+    "reason": "CLEAN_WORKTREE_REQUIRED_EXPLICIT_PLATFORM_SHARED_FACTS_ROOT",
+    "product_failure_claimed": false,
+    "corrected_by": "EXPLICIT_EXACT_PLATFORM_ROOT"
+  },
+  "system_effects": {
+    "installer_executed_on_main_host": false,
+    "ui_launched_on_main_host": false,
+    "service_installed_on_main_host": false,
+    "network_mutated_on_main_host": false,
+    "main_desktop_control_used": false
+  },
+  "release_effect": {
+    "public_release_created": false,
+    "stable_pointer_mutated": false,
+    "production_mutated": false,
+    "gate_f": "UNCHANGED_BLOCKED_5_PASS_14_NON_PASS_0_FAIL"
+  },
+  "limitations": [
+    "This is a Windows-only CLI-built precursor, not a signed multi-platform candidate.",
+    "Static inspection and local CTest do not replace exact installed connected TUN, DNS, egress, recovery or uninstall proof.",
+    "Trusted Windows signing remains unavailable; the owner-approved direct-beta SmartScreen warning is mandatory."
+  ]
+}
