@@ -1,0 +1,105 @@
+{
+  "schema": "pokrov.release-1.2.0.signed-candidate-binding-evidence/v1",
+  "recorded_at_utc": "2026-09-03T10:22:02Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.29",
+    "version": "1.2.0+4053",
+    "release_index_source_revision": "71e2c71fbc1aab0b76ca634e283eaa362e605b97",
+    "platform_source_revision": "efb05e0899ad51afd4453ae2fb75f8cafe96db7e",
+    "client_source_revision": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+    "core_source_revision": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "signer_workflow_run": "Kiwunaka/pokrov/actions/runs/33741376651",
+    "signer_artifact_id": 9887848909,
+    "signer_artifact_name": "pokrov-pokrov-1.2.0-candidate.29-signed-manifest-71e2c71fbc1aab0b76ca634e283eaa362e605b97",
+    "signer_artifact_digest": "sha256:e5683b5c7ea9472a8fc8e3689d58cf1d80f64b3effe0ddce5039a19017d1250c",
+    "signer_artifact_expires_at_utc": "2026-09-17T09:54:15Z"
+  },
+  "outputs": [
+    {
+      "path": "pokrov-1.2.0-candidate.29.release-index.json",
+      "sha256": "231e3d5264ba18e68c5aac9b6faa1bca3864c011fbff3771960e84a9edc1e9df",
+      "size_bytes": 6884
+    },
+    {
+      "path": "pokrov-1.2.0-candidate.29.release-index.json.sig",
+      "sha256": "215f8234376d23806ad89e0d8f7d2aa0f6ad2fcc3dfeeec593e6a6f71db27bfc",
+      "size_bytes": 64
+    },
+    {
+      "path": "pokrov-1.2.0-candidate.29.signing-receipt.json",
+      "sha256": "097b0c3fbeb63c2e0a2557e9fc614363ef9883c233b6b99dc8c8fb3067524fcf",
+      "size_bytes": 589
+    }
+  ],
+  "supply_chain": {
+    "status": "PASS",
+    "artifact_count": 6,
+    "windows_runtime_file_count": 11,
+    "predecessor_candidate": "pokrov-1.2.0-candidate.25",
+    "same_byte_client_artifact_reuse": false,
+    "candidate_binaries_rebuilt": true,
+    "artifact_set_sha256": "8fe2ccb751694a0448ece6aec900b898ae7843223112b8f3033fb503eff20a79",
+    "sbom_sha256": "07a4e19ebdb1631c46ae324935b1bf629996d62b1597bbcd44c71606eeb42e44",
+    "provenance_sha256": "2993b8a16d2d21f41c63f59c037e0c3fb452c3e23bf8baeb2affb7e5a14c7c77",
+    "release_handoff_sha256": "f05791698e835da61680698cd2284bdd46dd2bbb76c4add69384c00b43fe9ab8",
+    "supply_validation_sha256": "919ab0ae017211a091d42990652a77839fc15b57eacb087bc1d7fa308208e992",
+    "windows_manifest_sha256": "8d535ff682b7beac7a23c52d63cd37698a1d6d8edbf19c48a2121ac9f398f9a3",
+    "windows_installer_sha256": "60487a7bb17da33dbca842a146f6eb24dddd089e532c241670c9c0fd79610451",
+    "windows_installer_size_bytes": 29154403
+  },
+  "independent_validation": {
+    "status": "READY_SIGNED_MANIFEST",
+    "receipt_matches_outputs": true,
+    "detached_signature_verified_with_public_keyring": true,
+    "method": "Hosted main-only signer plus local exact-byte readback and detached Ed25519 verification against the manifest-bound public keyring",
+    "promotion_authorized": false
+  },
+  "cli_build": {
+    "status": "PASS_EXACT_CANDIDATE_BYTES",
+    "source_revision": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+    "full_builder_exit_code": 0,
+    "app_shell_tests": "413/413 PASS",
+    "android_flutter_tests": "8/8 PASS",
+    "linux_flutter_tests": "5/5 PASS",
+    "windows_widget_tests": "23/23 PASS",
+    "windows_native_release": "7/7 PASS",
+    "windows_native_debug": "8/8 PASS",
+    "required_bundle_files_passed": 11,
+    "required_bundle_files_total": 11,
+    "candidate_binaries_rebuilt": true
+  },
+  "physical_phone_install_binding": {
+    "status": "NOT_RUN",
+    "gate_f_check": "android_physical_device",
+    "candidate_signature_validation_depends_on_this_status": false
+  },
+  "windows_vm_binding": {
+    "installer_file_identity": "PASS",
+    "installer_sha256": "60487a7bb17da33dbca842a146f6eb24dddd089e532c241670c9c0fd79610451",
+    "installer_size_bytes": 29154403,
+    "authenticode_status": "NotSigned",
+    "installation_status": "PASS_UPGRADE_FROM_CANDIDATE28",
+    "installed_runtime_files": "11/11 PASS",
+    "service_status": "RUNNING_AUTOMATIC_LOCALSYSTEM",
+    "ordinary_user_ui": "PASS",
+    "direct_tun_dns_lifecycle": "PASS",
+    "connected_guest_reboot_restore": "PASS",
+    "managed_node_awg_smart_dns": "NOT_RUN",
+    "screen_or_input_control_used": false,
+    "host_network_mutated": false,
+    "post_test_vm_state": "poweroff"
+  },
+  "mutation_boundary": {
+    "candidate_artifact_mutated": false,
+    "phone_install_or_runtime_test": false,
+    "windows_install_or_runtime_test": true,
+    "screen_or_input_control_used": false,
+    "host_network_mutated": false,
+    "signing_private_key_accessed_locally": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE29_SIGNED_SUPPLY_FULL_CLI_BUILD_AND_BOUNDED_WINDOWS11_DIRECT_RUNTIME; MANAGED_NODE_AWG_SMART_DNS_ANDROID_ORIGINS_PROVIDER_OPERATOR_LEGAL_PERFORMANCE_FINAL_AGGREGATE_AND_PROMOTION_REMAIN_NON_PASS"
+}

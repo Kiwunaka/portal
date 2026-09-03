@@ -1,0 +1,117 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate29-hosted-checks/v1",
+  "recorded_at_utc": "2026-09-03T10:22:02Z",
+  "status": "BLOCKED_BY_ACCESS_GITHUB_BILLING",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.29",
+    "version": "1.2.0+4053",
+    "sources": {
+      "platform": "efb05e0899ad51afd4453ae2fb75f8cafe96db7e",
+      "client": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "71e2c71fbc1aab0b76ca634e283eaa362e605b97"
+    }
+  },
+  "repositories": [
+    {
+      "repository": "Kiwunaka/portal",
+      "head_sha": "efb05e0899ad51afd4453ae2fb75f8cafe96db7e",
+      "attached_check_count": 2,
+      "checks": [
+        {
+          "name": "cross-repository-contract",
+          "workflow": "Release v2 Contract",
+          "run_id": 33735672030,
+          "job_id": 100585507822,
+          "status": "completed",
+          "conclusion": "failure",
+          "step_count": 0,
+          "runner_name": "",
+          "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+        },
+        {
+          "name": "repo-guardrails",
+          "workflow": "Guardrails",
+          "run_id": 33735672024,
+          "job_id": 100585507960,
+          "status": "completed",
+          "conclusion": "failure",
+          "step_count": 0,
+          "runner_name": "",
+          "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+        }
+      ]
+    },
+    {
+      "repository": "Kiwunaka/POKROV-app",
+      "head_sha": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+      "attached_check_count": 1,
+      "checks": [
+        {
+          "name": "cross-repository-contract",
+          "workflow": "Release v2 Contract",
+          "run_id": 33734621500,
+          "job_id": 100582174902,
+          "status": "completed",
+          "conclusion": "failure",
+          "step_count": 0,
+          "runner_name": "",
+          "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+        }
+      ]
+    },
+    {
+      "repository": "Kiwunaka/pokrov-core",
+      "head_sha": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "attached_check_count": 5,
+      "checks": [
+        {"name": "test", "workflow": "CI", "run_id": 33303561763, "job_id": 99239337643, "status": "completed", "conclusion": "success"},
+        {"name": "apple-source-build", "workflow": "CI", "run_id": 33303561763, "job_id": 99239337828, "status": "completed", "conclusion": "success"},
+        {"name": "windows-artifact-reproducibility", "workflow": "CI", "run_id": 33303561763, "job_id": 99239350126, "status": "completed", "conclusion": "success"},
+        {"name": "android-artifact-reproducibility", "workflow": "CI", "run_id": 33303561763, "job_id": 99239352003, "status": "completed", "conclusion": "success"},
+        {"name": "release-contract", "workflow": "CI", "run_id": 33303561763, "job_id": 99239336924, "status": "completed", "conclusion": "success"}
+      ]
+    },
+    {
+      "repository": "Kiwunaka/pokrov",
+      "head_sha": "71e2c71fbc1aab0b76ca634e283eaa362e605b97",
+      "attached_check_count": 2,
+      "checks": [
+        {"name": "source-contract", "workflow": "Release index contract", "run_id": 33741331273, "job_id": 100603700659, "status": "completed", "conclusion": "success"},
+        {"name": "prepare-signed-candidate", "workflow": "Prepare signed candidate manifest", "run_id": 33741376651, "job_id": 100603856586, "status": "completed", "conclusion": "success"}
+      ]
+    }
+  ],
+  "aggregate": {
+    "repository_count": 4,
+    "attached_check_count": 10,
+    "completed_success_count": 7,
+    "blocked_access_count": 3,
+    "executed_failure_count": 0,
+    "pending_count": 0,
+    "head_sha_mismatch_count": 0,
+    "zero_step_failure_count": 3,
+    "check_app": "github-actions"
+  },
+  "boundary": {
+    "api_operation": "READ_ONLY",
+    "workflow_dispatched_by_this_evidence_run": false,
+    "check_rerun_requested": false,
+    "branch_protection_verified": false,
+    "branch_protection_status": "OWNER_DECLINED_PAID_PROTECTION",
+    "independent_review_performed": false,
+    "owner_solo_exception_retained": true,
+    "local_checks_replace_hosted_checks": false,
+    "promotion_authorized": false,
+    "public_release_mutated": false,
+    "stable_pointer_mutated": false
+  },
+  "evidence_safety": {
+    "credentials_exported": false,
+    "tokens_exported": false,
+    "private_keys_exported": false,
+    "logs_or_artifact_payloads_exported": false,
+    "customer_or_provider_data_exported": false
+  },
+  "evidence_ceiling": "SEVEN_OF_TEN_EXACT_SHA_HOSTED_JOBS_PASS; THREE PLATFORM_OR_CLIENT_JOBS ARE ZERO_STEP BLOCKED_BY_ACCESS_GITHUB_BILLING; LOCAL_PASSES_DO_NOT_CONVERT_HOSTED_REQUIRED_CHECKS_TO_PASS"
+}
