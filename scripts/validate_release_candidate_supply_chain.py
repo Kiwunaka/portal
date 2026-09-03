@@ -32,6 +32,14 @@ EXPECTED_ARTIFACTS = {
     "pokrov-android-x86_64.apk": ("android", "apk", "x86_64"),
     "pokrov-windows-setup-x64.exe": ("windows", "exe", "x64"),
 }
+PROVENANCE_ARTIFACT_ORDER = (
+    "pokrov-android-arm64-v8a.apk",
+    "pokrov-android-armeabi-v7a.apk",
+    "pokrov-android-market.aab",
+    "pokrov-android-universal.apk",
+    "pokrov-android-x86_64.apk",
+    "pokrov-windows-setup-x64.exe",
+)
 EXPECTED_SBOM_FORMAT = "CycloneDX"
 EXPECTED_SBOM_SPEC_VERSION = "1.5"
 EXPECTED_PROVENANCE_TYPE = "https://in-toto.io/Statement/v1"
@@ -162,6 +170,16 @@ def _file_sha256(path: Path) -> str:
     except OSError as exc:
         raise SupplyChainIssue("file_unreadable", path.name) from exc
     return algorithm.hexdigest()
+
+
+def _provenance_artifact_set_sha256(artifacts: dict[str, JsonObject]) -> str:
+    lines: list[str] = []
+    for name in PROVENANCE_ARTIFACT_ORDER:
+        artifact = artifacts[name]
+        size = _positive_int(artifact.get("size_bytes"), f"artifact.{name}.size_bytes")
+        digest = _sha256(artifact.get("sha256"), f"artifact.{name}.sha256")
+        lines.append(f"{name}|{size}|{digest}\n")
+    return hashlib.sha256("".join(lines).encode("utf-8")).hexdigest()
 
 
 def _require_under_root(path: Path, root: Path, label: str) -> Path:
@@ -507,6 +525,18 @@ def _validate_provenance(
         raise SupplyChainIssue("provenance_source_revision_mismatch", "provenance.resolvedDependencies")
 
     run_details = _object(predicate.get("runDetails"), "provenance.predicate.runDetails")
+    metadata = _object(run_details.get("metadata"), "provenance.runDetails.metadata")
+    expected_invocation_id = (
+        f"{expected.candidate_id}/{_provenance_artifact_set_sha256(artifacts)}"
+    )
+    if (
+        _string(metadata.get("invocationId"), "provenance.metadata.invocationId")
+        != expected_invocation_id
+    ):
+        raise SupplyChainIssue(
+            "provenance_invocation_artifact_set_mismatch",
+            "provenance.metadata.invocationId",
+        )
     byproducts = _array(run_details.get("byproducts"), "provenance.byproducts")
     sbom_byproducts = []
     for value in byproducts:
