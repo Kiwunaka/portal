@@ -1,0 +1,124 @@
+{
+  "schema": "pokrov.release-1.2.0.successor-android-pre-candidate/v1",
+  "recorded_at_utc": "2026-09-03T22:41:22.942952Z",
+  "status": "PASS_LOCAL_PRE_CANDIDATE_ANDROID_5_OF_5_WINDOWS_REUSED_TOOLING_ONLY_DELTA",
+  "source": {
+    "platform_product": "3018fd27be57bfa590aac0bc55df949f8a7415ef",
+    "platform_ledger_head": "abe63e500cb569955c9e54d2f23cc2d91024a9a6",
+    "client": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+    "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_current": "4de2e9f8620b5aac2f538dc8a052a44ad2a563a5"
+  },
+  "version": "1.2.0+4053",
+  "candidate": {
+    "candidate_id": null,
+    "candidate_created": false,
+    "candidate_manifest_created": false,
+    "signed_release_index_created": false,
+    "promotion_authorized": false,
+    "public_release_created": false
+  },
+  "execution": {
+    "mode": "CLI_ONLY",
+    "host_ui_used": false,
+    "host_network_configuration_mutated": false,
+    "device_used": false,
+    "android_helper": "PASS_4_APK_1_AAB",
+    "android_rebuild_same_bytes": "PASS_TWO_SUCCESSIVE_RUNS",
+    "android_production_certificate_sha256": "0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500",
+    "aab_jar_signature": "PASS",
+    "aab_core_abis": [
+      "armeabi-v7a",
+      "arm64-v8a",
+      "x86_64"
+    ],
+    "store_submission": "NOT_REQUESTED",
+    "exact_main_source_binding": "PASS",
+    "windows_reuse": "PASS_SAME_PRODUCT_TREE_TOOLING_ONLY_DELTA_NOT_REBUILT_AFTER_MERGE",
+    "windows_source_build": "ad2a33d14335a5974e089f50946367e8e02372b8",
+    "client_delta_since_windows_build": [
+      "docs/operations/android-release-audit.md",
+      "scripts/README.md",
+      "scripts/build-android-production.ps1",
+      "test/docs-contract.ps1"
+    ]
+  },
+  "artifacts": [
+    {
+      "name": "pokrov-android-arm64-v8a.apk",
+      "platform": "android",
+      "kind": "apk",
+      "size_bytes": 101366678,
+      "sha256": "fe8d82289a4903958fe7ed4cf7f8a472e417760a72c95930328a9b9ec3a285f9",
+      "signing": "TRUSTED_PRODUCTION_CERTIFICATE"
+    },
+    {
+      "name": "pokrov-android-armeabi-v7a.apk",
+      "platform": "android",
+      "kind": "apk",
+      "size_bytes": 90778788,
+      "sha256": "71de150a4b411c8711146123f0255a88eb6201d6cb19037144baf65f9214aaef",
+      "signing": "TRUSTED_PRODUCTION_CERTIFICATE"
+    },
+    {
+      "name": "pokrov-android-market.aab",
+      "platform": "android",
+      "kind": "aab",
+      "size_bytes": 126263340,
+      "sha256": "53de5d9b9d0a64ef4e7a8cfaf2e6f1972f8ce21c1b723a764b03edd14894bf7f",
+      "signing": "TRUSTED_PRODUCTION_CERTIFICATE"
+    },
+    {
+      "name": "pokrov-android-universal.apk",
+      "platform": "android",
+      "kind": "apk",
+      "size_bytes": 295370161,
+      "sha256": "a5ddfa5a5e35f828df4c1817256658c4b569e61d12e4742107fa43c30c506d05",
+      "signing": "TRUSTED_PRODUCTION_CERTIFICATE"
+    },
+    {
+      "name": "pokrov-android-x86_64.apk",
+      "platform": "android",
+      "kind": "apk",
+      "size_bytes": 109951989,
+      "sha256": "00e792ab69e1d0e0c165e3e94be9c9bd4c1b66e9e2dbf706363987b45791d4f5",
+      "signing": "TRUSTED_PRODUCTION_CERTIFICATE"
+    },
+    {
+      "name": "pokrov-windows-setup-x64.exe",
+      "platform": "windows",
+      "kind": "exe",
+      "size_bytes": 29154644,
+      "sha256": "c66817238d49e366d143de0580513167b38656c78044f8abc9a7313d67c721ab",
+      "signing": "SKIPPED_BY_OWNER"
+    }
+  ],
+  "verification": {
+    "powershell_parse": "PASS",
+    "docs_contract": "PASS",
+    "validate_seed_exact_roots": "PASS",
+    "artifacts_releases_delta": "NONE",
+    "git_diff_check": "PASS",
+    "hosted_cross_repository_contract": "BLOCKED_BY_ACCESS_GITHUB_BILLING",
+    "hosted_run_id": 33813919433,
+    "hosted_job_id": 100841695789,
+    "hosted_runner_id": 0,
+    "hosted_steps": 0,
+    "client_pr": 74,
+    "client_merge_commit": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e"
+  },
+  "evidence_sha256": {
+    "external_aggregate_report": "60b50922ca0b904391a44dc31e67f1c24d4d65b526217e8e764265ccda35a3f4",
+    "build_log": "8ff95383ed6c8ac401d657486d3baa04a61e0b59f1afd895c80190ccb21fabee",
+    "helper_validation_log": "8861f214df2bc329e4dba560ee34672b6d492c133734706c6a74f154be0ec70e",
+    "artifact_inventory": "67d700c48bbf86e54d96e10a4eebc66430b6e2b3831df4017b966a3fed294fe1",
+    "windows_verification": "1b3e8efc671d0dd086417e5e394cf98831e60bec2090abc6b983f859c86e0d25",
+    "independent_artifact_verification": "ce6f647d7f96532be04670d44be458d8f8ef1f3d4fc6f90629e39ba38f85ab1d"
+  },
+  "limits": [
+    "No candidate number, release-index template, signed release manifest, deployment, Store submission or public publication was created.",
+    "Android install and physical-device runtime remain NOT_RUN for these exact bytes.",
+    "Windows setup is retained from the immediately preceding exact product tree; the merged delta contains only Android release tooling, its contract test and documentation.",
+    "Candidate-bound SBOM, provenance and strict-v2 handoff require separate candidate creation authorization."
+  ]
+}
