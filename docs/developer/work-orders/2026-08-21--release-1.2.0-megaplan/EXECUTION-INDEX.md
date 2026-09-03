@@ -2,6 +2,48 @@
 
 Last updated: 2026-09-03
 
+## 2026-09-03 — WO-013FF candidate.24 Gate F origin refresh
+
+Candidate.24 signed identity, exact four-source tuple and all `19/19` evidence
+pointers validate after attaching the current-public and Brain read-only
+origin records. `current_origin` and `brain_origin` advance to PASS. Gate F is
+now exact `BLOCKED 5 PASS / 14 non-PASS / 0 FAIL` with zero validation errors.
+The remaining rows preserve their explicit manual, missing, not-run and
+owner-skipped states; no predecessor runtime credit is transferred.
+
+Gate G, tags, public assets, Store submission, stable pointer and production
+promotion remain unauthorized. No completion-index row advances. Distribution
+stays `I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0` across `378` rows.
+
+## 2026-09-03 — WO-013FE candidate.24 source Gates A-E and local rollback
+
+Exact signed candidate.24 source passes Gate B at `70/70 + 111/111`, Gate D at
+`196/196 + 12` and `25/25`, and declared-Node local quality at `15/15`,
+including client `413/413`, cabinet `69/69` and static performance `9/9`.
+Adminapp and marketing audits are zero. Webapp retains one moderate
+development-only ESLint-chain finding with no observed production dependency,
+application/static-export or candidate-SBOM inclusion.
+
+The disposable portal/client pointer sequence `1.1.6 -> candidate.24 -> 1.1.6`
+restores byte-identically, receipts and unrelated-state preservation pass, and
+focused rollback tests pass `16/16`. This is local I3 evidence; guarded runtime
+pointer/kill rollback, installed Windows/Android and live boundaries remain
+open. Gates A-E keep their existing blocked levels and the 378-row distribution
+does not change.
+
+## 2026-09-03 — WO-013FD candidate.24 current/Brain origin refresh
+
+Brain exact-source/readiness/subscription/enabled-delivery readback passes
+`197/197`, `23/23`, `5/5` and `7/7 x3`. Separately, current-public health and
+catalog p95 pass at `36.2096/49.9565 ms` over 50 samples after warmup. The
+canonical permanent regressions pass `7/7`, owner-solo controls pass `3/3`, and
+open P0 label/title counts are zero across platform, client and Core.
+
+These are bounded current-public and Brain contours. They do not replace
+authenticated client egress, general RU-origin or physical mobile/fixed and
+additional-ASN proof. No runtime or public state changes and no completion
+index levels advance.
+
 ## 2026-09-03 — WO-013FC candidate.24 exact Gate F snapshot
 
 Candidate.24 signed identity, receipt, detached Ed25519 signature, exact

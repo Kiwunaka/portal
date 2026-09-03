@@ -15,3 +15,8 @@ docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013EU-can
 docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013EV-candidate21-service-availability-no-go/*.json text eol=lf
 docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013DP-candidate16-background-android-dns/*.json text eol=lf
 docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013DQ-candidate16-background-current-origin/*.json text eol=lf
+docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FB-candidate23-no-go-candidate24-supply/*.json text eol=lf
+docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FC-candidate24-gate-f/*.json text eol=lf
+docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FD-candidate24-current-brain-origin/*.json text eol=lf
+docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FE-candidate24-source-gates-and-local-rollback/*.json text eol=lf
+docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FF-candidate24-gate-f-refresh/*.json text eol=lf

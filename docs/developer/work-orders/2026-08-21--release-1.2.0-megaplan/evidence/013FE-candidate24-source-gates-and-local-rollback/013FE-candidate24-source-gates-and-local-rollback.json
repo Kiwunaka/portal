@@ -1,0 +1,141 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate24-source-gates-local-rollback/v1",
+  "work_order": "WO-013FE",
+  "recorded_at_utc": "2026-09-03T01:13:40Z",
+  "status": "PASS_EXACT_SOURCE_LOCAL_QUALITY_AND_ISOLATED_ROLLBACK_GATES_A_E_BLOCKED",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.24",
+    "version": "1.2.0+4053",
+    "sources": {
+      "platform": "06b932b48ffcb92c8ec024b8892aaa9c36359673",
+      "client": "54259b0f84e16c58e2d1f5f04b369af4fd0834b2",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "a2fb1067adc4f2881299b45929a0d46736f74fff"
+    },
+    "manifest_sha256": "bdd51f2c428298e3178fd94d9befaf79aa442445a384f52882995ffd5d9ddeed",
+    "signature_sha256": "ef47e339cafe23bd994844e70fe8263902a0d62f03312a35b10536913e7ac0bc",
+    "receipt_sha256": "1ff20e15adda261dff182c1166a276270a05721f3770f5cc4df1d77b61153343"
+  },
+  "focused_tests": [
+    {
+      "gate": "B",
+      "source": "platform",
+      "result": "PASS_70_OF_70",
+      "duration_seconds": 0.69
+    },
+    {
+      "gate": "B",
+      "source": "client",
+      "result": "PASS_111_OF_111",
+      "flutter": "3.38.5",
+      "dart": "3.10.4"
+    },
+    {
+      "gate": "D",
+      "source": "platform",
+      "result": "PASS_196_OF_196_PLUS_12_SUBTESTS",
+      "duration_seconds": 748.68,
+      "warnings": "20_EXISTING_DEPRECATIONS"
+    },
+    {
+      "gate": "D",
+      "source": "platform",
+      "result": "PASS_25_OF_25_ACTION_INTENT_POLICY",
+      "duration_seconds": 119.27
+    },
+    {
+      "scope": "rollback_pb14_harness",
+      "result": "PASS_16_OF_16"
+    }
+  ],
+  "local_quality": {
+    "status": "PASS_15_OF_15",
+    "captured_at_utc": "2026-09-03T01:13:40Z",
+    "toolchain": {
+      "node": "22.14.0",
+      "npm": "10.9.2",
+      "flutter": "3.38.5",
+      "dart": "3.10.4"
+    },
+    "client_analyze": "PASS",
+    "client_widget_tests": "PASS_413_OF_413",
+    "webapp_lint_and_build": "PASS",
+    "webapp_cabinet_e2e": "PASS_69_OF_69",
+    "marketing_build_seo_responsive_reduced_motion": "PASS",
+    "adminapp_api_sdk_operations": "PASS_75_OF_75",
+    "adminapp_build": "PASS",
+    "static_performance": "PASS_9_OF_9",
+    "report_sha256": "204695fb36bff6c69465aaa45ae9e6cba746438085a04352ff66f49b18086070",
+    "performance_evidence_sha256": "9f3928ea3ec998e98a9195a78cea938dfe71385250ffb38f957ca9fa2a6123ae",
+    "performance_gate_sha256": "c8265e787049c5faf8f7134ea0ebd213946d0856e0c74363c2590191608d8b1c"
+  },
+  "dependency_audit": {
+    "webapp": {
+      "total": 1,
+      "moderate": 1,
+      "high": 0,
+      "critical": 0,
+      "package": "@humanfs/node",
+      "version": "0.16.7",
+      "path": "eslint@9.39.4 > @humanfs/node@0.16.7",
+      "development_only": true,
+      "production_tree_present": false,
+      "application_source_hits": 0,
+      "static_export_hits": 0,
+      "candidate_sbom_hits": 0,
+      "patch_recommended": true,
+      "report_sha256": "6d2df3ddf85039caadd1665e45546a83a04469437f341ed56cc563d1e89c891d"
+    },
+    "adminapp": {
+      "total": 0,
+      "report_sha256": "c9da1ffe4d5cfeee5f48b5b13ca3a8f335498655d7dc2288a33b0f1a30f547c1"
+    },
+    "marketing": {
+      "total": 0,
+      "report_sha256": "99d22d2ff74f3ee22e71268254c539fb3bd1cea9301caaa61a88f8f487e9f8db"
+    },
+    "distributed_runtime_exposure_observed": false
+  },
+  "isolated_rollback": {
+    "status": "PASS_LOCAL_EXACT_CANDIDATE_PORTAL_CLIENT_ROLLBACK",
+    "sequence": ["1.1.6+20260819", "pokrov-1.2.0", "1.1.6+20260819"],
+    "stable_handoff_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+    "candidate_handoff_sha256": "54cf8142717ead4055ccb5c8cd98eeba17da7c6d140c1e1733681e70a7a77a28",
+    "candidate_artifact_set_sha256": "0797d2024e0709a25516f823af78eaf9caa20eea053d8f83ae79b244c9c86438",
+    "portal_rollback_byte_identical": true,
+    "client_rollback_byte_identical": true,
+    "unrelated_state_preserved": true,
+    "report_sha256": "739da660e620ed1978d07f885bd4d28eb2ebcec870bb0af595d8d62d6016b947"
+  },
+  "gates": {
+    "A": {"decision": "BLOCKED", "index": "I1", "explicit_source_failure": false},
+    "B": {"decision": "BLOCKED", "index": "I3", "explicit_source_failure": false},
+    "C": {"decision": "BLOCKED", "index": "I3", "explicit_source_failure": false},
+    "D": {"decision": "BLOCKED", "index": "I3", "explicit_source_failure": false},
+    "E": {"decision": "BLOCKED", "index": "I3", "explicit_source_failure": false}
+  },
+  "completion_index": {
+    "REL_DOD/DOD-18": "I3_EXACT_CANDIDATE24_LOCAL_ROLLBACK_PASS_RUNTIME_OPEN",
+    "FE/P12-130": "I3_EXACT_CANDIDATE24_LOCAL_POINTER_ROLLBACK_PASS_RUNTIME_PUBLIC_OPEN",
+    "level_changes": 0
+  },
+  "aggregate": {
+    "evaluated_gates": 5,
+    "decision": "BLOCKED",
+    "explicit_source_failures": 0,
+    "candidate_replacement_required_by_observed_runtime_exposure": false,
+    "development_lock_patch_recommended": true,
+    "gate_g_authorized": false
+  },
+  "mutation_boundary": {
+    "host_network_configuration_changed": false,
+    "vm_emulator_or_phone_used": false,
+    "production_deploy": false,
+    "payment_or_provider_action": false,
+    "database_or_outbox_mutation": false,
+    "operator_action_executed": false,
+    "tracked_or_runtime_pointer_changed": false,
+    "public_release_or_store_submission": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE24_OFFLINE_SOURCE_LOCAL_QUALITY_AND_ISOLATED_ROLLBACK; GATES_A_E_BLOCKED; LIVE_DEVICE_PROVIDER_OPERATOR_RUNTIME_ROLLBACK_AND_PROMOTION_PROOF_OPEN"
+}
