@@ -1,0 +1,96 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-09-03T03:05:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.25",
+    "operational_id": "73186757957d0116136b77a65ce75ac25fe91ea4c02c4836464025ff20da2d68",
+    "manifest_sha256": "7161bae715d590fac0623561d147e4d9ee069da14a5e3645001cc4c39aa329b6",
+    "signature_sha256": "f83cf5acbfa8aa55a45a73f03a2f4e829661215a788f68e8b7b36764b1ff3d14",
+    "receipt_sha256": "2c18b318fb538eeec69a9226f4eacf5a19066b0c1d479d26a7b6a13325cdd2cf",
+    "sources": {
+      "platform": "883cd1038a087fbf9f570cffcbfdfd5f5197ffd4",
+      "client": "54259b0f84e16c58e2d1f5f04b369af4fd0834b2",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "18d9cb4c5541481c5e60713376904f962ec19a7c"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "MANUAL_OWNER_TEST",
+    "mandatory_stop_ship_and_dod": "MANUAL_OWNER_TEST",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "SKIPPED_BY_OWNER",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MANUAL_OWNER_TEST",
+    "current_origin": "PASS",
+    "brain_origin": "PASS",
+    "ru_origin": "MANUAL_OWNER_TEST",
+    "windows_live_network": "NOT_RUN",
+    "android_ldplayer_rehearsal": "NOT_RUN",
+    "android_physical_device": "MANUAL_OWNER_TEST",
+    "authenticated_client_egress": "NOT_RUN",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "MANUAL_OWNER_TEST",
+    "hosted_required_checks": "PASS"
+  },
+  "facts": {
+    "gates_a_e": "Candidate.25 incorporates the successor development-lock correction and binds the exact platform, client, Core and release-index source tuple. Source, build and hosted checks pass, but installed runtime and manual owner boundaries keep the broad Gate F row non-PASS.",
+    "signed_supply": "The exact six-artifact private candidate.25 manifest, detached Ed25519 signature, receipt, manifest-bound public keyring, SBOM, provenance, strict-v2 handoff and exact four-source tuple validate. Artifact-set SHA-256 is 6b08f281571db3eee46ba13a043630aac4f76989bc74b18b6f92edfcb3dcfdd5; promotion remains false.",
+    "cli_rehearsal": "A fresh headless CLI rebuild from the exact client/Core source passes all builder gates and produces a valid unsigned Windows setup rehearsal. Its SHA-256 is 4881ba05e2700be5245332cd4f7de94e7354808b44dd0eabc400a39f9ef293f7, different from candidate.25 because Inno packaging is not byte-deterministic. It is retained only as build-path evidence and is not substituted into the immutable candidate.",
+    "privacy": "Bounded supply and staging scans report zero definite findings, and the successor dependency audit is clean. Installed-device behavior, deployed ingest and final live no-open-P0, false-green and privacy attestation remain open.",
+    "windows": "The exact candidate.25 setup file has size 29139238 and SHA-256 ffc9b07c59f75372b48c5c1e94551d6d9af710ac0287cd1352142b0964707fb3 both on the host and inside the isolated Windows 11 guest. Product metadata and the expected unsigned SmartScreen-exception state are retained. Installation and live runtime are NOT_RUN because the headless guest token is non-elevated; no UI or input control was used.",
+    "smart_dns": "Candidate.25 retains the source and package contracts, but exact in-app selection, authenticated target sessions, physical DoH, attribution, leak/privacy/load/lifecycle and named-origin proof remain open.",
+    "awg": "Candidate.25 retains typed AWG3.1/AWG2 lab materialization and default-off policy in the exact client artifacts. Packaged Android/Windows traffic plus physical Wi-Fi and mobile-network coverage remain open.",
+    "current_origin": "Fresh proxy-disabled physical-source-bound public health and catalog probes pass 50-sample p95 budgets at 48.8176 ms and 51.3052 ms. Authenticated client egress remains a separate non-PASS row.",
+    "brain_origin": "Fresh candidate.25 exact-source semantic parity passes 197/197, readiness 23/23, subscription stability 5/5 and enabled delivery 7/7 in three read-only samples.",
+    "ru_origin": "No fresh candidate.25 general RU runner, uploader, ingest and readback sequence is retained.",
+    "rollback": "The source-owned rollback contracts and retained predecessor isolated pointer rehearsal remain valid history. Guarded candidate.25 runtime pointer and kill rollback, readback and post-rollback health remain manual.",
+    "device_and_client": "Candidate.25 Android LDPlayer, physical-device and installed-Windows runtime are not run. Exact guest file identity and CLI rebuild do not replace a runtime aggregate.",
+    "provider_operator_legal_performance": "Provider and PostgreSQL/outbox/reversal, authenticated Operator RBAC/action-intent, legal/commercial approval and comparable device/browser performance remain manual.",
+    "hosted_boundary": "All ten GitHub Actions jobs attached to the exact platform, client, Core and signed release-index source SHAs are completed SUCCESS. The release-index signer run also validates the tracked candidate template. Paid branch protection remains owner-declined and independent review is not claimed.",
+    "development_lock": "The former moderate development-only webapp lock finding is corrected in candidate.25 platform source. Fresh local and hosted quality checks support this statement; candidate.24 remains immutable history.",
+    "decision_boundary": "Five checks are PASS and fourteen remain non-PASS with no explicit candidate.25 runtime failure. Gate F is therefore BLOCKED, not GO or NO_GO. Gate G and every public, Store or stable mutation remain unauthorized."
+  },
+  "source_records": [
+    "WO-013FG-successor-webapp-development-lock.md",
+    "013FH-candidate25-signed-binding.json",
+    "013FH-candidate25-hosted-checks.json",
+    "013FH-candidate25-current-brain-origin.json"
+  ],
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FH-candidate25-signed-gate-f/013FH-candidate25-signed-binding.json",
+      "sha256": "28bc92dec9bcfd14d790fc3bdbaf57135578d11e3e277096a4b39c508809c4d6"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FH-candidate25-signed-gate-f/013FH-candidate25-hosted-checks.json",
+      "sha256": "ab6a7c1b6cbd1b5abe72f9fbb4ad0191dfb0fcc71fdd1e0ef0d6ee0ce1fec3c3"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FH-candidate25-signed-gate-f/013FH-candidate25-current-brain-origin.json",
+      "sha256": "5adab8e6fab13622e9659591d24111c11bc2ddcf2bbbb1492b47c94e2f552901"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FG-successor-webapp-development-lock/013FG-successor-webapp-development-lock.json",
+      "sha256": "e4ec72da2ce184c8c73fc6c6ab9ead299b3164aa7553fe7af93c5ea4f354f8f7"
+    }
+  ],
+  "mutation_boundary": {
+    "gate_generation_mutated_runtime": false,
+    "candidate_artifact_mutated": false,
+    "phone_or_emulator_test_run": false,
+    "vpn_runtime_started": false,
+    "screen_or_input_control_used": false,
+    "credential_or_private_key_exported": false,
+    "payment_or_provider_action": false,
+    "database_or_outbox_mutation": false,
+    "operator_action_executed": false,
+    "public_release": false,
+    "store_upload": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE25_GATE_F_BLOCKED_5_PASS_14_NON_PASS_0_FAIL; SIGNED_PRIVATE_SUPPLY_CURRENT_PUBLIC_BRAIN_ORIGIN_AND_SUCCESSOR_LOCK_PASS; INSTALLED_WINDOWS_ANDROID_AUTHENTICATED_EGRESS_RU_PROVIDER_OPERATOR_LEGAL_COMPARABLE_PERFORMANCE_RUNTIME_ROLLBACK_AND_FINAL_ATTESTATIONS_OPEN; NO_GATE_G_PUBLIC_STORE_STABLE_OR_PRODUCTION_PROMOTION"
+}

@@ -1,0 +1,101 @@
+{
+  "schema": "pokrov.release-1.2.0.signed-candidate-binding-evidence/v1",
+  "recorded_at_utc": "2026-09-03T03:02:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.25",
+    "version": "1.2.0+4053",
+    "release_index_source_revision": "18d9cb4c5541481c5e60713376904f962ec19a7c",
+    "platform_source_revision": "883cd1038a087fbf9f570cffcbfdfd5f5197ffd4",
+    "client_source_revision": "54259b0f84e16c58e2d1f5f04b369af4fd0834b2",
+    "core_source_revision": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "signer_workflow_run": "Kiwunaka/pokrov/actions/runs/33709201344",
+    "signer_artifact_id": 9876331429,
+    "signer_artifact_name": "pokrov-pokrov-1.2.0-candidate.25-signed-manifest-18d9cb4c5541481c5e60713376904f962ec19a7c",
+    "signer_artifact_digest": "sha256:7dc9beb122c0315017835cad6877513754b9acc5bd0120d369dd16f2602e61bb",
+    "signer_artifact_expires_at_utc": "2026-09-17T02:52:15Z"
+  },
+  "outputs": [
+    {
+      "path": "pokrov-1.2.0-candidate.25.release-index.json",
+      "sha256": "7161bae715d590fac0623561d147e4d9ee069da14a5e3645001cc4c39aa329b6",
+      "size_bytes": 6884
+    },
+    {
+      "path": "pokrov-1.2.0-candidate.25.release-index.json.sig",
+      "sha256": "f83cf5acbfa8aa55a45a73f03a2f4e829661215a788f68e8b7b36764b1ff3d14",
+      "size_bytes": 64
+    },
+    {
+      "path": "pokrov-1.2.0-candidate.25.signing-receipt.json",
+      "sha256": "2c18b318fb538eeec69a9226f4eacf5a19066b0c1d479d26a7b6a13325cdd2cf",
+      "size_bytes": 589
+    }
+  ],
+  "supply_chain": {
+    "status": "PASS",
+    "artifact_count": 6,
+    "windows_runtime_file_count": 11,
+    "predecessor_candidate": "pokrov-1.2.0-candidate.24",
+    "same_byte_client_artifact_reuse": true,
+    "candidate_binaries_rebuilt": false,
+    "artifact_set_sha256": "6b08f281571db3eee46ba13a043630aac4f76989bc74b18b6f92edfcb3dcfdd5",
+    "sbom_sha256": "f6d8ec5b7ab999bd8d7ca648aed4ff640543fef11c8176781922e82482779d70",
+    "provenance_sha256": "4f106a2ed15b37457816460d42db5706f79c377bf7671bb9ba58bd93cf414f0d",
+    "release_handoff_sha256": "b65b9e7ec16b85c55235f4f5b9481507e13dccd07f0ba2c0a74202d661702908",
+    "supply_validation_sha256": "2eba8a01829d7fac5a505a9d7328fd7def936f944d60763fe18386acf9321996",
+    "windows_manifest_sha256": "344b842cd0222aa642115c00f42810bf922492394435271d43d9837169f187c0",
+    "windows_installer_sha256": "ffc9b07c59f75372b48c5c1e94551d6d9af710ac0287cd1352142b0964707fb3",
+    "windows_installer_size_bytes": 29139238
+  },
+  "independent_validation": {
+    "status": "READY_SIGNED_MANIFEST",
+    "receipt_matches_outputs": true,
+    "detached_signature_verified_with_public_keyring": true,
+    "method": "Hosted main-only signer plus local exact-byte readback and detached Ed25519 verification against the manifest-bound public keyring",
+    "promotion_authorized": false
+  },
+  "cli_rehearsal": {
+    "status": "PASS_NOT_CANDIDATE_BYTES",
+    "source_revision": "54259b0f84e16c58e2d1f5f04b369af4fd0834b2",
+    "full_builder_exit_code": 0,
+    "required_bundle_files_passed": 11,
+    "required_bundle_files_total": 11,
+    "installer_sha256": "4881ba05e2700be5245332cd4f7de94e7354808b44dd0eabc400a39f9ef293f7",
+    "installer_size_bytes": 29138850,
+    "manifest_sha256": "8338c0a72a791d2340625b9c09c52cec67bdba067d3351acddb29393ae3459ce",
+    "authenticode_status": "NotSigned",
+    "guest_file_hash_match": true,
+    "guest_session_elevated": false,
+    "installation_status": "NOT_RUN_NON_ELEVATED_GUEST_SESSION",
+    "same_bytes_as_candidate25": false,
+    "classification": "PACKAGING_REHEARSAL_ONLY_INNO_OUTPUT_IS_NONDETERMINISTIC",
+    "screen_or_input_control_used": false,
+    "guest_temporary_copy_removed": true
+  },
+  "physical_phone_install_binding": {
+    "status": "NOT_RUN",
+    "gate_f_check": "android_physical_device",
+    "candidate_signature_validation_depends_on_this_status": false
+  },
+  "windows_vm_binding": {
+    "installer_file_identity": "PASS",
+    "installer_sha256": "ffc9b07c59f75372b48c5c1e94551d6d9af710ac0287cd1352142b0964707fb3",
+    "installer_size_bytes": 29139238,
+    "authenticode_status": "NotSigned",
+    "installation_status": "NOT_RUN_NON_ELEVATED_GUEST_SESSION",
+    "screen_or_input_control_used": false,
+    "guest_temporary_copy_removed": true
+  },
+  "mutation_boundary": {
+    "candidate_artifact_mutated": false,
+    "phone_install_or_runtime_test": false,
+    "windows_install_or_runtime_test": false,
+    "screen_or_input_control_used": false,
+    "signing_private_key_accessed_locally": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE25_SIGNED_SUPPLY_AND_HEADLESS_WINDOWS_FILE_IDENTITY_ONLY; INSTALLED_WINDOWS_AND_PHYSICAL_ANDROID_RUNTIME_ARE_SEPARATE_NON_PASS_GATE_F_CHECKS"
+}
