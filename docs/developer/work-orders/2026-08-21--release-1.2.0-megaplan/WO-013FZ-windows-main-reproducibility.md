@@ -63,6 +63,12 @@ of account Billing/spending-limit state, so it is
 `OWNER_SOLO_EXCEPTION` was used after the complete local replacement evidence
 below passed.
 
+Platform PR 208 records this append-only evidence. Its `repo-guardrails` and
+`cross-repository-contract` jobs also finish with `runner_id=0`, zero steps and
+the exact Billing/spending-limit annotation. They are likewise
+`BLOCKED_BY_ACCESS_GITHUB_BILLING`; `release-base-isolation` is `SKIPPED`. The
+same authorized solo exception applies after the local docs/link checks pass.
+
 ## Reproducibility proof
 
 Two independent worktrees at `1847c719...` and a third freshly recreated
@@ -148,7 +154,7 @@ proof does not close them.
 
 | File | SHA-256 |
 |---|---|
-| `evidence/013FZ-windows-main-reproducibility/013FZ-windows-main-reproducibility.json` | `5f58c0cc8d6b2e85dbfb1fa674447a22eebac28005650cccfdc3afe237ab3583` |
+| `evidence/013FZ-windows-main-reproducibility/013FZ-windows-main-reproducibility.json` | `28b5809fb9da76f70cb711db159b86b695af850f71f25a3f19f7aff5bbca0c5f` |
 | external `FINAL_RESULT.json` | `607bbbc7bfe6ccfcc2408981c0ffdf2743e0058e613cae6bbd5a5142a7da97a7` |
 | external `final-canonical-a.sha256` | `a0af6445ce9c59a3ca1cfe72bdbbd964057861a0e6abe54fca1f2df2fc253ed1` |
 | external `final-canonical-a.manifest.json` | `f89eb3238a7fd556d2231d991248f37230b9f8123289f5b49568ddf7b76ca014` |

@@ -103,6 +103,27 @@
     "owner_solo_exception_authorized": true,
     "local_replacement_evidence": "PASS"
   },
+  "hosted_platform_pr": {
+    "url": "https://github.com/Kiwunaka/portal/pull/208",
+    "head": "a5428467a4c6bae33a39c2cdf6c11dd737a9c2ee",
+    "repo_guardrails": {
+      "run_id": 33807750799,
+      "job_id": 100822157261,
+      "runner_id": 0,
+      "step_count": 0,
+      "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+    },
+    "cross_repository_contract": {
+      "run_id": 33807751019,
+      "job_id": 100822157827,
+      "runner_id": 0,
+      "step_count": 0,
+      "classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+    },
+    "release_base_isolation": "SKIPPED",
+    "owner_solo_exception_authorized": true,
+    "local_replacement_evidence": "PASS"
+  },
   "cleanup": {
     "temporary_drive_removed": true,
     "old_duplicate_worktree_removed": true,
