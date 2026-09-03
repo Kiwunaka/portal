@@ -2,6 +2,29 @@
 
 Last updated: 2026-09-03
 
+## 2026-09-03 — WO-013FH candidate.25 signed supply and Gate F
+
+Private candidate.25 binds merged platform `883cd103...`, exact client
+`54259b0...`, Core `cd8f0f4...` and signed release-index `18d9cb4...`. The
+platform-only development-lock correction means the strict-v2 supply reuses
+the six exact build-4053 client artifacts while producing new handoff, SBOM,
+provenance, manifest, signature and receipt bindings. All ten attached hosted
+jobs and the main-only signer pass.
+
+A fresh headless CLI release rebuild passes client `413/413`, runtime engine
+`72 PASS`, Windows release/Inno and both Android Gradle flavors. Its setup hash
+differs due to nondeterministic Inno packaging and remains rehearsal-only. The
+exact candidate.25 installer size/hash and metadata match inside the isolated
+Windows 11 guest, but installation is `NOT_RUN` because Guest Control is not
+elevated. No mouse, screen or host input is used.
+
+Fresh current-public and Brain read-only origins pass their bounded budgets.
+Signed identity and all `19/19` Gate F pointers validate at exact
+`BLOCKED 5 PASS / 14 non-PASS / 0 FAIL`, with zero validation errors. Gate G,
+tags, public assets, Store submission, stable pointer and production promotion
+remain unauthorized. No completion-index level changes; distribution remains
+`I4=7`, `I3=320`, `I2=19`, `I1=32`, `I0=0` across `378` rows.
+
 ## 2026-09-03 — WO-013FG successor webapp development-lock refresh
 
 Successor platform source `8fc216c...` changes only

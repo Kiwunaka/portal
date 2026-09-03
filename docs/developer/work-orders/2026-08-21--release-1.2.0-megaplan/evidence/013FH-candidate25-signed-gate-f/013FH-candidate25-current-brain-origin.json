@@ -1,0 +1,112 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate25-current-brain-origin/v1",
+  "work_order": "WO-013FH",
+  "recorded_at_utc": "2026-09-03T03:01:00Z",
+  "status": "PASS_CURRENT_PUBLIC_API_AND_BRAIN_SOURCE_READINESS_DELIVERY_AUTHENTICATED_CLIENT_RU_AGGREGATE_OPEN",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.25",
+    "version": "1.2.0+4053",
+    "private": true,
+    "promotion_authorized": false,
+    "sources": {
+      "platform": "883cd1038a087fbf9f570cffcbfdfd5f5197ffd4",
+      "client": "54259b0f84e16c58e2d1f5f04b369af4fd0834b2",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d"
+    },
+    "signed_manifest_sha256": "7161bae715d590fac0623561d147e4d9ee069da14a5e3645001cc4c39aa329b6"
+  },
+  "brain_origin": {
+    "status": "PASS_EXACT_SOURCE_READINESS_AND_ENABLED_DELIVERY",
+    "source": {
+      "status": "PASS",
+      "observed_at": "2026-09-03T06:00:18.529749+03:00",
+      "payload_count": 197,
+      "raw_match_count": 4,
+      "crlf_only_difference_count": 193,
+      "normalized_match_count": 197,
+      "mismatch_count": 0,
+      "normalization_rule": "CRLF_TO_LF_ONLY",
+      "external_report_sha256": "63a1f117aeeb9879f23647bf5a37c6d2756617135647bea9bb03fc475e78854d"
+    },
+    "readiness": {
+      "status": "PASS",
+      "observed_at": "2026-09-03T06:00:27.763229+03:00",
+      "check_count": 23,
+      "failure_count": 0,
+      "subscription_samples_requested": 5,
+      "subscription_samples_observed": 5,
+      "external_report_sha256": "525e5128766c13e6cf6b5d00a1a2502a02133733780e9a636d91abd0ebfa9fff"
+    },
+    "enabled_delivery": {
+      "status": "PASS",
+      "sample_count": 3,
+      "required_node_count": 7,
+      "open_count_per_sample": [7, 7, 7],
+      "non_open_node_codes_per_sample": [[], [], []],
+      "external_report_sha256": [
+        "f929175bb6c3a3beb81e541802cf464d3427af9d6ee226871b34e16e5a78d1d8",
+        "cfb52d74790f52987aaffde9c5e0ba42ae9f72842efa264cd3d2524357169713",
+        "488e17266ca03aeb576c56bad295966ca80374595b4435f1607fdee88f31a7a3"
+      ]
+    }
+  },
+  "current_origin": {
+    "status": "PASS_PUBLIC_API_BUDGETS",
+    "method": "PROXY_DISABLED_PHYSICAL_SOURCE_BOUND",
+    "environment_fingerprint": "9a94902f446bcc4fc5bbc0007ae4d5f25e452f2a50d76f897000975bfd0fc57c",
+    "source_address_retained_in_tracked_evidence": false,
+    "health": {
+      "status": "PASS",
+      "p95_ms": 48.8176,
+      "threshold_ms": 100,
+      "sample_count": 50,
+      "warmup_count": 5,
+      "gate_report_sha256": "f0d1a470e10744470331606bd867d0a1e8b6803c8afad81d1987ac1acaba2a7d",
+      "private_sample_report_sha256": "7a0db1128d1aa7c1deae564edcddfd5696ae70faf20ef64bcbe5483e70dcfd3e"
+    },
+    "public_catalog": {
+      "status": "PASS",
+      "p95_ms": 51.3052,
+      "threshold_ms": 200,
+      "sample_count": 50,
+      "warmup_count": 5,
+      "gate_report_sha256": "17b67b7a7a4b9ff8ebc0e85a52ea0fd1c3ed7e93abc67e37e20f08be32d205a3",
+      "private_sample_report_sha256": "f5ce72e06f0d35d700c0972b416d6f35691914c21aaf55d44fc7a450161de19f"
+    },
+    "authenticated_client_egress": "NOT_RUN"
+  },
+  "completion_index": {
+    "FRKN_PLAN/W9-02": "I2_CANDIDATE25_CURRENT_PUBLIC_AND_BRAIN_PASS_AUTHENTICATED_CLIENT_GENERAL_RU_OPEN",
+    "REL_GATE/GATE-D": "UNCHANGED_I3_PROVIDER_E2E_OPEN",
+    "REL_GATE/GATE-E": "UNCHANGED_I3_PHYSICAL_AND_COMPARABLE_PERFORMANCE_OPEN",
+    "REL_GATE/GATE-F": "UNCHANGED_I3_BLOCKED_REFRESH_PENDING",
+    "level_changes": 0
+  },
+  "remaining": [
+    "exact candidate25 authenticated current-origin client egress",
+    "general RU-origin manifest and authenticated client proof",
+    "physical mobile and fixed multi-ASN origin coverage",
+    "live provider, PostgreSQL, outbox and reconciliation proof",
+    "physical and comparable-device performance",
+    "final live no-open-P0, false-green and privacy attestation"
+  ],
+  "mutation_boundary": {
+    "brain_runtime_mutated": false,
+    "database_mutated": false,
+    "delivery_nodes_mutated": false,
+    "host_network_configuration_mutated": false,
+    "client_tunnel_started": false,
+    "screen_or_input_control_used": false,
+    "public_release_or_stable_pointer_changed": false
+  },
+  "evidence_safety": {
+    "credentials_exported": false,
+    "private_keys_exported": false,
+    "tokens_exported": false,
+    "remote_content_exported": false,
+    "response_bodies_exported": false,
+    "raw_addresses_or_hosts_exported": false,
+    "local_source_address_exported": false,
+    "device_identifiers_exported": false
+  }
+}
