@@ -2,6 +2,28 @@
 
 Last updated: 2026-09-03
 
+## 2026-09-03 — WO-013FO candidate.29 signed CLI build and Windows VM
+
+Private candidate.29 is the exact successor required by WO-013FN. It binds
+platform `efb05e0...`, client `7e3e771...`, Core `cd8f0f4...` and signing
+revision `71e2c71...` to six rebuilt `1.2.0+4053` artifacts. Full headless CLI
+build, native Windows `7/7 + 8/8`, Android production signing, AAB integrity,
+zero-finding high-confidence archive scan, offline `6/6 + 11/11` supply
+validation and hosted Ed25519 signing pass.
+
+The exact Windows setup passes first-attempt candidate.28-to-29 upgrade,
+owner-SID reuse, `11/11` installed identities, automatic LocalSystem service,
+ordinary-user UI launch, direct-only TUN/DNS lifecycle and connected guest
+reboot with clean route/DNS restoration. The VM is powered off after the run;
+host input and host network state are untouched.
+
+This closes the missing-successor supply boundary and bounded Windows direct
+substrate only. Managed-node/AWG/Smart-DNS Windows, exact physical Android,
+Windows 10, sleep/IPv6/connected uninstall, origins, provider, Operator,
+legal/commercial, rollback and final aggregate checks remain non-PASS. Gate F
+is `NOT_RUN_FOR_CANDIDATE29`; no public tag, assets, Store object, stable
+pointer or promotion exists. No completion-index level changes.
+
 ## 2026-09-03 — WO-013FH candidate.25 signed supply and Gate F
 
 Private candidate.25 binds merged platform `883cd103...`, exact client
