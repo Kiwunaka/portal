@@ -1,0 +1,117 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate29-managed-egress/v1",
+  "work_order": "WO-013FR",
+  "recorded_at_utc": "2026-09-03T12:10:10Z",
+  "status": "EXACT_CANDIDATE29_WINDOWS_MANAGED_EGRESS_FAIL_RU_PI_AWG_NO_OUTER_RESPONSE",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.29",
+    "version": "1.2.0+4053",
+    "private": true,
+    "promotion_authorized": false,
+    "sources": {
+      "platform": "efb05e0899ad51afd4453ae2fb75f8cafe96db7e",
+      "client": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "71e2c71fbc1aab0b76ca634e283eaa362e605b97"
+    },
+    "signed_manifest_sha256": "231e3d5264ba18e68c5aac9b6faa1bca3864c011fbff3771960e84a9edc1e9df"
+  },
+  "windows_vm": {
+    "environment": "isolated_windows_11_virtual_machine",
+    "first_launch_trial_home": "PASS",
+    "service_trust_and_compatibility": "PASS",
+    "service_state_after_tests": "Running",
+    "service_start_mode": "Auto",
+    "managed_attempts": {
+      "awg31_lab": "FAIL_CORE_EGRESS_PROBE",
+      "awg2_lab": "FAIL_CORE_EGRESS_PROBE",
+      "legacy_reality_fallback": "FAIL_CORE_EGRESS_PROBE"
+    },
+    "common_observation": {
+      "profile_resolved": true,
+      "configuration_staged": true,
+      "core_ready": true,
+      "egress_validated": false,
+      "rollback": "PASS",
+      "tunnel_running_after_attempt": false
+    },
+    "direct_no_tunnel_controls": {
+      "app_health_http_status": 200,
+      "api_health_http_status": 200,
+      "authenticated_egress_probe_http_status": 204,
+      "authenticated_egress_probe_marker_valid": true
+    },
+    "postcondition": {
+      "profile": "default",
+      "cohort_identity_present": false,
+      "lab_allowlist_identity_present": false,
+      "awg31_material_provisioned": false,
+      "awg2_material_provisioned": false,
+      "tun_adapter_count": 0,
+      "pairing_temp_count": 0,
+      "prior_app_data_retained_for_rollback": true
+    },
+    "external_summary_sha256": "3a0194e14fd11fec5bf1d97d84b2acee770b8c8a4f55ee7276e2599ab156772a"
+  },
+  "ru_pi_core_interop": {
+    "environment": "owned_raspberry_pi_4_linux_arm64_direct_default_route",
+    "execution_origin": "ru",
+    "core_revision_exact": true,
+    "awg31_lab": {
+      "outcome": "failed_no_outer_response",
+      "passed": false,
+      "binary_sha256": "b1ba0feca601935ea380f5def3ab32af41bc7a8a0dac77bc8cbf8b21535c61ab",
+      "material_sha256": "7effbffdbab9013e682f60832c89d488ef0ecfe0829c4e8acb788918bbfaea50",
+      "temporary_remote_state_removed": true,
+      "external_report_sha256": "1e63db2045cf5ed084f6ead9cc83d0e0bb6c67cf2140d9e6d4f5ee0db2fe409d"
+    },
+    "awg2_lab": {
+      "outcome": "failed_no_outer_response",
+      "passed": false,
+      "binary_sha256": "2e03aad39ebebee9dd190ca9df257b5e93f5ddc7720f4a16d4b31280bf4da38c",
+      "material_sha256": "07ae6a2f8bdbfc3bd78bb6fabf105db5380f1bf9a0989efed7a8330d0f7648a9",
+      "temporary_remote_state_removed": true,
+      "external_report_sha256": "7ade05416fd7a41792b0180ca90eb52cbbe39e27e34e9c362b64cfe76ace27f1"
+    },
+    "runtime_mutated": false,
+    "server_mutated": false
+  },
+  "server_readback": {
+    "status": "BLOCKED_BY_ACCESS",
+    "reason": "DE SSH session could not be established before the bounded timeout",
+    "second_identical_timeout_not_repeated": true,
+    "host_key_override_used": false,
+    "known_hosts_mutated": false,
+    "server_mutated": false
+  },
+  "classification": {
+    "windows_live_network": "FAIL",
+    "authenticated_client_egress": "FAIL",
+    "ru_origin": "MANUAL_OWNER_TEST",
+    "awg_specific_client_defect_proven": false,
+    "candidate_source_or_artifact_replacement_required": false,
+    "reason": "Three Windows managed profiles share the same egress failure, while both exact-Core AWG variants independently receive no outer response from the direct-RU Pi"
+  },
+  "gate_f_effect": {
+    "prior_decision": "NO_GO",
+    "prior_pass": 2,
+    "prior_non_pass": 17,
+    "prior_fail": 1,
+    "successor_decision_regenerated": false,
+    "subsequent_fail_rows": [
+      "windows_live_network",
+      "authenticated_client_egress"
+    ],
+    "effective_fail_count_if_regenerated": 3
+  },
+  "evidence_safety": {
+    "raw_profiles_retained": false,
+    "credentials_retained": false,
+    "private_keys_retained": false,
+    "tokens_retained": false,
+    "raw_addresses_retained": false,
+    "raw_device_identifiers_retained": false,
+    "host_input_used": false,
+    "host_network_mutated": false
+  }
+}

@@ -2,6 +2,30 @@
 
 Last updated: 2026-09-03
 
+## 2026-09-03 — WO-013FR candidate.29 managed egress and RU-Pi AWG NO_GO
+
+Exact candidate.29 completes a fresh first launch in the isolated Windows 11
+VM and passes service trust, compatibility, authenticated IPC and Core
+readiness. AWG3.1, AWG2 and the ordinary Reality fallback each resolve and
+stage, then fail the authenticated egress probe and roll back cleanly. Direct
+guest health and public probe controls pass, so the shared failure is inside
+the managed route rather than public API reachability.
+
+The same exact Core revision is cross-built as Linux ARM64 and run on the owned
+direct-RU Pi 4. AWG3.1 and AWG2 both return
+`failed_no_outer_response`; both temporary executions clean up and neither
+mutates runtime or server state. A read-only DE alignment audit is separately
+`BLOCKED_BY_ACCESS` because no SSH session forms before timeout; no permissive
+trust or server action is used.
+
+The WO-013FQ Gate F snapshot remains immutable `NO_GO 2/17/1`. Subsequent exact
+evidence makes `windows_live_network` and `authenticated_client_egress`
+explicit FAIL rows, so a regenerated aggregate would be `NO_GO 2/17/3`.
+Regeneration waits for restoration of the shared live path. Candidate.29 is
+not replaced because no source or artifact defect is isolated. Default profile
+and zero lab membership/material are restored, no TUN remains, and host input
+and network state are untouched. No completion-index level changes.
+
 ## 2026-09-03 — WO-013FQ candidate.29 current/Brain origin NO_GO
 
 Source-address-bound public health and catalog measurements meet their
