@@ -1,0 +1,32 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate30-artifact-set-correction/v1",
+  "recorded_at_utc": "2026-09-03T17:12:11Z",
+  "status": "CORRECTED_APPEND_ONLY",
+  "supersedes_only": {
+    "work_order": "WO-013FS-candidate30-provenance-no-go.md",
+    "evidence": "013FS-candidate30-provenance-stop-ship.json",
+    "incorrect_expected_sha256": "5076e81d795927e7432eeeea9cde5093e8bed71e1a2bf2e6d670eeb2520069d1",
+    "incorrect_algorithm": "SHA-256 of ordered name|size_bytes|sha256 text rows"
+  },
+  "canonical_artifact_set": {
+    "expected_sha256": "dce1c4e43aa1729e87f6620da9f655482dd3a6113bb67006e319c090e0b02b9e",
+    "algorithm": "SHA-256 of sorted canonical JSON artifact descriptors including architecture, core_abi, core_artifact_sha256, file_name, kind, platform, sha256 and size_bytes",
+    "validator_revision": "84837ce68a028f0c81580a5f1beefddba584de6d",
+    "validator_pull_request": "https://github.com/Kiwunaka/portal/pull/201"
+  },
+  "candidate30_retained_mismatches": {
+    "sbom_artifact_set_sha256": "79517b5c1e771be88851ad3b3644e49bfce1c619831db8db17de8a604fa89e87",
+    "provenance_invocation_artifact_set_sha256": "8fe2ccb751694a0448ece6aec900b898ae7843223112b8f3033fb503eff20a79",
+    "sbom_root_candidate": 29,
+    "expected_candidate": 30,
+    "predecessor_internal_references_present": true
+  },
+  "decision_unchanged": {
+    "candidate30": "IMMUTABLE_NO_GO_REJECTED_FOR_REPLACEMENT",
+    "gate_f": "NO_GO",
+    "supply_chain": "FAIL",
+    "public_release": false,
+    "promotion_authorized": false
+  },
+  "evidence_ceiling": "CORRECTS ONLY THE EXPECTED ARTIFACT-SET DIGEST AND ALGORITHM; ALL CANDIDATE30 STOP-SHIP FINDINGS AND NO_GO REMAIN"
+}
