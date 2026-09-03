@@ -1,0 +1,98 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-09-03T10:37:06Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.29",
+    "operational_id": "99d120ff91767f89fbb46e4d9e63b0edd34461db44a744da28b886364a3d4229",
+    "manifest_sha256": "231e3d5264ba18e68c5aac9b6faa1bca3864c011fbff3771960e84a9edc1e9df",
+    "signature_sha256": "215f8234376d23806ad89e0d8f7d2aa0f6ad2fcc3dfeeec593e6a6f71db27bfc",
+    "receipt_sha256": "097b0c3fbeb63c2e0a2557e9fc614363ef9883c233b6b99dc8c8fb3067524fcf",
+    "sources": {
+      "platform": "efb05e0899ad51afd4453ae2fb75f8cafe96db7e",
+      "client": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "71e2c71fbc1aab0b76ca634e283eaa362e605b97"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "MANUAL_OWNER_TEST",
+    "mandatory_stop_ship_and_dod": "MANUAL_OWNER_TEST",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "SKIPPED_BY_OWNER",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MANUAL_OWNER_TEST",
+    "current_origin": "BLOCKED_BY_ACCESS",
+    "brain_origin": "FAIL",
+    "ru_origin": "MANUAL_OWNER_TEST",
+    "windows_live_network": "MANUAL_OWNER_TEST",
+    "android_ldplayer_rehearsal": "NOT_RUN",
+    "android_physical_device": "MANUAL_OWNER_TEST",
+    "authenticated_client_egress": "NOT_RUN",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "MANUAL_OWNER_TEST",
+    "hosted_required_checks": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+  },
+  "facts": {
+    "gates_a_e": "Candidate.29 binds the exact platform, client, Core and signed release-index source tuple. Full local CLI, client, Core, Android and Windows build checks pass, while the repeated Brain-to-DE delivery timeout now supplies one explicit exact-candidate release failure.",
+    "signed_supply": "The exact six-artifact private candidate.29 manifest, detached Ed25519 signature, receipt, manifest-bound public keyring, SBOM, provenance, strict-v2 handoff and exact four-source tuple validate. Artifact-set SHA-256 is 8fe2ccb751694a0448ece6aec900b898ae7843223112b8f3033fb503eff20a79; promotion remains false.",
+    "cli_build": "The full headless release builder creates the exact candidate.29 bytes from client 7e3e771fe36333a75244cbfd828c60beb84c7ff1 and Core cd8f0f4169d570d693992a959d81d17c2c44884d. App-shell 413/413, Android 8/8, Linux 5/5, Windows widget 23/23, native Windows 7/7 plus 8/8 and both Android production flavors pass.",
+    "privacy": "The exact staged archives have zero high-confidence findings and the offline supply validation passes 6/6 artifacts plus 11/11 Windows runtime files. Final installed-device, deployed-ingest and no-open-P0, false-green and privacy attestation remain open.",
+    "windows": "The exact candidate.29 setup upgrades candidate.28 on first attempt in the isolated Windows 11 guest. Installed identities pass 11/11, the LocalSystem service and ordinary-user UI pass, and a secret-free direct fixture passes TUN/DNS disconnect and connected-reboot restoration. The full managed Windows matrix remains open, so windows_live_network is not PASS.",
+    "smart_dns": "Candidate.29 retains Smart DNS source and package contracts, but exact in-app selection, authenticated target sessions, physical DoH, attribution, leak/privacy/load/lifecycle and redundant resolver proof remain open.",
+    "awg": "Candidate.29 contains typed default-off AWG3.1/AWG2 lab materialization in the exact client artifacts. Packaged Android and Windows managed-node traffic plus physical Wi-Fi and mobile-network coverage remain open.",
+    "current_origin": "Proxy-disabled API measurements bound to the physical Ethernet source address meet 50-sample p95 budgets at 41.1541 ms and 45.1495 ms, but an already-active owner tun0 was observed. It was not changed, so the network origin cannot be proven and current_origin receives no PASS credit.",
+    "brain_origin": "Exact-source semantic parity passes 197/197, readiness passes 23/23 and subscription stability passes 5/5. Three enabled-delivery samples each pass 6/7 nodes and time out on DE, so the aggregate Brain-origin row is FAIL.",
+    "de_access": "Direct DE diagnosis stops at strict host-key validation because the presented key differs from the saved key for both owner-declared addresses. No override, known-host mutation or server mutation is performed.",
+    "ru_origin": "No fresh candidate.29 general RU-origin runner, uploader, ingest and readback sequence is retained.",
+    "rollback": "The source-owned rollback contracts and retained predecessor rehearsals remain valid history. Guarded candidate.29 runtime pointer and kill rollback, readback and post-rollback health remain manual.",
+    "device_and_client": "Candidate.29 exact Windows direct substrate is bounded proof. Android LDPlayer and physical-device runtime, authenticated managed-node egress and the complete Windows connected matrix are not complete.",
+    "provider_operator_legal_performance": "Provider and PostgreSQL/outbox/reversal, authenticated Operator RBAC/action-intent, legal/commercial approval and comparable device/browser performance remain manual.",
+    "hosted_boundary": "Seven of ten GitHub Actions jobs attached to the exact candidate.29 source SHAs pass. The two platform jobs and one client job fail before runner allocation with zero steps and remain BLOCKED_BY_ACCESS_GITHUB_BILLING.",
+    "decision_boundary": "Two checks are PASS and seventeen are non-PASS, including one explicit Brain-origin FAIL. Gate F is therefore NO_GO. Gate G and every public, Store or stable mutation remain unauthorized."
+  },
+  "source_records": [
+    "WO-013FO-candidate29-cli-vm-signed.md",
+    "WO-013FP-candidate29-gate-f.md",
+    "013FO-candidate29-cli-vm-signed.json",
+    "013FP-candidate29-signed-binding.json",
+    "013FP-candidate29-hosted-checks.json",
+    "013FQ-candidate29-current-brain-origin.json"
+  ],
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FO-candidate29-cli-vm-signed/013FO-candidate29-cli-vm-signed.json",
+      "sha256": "4a070634264f38f86b15a8b5ceb418128d2467682e6f29f1fb2361df04505b0b"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FP-candidate29-gate-f/013FP-candidate29-signed-binding.json",
+      "sha256": "237a0e8dcc491375a1d82604d77a8958ec6506a1f808ed4fee7464a659db6170"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FP-candidate29-gate-f/013FP-candidate29-hosted-checks.json",
+      "sha256": "ffdec0d905f386ae00c2a719b3b4ca0eacddd66def2f39a3f52461703a963b6b"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013FQ-candidate29-origin-gate-f/013FQ-candidate29-current-brain-origin.json",
+      "sha256": "94fc4398d48985ce9cc1eadab993860e2533a2028a2a28c53ca38b2ac642a2c0"
+    }
+  ],
+  "mutation_boundary": {
+    "candidate_artifact_mutated": false,
+    "phone_install_or_runtime_test": false,
+    "windows_runtime_reused_from_exact_candidate29": true,
+    "brain_runtime_mutated": false,
+    "delivery_nodes_mutated": false,
+    "ssh_known_hosts_mutated": false,
+    "screen_or_input_control_used": false,
+    "host_network_mutated": false,
+    "signing_private_key_accessed_locally": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE29_GATE_F_NO_GO_2_PASS_17_NON_PASS_1_FAIL; CURRENT_API_MEASUREMENTS_WITH_ACTIVE_HOST_TUNNEL_RECEIVE_NO_ORIGIN_CREDIT; BRAIN_SOURCE_AND_READINESS_PASS_BUT_ENABLED_DE_TIMEOUTS_THREE_OF_THREE; DE_DIRECT_ACCESS_REQUIRES_INDEPENDENT_HOST_KEY_REVALIDATION; HOSTED_PLATFORM_CLIENT_CHECKS_BLOCKED_BY_ACCESS; ANDROID_AUTHENTICATED_EGRESS_RU_PROVIDER_OPERATOR_LEGAL_PERFORMANCE_ROLLBACK_AND_FINAL_ATTESTATIONS_OPEN; NO_GATE_G_PUBLIC_STORE_STABLE_OR_PRODUCTION_PROMOTION"
+}

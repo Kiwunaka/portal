@@ -1,0 +1,130 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate29-current-brain-origin/v1",
+  "work_order": "WO-013FQ",
+  "recorded_at_utc": "2026-09-03T10:37:06Z",
+  "status": "CURRENT_ORIGIN_NO_CREDIT_ACTIVE_HOST_TUNNEL_BRAIN_SOURCE_READINESS_PASS_ENABLED_DE_FAIL",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.29",
+    "version": "1.2.0+4053",
+    "private": true,
+    "promotion_authorized": false,
+    "sources": {
+      "platform": "efb05e0899ad51afd4453ae2fb75f8cafe96db7e",
+      "client": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d"
+    },
+    "signed_manifest_sha256": "231e3d5264ba18e68c5aac9b6faa1bca3864c011fbff3771960e84a9edc1e9df"
+  },
+  "brain_origin": {
+    "status": "FAIL_ENABLED_NODE_DE_TIMEOUT_THREE_OF_THREE",
+    "source": {
+      "status": "PASS",
+      "observed_at": "2026-09-03T10:32:04.239730+00:00",
+      "payload_count": 197,
+      "raw_match_count": 4,
+      "crlf_only_difference_count": 193,
+      "normalized_match_count": 197,
+      "mismatch_count": 0,
+      "normalization_rule": "CRLF_TO_LF_ONLY",
+      "external_report_sha256": "15d8ddfd35e8aa3aa407645bb2ee84a5297ed829960596da940603057f45e9ef"
+    },
+    "readiness": {
+      "status": "PASS",
+      "observed_at": "2026-09-03T10:32:31.614368+00:00",
+      "check_count": 23,
+      "failure_count": 0,
+      "subscription_samples_requested": 5,
+      "subscription_samples_observed": 5,
+      "external_report_sha256": "a784fd10503dee2ef3bb597ce3c65e0dba1335b98f0ef38e149055573c4ec617"
+    },
+    "enabled_delivery": {
+      "status": "FAIL",
+      "sample_count": 3,
+      "required_node_count": 7,
+      "open_count_per_sample": [6, 6, 6],
+      "non_open_node_codes_per_sample": [["de"], ["de"], ["de"]],
+      "error_kind_per_sample": [["timeout"], ["timeout"], ["timeout"]],
+      "external_report_sha256": [
+        "b3e9a83d60b010be36105ae2e0fb8b7f5c65b615dddcdfe07d001b5c3f17ddb8",
+        "650fe4856e06ed933f6b8f59189fa73ddb7b95827ccd640ff7639e067b7cee9d",
+        "d4e49d404354c04cb8ed835ffc502879ac08db730f9ba514269020be9596ba15"
+      ]
+    },
+    "direct_de_diagnostic": {
+      "status": "BLOCKED_BY_ACCESS_HOST_KEY_REVALIDATION",
+      "strict_host_key_checking": true,
+      "saved_keys_for_both_owned_addresses_match_each_other": true,
+      "presented_key_matches_saved_key": false,
+      "host_key_override_used": false,
+      "server_mutated": false
+    }
+  },
+  "current_origin": {
+    "status": "BLOCKED_BY_ACTIVE_HOST_TUNNEL",
+    "method": "PROXY_DISABLED_PHYSICAL_SOURCE_ADDRESS_BOUND_WITH_ACTIVE_HOST_TUNNEL",
+    "environment_fingerprint": "9a94902f446bcc4fc5bbc0007ae4d5f25e452f2a50d76f897000975bfd0fc57c",
+    "source_address_retained_in_tracked_evidence": false,
+    "active_host_tunnel_observed": true,
+    "owner_host_tunnel_mutated": false,
+    "origin_credit_awarded": false,
+    "health": {
+      "status": "MEASUREMENT_PASS_NO_ORIGIN_CREDIT",
+      "p95_ms": 41.1541,
+      "threshold_ms": 100,
+      "sample_count": 50,
+      "warmup_count": 5,
+      "gate_report_sha256": "69b7dbf8335f46532059c20623cb7e76298745bc7d63937296c171a0b419a830",
+      "private_sample_report_sha256": "4804e441e9d637b34f5538f3f65d3400d3eec3ec43373e4289b80c081ad6d407"
+    },
+    "public_catalog": {
+      "status": "MEASUREMENT_PASS_NO_ORIGIN_CREDIT",
+      "p95_ms": 45.1495,
+      "threshold_ms": 200,
+      "sample_count": 50,
+      "warmup_count": 5,
+      "gate_report_sha256": "59f437b5dfcb6950212019cec12a4fa185ef0fcc48706813b3ffcf26dfd298d5",
+      "private_sample_report_sha256": "db1e5e7bbdf3ef20e15d19c4a19a4a1d0d5ddf64395979b1d2666de863bae02f"
+    },
+    "authenticated_client_egress": "NOT_RUN"
+  },
+  "gate_f_effect": {
+    "current_origin": "BLOCKED_BY_ACCESS",
+    "brain_origin": "FAIL",
+    "decision": "NO_GO",
+    "pass": 2,
+    "non_pass": 17,
+    "fail": 1
+  },
+  "remaining": [
+    "restore or intentionally disable the enabled de delivery endpoint",
+    "independently revalidate the changed de SSH host key before direct administration",
+    "repeat current-origin on a tunnel-free or independent source without mutating the owner host tunnel",
+    "exact candidate29 authenticated current-origin client egress",
+    "general RU-origin manifest and authenticated client proof",
+    "physical mobile and fixed multi-ASN origin coverage",
+    "live provider, PostgreSQL, outbox and reconciliation proof",
+    "physical and comparable-device performance",
+    "final live no-open-P0, false-green and privacy attestation"
+  ],
+  "mutation_boundary": {
+    "brain_runtime_mutated": false,
+    "database_mutated": false,
+    "delivery_nodes_mutated": false,
+    "ssh_known_hosts_mutated": false,
+    "host_network_configuration_mutated": false,
+    "client_tunnel_started": false,
+    "screen_or_input_control_used": false,
+    "public_release_or_stable_pointer_changed": false
+  },
+  "evidence_safety": {
+    "credentials_exported": false,
+    "private_keys_exported": false,
+    "tokens_exported": false,
+    "remote_content_exported": false,
+    "response_bodies_exported": false,
+    "raw_addresses_or_hosts_exported": false,
+    "local_source_address_exported": false,
+    "device_identifiers_exported": false,
+    "presented_host_key_fingerprint_exported": false
+  }
+}

@@ -2,6 +2,27 @@
 
 Last updated: 2026-09-03
 
+## 2026-09-03 — WO-013FQ candidate.29 current/Brain origin NO_GO
+
+Source-address-bound public health and catalog measurements meet their
+50-sample p95 budgets at `41.1541/45.1495 ms`, but the owner's already-active
+`tun0` prevents reliable current-origin attribution and remains untouched.
+Brain exact-source parity passes `197/197`, readiness passes `23/23` and
+subscription stability passes `5/5`. Enabled delivery passes only `6/7` in
+three samples because `de` times out every time.
+
+Direct DE inspection is stopped by strict host-key revalidation: the presented
+key differs from the saved key for both owner-declared addresses. No override,
+known-host mutation, server mutation, host-network change or desktop input is
+used.
+
+Gate F validates the exact signed candidate and all `19/19` pointers with zero
+validation errors. `current_origin` is `BLOCKED_BY_ACCESS` without PASS credit
+and `brain_origin` becomes FAIL, producing exact
+`NO_GO 2 PASS / 17 non-PASS / 1 FAIL`. Candidate bytes remain immutable. Gate
+G and all public/stable actions remain unauthorized; the 378-row
+completion-index distribution is unchanged.
+
 ## 2026-09-03 — WO-013FP candidate.29 exact Gate F snapshot
 
 Candidate.29 signed identity and exact platform `efb05e0...`, client
