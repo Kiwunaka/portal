@@ -1,0 +1,105 @@
+{
+  "schema": "pokrov.release-1.2.0.successor-webapp-development-lock/v1",
+  "recorded_at_utc": "2026-09-03T02:08:26Z",
+  "status": "PASS_PRE_CANDIDATE_LOCAL",
+  "production_mutation": "NONE",
+  "candidate_boundary": {
+    "current_candidate": {
+      "id": "pokrov-1.2.0-candidate.24",
+      "app_version": "1.2.0+4053",
+      "manifest_sha256": "bdd51f2c428298e3178fd94d9befaf79aa442445a384f52882995ffd5d9ddeed",
+      "gate_f": "BLOCKED_5_PASS_14_NON_PASS_0_FAIL",
+      "immutable": true,
+      "changed": false
+    },
+    "successor": {
+      "state": "PRE_CANDIDATE_LOCAL",
+      "platform_revision": "8fc216cf9cac6c78719803afefdb7dd174d2efb7",
+      "client_revision": "54259b0f84e16c58e2d1f5f04b369af4fd0834b2",
+      "core_revision": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "candidate_created": false,
+      "release_credit": false
+    }
+  },
+  "change": {
+    "path": "webapp/package-lock.json",
+    "package_manifest_changed": false,
+    "application_source_changed": false,
+    "previous_sha256": "175f86e9a99b834e56ad222dc7e474e6232b5f2e99993e4a8714153c885670f4",
+    "updated_sha256": "d43d4ebc0f1d48eea495331620fe9b0e442b28d7377c66dc2d8e296d5544d138",
+    "packages": {
+      "@humanfs/node": {
+        "before": "0.16.7",
+        "after": "0.16.8"
+      },
+      "@humanfs/core": {
+        "before": "0.19.1",
+        "after": "0.19.2"
+      },
+      "@humanfs/types": {
+        "before": null,
+        "after": "0.15.0"
+      }
+    }
+  },
+  "audit": {
+    "before": {
+      "total": 1,
+      "moderate": 1,
+      "package": "@humanfs/node",
+      "affected_range": "<0.16.8",
+      "dependency_class": "development_only"
+    },
+    "after": {
+      "webapp_total": 0,
+      "adminapp_total": 0,
+      "marketing_total": 0
+    },
+    "distributed_runtime_inclusion": "NOT_OBSERVED"
+  },
+  "toolchain": {
+    "node": "22.14.0",
+    "npm": "10.9.2"
+  },
+  "verification": {
+    "webapp_npm_ci": "PASS",
+    "webapp_audit": "PASS_0_FINDINGS",
+    "webapp_lint": "PASS",
+    "webapp_build": "PASS",
+    "webapp_cabinet_e2e": "PASS_69_OF_69",
+    "full_local_quality": "PASS_15_OF_15",
+    "client_analyze": "PASS",
+    "client_widget_suite": "PASS_413_OF_413",
+    "marketing_build": "PASS",
+    "marketing_seo": "PASS",
+    "marketing_responsive_reduced_motion": "PASS",
+    "adminapp_build": "PASS",
+    "static_performance": "PASS_9_OF_9"
+  },
+  "evidence": {
+    "root": "E:/POKROV-tools/temp/candidate25-prebuild-local-quality-r2",
+    "quality_report": {
+      "path": "010I-local-quality-gate.json",
+      "sha256": "974339a9aba3333b97b3346c628360722a18e9483d6063fd52caa1dabe04b048"
+    },
+    "performance_evidence": {
+      "path": "010I-local-web-performance-evidence.json",
+      "sha256": "a666e6566d64709b21d5d06cb3c10a42aede6f7edbe664922e1d02d89a909c7e"
+    },
+    "performance_gate": {
+      "path": "010I-local-web-performance-gate.json",
+      "sha256": "f8f1249bdca751b0e4c5d609b0282ad02f56a87ffb9063b9e61ef05869bff110"
+    }
+  },
+  "excluded_setup_attempt": {
+    "reason": "marketing and adminapp node_modules were absent in the reused worktree",
+    "source_failure": false,
+    "release_credit": false,
+    "authoritative_rerun": "candidate25-prebuild-local-quality-r2"
+  },
+  "remaining": [
+    "merge the source change through hosted checks",
+    "create and sign a successor candidate before assigning release credit",
+    "run exact installed Windows and Android device gates against that successor"
+  ]
+}
