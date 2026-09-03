@@ -2,6 +2,22 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013GB successor-main local freeze preflight READY
+
+The read-only candidate preflight binds clean platform `6af24e9...`, client
+`ad2a33d...`, Core `cd8f0f4...` and authoritative release-index `main`
+`4de2e9f...`. The release-index contract, stage policy and exact local Core
+artifacts validate; blockers are `0` and pre-freeze rows below `I3` are `0`.
+The exact classification is `READY_LOCAL_FREEZE`.
+
+This is not candidate or release proof. The same report states
+`candidate_created=false`, `candidate_proven=false`,
+`promotion_authorized=false` and retains `51` rows below `I3`: `22` candidate,
+`16` deferred and `13` external. The first invocation without the release-index
+root is retained as `BLOCKED_BY_ACCESS`; providing clean published `main`
+removes that sole input blocker. No candidate.32, signature, upload, deploy,
+Gate F or public/stable change occurs.
+
 ## 2026-09-04 — WO-013GA successor-main local quality and CLI rebuild PASS
 
 The exact clean tuple platform `3018fd27...`, client `ad2a33d...` and Core
