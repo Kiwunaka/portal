@@ -1,0 +1,87 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate29-cli-vm-signed.v1",
+  "observed_at_utc": "2026-09-03T10:03:26Z",
+  "status": "PASS_PRIVATE_SIGNED_CANDIDATE29_CLI_AND_BOUNDED_WINDOWS_VM",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.29",
+    "version": "1.2.0+4053",
+    "candidate_created": true,
+    "promotion_authorized": false,
+    "artifact_count": 6
+  },
+  "sources": {
+    "platform": "efb05e0899ad51afd4453ae2fb75f8cafe96db7e",
+    "client": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+    "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_signing_revision": "71e2c71fbc1aab0b76ca634e283eaa362e605b97",
+    "release_index_receipt_revision": "80bf03d3d81006d6b20825c97ab9dec89f95f2c2"
+  },
+  "artifacts": {
+    "android_arm64_v8a_sha256": "bd65a3f3072d642b532198ae1e703039c903f8e152edcec8c7f7616f2fc83779",
+    "android_armeabi_v7a_sha256": "6c9a7933e948e49429e7a272e4f021106f673fa2bbb8fe78354b3f1a3fb99918",
+    "android_market_aab_sha256": "f28719706dcbdb5ac0a5fd3d4d325cd7c90d68a674aafe2a7a483ae92b248aa1",
+    "android_universal_sha256": "365d9b329a80148df5be22e7e00c0d9632e85cd18b981af3869a73cacff656e5",
+    "android_x86_64_sha256": "143c58176193dcb84e543ba4559e61bfc2ec7bb43681c7124d83292499da570d",
+    "windows_setup_sha256": "60487a7bb17da33dbca842a146f6eb24dddd089e532c241670c9c0fd79610451",
+    "windows_setup_size_bytes": 29154403,
+    "windows_manifest_sha256": "8d535ff682b7beac7a23c52d63cd37698a1d6d8edbf19c48a2121ac9f398f9a3",
+    "windows_required_files": 11,
+    "android_signing_fingerprint_sha256": "0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500",
+    "windows_signing_status": "SKIPPED_BY_OWNER"
+  },
+  "supply": {
+    "release_handoff_sha256": "f05791698e835da61680698cd2284bdd46dd2bbb76c4add69384c00b43fe9ab8",
+    "sbom_component_count": 352,
+    "sbom_sha256": "07a4e19ebdb1631c46ae324935b1bf629996d62b1597bbcd44c71606eeb42e44",
+    "provenance_sha256": "2993b8a16d2d21f41c63f59c037e0c3fb452c3e23bf8baeb2affb7e5a14c7c77",
+    "offline_validation_sha256": "919ab0ae017211a091d42990652a77839fc15b57eacb087bc1d7fa308208e992",
+    "static_scan_sha256": "2f64465f99cfef0cb610a48fab019c79310fc6e4b8369a95eb2b8df1cfa5f490",
+    "signed_manifest_sha256": "231e3d5264ba18e68c5aac9b6faa1bca3864c011fbff3771960e84a9edc1e9df",
+    "detached_signature_sha256": "215f8234376d23806ad89e0d8f7d2aa0f6ad2fcc3dfeeec593e6a6f71db27bfc",
+    "signing_receipt_sha256": "097b0c3fbeb63c2e0a2557e9fc614363ef9883c233b6b99dc8c8fb3067524fcf",
+    "signer_run": 33741376651,
+    "signer_artifact_digest": "sha256:e5683b5c7ea9472a8fc8e3689d58cf1d80f64b3effe0ddce5039a19017d1250c"
+  },
+  "verification": {
+    "full_cli_build": "PASS",
+    "app_shell": "413/413 PASS",
+    "runtime_engine": "PASS_WITH_DECLARED_OPTIONAL_REAL_CORE_SKIP",
+    "android_flutter": "8/8 PASS",
+    "linux_flutter": "5/5 PASS",
+    "windows_widget": "23/23 PASS",
+    "android_gradle_direct_store": "PASS",
+    "windows_native_release": "7/7 PASS",
+    "windows_native_debug": "8/8 PASS",
+    "windows_package_manifest": "11/11 PASS",
+    "offline_supply": "6/6 artifacts and 11/11 Windows files PASS",
+    "signed_manifest": "READY_SIGNED_MANIFEST"
+  },
+  "windows_vm": {
+    "environment": "isolated Windows 11 VirtualBox guest, bridged NIC",
+    "ancestor": "installed candidate.28 precursor",
+    "setup_guest_sha256_match": true,
+    "upgrade_first_attempt": "PASS",
+    "owner_reused_for_upgrade": true,
+    "installed_files_present": 11,
+    "installed_files_size_match": 11,
+    "installed_files_hash_match": 11,
+    "service_running_automatic_localsystem": true,
+    "ordinary_user_ui_launch": "PASS",
+    "direct_tun_dns_lifecycle": "PASS",
+    "connected_guest_reboot_recovery": "PASS",
+    "route_dns_restore": "PASS",
+    "post_test_vm_state": "poweroff",
+    "post_test_vm_resources": "2 CPU / 4096 MiB"
+  },
+  "limits": {
+    "gate_f": "NOT_RUN_FOR_CANDIDATE29",
+    "windows_managed_node_awg_smart_dns": "NOT_RUN",
+    "windows_10_sleep_resume_ipv6_connected_uninstall": "NOT_RUN_OR_ENVIRONMENT_BLOCKED",
+    "physical_android_wifi_beeline": "MANUAL_OWNER_TEST",
+    "provider_operator_legal_final_aggregate": "NON_PASS",
+    "public_tag_release_assets_store_stable": "NOT_CREATED"
+  },
+  "host_input_used": false,
+  "host_network_mutated": false,
+  "production_mutation_performed": false
+}
