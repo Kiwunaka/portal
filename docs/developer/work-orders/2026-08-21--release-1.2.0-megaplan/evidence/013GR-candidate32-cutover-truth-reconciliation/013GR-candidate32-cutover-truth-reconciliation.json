@@ -1,0 +1,82 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate32-cutover-truth-reconciliation/v1",
+  "recorded_at_utc": "2026-09-04T04:44:01Z",
+  "status": "PASS_LOCAL_CURRENT_TRUTH_RECONCILIATION",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.32",
+    "version": "1.2.0+4053",
+    "state": "SIGNED_PRIVATE_NO_GO",
+    "gate_f": {
+      "decision": "NO_GO",
+      "required": 19,
+      "pass": 2,
+      "non_pass": 17,
+      "fail": 2
+    },
+    "sources": {
+      "platform": "d0dd37c1003198ba08cffc49a040a77e21621a86",
+      "client": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "5d11fd6821a5ebfa42163f461332125143c553c3"
+    },
+    "signed_outputs": {
+      "manifest_sha256": "b15938e1bef2b4cafb634eea81039163e2b15a446cda5bbd32d9894cbe2da449",
+      "signature_sha256": "e63d8ee39c15185afc9e600efe66a1a081b0fafc50343fd898114dfcb8bafcf4",
+      "receipt_sha256": "7bfaf81f26a2030e01db534732723fe726251457f4d0f7ebc6d7d92018375a42",
+      "promotion_authorized": false
+    }
+  },
+  "exact_failure": {
+    "id": "REL/WIN-001",
+    "status": "FAIL_EXACT_CANDIDATE32_SECOND_LAUNCH_FOCUS_NOT_RESTORED",
+    "candidate_mutated": false
+  },
+  "successor": {
+    "client_source_commit": "76abed9056282df6436fbd8734f8093baabdb711",
+    "client_truth_commit": "866bd663875d5d3cc4c1682213031f2855a3693b",
+    "platform_publishing_truth_commit": "9ab44eb7d4a92659c1d567a00346f00521352276",
+    "status": "PASS_PRE_CANDIDATE_LOCAL",
+    "candidate_created": false,
+    "candidate_signed": false
+  },
+  "reconciled_owners": [
+    "POKROV-app/config/cutover-readiness.seed.json",
+    "POKROV-app/docs/operations/cutover-readiness.md",
+    "POKROV-app/docs/operations/android-release-audit.md",
+    "POKROV-app/docs/operations/windows-release-readiness.md",
+    "POKROV-app/docs/implementation/client-release-backlog.md",
+    "VPN/docs/operations/publishing-and-signing-guide.md"
+  ],
+  "verification": {
+    "client_docs_contract": "PASS",
+    "client_validate_seed": "PASS",
+    "platform_agent_docs_contract": "PASS_33_OF_33",
+    "platform_context_audit": "PASS",
+    "platform_link_check": "PASS",
+    "git_diff_check": "PASS",
+    "secret_like_diff_scan": 0
+  },
+  "ledger": {
+    "index_changes": 0,
+    "row_changes": 0,
+    "distribution": {
+      "I4": 7,
+      "I3": 320,
+      "I2": 19,
+      "I1": 32,
+      "I0": 0,
+      "total": 378
+    }
+  },
+  "mutation_boundary": {
+    "git_push": false,
+    "new_candidate": false,
+    "signing": false,
+    "deploy": false,
+    "public_release": false,
+    "store_submission": false,
+    "stable_pointer_mutation": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "CURRENT CLIENT AND PLATFORM RELEASE OWNERS NOW NAME CANDIDATE32 NO_GO AND THE PRE_CANDIDATE SUCCESSOR FIX; NO NEW CANDIDATE OR PROMOTION CREDIT"
+}

@@ -2,6 +2,25 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013GR candidate.32 current cutover truth reconciled
+
+The active client cutover seed/docs and platform publishing guide now agree
+that private signed candidate.32 is immutable `NO_GO 2/17/2`. Its signed
+supply remains valid, while exact `WIN-001` foreground focus fails. Candidate
+22 remains only the latest bounded `WIN-003` pass; that credit is not
+transferred to candidate.32.
+
+Client source commit `76abed9...` and truth commit `866bd66...` retain the
+focus correction as `PASS_PRE_CANDIDATE_LOCAL`. Platform publishing truth is
+bound at `9ab44eb...`. Client seed/docs, full seed validation, platform docs
+tests `33/33`, context audit and link checks pass. New generic contract checks
+reject inconsistent Gate F/NO_GO counts or a source fix relabelled as exact
+candidate proof.
+
+No levels or ledger rows change. Distribution stays `I4=7`, `I3=320`,
+`I2=19`, `I1=32`, `I0=0` across `378` rows. No new candidate, signature,
+push, deploy, public asset, Store object, stable pointer or promotion occurs.
+
 ## 2026-09-04 — WO-013GQ candidate.32 Windows singleton/focus NO_GO
 
 Exact candidate.32 plain and typed second launches each exit `0`, retain one
