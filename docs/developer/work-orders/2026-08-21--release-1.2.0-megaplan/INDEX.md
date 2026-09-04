@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-04
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_CANDIDATE33_WINDOWS_LIFECYCLE_STARTUP_SAVED_STATE_IDLE_LDPLAYER_UI_MARKETING_BROWSER_PASS_CABINET_BROWSER_BLOCKED_AWG_PLAN_READY_GATE_F_BLOCKED`
+Wave status: `PHASE_11_CANDIDATE33_WINDOWS_LIFECYCLE_STARTUP_SAVED_STATE_IDLE_CPU_BUDGET_LDPLAYER_UI_MARKETING_BROWSER_PASS_CABINET_BROWSER_BLOCKED_AWG_PLAN_READY_GATE_F_BLOCKED`
 Release candidate: `POKROV_1_2_0_CANDIDATE33_PRIVATE_SIGNED_PARTIAL_DEVICE_RUNTIME_BLOCKED`
 
 ## Outcome
@@ -36,7 +36,8 @@ saved-state offline-startup/network-appearance authority; WO-013HD is the
 current exact LDPlayer install-identity and cold-UI-start authority; WO-013HE
 is the current exact Windows fresh-process UI idle authority; WO-013HF is the
 current exact-source localhost marketing browser-budget and cabinet
-browser-access boundary authority. Private signed
+browser-access boundary authority; WO-013HG is the current exact candidate.33
+Windows UI idle CPU budget and working-set baseline authority. Private signed
 `pokrov-1.2.0-candidate.33`, app `1.2.0+4053`, binds merged platform
 `f530005...`, client `6ab1bca...`, Core `cd8f0f4...` and release-index source
 `63993fb...` to six fresh artifacts plus candidate-specific SBOM, provenance
@@ -127,6 +128,17 @@ authenticated dashboard route-content evidence. That metric is
 `BLOCKED_BY_ACCESS`, so the complete required `browser_lab` scope fails closed.
 This local marketing subset does not replace the selected Phase 11
 browser/network matrix; Gate F and all ledger levels stay unchanged.
+
+The exact candidate.33 Windows UI then runs the canonical client performance
+collector under PowerShell Core `7.6.5`, discards 30 one-second warmups and
+retains 60 one-second samples. UI-process idle CPU p95 is exactly `1.0%` and
+passes the `1.0%` stop boundary. Working-set p95 is `98693120` bytes and is
+`BASELINE_RECORDED`, not a regression PASS. The UI remains responsive with
+zero matching crash events, no adapter Up and unchanged route/DNS hashes;
+temporary guest tooling and the UI process are removed. This single VM/UI
+process does not prove physical/comparable Windows, service-combined idle or
+the remaining client performance matrix; Gate F and all ledger levels stay
+unchanged.
 
 Candidates.20–23 remain immutable `NO_GO` history. WO-013FA rejects
 candidate.22 after exact connected uninstall leaves the UI and 13 loaded files.
@@ -1237,6 +1249,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013HB` | Prove exact candidate.33 Windows product startup preference on/off without premature auto-connect | Exact installed UI, guest-only keyboard path, temporary first-launch marker, product-generated Run value, service/TUN/route/DNS contour and complete guest cleanup | The Profile → Windows switch creates and removes the exact quoted UI plus `--startup` Run value while the same UI/service state, zero TUN and exact route/DNS fingerprints remain. Marker, UI and guest fixtures are removed and the bridged link is restored. WO-013HA separately proves real-login behavior; WO-013HC subsequently proves synthetic saved-state/network appearance. `WIN-005` stays `I3`; Gate F stays `2/17/0` | Retain as product-preference evidence; use WO-013HC limitations for valid-account managed auto-connect work |
 | `WO-013HC` | Prove exact candidate.33 synthetic saved-state migration across offline Windows login startup and later network appearance | Exact installed UI, dedicated temporary user, synthetic v0 account/profile state, secure-store migration, guest cable off/on, service/UI/Core/TUN contour and SYSTEM cleanup | State migrates to schema v1 secure storage with no plaintext token field; one hidden PID remains disconnected when Ethernet appears; no consent/Core/TUN occurs. SYSTEM removes the temporary user/profile/data/task and restores `pokrovtest`. Valid saved-account/managed-profile refresh and managed auto-connect remain open; `WIN-005` stays `I3`, Gate F `2/17/0` | Repeat with a valid saved account/profile and managed-profile refresh, then prove explicitly owned managed auto-connect/service-readiness timing before I4 |
 | `WO-013HF` | Retain exact candidate.33 headless marketing browser budgets and the cabinet integration boundary | Fresh exact-source static exports, canonical browser-performance collector, 20 retained samples per marketing metric, rendered QA, fail-closed required-scope gate and external evidence index | Marketing home/checkout LCP, CLS and TBT pass `4/4`; cabinet `/dashboard/` renders account login but has no integrated API/auth fixture, so route-content is `BLOCKED_BY_ACCESS` and the required full browser-lab scope fails closed. No level, Gate F, deploy or publication changes | Run authenticated cabinet route content in the selected browser/network lab, then add comparable baseline/regression and the remaining physical client performance matrix |
+| `WO-013HG` | Retain exact candidate.33 Windows UI idle CPU budget and first working-set baseline | Exact installed UI, canonical client collector under PowerShell Core, 30 discarded warmups, 60 retained one-second samples, offline performance validator, route/DNS/TUN/crash contour and complete guest cleanup | CPU p95 `1.0% <= 1.0%` passes; working-set p95 `98693120` bytes is `BASELINE_RECORDED`, not regression PASS. Unsupported PowerShell 5 output is excluded. No level, Gate F, deploy or publication changes | Repeat on comparable physical Windows and service-combined scope, add matching memory comparison, then close cold-start/connect/frame/battery/thermal performance rows |
 
 ## Current evidence
 
