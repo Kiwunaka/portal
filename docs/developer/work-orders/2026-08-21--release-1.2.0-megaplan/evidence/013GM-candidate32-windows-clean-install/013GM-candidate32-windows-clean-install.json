@@ -1,0 +1,133 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate32-windows-clean-install/v1",
+  "recorded_at_utc": "2026-09-04T02:44:54Z",
+  "status": "PASS_EXACT_CANDIDATE32_CLEAN_HOST_INSTALL_RECONCILED",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.32",
+    "platform_source": "d0dd37c1003198ba08cffc49a040a77e21621a86",
+    "client_source": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "5d11fd6821a5ebfa42163f461332125143c553c3",
+    "signed_manifest_sha256": "b15938e1bef2b4cafb634eea81039163e2b15a446cda5bbd32d9894cbe2da449",
+    "signature_sha256": "e63d8ee39c15185afc9e600efe66a1a081b0fafc50343fd898114dfcb8bafcf4",
+    "receipt_sha256": "7bfaf81f26a2030e01db534732723fe726251457f4d0f7ebc6d7d92018375a42",
+    "windows_installer_sha256": "22689e3e61be82f90b1ba9530cba37628ec546022338fc87018b2d460c020574",
+    "windows_manifest_sha256": "43bd310e2fb287d2ada339d8938fbe2304261fe23c9d8608124417d05af9e7dd",
+    "windows_signing_status": "SKIPPED_BY_OWNER",
+    "windows_exception_code": "OWNER_ACCEPTED_UNSIGNED_WINDOWS_BETA_1_2_0"
+  },
+  "environment": {
+    "vm": "POKROV-Win11-Test",
+    "os": "Windows 11 Enterprise Evaluation",
+    "build": "26200",
+    "control": "VirtualBox guest-control plus VM-only keyboard confirmation",
+    "host_screen_mouse_keyboard_used": false,
+    "host_route_vpn_or_dns_changed": false,
+    "raw_network_addresses_retained": false,
+    "clean_baseline_snapshot": {
+      "name": "ready-for-pokrov-tests",
+      "uuid": "c0abfe48-b33c-4d9d-8556-6a7196aa1916"
+    },
+    "prior_candidate32_state_snapshot": {
+      "name": "candidate32-inplace-reboot-forced-recovery-20260904",
+      "uuid": "ddb86649-60a3-4f84-92ee-1639da1a3744"
+    },
+    "clean_installed_snapshot": {
+      "name": "candidate32-clean-installed-uninitialized-20260904",
+      "uuid": "810a0223-d942-481f-a4b0-6866421f5570"
+    },
+    "vm_state_after_snapshot": "poweroff"
+  },
+  "clean_host_before": {
+    "install_root_present": false,
+    "program_data_present": false,
+    "service_present": false,
+    "uninstall_entry_count": 0,
+    "pokrov_adapter_count": 0,
+    "pokrov_process_count": 0,
+    "candidate_task_count": 0,
+    "prior_staging_present": false
+  },
+  "install": {
+    "execution_token": "HIGH_INTEGRITY_ADMIN",
+    "supply_matches": 5,
+    "installer_exit_code": 0,
+    "required_file_count": 11,
+    "exact_candidate32_file_matches": 11,
+    "product_display_version": "1.2.0+4053",
+    "uninstall_entry_count": 1,
+    "service_state": "Running",
+    "service_start_mode": "Auto",
+    "service_account": "LocalSystem",
+    "network_contour_unchanged": true,
+    "pokrov_up_adapter_count": 0,
+    "ui_process_count": 0,
+    "diagnostic_cli_absent": true,
+    "authenticode_status": "NotSigned"
+  },
+  "recovery_contract": {
+    "journal_present_before_first_initialize": false,
+    "pending_file_present": false,
+    "interpreted_state": "clean_uninitialized_by_exact_source_contract",
+    "exact_source_file": "apps/windows_shell/windows/service/service_recovery.cpp",
+    "exact_source_sha256": "a61c1f22415b3db86ee7b37c2ec5ec38661fa1372757aa17596ccb60b300aa23",
+    "exact_source_semantics": "missing journal initializes generation to zeros and leaves the default clean non-invalid stage"
+  },
+  "collector_corrections": {
+    "first_preinstall_collector_stopped_before_installer": true,
+    "first_error": "UNINSTALL_DISPLAY_NAME_PROPERTY_ACCESS",
+    "successful_installer_run_repeated": false,
+    "successful_installer_collector_status": "FAIL",
+    "successful_installer_collector_error": "RECOVERY_JOURNAL_EXPECTED_PRESENT_BEFORE_FIRST_INITIALIZE",
+    "final_reconciliation_uses_raw_clean_prestate_and_installer_exit_plus_independent_postcheck": true
+  },
+  "retained_external_evidence": {
+    "root": "E:/POKROV-tools/release-evidence/1.2.0-candidate32-windows-clean-install-2026-09-04",
+    "files": {
+      "candidate32-clean-install-reconciled.json": "5814c37d6d4f6472b5c5c1ecdc6ee6e654d3bf174a05d5d4a2bc0cf51fb939f4",
+      "candidate32-clean-install.json": "4f299ae8fb6dc93989c748d1647f0854684159fb6bfa0a190cbe9f13cb7a761d",
+      "candidate32-clean-install.log": "598dacbc40eb81e0f29d3be93433c9d06050802b4f8987a6d56f2bd762034171",
+      "candidate32-clean-install-launcher.json": "6689a80bcef776ffbc29251bf8f3a6ca8536cd3a83f2bd239f3c7d18fc73181d",
+      "candidate32-clean-install-postcheck-launcher.json": "dd89d794f4d2b59856a460bcb6cda0722d03c26bde2d73fed8d46e4e93f8b929",
+      "raw-candidate32-clean-install-strict-property-fail.json": "a0cec7bff0b3a4d593b441782682e6059c7080f2e59dc83ffddc8d390e340682",
+      "raw-candidate32-clean-install-strict-property-launcher-fail.json": "a8a5ae0df2dd817a9bd002936e1b362b6ff307f50c54c7664e36ceb359a9bf12",
+      "Invoke-Candidate32CleanInstallElevated.ps1": "18133a9e7b5ee8b4ba12e8bb94c466328e87cf56b35d06bc47a338675f99d1be",
+      "Complete-Candidate32CleanInstallPostcheck.ps1": "a40dd7367e43ff27b1fa448a0b0c5a1ff10175837a751b9bd0ab4ec3e0192e4e"
+    }
+  },
+  "cleanup": {
+    "scheduled_tasks_removed": true,
+    "temporary_guest_scripts_removed": true,
+    "temporary_guest_results_removed_after_host_copy": true,
+    "exact_five_file_supply_staging_retained": true,
+    "return_snapshot_retained": true
+  },
+  "evidence_boundaries": {
+    "clean_host_install_proven": true,
+    "ordinary_ui_or_ipc_on_clean_install_proven": false,
+    "reboot_from_clean_install_proven": false,
+    "public_1_1_6_upgrade_proven": false,
+    "saved_state_migration_or_rollback_proven": false,
+    "connected_default_proven": false,
+    "awg31_or_awg2_proven": false,
+    "smart_dns_proven": false,
+    "connected_uninstall_proven": false,
+    "windows_10_proven": false,
+    "smartscreen_ui_proven": false
+  },
+  "ledger": {
+    "changed_rows": [
+      "REL/WIN-003",
+      "REL_DOD/DOD-04",
+      "FRKN_PLAN/W6-03"
+    ],
+    "index_changes": 0
+  },
+  "decision": {
+    "gate_f": "BLOCKED_2_PASS_17_NON_PASS_0_FAIL",
+    "gate_f_regenerated": false,
+    "promotion_authorized": false,
+    "deploy_or_publication_performed": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE32_CLEAN_HOST_INSTALL_DISCONNECTED_BEFORE_FIRST_INITIALIZE_ONLY"
+}
