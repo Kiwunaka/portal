@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-04
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_CANDIDATE33_CONNECTED_WINDOWS_CRASH_REBOOT_UNINSTALL_PASS_GATE_F_BLOCKED`
+Wave status: `PHASE_11_CANDIDATE33_WINDOWS_LIFECYCLE_PASS_AWG_PLAN_READY_GATE_F_BLOCKED`
 Release candidate: `POKROV_1_2_0_CANDIDATE33_PRIVATE_SIGNED_PARTIAL_DEVICE_RUNTIME_BLOCKED`
 
 ## Outcome
@@ -28,7 +28,8 @@ authority; WO-013GV is the current bounded Windows/physical-Android runtime
 and Gate F authority; WO-013GW is the current exact connected Windows
 forced-service recovery authority; WO-013GX is the current exact connected
 Windows reboot-recovery authority; WO-013GY is the current exact connected
-Windows uninstall/reinstall authority. Private signed
+Windows uninstall/reinstall authority; WO-013GZ is the current read-only
+Windows AWG3.1/AWG2 PLAN-readiness authority. Private signed
 `pokrov-1.2.0-candidate.33`, app `1.2.0+4053`, binds merged platform
 `f530005...`, client `6ab1bca...`, Core `cd8f0f4...` and release-index source
 `63993fb...` to six fresh artifacts plus candidate-specific SBOM, provenance
@@ -72,6 +73,11 @@ rows remain `MANUAL_OWNER_TEST`, not `PASS`; managed AWG, LDPlayer,
 sleep, leak/lifecycle and the remaining external/manual gates
 stay open. Candidate.32 remains immutable `NO_GO` history. No deploy, public
 asset, Store object, stable pointer, Gate G or production mutation occurs.
+
+Fresh guarded read-only PLAN runs after the clean reinstall resolve one exact
+entitled Windows target for both `awg31_lab` and `awg2_lab` and confirm both
+source materials. No APPLY occurs, so this is readiness only and receives no
+packaged AWG runtime or level credit.
 
 Candidates.20–23 remain immutable `NO_GO` history. WO-013FA rejects
 candidate.22 after exact connected uninstall leaves the UI and 13 loaded files.
@@ -410,8 +416,8 @@ reconciled without changing any completion index.
 | 07 | Canonical Operator Center v2 and legacy admin cutover | Local package complete, including the deterministic 75-operation OpenAPI/TypeScript contract, purpose-bound Telegram OIDC Authorization Code plus PKCE login and same-identity step-up for preprovisioned operators, exact retained-bridge permissions and query-suppressed field redaction; live IdP, authenticated exact-candidate readback and cutover/rollback gates remain open | `WO-009`, `WO-009H`, `WO-009I`, `WO-009J` |
 | 08 | App, cabinet and marketing UX/accessibility/performance reconciliation | Locally complete at `I3`. Exact candidate.33 Gate E replay passes local quality `15/15`, client `413/413`, cabinet `69/69`, Admin v2 SDK `75/75` and static budgets `9/9`. The physical Android Wi-Fi/Beeline slice adds bounded device health but not accessibility/OEM/scaling or comparable performance. Fresh npm registry audit is access-blocked; all three locks are byte-identical to candidate.32's retained zero-finding audit inputs, but no fresh audit PASS is claimed. `FE_PR/PR-10` points to candidate.33 Gate F `BLOCKED 2/17/0` without level change. Exact current/Brain origin, authenticated journeys, full physical accessibility/OEM/scaling, comparable artifact/device/browser performance, support, general RU-origin and post-promotion evidence remain `NOT_RUN` or manual. Gate E stays `BLOCKED` below I4 | `WO-010`, `WO-013AN`, `WO-013CI`, `WO-013CO`, `WO-013DA`, `WO-013DD`, `WO-013DE`, `WO-013DQ`, `WO-013DS`, `WO-013EL`, `WO-013EN`, `WO-013EO`, `WO-013FD`–`WO-013FH`, `WO-013FV`, `WO-013FX`, `WO-013GA`, `WO-013GF`, `WO-013GG`, `WO-013GI`, `WO-013GT`–`WO-013GY` |
 | 09 | Legal-gated, capacity-aware marketing pilot and evidence-based decision | Locally complete (`I3` package); external pilot `NOT_AUTHORIZED` | `WO-011` |
-| 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | Candidate.33 binds the same exact Core commit whose direct-RU Raspberry Pi source-level predecessor evidence passes AWG3.1 then AWG2 and the default-off Smart DNS policy/TLS contour. Candidate.33's own SBOM/provenance is the current `W1-03` authority; its Windows Smart DNS synthetic TUN/DNS lifecycle now passes, but managed Smart DNS application sessions and packaged AWG runtime are not credited. Phase 10 remains `I3`, not `I4`: managed Android/Windows AWG, multi-ASN, UDP/IPv6/MTU, leak/privacy/load/lifecycle and authenticated-session evidence remain open. Candidate.29 failures remain immutable predecessor evidence. HY2 remains undeployed; Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AU`, `WO-013AX`–`WO-013BL`, `WO-013BP`, `WO-013BQ`, `WO-013BV`–`WO-013BX`, `WO-013CE`, `WO-013CG`, `WO-013CK`, `WO-013DG`, `WO-013DP`, `WO-013DU`, `WO-013EJ`, `WO-013EY`, `WO-013EZ`, `WO-013FB`–`WO-013FW`, `WO-013GF`, `WO-013GI`, `WO-013GT`, `WO-013GV` |
-| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Candidate.33 is the current private signed candidate. Its freshly built six-file supply, candidate-specific SBOM/provenance/handoff, signature chain, exact Windows update and exact plain/typed singleton-forwarding/focus pass. Exact source Gates A–E and isolated rollback have been executed; exact Windows synthetic direct/Smart DNS lifecycle, connected forced-service rollback, connected reboot recovery, connected uninstall/clean reinstall and physical Android ordinary Wi-Fi plus bounded Beeline slices are now retained. Gate F remains `BLOCKED 2 PASS / 17 non-PASS / 0 FAIL` with zero validation errors; the two device rows are `MANUAL_OWNER_TEST`, not PASS. LDPlayer, saved-state migration, managed Windows default/AWG recovery, Android AWG/leak/lifecycle matrices, exact current/Brain/RU origins, provider/Operator/legal, runtime rollback, comparable performance and final attestations remain non-PASS. Candidate.32 stays immutable `NO_GO` predecessor history. No public `v1.2.0`, Store object, stable switch, deploy or promotion occurred | `WO-013`, `WO-013BK`–`WO-013GY` |
+| 10 | FRKN-derived rules and isolated AWG2/AWG3.1/HY2/Smart-DNS owner labs | Candidate.33 binds the same exact Core commit whose direct-RU Raspberry Pi source-level predecessor evidence passes AWG3.1 then AWG2 and the default-off Smart DNS policy/TLS contour. Candidate.33's own SBOM/provenance is the current `W1-03` authority; its Windows Smart DNS synthetic TUN/DNS lifecycle passes. WO-013GZ fresh guarded PLAN resolves one exact entitled Windows install for AWG3.1 and AWG2 with both materials available, but no APPLY occurs and no packaged AWG runtime is credited. Phase 10 remains `I3`, not `I4`: managed Android/Windows AWG, multi-ASN, UDP/IPv6/MTU, leak/privacy/load/lifecycle and authenticated-session evidence remain open. Candidate.29 failures remain immutable predecessor evidence. HY2 remains undeployed; Gecko, Mimic and port hopping remain monitor-only | `WO-012`, `WO-013AO`, `WO-013AR`, `WO-013AS`, `WO-013AU`, `WO-013AX`–`WO-013BL`, `WO-013BP`, `WO-013BQ`, `WO-013BV`–`WO-013BX`, `WO-013CE`, `WO-013CG`, `WO-013CK`, `WO-013DG`, `WO-013DP`, `WO-013DU`, `WO-013EJ`, `WO-013EY`, `WO-013EZ`, `WO-013FB`–`WO-013FW`, `WO-013GF`, `WO-013GI`, `WO-013GT`, `WO-013GV`, `WO-013GZ` |
+| 11 | Exact-candidate RC matrix, immutable promotion, rollback and go/no-go | Candidate.33 is the current private signed candidate. Its freshly built six-file supply, candidate-specific SBOM/provenance/handoff, signature chain, exact Windows update and exact plain/typed singleton-forwarding/focus pass. Exact source Gates A–E and isolated rollback have been executed; exact Windows synthetic direct/Smart DNS lifecycle, connected forced-service rollback, connected reboot recovery, connected uninstall/clean reinstall and physical Android ordinary Wi-Fi plus bounded Beeline slices are now retained. Read-only Windows AWG3.1/AWG2 plans are ready but receive no runtime credit without separately authorized APPLY. Gate F remains `BLOCKED 2 PASS / 17 non-PASS / 0 FAIL` with zero validation errors; the two device rows are `MANUAL_OWNER_TEST`, not PASS. LDPlayer, saved-state migration, managed Windows default/AWG recovery, Android AWG/leak/lifecycle matrices, exact current/Brain/RU origins, provider/Operator/legal, runtime rollback, comparable performance and final attestations remain non-PASS. Candidate.32 stays immutable `NO_GO` predecessor history. No public `v1.2.0`, Store object, stable switch, deploy or promotion occurred | `WO-013`, `WO-013BK`–`WO-013GZ` |
 
 Active Phase 10/11 supersession: WO-013GT is the current signed-candidate,
 exact `WIN-001` and supply-chain authority. WO-013GU is the current exact
@@ -419,7 +425,8 @@ source Gates A–E and isolated rollback authority; WO-013GV is the current
 bounded Windows/physical-Android runtime and Gate F authority; WO-013GW is the
 current exact connected Windows forced-service recovery authority; WO-013GX is
 the current exact connected Windows reboot-recovery authority; WO-013GY is the
-current exact connected Windows uninstall/reinstall authority. Candidate.33
+current exact connected Windows uninstall/reinstall authority; WO-013GZ is the
+current read-only Windows AWG3.1/AWG2 PLAN-readiness authority. Candidate.33
 has exact signed supply, Windows singleton/typed-forwarding/focus PASS, local
 byte-identical rollback, synthetic Windows TUN/DNS cleanup, connected
 forced-service/reboot/uninstall cleanup plus bounded physical Android
@@ -1171,6 +1178,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013GW` | Prove exact candidate.33 connected Windows forced-service recovery | Exact installed service/Core, secret-free direct TUN, durable journal, SCM restart and ordinary authenticated IPC postcheck in the dedicated headless Windows 11 VM | Connected TUN reaches `committed`; forced LocalSystem termination automatically restarts in `5449` ms, journal returns to `clean`, exact route/DNS baseline returns, ordinary IPC reports safe disconnected, diagnostic CLI is removed and `11/11` candidate files remain. Gate F stays `BLOCKED 2/17/0`; no level or promotion state changes | Connected reboot/uninstall are completed by WO-013GX/WO-013GY; run managed default/AWG recovery, sleep, Windows 10, leak/IPv6 and remaining Gate F rows |
 | `WO-013GX` | Prove exact candidate.33 connected Windows reboot recovery | Exact installed service/Core, secret-free direct TUN, committed durable journal, guest reboot, ordinary post-boot IPC and fresh reconnect/disconnect in the dedicated headless Windows 11 VM | Connected reboot returns the automatic LocalSystem service safely disconnected with zero TUN, exact preboot route/DNS, DNS `4/4` and API health `200`; fresh post-boot connect/disconnect restores the boot baseline; final journal is `clean`, diagnostic CLI is removed and `11/11` candidate files remain. An already queued guest update completes without power interruption; automatic updates are disabled only in the guest after product proof. Gate F stays `BLOCKED 2/17/0`; no level or promotion state changes | Connected uninstall is completed by WO-013GY; run managed default/AWG recovery, sleep, Windows 10, leak/IPv6 and remaining Gate F rows |
 | `WO-013GY` | Prove exact candidate.33 connected Windows uninstall and clean reinstall | Exact interactive UI, exact installed service/Core, secret-free direct TUN, exact uninstaller, product-file inventory, route/DNS baseline and same exact setup in the dedicated headless Windows 11 VM | Uninstaller `0` terminates UI, removes service, all `11` product files, registry and TUN, and restores exact route/DNS. The external diagnostic CLI is identified by hash and removed separately. Clean setup returns `0`, restores `11/11` and Automatic LocalSystem service with unchanged network. Three harness/postcollector errors remain explicit. Gate F stays `BLOCKED 2/17/0`; no level or promotion state changes | Run managed default/AWG recovery, sleep, Windows 10, leak/IPv6 and remaining Gate F rows |
+| `WO-013GZ` | Retain fresh exact candidate.33 Windows AWG3.1/AWG2 PLAN readiness after the clean reinstall | Exact installed app `1.2.0+4053`, guarded runner, one entitled target, source-material resolution and read-only PLAN artifacts | Both `awg31_lab` and `awg2_lab` resolve the same exact installed target, entitlement passes and source material is available. APPLY count is `0`; no runtime, level, Gate F, deploy or promotion credit changes | Obtain separate authority for temporary guarded APPLY, then run AWG3.1 runtime, restore default, run AWG2 runtime and restore default again |
 
 ## Current evidence
 
@@ -1292,6 +1300,8 @@ The row order is a dependency order, not permission for one giant merge. Each im
 - `evidence/013GX-candidate33-windows-connected-reboot-recovery/`
 - `WO-013GY-candidate33-windows-connected-uninstall.md`
 - `evidence/013GY-candidate33-windows-connected-uninstall/`
+- `WO-013GZ-candidate33-windows-awg-plan-readiness.md`
+- `evidence/013GZ-candidate33-windows-awg-plan-readiness/`
 
 - `WO-013EP-candidate21-static-artifact-privacy.md`
 - `evidence/013EP-candidate21-static-artifact-privacy/`

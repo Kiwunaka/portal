@@ -1,0 +1,64 @@
+{
+  "schema": "pokrov.release-1.2.0.wo-013gz-candidate33-windows-awg-plan-readiness/v1",
+  "work_order": "WO-013GZ",
+  "recorded_at_utc": "2026-09-04T12:55:00Z",
+  "status": "READY_READ_ONLY_PLAN_TEMPORARY_CONTROL_PLANE_APPLY_NOT_AUTHORIZED_GATE_F_BLOCKED",
+  "candidate": {
+    "label": "pokrov-1.2.0-candidate.33",
+    "platform_source": "f5300053026d32826e54c02202303e1f68c65bc1",
+    "client_source": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "windows_setup_sha256": "250622f7e4bf9bea39a9456004d4cfeb2340a987c622c46f70b3af07aaec3580",
+    "installed_files": "11/11",
+    "service": "Running_Auto_LocalSystem"
+  },
+  "target": {
+    "selection_mode": "confirmed_install_hash",
+    "target_install_sha256": "fe746f1300ba28298736b684b3b272af2f0c3d02cf4934def66ee98f581475d0",
+    "platform": "windows",
+    "app_version": "1.2.0+4053",
+    "matched_device_count": 1,
+    "entitled": true,
+    "entitlement_extension_needed": false,
+    "entitlement_extension_applied": false,
+    "raw_identifiers_returned": false
+  },
+  "plans": [
+    {
+      "profile": "awg31_lab",
+      "mode": "PLAN",
+      "ok": true,
+      "source_material_available": true,
+      "apply_performed": false,
+      "sha256": "9543f467703a31c71f2ef1aea16a7435a6325e34607242ea10c3a25444f91fc5"
+    },
+    {
+      "profile": "awg2_lab",
+      "mode": "PLAN",
+      "ok": true,
+      "source_material_available": true,
+      "apply_performed": false,
+      "sha256": "53209f601299e01d8201897d2f1a40fd5136ff9db2f7c1f37e6c8c95cff0abe5"
+    }
+  ],
+  "authority": {
+    "temporary_control_plane_apply_authorized": false,
+    "deploy_authorized": false,
+    "public_release_authorized": false
+  },
+  "credit": {
+    "control_plane_plan_readiness": true,
+    "packaged_windows_awg_runtime": false,
+    "level_changed": false,
+    "gate_f": "BLOCKED_2_17_0"
+  },
+  "mutations": {
+    "control_plane_changed": false,
+    "candidate_bytes_changed": false,
+    "production_runtime_changed": false,
+    "deploy_performed": false,
+    "public_release_created": false,
+    "stable_pointer_changed": false
+  },
+  "external_index_sha256": "df387c1f6474509c932a934507f1515fcbca57c67b43eece5a734355fc98af19"
+}
