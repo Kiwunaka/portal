@@ -2,6 +2,23 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013GW candidate.33 Windows connected crash recovery
+
+The exact installed candidate.33 service/Core reaches the connected direct
+synthetic TUN boundary in the dedicated headless Windows 11 VM. Forced
+termination of the LocalSystem service triggers automatic SCM restart in
+`5449` ms. Startup recovery returns the durable journal from `committed` to
+`clean`, removes TUN and restores the exact route/DNS baseline without
+operator remediation.
+
+Ordinary authenticated IPC after recovery reports `initialized`,
+`running=false`, `failure=none`. The temporary exact-source diagnostic client
+is removed; final state retains `11/11` candidate files, running Automatic
+LocalSystem service, zero POKROV TUN/UI processes, DNS `4/4` and API health
+`200`. Managed default/AWG, connected reboot/uninstall, sleep, Windows 10,
+IPv6/leak and SmartScreen remain open. Gate F stays `BLOCKED 2/17/0`, and the
+`378`-row distribution does not change.
+
 ## 2026-09-04 — WO-013GV candidate.33 bounded Windows/Android runtime
 
 The exact installed candidate.33 service/Core passes direct and Smart DNS
