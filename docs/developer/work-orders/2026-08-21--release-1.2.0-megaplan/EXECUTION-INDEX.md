@@ -2,6 +2,26 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013HC candidate.33 Windows synthetic saved-state startup
+
+The exact installed candidate.33 now passes synthetic v0 saved-state migration
+through offline login startup and later guest-network appearance. One dedicated
+temporary user starts the exact quoted `--startup` value while Ethernet is
+disconnected. The UI remains hidden on PID `6884`, migrates state to schema v1
+secure storage, leaves no plaintext token field and creates no Core or TUN.
+
+Restoring only the guest adapter cable preserves the same hidden PID and
+unchanged state, secure-store and experience fingerprints. Ethernet becomes
+available, but the app remains disconnected as required by the current 1.2.0
+startup contract. SYSTEM cleanup removes the fixture user/profile/data/task;
+`pokrovtest` returns with no Run/UI/Core/TUN residue and the Automatic
+LocalSystem service intact.
+
+This is synthetic migration and no-autoconnect proof, not a valid saved
+account, managed-profile fetch or managed auto-connect pass. `REL/WIN-005`
+therefore stays `I3`; Gate F stays `BLOCKED 2/17/0`. No level, candidate,
+deploy, public, host-input or host-network state changes.
+
 ## 2026-09-04 — WO-013HB candidate.33 Windows product startup preference
 
 The owning candidate.33 Profile → Windows preference now passes in the exact
@@ -14,9 +34,10 @@ route/DNS fingerprints do not change.
 A temporary first-launch marker, UI and guest fixtures are removed, and the
 bridged guest link plus network baseline are restored. WO-013HA separately
 proves real-login hidden startup and same-PID ordinary activation for this exact
-Run value; the combined same-sequence reboot is not repeated. Saved state,
-managed auto-connect and delayed-network readiness remain open, so
-`REL/WIN-005` stays `I3`. Gate F remains `BLOCKED 2/17/0`; no level,
+Run value; the combined same-sequence reboot is not repeated. WO-013HC later
+closes synthetic saved-state migration and network-appearance no-autoconnect;
+valid saved-account/managed-profile refresh and managed auto-connect remain
+open, so `REL/WIN-005` stays `I3`. Gate F remains `BLOCKED 2/17/0`; no level,
 candidate, deploy or public state changes.
 
 ## 2026-09-04 — WO-013HA candidate.33 Windows login startup
@@ -27,9 +48,10 @@ UAC, TUN or route/DNS drift, and an ordinary activation exposes a window on the
 same PID. The temporary Run value, activation task and UI are removed; the
 Automatic LocalSystem service and exact network baseline remain.
 
-The Run value was staged directly in the real interactive user's hive. The
-product preference toggle, managed auto-connect/saved state and delayed-network
-readiness remain open, so `REL/WIN-005` stays `I3`. Gate F remains `BLOCKED
+The Run value was staged directly in the real interactive user's hive. WO-013HB
+later closes the product-preference toggle and WO-013HC closes synthetic
+saved-state/network-appearance no-autoconnect. Valid saved-account managed
+refresh and auto-connect remain open, so `REL/WIN-005` stays `I3`. Gate F remains `BLOCKED
 2/17/0`; no level, candidate, deploy or public state changes.
 
 ## 2026-09-04 — WO-013GZ candidate.33 Windows AWG PLAN readiness
