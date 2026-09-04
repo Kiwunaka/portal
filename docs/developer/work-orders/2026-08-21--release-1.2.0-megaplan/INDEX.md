@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-04
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_CANDIDATE33_WINDOWS_LIFECYCLE_STARTUP_SAVED_STATE_COLD_START_COMBINED_IDLE_CPU_ARTIFACT_BASELINES_LDPLAYER_UI_MARKETING_BROWSER_PASS_CABINET_BROWSER_BLOCKED_AWG_PLAN_READY_GATE_F_BLOCKED`
+Wave status: `PHASE_11_CANDIDATE33_WINDOWS_LIFECYCLE_STARTUP_SAVED_STATE_COLD_START_UI_IDLE_CPU_ARTIFACT_BASELINES_LDPLAYER_UI_MARKETING_BROWSER_PASS_CABINET_BROWSER_BLOCKED_AWG_PLAN_READY_COMBINED_CPU_REVOKED_GATE_F_BLOCKED`
 Release candidate: `POKROV_1_2_0_CANDIDATE33_PRIVATE_SIGNED_PARTIAL_DEVICE_RUNTIME_BLOCKED`
 
 ## Outcome
@@ -40,8 +40,8 @@ browser-access boundary authority; WO-013HG is the current exact candidate.33
 Windows UI idle CPU budget and working-set baseline authority; WO-013HH is the
 current exact candidate.33 Android/Windows artifact-size baseline authority;
 WO-013HI is the current exact candidate.33 Windows useful cold-process start
-budget authority; WO-013HJ is the current exact candidate.33 combined Windows
-UI/service idle CPU budget and working-set baseline authority. Private signed
+budget authority; corrected WO-013HJ withdraws the candidate.33 combined Windows
+UI/service CPU PASS (null service counter cast to zero); its memory baseline remains. Private signed
 `pokrov-1.2.0-candidate.33`, app `1.2.0+4053`, binds merged platform
 `f530005...`, client `6ab1bca...`, Core `cd8f0f4...` and release-index source
 `63993fb...` to six fresh artifacts plus candidate-specific SBOM, provenance
@@ -1266,7 +1266,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013HG` | Retain exact candidate.33 Windows UI idle CPU budget and first working-set baseline | Exact installed UI, canonical client collector under PowerShell Core, 30 discarded warmups, 60 retained one-second samples, offline performance validator, route/DNS/TUN/crash contour and complete guest cleanup | CPU p95 `1.0% <= 1.0%` passes; working-set p95 `98693120` bytes is `BASELINE_RECORDED`, not regression PASS. Unsupported PowerShell 5 output is excluded. No level, Gate F, deploy or publication changes | Repeat on comparable physical Windows and service-combined scope, add matching memory comparison, then close cold-start/connect/frame/battery/thermal performance rows |
 | `WO-013HH` | Retain exact candidate.33 Android and Windows artifact-size baselines and repair the one-sample collector shape | Exact signed private release index, byte-identical local universal APK and Windows installer, canonical client collector, strict platform normalizer and offline validator | APK `295370161` bytes and installer `29153792` bytes are both `BASELINE_RECORDED`; neither is a regression PASS. The collector now always emits an array and its raw JSON shape is regression-tested. No candidate-byte, level, Gate F, deploy or publication changes | Compare a later same-kind candidate against these fingerprints, then close the remaining physical/comparable client and authenticated cabinet performance rows |
 | `WO-013HI` | Prove exact candidate.33 Windows useful cold-process start against the owned performance budget | Dedicated headless VM, exact installed UI, limited interactive-session harness, 3 discarded warmups, 20 retained process recreations, rendered UIA terminal and offline validator | p95 `1499.404 ms` passes the `2000 ms` target and `3500 ms` stop; crash events are zero and service/TUN contour remains safe. This is not cold OS boot or physical/comparable Windows proof. No level, Gate F, deploy or publication changes | Add Android cold start and Windows cold OS boot/physical comparison, then close connect/frame/idle-memory/battery/thermal and authenticated cabinet performance rows |
-| `WO-013HJ` | Prove exact candidate.33 combined Windows UI/service idle CPU and retain its working-set baseline | Dedicated headless VM, exact installed UI/service identities, limited interactive-session harness, 30 discarded warmups, 60 retained one-second samples, strict normalizer/validator and network/crash cleanup contour | Combined CPU p95 `0.749734% <= 1.0%` passes; combined working-set p95 `108158976` bytes is `BASELINE_RECORDED`, not regression PASS. Two pre-sample harness failures remain no-product-result. No level, Gate F, deploy or publication changes | Repeat on comparable physical Windows, compare a later matching combined-memory run, then close Android cold start, Windows cold OS boot, connect/frame/battery/thermal and authenticated cabinet performance rows |
+| `WO-013HJ` | Reclassify candidate.33 combined Windows UI/service idle evidence | Original raw artifacts preserved; live service counter-null probe and fail-first client collector regression test | Combined CPU PASS withdrawn: `INVALID_METHOD`, zero accepted CPU samples. Working-set p95 `108158976` bytes remains `BASELINE_RECORDED`. No level, Gate F, candidate, deploy or publication changes | Repeat with readable counters for both processes; then close remaining exact-device performance gates |
 
 ## Current evidence
 

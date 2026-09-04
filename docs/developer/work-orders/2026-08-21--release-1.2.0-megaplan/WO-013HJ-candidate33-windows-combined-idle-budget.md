@@ -1,6 +1,41 @@
 # WO-013HJ — candidate.33 Windows combined UI/service idle budget
 
-Status: `PASS_EXACT_CANDIDATE33_WINDOWS_COMBINED_UI_SERVICE_IDLE_CPU; MEMORY_BASELINE_RECORDED; FULL_CANDIDATE_DEVICE_SCOPE_OPEN; GATE_F_BLOCKED`
+Status: `INVALID_METHOD_COMBINED_CPU; MEMORY_BASELINE_RECORDED; FULL_CANDIDATE_DEVICE_SCOPE_OPEN; GATE_F_BLOCKED`
+
+## Correction — 2026-09-04
+
+The combined CPU PASS below is withdrawn. A read-only guest probe found the
+Running LocalSystem service PID `3192` had null `CPU` and `TotalProcessorTime`
+for the ordinary collector account; casting null to double produced zero.
+All 60 combined CPU values therefore have zero accepted evidence credit.
+The independently readable working set remains a baseline, not a regression
+PASS. No replacement combined CPU run has occurred.
+
+The client collector now rejects unavailable CPU counters before arithmetic.
+Its executable regression test failed on the old collector and passes after
+the fix, covering missing first/subsequent counters and a genuine readable
+zero. The original external raw reports and their hashes remain unchanged.
+The client/platform JSON summaries are reclassified; SHA values in the
+historical account below identify the pre-correction versions only.
+
+PERF-001, GATE-E, DOD-13 and PR-09 lose combined CPU credit without changing
+their execution levels. Gate F remains `BLOCKED 2/17/0`. The prepared synthetic
+connect timing harness is `NOT_RUN`: it needs CLI/cleanup correction and cannot
+by itself prove the full UI-intent-to-verified-managed-connection budget.
+
+## Correction verification
+
+Correction verification (2026-09-04): client
+`pwsh -NoProfile -File test/client-performance-collector-contract.ps1`,
+`pwsh -NoProfile -File test/docs-contract.ps1`, and
+`pwsh -NoProfile -File scripts/validate-seed.ps1` with exact platform/Core
+worktrees pass. Platform
+`python -B -m pytest -p no:cacheprovider -q tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py tests/test_release_1_2_candidate_preflight.py`
+passes `57/57`; platform-context audit and link check pass. Both scoped diffs
+pass `git diff --check`; no retained release-artifact delta exists. Ledger
+still has 378 unique rows (`I1=32`, `I2=19`, `I3=319`, `I4=8`).
+
+## Historical account — CPU conclusions superseded by correction above
 
 Observed: `2026-09-04`
 
