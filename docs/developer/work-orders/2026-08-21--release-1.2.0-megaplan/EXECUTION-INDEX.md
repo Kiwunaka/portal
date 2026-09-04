@@ -2,6 +2,34 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013GT candidate.33 signed supply and WIN-001 PASS
+
+Private `pokrov-1.2.0-candidate.33` is now the current exact signed candidate.
+It binds merged platform `f530005...`, client `6ab1bca...`, Core
+`cd8f0f4...` and signed release-index source `63993fb...` to six fresh
+application artifacts plus candidate-specific SBOM, provenance and handoff.
+Strict replay passes `6/6` artifacts and `11/11` Windows runtime files;
+release-index source-contract, signer and receipt runs execute real steps and
+pass. Windows Authenticode remains explicit `NotSigned` under the owner
+direct-beta exception.
+
+Exact candidate.33 then updates candidate.32 in the dedicated headless
+Windows 11 VM. Installer exit `0`, installed identity `11/11`, Auto
+LocalSystem service and unchanged disconnected route/DNS contour pass. Plain
+and typed second launches each exit `0`, retain one original process, forward
+activation and return foreground focus. `REL/WIN-001` advances `I3` to `I4`.
+Retained collector/control-window failures are harness-only and independently
+reconciled; candidate bytes are unchanged.
+
+Gate F validates all `19/19` pointers and returns `BLOCKED 2 PASS / 17
+non-PASS / 0 FAIL` with zero validation errors. Three required platform/client
+jobs terminate with `steps=[]` and remain
+`BLOCKED_BY_ACCESS_GITHUB_BILLING`; they are not reported as hosted PASS.
+Distribution is now `I4=8`, `I3=319`, `I2=19`, `I1=32`, `I0=0` across
+`378` unique rows. Candidate.32 stays immutable `NO_GO` history. No deploy,
+public asset, Store object, stable pointer, Gate G or production mutation
+occurs.
+
 ## 2026-09-04 — WO-013GS successor focus fix local freeze READY
 
 The read-only preflight binds clean platform/ledger `435999a...`, client

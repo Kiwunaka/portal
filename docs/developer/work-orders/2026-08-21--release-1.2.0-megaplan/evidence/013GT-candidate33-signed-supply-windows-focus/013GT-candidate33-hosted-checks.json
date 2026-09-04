@@ -1,0 +1,79 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate33-hosted-checks/v1",
+  "recorded_at_utc": "2026-09-04T08:24:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.33",
+    "platform_merge": "f5300053026d32826e54c02202303e1f68c65bc1",
+    "client_merge": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+    "release_index_signed_source": "63993fba699b68641b7e972071ab7729fa9ec43c",
+    "release_index_receipt_merge": "9169f272203ec690ab7b0e6a69e92dc2b6762cb4"
+  },
+  "release_index": [
+    {
+      "run_id": 33851340475,
+      "name": "Release index contract",
+      "job": "source-contract",
+      "steps_executed": 9,
+      "status": "PASS"
+    },
+    {
+      "run_id": 33851401873,
+      "name": "Prepare signed candidate manifest",
+      "job": "prepare-signed-candidate",
+      "steps_executed": 9,
+      "status": "PASS"
+    },
+    {
+      "run_id": 33851614987,
+      "name": "Release index contract receipt PR",
+      "job": "source-contract",
+      "steps_executed": 9,
+      "status": "PASS"
+    }
+  ],
+  "platform_pr": {
+    "repository": "Kiwunaka/portal",
+    "pull_request": 216,
+    "checks": [
+      {
+        "name": "repo-guardrails",
+        "workflow": "Guardrails",
+        "run_id": 33849479231,
+        "job_id": 100948752956,
+        "steps": [],
+        "status": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+      },
+      {
+        "name": "cross-repository-contract",
+        "workflow": "Release v2 Contract",
+        "run_id": 33849479243,
+        "job_id": 100948752849,
+        "steps": [],
+        "status": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+      },
+      {
+        "name": "release-base-isolation",
+        "workflow": "Release 1.2.0 PR-00 Freeze",
+        "run_id": 33849479168,
+        "job_id": 100948775795,
+        "status": "SKIPPED"
+      }
+    ]
+  },
+  "client_pr": {
+    "repository": "Kiwunaka/POKROV-app",
+    "pull_request": 75,
+    "checks": [
+      {
+        "name": "cross-repository-contract",
+        "workflow": "Release v2 Contract",
+        "run_id": 33849479969,
+        "job_id": 100948755024,
+        "steps": [],
+        "status": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+      }
+    ]
+  },
+  "classification": "Required platform/client hosted jobs executed zero steps and are not PASS; release-index contract/signing jobs executed normally and passed.",
+  "status": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+}

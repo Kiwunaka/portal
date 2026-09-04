@@ -180,14 +180,15 @@ a new exception or return to team review.
 The latest exact `WIN-003` default-path pass remains candidate.22 on isolated
 Windows 11: managed TUN, route/DNS change, authenticated DE egress,
 service-restart/reboot recovery and exact RU baseline restoration pass within
-that candidate's bounded evidence. The result does not transfer to private
-candidate.32. Candidate.32 separately proves signed supply, exact `11/11`
-identity, clean install, public `1.1.6` migration, ordinary UI/authenticated
-IPC and disconnected service recovery, but its exact second-launch replay
-fails foreground focus under `WIN-001`. Candidate.32 is therefore immutable
-`NO_GO`; client `76abed9…711` is a pre-candidate source correction only. A
-source anchor, predecessor pass or solo PR control cannot convert a current
-manual or failed gate into `PASS`.
+that candidate's bounded evidence. It does not transfer to private
+candidate.33. Candidate.33 separately proves fresh signed supply, exact
+candidate.32-to-33 update, `11/11` installed identity and plain/typed
+second-launch forwarding plus foreground focus under `WIN-001`. Its connected
+default/AWG/Smart-DNS and remaining device/origin/rollback rows are still
+non-PASS, so Gate F remains `BLOCKED 2/17/0`. Candidate.32 remains immutable
+`NO_GO 2/17/2` history. A source anchor, predecessor pass, solo PR control or
+one exact runtime slice cannot convert another current manual/unrun gate into
+`PASS`.
 
 Current focused procedures:
 
@@ -317,20 +318,19 @@ Current public user-facing version policy:
   its exact rejected-session service-availability defect
 - candidate.20's package line is `1.2.0+4049`; both older package lines remain
   historical evidence only
-- exact platform `d0dd37c...`, client `2d6adfc...`, Core `cd8f0f4...` and
-  signed release-index source `5d11fd6...` own private
-  `pokrov-1.2.0-candidate.32` at `1.2.0+4053`. Its six artifacts bind to
-  strict-v2 handoff `df85e2ee...`, refreshed SBOM `5ddf2a96...`, provenance
-  `4785cd00...` and manifest/signature/receipt
-  `b15938e1...` / `e63d8ee3...` / `7bfaf81f...`. Signer run `33819350778`
-  passes; output remains `ACTIONS_ARTIFACT_ONLY` with
-  `promotion_authorized=false`. Exact Windows clean install, public `1.1.6`
-  migration, ordinary UI/authenticated IPC and disconnected service recovery
-  pass, but the exact `WIN-001` second-launch focus check fails. Candidate.32
-  is immutable `NO_GO 2/17/2`. Client `76abed9...` fixes the defect only as
-  pre-candidate source/VM evidence, so a newly numbered candidate is required.
-  Candidate.31 and all earlier decisions remain immutable history; Gate G is
-  unauthorized
+- exact platform `f530005...`, client `6ab1bca...`, Core `cd8f0f4...` and
+  signed release-index source `63993fb...` own private
+  `pokrov-1.2.0-candidate.33` at `1.2.0+4053`. Its six fresh artifacts bind to
+  strict-v2 handoff `30d9d044...`, SBOM `3b586c6e...`, provenance
+  `9aadcb1d...` and manifest/signature/receipt
+  `5620c2f0...` / `5115ab3c...` / `f84843c8...`. Signer run `33851401873`
+  passes with real steps; output remains `ACTIONS_ARTIFACT_ONLY` and
+  `promotion_authorized=false`. Exact candidate.32-to-33 update, installed
+  `11/11` identity and `WIN-001` plain/typed forwarding plus focus pass.
+  Gate F remains `BLOCKED 2/17/0`; connected Windows, Android runtime,
+  origins, rollback, approvals, performance and final aggregates remain
+  non-PASS. Candidate.32 and all earlier decisions remain immutable history;
+  Gate G is unauthorized
 - Android `versionName`, Windows display version, cabinet download badges, and
   public changelog copy must stay aligned to the distributed stable line
 - internal build numbers and platform-native version codes may remain numeric or platform-specific and are not the public label

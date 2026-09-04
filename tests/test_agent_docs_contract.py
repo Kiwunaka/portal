@@ -1295,12 +1295,13 @@ def test_publishing_guide_tracks_current_private_candidate_verdict() -> None:
         "## Current POKROV-app Client Verification Commands", 1
     )[0]
 
-    assert "pokrov-1.2.0-candidate.32" in public_versioning
-    assert "NO_GO 2/17/2" in public_versioning
-    assert "76abed9" in public_versioning
-    assert "pre-candidate" in public_versioning.casefold()
+    assert "pokrov-1.2.0-candidate.33" in public_versioning
+    assert "BLOCKED 2/17/0" in public_versioning
+    assert "33851401873" in public_versioning
+    assert "WIN-001" in public_versioning
+    assert "Candidate.32" in public_versioning
     assert "promotion_authorized=false" in public_versioning
-    assert "newly numbered candidate is required" in public_versioning
+    assert "Gate G is unauthorized" in public_versioning
 
 
 def test_superseded_release_trackers_are_evidence_only() -> None:

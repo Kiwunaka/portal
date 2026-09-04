@@ -1,0 +1,94 @@
+{
+  "schema": "pokrov.release-1.2.0.signed-candidate-binding-evidence/v1",
+  "recorded_at_utc": "2026-09-04T08:24:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.33",
+    "version": "1.2.0+4053",
+    "operational_id": "d7a09ea6601f2cc1422366b29cc0ed7d7b8ca6fee889a143a3ebef7fe488c923",
+    "release_index_source_revision": "63993fba699b68641b7e972071ab7729fa9ec43c",
+    "release_index_receipt_merge_revision": "9169f272203ec690ab7b0e6a69e92dc2b6762cb4",
+    "platform_source_revision": "f5300053026d32826e54c02202303e1f68c65bc1",
+    "client_source_revision": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+    "core_source_revision": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "signer_workflow_run": "Kiwunaka/pokrov/actions/runs/33851401873",
+    "signer_artifact_id": 9928470408,
+    "signer_artifact_name": "pokrov-pokrov-1.2.0-candidate.33-signed-manifest-63993fba699b68641b7e972071ab7729fa9ec43c",
+    "signer_artifact_digest": "sha256:e31d70082cc9417e088868f6d09a139cb0a8fecd95025b6d28b314a30f59e844",
+    "signer_artifact_expires_at_utc": "2026-09-18T08:01:25Z"
+  },
+  "outputs": [
+    {
+      "path": "pokrov-1.2.0-candidate.33.release-index.json",
+      "sha256": "5620c2f0558e7c9a0f8ff8dfbcd47523986dd7fdf13f061e81adab3b10a3f680",
+      "size_bytes": 6884
+    },
+    {
+      "path": "pokrov-1.2.0-candidate.33.release-index.json.sig",
+      "sha256": "5115ab3cd8ee0fa49018e521f75fd9baf5d469c2793a8a47cda4a965b82d3191",
+      "size_bytes": 64
+    },
+    {
+      "path": "pokrov-1.2.0-candidate.33.signing-receipt.json",
+      "sha256": "f84843c81f9173072dcb3f3f551f7ef5ca9e41c21312ddec77ca0fe6cb6b78d7",
+      "size_bytes": 589
+    }
+  ],
+  "supply_chain": {
+    "status": "PASS",
+    "artifact_count": 6,
+    "windows_runtime_file_count": 11,
+    "canonical_artifact_set_sha256": "1858db3491effa6224d3816763f7bd90a16429ae6b21c6fc97275d84f5d31978",
+    "sbom_sha256": "3b586c6e2b63e802ecb6cdfadf5cdac5cd8b7957a5112da4ed9d0a86f6646125",
+    "provenance_sha256": "9aadcb1dfa8973c08ca4682238e91baa17f4aa952f4d03eb78ebdfea733aeb08",
+    "release_handoff_sha256": "30d9d04437caa51c0fafb533a77589d745c66cd7ce5c17843d5b3a1e37e72c81",
+    "windows_runtime_manifest_sha256": "0f93211e254076fad5de8cf88d0817897313c2fd3f3b2daa6d1253628da63a5b",
+    "sbom_root_bom_ref": "pkg:generic/pokrov-release-candidate@1.2.0%2B4053?candidate=33",
+    "provenance_invocation_id": "pokrov-1.2.0-candidate.33/1858db3491effa6224d3816763f7bd90a16429ae6b21c6fc97275d84f5d31978",
+    "predecessor_candidate_references": 0,
+    "strict_supply_validation_status": "PASS_6_OF_6_ARTIFACTS_11_OF_11_WINDOWS_RUNTIME"
+  },
+  "independent_validation": {
+    "status": "READY_SIGNED_MANIFEST",
+    "receipt_matches_outputs": true,
+    "detached_signature_verified_with_public_keyring": true,
+    "strict_supply_validation_status": "PASS",
+    "public_key_sha256": "651d1bcfbedecc4e50d21f3ad3bf3cc990a6cfc97ad355f0e0e76972b8ba8024",
+    "promotion_authorized": false
+  },
+  "artifact_build": {
+    "status": "PASS_EXACT_MERGED_MAIN_BYTES",
+    "windows_build_log_sha256": "b73bcd35cb911bffb4df1685bbc11ac787f39d14e0054fd8636d7c2d06bf630a",
+    "windows_ctest_release": "7/7 PASS",
+    "windows_verification_report_sha256": "fbf5b396decbdc6c633f91b21b3f16547e07f6fa89a0a7f2c2d4654737665f24",
+    "android_build_log_sha256": "272e290449d85ee89646fef559fd8cb86369f7e091e9dddc5d8344958ab898f1",
+    "android_verification_report_sha256": "ed60ac2b2e4d5c48de8a7902019423e0d35a402325c61ad2d92e12faa9e48a80",
+    "android_production_certificate_sha256": "0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500"
+  },
+  "windows_vm_binding": {
+    "status": "PASS_EXACT_CANDIDATE33_UPDATE_AND_WIN001",
+    "candidate32_to_candidate33_update": "PASS",
+    "required_runtime_file_matches": "11/11",
+    "service_contract": "Running/Auto/LocalSystem",
+    "plain_second_launch_focus": "PASS",
+    "typed_second_launch_focus": "PASS",
+    "disconnected_network_contour_unchanged": true,
+    "connected_runtime": "NOT_RUN"
+  },
+  "physical_phone_install_binding": {
+    "status": "NOT_RUN",
+    "gate_f_check": "android_physical_device"
+  },
+  "mutation_boundary": {
+    "candidate_artifact_mutated": false,
+    "host_screen_or_input_control_used": false,
+    "guest_headless_input_used_for_logon_and_uac": true,
+    "host_network_mutated": false,
+    "signing_private_key_accessed_locally": false,
+    "production_deploy": false,
+    "public_release": false,
+    "store_submission": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT CANDIDATE33 SIGNATURE, SUPPLY, CANDIDATE32-TO-33 UPDATE AND DISCONNECTED WIN-001 PASS; CONNECTED WINDOWS, ANDROID RUNTIME, ORIGINS, APPROVALS, ROLLBACK AND FINAL AGGREGATE REMAIN OPEN"
+}
