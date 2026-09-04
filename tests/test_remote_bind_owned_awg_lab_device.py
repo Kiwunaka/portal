@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import ast
+import copy
 from pathlib import Path
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -18,6 +21,51 @@ def _remote_helper() -> str:
                     assert isinstance(value, str)
                     return value
     raise AssertionError("remote helper not found")
+
+
+def _scope_guard():
+    helper = ast.parse(_remote_helper())
+    function = next(node for node in helper.body if isinstance(node, ast.FunctionDef) and node.name == "require_isolated_lab_scope")
+    namespace = {}
+    exec(compile(ast.Module(body=[function], type_ignores=[]), str(SCRIPT), "exec"), namespace)
+    return namespace["require_isolated_lab_scope"]
+
+
+@pytest.mark.parametrize("config", [
+    {"awg2_lab": {"allowlist_install_ids": ["other-install"]}},
+    {"awg31_lab": {"allowlist_tg_ids": [42]}},
+    {"cohort_overrides": {"candidate4-awg-lab": {"install_ids": ["other-install"]}}},
+    {"cohort_overrides": {"candidate4-awg-lab": {"install_ids": ["target"], "tg_ids": [42]}}},
+    {"cohort_overrides": {"other": {"transport_profile": "awg31_lab", "platforms": ["windows"]}}},
+    {"defaults": {"transport_profile": "awg2_lab"}},
+    {"carrier_overrides": {"beeline": {"transport_profile": "awg31_lab"}}},
+])
+def test_shared_lab_scope_is_rejected_without_mutating_input(config) -> None:
+    before = copy.deepcopy(config)
+    with pytest.raises(ValueError, match="shared AWG scope"):
+        _scope_guard()(config, "target")
+    assert config == before
+
+
+def test_isolated_install_scope_preserves_unrelated_configuration() -> None:
+    config = {"defaults": {"transport_profile": "legacy_reality_fallback"},
+              "cohort_overrides": {"other": {"install_ids": ["other"], "transport_profile": "legacy_reality_fallback"},
+                                   "candidate4-awg-lab": {"install_ids": ["target"], "transport_profile": "awg31_lab"}},
+              "awg2_lab": {"allowlist_install_ids": ["target"]},
+              "awg31_lab": {"allowlist_install_ids": []}}
+    before = copy.deepcopy(config)
+    _scope_guard()(config, "target")
+    assert config == before
+
+
+def test_scope_guard_precedes_any_guarded_mutation_and_new_scope_is_install_only() -> None:
+    helper = _remote_helper()
+    first_mutation = helper.index('    guarded(\n        "user.extend"')
+    assert helper.index("require_isolated_lab_scope(current, install_id)") < first_mutation
+    assignment = helper[helper.index('    cohorts["candidate4-awg-lab"] = {'):helper.index('current["cohort_overrides"] = cohorts')]
+    assert '"tg_ids": []' in assignment
+    assert '"allowlist_tg_ids": [tg_id]' not in helper
+    assert helper.index("if latest != current:") < helper.index('    "network_rollout_config.update",')
 
 
 def test_default_profile_is_supported_without_reprovisioning_material() -> None:

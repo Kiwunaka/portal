@@ -605,6 +605,33 @@ def guarded(action, target_type, target_id, method, path, body):
         },
     )
 
+def require_isolated_lab_scope(config, target_install):
+    # This helper replaces a single legacy lab cohort and both lab gates. It is
+    # not a shared-rollout editor: account selectors can match other installs.
+    labs = {"awg2_lab", "awg31_lab"}
+    for rule in [config.get("defaults") or {}, *(config.get("carrier_overrides") or {}).values()]:
+        if rule.get("transport_profile") in labs:
+            raise ValueError("shared AWG scope requires separate review")
+    for name, rule in (config.get("cohort_overrides") or {}).items():
+        if name != "candidate4-awg-lab" and rule.get("transport_profile") not in labs:
+            continue
+        if (name != "candidate4-awg-lab"
+                or any(value != target_install for value in rule.get("install_ids") or [])
+                or any(rule.get(field) for field in ("tg_ids", "linked_tg_ids", "platforms"))):
+            raise ValueError("shared AWG scope requires separate review")
+    for name in labs:
+        lab = config.get(name) or {}
+        if (any(value != target_install for value in lab.get("allowlist_install_ids") or [])
+                or lab.get("allowlist_tg_ids")):
+            raise ValueError("shared AWG scope requires separate review")
+
+
+current = request("GET", "/api/admin/network-rollout-config")["network_rollout_config"]
+try:
+    require_isolated_lab_scope(current, install_id)
+except ValueError:
+    blocked("shared_awg_scope_requires_separate_review")
+
 entitlement_extension_applied = False
 if entitlement_extension_needed:
     guarded(
@@ -651,7 +678,9 @@ if selected_profile != "default":
         },
     )
 
-current = request("GET", "/api/admin/network-rollout-config")["network_rollout_config"]
+latest = request("GET", "/api/admin/network-rollout-config")["network_rollout_config"]
+if latest != current:
+    blocked("network_rollout_changed_during_bind")
 expires_at = (datetime.now(timezone.utc) + timedelta(hours=24)).isoformat().replace(
     "+00:00", "Z"
 )
@@ -683,7 +712,7 @@ else:
     cohorts["candidate4-awg-lab"] = {
         "transport_profile": selected_profile,
         "install_ids": [install_id],
-        "tg_ids": [tg_id],
+        "tg_ids": [],
         "linked_tg_ids": [],
         "platforms": [],
     }
@@ -707,7 +736,7 @@ for name in ("awg2_lab", "awg31_lab"):
                 "enabled": True,
                 "kill_switch_engaged": False,
                 "allowlist_install_ids": [install_id],
-                "allowlist_tg_ids": [tg_id],
+                "allowlist_tg_ids": [],
                 "allowlist_node_codes": ["de"],
                 "allowed_platforms": ["android", "windows"],
                 "expires_at": expires_at,
