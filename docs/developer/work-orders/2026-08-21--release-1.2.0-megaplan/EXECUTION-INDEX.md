@@ -2,6 +2,61 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013GS successor focus fix local freeze READY
+
+The read-only preflight binds clean platform/ledger `435999a...`, client
+`866bd66...` including focus fix `76abed9...`, exact Core `cd8f0f4...` and
+clean published release-index ancestor `86547e9...`. Release contracts,
+versions, stage policy and exact Core AAR/DLL/Cronet bytes pass with zero
+blockers and zero pre-freeze rows below `I3`.
+
+This is `READY_LOCAL_FREEZE`, not a candidate. All `51` rows below `I3` remain
+open: `22` candidate, `16` deferred and `13` external. Candidate.32 stays
+immutable `NO_GO 2/17/2`; `candidate_created=false`,
+`candidate_proven=false`, `promotion_authorized=false`. No signature, push,
+deploy, public asset, Store object, stable pointer or index change occurs.
+
+## 2026-09-04 — WO-013GR candidate.32 current cutover truth reconciled
+
+The active client cutover seed/docs and platform publishing guide now agree
+that private signed candidate.32 is immutable `NO_GO 2/17/2`. Its signed
+supply remains valid, while exact `WIN-001` foreground focus fails. Candidate
+22 remains only the latest bounded `WIN-003` pass; that credit is not
+transferred to candidate.32.
+
+Client source commit `76abed9...` and truth commit `866bd66...` retain the
+focus correction as `PASS_PRE_CANDIDATE_LOCAL`. Platform publishing truth is
+bound at `9ab44eb...`. Client seed/docs, full seed validation, platform docs
+tests `33/33`, context audit and link checks pass. New generic contract checks
+reject inconsistent Gate F/NO_GO counts or a source fix relabelled as exact
+candidate proof.
+
+No levels or ledger rows change. Distribution stays `I4=7`, `I3=320`,
+`I2=19`, `I1=32`, `I0=0` across `378` rows. No new candidate, signature,
+push, deploy, public asset, Store object, stable pointer or promotion occurs.
+
+## 2026-09-04 — WO-013GQ candidate.32 Windows singleton/focus NO_GO
+
+Exact candidate.32 plain and typed second launches each exit `0`, retain one
+original UI process and forward activation, but the existing window does not
+regain foreground focus. `REL/WIN-001` is therefore exact STOP-SHIP `FAIL` and
+the signed candidate remains immutable `NO_GO`.
+
+Client commit `76abed9...` transfers foreground permission before forwarding
+`WM_COPYDATA`. Focused Flutter `8/8`, Release native CTest `7/7`, Release build
+and bounded ordinary-user Windows 11 VM plain/typed replay pass only as
+`PRE_CANDIDATE_LOCAL`. The precursor and guest staging are removed,
+candidate.32 remains byte-identical and the VM is powered off.
+
+Gate F validates all `19/19` pointers and returns exact `NO_GO 2 PASS / 17
+non-PASS / 2 FAIL` with zero validation errors. Seven current-status rows and
+all `57` future-action fields are reconciled without level changes; the eight
+remaining candidate.32 action mentions are explicit immutable-history guards.
+Distribution remains `I4=7`,
+`I3=320`, `I2=19`, `I1=32`, `I0=0` across `378` unique rows. No new candidate,
+signature, deploy, public asset, Store object, stable pointer or promotion is
+created.
+
 ## 2026-09-04 — WO-013GE successor-current local freeze preflight READY
 
 The read-only preflight binds clean platform/ledger `9d92889...`, exact merged

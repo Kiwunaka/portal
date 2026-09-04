@@ -1,6 +1,6 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-08-30
+Last updated: 2026-09-04
 
 ## Document Status
 
@@ -177,17 +177,17 @@ mandatory compensating controls outside the branch readback itself. The
 exception expires when release 1.2.0 is closed; a later release must authorize
 a new exception or return to team review.
 
-WIN-003 is `PASS` for exact private candidate.21 on the isolated Windows 11
-default path. Setup `87f90be1…dff3` proves exact installed identity, ordinary
-UI/LocalSystem service, upgrade-time startup recovery from candidate.20's
-committed journal, TUN, route/DNS change, authenticated DE egress and exact RU
-baseline restoration after disconnect. Candidate.20's earlier default path,
-migration and connected-reboot slices remain bounded history, but the failed
-service-restart recovery makes that candidate immutable `NO_GO`. Candidate.21
-still lacks an in-place forced-termination/SCM-restart proof, Windows 10,
-AWG 3.1/AWG2, connected uninstall, interactive SmartScreen and trusted
-signing. A source anchor or solo PR control alone cannot convert a manual gate
-into `PASS`.
+The latest exact `WIN-003` default-path pass remains candidate.22 on isolated
+Windows 11: managed TUN, route/DNS change, authenticated DE egress,
+service-restart/reboot recovery and exact RU baseline restoration pass within
+that candidate's bounded evidence. The result does not transfer to private
+candidate.32. Candidate.32 separately proves signed supply, exact `11/11`
+identity, clean install, public `1.1.6` migration, ordinary UI/authenticated
+IPC and disconnected service recovery, but its exact second-launch replay
+fails foreground focus under `WIN-001`. Candidate.32 is therefore immutable
+`NO_GO`; client `76abed9…711` is a pre-candidate source correction only. A
+source anchor, predecessor pass or solo PR control cannot convert a current
+manual or failed gate into `PASS`.
 
 Current focused procedures:
 
@@ -317,18 +317,19 @@ Current public user-facing version policy:
   its exact rejected-session service-availability defect
 - candidate.20's package line is `1.2.0+4049`; both older package lines remain
   historical evidence only
-- exact platform `5ba4dba...`, client `df9ed85...`, Core `cd8f0f4...` and
-  release-index signing source `95f9f03...` own signed private
-  `pokrov-1.2.0-candidate.23` at `1.2.0+4052`. Its six exact artifacts bind to
-  strict-v2 handoff `457bbf71...`, refreshed SBOM `0c789b50...`, provenance
-  `71f2d6ec...` and trusted manifest/signature/receipt
-  `5073c201...` / `92027334...` / `d11e24ac...`. Main-only signer run
-  `33690078543` passes; output remains `ACTIONS_ARTIFACT_ONLY` with
-  `promotion_authorized=false`. The exact Windows package installs and reaches
-  an initial authenticated connection, but valid service requests can fail
-  under serial-pipe contention while the service remains running. Candidate.23
-  is immutable `NO_GO`; the build-4053 working branch contains the bounded
-  retry and requires a new candidate. Earlier candidate decisions remain immutable history; Gate G is
+- exact platform `d0dd37c...`, client `2d6adfc...`, Core `cd8f0f4...` and
+  signed release-index source `5d11fd6...` own private
+  `pokrov-1.2.0-candidate.32` at `1.2.0+4053`. Its six artifacts bind to
+  strict-v2 handoff `df85e2ee...`, refreshed SBOM `5ddf2a96...`, provenance
+  `4785cd00...` and manifest/signature/receipt
+  `b15938e1...` / `e63d8ee3...` / `7bfaf81f...`. Signer run `33819350778`
+  passes; output remains `ACTIONS_ARTIFACT_ONLY` with
+  `promotion_authorized=false`. Exact Windows clean install, public `1.1.6`
+  migration, ordinary UI/authenticated IPC and disconnected service recovery
+  pass, but the exact `WIN-001` second-launch focus check fails. Candidate.32
+  is immutable `NO_GO 2/17/2`. Client `76abed9...` fixes the defect only as
+  pre-candidate source/VM evidence, so a newly numbered candidate is required.
+  Candidate.31 and all earlier decisions remain immutable history; Gate G is
   unauthorized
 - Android `versionName`, Windows display version, cabinet download badges, and
   public changelog copy must stay aligned to the distributed stable line

@@ -1,0 +1,99 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate32-windows-singleton-focus/v1",
+  "recorded_at_utc": "2026-09-04T04:15:55Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.32",
+    "operational_id": "a24e6a5984326dd2f57f34a4195aab85962a64efe991b85ed5284e871cf3dbbf",
+    "manifest_sha256": "b15938e1bef2b4cafb634eea81039163e2b15a446cda5bbd32d9894cbe2da449",
+    "signature_sha256": "e63d8ee39c15185afc9e600efe66a1a081b0fafc50343fd898114dfcb8bafcf4",
+    "receipt_sha256": "7bfaf81f26a2030e01db534732723fe726251457f4d0f7ebc6d7d92018375a42",
+    "sources": {
+      "platform": "d0dd37c1003198ba08cffc49a040a77e21621a86",
+      "client": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "5d11fd6821a5ebfa42163f461332125143c553c3"
+    },
+    "windows_setup_sha256": "22689e3e61be82f90b1ba9530cba37628ec546022338fc87018b2d460c020574",
+    "installed_ui_sha256": "611208b20b68b333d81655b0d6dbd7ada3a213fbfd9a82b6af71b01b3bdf15a2",
+    "status": "NO_GO_EXACT_CANDIDATE32_WIN_001_FOCUS"
+  },
+  "exact_candidate_runtime": {
+    "status": "FAIL_EXACT_CANDIDATE32_SECOND_LAUNCH_FOCUS_NOT_RESTORED",
+    "ordinary_medium_integrity_user": true,
+    "plain_second_launch_exit_code": 0,
+    "plain_singleton_retained": true,
+    "plain_typed_forwarding_retained": true,
+    "plain_focus_restored": false,
+    "typed_second_launch_exit_code": 0,
+    "typed_singleton_retained": true,
+    "typed_forwarding_retained": true,
+    "typed_focus_restored": false,
+    "network_contour_unchanged": true,
+    "cleanup_ui_process_count": 0,
+    "classification": "EXACT_CANDIDATE_STOP_SHIP_FAILURE",
+    "raw_path": "E:/POKROV-tools/release-evidence/1.2.0-candidate32-windows-singleton-focus-2026-09-04/candidate32-singleton-focus-final.json",
+    "raw_sha256": "46cab10a7a64fbc1c934f7762bad0d62826e404ded7c591fcf96100bf1fb2a28",
+    "harness_path": "E:/POKROV-tools/release-evidence/1.2.0-candidate32-windows-singleton-focus-2026-09-04/Invoke-Candidate32SingletonFocus.ps1",
+    "harness_sha256": "7bacd820696da7a35db922b214b6511e9eeee7b7a6537e7e3ae22584cc072178"
+  },
+  "cause": {
+    "boundary": "WINDOWS_FOREGROUND_ACTIVATION_PERMISSION",
+    "observed_source_behavior": "The new foreground-launched instance forwards WM_COPYDATA and exits, but the existing process is not permitted to become foreground.",
+    "candidate_mutation_required": true,
+    "candidate32_mutated": false
+  },
+  "successor_source": {
+    "base_client": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+    "commit": "76abed9056282df6436fbd8734f8093baabdb711",
+    "status": "PASS_PRE_CANDIDATE_SUCCESSOR_SINGLETON_SHOW_TYPED_FORWARDING_FOCUS",
+    "change": "The foreground-launched second process resolves the existing window process id and calls AllowSetForegroundWindow before forwarding WM_COPYDATA.",
+    "focused_flutter_tests": "PASS_8_OF_8",
+    "native_release_ctest": "PASS_7_OF_7",
+    "release_build": "PASS",
+    "release_ui_sha256": "1ac2bb3135b66930bfbbb7d6cd0b5fc319bad5c56fe62c8f7b7af848caabcdb9",
+    "release_ui_size": 192512,
+    "runtime": {
+      "ordinary_medium_integrity_user": true,
+      "plain_second_launch_exit_code": 0,
+      "plain_singleton_and_focus": true,
+      "typed_second_launch_exit_code": 0,
+      "typed_singleton_and_focus": true,
+      "network_contour_unchanged": true,
+      "cleanup_ui_process_count": 0,
+      "raw_path": "E:/POKROV-tools/release-evidence/1.2.0-candidate32-windows-singleton-focus-2026-09-04/successor-singleton-focus-final.json",
+      "raw_sha256": "a7b08b9ad0aac97199adb0acbee666dea2cff22d39a387043f33e4c66e755268"
+    }
+  },
+  "retained_harness_boundary": {
+    "first_successor_attempt_classification": "HARNESS_ERROR_PROCESS_ENUMERATION_RACE",
+    "first_successor_attempt_sha256": "01fd72cae5fff802e46c178eb0c216de4d99348c20afab32efea332cdf29b8d2",
+    "corrected_successor_harness_sha256": "55b561de39c4a7339dceb622f2ed626747dd719361f433b78b858f758d55f00a",
+    "product_code_changed_for_harness_retry": false
+  },
+  "cleanup": {
+    "precursor_removed": true,
+    "precursor_remove_evidence_sha256": "63dc7fd4a54999354637154b9e7957f997eef2429c73e136aa7e52592b29bd63",
+    "elevated_launcher_evidence_sha256": "7d1f04069c8856dbffddcf6bf5949a6215c984ec9203c76ebc477a30314d18bf",
+    "candidate32_ui_sha256_after": "611208b20b68b333d81655b0d6dbd7ada3a213fbfd9a82b6af71b01b3bdf15a2",
+    "candidate32_service_status_before_shutdown": "Running",
+    "guest_staging_removed": true,
+    "vm_powered_off": true
+  },
+  "release_boundary": {
+    "candidate32_re_signed": false,
+    "new_candidate_created": false,
+    "new_candidate_signed": false,
+    "deployment": false,
+    "public_release": false,
+    "store_submission": false,
+    "stable_pointer_mutated": false,
+    "promotion_authorized": false
+  },
+  "ledger": {
+    "index_changes": 0,
+    "win_001_index": "I3",
+    "candidate32_credit": "FAIL",
+    "successor_credit": "PRE_CANDIDATE_LOCAL"
+  },
+  "evidence_ceiling": "CANDIDATE32 EXACT WIN-001 NO_GO; SUCCESSOR SOURCE AND BOUNDED VM PRECURSOR PASS; NEW NUMBERED CANDIDATE REQUIRED"
+}

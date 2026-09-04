@@ -1,0 +1,188 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate32-android-static-signing/v1",
+  "recorded_at_utc": "2026-09-04T01:19:37Z",
+  "status": "PASS_EXACT_CANDIDATE32_ANDROID_STATIC_SIGNING_BUNDLE_AND_DISTRIBUTION_SEPARATION_DEVICE_AND_STORE_OPEN",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.32",
+    "version": "1.2.0+4053",
+    "platform_source": "d0dd37c1003198ba08cffc49a040a77e21621a86",
+    "client_source": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "5d11fd6821a5ebfa42163f461332125143c553c3",
+    "signed_manifest_sha256": "b15938e1bef2b4cafb634eea81039163e2b15a446cda5bbd32d9894cbe2da449",
+    "signature_sha256": "e63d8ee39c15185afc9e600efe66a1a081b0fafc50343fd898114dfcb8bafcf4",
+    "receipt_sha256": "7bfaf81f26a2030e01db534732723fe726251457f4d0f7ebc6d7d92018375a42",
+    "release_handoff_sha256": "df85e2ee1a03133ac79bb36064d47518f9067cd188e7624d70fd349011422bef",
+    "sbom_sha256": "5ddf2a96244e70ad1284409f0cea6f5838fab5bfbca5c5b96a245f0716de2893",
+    "provenance_sha256": "4785cd005791a8872f4c8a45202ba2d35c9d1ba65737f5683ee17d0b927c53e6"
+  },
+  "toolchain": {
+    "android_build_tools": "36.1.0",
+    "apksigner": "0.9",
+    "aapt2": "2.20-14042983",
+    "bundletool": "1.18.1",
+    "bundletool_sha256": "675786493983787ffa11550bdb7c0715679a44e1643f3ff980a529e9c822595c",
+    "java": "Microsoft OpenJDK 17.0.18+8-LTS"
+  },
+  "expected_android_identity": {
+    "package_name": "space.pokrov.pokrov_android_shell",
+    "version_name": "1.2.0",
+    "version_code": 4053,
+    "certificate_subject": "CN=POKROV, O=POKROV, C=RU",
+    "certificate_sha256": "0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500",
+    "certificate_public_key_sha256": "c146dbba98f669106de02287287e212494733c812b7eb373fe1fc85b9e583254",
+    "certificate_key": "RSA 4096"
+  },
+  "apk_validation": {
+    "artifact_count": 4,
+    "apksigner_passed": 4,
+    "zipalign_passed": 4,
+    "aapt_identity_passed": 4,
+    "debuggable_false": 4,
+    "signature_scheme": "APK Signature Scheme v2",
+    "signer_count_per_artifact": 1,
+    "artifacts": [
+      {
+        "name": "pokrov-android-universal.apk",
+        "bytes": 295370161,
+        "sha256": "a5ddfa5a5e35f828df4c1817256658c4b569e61d12e4742107fa43c30c506d05",
+        "native_code": [
+          "arm64-v8a",
+          "armeabi-v7a",
+          "x86_64"
+        ],
+        "apksigner": "PASS",
+        "zipalign": "PASS",
+        "manifest_identity": "PASS"
+      },
+      {
+        "name": "pokrov-android-arm64-v8a.apk",
+        "bytes": 101366678,
+        "sha256": "fe8d82289a4903958fe7ed4cf7f8a472e417760a72c95930328a9b9ec3a285f9",
+        "native_code": [
+          "arm64-v8a"
+        ],
+        "apksigner": "PASS",
+        "zipalign": "PASS",
+        "manifest_identity": "PASS"
+      },
+      {
+        "name": "pokrov-android-armeabi-v7a.apk",
+        "bytes": 90778788,
+        "sha256": "71de150a4b411c8711146123f0255a88eb6201d6cb19037144baf65f9214aaef",
+        "native_code": [
+          "armeabi-v7a"
+        ],
+        "apksigner": "PASS",
+        "zipalign": "PASS",
+        "manifest_identity": "PASS"
+      },
+      {
+        "name": "pokrov-android-x86_64.apk",
+        "bytes": 109951989,
+        "sha256": "00e792ab69e1d0e0c165e3e94be9c9bd4c1b66e9e2dbf706363987b45791d4f5",
+        "native_code": [
+          "x86_64"
+        ],
+        "apksigner": "PASS",
+        "zipalign": "PASS",
+        "manifest_identity": "PASS"
+      }
+    ]
+  },
+  "aab_validation": {
+    "name": "pokrov-android-market.aab",
+    "bytes": 126263340,
+    "sha256": "53de5d9b9d0a64ef4e7a8cfaf2e6f1972f8ce21c1b723a764b03edd14894bf7f",
+    "bundletool_validate": "PASS_EXIT_0",
+    "bundletool_manifest_dump": "PASS_EXIT_0",
+    "package_name": "space.pokrov.pokrov_android_shell",
+    "version_name": "1.2.0",
+    "version_code": 4053,
+    "debuggable": false,
+    "allow_backup": false,
+    "included_core_abis": [
+      "armeabi-v7a",
+      "arm64-v8a",
+      "x86_64"
+    ],
+    "keytool_certificate_match": true,
+    "jarsigner_non_strict": "VERIFIED_EXIT_0_WITH_WARNINGS",
+    "jarsigner_strict": "WARN_EXIT_4",
+    "strict_warning_classes": [
+      "self-managed self-signed certificate has no public PKIX chain",
+      "signature has no timestamp",
+      "POSIX attributes are outside the JAR signature",
+      "JarFile and JarInputStream report different signed-entry visibility"
+    ],
+    "disposition": "BUNDLETOOL_AND_SIGNATURE_INTEGRITY_PASS_LOCAL; STRICT_WARNINGS_RETAINED; STORE_SUBMISSION_NOT_REQUESTED"
+  },
+  "distribution_separation_validation": {
+    "exact_direct_artifact": "pokrov-android-universal.apk",
+    "exact_store_artifact": "pokrov-android-market.aab",
+    "direct_manifest": {
+      "request_install_packages": true,
+      "file_provider": "androidx.core.content.FileProvider",
+      "provider_authority": "space.pokrov.pokrov_android_shell.updates",
+      "provider_exported": false,
+      "grant_uri_permissions": true
+    },
+    "store_manifest": {
+      "request_install_packages": false,
+      "direct_update_file_provider": false,
+      "direct_update_authority": false
+    },
+    "artifact_manifest_result": "PASS_EXACT_DIRECT_STORE_SEPARATION",
+    "source_contract_tests": {
+      "gradle": "8.11.1",
+      "testDirectDebugUnitTest": {
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "result": "PASS"
+      },
+      "testStoreDebugUnitTest": {
+        "tests": 5,
+        "failures": 0,
+        "errors": 0,
+        "result": "PASS"
+      },
+      "covered_suites": [
+        "AndroidManifestPermissionsTest",
+        "AndroidUpdateFlavorContractTest"
+      ]
+    },
+    "evidence_ceiling": "STATIC_PERMISSION_PROVIDER_AND_SOURCE_FLAVOR_CONTRACT_PASS; INSTALL_PERMISSION_FLOW_DIRECT_UPGRADE_AND_PLAY_MANAGED_UPDATE_NOT_RUN"
+  },
+  "signed_index_binding": {
+    "android_artifacts_in_index": 5,
+    "size_and_sha256_matches": 5,
+    "certificate_fingerprint_matches": 5,
+    "sbom_and_provenance_bindings_present": 5,
+    "all_checks_passed": true
+  },
+  "ledger_effect": {
+    "REL_DOD/DOD-02": "I2_RETAINED_WITH_CANDIDATE32_SIGNED_SUPPLY_AND_ANDROID_STATIC_REPLACEMENT_EVIDENCE",
+    "REL_DOD/DOD-15": "I2_RETAINED_WITH_CANDIDATE32_SIGNED_SUPPLY_AND_ANDROID_STATIC_REPLACEMENT_EVIDENCE",
+    "REL_DOD/DOD-05": "I3_RETAINED_WITH_CANDIDATE32_DIRECT_STORE_STATIC_SEPARATION_EVIDENCE",
+    "FE/P12-022": "I2_RETAINED_WITH_CANDIDATE32_SIGNED_SUPPLY_AND_ANDROID_STATIC_REPLACEMENT_EVIDENCE",
+    "FRKN_ADOPT/ADOPT-05": "I2_RETAINED_WITH_CANDIDATE32_SIGNED_SUPPLY_AND_ANDROID_STATIC_REPLACEMENT_EVIDENCE"
+  },
+  "limitations": [
+    "Static archive validation does not prove install, launch, update, VPN lifecycle, AWG, Smart DNS, OEM, Wi-Fi, mobile-network or physical-device behavior.",
+    "Direct/store manifest separation does not prove the physical direct-installer permission flow, retained-settings upgrade or Play-managed update.",
+    "The AAB was not submitted to a store; bundletool validation is not Store acceptance or Play App Signing proof.",
+    "The self-managed AAB upload certificate has no public PKIX chain and no timestamp; strict jarsigner warnings are retained rather than converted to PASS.",
+    "No public asset, same-byte public readback, tag, Store object, stable pointer or promotion exists.",
+    "No I3, I4 or Gate F pass follows from refreshing four already-I2 signed-supply rows."
+  ],
+  "mutation_boundary": {
+    "host_input_or_ui_used": false,
+    "host_vpn_route_or_dns_changed": false,
+    "vm_emulator_or_phone_used": false,
+    "application_installed_or_launched": false,
+    "server_provider_payment_or_entitlement_changed": false,
+    "deploy_publication_store_or_stable_pointer_changed": false
+  },
+  "evidence_ceiling": "PASS_EXACT_CANDIDATE32_ANDROID_4_OF_4_APK_SIGNATURE_ZIPALIGN_IDENTITY_AND_AAB_BUNDLETOOL_LOCAL_VALIDATION; DEVICE_STORE_PUBLIC_SAME_BYTE_AND_PROMOTION_OPEN"
+}

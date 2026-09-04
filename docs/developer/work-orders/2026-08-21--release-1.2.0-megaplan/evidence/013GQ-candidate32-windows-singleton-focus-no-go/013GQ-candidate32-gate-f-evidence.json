@@ -1,0 +1,90 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-09-04T04:15:55Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.32",
+    "operational_id": "a24e6a5984326dd2f57f34a4195aab85962a64efe991b85ed5284e871cf3dbbf",
+    "manifest_sha256": "b15938e1bef2b4cafb634eea81039163e2b15a446cda5bbd32d9894cbe2da449",
+    "signature_sha256": "e63d8ee39c15185afc9e600efe66a1a081b0fafc50343fd898114dfcb8bafcf4",
+    "receipt_sha256": "7bfaf81f26a2030e01db534732723fe726251457f4d0f7ebc6d7d92018375a42",
+    "sources": {
+      "platform": "d0dd37c1003198ba08cffc49a040a77e21621a86",
+      "client": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "5d11fd6821a5ebfa42163f461332125143c553c3"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "FAIL",
+    "mandatory_stop_ship_and_dod": "FAIL",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "SKIPPED_BY_OWNER",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MANUAL_OWNER_TEST",
+    "current_origin": "NOT_RUN",
+    "brain_origin": "NOT_RUN",
+    "ru_origin": "MANUAL_OWNER_TEST",
+    "windows_live_network": "MANUAL_OWNER_TEST",
+    "android_ldplayer_rehearsal": "NOT_RUN",
+    "android_physical_device": "NOT_RUN",
+    "authenticated_client_egress": "NOT_RUN",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "MANUAL_OWNER_TEST",
+    "hosted_required_checks": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+  },
+  "facts": {
+    "gates_a_e": "Candidate.32 source/local Gate A anchors previously passed, but exact-candidate WIN-001 runtime now fails the mandatory second-launch focus boundary. Gate A and the Gates A-E aggregate are FAIL for these immutable bytes; Gates B-E retain their prior bounded results.",
+    "stop_ship": "Exact candidate.32 plain and typed second launches each exit zero, retain one original process and forward activation, but neither returns foreground focus to the existing window. WIN-001 is therefore an exact mandatory STOP-SHIP FAIL.",
+    "no_open_p0": "The final no-open-P0, false-green and privacy attestation remains missing. This slice does not assign a separate P0 classification to the WIN-001 defect.",
+    "signed_supply": "Detached Ed25519 signature, receipt, six artifact identities, eleven Windows runtime files, candidate-bound CycloneDX and SLSA provenance remain cryptographically valid and immutable.",
+    "successor": "Client commit 76abed9056282df6436fbd8734f8093baabdb711 transfers foreground permission to the existing process before WM_COPYDATA. Focused Flutter 8/8, Release native CTest 7/7, Release build and bounded VM plain/typed singleton-focus replay pass. This is PRE_CANDIDATE_LOCAL only.",
+    "windows": "The exact candidate failure is independent of managed TUN/DNS/egress. The existing windows_live_network row remains MANUAL_OWNER_TEST rather than receiving synthetic network credit.",
+    "decision_boundary": "Gate F is NO_GO for immutable candidate.32. A newly numbered exact candidate is required; no new candidate, signature, deploy, public release, Store object or stable pointer is created."
+  },
+  "source_records": [
+    "013GQ-candidate32-windows-singleton-focus-no-go.json"
+  ],
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GQ-candidate32-windows-singleton-focus-no-go/013GQ-candidate32-windows-singleton-focus-no-go.json",
+      "sha256": "f337599e36b7279aa4b5b6a9d4a99d79e7f6144df06c4855460bb942b66fe6c1"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GG-candidate32-gates-a-e-local-rollback/013GG-candidate32-gate-f-evidence.json",
+      "sha256": "205ffc33a3c21523a4b132eea07d894240b76fcfe5ba4d87225253b0de87f7ae"
+    }
+  ],
+  "external_evidence": [
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate32-windows-singleton-focus-2026-09-04/candidate32-singleton-focus-final.json",
+      "sha256": "46cab10a7a64fbc1c934f7762bad0d62826e404ded7c591fcf96100bf1fb2a28"
+    },
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate32-windows-singleton-focus-2026-09-04/successor-singleton-focus-final.json",
+      "sha256": "a7b08b9ad0aac97199adb0acbee666dea2cff22d39a387043f33e4c66e755268"
+    },
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate32-windows-singleton-focus-2026-09-04/successor-focus-fix-ui-remove.json",
+      "sha256": "63dc7fd4a54999354637154b9e7957f997eef2429c73e136aa7e52592b29bd63"
+    }
+  ],
+  "mutation_boundary": {
+    "candidate_artifact_mutated": false,
+    "successor_source_committed_locally": true,
+    "successor_candidate_created": false,
+    "successor_candidate_signed": false,
+    "vm_virtual_console_input_used": true,
+    "host_screen_or_input_control_used": false,
+    "host_network_mutated": false,
+    "guest_network_mutated": false,
+    "tracked_or_runtime_pointer_changed": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT CANDIDATE32 WIN-001 STOP-SHIP FAIL; GATE_F NO_GO; SUCCESSOR SOURCE AND VM PRECURSOR PASS ONLY; NO GATE_G OR PROMOTION"
+}

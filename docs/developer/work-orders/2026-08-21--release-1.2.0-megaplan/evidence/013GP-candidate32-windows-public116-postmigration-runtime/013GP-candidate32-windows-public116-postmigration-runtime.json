@@ -1,0 +1,188 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate32-windows-public116-postmigration-runtime/v1",
+  "recorded_at_utc": "2026-09-04T03:34:41Z",
+  "status": "PASS_PUBLIC116_POST_MIGRATION_ORDINARY_UI_TRUSTED_IPC_DISCONNECTED",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.32",
+    "product_version": "1.2.0+4053",
+    "platform_source": "d0dd37c1003198ba08cffc49a040a77e21621a86",
+    "client_source": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "5d11fd6821a5ebfa42163f461332125143c553c3",
+    "signed_manifest_sha256": "b15938e1bef2b4cafb634eea81039163e2b15a446cda5bbd32d9894cbe2da449",
+    "signature_sha256": "e63d8ee39c15185afc9e600efe66a1a081b0fafc50343fd898114dfcb8bafcf4",
+    "receipt_sha256": "7bfaf81f26a2030e01db534732723fe726251457f4d0f7ebc6d7d92018375a42"
+  },
+  "predecessor": {
+    "public_version": "1.1.6+29",
+    "migration_authority": "WO-013GO",
+    "exact_public_package_migration_precondition": true
+  },
+  "environment": {
+    "vm": "POKROV-Win11-Test",
+    "os": "Windows 11 Enterprise Evaluation",
+    "build": "26200",
+    "host_screen_mouse_keyboard_used": false,
+    "virtual_machine_keyboard_used": true,
+    "host_route_vpn_or_dns_changed": false,
+    "raw_network_addresses_retained": false,
+    "service_before_console_login": {
+      "status": "Running",
+      "start_type": "Automatic",
+      "console_user_present": false,
+      "explorer_process_count": 0,
+      "pokrov_ui_process_count": 0
+    }
+  },
+  "retained_harness_attempts": [
+    {
+      "attempt": 1,
+      "classification": "HARNESS_ERROR",
+      "reason": "strict registry reader accessed a missing DisplayName property",
+      "product_ipc_or_ui_reached": false,
+      "sha256": "46b70d6f905fe414d01bbb32ad242f8787d6b2af150e2fa5c873b65f7afdd223"
+    },
+    {
+      "attempt": 2,
+      "classification": "HARNESS_ERROR",
+      "reason": "PowerShell unrolled the singleton HKLM row before Count validation",
+      "product_ipc_or_ui_reached": false,
+      "sha256": "ed2cb30ce1e7f9189a6742d7309f5c3a28a1eabed11fae333a284196cff9c68d"
+    },
+    {
+      "attempt": 3,
+      "classification": "EXPECTED_FAIL_CLOSED_INVALID_DIAGNOSTIC_PLACEMENT",
+      "exact_cli_sha256": "3687e95575fe6df0d39798c322f77ce1d648b74c7856864c0b6f703487141f47",
+      "cli_location": "ordinary-user temporary directory",
+      "client_state": "server_untrusted",
+      "phase": "artifact_missing",
+      "failure": "service_unavailable",
+      "service_status": "Running",
+      "legacy_root_present": false,
+      "hkcu_uninstall_entry_count": 0,
+      "hklm_uninstall_entry_count": 1,
+      "product_mutation_performed": false,
+      "sha256": "e7e26bcc38237b82129fd511dda5b5a11356c9f777688b9874d49c073c2e034d"
+    }
+  ],
+  "exact_source_security_contract": {
+    "path": "apps/windows_shell/windows/service/service_client.cpp",
+    "sha256": "2abcb86edc8f629e2e589b8738fa0e10042f3a3138f41488cf6aa516d9853ea9",
+    "lines": [
+      "86-97",
+      "167-176"
+    ],
+    "behavior": "the IPC client derives the expected service path from its own executable directory and compares it to the SCM service record",
+    "attempt_3_reconciled_as_candidate_failure": false
+  },
+  "diagnostic_cli_lifecycle": {
+    "sha256": "3687e95575fe6df0d39798c322f77ce1d648b74c7856864c0b6f703487141f47",
+    "stage": {
+      "execution": "HIGH_INTEGRITY_ADMIN",
+      "status": "PASS_EXACT_CLI_STAGED",
+      "adjacent_to_service": true
+    },
+    "remove": {
+      "execution": "HIGH_INTEGRITY_ADMIN",
+      "status": "PASS_EXACT_CLI_REMOVED",
+      "present_after": false
+    }
+  },
+  "ordinary_runtime": {
+    "observed_at_utc": "2026-09-04T03:32:10.981373Z",
+    "execution": "MEDIUM_INTEGRITY_NON_ELEVATED",
+    "user": "POKROV-WIN11-TE\\pokrovtest",
+    "installed_service_sha256": "b962d3d0c369e24a5d927a4b024148a3b8ceaed0e78efb6aef454f537d4c326b",
+    "installed_ui_sha256": "611208b20b68b333d81655b0d6dbd7ada3a213fbfd9a82b6af71b01b3bdf15a2",
+    "service_status": "Running",
+    "service_start_type": "Automatic",
+    "legacy_root_present": false,
+    "hkcu_uninstall_entry_count": 0,
+    "hklm_uninstall_entry_count": 1,
+    "hklm_display_version": "1.2.0+4053",
+    "status_before": {
+      "trusted": true,
+      "compatible": true,
+      "command_accepted": true,
+      "phase": "artifact_ready",
+      "core_ready": false,
+      "can_connect": false,
+      "running": false,
+      "dns_ready": false
+    },
+    "initialize": {
+      "trusted": true,
+      "compatible": true,
+      "command_accepted": true,
+      "phase": "initialized",
+      "core_ready": true,
+      "can_connect": false,
+      "running": false,
+      "core_egress_validated": false,
+      "dns_ready": false,
+      "failure": "none"
+    },
+    "ui": {
+      "process_alive_during_probe": true,
+      "same_session": true,
+      "owner_matches_launcher": true,
+      "main_window_present": true,
+      "uac_used": false,
+      "stopped_after_probe": true
+    },
+    "network_contour_unchanged": true,
+    "pokrov_up_adapter_count": 0,
+    "onboarding_or_entitlement_action_performed": false,
+    "status": "PASS_PUBLIC116_POST_MIGRATION_ORDINARY_UI_TRUSTED_IPC_DISCONNECTED"
+  },
+  "cleanup": {
+    "diagnostic_cli_removed_from_program_files": true,
+    "guest_staging_removed": true,
+    "ui_left_stopped": true,
+    "service_left_running": true,
+    "legacy_per_user_install_absent": true,
+    "vm_final_state": "poweroff"
+  },
+  "retained_external_evidence": {
+    "root": "E:/POKROV-tools/release-evidence/1.2.0-candidate32-windows-public116-postmigration-runtime-2026-09-04",
+    "files": {
+      "attempt1-harness-error.json": "46b70d6f905fe414d01bbb32ad242f8787d6b2af150e2fa5c873b65f7afdd223",
+      "attempt2-harness-error.json": "ed2cb30ce1e7f9189a6742d7309f5c3a28a1eabed11fae333a284196cff9c68d",
+      "candidate32-public116-post-migration-runtime.json": "e7e26bcc38237b82129fd511dda5b5a11356c9f777688b9874d49c073c2e034d",
+      "final-runtime-pass.json": "7e9d31eeaf6ce005c1ead703f28e3fbbf8b5ccc74064517b41830307c83c9068",
+      "candidate32-public116-post-migration-cli-stage.json": "eb0bdf30261df224ccf2539da9fbf5cb3e8f2d579ede55d8edf3196f7227b961",
+      "candidate32-public116-post-migration-cli-stage-launcher.json": "bd9e21e64d9390b06a1a268750b84d1930b6b6d64ee278060bd26f335e580178",
+      "candidate32-public116-post-migration-cli-remove.json": "3587aa3595a40ff4904cc0f7248a8e54227975b508eb9fe5676b51269f40579a",
+      "candidate32-public116-post-migration-cli-remove-launcher.json": "bb3fd20557fa82c194bd324f2db1b33baf5c45f80ac998651819287345dbb05c",
+      "Invoke-Candidate32Public116PostMigrationRuntime.ps1": "f5a19e49ac1cacdd912b7494488a2c3d8520039ef5113dd5c1ee9cf375a57176",
+      "Manage-Candidate32Public116PostMigrationCli.ps1": "e1a9155b6a379e2cf3077b3ce3258e190577e150e96dde08d577e729a099f83d",
+      "Launch-Candidate32Public116PostMigrationCliManagement.ps1": "22f9cb8b41cbfcd670d82757fdfd119a1060764b5fe339dff40139ed043cfef9"
+    }
+  },
+  "evidence_boundaries": {
+    "exact_public_package_migration_proven": true,
+    "ordinary_ui_and_trusted_ipc_after_migration_proven": true,
+    "saved_account_or_profile_state_migration_proven": false,
+    "connected_default_proven": false,
+    "awg31_or_awg2_proven": false,
+    "smart_dns_proven": false,
+    "connected_recovery_or_uninstall_proven": false,
+    "downgrade_or_runtime_rollback_proven": false,
+    "physical_android_migration_proven": false
+  },
+  "ledger": {
+    "changed_rows": [
+      "REL/WIN-002",
+      "REL/WIN-003",
+      "REL_DOD/DOD-11"
+    ],
+    "index_changes": 0
+  },
+  "decision": {
+    "gate_f": "BLOCKED_2_PASS_17_NON_PASS_0_FAIL",
+    "gate_f_regenerated": false,
+    "promotion_authorized": false,
+    "deploy_or_publication_performed": false
+  },
+  "evidence_ceiling": "EXACT_PUBLIC116_PACKAGE_MIGRATION_PLUS_POSTMIGRATION_ORDINARY_UI_TRUSTED_IPC_DISCONNECTED_ONLY"
+}

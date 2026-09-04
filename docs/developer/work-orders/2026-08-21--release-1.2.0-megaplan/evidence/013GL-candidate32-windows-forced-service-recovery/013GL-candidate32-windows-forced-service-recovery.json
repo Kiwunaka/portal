@@ -1,0 +1,103 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate32-windows-forced-service-recovery/v1",
+  "recorded_at_utc": "2026-09-04T02:29:31Z",
+  "status": "PASS_DISCONNECTED_FORCED_TERMINATION_AUTOMATIC_SERVICE_RECOVERY",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.32",
+    "platform_source": "d0dd37c1003198ba08cffc49a040a77e21621a86",
+    "client_source": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "5d11fd6821a5ebfa42163f461332125143c553c3",
+    "signed_manifest_sha256": "b15938e1bef2b4cafb634eea81039163e2b15a446cda5bbd32d9894cbe2da449",
+    "windows_installer_sha256": "22689e3e61be82f90b1ba9530cba37628ec546022338fc87018b2d460c020574",
+    "windows_manifest_sha256": "43bd310e2fb287d2ada339d8938fbe2304261fe23c9d8608124417d05af9e7dd"
+  },
+  "environment": {
+    "vm": "POKROV-Win11-Test",
+    "os": "Windows 11 Enterprise Evaluation",
+    "build": "26200",
+    "control": "VirtualBox guest-control plus VM-only keyboard confirmation",
+    "host_screen_mouse_keyboard_used": false,
+    "host_route_vpn_or_dns_changed": false,
+    "raw_network_addresses_retained": false
+  },
+  "precondition": {
+    "exact_required_files": 11,
+    "exact_file_matches": 11,
+    "service_state": "Running",
+    "service_start_mode": "Auto",
+    "service_account": "LocalSystem",
+    "recovery_stage": "clean",
+    "recovery_network_state_present": false,
+    "pending_recovery_file_present": false,
+    "pokrov_up_adapter_count": 0,
+    "ui_process_count": 0,
+    "diagnostic_cli_absent": true
+  },
+  "forced_termination": {
+    "execution_token": "HIGH_INTEGRITY_ADMIN",
+    "old_process_terminated": true,
+    "automatic_scm_recovery_observed": true,
+    "recovery_elapsed_ms": 5252,
+    "operator_remediation_used": false,
+    "process_identity_changed": true
+  },
+  "postcondition": {
+    "exact_required_files": 11,
+    "exact_file_matches": 11,
+    "service_state": "Running",
+    "service_start_mode": "Auto",
+    "service_account": "LocalSystem",
+    "recovery_stage": "clean",
+    "recovery_network_state_present": false,
+    "pending_recovery_file_present": false,
+    "network_contour_unchanged": true,
+    "pokrov_up_adapter_count": 0,
+    "ui_process_count": 0,
+    "diagnostic_cli_absent": true
+  },
+  "retained_external_evidence": {
+    "root": "E:/POKROV-tools/release-evidence/1.2.0-candidate32-windows-runtime-2026-09-04",
+    "files": {
+      "candidate32-forced-service-recovery.json": "949139e16f7f235b923a99a004cd4ddf4ce82ba6b8d71e52bd19b5e05fb8ae27",
+      "candidate32-forced-service-recovery-launcher.json": "588cd8ec670a0bd16ccc9e1e3784f6ac904963885653398ae287dd3883aad626",
+      "Invoke-Candidate32ForcedServiceRecoveryElevated.ps1": "01ac7d64ae6197a052c2eb638c25088aca706ffc6fe8a9fee5aec687273ae17a",
+      "Launch-Candidate32ForcedServiceRecovery.ps1": "b9ddf59d933e6dd2e438cc76508321ebd62fcc347a8b7f1d9fa6129336050e46"
+    }
+  },
+  "cleanup": {
+    "scheduled_task_removed": true,
+    "temporary_guest_scripts_removed": true,
+    "temporary_guest_results_removed_after_host_copy": true,
+    "service_left_running": true,
+    "ui_left_stopped": true
+  },
+  "evidence_boundaries": {
+    "disconnected_forced_service_termination_proven": true,
+    "automatic_scm_restart_proven": true,
+    "connected_forced_service_termination_proven": false,
+    "tunnel_or_dns_recovery_proven": false,
+    "awg31_or_awg2_recovery_proven": false,
+    "smart_dns_recovery_proven": false,
+    "sleep_or_resume_proven": false,
+    "network_change_proven": false,
+    "endurance_proven": false,
+    "connected_uninstall_proven": false
+  },
+  "ledger": {
+    "changed_rows": [
+      "REL/WIN-004",
+      "REL_DOD/DOD-04",
+      "FRKN_AWG/AWG-07",
+      "FRKN_PLAN/W6-03"
+    ],
+    "index_changes": 0
+  },
+  "decision": {
+    "gate_f": "BLOCKED_2_PASS_17_NON_PASS_0_FAIL",
+    "gate_f_regenerated": false,
+    "promotion_authorized": false,
+    "deploy_or_publication_performed": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE32_DISCONNECTED_FORCED_SERVICE_TERMINATION_AND_AUTOMATIC_SCM_RECOVERY_ONLY"
+}

@@ -1,0 +1,152 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate32-historical-blocker-reconciliation/v1",
+  "recorded_at_utc": "2026-09-04T01:44:13Z",
+  "status": "PASS_FOURTEEN_HISTORICAL_ROWS_TARGET_CANDIDATE32_WITHOUT_LEVEL_OR_GATE_CHANGE",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.32",
+    "platform_source": "d0dd37c1003198ba08cffc49a040a77e21621a86",
+    "client_source": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "5d11fd6821a5ebfa42163f461332125143c553c3",
+    "signed_manifest_sha256": "b15938e1bef2b4cafb634eea81039163e2b15a446cda5bbd32d9894cbe2da449",
+    "signature_sha256": "e63d8ee39c15185afc9e600efe66a1a081b0fafc50343fd898114dfcb8bafcf4",
+    "receipt_sha256": "7bfaf81f26a2030e01db534732723fe726251457f4d0f7ebc6d7d92018375a42",
+    "sbom_sha256": "5ddf2a96244e70ad1284409f0cea6f5838fab5bfbca5c5b96a245f0716de2893",
+    "provenance_sha256": "4785cd005791a8872f4c8a45202ba2d35c9d1ba65737f5683ee17d0b927c53e6"
+  },
+  "reconciled_rows": [
+    {
+      "key": "REL/WIN-005",
+      "index_before": "I3",
+      "index_after": "I3",
+      "retained_history": "candidate.20/21 Windows ordinary-user UI, service and default-runtime evidence",
+      "candidate32_boundary": "login-startup, service-readiness and network-availability timing"
+    },
+    {
+      "key": "REL/SEC-001",
+      "index_before": "I3",
+      "index_after": "I3",
+      "retained_history": "candidate.20 Windows 11 owner-session evidence",
+      "candidate32_boundary": "full identity and privilege-boundary matrix"
+    },
+    {
+      "key": "REL_DOD/DOD-12",
+      "index_before": "I3",
+      "index_after": "I3",
+      "retained_history": "candidate.21 support-bundle and bounded static-privacy evidence",
+      "candidate32_boundary": "physical bundle, privacy replay, encrypted upload and live ingest"
+    },
+    {
+      "key": "REL_DOD/DOD-17",
+      "index_before": "I3",
+      "index_after": "I3",
+      "retained_history": "candidate.21 documented platform-limitations history",
+      "candidate32_boundary": "physical Android OEM, network, Private DNS, leak and endurance matrix"
+    },
+    {
+      "key": "OBS/OBS-005",
+      "index_before": "I3",
+      "index_after": "I3",
+      "retained_history": "candidate.21 release-logging and bounded static-artifact privacy evidence",
+      "candidate32_boundary": "physical Android and Windows runtime journals, bundle and privacy replay"
+    },
+    {
+      "key": "OBS/OBS-006",
+      "index_before": "I3",
+      "index_after": "I3",
+      "retained_history": "candidate.21 rejection and bounded static-artifact privacy evidence",
+      "candidate32_boundary": "deployed ingest, physical runtime and privacy replay"
+    },
+    {
+      "key": "OBS/OBS-010",
+      "index_before": "I3",
+      "index_after": "I3",
+      "retained_history": "candidate.21 planted-secret and static-artifact corpus evidence",
+      "candidate32_boundary": "physical and deployed-ingest corpus replay"
+    },
+    {
+      "key": "OBS/OBS-075",
+      "index_before": "I3",
+      "index_after": "I3",
+      "retained_history": "candidate.21 property-suite evidence",
+      "candidate32_boundary": "physical runtime-output property replay"
+    },
+    {
+      "key": "OBS/OBS-076",
+      "index_before": "I3",
+      "index_after": "I3",
+      "retained_history": "candidate.21 deterministic preview and golden-manifest evidence",
+      "candidate32_boundary": "physical bundle generation plus encrypted upload and ingest"
+    },
+    {
+      "key": "FRKN_AWG/AWG-01",
+      "index_before": "I3",
+      "index_after": "I3",
+      "retained_history": "candidate.21 synthetic-fixture and bounded static-artifact history",
+      "candidate32_boundary": "candidate-bound privacy and physical runtime replay"
+    },
+    {
+      "key": "FRKN_AWG/AWG-08",
+      "index_before": "I1",
+      "index_after": "I1",
+      "retained_history": "candidate.21 manual-stage wording only",
+      "candidate32_boundary": "physical Windows and Android lab activation with clean restore"
+    },
+    {
+      "key": "FRKN_PLAN/W6-03",
+      "index_before": "I1",
+      "index_after": "I1",
+      "retained_history": "candidate.20/21 Windows install and recovery history",
+      "candidate32_boundary": "clean install, forced-kill, sleep/resume, reboot and connected recovery"
+    },
+    {
+      "key": "FRKN_PLAN/W6-04",
+      "index_before": "I1",
+      "index_after": "I1",
+      "retained_history": "candidate.16 emulator and candidate.21 open-device history",
+      "candidate32_boundary": "protected egress, network changes, Doze, Private DNS and IPv6 leaks"
+    },
+    {
+      "key": "FRKN_PLAN/W6-05",
+      "index_before": "I1",
+      "index_after": "I1",
+      "retained_history": "candidate.21 manual-stage wording only",
+      "candidate32_boundary": "physical Android and Windows lab exit, telemetry and restore"
+    }
+  ],
+  "reconciliation_invariants": {
+    "historical_candidate21_evidence_relabelled_as_candidate32": false,
+    "historical_work_orders_rewritten": false,
+    "next_action_values_targeting_candidate21": 0,
+    "new_runtime_or_device_evidence_claimed": false
+  },
+  "ledger_invariants": {
+    "row_count": 378,
+    "unique_primary_keys": 378,
+    "duplicate_primary_keys": 0,
+    "changed_rows": 14,
+    "index_changes": 0,
+    "distribution": {
+      "I4": 7,
+      "I3": 320,
+      "I2": 19,
+      "I1": 32,
+      "I0": 0
+    }
+  },
+  "decision": {
+    "gate_f": "BLOCKED_2_PASS_17_NON_PASS_0_FAIL",
+    "gate_f_regenerated": false,
+    "gate_g_authorized": false,
+    "promotion_authorized": false,
+    "public_release_created": false
+  },
+  "mutation_boundary": {
+    "source_or_runtime_behavior_changed": false,
+    "host_input_vpn_route_or_dns_changed": false,
+    "vm_emulator_or_phone_used": false,
+    "server_provider_payment_or_entitlement_changed": false,
+    "deploy_publication_store_or_stable_pointer_changed": false
+  },
+  "evidence_ceiling": "HISTORICAL_PROOF_RETAINED_AND_ALL_FUTURE_BLOCKERS_TARGET_CANDIDATE32; NO_NEW_RUNTIME_DEVICE_OR_RELEASE_PROOF"
+}

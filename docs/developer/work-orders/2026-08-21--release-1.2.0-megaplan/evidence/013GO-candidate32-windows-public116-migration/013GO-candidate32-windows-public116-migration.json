@@ -1,0 +1,125 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate32-windows-public116-migration/v1",
+  "recorded_at_utc": "2026-09-04T03:11:59Z",
+  "status": "PASS_PUBLIC_1_1_6_PER_USER_TO_EXACT_CANDIDATE32_MACHINE_MIGRATION",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.32",
+    "platform_source": "d0dd37c1003198ba08cffc49a040a77e21621a86",
+    "client_source": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "5d11fd6821a5ebfa42163f461332125143c553c3",
+    "signed_manifest_sha256": "b15938e1bef2b4cafb634eea81039163e2b15a446cda5bbd32d9894cbe2da449",
+    "signature_sha256": "e63d8ee39c15185afc9e600efe66a1a081b0fafc50343fd898114dfcb8bafcf4",
+    "receipt_sha256": "7bfaf81f26a2030e01db534732723fe726251457f4d0f7ebc6d7d92018375a42",
+    "windows_installer_sha256": "22689e3e61be82f90b1ba9530cba37628ec546022338fc87018b2d460c020574",
+    "windows_manifest_sha256": "43bd310e2fb287d2ada339d8938fbe2304261fe23c9d8608124417d05af9e7dd"
+  },
+  "public_source": {
+    "release_id": "1.1.6+20260819",
+    "version": "1.1.6",
+    "package_version": "1.1.6+29",
+    "repository": "Kiwunaka/pokrov",
+    "tag": "v1.1.6",
+    "release_handoff_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+    "installer_sha256": "dbaa664cf9046205f969204df79f9366b8a944f7d2a6b8d8bbd371522a3b8ae8",
+    "installer_size": 28562832,
+    "installed_executable_sha256": "2ec9ecb584cb58cf15fe246499175fe926b17a8b40176cc2f93379241add4b4c",
+    "authenticode_status": "NotSigned"
+  },
+  "environment": {
+    "vm": "POKROV-Win11-Test",
+    "os": "Windows 11 Enterprise Evaluation",
+    "build": "26200",
+    "clean_baseline_snapshot": {
+      "name": "ready-for-pokrov-tests",
+      "uuid": "c0abfe48-b33c-4d9d-8556-6a7196aa1916"
+    },
+    "host_screen_mouse_keyboard_used": false,
+    "host_route_vpn_or_dns_changed": false,
+    "raw_network_addresses_retained": false
+  },
+  "public_install": {
+    "execution_token": "MEDIUM_INTEGRITY_NON_ELEVATED",
+    "clean_before": {
+      "legacy_root_present": false,
+      "hkcu_uninstall_entry_count": 0,
+      "machine_install_root_present": false,
+      "machine_program_data_present": false,
+      "machine_service_present": false,
+      "pokrov_process_count": 0
+    },
+    "installer_exit_code": 0,
+    "legacy_root_present": true,
+    "legacy_executable_match": true,
+    "hkcu_uninstall_entry_count": 1,
+    "display_version": "1.1.6+29",
+    "machine_service_present": false,
+    "ui_process_count": 0,
+    "network_contour_unchanged": true
+  },
+  "candidate_migration": {
+    "execution_token": "HIGH_INTEGRITY_ADMIN",
+    "candidate_supply_matches": 5,
+    "installer_exit_code": 0,
+    "required_file_count": 11,
+    "exact_file_matches": 11,
+    "product_version": "1.2.0+4053",
+    "hklm_uninstall_entry_count": 1,
+    "service_state": "Running",
+    "service_start_mode": "Auto",
+    "service_account": "LocalSystem",
+    "ui_process_count": 0,
+    "legacy_root_present_after": false,
+    "legacy_executable_present_after": false,
+    "hkcu_uninstall_entry_count_after": 0,
+    "recovery_state": "clean_uninitialized_by_exact_source_contract",
+    "network_contour_unchanged": true,
+    "pokrov_up_adapter_count": 0
+  },
+  "retained_external_evidence": {
+    "root": "E:/POKROV-tools/release-evidence/1.2.0-candidate32-windows-public116-migration-2026-09-04",
+    "files": {
+      "public-1.1.6-ordinary-install.json": "4eb7a84176cfe1a6a97e361e8910c1dda0b9eaa3f39c8629499a2936b239c0b5",
+      "public-1.1.6-ordinary-install.log": "dadd3b3ebaa6d9822ff52d683e50e55cb93158c267e1fd4cd760ad229304256a",
+      "candidate32-public-1.1.6-migration.json": "b0dac782a77266f215f709ed5f9f76178f53fe5c04f12e128c562afd1fc017a8",
+      "candidate32-public-1.1.6-migration-launcher.json": "2a68585d07b30ffa069c89965dfd1ad3e21f7d7e0b8409133798162a718dc735",
+      "candidate32-public-1.1.6-migration.log": "d4dec6fad6b6612323c5314e7d1d80b1ebe43a3513562e7271023560a4e07383",
+      "Install-Public116Ordinary.ps1": "71c3c3c88222152f2e2160695e831cb5c8e116cd8109c0f325b3e44d1679337f",
+      "Migrate-Public116ToCandidate32Elevated.ps1": "6d1c33629bae97cbe29e35f23dce270243b12dc9868cff1370a9c59ced9e924b",
+      "Launch-Candidate32Public116Migration.ps1": "3513f7a04c347fcc6cf525ed475ff9871acb730274bb2e9524f426e504018082"
+    }
+  },
+  "cleanup": {
+    "scheduled_tasks_removed": true,
+    "guest_staging_removed": true,
+    "service_left_running": true,
+    "ui_left_stopped": true,
+    "legacy_per_user_install_absent": true
+  },
+  "evidence_boundaries": {
+    "exact_public_package_migration_proven": true,
+    "saved_account_or_profile_state_migration_proven": false,
+    "ordinary_ui_or_ipc_after_migration_proven": false,
+    "downgrade_or_runtime_rollback_proven": false,
+    "connected_default_proven": false,
+    "awg31_or_awg2_proven": false,
+    "smart_dns_proven": false,
+    "connected_uninstall_proven": false,
+    "physical_android_migration_proven": false
+  },
+  "ledger": {
+    "changed_rows": [
+      "REL/WIN-002",
+      "REL/WIN-003",
+      "REL_DOD/DOD-11"
+    ],
+    "index_changes": 0
+  },
+  "decision": {
+    "gate_f": "BLOCKED_2_PASS_17_NON_PASS_0_FAIL",
+    "gate_f_regenerated": false,
+    "promotion_authorized": false,
+    "deploy_or_publication_performed": false
+  },
+  "evidence_ceiling": "EXACT_PUBLIC_1_1_6_PER_USER_PACKAGE_TO_CANDIDATE32_MACHINE_SERVICE_MIGRATION_ONLY"
+}
