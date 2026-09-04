@@ -1,0 +1,92 @@
+{
+  "schema": "pokrov.release-1.2.0.wo-013gy-candidate33-windows-connected-uninstall/v1",
+  "work_order": "WO-013GY",
+  "recorded_at_utc": "2026-09-04T12:41:54.9340413Z",
+  "status": "PASS_BOUNDED_EXACT_CANDIDATE_CONNECTED_UNINSTALL_AND_REINSTALL_GATE_F_BLOCKED",
+  "candidate": {
+    "label": "pokrov-1.2.0-candidate.33",
+    "platform_source": "f5300053026d32826e54c02202303e1f68c65bc1",
+    "client_source": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "63993fba699b68641b7e972071ab7729fa9ec43c",
+    "windows_setup_sha256": "250622f7e4bf9bea39a9456004d4cfeb2340a987c622c46f70b3af07aaec3580",
+    "windows_manifest_sha256": "0f93211e254076fad5de8cf88d0817897313c2fd3f3b2daa6d1253628da63a5b",
+    "installed_file_matches_before": 11,
+    "installed_file_required": 11
+  },
+  "connected_precondition": {
+    "interactive_ui_count": 1,
+    "interactive_ui_session": 1,
+    "interactive_ui_sha256": "1b175a66523be467c0fa66e8f74df20dbeb87f7e190f5dc57a9f1cea0961d97f",
+    "tunnel_present": true,
+    "route_changed": true,
+    "dns_changed": true,
+    "dns_pass": "4/4",
+    "core_egress_validated": true,
+    "dns_ready": true,
+    "phase": "running"
+  },
+  "uninstall": {
+    "uninstaller_sha256": "0c9ad2224f43f0a0b5414f775b38b6c35dfbbdf2d14b504a2322e3c99dd08dba",
+    "uninstaller_exit_code": 0,
+    "ui_process_count_after": 0,
+    "service_absent": true,
+    "product_manifest_files_remaining": 0,
+    "uninstall_registry_count": 0,
+    "tunnel_absent": true,
+    "route_restored": true,
+    "dns_restored": true,
+    "external_diagnostic_cli_removed_sha256": "2a445f6ecb59e6464e0c743505d0b4de15c7ea471568bac69b3150b86918c26f",
+    "install_root_absent_after_harness_cleanup": true
+  },
+  "reinstall": {
+    "setup_exit_code": 0,
+    "installed_file_matches": 11,
+    "installed_file_required": 11,
+    "service_state": "Running",
+    "service_start_mode": "Auto",
+    "service_account": "LocalSystem",
+    "tunnel_absent": true,
+    "route_unchanged": true,
+    "dns_unchanged": true,
+    "diagnostic_cli_absent": true,
+    "ui_process_count": 0
+  },
+  "evidence": {
+    "external_index_sha256": "bf222d369972aa36ddaad23395fe384f259940f4be106980974fc98627a4a771",
+    "prepare_sha256": "2b54557decb2b6380f25d34838887ba640ce2c5a07cd875d2621afec75bd4c44",
+    "uninstall_collector_sha256": "f85600d43d9ab27ccd394f4f4aeddc49a168ed3dac31b5f1440029f1c198e906",
+    "postcheck_collector_sha256": "b5456a908a714ceb52e43c40535b0944a6407a0d8a60db6f37020fbd52969a70",
+    "postcheck_sha256": "7828dc917790040e71f09514766a7ee75a063b048dfe03a407b12e64ac40ccd8",
+    "reinstall_sha256": "716a3b7163bb3499c5cb0a5f5423be1ea7ad5cab917fb42dabad43547fdd0ecd",
+    "retained_harness_error_count": 3
+  },
+  "completion": {
+    "level_changed": false,
+    "distribution": {
+      "I4": 8,
+      "I3": 319,
+      "I2": 19,
+      "I1": 32,
+      "I0": 0,
+      "total": 378
+    }
+  },
+  "gate_f": {
+    "status": "BLOCKED",
+    "pass": 2,
+    "non_pass": 17,
+    "fail": 0,
+    "validation_errors": 0,
+    "gate_g_authorized": false
+  },
+  "mutations": {
+    "candidate_bytes_changed": false,
+    "production_runtime_changed": false,
+    "main_host_network_changed": false,
+    "main_host_input_used": false,
+    "deploy_performed": false,
+    "public_release_created": false,
+    "stable_pointer_changed": false
+  }
+}

@@ -2,6 +2,23 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013GY candidate.33 Windows connected uninstall
+
+The exact installed candidate.33 interactive UI runs in ordinary user session
+`1` while the exact service/Core reaches the connected secret-free direct TUN
+boundary. The exact uninstaller returns `0`, terminates UI, removes the service,
+all `11` manifest-owned product files, uninstall registry and TUN, and restores
+the exact route/DNS baseline. The only residual file is the external diagnostic
+CLI; the harness verifies its exact hash, removes it and removes the empty
+installation root.
+
+A clean reinstall from the same exact setup returns `0`, restores `11/11` and
+the Automatic LocalSystem service, and leaves route/DNS unchanged with zero
+UI/TUN residue. One pre-mutation hash-binding error and two postcollector
+StrictMode errors are retained explicitly. Managed default/AWG, sleep, Windows
+10, IPv6/leak and SmartScreen remain open. Gate F stays `BLOCKED 2/17/0`, and
+the `378`-row distribution does not change.
+
 ## 2026-09-04 — WO-013GX candidate.33 Windows connected reboot recovery
 
 The exact installed candidate.33 service/Core reaches the connected direct
