@@ -1,0 +1,95 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-09-04T11:04:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.33",
+    "operational_id": "d7a09ea6601f2cc1422366b29cc0ed7d7b8ca6fee889a143a3ebef7fe488c923",
+    "manifest_sha256": "5620c2f0558e7c9a0f8ff8dfbcd47523986dd7fdf13f061e81adab3b10a3f680",
+    "signature_sha256": "5115ab3cd8ee0fa49018e521f75fd9baf5d469c2793a8a47cda4a965b82d3191",
+    "receipt_sha256": "f84843c81f9173072dcb3f3f551f7ef5ca9e41c21312ddec77ca0fe6cb6b78d7",
+    "sources": {
+      "platform": "f5300053026d32826e54c02202303e1f68c65bc1",
+      "client": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "63993fba699b68641b7e972071ab7729fa9ec43c"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "MANUAL_OWNER_TEST",
+    "mandatory_stop_ship_and_dod": "MISSING",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "SKIPPED_BY_OWNER",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MANUAL_OWNER_TEST",
+    "current_origin": "NOT_RUN",
+    "brain_origin": "NOT_RUN",
+    "ru_origin": "NOT_RUN",
+    "windows_live_network": "MANUAL_OWNER_TEST",
+    "android_ldplayer_rehearsal": "NOT_RUN",
+    "android_physical_device": "MANUAL_OWNER_TEST",
+    "authenticated_client_egress": "NOT_RUN",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "MANUAL_OWNER_TEST",
+    "hosted_required_checks": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+  },
+  "facts": {
+    "gates_a_e": "Exact candidate.33 source/local Gates A-E replay remains valid. New bounded runtime evidence strengthens Gates A-C and E without making any aggregate PASS.",
+    "stop_ship": "Local STOP-SHIP anchors remain 7/7 PASS. Hosted platform/client execution, Core branch enforcement, trusted Windows signing, complete managed-network/device matrices and final attestations remain non-PASS.",
+    "signed_supply": "Candidate.33 signed supply remains byte-identical and valid; no candidate artifact was changed by this runtime slice.",
+    "rollback": "Exact local portal/client rollback remains MANUAL_OWNER_TEST. Runtime pointer/kill rollback and named-origin readback remain open.",
+    "windows": "The exact installed candidate.33 service/Core passes direct and Smart DNS synthetic secret-free TUN/DNS connect-disconnect-cleanup in the headless Windows 11 VM. This is MANUAL_OWNER_TEST, not PASS, because managed-node/AWG, recovery, uninstall, Windows 10, SmartScreen and leak coverage remain open.",
+    "android": "The exact candidate.33 universal APK installs in place on physical Huawei Android 12, passes ordinary Wi-Fi connected/validated DNS 4/4, and supplies a bounded Beeline automatic-mode interval plus fail-closed whitelist results. This is MANUAL_OWNER_TEST, not a complete physical-device PASS.",
+    "origins": "The 32-second Beeline slice is retained as bounded device evidence only. It does not replace the current-origin, brain-origin or general RU-origin gates.",
+    "authenticated_egress": "Android VPN validation and DNS health do not independently close the required authenticated-client egress matrix; the row remains NOT_RUN.",
+    "hosted_boundary": "Client PR 76 local contract checks pass, while its hosted cross-repository-contract job executes zero steps and remains BLOCKED_BY_ACCESS_GITHUB_BILLING.",
+    "decision_boundary": "Gate F remains BLOCKED 2/17/0. No Gate G, deploy, public release, Store submission or stable-pointer mutation is authorized."
+  },
+  "source_records": [
+    "013GV-candidate33-bounded-windows-android-runtime.json",
+    "../013GU-candidate33-gates-a-e-local-rollback/013GU-candidate33-gate-f-evidence.json"
+  ],
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GV-candidate33-bounded-windows-android-runtime/013GV-candidate33-bounded-windows-android-runtime.json",
+      "sha256": "2380ea7aaf8b0ef66ad12b028d1ff84d6077b015f6569220859e9cac28b3407b"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GU-candidate33-gates-a-e-local-rollback/013GU-candidate33-gate-f-evidence.json",
+      "sha256": "03c8a7241bbb0aa2fa1a7cfdf28f293b7318eed7f29580b4750ee959e89d9638"
+    }
+  ],
+  "external_evidence": [
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate33-windows-connected-2026-09-04/candidate33-direct-result.json",
+      "sha256": "f0eaa96e81f950cd39aa485a01c1240ed1dce06cc40ba925d3f465b1c98105f6"
+    },
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate33-windows-connected-2026-09-04/candidate33-smart-dns-result.json",
+      "sha256": "ae7d0c3fc6038e2514bf97d143f71bad374bbbce81c2bdc8958369d6fa061d1a"
+    },
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate33-android-physical-2026-09-04/summary.json",
+      "sha256": "e89799a184762ef73efbff782bff8c033876f854eb2ddad1833bdb369345824e"
+    },
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate33-android-physical-2026-09-04/manifest.json",
+      "sha256": "364f29a286f78cbed2be3710d4f84b8abc19834e5741b7daf2fd2de72476928e"
+    }
+  ],
+  "mutation_boundary": {
+    "candidate_artifact_mutated": false,
+    "windows_vm_used": true,
+    "physical_phone_used": true,
+    "host_screen_or_input_control_used": false,
+    "host_network_mutated": false,
+    "managed_server_rollout_changed": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT CANDIDATE33 BOUNDED WINDOWS AND PHYSICAL ANDROID RUNTIME; GATE_F BLOCKED WITH MANAGED AWG LDPLAYER LEAK LIFECYCLE ORIGIN PROVIDER OPERATOR LEGAL PERFORMANCE RUNTIME ROLLBACK FINAL ATTESTATION AND PROMOTION OPEN"
+}
