@@ -1,0 +1,94 @@
+{
+  "schema": "pokrov.release-1.2.0.wo-013gx-candidate33-windows-connected-reboot-recovery/v1",
+  "work_order": "WO-013GX",
+  "recorded_at_utc": "2026-09-04T12:17:32.7466317Z",
+  "status": "PASS_BOUNDED_EXACT_CANDIDATE_CONNECTED_REBOOT_RECOVERY_GATE_F_BLOCKED",
+  "candidate": {
+    "label": "pokrov-1.2.0-candidate.33",
+    "platform_source": "f5300053026d32826e54c02202303e1f68c65bc1",
+    "client_source": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "63993fba699b68641b7e972071ab7729fa9ec43c",
+    "windows_setup_sha256": "250622f7e4bf9bea39a9456004d4cfeb2340a987c622c46f70b3af07aaec3580",
+    "windows_manifest_sha256": "0f93211e254076fad5de8cf88d0817897313c2fd3f3b2daa6d1253628da63a5b",
+    "installed_file_matches": 11,
+    "installed_file_required": 11
+  },
+  "test": {
+    "environment": "POKROV-Win11-Test",
+    "profile_class": "synthetic_secret_free_direct_tun",
+    "connected_before_reboot": true,
+    "connected_tun_present": true,
+    "connected_recovery_journal_stage": "committed",
+    "reboot_requested_while_connected": true,
+    "unexpected_guest_windows_update_completed": true,
+    "power_interrupted": false,
+    "postboot_service_state": "Running",
+    "postboot_service_start_mode": "Auto",
+    "postboot_service_account": "LocalSystem",
+    "postboot_ordinary_ipc_trusted": true,
+    "postboot_phase": "artifact_ready",
+    "postboot_running": false,
+    "postboot_failure": "none",
+    "postboot_tunnel_absent": true,
+    "postboot_route_equal_preboot": true,
+    "postboot_dns_equal_preboot": true,
+    "postboot_dns_pass": "4/4",
+    "postboot_api_health": 200,
+    "reconnect_tunnel_present": true,
+    "reconnect_route_changed": true,
+    "reconnect_dns_changed": true,
+    "reconnect_core_egress_validated": true,
+    "reconnect_dns_ready": true,
+    "disconnect_tunnel_absent": true,
+    "disconnect_route_restored": true,
+    "disconnect_dns_restored": true,
+    "recovery_journal_after": "clean",
+    "diagnostic_cli_removed": true,
+    "final_ui_process_count": 0,
+    "final_tunnel_adapter_count": 0
+  },
+  "evidence": {
+    "external_index_sha256": "e9a9fd5df8fd5075e2742a8486903aa6042fc9499a56feb393cd5ff85ff1b4cf",
+    "reboot_prepare_sha256": "8f74f8666ebf783f57c9d384778efbd2b0aedbb6e63ade377e927cee2294a292",
+    "reboot_request_sha256": "c618aecb0d4b10c14fa51316f0266442408e9606b6731ec214b16439363d0fe5",
+    "reboot_postcheck_sha256": "a4f0d29893ac224569a59973323a65d0bffe2c38a39aaf750820feda544d292d",
+    "reboot_finalize_sha256": "6537a41678805238ad07fb28ca6db9d3ee14a3945212a4db003c4c8077715b11",
+    "vm_update_policy_sha256": "a2e45b3938828ee95b6397951457ed4a4ec547f08085dc65e15ac56dc5f5f3e7"
+  },
+  "harness": {
+    "automatic_windows_updates_disabled_after_product_test": true,
+    "windows_update_service_state": "Stopped",
+    "windows_update_service_start_mode": "Disabled",
+    "main_windows_host_modified": false,
+    "harness_configuration_receives_release_credit": false
+  },
+  "completion": {
+    "level_changed": false,
+    "distribution": {
+      "I4": 8,
+      "I3": 319,
+      "I2": 19,
+      "I1": 32,
+      "I0": 0,
+      "total": 378
+    }
+  },
+  "gate_f": {
+    "status": "BLOCKED",
+    "pass": 2,
+    "non_pass": 17,
+    "fail": 0,
+    "validation_errors": 0,
+    "gate_g_authorized": false
+  },
+  "mutations": {
+    "candidate_bytes_changed": false,
+    "production_runtime_changed": false,
+    "main_host_network_changed": false,
+    "main_host_input_used": false,
+    "deploy_performed": false,
+    "public_release_created": false,
+    "stable_pointer_changed": false
+  }
+}

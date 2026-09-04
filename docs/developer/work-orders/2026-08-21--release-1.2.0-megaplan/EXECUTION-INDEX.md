@@ -2,6 +2,25 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013GX candidate.33 Windows connected reboot recovery
+
+The exact installed candidate.33 service/Core reaches the connected direct
+synthetic TUN boundary in the dedicated headless Windows 11 VM, then the guest
+reboots while its durable journal is `committed`. Windows completes an already
+queued guest update without power interruption. After boot the Automatic
+LocalSystem service exposes trusted ordinary IPC in safe disconnected
+`artifact_ready` state; no TUN remains, route/DNS match the exact pre-reboot
+baseline, DNS is `4/4` and API health is `200`.
+
+A fresh post-boot connect recreates TUN and route/DNS changes; disconnect
+restores the post-boot baseline. Final cleanup retains `11/11` exact candidate
+files, a `clean` journal and zero UI/TUN residue, then removes the diagnostic
+client. Automatic Windows updates are disabled only in the dedicated guest
+after product verification; this harness configuration receives no release
+credit. Managed default/AWG, connected uninstall, sleep, Windows 10, IPv6/leak
+and SmartScreen remain open. Gate F stays `BLOCKED 2/17/0`, and the `378`-row
+distribution does not change.
+
 ## 2026-09-04 — WO-013GW candidate.33 Windows connected crash recovery
 
 The exact installed candidate.33 service/Core reaches the connected direct
