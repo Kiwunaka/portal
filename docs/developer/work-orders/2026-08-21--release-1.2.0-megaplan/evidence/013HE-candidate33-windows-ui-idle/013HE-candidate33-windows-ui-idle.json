@@ -1,7 +1,7 @@
 {
   "schema": "pokrov.release-1.2.0.wo-013he-candidate33-windows-ui-idle/v1",
   "work_order": "WO-013HE",
-  "recorded_at_utc": "2026-09-04T16:06:27.4298830Z",
+  "recorded_at_utc": "2026-09-04T16:21:43.0948115Z",
   "status": "PASS_EXACT_CANDIDATE33_WINDOWS_FRESH_PROCESS_UI_IDLE_NO_NETWORK_MUTATION_PERFORMANCE_BUDGET_NOT_DEFINED_GATE_F_BLOCKED",
   "candidate": {
     "label": "pokrov-1.2.0-candidate.33",
@@ -46,6 +46,34 @@
     "all_samples_window_present": true,
     "crash_event_count": 0
   },
+  "post_reboot_repeat": {
+    "previous_boot_utc": "2026-09-04T14:46:38.5000000Z",
+    "current_boot_utc": "2026-09-04T16:19:24.5000000Z",
+    "guest_windows_update_before_reboot": "Stopped_Disabled",
+    "login_method": "guest_only_dpapi_helper",
+    "host_input_used": false,
+    "process_observed_ms": 372.677,
+    "responsive_window_observed_ms": 2560.474,
+    "sample_interval_seconds": 5,
+    "sample_count": 10,
+    "sample_duration_seconds": 45,
+    "normalized_cpu_percent": 0.9722,
+    "working_set_bytes_p50": 99446784,
+    "working_set_bytes_p95": 99713024,
+    "private_memory_bytes_p50": 77172736,
+    "private_memory_bytes_p95": 85934080,
+    "thread_count_min": 16,
+    "thread_count_max": 24,
+    "handle_count_min": 400,
+    "handle_count_max": 428,
+    "all_samples_responding": true,
+    "all_samples_window_present": true,
+    "crash_event_count": 0,
+    "route_dns_fingerprint_unchanged": true,
+    "pokrov_adapter_up_count": 0,
+    "ui_process_count_after_cleanup": 0,
+    "service_after_cleanup": "Running_Auto_LocalSystem"
+  },
   "safety": {
     "connect_requested": false,
     "user_data_inspected": false,
@@ -66,9 +94,9 @@
     "gate_f": "BLOCKED_2_17_0"
   },
   "client_reconciliation": {
-    "pull_request": 84,
-    "merge_commit": "ec67ef86b03ff316a33b048142ece73e6256ce8a",
-    "hosted_run": 33893847234,
+    "pull_request": 85,
+    "merge_commit": "82268d2ef086c879ce04bffd9eedee9737c923d8",
+    "hosted_run": 33895179510,
     "hosted_job_steps": 0,
     "hosted_classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
   },
@@ -81,6 +109,6 @@
     "public_release_created": false,
     "stable_pointer_changed": false
   },
-  "external_index_sha256": "d176d3c08df91366e055626c012a8304a0c6e535e0f49bcb285c8411f679d68a",
-  "client_evidence_sha256": "b993ee6d7f2ed572c41b12e0bff5b3cff4185eb71f9392365eb81ecf7641d5cc"
+  "external_index_sha256": "82fe9df648f3f4b9d01b77c3321696ea9f44406bbfa54e8e583581677b71c42a",
+  "client_evidence_sha256": "6a0d1f81fec2cd8d4b7db5e4fb0de5b4d3ad3dbdd9b40a20f04af2ab40b6ce54"
 }

@@ -10,10 +10,17 @@ warm guest file cache. Ten samples over `45` seconds remain responsive and
 window-present. Normalized CPU is `1.9097%`; working-set p50/p95 is
 `94621696/95019008` bytes; matching crash events are zero.
 
+After a full guest reboot with Windows Update already Stopped/Disabled, a
+second fresh process exposes a responsive window in `2560.474 ms`. Ten more
+samples over `45` seconds remain responsive/window-present; normalized CPU is
+`0.9722%`, working-set p50/p95 is `99446784/99713024` bytes and crash events
+remain zero.
+
 No connection is requested. Route/DNS fingerprints stay unchanged, the hidden
 POKROV adapter remains not present/never Up, and cleanup leaves zero UI
-processes with the service Running/Auto/LocalSystem. The sample is descriptive,
-not a cold-boot, comparable-device or performance-budget PASS. Gate F stays
+processes with the service Running/Auto/LocalSystem. The two observations are
+descriptive, not a controlled cold-boot distribution, comparable-device or
+performance-budget PASS. Gate F stays
 `BLOCKED 2/17/0`; no level, candidate, deploy, public, host-input or host-network
 state changes.
 
