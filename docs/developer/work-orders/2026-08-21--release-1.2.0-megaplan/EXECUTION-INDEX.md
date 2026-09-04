@@ -2,6 +2,42 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013GV candidate.33 bounded Windows/Android runtime
+
+The exact installed candidate.33 service/Core passes direct and Smart DNS
+synthetic secret-free TUN/DNS connect-disconnect-cleanup in the dedicated
+headless Windows 11 VM. TUN, route and DNS changes are observed only inside
+the guest; disconnect restores the exact baseline hashes. Smart DNS additionally
+returns DoH `200` with a DNS message. This is bounded service/Core lifecycle
+proof, not managed-node or AWG runtime credit.
+
+The exact universal APK then installs in place on physical Huawei Android 12
+with version code `4053`, matching base-APK and production certificate hashes,
+and preserved data. Ordinary Wi-Fi reaches connected+validated with DNS `4/4`.
+On Beeline, selected whitelist and emergency routes fail closed; automatic
+mode retains a 32-second connected+validated interval before an external
+transport change ends mobile credit. Owner foreground use is preserved.
+
+Client PR 76 merges the exact evidence at `e23101f...`; local seed and docs
+contracts pass. Its hosted contract job executes zero steps and remains
+`BLOCKED_BY_ACCESS_GITHUB_BILLING`. Gate F now labels Windows live network and
+physical Android `MANUAL_OWNER_TEST` rather than `NOT_RUN`, but remains
+`BLOCKED 2/17/0`. Distribution stays `I4=8`, `I3=319`, `I2=19`, `I1=32`,
+`I0=0`; no Gate G, deploy, public asset, Store object or stable mutation occurs.
+
+## 2026-09-04 — WO-013GU candidate.33 Gates A–E local replay
+
+The exact candidate.33 source tuple passes Gate B `70/70 + 111/111`, Gate D
+`196/196 + 12` plus `25/25`, declared-toolchain local quality `15/15`, client
+widgets `413/413`, cabinet `69/69` and static performance `9/9`. The isolated
+stable -> candidate -> stable portal/client rollback restores both pointers
+byte-identically and preserves unrelated state.
+
+All five aggregate gates remain blocked on live/manual boundaries with zero
+source failures. Fresh npm audit is registry-timeout blocked and no fresh PASS
+is claimed. Gate F validates `19/19` evidence pointers and remains
+`BLOCKED 2/17/0`; no level or promotion state changes.
+
 ## 2026-09-04 — WO-013GT candidate.33 signed supply and WIN-001 PASS
 
 Private `pokrov-1.2.0-candidate.33` is now the current exact signed candidate.

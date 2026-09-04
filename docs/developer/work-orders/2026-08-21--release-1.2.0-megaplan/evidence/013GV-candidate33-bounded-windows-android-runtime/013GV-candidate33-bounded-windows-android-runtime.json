@@ -1,0 +1,150 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate33-bounded-windows-android-runtime/v1",
+  "work_order": "WO-013GV",
+  "recorded_at_utc": "2026-09-04T11:03:00Z",
+  "status": "PASS_EXACT_CANDIDATE33_BOUNDED_WINDOWS_ANDROID_RUNTIME_GATE_F_BLOCKED",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.33",
+    "version": "1.2.0+4053",
+    "operational_id": "d7a09ea6601f2cc1422366b29cc0ed7d7b8ca6fee889a143a3ebef7fe488c923",
+    "manifest_sha256": "5620c2f0558e7c9a0f8ff8dfbcd47523986dd7fdf13f061e81adab3b10a3f680",
+    "signature_sha256": "5115ab3cd8ee0fa49018e521f75fd9baf5d469c2793a8a47cda4a965b82d3191",
+    "receipt_sha256": "f84843c81f9173072dcb3f3f551f7ef5ca9e41c21312ddec77ca0fe6cb6b78d7",
+    "sources": {
+      "platform": "f5300053026d32826e54c02202303e1f68c65bc1",
+      "client": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "63993fba699b68641b7e972071ab7729fa9ec43c"
+    }
+  },
+  "windows_vm": {
+    "environment": "dedicated headless Windows 11 VM",
+    "service": {
+      "state": "Running",
+      "start_mode": "Auto",
+      "account": "LocalSystem",
+      "binary_sha256": "b962d3d0c369e24a5d927a4b024148a3b8ceaed0e78efb6aef454f537d4c326b"
+    },
+    "direct": {
+      "status": "PASS_EXACT_CANDIDATE33_DIRECT_TUN_DNS_LIFECYCLE",
+      "scope": "EXACT_INSTALLED_SERVICE_CORE_SYNTHETIC_SECRET_FREE_PROFILE",
+      "tunnel_present_while_connected": true,
+      "route_changed_while_connected": true,
+      "dns_changed_while_connected": true,
+      "dns_resolution": "PASS_4_OF_4",
+      "api_health_status": 200,
+      "cleanup": "PASS_TUNNEL_ABSENT_ROUTE_AND_DNS_RESTORED"
+    },
+    "smart_dns": {
+      "status": "PASS_EXACT_CANDIDATE33_SMART_DNS_TUN_LIFECYCLE",
+      "scope": "EXACT_INSTALLED_SERVICE_CORE_SYNTHETIC_SECRET_FREE_PROFILE",
+      "dns_resolution": "PASS_4_OF_4",
+      "doh_status": 200,
+      "dns_message_present": true,
+      "cleanup": "PASS_TUNNEL_ABSENT_ROUTE_AND_DNS_RESTORED"
+    },
+    "gate_f_credit": "MANUAL_OWNER_TEST",
+    "not_proved": [
+      "managed production node egress",
+      "AWG3.1 or AWG2 packaged runtime",
+      "sleep or resume",
+      "forced service or reboot recovery while connected",
+      "connected uninstall",
+      "Windows 10, SmartScreen UI, IPv6 or leak matrix"
+    ]
+  },
+  "android_physical": {
+    "device_class": "physical Huawei Android 12 arm64-v8a",
+    "unique_identifiers_retained": false,
+    "artifact": {
+      "name": "pokrov-android-universal.apk",
+      "version": "1.2.0+4053",
+      "sha256": "51b86f66bd5c79fdf8a8e51d7607315a6ea3f8dfe9c36c4656034aac3b4583f2",
+      "signature_scheme": "APK_SIGNATURE_SCHEME_V2",
+      "production_certificate_sha256": "0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500"
+    },
+    "install": "PASS_EXACT_INSTALLED_BYTES_VERSION_4053_DATA_PRESERVED",
+    "wifi_default_profile": "PASS_CONNECTED_VALIDATED_DNS_4_OF_4",
+    "process_health": "PASS_NO_FATAL_ANR_UNCAUGHT_EGRESS_OR_PERMISSION_ERRORS",
+    "beeline": {
+      "selected_location": "Milan whitelist type 4",
+      "selected_location_result": "FAIL_CLOSED_AFTER_TRANSIENT_VALIDATED_STATE",
+      "white_mode_result": "FAIL_CLOSED_NO_CONFIRMED_EMERGENCY_ROUTE",
+      "automatic_mode_result": "PASS_BOUNDED_CONNECTED_VALIDATED_32_SECONDS_THEN_EXTERNAL_TRANSPORT_CHANGE",
+      "post_transport_change_credit": false
+    },
+    "gate_f_credit": "MANUAL_OWNER_TEST",
+    "not_proved": [
+      "LDPlayer parity",
+      "managed AWG3.1, AWG2 or HY2",
+      "direct DoH or Smart DNS application UI",
+      "Doze, Private DNS, IPv6 or leak matrix",
+      "UDP53, MTU, OEM, battery, thermal or endurance matrix"
+    ],
+    "final_state": "WIFI_ON_POKROV_DISCONNECTED_OWNER_FOREGROUND_PRESERVED"
+  },
+  "client_truth_merge": {
+    "branch_commit": "246fa531685cc7f7e2a2a0d058b989fe36b778e9",
+    "pull_request": "https://github.com/Kiwunaka/POKROV-app/pull/76",
+    "merged_commit": "e23101f9cfa4bff055511e286118c941bf595712",
+    "local_seed_and_docs_validation": "PASS",
+    "hosted_cross_repository_contract": "BLOCKED_BY_ACCESS_GITHUB_BILLING",
+    "hosted_steps": 0
+  },
+  "gate_f_refresh": {
+    "decision": "BLOCKED",
+    "required": 19,
+    "pass": 2,
+    "non_pass": 17,
+    "fail": 0,
+    "validation_errors": 0,
+    "windows_live_network": "MANUAL_OWNER_TEST",
+    "android_physical_device": "MANUAL_OWNER_TEST",
+    "gate_g_authorized": false
+  },
+  "completion_index": {
+    "level_changes": 0,
+    "distribution": {
+      "I4": 8,
+      "I3": 319,
+      "I2": 19,
+      "I1": 32,
+      "I0": 0,
+      "total": 378
+    }
+  },
+  "external_evidence": [
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate33-windows-connected-2026-09-04/candidate33-direct-result.json",
+      "sha256": "f0eaa96e81f950cd39aa485a01c1240ed1dce06cc40ba925d3f465b1c98105f6"
+    },
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate33-windows-connected-2026-09-04/candidate33-smart-dns-result.json",
+      "sha256": "ae7d0c3fc6038e2514bf97d143f71bad374bbbce81c2bdc8958369d6fa061d1a"
+    },
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate33-android-physical-2026-09-04/summary.json",
+      "sha256": "e89799a184762ef73efbff782bff8c033876f854eb2ddad1833bdb369345824e"
+    },
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate33-android-physical-2026-09-04/manifest.json",
+      "sha256": "364f29a286f78cbed2be3710d4f84b8abc19834e5741b7daf2fd2de72476928e"
+    },
+    {
+      "path": "E:/POKROV-tools/wt/client-candidate33-physical-evidence/docs/operations/evidence/candidate33-physical-android.json",
+      "sha256": "aeabad153636c161c6688751c1f6a324c1d3668bba4eac498fe8f98c8015831f"
+    }
+  ],
+  "mutation_boundary": {
+    "candidate_artifact_mutated": false,
+    "windows_vm_used": true,
+    "physical_phone_used": true,
+    "host_screen_or_input_control_used": false,
+    "host_network_mutated": false,
+    "managed_server_rollout_changed": false,
+    "production_deploy": false,
+    "public_release_or_store_submission": false,
+    "stable_pointer_mutated": false
+  },
+  "evidence_ceiling": "EXACT CANDIDATE33 BOUNDED WINDOWS SYNTHETIC TUN DNS SMART_DNS AND PHYSICAL ANDROID DEFAULT WIFI BEELINE SLICES; MANAGED AWG LDPLAYER LEAK LIFECYCLE ORIGIN PROVIDER OPERATOR LEGAL PERFORMANCE FINAL ATTESTATION AND PROMOTION OPEN"
+}
