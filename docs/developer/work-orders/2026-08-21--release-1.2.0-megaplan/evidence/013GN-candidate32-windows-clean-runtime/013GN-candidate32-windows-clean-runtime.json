@@ -1,0 +1,129 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate32-windows-clean-runtime/v1",
+  "recorded_at_utc": "2026-09-04T02:57:57Z",
+  "status": "PASS_CLEAN_BOOT_PRELOGIN_SERVICE_ORDINARY_UI_TRUSTED_IPC_INITIALIZE_DISCONNECTED",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.32",
+    "platform_source": "d0dd37c1003198ba08cffc49a040a77e21621a86",
+    "client_source": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "windows_installer_sha256": "22689e3e61be82f90b1ba9530cba37628ec546022338fc87018b2d460c020574",
+    "windows_manifest_sha256": "43bd310e2fb287d2ada339d8938fbe2304261fe23c9d8608124417d05af9e7dd"
+  },
+  "environment": {
+    "vm": "POKROV-Win11-Test",
+    "os": "Windows 11 Enterprise Evaluation",
+    "build": "26200",
+    "source_snapshot": {
+      "name": "candidate32-clean-installed-uninitialized-20260904",
+      "uuid": "810a0223-d942-481f-a4b0-6866421f5570"
+    },
+    "host_screen_mouse_keyboard_used": false,
+    "host_route_vpn_or_dns_changed": false,
+    "raw_network_addresses_retained": false
+  },
+  "boot_before_login": {
+    "last_boot_up_utc": "2026-09-04T02:50:38.5000000Z",
+    "console_user": null,
+    "service_state": "Running",
+    "service_start_mode": "Auto",
+    "service_account": "LocalSystem",
+    "ui_process_count": 0
+  },
+  "exact_source_cli": {
+    "binary_sha256": "3687e95575fe6df0d39798c322f77ce1d648b74c7856864c0b6f703487141f47",
+    "service_sha256": "b962d3d0c369e24a5d927a4b024148a3b8ceaed0e78efb6aef454f537d4c326b",
+    "ui_sha256": "611208b20b68b333d81655b0d6dbd7ada3a213fbfd9a82b6af71b01b3bdf15a2",
+    "staged_beside_service_for_probe": true,
+    "removed_after_probe": true
+  },
+  "ordinary_runtime": {
+    "token": "MEDIUM_INTEGRITY_NON_ELEVATED",
+    "status_before": {
+      "available": true,
+      "trusted": true,
+      "compatible": true,
+      "command_accepted": true,
+      "phase": "artifact_ready",
+      "core_ready": false,
+      "can_connect": false,
+      "running": false,
+      "dns_ready": false
+    },
+    "initialize": {
+      "available": true,
+      "trusted": true,
+      "compatible": true,
+      "command_accepted": true,
+      "phase": "initialized",
+      "core_ready": true,
+      "can_connect": false,
+      "running": false,
+      "core_egress_validated": false,
+      "dns_ready": false,
+      "failure": "none"
+    },
+    "ui": {
+      "process_alive_during_probe": true,
+      "same_session": true,
+      "owner_matches_launcher": true,
+      "main_window_present": true,
+      "uac_used": false,
+      "onboarding_or_entitlement_action_performed": false,
+      "stopped_after_probe": true
+    },
+    "network_contour_unchanged": true,
+    "pokrov_up_adapter_count": 0
+  },
+  "retained_external_evidence": {
+    "root": "E:/POKROV-tools/release-evidence/1.2.0-candidate32-windows-clean-runtime-2026-09-04",
+    "files": {
+      "candidate32-clean-ordinary-runtime.json": "9e9b6471ceeff4c74ffe4039422309135a51bcdb863bb69db53e833d1e554438",
+      "candidate32-clean-cli-stage.json": "f1839c5c113372347d5bd361a5aae6bd186f2b490f6b0394ba49688c529b772e",
+      "candidate32-clean-cli-stage-launcher.json": "4730cccd18a2d5bfdb894b861f80b24e3f908f20e6864490b1db00e2854c21ef",
+      "candidate32-clean-cli-remove.json": "fe00953624d9ebffd34a23b0d12013b1a90319e921e324be61f61dbf88aacffe",
+      "candidate32-clean-cli-remove-launcher.json": "64bdb1bfecf2701b5a923934ebb8f1412fe4ce7a200fdf61313e99e6ca772804",
+      "Invoke-Candidate32CleanOrdinaryRuntime.ps1": "3a5e7e699d12bbb347bdd9e6279fd0ba93ca2c96447ab589b5fce6a140136b83",
+      "Manage-Candidate32CleanServiceCliElevated.ps1": "f8e52c151245add423f1d516fe8a32bb20e7d15ff0c40efe08e5db5cf9b2a984"
+    }
+  },
+  "cleanup": {
+    "scheduled_tasks_removed": true,
+    "temporary_guest_scripts_removed": true,
+    "temporary_guest_results_removed_after_host_copy": true,
+    "diagnostic_cli_removed": true,
+    "ui_stopped": true,
+    "service_left_running": true,
+    "exact_five_file_supply_staging_retained": true
+  },
+  "evidence_boundaries": {
+    "clean_installed_boot_service_before_login_proven": true,
+    "clean_owner_ordinary_ui_and_ipc_proven": true,
+    "clean_disconnected_initialize_proven": true,
+    "launch_at_login_enabled_timing_proven": false,
+    "managed_reboot_after_initialize_proven": false,
+    "public_1_1_6_upgrade_proven": false,
+    "connected_default_proven": false,
+    "awg31_or_awg2_proven": false,
+    "smart_dns_proven": false,
+    "connected_uninstall_proven": false,
+    "non_owner_or_elevated_admin_ipc_proven": false
+  },
+  "ledger": {
+    "changed_rows": [
+      "REL/WIN-003",
+      "REL/WIN-005",
+      "REL/SEC-001",
+      "REL_DOD/DOD-04",
+      "FRKN_PLAN/W6-03"
+    ],
+    "index_changes": 0
+  },
+  "decision": {
+    "gate_f": "BLOCKED_2_PASS_17_NON_PASS_0_FAIL",
+    "gate_f_regenerated": false,
+    "promotion_authorized": false,
+    "deploy_or_publication_performed": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE32_CLEAN_BOOT_PRELOGIN_SERVICE_ORDINARY_UI_TRUSTED_IPC_AND_DISCONNECTED_INITIALIZE_ONLY"
+}
