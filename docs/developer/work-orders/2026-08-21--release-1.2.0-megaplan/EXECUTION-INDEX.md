@@ -2,6 +2,19 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013GZ candidate.33 Windows AWG PLAN readiness
+
+After the exact candidate.33 clean `11/11` reinstall, fresh guarded read-only
+PLAN runs resolve one entitled Windows target by confirmed install identity for
+both `awg31_lab` and `awg2_lab`. App version is `1.2.0+4053`, both source
+materials are available, no entitlement extension is needed or applied, and no
+raw identifier or connection material is returned.
+
+No APPLY occurs. This is control-plane readiness only, not packaged Windows
+AWG runtime, profile fetch, Core/TUN/DNS/egress or cleanup credit. Temporary
+guarded APPLY remains separately unauthorized. Ledger levels and Gate F remain
+unchanged; Gate F is `BLOCKED 2/17/0`.
+
 ## 2026-09-04 — WO-013GY candidate.33 Windows connected uninstall
 
 The exact installed candidate.33 interactive UI runs in ordinary user session
