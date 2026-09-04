@@ -1,0 +1,85 @@
+{
+  "schema": "pokrov.release-1.2.0.signed-candidate-binding-evidence/v1",
+  "recorded_at_utc": "2026-09-03T23:53:16Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.32",
+    "version": "1.2.0+4053",
+    "release_index_source_revision": "5d11fd6821a5ebfa42163f461332125143c553c3",
+    "platform_source_revision": "d0dd37c1003198ba08cffc49a040a77e21621a86",
+    "client_source_revision": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+    "core_source_revision": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "signer_workflow_run": "Kiwunaka/pokrov/actions/runs/33819350778",
+    "signer_artifact_id": 9917689367,
+    "signer_artifact_name": "pokrov-pokrov-1.2.0-candidate.32-signed-manifest-5d11fd6821a5ebfa42163f461332125143c553c3",
+    "signer_artifact_digest": "sha256:fc4b30a35ae98418392e245867ca1d269fb4cc08359ff7835f0f4bf0fd8ccb13",
+    "signer_artifact_expires_at_utc": "2026-09-17T23:51:15Z"
+  },
+  "outputs": [
+    {
+      "path": "pokrov-1.2.0-candidate.32.release-index.json",
+      "sha256": "b15938e1bef2b4cafb634eea81039163e2b15a446cda5bbd32d9894cbe2da449",
+      "size_bytes": 6884
+    },
+    {
+      "path": "pokrov-1.2.0-candidate.32.release-index.json.sig",
+      "sha256": "e63d8ee39c15185afc9e600efe66a1a081b0fafc50343fd898114dfcb8bafcf4",
+      "size_bytes": 64
+    },
+    {
+      "path": "pokrov-1.2.0-candidate.32.signing-receipt.json",
+      "sha256": "7bfaf81f26a2030e01db534732723fe726251457f4d0f7ebc6d7d92018375a42",
+      "size_bytes": 589
+    }
+  ],
+  "supply_chain": {
+    "status": "PASS",
+    "artifact_count": 6,
+    "windows_runtime_file_count": 11,
+    "canonical_artifact_set_sha256": "1392133caa1cb52f59c058a918ba5006d6aefded048fc0927052e4ff51575fb0",
+    "sbom_sha256": "5ddf2a96244e70ad1284409f0cea6f5838fab5bfbca5c5b96a245f0716de2893",
+    "provenance_sha256": "4785cd005791a8872f4c8a45202ba2d35c9d1ba65737f5683ee17d0b927c53e6",
+    "release_handoff_sha256": "df85e2ee1a03133ac79bb36064d47518f9067cd188e7624d70fd349011422bef",
+    "windows_runtime_manifest_sha256": "43bd310e2fb287d2ada339d8938fbe2304261fe23c9d8608124417d05af9e7dd",
+    "sbom_root_bom_ref": "pkg:generic/pokrov-release-candidate@1.2.0%2B4053?candidate=32",
+    "provenance_invocation_id": "pokrov-1.2.0-candidate.32/1392133caa1cb52f59c058a918ba5006d6aefded048fc0927052e4ff51575fb0",
+    "predecessor_candidate_references": 0
+  },
+  "independent_validation": {
+    "status": "READY_SIGNED_MANIFEST",
+    "receipt_matches_outputs": true,
+    "detached_signature_verified_with_public_keyring": true,
+    "strict_supply_validation_status": "PASS",
+    "promotion_authorized": false
+  },
+  "artifact_reuse": {
+    "status": "PASS_EXACT_CURRENT_SOURCE_BYTES",
+    "application_bytes_rebuilt_for_candidate32": true,
+    "application_bytes_reverified": true,
+    "supply_metadata_regenerated": true,
+    "candidate31_supply_metadata_reused": false
+  },
+  "windows_vm_binding": {
+    "status": "PASS_NON_ELEVATED_FAIL_CLOSED_EXISTING_INSTALL_UNCHANGED",
+    "exact_candidate32_identity_inside_guest": true,
+    "candidate32_installed": false,
+    "pre_existing_install_exact_file_matches": "8/11",
+    "clean_install_or_upgrade_credit": "NOT_RUN",
+    "managed_node_awg_smart_dns": "NOT_RUN_EXACT_CANDIDATE32"
+  },
+  "physical_phone_install_binding": {
+    "status": "NOT_RUN",
+    "gate_f_check": "android_physical_device"
+  },
+  "mutation_boundary": {
+    "candidate_artifact_mutated": false,
+    "phone_install_or_runtime_test": false,
+    "screen_or_input_control_used": false,
+    "host_network_mutated": false,
+    "signing_private_key_accessed_locally": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT CANDIDATE32 SIGNATURE AND SUPPLY METADATA PASS; WINDOWS VM PROVES EXACT BYTES AND NON-ELEVATED FAIL-CLOSED ONLY; CURRENT ANDROID, ELEVATED WINDOWS INSTALL, MANAGED RUNTIME AND EXTERNAL GATES REMAIN OPEN"
+}
