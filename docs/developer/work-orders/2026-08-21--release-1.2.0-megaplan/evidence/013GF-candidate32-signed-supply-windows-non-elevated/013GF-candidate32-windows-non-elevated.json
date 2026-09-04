@@ -1,0 +1,55 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate32-windows-non-elevated-evidence/v1",
+  "recorded_at_utc": "2026-09-04T00:01:56.0846923Z",
+  "status": "PASS_EXACT_CANDIDATE32_NON_ELEVATED_FAIL_CLOSED_EXISTING_INSTALL_UNCHANGED",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.32",
+    "version": "1.2.0+4053",
+    "installer_sha256": "22689e3e61be82f90b1ba9530cba37628ec546022338fc87018b2d460c020574",
+    "installer_size_bytes": 29154647,
+    "authenticode": "NotSigned",
+    "release_index_commit": "5d11fd6821a5ebfa42163f461332125143c553c3",
+    "release_manifest_sha256": "b15938e1bef2b4cafb634eea81039163e2b15a446cda5bbd32d9894cbe2da449",
+    "detached_signature_sha256": "e63d8ee39c15185afc9e600efe66a1a081b0fafc50343fd898114dfcb8bafcf4",
+    "signing_receipt_sha256": "7bfaf81f26a2030e01db534732723fe726251457f4d0f7ebc6d7d92018375a42"
+  },
+  "runner": {
+    "environment": "owner-dedicated-virtualbox-windows11-vm",
+    "os": "Microsoft Windows 11 Enterprise Evaluation",
+    "build": "26200",
+    "elevated_administrator": false,
+    "screen_or_host_input_used": false
+  },
+  "pre_existing_install": {
+    "service_present": true,
+    "service_state": "Running",
+    "candidate32_exact_file_matches": "8/11",
+    "clean_host_claim": false
+  },
+  "non_elevated_installer": {
+    "status": "PASS_FAIL_CLOSED",
+    "timed_out": false,
+    "exit_code": 1,
+    "installer_log_created": false,
+    "installed_bytes_unchanged": true,
+    "service_unchanged": true,
+    "route_and_dns_unchanged": true,
+    "candidate32_exact_file_matches_after": "8/11"
+  },
+  "external_evidence": {
+    "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate32-windows-non-elevated-2026-09-04/candidate32-vm-non-elevated.json",
+    "sha256": "0575b3389d85371ad616b7587763f9cf28e0f69132444763dd0be3176abf0893",
+    "runner_sha256": "aef73f928cd57fb56fe89af6bf3e07ab24900d77115fdc474fb0e9b5bd699b37"
+  },
+  "mutation_boundary": {
+    "existing_install_removed": false,
+    "candidate32_installed": false,
+    "service_or_installed_bytes_mutated": false,
+    "guest_route_or_dns_mutated": false,
+    "host_route_or_dns_mutated": false,
+    "screen_or_input_control_used": false,
+    "production_deploy": false,
+    "public_release": false
+  },
+  "evidence_ceiling": "EXACT CANDIDATE32 BYTES AND SIGNED IDENTITY INSIDE DEDICATED WINDOWS 11 VM; NON-ELEVATED INSTALLER FAIL-CLOSED WITH PRE-EXISTING INSTALL UNCHANGED; NOT CLEAN INSTALL, UPGRADE, MANAGED TUN, DNS, EGRESS, REBOOT, UNINSTALL, SMARTSCREEN UI OR WINDOWS 10 PROOF"
+}
