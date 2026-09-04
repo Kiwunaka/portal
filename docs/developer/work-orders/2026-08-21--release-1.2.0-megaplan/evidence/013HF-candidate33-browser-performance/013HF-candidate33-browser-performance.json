@@ -1,0 +1,102 @@
+{
+  "schema": "pokrov.release-1.2.0.wo-013hf-candidate33-browser-performance/v1",
+  "work_order": "WO-013HF",
+  "recorded_at_utc": "2026-09-04T16:47:21.5348051Z",
+  "status": "PARTIAL_EXACT_CANDIDATE33_BROWSER_LAB_MARKETING_4_OF_4_PASS_WEBAPP_BLOCKED_BY_ACCESS_REQUIRED_SCOPE_FAIL_GATE_F_BLOCKED",
+  "candidate": {
+    "label": "pokrov-1.2.0-candidate.33",
+    "platform_source": "f5300053026d32826e54c02202303e1f68c65bc1",
+    "client_source": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "63993fba699b68641b7e972071ab7729fa9ec43c",
+    "source_worktree_state": "clean"
+  },
+  "environment": {
+    "os": "Windows 11 Pro 10.0.26100 build 26100",
+    "device": "ASUS System Product Name",
+    "browser": "Chromium 149.0.7827.55",
+    "playwright": "1.61.1",
+    "node": "22.14.0",
+    "npm": "11.7.0",
+    "next": "16.3.2",
+    "mode": "headless localhost production static export",
+    "browser_plugin": "NOT_AVAILABLE_REGULAR_PLAYWRIGHT_FALLBACK",
+    "host_input_used": false,
+    "host_network_changed": false
+  },
+  "marketing": {
+    "build": "PASS",
+    "render_qa": "PASS_LOCAL_STATIC_RENDER",
+    "framework_overlay_count": 0,
+    "page_error_count": 0,
+    "metrics": {
+      "page.marketing_home_lcp_ms": {
+        "statistic": "p75",
+        "value": 136.0,
+        "stop_lte": 2500,
+        "samples": 20,
+        "status": "PASS"
+      },
+      "page.marketing_checkout_lcp_ms": {
+        "statistic": "p75",
+        "value": 96.0,
+        "stop_lte": 2800,
+        "samples": 20,
+        "status": "PASS"
+      },
+      "page.marketing_cls": {
+        "statistic": "p75",
+        "value": 0.0,
+        "stop_lte": 0.1,
+        "samples": 20,
+        "status": "PASS"
+      },
+      "page.marketing_tbt_ms": {
+        "statistic": "p75",
+        "value": 8.0,
+        "stop_lte": 200,
+        "samples": 20,
+        "status": "PASS"
+      }
+    },
+    "gate": "PASS_4_OF_4_NO_BASELINE_COMPARISON"
+  },
+  "webapp": {
+    "build": "PASS",
+    "rendered_screen": "account login",
+    "metric": "page.webapp_route_content_ms",
+    "metric_status": "BLOCKED_BY_ACCESS",
+    "sample_count": 0,
+    "reason": "localhost static export has no integrated API/auth fixture and does not render authenticated dashboard content",
+    "false_pass_claimed": false
+  },
+  "aggregate": {
+    "browser_lab_required_scope": "FAIL_MISSING_page.webapp_route_content_ms",
+    "marketing_budget_pass": true,
+    "full_browser_lab_pass": false,
+    "phase_11_browser_network_matrix_replaced": false,
+    "ledger_level_changed": false,
+    "gate_f": "BLOCKED_2_17_0"
+  },
+  "verification": {
+    "production_static_exports": "PASS_2_OF_2",
+    "performance_budget_and_normalizer_tests": "PASS_14_OF_14",
+    "source_git_diff_check": "PASS",
+    "source_worktree_clean_after_collection": true,
+    "temporary_ports_closed": true
+  },
+  "external_evidence": {
+    "index_path": "E:/POKROV-tools/release-evidence/1.2.0-candidate33-browser-performance-2026-09-04/candidate33-browser-performance-evidence-index.json",
+    "index_sha256": "4096fea9cab987d6ab5a3c9cb4466d710c207630076b82525c765eb1f92ff71c",
+    "marketing_gate_sha256": "0f9c965de0ae5d20fc3a99b9cd1a70c3e15183029c851654e5a2818b30b14c5f",
+    "required_scope_gate_sha256": "5d823cfb0570f1327fb268c45aab2527efd21a7452f2f57f770c2e777c1c459e",
+    "render_qa_sha256": "8bd86994dd98a835956a14f0171f15e916190d9c89881dac930b55bf452b2472"
+  },
+  "mutations": {
+    "production_runtime_changed": false,
+    "deploy_performed": false,
+    "public_release_created": false,
+    "stable_pointer_changed": false,
+    "candidate_bytes_changed": false
+  }
+}

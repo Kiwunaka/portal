@@ -2,6 +2,30 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013HF candidate.33 headless browser performance
+
+Fresh production static exports from clean exact candidate.33 platform source
+pass for marketing and cabinet under pinned Node `22.14.0`, npm `11.7.0` and
+Next.js `16.3.2`. Headless Playwright/Chromium retains three warmups plus 20
+samples for each marketing metric. Home LCP p75 is `136 ms`, checkout LCP p75
+is `96 ms`, CLS p75 is `0` and TBT p75 is `8 ms`; all four pass their stop
+thresholds. Rendered marketing QA is non-blank with the expected title/main,
+visible controls, no framework overlay and no page error.
+
+The cabinet static export also renders, but `/dashboard/` stops at the account
+login screen without an integrated API/auth fixture. External requests are
+deliberately blocked in QA and no live account action occurs. Authenticated
+route-content therefore remains `BLOCKED_BY_ACCESS` with zero samples, and the
+required whole `browser_lab` scope fails closed on that missing metric. The
+local marketing subset does not replace the selected Phase 11 browser/network
+matrix or comparable baseline/regression proof.
+
+Focused performance gate/normalizer tests pass `14/14`; temporary localhost
+servers are closed and the exact source worktree remains clean. No host input,
+host networking, candidate bytes, deploy, public or stable state changes.
+`PERF-001`, Gate E, `DOD-13` and `PR-09` gain stronger evidence without level
+change; Gate F stays `BLOCKED 2/17/0`.
+
 ## 2026-09-04 — WO-013HE candidate.33 Windows fresh-process UI idle
 
 The exact installed candidate.33 UI starts as a fresh process in the dedicated
