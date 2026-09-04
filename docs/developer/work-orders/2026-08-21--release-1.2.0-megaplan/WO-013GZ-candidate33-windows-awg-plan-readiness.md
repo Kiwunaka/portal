@@ -6,6 +6,18 @@ Observed: `2026-09-04`
 
 Production/public mutation: `NONE`
 
+Local preparation update, 2026-09-04: the binder now rejects shared AWG
+scope before any guarded write and creates only install-based selectors.
+Legacy account selectors, other devices/cohorts and AWG defaults/carrier rules
+require separate operator review. PLAN below remains historical target
+readiness, not proof that the new APPLY precondition passes. Config drift
+before the rollout write also stops the bind; this is not an atomic rollback
+of any earlier material write. See the canonical binder procedure in
+`docs/operations/deployment-and-access.md`. Local binder/selector and release
+script checks pass `65 tests + 21 subtests`; link and diff checks pass.
+No remote command or APPLY was run for this preparation, and packaged
+AWG/DNS/egress proof remains open pending explicit temporary-switch authority.
+
 ## Outcome
 
 After exact candidate.33 connected-uninstall cleanup and clean `11/11`
