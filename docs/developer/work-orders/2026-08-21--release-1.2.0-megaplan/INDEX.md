@@ -107,12 +107,14 @@ ledger levels stay unchanged.
 
 The exact installed Windows UI separately exposes a responsive window in
 `376.835 ms` from a fresh process with warm guest file cache and stays
-responsive for all ten samples over `45` seconds. Normalized CPU is `1.9097%`;
-working-set p50/p95 is `94621696/95019008` bytes; matching crash events are
-zero. Route/DNS fingerprints stay unchanged, no POKROV/Wintun adapter is Up,
-and cleanup preserves the Automatic LocalSystem service. This is a descriptive
-VM observation, not a cold-boot, comparable-device or performance-budget PASS;
-Gate F and all ledger levels stay unchanged.
+responsive for all ten samples over `45` seconds. After a full guest reboot
+with guest updates already Stopped/Disabled, a second fresh process reaches a
+responsive window in `2560.474 ms` and again keeps 10/10 samples responsive for
+`45` seconds. Normalized CPU is `1.9097/0.9722%`; matching crash events are zero.
+Both runs retain the same route/DNS fingerprint, no POKROV/Wintun adapter Up,
+and the Automatic LocalSystem service after cleanup. These are descriptive VM
+observations, not a controlled cold-boot distribution, comparable-device or
+performance-budget PASS; Gate F and all ledger levels stay unchanged.
 
 Candidates.20–23 remain immutable `NO_GO` history. WO-013FA rejects
 candidate.22 after exact connected uninstall leaves the UI and 13 loaded files.
