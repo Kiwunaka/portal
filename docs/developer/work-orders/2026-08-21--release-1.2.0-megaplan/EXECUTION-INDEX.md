@@ -2,6 +2,28 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013GQ candidate.32 Windows singleton/focus NO_GO
+
+Exact candidate.32 plain and typed second launches each exit `0`, retain one
+original UI process and forward activation, but the existing window does not
+regain foreground focus. `REL/WIN-001` is therefore exact STOP-SHIP `FAIL` and
+the signed candidate remains immutable `NO_GO`.
+
+Client commit `76abed9...` transfers foreground permission before forwarding
+`WM_COPYDATA`. Focused Flutter `8/8`, Release native CTest `7/7`, Release build
+and bounded ordinary-user Windows 11 VM plain/typed replay pass only as
+`PRE_CANDIDATE_LOCAL`. The precursor and guest staging are removed,
+candidate.32 remains byte-identical and the VM is powered off.
+
+Gate F validates all `19/19` pointers and returns exact `NO_GO 2 PASS / 17
+non-PASS / 2 FAIL` with zero validation errors. Seven current-status rows and
+all `57` future-action fields are reconciled without level changes; the eight
+remaining candidate.32 action mentions are explicit immutable-history guards.
+Distribution remains `I4=7`,
+`I3=320`, `I2=19`, `I1=32`, `I0=0` across `378` unique rows. No new candidate,
+signature, deploy, public asset, Store object, stable pointer or promotion is
+created.
+
 ## 2026-09-04 — WO-013GE successor-current local freeze preflight READY
 
 The read-only preflight binds clean platform/ledger `9d92889...`, exact merged
