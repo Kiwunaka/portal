@@ -2,6 +2,23 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013HD candidate.33 LDPlayer 14 install and cold UI start
+
+The exact candidate.33 universal APK update-installs over build `4030` in the
+dedicated LDPlayer 14 Android 14 instance without uninstall or clear-data.
+Package version is `1.2.0+4053`, and installed `base.apk` is byte-identical to
+the immutable candidate artifact.
+
+Exact `MainActivity` cold-starts in `665 ms` and remains top-resumed on one PID
+for `321` seconds while the LDPlayer window is minimized and responsive. The
+crash buffer stays empty; no POKROV VPN service or emulator `tun0` appears.
+The raw UI tree and screenshots are not retained.
+
+Host Hiddify/sing-tun is active, so emulator DNS, egress, VPN, AWG, Smart-DNS,
+WARP, routing and protocol checks remain `BLOCKED_BY_HOST_TUN`. Gate F stays
+`BLOCKED 2/17/0`; no level, candidate, deploy, public, host-input or host-network
+state changes.
+
 ## 2026-09-04 — WO-013HC candidate.33 Windows synthetic saved-state startup
 
 The exact installed candidate.33 now passes synthetic v0 saved-state migration
