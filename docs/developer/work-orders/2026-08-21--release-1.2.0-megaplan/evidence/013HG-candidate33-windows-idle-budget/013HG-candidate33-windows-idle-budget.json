@@ -1,0 +1,99 @@
+{
+  "schema": "pokrov.release-1.2.0.wo-013hg-candidate33-windows-idle-budget/v1",
+  "work_order": "WO-013HG",
+  "recorded_at_utc": "2026-09-04T17:14:19.1430603Z",
+  "status": "PASS_EXACT_CANDIDATE33_WINDOWS_UI_IDLE_CPU_BUDGET_MEMORY_BASELINE_RECORDED_FULL_CANDIDATE_DEVICE_SCOPE_OPEN_GATE_F_BLOCKED",
+  "candidate": {
+    "label": "pokrov-1.2.0-candidate.33",
+    "app_version": "1.2.0+4053",
+    "platform_source": "f5300053026d32826e54c02202303e1f68c65bc1",
+    "client_source": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "63993fba699b68641b7e972071ab7729fa9ec43c",
+    "windows_ui_sha256": "1b175a66523be467c0fa66e8f74df20dbeb87f7e190f5dc57a9f1cea0961d97f",
+    "windows_ui_size": 192512
+  },
+  "environment": {
+    "kind": "dedicated headless VirtualBox Windows VM",
+    "os": "Microsoft Windows 11 Enterprise Evaluation 10.0.26200 build 26200",
+    "device": "innotek GmbH VirtualBox; 2 vCPU; 4274917376 bytes RAM",
+    "architecture": "x86_64",
+    "power_mode": "balanced",
+    "network_profile": "bridged_no_pokrov_tunnel",
+    "collector_runtime": "PowerShell 7.6.5",
+    "host_input_used": false,
+    "host_network_changed": false
+  },
+  "sampling": {
+    "collector": "POKROV-app/scripts/collect-client-performance-samples.ps1",
+    "target_process": "pokrov_windows.exe",
+    "sample_interval_ms": 1000,
+    "warmups_discarded": 30,
+    "retained_samples": 60,
+    "retained_window_seconds": 60
+  },
+  "results": {
+    "client.windows.idle_cpu_percent": {
+      "p50": 0.0,
+      "p95": 1.0,
+      "average": 0.083333,
+      "target_lte": 1.0,
+      "stop_lte": 1.0,
+      "gate_status": "PASS"
+    },
+    "client.windows.idle_working_set_bytes": {
+      "p50": 98693120,
+      "p95": 98693120,
+      "average": 98677828.266667,
+      "gate_status": "BASELINE_RECORDED",
+      "regression_pass": false
+    }
+  },
+  "invalid_method": {
+    "windows_powershell_5_samples_excluded": true,
+    "collector_guard_rejections": 2,
+    "product_failure": false,
+    "reason": "canonical collector requires PowerShell Core"
+  },
+  "safety": {
+    "connection_requested": false,
+    "ui_responding_after_collection": true,
+    "matching_crash_events": 0,
+    "service_before_and_after": "Running",
+    "pokrov_adapter_up_count_before_and_after": 0,
+    "route_dns_fingerprints_unchanged": true,
+    "ui_process_count_after_cleanup": 0,
+    "temporary_guest_tooling_removed": true
+  },
+  "credit": {
+    "windows_ui_idle_cpu_budget": "PASS",
+    "windows_ui_working_set": "BASELINE_RECORDED",
+    "memory_regression_pass": false,
+    "cold_start_connect_frame": false,
+    "physical_or_comparable_windows": false,
+    "full_candidate_device_scope": false,
+    "ledger_level_changed": false,
+    "gate_f": "BLOCKED_2_17_0"
+  },
+  "client_reconciliation": {
+    "pull_request": 86,
+    "merge_commit": "9a1c3b9b6fb58354a91066b1c812a2076b759990",
+    "hosted_run": 33899926514,
+    "hosted_job_steps": 0,
+    "hosted_classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING",
+    "client_evidence_sha256": "b4040fc455f48e08893a4fb2ed61f758228490e6b9ddbbb9040a462bc01981be"
+  },
+  "external_index": {
+    "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate33-windows-idle-budget-2026-09-04/candidate33-windows-idle-budget-evidence-index.json",
+    "sha256": "db39ed2cd619ff84b618f43a9dc43c09cf5b1693ff3a0856557ee99a458353c6"
+  },
+  "mutations": {
+    "candidate_bytes_changed": false,
+    "guest_network_changed": false,
+    "host_network_changed": false,
+    "production_runtime_changed": false,
+    "deploy_performed": false,
+    "public_release_created": false,
+    "stable_pointer_changed": false
+  }
+}

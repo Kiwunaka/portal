@@ -2,6 +2,31 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013HG candidate.33 Windows idle performance budget
+
+The exact candidate.33 `pokrov_windows.exe` runs the canonical client
+performance collector inside the dedicated headless Windows 11 VM under
+PowerShell Core `7.6.5`. The accepted run discards 30 one-second warmups and
+retains 60 one-second samples. Idle CPU p95 is exactly `1.0%`, meeting the
+`1.0%` target and stop boundary. The offline validator returns `PASS`.
+
+Working-set p95 is `98693120` bytes. The observation-first memory budget has
+no matching approved baseline, so its exact result is `BASELINE_RECORDED`, not
+a regression PASS. Two collector-guard rejections and one forced Windows
+PowerShell 5 output remain explicit harness/method evidence and are excluded
+from the accepted gate.
+
+The UI remains responsive with zero matching crash events. The service stays
+Running, POKROV adapter Up count remains zero and route/DNS fingerprints do
+not change. Cleanup stops only the test-launched UI and removes the verified
+temporary guest QA directory, including portable PowerShell; the main host is
+untouched.
+
+This is one VM/UI process, not physical/comparable Windows, service-combined
+idle, cold-start/connect/frame/battery/thermal or post-promotion proof.
+`PERF-001`, Gate E, `DOD-13` and `PR-09` gain stronger evidence without level
+change; Gate F stays `BLOCKED 2/17/0`.
+
 ## 2026-09-04 — WO-013HF candidate.33 headless browser performance
 
 Fresh production static exports from clean exact candidate.33 platform source
