@@ -183,10 +183,13 @@ service-restart/reboot recovery and exact RU baseline restoration pass within
 that candidate's bounded evidence. It does not transfer to private
 candidate.33. Candidate.33 separately proves fresh signed supply, exact
 candidate.32-to-33 update, `11/11` installed identity and plain/typed
-second-launch forwarding plus foreground focus under `WIN-001`. Its connected
-default/AWG/Smart-DNS and remaining device/origin/rollback rows are still
-non-PASS, so Gate F remains `BLOCKED 2/17/0`. Candidate.32 remains immutable
-`NO_GO 2/17/2` history. A source anchor, predecessor pass, solo PR control or
+second-launch forwarding plus foreground focus under `WIN-001`. Its exact
+source Gate B/D suites and local quality pass, and an isolated
+stable-to-candidate-to-stable drill restores byte-identically. All five Gates
+A–E still remain blocked at their live/manual boundaries; connected
+default/AWG/Smart-DNS, device/origin and runtime rollback rows are non-PASS, so
+Gate F remains `BLOCKED 2/17/0`. Candidate.32 remains immutable `NO_GO 2/17/2`
+history. A source anchor, local rollback, predecessor pass, solo PR control or
 one exact runtime slice cannot convert another current manual/unrun gate into
 `PASS`.
 
@@ -326,11 +329,13 @@ Current public user-facing version policy:
   `5620c2f0...` / `5115ab3c...` / `f84843c8...`. Signer run `33851401873`
   passes with real steps; output remains `ACTIONS_ARTIFACT_ONLY` and
   `promotion_authorized=false`. Exact candidate.32-to-33 update, installed
-  `11/11` identity and `WIN-001` plain/typed forwarding plus focus pass.
-  Gate F remains `BLOCKED 2/17/0`; connected Windows, Android runtime,
-  origins, rollback, approvals, performance and final aggregates remain
-  non-PASS. Candidate.32 and all earlier decisions remain immutable history;
-  Gate G is unauthorized
+  `11/11` identity and `WIN-001` plain/typed forwarding plus focus pass. Exact
+  source Gate B/D suites and local quality pass; isolated rollback returns the
+  stable handoff byte-identically. All five Gates A–E remain blocked at their
+  live/manual boundaries and Gate F remains `BLOCKED 2/17/0`; connected
+  Windows, Android runtime, origins, runtime rollback, approvals, comparable
+  performance and final aggregates remain non-PASS. Candidate.32 and all
+  earlier decisions remain immutable history; Gate G is unauthorized
 - Android `versionName`, Windows display version, cabinet download badges, and
   public changelog copy must stay aligned to the distributed stable line
 - internal build numbers and platform-native version codes may remain numeric or platform-specific and are not the public label

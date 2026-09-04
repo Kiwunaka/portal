@@ -1,0 +1,104 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-09-04T09:36:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.33",
+    "operational_id": "d7a09ea6601f2cc1422366b29cc0ed7d7b8ca6fee889a143a3ebef7fe488c923",
+    "manifest_sha256": "5620c2f0558e7c9a0f8ff8dfbcd47523986dd7fdf13f061e81adab3b10a3f680",
+    "signature_sha256": "5115ab3cd8ee0fa49018e521f75fd9baf5d469c2793a8a47cda4a965b82d3191",
+    "receipt_sha256": "f84843c81f9173072dcb3f3f551f7ef5ca9e41c21312ddec77ca0fe6cb6b78d7",
+    "sources": {
+      "platform": "f5300053026d32826e54c02202303e1f68c65bc1",
+      "client": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "63993fba699b68641b7e972071ab7729fa9ec43c"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "MANUAL_OWNER_TEST",
+    "mandatory_stop_ship_and_dod": "MISSING",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "SKIPPED_BY_OWNER",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MANUAL_OWNER_TEST",
+    "current_origin": "NOT_RUN",
+    "brain_origin": "NOT_RUN",
+    "ru_origin": "NOT_RUN",
+    "windows_live_network": "NOT_RUN",
+    "android_ldplayer_rehearsal": "NOT_RUN",
+    "android_physical_device": "NOT_RUN",
+    "authenticated_client_egress": "NOT_RUN",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "MANUAL_OWNER_TEST",
+    "hosted_required_checks": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+  },
+  "facts": {
+    "gates_a_e": "Exact candidate.33 source tuple passes Gate B 70/70 platform plus 111/111 client, Gate D 196/196 plus 12 subtests and 25/25 Action Intent/policy, and local quality 15/15 including client 413/413, cabinet 69/69 and static performance 9/9. All five gates remain BLOCKED on live/manual boundaries with zero source or local-fixture failures.",
+    "stop_ship": "Permanent local STOP-SHIP anchors pass 7/7. Branch enforcement remains unavailable or owner-excepted, exact Windows live network is NOT_RUN, and final no-open-P0/DoD attestation is missing.",
+    "signed_supply": "Detached Ed25519 signature, receipt, six artifact identities, eleven Windows runtime files, CycloneDX root/property and SLSA invocation/internal references pass. Canonical artifact-set SHA-256 is 1858db3491effa6224d3816763f7bd90a16429ae6b21c6fc97275d84f5d31978.",
+    "rollback": "Exact candidate.33 isolated portal/client sequence 1.1.6+20260819 -> pokrov-1.2.0 -> 1.1.6+20260819 passes with byte-identical stable restoration and unrelated-state preservation. This is I3 local evidence only; runtime pointer/kill rollback and origin readback remain open.",
+    "windows": "Exact candidate.33 installer updates candidate.32 to 11/11 runtime files and passes WIN-001 singleton, typed forwarding and focus. Connected TUN/DNS/egress, complete lifecycle and trusted Windows signing remain open.",
+    "android": "Candidate.33 production-signed Android artifacts pass static supply validation. No candidate.33 phone or LDPlayer runtime test was performed in this slice.",
+    "dependency_audit": "All three package-lock files are byte-identical to the candidate.32 locks whose retained audit result was zero findings. The fresh candidate.33 npm registry request timed out, so no fresh audit result is claimed.",
+    "hosted_boundary": "Release-index contract, signing and receipt jobs pass with real steps. Required platform/client jobs execute zero steps and remain BLOCKED_BY_ACCESS_GITHUB_BILLING; Core branch protection remains owner-excepted and unprotected.",
+    "decision_boundary": "Gate F remains BLOCKED with no explicit FAIL rows. No Gate G, deploy, public release, Store submission or stable-pointer mutation is authorized."
+  },
+  "source_records": [
+    "013GU-candidate33-gates-a-e-local-rollback.json"
+  ],
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GU-candidate33-gates-a-e-local-rollback/013GU-candidate33-gates-a-e-local-rollback.json",
+      "sha256": "f183d82a89184443dfeef9d473ade8349ae50196aa2f579afe899be05b8386a4"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GT-candidate33-signed-supply-windows-focus/013GT-candidate33-signed-binding.json",
+      "sha256": "79bd55b410f441f7a003498ece4bfe81dec460dd5ed893115d212a990554920c"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GT-candidate33-signed-supply-windows-focus/013GT-candidate33-hosted-checks.json",
+      "sha256": "fc21d2b55e27e412c612650dec9c3790608ca028dfef58b759318d0d88e80d04"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GT-candidate33-signed-supply-windows-focus/013GT-candidate33-windows-focus.json",
+      "sha256": "20ba6afee2ee88a2f11d430c37266f9da51ed61c934c4fbd2fdd17443a4d65ca"
+    }
+  ],
+  "external_evidence": [
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate33-gates-a-e-2026-09-04/local-quality/010I-local-quality-gate.json",
+      "sha256": "bf14b540a0f1242caa8be4e860480ca3b74043376a6549e42e1bca37fc7b7934"
+    },
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate33-gates-a-e-2026-09-04/candidate33-rollback-rehearsal.json",
+      "sha256": "2f1207c96788c28300220676c78c80a03193de8eb1f39cf2a425331b6fc28dcf"
+    },
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate33-gates-a-e-2026-09-04/candidate33-stop-ship.json",
+      "sha256": "f7e874f56d7a5145b6b3b7c9fdbf45292812d53b762b86b32d7ad5855d695feb"
+    },
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate33-gates-a-e-2026-09-04/candidate33-preflight.json",
+      "sha256": "cffdc9976363dffa9298fe28c85f20898b01a52219c86256cc74af597955d9b2"
+    }
+  ],
+  "mutation_boundary": {
+    "candidate_artifact_mutated": false,
+    "phone_install_or_runtime_test": false,
+    "windows_vm_used_in_this_slice": false,
+    "screen_or_input_control_used": false,
+    "host_network_mutated": false,
+    "payment_or_provider_action": false,
+    "database_or_outbox_mutation": false,
+    "operator_action_executed": false,
+    "tracked_or_runtime_pointer_changed": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT CANDIDATE33 SOURCE LOCAL QUALITY AND ISOLATED ROLLBACK PASS; GATE_F BLOCKED WITH LIVE DEVICE, ORIGIN, PROVIDER, OPERATOR, LEGAL, PERFORMANCE, RUNTIME ROLLBACK, FRESH DEPENDENCY AUDIT AND FINAL ATTESTATIONS OPEN; NO GATE_G OR PROMOTION"
+}
