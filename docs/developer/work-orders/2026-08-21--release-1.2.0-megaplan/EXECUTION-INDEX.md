@@ -2,6 +2,23 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013HB candidate.33 Windows product startup preference
+
+The owning candidate.33 Profile → Windows preference now passes in the exact
+installed application. With the dedicated guest link off, enabling
+`Запускать вместе с Windows` creates the exact quoted installed UI plus
+`--startup` Run value; disabling it removes that value. The same ordinary UI
+PID and Automatic LocalSystem service remain, TUN stays absent and exact
+route/DNS fingerprints do not change.
+
+A temporary first-launch marker, UI and guest fixtures are removed, and the
+bridged guest link plus network baseline are restored. WO-013HA separately
+proves real-login hidden startup and same-PID ordinary activation for this exact
+Run value; the combined same-sequence reboot is not repeated. Saved state,
+managed auto-connect and delayed-network readiness remain open, so
+`REL/WIN-005` stays `I3`. Gate F remains `BLOCKED 2/17/0`; no level,
+candidate, deploy or public state changes.
+
 ## 2026-09-04 — WO-013HA candidate.33 Windows login startup
 
 The exact cleanly reinstalled candidate.33 now passes a real guest-login
