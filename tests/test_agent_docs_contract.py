@@ -1287,6 +1287,22 @@ def test_active_release_owners_name_public_github_stable_direct() -> None:
     assert "historical outside-store beta" in historical_beta
 
 
+def test_publishing_guide_tracks_current_private_candidate_verdict() -> None:
+    publishing = (
+        REPO_ROOT / "docs/operations/publishing-and-signing-guide.md"
+    ).read_text(encoding="utf-8")
+    public_versioning = publishing.split("## Public Versioning Policy", 1)[1].split(
+        "## Current POKROV-app Client Verification Commands", 1
+    )[0]
+
+    assert "pokrov-1.2.0-candidate.32" in public_versioning
+    assert "NO_GO 2/17/2" in public_versioning
+    assert "76abed9" in public_versioning
+    assert "pre-candidate" in public_versioning.casefold()
+    assert "promotion_authorized=false" in public_versioning
+    assert "newly numbered candidate is required" in public_versioning
+
+
 def test_superseded_release_trackers_are_evidence_only() -> None:
     registry = (REPO_ROOT / "docs/README.md").read_text(encoding="utf-8")
     expected_rows = (
