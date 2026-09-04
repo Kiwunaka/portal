@@ -1,0 +1,128 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate32-ledger-authority-reconciliation/v1",
+  "recorded_at_utc": "2026-09-04T01:35:36Z",
+  "status": "PASS_SEVEN_CURRENT_AUTHORITY_ROWS_RECONCILED_TO_CANDIDATE32_WITHOUT_LEVEL_OR_GATE_CHANGE",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.32",
+    "platform_source": "d0dd37c1003198ba08cffc49a040a77e21621a86",
+    "client_source": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "5d11fd6821a5ebfa42163f461332125143c553c3",
+    "signed_manifest_sha256": "b15938e1bef2b4cafb634eea81039163e2b15a446cda5bbd32d9894cbe2da449",
+    "signature_sha256": "e63d8ee39c15185afc9e600efe66a1a081b0fafc50343fd898114dfcb8bafcf4",
+    "receipt_sha256": "7bfaf81f26a2030e01db534732723fe726251457f4d0f7ebc6d7d92018375a42",
+    "sbom_sha256": "5ddf2a96244e70ad1284409f0cea6f5838fab5bfbca5c5b96a245f0716de2893",
+    "provenance_sha256": "4785cd005791a8872f4c8a45202ba2d35c9d1ba65737f5683ee17d0b927c53e6"
+  },
+  "authoritative_inputs": [
+    {
+      "work_order": "WO-013GF",
+      "scope": "candidate32 signed supply, hosted checks, non-elevated Windows boundary and initial Gate F",
+      "signed_binding_sha256": "e1b067710e8ec2ea194710e1dddbad469d67993cd00256b053daecf4795bdf04",
+      "hosted_checks_sha256": "e206264b65b392148f33d35bef50ce8a0fb196a78164382d8d88445701928b82"
+    },
+    {
+      "work_order": "WO-013GG",
+      "scope": "candidate32 Gates A-E source replay, PB-14 harness, isolated rollback and current Gate F",
+      "local_replay_sha256": "84b434a9cda73d303b166271aa347bf28d7306dd942f62cc0c8cb01421f4f986",
+      "gate_f_decision_sha256": "392cb684303ec8d53bc95d92d03ff449d89db43360e2e730e502598be1ce143e"
+    },
+    {
+      "work_order": "WO-013GH",
+      "scope": "candidate32 Android static signing, bundle and direct/store separation",
+      "evidence_sha256": "de8ea5fee90a0f1501d6dd0ad8e44848faec64bc0ab86c262023141fad4d5aa0"
+    }
+  ],
+  "reconciled_rows": [
+    {
+      "key": "REL/REPO-001",
+      "index_before": "I3",
+      "index_after": "I3",
+      "previous_current_authority": "candidate.21 signed index",
+      "new_current_authority": "candidate.32 signed index and receipt",
+      "remaining_boundary": "six public same-byte assets, immutable public readback and guarded runtime rollback"
+    },
+    {
+      "key": "OBS_DOD/DOD-23",
+      "index_before": "I3",
+      "index_after": "I3",
+      "previous_current_authority": "candidate.21 signed index with physical identity absent",
+      "new_current_authority": "candidate.32 signed index with focused PB-14 harness PASS",
+      "remaining_boundary": "exact installed physical identity, live cohort, deployed readback, guarded rollback and post-promotion health"
+    },
+    {
+      "key": "OBS_PB/PB-14",
+      "index_before": "I3",
+      "index_after": "I3",
+      "previous_current_authority": "candidate.21 signed index with physical identity absent",
+      "new_current_authority": "candidate.32 signed index with focused PB-14 harness PASS",
+      "remaining_boundary": "exact installed physical identity, live incident/cohort path, deployed readback, guarded rollback and post-promotion health"
+    },
+    {
+      "key": "FE/P12-023",
+      "index_before": "I3",
+      "index_after": "I3",
+      "previous_current_authority": "candidate.21 private signed trust surface",
+      "new_current_authority": "candidate.32 private signed trust surface",
+      "remaining_boundary": "six public same-byte assets, public index readback and stable pointer"
+    },
+    {
+      "key": "FE_PR/PR-09",
+      "index_before": "I3",
+      "index_after": "I3",
+      "previous_current_authority": "candidate.21 local quality",
+      "new_current_authority": "candidate.32 exact-source local quality 15/15",
+      "remaining_boundary": "physical accessibility/performance, authenticated journeys, comparable artifacts, named origins and post-promotion proof"
+    },
+    {
+      "key": "FE_PR/PR-10",
+      "index_before": "I3",
+      "index_after": "I3",
+      "previous_current_authority": "candidate.21 Gate F BLOCKED 5/14/0",
+      "new_current_authority": "candidate.32 Gate F BLOCKED 2/17/0 with zero validation errors",
+      "remaining_boundary": "the seventeen explicit runtime, origin, provider, Operator, legal, rollback, performance and final-attestation non-PASS rows"
+    },
+    {
+      "key": "FRKN_PLAN/W1-03",
+      "index_before": "I3",
+      "index_after": "I3",
+      "previous_current_authority": "candidate.21 SBOM and provenance",
+      "new_current_authority": "candidate.32 candidate-bound SBOM and provenance",
+      "remaining_boundary": "public same-byte asset/SBOM/provenance/notices mapping and final promotion evidence"
+    }
+  ],
+  "retained_history_policy": {
+    "candidate21_runtime_or_static_results_relabelled_as_candidate32": false,
+    "historical_work_orders_rewritten": false,
+    "rows_with_only_historical_candidate21_evidence_left_for_separate_review": true
+  },
+  "ledger_invariants": {
+    "row_count": 378,
+    "unique_primary_keys": 378,
+    "duplicate_primary_keys": 0,
+    "changed_rows": 7,
+    "index_changes": 0,
+    "distribution": {
+      "I4": 7,
+      "I3": 320,
+      "I2": 19,
+      "I1": 32,
+      "I0": 0
+    }
+  },
+  "decision": {
+    "gate_f": "BLOCKED_2_PASS_17_NON_PASS_0_FAIL",
+    "gate_f_regenerated": false,
+    "gate_g_authorized": false,
+    "promotion_authorized": false,
+    "public_release_created": false
+  },
+  "mutation_boundary": {
+    "source_or_runtime_behavior_changed": false,
+    "host_input_vpn_route_or_dns_changed": false,
+    "vm_emulator_or_phone_used": false,
+    "server_provider_payment_or_entitlement_changed": false,
+    "deploy_publication_store_or_stable_pointer_changed": false
+  },
+  "evidence_ceiling": "CURRENT_LEDGER_AUTHORITY_RECONCILED_FOR_SEVEN_ROWS_ONLY; NO_NEW_RUNTIME_DEVICE_OR_RELEASE_PROOF"
+}
