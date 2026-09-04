@@ -1,0 +1,86 @@
+{
+  "schema": "pokrov.release-1.2.0.wo-013he-candidate33-windows-ui-idle/v1",
+  "work_order": "WO-013HE",
+  "recorded_at_utc": "2026-09-04T16:06:27.4298830Z",
+  "status": "PASS_EXACT_CANDIDATE33_WINDOWS_FRESH_PROCESS_UI_IDLE_NO_NETWORK_MUTATION_PERFORMANCE_BUDGET_NOT_DEFINED_GATE_F_BLOCKED",
+  "candidate": {
+    "label": "pokrov-1.2.0-candidate.33",
+    "app_version": "1.2.0+4053",
+    "platform_source": "f5300053026d32826e54c02202303e1f68c65bc1",
+    "client_source": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "63993fba699b68641b7e972071ab7729fa9ec43c",
+    "windows_ui_sha256": "1b175a66523be467c0fa66e8f74df20dbeb87f7e190f5dc57a9f1cea0961d97f",
+    "windows_ui_size": 192512
+  },
+  "environment": {
+    "kind": "dedicated headless VirtualBox Windows 11 VM",
+    "os": "Microsoft Windows 11 Enterprise Evaluation",
+    "logical_processors": 2,
+    "memory_bytes": 4274917376,
+    "interactive_session": 1,
+    "host_input_used": false,
+    "host_network_changed": false,
+    "guest_windows_update_state": "Stopped_Disabled"
+  },
+  "startup": {
+    "mode": "fresh_process_warm_guest_file_cache",
+    "process_observed_ms": 75.107,
+    "responsive_window_observed_ms": 376.835,
+    "responsive_window_observed": true
+  },
+  "idle": {
+    "sample_interval_seconds": 5,
+    "sample_count": 10,
+    "sample_duration_seconds": 45,
+    "normalized_cpu_percent": 1.9097,
+    "working_set_bytes_p50": 94621696,
+    "working_set_bytes_p95": 95019008,
+    "private_memory_bytes_p50": 76607488,
+    "private_memory_bytes_p95": 81367040,
+    "thread_count_min": 15,
+    "thread_count_max": 22,
+    "handle_count_min": 378,
+    "handle_count_max": 404,
+    "all_samples_responding": true,
+    "all_samples_window_present": true,
+    "crash_event_count": 0
+  },
+  "safety": {
+    "connect_requested": false,
+    "user_data_inspected": false,
+    "service_before_and_after": "Running_Auto_LocalSystem",
+    "route_dns_fingerprint_unchanged": true,
+    "pokrov_adapter_up_count_before_after_cleanup": 0,
+    "ui_process_count_after_cleanup": 0,
+    "route_dns_restored_after_cleanup": true
+  },
+  "credit": {
+    "fresh_process_ui_start": true,
+    "bounded_idle_observation": true,
+    "no_network_mutation": true,
+    "cold_boot_measurement": false,
+    "performance_budget_pass": false,
+    "comparable_device_matrix": false,
+    "level_changed": false,
+    "gate_f": "BLOCKED_2_17_0"
+  },
+  "client_reconciliation": {
+    "pull_request": 84,
+    "merge_commit": "ec67ef86b03ff316a33b048142ece73e6256ce8a",
+    "hosted_run": 33893847234,
+    "hosted_job_steps": 0,
+    "hosted_classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+  },
+  "mutations": {
+    "candidate_bytes_changed": false,
+    "guest_network_changed": false,
+    "host_network_changed": false,
+    "production_runtime_changed": false,
+    "deploy_performed": false,
+    "public_release_created": false,
+    "stable_pointer_changed": false
+  },
+  "external_index_sha256": "d176d3c08df91366e055626c012a8304a0c6e535e0f49bcb285c8411f679d68a",
+  "client_evidence_sha256": "b993ee6d7f2ed572c41b12e0bff5b3cff4185eb71f9392365eb81ecf7641d5cc"
+}
