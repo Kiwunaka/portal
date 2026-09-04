@@ -1,0 +1,83 @@
+{
+  "schema": "pokrov.release-1.2.0.wo-013gw-candidate33-windows-connected-crash-recovery/v1",
+  "work_order": "WO-013GW",
+  "recorded_at_utc": "2026-09-04T11:51:19.6011841Z",
+  "status": "PASS_BOUNDED_EXACT_CANDIDATE_CONNECTED_CRASH_RECOVERY_GATE_F_BLOCKED",
+  "candidate": {
+    "label": "pokrov-1.2.0-candidate.33",
+    "platform_source": "f5300053026d32826e54c02202303e1f68c65bc1",
+    "client_source": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "63993fba699b68641b7e972071ab7729fa9ec43c",
+    "windows_setup_sha256": "250622f7e4bf9bea39a9456004d4cfeb2340a987c622c46f70b3af07aaec3580",
+    "windows_manifest_sha256": "0f93211e254076fad5de8cf88d0817897313c2fd3f3b2daa6d1253628da63a5b",
+    "installed_file_matches": 11,
+    "installed_file_required": 11
+  },
+  "test": {
+    "environment": "POKROV-Win11-Test",
+    "profile_class": "synthetic_secret_free_direct_tun",
+    "connected_tun_present": true,
+    "connected_route_changed": true,
+    "connected_dns_changed": true,
+    "connected_dns_pass": "4/4",
+    "connected_api_health": 200,
+    "connected_recovery_journal_stage": "committed",
+    "old_service_process_terminated": true,
+    "automatic_scm_recovery": true,
+    "automatic_recovery_elapsed_ms": 5449,
+    "operator_remediation_used": false,
+    "recovery_journal_after": "clean",
+    "tunnel_absent_after": true,
+    "route_restored_after": true,
+    "dns_restored_after": true,
+    "ordinary_ipc_trusted_after": true,
+    "ordinary_ipc_phase_after": "initialized",
+    "ordinary_ipc_running_after": false,
+    "ordinary_ipc_failure_after": "none",
+    "diagnostic_cli_removed": true,
+    "final_ui_process_count": 0,
+    "final_tunnel_adapter_count": 0,
+    "final_dns_pass": "4/4",
+    "final_api_health": 200
+  },
+  "evidence": {
+    "external_index_sha256": "50552dddbb35ba9be280dd2437e25e7a90fad98231673debf064aaa37ad56109",
+    "connected_prepare_sha256": "3dd62032da6f90913b6c2244a2794ced87efa9d492aa108dc79cb828be821390",
+    "crash_recovery_sha256": "ecd5fc6f6672a91aec037fac5c4e3319d01e39d8c296f0741000745888612237",
+    "ordinary_postcheck_sha256": "2da0d7fa95d4f4bd8eb010442860362bfb6ff6ca7373d70cbf157011c6b24fac",
+    "final_cleanup_sha256": "736b881a9b0ab12d6b8bec3fdcbef34c2271bbebc180fea45960b99c107083d8",
+    "harness_attempts": [
+      "NON_PRODUCT_HARNESS_ERROR_UNSUPPORTED_CLI_ARGUMENTS_BEFORE_NETWORK_MUTATION",
+      "NON_PRODUCT_HARNESS_ERROR_UNTRUSTED_CLI_LOCATION_BEFORE_NETWORK_MUTATION"
+    ]
+  },
+  "completion": {
+    "level_changed": false,
+    "distribution": {
+      "I4": 8,
+      "I3": 319,
+      "I2": 19,
+      "I1": 32,
+      "I0": 0,
+      "total": 378
+    }
+  },
+  "gate_f": {
+    "status": "BLOCKED",
+    "pass": 2,
+    "non_pass": 17,
+    "fail": 0,
+    "validation_errors": 0,
+    "gate_g_authorized": false
+  },
+  "mutations": {
+    "candidate_bytes_changed": false,
+    "production_runtime_changed": false,
+    "main_host_network_changed": false,
+    "main_host_input_used": false,
+    "deploy_performed": false,
+    "public_release_created": false,
+    "stable_pointer_changed": false
+  }
+}
