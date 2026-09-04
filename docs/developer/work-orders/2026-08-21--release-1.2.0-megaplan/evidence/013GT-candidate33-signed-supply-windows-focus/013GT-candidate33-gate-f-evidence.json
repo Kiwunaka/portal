@@ -1,0 +1,54 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-09-04T08:25:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.33",
+    "operational_id": "d7a09ea6601f2cc1422366b29cc0ed7d7b8ca6fee889a143a3ebef7fe488c923",
+    "manifest_sha256": "5620c2f0558e7c9a0f8ff8dfbcd47523986dd7fdf13f061e81adab3b10a3f680",
+    "signature_sha256": "5115ab3cd8ee0fa49018e521f75fd9baf5d469c2793a8a47cda4a965b82d3191",
+    "receipt_sha256": "f84843c81f9173072dcb3f3f551f7ef5ca9e41c21312ddec77ca0fe6cb6b78d7"
+  },
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GT-candidate33-signed-supply-windows-focus/013GT-candidate33-signed-binding.json",
+      "sha256": "79bd55b410f441f7a003498ece4bfe81dec460dd5ed893115d212a990554920c"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GT-candidate33-signed-supply-windows-focus/013GT-candidate33-windows-focus.json",
+      "sha256": "20ba6afee2ee88a2f11d430c37266f9da51ed61c934c4fbd2fdd17443a4d65ca"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GT-candidate33-signed-supply-windows-focus/013GT-candidate33-hosted-checks.json",
+      "sha256": "fc21d2b55e27e412c612650dec9c3790608ca028dfef58b759318d0d88e80d04"
+    }
+  ],
+  "checks": {
+    "gates_a_e_exact_candidate": "NOT_RUN",
+    "mandatory_stop_ship_and_dod": "NOT_RUN",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "SKIPPED_BY_OWNER",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "NOT_RUN",
+    "current_origin": "NOT_RUN",
+    "brain_origin": "NOT_RUN",
+    "ru_origin": "NOT_RUN",
+    "windows_live_network": "NOT_RUN",
+    "android_ldplayer_rehearsal": "NOT_RUN",
+    "android_physical_device": "NOT_RUN",
+    "authenticated_client_egress": "NOT_RUN",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "NOT_RUN",
+    "hosted_required_checks": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+  },
+  "supplemental_exact_candidate_checks": {
+    "windows_candidate32_to_candidate33_update": "PASS",
+    "windows_win_001_singleton_typed_forwarding_focus": "PASS",
+    "windows_connected_tun_dns_egress": "NOT_RUN",
+    "android_static_signing_bundle_identity": "PASS"
+  },
+  "status": "READY_FOR_GATE_F_BLOCKED_DECISION",
+  "promotion_authorized": false
+}

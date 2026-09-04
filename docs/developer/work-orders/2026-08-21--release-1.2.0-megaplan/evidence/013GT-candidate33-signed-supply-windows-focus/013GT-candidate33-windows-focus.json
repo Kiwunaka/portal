@@ -1,0 +1,58 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate33-windows-focus/v1",
+  "recorded_at_utc": "2026-09-04T08:21:32Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.33",
+    "installer_sha256": "250622f7e4bf9bea39a9456004d4cfeb2340a987c622c46f70b3af07aaec3580",
+    "windows_manifest_sha256": "0f93211e254076fad5de8cf88d0817897313c2fd3f3b2daa6d1253628da63a5b",
+    "installed_ui_sha256": "1b175a66523be467c0fa66e8f74df20dbeb87f7e190f5dc57a9f1cea0961d97f",
+    "signed_manifest_sha256": "5620c2f0558e7c9a0f8ff8dfbcd47523986dd7fdf13f061e81adab3b10a3f680"
+  },
+  "environment": {
+    "vm": "POKROV-Win11-Test",
+    "os": "Microsoft Windows 11 Enterprise Evaluation",
+    "execution": "headless guest control; ordinary interactive medium-integrity user for UI checks",
+    "host_ui_or_network_control_taken": false,
+    "vm_powered_off_after_test": true
+  },
+  "update_from_candidate32": {
+    "status": "PASS",
+    "installer_exit_code": 0,
+    "required_file_matches": "11/11",
+    "service": "Running/Auto/LocalSystem",
+    "authenticode_status": "NotSigned",
+    "network_contour_unchanged": true,
+    "source_evidence_sha256": "7b28d4525434f3372172b84eee52c4a24da4a2b7177ade2794b420b011154889"
+  },
+  "win_001": {
+    "status": "PASS",
+    "plain_second_launch": {
+      "exit_code": 0,
+      "existing_process_retained": true,
+      "foreground_returned_to_existing": true
+    },
+    "typed_second_launch": {
+      "exit_code": 0,
+      "existing_process_retained": true,
+      "foreground_returned_to_existing": true
+    },
+    "final_process_count": 1,
+    "network_contour_unchanged": true,
+    "source_evidence_sha256": "183967cc6300b4387dcf5397ab5070e33af98e6db38fa46fa3a8e814ffc2ff3c"
+  },
+  "retained_harness_failures": [
+    {
+      "classification": "HARNESS_COLLECTOR_FAILURE",
+      "sha256": "2c4a151528fd1d47c0d6d42a43fd2bd87daaee22fa70124391c26e41d99c083b",
+      "reconciled": true
+    },
+    {
+      "classification": "HARNESS_CONTROL_WINDOW_FAILURE",
+      "sha256": "69ff9e9a55454f924fc69bb7be8dbfaf0922a7b0fe2392088766fab337f8d725",
+      "reconciled": true
+    }
+  ],
+  "status": "PASS_EXACT_CANDIDATE33_UPDATE_AND_WIN001",
+  "connected_tun_dns_egress": "NOT_RUN",
+  "promotion_authorized": false
+}
