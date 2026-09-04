@@ -2,6 +2,19 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013HA candidate.33 Windows login startup
+
+The exact cleanly reinstalled candidate.33 now passes a real guest-login
+`--startup` slice: one responsive session-1 UI process starts hidden without
+UAC, TUN or route/DNS drift, and an ordinary activation exposes a window on the
+same PID. The temporary Run value, activation task and UI are removed; the
+Automatic LocalSystem service and exact network baseline remain.
+
+The Run value was staged directly in the real interactive user's hive. The
+product preference toggle, managed auto-connect/saved state and delayed-network
+readiness remain open, so `REL/WIN-005` stays `I3`. Gate F remains `BLOCKED
+2/17/0`; no level, candidate, deploy or public state changes.
+
 ## 2026-09-04 — WO-013GZ candidate.33 Windows AWG PLAN readiness
 
 After the exact candidate.33 clean `11/11` reinstall, fresh guarded read-only

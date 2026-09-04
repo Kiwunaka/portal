@@ -1,0 +1,71 @@
+{
+  "schema": "pokrov.release-1.2.0.wo-013ha-candidate33-windows-login-startup/v1",
+  "work_order": "WO-013HA",
+  "recorded_at_utc": "2026-09-04T13:16:00Z",
+  "status": "PASS_EXACT_CANDIDATE33_WINDOWS_LOGIN_STARTUP_HIDDEN_SINGLETON_ACTIVATION_GATE_F_BLOCKED",
+  "candidate": {
+    "label": "pokrov-1.2.0-candidate.33",
+    "app_version": "1.2.0+4053",
+    "platform_source": "f5300053026d32826e54c02202303e1f68c65bc1",
+    "client_source": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "63993fba699b68641b7e972071ab7729fa9ec43c",
+    "windows_setup_sha256": "250622f7e4bf9bea39a9456004d4cfeb2340a987c622c46f70b3af07aaec3580",
+    "installed_ui_sha256": "1b175a66523be467c0fa66e8f74df20dbeb87f7e190f5dc57a9f1cea0961d97",
+    "installed_files": "11/11"
+  },
+  "login_startup": {
+    "run_value_exact": true,
+    "ui_count": 1,
+    "ui_pid": 7236,
+    "ui_session_id": 1,
+    "main_window_handle": 0,
+    "responding": true,
+    "uac_observed": false,
+    "tun_count": 0,
+    "network_baseline_exact": true
+  },
+  "ordinary_activation": {
+    "temporary_interactive_task_result": 0,
+    "temporary_task_removed": true,
+    "same_ui_pid": true,
+    "main_window_handle": 66164,
+    "tun_count": 0,
+    "network_baseline_exact": true
+  },
+  "cleanup": {
+    "test_run_value_removed": true,
+    "ui_count": 0,
+    "service": "Running_Auto_LocalSystem",
+    "tun_count": 0,
+    "network_baseline_exact": true
+  },
+  "limits": {
+    "product_preference_toggle_tested": false,
+    "managed_auto_connect_tested": false,
+    "saved_account_or_profile_state_tested": false,
+    "delayed_network_readiness_tested": false,
+    "sleep_resume_tested": false
+  },
+  "credit": {
+    "exact_login_startup_hidden": true,
+    "same_process_ordinary_activation": true,
+    "rel_win_005_index": "I3",
+    "level_changed": false,
+    "gate_f": "BLOCKED_2_17_0"
+  },
+  "mutations": {
+    "guest_run_value_temporary_and_removed": true,
+    "guest_task_temporary_and_removed": true,
+    "candidate_bytes_changed": false,
+    "host_input_used": false,
+    "host_network_changed": false,
+    "production_runtime_changed": false,
+    "deploy_performed": false,
+    "public_release_created": false,
+    "stable_pointer_changed": false
+  },
+  "external_index_sha256": "a0ba483a7dd87d12451ed8dcfdfd35f52caab6c7a298170983fa0ac48eb45090",
+  "hidden_desktop_screenshot_sha256": "420cb3f713d6eb158ea2e727f16e4c87902fdc8957a3ff95e3b4496147059063",
+  "visible_ui_screenshot_sha256": "575e235cdca627ab9f3a5129d5247c317f07ca56639c7c4f50de4e83fc59a49a"
+}
