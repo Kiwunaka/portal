@@ -1,0 +1,69 @@
+{
+  "schema": "pokrov.release-1.2.0.successor-focus-local-freeze-preflight/v1",
+  "recorded_at_utc": "2026-09-04T04:47:18Z",
+  "status": "READY_LOCAL_FREEZE",
+  "sources": {
+    "platform": {
+      "revision": "435999a55cf1c601ca41192a9c6792206ff88c4b",
+      "working_tree_state": "clean"
+    },
+    "client": {
+      "revision": "866bd663875d5d3cc4c1682213031f2855a3693b",
+      "focus_fix_revision": "76abed9056282df6436fbd8734f8093baabdb711",
+      "working_tree_state": "clean"
+    },
+    "core": {
+      "revision": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "working_tree_state": "clean"
+    },
+    "release_index": {
+      "revision": "86547e98e6d10ee589a55157b2b26e8fb6a12877",
+      "published_main_revision": "7a6b2ce859b34b074e877851ba50aae7e80854a3",
+      "head_is_published_ancestor": true,
+      "working_tree_state": "clean"
+    }
+  },
+  "versions": {
+    "target": "1.2.0",
+    "android": "1.2.0+4053",
+    "windows": "1.2.0+4053",
+    "app_shell": "1.2.0"
+  },
+  "result": {
+    "blocker_count": 0,
+    "ledger_total": 378,
+    "ledger_below_i3": 51,
+    "pre_freeze_rows_below_i3": 0,
+    "candidate_rows_below_i3": 22,
+    "deferred_rows_below_i3": 16,
+    "external_rows_below_i3": 13,
+    "external_pre_candidate_rows_below_i3": 0
+  },
+  "stage_policy": {
+    "schema": "pokrov.release-1.2.0.row-stage-policy/v1",
+    "sha256": "c6cfed020f8432daa2ae746fe1bc85b045302652374d6ce8c8421a6a6e543d23",
+    "default_stage": "pre_freeze",
+    "override_count": 71
+  },
+  "core_artifacts": {
+    "exact_local_bytes": true,
+    "android_match": true,
+    "windows_match": true,
+    "libcronet_match": true
+  },
+  "raw_evidence": {
+    "path": "E:/POKROV-tools/release-evidence/1.2.0-successor-focus-preflight-2026-09-04/successor-focus-preflight.json",
+    "sha256": "ff09e649ca3703df794378182e5a625bdb60398a4af5ac9dc2a68055c01784be"
+  },
+  "boundaries": {
+    "candidate_created": false,
+    "candidate_proven": false,
+    "promotion_authorized": false,
+    "new_signature": false,
+    "deploy": false,
+    "public_release": false,
+    "store_submission": false,
+    "stable_pointer_mutation": false
+  },
+  "evidence_ceiling": "READ_ONLY SUCCESSOR SOURCE FREEZE PREFLIGHT; EXACT CANDIDATE, SIGNATURE, RUNTIME AND PROMOTION PROOF REMAIN ABSENT"
+}
