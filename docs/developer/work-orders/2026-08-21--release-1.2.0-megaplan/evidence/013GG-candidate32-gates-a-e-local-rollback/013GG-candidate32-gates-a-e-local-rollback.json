@@ -1,0 +1,206 @@
+{
+  "schema": "pokrov.release-1.2.0.candidate32-gates-a-e-local-rollback/v1",
+  "work_order": "WO-013GG",
+  "recorded_at_utc": "2026-09-04T00:57:12Z",
+  "status": "PASS_EXACT_SOURCE_LOCAL_QUALITY_AND_ISOLATED_ROLLBACK_GATES_A_E_BLOCKED",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.32",
+    "version": "1.2.0+4053",
+    "operational_id": "a24e6a5984326dd2f57f34a4195aab85962a64efe991b85ed5284e871cf3dbbf",
+    "manifest_sha256": "b15938e1bef2b4cafb634eea81039163e2b15a446cda5bbd32d9894cbe2da449",
+    "signature_sha256": "e63d8ee39c15185afc9e600efe66a1a081b0fafc50343fd898114dfcb8bafcf4",
+    "receipt_sha256": "7bfaf81f26a2030e01db534732723fe726251457f4d0f7ebc6d7d92018375a42",
+    "sources": {
+      "platform": "d0dd37c1003198ba08cffc49a040a77e21621a86",
+      "client": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "5d11fd6821a5ebfa42163f461332125143c553c3"
+    }
+  },
+  "source_preflight": {
+    "status": "READY_LOCAL_FREEZE",
+    "blockers": 0,
+    "pre_freeze_rows_below_i3": 0,
+    "candidate_rows_below_i3": 22,
+    "deferred_rows_below_i3": 16,
+    "external_rows_below_i3": 13,
+    "candidate_proven": false,
+    "promotion_authorized": false,
+    "report_sha256": "daa2e2544ed749b76873f0868b81da932176c7b6b99e77c9bdd5747f0790e2a3"
+  },
+  "stop_ship": {
+    "status": "BLOCKED",
+    "local_regressions": "PASS_7_OF_7",
+    "owner_solo_controls": "PASS_3_OF_3_HISTORICAL_CONTROL",
+    "hosted_branch_policy": {
+      "platform": "BLOCKED_BY_ACCESS",
+      "client": "BLOCKED_BY_ACCESS",
+      "core": "OWNER_SOLO_EXCEPTION_UNPROTECTED"
+    },
+    "windows_live_gate": "NOT_RUN",
+    "report_sha256": "b500b9f3e7a4d110e9e204271b34e7da642e03f4baafedf3235eb097aefa8a9c"
+  },
+  "focused_tests": [
+    {
+      "gate": "B",
+      "source": "platform",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_observability_contracts.py tests/test_generate_observability_support_reference.py tests/test_release_handoff_metadata.py -q",
+      "result": "PASS_70_OF_70",
+      "duration_seconds": 0.93
+    },
+    {
+      "gate": "B",
+      "source": "client",
+      "command": "flutter test test/connection_experience_test.dart test/diagnostics_coordinator_test.dart test/client_experience_store_test.dart test/app_first_runtime_bootstrap_test.dart",
+      "result": "PASS_111_OF_111"
+    },
+    {
+      "gate": "D",
+      "source": "platform",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_api_payments_callbacks.py tests/test_lavatop_payment_providers.py tests/test_payment_email_readiness_smoke.py tests/test_admin_payments_api.py tests/test_payment_entitlement_claims.py tests/test_payment_bounded_context.py tests/test_payment_db_runtime.py tests/test_payment_return_service.py tests/test_payment_provider_boundaries.py tests/test_payment_order_service.py tests/test_payment_http_registry.py tests/test_payment_entitlement_outbox.py tests/test_module_slices.py -q",
+      "result": "PASS_196_OF_196_PLUS_12_SUBTESTS",
+      "duration_seconds": 703.43,
+      "warnings": "20_EXISTING_DEPRECATIONS"
+    },
+    {
+      "gate": "D",
+      "source": "platform",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_admin_action_intents.py tests/test_admin_action_policy_coverage.py -q",
+      "result": "PASS_25_OF_25",
+      "duration_seconds": 151.43
+    },
+    {
+      "scope": "rollback_pb14_harness",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_release_1_2_candidate_rollback_rehearsal.py tests/test_release_1_2_pb14_candidate_gate.py -q",
+      "result": "PASS_16_OF_16",
+      "duration_seconds": 15.04
+    }
+  ],
+  "local_quality": {
+    "status": "PASS_15_OF_15",
+    "candidate_proven": false,
+    "promotion_status": "MANUAL_OWNER_TEST",
+    "toolchain": {
+      "node": "22.14.0",
+      "npm": "10.9.2",
+      "flutter": "3.38.5",
+      "dart": "3.10.4"
+    },
+    "client_analyze": "PASS",
+    "client_widget_tests": "PASS_413_OF_413",
+    "webapp_lint_and_build": "PASS",
+    "webapp_cabinet_e2e": "PASS_69_OF_69",
+    "marketing_build_seo_responsive_reduced_motion": "PASS",
+    "adminapp_api_sdk_operations": "PASS_75_OF_75",
+    "adminapp_build": "PASS",
+    "static_performance": "PASS_9_OF_9",
+    "report_sha256": "aedd182b001cd3849b4cd2fef24a8e7dfce97f39987e2ad37eeca8e56e71b0c9",
+    "performance_evidence_sha256": "7bd9f5afb55c2f301edc4286030e8fb322a1fe75122ddcfd071f1038ed9afb4d",
+    "performance_gate_sha256": "222cc394f813b5f5cf59cc32eda43b7f15ece4df4024ac3f0894cd0b33fa2016"
+  },
+  "dependency_audit": {
+    "node": "22.14.0",
+    "npm": "10.9.2",
+    "webapp": {
+      "total": 0,
+      "package_lock_sha256": "6b303f41e2a39f4767d72c3f0fe48e52fa2ba2d64637fb4e7b0bb6fcaf2e1aa4"
+    },
+    "adminapp": {
+      "total": 0,
+      "package_lock_sha256": "ce55397a7e036ddf6e29c1e0a0754c71e8f636f2b96a0bf7b2f5ebe36c29cf6a"
+    },
+    "marketing": {
+      "total": 0,
+      "package_lock_sha256": "b7545ef35566448fc6e7794fc6c094fb31fd9b982f869631a1d19e5d2269452d"
+    }
+  },
+  "isolated_rollback": {
+    "status": "PASS_LOCAL_EXACT_CANDIDATE_PORTAL_CLIENT_ROLLBACK",
+    "sequence": [
+      "1.1.6+20260819",
+      "pokrov-1.2.0",
+      "1.1.6+20260819"
+    ],
+    "stable_handoff_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+    "candidate_handoff_sha256": "4e7054fa3966855942352a9155f69c5148d623752ba819bb5ac50b9799cb43f4",
+    "candidate_artifact_set_sha256": "1392133caa1cb52f59c058a918ba5006d6aefded048fc0927052e4ff51575fb0",
+    "portal_rollback_byte_identical": true,
+    "client_rollback_byte_identical": true,
+    "unrelated_state_preserved": true,
+    "report_sha256": "8e70ae2ba7ef1c1888d5e2a48ee0c22535fff4f2f6b3ff632778a19f4ff5e8ed"
+  },
+  "gates": {
+    "A": {
+      "decision": "BLOCKED",
+      "index": "I1",
+      "explicit_source_failure": false,
+      "blocker": "Windows live TUN/DNS/egress/recovery, physical Android, hosted platform/client execution and trusted Windows signing remain non-PASS."
+    },
+    "B": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "explicit_source_failure": false,
+      "blocker": "Exact candidate.32 connected Windows recovery and physical-device false-green boundaries remain open."
+    },
+    "C": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "explicit_source_failure": false,
+      "blocker": "Elevated Windows install/managed lifecycle, physical Android matrix, Store delivery and conditional Linux package proof remain open."
+    },
+    "D": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "explicit_source_failure": false,
+      "blocker": "Production provider, PostgreSQL locking/load, outbox delivery/reconciliation/reversal and real Operator rollback remain open."
+    },
+    "E": {
+      "decision": "BLOCKED",
+      "index": "I3",
+      "explicit_source_failure": false,
+      "blocker": "Authenticated journeys, physical accessibility/OEM/scaling, comparable device/browser performance, support, named origins and post-promotion proof remain open."
+    }
+  },
+  "completion_index": {
+    "REL_DOD/DOD-18": "I3_EXACT_CANDIDATE32_LOCAL_ROLLBACK_PASS_RUNTIME_OPEN",
+    "FE/P12-130": "I3_EXACT_CANDIDATE32_LOCAL_POINTER_ROLLBACK_PASS_RUNTIME_PUBLIC_OPEN",
+    "level_changes": 0
+  },
+  "aggregate": {
+    "evaluated_gates": 5,
+    "decision": "BLOCKED",
+    "explicit_source_failures": 0,
+    "candidate_replacement_required_by_observed_source_or_local_fixture_failure": false,
+    "gate_g_authorized": false
+  },
+  "external_evidence": [
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate32-gates-a-e-2026-09-04/candidate32-preflight.json",
+      "sha256": "daa2e2544ed749b76873f0868b81da932176c7b6b99e77c9bdd5747f0790e2a3"
+    },
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate32-gates-a-e-2026-09-04/candidate32-stop-ship.json",
+      "sha256": "b500b9f3e7a4d110e9e204271b34e7da642e03f4baafedf3235eb097aefa8a9c"
+    },
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate32-gates-a-e-2026-09-04/local-quality/010I-local-quality-gate.json",
+      "sha256": "aedd182b001cd3849b4cd2fef24a8e7dfce97f39987e2ad37eeca8e56e71b0c9"
+    },
+    {
+      "path": "E:/POKROV-tools/release-candidates/pokrov-1.2.0-candidate.32/rollback/candidate32-rollback-rehearsal.json",
+      "sha256": "8e70ae2ba7ef1c1888d5e2a48ee0c22535fff4f2f6b3ff632778a19f4ff5e8ed"
+    }
+  ],
+  "mutation_boundary": {
+    "host_network_configuration_changed": false,
+    "vm_emulator_or_phone_used": false,
+    "production_deploy": false,
+    "payment_or_provider_action": false,
+    "database_or_outbox_mutation": false,
+    "operator_action_executed": false,
+    "tracked_or_runtime_pointer_changed": false,
+    "public_release_or_store_submission": false,
+    "stable_promotion": false
+  },
+  "evidence_ceiling": "EXACT_CANDIDATE32 OFFLINE SOURCE LOCAL QUALITY AND ISOLATED ROLLBACK PASS; GATES A-E BLOCKED; LIVE DEVICE PROVIDER OPERATOR ORIGIN RUNTIME ROLLBACK AND PROMOTION PROOF OPEN"
+}

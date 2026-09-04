@@ -1,0 +1,99 @@
+{
+  "schema": "pokrov.release-1.2.0.gate-f-evidence/v1",
+  "recorded_at_utc": "2026-09-04T00:58:00Z",
+  "candidate": {
+    "id": "pokrov-1.2.0-candidate.32",
+    "operational_id": "a24e6a5984326dd2f57f34a4195aab85962a64efe991b85ed5284e871cf3dbbf",
+    "manifest_sha256": "b15938e1bef2b4cafb634eea81039163e2b15a446cda5bbd32d9894cbe2da449",
+    "signature_sha256": "e63d8ee39c15185afc9e600efe66a1a081b0fafc50343fd898114dfcb8bafcf4",
+    "receipt_sha256": "7bfaf81f26a2030e01db534732723fe726251457f4d0f7ebc6d7d92018375a42",
+    "sources": {
+      "platform": "d0dd37c1003198ba08cffc49a040a77e21621a86",
+      "client": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "5d11fd6821a5ebfa42163f461332125143c553c3"
+    }
+  },
+  "checks": {
+    "gates_a_e_exact_candidate": "MANUAL_OWNER_TEST",
+    "mandatory_stop_ship_and_dod": "MISSING",
+    "no_open_p0_false_green_or_secret_leak": "MISSING",
+    "supply_chain_signature_sbom_provenance": "PASS",
+    "target_channel_signing_and_manual_gates": "SKIPPED_BY_OWNER",
+    "release_docs_manifest_binding": "PASS",
+    "rollback_and_kill_controls": "MANUAL_OWNER_TEST",
+    "current_origin": "NOT_RUN",
+    "brain_origin": "NOT_RUN",
+    "ru_origin": "MANUAL_OWNER_TEST",
+    "windows_live_network": "MANUAL_OWNER_TEST",
+    "android_ldplayer_rehearsal": "NOT_RUN",
+    "android_physical_device": "NOT_RUN",
+    "authenticated_client_egress": "NOT_RUN",
+    "payment_provider_e2e": "MANUAL_OWNER_TEST",
+    "operator_auth_rbac_action_intent": "MANUAL_OWNER_TEST",
+    "legal_commercial_approval": "MANUAL_OWNER_TEST",
+    "performance_and_release_health": "MANUAL_OWNER_TEST",
+    "hosted_required_checks": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+  },
+  "facts": {
+    "gates_a_e": "Exact candidate.32 source tuple passes Gate B 70/70 platform plus 111/111 client, Gate D 196/196 plus 12 subtests and 25/25 Action Intent/policy, local quality 15/15 including client 413/413 and cabinet 69/69, static performance 9/9, and dependency audits 0/0/0. All five gates remain BLOCKED on live/manual boundaries with zero source failures.",
+    "stop_ship": "Permanent local STOP-SHIP anchors pass 7/7. Branch enforcement remains unavailable or owner-excepted, exact Windows live network is NOT_RUN, and final no-open-P0/DoD attestation is missing.",
+    "signed_supply": "Detached Ed25519 signature, receipt, six artifact identities, eleven Windows runtime files, CycloneDX root/property and SLSA invocation/internal references pass. Canonical artifact-set SHA-256 is 1392133caa1cb52f59c058a918ba5006d6aefded048fc0927052e4ff51575fb0.",
+    "rollback": "Exact candidate.32 isolated portal/client sequence 1.1.6+20260819 -> pokrov-1.2.0 -> 1.1.6+20260819 passes with byte-identical stable restoration and unrelated-state preservation. This is I3 local evidence only; runtime pointer/kill rollback and origin readback remain open.",
+    "windows": "Exact candidate.32 installer, signed manifest and receipt are bound inside the dedicated Windows 11 VM. The non-elevated installer fails closed without installed-byte, service, route or DNS mutation. Elevated install and managed live network remain open.",
+    "android": "ADB listed no devices in this CLI session. No candidate.32 phone or LDPlayer runtime test was performed.",
+    "hosted_boundary": "Seven of ten exact-source hosted jobs pass. Three platform/client jobs executed zero steps and remain BLOCKED_BY_ACCESS_GITHUB_BILLING.",
+    "decision_boundary": "Gate F remains BLOCKED with no explicit FAIL rows. No Gate G, deploy, public release, Store submission or stable-pointer mutation is authorized."
+  },
+  "source_records": [
+    "013GG-candidate32-gates-a-e-local-rollback.json"
+  ],
+  "upstream_evidence": [
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GG-candidate32-gates-a-e-local-rollback/013GG-candidate32-gates-a-e-local-rollback.json",
+      "sha256": "84b434a9cda73d303b166271aa347bf28d7306dd942f62cc0c8cb01421f4f986"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GF-candidate32-signed-supply-windows-non-elevated/013GF-candidate32-signed-binding.json",
+      "sha256": "e1b067710e8ec2ea194710e1dddbad469d67993cd00256b053daecf4795bdf04"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GF-candidate32-signed-supply-windows-non-elevated/013GF-candidate32-hosted-checks.json",
+      "sha256": "e206264b65b392148f33d35bef50ce8a0fb196a78164382d8d88445701928b82"
+    },
+    {
+      "path": "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GF-candidate32-signed-supply-windows-non-elevated/013GF-candidate32-windows-non-elevated.json",
+      "sha256": "c655898a51d6921a67a84f1a9d745e735362bd94237fa47ce41f01a597c7b9b2"
+    }
+  ],
+  "external_evidence": [
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate32-gates-a-e-2026-09-04/local-quality/010I-local-quality-gate.json",
+      "sha256": "aedd182b001cd3849b4cd2fef24a8e7dfce97f39987e2ad37eeca8e56e71b0c9"
+    },
+    {
+      "path": "E:/POKROV-tools/release-candidates/pokrov-1.2.0-candidate.32/rollback/candidate32-rollback-rehearsal.json",
+      "sha256": "8e70ae2ba7ef1c1888d5e2a48ee0c22535fff4f2f6b3ff632778a19f4ff5e8ed"
+    },
+    {
+      "path": "E:/POKROV-tools/release-evidence/1.2.0-candidate32-windows-non-elevated-2026-09-04/candidate32-vm-non-elevated.json",
+      "sha256": "0575b3389d85371ad616b7587763f9cf28e0f69132444763dd0be3176abf0893"
+    }
+  ],
+  "mutation_boundary": {
+    "candidate_artifact_mutated": false,
+    "phone_install_or_runtime_test": false,
+    "windows_vm_used_in_this_slice": false,
+    "screen_or_input_control_used": false,
+    "host_network_mutated": false,
+    "payment_or_provider_action": false,
+    "database_or_outbox_mutation": false,
+    "operator_action_executed": false,
+    "tracked_or_runtime_pointer_changed": false,
+    "production_deploy": false,
+    "public_release": false,
+    "stable_pointer_mutated": false,
+    "gate_g_authorized": false
+  },
+  "evidence_ceiling": "EXACT CANDIDATE32 SOURCE LOCAL QUALITY AND ISOLATED ROLLBACK PASS; GATE_F BLOCKED WITH LIVE DEVICE, ORIGIN, PROVIDER, OPERATOR, LEGAL, PERFORMANCE, RUNTIME ROLLBACK AND FINAL ATTESTATIONS OPEN; NO GATE_G OR PROMOTION"
+}
