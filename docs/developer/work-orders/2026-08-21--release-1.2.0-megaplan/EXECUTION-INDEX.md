@@ -2,6 +2,21 @@
 
 Last updated: 2026-09-04
 
+## 2026-09-04 — WO-013HE candidate.33 Windows fresh-process UI idle
+
+The exact installed candidate.33 UI starts as a fresh process in the dedicated
+headless Windows 11 VM and exposes a responsive window in `376.835 ms` with a
+warm guest file cache. Ten samples over `45` seconds remain responsive and
+window-present. Normalized CPU is `1.9097%`; working-set p50/p95 is
+`94621696/95019008` bytes; matching crash events are zero.
+
+No connection is requested. Route/DNS fingerprints stay unchanged, the hidden
+POKROV adapter remains not present/never Up, and cleanup leaves zero UI
+processes with the service Running/Auto/LocalSystem. The sample is descriptive,
+not a cold-boot, comparable-device or performance-budget PASS. Gate F stays
+`BLOCKED 2/17/0`; no level, candidate, deploy, public, host-input or host-network
+state changes.
+
 ## 2026-09-04 — WO-013HD candidate.33 LDPlayer 14 install and cold UI start
 
 The exact candidate.33 universal APK update-installs over build `4030` in the

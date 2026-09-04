@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-04
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_CANDIDATE33_WINDOWS_LIFECYCLE_STARTUP_SAVED_STATE_LDPLAYER_UI_PASS_AWG_PLAN_READY_GATE_F_BLOCKED`
+Wave status: `PHASE_11_CANDIDATE33_WINDOWS_LIFECYCLE_STARTUP_SAVED_STATE_IDLE_LDPLAYER_UI_PASS_AWG_PLAN_READY_GATE_F_BLOCKED`
 Release candidate: `POKROV_1_2_0_CANDIDATE33_PRIVATE_SIGNED_PARTIAL_DEVICE_RUNTIME_BLOCKED`
 
 ## Outcome
@@ -33,7 +33,8 @@ Windows AWG3.1/AWG2 PLAN-readiness authority; WO-013HA is the current exact
 Windows login-startup authority; WO-013HB is the current exact Windows product
 startup-preference authority; WO-013HC is the current exact Windows synthetic
 saved-state offline-startup/network-appearance authority; WO-013HD is the
-current exact LDPlayer install-identity and cold-UI-start authority. Private signed
+current exact LDPlayer install-identity and cold-UI-start authority; WO-013HE
+is the current exact Windows fresh-process UI idle authority. Private signed
 `pokrov-1.2.0-candidate.33`, app `1.2.0+4053`, binds merged platform
 `f530005...`, client `6ab1bca...`, Core `cd8f0f4...` and release-index source
 `63993fb...` to six fresh artifacts plus candidate-specific SBOM, provenance
@@ -103,6 +104,15 @@ same-PID/crash-buffer slice pass with no POKROV service or emulator TUN. Host
 Hiddify/sing-tun is active, so all emulator DNS, egress, VPN, AWG, Smart-DNS,
 WARP, routing and protocol checks remain `BLOCKED_BY_HOST_TUN`. Gate F and all
 ledger levels stay unchanged.
+
+The exact installed Windows UI separately exposes a responsive window in
+`376.835 ms` from a fresh process with warm guest file cache and stays
+responsive for all ten samples over `45` seconds. Normalized CPU is `1.9097%`;
+working-set p50/p95 is `94621696/95019008` bytes; matching crash events are
+zero. Route/DNS fingerprints stay unchanged, no POKROV/Wintun adapter is Up,
+and cleanup preserves the Automatic LocalSystem service. This is a descriptive
+VM observation, not a cold-boot, comparable-device or performance-budget PASS;
+Gate F and all ledger levels stay unchanged.
 
 Candidates.20–23 remain immutable `NO_GO` history. WO-013FA rejects
 candidate.22 after exact connected uninstall leaves the UI and 13 loaded files.
