@@ -1,0 +1,89 @@
+{
+  "schema": "pokrov.release-1.2.0.wo-013hb-candidate33-windows-product-preference/v1",
+  "work_order": "WO-013HB",
+  "recorded_at_utc": "2026-09-04T13:45:00Z",
+  "status": "PASS_EXACT_CANDIDATE33_PRODUCT_PREFERENCE_TOGGLE_ON_OFF_NO_PREMATURE_AUTOCONNECT_GATE_F_BLOCKED",
+  "candidate": {
+    "label": "pokrov-1.2.0-candidate.33",
+    "app_version": "1.2.0+4053",
+    "platform_source": "f5300053026d32826e54c02202303e1f68c65bc1",
+    "client_source": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "63993fba699b68641b7e972071ab7729fa9ec43c",
+    "windows_setup_sha256": "250622f7e4bf9bea39a9456004d4cfeb2340a987c622c46f70b3af07aaec3580",
+    "installed_ui_sha256": "1b175a66523be467c0fa66e8f74df20dbeb87f7e190f5dc57a9f1cea0961d97",
+    "installed_files": "11/11"
+  },
+  "fixture": {
+    "first_launch_marker_preexisting": false,
+    "first_launch_marker_staged": true,
+    "first_launch_marker_sha256": "4ddb3e96801a1ee2b77dc5247c0db478d5f97a93b90e7cdb09f5f51d43764b08",
+    "guest_network_link_during_ui_test": "off",
+    "guest_keyboard_only": true,
+    "host_input_used": false,
+    "existing_session_secret_files_read_or_moved": false
+  },
+  "product_toggle_on": {
+    "observed_at_utc": "2026-09-04T13:41:49.9598992Z",
+    "run_value": "\"C:\\Program Files\\POKROV\\pokrov_windows.exe\" --startup",
+    "run_value_exact": true,
+    "ui_pid": 6212,
+    "ui_count": 1,
+    "service": "Running_Auto_LocalSystem",
+    "tun_count": 0,
+    "network_baseline_exact": true
+  },
+  "product_toggle_off": {
+    "observed_at_utc": "2026-09-04T13:42:25.9388922Z",
+    "run_value_present": false,
+    "same_ui_pid": true,
+    "ui_pid": 6212,
+    "ui_count": 1,
+    "service": "Running_Auto_LocalSystem",
+    "tun_count": 0,
+    "network_baseline_exact": true
+  },
+  "cleanup": {
+    "observed_at_utc": "2026-09-04T13:43:01.8851778Z",
+    "first_launch_marker_present": false,
+    "run_value_present": false,
+    "ui_count": 0,
+    "temporary_task_present": false,
+    "temporary_script_present": false,
+    "guest_network_link": "on",
+    "guest_network_attachment": "bridged",
+    "service": "Running_Auto_LocalSystem",
+    "tun_count": 0,
+    "network_baseline_exact": true
+  },
+  "limits": {
+    "same_sequence_product_toggle_then_reboot_tested": false,
+    "real_login_startup_separately_proved_by_wo_013ha": true,
+    "saved_account_or_profile_migration_tested": false,
+    "managed_auto_connect_tested": false,
+    "delayed_network_readiness_tested": false,
+    "sleep_resume_tested": false
+  },
+  "credit": {
+    "product_preference_toggle_on": true,
+    "product_preference_toggle_off": true,
+    "exact_run_value_generated": true,
+    "premature_tun_or_network_mutation": false,
+    "rel_win_005_index": "I3",
+    "level_changed": false,
+    "gate_f": "BLOCKED_2_17_0"
+  },
+  "mutations": {
+    "guest_marker_temporary_and_removed": true,
+    "guest_network_link_temporarily_disabled_and_restored": true,
+    "candidate_bytes_changed": false,
+    "host_network_changed": false,
+    "production_runtime_changed": false,
+    "deploy_performed": false,
+    "public_release_created": false,
+    "stable_pointer_changed": false
+  },
+  "external_index_sha256": "085419e4c733eb9659cd4745a8e7119ceb0eaea7d4da1991c4c63f6d1e6e21a2",
+  "login_startup_external_index_sha256": "a0ba483a7dd87d12451ed8dcfdfd35f52caab6c7a298170983fa0ac48eb45090",
+  "toggle_on_screenshot_sha256": "2cd0d2d16e9eb0ea8b017d5a3cddb15686e536bab8d1c9014ef73b6e67031ce7"
+}
