@@ -1,0 +1,96 @@
+{
+  "schema": "pokrov.release-1.2.0.wo-013hd-candidate33-ldplayer14-ui/v1",
+  "work_order": "WO-013HD",
+  "recorded_at_utc": "2026-09-04T15:46:01Z",
+  "status": "PASS_EXACT_CANDIDATE33_LDPLAYER14_INSTALL_IDENTITY_COLD_UI_START_ONLY_NETWORK_BLOCKED_BY_HOST_TUN_GATE_F_BLOCKED",
+  "candidate": {
+    "label": "pokrov-1.2.0-candidate.33",
+    "app_version": "1.2.0+4053",
+    "platform_source": "f5300053026d32826e54c02202303e1f68c65bc1",
+    "client_source": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "63993fba699b68641b7e972071ab7729fa9ec43c",
+    "universal_apk_sha256": "51b86f66bd5c79fdf8a8e51d7607315a6ea3f8dfe9c36c4656034aac3b4583f2",
+    "universal_apk_size": 295370161,
+    "production_certificate_sha256": "0a0602a7df5d96a0b427909d004f3ddf26def86587634bf16694da8d654b2500"
+  },
+  "environment": {
+    "kind": "LDPlayer 14 Android emulator",
+    "instance_name": "pokrov-qa-120",
+    "android_version": "14",
+    "primary_abi": "x86_64",
+    "display": "1080x1920@480dpi",
+    "host_input_used": false,
+    "host_network_changed": false,
+    "host_tunnel": "Hiddify_sing_tun_tun0_up"
+  },
+  "install": {
+    "method": "in_place_update",
+    "previous_version_code": 4030,
+    "installed_version_code": 4053,
+    "data_preserved": true,
+    "uninstall_used": false,
+    "clear_data_used": false,
+    "installed_base_apk_sha256": "51b86f66bd5c79fdf8a8e51d7607315a6ea3f8dfe9c36c4656034aac3b4583f2",
+    "installed_bytes_match_candidate": true
+  },
+  "launch": {
+    "activity": "space.pokrov.pokrov_android_shell/.MainActivity",
+    "cold_status": "ok",
+    "total_time_ms": 665,
+    "wait_time_ms": 670,
+    "stable_process_seconds": 321,
+    "process_id_stable": true,
+    "top_resumed_activity_exact": true,
+    "crash_buffer_lines": 0,
+    "vpn_service_records": 0,
+    "emulator_tun0_present": false
+  },
+  "ui_privacy": {
+    "sanitized_tree_nodes": 23,
+    "app_package_nodes": 23,
+    "foreign_package_nodes": 0,
+    "raw_tree_retained": false,
+    "screenshot_retained": false
+  },
+  "network_credit": {
+    "classification": "BLOCKED_BY_HOST_TUN",
+    "dns": false,
+    "egress": false,
+    "vpn": false,
+    "awg": false,
+    "smart_dns": false,
+    "warp": false,
+    "routing_or_protocol": false
+  },
+  "cleanup": {
+    "qa_instance_stopped_gracefully": true,
+    "installed_candidate_retained": true,
+    "application_data_retained": true
+  },
+  "credit": {
+    "exact_install_identity": true,
+    "cold_ui_start": true,
+    "bounded_process_crash_check": true,
+    "network_or_full_ui_matrix": false,
+    "level_changed": false,
+    "gate_f": "BLOCKED_2_17_0"
+  },
+  "client_reconciliation": {
+    "pull_request": 83,
+    "merge_commit": "0113b4dd8b4325ce6b45fb0f4f18e5405b8cc8e8",
+    "hosted_run": 33891913025,
+    "hosted_job_steps": 0,
+    "hosted_classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING"
+  },
+  "mutations": {
+    "candidate_bytes_changed": false,
+    "host_network_changed": false,
+    "production_runtime_changed": false,
+    "deploy_performed": false,
+    "public_release_created": false,
+    "stable_pointer_changed": false
+  },
+  "external_index_sha256": "74703a9d17707cccec94f9ad5f134fed02f29ac9e14c23d9953164d6d3dfd850",
+  "client_evidence_sha256": "6114f575cb9dfe49f7e57bc642f39448dd735d01b950b264d67b531e3765e4c7"
+}
