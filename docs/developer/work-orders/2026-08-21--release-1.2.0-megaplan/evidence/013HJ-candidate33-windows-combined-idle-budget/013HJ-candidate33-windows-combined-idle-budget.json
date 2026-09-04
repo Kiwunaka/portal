@@ -1,7 +1,16 @@
 {
   "schema": "pokrov.release-1.2.0.013HJ-candidate33-windows-combined-idle-budget/v1",
   "recorded_at_utc": "2026-09-04T18:23:49.3406636Z",
-  "status": "PASS_EXACT_CANDIDATE33_WINDOWS_COMBINED_UI_SERVICE_IDLE_CPU_MEMORY_BASELINE_RECORDED_FULL_CANDIDATE_DEVICE_SCOPE_OPEN",
+  "status": "INVALID_METHOD_COMBINED_CPU_MEMORY_BASELINE_RETAINED",
+  "correction": {
+    "date": "2026-09-04",
+    "prior_summary_sha256": "7f88cc25f17b153d4c92bb7c70df472110be0f21b8b67620029244ff0246125b",
+    "reason": "Ordinary-user service CPU and TotalProcessorTime were null; the external harness cast null CPU to double zero. Historical CPU numbers below are invalid, not measured combined CPU.",
+    "runtime_observation": { "service_state": "Running", "pid": 3192, "cpu_is_null": true, "total_processor_time_is_null": true, "cpu_cast_to_double": 0, "working_set": 10338304 },
+    "accepted_combined_cpu_samples": 0,
+    "repeat_run": "NOT_RUN",
+    "raw_external_evidence_preserved": true
+  },
   "candidate": {
     "label": "pokrov-1.2.0-candidate.33",
     "app_version": "1.2.0+4053",
@@ -24,7 +33,8 @@
       "average_percent": 0.137304,
       "target_lte_percent": 1.0,
       "stop_lte_percent": 1.0,
-      "gate_status": "PASS"
+      "state": "HISTORICAL_INVALID_OBSERVATION",
+      "gate_status": "INVALID_METHOD"
     },
     "client.windows.idle_working_set_bytes": {
       "warmups_discarded": 30,
@@ -54,7 +64,7 @@
     "count": 2,
     "classification": "HARNESS_FAILURE_NO_PRODUCT_RESULT",
     "accepted_samples": 0,
-    "cause": "external Windows PowerShell process CPU property assumption corrected before the accepted run"
+    "cause": "Two setup failures preceded the retained run; its subsequent null-to-zero CPU workaround was also invalid. See correction."
   },
   "safety": {
     "connection_requested": false,
@@ -70,7 +80,7 @@
     "host_network_changed": false
   },
   "credit": {
-    "windows_combined_idle_cpu": "PASS",
+    "windows_combined_idle_cpu": "INVALID_METHOD",
     "windows_combined_idle_memory": "BASELINE_RECORDED",
     "memory_regression_pass": false,
     "full_dod_13": false,
@@ -80,7 +90,7 @@
   "evidence": {
     "external_index_path": "E:/POKROV-tools/release-evidence/1.2.0-candidate33-windows-combined-idle-budget-2026-09-04/candidate33-windows-combined-idle-budget-evidence-index.json",
     "external_index_sha256": "6c2434c1178b5f3fb61c1e5bb356c026142b822fd4c025a62b4b3382a06a44f2",
-    "client_summary_sha256": "cd7e4608e44d0465e1a063aad8f9518d4cf775627792ed31879613a9c1c29e95"
+    "historical_client_summary_sha256_before_correction": "cd7e4608e44d0465e1a063aad8f9518d4cf775627792ed31879613a9c1c29e95"
   },
   "github": {
     "client_pr": 89,
