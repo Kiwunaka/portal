@@ -1,0 +1,98 @@
+{
+  "schema": "pokrov.release-1.2.0.013HJ-candidate33-windows-combined-idle-budget/v1",
+  "recorded_at_utc": "2026-09-04T18:23:49.3406636Z",
+  "status": "PASS_EXACT_CANDIDATE33_WINDOWS_COMBINED_UI_SERVICE_IDLE_CPU_MEMORY_BASELINE_RECORDED_FULL_CANDIDATE_DEVICE_SCOPE_OPEN",
+  "candidate": {
+    "label": "pokrov-1.2.0-candidate.33",
+    "app_version": "1.2.0+4053",
+    "platform_source": "f5300053026d32826e54c02202303e1f68c65bc1",
+    "client_source": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "63993fba699b68641b7e972071ab7729fa9ec43c",
+    "windows_ui_sha256": "1b175a66523be467c0fa66e8f74df20dbeb87f7e190f5dc57a9f1cea0961d97f",
+    "windows_service_sha256": "b962d3d0c369e24a5d927a4b024148a3b8ceaed0e78efb6aef454f537d4c326b",
+    "combined_artifact_fingerprint_sha256": "f718bb93982fdcb8565ffb81dbb5d1f0849310219dc0bc6d2220e445b6638fa6"
+  },
+  "results": {
+    "client.windows.idle_cpu_percent": {
+      "warmups_discarded": 30,
+      "sample_count": 60,
+      "minimum_percent": 0.0,
+      "p50_percent": 0.0,
+      "p95_percent": 0.749734,
+      "maximum_percent": 1.499068,
+      "average_percent": 0.137304,
+      "target_lte_percent": 1.0,
+      "stop_lte_percent": 1.0,
+      "gate_status": "PASS"
+    },
+    "client.windows.idle_working_set_bytes": {
+      "warmups_discarded": 30,
+      "sample_count": 60,
+      "minimum_bytes": 107610112,
+      "p50_bytes": 108019712,
+      "p95_bytes": 108158976,
+      "maximum_bytes": 108158976,
+      "average_bytes": 107953288.533333,
+      "gate_status": "BASELINE_RECORDED",
+      "baseline_compared": false
+    }
+  },
+  "boundary": {
+    "processes": [
+      "pokrov_windows.exe",
+      "POKROVService/pokrov_service.exe"
+    ],
+    "combined_cpu_normalized_by_logical_processors": 2,
+    "combined_working_set": true,
+    "existing_interactive_session": 1,
+    "os_reboot_during_samples": false,
+    "physical_windows": false,
+    "full_candidate_device_scope": false
+  },
+  "invalid_attempts": {
+    "count": 2,
+    "classification": "HARNESS_FAILURE_NO_PRODUCT_RESULT",
+    "accepted_samples": 0,
+    "cause": "external Windows PowerShell process CPU property assumption corrected before the accepted run"
+  },
+  "safety": {
+    "connection_requested": false,
+    "all_retained_samples_ui_responding": true,
+    "application_crash_events": 0,
+    "service_after": "Running",
+    "pokrov_adapter_up_count_after": 0,
+    "route_dns_fingerprint_before_after": "3a6bca0c01fe20542bca6ecdbc02bb3465e25303646cbf5800fa94cfd4e92995",
+    "route_dns_unchanged": true,
+    "ui_process_count_after_cleanup": 0,
+    "guest_task_and_files_removed": true,
+    "host_input_used": false,
+    "host_network_changed": false
+  },
+  "credit": {
+    "windows_combined_idle_cpu": "PASS",
+    "windows_combined_idle_memory": "BASELINE_RECORDED",
+    "memory_regression_pass": false,
+    "full_dod_13": false,
+    "ledger_level_changed": false,
+    "gate_f": "BLOCKED_2_17_0"
+  },
+  "evidence": {
+    "external_index_path": "E:/POKROV-tools/release-evidence/1.2.0-candidate33-windows-combined-idle-budget-2026-09-04/candidate33-windows-combined-idle-budget-evidence-index.json",
+    "external_index_sha256": "6c2434c1178b5f3fb61c1e5bb356c026142b822fd4c025a62b4b3382a06a44f2",
+    "client_summary_sha256": "cd7e4608e44d0465e1a063aad8f9518d4cf775627792ed31879613a9c1c29e95"
+  },
+  "github": {
+    "client_pr": 89,
+    "client_merge": "c2d00d0520a35344740fa429fbe559a96bc0ed8c",
+    "client_hosted_run": 33906621241,
+    "client_hosted_classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING_STEPS_EMPTY"
+  },
+  "mutations": {
+    "candidate_bytes_changed": false,
+    "production_runtime_changed": false,
+    "deploy_performed": false,
+    "public_release_created": false,
+    "stable_pointer_changed": false
+  }
+}
