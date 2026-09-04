@@ -1,0 +1,71 @@
+{
+  "schema": "pokrov.release-1.2.0.013HI-candidate33-windows-cold-start-budget/v1",
+  "recorded_at_utc": "2026-09-04T17:52:25Z",
+  "status": "PASS_EXACT_CANDIDATE33_WINDOWS_USEFUL_COLD_PROCESS_START_FULL_CANDIDATE_DEVICE_SCOPE_OPEN",
+  "candidate": {
+    "label": "pokrov-1.2.0-candidate.33",
+    "app_version": "1.2.0+4053",
+    "platform_source": "f5300053026d32826e54c02202303e1f68c65bc1",
+    "client_source": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "63993fba699b68641b7e972071ab7729fa9ec43c",
+    "windows_ui_sha256": "1b175a66523be467c0fa66e8f74df20dbeb87f7e190f5dc57a9f1cea0961d97f"
+  },
+  "result": {
+    "budget_id": "client.windows.cold_start_useful_ui_ms",
+    "warmups_discarded": 3,
+    "sample_count": 20,
+    "minimum_ms": 310.576,
+    "p50_ms": 399.142,
+    "p95_ms": 1499.404,
+    "maximum_ms": 1911.46,
+    "average_ms": 556.63,
+    "target_lte_ms": 2000,
+    "stop_lte_ms": 3500,
+    "gate_status": "PASS"
+  },
+  "boundary": {
+    "ordinary_limited_user_process_start": true,
+    "existing_interactive_session": 1,
+    "useful_terminal": "responding POKROV window with a visible rendered UI Automation pane",
+    "process_recreated_between_samples": true,
+    "os_reboot_between_samples": false,
+    "physical_windows": false,
+    "full_candidate_device_scope": false
+  },
+  "safety": {
+    "application_crash_events": 0,
+    "service_after": "Running",
+    "pokrov_adapter_up_count_after": 0,
+    "route_dns_fingerprint_after": "3a6bca0c01fe20542bca6ecdbc02bb3465e25303646cbf5800fa94cfd4e92995",
+    "ui_process_count_after_cleanup": 0,
+    "guest_task_and_files_removed": true,
+    "host_input_used": false,
+    "host_network_changed": false
+  },
+  "credit": {
+    "windows_useful_cold_process_start": "PASS",
+    "cold_os_boot": false,
+    "full_dod_13": false,
+    "ledger_level_changed": false,
+    "gate_f": "BLOCKED_2_17_0"
+  },
+  "evidence": {
+    "external_index_path": "E:/POKROV-tools/release-evidence/1.2.0-candidate33-windows-cold-start-budget-2026-09-04/candidate33-windows-cold-start-evidence-index.json",
+    "external_index_sha256": "d81fb1a0d32cf0de0eb4ef242d9ace4898468b31693778e57c5b7aebee307a6d",
+    "client_summary_sha256": "d0aa43172b469a47bf0cc3aaf7c19588ffcf06737e2727214af7da604f85cc9c"
+  },
+  "github": {
+    "client_pr": 88,
+    "client_merge": "3a88044cc8c6dc49ac652bdf681a71e53f22c4d0",
+    "client_hosted_run": 33903440689,
+    "client_hosted_classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING_STEPS_EMPTY"
+  },
+  "mutations": {
+    "candidate_bytes_changed": false,
+    "production_runtime_changed": false,
+    "deploy_performed": false,
+    "public_release_created": false,
+    "stable_pointer_changed": false
+  }
+}
