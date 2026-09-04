@@ -2,7 +2,7 @@
 
 Last updated: 2026-09-04
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_CANDIDATE33_WINDOWS_LIFECYCLE_STARTUP_SAVED_STATE_IDLE_CPU_BUDGET_LDPLAYER_UI_MARKETING_BROWSER_PASS_CABINET_BROWSER_BLOCKED_AWG_PLAN_READY_GATE_F_BLOCKED`
+Wave status: `PHASE_11_CANDIDATE33_WINDOWS_LIFECYCLE_STARTUP_SAVED_STATE_IDLE_CPU_ARTIFACT_BASELINES_LDPLAYER_UI_MARKETING_BROWSER_PASS_CABINET_BROWSER_BLOCKED_AWG_PLAN_READY_GATE_F_BLOCKED`
 Release candidate: `POKROV_1_2_0_CANDIDATE33_PRIVATE_SIGNED_PARTIAL_DEVICE_RUNTIME_BLOCKED`
 
 ## Outcome
@@ -37,7 +37,9 @@ current exact LDPlayer install-identity and cold-UI-start authority; WO-013HE
 is the current exact Windows fresh-process UI idle authority; WO-013HF is the
 current exact-source localhost marketing browser-budget and cabinet
 browser-access boundary authority; WO-013HG is the current exact candidate.33
-Windows UI idle CPU budget and working-set baseline authority. Private signed
+Windows UI idle CPU budget and working-set baseline authority; WO-013HH is the
+current exact candidate.33 Android/Windows artifact-size baseline authority.
+Private signed
 `pokrov-1.2.0-candidate.33`, app `1.2.0+4053`, binds merged platform
 `f530005...`, client `6ab1bca...`, Core `cd8f0f4...` and release-index source
 `63993fb...` to six fresh artifacts plus candidate-specific SBOM, provenance
@@ -1250,6 +1252,7 @@ The row order is a dependency order, not permission for one giant merge. Each im
 | `WO-013HC` | Prove exact candidate.33 synthetic saved-state migration across offline Windows login startup and later network appearance | Exact installed UI, dedicated temporary user, synthetic v0 account/profile state, secure-store migration, guest cable off/on, service/UI/Core/TUN contour and SYSTEM cleanup | State migrates to schema v1 secure storage with no plaintext token field; one hidden PID remains disconnected when Ethernet appears; no consent/Core/TUN occurs. SYSTEM removes the temporary user/profile/data/task and restores `pokrovtest`. Valid saved-account/managed-profile refresh and managed auto-connect remain open; `WIN-005` stays `I3`, Gate F `2/17/0` | Repeat with a valid saved account/profile and managed-profile refresh, then prove explicitly owned managed auto-connect/service-readiness timing before I4 |
 | `WO-013HF` | Retain exact candidate.33 headless marketing browser budgets and the cabinet integration boundary | Fresh exact-source static exports, canonical browser-performance collector, 20 retained samples per marketing metric, rendered QA, fail-closed required-scope gate and external evidence index | Marketing home/checkout LCP, CLS and TBT pass `4/4`; cabinet `/dashboard/` renders account login but has no integrated API/auth fixture, so route-content is `BLOCKED_BY_ACCESS` and the required full browser-lab scope fails closed. No level, Gate F, deploy or publication changes | Run authenticated cabinet route content in the selected browser/network lab, then add comparable baseline/regression and the remaining physical client performance matrix |
 | `WO-013HG` | Retain exact candidate.33 Windows UI idle CPU budget and first working-set baseline | Exact installed UI, canonical client collector under PowerShell Core, 30 discarded warmups, 60 retained one-second samples, offline performance validator, route/DNS/TUN/crash contour and complete guest cleanup | CPU p95 `1.0% <= 1.0%` passes; working-set p95 `98693120` bytes is `BASELINE_RECORDED`, not regression PASS. Unsupported PowerShell 5 output is excluded. No level, Gate F, deploy or publication changes | Repeat on comparable physical Windows and service-combined scope, add matching memory comparison, then close cold-start/connect/frame/battery/thermal performance rows |
+| `WO-013HH` | Retain exact candidate.33 Android and Windows artifact-size baselines and repair the one-sample collector shape | Exact signed private release index, byte-identical local universal APK and Windows installer, canonical client collector, strict platform normalizer and offline validator | APK `295370161` bytes and installer `29153792` bytes are both `BASELINE_RECORDED`; neither is a regression PASS. The collector now always emits an array and its raw JSON shape is regression-tested. No candidate-byte, level, Gate F, deploy or publication changes | Compare a later same-kind candidate against these fingerprints, then close the remaining physical/comparable client and authenticated cabinet performance rows |
 
 ## Current evidence
 

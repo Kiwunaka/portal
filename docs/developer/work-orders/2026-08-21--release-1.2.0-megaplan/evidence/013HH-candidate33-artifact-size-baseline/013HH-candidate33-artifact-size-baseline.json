@@ -1,0 +1,59 @@
+{
+  "schema": "pokrov.release-1.2.0.013HH-candidate33-artifact-size-baseline/v1",
+  "recorded_at_utc": "2026-09-04T17:39:04Z",
+  "status": "EXACT_CANDIDATE33_ARTIFACT_SIZE_BASELINES_RECORDED_REGRESSION_PASS_OPEN",
+  "candidate": {
+    "label": "pokrov-1.2.0-candidate.33",
+    "app_version": "1.2.0+4053",
+    "platform_source": "f5300053026d32826e54c02202303e1f68c65bc1",
+    "client_source": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+    "core_source": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+    "release_index_source": "63993fba699b68641b7e972071ab7729fa9ec43c"
+  },
+  "results": {
+    "client.android.apk_size_bytes": {
+      "artifact_sha256": "51b86f66bd5c79fdf8a8e51d7607315a6ea3f8dfe9c36c4656034aac3b4583f2",
+      "value": 295370161,
+      "gate_status": "BASELINE_RECORDED",
+      "regression_pass": false
+    },
+    "client.windows.installer_size_bytes": {
+      "artifact_sha256": "250622f7e4bf9bea39a9456004d4cfeb2340a987c622c46f70b3af07aaec3580",
+      "value": 29153792,
+      "gate_status": "BASELINE_RECORDED",
+      "regression_pass": false
+    }
+  },
+  "collector": {
+    "defect": "one retained ArtifactSize sample serialized as a scalar instead of the promised numeric array",
+    "strict_normalizer_rejected_original_output": true,
+    "fixed_source": "7855edf315a8d0768cb8f78b3f3bbdeab9dd40bf",
+    "regression_contract_pass": true,
+    "client_merge": "f38f6dbba545fd7cd9bddc0109e8912c6c8f8842"
+  },
+  "credit": {
+    "candidate_artifact_budget_coverage": "2/2",
+    "artifact_size_regression_pass": false,
+    "full_dod_13": false,
+    "ledger_level_changed": false,
+    "gate_f": "BLOCKED_2_17_0"
+  },
+  "evidence": {
+    "external_index_path": "E:/POKROV-tools/release-evidence/1.2.0-candidate33-artifact-size-2026-09-04/candidate33-artifact-size-evidence-index.json",
+    "external_index_sha256": "1784eaa9840c18ec4375f39f081815dd2a8829897cfc06ac2cebb812f6eed105",
+    "client_summary_sha256": "7f53e1979fa597f5a77a63a06e8b2bd950649c965f566e3666d392bc2c0ed7f1",
+    "signed_release_index_sha256": "5620c2f0558e7c9a0f8ff8dfbcd47523986dd7fdf13f061e81adab3b10a3f680"
+  },
+  "github": {
+    "client_pr": 87,
+    "client_hosted_run": 33901995731,
+    "client_hosted_classification": "BLOCKED_BY_ACCESS_GITHUB_BILLING_STEPS_EMPTY"
+  },
+  "mutations": {
+    "candidate_bytes_changed": false,
+    "production_runtime_changed": false,
+    "deploy_performed": false,
+    "public_release_created": false,
+    "stable_pointer_changed": false
+  }
+}
