@@ -400,6 +400,11 @@ Money и growth boundary v2:
 
 Release boundary v2:
 
+- Cockpit shows policy `pokrov.operator-cockpit-gates/v1`, its actual check count,
+  and `gate_f_decision=NOT_EVALUATED`. Its 11 operational checks plus origins do
+  not imply the separate 19-check final Gate F decision. The canonical crosswalk
+  is in [monitoring and visibility](../docs/operations/monitoring-and-visibility.md#cockpit-checks-and-the-final-release-decision).
+
 - `GET /api/admin/v2/releases/candidates`, `GET .../cockpit` и
   `GET .../adoption` связывают точный состав кандидата с current/brain/RU
   evidence, диагностическими gate, rollout policy, adoption, health/support

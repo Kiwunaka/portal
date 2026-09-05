@@ -295,7 +295,7 @@ export function ReleasePage({ onShellStatus }: { onShellStatus?: (status: OpsShe
       <div className="ops-route-toolbar">
         <div className="flex flex-wrap items-center gap-2 text-xs text-[color:var(--atlas-text-soft)]">
           <Badge tone={cockpit.data ? statusTone(cockpit.data.gate_matrix.status) : cockpit.error ? "warning" : "neutral"}>
-            {cockpit.data ? `Release gates: ${statusText(cockpit.data.gate_matrix.status)}` : cockpit.error ? "Release cockpit недоступен" : "Кандидат не выбран"}
+            {cockpit.data ? `Проверки cockpit: ${statusText(cockpit.data.gate_matrix.status)}` : cockpit.error ? "Release cockpit недоступен" : "Кандидат не выбран"}
           </Badge>
           <span>Rollout и health считаются backend; браузер их не выводит сам.</span>
         </div>
@@ -306,7 +306,7 @@ export function ReleasePage({ onShellStatus }: { onShellStatus?: (status: OpsShe
 
       <MetricStrip label="Release cockpit">
         <MetricCell icon={<Boxes size={17} />} label="Компоненты" value={cockpit.data?.components.length ?? <MissingData />} detail="Точные revisions одной версии" tone="info" />
-        <MetricCell icon={<ShieldCheck size={17} />} label="Release gates" value={cockpit.data ? statusText(cockpit.data.gate_matrix.status) : <MissingData />} detail="Origins + client/core/backend/admin proofs" tone={cockpit.data ? statusTone(cockpit.data.gate_matrix.status) : "neutral"} />
+        <MetricCell icon={<ShieldCheck size={17} />} label="Проверки cockpit" value={cockpit.data ? statusText(cockpit.data.gate_matrix.status) : <MissingData />} detail="Операционная матрица и origins" tone={cockpit.data ? statusTone(cockpit.data.gate_matrix.status) : "neutral"} />
         <MetricCell icon={<Gauge size={17} />} label={`Rollout · ${platform}`} value={rollout ? `${rollout.rollout_percent}%` : <MissingData />} detail={rollout?.status || "Состояние не создано"} tone={rollout?.paused ? "warning" : rollout ? "success" : "neutral"} />
         <MetricCell icon={<Activity size={17} />} label="Health gate" value={cockpit.data ? statusText(cockpit.data.health_gate.status) : <MissingData />} detail={cockpit.data?.health_gate.reason || "Нет среза"} tone={cockpit.data ? statusTone(cockpit.data.health_gate.status) : "neutral"} />
       </MetricStrip>
@@ -339,6 +339,12 @@ export function ReleasePage({ onShellStatus }: { onShellStatus?: (status: OpsShe
                   </table>
                 </div>
                 <p className="text-[11px] text-[color:var(--atlas-text-muted)]">Срез: {dateText(cockpit.data.generated_at)} · Матрица evidence: {cockpit.data.readiness.required_check_matrix_version}</p>
+                <p className="text-xs text-[color:var(--atlas-text-muted)]">
+                  Политика cockpit: {cockpit.data.gate_matrix.policy_version || "UNKNOWN"} · Проверок: {cockpit.data.gate_matrix.checks.length}.
+                </p>
+                <p role="note" className="text-xs text-[color:var(--atlas-text-muted)]">
+                  Gate F: решение о выпуске не загружено. PASS в cockpit подтверждает только его операционную матрицу.
+                </p>
               </div>
             ) : null}
           </RouteBoundary>

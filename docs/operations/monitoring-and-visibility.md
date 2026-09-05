@@ -966,3 +966,38 @@ Manual/test cleanup policy:
 - operators should keep real-user cleanup out of routine admin tooling
 
 Only collect and expose the minimum operational context needed to diagnose service problems and keep the app-first account model working reliably.
+
+## Cockpit checks and the final release decision
+
+The operational `gate_matrix` policy is `pokrov.operator-cockpit-gates/v1`:
+11 named checks plus separate current/brain/RU origin readiness. `ready` and
+`status` describe only this matrix. The API always reports
+`gate_f_decision=NOT_EVALUATED`; the cockpit does not load a Gate F report.
+The UI shows the policy, actual check count and this limitation even when all
+operational checks pass. Guarded rollout registry actions retain their existing
+permissions, preview, confirmation and audit requirements. They do not replace
+owner release authorization or switch an external artifact pointer.
+
+The separate final policy is `pokrov.release-1.2.0.gate-f-decision/v1`, whose
+19 required IDs are owned by `scripts/release_1_2_gate_f.py`. The following is a
+review crosswalk of related areas, never an automatic transfer of PASS:
+
+| Cockpit input | Related final Gate F area; requires its own bound receipt |
+| --- | --- |
+| `app_tests`, `core_tests`, `backend_tests`, `admin_tests` | `gates_a_e_exact_candidate`, `mandatory_stop_ship_and_dod`, `no_open_p0_false_green_or_secret_leak`, `hosted_required_checks` |
+| `android_proof` | `android_ldplayer_rehearsal`, `android_physical_device`; these remain distinct |
+| `windows_proof` | `windows_live_network` |
+| `payment_proof` | `payment_provider_e2e` |
+| `update_proof` | `gates_a_e_exact_candidate`, `rollback_and_kill_controls` |
+| `signing` | `supply_chain_signature_sbom_provenance`, `target_channel_signing_and_manual_gates` |
+| `public_url` | `release_docs_manifest_binding`; a URL alone does not establish byte/signature identity |
+| `docs_support_readiness` | `release_docs_manifest_binding`, `mandatory_stop_ship_and_dod` |
+| Separate current/brain/RU readiness | `current_origin`, `brain_origin`, `ru_origin`, only with matching candidate and origin |
+
+No cockpit check alone supplies `authenticated_client_egress`,
+`operator_auth_rbac_action_intent`, `legal_commercial_approval`, or
+`performance_and_release_health`. These four final areas and all other required
+Gate F evidence remain independent. An operational green must not be displayed
+or consumed as final GO. A rollback request still reports
+`external_artifact_switch=NOT_PERFORMED` until the separate switch is executed
+and verified; a paused registry is not proof of a completed rollback.

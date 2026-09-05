@@ -958,6 +958,8 @@ function releaseCockpit(candidateId: string) {
     }],
     readiness,
     gate_matrix: {
+      policy_version: "pokrov.operator-cockpit-gates/v1",
+      gate_f_decision: "NOT_EVALUATED",
       status: readiness.ready ? "PASS" : "MISSING",
       ready: readiness.ready,
       origin_readiness_status: readiness.status,
