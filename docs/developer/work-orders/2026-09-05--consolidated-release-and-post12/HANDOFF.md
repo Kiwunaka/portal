@@ -8,6 +8,7 @@ candidate и postrelease activation не выполнены. Ранние отч
 
 Последующий срез N05 — [наблюдения, новые Core bytes и проверки](EXECUTION-N05.md).
 Он дополняет этот сохранённый срез от 2026-09-05.
+Следом исправлен [лимит незавершённых Smart Connect probes — N06](EXECUTION-N06.md).
 
 ## Изменения
 

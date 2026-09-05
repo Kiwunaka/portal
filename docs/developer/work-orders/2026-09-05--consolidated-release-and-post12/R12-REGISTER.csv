@@ -11,7 +11,7 @@ R12-N02,Транзакция применения и rollback профиля,act
 R12-N03,Связать protection proof с effective route,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
 R12-N04,Регрессии event fencing и конкурирующих probes,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
 R12-N05,Различать наблюдения и гипотезы блокировки,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-N05.md
-R12-N06,Ограниченный автоматический fallback,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-N06,Ограниченный автоматический fallback,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-N06.md
 R12-N07,Control-plane outage и bootstrap,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-N08,Routing truth matrix,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-A01,Закрепить AWG3.1 baseline и границу публичного scope,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
