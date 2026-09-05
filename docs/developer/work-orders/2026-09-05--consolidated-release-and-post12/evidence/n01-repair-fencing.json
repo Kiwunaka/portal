@@ -1,0 +1,63 @@
+{
+  "recorded_at_utc": "2026-09-05T23:18:40.890519+00:00",
+  "origin": "current-origin Windows local Flutter Android host-bridge fixtures",
+  "client_source": "f02486170b7299415dadc7518681102a27210ae3",
+  "commands": [
+    {
+      "command": "flutter test test/pokrov_seed_app_test.dart --plain-name \"Quick Settings invalidation coalesces a held burst\"",
+      "log": "E:/r12-n01-repair-invalidation-before.log",
+      "sha256": "3d7cb8b464489b7706b0a3f443a9949f84bfa77f2b0a1e96d0962389254c67db",
+      "exit_code": 1,
+      "result": "connect PASS / repair FAIL: stage called while invalidation pending"
+    },
+    {
+      "command": "flutter test test/pokrov_seed_app_test.dart --plain-name \"Quick Settings invalidation coalesces a held burst before repair-stale\"",
+      "log": "E:/r12-n01-repair-stale-before3.log",
+      "sha256": "697a267cc61c1e91df406d415b3a9367e471cf2fb5a2a81a3ee9377d9a818982",
+      "exit_code": 1,
+      "result": "FAIL: connect called for old stage after route mode changed"
+    },
+    {
+      "command": "flutter test test/pokrov_seed_app_test.dart --plain-name \"Quick Settings invalidation coalesces a held burst\"",
+      "log": "E:/r12-n01-repair-final2.log",
+      "sha256": "867ee19ffe51e54a9c89be160b8d5ccdc765375d676a17161d871f240f3328af",
+      "exit_code": 0,
+      "result": "4 PASS: connect, repair, changed settings during stage, timeout and late host completion"
+    },
+    {
+      "command": "flutter test test/pokrov_seed_app_test.dart test/managed_profile_lifecycle_test.dart",
+      "log": "E:/r12-n01-repair-widget-full.log",
+      "sha256": "60d3831025b6c1eadc3139cd36fb206dca3cf9db0874fac4f6d011f0bc233eb9",
+      "exit_code": 0,
+      "result": "178 PASS"
+    },
+    {
+      "command": "flutter analyze --no-pub",
+      "log": "E:/r12-n01-repair-analyze.log",
+      "sha256": "116400460731f0812b45c9f31dd8b49b1794234838fda588570651bfc120ee04",
+      "exit_code": 0,
+      "result": "no issues"
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/validate-seed.ps1 -CoreRoot E:/r12core-implementation -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start",
+      "log": "E:/r12-n01-repair-seed.log",
+      "sha256": "4a82d6cff817438041975f21e2679de4fa6bec1576302eb644dccafb6945912a",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "python -m pytest -q tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py",
+      "log": "E:\\r12-n01-repair-docs.log",
+      "sha256": "ec23b3930fde9f6a8f776ce67609009a916b7f347b9a7e5a71e55ec16ac4a69b",
+      "exit_code": 0,
+      "result": "33 PASS"
+    }
+  ],
+  "limitations": [
+    "Shared shell behavior tested with injected Android host bridge, not physical device/VM proof.",
+    "First stale-stage attempt failed compilation on duplicate const map keys. before2 passed by advancing fake time to the stage timeout; it did not prove the desired race. before3 uses bounded pumps and checks active repair progress before dismissing the sheet, and reproduces the unwanted connect.",
+    "The canonical paragraph was moved into its owning section after validate-seed started; final pwsh -NoProfile -File test/docs-contract.ps1 then passed after the move.",
+    "Durable last-known-good authority and N02 operator decision remain unresolved."
+  ],
+  "release_artifacts_delta": false
+}

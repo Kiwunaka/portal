@@ -15,6 +15,8 @@ candidate и postrelease activation не выполнены. Ранние отч
 
 Добавлено [C04/F01/F04 — остановка фоновых animation tickers и сверка presentation](EXECUTION-PRESENTATION.md): client `fa62f04`, 216 локальных тестов PASS; reference device performance открыт.
 
+Исправлен [N01/N04 — repair против pending invalidation и смены режима](EXECUTION-N01-REPAIR.md): client `f024861`, 178 widget/lifecycle PASS.
+
 ## Изменения
 
 - Core: correlated endpoint/selector proof; Android/Windows AAR/DLL собраны
