@@ -10,6 +10,8 @@ candidate и postrelease activation не выполнены. Ранние отч
 Он дополняет этот сохранённый срез от 2026-09-05.
 Следом исправлен [лимит незавершённых Smart Connect probes — N06](EXECUTION-N06.md).
 
+Дополнительно проверен [N08 — режимы маршрутизации и direct в VPN selectors](EXECUTION-N08.md).
+
 ## Изменения
 
 - Core: correlated endpoint/selector proof; Android/Windows AAR/DLL собраны
