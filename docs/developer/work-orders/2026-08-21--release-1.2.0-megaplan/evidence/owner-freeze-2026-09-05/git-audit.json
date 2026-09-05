@@ -1,0 +1,306 @@
+{
+  "schema": "pokrov.release-owner-freeze-git-audit/v1",
+  "recorded_on": "2026-09-05",
+  "scope": "Release 1.2.0 source/evidence preservation, not blanket promotion of unrelated work",
+  "initial_worktrees": [
+    {
+      "repo": "E:\\POKROV-tools\\wt\\platform-candidate33-recovery-evidence",
+      "count": 31,
+      "exceptions": [
+        {
+          "path": "C:/Users/kiwun/Documents/ai/VPN",
+          "branch": "master",
+          "sha": "826112cf18d7b66b19ae43eb6884c594d1adf402",
+          "tracked_changes": [
+            " M AGENTS.md",
+            " M competitor-profiles/_summary.md",
+            " M docs/README.md",
+            " M docs/developer/developer-guide.md",
+            " M docs/developer/pokrov-canonical-feature-tracker.csv",
+            " M docs/operations/deployment-and-access.md",
+            " M docs/operations/monitoring-and-visibility.md",
+            " M infra/Caddyfile.internal",
+            " M infra/brain-haproxy-l4.cfg"
+          ],
+          "untracked": [
+            "competitor-profiles/raw/frkn-org/** (path inventory condensed)",
+            "competitor-profiles/frkn-org.md",
+            "docs/developer/work-orders/2026-08-26--post-1.2.0-censorship-resilience/INDEX.md",
+            "docs/superpowers/plans/2026-08-26-happ-ios-subscription-bs.md",
+            "infra/private-chat/99-private-chat-livekit.conf",
+            "infra/private-chat/README.md",
+            "infra/private-chat/compose.yaml",
+            "infra/private-chat/config/Caddyfile",
+            "infra/private-chat/config/element-config.json",
+            "infra/private-chat/config/homeserver.yaml.template",
+            "infra/private-chat/config/ketesa-config.json",
+            "infra/private-chat/config/livekit.yaml",
+            "infra/private-chat/config/synapse-log.config",
+            "infra/private-chat/guest-entry/Dockerfile",
+            "infra/private-chat/guest-entry/index.html",
+            "infra/private-chat/guest-entry/server.py",
+            "infra/private-chat/guest-entry/test_server.py"
+          ],
+          "head_on_origin": true,
+          "untracked_count": 255
+        },
+        {
+          "path": "E:/POKROV-tools/worktrees/VPN-candidate13-smart-dns-readiness",
+          "branch": "codex/candidate13-smart-dns-readiness",
+          "sha": "e233907c7dd9b2cb888a41a78916274480e4d3ef",
+          "tracked_changes": [],
+          "untracked": [],
+          "head_on_origin": false,
+          "untracked_count": 0
+        },
+        {
+          "path": "E:/POKROV-tools/worktrees/VPN-infra-live-parity-20260830",
+          "branch": "codex/infra-live-parity-20260830",
+          "sha": "0f6657b885e9e18a0345a085909d392b586d165c",
+          "tracked_changes": [],
+          "untracked": [],
+          "head_on_origin": false,
+          "untracked_count": 0
+        },
+        {
+          "path": "E:/POKROV-tools/worktrees/VPN-post-1.2.0-program",
+          "branch": "codex/post-1.2.0-program",
+          "sha": "4c1002522c06cd74f3da490fc95ea9531bf300c3",
+          "tracked_changes": [
+            " M docs/developer/work-orders/2026-08-28--post-1.2.0-program/INDEX.md"
+          ],
+          "untracked": [
+            "docs/developer/work-orders/2026-08-28--post-1.2.0-program/POKROV_ADAPTIVE_TRANSPORT_PRE_ARCHITECTURE_PLAN_2026-08-29.md"
+          ],
+          "head_on_origin": false,
+          "untracked_count": 1
+        },
+        {
+          "path": "E:/POKROV-tools/wt/v16-awg",
+          "branch": "codex/de-dual-delivery-evidence",
+          "sha": "7ee543ebc8fb021051391189f8d5aa2672666e29",
+          "tracked_changes": [],
+          "untracked": [],
+          "head_on_origin": false,
+          "untracked_count": 0
+        }
+      ]
+    },
+    {
+      "repo": "E:\\POKROV-tools\\wt\\client-candidate33-recovery-evidence",
+      "count": 15,
+      "exceptions": [
+        {
+          "path": "C:/Users/kiwun/Documents/ai/POKROV-app",
+          "branch": "main",
+          "sha": "2d6adfcebc37f2109ef339276be6a1569cb7aa1e",
+          "tracked_changes": [],
+          "untracked": [
+            "pokrov_status_probe.obj",
+            "service_client.obj",
+            "service_pipe_client.obj",
+            "service_protocol.obj"
+          ],
+          "head_on_origin": true,
+          "untracked_count": 4
+        },
+        {
+          "path": "E:/POKROV-tools/worktrees/POKROV-app-candidate5-client-source",
+          "branch": null,
+          "sha": "6b596cefbc043c2da30b31007789cea7e30fc336",
+          "tracked_changes": [
+            " M apps/macos_shell/macos/Flutter/GeneratedPluginRegistrant.swift"
+          ],
+          "untracked": [],
+          "head_on_origin": true,
+          "untracked_count": 0
+        },
+        {
+          "path": "E:/POKROV-tools/wt/client-candidate18-source",
+          "branch": null,
+          "sha": "820ca1016bdfef0f44a1d217e3804adb9b365ca5",
+          "tracked_changes": [
+            " M apps/windows_shell/windows/flutter/generated_plugin_registrant.cc",
+            " M apps/windows_shell/windows/flutter/generated_plugin_registrant.h",
+            " M apps/windows_shell/windows/flutter/generated_plugins.cmake"
+          ],
+          "untracked": [],
+          "head_on_origin": true,
+          "untracked_count": 0
+        },
+        {
+          "path": "E:/POKROV-tools/wt/client-candidate29-source",
+          "branch": null,
+          "sha": "7e3e771fe36333a75244cbfd828c60beb84c7ff1",
+          "tracked_changes": [
+            " M apps/macos_shell/macos/Flutter/GeneratedPluginRegistrant.swift",
+            " M apps/windows_shell/windows/flutter/generated_plugin_registrant.cc",
+            " M apps/windows_shell/windows/flutter/generated_plugin_registrant.h",
+            " M apps/windows_shell/windows/flutter/generated_plugins.cmake"
+          ],
+          "untracked": [],
+          "head_on_origin": true,
+          "untracked_count": 0
+        },
+        {
+          "path": "E:/POKROV-tools/wt/client-candidate33-recovery-evidence",
+          "branch": "codex/candidate33-awg-runtime-observations",
+          "sha": "c55367454722e2695fc23a813c6541f92c6a950a",
+          "tracked_changes": [
+            " M docs/operations/cutover-readiness.md"
+          ],
+          "untracked": [],
+          "head_on_origin": true,
+          "untracked_count": 0
+        },
+        {
+          "path": "E:/POKROV-tools/wt/client-windows-runtime-fix",
+          "branch": "codex/windows-app-local-runtime",
+          "sha": "c6a042995f28d5682874923155d09bad245faf2b",
+          "tracked_changes": [
+            " M apps/macos_shell/macos/Flutter/GeneratedPluginRegistrant.swift",
+            " M apps/windows_shell/windows/flutter/generated_plugin_registrant.cc",
+            " M apps/windows_shell/windows/flutter/generated_plugin_registrant.h",
+            " M apps/windows_shell/windows/flutter/generated_plugins.cmake"
+          ],
+          "untracked": [],
+          "head_on_origin": true,
+          "untracked_count": 0
+        }
+      ]
+    },
+    {
+      "repo": "E:\\POKROV-tools\\wt\\core-candidate29-source",
+      "count": 4,
+      "exceptions": []
+    }
+  ],
+  "release_index": {
+    "repo": "Kiwunaka/pokrov",
+    "worktrees_checked": 51,
+    "dirty_worktrees": 0,
+    "unpublished_local_branch_commits": 0,
+    "origin_main": "9169f272203ec690ab7b0e6a69e92dc2b6762cb4"
+  },
+  "archived_release_refs": [
+    {
+      "repo": "E:\\POKROV-tools\\wt\\platform-candidate33-recovery-evidence",
+      "refs": [
+        {
+          "source_branch": "codex/1.2.0-hosted-gate-control-history",
+          "sha": "2dc9f676c8a9d08386699784971179b695162137",
+          "remote_ref": "refs/heads/codex/freeze-1.2.0-20260905/1.2.0-hosted-gate-control-history",
+          "push": "PASS_ATOMIC",
+          "ls_remote_match": true
+        },
+        {
+          "source_branch": "codex/1.2.0-pr00-freeze",
+          "sha": "dcfbbce17886277bd79ee1c9749c15dc64aa6508",
+          "remote_ref": "refs/heads/codex/freeze-1.2.0-20260905/1.2.0-pr00-freeze",
+          "push": "PASS_ATOMIC",
+          "ls_remote_match": true
+        },
+        {
+          "source_branch": "codex/candidate13-evidence-ledger",
+          "sha": "52dab88ad95ae0329f6390a39df188f7eb8eff4b",
+          "remote_ref": "refs/heads/codex/freeze-1.2.0-20260905/candidate13-evidence-ledger",
+          "push": "PASS_ATOMIC",
+          "ls_remote_match": true
+        },
+        {
+          "source_branch": "codex/candidate13-final-audit",
+          "sha": "9b59e1f625d2f37b7df74ebdebfbc187d56aefdd",
+          "remote_ref": "refs/heads/codex/freeze-1.2.0-20260905/candidate13-final-audit",
+          "push": "PASS_ATOMIC",
+          "ls_remote_match": true
+        },
+        {
+          "source_branch": "codex/candidate13-origin-refresh",
+          "sha": "3da5fb6ec5747613cacb348062a71724fc790172",
+          "remote_ref": "refs/heads/codex/freeze-1.2.0-20260905/candidate13-origin-refresh",
+          "push": "PASS_ATOMIC",
+          "ls_remote_match": true
+        },
+        {
+          "source_branch": "codex/candidate13-rollback-rehearsal",
+          "sha": "34055011871e8544e1cb9691a80d109d40e12d96",
+          "remote_ref": "refs/heads/codex/freeze-1.2.0-20260905/candidate13-rollback-rehearsal",
+          "push": "PASS_ATOMIC",
+          "ls_remote_match": true
+        },
+        {
+          "source_branch": "codex/candidate13-smart-dns-readiness",
+          "sha": "e233907c7dd9b2cb888a41a78916274480e4d3ef",
+          "remote_ref": "refs/heads/codex/freeze-1.2.0-20260905/candidate13-smart-dns-readiness",
+          "push": "PASS_ATOMIC",
+          "ls_remote_match": true
+        },
+        {
+          "source_branch": "codex/de-dual-delivery-endpoints",
+          "sha": "fb9a88243814595fdca3db40a9062b07bedaed7c",
+          "remote_ref": "refs/heads/codex/freeze-1.2.0-20260905/de-dual-delivery-endpoints",
+          "push": "PASS_ATOMIC",
+          "ls_remote_match": true
+        },
+        {
+          "source_branch": "codex/de-dual-delivery-evidence",
+          "sha": "7ee543ebc8fb021051391189f8d5aa2672666e29",
+          "remote_ref": "refs/heads/codex/freeze-1.2.0-20260905/de-dual-delivery-evidence",
+          "push": "PASS_ATOMIC",
+          "ls_remote_match": true
+        }
+      ]
+    },
+    {
+      "repo": "E:\\POKROV-tools\\wt\\client-candidate33-recovery-evidence",
+      "refs": [
+        {
+          "source_branch": "codex/candidate13-evidence-ledger",
+          "sha": "ab2797a72368fb6c9c5c0df983da547a80767439",
+          "remote_ref": "refs/heads/codex/freeze-1.2.0-20260905/candidate13-evidence-ledger",
+          "push": "PASS_ATOMIC",
+          "ls_remote_match": true
+        },
+        {
+          "source_branch": "codex/owned-lab-smart-connect-bypass",
+          "sha": "4718e9650f160c0c4cda2f491b3cd26dd950f242",
+          "remote_ref": "refs/heads/codex/freeze-1.2.0-20260905/owned-lab-smart-connect-bypass",
+          "push": "PASS_ATOMIC",
+          "ls_remote_match": true
+        },
+        {
+          "source_branch": "codex/release-1.2.0-exact-hosted-replay",
+          "sha": "de6d477dc2d46989e3874331450587d37321c4c4",
+          "remote_ref": "refs/heads/codex/freeze-1.2.0-20260905/release-1.2.0-exact-hosted-replay",
+          "push": "PASS_ATOMIC",
+          "ls_remote_match": true
+        },
+        {
+          "source_branch": "codex/windows-draft-carrier-download",
+          "sha": "34ca7add4eddb9e1270507ca0b87005f362f23b0",
+          "remote_ref": "refs/heads/codex/freeze-1.2.0-20260905/windows-draft-carrier-download",
+          "push": "PASS_ATOMIC",
+          "ls_remote_match": true
+        }
+      ]
+    }
+  ],
+  "excluded_unpublished_branches": [
+    {
+      "branch": "codex/infra-live-parity-20260830",
+      "sha": "0f6657b885e9e18a0345a085909d392b586d165c",
+      "unpublished_commit_count": 1
+    },
+    {
+      "branch": "codex/post-1.2.0-program",
+      "sha": "4c1002522c06cd74f3da490fc95ea9531bf300c3",
+      "unpublished_commit_count": 1
+    },
+    {
+      "branch": "design/cabinet-onboarding-uiux",
+      "sha": "a916b3933974f45058c89aeb81abaa9b39fb55c5",
+      "unpublished_commit_count": 14
+    }
+  ],
+  "exclusions": "Unrelated dirty primary workspace, post-release plan, infrastructure/design branches, generated historical registrants and object files were not staged or deleted. Frozen detached source worktrees are intentionally not fast-forwarded. Ignored binary artifacts were not uploaded by Git."
+}

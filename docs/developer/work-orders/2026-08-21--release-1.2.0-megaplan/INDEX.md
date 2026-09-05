@@ -1,8 +1,8 @@
 # POKROV 1.2.0 Megaplan — Wave Index
 
-Last updated: 2026-09-04
+Last updated: 2026-09-05
 Classification: `ACTIVE_EXECUTION`
-Wave status: `PHASE_11_CANDIDATE33_WINDOWS_LIFECYCLE_STARTUP_SAVED_STATE_COLD_START_UI_IDLE_CPU_ARTIFACT_BASELINES_LDPLAYER_UI_MARKETING_BROWSER_PASS_CABINET_BROWSER_BLOCKED_AWG_PLAN_READY_WMI_COMBINED_IDLE_CPU_PASS_GATE_F_BLOCKED`
+Wave status: `OWNER_PAUSED_FOR_REPLANNING_2026_09_05`
 Release candidate: `POKROV_1_2_0_CANDIDATE33_PRIVATE_SIGNED_PARTIAL_DEVICE_RUNTIME_BLOCKED`
 
 ## Outcome
@@ -21,6 +21,17 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 - Current runtime, signing, device, RU-origin and provider proofs remain distinct. A document or local pass is not production proof.
 
 ## Current candidate reconciliation
+
+**Owner freeze, 2026-09-05:** preserve the current results and stop execution
+of the old plan pending owner replanning. Start with the
+[frozen handoff](OWNER-FREEZE-2026-09-05.md), original goal, ledger and Git
+inventory linked there. This is not completion or release approval. Owner
+scope selection is now confirmed; partial AWG3.1 UI/DNS/HTTPS observations
+and an uncredited stale-profile AWG2 attempt are retained in client PR #93.
+The repair attempt was interrupted before UI input, and the final temporary
+lab assignment has been restored to default. Gate F stays `BLOCKED 2/17/0`.
+The dated checkpoints below retain their historical evidence boundaries;
+the freeze handoff supersedes their pending next-action wording.
 
 The 2026-09-05 checkpoint in the canonical performance owner adds a bounded
 cabinet localhost rendering PASS: exact candidate.33 export, existing synthetic
