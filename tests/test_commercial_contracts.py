@@ -131,7 +131,10 @@ def test_marketing_webapp_bot_and_json_ld_share_the_manifest_price_authority() -
     assert "Boolean(catalog && providerState?.ok" in marketing_checkout
     assert 'fetch(`${base}/api/public/offers/preview`' in marketing_checkout
     assert "promo_code: promoCode" in marketing_checkout
-    assert "offer_token: payload.offer_token" in marketing_checkout
+    # The immutable retry intent owns the submitted quote; the request helper
+    # forwards that typed payload without replacing it with a newer preview.
+    assert "offer_token: checkoutIntent.current.offerToken || undefined" in marketing_checkout
+    assert 'body: JSON.stringify({ ...payload, source: "site"' in marketing_checkout
     assert "payment_return_token" in marketing_checkout
     assert "paymentMethods.map" in marketing_checkout
     assert 'mintAcquisitionHandoff("checkout", undefined, config.apiBaseUrl)' in marketing_checkout
