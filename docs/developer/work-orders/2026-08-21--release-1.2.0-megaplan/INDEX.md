@@ -22,6 +22,11 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 
 ## Current candidate reconciliation
 
+WO-013HL supersedes the historical WO-013GZ VM target and authorization:
+fresh current-install AWG3.1/AWG2 APPLY and default restore pass after explicit
+owner authorization. The client currently shows onboarding and has no managed
+profile; connection/DNS/egress proof remains NOT_RUN. No level or Gate F change.
+
 WO-013GT is the current signed-candidate and exact `WIN-001` authority;
 WO-013GU is the current exact source Gates A–E and isolated rollback
 authority; WO-013GV is the current bounded Windows/physical-Android runtime
