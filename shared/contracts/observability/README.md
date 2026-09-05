@@ -42,6 +42,26 @@ not accept caller-supplied values for them. Client and Core keep hash snapshots
 only for compatibility checks; these platform files remain the source of
 truth.
 
+## Observation and cause boundary
+
+Failure codes describe observed facts. `CONN-003` requires an absent default
+network; `ROUTE-005` means the interface could not be resolved, not a proven route
+conflict. DNS failures remain DNS observations even when the DNS error timed out.
+`TRANSPORT-005` requires a typed UDP timeout; `TRANSPORT-006` and
+`TRANSPORT-007` require the probe's observed TLS or response stage respectively.
+An unqualified deadline remains `TRANSPORT-001`. None establishes DPI, MTU,
+ASN filtering or a whitelist as the cause.
+
+`API-011` describes pending profile provisioning. A failed subscription refresh
+retains its API/auth error; it does not establish missing entitlement (`ENT-001`).
+`CORE-009` preserves an unspecified runtime failure without claiming that profile
+validation rejected the configuration. An explicit failure is not overwritten
+by an incomplete DNS/egress proof in the diagnostics presenter.
+
+These additive development-catalog entries require updated client/Core hash
+snapshots and consumers before packaging. Existing candidate hashes and receipts
+remain historical evidence. Event ABI 1 and desktop ABI 2 frame shapes are unchanged.
+
 ## Privacy boundary
 
 Event objects are closed. Arbitrary metadata is forbidden. The attributes map
