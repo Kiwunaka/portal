@@ -22,6 +22,10 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 
 ## Current candidate reconciliation
 
+WO-013HM closes the fresh npm audit timeout boundary: canonical-registry
+audits of all three exact candidate.33 lockfiles return zero known advisories
+on 2026-09-05. No dependency, candidate byte, execution level or Gate F change.
+
 WO-013HL supersedes the historical WO-013GZ VM target and authorization:
 fresh current-install AWG3.1/AWG2 APPLY and default restore pass after explicit
 owner authorization. Local onboarding completed; Connect now reaches the
