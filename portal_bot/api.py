@@ -1552,6 +1552,7 @@ class FreekassaOrderCreateIn(BaseModel):
 
 
 class CommercialOfferPreviewIn(BaseModel):
+    buyer_email: str | None = Field(default=None, max_length=200)
     plan_code: str = Field(min_length=2, max_length=32)
     promo_code: str | None = Field(default=None, max_length=20)
     offer_id: str | None = Field(default=None, min_length=36, max_length=36)
@@ -1674,6 +1675,7 @@ class RubOrderCreateIn(BaseModel):
 
 
 class RubPublicOrderCreateIn(BaseModel):
+    intent_id: str | None = Field(default=None, pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
     provider: str = Field(min_length=2, max_length=32)
     plan_code: str = Field(min_length=2, max_length=32)
     checkout_ticket: str | None = Field(default=None, min_length=16, max_length=1200)

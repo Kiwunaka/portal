@@ -49,7 +49,10 @@ try:
         expire_failed_commercial_reservations,
     )
     from .payment_order_service import (
+        PaymentOrderIntentError,
         build_payment_order_intent,
+        lock_public_checkout_retry,
+        recovered_checkout_fields,
         persist_local_order_intent,
         record_provider_checkout,
         record_provider_checkout_failure,
@@ -86,7 +89,10 @@ except ImportError:
         expire_failed_commercial_reservations,
     )
     from payment_order_service import (
+        PaymentOrderIntentError,
         build_payment_order_intent,
+        lock_public_checkout_retry,
+        recovered_checkout_fields,
         persist_local_order_intent,
         record_provider_checkout,
         record_provider_checkout_failure,

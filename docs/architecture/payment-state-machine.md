@@ -35,6 +35,23 @@ A completed production cutover, mixed-fleet safety, and full migration must not 
 
 For `lavatop`, local order creation stores an `ExternalOrder` before redirect. The provider invoice request is sent to `/api/v3/invoice` with `clientUtm.utm_content=<local order_id>` and optional per-plan `offerId` mapping.
 
+A repeated public base-price `intent_id` is scoped to its server-resolved owner
+and serialized with a PostgreSQL transaction advisory lock before local creation.
+Only a request digest is stored with the immutable order. Changed provider, plan,
+source, promo, currency, payment method or attribution input returns a conflict.
+Matching retries and valid already-bound commercial reservations return order
+status for reconciliation; they do not repeat provider invoice creation. No lock
+or database session spans provider I/O, and no checkout URL is stored for retry.
+A timeout/provider error may leave a committed non-fulfilling `created` order;
+status recovery does not classify it as paid or authorize a second invoice.
+
+A signed base quote (`bq1`) uses its embedded UUID as the same owner-scoped retry
+identity. The signature is verified before lookup. Exact committed retries recover
+the existing order even after quote expiry; new orders must also pass expiry and
+current server pricing/entitlement-duration binding checks. No commercial
+reservation or migration is added. Rejected calculations create no order and make
+no provider call; the browser refreshes the calculation before a new explicit click.
+
 The creation boundary is explicitly two-phase and never carries a database
 session across provider I/O. Before the provider call, the local `created` row
 stores a canonical intent digest over provider/order, owner, amount, currency,
@@ -80,6 +97,10 @@ Before any Lava.top paid callback fulfills, the backend validates local order bi
 For authenticated cabinet and Telegram-bound orders, fulfillment extends the linked account. The cabinet can show the single `connect.pokrov.space` subscription link and QR after access is active; the bot also sends that link after a paid Telegram-bound callback as a beta-stage manual import fallback. Anonymous public orders do not receive links in API responses; they receive one emailed access key after fulfillment.
 
 ## Consumer Return Projection
+
+Legacy GET `/pay/success` renders a neutral status/cabinet continuation. POST to
+that route acknowledges only receipt with `status=unverified`. Neither path
+looks up or mutates payment authority, and neither presents a redirect as paid.
 
 The browser-facing return projection is deliberately smaller than the payment
 ledger. `POST /api/payments/orders/status` maps current local truth to exactly

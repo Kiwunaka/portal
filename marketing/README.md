@@ -1,5 +1,12 @@
 # POKROV Marketing
 
+The home and install download controls refresh the public stable catalog with an
+8-second deadline. Failed or timed-out reads retain approved static release links
+when configured; otherwise the home links to installation and the install page
+shows file availability explicitly. Responsive checks use the local export, block external requests,
+and include a deliberately stalled catalog response; this is synthetic UI proof,
+not live release-index availability evidence.
+
 Last updated: 2026-08-13
 
 ## Document Status

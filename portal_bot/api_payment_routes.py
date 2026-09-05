@@ -17,11 +17,11 @@ bootstrap_slice(globals())
 @app.api_route("/pay/success", methods=["GET", "POST"])
 async def pay_success(request: Request):
     if request.method == "POST":
-        return {"ok": True, "status": "success"}
+        return {"ok": True, "status": "unverified"}
     return HTMLResponse(
         content=_payment_page_html(
-            title="Оплата подтверждена",
-            message="Платеж получен. Доступ обновится автоматически, а статус появится в личном кабинете.",
+            title="Статус платежа",
+            message="Проверьте оплату в личном кабинете. Доступ обновится после подтверждения платежа.",
             action_url=_public_webapp_url(),
             action_label="Открыть кабинет",
         )
@@ -201,6 +201,7 @@ async def rub_order_create_public(
         acquisition_handle=payload.acquisition_handle,
         offer_token=payload.offer_token,
         return_surface="marketing",
+        intent_id=payload.intent_id,
     )
 
 

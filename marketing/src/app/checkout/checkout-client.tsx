@@ -1,7 +1,7 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
@@ -200,6 +200,8 @@ const PAYMENT_METHOD_FALLBACKS: Array<{
 const PAYMENT_RETURN_STORAGE_KEY = "pokrov.payment-return.v1";
 
 const OFFER_REASON_TEXT: Record<string, string> = {
+  subject_missing: "Укажите корректный email для расчёта, чека и кода доступа.",
+  start_99_already_used: "Приветственный месяц уже использован. Выберите обычный тариф.",
   ready: "Промокод применён сервером.",
   promo_unknown: "Промокод не найден.",
   promo_invalid: "Промокод недействителен.",
@@ -277,10 +279,17 @@ function candidateApiBases(): string[] {
   return Array.from(new Set(bases.filter(Boolean)));
 }
 
+function checkoutReadSignal(signal?: AbortSignal): AbortSignal {
+  const deadline = AbortSignal.timeout(8_000);
+  return signal ? AbortSignal.any([signal, deadline]) : deadline;
+}
+
 async function fetchCatalog(): Promise<PublicCatalogResponse | null> {
+  const signal = checkoutReadSignal();
   for (const base of candidateApiBases()) {
+    if (signal.aborted) return null;
     try {
-      const response = await fetch(`${base}/api/public/catalog`, { cache: "no-store" });
+      const response = await fetch(`${base}/api/public/catalog`, { cache: "no-store", signal });
       if (!response.ok) continue;
       const payload = (await response.json()) as PublicCatalogResponse;
       const responseRevision = String(response.headers.get("X-Pokrov-Commercial-Revision") || "");
@@ -301,27 +310,27 @@ async function fetchCatalog(): Promise<PublicCatalogResponse | null> {
   return null;
 }
 
-async function fetchAccessKeyStatus(key: string): Promise<AccessKeyStatusResponse> {
-  let lastError = "Не удалось проверить ключ.";
+async function fetchAccessKeyStatus(key: string, signal?: AbortSignal): Promise<AccessKeyStatusResponse> {
+  const requestSignal = checkoutReadSignal(signal);
   for (const base of candidateApiBases()) {
+    if (requestSignal.aborted) break;
     try {
-      const response = await fetch(`${base}/api/access-keys/status/${encodeURIComponent(key)}`, { cache: "no-store" });
-      if (!response.ok) {
-        lastError = await response.text() || `HTTP ${response.status}`;
-        continue;
-      }
+      const response = await fetch(`${base}/api/access-keys/status/${encodeURIComponent(key)}`, { cache: "no-store", signal: requestSignal });
+      if (!response.ok) continue;
       return (await response.json()) as AccessKeyStatusResponse;
-    } catch (error) {
-      lastError = String((error as { message?: string })?.message || error || lastError);
+    } catch {
+      // Try another base within the same read deadline.
     }
   }
-  throw new Error(lastError);
+  throw new Error("Не удалось проверить ключ. Попробуйте ещё раз.");
 }
 
 async function fetchPaymentProviderState(): Promise<PaymentProviderState | null> {
+  const signal = checkoutReadSignal();
   for (const base of candidateApiBases()) {
+    if (signal.aborted) return null;
     try {
-      const response = await fetch(`${base}/api/payments/providers`, { cache: "no-store" });
+      const response = await fetch(`${base}/api/payments/providers`, { cache: "no-store", signal });
       if (!response.ok) continue;
       return (await response.json()) as PaymentProviderState;
     } catch {
@@ -332,14 +341,18 @@ async function fetchPaymentProviderState(): Promise<PaymentProviderState | null>
 }
 
 async function fetchCommercialOfferPreview(payload: {
+  buyer_email?: string;
   plan_code: string;
   promo_code: string;
   checkout_ticket?: string;
   acquisition_handle?: string;
-}): Promise<CommercialOfferPreviewResponse | null> {
+}, signal?: AbortSignal): Promise<CommercialOfferPreviewResponse | null> {
+  const requestSignal = checkoutReadSignal(signal);
   for (const base of candidateApiBases()) {
+    if (requestSignal.aborted) return null;
     try {
       const response = await fetch(`${base}/api/public/offers/preview`, {
+        signal: requestSignal,
         method: "POST",
         credentials: "omit",
         cache: "no-store",
@@ -357,27 +370,26 @@ async function fetchCommercialOfferPreview(payload: {
   return null;
 }
 
-async function fetchPaymentReturnStatus(returnToken: string): Promise<PaymentReturnStatusResponse> {
-  let lastError = "Не удалось проверить статус платежа.";
+async function fetchPaymentReturnStatus(returnToken: string, signal?: AbortSignal): Promise<PaymentReturnStatusResponse> {
+  const requestSignal = checkoutReadSignal(signal);
   for (const base of candidateApiBases()) {
+    if (requestSignal.aborted) break;
     try {
       const response = await fetch(`${base}/api/payments/orders/status`, {
+        signal: requestSignal,
         method: "POST",
         credentials: "omit",
         cache: "no-store",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ return_token: returnToken }),
       });
-      if (!response.ok) {
-        lastError = (await response.text()) || `HTTP ${response.status}`;
-        continue;
-      }
+      if (!response.ok) continue;
       return (await response.json()) as PaymentReturnStatusResponse;
-    } catch (error) {
-      lastError = String((error as { message?: string })?.message || error || lastError);
+    } catch {
+      // Try another base within the same read deadline.
     }
   }
-  throw new Error(lastError);
+  throw new Error("Не удалось проверить статус платежа. Попробуйте ещё раз.");
 }
 
 function storePaymentReturnToken(token: string): boolean {
@@ -408,6 +420,7 @@ function clearPaymentReturnToken(): void {
 }
 
 async function createPublicRubOrder(payload: {
+  intent_id?: string;
   provider: string;
   plan_code: string;
   buyer_email?: string;
@@ -418,59 +431,41 @@ async function createPublicRubOrder(payload: {
   acquisition_handle?: string;
   offer_token?: string;
 }): Promise<PublicRubOrderResponse> {
-  let lastError = "Не удалось создать платеж.";
-  for (const base of candidateApiBases()) {
-    try {
-      const response = await fetch(`${base}/api/payments/orders/create-public`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          provider: payload.provider,
-          plan_code: payload.plan_code,
-          buyer_email: payload.buyer_email,
-          checkout_ticket: payload.checkout_ticket,
-          source: "site",
-          promo_code: payload.promo_code || undefined,
-          currency: payload.currency || "RUB",
-          payment_method: payload.payment_method,
-          acquisition_handle: payload.acquisition_handle,
-          offer_token: payload.offer_token,
-        }),
-      });
-      if (!response.ok) {
-        const raw = await response.text();
-        try {
-          const parsed = JSON.parse(raw) as {
-            detail?: string | { code?: string; message?: string; replacement_plan?: string };
-          };
-          const detail = parsed.detail;
-          if (typeof detail === "object" && detail) {
-            throw new CheckoutRequestError(
-              String(detail.message || `HTTP ${response.status}`),
-              String(detail.code || "checkout_failed"),
-              String(detail.replacement_plan || ""),
-            );
-          }
-        } catch (error) {
-          if (error instanceof CheckoutRequestError) throw error;
-        }
-        lastError = raw || `HTTP ${response.status}`;
-        continue;
-      }
-      return (await response.json()) as PublicRubOrderResponse;
-    } catch (error) {
-      if (error instanceof CheckoutRequestError) throw error;
-      lastError = String((error as { message?: string })?.message || error || lastError);
-    }
+  let response: Response;
+  try {
+    response = await fetch(`${candidateApiBases()[0]}/api/payments/orders/create-public`, {
+      signal: AbortSignal.timeout(15_000),
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...payload, source: "site", promo_code: payload.promo_code || undefined, currency: payload.currency || "RUB" }),
+    });
+    if (response.ok) return (await response.json()) as PublicRubOrderResponse;
+  } catch {
+    // A timeout can follow a committed order. Only an explicit same-intent
+    // retry may recover it; switching API bases must not create another bill.
+    throw new CheckoutRequestError("Ответ не получен. Повторите попытку, чтобы проверить этот же заказ.", "checkout_outcome_unknown", "");
   }
-  throw new Error(lastError);
+  let code = "checkout_failed";
+  try {
+    const body = await response.json() as { detail?: string | { code?: string } };
+    code = typeof body.detail === "string" ? body.detail : String(body.detail?.code || code);
+  } catch {
+    // Provider and transport response bodies are never user-facing copy.
+  }
+  if (code === "start_99_already_used") {
+    throw new CheckoutRequestError("Приветственный месяц уже использован.", code, "1_month");
+  }
+  throw new CheckoutRequestError("Не удалось продолжить оплату. Повторите попытку или напишите в поддержку.", code, "");
 }
 
 async function fetchStart99Eligibility(checkoutTicket: string): Promise<Start99EligibilityResponse | null> {
   if (!checkoutTicket) return null;
+  const signal = checkoutReadSignal();
   for (const base of candidateApiBases()) {
+    if (signal.aborted) return null;
     try {
       const response = await fetch(`${base}/api/payments/start-99-eligibility`, {
+        signal,
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ checkout_ticket: checkoutTicket }),
@@ -587,21 +582,30 @@ export default function CheckoutClient() {
   const [start99Eligibility, setStart99Eligibility] = useState<"unknown" | "eligible" | "ineligible">("unknown");
   const [activeCheckoutTicket, setActiveCheckoutTicket] = useState(checkoutTicket);
   const [acquisitionHandle, setAcquisitionHandle] = useState("");
-  const [offerPreview, setOfferPreview] = useState<CommercialOfferPreviewResponse | null>(null);
-  const [offerPreviewPending, setOfferPreviewPending] = useState(true);
+  const [quoteRefresh, setQuoteRefresh] = useState(0);
+  const [offerQuote, setOfferQuote] = useState<{
+    input: object;
+    preview: CommercialOfferPreviewResponse | null;
+    expiresAt: number;
+    expired: boolean;
+  } | null>(null);
+  const orderInFlight = useRef(false);
+  const checkoutIntent = useRef<{ key: string; id: string; acquisitionHandle: string; offerToken: string } | null>(null);
+  const [recoveredReturnToken, setRecoveredReturnToken] = useState("");
+  const [checkoutRecoveryKey, setCheckoutRecoveryKey] = useState("");
+  const [infrastructureRetry, setInfrastructureRetry] = useState(0);
   const [paymentReturn, setPaymentReturn] = useState<PaymentReturnStatusResponse | null>(null);
   const [paymentReturnError, setPaymentReturnError] = useState("");
 
-  // Fetch the catalog exactly once on mount: plan selection must not refetch.
+  // Fetch commerce state on mount or explicit read retry; plan selection does not refetch.
   // Selection is reconciled through a functional update instead of a dep.
   useEffect(() => {
     let cancelled = false;
 
     const load = async () => {
-      const [catalogResult, providerResult, acquisitionResult] = await Promise.allSettled([
+      const [catalogResult, providerResult] = await Promise.allSettled([
         fetchCatalog(),
         fetchPaymentProviderState(),
-        mintAcquisitionHandoff("checkout", undefined, config.apiBaseUrl),
       ]);
       if (cancelled) return;
       const nextCatalog = catalogResult.status === "fulfilled" ? catalogResult.value : null;
@@ -625,15 +629,21 @@ export default function CheckoutClient() {
         }
       }
       setProviderState(providerResult.status === "fulfilled" ? providerResult.value : null);
-      setAcquisitionHandle(
-        acquisitionResult.status === "fulfilled" ? String(acquisitionResult.value?.handle || "") : "",
-      );
+
     };
 
     void load();
     return () => {
       cancelled = true;
     };
+  }, [infrastructureRetry]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void mintAcquisitionHandoff("checkout", undefined, config.apiBaseUrl).then((result) => {
+      if (!cancelled) setAcquisitionHandle(String(result?.handle || ""));
+    });
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -655,8 +665,8 @@ export default function CheckoutClient() {
   }, [checkoutTicket]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || !searchParams.get("payment_return")) return;
-    const returnToken = readPaymentReturnToken();
+    if (typeof window === "undefined" || (!recoveredReturnToken && !searchParams.get("payment_return"))) return;
+    const returnToken = recoveredReturnToken || readPaymentReturnToken();
     const cleanedUrl = new URL(window.location.href);
     cleanedUrl.searchParams.delete("payment_return");
     window.history.replaceState(window.history.state, "", `${cleanedUrl.pathname}${cleanedUrl.search}${cleanedUrl.hash}`);
@@ -690,7 +700,7 @@ export default function CheckoutClient() {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [searchParams]);
+  }, [searchParams, recoveredReturnToken]);
 
   useEffect(() => {
     const normalized = keyInput.trim().toUpperCase();
@@ -698,7 +708,9 @@ export default function CheckoutClient() {
       return;
     }
     let cancelled = false;
-    void fetchAccessKeyStatus(normalized)
+    const controller = new AbortController();
+    const timer = setTimeout(() => {
+    void fetchAccessKeyStatus(normalized, controller.signal)
       .then((payload) => {
         if (!cancelled) {
           setKeyStatus(payload);
@@ -715,8 +727,11 @@ export default function CheckoutClient() {
           setKeyBusy(false);
         }
       });
+    }, 250);
     return () => {
       cancelled = true;
+      clearTimeout(timer);
+      controller.abort();
     };
   }, [keyInput]);
 
@@ -752,26 +767,42 @@ export default function CheckoutClient() {
     ? requestedPaymentMethod.code as PaymentMethodChoice
     : fallbackPaymentMethod?.code as PaymentMethodChoice | undefined;
   const selectedPaymentMethod = paymentMethods.find((method) => method.code === effectivePaymentMethod);
+  const quotePlanCode = String(activePlan.code);
+  const quotePaymentMethod = String(effectivePaymentMethod || "");
+  // Object identity also fences A -> B -> A input changes before debounce.
+  const quoteInput = useMemo(() => ({
+    plan_code: quotePlanCode,
+    promo_code: promoCode,
+    checkout_ticket: activeCheckoutTicket || undefined,
+    acquisition_handle: activeCheckoutTicket ? undefined : acquisitionHandle || undefined,
+    provider: activeProviderCode,
+    currency: "RUB",
+    payment_method: quotePaymentMethod,
+    buyer_email: activeCheckoutTicket ? "" : buyerEmail.trim().toLowerCase(),
+    refresh: quoteRefresh,
+  }), [quotePlanCode, promoCode, activeCheckoutTicket, acquisitionHandle, activeProviderCode, quotePaymentMethod, buyerEmail, quoteRefresh]);
+  const quoteMatchesInput = offerQuote?.input === quoteInput;
+  const offerPreview = quoteMatchesInput ? offerQuote.preview : null;
+  const offerPreviewPending = !quoteMatchesInput;
   const previewMatchesPlan = Boolean(
-    offerPreview
+    offerPreview?.ok && offerPreview.valid && offerPreview.offer_token
       && offerPreview.plan_code === activePlan.code
-      && offerPreview.commercial_revision === COMMERCIAL_REVISION,
+      && offerPreview.commercial_revision === COMMERCIAL_REVISION
+      && offerPreview.currency === quoteInput.currency
+      && Number.isSafeInteger(offerPreview.base_price_rub) && offerPreview.base_price_rub > 0
+      && Number.isSafeInteger(offerPreview.final_price_rub) && offerPreview.final_price_rub > 0
+      && !offerQuote?.expired,
   );
-  const promoAccepted = !promoCode || Boolean(offerPreview?.valid && offerPreview.offer_token);
   const infrastructureReady = Boolean(catalog && providerState?.ok && !providerState?.blocked && activeProviderCode);
-  const checkoutReady = Boolean(
-    infrastructureReady
-      && previewMatchesPlan
-      && !offerPreviewPending
-      && promoAccepted
-      && selectedPaymentMethod?.available,
-  );
+  const checkoutReady = Boolean(infrastructureReady && previewMatchesPlan && selectedPaymentMethod?.available);
+  const currentCheckoutIntentKey = JSON.stringify([activeProviderCode, activePlan.code, activeCheckoutTicket, buyerEmail.trim().toLowerCase(), promoCode, effectivePaymentMethod]);
+  const recoveringCheckout = checkoutRecoveryKey === currentCheckoutIntentKey;
   const checkoutBlockedReasons = providerState?.blocked_reason_texts?.length
     ? providerState.blocked_reason_texts
     : providerState?.blocked_reasons || [];
   const activePlanMonths = PLAN_MONTHS[activePlan.code] || 0;
-  const activePlanBase = previewMatchesPlan ? Math.max(1, Math.round(offerPreview?.base_price_rub || 0)) : 0;
-  const activePlanTotal = previewMatchesPlan ? Math.max(1, Math.round(offerPreview?.final_price_rub || 0)) : 0;
+  const activePlanBase = previewMatchesPlan ? Math.round(offerPreview?.base_price_rub || 0) : 0;
+  const activePlanTotal = previewMatchesPlan ? Math.round(offerPreview?.final_price_rub || 0) : 0;
   const activePlanMonthly = activePlanMonths > 0 ? Math.round(activePlanTotal / activePlanMonths) : 0;
   const offerMessage = promoCode && offerPreview && !offerPreview.valid
     ? OFFER_REASON_TEXT[offerPreview.reason_code] || "Промокод сейчас недоступен."
@@ -780,32 +811,49 @@ export default function CheckoutClient() {
       : "";
 
   useEffect(() => {
-    if (!catalog || !activePlan.code) return;
+    if (!catalog || !quoteInput.plan_code) return;
     let cancelled = false;
+    const controller = new AbortController();
     const timer = setTimeout(() => {
-      setOfferPreviewPending(true);
-      setOfferPreview(null);
+      const requestedAt = performance.now();
       void fetchCommercialOfferPreview({
-        plan_code: activePlan.code,
-        promo_code: promoCode,
-        checkout_ticket: activeCheckoutTicket || undefined,
-        acquisition_handle: activeCheckoutTicket ? undefined : acquisitionHandle || undefined,
-      })
-        .then((result) => {
-          if (!cancelled) setOfferPreview(result);
-        })
-        .finally(() => {
-          if (!cancelled) setOfferPreviewPending(false);
-        });
+        buyer_email: quoteInput.buyer_email || undefined,
+        plan_code: quoteInput.plan_code,
+        promo_code: quoteInput.promo_code,
+        checkout_ticket: quoteInput.checkout_ticket,
+        acquisition_handle: quoteInput.acquisition_handle,
+      }, controller.signal).then((preview) => {
+        if (cancelled) return;
+        const serverTime = Date.parse(preview?.server_time || "");
+        const deadline = Math.min(
+          Date.parse(preview?.hold_expires_at || ""),
+          Date.parse(preview?.offer_ends_at || ""),
+        );
+        const lifetime = deadline - serverTime;
+        // Subtract request time conservatively; workstation clock skew cannot
+        // extend the server's absolute hold.
+        const expiresAt = requestedAt + (Number.isFinite(lifetime) ? Math.max(0, lifetime) : 0);
+        setOfferQuote({ input: quoteInput, preview, expiresAt, expired: expiresAt <= performance.now() });
+      });
     }, 250);
     return () => {
       cancelled = true;
+      controller.abort();
       clearTimeout(timer);
     };
-  }, [acquisitionHandle, activeCheckoutTicket, activePlan.code, catalog, promoCode]);
+  }, [catalog, quoteInput]);
 
-  const startPublicCheckout = async (): Promise<void> => {
-    if (!checkoutReady || !activeProviderCode) return;
+  useEffect(() => {
+    if (!offerQuote || offerQuote.expired) return;
+    const timer = setTimeout(() => {
+      setOfferQuote((current) => current === offerQuote ? { ...current, expired: true } : current);
+    }, Math.max(0, offerQuote.expiresAt - performance.now()));
+    return () => clearTimeout(timer);
+  }, [offerQuote]);
+
+  const startPublicCheckout = async (submittedAt: number): Promise<void> => {
+    if (orderInFlight.current || !activeProviderCode || recoveredReturnToken
+      || (!recoveringCheckout && (!checkoutReady || !offerQuote || offerQuote.expiresAt <= submittedAt))) return;
     const email = buyerEmail.trim().toLowerCase();
     if (!activeCheckoutTicket && !validBuyerEmail(email)) {
       setEmailError(email ? "Проверьте адрес email." : "Укажите email для чека и кода активации.");
@@ -814,10 +862,20 @@ export default function CheckoutClient() {
       return;
     }
     setEmailError("");
+    orderInFlight.current = true;
     setCheckoutBusy(true);
     setCheckoutStatusText("");
     try {
+      const intentKey = currentCheckoutIntentKey;
+      if (checkoutIntent.current?.key !== intentKey) {
+        checkoutIntent.current = {
+          key: intentKey, id: crypto.randomUUID(), acquisitionHandle,
+          offerToken: String(offerPreview?.offer_token || ""),
+        };
+      }
+      setCheckoutRecoveryKey(intentKey);
       const order = await createPublicRubOrder({
+        intent_id: checkoutIntent.current.offerToken ? undefined : checkoutIntent.current.id,
         provider: activeProviderCode,
         plan_code: activePlan.code,
         buyer_email: activeCheckoutTicket ? undefined : email,
@@ -825,15 +883,17 @@ export default function CheckoutClient() {
         promo_code: promoCode || undefined,
         currency: "RUB",
         payment_method: effectivePaymentMethod,
-        acquisition_handle: activeCheckoutTicket ? undefined : acquisitionHandle || undefined,
-        offer_token: offerPreview?.valid ? String(offerPreview.offer_token || "") || undefined : undefined,
+        acquisition_handle: activeCheckoutTicket ? undefined : checkoutIntent.current.acquisitionHandle || undefined,
+        offer_token: checkoutIntent.current.offerToken || undefined,
       });
       const paymentUrl = String(order.payment_url || "").trim();
-      if (!paymentUrl) {
-        throw new Error("Платежная ссылка не получена.");
-      }
       if (!storePaymentReturnToken(order.payment_return_token)) {
         throw new Error("Браузер не сохранил безопасный идентификатор платежа. Разрешите временное хранилище и повторите.");
+      }
+      if (!paymentUrl) {
+        setRecoveredReturnToken(order.payment_return_token);
+        setCheckoutStatusText("Заказ уже создан. Проверяем его статус. Если деньги списались, не оплачивайте повторно.");
+        return;
       }
       window.location.assign(paymentUrl);
     } catch (error) {
@@ -844,10 +904,16 @@ export default function CheckoutClient() {
         setActiveCheckoutTicket(String(eligibility?.replacement_checkout_ticket || ""));
         setPlanPickerOpen(false);
         setCheckoutStatusText("Приветственный месяц уже использован. Выбран обычный месяц за 239 ₽.");
+      } else if (error instanceof CheckoutRequestError && ["checkout_quote_expired", "checkout_quote_changed", "checkout_quote_invalid"].includes(error.code)) {
+        checkoutIntent.current = null;
+        setCheckoutRecoveryKey("");
+        setQuoteRefresh((current) => current + 1);
+        setCheckoutStatusText("Расчёт изменился или истёк. Проверьте обновлённую сумму перед оплатой.");
       } else {
         setCheckoutStatusText(String((error as { message?: string })?.message || error || "Не удалось создать платеж."));
       }
     } finally {
+      orderInFlight.current = false;
       setCheckoutBusy(false);
     }
   };
@@ -1045,8 +1111,8 @@ export default function CheckoutClient() {
               ) : null}
 
               {infrastructureReady ? (
-                <Button onClick={startPublicCheckout} disabled={checkoutBusy || !checkoutReady} size="lg" className="w-full">
-                  {offerPreviewPending || !previewMatchesPlan ? "Проверяем сумму…" : `Оплатить ${activePlanTotal} ₽`}
+                <Button onClick={() => void startPublicCheckout(performance.now())} disabled={checkoutBusy || Boolean(recoveredReturnToken) || (!checkoutReady && !recoveringCheckout)} size="lg" className="w-full">
+                  {recoveringCheckout ? "Проверить заказ" : offerPreviewPending ? "Проверяем сумму…" : previewMatchesPlan ? `Оплатить ${activePlanTotal} ₽` : "Оплата недоступна"}
                 </Button>
               ) : (
                 <span aria-disabled="true" className="inline-flex min-h-11 w-full items-center justify-center rounded-full bg-canvas-alt px-6 text-[0.9375rem] font-semibold text-ink-muted">
@@ -1060,15 +1126,28 @@ export default function CheckoutClient() {
                   : "Разовая оплата · без автосписаний · код на email"}
               </p>
 
-              {offerPreview?.valid && formatServerDeadline(offerPreview.hold_expires_at) ? (
+              {previewMatchesPlan && formatServerDeadline(offerPreview?.hold_expires_at) ? (
                 <p className="-mt-2 text-center text-[0.75rem] leading-relaxed text-ink-soft">
-                  Сумма зафиксирована сервером до {formatServerDeadline(offerPreview.hold_expires_at)}.
+                  Расчёт действителен до {formatServerDeadline(offerPreview?.hold_expires_at)}.
                 </p>
               ) : null}
               {offerPreview?.terms_url ? (
                 <a href={offerPreview.terms_url} target="_blank" rel="noreferrer" className="-mt-2 text-center text-[0.75rem] font-semibold text-brand-strong underline-offset-4 hover:underline">
                   Условия предложения
                 </a>
+              ) : null}
+
+              {infrastructureReady && !offerPreviewPending && !previewMatchesPlan ? (
+                <div className="flex flex-col gap-2" role="status">
+                  <p className="text-[0.8125rem] text-ink-soft">
+                    {offerQuote?.expired && offerPreview?.valid
+                      ? "Срок подтверждённой суммы истёк. Проверьте условия ещё раз."
+                      : OFFER_REASON_TEXT[offerPreview?.reason_code || ""] || "Не удалось подтвердить сумму. Проверьте условия ещё раз."}
+                  </p>
+                  <Button variant="secondary" onClick={() => setQuoteRefresh((current) => current + 1)}>
+                    Проверить сумму
+                  </Button>
+                </div>
               ) : null}
 
               {checkoutStatusText ? (
@@ -1084,6 +1163,9 @@ export default function CheckoutClient() {
                       ? "Оплата временно недоступна. Начните с приложения или напишите в поддержку — подскажем следующий шаг."
                       : "Проверяем доступность оплаты. Если кнопка не появится, начните с приложения или напишите в поддержку."}
                   </p>
+                  <Button variant="secondary" onClick={() => setInfrastructureRetry((value) => value + 1)}>
+                    Проверить доступность оплаты
+                  </Button>
                   <div className="grid grid-cols-2 gap-2">
                     <Button href={MARKETING_CANONICAL_PATHS.install} variant="secondary" className="w-full">
                       Скачать

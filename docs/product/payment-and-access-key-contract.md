@@ -33,10 +33,21 @@ A completed production cutover, mixed-fleet safety, and full migration must not 
 Marketing and cabinet checkout consume one server contract. Initial catalog,
 provider capability and independent acquisition requests run in parallel;
 offer preview follows the selected plan/promo and is the only source for final
-price, benefit, absolute deadline, terms link and signed hold. A non-empty
-invalid promo blocks order creation. Checkout submits the signed offer token,
-and the server revalidates price/revision/legal/capacity/quota/deadline under
-lock before provider I/O.
+price, benefit, absolute deadline, terms link and signed calculation. Marketing checkout
+requires a valid, positive, unexpired preview and signed token even with an empty
+promo. Plan, promo, checkout subject, provider, payment method or buyer changes
+immediately invalidate its previous quote; debounce delays only the new request.
+Late responses cannot restore an earlier input's quote. Expiry uses the server's
+remaining hold with monotonic local elapsed time, and submit checks it again.
+Catalog/provider read results become visible independently of optional acquisition
+completion. Read-only checkout fetches share one eight-second deadline across all API bases,
+including response-body reads; replacing preview or debounced key inputs aborts
+the old request. Explicit catalog/provider retry is read-only. API/provider error
+bodies are not rendered to the buyer.
+Checkout submits the signed offer token,
+and the server revalidates the applicable price, revision and deadline before
+provider I/O. Commercial offers additionally retain their legal, capacity and
+quota checks under the existing reservation lock.
 
 The provider capability response owns which methods are enabled. Return from a
 provider is restored from a versioned identity-free token kept in browser
@@ -45,6 +56,43 @@ and render only the six server states `processing`, `paid`, `failed`,
 `cancelled`, `manual_review`, and `expired`. They do not calculate price,
 restart an urgency deadline, infer remaining quota, or turn a callback/redirect
 hint into payment or access truth.
+
+The legacy `/pay/success` landing page is an unverified return receipt: it directs
+the user to check the cabinet and does not state that money was received. Its POST
+response is `ok=true, status=unverified`; redirect parameters or posted `paid`
+values do not confirm an order or grant access.
+
+Public base-price order requests may carry a subject-scoped UUID `intent_id`.
+The server serializes that key in PostgreSQL, binds the normalized request digest
+to the existing immutable order, and rejects changed parameters with HTTP 409.
+A matching retry returns its current order and a read-only return token without
+creating another provider invoice. Signed commercial offers retain their unique
+reservation as retry identity. Recovery has no stored checkout URL: the browser
+shows order verification and server payment status. A lost mutation response never
+triggers automatic fallback POSTs; the explicit retry retains the original quote
+and attribution and is labelled «Проверить заказ», not a newly quoted purchase.
+Legacy callers omitting both identities do not gain retry deduplication.
+
+Ordinary marketing checkout with no promo/offer ID now receives a signed `bq1`
+calculation through `/api/public/offers/preview`. Anonymous checkout supplies the
+receipt email; account checkout uses a verified ticket/auth subject. The same
+server pricing function is used for preview and order creation, including eligible
+referral and pending discounts. No campaign, assignment or commercial reservation
+is manufactured for an ordinary purchase. The existing HMAC secret and bounded
+quote TTL are reused, with a distinct signature prefix and no raw identity in the
+token. Missing signing configuration keeps preview unavailable.
+
+A base quote binds owner, tariff duration, RUB pricing details and commercial
+revision. Before creating a new order the server checks signature, expiry, active
+plan and the current calculation; changed price/discount/owner returns 409 and an
+expired quote returns 410. This is a validated calculation, not a promise to honor
+stale pricing until expiry. The browser refreshes a rejected calculation and asks
+for another explicit payment click. A quote's signed UUID is its retry identity:
+an exact retry may recover a committed order after quote expiry without repeating
+provider I/O. Changed request parameters still conflict. Legacy API callers without
+a quote retain server-side pricing; the marketing UI always requires a quote.
+Local HTTP/browser proof uses isolated SQLite and a synthetic provider. PostgreSQL
+concurrency, live provider operations and deployment remain separate gates.
 
 The 1.2.0 repository candidate implements order creation as two short local
 transactions separated by provider I/O. The first transaction stores a
