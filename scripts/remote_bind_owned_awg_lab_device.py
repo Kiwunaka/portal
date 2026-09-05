@@ -798,9 +798,10 @@ if selected_profile == "default":
 else:
     ok = bool(
         selected.get("transport_profile") == selected_profile
-        and install_id in list(selected.get("install_ids") or [])
-        and install_id in list(selected_lab.get("allowlist_install_ids") or [])
-        and tg_id in list(selected_lab.get("allowlist_tg_ids") or [])
+        and list(selected.get("install_ids") or []) == [install_id]
+        and not any(selected.get(field) for field in ("tg_ids", "linked_tg_ids", "platforms"))
+        and list(selected_lab.get("allowlist_install_ids") or []) == [install_id]
+        and not selected_lab.get("allowlist_tg_ids")
         and live_user_entitled
         and resolved_profile == selected_profile
     )

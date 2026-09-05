@@ -2,6 +2,11 @@
 
 Status: `READY_READ_ONLY_PLAN; TEMPORARY_CONTROL_PLANE_APPLY_NOT_AUTHORIZED; GATE_F_BLOCKED`
 
+Superseded for current VM identity/authorization by WO-013HL (2026-09-05).
+The owner authorized bounded temporary switching; fresh VM digest differs
+from this historical target. HL retains real APPLY/default-restore results,
+with client connection still NOT_RUN.
+
 Observed: `2026-09-04`
 
 Production/public mutation: `NONE`

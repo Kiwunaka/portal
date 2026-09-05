@@ -68,6 +68,19 @@ def test_scope_guard_precedes_any_guarded_mutation_and_new_scope_is_install_only
     assert helper.index("if latest != current:") < helper.index('    "network_rollout_config.update",')
 
 
+@pytest.mark.parametrize("account_selector,expected", [(False, True), (True, False)])
+def test_apply_readback_accepts_only_install_scoped_binding(account_selector, expected) -> None:
+    tree = ast.parse(_remote_helper())
+    branch = next(node for node in tree.body if isinstance(node, ast.If)
+                  and any(isinstance(child, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "ok" for t in child.targets) for child in node.body))
+    scope = {"selected_profile": "awg31_lab", "install_id": "target", "tg_id": 42,
+             "selected": {"transport_profile": "awg31_lab", "install_ids": ["target"]},
+             "selected_lab": {"allowlist_install_ids": ["target"], "allowlist_tg_ids": [42] if account_selector else []},
+             "live_user_entitled": True, "resolved_profile": "awg31_lab"}
+    exec(compile(ast.Module(body=branch.orelse, type_ignores=[]), str(SCRIPT), "exec"), scope)
+    assert scope["ok"] is expected
+
+
 def test_default_profile_is_supported_without_reprovisioning_material() -> None:
     source = SCRIPT.read_text(encoding="utf-8")
     helper = _remote_helper()
