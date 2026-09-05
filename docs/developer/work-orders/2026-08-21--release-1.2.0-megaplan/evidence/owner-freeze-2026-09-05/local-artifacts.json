@@ -1,0 +1,58 @@
+{
+  "schema": "pokrov.candidate33.owner-freeze-local-artifacts/v1",
+  "recorded_on": "2026-09-05",
+  "directory": "E:/POKROV-tools/release-candidates/pokrov-1.2.0-candidate.33/",
+  "verification": "READ_ONLY_SHA256_INVENTORY_NO_REBUILD_NO_UPLOAD",
+  "files": [
+    {
+      "name": "pokrov-android-arm64-v8a.apk",
+      "size": 101366678,
+      "sha256": "1eca4cbe8d36cbec2aca3dd92f27b7b369fb1199a13e6110a2447fad265acda5"
+    },
+    {
+      "name": "pokrov-android-armeabi-v7a.apk",
+      "size": 90778788,
+      "sha256": "cee69c797e5e73b929ee1ad7b56d4c0918d81d0b25b42cfc0903801b16450734"
+    },
+    {
+      "name": "pokrov-android-market.aab",
+      "size": 126263318,
+      "sha256": "9f3ad01d92fcde54d93d88b0df9a04e9b7b531362029d1df4beab86ded5fac2c"
+    },
+    {
+      "name": "pokrov-android-universal.apk",
+      "size": 295370161,
+      "sha256": "51b86f66bd5c79fdf8a8e51d7607315a6ea3f8dfe9c36c4656034aac3b4583f2"
+    },
+    {
+      "name": "pokrov-android-x86_64.apk",
+      "size": 109951989,
+      "sha256": "fe1fa2d2efb3c20530ed4af7ef48d74e05b6b89e213410f976d180c58c473168"
+    },
+    {
+      "name": "pokrov-windows-setup-x64.exe",
+      "size": 29153792,
+      "sha256": "250622f7e4bf9bea39a9456004d4cfeb2340a987c622c46f70b3af07aaec3580"
+    },
+    {
+      "name": "pokrov-1.2.0-candidate.33.release-index.json",
+      "size": 6884,
+      "sha256": "5620c2f0558e7c9a0f8ff8dfbcd47523986dd7fdf13f061e81adab3b10a3f680"
+    },
+    {
+      "name": "pokrov-1.2.0-candidate.33.release-index.json.sig",
+      "size": 64,
+      "sha256": "5115ab3cd8ee0fa49018e521f75fd9baf5d469c2793a8a47cda4a965b82d3191"
+    },
+    {
+      "name": "pokrov-1.2.0-candidate.33.signing-receipt.json",
+      "size": 589,
+      "sha256": "f84843c81f9173072dcb3f3f551f7ef5ca9e41c21312ddec77ca0fe6cb6b78d7"
+    },
+    {
+      "name": "pokrov-1.2.0-candidate.33.release-handoff.json",
+      "size": 13186,
+      "sha256": "30d9d04437caa51c0fafb533a77589d745c66cd7ce5c17843d5b3a1e37e72c81"
+    }
+  ]
+}
