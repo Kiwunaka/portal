@@ -21,7 +21,7 @@ R12-A04,Managed provisioning и key lifecycle,active,I3,NEEDS_RUNTIME_PROOF,03_R
 R12-A05,Независимая RU-origin matrix,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-A06,Выбрать AWG presets по измерениям,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-A07,TCP fallback при недоступном UDP,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
-R12-A08,"Разделить Smart DNS, WARP и AWG",queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-A08,"Разделить Smart DNS, WARP и AWG",active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-A08.md
 R12-A09,AWG canary и обратимое отключение,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-W01,Win10/Win11 exact managed-network matrix,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-W02,Crash/sleep/network handoff без сетевого ущерба,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,

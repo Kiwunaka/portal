@@ -1,0 +1,108 @@
+{
+  "recorded_at_utc": "2026-09-05T23:47:50.013885+00:00",
+  "origin": "current-origin Windows source and isolated net.Pipe TLS tests",
+  "platform_source": "959d1f5f83180700a9ecab8516cc122dd947a5a8",
+  "client_source": "f02486170b7299415dadc7518681102a27210ae3",
+  "go_version": "go1.25.13 windows/amd64",
+  "source_files": {
+    "infra/owned-smart-dns/internal/smartdns/clienthello.go": "65e6b692f912ca86e72949dcdbe84326b7e9cb064e53d6a350316b1e512a60e5",
+    "infra/owned-smart-dns/internal/smartdns/clienthello_test.go": "e28ca4999e2e14716f273e1092ac028d4151a11ba3a85de35cb9e7ecec02ab07",
+    "infra/owned-smart-dns/README.md": "a7a3c7ad4bf8830fbcd03bec2a44f04f1795203ba9a2b53b606376f6823f8758",
+    "docs/operations/deployment-and-access.md": "9fa9d68eb147a85ccd538c5b68a3cd07ab89dc4807d40cc6968b8cb1b0fcc652"
+  },
+  "commands": [
+    {
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\infra\\owned-smart-dns",
+      "command": "E:/POKROV-tools/go1.25.13/go/bin/go.exe test ./internal/smartdns -run TestSniffClientHelloRejectsECHWithAllowedOuterSNI -count=1",
+      "log": "E:/r12-a08-ech-before.log",
+      "sha256": "fc93498d454f5892801016daf2cf70aa41e785288479ede04b94b78261bf831d",
+      "exit_code": 1,
+      "result": "FAIL before fix: allowed outer SNI accepted despite concealed inner name"
+    },
+    {
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\infra\\owned-smart-dns",
+      "command": "E:/POKROV-tools/go1.25.13/go/bin/go.exe test ./... -count=1",
+      "log": "E:/r12-a08-smartdns-go.log",
+      "sha256": "f2a90a1698fae6ae46a07cea9dd815d4914229c94b4b7e8768442e598058e31e",
+      "exit_code": 0,
+      "result": "PASS full Go module tests"
+    },
+    {
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\infra\\owned-smart-dns",
+      "command": "E:/POKROV-tools/go1.25.13/go/bin/go.exe vet ./...",
+      "log": "E:/r12-a08-smartdns-vet.log",
+      "sha256": "6de1eff8f5ec6316aebba263b3c81148f40b2fcc8e77dfb0f2b73f48aa225598",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\infra\\owned-smart-dns",
+      "command": "E:/POKROV-tools/go1.25.13/go/bin/go.exe build -o E:/r12-a08-smartdns.exe ./cmd/pokrov-smart-dns",
+      "log": "E:/r12-a08-smartdns-build.log",
+      "sha256": "6c2cd107cc980bcc427fb06122e26fb21baca5abaca1cc68adbd7b9b9ec54785",
+      "exit_code": 0,
+      "result": "PASS Windows host compile; executable not started"
+    },
+    {
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_check_smart_dns_policy_parity.py tests/test_build_owned_smart_dns_server_bundle.py tests/test_remote_install_owned_smart_dns_lab.py tests/test_remote_migrate_owned_smart_dns_frontend.py tests/test_remote_prepare_owned_smart_dns_runtime.py -q",
+      "log": "E:/r12-a08-smartdns-python.log",
+      "sha256": "0ea915dcb8e8701e1ba2b96c703fdb1f0ccf31ab25418178ae0b0ccbd2187311",
+      "exit_code": 0,
+      "result": "60 PASS"
+    },
+    {
+      "cwd": "E:/r12client/packages/app_shell",
+      "command": "flutter test test/client_routing_preferences_test.dart",
+      "log": "E:/r12-a08-client-routing.log",
+      "sha256": "08f871b00910a6a979420af551da5d93f019180305b603374b07590e751ab3e1",
+      "exit_code": 0,
+      "result": "17 PASS"
+    },
+    {
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "command": "python scripts/check_smart_dns_policy_parity.py --client-root E:/r12client",
+      "log": "E:/r12-a08-policy-parity.log",
+      "sha256": "2ad47c7f5ec09cde3bc588f1a914e52d479b5fbee775d651f4c6e8bbfe86ba02",
+      "exit_code": 0,
+      "result": "PASS policy parity"
+    },
+    {
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_collect_node_metrics.py tests/test_collect_node_metrics_observability.py tests/test_panel_client_metrics.py tests/test_live_probe_scripts.py tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "log": "E:/r12-a08-router-docs.log",
+      "sha256": "dece76e85416e1fff9fa7ef52881ef8b682358aa03afbca530ec83bb8a07591b",
+      "exit_code": 0,
+      "result": "61 PASS, 28 existing deprecation warnings"
+    },
+    {
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "log": "E:/r12-a08-context-audit.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "command": "python docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "log": "E:/r12-a08-package.log",
+      "sha256": "addff57a0d579a051dfd861c95e8dce5547c29650a582021ccac5da6579c0870",
+      "exit_code": 0,
+      "result": "PASS 13 imports / 83 IDs / 378 legacy IDs / 144 links"
+    }
+  ],
+  "host_compile": {
+    "path": "E:/r12-a08-smartdns.exe",
+    "sha256": "f5aaf086afd12a8bfbcf3e2dc30cfa0bd52ced4863cd53f41bb36413a07ff53d",
+    "status": "COMPILE_ONLY_NOT_RELEASE"
+  },
+  "limitations": [
+    "ECH GREASE is rejected as well; this selective relay cannot authorize the concealed inner name.",
+    "No runtime install, Linux release bundle or owned-server/application-session test was performed.",
+    "QUIC, cached DNS, direct fallback, independent origin and authenticated service access remain unverified at runtime.",
+    "N01/N03 dependencies and full A08 remain partial."
+  ],
+  "protocol_reference": "https://www.iana.org/assignments/tls-extensiontype-values/tls-extensiontype-values.xhtml",
+  "release_artifacts_delta": false
+}

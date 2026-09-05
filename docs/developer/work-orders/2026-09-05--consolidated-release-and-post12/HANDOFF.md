@@ -19,6 +19,8 @@ candidate и postrelease activation не выполнены. Ранние отч
 
 Добавлен [A04 — согласованная выдача AWG material при ротации](EXECUTION-A04.md): 43 focused checks PASS; server revoke/expiry и interop OPEN.
 
+Исправлен [A08 — ECH с разрешённым внешним SNI в Smart DNS](EXECUTION-A08.md): source `959d1f5`, Go/tooling/client checks PASS; live access/QUIC/fallback OPEN.
+
 ## Изменения
 
 - Core: correlated endpoint/selector proof; Android/Windows AAR/DLL собраны
