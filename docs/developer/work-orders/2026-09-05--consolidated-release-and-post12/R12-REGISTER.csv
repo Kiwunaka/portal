@@ -17,7 +17,7 @@ R12-N08,Routing truth matrix,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83
 R12-A01,Закрепить AWG3.1 baseline и границу публичного scope,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-A02,Interop с реальным owned AWG server,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-A03,Cross-field validation и packet-size budget,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
-R12-A04,Managed provisioning и key lifecycle,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-A04,Managed provisioning и key lifecycle,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-A04.md
 R12-A05,Независимая RU-origin matrix,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-A06,Выбрать AWG presets по измерениям,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-A07,TCP fallback при недоступном UDP,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,

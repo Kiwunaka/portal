@@ -17,6 +17,8 @@ candidate и postrelease activation не выполнены. Ранние отч
 
 Исправлен [N01/N04 — repair против pending invalidation и смены режима](EXECUTION-N01-REPAIR.md): client `f024861`, 178 widget/lifecycle PASS.
 
+Добавлен [A04 — согласованная выдача AWG material при ротации](EXECUTION-A04.md): 43 focused checks PASS; server revoke/expiry и interop OPEN.
+
 ## Изменения
 
 - Core: correlated endpoint/selector proof; Android/Windows AAR/DLL собраны
