@@ -6,6 +6,9 @@ candidate и postrelease activation не выполнены. Ранние отч
 последовательные срезы. Точные команды, SHA логов и source tuple —
 [evidence/handoff-local.json](evidence/handoff-local.json).
 
+Последующий срез N05 — [наблюдения, новые Core bytes и проверки](EXECUTION-N05.md).
+Он дополняет этот сохранённый срез от 2026-09-05.
+
 ## Изменения
 
 - Core: correlated endpoint/selector proof; Android/Windows AAR/DLL собраны

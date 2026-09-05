@@ -1,0 +1,137 @@
+{
+  "recorded_at_utc": "2026-09-05T22:09:01.091878+00:00",
+  "origin": "current-origin local Windows source/fixture/build checks",
+  "source_tuple": {
+    "platform": "9f48273104a7dbfbf9bec726f569b7be2426cba0",
+    "client": "c78c458afdbe805624ade4b554a996e9469dafd5",
+    "core": "6bc36034c86528972488fc203a98512686ac4db9"
+  },
+  "commands": [
+    {
+      "repository": "core",
+      "command": "pwsh -NoProfile -File scripts/test.ps1 -GoExecutable E:/POKROV-tools/go1.25.13/go/bin/go.exe",
+      "log": "E:/r12-n05-core-full2.log",
+      "sha256": "f15454cf753223a0e71ea80f4aed5c597ab9cac089b38d7d7c1628ae43c95fc0",
+      "result": "PASS full Core suite"
+    },
+    {
+      "repository": "core",
+      "command": "go -C engine/sing-box test -race -count=1 ./common/urltest ./daemon ./experimental/libbox",
+      "log": "E:/r12-n05-core-race-final.log",
+      "sha256": "7339a72f77230738d6a10e09c3fbd3e6aefb591ffdede023034efefd25e72a51",
+      "result": "PASS race; Go1.25.13, CGO=1, MinGW13.2.0 on process PATH"
+    },
+    {
+      "repository": "client",
+      "command": "ctest --test-dir E:/r12-windows-tests/build -C Debug --output-on-failure",
+      "log": "E:/r12-n05-native-tests.log",
+      "sha256": "0bb43021c1ecba3d543b700370a9a7f47264c573f5625ad5c8349e43e29b6abb",
+      "result": "PASS 9/9 native tests"
+    },
+    {
+      "repository": "client",
+      "command": "pwsh -NoProfile -File scripts/run-tests.ps1",
+      "log": "E:/r12-n05-client-full3.log",
+      "sha256": "e3f34c67ef217c3a842a7c8b7db5fd5c843ee96bc5ce868ea532124fa259643f",
+      "result": "PASS 594 Flutter tests, 1 retained opt-in DLL skip, both JVM flavors"
+    },
+    {
+      "repository": "client",
+      "command": "flutter analyze --no-pub",
+      "log": "E:/r12-n05-client-analyze-final.log",
+      "sha256": "56ffa824212113052bc783b27baa60e837bd43bc4177fef379cb9504e2407830",
+      "result": "PASS no issues"
+    },
+    {
+      "repository": "client",
+      "command": "gradlew.bat :app:testDirectDebugUnitTest :app:testStoreDebugUnitTest",
+      "log": "E:/r12-n05-jvm-exact-aar.log",
+      "sha256": "abf2411560a7e88b4e550cadbb0cc5932cc2119b991cdce4a7661a57c942f8e5",
+      "result": "PASS with new AAR; Gradle incremental tasks included"
+    },
+    {
+      "repository": "client",
+      "command": "pwsh -NoProfile -File scripts/test-windows-core-proxy-only.ps1 -CoreRoot E:/POKROV-tools/builds/core-6bc3603-n05/windows-a",
+      "log": "E:/r12-n05-dll-proxy.log",
+      "sha256": "5a387fdf903f693abebdca980a0a8002b9af377174de9cb5598249ecfaab00d3",
+      "result": "PASS exact DLL 100 proxy-only start/stop cycles; no TUN/routes test"
+    },
+    {
+      "repository": "client",
+      "command": "pwsh -NoProfile -File scripts/validate-seed.ps1 -CoreRoot E:/r12core-implementation -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start",
+      "log": "E:/r12-n05-seed-final.log",
+      "sha256": "7e1bacec3d1571b304076aae7e5b3bde683d1ebe193604f27f34676d88f334d3",
+      "result": "PASS"
+    },
+    {
+      "repository": "platform",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_observability_contracts.py tests/test_support_bundle_contracts.py tests/test_observability_data_inventory.py -q",
+      "log": "E:/r12-n05-platform-final2.log",
+      "sha256": "2c7afcc8feebeb03329318c6f27788b263540a702cb18430208d93192897b12e",
+      "result": "PASS 23"
+    }
+  ],
+  "all_retained_log_sha256": {
+    "r12-n05-aar-a.log": "be8e031a102db7dfee4f68c430703020112b0c605102007078bb4e021093a315",
+    "r12-n05-aar-b.log": "c378371351c495d6d55355543ac64f89330fd78eb90998a6eabf39875516cc35",
+    "r12-n05-client-analyze-final.log": "56ffa824212113052bc783b27baa60e837bd43bc4177fef379cb9504e2407830",
+    "r12-n05-client-full.log": "f3bec852e22413a256c8ba4dd8e412dd77b79d0d92e30958f4c332104be0e535",
+    "r12-n05-client-full2.log": "cf24d22c830bace5dcad4a5355a51816e146feeaa51efe639359fdcab7cf14dc",
+    "r12-n05-client-full3.log": "e3f34c67ef217c3a842a7c8b7db5fd5c843ee96bc5ce868ea532124fa259643f",
+    "r12-n05-core-emitter.log": "85819acd0d1168eed1c1f3d4dae0e165d7879836f8d549a6776d09c34a5a4fb8",
+    "r12-n05-core-focused.log": "8a259a63522e7ad1046aef73bab84d98f231fc4835fad1606dd4203a261bf145",
+    "r12-n05-core-focused2.log": "448f900df105ee8990ee60e1622500b2f1549ea0736e072ff1d634493f6b3400",
+    "r12-n05-core-focused3.log": "9a7fd405c912695b54a56e255ec6514ad326feb73378d8dbdbccd280748a5bd7",
+    "r12-n05-core-full.log": "d374c70ed33c37d5775f9cad87687c7c3dab61cecbcc6de3cbbbfb7ebbde6887",
+    "r12-n05-core-full2.log": "f15454cf753223a0e71ea80f4aed5c597ab9cac089b38d7d7c1628ae43c95fc0",
+    "r12-n05-core-race-final.log": "7339a72f77230738d6a10e09c3fbd3e6aefb591ffdede023034efefd25e72a51",
+    "r12-n05-core-race.log": "e87723765a39895cc0ba9bda36306471d28368cf097a48e0f44e54c7c45ecba1",
+    "r12-n05-core-race2.log": "b7d8370d149b87a51fa6bdb0919490016501621ec6b7e76c337854d9f9236dc6",
+    "r12-n05-diagnostics-after.log": "aa159a391f2ac10fda4255a7516d5281cf072e14c73c69650054f2f197e87dbc",
+    "r12-n05-diagnostics-before.log": "fbfe8d469e9436f66430ec3d932dd176ca9d621c0a831274c61e0473b754f160",
+    "r12-n05-dll-a.log": "c7ecf8f1c9b22dbd9a3ec66314d821a84d24e9fab1fee4ad0cac27700e8b1ba8",
+    "r12-n05-dll-a2.log": "2a847c5da0303cd382ca1bd84e03b225cf7a843e9a5c5e3aac84607d8b6302f1",
+    "r12-n05-dll-b.log": "9a45677b39fd1149b2912dc13f1d336352f45ccaf08d9986161af01475de52c0",
+    "r12-n05-dll-proxy.log": "5a387fdf903f693abebdca980a0a8002b9af377174de9cb5598249ecfaab00d3",
+    "r12-n05-entitlement.log": "3aea9e9979dd217c0e342e8d8ee3d09b9d11d019be6692e69f2a3b8926e8b0bf",
+    "r12-n05-entitlement2.log": "6f00b8f0188aa48d832bee5fc8c73594b8a7a3621f8f8c551bf08473e55e7f29",
+    "r12-n05-entitlement3.log": "8cb85a2a0f1022a3ebd79c7768b4d1fc8702e88d94739e5a29f37d631c7ad861",
+    "r12-n05-event-consumer.log": "d28442e76d693f29be61231987ce81eeedafb1f6460da216ed4a88e7029aeb10",
+    "r12-n05-jvm-exact-aar.log": "abf2411560a7e88b4e550cadbb0cc5932cc2119b991cdce4a7661a57c942f8e5",
+    "r12-n05-native-build.log": "51930dea9e1c9f3d6e09fa64e2ee22c433121bf413a38e99262f89f01ffb9c3b",
+    "r12-n05-native-tests.log": "0bb43021c1ecba3d543b700370a9a7f47264c573f5625ad5c8349e43e29b6abb",
+    "r12-n05-observability-analyze.log": "0b99ac2b68dd5870411eff8113a9f201a844ea25212d8b7bf00faa8346e59971",
+    "r12-n05-observability.log": "4e8f4aa0d6ffc2096312e43283260492983f074f48be5343b9c54e89060b3e1a",
+    "r12-n05-parity.log": "c49d982f6bb14bd0a4f4388a85bd8e781c053af49b7365f033f0385fd1d2f47e",
+    "r12-n05-platform-contracts.log": "9ff3680e9d15f91e2009b6661014120c26a02bbcff2854d6f0e8e239b870ffce",
+    "r12-n05-platform-final.log": "42c2946cc4d928ff063cc5108cc4df76cae77a056fa7845a792e4d55125c65a2",
+    "r12-n05-platform-final2.log": "2c7afcc8feebeb03329318c6f27788b263540a702cb18430208d93192897b12e",
+    "r12-n05-provisioning.log": "1420ee0756148ae2a649723b6d26a238345f5fdb757f7f20f0f2ed55c7ba770a",
+    "r12-n05-runtime-after.log": "59549d4e2324ab068cbd2d257d897c04a4614d69cf732d81445c6db32200d92d",
+    "r12-n05-runtime-analyze.log": "0ad2abc67cb6c7bb25c6b1763356d58e2af372032de3f2c498f138530d1ca38e",
+    "r12-n05-runtime-before.log": "a56c1c1996b3d55a7f2afd0689dbe47a1331776ceeb861b6482627ed8b5c5c3b",
+    "r12-n05-runtime-full.log": "2b0fb24775e320112775260b7a615133ca7d031fecb892caf3aeb675b8b92065",
+    "r12-n05-sbom.log": "b78fc7425f406a26bbf019f526d583f25ea6c933a90250e38f9733d18a928770",
+    "r12-n05-seed-final.log": "7e1bacec3d1571b304076aae7e5b3bde683d1ebe193604f27f34676d88f334d3",
+    "r12-n05-seed.log": "3cc8b9eaf5448c39ca4355256ff033c69c2e5e0c5943bd1eae314417cbd52195",
+    "r12-n05-shell-analyze.log": "bbe522d2b7d1a7a21790421243f6ba99b83e4fdb5ae7c92a80e9fe65def145d1",
+    "r12-n05-shell-focused.log": "48434be914246d107a3023b0db0a79734019203ff52bb80e10be88c59ecf7d32"
+  },
+  "artifact_evidence_root": "E:/POKROV-tools/builds/core-6bc3603-n05",
+  "runtime_binding": "6bc36034c86528972488fc203a98512686ac4db9",
+  "prior_failed_attempts": [
+    "runtime and diagnostics regressions fail before first fix",
+    "entitlement widget fixture async/cleanup corrected; full3 is successful rerun",
+    "Windows DLL first build fails cgo: compiler runtime directory absent from PATH; build a2 succeeds",
+    "platform-final uses nonexistent test_data_inventory_contract.py; no tests ran; platform-final2 executes correct observed filenames"
+  ],
+  "manual_open": [
+    "exact APK/installer and signing",
+    "physical Android",
+    "Windows clean VM/TUN/DNS",
+    "independent RU/brain origins",
+    "final license/provenance review",
+    "N01/N03 full runtime evidence"
+  ],
+  "release_state": "PARTIAL / RELEASE_BLOCKED; no push, merge, deploy, candidate, tag or publication"
+}
