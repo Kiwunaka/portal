@@ -56,8 +56,11 @@ candidate и postrelease activation не выполнены. Ранние отч
 | Provider, restore/deploy rehearsal и operator identity | B06/B08/O01/O02/O04/O06/M01 | Реальные payment/refund, DB recovery, OIDC и deployed fingerprint не проверены. Local API/browser fixtures ограничены I3. |
 | Exact candidate acceptance и owner release decision | Q01–Q05 | Отдельное решение Gate F ещё невозможно; public rollout, channel, cohort и observation требуют конкретного разрешения после gates. |
 
-N02 полностью открыт: durable last-known-good с entitlement/expiry и restart
-ещё не доказан. N05/N06/C03/C04/F04 и другие оставшиеся source/optimization
+N02 остаётся PARTIALLY_FIXED: исправлен сбой завершения recovery journal
+после `recovered`, client commit `20b997a`, native 9/9 PASS.
+[Новый срез N02](EXECUTION-N02.md) сохраняет regression/evidence и вопрос
+политики rollback. Durable last-known-good с entitlement/expiry ещё не доказан.
+N05/N06/C03/C04/F04 и другие оставшиеся source/optimization
 части не объявлены завершёнными из соседних PASS; их не требуется механически
 переписывать без проверенного дефекта или измеренного узкого результата.
 Полный текущий статус всех 83 строк сохранён в [реестре](R12-REGISTER.csv).
@@ -71,7 +74,7 @@ activation gate. Внешний маркетинговый пилот, spend и 
 Platform feature branch: `codex/consolidated-plan-start-20260905` — product
 commits `917612f`, `5577bb7`, `bf72daa`, `7e8beab`.
 Client feature branch: `codex/r12-client-implementation` — `8176c3b`,
-`cebbe851`, `61d1838`, `4dbe2c6`.
+`cebbe851`, `61d1838`, `4dbe2c6`, `20b997a`.
 Core feature branch/HEAD — в source tuple, commits `9476df5`, `3f52efd`.
 Push, merge, deploy и новый candidate: **NOT_PERFORMED**.
 

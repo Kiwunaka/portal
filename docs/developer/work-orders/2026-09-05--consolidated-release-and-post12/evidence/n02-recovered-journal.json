@@ -1,0 +1,81 @@
+{
+  "recorded_at_utc": "2026-09-05T19:39:20.339220+00:00",
+  "scope": "N02 recovered-to-clean Windows network journal completion",
+  "outcome": "IMPLEMENTATION_VERIFIED_I3_FOR_SCOPED_FIX",
+  "parent_N02": "PARTIALLY_FIXED_POLICY_DECISION_PENDING",
+  "origin": "current-origin local synthetic Windows backend; no host tunnel mutation",
+  "client_commit": "20b997afb9fbad6d77d9d278c06c9ae0dcc6d3a8",
+  "client_root": "E:\\r12client",
+  "checks": [
+    {
+      "label": "native regression before fix",
+      "command": "ctest --test-dir apps/windows_shell/build/windows/x64 -C Debug -R ^pokrov_service_runtime$ --output-on-failure",
+      "exit_code": 8,
+      "result": "FAIL_EXPECTED: clean journal invalid after recovered checkpoint",
+      "log": "E:/r12-n02-recovered-before-test.log",
+      "sha256": "ef83ab217d9bff2a825aea6dc8893eeba51e4083387d3fe5c3422d6e0da6073a"
+    },
+    {
+      "label": "native regression after fix",
+      "command": "ctest --test-dir apps/windows_shell/build/windows/x64 -C Debug -R ^pokrov_service_runtime$ --output-on-failure",
+      "exit_code": 0,
+      "result": "PASS 1/1",
+      "log": "E:/r12-n02-recovered-after-test.log",
+      "sha256": "a726ac0c48334ecd91e120f6346b44310fb808c093ccc4b5f08f5a9a4d8032fe"
+    },
+    {
+      "label": "rebuild affected native targets",
+      "command": "cmake --build apps/windows_shell/build/windows/x64 --config Debug --target pokrov_service_integration_test pokrov_service_events_test",
+      "exit_code": 0,
+      "result": "PASS",
+      "log": "E:/r12-n02-native-build.log",
+      "sha256": "932b97d790e14720cf5eb3920774a85d3e1625056dbb63d728525e42459725ac"
+    },
+    {
+      "label": "native regression suite",
+      "command": "ctest --test-dir apps/windows_shell/build/windows/x64 -C Debug --output-on-failure",
+      "exit_code": 0,
+      "result": "PASS 9/9",
+      "log": "E:/r12-n02-native-test.log",
+      "sha256": "64a889941a7734bb9c453ca8d4566c922fedb6f9da69a3385db03097f01b5292"
+    },
+    {
+      "label": "incorrect Flutter test path",
+      "command": "flutter test test/windows_service_adapter_test.dart",
+      "exit_code": 1,
+      "result": "NOT_RUN: path does not exist; corrected command below",
+      "log": "E:/r12-n02-flutter-test.log",
+      "sha256": "ed81d6ab72a31e3830c2f7d4fb13e17de5e6dba96db1d78f9ff62d26f16de6c0"
+    },
+    {
+      "label": "runtime Flutter regression",
+      "command": "flutter test test/runtime_engine_test.dart --plain-name 'windows profile mismatch'",
+      "exit_code": 0,
+      "result": "PASS 1",
+      "log": "E:/r12-n02-flutter-focused.log",
+      "sha256": "38d0e7d65291cd50d19b27b982d6de7ad021d89e6a2ecfb8a40ade6d96694a15"
+    },
+    {
+      "label": "runtime analyze",
+      "command": "flutter analyze",
+      "exit_code": 0,
+      "result": "PASS no issues",
+      "log": "E:/r12-n02-runtime-analyze.log",
+      "sha256": "6bd73ac19cd332e3b17c3e90f1c84d12030b64ea4d42ce73d0b21710e1ab585c"
+    },
+    {
+      "label": "client seed/docs",
+      "command": "pwsh -NoProfile -File scripts/validate-seed.ps1 -CoreRoot E:/r12core-implementation -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "result": "PASS",
+      "log": "E:/r12-n02-seed.log",
+      "sha256": "9c0dd553efe52c53f0397b4e52b41ebed2510c482b099d73a8864e45c604dbb5"
+    }
+  ],
+  "limitations": [
+    "No durable profile LKG restoration implemented by this slice",
+    "Pending owner choice: fresh server confirmation versus new signed offline rollback authority",
+    "No candidate, VM reboot, physical Android, signing or production evidence",
+    "No push, merge, deploy; prior candidate artifacts preserved"
+  ]
+}
