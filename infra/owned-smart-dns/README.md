@@ -1,8 +1,9 @@
 # POKROV owned Smart DNS laboratory
 
 This directory contains source for a default-off, source-only Smart DNS
-laboratory. It is not deployed and contains no runtime host, certificate,
-private key, token, or retained DNS/SNI data.
+laboratory. Source here does not establish deployment state; exact runtime
+receipts are owned by the platform deployment documentation. This directory
+contains no runtime host, certificate, private key, token, or retained DNS/SNI data.
 
 The guarded bundle installer supports two explicit, default-off listener
 modes. `dedicated` owns one public TCP/443 listener and its UFW rule. `fronted`
@@ -20,6 +21,12 @@ SNI matches the canonical AI or gaming-service suffix policy. Application TLS
 is passed through without certificate replacement or decryption. Missing,
 malformed, ambiguous, ECH-concealed, or non-allowlisted SNI is closed before
 any origin connection.
+
+The parser rejects any `encrypted_client_hello` extension (`0xfe0d`), even when
+its visible outer SNI is allowlisted. It cannot authorize the hidden inner
+name or distinguish ECH GREASE from encrypted application intent, so GREASE is
+also rejected. Ordinary visible-SNI TLS remains supported. DNS `HTTPS`/`SVCB`
+suppression does not replace this check: a client may have cached ECH config.
 
 The DoH endpoint is deliberately not recursive. An allowlisted `A` question
 receives the owned proxy IPv4, `AAAA`, `HTTPS`, `SVCB`, and other allowed types
