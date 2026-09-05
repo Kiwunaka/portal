@@ -207,3 +207,7 @@ exact action and its source. `shared/pokrov-screen-atlas.ts` owns the
 separate application-screen registry and every referenced screenshot must be a
 redacted current-candidate capture. Guide videos remain unpublished until a
 clean, redacted recording is attached to the matching guide ID.
+
+Hero floating labels keep full opacity during their entrance so readable text
+retains contrast throughout the animation. Their existing two vertical cycles
+and reduced-motion behavior remain bounded.

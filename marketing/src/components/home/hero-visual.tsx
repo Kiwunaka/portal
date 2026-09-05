@@ -22,8 +22,8 @@ function FloatingChip({
   return (
     <m.span
       aria-hidden="true"
-      initial={reduceMotion ? { opacity: 1, y: 0 } : { opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
+      initial={reduceMotion ? { y: 0 } : { y: 10 }}
+      animate={{ y: 0 }}
       transition={{ duration: reduceMotion ? 0 : 0.5, delay: reduceMotion ? 0 : delay, ease: EASE }}
       className={`absolute z-10 ${className || ""}`}
     >
