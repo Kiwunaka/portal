@@ -117,6 +117,21 @@ array with `new_performance_evidence.py`, supplying an environment JSON object,
 then validate it. Headless local output does not replace the selected Phase 11
 browser/network matrix.
 
+Cabinet route-content collection requires a successful `/api/dashboard` JSON
+response with account state, the dashboard route, its launch-checklist control
+and the matching rendered access-state heading. A visible shell/login `main`,
+failed API or non-account response is not a sample. The response listener is
+installed before navigation, and its wait is included in route-content time.
+The corrected collector source revision must be retained with new evidence;
+old shell-only timings are not comparable dashboard measurements. Run its
+focused regression checks with
+`node --test marketing/scripts/collect-browser-performance.test.mjs`.
+
+An existing cabinet E2E API fixture may be used for an explicitly labelled
+localhost rendering lab. Such a result measures rendering with synthetic
+session/data responses, not real authentication, backend latency, production
+account access or external-origin readiness.
+
 The API collector allows only the five contract endpoints, never prints bodies
 or authorization, requires HTTPS except explicitly allowed localhost, and
 rejects state-changing probes unless the operator supplies both the explicit
@@ -191,6 +206,30 @@ It retains `candidate_proven=false` and promotion `MANUAL_OWNER_TEST`, so this
 clean run closes only the local source-quality slice.
 
 ## Phase 11 handoff
+
+### 2026-09-05 candidate.33 cabinet rendering checkpoint
+
+The corrected browser collector measures the retained exact `f530005` cabinet
+production export with the existing candidate E2E session/API fixture. Three
+warmups and twenty retained 390x844 samples give route-content p95 `176.284 ms`;
+the unchanged `3000 ms` stop validates as a single-metric PASS. A forced 1100 ms
+API delay yields `1527.504 ms`, and a 401 response emits no sample. Four focused
+collector regressions and fourteen performance gate/normalizer tests pass.
+
+Headless Chromium `149.0.7827.55` also renders the dashboard at 1280x720 and
+follows `Главная -> Доступ`, with no page/console errors or framework overlay.
+The subscription view shows a tariff warning because the reused fixture does
+not supply its catalog: only navigation, not catalog or checkout readiness, is
+proved. Screenshots are synthetic QA data, not a real customer account.
+
+This is `LOCALHOST_SYNTHETIC_API_RENDERING_ONLY`, not real authentication,
+backend latency, comparable regression or the full selected browser/network
+matrix. No Gate F level changes. Exact app/candidate bytes are unchanged;
+collector code is newer and independently SHA-bound in the retained report.
+No host input/network changes occurred, and localhost port 43121 was closed.
+Raw samples, source/collector/fixture identities, normalized gate output and
+screenshots are retained in
+`E:/POKROV-tools/release-evidence/1.2.0-candidate33-cabinet-rendering-2026-09-05/evidence-index.json`.
 
 Before promotion, Phase 11 must attach clean exact-candidate evidence for every
 required scope, compare memory/artifact observations with a matching approved

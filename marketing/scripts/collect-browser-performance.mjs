@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { writeFile } from "node:fs/promises";
-import { chromium } from "playwright";
+import { pathToFileURL } from "node:url";
 
 const METRICS = Object.freeze({
   "page.marketing_home_lcp_ms": {
@@ -69,7 +69,7 @@ function parseArguments(argv) {
   };
 }
 
-async function installObservers(page) {
+export async function installObservers(page) {
   await page.addInitScript(() => {
     globalThis.__pokrovBrowserPerformance = {
       cls: 0,
@@ -102,10 +102,41 @@ async function installObservers(page) {
   });
 }
 
-async function capture(page, target, metric) {
+export async function capture(page, target, metric) {
+  // A shell/login <main> is not authenticated, hydrated cabinet content.
+  // Register before navigation so a fast response cannot be missed.
+  const dashboardReady = metric === "page.webapp_route_content_ms"
+    ? page.waitForResponse(
+        (response) => new URL(response.url()).pathname === "/api/dashboard",
+        { timeout: 15_000 },
+      ).then(async (response) => {
+        if (!response.ok()) throw new Error("cabinet dashboard API was not successful");
+        const body = await response.json();
+        if (typeof body?.is_active !== "boolean") {
+          throw new Error("cabinet dashboard API did not return account data");
+        }
+        return body.is_active;
+      })
+    : null;
+  // Observe early rejection while goto is pending; the awaited promise below
+  // still propagates it and prevents a numeric sample.
+  dashboardReady?.catch(() => {});
   const started = performance.now();
   await page.goto(target.toString(), { waitUntil: "domcontentloaded" });
   await page.locator("main").first().waitFor({ state: "visible", timeout: 15_000 });
+  if (dashboardReady) {
+    const active = await dashboardReady;
+    if (new URL(page.url()).pathname.replace(/\/$/, "") !== "/dashboard") {
+      throw new Error("cabinet navigation did not remain on dashboard");
+    }
+    await page.getByTestId("launch-checklist-open").waitFor({ state: "visible", timeout: 15_000 });
+    await page.locator("main").getByRole("heading", {
+      name: active
+        ? /^(Доступ активен|Доступ скоро закончится|Скорость ограничена)$/
+        : "Доступ закончился",
+      exact: true,
+    }).waitFor({ state: "visible", timeout: 15_000 });
+  }
   const routeContent = performance.now() - started;
   await page.waitForTimeout(1_000);
   const observed = await page.evaluate(() => {
@@ -128,6 +159,7 @@ async function capture(page, target, metric) {
 }
 
 async function main() {
+  const { chromium } = await import("playwright");
   const options = parseArguments(process.argv.slice(2));
   const definition = METRICS[options.metric];
   const target = new URL(definition.path, options.baseUrl);
@@ -160,7 +192,9 @@ async function main() {
   );
 }
 
-main().catch((error) => {
-  process.stderr.write(`BROWSER_PERFORMANCE_COLLECTION_FAILED: ${error.message}\n`);
-  process.exitCode = 2;
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main().catch((error) => {
+    process.stderr.write(`BROWSER_PERFORMANCE_COLLECTION_FAILED: ${error.message}\n`);
+    process.exitCode = 2;
+  });
+}
