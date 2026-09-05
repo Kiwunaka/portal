@@ -720,6 +720,11 @@ explicitly enables the legacy contour.
   state fallback without downgrading either readiness path. None of these
   states creates connection evidence. Device-bound `awg2_lab`, `awg31_lab`,
   and `hy2_lab` skip this unrelated legacy panel path entirely.
+- AWG2/AWG3.1 managed rendering validates and decrypts the same selected
+  device-material row. It does not select a second active row after readiness
+  validation, so concurrent rotation cannot label unchecked material with the
+  previously approved generation. This is an issuance snapshot; revoking an
+  already issued peer still requires the owned server enforcement path.
 - Both owned AWG profiles currently route only `0.0.0.0/0`; their managed DNS
   strategy is therefore `ipv4_only`. An IPv6 answer must not be selected until
   the endpoint contract also owns and proves an IPv6 routed prefix.

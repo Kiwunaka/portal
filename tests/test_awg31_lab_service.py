@@ -314,3 +314,43 @@ def test_admin_material_route_is_l3_intent_guarded() -> None:
         "PUT",
         "/api/admin/client/awg31-lab/material",
     ) in action_policy_route_keys()
+
+
+def test_awg31_issuance_never_labels_unvalidated_rotation_with_old_generation(
+    db_session, monkeypatch,
+) -> None:
+    now = datetime(2026, 9, 6, 0, 0, 0)
+    options = dict(
+        tg_id=1001,
+        install_id="owner-device",
+        endpoint_revision=AWG31_ENDPOINT_REVISION,
+        server_record_id="pokrov-awg31-pl-01",
+        node_code="pl",
+        now=now,
+    )
+    first = replace_awg31_lab_material(
+        db_session, generation="awg31-lab-v1", endpoint=_endpoint(), **options,
+    )
+    checked_snapshot = SimpleNamespace(**{
+        column.name: getattr(first, column.name) for column in first.__table__.columns
+    })
+    rotated_endpoint = _endpoint()
+    rotated_endpoint["peers"][0]["port"] += 1
+    rotated = replace_awg31_lab_material(
+        db_session, generation="awg31-lab-v2", endpoint=rotated_endpoint, **options,
+    )
+    reads = iter((checked_snapshot, rotated))
+    monkeypatch.setattr(
+        awg31_lab_service_module, "_active_material", lambda *args, **kwargs: next(reads),
+    )
+    try:
+        config = build_managed_awg31_lab_config(
+            db_session, tg_id=1001, install_id="owner-device",
+            rollout_value=_rollout()[AWG31_LAB], title="POKROV", now=now,
+        )
+    except Awg31LabError as error:
+        assert error.code == "material_not_ready"
+    else:
+        # Either reject the incompatible rotation or issue the checked row;
+        # never expose its endpoint under the previous generation metadata.
+        assert config["endpoints"][0]["peers"][0]["port"] == _endpoint()["peers"][0]["port"]

@@ -15,6 +15,7 @@ PORTAL_BOT_DIR = Path(__file__).resolve().parents[1] / "portal_bot"
 if str(PORTAL_BOT_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_BOT_DIR))
 
+import awg2_lab_service as awg2_lab_service_module  # noqa: E402
 from awg2_lab_service import (  # noqa: E402
     AWG2_CONTRACT_ID,
     AWG2_CONTRACT_SHA256,
@@ -373,3 +374,43 @@ def test_admin_intent_and_result_expose_only_fingerprints_and_safe_metadata() ->
     assert "install_id" not in safe_result["material"]
     assert _endpoint()["private_key"] not in serialized
     assert "192.0.2.10" not in serialized
+
+
+def test_awg2_issuance_never_labels_unvalidated_rotation_with_old_generation(
+    db_session, monkeypatch,
+) -> None:
+    now = datetime(2026, 9, 6, 0, 0, 0)
+    options = dict(
+        tg_id=1001,
+        install_id="owner-device",
+        endpoint_revision=AWG2_ENDPOINT_REVISION,
+        server_record_id="pokrov-awg2-pl-01",
+        node_code="pl",
+        now=now,
+    )
+    first = replace_awg2_lab_material(
+        db_session, generation="awg2-lab-v1", endpoint=_endpoint(), **options,
+    )
+    checked_snapshot = SimpleNamespace(**{
+        column.name: getattr(first, column.name) for column in first.__table__.columns
+    })
+    rotated_endpoint = _endpoint()
+    rotated_endpoint["peers"][0]["port"] += 1
+    rotated = replace_awg2_lab_material(
+        db_session, generation="awg2-lab-v2", endpoint=rotated_endpoint, **options,
+    )
+    reads = iter((checked_snapshot, rotated))
+    monkeypatch.setattr(
+        awg2_lab_service_module, "_active_material", lambda *args, **kwargs: next(reads),
+    )
+    try:
+        config = build_managed_awg2_lab_config(
+            db_session, tg_id=1001, install_id="owner-device",
+            rollout_value=_rollout()[AWG2_LAB], title="POKROV", now=now,
+        )
+    except Awg2LabError as error:
+        assert error.code == "material_not_ready"
+    else:
+        # Either reject the incompatible rotation or issue the checked row;
+        # never expose its endpoint under the previous generation metadata.
+        assert config["endpoints"][0]["peers"][0]["port"] == _endpoint()["peers"][0]["port"]
