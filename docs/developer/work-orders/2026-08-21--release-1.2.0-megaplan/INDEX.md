@@ -22,6 +22,13 @@ Linux and protocol experiments are conditional lanes: Linux may be a beta only a
 
 ## Current candidate reconciliation
 
+The 2026-09-05 checkpoint in the canonical performance owner adds a bounded
+cabinet localhost rendering PASS: exact candidate.33 export, existing synthetic
+E2E API/session fixture, corrected content-ready collector, 20 samples,
+p95 176.284 ms. Real authentication/API latency and the full selected browser
+matrix remain open; the subscription fixture has a catalog warning. No level
+or Gate F change.
+
 WO-013HM closes the fresh npm audit timeout boundary: canonical-registry
 audits of all three exact candidate.33 lockfiles return zero known advisories
 on 2026-09-05. No dependency, candidate byte, execution level or Gate F change.
