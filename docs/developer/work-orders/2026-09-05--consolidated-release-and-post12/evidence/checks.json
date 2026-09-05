@@ -1,0 +1,56 @@
+{
+  "recorded_at_utc": "2026-09-05T11:05:58.754803+00:00",
+  "source_sha": "6b41f758ca228a0d5ff13ede0f865096cdac2134",
+  "environment": "Windows current-origin, Python 3.12.5, isolated platform worktree; local synthetic tests",
+  "commands": [
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_payment_order_service.py tests/test_commercial_offer_service.py tests/test_payment_return_service.py -q",
+      "exit_code": 0,
+      "result": "29 passed in 33.35s",
+      "limitation": "Service fixtures only, not browser/HTTP/PostgreSQL/live provider proof"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "exit_code": 0,
+      "result": "33 passed in 0.52s after navigation changes"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "PASS tracked navigation diff; package files also checked separately before handoff"
+    },
+    {
+      "command": "python -B docs\\developer\\work-orders\\2026-09-05--consolidated-release-and-post12\\validate_package.py",
+      "exit_code": 0,
+      "result": "PASS: 13 imported section hashes, 83 R12 IDs, 378 retained legacy IDs and ledger hash, 112 local file links"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "git -c core.autocrlf=false diff --no-index --check -- NUL <each package file>",
+      "exit_codes": {
+        "1": 24
+      },
+      "result": "PASS: no whitespace diagnostics; no-index exit 1 means differing file",
+      "prior_attempts": "Converted imported Markdown hard breaks to <br>; normalized all package files to LF; corrected no-index difference exit interpretation."
+    }
+  ],
+  "not_run": [
+    "Flutter/JVM/physical devices",
+    "PostgreSQL two-connection concurrency",
+    "provider E2E",
+    "brain-origin / RU-origin runtime",
+    "new build or cryptographic signing validation",
+    "deploy / promotion"
+  ],
+  "limitations": "No product fix has been applied. The startup documentation scope is complete; implementation and release are not complete.",
+  "final_validation_at_utc": "2026-09-05T11:08:03.740183+00:00"
+}

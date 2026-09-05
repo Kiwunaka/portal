@@ -1,0 +1,60 @@
+{
+  "source_name": "POKROV_FINAL_PLANS_ALL_IN_ONE_2026-09-05.md",
+  "source_sha256": "bf547d6e938228e7a1e5ea9cceb6180634bf16cb3938963e58b7217ec5dc2818",
+  "imported_at_utc": "2026-09-05T10:59:19.155081+00:00",
+  "transformation": "Split numbered sections, resolve #doc-NN links to sibling files, append source reference definitions. Imported plan is input, not execution authority. Original per-file hashes in section 12 are historical, not hashes of this extraction. Normalize LF; replace Markdown trailing-space hard breaks with explicit <br>. Extracted hashes use UTF-8/LF.",
+  "files": [
+    {
+      "name": "00_START_HERE.md",
+      "sha256": "7c6fb687b35168e02d617568b232c31dd9ed483574be93587dac41dd108fca62"
+    },
+    {
+      "name": "01_SCOPE_AND_CORRECTIONS.md",
+      "sha256": "3392a4cfd5728a9a6cd6f1d0b26a3a59479ee06746274f3b2dc061a805211219"
+    },
+    {
+      "name": "02_RELEASE_1_2_0.md",
+      "sha256": "ae81f124088b71d47cd99354625dabb7a549f472eefaa9ef325db6d81be51b63"
+    },
+    {
+      "name": "03_RELEASE_BACKLOG_83.md",
+      "sha256": "1a6ebc63b7906657ddc57a1de484566d86486573ef77f531e5e20b6c4df35e4a"
+    },
+    {
+      "name": "04_POST12_SHARED_ARCHITECTURE.md",
+      "sha256": "0851fa6545587ba3ce4d080b3131724f27d05e483fc95fa7ea21a29f57b19563"
+    },
+    {
+      "name": "05_POST12_TRANSPORT_AWG.md",
+      "sha256": "bbc62d2df4c2e526b776bd31d48bb3e1c5bd75f73e0b2ea6ecce5b6723d88e9e"
+    },
+    {
+      "name": "06_POST12_SMART_ROUTING_ACCESS.md",
+      "sha256": "5baa2893ed79fff6756a817ede2955b01899d83a110df203339bda10035b2c3c"
+    },
+    {
+      "name": "07_POST12_SHORTLINK_ATTRIBUTION.md",
+      "sha256": "496d4f3037150c2ce78132383039212f4bb419e5e58b379822e1f092b5a156b2"
+    },
+    {
+      "name": "08_POST12_HAPP_IOS_SOURCE_GATE.md",
+      "sha256": "5efaa45819a89af514fb7bf851ed10b837ca26d6d261eb3cae3cfdefb50bd484"
+    },
+    {
+      "name": "09_EXECUTION_AND_ACCEPTANCE.md",
+      "sha256": "2bb066989bcd6ed08ab57213714fe42030614308b4f5f838482c179c6a2c448c"
+    },
+    {
+      "name": "10_CODEX_GOALS.md",
+      "sha256": "326cabfbc3577ede401648a3492e511c9aa0a0faeef698aef3a05c06ece466c1"
+    },
+    {
+      "name": "11_SOURCE_CROSSWALK.md",
+      "sha256": "3e884996a177e2c49cf2ac91472d033e8b8d52ef5ee0ab09d591f46490c5e5c8"
+    },
+    {
+      "name": "12_PACKAGE_VALIDATION.md",
+      "sha256": "0584833044915dcd7417a4167a9f6982ff5cda2288187d5d691600bfd95578e2"
+    }
+  ]
+}

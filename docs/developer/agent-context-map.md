@@ -58,6 +58,8 @@ Name evidence origins explicitly: `current-origin`, `brain-origin`, and `RU-orig
 
 ## Task Router
 
+For the consolidated 2026-09-05 release plan, start at the [startup baseline](work-orders/2026-09-05--consolidated-release-and-post12/BASELINE.md), then its scoped next work order. Imported postrelease plans remain queued; this link does not change release authority.
+
 Commands are focused starting points. Run them from the path named in the cell, add narrower tests for the exact change, and do not run live mutation or deploy commands without authorization.
 
 | Task | Read first | Inspect | Verify | Docs impact |

@@ -1,0 +1,100 @@
+{
+  "recorded_at_utc": "2026-09-05T16:29:46.740807+00:00",
+  "origin": "current-origin GitHub read-only",
+  "commands": [
+    {
+      "command": "gh api repos/Kiwunaka/portal/branches/master/protection",
+      "exit_code": 1,
+      "kind": "branch_protection",
+      "result": "BLOCKED_BY_ACCESS",
+      "http_status": "403"
+    },
+    {
+      "command": "gh api repos/Kiwunaka/portal/rulesets",
+      "exit_code": 1,
+      "kind": "rulesets",
+      "result": "BLOCKED_BY_ACCESS",
+      "http_status": "403"
+    },
+    {
+      "command": "gh api repos/Kiwunaka/portal/releases/latest",
+      "exit_code": 1,
+      "kind": "latest_release",
+      "result": "BLOCKED_BY_ACCESS",
+      "http_status": "404"
+    },
+    {
+      "command": "gh api repos/Kiwunaka/POKROV-app/branches/main/protection",
+      "exit_code": 1,
+      "kind": "branch_protection",
+      "result": "BLOCKED_BY_ACCESS",
+      "http_status": "403"
+    },
+    {
+      "command": "gh api repos/Kiwunaka/POKROV-app/rulesets",
+      "exit_code": 1,
+      "kind": "rulesets",
+      "result": "BLOCKED_BY_ACCESS",
+      "http_status": "403"
+    },
+    {
+      "command": "gh api repos/Kiwunaka/POKROV-app/releases/latest",
+      "exit_code": 1,
+      "kind": "latest_release",
+      "result": "BLOCKED_BY_ACCESS",
+      "http_status": "404"
+    },
+    {
+      "command": "gh api repos/Kiwunaka/pokrov-core/branches/main/protection",
+      "exit_code": 1,
+      "kind": "branch_protection",
+      "result": "BLOCKED_BY_ACCESS",
+      "http_status": "404"
+    },
+    {
+      "command": "gh api repos/Kiwunaka/pokrov-core/rulesets",
+      "exit_code": 0,
+      "kind": "rulesets",
+      "result": "READBACK",
+      "rulesets": []
+    },
+    {
+      "command": "gh api repos/Kiwunaka/pokrov-core/releases/latest",
+      "exit_code": 0,
+      "kind": "latest_release",
+      "result": "READBACK",
+      "release": {
+        "tag_name": "v1.0.3",
+        "draft": false,
+        "prerelease": false,
+        "published_at": "2026-08-13T05:19:30Z"
+      }
+    },
+    {
+      "command": "gh api repos/Kiwunaka/pokrov/branches/main/protection",
+      "exit_code": 1,
+      "kind": "branch_protection",
+      "result": "BLOCKED_BY_ACCESS",
+      "http_status": "404"
+    },
+    {
+      "command": "gh api repos/Kiwunaka/pokrov/rulesets",
+      "exit_code": 0,
+      "kind": "rulesets",
+      "result": "READBACK",
+      "rulesets": []
+    },
+    {
+      "command": "gh api repos/Kiwunaka/pokrov/releases/latest",
+      "exit_code": 0,
+      "kind": "latest_release",
+      "result": "READBACK",
+      "release": {
+        "tag_name": "v1.1.6",
+        "draft": false,
+        "prerelease": false,
+        "published_at": "2026-08-19T12:26:40Z"
+      }
+    }
+  ]
+}

@@ -12,6 +12,7 @@ This registry classifies important platform documents and the active client poin
 | `EVIDENCE` | completed POKROV 1.1.1 product-analytics/operator wave | `docs/developer/work-orders/2026-08-17--product-analytics-admin-bot/` | `RECONCILED` |
 | `EVIDENCE` | completed POKROV 1.0.8 promos/variant-status wave | `docs/developer/work-orders/2026-08-14-stable-1.0.7-promos-node-status-ru-apps/` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | POKROV 1.2.0 cross-repository release megaplan | `docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/` | `RECONCILED` |
+| `ACTIVE_EXECUTION` | consolidated 1.2.0 startup reconciliation; postrelease queue retained | `docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/BASELINE.md` | `RECONCILED` |
 | `EVIDENCE` | completed conversion-first acquisition and retention wave | `docs/developer/work-orders/2026-08-14--conversion-acquisition-reconciliation/` | `RECONCILED` |
 | `EVIDENCE` | released POKROV 1.0.10 emergency-network wave | `docs/developer/work-orders/2026-08-15--emergency-network/` | `RECONCILED` |
 | `ACTIVE_EXECUTION` | open-source client rollout | `docs/launch/open-source-client-rollout-plan.md` | `RECONCILED` |

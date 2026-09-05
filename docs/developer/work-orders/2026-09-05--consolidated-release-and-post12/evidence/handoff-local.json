@@ -1,0 +1,227 @@
+{
+  "recorded_at_utc": "2026-09-05T19:22:25.192410+00:00",
+  "origin": "current-origin local synthetic fixtures",
+  "outcome": "PARTIAL",
+  "release_status": "BLOCKED",
+  "candidate_proven": false,
+  "sources": {
+    "platform": {
+      "root": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "head": "7e8beab200f7ede5c221e964b4a370ba313d9def",
+      "branch": "codex/consolidated-plan-start-20260905"
+    },
+    "client": {
+      "root": "E:\\r12client",
+      "head": "4dbe2c68ab90abf273878e761bccc04072580e72",
+      "branch": "codex/r12-client-implementation"
+    },
+    "core": {
+      "root": "E:\\r12core-implementation",
+      "head": "3f52efd4635218967cc84d58cb06b2fa593fd563",
+      "branch": "codex/r12-correlated-endpoint-probe"
+    }
+  },
+  "checks": [
+    {
+      "id": "cache-clock",
+      "command": "flutter test test/cached_profile_fallback_gate_test.dart",
+      "cwd": "E:/r12client/packages/app_shell",
+      "exit_code": 0,
+      "status": "PASS",
+      "count": 5,
+      "log": "E:/r12-cache-clock-tests.log",
+      "log_sha256": "792ed1514cd70e5e902f10f1b06ee5b41aba77d32cf40a523327a71f9242c2ee"
+    },
+    {
+      "id": "cache-analyze",
+      "command": "flutter analyze --no-pub",
+      "cwd": "E:/r12client",
+      "exit_code": 0,
+      "status": "PASS",
+      "count": null,
+      "log": "E:/r12-cache-clock-analyze.log",
+      "log_sha256": "3b19cc533210a8e32378a878bd9358dc70d17e13c85fcc875feade32ce9ceeed"
+    },
+    {
+      "id": "cache-seed",
+      "command": "pwsh -NoProfile -File scripts/validate-seed.ps1 -CoreRoot E:/r12core-implementation -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start",
+      "cwd": "E:/r12client",
+      "exit_code": 0,
+      "status": "PASS",
+      "count": null,
+      "log": "E:/r12-cache-clock-seed.log",
+      "log_sha256": "a2e60d1b555ef2359eae29d8c022d542706144923dc006bc2c0a747db8c5a4b9"
+    },
+    {
+      "id": "awg-contracts",
+      "command": "python -u -B -m pytest -p no:cacheprovider tests/test_awg31_lab_service.py tests/test_awg2_lab_service.py tests/test_verify_awg31_contract_sync.py tests/test_verify_awg2_contract_sync.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "status": "PASS",
+      "count": 32,
+      "log": "E:/r12-awg-contract-gates.log",
+      "log_sha256": "90e8f180a91184052de1d499e707e34889b7c2e929ef55c838b2c75326dffbff"
+    },
+    {
+      "id": "commercial-contracts",
+      "command": "python -u -B -m pytest -p no:cacheprovider tests/test_commercial_revision_bundle.py tests/test_commercial_contracts.py tests/test_commercial_capacity_service.py tests/test_commercial_campaign_policy.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "status": "PASS",
+      "count": 23,
+      "log": "E:/r12-commercial-contract-gates-final.log",
+      "log_sha256": "0a83b362fcb251da19bd04c6a4b5d9cc1ff3b093a2e7366bf7061bcc5099a3b6"
+    },
+    {
+      "id": "diagnostics-contracts",
+      "command": "python -u -B -m pytest -p no:cacheprovider tests/test_support_bundle_contracts.py tests/test_support_bundle_ingest_service.py tests/test_support_bundle_worker.py tests/test_observability_contracts.py tests/test_observability_data_inventory.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "status": "PASS",
+      "count": 33,
+      "log": "E:/r12-diagnostics-contract-gates.log",
+      "log_sha256": "2d7f53a98b98dc3de1daa6632bbc2fa523de652519a77c170491ce28d6f3081b"
+    },
+    {
+      "id": "cockpit-service",
+      "command": "python -u -B -m pytest -p no:cacheprovider tests/test_operator_release_service.py tests/test_release_evidence_service.py tests/test_operator_center_manifest.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "status": "PASS",
+      "count": 27,
+      "log": "E:/r12-cockpit-policy-tests.log",
+      "log_sha256": "4edaa878e58cc3ae1a918382e454bda9323c5fa07832aa794b27d8a2ed866b0f"
+    },
+    {
+      "id": "cockpit-api",
+      "command": "python -u -B -m pytest -p no:cacheprovider tests/test_admin_ops_api.py -k release_cockpit_and_news -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "status": "PASS",
+      "count": 1,
+      "log": "E:/r12-cockpit-policy-api.log",
+      "log_sha256": "b4e5e4b226f6383e620d9f8fbd1602a2b424b94ae998da4e9ba6cbe746669f40"
+    },
+    {
+      "id": "admin-lint",
+      "command": "npm.cmd run lint",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\adminapp",
+      "exit_code": 0,
+      "status": "PASS",
+      "count": null,
+      "log": "E:/r12-cockpit-policy-lint.log",
+      "log_sha256": "6ffa13369ce63ea4802a88045643022692e51d25ff529168647557a8f394a88b"
+    },
+    {
+      "id": "admin-browser",
+      "command": "npm.cmd run test:e2e -- --output=E:/r12-cockpit-policy-e2e-results",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\adminapp",
+      "exit_code": 0,
+      "status": "PASS",
+      "count": 78,
+      "log": "E:/r12-cockpit-policy-e2e.log",
+      "log_sha256": "dd06b719d0c8945cd51d95b5ba0e8fd3df4a85d738f844d0ac30adae3262ab1a"
+    },
+    {
+      "id": "marketing-build",
+      "command": "npm.cmd run build",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\marketing",
+      "exit_code": 0,
+      "status": "PASS",
+      "count": null,
+      "log": "E:/r12-hero-contrast-build.log",
+      "log_sha256": "8291843d34ddeb2d131b42df1bcdf037fb8bc1b396e4de773918d149633cecc1"
+    },
+    {
+      "id": "marketing-seo",
+      "command": "npm.cmd run check:seo",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\marketing",
+      "exit_code": 0,
+      "status": "PASS",
+      "count": null,
+      "log": "E:/r12-hero-contrast-seo.log",
+      "log_sha256": "61297802d5beb919f8434fea61ef4778f928c5b16a3cadd87c4cb42f480afc96"
+    },
+    {
+      "id": "marketing-responsive",
+      "command": "npm.cmd run check:responsive",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\marketing",
+      "exit_code": 0,
+      "status": "PASS",
+      "count": null,
+      "log": "E:/r12-hero-contrast-responsive.log",
+      "log_sha256": "e75d9f27bf0891bb122039c168321f182dcf813d35ea5fc4f839c1d5042de0df"
+    },
+    {
+      "id": "copy-docs",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_frontend_text_integrity.py tests/test_public_copy_guardrails.py tests/test_marketing_governance.py tests/test_winback_pilot.py tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "status": "PASS",
+      "count": 72,
+      "log": "E:/r12-final-copy-docs.log",
+      "log_sha256": "bbd1397a5995cd014bc8c0eaa5943aa0de21bc54b2c37418e240627e96325c6e"
+    },
+    {
+      "id": "visual-review",
+      "command": "node.exe --experimental-strip-types E:/r12-ui-review.mjs",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "status": "PASS",
+      "count": null,
+      "log": "E:/r12-ui-review.log",
+      "log_sha256": "e99e6906c6d32a0884775eb21dc112758d4572d9f9274d26b99c8b24c209752b"
+    },
+    {
+      "id": "static-performance",
+      "command": "python -B scripts/performance_budget_gate.py --evidence E:/r12-ui-final-performance.json --required-scope local_static --output E:/r12-ui-final-performance-gate.json",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "status": "PASS",
+      "count": 9,
+      "log": "E:/r12-ui-final-performance-gate.log",
+      "log_sha256": "71949a51594b13cf2fe2513acba3263a24f3db29ab2a6ef42d0e7e2380050665"
+    }
+  ],
+  "device_readback": {
+    "command": "adb.exe devices -l",
+    "exit_code": 0,
+    "connected_devices": 0,
+    "identifiers_retained": false
+  },
+  "push_merge_deploy": "NOT_PERFORMED",
+  "whole_quality_attempt": {
+    "status": "FAIL",
+    "report": "E:\\r12-quality-handoff\\010I-local-quality-gate.json",
+    "sha256": "c53a38774b2eab604ec731ceafbdd65a4c7a2686641f93261c6f751a3fa90ff5",
+    "only_failed_step": "marketing-responsive-reduced-motion",
+    "failure": "hero floating label opacity animation caused axe contrast 2.84:1",
+    "resolution": "bf72daa; marketing build/SEO/responsive and static performance rerun passed. Unaffected client/cabinet steps remain from this attempt; full attempt is not rewritten as PASS."
+  },
+  "qa": {
+    "browser_plugin": "not available; existing Playwright workflow used",
+    "screenshots": [
+      {
+        "surface": "marketing",
+        "url": "http://127.0.0.1:3187/",
+        "title": "POKROV для Android и Windows — проверьте до оплаты",
+        "body_length": 3710,
+        "framework_overlay": 0,
+        "page_errors": [],
+        "screenshot": "E:/r12-ui-review/marketing-desktop.png"
+      },
+      {
+        "surface": "adminapp",
+        "url": "http://127.0.0.1:3188/release?candidate=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "title": "Центр управления POKROV",
+        "body_length": 3354,
+        "framework_overlay": 0,
+        "page_errors": [],
+        "screenshot": "E:/r12-ui-review/adminapp-desktop.png"
+      }
+    ],
+    "mobile_screenshot": "E:/r12-ui-review/marketing-mobile.png",
+    "first_visual_attempt": "ambiguous image locator; narrowed to the observed hero image before successful capture",
+    "warnings": "Node experimental TS fixture module-type warning only; no app page errors. Commercial fixture has two existing SQLite datetime adapter warnings."
+  }
+}

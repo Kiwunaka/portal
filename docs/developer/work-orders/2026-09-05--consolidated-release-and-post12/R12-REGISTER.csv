@@ -1,0 +1,84 @@
+id,summary,status,evidence_level,inventory,source,reconciliation
+R12-G01,Зафиксировать новый scope и authority,queued,I1,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,SOURCE_RECONCILIATION.md#r12-g01g03
+R12-G02,Сохранить candidate.33 и доказательства,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-G03,Dependency-aware evidence invalidation,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-G04,Реальный исполняемый CI вместо зелёной декларации,blocked,I1,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-G05,"Развести public, candidate и development metadata",active,I3,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-G06,Проверить enforcement и действующие исключения,blocked,I1,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-G07,"Отделить release-index, source-only и legacy lanes",active,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-N01,Desired → fetched → staged → effective profile revision,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-N02,Транзакция применения и rollback профиля,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-N03,Связать protection proof с effective route,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-N04,Регрессии event fencing и конкурирующих probes,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-N05,Различать наблюдения и гипотезы блокировки,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-N06,Ограниченный автоматический fallback,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-N07,Control-plane outage и bootstrap,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-N08,Routing truth matrix,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-A01,Закрепить AWG3.1 baseline и границу публичного scope,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-A02,Interop с реальным owned AWG server,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-A03,Cross-field validation и packet-size budget,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-A04,Managed provisioning и key lifecycle,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-A05,Независимая RU-origin matrix,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-A06,Выбрать AWG presets по измерениям,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-A07,TCP fallback при недоступном UDP,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-A08,"Разделить Smart DNS, WARP и AWG",queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-A09,AWG canary и обратимое отключение,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-W01,Win10/Win11 exact managed-network matrix,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-W02,Crash/sleep/network handoff без сетевого ущерба,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-W03,Install/update/uninstall на реально выдаваемых bytes,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-W04,Tray/focus/startup/single instance regression,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-W05,CPU/RAM/cold-start реальные бюджеты,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-W06,IPC negative cases и WFP coexistence,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-D01,"Проверить primary ARM64 APK, не только universal",queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-D02,Wi-Fi/LTE/IPv6/MTU/UDP53 матрица,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-D03,"OEM, Doze, lifecycle и энергия",queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-D04,Direct/store authority и downgrade boundaries,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-D05,"Логи, notification и счётчики только по контракту",queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-D06,Уменьшать доставку по size breakdown,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-C01,Сохранить ABI2 и проверить artifacts consumers,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-C02,Lifecycle/race/fuzz/resource bounds,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-C03,Извлечь реальные владельцы состояния из bootstrap,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-C04,Ограничить rebuild/repaint/polling,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-C05,Final binary dependency/license/privacy scan,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-B01,Invalid preview всегда запрещает оплату,active,I3,ALREADY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-B02,Закрыть stale quote окно debounce,active,I3,ALREADY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-B03,"Truthful payment return, включая legacy success URL",active,I3,ALREADY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-B04,Bounded fetch и graceful recovery,active,I3,ALREADY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-B05,Идемпотентность order-create и quote reservation,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-B06,Provider payment/refund/reconciliation E2E,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-B07,DB/HTTP/outbox bottlenecks по профилю,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-B08,"Postgres migration, deploy и rollback drill",queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-O01,OIDC/PKCE/session/RBAC live readback,active,I3,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-O02,Проверить 28 capability routes без переписывания shell,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-O03,Connectivity view: requested/effective/proven,blocked,I1,NEEDS_CONTEXT,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-O04,"Моя смена, Inbox и Incident Room как рабочие сценарии",active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-O05,Развести 11 cockpit и 19 release checks,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-O06,Платежи и кампании до безопасного действия,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-O07,Responsive density и query performance,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-F01,Единый protection presenter без рекламного шума,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-F02,Путь download→install→trial→verified connect,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-F03,Motion/reduced-motion/платформенное поведение,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-F04,"Rules/Profile/Locations: сохранить возможности, убрать путаницу",queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-F05,Доступность критического пути,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-F06,Bundle/data waterfall/route latency,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-F07,Upgrade и многоповерхностный путь,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-M01,Актуальные legal/seller/claims решения,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-M02,Одна commercial revision на всех поверхностях,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-M03,"Настоящие сроки, price hold и квоты",active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-M04,"Capacity guard по качеству, а не только 300 аккаунтам",active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-M05,Атрибуция и полезная воронка,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-M06,Малый winback/renewal pilot и банк текстов,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-V01,Bundle redaction через все реальные sinks,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-V02,Связать диагностику с причиной и effective profile,blocked,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-V03,Наблюдаемость не ломает VPN,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
+R12-V04,Поддержка по одному безопасному case code,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-L01,Ограничить Linux beta Ubuntu24.04 amd64,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-L02,Подключить live Core к dormant transaction plan,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-L03,Durable recovery и desktop authorization,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-L04,Signed deb install/update/remove + clean VM,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-L05,Отдельно Fedora/aarch64/per-app,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-Q01,Сводная exact-candidate acceptance matrix,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-Q02,Soak/chaos и регрессионные циклы,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-Q03,Новый go/no-go на финальных bytes,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-Q04,Same-byte staged rollout с pause/rollback,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-Q05,Наблюдение и закрытие релиза,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
