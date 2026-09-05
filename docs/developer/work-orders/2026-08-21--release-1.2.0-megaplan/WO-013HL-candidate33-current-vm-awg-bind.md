@@ -55,3 +55,33 @@ Complete the existing app access/onboarding flow, refresh the exact managed
 profile after a new guarded selection, then run connection and cleanup tests.
 Earlier GZ PLAN is historical, not current VM identity authority. Candidate
 bytes, ledger levels and aggregate Gate F remain unchanged.
+
+## Follow-up: actual UI attempt
+
+The welcome screen was not an authentication blocker. Exact candidate source
+maps `Начать бесплатно` to local completion plus existing-session telemetry
+and account refresh. Completing it rendered the home screen. A fresh guarded
+AWG3.1 APPLY succeeded, then the app's Connect button reached the first-connect
+route-scope sheet (`Всё устройство` / `Выбранные приложения`). No mode was
+selected: Windows computer-use restrictions require owner handling of this
+VPN scope setting. No tunnel/DNS/egress PASS follows from reaching this sheet.
+
+`awg31-ui-test-apply.json` and `default-after-ui-route-prompt.json` retain this
+additional selection/restoration, separately from the original eight-report
+index. Final readback again has `ok=true`, `legacy_reality_fallback`, no target
+cohort and no lab allowlist identity. Local onboarding completion is retained;
+the UI is left at the scope sheet. App session storage remains protected and
+no managed profile file was observed. The next manual step is scope selection,
+not login. Re-select the lab with the guarded helper before resuming AWG proof.
+
+A status CLI launched from Downloads returned `server_untrusted`: its exact
+source binds the service path relative to its own executable directory, so
+this is not evidence of an installed-app service failure. Placing that helper
+beside the installed app was denied under the limited guest-control token;
+no trust checks or file permissions were weakened. This invocation receives
+no runtime credit.
+
+GitHub PR 238 guardrail/contract annotations explicitly report that jobs did
+not start because of account billing/spending restrictions. Hosted checks
+remain `BLOCKED_BY_ACCESS`, not a code-test PASS. The owner-solo exception
+applies to source promotion; it does not waive exact-candidate runtime gates.
