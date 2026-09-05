@@ -38,7 +38,7 @@ R12-D06,Уменьшать доставку по size breakdown,queued,I0,NOT_RE
 R12-C01,Сохранить ABI2 и проверить artifacts consumers,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-C02,Lifecycle/race/fuzz/resource bounds,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-C03,Извлечь реальные владельцы состояния из bootstrap,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
-R12-C04,Ограничить rebuild/repaint/polling,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-C04,Ограничить rebuild/repaint/polling,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-PRESENTATION.md
 R12-C05,Final binary dependency/license/privacy scan,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-B01,Invalid preview всегда запрещает оплату,active,I3,ALREADY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
 R12-B02,Закрыть stale quote окно debounce,active,I3,ALREADY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
@@ -55,10 +55,10 @@ R12-O04,"Моя смена, Inbox и Incident Room как рабочие сце�
 R12-O05,Развести 11 cockpit и 19 release checks,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-O06,Платежи и кампании до безопасного действия,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-O07,Responsive density и query performance,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
-R12-F01,Единый protection presenter без рекламного шума,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-F01,Единый protection presenter без рекламного шума,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-PRESENTATION.md
 R12-F02,Путь download→install→trial→verified connect,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-F03,Motion/reduced-motion/платформенное поведение,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
-R12-F04,"Rules/Profile/Locations: сохранить возможности, убрать путаницу",queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-F04,"Rules/Profile/Locations: сохранить возможности, убрать путаницу",active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-PRESENTATION.md
 R12-F05,Доступность критического пути,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-F06,Bundle/data waterfall/route latency,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-F07,Upgrade и многоповерхностный путь,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,

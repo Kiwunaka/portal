@@ -13,6 +13,8 @@ candidate и postrelease activation не выполнены. Ранние отч
 Дополнительно проверен [N08 — режимы маршрутизации и direct в VPN selectors](EXECUTION-N08.md).
 Продолжение N08 (`5606fdc`): готовые Windows-профили применяют process/DNS-режимы с сохранением настроенных resolvers; локально 116 + 80 PASS, VM/device proof открыт.
 
+Добавлено [C04/F01/F04 — остановка фоновых animation tickers и сверка presentation](EXECUTION-PRESENTATION.md): client `fa62f04`, 216 локальных тестов PASS; reference device performance открыт.
+
 ## Изменения
 
 - Core: correlated endpoint/selector proof; Android/Windows AAR/DLL собраны
