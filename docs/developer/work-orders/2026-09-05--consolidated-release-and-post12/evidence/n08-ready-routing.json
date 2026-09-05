@@ -1,0 +1,63 @@
+{
+  "recorded_at_utc": "2026-09-05T22:49:41.194300+00:00",
+  "origin": "current-origin Windows local source/loopback fixtures",
+  "client_source": "5606fdc356884821fd44da2c1cdd9488d870c45a",
+  "commands": [
+    {
+      "command": "flutter test test/app_first_runtime_bootstrap_test.dart --plain-name \"runtimeReady=true\"",
+      "log": "E:/r12-n08-ready-before.log",
+      "sha256": "2dbb43a7be84ffa679d7d65e69983314ef2f9b8d9c275bff35e49b75538debe2",
+      "exit_code": 1,
+      "result": "four mode fixtures FAIL before mode application"
+    },
+    {
+      "command": "flutter test test/app_first_runtime_bootstrap_test.dart --plain-name \"runtimeReady=true\"",
+      "log": "E:/r12-n08-ready-dns-cycle-before3.log",
+      "sha256": "d899c11cf052e62969b193909fbfea1fdbc3820430580b4bc395a671f64ca502",
+      "exit_code": 1,
+      "result": "four FAIL: direct DNS copy refers to itself"
+    },
+    {
+      "command": "flutter test test/app_first_runtime_bootstrap_test.dart test/client_routing_preferences_test.dart",
+      "log": "E:/r12-n08-ready-routing-final2.log",
+      "sha256": "13607f6b062529ad83f1e46d7fadb8b33508323266b66cf611a649e612d5d2d8",
+      "exit_code": 0,
+      "result": "116 PASS"
+    },
+    {
+      "command": "flutter test (packages/runtime_engine)",
+      "log": "E:/r12-n08-ready-runtime.log",
+      "sha256": "2b0fb24775e320112775260b7a615133ca7d031fecb892caf3aeb675b8b92065",
+      "exit_code": 0,
+      "result": "80 PASS and one existing opt-in DLL skip"
+    },
+    {
+      "command": "flutter analyze --no-pub",
+      "log": "E:/r12-n08-ready-analyze-final.log",
+      "sha256": "3401f1b5572484fcc5a5764516bc5d0869eb4bd0787b5bded1e731cb81e575f5",
+      "exit_code": 0,
+      "result": "no issues"
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/validate-seed.ps1 -CoreRoot E:/r12core-implementation -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start",
+      "log": "E:/r12-n08-ready-seed.log",
+      "sha256": "2b0ca61ecc094269b562bfa8954d45a8ba8ab7545e520060d0f86dd9ce10a6c6",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "python -m pytest -q tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py",
+      "log": "E:\\r12-n08-ready-docs.log",
+      "sha256": "085a86e9113427c0664cb8949256073be2d551abe486ff5ea60d3bf8ddac21a0",
+      "exit_code": 0,
+      "result": "33 PASS"
+    }
+  ],
+  "limitations": [
+    "Not Windows TUN/DNS leak or installed package proof.",
+    "Ready fixture uses configured HTTPS DNS; JSON assertions are not actual resolver traffic.",
+    "First DNS-cycle assertion insertion missed formatted text, second edit used wrong relative path: before and before2 logs passed old assertions, not regression proof. before3 contains the actual failure.",
+    "The initial full routing run failed an old pass-through fixture with a selector without members and string-only local DNS. Replaced with a valid managed transport, direct outbound and typed HTTPS DNS; preserved settings assertions remain."
+  ],
+  "release_artifacts_delta": false
+}

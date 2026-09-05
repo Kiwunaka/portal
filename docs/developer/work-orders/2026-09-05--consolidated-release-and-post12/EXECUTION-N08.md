@@ -53,3 +53,30 @@ AAR/DLL остаются N05 bytes, candidate.33 и исторические rec
 Push, merge, deploy, новый candidate, signing и публикация: NOT_PERFORMED.
 Rollback: scoped revert client commit; новая цепочка не меняет серверные ключи,
 системные настройки host или старые release artifacts.
+
+## Продолжение: готовые Windows-профили
+
+Client commit `5606fdc`. Статус всего N08 остаётся **PARTIAL / I3 /
+NEEDS_RUNTIME_PROOF**. Этот срез закрывает ранее указанный пробел в локальных
+route-mode/DNS fixtures; device/VM proof остаётся OPEN.
+
+Готовый профиль обходил построители mode/process/DNS правил. Четыре режима
+падали на новых assertions до исправления. Теперь этот путь применяет общие
+Windows rules: текущий process selection, противоположные selected/excluded
+маршруты и DNS, Full/RU bypass semantics и защищённый port-53 prefix. Устаревшие
+process routes и DNS server choices заменяются; direct outbound добавляется,
+если его не было. Профиль без безопасного VPN-выхода отклоняется до staging.
+
+Исходные inbounds и прочие параметры профиля сохраняются. DNS builder сохраняет
+настроенные server type/address/path/TLS и прочие transport options в direct/VPN
+ветках, а также non-routing DNS actions. Без network resolver действуют прежние
+TCP/UDP defaults. Самоссылка direct-копии resolver обнаружена отдельной регрессией
+и заменена local bootstrap с сохранением остальных resolver options.
+
+Проверки после окончательных правок: bootstrap/preferences — 116 PASS;
+runtime — 80 PASS / один прежний opt-in skip; analyze и validate-seed — PASS;
+`git diff --check` — PASS; delta `artifacts/releases/**` отсутствует.
+[Точные команды, SHA логов и ограничения](evidence/n08-ready-routing.json).
+Физические Windows DNS/process/TUN и RU-origin проверки не выполнялись.
+Core/AAR/DLL не изменялись; push, deploy, candidate и публикация не выполнялись.
+Rollback — scoped revert `5606fdc`; серверное состояние не менялось.

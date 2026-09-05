@@ -11,6 +11,7 @@ candidate и postrelease activation не выполнены. Ранние отч
 Следом исправлен [лимит незавершённых Smart Connect probes — N06](EXECUTION-N06.md).
 
 Дополнительно проверен [N08 — режимы маршрутизации и direct в VPN selectors](EXECUTION-N08.md).
+Продолжение N08 (`5606fdc`): готовые Windows-профили применяют process/DNS-режимы с сохранением настроенных resolvers; локально 116 + 80 PASS, VM/device proof открыт.
 
 ## Изменения
 
