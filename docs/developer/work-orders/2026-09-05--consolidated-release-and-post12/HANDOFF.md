@@ -197,3 +197,12 @@ toolchain и SHA-256. Четыре internal debug-signed APK и unsigned Windows
 содержат точные notice bytes; Core binaries прежние. Windows: 302 файла,
 добавлен notice, изменён AssetManifest, остальные 300 прежние. Seed/docs PASS.
 Psiphon utls, вложенные/native notices, source delivery и полный C05 остаются OPEN.
+
+## C05 вложенные Go notices — 2026-09-06
+
+[Вложенные notices и utls upstream readback](EXECUTION-C05-NESTED-NOTICES.md):
+client `b0f4374`, ещё 28 текстов, всего 173. Пять графов с флагами из AAR/DLL
+покрыли все 128 записанных modules; fresh build-info совпал. Четыре APK и
+Windows bundle PASS; в Windows изменился только notice, 301 файл прежний.
+298 файлов Psiphon utls совпали с upstream: root license действительно отсутствует.
+Scoped dicttls license добавлен; полный C05, source delivery и runtime gates OPEN.
