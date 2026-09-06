@@ -6,6 +6,10 @@ candidate и postrelease activation не выполнены. Ранние отч
 последовательные срезы. Точные команды, SHA логов и source tuple —
 [evidence/handoff-local.json](evidence/handoff-local.json).
 
+Свежий [readback условий следующей приёмки](NEXT_ACCEPTANCE.md): найден выключенный
+POKROV Win11 lab; Android 0; platform/client CI не стартует по billing/spending
+annotations, enforcement API 403. VM availability не является runtime PASS.
+
 Обновлён [G03 — source inputs и зависимости evidence](EXECUTION-G03.md):
 250 изменённых файлов от task baseline, отдельный diff от candidate.33;
 исправлена классификация dependency manifests и infra README. Старые runtime
@@ -104,7 +108,7 @@ payment/self-report events больше не дают paid/connected outcome; IP
 | --- | --- | --- |
 | Источник operator profile/proof данных | O03/V02/V04 | NEEDS_CONTEXT: pending выбор opt-in support bundle либо нового минимального account-bound отчёта. Новый сбор не включён. |
 | Exact source tuple, candidate и hosted CI/signing lane | G04/G06/G07/C05/Q01 | Source commits локальные; нового кандидата нет; private rules readback вернул 403. Финальный license/privacy scan требует новых packaged bytes. |
-| Разрешённая Windows VM и exact package | W01–W06/N01–N03/N08/F07 | MANUAL_OWNER_TEST: host VPN не заменялся; clean VM и installed-package proof не выполнены. |
+| Разрешённая Windows VM и exact package | W01–W06/N01–N03/N08/F07 | Найдена выключенная POKROV-Win11-Test; см. NEXT_ACCEPTANCE. Current guest baseline и exact new installed-package proof не проверены; host VPN не заменялся. |
 | Физический Android и primary ARM64 APK | D01–D06/N01–N03/N08/F05/F07 | ADB readback: 0 устройств. JVM и desktop screenshot не заменяют physical/Doze/radio proof. |
 | Owned lab/server + независимые origins | A02/A04–A09/N07/Q02 | Новый artifact/server/profile tuple и runtime/origin матрица не выполнены. 32 local AWG tests не являются interop PASS. |
 | Provider, restore/deploy rehearsal и operator identity | B06/B08/O01/O02/O04/O06/M01 | Реальные payment/refund, DB recovery, OIDC и deployed fingerprint не проверены. Local API/browser fixtures ограничены I3. |
