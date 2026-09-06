@@ -61,7 +61,7 @@ R12-F03,Motion/reduced-motion/платформенное поведение,acti
 R12-F04,"Rules/Profile/Locations: сохранить возможности, убрать путаницу",active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-PRESENTATION.md
 R12-F05,Доступность критического пути,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-F06,Bundle/data waterfall/route latency,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
-R12-F07,Upgrade и многоповерхностный путь,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-F07,Upgrade и многоповерхностный путь,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-F07.md
 R12-M01,Актуальные legal/seller/claims решения,blocked,I1,NEEDS_CONTEXT,03_RELEASE_BACKLOG_83.md,EXECUTION-G01-M01.md
 R12-M02,Одна commercial revision на всех поверхностях,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-M03,"Настоящие сроки, price hold и квоты",active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
