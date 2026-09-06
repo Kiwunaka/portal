@@ -6,7 +6,12 @@ candidate и postrelease activation не выполнены. Ранние отч
 последовательные срезы. Точные команды, SHA логов и source tuple —
 [evidence/handoff-local.json](evidence/handoff-local.json).
 
-Свежий [readback условий следующей приёмки](NEXT_ACCEPTANCE.md): найден выключенный
+Выполнен [Windows 11 component lab](EXECUTION-WINDOWS-LAB.md): отдельный linked
+clone без NIC, текущие service/test bytes, семь native fixtures PASS. Подготовлен
+SCM start/status/stop сценарий; запуск с UAC ожидает владельца. W01–W03 и
+реальный TUN/installer/network proof остаются OPEN.
+
+Предыдущий [readback условий следующей приёмки](NEXT_ACCEPTANCE.md): найден выключенный
 POKROV Win11 lab; Android 0; platform/client CI не стартует по billing/spending
 annotations, enforcement API 403. VM availability не является runtime PASS.
 

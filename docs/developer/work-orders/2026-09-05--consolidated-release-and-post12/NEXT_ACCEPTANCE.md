@@ -1,5 +1,10 @@
 # Текущие условия следующей приёмки
 
+Последующий [Windows component lab](EXECUTION-WINDOWS-LAB.md): исходная VM
+остаётся выключенной; из чистого snapshot создан и запущен отдельный linked
+clone с NIC1 `none`. Семь native fixtures PASS; SCM-сценарий подготовлен,
+ожидает ручного UAC. Таблица ниже сохраняет предыдущий readback до клонирования.
+
 Readback: 2026-09-06. Platform source `0767c7d`, client `ded58b1`, Core `94dd310`.
 Доказательства: [next-acceptance-access.json](evidence/next-acceptance-access.json).
 Предыдущие source changes и [карта G03](EXECUTION-G03.md) сохранены.
