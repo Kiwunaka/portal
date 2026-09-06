@@ -6,6 +6,11 @@ candidate и postrelease activation не выполнены. Ранние отч
 последовательные срезы. Точные команды, SHA логов и source tuple —
 [evidence/handoff-local.json](evidence/handoff-local.json).
 
+Проверен [G01 scope record и M01 legal/seller review](EXECUTION-G01-M01.md):
+все 83 slice metadata и 378 legacy references сохранены; G01 VERIFIED как
+документационный критерий. M01 ждёт утверждённого продавца и receipt evidence;
+legal/channel launch остаётся закрытым, дата части 10.8 — 01.09.2025.
+
 Выполнен [B08 — локальный PostgreSQL restore и deployment contract](EXECUTION-B08.md):
 encrypted snapshot/restore, additive migration, два workers и poison message PASS
 на synthetic PostgreSQL; 198-file payload audit PASS. Production recovery,

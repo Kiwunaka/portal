@@ -22,6 +22,33 @@ truth intentionally remains `state=draft_blocked`, legal launch false and
 holdout percentage null. Editing a generated file, database row or frontend
 payload cannot change those gates.
 
+## Legal and seller review boundary
+
+The effective date of part 10.8 of article 5 of the Russian Advertising Law
+is **2025-09-01**. Article 1(1) of Federal Law No. 332-FZ of 2025-07-31 added
+that provision; article 2(2) sets its separate effective date. The law's general
+2026-01-01 date does not apply to part 10.8. Source text:
+[article 1](https://www.consultant.ru/document/cons_doc_LAW_511149/3d0cac60971a511280cbba229d9b6329c07731f7/),
+[article 2](https://www.consultant.ru/document/cons_doc_LAW_511149/b004fed0b70d0f223e4a81f8ad6cd92af90a7e3b/).
+These provisions were checked on 2026-09-06; they do not constitute approval
+of any POKROV campaign or channel.
+
+An owned website, in-app slot, cabinet, email or lifecycle message is not
+automatically cleared by its surface or audience. Before an external launch,
+retain a current review of the actual content, audience, channel and applicable
+restrictions. Consent and technical delivery readiness do not replace that
+review. A channel decision must not be inferred from a generated contract.
+
+The published offer, checkout/provider page and actual payment receipt must be
+checked against the owner's approved seller identity and terms revision.
+The current source contract still reports `seller_publication_status=blocked_unpublished`
+and `offer_review_status=blocked_unapproved`. `payment_access_key` email contains
+an access key and order information; it is not evidence of fiscal receipt
+issuance or delivery. A payment webhook acknowledgement is not such evidence
+either. Receipt issuer, applicable receipt process, seller details and delivery
+must be established for the actual provider setup before claiming that gate
+passed. Do not invent seller details or relabel these open items as approval.
+
 ## Local package
 
 The locally implemented pilot is limited to users who paid before, have no
