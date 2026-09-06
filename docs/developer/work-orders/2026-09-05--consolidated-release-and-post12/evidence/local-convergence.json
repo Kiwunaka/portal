@@ -1,0 +1,416 @@
+{
+  "status": "LOCAL_AGGREGATE_PASS_RELEASE_OPEN",
+  "gate": {
+    "candidate_proven": false,
+    "captured_at_utc": "2026-09-06T15:57:22Z",
+    "gate_id": "pokrov.release-1.2.local-quality",
+    "gate_version": "1.0.0",
+    "local_status": "PASS",
+    "manual_lanes": [
+      {
+        "id": "candidate-device-performance",
+        "reason": "Android/Windows cold start, connect, frame, idle CPU and memory require release artifacts on reference devices.",
+        "required_for_promotion": true,
+        "status": "MANUAL_OWNER_TEST"
+      },
+      {
+        "id": "candidate-artifact-size-regression",
+        "reason": "APK/installer observations require the exact candidate artifacts and a comparable prior baseline.",
+        "required_for_promotion": true,
+        "status": "MANUAL_OWNER_TEST"
+      },
+      {
+        "id": "browser-lab-page-performance",
+        "reason": "LCP, CLS, TBT and route-content latency require the selected browser/network lab environment.",
+        "required_for_promotion": true,
+        "status": "MANUAL_OWNER_TEST"
+      },
+      {
+        "id": "controlled-origin-api-performance",
+        "reason": "Current-origin authenticated API samples need explicit environment and state-changing probe authorization.",
+        "required_for_promotion": true,
+        "status": "BLOCKED_BY_ACCESS"
+      },
+      {
+        "id": "exact-candidate-signing-device-origin",
+        "reason": "Signing, physical device, current/brain/RU origin and post-promotion proof remain Phase 11.",
+        "required_for_promotion": true,
+        "status": "MANUAL_OWNER_TEST"
+      }
+    ],
+    "promotion_status": "MANUAL_OWNER_TEST",
+    "schema_version": 1,
+    "scope": "local_worktree_only",
+    "sources": {
+      "client": {
+        "revision": "70907c028bf80b7825e8e70c06899e521fea7528",
+        "working_tree_state": "dirty"
+      },
+      "core": {
+        "revision": "8dc57a830bd1487389dd1b7c9190f094c31e13bc",
+        "working_tree_state": "clean"
+      },
+      "platform": {
+        "revision": "272ef9ae24527fd8777e79c18ec01efb04a77871",
+        "working_tree_state": "dirty"
+      }
+    },
+    "steps": [
+      {
+        "category": "performance",
+        "duration_seconds": 0.137,
+        "exit_code": 0,
+        "id": "performance-contract",
+        "status": "PASS"
+      },
+      {
+        "category": "unit",
+        "duration_seconds": 2.637,
+        "exit_code": 0,
+        "id": "performance-contract-tests",
+        "status": "PASS"
+      },
+      {
+        "category": "client-static",
+        "duration_seconds": 5.003,
+        "exit_code": 0,
+        "id": "client-analyze",
+        "status": "PASS"
+      },
+      {
+        "category": "client-widget",
+        "duration_seconds": 64.558,
+        "exit_code": 0,
+        "id": "client-widget-suite",
+        "status": "PASS"
+      },
+      {
+        "category": "client-contract",
+        "duration_seconds": 50.962,
+        "exit_code": 0,
+        "id": "client-seed-contract",
+        "status": "PASS"
+      },
+      {
+        "category": "client-contract",
+        "duration_seconds": 4.637,
+        "exit_code": 0,
+        "id": "client-docs-contract",
+        "status": "PASS"
+      },
+      {
+        "category": "web-component",
+        "duration_seconds": 36.523,
+        "exit_code": 0,
+        "id": "webapp-lint",
+        "status": "PASS"
+      },
+      {
+        "category": "web-build",
+        "duration_seconds": 46.043,
+        "exit_code": 0,
+        "id": "webapp-build",
+        "status": "PASS"
+      },
+      {
+        "category": "web-e2e-a11y-responsive",
+        "duration_seconds": 81.534,
+        "exit_code": 0,
+        "id": "webapp-cabinet-e2e",
+        "status": "PASS"
+      },
+      {
+        "category": "marketing-build",
+        "duration_seconds": 23.053,
+        "exit_code": 0,
+        "id": "marketing-build",
+        "status": "PASS"
+      },
+      {
+        "category": "marketing-contract",
+        "duration_seconds": 4.198,
+        "exit_code": 0,
+        "id": "marketing-seo",
+        "status": "PASS"
+      },
+      {
+        "category": "marketing-e2e-a11y-responsive",
+        "duration_seconds": 78.856,
+        "exit_code": 0,
+        "id": "marketing-responsive-reduced-motion",
+        "status": "PASS"
+      },
+      {
+        "category": "performance-input",
+        "duration_seconds": 27.121,
+        "exit_code": 0,
+        "id": "adminapp-build-for-static-budget",
+        "status": "PASS"
+      },
+      {
+        "category": "performance",
+        "duration_seconds": 2.546,
+        "exit_code": 0,
+        "id": "web-static-performance-collect",
+        "status": "PASS"
+      },
+      {
+        "category": "performance",
+        "duration_seconds": 0.141,
+        "exit_code": 0,
+        "id": "web-static-performance-gate",
+        "status": "PASS"
+      }
+    ]
+  },
+  "performance": {
+    "contract": {
+      "id": "pokrov.performance-budgets",
+      "sha256": "9edc0b96ee1b7e762342d8ff72f974d61898540fd5c4174ff0cc8d6583d6fca2",
+      "version": "1.0.0"
+    },
+    "counts": {
+      "baseline_recorded": 0,
+      "failed": 0,
+      "measured": 9,
+      "non_measured": 0,
+      "passed": 9,
+      "total": 9
+    },
+    "environment_fingerprint": "d427c84f1627238a4419e6e88ee26e9fd8ce1781900ef32c642d9c30900adb63",
+    "missing_required_budget_ids": [],
+    "nonpassing_required_budget_ids": [],
+    "overall_status": "PASS",
+    "release": {
+      "candidate_label": "local-working-tree",
+      "source_revision": "272ef9ae24527fd8777e79c18ec01efb04a77871",
+      "version": "1.2.0",
+      "working_tree_state": "dirty"
+    },
+    "required_scopes": [
+      "local_static"
+    ],
+    "results": [
+      {
+        "baseline_compared": false,
+        "budget_id": "web.marketing.critical_route_js_gzip_bytes",
+        "environment_fingerprint": "d427c84f1627238a4419e6e88ee26e9fd8ce1781900ef32c642d9c30900adb63",
+        "gate_status": "PASS",
+        "max_regression_percent": 10,
+        "regression_met": true,
+        "regression_percent": null,
+        "sample_count": 1,
+        "scope": "local_static",
+        "state": "MEASURED",
+        "statistic": "max",
+        "stop_lte": 275000,
+        "stop_met": true,
+        "target_lte": 122880,
+        "target_met": false,
+        "unit": "bytes",
+        "value": 239757.0
+      },
+      {
+        "baseline_compared": false,
+        "budget_id": "web.marketing.export_image_bytes",
+        "environment_fingerprint": "d427c84f1627238a4419e6e88ee26e9fd8ce1781900ef32c642d9c30900adb63",
+        "gate_status": "PASS",
+        "max_regression_percent": 10,
+        "regression_met": true,
+        "regression_percent": null,
+        "sample_count": 1,
+        "scope": "local_static",
+        "state": "MEASURED",
+        "statistic": "sum",
+        "stop_lte": 8700000,
+        "stop_met": true,
+        "target_lte": 7500000,
+        "target_met": false,
+        "unit": "bytes",
+        "value": 7848431.0
+      },
+      {
+        "baseline_compared": false,
+        "budget_id": "web.marketing.export_font_bytes",
+        "environment_fingerprint": "d427c84f1627238a4419e6e88ee26e9fd8ce1781900ef32c642d9c30900adb63",
+        "gate_status": "PASS",
+        "max_regression_percent": 10,
+        "regression_met": true,
+        "regression_percent": null,
+        "sample_count": 1,
+        "scope": "local_static",
+        "state": "MEASURED",
+        "statistic": "sum",
+        "stop_lte": 110000,
+        "stop_met": true,
+        "target_lte": 100000,
+        "target_met": true,
+        "unit": "bytes",
+        "value": 96848.0
+      },
+      {
+        "baseline_compared": false,
+        "budget_id": "web.webapp.critical_route_js_gzip_bytes",
+        "environment_fingerprint": "d427c84f1627238a4419e6e88ee26e9fd8ce1781900ef32c642d9c30900adb63",
+        "gate_status": "PASS",
+        "max_regression_percent": 10,
+        "regression_met": true,
+        "regression_percent": null,
+        "sample_count": 1,
+        "scope": "local_static",
+        "state": "MEASURED",
+        "statistic": "max",
+        "stop_lte": 340000,
+        "stop_met": true,
+        "target_lte": 153600,
+        "target_met": false,
+        "unit": "bytes",
+        "value": 305386.0
+      },
+      {
+        "baseline_compared": false,
+        "budget_id": "web.webapp.export_image_bytes",
+        "environment_fingerprint": "d427c84f1627238a4419e6e88ee26e9fd8ce1781900ef32c642d9c30900adb63",
+        "gate_status": "PASS",
+        "max_regression_percent": 10,
+        "regression_met": true,
+        "regression_percent": null,
+        "sample_count": 1,
+        "scope": "local_static",
+        "state": "MEASURED",
+        "statistic": "sum",
+        "stop_lte": 6000000,
+        "stop_met": true,
+        "target_lte": 5200000,
+        "target_met": false,
+        "unit": "bytes",
+        "value": 5390960.0
+      },
+      {
+        "baseline_compared": false,
+        "budget_id": "web.webapp.export_font_bytes",
+        "environment_fingerprint": "d427c84f1627238a4419e6e88ee26e9fd8ce1781900ef32c642d9c30900adb63",
+        "gate_status": "PASS",
+        "max_regression_percent": 10,
+        "regression_met": true,
+        "regression_percent": null,
+        "sample_count": 1,
+        "scope": "local_static",
+        "state": "MEASURED",
+        "statistic": "sum",
+        "stop_lte": 210000,
+        "stop_met": true,
+        "target_lte": 190000,
+        "target_met": true,
+        "unit": "bytes",
+        "value": 182880.0
+      },
+      {
+        "baseline_compared": false,
+        "budget_id": "web.adminapp.critical_route_js_gzip_bytes",
+        "environment_fingerprint": "d427c84f1627238a4419e6e88ee26e9fd8ce1781900ef32c642d9c30900adb63",
+        "gate_status": "PASS",
+        "max_regression_percent": 10,
+        "regression_met": true,
+        "regression_percent": null,
+        "sample_count": 1,
+        "scope": "local_static",
+        "state": "MEASURED",
+        "statistic": "max",
+        "stop_lte": 510000,
+        "stop_met": true,
+        "target_lte": 400000,
+        "target_met": false,
+        "unit": "bytes",
+        "value": 451397.0
+      },
+      {
+        "baseline_compared": false,
+        "budget_id": "web.adminapp.export_image_bytes",
+        "environment_fingerprint": "d427c84f1627238a4419e6e88ee26e9fd8ce1781900ef32c642d9c30900adb63",
+        "gate_status": "PASS",
+        "max_regression_percent": 10,
+        "regression_met": true,
+        "regression_percent": null,
+        "sample_count": 1,
+        "scope": "local_static",
+        "state": "MEASURED",
+        "statistic": "sum",
+        "stop_lte": 100000,
+        "stop_met": true,
+        "target_lte": 100000,
+        "target_met": true,
+        "unit": "bytes",
+        "value": 0.0
+      },
+      {
+        "baseline_compared": false,
+        "budget_id": "web.adminapp.export_font_bytes",
+        "environment_fingerprint": "d427c84f1627238a4419e6e88ee26e9fd8ce1781900ef32c642d9c30900adb63",
+        "gate_status": "PASS",
+        "max_regression_percent": 10,
+        "regression_met": true,
+        "regression_percent": null,
+        "sample_count": 1,
+        "scope": "local_static",
+        "state": "MEASURED",
+        "statistic": "sum",
+        "stop_lte": 100000,
+        "stop_met": true,
+        "target_lte": 100000,
+        "target_met": true,
+        "unit": "bytes",
+        "value": 0.0
+      }
+    ],
+    "schema_version": 1
+  },
+  "command": "python -B scripts/release_1_2_local_quality_gate.py --client-root E:/r12client --core-root E:/r12core-implementation --evidence-dir E:/r12-final-local-quality-20260906-c03-pinned --keep-going",
+  "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+  "toolchain": {
+    "node": "22.14.0",
+    "npm_runner": "10.9.2",
+    "python": "3.12.5",
+    "flutter": "3.38.5",
+    "flutter_framework": "f6ff1529fd",
+    "dart": "3.10.4"
+  },
+  "aggregate_script": {
+    "path": "scripts\\release_1_2_local_quality_gate.py",
+    "sha256": "ee71ceeb8a4bf52d349bb4ef26304ca2a0cb87cb2ce5ab694ff9275eb9cb071c"
+  },
+  "files": [
+    {
+      "path": "E:\\r12-final-local-quality-20260906-c03-pinned\\010I-local-quality-gate.json",
+      "bytes": 4610,
+      "sha256": "2d2e40c01af69ea1a916002ae1cdce943f0297c30110c4816cce954213552c1c"
+    },
+    {
+      "path": "E:\\r12-final-local-quality-20260906-c03-pinned\\010I-local-web-performance-evidence.json",
+      "bytes": 3123,
+      "sha256": "2cecce54171a36ac110364993c27821540e2f481bcad6447050cdcb24c8fb960"
+    },
+    {
+      "path": "E:\\r12-final-local-quality-20260906-c03-pinned\\010I-local-web-performance-gate.json",
+      "bytes": 6333,
+      "sha256": "367392cba1fd3f1a7dc4ee31a76b032537f729553c97e27783025aaa7de8f5ba"
+    },
+    {
+      "path": "E:\\r12-final-local-quality-20260906-c03-pinned.log",
+      "bytes": 94924,
+      "sha256": "b7192f6e9f61946c3932e20bd0e921dfcfb06914eb910d2f822eb36a73aa77ea"
+    },
+    {
+      "path": "E:\\r12-final-local-quality-20260906-c03.log",
+      "bytes": 72004,
+      "sha256": "f452ec626d22d3f0aa70fce6f349b79369f9f75f458d8a6dabad6d9c99cc02af"
+    }
+  ],
+  "archive": {
+    "path": "E:\\r12-final-local-quality-20260906-c03-evidence.zip",
+    "bytes": 26650,
+    "sha256": "a8133201d55500f558fa224b2b9fdcd73c2a10054444ec49fe808a7fe168a0bb"
+  },
+  "initial_run": "Interrupted before completion because ambient Node 24 did not match node 22.14.x. Not a PASS. Log preserved.",
+  "operations": "Local tests/builds only; no product edit, dependency install, candidate, push, merge, deploy, signing, publication, VM or host VPN mutation."
+}
