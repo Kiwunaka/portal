@@ -27,6 +27,8 @@ candidate и postrelease activation не выполнены. Ранние отч
 
 Сверен [D04 — direct/store update authority](EXECUTION-D04.md): существующие исходники, 22 JVM + 3 Flutter PASS; ADB 0 устройств, реальные update/data-preservation переходы OPEN.
 
+Исправлен [D05 — фильтрация до native log sinks](EXECUTION-D05.md): Core `94dd310`, client `4539753`, новые AAR/DLL; 372 JVM, 190 shell, 80 runtime и 100 DLL cycles PASS. Physical lockscreen/journal/native-log/counters проверки OPEN.
+
 ## Изменения
 
 - Core: correlated endpoint/selector proof; Android/Windows AAR/DLL собраны
