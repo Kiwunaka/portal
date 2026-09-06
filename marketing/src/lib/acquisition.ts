@@ -42,12 +42,30 @@ function cleanRoute(value: string): string {
   }
 }
 
+function isIpLiteral(value: string): boolean {
+  try {
+    const raw = value.trim().replace(/\.$/, "");
+    const host = new URL(`http://${raw.includes(":") && !raw.startsWith("[") ? `[${raw}]` : raw}/`).hostname;
+    return host.startsWith("[") || /^\d+(?:\.\d+){3}$/.test(host);
+  } catch {
+    return false;
+  }
+}
+
+function cleanSource(value: string | null | undefined): string {
+  return isIpLiteral(String(value || "")) ? "" : cleanSlug(value);
+}
+
+function cleanReferrerHost(value: string): string {
+  return /^[a-z0-9.-]+$/i.test(value) && !isIpLiteral(value) ? value.toLowerCase().slice(0, 128) : "";
+}
+
 function externalReferrerHost(): string {
   try {
     if (!document.referrer) return "";
     const referrer = new URL(document.referrer);
     if (referrer.origin === window.location.origin) return "";
-    return /^[a-z0-9.-]+$/i.test(referrer.hostname) ? referrer.hostname.toLowerCase().slice(0, 128) : "";
+    return cleanReferrerHost(referrer.hostname);
   } catch {
     return "";
   }
@@ -71,7 +89,7 @@ function newSessionId(): string {
 function currentTouch(): { touch: AcquisitionTouch; explicit: boolean } {
   const params = new URLSearchParams(window.location.search);
   const referrerHost = externalReferrerHost();
-  const utmSource = cleanSlug(params.get("utm_source"));
+  const utmSource = cleanSource(params.get("utm_source"));
   const campaign = cleanSlug(params.get("utm_campaign") || params.get("campaign"));
   const content = cleanSlug(params.get("utm_content"));
   const ref = cleanSlug(params.get("ref"));
@@ -100,6 +118,10 @@ function readStored(): StoredAcquisition | null {
       parsed.expiresAt <= Date.now()
     ) {
       return null;
+    }
+    for (const touch of [parsed.first, parsed.last]) {
+      touch.source = cleanSource(touch.source) || "direct";
+      touch.referrerHost = cleanReferrerHost(touch.referrerHost || "");
     }
     return parsed;
   } catch {

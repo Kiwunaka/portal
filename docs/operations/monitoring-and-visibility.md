@@ -115,6 +115,18 @@ truth comes from signed provider callbacks and entitlement records, never from
 marketing events. The aggregate response and UI must not enumerate anonymous
 session hashes, handoff tokens, Telegram/account/order ids, or raw event rows.
 
+The funnel's paid numerator reads only paid `external_orders` and Stars
+`pay_attempts` with a recorded payment time. Client `paid`/`renewed` events
+remain diagnostics. Its connected numerator requires a durable
+`ConnectionEvidence` row of kind `observer_connection`, observed at or after
+that cohort's first qualifying payment and within the selected period's end.
+Client `connected_ok`, self-report and cached first-connection timestamps do
+not establish this outcome; an earlier trial connection does not count as a
+post-payment connection. The existing commercial conversion projection
+separately binds campaign/offer/order/grant and renewal/reversal lineage.
+Literal IP referrers are discarded before persistence and cannot become an
+automatic acquisition source; an absent source remains `unknown`.
+
 Commercial capacity is a separate entitlement-owned projection. The
 `capacity_automation` object on `GET /api/admin/campaigns` shows exact commercial
 revision/SHA, active units, the 300-unit limit, current band, 70% pause and

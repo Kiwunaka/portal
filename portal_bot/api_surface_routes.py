@@ -295,6 +295,7 @@ def _admin_funnel_summary_payload(*, s, from_dt: datetime, to_dt: datetime) -> d
     resolved_ids: set[str] = set()
     checkout_ids: set[str] = set()
     paid_ids: set[str] = set()
+    acquisition_paid_at: dict[str, datetime] = {}
     connected_ids: set[str] = set()
 
     if hash_to_id:
@@ -349,22 +350,21 @@ def _admin_funnel_summary_payload(*, s, from_dt: datetime, to_dt: datetime) -> d
         checkout_ids.add(session_id)
         if str(row.status or "").lower() == "paid" and row.paid_at is not None and row.paid_at <= to_dt:
             paid_ids.add(session_id)
+            acquisition_paid_at[session_id] = min(acquisition_paid_at.get(session_id, row.paid_at), row.paid_at)
     for row in pay_attempts:
         session_id = str(row.acquisition_session_id or "")
         checkout_ids.add(session_id)
         if str(row.status or "").lower() == "paid" and row.paid_at is not None and row.paid_at <= to_dt:
             paid_ids.add(session_id)
+            acquisition_paid_at[session_id] = min(acquisition_paid_at.get(session_id, row.paid_at), row.paid_at)
 
     bound_account_ids = {str(row.bound_account_id) for row in cohort if row.bound_account_id}
     connection_times: dict[str, list[datetime]] = {}
     if bound_account_ids:
-        for row in s.query(AccountExperienceState).filter(AccountExperienceState.account_id.in_(sorted(bound_account_ids))).all():
-            values = [value for value in (row.first_connection_reported_at, row.first_connection_verified_at) if value is not None]
-            if values:
-                connection_times.setdefault(str(row.account_id), []).extend(values)
         for account_id, observed_at in (
             s.query(ConnectionEvidence.account_id, ConnectionEvidence.observed_at)
             .filter(ConnectionEvidence.account_id.in_(sorted(bound_account_ids)))
+            .filter(ConnectionEvidence.evidence_kind == "observer_connection")
             .filter(ConnectionEvidence.observed_at <= to_dt)
             .all()
         ):
@@ -372,7 +372,11 @@ def _admin_funnel_summary_payload(*, s, from_dt: datetime, to_dt: datetime) -> d
                 connection_times.setdefault(str(account_id), []).append(observed_at)
     for row in cohort:
         account_id = str(row.bound_account_id or "")
-        if any(row.first_touch_at <= value <= to_dt for value in connection_times.get(account_id, [])):
+        paid_at = acquisition_paid_at.get(str(row.id))
+        if paid_at is not None and any(
+            max(row.first_touch_at, paid_at) <= value <= to_dt
+            for value in connection_times.get(account_id, [])
+        ):
             connected_ids.add(str(row.id))
 
     entry_ids &= cohort_ids
@@ -449,82 +453,33 @@ def _admin_funnel_summary_payload(*, s, from_dt: datetime, to_dt: datetime) -> d
         if value is not None and int(value) > 0
     )
 
-    paid_users = {
-        int(value)
-        for (value,) in (
-            s.query(Event.tg_id)
-            .filter(Event.created_at >= from_dt, Event.created_at <= to_dt)
-            .filter(Event.event_name.in_(["paid", "renewed"]))
-            .distinct()
+    # Client event names and first-connection self-reports are diagnostics.
+    # Conversion outcomes require server payment rows and observer evidence.
+    product_paid_at: dict[int, datetime] = {}
+    for payment_model in (PayAttempt, ExternalOrder):
+        for tg_id, paid_at in (
+            s.query(payment_model.tg_id, func.min(payment_model.paid_at))
+            .filter(payment_model.paid_at >= from_dt, payment_model.paid_at <= to_dt)
+            .filter(func.lower(func.coalesce(payment_model.status, "")) == "paid")
+            .group_by(payment_model.tg_id)
             .all()
-        )
-        if value is not None and int(value) > 0
-    }
-    paid_users.update(
-        int(value)
-        for (value,) in (
-            s.query(PayAttempt.tg_id)
-            .filter(PayAttempt.paid_at >= from_dt, PayAttempt.paid_at <= to_dt)
-            .filter(func.lower(func.coalesce(PayAttempt.status, "")) == "paid")
-            .distinct()
-            .all()
-        )
-        if value is not None and int(value) > 0
-    )
-    paid_users.update(
-        int(value)
-        for (value,) in (
-            s.query(ExternalOrder.tg_id)
-            .filter(ExternalOrder.paid_at >= from_dt, ExternalOrder.paid_at <= to_dt)
-            .filter(func.lower(func.coalesce(ExternalOrder.status, "")) == "paid")
-            .distinct()
-            .all()
-        )
-        if value is not None and int(value) > 0
-    )
-
-    connected_users = {
-        int(value)
-        for (value,) in (
-            s.query(Event.tg_id)
-            .filter(Event.created_at >= from_dt, Event.created_at <= to_dt)
-            .filter(Event.event_name == "connected_ok")
-            .distinct()
-            .all()
-        )
-        if value is not None and int(value) > 0
-    }
-    product_account_ids = {
-        str(value)
-        for (value,) in (
-            s.query(AccountExperienceState.account_id)
-            .filter(
-                or_(
-                    and_(AccountExperienceState.first_connection_reported_at >= from_dt, AccountExperienceState.first_connection_reported_at <= to_dt),
-                    and_(AccountExperienceState.first_connection_verified_at >= from_dt, AccountExperienceState.first_connection_verified_at <= to_dt),
-                )
-            )
-            .distinct()
-            .all()
-        )
-        if value
-    }
-    product_account_ids.update(
-        str(value)
-        for (value,) in (
-            s.query(ConnectionEvidence.account_id)
+        ):
+            if tg_id is not None and int(tg_id) > 0:
+                user_id = int(tg_id)
+                product_paid_at[user_id] = min(product_paid_at.get(user_id, paid_at), paid_at)
+    paid_users = set(product_paid_at)
+    connected_users: set[int] = set()
+    if paid_users:
+        for tg_id, observed_at in (
+            s.query(User.tg_id, ConnectionEvidence.observed_at)
+            .join(ConnectionEvidence, ConnectionEvidence.account_id == User.account_id)
+            .filter(User.tg_id.in_(sorted(paid_users)))
+            .filter(ConnectionEvidence.evidence_kind == "observer_connection")
             .filter(ConnectionEvidence.observed_at >= from_dt, ConnectionEvidence.observed_at <= to_dt)
-            .distinct()
             .all()
-        )
-        if value
-    )
-    if product_account_ids:
-        connected_users.update(
-            int(value)
-            for (value,) in s.query(User.tg_id).filter(User.account_id.in_(sorted(product_account_ids))).distinct().all()
-            if value is not None and int(value) > 0
-        )
+        ):
+            if observed_at >= product_paid_at[int(tg_id)]:
+                connected_users.add(int(tg_id))
 
     product_checkout_users = product_open_users & checkout_users
     product_paid_users = product_checkout_users & paid_users

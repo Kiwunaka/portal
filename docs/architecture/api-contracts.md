@@ -341,6 +341,10 @@ raw value, raw URL/query, IP address, user agent, VPN destination history,
 message text, credentials, and provider payloads are not stored. First touch is
 immutable, last touch is updated by later accepted events, and the session
 expires after `180 days` from its latest touch.
+Literal IPv4/IPv6 referrer hosts and explicit IP sources are discarded before
+persistence and before fallback acquisition-source derivation. Marketing also
+clears these fields from cached browser touches before reuse; ordinary domain
+and campaign attribution remains intact.
 
 `POST /api/acquisition/handoffs` issues a random opaque handle for exactly one
 allowlisted purpose: Android install, Windows install, account continuation,
@@ -355,6 +359,13 @@ known Telegram/account/order lineage. External orders and Telegram Stars
 `pay_attempts` retain the exact acquisition-session foreign key available when
 checkout starts; signed provider callbacks remain payment authority and cannot
 rewrite first/last-touch attribution.
+
+`GET /api/admin/funnel/summary` keeps browser acquisition and known-user product
+cohorts separate. Paid outcomes come only from timestamped server payment
+rows; connected outcomes require `observer_connection` evidence at or after
+the first qualifying payment. Client payment/connection events and
+first-connection self-reports remain diagnostic observations. The projection
+does not infer a browser-to-account link when the acquisition handoff is absent.
 
 `GET /api/client/locations` keeps its existing country/city shape and adds a
 deterministic `variants` list to every returned city. The first item is always

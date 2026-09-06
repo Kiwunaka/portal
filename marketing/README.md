@@ -21,6 +21,13 @@ the old webapp admin routes are a retained parity fallback only.
 
 ## Current Surface Map
 
+Browser acquisition discards IP literals in referrer hosts and `utm_source`
+before writing local storage or sending funnel/handoff requests. On reuse it
+also clears those fields in an older cached touch, preserving its session and
+campaign history. Domain referrers and named campaign sources remain supported.
+The server independently applies this boundary; payment and connection
+authority is defined in [API contracts](../docs/architecture/api-contracts.md).
+
 - `/` is owned by `marketing/src/app/page.tsx`. Its trust-led sequence is
   `Hero`, `HonestyStrip`, `Steps`, `Showcase`, `Pricing`, `Faq` and `FinalCta`;
   the retired service-claim grid must not be remounted as a parallel homepage
