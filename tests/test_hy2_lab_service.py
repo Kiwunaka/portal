@@ -15,6 +15,7 @@ PORTAL_BOT_DIR = Path(__file__).resolve().parents[1] / "portal_bot"
 if str(PORTAL_BOT_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_BOT_DIR))
 
+import hy2_lab_service as hy2_lab_service_module  # noqa: E402
 from hy2_lab_service import (  # noqa: E402
     HY2_CONTRACT_ID,
     HY2_CONTRACT_SHA256,
@@ -99,6 +100,10 @@ def _rollout(
 @pytest.fixture()
 def db_session(monkeypatch):
     monkeypatch.setenv("HY2_LAB_MATERIAL_SECRET", "synthetic-hy2-lab-test-secret")
+    monkeypatch.setattr(
+        hy2_lab_service_module, "_utcnow",
+        lambda: datetime(2026, 8, 28, 10, 1, 0),
+    )
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine)()

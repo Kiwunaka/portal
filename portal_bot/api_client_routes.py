@@ -1984,6 +1984,7 @@ async def client_support_assistant(
 async def client_managed_profile(
     request: Request,
     selected_node_code: str = Query(default="", max_length=32),
+    fallback_from_revision: str = Query(default="", max_length=512),
     x_telegram_init_data: str = Header(default=""),
     x_portal_carrier: str = Header(default=""),
 ) -> dict[str, Any]:
@@ -2020,6 +2021,17 @@ async def client_managed_profile(
                 auth_user=auth_user,
                 require_device=True,
             )
+        if fallback_from_revision:
+            try:
+                client_policy = client_policy_for_lab_tcp_fallback(
+                    client_policy, source_revision=fallback_from_revision,
+                )
+            except ValueError:
+                raise HTTPException(
+                    status_code=409, detail="Lab fallback revision changed or unavailable",
+                ) from None
+            transport_profile = client_policy["transport_profile"]
+            is_owned_transport_lab = False
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
         requested_node_code = str(selected_node_code or "").strip().lower()

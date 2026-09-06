@@ -380,6 +380,7 @@ from observer_service import (
     observer_stale_after_seconds,
 )
 from network_rollout import (
+    client_policy_for_lab_tcp_fallback,
     NETWORK_ROLLOUT_CONFIG_KEY,
     load_network_rollout_config,
     normalized_network_rollout_config,

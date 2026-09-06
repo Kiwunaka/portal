@@ -264,6 +264,16 @@ Rollout note:
 
 - `AppSetting.network_rollout_config` resolves the transport profile for app-managed session and profile payloads
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint and returns a manifest with `version`, `profile_revision`, `transport_profile`, `transport_kind`, `engine_hint`, `config_format`, `config_payload`, `fallback_order`, `support_context`, and `warp_policy`
+- Its optional `fallback_from_revision` query requests only the already
+  advertised ordinary TCP/REALITY fallback of a currently authorized
+  `awg2_lab`, `awg31_lab` or `hy2_lab` device profile. The exact current lab
+  revision must match, otherwise HTTP 409 is returned before rendering.
+  Device authentication, entitlement/node eligibility and normal control-panel
+  provisioning still apply. The per-request effective policy identifies
+  `legacy_reality_fallback` and revision
+  `<source-revision>:fallback:legacy_reality_fallback`; route/DNS policy fields
+  are retained. This request does not modify cohort selection or rollout state.
+
 - managed-profile `warp_policy` is the only app endpoint allowed to carry
   optional backend-provisioned WireGuard config/account material, and only when
   that optional material lane is `runtime_ready=true`; public `client_policy`

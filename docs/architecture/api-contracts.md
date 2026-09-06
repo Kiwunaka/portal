@@ -720,6 +720,15 @@ explicitly enables the legacy contour.
   state fallback without downgrading either readiness path. None of these
   states creates connection evidence. Device-bound `awg2_lab`, `awg31_lab`,
   and `hy2_lab` skip this unrelated legacy panel path entirely.
+- `GET /api/client/profile/managed?fallback_from_revision=<current-lab-revision>`
+  admits only the advertised ordinary TCP fallback for a current device-bound
+  AWG2/AWG3.1/HY2 policy. A stale revision or non-lab policy returns HTTP 409.
+  Matching requests repeat the normal TCP provisioning/node/access checks and
+  render REALITY with revision
+  `<source-revision>:fallback:legacy_reality_fallback`. The fallback metadata,
+  support context and shortlist name that effective transport; saved rollout
+  policy is unchanged. This is a bounded client recovery mechanism, not a new
+  transport provider pool or permission to activate a lab cohort.
 - AWG2/AWG3.1 managed rendering validates and decrypts the same selected
   device-material row. It does not select a second active row after readiness
   validation, so concurrent rotation cannot label unchecked material with the
