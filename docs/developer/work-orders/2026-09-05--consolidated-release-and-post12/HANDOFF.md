@@ -35,6 +35,8 @@ candidate и postrelease activation не выполнены. Ранние отч
 
 Исправлен [release contract digest после N05](EXECUTION-RELEASE-CONTRACT.md): `aff9653`, 102 release tooling tests и 21 subtests PASS; synthetic fixture не является новым кандидатом.
 
+Сверены [G05/G07 — metadata owners и source boundary](EXECUTION-G05-G07.md): 6/6 public asset metadata совпали с GitHub; private candidate artifact не истёк. Устранено смешение retained candidate с текущим source в client docs. 42 platform и 16 generator checks PASS; финальные packaged provenance/license и новый candidate остаются OPEN.
+
 ## Изменения
 
 - Core: correlated endpoint/selector proof; Android/Windows AAR/DLL собраны
