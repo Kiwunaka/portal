@@ -1,0 +1,444 @@
+{
+  "status": "I3_IMPLEMENTATION_SEQUENCE_VERIFIED_PACKAGED_DEPENDENCIES_OPEN",
+  "platform_commit": "a50d446d0ad88b3fac43f694558e412cb3efefcb",
+  "client_commit": "70907c028bf80b7825e8e70c06899e521fea7528",
+  "core_commit": "8dc57a830bd1487389dd1b7c9190f094c31e13bc",
+  "git_blobs": [
+    {
+      "path": "marketing/README.md",
+      "bytes": 12488,
+      "sha256": "e061bab3a92d91125d551c1cb9cc31022d2678e5fdbbf7735478243b49a4a33f"
+    },
+    {
+      "path": "marketing/src/app/checkout/checkout-client.tsx",
+      "bytes": 24015,
+      "sha256": "c008bad340935fe5481a3e73d3743ac78152c060e9d2a079c4d574f971dbfa2c"
+    },
+    {
+      "path": "marketing/src/app/checkout/use-checkout-controller.ts",
+      "bytes": 36263,
+      "sha256": "60f780ae6412abc766d2752fec0a94bc9ab5391de5837ab252dc6283e6846b74"
+    },
+    {
+      "path": "scripts/check-links.py",
+      "bytes": 8859,
+      "sha256": "94e6e7dc88173bf62ef47a6cd26296a92496c79f0d32d0bfc6a519e322166428"
+    },
+    {
+      "path": "scripts/ui_visual_smoke.py",
+      "bytes": 9766,
+      "sha256": "58d15a15af116c067884dce9526b5b77fc8f8c107873be10537728761391eb1a"
+    },
+    {
+      "path": "tests/test_commercial_contracts.py",
+      "bytes": 8690,
+      "sha256": "8254d75b7e6d3e2ed904a616187a7a299cdb9b12283e2d618fa427c55f604e1d"
+    },
+    {
+      "path": "tests/test_frontend_text_integrity.py",
+      "bytes": 2646,
+      "sha256": "fc4bc71388de3e1ec30f0cfc132e5c96b659345a4050a7ef849802762737f7f2"
+    },
+    {
+      "path": "tests/test_marketing_story_contracts.py",
+      "bytes": 15575,
+      "sha256": "18e71c28d5a5fdde8470f3d18f432ea768dddd581c1d3c0c7f14e6d9a47c386d"
+    },
+    {
+      "path": "tests/test_public_copy_guardrails.py",
+      "bytes": 15036,
+      "sha256": "409c0e6d60ac13ad2dc6f2ac1cff911e87209f7a103aa5ed4f0b7438aaa37581"
+    },
+    {
+      "path": "tests/test_ui_visual_smoke.py",
+      "bytes": 5374,
+      "sha256": "d18d25a67b67c2a7c996900598d753ee0b578768a94cdbbef6ed797604ba11af"
+    }
+  ],
+  "checks": [
+    {
+      "path": "E:\\r12-c03-checkout-types.log",
+      "sha256": "bf5c01c7c099cdda950879df4ef11885a9b69d542dc3a66fac5c1df42ef08fb8",
+      "exit_code": 2,
+      "result": "Early missing moved import; final build TypeScript PASS"
+    },
+    {
+      "path": "E:\\r12-c03-checkout-lint.log",
+      "sha256": "346c58f7a329c01bb8647e58c2592f93ab2bbc80cdc5b7b896758f04392a2c6b",
+      "exit_code": 0,
+      "result": "Early unused moved import warning; corrected"
+    },
+    {
+      "path": "E:\\r12-c03-checkout-lint-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 0,
+      "result": "No warnings"
+    },
+    {
+      "path": "E:\\r12-c03-checkout-build.log",
+      "sha256": "ef97f86a16c13c6acad9543d50404adaa6d683b92ecdeff129833abed3b6f131",
+      "exit_code": 0,
+      "result": "Static build and TypeScript PASS"
+    },
+    {
+      "path": "E:\\r12-c03-checkout-contracts.log",
+      "sha256": "8d56a45b93474e2b7835c8aa0ec2d58a920bfa88c7696848fc9fdc806b933040",
+      "exit_code": 1,
+      "result": "54 PASS, one obsolete snippet already absent in baseline"
+    },
+    {
+      "path": "E:\\r12-c03-checkout-contracts-final.log",
+      "sha256": "1ad03e0d16440a5a04b684e4b060f4d54d1618862dec6ac37181c85a393c8843",
+      "exit_code": 0,
+      "result": "55 PASS"
+    },
+    {
+      "path": "E:\\r12-c03-checkout-responsive.log",
+      "sha256": "d9b3f94e42c65063a639070664ccccf3b41b69f264c4cfa59bbff41b4e7f2396",
+      "exit_code": 0,
+      "result": "Responsive plus nine checkout feature fixtures PASS"
+    },
+    {
+      "path": "E:\\r12-c03-checkout-seo.log",
+      "sha256": "61297802d5beb919f8434fea61ef4778f928c5b16a3cadd87c4cb42f480afc96",
+      "exit_code": 0,
+      "result": "SEO/brand PASS"
+    },
+    {
+      "path": "E:\\r12-c03-checkout-visual-contract.log",
+      "sha256": "0879845f077d12b6113cb3323d45afa9cc3e1515ae533670ba0a2d7e06e9b7b4",
+      "exit_code": 0,
+      "result": "UI source contracts PASS"
+    },
+    {
+      "path": "E:\\r12-c03-checkout-links.log",
+      "sha256": "daaa45bce1caaa40f6c7334de181941b64650fcf0bcb6900d712fde7ecb53697",
+      "exit_code": 0,
+      "result": "Public routing source contracts PASS"
+    },
+    {
+      "path": "E:\\r12-c03-owners-current.log",
+      "sha256": "21d560aedf87583f305626d1be89b170ac3418c1f66c31493cbc0dea7f4ddc7f",
+      "exit_code": 0,
+      "result": "33 current client owner tests PASS"
+    }
+  ],
+  "counts": {
+    "marketing/src/app/checkout/checkout-client.tsx": {
+      "after_lines": 435,
+      "before_lines": 1259
+    },
+    "marketing/src/app/checkout/use-checkout-controller.ts": {
+      "after_lines": 939
+    }
+  },
+  "equivalence": {
+    "baseline": "04923e1bdbdb6bd780a9da3da134716f6fdb8f6d",
+    "status": "EXTRACTION_EQUIVALENT",
+    "state_statements": 69,
+    "helper_bodies": 23,
+    "checkout_jsx_identical": true,
+    "loading_fallback_identical": true,
+    "obsolete_test_snippet_absent_in_baseline": true,
+    "scope": "AST node text comparison; not a substitute for browser/runtime tests"
+  },
+  "archive": {
+    "path": "E:\\r12-c03-checkout-evidence.zip",
+    "files": 14,
+    "bytes": 9195,
+    "sha256": "118e1727a4d72f10c8f30a1c4c4c253e68e32c9e7b366795cc53cbc884af8e75"
+  },
+  "responsive_screenshots": {
+    "path": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\.tmp-marketing-responsive-1788708652038",
+    "scope": "General responsive route captures; checkout uses nine functional browser fixtures",
+    "files": [
+      {
+        "path": "desktop-android.png",
+        "bytes": 96390,
+        "sha256": "7300231bf490c7c7eaebee088f01fc6d9aeb190155249a95011cc74f0fae40c4"
+      },
+      {
+        "path": "desktop-best-vpn.png",
+        "bytes": 110994,
+        "sha256": "3a7953d0d2dec7d4216d5b77ad6014922c3fd4b1c3cf0c29eb053e0c49c64eff"
+      },
+      {
+        "path": "desktop-billing-no-autosubscription.png",
+        "bytes": 96754,
+        "sha256": "046ca797c82984eedf13d8e6de47d819d4be4fe67726bc09d05c68309ff02e2e"
+      },
+      {
+        "path": "desktop-compare-free-vpn.png",
+        "bytes": 97030,
+        "sha256": "5192ae70b79e3e55f8c8e7ea5ae100e8f238c3ea6da4f8558b70ad4ed9a88aa7"
+      },
+      {
+        "path": "desktop-devices.png",
+        "bytes": 88066,
+        "sha256": "001428c439894ac5e5d0d7c41162c5994cfb4023d90b99e5acb45432f58bce60"
+      },
+      {
+        "path": "desktop-fallback.png",
+        "bytes": 123883,
+        "sha256": "bb457180b87ce737ccf2ecc37ba211939366fc1684816aa2ff072dea32696fa3"
+      },
+      {
+        "path": "desktop-home.png",
+        "bytes": 72113,
+        "sha256": "dd7d7bf991d93f3942b7ad636b196207afd4958241003f5403663fc1aca0d868"
+      },
+      {
+        "path": "desktop-install-android.png",
+        "bytes": 108386,
+        "sha256": "66947188756335396e5c391ae4bd4e36888e9ed4b4ff9e000200c05cf2cb0698"
+      },
+      {
+        "path": "desktop-install-windows.png",
+        "bytes": 103394,
+        "sha256": "009bcc87a57864f50c82839f6d2aa090b0b9800d71cd128a31ca2ed84ffd422d"
+      },
+      {
+        "path": "desktop-install.png",
+        "bytes": 86531,
+        "sha256": "d950e0a102d0d6d0621e806b7038810c3266f5b7a2d85db4820f153e650b00a9"
+      },
+      {
+        "path": "desktop-mobile.png",
+        "bytes": 91132,
+        "sha256": "2ce59781c89cc365dcb1fe777106d42575b44ac8628b628571ccbae78f0160c0"
+      },
+      {
+        "path": "desktop-support-install.png",
+        "bytes": 90069,
+        "sha256": "9b0426cbf8a4c2e383c2798e1a75cf4c36f3afe3f3a908a5d9b12bfe6873e0a1"
+      },
+      {
+        "path": "desktop-telegram.png",
+        "bytes": 94900,
+        "sha256": "86fa27e9f020754cfd68c5e2933178e47504157e0047feffb41158f67f6877d2"
+      },
+      {
+        "path": "desktop-tiktok.png",
+        "bytes": 88591,
+        "sha256": "4ff8cc712b815b5e885a7c0cd2688f1b3cde44d859a2443242ded2a4794955c7"
+      },
+      {
+        "path": "desktop-trial-no-card.png",
+        "bytes": 102375,
+        "sha256": "1c38f56a9231f2eef0508d237625e4f8467b9146c127b20f354717e76a2b2045"
+      },
+      {
+        "path": "desktop-trust-github-releases.png",
+        "bytes": 99164,
+        "sha256": "c0d4ce0a83346cfed816e829c7d98ffe7ab6f122566c6454c4f8d53b8dc3ed49"
+      },
+      {
+        "path": "desktop-vpn.png",
+        "bytes": 115647,
+        "sha256": "28d013bc159f2accaefacec35210a9a9d74a079ec9301f3f6ffe173c843d6af8"
+      },
+      {
+        "path": "desktop-windows.png",
+        "bytes": 105721,
+        "sha256": "fa706f5c263f9a01235ed702d91c65af5615921439b79aad93c6756e20c5b7a6"
+      },
+      {
+        "path": "desktop-youtube.png",
+        "bytes": 85547,
+        "sha256": "b4dc0f3973950826868eb0f20748d6c7fd695f6b80328709059cb3ec96c5dd9c"
+      },
+      {
+        "path": "mobile-android.png",
+        "bytes": 64704,
+        "sha256": "5da1323bb639b1a9a017874c8fa7f7c8e4b18122b131e3333b198730389e6e26"
+      },
+      {
+        "path": "mobile-best-vpn.png",
+        "bytes": 71693,
+        "sha256": "6055c8b17b32ef18575533990463499618b7a456c912497f4c1bf3433b7b9fb6"
+      },
+      {
+        "path": "mobile-billing-no-autosubscription.png",
+        "bytes": 66475,
+        "sha256": "48da52a811c3848d004e9f82040ff4a839a2c11479d2c286124deb3c3ffb5789"
+      },
+      {
+        "path": "mobile-compare-free-vpn.png",
+        "bytes": 64602,
+        "sha256": "ee13564e8fdee00827ae60d966d69dd20db142566e2162e9b56b039a7a0f8069"
+      },
+      {
+        "path": "mobile-devices.png",
+        "bytes": 62776,
+        "sha256": "37886755ea0feb855f828fecc20ed110337648c3a3af33a145889b60573ff671"
+      },
+      {
+        "path": "mobile-fallback.png",
+        "bytes": 60509,
+        "sha256": "ca6d4fddafd605391bd1f977c811f25d45118d91a20d63239e96763280f38f68"
+      },
+      {
+        "path": "mobile-home.png",
+        "bytes": 52437,
+        "sha256": "99e2a8c84b51bf951509097ce68e394e8b5ddc4259022a107f26bc6231753de3"
+      },
+      {
+        "path": "mobile-install-android.png",
+        "bytes": 66211,
+        "sha256": "4d2c0aa37b1ca56e1e91f45ac6f8946549e7d484fad60d1be86b2767349443f3"
+      },
+      {
+        "path": "mobile-install-windows.png",
+        "bytes": 68765,
+        "sha256": "476893157de6e16efddf8d344dae5f1fa68e30308c0631344b9f9b18f6027109"
+      },
+      {
+        "path": "mobile-install.png",
+        "bytes": 61063,
+        "sha256": "62a6212e733aab1d82eb02f4eecc50c7f5d6efa6f7b0a078e810fc5e3cc0d154"
+      },
+      {
+        "path": "mobile-mobile.png",
+        "bytes": 60831,
+        "sha256": "936fe087c0c9a1f3b2380dad85b5285a3f4a223fde064ea0d50945a67a6d7735"
+      },
+      {
+        "path": "mobile-support-install.png",
+        "bytes": 58654,
+        "sha256": "cd307f997b0a1761c52847f9987cf268e5a15b02fa36f47cd0e212d34f496401"
+      },
+      {
+        "path": "mobile-telegram.png",
+        "bytes": 65505,
+        "sha256": "6858d4c8fb36d9ac37f5a5d7f7e43a4a49882c194d626f2cf93e85650c1a5224"
+      },
+      {
+        "path": "mobile-tiktok.png",
+        "bytes": 61837,
+        "sha256": "068cf78f93d69cb6e5f376a8ff6e0100f10db16ebb1ac69a84ac152ed7121610"
+      },
+      {
+        "path": "mobile-trial-no-card.png",
+        "bytes": 65991,
+        "sha256": "e2aaf046ae41f50f542a54dd9b5c4be7f524b5cd8d3b6600d909efaa8f2ecdb6"
+      },
+      {
+        "path": "mobile-trust-github-releases.png",
+        "bytes": 67242,
+        "sha256": "b52d9a30f63e24a34ab234038d4fc8a38045e932e7a33273064ba96c722c797f"
+      },
+      {
+        "path": "mobile-vpn.png",
+        "bytes": 63612,
+        "sha256": "ca533ac6d3c71930513190179ddd16603b92501ca6f5b1ace4c1d25dc0aaa2f0"
+      },
+      {
+        "path": "mobile-windows.png",
+        "bytes": 67658,
+        "sha256": "919607ac5e59a01023ed4d7c3fe5d0185c87db4ab22f65a47792880c9e2c1b3d"
+      },
+      {
+        "path": "mobile-youtube.png",
+        "bytes": 65001,
+        "sha256": "7bf1840c848d82e3b2c294dee53812779f23123631aca03873168322900314e9"
+      },
+      {
+        "path": "tablet-android.png",
+        "bytes": 81068,
+        "sha256": "b2178a644f712e1fc677792a618fbadb4561f39e8a38d7a32ca9a17af39c2033"
+      },
+      {
+        "path": "tablet-best-vpn.png",
+        "bytes": 96597,
+        "sha256": "8c3ef4ceec1ebd21f8b64e651d9469584207e6d4e999c0b390d158c4d3d31067"
+      },
+      {
+        "path": "tablet-billing-no-autosubscription.png",
+        "bytes": 85932,
+        "sha256": "a81e6689c811d5172e53e5bfd150582b2e9c010f34ae792e527d1672d35de309"
+      },
+      {
+        "path": "tablet-compare-free-vpn.png",
+        "bytes": 84917,
+        "sha256": "c77d6b6f7621e72b1e4a3b05026d1984e8752c86272d0d94c0b10c7f33167978"
+      },
+      {
+        "path": "tablet-devices.png",
+        "bytes": 86932,
+        "sha256": "cbc30ee4aac13582b37c60587d8a8f4130ca78b25fe3bb4786d67874a7b5e7e1"
+      },
+      {
+        "path": "tablet-fallback.png",
+        "bytes": 94619,
+        "sha256": "d23ef1fa5a9c809cccb217a300806d5ec2316e6aa62004ff124b254b254ce375"
+      },
+      {
+        "path": "tablet-home.png",
+        "bytes": 63678,
+        "sha256": "c8d3e4eca5969222581390df00cac9a13b167b4d67dcf6d93d58f7b8752be616"
+      },
+      {
+        "path": "tablet-install-android.png",
+        "bytes": 93539,
+        "sha256": "a85bb460684d73bc3c180ae792264dcf995c832b2a2aaebe051f45027df89504"
+      },
+      {
+        "path": "tablet-install-windows.png",
+        "bytes": 88896,
+        "sha256": "fd39f7e3fc842c9a75d9508e84db921e0ff813c84dd136d76ee04a0004479305"
+      },
+      {
+        "path": "tablet-install.png",
+        "bytes": 69355,
+        "sha256": "1de36366d5bf3390e2d73a3c28237a73510c0a9bf5124f77b768dffcc3669de6"
+      },
+      {
+        "path": "tablet-mobile.png",
+        "bytes": 84471,
+        "sha256": "e8623f6f61c5a113375049db8c296f24b797c2e1062e55cce79e2fe7f5885ec2"
+      },
+      {
+        "path": "tablet-support-install.png",
+        "bytes": 78012,
+        "sha256": "99df2740cabb8495ff99666566202423b6dfc774eeac7ff8f728fa1508f2ee51"
+      },
+      {
+        "path": "tablet-telegram.png",
+        "bytes": 88766,
+        "sha256": "ca2531d9eab59920260b41c57b4c1a75884ab7cfc72ff45e8daf527c4e1cad99"
+      },
+      {
+        "path": "tablet-tiktok.png",
+        "bytes": 81858,
+        "sha256": "9cb903f71f4723d867efaebeca96d960f00752bc3abda4151685ca97e77d4e20"
+      },
+      {
+        "path": "tablet-trial-no-card.png",
+        "bytes": 89560,
+        "sha256": "99db646ffa6a8831919ca03f5655388433a72eaf61288ec71c0b8ef38c921481"
+      },
+      {
+        "path": "tablet-trust-github-releases.png",
+        "bytes": 85804,
+        "sha256": "cff22e12776222deb111dfb666ea8de0ebbfe5f6a858aa2ad791c64d8457db91"
+      },
+      {
+        "path": "tablet-vpn.png",
+        "bytes": 108794,
+        "sha256": "bdce7f0656036f8c1f196c0b9a61dfaa9443fdf5a3b5a7c65e62e5ab440f961c"
+      },
+      {
+        "path": "tablet-windows.png",
+        "bytes": 90099,
+        "sha256": "10b11be2484acc851680e2d68ac10dffb4eaaa2bdd4786483beed73c36d11a5d"
+      },
+      {
+        "path": "tablet-youtube.png",
+        "bytes": 85796,
+        "sha256": "57ffffdc80952beba5a1d4946751e0591fcffcf4a82df0d052c62f0182bfc996"
+      }
+    ]
+  },
+  "remaining": "N01/N03 dependency-bound installed candidate proof; final release and overall plan gates",
+  "operations": "Local source/build/tests only; no push, merge, deploy, publication, signing, payment/provider operation or new candidate"
+}
