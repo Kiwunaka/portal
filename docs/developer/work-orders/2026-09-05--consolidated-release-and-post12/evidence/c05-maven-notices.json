@@ -1,0 +1,144 @@
+{
+  "schema": "pokrov.r12.c05-maven-notices/v1",
+  "status": "I3_PARTIALLY_FIXED_FULL_C05_OPEN",
+  "client_commit": "46ac645f5096628d065a9dd2c2a0da58d2dce4f4",
+  "core_commit": "8dc57a830bd1487389dd1b7c9190f094c31e13bc",
+  "client_git_blobs": [
+    {
+      "path": ".gitattributes",
+      "bytes": 1906,
+      "sha256": "98b7b072a6193f52f71f5661ee1081236793512516950bf4c35d5f0102b1224c"
+    },
+    {
+      "path": "apps/android_shell/assets/licenses/maven-NOTICES.txt",
+      "bytes": 176690,
+      "sha256": "06b7256830d0d19ec1aeb70326ea8216b830e2c41a29cb3c4314e7ca84f180af"
+    },
+    {
+      "path": "apps/android_shell/pubspec.yaml",
+      "bytes": 671,
+      "sha256": "82e8ecec044767b7f77176a97c3d5d7f028bae1f3c1db50263f3da6fa2cabe46"
+    },
+    {
+      "path": "docs/operations/android-release-audit.md",
+      "bytes": 60532,
+      "sha256": "73724bfd23484df8ee4f050374ad42bd2460342649e190e756aee04ccc3f8649"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-c05-maven-notices/assemble.py",
+      "bytes": 6328,
+      "sha256": "de44e4ef0c628a36af532c6838c6106440ff0fc8d533ca7daae2f89df2a46299"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-c05-maven-notices/inventory.init.gradle",
+      "bytes": 1079,
+      "sha256": "3578897cb90c01a96a0dcc182c06ac6d288e39dfed05722cce0673355518fdb0"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-c05-maven-notices/maven-supplement.cdx.json",
+      "bytes": 65715,
+      "sha256": "7282f2c30e4e413a5b2360d736d117065ebcfd0710c51634d890f3b91860a442"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-c05-maven-notices/package-notices.json",
+      "bytes": 58560,
+      "sha256": "9cd1403d98743c8f77f541fa2e2dd77d3322eacd8915389661bc979f12c3ba15"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-c05-maven-notices/verify-packages.py",
+      "bytes": 2938,
+      "sha256": "443682fcb3d680c37edbbd23fdd62cc0c71eda0fc343c7eca63322ff6ea0ad0a"
+    }
+  ],
+  "client_receipt": "E:/r12client/docs/operations/evidence/2026-09-06-r12-c05-maven-notices/package-notices.json",
+  "evidence_archive": {
+    "path": "E:\\r12-c05-maven-notices\\maven-notices-evidence.zip",
+    "bytes": 512727,
+    "sha256": "f8b9ab9aa6dd035a670b345524a554157fe0131189d15e2d76a65ec3245c4e51",
+    "excluded_binary_inputs": "Official JAR/AAR/source JAR inputs and four APKs retained separately under the same evidence directory, with hashes in official-downloads.json and package-verification.json."
+  },
+  "summary": {
+    "public_maven_modules": 63,
+    "unique_binary_matches": 58,
+    "metadata_redirect_only": 5,
+    "source_jars": 59,
+    "source_files": 4035,
+    "packaged_license_bodies": 164,
+    "apk_count": 4,
+    "changed_old_apk_entries": [
+      "assets/flutter_assets/AssetManifest.bin"
+    ],
+    "dex_native_previous_notices_unchanged": true,
+    "sbom_components": 59,
+    "sbom_schema": "CycloneDX 1.6",
+    "protobuf_shaded_upstream_class_names": 539,
+    "protobuf_shaded_extra_anonymous_classes": 3,
+    "protobuf_osv_advisory_ids": [],
+    "installed_privacy": "OPEN",
+    "final_license_compatibility": "OPEN",
+    "candidate_device_origin_acceptance": "OPEN"
+  },
+  "operations": {
+    "push": false,
+    "merge": false,
+    "deploy": false,
+    "production_signing": false,
+    "new_candidate": false,
+    "retained_release_artifacts_changed": false
+  },
+  "platform_checks": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_agent_docs_contract.py",
+        "tests/test_agent_context_packet_audit.py",
+        "-q"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-maven-notices\\platform-docs.log",
+      "sha256": "4496ea851ece856a4e77a7ad8d30be65fff2731189bf8a3b690ef6c618b4cffe",
+      "output": ".................................                                        [100%]\n33 passed in 0.87s"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "scripts/agent_context_packet_audit.py",
+        "--platform-context-root",
+        "."
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-maven-notices\\platform-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "output": "PASS platform-context"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-maven-notices\\platform-package.log",
+      "sha256": "f8119fd90455a0b18224e99794982c495a5a65e3d8441733759c940c2f1c1daa",
+      "output": "PASS: 13 imported section hashes, 83 R12 IDs, 378 retained legacy IDs and ledger hash, 235 local file links"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "platform_receipt_note": "Initial register update attempted locale-default decoding and failed before changing the CSV. The targeted update succeeded with explicit UTF-8; source imports and legacy ledger checks pass."
+}
