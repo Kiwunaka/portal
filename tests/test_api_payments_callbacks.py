@@ -3780,74 +3780,97 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         finally:
             s.close()
 
-    def test_lavatop_paid_callback_amount_mismatch_goes_to_manual_review(self) -> None:
+    def test_lavatop_paid_callback_mismatches_go_to_manual_review(self) -> None:
         client = TestClient(self.api.app)
-
         from db import SessionLocal
-        from models import ExternalOrder, GiftCard, User
+        from models import EntitlementGrant, ExternalOrder, GiftCard, User
 
-        s = SessionLocal()
-        try:
-            s.add(
-                User(
-                    tg_id=7777,
-                    username="mismatch_lava",
-                    uuid=str(uuid.uuid4()),
-                    email="user_7777",
-                    sub_type="FREE",
-                    is_active=True,
-                    tos_accepted=True,
-                )
-            )
-            s.add(
-                ExternalOrder(
-                    order_id="lavatop_bot_7777_mismatch",
-                    provider="lavatop",
-                    tg_id=7777,
-                    plan_code="start_99",
-                    source="bot",
-                    amount=99.0,
-                    currency="RUB",
-                    status="pending",
-                    created_at=self.api._utcnow(),
-                )
-            )
-            s.commit()
-        finally:
-            s.close()
-
-        payload = {
-            "eventType": "payment.success",
-            "contractId": "amount-mismatch-contract",
-            "amount": 1,
-            "currency": "RUB",
-            "status": "completed",
-            "clientUtm": {"utm_content": "lavatop_bot_7777_mismatch", "utm_term": "start_99"},
-            "tg_id": "7777",
-            "plan_code": "start_99",
-        }
-        response = client.post(
-            "/api/payments/result/lavatop",
-            json=payload,
-            headers={"X-Api-Key": "lavatop_webhook_key_test"},
+        cases = (
+            ({"amount": 1}, "amount_mismatch"),
+            ({"amount": "99.001"}, "invalid_amount"),
+            ({"amount": "NaN"}, "invalid_amount"),
+            ({"currency": "USD"}, "currency_mismatch"),
+            ({"currency": ""}, "missing_currency"),
+            ({"plan_code": "6_months"}, "plan_mismatch"),
         )
+        for index, (changes, reason) in enumerate(cases):
+            with self.subTest(reason=reason, changes=changes):
+                tg_id = 7777 + index
+                order_id = f"lavatop-mismatch-{index}"
+                with SessionLocal() as session:
+                    session.add(User(
+                        tg_id=tg_id, username="mismatch_lava", uuid=str(uuid.uuid4()),
+                        email=f"user_{tg_id}", sub_type="FREE", is_active=True, tos_accepted=True,
+                    ))
+                    session.add(ExternalOrder(
+                        order_id=order_id, provider="lavatop", tg_id=tg_id,
+                        plan_code="start_99", source="bot", amount=99.0,
+                        currency="RUB", status="pending", created_at=self.api._utcnow(),
+                    ))
+                    session.commit()
+                response = client.post(
+                    "/api/payments/result/lavatop",
+                    json={
+                        "eventType": "payment.success", "contractId": f"mismatch-event-{index}",
+                        "amount": 99, "currency": "RUB", "status": "completed",
+                        "clientUtm": {"utm_content": order_id, "utm_term": "start_99"},
+                        "tg_id": str(tg_id), "plan_code": "start_99", **changes,
+                    },
+                    headers={"X-Api-Key": "lavatop_webhook_key_test"},
+                )
+                self.assertEqual(response.status_code, 200, response.text)
+                body = response.json()
+                self.assertEqual(body.get("status"), "manual_review")
+                self.assertFalse(body.get("activated"))
+                self.assertEqual(body.get("activation_reason"), reason)
+                with SessionLocal() as session:
+                    row = session.query(ExternalOrder).filter_by(order_id=order_id).one()
+                    user = session.query(User).filter_by(tg_id=tg_id).one()
+                    self.assertEqual(row.status, "manual_review")
+                    self.assertEqual(user.sub_type, "FREE")
+                    self.assertEqual(session.query(EntitlementGrant).filter_by(external_order_id=order_id).count(), 0)
+                    self.assertEqual(session.query(GiftCard).count(), 0)
 
-        self.assertEqual(response.status_code, 200, response.text)
-        body = response.json()
-        self.assertEqual(body.get("status"), "manual_review")
-        self.assertFalse(body.get("activated"))
-        self.assertEqual(body.get("activation_reason"), "amount_mismatch")
+    def test_lavatop_unbound_reversal_envelopes_are_deduped_manual_review(self) -> None:
+        client = TestClient(self.api.app)
+        from db import SessionLocal
+        from models import EntitlementGrant, ExternalOrder, ExternalPaymentEvent, GiftCard
 
-        s = SessionLocal()
-        try:
-            row = s.query(ExternalOrder).filter(ExternalOrder.order_id == "lavatop_bot_7777_mismatch").first()
-            user = s.query(User).filter(User.tg_id == 7777).first()
-            cards = s.query(GiftCard).all()
-            self.assertEqual(str(row.status or ""), "manual_review")
-            self.assertEqual(str(user.sub_type or ""), "FREE")
-            self.assertEqual(cards, [])
-        finally:
-            s.close()
+        for event_type in ("refund.success", "chargeback.initiated"):
+            with self.subTest(event_type=event_type):
+                event_id = str(uuid.uuid4())
+                payload = {
+                    "event_id": event_id,
+                    "event_type": event_type,
+                    "created_at": "2026-09-06T00:00:00Z",
+                    "data": {
+                        "amount": 99, "currency": "RUB",
+                        "customer_email": "reversal-private@example.test",
+                        "product": {"product_id": "synthetic-product"},
+                    },
+                }
+                response = client.post(
+                    "/api/payments/result/lavatop", json=payload,
+                    headers={"X-Api-Key": "lavatop_webhook_key_test"},
+                )
+                # Serialization/key order is not the provider event identity.
+                replay = client.post(
+                    "/api/payments/result/lavatop", json=dict(reversed(list(payload.items()))),
+                    headers={"X-Api-Key": "lavatop_webhook_key_test"},
+                )
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.json()["status"], "manual_review")
+                self.assertFalse(response.json()["activated"])
+                self.assertEqual(replay.status_code, 200, replay.text)
+                self.assertTrue(replay.json()["duplicate"])
+                with SessionLocal() as session:
+                    row = session.query(ExternalPaymentEvent).filter_by(external_id=event_id).one()
+                    self.assertIsNone(row.order_id)
+                    self.assertTrue(row.signature_ok)
+                    self.assertNotIn("reversal-private@example.test", row.payload_json)
+                    self.assertEqual(session.query(ExternalOrder).count(), 0)
+                    self.assertEqual(session.query(EntitlementGrant).count(), 0)
+                    self.assertEqual(session.query(GiftCard).count(), 0)
 
     def test_lavatop_callback_rejects_invalid_webhook_api_key(self) -> None:
         client = TestClient(self.api.app)

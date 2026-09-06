@@ -123,6 +123,12 @@ Worker errors retain only closed error codes. Never paste payloads, account
 identifiers, provider bodies or panel credentials into an operator note. There
 is no direct manual requeue surface in this candidate; do not edit queue rows.
 
+An old `processing` row can be locked by an active dispatch transaction.
+PostgreSQL recovery skips those locked rows and revisits eligible abandoned
+claims later. Age alone does not prove abandonment or authorize a second
+delivery. Dispatch/failure finalization retain the claim lock until commit
+or rollback.
+
 ## Commercial attribution reconciliation
 
 For a commercial order, reconcile immutable order intent, consumed reservation,

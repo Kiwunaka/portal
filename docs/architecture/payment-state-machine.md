@@ -94,6 +94,11 @@ Incoming Lava.top result webhooks must pass `X-Api-Key` or Basic webhook authent
 
 Before any Lava.top paid callback fulfills, the backend validates local order binding, amount, currency, and plan. Any missing local order, amount mismatch, currency mismatch, or plan mismatch becomes `manual_review` and does not grant access.
 
+The Lava.top amount must be a finite positive decimal with at most two
+fractional digits and equal the persisted order amount exactly. Non-finite
+values, fractional kopecks and invalid local amounts are manual-review
+outcomes; floating-point tolerance is not payment authority.
+
 For authenticated cabinet and Telegram-bound orders, fulfillment extends the linked account. The cabinet can show the single `connect.pokrov.space` subscription link and QR after access is active; the bot also sends that link after a paid Telegram-bound callback as a beta-stage manual import fallback. Anonymous public orders do not receive links in API responses; they receive one emailed access key after fulfillment.
 
 ## Consumer Return Projection
@@ -180,6 +185,13 @@ transaction that marks the event delivered. This downstream path may refresh
 panel traffic/access state but is never payment authority. Invalid payload,
 missing/mismatched grant, reversed grant or exhausted retry cannot grant or
 extend access.
+
+On PostgreSQL, dispatch and failure finalization lock the currently owned
+outbox row before validating its claim and changing state. Stale recovery
+locks eligible rows with `SKIP LOCKED`: elapsed claim age does not let another
+worker steal a dispatch whose database transaction is still active. Once that
+transaction ends, abandoned processing rows remain recoverable under the
+existing timeout/retry policy.
 
 For an order whose immutable v2 intent contains commercial lineage, successful
 reservation consume and the unique `commercial_conversions(stage=paid)` row

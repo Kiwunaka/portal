@@ -6171,11 +6171,16 @@ def _validate_paid_callback_against_order(*, provider: str, order_id: str, paylo
             return True, "ok"
         if normalized_provider != "lavatop":
             return True, "ok"
-        expected_amount = float(row.amount or 0)
-        actual_amount = _payload_amount(payload)
-        if expected_amount > 0 and actual_amount <= 0:
-            return False, "missing_amount"
-        if expected_amount > 0 and abs(expected_amount - actual_amount) > 0.01:
+        actual_amount = _payload_amount_decimal(payload)
+        if actual_amount is None:
+            return False, "invalid_amount"
+        try:
+            expected_amount = Decimal(str(row.amount))
+        except (InvalidOperation, ValueError):
+            return False, "invalid_order_amount"
+        if not expected_amount.is_finite() or expected_amount <= 0:
+            return False, "invalid_order_amount"
+        if actual_amount != expected_amount:
             return False, "amount_mismatch"
         expected_currency = str(row.currency or "RUB").strip().upper() or "RUB"
         actual_currency = _payload_currency(payload)
