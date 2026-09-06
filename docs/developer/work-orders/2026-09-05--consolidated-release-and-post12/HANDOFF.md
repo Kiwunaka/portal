@@ -30,6 +30,10 @@ encrypted snapshot/restore, additive migration, два workers и poison message
 на synthetic PostgreSQL; 198-file payload audit PASS. Последующий
 [Linux SSH/systemd drill](EXECUTION-B08-DEPLOY-LAB.md) подтвердил автоматический
 rollback при health 503 и delayed crash с восстановлением SHA всех 198 файлов.
+[Полный remote PostgreSQL gate](EXECUTION-B08-REMOTE-PG.md) затем прошёл в этой
+Linux VM: snapshot/restore 117 таблиц, ownership 1077 объектов, независимые
+content hashes и исключение поздней записи; два synthetic attachment files
+восстановлены отдельно из encrypted archive.
 Production recovery, старый runtime на expanded schema и exact production
 units/API остаются OPEN; в VM использовался synthetic service.
 
