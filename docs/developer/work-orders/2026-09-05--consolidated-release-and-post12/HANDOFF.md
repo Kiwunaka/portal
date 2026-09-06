@@ -206,3 +206,11 @@ client `b0f4374`, ещё 28 текстов, всего 173. Пять графо�
 Windows bundle PASS; в Windows изменился только notice, 301 файл прежний.
 298 файлов Psiphon utls совпали с upstream: root license действительно отсутствует.
 Scoped dicttls license добавлен; полный C05, source delivery и runtime gates OPEN.
+
+## C05 residual advisory triage — 2026-09-06
+
+[Статический разбор девяти ID](EXECUTION-C05-TRIAGE.md): семь not_actionable
+для текущих пяти runtime targets; два sumdb needs_review из-за неподтверждённой
+истории аутентификации module cache. Go 1.26.8 исправлен, runtime sumdb отсутствует.
+Исходные scanner records сохранены. C05 остаётся PARTIALLY_FIXED; новый candidate,
+runtime checks, push/merge/deploy в этом срезе не выполнялись.
