@@ -29,3 +29,6 @@ race proof и не interop с owned AWG server. Отзыв уже выданно
 Rollback — scoped revert локального commit. Production, push, merge, deploy,
 новый candidate, подпись и публикация: NOT_PERFORMED. Client/Core bytes и
 retained release artifacts не менялись.
+
+Последующий связанный срез: [та же граница выдачи в существующем HY2 lab](EXECUTION-HY2-SNAPSHOT.md).
+Он не подменяет AWG scope и runtime gates этого отчёта.

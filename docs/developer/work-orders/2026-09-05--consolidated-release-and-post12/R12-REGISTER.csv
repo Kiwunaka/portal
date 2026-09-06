@@ -32,7 +32,7 @@ R12-W06,IPC negative cases и WFP coexistence,queued,I0,NOT_REVIEWED,03_RELEASE_
 R12-D01,"Проверить primary ARM64 APK, не только universal",queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-D02,Wi-Fi/LTE/IPv6/MTU/UDP53 матрица,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-D03,"OEM, Doze, lifecycle и энергия",queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
-R12-D04,Direct/store authority и downgrade boundaries,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-D04,Direct/store authority и downgrade boundaries,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-D04.md
 R12-D05,"Логи, notification и счётчики только по контракту",queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-D06,Уменьшать доставку по size breakdown,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-C01,Сохранить ABI2 и проверить artifacts consumers,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md

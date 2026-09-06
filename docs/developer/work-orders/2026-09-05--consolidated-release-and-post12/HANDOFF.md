@@ -23,6 +23,10 @@ candidate и postrelease activation не выполнены. Ранние отч
 
 Добавлен [A07 — ограниченный переход lab → managed TCP](EXECUTION-A07.md): platform `f03a6a7`, client `45036ab`; 56 rollout/lab и 7 финальных client checks PASS, backend 154 + 8 subtests PASS; реальная UDP blackhole matrix OPEN.
 
+Продолжение provisioning: [HY2 — одна проверенная запись при выдаче](EXECUTION-HY2-SNAPSHOT.md). Воспроизведена и исправлена подмена generation между readiness и render; server revoke/expiry остаются OPEN.
+
+Сверен [D04 — direct/store update authority](EXECUTION-D04.md): существующие исходники, 22 JVM + 3 Flutter PASS; ADB 0 устройств, реальные update/data-preservation переходы OPEN.
+
 ## Изменения
 
 - Core: correlated endpoint/selector proof; Android/Windows AAR/DLL собраны

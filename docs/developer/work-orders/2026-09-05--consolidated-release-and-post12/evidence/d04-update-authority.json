@@ -1,0 +1,136 @@
+{
+  "recorded_at_utc": "2026-09-06T00:39:45.902961+00:00",
+  "status": "PARTIAL / I3 / NEEDS_RUNTIME_PROOF",
+  "client_source": "45036ab577b2f315bd6f220b1d6eb30e5f61a263",
+  "source_files": {
+    "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidClientUpdateContract.kt": "861f9a2bd94749b7553ba9aae2aea52fed30f7adeedc15e5722d13cdbca81efc",
+    "apps/android_shell/android/app/src/direct/kotlin/space/pokrov/pokrov_android_shell/AndroidClientUpdateInstaller.kt": "eedae8ae466ba52f19badea4d4fa3ba9a48903ab12e614fa8f60c77a8e8c28f2",
+    "apps/android_shell/android/app/src/store/kotlin/space/pokrov/pokrov_android_shell/AndroidClientUpdateInstaller.kt": "53c3161bd030280678de5f617d9377b9554f9916db7efc22ee371c91220f614e",
+    "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/AndroidApkIdentityPolicyTest.kt": "1d644f8287cec210639be489fb35e8e7439c12433b5bf84d7b240c76722dedaf",
+    "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/AndroidClientUpdateInstallerTest.kt": "faaa335fb867bcf5a0a229cb697f3b7325a5579ca94d0abe57087521aeea835f",
+    "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/AndroidUpdateFlavorContractTest.kt": "b1d1be6957cc36852a4f06c7b68e94059fbec1d176ec325fab374d8dcd547de5",
+    "packages/app_shell/test/android_client_update_channel_test.dart": "ce95815073edd4ed284726b0650d2532ae422d7d4c1461a495eef7f31069fbb8",
+    "packages/app_shell/test/client_update_coordinator_test.dart": "4b54ac0d570e7dd3b248f3fbe38fd6ee642b1a1dbe252bd3eb457797a7253a1e"
+  },
+  "commands": [
+    {
+      "command": ".\\gradlew.bat :app:testDirectDebugUnitTest --tests '*AndroidClientUpdateInstallerTest' --tests '*AndroidApkIdentityPolicyTest' --tests '*AndroidUpdateFlavorContractTest' :app:testStoreDebugUnitTest --tests '*AndroidClientUpdateInstallerTest' --tests '*AndroidApkIdentityPolicyTest' --tests '*AndroidUpdateFlavorContractTest' --console=plain",
+      "cwd": "E:\\r12client\\apps\\android_shell\\android",
+      "log": "E:\\r12-d04-jvm.log",
+      "sha256": "f02b0691f538df32650e5da96bd19dbb33e04e29ee7602be248ebe167f905d1f",
+      "exit_code": 0,
+      "result": "22 PASS, 11 per flavor; task execution confirmed"
+    },
+    {
+      "command": "flutter test test/android_client_update_channel_test.dart test/client_update_coordinator_test.dart",
+      "cwd": "E:\\r12client\\packages\\app_shell",
+      "log": "E:\\r12-d04-flutter.log",
+      "sha256": "6d37b73157300e3ce925447ebfedfbef5be6284c7910f674cfe49d1f2797edac",
+      "exit_code": 0,
+      "result": "3 PASS"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:\\r12-hy2-d04-context-final.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:\\r12-hy2-d04-package-final.log",
+      "sha256": "a83287e9363a6fc1a012495be198b04c385dd781c3cb4338fc380efac72e9b45",
+      "exit_code": 0,
+      "result": "PASS 13 imports / 83 IDs / 378 legacy IDs / 153 links"
+    }
+  ],
+  "junit_reports": [
+    {
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidClientUpdateInstallerTest.xml",
+      "sha256": "69fe93acdf0a1136460ed223c9a15fd204bac1c592c9d9b27f5e1cbdabeb51f6",
+      "flavor": "Direct",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timestamp": "2026-09-06T00:38:28",
+      "retained_path": "E:\\r12-d04-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidClientUpdateInstallerTest.xml"
+    },
+    {
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidApkIdentityPolicyTest.xml",
+      "sha256": "8f6c1310e19ab9cc250199e6a4caf8f78cfc265c15ded91ed07fd96e1092d78e",
+      "flavor": "Direct",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timestamp": "2026-09-06T00:38:28",
+      "retained_path": "E:\\r12-d04-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidApkIdentityPolicyTest.xml"
+    },
+    {
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidUpdateFlavorContractTest.xml",
+      "sha256": "893fe7e881d07676c0a973545f8661602775c3d342fc47a7e9d9c1c17c57fec0",
+      "flavor": "Direct",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timestamp": "2026-09-06T00:38:28",
+      "retained_path": "E:\\r12-d04-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidUpdateFlavorContractTest.xml"
+    },
+    {
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidClientUpdateInstallerTest.xml",
+      "sha256": "a1c8ee94fdbb773c8bb4066a217c1f6e7a597e33a1a9142af9e5ab96ca67aee6",
+      "flavor": "Store",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timestamp": "2026-09-06T00:38:36",
+      "retained_path": "E:\\r12-d04-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidClientUpdateInstallerTest.xml"
+    },
+    {
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidApkIdentityPolicyTest.xml",
+      "sha256": "3d7aee89ef6d6de99fb3beffc7ef13b4b47bd055507ecbb299d5c135a97ae26f",
+      "flavor": "Store",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timestamp": "2026-09-06T00:38:36",
+      "retained_path": "E:\\r12-d04-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidApkIdentityPolicyTest.xml"
+    },
+    {
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidUpdateFlavorContractTest.xml",
+      "sha256": "80dc43e1b82e91610d08a9bf5cfd746d659c5aa63b6634eaf871668e3de95323",
+      "flavor": "Store",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "timestamp": "2026-09-06T00:38:36",
+      "retained_path": "E:\\r12-d04-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidUpdateFlavorContractTest.xml"
+    }
+  ],
+  "device_access": {
+    "command": "adb.exe devices -l",
+    "exit_code": 0,
+    "device_count": 0,
+    "ready_count": 0,
+    "serials_retained": false
+  },
+  "device_access_receipt": {
+    "path": "E:\\r12-d04-device-access.json",
+    "sha256": "a401188849651bbbf42ba42c3edc0b871c76a4af82117da27ed74a5c8facd89b"
+  },
+  "scope": "Existing source review and tests; no client implementation change",
+  "limitations": [
+    "Flavor reachability test is source text inspection, not installed-package proof.",
+    "APK identity and signing lineage objects are synthetic; Android PackageManager and signing validation are not emulated.",
+    "ABI/universal/split update, signing/versionCode continuity and data preservation require exact installed bytes on supported devices.",
+    "No APK/AAB release build, install, signing, store action or promotion performed.",
+    "D01 dependency and full D04 remain open."
+  ]
+}
