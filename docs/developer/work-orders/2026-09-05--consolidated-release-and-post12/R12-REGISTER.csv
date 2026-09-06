@@ -71,7 +71,7 @@ R12-M06,Малый winback/renewal pilot и банк текстов,queued,I0,NO
 R12-V01,Bundle redaction через все реальные sinks,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-V02,Связать диагностику с причиной и effective profile,blocked,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-V03,Наблюдаемость не ломает VPN,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
-R12-V04,Поддержка по одному безопасному case code,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-V04,Поддержка по одному безопасному case code,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-V04.md
 R12-L01,Ограничить Linux beta Ubuntu24.04 amd64,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-L02,Подключить live Core к dormant transaction plan,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-L03,Durable recovery и desktop authorization,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,

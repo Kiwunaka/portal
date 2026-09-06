@@ -29,6 +29,8 @@ candidate и postrelease activation не выполнены. Ранние отч
 
 Исправлен [D05 — фильтрация до native log sinks](EXECUTION-D05.md): Core `94dd310`, client `4539753`, новые AAR/DLL; 372 JVM, 190 shell, 80 runtime и 100 DLL cycles PASS. Physical lockscreen/journal/native-log/counters проверки OPEN.
 
+Исправлен [V04 — связь обращения, попытки и версии](EXECUTION-V04.md): `2ba8e8e`; missing-linked attempt больше не подменяется, смена build обновляет known issues. 110 support/AI, 55 API и 80 browser tests PASS; live case и effective-profile proof OPEN.
+
 ## Изменения
 
 - Core: correlated endpoint/selector proof; Android/Windows AAR/DLL собраны
