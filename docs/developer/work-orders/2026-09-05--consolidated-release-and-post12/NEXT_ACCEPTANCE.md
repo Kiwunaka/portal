@@ -1,5 +1,12 @@
 # Текущие условия следующей приёмки
 
+Последний [readback — 2026-09-06 14:39 UTC](EXECUTION-ACCEPTANCE-READBACK.md):
+Android не подключён; SCM result отсутствует. Изолированный Windows-клон был
+запущен только для чтения результата и снова выключен, NIC1 `none`. Последние
+platform/client CI jobs имеют ноль steps; enforcement остаётся недоступным.
+Текущий tuple: platform `afb2917`, client `c579708`, Core `8dc57a8`.
+Ниже сохранены предыдущие наблюдения и ещё открытые owner decisions.
+
 Последующий [Windows component lab](EXECUTION-WINDOWS-LAB.md): исходная VM
 остаётся выключенной; из чистого snapshot создан и запущен отдельный linked
 clone с NIC1 `none`. Семь native fixtures PASS; SCM-сценарий подготовлен,

@@ -1,0 +1,89 @@
+{
+  "status": "ACCEPTANCE_PREREQUISITES_OPEN",
+  "retained_at_utc": "2026-09-06T14:39:58Z",
+  "source_tuple": {
+    "platform": "afb2917",
+    "client": "c579708",
+    "core": "8dc57a830bd1487389dd1b7c9190f094c31e13bc"
+  },
+  "origin": "current-origin Windows host and owned isolated Windows guest",
+  "android": {
+    "command": "C:/Users/kiwun/AppData/Local/Android/Sdk/platform-tools/adb.exe devices -l",
+    "exit_code": 0,
+    "ready_devices": 0
+  },
+  "windows": {
+    "clone": "POKROV-r12-win11-20260906T035616Z",
+    "uuid": "d5ae2f7a-96c3-48b5-a2ba-5e009948ee27",
+    "initial_state": "poweroff",
+    "final_state": "poweroff",
+    "nic1": "none",
+    "inspection": "Existing E:/r12-win11-invoke-guest.ps1 with read-only PowerShellCommand",
+    "guest_exit_code": 0,
+    "guest": {
+      "scmResultExists": false,
+      "services": [],
+      "upAdapters": 0,
+      "pokrovProcesses": 0
+    },
+    "operations": [
+      "VBoxManage startvm POKROV-r12-win11-20260906T035616Z --type headless",
+      "Read-only guest check of C:/Users/Public/R12Lab/scm-smoke.json, POKROV services/processes, active adapter count",
+      "VBoxManage controlvm POKROV-r12-win11-20260906T035616Z acpipowerbutton",
+      "Final showvminfo confirms poweroff and nic1 none"
+    ],
+    "original_vm": {
+      "name": "POKROV-Win11-Test",
+      "uuid": "b769c8b4-e88a-452e-9d3a-cb4be23125e7",
+      "initial_state": "poweroff",
+      "final_state": "poweroff",
+      "booted": false
+    },
+    "pending": "MANUAL_OWNER_TEST: prepared Run-SCM-Smoke.cmd with manual UAC inside named clone; no result exists"
+  },
+  "github": {
+    "platform": {
+      "repository": "Kiwunaka/portal",
+      "run": 33945202524,
+      "head": "6b41f758ca228a0d5ff13ede0f865096cdac2134",
+      "status": "completed",
+      "conclusion": "failure",
+      "job": 101249919665,
+      "steps": 0,
+      "annotation": "The job was not started because recent account payments have failed or your spending limit needs to be increased. Please check the 'Billing & plans' section in your settings",
+      "rulesets_http": 403,
+      "branch_protection_http": 403
+    },
+    "client": {
+      "repository": "Kiwunaka/POKROV-app",
+      "run": 33944971093,
+      "head": "da1ad7395615837432615e0f150d7c0bf05322a4",
+      "status": "completed",
+      "conclusion": "failure",
+      "job": 101249293281,
+      "steps": 0,
+      "annotation_readback": "TLS handshake timeout on both attempts; current annotation not revalidated",
+      "rulesets_http": 403,
+      "branch_protection_http": 403
+    },
+    "core": {
+      "repository": "Kiwunaka/pokrov-core",
+      "run": 33304876489,
+      "head": "c1185faa998c69fd5164af415249c96c68ab61bd",
+      "status": "completed",
+      "conclusion": "success",
+      "rulesets": [],
+      "branch_protection_http": 404
+    },
+    "private_enforcement_message": "Upgrade to GitHub Pro or make this repository public to enable this feature.",
+    "limitations": "No current feature HEAD is covered by these old CI results. No workflow dispatch, payment, repository setting or visibility change occurred.",
+    "retained_transients": "Initial platform rulesets, client jobs/rulesets, and Core reads had TLS handshake timeouts. Successful retries are distinguished above. Client annotations stayed unavailable."
+  },
+  "pending_decisions": [
+    "N02 rollback authority",
+    "O03/V02 per-account diagnostic source and consent model",
+    "M01 seller/receipt/provider binding"
+  ],
+  "independent_queue": "C03 scoped remaining ownership work and other source requirements remain eligible; this readback is not a claim that all autonomous work is exhausted.",
+  "release_state": "No new candidate, production signing, deploy, publication, payment or host VPN changes. Original VM not booted; clone returned to initial poweroff state."
+}
