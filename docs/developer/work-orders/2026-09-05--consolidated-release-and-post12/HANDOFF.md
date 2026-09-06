@@ -43,6 +43,10 @@ recovery, exact deployed tuple/units и полный provider E2E остаютс
 повторные burst measurements с queue wait и event-loop samples, reuse 20 HTTP
 connections; два worker доставили 120 synthetic outbox events в provisioning
 queue. Production profile остаётся OPEN; лимиты по fixture не менялись.
+[B07 runtime readback и observer](EXECUTION-B07-RUNTIME.md): current-origin
+health и brain-origin read-only SQL показали idle DB counters и пустую открытую
+outbox queue. Добавлен lifespan-owned event-loop lag collector; проверен в
+Linux API lab, на production не развёрнут. Нагрузочный профиль остаётся OPEN.
 
 Исправлен [B06 — amount validation, outbox race и provider event dedupe](EXECUTION-B06.md):
 `58e3684`; реальный PostgreSQL race PASS, provider/API fixtures PASS. Live
