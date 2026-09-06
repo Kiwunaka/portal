@@ -160,3 +160,8 @@ marketing/AGENTS.md и CLAUDE.md и четыре line-ending-only client registr
 ## C05 package audit — 2026-09-06
 
 [Локальные APK/EXE inventories и packaging fixes](EXECUTION-C05-PACKAGES.md): client `7a8fd55`. Исправлены отсутствие Golos OFL и попадание native test EXE в Windows bundle. Четыре local debug-signed release-mode APK, Windows release bundle, 8 CTest, analyze/seed/docs PASS. OSV: 0 IDs для 138 Pub/Maven runtime graph records; native/Flutter/Cronet scope этим не покрыт. Сохранены 128 Go module entries и 130 root notices; native/source/privacy и exact candidate gates остаются OPEN.
+
+
+## C05 Cronet origin — 2026-09-06
+
+[Происхождение pinned Windows Cronet](EXECUTION-C05-CRONET.md): upstream release asset побайтно совпал с DLL; закреплены tag `82e1521` и declared native gitlink `2be061b6`. Source archive: 30561 exact + 30 line-ending-only matches, без необъяснённых расхождений. Сохранён 69-file source license review archive; exact Windows linked notices и source reproducibility остаются OPEN. Client manifest и readiness обновлены, runtime bytes прежние.

@@ -39,7 +39,7 @@ R12-C01,Сохранить ABI2 и проверить artifacts consumers,active
 R12-C02,Lifecycle/race/fuzz/resource bounds,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-C03,Извлечь реальные владельцы состояния из bootstrap,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
 R12-C04,Ограничить rebuild/repaint/polling,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-PRESENTATION.md
-R12-C05,Final binary dependency/license/privacy scan,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-C05-PACKAGES.md
+R12-C05,Final binary dependency/license/privacy scan,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-C05-CRONET.md
 R12-B01,Invalid preview всегда запрещает оплату,active,I3,ALREADY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
 R12-B02,Закрыть stale quote окно debounce,active,I3,ALREADY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
 R12-B03,"Truthful payment return, включая legacy success URL",active,I3,ALREADY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md

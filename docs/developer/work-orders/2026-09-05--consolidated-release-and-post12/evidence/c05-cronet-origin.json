@@ -1,0 +1,49 @@
+{
+  "schema": "pokrov.r12.c05-cronet-origin-reference/v1",
+  "client_commit": "47c6053cfc29874f9c72dafe8dd710055617880f",
+  "core_commit": "8dc57a830bd1487389dd1b7c9190f094c31e13bc",
+  "candidate_created": false,
+  "client_receipt": {
+    "path": "docs/operations/evidence/2026-09-06-r12-c05-cronet-origin/provenance.json",
+    "git_blob_sha256": "e4a30f1065d1b216d765cdcad8c878dd05567696766eab43ac3882ba5de5b38f",
+    "hash_scope": "Bytes returned by git show client_commit:path; checkout line-ending conversion is not the identity source."
+  },
+  "metadata_git_blobs": {
+    "config/runtime-artifacts.seed.json": "a5ad55eabc1c8250615f4e4b8a557ecdc40137aa8c7e3fab4667c71ea3ddc345",
+    "docs/operations/windows-release-readiness.md": "3125ea640756c823d09b2f79ae8753a8d810c6eb132643ff4c149c05ab19f613"
+  },
+  "checks": [
+    {
+      "command": "./scripts/validate-seed.ps1 -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start -CoreRoot E:/r12core-implementation",
+      "cwd": "E:/r12client",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-cronet-client-seed.log",
+      "sha256": "f0575c881b196af480277d01058738a670344edd55b388b429b412d3b8facd2c",
+      "result": "PASS seed/docs/source/fixture contracts; performance collector fixture is not a new physical measurement"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:/r12-c05-cronet-platform-docs.log",
+      "sha256": "c6cf873946abb2b3c4162f1e037384e5dbbac1a46cf534489c159dc81dc4c0d2",
+      "result": "33 PASS"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:/r12-c05-cronet-platform-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:/r12-c05-cronet-package.log",
+      "sha256": "bbe24fd6baf0848d2d0ccf5d8499a9c6640c2ec7ae7c01eca58c532ce605605f",
+      "result": "PASS 13 imports / 83 R12 / 378 legacy / 194 local links"
+    }
+  ]
+}
