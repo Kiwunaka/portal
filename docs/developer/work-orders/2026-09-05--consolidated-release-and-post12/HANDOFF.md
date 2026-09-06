@@ -148,3 +148,7 @@ historical receipts сохранены; прежние release artifacts не п
 marketing/AGENTS.md и CLAUDE.md и четыре line-ending-only client registrants
 оставлены вне commit. Временные browser servers этой проверки остановлены;
 логи и скриншоты сохранены.
+
+## C05 — Core dependency remediation, 2026-09-06
+
+[Исправлены два reachable SSH deadlock advisory](EXECUTION-C05.md): Core `8dc57a8`, Go 1.26.8 / x/crypto 0.56.0 / tfo-go 2.3.3 и совместимый Psiphon TLS mirror. Две пары локальных DLL/AAR byte-identical; full gate, 15 exports и 100 proxy-only cycles PASS. Binary findings имеют module precision (0 extracted symbols); девять ID и license gaps сохранены. Client binding пока D05, final APK/EXE/license/privacy gate открыт.
