@@ -852,6 +852,12 @@ completed, failed, queue-wait and duration counters; it contains no SQL,
 parameters, row identity or exception. This is a scoped payment transition, not
 a claim that the remaining async API ORM inventory has been migrated.
 
+The separate `/api/health.event_loop_lag` projection reports lifespan-owned
+timer observations, not payment or request latency. Before its first sample,
+last/max are null; an API without lifespan returns a null projection. Fields,
+collection states and operational limits are defined in
+[Monitoring And Visibility](../operations/monitoring-and-visibility.md).
+
 Anonymous public order creation persists `ExternalOrder` and one
 `PaymentEntitlementClaim` in the same local transaction. The claim is unique by
 provider and provider order ID, stores only normalized claim ownership data,

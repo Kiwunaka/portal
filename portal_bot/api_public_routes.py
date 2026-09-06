@@ -104,11 +104,15 @@ EMERGENCY_PROBE_PAYLOAD_V1_SHA256 = hashlib.sha256(EMERGENCY_PROBE_PAYLOAD_V1).h
 
 @app.get("/api/health")
 async def health() -> dict:
+    event_loop_lag_monitor = getattr(app.state, "event_loop_lag_monitor", None)
     return {
         "status": "ok",
         "ts": _utcnow().isoformat(),
         "commercial": commercial_health_snapshot(),
         "payment_db": payment_db_runtime_snapshot(),
+        "event_loop_lag": (
+            event_loop_lag_monitor.snapshot() if event_loop_lag_monitor is not None else None
+        ),
     }
 
 

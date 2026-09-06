@@ -59,6 +59,7 @@ from request_correlation import (
     response_headers as request_correlation_response_headers,
 )
 from outbound_http import OutboundHttpError, PaymentHttpRegistry
+from event_loop_lag import EventLoopLagMonitor
 from payment_db_runtime import payment_db_runtime_snapshot, run_payment_db_use_case
 from payment_callback_application import (
     PaymentCallbackDependencies,
@@ -2327,9 +2328,14 @@ async def _api_lifespan(application: FastAPI):
     payment_http_registry = PaymentHttpRegistry()
     await payment_http_registry.start()
     application.state.payment_http_registry = payment_http_registry
+    event_loop_lag_monitor = EventLoopLagMonitor()
     try:
+        event_loop_lag_monitor.start()
+        application.state.event_loop_lag_monitor = event_loop_lag_monitor
         yield
     finally:
+        application.state.event_loop_lag_monitor = None
+        await event_loop_lag_monitor.close()
         application.state.payment_http_registry = None
         await payment_http_registry.close()
 

@@ -744,6 +744,15 @@ Admin ops app wave `2026-07-06`, command-center redesign updated locally on
   account/order identity or exception text. Sustained active=max-active,
   increasing queue wait or failure count is an operator signal, but local tests
   do not establish production pool sizing or latency SLOs
+- `/api/health.event_loop_lag` observes the API event loop with one lifespan-owned
+  monotonic timer at a one-second interval. It retains only `status`,
+  `interval_ms`, `samples`, `last_lag_ms`, `max_lag_ms`, and `lag_total_ms`.
+  Last/max are null before the first observation; status is `warming_up` until
+  then, `collecting` while running, or `failed` if collection stops unexpectedly.
+  The task is cancelled and awaited on shutdown (`stopped`); an API used without
+  lifespan returns null for this projection. Each new lifespan has fresh counters.
+  Timer delay is not request latency or DB/HTTP pool wait; cumulative total/max
+  cannot establish p95 or a production SLO. No request or account data is sampled.
 - an access-key UUID rotation is not successful on canonical DB or panel-row readback alone: after every affected panel confirms the replacement row, the worker must receive an authenticated Xray restart acknowledgement, then bounded `/server/status` proof from two consecutive samples that `xray.state=running` with no `xray.errorMsg`, and then re-read the panel row. The same apply/readback sequence is required when compensation restores the old UUID. An apply error or post-apply row mismatch is `rotation_runtime_apply_failed` (or `rotation_compensation_failed` during rollback) and requires `manual_review`; it must never finalize the canonical UUID. These panel signals confirm process/config application, not an independent authenticated dataplane canary; the dedicated egress canary remains an operator-run check and is not invoked with a customer identity during rotation.
 - `free_standard` and `free_soft` are legacy rollback/cleanup roles only; while free delivery is disabled they must not be selected, provisioned, or fall back to paid or `operator_lab` nodes
 - nftables shaper readiness requires Linux canary evidence for syntax, IPv4/IPv6 TCP/UDP throughput, NAT sharing, counters, premium isolation, idempotent setup, and rollback; local dry-run evidence is not production proof
