@@ -1,7 +1,7 @@
 id,summary,status,evidence_level,inventory,source,reconciliation
 R12-G01,Зафиксировать новый scope и authority,verified,I3,ALREADY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-G01-M01.md
 R12-G02,Сохранить candidate.33 и доказательства,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
-R12-G03,Dependency-aware evidence invalidation,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
+R12-G03,Dependency-aware evidence invalidation,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-G03.md
 R12-G04,Реальный исполняемый CI вместо зелёной декларации,blocked,I1,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
 R12-G05,"Развести public, candidate и development metadata",active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-G05-G07.md
 R12-G06,Проверить enforcement и действующие исключения,blocked,I1,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md

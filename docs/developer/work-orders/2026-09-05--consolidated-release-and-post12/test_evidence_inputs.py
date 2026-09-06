@@ -40,7 +40,10 @@ class EvidenceInputsTest(unittest.TestCase):
             "portal_bot/api_client_routes.py": "api_schema",
             "engine/sing-box/daemon/started_service.go": "core_runtime",
             "apps/windows/runtime/pokrov-core.dll": "packaged_dependency_toolchain",
+            "portal_bot/requirements.txt": "packaged_dependency_toolchain",
+            "marketing/package-lock.json": "packaged_dependency_toolchain",
             "infra/runtime.service": "deployment_migration",
+            "infra/owned-smart-dns/README.md": "documentation_only",
             "shared/copy.ts": "product_copy",
             "scripts/collect_client_evidence.py": "manual_classification_required",
         }

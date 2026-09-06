@@ -20,9 +20,14 @@ def classify_path(path: str) -> str:
     parts = set(p.parts)
     if "test" in parts or "tests" in parts or "e2e" in parts or p.name.startswith("test_") or p.stem.endswith(("_test", ".test", ".spec")):
         return "test_harness"
+    if p.suffix.lower() == ".md":
+        return "documentation_only"
     if text.startswith(("infra/", ".github/")) or "migration" in p.stem:
         return "deployment_migration"
-    if p.suffix.lower() in {".aar", ".dll", ".exe", ".apk", ".aab", ".lock"} or p.name in {"go.mod", "go.sum", "pubspec.yaml", "package.json", "CMakeLists.txt"} or "gradle" in text:
+    if p.suffix.lower() in {".aar", ".dll", ".exe", ".apk", ".aab", ".lock"} or p.name in {
+        "go.mod", "go.sum", "pubspec.yaml", "package.json", "package-lock.json",
+        "requirements.txt", "requirements-ops.txt", "requirements-test.txt", "CMakeLists.txt",
+    } or "gradle" in text:
         return "packaged_dependency_toolchain"
     if text.startswith(("shared/copy", "copy/")):
         return "product_copy"

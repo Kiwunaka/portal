@@ -6,6 +6,11 @@ candidate и postrelease activation не выполнены. Ранние отч
 последовательные срезы. Точные команды, SHA логов и source tuple —
 [evidence/handoff-local.json](evidence/handoff-local.json).
 
+Обновлён [G03 — source inputs и зависимости evidence](EXECUTION-G03.md):
+250 изменённых файлов от task baseline, отдельный diff от candidate.33;
+исправлена классификация dependency manifests и infra README. Старые runtime
+receipts не получили автоматического reuse; final candidate proof остаётся OPEN.
+
 Проверен [G01 scope record и M01 legal/seller review](EXECUTION-G01-M01.md):
 все 83 slice metadata и 378 legacy references сохранены; G01 VERIFIED как
 документационный критерий. M01 ждёт утверждённого продавца и receipt evidence;
