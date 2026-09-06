@@ -66,7 +66,7 @@ R12-M01,Актуальные legal/seller/claims решения,queued,I0,NOT_RE
 R12-M02,Одна commercial revision на всех поверхностях,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-M03,"Настоящие сроки, price hold и квоты",active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-M04,"Capacity guard по качеству, а не только 300 аккаунтам",active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
-R12-M05,Атрибуция и полезная воронка,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-M05,Атрибуция и полезная воронка,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-M05.md
 R12-M06,Малый winback/renewal pilot и банк текстов,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-V01,Bundle redaction через все реальные sinks,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-V02,Связать диагностику с причиной и effective profile,blocked,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-V02.md

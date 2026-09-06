@@ -6,6 +6,10 @@ candidate и postrelease activation не выполнены. Ранние отч
 последовательные срезы. Точные команды, SHA логов и source tuple —
 [evidence/handoff-local.json](evidence/handoff-local.json).
 
+Исправлен [M05 — атрибуция и серверная воронка](EXECUTION-M05.md): клиентские
+payment/self-report events больше не дают paid/connected outcome; IP referrer
+и source очищаются на сервере и в browser cache. Provider E2E остаётся OPEN.
+
 Последующий срез N05 — [наблюдения, новые Core bytes и проверки](EXECUTION-N05.md).
 Он дополняет этот сохранённый срез от 2026-09-05.
 Следом исправлен [лимит незавершённых Smart Connect probes — N06](EXECUTION-N06.md).

@@ -1,0 +1,191 @@
+{
+  "schema": "pokrov.r12.m05-attribution/v1",
+  "date": "2026-09-06",
+  "status": "PARTIALLY_FIXED",
+  "implementation_level": "I3",
+  "origin": "current-origin local Windows host; isolated synthetic fixtures",
+  "platform_source": "8293c484eb5e1953099d7cdbfcdf6f5dbe4d17b6",
+  "client_source": "ded58b1906bbfb1096ff919085ef37f5be942eb7",
+  "core_source": "94dd31012ac91fb9ecf2c98ad7383afb54102dd4",
+  "candidate_created": false,
+  "promotion_authorized": false,
+  "commands": [
+    {
+      "command": "python -B -m pytest -p no:cacheprovider portal_bot/tests/test_acquisition_service.py -k referrer_ip -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-m05-referrer-before.log",
+      "sha256": "6954fb97e15c8aa7206cee7ba58c884f42779f047a4bbbb2b6a10651033d5e24",
+      "exit_code": 1,
+      "result": "FAIL IPv4 referrer persisted; 1 failed / 1 passed"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_backend_route_gap_coverage.py -k 'funnel_separates or funnel_client_paid' -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-m05-funnel-before.log",
+      "sha256": "de5569c9089281c695a7d406c252918dc66480ff798a5aee205fa69945a4f07d",
+      "exit_code": 1,
+      "result": "FAIL client outcomes counted; 2 failed / 7 deselected"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider portal_bot/tests/test_acquisition_service.py -k referrer_ip -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-m05-source-before.log",
+      "sha256": "bb0fc9dc1906e4fdd19bad72ceff0733afb3d3633aba8961a8eb7f22feb91c96",
+      "exit_code": 1,
+      "result": "FAIL explicit source bypasses referrer-only filtering; 2 failed / 2 passed"
+    },
+    {
+      "command": "node.exe --test scripts/acquisition.test.mjs",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\marketing",
+      "log": "E:/r12-m05-browser-before.log",
+      "sha256": "a22c761611d9ce5006fd593cfeca177511147703c62b68fa3a39d8983b756790",
+      "exit_code": 1,
+      "result": "FAIL IP persisted and old cache replayed; 2 failed / 1 passed"
+    },
+    {
+      "command": "node.exe --test scripts/acquisition.test.mjs",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\marketing",
+      "log": "E:/r12-m05-browser-after.log",
+      "sha256": "947a7c4c74108574b9ed7921b98db9b878a6df0774588ffbcd35789e2bc04582",
+      "exit_code": 0,
+      "result": "PASS 3",
+      "note": "Existing TypeScript transpilation + Node VM with browser storage and fetch fixtures; no external calls."
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider portal_bot/tests/test_acquisition_service.py tests/test_backend_route_gap_coverage.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-m05-final-funnel.log",
+      "sha256": "43e377b837ba34988ec389b0b346db30bad994616c02d40d820796df41ea0caf",
+      "exit_code": 0,
+      "result": "PASS 17"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_commercial_order_service.py tests/test_commercial_pilot_decision_service.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-m05-commercial.log",
+      "sha256": "6dc072997f011e4ab5593c48980b8307ddf5a761447835179443cac5f39dc9f3",
+      "exit_code": 0,
+      "result": "PASS 15"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_admin_ops_api.py -k cutover_projections_and_referral_action -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-m05-admin-projection.log",
+      "sha256": "6695c6c558f0cd5b676131544bbe2e45da102f20c0ad85d2182b964a30194c40",
+      "exit_code": 0,
+      "result": "PASS 1 / 48 deselected"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_frontend_text_integrity.py tests/test_public_copy_guardrails.py tests/test_marketing_governance.py tests/test_winback_pilot.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-m05-marketing-contracts.log",
+      "sha256": "cba842bbcd6bf62289fad5268671b7ec8bcf400af76300163bb29579553c75cb",
+      "exit_code": 0,
+      "result": "PASS 39"
+    },
+    {
+      "command": "npm.cmd run build",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\marketing",
+      "log": "E:/r12-m05-marketing-build.log",
+      "sha256": "e102a6090d10cf42976cb02e59ec98b2a11df95d865468ba0f9143a909860db7",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm.cmd run lint",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\marketing",
+      "log": "E:/r12-m05-marketing-lint.log",
+      "sha256": "244ff94067bc752c23057d361bdae40fc7b9c5ea2c9339723a043c3b0df3746d",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "npm.cmd run check:seo",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\marketing",
+      "log": "E:/r12-m05-seo.log",
+      "sha256": "61297802d5beb919f8434fea61ef4778f928c5b16a3cadd87c4cb42f480afc96",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "rg.exe -n -i 'fingerprintjs|mixpanel|amplitude|appsflyer|firebase.analytics|gtag|google-analytics|doubleclick|facebook.net' marketing/package.json marketing/src E:/r12client/apps/android_shell/pubspec.yaml E:/r12client/apps/windows_shell/pubspec.yaml E:/r12client/packages/app_shell/pubspec.yaml E:/r12client/packages/app_shell/lib",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-m05-ad-sdk-scan.log",
+      "sha256": "a76eb7fcad9390b202a9197a1112e33b50d875df374b331b006e4281ac03c4ff",
+      "exit_code": 0,
+      "result": "PASS no named matches",
+      "note": "rg exit 1 means no matches; wrapper records PASS and exits 0. Source/manifest scan only, not final binary or network audit."
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider portal_bot/tests/test_app_first_api.py portal_bot/tests/test_app_first_service.py tests/test_api_auth_and_tickets.py tests/test_subscription_preview_api.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-m05-backend-router.log",
+      "sha256": "77cb831082fae69359bd22379db7894c655c1e64873c5076398cc3221f359c2f",
+      "exit_code": 0,
+      "result": "PASS 154 and 8 subtests"
+    },
+    {
+      "command": "npm.cmd run check:responsive",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\marketing",
+      "log": "E:/r12-m05-responsive.log",
+      "sha256": "05c3a0d2149b0925c80d598f7cc6fb0dc791433fed9e2a07fa2c521c0a6d0e2d",
+      "exit_code": 0,
+      "result": "PASS synthetic responsive export checks"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-m05-final-docs.log",
+      "sha256": "ec23b3930fde9f6a8f776ce67609009a916b7f347b9a7e5a71e55ec16ac4a69b",
+      "exit_code": 0,
+      "result": "PASS 33"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-m05-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-m05-package.log",
+      "sha256": "d9f8a24cb0d2fcb6daa843442262f89a6cb915b537b9a49b2e6cd8a1bc4baf54",
+      "exit_code": 0,
+      "result": "PASS 13 imports / 83 R12 IDs / 378 legacy IDs / 165 links"
+    }
+  ],
+  "changed_source_files": {
+    "docs/architecture/api-contracts.md": "695acfd73ae34e253755180c9c4724420e6f54ba3a7d00c8fb72364c6856fd64",
+    "docs/operations/monitoring-and-visibility.md": "1eea224b78d9c4042383dceb56e7483137a5fedda359fb51e3d9179d91af07a2",
+    "marketing/README.md": "2503c1d916bbf82e9fd588127980b78b2721fec0c3be908f667dad3fe13bbcca",
+    "marketing/scripts/acquisition.test.mjs": "ab85e0285fd15b91bfd0ac9d72a0ebb17d76491163678b9f7c63d04789b95a04",
+    "marketing/src/lib/acquisition.ts": "cf27b998f6f10d5348acf7b2e9be33b5404c59c04c465f30c9d59807f6cb8f02",
+    "portal_bot/acquisition_service.py": "07da6a4a8e445eff3b3dee1b960febd6d1d9d25a68e4040a7c46a9e2f8bd532b",
+    "portal_bot/api_surface_routes.py": "a2eac6e928f9083b6b017beec80667a9f845a655cebe2fc4ccf7d5c13dfa7324",
+    "portal_bot/tests/test_acquisition_service.py": "c692bdd733bb4036c5348145a235c14b23a770f8260eafeb591825fb09eeb2ce",
+    "tests/test_backend_route_gap_coverage.py": "d96e3d79fd720466c3ee01269586980c12e4330506241d451e84f87e7fc9ce5a"
+  },
+  "inspected_contract_sources": {
+    "portal_bot/commercial_attribution_service.py": "d5a6caffa28e4ab0831f0b5c23493830567c2ad95a1306f8832e3fc5d9b39635",
+    "portal_bot/commercial_order_service.py": "491d5653375c3dd7135efac1a97cc67f9a72d8716e386d7e080eca8ea04f78c0",
+    "portal_bot/acquisition_service.py": "07da6a4a8e445eff3b3dee1b960febd6d1d9d25a68e4040a7c46a9e2f8bd532b",
+    "portal_bot/api_surface_routes.py": "a2eac6e928f9083b6b017beec80667a9f845a655cebe2fc4ccf7d5c13dfa7324",
+    "portal_bot/models.py": "6fb565bb7df1c162ce1e58d3b34b84d8807a19b4ba8693c03d23267c2e4e0b58"
+  },
+  "manual_gates": {
+    "M02/F02 deployed commercial revision and install/trial/connect journey": "NEEDS_RUNTIME_PROOF",
+    "B06 provider payment/refund/reconciliation E2E": "MANUAL_OWNER_TEST",
+    "retrospective production attribution cleanup": "NOT_REQUESTED",
+    "new candidate / publication / signing / deploy / external pilot": "NOT_REQUESTED",
+    "POST12-40 /t/ integration": "NOT_REQUESTED in M05; separate backlog item"
+  },
+  "verification_notes": [
+    "No response-field or database-schema changes. Browser fields cleared only on next cache reuse; server filtering applies to new accepted touches.",
+    "Marketing static build ran before source commit. These are local source checks, not an exact clean release-candidate build.",
+    "All recorded test/build processes completed. Backend router suite started before the subsequent explicit-IP source filter was added; final 17 acquisition/API and browser/build checks cover that final source change. No later behavior changes."
+  ],
+  "responsive_artifact_note": "check-marketing-responsive.mjs removes its temporary screenshots by default unless KEEP_MARKETING_RESPONSIVE_ARTIFACTS=1. Only the terminal PASS log is retained for this run; no screenshot hash or manual visual review is claimed. No UI presentation changed."
+}
