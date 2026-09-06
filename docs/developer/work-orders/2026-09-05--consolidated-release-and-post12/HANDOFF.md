@@ -6,6 +6,10 @@ candidate и postrelease activation не выполнены. Ранние отч
 последовательные срезы. Точные команды, SHA логов и source tuple —
 [evidence/handoff-local.json](evidence/handoff-local.json).
 
+Исправлен [B06 — amount validation, outbox race и provider event dedupe](EXECUTION-B06.md):
+`58e3684`; реальный PostgreSQL race PASS, provider/API fixtures PASS. Live
+payment/refund и order binding нового reversal envelope остаются OPEN.
+
 Исправлен [M05 — атрибуция и серверная воронка](EXECUTION-M05.md): клиентские
 payment/self-report events больше не дают paid/connected outcome; IP referrer
 и source очищаются на сервере и в browser cache. Provider E2E остаётся OPEN.
