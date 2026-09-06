@@ -1,0 +1,124 @@
+{
+  "status": "I3_PARTIALLY_FIXED_FULL_C05_OPEN",
+  "client_commit": "0e69b11b41e149987930703d195ec24a7afd3ca7",
+  "core_commit": "8dc57a830bd1487389dd1b7c9190f094c31e13bc",
+  "native_commit": "30f3a5689ac20ba1b87c1ce58f66d3aaa8b2cfe5",
+  "client_git_blobs": [
+    {
+      "path": ".gitattributes",
+      "bytes": 2005,
+      "sha256": "448a1917a711dfafc8af2f4960fe1a09338a2ec5383cd3ef69c9499e79d65af9"
+    },
+    {
+      "path": "apps/android_shell/assets/licenses/cronet-NOTICES.txt",
+      "bytes": 173535,
+      "sha256": "7c60e87757cfefe0f865c64b70eafe7ee2d64e4cb2c7275ab05dadc5292e54b5"
+    },
+    {
+      "path": "apps/android_shell/pubspec.yaml",
+      "bytes": 712,
+      "sha256": "2c148a675a8c36bf69c322cf56fe3408f777ebe8cabd38cf65aae94a740a2bed"
+    },
+    {
+      "path": "docs/operations/android-release-audit.md",
+      "bytes": 62164,
+      "sha256": "e453f51d887d75210ee5b25f6dd03ddcb06f6b7fb1f529cd657c9f92d5fbbfb1"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-c05-android-cronet/assemble.py",
+      "bytes": 4039,
+      "sha256": "61ffaee56be0bd45c01f43f682781750c915736f5c6650ddfdf1bd0a037e7510"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-c05-android-cronet/check-object-sources.py",
+      "bytes": 1601,
+      "sha256": "f8c91670810559ac06d0fe835d66e3cb6450c3b5ba95e34271f1f1268c48f6ec"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-c05-android-cronet/collect-notice-inputs.py",
+      "bytes": 3723,
+      "sha256": "edc9aa1f6b49b7f697d8ab581a1460daac11ecf6d07e6db347f5240288282470"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-c05-android-cronet/cronet-supplement.cdx.json",
+      "bytes": 42629,
+      "sha256": "8dc8abf1c526724c8758ad10082316ab9ff4af713a76d7ada22cbdc27bfd98ff"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-c05-android-cronet/package-notices.json",
+      "bytes": 45435,
+      "sha256": "e140dca8daafa94e2a771ca716721c76945652b4cdec2cd016f8607938bc4e95"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-c05-android-cronet/read-object-metadata.py",
+      "bytes": 2384,
+      "sha256": "3c6d23fb69f346727c592cf1d933537627d867e2a6767b7bde477d4afa770186"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-c05-android-cronet/source-object-summary.json",
+      "bytes": 1661,
+      "sha256": "06d211cebab07ff7baf2faeff190cf206fd740a6556217e72bddf3d1a6dde56a"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-c05-android-cronet/upstream-license-scope-equality.json",
+      "bytes": 275,
+      "sha256": "77640a79ece5d5eac11adf941ff36a9306789f5122514ed81693e2c8cfe8f6c5"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-c05-android-cronet/verify-packages.py",
+      "bytes": 2945,
+      "sha256": "d6d99bd1d81579c6aaa215c5537daee9311bdc1d119170fce755a2ad65fd14bf"
+    }
+  ],
+  "client_receipt": "E:/r12client/docs/operations/evidence/2026-09-06-r12-c05-android-cronet/package-notices.json",
+  "archive": {
+    "path": "E:\\r12-c05-android-cronet\\android-cronet-evidence.zip",
+    "bytes": 20022280,
+    "sha256": "dd78a5acbc9810dac31e6dc3c381d087f73004582c9662d2434246d356beb0ce",
+    "file_count": 154
+  },
+  "source_object_summary": [
+    {
+      "cpu": "arm64",
+      "goarch": "arm64",
+      "compile_sources": 2663,
+      "source_filename_symbols": 2538,
+      "archive_members": 2663,
+      "matching_archive_member_multiset": true,
+      "matching_non_assembly_source_filename_multiset": true,
+      "limitations": "Member and STT_FILE basenames cannot distinguish source paths with identical basenames or prove compiler command/source bytes/reproducibility."
+    },
+    {
+      "cpu": "arm",
+      "goarch": "arm",
+      "compile_sources": 2663,
+      "source_filename_symbols": 2538,
+      "archive_members": 2663,
+      "matching_archive_member_multiset": true,
+      "matching_non_assembly_source_filename_multiset": true,
+      "limitations": "Member and STT_FILE basenames cannot distinguish source paths with identical basenames or prove compiler command/source bytes/reproducibility."
+    },
+    {
+      "cpu": "x64",
+      "goarch": "amd64",
+      "compile_sources": 2666,
+      "source_filename_symbols": 2540,
+      "archive_members": 2666,
+      "matching_archive_member_multiset": true,
+      "matching_non_assembly_source_filename_multiset": true,
+      "limitations": "Member and STT_FILE basenames cannot distinguish source paths with identical basenames or prove compiler command/source bytes/reproducibility."
+    },
+    {
+      "cpu": "x86",
+      "goarch": "386",
+      "compile_sources": 2665,
+      "source_filename_symbols": 2540,
+      "archive_members": 2665,
+      "matching_archive_member_multiset": true,
+      "matching_non_assembly_source_filename_multiset": true,
+      "limitations": "Member and STT_FILE basenames cannot distinguish source paths with identical basenames or prove compiler command/source bytes/reproducibility."
+    }
+  ],
+  "vm_final_state": "poweroff",
+  "operations": "No push, merge, deploy, production signing, new candidate or retained release artifact mutation."
+}
