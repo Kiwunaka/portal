@@ -34,8 +34,10 @@ rollback при health 503 и delayed crash с восстановлением SH
 Linux VM: snapshot/restore 117 таблиц, ownership 1077 объектов, независимые
 content hashes и исключение поздней записи; два synthetic attachment files
 восстановлены отдельно из encrypted archive.
-Production recovery, старый runtime на expanded schema и exact production
-units/API остаются OPEN; в VM использовался synthetic service.
+[Previous/current API compatibility](EXECUTION-B08-APP-COMPAT.md): настоящие
+API из candidate.33 source и feature branch прошли 25 HTTP checks на общей
+PostgreSQL, включая совместную работу и перезапуск previous. Production
+recovery, exact deployed tuple/units и полный provider E2E остаются OPEN.
 
 Исправлен [B06 — amount validation, outbox race и provider event dedupe](EXECUTION-B06.md):
 `58e3684`; реальный PostgreSQL race PASS, provider/API fixtures PASS. Live
