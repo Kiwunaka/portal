@@ -31,6 +31,10 @@ candidate и postrelease activation не выполнены. Ранние отч
 
 Исправлен [V04 — связь обращения, попытки и версии](EXECUTION-V04.md): `2ba8e8e`; missing-linked attempt больше не подменяется, смена build обновляет known issues. 110 support/AI, 55 API и 80 browser tests PASS; live case и effective-profile proof OPEN.
 
+Исправлен [V02 — сводка диагностического пакета](EXECUTION-V02.md): egress не подменяется последним служебным событием; unknown и отсутствие счётчика попыток сохраняются явно. 23 focused checks PASS; полная effective-profile correlation и O03 source decision OPEN.
+
+Исправлен [release contract digest после N05](EXECUTION-RELEASE-CONTRACT.md): `aff9653`, 102 release tooling tests и 21 subtests PASS; synthetic fixture не является новым кандидатом.
+
 ## Изменения
 
 - Core: correlated endpoint/selector proof; Android/Windows AAR/DLL собраны
