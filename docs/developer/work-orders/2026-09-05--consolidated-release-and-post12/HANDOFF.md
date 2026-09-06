@@ -165,3 +165,8 @@ marketing/AGENTS.md и CLAUDE.md и четыре line-ending-only client registr
 ## C05 Cronet origin — 2026-09-06
 
 [Происхождение pinned Windows Cronet](EXECUTION-C05-CRONET.md): upstream release asset побайтно совпал с DLL; закреплены tag `82e1521` и declared native gitlink `2be061b6`. Source archive: 30561 exact + 30 line-ending-only matches, без необъяснённых расхождений. Сохранён 69-file source license review archive; exact Windows linked notices и source reproducibility остаются OPEN. Client manifest и readiness обновлены, runtime bytes прежние.
+
+
+## C05 native notices — 2026-09-06
+
+[Windows Cronet graph и обязательный notice в bundle](EXECUTION-C05-NOTICES.md): 558 recursive GN dependencies; восстановлены отсутствовавшие Perfetto/Protobuf/compiler-rt licenses и дополнительные attributions. 28 секций включены через CMake; изолированный bundle содержит 301 файл, остальные 300 побайтно прежние. Полный C05 licensing/privacy gate, source reproducibility и release/device/runtime gates остаются OPEN.
