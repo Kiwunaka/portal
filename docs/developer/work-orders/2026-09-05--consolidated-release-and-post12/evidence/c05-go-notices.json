@@ -1,0 +1,231 @@
+{
+  "schema": "pokrov.r12.c05-go-notices-handoff/v1",
+  "status": "I3_PARTIAL_FULL_C05_OPEN",
+  "client_commit": "1032c4801d68b4f67e4a6bc0fdc018f20886d680",
+  "client_parent": "4a184b02b6bbdb06a3f9994f7e84e3f092eb718a",
+  "core_source_commit": "8dc57a830bd1487389dd1b7c9190f094c31e13bc",
+  "client_receipt": {
+    "path": "E:\\r12client\\docs\\operations\\evidence\\2026-09-06-r12-c05-go-notices\\package-notices.json",
+    "sha256": "d3efb1f6a835f29367fc9eebf96747e12ee1c8c6b55650f974cf484a88249692"
+  },
+  "client_committed_blobs": {
+    ".gitattributes": "26bcfd5592171810de0c19716678d44144acc4ab38d72a3f2ac40336aa6527ae",
+    "config/runtime-artifacts.seed.json": "09b6af35e6737825536722f5d2d3ae88ab9ffffd759646883b3e45cd217485df",
+    "docs/architecture/bootstrap-workflow.md": "8e4f797f7b3d069b9aee266d7fbabe1b83c1ee62b08bb80283ff10276e9f455a",
+    "docs/operations/android-release-audit.md": "a510d641b72019b153d8e2b5701fee52990931dc2f7c40cf872badde8372919b",
+    "docs/operations/evidence/2026-09-06-r12-c05-go-notices/android-verification.json": "5b30e24fa8d3ad4a2ec18b4ad11364f2f9ffabc3d9cc557e5d73fb71e2b5d6cc",
+    "docs/operations/evidence/2026-09-06-r12-c05-go-notices/assemble.py": "ef56066759798d16a9d0936128c3bb6912425af43cc2b1819bf64b9443eada73",
+    "docs/operations/evidence/2026-09-06-r12-c05-go-notices/assembly.json": "39007d6f51f04a08774783e727903f65cdb3436911e69f99334feafe9c6a87b6",
+    "docs/operations/evidence/2026-09-06-r12-c05-go-notices/package-notices.json": "742701a75606681d0e0097c8a67e05d080af1567caf69ed51c8073f205a0727a",
+    "docs/operations/evidence/2026-09-06-r12-c05-go-notices/verify-packages.py": "85a2054c8c5e814811505afb6a14e5738d7eacfa2b06c532e36eed3758b6bea8",
+    "docs/operations/evidence/2026-09-06-r12-c05-go-notices/windows-verification.json": "42413a48ee1de2765a99f6ca13505d58f920983d5ec1b3e8c93590a3863317ab",
+    "docs/operations/windows-release-readiness.md": "7ed82fb79088d3675fa89cb9b6bee1a554cb8b1b8ab0fe9f05e0bcd7b7254328",
+    "packages/app_shell/assets/licenses/native-go-NOTICES.txt": "c0389ada6e70b079fb964eb04ec015db63db85e699b7d82e21a64b568c1c19f3",
+    "packages/app_shell/pubspec.yaml": "af856135a8e7b1c6d940735f69df09898f35754199925a122b060af5a98bf90c",
+    "scripts/validate-seed.ps1": "fdaff91f3cf06a4da5281cac5bf0b15eb3f680d23041852c1b91ac0e53609c0c"
+  },
+  "notice": {
+    "file": "packages/app_shell/assets/licenses/native-go-NOTICES.txt",
+    "bytes": 550167,
+    "sha256": "c0389ada6e70b079fb964eb04ec015db63db85e699b7d82e21a64b568c1c19f3"
+  },
+  "android_packages": [
+    {
+      "file": "E:\\r12-c05-go-notices\\android\\app-direct-arm64-v8a-release.apk",
+      "bytes": 101179515,
+      "sha256": "d4cb7c6106c5f6cc410cf2cdb0e169fcd38f25e0f280accf6e29a3cbac48253a",
+      "notice_sha256": "c0389ada6e70b079fb964eb04ec015db63db85e699b7d82e21a64b568c1c19f3"
+    },
+    {
+      "file": "E:\\r12-c05-go-notices\\android\\app-direct-armeabi-v7a-release.apk",
+      "bytes": 90693745,
+      "sha256": "0149fbc511d6af01d05268f7195f1bb168f42b285b299d11a03031143329d1f8",
+      "notice_sha256": "c0389ada6e70b079fb964eb04ec015db63db85e699b7d82e21a64b568c1c19f3"
+    },
+    {
+      "file": "E:\\r12-c05-go-notices\\android\\app-direct-universal-release.apk",
+      "bytes": 295164246,
+      "sha256": "7ad7d4dd0aa7cfe23566518e8a1647a6ebf9ce339538479be19289a80589f036",
+      "notice_sha256": "c0389ada6e70b079fb964eb04ec015db63db85e699b7d82e21a64b568c1c19f3"
+    },
+    {
+      "file": "E:\\r12-c05-go-notices\\android\\app-direct-x86_64-release.apk",
+      "bytes": 110188442,
+      "sha256": "dc3958f8aea6255d4c90b0192b39946c2f0857ae9af9595cfe69d9b48b72ebee",
+      "notice_sha256": "c0389ada6e70b079fb964eb04ec015db63db85e699b7d82e21a64b568c1c19f3"
+    }
+  ],
+  "windows": {
+    "bundle": "E:\\r12-c05-go-notices\\windows-bundle",
+    "file_count": 302,
+    "changed_from_prior_bundle": [
+      "data/flutter_assets/AssetManifest.bin"
+    ],
+    "added_from_prior_bundle": [
+      "data/flutter_assets/packages/pokrov_app_shell/assets/licenses/native-go-NOTICES.txt"
+    ],
+    "removed_from_prior_bundle": []
+  },
+  "client_checks": [
+    {
+      "command": "flutter build apk --release --flavor direct --target-platform android-arm,android-arm64,android-x64 --android-project-arg=pokrov.singleVersionSplitApks=true --dart-define=POKROV_API_BASE_URL=http://127.0.0.1:9 --dart-define=POKROV_APP_VERSION=1.2.0",
+      "cwd": "E:/r12client/apps/android_shell",
+      "env": {
+        "POKROV_ALLOW_INTERNAL_BETA_DEBUG_SIGNING": "true"
+      },
+      "exit_code": 0,
+      "log": "E:\\r12-c05-go-notices\\android-build.log",
+      "sha256": "c106c185df2ff3e619d949200381356f7db878dd7c14baa3dd1b39aef65dd0b0"
+    },
+    {
+      "command": "flutter build windows --release --no-pub --dart-define=POKROV_API_BASE_URL=http://127.0.0.1:9 --dart-define=POKROV_APP_VERSION=1.2.0",
+      "cwd": "E:/r12client/apps/windows_shell",
+      "exit_code": 1,
+      "log": "E:\\r12-c05-go-notices\\windows-build.log",
+      "result": "FAIL stale CMake cache prefix E:/r12client/$<TARGET_FILE_DIR:pokrov_windows>",
+      "sha256": "0fde07b441201c589be22e403817f3b12e061143d5cd6c51633525a81e9c2e85"
+    },
+    {
+      "command": [
+        "cmake",
+        "-S",
+        "E:/r12client/apps/windows_shell/windows",
+        "-B",
+        "E:/r12client/apps/windows_shell/build/windows/x64",
+        "-DCMAKE_INSTALL_PREFIX=E:/r12-c05-go-notices/windows-bundle"
+      ],
+      "exit_code": 0,
+      "log": "E:\\r12-c05-go-notices\\windows-prefix.log",
+      "sha256": "a4e1643b350917832b1718eb7b479a1277b14c0b0e7e4b5c598b882a215cc91a"
+    },
+    {
+      "command": "flutter build windows --release --no-pub --dart-define=POKROV_API_BASE_URL=http://127.0.0.1:9 --dart-define=POKROV_APP_VERSION=1.2.0",
+      "cwd": "E:/r12client/apps/windows_shell",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-go-notices\\windows-build-final.log",
+      "sha256": "b66ad619c6c7caeef8a72b0bed45f877c2e8faae7277442c55c53a1d4c561283"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "E:/r12-c05-go-notices/verify-packages.py"
+      ],
+      "cwd": "E:\\r12client",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-go-notices\\package-verification.log",
+      "sha256": "ef41731382420e1f4e234fe7ef2f5cff10e382f4b898e1447d74b7eb0da73bae"
+    },
+    {
+      "command": "./scripts/validate-seed.ps1 -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start -CoreRoot E:/r12core-implementation",
+      "cwd": "E:\\r12client",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-go-notices\\seed.log",
+      "result": "PASS; seed completion markers are retained separately from redirected stdout because PowerShell Write-Host used the information stream",
+      "terminal_evidence": "seed-terminal.json",
+      "limitation": "Included performance collector uses fixture, not device proof",
+      "sha256": "5082007bd965f5d37654fbe036ebe5165794ce291c22a3be124e3536847703d9"
+    },
+    {
+      "command": [
+        "C:/Users/kiwun/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.windows-amd64/bin/go.exe",
+        "mod",
+        "verify"
+      ],
+      "cwd": "E:/r12core-implementation",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-go-notices\\go-mod-verify.log",
+      "sha256": "acdb6a6a98dc2c297af31bb3538319778be8c8ef263cd0a8c9799de9c4998533"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "E:\\r12client",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-go-notices\\diff-check.log",
+      "sha256": "a9f58776a09b5dac438049683f24bf85764e0ff8e7455952456165c68c158627"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--exit-code",
+        "--",
+        "artifacts/releases"
+      ],
+      "cwd": "E:\\r12client",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-go-notices\\release-artifacts-diff.log",
+      "sha256": "ff05c6a27327e338d31eee901b4028c137754c34ab305aa70ead157f56d76d48"
+    }
+  ],
+  "remaining": [
+    "Psiphon utls root license unavailable; not substituted.",
+    "Nested/native notices, corresponding source and native privacy/physical-device proof remain open.",
+    "Exact candidate, physical Android, Windows installer/SCM/TUN and installed privacy acceptance were not performed."
+  ],
+  "platform_checks": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_agent_docs_contract.py",
+        "tests/test_agent_context_packet_audit.py",
+        "-q"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-go-notices\\platform-docs-tests.log",
+      "sha256": "ef068527969c3c2381d5e8899023987983fd6222cf5bb70441c586bc051f5fc7",
+      "output": ".................................                                        [100%]\n33 passed in 0.84s"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "scripts/agent_context_packet_audit.py",
+        "--platform-context-root",
+        "."
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-go-notices\\platform-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "output": "PASS platform-context"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "docs\\developer\\work-orders\\2026-09-05--consolidated-release-and-post12\\validate_package.py"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-go-notices\\platform-package.log",
+      "sha256": "87636937cac25051b6a860a60e23899d46981f6d19c53c9b4f2ebc6bf7b2e51d",
+      "output": "PASS: 13 imported section hashes, 83 R12 IDs, 378 retained legacy IDs and ledger hash, 215 local file links"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "git_release_state": {
+    "push": false,
+    "merge": false,
+    "deploy": false,
+    "candidate_created": false,
+    "release_artifacts_changed": false
+  }
+}

@@ -188,3 +188,12 @@ marketing/AGENTS.md и CLAUDE.md и четыре line-ending-only client registr
 ## C05 native notices — 2026-09-06
 
 [Windows Cronet graph и обязательный notice в bundle](EXECUTION-C05-NOTICES.md): 558 recursive GN dependencies; восстановлены отсутствовавшие Perfetto/Protobuf/compiler-rt licenses и дополнительные attributions. 28 секций включены через CMake; изолированный bundle содержит 301 файл, остальные 300 побайтно прежние. Полный C05 licensing/privacy gate, source reproducibility и release/device/runtime gates остаются OPEN.
+
+## C05 Go notices в пакетах — 2026-09-06
+
+[Поставка native Go notices](EXECUTION-C05-GO-NOTICES.md): client `1032c48`.
+145 license/patent текстов включены общим asset и связаны с Core source,
+toolchain и SHA-256. Четыре internal debug-signed APK и unsigned Windows bundle
+содержат точные notice bytes; Core binaries прежние. Windows: 302 файла,
+добавлен notice, изменён AssetManifest, остальные 300 прежние. Seed/docs PASS.
+Psiphon utls, вложенные/native notices, source delivery и полный C05 остаются OPEN.
