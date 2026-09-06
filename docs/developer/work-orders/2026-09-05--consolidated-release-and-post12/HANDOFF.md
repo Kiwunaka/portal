@@ -27,8 +27,11 @@ legal/channel launch остаётся закрытым, дата части 10.8
 
 Выполнен [B08 — локальный PostgreSQL restore и deployment contract](EXECUTION-B08.md):
 encrypted snapshot/restore, additive migration, два workers и poison message PASS
-на synthetic PostgreSQL; 198-file payload audit PASS. Production recovery,
-старый runtime на expanded schema и live delayed-health rollback остаются OPEN.
+на synthetic PostgreSQL; 198-file payload audit PASS. Последующий
+[Linux SSH/systemd drill](EXECUTION-B08-DEPLOY-LAB.md) подтвердил автоматический
+rollback при health 503 и delayed crash с восстановлением SHA всех 198 файлов.
+Production recovery, старый runtime на expanded schema и exact production
+units/API остаются OPEN; в VM использовался synthetic service.
 
 Исправлен [B06 — amount validation, outbox race и provider event dedupe](EXECUTION-B06.md):
 `58e3684`; реальный PostgreSQL race PASS, provider/API fixtures PASS. Live

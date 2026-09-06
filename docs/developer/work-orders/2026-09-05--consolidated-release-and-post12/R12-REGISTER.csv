@@ -47,7 +47,7 @@ R12-B04,Bounded fetch и graceful recovery,active,I3,ALREADY_FIXED,03_RELEASE_BA
 R12-B05,Идемпотентность order-create и quote reservation,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
 R12-B06,Provider payment/refund/reconciliation E2E,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-B06.md
 R12-B07,DB/HTTP/outbox bottlenecks по профилю,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
-R12-B08,"Postgres migration, deploy и rollback drill",active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-B08.md
+R12-B08,"Postgres migration, deploy и rollback drill",active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-B08-DEPLOY-LAB.md
 R12-O01,OIDC/PKCE/session/RBAC live readback,active,I3,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md
 R12-O02,Проверить 28 capability routes без переписывания shell,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-O03,Connectivity view: requested/effective/proven,blocked,I1,NEEDS_CONTEXT,03_RELEASE_BACKLOG_83.md,EXECUTION-CONTINUED.md

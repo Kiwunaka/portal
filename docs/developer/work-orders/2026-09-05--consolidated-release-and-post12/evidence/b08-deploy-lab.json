@@ -1,0 +1,372 @@
+{
+  "schema": "pokrov.r12.b08-linux-deploy-lab/v1",
+  "observed_on": "2026-09-06",
+  "source_commit": "e74ee81424a23cebb631cabdc0fc8e790765f9d1",
+  "origin": "current-origin; local VirtualBox Ubuntu Linux; synthetic services and data",
+  "result": "I3 / NEEDS_RUNTIME_PROOF",
+  "production_mutation": false,
+  "candidate_created": false,
+  "implementation_changed": false,
+  "image": {
+    "url": "https://cloud-images.ubuntu.com/noble/20260826/noble-server-cloudimg-amd64.vmdk",
+    "bytes": 593926144,
+    "sha256": "fb3ba097a9013d759fa13ab22d2b4118bd55452c617ca3758a55303eea96de6e",
+    "checksum_match": true
+  },
+  "vm_final_state": {
+    "name": "POKROV-r12-b08-linux-20260906",
+    "UUID": "b5151b45-ce00-46da-be3d-0e6c8d346f97",
+    "VMState": "poweroff",
+    "memory": "3072",
+    "cpus": "2",
+    "nic1": "nat",
+    "Forwarding(0)": "lab-ssh,tcp,127.0.0.1,55228,,22",
+    "clipboard": "disabled",
+    "draganddrop": "disabled",
+    "vrde": "off",
+    "CfgFile": "E:\\\\r12-b08-linux-lab\\\\machines\\\\POKROV-r12-b08-linux-20260906\\\\POKROV-r12-b08-linux-20260906.vbox"
+  },
+  "payload_files": 198,
+  "payload_bytes": 6187777,
+  "fixture_fault": {
+    "changed_file": "portal_bot/api.py",
+    "original_sha256": "7f0ee0fd473f9c98a63b72c1c03fb490ceeefec2d3ebdd2177215dee3aee2b73",
+    "fault_sha256": "084a51796ba8909a40f5a23481de247a70d2405f45887980d5dc4f249c0143ff",
+    "change": "append inert comment for fixture rejection",
+    "rest_files_unchanged": true
+  },
+  "setup_outcome": {
+    "command": [
+      "python",
+      "-B",
+      "E:\\r12-b08-linux-lab\\prepare-drill.py"
+    ],
+    "exit_code": 1,
+    "phase": "immediate_baseline_curl",
+    "error": "curl exit 7 before service listened; later baseline readback PASS before deploy",
+    "restarted_setup": false
+  },
+  "runs": [
+    {
+      "command": [
+        "python",
+        "-u",
+        "-B",
+        "E:\\r12-b08-linux-lab\\deploy-entry.py",
+        "success"
+      ],
+      "exit_code": 0,
+      "expected_exit_code": 0,
+      "result": "PASS_LAB_EXPECTED_OUTCOME",
+      "readback": {
+        "case": "success",
+        "payload_files_verified": 198,
+        "all_current_source_hashes_match": true,
+        "state": "MainPID=5335\nNRestarts=0\nExecMainStartTimestampMonotonic=175560903\nActiveState=active\n",
+        "health": {
+          "fixture": true,
+          "api_sha256": "7f0ee0fd473f9c98a63b72c1c03fb490ceeefec2d3ebdd2177215dee3aee2b73"
+        },
+        "attachment_sentinel_unchanged": true,
+        "backups": [
+          "20260906T073514Z-26596"
+        ],
+        "steps": 11,
+        "nonzero_steps": []
+      }
+    },
+    {
+      "command": [
+        "python",
+        "-u",
+        "-B",
+        "E:\\r12-b08-linux-lab\\deploy-entry.py",
+        "health-fail"
+      ],
+      "exit_code": 1,
+      "expected_exit_code": 1,
+      "result": "PASS_LAB_EXPECTED_OUTCOME",
+      "readback": {
+        "case": "health-fail",
+        "payload_files_verified": 198,
+        "all_current_source_hashes_match": true,
+        "state": "MainPID=6424\nNRestarts=0\nExecMainStartTimestampMonotonic=277303388\nActiveState=active\n",
+        "health": {
+          "fixture": true,
+          "api_sha256": "7f0ee0fd473f9c98a63b72c1c03fb490ceeefec2d3ebdd2177215dee3aee2b73"
+        },
+        "attachment_sentinel_unchanged": true,
+        "backups": [
+          "20260906T073636Z-8168",
+          "20260906T073514Z-26596"
+        ],
+        "steps": 12,
+        "nonzero_steps": [
+          {
+            "index": 9,
+            "exit_code": 1,
+            "stdout": "r12-deploy-fixture state=active restarts=0\n",
+            "stderr": "curl: (22) The requested URL returned error: 503\ncurl: (22) The requested URL returned error: 503\ncurl: (22) The requested URL returned error: 503\ncurl: (22) The requested URL returned error: 503\ncurl: (22) The requested URL returned error: 503\ncurl: (22) The requested URL returned error: 503\ncurl: (22) The requested URL returned error: 503\ncurl: (22) The requested URL returned error: 503\ncurl: (22) The requested URL returned error: 503\ncurl: (22) The requested URL returned error: 503\ncurl: (22) The requested URL returned error: 503\ncurl: (22) The requested URL returned error: 503\n"
+          }
+        ]
+      }
+    },
+    {
+      "command": [
+        "python",
+        "-u",
+        "-B",
+        "E:\\r12-b08-linux-lab\\deploy-entry.py",
+        "crash"
+      ],
+      "exit_code": 1,
+      "expected_exit_code": 1,
+      "result": "PASS_LAB_EXPECTED_OUTCOME",
+      "readback": {
+        "case": "crash",
+        "payload_files_verified": 198,
+        "all_current_source_hashes_match": true,
+        "state": "MainPID=7491\nNRestarts=0\nExecMainStartTimestampMonotonic=338273149\nActiveState=active\n",
+        "health": {
+          "fixture": true,
+          "api_sha256": "7f0ee0fd473f9c98a63b72c1c03fb490ceeefec2d3ebdd2177215dee3aee2b73"
+        },
+        "attachment_sentinel_unchanged": true,
+        "backups": [
+          "20260906T073636Z-8168",
+          "20260906T073802Z-5060",
+          "20260906T073514Z-26596"
+        ],
+        "steps": 12,
+        "nonzero_steps": [
+          {
+            "index": 9,
+            "exit_code": 1,
+            "stdout": "r12-deploy-fixture state=active restarts=2\n",
+            "stderr": ""
+          }
+        ]
+      }
+    }
+  ],
+  "retained_artifacts": [
+    {
+      "path": "E:\\r12-b08-linux-lab\\crash-deploy.log",
+      "bytes": 477,
+      "sha256": "04a8ef608424f80af23a9d1da1022bbcdfc5a489ca76aca8b4045f4fbf63e894"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\crash-readback.json",
+      "bytes": 677,
+      "sha256": "5cee54657eb165cccca07d051762a1b40c1315f95a7cb58f0acc8747fa66f660"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\crash-ssh-steps.json",
+      "bytes": 155063,
+      "sha256": "6b95c60dc486648d7dd61c1bcd20c1615e0760d54d220513cbfc9cc108cc9224"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\deploy-entry.py",
+      "bytes": 1788,
+      "sha256": "704e854603ae13849e20a2e87a366a06b24cfb91e99106856911edef0df065d5"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\docs-tests.log",
+      "bytes": 101,
+      "sha256": "8e8012de312ded1fc1a4eb22b5cdb3d776c4be76fdde07836ddf39e5bec16c6b"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\drill-baseline-readback.json",
+      "bytes": 386,
+      "sha256": "622bab53dfacafefff85539efee2906b88e2d55c1f3e873300f733f8c5712c04"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\fault-description.json",
+      "bytes": 314,
+      "sha256": "3439549680918c7b2a6bc3097408b95a81ead34d2590cd68f06c062b9810c4a5"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\guest-final-fixture_journal.json",
+      "bytes": 3618,
+      "sha256": "99406d81534fc7022240484355966bc02807fb47c4831cdff36f9b1c14e6a944"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\guest-final-retained_paths.json",
+      "bytes": 470,
+      "sha256": "5767b81831544c0f1f8f846b21cfda6f81c17d5bafc95f3fc03b6df704dcfc61"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\guest-final-versions.json",
+      "bytes": 2535,
+      "sha256": "90f1c77ff547ec7bacf70be1a42804f7bc186648f314ebf37bff2c862fbda2aa"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\guest-initial-readback.json",
+      "bytes": 945,
+      "sha256": "ed5d59682c355531512b351d180dc1b1cc14d2a79508b6de43c41f2851c53045"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\guest-ready-readback.json",
+      "bytes": 1128,
+      "sha256": "71b8cd666b34e26d34350ae307f2bba49bb0f9025a41b33ded9b3d006b74a349"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\health-fail-deploy.log",
+      "bytes": 477,
+      "sha256": "99d9e40ad8ea9b5e99975155c9a65981dfe1e3418dc99d2da4f7838092a09fa2"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\health-fail-readback.json",
+      "bytes": 1253,
+      "sha256": "4a51e9740d2b09fca3a168a944ea76cf6933be4e0f32442b43ca3d79aa5c0a13"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\health-fail-ssh-steps.json",
+      "bytes": 155663,
+      "sha256": "78a3f8ca13bc53bc771e25dce3f83a311c1bd5fbb24f90f96fe9071a6f5b74af"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\image-provenance.json",
+      "bytes": 229,
+      "sha256": "2d5036518c84e7cc9ea2a07330e285958040d2eb18704d85ed31983e1c3c71a0"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\lab-service.py",
+      "bytes": 896,
+      "sha256": "f5364e440e6c9bda34b0b2b8edd0d15b1899c82dd7dad6cee9db58b1d62a33eb"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\payload-manifest.json",
+      "bytes": 47860,
+      "sha256": "1071463a9991ee9e02cc28981b147174cead52d1391353c6ef2b521dc37fe048"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\prepare-drill.py",
+      "bytes": 2933,
+      "sha256": "5b59e84fbe8745c92e019b11c41d5ab65407fa12759fd52e855a963ea9d27c58"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\readback.py",
+      "bytes": 2297,
+      "sha256": "29f539a8ba12430476aed79d337547d8ac407c36e4ce4127aeee220e9bfff939"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\script-tests.log",
+      "bytes": 101,
+      "sha256": "4994cc0acbfd6a9ac6b6e1bf763d99c247cae975c585393511277b0876b69015"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\seed-receipt.json",
+      "bytes": 297,
+      "sha256": "780ec9347b4d53f5886d4924a93e75cc6c4f759f9081ed57b4bdb7ce8f156174"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\set-fault.py",
+      "bytes": 607,
+      "sha256": "d3d48b6694f1803d8c62901855db29c85d21d2f264fe5194cd4016b417fc5635"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\setup-outcome.json",
+      "bytes": 282,
+      "sha256": "72453b51e5e300f791ed0b6b2b7b6d900d7b0ddf6867c7fe3a3d7a482beb7d02"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\success-deploy.log",
+      "bytes": 309,
+      "sha256": "b2d2fb9464260998a7e135f01bcd3c71e5a4d7f0a82bad8a504ea0e4a8424070"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\success-readback.json",
+      "bytes": 474,
+      "sha256": "909fd0d68c3d099d3ed79168863356b6b20f980e62b4bbfe92d1da3d5d7cca86"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\success-ssh-steps.json",
+      "bytes": 89394,
+      "sha256": "8f57132f00120b64424129f4f5b4ab6a461a2c25abf73659a6509ba3f8f80717"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\vm-final-state.json",
+      "bytes": 436,
+      "sha256": "54fa56ab22e9ba5a57ffb4d859e12c7b9bdd23343810059a8dfec4ed3d926bf3"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\vm-setup.json",
+      "bytes": 3083,
+      "sha256": "4d741f94a1be70b9e07173ccd6354082c9abc15e3d1ac473846fabfd93836cdc"
+    }
+  ],
+  "checks": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_remote_deploy_brain_portal_code.py",
+        "tests/test_remote_postgres_backup_restore_gate.py",
+        "tests/test_postgres_migration_helpers.py",
+        "-q"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "result": "64 passed in 2.75s",
+      "log": "E:\\r12-b08-linux-lab\\script-tests.log",
+      "sha256": "4994cc0acbfd6a9ac6b6e1bf763d99c247cae975c585393511277b0876b69015"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_agent_docs_contract.py",
+        "tests/test_agent_context_packet_audit.py",
+        "-q"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "result": "33 passed in 0.41s",
+      "log": "E:\\r12-b08-linux-lab\\docs-tests.log",
+      "sha256": "8e8012de312ded1fc1a4eb22b5cdb3d776c4be76fdde07836ddf39e5bec16c6b"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "scripts/agent_context_packet_audit.py",
+        "--platform-context-root",
+        "."
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "result": "PASS platform-context",
+      "log": "E:\\r12-b08-linux-lab\\context-check.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "result": "PASS 13 import hashes, 83 R12 IDs, 378 legacy IDs, 200 links",
+      "log": "E:\\r12-b08-linux-lab\\package-check.log",
+      "sha256": "6dc67fd1f42f8cffb814136dfbc344180e3d2f72ec70e44703b9d2801c3f4bd6"
+    }
+  ],
+  "limitations": [
+    "Synthetic HTTP service; actual portal API/bots/worker not run.",
+    "Only deployment endpoint and fault source selection overridden; real SSH/SFTP/systemd/pip/curl/backup/rollback.",
+    "Actual old app on expanded schema and database/attachment recovery not covered.",
+    "Same dependency versions; venv dependency rollback not covered.",
+    "No production/public health/brain-origin/RU-origin/candidate proof.",
+    "Guest powered off after readback."
+  ]
+}
