@@ -22,6 +22,11 @@ Release-handoff v2 requires two descriptors in `compatibility.contracts`:
 Both digests use UTF-8 text with CRLF and lone CR normalized to LF, so the
 contract identity is stable across Windows and Linux checkouts.
 
+When either canonical contract changes, update its pinned digest in
+`scripts/release_handoff_metadata.schema.json` and the current synthetic
+`tests/fixtures/release-handoff/valid-v2.json` together. Retained candidate
+handoffs keep the digests of their original source tuple.
+
 - `SUPPORT-REFERENCE.md` is generated from that exact catalog and gives support
   the safe Russian message, owner, action and release-blocking flag for every
   current code. `generate_observability_support_reference.py --check` rejects
