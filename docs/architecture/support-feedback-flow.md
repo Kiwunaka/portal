@@ -141,6 +141,14 @@ Last updated: 2026-08-15
   eligible unheld accepted/quarantine/audit data in bounded batches and reports
   integer counters; production scheduling, permissions, backlog, and real
   operator-role evidence remain unproved until retained separately.
+- The accepted bundle's `proof_outcome` comes only from
+  `network/summary.json.egress_state`; unrelated operational events do not
+  replace it. An unknown egress state remains `unknown`. `last_phase` and
+  `last_error_code` describe the last available event independently, or are
+  null when there are no events. The reduced support event schema contains no
+  attempt identity or authoritative count, so `observed_attempts` is null;
+  stage-start events and connection state are not a connection denominator.
+  These are historical client-reported bundle facts, not current runtime proof.
 - Recovery sessions have a narrower text-only support projection: upload, attachment download, and standalone `/api/client/support/assistant` return `403 recovery_scope_forbidden`; nonempty media fields on ticket create/message are rejected; all recovery ticket responses omit historical and new message media metadata. Normal client and admin attachment behavior remains unchanged.
 - Normal sessions retain standalone assistant `safeDiagnostics` compatibility. The active Android/Windows adapter currently always sends app diagnostics and uses the standalone assistant path, so this platform slice is not promotable for recovery UX until a separate recovery-aware client slice omits diagnostics/media and uses ticket text endpoints instead. That client repository is outside this task.
 - Telegram support ticket replies in both `@pokrov_supportbot` and the main bot admin queue accept text, photo, document, and video messages; captions are stored as the message body, and attachment metadata is retained on the ticket message.
