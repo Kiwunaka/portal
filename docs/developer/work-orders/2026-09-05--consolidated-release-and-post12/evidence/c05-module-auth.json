@@ -1,0 +1,181 @@
+{
+  "schema_version": "pokrov.r12-c05-module-auth/v1",
+  "date": "2026-09-06",
+  "status": "PASS_SELECTED_MODULE_AUTHENTICITY",
+  "c05_status": "PARTIALLY_FIXED",
+  "core_head": "8dc57a830bd1487389dd1b7c9190f094c31e13bc",
+  "client_head": "b0f4374c8ac00840aaa52c170121ba310133bef0",
+  "preceding_platform_head": "834b7f6",
+  "method": "Go 1.26.8 mod download with 123 explicit module@version arguments, empty isolated working directory and fresh module/checksum caches, public proxy.golang.org and authenticated sum.golang.org, GOENV off, GOTOOLCHAIN local, no inherited go.sum/GOPRIVATE/GONOSUMDB. Whole prior and fresh module trees compared by SHA-256.",
+  "counts": {
+    "remote_modules": 123,
+    "authenticated_lookup_records": 123,
+    "module_and_go_mod_sums_matched": 246,
+    "files_matched": 16868,
+    "sum_mismatches": 0,
+    "file_differences": 0,
+    "previous_selected_source_files_unchanged": 6751,
+    "tracked_local_replacements": 5,
+    "main_module": 1
+  },
+  "followup_dispositions": [
+    {
+      "input_id": "GO-2026-6179",
+      "verdict": "not_actionable",
+      "confidence": "high",
+      "scope": "Current exact runtime targets and selected external module sources.",
+      "reason": "Affected sumdb/cmd/go packages excluded from runtime; current Go 1.26.8 fixed. All selected remote module bytes independently match fresh authenticated downloads; no cache substitution is present in this selected source tuple.",
+      "proof_gaps": [
+        "Historical cache acquisition events are not reconstructed.",
+        "No claim about malicious upstream code, local vendored provenance, other module versions or future caches."
+      ],
+      "previous_disposition": "needs_review; preserved in c05-triage-results.json"
+    },
+    {
+      "input_id": "GO-2026-6180",
+      "verdict": "not_actionable",
+      "confidence": "high",
+      "scope": "Current exact runtime targets and selected external module sources.",
+      "reason": "Affected sumdb/cmd/go packages excluded from runtime; current Go 1.26.8 fixed. All selected remote module bytes independently match fresh authenticated downloads; no cache substitution is present in this selected source tuple.",
+      "proof_gaps": [
+        "Historical cache acquisition events are not reconstructed.",
+        "No claim about malicious upstream code, local vendored provenance, other module versions or future caches."
+      ],
+      "previous_disposition": "needs_review; preserved in c05-triage-results.json"
+    }
+  ],
+  "inputs": [
+    {
+      "path": "E:\\r12-c05-module-auth\\authenticated-lookups.json",
+      "bytes": 44426,
+      "sha256": "a38a9c5ddf363bcd8159b53b7337b2ce3bd535e17277c36695429d46ab41c105"
+    },
+    {
+      "path": "E:\\r12-c05-module-auth\\download-receipt.json",
+      "bytes": 7544,
+      "sha256": "f18d6ee04924c09065151d7382b7514d5fd4c27e44b47b84f030dfdca4f5b247"
+    },
+    {
+      "path": "E:\\r12-c05-module-auth\\downloads.json",
+      "bytes": 97647,
+      "sha256": "cb63c1b6e369233101fcb901b35edf457366d6e2e7a2661e33616ff148aaaf91"
+    },
+    {
+      "path": "E:\\r12-c05-module-auth\\file-comparison.json",
+      "bytes": 5262383,
+      "sha256": "0117e80656bac4fba78aa341d52a6ce9a257ac035001d6650fa9b6f0d93a42d9"
+    },
+    {
+      "path": "E:\\r12-c05-module-auth\\inputs.json",
+      "bytes": 95128,
+      "sha256": "2399dd53390cb5a78e316d763d7d1ff77210c6efdcd40b38acae69c332f1b621"
+    },
+    {
+      "path": "E:\\r12-c05-module-auth\\module-comparison.json",
+      "bytes": 39713,
+      "sha256": "dd4e58403d2245ad13e5b4ee20df912f2ec4a18160fb84f3b5f7bbf8fab7f699"
+    },
+    {
+      "path": "E:\\r12-c05-module-auth\\source-recheck.json",
+      "bytes": 273,
+      "sha256": "2afae423f749952bfb01468b29c8904f29a7f98806967bdd116b25a7c9eef926"
+    },
+    {
+      "path": "E:\\r12-c05-module-auth\\download.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\authenticate-modules.py",
+      "bytes": 2236,
+      "sha256": "d3e66d2153ab39e042a457a23f471386062804f0490783a8803acd28e5f5f7a3"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\compare-authenticated-modules.py",
+      "bytes": 2223,
+      "sha256": "bcfdc727661d6e1b11d565cbda92737fb26724c626e8cecc7d552676998f19d0"
+    }
+  ],
+  "archive": {
+    "path": "E:\\r12-c05-module-auth\\module-auth-evidence.zip",
+    "bytes": 2938348,
+    "sha256": "b4b637d85d97e1a57a567afb1b15b41b7b5eebd1f14059768d1e56e36dbc97c1"
+  },
+  "prior_triage_receipt": {
+    "path": "evidence/c05-triage.json",
+    "sha256": "6a4e89e6a5576aaf611aee387ea7d5301241b8f3b5e89f2a281f7fe29c94e481"
+  },
+  "docs_checks": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_agent_docs_contract.py",
+        "tests/test_agent_context_packet_audit.py",
+        "-q"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-module-auth\\platform-docs.log",
+      "sha256": "4496ea851ece856a4e77a7ad8d30be65fff2731189bf8a3b690ef6c618b4cffe",
+      "output": ".................................                                        [100%]\r\n33 passed in 0.87s"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "scripts/agent_context_packet_audit.py",
+        "--platform-context-root",
+        "."
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-module-auth\\platform-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "output": "PASS platform-context"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\docs\\developer\\work-orders\\2026-09-05--consolidated-release-and-post12\\validate_package.py"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-module-auth\\platform-package.log",
+      "sha256": "7835f0ff6a181d0e10a5634598aaa70e66cd6d3215e8c299d1f03c456844cd7e",
+      "output": "PASS: 13 imported section hashes, 83 R12 IDs, 378 retained legacy IDs and ledger hash, 225 local file links"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-module-auth\\platform-diff.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "output": ""
+    }
+  ],
+  "runtime_exploit_checks": "NOT_PERFORMED",
+  "source_runtime_bytes_changed": false,
+  "push_merge_deploy_candidate": "NOT_PERFORMED",
+  "comparison_command": {
+    "command": [
+      "python",
+      "-X",
+      "utf8",
+      "-B",
+      "E:/r12-c05-triage/compare-authenticated-modules.py"
+    ],
+    "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN",
+    "exit_code": 0,
+    "results": "module-comparison.json and file-comparison.json in archive"
+  }
+}

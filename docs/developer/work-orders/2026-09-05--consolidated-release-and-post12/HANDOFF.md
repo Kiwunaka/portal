@@ -214,3 +214,12 @@ Scoped dicttls license добавлен; полный C05, source delivery и ru
 истории аутентификации module cache. Go 1.26.8 исправлен, runtime sumdb отсутствует.
 Исходные scanner records сохранены. C05 остаётся PARTIALLY_FIXED; новый candidate,
 runtime checks, push/merge/deploy в этом срезе не выполнялись.
+
+## C05 sumdb source authentication — 2026-09-06
+
+[Независимая проверка 123 внешних modules](EXECUTION-C05-MODULE-AUTH.md):
+246 checksums и 16 868 файлов совпали с fresh authenticated downloads,
+6751 выбранный source file неизменен. Два sumdb needs_review закрыты как
+not_actionable для текущего source/artifact tuple; прежний triage сохранён.
+Полный C05 остаётся PARTIALLY_FIXED: licenses/source delivery/installed privacy
+и final candidate gates открыты. Runtime bytes, push/merge/deploy не менялись.
