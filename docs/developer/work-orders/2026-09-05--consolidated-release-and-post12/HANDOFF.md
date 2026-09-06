@@ -21,6 +21,8 @@ candidate и postrelease activation не выполнены. Ранние отч
 
 Исправлен [A08 — ECH с разрешённым внешним SNI в Smart DNS](EXECUTION-A08.md): source `959d1f5`, Go/tooling/client checks PASS; live access/QUIC/fallback OPEN.
 
+Добавлен [A07 — ограниченный переход lab → managed TCP](EXECUTION-A07.md): platform `f03a6a7`, client `45036ab`; 56 rollout/lab и 7 финальных client checks PASS, backend 154 + 8 subtests PASS; реальная UDP blackhole matrix OPEN.
+
 ## Изменения
 
 - Core: correlated endpoint/selector proof; Android/Windows AAR/DLL собраны

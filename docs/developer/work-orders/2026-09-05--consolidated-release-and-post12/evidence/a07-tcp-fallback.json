@@ -1,0 +1,147 @@
+{
+  "recorded_at_utc": "2026-09-06T00:28:58.183466+00:00",
+  "status": "PARTIAL / I3 / NEEDS_RUNTIME_PROOF",
+  "origin": "current-origin Windows source and isolated API/HTTP/MethodChannel fixtures",
+  "platform_source": "f03a6a76db16e17319fd59a70288ab5c789935c8",
+  "client_source": "45036ab577b2f315bd6f220b1d6eb30e5f61a263",
+  "core_source": "6bc36034c86528972488fc203a98512686ac4db9",
+  "platform_source_files": {
+    "docs/architecture/api-contracts.md": "c4b8042e527d9091f88a2f91d53aaaf7643ea564bf0256ad753ee1f56872a216",
+    "docs/architecture/app-first-and-bonus-flows.md": "b93358206bbc6bcab4665e4fd980a52be43ecf73490e87c9055b6f2e749d32bd",
+    "portal_bot/api.py": "409be58c15de93b33f0990d70809709a4df055f05373f0555c8cf885cb40b786",
+    "portal_bot/api_client_routes.py": "149c98cd0b41532cf68618aa719aca91dc0cbda163b9d27552ecf83f754ba42e",
+    "portal_bot/network_rollout.py": "092a4ea6bcdcb887d4440d7f0b3b3db853b85318a40fdf71b433bb026c337cec",
+    "tests/test_hy2_lab_service.py": "4c8f7e317fa90bd784ab6f814e1bc3fb12cefe0d3983ea9f99b325e9c3f09fe5",
+    "tests/test_network_rollout_api.py": "c91ec3f948c9a9f8283717da9c70343f0ec306a276818d5b6bfd0255d3c55ca6"
+  },
+  "client_source_files": {
+    "docs/architecture/bootstrap-workflow.md": "e337d5094a6bd852279b554d8f10f87f39e31cdaa36afe3e154faf615d32f009",
+    "packages/app_shell/lib/app_first_runtime_bootstrap.dart": "148a0b073c5d7a20dd5bea01f9e3504741df18dd5e4b05aeb7b81368640d4674",
+    "packages/app_shell/lib/src/shell/seed_shell.dart": "ad7746f659bfef5f6cca1c2ffbf7e8ffd6fe51c799af3efff2b2055bf0f50bdb",
+    "packages/app_shell/test/app_first_runtime_bootstrap_test.dart": "39fdac55857e193124e26a56637e98030d56297f2b6a4e8a96fa0f56774b5007",
+    "packages/app_shell/test/connect_first_hint_test.dart": "6f2aed9c519e4ceca5526a48a01126bcfefed3205953271f83b92415332b2314",
+    "packages/app_shell/test/pokrov_seed_app_test.dart": "f1de47fd304b148bdd28a9dcd0bf15c0928d53509469274f0952fe5b7471c49a",
+    "packages/runtime_engine/lib/runtime_engine.dart": "a5b9239cb54a40fc0cc6a4cec167557e9e7c1c494fa3e551bcfd8ce2d81b9668"
+  },
+  "commands": [
+    {
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "command": "python -B -m pytest -p no:cacheprovider -q tests/test_network_rollout_api.py -k managed_lab_tcp_fallback",
+      "log": "E:\\r12-a07-api-before.log",
+      "sha256": "4473861ecd8fcf72dfd715ee259361f4ca28a320065d39fc42d2c56c1959f2b2",
+      "exit_code": 1,
+      "result": "3 FAIL before API change: query ignored"
+    },
+    {
+      "cwd": "E:\\r12client\\packages\\app_shell",
+      "command": "flutter test test/pokrov_seed_app_test.dart --plain-name 'automatic Android connect retries after failure'",
+      "log": "E:\\r12-a07-shell-before2.log",
+      "sha256": "c8cfb9dacb130246c990126cd2c9c76b505479ac8a3ac7b8355a210930ec4a00",
+      "exit_code": 1,
+      "result": "1 PASS ordinary node / 1 FAIL lab before shell change"
+    },
+    {
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_network_rollout_api.py tests/test_awg2_lab_service.py tests/test_awg31_lab_service.py tests/test_hy2_lab_service.py -q",
+      "log": "E:\\r12-a07-platform-final.log",
+      "sha256": "a5a7e2c50718a9ee51a295609c99ebd27e4dc95b251e6469ed275f8dc3fa284a",
+      "exit_code": 0,
+      "result": "56 PASS after HY2 fixture clock correction"
+    },
+    {
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "command": "python -B -m pytest -p no:cacheprovider portal_bot/tests/test_app_first_api.py portal_bot/tests/test_app_first_service.py tests/test_api_auth_and_tickets.py tests/test_subscription_preview_api.py -q",
+      "log": "E:\\r12-a07-backend-router.log",
+      "sha256": "511fd0f2a37cb9c6a290e5dde5c9e27bd6d840c8df00b6fff441a34d952d7ac1",
+      "exit_code": 0,
+      "result": "154 PASS / 8 subtests PASS in 732.11 seconds"
+    },
+    {
+      "cwd": "E:\\r12client\\packages\\app_shell",
+      "command": "flutter test test/pokrov_seed_app_test.dart test/managed_profile_lifecycle_test.dart test/connect_first_hint_test.dart test/app_first_runtime_bootstrap_test.dart test/client_routing_preferences_test.dart test/cached_profile_fallback_gate_test.dart",
+      "log": "E:\\r12-a07-client-full.log",
+      "sha256": "975c00220760832222d76c12bdb69e26cb98cb8d7d9df66833610751d000a5fe",
+      "exit_code": 0,
+      "result": "311 PASS before final refusal case and formatting; later focused run covers that delta"
+    },
+    {
+      "cwd": "E:\\r12client\\packages\\app_shell",
+      "command": "flutter test test/pokrov_seed_app_test.dart test/app_first_runtime_bootstrap_test.dart --name 'managed fallback on|materializes managed AWG2 and AWG31 endpoints for Android'",
+      "log": "E:\\r12-a07-client-final-focused.log",
+      "sha256": "a55972e0c69ad6ed795657b6087af50d9e5e35ba98386b115e9042946cc2e3e0",
+      "exit_code": 0,
+      "result": "7 PASS final changed scenarios"
+    },
+    {
+      "cwd": "E:\\r12client\\packages\\runtime_engine",
+      "command": "flutter test test/runtime_engine_test.dart",
+      "log": "E:\\r12-a07-runtime.log",
+      "sha256": "d357188a8fc19907295d0faecb82e492f5c8900958d3b7f15c8231bda5370ae1",
+      "exit_code": 0,
+      "result": "80 PASS / 1 existing opt-in DLL skip"
+    },
+    {
+      "cwd": "E:\\r12client",
+      "command": "flutter analyze --no-pub",
+      "log": "E:\\r12-a07-analyze-final.log",
+      "sha256": "764cffcb4e53e8e8bd811ce9911d41e356538e5ced9eab820ec5ce06bf1cb41f",
+      "exit_code": 0,
+      "result": "PASS no issues"
+    },
+    {
+      "cwd": "E:\\r12client",
+      "command": "pwsh -NoProfile -File scripts/validate-seed.ps1 -CoreRoot E:/r12core-implementation -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start",
+      "log": "E:\\r12-a07-seed.log",
+      "sha256": "f4a5bf04c2fdfc3376b1d630ea9f9c6061114962f383cfdff5307874df0d0ddb",
+      "exit_code": 0,
+      "result": "PASS explicit repository roots"
+    },
+    {
+      "cwd": "E:\\r12client",
+      "command": "pwsh -NoProfile -File test/docs-contract.ps1",
+      "log": "E:\\r12-a07-client-docs-final.log",
+      "sha256": "01ed68a810c26d9bef6f98225f2238a25332fa3585d5effd38d0101f87467874",
+      "exit_code": 0,
+      "result": "PASS after deployment-order documentation"
+    },
+    {
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "log": "E:\\r12-a07-docs.log",
+      "sha256": "ec23b3930fde9f6a8f776ce67609009a916b7f347b9a7e5a71e55ec16ac4a69b",
+      "exit_code": 0,
+      "result": "33 PASS"
+    },
+    {
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "log": "E:\\r12-a07-context-audit.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "log": "E:\\r12-a07-package.log",
+      "sha256": "be7f0c3806ec44c9801b1af5008b5737248153d9985417b19a4db3bfd32b6f0b",
+      "exit_code": 0,
+      "result": "PASS 13 imports / 83 IDs / 378 legacy IDs / 146 links"
+    }
+  ],
+  "retained_intermediate_failure": {
+    "log": "E:/r12-a07-platform-focused.log",
+    "sha256": "1cf8905f0b3fb3027205510e8251bb9b089bbc38aec880c36d21df2107be7fe0",
+    "result": "55 PASS / 1 FAIL: HY2 fixed-date fixture exceeded real-time age limit; test clock corrected, production expiry unchanged"
+  },
+  "limitations": [
+    "No physical Android, Windows VM or real UDP blackhole test.",
+    "No TCP traffic, provider access or independent brain/RU-origin proof.",
+    "Client fixtures preserve route mode and materialization; not a traffic privacy proof.",
+    "Platform API must precede client use; older ignored-query response is rejected.",
+    "No push, merge, deploy, cohort activation, candidate, signing or publication.",
+    "A05/N06 dependencies and full A07 remain partial."
+  ],
+  "release_artifacts_delta": false,
+  "native_bytes_changed": false
+}
