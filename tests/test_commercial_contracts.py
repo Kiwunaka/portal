@@ -114,6 +114,7 @@ def test_legal_capacity_and_price_authorities_are_explicitly_fail_closed() -> No
 
 def test_marketing_webapp_bot_and_json_ld_share_the_manifest_price_authority() -> None:
     marketing_checkout = (REPO_ROOT / "marketing/src/app/checkout/checkout-client.tsx").read_text(encoding="utf-8")
+    marketing_checkout += (REPO_ROOT / "marketing/src/app/checkout/use-checkout-controller.ts").read_text(encoding="utf-8")
     marketing_acquisition = (REPO_ROOT / "marketing/src/lib/acquisition.ts").read_text(encoding="utf-8")
     marketing_site = (REPO_ROOT / "marketing/src/lib/marketing-site.ts").read_text(encoding="utf-8")
     webapp_api = (REPO_ROOT / "webapp/src/lib/api.ts").read_text(encoding="utf-8")

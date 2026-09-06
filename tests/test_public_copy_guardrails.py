@@ -24,7 +24,7 @@ FRONTEND_COPY_FILES = [
 MARKETING_TELEGRAM_PROMISE_FILES = [
     ROOT / "marketing/src/lib/seo-pages.ts",
     ROOT / "marketing/src/lib/marketing-site.ts",
-    ROOT / "marketing/src/app/checkout/checkout-client.tsx",
+    ROOT / "marketing/src/app/checkout/use-checkout-controller.ts",
     ROOT / "marketing/src/app/telegram/page.tsx",
     ROOT / "marketing/src/app/vpn/page.tsx",
 ]
@@ -68,6 +68,7 @@ PUBLIC_BETA_SURFACE_FILES = [
     ROOT / "marketing/src/app/page.tsx",
     ROOT / "marketing/src/app/checkout/page.tsx",
     ROOT / "marketing/src/app/checkout/checkout-client.tsx",
+    ROOT / "marketing/src/app/checkout/use-checkout-controller.ts",
     ROOT / "marketing/src/app/devices/page.tsx",
     ROOT / "marketing/src/app/install/page.tsx",
     ROOT / "marketing/src/app/mobile/page.tsx",

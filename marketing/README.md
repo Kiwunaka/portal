@@ -218,3 +218,12 @@ clean, redacted recording is attached to the matching guide ID.
 Hero floating labels keep full opacity during their entrance so readable text
 retains contrast throughout the animation. Their existing two vertical cycles
 and reduced-motion behavior remain bounded.
+
+Checkout state belongs to `src/app/checkout/use-checkout-controller.ts`:
+catalog/provider readiness, quote identity and expiry, immutable order intent,
+same-intent recovery and server payment-return polling. `checkout-client.tsx`
+renders the returned state and invokes its actions. The effects keep their
+separate dependencies, deadlines and cancellation; acquisition remains outside
+the payment critical path. `scripts/check-checkout-authority.mjs` exercises this
+boundary with synthetic responses through the responsive suite. Source contract
+and copy checks inspect both the view and controller.

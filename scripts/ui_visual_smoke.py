@@ -15,6 +15,7 @@ class Check:
     path: Path
     must_contain: tuple[str, ...] = ()
     must_not_contain: tuple[str, ...] = ()
+    additional_paths: tuple[Path, ...] = ()
 
 
 def _read(path: Path) -> str:
@@ -26,7 +27,7 @@ def _read(path: Path) -> str:
 def _run_checks(checks: list[Check]) -> tuple[int, list[str]]:
     failures: list[str] = []
     for check in checks:
-        text = _read(check.path)
+        text = "\n".join(_read(path) for path in (check.path, *check.additional_paths))
         for item in check.must_contain:
             if item not in text:
                 failures.append(f"{check.name}: missing `{item}` in {check.path.relative_to(REPO_ROOT)}")
@@ -132,6 +133,7 @@ def _default_checks() -> list[Check]:
         Check(
             name="marketing-checkout-gateway",
             path=REPO_ROOT / "marketing" / "src" / "app" / "checkout" / "checkout-client.tsx",
+            additional_paths=(REPO_ROOT / "marketing/src/app/checkout/use-checkout-controller.ts",),
             must_contain=(
                 "config.webappUrl",
                 "fetchAccessKeyStatus",

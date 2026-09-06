@@ -127,6 +127,7 @@ def _collect_findings() -> list[Finding]:
             _add_fail(findings, marketing_home_page, f"Home page misses `{required}`")
 
     checkout_text = _read(marketing_checkout)
+    checkout_text += _read(marketing_checkout.with_name("use-checkout-controller.ts"))
     if "config.connectUrl" in checkout_text:
         _add_fail(findings, marketing_checkout, "Checkout gateway still falls back to connect host")
     else:

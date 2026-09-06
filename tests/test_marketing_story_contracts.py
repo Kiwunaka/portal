@@ -202,6 +202,7 @@ def test_marketing_route_seo_and_responsive_checks_cover_public_entrypoints() ->
 
 def test_marketing_checkout_contract_keeps_provider_fallback_redeem_and_email_flow() -> None:
     checkout = _read("marketing/src/app/checkout/checkout-client.tsx")
+    checkout += _read("marketing/src/app/checkout/use-checkout-controller.ts")
     checkout_page = _read("marketing/src/app/checkout/page.tsx")
     cabinet_checkout = _read("webapp/src/app/(dashboard)/subscription/checkout/page.tsx")
     cabinet_plans = _read("webapp/src/lib/cabinet-plans.ts")
@@ -223,7 +224,8 @@ def test_marketing_checkout_contract_keeps_provider_fallback_redeem_and_email_fl
             "async function createPublicRubOrder",
             "/api/payments/orders/create-public",
             "/api/payments/start-99-eligibility",
-            "checkout_ticket: payload.checkout_ticket",
+            "checkout_ticket: activeCheckoutTicket || undefined",
+            'body: JSON.stringify({ ...payload, source: "site"',
             "start_99_already_used",
             "Приветственный месяц уже использован",
             'replacementPlan || "1_month"',

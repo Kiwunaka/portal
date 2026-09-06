@@ -22,7 +22,7 @@ ACTIVE_TEXT_ROOTS = [
 TELEGRAM_PROMISE_FILES = [
     ROOT / "marketing/src/lib/seo-pages.ts",
     ROOT / "marketing/src/lib/marketing-site.ts",
-    ROOT / "marketing/src/app/checkout/checkout-client.tsx",
+    ROOT / "marketing/src/app/checkout/use-checkout-controller.ts",
     ROOT / "marketing/src/app/telegram/page.tsx",
     ROOT / "marketing/src/app/vpn/page.tsx",
     ROOT / "marketing/public/llms.txt",
