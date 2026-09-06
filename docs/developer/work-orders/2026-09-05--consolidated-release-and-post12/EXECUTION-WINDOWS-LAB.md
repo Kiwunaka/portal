@@ -65,7 +65,7 @@ or connect. It retains the stopped service, registry, files and journal in the
 clone for inspection; no removal is part of the script.
 
 The probe compiled successfully and transferred files match their host hashes.
-Before installation it returns exit 1 with unavailable/untrusted/incompatible
+Before installation it returns exit 1 with available/trusted/compatible
 flags false, the expected negative result; this is not an installed-service pass.
 The elevated script was syntax-checked only; its result is **MANUAL_OWNER_TEST**.
 The owner action request is pending. The clone remains running without a NIC
