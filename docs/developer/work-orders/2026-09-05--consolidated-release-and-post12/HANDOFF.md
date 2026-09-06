@@ -223,3 +223,12 @@ runtime checks, push/merge/deploy в этом срезе не выполняли
 not_actionable для текущего source/artifact tuple; прежний triage сохранён.
 Полный C05 остаётся PARTIALLY_FIXED: licenses/source delivery/installed privacy
 и final candidate gates открыты. Runtime bytes, push/merge/deploy не менялись.
+
+## C05 source preparation — 2026-09-06
+
+[Пакет исходников Core](EXECUTION-C05-SOURCE-PACKET.md): 3670 verified entries,
+3161 Git blob, 123 authenticated modules и отдельные Android/Windows native
+source archives. Пять offline source graphs совпали с исходными. Android
+Cronet .a связываются с `f21660be` → `30f3a568`; Windows остаётся `2be061b6`.
+Это SOURCE_PREPARATION_ONLY, полный C05 открыт; publication, native reproduction,
+client licensing и installed privacy не подменены локальной упаковкой.
