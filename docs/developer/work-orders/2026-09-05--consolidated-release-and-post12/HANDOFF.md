@@ -156,3 +156,7 @@ marketing/AGENTS.md и CLAUDE.md и четыре line-ending-only client registr
 ## C05 consumer binding — 2026-09-06
 
 [Client C05 binding и backtests](EXECUTION-C05-BINDING.md): `c2c6f96` использует Core `8dc57a8`. 80 runtime + 8 Android Flutter + 372 JVM tests и 100 synced DLL proxy cycles PASS. Обнаруженная Git normalization исправлена для новых receipt JSON; проверены committed blobs и LFS OIDs. Final package/license/privacy и device/SCM/origin gates остаются открытыми.
+
+## C05 package audit — 2026-09-06
+
+[Локальные APK/EXE inventories и packaging fixes](EXECUTION-C05-PACKAGES.md): client `7a8fd55`. Исправлены отсутствие Golos OFL и попадание native test EXE в Windows bundle. Четыре local debug-signed release-mode APK, Windows release bundle, 8 CTest, analyze/seed/docs PASS. OSV: 0 IDs для 138 Pub/Maven runtime graph records; native/Flutter/Cronet scope этим не покрыт. Сохранены 128 Go module entries и 130 root notices; native/source/privacy и exact candidate gates остаются OPEN.
