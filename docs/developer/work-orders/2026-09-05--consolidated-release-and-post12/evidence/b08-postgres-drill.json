@@ -1,0 +1,305 @@
+{
+  "schema": "pokrov.r12.b08-evidence/v1",
+  "observed_on": "2026-09-06",
+  "result": "I3 / NEEDS_RUNTIME_PROOF",
+  "source_commit": "6632ca095abc14d2ed329452e80e0f75a198d44e",
+  "origin": "current-origin; Windows and loopback PostgreSQL 16.15; synthetic data only",
+  "production_mutation": false,
+  "source_code_changed": false,
+  "runs": [
+    {
+      "run_id": "20260906T060657_5b641d0b",
+      "status": "FAIL",
+      "report": "E:\\r12-b08-drills\\20260906T060657_5b641d0b\\report.json",
+      "runner_sha256": null
+    },
+    {
+      "run_id": "20260906T060741_0f3c9ce1",
+      "status": "FAIL",
+      "report": "E:\\r12-b08-drills\\20260906T060741_0f3c9ce1\\report.json",
+      "runner_sha256": "6e25d431a77acc84ae264b91cae8c0859e824f8f88f94a7a5bba8f1973afc63f"
+    },
+    {
+      "run_id": "20260906T061019_2ea30ca1",
+      "status": "PASS_LOCAL_SYNTHETIC",
+      "report": "E:\\r12-b08-drills\\20260906T061019_2ea30ca1\\report.json",
+      "runner_sha256": "53bbfb22a2027b14b00f6062a0e3f498f70307d972d879782583863da3022ce4"
+    }
+  ],
+  "successful_drill": {
+    "schema": "pokrov.r12.b08-local-postgres-drill/v1",
+    "run_id": "20260906T061019_2ea30ca1",
+    "status": "PASS_LOCAL_SYNTHETIC",
+    "origin": "current-origin; loopback PostgreSQL; synthetic source only",
+    "source_db": "r12_b08_source_20260906t061019_2ea30ca1_rehearsal",
+    "target_db": "r12_b08_target_20260906t061019_2ea30ca1_rehearsal",
+    "source_commit": "6632ca095abc14d2ed329452e80e0f75a198d44e",
+    "production_mutation": false,
+    "candidate_created": false,
+    "steps": [
+      {
+        "step": "synthetic_source_as_unprivileged_role",
+        "result": "PASS",
+        "missing_additive_column": "admin_operator_roles.grant_reason"
+      },
+      {
+        "step": "repeatable_read_encrypted_snapshot",
+        "result": "PASS",
+        "tables": 117,
+        "rows": 9,
+        "archive_sha256": "67d5f1da555ca6b3062b751deff3d7f4f98fd2f3ca5ef0d09c09f547ea777489",
+        "archive_bytes": 504160,
+        "plaintext_dump_retained": false
+      },
+      {
+        "step": "restore_and_ownership",
+        "result": "PASS",
+        "all_table_content_matches": true,
+        "post_snapshot_write_excluded": true,
+        "ownership": {
+          "database_owner_is_app": true,
+          "database_public_access_revoked": true,
+          "public_schema_create": true,
+          "schema_public_access_revoked": true,
+          "public_objects_total": 1077,
+          "public_objects_owned": 1077
+        }
+      },
+      {
+        "step": "additive_migration_and_repeat",
+        "result": "PASS",
+        "legacy_columns_readable": true,
+        "second_run_byte_identical": false,
+        "second_run_changed_tables": [
+          "plan_catalog"
+        ],
+        "second_run_data_identical_except": [
+          "plan_catalog.updated_at"
+        ],
+        "changed_tables_on_first_migration": [
+          "access_keys",
+          "admin_operator_roles",
+          "plan_catalog",
+          "support_tickets",
+          "templates"
+        ]
+      },
+      {
+        "step": "duplicate_workers_and_poison",
+        "result": "PASS",
+        "distinct_backend_pids": 2,
+        "workers": [
+          {
+            "backfilled": 0,
+            "backfill_rejected": 0,
+            "recovered": 0,
+            "claimed": 1,
+            "delivered": 0,
+            "retryable": 0,
+            "dead_letter": 1,
+            "claim_lost": 0
+          },
+          {
+            "backfilled": 0,
+            "backfill_rejected": 0,
+            "recovered": 0,
+            "claimed": 1,
+            "delivered": 1,
+            "retryable": 0,
+            "dead_letter": 0,
+            "claim_lost": 0
+          }
+        ],
+        "replay": {
+          "backfilled": 0,
+          "backfill_rejected": 0,
+          "recovered": 0,
+          "claimed": 0,
+          "delivered": 0,
+          "retryable": 0,
+          "dead_letter": 0,
+          "claim_lost": 0
+        }
+      }
+    ],
+    "postgres_version": "16.15",
+    "unproven": [
+      "production snapshot/scale/DDL locks",
+      "actual old application binary on expanded schema",
+      "remote deployment and delayed-health rollback",
+      "full attachment-file restore",
+      "live provider operations"
+    ]
+  },
+  "commands": [
+    {
+      "command": "python -u -B E:/r12-b08-postgres-drill.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b08-drill-before.log",
+      "sha256": "3dd7c326d1b5fa9946036bbf390ebc60cf3b34660e532973f4b3249047f81f29",
+      "exit_code": 1,
+      "result": "FAIL synthetic Event insert missing schema_version"
+    },
+    {
+      "command": "python -u -B E:/r12-b08-postgres-drill.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b08-drill-second.log",
+      "sha256": "eef4a45e2811dd15e30e6a5325fa7ef2f1bc197b173864b0e9367be1b8d57a51",
+      "exit_code": 1,
+      "result": "FAIL strict byte-identical comparison: plan_catalog.updated_at refresh"
+    },
+    {
+      "command": "python -u -B E:/r12-b08-postgres-drill.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b08-drill-third.log",
+      "sha256": "2e37f4901c73582929305f5adc37f74e33767d2bc82a5248c2506a5b83bd0268",
+      "exit_code": 0,
+      "result": "PASS_LOCAL_SYNTHETIC all five steps"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_remote_deploy_brain_portal_code.py tests/test_remote_postgres_backup_restore_gate.py tests/test_postgres_migration_helpers.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b08-contracts.log",
+      "sha256": "689adbe2a2e41fcd618829112409a7def1bab4748976a909ba98839c996ba0b3",
+      "exit_code": 0,
+      "result": "64 PASS in 2.55s; SSH/systemd mocked"
+    },
+    {
+      "command": "python -B E:/r12-b08-payload-audit.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b08-payload.log",
+      "sha256": "ad640d73b1e5bfec8d821da71f9a7a97bf90719763d890f5600d690e317fd15e",
+      "exit_code": 1,
+      "result": "FAIL Windows cp1251 git path decoding"
+    },
+    {
+      "command": "python -X utf8 -B E:/r12-b08-payload-audit.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b08-payload-final.log",
+      "sha256": "971cdc217ed529283ec0f87401a9d0b3bab370c3c5b8581dfac38402699acd08",
+      "exit_code": 0,
+      "result": "PASS canonical 198-file selection / 6187777 bytes / clean tracked inputs / AST and JSON parsing"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b08-docs.log",
+      "sha256": "8e8012de312ded1fc1a4eb22b5cdb3d776c4be76fdde07836ddf39e5bec16c6b",
+      "exit_code": 0,
+      "result": "33 PASS in 0.41s"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b08-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:\\r12-b08-package.log",
+      "sha256": "a1fc793dd3071b0c62d60c8955d4dd458560c4b9c3ee01a55db7dd6952369786",
+      "exit_code": 0,
+      "result": "PASS 13 imported sections / 83 R12 IDs / 378 legacy IDs / 169 links"
+    }
+  ],
+  "inspected_source_sha256": {
+    "scripts/remote_deploy_brain_portal_code.py": "cc16b4cd870403cf01c909b169e98d1482c86b39da173fb8306d7fa6b3d46f2a",
+    "scripts/remote_postgres_backup_restore_gate.py": "242c216619da0298feeb7df9d5570511e23b1a9a859c9993845e914617baaf1c",
+    "portal_bot/migrations.py": "75a6d78fcf9bfe6348824c99406feef895ee1832f38049e6b9fad2620ce28e07",
+    "portal_bot/models.py": "6fb565bb7df1c162ce1e58d3b34b84d8807a19b4ba8693c03d23267c2e4e0b58",
+    "portal_bot/economy_service.py": "8be45dbc6041a9139a492fd2134d9dbd7f44f8922f8ecf67f8d14f48b02deeb0",
+    "portal_bot/payment_entitlement_outbox.py": "45a75353821e76e30418d98006128a3aa7b6c773d916218e4685b2cbe1a3348e",
+    "tests/test_remote_deploy_brain_portal_code.py": "c779b6be0eb9d9894980cd9164e505e3969a85ac66e85fafbb9798e7fce80a0a",
+    "tests/test_remote_postgres_backup_restore_gate.py": "9f9cdbf52ce6a4e5b9832f490c160e72faafb13f721e48233aeb390e0c20b8c7",
+    "tests/test_postgres_migration_helpers.py": "1c148cd6ba0feebcb1d29eea9c65f7f1375e230ea6914484d08d819dae0a0b95"
+  },
+  "retained_artifacts": {
+    "E:\\r12-b08-drills\\20260906T060657_5b641d0b\\report.json": {
+      "sha256": "6dcfa7d259cf06817cf562838c12bc863d4713b9e057163e672039d95d00a428",
+      "bytes": 913
+    },
+    "E:\\r12-b08-drills\\20260906T060657_5b641d0b\\b08-synthetic.txt": {
+      "sha256": "2e872263e12593bf0c92feeb8cad3a84609a638af7515696ed3356631249a6d8",
+      "bytes": 18
+    },
+    "E:\\r12-b08-drills\\20260906T060741_0f3c9ce1\\drill-source.py": {
+      "sha256": "6e25d431a77acc84ae264b91cae8c0859e824f8f88f94a7a5bba8f1973afc63f",
+      "bytes": 16408
+    },
+    "E:\\r12-b08-drills\\20260906T060741_0f3c9ce1\\report.json": {
+      "sha256": "ef3c578a8f1df793db1bd6d127b76c3785a7e4a09852efcc7a882724f5ce6e5d",
+      "bytes": 1546
+    },
+    "E:\\r12-b08-drills\\20260906T060741_0f3c9ce1\\source.dump.enc": {
+      "sha256": "dd74cb66ebc41255f88cf26f4e52d0c9cd85752be47a90b0b717c005410d3363",
+      "bytes": 504160
+    },
+    "E:\\r12-b08-drills\\20260906T060741_0f3c9ce1\\snapshot-fingerprints.json": {
+      "sha256": "8bb04cc32f44042814e3c2ad970e0f9ee87be5b0938b82a21839aff9fab0db89",
+      "bytes": 15384
+    },
+    "E:\\r12-b08-drills\\20260906T060741_0f3c9ce1\\b08-synthetic.txt": {
+      "sha256": "2e872263e12593bf0c92feeb8cad3a84609a638af7515696ed3356631249a6d8",
+      "bytes": 18
+    },
+    "E:\\r12-b08-drills\\20260906T060741_0f3c9ce1\\third-migration-diagnostic.json": {
+      "sha256": "03d5910b413440c750525e0277fce9db74b313521b7ce856d051203df8607cfa",
+      "bytes": 132
+    },
+    "E:\\r12-b08-drills\\20260906T061019_2ea30ca1\\drill-source.py": {
+      "sha256": "53bbfb22a2027b14b00f6062a0e3f498f70307d972d879782583863da3022ce4",
+      "bytes": 17418
+    },
+    "E:\\r12-b08-drills\\20260906T061019_2ea30ca1\\report.json": {
+      "sha256": "2c588d61e1eaf58fb76bd50c8270aa22c1b4c0b1ce194a9d4c540f6daa5f316a",
+      "bytes": 3094
+    },
+    "E:\\r12-b08-drills\\20260906T061019_2ea30ca1\\source.dump.enc": {
+      "sha256": "67d5f1da555ca6b3062b751deff3d7f4f98fd2f3ca5ef0d09c09f547ea777489",
+      "bytes": 504160
+    },
+    "E:\\r12-b08-drills\\20260906T061019_2ea30ca1\\snapshot-fingerprints.json": {
+      "sha256": "52c325a54d57657e68321d67b916c89be12a8a6b29574229b6905252f8d825e3",
+      "bytes": 15384
+    },
+    "E:\\r12-b08-drills\\20260906T061019_2ea30ca1\\migration-first-fingerprints.json": {
+      "sha256": "5c0d172b48aee84eb1fcab87fec794f5cebdd1403fe02c04c87f5edc5550b1cf",
+      "bytes": 15385
+    },
+    "E:\\r12-b08-drills\\20260906T061019_2ea30ca1\\migration-second-fingerprints.json": {
+      "sha256": "5ac35e169027af1f033bf87aec21d06b150230428f29614805e33857606ed60e",
+      "bytes": 15385
+    },
+    "E:\\r12-b08-drills\\20260906T061019_2ea30ca1\\b08-synthetic.txt": {
+      "sha256": "2e872263e12593bf0c92feeb8cad3a84609a638af7515696ed3356631249a6d8",
+      "bytes": 18
+    },
+    "E:/r12-b08-payload-manifest.json": {
+      "sha256": "cb9351b505d28456675bc2c44456f9012859001b5e3f1d9a6d2d8daf0b202afd",
+      "bytes": 47962
+    },
+    "E:/r12-b08-payload-audit.py": {
+      "sha256": "6956d81c9ee234068d7797b4855e13ac9e669a48397a460efc17e00630ab80e0",
+      "bytes": 1911
+    }
+  },
+  "unproven": [
+    "Production clone, data volume and DDL/index locks",
+    "Old application binary on expanded schema and contract phase",
+    "Full attachment-file restore",
+    "Remote orchestration and live delayed-health rollback",
+    "Brain/RU-origin payload and health",
+    "Provider E2E and G03/B06 dependencies"
+  ],
+  "notes": [
+    "No private credentials or passphrases copied to evidence. Databases and failed artifacts retained. First failed runner version was not retained; its report and log are retained.",
+    "Real pg_dump/pg_restore streaming through OpenSSL, current migrations/outbox and production ownership validator; remote SSH orchestration not executed.",
+    "Synthetic schema based on current ORM metadata with one omitted additive column; not a captured historical production schema.",
+    "Repeat-run comparison excludes only plan_catalog.updated_at; full fingerprints retained.",
+    "Payload first failed decoding git paths; explicit UTF-8 rerun passed. Initial wrapper exit status masked by cat, recorded failure derived from traceback.",
+    "Payload selection and parseability do not prove runtime dependencies/imports/deploy. No release archive/candidate created."
+  ]
+}

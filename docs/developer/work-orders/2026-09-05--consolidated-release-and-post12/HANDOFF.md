@@ -6,6 +6,11 @@ candidate и postrelease activation не выполнены. Ранние отч
 последовательные срезы. Точные команды, SHA логов и source tuple —
 [evidence/handoff-local.json](evidence/handoff-local.json).
 
+Выполнен [B08 — локальный PostgreSQL restore и deployment contract](EXECUTION-B08.md):
+encrypted snapshot/restore, additive migration, два workers и poison message PASS
+на synthetic PostgreSQL; 198-file payload audit PASS. Production recovery,
+старый runtime на expanded schema и live delayed-health rollback остаются OPEN.
+
 Исправлен [B06 — amount validation, outbox race и provider event dedupe](EXECUTION-B06.md):
 `58e3684`; реальный PostgreSQL race PASS, provider/API fixtures PASS. Live
 payment/refund и order binding нового reversal envelope остаются OPEN.
