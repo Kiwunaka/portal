@@ -1,0 +1,949 @@
+{
+  "schema": "pokrov.r12.b07-component-profile/v1",
+  "source_commit": "6789cef0a2849cb65cb5b5339d214340a41dbf09",
+  "observed_on": "2026-09-06",
+  "result": "I3 / NEEDS_RUNTIME_PROOF",
+  "actual_origin": "current-origin; isolated local Ubuntu VM",
+  "implementation_changed": false,
+  "production_mutation": false,
+  "performance_gate_run": false,
+  "summary": {
+    "schema": "pokrov.b07.synthetic-component-profile/v1",
+    "observed_at": "2026-09-06T08:36:07.224822Z",
+    "environment": {
+      "python": "3.12.3",
+      "os": "Linux-6.8.0-138-generic-x86_64-with-glibc2.39",
+      "threadpool_tokens": 40,
+      "db_pool_size": 5,
+      "db_pool_max_overflow": 10
+    },
+    "source_hashes": {
+      "portal_bot/db.py": "18462b548def2e31835621d751c7441b78cae34709d2a019f3c73c6ca5c1b40f",
+      "portal_bot/payment_db_runtime.py": "06d86c0a794e48abe2b4d3ddc7e0cbb242ecac32bf736489cb3b7d53c5768551",
+      "portal_bot/outbound_http.py": "dc31653e97eceb7b7789ce70845e833ca4d3d41b78c074ae59d3e9ccdd94cec6",
+      "portal_bot/payment_entitlement_outbox.py": "a9f73e131c383a35dcc18526f4766f87ee945e88cc59cd6d0be2ece3f109375b",
+      "portal_bot/economy_service.py": "5eb7a68b34802803ce7d33f2ca20c976a1dd55c04d4a1d0b28abc0a4695cebf4",
+      "portal_bot/node_provisioning_service.py": "3b4aff48f9471c355ce11cc8120bbcb3f60a8be45c6999634f51888331714020",
+      "portal_bot/models.py": "6fb565bb7df1c162ce1e58d3b34b84d8807a19b4ba8693c03d23267c2e4e0b58"
+    },
+    "measurements": {
+      "db_10": {
+        "concurrency": 10,
+        "requests": 120,
+        "sql_delay_ms": 50,
+        "elapsed_ms": 756.7259399999955,
+        "stats": {
+          "thread_queue_ms": {
+            "n": 120,
+            "p50": 0.21191199999748278,
+            "p95": 2.9073240000059286,
+            "max": 6.123488000014277
+          },
+          "db_checkout_ms": {
+            "n": 120,
+            "p50": 0.35207999999897766,
+            "p95": 63.59534299997449,
+            "max": 82.76991799999678
+          },
+          "db_operation_ms": {
+            "n": 120,
+            "p50": 52.129817999997385,
+            "p95": 66.74012499999549,
+            "max": 74.89808700000822
+          },
+          "total_ms": {
+            "n": 120,
+            "p50": 52.990837999999485,
+            "p95": 136.402382,
+            "max": 140.08231299999352
+          }
+        },
+        "runtime": {
+          "active": 0,
+          "max_active": 10,
+          "started": 120,
+          "completed": 120,
+          "failed": 0,
+          "queue_wait_total_ms": 49,
+          "queue_wait_max_ms": 6,
+          "duration_total_ms": 7230,
+          "duration_max_ms": 139
+        },
+        "checkedout_final": 0,
+        "event_loop_lag_ms": {
+          "n": 93,
+          "p50": 1.3096810000047299,
+          "p95": 13.902109999999082,
+          "max": 26.56162700000209
+        }
+      },
+      "db_80": {
+        "concurrency": 80,
+        "requests": 120,
+        "sql_delay_ms": 50,
+        "elapsed_ms": 489.09935400001814,
+        "stats": {
+          "thread_queue_ms": {
+            "n": 120,
+            "p50": 123.94952100001433,
+            "p95": 180.7341729999905,
+            "max": 218.01874999999882
+          },
+          "db_checkout_ms": {
+            "n": 120,
+            "p50": 80.37180900001317,
+            "p95": 182.01631699997733,
+            "max": 261.0337889999812
+          },
+          "db_operation_ms": {
+            "n": 120,
+            "p50": 51.79730899999413,
+            "p95": 57.39108200000942,
+            "max": 65.22740999997723
+          },
+          "total_ms": {
+            "n": 120,
+            "p50": 233.24672800001167,
+            "p95": 375.35149100000353,
+            "max": 476.60535400001436
+          }
+        },
+        "runtime": {
+          "active": 0,
+          "max_active": 40,
+          "started": 120,
+          "completed": 120,
+          "failed": 0,
+          "queue_wait_total_ms": 12406,
+          "queue_wait_max_ms": 218,
+          "duration_total_ms": 15533,
+          "duration_max_ms": 316
+        },
+        "checkedout_final": 0,
+        "event_loop_lag_ms": {
+          "n": 64,
+          "p50": 1.077790000006189,
+          "p95": 5.9481100000152765,
+          "max": 66.8787099999929
+        }
+      },
+      "http": {
+        "requests": 120,
+        "warmups": 5,
+        "server_delay_ms": 50,
+        "sessions_created": 1,
+        "sessions_closed": true,
+        "unique_server_transports": 20,
+        "max_active_server_requests": 20,
+        "pool_limit": 20,
+        "connector_queue_ms": {
+          "n": 100,
+          "p50": 249.87622699998724,
+          "p95": 450.30982199997993,
+          "max": 450.3886189999946
+        },
+        "total_ms": {
+          "n": 120,
+          "p50": 249.85015999999405,
+          "p95": 506.60983999998166,
+          "max": 506.66902400001845
+        },
+        "telemetry": [
+          {
+            "provider": "lavatop",
+            "operation": "profile",
+            "status": 200,
+            "result_code": "ok",
+            "count": 125,
+            "latency_total_ms": 36005,
+            "latency_max_ms": 506
+          }
+        ],
+        "event_loop_lag_ms": {
+          "n": 30,
+          "p50": 6.052841999998009,
+          "p95": 88.50622499999872,
+          "max": 98.29561300000023
+        }
+      },
+      "outbox": {
+        "workers": 2,
+        "batch_limit": 20,
+        "before": {
+          "pending": 120,
+          "processing": 0,
+          "delivered": 0,
+          "dead_letter": 0,
+          "oldest_open_age_seconds": 2
+        },
+        "after": {
+          "pending": 0,
+          "processing": 0,
+          "delivered": 120,
+          "dead_letter": 0,
+          "oldest_open_age_seconds": 0
+        },
+        "elapsed_ms": 648.4014459999798,
+        "delivered_per_second": 185.070531135126,
+        "grants": 120,
+        "queued_provisioning_jobs": 120,
+        "all_attempts_exactly_one": true,
+        "provider_or_node_calls": 0,
+        "event_loop_lag_ms": {
+          "n": 377,
+          "p50": 0.5517029999805344,
+          "p95": 2.771215000019538,
+          "max": 41.28282499999159
+        }
+      }
+    },
+    "integrity": "PASS"
+  },
+  "repeated_summary": {
+    "real_query_warmups": 5,
+    "method": "Three sequential repetitions on retained synthetic B07 DB; no new grant/event writes",
+    "checkout_includes_new_connection_pre_ping_and_pool_wait": true,
+    "results": [
+      {
+        "repeat": 1,
+        "db_10": {
+          "concurrency": 10,
+          "requests": 120,
+          "sql_delay_ms": 50,
+          "elapsed_ms": 720.4447449999805,
+          "stats": {
+            "thread_queue_ms": {
+              "n": 120,
+              "p50": 0.22473499998909574,
+              "p95": 5.271346000000676,
+              "max": 17.98508799998899
+            },
+            "db_checkout_ms": {
+              "n": 120,
+              "p50": 0.353111000009676,
+              "p95": 32.58083100001841,
+              "max": 49.120459000022265
+            },
+            "db_operation_ms": {
+              "n": 120,
+              "p50": 53.35309299999835,
+              "p95": 58.86728800001606,
+              "max": 60.14320899998893
+            },
+            "total_ms": {
+              "n": 120,
+              "p50": 54.1428109999913,
+              "p95": 94.57136800000399,
+              "max": 111.78892600000268
+            }
+          },
+          "runtime": {
+            "active": 0,
+            "max_active": 10,
+            "started": 120,
+            "completed": 120,
+            "failed": 0,
+            "queue_wait_total_ms": 76,
+            "queue_wait_max_ms": 17,
+            "duration_total_ms": 6798,
+            "duration_max_ms": 109
+          },
+          "checkedout_final": 0,
+          "event_loop_lag_ms": {
+            "n": 96,
+            "p50": 1.674521999997296,
+            "p95": 7.400103999993917,
+            "max": 16.448774000020876
+          }
+        },
+        "db_80": {
+          "concurrency": 80,
+          "requests": 120,
+          "sql_delay_ms": 50,
+          "elapsed_ms": 501.7343150000215,
+          "stats": {
+            "thread_queue_ms": {
+              "n": 120,
+              "p50": 123.5311700000068,
+              "p95": 185.21177699997793,
+              "max": 228.36639499999478
+            },
+            "db_checkout_ms": {
+              "n": 120,
+              "p50": 95.50296800000524,
+              "p95": 186.28627900000083,
+              "max": 262.8664540000045
+            },
+            "db_operation_ms": {
+              "n": 120,
+              "p50": 52.45374500000821,
+              "p95": 62.68955000001597,
+              "max": 66.88652099998649
+            },
+            "total_ms": {
+              "n": 120,
+              "p50": 265.84736499998485,
+              "p95": 371.7606230000001,
+              "max": 443.5099819999948
+            }
+          },
+          "runtime": {
+            "active": 0,
+            "max_active": 40,
+            "started": 120,
+            "completed": 120,
+            "failed": 0,
+            "queue_wait_total_ms": 12091,
+            "queue_wait_max_ms": 228,
+            "duration_total_ms": 16509,
+            "duration_max_ms": 314
+          },
+          "checkedout_final": 0,
+          "event_loop_lag_ms": {
+            "n": 69,
+            "p50": 1.0553670000160764,
+            "p95": 5.596761000016386,
+            "max": 46.51933600001257
+          }
+        },
+        "http": {
+          "requests": 120,
+          "warmups": 5,
+          "server_delay_ms": 50,
+          "sessions_created": 1,
+          "sessions_closed": true,
+          "unique_server_transports": 20,
+          "max_active_server_requests": 20,
+          "pool_limit": 20,
+          "connector_queue_ms": {
+            "n": 100,
+            "p50": 175.66777999999772,
+            "p95": 282.83030299999723,
+            "max": 283.16712599999505
+          },
+          "total_ms": {
+            "n": 120,
+            "p50": 175.23062499998332,
+            "p95": 337.01402399998415,
+            "max": 337.0806950000258
+          },
+          "telemetry": [
+            {
+              "provider": "lavatop",
+              "operation": "profile",
+              "status": 200,
+              "result_code": "ok",
+              "count": 125,
+              "latency_total_ms": 24359,
+              "latency_max_ms": 337
+            }
+          ],
+          "event_loop_lag_ms": {
+            "n": 72,
+            "p50": 3.3133569999915835,
+            "p95": 6.239489999979924,
+            "max": 6.684405000011111
+          }
+        }
+      },
+      {
+        "repeat": 2,
+        "db_10": {
+          "concurrency": 10,
+          "requests": 120,
+          "sql_delay_ms": 50,
+          "elapsed_ms": 685.8719640000004,
+          "stats": {
+            "thread_queue_ms": {
+              "n": 120,
+              "p50": 0.2480029999958333,
+              "p95": 1.2151250000158598,
+              "max": 3.498819000014919
+            },
+            "db_checkout_ms": {
+              "n": 120,
+              "p50": 0.4614249999974618,
+              "p95": 1.8808179999894037,
+              "max": 29.42018400000279
+            },
+            "db_operation_ms": {
+              "n": 120,
+              "p50": 52.95678599998155,
+              "p95": 55.47998699998402,
+              "max": 57.55462499999453
+            },
+            "total_ms": {
+              "n": 120,
+              "p50": 53.84431499999209,
+              "p95": 57.5282720000132,
+              "max": 86.12457699999254
+            }
+          },
+          "runtime": {
+            "active": 0,
+            "max_active": 10,
+            "started": 120,
+            "completed": 120,
+            "failed": 0,
+            "queue_wait_total_ms": 15,
+            "queue_wait_max_ms": 3,
+            "duration_total_ms": 6521,
+            "duration_max_ms": 84
+          },
+          "checkedout_final": 0,
+          "event_loop_lag_ms": {
+            "n": 92,
+            "p50": 2.0652949999896464,
+            "p95": 6.62543899999946,
+            "max": 8.38752600000248
+          }
+        },
+        "db_80": {
+          "concurrency": 80,
+          "requests": 120,
+          "sql_delay_ms": 50,
+          "elapsed_ms": 507.4681400000145,
+          "stats": {
+            "thread_queue_ms": {
+              "n": 120,
+              "p50": 125.62881599998832,
+              "p95": 183.18593399999372,
+              "max": 230.04191800001195
+            },
+            "db_checkout_ms": {
+              "n": 120,
+              "p50": 87.3031229999981,
+              "p95": 178.87529000000768,
+              "max": 244.745824000006
+            },
+            "db_operation_ms": {
+              "n": 120,
+              "p50": 52.868109999991475,
+              "p95": 58.043612999995275,
+              "max": 61.65759000001003
+            },
+            "total_ms": {
+              "n": 120,
+              "p50": 254.78896199999213,
+              "p95": 393.51710599999024,
+              "max": 448.28307700001346
+            }
+          },
+          "runtime": {
+            "active": 0,
+            "max_active": 40,
+            "started": 120,
+            "completed": 120,
+            "failed": 0,
+            "queue_wait_total_ms": 12085,
+            "queue_wait_max_ms": 230,
+            "duration_total_ms": 16803,
+            "duration_max_ms": 295
+          },
+          "checkedout_final": 0,
+          "event_loop_lag_ms": {
+            "n": 78,
+            "p50": 0.9674379999989923,
+            "p95": 6.107243999987304,
+            "max": 7.430692000009458
+          }
+        },
+        "http": {
+          "requests": 120,
+          "warmups": 5,
+          "server_delay_ms": 50,
+          "sessions_created": 1,
+          "sessions_closed": true,
+          "unique_server_transports": 20,
+          "max_active_server_requests": 20,
+          "pool_limit": 20,
+          "connector_queue_ms": {
+            "n": 100,
+            "p50": 173.03233800001294,
+            "p95": 286.68196800001056,
+            "max": 286.7288770000016
+          },
+          "total_ms": {
+            "n": 120,
+            "p50": 172.87785899998198,
+            "p95": 340.18372900001737,
+            "max": 340.2310630000045
+          },
+          "telemetry": [
+            {
+              "provider": "lavatop",
+              "operation": "profile",
+              "status": 200,
+              "result_code": "ok",
+              "count": 125,
+              "latency_total_ms": 24378,
+              "latency_max_ms": 340
+            }
+          ],
+          "event_loop_lag_ms": {
+            "n": 74,
+            "p50": 3.197837999972535,
+            "p95": 6.151147000020956,
+            "max": 7.830910000019457
+          }
+        }
+      },
+      {
+        "repeat": 3,
+        "db_10": {
+          "concurrency": 10,
+          "requests": 120,
+          "sql_delay_ms": 50,
+          "elapsed_ms": 679.163310000007,
+          "stats": {
+            "thread_queue_ms": {
+              "n": 120,
+              "p50": 0.24157800001489704,
+              "p95": 1.0635240000169688,
+              "max": 4.652192000008881
+            },
+            "db_checkout_ms": {
+              "n": 120,
+              "p50": 0.37282400001004135,
+              "p95": 2.470831000010776,
+              "max": 26.239908000007972
+            },
+            "db_operation_ms": {
+              "n": 120,
+              "p50": 52.77777899999592,
+              "p95": 55.43516100001966,
+              "max": 57.17769299999986
+            },
+            "total_ms": {
+              "n": 120,
+              "p50": 53.537824999978056,
+              "p95": 57.04247200000623,
+              "max": 82.55677200000378
+            }
+          },
+          "runtime": {
+            "active": 0,
+            "max_active": 10,
+            "started": 120,
+            "completed": 120,
+            "failed": 0,
+            "queue_wait_total_ms": 14,
+            "queue_wait_max_ms": 4,
+            "duration_total_ms": 6483,
+            "duration_max_ms": 79
+          },
+          "checkedout_final": 0,
+          "event_loop_lag_ms": {
+            "n": 88,
+            "p50": 1.385343999994575,
+            "p95": 9.973182000005634,
+            "max": 17.075929999999744
+          }
+        },
+        "db_80": {
+          "concurrency": 80,
+          "requests": 120,
+          "sql_delay_ms": 50,
+          "elapsed_ms": 497.2029009999801,
+          "stats": {
+            "thread_queue_ms": {
+              "n": 120,
+              "p50": 118.41219199999387,
+              "p95": 172.77853699999923,
+              "max": 213.32792199999062
+            },
+            "db_checkout_ms": {
+              "n": 120,
+              "p50": 92.03094400001532,
+              "p95": 179.75426099999936,
+              "max": 256.5283229999977
+            },
+            "db_operation_ms": {
+              "n": 120,
+              "p50": 53.28243900001439,
+              "p95": 60.31983700000865,
+              "max": 64.90245299997355
+            },
+            "total_ms": {
+              "n": 120,
+              "p50": 263.4190109999963,
+              "p95": 342.29125600001,
+              "max": 434.51317000000245
+            }
+          },
+          "runtime": {
+            "active": 0,
+            "max_active": 40,
+            "started": 120,
+            "completed": 120,
+            "failed": 0,
+            "queue_wait_total_ms": 11509,
+            "queue_wait_max_ms": 213,
+            "duration_total_ms": 16774,
+            "duration_max_ms": 309
+          },
+          "checkedout_final": 0,
+          "event_loop_lag_ms": {
+            "n": 69,
+            "p50": 1.18329700000686,
+            "p95": 7.441418999998177,
+            "max": 17.709843999990653
+          }
+        },
+        "http": {
+          "requests": 120,
+          "warmups": 5,
+          "server_delay_ms": 50,
+          "sessions_created": 1,
+          "sessions_closed": true,
+          "unique_server_transports": 20,
+          "max_active_server_requests": 20,
+          "pool_limit": 20,
+          "connector_queue_ms": {
+            "n": 100,
+            "p50": 247.22720299999423,
+            "p95": 562.0155819999866,
+            "max": 562.1296490000134
+          },
+          "total_ms": {
+            "n": 120,
+            "p50": 247.1344610000017,
+            "p95": 616.2751479999997,
+            "max": 616.2986690000025
+          },
+          "telemetry": [
+            {
+              "provider": "lavatop",
+              "operation": "profile",
+              "status": 200,
+              "result_code": "ok",
+              "count": 125,
+              "latency_total_ms": 41272,
+              "latency_max_ms": 616
+            }
+          ],
+          "event_loop_lag_ms": {
+            "n": 43,
+            "p50": 3.40208500000017,
+            "p95": 80.29380100000594,
+            "max": 181.98561700000482
+          }
+        }
+      }
+    ]
+  },
+  "inventory": {
+    "source_commit": "6789cef0a2849cb65cb5b5339d214340a41dbf09",
+    "sites": [
+      {
+        "path": "portal_bot/api.py",
+        "line": 7471,
+        "scope": "_telegram_get_chat_member",
+        "constructor_timeout_explicit": false,
+        "file_sha256": "7f0ee0fd473f9c98a63b72c1c03fb490ceeefec2d3ebdd2177215dee3aee2b73",
+        "constructor_ast_sha256": "46bd3f12df9cb52ef476b9f23ad59a93c674243018a5259aa8e706c41f17dca5"
+      },
+      {
+        "path": "portal_bot/api.py",
+        "line": 9331,
+        "scope": "_get_panel_usage_legacy",
+        "constructor_timeout_explicit": false,
+        "file_sha256": "7f0ee0fd473f9c98a63b72c1c03fb490ceeefec2d3ebdd2177215dee3aee2b73",
+        "constructor_ast_sha256": "46bd3f12df9cb52ef476b9f23ad59a93c674243018a5259aa8e706c41f17dca5"
+      },
+      {
+        "path": "portal_bot/bot.py",
+        "line": 721,
+        "scope": "_bot_api_call",
+        "constructor_timeout_explicit": false,
+        "file_sha256": "2cd0d5c60993c4d92ba228dfe25367412fae233769dbf68c6a8e4abfcda4201f",
+        "constructor_ast_sha256": "46bd3f12df9cb52ef476b9f23ad59a93c674243018a5259aa8e706c41f17dca5"
+      },
+      {
+        "path": "portal_bot/bot.py",
+        "line": 4134,
+        "scope": "_create_rub_payment_link_for_bot",
+        "constructor_timeout_explicit": true,
+        "file_sha256": "2cd0d5c60993c4d92ba228dfe25367412fae233769dbf68c6a8e4abfcda4201f",
+        "constructor_ast_sha256": "6f4cec13febbc1e725ac4038861b28b2f67a2aec2f34ecde952dd5fd388846b8"
+      },
+      {
+        "path": "portal_bot/bot_operator_handlers.py",
+        "line": 698,
+        "scope": "health_check",
+        "constructor_timeout_explicit": false,
+        "file_sha256": "8b6c9317bc04acf5e45c0cfa83beaf41bad3fc73425622e60a13782049807c85",
+        "constructor_ast_sha256": "46bd3f12df9cb52ef476b9f23ad59a93c674243018a5259aa8e706c41f17dca5"
+      },
+      {
+        "path": "portal_bot/channel_bonus_service.py",
+        "line": 43,
+        "scope": "_telegram_get_chat_member",
+        "constructor_timeout_explicit": false,
+        "file_sha256": "15c308369d321c8109a3163cc71bac495c5a11884882c1b05f38c54bfe8b978b",
+        "constructor_ast_sha256": "46bd3f12df9cb52ef476b9f23ad59a93c674243018a5259aa8e706c41f17dca5"
+      },
+      {
+        "path": "portal_bot/email_delivery_service.py",
+        "line": 77,
+        "scope": "deliver_email_message",
+        "constructor_timeout_explicit": true,
+        "file_sha256": "b420b828ab3b34e6e39fba7f94d9fed5f27ee2f056ac7c09ca8d2e2998d4cde2",
+        "constructor_ast_sha256": "6f4cec13febbc1e725ac4038861b28b2f67a2aec2f34ecde952dd5fd388846b8"
+      },
+      {
+        "path": "portal_bot/emergency_catalog_ingestion.py",
+        "line": 116,
+        "scope": "fetch_approved_mirror",
+        "constructor_timeout_explicit": true,
+        "file_sha256": "5a3ded9258c1c4f5f54c202f74be7e115884316beaa627a488346d905d6424f3",
+        "constructor_ast_sha256": "9b8d2a5e102cfae40707588d69a19d2642f65728221a0b00815384448f4c602d"
+      },
+      {
+        "path": "portal_bot/news_draft_service.py",
+        "line": 331,
+        "scope": "collect_news_drafts",
+        "constructor_timeout_explicit": false,
+        "file_sha256": "e53f4bf4dd4f999bab2b7d0463fa2bab0101762774d419244cdaec229a964ce6",
+        "constructor_ast_sha256": "46bd3f12df9cb52ef476b9f23ad59a93c674243018a5259aa8e706c41f17dca5"
+      },
+      {
+        "path": "portal_bot/panel_client.py",
+        "line": 352,
+        "scope": "PanelClient.ensure_session",
+        "constructor_timeout_explicit": false,
+        "file_sha256": "fa641cd430e07b2b29a15fc584b13dd4acbd92701da9da5b456e4d06847ab5c2",
+        "constructor_ast_sha256": "a3b3390a02220dd452cfca82ae8c9a5768db95e4ab16863c6a22debb2aa18557"
+      },
+      {
+        "path": "portal_bot/telegram_delivery_service.py",
+        "line": 115,
+        "scope": "send_telegram_message",
+        "constructor_timeout_explicit": false,
+        "file_sha256": "10007ce61176d3e16e8541658f42e6eb38c6844948819798bbf6127fe24e9540",
+        "constructor_ast_sha256": "46bd3f12df9cb52ef476b9f23ad59a93c674243018a5259aa8e706c41f17dca5"
+      },
+      {
+        "path": "portal_bot/web_auth_service.py",
+        "line": 311,
+        "scope": "fetch_telegram_oidc_jwks",
+        "constructor_timeout_explicit": true,
+        "file_sha256": "88d823e9ab5e56415127a0f36e2c366f0ac1c06945169ec1fe8f0ab464bb6bb8",
+        "constructor_ast_sha256": "6f4cec13febbc1e725ac4038861b28b2f67a2aec2f34ecde952dd5fd388846b8"
+      },
+      {
+        "path": "portal_bot/web_auth_service.py",
+        "line": 445,
+        "scope": "exchange_telegram_oidc_code",
+        "constructor_timeout_explicit": true,
+        "file_sha256": "88d823e9ab5e56415127a0f36e2c366f0ac1c06945169ec1fe8f0ab464bb6bb8",
+        "constructor_ast_sha256": "6f4cec13febbc1e725ac4038861b28b2f67a2aec2f34ecde952dd5fd388846b8"
+      },
+      {
+        "path": "portal_bot/worker.py",
+        "line": 410,
+        "scope": "_telegram_send_message",
+        "constructor_timeout_explicit": false,
+        "file_sha256": "1c2dcdb5e5ccea48a301468c8d15f71aa4a609e4e0c5e6e10d57cc561c26c279",
+        "constructor_ast_sha256": "46bd3f12df9cb52ef476b9f23ad59a93c674243018a5259aa8e706c41f17dca5"
+      },
+      {
+        "path": "portal_bot/worker.py",
+        "line": 427,
+        "scope": "_telegram_get_chat_member",
+        "constructor_timeout_explicit": false,
+        "file_sha256": "1c2dcdb5e5ccea48a301468c8d15f71aa4a609e4e0c5e6e10d57cc561c26c279",
+        "constructor_ast_sha256": "46bd3f12df9cb52ef476b9f23ad59a93c674243018a5259aa8e706c41f17dca5"
+      }
+    ],
+    "same_enclosing_sites_as_prior": true,
+    "prior_only": [],
+    "current_only": [],
+    "scope": "Direct aiohttp.ClientSession constructors; injected PaymentHttpRegistry factory tracked separately"
+  },
+  "retained_artifacts": [
+    {
+      "path": "E:\\r12-b07-profile\\attempt01-profile.py",
+      "bytes": 10412,
+      "sha256": "27406983459e34708d46e10176aee4642e90755b47846aa73bb59cc9988dceec"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\attempt01-result.json",
+      "bytes": 66565,
+      "sha256": "e06a8d713c6c8bff951a2ce755a28b4bea8996171bb3e4bc52df4ad3463ba7b2"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\attempt01-run-command.json",
+      "bytes": 217,
+      "sha256": "a46f9e2cac3f01be726a5e0f8d0d356f6bbd825b90e54a2e8f678bba5a4b8f88"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\attempt01-run.log",
+      "bytes": 3066,
+      "sha256": "b001b18e9632c43113e154171dfc90aa89ae127597e313b15056afea3722bd3d"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\context-check.log",
+      "bytes": 23,
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\docs-tests.log",
+      "bytes": 101,
+      "sha256": "0d917123525e40216d5bfc5f6b30f66edd77b7093fac462773f5a7559b30a7ce"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\guest-final.json",
+      "bytes": 420,
+      "sha256": "a919e4e645f4e77ee25f6fb3704a57601d3dbd953be2d228611796bf4b232522"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\http-inventory.json",
+      "bytes": 5682,
+      "sha256": "2731f32bcafc72319c13c77c222ffe841bb460f96580ea2cc5fe71524c458e51"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\package-check.log",
+      "bytes": 109,
+      "sha256": "e70f93063a228db0ed8a1efda4b0709e1ccbfe266c9a965545435799d402c446"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\profile.py",
+      "bytes": 10492,
+      "sha256": "5e2a359ba3c86131afef48563a00acdefab13924d186fff344915ac6502ada35"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\regression.log",
+      "bytes": 102,
+      "sha256": "a0651965ec5831bd214b6972e30b1c432a341bd4d1dc765d29895e39072b6395"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\repeat-command.json",
+      "bytes": 215,
+      "sha256": "32147db3c4e679da4b1b43dc1238d396207955f66675fe274f60f57e56c622aa"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\repeat.log",
+      "bytes": 312,
+      "sha256": "f984dfb5ec73168c14166dc8b6cc92bb104a67f4b5db0ee13ba8f5d45cd5afa2"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\repeat.py",
+      "bytes": 1318,
+      "sha256": "a095c4de5ed77cbad39d42510d10aeefb059bcc2d36f851ce6f809e3a115ae24"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\repeated.json",
+      "bytes": 209630,
+      "sha256": "2288443627f644cf28c62dbf03d3d63cc97dc04015cb683deb01a04e8c015cf3"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\result.json",
+      "bytes": 79755,
+      "sha256": "77404501aa9c326822d0bc1c9ee35e168394b5707f3c8a5c6052337f3c36acbc"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\run-command.json",
+      "bytes": 220,
+      "sha256": "bc7e0ebf24b9914b49ee679328f3b9063789f29d8e8519bbd1da91cf2a5703a0"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\run-host.py",
+      "bytes": 1178,
+      "sha256": "02cca476d61fca6015b007d530070e0d304ac1b93588aeb21a747376a43786a0"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\run.log",
+      "bytes": 1817,
+      "sha256": "5a2ec21dbb7966ed0a334ca7439207a35c25d3989ca808fe6dc5a92ae8f16b3e"
+    },
+    {
+      "path": "E:\\r12-b07-profile\\vm-final.json",
+      "bytes": 111,
+      "sha256": "8abe1e27a3d518b1ffa3d038b304e6dd15639a998ee1f39161b55cc11f5e1250"
+    }
+  ],
+  "checks": [
+    {
+      "command": [
+        "python",
+        "-u",
+        "-B",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_payment_db_runtime.py",
+        "tests/test_payment_http_registry.py",
+        "tests/test_payment_entitlement_outbox.py",
+        "-q"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-b07-profile\\regression.log",
+      "sha256": "a0651965ec5831bd214b6972e30b1c432a341bd4d1dc765d29895e39072b6395",
+      "result": "....................                                                     [100%]\n20 passed in 32.79s"
+    },
+    {
+      "command": [
+        "python",
+        "-u",
+        "-B",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_agent_docs_contract.py",
+        "tests/test_agent_context_packet_audit.py",
+        "-q"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-b07-profile\\docs-tests.log",
+      "sha256": "0d917123525e40216d5bfc5f6b30f66edd77b7093fac462773f5a7559b30a7ce",
+      "result": ".................................                                        [100%]\n33 passed in 0.78s"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "scripts/agent_context_packet_audit.py",
+        "--platform-context-root",
+        "."
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-b07-profile\\context-check.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "result": "PASS platform-context"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "docs\\developer\\work-orders\\2026-09-05--consolidated-release-and-post12\\validate_package.py"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-b07-profile\\package-check.log",
+      "sha256": "e70f93063a228db0ed8a1efda4b0709e1ccbfe266c9a965545435799d402c446",
+      "result": "PASS: 13 imported section hashes, 83 R12 IDs, 378 retained legacy IDs and ledger hash, 209 local file links"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "limits": [
+    "Synthetic fixed service delay; not a production capacity or release-budget result.",
+    "DB checkout includes connection establishment and pre-ping as well as pool queue.",
+    "Colocated HTTP server/client share event loop on a two-vCPU VM.",
+    "Initial DB warmups opened no connections; repeated series added five real query warmups.",
+    "Initial all-grants-empty fixture assertion failed on preexisting free grant; first DB/evidence retained.",
+    "Outbox ends at durable provisioning queue; no provider/node E2E."
+  ]
+}

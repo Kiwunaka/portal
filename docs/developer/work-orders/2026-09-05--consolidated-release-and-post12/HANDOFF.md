@@ -39,6 +39,11 @@ API из candidate.33 source и feature branch прошли 25 HTTP checks на 
 PostgreSQL, включая совместную работу и перезапуск previous. Production
 recovery, exact deployed tuple/units и полный provider E2E остаются OPEN.
 
+Выполнен [B07 — Linux DB/HTTP/outbox profile](EXECUTION-B07-PROFILE.md):
+повторные burst measurements с queue wait и event-loop samples, reuse 20 HTTP
+connections; два worker доставили 120 synthetic outbox events в provisioning
+queue. Production profile остаётся OPEN; лимиты по fixture не менялись.
+
 Исправлен [B06 — amount validation, outbox race и provider event dedupe](EXECUTION-B06.md):
 `58e3684`; реальный PostgreSQL race PASS, provider/API fixtures PASS. Live
 payment/refund и order binding нового reversal envelope остаются OPEN.
