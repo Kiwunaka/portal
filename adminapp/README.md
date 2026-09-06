@@ -351,6 +351,11 @@ Support work boundary v2:
   diagnostic collections, `field_access=redacted` и warning;
 - `GET /api/admin/v2/support/attempts` — ограниченный correlated attempt
   explorer; маршрут требует отдельное `support.sensitive.read`;
+- сводка обращения показывает связанную попытку либо явное отсутствие данных.
+  Другие попытки пользователя доступны для ручной привязки; при отсутствии
+  привязки последняя попытка так и помечается. Версия сводки берётся из
+  последнего события этой попытки. Known issues повторно запрашиваются при
+  изменении code/app/build/platform пакета, включая смену build с прежним code;
 - `GET /api/admin/v2/support/macros` отдаёт серверный закрытый набор макросов;
 - claim, assign и workflow update идут через
   `/api/admin/v2/support/action-intents`; reply/status и internal note временно

@@ -82,6 +82,31 @@ test("L1 видит явную редактированную область в�
   await expect(page.getByText("История действий администраторов скрыта текущей роли.")).toBeVisible();
 });
 
+test("сводка обращения не подменяет отсутствующую связанную попытку", async ({ page }) => {
+  await installAdminApiMock(page, { supportScenario: "missing_linked_attempt" });
+  await page.goto("/tickets?selected=501");
+
+  await expect(page.getByRole("heading", { name: "Тикет #501" })).toBeVisible();
+  await expect(page.getByText("Связанная попытка отсутствует в доступных данных.", { exact: true })).toBeVisible();
+  await expect(page.getByText("Сводка выбранной попытки", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Сводка связанной попытки", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("attempt_11111111111111111111", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Связать с тикетом", exact: true })).toBeVisible();
+});
+
+test("обновление сборки пакета пересверяет known issue без смены кода ошибки", async ({ page }) => {
+  const api = await installAdminApiMock(page, { supportScenario: "bundle_build_changes" });
+  await page.goto("/tickets?selected=501");
+  await expect(page.getByText("Core не запускается после обновления", { exact: true })).toBeVisible();
+
+  await page.getByRole("main").getByRole("button", { name: "Обновить", exact: true }).click();
+  await expect(page.getByText("windows · 1.2.0 · 43", { exact: true }).last()).toBeVisible();
+  await expect.poll(() => api.calls.some((call) => call.path.startsWith("/api/admin/v2/support/known-issues?") && call.path.includes("build_number=43"))).toBe(true);
+  await expect(page.getByText("Core не запускается после обновления", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Для текущего кода и версии известная проблема не зарегистрирована.", { exact: true })).toBeVisible();
+  await expect(page.getByText("windows · 1.2.0 · 42", { exact: true })).toBeVisible();
+});
+
 test("L2 скачивает только шифротекст через обоснованный одноразовый grant", async ({ page }) => {
   const api = await installAdminApiMock(page);
   await page.goto("/tickets?selected=501");

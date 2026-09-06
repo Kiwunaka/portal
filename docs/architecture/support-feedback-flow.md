@@ -44,6 +44,15 @@ Last updated: 2026-08-15
   summaries retain existing TTL, retention and access-audit limits; observer
   state is a read-only trusted signal. Neither projection changes ticket,
   account, entitlement or encrypted-bundle authority.
+- The case summary uses the explicitly linked attempt. If that attempt is
+  absent from the available data, the view states that it is missing; other
+  user attempts remain available for an explicit link action. With no link,
+  the latest user attempt is labelled as unlinked. Its displayed build comes
+  from its own latest event, not from another support bundle.
+- Known-issue lookup follows the bundle's error code, app version, build and
+  platform together. A changed scope clears the previous result and triggers
+  a fresh lookup, even when the error code is unchanged. This projection does
+  not establish an effective runtime profile or current protection proof.
 
 ### Temporary support mode and short code
 
