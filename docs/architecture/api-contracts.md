@@ -729,7 +729,7 @@ explicitly enables the legacy contour.
   support context and shortlist name that effective transport; saved rollout
   policy is unchanged. This is a bounded client recovery mechanism, not a new
   transport provider pool or permission to activate a lab cohort.
-- AWG2/AWG3.1 managed rendering validates and decrypts the same selected
+- AWG2/AWG3.1/HY2 managed rendering validates and decrypts the same selected
   device-material row. It does not select a second active row after readiness
   validation, so concurrent rotation cannot label unchecked material with the
   previously approved generation. This is an issuance snapshot; revoking an
