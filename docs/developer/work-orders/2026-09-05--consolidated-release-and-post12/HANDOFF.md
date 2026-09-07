@@ -6,6 +6,11 @@ candidate и postrelease activation не выполнены. Ранние отч
 последовательные срезы. Точные команды, SHA логов и source tuple —
 [evidence/handoff-local.json](evidence/handoff-local.json).
 
+[Installed Windows IPC](EXECUTION-WINDOWS-IPC-2026-09-07.md): восемь проверок
+реальной службы под обычным владельцем и отказ другому пользователю PASS.
+PID named pipe совпал с SCM; все 305 installed hashes прежние. W06 остаётся
+OPEN для cancellation/concurrency, WFP coexistence, Win10 и final channel.
+
 [Windows installer](EXECUTION-WINDOWS-INSTALLER-2026-09-07.md): исправлен
 отказ clean install для обычной учётной записи при UAC через другого admin.
 На exact local package прошли install, standard UI/IPC, 305 file hashes,
