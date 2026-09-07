@@ -6,6 +6,12 @@ candidate и postrelease activation не выполнены. Ранние отч
 последовательные срезы. Точные команды, SHA логов и source tuple —
 [evidence/handoff-local.json](evidence/handoff-local.json).
 
+[Windows connect interruption](EXECUTION-WINDOWS-CONNECT-INTERRUPTION-2026-09-08.md):
+просроченный или остановленный connect больше не фиксирует защиту после позднего
+возврата Core/probe. Между этапами выполняется проверка и штатный rollback;
+ошибка восстановления сохраняет recovery_required. Native 8/8, runtime 80 PASS.
+Прерывание внутри блокирующих вызовов, IPC cancel и concurrent mutations OPEN.
+
 [Windows IPC timeout](EXECUTION-WINDOWS-IPC-TIMEOUT-2026-09-08.md): исправлена
 блокировка единственного pipe и SCM stop зависшим клиентом. В VM новая служба
 освобождает pipe за 3.0–3.05 с; stop при непрочитанном ответе — 10 мс.
