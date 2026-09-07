@@ -23,9 +23,9 @@ R12-A06,Выбрать AWG presets по измерениям,queued,I0,NOT_REVIE
 R12-A07,TCP fallback при недоступном UDP,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-A07.md
 R12-A08,"Разделить Smart DNS, WARP и AWG",active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-A08.md
 R12-A09,AWG canary и обратимое отключение,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
-R12-W01,Win10/Win11 exact managed-network matrix,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-WINDOWS-SCM-2026-09-07.md; SCM Core initialization limited-token PASS_COMPONENT_ONLY; full UI non-admin installer TUN network Win10 final channel open
-R12-W02,Crash/sleep/network handoff без сетевого ущерба,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
-R12-W03,Install/update/uninstall на реально выдаваемых bytes,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
+R12-W01,Win10/Win11 exact managed-network matrix,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-WINDOWS-INSTALLER-2026-09-07.md; standard account stock UI SCM and 305 installed hashes PASS_LOCAL; TUN network Win10 final channel open
+R12-W02,Crash/sleep/network handoff без сетевого ущерба,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-WINDOWS-INSTALLER-2026-09-07.md; idle service auto start after planned reboot PASS_LOCAL; connected crash sleep network recovery open
+R12-W03,Install/update/uninstall на реально выдаваемых bytes,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-WINDOWS-INSTALLER-2026-09-07.md; separate standard-account install uninstall reinstall PASS_LOCAL; connected upgrade final channel Win10 open
 R12-W04,Tray/focus/startup/single instance regression,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-W04-SHELL.md
 R12-W05,CPU/RAM/cold-start реальные бюджеты,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-W06,IPC negative cases и WFP coexistence,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,

@@ -1,10 +1,16 @@
 # R12 — текущий результат и граница исполнения
 
-**На 2026-09-05: PARTIAL / RELEASE_BLOCKED. План целиком не завершён.**
+**PARTIAL / RELEASE_BLOCKED. План целиком не завершён; последующие срезы датированы ниже.**
 Локальная реализация и проверки ниже выполнены; production, новый release
 candidate и postrelease activation не выполнены. Ранние отчёты сохранены как
 последовательные срезы. Точные команды, SHA логов и source tuple —
 [evidence/handoff-local.json](evidence/handoff-local.json).
+
+[Windows installer](EXECUTION-WINDOWS-INSTALLER-2026-09-07.md): исправлен
+отказ clean install для обычной учётной записи при UAC через другого admin.
+На exact local package прошли install, standard UI/IPC, 305 file hashes,
+uninstall/reinstall и auto SCM start после reboot. Managed network, connected
+update/recovery, Win10 и final channel остаются открытыми.
 
 Выполнен [Windows 11 component lab](EXECUTION-WINDOWS-LAB.md): отдельный linked
 clone без NIC, текущие service/test bytes, семь native fixtures PASS. Подготовлен

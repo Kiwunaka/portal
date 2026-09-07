@@ -1,5 +1,13 @@
 # Текущие условия следующей приёмки
 
+[Установщик 2026-09-07](EXECUTION-WINDOWS-INSTALLER-2026-09-07.md): исправлен
+реальный отказ clean install через UAC другой учётной записи. Отдельный
+R12Standard подтверждён без прав администратора: install, 305 hashes, stock
+UI/IPC, uninstall/reinstall и SCM autoboot до login PASS в локальном offline
+scope. Полная network/connected-update/Win10/final-channel matrix открыта.
+Новый installer clone `960ae449-036f-4166-b215-d8349145a4de` оставлен offline
+с установленной auto-службой; прежний SCM clone и исходная VM сохранены.
+
 [SCM 2026-09-07](EXECUTION-WINDOWS-SCM-2026-09-07.md): служба LocalSystem, IPC
 под ограниченным токеном владельца, Initialize текущего Core и остановка PASS
 в component scope. Отдельная standard-account UI/installer и managed-network
