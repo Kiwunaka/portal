@@ -8,7 +8,9 @@ candidate и postrelease activation не выполнены. Ранние отч
 
 Выполнен [Windows 11 component lab](EXECUTION-WINDOWS-LAB.md): отдельный linked
 clone без NIC, текущие service/test bytes, семь native fixtures PASS. Подготовлен
-SCM start/status/stop сценарий; запуск с UAC ожидает владельца. W01–W03 и
+SCM start/status/stop сценарий на том срезе ещё ожидал UAC. [Новый SCM run](EXECUTION-WINDOWS-SCM-2026-09-07.md)
+прошёл с текущим Core: LocalSystem, IPC под ограниченным токеном, Initialize
+и штатная остановка. W01–W03 и
 реальный TUN/installer/network proof остаются OPEN.
 
 Предыдущий [readback условий следующей приёмки](NEXT_ACCEPTANCE.md): найден выключенный

@@ -1,5 +1,11 @@
 # Текущие условия следующей приёмки
 
+[SCM 2026-09-07](EXECUTION-WINDOWS-SCM-2026-09-07.md): служба LocalSystem, IPC
+под ограниченным токеном владельца, Initialize текущего Core и остановка PASS
+в component scope. Отдельная standard-account UI/installer и managed-network
+матрица остаются открытыми. Клон включён офлайн, служба оставлена stopped/manual.
+Evaluation Windows выключается через `wlms.exe`; учитывать это в длительных runs.
+
 [Проверки всех трёх сред 2026-09-07](EXECUTION-RUNTIME-SURFACES-2026-09-07.md):
 Windows VM включена; [W04](EXECUTION-W04-SHELL.md) содержит исправления скрытого
 запуска и падения при выходе с точным red/green proof. На Pi прошли AWG2/AWG3.1
@@ -17,7 +23,7 @@ Huawei теперь доступен: Android 12 / SDK 31, физические 
 M01 seller/receipt и платные GitHub G04/G06 — `SKIPPED_BY_OWNER`.
 Их общий release criterion остаётся незакрытым: skip не означает provider,
 CI или enforcement PASS. Оплата GitHub и реквизиты сейчас не запрашиваются.
-Windows SCM/Win10, полная Android matrix, exact release bytes, deployed
+Полная Windows UI/SCM/network/Win10, Android matrix, exact release bytes, deployed
 Android-to-API diagnostics и origin-specific acceptance остаются отдельными
 незакрытыми проверками. Production/release rollout не выполнен.
 
