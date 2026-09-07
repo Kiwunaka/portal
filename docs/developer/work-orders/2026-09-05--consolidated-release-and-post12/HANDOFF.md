@@ -232,3 +232,7 @@ source archives. Пять offline source graphs совпали с исходны
 Cronet .a связываются с `f21660be` → `30f3a568`; Windows остаётся `2be061b6`.
 Это SOURCE_PREPARATION_ONLY, полный C05 открыт; publication, native reproduction,
 client licensing и installed privacy не подменены локальной упаковкой.
+
+- 2026-09-07: [W04 Windows shell](EXECUTION-W04-SHELL.md) — hidden startup and native teardown fixed; exact offline UI regression/exit proof retained, full Windows matrix open.
+
+- 2026-09-07: [Pi/Huawei hardware runs](EXECUTION-RUNTIME-SURFACES-2026-09-07.md) — exact-Core AWG2/AWG3.1 PASS on owned Pi; bounded Android handoff/protection, first interruption retained as unresolved.
