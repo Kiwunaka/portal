@@ -6,6 +6,14 @@ candidate и postrelease activation не выполнены. Ранние отч
 последовательные срезы. Точные команды, SHA логов и source tuple —
 [evidence/handoff-local.json](evidence/handoff-local.json).
 
+[Windows IPC cancellation](EXECUTION-WINDOWS-IPC-CANCELLATION-2026-09-08.md):
+client `0218e89` добавляет отмену активного connect, status во время операции,
+отказ параллельным mutations, отмену WinHTTP и worker для вызовов из UI.
+Native 12/12, Windows Flutter 24, runtime Flutter 80 PASS; Win11 component
+fixtures PASS с сохранённым повтором integration после исправления payload.
+Отмена/синтетический rollback — 31 мс, HTTP — 94 мс; installed 305 hashes прежние.
+Новая пара UI/service с реальным TUN, Core blocking calls, WFP, Win10 и candidate OPEN.
+
 [Windows connect interruption](EXECUTION-WINDOWS-CONNECT-INTERRUPTION-2026-09-08.md):
 просроченный или остановленный connect больше не фиксирует защиту после позднего
 возврата Core/probe. Между этапами выполняется проверка и штатный rollback;
