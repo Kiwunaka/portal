@@ -6,6 +6,12 @@ candidate и postrelease activation не выполнены. Ранние отч
 последовательные срезы. Точные команды, SHA логов и source tuple —
 [evidence/handoff-local.json](evidence/handoff-local.json).
 
+[Windows IPC timeout](EXECUTION-WINDOWS-IPC-TIMEOUT-2026-09-08.md): исправлена
+блокировка единственного pipe и SCM stop зависшим клиентом. В VM новая служба
+освобождает pipe за 3.0–3.05 с; stop при непрочитанном ответе — 10 мс.
+После проверки восстановлен прежний пакет, все 305 хешей совпали. Полная
+отмена сетевых операций и concurrent mutation acceptance ещё OPEN.
+
 [Installed Windows IPC](EXECUTION-WINDOWS-IPC-2026-09-07.md): восемь проверок
 реальной службы под обычным владельцем и отказ другому пользователю PASS.
 PID named pipe совпал с SCM; все 305 installed hashes прежние. W06 остаётся
