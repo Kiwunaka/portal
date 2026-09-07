@@ -3,7 +3,7 @@
 Актуализация 2026-09-07: [решения владельца](OWNER-DECISIONS-2026-09-07.md)
 снимают вопросы N02 и O03/V02. Защищённый офлайн-профиль и автоматическая
 диагностика исходной сети реализованы; [новые проверки и границы](EXECUTION-OFFLINE-NETWORK-2026-09-07.md)
-относятся к client `550329f` и текущему platform diff поверх `398b32f`.
+относятся к client `550329f` и platform `f103a7b`.
 Huawei теперь доступен: Android 12 / SDK 31, физические Wi-Fi/mobile проверки
 проведены. Старое наблюдение «0 устройств» больше не является блокером.
 
@@ -13,6 +13,14 @@ CI или enforcement PASS. Оплата GitHub и реквизиты сейча
 Windows SCM/Win10, полная Android matrix, exact release bytes, deployed
 Android-to-API diagnostics и origin-specific acceptance остаются отдельными
 незакрытыми проверками. Production/release rollout не выполнен.
+
+Последующая [проверка ARM64 и статуса подписки](EXECUTION-ARM64-ACCESS-2026-09-07.md)
+относится к client `9334d46`, platform `01914f9`, Core `8dc57a8`. Штатный ARM64
+APK — 101,2 МБ против universal 295,2 МБ; подтверждены отдельные ABI, сохранность
+Core/notice assets и локальный переход universal → ARM64 на Huawei. При
+недоступном API больше не подставляется «Пробный · 5 дней», а сохранённый профиль
+подключается и подтверждает защиту. Обычный APK восстановлен, его installed hash
+совпал; VPN отключён. Полная D02/D03/D04 matrix и final channel остаются открыты.
 
 ## Исторический readback до ответов владельца
 

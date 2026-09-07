@@ -29,12 +29,12 @@ R12-W03,Install/update/uninstall на реально выдаваемых bytes,
 R12-W04,Tray/focus/startup/single instance regression,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-W05,CPU/RAM/cold-start реальные бюджеты,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
 R12-W06,IPC negative cases и WFP coexistence,queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
-R12-D01,"Проверить primary ARM64 APK, не только universal",active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-OFFLINE-NETWORK-2026-09-07.md
+R12-D01,"Проверить primary ARM64 APK, не только universal",active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-ARM64-ACCESS-2026-09-07.md
 R12-D02,Wi-Fi/LTE/IPv6/MTU/UDP53 матрица,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-OFFLINE-NETWORK-2026-09-07.md
 R12-D03,"OEM, Doze, lifecycle и энергия",queued,I0,NOT_REVIEWED,03_RELEASE_BACKLOG_83.md,
-R12-D04,Direct/store authority и downgrade boundaries,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-D04.md
+R12-D04,Direct/store authority и downgrade boundaries,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-ARM64-ACCESS-2026-09-07.md
 R12-D05,"Логи, notification и счётчики только по контракту",active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-D05.md
-R12-D06,Уменьшать доставку по size breakdown,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-D06.md
+R12-D06,Уменьшать доставку по size breakdown,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-ARM64-ACCESS-2026-09-07.md
 R12-C01,Сохранить ABI2 и проверить artifacts consumers,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-C02,Lifecycle/race/fuzz/resource bounds,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-C03,Извлечь реальные владельцы состояния из bootstrap,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-C03-CHECKOUT.md
@@ -55,13 +55,13 @@ R12-O04,"Моя смена, Inbox и Incident Room как рабочие сце�
 R12-O05,Развести 11 cockpit и 19 release checks,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-O06,Платежи и кампании до безопасного действия,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-O07,Responsive density и query performance,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
-R12-F01,Единый protection presenter без рекламного шума,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-PRESENTATION.md
+R12-F01,Единый protection presenter без рекламного шума,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-ARM64-ACCESS-2026-09-07.md
 R12-F02,Путь download→install→trial→verified connect,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-F03,Motion/reduced-motion/платформенное поведение,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-F04,"Rules/Profile/Locations: сохранить возможности, убрать путаницу",active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-PRESENTATION.md
 R12-F05,Доступность критического пути,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-F06,Bundle/data waterfall/route latency,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
-R12-F07,Upgrade и многоповерхностный путь,active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-F07.md
+R12-F07,Upgrade и многоповерхностный путь,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-ARM64-ACCESS-2026-09-07.md
 R12-M01,Актуальные legal/seller/claims решения,blocked,I1,NEEDS_CONTEXT,03_RELEASE_BACKLOG_83.md,OWNER-DECISIONS-2026-09-07.md
 R12-M02,Одна commercial revision на всех поверхностях,active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,HANDOFF.md
 R12-M03,"Настоящие сроки, price hold и квоты",active,I3,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,HANDOFF.md
