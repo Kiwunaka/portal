@@ -1306,6 +1306,10 @@ function clientSupportUser360(tgId: number, redactFields = false) {
     installations: redactFields ? [] : [{ installation_ref: supportAttempt.installation_ref, attempts: 1, sessions: 1, last_seen_at: supportAttempt.ended_at }],
     sessions: redactFields ? [] : [{ session_ref: supportAttempt.session_ref, installation_ref: supportAttempt.installation_ref, attempts: 1, last_seen_at: supportAttempt.ended_at }],
     attempts: redactFields ? [] : [supportAttempt],
+    network_context: redactFields ? [] : [
+      { device_ref: "network-device_fixture1", observed_at: "2026-09-07T16:00:00Z", origin_status: "observed", public_ip: "203.0.113.77", network_class: "cellular", carrier: "Fixture carrier", country_code: "RU", region: "Fixture region", platform: "android", app_version: "1.2.0" },
+      { device_ref: "network-device_fixture2", observed_at: "2026-09-07T16:01:00Z", origin_status: "unavailable", public_ip: null, network_class: "cellular", carrier: "Offline carrier", country_code: null, region: null, platform: "android", app_version: "1.2.0" },
+    ],
     fingerprints: redactFields ? [] : [{ fingerprint: "fp_11111111111111111111", count: 2, platform: "windows", app_version: "1.2.0", subsystem: "runtime", stage: "core_start", result: "failure", error_code: "CORE-001" }],
     observer: { authority: "trusted_server_observer", state: "watch", observed_ip_count_24h: 2, observed_node_count_24h: 1, last_observed_at: "2026-07-15T09:58:00Z" },
     privacy: { adapter: "event_allowlist_v1", excluded: ["meta_json", "ip", "url", "token"] },

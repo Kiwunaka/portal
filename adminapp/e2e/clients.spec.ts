@@ -20,6 +20,11 @@ test("прямая ссылка на пользователя загружает
   await expect(page.getByText(/desktop_tun_start_failed/)).toBeVisible();
   await expect(page.getByText("windows · v1.1.5+28", { exact: true })).toBeVisible();
   await expect(page.getByText("Сгруппированные попытки", { exact: true })).toBeVisible();
+  await expect(page.getByText("Исходная сеть устройства", { exact: true })).toBeVisible();
+  await expect(page.getByText("203.0.113.77", { exact: true })).toBeVisible();
+  await expect(page.getByText("RU · Fixture region", { exact: true })).toBeVisible();
+  const offlineNetwork = page.getByRole("row").filter({ hasText: "Offline carrier" });
+  await expect(offlineNetwork.getByRole("cell", { name: "Неизвестен", exact: true })).toHaveCount(2);
   await expect(page.getByText("attempt_11111111111111111111", { exact: true })).toBeVisible();
   await expect(page.getByText("raw-session-secret", { exact: true })).toHaveCount(0);
 
@@ -72,6 +77,7 @@ test("L1 видит явную редактированную область в�
 
   await page.getByRole("tab", { name: "События приложения" }).click();
   await expect(page.getByText("Установки, сессии, попытки и события приложения относятся к чувствительной диагностике.")).toBeVisible();
+  await expect(page.getByText("203.0.113.77", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Событий приложения нет.")).toHaveCount(0);
 
   await page.getByRole("tab", { name: "Платежи" }).click();

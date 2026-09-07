@@ -11,6 +11,7 @@ except ImportError:
 
 bootstrap_slice(globals())
 from checkout_quote_service import CheckoutQuoteError, quote_binding, sign_checkout_quote, verify_checkout_quote
+from client_network_diagnostics import NETWORK_CLASSES, record_network_context
 SMART_CONNECT_LATENCY_EVENT_NAME = "smart_connect_latency_sample"
 MANAGED_PROFILE_SYNC_BUDGET_SECONDS = 7.0
 MANAGED_PROFILE_PANEL_BUDGET_SECONDS = 8.0
@@ -135,6 +136,15 @@ class ClientRuntimeStatsIn(BaseModel):
 
 class ClientTelegramLinkEventIn(BaseModel):
     event_name: str = Field(min_length=1, max_length=32)
+
+
+class ClientNetworkContextIn(BaseModel):
+    model_config = {"extra": "forbid"}
+    network_class: str = Field(default="unknown", max_length=24)
+    carrier: str | None = Field(default=None, max_length=80)
+    direct_observation: bool = False
+    profile_revision: str | None = Field(default=None, max_length=128)
+    runtime_phase: str | None = Field(default=None, max_length=32)
 
 
 class AccountOnboardingStatusIn(BaseModel):
@@ -2466,6 +2476,36 @@ async def client_nodes_select(
             "transport_profile": resolved_profile,
             "accepted_samples": len(accepted_samples),
         }
+    finally:
+        s.close()
+
+
+@app.post("/api/client/network/context")
+async def client_network_context(
+    payload: ClientNetworkContextIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    s, user, auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        install_id = _client_authenticated_install_id(
+            s, user=user, auth_user=auth_user, require_device=True,
+        )
+        _, identity = _client_telemetry_identity(
+            s, user=user, auth_user=auth_user, request=request,
+        )
+        if identity["platform"] != "android" or payload.network_class not in NETWORK_CLASSES:
+            raise HTTPException(status_code=422, detail="Unsupported network context")
+        accepted = record_network_context(
+            s, request=request, account_id=str(user.account_id),
+            device_id=str(auth_user["device_id"]), install_id=install_id,
+            network_class=payload.network_class, carrier=payload.carrier,
+            direct_observation=payload.direct_observation,
+            platform=identity["platform"], app_version=identity["app_version"],
+            profile_revision=payload.profile_revision, runtime_phase=payload.runtime_phase,
+        )
+        s.commit()
+        return {"ok": True, "accepted": accepted}
     finally:
         s.close()
 

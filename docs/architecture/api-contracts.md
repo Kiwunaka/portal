@@ -1382,8 +1382,44 @@ client/core fields, replaces raw account/install/device/session/attempt/trace
 identity with purpose-scoped opaque references, and groups correlated attempts
 and diagnostic fingerprints server-side. Support-bundle data remains a bounded
 summary with TTL, retention and access-audit facts; observer state remains a
-trusted read-only projection. None of these reads grants entitlement, exposes
-raw IP/token/config/URL material, or changes support-bundle custody.
+trusted read-only projection. These Event-based reads do not grant entitlement,
+expose raw IP/token/config/URL material, or change support-bundle custody.
+The separate, access-controlled network-context field is specified below.
+
+### Automatic access-network diagnostics
+
+Owner decision 2026-09-07 adds `POST /api/client/network/context` for an
+authenticated Android device session. Its closed body accepts `network_class`
+(`cellular|wifi|ethernet|other|unknown`), bounded `carrier`, `direct_observation`,
+`profile_revision` and `runtime_phase`. Account/device/install identity comes
+from authentication; client-supplied IP is rejected. The response is only
+`ok`/`accepted`. Persistence is bounded to one observation per device/30 seconds.
+
+Android binds a fixed owned HTTPS request to a physical `NOT_VPN` network,
+with default TLS verification and no redirects or proxy/default-network
+fallback. The receiving server obtains IP with existing trusted-proxy rules.
+Native routing is a diagnostic claim, never access, abuse or tunnel-health
+authority. If that path fails, ordinary API transport may send carrier/class
+with `direct_observation=false`; its source IP is never saved as the underlying
+address. Missing values stay unknown.
+
+The focused `client_network_diagnostics` service stores zero-risk
+`AntiAbuseEvent(event_kind=client_network_context)` rows outside Event/analytics.
+The supervised privacy worker clears raw IP and coarse metadata within the
+existing capped 72-hour window; full/prefix IP HMAC limits remain seven/ninety
+days. Audit rows remain. Optional `CLIENT_NETWORK_GEOIP_CITY_DB_PATH` points
+to an operator-local City MMDB for subdivision lookup. Country uses the existing
+local country database. No external IP lookup, GPS or coordinates are used;
+missing/unreadable databases yield unknown geography.
+
+User 360 adds `network_context`: latest observation per device (up to 20),
+timestamp, opaque device ref, network/carrier/IP/region and bounded client
+context. This is an explicit exception to the Event adapter's IP exclusion.
+`support.sensitive.read` is required; L1 receives an empty redacted field.
+Expired IP is hidden at read time before cleanup. Every read with these data
+records `support.network_context.read` with actor/scope/count, never network
+values. Online lists, public responses, release-health aggregates and manual
+support-bundle custody do not acquire this payload.
 
 ### Operator network work boundary
 

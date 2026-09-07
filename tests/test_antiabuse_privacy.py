@@ -295,6 +295,7 @@ def test_cleanup_nulls_expired_ip_fields_without_deleting_audit(tmp_path: Path) 
             "antiabuse_prefix_hmac": 1,
             "security_event_ip": 1,
             "user_last_ip": 1,
+            "client_network_metadata": 0,
         }
         assert session.query(AntiAbuseEvent).count() == 3
         assert session.get(AntiAbuseEvent, "raw-expired").raw_ip is None

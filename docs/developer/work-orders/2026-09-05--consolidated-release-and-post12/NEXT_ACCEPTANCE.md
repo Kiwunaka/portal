@@ -1,5 +1,24 @@
 # Текущие условия следующей приёмки
 
+Актуализация 2026-09-07: [решения владельца](OWNER-DECISIONS-2026-09-07.md)
+снимают вопросы N02 и O03/V02. Защищённый офлайн-профиль и автоматическая
+диагностика исходной сети реализованы; [новые проверки и границы](EXECUTION-OFFLINE-NETWORK-2026-09-07.md)
+относятся к client `550329f` и текущему platform diff поверх `398b32f`.
+Huawei теперь доступен: Android 12 / SDK 31, физические Wi-Fi/mobile проверки
+проведены. Старое наблюдение «0 устройств» больше не является блокером.
+
+M01 seller/receipt и платные GitHub G04/G06 — `SKIPPED_BY_OWNER`.
+Их общий release criterion остаётся незакрытым: skip не означает provider,
+CI или enforcement PASS. Оплата GitHub и реквизиты сейчас не запрашиваются.
+Windows SCM/Win10, полная Android matrix, exact release bytes, deployed
+Android-to-API diagnostics и origin-specific acceptance остаются отдельными
+незакрытыми проверками. Production/release rollout не выполнен.
+
+## Исторический readback до ответов владельца
+
+Ниже сохранены прежние наблюдения. Упоминания ожидаемых N02/O03/M01/GitHub
+решений относятся к их дате; для продолжения применяется актуализация выше.
+
 После C03 выполнен [общий локальный gate](EXECUTION-LOCAL-CONVERGENCE.md):
 2026-09-06 15:57 UTC, platform `272ef9a`, client `70907c0`, Core `8dc57a8`;
 15/15 этапов PASS, 9/9 статических пределов PASS, пять целевых размеров не

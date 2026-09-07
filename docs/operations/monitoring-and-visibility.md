@@ -227,6 +227,23 @@ Operational rules:
 - a green summary does not prove production WARP; production proof still needs
   Android and Windows release-build connect/disconnect/fallback evidence
 
+## Automatic client access-network context
+
+Android reports on app open/connect/running/failure, at most once per minute
+per account in a process. Support → User → Events shows the latest source
+IP, carrier and approximate region with observation time. Access requires
+`support.sensitive.read` and records `support.network_context.read` in audit.
+L1 sees no network values. Unavailable direct API transport shows unknown IP;
+an old observation never proves the present connection's source address.
+
+The existing supervised anti-abuse worker clears raw IP and
+`client_network_metadata` within 72 hours; backlog includes the new field.
+No separate worker/database is introduced. An operator-local City MMDB at
+`CLIENT_NETWORK_GEOIP_CITY_DB_PATH` enables subdivision lookup. The existing
+country MMDB alone may provide country while region stays unknown. Neither
+lookup transmits IP to a third party. Local fixtures do not establish deployed
+Android-to-API evidence or physical carrier/geography accuracy.
+
 ## Security Abuse Visibility
 
 `/api/admin/metrics/status` includes a `security` block with 24-hour counters
