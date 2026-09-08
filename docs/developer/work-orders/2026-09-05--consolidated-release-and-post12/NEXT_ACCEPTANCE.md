@@ -5,9 +5,11 @@
 [Исправление явного запрета доступа](EXECUTION-INTEGRATED-ACCESS-DENIAL-2026-09-08.md)
 client `f479fd4` принято в Windows VM: 304 hashes, очистка кэша и отключение,
 offline отказ после UI restart PASS. Прежний комплект больше не содержит все
-требуемые исправления. Следующий шаг — новый Android APK после общего Dart
-изменения и затронутая device проверка; далее actual revocation/expiry нового
-комплекта. Старый controlled-clock expiry не закрывает эти сценарии.
+требуемые исправления. Новый Android APK `20a0781b…97af` уже установлен на
+Huawei; positive connect/resume и cleanup PASS. [Актуальные inputs](evidence/integrated-acceptance-20260908/inputs-access-denial.json)
+закреплены. Следующий шаг — Android denial на отдельном test login и actual
+revocation/expiry нового комплекта. Основная admin-сессия телефона сохранена;
+отдельный вход запрошен. Старый controlled-clock expiry не закрывает эти сценарии.
 
 [Совместимость actual old/current backend](EXECUTION-INTEGRATED-BACKEND-COMPAT-2026-09-08.md)
 для `16407b8` проверена на PostgreSQL: 25 HTTP assertions, пять SQL writes,

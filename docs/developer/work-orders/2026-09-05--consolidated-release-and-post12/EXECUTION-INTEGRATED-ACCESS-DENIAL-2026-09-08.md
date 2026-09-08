@@ -2,8 +2,22 @@
 
 **PASS_BOUNDED** для client `f479fd4` / Core `02a091c`, Windows setup
 `f44486c3ae32ac5c3020e9b76c997902c202084076cb7954bc0678d5805f676d`.
-Общий комплект требует актуализации: изменился общий Dart-код, прежний Android
-APK не содержит исправления. Полные N02/N07/A04 и release gates открыты.
+Общий комплект обновлён после изменения Dart-кода; прежний Android APK
+не содержит исправления. Полные N02/N07/A04 и release gates открыты.
+
+Последующее обновление Android завершено: [новые inputs](evidence/integrated-acceptance-20260908/inputs-access-denial.json),
+четыре APK `f479fd4`; ARM64 `20a0781b…97af` установлен на Huawei. Восемь
+проверок update/connect/resume/disconnect и routes/rules cleanup PASS_BOUNDED.
+APK подпись, ABI, native hashes и notices PASS; Core/Flutter/notices прежние,
+Dart AOT изменился. Current Android owner evidence:
+`POKROV-app/docs/operations/evidence/2026-09-08-r12-android-access-denial/README.md`.
+Для физического denial/revocation запрошен отдельный test login: телефон
+привязан к основному runtime admin. Его текущая сессия и backend не изменялись.
+Положительная device проверка не считается отрицательной; этот gate открыт.
+Android evidence commit: `408e936`; 18 staged Git blob hashes PASS. Повторные
+client seed/docs contracts PASS; platform 33 tests, context audit и package
+validator (350 local links) PASS. Пять artifact hashes нового input inventory
+перепроверены по локальным bytes. `git diff --check` PASS.
 
 На прежнем Windows `3784352` воспроизведён дефект: подписка уже возвращала
 HTTP 200 / `expiredOrBlocked`, managed profile — 503, а клиент подключался из
@@ -50,8 +64,8 @@ tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q`
 build script завершён; название script не доказывает две идентичные сборки.
 `validate-seed.ps1` с явными platform/Core roots и `test/docs-contract.ps1` PASS.
 
-Дальше: пересобрать Android после общего source fix и выполнить затронутый
-device scenario; отдельно проверить actual session/device revocation 401/403
+Дальше: выполнить Android denial scenario на отдельном test login;
+отдельно проверить actual session/device revocation 401/403
 и expiry на новом комплекте. Старые AWG/route/update receipts сохраняют только
 свои исходные bytes. Новый candidate, push, production deploy и публикация
 не выполнялись. Разрешение на тесты сохраняется; release/spend границы прежние.
