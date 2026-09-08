@@ -2,6 +2,18 @@
 
 ## Текущая очередь до выпуска — 2026-09-08
 
+Последующее [AWG-прохождение текущего Huawei](EXECUTION-INTEGRATED-ANDROID-AWG-2026-09-08.md)
+закрыло поиск exact identity и дало AWG3.1→AWG2→AWG3.1, server inner traffic и
+Wi-Fi/mobile/Wi-Fi continuity. Backend configuration восстановлена, VPN off,
+routes совпали; два policy-rule hashes изменились только из-за нового OS network
+ID, остальной текст совпал с baseline. Следующая очередь — оставшаяся связная
+Windows/backend-приёмка; новый candidate и выпуск ещё не выполнены.
+
+[Текущий backend](EXECUTION-INTEGRATED-BACKEND-2026-09-08.md): 129 HTTP tests,
+22 subtests и 9 PostgreSQL concurrency cases PASS на `16407b8`. Локальная
+payment acceptance выполнена. Старое приложение на expanded schema, deployed
+operator/runtime, реальные provider операции и оставшаяся Windows matrix открыты.
+
 Обновление: [единый комплект и acceptance matrix](INTEGRATED-ACCEPTANCE-2026-09-08.md)
 закреплены. Preflight `READY_LOCAL_FREEZE`, 15/15 local quality steps и четыре
 Android ABI audit PASS. Новый ARM64 установлен на Huawei: два обычных

@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "captured_at_utc": "2026-09-08T11:05:19.652180+00:00",
+  "source": "16407b8909508c9d533e88ba24153f8fef0314ce",
+  "source_checkout": "E:/r12-integration-platform-20260908",
+  "source_state": "clean",
+  "origin": "current-origin; loopback PostgreSQL and synthetic HTTP/provider fixtures",
+  "result": "PASS_LOCAL_PAYMENT_ACCEPTANCE",
+  "commands": [
+    {
+      "command": "python -u -B -m pytest -p no:cacheprovider portal_bot/tests/test_email_auth.py tests/test_api_payments_callbacks.py tests/test_lavatop_payment_providers.py tests/test_payment_email_readiness_smoke.py tests/test_admin_payments_api.py -q",
+      "exit_code": 0,
+      "result": "129 passed; 22 subtests; 19 deprecation warnings; 656.14 seconds"
+    },
+    {
+      "command": "python -u -B -m pytest -p no:cacheprovider tests/test_public_checkout_postgres.py tests/test_payment_outbox_postgres.py -q",
+      "exit_code": 0,
+      "result": "9 passed; 72.75 seconds; exact loopback rehearsal DB and new retained schemas"
+    }
+  ],
+  "initial_failure": "9 fixture setup errors: loopback PostgreSQL was stopped; no scenario executed; server started with existing data and explicit loopback/55439; only failed PG suite repeated",
+  "fixture_final_state": "PostgreSQL stopped with pg_ctl -m fast; pg_ctl status confirms no server running; data and schemas retained",
+  "b08_review": "9 named backup/deploy/model/db/outbox/test input blobs unchanged since af80ade; no transfer of prior deployed payload hashes or unexecuted old-app compatibility",
+  "remaining": [
+    "real provider payment/refund/reversal binding and partial-refund policy",
+    "old application on expanded PostgreSQL schema; full rolling/contract matrix",
+    "current deployed access/fingerprint and production backup/recovery",
+    "final candidate and release authorization observation"
+  ],
+  "production_mutation": false,
+  "candidate_created": false,
+  "retained_files": [
+    {
+      "path": "b08-input-review.json",
+      "sha256": "be584de74c4f7ebd2d1325497b550360db91c3cc050ee3d6c22dff2de7120625",
+      "bytes": 2980
+    },
+    {
+      "path": "payment-api.log",
+      "sha256": "c3dd7e96c195f11824e3475544583daeb8ff7133f2516a2e4fd1c720261140c1",
+      "bytes": 3605
+    },
+    {
+      "path": "postgres-ready.log",
+      "sha256": "76ff263c30a318debd38922a54c847dcc1739c3d3eff3149f56868f05fde2dd4",
+      "bytes": 111
+    },
+    {
+      "path": "E:\\r12-integrated-acceptance-20260908\\backend\\postgres.log",
+      "sha256": "eb666440a2777c8a375d4a9b7bc6f80aa88c1b1202054ffd9ea1644b38149523",
+      "bytes": 145632
+    }
+  ]
+}

@@ -34,6 +34,12 @@ APK `0206cd2a...` не подтверждает новый `88452b99...`.
 
 ## Общая acceptance matrix
 
+Дополнение: [текущий Huawei AWG](EXECUTION-INTEGRATED-ANDROID-AWG-2026-09-08.md)
+прошёл AWG3.1 → AWG2 → AWG3.1 и Wi-Fi/mobile/Wi-Fi с server inner traffic.
+Exact identity найдена; исходная backend configuration полностью восстановлена.
+Финальные routes совпали, VPN/TUN выключены. Два rule hashes отличаются только
+новым OS network ID; остальные bytes совпали с baseline.
+
 PASS ниже относится ровно к названному сценарию. Полные родительские R12
 критерии и будущий exact-candidate gate остаются открытыми.
 
@@ -42,14 +48,14 @@ PASS ниже относится ровно к названному сценар
 | G02/G03/G05/G07, источники и artifact binding | PASS: чистый tuple, четыре APK, существующий Windows installer и Core bytes | Final release-handoff и same-byte channel binding |
 | G03/Q01, локальная автоматическая проверка | PASS: 15/15 quality steps; preflight `READY_LOCAL_FREEZE`, 0 blockers | Это preflight, не полный go/no-go |
 | D01/D04/D06, Android packaging | PASS: подпись, version 4053, ABI, native Core hashes, release flags и notices всех 4 APK | Direct/store authority, downgrade и final-channel acceptance |
-| D01/N01/N03, Huawei | PASS_BOUNDED: новый ARM64 установлен, видимые настройки и first-install timestamp сохранены; два connect/disconnect с app protection и точным восстановлением routes/rules | AWG текущей identity, independent egress и полный parent scope |
+| D01/N01/N03, Huawei | PASS_BOUNDED: новый ARM64 установлен; обычные connect/disconnect и AWG3.1→AWG2→AWG3.1 с server inner traffic; routes/rules восстановлены с учётом нового OS network ID | Полный independent egress/leak и parent scope |
 | W01/N03/N08, Windows | PASS_BOUNDED: для тех же bytes сохранены 305 installed hashes и независимые NIC-counter routing samples | Остальные протоколы, Win10, IPv6 и полный matrix |
 | W02/W03/W04/W06 | Исторические crash, reboot, update, tray и coexistence receipts сохранены | Review изменённых inputs и затронутые сценарии единого комплекта; unresolved Defender behavior |
 | N02/N07/A04, outage/expiry/revocation | Исходная реализация и прежние bounded receipts сохранены | Связная проверка текущих bytes; expiry и явная revocation не равны API outage |
 | N04, event/probe fencing | Текущие Core concurrency/race и Android source tests сохранены | Exact installed event scenarios вместе с N03 |
-| A02/A03, owned AWG | A02 I4 сохранён для exact Core/server/Pi; новый Core в обоих пакетах | Android managed AWG identity и whole-path MTU/packet matrix |
+| A02/A03, owned AWG | A02 I4 сохранён для exact Core/server/Pi; текущий Huawei прошёл managed AWG2/AWG3.1 и 22 server alignment checks | Whole-path MTU/packet matrix и полный parent scope |
 | D02/D03/W05, сеть и нагрузка | Предыдущие измерения остаются ограниченными своим tuple | Network change, Doze, leak/IPv6, CPU/RAM/startup и energy по применимым exact inputs |
-| B01–B08, backend | Локальные payment/outbox/Postgres receipts сохранены | Dependency review; текущие payment idempotency/reconciliation и migration/rollback acceptance; real provider E2E отдельно |
+| B01–B08, backend | [Текущая payment acceptance](EXECUTION-INTEGRATED-BACKEND-2026-09-08.md): 129 HTTP tests / 22 subtests и 9 PostgreSQL cases PASS; 9 B08 input blobs неизменны | Реальный provider E2E; old-app/expanded-schema и полный migration/rollback/deployed scope |
 | O/V, operator | Локальные реализации и проверки сохранены | Current deployed access/fingerprint и runtime evidence |
 | G04/G06 | SKIPPED_BY_OWNER для платных GitHub checks/protection | Применимые бесплатные/local checks; skip не считается CI/enforcement PASS |
 | M01 | SKIPPED_BY_OWNER для seller/receipt confirmation | Не подтверждает real payment/refund E2E |
@@ -89,7 +95,7 @@ routes/rules восстановлены. Это не independent leak/egress pro
 
 ## Внешние условия выпуска
 
-Лицензированный Win10-стенд, текущая exact Android/AWG identity, real provider
+Лицензированный Win10-стенд, real provider
 операции, deployed operator proof, окончательные signing/channel и release
 решения остаются в общей очереди. Owner skips не переоткрываются как просьба
 об оплате. Авторизация тестовых профилей от 2026-09-08 сохраняется; production
