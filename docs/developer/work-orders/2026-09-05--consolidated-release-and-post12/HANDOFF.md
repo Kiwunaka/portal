@@ -2,6 +2,12 @@
 
 **PARTIAL / RELEASE_BLOCKED. План целиком не завершён; последующие срезы датированы ниже.**
 
+[N04 current source](EXECUTION-N04-2026-09-08.md): Core `02a091c` прошёл
+три package suites и race detector; client `5188505` — 188 direct и 22 scoped
+store JVM tests. Проверены timeout, поздний ответ, раздельные результаты calls
+и внешние event fences. Нового runtime diff нет. Exact Android package и
+зависимость N03 остаются открытыми; N04 теперь `NEEDS_RUNTIME_PROOF`.
+
 [Win11 API outage](EXECUTION-WINDOWS-API-OUTAGE-2026-09-08.md): installed
 `e88dff9` сохраняет туннель при блокировке клиентских HTTP-запросов; cached
 reconnect и UI-restart connect PASS_BOUNDED. Original cache window не продлён;

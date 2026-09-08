@@ -1,0 +1,114 @@
+=== RUN   TestURLTestCancellationAfterDialCannotSucceed
+--- PASS: TestURLTestCancellationAfterDialCannotSucceed (0.00s)
+=== RUN   TestURLTestRetainsObservedTimeoutStage
+=== RUN   TestURLTestRetainsObservedTimeoutStage/tls_timeout
+=== RUN   TestURLTestRetainsObservedTimeoutStage/response_timeout
+--- PASS: TestURLTestRetainsObservedTimeoutStage (0.40s)
+    --- PASS: TestURLTestRetainsObservedTimeoutStage/tls_timeout (0.20s)
+    --- PASS: TestURLTestRetainsObservedTimeoutStage/response_timeout (0.20s)
+=== RUN   TestObservedFailureDoesNotInferTimeoutCause
+--- PASS: TestObservedFailureDoesNotInferTimeoutCause (0.00s)
+=== RUN   TestResolveURLTestLinkUsesOwnedProbeByDefault
+--- PASS: TestResolveURLTestLinkUsesOwnedProbeByDefault (0.00s)
+PASS
+ok  	github.com/sagernet/sing-box/common/urltest	1.092s
+=== RUN   TestSelectedProbeCannotConfirmChangedRouteOrDirectLeaf
+--- PASS: TestSelectedProbeCannotConfirmChangedRouteOrDirectLeaf (0.00s)
+=== RUN   TestSelectedProbeLateSuccessAfterTimeoutCannotSettleNextCall
+--- PASS: TestSelectedProbeLateSuccessAfterTimeoutCannotSettleNextCall (0.05s)
+=== RUN   TestEndpointCallCannotSucceedWithoutItsRuntime
+--- PASS: TestEndpointCallCannotSucceedWithoutItsRuntime (0.00s)
+=== RUN   TestURLTestErrorCategory
+=== RUN   TestURLTestErrorCategory/none
+=== RUN   TestURLTestErrorCategory/deadline
+=== RUN   TestURLTestErrorCategory/cancelled
+=== RUN   TestURLTestErrorCategory/dns
+=== RUN   TestURLTestErrorCategory/certificate
+=== RUN   TestURLTestErrorCategory/reality
+=== RUN   TestURLTestErrorCategory/http
+=== RUN   TestURLTestErrorCategory/timeout
+=== RUN   TestURLTestErrorCategory/other
+=== RUN   TestURLTestErrorCategory/observed_TLS_timeout
+=== RUN   TestURLTestErrorCategory/observed_response_timeout
+=== RUN   TestURLTestErrorCategory/wrapped_certificate
+--- PASS: TestURLTestErrorCategory (0.00s)
+    --- PASS: TestURLTestErrorCategory/none (0.00s)
+    --- PASS: TestURLTestErrorCategory/deadline (0.00s)
+    --- PASS: TestURLTestErrorCategory/cancelled (0.00s)
+    --- PASS: TestURLTestErrorCategory/dns (0.00s)
+    --- PASS: TestURLTestErrorCategory/certificate (0.00s)
+    --- PASS: TestURLTestErrorCategory/reality (0.00s)
+    --- PASS: TestURLTestErrorCategory/http (0.00s)
+    --- PASS: TestURLTestErrorCategory/timeout (0.00s)
+    --- PASS: TestURLTestErrorCategory/other (0.00s)
+    --- PASS: TestURLTestErrorCategory/observed_TLS_timeout (0.00s)
+    --- PASS: TestURLTestErrorCategory/observed_response_timeout (0.00s)
+    --- PASS: TestURLTestErrorCategory/wrapped_certificate (0.00s)
+=== RUN   TestProbeEventUsesOnlyTypedCauseEvidence
+--- PASS: TestProbeEventUsesOnlyTypedCauseEvidence (0.00s)
+=== RUN   TestCanonicalAWGSafeDiagnostic
+=== RUN   TestCanonicalAWGSafeDiagnostic/formatted_safe_diagnostic
+=== RUN   TestCanonicalAWGSafeDiagnostic/all_bounded_occurrences
+=== RUN   TestCanonicalAWGSafeDiagnostic/unknown_code
+=== RUN   TestCanonicalAWGSafeDiagnostic/zero_occurrence
+=== RUN   TestCanonicalAWGSafeDiagnostic/unbounded_occurrence
+=== RUN   TestCanonicalAWGSafeDiagnostic/trailing_material
+=== RUN   TestCanonicalAWGSafeDiagnostic/newline
+=== RUN   TestCanonicalAWGSafeDiagnostic/ordinary_log
+--- PASS: TestCanonicalAWGSafeDiagnostic (0.00s)
+    --- PASS: TestCanonicalAWGSafeDiagnostic/formatted_safe_diagnostic (0.00s)
+    --- PASS: TestCanonicalAWGSafeDiagnostic/all_bounded_occurrences (0.00s)
+    --- PASS: TestCanonicalAWGSafeDiagnostic/unknown_code (0.00s)
+    --- PASS: TestCanonicalAWGSafeDiagnostic/zero_occurrence (0.00s)
+    --- PASS: TestCanonicalAWGSafeDiagnostic/unbounded_occurrence (0.00s)
+    --- PASS: TestCanonicalAWGSafeDiagnostic/trailing_material (0.00s)
+    --- PASS: TestCanonicalAWGSafeDiagnostic/newline (0.00s)
+    --- PASS: TestCanonicalAWGSafeDiagnostic/ordinary_log (0.00s)
+=== RUN   TestReleaseStartedServiceForwardsOnlyCanonicalAWGSafeDiagnostic
+--- PASS: TestReleaseStartedServiceForwardsOnlyCanonicalAWGSafeDiagnostic (0.00s)
+=== RUN   TestManagedLoggerDoesNotRetainPlantedMaterialInAnyLogSink
+=== RUN   TestManagedLoggerDoesNotRetainPlantedMaterialInAnyLogSink/release
+=== RUN   TestManagedLoggerDoesNotRetainPlantedMaterialInAnyLogSink/debug
+--- PASS: TestManagedLoggerDoesNotRetainPlantedMaterialInAnyLogSink (0.00s)
+    --- PASS: TestManagedLoggerDoesNotRetainPlantedMaterialInAnyLogSink/release (0.00s)
+    --- PASS: TestManagedLoggerDoesNotRetainPlantedMaterialInAnyLogSink/debug (0.00s)
+=== RUN   TestManagedLoggerKeepsPanicSemanticsWithSafePayload
+--- PASS: TestManagedLoggerKeepsPanicSemanticsWithSafePayload (0.00s)
+PASS
+ok  	github.com/sagernet/sing-box/daemon	0.214s
+=== RUN   TestOperationalEmitterUsesClosedSafeFields
+--- PASS: TestOperationalEmitterUsesClosedSafeFields (0.00s)
+=== RUN   TestOperationalEmitterPreservesCanonicalEgressSubsystem
+--- PASS: TestOperationalEmitterPreservesCanonicalEgressSubsystem (0.00s)
+=== RUN   TestOperationalEmitterRejectsUnknownAndStaleInput
+--- PASS: TestOperationalEmitterRejectsUnknownAndStaleInput (0.00s)
+=== RUN   TestOperationalClassifierDoesNotForwardRawFailure
+--- PASS: TestOperationalClassifierDoesNotForwardRawFailure (0.00s)
+=== RUN   TestOperationalClassifierKeepsTransportClassesDistinct
+=== RUN   TestOperationalClassifierKeepsTransportClassesDistinct/deadline
+=== RUN   TestOperationalClassifierKeepsTransportClassesDistinct/typed_DNS_timeout
+=== RUN   TestOperationalClassifierKeepsTransportClassesDistinct/typed_UDP_timeout
+=== RUN   TestOperationalClassifierKeepsTransportClassesDistinct/observed_TLS_timeout
+=== RUN   TestOperationalClassifierKeepsTransportClassesDistinct/observed_response_timeout
+=== RUN   TestOperationalClassifierKeepsTransportClassesDistinct/refused
+=== RUN   TestOperationalClassifierKeepsTransportClassesDistinct/authentication
+=== RUN   TestOperationalClassifierKeepsTransportClassesDistinct/protocol
+=== RUN   TestOperationalClassifierKeepsTransportClassesDistinct/configuration
+=== RUN   TestOperationalClassifierKeepsTransportClassesDistinct/generic_transport
+=== RUN   TestOperationalClassifierKeepsTransportClassesDistinct/unknown
+--- PASS: TestOperationalClassifierKeepsTransportClassesDistinct (0.00s)
+    --- PASS: TestOperationalClassifierKeepsTransportClassesDistinct/deadline (0.00s)
+    --- PASS: TestOperationalClassifierKeepsTransportClassesDistinct/typed_DNS_timeout (0.00s)
+    --- PASS: TestOperationalClassifierKeepsTransportClassesDistinct/typed_UDP_timeout (0.00s)
+    --- PASS: TestOperationalClassifierKeepsTransportClassesDistinct/observed_TLS_timeout (0.00s)
+    --- PASS: TestOperationalClassifierKeepsTransportClassesDistinct/observed_response_timeout (0.00s)
+    --- PASS: TestOperationalClassifierKeepsTransportClassesDistinct/refused (0.00s)
+    --- PASS: TestOperationalClassifierKeepsTransportClassesDistinct/authentication (0.00s)
+    --- PASS: TestOperationalClassifierKeepsTransportClassesDistinct/protocol (0.00s)
+    --- PASS: TestOperationalClassifierKeepsTransportClassesDistinct/configuration (0.00s)
+    --- PASS: TestOperationalClassifierKeepsTransportClassesDistinct/generic_transport (0.00s)
+    --- PASS: TestOperationalClassifierKeepsTransportClassesDistinct/unknown (0.00s)
+=== RUN   TestOperationalEmitterIsConcurrentAndBounded
+--- PASS: TestOperationalEmitterIsConcurrentAndBounded (0.00s)
+PASS
+ok  	github.com/sagernet/sing-box/experimental/libbox	0.146s
