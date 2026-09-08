@@ -1,0 +1,38 @@
+{
+  "kind": "R12 Windows installed UI termination and graceful connected reboot",
+  "client_source": "6fc1e8439371dc5aee0f1df9cbcf1b3cca2841cd",
+  "core_source": "8dc57a830bd1487389dd1b7c9190f094c31e13bc",
+  "client_evidence_path": "E:/r12client/docs/operations/evidence/2026-09-08-r12-connected-recovery/",
+  "client_receipt_sha256": "e4a13562c43257e4a831116535eb869f4b22cc9b9f6b5d37e0597c7ceaf6a24a",
+  "results": {
+    "forced_ui_termination_retains_service_and_tun": "PASS_BOUNDED",
+    "ui_relaunch_observes_running_service": "PASS_BOUNDED",
+    "connected_graceful_reboot_returns_safe_disconnected": "PASS_BOUNDED",
+    "guest_route_dns_exact_baseline_restored": true,
+    "installed_files_verified_before_and_after": 305,
+    "sleep": "BLOCKED_BY_ACCESS: virtual firmware exposes no sleep/hibernate state",
+    "forced_service_termination": "NOT_RUN: current guest control token is not elevated",
+    "post_reboot_reconnect": "NOT_RUN",
+    "new_candidate": "NOT_CREATED"
+  },
+  "cleanup": {
+    "full_original_rollout_config_restored": true,
+    "entitlement_or_endpoint_material_mutated": false,
+    "vm_poweroff_nic_none": true,
+    "host_routes_dns_match_retained_baseline": true,
+    "temporary_launch_task_removed": "launch-ui.ps1 finally; no R12 task returned by subsequent guest inventory",
+    "installed_diagnostic_probe": "retained unchanged on disposable offline clone"
+  },
+  "validation": {
+    "client_log_sha256": "0ad88501c95be830e1dcb2c7afcff35a6cf2035f48f2ffae84573bfe695c006b",
+    "client_seed_and_docs": "PASS",
+    "client_command": "pwsh -NoProfile -File scripts/validate-seed.ps1 -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start -CoreRoot E:/r12core-implementation",
+    "platform_docs_tests": "PASS: 33 tests",
+    "platform_context_audit": "PASS",
+    "package_validator": "PASS: 83 R12 IDs; 378 legacy IDs; 297 links",
+    "git_evidence_hashes": "PASS: 21 retained staged blobs",
+    "diff_check": "PASS"
+  },
+  "release_state": "No new candidate; no push merge deploy publication",
+  "client_evidence_commit": "6014b910e0f7263ae5d378efc9dad2abe3e567d7"
+}
