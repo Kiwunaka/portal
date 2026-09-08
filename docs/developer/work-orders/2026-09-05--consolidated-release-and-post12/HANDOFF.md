@@ -2,6 +2,13 @@
 
 **PARTIAL / RELEASE_BLOCKED. План целиком не завершён; последующие срезы датированы ниже.**
 
+[Windows managed switching](EXECUTION-WINDOWS-SWITCHING-2026-09-08.md):
+обычные reconnect AWG3.1 → AWG2 → AWG3.1 прошли на установленном v3 пакете.
+Защищённый файл службы сменился и вернулся к исходному SHA; все три отключения
+восстановили routes/DNS, 305 installed hashes совпали. Независимый route proof
+остаётся OPEN: одинаковый внешний IP и неподтверждённый SSH host key DE.
+Временная серверная настройка восстановлена; clone выключен, NIC none.
+
 [Windows upgrade / installed cancellation](EXECUTION-WINDOWS-UPGRADE-MANAGED-2026-09-08.md):
 исправлено завершение UI установщиком и удаление одного старого test EXE.
 Повторный Win11 upgrade, 305 hashes, сохранённое состояние и обычный IPC PASS.
