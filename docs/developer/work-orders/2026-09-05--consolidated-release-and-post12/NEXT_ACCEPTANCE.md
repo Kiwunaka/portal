@@ -2,6 +2,14 @@
 
 ## Текущая очередь до выпуска — 2026-09-08
 
+[Windows connected update текущего комплекта](EXECUTION-INTEGRATED-WINDOWS-UPDATE-2026-09-08.md)
+прошёл с первого раза: 305 hashes, saved session/experience bytes, повторное
+подключение и восстановление routes/DNS. Backend config восстановлен точным
+guarded rollback после отказа entitlement selector; учётные данные/material не
+менялись. VM off/NIC none, host network неизменна. Sleep VM не поддерживает;
+полные Windows gates и actual expiry/revocation остаются открытыми. Следующий
+доступный backend-критерий — старая application version на expanded schema.
+
 Последующее [AWG-прохождение текущего Huawei](EXECUTION-INTEGRATED-ANDROID-AWG-2026-09-08.md)
 закрыло поиск exact identity и дало AWG3.1→AWG2→AWG3.1, server inner traffic и
 Wi-Fi/mobile/Wi-Fi continuity. Backend configuration восстановлена, VPN off,

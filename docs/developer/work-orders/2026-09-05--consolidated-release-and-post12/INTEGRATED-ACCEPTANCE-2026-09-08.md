@@ -50,7 +50,7 @@ PASS ниже относится ровно к названному сценар
 | D01/D04/D06, Android packaging | PASS: подпись, version 4053, ABI, native Core hashes, release flags и notices всех 4 APK | Direct/store authority, downgrade и final-channel acceptance |
 | D01/N01/N03, Huawei | PASS_BOUNDED: новый ARM64 установлен; обычные connect/disconnect и AWG3.1→AWG2→AWG3.1 с server inner traffic; routes/rules восстановлены с учётом нового OS network ID | Полный independent egress/leak и parent scope |
 | W01/N03/N08, Windows | PASS_BOUNDED: для тех же bytes сохранены 305 installed hashes и независимые NIC-counter routing samples | Остальные протоколы, Win10, IPv6 и полный matrix |
-| W02/W03/W04/W06 | Исторические crash, reboot, update, tray и coexistence receipts сохранены | Review изменённых inputs и затронутые сценарии единого комплекта; unresolved Defender behavior |
+| W02/W03/W04/W06 | [Текущий connected update](EXECUTION-INTEGRATED-WINDOWS-UPDATE-2026-09-08.md) PASS_BOUNDED: 305 hashes, неизменные saved bytes, повторное подключение и routes/DNS cleanup; исторические crash/reboot/tray/coexistence receipts сохранены | Sleep не поддерживается VM; полный W03/current-input scope и Win10 открыты; прежний Defender behavior unresolved |
 | N02/N07/A04, outage/expiry/revocation | Исходная реализация и прежние bounded receipts сохранены | Связная проверка текущих bytes; expiry и явная revocation не равны API outage |
 | N04, event/probe fencing | Текущие Core concurrency/race и Android source tests сохранены | Exact installed event scenarios вместе с N03 |
 | A02/A03, owned AWG | A02 I4 сохранён для exact Core/server/Pi; текущий Huawei прошёл managed AWG2/AWG3.1 и 22 server alignment checks | Whole-path MTU/packet matrix и полный parent scope |
