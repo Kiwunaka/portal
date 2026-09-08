@@ -2,6 +2,13 @@
 
 ## Текущая очередь до выпуска — 2026-09-08
 
+[Исправление явного запрета доступа](EXECUTION-INTEGRATED-ACCESS-DENIAL-2026-09-08.md)
+client `f479fd4` принято в Windows VM: 304 hashes, очистка кэша и отключение,
+offline отказ после UI restart PASS. Прежний комплект больше не содержит все
+требуемые исправления. Следующий шаг — новый Android APK после общего Dart
+изменения и затронутая device проверка; далее actual revocation/expiry нового
+комплекта. Старый controlled-clock expiry не закрывает эти сценарии.
+
 [Совместимость actual old/current backend](EXECUTION-INTEGRATED-BACKEND-COMPAT-2026-09-08.md)
 для `16407b8` проверена на PostgreSQL: 25 HTTP assertions, пять SQL writes,
 совместная работа и restart старого API после нового PASS. Предыдущие 197 файлов
@@ -9,8 +16,8 @@
 1690 columns / 734 indexes / 246 constraints одинаковы. Новой expand/contract
 migration для этого exact pair нет; её искусственное добавление не требуется.
 Production snapshot/volume/locks/recovery остаются отдельными gates.
-Следующий незакрытый локальный критерий связной приёмки — явное
-expiry/revocation на текущем установленном клиенте с проверенной identity.
+Expiry/revocation остаются отдельными критериями связной приёмки; новый
+результат явного запрета и следующий шаг указаны выше.
 
 [Windows connected update текущего комплекта](EXECUTION-INTEGRATED-WINDOWS-UPDATE-2026-09-08.md)
 прошёл с первого раза: 305 hashes, saved session/experience bytes, повторное
