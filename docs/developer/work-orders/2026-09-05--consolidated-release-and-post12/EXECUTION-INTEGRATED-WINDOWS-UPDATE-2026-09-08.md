@@ -4,7 +4,10 @@
 `3784352` / Core `02a091c`. [Receipt с точными SHA и командами](evidence/integrated-windows-update-20260908.json).
 Полные файлы evidence принадлежат client:
 `docs/operations/evidence/2026-09-08-r12-integrated-windows-update/`.
-Client evidence сохранён коммитом `b525547`; packaged source остаётся `3784352`.
+Client evidence сохранён коммитами `b525547` и `ff77f36`; packaged source
+остаётся `3784352`. Второй коммит сохраняет исходные CRLF bytes отчётов через
+точечные Git attributes: первый blob readback выявил нормализацию строк.
+После исправления все 28 hashes подтверждены непосредственно из Git blobs.
 
 В отдельной Win11 Evaluation VM установлен сохранённый предыдущий пакет
 `e88dff9`, затем выполнено обновление текущим установщиком при работающем
