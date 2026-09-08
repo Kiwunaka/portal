@@ -2,6 +2,13 @@
 
 **PARTIAL / RELEASE_BLOCKED. План целиком не завершён; последующие срезы датированы ниже.**
 
+[A03 в новом Windows-пакете](EXECUTION-WINDOWS-AWG-CROSSFIELD-2026-09-08.md):
+client `295ceac` / Core `02a091c` установлен в VM. Upgrade, 305 hashes и обычные
+AWG3.1 → AWG2 → AWG3.1 reconnect PASS_BOUNDED; все три disconnect восстановили
+routes/DNS. Серверная настройка восстановлена, VM off/NIC none, сеть host прежняя.
+Это следующий срез после отсутствия installed proof в отчёте ниже. Независимый
+route, новые Android bytes, полный MTU и остальные release gates открыты.
+
 [A03 cross-field и новый Core](EXECUTION-A03-CROSSFIELD-2026-09-08.md):
 исправлены доказанные пробелы H/S/MTU/timing validation. Core `02a091c`, client
 `295ceac`: две побайтно одинаковые сборки AAR/DLL, 100 DLL cycles, 80 runtime,
