@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "status": "PASS_BOUNDED",
+  "origin": "current-origin",
+  "client_source": "68a44e5327fdaaa42adbf1bbe9218ad755b051ff",
+  "core_source": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+  "client_evidence_commit": "544d0033f4d879d75f3fd6f409848d36944518a2",
+  "committed_client_receipt": {
+    "path": "docs/operations/evidence/2026-09-08-r12-service-crash/receipt.json",
+    "git_blob": "6bb8de10451f8490739831305cc195dc288f0c27",
+    "bytes": 51303,
+    "sha256": "bfde206043ad38b8ba9e438547d841123814b80c2218847cb11af7f21bc47c5d"
+  },
+  "summary": "Installed service crash clears stale UI protection; ordinary reconnect, 305 hashes and exact route/DNS restoration passed. Full W02 remains open.",
+  "handoff_validation": [
+    {
+      "path": "E:/r12-windows-service-crash-20260908/final-docs-seed.log",
+      "bytes": 1818,
+      "sha256": "0b88d9330abb0f7f17aa1fe77e557e165bb1fdd1cbb93960c547198cf7026db5"
+    },
+    {
+      "path": "E:/r12-windows-service-crash-20260908/platform-docs-tests.log",
+      "bytes": 101,
+      "sha256": "8e8012de312ded1fc1a4eb22b5cdb3d776c4be76fdde07836ddf39e5bec16c6b"
+    },
+    {
+      "path": "E:/r12-windows-service-crash-20260908/platform-context-audit.log",
+      "bytes": 23,
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d"
+    },
+    {
+      "path": "E:/r12-windows-service-crash-20260908/platform-package-validator.log",
+      "bytes": 109,
+      "sha256": "b4e63c27224df1b56d713c9f942eacc200f83dfbe38b73671f538c5a7fa4f9b4"
+    }
+  ]
+}

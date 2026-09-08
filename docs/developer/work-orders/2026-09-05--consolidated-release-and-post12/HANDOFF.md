@@ -2,6 +2,17 @@
 
 **PARTIAL / RELEASE_BLOCKED. План целиком не завершён; последующие срезы датированы ниже.**
 
+[Windows service crash](EXECUTION-WINDOWS-SERVICE-CRASH-2026-09-08.md): исправлен
+ложный «Подключено» после завершения службы. Client `68a44e5` установлен в VM:
+crash/recovery, обычный retry, exact routes/DNS и 305 hashes PASS_BOUNDED.
+Первый clean SCM sample — 15,6 с. Backend восстановлен, VM off/NIC none,
+host network прежний. Sleep/handoff, Win10 и полный W02 остаются открытыми.
+
+[Android APK с новым Core](EXECUTION-ANDROID-AWG-PACKAGES-2026-09-08.md): client
+`76614b1` / Core `02a091c`, ARM64 101,23 МБ, universal 295,23 МБ; четыре ABI
+варианта прошли signer/package/native hash audit. Физической установки этих
+bytes ещё нет, device/LTE приёмка открыта. Это подготовка, не публикация.
+
 [A03 в новом Windows-пакете](EXECUTION-WINDOWS-AWG-CROSSFIELD-2026-09-08.md):
 client `295ceac` / Core `02a091c` установлен в VM. Upgrade, 305 hashes и обычные
 AWG3.1 → AWG2 → AWG3.1 reconnect PASS_BOUNDED; все три disconnect восстановили
