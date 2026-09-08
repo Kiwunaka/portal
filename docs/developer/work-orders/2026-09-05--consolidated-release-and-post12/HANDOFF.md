@@ -2,6 +2,14 @@
 
 **PARTIAL / RELEASE_BLOCKED. План целиком не завершён; последующие срезы датированы ниже.**
 
+[A03 cross-field и новый Core](EXECUTION-A03-CROSSFIELD-2026-09-08.md):
+исправлены доказанные пробелы H/S/MTU/timing validation. Core `02a091c`, client
+`295ceac`: две побайтно одинаковые сборки AAR/DLL, 100 DLL cycles, 80 runtime,
+8 Android Flutter и 376 JVM tests PASS. Шесть живых MTU cases на Pi PASS.
+Новые библиотеки привязаны в source; старые установленные phone/VM пакеты
+не обновлялись. Их приёмка не переносится на новые bytes. Полный план открыт.
+
+
 [Windows managed switching](EXECUTION-WINDOWS-SWITCHING-2026-09-08.md):
 обычные reconnect AWG3.1 → AWG2 → AWG3.1 прошли на установленном v3 пакете.
 Защищённый файл службы сменился и вернулся к исходному SHA; все три отключения
