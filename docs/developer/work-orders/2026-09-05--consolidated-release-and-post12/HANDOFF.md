@@ -1,6 +1,14 @@
 # R12 — текущий результат и граница исполнения
 
 **PARTIAL / RELEASE_BLOCKED. План целиком не завершён; последующие срезы датированы ниже.**
+
+[Windows upgrade / installed cancellation](EXECUTION-WINDOWS-UPGRADE-MANAGED-2026-09-08.md):
+исправлено завершение UI установщиком и удаление одного старого test EXE.
+Повторный Win11 upgrade, 305 hashes, сохранённое состояние и обычный IPC PASS.
+Реальный AWG31 connect и отмена проверены в ограниченном сценарии: 2110 мс,
+TUN удалён, routes/DNS восстановлены. Одинаковый внешний IP ограничивает route
+proof. Серверный cohort полностью восстановлен; host network прежний;
+clone выключен, NIC отключён. Полная Windows/runtime/release матрица OPEN.
 Локальная реализация и проверки ниже выполнены; production, новый release
 candidate и postrelease activation не выполнены. Ранние отчёты сохранены как
 последовательные срезы. Точные команды, SHA логов и source tuple —
