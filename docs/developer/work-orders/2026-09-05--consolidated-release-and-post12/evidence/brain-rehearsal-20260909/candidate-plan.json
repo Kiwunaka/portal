@@ -1,0 +1,14 @@
+{
+  "candidate": {
+    "archive_sha256": "aa1f9e6e944ad4d123357924c29f3c2c63df7bd24ae8c82f2861af2d64f26f5f",
+    "commit": "235e8a49e94261f39b1166b152fe547fe95da740",
+    "runner_sha256": "8345c5b1c80a0b9e7fd36eda96d7eb57485f3c3a23e26553acd0ab7b10e154da",
+    "tracked_files": 233
+  },
+  "gate": "postgres_candidate_rehearsal",
+  "schema_version": 1,
+  "source_database": "portal",
+  "ssh": "NOT_REQUESTED",
+  "status": "PLAN_ONLY",
+  "target_database": "portal_r12_20260909_rehearsal"
+}

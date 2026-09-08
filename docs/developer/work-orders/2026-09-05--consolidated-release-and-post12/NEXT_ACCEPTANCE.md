@@ -6,8 +6,11 @@
 сверки 196 source files; PostgreSQL/HTTP/DE/Pi evidence PASS_BOUNDED.
 [Автоматический source worker](EXECUTION-A04-AUTO-RECONCILE-2026-09-09.md)
 прошёл отдельные PostgreSQL и owned DE/RU Pi revoke/expiry/restart проверки.
-Следующий scope — обновлённая integrated quality, безопасная замена прежних
-общих lab keys и permanent Brain activation, затем installed-client acceptance.
+[Current quality и Brain rehearsal](EXECUTION-BRAIN-REHEARSAL-2026-09-09.md)
+прошли для `235e8a4 / 5760f41 / 02a091c`: 15/15 steps, production snapshot
+restore и exact candidate на копии реального volume PASS_BOUNDED. Следующий
+scope — source promotion/deployed runtime, безопасная замена прежних общих
+lab keys и permanent Brain activation, затем installed-client acceptance.
 
 ## Текущая очередь до выпуска — 2026-09-08
 

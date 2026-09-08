@@ -565,6 +565,15 @@ and observed columns/indexes/constraints match; no new expand/contract change
 exists for this exact pair. This is local compatibility evidence, not a current
 production snapshot, deployed-candidate or volume/lock/recovery pass.
 
+The subsequent [2026-09-09 Brain rehearsal](../developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-BRAIN-REHEARSAL-2026-09-09.md)
+restored an encrypted production snapshot (121 tables, 2,466,128 rows) into
+`portal_r12_20260909_rehearsal` and passed the exact `235e8a4` candidate database
+gate on that clone. Three promo files also restored byte-identically from a
+separate encrypted archive. Source services retained their PIDs and zero
+restarts. Support attachments were empty; atomic cross-store consistency and
+deployment of the current API/bot/worker are not claimed. Archives and the
+rehearsal database remain retained outside Git on Brain.
+
 ### Static sites deploy
 
 - [remote_deploy_brain_static_sites.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_static_sites.py)

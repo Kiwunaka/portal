@@ -6,6 +6,14 @@
 текущего плана и необходимые решения без повторных согласований. Технические
 условия выпуска остаются открытыми.
 
+[Brain backup/rehearsal и current quality](EXECUTION-BRAIN-REHEARSAL-2026-09-09.md):
+`235e8a4 / 5760f41 / 02a091c`, 15/15 local steps, preflight без blockers.
+Зашифрованный production snapshot восстановлен: 121 таблица / 2 466 128 строк,
+ordinary role и current candidate DDL/lock/bind/lost-ACK gates PASS. Три media
+files восстановлены побайтно. Архивы/clone сохранены; live services с прежними
+PIDs и без рестартов. Support attachments 0; atomic cross-store и full B08
+не заявлены. Production source activation и installed-client proof открыты.
+
 [A04 automatic peer revoke/expiry](EXECUTION-A04-AUTO-RECONCILE-2026-09-09.md):
 source worker удаляет отдельный peer из live и persisted config. Четыре PostgreSQL
 races, четыре expiry retries, 16 owned DE/RU Pi Core oracles PASS_BOUNDED,
