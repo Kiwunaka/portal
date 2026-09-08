@@ -414,3 +414,61 @@ def test_awg2_issuance_never_labels_unvalidated_rotation_with_old_generation(
         # Either reject the incompatible rotation or issue the checked row;
         # never expose its endpoint under the previous generation metadata.
         assert config["endpoints"][0]["peers"][0]["port"] == _endpoint()["peers"][0]["port"]
+
+
+@pytest.mark.parametrize("target", [(1001, "other-device"), (1002, "owner-device")])
+def test_material_key_is_exclusive_to_one_device_binding(db_session, target) -> None:
+    import base64
+
+    options = dict(
+        generation="awg2-lab-v1", endpoint_revision=AWG2_ENDPOINT_REVISION,
+        server_record_id="pokrov-awg2-pl-01", node_code="pl",
+    )
+    first = replace_awg2_lab_material(
+        db_session, tg_id=1001, install_id="owner-device", endpoint=_endpoint(), **options,
+    )
+    db_session.commit()
+    ciphertext = first.endpoint_ciphertext
+    copied = _endpoint()
+    # Changing the address and an X25519-clamped private bit still uses the
+    # same server peer; comparing full endpoint hashes would miss it.
+    copied["address"] = ["10.66.0.99/32"]
+    private = bytearray(base64.b64decode(copied["private_key"]))
+    private[0] ^= 1
+    copied["private_key"] = base64.b64encode(private).decode()
+    with pytest.raises(Awg2LabError, match="material_key_already_bound"):
+        replace_awg2_lab_material(
+            db_session, tg_id=target[0], install_id=target[1], endpoint=copied, **options,
+        )
+    db_session.rollback()
+    db_session.refresh(first)
+    assert first.is_active and first.state == "ready"
+    assert first.endpoint_ciphertext == ciphertext
+    assert db_session.query(Awg2LabMaterial).count() == 1
+
+
+def test_revoked_material_key_requires_a_fresh_key(db_session) -> None:
+    import base64
+
+    options = dict(
+        tg_id=1001, install_id="owner-device", generation="awg2-lab-v1",
+        endpoint_revision=AWG2_ENDPOINT_REVISION,
+        server_record_id="pokrov-awg2-pl-01", node_code="pl",
+    )
+    old = replace_awg2_lab_material(db_session, endpoint=_endpoint(), **options)
+    old.is_active = False
+    old.state = "revoked"
+    old.revoked_at = datetime(2026, 9, 8, 0, 0, 0)
+    db_session.commit()
+    ciphertext = old.endpoint_ciphertext
+    with pytest.raises(Awg2LabError, match="material_key_revoked"):
+        replace_awg2_lab_material(db_session, endpoint=_endpoint(), **options)
+    db_session.rollback()
+    fresh_endpoint = _endpoint()
+    fresh_endpoint["private_key"] = base64.b64encode(bytes(range(32))).decode()
+    fresh = replace_awg2_lab_material(db_session, endpoint=fresh_endpoint, **options)
+    db_session.commit()
+    db_session.refresh(old)
+    assert old.state == "revoked" and not old.is_active
+    assert old.endpoint_ciphertext == ciphertext
+    assert fresh.is_active and fresh.id != old.id

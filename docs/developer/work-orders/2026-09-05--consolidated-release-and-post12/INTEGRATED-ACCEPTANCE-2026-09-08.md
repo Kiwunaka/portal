@@ -4,6 +4,12 @@
 кандидата. Candidate.33 и его история сохранены. Публикация, новый release tag,
 promotion и production deploy не выполнены.
 
+[Изоляция AWG-ключей](EXECUTION-A04-KEY-ISOLATION-2026-09-08.md) проверена
+на 196 source files, PostgreSQL, реальном ASGI API и owned DE/RU Pi.
+Четыре races, 46 HTTP assertions и 14 Core oracles PASS_BOUNDED. Этот runtime
+diff также требует обновления platform input после завершения A04. Автоматическое
+server revoke/expiry и installed-client proof остаются открытыми.
+
 [Новый platform revoke fix](EXECUTION-A04-MANAGED-REVOKE-2026-09-08.md)
 инвалидирует device-bound lab material и закрывает canonical-device bypass.
 Его focused/router/PostgreSQL проверки PASS, но он ещё не входит в platform

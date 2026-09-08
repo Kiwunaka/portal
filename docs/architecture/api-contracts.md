@@ -769,6 +769,14 @@ explicitly enables the legacy contour.
   non-revoked `AccountDevice` row even when the requested install matches the
   legacy `User.app_install_id`. Execution locks that row, so concurrent device
   revoke either rejects the replacement or invalidates its committed material.
+- AWG2/AWG3.1 replacement additionally binds the derived X25519 client public
+  key to its original `(tg_id, install_id)` within that protocol, including
+  retained history. A changed endpoint/address or clamped private-key encoding
+  cannot move the same server peer key to another device. A revoked key requires
+  a fresh key even for its original device. PostgreSQL serializes competing
+  insertions of that key until commit; ciphertext and history remain retained.
+  Existing shared lab keys require separate per-device replacement before
+  selective server revocation; this guard does not migrate or remove live peers.
 - A confirmed reset starts a fresh full 30-day cycle. Migration retains any
   prior invalid node role in `access_role_legacy` before heuristic backfill so
   an application rollback can restore the old value without deleting evidence.

@@ -1,0 +1,170 @@
+FFFFFF                                                                   [100%]
+================================== FAILURES ===================================
+________ test_material_key_is_exclusive_to_one_device_binding[target0] ________
+
+db_session = <sqlalchemy.orm.session.Session object at 0x00000264FDCFA270>
+target = (1001, 'other-device')
+
+    @pytest.mark.parametrize("target", [(1001, "other-device"), (1002, "owner-device")])
+    def test_material_key_is_exclusive_to_one_device_binding(db_session, target) -> None:
+        import base64
+    
+        options = dict(
+            generation="awg2-lab-v1", endpoint_revision=AWG2_ENDPOINT_REVISION,
+            server_record_id="pokrov-awg2-pl-01", node_code="pl",
+        )
+        first = replace_awg2_lab_material(
+            db_session, tg_id=1001, install_id="owner-device", endpoint=_endpoint(), **options,
+        )
+        db_session.commit()
+        ciphertext = first.endpoint_ciphertext
+        copied = _endpoint()
+        # Changing the address and an X25519-clamped private bit still uses the
+        # same server peer; comparing full endpoint hashes would miss it.
+        copied["address"] = ["10.66.0.99/32"]
+        private = bytearray(base64.b64decode(copied["private_key"]))
+        private[0] ^= 1
+        copied["private_key"] = base64.b64encode(private).decode()
+>       with pytest.raises(Awg2LabError, match="material_key_already_bound"):
+E       Failed: DID NOT RAISE <class 'awg2_lab_service.Awg2LabError'>
+
+tests\test_awg2_lab_service.py:439: Failed
+________ test_material_key_is_exclusive_to_one_device_binding[target1] ________
+
+db_session = <sqlalchemy.orm.session.Session object at 0x00000264FC38B1D0>
+target = (1002, 'owner-device')
+
+    @pytest.mark.parametrize("target", [(1001, "other-device"), (1002, "owner-device")])
+    def test_material_key_is_exclusive_to_one_device_binding(db_session, target) -> None:
+        import base64
+    
+        options = dict(
+            generation="awg2-lab-v1", endpoint_revision=AWG2_ENDPOINT_REVISION,
+            server_record_id="pokrov-awg2-pl-01", node_code="pl",
+        )
+        first = replace_awg2_lab_material(
+            db_session, tg_id=1001, install_id="owner-device", endpoint=_endpoint(), **options,
+        )
+        db_session.commit()
+        ciphertext = first.endpoint_ciphertext
+        copied = _endpoint()
+        # Changing the address and an X25519-clamped private bit still uses the
+        # same server peer; comparing full endpoint hashes would miss it.
+        copied["address"] = ["10.66.0.99/32"]
+        private = bytearray(base64.b64decode(copied["private_key"]))
+        private[0] ^= 1
+        copied["private_key"] = base64.b64encode(private).decode()
+>       with pytest.raises(Awg2LabError, match="material_key_already_bound"):
+E       Failed: DID NOT RAISE <class 'awg2_lab_service.Awg2LabError'>
+
+tests\test_awg2_lab_service.py:439: Failed
+_______________ test_revoked_material_key_requires_a_fresh_key ________________
+
+db_session = <sqlalchemy.orm.session.Session object at 0x00000264FDF0CDA0>
+
+    def test_revoked_material_key_requires_a_fresh_key(db_session) -> None:
+        import base64
+    
+        options = dict(
+            tg_id=1001, install_id="owner-device", generation="awg2-lab-v1",
+            endpoint_revision=AWG2_ENDPOINT_REVISION,
+            server_record_id="pokrov-awg2-pl-01", node_code="pl",
+        )
+        old = replace_awg2_lab_material(db_session, endpoint=_endpoint(), **options)
+        old.is_active = False
+        old.state = "revoked"
+        old.revoked_at = datetime(2026, 9, 8, 0, 0, 0)
+        db_session.commit()
+        ciphertext = old.endpoint_ciphertext
+>       with pytest.raises(Awg2LabError, match="material_key_revoked"):
+E       Failed: DID NOT RAISE <class 'awg2_lab_service.Awg2LabError'>
+
+tests\test_awg2_lab_service.py:464: Failed
+________ test_material_key_is_exclusive_to_one_device_binding[target0] ________
+
+db_session = <sqlalchemy.orm.session.Session object at 0x00000264FDEB90A0>
+target = (1001, 'other-device')
+
+    @pytest.mark.parametrize("target", [(1001, "other-device"), (1002, "owner-device")])
+    def test_material_key_is_exclusive_to_one_device_binding(db_session, target) -> None:
+        import base64
+    
+        options = dict(
+            generation="awg31-lab-v1", endpoint_revision=AWG31_ENDPOINT_REVISION,
+            server_record_id="pokrov-awg31-pl-01", node_code="pl",
+        )
+        first = replace_awg31_lab_material(
+            db_session, tg_id=1001, install_id="owner-device", endpoint=_endpoint(), **options,
+        )
+        db_session.commit()
+        ciphertext = first.endpoint_ciphertext
+        copied = _endpoint()
+        # Changing the address and an X25519-clamped private bit still uses the
+        # same server peer; comparing full endpoint hashes would miss it.
+        copied["address"] = ["10.66.0.99/32"]
+        private = bytearray(base64.b64decode(copied["private_key"]))
+        private[0] ^= 1
+        copied["private_key"] = base64.b64encode(private).decode()
+>       with pytest.raises(Awg31LabError, match="material_key_already_bound"):
+E       Failed: DID NOT RAISE <class 'awg31_lab_service.Awg31LabError'>
+
+tests\test_awg31_lab_service.py:379: Failed
+________ test_material_key_is_exclusive_to_one_device_binding[target1] ________
+
+db_session = <sqlalchemy.orm.session.Session object at 0x00000264FE2C4C80>
+target = (1002, 'owner-device')
+
+    @pytest.mark.parametrize("target", [(1001, "other-device"), (1002, "owner-device")])
+    def test_material_key_is_exclusive_to_one_device_binding(db_session, target) -> None:
+        import base64
+    
+        options = dict(
+            generation="awg31-lab-v1", endpoint_revision=AWG31_ENDPOINT_REVISION,
+            server_record_id="pokrov-awg31-pl-01", node_code="pl",
+        )
+        first = replace_awg31_lab_material(
+            db_session, tg_id=1001, install_id="owner-device", endpoint=_endpoint(), **options,
+        )
+        db_session.commit()
+        ciphertext = first.endpoint_ciphertext
+        copied = _endpoint()
+        # Changing the address and an X25519-clamped private bit still uses the
+        # same server peer; comparing full endpoint hashes would miss it.
+        copied["address"] = ["10.66.0.99/32"]
+        private = bytearray(base64.b64decode(copied["private_key"]))
+        private[0] ^= 1
+        copied["private_key"] = base64.b64encode(private).decode()
+>       with pytest.raises(Awg31LabError, match="material_key_already_bound"):
+E       Failed: DID NOT RAISE <class 'awg31_lab_service.Awg31LabError'>
+
+tests\test_awg31_lab_service.py:379: Failed
+_______________ test_revoked_material_key_requires_a_fresh_key ________________
+
+db_session = <sqlalchemy.orm.session.Session object at 0x00000264FE3247A0>
+
+    def test_revoked_material_key_requires_a_fresh_key(db_session) -> None:
+        import base64
+    
+        options = dict(
+            tg_id=1001, install_id="owner-device", generation="awg31-lab-v1",
+            endpoint_revision=AWG31_ENDPOINT_REVISION,
+            server_record_id="pokrov-awg31-pl-01", node_code="pl",
+        )
+        old = replace_awg31_lab_material(db_session, endpoint=_endpoint(), **options)
+        old.is_active = False
+        old.state = "revoked"
+        old.revoked_at = datetime(2026, 9, 8, 0, 0, 0)
+        db_session.commit()
+        ciphertext = old.endpoint_ciphertext
+>       with pytest.raises(Awg31LabError, match="material_key_revoked"):
+E       Failed: DID NOT RAISE <class 'awg31_lab_service.Awg31LabError'>
+
+tests\test_awg31_lab_service.py:404: Failed
+=========================== short test summary info ===========================
+FAILED tests/test_awg2_lab_service.py::test_material_key_is_exclusive_to_one_device_binding[target0]
+FAILED tests/test_awg2_lab_service.py::test_material_key_is_exclusive_to_one_device_binding[target1]
+FAILED tests/test_awg2_lab_service.py::test_revoked_material_key_requires_a_fresh_key
+FAILED tests/test_awg31_lab_service.py::test_material_key_is_exclusive_to_one_device_binding[target0]
+FAILED tests/test_awg31_lab_service.py::test_material_key_is_exclusive_to_one_device_binding[target1]
+FAILED tests/test_awg31_lab_service.py::test_revoked_material_key_requires_a_fresh_key
+6 failed, 30 deselected in 2.13s

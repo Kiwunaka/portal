@@ -1,0 +1,25 @@
+{
+  "utc": "2026-09-08T16:09:09.148186+00:00",
+  "profile": "awg2",
+  "scope": "isolated ASGI/PG accounts + exact Core on RU Pi + ephemeral owned DE peers; operator applies server changes",
+  "build": {
+    "core_revision": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+    "binary_sha256": "0f1d735609fb00b9dd0480b6090d4b8c1cbdce5661cd9b7d9b629d192482fb08",
+    "binary_bytes": 15952509,
+    "go_sha256": "21761eceb9302062c9623fb699f332c8c7fe000f15f70efe8da01a2cfbbc16b9",
+    "git_sha256": "fec691d80fccc35fcc309fbc9f720536c1d795b8a562ec169f28c9923da9600f",
+    "target": "linux_arm64",
+    "interop_runner_sha256": "ddf6a29a54dfd5f907d01409a4587294a4c1f0709a2ded64f9388421b8fb3902"
+  },
+  "public_key_sha256": {
+    "a": "44ffe0331bb11fd360a7f8ea9c18eb529667f4b2210587d94a26a1b12ff1d11a",
+    "b": "30746497048263f745b26b8edb2c7977f654ce25bbbbf63f44da6efa67b25531",
+    "c": "519abe38775d4dd03c6be302a95d0bcae7611909842149d7850fa3501dcf9c77"
+  },
+  "server": [],
+  "http_phases": [],
+  "core_tests": [],
+  "raw_material_retained": false,
+  "result": "RUNNING",
+  "guest_exit_code": 1
+}

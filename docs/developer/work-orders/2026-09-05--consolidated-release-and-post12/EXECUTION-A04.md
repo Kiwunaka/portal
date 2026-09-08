@@ -1,5 +1,10 @@
 # A04 — согласованность AWG material при выдаче, 2026-09-06
 
+Срез 8 сентября, сохранён 9 сентября: [отдельные device keys и lifecycle](EXECUTION-A04-KEY-ISOLATION-2026-09-08.md).
+Исправлен перенос ключа между устройствами; четыре PostgreSQL races, 46 HTTP
+assertions и 14 Core oracles PASS_BOUNDED. Автоматическое удаление server peer
+и expiry, миграция прежних общих keys и installed-client proof остаются открытыми.
+
 **PARTIAL / I3.** Локальный slice существующего managed provisioning.
 Platform commit `c98b58f`.
 [Точные команды, SHA логов и source](evidence/a04-material-snapshot.json).

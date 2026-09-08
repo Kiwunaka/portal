@@ -1,0 +1,21 @@
+{
+  "error_type": "RuntimeError",
+  "message": "The starlette.testclient module requires the httpx2 package to be installed.\nYou can install this with:\n    $ pip install httpx2\n",
+  "frames": [
+    {
+      "file": "<string>",
+      "line": 3,
+      "name": "<module>"
+    },
+    {
+      "file": "/root/portal_bot/venv/lib/python3.12/site-packages/fastapi/testclient.py",
+      "line": 1,
+      "name": "<module>"
+    },
+    {
+      "file": "/root/portal_bot/venv/lib/python3.12/site-packages/starlette/testclient.py",
+      "line": 41,
+      "name": "<module>"
+    }
+  ]
+}

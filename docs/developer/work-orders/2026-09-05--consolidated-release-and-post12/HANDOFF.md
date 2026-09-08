@@ -2,6 +2,17 @@
 
 **PARTIAL / RELEASE_BLOCKED. План целиком не завершён; последующие срезы датированы ниже.**
 
+[Решение владельца 9 сентября](OWNER-DECISIONS-2026-09-09.md) разрешает действия
+текущего плана и необходимые решения без повторных согласований. Технические
+условия выпуска остаются открытыми.
+
+[A04 key isolation](EXECUTION-A04-KEY-ISOLATION-2026-09-08.md): исправлено
+копирование чужого AWG-ключа и обновление возраста material при выборе профиля.
+196 source hashes совпали; четыре PostgreSQL races, 46 HTTP assertions и
+14 Core oracles на owned DE/RU Pi PASS_BOUNDED. Исходное состояние DE восстановлено,
+VM выключена. Автоматическое server revoke/expiry, миграция прежних общих ключей
+и installed-client proof открыты. Старый integrated quality не проверяет этот diff.
+
 [A04 database revoke](EXECUTION-A04-MANAGED-REVOKE-2026-09-08.md): device revoke
 и account lockdown инвалидируют AWG2/AWG3.1/HY2 material в той же транзакции;
 legacy install ID не обходит отозванный canonical device. 366 тестов и 30

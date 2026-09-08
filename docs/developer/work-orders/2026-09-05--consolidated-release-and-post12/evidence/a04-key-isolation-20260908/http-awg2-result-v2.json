@@ -1,0 +1,75 @@
+{
+  "profile": "awg2",
+  "database": "portal_r12_a04_http_keys_awg2_20260908_v2",
+  "result": "FAILED",
+  "http": [
+    {
+      "label": "unguarded",
+      "status": 428
+    },
+    {
+      "label": "prepare_a_a",
+      "status": 200
+    },
+    {
+      "label": "execute_a_a",
+      "status": 200
+    },
+    {
+      "label": "repeat_a_a",
+      "status": 200
+    },
+    {
+      "label": "prepare_b_a",
+      "status": 200
+    },
+    {
+      "label": "execute_b_a",
+      "status": 422
+    },
+    {
+      "label": "prepare_b_b",
+      "status": 200
+    },
+    {
+      "label": "execute_b_b",
+      "status": 200
+    },
+    {
+      "label": "repeat_b_b",
+      "status": 200
+    },
+    {
+      "label": "manifest_a",
+      "status": 200
+    },
+    {
+      "label": "manifest_b",
+      "status": 200
+    },
+    {
+      "label": "revoke_a",
+      "status": 200
+    },
+    {
+      "label": "denied_a",
+      "status": 401
+    }
+  ],
+  "raw_material_returned_to_evidence": false,
+  "source_files_checked": 196,
+  "source_parent": "9081b964b2ce2f2375e98ccaa9c27c2eec9d8e6c",
+  "test_library_versions": {
+    "httpx2": "2.10.0",
+    "httpcore2": "2.10.0",
+    "anyio": "4.12.0",
+    "idna": "3.18",
+    "truststore": "0.10.4",
+    "h11": "0.16.0",
+    "typing_extensions": "4.15.0"
+  },
+  "initial_rows": 2,
+  "failed_phase": "rotate_a",
+  "error_type": "TypeError",
+  "traceback_sha256": "e63ed83fc171f8533aec210e1c2875c3614285ca247e6ed678d95a754c606872"
+}

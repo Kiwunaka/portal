@@ -1,0 +1,88 @@
+{
+  "source_files_unchanged": 196,
+  "databases": {
+    "portal_r12_a04_keys_20260908": {
+      "other_sessions": 0,
+      "materials": {
+        "awg2_lab_materials": {
+          "rows": 2,
+          "active": 2,
+          "revoked": 0
+        },
+        "awg31_lab_materials": {
+          "rows": 2,
+          "active": 2,
+          "revoked": 0
+        }
+      }
+    },
+    "portal_r12_a04_http_keys_awg2_20260908": {
+      "other_sessions": 0,
+      "materials": {
+        "awg2_lab_materials": {
+          "rows": 0,
+          "active": 0,
+          "revoked": 0
+        },
+        "awg31_lab_materials": {
+          "rows": 0,
+          "active": 0,
+          "revoked": 0
+        }
+      }
+    },
+    "portal_r12_a04_http_keys_awg2_20260908_v2": {
+      "other_sessions": 0,
+      "materials": {
+        "awg2_lab_materials": {
+          "rows": 2,
+          "active": 1,
+          "revoked": 1
+        },
+        "awg31_lab_materials": {
+          "rows": 0,
+          "active": 0,
+          "revoked": 0
+        }
+      }
+    },
+    "portal_r12_a04_http_keys_awg2_20260908_v3": {
+      "other_sessions": 0,
+      "materials": {
+        "awg2_lab_materials": {
+          "rows": 3,
+          "active": 0,
+          "revoked": 3
+        },
+        "awg31_lab_materials": {
+          "rows": 0,
+          "active": 0,
+          "revoked": 0
+        }
+      }
+    },
+    "portal_r12_a04_http_keys_awg31_20260908_v3": {
+      "other_sessions": 0,
+      "materials": {
+        "awg2_lab_materials": {
+          "rows": 0,
+          "active": 0,
+          "revoked": 0
+        },
+        "awg31_lab_materials": {
+          "rows": 3,
+          "active": 0,
+          "revoked": 3
+        }
+      }
+    }
+  },
+  "previous_databases_recreated": false,
+  "production_database_mutated": false,
+  "services": {
+    "portal-api": "inactive",
+    "portal-bot": "inactive",
+    "portal-worker": "inactive"
+  },
+  "fixture_runner_processes": 0
+}

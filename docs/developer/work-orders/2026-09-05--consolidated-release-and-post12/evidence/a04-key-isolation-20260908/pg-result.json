@@ -1,0 +1,56 @@
+{
+  "result": "PASS_FOUR_POSTGRES_DEVICE_KEY_RACES",
+  "database": "portal_r12_a04_keys_20260908",
+  "source_parent": "9081b964b2ce2f2375e98ccaa9c27c2eec9d8e6c",
+  "source_files_checked": 196,
+  "cases": [
+    {
+      "profile": "awg2",
+      "first_transaction": "commit",
+      "advisory_lock_observed": true,
+      "contender_outcome": "rejected",
+      "contender_code": "material_key_already_bound",
+      "one_device_bound_row": true,
+      "x25519_clamped_alias_compared": true,
+      "committed_ciphertext_preserved": true
+    },
+    {
+      "profile": "awg2",
+      "first_transaction": "rollback",
+      "advisory_lock_observed": true,
+      "contender_outcome": "inserted",
+      "contender_code": null,
+      "one_device_bound_row": true,
+      "x25519_clamped_alias_compared": true,
+      "committed_ciphertext_preserved": false
+    },
+    {
+      "profile": "awg31",
+      "first_transaction": "commit",
+      "advisory_lock_observed": true,
+      "contender_outcome": "rejected",
+      "contender_code": "material_key_already_bound",
+      "one_device_bound_row": true,
+      "x25519_clamped_alias_compared": true,
+      "committed_ciphertext_preserved": true
+    },
+    {
+      "profile": "awg31",
+      "first_transaction": "rollback",
+      "advisory_lock_observed": true,
+      "contender_outcome": "inserted",
+      "contender_code": null,
+      "one_device_bound_row": true,
+      "x25519_clamped_alias_compared": true,
+      "committed_ciphertext_preserved": false
+    }
+  ],
+  "synthetic_only": true,
+  "server_network_mutation": false,
+  "postgres_version": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "isolation_level": "read committed",
+  "material_rows": {
+    "awg2": 2,
+    "awg31": 2
+  }
+}

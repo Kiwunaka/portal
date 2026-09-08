@@ -13,6 +13,7 @@ from typing import Any, Mapping
 
 from cryptography.fernet import Fernet, InvalidToken
 
+from awg_lab_key_binding import AwgDeviceKeyError, require_awg_device_key_binding
 from models import Awg2LabMaterial
 from transport_catalog import AWG2_LAB
 
@@ -419,6 +420,13 @@ def replace_awg2_lab_material(
     server_record = _safe_token(server_record_id, code="server_record_invalid")
     node = _safe_token(node_code, code="node_code_invalid")
     normalized_endpoint = validate_awg2_endpoint(endpoint)
+    try:
+        require_awg_device_key_binding(
+            session, model=Awg2LabMaterial, decrypt_endpoint=_decrypt_endpoint,
+            endpoint=normalized_endpoint, tg_id=tg_id, install_id=install,
+        )
+    except AwgDeviceKeyError as error:
+        raise Awg2LabError(error.code) from None
     canonical = _canonical_json(normalized_endpoint)
     material_hash = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     current = now or _utcnow()

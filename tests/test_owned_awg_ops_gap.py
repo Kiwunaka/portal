@@ -730,11 +730,9 @@ class OwnedAwgDeviceEvidenceContractTests(unittest.TestCase):
 
     def test_bind_helper_uses_current_awg31_metadata(self) -> None:
         helper = self.bind_module._REMOTE_HELPER
-        activation = _load_module("remote_activate_owned_awg_labs")
-
-        self.assertIn(activation.AWG31_GENERATION, helper)
-        self.assertIn(activation.AWG31_ENDPOINT_REVISION, helper)
-        self.assertIn(activation.AWG31_SERVER_RECORD, helper)
+        self.assertIn("_ready_material as ready_awg31", helper)
+        self.assertIn("policy = load_network_rollout_config(session=session)", helper)
+        self.assertIn('rollout_value=policy.get("awg31_lab")', helper)
         self.assertNotIn("awg31-lab-v3-randomized-trailers", helper)
         self.assertNotIn("de-awg31-20260828-03-randomized-trailers", helper)
         self.assertIn('"runtime_admin_owner_fallback"', helper)
@@ -760,7 +758,7 @@ class OwnedAwgDeviceEvidenceContractTests(unittest.TestCase):
         self.assertIn('"user.extend"', helper)
         self.assertIn("entitlement_extension_applied", helper)
         self.assertIn('"device_target_identity_incomplete"', helper)
-        self.assertIn('"owned_awg_source_material_unavailable"', helper)
+        self.assertIn('"owned_awg_device_material_not_ready"', helper)
 
     def test_selection_result_is_atomically_retained_without_raw_install_id(
         self,

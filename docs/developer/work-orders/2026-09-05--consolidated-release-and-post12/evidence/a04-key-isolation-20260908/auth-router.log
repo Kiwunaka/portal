@@ -1,0 +1,34 @@
+............................................................ [ 43%]
+.............................................................. [ 88%]
+................                                                         [100%]
+============================== warnings summary ===============================
+tests/test_api_payments_callbacks.py::ApiPaymentCallbacksTests::test_admin_plan_key_then_real_payment_still_starts_first_referral_hold
+  C:\Users\kiwun\Documents\ai\VPN-consolidated-plan-start\tests\test_api_payments_callbacks.py:1094: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    ref_expiry = datetime.utcnow() + timedelta(days=20)
+
+tests/test_api_payments_callbacks.py::ApiPaymentCallbacksTests::test_admin_plan_key_then_real_payment_still_starts_first_referral_hold
+  C:\Users\kiwun\Documents\ai\VPN-consolidated-plan-start\tests\test_api_payments_callbacks.py:1108: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    invited_expiry = datetime.utcnow() + timedelta(days=5)
+
+tests/test_api_payments_callbacks.py::ApiPaymentCallbacksTests::test_admin_plan_key_then_real_payment_still_starts_first_referral_hold
+  C:\Users\kiwun\Documents\ai\VPN-consolidated-plan-start\tests\test_api_payments_callbacks.py:1124: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    now=datetime.utcnow(),
+
+tests/test_api_payments_callbacks.py::ApiPaymentCallbacksTests::test_admin_plan_key_then_real_payment_still_starts_first_referral_hold
+  C:\Users\kiwun\Documents\ai\VPN-consolidated-plan-start\tests\test_api_payments_callbacks.py:1196: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.assertTrue(bool(referrer.expiry_at and referrer.expiry_at < datetime.utcnow() + timedelta(days=30)))
+
+tests/test_api_payments_callbacks.py: 13 warnings
+  C:\Users\kiwun\AppData\Local\Programs\Python\Python312\Lib\site-packages\httpx2\_models.py:422: DeprecationWarning: Use 'content=<...>' to upload raw bytes/text content.
+    headers, stream = encode_request(
+
+tests/test_api_payments_callbacks.py::ApiPaymentCallbacksTests::test_create_public_order_applies_referral_first_purchase_discount
+  C:\Users\kiwun\Documents\ai\VPN-consolidated-plan-start\tests\test_api_payments_callbacks.py:1397: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    expiry_at=datetime.utcnow() + timedelta(days=30),
+
+tests/test_api_payments_callbacks.py::ApiPaymentCallbacksTests::test_start99_public_order_ignores_referral_and_pending_discounts
+  C:\Users\kiwun\Documents\ai\VPN-consolidated-plan-start\tests\test_api_payments_callbacks.py:1987: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    expiry_at=datetime.utcnow() + timedelta(days=30),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+138 passed, 19 warnings, 22 subtests passed in 1007.35s (0:16:47)

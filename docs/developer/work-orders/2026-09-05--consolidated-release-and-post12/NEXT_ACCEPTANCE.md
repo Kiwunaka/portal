@@ -1,5 +1,12 @@
 # Текущие условия следующей приёмки
 
+9 сентября: [новое разрешение владельца](OWNER-DECISIONS-2026-09-09.md)
+снимает повторные согласования действий и решений в рамках текущего плана.
+[A04 key isolation](EXECUTION-A04-KEY-ISOLATION-2026-09-08.md) сохранён после
+сверки 196 source files; PostgreSQL/HTTP/DE/Pi evidence PASS_BOUNDED.
+Следующее незакрытое поведение — автоматический server revoke/expiry и
+безопасная замена прежних общих lab keys, затем installed-client acceptance.
+
 ## Текущая очередь до выпуска — 2026-09-08
 
 [A01 принят](EXECUTION-A01-ACCEPTANCE-2026-09-08.md): exact pin, два отдельных
