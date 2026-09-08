@@ -556,6 +556,15 @@ probe DDL must be confirmed absent before the report can say `PASS`.
 The script does not create, drop, or reset a database and does not deploy or
 restart a service.
 
+Current R12 local compatibility (2026-09-08): the
+[actual previous/current API rehearsal](../developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-INTEGRATED-BACKEND-COMPAT-2026-09-08.md)
+binds 197 read-only verified deployed source files to 200 Git-source files from
+`16407b8`. The actual APIs pass 25 HTTP assertions and five SQL writes during
+coexistence and code rollback in isolated PostgreSQL. Schema/bootstrap inputs
+and observed columns/indexes/constraints match; no new expand/contract change
+exists for this exact pair. This is local compatibility evidence, not a current
+production snapshot, deployed-candidate or volume/lock/recovery pass.
+
 ### Static sites deploy
 
 - [remote_deploy_brain_static_sites.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_static_sites.py)

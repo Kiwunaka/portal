@@ -2,13 +2,23 @@
 
 ## Текущая очередь до выпуска — 2026-09-08
 
+[Совместимость actual old/current backend](EXECUTION-INTEGRATED-BACKEND-COMPAT-2026-09-08.md)
+для `16407b8` проверена на PostgreSQL: 25 HTTP assertions, пять SQL writes,
+совместная работа и restart старого API после нового PASS. Предыдущие 197 файлов
+сверены с работающим Brain; текущие 200 — с Git. Schema inputs и фактические
+1690 columns / 734 indexes / 246 constraints одинаковы. Новой expand/contract
+migration для этого exact pair нет; её искусственное добавление не требуется.
+Production snapshot/volume/locks/recovery остаются отдельными gates.
+Следующий незакрытый локальный критерий связной приёмки — явное
+expiry/revocation на текущем установленном клиенте с проверенной identity.
+
 [Windows connected update текущего комплекта](EXECUTION-INTEGRATED-WINDOWS-UPDATE-2026-09-08.md)
 прошёл с первого раза: 305 hashes, saved session/experience bytes, повторное
 подключение и восстановление routes/DNS. Backend config восстановлен точным
 guarded rollback после отказа entitlement selector; учётные данные/material не
 менялись. VM off/NIC none, host network неизменна. Sleep VM не поддерживает;
-полные Windows gates и actual expiry/revocation остаются открытыми. Следующий
-доступный backend-критерий — старая application version на expanded schema.
+полные Windows gates и actual expiry/revocation остаются открытыми.
+Проверка совместимости backend выполнена в указанном выше локальном scope.
 
 Последующее [AWG-прохождение текущего Huawei](EXECUTION-INTEGRATED-ANDROID-AWG-2026-09-08.md)
 закрыло поиск exact identity и дало AWG3.1→AWG2→AWG3.1, server inner traffic и
@@ -19,8 +29,8 @@ Windows/backend-приёмка; новый candidate и выпуск ещё не
 
 [Текущий backend](EXECUTION-INTEGRATED-BACKEND-2026-09-08.md): 129 HTTP tests,
 22 subtests и 9 PostgreSQL concurrency cases PASS на `16407b8`. Локальная
-payment acceptance выполнена. Старое приложение на expanded schema, deployed
-operator/runtime, реальные provider операции и оставшаяся Windows matrix открыты.
+payment acceptance выполнена. Actual old/current compatibility дополнена выше;
+deployed operator/runtime, реальные provider операции и оставшаяся Windows matrix открыты.
 
 Обновление: [единый комплект и acceptance matrix](INTEGRATED-ACCEPTANCE-2026-09-08.md)
 закреплены. Preflight `READY_LOCAL_FREEZE`, 15/15 local quality steps и четыре

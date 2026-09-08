@@ -1,0 +1,41 @@
+{
+  "result": "PASS_CURRENT_LOCAL_API_COMPATIBILITY",
+  "source_files_verified": {
+    "previous": 197,
+    "current": 200
+  },
+  "event_writes_verified": 5,
+  "http_assertions": 25,
+  "ticket_and_attachment_rows_retained": true,
+  "schema_identical_after_previous_current_rollback": true,
+  "schema_counts": {
+    "columns": 1690,
+    "indexes": 734,
+    "constraints": 246
+  },
+  "new_expand_or_contract_schema_change_between_inputs": false,
+  "schema_inputs": {
+    "models.py": true,
+    "migrations.py": true,
+    "db.py": true,
+    "requirements.txt": true,
+    "account_foundation_service.py": true,
+    "support_account_service.py": true
+  },
+  "requests_are_real_http": true,
+  "database_is_real_postgresql": true,
+  "python_version": "3.12.3",
+  "pip_check": "PASS",
+  "journals": {
+    "previous": {
+      "bytes": 4496,
+      "sha256": "1156ee8b517e771cb0952faac2b013b3fd7d07adacdcb282739f8ea1686046c5"
+    },
+    "current": {
+      "bytes": 2103,
+      "sha256": "15ebf1c4103143193d9765efcb3e672e844048ab899e60276c9a68c5a89efbe0"
+    }
+  },
+  "provider_io_executed": false,
+  "production_mutation": false
+}

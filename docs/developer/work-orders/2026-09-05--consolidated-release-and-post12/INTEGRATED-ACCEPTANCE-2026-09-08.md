@@ -55,7 +55,7 @@ PASS ниже относится ровно к названному сценар
 | N04, event/probe fencing | Текущие Core concurrency/race и Android source tests сохранены | Exact installed event scenarios вместе с N03 |
 | A02/A03, owned AWG | A02 I4 сохранён для exact Core/server/Pi; текущий Huawei прошёл managed AWG2/AWG3.1 и 22 server alignment checks | Whole-path MTU/packet matrix и полный parent scope |
 | D02/D03/W05, сеть и нагрузка | Предыдущие измерения остаются ограниченными своим tuple | Network change, Doze, leak/IPv6, CPU/RAM/startup и energy по применимым exact inputs |
-| B01–B08, backend | [Текущая payment acceptance](EXECUTION-INTEGRATED-BACKEND-2026-09-08.md): 129 HTTP tests / 22 subtests и 9 PostgreSQL cases PASS; 9 B08 input blobs неизменны | Реальный provider E2E; old-app/expanded-schema и полный migration/rollback/deployed scope |
+| B01–B08, backend | [Payment acceptance](EXECUTION-INTEGRATED-BACKEND-2026-09-08.md): 129 HTTP tests / 22 subtests, 9 PG cases PASS. [Actual old/current API compatibility](EXECUTION-INTEGRATED-BACKEND-COMPAT-2026-09-08.md): 25 HTTP assertions, 5 SQL writes и rollback PASS; 197+200 hashes, schema неизменна | Для exact pair новой expand/contract migration нет. Real providers, production process/volume/locks и actual snapshot/attachment recovery остаются открытыми |
 | O/V, operator | Локальные реализации и проверки сохранены | Current deployed access/fingerprint и runtime evidence |
 | G04/G06 | SKIPPED_BY_OWNER для платных GitHub checks/protection | Применимые бесплатные/local checks; skip не считается CI/enforcement PASS |
 | M01 | SKIPPED_BY_OWNER для seller/receipt confirmation | Не подтверждает real payment/refund E2E |

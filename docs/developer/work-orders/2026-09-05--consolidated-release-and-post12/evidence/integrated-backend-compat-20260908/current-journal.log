@@ -1,0 +1,19 @@
+[  406.250984] pokrov-r12-b08-linux systemd[1]: Started r12-integrated-current.service - R12 integrated current real API compatibility.
+[  408.886030] pokrov-r12-b08-linux python[1655]: INFO:     Started server process [1655]
+[  408.886255] pokrov-r12-b08-linux python[1655]: INFO:     Waiting for application startup.
+[  408.886384] pokrov-r12-b08-linux python[1655]: INFO:     Application startup complete.
+[  408.886564] pokrov-r12-b08-linux python[1655]: INFO:     Uvicorn running on http://127.0.0.1:18084 (Press CTRL+C to quit)
+[  409.441373] pokrov-r12-b08-linux python[1655]: INFO:     127.0.0.1:47534 - "GET /api/health HTTP/1.1" 200 OK
+[  411.128348] pokrov-r12-b08-linux python[1655]: INFO:     127.0.0.1:47538 - "GET /api/health HTTP/1.1" 200 OK
+[  411.134218] pokrov-r12-b08-linux python[1655]: INFO:     127.0.0.1:47538 - "GET /api/public/plans HTTP/1.1" 200 OK
+[  411.138639] pokrov-r12-b08-linux python[1655]: INFO:     127.0.0.1:47538 - "GET /api/tickets HTTP/1.1" 401 Unauthorized
+[  411.148172] pokrov-r12-b08-linux python[1655]: INFO:     127.0.0.1:47538 - "GET /api/tickets HTTP/1.1" 200 OK
+[  411.159626] pokrov-r12-b08-linux python[1655]: INFO:     127.0.0.1:47538 - "POST /api/events HTTP/1.1" 200 OK
+[  430.470431] pokrov-r12-b08-linux systemd[1]: Stopping r12-integrated-current.service - R12 integrated current real API compatibility...
+[  430.562185] pokrov-r12-b08-linux python[1655]: INFO:     Shutting down
+[  430.664293] pokrov-r12-b08-linux python[1655]: INFO:     Waiting for application shutdown.
+[  430.664293] pokrov-r12-b08-linux python[1655]: INFO:     Application shutdown complete.
+[  430.664293] pokrov-r12-b08-linux python[1655]: INFO:     Finished server process [1655]
+[  430.670153] pokrov-r12-b08-linux systemd[1]: r12-integrated-current.service: Deactivated successfully.
+[  430.670210] pokrov-r12-b08-linux systemd[1]: Stopped r12-integrated-current.service - R12 integrated current real API compatibility.
+[  430.670388] pokrov-r12-b08-linux systemd[1]: r12-integrated-current.service: Consumed 2.488s CPU time, 124.0M memory peak, 0B memory swap peak.

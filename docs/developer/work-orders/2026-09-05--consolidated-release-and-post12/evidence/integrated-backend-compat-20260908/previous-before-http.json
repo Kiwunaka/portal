@@ -1,0 +1,20 @@
+{
+  "phase": "previous-before",
+  "result": "PASS",
+  "requests": [
+    {
+      "source": "previous",
+      "port": 18083,
+      "checks": {
+        "health": 200,
+        "plans": 200,
+        "unauthenticated_ticket_denial": 401,
+        "authenticated_ticket_read": 200,
+        "authenticated_event_write": 200
+      },
+      "plans_body_sha256": "08a9cbd693860edb389a44d2cfe3a8b669e43a3bb6ba109856a49e04df7b80e5",
+      "event_id": "1ecc6552-3e1c-4c8e-ad5d-bb0712c26e63",
+      "db_write_verified": true
+    }
+  ]
+}

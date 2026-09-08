@@ -28,3 +28,4 @@ docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GF-can
 docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GG-candidate32-gates-a-e-local-rollback/*.json text eol=lf
 docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GT-candidate33-signed-supply-windows-focus/*.json text eol=lf
 docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GU-candidate33-gates-a-e-local-rollback/*.json text eol=lf
+docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/integrated-backend-compat-20260908/* -text whitespace=trailing-space,space-before-tab,cr-at-eol
