@@ -1,0 +1,82 @@
+{
+  "schema": "pokrov.r12-platform-windows-idle/v1",
+  "status": "PASS_BOUNDED",
+  "source": "EXECUTION-WINDOWS-IDLE-2026-09-08.md",
+  "client_evidence_commit": "c6858e7a63c7e94ce1a4f9b989d251e14d742064",
+  "client_evidence_git_blob": "11fcc0c5d7c73b09cbaf43c36f87f3a7610d440c",
+  "client_evidence_git_sha256": "4e602340e4cc2a922224914d34404ed3ae32caf78e7af8a188df5ae8b0f4133f",
+  "client_evidence_path": "E:/r12client/docs/operations/evidence/2026-09-08-r12-windows-idle/receipt.json",
+  "client_source": "e88dff94bef85650c5f0b3d31dc3ff9a5e39c38a",
+  "core_source": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+  "installer_sha256": "29a87a13906909e400037a947f1e4f876ca59821e7e34c73060e623f2d9fbeea",
+  "origin": "current-origin; owned offline Windows 11 VM",
+  "before_cpu_p95_percent": 1.4982963531418818,
+  "after_cpu_p95_percent": 0.7499829123893241,
+  "memory_growth_percent": 2.5704520089285716,
+  "gate_status": {
+    "before_cpu": "FAIL",
+    "after_cpu": "PASS",
+    "comparable_memory": "PASS"
+  },
+  "installed_hashes": 305,
+  "raw_artifacts_verified": 41,
+  "cleanup": {
+    "vm": {
+      "utc": "2026-09-08T04:21:02.1111286Z",
+      "vm_uuid": "e42043a3-dd4d-452b-b151-410ad5d49543",
+      "powered_off": true,
+      "nic_none": true,
+      "source_powered_off": true
+    },
+    "host_routes_and_dns_unchanged": true,
+    "backend_changed": false,
+    "ui_processes": 0,
+    "service": "Running at pre-shutdown readback"
+  },
+  "open_checks": [
+    "useful semantic cold start",
+    "cold OS boot and post-reboot distributions",
+    "Windows 10",
+    "physical/comparable Windows hardware",
+    "connected and tray-hidden performance",
+    "exact final release channel"
+  ],
+  "cold_start_method_note": "Historical candidate33 terminal only checked responsive POKROV window with visible UIA Pane. No useful Protection/control readiness proof; historical raw evidence retained, semantic cold-start credit not granted.",
+  "validation": {
+    "shell": "188 PASS",
+    "runtime": "81 PASS; 1 opt-in skip",
+    "windows": "24 PASS",
+    "analyze": "PASS; no issues",
+    "seed": "PASS with explicit platform/Core worktrees",
+    "build": "PASS",
+    "package": "PASS; separate local output root"
+  },
+  "docs_seed": {
+    "path": "E:/r12-windows-performance-20260908/docs-seed.log",
+    "sha256": "a2dc7f2e53d3df19f9a884ed9d95c329c89509b28d9a38a1034e484e17e3aa94",
+    "status": "PASS"
+  },
+  "release": {
+    "published": false,
+    "deployed": false,
+    "promoted": false,
+    "final_candidate": false
+  },
+  "platform_validation": [
+    {
+      "path": "E:/r12-windows-performance-20260908/platform-docs-tests.log",
+      "sha256": "9ec871569189d5ee76f57ff99750308c9f7e066e585e3a924dc887d4f8544d68",
+      "status": "PASS"
+    },
+    {
+      "path": "E:/r12-windows-performance-20260908/platform-context-audit.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "status": "PASS"
+    },
+    {
+      "path": "E:/r12-windows-performance-20260908/work-order-validate.log",
+      "sha256": "7061a00b1fe69206d2c08e6fd06b7cb0cd2260e2a1187e3466b22f8155665c62",
+      "status": "PASS"
+    }
+  ]
+}

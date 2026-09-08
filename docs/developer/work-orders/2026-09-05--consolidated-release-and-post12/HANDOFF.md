@@ -2,6 +2,13 @@
 
 **PARTIAL / RELEASE_BLOCKED. План целиком не завершён; последующие срезы датированы ниже.**
 
+[Windows idle CPU/RAM](EXECUTION-WINDOWS-IDLE-2026-09-08.md): client `e88dff9`
+устраняет уведомления при неизменном runtime status. В той же Win11 VM CPU p95
+UI/service вместе снизился с 1,498296% FAIL до 0,749983% PASS при лимите 1%.
+Сравнение RAM +2,570452% PASS при лимите 10%; 305 installed hashes совпали.
+VM off/NIC none, host network прежний. Старый Pane-only cold-start замер
+не доказывает готовность защиты; полезный cold start и полный W05 открыты.
+
 [Windows service crash](EXECUTION-WINDOWS-SERVICE-CRASH-2026-09-08.md): исправлен
 ложный «Подключено» после завершения службы. Client `68a44e5` установлен в VM:
 crash/recovery, обычный retry, exact routes/DNS и 305 hashes PASS_BOUNDED.
