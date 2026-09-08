@@ -2,6 +2,13 @@
 
 **PARTIAL / RELEASE_BLOCKED. План целиком не завершён; последующие срезы датированы ниже.**
 
+[Windows firewall/local app](EXECUTION-WINDOWS-COEXISTENCE-2026-09-08.md):
+installed `e88dff9`, три фазы AWG3.1 PASS_BOUNDED. Firewall блокирует тестовый
+HTTPS-запрос и восстанавливает доступ после снятия блока; local HTTP работает.
+488 исходных rules/selected filters, route/DNS restoration и 305 files проверены.
+Fixture удалён, backend восстановлен, VM off/NIC none, host network прежний.
+Другой VPN, сторонние WFP-фильтры, LAN/IPv6, Win10 и полный W06 открыты.
+
 [Win10 access](EXECUTION-WIN10-ACCESS-2026-09-08.md): официальная hash-verified
 LTSC 2021 Evaluation установлена в отдельной VM, но две попытки активации дали
 `0x87E10BC6`, status 5 / grace 0. `BLOCKED_BY_ACCESS`; POKROV installation/runtime
