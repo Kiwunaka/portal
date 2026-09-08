@@ -6,6 +6,14 @@
 текущего плана и необходимые решения без повторных согласований. Технические
 условия выпуска остаются открытыми.
 
+[A04 automatic peer revoke/expiry](EXECUTION-A04-AUTO-RECONCILE-2026-09-09.md):
+source worker удаляет отдельный peer из live и persisted config. Четыре PostgreSQL
+races, четыре expiry retries, 16 owned DE/RU Pi Core oracles PASS_BOUNDED,
+включая server restart. Focused 99 + 12 subtests PASS; backend 179 + 8 subtests
+PASS и один clock-boundary FAIL, исправленный тест отдельно PASS. Исходные
+config/peer identities восстановлены, VM off. Permanent Brain activation,
+legacy shared-key migration, installed clients и updated integrated quality открыты.
+
 [A04 key isolation](EXECUTION-A04-KEY-ISOLATION-2026-09-08.md): исправлено
 копирование чужого AWG-ключа и обновление возраста material при выборе профиля.
 196 source hashes совпали; четыре PostgreSQL races, 46 HTTP assertions и

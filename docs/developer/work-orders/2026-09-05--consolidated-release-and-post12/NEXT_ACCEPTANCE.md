@@ -4,8 +4,10 @@
 снимает повторные согласования действий и решений в рамках текущего плана.
 [A04 key isolation](EXECUTION-A04-KEY-ISOLATION-2026-09-08.md) сохранён после
 сверки 196 source files; PostgreSQL/HTTP/DE/Pi evidence PASS_BOUNDED.
-Следующее незакрытое поведение — автоматический server revoke/expiry и
-безопасная замена прежних общих lab keys, затем installed-client acceptance.
+[Автоматический source worker](EXECUTION-A04-AUTO-RECONCILE-2026-09-09.md)
+прошёл отдельные PostgreSQL и owned DE/RU Pi revoke/expiry/restart проверки.
+Следующий scope — обновлённая integrated quality, безопасная замена прежних
+общих lab keys и permanent Brain activation, затем installed-client acceptance.
 
 ## Текущая очередь до выпуска — 2026-09-08
 

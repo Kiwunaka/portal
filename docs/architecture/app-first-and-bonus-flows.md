@@ -421,9 +421,15 @@ Repository session rules:
 - device revoke and account lockdown also invalidate active AWG2/AWG3.1/HY2
   material for the revoked account/install pairs in that transaction. A fresh
   login cannot restore those retained encrypted rows. Prior rotation history
-  and other devices remain unchanged. Already issued server peers still need
-  separate delivery-plane removal; database revocation is not proof of that
-  removal
+  and other devices remain unchanged. For configured owned AWG targets, the
+  existing worker performs separate persistent/live peer removal after committed
+  revocation and retries failed server delivery. It also retires expired material
+  and expired or disabled device/account access. A rotated key without an active
+  copy becomes revoked, retaining ciphertext and the earlier timestamp. Shared
+  legacy keys remain explicitly blocked until per-device migration. Database
+  revocation alone is not proof of server removal; HY2 server enforcement remains
+  separate. See the operational target configuration in
+  [deployment and access](../operations/deployment-and-access.md).
 - raw refresh credentials are never written to the database or logs; only a
   SHA-256 digest of a high-entropy token is retained
 - `POST /api/auth/email/otp/start` returns an enumeration-resistant generic

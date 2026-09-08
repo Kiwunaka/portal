@@ -776,7 +776,15 @@ explicitly enables the legacy contour.
   a fresh key even for its original device. PostgreSQL serializes competing
   insertions of that key until commit; ciphertext and history remain retained.
   Existing shared lab keys require separate per-device replacement before
-  selective server revocation; this guard does not migrate or remove live peers.
+  selective server revocation; the replacement guard itself does not migrate peers.
+  When `AWG_LAB_PEER_TARGETS_FILE` configures an owned server, the worker retires
+  active material after device/account denial, entitlement expiry, or the existing
+  material-age deadline. It commits revocation before removing the peer through
+  strict SSH, from both the saved server configuration and the live interface.
+  Failures remain retryable from retained revoked rows; an unavailable server
+  is not reported as successful revocation. A rotated key with no active copy
+  becomes revoked while retaining ciphertext and its original rotation timestamp.
+  Keys shared by different bindings are reported as blocked and require migration.
 - A confirmed reset starts a fresh full 30-day cycle. Migration retains any
   prior invalid node role in `access_role_legacy` before heuristic backfill so
   an application rollback can restore the old value without deleting evidence.

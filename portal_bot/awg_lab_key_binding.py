@@ -23,12 +23,8 @@ def _client_public_key(endpoint) -> bytes:
     )
 
 
-def require_awg_device_key_binding(
-    session, *, model, decrypt_endpoint, endpoint, tg_id: int, install_id: str,
-    for_update: bool = True,
-) -> None:
-    public = _client_public_key(endpoint)
-    if for_update and session.get_bind().dialect.name == "postgresql":
+def lock_awg_device_key(session, *, model, public: bytes) -> None:
+    if session.get_bind().dialect.name == "postgresql":
         # Different devices otherwise lock different rows. Serialize requests
         # for this peer key, including its first insertion, until commit.
         digest = hashlib.sha256(model.__tablename__.encode() + b":" + public).digest()
@@ -36,6 +32,15 @@ def require_awg_device_key_binding(
             text("SELECT pg_advisory_xact_lock(:key)"),
             {"key": int.from_bytes(digest[:8], "big", signed=True)},
         )
+
+
+def require_awg_device_key_binding(
+    session, *, model, decrypt_endpoint, endpoint, tg_id: int, install_id: str,
+    for_update: bool = True,
+) -> None:
+    public = _client_public_key(endpoint)
+    if for_update:
+        lock_awg_device_key(session, model=model, public=public)
     for row in session.query(model).order_by(model.id).yield_per(100):
         try:
             existing_public = _client_public_key(decrypt_endpoint(row.endpoint_ciphertext))

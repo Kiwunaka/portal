@@ -1121,7 +1121,7 @@ Transport policy rule:
 - `scripts/remote_set_owned_awg31_variant.py` applies only the reviewed `randomized_trailers_mobile_safe_v2` server drop-in and matching encrypted material after backup and exact readback. It retains header protection and randomized handshake trailers but explicitly sets data-packet content padding to `0`: the physical Beeline path accepted the 1280-byte inner ceiling while the former `64-512` addition black-holed TLS records. It does not promote AWG3.1 outside the owner-only lab.
 - `scripts/remote_probe_owned_awg_udp_roundtrip.py --apply` temporarily stops exactly one confirmed lab service, runs a bounded plain-UDP echo on its owned port and restores/readbacks the service in `finally`. It can compare normal route selection, ingress-address `IP_PKTINFO`, temporary narrow SNAT and temporary source-port policy routing; every temporary rule/table must be removed before `execution_safe=true`. A roundtrip is `PASS` only when the server received every probe, the selected source received a valid echo and the service was restored. Server receive plus missing reverse echo is a network-path failure, never `ok=true`.
 - `scripts/remote_select_owned_awg_lab.py` selects or removes the exact rooted Android test install from the owner-only cohort after install-identity digest confirmation. PLAN is non-mutating; APPLY must be followed by the matching `default` cleanup. `--json-out` atomically retains the sanitized selection/readback and never writes the raw install ID.
-- `scripts/remote_bind_owned_awg_lab_device.py` requires a confirmed device-label digest and normally ranks matching active devices by freshness. Run PLAN immediately before APPLY and compare only its sanitized `last_seen_age_seconds` plus OS/locale/time-zone digests; raw device identifiers are never returned. For a root-capable emulator, pass `--adb` and `--adb-serial` together with the locally computed `--confirm-target-install-sha256`: the binder reads the exact app-first install identity locally, verifies its digest, sends the raw value only through SSH stdin and selects that install even when Brain has no fresh `AccountDevice` card. Any supplied target-install confirmation is checked during PLAN; APPLY always requires it and Brain checks it before decrypting material or mutating state. Precondition failures return a nonzero status plus a structured blocker containing only counts, booleans and permitted digests. A stale legacy install-user may resolve to the runtime owner only when the selector is exact-local or exactly one device matches the confirmed label, the install-user is globally unique, `ADMIN_ID` resolves to exactly one active entitled user and the direct account component has zero entitled users; every ambiguous case fails closed. For an owned root-capable emulator whose exact install-user is inactive, `--extend-target-entitlement-days 1` is the only permitted entitlement mutation: it requires the exact local ADB selector, the confirmed install digest, a matching active device/account owner, a non-default AWG lab profile and guarded `user.extend` readback. It never transfers the runtime owner's entitlement and accepts no duration other than one day. Cleanup removes both the delivery-owner and stale legacy target identities. AWG3.1 generation, endpoint revision and server-record metadata are rendered from the same canonical activation constants as new lab provisioning, so a later device bind cannot relabel the mobile-safe material as the retired variant. Set `--carrier-context none` for Wi-Fi/emulator policy readback or `beeline` for that cellular context. `--json-out` atomically retains the sanitized PLAN/APPLY readback without shell redirection. A successful binder readback proves control-plane selection, not client profile fetch, Core activation or tunnel traffic.
+- `scripts/remote_bind_owned_awg_lab_device.py` requires a confirmed device-label digest and normally ranks matching active devices by freshness. Run PLAN immediately before APPLY and compare only its sanitized `last_seen_age_seconds` plus OS/locale/time-zone digests; raw device identifiers are never returned. For a root-capable emulator, pass `--adb` and `--adb-serial` together with the locally computed `--confirm-target-install-sha256`: the binder reads the exact app-first install identity locally, verifies its digest, sends the raw value only through SSH stdin and selects that install even when Brain has no fresh `AccountDevice` card. Any supplied target-install confirmation is checked during PLAN; APPLY always requires it and Brain checks it before decrypting material or mutating state. Precondition failures return a nonzero status plus a structured blocker containing only counts, booleans and permitted digests. A stale legacy install-user may resolve to the runtime owner only when the selector is exact-local or exactly one device matches the confirmed label, the install-user is globally unique, `ADMIN_ID` resolves to exactly one active entitled user and the direct account component has zero entitled users; every ambiguous case fails closed. For an owned root-capable emulator whose exact install-user is inactive, `--extend-target-entitlement-days 1` is the only permitted entitlement mutation: it requires the exact local ADB selector, the confirmed install digest, a matching active device/account owner, a non-default AWG lab profile and guarded `user.extend` readback. It never transfers the runtime owner's entitlement and accepts no duration other than one day. Cleanup removes both the delivery-owner and stale legacy target identities. AWG3.1 readiness is checked against the current rollout policy and the existing exact-device material; the binder no longer reprovisions a key or rewrites its generation, endpoint revision, server record or age during selection. Set `--carrier-context none` for Wi-Fi/emulator policy readback or `beeline` for that cellular context. `--json-out` atomically retains the sanitized PLAN/APPLY readback without shell redirection. A successful binder readback proves control-plane selection, not client profile fetch, Core activation or tunnel traffic.
 
   The binder is an isolated-install tool, not a shared-rollout editor. Before
   any guarded entitlement/material/configuration write, APPLY rejects other
@@ -1217,6 +1217,62 @@ Node shaping repo truth:
 - if `sch_cake` is unavailable, the script falls back to `fq_codel` and must report that fallback explicitly
 - `scripts/remote_node_qdisc_smoke.py` runs one heavy egress flow plus parallel small HTTPS probes, records p95 latency / TTFB, and fails the gate if the heavy flow never materializes or starvation exceeds the configured thresholds
 - `infra/portal-node-qdisc.service` restores the configured qdisc after reboot
+
+### Owned AWG peer revocation worker
+
+`portal_bot/awg_lab_peer_worker.py` runs inside the existing worker when
+`AWG_LAB_PEER_TARGETS_FILE` names a JSON target file. Empty configuration leaves
+this job disabled. Configure only the owned AWG2/AWG3.1 lab interfaces whose
+current node/server-record and SSH host identities have been verified. This
+does not enable public AWG or provision new client keys.
+
+The root-owned target file contains a list with these fields for each interface:
+
+```json
+[
+  {
+    "profile": "awg2_lab",
+    "node_code": "de",
+    "server_record_id": "de-awg2-20260827-01",
+    "host": "owned-awg.example.test",
+    "port": 22,
+    "username": "root",
+    "key_file": "/run/secrets/owned-awg-ssh",
+    "known_hosts": "/run/secrets/owned-awg-known-hosts",
+    "interface": "pokrovawg2",
+    "server_public_key_sha256": "REPLACE_WITH_VERIFIED_64_HEX_DIGEST"
+  }
+]
+```
+
+The digest is SHA-256 of the decoded server public-key bytes, not its Base64
+text. SSH uses the supplied key and known-host file with TOFU disabled. The
+server helper also verifies that digest against the current interface before
+any change. Runtime configuration, key files and real peer material stay out
+of Git and evidence. The remote interface configuration must be at
+`/etc/amnezia/amneziawg/<interface>.conf`; `/usr/local/bin/awg` and Python 3
+are required on that owned node.
+
+Each pass commits device/account/entitlement or material-age revocation before
+the SSH operation. It then removes the exact client public key from the saved
+configuration and the live interface, and verifies both. The next pass starts
+30 seconds after the previous pass. Failed server delivery remains pending in
+retained revoked rows and is retried; it is not a successful server revoke.
+Repeated successful removal is idempotent. Source code does not recreate peers.
+
+The helper serializes configuration edits with an interface lock, keeps a
+root-only preimage under `/etc/amnezia/amneziawg/.pokrov-revocations/`, and writes
+the new configuration atomically before the live removal. After a failed live
+operation, restoring the revoked key to the boot configuration is not automatic.
+Unrelated peer sections remain byte-for-byte. A rotated key without an active
+copy is sealed as revoked, retaining its encrypted material and earlier timestamp.
+Historical keys shared by multiple device bindings are counted as blocked and
+require explicit per-device migration before selective removal. The worker
+reports only counts and stable error codes, never keys or raw device identity.
+
+This is the source contract. Activation on a particular runtime requires its
+deployment/readback evidence; an empty or missing target configuration cannot
+be counted as effective revocation enforcement.
 
 ## Current POKROV-app Local Build Matrix
 

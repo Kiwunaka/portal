@@ -1,0 +1,94 @@
+{
+  "result": "PASS_FOUR_RACES_AND_FOUR_EXPIRY_RETRIES",
+  "cases": [
+    {
+      "profile": "awg2_lab",
+      "order": "scanner_first",
+      "postgres_block_observed": true,
+      "outcome": {
+        "outcome": "rejected",
+        "code": "material_key_revoked"
+      },
+      "ciphertext_preserved": true
+    },
+    {
+      "profile": "awg2_lab",
+      "order": "replacement_first",
+      "postgres_block_observed": true,
+      "outcome": {
+        "outcome": "scan",
+        "report": {
+          "targets": 1,
+          "retired": 0,
+          "shared_keys_blocked": 0,
+          "disk_removed": 0,
+          "live_removed": 0,
+          "failed_targets": 0,
+          "errors": {}
+        },
+        "removal_count": 0
+      },
+      "ciphertext_preserved": true
+    },
+    {
+      "profile": "awg2_lab",
+      "expiry_kind": "entitlement",
+      "durable_before_network": true,
+      "retry_same_key": true,
+      "result": "PASS"
+    },
+    {
+      "profile": "awg2_lab",
+      "expiry_kind": "material_age",
+      "durable_before_network": true,
+      "retry_same_key": true,
+      "result": "PASS"
+    },
+    {
+      "profile": "awg31_lab",
+      "order": "scanner_first",
+      "postgres_block_observed": true,
+      "outcome": {
+        "outcome": "rejected",
+        "code": "material_key_revoked"
+      },
+      "ciphertext_preserved": true
+    },
+    {
+      "profile": "awg31_lab",
+      "order": "replacement_first",
+      "postgres_block_observed": true,
+      "outcome": {
+        "outcome": "scan",
+        "report": {
+          "targets": 1,
+          "retired": 0,
+          "shared_keys_blocked": 0,
+          "disk_removed": 0,
+          "live_removed": 0,
+          "failed_targets": 0,
+          "errors": {}
+        },
+        "removal_count": 0
+      },
+      "ciphertext_preserved": true
+    },
+    {
+      "profile": "awg31_lab",
+      "expiry_kind": "entitlement",
+      "durable_before_network": true,
+      "retry_same_key": true,
+      "result": "PASS"
+    },
+    {
+      "profile": "awg31_lab",
+      "expiry_kind": "material_age",
+      "durable_before_network": true,
+      "retry_same_key": true,
+      "result": "PASS"
+    }
+  ],
+  "source_parent": "0e829c916ef44f2016ead4726d09d6b0f57d46b5",
+  "postgres_version": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "isolation_level": "read committed"
+}

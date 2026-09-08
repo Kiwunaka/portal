@@ -1,0 +1,66 @@
+...................F.................................................... [ 40%]
+................................................................ [ 75%]
+............................................                             [100%]
+================================== FAILURES ===================================
+____________ test_start_trial_rate_limits_fresh_installs_by_origin ____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000200FA6CA300>
+tmp_path = WindowsPath('C:/Users/kiwun/AppData/Local/Temp/pytest-of-kiwun/pytest-1797/test_start_trial_rate_limits_f0')
+
+    def test_start_trial_rate_limits_fresh_installs_by_origin(monkeypatch, tmp_path):
+        monkeypatch.setenv("API_RATE_LIMIT_START_TRIAL_PER_MINUTE", "1")
+        api = _load_api(monkeypatch, tmp_path)
+        client = TestClient(api.app)
+        headers = {"X-Real-IP": "198.51.100.44"}
+    
+        class FakePanel:
+            async def add_client(self, **_kwargs):
+                return True
+    
+            async def close(self):
+                return None
+    
+        old_panel = api.ControlPanel
+        try:
+            api.ControlPanel = FakePanel
+            first = client.post(
+                "/api/client/session/start-trial",
+                headers=headers,
+                json={
+                    "install_id": "install-rate-one",
+                    "device_name": "Pixel 10",
+                    "platform": "android",
+                },
+            )
+            repeated_same_install = client.post(
+                "/api/client/session/start-trial",
+                headers=headers,
+                json={
+                    "install_id": "install-rate-one",
+                    "device_name": "Pixel 10",
+                    "platform": "android",
+                },
+            )
+            blocked_new_install = client.post(
+                "/api/client/session/start-trial",
+                headers=headers,
+                json={
+                    "install_id": "install-rate-two",
+                    "device_name": "Pixel 10",
+                    "platform": "android",
+                },
+            )
+        finally:
+            api.ControlPanel = old_panel
+    
+        assert first.status_code == 200, first.text
+        assert repeated_same_install.status_code == 409, repeated_same_install.text
+        assert repeated_same_install.headers["X-POKROV-Auth-Error"] == "device_recovery_required"
+>       assert blocked_new_install.status_code == 429
+E       assert 200 == 429
+E        +  where 200 = <Response [200 OK]>.status_code
+
+portal_bot\tests\test_app_first_api.py:1003: AssertionError
+=========================== short test summary info ===========================
+FAILED portal_bot/tests/test_app_first_api.py::test_start_trial_rate_limits_fresh_installs_by_origin
+1 failed, 179 passed, 8 subtests passed in 788.70s (0:13:08)
