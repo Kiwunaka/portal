@@ -1,0 +1,324 @@
+{
+  "utc": "2026-09-08T14:55:26.335893+00:00",
+  "result": "PASS_BOUNDED_SERVER_PEER_LIFECYCLE",
+  "platform_parent": "6fdb8d16bdac4c796c286d06c9e080c5b2d9cde4",
+  "build": {
+    "core_revision": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+    "binary_sha256": "0f1d735609fb00b9dd0480b6090d4b8c1cbdce5661cd9b7d9b629d192482fb08",
+    "binary_bytes": 15952509,
+    "go_sha256": "21761eceb9302062c9623fb699f332c8c7fe000f15f70efe8da01a2cfbbc16b9",
+    "git_sha256": "fec691d80fccc35fcc309fbc9f720536c1d795b8a562ec169f28c9923da9600f",
+    "target": "linux_arm64",
+    "interop_runner_sha256": "ddf6a29a54dfd5f907d01409a4587294a4c1f0709a2ded64f9388421b8fb3902"
+  },
+  "origin": "owned Raspberry Pi 4; direct default-route preflight; one RU lab origin",
+  "server_original_full_interfaces_equal": true,
+  "server_files_equal": true,
+  "positive_authenticated_exchanges": 6,
+  "expected_stale_key_rejections": 4,
+  "profiles": {
+    "awg2_lab": {
+      "tests": [
+        {
+          "label": "key_a_provisioned",
+          "key": "a",
+          "expected": "accepted",
+          "returncode": 0,
+          "selected_subtest_observed": true,
+          "classification": "passed",
+          "authenticated_egress_passed": true,
+          "no_outer_response_rejection": false,
+          "oracle_passed": true,
+          "elapsed_seconds": 0.469,
+          "mtu_observations": {
+            "1280": {
+              "tx_packets": 20,
+              "rx_packets": 11,
+              "tx_max": 1296,
+              "rx_max": 1312,
+              "elapsed_ms": 255
+            }
+          },
+          "captured_output_sha256": "23504d0ad4b27486c6488171efc62c0b39628f7c7add50db511f1285e2a7eeb5"
+        },
+        {
+          "label": "key_a_revoked",
+          "key": "a",
+          "expected": "rejected",
+          "returncode": 1,
+          "selected_subtest_observed": true,
+          "classification": "failed_no_outer_response",
+          "authenticated_egress_passed": false,
+          "no_outer_response_rejection": true,
+          "oracle_passed": true,
+          "elapsed_seconds": 45.219,
+          "mtu_observations": {},
+          "captured_output_sha256": "fd6ef7e52e856787cc3183051c2fcce497c5e5d964c85dedea1cd4878fabd315"
+        },
+        {
+          "label": "key_b_replacement",
+          "key": "b",
+          "expected": "accepted",
+          "returncode": 0,
+          "selected_subtest_observed": true,
+          "classification": "passed",
+          "authenticated_egress_passed": true,
+          "no_outer_response_rejection": false,
+          "oracle_passed": true,
+          "elapsed_seconds": 0.468,
+          "mtu_observations": {
+            "1280": {
+              "tx_packets": 20,
+              "rx_packets": 15,
+              "tx_max": 1296,
+              "rx_max": 1312,
+              "elapsed_ms": 261
+            }
+          },
+          "captured_output_sha256": "0c9cb97af28b92e248886c2b00c6b66ab8f8bd45a2fac2afaa9657567e7513e2"
+        },
+        {
+          "label": "key_a_stale_after_rotation",
+          "key": "a",
+          "expected": "rejected",
+          "returncode": 1,
+          "selected_subtest_observed": true,
+          "classification": "failed_no_outer_response",
+          "authenticated_egress_passed": false,
+          "no_outer_response_rejection": true,
+          "oracle_passed": true,
+          "elapsed_seconds": 45.281,
+          "mtu_observations": {},
+          "captured_output_sha256": "f6c9186fb0ddb9ca12fbcee296a9d1eb00ced3f0758888b417937e3d004f9610"
+        },
+        {
+          "label": "key_b_still_accepted",
+          "key": "b",
+          "expected": "accepted",
+          "returncode": 0,
+          "selected_subtest_observed": true,
+          "classification": "passed",
+          "authenticated_egress_passed": true,
+          "no_outer_response_rejection": false,
+          "oracle_passed": true,
+          "elapsed_seconds": 0.547,
+          "mtu_observations": {
+            "1280": {
+              "tx_packets": 19,
+              "rx_packets": 12,
+              "tx_max": 1296,
+              "rx_max": 1312,
+              "elapsed_ms": 255
+            }
+          },
+          "captured_output_sha256": "cec77aa0720c451ac3327b82ecd7bd2431f8720cf3c9e12fde5824e4ecd5e557"
+        }
+      ],
+      "server_cleanup_verified": true,
+      "temporary_remote_state_removed": true
+    },
+    "awg31_lab": {
+      "tests": [
+        {
+          "label": "key_a_provisioned",
+          "key": "a",
+          "expected": "accepted",
+          "returncode": 0,
+          "selected_subtest_observed": true,
+          "classification": "passed",
+          "authenticated_egress_passed": true,
+          "no_outer_response_rejection": false,
+          "oracle_passed": true,
+          "elapsed_seconds": 1.625,
+          "mtu_observations": {
+            "1280": {
+              "tx_packets": 22,
+              "rx_packets": 11,
+              "tx_max": 1300,
+              "rx_max": 1328,
+              "elapsed_ms": 1299
+            }
+          },
+          "captured_output_sha256": "9919a1f9c0507d7da49c4430243ed5ea9ed25e27fedcaf9cebc3e51622a3bbfa"
+        },
+        {
+          "label": "key_a_revoked",
+          "key": "a",
+          "expected": "rejected",
+          "returncode": 1,
+          "selected_subtest_observed": true,
+          "classification": "failed_no_outer_response",
+          "authenticated_egress_passed": false,
+          "no_outer_response_rejection": true,
+          "oracle_passed": true,
+          "elapsed_seconds": 45.313,
+          "mtu_observations": {},
+          "captured_output_sha256": "fd6ef7e52e856787cc3183051c2fcce497c5e5d964c85dedea1cd4878fabd315"
+        },
+        {
+          "label": "key_b_replacement",
+          "key": "b",
+          "expected": "accepted",
+          "returncode": 0,
+          "selected_subtest_observed": true,
+          "classification": "passed",
+          "authenticated_egress_passed": true,
+          "no_outer_response_rejection": false,
+          "oracle_passed": true,
+          "elapsed_seconds": 1.453,
+          "mtu_observations": {
+            "1280": {
+              "tx_packets": 23,
+              "rx_packets": 14,
+              "tx_max": 1300,
+              "rx_max": 1328,
+              "elapsed_ms": 1233
+            }
+          },
+          "captured_output_sha256": "da4d7419b43d693d7d85c059b5db94654702f6a8b513c41ea46d6a3ae6ee92a1"
+        },
+        {
+          "label": "key_a_stale_after_rotation",
+          "key": "a",
+          "expected": "rejected",
+          "returncode": 1,
+          "selected_subtest_observed": true,
+          "classification": "failed_no_outer_response",
+          "authenticated_egress_passed": false,
+          "no_outer_response_rejection": true,
+          "oracle_passed": true,
+          "elapsed_seconds": 45.218,
+          "mtu_observations": {},
+          "captured_output_sha256": "fd6ef7e52e856787cc3183051c2fcce497c5e5d964c85dedea1cd4878fabd315"
+        },
+        {
+          "label": "key_b_still_accepted",
+          "key": "b",
+          "expected": "accepted",
+          "returncode": 0,
+          "selected_subtest_observed": true,
+          "classification": "passed",
+          "authenticated_egress_passed": true,
+          "no_outer_response_rejection": false,
+          "oracle_passed": true,
+          "elapsed_seconds": 1.5,
+          "mtu_observations": {
+            "1280": {
+              "tx_packets": 22,
+              "rx_packets": 12,
+              "tx_max": 1300,
+              "rx_max": 1328,
+              "elapsed_ms": 1236
+            }
+          },
+          "captured_output_sha256": "e4d07c2fcb408559a674122cb7d2fd2c6fd7adb6e32dc53fa5eaab15f7d899a8"
+        }
+      ],
+      "server_cleanup_verified": true,
+      "temporary_remote_state_removed": true
+    }
+  },
+  "retained_files": [
+    {
+      "path": "prepare.py",
+      "source_path": "E:\\r12-a04-peer-lifecycle-20260908\\prepare.py",
+      "bytes": 1114,
+      "sha256": "aa88c8d325df604d4c06b2e471e8cc94fc1d42a0ba5e5a83f37583f5ce0304ea"
+    },
+    {
+      "path": "run.py",
+      "source_path": "E:\\r12-a04-peer-lifecycle-20260908\\run.py",
+      "bytes": 8718,
+      "sha256": "b3bb4d7b558f4fc6b056b0b5b8114137c4643ef4aa46d7af6e7ff47346bb42a5"
+    },
+    {
+      "path": "server-controller.py",
+      "source_path": "E:\\r12-a04-peer-lifecycle-20260908\\server-controller.py",
+      "bytes": 4200,
+      "sha256": "84e6fc645f01ac1dd698e0fa0b35f1c538de8b9f4edb3f5b527b7efb5cfcb024"
+    },
+    {
+      "path": "verify-and-retain.py",
+      "source_path": "E:\\r12-a04-peer-lifecycle-20260908\\verify-and-retain.py",
+      "bytes": 5233,
+      "sha256": "e97ab5feafc7b5066941bfbff1399fb565c67e25f7249fb397b86b2edf5b9cc1"
+    },
+    {
+      "path": "verify-and-retain-v2.py",
+      "source_path": "E:\\r12-a04-peer-lifecycle-20260908\\verify-and-retain-v2.py",
+      "bytes": 5578,
+      "sha256": "13c7f3cfc906a102a9d2ad31b9a40a93642bdeb24189ad511d0addde866c95c4"
+    },
+    {
+      "path": "verify-and-retain-v3.py",
+      "source_path": "E:\\r12-a04-peer-lifecycle-20260908\\verify-and-retain-v3.py",
+      "bytes": 5821,
+      "sha256": "93b54e5c9524baa971672ea88968f13faffb6be5a165fe4bec51ba3691e19340"
+    },
+    {
+      "path": "verifier-v1-result.json",
+      "source_path": "E:\\r12-a04-peer-lifecycle-20260908\\verifier-v1-result.json",
+      "bytes": 541,
+      "sha256": "70465a429c29f5d8e278cf52785da7d6420d57295c15131b27955b5904437ae1"
+    },
+    {
+      "path": "verifier-v2-result.json",
+      "source_path": "E:\\r12-a04-peer-lifecycle-20260908\\verifier-v2-result.json",
+      "bytes": 527,
+      "sha256": "f2c470c90a4ba0fe27e5ed2a62e57b9427b8eee1b077963c1ae174b0f7246445"
+    },
+    {
+      "path": "build.json",
+      "source_path": "E:\\r12-a04-peer-lifecycle-20260908\\build.json",
+      "bytes": 479,
+      "sha256": "99b19718b097162b4c34264ffcb9af76a08c4b8fa37b26a92f7445e1f2f2fcec"
+    },
+    {
+      "path": "server-before.json",
+      "source_path": "E:\\r12-a04-peer-lifecycle-20260908\\server-before.json",
+      "bytes": 2356,
+      "sha256": "e6a5c01b68be78ff7cf3f970cbbb10432d8e466bf10ebbd129972df96da5afb9"
+    },
+    {
+      "path": "server-after.json",
+      "source_path": "E:\\r12-a04-peer-lifecycle-20260908\\server-after.json",
+      "bytes": 2356,
+      "sha256": "16f114da4b9624f8243e3c51a128b8b1f79fee9afda2a2f154b7fbc18725829d"
+    },
+    {
+      "path": "awg2_lab-lifecycle.json",
+      "source_path": "E:\\r12-a04-peer-lifecycle-20260908\\awg2_lab-lifecycle.json",
+      "bytes": 7648,
+      "sha256": "32846d24d736600e0e1d3b9aeb9f4eaba649e60a249d3473a8691a1337d43570"
+    },
+    {
+      "path": "awg31_lab-lifecycle.json",
+      "source_path": "E:\\r12-a04-peer-lifecycle-20260908\\awg31_lab-lifecycle.json",
+      "bytes": 7655,
+      "sha256": "6dea78018af311945ce87d3de4e0bcae5da8ebd1b0d0b806e1bec6ab0c1b6be8"
+    },
+    {
+      "path": "server-readback.py",
+      "source_path": "E:\\r12-a02-server-20260908\\server-readback.py",
+      "bytes": 3321,
+      "sha256": "3879a31cd5bee157a50850527a0e44bc9332018621ad73d521c6267d64145dfb"
+    }
+  ],
+  "local_binary": {
+    "path": "E:\\r12-a04-peer-lifecycle-20260908\\owned-awg.test",
+    "sha256": "0f1d735609fb00b9dd0480b6090d4b8c1cbdce5661cd9b7d9b629d192482fb08",
+    "bytes": 15952509
+  },
+  "raw_output_retained": false,
+  "raw_material_returned": false,
+  "backend_mutated": false,
+  "remaining": [
+    "managed API/device rotation and revocation",
+    "expiry and device loss",
+    "PostgreSQL issuance race",
+    "installed client scope",
+    "full A04 and release gates"
+  ],
+  "candidate_created": false,
+  "push_merge_deploy_publication_performed": false
+}

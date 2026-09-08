@@ -2,6 +2,12 @@
 
 **PARTIAL / RELEASE_BLOCKED. План целиком не завершён; последующие срезы датированы ниже.**
 
+[A04 server peer lifecycle](EXECUTION-A04-PEER-LIFECYCLE-2026-09-08.md):
+exact Core `02a091c`, отдельные временные peers AWG2/AWG3.1; шесть authenticated
+exchanges и четыре ожидаемых отказа старого ключа PASS_BOUNDED. Исходные peers,
+включая counters, и server configurations побайтно/по hashes прежние; cleanup
+проверен. Автоматический managed API/device revoke/expiry и полный A04 открыты.
+
 [Новый Android package на Huawei](EXECUTION-ANDROID-DEVICE-2026-09-08.md):
 точные ARM64 bytes client `76614b1` / Core `02a091c` установлены с сохранением
 настроек. Обычный connect и Wi-Fi/mobile/Wi-Fi refresh PASS_BOUNDED;

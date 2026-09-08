@@ -32,3 +32,9 @@ retained release artifacts не менялись.
 
 Последующий связанный срез: [та же граница выдачи в существующем HY2 lab](EXECUTION-HY2-SNAPSHOT.md).
 Он не подменяет AWG scope и runtime gates этого отчёта.
+
+2026-09-08: [два протокола с отдельными временными server peers](EXECUTION-A04-PEER-LIFECYCLE-2026-09-08.md)
+прошли прямой отзыв и замену ключа с exact Core `02a091c`: шесть успешных
+authenticated exchanges и четыре ожидаемых отказа старого ключа. Исходные
+peers/configurations восстановлены. Это server primitive proof; автоматический
+managed revoke/expiry, device/session scope и полный A04 остаются открытыми.
