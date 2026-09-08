@@ -418,6 +418,12 @@ Repository session rules:
   session/device/epoch binding and are invalidated with that source family
 - `GET /api/client/devices` reads the real registry; `DELETE` requires fresh
   auth, increments device credential version and revokes every bound session
+- device revoke and account lockdown also invalidate active AWG2/AWG3.1/HY2
+  material for the revoked account/install pairs in that transaction. A fresh
+  login cannot restore those retained encrypted rows. Prior rotation history
+  and other devices remain unchanged. Already issued server peers still need
+  separate delivery-plane removal; database revocation is not proof of that
+  removal
 - raw refresh credentials are never written to the database or logs; only a
   SHA-256 digest of a high-entropy token is retained
 - `POST /api/auth/email/otp/start` returns an enumeration-resistant generic

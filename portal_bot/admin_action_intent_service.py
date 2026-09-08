@@ -5348,11 +5348,9 @@ def _user_owns_active_install(
     install_id: str,
     for_update: bool,
 ) -> bool:
-    if install_id == str(getattr(user, "app_install_id", "") or "").strip():
-        return True
     account_id = str(getattr(user, "account_id", "") or "").strip()
     if not account_id:
-        return False
+        return install_id == str(getattr(user, "app_install_id", "") or "").strip()
     query = session.query(AccountDevice).filter(
         AccountDevice.account_id == account_id,
         AccountDevice.install_id == install_id,

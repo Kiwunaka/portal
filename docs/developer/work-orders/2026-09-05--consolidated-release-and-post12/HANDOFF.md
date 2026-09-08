@@ -2,6 +2,14 @@
 
 **PARTIAL / RELEASE_BLOCKED. План целиком не завершён; последующие срезы датированы ниже.**
 
+[A04 database revoke](EXECUTION-A04-MANAGED-REVOKE-2026-09-08.md): device revoke
+и account lockdown инвалидируют AWG2/AWG3.1/HY2 material в той же транзакции;
+legacy install ID не обходит отозванный canonical device. 366 тестов и 30
+подтестов, шесть PostgreSQL races и 33 docs tests PASS. Исходные пять FAIL,
+source manifests и cleanup сохранены. VM выключена. Реальное удаление peer,
+installed-client revoke/expiry и полный A04 открыты. Изменение ещё не входит
+в ранее проверенный integrated platform `16407b8`; его quality PASS не переносится.
+
 [A04 server peer lifecycle](EXECUTION-A04-PEER-LIFECYCLE-2026-09-08.md):
 exact Core `02a091c`, отдельные временные peers AWG2/AWG3.1; шесть authenticated
 exchanges и четыре ожидаемых отказа старого ключа PASS_BOUNDED. Исходные peers,

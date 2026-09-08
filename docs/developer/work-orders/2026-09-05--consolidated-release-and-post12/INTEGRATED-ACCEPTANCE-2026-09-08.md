@@ -4,6 +4,12 @@
 кандидата. Candidate.33 и его история сохранены. Публикация, новый release tag,
 promotion и production deploy не выполнены.
 
+[Новый platform revoke fix](EXECUTION-A04-MANAGED-REVOKE-2026-09-08.md)
+инвалидирует device-bound lab material и закрывает canonical-device bypass.
+Его focused/router/PostgreSQL проверки PASS, но он ещё не входит в platform
+`16407b8` и сохранённый ниже integrated tuple. После завершения lifecycle
+изменений требуется обновить exact platform input и общий quality gate.
+
 [Явный запрет доступа](EXECUTION-INTEGRATED-ACCESS-DENIAL-2026-09-08.md) выявил
 дефект в прежнем комплекте. Client `f479fd4` исправлен и принят в Win11 для
 отключения/очистки кэша/отказа после offline UI restart. Новый setup SHA-256

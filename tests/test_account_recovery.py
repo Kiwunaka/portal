@@ -35,7 +35,10 @@ from models import (  # noqa: E402
     AccountDevice,
     AntiAbuseEvent,
     AuthSession,
+    Awg2LabMaterial,
+    Awg31LabMaterial,
     Base,
+    Hy2LabMaterial,
     NodeProvisioningJob,
     RecoveryCode,
     User,
@@ -453,6 +456,18 @@ def test_account_lockdown_revokes_other_devices_and_increments_epoch(monkeypatch
     monkeypatch.setenv("RECOVERY_CODE_HMAC_SECRET", "recovery-code-test-secret")
     engine, session = _session_for(tmp_path)
     user, account, original_device, _identity = _seed_account(session)
+    materials = [
+        model(
+            tg_id=user.tg_id, install_id=original_device.install_id,
+            contract_id="fixture-contract", contract_sha256="a" * 64,
+            generation="fixture-v1", endpoint_revision="fixture-rev1",
+            server_record_id="fixture-server", node_code="fixture-node",
+            endpoint_ciphertext="retained-encrypted-fixture", material_hash="b" * 64,
+            is_active=True, state="ready", provisioned_at=NOW, updated_at=NOW,
+        )
+        for model in (Awg2LabMaterial, Awg31LabMaterial, Hy2LabMaterial)
+    ]
+    session.add_all(materials)
     original = issue_device_session(
         session,
         user=user,
@@ -496,6 +511,11 @@ def test_account_lockdown_revokes_other_devices_and_increments_epoch(monkeypatch
     assert safe_device.state == "active"
     assert result.revoked_devices == 1
     assert session.query(AuthSession).filter_by(id=result.session.session_id).one().revoked_at is None
+    for material in materials:
+        session.refresh(material)
+        assert not material.is_active and material.state == "revoked"
+        assert material.revoked_at == original_device.revoked_at
+        assert material.endpoint_ciphertext == "retained-encrypted-fixture"
 
     session.close()
     engine.dispose()

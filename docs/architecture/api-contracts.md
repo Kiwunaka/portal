@@ -442,6 +442,12 @@ identifier; an empty selection is rejected as HTTP `422` with stable code
 - `DELETE /api/client/devices/{device_id}` accepts either identifier, requires a
   recent `fresh_auth_at`, increments `credential_version`, marks the device
   revoked and revokes all sessions bound to that device.
+- Device revoke and account lockdown mark active AWG2/AWG3.1/HY2 material for
+  each revoked account/install pair inactive and `revoked` in the same database
+  transaction. Encrypted material and prior rotation history remain retained;
+  a later fresh login does not reactivate those rows. This prevents reissuance
+  of the old material, but removal of an already issued server peer remains a
+  separate delivery-plane enforcement step.
 - Bootstrap possession is not fresh authentication. Email OTP or a one-time
   recovery exchange can set `fresh_auth_at`; otherwise device revoke returns
   `409 fresh_auth_required`.
@@ -759,6 +765,10 @@ explicitly enables the legacy contour.
   fingerprints in intent, preview, audit and result payloads. Raw endpoint,
   keys and install ID are forbidden outside the encrypted request-to-storage
   boundary.
+- AWG2/AWG3.1/HY2 material intents for a canonical account require its active,
+  non-revoked `AccountDevice` row even when the requested install matches the
+  legacy `User.app_install_id`. Execution locks that row, so concurrent device
+  revoke either rejects the replacement or invalidates its committed material.
 - A confirmed reset starts a fresh full 30-day cycle. Migration retains any
   prior invalid node role in `access_role_legacy` before heuristic backfill so
   an application rollback can restore the old value without deleting evidence.

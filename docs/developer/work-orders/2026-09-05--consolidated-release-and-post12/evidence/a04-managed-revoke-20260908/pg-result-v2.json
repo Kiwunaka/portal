@@ -1,0 +1,81 @@
+{
+  "result": "PASS_SIX_POSTGRES_REVOKE_REPLACE_RACES",
+  "database": "portal_r12_a04_20260908_rehearsal",
+  "source_parent": "ce93653161858f427a71e12e23565c9ad287bcf5",
+  "source_files_checked": 195,
+  "cases": [
+    {
+      "profile": "awg2",
+      "order": "revoke_first",
+      "row_lock_observed": true,
+      "outcome": {
+        "outcome": "rejected",
+        "code": "invalid_target"
+      },
+      "old_ciphertext_preserved": true,
+      "fresh_login_did_not_restore_material": true,
+      "repeat_revoke_preserved_first_timestamp": true
+    },
+    {
+      "profile": "awg2",
+      "order": "replace_first",
+      "row_lock_observed": true,
+      "outcome": {
+        "outcome": "revoked"
+      },
+      "old_ciphertext_preserved": true,
+      "fresh_login_did_not_restore_material": true,
+      "repeat_revoke_preserved_first_timestamp": true
+    },
+    {
+      "profile": "awg31",
+      "order": "revoke_first",
+      "row_lock_observed": true,
+      "outcome": {
+        "outcome": "rejected",
+        "code": "invalid_target"
+      },
+      "old_ciphertext_preserved": true,
+      "fresh_login_did_not_restore_material": true,
+      "repeat_revoke_preserved_first_timestamp": true
+    },
+    {
+      "profile": "awg31",
+      "order": "replace_first",
+      "row_lock_observed": true,
+      "outcome": {
+        "outcome": "revoked"
+      },
+      "old_ciphertext_preserved": true,
+      "fresh_login_did_not_restore_material": true,
+      "repeat_revoke_preserved_first_timestamp": true
+    },
+    {
+      "profile": "hy2",
+      "order": "revoke_first",
+      "row_lock_observed": true,
+      "outcome": {
+        "outcome": "rejected",
+        "code": "invalid_target"
+      },
+      "old_ciphertext_preserved": true,
+      "fresh_login_did_not_restore_material": true,
+      "repeat_revoke_preserved_first_timestamp": true
+    },
+    {
+      "profile": "hy2",
+      "order": "replace_first",
+      "row_lock_observed": true,
+      "outcome": {
+        "outcome": "revoked"
+      },
+      "old_ciphertext_preserved": true,
+      "fresh_login_did_not_restore_material": true,
+      "repeat_revoke_preserved_first_timestamp": true
+    }
+  ],
+  "synthetic_only": true,
+  "server_network_mutation": false,
+  "postgres_version": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "isolation_level": "read committed"
+}

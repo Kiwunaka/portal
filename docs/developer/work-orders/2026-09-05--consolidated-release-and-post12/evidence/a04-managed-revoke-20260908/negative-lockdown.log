@@ -1,0 +1,77 @@
+F                                                                        [100%]
+================================== FAILURES ===================================
+______ test_account_lockdown_revokes_other_devices_and_increments_epoch _______
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x0000016B2F455E20>
+tmp_path = WindowsPath('C:/Users/kiwun/AppData/Local/Temp/pytest-of-kiwun/pytest-1782/test_account_lockdown_revokes_0')
+
+    def test_account_lockdown_revokes_other_devices_and_increments_epoch(monkeypatch, tmp_path: Path) -> None:
+        monkeypatch.setenv("WEBAPP_SESSION_SECRET", "account-recovery-test-secret")
+        monkeypatch.setenv("RECOVERY_CODE_HMAC_SECRET", "recovery-code-test-secret")
+        engine, session = _session_for(tmp_path)
+        user, account, original_device, _identity = _seed_account(session)
+        materials = [
+            model(
+                tg_id=user.tg_id, install_id=original_device.install_id,
+                contract_id="fixture-contract", contract_sha256="a" * 64,
+                generation="fixture-v1", endpoint_revision="fixture-rev1",
+                server_record_id="fixture-server", node_code="fixture-node",
+                endpoint_ciphertext="retained-encrypted-fixture", material_hash="b" * 64,
+                is_active=True, state="ready", provisioned_at=NOW, updated_at=NOW,
+            )
+            for model in (Awg2LabMaterial, Awg31LabMaterial, Hy2LabMaterial)
+        ]
+        session.add_all(materials)
+        original = issue_device_session(
+            session,
+            user=user,
+            install_id=original_device.install_id,
+            now=NOW,
+            fresh_auth_at=NOW,
+        )
+        code = rotate_recovery_code(
+            session,
+            account_id=account.id,
+            actor_session_id=original.session_id,
+            now=NOW,
+        )
+        session.commit()
+        exchange = exchange_recovery_code(
+            session,
+            code=code.code,
+            install_id="install-lockdown-device",
+            device_name="Safe device",
+            platform="windows",
+            now=NOW + timedelta(minutes=1),
+        )
+        session.commit()
+    
+        result = complete_access_reissue(
+            session,
+            account_id=account.id,
+            recovery_session_id=exchange.session.session_id,
+            mode="account_lockdown",
+            device_limit=1,
+            now=NOW + timedelta(minutes=2),
+        )
+        session.commit()
+    
+        session.refresh(account)
+        session.refresh(original_device)
+        assert account.auth_epoch == 3
+        assert original_device.state == "revoked"
+        assert original_device.revoked_at == NOW + timedelta(minutes=2)
+        safe_device = session.query(AccountDevice).filter_by(install_id="install-lockdown-device").one()
+        assert safe_device.state == "active"
+        assert result.revoked_devices == 1
+        assert session.query(AuthSession).filter_by(id=result.session.session_id).one().revoked_at is None
+        for material in materials:
+            session.refresh(material)
+>           assert not material.is_active and material.state == "revoked"
+E           assert (not True)
+E            +  where True = <models.Awg2LabMaterial object at 0x0000016B2F36D790>.is_active
+
+tests\test_account_recovery.py:516: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_account_recovery.py::test_account_lockdown_revokes_other_devices_and_increments_epoch
+1 failed, 8 deselected in 3.81s

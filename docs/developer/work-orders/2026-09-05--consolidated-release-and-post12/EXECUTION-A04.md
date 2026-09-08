@@ -38,3 +38,10 @@ retained release artifacts не менялись.
 authenticated exchanges и четыре ожидаемых отказа старого ключа. Исходные
 peers/configurations восстановлены. Это server primitive proof; автоматический
 managed revoke/expiry, device/session scope и полный A04 остаются открытыми.
+
+2026-09-08: [device revoke и account lockdown в БД](EXECUTION-A04-MANAGED-REVOKE-2026-09-08.md)
+теперь инвалидируют активный AWG2/AWG3.1/HY2 material; legacy install ID больше
+не обходит отозванный canonical device. 366 focused/router tests, 30 подтестов
+и шесть реальных PostgreSQL races PASS. Проверено сохранение ciphertext и
+истории; fresh login не восстанавливает старый material. Это закрывает
+database-границу, но actual server removal/expiry и полный A04 ещё открыты.
