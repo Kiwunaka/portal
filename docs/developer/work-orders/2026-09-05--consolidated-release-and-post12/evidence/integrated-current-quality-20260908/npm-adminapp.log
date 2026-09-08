@@ -1,0 +1,7 @@
+npm warn EBADENGINE Unsupported engine {
+npm warn EBADENGINE   package: 'pokrov-adminapp@0.1.0',
+npm warn EBADENGINE   required: { node: '22.14.x' },
+npm warn EBADENGINE   current: { node: 'v24.15.0', npm: '11.7.0' }
+npm warn EBADENGINE }
+
+added 403 packages in 25s

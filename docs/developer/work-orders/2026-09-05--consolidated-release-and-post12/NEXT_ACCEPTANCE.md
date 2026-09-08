@@ -2,6 +2,19 @@
 
 ## Текущая очередь до выпуска — 2026-09-08
 
+[Полный локальный gate исправленного комплекта](EXECUTION-INTEGRATED-CURRENT-QUALITY-2026-09-08.md)
+завершён: `16407b8` / `f479fd4` / `02a091c`, 15/15 PASS, static stops 9/9,
+preflight `READY_LOCAL_FREEZE` без blockers. Пять static targets unmet.
+Первоначальные ошибки окружения сохранены. Источники чистые; candidate и
+release не созданы. Следующая работа — оставшиеся device/runtime gates,
+а не ещё один общий локальный прогон без новых изменений или ошибок.
+
+Первый запуск отдельного Windows revocation clone завершился installer exit 2
+после UAC; actual revocation NOT_RUN, 304 hashes и прежние данные сохранены.
+Владелец согласился ввести UAC вручную; повтор ожидает входа в Windows.
+Наблюдение expired Evaluation относится к этому clone и не подтверждает
+доступность лицензированного Win10/Win11-стенда.
+
 [Исправление явного запрета доступа](EXECUTION-INTEGRATED-ACCESS-DENIAL-2026-09-08.md)
 client `f479fd4` принято в Windows VM: 304 hashes, очистка кэша и отключение,
 offline отказ после UI restart PASS. Прежний комплект больше не содержит все

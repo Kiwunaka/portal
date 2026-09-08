@@ -14,7 +14,10 @@ promotion и production deploy не выполнены.
 routes/rules PASS_BOUNDED; denial/revocation телефона требует отдельного test
 login, текущая admin-сессия сохранена. [Новые inputs](evidence/integrated-acceptance-20260908/inputs-access-denial.json)
 содержат пять проверенных artifact hashes. Таблица источников ниже сохраняет
-исходный комплект; её local preflight не подтверждает исправленный tuple.
+исходный комплект. [Новый локальный gate](EXECUTION-INTEGRATED-CURRENT-QUALITY-2026-09-08.md)
+для `16407b8` / `f479fd4` / `02a091c` дал 15/15 PASS; чистый preflight —
+`READY_LOCAL_FREEZE`, 0 blockers. Статические stop-пределы 9/9 PASS,
+пять target-значений не достигнуты. Это source-quality proof нового tuple.
 Actual session revocation и expiry нового пакета остаются открытыми.
 
 ## Исходные закреплённые входы до исправления запрета
@@ -59,10 +62,10 @@ PASS ниже относится ровно к названному сценар
 | Область / R12 | Результат для комплекта | Что ещё нужно |
 | --- | --- | --- |
 | G02/G03/G05/G07, источники и artifact binding | PASS: чистый tuple, четыре APK, существующий Windows installer и Core bytes | Final release-handoff и same-byte channel binding |
-| G03/Q01, локальная автоматическая проверка | PASS: 15/15 quality steps; preflight `READY_LOCAL_FREEZE`, 0 blockers | Это preflight, не полный go/no-go |
+| G03/Q01, локальная автоматическая проверка | [Текущий `16407b8` / `f479fd4` / `02a091c`](EXECUTION-INTEGRATED-CURRENT-QUALITY-2026-09-08.md): 15/15 quality steps; preflight `READY_LOCAL_FREEZE`, 0 blockers | Local-only; пять static targets unmet; полный go/no-go открыт |
 | D01/D04/D06, Android packaging | PASS: подпись, version 4053, ABI, native Core hashes, release flags и notices всех 4 APK | Direct/store authority, downgrade и final-channel acceptance |
-| D01/N01/N03, Huawei | PASS_BOUNDED: новый ARM64 установлен; обычные connect/disconnect и AWG3.1→AWG2→AWG3.1 с server inner traffic; routes/rules восстановлены с учётом нового OS network ID | Полный independent egress/leak и parent scope |
-| W01/N03/N08, Windows | PASS_BOUNDED: для тех же bytes сохранены 305 installed hashes и независимые NIC-counter routing samples | Остальные протоколы, Win10, IPv6 и полный matrix |
+| D01/N01/N03, Huawei | Текущий `f479fd4`: update/connect/resume/disconnect и точные routes/rules PASS_BOUNDED. AWG3.1→AWG2→AWG3.1 с server inner traffic относится к прежнему `7ae931b` | Полный independent egress/leak и parent scope; перенос AWG proof требует совпадения значимых inputs |
+| W01/N03/N08, Windows | Текущий `f479fd4`: 304 expected hashes и explicit-denial PASS. Прежние 305 hashes / NIC-counter routing samples относятся к `3784352` | Остальные протоколы, Win10, IPv6 и полный matrix; прежний routing receipt не получает автоматический PASS для новых bytes |
 | W02/W03/W04/W06 | [Текущий connected update](EXECUTION-INTEGRATED-WINDOWS-UPDATE-2026-09-08.md) PASS_BOUNDED: 305 hashes, неизменные saved bytes, повторное подключение и routes/DNS cleanup; исторические crash/reboot/tray/coexistence receipts сохранены | Sleep не поддерживается VM; полный W03/current-input scope и Win10 открыты; прежний Defender behavior unresolved |
 | N02/N07/A04, outage/expiry/revocation | [Явный запрет](EXECUTION-INTEGRATED-ACCESS-DENIAL-2026-09-08.md): old-package FAIL исправлен; новый Windows `f479fd4` отключает туннель и очищает кэш, offline UI restart не подключается. Новый Android `f479fd4` установлен; положительный connect/resume PASS. Controlled-clock expiry PASS только старого пакета | Android denial на отдельном test login; actual device/session revocation 401/403; expiry нового пакета и полный scope |
 | N04, event/probe fencing | Текущие Core concurrency/race и Android source tests сохранены | Exact installed event scenarios вместе с N03 |
