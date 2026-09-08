@@ -46,6 +46,12 @@ digest, signing, SBOM, provenance, manual gates, and same-byte promotion intent.
 Runtime and manual evidence remains candidate-scoped; metadata does not turn a
 missing or manual gate into `PASS`.
 
+The local candidate preflight follows the client runtime seed's Core SBOM
+binding: `core-source.cdx.json` and `engine-source.cdx.json`, each with a
+SHA-256 digest. Missing entries, obsolete names or malformed digests block the
+preflight. This metadata check does not replace the candidate's SBOM artifact
+and provenance verification.
+
 Validate metadata offline:
 
 ```powershell

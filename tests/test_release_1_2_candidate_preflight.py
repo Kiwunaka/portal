@@ -552,8 +552,8 @@ def _bound_runtime_seed(client_root: Path, core_revision: str) -> dict[str, obje
                     "proxy_only_result": "PASS_LOCAL",
                 },
                 "sbom": [
-                    {"name": "pokrov-core.cdx.json", "sha256": proof_hash},
-                    {"name": "sing-box.cdx.json", "sha256": proof_hash},
+                    {"name": "core-source.cdx.json", "sha256": proof_hash},
+                    {"name": "engine-source.cdx.json", "sha256": proof_hash},
                 ],
             },
         },
@@ -615,6 +615,31 @@ def test_bound_core_artifacts_require_exact_local_bytes(tmp_path: Path) -> None:
     assert {blocker["id"] for blocker in blockers} == {
         "core_artifact_binding_bytes_invalid"
     }
+
+
+@pytest.mark.parametrize("invalid_sbom", [
+    [{"name": "core-source.cdx.json", "sha256": "a" * 64}],
+    [
+        {"name": "core-source.cdx.json", "sha256": "a" * 64},
+        {"name": "engine-source.cdx.json", "sha256": "invalid"},
+    ],
+    [
+        {"name": "pokrov-core.cdx.json", "sha256": "a" * 64},
+        {"name": "sing-box.cdx.json", "sha256": "a" * 64},
+    ],
+])
+def test_bound_core_artifacts_reject_invalid_sbom(tmp_path: Path, invalid_sbom) -> None:
+    core_revision = "f" * 40
+    runtime_seed = _bound_runtime_seed(tmp_path, core_revision)
+    runtime_seed["artifact_provenance"]["artifact_evidence"]["sbom"] = invalid_sbom
+    summary, blockers = MODULE._core_artifact_binding(
+        client_root=tmp_path, runtime_seed=runtime_seed, core_revision=core_revision,
+    )
+    assert summary["verified_exact_local_bytes"] is False
+    assert [blocker["id"] for blocker in blockers] == [
+        "core_artifact_binding_metadata_invalid"
+    ]
+    assert "artifact_evidence.sbom" in blockers[0]["detail"]
 
 
 def test_bound_core_artifacts_reject_a_mixed_source_tuple(tmp_path: Path) -> None:

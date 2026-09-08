@@ -512,7 +512,7 @@ def _core_artifact_binding(
     require(
         isinstance(sbom, list)
         and len(sbom) == 2
-        and set(sbom_map) == {"pokrov-core.cdx.json", "sing-box.cdx.json"}
+        and set(sbom_map) == {"core-source.cdx.json", "engine-source.cdx.json"}
         and all(SHA256_PATTERN.fullmatch(value) for value in sbom_map.values()),
         "artifact_evidence.sbom",
     )
