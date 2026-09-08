@@ -152,6 +152,27 @@ def _classify(output: str, returncode: int) -> str:
     return "failed_other"
 
 
+def _interop_mtu_observations(output: str) -> dict[str, dict[str, int]]:
+    observations: dict[str, dict[str, int]] = {}
+    marker = re.compile(
+        r"(?m)^\s*owned_lab_interop_test\.go:\d+: POKROV_AWG_MTU_RESULT "
+        r"mtu=(1280|1400|1408) tx_packets=(\d+) rx_packets=(\d+) "
+        r"tx_max=(\d+) rx_max=(\d+) elapsed_ms=(\d+)\s*$"
+    )
+    for match in marker.finditer(output):
+        mtu, *values = match.groups()
+        if mtu in observations:
+            return {}
+        metrics = dict(zip(
+            ("tx_packets", "rx_packets", "tx_max", "rx_max", "elapsed_ms"),
+            (int(value) for value in values),
+        ))
+        if any(metrics[key] <= 0 for key in ("tx_packets", "rx_packets", "tx_max", "rx_max")):
+            return {}
+        observations[mtu] = metrics
+    return observations
+
+
 def _interop_outcome(output: str, returncode: int) -> tuple[str, bool]:
     passed = bool(
         returncode == 0
@@ -160,6 +181,16 @@ def _interop_outcome(output: str, returncode: int) -> tuple[str, bool]:
     )
     if returncode == 0 and not passed:
         return "failed_test_not_observed", False
+    if passed:
+        observations = _interop_mtu_observations(output)
+        if set(observations) != {"1280", "1400", "1408"} or any(
+            not re.search(
+                rf"(?m)^\s+--- PASS: {re.escape(_INTEROP_TEST_NAME)}/mtu_{mtu}\s+\(",
+                output,
+            )
+            for mtu in observations
+        ):
+            return "failed_mtu_matrix", False
     return _classify(output, returncode), passed
 
 
@@ -503,11 +534,11 @@ def _run_local_interop(
                 "-test.run",
                 "^TestOwnedAWGLabAuthenticatedEgress$",
                 "-test.count=1",
-                "-test.timeout=70s",
+                "-test.timeout=150s",
                 "-test.v",
             ],
             environment=environment,
-            timeout=90,
+            timeout=180,
         )
         combined = completed.stdout + "\n" + completed.stderr
         outcome, passed = _interop_outcome(combined, completed.returncode)
@@ -522,6 +553,7 @@ def _run_local_interop(
                 "execution_host_class": "operator_workstation",
                 "binary_sha256": binary_sha256,
                 "temporary_remote_state_removed": None,
+                "mtu_observations": _interop_mtu_observations(combined),
             },
         )
     finally:
@@ -630,12 +662,12 @@ def _run_ru_pi_interop(
             "exec "
             + shlex.quote(remote_binary)
             + " -test.run '^TestOwnedAWGLabAuthenticatedEgress$'"
-            " -test.count=1 -test.timeout=70s -test.v"
+            " -test.count=1 -test.timeout=150s -test.v"
         )
         completed = _run_process(
             ssh_base + [remote_command],
             input_text=base64.b64encode(material).decode("ascii") + "\n",
-            timeout=100,
+            timeout=180,
         )
     finally:
         if remote_created and _REMOTE_ROOT_PATTERN.fullmatch(remote_root):
@@ -664,6 +696,7 @@ def _run_ru_pi_interop(
     if completed is None:
         return "failed_other", False, details
     combined = completed.stdout + "\n" + completed.stderr
+    details["mtu_observations"] = _interop_mtu_observations(combined)
     outcome, passed = _interop_outcome(combined, completed.returncode)
     return outcome, passed, details
 
@@ -814,7 +847,7 @@ def main() -> int:
                 raise SystemExit(f"{name.upper()} executable identity changed during execution")
 
     result = {
-        "schema_version": "pokrov-owned-awg-core-interop-v3",
+        "schema_version": "pokrov-owned-awg-core-interop-v4",
         "profile": str(args.profile),
         "outcome": outcome,
         "passed": passed,

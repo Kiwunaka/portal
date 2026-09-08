@@ -1,0 +1,132 @@
+{
+  "kind": "R12-A03 owned Pi AWG client-MTU interop matrix",
+  "source_core": "a57462e4a4ea50b72c612af47d101dffd2d9e281",
+  "runtime_source_unchanged_from": "8dc57a830bd1487389dd1b7c9190f094c31e13bc",
+  "core_changed_paths": [
+    "docs/release.md",
+    "engine/sing-box/protocol/awg/owned_lab_interop_test.go"
+  ],
+  "platform_parent": "97f9386",
+  "runner_working_sha256": "ddf6a29a54dfd5f907d01409a4587294a4c1f0709a2ded64f9388421b8fb3902",
+  "observations": {
+    "awg31": {
+      "result": {
+        "binary_sha256": "ae917c208fcf720ce0117852888abfacead5fc8b44792a10868f4a658decda70",
+        "core_revision": "a57462e4a4ea50b72c612af47d101dffd2d9e281",
+        "direct_default_route_preflight": true,
+        "execution_architecture": "linux_arm64",
+        "execution_host_class": "owned_raspberry_pi_4",
+        "execution_origin": "ru",
+        "execution_tool_sha256": {
+          "git": "fec691d80fccc35fcc309fbc9f720536c1d795b8a562ec169f28c9923da9600f",
+          "go": "21761eceb9302062c9623fb699f332c8c7fe000f15f70efe8da01a2cfbbc16b9",
+          "scp": "63b7118d8e1a8a84398cf4ce1584dc6b146606092fe9c68bbaf110bbdcfb480a",
+          "ssh": "6250fd52163fe99a0dc49403ed1b4bbef9b764bdb7bada017a93d057d9376a42"
+        },
+        "material_sha256": "7effbffdbab9013e682f60832c89d488ef0ecfe0829c4e8acb788918bbfaea50",
+        "mtu_observations": {
+          "1280": {
+            "elapsed_ms": 1226,
+            "rx_max": 1328,
+            "rx_packets": 12,
+            "tx_max": 1300,
+            "tx_packets": 22
+          },
+          "1400": {
+            "elapsed_ms": 1198,
+            "rx_max": 1328,
+            "rx_packets": 15,
+            "tx_max": 1420,
+            "tx_packets": 22
+          },
+          "1408": {
+            "elapsed_ms": 1200,
+            "rx_max": 1328,
+            "rx_packets": 15,
+            "tx_max": 1300,
+            "tx_packets": 22
+          }
+        },
+        "outcome": "passed",
+        "passed": true,
+        "profile": "awg31_lab",
+        "raw_material_returned": false,
+        "runtime_mutated": false,
+        "schema_version": "pokrov-owned-awg-core-interop-v4",
+        "server_mutated": false,
+        "temporary_remote_state_removed": true
+      },
+      "raw_receipt_sha256": "d585275a340956eb8601bcd08aac9dbf2ff53337c2a40ccac3a9f5ec02bbd077"
+    },
+    "awg2": {
+      "result": {
+        "binary_sha256": "15170695dca87268d4f00d49f4aea7672124d0a08b1fd293c273b082c0c784ab",
+        "core_revision": "a57462e4a4ea50b72c612af47d101dffd2d9e281",
+        "direct_default_route_preflight": true,
+        "execution_architecture": "linux_arm64",
+        "execution_host_class": "owned_raspberry_pi_4",
+        "execution_origin": "ru",
+        "execution_tool_sha256": {
+          "git": "fec691d80fccc35fcc309fbc9f720536c1d795b8a562ec169f28c9923da9600f",
+          "go": "21761eceb9302062c9623fb699f332c8c7fe000f15f70efe8da01a2cfbbc16b9",
+          "scp": "63b7118d8e1a8a84398cf4ce1584dc6b146606092fe9c68bbaf110bbdcfb480a",
+          "ssh": "6250fd52163fe99a0dc49403ed1b4bbef9b764bdb7bada017a93d057d9376a42"
+        },
+        "material_sha256": "07ae6a2f8bdbfc3bd78bb6fabf105db5380f1bf9a0989efed7a8330d0f7648a9",
+        "mtu_observations": {
+          "1280": {
+            "elapsed_ms": 248,
+            "rx_max": 1312,
+            "rx_packets": 13,
+            "tx_max": 1296,
+            "tx_packets": 19
+          },
+          "1400": {
+            "elapsed_ms": 186,
+            "rx_max": 1312,
+            "rx_packets": 14,
+            "tx_max": 1296,
+            "tx_packets": 19
+          },
+          "1408": {
+            "elapsed_ms": 187,
+            "rx_max": 1312,
+            "rx_packets": 15,
+            "tx_max": 1296,
+            "tx_packets": 20
+          }
+        },
+        "outcome": "passed",
+        "passed": true,
+        "profile": "awg2_lab",
+        "raw_material_returned": false,
+        "runtime_mutated": false,
+        "schema_version": "pokrov-owned-awg-core-interop-v4",
+        "server_mutated": false,
+        "temporary_remote_state_removed": true
+      },
+      "raw_receipt_sha256": "720f640df20cdd9781496e26a4adc7aeae11deb3b4b977071b4ffbe549c046ba"
+    }
+  },
+  "scope": "Six sequential client MTU cases across two separate owned AWG profiles; no server MTU or endpoint material mutation",
+  "limitations": [
+    "Registered Pi direct default route preflight, not independent geographic attestation or Android/Windows final package evidence",
+    "Short padded HTTP request, not sustained throughput, energy, full MTU path/leak matrix or preset selection",
+    "Current server image/parameter/HP/peer readback remains open under A02; prior DE SSH trust mismatch not bypassed",
+    "Cross-field H/S/timing and wire-budget review remains open under A03; MTU passes do not close it"
+  ],
+  "initial_attempt": "Stopped before build/material retrieval: default credential path absent in feature worktree. Corrected to existing explicit owner credential path and existing temp root. No raw credential printed.",
+  "validation": {
+    "core": "go1.26.8 test -count=1 ./protocol/awg ./transport/awg: PASS; operator test skips without material",
+    "platform": "76 tests and 33 subtests PASS; test_owned_awg_ops_gap plus release gate/orchestrator/manifest",
+    "report_regression": "Before collector change: missing MTU/zero packets/unsupported MTU/duplicate metrics accepted; negative regression failed. After change: all rejected, three complete cases accepted.",
+    "platform_docs": "33 PASS",
+    "platform_context": "PASS",
+    "package_validator": "83 R12 / 378 legacy / 298 links PASS",
+    "core_pinned_awg_contracts": "AWG2 and AWG3.1 PASS",
+    "diff_check": "PASS"
+  },
+  "local_root": "E:\\r12-awg-mtu-20260908",
+  "new_candidate": false,
+  "release_artifacts_changed": false
+}

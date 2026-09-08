@@ -244,6 +244,21 @@ class OwnedAwgMtuUpdateContractTests(unittest.TestCase):
 
 
 class OwnedAwgCoreInteropContractTests(unittest.TestCase):
+    @staticmethod
+    def _passing_matrix() -> str:
+        name = "TestOwnedAWGLabAuthenticatedEgress"
+        return (
+            f"=== RUN   {name}\n"
+            + "".join(
+                f"=== RUN   {name}/mtu_{mtu}\n"
+                f"    owned_lab_interop_test.go:80: POKROV_AWG_MTU_RESULT mtu={mtu} "
+                "tx_packets=12 rx_packets=9 tx_max=1450 rx_max=1400 elapsed_ms=750\n"
+                f"    --- PASS: {name}/mtu_{mtu} (0.75s)\n"
+                for mtu in (1280, 1400, 1408)
+            )
+            + f"--- PASS: {name} (2.25s)\n"
+        )
+
     @classmethod
     def setUpClass(cls) -> None:
         cls.module = _load_module("remote_run_owned_awg_core_interop")
@@ -268,15 +283,29 @@ class OwnedAwgCoreInteropContractTests(unittest.TestCase):
 
     def test_zero_exit_requires_the_exact_interop_test_pass_marker(self) -> None:
         module = self.module
-        passed_output = (
-            "=== RUN   TestOwnedAWGLabAuthenticatedEgress\n"
-            "--- PASS: TestOwnedAWGLabAuthenticatedEgress (0.01s)\n"
-        )
+        passed_output = self._passing_matrix()
 
         self.assertEqual(module._interop_outcome(passed_output, 0), ("passed", True))
         self.assertEqual(
             module._interop_outcome("testing: warning: no tests to run\nPASS\n", 0),
             ("failed_test_not_observed", False),
+        )
+
+    def test_mtu_matrix_requires_three_passes_and_bidirectional_measurements(self) -> None:
+        module = self.module
+        good = self._passing_matrix()
+        variants = [
+            good.replace("--- PASS: TestOwnedAWGLabAuthenticatedEgress/mtu_1408", "--- SKIP: TestOwnedAWGLabAuthenticatedEgress/mtu_1408"),
+            good.replace("mtu=1400 tx_packets=12", "mtu=1400 tx_packets=0"),
+            good.replace("mtu=1280 tx_packets=12", "mtu=1360 tx_packets=12"),
+            good + "    owned_lab_interop_test.go:80: POKROV_AWG_MTU_RESULT mtu=1280 tx_packets=12 rx_packets=9 tx_max=1450 rx_max=1400 elapsed_ms=750\n",
+        ]
+        for output in variants:
+            with self.subTest(output=output):
+                self.assertEqual(module._interop_outcome(output, 0), ("failed_mtu_matrix", False))
+        self.assertEqual(
+            module._interop_mtu_observations(good)["1400"],
+            {"tx_packets": 12, "rx_packets": 9, "tx_max": 1450, "rx_max": 1400, "elapsed_ms": 750},
         )
         self.assertEqual(
             module._interop_outcome(
@@ -292,10 +321,7 @@ class OwnedAwgCoreInteropContractTests(unittest.TestCase):
         completed = subprocess.CompletedProcess(
             args=[],
             returncode=0,
-            stdout=(
-                "=== RUN   TestOwnedAWGLabAuthenticatedEgress\n"
-                "--- PASS: TestOwnedAWGLabAuthenticatedEgress (0.01s)\n"
-            ),
+            stdout=self._passing_matrix(),
             stderr="",
         )
         binary = Path(sys.executable).resolve()
