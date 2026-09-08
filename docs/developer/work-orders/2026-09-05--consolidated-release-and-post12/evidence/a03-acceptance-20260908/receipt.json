@@ -1,0 +1,26 @@
+{
+  "raw_root": "E:/r12-a03-acceptance-20260908",
+  "files": [
+    {
+      "path": "acceptance.json",
+      "sha256": "3025001e6024d0923e61ba734af8ce4aa74bf779a7a38fbad96f283121c8f51b"
+    },
+    {
+      "path": "verify-acceptance.py",
+      "sha256": "810a973ce3b8a703ab5b98ac2d3e357db08a5013d173b973d6969b3fe781751a"
+    },
+    {
+      "path": "server-current.json",
+      "sha256": "c33a154b9f30971532f64f30268890957ea1fc586a27a595e4020a7a48bec0a9"
+    },
+    {
+      "path": "server-current.log",
+      "sha256": "c33a154b9f30971532f64f30268890957ea1fc586a27a595e4020a7a48bec0a9"
+    },
+    {
+      "path": "validator-current.log",
+      "sha256": "7289d0d4fa7ec22aeb51708d285e4c944831f3cf88d2cbac3e2fc2f42bf9b99c"
+    }
+  ],
+  "old_evidence_modified": false
+}

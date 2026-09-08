@@ -2,6 +2,17 @@
 
 ## Текущая очередь до выпуска — 2026-09-08
 
+[A03 принят по исходному DoD](EXECUTION-A03-ACCEPTANCE-2026-09-08.md): verified/I4
+для Core `02a091c` и разрешённых owned AWG labs. Текущий validator 8 tests /
+35 subtests PASS; 53 hashes и неизменность server/static inputs подтверждены.
+Шесть MTU cases относятся к этому же exact pin. Реестр: 3 verified, 64 active,
+3 blocked, 13 queued. Полная D02/N03/N08 matrix и выпуск остаются открытыми.
+
+Последний readback доступности: Huawei не виден в ADB; повторное USB-подключение
+запрошено. Windows revocation clone открыт на экране входа, ручной вход ещё
+ожидается; UAC не открыт. Pi доступен по strict SSH. Runtime checks отсутствующих
+устройств не выполнялись и не получили PASS.
+
 [Полный локальный gate исправленного комплекта](EXECUTION-INTEGRATED-CURRENT-QUALITY-2026-09-08.md)
 завершён: `16407b8` / `f479fd4` / `02a091c`, 15/15 PASS, static stops 9/9,
 preflight `READY_LOCAL_FREEZE` без blockers. Пять static targets unmet.
@@ -60,8 +71,8 @@ Android ABI audit PASS. Новый ARM64 установлен на Huawei: дв�
 connect/disconnect с точным восстановлением routes/rules PASS_BOUNDED.
 Продолжать связную приёмку этого комплекта; новый candidate/release не создан.
 
-Ответ на вопрос владельца о глобальном прогрессе: программа всё ещё до нового
-релизного кандидата. Реестр содержит 83 требования: 2 verified, 65 active,
+Исторический ответ о прогрессе до последующей сверки A03: программа до нового
+релизного кандидата. Тогда реестр содержал 83 требования: 2 verified, 65 active,
 3 blocked, 13 queued; это статусы критериев разного масштаба, не процент
 готовности кода. У 65 строк есть I3, у одной I4. Postrelease-программа не начата.
 Последние Android/Windows/Pi проверки дали новые результаты, но их дробление

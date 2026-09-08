@@ -1,5 +1,11 @@
 # A03 — cross-field validator and exact Core binding
 
+Subsequent [A03 acceptance reconciliation](EXECUTION-A03-ACCEPTANCE-2026-09-08.md)
+verifies the unchanged declared Core/AWG-lab DoD at I4 using this exact Core,
+the retained six MTU cases, fresh server identity readback and focused validator
+tests. D02 whole-device/path and N03/N08 routing criteria remain open. The
+implementation/build observations below retain their original execution time.
+
 Core `02a091cb0e369192a5ad0909b56ccba8aa1dce17`, client
 `295ceace0b8dfbe9af5cfc9c3fa06eda45ce5747`. **PASS_BOUNDED** for the source,
 reproducible library builds, component checks and six owned Pi interop cases.

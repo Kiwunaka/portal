@@ -1,0 +1,88 @@
+=== RUN   TestSyntheticDualStackFixtureAndMTUSweep
+--- PASS: TestSyntheticDualStackFixtureAndMTUSweep (0.00s)
+=== RUN   TestSyntheticAWG31FixtureAndIPC
+--- PASS: TestSyntheticAWG31FixtureAndIPC (0.00s)
+=== RUN   TestAWG31SubsetFailsClosedBeforeDeviceCreation
+=== RUN   TestAWG31SubsetFailsClosedBeforeDeviceCreation/timing_range
+=== RUN   TestAWG31SubsetFailsClosedBeforeDeviceCreation/short_header_key
+=== RUN   TestAWG31SubsetFailsClosedBeforeDeviceCreation/large_jc
+=== RUN   TestAWG31SubsetFailsClosedBeforeDeviceCreation/large_jmax
+=== RUN   TestAWG31SubsetFailsClosedBeforeDeviceCreation/dual_keepalive
+=== RUN   TestAWG31SubsetFailsClosedBeforeDeviceCreation/unknown_contract
+=== RUN   TestAWG31SubsetFailsClosedBeforeDeviceCreation/small_s4
+=== RUN   TestAWG31SubsetFailsClosedBeforeDeviceCreation/large_s4
+=== RUN   TestAWG31SubsetFailsClosedBeforeDeviceCreation/ipc_injection
+=== RUN   TestAWG31SubsetFailsClosedBeforeDeviceCreation/unknown_tag
+=== RUN   TestAWG31SubsetFailsClosedBeforeDeviceCreation/large_signature
+=== RUN   TestAWG31SubsetFailsClosedBeforeDeviceCreation/padding_range
+--- PASS: TestAWG31SubsetFailsClosedBeforeDeviceCreation (0.00s)
+    --- PASS: TestAWG31SubsetFailsClosedBeforeDeviceCreation/timing_range (0.00s)
+    --- PASS: TestAWG31SubsetFailsClosedBeforeDeviceCreation/short_header_key (0.00s)
+    --- PASS: TestAWG31SubsetFailsClosedBeforeDeviceCreation/large_jc (0.00s)
+    --- PASS: TestAWG31SubsetFailsClosedBeforeDeviceCreation/large_jmax (0.00s)
+    --- PASS: TestAWG31SubsetFailsClosedBeforeDeviceCreation/dual_keepalive (0.00s)
+    --- PASS: TestAWG31SubsetFailsClosedBeforeDeviceCreation/unknown_contract (0.00s)
+    --- PASS: TestAWG31SubsetFailsClosedBeforeDeviceCreation/small_s4 (0.00s)
+    --- PASS: TestAWG31SubsetFailsClosedBeforeDeviceCreation/large_s4 (0.00s)
+    --- PASS: TestAWG31SubsetFailsClosedBeforeDeviceCreation/ipc_injection (0.00s)
+    --- PASS: TestAWG31SubsetFailsClosedBeforeDeviceCreation/unknown_tag (0.00s)
+    --- PASS: TestAWG31SubsetFailsClosedBeforeDeviceCreation/large_signature (0.00s)
+    --- PASS: TestAWG31SubsetFailsClosedBeforeDeviceCreation/padding_range (0.00s)
+=== RUN   TestAWG2RejectsAWG31Fields
+--- PASS: TestAWG2RejectsAWG31Fields (0.00s)
+=== RUN   TestAWG2SubsetFailsClosedBeforeDeviceCreation
+=== RUN   TestAWG2SubsetFailsClosedBeforeDeviceCreation/integrated_tun
+=== RUN   TestAWG2SubsetFailsClosedBeforeDeviceCreation/unknown_mtu
+=== RUN   TestAWG2SubsetFailsClosedBeforeDeviceCreation/large_jc
+=== RUN   TestAWG2SubsetFailsClosedBeforeDeviceCreation/large_jmax
+=== RUN   TestAWG2SubsetFailsClosedBeforeDeviceCreation/two_peers
+=== RUN   TestAWG2SubsetFailsClosedBeforeDeviceCreation/hostname
+=== RUN   TestAWG2SubsetFailsClosedBeforeDeviceCreation/keepalive
+=== RUN   TestAWG2SubsetFailsClosedBeforeDeviceCreation/short_key
+=== RUN   TestAWG2SubsetFailsClosedBeforeDeviceCreation/junk_bounds
+=== RUN   TestAWG2SubsetFailsClosedBeforeDeviceCreation/large_s4
+=== RUN   TestAWG2SubsetFailsClosedBeforeDeviceCreation/header_range
+=== RUN   TestAWG2SubsetFailsClosedBeforeDeviceCreation/instruction_v3
+--- PASS: TestAWG2SubsetFailsClosedBeforeDeviceCreation (0.00s)
+    --- PASS: TestAWG2SubsetFailsClosedBeforeDeviceCreation/integrated_tun (0.00s)
+    --- PASS: TestAWG2SubsetFailsClosedBeforeDeviceCreation/unknown_mtu (0.00s)
+    --- PASS: TestAWG2SubsetFailsClosedBeforeDeviceCreation/large_jc (0.00s)
+    --- PASS: TestAWG2SubsetFailsClosedBeforeDeviceCreation/large_jmax (0.00s)
+    --- PASS: TestAWG2SubsetFailsClosedBeforeDeviceCreation/two_peers (0.00s)
+    --- PASS: TestAWG2SubsetFailsClosedBeforeDeviceCreation/hostname (0.00s)
+    --- PASS: TestAWG2SubsetFailsClosedBeforeDeviceCreation/keepalive (0.00s)
+    --- PASS: TestAWG2SubsetFailsClosedBeforeDeviceCreation/short_key (0.00s)
+    --- PASS: TestAWG2SubsetFailsClosedBeforeDeviceCreation/junk_bounds (0.00s)
+    --- PASS: TestAWG2SubsetFailsClosedBeforeDeviceCreation/large_s4 (0.00s)
+    --- PASS: TestAWG2SubsetFailsClosedBeforeDeviceCreation/header_range (0.00s)
+    --- PASS: TestAWG2SubsetFailsClosedBeforeDeviceCreation/instruction_v3 (0.00s)
+=== RUN   TestAWG31CrossFieldRejectionBeforeDeviceCreation
+=== RUN   TestAWG31CrossFieldRejectionBeforeDeviceCreation/oversized_transport
+=== RUN   TestAWG31CrossFieldRejectionBeforeDeviceCreation/combined_transport_budget
+=== RUN   TestAWG31CrossFieldRejectionBeforeDeviceCreation/expire_before_rekey
+=== RUN   TestAWG31CrossFieldRejectionBeforeDeviceCreation/immediate_receive_rekey
+=== RUN   TestAWG31CrossFieldRejectionBeforeDeviceCreation/overlapping_headers
+=== RUN   TestAWG31CrossFieldRejectionBeforeDeviceCreation/oversized_handshake
+--- PASS: TestAWG31CrossFieldRejectionBeforeDeviceCreation (0.00s)
+    --- PASS: TestAWG31CrossFieldRejectionBeforeDeviceCreation/oversized_transport (0.00s)
+    --- PASS: TestAWG31CrossFieldRejectionBeforeDeviceCreation/combined_transport_budget (0.00s)
+    --- PASS: TestAWG31CrossFieldRejectionBeforeDeviceCreation/expire_before_rekey (0.00s)
+    --- PASS: TestAWG31CrossFieldRejectionBeforeDeviceCreation/immediate_receive_rekey (0.00s)
+    --- PASS: TestAWG31CrossFieldRejectionBeforeDeviceCreation/overlapping_headers (0.00s)
+    --- PASS: TestAWG31CrossFieldRejectionBeforeDeviceCreation/oversized_handshake (0.00s)
+=== RUN   TestManagedAWGPacketBoundaryAndDefaultTimings
+=== RUN   TestManagedAWGPacketBoundaryAndDefaultTimings/awg2
+=== RUN   TestManagedAWGPacketBoundaryAndDefaultTimings/awg31
+--- PASS: TestManagedAWGPacketBoundaryAndDefaultTimings (0.00s)
+    --- PASS: TestManagedAWGPacketBoundaryAndDefaultTimings/awg2 (0.00s)
+    --- PASS: TestManagedAWGPacketBoundaryAndDefaultTimings/awg31 (0.00s)
+=== RUN   TestPinnedAWG31CrossFieldAcceptanceBoundary
+=== RUN   TestPinnedAWG31CrossFieldAcceptanceBoundary/header_overlap
+=== RUN   TestPinnedAWG31CrossFieldAcceptanceBoundary/transport_overflow
+=== RUN   TestPinnedAWG31CrossFieldAcceptanceBoundary/timing_inversion
+--- PASS: TestPinnedAWG31CrossFieldAcceptanceBoundary (0.00s)
+    --- PASS: TestPinnedAWG31CrossFieldAcceptanceBoundary/header_overlap (0.00s)
+    --- PASS: TestPinnedAWG31CrossFieldAcceptanceBoundary/transport_overflow (0.00s)
+    --- PASS: TestPinnedAWG31CrossFieldAcceptanceBoundary/timing_inversion (0.00s)
+PASS
+ok  	github.com/sagernet/sing-box/protocol/awg	0.097s
