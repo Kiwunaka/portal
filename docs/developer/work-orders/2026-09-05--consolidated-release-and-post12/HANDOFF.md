@@ -2,6 +2,12 @@
 
 **PARTIAL / RELEASE_BLOCKED. План целиком не завершён; последующие срезы датированы ниже.**
 
+[A02 owned server](EXECUTION-A02-2026-09-08.md): доступ DE восстановлен,
+отдельный SSH-ключ проверен. Серверный бинарник воспроизведён побайтно;
+AWG2/AWG3.1 с exact Core `02a091c` прошли шесть Pi MTU cases, 22 alignment
+checks и двусторонние server counters. A02 verified/I4 для существующего lab;
+остальная device/origin/release матрица остаётся открытой.
+
 [N04 current source](EXECUTION-N04-2026-09-08.md): Core `02a091c` прошёл
 три package suites и race detector; client `5188505` — 188 direct и 22 scoped
 store JVM tests. Проверены timeout, поздний ответ, раздельные результаты calls
