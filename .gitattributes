@@ -31,3 +31,4 @@ docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GU-can
 docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/integrated-backend-compat-20260908/* -text whitespace=trailing-space,space-before-tab,cr-at-eol
 docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/integrated-current-quality-20260908/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
 docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/a03-acceptance-20260908/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/a01-acceptance-20260908/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol

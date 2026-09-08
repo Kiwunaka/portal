@@ -2,11 +2,17 @@
 
 ## Текущая очередь до выпуска — 2026-09-08
 
+[A01 принят](EXECUTION-A01-ACCEPTANCE-2026-09-08.md): exact pin, два отдельных
+контракта и consumer sync PASS; 34 tests PASS. В Brain lab gates enabled,
+но identity allowlists пусты, общих lab rules/cohorts нет, access functions
+отказывают неназначенной identity. Публичный AWG не включался. После A01/A03
+реестр: 4 verified, 63 active, 3 blocked, 13 queued.
+
 [A03 принят по исходному DoD](EXECUTION-A03-ACCEPTANCE-2026-09-08.md): verified/I4
 для Core `02a091c` и разрешённых owned AWG labs. Текущий validator 8 tests /
 35 subtests PASS; 53 hashes и неизменность server/static inputs подтверждены.
-Шесть MTU cases относятся к этому же exact pin. Реестр: 3 verified, 64 active,
-3 blocked, 13 queued. Полная D02/N03/N08 matrix и выпуск остаются открытыми.
+Шесть MTU cases относятся к этому же exact pin. Полная D02/N03/N08 matrix
+и выпуск остаются открытыми.
 
 Последний readback доступности: Huawei не виден в ADB; повторное USB-подключение
 запрошено. Windows revocation clone открыт на экране входа, ручной вход ещё
