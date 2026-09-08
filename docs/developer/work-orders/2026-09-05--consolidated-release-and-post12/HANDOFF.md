@@ -2,6 +2,13 @@
 
 **PARTIAL / RELEASE_BLOCKED. План целиком не завершён; последующие срезы датированы ниже.**
 
+[Win11 API outage](EXECUTION-WINDOWS-API-OUTAGE-2026-09-08.md): installed
+`e88dff9` сохраняет туннель при блокировке клиентских HTTP-запросов; cached
+reconnect и UI-restart connect PASS_BOUNDED. Original cache window не продлён;
+online refresh снова получает свежий профиль. 305 files, четыре route/DNS
+restores и 488 firewall rules проверены. Fixture удалён, backend восстановлен,
+VM off/NIC none, host network прежний. Expiry/revocation, Win10 и full N02/N07 open.
+
 [Windows firewall/local app](EXECUTION-WINDOWS-COEXISTENCE-2026-09-08.md):
 installed `e88dff9`, три фазы AWG3.1 PASS_BOUNDED. Firewall блокирует тестовый
 HTTPS-запрос и восстанавливает доступ после снятия блока; local HTTP работает.

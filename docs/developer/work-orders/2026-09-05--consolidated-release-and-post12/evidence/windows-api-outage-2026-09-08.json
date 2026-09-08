@@ -1,0 +1,202 @@
+{
+  "status": "PASS_BOUNDED",
+  "client_source": "e88dff94bef85650c5f0b3d31dc3ff9a5e39c38a",
+  "core_source": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+  "installer_sha256": "29a87a13906909e400037a947f1e4f876ca59821e7e34c73060e623f2d9fbeea",
+  "installed_files_verified": 305,
+  "origin": "current-origin; owned Windows 11 VM, VirtualBox NAT, managed AWG3.1",
+  "samples": {
+    "initial": {
+      "utc": "2026-09-08T06:41:36.1677604Z",
+      "running": false,
+      "tun_count": 0,
+      "curl_status": 200,
+      "blocked_process_probe": {
+        "status": 200,
+        "error": null,
+        "elapsed_ms": 624
+      },
+      "cache_used_event": false
+    },
+    "fresh-connected": {
+      "utc": "2026-09-08T06:44:00.3940507Z",
+      "running": true,
+      "tun_count": 1,
+      "curl_status": 200,
+      "blocked_process_probe": {
+        "status": 200,
+        "error": null,
+        "elapsed_ms": 534
+      },
+      "cache_used_event": false
+    },
+    "outage-start": {
+      "utc": "2026-09-08T06:45:28.0236040Z",
+      "running": true,
+      "tun_count": 1,
+      "curl_status": 200,
+      "blocked_process_probe": {
+        "status": null,
+        "error": "ConnectFailure",
+        "elapsed_ms": 313
+      },
+      "cache_used_event": false
+    },
+    "outage-held": {
+      "utc": "2026-09-08T06:47:05.4734443Z",
+      "running": true,
+      "tun_count": 1,
+      "curl_status": 200,
+      "blocked_process_probe": {
+        "status": null,
+        "error": "ConnectFailure",
+        "elapsed_ms": 173
+      },
+      "cache_used_event": false
+    },
+    "outage-disconnected": {
+      "utc": "2026-09-08T06:48:09.5427423Z",
+      "running": false,
+      "tun_count": 0,
+      "curl_status": 200,
+      "blocked_process_probe": {
+        "status": null,
+        "error": "ConnectFailure",
+        "elapsed_ms": 58
+      },
+      "cache_used_event": false
+    },
+    "cached-reconnect": {
+      "utc": "2026-09-08T06:48:54.4771588Z",
+      "running": true,
+      "tun_count": 1,
+      "curl_status": 200,
+      "blocked_process_probe": {
+        "status": null,
+        "error": "ConnectFailure",
+        "elapsed_ms": 236
+      },
+      "cache_used_event": true
+    },
+    "before-ui-restart": {
+      "utc": "2026-09-08T06:50:41.5725251Z",
+      "running": false,
+      "tun_count": 0,
+      "curl_status": 200,
+      "blocked_process_probe": {
+        "status": null,
+        "error": "ConnectFailure",
+        "elapsed_ms": 46
+      },
+      "cache_used_event": true
+    },
+    "restarted-before-connect": {
+      "utc": "2026-09-08T06:50:57.3025563Z",
+      "running": false,
+      "tun_count": 0,
+      "curl_status": 200,
+      "blocked_process_probe": {
+        "status": null,
+        "error": "ConnectFailure",
+        "elapsed_ms": 66
+      },
+      "cache_used_event": true
+    },
+    "restarted-cached-connect": {
+      "utc": "2026-09-08T06:51:45.8438748Z",
+      "running": true,
+      "tun_count": 1,
+      "curl_status": 200,
+      "blocked_process_probe": {
+        "status": null,
+        "error": "ConnectFailure",
+        "elapsed_ms": 219
+      },
+      "cache_used_event": true
+    },
+    "api-restored": {
+      "utc": "2026-09-08T06:53:25.4586485Z",
+      "running": true,
+      "tun_count": 1,
+      "curl_status": 200,
+      "blocked_process_probe": {
+        "status": 200,
+        "error": null,
+        "elapsed_ms": 556
+      },
+      "cache_used_event": true
+    },
+    "online-before-reconnect": {
+      "utc": "2026-09-08T06:54:04.4410974Z",
+      "running": false,
+      "tun_count": 0,
+      "curl_status": 200,
+      "blocked_process_probe": {
+        "status": 200,
+        "error": null,
+        "elapsed_ms": 494
+      },
+      "cache_used_event": true
+    },
+    "online-fresh-reconnect": {
+      "utc": "2026-09-08T06:54:49.0793191Z",
+      "running": true,
+      "tun_count": 1,
+      "curl_status": 200,
+      "blocked_process_probe": {
+        "status": 200,
+        "error": null,
+        "elapsed_ms": 616
+      },
+      "cache_used_event": false
+    },
+    "final-disconnected": {
+      "utc": "2026-09-08T06:56:21.7653219Z",
+      "running": false,
+      "tun_count": 0,
+      "curl_status": 200,
+      "blocked_process_probe": {
+        "status": 200,
+        "error": null,
+        "elapsed_ms": 610
+      },
+      "cache_used_event": false
+    }
+  },
+  "routes_and_dns_restored": true,
+  "cleanup": {
+    "utc": "2026-09-08T06:58:14.1362718Z",
+    "vm_uuid": "e42043a3-dd4d-452b-b151-410ad5d49543",
+    "vm_off": true,
+    "nic_none": true,
+    "source_off": true,
+    "routes_sha256": "401e4b0a47c9c8c73d6b52536cec753f09f559ceb2d512884e57d5f7aff72434",
+    "dns_sha256": "720fe40b4ee8ab42f57c808b3c5f824808703b35113fe9999ef97a7bbccdee59",
+    "backend_restored": true,
+    "fixture_rules": 0,
+    "ui_count": 0,
+    "installed_files_verified": 305,
+    "host_network_unchanged": true
+  },
+  "open_checks": [
+    "actual 24-hour expiry on installed bytes",
+    "explicit 401/403 and remote revocation on installed bytes",
+    "network-side/API-only failure variants",
+    "Windows 10",
+    "independent route/effective location proof",
+    "exact final channel and complete N02/N07"
+  ],
+  "release": {
+    "published": false,
+    "deployed": false,
+    "promoted": false,
+    "final_candidate": false
+  },
+  "schema": "pokrov.r12-platform-windows-api-outage/v1",
+  "source": "EXECUTION-WINDOWS-API-OUTAGE-2026-09-08.md",
+  "client_evidence_commit": "d482d180616c472039c51affe29c5c39891dc0dd",
+  "client_evidence_git_blob": "ad5dab4522c700ed765e0ed884116b7f2ae19228",
+  "client_evidence_git_sha256": "712f4c3d5ca7d8c9a619f715b8e585f522e4b51275188af846d96e2b6da44d42",
+  "client_evidence_path": "E:/r12client/docs/operations/evidence/2026-09-08-r12-windows-api-outage/receipt.json",
+  "raw_artifacts_verified": 44
+}
