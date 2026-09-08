@@ -2,6 +2,13 @@
 
 **PARTIAL / RELEASE_BLOCKED. План целиком не завершён; последующие срезы датированы ниже.**
 
+[Windows useful startup](EXECUTION-WINDOWS-STARTUP-2026-09-08.md): установленный
+`e88dff9` достигает доступных controls защиты с p95 765,5534 мс при прогретой
+ОС и 2311,4823 мс после power-on/login VM. В каждом сценарии 3 warmups и
+20 retained; оба stop 3500 мс PASS, postboot target 2000 мс не достигнут.
+23 разных boot identities, 305 installed hashes и return state проверены.
+VM off/NIC none, host network прежний. Полный W05, Win10 и final channel открыты.
+
 [Windows idle CPU/RAM](EXECUTION-WINDOWS-IDLE-2026-09-08.md): client `e88dff9`
 устраняет уведомления при неизменном runtime status. В той же Win11 VM CPU p95
 UI/service вместе снизился с 1,498296% FAIL до 0,749983% PASS при лимите 1%.

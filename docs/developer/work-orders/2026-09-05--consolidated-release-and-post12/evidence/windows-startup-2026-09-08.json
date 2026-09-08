@@ -1,0 +1,89 @@
+{
+  "schema": "pokrov.r12-platform-windows-startup/v1",
+  "status": "PASS_BOUNDED",
+  "source": "EXECUTION-WINDOWS-STARTUP-2026-09-08.md",
+  "client_evidence_commit": "f972a4c57db8bbf6cfae76e988dd1536241c6ea7",
+  "client_evidence_git_blob": "53820241c974f047dd39721b44257820a0436400",
+  "client_evidence_git_sha256": "1a7ba3e111963304450bb15da06215730ddd248d468b015486d933ce4e0d9a38",
+  "client_evidence_path": "E:/r12client/docs/operations/evidence/2026-09-08-r12-windows-startup/receipt.json",
+  "client_source": "e88dff94bef85650c5f0b3d31dc3ff9a5e39c38a",
+  "core_source": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+  "installer_sha256": "29a87a13906909e400037a947f1e4f876ca59821e7e34c73060e623f2d9fbeea",
+  "origin": "current-origin; owned offline Windows 11 VM",
+  "warm_os_p95_ms": 765.5534,
+  "postboot_p95_ms": 2311.4823,
+  "gate_status": {
+    "warm_os_stop": "PASS",
+    "warm_os_target_met": true,
+    "postboot_stop": "PASS",
+    "postboot_target_met": false
+  },
+  "warmups_per_scenario": 3,
+  "retained_per_scenario": 20,
+  "distinct_postboot_ids": 23,
+  "installed_hashes": 305,
+  "raw_artifacts_verified": 51,
+  "cleanup": {
+    "vm": {
+      "utc": "2026-09-08T05:08:08.0021936Z",
+      "vm_uuid": "e42043a3-dd4d-452b-b151-410ad5d49543",
+      "powered_off": true,
+      "nic_none": true,
+      "source_powered_off": true,
+      "installed_files_verified": 305,
+      "ui_after": 0,
+      "service_before_poweroff": "Running"
+    },
+    "host_routes_and_dns_unchanged": true,
+    "backend_changed": false,
+    "ui_processes": 0,
+    "service": "Auto LocalSystem Running before poweroff"
+  },
+  "open_checks": [
+    "postboot 2000ms optimization target",
+    "Windows 10",
+    "physical/comparable hardware",
+    "physical cold-cache conditions",
+    "connected/tray-hidden performance",
+    "exact final channel and full R12-W05"
+  ],
+  "validation": {
+    "performance_contract_tests": "30 PASS",
+    "client_seed_docs": "PASS with explicit platform/Core worktrees"
+  },
+  "validation_logs": [
+    {
+      "path": "E:/r12-windows-startup-20260908/performance-contract-tests.log",
+      "sha256": "bf8dc4e0daad7da83abb05909a7dfd12f00541bcb61359a3bde4a4076401de57",
+      "status": "PASS"
+    },
+    {
+      "path": "E:/r12-windows-startup-20260908/docs-seed.log",
+      "sha256": "d431b1ff7a56453e0a6bc58439a21901e672d632ee898d8807042de647ab1d72",
+      "status": "PASS"
+    }
+  ],
+  "release": {
+    "published": false,
+    "deployed": false,
+    "promoted": false,
+    "final_candidate": false
+  },
+  "platform_validation": [
+    {
+      "path": "E:/r12-windows-startup-20260908/platform-docs-tests.log",
+      "sha256": "8e8012de312ded1fc1a4eb22b5cdb3d776c4be76fdde07836ddf39e5bec16c6b",
+      "status": "PASS"
+    },
+    {
+      "path": "E:/r12-windows-startup-20260908/platform-context-audit.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "status": "PASS"
+    },
+    {
+      "path": "E:/r12-windows-startup-20260908/work-order-validate.log",
+      "sha256": "5b3bc60d0881be28b4381bd4ce7518772a6bf9b2df73e9d95e96d032ef1f9f51",
+      "status": "PASS"
+    }
+  ]
+}
