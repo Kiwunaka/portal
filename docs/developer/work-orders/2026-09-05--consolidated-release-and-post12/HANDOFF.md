@@ -2,6 +2,13 @@
 
 **PARTIAL / RELEASE_BLOCKED. План целиком не завершён; последующие срезы датированы ниже.**
 
+[Новый Android package на Huawei](EXECUTION-ANDROID-DEVICE-2026-09-08.md):
+точные ARM64 bytes client `76614b1` / Core `02a091c` установлены с сохранением
+настроек. Обычный connect и Wi-Fi/mobile/Wi-Fi refresh PASS_BOUNDED;
+отдельный reconnect восстановил routes/rules и удалил TUN. Разница rule hash
+после смены сети остаётся непроверенной. AWG preview отверг старую запись;
+installed AWG и полная device/release матрица открыты. VPN off, Wi-Fi/mobile on.
+
 [A02 owned server](EXECUTION-A02-2026-09-08.md): доступ DE восстановлен,
 отдельный SSH-ключ проверен. Серверный бинарник воспроизведён побайтно;
 AWG2/AWG3.1 с exact Core `02a091c` прошли шесть Pi MTU cases, 22 alignment
