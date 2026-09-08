@@ -2,6 +2,12 @@
 
 **PARTIAL / RELEASE_BLOCKED. План целиком не завершён; последующие срезы датированы ниже.**
 
+[Win10 access](EXECUTION-WIN10-ACCESS-2026-09-08.md): официальная hash-verified
+LTSC 2021 Evaluation установлена в отдельной VM, но две попытки активации дали
+`0x87E10BC6`, status 5 / grace 0. `BLOCKED_BY_ACCESS`; POKROV installation/runtime
+NOT_RUN. VM off/NIC none, host network прежний. Запрошен существующий
+лицензированный Win10-стенд; полный W01 открыт.
+
 [Windows useful startup](EXECUTION-WINDOWS-STARTUP-2026-09-08.md): установленный
 `e88dff9` достигает доступных controls защиты с p95 765,5534 мс при прогретой
 ОС и 2311,4823 мс после power-on/login VM. В каждом сценарии 3 warmups и
