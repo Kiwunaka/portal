@@ -47,6 +47,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import and_, or_, case, func, text
 from sqlalchemy import text as sql_text
 from sqlalchemy.exc import IntegrityError
+from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from request_correlation import (
@@ -9615,14 +9616,10 @@ async def _admin_v2_legacy_read_executor(context):
         finally:
             session.close()
     if kind == "shift.overview":
-        reader = globals().get("_admin_ops_overview_payload")
+        reader = globals().get("_admin_ops_overview_read")
         if not callable(reader):
             raise RuntimeError("overview projection is unavailable")
-        session = SessionLocal()
-        try:
-            return reader(s=session)
-        finally:
-            session.close()
+        return await run_in_threadpool(reader)
     if kind == "growth.funnel":
         range_reader = globals().get("_admin_metrics_range")
         payload_reader = globals().get("_admin_funnel_summary_payload")

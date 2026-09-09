@@ -3991,14 +3991,18 @@ def _admin_ops_overview_payload(*, s, now: datetime | None = None) -> dict[str, 
     }
 
 
-@app.get("/api/admin/ops/overview")
-async def admin_ops_overview(x_telegram_init_data: str = Header(default="")) -> dict:
-    _require_admin(x_telegram_init_data)
+def _admin_ops_overview_read() -> dict[str, Any]:
     s = SessionLocal()
     try:
         return _admin_ops_overview_payload(s=s)
     finally:
         s.close()
+
+
+@app.get("/api/admin/ops/overview")
+async def admin_ops_overview(x_telegram_init_data: str = Header(default="")) -> dict:
+    _require_admin(x_telegram_init_data)
+    return await run_in_threadpool(_admin_ops_overview_read)
 
 
 @app.get("/api/admin/campaigns/{campaign_id}/pilot-decision")
