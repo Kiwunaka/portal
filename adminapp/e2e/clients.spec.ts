@@ -161,9 +161,10 @@ test("Support Inbox claim и внутренняя заметка использ�
 
   expect(api.calls.some((call) => call.path === "/api/admin/v2/support/action-intents")).toBe(true);
   expect(api.calls.some((call) => /^\/api\/admin\/v2\/support\/action-intents\/[0-9a-f-]{36}\/execute$/.test(call.path))).toBe(true);
-  const note = api.calls.find((call) => call.path === "/api/admin/tickets/501/note");
-  expect(note?.body).toMatchObject({ expected_version: 3 });
-  expect(note?.headers?.["x-admin-intent-id"]).toBe("00000000-0000-4000-8000-000000000713");
+  const note = api.calls.find((call) => call.path.endsWith("/execute") && (call.body as { action?: string })?.action === "ticket.note");
+  expect(note?.path).toMatch(/^\/api\/admin\/v2\/support\/action-intents\/[0-9a-f-]{36}\/execute$/);
+  expect(note?.body).toMatchObject({ payload: { expected_version: 3 } });
+  expect(api.calls.some((call) => call.path === "/api/admin/tickets/501/note")).toBe(false);
 });
 
 test("блокировка и ответ проходят через намерение, а неясный ответ сохраняет черновик", async ({ page }) => {

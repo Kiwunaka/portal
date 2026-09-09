@@ -4236,6 +4236,57 @@ def test_admin_v2_support_inbox_user360_and_attempts_are_versioned_and_bounded(
     assert stale.status_code == 409
     assert stale.json()["error"]["code"] == "stale_version"
 
+    note_body = "Internal support note must stay private"
+    command = {
+        "action": "ticket.note",
+        "target": {"type": "ticket", "id": str(ticket_id)},
+        "payload": {"expected_version": ticket_version + 1, "body": note_body},
+    }
+    prepared = client.post(
+        "/api/admin/v2/support/action-intents",
+        headers={"X-Pokrov-Admin-CSRF": csrf}, json=command,
+    )
+    assert prepared.status_code == 200, prepared.text
+    intent = prepared.json()["data"]
+    headers = {
+        "X-Pokrov-Admin-CSRF": csrf,
+        "X-Admin-Idempotency-Key": str(uuid.uuid4()),
+        "X-Admin-Confirmation-SHA256": hashlib.sha256(
+            intent["confirmation_challenge"].encode()
+        ).hexdigest(),
+    }
+    for _ in range(2):
+        note = client.post(
+            f"/api/admin/v2/support/action-intents/{intent['intent_id']}/execute",
+            headers=headers, json=command,
+        )
+        assert note.status_code == 200, note.text
+        assert note.json()["data"]["status"] == "completed"
+    detail = client.get(f"/api/admin/v2/support/tickets/{ticket_id}").json()["data"]
+    assert sum(row["body"] == note_body for row in detail["messages"]) == 1
+    assert detail["messages"][-1]["visibility"] == "internal"
+    public_client = TestClient(api.app, base_url="https://api.pokrov.test")
+    public = public_client.get(f"/api/tickets/{ticket_id}", headers={
+        "X-Telegram-Init-Data": _sign_telegram_init_data(
+            bot_token="test_bot_token_123", tg_id=1001,
+        ),
+    })
+    assert public.status_code == 200, public.text
+    assert note_body not in public.text
+    from models import AdminAudit, AdminOperatorAudit
+    with api.SessionLocal() as db:
+        assert db.query(AdminAudit).filter(AdminAudit.action == "ticket.note").count() == 1
+        audit = db.query(AdminOperatorAudit).filter(AdminOperatorAudit.action == "ticket.note").one()
+        assert note_body not in str(audit.details_json)
+        db.query(AdminOperatorRole).one().role_code = "readonly"
+        db.commit()
+    denied = client.post(
+        "/api/admin/v2/support/action-intents",
+        headers={"X-Pokrov-Admin-CSRF": csrf}, json=command,
+    )
+    assert denied.status_code == 403
+    assert denied.json()["error"]["code"] == "operator_permission_denied"
+
 
 def test_admin_v2_issues_one_time_signed_support_mode_through_action_intent(
     monkeypatch, tmp_path
