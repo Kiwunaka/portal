@@ -1297,6 +1297,7 @@ def _ensure_capacity_domain_sqlite(conn) -> None:
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_node_capacity_policy_code ON node_capacity_policy(node_code);",
         "CREATE INDEX IF NOT EXISTS ix_node_runtime_metrics_node_code ON node_runtime_metrics(node_code);",
         "CREATE INDEX IF NOT EXISTS ix_node_runtime_metrics_sampled_at ON node_runtime_metrics(sampled_at);",
+        "CREATE INDEX IF NOT EXISTS ix_node_runtime_metrics_lower_node_sampled_id ON node_runtime_metrics(lower(node_code), sampled_at, id);",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_key_usage_rollup_window ON key_usage_rollups(key_id, node_code, window_bucket_at, window_seconds);",
         "CREATE INDEX IF NOT EXISTS ix_key_usage_rollups_tg_id ON key_usage_rollups(tg_id);",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_key_source_window ON key_source_observations(key_id, node_code, source_ip_hash, window_bucket_at);",
@@ -1495,6 +1496,7 @@ def _ensure_capacity_domain_postgres(conn) -> None:
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_node_capacity_policy_code ON node_capacity_policy(node_code);",
         "CREATE INDEX IF NOT EXISTS ix_node_runtime_metrics_node_code ON node_runtime_metrics(node_code);",
         "CREATE INDEX IF NOT EXISTS ix_node_runtime_metrics_sampled_at ON node_runtime_metrics(sampled_at);",
+        "CREATE INDEX IF NOT EXISTS ix_node_runtime_metrics_lower_node_sampled_id ON node_runtime_metrics(lower(node_code), sampled_at, id);",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_key_usage_rollup_window ON key_usage_rollups(key_id, node_code, window_bucket_at, window_seconds);",
         "CREATE INDEX IF NOT EXISTS ix_key_usage_rollups_tg_id ON key_usage_rollups(tg_id);",
         "CREATE UNIQUE INDEX IF NOT EXISTS uq_key_source_window ON key_source_observations(key_id, node_code, source_ip_hash, window_bucket_at);",
@@ -4779,6 +4781,10 @@ def run_migrations(engine: Engine) -> None:
                     conn.execute(text(f"ALTER TABLE node_health_samples ADD COLUMN {col} {ddl};"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_node_health_samples_node_code ON node_health_samples(node_code);"))
         conn.execute(text("CREATE INDEX IF NOT EXISTS ix_node_health_samples_sampled_at ON node_health_samples(sampled_at);"))
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_node_health_samples_node_sampled_id "
+            "ON node_health_samples(node_code, sampled_at, id);"
+        ))
 
         _ensure_capacity_domain_sqlite(conn)
         _ensure_admin_ops_domain_sqlite(conn)
@@ -5985,6 +5991,10 @@ def _run_postgres_migrations(engine: Engine) -> None:
         _postgres_add_column_if_missing(conn, "node_health_samples", "ipv4_health", "VARCHAR(32)")
         _postgres_add_column_if_missing(conn, "node_health_samples", "ipv6_health", "VARCHAR(32)")
         _postgres_add_column_if_missing(conn, "node_health_samples", "transport_health_json", "TEXT")
+        conn.execute(text(
+            "CREATE INDEX IF NOT EXISTS ix_node_health_samples_node_sampled_id "
+            "ON node_health_samples(node_code, sampled_at, id);"
+        ))
 
         _ensure_capacity_domain_postgres(conn)
         _ensure_admin_ops_domain_postgres(conn)
