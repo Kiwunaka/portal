@@ -332,6 +332,14 @@ version, desktop ABI and Android package. The field is `null` unless every
 identity value is complete and valid; legacy or partially configured runtime
 state must not look manifest-bound.
 
+### Subscription reads
+
+`GET /api/client/subscription` waits at most three seconds for optional panel
+statistics, below the client's fifteen-second request timeout. If that read
+times out or is unavailable, the response still includes database-backed access,
+expiry and linked identities; `usage.source` is `unavailable`. Missing statistics
+are not persisted as a new zero-usage observation for a free account.
+
 ### First-party acquisition handoff
 
 `POST /api/funnel/events` accepts only the bounded acquisition fields used to

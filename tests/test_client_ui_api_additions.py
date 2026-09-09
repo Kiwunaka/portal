@@ -1183,6 +1183,77 @@ def test_client_account_devices_notifications_push_and_subscription_contract(mon
     assert push_body["tokenHash"] == hashlib.sha256(b"local-test-token").hexdigest()
 
 
+def test_subscription_keeps_access_and_identity_when_panel_stats_time_out(monkeypatch, tmp_path) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    _seed_rollout(api)
+    _add_node(api, code="nl-ams-01")
+    started = _start_trial(client, install_id="subscription-panel-timeout")
+    from models import User
+
+    with api.SessionLocal() as db:
+        user = db.query(User).filter(User.app_install_id == "subscription-panel-timeout").one()
+        user.is_app_user = False
+        user.username = "pokrov_owner"
+        user.sub_type = "PAID"
+        user.current_plan_code = "1_month"
+        db.commit()
+
+    cancelled = []
+
+    async def stalled_runtime(**kwargs):
+        try:
+            await asyncio.sleep(60)
+        finally:
+            cancelled.append(True)
+
+    monkeypatch.setattr(api, "CLIENT_SUBSCRIPTION_RUNTIME_BUDGET_SECONDS", 0.05)
+    monkeypatch.setattr(api, "_get_user_runtime_summary", stalled_runtime)
+    started_at = time.perf_counter()
+    response = client.get("/api/client/subscription", headers=_auth_headers(started))
+    assert response.status_code == 200, response.text
+    assert time.perf_counter() - started_at < 1.0
+    assert cancelled == [True]
+    body = response.json()
+    assert body["lane"] == "paidUnlimited"
+    assert body["daysLeft"] > 0
+    assert body["identities"]["telegram"]["linked"] is True
+    assert body["usage"]["source"] == "unavailable"
+
+
+def test_subscription_does_not_record_missing_stats_as_free_usage(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("FREE_TIER_ENABLED", "true")
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    _seed_rollout(api)
+    _add_node(api, code="nl-ams-01")
+    started = _start_trial(client, install_id="subscription-panel-missing-usage")
+    from models import User
+
+    observed_at = _utcnow() - timedelta(hours=1)
+    with api.SessionLocal() as db:
+        user = db.query(User).filter(User.app_install_id == "subscription-panel-missing-usage").one()
+        user.sub_type = "FREE"
+        user.current_plan_code = "free_monthly"
+        user.free_profile_observed_bytes = 123456789
+        user.free_profile_observed_at = observed_at
+        user.free_profile_observation_source = "retained_panel_sample"
+        db.commit()
+
+    async def unavailable_runtime(**kwargs):
+        return api._managed_profile_runtime_fallback(panel_state="timeout", panel_error="panel_runtime_timeout")
+
+    monkeypatch.setattr(api, "_get_user_runtime_summary", unavailable_runtime)
+    response = client.get("/api/client/subscription", headers=_auth_headers(started))
+    assert response.status_code == 200, response.text
+    assert response.json()["usage"]["source"] == "unavailable"
+    with api.SessionLocal() as db:
+        user = db.query(User).filter(User.app_install_id == "subscription-panel-missing-usage").one()
+        assert user.free_profile_observed_bytes == 123456789
+        assert user.free_profile_observed_at == observed_at
+        assert user.free_profile_observation_source == "retained_panel_sample"
+
+
 def test_native_telegram_account_is_already_linked_in_client_profile(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path)
     client = TestClient(api.app)
