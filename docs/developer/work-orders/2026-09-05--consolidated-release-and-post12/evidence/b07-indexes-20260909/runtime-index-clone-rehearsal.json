@@ -1,0 +1,33 @@
+{
+  "utc": "2026-09-09T12:00:04.888169+00:00",
+  "target_database": "portal_r12_20260909_rehearsal",
+  "origin": "brain-origin restored PostgreSQL clone",
+  "migration_source_sha256": "6a5398182b36162a120faf4ae70854fc4ce6c2b952a6b53715b78fb73c59bd9e",
+  "models_source_sha256": "bb9369d380fd407f0d2ba985e1e00855a36e6bf5d3521d450c5eba4a5577ca17",
+  "ddl": "CREATE INDEX IF NOT EXISTS ix_node_runtime_metrics_lower_node_sampled_id ON node_runtime_metrics(lower(node_code), sampled_at, id);",
+  "production_database_modified": false,
+  "steps": [
+    {
+      "name": "create_concurrently",
+      "ms": 2014.51
+    },
+    {
+      "name": "candidate_migrations_1",
+      "ms": 813.47
+    },
+    {
+      "name": "candidate_migrations_2",
+      "ms": 569.27
+    }
+  ],
+  "rows_before": 743891,
+  "index": {
+    "relname": "ix_node_runtime_metrics_lower_node_sampled_id",
+    "indisvalid": true,
+    "indisready": true,
+    "definition": "CREATE INDEX ix_node_runtime_metrics_lower_node_sampled_id ON public.node_runtime_metrics USING btree (lower((node_code)::text), sampled_at, id)",
+    "bytes": 30195712
+  },
+  "rows_after": 743891,
+  "status": "PASS_CONCURRENT_INDEX_AND_IDEMPOTENT_MIGRATIONS"
+}

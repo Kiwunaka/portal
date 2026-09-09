@@ -1,0 +1,28 @@
+{
+  "before": {
+    "path": "E:\\r12-shift-evidence-20260909\\runtime-shift-observation.json",
+    "sha256": "ba12873238d9309cb8196b9572fc52ce4b31cff24017556272a54da2b78667c6",
+    "source_revision": "3478fc4f292484c01bc2ccec124588f8f0c2423e",
+    "shift_ms": 6368.37,
+    "health_count": 16,
+    "health_max_ms": 131.47,
+    "lag_total_delta_ms": 11,
+    "outbox_unchanged": true,
+    "fixture_revoked": true
+  },
+  "after": {
+    "path": "E:\\r12-shift-profile-20260909\\runtime-shift-observation.json",
+    "sha256": "c3bcf24c28256dee27b8c59b20de9d8ec40f52aabed8ffd08cceaaf8d32d839e",
+    "source_revision": "1ef1f50f76c0529b0efa17a694dd2a5885a475a5",
+    "shift_ms": 671.96,
+    "health_count": 11,
+    "health_max_ms": 92.99,
+    "lag_total_delta_ms": 4,
+    "outbox_unchanged": true,
+    "fixture_revoked": true
+  },
+  "origin": "brain-origin production HTTPS",
+  "comparison": "separate bounded observation windows; not p95 or SLO",
+  "same_clone_projection_hash": "c334744ac4b225ee99af718ac2f0a029f710094fedc128ba11c7a75a9cef4ea3",
+  "shift_speedup_ratio": 9.48
+}

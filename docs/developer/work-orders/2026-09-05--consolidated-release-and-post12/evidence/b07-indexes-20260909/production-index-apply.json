@@ -1,0 +1,212 @@
+{
+  "utc": "2026-09-09T12:27:16.968617+00:00",
+  "origin": "brain-origin production PostgreSQL",
+  "status": "PASS_INDEXES",
+  "pid": 76036,
+  "start_ticks": "424855677",
+  "previous_runtime_source": "3478fc4f292484c01bc2ccec124588f8f0c2423e",
+  "candidate_source": "1ef1f50f76c0529b0efa17a694dd2a5885a475a5",
+  "migration_payload_sha256": "6a5398182b36162a120faf4ae70854fc4ce6c2b952a6b53715b78fb73c59bd9e",
+  "steps": [
+    {
+      "index": "ix_node_health_samples_node_sampled_id",
+      "milliseconds": 9214.54,
+      "indisvalid": true,
+      "indisready": true,
+      "definition": "CREATE INDEX ix_node_health_samples_node_sampled_id ON public.node_health_samples USING btree (node_code, sampled_at, id)",
+      "bytes": 66691072
+    },
+    {
+      "index": "ix_node_runtime_metrics_lower_node_sampled_id",
+      "milliseconds": 1525.93,
+      "indisvalid": true,
+      "indisready": true,
+      "definition": "CREATE INDEX ix_node_runtime_metrics_lower_node_sampled_id ON public.node_runtime_metrics USING btree (lower((node_code)::text), sampled_at, id)",
+      "bytes": 30433280
+    },
+    {
+      "operation": "analyze_node_runtime_metrics",
+      "milliseconds": 383.58
+    }
+  ],
+  "health_samples": [
+    {
+      "http_status": 200,
+      "http_ms": 96.7,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 3052,
+        "last_lag_ms": 0,
+        "max_lag_ms": 577,
+        "lag_total_ms": 2419
+      }
+    },
+    {
+      "http_status": 200,
+      "http_ms": 81.54,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 3053,
+        "last_lag_ms": 0,
+        "max_lag_ms": 577,
+        "lag_total_ms": 2419
+      }
+    },
+    {
+      "http_status": 200,
+      "http_ms": 21.2,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 3054,
+        "last_lag_ms": 0,
+        "max_lag_ms": 577,
+        "lag_total_ms": 2419
+      }
+    },
+    {
+      "http_status": 200,
+      "http_ms": 109.42,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 3055,
+        "last_lag_ms": 0,
+        "max_lag_ms": 577,
+        "lag_total_ms": 2419
+      }
+    },
+    {
+      "http_status": 200,
+      "http_ms": 16.36,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 3056,
+        "last_lag_ms": 0,
+        "max_lag_ms": 577,
+        "lag_total_ms": 2419
+      }
+    },
+    {
+      "http_status": 200,
+      "http_ms": 24.94,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 3057,
+        "last_lag_ms": 2,
+        "max_lag_ms": 577,
+        "lag_total_ms": 2421
+      }
+    },
+    {
+      "http_status": 200,
+      "http_ms": 17.52,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 3058,
+        "last_lag_ms": 1,
+        "max_lag_ms": 577,
+        "lag_total_ms": 2422
+      }
+    },
+    {
+      "http_status": 200,
+      "http_ms": 15.29,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 3059,
+        "last_lag_ms": 0,
+        "max_lag_ms": 577,
+        "lag_total_ms": 2422
+      }
+    },
+    {
+      "http_status": 200,
+      "http_ms": 64.66,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 3060,
+        "last_lag_ms": 0,
+        "max_lag_ms": 577,
+        "lag_total_ms": 2422
+      }
+    },
+    {
+      "http_status": 200,
+      "http_ms": 12.26,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 3061,
+        "last_lag_ms": 0,
+        "max_lag_ms": 577,
+        "lag_total_ms": 2422
+      }
+    },
+    {
+      "http_status": 200,
+      "http_ms": 24.56,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 3062,
+        "last_lag_ms": 1,
+        "max_lag_ms": 577,
+        "lag_total_ms": 2423
+      }
+    },
+    {
+      "http_status": 200,
+      "http_ms": 15.6,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 3063,
+        "last_lag_ms": 0,
+        "max_lag_ms": 577,
+        "lag_total_ms": 2423
+      }
+    },
+    {
+      "http_status": 200,
+      "http_ms": 12.17,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 3064,
+        "last_lag_ms": 0,
+        "max_lag_ms": 577,
+        "lag_total_ms": 2423
+      }
+    }
+  ],
+  "row_mutations_executed": false,
+  "payment_operations_executed": false,
+  "credentials_exported": false,
+  "indexes_before": {
+    "node_health_samples_pkey": "CREATE UNIQUE INDEX node_health_samples_pkey ON public.node_health_samples USING btree (id)",
+    "ix_node_health_samples_node_code": "CREATE INDEX ix_node_health_samples_node_code ON public.node_health_samples USING btree (node_code)",
+    "node_runtime_metrics_pkey": "CREATE UNIQUE INDEX node_runtime_metrics_pkey ON public.node_runtime_metrics USING btree (id)",
+    "ix_node_runtime_metrics_sampled_at": "CREATE INDEX ix_node_runtime_metrics_sampled_at ON public.node_runtime_metrics USING btree (sampled_at)",
+    "ix_node_runtime_metrics_node_code": "CREATE INDEX ix_node_runtime_metrics_node_code ON public.node_runtime_metrics USING btree (node_code)"
+  },
+  "active_step": "analyze_runtime_expression",
+  "indexes_after": {
+    "node_health_samples_pkey": "CREATE UNIQUE INDEX node_health_samples_pkey ON public.node_health_samples USING btree (id)",
+    "ix_node_health_samples_node_code": "CREATE INDEX ix_node_health_samples_node_code ON public.node_health_samples USING btree (node_code)",
+    "ix_node_health_samples_node_sampled_id": "CREATE INDEX ix_node_health_samples_node_sampled_id ON public.node_health_samples USING btree (node_code, sampled_at, id)",
+    "node_runtime_metrics_pkey": "CREATE UNIQUE INDEX node_runtime_metrics_pkey ON public.node_runtime_metrics USING btree (id)",
+    "ix_node_runtime_metrics_sampled_at": "CREATE INDEX ix_node_runtime_metrics_sampled_at ON public.node_runtime_metrics USING btree (sampled_at)",
+    "ix_node_runtime_metrics_node_code": "CREATE INDEX ix_node_runtime_metrics_node_code ON public.node_runtime_metrics USING btree (node_code)",
+    "ix_node_runtime_metrics_lower_node_sampled_id": "CREATE INDEX ix_node_runtime_metrics_lower_node_sampled_id ON public.node_runtime_metrics USING btree (lower((node_code)::text), sampled_at, id)"
+  },
+  "schema_delta": "two validated non-unique indexes only; existing index definitions unchanged",
+  "completed_at": "2026-09-09T12:27:30.134758+00:00"
+}

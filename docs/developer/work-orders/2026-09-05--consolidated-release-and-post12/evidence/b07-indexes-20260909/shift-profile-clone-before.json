@@ -1,0 +1,82 @@
+{
+  "utc": "2026-09-09T11:47:13.540951+00:00",
+  "origin": "brain-origin isolated exact-source projection, read-only restored PostgreSQL clone",
+  "source_revision": "3478fc4f292484c01bc2ccec124588f8f0c2423e",
+  "verified_payload_files": 204,
+  "sql_samples": [
+    {
+      "stage": "build_admin_metrics_status_snapshot",
+      "tables": [
+        "nodes"
+      ],
+      "elapsed_ms": 39.77,
+      "row_count": 7,
+      "statement_sha256": "813170f2c614a36545c7f832189732f5e5d3cdbe20df5cff37b1262cd31d351c"
+    },
+    {
+      "stage": "build_admin_metrics_status_snapshot",
+      "tables": [
+        "node_health_samples"
+      ],
+      "elapsed_ms": 3498.18,
+      "row_count": 3,
+      "statement_sha256": "68bd6bc3f5b98d232a5b919ec9d22898695a65c0783eedcca638db7778f1f039"
+    },
+    {
+      "stage": "build_admin_metrics_status_snapshot",
+      "tables": [
+        "node_health_samples"
+      ],
+      "elapsed_ms": 2503.42,
+      "row_count": 3,
+      "statement_sha256": "68bd6bc3f5b98d232a5b919ec9d22898695a65c0783eedcca638db7778f1f039"
+    },
+    {
+      "stage": "build_admin_metrics_status_snapshot",
+      "tables": [
+        "node_health_samples"
+      ],
+      "elapsed_ms": 4448.48,
+      "row_count": 3,
+      "statement_sha256": "68bd6bc3f5b98d232a5b919ec9d22898695a65c0783eedcca638db7778f1f039"
+    },
+    {
+      "stage": "build_admin_metrics_status_snapshot",
+      "tables": [
+        "node_health_samples"
+      ],
+      "elapsed_ms": 3021.37,
+      "row_count": 3,
+      "statement_sha256": "68bd6bc3f5b98d232a5b919ec9d22898695a65c0783eedcca638db7778f1f039"
+    },
+    {
+      "stage": "build_admin_metrics_status_snapshot",
+      "tables": [
+        "node_health_samples"
+      ],
+      "elapsed_ms": 961.78,
+      "row_count": 3,
+      "statement_sha256": "68bd6bc3f5b98d232a5b919ec9d22898695a65c0783eedcca638db7778f1f039"
+    },
+    {
+      "stage": "build_admin_metrics_status_snapshot",
+      "tables": [
+        "node_health_samples"
+      ],
+      "elapsed_ms": 1204.26,
+      "row_count": 3,
+      "statement_sha256": "68bd6bc3f5b98d232a5b919ec9d22898695a65c0783eedcca638db7778f1f039"
+    }
+  ],
+  "stages": [
+    {
+      "stage": "build_admin_metrics_status_snapshot",
+      "elapsed_ms": 20994.05
+    }
+  ],
+  "production_source_modified": false,
+  "credentials_or_raw_customer_data_exported": false,
+  "isolated_cold_connection_acquire_ms": 58.05,
+  "status": "PROFILE_FAILED",
+  "failure_type": "OperationalError"
+}

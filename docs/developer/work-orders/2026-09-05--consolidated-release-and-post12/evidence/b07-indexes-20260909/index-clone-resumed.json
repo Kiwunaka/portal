@@ -1,0 +1,33 @@
+{
+  "utc": "2026-09-09T11:53:23.583335+00:00",
+  "target_database": "portal_r12_20260909_rehearsal",
+  "origin": "brain-origin restored PostgreSQL clone",
+  "migration_source_sha256": "19276c9e25af93c8909aaace5f5222ed634b5024668ceca46f3d745c3fa9242c",
+  "models_source_sha256": "aa4d2f121a84a48917e0270b384e4519066611135f3fef4455ddcd209969598d",
+  "ddl": "CREATE INDEX IF NOT EXISTS ix_node_health_samples_node_sampled_id ON node_health_samples(node_code, sampled_at, id);",
+  "production_database_modified": false,
+  "steps": [
+    {
+      "name": "previous_attempt_index_verified_valid_and_ready"
+    },
+    {
+      "name": "candidate_migrations_1",
+      "ms": 3759.01
+    },
+    {
+      "name": "candidate_migrations_2",
+      "ms": 949.14
+    }
+  ],
+  "rows_before": 1638180,
+  "index": {
+    "relname": "ix_node_health_samples_node_sampled_id",
+    "indisvalid": true,
+    "indisready": true,
+    "definition": "CREATE INDEX ix_node_health_samples_node_sampled_id ON public.node_health_samples USING btree (node_code, sampled_at, id)",
+    "bytes": 66453504
+  },
+  "rows_after": 1638180,
+  "original_instrument_failure": "NameError: missing module __file__ reproduced before migrations",
+  "status": "PASS_CONCURRENT_INDEX_AND_IDEMPOTENT_MIGRATIONS"
+}

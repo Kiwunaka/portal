@@ -1,0 +1,30 @@
+{
+  "focused": {
+    "log": "E:\\r12-shift-profile-20260909\\schema-final-focused.log",
+    "sha256": "814b84cd6c0d9c34dbafec09dd2208e6ef25df1f28eefdfb7dcc6296851048dc",
+    "tests_passed": 41,
+    "subtests_passed": 0,
+    "status": "PASS"
+  },
+  "integration": {
+    "log": "E:\\r12-shift-profile-20260909\\integration-schema.log",
+    "sha256": "daaaa0ef7953e4f292c3f11dc0b79c923697f36bf344b8435a39c296b18e86a4",
+    "tests_passed": 4,
+    "subtests_passed": 0,
+    "status": "PASS"
+  },
+  "backend": {
+    "log": "E:\\r12-shift-profile-20260909\\backend-router-final.log",
+    "sha256": "8af4ea572452e65d72eabe6cf6dc218d04493ba5a84626cf4453e6bbdc3b81fa",
+    "tests_passed": 154,
+    "subtests_passed": 8,
+    "status": "PASS"
+  },
+  "previous_backend": {
+    "log": "E:\\r12-shift-profile-20260909\\backend-router.log",
+    "sha256": "8a26337d2d385b959d9d96fadbb57e99d32989ddc9113c523b65d86df4d14837",
+    "tests_passed": null,
+    "subtests_passed": null,
+    "status": "INTERRUPTED_NOT_PASS"
+  }
+}

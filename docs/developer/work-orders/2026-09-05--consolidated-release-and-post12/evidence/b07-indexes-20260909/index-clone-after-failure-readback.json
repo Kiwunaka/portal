@@ -1,0 +1,11 @@
+{
+  "index": [
+    {
+      "relname": "ix_node_health_samples_node_sampled_id",
+      "indisvalid": true,
+      "indisready": true,
+      "definition": "CREATE INDEX ix_node_health_samples_node_sampled_id ON public.node_health_samples USING btree (node_code, sampled_at, id)",
+      "bytes": 66453504
+    }
+  ]
+}

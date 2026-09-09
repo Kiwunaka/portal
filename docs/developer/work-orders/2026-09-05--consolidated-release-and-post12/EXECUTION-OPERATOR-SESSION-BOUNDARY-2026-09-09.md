@@ -116,3 +116,18 @@ cleanup отозвал обе fixture sessions. Idle PASS остаётся, abso
 побайтно проверенному `security.py` (`02cd79f4…`). Процесс жив; idle deadline
 15:07 мск 9 сентября, absolute 02:37 мск 10 сентября. Оба результата V3
 RUNNING_NOT_PASSED. V2 idle PASS и его неуспешный absolute run сохранены.
+
+
+V3 readback **12:07:28 UTC**: реальный idle expiry PASS — HTTP 401,
+`operator_session_expired`, DB `idle_expired`, session revoked. Отдельный
+процесс жив, absolute cookie получила шесть успешных refreshes, anomalies=0.
+Absolute deadline прежний: 23:37 UTC / 02:37 мск 10 сентября; эта проверка
+ещё RUNNING_NOT_PASSED. Clock и deadlines не изменялись.
+
+
+V3 readback **12:32:23 UTC** после [поставки индексов](EXECUTION-B07-INDEXES-2026-09-09.md):
+тот же PID/start ticks жив; 11-й refresh прошёл в 12:32:19 после API restart.
+HTTP anomalies=0, raw security.py hash и absolute deadline сохранены.
+Source at start `3478fc4`, текущий backend `1ef1f50`; source continuity
+ограничена проверенным security.py, полный source tuple не объявляется неизменным.
+Absolute expiry всё ещё RUNNING_NOT_PASSED.
