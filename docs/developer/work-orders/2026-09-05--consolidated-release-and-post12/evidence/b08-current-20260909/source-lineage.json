@@ -1,0 +1,56 @@
+{
+  "status": "PASS_SOURCE_LINEAGE",
+  "previous": {
+    "base": "f5300053026d32826e54c02202303e1f68c65bc1",
+    "control_panel_override": "1207b63f1574a15569594c5fdbb79e4c8dff553f",
+    "archive_sha256": "8443502c025d033d507fe016fd878952e70736353cd2d68a20184663f5f9d5c5",
+    "files": 197
+  },
+  "current": {
+    "source": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+    "archive_sha256": "44477a0afd4a3f312fcdbeb1a18b333dc3bd8e392ad79deaecf8666314559193",
+    "files": 205
+  },
+  "unchanged_deploy_backup_worker_dependencies": [
+    {
+      "path": "scripts/remote_deploy_brain_portal_code.py",
+      "previous_source": "e74ee81424a23cebb631cabdc0fc8e790765f9d1",
+      "current_source": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+      "both_sha256": "4fb9a3d92afce668cd766df62c7f626b032791fe542e5e7407a6c05704dc4a78",
+      "equal": true
+    },
+    {
+      "path": "scripts/remote_postgres_backup_restore_gate.py",
+      "previous_source": "e74ee81424a23cebb631cabdc0fc8e790765f9d1",
+      "current_source": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+      "both_sha256": "62b2f1f6e954b80a1a4d8d5e2400ea4f7a462101b2679d85cde089fdd17a72fc",
+      "equal": true
+    },
+    {
+      "path": "portal_bot/payment_entitlement_outbox.py",
+      "previous_source": "e74ee81424a23cebb631cabdc0fc8e790765f9d1",
+      "current_source": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+      "both_sha256": "a9f73e131c383a35dcc18526f4766f87ee945e88cc59cd6d0be2ece3f109375b",
+      "equal": true
+    },
+    {
+      "path": "portal_bot/node_provisioning_service.py",
+      "previous_source": "e74ee81424a23cebb631cabdc0fc8e790765f9d1",
+      "current_source": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+      "both_sha256": "3b4aff48f9471c355ce11cc8120bbcb3f60a8be45c6999634f51888331714020",
+      "equal": true
+    },
+    {
+      "path": "portal_bot/requirements.txt",
+      "previous_source": "e74ee81424a23cebb631cabdc0fc8e790765f9d1",
+      "current_source": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+      "both_sha256": "bcf26246b4a9c9c45b0a73a11f1145d0f0cd779a3e659acbfab8ee5cc5a2f5f0",
+      "equal": true
+    }
+  ],
+  "full_source_manifest": {
+    "path": "E:\\r12-b08-current-20260909\\source-manifests.json",
+    "sha256": "a947c451780631733d38a2f55aec42e9b66d18020d7dfb2784907c1f05633247"
+  },
+  "reuse_limits": "Existing real SSH/systemd synthetic-service rollback proves unchanged deploy/restore machinery only. New API compatibility, migration and workers executed separately on Brain; no intentional production failure injected."
+}

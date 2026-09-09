@@ -1,0 +1,37 @@
+{
+  "phase": "concurrent",
+  "result": "PASS",
+  "origin": "brain-origin isolated real APIs and cloned PostgreSQL",
+  "requests": [
+    {
+      "source": "previous",
+      "port": 18091,
+      "checks": {
+        "health": 200,
+        "plans": 200,
+        "unauthenticated_ticket_denial": 401,
+        "authenticated_ticket_read": 200,
+        "authenticated_event_write": 200
+      },
+      "plans_body_sha256": "049e053182a1464fd54aed2a565a6a682126255741632177dcfd1c6a7635c868",
+      "event_id": "f1bb0dec-65f1-45e8-888b-0022a3be1efd",
+      "db_write_verified": true
+    },
+    {
+      "source": "current",
+      "port": 18092,
+      "checks": {
+        "health": 200,
+        "plans": 200,
+        "unauthenticated_ticket_denial": 401,
+        "authenticated_ticket_read": 200,
+        "authenticated_event_write": 200
+      },
+      "plans_body_sha256": "049e053182a1464fd54aed2a565a6a682126255741632177dcfd1c6a7635c868",
+      "event_id": "651ea60c-3c6c-4a0d-ac42-42f68793305f",
+      "db_write_verified": true
+    }
+  ],
+  "production_database_or_source_changed": false,
+  "provider_contacted": false
+}

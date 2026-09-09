@@ -594,6 +594,15 @@ restarts. Support attachments were empty; atomic cross-store consistency and
 deployment of the current API/bot/worker are not claimed. Archives and the
 rehearsal database remain retained outside Git on Brain.
 
+The later [current B08 compatibility and worker check](../developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-B08-CURRENT-2026-09-09.md)
+uses a new descendant of that restored Brain database with actual previous
+197-file and current `cd4a8b9` 205-file APIs. The new startup adds two indexes;
+old/new coexistence and old-code restart retain read/write behavior and the
+expanded schema. Two current outbox workers deliver one synthetic event and
+quarantine one poison event without duplicate grant/job. Production source and
+PIDs remain unchanged. Technical B08 checks are I4; its B06 provider dependency
+and final release acceptance remain open. No production failure was injected.
+
 ### Static sites deploy
 
 Observed 2026-09-09: backend `7d37005` and static inputs `0392052` are deployed

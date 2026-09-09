@@ -1,0 +1,10 @@
+{
+  "status": "FAILED_REQUIRES_INSPECTION",
+  "phase": "configuration",
+  "pid": 85914,
+  "start_ticks": "425280669",
+  "utc": "2026-09-09T13:38:06.334036+00:00",
+  "clone_ms": 8780.93,
+  "failure_type": "AssertionError",
+  "reason": ""
+}

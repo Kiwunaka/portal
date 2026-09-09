@@ -1,0 +1,18 @@
+{
+  "status": "PASS_PREPARED_RESUMED",
+  "phase": "ready_not_started",
+  "utc": "2026-09-09T13:40:07.924360+00:00",
+  "original_failure": "collision_with_existing_retained_fixture_user",
+  "target_database": "portal_r12_b08_current_20260909_rehearsal",
+  "source_rehearsal_database": "portal_r12_20260909_rehearsal",
+  "source_files": {
+    "previous": 197,
+    "current": 205
+  },
+  "ordinary_role": true,
+  "all_public_objects_owned": true,
+  "no_pending_or_processing_outbox_before": true,
+  "synthetic_fixture_seeded": true,
+  "provider_contacted": false,
+  "production_source_or_db_changed": false
+}

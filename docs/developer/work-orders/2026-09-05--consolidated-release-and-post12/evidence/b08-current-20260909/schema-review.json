@@ -1,0 +1,72 @@
+{
+  "status": "PASS_ADDITIVE_SCHEMA_AND_CODE_ROLLBACK",
+  "snapshots": [
+    {
+      "path": "E:\\r12-b08-current-20260909\\schema-prepare-old-indexes.json",
+      "raw_sha256": "c971e00dded5d7a8f8dc4f087aba35f3e667f6e31bb6556c5c143a6fc0b8d5db",
+      "utc": "2026-09-09T13:40:49.195530+00:00",
+      "phase": "prepare-old-indexes",
+      "status": "PASS",
+      "database_scope": "new isolated clone only",
+      "columns_count": 1730,
+      "indexes_count": 738,
+      "constraints_count": 246,
+      "schema_sha256": "2ffc494d3d1448aa4d261f985ded3fa74194d70d05db5ac36d4cbf138469fb3d",
+      "removed_fixture_indexes": [
+        [
+          "node_health_samples",
+          "ix_node_health_samples_node_sampled_id",
+          "CREATE INDEX ix_node_health_samples_node_sampled_id ON public.node_health_samples USING btree (node_code, sampled_at, id)"
+        ],
+        [
+          "node_runtime_metrics",
+          "ix_node_runtime_metrics_lower_node_sampled_id",
+          "CREATE INDEX ix_node_runtime_metrics_lower_node_sampled_id ON public.node_runtime_metrics USING btree (lower((node_code)::text), sampled_at, id)"
+        ]
+      ],
+      "prior_schema_sha256": "1175e8c65a59f48fbedbc6b9724f809745fa68bdc872e40d22f0c5277afaac34",
+      "source_template_and_production_unchanged": true
+    },
+    {
+      "path": "E:\\r12-b08-current-20260909\\schema-after-previous.json",
+      "raw_sha256": "b7d036064bcb24a0eda122a0b8d3454a54d51ca4d7016229cf609a76afaa6a40",
+      "utc": "2026-09-09T13:42:25.246231+00:00",
+      "phase": "after-previous",
+      "status": "PASS",
+      "database_scope": "new isolated clone only",
+      "columns_count": 1730,
+      "indexes_count": 738,
+      "constraints_count": 246,
+      "schema_sha256": "2ffc494d3d1448aa4d261f985ded3fa74194d70d05db5ac36d4cbf138469fb3d"
+    },
+    {
+      "path": "E:\\r12-b08-current-20260909\\schema-after-current.json",
+      "raw_sha256": "45ff23d1570c1ce5739ee003062749fb0948e88b01626a903c62ea2b59bd02c3",
+      "utc": "2026-09-09T13:43:35.513521+00:00",
+      "phase": "after-current",
+      "status": "PASS",
+      "database_scope": "new isolated clone only",
+      "columns_count": 1730,
+      "indexes_count": 740,
+      "constraints_count": 246,
+      "schema_sha256": "1175e8c65a59f48fbedbc6b9724f809745fa68bdc872e40d22f0c5277afaac34"
+    },
+    {
+      "path": "E:\\r12-b08-current-20260909\\schema-after-rollback.json",
+      "raw_sha256": "8add2bcbe88652366d44917a5e7bdc9fde8ce795e993a696fdffba6dedcc09b4",
+      "utc": "2026-09-09T13:43:44.653729+00:00",
+      "phase": "after-rollback",
+      "status": "PASS",
+      "database_scope": "new isolated clone only",
+      "columns_count": 1730,
+      "indexes_count": 740,
+      "constraints_count": 246,
+      "schema_sha256": "1175e8c65a59f48fbedbc6b9724f809745fa68bdc872e40d22f0c5277afaac34"
+    }
+  ],
+  "production_units_same_as_before": true,
+  "columns_unchanged": true,
+  "constraints_unchanged": true,
+  "only_two_required_additive_indexes": true,
+  "no_destructive_contraction_in_current_source": true
+}

@@ -1,0 +1,17 @@
+{
+  "utc": "2026-09-09T13:39:24.039941+00:00",
+  "fixture_file_exists": false,
+  "database": "portal_r12_b08_current_20260909_rehearsal",
+  "role_flags": [
+    false,
+    false,
+    false,
+    false,
+    false
+  ],
+  "non_app_owned_objects": [],
+  "outbox_status_counts": {
+    "delivered": 2
+  },
+  "fixture_user_exists": 1
+}

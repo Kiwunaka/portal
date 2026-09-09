@@ -1,5 +1,8 @@
 # Текущие условия следующей приёмки
 
+[B08 current, срез 13:49 UTC](EXECUTION-B08-CURRENT-2026-09-09.md): технические пункты I4 PASS на Brain-копии 121 таблицы; старые 197 и текущие 205 files, 25 HTTP assertions / пять writes, additive indexes и code rollback, два worker / poison PASS. Production `cd4a8b9` и PID сохранены. Parent B08 остаётся active только из-за зависимости B06; общий release открыт.
+
+
 [B07 pool wait, срез 13:24 UTC](EXECUTION-B07-POOL-WAIT-2026-09-09.md): PR #252 слит и `cd4a8b9` развёрнут; 262 tests + 30 subtests, 15 focused, четыре CI и 205 hashes PASS. В production 32 ожидаемых status 404, worker wait max 23 мс, PostgreSQL wait 0, outbox прежний; HTTP queue/timeout/cancel proof получен на Brain loopback. **B07 verified/I5 по исходному DoD**; реальные provider readiness, final candidate и общий план открыты. Прежние записи ниже относятся к датированным срезам.
 
 

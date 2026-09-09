@@ -1,0 +1,12 @@
+{
+  "status": "FAILED_REQUIRES_INSPECTION",
+  "origin": "brain-origin isolated current code and restored PostgreSQL descendant",
+  "utc": "2026-09-09T13:45:52.691202+00:00",
+  "source_revision": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+  "provider_contacted": false,
+  "production_db_changed": false,
+  "synthetic_paid_order_only": true,
+  "failure_type": "ProgrammingError",
+  "sqlstate": "42883",
+  "completed_at": "2026-09-09T13:45:52.751813+00:00"
+}
