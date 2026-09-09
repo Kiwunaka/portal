@@ -1,5 +1,8 @@
 # R12 — текущий результат и граница исполнения
 
+[Operator cutover](EXECUTION-OPERATOR-CUTOVER-2026-09-09.md): compatibility bootstrap и legacy step-up отключены на Brain; пять production assertions PASS, rollback проверен на первом проходе. Реальные сроки сессий продолжают проверяться; O01 открыт.
+
+
 [Windows NAT/bridge](EXECUTION-WINDOWS-NAT-PATH-2026-09-09.md): тот же профиль
 Франкфурта отказывает на NAT и проходит через мост; повтор в одном boot PASS.
 Все 304 файла client `c05b58b` / Core `c7a11f7` совпали. Полный installed-service

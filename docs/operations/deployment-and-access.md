@@ -642,6 +642,11 @@ and the [dated deployment execution and retained evidence](../developer/work-ord
   OIDC login and step-up have been retained. OIDC does not auto-create an
   operator or role, so provision and review those records before disabling the
   compatibility path.
+  Brain cutover on 2026-09-09 explicitly set this flag to `false` after the
+  provisioned operator's OIDC login/step-up and source comparison. Current
+  bootstrap and compatibility step-up return their expected 403 codes;
+  existing sessions and OIDC start remain available. See the retained
+  [cutover and rollback evidence](../developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-OPERATOR-CUTOVER-2026-09-09.md).
   Idle, absolute, step-up and active-session bounds use the documented
   `ADMIN_OPERATOR_*_SECONDS`/`ADMIN_OPERATOR_MAX_ACTIVE_SESSIONS` variables.
   A missing/short secret or invalid environment fails closed. CORS must keep

@@ -1,0 +1,23 @@
+{
+  "utc": "2026-09-09T09:35:38.420784+00:00",
+  "source_revision": "a8e6918ccc166a58ae65ba7d08feea63ce3a9623",
+  "legacy_bootstrap_enabled": true,
+  "environment": "production",
+  "operators": [
+    {
+      "identity_source": "telegram_oidc",
+      "linked": true,
+      "roles": [
+        "superadmin"
+      ],
+      "oidc_login_count": 1,
+      "oidc_step_up_count": 1
+    }
+  ],
+  "source_hashes": {
+    "admin_v2/router.py": "404490720b3ce7aa56d47bbf98a573127340d7b1689f2b75301bc9d14da20b9a",
+    "admin_v2/security.py": "881305eea730472628ca64367f6e412a53a08ae41ccbb2b973aed5d9e65e4136",
+    "web_auth_service.py": "88d823e9ab5e56415127a0f36e2c366f0ac1c06945169ec1fe8f0ab464bb6bb8"
+  },
+  "raw_identifiers_exported": false
+}

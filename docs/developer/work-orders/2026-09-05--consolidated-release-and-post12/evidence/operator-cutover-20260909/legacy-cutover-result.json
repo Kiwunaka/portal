@@ -1,0 +1,40 @@
+{
+  "utc": "2026-09-09T09:38:15.936086+00:00",
+  "origin": "brain-origin HTTPS production",
+  "source_revision": "a8e6918ccc166a58ae65ba7d08feea63ce3a9623",
+  "status": "FAIL",
+  "backup_directory": "/root/portal_bot.deploy-backups/20260909T093815Z-operator-bootstrap",
+  "raw_identifiers_or_credentials_exported": false,
+  "observations": [
+    {
+      "check": "health",
+      "http_status": 200,
+      "error_code": null,
+      "pass": true
+    },
+    {
+      "check": "existing_session_survives",
+      "http_status": 200,
+      "error_code": null,
+      "pass": true
+    },
+    {
+      "check": "legacy_bootstrap_disabled",
+      "http_status": 403,
+      "error_code": "operator_legacy_bootstrap_disabled",
+      "pass": true
+    },
+    {
+      "check": "legacy_step_up_disabled",
+      "http_status": 422,
+      "error_code": null,
+      "pass": false
+    }
+  ],
+  "failure_type": "AssertionError",
+  "rollback_restored": true,
+  "fixture_session_revoked": true,
+  "preexisting_sessions_unchanged": true,
+  "roles_unchanged": true,
+  "completed_at": "2026-09-09T09:38:41.121188+00:00"
+}
