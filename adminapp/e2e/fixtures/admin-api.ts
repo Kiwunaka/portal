@@ -1306,6 +1306,15 @@ const clientTicketDetail = {
 };
 
 const supportAttempt = {
+  connectivity: {
+    assignment: { revision: "rev_22222222222222222222", protocol: "awg2" },
+    fetched: { revision: "rev_22222222222222222222", protocol: "awg2" },
+    staged: { revision: "rev_11111111111111111111", protocol: "awg31" },
+    effective: { revision: "rev_11111111111111111111", protocol: "awg31" },
+    assignment_authority: "server_policy_at_report", runtime_authority: "client_reported",
+    proof_stage: "egress", proof_age_seconds: 90, received_at: "2026-09-10T00:00:00Z",
+    alignment: "mismatch", next_action: "refresh_profile", sequence: 3,
+  },
   attempt_ref: "attempt_11111111111111111111",
   installation_ref: "install_11111111111111111111",
   session_ref: "session_11111111111111111111",

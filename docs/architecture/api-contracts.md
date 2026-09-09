@@ -584,6 +584,17 @@ TTL after the final issuance before routing app access back to the old revision.
 - `POST /api/client/runtime/stats` with `connected=true` records the earliest
   account-scoped `reported_at`. It remains client-authored telemetry and cannot
   activate a trial, extend expiry, grant a reward, or become observer evidence.
+- Runtime stats optionally carry a closed `connectivity` object: fetched,
+  staged and effective revision/protocol; proof stage; and an optional client
+  observation time in milliseconds. Protocols are `vless|awg2|awg31|hysteria2|unknown`;
+  stages are `unknown|not_running|tunnel|dns|egress|degraded`. These reports require
+  a UUIDv4 `report_run_id` and a positive `report_sequence`. The run/attempt trace
+  is hashed and raw connectivity revisions become opaque references before Event
+  persistence. Existing clients may omit this object. Assignment is resolved from
+  authenticated server policy at receipt time, not supplied by the client.
+  Support projection preserves `client_reported` runtime authority and
+  `server_policy_at_report` assignment authority; future or absent client times
+  have unknown age. This is diagnostic data, never entitlement or traffic proof.
 - Signed `POST /api/internal/observer/batches` observations resolved to a
   canonical account are the activation source. Each accepted observation adds
   append-only `connection_evidence` with account, optional device, node,

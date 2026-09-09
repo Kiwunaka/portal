@@ -1957,3 +1957,40 @@ def test_client_support_assistant_and_ticket_presence_contract(monkeypatch, tmp_
     )
     assert denied_ticket.status_code == 403
     assert len(recording_harness.requests) == calls_before_denial
+
+
+def test_runtime_connectivity_is_assignment_bound_and_stores_only_revision_refs(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    _seed_rollout(api)
+    started = _start_trial(client, install_id="connectivity-fixture")
+    headers = _auth_headers(started)
+    body = {
+        "runtime_phase": "running", "connected": True, "attempt_number": 1,
+        "report_run_id": "77777777-7777-4777-8777-777777777777", "report_sequence": 2,
+        "connectivity": {
+            "fetched_revision": "private-revision-fetched", "fetched_protocol": "awg2",
+            "staged_revision": "private-revision-effective", "staged_protocol": "awg31",
+            "effective_revision": "private-revision-effective", "effective_protocol": "awg31",
+            "proof_stage": "egress", "observed_at_ms": int(_utcnow().replace(tzinfo=timezone.utc).timestamp() * 1000) - 9000,
+        },
+    }
+    response = client.post("/api/client/runtime/stats", headers=headers, json=body)
+    assert response.status_code == 200, response.text
+    from models import Event
+    from client_connectivity import project_connectivity
+    with api.SessionLocal() as db:
+        row = db.query(Event).filter(Event.event_name == "connected_ok").one()
+        assert "private-revision" not in row.meta_json
+        assert body["report_run_id"] not in row.meta_json
+        assert row.device_id == row.session_id and len(row.trace_id) == 32
+        view = project_connectivity(row.meta_json, received_at=row.received_at, now=_utcnow())
+        assert view["assignment"]["protocol"] == "vless"
+        assert view["effective"]["protocol"] == "awg31"
+        assert view["alignment"] == "mismatch"
+        assert view["runtime_authority"] == "client_reported"
+        assert view["assignment_authority"] == "server_policy_at_report"
+        assert view["proof_age_seconds"] >= 9
+        assert view["next_action"] == "refresh_profile"
+    body["connectivity"]["raw_config"] = "forbidden fixture"
+    assert client.post("/api/client/runtime/stats", headers=headers, json=body).status_code == 422

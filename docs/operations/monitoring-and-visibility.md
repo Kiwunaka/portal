@@ -140,6 +140,16 @@ mutation.
 
 ## Transport Rollout Visibility
 
+User360 and support attempts include bounded connectivity self-reports when the
+client supplies them. Compare server assignment at report time with fetched,
+staged and effective revision references and protocol families. The card exposes
+mismatch, client proof stage, observation age (or unknown) and a safe next step.
+No connectivity IP, topology, key or config is returned. Existing sensitive-field
+permissions and audit apply. Reports are correlated per client run/attempt and
+the highest sequence wins within that attempt; an informational report does not
+replace its success/failure outcome. Client evidence is not server-observed
+traffic, and a historical assignment is not a live policy lookup.
+
 Transport rollout must stay visible to operators instead of being buried in opaque config.
 
 Visibility rule:

@@ -9,6 +9,7 @@ from typing import Any, Iterable
 
 from sqlalchemy import String, and_, func, or_
 from client_network_diagnostics import recent_network_context
+from client_connectivity import project_connectivity
 
 try:
     from .models import (
@@ -464,6 +465,7 @@ def _adapt_event(row: Event, *, fallback_install: str | None) -> dict[str, Any]:
     )
     return {
         "event_id": int(row.id),
+        "connectivity": project_connectivity(row.meta_json, received_at=row.received_at or row.created_at, now=_now()),
         "installation_ref": _opaque_ref("install", install_raw),
         "session_ref": _opaque_ref("session", install_raw, session_raw),
         "attempt_ref": _opaque_ref("attempt", install_raw, attempt_raw),
@@ -504,10 +506,19 @@ def _group_attempts(events: list[dict[str, Any]]) -> tuple[list[dict[str, Any]],
             "event_count": 0,
             "fingerprints": [],
             "events": [],
+            "connectivity": None,
         })
         attempt["ended_at"] = event.get("occurred_at") or event.get("received_at") or attempt["ended_at"]
-        attempt["outcome"] = event.get("result") or attempt["outcome"]
+        # A status self-report does not replace the connection result.
+        if event.get("result") != "reported" or not attempt["outcome"]:
+            attempt["outcome"] = event.get("result") or attempt["outcome"]
         attempt["event_count"] += 1
+        connectivity = event.get("connectivity")
+        if connectivity is not None and (
+            attempt["connectivity"] is None
+            or connectivity["sequence"] > attempt["connectivity"]["sequence"]
+        ):
+            attempt["connectivity"] = connectivity
         if len(attempt["events"]) < 50:
             attempt["events"].append(event)
         fingerprint = str(event["fingerprint"])

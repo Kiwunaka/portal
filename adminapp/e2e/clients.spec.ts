@@ -20,6 +20,12 @@ test("прямая ссылка на пользователя загружает
   await expect(page.getByText(/desktop_tun_start_failed/)).toBeVisible();
   await expect(page.getByText("windows · v1.1.5+28", { exact: true })).toBeVisible();
   await expect(page.getByText("Сгруппированные попытки", { exact: true })).toBeVisible();
+  const connectivity = page.getByRole("region", { name: "Назначенный и работающий профиль" });
+  await expect(connectivity).toContainText("Назначен AWG2 · работает AWG3.1");
+  await expect(connectivity).toContainText("Не совпадает с назначением");
+  await expect(connectivity).toContainText("90 с назад");
+  await expect(connectivity).toContainText("Попросите обновить профиль");
+  await expect(connectivity).toContainText("это не независимое серверное подтверждение трафика");
   await expect(page.getByText("Исходная сеть устройства", { exact: true })).toBeVisible();
   await expect(page.getByText("203.0.113.77", { exact: true })).toBeVisible();
   await expect(page.getByText("RU · Fixture region", { exact: true })).toBeVisible();
