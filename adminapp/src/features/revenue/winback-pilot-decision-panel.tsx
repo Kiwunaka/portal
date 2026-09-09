@@ -122,6 +122,14 @@ export function WinbackPilotDecisionPanel() {
               <MetricCell icon={<ShieldAlert size={17} />} label="Инциденты / P0–P1" value={`${guardrails?.incidents?.count ?? "—"} / ${guardrails?.support?.p0_p1_count ?? "—"}`} detail="Пересечение окна пилота" tone={Number(guardrails?.incidents?.count || 0) + Number(guardrails?.support?.p0_p1_count || 0) > 0 ? "danger" : "success"} />
             </MetricStrip>
 
+            <section aria-label="Условия запуска кампании" className="space-y-2 text-xs [overflow-wrap:anywhere]">
+              <h3 className="font-semibold">Условия запуска</h3>
+              <p>Юридический профиль: <strong>{selected.legal_profile_status || "Нет данных"}</strong> · оферта: {selected.terms_revision || "Нет данных"}</p>
+              <p>Ёмкость: {formatNumber(selected.policy.capacity?.active_units)} / {formatNumber(selected.policy.capacity?.limit_units)} · зона: {selected.policy.capacity?.band || "Нет данных"}</p>
+              <p>Привлечение по ёмкости: {selected.policy.capacity ? selected.policy.capacity.acquisition_permitted ? "разрешено" : "приостановлено" : "Нет данных"}</p>
+              {selected.policy.blocking_reasons?.length ? <ul className="space-y-1 text-[color:var(--atlas-status-danger-text)]">{selected.policy.blocking_reasons.map((reason) => <li key={reason} className="font-mono">{reason}</li>)}</ul> : null}
+            </section>
+
             <div className="grid gap-3 lg:grid-cols-2">
               <div className="rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] p-3">
                 <p className="text-xs font-semibold text-[color:var(--atlas-text)]">Стоп-причины</p>

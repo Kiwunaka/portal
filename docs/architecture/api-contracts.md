@@ -1533,6 +1533,17 @@ Money reads require `money.read`:
   `GET .../orders/{provider}/{order_id}` joins redacted order, callback, claim,
   grant and outbox lineage without returning raw payloads, buyer email, provider
   event identity, tokens or secrets;
+- the payment card consumes `problem_reasons`, `lineage.claim/grant/outbox`
+  and the detail response's bounded `commands` list. It displays safe delivery
+  error codes and retry/delivery timestamps, not raw error bodies. A null
+  lineage member means no associated row; an absent lineage/commands field is
+  unavailable data, not successful fulfillment or an empty command history;
+- the order detail also returns `quote` from the stored v1/v2 `order_intent`:
+  bounded plan/amount/currency and commercial campaign/revision/terms/base
+  amount/reservation deadline fields only. It is a creation-time snapshot,
+  not a fresh executable checkout quote or payment proof. Missing or unsupported
+  intent metadata returns null. Owner, subject, token, provider metadata and
+  raw entitlement snapshots are excluded;
 - `GET /api/admin/v2/money/access` returns grant/outbox/key aggregates, recent
   grants, the shared tariff catalog and redacted gift-code hints. Its authority
   explicitly sets `telemetry_confirms_payment=false`;
