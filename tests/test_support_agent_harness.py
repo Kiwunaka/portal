@@ -417,7 +417,7 @@ def harness_case_factory():
 def test_owned_case_can_answer_without_kb_match(harness_case_factory, plan, origin):
     case = harness_case_factory(name="owned_case", input_mode="safe", retrieval="none",
                                 provider_plan=plan, store_plan="ok")
-    async def load():
+    async def load(analyze_attachment):
         return {"operator_handling": False, "payments": [{"status": "paid", "amount": 99,
                 "live_provider": {"status": "COMPLETED"}}]}
     request = replace(case.request, message="Проверьте вложение и оплату", case_loader=load)
@@ -430,11 +430,50 @@ def test_owned_case_can_answer_without_kb_match(harness_case_factory, plan, orig
 def test_owned_case_stops_for_operator(harness_case_factory):
     case = harness_case_factory(name="operator_case", input_mode="safe", retrieval="none",
                                 provider_plan="unused", store_plan="ok")
-    async def load():
+    async def load(analyze_attachment):
         return {"operator_handling": True}
     result = asyncio.run(case.harness.run(replace(case.request, case_loader=load)))
     assert result.status == "silent" and not result.reply
     assert case.adapter.call_count == 0
+
+
+def test_case_attachment_analysis_is_internal_and_usage_is_aggregated(harness_case_factory):
+    from support_agent_provider import ProviderUsage, SynthesisTurn
+    case = harness_case_factory(name="vision_case", input_mode="safe", retrieval="none",
+                                provider_plan="answer", store_plan="ok")
+    async def complete_attachment(*, images, request_timeout):
+        assert images == [("image/png", b"fixture")] and 0 < request_timeout <= 18
+        return SynthesisTurn(content='{"visible_text":"99 рублей","visual_details":"","uncertainty":""}',
+                             finish_reason="stop", usage=ProviderUsage(10, 5, 0), latency_ms=123)
+    case.adapter.complete_attachment = complete_attachment
+    async def load(analyze_attachment):
+        from support_case_context import parse_attachment_analysis
+        attachment = parse_attachment_analysis(await analyze_attachment([("image/png", b"fixture")]))
+        return {"operator_handling": False, "attachments": [attachment]}
+    result = asyncio.run(case.harness.run(replace(case.request, case_loader=load)))
+    assert result.provider_request_count == 2 and case.adapter.call_count == 1
+    assert result.answer_origin == "case_model"
+    assert result.reply != '99 рублей'
+    payload = json.loads(case.adapter.requests[0]["messages"][1]["content"])
+    assert payload["case"]["attachments"][0]["visible_text"] == "99 рублей"
+    assert "fixture" not in json.dumps(payload)
+    assert result.usage.prompt_tokens == 110
+
+
+def test_case_rejects_receipt_as_authoritative_payment_proof(harness_case_factory):
+    from support_agent_provider import ProviderUsage, SynthesisTurn
+    case = harness_case_factory(name="receipt_proof", input_mode="safe", retrieval="none",
+                                provider_plan="unused", store_plan="ok")
+    async def complete_synthesis(**kwargs):
+        return SynthesisTurn(content=json.dumps({"schema_version": "1", "status": "answer",
+            "reply": "Чек подтверждает оплату."}), finish_reason="stop", usage=ProviderUsage(10, 5, 0), latency_ms=1)
+    case.adapter.complete_synthesis = complete_synthesis
+    async def load(analyze_attachment):
+        return {"operator_handling": False, "payments": []}
+    result = asyncio.run(case.harness.run(replace(case.request, case_loader=load)))
+    assert result.answer_origin == "case_local" and result.status == "escalate"
+    assert "Чек подтверждает" not in result.reply
+    assert "оплаченных нет" in result.reply
 
 
 @pytest.mark.parametrize(

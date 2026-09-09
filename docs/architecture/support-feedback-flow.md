@@ -85,13 +85,13 @@ Last updated: 2026-09-09
 - Runtime facade and legacy helper: `portal_bot/support_agent_service.py` and `portal_bot/support_ai_service.py`; bounded harness: `portal_bot/support_agent_harness.py`; bounded OpenAI-compatible adapter: `portal_bot/support_agent_provider.py`.
 - Deployable allowlisted assets are `shared/support-agent-policy.json` and `shared/support-ai-knowledge.json`, uploaded under `/root/shared/`.
 - The canonical model identity is `deepseek-v4-flash-0731` with medium reasoning. The transport is the exact OpenRouter base `https://openrouter.ai/api/v1`, where the adapter maps the canonical identity to the provider wire slug `deepseek/deepseek-v4-flash-0731`. The request deliberately omits `max_tokens` so internal reasoning cannot exhaust a short completion cap, while the private reasoning trace is excluded from the response. The route uses a 45-second provider window inside a 50-second harness deadline by default, including when those two environment values are omitted. The explicitly supported alternative is deepseek-v4-flash-vision-exp, sent as deepseek/deepseek-v4-flash-vision-exp, with Fireworks preferred and provider data collection denied. Other provider URLs, models, and reasoning profiles fail closed before either provider path. Credentials remain server-environment only.
-- The feature is disabled by default. `SUPPORT_AI_ENABLED=false` always selects deterministic local fallback. With it enabled, `SUPPORT_AI_AGENT_ENABLED=false` selects the legacy one-call helper and `SUPPORT_AI_AGENT_ENABLED=true` selects the bounded harness. There is no shadow or double call.
+- The feature is disabled by default. `SUPPORT_AI_ENABLED=false` always selects deterministic local fallback. With it enabled, `SUPPORT_AI_AGENT_ENABLED=false` selects the legacy one-call helper and `SUPPORT_AI_AGENT_ENABLED=true` selects the bounded harness. The legacy and harness paths never run together.
 - Before any provider call, code retrieves at most three topics from the validated public-support KB. `confident` routing requires both an active high-precision intent rule and the expected topic-body fingerprint; all other supported retrieval is only candidate context. Ten narrow `confident` topics have an additional direct-render allowlist: for a new session, their fingerprint-bound user-facing body is returned by code with zero provider requests. WARP, location choice, both route modes, notifications, trial limitations, Telegram bonus, and payment-not-applied questions also have fingerprint-bound confident routing so the provider can give concrete public diagnostics and a provider failure can still return those safe steps before human handoff. For a bounded follow-up with no explicit new intent, the established active session issue is pinned as the first candidate source without upgrading confidence; an explicit new intent replaces it. Model-visible topic copy names official surfaces without embedding literal domains or URLs that the output contract forbids.
 - Candidate answers retain context provenance but no grounding claim and therefore receive only generic public actions. Confident answers may use the single code-owned grounding topic to select existing topic-specific actions; model text never selects actions, source labels, or escalation metadata.
 - When synthesis is needed, DeepSeek receives exactly two messages: one cache-stable system prefix containing policy and bundle fingerprints, and one volatile user JSON envelope containing only the selected topic bodies, bounded session state, and current question. The global KB index is never sent. The model may return only `schema_version`, `status`, and `reply`; retrieval, provenance, state, actions, and escalation remain code-owned.
 - Provider output must be either the bare JSON object or one JSON object inside a single `json`/plain Markdown fence with no surrounding prose or nested fence. Code unwraps only that exact transport artifact, then applies the same duplicate-key, closed-schema, semantic-action, redaction, and output-safety validation; every other wrapper still fails closed.
-- One eligible user message makes at most one OpenAI-compatible Chat Completions request. The harness has no provider retry, model-visible tool, tool continuation, command execution, or second provider request.
-- Model context may contain only the validated operating policy, bounded retrieved public-support topics, redacted process-local session state, the redacted user question, and an allowlisted scalar snapshot for the authenticated account. The endpoint, not the model, reads that snapshot. The ticket case path additionally admits the bounded evidence described below. It has no arbitrary database/API access, raw attachment, key/config, QR, Telegram init data, payment payload, shell, network-tool, arbitrary-file, command-execution, or cross-account access. Read-only account questions use only those supplied scalars; unresolved anomalies still require an operator.
+- A text-only eligible message makes at most one OpenAI-compatible Chat Completions request. Authorized ticket attachments may add one isolated Vision analysis per file (two files maximum) before the final synthesis; all calls and reported usage are counted in the same run. The harness has no provider retry, model-visible tool, tool continuation or model-directed command execution.
+- Main synthesis context may contain only the validated operating policy, bounded retrieved public-support topics, redacted process-local session state, the redacted user question, and an allowlisted scalar snapshot for the authenticated account. The endpoint, not the model, reads that snapshot. The ticket case path additionally admits the bounded evidence described below; its isolated Vision stage receives authorized attachment images. Main synthesis has no arbitrary database/API access, raw attachment, key/config, QR, Telegram init data, payment payload, shell, network-tool, arbitrary-file, command-execution, or cross-account access. Read-only account questions use only those supplied scalars; unresolved anomalies still require an operator.
 - Client `safeDiagnostics` is admitted through a fixed allowlist. The authenticated endpoint then overrides any colliding account keys with server-owned access, days-left, normalized plan, active-device count, Telegram-link/bonus state, bounded panel-runtime facts, and the currently applicable public promo-code snapshot. The client may supply only its user-visible active-connection flag and location label for the current device. Raw identifiers, usernames, email, node hosts/IPs, URLs, configs, and panel payloads are excluded. These values may enter only the current request and are never retained in process-local agent memory or value-bearing logs.
 - Questions about the current node/location and available public promo codes are rendered by code before retrieval or provider synthesis. The former uses only the current client's active flag and public location label; the latter uses only server-owned campaigns eligible for the authenticated account. Neither path exposes topology, provider records, payment data, or another account, and both make zero provider requests.
 - Harness continuity is owner- and surface-scoped, process-local RAM only: 60-minute TTL, at most six safe messages per session, 256 sessions, and six requests per authenticated owner per rolling minute. Attempted-step codes remain code-owned session state. A newly reported completed step with no outcome and a first clean negative outcome are acknowledged by fixed code-owned copy, persisted, and returned with zero provider requests. A negative outcome after support was already contacted, or the second negative outcome for one established issue, causes sticky human transfer. Other follow-ups may use synthesis, whose policy requires DeepSeek not to repeat attempted steps. The runtime allows at most two concurrent runs.
@@ -156,7 +156,7 @@ Last updated: 2026-09-09
 - AI ticket messages use safe plaintext mini-formatting only: short labels, line breaks, numbered steps, bullets, inline bold/code markers. The WebApp renders those markers as structured blocks without accepting raw HTML.
 - `@pokrov_supportbot` renders AI mini-formatting through escaped Telegram HTML and attaches quick follow-up buttons: `Не получилось`, `Дайте шаги`, `Оператор`, and `Открыть обращение`. Buttons either put the user into the same ticket reply flow or append a safe operator-request message to the ticket.
 - Current support knowledge covers the app-first path plus beta manual setup through compatible clients such as `Hiddify`, `Happ`, `v2rayNG`, `v2rayN`, `Streisand`, `NekoBox`, `NekoRay`, `Shadowrocket`, `FoXray`, and `V2Box`; safe same-account scalar questions may be answered in-app, while mutations, unresolved anomalies, and unclear cases still go to operators.
-- The harness serialized-input ceiling is 30,000 characters with a 512-character provider-envelope reserve. Environment values may lower the 30,000-character ceiling but cannot raise it.
+- The text synthesis serialized-input ceiling is 30,000 characters with a 512-character provider-envelope reserve. Environment values may lower the 30,000-character ceiling but cannot raise it. Isolated Vision requests instead carry at most three inline images of up to 2 MiB each, plus the fixed prompt/schema; they do not carry the main synthesis context.
 - Knowledge refresh is an operator-side xCody operation and is never invoked inside a user request.
 
 ## Read-only ticket case context
@@ -180,14 +180,36 @@ operator, not a cross-account search driven by the model.
 The latest two public user attachments are read only after ticket authorization.
 Private web files require an exact bound attachment row and a confined storage
 path; Telegram downloads use the receiving helpbot. Files are limited to 2 MiB.
-TXT is decoded locally; PDF text is extracted from up to three pages; scanned
-PDFs use only the first page. Images use local Tesseract OCR with a 12-megapixel
-input bound and 1800-pixel working size. Production requires `poppler-utils`,
-`tesseract-ocr` and `tesseract-ocr-rus`. Credentials and PII are sanitized before
-the 1200-character per-file projection. The provider receives text, not original
-images, PDFs, QR codes or file URLs. Visual layout and non-text image content are
-not interpreted by this path, including when the vision-capable model is selected.
-Unreadable, oversized and unsupported files are explicitly labelled.
+TXT is decoded and sanitized locally. PNG/JPEG/WebP images retain the 12-megapixel
+input limit and are sent as inline bytes to the exact supported Vision route.
+PDFs are rasterized into at most three 1800-pixel JPEG pages and sent in one
+Vision request per file. Production requires `poppler-utils` and the existing
+Pillow dependency; Tesseract/OCR is no longer used. The owner explicitly approved
+external processing of user attachments on 2026-09-09. Original image contents
+therefore reach the provider; subsequent sanitization is an output boundary,
+not a claim that the provider never sees PII. Private download URLs, bot tokens,
+account facts and unrelated history are never sent to this analysis stage.
+
+Vision receives only a fixed internal extraction prompt and the images, with no
+tools or ability to send messages. Its closed JSON contains `visible_text`
+(1200 characters), `visual_details` (600) and `uncertainty` (200); code rejects
+extra fields, invalid types and over-limit strings, then redacts credentials
+and PII before passing the projection to the main support synthesis. The
+intermediate response is not stored as a ticket message or returned directly
+to the user. It remains untrusted evidence, including any instructions depicted
+in the attachment. PDF projections explicitly state the three-page limit.
+Final case validation also rejects the observed unsupported assertion that a
+receipt or screenshot itself confirms payment; rejection returns the existing
+local account/payment summary. This narrow regression guard does not establish
+complete semantic correctness of model-generated prose.
+
+The two bounded attachment jobs and up to two live invoice reads run in
+parallel. Each attachment has a 22-second total budget, with at most 18 seconds
+for its provider call and eight seconds for PDF conversion; the existing
+25-second case-load and 50-second total harness deadlines still apply. An
+attachment failure is labelled `unreadable_or_over_limit` while completed
+payment/access facts remain available. No local OCR or alternate-provider
+fallback runs. Text-model configurations cannot make the Vision call.
 
 The model may summarize the collected facts without a KB keyword match. It has
 no model-visible tools or write access. Unresolved discrepancies retain a useful

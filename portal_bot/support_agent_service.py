@@ -403,8 +403,9 @@ class SupportAgentService:
         case_loader = None
         if case_context_enabled and ticket_id is not None and surface in {"ticket", "helpbot"}:
             from support_case_context import load_case
-            async def case_loader():
-                return await load_case(int(authenticated_owner_id), int(ticket_id), attachment_bot)
+            async def case_loader(analyze_attachment):
+                return await load_case(int(authenticated_owner_id), int(ticket_id), attachment_bot,
+                                       analyze_attachment=analyze_attachment)
 
         try:
             result = await self._harness.run(

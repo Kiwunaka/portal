@@ -140,6 +140,13 @@ Reference-lane note:
   Bounded mini-agent loop, stable cacheable context, and an exact-route OpenAI-compatible adapter for canonical `deepseek-v4-flash-0731` with medium reasoning. The exact OpenRouter route maps it to `deepseek/deepseek-v4-flash-0731` on the wire, leaves the completion budget provider-managed so reasoning cannot consume a short `max_tokens` cap, excludes the private reasoning trace, allows a 45-second provider window inside a 50-second harness deadline, and normalizes only a single clean JSON Markdown fence before the unchanged closed-schema safety checks.
 - `portal_bot/support_agent_policy.py`, `portal_bot/support_agent_knowledge.py`, and `portal_bot/support_agent_sessions.py`
   Fail-closed policy/KB validation, read-only local topic retrieval, and owner-scoped process-memory/rate limits.
+- `portal_bot/support_case_context.py`
+  Owner-bound ticket/payment/diagnostic reads and isolated attachment analysis.
+  The supported Vision profile reads images or bounded rendered PDF pages in
+  separate internal calls; only a validated, sanitized text projection enters
+  final support synthesis. Invoice reads and attachment analysis run in parallel
+  within the existing harness deadline. See the
+  [support case boundary](support-feedback-flow.md#read-only-ticket-case-context).
 - `portal_bot/worker.py`
   Background jobs for retention, bonus enforcement, and free-cycle operations.
 - `portal_bot/models.py`
