@@ -143,7 +143,20 @@ export type SupportKnownIssue = {
   updatedAt: string | null;
 };
 
+export type SupportConnectivity = {
+  assignment: { revision: string | null; protocol: string };
+  fetched: { revision: string | null; protocol: string };
+  staged: { revision: string | null; protocol: string };
+  effective: { revision: string | null; protocol: string };
+  proofStage: string;
+  proofAgeSeconds: number | null;
+  receivedAt: string | null;
+  alignment: string;
+  nextAction: string;
+};
+
 export type SupportAttempt = {
+  connectivity: SupportConnectivity | null;
   attemptRef: string;
   installationRef: string;
   sessionRef: string;
@@ -404,9 +417,27 @@ export async function fetchSupportMacros(init?: ApiRequestInit): Promise<Support
   return records(payload.data.items).map((row) => ({ code: text(row.code), title: text(row.title), body: text(row.body) })).filter((row) => row.code && row.title && row.body);
 }
 
+function mapConnectivity(value: unknown): SupportConnectivity | null {
+  const row = record(value);
+  if (row.runtime_authority !== "client_reported") return null;
+  const profile = (value: unknown) => {
+    const source = record(value);
+    return { revision: optionalText(source.revision), protocol: text(source.protocol) || "unknown" };
+  };
+  return {
+    assignment: profile(row.assignment), fetched: profile(row.fetched),
+    staged: profile(row.staged), effective: profile(row.effective),
+    proofStage: text(row.proof_stage) || "unknown",
+    proofAgeSeconds: optionalNumber(row.proof_age_seconds),
+    receivedAt: optionalText(row.received_at), alignment: text(row.alignment) || "unknown",
+    nextAction: text(row.next_action) || "request_diagnostics",
+  };
+}
+
 function mapAttempt(value: unknown): SupportAttempt {
   const row = record(value);
   return {
+    connectivity: mapConnectivity(row.connectivity),
     attemptRef: text(row.attempt_ref),
     installationRef: text(row.installation_ref),
     sessionRef: text(row.session_ref),

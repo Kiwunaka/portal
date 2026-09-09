@@ -12,6 +12,7 @@ except ImportError:
 bootstrap_slice(globals())
 from checkout_quote_service import CheckoutQuoteError, quote_binding, sign_checkout_quote, verify_checkout_quote
 from client_network_diagnostics import NETWORK_CLASSES, record_network_context
+from client_connectivity import ClientConnectivityIn, record_connectivity, runtime_attempt_trace
 SMART_CONNECT_LATENCY_EVENT_NAME = "smart_connect_latency_sample"
 MANAGED_PROFILE_SYNC_BUDGET_SECONDS = 7.0
 MANAGED_PROFILE_PANEL_BUDGET_SECONDS = 8.0
@@ -119,6 +120,9 @@ class NodeSelectIn(BaseModel):
 
 
 class ClientRuntimeStatsIn(BaseModel):
+    connectivity: ClientConnectivityIn | None = None
+    report_sequence: int | None = Field(default=None, ge=1, le=2147483647)
+    report_run_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
     profile_revision: str | None = Field(default=None, max_length=128)
     selected_node_code: str | None = Field(default=None, max_length=32)
     runtime_phase: str | None = Field(default=None, max_length=32)
@@ -545,6 +549,7 @@ def _record_client_event(
     source: str = "app",
     session_id: str | None = None,
     meta: dict[str, Any] | None = None,
+    trace_id: str | None = None,
 ) -> None:
     observed_at = _utcnow()
     safe_meta = dict(meta or {})
@@ -559,6 +564,8 @@ def _record_client_event(
         Event(
             tg_id=int(user.tg_id),
             event_name=str(event_name or "").strip()[:64],
+            trace_id=trace_id,
+            device_id=session_id if safe_meta.get("connectivity") else None,
             schema_version=1,
             event_id=str(uuid.uuid4()),
             source=str(source or "app").strip()[:32] or "app",
@@ -2545,6 +2552,17 @@ async def client_runtime_stats(
             raise HTTPException(status_code=422, detail="Invalid runtime phase")
         if error_code and not re.fullmatch(r"[a-z0-9_.-]{1,64}", error_code):
             raise HTTPException(status_code=422, detail="Invalid error code")
+        connectivity = None
+        if payload.connectivity is not None:
+            if payload.report_run_id is None or payload.report_sequence is None:
+                raise HTTPException(status_code=422, detail="Runtime report correlation is required")
+            install_id = _client_authenticated_install_id(s, user=user, auth_user=auth_user)
+            assignment = app_first_service.build_client_policy(
+                session=s, user=user, install_id=install_id,
+                carrier=_request_carrier_header(request.headers.get("x-portal-carrier", "")),
+                rollout_config=load_network_rollout_config(session=s),
+            )
+            connectivity = record_connectivity(payload.connectivity, assignment=assignment, sequence=payload.report_sequence)
         event_name = "client_runtime_stats"
         if bool(payload.connected):
             event_name = "connected_ok"
@@ -2565,8 +2583,11 @@ async def client_runtime_stats(
             event_name=event_name,
             source="app",
             session_id=session_id or "unavailable",
+            trace_id=runtime_attempt_trace(payload.report_run_id, payload.attempt_number)
+                if payload.report_run_id else None,
             meta={
                 **identity_meta,
+                "connectivity": connectivity,
                 "profile_revision": str(payload.profile_revision or "") or None,
                 "selected_node_code": str(payload.selected_node_code or "").strip().lower() or None,
                 "runtime_phase": runtime_phase or None,

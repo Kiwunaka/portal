@@ -6,6 +6,7 @@ import { Activity, Radio, RefreshCw, ShieldAlert, UserRound } from "lucide-react
 import { Badge, Button, Card, SectionTitle, type Tone } from "@/components/ui";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { OpsTooltip } from "@/components/ui/tooltip";
+import { ConnectivityReport } from "@/components/ops/connectivity-report";
 import { WindowedTable } from "@/components/ui/windowed-table";
 import type { AdminUserDetail, AdminUserInvestigation } from "@/lib/admin-api/users";
 import { formatSourceAge } from "@/lib/ops-status/presentation";
@@ -366,6 +367,7 @@ export function UserDetail({
               </div>
               <div>
                 <SectionTitle title="Сгруппированные попытки" description="Внутри каждой попытки — только allowlist событий Event adapter v1." />
+                <ConnectivityReport data={data.support360.attempts[0]?.connectivity ?? null} />
                 <DetailTable headers={["Попытка", "Сессия", "Результат", "Событий", "Последнее событие"]} empty="Коррелируемых попыток нет." rows={data.support360.attempts.map((attempt) => [<code key="attempt" className="font-mono text-[11px]">{attempt.attemptRef}</code>, <code key="session" className="font-mono text-[11px]">{attempt.sessionRef}</code>, <Badge key="outcome" tone={tone(attempt.outcome || "unknown")}>{statusLabel(attempt.outcome || "unknown")}</Badge>, String(attempt.eventCount), dateText(attempt.endedAt)])} />
               </div>
               <div>

@@ -4105,9 +4105,22 @@ def test_admin_v2_support_inbox_user360_and_attempts_are_versioned_and_bounded(
                 trace_id="raw-trace-do-not-return",
                 occurred_at=now,
                 received_at=now,
-                meta_json='{"token":"forbidden-support-token","url":"https://private.invalid"}',
+                meta_json=json.dumps({"token": "forbidden-support-token", "url": "https://private.invalid", "connectivity": {
+                    "sequence": 2, "assignment_revision": "rev_" + "a" * 20, "assignment_protocol": "awg2",
+                    "staged_revision": "rev_" + "b" * 20, "staged_protocol": "awg31",
+                    "effective_revision": "rev_" + "b" * 20, "effective_protocol": "awg31",
+                    "proof_stage": "egress", "observed_at_ms": int(now.replace(tzinfo=timezone.utc).timestamp() * 1000) - 8000,
+                }}),
             )
         )
+        db.add(Event(
+            tg_id=1001, event_name="runtime_observed", source="client", platform="windows",
+            result="reported",
+            session_id="raw-session-do-not-return", device_id="raw-device-do-not-return",
+            trace_id="raw-trace-do-not-return", occurred_at=now + timedelta(seconds=1), received_at=now + timedelta(seconds=1),
+            meta_json=json.dumps({"connectivity": {"sequence": 1, "proof_stage": "not_running",
+                "effective_revision": "private.invalid", "effective_protocol": ["malformed"]}}),
+        ))
         db.add(
             AccessKey(
                 tg_id=1001,
@@ -4151,6 +4164,13 @@ def test_admin_v2_support_inbox_user360_and_attempts_are_versioned_and_bounded(
     user360 = client.get("/api/admin/v2/support/users/1001")
     assert user360.status_code == 200, user360.text
     rendered = user360.text
+    connectivity = user360.json()["data"]["attempts"][0]["connectivity"]
+    assert connectivity["assignment"]["protocol"] == "awg2"
+    assert connectivity["effective"]["protocol"] == "awg31"
+    assert connectivity["proof_stage"] == "egress"  # Delayed sequence 1 cannot replace sequence 2.
+    assert connectivity["alignment"] == "mismatch"
+    assert connectivity["proof_age_seconds"] >= 8
+    assert user360.json()["data"]["attempts"][0]["outcome"] == "failure"
     assert "attempt_" in rendered and "fp_" in rendered
     for forbidden in (
         "forbidden-support-token",
@@ -4164,7 +4184,7 @@ def test_admin_v2_support_inbox_user360_and_attempts_are_versioned_and_bounded(
 
     attempts = client.get(f"/api/admin/v2/support/attempts?ticket_id={ticket_id}")
     assert attempts.status_code == 200, attempts.text
-    assert attempts.json()["data"]["attempts"][0]["event_count"] == 1
+    assert attempts.json()["data"]["attempts"][0]["event_count"] == 2
 
     from models import AdminOperatorRole
 
