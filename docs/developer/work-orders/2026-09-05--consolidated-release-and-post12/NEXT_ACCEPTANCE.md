@@ -1,5 +1,9 @@
 # Текущие условия следующей приёмки
 
+9 сентября: [G02 preservation](EXECUTION-G02-RETENTION-2026-09-09.md) verified/I3.
+Доказательства candidate.33 сохранены с отдельными фактическими сроками retention;
+новый candidate и его runtime gates остаются самостоятельными требованиями.
+
 9 сентября: [G06 branch protection](EXECUTION-G06-ENFORCEMENT-2026-09-09.md)
 verified/I3. Три public promotion branches теперь имеют бесплатную защиту,
 3/3 hosted policy readbacks PASS; прежние access/billing observations ниже

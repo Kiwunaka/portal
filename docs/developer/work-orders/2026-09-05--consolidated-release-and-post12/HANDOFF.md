@@ -6,6 +6,12 @@
 текущего плана и необходимые решения без повторных согласований. Технические
 условия выпуска остаются открытыми.
 
+[G02 retention](EXECUTION-G02-RETENTION-2026-09-09.md): candidate.33 сохранён,
+24 local files проиндексированы, 21 pinned hash совпал. Пять CI archives и
+восемь members сохранены; Core retention истекает 13 сентября, signer — 18-го.
+G02 verified/I3. Бинарные копии и новые worktrees не создавались; этот результат
+не закрывает runtime или новый release candidate.
+
 [G06 enforcement](EXECUTION-G06-ENFORCEMENT-2026-09-09.md): все три public
 promotion branches защищены; existing gate подтвердил 3/3 hosted policies PASS.
 Strict app-bound checks, PRs, signatures и admin enforcement включены; bypass
