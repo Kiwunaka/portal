@@ -944,6 +944,28 @@ function operatorShiftPayload() {
 }
 
 function releaseCockpit(candidateId: string) {
+  const gateNames = ["app_tests", "core_tests", "backend_tests", "admin_tests", "android_proof", "windows_proof", "payment_proof", "update_proof", "signing", "public_url", "docs_support_readiness"];
+  const gateFMapping = [
+    {"check_id": "gates_a_e_exact_candidate", "cockpit_inputs": ["app_tests", "core_tests", "backend_tests", "admin_tests", "update_proof"]},
+    {"check_id": "mandatory_stop_ship_and_dod", "cockpit_inputs": ["app_tests", "core_tests", "backend_tests", "admin_tests", "docs_support_readiness"]},
+    {"check_id": "no_open_p0_false_green_or_secret_leak", "cockpit_inputs": ["app_tests", "core_tests", "backend_tests", "admin_tests"]},
+    {"check_id": "supply_chain_signature_sbom_provenance", "cockpit_inputs": ["signing"]},
+    {"check_id": "target_channel_signing_and_manual_gates", "cockpit_inputs": ["signing"]},
+    {"check_id": "release_docs_manifest_binding", "cockpit_inputs": ["public_url", "docs_support_readiness"]},
+    {"check_id": "rollback_and_kill_controls", "cockpit_inputs": ["update_proof"]},
+    {"check_id": "current_origin", "cockpit_inputs": ["origin:current"]},
+    {"check_id": "brain_origin", "cockpit_inputs": ["origin:brain"]},
+    {"check_id": "ru_origin", "cockpit_inputs": ["origin:ru"]},
+    {"check_id": "windows_live_network", "cockpit_inputs": ["windows_proof"]},
+    {"check_id": "android_ldplayer_rehearsal", "cockpit_inputs": ["android_proof"]},
+    {"check_id": "android_physical_device", "cockpit_inputs": ["android_proof"]},
+    {"check_id": "authenticated_client_egress", "cockpit_inputs": []},
+    {"check_id": "payment_provider_e2e", "cockpit_inputs": ["payment_proof"]},
+    {"check_id": "operator_auth_rbac_action_intent", "cockpit_inputs": []},
+    {"check_id": "legal_commercial_approval", "cockpit_inputs": []},
+    {"check_id": "performance_and_release_health", "cockpit_inputs": []},
+    {"check_id": "hosted_required_checks", "cockpit_inputs": ["app_tests", "core_tests", "backend_tests", "admin_tests"]},
+  ];
   const readiness = releaseReadiness(candidateId);
   const candidate = readiness.candidate;
   return {
@@ -959,17 +981,16 @@ function releaseCockpit(candidateId: string) {
     }],
     readiness,
     gate_matrix: {
-      policy_version: "pokrov.operator-cockpit-gates/v1",
+      policy_version: "pokrov.operator-cockpit-gates/v2",
       gate_f_decision: "NOT_EVALUATED",
+      gate_f_policy_version: "pokrov.release-1.2.0.gate-f-decision/v1",
+      gate_f_mapping: gateFMapping,
       status: readiness.ready ? "PASS" : "MISSING",
       ready: readiness.ready,
       origin_readiness_status: readiness.status,
-      checks: [
-        { check_name: "app_tests", status: readiness.ready ? "PASS" : "MISSING" },
-        { check_name: "core_tests", status: readiness.ready ? "PASS" : "MISSING" },
-      ],
+      checks: gateNames.map((check_name) => ({ check_name, status: readiness.ready ? "PASS" : "MISSING" })),
     },
-    rollout: { states: [], active_by_platform: {}, source: "release_rollout_v1" },
+    rollout: { states: [], active_by_platform: {}, source: "release_rollout_v1", external_artifact_switch: "NOT_EVALUATED" },
     adoption: { window_days: 30, window_start: "2026-06-15T10:00:00Z", authority: "active_account_devices_last_seen", cohorts: [], platform_totals: {} },
     health: { groups: [] },
     health_gate: { status: "MISSING", reason: "no_version_health", thresholds: {}, groups: [] },

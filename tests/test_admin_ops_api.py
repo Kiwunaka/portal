@@ -4647,7 +4647,9 @@ def test_admin_v2_release_cockpit_and_news_use_guarded_v2_contracts(monkeypatch,
     assert cockpit.status_code == 200, cockpit.text
     assert cockpit.json()["data"]["gate_matrix"]["status"] == "PASS"
     assert cockpit.json()["data"]["gate_matrix"]["gate_f_decision"] == "NOT_EVALUATED"
-    assert cockpit.json()["data"]["gate_matrix"]["policy_version"] == "pokrov.operator-cockpit-gates/v1"
+    assert cockpit.json()["data"]["gate_matrix"]["policy_version"] == "pokrov.operator-cockpit-gates/v2"
+    assert len(cockpit.json()["data"]["gate_matrix"]["gate_f_mapping"]) == 19
+    assert cockpit.json()["data"]["rollout"]["external_artifact_switch"] == "NOT_EVALUATED"
     assert cockpit.json()["data"]["components"][0]["revision"] == "d" * 40
 
     step_up = client.post(

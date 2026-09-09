@@ -1024,18 +1024,27 @@ Only collect and expose the minimum operational context needed to diagnose servi
 
 ## Cockpit checks and the final release decision
 
-The operational `gate_matrix` policy is `pokrov.operator-cockpit-gates/v1`:
+The operational `gate_matrix` policy is `pokrov.operator-cockpit-gates/v2`:
 11 named checks plus separate current/brain/RU origin readiness. `ready` and
 `status` describe only this matrix. The API always reports
 `gate_f_decision=NOT_EVALUATED`; the cockpit does not load a Gate F report.
 The UI shows the policy, actual check count and this limitation even when all
-operational checks pass. Guarded rollout registry actions retain their existing
+operational checks pass. Each cockpit check aggregates the latest evidence
+from every represented origin using the evidence status precedence; current
+PASS cannot hide brain/RU FAIL or an attestation/skip. The separate origin
+readiness still applies. Guarded rollout registry actions retain their existing
 permissions, preview, confirmation and audit requirements. They do not replace
 owner release authorization or switch an external artifact pointer.
 
 The separate final policy is `pokrov.release-1.2.0.gate-f-decision/v1`, whose
 19 required IDs are owned by `scripts/release_1_2_gate_f.py`. The following is a
 review crosswalk of related areas, never an automatic transfer of PASS:
+
+The API includes `gate_f_policy_version` and `gate_f_mapping`, with one entry
+per final `check_id` and its `cockpit_inputs` (including `origin:current`,
+`origin:brain`, `origin:ru`). The UI renders the complete 19-row table on demand.
+An empty input list explicitly means independent evidence is required.
+Contract parity with the final policy's version and 19 IDs is tested.
 
 | Cockpit input | Related final Gate F area; requires its own bound receipt |
 | --- | --- |
@@ -1056,3 +1065,8 @@ Gate F evidence remain independent. An operational green must not be displayed
 or consumed as final GO. A rollback request still reports
 `external_artifact_switch=NOT_PERFORMED` until the separate switch is executed
 and verified; a paused registry is not proof of a completed rollback.
+The cockpit read model separately reports
+`rollout.external_artifact_switch=NOT_EVALUATED`: it does not query the external
+artifact store. The UI distinguishes this observation gap from the stored
+`paused` flag and `rollback_requested` state. The action result describes what
+that command performed; the cockpit does not invent a subsequent external result.

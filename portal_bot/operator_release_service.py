@@ -12,6 +12,7 @@ try:
     from .models import AccountDevice, AppSetting, ReleaseCandidate, SupportBundleUpload
     from .operator_observability_service import known_issues, release_health_snapshot
     from .release_evidence_service import (
+        _aggregate_status,
         ReleaseEvidenceNotFound,
         ReleaseEvidenceReadError,
         get_release_readiness,
@@ -21,6 +22,7 @@ except ImportError:
     from models import AccountDevice, AppSetting, ReleaseCandidate, SupportBundleUpload
     from operator_observability_service import known_issues, release_health_snapshot
     from release_evidence_service import (
+        _aggregate_status,
         ReleaseEvidenceNotFound,
         ReleaseEvidenceReadError,
         get_release_readiness,
@@ -31,7 +33,7 @@ except ImportError:
 RELEASE_ROLLOUT_SETTING_KEY = "release_rollout_v1"
 RELEASE_ROLLOUT_SCHEMA = 1
 RELEASE_PLATFORMS = frozenset({"android", "windows"})
-RELEASE_GATE_POLICY_VERSION = "pokrov.operator-cockpit-gates/v1"
+RELEASE_GATE_POLICY_VERSION = "pokrov.operator-cockpit-gates/v2"
 RELEASE_GATE_NAMES = (
     "app_tests",
     "core_tests",
@@ -45,6 +47,30 @@ RELEASE_GATE_NAMES = (
     "public_url",
     "docs_support_readiness",
 )
+# Review crosswalk only. Gate F owns each check's exact-candidate evidence and
+# decision; a related cockpit input never supplies a final PASS.
+RELEASE_GATE_F_POLICY_VERSION = "pokrov.release-1.2.0.gate-f-decision/v1"
+RELEASE_GATE_F_MAPPING = {
+    "gates_a_e_exact_candidate": ("app_tests", "core_tests", "backend_tests", "admin_tests", "update_proof"),
+    "mandatory_stop_ship_and_dod": ("app_tests", "core_tests", "backend_tests", "admin_tests", "docs_support_readiness"),
+    "no_open_p0_false_green_or_secret_leak": ("app_tests", "core_tests", "backend_tests", "admin_tests"),
+    "supply_chain_signature_sbom_provenance": ("signing",),
+    "target_channel_signing_and_manual_gates": ("signing",),
+    "release_docs_manifest_binding": ("public_url", "docs_support_readiness"),
+    "rollback_and_kill_controls": ("update_proof",),
+    "current_origin": ("origin:current",),
+    "brain_origin": ("origin:brain",),
+    "ru_origin": ("origin:ru",),
+    "windows_live_network": ("windows_proof",),
+    "android_ldplayer_rehearsal": ("android_proof",),
+    "android_physical_device": ("android_proof",),
+    "authenticated_client_egress": (),
+    "payment_provider_e2e": ("payment_proof",),
+    "operator_auth_rbac_action_intent": (),
+    "legal_commercial_approval": (),
+    "performance_and_release_health": (),
+    "hosted_required_checks": ("app_tests", "core_tests", "backend_tests", "admin_tests"),
+}
 _ROLLOUT_STATES = frozenset(
     {"candidate", "staged", "paused", "current", "rollback_requested", "deprecated"}
 )
@@ -173,27 +199,32 @@ def rollout_state(
 
 
 def release_gate_matrix(readiness: Mapping[str, Any]) -> dict[str, Any]:
-    latest: dict[str, str] = {}
+    observed: dict[str, list[str]] = {}
     for origin in readiness.get("origins") or []:
         if not isinstance(origin, Mapping):
             continue
         for check in list(origin.get("checks") or []) + list(origin.get("diagnostics") or []):
             if isinstance(check, Mapping):
-                latest.setdefault(str(check.get("check_name") or ""), str(check.get("status") or "MISSING"))
+                observed.setdefault(str(check.get("check_name") or ""), []).append(str(check.get("status") or "MISSING"))
     gates = [
-        {"check_name": name, "status": latest.get(name, "MISSING")}
+        {"check_name": name, "status": _aggregate_status(observed.get(name, []))}
         for name in RELEASE_GATE_NAMES
     ]
     origins_pass = bool(readiness.get("ready"))
     all_pass = origins_pass and all(item["status"] == "PASS" for item in gates)
     return {
-        "status": "PASS" if all_pass else "MISSING" if not any(item["status"] == "FAIL" for item in gates) else "FAIL",
+        "status": _aggregate_status([str(readiness.get("status") or "MISSING"), *(item["status"] for item in gates)]),
         "ready": all_pass,
         "origin_readiness_status": str(readiness.get("status") or "MISSING"),
         "policy_version": RELEASE_GATE_POLICY_VERSION,
         # These operational checks do not load the separate exact-candidate
         # Gate F decision or authorize an external artifact switch.
         "gate_f_decision": "NOT_EVALUATED",
+        "gate_f_policy_version": RELEASE_GATE_F_POLICY_VERSION,
+        "gate_f_mapping": [
+            {"check_id": check_id, "cockpit_inputs": list(inputs)}
+            for check_id, inputs in RELEASE_GATE_F_MAPPING.items()
+        ],
         "checks": gates,
     }
 
@@ -358,6 +389,7 @@ def candidate_cockpit(
             "states": states,
             "active_by_platform": active_by_platform,
             "source": RELEASE_ROLLOUT_SETTING_KEY,
+            "external_artifact_switch": "NOT_EVALUATED",
         },
         "adoption": version_adoption(session, days=30, now=current),
         "health": health,

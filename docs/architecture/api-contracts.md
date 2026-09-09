@@ -1593,6 +1593,18 @@ when rollout is paused, rollback is requested, the registry is invalid, or the
 active candidate version differs from configured artifact metadata. They do
 not claim that an external download pointer was switched.
 
+Cockpit `gate_matrix.policy_version=pokrov.operator-cockpit-gates/v2` aggregates
+all represented origins for each diagnostic using the evidence status
+precedence. A FAIL in a later origin blocks readiness and rollout preparation
+even when origin reachability and the earlier diagnostic pass. Raw origin
+results remain in `readiness.origins`. `gate_f_decision=NOT_EVALUATED` remains
+independent: `gate_f_policy_version` identifies the final decision schema and
+`gate_f_mapping` lists its 19 `check_id` / `cockpit_inputs` associations without
+copying a diagnostic status into a release result. An empty input list marks
+independent final evidence. `rollout.external_artifact_switch=NOT_EVALUATED`
+records that the cockpit does not observe the external artifact pointer;
+registry pause and rollback request remain separate stored states.
+
 Growth messaging reads require `growth.read`: delivery aggregate by broadcast
 intent, bounded news-draft/run state, live updates with `source_draft_id`, and
 intent status. `broadcast.send` and `live_update.create|update|delete` use the

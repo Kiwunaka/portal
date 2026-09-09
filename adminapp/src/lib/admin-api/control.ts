@@ -74,6 +74,8 @@ export async function fetchReleaseCandidates(init?: ApiRequestInit): Promise<Rel
 export type ReleaseGateMatrix = {
   policy_version: string;
   gate_f_decision: "NOT_EVALUATED";
+  gate_f_policy_version: string;
+  gate_f_mapping: Array<{ check_id: string; cockpit_inputs: string[] }>;
   status: ReleaseEvidenceStatus;
   ready: boolean;
   origin_readiness_status: ReleaseEvidenceStatus;
@@ -128,6 +130,7 @@ export type ReleaseCockpit = {
     states: ReleaseRolloutState[];
     active_by_platform: Record<string, string>;
     source: string;
+    external_artifact_switch: "NOT_EVALUATED";
   };
   adoption: ReleaseAdoption;
   health: { groups?: Array<Record<string, unknown>>; [key: string]: unknown };

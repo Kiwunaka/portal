@@ -15,6 +15,21 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
+def test_cockpit_crosswalk_covers_exact_final_policy_without_status_transfer() -> None:
+    from portal_bot.operator_release_service import (
+        RELEASE_GATE_F_MAPPING, RELEASE_GATE_F_POLICY_VERSION, RELEASE_GATE_NAMES,
+    )
+
+    assert RELEASE_GATE_F_POLICY_VERSION == MODULE.REPORT_SCHEMA
+    assert tuple(RELEASE_GATE_F_MAPPING) == MODULE.REQUIRED_CHECK_IDS
+    inputs = {name for values in RELEASE_GATE_F_MAPPING.values() for name in values}
+    assert inputs == set(RELEASE_GATE_NAMES) | {"origin:current", "origin:brain", "origin:ru"}
+    assert {check for check, values in RELEASE_GATE_F_MAPPING.items() if not values} == {
+        "authenticated_client_egress", "operator_auth_rbac_action_intent",
+        "legal_commercial_approval", "performance_and_release_health",
+    }
+
+
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
