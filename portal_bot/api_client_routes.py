@@ -15,6 +15,7 @@ from client_network_diagnostics import NETWORK_CLASSES, record_network_context
 SMART_CONNECT_LATENCY_EVENT_NAME = "smart_connect_latency_sample"
 MANAGED_PROFILE_SYNC_BUDGET_SECONDS = 7.0
 MANAGED_PROFILE_PANEL_BUDGET_SECONDS = 8.0
+CLIENT_SUBSCRIPTION_RUNTIME_BUDGET_SECONDS = 3.0
 
 
 def _managed_profile_runtime_fallback(*, panel_state: str, panel_error: str | None) -> dict[str, Any]:
@@ -1284,13 +1285,27 @@ async def client_subscription(request: Request, x_telegram_init_data: str = Head
     try:
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
-        runtime = await _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user)
-        access_policy = _build_reconciled_access_policy(
-            session=s,
-            user=user,
-            used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0),
-            source="client_subscription_runtime",
-        )
+        try:
+            runtime = await asyncio.wait_for(
+                _get_user_runtime_summary(s=s, user=user, nodes=nodes_for_user),
+                timeout=CLIENT_SUBSCRIPTION_RUNTIME_BUDGET_SECONDS,
+            )
+        except asyncio.TimeoutError:
+            runtime = _managed_profile_runtime_fallback(
+                panel_state="timeout", panel_error="panel_runtime_timeout",
+            )
+        if runtime.get("panel_state") == "ok":
+            access_policy = _build_reconciled_access_policy(
+                session=s,
+                user=user,
+                used_bytes=int(runtime.get("traffic_total_bytes", 0) or 0),
+                source="client_subscription_runtime",
+            )
+        else:
+            access_policy = _build_access_policy(
+                user=user,
+                used_bytes=int(getattr(user, "free_profile_observed_bytes", 0) or 0),
+            )
         access_state = str(access_policy.get("access_state") or "")
         expiry = getattr(user, "expiry_at", None)
         days_left = _client_days_left(expiry)
