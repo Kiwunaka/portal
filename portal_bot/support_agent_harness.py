@@ -195,7 +195,7 @@ class SupportAgentRequest:
     message: str
     now: float
     safe_diagnostics: tuple[tuple[str, str | int | bool | None], ...] = ()
-    case_loader: Callable[[], Awaitable[dict]] | None = field(default=None, repr=False)
+    case_loader: Callable[..., Awaitable[dict]] | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -281,16 +281,20 @@ class _RunStats:
     provider_latency_ms: int | None = None
     error_code: str | None = None
 
+    usage_turn_count: int = 0
+
     def record_decision(self, decision: RetrievalDecision) -> None:
         self.retrieval_disposition = decision.disposition.value
         self.context_topic_ids = decision.context_topic_ids
         self.grounding_topic_id = decision.grounding_topic_id
 
     def add_turn(self, turn: SynthesisTurn) -> None:
-        self.provider_latency_ms = turn.latency_ms
-        self.prompt_tokens = turn.usage.prompt_tokens
-        self.completion_tokens = turn.usage.completion_tokens
-        self.cached_tokens = turn.usage.cached_tokens
+        self.provider_latency_ms = (self.provider_latency_ms or 0) + turn.latency_ms
+        for name in ("prompt_tokens", "completion_tokens", "cached_tokens"):
+            previous, current = getattr(self, name), getattr(turn.usage, name)
+            setattr(self, name, current if self.usage_turn_count == 0 else
+                    (previous + current if previous is not None and current is not None else None))
+        self.usage_turn_count += 1
 
     def usage(self) -> ProviderUsage:
         return ProviderUsage(
@@ -728,7 +732,15 @@ class SupportAgentHarness:
     async def _execute_case(self, request, boundary, session, stats, started) -> _Outcome:
         from support_case_context import CASE_PROMPT, case_fallback
 
-        case = await asyncio.wait_for(request.case_loader(), timeout=min(25.0, self._remaining(started)))
+        async def analyze_attachment(images):
+            stats.provider_request_count += 1
+            turn = await self.adapter.complete_attachment(
+                images=images, request_timeout=min(18.0, self._remaining(started)))
+            stats.add_turn(turn)
+            return turn.content
+
+        case = await asyncio.wait_for(request.case_loader(analyze_attachment),
+                                      timeout=min(25.0, self._remaining(started)))
         if case.get("operator_handling"):
             return _Outcome("silent", "", (), None, None, "code_owned", "operator_handling")
         decision = self.grounding_engine.select(boundary.model_text, session)
@@ -742,13 +754,16 @@ class SupportAgentHarness:
         remaining = self._remaining(started)
         if remaining < _MIN_PROVIDER_WINDOW_SECONDS:
             return _human_transfer("deadline_exhausted", status="fallback")
-        stats.provider_request_count = 1
+        stats.provider_request_count += 1
         try:
             turn = await self.adapter.complete_synthesis(messages=messages,
                 request_timeout=min(self.provider_timeout_seconds, remaining))
             stats.add_turn(turn)
             model = validate_model_output(turn.content, self.policy,
                 source_text=(CASE_PROMPT + "\n" + "\n".join(t["body"] for t in topics))[:3600])
+            if re.search(r"\b(?:чек|квитанция|скриншот|изображение)\s+(?:подтверждает|доказывает)\s+оплат",
+                         model.reply, re.IGNORECASE):
+                raise SafetyValidationError("agent_output_source_invalid")
         except (ProviderCallError, SafetyValidationError) as exc:
             stats.error_code = _fixed_error_code(exc)
             reply = validate_safe_reply(case_fallback(case), self.policy)

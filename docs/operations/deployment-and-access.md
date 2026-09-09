@@ -207,12 +207,14 @@ Repo-side deploy rule:
 
 The support case alternative is `SUPPORT_AI_MODEL=deepseek/deepseek-v4-flash-vision-exp`
 with the same medium reasoning and exact OpenRouter route. Its routing prefers
-Fireworks and denies provider data collection. Ticket case reads and local OCR
+Fireworks and denies provider data collection. Ticket case reads and isolated Vision analysis
 follow [the support case boundary](../architecture/support-feedback-flow.md#read-only-ticket-case-context).
-Install `poppler-utils`, `tesseract-ocr`, and `tesseract-ocr-rus` for PDF/image
-text extraction; Pillow remains the existing pinned Python dependency.
-Model selection does not authorize sending raw images or customer/provider
-payloads. Keep per-service overrides in a secret-free EnvironmentFile loaded
+Install `poppler-utils` for bounded PDF page rendering; Pillow remains the
+existing pinned Python dependency. Tesseract is no longer invoked. The owner
+approved sending authorized ticket images and rendered PDF pages to the
+external Vision provider on 2026-09-09. Only the validated and sanitized internal
+analysis enters the main assistant context; raw account/provider payloads remain
+excluded. Keep per-service overrides in a secret-free EnvironmentFile loaded
 after the common `.env`; do not overwrite the common environment during a
 support-only rollout. Removing that override restores the common model settings.
 
