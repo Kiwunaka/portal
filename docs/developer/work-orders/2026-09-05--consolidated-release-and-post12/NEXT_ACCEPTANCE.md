@@ -1,5 +1,8 @@
 # Текущие условия следующей приёмки
 
+[O01 idle expiry](EXECUTION-OPERATOR-SESSION-BOUNDARY-2026-09-09.md): реальные 30 минут PASS — HTTP 401 и DB idle_expired; absolute deadline остаётся RUNNING до 00:44 мск 10 сентября. [B07 collector](EXECUTION-B07-DEPLOYED-LAG-2026-09-09.md): 27 production health samples и outbox aggregates сохранены; во время 17,59-секундного online read loop продолжал работать, источник ожидания пока не локализован.
+
+
 [O02 routes и rollback](EXECUTION-OPERATOR-ROUTES-2026-09-09.md): 28 привязок к workspace/API/permission, 22 primary GET и фактический production static rollback/restore PASS. Inventory исправлен до семи retained read patterns; 60 backend/contract и 80 Playwright PASS. Новый manifest не развёрнут; redirect и зависимость O01 открыты.
 
 

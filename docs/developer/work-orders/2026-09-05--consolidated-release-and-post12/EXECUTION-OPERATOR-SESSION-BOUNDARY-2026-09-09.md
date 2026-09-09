@@ -88,3 +88,13 @@ Production TTL и время не сдвигались. Источник securit
 на каждом цикле. Наблюдать существующий процесс командой
 `python E:/r12-operator-session-20260909/observe-elapsed-expiry-v2.py`.
 Первое наблюдение v2: RUNNING, ещё без expiry assertions. Полный O01 открыт.
+
+
+## Реальный idle expiry — PASS, 10:14:45 UTC
+
+V2 после 1800 секунд бездействия и трёхсекундного запаса получил
+HTTP 401 `operator_session_expired`; БД сохранила отзыв `idle_expired`.
+Текущее время, production TTL и deadlines не менялись. Наблюдение 10:15
+подтвердило тот же живой PID/start ticks, шесть absolute refreshes, неизменный
+absolute deadline и отсутствие HTTP anomalies. Absolute expiry остаётся
+RUNNING до `2026-09-09T21:44:42.057920Z`; полный O01 пока открыт.

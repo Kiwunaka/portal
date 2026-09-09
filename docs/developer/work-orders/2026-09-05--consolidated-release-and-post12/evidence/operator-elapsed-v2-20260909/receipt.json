@@ -1,5 +1,5 @@
 {
-  "status": "RUNNING_NOT_PASSED",
+  "status": "PASS_REAL_IDLE_EXPIRY_ABSOLUTE_RUNNING",
   "origin": "brain-origin HTTPS production",
   "source_revision": "a8e6918ccc166a58ae65ba7d08feea63ce3a9623",
   "captures": [
@@ -22,6 +22,11 @@
       "path": "elapsed-expiry-observation-v2-2026-09-09T094442133472+0000.json",
       "sha256": "9ae35fe43c377d6068c05cbe4a687ae5828747a4f9f7dcba587b1eb22408ebef",
       "source_sha256": "b129b21030ceaa7bc60104a21c6b0ddd1e42b228ca466cc86234093ad7db546f"
+    },
+    {
+      "path": "elapsed-expiry-observation-v2-2026-09-09T101502133552+0000.json",
+      "sha256": "65beabb8502724d5e18b86c0227f5fa83f7cfff2f1c17fa6124c8d6a3de72b9d",
+      "source_sha256": "d15bf0786c89e4a8e560eb29d30643265c7ba15dc7ee0e668335edeb3174adb6"
     }
   ],
   "local_instruments": [
@@ -44,5 +49,11 @@
   ],
   "previous_run": "JSONDecodeError; both owned sessions revoked by targeted cleanup; evidence preserved",
   "production_ttls_modified": false,
-  "legacy_bootstrap_reenabled": false
+  "legacy_bootstrap_reenabled": false,
+  "idle_observation": {
+    "http_status": 401,
+    "error_code": "operator_session_expired",
+    "revoke_reason": "idle_expired",
+    "utc": "2026-09-09T10:14:45.152950+00:00"
+  }
 }
