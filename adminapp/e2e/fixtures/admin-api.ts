@@ -2815,7 +2815,7 @@ export async function installAdminApiMock(
           outbox: { outbox_ref: "outbox_review_901", status: "pending", attempts: 3, last_error_code: "delivery_deferred", terminal_reason: null, next_run_at: "2026-07-15T10:05:00Z", delivered_at: null },
         } : { claim: null, grant: null, outbox: null },
         events: order.last_event ? [order.last_event] : [],
-        commands: order.id === 901 ? [{ intent_ref: "intent_review_901", action: "payment.reconcile", status: "executed", created_at: generatedAt, consumed_at: generatedAt }] : [],
+        commands: order.id === 901 ? [{ intent_ref: "intent_review_901", action: "payment.reconcile", status: "completed", created_at: generatedAt, consumed_at: generatedAt }] : [],
       }, [{ authority: "external_orders" }]) : { detail: "Order not found" }, order ? 200 : 404);
       return;
     }
