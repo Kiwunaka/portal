@@ -1,5 +1,8 @@
 # R12 — текущий результат и граница исполнения
 
+[Реальные сроки, уточнение 09:44 UTC](EXECUTION-OPERATOR-SESSION-BOUNDARY-2026-09-09.md): первый runner завершился JSONDecodeError; обе fixture sessions отозваны. V2 запущен отдельно, idle ожидается в 13:14 мск, absolute — в 00:44 мск 10 сентября; оба пока NOT_PASSED. Compatibility остаётся выключенным.
+
+
 [Operator cutover](EXECUTION-OPERATOR-CUTOVER-2026-09-09.md): compatibility bootstrap и legacy step-up отключены на Brain; пять production assertions PASS, rollback проверен на первом проходе. Реальные сроки сессий продолжают проверяться; O01 открыт.
 
 
