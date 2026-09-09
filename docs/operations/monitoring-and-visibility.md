@@ -508,6 +508,7 @@ Operator-facing rendering rule:
 - `panel_latency_ms` measures the full `brain -> panel admin API` transaction; it is control-plane latency and must not be labeled or interpreted as user VPN/dataplane latency
 - do not confuse the `brain -> node` control-plane probe with the separate external RU probe result
 - node cards should show `provisioned_clients_count` separately from any `online_connections_hint`; provisioned count is configured key inventory, not online load
+- current 3x-ui online reads use `POST /panel/api/clients/onlines` with the session CSRF header. Each node summary or client snapshot attempts this read once, including when it is unavailable; the next snapshot may retry. An unavailable response remains distinct from a successful empty list and preserves existing last-seen inference.
 - current Ethernet throughput in admin comes from the live panel/server metrics collected by `brain`
 - if network counters are missing, the admin surface must show missing telemetry rather than `0 Mbps`
 - use the current and 24h peak Ethernet view for capacity planning, server purchase decisions, and early warning before saturating the `1 Gbit/s` uplink

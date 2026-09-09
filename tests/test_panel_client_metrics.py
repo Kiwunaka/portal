@@ -87,6 +87,58 @@ class PanelClientMetricsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(metrics["network_tx_bytes_per_sec"], 126925)
         self.assertEqual(metrics["network_rx_bytes_per_sec"], 129934)
 
+    async def test_online_list_uses_current_panel_route_and_csrf(self) -> None:
+        from unittest.mock import AsyncMock, MagicMock
+        from panel_client import PanelClient
+
+        client = PanelClient(self._node())
+        client.cookies = {"session": "fixture"}
+        client.csrf_token = "fixture-csrf"
+        response = AsyncMock()
+        response.status = 200
+        response.json.return_value = {"success": True, "obj": ["online@example.test"]}
+        request = MagicMock()
+        request.__aenter__.return_value = response
+        client.session = SimpleNamespace(post=MagicMock(return_value=request))
+
+        self.assertEqual(await client._get_online_emails(), (True, {"online@example.test"}))
+        call = client.session.post.call_args
+        self.assertTrue(call.args[0].endswith("/panel/api/clients/onlines"))
+        self.assertEqual(call.kwargs["headers"]["X-CSRF-Token"], "fixture-csrf")
+        self.assertEqual(call.kwargs["cookies"], client.cookies)
+        response.json.return_value = {"success": True, "obj": []}
+        self.assertEqual(await client._get_online_emails(), (True, set()))
+
+    async def test_unavailable_online_list_is_requested_once_per_snapshot(self) -> None:
+        from datetime import datetime, timezone
+        from unittest.mock import AsyncMock
+        from panel_client import PanelClient
+
+        for method in ("get_node_online_summary", "get_node_online_clients"):
+            with self.subTest(method=method):
+                client = PanelClient(self._node())
+                client._get_inbounds = AsyncMock(return_value=[{
+                    "id": 1,
+                    "settings": json.dumps({"clients": [
+                        {"email": "unknown-a@example.test"},
+                        {"email": "recent@example.test"},
+                        {"email": "unknown-b@example.test"},
+                    ]}),
+                    "clientStats": [{
+                        "email": "recent@example.test",
+                        "lastOnlineTime": int(datetime.now(timezone.utc).timestamp()),
+                    }],
+                }])
+                client._get_online_emails = AsyncMock(return_value=(False, set()))
+
+                for snapshot in (1, 2):
+                    result = await getattr(client, method)()
+                    self.assertEqual(client._get_online_emails.await_count, snapshot)
+                    if method == "get_node_online_summary":
+                        self.assertEqual(result, {"online_keys_now": 1, "online_connections_now": 1})
+                    else:
+                        self.assertEqual([row["panel_email"] for row in result], ["recent@example.test"])
+
     async def test_get_client_snapshot_reuses_one_inbounds_read(self) -> None:
         from panel_client import PanelClient
 
