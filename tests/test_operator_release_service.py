@@ -34,6 +34,7 @@ from operator_release_service import (  # noqa: E402
     version_adoption,
 )
 from operator_work_service import add_admin_audit  # noqa: E402
+from release_evidence_service import get_release_readiness  # noqa: E402
 
 
 NOW = datetime(2026, 8, 22, 12, 0, 0)
@@ -399,7 +400,28 @@ def test_operational_green_never_claims_a_gate_f_decision() -> None:
     matrix = release_gate_matrix(readiness)
     assert matrix["ready"] is True
     assert len(matrix["checks"]) == 11
-    assert matrix["policy_version"] == "pokrov.operator-cockpit-gates/v1"
+    assert matrix["policy_version"] == "pokrov.operator-cockpit-gates/v2"
     assert matrix["gate_f_decision"] == "NOT_EVALUATED"
     readiness["origins"][0]["checks"].pop()
     assert release_gate_matrix(readiness)["ready"] is False
+
+
+def test_later_origin_failure_blocks_cockpit_and_rollout(factory) -> None:
+    with factory() as session:
+        candidate_id = _candidate(session, "c", "1.2.0")
+        session.add(models.ReleaseOriginEvidence(
+            candidate_id=candidate_id, origin="brain", check_name="payment_proof",
+            status="FAIL", evidence_sha256="f" * 64, observed_at=NOW,
+            detail_json='{"source":"retained-test"}', imported_at=NOW,
+        ))
+        session.commit()
+        readiness = get_release_readiness(session, candidate_id)
+    # Reachability is complete; the failed diagnostic must still stop rollout.
+    assert readiness["ready"] is True
+    matrix = release_gate_matrix(readiness)
+    assert matrix["ready"] is False
+    assert matrix["status"] == "FAIL"
+    payment = next(row for row in matrix["checks"] if row["check_name"] == "payment_proof")
+    assert payment["status"] == "FAIL"
+    with pytest.raises(ActionIntentError, match="release_gates_incomplete"):
+        _start(factory, candidate_id, percent=10)

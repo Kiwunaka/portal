@@ -143,7 +143,7 @@ function CandidateButton({ candidate, selected }: { candidate: ReleaseCandidateS
       aria-label={`Открыть релиз ${candidate.component} ${candidate.version}`}
       aria-current={selected ? "true" : undefined}
       onClick={() => replaceUrlState<ReleaseUrlState>({ candidate: candidate.candidate_id }, RELEASE_URL_CODECS)}
-      className={`w-full rounded-[var(--pokrov-radius-card)] border p-3 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[color:var(--atlas-focus)] ${selected ? "border-[color:var(--atlas-primary)] bg-[color:var(--atlas-status-info-bg)]" : "border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] hover:border-[color:var(--atlas-border-strong)]"}`}
+      className={`min-w-0 w-full rounded-[var(--pokrov-radius-card)] border p-3 text-left outline-none transition focus-visible:ring-2 focus-visible:ring-[color:var(--atlas-focus)] ${selected ? "border-[color:var(--atlas-primary)] bg-[color:var(--atlas-status-info-bg)]" : "border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] hover:border-[color:var(--atlas-border-strong)]"}`}
     >
       <span className="font-semibold">{candidate.component || "—"} · {candidate.version || "—"}</span>
       <span className="mt-1 block text-[11px] text-[color:var(--atlas-text-soft)]">Возраст: {ageText(candidate.age_seconds)}</span>
@@ -345,6 +345,21 @@ export function ReleasePage({ onShellStatus }: { onShellStatus?: (status: OpsShe
                 <p role="note" className="text-xs text-[color:var(--atlas-text-muted)]">
                   Gate F: решение о выпуске не загружено. PASS в cockpit подтверждает только его операционную матрицу.
                 </p>
+                <details className="rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)] p-3">
+                  <summary className="cursor-pointer text-xs font-semibold">Соответствие {cockpit.data.gate_matrix.checks.length} проверок cockpit и {cockpit.data.gate_matrix.gate_f_mapping.length} условий Gate F</summary>
+                  <p className="my-2 break-all text-[11px] text-[color:var(--atlas-text-muted)]">Политика Gate F: {cockpit.data.gate_matrix.gate_f_policy_version}. Каждому условию нужно отдельное evidence для выбранного кандидата; связь не переносит PASS.</p>
+                  <div className="overflow-x-auto">
+                    <table aria-label="Соответствие cockpit и Gate F" className="w-full table-fixed text-left text-xs">
+                      <thead><tr><th className="p-2">Условие Gate F</th><th className="p-2">Связанные входные данные</th></tr></thead>
+                      <tbody>{cockpit.data.gate_matrix.gate_f_mapping.map((row) => (
+                        <tr key={row.check_id} className="border-t border-[color:var(--atlas-border)]">
+                          <td className="p-2 font-mono [overflow-wrap:anywhere]">{row.check_id}</td>
+                          <td className="p-2 [overflow-wrap:anywhere]">{row.cockpit_inputs.length ? row.cockpit_inputs.join(", ") : "Отдельная проверка; входа cockpit нет"}</td>
+                        </tr>
+                      ))}</tbody>
+                    </table>
+                  </div>
+                </details>
               </div>
             ) : null}
           </RouteBoundary>
@@ -372,7 +387,8 @@ export function ReleasePage({ onShellStatus }: { onShellStatus?: (status: OpsShe
 
         <Card>
           <SectionTitle title="Текущее состояние" description="Registry связан с реальным /api/client/apps. При mismatch или pause выдача update policy закрывается." />
-          {rollout ? <dl className="mt-3 grid grid-cols-2 gap-3 text-xs"><dt className="text-[color:var(--atlas-text-muted)]">Статус</dt><dd className="font-semibold">{rollout.status}</dd><dt className="text-[color:var(--atlas-text-muted)]">Rollout</dt><dd className="font-semibold">{rollout.rollout_percent}%</dd><dt className="text-[color:var(--atlas-text-muted)]">Min supported</dt><dd className="font-mono">{rollout.min_supported_version || "—"}</dd><dt className="text-[color:var(--atlas-text-muted)]">Observation ends</dt><dd>{dateText(rollout.observation_ends_at)}</dd><dt className="text-[color:var(--atlas-text-muted)]">Paused</dt><dd>{rollout.paused ? "Да" : "Нет"}</dd></dl> : <EmptyState title="Rollout не создан" description="Начать rollout можно только после PASS всех release gates." />}
+          {rollout ? <dl className="mt-3 grid grid-cols-2 gap-3 text-xs"><dt className="text-[color:var(--atlas-text-muted)]">Статус registry</dt><dd className="font-semibold">{rollout.status}</dd><dt className="text-[color:var(--atlas-text-muted)]">Rollout</dt><dd className="font-semibold">{rollout.rollout_percent}%</dd><dt className="text-[color:var(--atlas-text-muted)]">Min supported</dt><dd className="font-mono">{rollout.min_supported_version || "—"}</dd><dt className="text-[color:var(--atlas-text-muted)]">Observation ends</dt><dd>{dateText(rollout.observation_ends_at)}</dd><dt className="text-[color:var(--atlas-text-muted)]">Выдача приостановлена</dt><dd>{rollout.paused ? "Да" : "Нет"}</dd><dt className="text-[color:var(--atlas-text-muted)]">Запрос отката</dt><dd>{rollout.status === "rollback_requested" ? "Зарегистрирован" : "Нет в текущем состоянии"}</dd></dl> : <EmptyState title="Rollout не создан" description="Начать rollout можно только после PASS операционных проверок и origins." />}
+          {cockpit.data ? <p className="mt-3 text-xs text-[color:var(--atlas-text-muted)]">Фактическое переключение артефакта: {cockpit.data.rollout.external_artifact_switch} — внешний указатель не проверен. Пауза выдачи и запрос отката его не подтверждают.</p> : null}
           <div className="mt-4 border-t border-[color:var(--atlas-border)] pt-4">
             <p className="text-xs font-semibold">Adoption выбранной версии</p>
             <p className="mt-2 text-2xl font-bold tabular-nums">{adoption ? `${adoption.share_percent}%` : "—"}</p>

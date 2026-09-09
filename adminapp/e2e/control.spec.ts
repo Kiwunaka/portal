@@ -31,8 +31,17 @@ test("release checklist binds exact candidate and keeps origins honest", async (
   await expect(page.getByText(secondCandidate, { exact: true }).first()).toBeVisible();
   await expect(page.getByText("4".repeat(64), { exact: true }).first()).toBeVisible();
   await expect(page.getByText(/Проверки cockpit: Подтверждено · PASS/)).toBeVisible();
-  await expect(page.getByText(/Политика cockpit: pokrov.operator-cockpit-gates\/v1/)).toBeVisible();
+  await expect(page.getByText(/Политика cockpit: pokrov.operator-cockpit-gates\/v2/)).toBeVisible();
   await expect(page.getByRole("note").filter({ hasText: "Gate F: решение о выпуске не загружено" })).toBeVisible();
+  await page.getByText("Соответствие 11 проверок cockpit и 19 условий Gate F", { exact: true }).click();
+  const mapping = page.getByRole("table", { name: "Соответствие cockpit и Gate F" });
+  await expect(mapping.locator("tbody tr")).toHaveCount(19);
+  await expect(mapping.getByRole("row").filter({ hasText: "android_physical_device" })).toContainText("android_proof");
+  await expect(mapping.getByRole("row").filter({ hasText: "android_ldplayer_rehearsal" })).toContainText("android_proof");
+  await expect(mapping.getByText("Отдельная проверка; входа cockpit нет", { exact: true })).toHaveCount(4);
+  await expect(page.getByText(/Фактическое переключение артефакта: NOT_EVALUATED/)).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
 test("broadcast draft survives a 401 prepare error", async ({ page }) => {

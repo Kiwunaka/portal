@@ -418,9 +418,13 @@ Money и growth boundary v2:
 
 Release boundary v2:
 
-- Cockpit shows policy `pokrov.operator-cockpit-gates/v1`, its actual check count,
-  and `gate_f_decision=NOT_EVALUATED`. Its 11 operational checks plus origins do
-  not imply the separate 19-check final Gate F decision. The canonical crosswalk
+- Cockpit shows policy `pokrov.operator-cockpit-gates/v2`, its actual check count,
+  and `gate_f_decision=NOT_EVALUATED`. The expandable crosswalk names all 19
+  final checks and their related cockpit/origin inputs, including four checks
+  with no cockpit input. A repeated check aggregates all represented origins
+  with the evidence status precedence: a later-origin FAIL cannot be hidden by
+  an earlier PASS. Its 11 operational checks plus origins do not imply the
+  separate final Gate F decision. The canonical crosswalk
   is in [monitoring and visibility](../docs/operations/monitoring-and-visibility.md#cockpit-checks-and-the-final-release-decision).
 
 - `GET /api/admin/v2/releases/candidates`, `GET .../cockpit` и
@@ -431,6 +435,9 @@ Release boundary v2:
   только через `/api/admin/v2/releases/action-intents`. Rollback меняет
   серверную rollout policy, но явно возвращает
   `external_artifact_switch=NOT_PERFORMED` и не выдаётся за внешний deploy.
+  Cockpit отдельно показывает registry pause, текущий rollback request и
+  `rollout.external_artifact_switch=NOT_EVALUATED`: этот read model не читает
+  внешний artifact pointer и не подтверждает фактический откат.
 
 Governance boundary v2:
 
