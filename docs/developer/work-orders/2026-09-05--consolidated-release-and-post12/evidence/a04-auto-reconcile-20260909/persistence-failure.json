@@ -1,0 +1,12 @@
+{
+  "result": "PASS_PERSISTENCE_FAILURE_RETRY",
+  "scope": "isolated temporary config and synthetic AWG command fixture on owned Linux",
+  "disk_denial_survives_live_failure": true,
+  "retry_removes_live_peer": true,
+  "unrelated_peer_preserved": true,
+  "root_only_preimage_preserved": true,
+  "repeat_idempotent": true,
+  "wrong_server_identity_rejected": true,
+  "temporary_directory_removed": true,
+  "source_helper_sha256": "ec16f34c7468093936547e508a9008fe29357947477ea47cfc479d46341fd5d3"
+}

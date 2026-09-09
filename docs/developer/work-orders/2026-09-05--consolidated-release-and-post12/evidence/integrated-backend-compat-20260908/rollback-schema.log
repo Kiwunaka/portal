@@ -1,0 +1,4 @@
+{"label": "after-rollback", "columns": 1690, "indexes": 734, "constraints": 246, "schema_sha256": "e651d1a7047e1f54d137b05ed15c4c807cda2f471c9c7b0c18e11a011ed251d3", "same_as_previous": true}
+
+exit_code=0
+stderr_bytes=0

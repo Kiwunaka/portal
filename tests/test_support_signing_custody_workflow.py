@@ -22,9 +22,12 @@ def _step(text: str, name: str) -> str:
 def test_custody_workflow_exposes_secrets_only_to_trusted_validation_step() -> None:
     text = WORKFLOW.read_text(encoding="utf-8-sig")
     validation = _step(text, "Verify hosted custody against client pin")
+    checkout = _step(text, "Checkout trusted platform promotion line")
     prefix = text.split("      - name: Verify hosted custody against client pin", 1)[0]
 
     assert "pull_request:" not in text
+    assert "    if: github.ref == 'refs/heads/master'" in text
+    assert "ref: ${{ github.sha }}" in checkout
     assert "permissions:\n  contents: read" in text
     assert "POKROV_SUPPORT_MODE_SIGNING_PRIVATE_KEY_B64" not in prefix
     assert "POKROV_SUPPORT_MODE_CODE_SECRET" not in prefix

@@ -1,0 +1,413 @@
+{
+  "utc": "2026-09-08T21:45:13.980301+00:00",
+  "profile": "awg31",
+  "scope": "Source worker loop on current-origin control plane, isolated PostgreSQL, real SSH removal and lab service restart on owned DE; exact Core on RU Pi",
+  "build": {
+    "core_revision": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+    "binary_sha256": "0f1d735609fb00b9dd0480b6090d4b8c1cbdce5661cd9b7d9b629d192482fb08",
+    "binary_bytes": 15952509,
+    "go_sha256": "21761eceb9302062c9623fb699f332c8c7fe000f15f70efe8da01a2cfbbc16b9",
+    "git_sha256": "fec691d80fccc35fcc309fbc9f720536c1d795b8a562ec169f28c9923da9600f",
+    "target": "linux_arm64",
+    "interop_runner_sha256": "ddf6a29a54dfd5f907d01409a4587294a4c1f0709a2ded64f9388421b8fb3902"
+  },
+  "public_key_sha256": {
+    "a": "937069f2c8e7f44156ecd4a4c0a5852414cb69b57440d276efe0a43fadd60728",
+    "b": "e3ec2a7d554b116fe3f8aba4ec35e223a074090b9677aca03a1c5b74e2efc98e",
+    "c": "96150f7ee3263c1b13ad2c6a7d81d045b10c65c201e3fedf751da2f55d9af39c"
+  },
+  "server": [
+    {
+      "utc": "2026-09-08T21:44:37.188661+00:00",
+      "phase": "ready",
+      "interface": "pokrovawg31",
+      "peer_count": 1,
+      "original_peer_present": true,
+      "test_peers": []
+    },
+    {
+      "utc": "2026-09-08T21:44:37.239153+00:00",
+      "phase": "add",
+      "service_restarts": 0,
+      "peer_count": 2,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "937069f2c8e7f44156ecd4a4c0a5852414cb69b57440d276efe0a43fadd60728",
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "handshake_unix": 0
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:44:37.288858+00:00",
+      "phase": "add",
+      "service_restarts": 0,
+      "peer_count": 3,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "937069f2c8e7f44156ecd4a4c0a5852414cb69b57440d276efe0a43fadd60728",
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "handshake_unix": 0
+        },
+        {
+          "public_key_sha256": "e3ec2a7d554b116fe3f8aba4ec35e223a074090b9677aca03a1c5b74e2efc98e",
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "handshake_unix": 0
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:44:38.840233+00:00",
+      "phase": "read",
+      "service_restarts": 0,
+      "peer_count": 3,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "937069f2c8e7f44156ecd4a4c0a5852414cb69b57440d276efe0a43fadd60728",
+          "rx_bytes": 10266,
+          "tx_bytes": 9234,
+          "handshake_unix": 1788903877
+        },
+        {
+          "public_key_sha256": "e3ec2a7d554b116fe3f8aba4ec35e223a074090b9677aca03a1c5b74e2efc98e",
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "handshake_unix": 0
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:44:40.317307+00:00",
+      "phase": "read",
+      "service_restarts": 0,
+      "peer_count": 3,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "e3ec2a7d554b116fe3f8aba4ec35e223a074090b9677aca03a1c5b74e2efc98e",
+          "rx_bytes": 9957,
+          "tx_bytes": 8640,
+          "handshake_unix": 1788903879
+        },
+        {
+          "public_key_sha256": "937069f2c8e7f44156ecd4a4c0a5852414cb69b57440d276efe0a43fadd60728",
+          "rx_bytes": 10266,
+          "tx_bytes": 9234,
+          "handshake_unix": 1788903877
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:45:26.846734+00:00",
+      "phase": "read",
+      "service_restarts": 0,
+      "peer_count": 2,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "e3ec2a7d554b116fe3f8aba4ec35e223a074090b9677aca03a1c5b74e2efc98e",
+          "rx_bytes": 9957,
+          "tx_bytes": 11522,
+          "handshake_unix": 1788903879
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:45:28.370413+00:00",
+      "phase": "read",
+      "service_restarts": 0,
+      "peer_count": 2,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "e3ec2a7d554b116fe3f8aba4ec35e223a074090b9677aca03a1c5b74e2efc98e",
+          "rx_bytes": 20130,
+          "tx_bytes": 19524,
+          "handshake_unix": 1788903927
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:45:28.932037+00:00",
+      "phase": "restart",
+      "service_restarts": 1,
+      "peer_count": 2,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "e3ec2a7d554b116fe3f8aba4ec35e223a074090b9677aca03a1c5b74e2efc98e",
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "handshake_unix": 0
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:46:14.215797+00:00",
+      "phase": "read",
+      "service_restarts": 1,
+      "peer_count": 2,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "e3ec2a7d554b116fe3f8aba4ec35e223a074090b9677aca03a1c5b74e2efc98e",
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "handshake_unix": 0
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:46:15.762560+00:00",
+      "phase": "read",
+      "service_restarts": 1,
+      "peer_count": 2,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "e3ec2a7d554b116fe3f8aba4ec35e223a074090b9677aca03a1c5b74e2efc98e",
+          "rx_bytes": 11056,
+          "tx_bytes": 8307,
+          "handshake_unix": 1788903974
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:47:02.452905+00:00",
+      "phase": "read",
+      "service_restarts": 1,
+      "peer_count": 1,
+      "original_peer_present": true,
+      "test_peers": []
+    },
+    {
+      "utc": "2026-09-08T21:47:02.520928+00:00",
+      "phase": "add",
+      "service_restarts": 1,
+      "peer_count": 2,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "96150f7ee3263c1b13ad2c6a7d81d045b10c65c201e3fedf751da2f55d9af39c",
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "handshake_unix": 0
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:47:04.007569+00:00",
+      "phase": "read",
+      "service_restarts": 1,
+      "peer_count": 2,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "96150f7ee3263c1b13ad2c6a7d81d045b10c65c201e3fedf751da2f55d9af39c",
+          "rx_bytes": 10471,
+          "tx_bytes": 8670,
+          "handshake_unix": 1788904022
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:47:04.745475+00:00",
+      "phase": "cleanup",
+      "removed_test_peers": true,
+      "saved_configuration_restored": true,
+      "original_live_static_configuration_restored": true,
+      "original_peers_restored": true,
+      "service_restarts": 1,
+      "counters_reset_by_restart": true,
+      "passed": true
+    }
+  ],
+  "worker_runs": [
+    {
+      "targets": 1,
+      "retired": 0,
+      "shared_keys_blocked": 0,
+      "disk_removed": 1,
+      "live_removed": 1,
+      "failed_targets": 0,
+      "errors": {}
+    },
+    {
+      "targets": 1,
+      "retired": 1,
+      "shared_keys_blocked": 0,
+      "disk_removed": 1,
+      "live_removed": 1,
+      "failed_targets": 0,
+      "errors": {}
+    },
+    {
+      "targets": 1,
+      "retired": 0,
+      "shared_keys_blocked": 0,
+      "disk_removed": 1,
+      "live_removed": 1,
+      "failed_targets": 0,
+      "errors": {}
+    }
+  ],
+  "core_tests": [
+    {
+      "label": "a_initial",
+      "key": "a",
+      "expected": "accepted",
+      "returncode": 0,
+      "selected_subtest_observed": true,
+      "classification": "passed",
+      "oracle_passed": true,
+      "payload_sha256": "330b78f47efe6cb3982a56e187fe1f1a963e3b63a51a9a0f5bdd3156b9f36999",
+      "output_sha256": "8e844ae9431c6d5e45b2eee3d639b5832415f83f9fa3099a5d35287e7f121853",
+      "mtu_observations": {
+        "1280": {
+          "tx_packets": 23,
+          "rx_packets": 13,
+          "tx_max": 1300,
+          "rx_max": 1328,
+          "elapsed_ms": 1288
+        }
+      }
+    },
+    {
+      "label": "b_initial",
+      "key": "b",
+      "expected": "accepted",
+      "returncode": 0,
+      "selected_subtest_observed": true,
+      "classification": "passed",
+      "oracle_passed": true,
+      "payload_sha256": "c5e40a6be1871b145b72f3f8a6854ddc1a948613d5740a785d76e04dc4335145",
+      "output_sha256": "120b7e9166ab04359cbf9404b96e1f78bb9d17d0ac69e8757afed357d05b302b",
+      "mtu_observations": {
+        "1280": {
+          "tx_packets": 21,
+          "rx_packets": 13,
+          "tx_max": 1300,
+          "rx_max": 1328,
+          "elapsed_ms": 1218
+        }
+      }
+    },
+    {
+      "label": "a_after_automatic_revoke",
+      "key": "a",
+      "expected": "rejected",
+      "returncode": 1,
+      "selected_subtest_observed": true,
+      "classification": "failed_no_outer_response",
+      "oracle_passed": true,
+      "payload_sha256": "330b78f47efe6cb3982a56e187fe1f1a963e3b63a51a9a0f5bdd3156b9f36999",
+      "output_sha256": "fd6ef7e52e856787cc3183051c2fcce497c5e5d964c85dedea1cd4878fabd315",
+      "mtu_observations": {}
+    },
+    {
+      "label": "b_survives_a_revoke",
+      "key": "b",
+      "expected": "accepted",
+      "returncode": 0,
+      "selected_subtest_observed": true,
+      "classification": "passed",
+      "oracle_passed": true,
+      "payload_sha256": "c5e40a6be1871b145b72f3f8a6854ddc1a948613d5740a785d76e04dc4335145",
+      "output_sha256": "7fedc8fbf9278d74c887ef7fbaf84d93430c949d6e672ee3473aa419e85349b9",
+      "mtu_observations": {
+        "1280": {
+          "tx_packets": 22,
+          "rx_packets": 12,
+          "tx_max": 1300,
+          "rx_max": 1328,
+          "elapsed_ms": 1217
+        }
+      }
+    },
+    {
+      "label": "a_denied_after_server_restart",
+      "key": "a",
+      "expected": "rejected",
+      "returncode": 1,
+      "selected_subtest_observed": true,
+      "classification": "failed_no_outer_response",
+      "oracle_passed": true,
+      "payload_sha256": "330b78f47efe6cb3982a56e187fe1f1a963e3b63a51a9a0f5bdd3156b9f36999",
+      "output_sha256": "f6c9186fb0ddb9ca12fbcee296a9d1eb00ced3f0758888b417937e3d004f9610",
+      "mtu_observations": {}
+    },
+    {
+      "label": "b_survives_server_restart",
+      "key": "b",
+      "expected": "accepted",
+      "returncode": 0,
+      "selected_subtest_observed": true,
+      "classification": "passed",
+      "oracle_passed": true,
+      "payload_sha256": "c5e40a6be1871b145b72f3f8a6854ddc1a948613d5740a785d76e04dc4335145",
+      "output_sha256": "9f6ae8cab8a9e25d74ad43ac26009a7117b20451713c0f99d5e4c7fcd39e424e",
+      "mtu_observations": {
+        "1280": {
+          "tx_packets": 23,
+          "rx_packets": 12,
+          "tx_max": 1300,
+          "rx_max": 1328,
+          "elapsed_ms": 1286
+        }
+      }
+    },
+    {
+      "label": "b_after_automatic_expiry",
+      "key": "b",
+      "expected": "rejected",
+      "returncode": 1,
+      "selected_subtest_observed": true,
+      "classification": "failed_no_outer_response",
+      "oracle_passed": true,
+      "payload_sha256": "c5e40a6be1871b145b72f3f8a6854ddc1a948613d5740a785d76e04dc4335145",
+      "output_sha256": "fd6ef7e52e856787cc3183051c2fcce497c5e5d964c85dedea1cd4878fabd315",
+      "mtu_observations": {}
+    },
+    {
+      "label": "a_fresh_key_after_reauth",
+      "key": "c",
+      "expected": "accepted",
+      "returncode": 0,
+      "selected_subtest_observed": true,
+      "classification": "passed",
+      "oracle_passed": true,
+      "payload_sha256": "92e63938d78b6c928b15ee068ff14dbb663b286d03d71213116ced93655f0ba4",
+      "output_sha256": "5493852ddcbe17dab32a9db6800476498137b237cd0413656517c29ff777d381",
+      "mtu_observations": {
+        "1280": {
+          "tx_packets": 25,
+          "rx_packets": 14,
+          "tx_max": 1300,
+          "rx_max": 1328,
+          "elapsed_ms": 1226
+        }
+      }
+    }
+  ],
+  "raw_material_retained": false,
+  "result": "PASS_SOURCE_WORKER_PERSISTENT_REVOKE_EXPIRY_AND_RESTART",
+  "oracle_source_sha256": "b95ab6f215985ec544f3c1061d12277e905902814b81ff2d7730c9af11021687",
+  "idempotent_retry": {
+    "targets": 1,
+    "retired": 0,
+    "shared_keys_blocked": 0,
+    "disk_removed": 0,
+    "live_removed": 0,
+    "failed_targets": 0,
+    "errors": {}
+  },
+  "server_cleanup_verified": true,
+  "server_exit_code": 0,
+  "pi_temporary_state_removed": true
+}

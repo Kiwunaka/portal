@@ -236,7 +236,16 @@ def test_api_lifespan_starts_and_closes_payment_registry(monkeypatch) -> None:
             type(value) is int for value in response.json()["payment_db"].values()
         )
         assert isinstance(api.app.state.payment_http_registry, FakeRegistry)
+        monitor = api.app.state.event_loop_lag_monitor
+        lag = response.json()["event_loop_lag"]
+        assert set(lag) == {
+            "status", "interval_ms", "samples", "last_lag_ms", "max_lag_ms", "lag_total_ms"
+        }
+        assert lag["interval_ms"] == 1000
+        assert lag["status"] in {"warming_up", "collecting"}
         assert events == ["start"]
 
     assert api.app.state.payment_http_registry is None
+    assert api.app.state.event_loop_lag_monitor is None
+    assert monitor.snapshot()["status"] == "stopped"
     assert events == ["start", "close"]

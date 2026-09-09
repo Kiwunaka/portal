@@ -265,11 +265,13 @@ def _capture_operator_summary(row: SupportBundleUpload, payload: Mapping[str, An
         "failed": "failed",
         "pending": "started",
         "unavailable": "unavailable",
-        "unknown": "observed",
+        "unknown": "unknown",
     }[proof_state]
-    row.last_phase = "egress"
+    row.last_phase = None
     row.last_error_code = None
-    observed_attempts = 0
+    # Reduced support events have no attempt identity or authoritative counter.
+    # Stage starts and a non-disconnected snapshot cannot supply a denominator.
+    row.observed_attempts = None
 
     events_raw = file_bytes.get("events/recent.jsonl")
     if events_raw:
@@ -278,9 +280,6 @@ def _capture_operator_summary(row: SupportBundleUpload, payload: Mapping[str, An
             for line in events_raw.splitlines()
             if line
         ]
-        observed_attempts = sum(
-            1 for record in records if record.get("outcome") == "started"
-        )
         if records:
             last = records[-1]
             row.last_phase = _text(last.get("stage"), 32)
@@ -288,11 +287,6 @@ def _capture_operator_summary(row: SupportBundleUpload, payload: Mapping[str, An
             row.last_error_code = (
                 _text(error_code, 32) if error_code is not None else None
             )
-            row.proof_outcome = _text(last.get("outcome"), 24)
-
-    if observed_attempts == 0 and network.get("connection_state") != "disconnected":
-        observed_attempts = 1
-    row.observed_attempts = observed_attempts
 
 
 def parse_encrypted_envelope(raw: bytes) -> dict[str, Any]:

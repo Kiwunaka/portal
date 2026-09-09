@@ -1,0 +1,301 @@
+{
+  "schema": "pokrov.r12.next-acceptance-access/v1",
+  "source_baseline": "0767c7de1545217a8568f0899c1a3a242dbd25a3",
+  "result": "ACCESS_READBACK_ONLY; RELEASE_BLOCKED",
+  "readbacks": {
+    "r12-next-device-access": {
+      "observed_at_utc": "2026-09-06T03:42:19.704549+00:00",
+      "commands": [],
+      "adb": {
+        "exit_code": 0,
+        "total": 0,
+        "ready": 0,
+        "physical_ready": 0,
+        "emulator_ready": 0
+      },
+      "virtualbox": {
+        "executable_exists": true
+      },
+      "vmware": {
+        "executable_exists": false
+      }
+    },
+    "r12-next-hyperv-access": {
+      "error_category": "MetadataError",
+      "error_id": "HRESULT 0x8004100e,Microsoft.Management.Infrastructure.CimCmdlets.GetCimInstanceCommand",
+      "query_status": "UNAVAILABLE"
+    },
+    "r12-next-github-access": {
+      "observed_at_utc": "2026-09-06T03:42:20.817817+00:00",
+      "repos": [
+        {
+          "repo": "Kiwunaka/portal",
+          "rulesets": {
+            "exit_code": 1,
+            "http_status": 403
+          },
+          "runs": [
+            {
+              "id": 33945202524,
+              "name": "Release v2 Contract",
+              "status": "completed",
+              "conclusion": "failure",
+              "head_sha": "6b41f758ca228a0d5ff13ede0f865096cdac2134",
+              "created_at": "2026-09-05T04:40:40Z"
+            },
+            {
+              "id": 33945202450,
+              "name": "Guardrails",
+              "status": "completed",
+              "conclusion": "failure",
+              "head_sha": "6b41f758ca228a0d5ff13ede0f865096cdac2134",
+              "created_at": "2026-09-05T04:40:40Z"
+            },
+            {
+              "id": 33945185576,
+              "name": "Guardrails",
+              "status": "completed",
+              "conclusion": "failure",
+              "head_sha": "c1f4653a361d4ff450c47e66ddede8373f85520c",
+              "created_at": "2026-09-05T04:40:16Z"
+            }
+          ],
+          "latest_run_jobs": [
+            {
+              "id": 101249919665,
+              "name": "cross-repository-contract",
+              "status": "completed",
+              "conclusion": "failure",
+              "step_count": 0
+            }
+          ],
+          "branch_protection": {
+            "exit_code": 1,
+            "http_status": 403
+          },
+          "latest_job_annotations": {
+            "count": 1,
+            "billing_or_spending_message": true,
+            "job_not_started_message": true
+          }
+        },
+        {
+          "repo": "Kiwunaka/POKROV-app",
+          "rulesets": {
+            "exit_code": 1,
+            "http_status": 403
+          },
+          "runs": [
+            {
+              "id": 33944971093,
+              "name": "Release v2 Contract",
+              "status": "completed",
+              "conclusion": "failure",
+              "head_sha": "da1ad7395615837432615e0f150d7c0bf05322a4",
+              "created_at": "2026-09-05T04:35:30Z"
+            },
+            {
+              "id": 33944947474,
+              "name": "Release v2 Contract",
+              "status": "completed",
+              "conclusion": "failure",
+              "head_sha": "db1b0697ba9229ae1c334b92731156141c82b77d",
+              "created_at": "2026-09-05T04:35:02Z"
+            },
+            {
+              "id": 33940953782,
+              "name": "Release v2 Contract",
+              "status": "completed",
+              "conclusion": "failure",
+              "head_sha": "c55367454722e2695fc23a813c6541f92c6a950a",
+              "created_at": "2026-09-05T03:06:54Z"
+            }
+          ],
+          "latest_run_jobs": [
+            {
+              "id": 101249293281,
+              "name": "cross-repository-contract",
+              "status": "completed",
+              "conclusion": "failure",
+              "step_count": 0
+            }
+          ],
+          "branch_protection": {
+            "exit_code": 1,
+            "http_status": 403
+          },
+          "latest_job_annotations": {
+            "count": 1,
+            "billing_or_spending_message": true,
+            "job_not_started_message": true
+          }
+        },
+        {
+          "repo": "Kiwunaka/pokrov-core",
+          "rulesets": [],
+          "runs": [
+            {
+              "id": 33304876489,
+              "name": "CI",
+              "status": "completed",
+              "conclusion": "success",
+              "head_sha": "c1185faa998c69fd5164af415249c96c68ab61bd",
+              "created_at": "2026-08-30T09:46:42Z"
+            },
+            {
+              "id": 33303561763,
+              "name": "CI",
+              "status": "completed",
+              "conclusion": "success",
+              "head_sha": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+              "created_at": "2026-08-30T09:14:36Z"
+            },
+            {
+              "id": 33232348126,
+              "name": "CI",
+              "status": "completed",
+              "conclusion": "success",
+              "head_sha": "a45d69e40ed7d892619a2b5c4592a527f630665e",
+              "created_at": "2026-08-29T03:49:31Z"
+            }
+          ],
+          "latest_run_jobs": [
+            {
+              "id": 99239518920,
+              "name": "release-contract",
+              "status": "completed",
+              "conclusion": "success",
+              "step_count": 13
+            },
+            {
+              "id": 99239519017,
+              "name": "test",
+              "status": "completed",
+              "conclusion": "success",
+              "step_count": 20
+            },
+            {
+              "id": 99239817066,
+              "name": "android-artifact-reproducibility",
+              "status": "completed",
+              "conclusion": "success",
+              "step_count": 16
+            },
+            {
+              "id": 99239817079,
+              "name": "windows-artifact-reproducibility",
+              "status": "completed",
+              "conclusion": "success",
+              "step_count": 18
+            },
+            {
+              "id": 99239817096,
+              "name": "apple-source-build",
+              "status": "completed",
+              "conclusion": "success",
+              "step_count": 13
+            }
+          ],
+          "branch_protection": {
+            "exit_code": 1,
+            "http_status": 404
+          }
+        }
+      ],
+      "mutation": false
+    },
+    "r12-next-vbox-access": {
+      "vms": {
+        "exit_code": 0,
+        "registered_count": 1,
+        "candidate_windows_lab": [
+          {
+            "name": "POKROV-Win11-Test",
+            "uuid": "b769c8b4-e88a-452e-9d3a-cb4be23125e7"
+          }
+        ]
+      },
+      "runningvms": {
+        "exit_code": 0,
+        "registered_count": 0,
+        "candidate_windows_lab": []
+      }
+    },
+    "r12-next-vbox-info": {
+      "exit_code": 0,
+      "vm": {
+        "name": "POKROV-Win11-Test",
+        "ostype": "Windows 11 (64-bit)",
+        "CfgFile": "E:\\\\POKROV-tools\\\\vm\\\\machines\\\\POKROV-Win11-Test\\\\POKROV-Win11-Test.vbox",
+        "memory": "4096",
+        "cpus": "2",
+        "VMState": "poweroff",
+        "VMStateChangeTime": "2026-09-04T09:53:41.000000000",
+        "cableconnected1": "on",
+        "nic1": "bridged",
+        "clipboard": "disabled",
+        "draganddrop": "disabled",
+        "vrde": "off",
+        "CurrentSnapshotName": "ready-for-pokrov-tests",
+        "CurrentSnapshotUUID": "c0abfe48-b33c-4d9d-8556-6a7196aa1916"
+      }
+    }
+  },
+  "retained_readback_sha256": {
+    "E:/r12-next-device-access.json": "ec32c3ca55c6adca393670f9bd099fdc5a614a93e066d456edb951c6d1b23ab9",
+    "E:/r12-next-hyperv-access.json": "53764fbcbe2ed8f5c02e3b32de3fa825f8f1b4b96108a870bad0f79868c45b83",
+    "E:/r12-next-github-access.json": "f80b41ed5490319f9f4a7f7a5c1cf8b45b08df89f53313e0098c39e8eb858e41",
+    "E:/r12-next-vbox-access.json": "a246d4c63084ba2537994269c38fc87dd721aa78c88fe2a589f6da8dfa92ec9d",
+    "E:/r12-next-vbox-info.json": "ec9687d36d3f37505e3b0a147096ea8fe8a6c2148be0895bef79209a32a23e42"
+  },
+  "executed_readonly_commands": [
+    "C:/Users/kiwun/AppData/Local/Android/Sdk/platform-tools/adb.exe devices -l",
+    "Get-CimInstance -Namespace root/virtualization/v2 -ClassName Msvm_ComputerSystem",
+    "C:/Program Files/Oracle/VirtualBox/VBoxManage.exe list vms",
+    "C:/Program Files/Oracle/VirtualBox/VBoxManage.exe list runningvms",
+    "C:/Program Files/Oracle/VirtualBox/VBoxManage.exe showvminfo b769c8b4-e88a-452e-9d3a-cb4be23125e7 --machinereadable",
+    "gh api repos/{Kiwunaka/portal,Kiwunaka/POKROV-app,Kiwunaka/pokrov-core}/rulesets?includes_parents=true",
+    "gh api repos/{repo}/actions/runs?per_page=3; then returned latest run jobs, returned job check_run annotations",
+    "gh api repos/{repo}/branches/{master|main}/protection"
+  ],
+  "limitations": [
+    "Repository placeholders above enumerate exact repos retained in readbacks; commands were independent GET calls, not shell brace expansion.",
+    "ADB identifiers and raw GitHub annotations excluded; retained counts/categories only. Billing/spending and job-not-started markers were observed in latest platform/client job annotations.",
+    "Latest CI jobs are terminal, not confirmed live work to wait for. Core successes reference previous sources.",
+    "VM metadata and historical lab records establish an available VM, not current guest cleanliness or new installed-artifact proof. No VM boot/snapshot restore/NIC mutation performed.",
+    "Current snapshot pointer is not proof that the mutable disk state still equals the clean snapshot.",
+    "No production contact beyond read-only GitHub API; no provider/payment/customer data accessed.",
+    "No goal completion or blocked-threshold claim. This pass changes the next action by discovering the owned Win11 VM."
+  ],
+  "owner_decisions_pending": [
+    "N02 fresh server confirmation versus specified signed offline rollback authority",
+    "O03/V02 opt-in support evidence versus new account-bound report contract",
+    "M01 approved seller details and real receipt/provider binding"
+  ],
+  "checks": [
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-next-acceptance-docs.log",
+      "sha256": "8e8012de312ded1fc1a4eb22b5cdb3d776c4be76fdde07836ddf39e5bec16c6b",
+      "exit_code": 0,
+      "result": "33 PASS in 0.41s"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-next-acceptance-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-next-acceptance-package.log",
+      "sha256": "653b4c214e0944abec95be78eedb088a3aae79abb9661d2553f2e2561b1f4034",
+      "exit_code": 0,
+      "result": "PASS: 13 imported section hashes, 83 R12 IDs, 378 retained legacy IDs and ledger hash, 179 local file links"
+    }
+  ]
+}

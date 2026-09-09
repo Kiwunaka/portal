@@ -20,6 +20,10 @@ class UiVisualSmokeTests(unittest.TestCase):
         checkout_check = next(check for check in checks if check.name == "marketing-checkout-gateway")
 
         self.assertTrue(str(checkout_check.path).endswith("marketing\\src\\app\\checkout\\checkout-client.tsx"))
+        self.assertEqual(
+            [path.name for path in checkout_check.additional_paths],
+            ["use-checkout-controller.ts"],
+        )
 
     def test_ui_smoke_tracks_marketing_release_contract(self) -> None:
         import importlib

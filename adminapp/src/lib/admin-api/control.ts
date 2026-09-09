@@ -72,6 +72,8 @@ export async function fetchReleaseCandidates(init?: ApiRequestInit): Promise<Rel
 }
 
 export type ReleaseGateMatrix = {
+  policy_version: string;
+  gate_f_decision: "NOT_EVALUATED";
   status: ReleaseEvidenceStatus;
   ready: boolean;
   origin_readiness_status: ReleaseEvidenceStatus;

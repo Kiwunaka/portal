@@ -716,6 +716,28 @@ def resolved_client_policy(
     }
 
 
+def client_policy_for_lab_tcp_fallback(
+    policy: dict[str, Any], *, source_revision: str,
+) -> dict[str, Any]:
+    """Resolve only the already advertised ordinary fallback for this lab revision."""
+    revision = _clean_text(policy.get("profile_revision"))
+    if (
+        policy.get("transport_profile") not in {AWG2_LAB, AWG31_LAB, HY2_LAB}
+        or not revision
+        or source_revision != revision
+    ):
+        raise ValueError("lab_fallback_revision_mismatch")
+    return {
+        **policy,
+        "transport_profile": LEGACY_REALITY_FALLBACK,
+        **_transport_metadata(LEGACY_REALITY_FALLBACK, version=f"{revision}:fallback"),
+        "support_context": {
+            **dict(policy.get("support_context") or {}),
+            "transport": LEGACY_REALITY_FALLBACK,
+        },
+    }
+
+
 def transport_node_allowlist(config: dict[str, Any], transport_profile: str) -> list[str]:
     if _clean_text(transport_profile) == AWG2_LAB:
         lab = dict(config.get(AWG2_LAB) or {})

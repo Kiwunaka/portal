@@ -2685,7 +2685,9 @@ def test_awg2_lab_material_intent_and_result_never_persist_endpoint_or_install(
                 expiry_at=now + timedelta(days=30),
                 is_active=True,
                 sub_token="awg2-guard-token",
-                app_install_id="legacy-install-awg2-7351",
+                # A retained compatibility projection must not override the
+                # canonical registry's explicit device revocation.
+                app_install_id="revoked-install-awg2-7351",
                 app_platform="windows",
                 ),
                 AccountDevice(

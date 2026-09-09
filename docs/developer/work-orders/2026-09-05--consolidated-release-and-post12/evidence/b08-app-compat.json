@@ -1,0 +1,421 @@
+{
+  "schema": "pokrov.r12.b08-app-compat-lab/v1",
+  "observed_on": "2026-09-06",
+  "actual_origin": "current-origin; isolated local Ubuntu VM",
+  "result": "I3 / NEEDS_RUNTIME_PROOF",
+  "implementation_changed": false,
+  "candidate_created": false,
+  "production_mutation": false,
+  "sources": {
+    "previous": {
+      "commit": "f5300053026d32826e54c02202303e1f68c65bc1",
+      "runtime_files": 197,
+      "archive_sha256": "3119f86df25365b072a12c59ea665a816c3f18178643d9ecdf0262105abbf5a9"
+    },
+    "current": {
+      "commit": "7d83e290459fe0078cffed20306c794d861153ca",
+      "runtime_files": 198,
+      "archive_sha256": "dc1cc411140028fba7c1ad2450a31779ae437c3c0966c963c08ff672debed05b"
+    }
+  },
+  "identical_inputs": [
+    "portal_bot/models.py",
+    "portal_bot/migrations.py",
+    "portal_bot/db.py",
+    "portal_bot/requirements.txt"
+  ],
+  "http_phases": [
+    {
+      "phase": "previous-before",
+      "result": "PASS",
+      "requests": [
+        {
+          "source": "previous",
+          "port": 18081,
+          "checks": {
+            "health": 200,
+            "plans": 200,
+            "unauthenticated_ticket_denial": 401,
+            "authenticated_ticket_read": 200,
+            "authenticated_event_write": 200
+          },
+          "plans_body_sha256": "a1e4d2246935e58f17e7877e317d3c59488009f77b04d160c115020a7ceb876b",
+          "event_id": "c85b28bb-bb19-4a8c-8b7f-e9a9eebe6cba",
+          "db_write_verified": true
+        }
+      ]
+    },
+    {
+      "phase": "concurrent",
+      "result": "PASS",
+      "requests": [
+        {
+          "source": "previous",
+          "port": 18081,
+          "checks": {
+            "health": 200,
+            "plans": 200,
+            "unauthenticated_ticket_denial": 401,
+            "authenticated_ticket_read": 200,
+            "authenticated_event_write": 200
+          },
+          "plans_body_sha256": "26d12992b4e6a18b407ae1588c4fd898c63b49c63a047550a83afbc71ccbd599",
+          "event_id": "963564e9-7c80-4da1-b3e5-01e0d762e6d9",
+          "db_write_verified": true
+        },
+        {
+          "source": "current",
+          "port": 18082,
+          "checks": {
+            "health": 200,
+            "plans": 200,
+            "unauthenticated_ticket_denial": 401,
+            "authenticated_ticket_read": 200,
+            "authenticated_event_write": 200
+          },
+          "plans_body_sha256": "26d12992b4e6a18b407ae1588c4fd898c63b49c63a047550a83afbc71ccbd599",
+          "event_id": "3fec199b-2cd6-4ae9-b597-99eca28f5e14",
+          "db_write_verified": true
+        }
+      ]
+    },
+    {
+      "phase": "previous-after",
+      "result": "PASS",
+      "requests": [
+        {
+          "source": "previous",
+          "port": 18081,
+          "checks": {
+            "health": 200,
+            "plans": 200,
+            "unauthenticated_ticket_denial": 401,
+            "authenticated_ticket_read": 200,
+            "authenticated_event_write": 200
+          },
+          "plans_body_sha256": "26d12992b4e6a18b407ae1588c4fd898c63b49c63a047550a83afbc71ccbd599",
+          "event_id": "8684196b-2244-46c1-a7c0-905154432efd",
+          "db_write_verified": true
+        }
+      ]
+    },
+    {
+      "phase": "previous-restarted",
+      "result": "PASS",
+      "requests": [
+        {
+          "source": "previous",
+          "port": 18081,
+          "checks": {
+            "health": 200,
+            "plans": 200,
+            "unauthenticated_ticket_denial": 401,
+            "authenticated_ticket_read": 200,
+            "authenticated_event_write": 200
+          },
+          "plans_body_sha256": "7d3abd55a2fbf0ef744f8f677d49bd4201d77c442af762ef960bce0546d50778",
+          "event_id": "ca1ffa81-486a-42d2-8a27-7fd12b30080f",
+          "db_write_verified": true
+        }
+      ]
+    }
+  ],
+  "http_assertions": 25,
+  "final_audit": {
+    "result": "PASS",
+    "sources": {
+      "previous": {
+        "source_commit": "f5300053026d32826e54c02202303e1f68c65bc1",
+        "verified_files": 197
+      },
+      "current": {
+        "source_commit": "7d83e290459fe0078cffed20306c794d861153ca",
+        "verified_files": 198
+      }
+    },
+    "event_writes_verified": 5,
+    "ticket_and_attachment_retained": true,
+    "units_before_stop": {
+      "previous": "MainPID=1524\nNRestarts=0\nIPAddressAllow=::1/128 127.0.0.0/8\nIPAddressDeny=::/0 0.0.0.0/0\nActiveState=active\n",
+      "current": "MainPID=0\nNRestarts=0\nIPAddressAllow=::1/128 127.0.0.0/8\nIPAddressDeny=::/0 0.0.0.0/0\nActiveState=inactive\n"
+    },
+    "requests_are_real_http": true,
+    "source_files_changed_by_run": false,
+    "shared_schema_and_dependency_inputs_identical": true
+  },
+  "schema_review": {
+    "raw_status": "REVIEW_SCHEMA_DELTA",
+    "reviewed_status": "PASS_BOUNDED_EXISTING_BOOTSTRAP_DELTA",
+    "added_indexes": 93,
+    "server_defaults_added": [
+      {
+        "before": [
+          "nodes",
+          "access_role",
+          "character varying",
+          "NO",
+          null
+        ],
+        "after": [
+          "nodes",
+          "access_role",
+          "character varying",
+          "NO",
+          "'paid'::character varying"
+        ]
+      },
+      {
+        "before": [
+          "users",
+          "free_profile_state",
+          "character varying",
+          "NO",
+          null
+        ],
+        "after": [
+          "users",
+          "free_profile_state",
+          "character varying",
+          "NO",
+          "'standard'::character varying"
+        ]
+      },
+      {
+        "before": [
+          "users",
+          "free_profile_active_role",
+          "character varying",
+          "NO",
+          null
+        ],
+        "after": [
+          "users",
+          "free_profile_active_role",
+          "character varying",
+          "NO",
+          "'free_standard'::character varying"
+        ]
+      },
+      {
+        "before": [
+          "users",
+          "free_profile_source",
+          "character varying",
+          "NO",
+          null
+        ],
+        "after": [
+          "users",
+          "free_profile_source",
+          "character varying",
+          "NO",
+          "'legacy_backfill'::character varying"
+        ]
+      },
+      {
+        "before": [
+          "users",
+          "free_profile_observed_bytes",
+          "bigint",
+          "NO",
+          null
+        ],
+        "after": [
+          "users",
+          "free_profile_observed_bytes",
+          "bigint",
+          "NO",
+          "0"
+        ]
+      }
+    ],
+    "no_removed_or_changed_existing_indexes": true,
+    "no_added_or_removed_columns": true,
+    "no_type_or_nullability_changes": true,
+    "new_migration_between_selected_source_snapshots": false
+  },
+  "vm_final": {
+    "name": "POKROV-r12-b08-linux-20260906",
+    "state": "poweroff",
+    "exit_code": 0
+  },
+  "retained_artifacts": [
+    {
+      "path": "E:\\r12-b08-app-compat\\concurrent-http.json",
+      "bytes": 963,
+      "sha256": "554720988aeb0ce31b726c1517dfb676882de18b4e7ea9d995262f939ae205ff"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\concurrent-probe.log",
+      "bytes": 811,
+      "sha256": "b6f5a95be758967882c329f9132f3d036d13e589abcca9c3d6e82a1c73e1b71c"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\current-journal.log",
+      "bytes": 1968,
+      "sha256": "4dfbc0337f5c71179931d8007f16f8612ad35b09ad0320cd35fa5217c737de91"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\current.zip",
+      "bytes": 1236597,
+      "sha256": "dc1cc411140028fba7c1ad2450a31779ae437c3c0966c963c08ff672debed05b"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\final-audit.json",
+      "bytes": 777,
+      "sha256": "3cf97b2c66a542b67e0143e7347842744615253177fb9b4b3ebfe8148c226834"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\final-audit.log",
+      "bytes": 700,
+      "sha256": "87c05e1bde6d7fab8d20ec206097cdb4e99c816db8ef97a2c1c8fb70fbe1a5ab"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\final-audit.py",
+      "bytes": 2191,
+      "sha256": "ae8830c4e06c504f8fa9073ec5aad8aaa1071da6177aa3bba8e9e26ca89869f2"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\guest-prepare.py",
+      "bytes": 2500,
+      "sha256": "bd27acd1aef84bff6b2e54ffb7ba19094d9b12c65244bef1bd5d653afb94c86b"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\http-probe.py",
+      "bytes": 3053,
+      "sha256": "440cf4e1c2356e8bee56333315cfa8c4def1fb21038e1064797fd45287f66e56"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\previous-after-http.json",
+      "bytes": 520,
+      "sha256": "392db35d769b20923d1f39032d6f1a0c38bdd3f45c05742af8bd614c4becdd13"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\previous-after-probe.log",
+      "bytes": 415,
+      "sha256": "9da8f9b265a863f4c63163aab7f63c471a2e298926ba582b3c727d71c193215c"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\previous-before-http.json",
+      "bytes": 521,
+      "sha256": "ac601358647a0448c77c60a8a6d03858fdcb81b379e175bfdc4276a4956c90d4"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\previous-before-probe.log",
+      "bytes": 416,
+      "sha256": "1c2f2386262a4aa008a54c6fc51eba53343335fb92ea57d9c826da1231054c0d"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\previous-journal.log",
+      "bytes": 4356,
+      "sha256": "f8a4bd5ac3b3c6c10960e4eedf61b9982212aec51f3b0b0047f205c8419ccc70"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\previous-restarted-http.json",
+      "bytes": 524,
+      "sha256": "1fdee58221f0efd69b725d0e3a2038eccc61352c7a1fdb5cf4aa9bdd84e6c547"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\previous-start-readback.log",
+      "bytes": 406,
+      "sha256": "733caf0abe938a9904066cbb6e68c0730373b6aaa18aa0a4e5885ce2eeffb302"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\previous.zip",
+      "bytes": 1231827,
+      "sha256": "3119f86df25365b072a12c59ea665a816c3f18178643d9ecdf0262105abbf5a9"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\schema-and-restart-review.log",
+      "bytes": 17242,
+      "sha256": "b88fd725de8a7b7986809b16810f55f4584f3e051348b0ef1cb5abf8878fe2e2"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\schema-proof.json",
+      "bytes": 733055,
+      "sha256": "7c28ef9a23ead19964749f81dad89374b7a577de983d3e9b1ab6fe4ab3651008"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\schema-proof.log",
+      "bytes": 196,
+      "sha256": "86e1f97b509baafc4ffb7aa5a0cbdb5426b65141e8afd1ff51276e750ce072ef"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\schema-proof.py",
+      "bytes": 2042,
+      "sha256": "e3329e9b5e9fcfee480f13e02bdc9111c534d8c0701a0c8096a50165bf7262ee"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\setup-host.py",
+      "bytes": 936,
+      "sha256": "02a908eeea521da51e111234092bd75ebaca7c483de8f6efa38c2c4465748055"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\setup.log",
+      "bytes": 66,
+      "sha256": "1123aa8e72b2dc15c68cdd8bc23c7728ca28b14b5fbeb6b52082c3ca70089bd9"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\source-manifests.json",
+      "bytes": 73796,
+      "sha256": "ab2d1f1bc0d0c49db196cfd7f5cda2b1cf99ed438bbb0caeed58cf0ea2ce1472"
+    },
+    {
+      "path": "E:\\r12-b08-app-compat\\vm-final-state.json",
+      "bytes": 92,
+      "sha256": "552f8860c99f97bccef80fa94380b19ec3d8f38fee3ebb6a6f59d071f5e7fe7d"
+    }
+  ],
+  "checks": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_agent_docs_contract.py",
+        "tests/test_agent_context_packet_audit.py",
+        "-q"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-b08-app-compat\\docs-tests.log",
+      "sha256": "a75426430a5846c820af8b09ce99713f2ccfa4466c0c60fc90d45da75f4ae524",
+      "result": ".................................                                        [100%]\n33 passed in 0.85s"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "scripts/agent_context_packet_audit.py",
+        "--platform-context-root",
+        "."
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-b08-app-compat\\context-check.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "result": "PASS platform-context"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-b08-app-compat\\package-check.log",
+      "sha256": "bc4a0a63c19869399e9893afa97789becdddfea3bf8635f1c90ee418df95ae91",
+      "result": "PASS: 13 imported section hashes, 83 R12 IDs, 378 retained legacy IDs and ledger hash, 206 local file links"
+    }
+  ],
+  "limitations": [
+    "Exact old/current source on shared Linux test venv, not exact historical packaged production runtime.",
+    "Selected health/plans/tickets/events HTTP paths; not full API/payment/provider E2E.",
+    "No new schema contraction between selected sources; contract phase not executed.",
+    "No production volume/DDL lock/failover/brain-origin/RU-origin proof."
+  ]
+}

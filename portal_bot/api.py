@@ -59,6 +59,7 @@ from request_correlation import (
     response_headers as request_correlation_response_headers,
 )
 from outbound_http import OutboundHttpError, PaymentHttpRegistry
+from event_loop_lag import EventLoopLagMonitor
 from payment_db_runtime import payment_db_runtime_snapshot, run_payment_db_use_case
 from payment_callback_application import (
     PaymentCallbackDependencies,
@@ -380,6 +381,7 @@ from observer_service import (
     observer_stale_after_seconds,
 )
 from network_rollout import (
+    client_policy_for_lab_tcp_fallback,
     NETWORK_ROLLOUT_CONFIG_KEY,
     load_network_rollout_config,
     normalized_network_rollout_config,
@@ -1552,6 +1554,7 @@ class FreekassaOrderCreateIn(BaseModel):
 
 
 class CommercialOfferPreviewIn(BaseModel):
+    buyer_email: str | None = Field(default=None, max_length=200)
     plan_code: str = Field(min_length=2, max_length=32)
     promo_code: str | None = Field(default=None, max_length=20)
     offer_id: str | None = Field(default=None, min_length=36, max_length=36)
@@ -1674,6 +1677,7 @@ class RubOrderCreateIn(BaseModel):
 
 
 class RubPublicOrderCreateIn(BaseModel):
+    intent_id: str | None = Field(default=None, pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
     provider: str = Field(min_length=2, max_length=32)
     plan_code: str = Field(min_length=2, max_length=32)
     checkout_ticket: str | None = Field(default=None, min_length=16, max_length=1200)
@@ -2324,9 +2328,14 @@ async def _api_lifespan(application: FastAPI):
     payment_http_registry = PaymentHttpRegistry()
     await payment_http_registry.start()
     application.state.payment_http_registry = payment_http_registry
+    event_loop_lag_monitor = EventLoopLagMonitor()
     try:
+        event_loop_lag_monitor.start()
+        application.state.event_loop_lag_monitor = event_loop_lag_monitor
         yield
     finally:
+        application.state.event_loop_lag_monitor = None
+        await event_loop_lag_monitor.close()
         application.state.payment_http_registry = None
         await payment_http_registry.close()
 
@@ -6168,11 +6177,16 @@ def _validate_paid_callback_against_order(*, provider: str, order_id: str, paylo
             return True, "ok"
         if normalized_provider != "lavatop":
             return True, "ok"
-        expected_amount = float(row.amount or 0)
-        actual_amount = _payload_amount(payload)
-        if expected_amount > 0 and actual_amount <= 0:
-            return False, "missing_amount"
-        if expected_amount > 0 and abs(expected_amount - actual_amount) > 0.01:
+        actual_amount = _payload_amount_decimal(payload)
+        if actual_amount is None:
+            return False, "invalid_amount"
+        try:
+            expected_amount = Decimal(str(row.amount))
+        except (InvalidOperation, ValueError):
+            return False, "invalid_order_amount"
+        if not expected_amount.is_finite() or expected_amount <= 0:
+            return False, "invalid_order_amount"
+        if actual_amount != expected_amount:
             return False, "amount_mismatch"
         expected_currency = str(row.currency or "RUB").strip().upper() or "RUB"
         actual_currency = _payload_currency(payload)

@@ -1,0 +1,72 @@
+{
+  "recorded_at_utc": "2026-09-06T00:37:07.614712+00:00",
+  "status": "PARTIAL / I3",
+  "origin": "current-origin Windows synthetic SQLite and API fixtures",
+  "platform_source": "f19a32c0046cfeed5a8d546d80308b36a45a8259",
+  "client_source": "45036ab577b2f315bd6f220b1d6eb30e5f61a263",
+  "core_source": "6bc36034c86528972488fc203a98512686ac4db9",
+  "source_files": {
+    "portal_bot/hy2_lab_service.py": "82a7761c691b077077d781358260b749d30d9180d4fe443160dfa47c032c6edc",
+    "tests/test_hy2_lab_service.py": "b32771ef97daa3dcfd908c984f689ff1c75ad7254b346b4887a818518aad4ba6",
+    "docs/architecture/api-contracts.md": "0b3b6f4a814567353c90b64c095a28f5216e60a08a62116e1a4337ea8a9b7eac"
+  },
+  "commands": [
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_hy2_lab_service.py -k cannot_relabel_rotated_material -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:\\r12-hy2-snapshot-before.log",
+      "sha256": "bf1c24aad4cc12fb809c5961b2aaf6d959ef497a0d6d2e7e57cd87461cd39a14",
+      "exit_code": 1,
+      "result": "FAIL before fix: v2 endpoint port 8443 emitted under v1 metadata"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_hy2_lab_service.py tests/test_awg2_lab_service.py tests/test_awg31_lab_service.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:\\r12-hy2-snapshot-labs.log",
+      "sha256": "b46471bc137954124978136eab35c6d2cb7d5a92c6d769f94e82f0969175bf0e",
+      "exit_code": 0,
+      "result": "45 PASS"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_network_rollout_api.py tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:\\r12-hy2-snapshot-api-docs.log",
+      "sha256": "1f6a3724e74a498f22197517b5a637d1cb3d35f5319712dccd3014ce81cdd9fc",
+      "exit_code": 0,
+      "result": "45 PASS in 73.86 seconds"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:\\r12-hy2-d04-context-final.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:\\r12-hy2-d04-package-final.log",
+      "sha256": "a83287e9363a6fc1a012495be198b04c385dd781c3cb4338fc380efac72e9b45",
+      "exit_code": 0,
+      "result": "PASS 13 imports / 83 IDs / 378 legacy IDs / 153 links"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider portal_bot/tests/test_app_first_api.py portal_bot/tests/test_app_first_service.py tests/test_api_auth_and_tickets.py tests/test_subscription_preview_api.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:\\r12-hy2-snapshot-backend.log",
+      "sha256": "0074ad6432cf1e4230e5101e4c7a9b64a40ca5d43162979d9b8fe9cc829126a2",
+      "exit_code": 0,
+      "result": "154 PASS / 8 subtests PASS in 749.10 seconds"
+    }
+  ],
+  "backend_router": "PASS",
+  "limitations": [
+    "Simulated consecutive-read rotation; no multi-process PostgreSQL proof.",
+    "Already issued password revocation, server expiry and lost-device enforcement not executed.",
+    "No owned HY2 handshake or independent-origin traffic proof.",
+    "No changes to client/Core/native bytes or retained release artifacts.",
+    "No push, merge, deploy, cohort activation, release candidate, signing or publication."
+  ],
+  "completed_at_utc": "2026-09-06T00:45:51.790135+00:00"
+}

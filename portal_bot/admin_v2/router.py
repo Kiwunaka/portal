@@ -1465,6 +1465,14 @@ def install_admin_v2(
                     message="User was not found.",
                 )
             warnings = []
+            if include_sensitive_diagnostics and data.get("network_context"):
+                add_operator_read_audit(
+                    db, context=context, action="support.network_context.read",
+                    trace_id=_trace_id(request), resource_type="user",
+                    resource_id=str(tg_id),
+                    details={"observation_count": len(data["network_context"])},
+                )
+                db.commit()
             if not include_sensitive_diagnostics:
                 warnings.append(
                     {

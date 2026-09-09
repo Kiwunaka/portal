@@ -1,0 +1,115 @@
+{
+  "schema": "pokrov.r12.v02-bundle-summary/v1",
+  "date": "2026-09-06",
+  "status": "PARTIALLY_FIXED",
+  "implementation_level": "I3",
+  "origin": "current-origin local Windows host; synthetic bundles / SQLite",
+  "platform_source": "97a96eb25fbc2c63062f38b77a6cecafb273965c",
+  "client_source": "453975348d91bfb78bb3bfb90660c000a9ccd692",
+  "core_source": "94dd31012ac91fb9ecf2c98ad7383afb54102dd4",
+  "candidate_created": false,
+  "commands": [
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_support_bundle_ingest_service.py -k keeps_egress -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v02-bundle-before.log",
+      "sha256": "35fd7f58fa25c415e56801feb05bb05f9df3d1e39a65a869ceca0a03eeec7852",
+      "exit_code": 1,
+      "result": "3 FAIL at invalid JSONL fixture, not product regression evidence"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_support_bundle_ingest_service.py -k keeps_egress -x -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v02-bundle-fixture.log",
+      "sha256": "e21118977749597f57089d5f1836cba29d57f5e8ce465cf08ae4cb7f6d1bc777",
+      "exit_code": 1,
+      "result": "1 FAIL jsonl_invalid; fixture final newline missing"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_support_bundle_ingest_service.py -k keeps_egress -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v02-bundle-before2.log",
+      "sha256": "6dc4a9a98d12ea17523acc4a7563b0e50af561a0ac905c566824b7028b8b24bd",
+      "exit_code": 1,
+      "result": "3 expected FAIL: unrelated event replaces egress proof outcome"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_support_bundle_ingest_service.py tests/test_support_bundle_worker.py tests/test_operator_observability_service.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v02-bundle-after.log",
+      "sha256": "2daf7522119a76218481c0cad934ddf7a9fe4591f910ac034d5fdd38471edadb",
+      "exit_code": 0,
+      "result": "23 PASS"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v02-docs.log",
+      "sha256": "ec23b3930fde9f6a8f776ce67609009a916b7f347b9a7e5a71e55ec16ac4a69b",
+      "exit_code": 0,
+      "result": "33 PASS"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v02-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider portal_bot/tests/test_app_first_api.py portal_bot/tests/test_app_first_service.py tests/test_api_auth_and_tickets.py tests/test_subscription_preview_api.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v02-backend-router.log",
+      "sha256": "2f57dae70f64c2d1eb582f6682589f4c0655b5a34f9ded6422dbf1354283fd70",
+      "exit_code": 0,
+      "result": "154 PASS, 8 subtests PASS; 756.84s"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v02-package.log",
+      "sha256": "4ac9ff772f7eaf9795c138a7fdce612de5c88e5b566614bb1ac777ffb0a7880e",
+      "exit_code": 0,
+      "result": "13 imported hashes / 83 R12 / 378 legacy / 159 links PASS"
+    }
+  ],
+  "changed_source_files": {
+    "portal_bot/support_bundle_ingest_service.py": "31cd1ab4eb30ae31744b992be65aa4fcd063cfe1dbe92f89ed462dc47e700e03",
+    "tests/test_support_bundle_ingest_service.py": "b284249ffe1d88d24447fa033d62072fd1582c020fb5a67af45730b2ea55861e",
+    "docs/architecture/support-feedback-flow.md": "cd36d704f6a299e30ec5f7a69e976954d2d4abdb126485520acd63dc2316cfb8"
+  },
+  "test_source_note": "Final test formatting only after successful focused run; behavior unchanged.",
+  "limitations": [
+    "Full expected/effective/proven correlation remains open; O03 data-source decision pending.",
+    "Historical client-reported bundle summary is not current runtime proof.",
+    "No production rows recomputed; no new collection or event schema.",
+    "No push, merge, deploy, recipient/signing custody or new release candidate."
+  ],
+  "final_documentation_checks": [
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v02-final-docs.log",
+      "sha256": "ec23b3930fde9f6a8f776ce67609009a916b7f347b9a7e5a71e55ec16ac4a69b",
+      "exit_code": 0,
+      "result": "33 PASS"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v02-final-package.log",
+      "sha256": "574d910d435469c53a0753524ead180dfa28b328beef50db6635dcd644ff871b",
+      "exit_code": 0,
+      "result": "13 imports / 83 R12 / 378 legacy / 161 links PASS"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v02-final-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    }
+  ]
+}

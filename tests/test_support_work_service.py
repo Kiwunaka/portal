@@ -199,6 +199,18 @@ def test_support_search_resolves_case_bundle_and_safe_correlation_without_raw_id
             bundle_ref=bundle_ref,
         ) == upload_id
 
+        other_case = create_ticket(session, user_tg_id=1001, subject="Other case")
+        other_case.environment = "test"
+        session.flush()
+        assert other_case.id != ticket_id
+        for environment, scoped_ticket_id in (("production", ticket_id), ("test", other_case.id)):
+            assert support_bundle_upload_id_for_ref(
+                session,
+                environment=environment,
+                ticket_id=scoped_ticket_id,
+                bundle_ref=bundle_ref,
+            ) is None
+
         case_results = search_support_cases(
             session, environment="test", query=f"#{ticket_id}"
         )

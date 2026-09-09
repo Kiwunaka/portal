@@ -1,0 +1,132 @@
+{
+  "schema": "pokrov.r12.g01-m01-evidence/v1",
+  "observed_on": "2026-09-06",
+  "source_baseline": "b40ab5f80db4bfd153f4ff10341d5f65aaa57ba0",
+  "origin": "current-origin; local documents/source and public legal text",
+  "g01_result": "VERIFIED / I3; scope documentation only",
+  "m01_result": "NEEDS_CONTEXT / I1; seller and receipt binding unresolved",
+  "scope_audit": {
+    "command": "python -X utf8 -B - (inline audit of all 83 R12 headings and required metadata plus retained legacy row count)",
+    "exit_code": 0,
+    "result": "83 slices have type/owner/applicability/acceptance; 378 legacy rows retained",
+    "retained_path": "E:/r12-g01-scope-audit.json",
+    "sha256": "70b0207474d96edca4c7667145ef44f36fb7f60bc2d910bb3c7b0df6e24944c4"
+  },
+  "historical_freeze": {
+    "path": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\docs\\developer\\work-orders\\2026-08-21--release-1.2.0-megaplan\\OWNER-FREEZE-2026-09-05.md",
+    "sha256": "9a5e42d08fe23c6d200769edefcb11a0d9d29b5e46366c69f76b2369e6a576ef",
+    "diff_to_head_empty": true,
+    "new_go": false
+  },
+  "worktrees": [
+    {
+      "path": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "head": "b40ab5f80db4bfd153f4ff10341d5f65aaa57ba0",
+      "branch": "codex/consolidated-plan-start-20260905",
+      "status": [
+        " M docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/HANDOFF.md",
+        " M docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/R12-REGISTER.csv",
+        " M docs/operations/marketing-governance-and-winback-pilot.md",
+        "?? docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-G01-M01.md",
+        "?? marketing/AGENTS.md",
+        "?? marketing/CLAUDE.md"
+      ]
+    },
+    {
+      "path": "E:/r12client",
+      "head": "ded58b1906bbfb1096ff919085ef37f5be942eb7",
+      "branch": "codex/r12-client-implementation",
+      "status": [
+        " M apps/macos_shell/macos/Flutter/GeneratedPluginRegistrant.swift",
+        " M apps/windows_shell/windows/flutter/generated_plugin_registrant.cc",
+        " M apps/windows_shell/windows/flutter/generated_plugin_registrant.h",
+        " M apps/windows_shell/windows/flutter/generated_plugins.cmake"
+      ]
+    },
+    {
+      "path": "E:/r12core-implementation",
+      "head": "94dd31012ac91fb9ecf2c98ad7383afb54102dd4",
+      "branch": "codex/r12-correlated-endpoint-probe",
+      "status": []
+    }
+  ],
+  "commands": [
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_frontend_text_integrity.py tests/test_public_copy_guardrails.py tests/test_marketing_governance.py tests/test_winback_pilot.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-m01-marketing-guards.log",
+      "sha256": "5aedc73140581fc41cbefdc70fdf3338822c87c6572eba7279f50b8070be146c",
+      "exit_code": 0,
+      "result": "39 PASS in 1.05s"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g01-m01-docs.log",
+      "sha256": "ec23b3930fde9f6a8f776ce67609009a916b7f347b9a7e5a71e55ec16ac4a69b",
+      "exit_code": 0,
+      "result": "33 PASS in 0.42s"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g01-m01-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g01-m01-package.log",
+      "sha256": "45d19933d5fcc9f75a12d3ed37cf3c7f3383842a7b5a5a7d1c9c686111c22a7c",
+      "exit_code": 0,
+      "result": "PASS 13 imported sections / 83 R12 / 378 legacy / 171 links"
+    }
+  ],
+  "inspected_source_sha256": {
+    "docs/operations/marketing-governance-and-winback-pilot.md": "6e20d2feac703983b3c030b5283a8b19471f843c047af0620d1bf00683189830",
+    "shared/commercial-contract.json": "e8d00b85251fa57af3b43fc19b479ee5d3f3fb56653b6f26cbfa3df804db47c0",
+    "shared/trust-and-guides.json": "c94d0b5e22a00de64fc77a2f2dfeb8b81d6a8834f07856f7be5063a0dc635498",
+    "marketing/src/app/offer/page.tsx": "9a49e6c29e90602ebd3d5e77d433512b3697d1f7a520d503a01f8591d0834fbd",
+    "marketing/src/app/transparency/page.tsx": "12c4094b07a112b5e696b302f3e3a2c5394167b6d70b23a5736bb25d0e51a329",
+    "marketing/src/app/checkout/checkout-client.tsx": "b50818859a1332388823072ed1f6a408e57427a7d3e49bbf2aa791be88c32f44",
+    "portal_bot/email_relay_app.py": "83284356357d7194efd67bb46421e45a03bbad13d808eec4df3e6b5fe0b7f5f3",
+    "portal_bot/email_delivery_service.py": "b420b828ab3b34e6e39fba7f94d9fed5f27ee2f056ac7c09ca8d2e2998d4cde2"
+  },
+  "public_sources": [
+    {
+      "url": "https://www.consultant.ru/document/cons_doc_LAW_511149/3d0cac60971a511280cbba229d9b6329c07731f7/",
+      "retrieved_on": "2026-09-06",
+      "supports": "332-FZ article 1(1) introduces advertising-law article 5 part 10.8"
+    },
+    {
+      "url": "https://www.consultant.ru/document/cons_doc_LAW_511149/b004fed0b70d0f223e4a81f8ad6cd92af90a7e3b/",
+      "retrieved_on": "2026-09-06",
+      "supports": "Article 2(2) specifies 2025-09-01 for article 1(1), separately from general 2026-01-01"
+    },
+    {
+      "url": "https://www.consultant.ru/document/cons_doc_LAW_58968/f67f81c57fdcdacc2643d19d59369f7e185e1156/",
+      "retrieved_on": "2026-09-06",
+      "supports": "Current displayed Advertising Law article 5 retains part 10.8; displayed revision 2026-08-04"
+    },
+    {
+      "url": "https://publication.pravo.gov.ru/document/0001202507310084",
+      "retrieved_on": "2026-09-06",
+      "status": "Official publication card found by search; full page fetch timed out, no full primary-publication read claimed"
+    }
+  ],
+  "owner_input": {
+    "requested": "Approved seller identity/public details or existing approved document path and receipt issuer/process",
+    "status": "PENDING; no reply as of this evidence"
+  },
+  "limits": [
+    "No legal clearance of POKROV or any channel. Own-site/lifecycle/consent are not assumed to establish permitted advertising.",
+    "No private provider/account/receipt data read. No seller details invented or public copy/legal flags changed.",
+    "Checkout receipt-delivery claim remains unverified pending actual provider/seller evidence. Local relay only proves access-key email implementation.",
+    "No new candidate, signing, package, push, merge, deployment, publication, payment or message to third parties.",
+    "Marketing builds/responsive checks not repeated: documentation-only change, no frontend/product bytes changed.",
+    "G01 documentation acceptance does not satisfy G03 or Gate F; historical candidate evidence is not transferred to ongoing source.",
+    "Final self-review clarified the English effective-date sentence after tests; no links, product text or behavior changed."
+  ]
+}

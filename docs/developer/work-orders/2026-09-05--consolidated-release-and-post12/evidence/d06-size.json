@@ -1,0 +1,195 @@
+{
+  "status": "I3_NEEDS_RUNTIME_PROOF",
+  "client_commit": "3d212449d947112f89eb7fd30ed0831f2e6c5e24",
+  "core_commit": "8dc57a830bd1487389dd1b7c9190f094c31e13bc",
+  "client_git_blobs": [
+    {
+      "path": "apps/android_shell/android/app/build.gradle",
+      "bytes": 5652,
+      "sha256": "3474e6cfb99f965a24253ab25c7b037eef11b18f049b7844de3a0092b1a3e7a7"
+    },
+    {
+      "path": "docs/operations/android-release-audit.md",
+      "bytes": 62990,
+      "sha256": "8b659395c5537c0cfa4e5b46e4f7800ca573176ec8860d201449e3d397bbc9b6"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/README.md",
+      "bytes": 5797,
+      "sha256": "c1fea0bcad2c0ff4606c7326ad31bbc9d1b120248bd939500b9ca5d21a52ada7"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/after-packaging.json",
+      "bytes": 9434,
+      "sha256": "9ebb2b59301608002913ae347f374ad72dd8e069bd5e229052bc3efdec3e16f1"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/app-direct-arm64-v8a-release.badging.txt",
+      "bytes": 5318,
+      "sha256": "8da1dab2ae2f9389ad13e82aef5acf0a3be0614a8dcc277e638fd13bf5ba259d"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/app-direct-arm64-v8a-release.manifest.txt",
+      "bytes": 12158,
+      "sha256": "c053a3be37c680cacc0b20f5ee4a0bb21470dd6050230950bdb79d479957552f"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/app-direct-arm64-v8a-release.signer.txt",
+      "bytes": 307,
+      "sha256": "a0870b1ef70faa813e25b7023854015c48fff2ee8692d482f389ae6a2d136b08"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/app-direct-armeabi-v7a-release.badging.txt",
+      "bytes": 5320,
+      "sha256": "a4e7ffdfe75fef2b1a761c1a0f667e5102d62e732d80aaa1a044a08d991b85e0"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/app-direct-armeabi-v7a-release.manifest.txt",
+      "bytes": 12158,
+      "sha256": "c053a3be37c680cacc0b20f5ee4a0bb21470dd6050230950bdb79d479957552f"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/app-direct-armeabi-v7a-release.signer.txt",
+      "bytes": 307,
+      "sha256": "a0870b1ef70faa813e25b7023854015c48fff2ee8692d482f389ae6a2d136b08"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/app-direct-universal-release.badging.txt",
+      "bytes": 5341,
+      "sha256": "acd4a701d76d5654f8add79e177669bfb134287bb8df12ccb3c107bf83354743"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/app-direct-universal-release.manifest.txt",
+      "bytes": 12158,
+      "sha256": "c053a3be37c680cacc0b20f5ee4a0bb21470dd6050230950bdb79d479957552f"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/app-direct-universal-release.signer.txt",
+      "bytes": 307,
+      "sha256": "a0870b1ef70faa813e25b7023854015c48fff2ee8692d482f389ae6a2d136b08"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/app-direct-x86_64-release.badging.txt",
+      "bytes": 5315,
+      "sha256": "7237eeb5285cdb1d84c221c78c68db93da290ba62371a5228590695c986f2e25"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/app-direct-x86_64-release.manifest.txt",
+      "bytes": 12158,
+      "sha256": "c053a3be37c680cacc0b20f5ee4a0bb21470dd6050230950bdb79d479957552f"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/app-direct-x86_64-release.signer.txt",
+      "bytes": 307,
+      "sha256": "a0870b1ef70faa813e25b7023854015c48fff2ee8692d482f389ae6a2d136b08"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/collect.py",
+      "bytes": 8126,
+      "sha256": "cdf470de1a03650c4d737340ee594611c092f3128aff8674040ad4ccb086459f"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/jvm-results.json",
+      "bytes": 282,
+      "sha256": "25eafd8ba8d29d7a7a26b50c640cdb80249d7ca443d130f4ef5d6da611a30bfc"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/native-section-review.json",
+      "bytes": 5956,
+      "sha256": "aa2937534df1088ba836d3969b0d11607a30c7b329912bf2e80bf0cc2eb5fd6d"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/receipt.json",
+      "bytes": 2173,
+      "sha256": "836826f455a4535465a8a24401d651bc4964675f86f3c25f38477eefd712b236"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/review-decisions.json",
+      "bytes": 1031,
+      "sha256": "a6676eaf9ec1b536fa6dec7f7848441311bbfafd3381c6d0e3727cf5ade78300"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/size-breakdown.json",
+      "bytes": 490613,
+      "sha256": "569bb4355b492e8c0de7d5ea16f5cd2d72d389b35a57b5823d80b07dea1d623d"
+    },
+    {
+      "path": "docs/operations/evidence/2026-09-06-r12-d06-size/verify-after.py",
+      "bytes": 4051,
+      "sha256": "325df018885c625c61665feb8708393ddb74b763faab7ab6f3b035e09eaee2b7"
+    }
+  ],
+  "archive": {
+    "path": "E:\\r12-d06-size\\d06-evidence.zip",
+    "bytes": 175719,
+    "sha256": "3c4f0f66fa4e633dd25eab68431807580adfdd6d82fdb04cfc493443a363490b",
+    "files": 97
+  },
+  "packages": [
+    {
+      "file": "E:\\r12-d06-size\\apks\\app-direct-arm64-v8a-release.apk",
+      "sha256": "39917bf25a427a55c383b11519e9fbbac302e9dbab84bccf02d38edb82b6116a",
+      "bytes": 101225939,
+      "saved_bytes": 891,
+      "unchanged_entries": 377,
+      "signer": "Android Debug"
+    },
+    {
+      "file": "E:\\r12-d06-size\\apks\\app-direct-armeabi-v7a-release.apk",
+      "sha256": "6886597fb5a0f9b3d13f17ff59a78f928d0fb15c7e64b61553cc5b4390414805",
+      "bytes": 90740169,
+      "saved_bytes": 891,
+      "unchanged_entries": 377,
+      "signer": "Android Debug"
+    },
+    {
+      "file": "E:\\r12-d06-size\\apks\\app-direct-universal-release.apk",
+      "sha256": "c1c6b6cd8e6b734600b78de9bfb4d424e8fc17c23aa4d6fd1d11d936b8e8bbe3",
+      "bytes": 295210670,
+      "saved_bytes": 891,
+      "unchanged_entries": 383,
+      "signer": "Android Debug"
+    },
+    {
+      "file": "E:\\r12-d06-size\\apks\\app-direct-x86_64-release.apk",
+      "sha256": "a314104f676484b8f61a410facf9091bcc1f128a15b7a82f5f92d73a77b97f1e",
+      "bytes": 110234866,
+      "saved_bytes": 891,
+      "unchanged_entries": 377,
+      "signer": "Android Debug"
+    }
+  ],
+  "commands": [
+    {
+      "command": "flutter test",
+      "exit_code": 0,
+      "log": "E:/r12-d06-flutter-test.log",
+      "sha256": "d4b6683d685d83fefd50509660b663bf68487aa93fd972707b6b5844fa2a3464"
+    },
+    {
+      "command": "flutter build apk --release --flavor direct --target-platform android-arm,android-arm64,android-x64 --android-project-arg=pokrov.singleVersionSplitApks=true --dart-define=POKROV_API_BASE_URL=http://127.0.0.1:9 --dart-define=POKROV_APP_VERSION=1.2.0",
+      "exit_code": 0,
+      "log": "E:/r12-d06-android-build.log",
+      "sha256": "acd7d051f5576d76d06a49a9f8a26e8f6c94d02b9db4853341fafee1e48e766c"
+    },
+    {
+      "command": "gradlew.bat :app:testDirectDebugUnitTest :app:testStoreDebugUnitTest",
+      "exit_code": 0,
+      "log": "E:/r12-d06-gradle-tests.log",
+      "sha256": "a0fdd732a2160c5dd303e4809ce6eb6ed95dedc010ff02761b606c4574d8358b"
+    },
+    {
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/validate-seed.ps1 -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start -CoreRoot E:/r12core-implementation",
+      "exit_code": 0,
+      "log": "E:/r12-d06-seed.log",
+      "sha256": "da9a8ee153ca4b885b224d1c3d331b61b66304d76b382f265a48911b9762a5e0"
+    }
+  ],
+  "result": "Only DebugProbesKt.bin removed; all remaining ZIP payloads unchanged in four APKs. 8 Flutter tests and 186 JVM tests per flavor PASS.",
+  "remaining": [
+    "D01 physical ARM64 acceptance",
+    "final signed candidate and distribution readback",
+    "full C05 privacy/license/source/advisory gates"
+  ],
+  "operations": "No production signing, install, VPN execution, release artifact modification, push, merge, deploy, publish or new candidate."
+}

@@ -1,0 +1,61 @@
+{
+  "source_before": "af80ade",
+  "source_current": "16407b8909508c9d533e88ba24153f8fef0314ce",
+  "checks": [
+    {
+      "path": "scripts/remote_postgres_backup_restore_gate.py",
+      "unchanged_git_blob": true,
+      "current_git_blob_sha256": "62b2f1f6e954b80a1a4d8d5e2400ea4f7a462101b2679d85cde089fdd17a72fc",
+      "current_file_sha256": "242c216619da0298feeb7df9d5570511e23b1a9a859c9993845e914617baaf1c"
+    },
+    {
+      "path": "scripts/remote_deploy_brain_portal_code.py",
+      "unchanged_git_blob": true,
+      "current_git_blob_sha256": "4fb9a3d92afce668cd766df62c7f626b032791fe542e5e7407a6c05704dc4a78",
+      "current_file_sha256": "cc16b4cd870403cf01c909b169e98d1482c86b39da173fb8306d7fa6b3d46f2a"
+    },
+    {
+      "path": "scripts/remote_postgres_cutover.py",
+      "unchanged_git_blob": true,
+      "current_git_blob_sha256": "af94f06a7dc631c7eef5b5871160f8ef4dabd069cf6efa447a6104c4d4813487",
+      "current_file_sha256": "fefbe771549280c78b9606dd23a6868e693fc38cd2e17ee01cc55fa4008eec8d"
+    },
+    {
+      "path": "portal_bot/models.py",
+      "unchanged_git_blob": true,
+      "current_git_blob_sha256": "6fb565bb7df1c162ce1e58d3b34b84d8807a19b4ba8693c03d23267c2e4e0b58",
+      "current_file_sha256": "6fb565bb7df1c162ce1e58d3b34b84d8807a19b4ba8693c03d23267c2e4e0b58"
+    },
+    {
+      "path": "portal_bot/requirements.txt",
+      "unchanged_git_blob": true,
+      "current_git_blob_sha256": "bcf26246b4a9c9c45b0a73a11f1145d0f0cd779a3e659acbfab8ee5cc5a2f5f0",
+      "current_file_sha256": "f14fb252fbc18884556863a0cb3ed04eb72e0ac0b48ac1fe384ace575e9a322c"
+    },
+    {
+      "path": "portal_bot/db.py",
+      "unchanged_git_blob": true,
+      "current_git_blob_sha256": "18462b548def2e31835621d751c7441b78cae34709d2a019f3c73c6ca5c1b40f",
+      "current_file_sha256": "dfeaf3794524c1110ce829c2f0211ed40b8a38555be8969a5ab5f21aef90d482"
+    },
+    {
+      "path": "portal_bot/payment_entitlement_outbox.py",
+      "unchanged_git_blob": true,
+      "current_git_blob_sha256": "a9f73e131c383a35dcc18526f4766f87ee945e88cc59cd6d0be2ece3f109375b",
+      "current_file_sha256": "5bcb3f576e8b062995879e193974971b057611c21755f67a2df54a194369467f"
+    },
+    {
+      "path": "tests/test_payment_outbox_postgres.py",
+      "unchanged_git_blob": true,
+      "current_git_blob_sha256": "e0358ee7b8b5a4ebb531db288f8e2726995300cf9cf5582c9ce54f46a2dadc10",
+      "current_file_sha256": "7641b796050ebf827e43375e2a6242bdcdbc8c7e07790adf376b0da9f9ac6ede"
+    },
+    {
+      "path": "tests/test_public_checkout_postgres.py",
+      "unchanged_git_blob": true,
+      "current_git_blob_sha256": "9df050b288ce4304d316ed3e7967c0b0a20fdc144f8528c9f18f346e991565df",
+      "current_file_sha256": "4c99f25476f3557545daeb2f45c9f3051ee9336b01369a9bc15eac8476ae9aa0"
+    }
+  ],
+  "boundary": "only named code inputs; no transfer of former deployed 198-file hashes; previous real application compatibility was not executed"
+}

@@ -72,6 +72,7 @@ from operator_observability_service import run_operator_retention_once
 from payment_entitlement_outbox import run_payment_entitlement_outbox_once
 from commercial_capacity_service import run_commercial_capacity_evaluation
 from emergency_catalog_worker import emergency_catalog_worker_enabled, emergency_catalog_worker_job
+from awg_lab_peer_worker import awg_lab_peer_worker_job
 from news_draft_service import collect_news_drafts, news_draft_interval_seconds, news_draft_worker_enabled
 import incident_service
 
@@ -1503,6 +1504,8 @@ async def main() -> None:
         asyncio.create_task(_supervise_job("referral_bonus_queue", referral_bonus_queue_job)),
         asyncio.create_task(_supervise_job("key_limits_watchdog", key_limits_watchdog_job)),
     ]
+    if os.getenv("AWG_LAB_PEER_TARGETS_FILE", "").strip():
+        tasks.append(asyncio.create_task(_supervise_job("awg_lab_peers", awg_lab_peer_worker_job)))
     if emergency_catalog_worker_enabled():
         tasks.append(
             asyncio.create_task(

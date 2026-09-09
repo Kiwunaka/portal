@@ -1,0 +1,31 @@
+{
+  "source_files_unchanged": 195,
+  "material_rows": {
+    "awg2_lab_materials": {
+      "rows": 7,
+      "active": 0,
+      "rotated": 1,
+      "revoked": 6
+    },
+    "awg31_lab_materials": {
+      "rows": 7,
+      "active": 0,
+      "rotated": 1,
+      "revoked": 6
+    },
+    "hy2_lab_materials": {
+      "rows": 7,
+      "active": 0,
+      "rotated": 1,
+      "revoked": 6
+    }
+  },
+  "other_fixture_db_sessions": 0,
+  "services": {
+    "portal-api": "inactive",
+    "portal-bot": "inactive",
+    "portal-worker": "inactive"
+  },
+  "previous_databases_recreated": false,
+  "production_contacted": false
+}

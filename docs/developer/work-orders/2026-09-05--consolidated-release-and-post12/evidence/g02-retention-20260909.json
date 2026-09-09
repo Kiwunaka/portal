@@ -1,0 +1,16 @@
+{
+  "candidate_id": "pokrov-1.2.0-candidate.33",
+  "result": "R12_G02_RETENTION_VERIFIED",
+  "client_evidence_commit": "de5d4784ecd9d1fc90575e48e16da0f90f42da41",
+  "client_evidence_path": "docs/operations/evidence/2026-09-09-r12-candidate33-retention/receipt.json",
+  "client_receipt_sha256": "27d447c33f9cc6f5327eeb1bbfacc7b30964c6b7ffa40669a75af808b18c2c9e",
+  "local_candidate_root": "E:/POKROV-tools/release-candidates/pokrov-1.2.0-candidate.33",
+  "local_ci_retention_root": "E:/r12-g02-retention-20260909",
+  "pinned_files_matched": 21,
+  "total_candidate_files": 24,
+  "retained_ci_archives": 5,
+  "retained_ci_members": 8,
+  "aggregate_ci_archive_bytes": 67934,
+  "release_ready": false,
+  "runtime_proof_reused": false
+}

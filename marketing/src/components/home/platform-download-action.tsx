@@ -47,6 +47,7 @@ export function PlatformDownloadAction({
 
   useEffect(() => {
     const controller = new AbortController();
+    const deadline = window.setTimeout(() => controller.abort(), 8_000);
     void fetch(`${CANONICAL_API_BASE_URL}/api/public/client-apps?channel=stable`, {
       credentials: "omit",
       headers: { Accept: "application/json" },
@@ -64,8 +65,12 @@ export function PlatformDownloadAction({
             approvedReleaseAsset(payload.windows?.exe_url || "", RELEASE_ASSET_NAMES.windows) || initial.windows,
         });
       })
-      .catch(() => undefined);
-    return () => controller.abort();
+      .catch(() => undefined)
+      .finally(() => window.clearTimeout(deadline));
+    return () => {
+      window.clearTimeout(deadline);
+      controller.abort();
+    };
   }, [initial]);
 
   const href = platform ? downloads[platform] : "";

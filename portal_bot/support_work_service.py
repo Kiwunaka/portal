@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from typing import Any, Iterable
 
 from sqlalchemy import String, and_, func, or_
+from client_network_diagnostics import recent_network_context
 
 try:
     from .models import (
@@ -550,6 +551,13 @@ def user_360(
             )
         ]
     attempts, fingerprints = _group_attempts(adapted)
+    network_context = []
+    if include_sensitive_diagnostics:
+        for observation in recent_network_context(session, account_id=str(user.account_id or "")):
+            device_id = observation.pop("device_id", None)
+            network_context.append({
+                **observation, "device_ref": _opaque_ref("network-device", device_id),
+            })
     installations: dict[str, dict[str, Any]] = {}
     sessions: dict[str, dict[str, Any]] = {}
     for attempt in attempts:
@@ -607,6 +615,7 @@ def user_360(
         "sessions": list(sessions.values()),
         "attempts": attempts[:100],
         "fingerprints": fingerprints,
+        "network_context": network_context,
         "tickets": tickets,
         "field_access": {
             "support_diagnostics": {
@@ -625,6 +634,7 @@ def user_360(
         "privacy": {
             "adapter": "event_allowlist_v1",
             "excluded": ["meta_json", "raw identifiers", "ip", "url", "token", "configuration"],
+            "network_context_exception": "support.sensitive.read; access-network IP and coarse context up to 72h",
         },
     }
 

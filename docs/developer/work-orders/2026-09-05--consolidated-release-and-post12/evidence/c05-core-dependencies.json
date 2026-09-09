@@ -1,0 +1,899 @@
+{
+  "schema": "pokrov.r12.c05-core-dependency-review/v1",
+  "observed_at": "2026-09-06T05:13:37.322485+00:00",
+  "status": "PARTIAL_I3_CORE_REMEDIATION",
+  "origin": "current-origin local Windows host; proxy-only loopback fixtures",
+  "source_commit": "8dc57a830bd1487389dd1b7c9190f094c31e13bc",
+  "source_workspace": "E:\\r12core-implementation",
+  "source_sha256": {
+    ".github/workflows/ci.yml": "bd635850fdbb8dee1c25021b0a7ebc25b1dedec69e51892639ba2a3296a4d2c1",
+    "config/release.json": "2f2f63c62b12c0507d6441c324b18f8dfaa9e2cb36883ebd60a81370d4e60e4e",
+    "docs/release.md": "dd53911fd5fe60c31d63a9bf8d9e71456a7a04c28e9be826fe97ee5add4fb1f5",
+    "engine/sing-box/go.mod": "caa380b551ab4bd54913729490caeb24a97d1241065bc6be1760a112cc166ca7",
+    "engine/sing-box/go.sum": "bc563f56a5cb57b3bb01c98758dbf4314f81ed9fbbca35e28fa383bcda9fb91f",
+    "engine/sing-box/replace/psiphon-tls/common.go": "273c60c2de6f6d0dbd58cb3ff154212d1a8099a7a7955e3887a9f071d2beaa0b",
+    "engine/sing-box/replace/psiphon-tls/conn.go": "39df24f401a86aca9982425e6dce268684ae5440818cf8fb7637f9fec22689c5",
+    "engine/sing-box/replace/psiphon-tls/handshake_client_test.go": "e6c14bdd241b6e11f9a0a1e771be56013064524800c1b126f039e1077780655b",
+    "engine/sing-box/replace/psiphon-tls/handshake_server_test.go": "584dd3eb7a1ed7b2ca8d9c20b8fc46098d5344f4d0a94155e2b93794d7aea883",
+    "engine/sing-box/replace/psiphon-tls/tls_test.go": "d1dfb52b685aa212158fc9181ecbf03837c2a98ec96a6065f9b716806f8bafc2",
+    "go.mod": "a552fa8be230cd1e049cba6d71332a78b3970ddedc61e5805eaab1b8cb39cb65",
+    "go.sum": "cd1d48bfba17ae7f459a07c2cf70c8ed0b5572bc4f930bec9abcbb5b61b53502",
+    "scripts/build-android.ps1": "4fbab681a0d4ee5eb1421f38d8e0f5a5e7e92c6419a2127d2924d45f29ffbdbe",
+    "scripts/build-windows.ps1": "b281306b6658d95af6a568abb6dffbb3a6f2d35dab6773d515eabbbc84b276e7",
+    "scripts/test.ps1": "b380b1a6223ff51f6476e6788f342f444d7db3d960cca7aafd68b5afab174d65",
+    "engine/sing-box/replace/psiphon-tls/unsafe_test.go": "e488290f2cb2bce80919ee30a4b9552a31b914740e825b9dec063c4343de6549"
+  },
+  "build_source_note": "Builds ran on uncommitted exact implementation now committed as source_commit. Precommit SHA snapshot matches all code/tests/scripts; only docs/release.md changed afterwards to explain scanner precision. Provenance generated after commit, local run fields empty; UNSIGNED_CI_BUILD_EVIDENCE is helper label, not hosted CI proof.",
+  "toolchain": {
+    "go": "go1.26.8",
+    "govulncheck": "v1.7.0 rebuilt with go1.26.8",
+    "cyclonedx_gomod": "v1.10.0",
+    "ndk": "29.0.14206865",
+    "gocache": "E:/r12-c05-artifacts/go126-cache",
+    "ccompiler": "E:/POKROV-tools/runtimes/mingw-13.2.0-ucrt-posix-seh/mingw64/bin/gcc.exe"
+  },
+  "commands": [
+    {
+      "command": "scripts/test.ps1 -GoExecutable C:/Users/kiwun/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.windows-amd64/bin/go.exe",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-c05-core-full-tests-isolated.log",
+      "sha256": "922fc37ab171bf58adc94441cfe98cf0a7ab107b9d94ecba9559983f9d570436",
+      "exit_code": 0,
+      "result": "PASS full Core gate including Psiphon conversion, root module and embedded AWG/event/TLS packages"
+    },
+    {
+      "command": "C:/Users/kiwun/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.windows-amd64/bin/go.exe test -count=1 -run 'TestUnsafeConnectionStateHelloRetryRequest|^TestConnectionState$' github.com/Psiphon-Labs/psiphon-tls",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-c05-tls-layout.log",
+      "sha256": "e6f490636eef2ee2d797f2058f0472df65192e9a20e85af0b1f384edd61eda9e",
+      "exit_code": 0,
+      "result": "PASS direct/HRR TLS 1.3 conversion and existing TLS 1.2/1.3 state tests (run pattern passed as one quoted argument)"
+    },
+    {
+      "command": "C:/Users/kiwun/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.windows-amd64/bin/go.exe test -count=1 -run 'TestHandshake(Client|Server)HelloRetryRequest' github.com/Psiphon-Labs/psiphon-tls; test process GODEBUG=cryptocustomrand=1",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-c05-psiphon-hrr-legacy-rand.log",
+      "sha256": "39efde487f26ac81ef14504977789bed4364d50d713215c2ab6b776d64f2a713",
+      "exit_code": 0,
+      "result": "PASS old transcript fixtures under test-only compatibility flag (run pattern quoted)"
+    },
+    {
+      "command": "C:/Users/kiwun/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.windows-amd64/bin/go.exe test -race -count=1 ./internal/observability ./v2/hcore",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-c05-core-race.log",
+      "sha256": "0e60ce8e3096d4de573744bf3015f66f1200f78de20d2369b75e1ca9877b9085",
+      "exit_code": 0,
+      "result": "PASS observability; hcore reports no test files"
+    },
+    {
+      "command": "scripts/build-windows.ps1 -GoExecutable C:/Users/kiwun/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.windows-amd64/bin/go.exe -CCompiler E:/POKROV-tools/runtimes/mingw-13.2.0-ucrt-posix-seh/mingw64/bin/gcc.exe -CronetLibrary E:/r12core-implementation/dist/windows/libcronet.dll -OutputDirectory E:/r12-c05-artifacts/windows-a",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-c05-windows-a.log",
+      "sha256": "cf23d38584af447ba8420a0e001a4fc5129b3ad3fee35e8b02aba4c8ed5bc206",
+      "exit_code": 0,
+      "result": "PASS 15 required exports"
+    },
+    {
+      "command": "scripts/build-windows.ps1 -GoExecutable C:/Users/kiwun/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.windows-amd64/bin/go.exe -CCompiler E:/POKROV-tools/runtimes/mingw-13.2.0-ucrt-posix-seh/mingw64/bin/gcc.exe -CronetLibrary E:/r12core-implementation/dist/windows/libcronet.dll -OutputDirectory E:/r12-c05-artifacts/windows-b",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-c05-windows-b.log",
+      "sha256": "8f7bd09fd35aba489f8466266d46b2a1490781ec6c8d998f0e9f66498898fb2e",
+      "exit_code": 0,
+      "result": "PASS 15 required exports"
+    },
+    {
+      "command": "scripts/build-android.ps1 -GoExecutable C:/Users/kiwun/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.windows-amd64/bin/go.exe -AndroidSdk C:/Users/kiwun/AppData/Local/Android/Sdk -GomobileBinDirectory E:/r12-c05-artifacts/gomobile-go1.26.8 -OutputDirectory E:/r12-c05-artifacts/android-a",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-c05-android-a.log",
+      "sha256": "8f532776fbc7ac79baca9e4b66304ec7ed1237d3e4d47d3ddc995aa1cf739dfd",
+      "exit_code": 0,
+      "result": "PASS AAR with four ABI entries"
+    },
+    {
+      "command": "scripts/build-android.ps1 -GoExecutable C:/Users/kiwun/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.windows-amd64/bin/go.exe -AndroidSdk C:/Users/kiwun/AppData/Local/Android/Sdk -GomobileBinDirectory E:/r12-c05-artifacts/gomobile-go1.26.8 -OutputDirectory E:/r12-c05-artifacts/android-b",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-c05-android-b.log",
+      "sha256": "e38bc539fa926f8297b974de7d8230444ba4df1de87ecdfd9429773005eac77f",
+      "exit_code": 0,
+      "result": "PASS AAR with four ABI entries"
+    },
+    {
+      "command": "scripts/test-windows-core-proxy-only.ps1 -CoreRoot E:/r12-c05-artifacts/windows-a",
+      "cwd": "E:/r12client",
+      "log": "E:/r12-c05-windows-proxy.log",
+      "sha256": "60801121780899de27952fb7d443f28958d70698155daf880387d965599558c8",
+      "exit_code": 0,
+      "result": "PASS 100 proxy-only start/stop cycles"
+    },
+    {
+      "command": "new-release-artifact-evidence.ps1 invoked for windows and android with first/second build roots and both new source SBOMs; exact fields in linked reproducibility JSON",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-c05-reproducibility.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 0,
+      "result": "PASS byte-identical two builds; 3 Windows files, 2 Android files",
+      "commands": [
+        "scripts/new-release-artifact-evidence.ps1 -Lane windows -FirstBuildRoot E:/r12-c05-artifacts/windows-a -SecondBuildRoot E:/r12-c05-artifacts/windows-b -Output E:/r12-c05-artifacts/windows-reproducibility.json -Sbom E:/r12-c05-artifacts/core-source.cdx.json,E:/r12-c05-artifacts/engine-source.cdx.json",
+        "scripts/new-release-artifact-evidence.ps1 -Lane android -FirstBuildRoot E:/r12-c05-artifacts/android-a -SecondBuildRoot E:/r12-c05-artifacts/android-b -Output E:/r12-c05-artifacts/android-reproducibility.json -Sbom E:/r12-c05-artifacts/core-source.cdx.json,E:/r12-c05-artifacts/engine-source.cdx.json"
+      ]
+    },
+    {
+      "command": "cyclonedx-gomod.exe mod -licenses -std -json -notimestamp -noserial -output E:/r12-c05-artifacts/core-source.cdx.json .",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-c05-sbom-final.log",
+      "sha256": "d50ddf7a3bde367c1b448d305fa5207a20532863da1b7bd0f3655f3883181df7",
+      "exit_code": 0,
+      "result": "PASS generated; license warnings retained, not license clearance"
+    },
+    {
+      "command": "cyclonedx-gomod.exe mod -licenses -std -json -notimestamp -noserial -output E:/r12-c05-artifacts/engine-source.cdx.json ./engine/sing-box",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-c05-engine-sbom-final.log",
+      "sha256": "256b1a7206edccd8a141fdea7d4c023bfffecf598a1231e36defc5e402f589f4",
+      "exit_code": 0,
+      "result": "PASS generated; license warnings retained, not license clearance"
+    },
+    {
+      "command": "cyclonedx-gomod.exe bin -std -json -notimestamp -noserial -output E:/r12-c05-artifacts/windows-binary.cdx.json E:/r12-c05-artifacts/windows-a/pokrov-core.dll",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-c05-binary-sbom-final.log",
+      "sha256": "0076083fbdaabbdbf9e4f8bf961533d4e52f7b2002caa31ba1709949d84fc7e6",
+      "exit_code": 0,
+      "result": "PASS module inventory; bin mode did not attach license evidence"
+    },
+    {
+      "command": "E:/r12-c05-artifacts/tools/govulncheck.exe -json -tags=with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api,with_grpc,with_awg,tfogo_checklinkname0,with_naive_outbound,with_conntrack,with_purego ./v2/hcore ./v2/hutils ./ray2sing/ray2sing",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-c05-source-vuln-after-v2.jsonl",
+      "sha256": "97bfdfb68338b87ccd3458b5587623f318c097e9166748d66afa1f6aeff36f32",
+      "exit_code": 0,
+      "result": "PASS scanner process; 9 advisory IDs at module/package level and no function/call-path findings for scoped Windows build"
+    },
+    {
+      "command": "python -X utf8 -B E:/r12-c05-final-binary-scan.py",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-c05-final-binary-scan.log",
+      "sha256": "bbeb826069829b645f38c5ee4a3052f2accb62fcef777e447688c5caa7db512a",
+      "exit_code": 0,
+      "result": "PASS five binary scans; nine advisory IDs each, fixed SSH pair absent; module precision"
+    },
+    {
+      "command": "go list -deps '-tags=with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api,with_grpc,with_awg,tfogo_checklinkname0,with_naive_outbound,with_conntrack,with_purego' ./platform/desktop",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-c05-windows-package-graph.log",
+      "sha256": "fcbe40ac2191eec56f4ddeed14a52d70b06c94b186bd0a9d723d1283b4a9a3ec",
+      "exit_code": 0,
+      "result": "PASS bounded source import graph, not runtime invocation evidence",
+      "environment": {
+        "GOOS": "windows",
+        "GOARCH": "amd64",
+        "CGO_ENABLED": "1"
+      }
+    },
+    {
+      "command": "go list -deps '-tags=with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api,with_grpc,with_awg,tfogo_checklinkname0,with_naive_outbound,with_conntrack' github.com/sagernet/sing-box/experimental/libbox ./platform/mobile",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-c05-android-package-graph.log",
+      "sha256": "229069aee2d5466cf062f6f3e58090c680ddafd145ac1fa2b292f1ae58d661a9",
+      "exit_code": 0,
+      "result": "PASS bounded source import graph, not runtime invocation evidence",
+      "environment": {
+        "GOOS": "android",
+        "GOARCH": "arm64",
+        "CGO_ENABLED": "1",
+        "CC": "C:/Users/kiwun/AppData/Local/Android/Sdk/ndk/29.0.14206865/toolchains/llvm/prebuilt/windows-x86_64/bin/aarch64-linux-android21-clang.cmd"
+      }
+    }
+  ],
+  "retained_failed_attempts": [
+    {
+      "path": "E:\\r12-c05-core-full-tests.log",
+      "size": 2062,
+      "sha256": "9e531c6d2c7b5e36d2dccba20122bca37e3a42dc92b9bd76fbbd0f33f5d1fdd7",
+      "result": "FAIL structural guard rejects old Psiphon TLS ConnectionState on Go 1.26"
+    },
+    {
+      "path": "E:\\r12-c05-core-full-tests-final.log",
+      "size": 4685,
+      "sha256": "cd26fd063aa523a01fefd7cd4c54cd3870b5c20a27e70eda628bf43af8ff8b8c",
+      "result": "FAIL root go test traversed retained generated gomobile build directory; archive retained outside source before isolated rerun"
+    },
+    {
+      "path": "E:\\r12-c05-psiphon-hrr.log",
+      "size": 76,
+      "sha256": "6b956d0aab832456ae5916f473ad3d963a24b3c35f58bee77b429ce7dc51e5c5",
+      "result": "FAIL initial command at root selected . with no Go files"
+    },
+    {
+      "path": "E:\\r12-c05-psiphon-hrr-final.log",
+      "size": 1196,
+      "sha256": "443351eafe0f425944df9c739d10f2f90d8f6d761d9d2566bb4a2fff1c07f18f",
+      "result": "FAIL standalone nested go.mod omits dependencies resolved by root module"
+    },
+    {
+      "path": "E:\\r12-c05-psiphon-hrr-root.log",
+      "size": 6429,
+      "sha256": "3e32eba5ad3f98d369c8a239ca24184aafc4bcd53a12e5035e6ad78691bd3ed7",
+      "result": "FAIL golden transcript random key bytes under Go 1.26 default; default live handshake tests pass"
+    },
+    {
+      "path": "E:\\r12-c05-go126-trial-build.log",
+      "size": 1923,
+      "sha256": "d13be1b837924c84b029df1fd5681341123a490b93a13e2909ab0c868060b940",
+      "result": "FAIL old tfo-go internal/poll link incompatibility"
+    },
+    {
+      "path": "E:\\r12-c05-source-vuln-after.stderr.log",
+      "size": 62635,
+      "sha256": "cc17d7f91c83e867963913015b43eb379b9087620c1caa11c8857b2aa13a4a7e",
+      "result": "FAIL scanner built with old Go could not analyze Go 1.26 range-over-function; rebuilt same scanner v1.7.0 using pinned Go"
+    }
+  ],
+  "artifact_receipts": [
+    {
+      "path": "E:\\r12-c05-artifacts\\windows-reproducibility.json",
+      "size": 2326,
+      "sha256": "372dd0ed2642720e71488f6a84fbceb4503df19bbd84197efee19d383d1906e4"
+    },
+    {
+      "path": "E:\\r12-c05-artifacts\\android-reproducibility.json",
+      "size": 2173,
+      "sha256": "3174f48987666393dfea5ffa5f9aad89cc69cbf4639e18e8b633e867c6d4ff7d"
+    },
+    {
+      "path": "E:\\r12-c05-artifacts\\core-source.cdx.json",
+      "size": 311796,
+      "sha256": "eedba4ded0fba299b2b2d4aedff03e1dc1057b8970a19fc406f40efaeacf7ba6"
+    },
+    {
+      "path": "E:\\r12-c05-artifacts\\engine-source.cdx.json",
+      "size": 267681,
+      "sha256": "bf2f4f2fd8c9d61e7178f19aca6991c0b00448949f1f8809279cc996cacf8672"
+    },
+    {
+      "path": "E:\\r12-c05-artifacts\\windows-binary.cdx.json",
+      "size": 103839,
+      "sha256": "0d0aadcef768a7ad895c39f02b37cc0ded18454447c71b2e00ea288a592437f4"
+    },
+    {
+      "path": "E:\\r12-c05-artifacts\\sbom-summary-v2.json",
+      "size": 8853,
+      "sha256": "cd5c60445742b51dc3b02a0852127746acb9246d550219f6b04ff090a01bf118"
+    },
+    {
+      "path": "E:\\r12-c05-artifacts\\source-before-commit.json",
+      "size": 1796,
+      "sha256": "06f2b9514b5b938c5a91c3c71ad15733b3a927922546ea9b142e4fffa842345e"
+    },
+    {
+      "path": "E:\\r12-c05-artifacts\\extract-summary.json",
+      "size": 1966,
+      "sha256": "741c8e808c4cd5ea133788c4e30a35388faf922bdc9f54cb338cebf18fe9438b"
+    },
+    {
+      "path": "E:\\r12-c05-artifacts\\final-binary-scans.json",
+      "size": 5021,
+      "sha256": "f76aaf453c9ce6704c479c09e940aedbbe9494a273385b5a86798a54798f9270"
+    },
+    {
+      "path": "E:\\r12-c05-source-summary.json",
+      "size": 17282,
+      "sha256": "3f73c9c9f4e9412d3776fdfcdd10f0bd1defa5945ce17af67ff7250be3727ba3"
+    },
+    {
+      "path": "E:\\r12-c05-vulnerability-candidates.json",
+      "size": 9690,
+      "sha256": "7fb58c7e809d2fd5955607bdaab72b436f49ab5b36b1f2da5f8ddaaa5a1a80ee"
+    },
+    {
+      "path": "E:\\r12-c05-license-gap-files.json",
+      "size": 12129,
+      "sha256": "c18982b737648608afe1dd9ed5121f4f2358a15ade2353e3ab7f9cde4f177fa7"
+    },
+    {
+      "path": "E:\\r12-c05-final-binary-scan.py",
+      "size": 2192,
+      "sha256": "c8d75f9905944343c7b42f21b4c594073474b9cbd0bf07a98f3c83cbcd272798"
+    },
+    {
+      "path": "E:\\r12-c05-artifacts\\tools\\govulncheck.exe",
+      "size": 15486464,
+      "sha256": "fd8811bd8fba451db7ba8588f4b4f6198beb791f22f80276b5c1663e96284bbc"
+    },
+    {
+      "path": "E:\\r12-c05-artifacts\\core-go126.mod.preapply",
+      "size": 14940,
+      "sha256": "a552fa8be230cd1e049cba6d71332a78b3970ddedc61e5805eaab1b8cb39cb65"
+    },
+    {
+      "path": "E:\\r12-c05-artifacts\\core-go126.sum.preapply",
+      "size": 81133,
+      "sha256": "cd1d48bfba17ae7f459a07c2cf70c8ed0b5572bc4f930bec9abcbb5b61b53502"
+    },
+    {
+      "path": "E:\\r12-c05-go126-trial-vuln.jsonl",
+      "size": 658519,
+      "sha256": "1eb77af028646170c95dc31a18138590077adffefcb8bc2266115a2d3fd8a155"
+    },
+    {
+      "path": "E:\\r12-c05-go126-trial-build-v2.log",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:\\r12-c05-scanner-rebuild.log",
+      "size": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "binary_scans": [
+    {
+      "binary": "E:\\r12-c05-artifacts\\windows-a\\pokrov-core.dll",
+      "sha256": "c679ba5af42939acbc8c6f44af59b4608f6a76c99e0d444cfa4bcc825bcc8e68",
+      "size": 55449088,
+      "scanner_exit": 0,
+      "report": "E:\\r12-c05-artifacts\\final-pokrov-core.vuln.jsonl",
+      "report_sha256": "9408705f9db0b57622b429036275ca7d5c91e6354aeae6393fd65e78b277d63e",
+      "stderr": "E:\\r12-c05-artifacts\\final-pokrov-core.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "buildinfo": "E:\\r12-c05-artifacts\\final-pokrov-core.buildinfo.log",
+      "buildinfo_sha256": "1ffb87d69e7569716a1813128d3e7824f7886c21f52ece4c29c1447e58b5215e",
+      "advisories": [
+        "GO-2026-4316",
+        "GO-2026-4503",
+        "GO-2026-5774",
+        "GO-2026-5775",
+        "GO-2026-5777",
+        "GO-2026-5841",
+        "GO-2026-5932",
+        "GO-2026-6179",
+        "GO-2026-6180"
+      ],
+      "symbol_finding_records": 21,
+      "precision": "module_fallback_no_extracted_symbols"
+    },
+    {
+      "binary": "E:\\r12-c05-artifacts\\android-a-extracted\\libpokrov-core-armeabi-v7a.so",
+      "sha256": "eb423282159b857bed6142d4cd780dd69e8501f4e0a3367d52a0b789eff2732e",
+      "size": 70207880,
+      "scanner_exit": 0,
+      "report": "E:\\r12-c05-artifacts\\final-libpokrov-core-armeabi-v7a.vuln.jsonl",
+      "report_sha256": "1e1367c4b2b93e6ed20775d7b7ee731b8843ef16167e2e12bf06894d0f85b490",
+      "stderr": "E:\\r12-c05-artifacts\\final-libpokrov-core-armeabi-v7a.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "buildinfo": "E:\\r12-c05-artifacts\\final-libpokrov-core-armeabi-v7a.buildinfo.log",
+      "buildinfo_sha256": "51704d9d511fec07a4aa8e55a36b6d9e26e5dc428593133492d9cc4998042192",
+      "advisories": [
+        "GO-2026-4316",
+        "GO-2026-4503",
+        "GO-2026-5774",
+        "GO-2026-5775",
+        "GO-2026-5777",
+        "GO-2026-5841",
+        "GO-2026-5932",
+        "GO-2026-6179",
+        "GO-2026-6180"
+      ],
+      "symbol_finding_records": 21,
+      "precision": "module_fallback_no_extracted_symbols"
+    },
+    {
+      "binary": "E:\\r12-c05-artifacts\\android-a-extracted\\libpokrov-core-arm64-v8a.so",
+      "sha256": "7fc36cbf805a42077424c934267beeb99d84a1c96c6f2de7493abed729f05ca5",
+      "size": 78530968,
+      "scanner_exit": 0,
+      "report": "E:\\r12-c05-artifacts\\final-libpokrov-core-arm64-v8a.vuln.jsonl",
+      "report_sha256": "f4bdebaf697f8442ade00d989a9d92f411d9f209a59040be96c077bf847f379f",
+      "stderr": "E:\\r12-c05-artifacts\\final-libpokrov-core-arm64-v8a.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "buildinfo": "E:\\r12-c05-artifacts\\final-libpokrov-core-arm64-v8a.buildinfo.log",
+      "buildinfo_sha256": "7ff88d5bb5e590413bd1ef0c14fdfb30f2c1482c54e8a91ae27df885a0476bef",
+      "advisories": [
+        "GO-2026-4316",
+        "GO-2026-4503",
+        "GO-2026-5774",
+        "GO-2026-5775",
+        "GO-2026-5777",
+        "GO-2026-5841",
+        "GO-2026-5932",
+        "GO-2026-6179",
+        "GO-2026-6180"
+      ],
+      "symbol_finding_records": 21,
+      "precision": "module_fallback_no_extracted_symbols"
+    },
+    {
+      "binary": "E:\\r12-c05-artifacts\\android-a-extracted\\libpokrov-core-x86.so",
+      "sha256": "a74663276fd9fb87f1175d13310781fc0ca8583d06eac12cb6472b7738228a1a",
+      "size": 76037888,
+      "scanner_exit": 0,
+      "report": "E:\\r12-c05-artifacts\\final-libpokrov-core-x86.vuln.jsonl",
+      "report_sha256": "dad37d6999747549ef8f620c9100483cd688e6778ba39815307b7167bd7ed177",
+      "stderr": "E:\\r12-c05-artifacts\\final-libpokrov-core-x86.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "buildinfo": "E:\\r12-c05-artifacts\\final-libpokrov-core-x86.buildinfo.log",
+      "buildinfo_sha256": "ede06b7406c16c6441040561f8d7a4f105da13b14aa4efa0c9c10da849449a50",
+      "advisories": [
+        "GO-2026-4316",
+        "GO-2026-4503",
+        "GO-2026-5774",
+        "GO-2026-5775",
+        "GO-2026-5777",
+        "GO-2026-5841",
+        "GO-2026-5932",
+        "GO-2026-6179",
+        "GO-2026-6180"
+      ],
+      "symbol_finding_records": 21,
+      "precision": "module_fallback_no_extracted_symbols"
+    },
+    {
+      "binary": "E:\\r12-c05-artifacts\\android-a-extracted\\libpokrov-core-x86_64.so",
+      "sha256": "fc1660500ad8578231d277e06da61a752bd1bec26b66babc6b0f6cd7b3679376",
+      "size": 86032576,
+      "scanner_exit": 0,
+      "report": "E:\\r12-c05-artifacts\\final-libpokrov-core-x86_64.vuln.jsonl",
+      "report_sha256": "0ccd1f032a3258da13cb3318fbe51505a4990f8f8415bc4e576ca252ff0d0f39",
+      "stderr": "E:\\r12-c05-artifacts\\final-libpokrov-core-x86_64.stderr.log",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "buildinfo": "E:\\r12-c05-artifacts\\final-libpokrov-core-x86_64.buildinfo.log",
+      "buildinfo_sha256": "bf07ae631ceabb35f13db61ae09043e410df4e49b85786e10e298d2824374fdf",
+      "advisories": [
+        "GO-2026-4316",
+        "GO-2026-4503",
+        "GO-2026-5774",
+        "GO-2026-5775",
+        "GO-2026-5777",
+        "GO-2026-5841",
+        "GO-2026-5932",
+        "GO-2026-6179",
+        "GO-2026-6180"
+      ],
+      "symbol_finding_records": 21,
+      "precision": "module_fallback_no_extracted_symbols"
+    }
+  ],
+  "extracted_symbols": [
+    {
+      "binary": "E:\\r12-c05-artifacts\\windows-a\\pokrov-core.dll",
+      "path": "E:\\r12-c05-artifacts\\extract-pokrov-core.jsonl",
+      "sha256": "736a0adbbe5229d6e653edeb955ed57244cbd296a614d3108414096bb06aea12",
+      "symbols": 0,
+      "keys": [
+        "goVersion",
+        "goarch",
+        "goos",
+        "main",
+        "modules",
+        "path"
+      ]
+    },
+    {
+      "binary": "E:\\r12-c05-artifacts\\android-a-extracted\\libpokrov-core-armeabi-v7a.so",
+      "path": "E:\\r12-c05-artifacts\\extract-libpokrov-core-armeabi-v7a.jsonl",
+      "sha256": "3a109ae23a6494b395fe4363e389a83f184034472134a1428906755f4249ff31",
+      "symbols": 0,
+      "keys": [
+        "goVersion",
+        "goarch",
+        "goos",
+        "main",
+        "modules",
+        "path"
+      ]
+    },
+    {
+      "binary": "E:\\r12-c05-artifacts\\android-a-extracted\\libpokrov-core-arm64-v8a.so",
+      "path": "E:\\r12-c05-artifacts\\extract-libpokrov-core-arm64-v8a.jsonl",
+      "sha256": "0d615b511595a62dd6ae496281ec84bffb60a280c8c6f7af435e39aecad79f51",
+      "symbols": 0,
+      "keys": [
+        "goVersion",
+        "goarch",
+        "goos",
+        "main",
+        "modules",
+        "path"
+      ]
+    },
+    {
+      "binary": "E:\\r12-c05-artifacts\\android-a-extracted\\libpokrov-core-x86.so",
+      "path": "E:\\r12-c05-artifacts\\extract-libpokrov-core-x86.jsonl",
+      "sha256": "0039d6311d5519feb24b8a41351cded40f41859e9211c9c9759e3d36de3ca80d",
+      "symbols": 0,
+      "keys": [
+        "goVersion",
+        "goarch",
+        "goos",
+        "main",
+        "modules",
+        "path"
+      ]
+    },
+    {
+      "binary": "E:\\r12-c05-artifacts\\android-a-extracted\\libpokrov-core-x86_64.so",
+      "path": "E:\\r12-c05-artifacts\\extract-libpokrov-core-x86_64.jsonl",
+      "sha256": "f63429f11be10c58d2b96866cbd6df06c969df4e9cfc2bc5ffa8c7920953ef99",
+      "symbols": 0,
+      "keys": [
+        "goVersion",
+        "goarch",
+        "goos",
+        "main",
+        "modules",
+        "path"
+      ]
+    }
+  ],
+  "baseline": {
+    "core_commit": "94dd31012ac91fb9ecf2c98ad7383afb54102dd4",
+    "windows_scan": {
+      "path": "E:\\r12-c05-windows-vuln.jsonl",
+      "size": 664009,
+      "sha256": "c0dfefd97b640100a689fa5adc320f2a3fec4d825900e03f53b58903dcd9516a"
+    },
+    "source_scan": {
+      "path": "E:\\r12-c05-source-vuln.jsonl",
+      "size": 666793,
+      "sha256": "fe63a43a791d59286175d1ebc9aa960e36d24812461642f61db79976380a28e9"
+    },
+    "source_summary": {
+      "path": "E:\\r12-c05-source-summary.json",
+      "size": 17282,
+      "sha256": "3f73c9c9f4e9412d3776fdfcdd10f0bd1defa5945ce17af67ff7250be3727ba3"
+    },
+    "advisories": [
+      "GO-2026-4316",
+      "GO-2026-4503",
+      "GO-2026-5774",
+      "GO-2026-5775",
+      "GO-2026-5777",
+      "GO-2026-5841",
+      "GO-2026-5932",
+      "GO-2026-6179",
+      "GO-2026-6180",
+      "GO-2026-6354",
+      "GO-2026-6355"
+    ],
+    "fixed": [
+      "GO-2026-6354",
+      "GO-2026-6355"
+    ]
+  },
+  "source_scan": {
+    "advisories": [
+      "GO-2026-4316",
+      "GO-2026-4503",
+      "GO-2026-5774",
+      "GO-2026-5775",
+      "GO-2026-5777",
+      "GO-2026-5841",
+      "GO-2026-5932",
+      "GO-2026-6179",
+      "GO-2026-6180"
+    ],
+    "finding_records": 14,
+    "function_finding_records": 0,
+    "call_path_records": 0
+  },
+  "license_review": {
+    "sbom_summary": [
+      {
+        "path": "core-source.cdx.json",
+        "sha256": "eedba4ded0fba299b2b2d4aedff03e1dc1057b8970a19fc406f40efaeacf7ba6",
+        "components": 239,
+        "missing_license_evidence": 39,
+        "missing_license_names": [
+          "github.com/Psiphon-Labs/utls",
+          "github.com/anytls/sing-anytls",
+          "github.com/flynn/noise",
+          "github.com/sagernet/cronet-go",
+          "github.com/sagernet/cronet-go/all",
+          "github.com/sagernet/cronet-go/lib/android_386",
+          "github.com/sagernet/cronet-go/lib/android_amd64",
+          "github.com/sagernet/cronet-go/lib/android_arm",
+          "github.com/sagernet/cronet-go/lib/android_arm64",
+          "github.com/sagernet/cronet-go/lib/darwin_amd64",
+          "github.com/sagernet/cronet-go/lib/darwin_arm64",
+          "github.com/sagernet/cronet-go/lib/ios_amd64_simulator",
+          "github.com/sagernet/cronet-go/lib/ios_arm64",
+          "github.com/sagernet/cronet-go/lib/ios_arm64_simulator",
+          "github.com/sagernet/cronet-go/lib/linux_386",
+          "github.com/sagernet/cronet-go/lib/linux_386_musl",
+          "github.com/sagernet/cronet-go/lib/linux_amd64",
+          "github.com/sagernet/cronet-go/lib/linux_amd64_musl",
+          "github.com/sagernet/cronet-go/lib/linux_arm",
+          "github.com/sagernet/cronet-go/lib/linux_arm64",
+          "github.com/sagernet/cronet-go/lib/linux_arm64_musl",
+          "github.com/sagernet/cronet-go/lib/linux_arm_musl",
+          "github.com/sagernet/cronet-go/lib/tvos_amd64_simulator",
+          "github.com/sagernet/cronet-go/lib/tvos_arm64",
+          "github.com/sagernet/cronet-go/lib/tvos_arm64_simulator",
+          "github.com/sagernet/cronet-go/lib/windows_amd64",
+          "github.com/sagernet/cronet-go/lib/windows_arm64",
+          "github.com/sagernet/fswatch",
+          "github.com/sagernet/sing",
+          "github.com/sagernet/sing-box",
+          "github.com/shtorm-7/sing-dns",
+          "github.com/sagernet/sing-mux",
+          "github.com/sagernet/sing-quic",
+          "github.com/sagernet/sing-shadowsocks",
+          "github.com/sagernet/sing-shadowsocks2",
+          "github.com/sagernet/sing-shadowtls",
+          "github.com/sagernet/sing-tun",
+          "github.com/sagernet/sing-vmess",
+          "std"
+        ]
+      },
+      {
+        "path": "engine-source.cdx.json",
+        "sha256": "bf2f4f2fd8c9d61e7178f19aca6991c0b00448949f1f8809279cc996cacf8672",
+        "components": 226,
+        "missing_license_evidence": 37,
+        "missing_license_names": [
+          "github.com/Psiphon-Labs/utls",
+          "github.com/anytls/sing-anytls",
+          "github.com/flynn/noise",
+          "github.com/sagernet/cronet-go",
+          "github.com/sagernet/cronet-go/all",
+          "github.com/sagernet/cronet-go/lib/android_386",
+          "github.com/sagernet/cronet-go/lib/android_amd64",
+          "github.com/sagernet/cronet-go/lib/android_arm",
+          "github.com/sagernet/cronet-go/lib/android_arm64",
+          "github.com/sagernet/cronet-go/lib/darwin_amd64",
+          "github.com/sagernet/cronet-go/lib/darwin_arm64",
+          "github.com/sagernet/cronet-go/lib/ios_amd64_simulator",
+          "github.com/sagernet/cronet-go/lib/ios_arm64",
+          "github.com/sagernet/cronet-go/lib/ios_arm64_simulator",
+          "github.com/sagernet/cronet-go/lib/linux_386",
+          "github.com/sagernet/cronet-go/lib/linux_386_musl",
+          "github.com/sagernet/cronet-go/lib/linux_amd64",
+          "github.com/sagernet/cronet-go/lib/linux_amd64_musl",
+          "github.com/sagernet/cronet-go/lib/linux_arm",
+          "github.com/sagernet/cronet-go/lib/linux_arm64",
+          "github.com/sagernet/cronet-go/lib/linux_arm64_musl",
+          "github.com/sagernet/cronet-go/lib/linux_arm_musl",
+          "github.com/sagernet/cronet-go/lib/tvos_amd64_simulator",
+          "github.com/sagernet/cronet-go/lib/tvos_arm64",
+          "github.com/sagernet/cronet-go/lib/tvos_arm64_simulator",
+          "github.com/sagernet/cronet-go/lib/windows_amd64",
+          "github.com/sagernet/cronet-go/lib/windows_arm64",
+          "github.com/sagernet/fswatch",
+          "github.com/sagernet/sing",
+          "github.com/sagernet/sing-mux",
+          "github.com/sagernet/sing-quic",
+          "github.com/sagernet/sing-shadowsocks",
+          "github.com/sagernet/sing-shadowsocks2",
+          "github.com/sagernet/sing-shadowtls",
+          "github.com/sagernet/sing-tun",
+          "github.com/sagernet/sing-vmess",
+          "std"
+        ]
+      },
+      {
+        "path": "windows-binary.cdx.json",
+        "sha256": "0d0aadcef768a7ad895c39f02b37cc0ded18454447c71b2e00ea288a592437f4",
+        "components": 115,
+        "missing_license_evidence": 115,
+        "missing_license_names": [
+          "filippo.io/edwards25519",
+          "github.com/AdguardTeam/golibs",
+          "github.com/Jigsaw-Code/outline-sdk",
+          "github.com/Psiphon-Labs/bolt",
+          "github.com/Psiphon-Labs/consistent",
+          "github.com/Psiphon-Labs/goptlib",
+          "./engine/sing-box/replace/psiphon-tls",
+          "github.com/Psiphon-Labs/psiphon-tunnel-core",
+          "./engine/sing-box/replace/psiphon-quic-go",
+          "github.com/Psiphon-Labs/utls",
+          "github.com/ajg/form",
+          "github.com/shtorm-7/dnscrypt/v2",
+          "github.com/ameshkov/dnsstamps",
+          "github.com/amnezia-vpn/amneziawg-go/v3",
+          "github.com/andybalholm/brotli",
+          "github.com/anytls/sing-anytls",
+          "github.com/axiomhq/hyperloglog",
+          "./third_party/warp-plus",
+          "github.com/bifurcation/mint",
+          "github.com/biter777/countries",
+          "github.com/bits-and-blooms/bitset",
+          "github.com/bits-and-blooms/bloom/v3",
+          "github.com/cespare/xxhash",
+          "github.com/cheekybits/genny",
+          "github.com/cloudflare/circl",
+          "github.com/cognusion/go-cache-lru",
+          "github.com/cretz/bine",
+          "github.com/database64128/netx-go",
+          "github.com/database64128/tfo-go/v2",
+          "github.com/dgryski/go-metro",
+          "github.com/ebitengine/purego",
+          "github.com/enfein/mieru/v3",
+          "github.com/flynn/noise",
+          "github.com/fsnotify/fsnotify",
+          "github.com/fxamacker/cbor/v2",
+          "github.com/go-chi/chi/v5",
+          "github.com/go-chi/render",
+          "github.com/go-ole/go-ole",
+          "github.com/gobwas/httphead",
+          "github.com/gobwas/pool",
+          "github.com/gofrs/uuid/v5",
+          "github.com/golang/groupcache",
+          "github.com/golang/snappy",
+          "github.com/google/btree",
+          "github.com/grafov/m3u8",
+          "github.com/hashicorp/yamux",
+          "github.com/hectane/go-acl",
+          "github.com/kamstrup/intmap",
+          "github.com/klauspost/compress",
+          "github.com/klauspost/cpuid/v2",
+          "github.com/klauspost/reedsolomon",
+          "github.com/logrusorgru/aurora",
+          "github.com/mahsanet/dnstt",
+          "github.com/marusama/semaphore",
+          "github.com/metacubex/utls",
+          "github.com/miekg/dns",
+          "github.com/pires/go-proxyproto",
+          "github.com/pkg/errors",
+          "github.com/quic-go/qpack",
+          "github.com/refraction-networking/utls",
+          "github.com/sagernet/bbolt",
+          "github.com/sagernet/cors",
+          "github.com/sagernet/cronet-go",
+          "github.com/sagernet/cronet-go/all",
+          "github.com/sagernet/cronet-go/lib/windows_amd64",
+          "github.com/sagernet/fswatch",
+          "github.com/sagernet/gvisor",
+          "github.com/sagernet/quic-go",
+          "github.com/sagernet/sing",
+          "./engine/sing-box",
+          "github.com/shtorm-7/sing-dns",
+          "github.com/sagernet/sing-mux",
+          "github.com/sagernet/sing-quic",
+          "github.com/sagernet/sing-shadowsocks",
+          "github.com/sagernet/sing-shadowsocks2",
+          "github.com/sagernet/sing-shadowtls",
+          "github.com/sagernet/sing-tun",
+          "github.com/sagernet/sing-vmess",
+          "github.com/sagernet/smux",
+          "./engine/sing-box/replace/wireguard-go",
+          "github.com/sagernet/ws",
+          "github.com/shadowsocks/go-shadowsocks2",
+          "github.com/syndtr/goleveldb",
+          "github.com/tendermint/tm-db",
+          "github.com/tidwall/gjson",
+          "github.com/tidwall/match",
+          "github.com/tidwall/pretty",
+          "github.com/tjfoc/gmsm",
+          "github.com/vishvananda/netns",
+          "github.com/wader/filtertransport",
+          "github.com/wlynxg/anet",
+          "github.com/x448/float16",
+          "github.com/xmdhs/clash2singbox",
+          "github.com/xtaci/kcp-go/v5",
+          "github.com/xtaci/smux",
+          "go4.org/netipx",
+          "golang.org/x/crypto",
+          "golang.org/x/exp",
+          "golang.org/x/mod",
+          "golang.org/x/net",
+          "golang.org/x/sys",
+          "golang.org/x/text",
+          "golang.org/x/time",
+          "golang.zx2c4.com/wintun",
+          "golang.zx2c4.com/wireguard",
+          "golang.zx2c4.com/wireguard/wgctrl",
+          "golang.zx2c4.com/wireguard/windows",
+          "google.golang.org/genproto/googleapis/rpc",
+          "google.golang.org/grpc",
+          "google.golang.org/protobuf",
+          "gopkg.in/yaml.v3",
+          "gvisor.dev/gvisor",
+          "lukechampine.com/blake3",
+          "tailscale.com",
+          "std"
+        ]
+      }
+    ],
+    "retained_old_gap_inspection": {
+      "path": "E:\\r12-c05-license-gap-files.json",
+      "size": 12129,
+      "sha256": "c18982b737648608afe1dd9ed5121f4f2358a15ade2353e3ab7f9cde4f177fa7"
+    },
+    "new_dependency_license_files": [
+      {
+        "path": "C:\\Users\\kiwun\\go\\pkg\\mod\\golang.org\\x\\crypto@v0.56.0\\LICENSE",
+        "size": 1453,
+        "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+      },
+      {
+        "path": "C:\\Users\\kiwun\\go\\pkg\\mod\\github.com\\database64128\\tfo-go\\v2@v2.3.3\\LICENSE",
+        "size": 1070,
+        "sha256": "092daaeb0ef37d1e9870febdaa8e2e19f263128bf4351f811bd5181d0f4a1081"
+      },
+      {
+        "path": "C:\\Users\\kiwun\\go\\pkg\\mod\\golang.org\\toolchain@v0.0.1-go1.26.8.windows-amd64\\LICENSE",
+        "size": 1453,
+        "sha256": "911f8f5782931320f5b8d1160a76365b83aea6447ee6c04fa6d5591467db9dad"
+      }
+    ],
+    "notes": [
+      "Module/source SBOMs include unused dependencies and local replacements; they do not alone prove final linked notices.",
+      "Of 22 old warning module directories inspected, 21 have root license files; Psiphon utls has no root license in this module cache, only nested dicttls/LICENSE found. No license conclusion or legal clearance inferred.",
+      "Initial external sbom-summary.json counted only direct licenses; corrected v2 also reads evidence.licenses. Original remains retained.",
+      "Binary inventory has 115 module components and no license evidence attached by bin command."
+    ]
+  },
+  "reachability_review": [
+    {
+      "ids": [
+        "GO-2026-5932",
+        "GO-2026-6179",
+        "GO-2026-6180",
+        "GO-2026-5841"
+      ],
+      "result": "Affected openpgp/sumdb/s2 packages absent from exact-tag Windows desktop and Android arm64 source import graphs; no binary symbol proof. Other Android architecture graphs not separately collected."
+    },
+    {
+      "ids": [
+        "GO-2026-4316",
+        "GO-2026-5774",
+        "GO-2026-5775",
+        "GO-2026-5777",
+        "GO-2026-4503"
+      ],
+      "result": "chi middleware and edwards25519 packages imported, bounded source scan found no vulnerable function/call path. Not a complete reflection/unsafe/native entrypoint reachability proof; no suppressed IDs."
+    }
+  ],
+  "limits": [
+    "No final APK/installer EXE or complete native Cronet/C++/Flutter dependency/privacy audit.",
+    "No client binding changed; client still uses D05 Core source 94dd310 artifacts. New binaries are component-only until binding/backtests and final packaging.",
+    "No new Windows SCM/TUN/network proof, Android device run, RU-origin/brain-origin proof, signing, candidate, hosted CI, release/push/merge/deploy or provider operation.",
+    "Prior Win11 component lab stays bound to older D05 bytes. Manual offline clone SCM action remains pending.",
+    "C05 remains active; full exact artifact license/notice closure and remaining advisory reachability must be reconciled for final candidate."
+  ],
+  "references": [
+    "https://go.dev/doc/go1.26",
+    "https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck",
+    "https://go.dev/issue/81316",
+    "https://go.dev/issue/81317",
+    "https://go.dev/cl/826504",
+    "https://go.dev/cl/826524"
+  ],
+  "scanner_fallback_source": {
+    "path": "C:\\Users\\kiwun\\go\\pkg\\mod\\golang.org\\x\\vuln@v1.7.0\\internal\\vulncheck\\binary.go",
+    "size": 7531,
+    "sha256": "7e5be5475cabd7870de581bf603650be8fbcf69e8f9f4160a8874a228b6de6b0"
+  },
+  "report_sha256": "c70481b9d58f16928d0322710680a9600c96a166df21c27dffd79dee9622dcfb",
+  "collector": {
+    "path": "E:/r12-c05-write-evidence.py",
+    "sha256": "03b33d133e9111f0dee5995f4bdaabc84a536f9226c3184581e8daeb034fd56e",
+    "note": "Generates initial receipt; command detail and documentation check results appended afterwards."
+  },
+  "documentation_checks": [
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-c05-platform-docs.log",
+      "sha256": "3ad662f775402842298035c10f902cca893213e4b20fee94459e60f5dea8e635",
+      "exit_code": 0,
+      "result": "33 PASS"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-c05-platform-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-c05-package.log",
+      "sha256": "60bf07b28b9b8630ec1c35d89d33406424760eb5603ad9d789630a2eb774a652",
+      "exit_code": 0,
+      "result": "PASS 13 imports / 83 R12 / 378 legacy / 184 links"
+    }
+  ]
+}

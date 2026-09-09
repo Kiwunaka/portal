@@ -1,0 +1,30 @@
+{
+  "utc": "2026-09-08T14:26:25.791325+00:00",
+  "read_only": true,
+  "raw_identifiers_returned": false,
+  "config_sha256": "cd0add7b4805b863531ba0cd49b44c9749dbe38d6e740be6154114631b6920a3",
+  "shared_rules_select_lab": 0,
+  "lab_cohort_count": 0,
+  "gates": {
+    "awg2_lab": {
+      "enabled": true,
+      "kill_switch_engaged": false,
+      "install_allowlist_count": 0,
+      "account_allowlist_count": 0,
+      "platform_count": 2
+    },
+    "awg31_lab": {
+      "enabled": true,
+      "kill_switch_engaged": false,
+      "install_allowlist_count": 0,
+      "account_allowlist_count": 0,
+      "platform_count": 2
+    }
+  },
+  "source_hashes": {
+    "network_rollout.py": "54ed24f243e29fb7c37fda5e3489dbd5ffb6ffac670ff4c6bab4b9c9021ce34b",
+    "awg31_lab_service.py": "95d4ce0609619c1a17a6f38de6aeaaf2369b34a0c7b44516ed9a7b50cd206978",
+    "awg2_lab_service.py": "6c19d94e389c705e73fc58c632503d0c043484aa547b72182e64b61f969b1666"
+  },
+  "status": "REVIEW_REQUIRED"
+}

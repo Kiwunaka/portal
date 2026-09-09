@@ -1,0 +1,1784 @@
+{
+  "captured_at_utc": "2026-09-09T02:19:51.322750+00:00",
+  "runs": [
+    {
+      "conclusion": "success",
+      "createdAt": "2026-09-09T02:00:19Z",
+      "databaseId": 34301454191,
+      "event": "pull_request",
+      "headBranch": "codex/consolidated-plan-start-20260905",
+      "headSha": "9b3f80f7bbd8a54e4ea9b0d377914340a015d5a3",
+      "jobs": [
+        {
+          "completedAt": "2026-09-09T02:08:48Z",
+          "conclusion": "success",
+          "databaseId": 102309032793,
+          "name": "repo-guardrails",
+          "startedAt": "2026-09-09T02:00:21Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-09-09T02:00:23Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-09-09T02:00:22Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:00:28Z",
+              "conclusion": "success",
+              "name": "Checkout",
+              "number": 2,
+              "startedAt": "2026-09-09T02:00:23Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:00:38Z",
+              "conclusion": "success",
+              "name": "Setup Python",
+              "number": 3,
+              "startedAt": "2026-09-09T02:00:28Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:00:46Z",
+              "conclusion": "success",
+              "name": "Setup Node",
+              "number": 4,
+              "startedAt": "2026-09-09T02:00:38Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:00:46Z",
+              "conclusion": "success",
+              "name": "Validate dependency contract",
+              "number": 5,
+              "startedAt": "2026-09-09T02:00:46Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:01:06Z",
+              "conclusion": "success",
+              "name": "Install backend dependencies",
+              "number": 6,
+              "startedAt": "2026-09-09T02:00:46Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:01:38Z",
+              "conclusion": "success",
+              "name": "Install webapp dependencies",
+              "number": 7,
+              "startedAt": "2026-09-09T02:01:06Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:01:50Z",
+              "conclusion": "success",
+              "name": "Install adminapp dependencies",
+              "number": 8,
+              "startedAt": "2026-09-09T02:01:38Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:02:00Z",
+              "conclusion": "success",
+              "name": "Install marketing dependencies",
+              "number": 9,
+              "startedAt": "2026-09-09T02:01:50Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:04:28Z",
+              "conclusion": "success",
+              "name": "Validate canonical adminapp candidate",
+              "number": 10,
+              "startedAt": "2026-09-09T02:02:00Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:04:29Z",
+              "conclusion": "success",
+              "name": "Validate script manifest references",
+              "number": 11,
+              "startedAt": "2026-09-09T02:04:28Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:04:29Z",
+              "conclusion": "success",
+              "name": "Validate generated artifacts and public wording",
+              "number": 12,
+              "startedAt": "2026-09-09T02:04:29Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:04:30Z",
+              "conclusion": "success",
+              "name": "Validate shared-facts and release-handoff contracts",
+              "number": 13,
+              "startedAt": "2026-09-09T02:04:29Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:04:31Z",
+              "conclusion": "success",
+              "name": "Validate support signing custody controls",
+              "number": 14,
+              "startedAt": "2026-09-09T02:04:30Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:08:45Z",
+              "conclusion": "success",
+              "name": "Quick release gate",
+              "number": 15,
+              "startedAt": "2026-09-09T02:04:31Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:08:45Z",
+              "conclusion": "success",
+              "name": "Post Setup Node",
+              "number": 28,
+              "startedAt": "2026-09-09T02:08:45Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:08:45Z",
+              "conclusion": "success",
+              "name": "Post Setup Python",
+              "number": 29,
+              "startedAt": "2026-09-09T02:08:45Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:08:45Z",
+              "conclusion": "success",
+              "name": "Post Checkout",
+              "number": 30,
+              "startedAt": "2026-09-09T02:08:45Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:08:45Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 31,
+              "startedAt": "2026-09-09T02:08:45Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/Kiwunaka/portal/actions/runs/34301454191/job/102309032793"
+        }
+      ],
+      "status": "completed",
+      "updatedAt": "2026-09-09T02:08:49Z",
+      "url": "https://github.com/Kiwunaka/portal/actions/runs/34301454191",
+      "workflowName": "Guardrails",
+      "repository": "Kiwunaka/portal",
+      "executed_step_count": 19,
+      "evidence_label": "PASS"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-09-09T02:05:09Z",
+      "databaseId": 34301792472,
+      "event": "pull_request",
+      "headBranch": "codex/consolidated-plan-start-20260905",
+      "headSha": "d57ead0a34f6a4eaf639bc741102356f9fb2f436",
+      "jobs": [
+        {
+          "completedAt": "2026-09-09T02:14:02Z",
+          "conclusion": "success",
+          "databaseId": 102310043833,
+          "name": "repo-guardrails",
+          "startedAt": "2026-09-09T02:05:12Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-09-09T02:05:14Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-09-09T02:05:13Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:05:18Z",
+              "conclusion": "success",
+              "name": "Checkout",
+              "number": 2,
+              "startedAt": "2026-09-09T02:05:14Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:05:26Z",
+              "conclusion": "success",
+              "name": "Setup Python",
+              "number": 3,
+              "startedAt": "2026-09-09T02:05:18Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:05:34Z",
+              "conclusion": "success",
+              "name": "Setup Node",
+              "number": 4,
+              "startedAt": "2026-09-09T02:05:26Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:05:34Z",
+              "conclusion": "success",
+              "name": "Validate dependency contract",
+              "number": 5,
+              "startedAt": "2026-09-09T02:05:34Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:05:57Z",
+              "conclusion": "success",
+              "name": "Install backend dependencies",
+              "number": 6,
+              "startedAt": "2026-09-09T02:05:34Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:06:32Z",
+              "conclusion": "success",
+              "name": "Install webapp dependencies",
+              "number": 7,
+              "startedAt": "2026-09-09T02:05:57Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:06:41Z",
+              "conclusion": "success",
+              "name": "Install adminapp dependencies",
+              "number": 8,
+              "startedAt": "2026-09-09T02:06:32Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:06:50Z",
+              "conclusion": "success",
+              "name": "Install marketing dependencies",
+              "number": 9,
+              "startedAt": "2026-09-09T02:06:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:08:56Z",
+              "conclusion": "success",
+              "name": "Validate canonical adminapp candidate",
+              "number": 10,
+              "startedAt": "2026-09-09T02:06:50Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:08:56Z",
+              "conclusion": "success",
+              "name": "Validate script manifest references",
+              "number": 11,
+              "startedAt": "2026-09-09T02:08:56Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:08:57Z",
+              "conclusion": "success",
+              "name": "Validate generated artifacts and public wording",
+              "number": 12,
+              "startedAt": "2026-09-09T02:08:56Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:08:57Z",
+              "conclusion": "success",
+              "name": "Validate shared-facts and release-handoff contracts",
+              "number": 13,
+              "startedAt": "2026-09-09T02:08:57Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:08:58Z",
+              "conclusion": "success",
+              "name": "Validate support signing custody controls",
+              "number": 14,
+              "startedAt": "2026-09-09T02:08:57Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:13:59Z",
+              "conclusion": "success",
+              "name": "Quick release gate",
+              "number": 15,
+              "startedAt": "2026-09-09T02:08:58Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:13:59Z",
+              "conclusion": "success",
+              "name": "Post Setup Node",
+              "number": 28,
+              "startedAt": "2026-09-09T02:13:59Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:14:00Z",
+              "conclusion": "success",
+              "name": "Post Setup Python",
+              "number": 29,
+              "startedAt": "2026-09-09T02:13:59Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:14:00Z",
+              "conclusion": "success",
+              "name": "Post Checkout",
+              "number": 30,
+              "startedAt": "2026-09-09T02:14:00Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:14:00Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 31,
+              "startedAt": "2026-09-09T02:14:00Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/Kiwunaka/portal/actions/runs/34301792472/job/102310043833"
+        }
+      ],
+      "status": "completed",
+      "updatedAt": "2026-09-09T02:14:02Z",
+      "url": "https://github.com/Kiwunaka/portal/actions/runs/34301792472",
+      "workflowName": "Guardrails",
+      "repository": "Kiwunaka/portal",
+      "executed_step_count": 19,
+      "evidence_label": "PASS"
+    },
+    {
+      "conclusion": "failure",
+      "createdAt": "2026-09-09T02:05:09Z",
+      "databaseId": 34301792505,
+      "event": "pull_request",
+      "headBranch": "codex/consolidated-plan-start-20260905",
+      "headSha": "d57ead0a34f6a4eaf639bc741102356f9fb2f436",
+      "jobs": [
+        {
+          "completedAt": "2026-09-09T02:06:36Z",
+          "conclusion": "failure",
+          "databaseId": 102310044138,
+          "name": "cross-repository-contract",
+          "startedAt": "2026-09-09T02:05:12Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-09-09T02:05:13Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-09-09T02:05:12Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:05:17Z",
+              "conclusion": "success",
+              "name": "Checkout platform candidate",
+              "number": 2,
+              "startedAt": "2026-09-09T02:05:13Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:06:12Z",
+              "conclusion": "success",
+              "name": "Checkout active client promotion line",
+              "number": 3,
+              "startedAt": "2026-09-09T02:05:17Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:06:15Z",
+              "conclusion": "success",
+              "name": "Checkout Core promotion line",
+              "number": 4,
+              "startedAt": "2026-09-09T02:06:12Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:06:27Z",
+              "conclusion": "success",
+              "name": "Setup Python",
+              "number": 5,
+              "startedAt": "2026-09-09T02:06:15Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:06:27Z",
+              "conclusion": "success",
+              "name": "Validate dependency contract",
+              "number": 6,
+              "startedAt": "2026-09-09T02:06:27Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:06:32Z",
+              "conclusion": "success",
+              "name": "Materialize bound Core source authority",
+              "number": 7,
+              "startedAt": "2026-09-09T02:06:27Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:06:34Z",
+              "conclusion": "failure",
+              "name": "Validate cross-repository release-handoff v2 contract",
+              "number": 8,
+              "startedAt": "2026-09-09T02:06:32Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:06:34Z",
+              "conclusion": "skipped",
+              "name": "Post Setup Python",
+              "number": 13,
+              "startedAt": "2026-09-09T02:06:34Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:06:35Z",
+              "conclusion": "success",
+              "name": "Post Checkout Core promotion line",
+              "number": 14,
+              "startedAt": "2026-09-09T02:06:34Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:06:35Z",
+              "conclusion": "success",
+              "name": "Post Checkout active client promotion line",
+              "number": 15,
+              "startedAt": "2026-09-09T02:06:35Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:06:35Z",
+              "conclusion": "success",
+              "name": "Post Checkout platform candidate",
+              "number": 16,
+              "startedAt": "2026-09-09T02:06:35Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:06:35Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 17,
+              "startedAt": "2026-09-09T02:06:35Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/Kiwunaka/portal/actions/runs/34301792505/job/102310044138"
+        }
+      ],
+      "status": "completed",
+      "updatedAt": "2026-09-09T02:06:37Z",
+      "url": "https://github.com/Kiwunaka/portal/actions/runs/34301792505",
+      "workflowName": "Release v2 Contract",
+      "repository": "Kiwunaka/portal",
+      "executed_step_count": 12,
+      "evidence_label": "FAILURE"
+    },
+    {
+      "conclusion": "skipped",
+      "createdAt": "2026-09-09T02:05:08Z",
+      "databaseId": 34301790647,
+      "event": "workflow_dispatch",
+      "headBranch": "codex/consolidated-plan-start-20260905",
+      "headSha": "d57ead0a34f6a4eaf639bc741102356f9fb2f436",
+      "jobs": [
+        {
+          "completedAt": "2026-09-09T02:05:09Z",
+          "conclusion": "skipped",
+          "databaseId": 102310074686,
+          "name": "verify-hosted-custody",
+          "startedAt": "2026-09-09T02:05:18Z",
+          "status": "completed",
+          "steps": [],
+          "url": "https://github.com/Kiwunaka/portal/actions/runs/34301790647/job/102310074686"
+        }
+      ],
+      "status": "completed",
+      "updatedAt": "2026-09-09T02:05:10Z",
+      "url": "https://github.com/Kiwunaka/portal/actions/runs/34301790647",
+      "workflowName": "Support Signing Custody",
+      "repository": "Kiwunaka/portal",
+      "executed_step_count": 0,
+      "evidence_label": "NOT_RUN"
+    },
+    {
+      "conclusion": "failure",
+      "createdAt": "2026-09-09T02:08:03Z",
+      "databaseId": 34301989210,
+      "event": "pull_request",
+      "headBranch": "codex/r12-client-implementation",
+      "headSha": "de5d4784ecd9d1fc90575e48e16da0f90f42da41",
+      "jobs": [
+        {
+          "completedAt": "2026-09-09T02:10:49Z",
+          "conclusion": "failure",
+          "databaseId": 102310647587,
+          "name": "cross-repository-contract",
+          "startedAt": "2026-09-09T02:08:42Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-09-09T02:08:46Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-09-09T02:08:43Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:09:02Z",
+              "conclusion": "success",
+              "name": "Reclaim unused runner disk",
+              "number": 2,
+              "startedAt": "2026-09-09T02:08:46Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:09:02Z",
+              "conclusion": "skipped",
+              "name": "Validate exact replay refs",
+              "number": 3,
+              "startedAt": "2026-09-09T02:09:02Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:10:29Z",
+              "conclusion": "success",
+              "name": "Checkout client candidate",
+              "number": 4,
+              "startedAt": "2026-09-09T02:09:02Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:10:38Z",
+              "conclusion": "success",
+              "name": "Checkout platform promotion line",
+              "number": 5,
+              "startedAt": "2026-09-09T02:10:29Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:10:40Z",
+              "conclusion": "success",
+              "name": "Checkout Core promotion line",
+              "number": 6,
+              "startedAt": "2026-09-09T02:10:38Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:10:45Z",
+              "conclusion": "failure",
+              "name": "Materialize bound Core source authority",
+              "number": 7,
+              "startedAt": "2026-09-09T02:10:40Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:10:45Z",
+              "conclusion": "skipped",
+              "name": "Setup Python",
+              "number": 8,
+              "startedAt": "2026-09-09T02:10:45Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:10:45Z",
+              "conclusion": "skipped",
+              "name": "Setup Java",
+              "number": 9,
+              "startedAt": "2026-09-09T02:10:45Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:10:45Z",
+              "conclusion": "skipped",
+              "name": "Setup Go",
+              "number": 10,
+              "startedAt": "2026-09-09T02:10:45Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:10:45Z",
+              "conclusion": "skipped",
+              "name": "Setup Flutter",
+              "number": 11,
+              "startedAt": "2026-09-09T02:10:45Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:10:45Z",
+              "conclusion": "skipped",
+              "name": "Validate cross-repository release-handoff v2 contract",
+              "number": 12,
+              "startedAt": "2026-09-09T02:10:45Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:10:45Z",
+              "conclusion": "skipped",
+              "name": "Run client unit and Android flavor tests",
+              "number": 13,
+              "startedAt": "2026-09-09T02:10:45Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:10:45Z",
+              "conclusion": "skipped",
+              "name": "Validate conditional Linux daemon foundation",
+              "number": 14,
+              "startedAt": "2026-09-09T02:10:45Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:10:45Z",
+              "conclusion": "success",
+              "name": "Post Checkout Core promotion line",
+              "number": 26,
+              "startedAt": "2026-09-09T02:10:45Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:10:46Z",
+              "conclusion": "success",
+              "name": "Post Checkout platform promotion line",
+              "number": 27,
+              "startedAt": "2026-09-09T02:10:45Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:10:46Z",
+              "conclusion": "success",
+              "name": "Post Checkout client candidate",
+              "number": 28,
+              "startedAt": "2026-09-09T02:10:46Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:10:46Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 29,
+              "startedAt": "2026-09-09T02:10:46Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/Kiwunaka/POKROV-app/actions/runs/34301989210/job/102310647587"
+        }
+      ],
+      "status": "completed",
+      "updatedAt": "2026-09-09T02:10:50Z",
+      "url": "https://github.com/Kiwunaka/POKROV-app/actions/runs/34301989210",
+      "workflowName": "Release v2 Contract",
+      "repository": "Kiwunaka/POKROV-app",
+      "executed_step_count": 10,
+      "evidence_label": "FAILURE"
+    },
+    {
+      "conclusion": "success",
+      "createdAt": "2026-09-09T02:08:05Z",
+      "databaseId": 34301990803,
+      "event": "workflow_dispatch",
+      "headBranch": "codex/r12-client-implementation",
+      "headSha": "de5d4784ecd9d1fc90575e48e16da0f90f42da41",
+      "jobs": [
+        {
+          "completedAt": "2026-09-09T02:18:19Z",
+          "conclusion": "success",
+          "databaseId": 102310654677,
+          "name": "cross-repository-contract",
+          "startedAt": "2026-09-09T02:08:08Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-09-09T02:08:11Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-09-09T02:08:09Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:08:31Z",
+              "conclusion": "success",
+              "name": "Reclaim unused runner disk",
+              "number": 2,
+              "startedAt": "2026-09-09T02:08:11Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:08:31Z",
+              "conclusion": "success",
+              "name": "Validate exact replay refs",
+              "number": 3,
+              "startedAt": "2026-09-09T02:08:31Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:09:25Z",
+              "conclusion": "success",
+              "name": "Checkout client candidate",
+              "number": 4,
+              "startedAt": "2026-09-09T02:08:31Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:09:31Z",
+              "conclusion": "success",
+              "name": "Checkout platform promotion line",
+              "number": 5,
+              "startedAt": "2026-09-09T02:09:25Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:09:32Z",
+              "conclusion": "success",
+              "name": "Checkout Core promotion line",
+              "number": 6,
+              "startedAt": "2026-09-09T02:09:31Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:09:51Z",
+              "conclusion": "success",
+              "name": "Materialize bound Core source authority",
+              "number": 7,
+              "startedAt": "2026-09-09T02:09:32Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:09:52Z",
+              "conclusion": "success",
+              "name": "Setup Python",
+              "number": 8,
+              "startedAt": "2026-09-09T02:09:51Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:09:52Z",
+              "conclusion": "success",
+              "name": "Setup Java",
+              "number": 9,
+              "startedAt": "2026-09-09T02:09:52Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:10:02Z",
+              "conclusion": "success",
+              "name": "Setup Go",
+              "number": 10,
+              "startedAt": "2026-09-09T02:09:52Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:10:22Z",
+              "conclusion": "success",
+              "name": "Setup Flutter",
+              "number": 11,
+              "startedAt": "2026-09-09T02:10:02Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:10:48Z",
+              "conclusion": "success",
+              "name": "Validate cross-repository release-handoff v2 contract",
+              "number": 12,
+              "startedAt": "2026-09-09T02:10:22Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:18:05Z",
+              "conclusion": "success",
+              "name": "Run client unit and Android flavor tests",
+              "number": 13,
+              "startedAt": "2026-09-09T02:10:48Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:18:14Z",
+              "conclusion": "success",
+              "name": "Validate conditional Linux daemon foundation",
+              "number": 14,
+              "startedAt": "2026-09-09T02:18:05Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:18:16Z",
+              "conclusion": "success",
+              "name": "Post Setup Flutter",
+              "number": 22,
+              "startedAt": "2026-09-09T02:18:14Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:18:16Z",
+              "conclusion": "success",
+              "name": "Post Setup Go",
+              "number": 23,
+              "startedAt": "2026-09-09T02:18:16Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:18:16Z",
+              "conclusion": "success",
+              "name": "Post Setup Java",
+              "number": 24,
+              "startedAt": "2026-09-09T02:18:16Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:18:16Z",
+              "conclusion": "success",
+              "name": "Post Setup Python",
+              "number": 25,
+              "startedAt": "2026-09-09T02:18:16Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:18:16Z",
+              "conclusion": "success",
+              "name": "Post Checkout Core promotion line",
+              "number": 26,
+              "startedAt": "2026-09-09T02:18:16Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:18:16Z",
+              "conclusion": "success",
+              "name": "Post Checkout platform promotion line",
+              "number": 27,
+              "startedAt": "2026-09-09T02:18:16Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:18:17Z",
+              "conclusion": "success",
+              "name": "Post Checkout client candidate",
+              "number": 28,
+              "startedAt": "2026-09-09T02:18:16Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T02:18:17Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 29,
+              "startedAt": "2026-09-09T02:18:17Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/Kiwunaka/POKROV-app/actions/runs/34301990803/job/102310654677"
+        }
+      ],
+      "status": "completed",
+      "updatedAt": "2026-09-09T02:18:20Z",
+      "url": "https://github.com/Kiwunaka/POKROV-app/actions/runs/34301990803",
+      "workflowName": "Release v2 Contract",
+      "repository": "Kiwunaka/POKROV-app",
+      "executed_step_count": 22,
+      "evidence_label": "PASS"
+    },
+    {
+      "conclusion": "failure",
+      "createdAt": "2026-09-05T04:35:30Z",
+      "databaseId": 33944971093,
+      "event": "push",
+      "headBranch": "main",
+      "headSha": "da1ad7395615837432615e0f150d7c0bf05322a4",
+      "jobs": [
+        {
+          "completedAt": "2026-09-05T04:35:32Z",
+          "conclusion": "failure",
+          "databaseId": 101249293281,
+          "name": "cross-repository-contract",
+          "startedAt": "2026-09-05T04:35:30Z",
+          "status": "completed",
+          "steps": [],
+          "url": "https://github.com/Kiwunaka/POKROV-app/actions/runs/33944971093/job/101249293281"
+        }
+      ],
+      "status": "completed",
+      "updatedAt": "2026-09-05T04:35:33Z",
+      "url": "https://github.com/Kiwunaka/POKROV-app/actions/runs/33944971093",
+      "workflowName": "Release v2 Contract",
+      "repository": "Kiwunaka/POKROV-app",
+      "executed_step_count": 0,
+      "evidence_label": "NOT_RUN"
+    },
+    {
+      "conclusion": "failure",
+      "createdAt": "2026-09-09T00:47:31Z",
+      "databaseId": 34296498734,
+      "event": "pull_request",
+      "headBranch": "codex/r12-correlated-endpoint-probe",
+      "headSha": "c7a11f7d2fd974726095ad7aa0619c055273dd15",
+      "jobs": [
+        {
+          "completedAt": "2026-09-09T00:50:11Z",
+          "conclusion": "success",
+          "databaseId": 102294161591,
+          "name": "test",
+          "startedAt": "2026-09-09T00:47:34Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-09-09T00:47:35Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-09-09T00:47:34Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:47:36Z",
+              "conclusion": "success",
+              "name": "Run actions/checkout@v4",
+              "number": 2,
+              "startedAt": "2026-09-09T00:47:35Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:47:37Z",
+              "conclusion": "success",
+              "name": "Verify exact Core source authority",
+              "number": 3,
+              "startedAt": "2026-09-09T00:47:36Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:03Z",
+              "conclusion": "success",
+              "name": "Run actions/setup-go@v5",
+              "number": 4,
+              "startedAt": "2026-09-09T00:47:37Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:13Z",
+              "conclusion": "success",
+              "name": "Install ripgrep",
+              "number": 5,
+              "startedAt": "2026-09-09T00:48:03Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:20Z",
+              "conclusion": "success",
+              "name": "Test",
+              "number": 6,
+              "startedAt": "2026-09-09T00:48:13Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:20Z",
+              "conclusion": "success",
+              "name": "Vet supported runtime packages",
+              "number": 7,
+              "startedAt": "2026-09-09T00:48:20Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:21Z",
+              "conclusion": "success",
+              "name": "Race-test supported runtime packages",
+              "number": 8,
+              "startedAt": "2026-09-09T00:48:20Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:21Z",
+              "conclusion": "success",
+              "name": "Install govulncheck",
+              "number": 9,
+              "startedAt": "2026-09-09T00:48:21Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:36Z",
+              "conclusion": "success",
+              "name": "Scan supported runtime packages for reachable vulnerabilities",
+              "number": 10,
+              "startedAt": "2026-09-09T00:48:21Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:37Z",
+              "conclusion": "success",
+              "name": "Vet and race-test mobile Core event bridge",
+              "number": 11,
+              "startedAt": "2026-09-09T00:48:36Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:51Z",
+              "conclusion": "success",
+              "name": "Scan mobile Core event bridge for reachable vulnerabilities",
+              "number": 12,
+              "startedAt": "2026-09-09T00:48:37Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:52Z",
+              "conclusion": "success",
+              "name": "Install pinned static analysis and SBOM tools",
+              "number": 13,
+              "startedAt": "2026-09-09T00:48:51Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:49:18Z",
+              "conclusion": "success",
+              "name": "Staticcheck supported release packages",
+              "number": 14,
+              "startedAt": "2026-09-09T00:48:52Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:49:51Z",
+              "conclusion": "success",
+              "name": "Fuzz the config and profile parser",
+              "number": 15,
+              "startedAt": "2026-09-09T00:49:18Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:50:08Z",
+              "conclusion": "success",
+              "name": "Generate deterministic dependency and license SBOMs",
+              "number": 16,
+              "startedAt": "2026-09-09T00:49:51Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:50:09Z",
+              "conclusion": "success",
+              "name": "Retain source SBOM evidence",
+              "number": 17,
+              "startedAt": "2026-09-09T00:50:08Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:50:09Z",
+              "conclusion": "success",
+              "name": "Post Run actions/setup-go@v5",
+              "number": 33,
+              "startedAt": "2026-09-09T00:50:09Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:50:09Z",
+              "conclusion": "success",
+              "name": "Post Run actions/checkout@v4",
+              "number": 34,
+              "startedAt": "2026-09-09T00:50:09Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:50:09Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 35,
+              "startedAt": "2026-09-09T00:50:09Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/Kiwunaka/pokrov-core/actions/runs/34296498734/job/102294161591"
+        },
+        {
+          "completedAt": "2026-09-09T00:48:49Z",
+          "conclusion": "failure",
+          "databaseId": 102294161699,
+          "name": "release-contract",
+          "startedAt": "2026-09-09T00:47:34Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-09-09T00:47:35Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-09-09T00:47:34Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:47:37Z",
+              "conclusion": "success",
+              "name": "Checkout Core candidate",
+              "number": 2,
+              "startedAt": "2026-09-09T00:47:35Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:40Z",
+              "conclusion": "success",
+              "name": "Checkout active client promotion line",
+              "number": 3,
+              "startedAt": "2026-09-09T00:47:37Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:41Z",
+              "conclusion": "success",
+              "name": "Verify exact Core source authority",
+              "number": 4,
+              "startedAt": "2026-09-09T00:48:40Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:45Z",
+              "conclusion": "success",
+              "name": "Checkout platform promotion line",
+              "number": 5,
+              "startedAt": "2026-09-09T00:48:41Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:46Z",
+              "conclusion": "success",
+              "name": "Setup Python",
+              "number": 6,
+              "startedAt": "2026-09-09T00:48:45Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:47Z",
+              "conclusion": "failure",
+              "name": "Materialize bound Core source authority",
+              "number": 7,
+              "startedAt": "2026-09-09T00:48:46Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:47Z",
+              "conclusion": "skipped",
+              "name": "Validate client, Core, and release-handoff v2 parity",
+              "number": 8,
+              "startedAt": "2026-09-09T00:48:47Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:47Z",
+              "conclusion": "skipped",
+              "name": "Post Setup Python",
+              "number": 13,
+              "startedAt": "2026-09-09T00:48:47Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:47Z",
+              "conclusion": "success",
+              "name": "Post Checkout platform promotion line",
+              "number": 14,
+              "startedAt": "2026-09-09T00:48:47Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:48Z",
+              "conclusion": "success",
+              "name": "Post Checkout active client promotion line",
+              "number": 15,
+              "startedAt": "2026-09-09T00:48:47Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:48Z",
+              "conclusion": "success",
+              "name": "Post Checkout Core candidate",
+              "number": 16,
+              "startedAt": "2026-09-09T00:48:48Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:48:48Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 17,
+              "startedAt": "2026-09-09T00:48:48Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/Kiwunaka/pokrov-core/actions/runs/34296498734/job/102294161699"
+        },
+        {
+          "completedAt": "2026-09-09T00:55:30Z",
+          "conclusion": "success",
+          "databaseId": 102294719253,
+          "name": "android-artifact-reproducibility",
+          "startedAt": "2026-09-09T00:50:13Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-09-09T00:50:15Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-09-09T00:50:14Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:50:16Z",
+              "conclusion": "success",
+              "name": "Checkout Core source",
+              "number": 2,
+              "startedAt": "2026-09-09T00:50:15Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:50:20Z",
+              "conclusion": "success",
+              "name": "Verify exact Core source authority",
+              "number": 3,
+              "startedAt": "2026-09-09T00:50:16Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:50:21Z",
+              "conclusion": "success",
+              "name": "Setup Python for deterministic XCFramework metadata",
+              "number": 4,
+              "startedAt": "2026-09-09T00:50:20Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:50:39Z",
+              "conclusion": "success",
+              "name": "Setup Go",
+              "number": 5,
+              "startedAt": "2026-09-09T00:50:21Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:50:39Z",
+              "conclusion": "success",
+              "name": "Setup Java",
+              "number": 6,
+              "startedAt": "2026-09-09T00:50:39Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:50:40Z",
+              "conclusion": "success",
+              "name": "Download source SBOM evidence",
+              "number": 7,
+              "startedAt": "2026-09-09T00:50:39Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:55:01Z",
+              "conclusion": "success",
+              "name": "Build Android AAR first pass",
+              "number": 8,
+              "startedAt": "2026-09-09T00:50:40Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:55:25Z",
+              "conclusion": "success",
+              "name": "Build Android AAR second pass",
+              "number": 9,
+              "startedAt": "2026-09-09T00:55:01Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:55:26Z",
+              "conclusion": "success",
+              "name": "Compare Android builds and write bounded provenance",
+              "number": 10,
+              "startedAt": "2026-09-09T00:55:25Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:55:27Z",
+              "conclusion": "success",
+              "name": "Retain Android pre-candidate evidence",
+              "number": 11,
+              "startedAt": "2026-09-09T00:55:26Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:55:27Z",
+              "conclusion": "success",
+              "name": "Post Setup Java",
+              "number": 19,
+              "startedAt": "2026-09-09T00:55:27Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:55:27Z",
+              "conclusion": "success",
+              "name": "Post Setup Go",
+              "number": 20,
+              "startedAt": "2026-09-09T00:55:27Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:55:28Z",
+              "conclusion": "success",
+              "name": "Post Setup Python for deterministic XCFramework metadata",
+              "number": 21,
+              "startedAt": "2026-09-09T00:55:27Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:55:28Z",
+              "conclusion": "success",
+              "name": "Post Checkout Core source",
+              "number": 22,
+              "startedAt": "2026-09-09T00:55:28Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:55:28Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 23,
+              "startedAt": "2026-09-09T00:55:28Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/Kiwunaka/pokrov-core/actions/runs/34296498734/job/102294719253"
+        },
+        {
+          "completedAt": "2026-09-09T01:02:06Z",
+          "conclusion": "success",
+          "databaseId": 102294719282,
+          "name": "apple-source-build",
+          "startedAt": "2026-09-09T00:50:18Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-09-09T00:50:20Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-09-09T00:50:18Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:50:22Z",
+              "conclusion": "success",
+              "name": "Checkout Core source",
+              "number": 2,
+              "startedAt": "2026-09-09T00:50:20Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:50:23Z",
+              "conclusion": "success",
+              "name": "Verify exact Core source authority",
+              "number": 3,
+              "startedAt": "2026-09-09T00:50:22Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:50:39Z",
+              "conclusion": "success",
+              "name": "Setup Go",
+              "number": 4,
+              "startedAt": "2026-09-09T00:50:23Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:50:40Z",
+              "conclusion": "success",
+              "name": "Download source SBOM evidence",
+              "number": 5,
+              "startedAt": "2026-09-09T00:50:39Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:58:31Z",
+              "conclusion": "success",
+              "name": "Build Apple XCFramework first pass",
+              "number": 6,
+              "startedAt": "2026-09-09T00:50:40Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T01:01:03Z",
+              "conclusion": "success",
+              "name": "Build Apple XCFramework second pass",
+              "number": 7,
+              "startedAt": "2026-09-09T00:58:31Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T01:01:09Z",
+              "conclusion": "success",
+              "name": "Diagnose Apple reproducibility inputs",
+              "number": 8,
+              "startedAt": "2026-09-09T01:01:03Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T01:01:12Z",
+              "conclusion": "success",
+              "name": "Compare Apple builds and write bounded provenance",
+              "number": 9,
+              "startedAt": "2026-09-09T01:01:09Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T01:01:13Z",
+              "conclusion": "success",
+              "name": "Retain Apple source-build evidence",
+              "number": 10,
+              "startedAt": "2026-09-09T01:01:12Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T01:02:00Z",
+              "conclusion": "success",
+              "name": "Post Setup Go",
+              "number": 19,
+              "startedAt": "2026-09-09T01:01:13Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T01:02:01Z",
+              "conclusion": "success",
+              "name": "Post Checkout Core source",
+              "number": 20,
+              "startedAt": "2026-09-09T01:02:00Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T01:02:02Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 21,
+              "startedAt": "2026-09-09T01:02:01Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/Kiwunaka/pokrov-core/actions/runs/34296498734/job/102294719282"
+        },
+        {
+          "completedAt": "2026-09-09T00:57:04Z",
+          "conclusion": "success",
+          "databaseId": 102294719343,
+          "name": "windows-artifact-reproducibility",
+          "startedAt": "2026-09-09T00:50:13Z",
+          "status": "completed",
+          "steps": [
+            {
+              "completedAt": "2026-09-09T00:50:17Z",
+              "conclusion": "success",
+              "name": "Set up job",
+              "number": 1,
+              "startedAt": "2026-09-09T00:50:14Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:50:25Z",
+              "conclusion": "success",
+              "name": "Checkout Core source",
+              "number": 2,
+              "startedAt": "2026-09-09T00:50:17Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:50:26Z",
+              "conclusion": "success",
+              "name": "Verify exact Core source authority",
+              "number": 3,
+              "startedAt": "2026-09-09T00:50:25Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:51:50Z",
+              "conclusion": "success",
+              "name": "Checkout active client for pinned Cronet and 100-cycle backtest",
+              "number": 4,
+              "startedAt": "2026-09-09T00:50:26Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:52:51Z",
+              "conclusion": "success",
+              "name": "Setup Go",
+              "number": 5,
+              "startedAt": "2026-09-09T00:51:50Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:54:10Z",
+              "conclusion": "success",
+              "name": "Setup Flutter",
+              "number": 6,
+              "startedAt": "2026-09-09T00:52:51Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:55:32Z",
+              "conclusion": "success",
+              "name": "Install pinned MinGW-w64",
+              "number": 7,
+              "startedAt": "2026-09-09T00:54:10Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:55:33Z",
+              "conclusion": "success",
+              "name": "Download source SBOM evidence",
+              "number": 8,
+              "startedAt": "2026-09-09T00:55:32Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:55:50Z",
+              "conclusion": "success",
+              "name": "Build Windows DLL first pass",
+              "number": 9,
+              "startedAt": "2026-09-09T00:55:33Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:56:00Z",
+              "conclusion": "success",
+              "name": "Build Windows DLL second pass",
+              "number": 10,
+              "startedAt": "2026-09-09T00:55:50Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:56:48Z",
+              "conclusion": "success",
+              "name": "Run the current-source DLL 100-cycle proxy backtest",
+              "number": 11,
+              "startedAt": "2026-09-09T00:56:00Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:56:50Z",
+              "conclusion": "success",
+              "name": "Compare Windows builds and write bounded provenance",
+              "number": 12,
+              "startedAt": "2026-09-09T00:56:48Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:56:51Z",
+              "conclusion": "success",
+              "name": "Retain Windows pre-candidate evidence",
+              "number": 13,
+              "startedAt": "2026-09-09T00:56:50Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:56:52Z",
+              "conclusion": "success",
+              "name": "Post Setup Flutter",
+              "number": 23,
+              "startedAt": "2026-09-09T00:56:51Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:56:53Z",
+              "conclusion": "success",
+              "name": "Post Setup Go",
+              "number": 24,
+              "startedAt": "2026-09-09T00:56:52Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:56:56Z",
+              "conclusion": "success",
+              "name": "Post Checkout active client for pinned Cronet and 100-cycle backtest",
+              "number": 25,
+              "startedAt": "2026-09-09T00:56:53Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:56:58Z",
+              "conclusion": "success",
+              "name": "Post Checkout Core source",
+              "number": 26,
+              "startedAt": "2026-09-09T00:56:56Z",
+              "status": "completed"
+            },
+            {
+              "completedAt": "2026-09-09T00:57:00Z",
+              "conclusion": "success",
+              "name": "Complete job",
+              "number": 27,
+              "startedAt": "2026-09-09T00:56:58Z",
+              "status": "completed"
+            }
+          ],
+          "url": "https://github.com/Kiwunaka/pokrov-core/actions/runs/34296498734/job/102294719343"
+        }
+      ],
+      "status": "completed",
+      "updatedAt": "2026-09-09T01:02:07Z",
+      "url": "https://github.com/Kiwunaka/pokrov-core/actions/runs/34296498734",
+      "workflowName": "CI",
+      "repository": "Kiwunaka/pokrov-core",
+      "executed_step_count": 78,
+      "evidence_label": "FAILURE"
+    }
+  ],
+  "repositories": [
+    {
+      "name": "Kiwunaka/portal",
+      "private": false,
+      "default_branch": "master",
+      "default_permissions": {
+        "default_workflow_permissions": "read",
+        "can_approve_pull_request_reviews": false
+      },
+      "collaborators": [
+        {
+          "login": "Kiwunaka",
+          "role": "admin"
+        }
+      ]
+    },
+    {
+      "name": "Kiwunaka/POKROV-app",
+      "private": false,
+      "default_branch": "main",
+      "default_permissions": {
+        "default_workflow_permissions": "read",
+        "can_approve_pull_request_reviews": false
+      },
+      "collaborators": [
+        {
+          "login": "Kiwunaka",
+          "role": "admin"
+        }
+      ]
+    },
+    {
+      "name": "Kiwunaka/pokrov-core",
+      "private": false,
+      "default_branch": "main",
+      "default_permissions": {
+        "default_workflow_permissions": "read",
+        "can_approve_pull_request_reviews": false
+      },
+      "collaborators": [
+        {
+          "login": "Kiwunaka",
+          "role": "admin"
+        }
+      ]
+    },
+    {
+      "name": "Kiwunaka/pokrov",
+      "private": false,
+      "default_branch": "main",
+      "default_permissions": {
+        "default_workflow_permissions": "read",
+        "can_approve_pull_request_reviews": false
+      },
+      "collaborators": [
+        {
+          "login": "Kiwunaka",
+          "role": "admin"
+        }
+      ]
+    }
+  ],
+  "workflows": [
+    {
+      "repository": "Kiwunaka/portal",
+      "revision": "d57ead0a34f6a4eaf639bc741102356f9fb2f436",
+      "path": ".github/workflows/guardrails.yml",
+      "git_blob": "c653fc241d55490777baadd02431740c3cb1b290",
+      "sha256": "2a9f0caa82fac4cb187f08ecfd708b2a89e82878f5359bba6f54925ce129b08a",
+      "source": "name: Guardrails\n\non:\n  pull_request:\n  push:\n    branches:\n      - main\n      - master\n\njobs:\n  repo-guardrails:\n    runs-on: ubuntu-latest\n    env:\n      PYTHONDONTWRITEBYTECODE: \"1\"\n    steps:\n      - name: Checkout\n        uses: actions/checkout@v4\n\n      - name: Setup Python\n        uses: actions/setup-python@v5\n        with:\n          python-version: \"3.12.5\"\n\n      - name: Setup Node\n        uses: actions/setup-node@v4\n        with:\n          node-version: \"22.14.0\"\n          cache: \"npm\"\n          cache-dependency-path: |\n            webapp/package-lock.json\n            adminapp/package-lock.json\n            marketing/package-lock.json\n\n      - name: Validate dependency contract\n        run: python scripts/check_dependency_contract.py\n\n      - name: Install backend dependencies\n        run: |\n          python -m pip install pip==26.1.2\n          python -m pip install --require-hashes -r requirements-test.txt\n          npm install --global npm@11.7.0\n\n      - name: Install webapp dependencies\n        run: |\n          cd webapp\n          npm ci\n          npx playwright install --with-deps chromium\n\n      - name: Install adminapp dependencies\n        run: |\n          cd adminapp\n          npm ci\n          npx playwright install chromium\n\n      - name: Install marketing dependencies\n        run: |\n          cd marketing\n          npm ci\n\n      - name: Validate canonical adminapp candidate\n        run: |\n          cd adminapp\n          npm run check:sdk\n          npm run lint\n          npm run build\n          npm run verify:cutover\n          npm run test:e2e\n\n      - name: Validate script manifest references\n        run: python scripts/check_script_manifest.py\n\n      - name: Validate generated artifacts and public wording\n        run: python scripts/ci_check_artifacts.py --check-copy\n\n      - name: Validate shared-facts and release-handoff contracts\n        run: python -m unittest tests.test_shared_surface_facts tests.test_remote_brain_apply_release_handoff tests.test_release_orchestrator tests.test_smoke_client_apps\n\n      - name: Validate support signing custody controls\n        run: python -m pytest -q tests/test_verify_support_signing_custody.py tests/test_support_signing_custody_workflow.py\n\n      - name: Quick release gate\n        run: python scripts/release_gate_check.py --quick --allow-missing-client-root\n"
+    },
+    {
+      "repository": "Kiwunaka/portal",
+      "revision": "d57ead0a34f6a4eaf639bc741102356f9fb2f436",
+      "path": ".github/workflows/release-v2-contract.yml",
+      "git_blob": "c0bfdd402bbe3e12d474aadcddf5276283147986",
+      "sha256": "615f8565d5cb8c12d7930c499bac67b662dedfd1a21cbca8387ddfe8fc9dd932",
+      "source": "name: Release v2 Contract\n\non:\n  pull_request:\n  push:\n    branches:\n      - master\n  workflow_dispatch:\n\npermissions:\n  contents: read\n\njobs:\n  cross-repository-contract:\n    runs-on: ubuntu-latest\n    steps:\n      - name: Checkout platform candidate\n        uses: actions/checkout@v4\n        with:\n          path: platform\n\n      - name: Checkout active client promotion line\n        uses: actions/checkout@v4\n        with:\n          repository: Kiwunaka/POKROV-app\n          # PR 20 assembles the exact unmerged 1.2.0 tuple. Pushes and every\n          # other PR continue to validate the client promotion line.\n          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 20 && '879970d9e44f2375f9d00f4f12eebcc9bfc568b7' || 'main' }}\n          path: POKROV-app\n          ssh-key: ${{ secrets.POKROV_RELEASE_CLIENT_DEPLOY_KEY }}\n          lfs: true\n          persist-credentials: false\n\n      - name: Checkout Core promotion line\n        uses: actions/checkout@v4\n        with:\n          repository: Kiwunaka/pokrov-core\n          ref: main\n          path: POKROV-core\n          fetch-depth: 0\n          persist-credentials: false\n\n      - name: Setup Python\n        uses: actions/setup-python@v5\n        with:\n          python-version: \"3.12.5\"\n\n      - name: Validate dependency contract\n        working-directory: platform\n        run: python scripts/check_dependency_contract.py\n\n      - name: Materialize bound Core source authority\n        shell: pwsh\n        run: |\n          $candidateRoot = Join-Path \"${{ github.workspace }}\" \"POKROV-core\"\n          $authorityRoot = Join-Path \"${{ github.workspace }}\" \"POKROV-core-authority\"\n          $seedPath = Join-Path \"${{ github.workspace }}\" \"POKROV-app/config/runtime-artifacts.seed.json\"\n          $boundCore = (Get-Content -Raw -LiteralPath $seedPath | ConvertFrom-Json).core.source_commit\n          if ($boundCore -notmatch \"^[0-9a-f]{40}$\") {\n            throw \"Client runtime seed does not contain a full Core source commit.\"\n          }\n\n          & git -C $candidateRoot cat-file -e \"$boundCore^{commit}\"\n          if ($LASTEXITCODE -ne 0) {\n            throw \"Bound Core source commit is unavailable in the candidate checkout.\"\n          }\n\n          & git -C $candidateRoot diff --quiet $boundCore HEAD -- . \":(exclude).github/**\"\n          if ($LASTEXITCODE -ne 0) {\n            throw \"Core promotion line changed bound source outside .github while client/main still pins $boundCore.\"\n          }\n\n          & git -C $candidateRoot worktree add --detach $authorityRoot $boundCore\n          if ($LASTEXITCODE -ne 0) {\n            throw \"Failed to materialize the bound Core source authority.\"\n          }\n\n      - name: Validate cross-repository release-handoff v2 contract\n        working-directory: platform\n        run: >-\n          python scripts/run_client_release_gate.py contract\n          --client-root \"${{ github.workspace }}/POKROV-app\"\n          --core-root \"${{ github.workspace }}/POKROV-core-authority\"\n"
+    },
+    {
+      "repository": "Kiwunaka/portal",
+      "revision": "d57ead0a34f6a4eaf639bc741102356f9fb2f436",
+      "path": ".github/workflows/support-signing-custody.yml",
+      "git_blob": "40bc3f2778a19fdd504e8d873d5b5732c1bbd59e",
+      "sha256": "bfbfef4cec33d7960d257d967cd3a11b84abd1e755dea2ccd701ad9753c34553",
+      "source": "name: Support Signing Custody\n\non:\n  push:\n    branches:\n      - master\n    paths:\n      - .github/workflows/support-signing-custody.yml\n      - scripts/verify_support_signing_custody.py\n      - tests/test_verify_support_signing_custody.py\n      - tests/test_support_signing_custody_workflow.py\n      - requirements-ops.txt\n  workflow_dispatch:\n\npermissions:\n  contents: read\n\njobs:\n  verify-hosted-custody:\n    if: github.ref == 'refs/heads/master'\n    runs-on: ubuntu-latest\n    steps:\n      - name: Checkout trusted platform promotion line\n        uses: actions/checkout@v4\n        with:\n          ref: ${{ github.sha }}\n          path: platform\n          persist-credentials: false\n\n      - name: Checkout active client public pin\n        uses: actions/checkout@v4\n        with:\n          repository: Kiwunaka/POKROV-app\n          ref: main\n          path: POKROV-app\n          ssh-key: ${{ secrets.POKROV_RELEASE_CLIENT_DEPLOY_KEY }}\n          persist-credentials: false\n          sparse-checkout: config/support-signing.seed.json\n          sparse-checkout-cone-mode: false\n\n      - name: Capture exact public revisions\n        id: revisions\n        shell: bash\n        run: |\n          set -euo pipefail\n          echo \"platform=$(git -C platform rev-parse HEAD)\" >> \"$GITHUB_OUTPUT\"\n          echo \"client=$(git -C POKROV-app rev-parse HEAD)\" >> \"$GITHUB_OUTPUT\"\n\n      - name: Setup Python\n        uses: actions/setup-python@v5\n        with:\n          python-version: \"3.12.5\"\n\n      - name: Install locked verifier dependencies\n        working-directory: platform\n        run: |\n          python scripts/check_dependency_contract.py\n          python -m pip install pip==26.1.2\n          python -m pip install --require-hashes -r requirements-ops.txt\n\n      - name: Verify hosted custody against client pin\n        working-directory: platform\n        env:\n          POKROV_SUPPORT_MODE_SIGNING_KEY_ID: ${{ vars.POKROV_SUPPORT_MODE_SIGNING_KEY_ID }}\n          POKROV_SUPPORT_MODE_SIGNING_PUBLIC_KEY_B64: ${{ vars.POKROV_SUPPORT_MODE_SIGNING_PUBLIC_KEY_B64 }}\n          POKROV_SUPPORT_MODE_SIGNING_PRIVATE_KEY_B64: ${{ secrets.POKROV_SUPPORT_MODE_SIGNING_PRIVATE_KEY_B64 }}\n          POKROV_SUPPORT_MODE_CODE_SECRET: ${{ secrets.POKROV_SUPPORT_MODE_CODE_SECRET }}\n        run: >-\n          python scripts/verify_support_signing_custody.py\n          --client-seed \"${{ github.workspace }}/POKROV-app/config/support-signing.seed.json\"\n          --platform-revision \"${{ steps.revisions.outputs.platform }}\"\n          --client-revision \"${{ steps.revisions.outputs.client }}\"\n          --output \"${{ runner.temp }}/support-signing-custody-receipt.json\"\n\n      - name: Upload public custody receipt\n        uses: actions/upload-artifact@v4\n        with:\n          name: support-signing-custody-${{ steps.revisions.outputs.platform }}\n          path: ${{ runner.temp }}/support-signing-custody-receipt.json\n          if-no-files-found: error\n          retention-days: 30\n"
+    },
+    {
+      "repository": "Kiwunaka/POKROV-app",
+      "revision": "de5d4784ecd9d1fc90575e48e16da0f90f42da41",
+      "path": ".github/workflows/release-v2-contract.yml",
+      "git_blob": "ff7540280aeb5dda50ae96672344b6373b665990",
+      "sha256": "0c725007aaf1262c5bfb665a430750c9d8d5deb258b3e380570d595985c89116",
+      "source": "name: Release v2 Contract\n\non:\n  pull_request:\n  push:\n    branches:\n      - main\n  workflow_dispatch:\n    inputs:\n      client_ref:\n        description: Exact 40-character client commit for a retained-candidate replay\n        required: true\n        type: string\n      platform_ref:\n        description: Exact 40-character platform commit for the same candidate\n        required: true\n        type: string\n      core_ref:\n        description: Exact 40-character Core commit for the same candidate\n        required: true\n        type: string\n\npermissions:\n  contents: read\n\njobs:\n  cross-repository-contract:\n    runs-on: ubuntu-latest\n    timeout-minutes: 45\n    steps:\n      - name: Reclaim unused runner disk\n        shell: bash\n        run: |\n          df -h /\n          sudo rm -rf -- /usr/share/dotnet\n          sudo rm -rf -- /opt/ghc\n          sudo rm -rf -- /usr/local/share/boost\n          sudo rm -rf -- /opt/hostedtoolcache/CodeQL\n          sudo apt-get clean\n          df -h /\n\n      - name: Validate exact replay refs\n        if: github.event_name == 'workflow_dispatch'\n        shell: bash\n        env:\n          CLIENT_REF: ${{ inputs.client_ref }}\n          PLATFORM_REF: ${{ inputs.platform_ref }}\n          CORE_REF: ${{ inputs.core_ref }}\n        run: |\n          for ref in \"$CLIENT_REF\" \"$PLATFORM_REF\" \"$CORE_REF\"; do\n            if [[ ! \"$ref\" =~ ^[0-9a-f]{40}$ ]]; then\n              echo \"Manual exact replay requires three lowercase full commit SHAs.\"\n              exit 1\n            fi\n          done\n\n      - name: Checkout client candidate\n        uses: actions/checkout@v7\n        with:\n          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.client_ref || github.sha }}\n          path: client\n          lfs: true\n\n      - name: Checkout platform promotion line\n        uses: actions/checkout@v7\n        with:\n          repository: Kiwunaka/portal\n          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.platform_ref || 'master' }}\n          path: platform\n          ssh-key: ${{ secrets.POKROV_RELEASE_PLATFORM_DEPLOY_KEY }}\n          persist-credentials: false\n\n      - name: Checkout Core promotion line\n        uses: actions/checkout@v7\n        with:\n          repository: Kiwunaka/pokrov-core\n          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.core_ref || 'main' }}\n          path: POKROV-core\n          fetch-depth: 0\n          persist-credentials: false\n\n      - name: Materialize bound Core source authority\n        shell: pwsh\n        run: |\n          $candidateRoot = Join-Path \"${{ github.workspace }}\" \"POKROV-core\"\n          $authorityRoot = Join-Path \"${{ github.workspace }}\" \"POKROV-core-authority\"\n          $seedPath = Join-Path \"${{ github.workspace }}\" \"client/config/runtime-artifacts.seed.json\"\n          $boundCore = (Get-Content -Raw -LiteralPath $seedPath | ConvertFrom-Json).core.source_commit\n          if ($boundCore -notmatch \"^[0-9a-f]{40}$\") {\n            throw \"Client runtime seed does not contain a full Core source commit.\"\n          }\n\n          & git -C $candidateRoot cat-file -e \"$boundCore^{commit}\"\n          if ($LASTEXITCODE -ne 0) {\n            throw \"Bound Core source commit is unavailable in the promotion-line checkout.\"\n          }\n\n          & git -C $candidateRoot diff --quiet $boundCore HEAD -- . \":(exclude).github/**\"\n          if ($LASTEXITCODE -ne 0) {\n            throw \"Core promotion line changed bound source outside .github while client/main still pins $boundCore.\"\n          }\n\n          & git -C $candidateRoot worktree add --detach $authorityRoot $boundCore\n          if ($LASTEXITCODE -ne 0) {\n            throw \"Failed to materialize the bound Core source authority.\"\n          }\n\n      - name: Setup Python\n        uses: actions/setup-python@v6\n        with:\n          python-version: \"3.12\"\n\n      - name: Setup Java\n        uses: actions/setup-java@v5\n        with:\n          distribution: temurin\n          java-version: \"17\"\n\n      - name: Setup Go\n        uses: actions/setup-go@v7\n        with:\n          go-version: \"1.25.13\"\n          cache-dependency-path: client/apps/linux_shell/daemon/go.mod\n\n      - name: Setup Flutter\n        uses: subosito/flutter-action@v2\n        with:\n          channel: stable\n          flutter-version: \"3.38.5\"\n          cache: true\n\n      - name: Validate cross-repository release-handoff v2 contract\n        shell: pwsh\n        working-directory: client\n        run: >-\n          ./scripts/validate-seed.ps1\n          -PlatformRoot \"${{ github.workspace }}/platform\"\n          -CoreRoot \"${{ github.workspace }}/POKROV-core-authority\"\n\n      - name: Run client unit and Android flavor tests\n        shell: pwsh\n        working-directory: client\n        run: ./scripts/run-tests.ps1\n\n      - name: Validate conditional Linux daemon foundation\n        shell: bash\n        working-directory: client/apps/linux_shell/daemon\n        run: |\n          unformatted=\"$(gofmt -l $(find . -type f -name '*.go'))\"\n          if [ -n \"$unformatted\" ]; then\n            echo \"$unformatted\"\n            exit 1\n          fi\n          go test ./...\n          go vet ./...\n          go build -trimpath -o \"$RUNNER_TEMP/pokrov-linuxd\" ./cmd/pokrov-linuxd\n"
+    },
+    {
+      "repository": "Kiwunaka/pokrov-core",
+      "revision": "c7a11f7d2fd974726095ad7aa0619c055273dd15",
+      "path": ".github/workflows/ci.yml",
+      "git_blob": "a0c48b9c908f61eb42fd717a3d418e6c21046d77",
+      "sha256": "bd635850fdbb8dee1c25021b0a7ebc25b1dedec69e51892639ba2a3296a4d2c1",
+      "source": "name: CI\n\non:\n  push:\n    branches: [main]\n  pull_request:\n\npermissions:\n  contents: read\n\nenv:\n  POKROV_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    timeout-minutes: 45\n    steps:\n      - uses: actions/checkout@v4\n        with:\n          ref: ${{ env.POKROV_SOURCE_COMMIT }}\n          fetch-depth: 0\n      - name: Verify exact Core source authority\n        shell: pwsh\n        run: |\n          $actual = (& git rev-parse HEAD).Trim()\n          if ($actual -cne $env:POKROV_SOURCE_COMMIT) {\n            throw \"Expected Core source $env:POKROV_SOURCE_COMMIT, got $actual.\"\n          }\n      - uses: actions/setup-go@v5\n        with:\n          go-version: 1.26.8\n          cache-dependency-path: |\n            go.sum\n            engine/sing-box/go.sum\n      - name: Install ripgrep\n        run: sudo apt-get update && sudo apt-get install --yes ripgrep\n      - name: Test\n        shell: pwsh\n        run: ./scripts/test.ps1\n\n      - name: Vet supported runtime packages\n        run: go vet ./internal/observability ./v2/config ./v2/hcore ./v2/hutils ./ray2sing/ray2sing\n\n      - name: Race-test supported runtime packages\n        run: go test -race ./internal/observability ./v2/config ./v2/hcore ./v2/hutils ./ray2sing/ray2sing\n\n      - name: Install govulncheck\n        run: go install golang.org/x/vuln/cmd/govulncheck@v1.7.0\n\n      - name: Scan supported runtime packages for reachable vulnerabilities\n        run: govulncheck ./internal/observability ./v2/config ./v2/hcore ./v2/hutils ./ray2sing/ray2sing\n\n      - name: Vet and race-test mobile Core event bridge\n        working-directory: engine/sing-box\n        run: |\n          go vet ./daemon ./experimental/libbox\n          go test -race ./daemon ./experimental/libbox\n\n      - name: Scan mobile Core event bridge for reachable vulnerabilities\n        working-directory: engine/sing-box\n        run: govulncheck ./daemon ./experimental/libbox\n\n      - name: Install pinned static analysis and SBOM tools\n        run: |\n          go install honnef.co/go/tools/cmd/staticcheck@v0.7.0\n          go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.10.0\n\n      - name: Staticcheck supported release packages\n        run: |\n          staticcheck -checks='SA2*,SA5*,SA6*' ./internal/observability ./v2/config ./v2/hcore ./v2/hutils ./v2/hcore/tunnelservice ./ray2sing/ray2sing ./ray2sing/cmd\n          cd engine/sing-box\n          staticcheck -checks='SA2*,SA5*,SA6*' ./daemon ./experimental/libbox ./protocol/awg\n\n      - name: Fuzz the config and profile parser\n        run: go test -run=^$ -fuzz=FuzzParseConfigDoesNotPanic -fuzztime=30s ./v2/config\n\n      - name: Generate deterministic dependency and license SBOMs\n        run: |\n          mkdir -p \"$RUNNER_TEMP/core-source-sbom\"\n          cyclonedx-gomod mod -licenses -std -json -notimestamp -noserial -output \"$RUNNER_TEMP/core-source-sbom/pokrov-core.cdx.json\" .\n          cyclonedx-gomod mod -licenses -std -json -notimestamp -noserial -output \"$RUNNER_TEMP/core-source-sbom/sing-box.cdx.json\" ./engine/sing-box\n\n      - name: Retain source SBOM evidence\n        uses: actions/upload-artifact@v4\n        with:\n          name: core-source-sbom\n          path: ${{ runner.temp }}/core-source-sbom/*.json\n          if-no-files-found: error\n          retention-days: 14\n\n  release-contract:\n    runs-on: ubuntu-latest\n    steps:\n      - name: Checkout Core candidate\n        uses: actions/checkout@v4\n        with:\n          ref: ${{ env.POKROV_SOURCE_COMMIT }}\n          path: POKROV-core\n          fetch-depth: 0\n\n      - name: Checkout active client promotion line\n        uses: actions/checkout@v4\n        with:\n          repository: Kiwunaka/POKROV-app\n          ref: main\n          path: client\n          lfs: true\n          ssh-key: ${{ secrets.POKROV_RELEASE_CLIENT_DEPLOY_KEY }}\n          persist-credentials: false\n\n      - name: Verify exact Core source authority\n        shell: pwsh\n        working-directory: POKROV-core\n        run: |\n          $actual = (& git rev-parse HEAD).Trim()\n          if ($actual -cne $env:POKROV_SOURCE_COMMIT) {\n            throw \"Expected Core source $env:POKROV_SOURCE_COMMIT, got $actual.\"\n          }\n\n      - name: Checkout platform promotion line\n        uses: actions/checkout@v4\n        with:\n          repository: Kiwunaka/portal\n          ref: master\n          path: platform\n          ssh-key: ${{ secrets.POKROV_RELEASE_PLATFORM_DEPLOY_KEY }}\n          persist-credentials: false\n\n      - name: Setup Python\n        uses: actions/setup-python@v5\n        with:\n          python-version: \"3.12\"\n\n      - name: Materialize bound Core source authority\n        shell: pwsh\n        run: |\n          $candidateRoot = Join-Path \"${{ github.workspace }}\" \"POKROV-core\"\n          $authorityRoot = Join-Path \"${{ github.workspace }}\" \"POKROV-core-authority\"\n          $seedPath = Join-Path \"${{ github.workspace }}\" \"client/config/runtime-artifacts.seed.json\"\n          $boundCore = (Get-Content -Raw -LiteralPath $seedPath | ConvertFrom-Json).core.source_commit\n          if ($boundCore -notmatch \"^[0-9a-f]{40}$\") {\n            throw \"Client runtime seed does not contain a full Core source commit.\"\n          }\n\n          & git -C $candidateRoot cat-file -e \"$boundCore^{commit}\"\n          if ($LASTEXITCODE -ne 0) {\n            throw \"Bound Core source commit is unavailable in the candidate checkout.\"\n          }\n\n          & git -C $candidateRoot diff --quiet $boundCore HEAD -- . \":(exclude).github/**\"\n          if ($LASTEXITCODE -ne 0) {\n            throw \"Core candidate changes bound source outside .github while client/main still pins $boundCore.\"\n          }\n\n          & git -C $candidateRoot worktree add --detach $authorityRoot $boundCore\n          if ($LASTEXITCODE -ne 0) {\n            throw \"Failed to materialize the bound Core source authority.\"\n          }\n\n      - name: Validate client, Core, and release-handoff v2 parity\n        shell: pwsh\n        working-directory: client\n        run: >-\n          ./scripts/validate-seed.ps1\n          -PlatformRoot \"${{ github.workspace }}/platform\"\n          -CoreRoot \"${{ github.workspace }}/POKROV-core-authority\"\n\n  android-artifact-reproducibility:\n    needs: test\n    runs-on: ubuntu-latest\n    timeout-minutes: 90\n    steps:\n      - name: Checkout Core source\n        uses: actions/checkout@v4\n        with:\n          ref: ${{ env.POKROV_SOURCE_COMMIT }}\n          fetch-depth: 0\n\n      - name: Verify exact Core source authority\n        shell: pwsh\n        run: |\n          $actual = (& git rev-parse HEAD).Trim()\n          if ($actual -cne $env:POKROV_SOURCE_COMMIT) {\n            throw \"Expected Core source $env:POKROV_SOURCE_COMMIT, got $actual.\"\n          }\n\n      - name: Setup Python for deterministic XCFramework metadata\n        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5\n        with:\n          python-version: \"3.12\"\n\n      - name: Setup Go\n        uses: actions/setup-go@v5\n        with:\n          go-version: 1.26.8\n          cache-dependency-path: |\n            go.sum\n            engine/sing-box/go.sum\n\n      - name: Setup Java\n        uses: actions/setup-java@v4\n        with:\n          distribution: temurin\n          java-version: \"17\"\n\n      - name: Download source SBOM evidence\n        uses: actions/download-artifact@v4\n        with:\n          name: core-source-sbom\n          path: ${{ runner.temp }}/core-source-sbom\n\n      - name: Build Android AAR first pass\n        shell: pwsh\n        run: >-\n          ./scripts/build-android.ps1\n          -AndroidSdk \"$env:ANDROID_SDK_ROOT\"\n          -GomobileBinDirectory \"$env:RUNNER_TEMP/gomobile\"\n          -OutputDirectory \"$env:RUNNER_TEMP/core-android-a\"\n\n      - name: Build Android AAR second pass\n        shell: pwsh\n        run: >-\n          ./scripts/build-android.ps1\n          -AndroidSdk \"$env:ANDROID_SDK_ROOT\"\n          -GomobileBinDirectory \"$env:RUNNER_TEMP/gomobile\"\n          -OutputDirectory \"$env:RUNNER_TEMP/core-android-b\"\n\n      - name: Compare Android builds and write bounded provenance\n        shell: pwsh\n        run: >-\n          ./scripts/new-release-artifact-evidence.ps1\n          -Lane android\n          -FirstBuildRoot \"$env:RUNNER_TEMP/core-android-a\"\n          -SecondBuildRoot \"$env:RUNNER_TEMP/core-android-b\"\n          -Sbom \"$env:RUNNER_TEMP/core-source-sbom/pokrov-core.cdx.json\",\"$env:RUNNER_TEMP/core-source-sbom/sing-box.cdx.json\"\n          -Output \"$env:RUNNER_TEMP/core-android-evidence.json\"\n          -RequireCleanSource\n\n      - name: Retain Android pre-candidate evidence\n        uses: actions/upload-artifact@v4\n        with:\n          name: core-android-pre-candidate-evidence\n          path: ${{ runner.temp }}/core-android-evidence.json\n          if-no-files-found: error\n          retention-days: 14\n\n  windows-artifact-reproducibility:\n    needs: test\n    runs-on: windows-latest\n    timeout-minutes: 120\n    steps:\n      - name: Checkout Core source\n        uses: actions/checkout@v4\n        with:\n          ref: ${{ env.POKROV_SOURCE_COMMIT }}\n          path: POKROV-core\n          fetch-depth: 0\n\n      - name: Verify exact Core source authority\n        shell: pwsh\n        working-directory: POKROV-core\n        run: |\n          $actual = (& git rev-parse HEAD).Trim()\n          if ($actual -cne $env:POKROV_SOURCE_COMMIT) {\n            throw \"Expected Core source $env:POKROV_SOURCE_COMMIT, got $actual.\"\n          }\n\n      - name: Checkout active client for pinned Cronet and 100-cycle backtest\n        uses: actions/checkout@v4\n        with:\n          repository: Kiwunaka/POKROV-app\n          ref: main\n          path: client\n          ssh-key: ${{ secrets.POKROV_RELEASE_CLIENT_DEPLOY_KEY }}\n          persist-credentials: false\n          lfs: true\n\n      - name: Setup Go\n        uses: actions/setup-go@v5\n        with:\n          go-version: 1.26.8\n          cache-dependency-path: |\n            POKROV-core/go.sum\n            POKROV-core/engine/sing-box/go.sum\n\n      - name: Setup Flutter\n        uses: subosito/flutter-action@v2\n        with:\n          channel: stable\n          flutter-version: \"3.38.5\"\n          cache: true\n\n      - name: Install pinned MinGW-w64\n        shell: pwsh\n        run: |\n          choco install mingw --version=13.2.0 --yes --no-progress\n          $compiler = Get-ChildItem -LiteralPath C:\\ProgramData\\mingw64 -Filter gcc.exe -File -Recurse | Select-Object -First 1\n          if (-not $compiler) { throw \"Pinned MinGW-w64 compiler was not installed.\" }\n          \"POKROV_MINGW_GCC=$($compiler.FullName)\" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append\n\n      - name: Download source SBOM evidence\n        uses: actions/download-artifact@v4\n        with:\n          name: core-source-sbom\n          path: ${{ runner.temp }}/core-source-sbom\n\n      - name: Build Windows DLL first pass\n        shell: pwsh\n        working-directory: POKROV-core\n        run: |\n          if (-not $env:POKROV_MINGW_GCC -or -not (Test-Path -LiteralPath $env:POKROV_MINGW_GCC -PathType Leaf)) { throw \"Pinned MinGW-w64 compiler was not resolved.\" }\n          $cronet = \"${{ github.workspace }}\\client\\apps\\windows_shell\\windows\\runner\\resources\\runtime\\libcronet.dll\"\n          ./scripts/build-windows.ps1 -CCompiler $env:POKROV_MINGW_GCC -CronetLibrary $cronet -OutputDirectory \"$env:RUNNER_TEMP/core-windows-a\"\n\n      - name: Build Windows DLL second pass\n        shell: pwsh\n        working-directory: POKROV-core\n        run: |\n          if (-not $env:POKROV_MINGW_GCC -or -not (Test-Path -LiteralPath $env:POKROV_MINGW_GCC -PathType Leaf)) { throw \"Pinned MinGW-w64 compiler was not resolved.\" }\n          $cronet = \"${{ github.workspace }}\\client\\apps\\windows_shell\\windows\\runner\\resources\\runtime\\libcronet.dll\"\n          ./scripts/build-windows.ps1 -CCompiler $env:POKROV_MINGW_GCC -CronetLibrary $cronet -OutputDirectory \"$env:RUNNER_TEMP/core-windows-b\"\n\n      - name: Run the current-source DLL 100-cycle proxy backtest\n        shell: pwsh\n        working-directory: client\n        run: ./scripts/test-windows-core-proxy-only.ps1 -CoreRoot \"$env:RUNNER_TEMP/core-windows-a\"\n\n      - name: Compare Windows builds and write bounded provenance\n        shell: pwsh\n        working-directory: POKROV-core\n        run: >-\n          ./scripts/new-release-artifact-evidence.ps1\n          -Lane windows\n          -FirstBuildRoot \"$env:RUNNER_TEMP/core-windows-a\"\n          -SecondBuildRoot \"$env:RUNNER_TEMP/core-windows-b\"\n          -Sbom \"$env:RUNNER_TEMP/core-source-sbom/pokrov-core.cdx.json\",\"$env:RUNNER_TEMP/core-source-sbom/sing-box.cdx.json\"\n          -Output \"$env:RUNNER_TEMP/core-windows-evidence.json\"\n          -RequireCleanSource\n\n      - name: Retain Windows pre-candidate evidence\n        uses: actions/upload-artifact@v4\n        with:\n          name: core-windows-pre-candidate-evidence\n          path: ${{ runner.temp }}/core-windows-evidence.json\n          if-no-files-found: error\n          retention-days: 14\n\n  apple-source-build:\n    needs: test\n    runs-on: macos-15\n    timeout-minutes: 120\n    steps:\n      - name: Checkout Core source\n        uses: actions/checkout@v4\n        with:\n          ref: ${{ env.POKROV_SOURCE_COMMIT }}\n          fetch-depth: 0\n\n      - name: Verify exact Core source authority\n        shell: pwsh\n        run: |\n          $actual = (& git rev-parse HEAD).Trim()\n          if ($actual -cne $env:POKROV_SOURCE_COMMIT) {\n            throw \"Expected Core source $env:POKROV_SOURCE_COMMIT, got $actual.\"\n          }\n\n      - name: Setup Go\n        uses: actions/setup-go@v5\n        with:\n          go-version: 1.26.8\n          cache-dependency-path: |\n            go.sum\n            engine/sing-box/go.sum\n\n      - name: Download source SBOM evidence\n        uses: actions/download-artifact@v4\n        with:\n          name: core-source-sbom\n          path: ${{ runner.temp }}/core-source-sbom\n\n      - name: Build Apple XCFramework first pass\n        shell: bash\n        run: bash ./scripts/build-apple.sh \"$RUNNER_TEMP/core-apple-a\"\n\n      - name: Build Apple XCFramework second pass\n        shell: bash\n        run: bash ./scripts/build-apple.sh \"$RUNNER_TEMP/core-apple-b\"\n\n      - name: Diagnose Apple reproducibility inputs\n        shell: bash\n        run: >-\n          bash ./scripts/diagnose-apple-reproducibility.sh\n          \"$RUNNER_TEMP/core-apple-a\"\n          \"$RUNNER_TEMP/core-apple-b\"\n\n      - name: Compare Apple builds and write bounded provenance\n        shell: pwsh\n        run: >-\n          ./scripts/new-release-artifact-evidence.ps1\n          -Lane apple\n          -FirstBuildRoot \"$env:RUNNER_TEMP/core-apple-a\"\n          -SecondBuildRoot \"$env:RUNNER_TEMP/core-apple-b\"\n          -Sbom \"$env:RUNNER_TEMP/core-source-sbom/pokrov-core.cdx.json\",\"$env:RUNNER_TEMP/core-source-sbom/sing-box.cdx.json\"\n          -Output \"$env:RUNNER_TEMP/core-apple-evidence.json\"\n          -RequireCleanSource\n\n      - name: Retain Apple source-build evidence\n        uses: actions/upload-artifact@v4\n        with:\n          name: core-apple-pre-candidate-evidence\n          path: ${{ runner.temp }}/core-apple-evidence.json\n          if-no-files-found: error\n          retention-days: 14\n"
+    },
+    {
+      "repository": "Kiwunaka/pokrov",
+      "revision": "9169f272203ec690ab7b0e6a69e92dc2b6762cb4",
+      "path": ".github/workflows/prepare-signed-candidate.yml",
+      "git_blob": "d02728573f0e57bae94cfa0432b192a20236e021",
+      "sha256": "c376feffb1e048d4c1fbe24d24dbe037457f360576bf27ba2f96080547b9df7e",
+      "source": "name: Prepare signed candidate manifest\n\non:\n  workflow_dispatch:\n    inputs:\n      template_path:\n        description: Tracked candidate template path under candidate-inputs/1.2.0\n        required: true\n        type: string\n      template_sha256:\n        description: Reviewed SHA-256 of the exact tracked template bytes\n        required: true\n        type: string\n      candidate_id:\n        description: Exact candidate id expected inside the template\n        required: true\n        type: string\n\npermissions:\n  contents: read\n\nconcurrency:\n  group: prepare-signed-candidate-${{ github.ref }}\n  cancel-in-progress: false\n\njobs:\n  prepare-signed-candidate:\n    if: github.ref == 'refs/heads/main'\n    runs-on: ubuntu-24.04\n    timeout-minutes: 10\n    steps:\n      - name: Checkout exact main revision\n        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4\n        with:\n          persist-credentials: false\n\n      - name: Set up Python 3.13\n        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5\n        with:\n          python-version: \"3.13\"\n          cache: pip\n          cache-dependency-path: requirements-release.txt\n\n      - name: Install pinned release validator dependencies\n        run: python -m pip install --requirement requirements-release.txt\n\n      - name: Prepare and sign exact candidate manifest\n        env:\n          POKROV_RELEASE_SIGNING_KEY_PEM: ${{ secrets.POKROV_RELEASE_SIGNING_KEY_PEM }}\n          TEMPLATE_PATH: ${{ inputs.template_path }}\n          TEMPLATE_SHA256: ${{ inputs.template_sha256 }}\n          CANDIDATE_ID: ${{ inputs.candidate_id }}\n        run: >-\n          python -B scripts/sign_release_index.py\n          --template \"${TEMPLATE_PATH}\"\n          --template-sha256 \"${TEMPLATE_SHA256}\"\n          --candidate-id \"${CANDIDATE_ID}\"\n          --release-index-commit \"${GITHUB_SHA}\"\n          --output-dir \"${RUNNER_TEMP}/pokrov-signed-candidate\"\n\n      - name: Revalidate signed output without private key\n        run: >-\n          python -B scripts/validate_release_index.py\n          --require-ready\n          --manifest \"${RUNNER_TEMP}/pokrov-signed-candidate/release-index.json\"\n          --signature \"${RUNNER_TEMP}/pokrov-signed-candidate/release-index.json.sig\"\n\n      - name: Upload signed candidate evidence only\n        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2\n        with:\n          name: pokrov-${{ inputs.candidate_id }}-signed-manifest-${{ github.sha }}\n          path: ${{ runner.temp }}/pokrov-signed-candidate/\n          if-no-files-found: error\n          retention-days: 14\n          compression-level: 0\n          overwrite: false\n          include-hidden-files: false\n"
+    },
+    {
+      "repository": "Kiwunaka/pokrov",
+      "revision": "9169f272203ec690ab7b0e6a69e92dc2b6762cb4",
+      "path": ".github/workflows/release-index-contract.yml",
+      "git_blob": "bcda9954c62044c95e54e837eeb5b60b601b8e86",
+      "sha256": "cf14dc4d321286bf061557f538f48fa353e38d3c7cd65f41706d35b9cd4d1bf9",
+      "source": "name: Release index contract\n\non:\n  pull_request:\n  push:\n    branches:\n      - main\n  workflow_dispatch:\n\npermissions:\n  contents: read\n\nconcurrency:\n  group: release-index-contract-${{ github.ref }}\n  cancel-in-progress: true\n\njobs:\n  source-contract:\n    runs-on: ubuntu-24.04\n    timeout-minutes: 10\n    steps:\n      - name: Checkout exact revision\n        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4\n\n      - name: Set up Python 3.13\n        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5\n        with:\n          python-version: \"3.13\"\n          cache: pip\n          cache-dependency-path: requirements-release.txt\n\n      - name: Install pinned release validator dependencies\n        run: python -m pip install --requirement requirements-release.txt\n\n      - name: Validate source contract\n        run: python -B scripts/validate_release_index.py\n\n      - name: Run release-index tests\n        run: python -B -m unittest discover -s tests -v\n"
+    }
+  ],
+  "budget": {
+    "evidence_class": "OWNER_PROVIDED_SCREENSHOT",
+    "account": "Kiwunaka",
+    "lfs_budget_usd": 0,
+    "stop_usage": true,
+    "lfs_billable_usd": 0,
+    "displayed_storage_gb": 1.8,
+    "displayed_included_storage_gb": 10,
+    "displayed_bandwidth_gb": 0,
+    "displayed_included_bandwidth_gb": 10,
+    "screenshots": [
+      {
+        "name": "account-budget-private.png",
+        "sha256": "267b341aead100b9263b1fd97432d1165f61e2ff8b2b3a0a18ed1d0ac6a5ea73"
+      },
+      {
+        "name": "lfs-usage-private.png",
+        "sha256": "664256d27ceee48ba6d02feefcd504bbc0273c46aff6b9464da408b46d076942"
+      }
+    ],
+    "raw_images_in_git": false,
+    "settings_changed": false,
+    "official_policy": "https://docs.github.com/en/billing/concepts/product-billing/git-lfs"
+  },
+  "release_pass": false
+}

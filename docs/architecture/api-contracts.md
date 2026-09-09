@@ -341,6 +341,10 @@ raw value, raw URL/query, IP address, user agent, VPN destination history,
 message text, credentials, and provider payloads are not stored. First touch is
 immutable, last touch is updated by later accepted events, and the session
 expires after `180 days` from its latest touch.
+Literal IPv4/IPv6 referrer hosts and explicit IP sources are discarded before
+persistence and before fallback acquisition-source derivation. Marketing also
+clears these fields from cached browser touches before reuse; ordinary domain
+and campaign attribution remains intact.
 
 `POST /api/acquisition/handoffs` issues a random opaque handle for exactly one
 allowlisted purpose: Android install, Windows install, account continuation,
@@ -355,6 +359,13 @@ known Telegram/account/order lineage. External orders and Telegram Stars
 `pay_attempts` retain the exact acquisition-session foreign key available when
 checkout starts; signed provider callbacks remain payment authority and cannot
 rewrite first/last-touch attribution.
+
+`GET /api/admin/funnel/summary` keeps browser acquisition and known-user product
+cohorts separate. Paid outcomes come only from timestamped server payment
+rows; connected outcomes require `observer_connection` evidence at or after
+the first qualifying payment. Client payment/connection events and
+first-connection self-reports remain diagnostic observations. The projection
+does not infer a browser-to-account link when the acquisition handoff is absent.
 
 `GET /api/client/locations` keeps its existing country/city shape and adds a
 deterministic `variants` list to every returned city. The first item is always
@@ -431,6 +442,12 @@ identifier; an empty selection is rejected as HTTP `422` with stable code
 - `DELETE /api/client/devices/{device_id}` accepts either identifier, requires a
   recent `fresh_auth_at`, increments `credential_version`, marks the device
   revoked and revokes all sessions bound to that device.
+- Device revoke and account lockdown mark active AWG2/AWG3.1/HY2 material for
+  each revoked account/install pair inactive and `revoked` in the same database
+  transaction. Encrypted material and prior rotation history remain retained;
+  a later fresh login does not reactivate those rows. This prevents reissuance
+  of the old material, but removal of an already issued server peer remains a
+  separate delivery-plane enforcement step.
 - Bootstrap possession is not fresh authentication. Email OTP or a one-time
   recovery exchange can set `fresh_auth_at`; otherwise device revoke returns
   `409 fresh_auth_required`.
@@ -720,6 +737,20 @@ explicitly enables the legacy contour.
   state fallback without downgrading either readiness path. None of these
   states creates connection evidence. Device-bound `awg2_lab`, `awg31_lab`,
   and `hy2_lab` skip this unrelated legacy panel path entirely.
+- `GET /api/client/profile/managed?fallback_from_revision=<current-lab-revision>`
+  admits only the advertised ordinary TCP fallback for a current device-bound
+  AWG2/AWG3.1/HY2 policy. A stale revision or non-lab policy returns HTTP 409.
+  Matching requests repeat the normal TCP provisioning/node/access checks and
+  render REALITY with revision
+  `<source-revision>:fallback:legacy_reality_fallback`. The fallback metadata,
+  support context and shortlist name that effective transport; saved rollout
+  policy is unchanged. This is a bounded client recovery mechanism, not a new
+  transport provider pool or permission to activate a lab cohort.
+- AWG2/AWG3.1/HY2 managed rendering validates and decrypts the same selected
+  device-material row. It does not select a second active row after readiness
+  validation, so concurrent rotation cannot label unchecked material with the
+  previously approved generation. This is an issuance snapshot; revoking an
+  already issued peer still requires the owned server enforcement path.
 - Both owned AWG profiles currently route only `0.0.0.0/0`; their managed DNS
   strategy is therefore `ipv4_only`. An IPv6 answer must not be selected until
   the endpoint contract also owns and proves an IPv6 routed prefix.
@@ -734,6 +765,26 @@ explicitly enables the legacy contour.
   fingerprints in intent, preview, audit and result payloads. Raw endpoint,
   keys and install ID are forbidden outside the encrypted request-to-storage
   boundary.
+- AWG2/AWG3.1/HY2 material intents for a canonical account require its active,
+  non-revoked `AccountDevice` row even when the requested install matches the
+  legacy `User.app_install_id`. Execution locks that row, so concurrent device
+  revoke either rejects the replacement or invalidates its committed material.
+- AWG2/AWG3.1 replacement additionally binds the derived X25519 client public
+  key to its original `(tg_id, install_id)` within that protocol, including
+  retained history. A changed endpoint/address or clamped private-key encoding
+  cannot move the same server peer key to another device. A revoked key requires
+  a fresh key even for its original device. PostgreSQL serializes competing
+  insertions of that key until commit; ciphertext and history remain retained.
+  Existing shared lab keys require separate per-device replacement before
+  selective server revocation; the replacement guard itself does not migrate peers.
+  When `AWG_LAB_PEER_TARGETS_FILE` configures an owned server, the worker retires
+  active material after device/account denial, entitlement expiry, or the existing
+  material-age deadline. It commits revocation before removing the peer through
+  strict SSH, from both the saved server configuration and the live interface.
+  Failures remain retryable from retained revoked rows; an unavailable server
+  is not reported as successful revocation. A rotated key with no active copy
+  becomes revoked while retaining ciphertext and its original rotation timestamp.
+  Keys shared by different bindings are reported as blocked and require migration.
 - A confirmed reset starts a fresh full 30-day cycle. Migration retains any
   prior invalid node role in `access_role_legacy` before heuristic backfill so
   an application rollback can restore the old value without deleting evidence.
@@ -826,6 +877,12 @@ remains between the committed order-intent and provider-result transactions.
 completed, failed, queue-wait and duration counters; it contains no SQL,
 parameters, row identity or exception. This is a scoped payment transition, not
 a claim that the remaining async API ORM inventory has been migrated.
+
+The separate `/api/health.event_loop_lag` projection reports lifespan-owned
+timer observations, not payment or request latency. Before its first sample,
+last/max are null; an API without lifespan returns a null projection. Fields,
+collection states and operational limits are defined in
+[Monitoring And Visibility](../operations/monitoring-and-visibility.md).
 
 Anonymous public order creation persists `ExternalOrder` and one
 `PaymentEntitlementClaim` in the same local transaction. The claim is unique by
@@ -1351,8 +1408,44 @@ client/core fields, replaces raw account/install/device/session/attempt/trace
 identity with purpose-scoped opaque references, and groups correlated attempts
 and diagnostic fingerprints server-side. Support-bundle data remains a bounded
 summary with TTL, retention and access-audit facts; observer state remains a
-trusted read-only projection. None of these reads grants entitlement, exposes
-raw IP/token/config/URL material, or changes support-bundle custody.
+trusted read-only projection. These Event-based reads do not grant entitlement,
+expose raw IP/token/config/URL material, or change support-bundle custody.
+The separate, access-controlled network-context field is specified below.
+
+### Automatic access-network diagnostics
+
+Owner decision 2026-09-07 adds `POST /api/client/network/context` for an
+authenticated Android device session. Its closed body accepts `network_class`
+(`cellular|wifi|ethernet|other|unknown`), bounded `carrier`, `direct_observation`,
+`profile_revision` and `runtime_phase`. Account/device/install identity comes
+from authentication; client-supplied IP is rejected. The response is only
+`ok`/`accepted`. Persistence is bounded to one observation per device/30 seconds.
+
+Android binds a fixed owned HTTPS request to a physical `NOT_VPN` network,
+with default TLS verification and no redirects or proxy/default-network
+fallback. The receiving server obtains IP with existing trusted-proxy rules.
+Native routing is a diagnostic claim, never access, abuse or tunnel-health
+authority. If that path fails, ordinary API transport may send carrier/class
+with `direct_observation=false`; its source IP is never saved as the underlying
+address. Missing values stay unknown.
+
+The focused `client_network_diagnostics` service stores zero-risk
+`AntiAbuseEvent(event_kind=client_network_context)` rows outside Event/analytics.
+The supervised privacy worker clears raw IP and coarse metadata within the
+existing capped 72-hour window; full/prefix IP HMAC limits remain seven/ninety
+days. Audit rows remain. Optional `CLIENT_NETWORK_GEOIP_CITY_DB_PATH` points
+to an operator-local City MMDB for subdivision lookup. Country uses the existing
+local country database. No external IP lookup, GPS or coordinates are used;
+missing/unreadable databases yield unknown geography.
+
+User 360 adds `network_context`: latest observation per device (up to 20),
+timestamp, opaque device ref, network/carrier/IP/region and bounded client
+context. This is an explicit exception to the Event adapter's IP exclusion.
+`support.sensitive.read` is required; L1 receives an empty redacted field.
+Expired IP is hidden at read time before cleanup. Every read with these data
+records `support.network_context.read` with actor/scope/count, never network
+values. Online lists, public responses, release-health aggregates and manual
+support-bundle custody do not acquire this payload.
 
 ### Operator network work boundary
 

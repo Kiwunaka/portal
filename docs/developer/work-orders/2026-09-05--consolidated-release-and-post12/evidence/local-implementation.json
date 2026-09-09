@@ -1,0 +1,182 @@
+{
+  "recorded_at_utc": "2026-09-05T13:27:54.576536+00:00",
+  "origin": "current-origin localhost/synthetic source verification",
+  "outcome": "PARTIAL_NEEDS_CONTEXT",
+  "release": "BLOCKED_NO_NEW_CANDIDATE",
+  "repositories": {
+    "platform": {
+      "root": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "head": "6b41f758ca228a0d5ff13ede0f865096cdac2134",
+      "branch": "codex/consolidated-plan-start-20260905",
+      "diff_sha256": "801a7659f66bad3ec7db296337eaa82612ae926173bca281f75df74d606b7414",
+      "changed_files_sha256": {
+        "docs/README.md": "2d7135ec20ff64ced607da4994c5b7b0fc5464533fa89220d3126cb40bb1232f",
+        "docs/architecture/payment-state-machine.md": "7192f623ef8e490e4c039f2ea47876f1111dc6c1f15fdb5243e89600bd9721a6",
+        "docs/developer/agent-context-map.md": "2e28d42d76f5dea3fcea8d536f6bff2e8648d5f0e5b61e12156c5d3cf6ac5c47",
+        "docs/product/payment-and-access-key-contract.md": "b400b372d89de458262d4bbaefd436c8dde33f0d406792e9521976188b87ad37",
+        "marketing/scripts/check-marketing-responsive.mjs": "059882165fbfabcc118976bd52c44abcf31f09a93ff9b811a1295f8fa12a9cc1",
+        "marketing/src/app/checkout/checkout-client.tsx": "86c1694298af0cab0faaf7333a7d6768b9d0e7b5c7f85d19421718ea2f9785a0",
+        "portal_bot/api.py": "6785d952dde8a7abce5bbbe9c1c567405501cf98437028c801e275bd4a8248b3",
+        "portal_bot/api_client_routes.py": "01e8fdf47eb515aec6f7c9bc54fd5abfb5769dce5772e80107891a2f696bebdf",
+        "portal_bot/api_payment_routes.py": "ac71e53ab11d294ba0e8b693854a479a98f7e378c96da87b8c6304d04854bf84",
+        "portal_bot/api_public_routes.py": "ea61cdcd66d22997775fd9d99bff307e9ffee55febbad1a7a2ce7c6fefc9f303",
+        "portal_bot/payment_order_service.py": "98cc464efde4c528d4a5b90246a9c772da129d7d1222caaf401872b191efe8bf",
+        "tests/test_api_payments_callbacks.py": "86d5c574619ea8005fd940954eabe597f2d450a9770e1dd6b06444aa05594786"
+      },
+      "committed": false
+    },
+    "client": {
+      "root": "E:\\r12client",
+      "head": "da1ad7395615837432615e0f150d7c0bf05322a4",
+      "branch": "codex/r12-client-implementation",
+      "diff_sha256": "b65c915e3d40f638ad905eed456167857ec26d977fc4cc260f85338bde236cdd",
+      "changed_files_sha256": {
+        "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidCoreEgressProbe.kt": "e581cd7f6a130665c0fefa254d35f70effa9fdc758533e101a46807777d86630",
+        "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidCoreOperationalEvents.kt": "2daabbb03659fd82721536bd7e3cfaf5122d63607e723e844c92000d0dbc72c1",
+        "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/PokrovRuntimeVpnService.kt": "1858faa2d6f1d21a80100077ef64effe70d9758f66e8f83edf0a3949be5e1850",
+        "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/AndroidCoreEgressProbeTest.kt": "5c5861e02ed7aed14402588757ba12ef72c97782539381af7303afa60a3d9bb6",
+        "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/AndroidCoreOperationalEventsTest.kt": "a843e414491595d2d7100d6fa08c481f7d454a6769da6185cfdf4890ff22d66f",
+        "docs/architecture/bootstrap-workflow.md": "fe3577db6bc2aa2f9d7b5571be45772c22a84dcd19f4e07060bb0baf06ec7d38",
+        "docs/operations/android-release-audit.md": "76a6661c94b35447c0cf2c1f398ac3a164bf3d29e50e9e1cd29267205a469b6e",
+        "docs/operations/windows-release-readiness.md": "5b92be0bcd0926dba2e89945d9899e95b13448db06ee0085c390fe523b016527",
+        "packages/app_shell/lib/src/shell/seed_shell.dart": "ea343811b32a29b2cd0c7f81f08626a9757605a50abe22015ce293e5e890a645",
+        "packages/app_shell/test/connect_first_hint_test.dart": "f9550a4a6d7e513b779df9bab08f4a9587e8155426acdf6dca9c937e88b430ba",
+        "packages/app_shell/test/pokrov_seed_app_test.dart": "9c6fe03ab5474f3e2b8a57e22ab565081ee39c998ba900f556bdb3a09095a462",
+        "packages/runtime_engine/lib/runtime_engine.dart": "85a55448105d9d6a19bdd8ac10158f96dd9ce2ab28e2f842acd9ccfb9ae98b1d",
+        "packages/runtime_engine/test/runtime_engine_test.dart": "b711ab0230170d0f6a20d6f45b156f2a9523300c12266f0bf5722dccfdcdb8fe"
+      },
+      "committed": false
+    },
+    "core": {
+      "root": "E:\\r12core-implementation",
+      "head": "c1185faa998c69fd5164af415249c96c68ab61bd",
+      "branch": "codex/r12-correlated-endpoint-probe",
+      "diff_sha256": "3c902de85932a1fad55ed5d78702622b434fc75804a8196e75e071fe8c745a46",
+      "changed_files_sha256": {
+        "docs/architecture.md": "efab1baef038fa975ae57a17f1dc552aef6d0d95d6b985b867468da9badae723",
+        "engine/sing-box/daemon/started_service.go": "e69dd9bf41f2e7bee895f94c9f5ba3e8bce2475252ad248a3990617f11580ed7",
+        "engine/sing-box/daemon/started_service_test.go": "3243337355b51178c1632ed3d80aa21d78b61d820666076be93e52bbb22e4648",
+        "engine/sing-box/experimental/libbox/command_server.go": "3ccbcdb90b0430d7b8eb9e4e5d2bae5e8330a04775f172571fcacf6e5efa6a11"
+      },
+      "committed": false
+    }
+  },
+  "checks": [
+    {
+      "command": "python -u -B -m pytest -p no:cacheprovider -o faulthandler_timeout=60 tests/test_payment_order_service.py tests/test_commercial_order_service.py tests/test_payment_return_service.py -q",
+      "exit_code": 0,
+      "result": "32 passed",
+      "retained_local_log": "E:/r12-payment-services3.log",
+      "log_sha256": "4ecc78f92a94fee4116ea3103e8ea10d77931dfbc2e908cd2e7764c07d4510e5"
+    },
+    {
+      "command": "python -u -B -m pytest -p no:cacheprovider -o faulthandler_timeout=60 portal_bot/tests/test_email_auth.py tests/test_api_payments_callbacks.py tests/test_lavatop_payment_providers.py tests/test_payment_email_readiness_smoke.py -q",
+      "exit_code": 0,
+      "result": "123 passed; 14 subtests; 19 warnings",
+      "retained_local_log": "E:/r12-payment-router3.log",
+      "log_sha256": "52bd537e06da91c4501c2955a090e63ed400a02840f2fb339a46d6ce90eebe45"
+    },
+    {
+      "command": "npm.cmd --prefix marketing run build",
+      "exit_code": 0,
+      "result": "PASS",
+      "retained_local_log": "E:/r12-marketing-build4.log",
+      "log_sha256": "ede59b6ba96d80a2600b184a769d443bc4446e2b9048d30e0378f6752871266c"
+    },
+    {
+      "command": "npm.cmd --prefix marketing run check:responsive",
+      "exit_code": 0,
+      "result": "PASS including eight checkout scenarios",
+      "retained_local_log": "E:/r12-marketing-responsive5.log",
+      "log_sha256": "254ed85886369ffde8cce31364b7a87a26aca3bab865a7be4e209eaa1ffc15c7"
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/run-tests.ps1",
+      "exit_code": 0,
+      "result": "585 Flutter passed; 1 existing skip; three analyze modules; both Android flavors",
+      "retained_local_log": "E:/r12-client-full-suite4.log",
+      "log_sha256": "1039a7594e90dca9299ab5e5b3559672d858a7c0ec03e2e32a38452e3df18255"
+    },
+    {
+      "command": "go -C engine/sing-box test -count=1 ./daemon ./experimental/libbox",
+      "exit_code": 0,
+      "result": "2 packages PASS; Go1.25.13",
+      "retained_local_log": "E:/r12-core-focused.log",
+      "log_sha256": "73feb016e2fc98ae18ff249f2b1bddd68b8e009986446e20d771d2063614b813"
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/validate-seed.ps1 -CoreRoot E:/r12core-bound -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "result": "PASS retained artifact binding and docs checks",
+      "retained_local_log": "E:/r12-client-seed-final.log",
+      "log_sha256": "85d043bb42e4042266e4b4974b490485e96de4904d24a0fa1a4240e62f0b15a5"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "exit_code": 0,
+      "result": "PASS 13 hashes; 83 R12; 378 legacy; 113 links"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "exit_code": 0,
+      "result": "33 passed in 0.82s"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/validate-seed.ps1 -CoreRoot E:/r12core-bound -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "result": "PASS after final client docs edits",
+      "retained_local_log": "E:/r12-client-docs-final.log",
+      "log_sha256": "fede9d919e7e01cca6ed7441dc2b8beb7e464b4b3b91a79a336155277acfa20e"
+    },
+    {
+      "repository": "platform",
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "repository": "client",
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "repository": "core",
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "PASS"
+    }
+  ],
+  "android_jvm": {
+    "Direct": {
+      "suites": 31,
+      "tests": 185,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "Store": {
+      "suites": 31,
+      "tests": 185,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "limitations": [
+    "Pending owner answer on signed quote for ordinary no-promo checkout",
+    "Disposable PostgreSQL concurrency not run: Docker API unavailable",
+    "Current retained AAR lacks new ProbeEndpoint; new binary binding/device proof not run",
+    "No new candidate/public flags/provider operations/production deployment",
+    "Other queued R12 and postrelease IDs are not completed by this slice"
+  ],
+  "new_source_files_sha256": {
+    "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\marketing\\scripts\\check-checkout-authority.mjs": "82e850a47f30ed25208d3ced7a2d42047c2b4bb57a05145b06fe91b3a8be377b"
+  },
+  "final_validation_at_utc": "2026-09-05T13:33:24.621950+00:00"
+}

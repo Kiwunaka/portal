@@ -1,5 +1,12 @@
 # POKROV Marketing
 
+The home and install download controls refresh the public stable catalog with an
+8-second deadline. Failed or timed-out reads retain approved static release links
+when configured; otherwise the home links to installation and the install page
+shows file availability explicitly. Responsive checks use the local export, block external requests,
+and include a deliberately stalled catalog response; this is synthetic UI proof,
+not live release-index availability evidence.
+
 Last updated: 2026-08-13
 
 ## Document Status
@@ -13,6 +20,13 @@ primary operator surface lives in `adminapp/` at `https://admin.pokrov.space/`;
 the old webapp admin routes are a retained parity fallback only.
 
 ## Current Surface Map
+
+Browser acquisition discards IP literals in referrer hosts and `utm_source`
+before writing local storage or sending funnel/handoff requests. On reuse it
+also clears those fields in an older cached touch, preserving its session and
+campaign history. Domain referrers and named campaign sources remain supported.
+The server independently applies this boundary; payment and connection
+authority is defined in [API contracts](../docs/architecture/api-contracts.md).
 
 - `/` is owned by `marketing/src/app/page.tsx`. Its trust-led sequence is
   `Hero`, `HonestyStrip`, `Steps`, `Showcase`, `Pricing`, `Faq` and `FinalCta`;
@@ -200,3 +214,16 @@ exact action and its source. `shared/pokrov-screen-atlas.ts` owns the
 separate application-screen registry and every referenced screenshot must be a
 redacted current-candidate capture. Guide videos remain unpublished until a
 clean, redacted recording is attached to the matching guide ID.
+
+Hero floating labels keep full opacity during their entrance so readable text
+retains contrast throughout the animation. Their existing two vertical cycles
+and reduced-motion behavior remain bounded.
+
+Checkout state belongs to `src/app/checkout/use-checkout-controller.ts`:
+catalog/provider readiness, quote identity and expiry, immutable order intent,
+same-intent recovery and server payment-return polling. `checkout-client.tsx`
+renders the returned state and invokes its actions. The effects keep their
+separate dependencies, deadlines and cancellation; acquisition remains outside
+the payment critical path. `scripts/check-checkout-authority.mjs` exercises this
+boundary with synthetic responses through the responsive suite. Source contract
+and copy checks inspect both the view and controller.

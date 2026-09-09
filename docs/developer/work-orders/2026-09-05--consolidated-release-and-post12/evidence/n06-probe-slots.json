@@ -1,0 +1,51 @@
+{
+  "recorded_at_utc": "2026-09-05T22:14:25.606947+00:00",
+  "source_commit": "152afc5ae9a1caaf657851f643692b3582083c04",
+  "origin": "current-origin Windows local loopback fixtures",
+  "commands": [
+    {
+      "command": "flutter test test/app_first_runtime_bootstrap_test.dart --plain-name \"bounds hanging Smart Connect probes\"",
+      "log": "E:/r12-n06-probe-before2.log",
+      "exit_code": 1,
+      "result": "regression FAIL before fix: eight outstanding probes, expected three",
+      "sha256": "9fa973a6964f7a3feab6316a859a6d779939e47d1183ff46ce04faadeb22d09a"
+    },
+    {
+      "command": "flutter test test/app_first_runtime_bootstrap_test.dart --plain-name \"bounds hanging Smart Connect probes\"",
+      "log": "E:/r12-n06-probe-after.log",
+      "exit_code": 0,
+      "result": "PASS limit, repeated resolution, capacity recovery",
+      "sha256": "f41b1471a92e2ebbd0763d0dfa15d38ef4f00163aa8ac8ca3f8d5aeb8deaee45"
+    },
+    {
+      "command": "flutter test test/app_first_runtime_bootstrap_test.dart",
+      "log": "E:/r12-n06-bootstrap-full.log",
+      "exit_code": 0,
+      "result": "86 passed",
+      "sha256": "c3510012f76286cd3e20a529596c5edb30c97fd61dc99a21c7ebcb20244c6ed4"
+    },
+    {
+      "command": "flutter test test/pokrov_seed_app_test.dart --plain-name \"automatic Android connect quarantines a confirmed failed node and retries\"",
+      "log": "E:/r12-n06-fallback-recheck.log",
+      "exit_code": 0,
+      "result": "1 passed",
+      "sha256": "511d3575c3330b552d16a358981136611f72e15a166bb057ae0042f53ce06336"
+    },
+    {
+      "command": "flutter analyze --no-pub",
+      "log": "E:/r12-n06-analyze.log",
+      "exit_code": 0,
+      "result": "no issues",
+      "sha256": "1b7ed06ae41f91553c20534821ed9f89a1b62af7e0439759363b3eaf33635fcc"
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/validate-seed.ps1 -CoreRoot E:/r12core-implementation -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start",
+      "log": "E:/r12-n06-seed.log",
+      "exit_code": 0,
+      "result": "PASS",
+      "sha256": "6faef85eec74326be6e48b93bcb796a585c1b6e9716d288da8eb1d406ca80c24"
+    }
+  ],
+  "limitation": "Per-bootstrapper advisory Smart Connect slot count; not all-process/Core probe concurrency, no live device proof. Full N06 remains partial.",
+  "initial_attempt": "The first edit used the wrong package-relative path; no edit occurred and the old test passed. The real before-fix failure is probe-before2, retained separately."
+}

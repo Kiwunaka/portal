@@ -436,6 +436,40 @@ def _active_material(session, *, tg_id: int, install_id: str) -> Hy2LabMaterial 
     )
 
 
+def _ready_material(
+    session,
+    *,
+    tg_id: int,
+    install_id: str,
+    rollout_value: Any,
+    now: datetime | None = None,
+) -> Hy2LabMaterial | None:
+    config = normalize_hy2_lab_config(rollout_value)
+    row = _active_material(session, tg_id=tg_id, install_id=install_id)
+    if row is None:
+        return None
+    current = now or _utcnow()
+    provisioned_at = row.provisioned_at
+    if not isinstance(provisioned_at, datetime):
+        return None
+    if provisioned_at.tzinfo is not None and provisioned_at.utcoffset() is not None:
+        provisioned_at = provisioned_at.astimezone(timezone.utc).replace(tzinfo=None)
+    if provisioned_at < current - timedelta(
+        hours=int(config["material_max_age_hours"])
+    ):
+        return None
+    if not (
+        row.contract_id == config["contract_id"] == HY2_CONTRACT_ID
+        and row.contract_sha256 == config["contract_sha256"] == HY2_CONTRACT_SHA256
+        and row.generation == config["generation"]
+        and row.endpoint_revision == config["endpoint_revision"] == HY2_ENDPOINT_REVISION
+        and row.server_record_id == config["server_record_id"]
+        and row.node_code in set(config["allowlist_node_codes"])
+    ):
+        return None
+    return row
+
+
 def hy2_lab_material_ready(
     session,
     *,
@@ -444,28 +478,10 @@ def hy2_lab_material_ready(
     rollout_value: Any,
     now: datetime | None = None,
 ) -> bool:
-    config = normalize_hy2_lab_config(rollout_value)
-    row = _active_material(session, tg_id=tg_id, install_id=install_id)
-    if row is None:
-        return False
-    current = now or _utcnow()
-    provisioned_at = row.provisioned_at
-    if not isinstance(provisioned_at, datetime):
-        return False
-    if provisioned_at.tzinfo is not None and provisioned_at.utcoffset() is not None:
-        provisioned_at = provisioned_at.astimezone(timezone.utc).replace(tzinfo=None)
-    if provisioned_at < current - timedelta(
-        hours=int(config["material_max_age_hours"])
-    ):
-        return False
-    return bool(
-        row.contract_id == config["contract_id"] == HY2_CONTRACT_ID
-        and row.contract_sha256 == config["contract_sha256"] == HY2_CONTRACT_SHA256
-        and row.generation == config["generation"]
-        and row.endpoint_revision == config["endpoint_revision"] == HY2_ENDPOINT_REVISION
-        and row.server_record_id == config["server_record_id"]
-        and row.node_code in set(config["allowlist_node_codes"])
-    )
+    return _ready_material(
+        session, tg_id=tg_id, install_id=install_id,
+        rollout_value=rollout_value, now=now,
+    ) is not None
 
 
 def build_managed_hy2_lab_config(
@@ -477,16 +493,14 @@ def build_managed_hy2_lab_config(
     title: str,
     now: datetime | None = None,
 ) -> dict[str, Any]:
-    if not hy2_lab_material_ready(
+    row = _ready_material(
         session,
         tg_id=tg_id,
         install_id=install_id,
         rollout_value=rollout_value,
         now=now,
-    ):
-        raise Hy2LabError("material_not_ready")
+    )
     config = normalize_hy2_lab_config(rollout_value)
-    row = _active_material(session, tg_id=tg_id, install_id=install_id)
     if row is None:
         raise Hy2LabError("material_not_ready")
     endpoint = validate_hy2_endpoint(_decrypt_endpoint(row.endpoint_ciphertext))

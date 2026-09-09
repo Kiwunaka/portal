@@ -13,6 +13,7 @@ from typing import Any, Mapping
 
 from cryptography.fernet import Fernet, InvalidToken
 
+from awg_lab_key_binding import AwgDeviceKeyError, require_awg_device_key_binding
 from models import Awg2LabMaterial
 from transport_catalog import AWG2_LAB
 
@@ -419,6 +420,13 @@ def replace_awg2_lab_material(
     server_record = _safe_token(server_record_id, code="server_record_invalid")
     node = _safe_token(node_code, code="node_code_invalid")
     normalized_endpoint = validate_awg2_endpoint(endpoint)
+    try:
+        require_awg_device_key_binding(
+            session, model=Awg2LabMaterial, decrypt_endpoint=_decrypt_endpoint,
+            endpoint=normalized_endpoint, tg_id=tg_id, install_id=install,
+        )
+    except AwgDeviceKeyError as error:
+        raise Awg2LabError(error.code) from None
     canonical = _canonical_json(normalized_endpoint)
     material_hash = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
     current = now or _utcnow()
@@ -474,29 +482,29 @@ def _active_material(session, *, tg_id: int, install_id: str) -> Awg2LabMaterial
     )
 
 
-def awg2_lab_material_ready(
+def _ready_material(
     session,
     *,
     tg_id: int,
     install_id: str,
     rollout_value: Any,
     now: datetime | None = None,
-) -> bool:
+) -> Awg2LabMaterial | None:
     config = normalize_awg2_lab_config(rollout_value)
     row = _active_material(session, tg_id=tg_id, install_id=install_id)
     if row is None:
-        return False
+        return None
     current = now or _utcnow()
     provisioned_at = row.provisioned_at
     if not isinstance(provisioned_at, datetime):
-        return False
+        return None
     if provisioned_at.tzinfo is not None and provisioned_at.utcoffset() is not None:
         provisioned_at = provisioned_at.astimezone(timezone.utc).replace(tzinfo=None)
     if provisioned_at < current - timedelta(
         hours=int(config["material_max_age_hours"])
     ):
-        return False
-    return bool(
+        return None
+    if (
         row.contract_id == config["contract_id"] == AWG2_CONTRACT_ID
         and row.contract_sha256 == config["contract_sha256"] == AWG2_CONTRACT_SHA256
         and row.generation == config["generation"]
@@ -505,7 +513,23 @@ def awg2_lab_material_ready(
         == AWG2_ENDPOINT_REVISION
         and row.server_record_id == config["server_record_id"]
         and row.node_code in set(config["allowlist_node_codes"])
-    )
+    ):
+        return row
+    return None
+
+
+def awg2_lab_material_ready(
+    session,
+    *,
+    tg_id: int,
+    install_id: str,
+    rollout_value: Any,
+    now: datetime | None = None,
+) -> bool:
+    return _ready_material(
+        session, tg_id=tg_id, install_id=install_id,
+        rollout_value=rollout_value, now=now,
+    ) is not None
 
 
 def build_managed_awg2_lab_config(
@@ -517,18 +541,17 @@ def build_managed_awg2_lab_config(
     title: str,
     now: datetime | None = None,
 ) -> dict[str, Any]:
-    if not awg2_lab_material_ready(
+    # Validate and render the same selected row across a concurrent rotation.
+    row = _ready_material(
         session,
         tg_id=tg_id,
         install_id=install_id,
         rollout_value=rollout_value,
         now=now,
-    ):
-        raise Awg2LabError("material_not_ready")
-    config = normalize_awg2_lab_config(rollout_value)
-    row = _active_material(session, tg_id=tg_id, install_id=install_id)
+    )
     if row is None:
         raise Awg2LabError("material_not_ready")
+    config = normalize_awg2_lab_config(rollout_value)
     endpoint = validate_awg2_endpoint(_decrypt_endpoint(row.endpoint_ciphertext))
     if (
         hashlib.sha256(_canonical_json(endpoint).encode("utf-8")).hexdigest()

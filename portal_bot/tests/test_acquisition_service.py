@@ -114,6 +114,33 @@ def test_funnel_event_hashes_session_and_drops_raw_urls_and_meta(tmp_path: Path)
         engine.dispose()
 
 
+@pytest.mark.parametrize("host", ["203.0.113.42", "[2001:db8::42]"])
+@pytest.mark.parametrize("explicit_source", [False, True])
+def test_referrer_ip_is_not_persisted_or_used_as_source(tmp_path: Path, host: str, explicit_source: bool) -> None:
+    from acquisition_service import record_funnel_event
+
+    engine, session = _session(tmp_path)
+    try:
+        acquisition, event = record_funnel_event(
+            session,
+            raw_session_id="browser-session-ip-referrer",
+            event_name="page_view",
+            stage="site_visit",
+            touch=_touch(source=host if explicit_source else "", referrer=f"https://{host}/?private=value"),
+            now=NOW,
+        )
+        session.commit()
+        assert acquisition.first_referrer_host is None
+        assert acquisition.last_referrer_host is None
+        assert acquisition.first_source == "unknown"
+        assert acquisition.last_source == "unknown"
+        assert event.referrer is None
+        assert event.source == "unknown"
+    finally:
+        session.close()
+        engine.dispose()
+
+
 def test_handoff_is_opaque_one_time_and_cross_account_closed(tmp_path: Path) -> None:
     from acquisition_service import AcquisitionError, consume_acquisition_handoff, create_acquisition_handoff
 

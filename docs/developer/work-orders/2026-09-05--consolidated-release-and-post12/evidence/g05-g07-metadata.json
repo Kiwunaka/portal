@@ -1,0 +1,267 @@
+{
+  "schema": "pokrov.r12.g05-g07-metadata/v1",
+  "date": "2026-09-06",
+  "recorded_at": "2026-09-06T02:11:15.235780+00:00",
+  "status": "PARTIAL",
+  "implementation_level": "I3",
+  "origin": "current-origin local Windows host and GitHub API readback",
+  "platform_source": "bf4b6aa77cd68ea36029e403e0c91cd9f045b299",
+  "client_source": "ded58b1906bbfb1096ff919085ef37f5be942eb7",
+  "core_source": "94dd31012ac91fb9ecf2c98ad7383afb54102dd4",
+  "candidate_created": false,
+  "commands": [
+    {
+      "command": "gh api repos/Kiwunaka/pokrov/releases/latest --jq '{tag_name,draft,prerelease,published_at,html_url,assets:[.assets[]|{name,size,digest}]}'",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g05-public-readback.json",
+      "sha256": "d810b43ff22c8704ef2e63a591886bf3e747bee28846c63f2a1224b8fbbbe4b5",
+      "exit_code": 0,
+      "result": "v1.1.6 public, 8 metadata assets"
+    },
+    {
+      "command": "gh api repos/Kiwunaka/pokrov/actions/artifacts/9928470408 --jq '{id,expired,expires_at,size_in_bytes,digest,workflow_run:{id:.workflow_run.id,head_sha:.workflow_run.head_sha}}'",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g05-candidate-artifact-readback.json",
+      "sha256": "dc2fed03723e8cb33aafd3dff44ee1cfaf7fa08ac14768afad4627b32ad09d02",
+      "exit_code": 0,
+      "result": "Private artifact retained, unexpired, digest matches seed"
+    },
+    {
+      "command": "gh api repos/Kiwunaka/pokrov-core/releases/latest --jq '{tag_name,draft,prerelease,published_at,html_url}'",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g07-core-release-readback.json",
+      "sha256": "048ce9e738d1a416bf74f64f7d320c263e5606c52c4c87ea2f604f26947c0562",
+      "exit_code": 0,
+      "result": "v1.0.3 public"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_pokrov_migration_defaults.py tests/test_release_1_2_candidate_preflight.py tests/test_release_1_2_candidate_rollback_rehearsal.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g05-metadata-before.log",
+      "sha256": "87a892f0b16f84f17272b85aac0d18bf5798e7c1193bedf770be67107d984ca2",
+      "exit_code": 1,
+      "result": "1 FAIL / 41 PASS; obsolete build4051 no-candidate prose expectation",
+      "environment": {
+        "POKROV_APP_REPO": "E:/r12client"
+      }
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_pokrov_migration_defaults.py tests/test_release_1_2_candidate_preflight.py tests/test_release_1_2_candidate_rollback_rehearsal.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g05-metadata-after.log",
+      "sha256": "8aa939440269fb7e47e7bb5b80360e669607c670f6d03b8e4abe361ed7a7d5ba",
+      "exit_code": 0,
+      "result": "42 PASS",
+      "environment": {
+        "POKROV_APP_REPO": "E:/r12client"
+      }
+    },
+    {
+      "command": "pwsh -NoProfile -File test/release-handoff-v2-contract.ps1 -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start -CoreRoot E:/r12core-implementation",
+      "cwd": "E:\\r12client",
+      "log": "E:/r12-g07-client-generator.log",
+      "sha256": "63b6ce302b59f7b16f239c7eff241f728772ebf85b3e8a6d073a486151b4c373",
+      "exit_code": 0,
+      "result": "16 PASS synthetic generator cases"
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/validate-seed.ps1 -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start -CoreRoot E:/r12core-implementation",
+      "cwd": "E:\\r12client",
+      "log": "E:/r12-g05-client-seed-final.log",
+      "sha256": "75d73ab37c2bec290312a240be9c2da6164d86c239bdad4768efecbabb133fad",
+      "exit_code": 1,
+      "result": "FAIL hygiene required obsolete BLOCKED_BY_ACCESS literal"
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/validate-seed.ps1 -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start -CoreRoot E:/r12core-implementation",
+      "cwd": "E:\\r12client",
+      "log": "E:/r12-g05-client-seed-after.log",
+      "sha256": "fa06e0042d889a93e76a5179d6c8fabfba1af5e178e1f24070dfda968416366f",
+      "exit_code": 0,
+      "result": "PASS including hygiene/docs/parity"
+    },
+    {
+      "command": "python -B E:/r12-g07-source-boundaries.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g07-source-boundaries.log",
+      "sha256": "da1a365c8b2b2499dbf5a633b4a38ca6b53a10511b48e4701bab16d71122f3e9",
+      "exit_code": 0,
+      "result": "4 rejected repository/latest source cases"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g05-platform-docs.log",
+      "sha256": "8e8012de312ded1fc1a4eb22b5cdb3d776c4be76fdde07836ddf39e5bec16c6b",
+      "exit_code": 0,
+      "result": "33 PASS"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g05-package.log",
+      "sha256": "169fa596b7ed424eab2cefcda887d1a6aae1a132c31f598da9e32d6503b288a3",
+      "exit_code": 0,
+      "result": "13 imports / 83 R12 / 378 legacy / 163 links PASS"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g05-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    }
+  ],
+  "client_files": {
+    "config/release-handoff.seed.json": "d3890d8dbe03d94930e71271655efc6d4fc09765a662ca75cbf9c9bfc406b121",
+    "config/cutover-readiness.seed.json": "434675114e24ecd4c2d5fe4f088a32c6e9ba860cce69bf8c848513aae9e4362e",
+    "config/runtime-artifacts.seed.json": "43df14326a7061d6243e44e491b36ea057fcecce2609f8fa99175ef1394fec46",
+    "scripts/new-release-handoff-v2.ps1": "49ac66b62451816d6508f524c36c88822c3a0d1a7c38b70d1ed0c871bf5290be",
+    "docs/operations/cutover-readiness.md": "0b05f567e69c3aa36b9abe50ad009591491756948603619e61cebfc6dd711ff5",
+    "artifacts/README.md": "d610b1eb0f3a5f52f9868b3f4a8580b3e971c6ba5dbda002b41f3e7099d96dd2",
+    "test/repository-hygiene-contract.ps1": "d59d3aa0622787e434463d682df6fbf2cbf53bb5def524b66f2a8e030ebb85dd"
+  },
+  "platform_test_sha256": "3626148b4c96ad161a259c261f9a82636e60b92a49985ca19a931c26bdd0c23e",
+  "readbacks": {
+    "public": {
+      "assets": [
+        {
+          "digest": "sha256:6ac6ac33d2fae7041b2d408a2c55b93eeddb7d50825c4068f8c9c6087f0d97ca",
+          "name": "pokrov-android-arm64-v8a.apk",
+          "size": 100450426
+        },
+        {
+          "digest": "sha256:553ebd70f91870c600e897da68d14823982839abe849a40a002bb7e2bcd49b5a",
+          "name": "pokrov-android-armeabi-v7a.apk",
+          "size": 89809492
+        },
+        {
+          "digest": "sha256:ff6eed962c7d6bc9d14e50c2e5cd9477fea7e0318f8244b361a01e0ad21233d8",
+          "name": "pokrov-android-universal.apk",
+          "size": 292531061
+        },
+        {
+          "digest": "sha256:2c75c5498b3fa0925960c9cc49cc07f4086b8b6bc83ce66303c0b088404071ec",
+          "name": "pokrov-android-x86_64.apk",
+          "size": 108964281
+        },
+        {
+          "digest": "sha256:2e4383b901629aeb1998b7774e7e308a333a77c5233335a4200cf5677803886d",
+          "name": "pokrov-windows-1.1.6.manifest.json",
+          "size": 2799
+        },
+        {
+          "digest": "sha256:9ecf90bcdec496f6820bb6d3a9658a72009c38664c9947c8d7d07b0ef2cbf27a",
+          "name": "pokrov-windows-portable-x64.zip",
+          "size": 39329345
+        },
+        {
+          "digest": "sha256:dbaa664cf9046205f969204df79f9366b8a944f7d2a6b8d8bbd371522a3b8ae8",
+          "name": "pokrov-windows-setup-x64.exe",
+          "size": 28562832
+        },
+        {
+          "digest": "sha256:b30c9cd93ea3b4e7c4f030cc7253fe60a8bbd767e4a045130e92e594b13e015b",
+          "name": "SHA256SUMS.txt",
+          "size": 673
+        }
+      ],
+      "draft": false,
+      "html_url": "https://github.com/Kiwunaka/pokrov/releases/tag/v1.1.6",
+      "prerelease": false,
+      "published_at": "2026-08-19T12:26:40Z",
+      "tag_name": "v1.1.6"
+    },
+    "candidate_actions": {
+      "digest": "sha256:e31d70082cc9417e088868f6d09a139cb0a8fecd95025b6d28b314a30f59e844",
+      "expired": false,
+      "expires_at": "2026-09-18T08:01:25Z",
+      "id": 9928470408,
+      "size_in_bytes": 7955,
+      "workflow_run": {
+        "head_sha": "63993fba699b68641b7e972071ab7729fa9ec43c",
+        "id": 33851401873
+      }
+    },
+    "core_public": {
+      "draft": false,
+      "html_url": "https://github.com/Kiwunaka/pokrov-core/releases/tag/v1.0.3",
+      "prerelease": false,
+      "published_at": "2026-08-13T05:19:30Z",
+      "tag_name": "v1.0.3"
+    },
+    "identity_comparison": {
+      "public_asset_comparison": [
+        {
+          "name": "pokrov-android-arm64-v8a.apk",
+          "size_sha_match": true
+        },
+        {
+          "name": "pokrov-android-armeabi-v7a.apk",
+          "size_sha_match": true
+        },
+        {
+          "name": "pokrov-android-x86_64.apk",
+          "size_sha_match": true
+        },
+        {
+          "name": "pokrov-android-universal.apk",
+          "size_sha_match": true
+        },
+        {
+          "name": "pokrov-windows-setup-x64.exe",
+          "size_sha_match": true
+        },
+        {
+          "name": "pokrov-windows-portable-x64.zip",
+          "size_sha_match": true
+        }
+      ],
+      "public_tag": "v1.1.6",
+      "public_asset_count": 6,
+      "candidate_actions_digest_matches_seed": true,
+      "candidate_artifact_expired": false,
+      "limitations": [
+        "GitHub reported digest/size; no binary download or cryptographic signature verification in this check.",
+        "Historical candidate identity does not validate current development artifacts."
+      ]
+    },
+    "source_rejections": [
+      {
+        "source": "client",
+        "field": "repository",
+        "rejected": "Kiwunaka/Pokrov-client",
+        "code": "repository_mismatch"
+      },
+      {
+        "source": "client",
+        "field": "repository",
+        "rejected": "Kiwunaka/PORTALapp",
+        "code": "repository_mismatch"
+      },
+      {
+        "source": "core",
+        "field": "revision",
+        "rejected": "latest",
+        "code": "invalid_git_revision"
+      },
+      {
+        "source": "release_index",
+        "field": "repository",
+        "rejected": "Kiwunaka/POKROV-app",
+        "code": "repository_mismatch"
+      }
+    ]
+  },
+  "source_check_script": {
+    "path": "E:/r12-g07-source-boundaries.py",
+    "sha256": "88b91430eb1e84b9487182abb475cac2acef423133ba1c691533d32ccb797cf4"
+  },
+  "limitations": [
+    "Remote digest/size comparison only; no binary download or new signature verification.",
+    "No production app/catalog readback, no new candidate, no final packaged license/provenance proof.",
+    "No mutation to retained artifacts/releases; generated registrants and marketing instruction files excluded.",
+    "No push, merge, deploy, signing or native builds."
+  ]
+}

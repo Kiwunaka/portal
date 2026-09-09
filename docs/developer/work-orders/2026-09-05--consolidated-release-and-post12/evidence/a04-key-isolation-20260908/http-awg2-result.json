@@ -1,0 +1,12 @@
+{
+  "profile": "awg2",
+  "database": "portal_r12_a04_http_keys_awg2_20260908",
+  "result": "FAILED",
+  "http": [],
+  "raw_material_returned_to_evidence": false,
+  "source_files_checked": 196,
+  "source_parent": "9081b964b2ce2f2375e98ccaa9c27c2eec9d8e6c",
+  "failed_phase": "import_api",
+  "error_type": "RuntimeError",
+  "traceback_sha256": "becf584845b86e52f969483a51d2c1402d76696030d2fc9b8913ef9a46446d3c"
+}

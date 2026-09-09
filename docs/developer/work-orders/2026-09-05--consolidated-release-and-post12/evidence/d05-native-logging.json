@@ -1,0 +1,1149 @@
+{
+  "schema": "pokrov.r12.d05-native-logging/v1",
+  "date": "2026-09-06",
+  "status": "NEEDS_RUNTIME_PROOF",
+  "implementation_level": "I3",
+  "origin": "current-origin local Windows host",
+  "core_source": "94dd31012ac91fb9ecf2c98ad7383afb54102dd4",
+  "client_source": "453975348d91bfb78bb3bfb90660c000a9ccd692",
+  "platform_base": "b9854815b6fc77658bf4658707cc7460421571d6",
+  "candidate_created": false,
+  "promotion_authorized": false,
+  "commands": [
+    {
+      "command": "E:/POKROV-tools/go1.25.13/go/bin/go.exe test ./daemon -run TestManagedLoggerDoesNotRetainPlantedMaterialInAnyLogSink -count=1",
+      "cwd": "E:\\r12core-implementation\\engine\\sing-box",
+      "log": "E:/r12-d05-native-before.log",
+      "sha256": "654bb5fa310609cb2ed9c1308a95e0b18a79491316c024aef38e1518375fff1f",
+      "exit_code": 1,
+      "result": "FAIL_REPRODUCED native observable sink retained planted material"
+    },
+    {
+      "command": "E:/POKROV-tools/go1.25.13/go/bin/go.exe test ./daemon ./log ./experimental/libbox -count=1",
+      "cwd": "E:\\r12core-implementation\\engine\\sing-box",
+      "log": "E:/r12-d05-native-after.log",
+      "sha256": "f9714bd1856785dad98816a27362125055bea015adbe9f417faeac6b964b4140",
+      "exit_code": 0,
+      "result": "PASS",
+      "note": "Before the additional panic-semantics test; final daemon race run covers that delta."
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/test.ps1 -GoExecutable E:/POKROV-tools/go1.25.13/go/bin/go.exe",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-d05-core-full.log",
+      "sha256": "e523a70123e22a7c6a9c932e997556cb97e8e5c7464cd3937c31d3d29b18e4d9",
+      "exit_code": 0,
+      "result": "PASS",
+      "note": "Before the additional panic-semantics test; production fix unchanged afterwards."
+    },
+    {
+      "command": "E:/POKROV-tools/go1.25.13/go/bin/go.exe test -race ./daemon -count=1",
+      "cwd": "E:\\r12core-implementation\\engine\\sing-box",
+      "log": "E:/r12-d05-native-race.log",
+      "sha256": "2847b9ab4552dcc7f095faf3f4eb853ee3ea328be893864c85d9d8de29a180ad",
+      "exit_code": 0,
+      "result": "PASS including final panic test",
+      "note": "CGO_ENABLED=1; MinGW 13.2 bin on PATH."
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/build-android.ps1 -GoExecutable E:/POKROV-tools/go1.25.13/go/bin/go.exe -AndroidSdk C:/Users/kiwun/AppData/Local/Android/Sdk -GomobileBinDirectory E:/POKROV-tools/gomobile-go1.25.13 -OutputDirectory E:/POKROV-tools/builds/core-d05/android-a",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-d05-android-a.log",
+      "sha256": "d5f0d887d7326aa2fa1a9d684548612d630e99747c57c91717000edc9faabb93",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/build-android.ps1 -GoExecutable E:/POKROV-tools/go1.25.13/go/bin/go.exe -AndroidSdk C:/Users/kiwun/AppData/Local/Android/Sdk -GomobileBinDirectory E:/POKROV-tools/gomobile-go1.25.13 -OutputDirectory E:/POKROV-tools/builds/core-d05/android-b",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-d05-android-b.log",
+      "sha256": "49c4c7194c48d5f6347049dbc447d5651984f9d987ed2b8d7aaec5afde3fb196",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/build-windows.ps1 -GoExecutable E:/POKROV-tools/go1.25.13/go/bin/go.exe -CCompiler E:/POKROV-tools/runtimes/mingw-13.2.0-ucrt-posix-seh/mingw64/bin/gcc.exe -CronetLibrary E:/r12core-implementation/dist/windows/libcronet.dll -OutputDirectory E:/POKROV-tools/builds/core-d05/windows-a",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-d05-windows-a.log",
+      "sha256": "826d784a5f2837b6495d76b6b8afd026123155ffdc2d41af9eff94fe4d2864a3",
+      "exit_code": 0,
+      "result": "PASS",
+      "note": "Windows build requires MinGW bin on PATH."
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/build-windows.ps1 -GoExecutable E:/POKROV-tools/go1.25.13/go/bin/go.exe -CCompiler E:/POKROV-tools/runtimes/mingw-13.2.0-ucrt-posix-seh/mingw64/bin/gcc.exe -CronetLibrary E:/r12core-implementation/dist/windows/libcronet.dll -OutputDirectory E:/POKROV-tools/builds/core-d05/windows-b",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-d05-windows-b.log",
+      "sha256": "ef3ff3893e2ce9d4f0d46106e5c23f7766d22d73cf8276160277096569f76eff",
+      "exit_code": 0,
+      "result": "PASS",
+      "note": "Windows build requires MinGW bin on PATH."
+    },
+    {
+      "command": "cyclonedx-gomod mod -licenses -std -json -notimestamp -noserial -output <lane SBOM path> . (root and engine/sing-box)",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-d05-sbom.log",
+      "sha256": "29f16d99fb05509a79ec9662ef55ee88943c29cd49f0df4b4e18f8e5e2b874e0",
+      "exit_code": 0,
+      "result": "PASS_GENERATED",
+      "note": "E:/POKROV-tools/builds/go-tools/cyclonedx-gomod.exe; output core-d05/sbom/{pokrov-core,sing-box}.cdx.json. Missing-license warnings retained; no license-clearance claim."
+    },
+    {
+      "command": "scripts/new-release-artifact-evidence.ps1 -Lane android|windows -FirstBuildRoot E:/POKROV-tools/builds/core-d05/<lane>-a -SecondBuildRoot E:/POKROV-tools/builds/core-d05/<lane>-b -Output E:/POKROV-tools/builds/core-d05/<lane>-evidence.json -RequireCleanSource -Sbom @(pokrov-core.cdx.json,sing-box.cdx.json)",
+      "cwd": "E:\\r12core-implementation",
+      "log": "E:/r12-d05-reproducibility-final.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "exit_code": 0,
+      "result": "PASS_BYTE_IDENTICAL_TWO_BUILDS",
+      "note": "Both full SBOM paths under core-d05/sbom; Go bin prepended to PATH. Earlier missing-go invocation retained separately."
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/test-windows-core-proxy-only.ps1 -CoreRoot E:/POKROV-tools/builds/core-d05/windows-a",
+      "cwd": "E:\\r12client",
+      "log": "E:/r12-d05-windows-proxy.log",
+      "sha256": "b66f33ca025d0db760f8294e4608aa765ec439d8407ca02248c8d53b02647610",
+      "exit_code": 1,
+      "result": "FAIL_TIMEOUT reused temporary database reports file missing"
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/test-windows-core-proxy-only.ps1 -CoreRoot E:/POKROV-tools/builds/core-d05/windows-a",
+      "cwd": "E:\\r12client",
+      "log": "E:/r12-d05-windows-proxy-isolated.log",
+      "sha256": "04e2d9b6111eb667725aa565e8f766c138e4ee23e5bfef2548dbfafc6ec2c8d8",
+      "exit_code": 0,
+      "result": "PASS 100 cycles",
+      "note": "TEMP=TMP=E:/r12-d05-proxy-isolated; same DLL; no database deletion."
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/sync-pokrov-core-runtime.ps1 -CoreRoot E:/r12core-implementation",
+      "cwd": "E:\\r12client",
+      "log": "E:/r12-d05-sync.log",
+      "sha256": "a507cb9f4745bf74ea4ff6f11fb0b09dd5266576a650448eb04e9c54d5b3b30d",
+      "exit_code": 0,
+      "result": "PASS exact Android and Windows bytes"
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/test-windows-core-proxy-only.ps1",
+      "cwd": "E:\\r12client",
+      "log": "E:/r12-d05-windows-proxy-final.log",
+      "sha256": "b048f4363b813eef41d1070f99c97b7edb85f2921c207de155bbfa3f7143b911",
+      "exit_code": 0,
+      "result": "PASS 100 cycles on synced DLL",
+      "note": "Final helper creates a unique temporary database per run and restores TEMP/TMP; no TUN."
+    },
+    {
+      "command": "./gradlew.bat :app:testDirectDebugUnitTest :app:testStoreDebugUnitTest --console=plain",
+      "cwd": "E:\\r12client\\apps\\android_shell\\android",
+      "log": "E:/r12-d05-jvm.log",
+      "sha256": "5c83b2b61caf41d825f6f0a83bc877aeef3622e8c124ff0fbc826513d160c3b9",
+      "exit_code": 0,
+      "result": "PASS 372 tests; 186 per flavor; tasks executed"
+    },
+    {
+      "command": "flutter test test/pokrov_seed_app_test.dart test/client_observability_test.dart test/ui_copy_contract_test.dart",
+      "cwd": "E:\\r12client\\packages\\app_shell",
+      "log": "E:/r12-d05-flutter.log",
+      "sha256": "283d30fe0e31d32b957409f21937295fcb7335ae05b43231904a867028dd041b",
+      "exit_code": 0,
+      "result": "PASS 190 tests"
+    },
+    {
+      "command": "flutter test test/runtime_engine_test.dart",
+      "cwd": "E:\\r12client\\packages\\runtime_engine",
+      "log": "E:/r12-d05-runtime.log",
+      "sha256": "2b0fb24775e320112775260b7a615133ca7d031fecb892caf3aeb675b8b92065",
+      "exit_code": 0,
+      "result": "PASS 80; 1 opt-in DLL test skipped; separately executed above"
+    },
+    {
+      "command": "flutter analyze --no-pub",
+      "cwd": "E:\\r12client",
+      "log": "E:/r12-d05-analyze.log",
+      "sha256": "5cc01103ede5b66ebdcb459a994b64dd11e3a8c2bbff79da52e1be4cd811be10",
+      "exit_code": 0,
+      "result": "PASS no issues"
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/validate-seed.ps1 -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start -CoreRoot E:/r12core-implementation",
+      "cwd": "E:\\r12client",
+      "log": "E:/r12-d05-seed.log",
+      "sha256": "a97dcd9415e60e85f98817c4839b2d2ba0667435cf3f63d69e83cab90e2f3931",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "pwsh -NoProfile -File test/docs-contract.ps1",
+      "cwd": "E:\\r12client",
+      "log": "E:/r12-d05-client-docs.log",
+      "sha256": "01ed68a810c26d9bef6f98225f2238a25332fa3585d5effd38d0101f87467874",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "pwsh -NoProfile -File test/release-source-logging-contract.ps1",
+      "cwd": "E:\\r12client",
+      "log": "E:/r12-d05-source-logging.log",
+      "sha256": "6b2c2d0449ef463f8d3a1495943cad53a86d39e8203fc43b28d64bbd762282cf",
+      "exit_code": 0,
+      "result": "PASS 151 production files and 4 negative fixtures"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-d05-platform-docs.log",
+      "sha256": "49cfdb2fd5c0636e6ece2eee4581dfa2fcdedb0ddff5009b79875de38fa4b8df",
+      "exit_code": 0,
+      "result": "PASS 33"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-d05-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-d05-package.log",
+      "sha256": "536206d92b4665dfb545eb869c49c50ab30d8b83712ea36f81ac5d782bf24c9c",
+      "exit_code": 0,
+      "result": "PASS 13 imports / 83 R12 / 378 legacy / 155 links"
+    }
+  ],
+  "junit_reports": [
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidApkIdentityPolicyTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidApkIdentityPolicyTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidApkIdentityPolicyTest.xml",
+      "sha256": "3e6b83e292e9dba853a7427db37b20af6f87c45c59bbb901ea87c182bd3d11bd"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidClientUpdateInstallerTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidClientUpdateInstallerTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidClientUpdateInstallerTest.xml",
+      "sha256": "454b240d9d70bd40d5677789ec9e60604511d66ceefcc25dbf324545caa97270"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidCoreEgressFailClosedPolicyTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidCoreEgressFailClosedPolicyTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidCoreEgressFailClosedPolicyTest.xml",
+      "sha256": "371e566cf0858ae25f5ec612c97621fe4d260617529e19730a78aa03f8ff1973"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidCoreEgressProbeTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidCoreEgressProbeTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidCoreEgressProbeTest.xml",
+      "sha256": "edcea49f9e95ac7a24180c4b35bedf59845ab0879c1ad0072edc8ea58dce5b19"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidCoreOperationalEventsTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidCoreOperationalEventsTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidCoreOperationalEventsTest.xml",
+      "sha256": "9a0e4b5c961754234f5614146837a350b40ef4c1aab93965ddbe9b91ba48bf15"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidDnsFailureTokenGateTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidDnsFailureTokenGateTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidDnsFailureTokenGateTest.xml",
+      "sha256": "b61686bb23611dd073a901ed0d6c1af21812f60b5ea96cb8bf0505c0b1d45d5c"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidEmergencyEndpointPreflightPolicyTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidEmergencyEndpointPreflightPolicyTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidEmergencyEndpointPreflightPolicyTest.xml",
+      "sha256": "6b8004527641a12a828fc2da0fec2d5942d0eab990d5afea9642586c264ac59f"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidHostSecurityContractTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 28,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidHostSecurityContractTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidHostSecurityContractTest.xml",
+      "sha256": "20d7a1f67fa468b56d15dc343506cf59241a3daa56ddc8de0406938f717d40a4"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidLifecycleTaskScopeTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidLifecycleTaskScopeTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidLifecycleTaskScopeTest.xml",
+      "sha256": "92a3c73245fd1d18344591386f73e46a5558e395a4eab44291b01f749ebb9c5c"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidManifestPermissionsTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidManifestPermissionsTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidManifestPermissionsTest.xml",
+      "sha256": "b8cec4f6c83079720e61055cd0508f6344c054caf34638a43daec4b10bf9f739"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidNodeLatencyProbeTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidNodeLatencyProbeTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidNodeLatencyProbeTest.xml",
+      "sha256": "43e31f45f09ab5a75150ac1a560c868d8faa32f01b85873f86bde41423b5e111"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidNotificationPermissionPlannerTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidNotificationPermissionPlannerTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidNotificationPermissionPlannerTest.xml",
+      "sha256": "bc045a7c5777a8a174b6346c6aec653a0f2eb0ef50488a240dd1c90bcf07a339"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidOperationalJournalTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidOperationalJournalTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidOperationalJournalTest.xml",
+      "sha256": "3adf2bad9e4dcb59aca04eb4c17d82dacc21de5b0bc9a84871c645ca872f8f37"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidPlatformRuntimeBridgeTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidPlatformRuntimeBridgeTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidPlatformRuntimeBridgeTest.xml",
+      "sha256": "68f5551cc190b6269f8b896478a3c9b7d6cb2e2ae1cfc67dc10bd4bc5b09cacf"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidResolverPolicyTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidResolverPolicyTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidResolverPolicyTest.xml",
+      "sha256": "8464922bfa528fa32b0078ba63f1feccfdb58ae0c5662d6bd7f4e837645124dc"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidRuntimeDispatchPolicyTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeDispatchPolicyTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeDispatchPolicyTest.xml",
+      "sha256": "a0dc0d8399efdc5719c73432e0b11a335c85d06e0b93c9f736b9118acad91049"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidRuntimeLogClassifierTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeLogClassifierTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeLogClassifierTest.xml",
+      "sha256": "13963f1bd7559df5dea1ef6d493265f6c485a2648bf714d8630bd300a3feda4d"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidRuntimeNotificationContentTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeNotificationContentTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeNotificationContentTest.xml",
+      "sha256": "f4c10a7fd0594ab0be8449cb6254e4ce627dd74c69d3e9b74376b0d3b5365d4a"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidRuntimeProfileIdentityTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeProfileIdentityTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeProfileIdentityTest.xml",
+      "sha256": "40fa60839ffeb1256cbe30af30da0671235d8ac9e1ef0bcdecb3fe8d2e0b2068"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidRuntimeProfileMigrationTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeProfileMigrationTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeProfileMigrationTest.xml",
+      "sha256": "af1e693e5f0d6a92ab3591e44df822a3ca0651c4b24779b585eacf8a2ad90820"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidRuntimeStateTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 20,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeStateTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeStateTest.xml",
+      "sha256": "e1fb5527f59295f76747047a299f80397f94671ce6b7a5f9537564f428ca33b0"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidSystemDnsPlannerTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidSystemDnsPlannerTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidSystemDnsPlannerTest.xml",
+      "sha256": "25e678a223e5ef973e795de2abbdd5ae8e1094b3da229eaaf3bcf34843fbba45"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidTunDnsConfigurationContractTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidTunDnsConfigurationContractTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidTunDnsConfigurationContractTest.xml",
+      "sha256": "e51729d946f9deb452204388b42f3d6533e50bb457a0ace01e023c9552fae0c1"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidTunMtuPolicyTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidTunMtuPolicyTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidTunMtuPolicyTest.xml",
+      "sha256": "6d8a238904f17eb7ccb3a99b1d856793891d8ec3d8549b194890d8f7b9cd403f"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidTunnelTrafficTrackerTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidTunnelTrafficTrackerTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidTunnelTrafficTrackerTest.xml",
+      "sha256": "e394cbf818be427d10d9ff26148269eeead672de6e677061f7343faa6a239996"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidTunPackagePlannerTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidTunPackagePlannerTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidTunPackagePlannerTest.xml",
+      "sha256": "d1e313fc10a76b34b144812ad89e7f10913706c8e9264f0ec9e47f6841ccc3ef"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidTunRoutePlannerTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidTunRoutePlannerTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidTunRoutePlannerTest.xml",
+      "sha256": "0f2cb72d6a9dbdb030fd4549ee8d29e6ecc32981d91a2efe8b9c3fbb0e7814ac"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidUpdateFlavorContractTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidUpdateFlavorContractTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidUpdateFlavorContractTest.xml",
+      "sha256": "305be7217559a066caf8aec24df2860f9642af9e7eaecf421675b3187e82ad71"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.AndroidVariantAvailabilityProbeTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidVariantAvailabilityProbeTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.AndroidVariantAvailabilityProbeTest.xml",
+      "sha256": "3cae572e327ad0e8de6c8fde30e898212d7db38b16c4bdf70f030c5b7acb6e72"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.PendingRuntimeConnectGateTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.PendingRuntimeConnectGateTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.PendingRuntimeConnectGateTest.xml",
+      "sha256": "09e0767269e77ae67fa8120ba01ad6ed82c61550950f307c26dfd755165d2662"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.PokrovInAppWebSurfaceTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.PokrovInAppWebSurfaceTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.PokrovInAppWebSurfaceTest.xml",
+      "sha256": "fde52acdfeb9420a6ad332e647ceabd8bd4809177ba750681032f201e6959083"
+    },
+    {
+      "flavor": "Direct",
+      "name": "space.pokrov.pokrov_android_shell.PokrovQuickSettingsTileServiceTest",
+      "timestamp": "2026-09-06T01:13:02",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.PokrovQuickSettingsTileServiceTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Direct-TEST-space.pokrov.pokrov_android_shell.PokrovQuickSettingsTileServiceTest.xml",
+      "sha256": "7df3b1b28d0e0f5e1a8189378881ff766b90c250ec6bf77103599d5839e8048c"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidApkIdentityPolicyTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidApkIdentityPolicyTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidApkIdentityPolicyTest.xml",
+      "sha256": "30c8dfcf84f46e0bba4787f37d942cecf19ef68c7a1586af8fabd53820701c51"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidClientUpdateInstallerTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidClientUpdateInstallerTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidClientUpdateInstallerTest.xml",
+      "sha256": "4a62768f0e262fc3a88863e3d8af6574581a5b3f30c08063c294a3bd45ce6baf"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidCoreEgressFailClosedPolicyTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 5,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidCoreEgressFailClosedPolicyTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidCoreEgressFailClosedPolicyTest.xml",
+      "sha256": "dca37a80da2a7fc1ed1fa4ca1392751ae512ca480f3308d32ddeee975cc0ed73"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidCoreEgressProbeTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 12,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidCoreEgressProbeTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidCoreEgressProbeTest.xml",
+      "sha256": "4f94ace4fb93638556a5aa9056b405ac88be97e8b025670249d1c5f5b58da318"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidCoreOperationalEventsTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidCoreOperationalEventsTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidCoreOperationalEventsTest.xml",
+      "sha256": "2600ec2c298b8c26e63f31c61496f0e1da5bd321f021986d431c86daf78cb296"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidDnsFailureTokenGateTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidDnsFailureTokenGateTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidDnsFailureTokenGateTest.xml",
+      "sha256": "29a86bd8856bd2cd44c41a7b76fb60e7be464db86f2bfbe79c2781a36aae578b"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidEmergencyEndpointPreflightPolicyTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidEmergencyEndpointPreflightPolicyTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidEmergencyEndpointPreflightPolicyTest.xml",
+      "sha256": "5ba0eeae9c3cec7c5d35cf8fdd9d79d9fce844f47aad660bd95aeb7e14ef99a8"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidHostSecurityContractTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 28,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidHostSecurityContractTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidHostSecurityContractTest.xml",
+      "sha256": "058382806a249b0eee921013ae1d952a64fb00cafc61d0859b6e9c2c1942c323"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidLifecycleTaskScopeTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidLifecycleTaskScopeTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidLifecycleTaskScopeTest.xml",
+      "sha256": "e7e0182484de8c90e6e49816719a8f974457de44d7e1fcaebe23bc5729a35fbf"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidManifestPermissionsTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidManifestPermissionsTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidManifestPermissionsTest.xml",
+      "sha256": "a668e13ced67489deda66c36af95fc3e56805a30d0b4d8550b107791d6232c29"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidNodeLatencyProbeTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidNodeLatencyProbeTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidNodeLatencyProbeTest.xml",
+      "sha256": "f01ba089f12e70c960fea1644e4b12d895e3cf9f8399b55e2413ca8ac8c80189"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidNotificationPermissionPlannerTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidNotificationPermissionPlannerTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidNotificationPermissionPlannerTest.xml",
+      "sha256": "3c56e68b66a0b4c2fb5d2475e35f7bd0801d7e13e169722e23b1495d38798371"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidOperationalJournalTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 8,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidOperationalJournalTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidOperationalJournalTest.xml",
+      "sha256": "1e97c4a31564fda73a1ac39a2fefdd1a94944443fbba938d76e229d091870cf2"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidPlatformRuntimeBridgeTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 14,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidPlatformRuntimeBridgeTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidPlatformRuntimeBridgeTest.xml",
+      "sha256": "27659bf5a3972912e0003aba2685c9754ae216477dd12990c114e14a3ce71c1e"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidResolverPolicyTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidResolverPolicyTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidResolverPolicyTest.xml",
+      "sha256": "67ca0fbb5915ead1cce8259a52f2cc102d05a4ad9d0226c064d4e0a4d54f9bc8"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidRuntimeDispatchPolicyTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeDispatchPolicyTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeDispatchPolicyTest.xml",
+      "sha256": "fd75fec3210da0b3e6496b509b0d19ef3d57d00956287b4968620561086a5b3b"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidRuntimeLogClassifierTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 15,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeLogClassifierTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeLogClassifierTest.xml",
+      "sha256": "b7e769c42fdc0b7b613f4fc4e31635c2dd16afda1da0f2574a057d78ca4dc08a"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidRuntimeNotificationContentTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeNotificationContentTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeNotificationContentTest.xml",
+      "sha256": "0bf9b1874556516919c8e2c064bcd0abb1c19cfe8dd4411b56a95ddc49b393e3"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidRuntimeProfileIdentityTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeProfileIdentityTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeProfileIdentityTest.xml",
+      "sha256": "7e3826b1c5d6bcc8fc8707943de42cd737a13c60eb493931f253169c3ac8e970"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidRuntimeProfileMigrationTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeProfileMigrationTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeProfileMigrationTest.xml",
+      "sha256": "602b307e0d95d395705a3163f60a3978463387c518c836f1b2d33bd1c430fc6e"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidRuntimeStateTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 20,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeStateTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidRuntimeStateTest.xml",
+      "sha256": "8343b653e0297a412a585fcbdb71c8a13d82c263bc0241ba731c4af5be29a764"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidSystemDnsPlannerTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidSystemDnsPlannerTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidSystemDnsPlannerTest.xml",
+      "sha256": "c8a92d77002fb98f9783772c5d11940f9373b07c4761a28e4b80af7a08a79669"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidTunDnsConfigurationContractTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidTunDnsConfigurationContractTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidTunDnsConfigurationContractTest.xml",
+      "sha256": "265d8d418f94c48891e16a483e62f54fc2b106b472f5444903cd832820cf53f1"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidTunMtuPolicyTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidTunMtuPolicyTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidTunMtuPolicyTest.xml",
+      "sha256": "b915ac1d882f561679aaae81df60ed499243d0a2250422d6a5a5d732f77f7f25"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidTunnelTrafficTrackerTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 4,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidTunnelTrafficTrackerTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidTunnelTrafficTrackerTest.xml",
+      "sha256": "d408ef8a82152d1170ba3db303563c318735dc2a1576c09dfe8433dd183b3b72"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidTunPackagePlannerTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidTunPackagePlannerTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidTunPackagePlannerTest.xml",
+      "sha256": "cb093389d92f76d0a28f350aa15c96fea4e3811e6edcfe9f48fd67ef22f60b3f"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidTunRoutePlannerTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidTunRoutePlannerTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidTunRoutePlannerTest.xml",
+      "sha256": "52a3ee547e93d3b94e3c27001773da78fe94c3ab4453e20a1b8b7fa1a66c5261"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidUpdateFlavorContractTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidUpdateFlavorContractTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidUpdateFlavorContractTest.xml",
+      "sha256": "266e510302afbc0ee34975dcc1624a1695544dd0117370321c6e368ad838e8de"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.AndroidVariantAvailabilityProbeTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidVariantAvailabilityProbeTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.AndroidVariantAvailabilityProbeTest.xml",
+      "sha256": "f2cf98bea5be19480eddef8fcc4f32334c248825ef1a05b933e9f19dd33c4f6b"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.PendingRuntimeConnectGateTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 3,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.PendingRuntimeConnectGateTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.PendingRuntimeConnectGateTest.xml",
+      "sha256": "b636e0079d9d985e95e32f74bdb76d77feb780b7eed0b8fb80409be439f320be"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.PokrovInAppWebSurfaceTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 2,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.PokrovInAppWebSurfaceTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.PokrovInAppWebSurfaceTest.xml",
+      "sha256": "a84e35f8de2fbc4ea224aa0be4587d495c67a6752c7cf025a502e2ce111e14ef"
+    },
+    {
+      "flavor": "Store",
+      "name": "space.pokrov.pokrov_android_shell.PokrovQuickSettingsTileServiceTest",
+      "timestamp": "2026-09-06T01:13:11",
+      "tests": 9,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.PokrovQuickSettingsTileServiceTest.xml",
+      "retained_path": "E:\\r12-d05-junit-reports\\Store-TEST-space.pokrov.pokrov_android_shell.PokrovQuickSettingsTileServiceTest.xml",
+      "sha256": "402f86f378a600c0d0909530388b53c925cddf9f555e9491bb63e6376f55644e"
+    }
+  ],
+  "artifacts": {
+    "android": {
+      "schema": "pokrov.core.pre-candidate-artifact-evidence/v1",
+      "lane": "android",
+      "state": "PRE_CANDIDATE_LOCAL",
+      "candidate_created": false,
+      "candidate_proven": false,
+      "promotion_authorized": false,
+      "provenance_status": "UNSIGNED_CI_BUILD_EVIDENCE",
+      "source": {
+        "commit": "94dd31012ac91fb9ecf2c98ad7383afb54102dd4",
+        "clean": true
+      },
+      "toolchain": {
+        "go": "go1.25.13",
+        "runner_os": ""
+      },
+      "workflow": {
+        "run_id": "",
+        "run_attempt": ""
+      },
+      "contracts": {
+        "config/release.json": "e11356a9acdd9cec42f60eae91b42de505aef0103e87b0e82259a539070bb214",
+        "config/abi-contract.json": "ea4962507e27dd8e46990b88345fcbe7ad1f154a5abd1ba44cc3af42a53375a1",
+        "config/core-event-abi.json": "b6e1708f6879b889d1a4f3bcc3d53d29fe4cb2518d05d5cc2c73a0ae02df2c81",
+        "config/awg2-capability.json": "c473c411025825bfef5a76c64990c5c921e9658b3581210d3a86d72e454fdea8",
+        "config/awg31-capability.json": "1bb49b61549ba7c4a3c2d56df445e919ebb1ed12d42e04b0cb3c915d23240818",
+        "go.sum": "ca5492839f2436916d685ab87a14ea27ba2fe5250a4cb46e561399f1096dcc3b",
+        "engine/sing-box/go.sum": "5079550d0c5e46125239196821bd0992cd6a71f53c16d0f6337138ce4cd3af95"
+      },
+      "reproducibility": {
+        "result": "PASS_BYTE_IDENTICAL_TWO_BUILDS",
+        "file_count": 2,
+        "tree_sha256": "e41fbe1af5ceed8684baa38680f897462caa892f97d7313d42b3c305aa549c25",
+        "files": [
+          {
+            "path": "pokrov-core-sources.jar",
+            "size": 55186,
+            "sha256": "183c6981053df278234fed9a7e9c93c9cb3859da6c1e0fe04415ff93c4361f65"
+          },
+          {
+            "path": "pokrov-core.aar",
+            "size": 107471658,
+            "sha256": "fa62c1116c55fe770f691bf62c8b3f613a5fb1f889226458f15fee8f62820512"
+          }
+        ]
+      },
+      "sbom": [
+        {
+          "name": "pokrov-core.cdx.json",
+          "size": 311801,
+          "sha256": "bd383fb434c4088a1184ffaa476afb7b65f37cd3b5eef18abc49c78f7ea6c6c8"
+        },
+        {
+          "name": "sing-box.cdx.json",
+          "size": 267686,
+          "sha256": "fd5d91106461a97c4e050d66f31e1daceba2c2451c0879e8ce596f3e93634653"
+        }
+      ],
+      "evidence_ceiling": "LOCAL_OR_HOSTED_PRE_CANDIDATE_CI"
+    },
+    "windows": {
+      "schema": "pokrov.core.pre-candidate-artifact-evidence/v1",
+      "lane": "windows",
+      "state": "PRE_CANDIDATE_LOCAL",
+      "candidate_created": false,
+      "candidate_proven": false,
+      "promotion_authorized": false,
+      "provenance_status": "UNSIGNED_CI_BUILD_EVIDENCE",
+      "source": {
+        "commit": "94dd31012ac91fb9ecf2c98ad7383afb54102dd4",
+        "clean": true
+      },
+      "toolchain": {
+        "go": "go1.25.13",
+        "runner_os": ""
+      },
+      "workflow": {
+        "run_id": "",
+        "run_attempt": ""
+      },
+      "contracts": {
+        "config/release.json": "e11356a9acdd9cec42f60eae91b42de505aef0103e87b0e82259a539070bb214",
+        "config/abi-contract.json": "ea4962507e27dd8e46990b88345fcbe7ad1f154a5abd1ba44cc3af42a53375a1",
+        "config/core-event-abi.json": "b6e1708f6879b889d1a4f3bcc3d53d29fe4cb2518d05d5cc2c73a0ae02df2c81",
+        "config/awg2-capability.json": "c473c411025825bfef5a76c64990c5c921e9658b3581210d3a86d72e454fdea8",
+        "config/awg31-capability.json": "1bb49b61549ba7c4a3c2d56df445e919ebb1ed12d42e04b0cb3c915d23240818",
+        "go.sum": "ca5492839f2436916d685ab87a14ea27ba2fe5250a4cb46e561399f1096dcc3b",
+        "engine/sing-box/go.sum": "5079550d0c5e46125239196821bd0992cd6a71f53c16d0f6337138ce4cd3af95"
+      },
+      "reproducibility": {
+        "result": "PASS_BYTE_IDENTICAL_TWO_BUILDS",
+        "file_count": 3,
+        "tree_sha256": "2f700e69536dd0234a58ecb472a8b0dc7472ee352ae8635b9dcdb1bc922dc52d",
+        "files": [
+          {
+            "path": "libcronet.dll",
+            "size": 8596992,
+            "sha256": "8ef1f8bbde77f954af1ae47bee1819ac8dc2354bb0e1d4baba3dad9e58d7a6f7"
+          },
+          {
+            "path": "pokrov-core.dll",
+            "size": 55443968,
+            "sha256": "38d40a1713c1cb5b3ad90ab5b4e66df68d5463b38945abac9d322be859b57c6b"
+          },
+          {
+            "path": "pokrov-core.h",
+            "size": 4505,
+            "sha256": "6342ad08029d0af52b8f65b886c464e015558830236b24d0bbc7eb819419d62f"
+          }
+        ]
+      },
+      "sbom": [
+        {
+          "name": "pokrov-core.cdx.json",
+          "size": 311801,
+          "sha256": "bd383fb434c4088a1184ffaa476afb7b65f37cd3b5eef18abc49c78f7ea6c6c8"
+        },
+        {
+          "name": "sing-box.cdx.json",
+          "size": 267686,
+          "sha256": "fd5d91106461a97c4e050d66f31e1daceba2c2451c0879e8ce596f3e93634653"
+        }
+      ],
+      "evidence_ceiling": "LOCAL_OR_HOSTED_PRE_CANDIDATE_CI"
+    }
+  },
+  "artifacts_note": "Generator provenance_status is UNSIGNED_CI_BUILD_EVIDENCE, but these executions are local current-origin builds; workflow/run/runner fields are empty. No hosted CI claim.",
+  "retained_files": {
+    "E:\\POKROV-tools\\builds\\core-d05\\sbom\\pokrov-core.cdx.json": "bd383fb434c4088a1184ffaa476afb7b65f37cd3b5eef18abc49c78f7ea6c6c8",
+    "E:\\POKROV-tools\\builds\\core-d05\\sbom\\sing-box.cdx.json": "fd5d91106461a97c4e050d66f31e1daceba2c2451c0879e8ce596f3e93634653",
+    "E:\\r12client\\config\\runtime-artifacts.seed.json": "43df14326a7061d6243e44e491b36ea057fcecce2609f8fa99175ef1394fec46",
+    "E:\\r12client\\docs\\operations\\evidence\\2026-09-06-r12-d05-core-binding\\previous-runtime-binding.json": "75913ded4b9953caf4d58643eb4a16f3fa4b5073fea855bd144f814233bcc0d5"
+  },
+  "core_files": {
+    "docs/architecture.md": "60d3b152ff1a0a43fde3e68cf8109c867e8df33c1f98316c90618fef8f75aa53",
+    "engine/sing-box/daemon/started_service.go": "e9ea1cd11a4e129e00a9f1d8c0eb6d20dc564d178ec73f9cf44eed78aa3305b0",
+    "engine/sing-box/daemon/started_service_test.go": "99f73217e61edd2723cfb3751565ea015c19ae604f1b0aa83c785cdd5cdfe912",
+    "engine/sing-box/log/observable.go": "7629ac5e2cd3a461c35d5e2a6292faff743db9d67688bef3221317d45d709884",
+    "engine/sing-box/log/platform.go": "fad74919a4505d3261ded6db786b0ef81574dcffe8e7fa1fac9ee914e5bad5fa"
+  },
+  "client_files": {
+    "apps/android_shell/android/app/libs/pokrov-core.aar": "fa62c1116c55fe770f691bf62c8b3f613a5fb1f889226458f15fee8f62820512",
+    "apps/windows_shell/windows/runner/resources/runtime/pokrov-core.dll": "38d40a1713c1cb5b3ad90ab5b4e66df68d5463b38945abac9d322be859b57c6b",
+    "config/runtime-artifacts.seed.json": "43df14326a7061d6243e44e491b36ea057fcecce2609f8fa99175ef1394fec46",
+    "docs/architecture/bootstrap-workflow.md": "f92c95838ffe61ecf71db6c2806fa308a09b5c4a89cd6e4091521752e8bf1d4d",
+    "docs/operations/android-release-audit.md": "e654939b240518208e0ff407f236f41e898a90fd485aec56709456280d9a511b",
+    "docs/operations/evidence/2026-09-06-r12-d05-core-binding/android-evidence.json": "ec068ab6b7e0475d9e8095a9dd65f82bddefea3c1bfcb54278fd47d17228ea39",
+    "docs/operations/evidence/2026-09-06-r12-d05-core-binding/previous-runtime-binding.json": "75913ded4b9953caf4d58643eb4a16f3fa4b5073fea855bd144f814233bcc0d5",
+    "docs/operations/evidence/2026-09-06-r12-d05-core-binding/windows-evidence.json": "ed56d6e49980f729a0721fb4101a9573de9ad4eef3fd85c6b2a3c9296030fd7f",
+    "docs/operations/windows-release-readiness.md": "80600ab253cc1e7d9d5bc1c5ed5ae29bb400cf1d192f9fbf516a68b79ca71f7b",
+    "packages/app_shell/lib/src/features/home/protection_center.dart": "f78ce78f9358f688a590a9e8da423920a56dd0b537309b7c737b872419a434ba",
+    "scripts/test-windows-core-proxy-only.ps1": "be88d3ee2be0d3967a6ecd0ab499389a7256cc554c52fe623e98de0b26d5f2cb",
+    "scripts/validate-seed.ps1": "c80eebb5c08b3bad467f3c0ecf59251afb236c716331463c5b5e49f16c1b9f72",
+    "test/fixtures/release-handoff-v2/synthetic-candidate-input.json": "36bcd771aced0840faafc8aee824558d5347bfe34f84aba288d9ca0ca7729b3c"
+  },
+  "manual_gates": {
+    "D01 exact installed API/ABI/OEM delivery matrix": "MANUAL_OWNER_TEST",
+    "lockscreen and private journal permissions/rotation on physical Android": "MANUAL_OWNER_TEST",
+    "planted-value inspection of final installed native log paths": "MANUAL_OWNER_TEST",
+    "TUN totals versus independent actual traffic and UID observations": "MANUAL_OWNER_TEST",
+    "Windows service/TUN/DNS/VM and RU-origin": "MANUAL_OWNER_TEST",
+    "new candidate/signing/publishing/deploy": "NOT_REQUESTED"
+  }
+}

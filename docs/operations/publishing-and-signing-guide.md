@@ -1,6 +1,6 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-09-04
+Last updated: 2026-09-09
 
 ## Document Status
 
@@ -45,6 +45,12 @@ governed contract hashes, version-matched release notes, artifact identity and
 digest, signing, SBOM, provenance, manual gates, and same-byte promotion intent.
 Runtime and manual evidence remains candidate-scoped; metadata does not turn a
 missing or manual gate into `PASS`.
+
+The local candidate preflight follows the client runtime seed's Core SBOM
+binding: `core-source.cdx.json` and `engine-source.cdx.json`, each with a
+SHA-256 digest. Missing entries, obsolete names or malformed digests block the
+preflight. This metadata check does not replace the candidate's SBOM artifact
+and provenance verification.
 
 Validate metadata offline:
 
@@ -95,7 +101,10 @@ Release-bound CI is cross-repository and fail-closed:
   half from the hosted support-mode private key, matches it to the tracked pin
   on client `main`, checks the code-secret minimum, and uploads only a public
   revision/digest receipt; it does not deploy runtime secrets or create a
-  release candidate.
+  release candidate. Its job rejects a manual dispatch from a non-`master` ref
+  before running any step, and checks out the exact triggering `github.sha`
+  on accepted runs. A skipped non-promotion dispatch proves only that boundary;
+  it is not a successful custody verification.
 
 These workflows produce contract evidence only. Until a workflow is observed
 green on the exact committed revisions, its GitHub-hosted result is unclaimed.
@@ -176,6 +185,23 @@ release index, retained candidate evidence and same-byte promotion remain
 mandatory compensating controls outside the branch readback itself. The
 exception expires when release 1.2.0 is closed; a later release must authorize
 a new exception or return to team review.
+
+The exception applies to the Android/Windows 1.2.0 direct-distribution lane,
+including its prerelease candidates and same-byte stable promotion. It does
+not extend to store publication, an Apple release, Linux beta or a later
+version. Its expiry is release closure, not an indefinite account-wide waiver.
+
+On 2026-09-09 all three source repositories were observed public with admin
+access. The existing solo-safe branch policy was enabled and read back on
+`portal/master`, `POKROV-app/main` and `pokrov-core/main`: strict named GitHub
+Actions checks, required PRs with zero second-person approvals, admin
+enforcement, signed commits, linear history, resolved conversations, and no
+force pushes or deletions. No PR or force-push bypass actors are configured.
+The paid-private-protection waiver is therefore not needed for these current
+public branches. The second-person-review exception remains explicit; no
+independent review is claimed. [G06 evidence and exact settings](../developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-G06-ENFORCEMENT-2026-09-09.md)
+do not establish successful PR checks or authorize a release with a failed
+executed check. Re-read these settings before final promotion.
 
 The latest exact `WIN-003` default-path pass remains candidate.22 on isolated
 Windows 11: managed TUN, route/DNS change, authenticated DE egress,

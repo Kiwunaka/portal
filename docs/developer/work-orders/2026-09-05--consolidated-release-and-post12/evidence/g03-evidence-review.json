@@ -1,0 +1,102 @@
+{
+  "schema": "pokrov.r12.g03-evidence-review/v1",
+  "observed_on": "2026-09-06",
+  "result": "I3 / PARTIALLY_FIXED",
+  "source_tuple": {
+    "platform": "e6a374e9a9ff5b6219f5175f38755df6d52ff728",
+    "client": "ded58b1906bbfb1096ff919085ef37f5be942eb7",
+    "core": "94dd31012ac91fb9ecf2c98ad7383afb54102dd4"
+  },
+  "origin": "current-origin; local Git objects and synthetic classifier receipts",
+  "changed_artifact_or_runtime_bytes": false,
+  "release_pass": false,
+  "commands": [
+    {
+      "command": "python -B -m unittest discover -s docs/developer/work-orders/2026-09-05--consolidated-release-and-post12 -p test_evidence_inputs.py -v",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g03-classifier-before.log",
+      "sha256": "29ab6dc4cdb2d3d775b9dc9ac8f414437bb6643f1467bc717695ed1438a22ab0",
+      "exit_code": 1,
+      "result": "4 tests; 2 regression subcases FAIL: requirements.txt and package-lock.json"
+    },
+    {
+      "command": "python -B -m unittest discover -s docs/developer/work-orders/2026-09-05--consolidated-release-and-post12 -p test_evidence_inputs.py -v",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g03-classifier-after.log",
+      "sha256": "e7d1dbcd2cf8a2872464ec0605932d26a73ff9ae702eb8cd4c22a6615aaa9c6a",
+      "exit_code": 0,
+      "result": "4 tests PASS after dependency manifest classification fix"
+    },
+    {
+      "command": "python -B -m unittest discover -s docs/developer/work-orders/2026-09-05--consolidated-release-and-post12 -p test_evidence_inputs.py -v",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g03-infra-doc-before.log",
+      "sha256": "15b4f227e0b92aae7a39aeb4e7ed5347cef30037563ad85a1b10f89a043ac721",
+      "exit_code": 1,
+      "result": "4 tests; infra README regression subcase FAIL"
+    },
+    {
+      "command": "python -B -m unittest discover -s docs/developer/work-orders/2026-09-05--consolidated-release-and-post12 -p test_evidence_inputs.py -v",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g03-classifier-final.log",
+      "sha256": "e7d1dbcd2cf8a2872464ec0605932d26a73ff9ae702eb8cd4c22a6615aaa9c6a",
+      "exit_code": 0,
+      "result": "4 tests PASS after final classifier fix"
+    },
+    {
+      "command": "python -X utf8 -B E:/r12-g03-refresh-inventory.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g03-inventory.log",
+      "sha256": "6ea66d48d9e5f66e770b7299940fe11d037cc4c23112a935c9d33cc9c3c2d015",
+      "exit_code": 0,
+      "result": "147 platform + 85 client + 18 Core committed changed files, initial path hints; subsequently reviewed and enriched as recorded in final manifest"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g03-docs.log",
+      "sha256": "8e8012de312ded1fc1a4eb22b5cdb3d776c4be76fdde07836ddf39e5bec16c6b",
+      "exit_code": 0,
+      "result": "33 PASS in 0.41s"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g03-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g03-package.log",
+      "sha256": "e6577a88cdc6e1b87e341585c65cc3402cced1e17562e55b5be1466525fdebd3",
+      "exit_code": 0,
+      "result": "PASS 13 imports / 83 R12 IDs / 378 legacy / 176 links"
+    }
+  ],
+  "source_sha256": {
+    "classify_evidence_inputs.py": "c92e3341129fcac29ab57071f6d2b367ffad03e7a0c94c905e867d16066b0815",
+    "test_evidence_inputs.py": "7b92993dfa5cb92a5f4261050e431de99383832a4315df56adfa325ed9347fb5",
+    "EXECUTION-G03.md": "f4869e8c1fe5758efeb72f5155d43113a92640892e00bf1c64ac4a61357dd187"
+  },
+  "manifest": {
+    "path": "evidence/change-impact-20260906.json",
+    "sha256": "a611338cdf8cde31a56dccf5507490f426dcef53486885630742447b6673b483",
+    "scope": "250 changed committed files from task baseline; separate candidate.33 comparisons; manual dependency groups"
+  },
+  "retained_collector": {
+    "path": "E:/r12-g03-refresh-inventory.py",
+    "sha256": "adfe1879ad9a26152d3ea1123ba95a3fd852151fe42be877d3c62384bc9ec66e"
+  },
+  "limits": [
+    "Classifier fix is itself an oracle change; historic inputs/receipts are retained, not rewritten.",
+    "Git blob hashes identify committed bytes, not the working-tree CRLF encoding or final packaged artifact. Scoped uncommitted audit changes are separately hash-bound.",
+    "Candidate.33 comparison covers source differences; it does not discover every runtime/config/toolchain dependency.",
+    "Review groups map affected domains to parent R12 checks; no automatic complete dependency graph or evidence reuse is claimed.",
+    "No full final candidate, device/environment/configuration/oracle receipt supplied to this helper; complete actual reuse assessment remains open.",
+    "No build, push, merge, deploy, signing, provider mutation, host VPN changes or external-origin test.",
+    "Documentation/fixture audits only; broad runtime regressions are not repeated for this work-order helper change."
+  ]
+}

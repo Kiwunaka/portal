@@ -1,0 +1,68 @@
+{
+  "utc": "2026-09-08T14:31:00.970528+00:00",
+  "status": "PASS_DECLARED_A01_BASELINE",
+  "sources": {
+    "platform": "6e8f33773988518ae478b636b47c283fc342cba7",
+    "client": "5760f415a567ddbc35ee12ba0087414bc3bd08ff",
+    "core": "02a091cb0e369192a5ad0909b56ccba8aa1dce17"
+  },
+  "contracts": {
+    "awg2": {
+      "id": "pokrov.awg2.endpoint.v1",
+      "contract_sha256": "c473c411025825bfef5a76c64990c5c921e9658b3581210d3a86d72e454fdea8",
+      "dependency": {
+        "module": "github.com/amnezia-vpn/amneziawg-go/v3",
+        "version": "v3.1.20260814",
+        "module_sum": "h1:l2AhBD+sFycU8Im81n/bZORMxW7fWtlZJEuJ4Hh0+z0=",
+        "license": "MIT",
+        "notice": "third_party/licenses/amneziawg-go-MIT.txt"
+      },
+      "platforms": [
+        "android",
+        "windows"
+      ],
+      "default_public_advertisement": false
+    },
+    "awg31": {
+      "id": "pokrov.awg31.endpoint.v1",
+      "contract_sha256": "1bb49b61549ba7c4a3c2d56df445e919ebb1ed12d42e04b0cb3c915d23240818",
+      "dependency": {
+        "module": "github.com/amnezia-vpn/amneziawg-go/v3",
+        "version": "v3.1.20260814",
+        "source_tag": "v3.1.20260814",
+        "source_commit": "1b86b2ae0e493e7ea93f8c1a0f0cb6735b1551f1",
+        "module_sum": "h1:l2AhBD+sFycU8Im81n/bZORMxW7fWtlZJEuJ4Hh0+z0=",
+        "license": "MIT",
+        "notice": "third_party/licenses/amneziawg-go-MIT.txt"
+      },
+      "platforms": [
+        "android",
+        "windows"
+      ],
+      "default_public_advertisement": false
+    }
+  },
+  "deployed_source_equivalent_to": "f530005",
+  "current_full_files_differ": true,
+  "current_and_deployed_gate_ast_equal": {
+    "awg2_lab_service.py:default_awg2_lab_config": "3fc2c1306cedb26c77f011775ffd53185928b2ad4a5942f046942321c9a22ac4",
+    "awg2_lab_service.py:normalize_awg2_lab_config": "8e435866700fb1b872b61f2fd3b59d41c3ce7038646180966444c47149ee3c79",
+    "awg2_lab_service.py:awg2_lab_rollout_access": "a01ed088c4379ae8cc57a81f42e2ac899ee078f77a691aea2d0b88751efc460d",
+    "awg31_lab_service.py:default_awg31_lab_config": "4c9f56195549160277a40d3371b609099854d42e2da55266cc8341d3abb93186",
+    "awg31_lab_service.py:normalize_awg31_lab_config": "ba1e217e201671e1439320003c779a1f979f0277a86a40ee03e992239223674b",
+    "awg31_lab_service.py:awg31_lab_rollout_access": "1df671463796aec8f6b4b7305e5948d4ee883897f71f52192ffbf5ec433edec9",
+    "network_rollout.py:default_network_rollout_config": "195026a3b0e48770db91b2862eb87a5db566bcaa1843dac82b058c0598e986ff",
+    "network_rollout.py:normalized_network_rollout_config": "d6b6429420eeeadc6d574d091843f2d81387af091a56e701ab8ae2c3873adb0c"
+  },
+  "runtime_readback": {
+    "config_sha256": "cd0add7b4805b863531ba0cd49b44c9749dbe38d6e740be6154114631b6920a3",
+    "public_access_denied": true,
+    "gate_enabled_flags": true,
+    "empty_identity_allowlists": true,
+    "no_shared_lab_rules_or_cohorts": true
+  },
+  "tests_passed": 34,
+  "backend_mutated": false,
+  "candidate_created": false,
+  "release_proven": false
+}

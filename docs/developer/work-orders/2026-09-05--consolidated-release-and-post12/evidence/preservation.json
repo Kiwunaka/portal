@@ -1,0 +1,86 @@
+{
+  "recorded_at_utc": "2026-09-05T10:59:21.759290+00:00",
+  "scope": "Read-only byte identity; no signing custody, runtime, remote retention or release claim",
+  "files": [
+    {
+      "name": "pokrov-android-arm64-v8a.apk",
+      "expected_sha256": "1eca4cbe8d36cbec2aca3dd92f27b7b369fb1199a13e6110a2447fad265acda5",
+      "exists": true,
+      "size": 101366678,
+      "actual_sha256": "1eca4cbe8d36cbec2aca3dd92f27b7b369fb1199a13e6110a2447fad265acda5",
+      "status": "PASS"
+    },
+    {
+      "name": "pokrov-android-armeabi-v7a.apk",
+      "expected_sha256": "cee69c797e5e73b929ee1ad7b56d4c0918d81d0b25b42cfc0903801b16450734",
+      "exists": true,
+      "size": 90778788,
+      "actual_sha256": "cee69c797e5e73b929ee1ad7b56d4c0918d81d0b25b42cfc0903801b16450734",
+      "status": "PASS"
+    },
+    {
+      "name": "pokrov-android-market.aab",
+      "expected_sha256": "9f3ad01d92fcde54d93d88b0df9a04e9b7b531362029d1df4beab86ded5fac2c",
+      "exists": true,
+      "size": 126263318,
+      "actual_sha256": "9f3ad01d92fcde54d93d88b0df9a04e9b7b531362029d1df4beab86ded5fac2c",
+      "status": "PASS"
+    },
+    {
+      "name": "pokrov-android-universal.apk",
+      "expected_sha256": "51b86f66bd5c79fdf8a8e51d7607315a6ea3f8dfe9c36c4656034aac3b4583f2",
+      "exists": true,
+      "size": 295370161,
+      "actual_sha256": "51b86f66bd5c79fdf8a8e51d7607315a6ea3f8dfe9c36c4656034aac3b4583f2",
+      "status": "PASS"
+    },
+    {
+      "name": "pokrov-android-x86_64.apk",
+      "expected_sha256": "fe1fa2d2efb3c20530ed4af7ef48d74e05b6b89e213410f976d180c58c473168",
+      "exists": true,
+      "size": 109951989,
+      "actual_sha256": "fe1fa2d2efb3c20530ed4af7ef48d74e05b6b89e213410f976d180c58c473168",
+      "status": "PASS"
+    },
+    {
+      "name": "pokrov-windows-setup-x64.exe",
+      "expected_sha256": "250622f7e4bf9bea39a9456004d4cfeb2340a987c622c46f70b3af07aaec3580",
+      "exists": true,
+      "size": 29153792,
+      "actual_sha256": "250622f7e4bf9bea39a9456004d4cfeb2340a987c622c46f70b3af07aaec3580",
+      "status": "PASS"
+    },
+    {
+      "name": "pokrov-1.2.0-candidate.33.release-index.json",
+      "expected_sha256": "5620c2f0558e7c9a0f8ff8dfbcd47523986dd7fdf13f061e81adab3b10a3f680",
+      "exists": true,
+      "size": 6884,
+      "actual_sha256": "5620c2f0558e7c9a0f8ff8dfbcd47523986dd7fdf13f061e81adab3b10a3f680",
+      "status": "PASS"
+    },
+    {
+      "name": "pokrov-1.2.0-candidate.33.release-index.json.sig",
+      "expected_sha256": "5115ab3cd8ee0fa49018e521f75fd9baf5d469c2793a8a47cda4a965b82d3191",
+      "exists": true,
+      "size": 64,
+      "actual_sha256": "5115ab3cd8ee0fa49018e521f75fd9baf5d469c2793a8a47cda4a965b82d3191",
+      "status": "PASS"
+    },
+    {
+      "name": "pokrov-1.2.0-candidate.33.signing-receipt.json",
+      "expected_sha256": "f84843c81f9173072dcb3f3f551f7ef5ca9e41c21312ddec77ca0fe6cb6b78d7",
+      "exists": true,
+      "size": 589,
+      "actual_sha256": "f84843c81f9173072dcb3f3f551f7ef5ca9e41c21312ddec77ca0fe6cb6b78d7",
+      "status": "PASS"
+    },
+    {
+      "name": "pokrov-1.2.0-candidate.33.release-handoff.json",
+      "expected_sha256": "30d9d04437caa51c0fafb533a77589d745c66cd7ce5c17843d5b3a1e37e72c81",
+      "exists": true,
+      "size": 13186,
+      "actual_sha256": "30d9d04437caa51c0fafb533a77589d745c66cd7ce5c17843d5b3a1e37e72c81",
+      "status": "PASS"
+    }
+  ]
+}

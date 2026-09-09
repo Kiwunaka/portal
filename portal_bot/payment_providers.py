@@ -803,6 +803,7 @@ def callback_ids(provider: str, payload: dict[str, Any]) -> tuple[str, str]:
         external_id = str(
             payload.get("contractId")
             or payload.get("contract_id")
+            or payload.get("event_id")
             or payload.get("id")
             or order_id
         ).strip()

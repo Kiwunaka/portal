@@ -1,0 +1,144 @@
+{
+  "candidate": {
+    "archive_sha256": "aa1f9e6e944ad4d123357924c29f3c2c63df7bd24ae8c82f2861af2d64f26f5f",
+    "commit": "235e8a49e94261f39b1166b152fe547fe95da740",
+    "runner_sha256": "8345c5b1c80a0b9e7fd36eda96d7eb57485f3c3a23e26553acd0ab7b10e154da"
+  },
+  "checks": {
+    "advisory_lock": {
+      "status": "PASS"
+    },
+    "bind_retry": {
+      "loser_state": "already_bound",
+      "losers": 1,
+      "messages": 1,
+      "retry_state": "canonical_existing",
+      "status": "PASS",
+      "winners": 1
+    },
+    "commit_ack_loss": {
+      "commit_error": true,
+      "commit_forwarded": true,
+      "committed_rows": 1,
+      "response_dropped": true,
+      "status": "PASS"
+    },
+    "ddl_lock_impact": {
+      "milliseconds": 756,
+      "sqlstate_class": "55",
+      "status": "PASS"
+    },
+    "migration_first": {
+      "milliseconds": 877,
+      "status": "PASS"
+    },
+    "migration_second": {
+      "milliseconds": 755,
+      "status": "PASS"
+    },
+    "post_migration": {
+      "counts": {
+        "account_devices": 44,
+        "account_entitlement_grants": 183,
+        "account_identities": 168,
+        "accounts": 102,
+        "auth_sessions": 996,
+        "entitlement_grants": 0,
+        "support_attachments": {
+          "bound": 0,
+          "dangling": 0,
+          "total": 0,
+          "unbound": 0
+        },
+        "support_ticket_messages": 116,
+        "support_tickets": {
+          "bound": 34,
+          "total": 42,
+          "unbound": 8
+        },
+        "users": {
+          "bound": 102,
+          "total": 102,
+          "unbound": 0
+        }
+      },
+      "legacy_entitlement_grants": {
+        "rows_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "schema_sha256": "2e1d2ca98a200aff45e4f867e1504b5fe2b55570509cd7685d9b408f84fa61e5",
+        "status": "PASS"
+      },
+      "status": "PASS"
+    },
+    "pre_migration": {
+      "counts": {
+        "account_devices": 44,
+        "account_entitlement_grants": 183,
+        "account_identities": 168,
+        "accounts": 102,
+        "auth_sessions": 996,
+        "entitlement_grants": 0,
+        "support_attachments": {
+          "bound": 0,
+          "dangling": 0,
+          "total": 0,
+          "unbound": 0
+        },
+        "support_ticket_messages": 116,
+        "support_tickets": {
+          "bound": 34,
+          "total": 42,
+          "unbound": 8
+        },
+        "users": {
+          "bound": 102,
+          "total": 102,
+          "unbound": 0
+        }
+      },
+      "legacy_entitlement_grants": {
+        "rows_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "schema_sha256": "2e1d2ca98a200aff45e4f867e1504b5fe2b55570509cd7685d9b408f84fa61e5",
+        "status": "PASS"
+      },
+      "schema": {
+        "tables_present": 10
+      },
+      "status": "PASS"
+    },
+    "schema_contract": {
+      "columns": 4,
+      "indexes": 7,
+      "markers": 2,
+      "status": "PASS",
+      "tables": 12
+    },
+    "skip_locked": {
+      "distinct": true,
+      "selected": 2,
+      "status": "PASS"
+    },
+    "target_access": {
+      "database_identity": true,
+      "database_owner": true,
+      "database_public_access_revoked": true,
+      "ordinary_login": true,
+      "public_objects_owned": 1191,
+      "public_objects_total": 1191,
+      "schema_create": true,
+      "schema_public_access_revoked": true,
+      "schema_usage": true,
+      "session_identity": true,
+      "status": "PASS",
+      "users_select": true
+    }
+  },
+  "durations_ms": {
+    "total": 4080
+  },
+  "gate": "postgres_candidate_rehearsal",
+  "schema_version": 1,
+  "source_database": "portal",
+  "status": "PASS",
+  "synthetic_cleanup": "confirmed",
+  "target_database": "portal_r12_20260909_rehearsal"
+}

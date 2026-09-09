@@ -1,0 +1,66 @@
+{
+  "recorded_at_utc": "2026-09-05T23:02:08.679535+00:00",
+  "origin": "current-origin Windows local Flutter fixtures",
+  "client_source": "fa62f0418efdce79decd4e0c352f63b0c112ca5e",
+  "commands": [
+    {
+      "command": "flutter test test/pokrov_seed_app_test.dart --plain-name \"inactive app mutes animation ticks including modal routes\"",
+      "log": "E:/r12-c04-inactive-before2.log",
+      "sha256": "513ac93a7ba0ad391045a0d20f6c2dab0f6607c72ab166da617979fef640bbe2",
+      "exit_code": 1,
+      "result": "FAIL before fix: opacity changed 0.674155693501234 -> 0.5665494240820408 while inactive"
+    },
+    {
+      "command": "flutter test test/pokrov_seed_app_test.dart --plain-name \"inactive app mutes animation ticks including modal routes\"",
+      "log": "E:/r12-c04-inactive-after3.log",
+      "sha256": "fcb7c833b7c1d317bc2d31461a830da2e36fdfb58d0098b8d681c9c3b27daa98",
+      "exit_code": 0,
+      "result": "PASS active -> inactive freezes -> resumed animates, modal retained"
+    },
+    {
+      "command": "flutter test test/pokrov_seed_app_test.dart test/design_system_contract_test.dart test/connection_experience_test.dart test/location_latency_measurements_test.dart",
+      "log": "E:/r12-c04-presentation-tests.log",
+      "sha256": "d7406ea4fbd326c70f658899c6d233b3bd10d955a3417b40d3a6ea78ec0481d2",
+      "exit_code": 0,
+      "result": "216 PASS including critical-state goldens"
+    },
+    {
+      "command": "flutter analyze --no-pub",
+      "log": "E:/r12-c04-analyze.log",
+      "sha256": "bd3de7a27150e4529bc997a936944ef03f304a0dab85d732796eb823cf91f960",
+      "exit_code": 0,
+      "result": "no issues"
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/validate-seed.ps1 -CoreRoot E:/r12core-implementation -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start",
+      "log": "E:/r12-c04-seed.log",
+      "sha256": "327710f10c2d340f7eafcacbd354908f675104fba24d469d5802ab38423a6616",
+      "exit_code": 0,
+      "result": "PASS including presentation boundary and docs contracts"
+    },
+    {
+      "command": "python -m pytest -q tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py",
+      "log": "E:\\r12-c04-docs.log",
+      "sha256": "ec23b3930fde9f6a8f776ce67609009a916b7f347b9a7e5a71e55ec16ac4a69b",
+      "exit_code": 0,
+      "result": "33 PASS"
+    }
+  ],
+  "source_sha256": {
+    "packages/app_shell/lib/src/design_system/pokrov_motion.dart": "8466ef1887d442534b7456dfa1e3df6dea5a1fed1d2b1d89643a109c56fca393",
+    "packages/app_shell/lib/src/shell/seed_shell.dart": "f6609b62417d0828786e2ef57446624c1c81159901958a10472588a7f8bbea5c",
+    "packages/app_shell/lib/src/shell/navigation_shell.dart": "a3e01a63d551a4d300fb9b7f918a7afe9b657849d1c86a2c95b9932c69767430",
+    "packages/app_shell/lib/src/features/home/connection_experience.dart": "920fda78b474b68c202ffd028da5295da5918e3c96f973c51295d1b81b44ac2d",
+    "packages/app_shell/lib/src/features/profile/profile_surface.dart": "69825d517619a48acfb6a754932fa7ce530ef94ea25c412179cc4e70381651e9",
+    "packages/app_shell/lib/src/features/rules/rules_surface.dart": "082221b9692db52f893698fbb271b4f653fcb887055d2ae875db7bffc86a007a",
+    "packages/app_shell/lib/src/features/locations/locations_surface.dart": "fc57b32fb1100e5d84a2cf9f4f08538710e4e27f27a9eecdfca9f16217396ef5"
+  },
+  "limitations": [
+    "C04 is partial: no 2-4 Hz traffic-update experiment or reference Android/Windows CPU/battery/frame trace.",
+    "Animation regression injects Flutter lifecycle events; not physical host focus/device proof.",
+    "F01/F04 source and existing tests are I3; exact-candidate multi-surface acceptance remains open.",
+    "Initial regression attempt failed compilation (await on void lifecycle callback); before2 is the actual observed regression.",
+    "First two after-fix runs reached assertions but failed fixture disposal because a foreground refresh delay remained; final test explicitly disposes the tree and drains the 250ms delay."
+  ],
+  "release_artifacts_delta": false
+}

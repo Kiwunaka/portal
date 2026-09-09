@@ -1,0 +1,337 @@
+{
+  "schema": "pokrov.r12.c05-nested-notices-handoff/v1",
+  "state": "I3_PARTIALLY_FIXED_FULL_C05_OPEN",
+  "client_commit": "b0f4374c8ac00840aaa52c170121ba310133bef0",
+  "client_parent": "1032c4801d68b4f67e4a6bc0fdc018f20886d680",
+  "core_source_commit": "8dc57a830bd1487389dd1b7c9190f094c31e13bc",
+  "client_receipt": {
+    "path": "E:\\r12client\\docs\\operations\\evidence\\2026-09-06-r12-c05-nested-notices\\package-notices.json",
+    "sha256": "b44c9071d3305c41da57894710b821b496b8153e2aeaff3607de4596e8dd0b83"
+  },
+  "client_committed_blobs": {
+    "config/runtime-artifacts.seed.json": "9d7818deef74349208014174da7953bd44f1819ede0e0a1e52862258f8aa8e6e",
+    "docs/architecture/bootstrap-workflow.md": "0d4aea365bdfd2bdc271ee743a0f91d6e06c384f368ce4718f49cef885080940",
+    "docs/operations/android-release-audit.md": "b2f6f03e5d9f5ab19f91b58ea5a58c5692bd8339b6cd839803f5cbc3f0009808",
+    "docs/operations/evidence/2026-09-06-r12-c05-nested-notices/append-notices.py": "0049e2336f8b4168328d938195dd1861091bbaca87d1d8f46576435fa6686240",
+    "docs/operations/evidence/2026-09-06-r12-c05-nested-notices/assembly.json": "baec54a2562ed95396eb9f55cc1f5f63539db65fe6da7fc5e6793eb27f5a90e7",
+    "docs/operations/evidence/2026-09-06-r12-c05-nested-notices/collect-package-graphs.py": "9119e29ed8530fd4efe573ba511ebb211235351a4514ac12ec3464af06df7696",
+    "docs/operations/evidence/2026-09-06-r12-c05-nested-notices/find-nested-notices.py": "8cbf75b22fbd345d001a7c27a89d627daa24397be81cd8a7b36d7fadef1cd47f",
+    "docs/operations/evidence/2026-09-06-r12-c05-nested-notices/nested-notices.json": "6d3ad1935ba4590df65990a5800b584dffaa3cb7f318b5668acbc3b27872e355",
+    "docs/operations/evidence/2026-09-06-r12-c05-nested-notices/package-notices.json": "3eab98340fc6879b15f6bd7e17cf6009bb9e4287774ebe5591521e5f70788b8f",
+    "docs/operations/evidence/2026-09-06-r12-c05-nested-notices/verify-packages.py": "08933e4c0c3b8c3e2906875843abc3c4ea182957dd680e0683325ee116c286ae",
+    "docs/operations/windows-release-readiness.md": "25991453a0ec41dfa97c9df54c3bffb531fc71c93681003152c070c4572a730b",
+    "packages/app_shell/assets/licenses/native-go-NOTICES.txt": "17034f0a50bbdc6480c660908885cf7d1ad185e1813e23b2dc6d2d25cde03355"
+  },
+  "notice": {
+    "file": "packages/app_shell/assets/licenses/native-go-NOTICES.txt",
+    "bytes": 637092,
+    "sha256": "17034f0a50bbdc6480c660908885cf7d1ad185e1813e23b2dc6d2d25cde03355"
+  },
+  "source_graphs": [
+    {
+      "name": "libpokrov-core-arm64-v8a",
+      "packages": 1022,
+      "exit_code": 0,
+      "command": [
+        "C:/Users/kiwun/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.windows-amd64/bin/go.exe",
+        "list",
+        "-deps",
+        "-json=ImportPath,Dir,Module,Standard,GoFiles,CgoFiles,SFiles,CFiles,CXXFiles,HFiles,SysoFiles,EmbedFiles,Error,DepsErrors",
+        "-tags=with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api,with_grpc,with_awg,tfogo_checklinkname0,with_naive_outbound,with_conntrack",
+        "github.com/sagernet/sing-box/experimental/libbox",
+        "./platform/mobile"
+      ],
+      "cwd": "E:\\r12core-implementation",
+      "environment": {
+        "GOOS": "android",
+        "GOARCH": "arm64",
+        "CGO_ENABLED": "1",
+        "GOTOOLCHAIN": "local",
+        "GOFLAGS": "-buildvcs=false -mod=readonly"
+      },
+      "build_info": "E:\\r12-c05-artifacts\\final-libpokrov-core-arm64-v8a.buildinfo.log",
+      "build_info_sha256": "7ff88d5bb5e590413bd1ef0c14fdfb30f2c1482c54e8a91ae27df885a0476bef",
+      "package_count": 1022
+    },
+    {
+      "name": "libpokrov-core-armeabi-v7a",
+      "packages": 1020,
+      "exit_code": 0,
+      "command": [
+        "C:/Users/kiwun/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.windows-amd64/bin/go.exe",
+        "list",
+        "-deps",
+        "-json=ImportPath,Dir,Module,Standard,GoFiles,CgoFiles,SFiles,CFiles,CXXFiles,HFiles,SysoFiles,EmbedFiles,Error,DepsErrors",
+        "-tags=with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api,with_grpc,with_awg,tfogo_checklinkname0,with_naive_outbound,with_conntrack",
+        "github.com/sagernet/sing-box/experimental/libbox",
+        "./platform/mobile"
+      ],
+      "cwd": "E:\\r12core-implementation",
+      "environment": {
+        "GOOS": "android",
+        "GOARCH": "arm",
+        "CGO_ENABLED": "1",
+        "GOARM": "7",
+        "GOTOOLCHAIN": "local",
+        "GOFLAGS": "-buildvcs=false -mod=readonly"
+      },
+      "build_info": "E:\\r12-c05-artifacts\\final-libpokrov-core-armeabi-v7a.buildinfo.log",
+      "build_info_sha256": "51704d9d511fec07a4aa8e55a36b6d9e26e5dc428593133492d9cc4998042192",
+      "package_count": 1020
+    },
+    {
+      "name": "libpokrov-core-x86",
+      "packages": 1020,
+      "exit_code": 0,
+      "command": [
+        "C:/Users/kiwun/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.windows-amd64/bin/go.exe",
+        "list",
+        "-deps",
+        "-json=ImportPath,Dir,Module,Standard,GoFiles,CgoFiles,SFiles,CFiles,CXXFiles,HFiles,SysoFiles,EmbedFiles,Error,DepsErrors",
+        "-tags=with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api,with_grpc,with_awg,tfogo_checklinkname0,with_naive_outbound,with_conntrack",
+        "github.com/sagernet/sing-box/experimental/libbox",
+        "./platform/mobile"
+      ],
+      "cwd": "E:\\r12core-implementation",
+      "environment": {
+        "GOOS": "android",
+        "GOARCH": "386",
+        "CGO_ENABLED": "1",
+        "GOTOOLCHAIN": "local",
+        "GOFLAGS": "-buildvcs=false -mod=readonly"
+      },
+      "build_info": "E:\\r12-c05-artifacts\\final-libpokrov-core-x86.buildinfo.log",
+      "build_info_sha256": "ede06b7406c16c6441040561f8d7a4f105da13b14aa4efa0c9c10da849449a50",
+      "package_count": 1020
+    },
+    {
+      "name": "libpokrov-core-x86_64",
+      "packages": 1023,
+      "exit_code": 0,
+      "command": [
+        "C:/Users/kiwun/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.windows-amd64/bin/go.exe",
+        "list",
+        "-deps",
+        "-json=ImportPath,Dir,Module,Standard,GoFiles,CgoFiles,SFiles,CFiles,CXXFiles,HFiles,SysoFiles,EmbedFiles,Error,DepsErrors",
+        "-tags=with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api,with_grpc,with_awg,tfogo_checklinkname0,with_naive_outbound,with_conntrack",
+        "github.com/sagernet/sing-box/experimental/libbox",
+        "./platform/mobile"
+      ],
+      "cwd": "E:\\r12core-implementation",
+      "environment": {
+        "GOOS": "android",
+        "GOARCH": "amd64",
+        "CGO_ENABLED": "1",
+        "GOTOOLCHAIN": "local",
+        "GOFLAGS": "-buildvcs=false -mod=readonly"
+      },
+      "build_info": "E:\\r12-c05-artifacts\\final-libpokrov-core-x86_64.buildinfo.log",
+      "build_info_sha256": "bf07ae631ceabb35f13db61ae09043e410df4e49b85786e10e298d2824374fdf",
+      "package_count": 1023
+    },
+    {
+      "name": "pokrov-core",
+      "packages": 1013,
+      "exit_code": 0,
+      "command": [
+        "C:/Users/kiwun/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.windows-amd64/bin/go.exe",
+        "list",
+        "-deps",
+        "-json=ImportPath,Dir,Module,Standard,GoFiles,CgoFiles,SFiles,CFiles,CXXFiles,HFiles,SysoFiles,EmbedFiles,Error,DepsErrors",
+        "-tags=with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api,with_grpc,with_awg,tfogo_checklinkname0,with_naive_outbound,with_conntrack,with_purego",
+        "./platform/desktop"
+      ],
+      "cwd": "E:\\r12core-implementation",
+      "environment": {
+        "GOOS": "windows",
+        "GOARCH": "amd64",
+        "CGO_ENABLED": "1",
+        "GOTOOLCHAIN": "local",
+        "GOFLAGS": "-buildvcs=false -mod=readonly"
+      },
+      "build_info": "E:\\r12-c05-artifacts\\final-pokrov-core.buildinfo.log",
+      "build_info_sha256": "1ffb87d69e7569716a1813128d3e7824f7886c21f52ece4c29c1447e58b5215e",
+      "package_count": 1013
+    }
+  ],
+  "upstream": {
+    "repository": "https://github.com/Psiphon-Labs/utls",
+    "commit": "24497d415a8de0d11c20c3a47724fb88897ed725",
+    "root_license": "MISSING",
+    "module_files_exact_match": 298,
+    "nested_license": "dicttls/LICENSE",
+    "queries": [
+      {
+        "command": [
+          "gh",
+          "api",
+          "repos/Psiphon-Labs/utls/commits/24497d415a8d"
+        ],
+        "exit_code": 0,
+        "log": "E:\\r12-c05-utls-review\\commit.json",
+        "sha256": "3c7b8ae2f8ec147cb8d4e4ea5094541f46def016c5cbed89e1fea6aacf260f83"
+      },
+      {
+        "command": [
+          "gh",
+          "api",
+          "repos/Psiphon-Labs/utls/git/trees/24497d415a8d?recursive=1"
+        ],
+        "exit_code": 0,
+        "log": "E:\\r12-c05-utls-review\\tree.json",
+        "sha256": "5958e090848541a308eda91a604dd112f9d07485646c2cc55a82e396cc08ec22"
+      },
+      {
+        "command": [
+          "gh",
+          "api",
+          "repos/Psiphon-Labs/utls/commits?sha=24497d415a8d&path=LICENSE&per_page=100"
+        ],
+        "exit_code": 0,
+        "log": "E:\\r12-c05-utls-review\\license-history.json",
+        "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      }
+    ]
+  },
+  "client_checks": [
+    {
+      "command": "flutter build apk --release --flavor direct --target-platform android-arm,android-arm64,android-x64 --android-project-arg=pokrov.singleVersionSplitApks=true --dart-define=POKROV_API_BASE_URL=http://127.0.0.1:9 --dart-define=POKROV_APP_VERSION=1.2.0",
+      "cwd": "E:/r12client/apps/android_shell",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-utls-review\\android-build.log",
+      "sha256": "133e63cac8801a880fa84d70af065c49f5ca6464c824605f3d71cd0c2ee4e767",
+      "environment": {
+        "POKROV_ALLOW_INTERNAL_BETA_DEBUG_SIGNING": "true"
+      }
+    },
+    {
+      "command": "cmake -S E:/r12client/apps/windows_shell/windows -B E:/r12client/apps/windows_shell/build/windows/x64 -DCMAKE_INSTALL_PREFIX=E:/r12-c05-utls-review/windows-bundle",
+      "cwd": "E:/r12client",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-utls-review\\windows-prefix.log",
+      "sha256": "7251dbf33f73f20904323dd58f05aa9fd4e3e7db415b4641ab0e9277f8cbeebc"
+    },
+    {
+      "command": "flutter build windows --release --no-pub --dart-define=POKROV_API_BASE_URL=http://127.0.0.1:9 --dart-define=POKROV_APP_VERSION=1.2.0",
+      "cwd": "E:/r12client/apps/windows_shell",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-utls-review\\windows-build.log",
+      "sha256": "7de98b74f0a57ad323a89fab226519e4a827a3154378c44bb6f0894543c55052"
+    },
+    {
+      "command": "python -B E:/r12-c05-utls-review/verify-packages.py",
+      "cwd": "E:/r12client",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-utls-review\\package-verification.log",
+      "sha256": "0367eab28000e83c8da7fe7aa43540a808d5ebbb4563ef3ecf3079c1012115c3"
+    },
+    {
+      "command": "./scripts/validate-seed.ps1 -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start -CoreRoot E:/r12core-implementation",
+      "cwd": "E:/r12client",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-utls-review\\seed.log",
+      "sha256": "4a49caddd2e4670f376adb62ec27538b2748dad40a7dbbdba4aac2a20bb8f532"
+    },
+    {
+      "command": "C:/Users/kiwun/go/pkg/mod/golang.org/toolchain@v0.0.1-go1.26.8.windows-amd64/bin/go.exe mod verify",
+      "cwd": "E:/r12core-implementation",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-utls-review\\go-mod-verify.log",
+      "sha256": "acdb6a6a98dc2c297af31bb3538319778be8c8ef263cd0a8c9799de9c4998533"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "E:\\r12client",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--exit-code",
+        "--",
+        "artifacts/releases"
+      ],
+      "cwd": "E:\\r12client",
+      "exit_code": 0
+    }
+  ],
+  "package_summary": {
+    "android_count": 4,
+    "windows_file_count": 302,
+    "windows_unchanged": 301,
+    "verbatim_texts": 173,
+    "added_texts": 28,
+    "added_text_bytes": 79569
+  },
+  "staged_git_check": {
+    "path": "E:\\r12-c05-utls-review\\git-staged-check.json",
+    "sha256": "f3fc729879961b6090d84552c16b3ea176beea2f2c4db3c29403c0734efaa55a"
+  },
+  "limitations": [
+    "Package/embedded-file ancestor notices cover selected source inputs, not every native include or file-level license header.",
+    "Go internal/boring directory notice inclusion does not prove optional BoringSSL implementation is linked.",
+    "Psiphon utls root license remains absent in exact upstream tree; dicttls text is scoped to its subtree.",
+    "Source delivery, residual advisory reachability, installed privacy/device/SCM/TUN/origin acceptance and final candidate remain open.",
+    "Seed performance collector uses fixture, not a new device measurement."
+  ],
+  "platform_checks": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_agent_docs_contract.py",
+        "tests/test_agent_context_packet_audit.py",
+        "-q"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-utls-review\\platform-docs.log",
+      "sha256": "0d917123525e40216d5bfc5f6b30f66edd77b7093fac462773f5a7559b30a7ce",
+      "output": ".................................                                        [100%]\n33 passed in 0.78s"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "scripts/agent_context_packet_audit.py",
+        "--platform-context-root",
+        "."
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-utls-review\\platform-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "output": "PASS platform-context"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "docs\\developer\\work-orders\\2026-09-05--consolidated-release-and-post12\\validate_package.py"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-utls-review\\platform-package.log",
+      "sha256": "70e11cea38d99eadd6ac0f6e4376a00fc7825b224512fcaac2b83ce3b22147d5",
+      "output": "PASS: 13 imported section hashes, 83 R12 IDs, 378 retained legacy IDs and ledger hash, 218 local file links"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "push_merge_deploy_candidate": false
+}

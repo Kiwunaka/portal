@@ -234,6 +234,45 @@ def test_l1_summary_is_closed_and_l2_grant_is_actor_bound_single_use(
         )
 
 
+@pytest.mark.parametrize("boundary", ["other_l2_actor", "other_case", "expires_at"])
+def test_bundle_grant_rejects_wrong_scope_and_exact_expiry_without_consumption(
+    session, tmp_path: Path, boundary: str
+) -> None:
+    upload = _upload(session, payload=b"encrypted-case-fixture")
+    other = _upload(session, payload=b"encrypted-other-case-fixture")
+    assert upload.ticket_id != other.ticket_id
+    grant = service.issue_bundle_access_grant(
+        session,
+        upload_id=upload.upload_id,
+        actor_tg_id=2002,
+        privileged_ids={2002, 2003},
+        reason_code="customer_case",
+        now=NOW,
+        ttl_seconds=3600,
+    )
+    session.commit()
+    assert grant.expires_at == NOW + timedelta(minutes=15)
+
+    with pytest.raises(
+        service.OperatorObservabilityError,
+        match="support_bundle_access_grant_invalid",
+    ):
+        service.consume_bundle_access_grant(
+            session,
+            upload_id=other.upload_id if boundary == "other_case" else upload.upload_id,
+            token=grant.token,
+            actor_tg_id=2003 if boundary == "other_l2_actor" else 2002,
+            privileged_ids={2002, 2003},
+            accepted_root=tmp_path / "not-read-for-denied-access",
+            now=grant.expires_at if boundary == "expires_at" else NOW,
+        )
+    audit = session.query(models.SupportBundleAccessAudit).one()
+    assert audit.action == "grant_issued"
+    assert audit.ticket_id == upload.ticket_id
+    assert audit.used_at is None
+    assert audit.access_token_hash is not None
+
+
 def test_retention_hold_is_l2_only_and_audited(session) -> None:
     upload = _upload(session, payload=b"ciphertext")
     with pytest.raises(

@@ -1,0 +1,21 @@
+{
+  "db.py": {
+    "size": 1376,
+    "crlf_count": 42,
+    "lf_sha256": "18462b548def2e31835621d751c7441b78cae34709d2a019f3c73c6ca5c1b40f"
+  },
+  "requirements.txt": {
+    "size": 132734,
+    "crlf_count": 1644,
+    "lf_sha256": "bcf26246b4a9c9c45b0a73a11f1145d0f0cd779a3e659acbfab8ee5cc5a2f5f0"
+  },
+  "api.py": {
+    "size": 365736,
+    "crlf_count": 9657,
+    "lf_sha256": "032b8dd3f790b284bc977855cbfe4c2312ce450d8d5a142d3534d8204d1fda50"
+  },
+  "runtime_db_schemes": {
+    "DATABASE_URL": "postgresql+psycopg2"
+  },
+  "mutation_performed": false
+}

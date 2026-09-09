@@ -1,0 +1,167 @@
+{
+  "result": "PASS_BOUNDED_SOURCE_WORKER_REVOKE_EXPIRY_RESTART",
+  "source_parent": "0e829c916ef44f2016ead4726d09d6b0f57d46b5",
+  "source_manifest": "source-manifest.json",
+  "source_manifest_timing": "at retention, after execution",
+  "source_files": 198,
+  "postgres_races": 4,
+  "postgres_expiry_retry_cases": 4,
+  "core_oracles": {
+    "accepted": 10,
+    "expected_rejected": 6
+  },
+  "actual_worker_cycles": 6,
+  "tests": {
+    "focused": "99 passed + 12 subtests",
+    "backend_initial": "179 passed + 8 subtests; 1 failed across minute boundary",
+    "backend_failed_test_recheck": "1 passed with test clock pinned"
+  },
+  "retained_files": [
+    {
+      "path": "audit-lab.py",
+      "bytes": 3071,
+      "sha256": "c5dbc88d8c237eb80033d6a1abe831c4328b3cf9fb57e1b7c5a0e1f2bb502bc2"
+    },
+    {
+      "path": "backend-router.log",
+      "bytes": 2939,
+      "sha256": "02f0945cd8dcc22318f6a18f2d99fe8a16da55647c46cf0f9975a1c53b1dc86d"
+    },
+    {
+      "path": "backend-failed-test-recheck.log",
+      "bytes": 100,
+      "sha256": "217bce2a5c77c14bd34a2dc6c3ca615652ae8ca6f57ba90ec92b380b1f29fcbe"
+    },
+    {
+      "path": "backend-failure-buckets.json",
+      "bytes": 381,
+      "sha256": "a90544f02a9e772b774dcdcc4453b3bfe669e14e3f86252fd49ab3d1e90cf8ee"
+    },
+    {
+      "path": "check-persistence-failure.py",
+      "bytes": 3591,
+      "sha256": "2df7043544a476cc4d82ccdb249dfefdf04eb67ab3da092cb60f91fc69c86ae7"
+    },
+    {
+      "path": "final-lab-audit.json",
+      "bytes": 1536,
+      "sha256": "5b82bdd58292df1dd168016b766660b739abf67309c69a7634424397ff1ee359"
+    },
+    {
+      "path": "focused.log",
+      "bytes": 181,
+      "sha256": "5aa5a1113b7564f00ae043e6b02f9cb557098220d64d022c47ec6a94dcf9833d"
+    },
+    {
+      "path": "persistence-failure.json",
+      "bytes": 510,
+      "sha256": "731aa788b0c96398128167e8afb65a8fc839279843db1427015f7eb225c4195f"
+    },
+    {
+      "path": "pg-result.json",
+      "bytes": 2430,
+      "sha256": "b32836fb554fedc58c6ca1b011b63c45b3dbebfbc01e1f05c6f8afd42d1d7201"
+    },
+    {
+      "path": "pg_lab.py",
+      "bytes": 3686,
+      "sha256": "caedbaeab3c0a6d52b9a21fb9579f18faaa59e3ce0f616acda183be8300d3d0b"
+    },
+    {
+      "path": "pg_lab-before-rsa-pin.py",
+      "bytes": 3479,
+      "sha256": "5d82ed96495142207e8eb5c60368f06e8753eb6a177bdd35c50f84971dc7fc94"
+    },
+    {
+      "path": "run-pg.py",
+      "bytes": 9917,
+      "sha256": "da9c1eff55f37b20f1268b674dab7e0032ccaec236024e28452be5c0748725b0"
+    },
+    {
+      "path": "run-server.py",
+      "bytes": 11936,
+      "sha256": "0129c096348cef5fbb32f80b3c536fde94edcb61604d2a301ec0f1f0073b7cc7"
+    },
+    {
+      "path": "run-server-v1.py",
+      "bytes": 11768,
+      "sha256": "2fb5c7c1c95858ed08e5ffc1473988330d7418f6c1f1d29da8878566ed1b08c9"
+    },
+    {
+      "path": "server-controller.py",
+      "bytes": 4903,
+      "sha256": "e051594c5b66f6023504bd4f79de7ccc3e1994f3873d7bbed2f1654cd81f9fca"
+    },
+    {
+      "path": "server-before.json",
+      "bytes": 2356,
+      "sha256": "37e985034dbf2d7b0a58ccbd2b1f55a36187020a9cf18df1442155289e1dc07d"
+    },
+    {
+      "path": "server-after.json",
+      "bytes": 2323,
+      "sha256": "bcf1b2bd0c0f4ff0c65fca4c97f5142ada1bc6262df4969e5fd5a667a9e0d3e7"
+    },
+    {
+      "path": "server-awg2-result.json",
+      "bytes": 1252,
+      "sha256": "f8566459efbd5fce82dd48a497fcb3ea6aca5ef05a2050085a016ea23af5f6f4"
+    },
+    {
+      "path": "server-awg2-result-v2.json",
+      "bytes": 12392,
+      "sha256": "e6541c00fc5f13f76c15ac2afbba046f5b027f4cecffcde5c4ae1d93a22c34c8"
+    },
+    {
+      "path": "server-awg31-result-v2.json",
+      "bytes": 12404,
+      "sha256": "0d7ebb38586130072bd6d5e81d0495f234ce6190b54e17e3417f70bfdea6354e"
+    },
+    {
+      "path": "vm-final-state.txt",
+      "bytes": 170,
+      "sha256": "24334967906f97e74bd631276311137035a5356b7527cec05c6beb4f4b93c783"
+    },
+    {
+      "path": "source-manifest.json",
+      "bytes": 51201,
+      "sha256": "b1b94b21000c807c0a5cd7942da82bf1324ea105f9e14234b505a16ff486bcc7"
+    },
+    {
+      "path": "retain.py",
+      "bytes": 5849,
+      "sha256": "debe92e4e09f1b1e7a5fd3f3331b56eddd375eb0b7262b943e03e81846f79f98"
+    },
+    {
+      "path": "docs-tests.log",
+      "bytes": 101,
+      "sha256": "cabfd15983de39e48cb3dde536376171e85f1dcb627b9386b5895907870419f0"
+    },
+    {
+      "path": "context-audit.json",
+      "bytes": 23,
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d"
+    },
+    {
+      "path": "package-validation.log",
+      "bytes": 109,
+      "sha256": "002c1e1837c23886f45ce844c9e2bfa30ec884c3c82212729937be50594c4880"
+    },
+    {
+      "path": "diff-check.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "cleanup_verified": true,
+  "original_server_files_static_config_peer_identities_restored": true,
+  "server_counters_and_process_ids_unchanged": false,
+  "production_backend_deployed": false,
+  "candidate_created": false,
+  "remaining": [
+    "legacy shared-key migration",
+    "permanent Brain worker activation",
+    "installed-client actual revoke/expiry",
+    "updated integrated quality and full release gates"
+  ]
+}

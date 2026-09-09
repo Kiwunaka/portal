@@ -17,11 +17,13 @@ permissions:
 
 jobs:
   verify-hosted-custody:
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout trusted platform promotion line
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           path: platform
           persist-credentials: false
 

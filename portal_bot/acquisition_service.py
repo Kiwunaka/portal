@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import json
 import re
 import secrets
@@ -81,6 +82,14 @@ def clean_entry_route(value: object) -> str:
     return path[:128]
 
 
+def _is_ip_literal(value: object) -> bool:
+    try:
+        ipaddress.ip_address(str(value or "").strip().rstrip(".").strip("[]"))
+    except ValueError:
+        return False
+    return True
+
+
 def clean_referrer_host(value: object) -> str:
     raw = str(value or "").strip()
     if not raw:
@@ -92,6 +101,8 @@ def clean_referrer_host(value: object) -> str:
     if parsed.scheme not in {"http", "https"} or parsed.username or parsed.password:
         return ""
     host = str(parsed.hostname or "").strip().lower().rstrip(".")
+    if _is_ip_literal(host):
+        return ""
     if not host or len(host) > 128 or not re.fullmatch(r"[a-z0-9.-]+", host):
         return ""
     return host
@@ -111,7 +122,7 @@ def normalize_acquisition_touch(
     if normalized_channel not in {"site", "marketing", "checkout", "webapp", "bot", "app"}:
         normalized_channel = "site"
     referrer_host = clean_referrer_host(referrer)
-    normalized_source = clean_acquisition_slug(source, default="", max_len=64)
+    normalized_source = "" if _is_ip_literal(source) else clean_acquisition_slug(source, default="", max_len=64)
     if not normalized_source and referrer_host:
         normalized_source = clean_acquisition_slug(referrer_host, default="unknown", max_len=64)
     return AcquisitionTouch(

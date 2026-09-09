@@ -1,0 +1,19 @@
+{
+  "phase": "previous-restart",
+  "states": {
+    "previous": {
+      "MainPID": "1948",
+      "NRestarts": "0",
+      "IPAddressAllow": "127.0.0.0/8 ::1/128",
+      "IPAddressDeny": "0.0.0.0/0 ::/0",
+      "ActiveState": "active"
+    },
+    "current": {
+      "MainPID": "0",
+      "NRestarts": "0",
+      "IPAddressAllow": "127.0.0.0/8 ::1/128",
+      "IPAddressDeny": "0.0.0.0/0 ::/0",
+      "ActiveState": "inactive"
+    }
+  }
+}

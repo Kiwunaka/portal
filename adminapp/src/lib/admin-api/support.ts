@@ -170,6 +170,7 @@ export type SupportUser360 = {
   fingerprints: SupportAttemptExplorer["fingerprints"];
   observer: { authority: string; state: string; observedIpCount24h: number; observedNodeCount24h: number; lastObservedAt: string | null };
   fieldAccess: { supportDiagnostics: boolean };
+  networkContext: Array<{ deviceRef: string; observedAt: string | null; originStatus: string; publicIp: string | null; networkClass: string; carrier: string | null; countryCode: string | null; region: string | null; platform: string | null; appVersion: string | null; runtimePhase: string | null }>;
 };
 
 export type AdminTicketsPayload = {
@@ -470,6 +471,7 @@ export async function fetchSupportUser360(tgId: number, init?: ApiRequestInit): 
     attempts: records(payload.attempts).map(mapAttempt).filter((row) => Boolean(row.attemptRef)),
     fingerprints: records(payload.fingerprints).map((row) => ({ fingerprint: text(row.fingerprint), count: Math.max(0, number(row.count)), platform: optionalText(row.platform), appVersion: optionalText(row.app_version), subsystem: optionalText(row.subsystem), stage: optionalText(row.stage), result: optionalText(row.result), errorCode: optionalText(row.error_code) })).filter((row) => Boolean(row.fingerprint)),
     observer: { authority: text(observer.authority), state: text(observer.state) || "missing", observedIpCount24h: Math.max(0, number(observer.observed_ip_count_24h)), observedNodeCount24h: Math.max(0, number(observer.observed_node_count_24h)), lastObservedAt: optionalText(observer.last_observed_at) },
+    networkContext: text(supportDiagnostics.state) === "visible" ? records(payload.network_context).map((row) => ({ deviceRef: text(row.device_ref), observedAt: optionalText(row.observed_at), originStatus: text(row.origin_status) || "unavailable", publicIp: row.origin_status === "observed" ? optionalText(row.public_ip) : null, networkClass: text(row.network_class) || "unknown", carrier: optionalText(row.carrier), countryCode: optionalText(row.country_code), region: optionalText(row.region), platform: optionalText(row.platform), appVersion: optionalText(row.app_version), runtimePhase: optionalText(row.runtime_phase) })) : [],
     fieldAccess: { supportDiagnostics: text(supportDiagnostics.state) !== "redacted" },
   };
 }

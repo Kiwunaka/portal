@@ -274,6 +274,69 @@ def _auth_headers(start_body: dict[str, object]) -> dict[str, str]:
     return {"Authorization": f"Bearer {start_body['session_token']}"}
 
 
+def test_automatic_network_context_is_device_bound_short_lived_and_redacted(monkeypatch, tmp_path):
+    api = _load_api(monkeypatch, tmp_path)
+    import client_network_diagnostics as diagnostics
+    from antiabuse_privacy_service import cleanup_antiabuse_retention
+    from models import AdminOperatorAudit, AntiAbuseEvent, User
+    from support_work_service import user_360
+    monkeypatch.setattr(diagnostics, "request_public_ip", lambda _request: "8.8.8.8")
+    monkeypatch.setattr(diagnostics, "approximate_region", lambda ip: ("RU", "Fixture region") if ip else (None, None))
+    client = TestClient(api.app, base_url="https://api.pokrov.test")
+    start = _start_trial(client, install_id="network-context-fixture", platform="android")
+    headers = _auth_headers(start)
+    body = {"network_class": "cellular", "carrier": "Fixture carrier", "direct_observation": True,
+            "runtime_phase": "running", "profile_revision": "revision-1"}
+    assert client.post("/api/client/network/context", json=body).status_code == 401
+    assert client.post("/api/client/network/context", headers=headers, json={**body, "public_ip": "1.1.1.1"}).status_code == 422
+    response = client.post("/api/client/network/context", headers=headers, json=body)
+    assert response.status_code == 200, response.text
+    assert response.json() == {"ok": True, "accepted": True}
+    assert "8.8.8.8" not in response.text
+    assert client.post("/api/client/network/context", headers=headers, json=body).json()["accepted"] is False
+    with api.SessionLocal() as session:
+        row = session.query(AntiAbuseEvent).filter_by(event_kind=diagnostics.EVENT_KIND).one()
+        user = session.query(User).filter_by(account_id=row.account_id).one()
+        tg_id = user.tg_id
+        assert row.raw_ip == "8.8.8.8" and row.device_id
+        assert "8.8.8.8" not in row.metadata_json
+        assert json.loads(row.metadata_json)["region"] == "Fixture region"
+        redacted = user_360(session, environment="test", tg_id=tg_id, include_sensitive_diagnostics=False)
+        assert redacted["network_context"] == []
+        visible = user_360(session, environment="test", tg_id=tg_id, include_sensitive_diagnostics=True)
+        assert visible["network_context"][0]["public_ip"] == "8.8.8.8"
+        assert row.device_id not in json.dumps(visible)
+        bootstrap = client.post("/api/admin/v2/auth/bootstrap", headers=_admin_headers())
+        assert bootstrap.status_code == 200, bootstrap.text
+        operator_read = client.get(f"/api/admin/v2/support/users/{tg_id}")
+        assert operator_read.status_code == 200, operator_read.text
+        assert operator_read.json()["data"]["network_context"][0]["public_ip"] == "8.8.8.8"
+        with api.SessionLocal() as audit_session:
+            audit = audit_session.query(AdminOperatorAudit).filter_by(action="support.network_context.read").one()
+            assert audit.resource_id == str(tg_id)
+            assert "8.8.8.8" not in (audit.details_json or "")
+        row.raw_ip_expires_at = _utcnow() - timedelta(seconds=1)
+        session.flush()
+        assert diagnostics.recent_network_context(session, account_id=row.account_id)[0]["public_ip"] is None
+        row.occurred_at = _utcnow() - timedelta(seconds=31)
+        session.commit()
+    # The fallback arrives through a possibly tunneled API connection. Never
+    # store that request's public IP as the access network.
+    response = client.post("/api/client/network/context", headers=headers, json={**body, "direct_observation": False})
+    assert response.status_code == 200 and response.json()["accepted"] is True
+    with api.SessionLocal() as session:
+        rows = session.query(AntiAbuseEvent).filter_by(event_kind=diagnostics.EVENT_KIND).order_by(AntiAbuseEvent.occurred_at).all()
+        assert len(rows) == 2 and rows[-1].raw_ip is None
+        latest = diagnostics.recent_network_context(session, account_id=rows[-1].account_id)[0]
+        assert latest["public_ip"] is None and latest["origin_status"] == "unavailable"
+        assert latest["carrier"] == "Fixture carrier" and latest["region"] is None
+        counts = cleanup_antiabuse_retention(session, now=_utcnow() + timedelta(hours=73))
+        session.commit()
+        assert counts["client_network_metadata"] == 2
+        assert all(row.metadata_json is None and row.raw_ip is None for row in rows)
+        assert session.query(AntiAbuseEvent).filter_by(event_kind=diagnostics.EVENT_KIND).count() == 2
+
+
 def _synthetic_awg2_endpoint() -> dict[str, object]:
     return {
         "useIntegratedTun": False,

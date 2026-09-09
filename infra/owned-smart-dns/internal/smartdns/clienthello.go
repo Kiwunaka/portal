@@ -105,6 +105,11 @@ func parseClientHelloSNI(handshake []byte) (string, error) {
 		if offset+extensionLength > extensionsEnd {
 			return "", errInvalidClientHello
 		}
+		// ECH hides the destination in ClientHelloInner; an allowed outer SNI
+		// cannot authorize this selective relay (including ECH GREASE).
+		if extensionType == 0xfe0d {
+			return "", errInvalidClientHello
+		}
 		if extensionType == 0 {
 			if serverName != "" || extensionLength < 5 {
 				return "", errInvalidClientHello

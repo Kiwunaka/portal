@@ -1,0 +1,176 @@
+{
+  "schema_version": "pokrov-brain-runtime-source-probe-v1",
+  "checked_at": "2026-09-08T22:08:24.958453+00:00",
+  "origin": "brain",
+  "mode": "READ_ONLY_SSH_HASHES",
+  "source_revision": "235e8a49e94261f39b1166b152fe547fe95da740",
+  "payload_selection": "remote_deploy_brain_portal_code.iter_upload_mappings",
+  "payload_count": 203,
+  "raw_match_count": 3,
+  "crlf_only_difference_count": 169,
+  "normalized_match_count": 172,
+  "normalization_rule": "CRLF_TO_LF_ONLY",
+  "mismatch_count": 31,
+  "mismatches": [
+    {
+      "source_path": "portal_bot/acquisition_service.py",
+      "remote_target": "/root/portal_bot/acquisition_service.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/admin_action_intent_service.py",
+      "remote_target": "/root/portal_bot/admin_action_intent_service.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/admin_v2/router.py",
+      "remote_target": "/root/portal_bot/admin_v2/router.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/antiabuse_privacy_service.py",
+      "remote_target": "/root/portal_bot/antiabuse_privacy_service.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/api.py",
+      "remote_target": "/root/portal_bot/api.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/api_client_routes.py",
+      "remote_target": "/root/portal_bot/api_client_routes.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/api_commercial_offer_routes.py",
+      "remote_target": "/root/portal_bot/api_commercial_offer_routes.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/api_payment_routes.py",
+      "remote_target": "/root/portal_bot/api_payment_routes.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/api_public_routes.py",
+      "remote_target": "/root/portal_bot/api_public_routes.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/api_surface_routes.py",
+      "remote_target": "/root/portal_bot/api_surface_routes.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/auth_session_service.py",
+      "remote_target": "/root/portal_bot/auth_session_service.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/awg2_lab_service.py",
+      "remote_target": "/root/portal_bot/awg2_lab_service.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/awg31_lab_service.py",
+      "remote_target": "/root/portal_bot/awg31_lab_service.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/awg_lab_key_binding.py",
+      "remote_target": "/root/portal_bot/awg_lab_key_binding.py",
+      "classification": "REMOTE_UNREADABLE"
+    },
+    {
+      "source_path": "portal_bot/awg_lab_peer_worker.py",
+      "remote_target": "/root/portal_bot/awg_lab_peer_worker.py",
+      "classification": "REMOTE_UNREADABLE"
+    },
+    {
+      "source_path": "portal_bot/awg_peer_remove.py",
+      "remote_target": "/root/portal_bot/awg_peer_remove.py",
+      "classification": "REMOTE_UNREADABLE"
+    },
+    {
+      "source_path": "portal_bot/checkout_quote_service.py",
+      "remote_target": "/root/portal_bot/checkout_quote_service.py",
+      "classification": "REMOTE_UNREADABLE"
+    },
+    {
+      "source_path": "portal_bot/client_network_diagnostics.py",
+      "remote_target": "/root/portal_bot/client_network_diagnostics.py",
+      "classification": "REMOTE_UNREADABLE"
+    },
+    {
+      "source_path": "portal_bot/control_panel.py",
+      "remote_target": "/root/portal_bot/control_panel.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/event_loop_lag.py",
+      "remote_target": "/root/portal_bot/event_loop_lag.py",
+      "classification": "REMOTE_UNREADABLE"
+    },
+    {
+      "source_path": "portal_bot/hy2_lab_service.py",
+      "remote_target": "/root/portal_bot/hy2_lab_service.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/network_rollout.py",
+      "remote_target": "/root/portal_bot/network_rollout.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/operator_release_service.py",
+      "remote_target": "/root/portal_bot/operator_release_service.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/payment_entitlement_outbox.py",
+      "remote_target": "/root/portal_bot/payment_entitlement_outbox.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/payment_order_service.py",
+      "remote_target": "/root/portal_bot/payment_order_service.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/payment_providers.py",
+      "remote_target": "/root/portal_bot/payment_providers.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/support_bundle_ingest_service.py",
+      "remote_target": "/root/portal_bot/support_bundle_ingest_service.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/support_work_service.py",
+      "remote_target": "/root/portal_bot/support_work_service.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "portal_bot/worker.py",
+      "remote_target": "/root/portal_bot/worker.py",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "shared/contracts/observability/error-catalog.json",
+      "remote_target": "/root/shared/contracts/observability/error-catalog.json",
+      "classification": "CONTENT_MISMATCH"
+    },
+    {
+      "source_path": "shared/trust-and-guides.json",
+      "remote_target": "/root/shared/trust-and-guides.json",
+      "classification": "CONTENT_MISMATCH"
+    }
+  ],
+  "exact_source_semantic_bytes_match": false,
+  "auth_method": "ssh_config",
+  "remote_content_retained": false,
+  "runtime_mutated": false,
+  "ok": false
+}

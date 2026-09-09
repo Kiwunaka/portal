@@ -209,6 +209,7 @@ def _recover_stale(
             )
             .order_by(models.PaymentEntitlementOutbox.claimed_at.asc())
             .limit(max(1, int(limit)))
+            .with_for_update(skip_locked=True)
             .all()
         )
         for row in rows:
@@ -349,6 +350,7 @@ def _finalize_failure(
                 models.PaymentEntitlementOutbox.status == STATUS_PROCESSING,
                 models.PaymentEntitlementOutbox.claim_token == claim.token,
             )
+            .with_for_update()
             .one_or_none()
         )
         if row is None:
@@ -390,6 +392,7 @@ def _dispatch_one(
                 models.PaymentEntitlementOutbox.status == STATUS_PROCESSING,
                 models.PaymentEntitlementOutbox.claim_token == claim.token,
             )
+            .with_for_update()
             .one_or_none()
         )
         if row is None:

@@ -1,0 +1,109 @@
+{
+  "status": "PASS_EXECUTABLE_CI_SCOPE",
+  "retained_files": [
+    {
+      "path": "before.log",
+      "sha256": "fd0aa48af8c3a8c98e6cdd2617c1da11ef07c6a0114fc208d60cf310d800fb6b",
+      "bytes": 1366
+    },
+    {
+      "path": "after.log",
+      "sha256": "ac4c7a11e2871db14d13e3a29418be2bb9f15af8df6b6507ee255e858de5622d",
+      "bytes": 181
+    },
+    {
+      "path": "client-push.log",
+      "sha256": "d0f857da36b90b0189ac2da89fa3c25c92b73c70951423ea0d3e9a8b9eb6949a",
+      "bytes": 393
+    },
+    {
+      "path": "snapshot-initial.json",
+      "sha256": "fda542a6ba06dd2932681fbb848e881afa9275d41275b18f2327edd471bbe3a8",
+      "bytes": 98370
+    },
+    {
+      "path": "snapshot-final.json",
+      "sha256": "321691d9b19b9af23ecb95b7f78c04e30634664c9cf256f9bf22343cedab0b3a",
+      "bytes": 99049
+    },
+    {
+      "path": "boundary.json",
+      "sha256": "dfaed578c48586c8e1f917481b0b6070a0fe8518faf889fa4bf0ab2f6428616b",
+      "bytes": 3324
+    },
+    {
+      "path": "collect.py",
+      "sha256": "ec5a40e74b765e5960a6fd15c655e582c81612c6fd2fc3e2e0df35e63e811fd4",
+      "bytes": 4302
+    },
+    {
+      "path": "check-boundary.py",
+      "sha256": "a3e60e883315412aa4cbcf9e2e595f9bd23fb6362523b83bb40326c2d121e26f",
+      "bytes": 2827
+    },
+    {
+      "path": "retain.py",
+      "sha256": "6ffa8fc0087cbca8dba10d7207aab1b0afa8644d5a7ce4c100d0fb3dff99b835",
+      "bytes": 3833
+    },
+    {
+      "path": "selected-ci-output.log",
+      "sha256": "6f02259dd4c951f371776b9deb170b1421e722978bc0f7c3c6a674a8636afdb4",
+      "bytes": 3345
+    },
+    {
+      "path": "client-pr-failure.log",
+      "sha256": "4f2c8cbc11385fa94887dc7e5dabb23db9e329c1f0346892fb14465ddf42fa8f",
+      "bytes": 5361
+    },
+    {
+      "path": "platform-pr-failure.log",
+      "sha256": "d9a23efc0a46aeda698bf087283ce36a4a58e493054f62891d23e6d6519fbd8a",
+      "bytes": 5004
+    }
+  ],
+  "client_flutter": {
+    "passed": 644,
+    "skipped": 1,
+    "skipped_test": "real Windows POKROV Core 1.1.0 survives 100 start-stop cycles"
+  },
+  "windows_signing_runtime_negatives": "SKIPPED_BY_PLATFORM",
+  "watcher_commands": [
+    {
+      "command": "gh run watch 34301990803 --repo Kiwunaka/POKROV-app --interval 30 --exit-status",
+      "exit_code": 0
+    },
+    {
+      "command": "gh run watch 34301792472 --interval 30 --exit-status",
+      "exit_code": 0
+    }
+  ],
+  "raw_logs": [
+    {
+      "path": "E:\\r12-g04-ci-20260909\\client-exact-full.log",
+      "sha256": "9c65736014801e06b723e40a5b63c169f934bf1943d9f5e610765a2bd85c2d6e",
+      "bytes": 464597
+    },
+    {
+      "path": "E:\\r12-g04-ci-20260909\\platform-current-full.log",
+      "sha256": "0a5cef56e6bdaaa46d8a8ebcb70a238d4541aac7f4b05f591fcc95c8074e6df4",
+      "bytes": 387484
+    },
+    {
+      "path": "E:\\r12-g04-ci-20260909\\client-exact-watch.log",
+      "sha256": "e020896706f9b74433cfd9bb2314fb81fc21264bdfadf284d974820d657d1c4e",
+      "bytes": 13224
+    },
+    {
+      "path": "E:\\r12-g04-ci-20260909\\platform-current-watch.log",
+      "sha256": "76f1d39b7dad0c87882d6261f21e9aacf44b82f2ff501f5f94ff3ad58f8ef64c",
+      "bytes": 4509
+    }
+  ],
+  "linux_daemon": "gofmt/go test/go vet/go build PASS; conditional source foundation only",
+  "ordinary_pr_contracts": "FAIL; retained and not overridden by exact-tuple replay",
+  "promotion": false,
+  "signing": false,
+  "candidate_created": false,
+  "release_pass": false
+}

@@ -1,0 +1,73 @@
+{
+  "schema": "pokrov.r12.c05-package-audit-reference/v1",
+  "client_commit": "7a8fd55f77d18982e71b39060371dacf4dfa1594",
+  "core_commit": "8dc57a830bd1487389dd1b7c9190f094c31e13bc",
+  "candidate_created": false,
+  "promotion_authorized": false,
+  "client_receipt": {
+    "path": "docs/operations/evidence/2026-09-06-r12-c05-package-audit/package-audit.json",
+    "git_blob_sha256": "8dc550a194202aecd5a4f2f6ac7b6f34c2760ad23cf7c5ec1844d3aed78816e3",
+    "hash_scope": "Bytes returned by git show client_commit:path; plain-text checkout conversion is not the identity source."
+  },
+  "implementation_git_blobs": {
+    "packages/app_shell/pubspec.yaml": "2b3093a2f3ea32641314c3212c6a95d6aba147c87b5a865374b843fdb01887e9",
+    "apps/windows_shell/windows/runner/CMakeLists.txt": "df71100a8dd07055e54079f8fe544023db7abb6d0004046487ac9cd6498260f1"
+  },
+  "checks": [
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "result": "PASS 33 tests",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-package-platform-docs.log",
+      "sha256": "3f0f614d1ac8611ca382c397f903fbe5f49c4e84aac08279769b534cf5c308a3"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "result": "PASS platform-context",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-package-platform-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "result": "PASS 13 imports / 83 R12 / 378 legacy / 191 links",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-package-plan-validator.log",
+      "sha256": "70ee7ee0fbb858c10e5cec3b6cd74b9152810ff3dcdb6d9957c46c14ddab02da"
+    }
+  ],
+  "summary": {
+    "local_android_apks": 4,
+    "android_mode": "release / Android Debug signing / loopback API only",
+    "windows_mode": "unsigned release Flutter application bundle / loopback API only; installer not created",
+    "windows_native_ctest": "8/8 PASS",
+    "ofl_asset": "PASS exact bytes in all APKs and Windows bundle",
+    "windows_bundle_test_exe": "REMOVED_FROM_OUTPUT_BY_CMAKE_TARGET_LOCATION; old bytes retained",
+    "osv_graph_queries": {
+      "Pub": 75,
+      "Maven": 63,
+      "advisory_ids": 0,
+      "scope": "Runtime package graphs only; inactive platform packages may remain in Pub graph"
+    },
+    "go_sbom_module_components": {
+      "windows_dll": 115,
+      "android_each_so": 119
+    },
+    "go_module_notice_union": 128,
+    "go_modules_with_root_notice": 127,
+    "retained_root_notice_files": 130,
+    "privacy": "7 explicit ad/analytics namespace patterns absent from defined DEX packages; no installed runtime privacy claim"
+  },
+  "open_gates": [
+    "Full native/Flutter/Cronet SBOM and notices, nested licenses and corresponding source delivery.",
+    "Psiphon utls pinned module lacks root LICENSE; upstream commit tree confirms omission, branch LICENSE history returned no entries. No license substitution made.",
+    "Pinned Windows Cronet DLL differs in size and .text/other sections from current Go module DLL despite shared version 143.0.7499.109; no source/build equivalence inferred.",
+    "Prior nine residual Go advisory IDs remain under module-fallback precision; complete reachability not proven.",
+    "New exact production-signed APK/candidate, Windows installer/clean-host/SCM/TUN, physical Android, installed runtime logs/privacy and named-origin proof."
+  ],
+  "state": "C05 ACTIVE/I3/PARTIALLY_FIXED",
+  "final_integrity": "PASS committed client receipt and source Git blob hashes; four APK ABI sets checked against exact file labels; release artifacts unchanged."
+}

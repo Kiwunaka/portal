@@ -965,3 +965,86 @@ def test_reserve_xhttp_rollout_stays_opt_in_and_emits_xray_manifest_only_when_en
     assert manifest_body["engine_hint"] == "xray"
     assert manifest_body["config_format"] == "xray-json"
     assert manifest_body["fallback_order"] == ["reserve_xhttp_cdn", "legacy_reality_fallback"]
+
+
+@pytest.mark.parametrize("lab_profile", ["awg2_lab", "awg31_lab", "hy2_lab"])
+def test_managed_lab_tcp_fallback_is_revision_bound_and_uses_normal_provisioning(
+    monkeypatch, tmp_path, lab_profile,
+) -> None:
+    api = _load_api(monkeypatch, tmp_path)
+    client = TestClient(api.app)
+    trial = client.post("/api/client/session/start-trial", json={
+        "install_id": "install-lab-fallback", "device_name": "Lab fixture",
+        "platform": "android", "trial_days": 5,
+    })
+    assert trial.status_code == 200
+    baseline_policy = trial.json()["client_policy"]
+    lab_revision = f"test-rollout:{lab_profile}:generation-1"
+    lab_policy = {
+        **baseline_policy,
+        "transport_profile": lab_profile,
+        "transport_kind": lab_profile,
+        "profile_revision": lab_revision,
+        "support_context": {
+            **baseline_policy["support_context"], "transport": lab_profile,
+        },
+    }
+    monkeypatch.setattr(api.app_first_service, "build_client_policy", lambda **kwargs: dict(lab_policy))
+    panel_requests = []
+    async def panel_state(**kwargs):
+        panel_requests.append(kwargs["panel_required"])
+        return True, {"traffic_total_bytes": 0}
+    monkeypatch.setattr(api, "_managed_profile_panel_state", panel_state)
+    # Isolate fallback admission from lab-key encryption, covered by lab suites.
+    rendered_profiles = []
+    original_render = api._managed_manifest_payload
+    def render(**kwargs):
+        rendered_profiles.append(kwargs["transport_profile"])
+        if kwargs["transport_profile"] == lab_profile:
+            return "singbox-json", {"outbounds": []}
+        return original_render(**kwargs)
+    monkeypatch.setattr(api, "_managed_manifest_payload", render)
+    headers = {"Authorization": f"Bearer {trial.json()['session_token']}"}
+    response = client.get("/api/client/profile/managed", headers=headers,
+        params={"fallback_from_revision": lab_revision})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["transport_profile"] == "legacy_reality_fallback"
+    assert body["transport_kind"] == "reality"
+    outbounds = body["config_payload"]["outbounds"]
+    assert any(outbound.get("type") == "vless" for outbound in outbounds)
+    assert not any(outbound.get("type") in {"awg", "hysteria2"} for outbound in outbounds)
+    assert not body["config_payload"].get("endpoints")
+    assert body["profile_revision"] == f"{lab_revision}:fallback:legacy_reality_fallback"
+    assert body["support_context"]["transport"] == "legacy_reality_fallback"
+    assert body["support_context"]["routing_mode"] == baseline_policy["support_context"]["routing_mode"]
+    assert body["fallback_order"] == ["legacy_reality_fallback"]
+    assert panel_requests == [True]
+    assert rendered_profiles == ["legacy_reality_fallback"]
+
+    stale = client.get("/api/client/profile/managed", headers=headers,
+        params={"fallback_from_revision": "old-revision"})
+    assert stale.status_code == 409
+    assert len(rendered_profiles) == 1
+    assert panel_requests == [True]
+    # The opt-in request does not persist a cohort or rollout mutation.
+    ordinary = client.get("/api/client/profile/managed", headers=headers)
+    assert ordinary.status_code == 200
+    assert ordinary.json()["transport_profile"] == lab_profile
+    assert panel_requests == [True, False]
+
+    async def pending_panel_state(**kwargs):
+        assert kwargs["panel_required"] is True
+        return False, {"traffic_total_bytes": 0}
+    monkeypatch.setattr(api, "_managed_profile_panel_state", pending_panel_state)
+    monkeypatch.setattr(api, "_provisioned_node_codes_for_user", lambda *args, **kwargs: set())
+    pending = client.get("/api/client/profile/managed", headers=headers,
+        params={"fallback_from_revision": lab_revision})
+    assert pending.status_code == 200
+    assert pending.json()["provisioning"]["status"] == "pending_sync"
+    assert pending.json()["provisioning"]["sync_ok"] is False
+
+    lab_policy["transport_profile"] = "legacy_reality_fallback"
+    retired_lab = client.get("/api/client/profile/managed", headers=headers,
+        params={"fallback_from_revision": lab_revision})
+    assert retired_lab.status_code == 409

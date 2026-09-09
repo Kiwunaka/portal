@@ -1,0 +1,688 @@
+{
+  "status": "PASS_G03_BOUNDED",
+  "sources": [
+    {
+      "lane": "platform",
+      "root": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "base": "235e8a49e94261f39b1166b152fe547fe95da740",
+      "head": "af146a3ebb71e307c53dde7a902d5994ca46ecfc",
+      "changes": [
+        {
+          "path": ".gitattributes",
+          "path_hint": "manual_classification_required",
+          "sha256": "25cc100814366dfbbe67bde8bd40def52025d254e4f4012f0c54bb9fc34b2c99"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-BRAIN-REHEARSAL-2026-09-09.md",
+          "path_hint": "documentation_only",
+          "sha256": "01fe0007e275628ce746a8105a006e61d029e3c8e6c3b8b2da321fb2df1f2ff0"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-G02-RETENTION-2026-09-09.md",
+          "path_hint": "documentation_only",
+          "sha256": "2b53753e484dc202bfe7f3cfeb9c2a32349cef5567809bf5d0cedab784ce29f8"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-G05-LIVE-METADATA-2026-09-09.md",
+          "path_hint": "documentation_only",
+          "sha256": "768fa4be2652370a46ee68f249cbd4b5b1118bf83d8606f98a42648e1fa5539d"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-G06-ENFORCEMENT-2026-09-09.md",
+          "path_hint": "documentation_only",
+          "sha256": "0b637679f0cedaea87a934e7b130cdb78eb9e1d8a5c2299a5e74b746c94a5d48"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-PR-DRAFTS-2026-09-09.md",
+          "path_hint": "documentation_only",
+          "sha256": "a878bf49b3599429dd95fd5631fd722ecf7f16b12275f3e24d3357fcf9f6d5c4"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/HANDOFF.md",
+          "path_hint": "documentation_only",
+          "sha256": "f729f6ff1dc95b98bb8d41c0bd24252fedbe99424500a523922bbca614ac2c4c"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/NEXT_ACCEPTANCE.md",
+          "path_hint": "documentation_only",
+          "sha256": "4859636adbe0a682cbd0087ba424ec663bf37d55298dc0023511b55daa06e955"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/OWNER-DECISIONS-2026-09-09.md",
+          "path_hint": "documentation_only",
+          "sha256": "ba09a070ec5696fc1de1f379e4bdd119a683e6226119dc99514cbca2a24f1df9"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/R12-REGISTER.csv",
+          "path_hint": "manual_classification_required",
+          "sha256": "8794dd9b160ddc4dd32f3ce180cf781f91b7093b547ed699b77d316cf2413bd8"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/backup-plan.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "f9967f0067ca73666b7800e18566afca675835d910457f2a07a72fbb144a687a"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/backup-restore-v2.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "a462124345bbd1b40a624b584ae7b8ed2c29c3c57a0ae0ca8a0e6d3819a7a8ab"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/backup-restore.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "629189f5ae8f077554d83709c0c39bd2d51c63878aa7d7f35c449f053ff8a5c2"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/candidate-apply.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "55e9e36a39f0e8b947090b0b3cb398b33238391c7f997b2e7262d64357f5f607"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/candidate-plan.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "7cb3322f1a8179f0174408917c04bbca9192a29d509d352cc63e4856a4b1a222"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/read-readiness-before.py",
+          "path_hint": "manual_classification_required",
+          "sha256": "bf973f1382c61eab21225eca735d6b835573c0fdbc6d50f54008c026a21c1819"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/read-readiness.py",
+          "path_hint": "manual_classification_required",
+          "sha256": "103a7bf66a5a8807bb789f81651220728156991de118b7c2ae752f720da6b731"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/readiness-after.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "f400027ad01eaaf5629454ded950309f3301e183dc670865e64cf58cba2d75bf"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/readiness-before.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "0cf1764e737db1abbd99e6c309b60195a128fcaa859c934ab9a558cbf4883e48"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/receipt.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "7ba45db34440b5a4f0f0ecfb4d407a1f6df567a0d567180d94b9a81c755a0d0b"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/retain-readiness.py",
+          "path_hint": "manual_classification_required",
+          "sha256": "1916dca0b13f73631433fad51173223623e8bb0c0b1257cdbe3d054f156e90a7"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/retry-backup.ps1",
+          "path_hint": "manual_classification_required",
+          "sha256": "8901bd6454ba94f943e35b05d49a2b52d409209ac07e062983874c059b0ef8f5"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/run-backup.ps1",
+          "path_hint": "manual_classification_required",
+          "sha256": "8d3cb713fba266c817c33b11a839d63be435f91bf7760cff0dc2665286592d91"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/run-volume.ps1",
+          "path_hint": "manual_classification_required",
+          "sha256": "2a7621445f58b69893fe3d03850c8093cda63e10c2fd58439eca4bd0460baa54"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/source-before.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "0d0399ad57658ceb842abb47e1900bec8804db6863504d9dfb5b0f67d562fe19"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/ssh-auth-diagnostic.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "0916af8d72f4b5d4ecd14b6e0846932bdf134ccedb2c64d9a06e592dd812b843"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/volume-apply-v2.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "cb353ffe7008f56de3d8e3658fbc707ab5dea11404caabfffa7a9a69d84e13bd"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/volume-plan-v2.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "ca18930b53680db1ee734f8ebdc67dae4b01bbdb3103802c143997a8873a0b83"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/volume-plan.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "01873ebda176ac686432f2f0f9aa9c6e73909e332894e31c6ca19d3ab69d7fa5"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/volume-snapshot-v1.py",
+          "path_hint": "manual_classification_required",
+          "sha256": "b4874622a95006c43b9e7520d34f5289e69c4515f8e230e98a7fba5a7f2684fd"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/brain-rehearsal-20260909/volume-snapshot.py",
+          "path_hint": "manual_classification_required",
+          "sha256": "667397240a0111ff4a2fd84bc7c634da55fd5ab4873b70a739dd5043afc1532f"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/core-ci-20260909/c7a11f7/core-android-evidence.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "9d512aeea6bd5702e1d4df412aad7fb5ce17b6a9990651d3cfca014fd8a0d0b5"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/core-ci-20260909/c7a11f7/core-apple-evidence.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "f48b33cc75dafd491994cf8440ba3ecf75bd97b986c8872286f132057f0037ec"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/core-ci-20260909/c7a11f7/core-windows-evidence.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "48a3337d54a7f12d7041aaad48943c4c141c0fd8ddf3b390f0b39110fdecb82f"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/core-ci-20260909/c7a11f7/pokrov-core.cdx.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "c36b2731824102cbea1a803c2ea12608473d89394e17bcf6dd01193f41b4c7fe"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/core-ci-20260909/c7a11f7/receipt.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "483cc846a2e0c50f4f27d51171259f7b86c2a621cd24c8c9635aa5c5757d7f19"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/core-ci-20260909/c7a11f7/sing-box.cdx.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "5cd800466e7cf02e72236e576b6ed297dd976042c5e1f262305f1c9280ea382e"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/core-ci-20260909/core-android-evidence.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "ad258c432a51b9507ad18445eb968f7d42ba00b987988a28d9c3063cec152486"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/core-ci-20260909/core-windows-evidence.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "38bd8fa12d01e7ba6ecb5c4449756dfc547fbf54edf4507aaeb6f8d9db277aa6"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/core-ci-20260909/pokrov-core.cdx.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "c36b2731824102cbea1a803c2ea12608473d89394e17bcf6dd01193f41b4c7fe"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/core-ci-20260909/receipt.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "87ffbc75290e075fcdacd1fba6af2f6e321e96f37f000f36a2100283e5e3b7b7"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/core-ci-20260909/sing-box.cdx.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "5cd800466e7cf02e72236e576b6ed297dd976042c5e1f262305f1c9280ea382e"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g02-retention-20260909.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "033528d8fd861b4b66929b2c79140438d52fdeb4f450ecf36e85b13d8195e38d"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-live-metadata-20260909/candidate-artifact.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "d763fa2c1b2dd7160fb1fa6b5fc5cafac33f52b13158d622ad008804199605b1"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-live-metadata-20260909/development-core-tag.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "94472c1e5cf3ae2cd2c986942cb7be6470a6f16d3747b1f236aa6359b6332a6d"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-live-metadata-20260909/development-version-query-body.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "c585f297c88928ddd44a5787e6af4320cd8c47b505b135dd5b449fc90bdaee8f"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-live-metadata-20260909/development-version-query-request.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "7aa3ecc40b62e0cdfc0af8dfd425517dd765092d5b0a3bd4eaa8878ed93e8638"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-live-metadata-20260909/download-redirects.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "d42b7860a9125f9e4791f3cfc5cd1f204c14b6bbbea3d3b213a28f41aa078604"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-live-metadata-20260909/github-latest-core.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "c38d25fedf111731f0a9ad98b4a847d79a6ff972172fc51bf500b64a290098c4"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-live-metadata-20260909/github-latest-release.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "ce0075a3ed96bad2e366e6587a4786548b196b53e79a0f7f1c0d4d92b3edad94"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-live-metadata-20260909/old-version-query-body.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "cb785291685ac74c4ffd5bd7298bc5eabcc37570988e66e50a587f512b11653b"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-live-metadata-20260909/old-version-query-request.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "23ac9f4d22b1324cd7c4db8d37519363cea8ebf757fca7f8ac4332c1c6a38de5"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-live-metadata-20260909/public-catalog-body.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "48fbeb5f905b1d3b89532d4fff3b23ed79b5a4a74d3bd38509447456ac81862a"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-live-metadata-20260909/public-catalog-request.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "6c1b37bb39eb85d878ecde765b009846fa2124c8f033d8b6f0ef2c4752c1f66c"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-live-metadata-20260909/readback.py",
+          "path_hint": "manual_classification_required",
+          "sha256": "8f0f561e94e37c18bdedf997af946015b200a2655b8e64be8c8f4c49ee4eb6f2"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-live-metadata-20260909/receipt.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "8d76260e8f7efe78748e4b29777822219c80c14d5e330fe309cf35d7c1a087fd"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-live-metadata-20260909/release-list-scope.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "ff13120faba67f10bc67c4b0c449ae9552b5c69de78ee4e2804f55c3acde5f10"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-live-metadata-20260909/result.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "7bfa2c660f96ec680fc161691d667d2efcd4daae236c179c0e086bf3611c5c82"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-live-metadata-20260909/windows-candidate-authenticode-named.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "a62b347e7471b1eaf0caa9cb6b1bb3ffd7f90e8154a6d4b4afee95ac49a71463"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/POKROV-app-put.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "182e5061867192c3970580f3f424d7d891bfdb4dfb53b8e0026a668ef97f02ba"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/POKROV-app-request.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "a92334cd4502b637bb2427eae336ef0c21e1b378853ad3e23eb8fec41a034bc0"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/POKROV-app-signatures.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "0eab944954509d696fbf30f2781bef0a51011d009dedc0ebacf4d0231e4df8be"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/apply.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "0b345598f9ce08cfbd9b037622efb730a824276c41e002e2bdcd18f3ecab6e24"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/bypass-readback.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "6c3f5da3b6afc28ac7adf60cb52ee2abe842bf7c0d8b686c59340583e43a9110"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/enforcement.py",
+          "path_hint": "manual_classification_required",
+          "sha256": "50b66cab6060bfba400e2cbe806d8470d0cc8fc736b007f20705b2889c6fbe1b"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/gate-after-recheck.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "de48c16be8cdb6e6dd941ea508b19eb191b814eb6d9d018035c98933f9ef02d4"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/gate-after.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "e7f6db7378443e67007ba5382407581b0a9d346f67ecd6256f9173be9b98120b"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/gate-before.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "4152f9fa22e49a2eb2a3a26ebacf12f530d6fd7bc1e1a45519fe3594ad0ff5c2"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/pokrov-core-put.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "2f24ae0b85e49f41866cecc3401088abd7608d739471cb5f49c230cb14564dc1"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/pokrov-core-request.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "33737403ac37541023342b6fe7c9e34585a5e46950f29cde5ee73e9503d82052"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/pokrov-core-signatures.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "fb0cd0e3af9534797c987df8a92f8ba6a05c24cdc73d8574d76f97b99efbc0f3"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/portal-put.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "4175048963d91610390c677be52e19a6df3d07ec7fa91b713ea6d72aa9d4ac8d"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/portal-request.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "d5a79293e2cf086c2c4baa165a34cd84cb905336d19af82a4ef09ea0163789ad"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/portal-signatures.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "4b99971e1b2aac6f9ad0fcb1a3737a7a251d7e91704c3f945dfba4a8e3f27d24"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/pr-readback.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "29f00969728580975db0fa8febd9f6fbdb3e5b61fb18c5661164437de1ebf5f9"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/prepare.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "7c849b70d52b635cdefe38cc5f5c3040e12d5bfaaba6d79ec88ed5bcc37799b9"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/readback.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "931e4a830305f9bafd010516caa828de5b4021585113c5285ba70036dcbbe4c3"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g06-enforcement-20260909/receipt.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "918038b8f2c5174bf2f4c1777d838e03a7b48217ee4780d70a185a5f4b7a731c"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/integrated-quality-20260909/010I-local-quality-gate.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "7efe146fbb49a547371e50f262f3843b8878fcd2243f60d089ffc241cbc1baee"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/integrated-quality-20260909/010I-local-web-performance-evidence.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "3cea78f977368be25932e04aa1b7c07d352c8b2c3ca88e4a5491739858f62ab8"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/integrated-quality-20260909/010I-local-web-performance-gate.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "a18c2ad14d0f3faf67ccf33b27868a0bb8293e2c429e52eb7f86af6c66b0dabc"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/integrated-quality-20260909/preflight.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "14527d1f29fa910df0cb3d34d8852efafc032b123d185e2f277830e670adf265"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/integrated-quality-20260909/receipt.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "58a655ae5e1e4313e37fa027e20c478786c128886cb5accbaa668ce2ecf7b031"
+        },
+        {
+          "path": "docs/operations/deployment-and-access.md",
+          "path_hint": "documentation_only",
+          "sha256": "7795eecfc21a5b9af747c39fd526f5d83464e75ea48fa7a59ad231011114abc3"
+        },
+        {
+          "path": "docs/operations/publishing-and-signing-guide.md",
+          "path_hint": "documentation_only",
+          "sha256": "7045c0ea8b0b0ddb8749d197aeb9e09bbef9fdc33056534f5b829d11350467f5"
+        }
+      ],
+      "class_counts": {
+        "manual_classification_required": 75,
+        "documentation_only": 10
+      }
+    },
+    {
+      "lane": "client",
+      "root": "E:\\r12client",
+      "base": "5760f415a567ddbc35ee12ba0087414bc3bd08ff",
+      "head": "de5d4784ecd9d1fc90575e48e16da0f90f42da41",
+      "changes": [
+        {
+          "path": ".gitattributes",
+          "path_hint": "manual_classification_required",
+          "sha256": "8cd766366ed67ddeaa622953006dc422e29d514fb5bfb1af679d584c673973ce"
+        },
+        {
+          "path": "docs/operations/cutover-readiness.md",
+          "path_hint": "documentation_only",
+          "sha256": "891c70b344eccf34bf2072d399792caa7d8cc940e755ecc68cf13f465829d090"
+        },
+        {
+          "path": "docs/operations/evidence/2026-09-09-r12-candidate33-retention/README.md",
+          "path_hint": "documentation_only",
+          "sha256": "d9212ce91f9f0e72857212c691c7e7c1b8f89a748159c4d85caeec85c3f98be8"
+        },
+        {
+          "path": "docs/operations/evidence/2026-09-09-r12-candidate33-retention/check-local.py",
+          "path_hint": "manual_classification_required",
+          "sha256": "1229076b36323037855eddd8c0f71b0a34a59579ed752267ca30924ffe972cb7"
+        },
+        {
+          "path": "docs/operations/evidence/2026-09-09-r12-candidate33-retention/local-preservation.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "50957c7ab3a2998acb76a6c065239de94cd3dd637765d285f373037e2ba6657b"
+        },
+        {
+          "path": "docs/operations/evidence/2026-09-09-r12-candidate33-retention/receipt.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "27d447c33f9cc6f5327eeb1bbfacc7b30964c6b7ffa40669a75af808b18c2c9e"
+        },
+        {
+          "path": "docs/operations/evidence/2026-09-09-r12-candidate33-retention/remote-retention.json",
+          "path_hint": "manual_classification_required",
+          "sha256": "b3fbb9351484d039a20845d3b260b9ea355482842a699bd8e49bbc57e35a48ea"
+        },
+        {
+          "path": "docs/operations/evidence/2026-09-09-r12-candidate33-retention/retain-remote.py",
+          "path_hint": "manual_classification_required",
+          "sha256": "2e0f620c41d07a6b8eea9a638506c4cb7326f5966217bde776f0d941036f5b28"
+        }
+      ],
+      "class_counts": {
+        "manual_classification_required": 6,
+        "documentation_only": 2
+      }
+    },
+    {
+      "lane": "core",
+      "root": "E:\\r12core-implementation",
+      "base": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+      "head": "c7a11f7d2fd974726095ad7aa0619c055273dd15",
+      "changes": [
+        {
+          "path": "docs/release.md",
+          "path_hint": "documentation_only",
+          "sha256": "08c5877de2e6ef4c255f76d09104170d117639323f4a348294aef79d089965d0"
+        },
+        {
+          "path": "scripts/build-apple.sh",
+          "path_hint": "manual_classification_required",
+          "sha256": "e500b05391d493a82fb4e0df9d793878e857c287688a6092e83470abb184d849"
+        }
+      ],
+      "class_counts": {
+        "documentation_only": 1,
+        "manual_classification_required": 1
+      }
+    }
+  ],
+  "retained_quality_hashes": [
+    {
+      "path": "010I-local-quality-gate.json",
+      "sha256": "7efe146fbb49a547371e50f262f3843b8878fcd2243f60d089ffc241cbc1baee",
+      "matches": true
+    },
+    {
+      "path": "010I-local-web-performance-evidence.json",
+      "sha256": "3cea78f977368be25932e04aa1b7c07d352c8b2c3ca88e4a5491739858f62ab8",
+      "matches": true
+    },
+    {
+      "path": "010I-local-web-performance-gate.json",
+      "sha256": "a18c2ad14d0f3faf67ccf33b27868a0bb8293e2c429e52eb7f86af6c66b0dabc",
+      "matches": true
+    },
+    {
+      "path": "preflight.json",
+      "sha256": "14527d1f29fa910df0cb3d34d8852efafc032b123d185e2f277830e670adf265",
+      "matches": true
+    }
+  ],
+  "classifier_sha256": "ff417c8e56582eda2d268876f50e2daf620cdec57249e4032cb1b14da5b4ac1f",
+  "path_review": [
+    {
+      "path": "infra/owned-smart-dns/internal/smartdns/server.go",
+      "sha256": "d34b686bba1090c47f7d88f6bc6d96f1d5d2a428a50d8900b2ff38643f28fea6",
+      "category": "core_runtime"
+    },
+    {
+      "path": "infra/owned-smart-dns/go.mod",
+      "sha256": "850a1026b661985e108bd8c24c2fb766f04d2f7538d149708eb74525f579810c",
+      "category": "packaged_dependency_toolchain"
+    },
+    {
+      "path": "infra/owned-smart-dns/config.template.json",
+      "sha256": "d5a0359f294c87a04ee70003d959c20f67d99283e2902006539474d4aca2a184",
+      "category": "profile_policy"
+    },
+    {
+      "path": "infra/owned-smart-dns/config.fronted.template.json",
+      "sha256": "f4bd55e6fb79ed65ae0fc7d603f9ce141c6445de3f490db4f1dcaea32a543560",
+      "category": "profile_policy"
+    }
+  ],
+  "offline_replay": {
+    "records": [
+      {
+        "inputs": {
+          "artifact": "3cea78f977368be25932e04aa1b7c07d352c8b2c3ca88e4a5491739858f62ab8",
+          "configuration": "9edc0b96ee1b7e762342d8ff72f974d61898540fd5c4174ff0cc8d6583d6fca2",
+          "toolchain": "9d0423e59a637e3acbbd4023725933500e13a57ca19bf75e0a578aa9f0fd4562",
+          "oracle": "ed80e502fe4159fe4f464b7b3ef3f0c22063769f350b53d052af8e2b0a3f3a72",
+          "scope": "4606d1d285444091a0d463390cc481201e1720e40deb87f0badb9df63eb5147d"
+        },
+        "environment": "Windows-11-10.0.26100-SP0;current-offline-replay",
+        "origin": "current-origin;offline"
+      },
+      {
+        "inputs": {
+          "artifact": "3cea78f977368be25932e04aa1b7c07d352c8b2c3ca88e4a5491739858f62ab8",
+          "configuration": "9edc0b96ee1b7e762342d8ff72f974d61898540fd5c4174ff0cc8d6583d6fca2",
+          "toolchain": "9d0423e59a637e3acbbd4023725933500e13a57ca19bf75e0a578aa9f0fd4562",
+          "oracle": "ed80e502fe4159fe4f464b7b3ef3f0c22063769f350b53d052af8e2b0a3f3a72",
+          "scope": "4606d1d285444091a0d463390cc481201e1720e40deb87f0badb9df63eb5147d"
+        },
+        "environment": "Windows-11-10.0.26100-SP0;current-offline-replay",
+        "origin": "current-origin;offline"
+      }
+    ],
+    "comparison": {
+      "policy": "r12-declared-evidence-inputs-v1",
+      "status": "DECLARED_INPUTS_MATCH_REVIEW_REQUIRED",
+      "changed": [],
+      "release_pass": false,
+      "limitation": "Supplied fingerprints only; verify dependency completeness and original evidence provenance separately."
+    },
+    "executions": [
+      {
+        "label": "previous_source",
+        "command": [
+          "C:\\Users\\kiwun\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+          "-B",
+          "E:\\r12-g03-infra-classifier-20260909\\previous_source-evaluator.py",
+          "--contract",
+          "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\shared\\contracts\\performance\\performance-budgets.v1.json",
+          "--evidence",
+          "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\docs\\developer\\work-orders\\2026-09-05--consolidated-release-and-post12\\evidence\\integrated-quality-20260909\\010I-local-web-performance-evidence.json",
+          "--required-scope",
+          "local_static",
+          "--output",
+          "E:\\r12-g03-infra-classifier-20260909\\previous_source-gate.json"
+        ],
+        "exit_code": 0,
+        "output_sha256": "a18c2ad14d0f3faf67ccf33b27868a0bb8293e2c429e52eb7f86af6c66b0dabc",
+        "historical_result_equal": true,
+        "counts": {
+          "baseline_recorded": 0,
+          "failed": 0,
+          "measured": 9,
+          "non_measured": 0,
+          "passed": 9,
+          "total": 9
+        }
+      },
+      {
+        "label": "current_source",
+        "command": [
+          "C:\\Users\\kiwun\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+          "-B",
+          "E:\\r12-g03-infra-classifier-20260909\\current_source-evaluator.py",
+          "--contract",
+          "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\shared\\contracts\\performance\\performance-budgets.v1.json",
+          "--evidence",
+          "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\docs\\developer\\work-orders\\2026-09-05--consolidated-release-and-post12\\evidence\\integrated-quality-20260909\\010I-local-web-performance-evidence.json",
+          "--required-scope",
+          "local_static",
+          "--output",
+          "E:\\r12-g03-infra-classifier-20260909\\current_source-gate.json"
+        ],
+        "exit_code": 0,
+        "output_sha256": "a18c2ad14d0f3faf67ccf33b27868a0bb8293e2c429e52eb7f86af6c66b0dabc",
+        "historical_result_equal": true,
+        "counts": {
+          "baseline_recorded": 0,
+          "failed": 0,
+          "measured": 9,
+          "non_measured": 0,
+          "passed": 9,
+          "total": 9
+        }
+      }
+    ],
+    "decision": "REUSE_APPROVED_ONLY_FOR_RETAINED_SAMPLE_EVALUATION",
+    "limitation": "No new asset collection, browser/device measurement or release acceptance; original source/environment remain attached."
+  },
+  "classifier_oracle_change": {
+    "previous": {
+      "inputs": {
+        "artifact": "819667dccc050c70d6906564711fc367b0dc84321b5acc1307a57b23989c5a41",
+        "configuration": "9edc0b96ee1b7e762342d8ff72f974d61898540fd5c4174ff0cc8d6583d6fca2",
+        "toolchain": "9d0423e59a637e3acbbd4023725933500e13a57ca19bf75e0a578aa9f0fd4562",
+        "oracle": "c92e3341129fcac29ab57071f6d2b367ffad03e7a0c94c905e867d16066b0815",
+        "scope": "9e38786d11e8f45712e0e3009b878e0be9f1512c0471dc1854a288255822f9c7"
+      },
+      "environment": "Windows-11-10.0.26100-SP0;current-offline-replay",
+      "origin": "current-origin;offline"
+    },
+    "current": {
+      "inputs": {
+        "artifact": "819667dccc050c70d6906564711fc367b0dc84321b5acc1307a57b23989c5a41",
+        "configuration": "9edc0b96ee1b7e762342d8ff72f974d61898540fd5c4174ff0cc8d6583d6fca2",
+        "toolchain": "9d0423e59a637e3acbbd4023725933500e13a57ca19bf75e0a578aa9f0fd4562",
+        "oracle": "ff417c8e56582eda2d268876f50e2daf620cdec57249e4032cb1b14da5b4ac1f",
+        "scope": "9e38786d11e8f45712e0e3009b878e0be9f1512c0471dc1854a288255822f9c7"
+      },
+      "environment": "Windows-11-10.0.26100-SP0;current-offline-replay",
+      "origin": "current-origin;offline"
+    },
+    "comparison": {
+      "policy": "r12-declared-evidence-inputs-v1",
+      "status": "INVALIDATED",
+      "changed": [
+        "inputs.oracle"
+      ],
+      "release_pass": false,
+      "limitation": "Supplied fingerprints only; verify dependency completeness and original evidence provenance separately."
+    }
+  },
+  "aggregate_quality_reuse": "NOT_GRANTED: docs/seed/release inputs changed; Core HEAD differs from the client bound Core revision.",
+  "live_device_reuse": "NOT_GRANTED: current server/config/device/freshness inputs have not been established.",
+  "release_pass": false
+}

@@ -1,0 +1,84 @@
+{
+  "recorded_at_utc": "2026-09-09T01:44:58.180615+00:00",
+  "result": "R12_G05_METADATA_READBACK_PASS",
+  "files": [
+    {
+      "path": "candidate-artifact.json",
+      "bytes": 492,
+      "sha256": "d763fa2c1b2dd7160fb1fa6b5fc5cafac33f52b13158d622ad008804199605b1"
+    },
+    {
+      "path": "development-core-tag.json",
+      "bytes": 180,
+      "sha256": "94472c1e5cf3ae2cd2c986942cb7be6470a6f16d3747b1f236aa6359b6332a6d"
+    },
+    {
+      "path": "development-version-query-body.json",
+      "bytes": 3811,
+      "sha256": "c585f297c88928ddd44a5787e6af4320cd8c47b505b135dd5b449fc90bdaee8f"
+    },
+    {
+      "path": "development-version-query-request.json",
+      "bytes": 384,
+      "sha256": "7aa3ecc40b62e0cdfc0af8dfd425517dd765092d5b0a3bd4eaa8878ed93e8638"
+    },
+    {
+      "path": "download-redirects.json",
+      "bytes": 431,
+      "sha256": "d42b7860a9125f9e4791f3cfc5cd1f204c14b6bbbea3d3b213a28f41aa078604"
+    },
+    {
+      "path": "github-latest-core.json",
+      "bytes": 136,
+      "sha256": "c38d25fedf111731f0a9ad98b4a847d79a6ff972172fc51bf500b64a290098c4"
+    },
+    {
+      "path": "github-latest-release.json",
+      "bytes": 2738,
+      "sha256": "ce0075a3ed96bad2e366e6587a4786548b196b53e79a0f7f1c0d4d92b3edad94"
+    },
+    {
+      "path": "old-version-query-body.json",
+      "bytes": 3815,
+      "sha256": "cb785291685ac74c4ffd5bd7298bc5eabcc37570988e66e50a587f512b11653b"
+    },
+    {
+      "path": "old-version-query-request.json",
+      "bytes": 384,
+      "sha256": "23ac9f4d22b1324cd7c4db8d37519363cea8ebf757fca7f8ac4332c1c6a38de5"
+    },
+    {
+      "path": "public-catalog-body.json",
+      "bytes": 3803,
+      "sha256": "48fbeb5f905b1d3b89532d4fff3b23ed79b5a4a74d3bd38509447456ac81862a"
+    },
+    {
+      "path": "public-catalog-request.json",
+      "bytes": 345,
+      "sha256": "6c1b37bb39eb85d878ecde765b009846fa2124c8f033d8b6f0ef2c4752c1f66c"
+    },
+    {
+      "path": "readback.py",
+      "bytes": 10126,
+      "sha256": "8f0f561e94e37c18bdedf997af946015b200a2655b8e64be8c8f4c49ee4eb6f2"
+    },
+    {
+      "path": "release-list-scope.json",
+      "bytes": 385,
+      "sha256": "ff13120faba67f10bc67c4b0c449ae9552b5c69de78ee4e2804f55c3acde5f10"
+    },
+    {
+      "path": "result.json",
+      "bytes": 4471,
+      "sha256": "7bfa2c660f96ec680fc161691d667d2efcd4daae236c179c0e086bf3611c5c82"
+    },
+    {
+      "path": "windows-candidate-authenticode-named.json",
+      "bytes": 266,
+      "sha256": "a62b347e7471b1eaf0caa9cb6b1bb3ffd7f90e8154a6d4b4afee95ac49a71463"
+    }
+  ],
+  "checks": 29,
+  "production_mutation": false,
+  "candidate_or_binary_publication": false
+}

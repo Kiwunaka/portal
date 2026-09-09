@@ -1,0 +1,122 @@
+{
+  "recorded_at_utc": "2026-09-05T18:32:20.827210+00:00",
+  "origin": "current-origin local source inspection",
+  "scope": "R12-B07 direct aiohttp.ClientSession constructor inventory; timeout flag describes constructor only, request-level timeouts inspected separately",
+  "sites": [
+    {
+      "path": "portal_bot/api.py",
+      "line": 7465,
+      "scope": "_telegram_get_chat_member",
+      "constructor_timeout_explicit": false,
+      "file_sha256": "c7817962d910cba903e1e9f88b255e1a4f1049bccdca0f208877b63422630364"
+    },
+    {
+      "path": "portal_bot/api.py",
+      "line": 9325,
+      "scope": "_get_panel_usage_legacy",
+      "constructor_timeout_explicit": false,
+      "file_sha256": "c7817962d910cba903e1e9f88b255e1a4f1049bccdca0f208877b63422630364"
+    },
+    {
+      "path": "portal_bot/bot.py",
+      "line": 721,
+      "scope": "_bot_api_call",
+      "constructor_timeout_explicit": false,
+      "file_sha256": "2cd0d5c60993c4d92ba228dfe25367412fae233769dbf68c6a8e4abfcda4201f"
+    },
+    {
+      "path": "portal_bot/bot.py",
+      "line": 4134,
+      "scope": "_create_rub_payment_link_for_bot",
+      "constructor_timeout_explicit": true,
+      "file_sha256": "2cd0d5c60993c4d92ba228dfe25367412fae233769dbf68c6a8e4abfcda4201f"
+    },
+    {
+      "path": "portal_bot/bot_operator_handlers.py",
+      "line": 698,
+      "scope": "health_check",
+      "constructor_timeout_explicit": false,
+      "file_sha256": "8b6c9317bc04acf5e45c0cfa83beaf41bad3fc73425622e60a13782049807c85"
+    },
+    {
+      "path": "portal_bot/channel_bonus_service.py",
+      "line": 43,
+      "scope": "_telegram_get_chat_member",
+      "constructor_timeout_explicit": false,
+      "file_sha256": "15c308369d321c8109a3163cc71bac495c5a11884882c1b05f38c54bfe8b978b"
+    },
+    {
+      "path": "portal_bot/email_delivery_service.py",
+      "line": 77,
+      "scope": "deliver_email_message",
+      "constructor_timeout_explicit": true,
+      "file_sha256": "b420b828ab3b34e6e39fba7f94d9fed5f27ee2f056ac7c09ca8d2e2998d4cde2"
+    },
+    {
+      "path": "portal_bot/emergency_catalog_ingestion.py",
+      "line": 116,
+      "scope": "fetch_approved_mirror",
+      "constructor_timeout_explicit": true,
+      "file_sha256": "5a3ded9258c1c4f5f54c202f74be7e115884316beaa627a488346d905d6424f3"
+    },
+    {
+      "path": "portal_bot/news_draft_service.py",
+      "line": 331,
+      "scope": "collect_news_drafts",
+      "constructor_timeout_explicit": false,
+      "file_sha256": "e53f4bf4dd4f999bab2b7d0463fa2bab0101762774d419244cdaec229a964ce6"
+    },
+    {
+      "path": "portal_bot/panel_client.py",
+      "line": 352,
+      "scope": "PanelClient.ensure_session",
+      "constructor_timeout_explicit": false,
+      "file_sha256": "fa641cd430e07b2b29a15fc584b13dd4acbd92701da9da5b456e4d06847ab5c2"
+    },
+    {
+      "path": "portal_bot/telegram_delivery_service.py",
+      "line": 115,
+      "scope": "send_telegram_message",
+      "constructor_timeout_explicit": false,
+      "file_sha256": "10007ce61176d3e16e8541658f42e6eb38c6844948819798bbf6127fe24e9540"
+    },
+    {
+      "path": "portal_bot/web_auth_service.py",
+      "line": 311,
+      "scope": "fetch_telegram_oidc_jwks",
+      "constructor_timeout_explicit": true,
+      "file_sha256": "88d823e9ab5e56415127a0f36e2c366f0ac1c06945169ec1fe8f0ab464bb6bb8"
+    },
+    {
+      "path": "portal_bot/web_auth_service.py",
+      "line": 445,
+      "scope": "exchange_telegram_oidc_code",
+      "constructor_timeout_explicit": true,
+      "file_sha256": "88d823e9ab5e56415127a0f36e2c366f0ac1c06945169ec1fe8f0ab464bb6bb8"
+    },
+    {
+      "path": "portal_bot/worker.py",
+      "line": 410,
+      "scope": "_telegram_send_message",
+      "constructor_timeout_explicit": false,
+      "file_sha256": "1c2dcdb5e5ccea48a301468c8d15f71aa4a609e4e0c5e6e10d57cc561c26c279"
+    },
+    {
+      "path": "portal_bot/worker.py",
+      "line": 427,
+      "scope": "_telegram_get_chat_member",
+      "constructor_timeout_explicit": false,
+      "file_sha256": "1c2dcdb5e5ccea48a301468c8d15f71aa4a609e4e0c5e6e10d57cc561c26c279"
+    }
+  ],
+  "managed_factory": "portal_bot/outbound_http.py PaymentHttpRegistry._session_factory, API lifespan owns start/close",
+  "payment_db": "bounded Starlette/AnyIO worker path with queue_wait and duration counters; isolated tests pass, not production latency",
+  "production_http_pool_wait": "NOT_MEASURED",
+  "production_event_loop_lag": "NOT_MEASURED",
+  "production_payment_outbox_age": "NOT_MEASURED",
+  "tests": {
+    "command": "python -u -B -m pytest -p no:cacheprovider tests/test_payment_db_runtime.py tests/test_payment_http_registry.py -q",
+    "result": "11 passed in 5.15s",
+    "log": "E:/r12-payment-resource-gates.log"
+  }
+}

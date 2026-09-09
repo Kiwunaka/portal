@@ -10,6 +10,12 @@ Document class: CANONICAL. Этот файл — локальный источн
 
 ## Назначение
 
+Карточка пользователя → события показывает автоматическую диагностику
+исходной сети Android: время наблюдения, оператор, IP и примерный регион.
+`network_context` User 360 доступен только с `support.sensitive.read`, чтение
+записывается в аудит. Срок хранения — до 72 часов. Недоступный прямой путь
+означает неизвестный исходный IP; IP выхода VPN не подставляется вместо него.
+
 `adminapp/` — русскоязычный операционный command center для повседневной
 диагностики и безопасного управления POKROV. Первый экран отвечает на вопрос
 «что требует действий сейчас», а не дублирует сырые API-ответы.
@@ -351,6 +357,11 @@ Support work boundary v2:
   diagnostic collections, `field_access=redacted` и warning;
 - `GET /api/admin/v2/support/attempts` — ограниченный correlated attempt
   explorer; маршрут требует отдельное `support.sensitive.read`;
+- сводка обращения показывает связанную попытку либо явное отсутствие данных.
+  Другие попытки пользователя доступны для ручной привязки; при отсутствии
+  привязки последняя попытка так и помечается. Версия сводки берётся из
+  последнего события этой попытки. Known issues повторно запрашиваются при
+  изменении code/app/build/platform пакета, включая смену build с прежним code;
 - `GET /api/admin/v2/support/macros` отдаёт серверный закрытый набор макросов;
 - claim, assign и workflow update идут через
   `/api/admin/v2/support/action-intents`; reply/status и internal note временно
@@ -399,6 +410,11 @@ Money и growth boundary v2:
   idempotent entitlement grant без второго reward path.
 
 Release boundary v2:
+
+- Cockpit shows policy `pokrov.operator-cockpit-gates/v1`, its actual check count,
+  and `gate_f_decision=NOT_EVALUATED`. Its 11 operational checks plus origins do
+  not imply the separate 19-check final Gate F decision. The canonical crosswalk
+  is in [monitoring and visibility](../docs/operations/monitoring-and-visibility.md#cockpit-checks-and-the-final-release-decision).
 
 - `GET /api/admin/v2/releases/candidates`, `GET .../cockpit` и
   `GET .../adoption` связывают точный состав кандидата с current/brain/RU

@@ -1,0 +1,97 @@
+{
+  "recorded_at_utc": "2026-09-09T01:18:46.730205+00:00",
+  "origin": "current-origin GitHub REST/GraphQL",
+  "result": "THREE_BRANCH_POLICIES_PASS_RELEASE_BLOCKED",
+  "files": [
+    {
+      "path": "apply.json",
+      "bytes": 8873,
+      "sha256": "0b345598f9ce08cfbd9b037622efb730a824276c41e002e2bdcd18f3ecab6e24"
+    },
+    {
+      "path": "bypass-readback.json",
+      "bytes": 1519,
+      "sha256": "6c3f5da3b6afc28ac7adf60cb52ee2abe842bf7c0d8b686c59340583e43a9110"
+    },
+    {
+      "path": "enforcement.py",
+      "bytes": 4751,
+      "sha256": "50b66cab6060bfba400e2cbe806d8470d0cc8fc736b007f20705b2889c6fbe1b"
+    },
+    {
+      "path": "gate-after-recheck.json",
+      "bytes": 7842,
+      "sha256": "de48c16be8cdb6e6dd941ea508b19eb191b814eb6d9d018035c98933f9ef02d4"
+    },
+    {
+      "path": "gate-after.json",
+      "bytes": 7872,
+      "sha256": "e7f6db7378443e67007ba5382407581b0a9d346f67ecd6256f9173be9b98120b"
+    },
+    {
+      "path": "gate-before.json",
+      "bytes": 7882,
+      "sha256": "4152f9fa22e49a2eb2a3a26ebacf12f530d6fd7bc1e1a45519fe3594ad0ff5c2"
+    },
+    {
+      "path": "POKROV-app-put.json",
+      "bytes": 1852,
+      "sha256": "182e5061867192c3970580f3f424d7d891bfdb4dfb53b8e0026a668ef97f02ba"
+    },
+    {
+      "path": "POKROV-app-request.json",
+      "bytes": 665,
+      "sha256": "a92334cd4502b637bb2427eae336ef0c21e1b378853ad3e23eb8fec41a034bc0"
+    },
+    {
+      "path": "POKROV-app-signatures.json",
+      "bytes": 304,
+      "sha256": "0eab944954509d696fbf30f2781bef0a51011d009dedc0ebacf4d0231e4df8be"
+    },
+    {
+      "path": "pokrov-core-put.json",
+      "bytes": 2369,
+      "sha256": "2f24ae0b85e49f41866cecc3401088abd7608d739471cb5f49c230cb14564dc1"
+    },
+    {
+      "path": "pokrov-core-request.json",
+      "bytes": 1014,
+      "sha256": "33737403ac37541023342b6fe7c9e34585a5e46950f29cde5ee73e9503d82052"
+    },
+    {
+      "path": "pokrov-core-signatures.json",
+      "bytes": 306,
+      "sha256": "fb0cd0e3af9534797c987df8a92f8ba6a05c24cdc73d8574d76f97b99efbc0f3"
+    },
+    {
+      "path": "portal-put.json",
+      "bytes": 1957,
+      "sha256": "4175048963d91610390c677be52e19a6df3d07ec7fa91b713ea6d72aa9d4ac8d"
+    },
+    {
+      "path": "portal-request.json",
+      "bytes": 748,
+      "sha256": "d5a79293e2cf086c2c4baa165a34cd84cb905336d19af82a4ef09ea0163789ad"
+    },
+    {
+      "path": "portal-signatures.json",
+      "bytes": 300,
+      "sha256": "4b99971e1b2aac6f9ad0fcb1a3737a7a251d7e91704c3f945dfba4a8e3f27d24"
+    },
+    {
+      "path": "pr-readback.json",
+      "bytes": 149,
+      "sha256": "29f00969728580975db0fa8febd9f6fbdb3e5b61fb18c5661164437de1ebf5f9"
+    },
+    {
+      "path": "prepare.json",
+      "bytes": 3051,
+      "sha256": "7c849b70d52b635cdefe38cc5f5c3040e12d5bfaaba6d79ec88ed5bcc37799b9"
+    },
+    {
+      "path": "readback.json",
+      "bytes": 8373,
+      "sha256": "931e4a830305f9bafd010516caa828de5b4021585113c5285ba70036dcbbe4c3"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+F.                                                                       [100%]
+================================== FAILURES ===================================
+____ test_custody_workflow_exposes_secrets_only_to_trusted_validation_step ____
+
+    def test_custody_workflow_exposes_secrets_only_to_trusted_validation_step() -> None:
+        text = WORKFLOW.read_text(encoding="utf-8-sig")
+        validation = _step(text, "Verify hosted custody against client pin")
+        checkout = _step(text, "Checkout trusted platform promotion line")
+        prefix = text.split("      - name: Verify hosted custody against client pin", 1)[0]
+    
+        assert "pull_request:" not in text
+>       assert "    if: github.ref == 'refs/heads/master'" in text
+E       assert "    if: github.ref == 'refs/heads/master'" in 'name: Support Signing Custody\n\non:\n  push:\n    branches:\n      - master\n    paths:\n      - .github/workflows/s...unner.temp }}/support-signing-custody-receipt.json\n          if-no-files-found: error\n          retention-days: 30\n'
+
+tests\test_support_signing_custody_workflow.py:29: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_support_signing_custody_workflow.py::test_custody_workflow_exposes_secrets_only_to_trusted_validation_step
+1 failed, 1 passed in 0.30s

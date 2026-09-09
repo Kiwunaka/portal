@@ -1,0 +1,29 @@
+{
+  "recorded_at_utc": "2026-09-05T11:05:56.725945+00:00",
+  "origin": "current-origin GitHub API readback",
+  "commands": [
+    {
+      "command": "gh api repos/Kiwunaka/pokrov/actions/artifacts/9928470408",
+      "exit_code": 0,
+      "safe_projection": {
+        "id": 9928470408,
+        "name": "pokrov-pokrov-1.2.0-candidate.33-signed-manifest-63993fba699b68641b7e972071ab7729fa9ec43c",
+        "expired": false,
+        "expires_at": "2026-09-18T08:01:25Z",
+        "size_in_bytes": 7955
+      }
+    },
+    {
+      "command": "gh api repos/Kiwunaka/POKROV-app/actions/jobs/101249235240",
+      "exit_code": 0,
+      "safe_projection": {
+        "id": 101249235240,
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2026-09-05T04:35:03Z",
+        "completed_at": "2026-09-05T04:35:04Z",
+        "executed_steps": 0
+      }
+    }
+  ]
+}

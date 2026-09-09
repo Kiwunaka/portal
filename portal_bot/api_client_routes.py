@@ -10,6 +10,8 @@ except ImportError:
     from module_slices import bootstrap_slice
 
 bootstrap_slice(globals())
+from checkout_quote_service import CheckoutQuoteError, quote_binding, sign_checkout_quote, verify_checkout_quote
+from client_network_diagnostics import NETWORK_CLASSES, record_network_context
 SMART_CONNECT_LATENCY_EVENT_NAME = "smart_connect_latency_sample"
 MANAGED_PROFILE_SYNC_BUDGET_SECONDS = 7.0
 MANAGED_PROFILE_PANEL_BUDGET_SECONDS = 8.0
@@ -134,6 +136,15 @@ class ClientRuntimeStatsIn(BaseModel):
 
 class ClientTelegramLinkEventIn(BaseModel):
     event_name: str = Field(min_length=1, max_length=32)
+
+
+class ClientNetworkContextIn(BaseModel):
+    model_config = {"extra": "forbid"}
+    network_class: str = Field(default="unknown", max_length=24)
+    carrier: str | None = Field(default=None, max_length=80)
+    direct_observation: bool = False
+    profile_revision: str | None = Field(default=None, max_length=128)
+    runtime_phase: str | None = Field(default=None, max_length=32)
 
 
 class AccountOnboardingStatusIn(BaseModel):
@@ -1983,6 +1994,7 @@ async def client_support_assistant(
 async def client_managed_profile(
     request: Request,
     selected_node_code: str = Query(default="", max_length=32),
+    fallback_from_revision: str = Query(default="", max_length=512),
     x_telegram_init_data: str = Header(default=""),
     x_portal_carrier: str = Header(default=""),
 ) -> dict[str, Any]:
@@ -2019,6 +2031,17 @@ async def client_managed_profile(
                 auth_user=auth_user,
                 require_device=True,
             )
+        if fallback_from_revision:
+            try:
+                client_policy = client_policy_for_lab_tcp_fallback(
+                    client_policy, source_revision=fallback_from_revision,
+                )
+            except ValueError:
+                raise HTTPException(
+                    status_code=409, detail="Lab fallback revision changed or unavailable",
+                ) from None
+            transport_profile = client_policy["transport_profile"]
+            is_owned_transport_lab = False
         nodes = enabled_nodes(s)
         nodes_for_user = _nodes_for_user(user, nodes, session=s)
         requested_node_code = str(selected_node_code or "").strip().lower()
@@ -2453,6 +2476,36 @@ async def client_nodes_select(
             "transport_profile": resolved_profile,
             "accepted_samples": len(accepted_samples),
         }
+    finally:
+        s.close()
+
+
+@app.post("/api/client/network/context")
+async def client_network_context(
+    payload: ClientNetworkContextIn,
+    request: Request,
+    x_telegram_init_data: str = Header(default=""),
+) -> dict[str, Any]:
+    s, user, auth_user = _client_user_session(request, x_telegram_init_data)
+    try:
+        install_id = _client_authenticated_install_id(
+            s, user=user, auth_user=auth_user, require_device=True,
+        )
+        _, identity = _client_telemetry_identity(
+            s, user=user, auth_user=auth_user, request=request,
+        )
+        if identity["platform"] != "android" or payload.network_class not in NETWORK_CLASSES:
+            raise HTTPException(status_code=422, detail="Unsupported network context")
+        accepted = record_network_context(
+            s, request=request, account_id=str(user.account_id),
+            device_id=str(auth_user["device_id"]), install_id=install_id,
+            network_class=payload.network_class, carrier=payload.carrier,
+            direct_observation=payload.direct_observation,
+            platform=identity["platform"], app_version=identity["app_version"],
+            profile_revision=payload.profile_revision, runtime_phase=payload.runtime_phase,
+        )
+        s.commit()
+        return {"ok": True, "accepted": accepted}
     finally:
         s.close()
 
@@ -3435,6 +3488,72 @@ def _normalize_lavatop_payment_method(raw: str | None) -> tuple[str, str, str]:
     raise HTTPException(status_code=400, detail="Unsupported payment method")
 
 
+def _rub_checkout_pricing(*, s, plan, user, promo_code):
+    normalized_plan_code = str(plan.get("code") or "").strip().lower()
+    base_amount = max(0, int(plan.get("amount_rub") or 0))
+    discount_allowed = normalized_plan_code != "start_99"
+    requested_promo = (promo_code or "").strip().upper()[:32]
+    effective_promo = ""
+    pending_code = (
+        (getattr(user, "pending_discount_code", "") or "").strip().upper()[:20]
+        if user
+        else ""
+    )
+    pending_pct = int(getattr(user, "pending_discount_pct", 0) or 0) if user else 0
+    direct_discount_pct = 0
+    direct_discount_code = ""
+    direct_discount_source = ""
+    referral_discount_eligible = bool(
+        discount_allowed
+        and user
+        and getattr(user, "referrer_id", None)
+        and not _has_successful_provider_payment(s=s, user=user)
+    )
+    working_amount = int(base_amount)
+    if referral_discount_eligible and working_amount > 0:
+        working_amount = max(1, int(round(working_amount * 0.8)))
+    if discount_allowed and pending_pct > 0:
+        working_amount, _ = _price_with_pending_discount(
+            amount_rub=working_amount,
+            pending_pct=pending_pct,
+        )
+        if pending_code:
+            effective_promo = pending_code[:32]
+    elif discount_allowed and requested_promo:
+        direct_discount_pct, direct_discount_code, direct_discount_source = (
+            _checkout_discount_code_preview_pct(
+                s=s,
+                promo_code=requested_promo,
+            )
+        )
+        if direct_discount_pct > 0:
+            working_amount, _ = _price_with_pending_discount(
+                amount_rub=working_amount,
+                pending_pct=direct_discount_pct,
+            )
+            effective_promo = direct_discount_code[:32]
+    final_amount = max(1, int(working_amount)) if base_amount > 0 else 0
+    discount_applied = bool(base_amount > 0 and final_amount < base_amount)
+    discount_pct = (
+        int(round((1.0 - (float(final_amount) / float(base_amount))) * 100))
+        if discount_applied
+        else 0
+    )
+    return {
+        "base_amount": base_amount,
+        "final_amount": final_amount,
+        "discount_applied": discount_applied,
+        "discount_pct": discount_pct,
+        "requested_promo": requested_promo,
+        "effective_promo": effective_promo,
+        "pending_code": pending_code,
+        "direct_discount_pct": direct_discount_pct,
+        "direct_discount_code": direct_discount_code,
+        "direct_discount_source": direct_discount_source,
+        "referral_discount_eligible": referral_discount_eligible,
+    }
+
+
 def _prepare_rub_order_db(
     *,
     provider: str,
@@ -3451,9 +3570,43 @@ def _prepare_rub_order_db(
     consume_pending_discount: bool,
     acquisition_handle: str | None,
     offer_token: str | None,
+    intent_id: str | None = None,
 ) -> dict[str, Any]:
     s = SessionLocal()
     try:
+        base_quote = None
+        if offer_token and offer_token.startswith("bq1."):
+            try:
+                base_quote = verify_checkout_quote(offer_token, now=_utcnow(), allow_expired=True)
+            except CheckoutQuoteError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+        commercial_token = offer_token if base_quote is None else None
+        retry_order_id = None
+        request_digest = None
+        if base_quote or (intent_id and not offer_token):
+            try:
+                retry_order_id, request_digest, existing = lock_public_checkout_retry(
+                    s,
+                    intent_id=base_quote["id"] if base_quote else intent_id,
+                    tg_id=normalized_tg_id or None,
+                    buyer_email=buyer_email_norm or None,
+                    request_fields={
+                        "provider": provider, "source": source, "plan": plan_code,
+                        "campaign": campaign, "promo": promo_code, "currency": currency,
+                        "payment_method": payment_method_choice,
+                        "acquisition_handle": acquisition_handle or "",
+                        "quote_sha256": hashlib.sha256(offer_token.encode()).hexdigest() if base_quote else None,
+                    },
+                )
+            except PaymentOrderIntentError as exc:
+                raise HTTPException(status_code=409, detail="checkout_intent_conflict") from exc
+            if existing is not None:
+                return {"recovered_order": recovered_checkout_fields(existing)}
+        if base_quote:
+            try:
+                verify_checkout_quote(offer_token, now=_utcnow())
+            except CheckoutQuoteError as exc:
+                raise HTTPException(status_code=410, detail=str(exc)) from exc
         expire_failed_commercial_reservations(s, now=_utcnow(), limit=100)
         plan = _resolve_plan_config(s=s, code=plan_code)
         if not plan:
@@ -3466,7 +3619,7 @@ def _prepare_rub_order_db(
         acquisition_handoff = None
         acquisition_row = None
         attribution_snapshot = None
-        if acquisition_handle and not offer_token:
+        if acquisition_handle and not commercial_token:
             try:
                 acquisition_handoff, acquisition_row, attribution_snapshot = (
                     consume_acquisition_handoff(
@@ -3504,61 +3657,35 @@ def _prepare_rub_order_db(
             buyer_email_norm=buyer_email_norm,
             plan_code=normalized_plan_code,
         )
-        base_amount = max(0, int(plan.get("amount_rub") or 0))
-        discount_allowed = normalized_plan_code != "start_99"
-        requested_promo = (promo_code or "").strip().upper()[:32]
-        effective_promo = ""
-        pending_code = (
-            (getattr(user, "pending_discount_code", "") or "").strip().upper()[:20]
-            if user
-            else ""
-        )
-        pending_pct = int(getattr(user, "pending_discount_pct", 0) or 0) if user else 0
-        direct_discount_pct = 0
-        direct_discount_code = ""
-        direct_discount_source = ""
-        referral_discount_eligible = bool(
-            discount_allowed
-            and user
-            and getattr(user, "referrer_id", None)
-            and not _has_successful_provider_payment(s=s, user=user)
-        )
-        working_amount = int(base_amount)
-        if referral_discount_eligible and working_amount > 0:
-            working_amount = max(1, int(round(working_amount * 0.8)))
-        if discount_allowed and pending_pct > 0:
-            working_amount, _ = _price_with_pending_discount(
-                amount_rub=working_amount,
-                pending_pct=pending_pct,
+        pricing = _rub_checkout_pricing(s=s, plan=plan, user=user, promo_code=promo_code)
+        if base_quote:
+            if not plan.get("is_active"):
+                raise HTTPException(status_code=409, detail="checkout_quote_changed")
+            expected_binding = quote_binding(
+                tg_id=normalized_tg_id, buyer_email=buyer_email_norm, plan=plan,
+                pricing=pricing, revision=get_commercial_contract()["commercial_revision"],
             )
-            if pending_code:
-                effective_promo = pending_code[:32]
-        elif discount_allowed and requested_promo:
-            direct_discount_pct, direct_discount_code, direct_discount_source = (
-                _checkout_discount_code_preview_pct(
-                    s=s,
-                    promo_code=requested_promo,
-                )
-            )
-            if direct_discount_pct > 0:
-                working_amount, _ = _price_with_pending_discount(
-                    amount_rub=working_amount,
-                    pending_pct=direct_discount_pct,
-                )
-                effective_promo = direct_discount_code[:32]
-        final_amount = max(1, int(working_amount)) if base_amount > 0 else 0
-        discount_applied = bool(base_amount > 0 and final_amount < base_amount)
-        discount_pct = (
-            int(round((1.0 - (float(final_amount) / float(base_amount))) * 100))
-            if discount_applied
-            else 0
-        )
+            if currency != "RUB" or base_quote["binding"] != expected_binding:
+                raise HTTPException(status_code=409, detail="checkout_quote_changed")
+        base_amount = pricing["base_amount"]
+        final_amount = pricing["final_amount"]
+        discount_applied = pricing["discount_applied"]
+        discount_pct = pricing["discount_pct"]
+        requested_promo = pricing["requested_promo"]
+        effective_promo = pricing["effective_promo"]
+        pending_code = pricing["pending_code"]
+        direct_discount_pct = pricing["direct_discount_pct"]
+        direct_discount_code = pricing["direct_discount_code"]
+        direct_discount_source = pricing["direct_discount_source"]
+        referral_discount_eligible = pricing["referral_discount_eligible"]
         order_prefix = "fk" if provider == "freekassa" else provider[:12]
         order_subject = str(normalized_tg_id if normalized_tg_id > 0 else "public")
         order_id = f"{order_prefix}_{source}_{order_subject}_{int(time.time())}_{secrets.token_hex(4)}"
+        if retry_order_id:
+            order_id = retry_order_id
         commercial_lineage = None
         commercial_acquisition_session_id = None
-        if offer_token:
+        if commercial_token:
             try:
                 binding = bind_commercial_offer_to_order(
                     s,
@@ -3636,6 +3763,7 @@ def _prepare_rub_order_db(
             s,
             intent=intent,
             metadata={
+                "checkout_request_sha256": request_digest,
                 "source": source,
                 "campaign": campaign,
                 "attribution_snapshot": attribution_snapshot,
@@ -3694,6 +3822,8 @@ def _prepare_rub_order_db(
             user.pending_discount_code = None
             user.pending_discount_set_at = None
         s.commit()
+        if not order_created:
+            return {"recovered_order": recovered_checkout_fields(ext)}
         return {
             "source": source,
             "campaign": campaign,
@@ -3892,6 +4022,7 @@ async def _rub_create_order_internal(
     acquisition_handle: str | None = None,
     offer_token: str | None = None,
     return_surface: str = "marketing",
+    intent_id: str | None = None,
 ) -> RubOrderActionOut:
     _ensure_checkout_runtime_ready()
     provider = _normalize_provider(provider)
@@ -3944,7 +4075,20 @@ async def _rub_create_order_internal(
         consume_pending_discount=consume_pending_discount,
         acquisition_handle=acquisition_handle,
         offer_token=offer_token,
+        intent_id=intent_id,
     )
+    recovered = prepared.get("recovered_order")
+    if recovered:
+        return RubOrderActionOut(
+            ok=True,
+            provider=provider,
+            payment_url=None,
+            widget_enabled=False,
+            payment_return_token=issue_payment_return_token(
+                provider=provider, order_id=recovered["order_id"], surface=return_surface,
+            ),
+            **recovered,
+        )
     source = str(prepared["source"])
     campaign = str(prepared["campaign"])
     normalized_plan_code = str(prepared["normalized_plan_code"])

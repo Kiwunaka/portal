@@ -1,0 +1,8 @@
+{
+  "url": "https://app.pokrov.space/api/public/client-apps",
+  "http_status": 200,
+  "observed_at_utc": "2026-09-09T01:42:20.330879+00:00",
+  "date": "Wed, 09 Sep 2026 01:41:36 GMT",
+  "cache_control": "public, max-age=300, stale-if-error=3600",
+  "response_sha256": "48fbeb5f905b1d3b89532d4fff3b23ed79b5a4a74d3bd38509447456ac81862a"
+}

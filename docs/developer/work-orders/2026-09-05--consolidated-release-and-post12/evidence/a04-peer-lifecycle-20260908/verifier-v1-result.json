@@ -1,0 +1,9 @@
+{
+  "exit_code": 1,
+  "product_or_runtime_changed": false,
+  "correction": "v2 compares public key identity, RX bytes and handshake; preserves observed TX values without assigning their cause",
+  "failure": "AssertionError: Stale key caused accepted peer traffic",
+  "command": "python -B E:/r12-a04-peer-lifecycle-20260908/verify-and-retain.py",
+  "observation": "Replacement peer RX bytes and handshake unchanged during stale-key attempt; TX bytes increased in both protocols",
+  "classification": "overbroad verifier condition"
+}

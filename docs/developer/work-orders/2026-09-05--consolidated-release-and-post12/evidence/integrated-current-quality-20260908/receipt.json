@@ -1,0 +1,59 @@
+{
+  "scope": "local_worktree_only",
+  "files": [
+    {
+      "path": "010I-local-quality-gate.json",
+      "sha256": "57d028bc429ee76696faf29d4f5f899aee8ed36a185437653de6c4930e989bea"
+    },
+    {
+      "path": "preflight-clean.json",
+      "sha256": "15138d22dbbe3ea3bf7b52dbe75fb3572fc5c840c72c2d02e802940dd2f9f82e"
+    },
+    {
+      "path": "preflight-before.json",
+      "sha256": "7e9ae3c1116d1b6fe0a3e2835dab3b4b9e2a10daca7d75664ac975d1b5adcd85"
+    },
+    {
+      "path": "runner.log",
+      "sha256": "745b2e4eb3d8a427e8d1cc95f3c8f538363368ae6fa4629271c8b999af2b656d"
+    },
+    {
+      "path": "runner-retry.log",
+      "sha256": "381af08035a667f37f2fbf3076ec68c17fa25cecc67c47458b800167cb6515c5"
+    },
+    {
+      "path": "npm-webapp.log",
+      "sha256": "4bbf0218ad9f44f237e440283ba4645e5305cbd96e7c62c2fe0afead8f1d6ec8"
+    },
+    {
+      "path": "npm-marketing.log",
+      "sha256": "63771906e2d1fc56405dd22e135c5312193afc5465fa6a3bea1515d294602dae"
+    },
+    {
+      "path": "npm-adminapp.log",
+      "sha256": "cbc1bad7409ff069475fca133878b0e5686e0626adb92dd07338819f803e861b"
+    },
+    {
+      "path": "retry/010I-local-quality-gate.json",
+      "sha256": "f903c65772978e9c7f503288417d6068de943d7ff32380383f7a05cad5c75a74"
+    },
+    {
+      "path": "retry/010I-local-web-performance-gate.json",
+      "sha256": "a8383272ffb7d2c58c9bc3da7ba4e225a6d9c5730f5bfc057536c1142f9a1907"
+    },
+    {
+      "path": "retry/010I-local-web-performance-evidence.json",
+      "sha256": "9e720a7f912c468ea1923cda4a13200a679fe3b697a9ecef1442665b4e3065ab"
+    }
+  ],
+  "raw_root": "E:/r12-integrated-acceptance-20260908/current-quality",
+  "candidate_created": false,
+  "toolchain": {
+    "dependency_install": "Node 24.15.0 / npm 11.7.0; npm ci --no-audit --no-fund; engine warning retained",
+    "recovery": "New detached checkout with regular lockfile-exact dependency directories; original junctions untouched",
+    "successful_gate": "Node 22.14.0 / npm 10.9.2; Flutter 3.38.5",
+    "install_location": "E:/r12-current-quality-platform-20260908",
+    "first_failure": "Turbopack rejects cross-root node_modules junction"
+  },
+  "candidate_proven": false
+}

@@ -1,0 +1,70 @@
+{
+  "schema": "pokrov.r12.release-contract-sync/v1",
+  "date": "2026-09-06",
+  "status": "PARTIAL_LOCAL_PASS",
+  "platform_source": "aff9653025ebe392dc09807c26ee64d6634c8208",
+  "origin": "current-origin local Windows host; synthetic metadata",
+  "candidate_created": false,
+  "changed_source_files": {
+    "scripts/release_handoff_metadata.schema.json": "b35d44cf34c2864ccce627b9b4a9af7d6c9c56b0b503c528f5112eb12ea889cf",
+    "tests/fixtures/release-handoff/valid-v2.json": "359de16c27b7a5d551c1a79ab7dfab41aaf6f272006570f2ccbb6426bc855fab",
+    "shared/contracts/observability/README.md": "fe42be6c8aec918923fed5e69c18b8e20116370983a5c107246bd9648ce4b2f8"
+  },
+  "commands": [
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_release_handoff_metadata.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g05-handoff-metadata.log",
+      "sha256": "7415cb7722b03913ebdefacc4f062ea1d990c0289d829ee0838f212dd2a4bbda",
+      "exit_code": 1,
+      "result": "21 FAIL / 29 PASS: stale error-catalog SHA in JSON Schema and fixture after 9f48273"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_release_handoff_metadata.py tests/test_remote_brain_apply_release_handoff.py tests/test_release_gate_check.py tests/test_release_orchestrator.py tests/test_check_script_manifest.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g05-handoff-after.log",
+      "sha256": "0493884b7278423f6507f3650e05f8268f2f434f618c7245397f9e115986656e",
+      "exit_code": 0,
+      "result": "102 PASS / 21 subtests PASS"
+    },
+    {
+      "command": "python -B scripts/validate_release_handoff_metadata.py --metadata-file tests/fixtures/release-handoff/valid-v2.json",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-g05-handoff-cli.log",
+      "sha256": "6042964fbb03589caa94170f3243021e4814dcc27da8c333fc5b5446cf58109d",
+      "exit_code": 0,
+      "result": "valid_v2 synthetic fixture; not a real candidate"
+    }
+  ],
+  "limitations": [
+    "No release candidate, old handoff/artifacts and receipts unchanged.",
+    "Current contracts only; final binary provenance/license and hosted release gates remain open.",
+    "No weakening of canonical digest validation, no version bump, no push/merge/deploy."
+  ],
+  "final_documentation_checks": [
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v02-final-docs.log",
+      "sha256": "ec23b3930fde9f6a8f776ce67609009a916b7f347b9a7e5a71e55ec16ac4a69b",
+      "exit_code": 0,
+      "result": "33 PASS"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v02-final-package.log",
+      "sha256": "574d910d435469c53a0753524ead180dfa28b328beef50db6635dcd644ff871b",
+      "exit_code": 0,
+      "result": "13 imports / 83 R12 / 378 legacy / 161 links PASS"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v02-final-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    }
+  ]
+}

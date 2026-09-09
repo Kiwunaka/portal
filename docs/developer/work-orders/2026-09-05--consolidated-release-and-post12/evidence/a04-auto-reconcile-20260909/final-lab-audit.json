@@ -1,0 +1,67 @@
+{
+  "databases": {
+    "portal_r12_a04_auto_20260909_pg_v1": {
+      "other_sessions": 0,
+      "materials": {
+        "awg2_lab_materials": {
+          "rows": 5,
+          "active": 1,
+          "revoked": 3,
+          "rotated": 1
+        },
+        "awg31_lab_materials": {
+          "rows": 5,
+          "active": 1,
+          "revoked": 3,
+          "rotated": 1
+        }
+      }
+    },
+    "portal_r12_a04_auto_20260909_live_awg2_v2": {
+      "other_sessions": 0,
+      "materials": {
+        "awg2_lab_materials": {
+          "rows": 3,
+          "active": 0,
+          "revoked": 3,
+          "rotated": 0
+        },
+        "awg31_lab_materials": {
+          "rows": 0,
+          "active": 0,
+          "revoked": 0,
+          "rotated": 0
+        }
+      }
+    },
+    "portal_r12_a04_auto_20260909_live_awg31_v2": {
+      "other_sessions": 0,
+      "materials": {
+        "awg2_lab_materials": {
+          "rows": 0,
+          "active": 0,
+          "revoked": 0,
+          "rotated": 0
+        },
+        "awg31_lab_materials": {
+          "rows": 3,
+          "active": 0,
+          "revoked": 3,
+          "rotated": 0
+        }
+      }
+    }
+  },
+  "previous_databases_recreated": false,
+  "production_database_mutated": false,
+  "services": {
+    "portal-api": "inactive",
+    "portal-bot": "inactive",
+    "portal-worker": "inactive"
+  },
+  "ssh_pin": {
+    "algorithm": "rsa-sha2-512",
+    "sha256": "f269379105688b9b9a25c0d00f2529b97745fb6cd389e8b572d71fc45b7f1dfa",
+    "original_known_hosts_unchanged": true
+  }
+}

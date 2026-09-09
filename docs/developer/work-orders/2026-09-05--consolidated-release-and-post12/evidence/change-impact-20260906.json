@@ -1,0 +1,2439 @@
+{
+  "schema": "pokrov.r12.reviewed-change-inventory/v1",
+  "observed_on": "2026-09-06",
+  "classifier_policy": "r12-declared-evidence-inputs-v1",
+  "classifier_sha256": "c92e3341129fcac29ab57071f6d2b367ffad03e7a0c94c905e867d16066b0815",
+  "classifier_state": "working tree includes scoped classifier and regression changes; product inputs from committed HEADs",
+  "release_pass": false,
+  "sources": [
+    {
+      "lane": "platform",
+      "path": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "base": "6b41f758ca228a0d5ff13ede0f865096cdac2134",
+      "head": "e6a374e9a9ff5b6219f5175f38755df6d52ff728",
+      "input_state": "committed Git objects; retained dirty files excluded",
+      "uncommitted_status": [
+        " M docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/classify_evidence_inputs.py",
+        " M docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/test_evidence_inputs.py",
+        "?? marketing/AGENTS.md",
+        "?? marketing/CLAUDE.md"
+      ],
+      "change_count": 147,
+      "class_counts": {
+        "documentation_only": 56,
+        "test_harness": 24,
+        "manual_classification_required": 47,
+        "deployment_migration": 1,
+        "api_schema": 18,
+        "profile_policy": 1
+      },
+      "changes": [
+        {
+          "path": "adminapp/README.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "826e643cc6f21e220fd67238251ae4d5a5c63158c8c92fb97e6cf59a871799b8",
+          "bytes": 43695,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "adminapp/e2e/clients.spec.ts",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "afb2f2ce7c47ac7ffa3ccfb13241a1bc94a9a3c2b04eb99d426d42323e78f757",
+          "bytes": 13922,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "adminapp/e2e/control.spec.ts",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "1c5b8c82ccfce9b3c9f33d95fc3ad2c98ffe841f569d442a5d2c679832ef65c9",
+          "bytes": 6704,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "adminapp/e2e/fixtures/admin-api.ts",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "be1097c8b5d8adc6342b00943b2539cf5bb024cbb657b19faa3db7af8391009c",
+          "bytes": 143135,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "adminapp/src/features/control/release-page.tsx",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "6cef790f6b84d3dfbef38767cec4cd94939d1a8171f8cb9f10fc1e354648920c",
+          "bytes": 26640,
+          "reviewed_class": "web_runtime",
+          "classification_reason": "Browser interaction/presentation or API adapter source."
+        },
+        {
+          "path": "adminapp/src/features/support/ticket-detail.tsx",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "7cf60cdabc7722788df1ed5c78c864f959bc326c29bd7fd6c9d2f45fc4c9c577",
+          "bytes": 32820,
+          "reviewed_class": "web_runtime",
+          "classification_reason": "Browser interaction/presentation or API adapter source."
+        },
+        {
+          "path": "adminapp/src/lib/admin-api/control.ts",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "d8f28aa07e90bd959d0d72f1cdbe27e1527e4a77471ea00987942910df7ee464",
+          "bytes": 6733,
+          "reviewed_class": "web_runtime",
+          "classification_reason": "Browser interaction/presentation or API adapter source."
+        },
+        {
+          "path": "docs/README.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "10eef1eb268d1ee6bf4b43a95e4d780b73f091fd90add0d4235f3a04610f6bde",
+          "bytes": 12635,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/architecture/api-contracts.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "695acfd73ae34e253755180c9c4724420e6f54ba3a7d00c8fb72364c6856fd64",
+          "bytes": 109018,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/architecture/app-first-and-bonus-flows.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "b93358206bbc6bcab4665e4fd980a52be43ecf73490e87c9055b6f2e749d32bd",
+          "bytes": 75810,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/architecture/payment-state-machine.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "5a3d178887de89bc70cc3974e26b641a2afac8f2ed4941ad1b7f871e7b9bbc93",
+          "bytes": 17303,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/architecture/support-feedback-flow.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "e8aa53f3c25f22ee7bb4e52f1baf1780a12526a1ddd888cf760982884a60e647",
+          "bytes": 28293,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/agent-context-map.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "c25aedda3e378a10e61a571833fdff662fd08452a44efbe7b42ca4a9c233887c",
+          "bytes": 11896,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/00_START_HERE.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "7c6fb687b35168e02d617568b232c31dd9ed483574be93587dac41dd108fca62",
+          "bytes": 12340,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/01_SCOPE_AND_CORRECTIONS.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "3392a4cfd5728a9a6cd6f1d0b26a3a59479ee06746274f3b2dc061a805211219",
+          "bytes": 23230,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/02_RELEASE_1_2_0.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "ae81f124088b71d47cd99354625dabb7a549f472eefaa9ef325db6d81be51b63",
+          "bytes": 23335,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/03_RELEASE_BACKLOG_83.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "1a6ebc63b7906657ddc57a1de484566d86486573ef77f531e5e20b6c4df35e4a",
+          "bytes": 87639,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/04_POST12_SHARED_ARCHITECTURE.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "0851fa6545587ba3ce4d080b3131724f27d05e483fc95fa7ea21a29f57b19563",
+          "bytes": 19425,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/05_POST12_TRANSPORT_AWG.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "bbc62d2df4c2e526b776bd31d48bb3e1c5bd75f73e0b2ea6ecce5b6723d88e9e",
+          "bytes": 22165,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/06_POST12_SMART_ROUTING_ACCESS.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "5baa2893ed79fff6756a817ede2955b01899d83a110df203339bda10035b2c3c",
+          "bytes": 25777,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/07_POST12_SHORTLINK_ATTRIBUTION.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "496d4f3037150c2ce78132383039212f4bb419e5e58b379822e1f092b5a156b2",
+          "bytes": 22546,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/08_POST12_HAPP_IOS_SOURCE_GATE.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "5efaa45819a89af514fb7bf851ed10b837ca26d6d261eb3cae3cfdefb50bd484",
+          "bytes": 8417,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/09_EXECUTION_AND_ACCEPTANCE.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "2bb066989bcd6ed08ab57213714fe42030614308b4f5f838482c179c6a2c448c",
+          "bytes": 15432,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/10_CODEX_GOALS.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "326cabfbc3577ede401648a3492e511c9aa0a0faeef698aef3a05c06ece466c1",
+          "bytes": 23640,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/11_SOURCE_CROSSWALK.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "3e884996a177e2c49cf2ac91472d033e8b8d52ef5ee0ab09d591f46490c5e5c8",
+          "bytes": 25903,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/12_PACKAGE_VALIDATION.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "0584833044915dcd7417a4167a9f6982ff5cda2288187d5d691600bfd95578e2",
+          "bytes": 7557,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/BASELINE.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "6d713d9f6ca72e49289689209026365c1a0a9037d3be6628669cb45cc7e8848d",
+          "bytes": 9477,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-A04.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "98778e13198ae4a56df587f27754fa63afd5c0dc2112025e05e32f72b5a2d5ed",
+          "bytes": 2702,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-A07.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "d80fb574dfaa3ca3676f7813776d37b27fd5a6036657aa3100700c98558bffad",
+          "bytes": 5100,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-A08.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "827cae562ef15c62d2a13e9ddabf11db36bdfde51a53d7bfe44987a4c105b279",
+          "bytes": 3841,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-B06.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "d34c6dcd19c84a07e1f3bd3d3c252405038e269c801c940d9a96e37756c752b8",
+          "bytes": 6178,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-B08.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "d2186f7b6d2aa96aaf861fb360e918c4ea8b6315d4d3eb1b34de5a1b39c7cde7",
+          "bytes": 5741,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-CONTINUED.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "e05e24684c86abadb44674d478c50d99e5ac93248e54e7a85332ee0a8a90d6aa",
+          "bytes": 19467,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-D04.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "2524ec1cff719f8fabf1a3117d1a1e974a1b1067564ee9e56c9749f01c231a2a",
+          "bytes": 2995,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-D05.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "3c16c8492254fe6b66019d3c7992a9cc9236502105b302843ae4c543926bd1c5",
+          "bytes": 6188,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-G01-M01.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "9b33f621adff3bed7a9f9e2be243f43923a95199cbd9da15eddfd0f9226f29ff",
+          "bytes": 6039,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-G05-G07.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "91206b128c13d5f65227be18c57950051def4dfc7eea418d4bf6c5f7260b5d1f",
+          "bytes": 5228,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-HY2-SNAPSHOT.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "7aa3c5d973abb5b562ac02cf6e97e5d7c1aebb1cb408210ef59aa8e5c7aac4b1",
+          "bytes": 2997,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-LOCAL.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "adf9ae9b39c74b35c378362e13ef2f23085f7d43a756b1963c36c9f93c8a388a",
+          "bytes": 15485,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-M05.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "b38e6a4fdd4b20ba53cad3c4e75c13c03182a38c5498a373bfa7db746003e506",
+          "bytes": 4866,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-N01-REPAIR.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "0f571ea809efc376605f1e90faee9051801fb90d8e416b0d58e7408ec94784bc",
+          "bytes": 2731,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-N02.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "1ec671a20943146bd32082c6d19c8589e7a81c0fa87bc14d3e5cc367c8c7fc38",
+          "bytes": 2827,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-N05.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "839510775ea589dfaded49467fd2f79e1a04f89b5083877374f7f8e09a3ba792",
+          "bytes": 4501,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-N06.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "a7cbf4b48740dd4368864a93ecc86da99d44a64a2ad8055c442e9a9debcab2e5",
+          "bytes": 3002,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-N08.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "d8e4de4155150f2dd0c00b8e31bcb62377ccff634b613d64d231cd012a9a721a",
+          "bytes": 7523,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-PRESENTATION.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "6f1748eae9ae0c49963b0abcd36052a84f3b94296de41d9b7d95ac4dd15a73d2",
+          "bytes": 4238,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-RELEASE-CONTRACT.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "1310fa83af569a4de3d518673fcf220352e10c9515021bcdb639e9fcf5318f3e",
+          "bytes": 1741,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-V02.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "9f7585970f35f333aeb969a40acf42b64f2f7d3cb6c16da1398369b4280586ad",
+          "bytes": 3751,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-V04.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "d68a17329632a4f5dea497c21212bfcb3b9bd7b65f9d0cdba1956d5ce88d52d7",
+          "bytes": 6918,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/HANDOFF.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "3f0e3ec8287420c08ac14b0f0fbb37159eb2b1878a6dd4a64d266f552a57421e",
+          "bytes": 13168,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/LEGACY-378-REFERENCE.csv",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "a97976d982b8cf36f07a24cd11394e9bfee3ca952d1a2850741b9028ddd07e34",
+          "bytes": 47075,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/NEXT_WORK_ORDER.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "964c07de1c3d86793501b6db7255e22dafc11864a366e744048b1c990ebf961a",
+          "bytes": 10977,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/R12-REGISTER.csv",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "8ada8b4fe2deea45852c4036fb9865ceed2dd9e1249862a7d1086e8f872e6df6",
+          "bytes": 10641,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/SOURCE_RECONCILIATION.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "b37730c0821ce7c67cf7ceef7bd098a1a1f191727f1c73a6ed4e73c05d6f83cb",
+          "bytes": 8879,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/classify_evidence_inputs.py",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "2ea35d8377219bb057ad639b5dc080bc491501fb533d6c93f891ce4af8b3c035",
+          "bytes": 4155,
+          "reviewed_class": "test_harness",
+          "classification_reason": "Work-order audit/oracle implementation."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/a04-material-snapshot.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "733c78e9352925c691787eb9c33ce92d38d23231a3c04d4f38acef9c366e931f",
+          "bytes": 3703,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/a07-tcp-fallback.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "dcd50dd91e5de00ee8641acc0d1c5f9291267b85fac2786ed7362d4a95c25d0a",
+          "bytes": 8422,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/a08-ech-rejection.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "c103940524fab074236295a9f5e8652d8a0881a41a98f4a722157ccf93d67ae0",
+          "bytes": 5944,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/b06-payments.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "31cd199577b54628ec240261c02c6234dfc6da21b61fade183aa6fa32f98b6ff",
+          "bytes": 10871,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/b08-postgres-drill.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "db8eb892f62a0565f7810b95a9e641bb2f04f16354ad99069c961f5d1e13b987",
+          "bytes": 13280,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/base-quote.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "3f7a4f3fb08aaa97a45d1ad0330272f15d37457227e9ff095ea82c2569aaa87b",
+          "bytes": 6440,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/baseline.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "56e614f1cdb29f90ffc330ffd428bafba6be2d69df64d01a4e5f471960f9b005",
+          "bytes": 19343,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/c04-presentation.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "edf9ad41efb428438d05ad7298f9ee8e8ad53c626de8a6b9771145b82520e46d",
+          "bytes": 4028,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/change-impact-current.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "8171ccfedd03f92b8996b3424a44132b3f56ef33553ec2f12edf97de79c083f4",
+          "bytes": 26662,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/change-impact.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "e4d54b395e5a372a56af33018c8d4b242988d9bbe3833aa1bf7743b196ea2a7c",
+          "bytes": 26353,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/checks.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "1d3fb3d85ede32295458a5644311cd1e7232578a3d2dfb7aa45a703b6931b8de",
+          "bytes": 2405,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/d04-update-authority.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "91383cca37f6034e5287aa8be83bf98ddd2830cbf8218d25f7e1af58cd46f672",
+          "bytes": 7702,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/d05-native-logging.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "50141863e91074a2e67353449fddd2bb8c983b72539c24becf6a5681e227324a",
+          "bytes": 60361,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g01-m01-scope-legal.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "91b5c3d3875c9c2c92c400d78d0aa9aff19e79720af675f10b844dd918582537",
+          "bytes": 7316,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-g07-metadata.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "c03bf9a3e7a2be1e2253b4b74c66d41753acf66a2fbb6665eff47aa737e43ce2",
+          "bytes": 11487,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/governance-readback.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "994260c6181b90cc877690b4160090b8940b8869479d682422ee175e422e3db7",
+          "bytes": 2716,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/handoff-local.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "07e2d6bbe8e77b7fa8301fa77ad16a00ccb69121100fc7a2c1a8c876233fa1e8",
+          "bytes": 9852,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/http-session-inventory.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "7136da865e4a4932091289a98c4d9398f95c1333161eaf3e69d87ff4171a689a",
+          "bytes": 4701,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/hy2-material-snapshot.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "b9b8e1b403b59723c4420beba85ab9378a309bee122098d7f336f373451e325c",
+          "bytes": 3923,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/import-manifest.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "3a37ad53ddb7346fb20689e5a0144864df226176acbbd7ea4676f7e26fba01a2",
+          "bytes": 2416,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/local-implementation.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "82a5971be6ab13274021ead2efadd010f2a3f96660459676e811cdad8104ae45",
+          "bytes": 9983,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/m05-attribution.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "cb887dc0ae13889329d9f59da34ce661035a21649b2bd8c3687fda2370a1576c",
+          "bytes": 11096,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/n01-repair-fencing.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "4cf5541c0e99d80f97cadc2b1bccb642dfc1dd2bf62aaadbb6d0f3b0db0eae2a",
+          "bytes": 3347,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/n02-recovered-journal.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "bb062dc2c5839cf412b316a80cb66551ea2292fddb6c8e54e4a1d1da19772510",
+          "bytes": 3669,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/n05-observed-failures.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "fac258efac3bcada3de8f45bc1243f000b47cd5fa8544baa58acc737b46fb8c8",
+          "bytes": 8702,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/n06-probe-slots.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "a235d8ac4b9111965d4912c31fdc5156786508a75c8c2ec6705fdfd65c1ae84d",
+          "bytes": 2491,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/n08-ready-routing.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "721715e7eaf87d2aa528ab9ce3275f3f83a3146dac06a531c1ceffbf02b3d6a8",
+          "bytes": 3073,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/n08-routing.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "9205f4f71d63d9010f415633dcc318e3eb97b8ab46855dab05fd9403ef2dca73",
+          "bytes": 5583,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/preservation.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "d9ba69ed952c15ed5b7d49547418e8f8e5b83552de0399e1b38c488b21e9ff1e",
+          "bytes": 3353,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/release-contract-sync.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "a2e2b149749790250ec161ac12266e500cf42be56df1d86288daf4e5a0ba48a9",
+          "bytes": 3651,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/remote-readback.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "18448f435af7f460538294fe820045b39b73b1ffe2c5455105062a92ed676975",
+          "bytes": 878,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/v02-bundle-summary.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "d29eca78b0b14805393abb9b9821e66933342e6e2e6577b192b53d5b071dd0e2",
+          "bytes": 6041,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/v04-case-evidence.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "f53ab6a56b29781838c416f08ffc7889e0c020a140ea33a7b99577995671262f",
+          "bytes": 10897,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/test_evidence_inputs.py",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "bffcb445553e7b91bb71236553be3c8921ee647d5d9279dfe16f438956bcf9ac",
+          "bytes": 2664,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "3cfef10380f7eb39e530de7c612b4eb0f8848d934ca70ebb9713f74b2ea7784e",
+          "bytes": 2071,
+          "reviewed_class": "test_harness",
+          "classification_reason": "Work-order audit/oracle implementation."
+        },
+        {
+          "path": "docs/operations/deployment-and-access.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "9fa9d68eb147a85ccd538c5b68a3cd07ab89dc4807d40cc6968b8cb1b0fcc652",
+          "bytes": 146990,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/operations/lavatop-payment-operations.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "9f325d8396524eb9dc1bfad353ccff4987d0096e83b0675923b88433af4df299",
+          "bytes": 8728,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/operations/marketing-governance-and-winback-pilot.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "64aa24d4c48b0ad68004b4abfd716f57f7f27a1c853e3f75f37aed6728ca4544",
+          "bytes": 7205,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/operations/monitoring-and-visibility.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "1eea224b78d9c4042383dceb56e7483137a5fedda359fb51e3d9179d91af07a2",
+          "bytes": 84109,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/operations/payment-reconciliation.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "5612de4b428bd206bf0e6ddd9fbb6a485e642548c23f9c80a3f61c82a7f8bc69",
+          "bytes": 9695,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/product/payment-and-access-key-contract.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "f0d0f23aa2a4c7957202f134265eb7674d5fc6571c30dfec660f346d53d542d5",
+          "bytes": 16944,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "infra/owned-smart-dns/README.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "a7a3c7ad4bf8830fbcd03bec2a44f04f1795203ba9a2b53b606376f6823f8758",
+          "bytes": 6603,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "infra/owned-smart-dns/internal/smartdns/clienthello.go",
+          "path_hint": "deployment_migration",
+          "git_blob_sha256": "65e6b692f912ca86e72949dcdbe84326b7e9cb064e53d6a350316b1e512a60e5",
+          "bytes": 4843,
+          "reviewed_class": "core_runtime",
+          "classification_reason": "Owned Smart DNS parser runtime; infra prefix is not only deployment configuration."
+        },
+        {
+          "path": "infra/owned-smart-dns/internal/smartdns/clienthello_test.go",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "e28ca4999e2e14716f273e1092ac028d4151a11ba3a85de35cb9e7ecec02ab07",
+          "bytes": 2898,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "marketing/README.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "2503c1d916bbf82e9fd588127980b78b2721fec0c3be908f667dad3fe13bbcca",
+          "bytes": 11888,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "marketing/scripts/acquisition.test.mjs",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "ab85e0285fd15b91bfd0ac9d72a0ebb17d76491163678b9f7c63d04789b95a04",
+          "bytes": 3745,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "marketing/scripts/check-checkout-authority.mjs",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "1fd3ac2a01df356880d3db5427d30c8cdb98aef5c9159f317317c9b6d66bf222",
+          "bytes": 12017,
+          "reviewed_class": "test_harness",
+          "classification_reason": "Executable browser/contract/runtime verification collector."
+        },
+        {
+          "path": "marketing/scripts/check-marketing-responsive.mjs",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "87ef7b41e13b271dec7c32416a0dbe2c0a02008fd67643b88b5f78838e885915",
+          "bytes": 20322,
+          "reviewed_class": "test_harness",
+          "classification_reason": "Executable browser/contract/runtime verification collector."
+        },
+        {
+          "path": "marketing/src/app/checkout/checkout-client.tsx",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "b50818859a1332388823072ed1f6a408e57427a7d3e49bbf2aa791be88c32f44",
+          "bytes": 57949,
+          "reviewed_class": "web_runtime",
+          "classification_reason": "Browser interaction/presentation or API adapter source."
+        },
+        {
+          "path": "marketing/src/components/home/hero-visual.tsx",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "65afcde6d01fd6ee4aba7405279b41e1bd46336920934218bd1f6213239ed3a8",
+          "bytes": 3279,
+          "reviewed_class": "web_runtime",
+          "classification_reason": "Browser interaction/presentation or API adapter source."
+        },
+        {
+          "path": "marketing/src/components/home/platform-download-action.tsx",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "179dd7e1bc4d2fb1e1f6d377830e8aad2842449331d30b047d652a0a619b3e01",
+          "bytes": 3990,
+          "reviewed_class": "web_runtime",
+          "classification_reason": "Browser interaction/presentation or API adapter source."
+        },
+        {
+          "path": "marketing/src/components/install/download-actions.tsx",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "23187756deaea84a265c84440f8c9e1d43435cf2dc108f1a0c0311f7612b57db",
+          "bytes": 5969,
+          "reviewed_class": "web_runtime",
+          "classification_reason": "Browser interaction/presentation or API adapter source."
+        },
+        {
+          "path": "marketing/src/lib/acquisition.ts",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "75a96ea4944a909645095d19f6d6925b9377b8c995391d8f1e342e887754c35e",
+          "bytes": 6534,
+          "reviewed_class": "web_runtime",
+          "classification_reason": "Browser interaction/presentation or API adapter source."
+        },
+        {
+          "path": "portal_bot/acquisition_service.py",
+          "path_hint": "api_schema",
+          "git_blob_sha256": "6cbab5a37096290c265da967046b7516ebba18f88c9a9ec8716eda2716a82899",
+          "bytes": 12492,
+          "reviewed_class": "api_schema"
+        },
+        {
+          "path": "portal_bot/api.py",
+          "path_hint": "api_schema",
+          "git_blob_sha256": "7f0ee0fd473f9c98a63b72c1c03fb490ceeefec2d3ebdd2177215dee3aee2b73",
+          "bytes": 356507,
+          "reviewed_class": "api_schema"
+        },
+        {
+          "path": "portal_bot/api_client_routes.py",
+          "path_hint": "api_schema",
+          "git_blob_sha256": "149c98cd0b41532cf68618aa719aca91dc0cbda163b9d27552ecf83f754ba42e",
+          "bytes": 170474,
+          "reviewed_class": "api_schema"
+        },
+        {
+          "path": "portal_bot/api_commercial_offer_routes.py",
+          "path_hint": "api_schema",
+          "git_blob_sha256": "cc23556ba977dc23f86b74674169e71a915fc460c3b4cb12a3f553983bc24b06",
+          "bytes": 9211,
+          "reviewed_class": "api_schema"
+        },
+        {
+          "path": "portal_bot/api_payment_routes.py",
+          "path_hint": "api_schema",
+          "git_blob_sha256": "eda21d27d9bf37b0bdacc05e7f73b7844060c0499647fe9125accb6f39270f92",
+          "bytes": 14377,
+          "reviewed_class": "api_schema"
+        },
+        {
+          "path": "portal_bot/api_public_routes.py",
+          "path_hint": "api_schema",
+          "git_blob_sha256": "ac72f5ab54635afeb633598e285f949fe315a088b23a73992092307dd62c1d15",
+          "bytes": 75382,
+          "reviewed_class": "api_schema"
+        },
+        {
+          "path": "portal_bot/api_surface_routes.py",
+          "path_hint": "api_schema",
+          "git_blob_sha256": "6e94bc776cf3da48b958e5b6328c25c7d51250d303bd1abe9d1247e4468ae503",
+          "bytes": 165442,
+          "reviewed_class": "api_schema"
+        },
+        {
+          "path": "portal_bot/awg2_lab_service.py",
+          "path_hint": "api_schema",
+          "git_blob_sha256": "0d22e99d2862813a2f0b18d7f3b211e5728f09ec94b017b8d042470cc06940ff",
+          "bytes": 19863,
+          "reviewed_class": "api_schema"
+        },
+        {
+          "path": "portal_bot/awg31_lab_service.py",
+          "path_hint": "api_schema",
+          "git_blob_sha256": "6a0c36729fc61f2b5c4175cfe49de136d903f86c4fb926fd4be1e1c960738261",
+          "bytes": 22820,
+          "reviewed_class": "api_schema"
+        },
+        {
+          "path": "portal_bot/checkout_quote_service.py",
+          "path_hint": "api_schema",
+          "git_blob_sha256": "ec019ad05a700e205f83c34332bc2afefd6374de73afd65158de21279843fbd5",
+          "bytes": 2580,
+          "reviewed_class": "api_schema"
+        },
+        {
+          "path": "portal_bot/hy2_lab_service.py",
+          "path_hint": "api_schema",
+          "git_blob_sha256": "318ad8113b3955553c0fbecca74a37fac67ca367ba95a3bb7feddae187494f4c",
+          "bytes": 18908,
+          "reviewed_class": "api_schema"
+        },
+        {
+          "path": "portal_bot/network_rollout.py",
+          "path_hint": "api_schema",
+          "git_blob_sha256": "092a4ea6bcdcb887d4440d7f0b3b3db853b85318a40fdf71b433bb026c337cec",
+          "bytes": 32897,
+          "reviewed_class": "api_schema"
+        },
+        {
+          "path": "portal_bot/operator_release_service.py",
+          "path_hint": "api_schema",
+          "git_blob_sha256": "504ad2d0d0a9c52ef59b7e32597717ffd28331282c8c4f29ec59384969cc1d7d",
+          "bytes": 17418,
+          "reviewed_class": "api_schema"
+        },
+        {
+          "path": "portal_bot/payment_entitlement_outbox.py",
+          "path_hint": "api_schema",
+          "git_blob_sha256": "a9f73e131c383a35dcc18526f4766f87ee945e88cc59cd6d0be2ece3f109375b",
+          "bytes": 17162,
+          "reviewed_class": "api_schema"
+        },
+        {
+          "path": "portal_bot/payment_order_service.py",
+          "path_hint": "api_schema",
+          "git_blob_sha256": "b7550c734f855209de38ef1e73eeca8e25871496a4e78882db116f8ed9e16004",
+          "bytes": 16148,
+          "reviewed_class": "api_schema"
+        },
+        {
+          "path": "portal_bot/payment_providers.py",
+          "path_hint": "api_schema",
+          "git_blob_sha256": "1e292dcd6d10b50fbd7513a1a3adf023f3b7fcedf480f0d427acde94e5b21513",
+          "bytes": 27728,
+          "reviewed_class": "api_schema"
+        },
+        {
+          "path": "portal_bot/support_bundle_ingest_service.py",
+          "path_hint": "api_schema",
+          "git_blob_sha256": "432da7b6fe5832e56d689504dfd1b2da1b48592c8abcb792e1e081cac76714bf",
+          "bytes": 30784,
+          "reviewed_class": "api_schema"
+        },
+        {
+          "path": "portal_bot/tests/test_acquisition_service.py",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "4e57b5061eb5b012f8fdeb2a6d7fe58366a7c776ddbde72291d4cdbc93f3311d",
+          "bytes": 7473,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "scripts/release_handoff_metadata.schema.json",
+          "path_hint": "api_schema",
+          "git_blob_sha256": "26038b37edc13696fc4dcc74510dddda1b00780913905c3465dcd8a51ef83c7b",
+          "bytes": 15233,
+          "reviewed_class": "api_schema"
+        },
+        {
+          "path": "shared/contracts/observability/README.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "cc544644be33ab49868f1549e5126dadf71e8c1a4c9d4415fdaef0aeeb6084e5",
+          "bytes": 5013,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "shared/contracts/observability/SUPPORT-REFERENCE.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "c7a8d29ab83e9281bda079b8bbe21392d8c37e691693dad9aefa57bbd280984e",
+          "bytes": 19565,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "shared/contracts/observability/error-catalog.json",
+          "path_hint": "profile_policy",
+          "git_blob_sha256": "1cef07aea2f859891794546569431d0e6aab91c6921729389fd63013f3002af1",
+          "bytes": 38662,
+          "reviewed_class": "profile_policy"
+        },
+        {
+          "path": "tests/fixtures/release-handoff/valid-v2.json",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "d6fd70e4ed055934364758103698fa62392a69f2ebeb0acce114fbcef3dd3ac6",
+          "bytes": 5024,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "tests/test_admin_ops_api.py",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "fe170a558c6b9ec66abe8ae35245c8f7d5144b5ceae5dfe4cb38bd548945be16",
+          "bytes": 176054,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "tests/test_api_payments_callbacks.py",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "efb585d84c3852a30a7926129cdb673a102d268e798c9f0ceb117f8d77efce50",
+          "bytes": 247857,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "tests/test_awg2_lab_service.py",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "b1e4a81f4de4d9746548d274e5bda73df0548acdbf1d18669be5b68db2fb63c9",
+          "bytes": 13386,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "tests/test_awg31_lab_service.py",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "5e0af9e23006b7fe655bfbcf47a82dbab57a79efa5bc54fd73f6797938dd9add",
+          "bytes": 12025,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "tests/test_backend_route_gap_coverage.py",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "1059b65e37ff5b35720b3c0d1a2e4c09d220f5a1652b4ae7a53f4c416a56c9e2",
+          "bytes": 32223,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "tests/test_commercial_contracts.py",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "9acb8bd0d24073cf3a51800850242f16451b2b6368dbfacccf3f56a4e6f10714",
+          "bytes": 8566,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "tests/test_hy2_lab_service.py",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "b32771ef97daa3dcfd908c984f689ff1c75ad7254b346b4887a818518aad4ba6",
+          "bytes": 11304,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "tests/test_network_rollout_api.py",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "c91ec3f948c9a9f8283717da9c70343f0ec306a276818d5b6bfd0255d3c55ca6",
+          "bytes": 43164,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "tests/test_observability_contracts.py",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "9778ae37fefa24795f08f7c51638352a57a79efc309f4e10e3e861d6c9c1bcbb",
+          "bytes": 6117,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "tests/test_operator_observability_service.py",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "f08241775bf187bdae6052de8886b6788df37b5faccc31cee1b571ad1d23a337",
+          "bytes": 18779,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "tests/test_operator_release_service.py",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "3c5a46f54ee82bd3db60aa4a94f874eeba870b174a8975c2e24c251d7de26c14",
+          "bytes": 12932,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "tests/test_payment_outbox_postgres.py",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "e0358ee7b8b5a4ebb531db288f8e2726995300cf9cf5582c9ce54f46a2dadc10",
+          "bytes": 3302,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "tests/test_pokrov_migration_defaults.py",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "5ab6ac61a75d4d8eb1deb2eb6e25d6f0acbdfcbdbfc6e30c20ffaf180c2590e6",
+          "bytes": 16096,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "tests/test_public_checkout_postgres.py",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "9df050b288ce4304d316ed3e7967c0b0a20fdc144f8528c9f18f346e991565df",
+          "bytes": 8961,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "tests/test_support_bundle_ingest_service.py",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "b284249ffe1d88d24447fa033d62072fd1582c020fb5a67af45730b2ea55861e",
+          "bytes": 13749,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "tests/test_support_work_service.py",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "923895b31feedccdf4c416b48663f4130dd79b2a54b67e561992a20a80b2d092",
+          "bytes": 14631,
+          "reviewed_class": "test_harness"
+        }
+      ],
+      "candidate33_comparison": {
+        "base": "f5300053026d32826e54c02202303e1f68c65bc1",
+        "change_count": 213,
+        "path_list_sha256": "10de44f08cff986afe93e001f0da3496810b7952868bca3353aa2c6ac2e6e657",
+        "changed_paths": [
+          ".gitattributes",
+          "adminapp/README.md",
+          "adminapp/e2e/clients.spec.ts",
+          "adminapp/e2e/control.spec.ts",
+          "adminapp/e2e/fixtures/admin-api.ts",
+          "adminapp/src/features/control/release-page.tsx",
+          "adminapp/src/features/support/ticket-detail.tsx",
+          "adminapp/src/lib/admin-api/control.ts",
+          "docs/README.md",
+          "docs/architecture/api-contracts.md",
+          "docs/architecture/app-first-and-bonus-flows.md",
+          "docs/architecture/payment-state-machine.md",
+          "docs/architecture/support-feedback-flow.md",
+          "docs/developer/agent-context-map.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/EXECUTION-INDEX.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/EXECUTION-LEDGER.csv",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/INDEX.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/OWNER-FREEZE-2026-09-05.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013GT-candidate33-signed-supply-windows-focus.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013GU-candidate33-gates-a-e-local-rollback.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013GV-candidate33-bounded-windows-android-runtime.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013GW-candidate33-windows-connected-crash-recovery.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013GX-candidate33-windows-connected-reboot-recovery.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013GY-candidate33-windows-connected-uninstall.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013GZ-candidate33-windows-awg-plan-readiness.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013HA-candidate33-windows-login-startup.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013HB-candidate33-windows-product-preference.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013HC-candidate33-windows-saved-state-startup.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013HD-candidate33-ldplayer14-ui.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013HE-candidate33-windows-ui-idle.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013HF-candidate33-browser-performance.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013HG-candidate33-windows-idle-budget.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013HH-candidate33-artifact-size-baseline.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013HI-candidate33-windows-cold-start-budget.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013HJ-candidate33-windows-combined-idle-budget.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013HK-candidate33-windows-wmi-idle-budget.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013HL-candidate33-current-vm-awg-bind.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/WO-013HM-candidate33-fresh-npm-audit.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GT-candidate33-signed-supply-windows-focus/013GT-candidate33-gate-f-decision.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GT-candidate33-signed-supply-windows-focus/013GT-candidate33-gate-f-evidence.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GT-candidate33-signed-supply-windows-focus/013GT-candidate33-gate-f-input.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GT-candidate33-signed-supply-windows-focus/013GT-candidate33-hosted-checks.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GT-candidate33-signed-supply-windows-focus/013GT-candidate33-signed-binding.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GT-candidate33-signed-supply-windows-focus/013GT-candidate33-windows-focus.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GU-candidate33-gates-a-e-local-rollback/013GU-candidate33-gate-f-decision.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GU-candidate33-gates-a-e-local-rollback/013GU-candidate33-gate-f-evidence.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GU-candidate33-gates-a-e-local-rollback/013GU-candidate33-gate-f-input.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GU-candidate33-gates-a-e-local-rollback/013GU-candidate33-gates-a-e-local-rollback.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GV-candidate33-bounded-windows-android-runtime/013GV-candidate33-bounded-windows-android-runtime.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GV-candidate33-bounded-windows-android-runtime/013GV-candidate33-gate-f-decision.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GV-candidate33-bounded-windows-android-runtime/013GV-candidate33-gate-f-evidence.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GV-candidate33-bounded-windows-android-runtime/013GV-candidate33-gate-f-input.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GW-candidate33-windows-connected-crash-recovery/013GW-candidate33-windows-connected-crash-recovery.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GX-candidate33-windows-connected-reboot-recovery/013GX-candidate33-windows-connected-reboot-recovery.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GY-candidate33-windows-connected-uninstall/013GY-candidate33-windows-connected-uninstall.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013GZ-candidate33-windows-awg-plan-readiness/013GZ-candidate33-windows-awg-plan-readiness.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013HA-candidate33-windows-login-startup/013HA-candidate33-windows-login-startup.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013HB-candidate33-windows-product-preference/013HB-candidate33-windows-product-preference.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013HC-candidate33-windows-saved-state-startup/013HC-candidate33-windows-saved-state-startup.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013HD-candidate33-ldplayer14-ui/013HD-candidate33-ldplayer14-ui.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013HE-candidate33-windows-ui-idle/013HE-candidate33-windows-ui-idle.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013HF-candidate33-browser-performance/013HF-candidate33-browser-performance.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013HG-candidate33-windows-idle-budget/013HG-candidate33-windows-idle-budget.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013HH-candidate33-artifact-size-baseline/013HH-candidate33-artifact-size-baseline.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013HI-candidate33-windows-cold-start-budget/013HI-candidate33-windows-cold-start-budget.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013HJ-candidate33-windows-combined-idle-budget/013HJ-candidate33-windows-combined-idle-budget.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013HM-candidate33-fresh-npm-audit/adminapp-npm-audit.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013HM-candidate33-fresh-npm-audit/marketing-npm-audit.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/013HM-candidate33-fresh-npm-audit/webapp-npm-audit.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/owner-freeze-2026-09-05/git-audit.json",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/owner-freeze-2026-09-05/goal-objective.md",
+          "docs/developer/work-orders/2026-08-21--release-1.2.0-megaplan/evidence/owner-freeze-2026-09-05/local-artifacts.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/00_START_HERE.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/01_SCOPE_AND_CORRECTIONS.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/02_RELEASE_1_2_0.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/03_RELEASE_BACKLOG_83.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/04_POST12_SHARED_ARCHITECTURE.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/05_POST12_TRANSPORT_AWG.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/06_POST12_SMART_ROUTING_ACCESS.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/07_POST12_SHORTLINK_ATTRIBUTION.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/08_POST12_HAPP_IOS_SOURCE_GATE.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/09_EXECUTION_AND_ACCEPTANCE.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/10_CODEX_GOALS.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/11_SOURCE_CROSSWALK.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/12_PACKAGE_VALIDATION.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/BASELINE.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-A04.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-A07.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-A08.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-B06.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-B08.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-CONTINUED.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-D04.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-D05.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-G01-M01.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-G05-G07.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-HY2-SNAPSHOT.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-LOCAL.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-M05.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-N01-REPAIR.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-N02.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-N05.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-N06.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-N08.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-PRESENTATION.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-RELEASE-CONTRACT.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-V02.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-V04.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/HANDOFF.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/LEGACY-378-REFERENCE.csv",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/NEXT_WORK_ORDER.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/R12-REGISTER.csv",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/SOURCE_RECONCILIATION.md",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/classify_evidence_inputs.py",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/a04-material-snapshot.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/a07-tcp-fallback.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/a08-ech-rejection.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/b06-payments.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/b08-postgres-drill.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/base-quote.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/baseline.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/c04-presentation.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/change-impact-current.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/change-impact.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/checks.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/d04-update-authority.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/d05-native-logging.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g01-m01-scope-legal.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-g07-metadata.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/governance-readback.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/handoff-local.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/http-session-inventory.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/hy2-material-snapshot.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/import-manifest.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/local-implementation.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/m05-attribution.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/n01-repair-fencing.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/n02-recovered-journal.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/n05-observed-failures.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/n06-probe-slots.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/n08-ready-routing.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/n08-routing.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/preservation.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/release-contract-sync.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/remote-readback.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/v02-bundle-summary.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/v04-case-evidence.json",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/test_evidence_inputs.py",
+          "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+          "docs/operations/deployment-and-access.md",
+          "docs/operations/lavatop-payment-operations.md",
+          "docs/operations/marketing-governance-and-winback-pilot.md",
+          "docs/operations/monitoring-and-visibility.md",
+          "docs/operations/payment-reconciliation.md",
+          "docs/operations/performance-and-local-quality-gate.md",
+          "docs/operations/publishing-and-signing-guide.md",
+          "docs/product/payment-and-access-key-contract.md",
+          "infra/owned-smart-dns/README.md",
+          "infra/owned-smart-dns/internal/smartdns/clienthello.go",
+          "infra/owned-smart-dns/internal/smartdns/clienthello_test.go",
+          "marketing/README.md",
+          "marketing/scripts/acquisition.test.mjs",
+          "marketing/scripts/check-checkout-authority.mjs",
+          "marketing/scripts/check-marketing-responsive.mjs",
+          "marketing/scripts/collect-browser-performance.mjs",
+          "marketing/scripts/collect-browser-performance.test.mjs",
+          "marketing/src/app/checkout/checkout-client.tsx",
+          "marketing/src/components/home/hero-visual.tsx",
+          "marketing/src/components/home/platform-download-action.tsx",
+          "marketing/src/components/install/download-actions.tsx",
+          "marketing/src/lib/acquisition.ts",
+          "portal_bot/acquisition_service.py",
+          "portal_bot/api.py",
+          "portal_bot/api_client_routes.py",
+          "portal_bot/api_commercial_offer_routes.py",
+          "portal_bot/api_payment_routes.py",
+          "portal_bot/api_public_routes.py",
+          "portal_bot/api_surface_routes.py",
+          "portal_bot/awg2_lab_service.py",
+          "portal_bot/awg31_lab_service.py",
+          "portal_bot/checkout_quote_service.py",
+          "portal_bot/hy2_lab_service.py",
+          "portal_bot/network_rollout.py",
+          "portal_bot/operator_release_service.py",
+          "portal_bot/payment_entitlement_outbox.py",
+          "portal_bot/payment_order_service.py",
+          "portal_bot/payment_providers.py",
+          "portal_bot/support_bundle_ingest_service.py",
+          "portal_bot/tests/test_acquisition_service.py",
+          "scripts/release_handoff_metadata.schema.json",
+          "scripts/remote_bind_owned_awg_lab_device.py",
+          "shared/contracts/observability/README.md",
+          "shared/contracts/observability/SUPPORT-REFERENCE.md",
+          "shared/contracts/observability/error-catalog.json",
+          "tests/fixtures/release-handoff/valid-v2.json",
+          "tests/test_admin_ops_api.py",
+          "tests/test_agent_docs_contract.py",
+          "tests/test_api_payments_callbacks.py",
+          "tests/test_awg2_lab_service.py",
+          "tests/test_awg31_lab_service.py",
+          "tests/test_backend_route_gap_coverage.py",
+          "tests/test_commercial_contracts.py",
+          "tests/test_hy2_lab_service.py",
+          "tests/test_network_rollout_api.py",
+          "tests/test_observability_contracts.py",
+          "tests/test_operator_observability_service.py",
+          "tests/test_operator_release_service.py",
+          "tests/test_payment_outbox_postgres.py",
+          "tests/test_pokrov_migration_defaults.py",
+          "tests/test_public_checkout_postgres.py",
+          "tests/test_remote_bind_owned_awg_lab_device.py",
+          "tests/test_support_bundle_ingest_service.py",
+          "tests/test_support_work_service.py"
+        ],
+        "status": "DIFFERENT_SOURCE; not a final artifact dependency proof"
+      },
+      "reviewed_class_counts": {
+        "documentation_only": 56,
+        "test_harness": 28,
+        "web_runtime": 8,
+        "evidence_record": 35,
+        "core_runtime": 1,
+        "api_schema": 18,
+        "profile_policy": 1
+      }
+    },
+    {
+      "lane": "client",
+      "path": "E:\\r12client",
+      "base": "da1ad7395615837432615e0f150d7c0bf05322a4",
+      "head": "ded58b1906bbfb1096ff919085ef37f5be942eb7",
+      "input_state": "committed Git objects; retained dirty files excluded",
+      "uncommitted_status": [
+        " M apps/macos_shell/macos/Flutter/GeneratedPluginRegistrant.swift",
+        " M apps/windows_shell/windows/flutter/generated_plugin_registrant.cc",
+        " M apps/windows_shell/windows/flutter/generated_plugin_registrant.h",
+        " M apps/windows_shell/windows/flutter/generated_plugins.cmake"
+      ],
+      "change_count": 85,
+      "class_counts": {
+        "documentation_only": 10,
+        "packaged_dependency_toolchain": 3,
+        "core_runtime": 30,
+        "test_harness": 23,
+        "profile_policy": 6,
+        "manual_classification_required": 13
+      },
+      "changes": [
+        {
+          "path": "DESIGN.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "485813562e266296269afc9605c398bcaeeeac391006f231a9d04c8315039404",
+          "bytes": 10695,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "apps/android_shell/android/app/libs/pokrov-core.aar",
+          "path_hint": "packaged_dependency_toolchain",
+          "git_blob_sha256": "1b5efd3dc4e30ccd8a3c347d48d6a651320c3466c3254c9bb0475a13d44c505a",
+          "bytes": 134,
+          "reviewed_class": "packaged_dependency_toolchain"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidCoreEgressProbe.kt",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "a6c39e3a7f9cc5890133589a27518132c890c91a657dec9c2bd18b177fa7d5eb",
+          "bytes": 11051,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidCoreOperationalEvents.kt",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "1639eb80cc523d49f38b76f8e095eab257da22642bd5ca809ac5c8b2b2f264f4",
+          "bytes": 8065,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeLogClassifier.kt",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "5a900c84607cbb94fc3dce6324cededba0272f6fbd4d1f77d7de01406de1fa7d",
+          "bytes": 10884,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeProfileIdentity.kt",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "50dca0a2e10247063e2d6233bdefbc755730e3dd3a863bfbb0c8b8ded45f1d6f",
+          "bytes": 1131,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeProfileStore.kt",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "6078bf71151b93b93c1b425785148e76a81c895a6e7e83b82453eda2929fc706",
+          "bytes": 6688,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeSafety.kt",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "551d19793fb770cf1f0bc0552cabf6db698fd37bc6ddf8522ec97bc0c55f85d0",
+          "bytes": 6691,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeState.kt",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "54c798402a5e98ae8690ab2014e62bf419b640de02cdfa5a256b50a79f90ba1d",
+          "bytes": 31372,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/PokrovQuickSettingsTileService.kt",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "9e442e96375eafe42aeda90406cc0a6548b7dc292fc5bad887e878a6ea542a59",
+          "bytes": 10311,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/PokrovRuntimeVpnService.kt",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "8f7c9815720183c49ec3f28836b948625135aa82029548042d3bc7f5ab94636f",
+          "bytes": 63838,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/RuntimeHostBridge.kt",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "b618a0913400c7837fbba2bee87e41f43017baa0e13ce98f853c642049fc3aa1",
+          "bytes": 45859,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/AndroidCoreEgressProbeTest.kt",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "bd3540928e0012766b8b6331a53e1ca63493c279a1d01f8c66b65e9a50f79254",
+          "bytes": 9779,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/AndroidCoreOperationalEventsTest.kt",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "9d7088cdd0aa735d75fba452d98ae00892e654b95e78f1b1d34a3b644de0a9c2",
+          "bytes": 4518,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeProfileIdentityTest.kt",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "2f54dcc8418a0d863f4d43618e06cba71f84ca2bc953ebd5e0514944f7e04de4",
+          "bytes": 1493,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeStateTest.kt",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "11ec2b1ba65cdd6e01a08398488e986ffffd0f7b8a129dd0cd7b04b2f7d84b27",
+          "bytes": 32000,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/PendingRuntimeConnectGateTest.kt",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "0b719b00b3d93c3d60d975158ec2112b5bb117dcfd0294483ad9c9b833db976a",
+          "bytes": 1738,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/PokrovQuickSettingsTileServiceTest.kt",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "7c6cac53731f267f5dee1fb594d63e94ac968005b8f12ccc2fe09c2ff9c4db4c",
+          "bytes": 5286,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "apps/windows_shell/windows/runner/flutter_window.cpp",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "74bac7fc9cb201a1cac373006b746f84b59286062b5cdf9b213d54d41695764b",
+          "bytes": 22411,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/windows_shell/windows/runner/flutter_window.h",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "aee502f84dbe38f21af08f762c55040f1fc6d3cc01632e396e42a0d36cba0594",
+          "bytes": 1481,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/windows_shell/windows/runner/resources/runtime/pokrov-core.dll",
+          "path_hint": "packaged_dependency_toolchain",
+          "git_blob_sha256": "4b26fddc39561d5e81317bce44e399f669d19af1ba05d5146f4b724bcd0708f6",
+          "bytes": 133,
+          "reviewed_class": "packaged_dependency_toolchain"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/CMakeLists.txt",
+          "path_hint": "packaged_dependency_toolchain",
+          "git_blob_sha256": "b526ba528522aeda6b081bb918ef1282a7e7c8886e852636a46fe5496b24af23",
+          "bytes": 3691,
+          "reviewed_class": "packaged_dependency_toolchain"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_client.cpp",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "bfcecc56f1db121a60843077dc79adcbe93f09dd07eb14cbee3d22cfc35376d6",
+          "bytes": 16984,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_client.h",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "1a67ca398a04aa28a185fab17d8f7ea9daf02ecb5f372a7aedd2041647fef750",
+          "bytes": 1673,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_client_test.cpp",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "a5e6e4766635e2aa3f133981445f78aa8fefe4b402af4f64b23ca200650e7691",
+          "bytes": 2325,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_integration_test.cpp",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "328da0476199979e697d2ca33f5bb5d255c2f94d63d49c52bd9f0c10229abc1b",
+          "bytes": 8867,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_profile_identity.cpp",
+          "path_hint": "profile_policy",
+          "git_blob_sha256": "aeef8b1aae50219669cea3a91e943259fdb1f8c9b55c1295ea78f7a753f6c097",
+          "bytes": 1126,
+          "reviewed_class": "profile_policy"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_profile_identity.h",
+          "path_hint": "profile_policy",
+          "git_blob_sha256": "4830dadd2f17bff454f66e45af09d22ecb75b54114d4fe3034c969c2be4d25ef",
+          "bytes": 428,
+          "reviewed_class": "profile_policy"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_protocol.cpp",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "4afe7f9d04daca27a616c6a6f60719589cdbaa6b8179e674c74687c638b39ea6",
+          "bytes": 7626,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_protocol.h",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "3934424eb5a4ce4857f971a05bf3819066c2a9cd0710ccaf9a038bfe90b80701",
+          "bytes": 2592,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_protocol_test.cpp",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "705dc3e61740bc5637aca0997aa954184392969344f5ea253c6468fa74b88578",
+          "bytes": 4641,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_recovery.cpp",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "b441c31b85ab0ca8b1a5455033a4e6a4c5824caa18d67454b225549d3649aa05",
+          "bytes": 13746,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_runtime.cpp",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "423ca7ed7ee30566d71bc09b8c36beec53227b352620543930675c6e7b89a40b",
+          "bytes": 51051,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_runtime.h",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "4712b076d5c3006b60a7848e9487e7d3ea846be8ae18ebd194f86b23e61c10f6",
+          "bytes": 3603,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_runtime_test.cpp",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "2c7210e82eee37f9a528610d91ff9e7acbb88da4f32403d1a61bf739a7ba0035",
+          "bytes": 42759,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_server.cpp",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "3b5297d671ed231d1899b80637485218079994cac0857f370d017240fd075744",
+          "bytes": 12652,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "artifacts/README.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "ac51bab8fef3add9648569ff7c4c2917fe7f11cf344d3d4a77a376232e71366c",
+          "bytes": 2496,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "config/observability-contracts.seed.json",
+          "path_hint": "profile_policy",
+          "git_blob_sha256": "77494dc6f9d6d07c8b331756a349d583c9ab7ed759911e20ffecc5c1210538ae",
+          "bytes": 400,
+          "reviewed_class": "profile_policy"
+        },
+        {
+          "path": "config/runtime-artifacts.seed.json",
+          "path_hint": "profile_policy",
+          "git_blob_sha256": "43df14326a7061d6243e44e491b36ea057fcecce2609f8fa99175ef1394fec46",
+          "bytes": 6746,
+          "reviewed_class": "profile_policy"
+        },
+        {
+          "path": "docs/architecture/bootstrap-workflow.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "f92c95838ffe61ecf71db6c2806fa308a09b5c4a89cd6e4091521752e8bf1d4d",
+          "bytes": 47532,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/architecture/persisted-state-contract.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "2d56d1e5fc1733d95897c8963ba81411f24e69ea49bd9d5a6439b80763318629",
+          "bytes": 10596,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/architecture/platform-privilege-runtime-contract.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "c9ef3feb5c3c074fa45d6c57d19060082f13c2e2bcecca572bcb5584bad53417",
+          "bytes": 31132,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/decisions/2026-08-23-pokrov-core-1.1.0-pre-candidate-binding.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "c7ee76d7f92a011d4e41b22edf739fc4f5599194c412f0d6ba94fc42eb3368ee",
+          "bytes": 13357,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/operations/android-release-audit.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "e654939b240518208e0ff407f236f41e898a90fd485aec56709456280d9a511b",
+          "bytes": 54060,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/operations/client-motion-performance-checklist.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "94d3be6e13a3bdcf5508b2eacb8ee150e45cb20bac59f5ead40b761e0b7465ce",
+          "bytes": 7807,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/operations/cutover-readiness.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "a6bbc9dd56a6f0e05423443977d19d63be678918991fc72080ab10f9d3090a45",
+          "bytes": 15495,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "docs/operations/evidence/2026-09-05-r12-core-binding/android-evidence.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "c30bb514f521639615aedb345b6929196e10c59b06883a601da8ad14c5d5f02e",
+          "bytes": 2110,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/operations/evidence/2026-09-05-r12-core-binding/final/android-evidence.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "ccefeec9dd67d8cb9774575a1df3eb491532c2d483f65f33a1a4f53cabef4e94",
+          "bytes": 2110,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/operations/evidence/2026-09-05-r12-core-binding/final/windows-evidence.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "cb4343261a3470320682e51465ea0b190de7adb6f979b201de12ade201c3d628",
+          "bytes": 2258,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/operations/evidence/2026-09-05-r12-core-binding/previous-runtime-binding.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "f932885502ed2d8c964c9b5bead76defddb7768ea03bb4741004aec61fba9cd7",
+          "bytes": 6746,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/operations/evidence/2026-09-05-r12-core-binding/windows-evidence.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "8c863be725ed0f2d2f7997503af238d70f01f08be895954cf9a8c41b12977a90",
+          "bytes": 2258,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/operations/evidence/2026-09-06-r12-d05-core-binding/android-evidence.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "380793c13cdbcb58c876f1cec9e938b11808acf96692f9db01c470cd585e7adf",
+          "bytes": 2110,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/operations/evidence/2026-09-06-r12-d05-core-binding/previous-runtime-binding.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "75913ded4b9953caf4d58643eb4a16f3fa4b5073fea855bd144f814233bcc0d5",
+          "bytes": 6746,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/operations/evidence/2026-09-06-r12-d05-core-binding/windows-evidence.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "468eee5192be6920aae6e771a07afafd1b7259a0ffd6ce393410fe65e5e5b014",
+          "bytes": 2258,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/operations/evidence/2026-09-06-r12-n05-core-binding/android-evidence.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "cc20f6bd5e39f7b36eed54aa0174094409aed20f664b9811e1ccb14058701d93",
+          "bytes": 2110,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/operations/evidence/2026-09-06-r12-n05-core-binding/previous-runtime-binding.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "310c0e00aa932e0273d0cac4a436799f1024d6a7b106eea6d785f0c67f54a4bf",
+          "bytes": 6746,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/operations/evidence/2026-09-06-r12-n05-core-binding/windows-evidence.json",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "f496815f1a76b950d60789c3d56add20af24085797bb4c127325c2e11b96c9d4",
+          "bytes": 2258,
+          "reviewed_class": "evidence_record",
+          "classification_reason": "Retained execution evidence/ledger; no product bytes. Collector and scope dependencies remain separate."
+        },
+        {
+          "path": "docs/operations/windows-release-readiness.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "80600ab253cc1e7d9d5bc1c5ed5ae29bb400cf1d192f9fbf516a68b79ca71f7b",
+          "bytes": 75661,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "packages/app_shell/lib/app_first_runtime_bootstrap.dart",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "148a0b073c5d7a20dd5bea01f9e3504741df18dd5e4b05aeb7b81368640d4674",
+          "bytes": 353477,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "packages/app_shell/lib/app_shell.dart",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "671f449b15133160b1f29ca66e75ecebf242265d1632cd324beaabdcd914e0d4",
+          "bytes": 10148,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "packages/app_shell/lib/src/design_system/pokrov_motion.dart",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "8466ef1887d442534b7456dfa1e3df6dea5a1fed1d2b1d89643a109c56fca393",
+          "bytes": 4859,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "packages/app_shell/lib/src/features/diagnostics/client_diagnostics.dart",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "8cfa3e45e4c9d67634a081875115435463862300878a7163e7e7c479355e5376",
+          "bytes": 55538,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "packages/app_shell/lib/src/features/home/protection_center.dart",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "9cb65b738f33a9ce6921bbbc04ac86b41c7d27b875dda5e7e4ddadfac84501e1",
+          "bytes": 46399,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "packages/app_shell/lib/src/shell/cached_profile_fallback_gate.dart",
+          "path_hint": "profile_policy",
+          "git_blob_sha256": "cd6dadd443190d9ad31b82e5e89ea74445051341e60c6c0ea9a10a6a4ce4d76f",
+          "bytes": 1098,
+          "reviewed_class": "profile_policy"
+        },
+        {
+          "path": "packages/app_shell/lib/src/shell/managed_profile_lifecycle.dart",
+          "path_hint": "profile_policy",
+          "git_blob_sha256": "9d75050e211006df5f1edc3189c652b466268bc8067fe990b25bea0b1a3964e5",
+          "bytes": 3482,
+          "reviewed_class": "profile_policy"
+        },
+        {
+          "path": "packages/app_shell/lib/src/shell/seed_shell.dart",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "ad7746f659bfef5f6cca1c2ffbf7e8ffd6fe51c799af3efff2b2055bf0f50bdb",
+          "bytes": 229795,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "packages/app_shell/test/app_first_runtime_bootstrap_test.dart",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "39fdac55857e193124e26a56637e98030d56297f2b6a4e8a96fa0f56774b5007",
+          "bytes": 366156,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "packages/app_shell/test/cached_profile_fallback_gate_test.dart",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "b732b5d63265552f37215d07647bcdfdfbce4332f5af397717f18f18cbc5cc20",
+          "bytes": 2054,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "packages/app_shell/test/client_diagnostics_test.dart",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "01851920969a35b93eac4079953aed696cd3e17dcbfa8d1df2cf76fd56f36d21",
+          "bytes": 18717,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "packages/app_shell/test/connect_first_hint_test.dart",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "6f2aed9c519e4ceca5526a48a01126bcfefed3205953271f83b92415332b2314",
+          "bytes": 20004,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "packages/app_shell/test/managed_profile_lifecycle_test.dart",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "42e0719d0cdcce8bdc0e2c078ba0e25c8e34186e2b22d3aa279951f3508008e9",
+          "bytes": 3447,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "packages/app_shell/test/pokrov_seed_app_test.dart",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "f1de47fd304b148bdd28a9dcd0bf15c0928d53509469274f0952fe5b7471c49a",
+          "bytes": 455993,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "packages/observability_contracts/lib/observability_contracts.dart",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "11f3fd97e41788f53914b670a472a9747a93da34cbc2e5879e1fa2ddf22e242c",
+          "bytes": 4724,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "packages/observability_contracts/test/observability_contracts_test.dart",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "2d422f1648a378fa45b17e94e4c4bbe81459baf2e32c597d038601749fbf7f5f",
+          "bytes": 2722,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "packages/observability_runtime/lib/src/failure_mapping.dart",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "cca2c1f33159b97986fefad327cf6259859050e6b8ae60784451c367ce212823",
+          "bytes": 13483,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "packages/observability_runtime/lib/src/legacy.dart",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "c80ead974cd89544ce6df22616d877f32ce69419b778c17c4da7cbef85587228",
+          "bytes": 19778,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "packages/observability_runtime/test/fault_chaos_contract_test.dart",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "fb9ceeaaddccdf82e66b6b15dcf8194c73d4cfb1b3e794e30899458a401a8dcd",
+          "bytes": 6413,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "packages/observability_runtime/test/observability_runtime_test.dart",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "c0708e3bab963dff64977aa3675f82594a9a70dac10614738eda90c00f5c1450",
+          "bytes": 20459,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "packages/runtime_engine/lib/runtime_engine.dart",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "a5b9239cb54a40fc0cc6a4cec167557e9e7c1c494fa3e551bcfd8ce2d81b9668",
+          "bytes": 133262,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "packages/runtime_engine/test/runtime_engine_test.dart",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "6dea73e48a464b91b67f5da4e992a641aab4611442c5c3482430fd27619ec760",
+          "bytes": 131483,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "scripts/test-windows-core-proxy-only.ps1",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "0317962d7f1713e3aaab2189983c188cd2738cb5aaded9238c3cabb765d312c2",
+          "bytes": 1815,
+          "reviewed_class": "test_harness",
+          "classification_reason": "Executable browser/contract/runtime verification collector."
+        },
+        {
+          "path": "scripts/validate-seed.ps1",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "c80eebb5c08b3bad467f3c0ecf59251afb236c716331463c5b5e49f16c1b9f72",
+          "bytes": 42261,
+          "reviewed_class": "test_harness",
+          "classification_reason": "Executable browser/contract/runtime verification collector."
+        },
+        {
+          "path": "test/client-presentation-boundary.ps1",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "7384f4e0cebcaffee20ea56a4b02ab438659b81cb3d3bdd42382076d2314fbd1",
+          "bytes": 9583,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "test/fixtures/release-handoff-v2/synthetic-candidate-input.json",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "36bcd771aced0840faafc8aee824558d5347bfe34f84aba288d9ca0ca7729b3c",
+          "bytes": 2750,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "test/repository-hygiene-contract.ps1",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "a04934bbbf30e097e92f167e6907814c4c3820dae9d40a88ca0cc20cdffb6cad",
+          "bytes": 5067,
+          "reviewed_class": "test_harness"
+        }
+      ],
+      "candidate33_comparison": {
+        "base": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+        "change_count": 98,
+        "path_list_sha256": "53edd541a1a66789d48f7d749592937b77c13d14be1ea259dbdc0a7a222321ce",
+        "changed_paths": [
+          "DESIGN.md",
+          "apps/android_shell/android/app/libs/pokrov-core.aar",
+          "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidCoreEgressProbe.kt",
+          "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidCoreOperationalEvents.kt",
+          "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeLogClassifier.kt",
+          "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeProfileIdentity.kt",
+          "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeProfileStore.kt",
+          "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeSafety.kt",
+          "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeState.kt",
+          "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/PokrovQuickSettingsTileService.kt",
+          "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/PokrovRuntimeVpnService.kt",
+          "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/RuntimeHostBridge.kt",
+          "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/AndroidCoreEgressProbeTest.kt",
+          "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/AndroidCoreOperationalEventsTest.kt",
+          "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeProfileIdentityTest.kt",
+          "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeStateTest.kt",
+          "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/PendingRuntimeConnectGateTest.kt",
+          "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/PokrovQuickSettingsTileServiceTest.kt",
+          "apps/windows_shell/windows/runner/flutter_window.cpp",
+          "apps/windows_shell/windows/runner/flutter_window.h",
+          "apps/windows_shell/windows/runner/resources/runtime/pokrov-core.dll",
+          "apps/windows_shell/windows/service/CMakeLists.txt",
+          "apps/windows_shell/windows/service/service_client.cpp",
+          "apps/windows_shell/windows/service/service_client.h",
+          "apps/windows_shell/windows/service/service_client_test.cpp",
+          "apps/windows_shell/windows/service/service_integration_test.cpp",
+          "apps/windows_shell/windows/service/service_profile_identity.cpp",
+          "apps/windows_shell/windows/service/service_profile_identity.h",
+          "apps/windows_shell/windows/service/service_protocol.cpp",
+          "apps/windows_shell/windows/service/service_protocol.h",
+          "apps/windows_shell/windows/service/service_protocol_test.cpp",
+          "apps/windows_shell/windows/service/service_recovery.cpp",
+          "apps/windows_shell/windows/service/service_runtime.cpp",
+          "apps/windows_shell/windows/service/service_runtime.h",
+          "apps/windows_shell/windows/service/service_runtime_test.cpp",
+          "apps/windows_shell/windows/service/service_server.cpp",
+          "artifacts/README.md",
+          "config/cutover-readiness.seed.json",
+          "config/observability-contracts.seed.json",
+          "config/runtime-artifacts.seed.json",
+          "docs/architecture/bootstrap-workflow.md",
+          "docs/architecture/persisted-state-contract.md",
+          "docs/architecture/platform-privilege-runtime-contract.md",
+          "docs/decisions/2026-08-23-pokrov-core-1.1.0-pre-candidate-binding.md",
+          "docs/implementation/client-release-backlog.md",
+          "docs/operations/android-release-audit.md",
+          "docs/operations/client-motion-performance-checklist.md",
+          "docs/operations/cutover-readiness.md",
+          "docs/operations/evidence/2026-09-05-r12-core-binding/android-evidence.json",
+          "docs/operations/evidence/2026-09-05-r12-core-binding/final/android-evidence.json",
+          "docs/operations/evidence/2026-09-05-r12-core-binding/final/windows-evidence.json",
+          "docs/operations/evidence/2026-09-05-r12-core-binding/previous-runtime-binding.json",
+          "docs/operations/evidence/2026-09-05-r12-core-binding/windows-evidence.json",
+          "docs/operations/evidence/2026-09-06-r12-d05-core-binding/android-evidence.json",
+          "docs/operations/evidence/2026-09-06-r12-d05-core-binding/previous-runtime-binding.json",
+          "docs/operations/evidence/2026-09-06-r12-d05-core-binding/windows-evidence.json",
+          "docs/operations/evidence/2026-09-06-r12-n05-core-binding/android-evidence.json",
+          "docs/operations/evidence/2026-09-06-r12-n05-core-binding/previous-runtime-binding.json",
+          "docs/operations/evidence/2026-09-06-r12-n05-core-binding/windows-evidence.json",
+          "docs/operations/evidence/candidate33-artifact-size-baseline.json",
+          "docs/operations/evidence/candidate33-ldplayer14-ui.json",
+          "docs/operations/evidence/candidate33-owner-freeze-awg.json",
+          "docs/operations/evidence/candidate33-physical-android.json",
+          "docs/operations/evidence/candidate33-windows-cold-start-budget.json",
+          "docs/operations/evidence/candidate33-windows-combined-idle-budget.json",
+          "docs/operations/evidence/candidate33-windows-idle-budget.json",
+          "docs/operations/evidence/candidate33-windows-ui-idle.json",
+          "docs/operations/evidence/candidate33-windows-wmi-idle-budget.json",
+          "docs/operations/windows-release-readiness.md",
+          "packages/app_shell/lib/app_first_runtime_bootstrap.dart",
+          "packages/app_shell/lib/app_shell.dart",
+          "packages/app_shell/lib/src/design_system/pokrov_motion.dart",
+          "packages/app_shell/lib/src/features/diagnostics/client_diagnostics.dart",
+          "packages/app_shell/lib/src/features/home/protection_center.dart",
+          "packages/app_shell/lib/src/shell/cached_profile_fallback_gate.dart",
+          "packages/app_shell/lib/src/shell/managed_profile_lifecycle.dart",
+          "packages/app_shell/lib/src/shell/seed_shell.dart",
+          "packages/app_shell/test/app_first_runtime_bootstrap_test.dart",
+          "packages/app_shell/test/cached_profile_fallback_gate_test.dart",
+          "packages/app_shell/test/client_diagnostics_test.dart",
+          "packages/app_shell/test/connect_first_hint_test.dart",
+          "packages/app_shell/test/managed_profile_lifecycle_test.dart",
+          "packages/app_shell/test/pokrov_seed_app_test.dart",
+          "packages/observability_contracts/lib/observability_contracts.dart",
+          "packages/observability_contracts/test/observability_contracts_test.dart",
+          "packages/observability_runtime/lib/src/failure_mapping.dart",
+          "packages/observability_runtime/lib/src/legacy.dart",
+          "packages/observability_runtime/test/fault_chaos_contract_test.dart",
+          "packages/observability_runtime/test/observability_runtime_test.dart",
+          "packages/runtime_engine/lib/runtime_engine.dart",
+          "packages/runtime_engine/test/runtime_engine_test.dart",
+          "scripts/collect-client-performance-samples.ps1",
+          "scripts/test-windows-core-proxy-only.ps1",
+          "scripts/validate-seed.ps1",
+          "test/client-performance-collector-contract.ps1",
+          "test/client-presentation-boundary.ps1",
+          "test/fixtures/release-handoff-v2/synthetic-candidate-input.json",
+          "test/repository-hygiene-contract.ps1"
+        ],
+        "status": "DIFFERENT_SOURCE; not a final artifact dependency proof"
+      },
+      "reviewed_class_counts": {
+        "documentation_only": 10,
+        "packaged_dependency_toolchain": 3,
+        "core_runtime": 30,
+        "test_harness": 25,
+        "profile_policy": 6,
+        "evidence_record": 11
+      }
+    },
+    {
+      "lane": "core",
+      "path": "E:\\r12core-implementation",
+      "base": "c1185faa998c69fd5164af415249c96c68ab61bd",
+      "head": "94dd31012ac91fb9ecf2c98ad7383afb54102dd4",
+      "input_state": "committed Git objects; retained dirty files excluded",
+      "uncommitted_status": [],
+      "change_count": 18,
+      "class_counts": {
+        "profile_policy": 2,
+        "documentation_only": 1,
+        "core_runtime": 7,
+        "test_harness": 5,
+        "manual_classification_required": 3
+      },
+      "changes": [
+        {
+          "path": "config/core-event-abi.json",
+          "path_hint": "profile_policy",
+          "git_blob_sha256": "b6e1708f6879b889d1a4f3bcc3d53d29fe4cb2518d05d5cc2c73a0ae02df2c81",
+          "bytes": 1361,
+          "reviewed_class": "profile_policy"
+        },
+        {
+          "path": "config/observability-contracts.json",
+          "path_hint": "profile_policy",
+          "git_blob_sha256": "77494dc6f9d6d07c8b331756a349d583c9ab7ed759911e20ffecc5c1210538ae",
+          "bytes": 400,
+          "reviewed_class": "profile_policy"
+        },
+        {
+          "path": "docs/architecture.md",
+          "path_hint": "documentation_only",
+          "git_blob_sha256": "60d3b152ff1a0a43fde3e68cf8109c867e8df33c1f98316c90618fef8f75aa53",
+          "bytes": 9472,
+          "reviewed_class": "documentation_only"
+        },
+        {
+          "path": "engine/sing-box/common/urltest/urltest.go",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "4875d804f2d78e5684f6f60e6b420998674a4eb57680cbd4384c2ce15ec1f310",
+          "bytes": 6386,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "engine/sing-box/common/urltest/urltest_pokrov_test.go",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "4a1aa78fd0a75830ec10fc68c3eb36145f915bab0667a757c47abd16c160b653",
+          "bytes": 2970,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "engine/sing-box/daemon/selected_outbound_probe.go",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "e319e9f8dcef69fe466da2db73a7ea019ac043b92f10e153f7e3e3601b9b0e36",
+          "bytes": 2756,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "engine/sing-box/daemon/selected_outbound_probe_test.go",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "7cbb378d7b42873bbe35170f97f82a4a35487955f39d515698a0bf0339001ddb",
+          "bytes": 3212,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "engine/sing-box/daemon/started_service.go",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "e9ea1cd11a4e129e00a9f1d8c0eb6d20dc564d178ec73f9cf44eed78aa3305b0",
+          "bytes": 40044,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "engine/sing-box/daemon/started_service_test.go",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "99f73217e61edd2723cfb3751565ea015c19ae604f1b0aa83c785cdd5cdfe912",
+          "bytes": 9286,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "engine/sing-box/experimental/libbox/command_server.go",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "b08ad06be19e700f0f21762d70b016a3c58d10534ad703ae11466a17323f55f4",
+          "bytes": 9523,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "engine/sing-box/experimental/libbox/operational_events.go",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "d96133c2b817bc81b9fb37e712b2c896d4d1dc81f4bf2cc4a588dca33ecc71e0",
+          "bytes": 6601,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "engine/sing-box/experimental/libbox/operational_events_test.go",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "6d92ecca8a97d37289938038e2bcf73b83a7f891d54321b5226a9a325d30aac5",
+          "bytes": 6101,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "engine/sing-box/log/observable.go",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "7629ac5e2cd3a461c35d5e2a6292faff743db9d67688bef3221317d45d709884",
+          "bytes": 5094,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "engine/sing-box/log/platform.go",
+          "path_hint": "core_runtime",
+          "git_blob_sha256": "fad74919a4505d3261ded6db786b0ef81574dcffe8e7fa1fac9ee914e5bad5fa",
+          "bytes": 337,
+          "reviewed_class": "core_runtime"
+        },
+        {
+          "path": "internal/observability/emitter.go",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "f2b69f6921280984c8e46eb3184b63fabf55525ec51e586cd418a2d1cc431102",
+          "bytes": 6025,
+          "reviewed_class": "core_runtime",
+          "classification_reason": "Core structured-event producer."
+        },
+        {
+          "path": "internal/observability/emitter_test.go",
+          "path_hint": "test_harness",
+          "git_blob_sha256": "3595fb6f303d2ab69958ab3fd25e7537e3446c4aef5f3fe211112eb9a168e151",
+          "bytes": 6060,
+          "reviewed_class": "test_harness"
+        },
+        {
+          "path": "scripts/test.ps1",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "261e49e3890c76def35009ea37fe7bdaae96b2588ae260c6f2c8a65c740fd46a",
+          "bytes": 4136,
+          "reviewed_class": "test_harness",
+          "classification_reason": "Executable browser/contract/runtime verification collector."
+        },
+        {
+          "path": "scripts/verify-abi-contract.ps1",
+          "path_hint": "manual_classification_required",
+          "git_blob_sha256": "732085f577338ae659a97061518a6d2555358268e9e373d33605ee3fe23d3f60",
+          "bytes": 7272,
+          "reviewed_class": "test_harness",
+          "classification_reason": "Executable browser/contract/runtime verification collector."
+        }
+      ],
+      "candidate33_comparison": {
+        "base": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+        "change_count": 18,
+        "path_list_sha256": "7118d61f3df00413900199c20507995dbd17071178600769d5fcfb6df10e4d2b",
+        "changed_paths": [
+          "config/core-event-abi.json",
+          "config/observability-contracts.json",
+          "docs/architecture.md",
+          "engine/sing-box/common/urltest/urltest.go",
+          "engine/sing-box/common/urltest/urltest_pokrov_test.go",
+          "engine/sing-box/daemon/selected_outbound_probe.go",
+          "engine/sing-box/daemon/selected_outbound_probe_test.go",
+          "engine/sing-box/daemon/started_service.go",
+          "engine/sing-box/daemon/started_service_test.go",
+          "engine/sing-box/experimental/libbox/command_server.go",
+          "engine/sing-box/experimental/libbox/operational_events.go",
+          "engine/sing-box/experimental/libbox/operational_events_test.go",
+          "engine/sing-box/log/observable.go",
+          "engine/sing-box/log/platform.go",
+          "internal/observability/emitter.go",
+          "internal/observability/emitter_test.go",
+          "scripts/test.ps1",
+          "scripts/verify-abi-contract.ps1"
+        ],
+        "status": "DIFFERENT_SOURCE; not a final artifact dependency proof"
+      },
+      "reviewed_class_counts": {
+        "profile_policy": 2,
+        "documentation_only": 1,
+        "core_runtime": 8,
+        "test_harness": 7
+      }
+    }
+  ],
+  "prior_inventory": {
+    "path": "evidence/change-impact-current.json",
+    "sha256": "8171ccfedd03f92b8996b3424a44132b3f56ef33553ec2f12edf97de79c083f4",
+    "status": "HISTORICAL_EARLIER_SOURCE_SLICE"
+  },
+  "reuse_policy": {
+    "retained_candidate33": "NOT_GRANTED for new artifact/runtime tuple; compare complete artifact/configuration/toolchain/oracle/scope/environment/origin inputs first",
+    "local_reports": "Preserve exact original source/log hashes. A passing subset is evidence only for its executed oracle and declared inputs; no automatic final-candidate acceptance.",
+    "documentation_only": "No automatic artifact rebuild from the filename alone; review whether changed document is an oracle or changes scope.",
+    "unknown_paths": "Manual dependency review required; not harmless.",
+    "absence_of_final_candidate": "Required artifact/environment/configuration/oracle receipts missing; no release-pass inferred."
+  },
+  "release_index_readonly": {
+    "path": "C:/Users/kiwun/Documents/ai/pokrov-release-index",
+    "head": "7a6b2ce859b34b074e877851ba50aae7e80854a3",
+    "remote_tracking_head": "9169f272203ec690ab7b0e6a69e92dc2b6762cb4",
+    "status": [],
+    "candidate33_source": "63993fba699b68641b7e972071ab7729fa9ec43c",
+    "mutation": false,
+    "note": "Read local objects only; no current remote fetch or release-state attestation."
+  },
+  "reviewed_dependency_groups": [
+    {
+      "id": "managed-runtime",
+      "inputs": [
+        "client runtime_engine/app_shell managed lifecycle and host stage/start/profile ACK",
+        "Android service and Windows service/protocol/recovery",
+        "Core probe/operational event producer",
+        "runtime AAR/DLL, binding seed, profile/configuration and validation oracle"
+      ],
+      "affected_r12": [
+        "N01",
+        "N02",
+        "N03",
+        "N04",
+        "N05",
+        "N06",
+        "N07",
+        "N08",
+        "W01",
+        "W02",
+        "W03",
+        "W04",
+        "W05",
+        "W06",
+        "D01",
+        "D02",
+        "D03",
+        "D04",
+        "D05",
+        "C01",
+        "C02",
+        "C03",
+        "C05",
+        "F07",
+        "Q01",
+        "Q02",
+        "Q03"
+      ],
+      "required_next": "Build/identify final compatible tuple, then exact packaged runtime/VM/device matrix; local tests retain their original scopes only."
+    },
+    {
+      "id": "transport-provisioning",
+      "inputs": [
+        "platform AWG2/AWG3.1/HY2 approved material snapshot and network rollout",
+        "effective Core/profile capability",
+        "owned server epoch/material and independent origin oracle",
+        "Smart DNS ECH rejection runtime"
+      ],
+      "affected_r12": [
+        "A01",
+        "A02",
+        "A03",
+        "A04",
+        "A05",
+        "A06",
+        "A07",
+        "A08",
+        "A09",
+        "N07",
+        "N08",
+        "Q02"
+      ],
+      "required_next": "Exact owned lab/server/profile/origin checks for affected paths. Documentation-only edits do not by themselves invalidate unchanged interop receipts."
+    },
+    {
+      "id": "payments-acquisition",
+      "inputs": [
+        "checkout quote/create/return/deadline browser flow",
+        "server amount/order/provider callback and entitlement outbox",
+        "PostgreSQL migration/runtime and worker semantics",
+        "acquisition source/privacy/payment-observer authority",
+        "actual payment provider/receipt/reconciliation oracle"
+      ],
+      "affected_r12": [
+        "B01",
+        "B02",
+        "B03",
+        "B04",
+        "B05",
+        "B06",
+        "B07",
+        "B08",
+        "M01",
+        "M02",
+        "M03",
+        "M04",
+        "M05",
+        "M06",
+        "O06",
+        "F02",
+        "F06",
+        "F07"
+      ],
+      "required_next": "Preserve local before/after receipts; final API/browser/DB checks and separately authorized provider/deploy proof for actual tuple."
+    },
+    {
+      "id": "presentation-diagnostics",
+      "inputs": [
+        "app_shell protection/polling/animation and structured diagnostics",
+        "Core log/error producers plus shared catalog and consumers",
+        "platform support summary/case binding",
+        "admin support/control source and browser fixtures",
+        "frontend bundles, viewport/device/accessibility/performance oracle"
+      ],
+      "affected_r12": [
+        "D05",
+        "C04",
+        "F01",
+        "F03",
+        "F04",
+        "F05",
+        "F06",
+        "O02",
+        "O03",
+        "O04",
+        "O05",
+        "O07",
+        "V01",
+        "V02",
+        "V03",
+        "V04"
+      ],
+      "required_next": "Match producer/catalog/consumer/oracle inputs; obtain missing privacy decision, then actual native sinks and exact device/performance proof."
+    },
+    {
+      "id": "release-contract-collectors",
+      "inputs": [
+        "handoff schema and synthetic preflight fixtures",
+        "client validate-seed and repository contracts",
+        "Core ABI/test scripts and proxy-only scope collector",
+        "current G03 classifier",
+        "complete artifact/config/toolchain/oracle/scope/environment/origin fingerprints"
+      ],
+      "affected_r12": [
+        "G02",
+        "G03",
+        "G04",
+        "G05",
+        "G06",
+        "G07",
+        "C01",
+        "C05",
+        "Q01",
+        "Q02",
+        "Q03",
+        "Q04",
+        "Q05"
+      ],
+      "required_next": "Review changed oracles even when runtime bytes match. No old Gate F conversion; final hosted enforcement/candidate/signing/rollout evidence still missing."
+    }
+  ],
+  "dependency_review_limit": "Review groups are an execution map for changed domains, not an automatically discovered complete build/test dependency graph. Candidate.33-to-HEAD changed paths are retained separately from task-baseline diff; no test receives reuse from path classification alone."
+}

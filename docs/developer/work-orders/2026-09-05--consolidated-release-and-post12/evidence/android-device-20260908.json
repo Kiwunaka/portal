@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "status": "PASS_BOUNDED",
+  "client_evidence_commit": "7ae931b",
+  "client_source": "76614b17a9d387cd791d407a7c50acb5f5e453e5",
+  "core_source": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+  "client_receipt": {
+    "path": "docs/operations/evidence/2026-09-08-r12-android-device/receipt.json",
+    "git_blob": "5a1d3107c8f3d3642849afd05be10cb337a17d02",
+    "sha256": "cde85b4ebc448d199d49d7b7391674671857db42c4c632c872051c7cee36ead0"
+  },
+  "summary": "New ARM64 installed; ordinary managed profile Wi-Fi/mobile/Wi-Fi and second reconnect PASS_BOUNDED; AWG exact target unresolved; full gates open"
+}

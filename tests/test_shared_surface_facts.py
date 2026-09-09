@@ -341,7 +341,6 @@ def _write_valid_client_product_fact_consumers(root: Path) -> Path:
     for path in paths.values():
         path.parent.mkdir(parents=True, exist_ok=True)
     paths["copy"].write_text(
-        "PlatformProductFacts.trialDays\n"
         "PlatformProductFacts.telegramRewardDays\n",
         encoding="utf-8",
     )
@@ -383,7 +382,8 @@ def test_shared_surface_fact_consumer_audit_rejects_hardcoded_client_price(tmp_p
         sync_shared_surface_facts.validate_pokrov_app_product_fact_consumers(tmp_path)
 
 
-def test_shared_surface_fact_consumer_audit_requires_device_scope_projection(tmp_path):
+@pytest.mark.parametrize("token", ["publicReleaseTargets", "trialDays"])
+def test_shared_surface_fact_consumer_audit_requires_seed_projection(tmp_path, token):
     module_path = REPO_ROOT / "scripts" / "sync_shared_surface_facts.py"
     spec = importlib.util.spec_from_file_location(
         "sync_shared_surface_facts_device_consumers", module_path
@@ -392,10 +392,12 @@ def test_shared_surface_fact_consumer_audit_requires_device_scope_projection(tmp
     sync_shared_surface_facts = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(sync_shared_surface_facts)
     source_root = _write_valid_client_product_fact_consumers(tmp_path)
+    # The trial offer is consumed in onboarding; account copy no longer invents it.
+    sync_shared_surface_facts.validate_pokrov_app_product_fact_consumers(tmp_path)
     seed_path = source_root / "src" / "seed" / "seed_context.dart"
     seed_path.write_text(
         seed_path.read_text(encoding="utf-8").replace(
-            "PlatformProductFacts.publicReleaseTargets\n", ""
+            f"PlatformProductFacts.{token}\n", ""
         ),
         encoding="utf-8",
     )

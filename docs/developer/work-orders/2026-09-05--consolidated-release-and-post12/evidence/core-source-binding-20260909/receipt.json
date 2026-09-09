@@ -1,0 +1,175 @@
+{
+  "status": "PASS_SOURCE_BINDING_AND_EXACT_TUPLE_CI",
+  "sources": {
+    "client": "5fdfc8dfd231265ea1d6c555d1ec56769c359b3b",
+    "platform": "0f6745dbe33f267d61eb0effb28afcd638e70364",
+    "core": "c7a11f7d2fd974726095ad7aa0619c055273dd15"
+  },
+  "retained_files": [
+    {
+      "path": "snapshot-final.json",
+      "bytes": 30619,
+      "sha256": "133f4a3a9afd2d4472cb1dad43ac9309e2283c4874b1ce5fe7435b9db8af6d74"
+    },
+    {
+      "path": "selected-ci-output.log",
+      "bytes": 2589,
+      "sha256": "3d6205378209014dbeae7999fa85d2863db276728c42d2be7f0cb2da98384f87"
+    },
+    {
+      "path": "pr-failure.log",
+      "bytes": 5329,
+      "sha256": "69528efad12fb87519acaa51fdbcaa634a488980e7055424337a200c246d2bd0"
+    },
+    {
+      "path": "short-ref-failure.log",
+      "bytes": 1894,
+      "sha256": "f41115c3869ae3b96ff389505a19de9c8efbfd9724445f798de02bb93008f37f"
+    },
+    {
+      "path": "seed-after.log",
+      "bytes": 1818,
+      "sha256": "e73f6c7de6c3fc48023de6965e690b6508bfbaae46c3b035fd8a43e31a0e111c"
+    },
+    {
+      "path": "proxy100.log",
+      "bytes": 2091,
+      "sha256": "d9c24bd09506f56663394366f5db335b203a2521c99afa8a4ec6ef34591af6d0"
+    },
+    {
+      "path": "collect-ci.py",
+      "bytes": 1909,
+      "sha256": "c64d22f0c82f0347d3b2f6d7322dc449fc671e6414d30d064323360eb44ed032"
+    },
+    {
+      "path": "bind-client.py",
+      "bytes": 5498,
+      "sha256": "c52fdb6aa5a90697abe46bb406baeb820ba9db656d8286b08516d0bcf5460efe"
+    },
+    {
+      "path": "retain.py",
+      "bytes": 3474,
+      "sha256": "32151a8a2bc54ed546ad1101a3fce2910042263e5aca55fcc1adb26d7c8cb485"
+    },
+    {
+      "path": "core-source.cdx.json.delta.json",
+      "bytes": 1188,
+      "sha256": "be241dfefa739392b6db5b4814a8bfafe40c4401be6495752a42667f9c7a0f21"
+    },
+    {
+      "path": "engine-source.cdx.json.delta.json",
+      "bytes": 1188,
+      "sha256": "be241dfefa739392b6db5b4814a8bfafe40c4401be6495752a42667f9c7a0f21"
+    }
+  ],
+  "client_receipts": [
+    {
+      "path": "E:\\r12client\\docs\\operations\\evidence\\2026-09-09-r12-core-source-binding\\android-evidence.json",
+      "bytes": 2173,
+      "sha256": "1d03d68afe5bba9f4bc812fb9b10a4da2f8e938849993633a3bfad21a9964c79"
+    },
+    {
+      "path": "E:\\r12client\\docs\\operations\\evidence\\2026-09-09-r12-core-source-binding\\binding.json",
+      "bytes": 4328,
+      "sha256": "4d2da48b0c99aed1a8eb9e7bcc6299fed782f76403759ebca6bc1d1a441b0bd0"
+    },
+    {
+      "path": "E:\\r12client\\docs\\operations\\evidence\\2026-09-09-r12-core-source-binding\\previous-runtime-binding.json",
+      "bytes": 8430,
+      "sha256": "6c83fa831391920aaaf2e14a53387a8ac699e7ad47517cfaa8a8c4f70defba25"
+    },
+    {
+      "path": "E:\\r12client\\docs\\operations\\evidence\\2026-09-09-r12-core-source-binding\\windows-evidence.json",
+      "bytes": 2326,
+      "sha256": "efe7283abb8030ec3f168206eda26f0dd9317667e3cbb7728a08dc4cf28bbb4a"
+    }
+  ],
+  "local_result": "two builds per platform match each other, old build trees and client runtime bytes; seed exit 0; 100 Windows proxy cycles PASS",
+  "hosted_result": {
+    "run": 34304294175,
+    "watcher_exit_code": 0,
+    "flutter_passed": 644,
+    "flutter_skipped": 1,
+    "windows_signing_runtime_negatives": "SKIPPED_BY_PLATFORM",
+    "android": "direct/store unit tasks PASS, no inferred JVM test count",
+    "linux": "conditional daemon gofmt/test/vet/build PASS"
+  },
+  "raw_retained_files": [
+    {
+      "path": "E:\\r12-core-rebinding-20260909\\client-ci-full.log",
+      "bytes": 462403,
+      "sha256": "ff618f581274725c0d1f7ab12b7345d847a84d6a451ff506f2e896d2406814c6"
+    },
+    {
+      "path": "E:\\r12-core-rebinding-20260909\\ci-watch.log",
+      "bytes": 17539,
+      "sha256": "e442938b12b99e29173909a8d4cc720f161ef821f362e13c6e6d867bbc978576"
+    },
+    {
+      "path": "E:\\r12-core-rebinding-20260909\\android-a.log",
+      "bytes": 628,
+      "sha256": "d7682b552af428e8251d6f737f342567feb03bf176fe73981cf4545d2b024f75"
+    },
+    {
+      "path": "E:\\r12-core-rebinding-20260909\\android-b.log",
+      "bytes": 628,
+      "sha256": "eb18559a6a1043437f3074f9fc26eca8d35a3c26644260a92fe0cc581e9199b4"
+    },
+    {
+      "path": "E:\\r12-core-rebinding-20260909\\windows-a.log",
+      "bytes": 584,
+      "sha256": "1a2a228a07aa0ad2dec5939d738cb5da02af418d158c04d95cb8bc2f3e8d56d3"
+    },
+    {
+      "path": "E:\\r12-core-rebinding-20260909\\windows-a-retry.log",
+      "bytes": 877,
+      "sha256": "63d0d48a96abe718c0ac359b187799f5ad870d6a186c24eb7564a424380ad813"
+    },
+    {
+      "path": "E:\\r12-core-rebinding-20260909\\windows-b-retry.log",
+      "bytes": 877,
+      "sha256": "898e1d1b944607511049060432e9ca00eb40e890440cb563154e44da17bd4256"
+    },
+    {
+      "path": "E:\\r12-core-rebinding-20260909\\android-evidence.json",
+      "bytes": 2173,
+      "sha256": "1d03d68afe5bba9f4bc812fb9b10a4da2f8e938849993633a3bfad21a9964c79"
+    },
+    {
+      "path": "E:\\r12-core-rebinding-20260909\\windows-evidence.json",
+      "bytes": 2326,
+      "sha256": "efe7283abb8030ec3f168206eda26f0dd9317667e3cbb7728a08dc4cf28bbb4a"
+    },
+    {
+      "path": "E:\\r12-core-rebinding-20260909\\core-source.cdx.json",
+      "bytes": 311796,
+      "sha256": "48bb61280e6c6db4621f755be5ea78f6c7b54fa2186fdf841ce9b233fa70564b"
+    },
+    {
+      "path": "E:\\r12-core-rebinding-20260909\\engine-source.cdx.json",
+      "bytes": 267681,
+      "sha256": "bf2f4f2fd8c9d61e7178f19aca6991c0b00448949f1f8809279cc996cacf8672"
+    },
+    {
+      "path": "E:\\r12-core-rebinding-20260909\\core-sbom.log",
+      "bytes": 5298,
+      "sha256": "dddef65d6583afa0d7f37708c4e1a953f3a920fe1f18d8e588dc64bf56cbd64c"
+    },
+    {
+      "path": "E:\\r12-core-rebinding-20260909\\engine-sbom.log",
+      "bytes": 4924,
+      "sha256": "9e2dd34c7b7590d77ac437b9967ae5013ed7e14787aeefe3dcf447bb58c87fa3"
+    },
+    {
+      "path": "E:\\r12-core-rebinding-20260909\\release-handoff-contract.log",
+      "bytes": 50,
+      "sha256": "63b6ce302b59f7b16f239c7eff241f728772ebf85b3e8a6d073a486151b4c373"
+    }
+  ],
+  "ordinary_pr_checks": "FAIL_OLD_PROMOTION_BINDINGS",
+  "source_promotion": false,
+  "deploy": false,
+  "candidate_created": false,
+  "signing": false,
+  "release_pass": false
+}

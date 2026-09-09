@@ -115,6 +115,18 @@ truth comes from signed provider callbacks and entitlement records, never from
 marketing events. The aggregate response and UI must not enumerate anonymous
 session hashes, handoff tokens, Telegram/account/order ids, or raw event rows.
 
+The funnel's paid numerator reads only paid `external_orders` and Stars
+`pay_attempts` with a recorded payment time. Client `paid`/`renewed` events
+remain diagnostics. Its connected numerator requires a durable
+`ConnectionEvidence` row of kind `observer_connection`, observed at or after
+that cohort's first qualifying payment and within the selected period's end.
+Client `connected_ok`, self-report and cached first-connection timestamps do
+not establish this outcome; an earlier trial connection does not count as a
+post-payment connection. The existing commercial conversion projection
+separately binds campaign/offer/order/grant and renewal/reversal lineage.
+Literal IP referrers are discarded before persistence and cannot become an
+automatic acquisition source; an absent source remains `unknown`.
+
 Commercial capacity is a separate entitlement-owned projection. The
 `capacity_automation` object on `GET /api/admin/campaigns` shows exact commercial
 revision/SHA, active units, the 300-unit limit, current band, 70% pause and
@@ -214,6 +226,23 @@ Operational rules:
   client runtime
 - a green summary does not prove production WARP; production proof still needs
   Android and Windows release-build connect/disconnect/fallback evidence
+
+## Automatic client access-network context
+
+Android reports on app open/connect/running/failure, at most once per minute
+per account in a process. Support → User → Events shows the latest source
+IP, carrier and approximate region with observation time. Access requires
+`support.sensitive.read` and records `support.network_context.read` in audit.
+L1 sees no network values. Unavailable direct API transport shows unknown IP;
+an old observation never proves the present connection's source address.
+
+The existing supervised anti-abuse worker clears raw IP and
+`client_network_metadata` within 72 hours; backlog includes the new field.
+No separate worker/database is introduced. An operator-local City MMDB at
+`CLIENT_NETWORK_GEOIP_CITY_DB_PATH` enables subdivision lookup. The existing
+country MMDB alone may provide country while region stays unknown. Neither
+lookup transmits IP to a third party. Local fixtures do not establish deployed
+Android-to-API evidence or physical carrier/geography accuracy.
 
 ## Security Abuse Visibility
 
@@ -732,6 +761,15 @@ Admin ops app wave `2026-07-06`, command-center redesign updated locally on
   account/order identity or exception text. Sustained active=max-active,
   increasing queue wait or failure count is an operator signal, but local tests
   do not establish production pool sizing or latency SLOs
+- `/api/health.event_loop_lag` observes the API event loop with one lifespan-owned
+  monotonic timer at a one-second interval. It retains only `status`,
+  `interval_ms`, `samples`, `last_lag_ms`, `max_lag_ms`, and `lag_total_ms`.
+  Last/max are null before the first observation; status is `warming_up` until
+  then, `collecting` while running, or `failed` if collection stops unexpectedly.
+  The task is cancelled and awaited on shutdown (`stopped`); an API used without
+  lifespan returns null for this projection. Each new lifespan has fresh counters.
+  Timer delay is not request latency or DB/HTTP pool wait; cumulative total/max
+  cannot establish p95 or a production SLO. No request or account data is sampled.
 - an access-key UUID rotation is not successful on canonical DB or panel-row readback alone: after every affected panel confirms the replacement row, the worker must receive an authenticated Xray restart acknowledgement, then bounded `/server/status` proof from two consecutive samples that `xray.state=running` with no `xray.errorMsg`, and then re-read the panel row. The same apply/readback sequence is required when compensation restores the old UUID. An apply error or post-apply row mismatch is `rotation_runtime_apply_failed` (or `rotation_compensation_failed` during rollback) and requires `manual_review`; it must never finalize the canonical UUID. These panel signals confirm process/config application, not an independent authenticated dataplane canary; the dedicated egress canary remains an operator-run check and is not invoked with a customer identity during rotation.
 - `free_standard` and `free_soft` are legacy rollback/cleanup roles only; while free delivery is disabled they must not be selected, provisioned, or fall back to paid or `operator_lab` nodes
 - nftables shaper readiness requires Linux canary evidence for syntax, IPv4/IPv6 TCP/UDP throughput, NAT sharing, counters, premium isolation, idempotent setup, and rollback; local dry-run evidence is not production proof
@@ -966,3 +1004,38 @@ Manual/test cleanup policy:
 - operators should keep real-user cleanup out of routine admin tooling
 
 Only collect and expose the minimum operational context needed to diagnose service problems and keep the app-first account model working reliably.
+
+## Cockpit checks and the final release decision
+
+The operational `gate_matrix` policy is `pokrov.operator-cockpit-gates/v1`:
+11 named checks plus separate current/brain/RU origin readiness. `ready` and
+`status` describe only this matrix. The API always reports
+`gate_f_decision=NOT_EVALUATED`; the cockpit does not load a Gate F report.
+The UI shows the policy, actual check count and this limitation even when all
+operational checks pass. Guarded rollout registry actions retain their existing
+permissions, preview, confirmation and audit requirements. They do not replace
+owner release authorization or switch an external artifact pointer.
+
+The separate final policy is `pokrov.release-1.2.0.gate-f-decision/v1`, whose
+19 required IDs are owned by `scripts/release_1_2_gate_f.py`. The following is a
+review crosswalk of related areas, never an automatic transfer of PASS:
+
+| Cockpit input | Related final Gate F area; requires its own bound receipt |
+| --- | --- |
+| `app_tests`, `core_tests`, `backend_tests`, `admin_tests` | `gates_a_e_exact_candidate`, `mandatory_stop_ship_and_dod`, `no_open_p0_false_green_or_secret_leak`, `hosted_required_checks` |
+| `android_proof` | `android_ldplayer_rehearsal`, `android_physical_device`; these remain distinct |
+| `windows_proof` | `windows_live_network` |
+| `payment_proof` | `payment_provider_e2e` |
+| `update_proof` | `gates_a_e_exact_candidate`, `rollback_and_kill_controls` |
+| `signing` | `supply_chain_signature_sbom_provenance`, `target_channel_signing_and_manual_gates` |
+| `public_url` | `release_docs_manifest_binding`; a URL alone does not establish byte/signature identity |
+| `docs_support_readiness` | `release_docs_manifest_binding`, `mandatory_stop_ship_and_dod` |
+| Separate current/brain/RU readiness | `current_origin`, `brain_origin`, `ru_origin`, only with matching candidate and origin |
+
+No cockpit check alone supplies `authenticated_client_egress`,
+`operator_auth_rbac_action_intent`, `legal_commercial_approval`, or
+`performance_and_release_health`. These four final areas and all other required
+Gate F evidence remain independent. An operational green must not be displayed
+or consumed as final GO. A rollback request still reports
+`external_artifact_switch=NOT_PERFORMED` until the separate switch is executed
+and verified; a paused registry is not proof of a completed rollback.

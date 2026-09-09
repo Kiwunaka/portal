@@ -12,7 +12,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any, Callable, Mapping
+from uuid import UUID
 
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 
@@ -183,6 +185,49 @@ def _owner(*, tg_id: int | None, buyer_email: str | None) -> dict[str, Any]:
 
 def _canonical_json(value: Any) -> str:
     return json.dumps(value, ensure_ascii=True, separators=(",", ":"), sort_keys=True)
+
+
+def lock_public_checkout_retry(
+    session: Session,
+    *,
+    intent_id: str,
+    tg_id: int | None,
+    buyer_email: str | None,
+    request_fields: Mapping[str, Any],
+) -> tuple[str, str, Any | None]:
+    """Serialize one base-price checkout intent without holding a DB lock over I/O.
+
+    The nonce is only a retry key. Ownership, price and entitlement still come
+    from the existing server checkout path. Only a digest of the request is kept.
+    Commercial orders instead use their existing signed reservation identity.
+    """
+    nonce = str(UUID(intent_id))
+    owner = _owner(tg_id=tg_id, buyer_email=buyer_email)
+    identity = hashlib.sha256(_canonical_json([owner, nonce]).encode()).hexdigest()
+    order_id = "checkout_" + identity
+    request_digest = hashlib.sha256(_canonical_json(request_fields).encode()).hexdigest()
+    if session.get_bind().dialect.name == "postgresql":
+        lock_key = int.from_bytes(bytes.fromhex(identity[:16]), "big", signed=True)
+        session.execute(text("SELECT pg_advisory_xact_lock(:key)"), {"key": lock_key})
+    model = _external_order_model()
+    row = session.query(model).filter(model.order_id == order_id).first()
+    if row is not None and _row_meta(row).get("checkout_request_sha256") != request_digest:
+        raise PaymentOrderIntentError("checkout_intent_conflict")
+    return order_id, request_digest, row
+
+
+def recovered_checkout_fields(row: Any) -> dict[str, Any]:
+    """Return order status for reconciliation; never recreate a provider invoice."""
+    pricing = _row_meta(row).get("pricing") or {}
+    return {
+        "order_id": str(row.order_id),
+        "amount_rub": float(row.amount),
+        "currency": str(row.currency),
+        "status": str(row.status),
+        "discount_applied": bool(pricing.get("discount_applied")),
+        "base_amount_rub": float(pricing.get("base_amount_rub") or row.amount),
+        "discount_pct": int(pricing.get("discount_pct") or 0),
+    }
 
 
 @dataclass(frozen=True)

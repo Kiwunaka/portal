@@ -1,0 +1,43 @@
+{
+  "files": {
+    "models.py": "6fb565bb7df1c162ce1e58d3b34b84d8807a19b4ba8693c03d23267c2e4e0b58",
+    "migrations.py": "75a6d78fcf9bfe6348824c99406feef895ee1832f38049e6b9fad2620ce28e07",
+    "db.py": "dfeaf3794524c1110ce829c2f0211ed40b8a38555be8969a5ab5f21aef90d482",
+    "requirements.txt": "f14fb252fbc18884556863a0cb3ed04eb72e0ac0b48ac1fe384ace575e9a322c",
+    "api.py": "dee50ce1d0a319abe455e58b4e5eb78eaf6c0408eda602f7e6e17ff0258aea88",
+    "worker.py": "1c2dcdb5e5ccea48a301468c8d15f71aa4a609e4e0c5e6e10d57cc561c26c279",
+    "bot.py": "2cd0d5c60993c4d92ba228dfe25367412fae233769dbf68c6a8e4abfcda4201f"
+  },
+  "declared_commits": {},
+  "mutation_performed": false,
+  "raw_environment_returned": false,
+  "comparison": {
+    "f530005": {
+      "models.py": true,
+      "migrations.py": true,
+      "db.py": false,
+      "requirements.txt": false,
+      "api.py": false,
+      "worker.py": true,
+      "bot.py": true
+    },
+    "6b41f758": {
+      "models.py": true,
+      "migrations.py": true,
+      "db.py": false,
+      "requirements.txt": false,
+      "api.py": false,
+      "worker.py": true,
+      "bot.py": true
+    },
+    "16407b8": {
+      "models.py": true,
+      "migrations.py": true,
+      "db.py": false,
+      "requirements.txt": false,
+      "api.py": false,
+      "worker.py": true,
+      "bot.py": true
+    }
+  }
+}

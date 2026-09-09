@@ -1,0 +1,10 @@
+test_collector_change_invalidates_identical_runtime_bytes (test_evidence_inputs.EvidenceInputsTest.test_collector_change_invalidates_identical_runtime_bytes) ... ok
+test_equal_declared_inputs_are_not_a_release_pass_and_missing_is_unknown (test_evidence_inputs.EvidenceInputsTest.test_equal_declared_inputs_are_not_a_release_pass_and_missing_is_unknown) ... ok
+test_equal_names_do_not_hide_config_or_origin_change (test_evidence_inputs.EvidenceInputsTest.test_equal_names_do_not_hide_config_or_origin_change) ... ok
+test_owned_smart_dns_runtime_inputs_are_not_deployment_files (test_evidence_inputs.EvidenceInputsTest.test_owned_smart_dns_runtime_inputs_are_not_deployment_files) ... ok
+test_scoped_classification_keeps_harness_before_product_and_unknown_explicit (test_evidence_inputs.EvidenceInputsTest.test_scoped_classification_keeps_harness_before_product_and_unknown_explicit) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.001s
+
+OK

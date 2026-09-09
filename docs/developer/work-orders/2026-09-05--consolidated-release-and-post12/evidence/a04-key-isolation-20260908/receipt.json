@@ -1,0 +1,304 @@
+{
+  "result": "PASS_BOUNDED_KEY_ISOLATION",
+  "source_parent": "9081b964b2ce2f2375e98ccaa9c27c2eec9d8e6c",
+  "source_files_verified": 196,
+  "checks": {
+    "focused-final.log": {
+      "passed": 92,
+      "subtests_passed": 12,
+      "result": "PASS"
+    },
+    "backend-router.log": {
+      "passed": 175,
+      "subtests_passed": 8,
+      "result": "PASS"
+    },
+    "auth-router.log": {
+      "passed": 138,
+      "subtests_passed": 22,
+      "result": "PASS"
+    },
+    "scripts-router.log": {
+      "passed": 44,
+      "subtests_passed": 21,
+      "result": "PASS"
+    },
+    "docs-tests.log": {
+      "passed": 33,
+      "subtests_passed": 0,
+      "result": "PASS"
+    }
+  },
+  "postgres_cases": 4,
+  "http_assertions": 46,
+  "core_oracles": {
+    "accepted": 10,
+    "expected_rejections": 4
+  },
+  "runtime_files": {
+    "portal_bot/awg_lab_key_binding.py": {
+      "worktree_sha256": "a42c81181d3bdb66f649dab30fdd63f0c29f3e2128a57749e23b946c96416ba9",
+      "lf_sha256": "a42c81181d3bdb66f649dab30fdd63f0c29f3e2128a57749e23b946c96416ba9"
+    },
+    "portal_bot/awg2_lab_service.py": {
+      "worktree_sha256": "82fe8841ce23675e54d9361145830fccb775790241eccd50a767deb1b5a5811a",
+      "lf_sha256": "82fe8841ce23675e54d9361145830fccb775790241eccd50a767deb1b5a5811a"
+    },
+    "portal_bot/awg31_lab_service.py": {
+      "worktree_sha256": "dfe6d30384b97a6f1870ec155bf1654e7182b9b3e6fe710e8d2f77df4c442d53",
+      "lf_sha256": "dfe6d30384b97a6f1870ec155bf1654e7182b9b3e6fe710e8d2f77df4c442d53"
+    },
+    "scripts/remote_bind_owned_awg_lab_device.py": {
+      "worktree_sha256": "dab803b0a5439d4147a8f005c59e13c11f3c498318c5e5dd41703e9995faf72a",
+      "lf_sha256": "ee6085e79052c8294f0b9612d2416d1881753c325d72a12f1c6ec87b586f4c67"
+    }
+  },
+  "scope": "Isolated ASGI/PostgreSQL identities; exact Core 02a091c on owned RU Pi; ephemeral DE peers. Controller applies server changes after HTTP revoke, not automatic product enforcement.",
+  "retained_files": [
+    {
+      "path": "audit-and-stop-lab.py",
+      "bytes": 3514,
+      "sha256": "1a40b0a7bade15810eda9be51226851945c26d6b30a640d269c879c4e7891e5b"
+    },
+    {
+      "path": "auth-router.log",
+      "bytes": 3720,
+      "sha256": "a12109046ab052fb7a756a54969071fc1fdf63dce09c5efd50e3fe54df1b6582"
+    },
+    {
+      "path": "backend-router.log",
+      "bytes": 288,
+      "sha256": "898bfe67d1754ccc5a3e0157f6627102fb80491b1ef6e5d6b9c7f941a157dda5"
+    },
+    {
+      "path": "binder-existing-first.log",
+      "bytes": 34701,
+      "sha256": "0d1fb5964606c3bc104b1d4976ae705049e80a7c09f822621691672a3856bb57"
+    },
+    {
+      "path": "brain-key-isolation-before.json",
+      "bytes": 760,
+      "sha256": "3f7534deb2a7d97c5f68bc3d268f852bd1514ba7a137578cf364a8418e87c1a9"
+    },
+    {
+      "path": "diagnose-http-import.py",
+      "bytes": 1746,
+      "sha256": "b72952979dc55bfd0289ddc99605fbe2c3a35ab9cc7a53467c44370c5d2c9da2"
+    },
+    {
+      "path": "docs-tests.log",
+      "bytes": 101,
+      "sha256": "994cc1b93a85c32d1190b59403ae89b44005b657ae589c1909eabbf3455178a8"
+    },
+    {
+      "path": "final-lab-audit.json",
+      "bytes": 1939,
+      "sha256": "76f42426b5a71295636420684a1aaaf3d582ab04e0ff890329838e6f7656313d"
+    },
+    {
+      "path": "focused-after.log",
+      "bytes": 34793,
+      "sha256": "180758603479bb2ab7f927fb7a291df10fd0eb2a177ecae988a1eab4c6be7833"
+    },
+    {
+      "path": "focused-final.log",
+      "bytes": 190,
+      "sha256": "437b35c3325534b3592a2a4da9db5b1741d2061871b33f5271dcb43a36d41daa"
+    },
+    {
+      "path": "guest-managed-keys-v2.py",
+      "bytes": 10842,
+      "sha256": "120ac14f56bd8a5ac1038cf2ff91564b367ec3a4858c07f2a31f0b2738fd7a46"
+    },
+    {
+      "path": "guest-managed-keys-v3.py",
+      "bytes": 11054,
+      "sha256": "c4c8f0c07656b22a8698af7c37edd21f96571613e8bc33f347b07fa1774da02c"
+    },
+    {
+      "path": "guest-managed-keys.py",
+      "bytes": 10388,
+      "sha256": "ad774d270ab84046d5320a51733cd7435f083edec3ed8e553eac15a10cd209b4"
+    },
+    {
+      "path": "guest-pg-keys.py",
+      "bytes": 6102,
+      "sha256": "4fb3e77d0602a66b084181f075d322a5c29fb34fd6b01a619b23f106d6508599"
+    },
+    {
+      "path": "http-awg2-result-v2.json",
+      "bytes": 1449,
+      "sha256": "37775c575368156b2fec7ee2634f11f1ef09e74da256d8943eb3294f201f814b"
+    },
+    {
+      "path": "http-awg2-result-v3.json",
+      "bytes": 2071,
+      "sha256": "34d65bf40379bf6fd58218456cabb447a70d4469cf745fbaee07de83b6e9da32"
+    },
+    {
+      "path": "http-awg2-result.json",
+      "bytes": 410,
+      "sha256": "d362d7b5040ab1c2653b20294b85c5577bd52c0530ba0b7d185ee5d24c2876b0"
+    },
+    {
+      "path": "http-awg31-result-v3.json",
+      "bytes": 2073,
+      "sha256": "ef1e025b10966e71811c97a5f920e883dc9422e695c9b70012ba3b1bac1153e8"
+    },
+    {
+      "path": "http-import-diagnostic.json",
+      "bytes": 23,
+      "sha256": "a389a827e43fc3eaad00680cfe2eacd4f46eeb87e94a9a34935f08185832f5ea"
+    },
+    {
+      "path": "http-peer-awg2-v2.json",
+      "bytes": 7593,
+      "sha256": "0fea1f4c738425ca9645f2f3c831155464b9f210fe29960897efb03025427ac2"
+    },
+    {
+      "path": "http-peer-awg2-v3.json",
+      "bytes": 14613,
+      "sha256": "e8951adc51417872bbd465060f7a856eaaf1c9583b9fbd11ebb1a34b01370eef"
+    },
+    {
+      "path": "http-peer-awg2.json",
+      "bytes": 1087,
+      "sha256": "c68b505819bcacb0e681876b105c12ea15e590ec14d7a560f86815d6880a28cf"
+    },
+    {
+      "path": "http-peer-awg31-v3.json",
+      "bytes": 14628,
+      "sha256": "a72245e79caa9a7797b24dca5ac91178251a7ef5653ab750f53e229e02173e0e"
+    },
+    {
+      "path": "http-testclient-diagnostic.json",
+      "bytes": 597,
+      "sha256": "81eafc78b99a98c41b163e85dc01dd6f8db9039a655538e2403797250897846d"
+    },
+    {
+      "path": "key-binding-after.log",
+      "bytes": 101,
+      "sha256": "82e2203206de4d60167e072de318b6159cc504e23a999ab513ccec3f26652072"
+    },
+    {
+      "path": "negative-key-binding.log",
+      "bytes": 8466,
+      "sha256": "452913385c67d9cc39172625393c8b7dbffb30d1eeb8e69a2c45c4055c151b88"
+    },
+    {
+      "path": "pg-execution.json",
+      "bytes": 195,
+      "sha256": "555a8586cddbe306ea1d9c39561cc94341bd5f535a6bcf36403236f836e570df"
+    },
+    {
+      "path": "pg-result.json",
+      "bytes": 1719,
+      "sha256": "1adad5d0cff96630b7ad4ab79379782fda88e203a5314fcea363c7b6c04d1a78"
+    },
+    {
+      "path": "prepare-pg-keys.py",
+      "bytes": 2560,
+      "sha256": "4e0865e1663544c6a639d2490accc2dd055aded7cf0c0fc1f4bf543926c8d90f"
+    },
+    {
+      "path": "prepare-test-libs.py",
+      "bytes": 1995,
+      "sha256": "4b841ac3ddb3511b6f84278a2ef08eb976d24d0b6d149b640ffca234e5cadb8a"
+    },
+    {
+      "path": "read-lab-isolation.py",
+      "bytes": 3170,
+      "sha256": "3c8fe7b564ec064fd77aec9fb8bcb5670f72fd92a49da105c3f85d9aca7ad5c1"
+    },
+    {
+      "path": "retain.py",
+      "bytes": 7236,
+      "sha256": "84f24326ebd089dc3147e05ba67b5ecabd8815d9652cc154c442ccff0aa9d04c"
+    },
+    {
+      "path": "run-http-peer-lifecycle-v2.py",
+      "bytes": 11799,
+      "sha256": "ff42de967e4c0ae5081ce34322d492e150061e9b57ffdc655fc0e2cc94f2dcb2"
+    },
+    {
+      "path": "run-http-peer-lifecycle-v3.py",
+      "bytes": 11799,
+      "sha256": "b95ab6f215985ec544f3c1061d12277e905902814b81ff2d7730c9af11021687"
+    },
+    {
+      "path": "run-http-peer-lifecycle.py",
+      "bytes": 11422,
+      "sha256": "939377ae54e9c104b37d9521892389a0e09369543ef9fab8e7c0fcadd696d3d2"
+    },
+    {
+      "path": "run-pg-keys.py",
+      "bytes": 1151,
+      "sha256": "d198d5bf521454f772b3ed83c4917e3451ced159e59bf0045d9feea2abda6856"
+    },
+    {
+      "path": "scripts-router.log",
+      "bytes": 100,
+      "sha256": "0c336d223cbfb3207240634c3b323e3ef005c30271e30695f4ba057449e315ec"
+    },
+    {
+      "path": "server-after.json",
+      "bytes": 2356,
+      "sha256": "636a041869f7dc57ede7c6c53ed1217edc228cfb7aa107635ca83ed364a8d244"
+    },
+    {
+      "path": "server-before.json",
+      "bytes": 2356,
+      "sha256": "1bff0bece43685d35cbe9e438f2d58670f35ad53141e902c56a22ca19d13a05f"
+    },
+    {
+      "path": "server-two-devices.py",
+      "bytes": 3697,
+      "sha256": "10878f181ad780270f6df2ace1ae25585bcbe6ba808d29c605616f4c0e13c267"
+    },
+    {
+      "path": "source-manifest.json",
+      "bytes": 33659,
+      "sha256": "7901a9a914005ee3c6bc0736c38e9e2d4c8483bbbdc21fbb71f2eb5049b5fd2b"
+    },
+    {
+      "path": "test-libs-manifest.json",
+      "bytes": 27606,
+      "sha256": "79aba9327a710cfbcfbbfe6417106f6525a086296dd1b9cd8b0d1690edf5a31d"
+    },
+    {
+      "path": "vm-final-state.txt",
+      "bytes": 170,
+      "sha256": "80caf44b723d2e20f0e7e08186bddd59b6ec1b0b79bd6129b44024c1625a62cf"
+    }
+  ],
+  "external_archives": [
+    {
+      "path": "E:\\r12-a04-key-isolation-20260908\\source.tar",
+      "bytes": 6328320,
+      "sha256": "c0c796edf821ed15195062c9c1afce01d23fb0656158f7b615ec539adcbdac81"
+    },
+    {
+      "path": "E:\\r12-a04-key-isolation-20260908\\test-libs.zip",
+      "bytes": 449289,
+      "sha256": "28a52fcf3ce055ca7014f48854af1d68413db7c177a1675eaabf101f1c564689"
+    },
+    {
+      "path": "E:\\r12-a04-key-isolation-20260908\\synthetic-endpoints.json",
+      "bytes": 1832,
+      "sha256": "be6495804a05a200deef6baf95b3d36970a03f7e085a7fde734efea49e08cde3"
+    }
+  ],
+  "historical_failures": [
+    "v1: TestClient lacked httpx2; no material issued",
+    "v2: fixture fresh-auth call omitted now; partial results and cleanup retained"
+  ],
+  "cleanup_verified": true,
+  "production_deploy": false,
+  "candidate_created": false,
+  "remaining": [
+    "Existing shared lab key migration",
+    "Automatic server revoke/expiry",
+    "Installed-client revoke/expiry",
+    "Current integrated quality and release gates"
+  ]
+}

@@ -1,0 +1,118 @@
+F                                                                        [100%]
+================================== FAILURES ===================================
+_ test_awg2_lab_material_intent_and_result_never_persist_endpoint_or_install __
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x00000214C17665D0>
+tmp_path = WindowsPath('C:/Users/kiwun/AppData/Local/Temp/pytest-of-kiwun/pytest-1781/test_awg2_lab_material_intent_0')
+
+    def test_awg2_lab_material_intent_and_result_never_persist_endpoint_or_install(
+        monkeypatch: pytest.MonkeyPatch,
+        tmp_path: Path,
+    ) -> None:
+        api = _load_api(monkeypatch, tmp_path)
+        from models import AccountDevice, AdminActionIntent, Awg2LabMaterial, User
+    
+        now = datetime.now(timezone.utc).replace(tzinfo=None)
+        session = api.SessionLocal()
+        try:
+            session.add_all(
+                [
+                    User(
+                    tg_id=7351,
+                    account_id="00000000-0000-4000-8000-000000007350",
+                    uuid="00000000-0000-4000-8000-000000007351",
+                    email="awg2-guard@example.test",
+                    sub_type="PAID",
+                    created_at=now,
+                    expiry_at=now + timedelta(days=30),
+                    is_active=True,
+                    sub_token="awg2-guard-token",
+                    # A retained compatibility projection must not override the
+                    # canonical registry's explicit device revocation.
+                    app_install_id="revoked-install-awg2-7351",
+                    app_platform="windows",
+                    ),
+                    AccountDevice(
+                        id="00000000-0000-4000-8000-000000007352",
+                        account_id="00000000-0000-4000-8000-000000007350",
+                        install_id="install-awg2-7351",
+                        label="Guarded AWG device",
+                        platform="windows",
+                        state="active",
+                        first_seen_at=now,
+                        last_seen_at=now,
+                        created_at=now,
+                        updated_at=now,
+                    ),
+                    AccountDevice(
+                        id="00000000-0000-4000-8000-000000007353",
+                        account_id="00000000-0000-4000-8000-000000007350",
+                        install_id="revoked-install-awg2-7351",
+                        label="Revoked AWG device",
+                        platform="windows",
+                        state="revoked",
+                        revoked_at=now,
+                        first_seen_at=now,
+                        last_seen_at=now,
+                        created_at=now,
+                        updated_at=now,
+                    ),
+                ]
+            )
+            session.commit()
+        finally:
+            session.close()
+    
+        private_key = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+        peer_address = "192.0.2.10"
+        payload = {
+            "tg_id": 7351,
+            "install_id": "install-awg2-7351",
+            "generation": "awg2-lab-v1",
+            "endpoint_revision": "awg2-v1",
+            "server_record_id": "pokrov-awg2-pl-01",
+            "node_code": "pl",
+            "endpoint": {
+                "useIntegratedTun": False,
+                "private_key": private_key,
+                "address": ["10.66.0.2/32", "fd66::2/128"],
+                "mtu": 1408,
+                "jc": 4,
+                "jmin": 40,
+                "jmax": 70,
+                "s1": 0,
+                "s2": 0,
+                "s3": 0,
+                "s4": 0,
+                "h1": "1000001",
+                "h2": "1000002",
+                "h3": "1000003",
+                "h4": "1000004",
+                "peers": [
+                    {
+                        "address": peer_address,
+                        "port": 51820,
+                        "public_key": "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=",
+                        "allowed_ips": ["0.0.0.0/0", "::/0"],
+                        "persistent_keepalive_interval": 25,
+                    }
+                ],
+            },
+        }
+        client = TestClient(api.app)
+        revoked_payload = {**payload, "install_id": "revoked-install-awg2-7351"}
+        revoked = _prepare(
+            client,
+            action="awg2_lab_material.replace",
+            target_type="awg2_lab_material",
+            target_id="7351",
+            payload=revoked_payload,
+        )
+>       assert revoked.status_code == 422
+E       assert 200 == 422
+E        +  where 200 = <Response [200 OK]>.status_code
+
+tests\test_admin_action_intents.py:2769: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_admin_action_intents.py::test_awg2_lab_material_intent_and_result_never_persist_endpoint_or_install
+1 failed, 20 deselected in 5.92s

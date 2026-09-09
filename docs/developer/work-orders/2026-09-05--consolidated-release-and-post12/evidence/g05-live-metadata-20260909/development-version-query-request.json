@@ -1,0 +1,8 @@
+{
+  "url": "https://app.pokrov.space/api/public/client-apps?platform=windows&current_version=1.2.0",
+  "http_status": 200,
+  "observed_at_utc": "2026-09-09T01:42:20.509744+00:00",
+  "date": "Wed, 09 Sep 2026 01:41:36 GMT",
+  "cache_control": "public, max-age=300, stale-if-error=3600",
+  "response_sha256": "c585f297c88928ddd44a5787e6af4320cd8c47b505b135dd5b449fc90bdaee8f"
+}
