@@ -7784,12 +7784,27 @@ async def _maybe_append_support_ai_reply(
     user_tg_id: int,
     text: str,
     has_attachment: bool = False,
+    case_context_enabled: bool = True,
 ) -> bool:
-    if has_attachment or not SUPPORT_AI_CONFIG.enabled:
+    if not SUPPORT_AI_CONFIG.enabled or (has_attachment and not SUPPORT_AGENT_SERVICE.settings.agent_enabled):
         return False
     body = (text or "").strip()
     if not body:
-        return False
+        if not has_attachment:
+            return False
+        body = "Проверьте вложение к обращению и состояние моего доступа."
+
+    revision = None
+    if SUPPORT_AGENT_SERVICE.settings.agent_enabled:
+        from support_case_context import pending_case_message
+        try:
+            with SessionLocal() as session:
+                revision = pending_case_message(session, int(user_tg_id), int(ticket_id))
+        except Exception:
+            logger.warning("support case guard failed code=support_case_guard_unavailable")
+            return False
+        if revision is None:
+            return False
 
     if not SUPPORT_AGENT_SERVICE.settings.agent_enabled:
         now = time.monotonic()
@@ -7804,6 +7819,7 @@ async def _maybe_append_support_ai_reply(
         authenticated_owner_id=str(int(user_tg_id)),
         message=body,
         ticket_id=int(ticket_id),
+        case_context_enabled=case_context_enabled,
     )
     reply = str(result.reply or "").strip()
     if not reply:
@@ -7812,7 +7828,11 @@ async def _maybe_append_support_ai_reply(
     s = SessionLocal()
     try:
         ticket = get_ticket_by_id(s, int(ticket_id))
-        if not ticket or int(ticket.user_tg_id) != int(user_tg_id):
+        if revision is not None and pending_case_message(s, int(user_tg_id), int(ticket_id), lock=True) != revision:
+            return False
+        if not ticket:
+            return False
+        if revision is None and int(ticket.user_tg_id) != int(user_tg_id):
             return False
         add_ticket_message(
             s,

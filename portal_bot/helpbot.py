@@ -227,6 +227,18 @@ async def _maybe_generate_support_ai_reply(message: Message, *, ticket_id: int, 
     if tg_id == ADMIN_ID or not SUPPORT_AI_CONFIG.enabled:
         return None
 
+    revision = None
+    if SUPPORT_AGENT_SERVICE.settings.agent_enabled:
+        from support_case_context import pending_case_message
+        try:
+            with SessionLocal() as session:
+                revision = pending_case_message(session, tg_id, ticket_id)
+        except Exception:
+            logger.warning("support case guard failed code=support_case_guard_unavailable")
+            return None
+        if revision is None:
+            return None
+
     if not SUPPORT_AGENT_SERVICE.settings.agent_enabled:
         now = time.monotonic()
         min_interval = max(0.0, float(SUPPORT_AI_CONFIG.min_interval_seconds))
@@ -241,6 +253,7 @@ async def _maybe_generate_support_ai_reply(message: Message, *, ticket_id: int, 
         message=text,
         ticket_id=ticket_id,
         validated_sender_id=tg_id,
+        attachment_bot=message.bot,
     )
     reply = str(result.reply or "").strip()
     if not reply:
@@ -248,6 +261,8 @@ async def _maybe_generate_support_ai_reply(message: Message, *, ticket_id: int, 
 
     session = SessionLocal()
     try:
+        if revision is not None and pending_case_message(session, tg_id, ticket_id, lock=True) != revision:
+            return None
         add_ticket_message(
             session,
             ticket_id=ticket_id,
@@ -847,6 +862,14 @@ async def capture_ticket_attachment(message: Message) -> None:
             ]
         ),
     )
+    if tg_id != ADMIN_ID and SUPPORT_AGENT_SERVICE.settings.agent_enabled:
+        reply = await _maybe_generate_support_ai_reply(
+            message, ticket_id=ticket_id,
+            text=(getattr(message, "caption", None) or "Проверьте вложение и состояние моего доступа."),
+        )
+        if reply:
+            await message.answer(_support_reply_html(reply), parse_mode="HTML",
+                                 reply_markup=_support_ai_reply_keyboard(ticket_id))
 
 
 @router.message(F.text)

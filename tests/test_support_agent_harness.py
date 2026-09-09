@@ -413,6 +413,30 @@ def harness_case_factory():
     return factory
 
 
+@pytest.mark.parametrize("plan,origin", [("answer", "case_model"), ("timeout", "case_local")])
+def test_owned_case_can_answer_without_kb_match(harness_case_factory, plan, origin):
+    case = harness_case_factory(name="owned_case", input_mode="safe", retrieval="none",
+                                provider_plan=plan, store_plan="ok")
+    async def load():
+        return {"operator_handling": False, "payments": [{"status": "paid", "amount": 99,
+                "live_provider": {"status": "COMPLETED"}}]}
+    request = replace(case.request, message="Проверьте вложение и оплату", case_loader=load)
+    result = asyncio.run(case.harness.run(request))
+    assert result.status in {"answer", "escalate"} and result.answer_origin == origin
+    assert case.adapter.call_count == 1
+    assert '"amount":99' in case.adapter.requests[0]["messages"][1]["content"]
+
+
+def test_owned_case_stops_for_operator(harness_case_factory):
+    case = harness_case_factory(name="operator_case", input_mode="safe", retrieval="none",
+                                provider_plan="unused", store_plan="ok")
+    async def load():
+        return {"operator_handling": True}
+    result = asyncio.run(case.harness.run(replace(case.request, case_loader=load)))
+    assert result.status == "silent" and not result.reply
+    assert case.adapter.call_count == 0
+
+
 @pytest.mark.parametrize(
     "name,input_mode,retrieval,provider_plan,store_plan,calls,status,origin,reason",
     CASES,

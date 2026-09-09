@@ -21,6 +21,9 @@ DEFAULT_MODEL = "deepseek-v4-flash-0731"
 DEFAULT_REASONING_EFFORT = "medium"
 OPENROUTER_API_BASE_URL = "https://openrouter.ai/api/v1"
 OPENROUTER_DEEPSEEK_V4_FLASH_0731_MODEL = "deepseek/deepseek-v4-flash-0731"
+VISION_MODEL = "deepseek-v4-flash-vision-exp"
+OPENROUTER_VISION_MODEL = "deepseek/deepseek-v4-flash-vision-exp"
+SUPPORTED_MODELS = frozenset({DEFAULT_MODEL, VISION_MODEL})
 DEFAULT_PROVIDER_TIMEOUT_SECONDS = 20.0
 OPENROUTER_PROVIDER_TIMEOUT_SECONDS = 45.0
 OPENROUTER_RUN_DEADLINE_SECONDS = 50.0
@@ -270,6 +273,8 @@ def canonical_support_model(value: str | None) -> str:
     raw = (value or DEFAULT_MODEL).strip()
     if raw in {DEFAULT_MODEL, OPENROUTER_DEEPSEEK_V4_FLASH_0731_MODEL}:
         return DEFAULT_MODEL
+    if raw in {VISION_MODEL, OPENROUTER_VISION_MODEL}:
+        return VISION_MODEL
     return raw
 
 
@@ -367,17 +372,17 @@ def provider_run_deadline_ceiling(api_base_url: str) -> float:
 def provider_wire_model(config: SupportAIConfig) -> str:
     """Map the canonical model ID only for the exact owned OpenRouter route."""
     if (
-        canonical_support_model(config.model) == DEFAULT_MODEL
+        canonical_support_model(config.model) in SUPPORTED_MODELS
         and is_exact_openrouter_route(config.api_base_url)
     ):
-        return OPENROUTER_DEEPSEEK_V4_FLASH_0731_MODEL
+        return "deepseek/" + canonical_support_model(config.model)
     return config.model
 
 
 def provider_generation_controls(config: SupportAIConfig) -> dict[str, Any]:
     """Keep 0731 reasoning provider-managed while bounding the final answer."""
     if (
-        canonical_support_model(config.model) == DEFAULT_MODEL
+        canonical_support_model(config.model) in SUPPORTED_MODELS
         and is_exact_openrouter_route(config.api_base_url)
     ):
         return {
@@ -395,7 +400,7 @@ def provider_generation_controls(config: SupportAIConfig) -> dict[str, Any]:
 def provider_response_controls(config: SupportAIConfig) -> dict[str, Any]:
     """Require the owned OpenRouter route to return the support wire contract."""
     if (
-        canonical_support_model(config.model) == DEFAULT_MODEL
+        canonical_support_model(config.model) in SUPPORTED_MODELS
         and is_exact_openrouter_route(config.api_base_url)
     ):
         return {
@@ -427,7 +432,11 @@ def provider_response_controls(config: SupportAIConfig) -> dict[str, Any]:
                     },
                 },
             },
-            "provider": {"require_parameters": True},
+            "provider": {
+                "require_parameters": True,
+                **({"order": ["fireworks"], "data_collection": "deny"}
+                   if canonical_support_model(config.model) == VISION_MODEL else {}),
+            },
         }
     return {"response_format": {"type": "json_object"}}
 

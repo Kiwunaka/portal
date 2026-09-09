@@ -11,7 +11,7 @@ from typing import Any, Awaitable, Callable, Mapping
 
 from support_ai_service import (
     DEFAULT_API_BASE_URL,
-    DEFAULT_MODEL,
+    SUPPORTED_MODELS,
     SupportAIConfig,
     canonical_support_model,
     generate_support_reply,
@@ -304,7 +304,7 @@ class SupportAgentService:
         if surface == "helpbot":
             if validated_sender_id is None:
                 raise ValueError("helpbot_session_missing")
-            return self.resolver.resolve_helpbot(validated_sender_id)
+            return self.resolver.resolve_helpbot(validated_sender_id, ticket_id)
         raise ValueError("support_surface_invalid")
 
     def _local_result(self, message: str, session_id: str) -> SupportReplyResult:
@@ -336,6 +336,8 @@ class SupportAgentService:
         ticket_id: int | None = None,
         validated_sender_id: int | None = None,
         safe_diagnostics: Mapping[str, str | int | bool | None] | None = None,
+        attachment_bot: object | None = None,
+        case_context_enabled: bool = True,
     ) -> SupportReplyResult:
         try:
             scope = self._resolve_scope(
@@ -359,7 +361,7 @@ class SupportAgentService:
 
         if (
             not is_exact_openrouter_route(self.config.api_base_url)
-            or canonical_support_model(self.config.model) != DEFAULT_MODEL
+            or canonical_support_model(self.config.model) not in SUPPORTED_MODELS
             or self.config.reasoning_effort != "medium"
         ):
             logger.warning("support agent disabled code=agent_profile_invalid")
@@ -398,6 +400,12 @@ class SupportAgentService:
                 logger.warning("support agent startup failed code=agent_runtime_unavailable")
                 return self._local_result(message, scope.client_session_id)
 
+        case_loader = None
+        if case_context_enabled and ticket_id is not None and surface in {"ticket", "helpbot"}:
+            from support_case_context import load_case
+            async def case_loader():
+                return await load_case(int(authenticated_owner_id), int(ticket_id), attachment_bot)
+
         try:
             result = await self._harness.run(
                 SupportAgentRequest(
@@ -405,6 +413,7 @@ class SupportAgentService:
                     session_scope=scope,
                     message=message,
                     now=float(self.time_source()),
+                    case_loader=case_loader,
                     safe_diagnostics=tuple(
                         sorted((safe_diagnostics or {}).items())
                     ),
@@ -413,6 +422,11 @@ class SupportAgentService:
         except Exception:
             logger.warning("support agent generation failed code=agent_run_error")
             return self._local_result(message, scope.client_session_id)
+        if isinstance(result, SupportAgentResult) and result.status == "silent":
+            return SupportReplyResult("", scope.client_session_id, (), False, "support_agent")
+        if isinstance(result, SupportAgentResult) and result.answer_origin in {"case_model", "case_local"}:
+            return SupportReplyResult(result.reply, scope.client_session_id, _fallback_actions(),
+                                      result.status == "escalate", "support_agent")
         if not isinstance(result, SupportAgentResult) or result.status != "answer":
             return self._agent_transfer_result(scope.client_session_id)
         if result.answer_origin not in {"model", "grounded_local", "code_owned"}:

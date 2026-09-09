@@ -23,6 +23,40 @@ def _config(*, enabled: bool = True, key: str = "sk-test"):
     )
 
 
+def test_recovery_ticket_does_not_load_case_or_files():
+    from support_agent_service import SupportAgentService
+    harness = _HarnessSpy()
+    service = SupportAgentService(config=_config(), env={"SUPPORT_AI_AGENT_ENABLED": "true"},
+                                  harness_factory=_HarnessFactory(harness))
+    asyncio.run(service.generate(surface="ticket", authenticated_owner_id="123", ticket_id=42,
+                                  message="Помогите восстановить доступ", case_context_enabled=False))
+    assert harness.requests[0].case_loader is None
+
+
+def test_helpbot_conversation_is_scoped_to_ticket():
+    from support_agent_sessions import SupportSessionResolver
+    resolver = SupportSessionResolver()
+    first, second = resolver.resolve_helpbot(123, 41), resolver.resolve_helpbot(123, 42)
+    assert first.owner_scope_hash == second.owner_scope_hash
+    assert first.internal_session_key != second.internal_session_key
+
+
+def test_vision_profile_and_case_escalation_preserve_collected_reply():
+    from dataclasses import replace
+    from support_agent_service import SupportAgentService
+    from support_ai_service import provider_wire_model, provider_response_controls
+    config = replace(_config(), model="deepseek-v4-flash-vision-exp")
+    harness = _HarnessSpy(_agent_result(status="escalate", answer_origin="case_model", grounding_topic_id=None))
+    service = SupportAgentService(config=config, env={"SUPPORT_AI_AGENT_ENABLED": "true"},
+                                  harness_factory=_HarnessFactory(harness))
+    result = asyncio.run(service.generate(surface="ticket", authenticated_owner_id="123", ticket_id=42,
+                                         message="Оплата прошла, а доступа нет"))
+    assert result.reply == "Безопасный ответ агента." and result.should_escalate
+    assert harness.requests[0].case_loader is not None
+    assert provider_wire_model(config) == "deepseek/deepseek-v4-flash-vision-exp"
+    assert provider_response_controls(config)["provider"]["data_collection"] == "deny"
+
+
 def _agent_result(
     *,
     status="answer",

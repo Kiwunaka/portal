@@ -9,7 +9,7 @@ import re
 import secrets
 import time
 from dataclasses import dataclass, field, replace
-from typing import Callable, Mapping, Sequence
+from typing import Awaitable, Callable, Mapping, Sequence
 
 from support_agent_context import (
     MAX_CURRENT_MESSAGE_CHARS,
@@ -195,6 +195,7 @@ class SupportAgentRequest:
     message: str
     now: float
     safe_diagnostics: tuple[tuple[str, str | int | bool | None], ...] = ()
+    case_loader: Callable[[], Awaitable[dict]] | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True, slots=True)
@@ -724,6 +725,41 @@ class SupportAgentHarness:
             escalation_reason=None,
         )
 
+    async def _execute_case(self, request, boundary, session, stats, started) -> _Outcome:
+        from support_case_context import CASE_PROMPT, case_fallback
+
+        case = await asyncio.wait_for(request.case_loader(), timeout=min(25.0, self._remaining(started)))
+        if case.get("operator_handling"):
+            return _Outcome("silent", "", (), None, None, "code_owned", "operator_handling")
+        decision = self.grounding_engine.select(boundary.model_text, session)
+        stats.stable_prefix_hash = hashlib.sha256(CASE_PROMPT.encode("utf-8")).hexdigest()
+        stats.prompt_bundle_sha256 = stats.stable_prefix_hash
+        topics = [{"id": hit.topic_id, "body": hit.body} for hit in decision.context_topics[:2]]
+        payload = json.dumps({"question": boundary.model_text, "case": case, "knowledge": topics},
+                             ensure_ascii=False, separators=(",", ":"))
+        messages = ({"role": "system", "content": CASE_PROMPT},
+                    {"role": "user", "content": payload})
+        remaining = self._remaining(started)
+        if remaining < _MIN_PROVIDER_WINDOW_SECONDS:
+            return _human_transfer("deadline_exhausted", status="fallback")
+        stats.provider_request_count = 1
+        try:
+            turn = await self.adapter.complete_synthesis(messages=messages,
+                request_timeout=min(self.provider_timeout_seconds, remaining))
+            stats.add_turn(turn)
+            model = validate_model_output(turn.content, self.policy,
+                source_text=(CASE_PROMPT + "\n" + "\n".join(t["body"] for t in topics))[:3600])
+        except (ProviderCallError, SafetyValidationError) as exc:
+            stats.error_code = _fixed_error_code(exc)
+            reply = validate_safe_reply(case_fallback(case), self.policy)
+            return _Outcome("escalate", reply, (), None, None, "case_local", stats.error_code)
+        state = state_after_answer(None if session is None else session.state, None,
+                                   classify_conversation_signals(boundary.model_text))
+        if not self._append_pair(request, boundary.model_text, model.reply, state):
+            return _human_transfer("session_write_failed", status="fallback")
+        return _Outcome(model.status, model.reply, (), None, state, "case_model",
+                        "model_escalation" if model.status == "escalate" else None)
+
     async def _execute_locked(
         self,
         request: SupportAgentRequest,
@@ -746,6 +782,9 @@ class SupportAgentHarness:
                 status="escalate",
                 session_state=session.state,
             )
+
+        if request.case_loader is not None:
+            return await self._execute_case(request, boundary, session, stats, started)
 
         signals = classify_conversation_signals(boundary.model_text)
         snapshot_answer = _code_owned_snapshot_reply(
@@ -1042,7 +1081,7 @@ class SupportAgentHarness:
             raise TypeError("support_agent_request_invalid")
         started = self.monotonic()
         stats = _RunStats()
-        boundary = classify_support_input(request.message)
+        boundary = classify_support_input(request.message, allow_case_reads=request.case_loader is not None)
         stats.input_redaction_counts = _closed_counts(boundary.category_counts)
 
         if not self._valid_request_scope(request):
