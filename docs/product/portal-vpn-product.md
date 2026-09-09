@@ -343,7 +343,9 @@ Product wording rule:
 - every valid first device account can receive `5 days`
 - trial must create a real backend account, device, session, and working subscription source
 - trial must never be decorative UI-only state
-- trial is premium-grade access during those `5 days`
+- trial is premium-grade access during those `5 days`, with unlimited traffic
+  on one device; bot tariff copy describes the same in-app trial and must not
+  attach the retired Free tier's traffic quota or location to it
 - the one-time Telegram `+5 days` acquisition reward remains available during
   trial; roulette, calendar, and referral rewards open after the first
   successful payment. App, cabinet, bot, and support must name that split

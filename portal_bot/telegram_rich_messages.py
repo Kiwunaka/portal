@@ -95,28 +95,23 @@ def tariff_choice_copy(
     show_trial: bool,
     paid_count: int,
     paid_list: str,
-    free_label: str,
-    trial_limit_gb: int,
-    trial_device_limit: int,
+    trial_days: int,
     paid_device_limit: int,
     savings: list[str] | tuple[str, ...] = (),
 ) -> RichMessageCopy:
     paid_locations = max(1, int(paid_count or 0))
     paid_list_safe = html.escape(str(paid_list or "доступные локации"))
-    free_label_safe = html.escape(str(free_label or "тестовая локация"))
     savings_safe = ", ".join(html.escape(str(item)) for item in savings if str(item).strip())
     trial_rich = ""
     trial_fallback = ""
     if show_trial:
         trial_rich = (
-            f"<p><mark>{rich_emoji('free')} 5 дней бесплатно</mark><br/>"
-            f"До {int(trial_limit_gb)} ГБ · до {int(trial_device_limit)} устройства · "
-            f"{free_label_safe}</p>"
+            f"<p><mark>{rich_emoji('free')} {int(trial_days)} дней бесплатно в приложении</mark><br/>"
+            "Безлимитный трафик · 1 устройство · без карты</p>"
         )
         trial_fallback = (
-            f"🆓 <b>5 дней бесплатно</b>\n"
-            f"До {int(trial_limit_gb)} ГБ · до {int(trial_device_limit)} устройства · "
-            f"{free_label_safe}\n\n"
+            f"🆓 <b>{int(trial_days)} дней бесплатно в приложении</b>\n"
+            "Безлимитный трафик · 1 устройство · без карты\n\n"
         )
 
     savings_rich = (

@@ -2648,7 +2648,12 @@ class BotPaywallTests(unittest.TestCase):
         text = self.bot_module.build_choose_tariff_text(show_trial=True)
         self.assertIn("5 дней", text)
         self.assertIn("бесплатно", text.lower())
-        self.assertIn("5 ГБ", text)
+        trial_block = text.split("*Платный доступ*", 1)[0]
+        self.assertIn("Безлимитный трафик", trial_block)
+        self.assertIn("1 устройство", trial_block)
+        self.assertIn("в приложении", trial_block)
+        self.assertNotIn("5 ГБ", trial_block)
+        self.assertNotIn("NL Free", trial_block)
         self.assertIn("Безлимитный трафик", text)
         self.assertIn("Фактическая скорость зависит", text)
         self.assertNotIn("Stars", text)
