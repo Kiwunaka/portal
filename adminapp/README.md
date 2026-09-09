@@ -449,7 +449,10 @@ Governance boundary v2:
 
 Все unsafe cookie-authenticated запросы требуют корректный CSRF и доверенный
 Origin. Роли и сессии постоянны и привязаны к environment; сервер перечитывает
-активные роли на каждом запросе. Аудит bootstrap/revoke/step-up сохраняет
+активные роли на каждом запросе. Активность продлевает idle deadline только до
+absolute deadline. При истечении сервер сохраняет причину первого достигнутого
+срока; совпадение сроков после ограничения означает `absolute_expired`.
+Аудит bootstrap/revoke/step-up сохраняет
 snapshot roles/permissions, environment и безопасный correlation ID. Замороженные
 legacy `/api/admin/*` временно принимают v2-cookie только при
 `legacy.admin.access` и с тем же CSRF для unsafe methods; новый frontend больше

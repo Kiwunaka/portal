@@ -2467,6 +2467,38 @@ def test_admin_v2_revoked_role_and_expired_session_fail_closed(monkeypatch, tmp_
         db.close()
 
 
+def test_admin_v2_activity_cannot_extend_absolute_session_expiry(monkeypatch, tmp_path) -> None:
+    monkeypatch.setenv("ADMIN_OPERATOR_SESSION_IDLE_SECONDS", "600")
+    monkeypatch.setenv("ADMIN_OPERATOR_SESSION_ABSOLUTE_SECONDS", "900")
+    api = _load_api(monkeypatch, tmp_path)
+    from admin_v2 import security
+    from models import AdminOperatorSession
+
+    now = _utcnow()
+    monkeypatch.setattr(security, "_utcnow", lambda: now)
+    client = TestClient(api.app, base_url="https://api.pokrov.test")
+    bootstrap = client.post("/api/admin/v2/auth/bootstrap", headers=_admin_headers())
+    assert bootstrap.status_code == 200, bootstrap.text
+    session_id = bootstrap.json()["data"]["session"]["id"]
+    absolute_deadline = now + timedelta(seconds=900)
+
+    now += timedelta(seconds=500)
+    refreshed = client.get("/api/admin/v2/auth/me")
+    assert refreshed.status_code == 200, refreshed.text
+    with api.SessionLocal() as db:
+        session = db.get(AdminOperatorSession, session_id)
+        assert session.idle_expires_at == session.absolute_expires_at == absolute_deadline
+
+    now = absolute_deadline + timedelta(seconds=1)
+    expired = client.get("/api/admin/v2/auth/me")
+    assert expired.status_code == 401
+    assert expired.json()["error"]["code"] == "operator_session_expired"
+    with api.SessionLocal() as db:
+        session = db.get(AdminOperatorSession, session_id)
+        assert session.revoked_at == now
+        assert session.revoke_reason == "absolute_expired"
+
+
 def test_admin_v2_high_risk_permission_requires_fresh_step_up() -> None:
     from admin_v2.security import (
         AdminV2Error,
