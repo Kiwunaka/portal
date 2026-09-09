@@ -1,5 +1,8 @@
 # R12 — текущий результат и граница исполнения
 
+[B07 pool wait, срез 13:24 UTC](EXECUTION-B07-POOL-WAIT-2026-09-09.md): PR #252 слит и `cd4a8b9` развёрнут; 262 tests + 30 subtests, 15 focused, четыре CI и 205 hashes PASS. В production 32 ожидаемых status 404, worker wait max 23 мс, PostgreSQL wait 0, outbox прежний; HTTP queue/timeout/cancel proof получен на Brain loopback. **B07 verified/I5 по исходному DoD**; реальные provider readiness, final candidate и общий план открыты. Прежние записи ниже относятся к датированным срезам.
+
+
 [B07 indexes, срез 12:29 UTC](EXECUTION-B07-INDEXES-2026-09-09.md): PR #251 слит и backend `1ef1f50` развёрнут; 154 tests + 8 subtests, 41 focused, четыре CI и 204 hashes PASS. Два production indexes valid/ready; shift HTTPS read 6368 → 672 мс. На копии 26,59 с → 404 мс при одинаковом полном hash. Commercial pool/connector wait остаётся открытым. O01 V3 idle PASS, absolute RUNNING до 02:37 мск 10 сентября; источник security.py сохранён. Прежние running/deploy записи ниже относятся к их датированным срезам.
 
 

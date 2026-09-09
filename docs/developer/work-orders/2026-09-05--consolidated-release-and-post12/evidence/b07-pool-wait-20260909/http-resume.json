@@ -1,0 +1,47 @@
+{
+  "utc": "2026-09-09T12:46:48.875018+00:00",
+  "origin": "brain-origin isolated exact-source loopback HTTP fixture",
+  "previous_result_sha256": "7ed6a75c2bcbf45dd71551f9330ca0e9677fb9a7107a7c614012300f02c826d9",
+  "source_sha256": {
+    "portal_bot/db.py": "137d92ef03f224c7ea168a9d9f55cfd8a045fda1ed617d6c3bb0baa8801d3d4f",
+    "portal_bot/db_pool_runtime.py": "a5f337924f1580f8da1d65eef0fe9064841bf90477280b73a0afe510bd37239d",
+    "portal_bot/outbound_http.py": "85eebbabb795c14eea405459e63b9388fdbbd624d392249b838616b169c04e3b",
+    "portal_bot/payment_db_runtime.py": "2ff23bb0b54a4a51e2312ab5b8a59483d89e89db43b4f44647d997c667ab64b0"
+  },
+  "aiohttp": "3.13.3",
+  "production_source_modified": false,
+  "provider_contacted": false,
+  "http_default_burst": {
+    "requests": 25,
+    "max_server_active": 20,
+    "lifespan_sessions": 5,
+    "telemetry": [
+      {
+        "provider": "lavatop",
+        "operation": "r12_burst",
+        "status": 200,
+        "result_code": "ok",
+        "count": 25,
+        "latency_total_ms": 964,
+        "latency_max_ms": 58,
+        "connector_queue_entries": 5,
+        "connector_wait_total_ms": 160,
+        "connector_wait_max_ms": 32
+      }
+    ],
+    "all_sessions_closed": true
+  },
+  "http_cancel": {
+    "provider": "lavatop",
+    "operation": "r12_wait",
+    "status": 0,
+    "latency_ms": 25,
+    "result_code": "cancelled",
+    "connector_queue_entries": 1,
+    "connector_wait_ms": 25
+  },
+  "status": "FAILED",
+  "failure_type": "AssertionError",
+  "failure_line": 52,
+  "completed_at": "2026-09-09T12:46:49.124790+00:00"
+}

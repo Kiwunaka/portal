@@ -1,0 +1,73 @@
+{
+  "utc": "2026-09-09T13:24:51.833410+00:00",
+  "status": "PASS",
+  "origin": "brain-origin production HTTPS and on-disk payload",
+  "source_revision": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+  "payload_count": 205,
+  "all_payload_hashes_match": true,
+  "units": {
+    "portal-api": {
+      "MainPID": "84224",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-bot": {
+      "MainPID": "83896",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-helpbot": {
+      "MainPID": "83909",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-feedbackbot": {
+      "MainPID": "83913",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-worker": {
+      "MainPID": "83916",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    }
+  },
+  "all_five_pids_changed": true,
+  "dotenv_commit_matches": true,
+  "process_initial_environment_commit": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+  "process_initial_environment_is_not_dotenv_reload_proof": true,
+  "health": {
+    "status": "ok",
+    "database_pool": {
+      "attempts": 0,
+      "waiting": 0,
+      "max_waiting": 0,
+      "timeouts": 0,
+      "wait_total_ms": 0,
+      "wait_max_ms": 0
+    },
+    "payment_db": {
+      "active": 0,
+      "max_active": 0,
+      "started": 0,
+      "completed": 0,
+      "failed": 0,
+      "queue_wait_total_ms": 0,
+      "queue_wait_max_ms": 0,
+      "duration_total_ms": 0,
+      "duration_max_ms": 0
+    },
+    "event_loop_lag": {
+      "status": "collecting",
+      "interval_ms": 1000,
+      "samples": 9,
+      "last_lag_ms": 0,
+      "max_lag_ms": 27,
+      "lag_total_ms": 33
+    }
+  },
+  "backup_count": 17,
+  "latest_backup": "/root/portal_bot.deploy-backups/portal_bot.env.before-v1.0.2-beta.1-20260812T0116Z",
+  "previous_backup_count": 16,
+  "customer_or_credentials_exported": false
+}

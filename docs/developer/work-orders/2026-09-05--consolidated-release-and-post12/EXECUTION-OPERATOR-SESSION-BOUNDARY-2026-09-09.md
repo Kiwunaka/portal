@@ -131,3 +131,12 @@ HTTP anomalies=0, raw security.py hash и absolute deadline сохранены.
 Source at start `3478fc4`, текущий backend `1ef1f50`; source continuity
 ограничена проверенным security.py, полный source tuple не объявляется неизменным.
 Absolute expiry всё ещё RUNNING_NOT_PASSED.
+
+
+V3 readback **13:27:53 UTC** после [поставки pool observers](EXECUTION-B07-POOL-WAIT-2026-09-09.md):
+тот же PID/start ticks жив; 22-й refresh прошёл в 13:27:21 UTC после
+API restart. HTTP anomalies=0, raw security.py hash и absolute deadline
+23:37 UTC сохранены. Current backend `cd4a8b9`, source at start `3478fc4`;
+continuity ограничена указанным исходником авторизации и процессом.
+[Новый readback](evidence/b07-pool-wait-20260909/session-continuity.json)
+не означает PASS абсолютного истечения; оно RUNNING_NOT_PASSED.

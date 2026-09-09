@@ -1,0 +1,237 @@
+{
+  "status": "PASS_BOUNDED_DEPLOYED_POOL_OBSERVABILITY",
+  "origin": "brain-origin isolated fixtures and production HTTPS",
+  "deployed_source": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+  "pr": "https://github.com/Kiwunaka/portal/pull/252",
+  "feature_source": "78f5977b6627f7e5e1557831785991da449affca",
+  "consolidated_feature_commit": "d295fd9",
+  "tree": "7a3f9d7cacd350eb272955eafc730a0dd6d1b821",
+  "captures": [
+    {
+      "path": "queue-rehearsal.json",
+      "sha256": "7ed6a75c2bcbf45dd71551f9330ca0e9677fb9a7107a7c614012300f02c826d9",
+      "original_raw_sha256": "5362475a2673a81f34b7442a6e983639ecbb1a37bef3d0992788bc16063f9d1f"
+    },
+    {
+      "path": "http-resume.json",
+      "sha256": "0cc2f62f89b5202617eaf7e56bec8b44e87023e348886e4155040c5f7e5b39cb",
+      "original_raw_sha256": "00e88cf5c4b9308aebf6d0e14863420e2a360ca372c3445496ec40c7cb8c7da3"
+    },
+    {
+      "path": "http-py310-final.json",
+      "sha256": "cbbd339043a1dd57294440e0861580f05f830c5605c54cf856e18adbd80feaaf",
+      "original_raw_sha256": "4dd0a3997adddbd6208335cf47f25a809d384dd4be4857aefdb0c2ad95fc57d9"
+    },
+    {
+      "path": "old-timeout-classification.json",
+      "sha256": "66849111ccab56afe7ae037513d467daf18fbb43e3836e9f8c59fe766ae56979",
+      "original_raw_sha256": "bb568ae620ac8a8d4d9b89989d592f7468077d6f5aa6c2fdac7f03ca71a98622"
+    },
+    {
+      "path": "http-session-inventory-final.json",
+      "sha256": "435511aad94d011b3ae05d51abef055d4efe79573ed1757340c8ebb4160727e3",
+      "original_raw_sha256": "9752dcf37ed224cb82b944f4cca8d4d56777bb60a3408a5bf71e0308fa2b7ac0"
+    },
+    {
+      "path": "backend-run-interrupted.json",
+      "sha256": "e005abaa93dd159ebb5229864dc27edb36565460bdf00967aa7cce88d7334fc9",
+      "original_raw_sha256": "99095d1bac086406bae141fa1cbcde491573e41b1f23986238c9b3b468439064"
+    },
+    {
+      "path": "local-verification.json",
+      "sha256": "d06975d057feff4d7e48194f5dbcea6a23540bb510b31aa1fab84d0eac31a991",
+      "original_raw_sha256": "438342d1ecded4a373547569039f11f462da5ecdff561ab08db544f17dc931bb"
+    },
+    {
+      "path": "merged-source-verified.json",
+      "sha256": "b13819c343e2a4ae619221670831c044cff4baab21f7b1dcdf2a59cee439d3fd",
+      "original_raw_sha256": "8b71bdc1ae9c70483e1105315f265669cd537ad7a6c9e720e4527935a22876b2"
+    },
+    {
+      "path": "baseline-at-deploy.json",
+      "sha256": "6f656079024492f54d923f4e84a87cd952d85b5837c0a6768430ff7451089283",
+      "original_raw_sha256": "9b7ef7c2244ee2239b68be0512615c5b77c1b9dd2a625acca8d1a9fd09f18ee4"
+    },
+    {
+      "path": "ci-verified.json",
+      "sha256": "602a2d8bbe269720c25d609f03fe3a001424a1986419402bdd009c510e205455",
+      "original_raw_sha256": "0ab00aa64d1e315c546ca4cfb1a2722015995a32c21cc7ef2f176883970c9b74"
+    },
+    {
+      "path": "build-identity-updated.json",
+      "sha256": "e8756fd29dee7f513821abcf240281c92be5b902f7bb533ffc03abf1f5317796",
+      "original_raw_sha256": "82a3366479fd95af55697c1097b03cd487d9dd7aea7ce5310d896c34eec511be"
+    },
+    {
+      "path": "live-payment-pool.json",
+      "sha256": "4c3cd076ee9acbe9016a294495a56645a14513e08661602dd68dd9fa7159f028",
+      "original_raw_sha256": "355d062bca2e31c1f2bceb67bcfadd47055369756e0bd56b95dc6806190e6be4"
+    },
+    {
+      "path": "post-deploy-readback.json",
+      "sha256": "90b7f0b1c28fecc27b11750e35b671e863256e2aa8f2c55c4a063c67df6a123a",
+      "original_raw_sha256": "a4eee2bee9258c205c34dc9020f1689f50f5c496d268a7f7f865d5303557fdd3"
+    },
+    {
+      "path": "backup-readback.json",
+      "sha256": "dc3d59a7238c5cb206fe4306e02478163ddb6938fa0f2e8bfe8097fcc9bb5543",
+      "original_raw_sha256": "7dc1ad02a60494f7bda2316b3647a373f50b910dfd494880638ea5f0c867f5cd"
+    },
+    {
+      "path": "session-continuity.json",
+      "sha256": "e085abc3fb44e13382de47aba6fd234c45f54b427f69abaea1621c575c15ab98",
+      "original_raw_sha256": "fa5b2735416abb2578e9ce5a30de36db62d22b949d917e3780ec2b23b3417bed"
+    }
+  ],
+  "external_retained_inputs": [
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\backend-provider-final.log",
+      "sha256": "4d4827006d0a92d5db1eec9b21601e5f8c2c3d2ab6701206edc5bc27e2cd23a7"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\backend-provider-regression.log",
+      "sha256": "b1465583f636400d07cfcb4155ca42d335e6ba18991ff96f7a4fd2957fcadf92"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\check-baseline-at-deploy.py",
+      "sha256": "9d470fd00ab434112fedc96745ca74f7da619ffe2c367b24269f40e0955e0b73"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\classify-old-timeout.py",
+      "sha256": "1078e81010d8157327943e7d69bc87879f6ebcb95950faf9ce7659000a070f66"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\deploy-backend.log",
+      "sha256": "09b88a45edf85e9e36fc0eb98f6d338be2da3f9728d2360e98024edd25f3ec29"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\http-after-py310-fix.log",
+      "sha256": "bc4c3655815362047e8dab40428056f66012d205dc344adc3fd42de3d849d3af"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\http-final-remote.py",
+      "sha256": "c9ab057e9239ff340a1095131db834dc42693f47a9b6522b141e68ba272050ee"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\http-resume-remote.py",
+      "sha256": "1e01d3cd25726fb383d763703ab872e3b56b4bf048389527a1c5a836fe47afce"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\inventory-http-sessions.py",
+      "sha256": "498e997b45257305d5d57d05a9ae1a4cab124d0cf15f33b1073e778207c4239a"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\master-guardrails.log",
+      "sha256": "d0802dc8bedca2906b53e5d66a015432f314380df2ee58b363ae75d8dc79530c"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\merged-payload.json",
+      "sha256": "d9217e1bd3a37347495062c7fe6481115f2ed63602f8c717b876b9f04f4c8622"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\observe-payment-pool-runtime.py",
+      "sha256": "b35d06086c25e3ecb9a13ad0ae0313ed3771caf51a3ed17cb1dc8a44d86a273e"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\pr-checks.log",
+      "sha256": "434e97ac1cb99d7ba758fdcfa033fb408e7a2374e01c4f1923aa798b66a61ff1"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\prepare-payload.py",
+      "sha256": "5fdc1cb6284deae88f5abbf9a20285bc7b0336494801678dd02f6af42d99aa84"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\promote-pool.py",
+      "sha256": "fd8ad790d0fde9b89e04fe4b20864cb9dde9c3aa23047d83361984278f790e4a"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\queue-metrics-before.log",
+      "sha256": "bcbf09d1c2ff257288fed3de38931e609cfd09fd874f3e1e4b7f324ec7a4b6e8"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\queue-metrics-final.log",
+      "sha256": "4677603207d10d439f21e58c5d66c01404ad44a823a1f8a993ba154cdf1489da"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\queue-metrics-focused.log",
+      "sha256": "f7d425134f01896b1ee9fb170e7c24b01c3d3e7089ed4cfbdca204638f3e23ee"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\readback-backup.py",
+      "sha256": "3c1f71407956248b2f68f86bdfaf008ffc76bf65785a5daeeb746dd2ad35be92"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\readback-deployment.py",
+      "sha256": "c28ef76783eeddb7fed6c9080c9922b7928e54b88825259b3b37ef91e981713d"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\rehearse-http-final.py",
+      "sha256": "17e4e64aae49c34ff5c9954427bf5ab8cb3a45449126ee2ff4d994967a0ec656"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\rehearse-http-resume.py",
+      "sha256": "e08a0c7158e992515e26fb6e44758e13e3613f19f1d0b06dc6787ef6d70cb6a4"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\rehearse-queue-runtime.py",
+      "sha256": "0b6d6b9295b83b4e0fbecfa84c1764c92b25a5a7c8651ad6302c2b3c5f1db253"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\retain-evidence.py",
+      "sha256": "91adbd3ca5f1061b540449dd3492bdb23d3b9b99bf0f07c1f41cf717c4f56974"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\update-build-identity.py",
+      "sha256": "75d74320f87f9f44d8203377407aa8655cdbacad927d4d98ff6486b56a9e7b47"
+    },
+    {
+      "path": "E:\\r12-pool-wait-evidence-20260909\\verify-ci.py",
+      "sha256": "c8739a946bb98e7af38aab12fb26e28dab80a4e6a980a42ab799bbfc94ddc513"
+    }
+  ],
+  "source_reuse": {
+    "early_database_module_hashes_equal_deployed": true,
+    "final_http_module_hash_equals_deployed": true,
+    "early_entire_run_status": "FAILED_RETAINED_NOT_PASSED"
+  },
+  "limits": [
+    "Single observation windows, not throughput or p95/SLO",
+    "HTTP fixture is loopback, not a payment provider",
+    "No order created, paid operation or provider contact",
+    "B07 scope does not close B06, final candidate or consolidated plan"
+  ],
+  "backup_directory": "/root/portal_bot.deploy-backups/20260909T132325Z-11288",
+  "deploy_exit_code": 0,
+  "restart_units": [
+    "portal-api",
+    "portal-bot",
+    "portal-helpbot",
+    "portal-feedbackbot",
+    "portal-worker"
+  ],
+  "b07_original_dod_status": "VERIFIED_I5",
+  "consolidated_plan_status": "ACTIVE_NOT_COMPLETE",
+  "evidence_checks": [
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "exit_code": 0,
+      "status": "PASS",
+      "path": "E:\\r12-pool-wait-evidence-20260909\\docs-checks.log",
+      "sha256": "3ad662f775402842298035c10f902cca893213e4b20fee94459e60f5dea8e635"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "exit_code": 0,
+      "status": "PASS",
+      "path": "E:\\r12-pool-wait-evidence-20260909\\context-audit.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "exit_code": 0,
+      "status": "PASS",
+      "path": "E:\\r12-pool-wait-evidence-20260909\\package-validation.log",
+      "sha256": "1bcd47b1ddb0f044b8f1073d4e815b952d6bc7a64a19f5bb4552112783633a26"
+    }
+  ]
+}

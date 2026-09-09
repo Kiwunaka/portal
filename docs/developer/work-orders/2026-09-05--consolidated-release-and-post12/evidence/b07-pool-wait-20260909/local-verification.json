@@ -1,0 +1,28 @@
+{
+  "status": "PASS",
+  "checks": [
+    {
+      "command": "python -u -B -m pytest -p no:cacheprovider portal_bot/tests/test_app_first_api.py portal_bot/tests/test_app_first_service.py tests/test_api_auth_and_tickets.py tests/test_subscription_preview_api.py tests/test_lavatop_payment_providers.py tests/test_api_payments_callbacks.py tests/test_payment_entitlement_outbox.py -q",
+      "cwd": "E:/r12-pool-wait-runtime-20260909",
+      "source_revision": "78f5977b6627f7e5e1557831785991da449affca",
+      "source_tree": "7a3f9d7cacd350eb272955eafc730a0dd6d1b821",
+      "exit_code": 0,
+      "status": "PASS",
+      "summary": "262 passed, 19 warnings, 30 subtests passed in 1279.15s",
+      "path": "E:\\r12-pool-wait-evidence-20260909\\backend-provider-final.log",
+      "sha256": "4d4827006d0a92d5db1eec9b21601e5f8c2c3d2ab6701206edc5bc27e2cd23a7"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_payment_db_runtime.py tests/test_payment_http_registry.py -q",
+      "cwd": "E:/r12-pool-wait-runtime-20260909",
+      "source_revision": "78f5977b6627f7e5e1557831785991da449affca",
+      "source_tree": "7a3f9d7cacd350eb272955eafc730a0dd6d1b821",
+      "exit_code": 0,
+      "status": "PASS",
+      "summary": "15 passed",
+      "path": "E:\\r12-pool-wait-evidence-20260909\\queue-metrics-final.log",
+      "sha256": "4677603207d10d439f21e58c5d66c01404ad44a823a1f8a993ba154cdf1489da"
+    }
+  ],
+  "initial_backend_run": "INTERRUPTED_NOT_PASSED"
+}

@@ -1,0 +1,67 @@
+{
+  "utc": "2026-09-09T12:49:22.670939+00:00",
+  "origin": "brain-origin isolated exact-source loopback HTTP fixture",
+  "source_sha256": {
+    "portal_bot/outbound_http.py": "c24a69b7d8d3d2bd8c1f18bcf4db32c8c19aa36f22fd87899f89a7398064de02"
+  },
+  "aiohttp": "3.13.3",
+  "python": "3.10.12",
+  "timeout_types": {
+    "asyncio_aliases_builtin": false,
+    "aiohttp_timeout_is_builtin": false,
+    "aiohttp_timeout_is_asyncio": true
+  },
+  "production_source_modified": false,
+  "provider_contacted": false,
+  "previous_failure_sha256": "0cc2f62f89b5202617eaf7e56bec8b44e87023e348886e4155040c5f7e5b39cb",
+  "http_default_burst": {
+    "requests": 25,
+    "max_server_active": 20,
+    "lifespan_sessions": 5,
+    "telemetry": [
+      {
+        "provider": "lavatop",
+        "operation": "r12_burst",
+        "status": 200,
+        "result_code": "ok",
+        "count": 25,
+        "latency_total_ms": 946,
+        "latency_max_ms": 58,
+        "connector_queue_entries": 5,
+        "connector_wait_total_ms": 155,
+        "connector_wait_max_ms": 31
+      }
+    ],
+    "all_sessions_closed": true
+  },
+  "http_cancel": {
+    "provider": "lavatop",
+    "operation": "r12_wait",
+    "status": 0,
+    "latency_ms": 25,
+    "result_code": "cancelled",
+    "connector_queue_entries": 1,
+    "connector_wait_ms": 25
+  },
+  "http_timeout": {
+    "provider": "lavatop",
+    "operation": "r12_wait",
+    "status": 0,
+    "latency_ms": 150,
+    "result_code": "timeout",
+    "connector_queue_entries": 1,
+    "connector_wait_ms": 150
+  },
+  "http_oversized": {
+    "provider": "lavatop",
+    "operation": "r12_oversized",
+    "status": 200,
+    "latency_ms": 0,
+    "result_code": "response_too_large",
+    "connector_queue_entries": 0,
+    "connector_wait_ms": 0
+  },
+  "http_all_sessions_closed": true,
+  "status": "PASS_HTTP_QUEUE_PY310",
+  "completed_at": "2026-09-09T12:49:22.920573+00:00"
+}
