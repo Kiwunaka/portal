@@ -1,0 +1,38 @@
+{
+  "source_commit": "c7a11f7d2fd974726095ad7aa0619c055273dd15",
+  "workflow_url": "https://github.com/Kiwunaka/pokrov-core/actions/runs/34296498734",
+  "status": "THREE_LANE_REPRODUCIBILITY_PASS_RELEASE_CONTRACT_FAILED",
+  "artifact_ids": [
+    10083655923,
+    10083545186,
+    10083511086,
+    10083376994
+  ],
+  "files": [
+    {
+      "path": "pokrov-core.cdx.json",
+      "bytes": 313047,
+      "sha256": "c36b2731824102cbea1a803c2ea12608473d89394e17bcf6dd01193f41b4c7fe"
+    },
+    {
+      "path": "sing-box.cdx.json",
+      "bytes": 268326,
+      "sha256": "5cd800466e7cf02e72236e576b6ed297dd976042c5e1f262305f1c9280ea382e"
+    },
+    {
+      "path": "core-windows-evidence.json",
+      "bytes": 2340,
+      "sha256": "48a3337d54a7f12d7041aaad48943c4c141c0fd8ddf3b390f0b39110fdecb82f"
+    },
+    {
+      "path": "core-android-evidence.json",
+      "bytes": 2126,
+      "sha256": "9d512aeea6bd5702e1d4df412aad7fb5ce17b6a9990651d3cfca014fd8a0d0b5"
+    },
+    {
+      "path": "core-apple-evidence.json",
+      "bytes": 8299,
+      "sha256": "f48b33cc75dafd491994cf8440ba3ecf75bd97b986c8872286f132057f0037ec"
+    }
+  ]
+}

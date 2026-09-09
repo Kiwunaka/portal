@@ -6,6 +6,16 @@
 текущего плана и необходимые решения без повторных согласований. Технические
 условия выпуска остаются открытыми.
 
+[Draft source review](EXECUTION-PR-DRAFTS-2026-09-09.md): platform PR #242 и
+Core PR #8 опубликованы; platform guardrails и Core tests/Android/Windows
+reproducibility PASS, cross-repository checks FAIL на старых promotion bindings.
+Apple preflight исправлен в Core `c7a11f7`; новый CI подтвердил Core tests и
+повторяемость Android/Windows/Apple builds. Общий run FAILURE из-за contract.
+Merge не было.
+Client push требует 814 580 545 bytes LFS; бесплатный остаток не подтверждён,
+objects не загружались. Владелец подтвердил бюджет $0, платные настройки не
+менялись. Runtime и release acceptance остаются открытыми.
+
 [Brain backup/rehearsal и current quality](EXECUTION-BRAIN-REHEARSAL-2026-09-09.md):
 `235e8a4 / 5760f41 / 02a091c`, 15/15 local steps, preflight без blockers.
 Зашифрованный production snapshot восстановлен: 121 таблица / 2 466 128 строк,

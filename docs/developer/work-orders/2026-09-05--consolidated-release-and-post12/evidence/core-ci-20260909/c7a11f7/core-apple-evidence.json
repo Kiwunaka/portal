@@ -1,0 +1,190 @@
+{
+  "schema": "pokrov.core.pre-candidate-artifact-evidence/v1",
+  "lane": "apple",
+  "state": "PRE_CANDIDATE_LOCAL",
+  "candidate_created": false,
+  "candidate_proven": false,
+  "promotion_authorized": false,
+  "provenance_status": "UNSIGNED_CI_BUILD_EVIDENCE",
+  "source": {
+    "commit": "c7a11f7d2fd974726095ad7aa0619c055273dd15",
+    "clean": true
+  },
+  "toolchain": {
+    "go": "go1.26.8",
+    "runner_os": "macOS"
+  },
+  "workflow": {
+    "run_id": "34296498734",
+    "run_attempt": "1"
+  },
+  "contracts": {
+    "config/release.json": "2f2f63c62b12c0507d6441c324b18f8dfaa9e2cb36883ebd60a81370d4e60e4e",
+    "config/abi-contract.json": "ea4962507e27dd8e46990b88345fcbe7ad1f154a5abd1ba44cc3af42a53375a1",
+    "config/core-event-abi.json": "b6e1708f6879b889d1a4f3bcc3d53d29fe4cb2518d05d5cc2c73a0ae02df2c81",
+    "config/awg2-capability.json": "c473c411025825bfef5a76c64990c5c921e9658b3581210d3a86d72e454fdea8",
+    "config/awg31-capability.json": "1bb49b61549ba7c4a3c2d56df445e919ebb1ed12d42e04b0cb3c915d23240818",
+    "go.sum": "cd1d48bfba17ae7f459a07c2cf70c8ed0b5572bc4f930bec9abcbb5b61b53502",
+    "engine/sing-box/go.sum": "bc563f56a5cb57b3bb01c98758dbf4314f81ed9fbbca35e28fa383bcda9fb91f"
+  },
+  "reproducibility": {
+    "result": "PASS_BYTE_IDENTICAL_TWO_BUILDS",
+    "file_count": 28,
+    "tree_sha256": "4249af5721f26f235dc3d01f760ae0e06dbeb1f256b1f0af1cd4eac9f03b6bf1",
+    "files": [
+      {
+        "path": "PokrovCore.xcframework/Info.plist",
+        "size": 1642,
+        "sha256": "4c5c024aac7a8248122b9f044d50a8ff2a3d37de18afc2f168ac636ce4429946"
+      },
+      {
+        "path": "PokrovCore.xcframework/ios-arm64/PokrovCore.framework/Versions/A/Headers/ref.h",
+        "size": 1163,
+        "sha256": "d76b969941e61d61551ae1e6b7ddc674ac898d422f28cb5dbf8d640ba2ae8df6"
+      },
+      {
+        "path": "PokrovCore.xcframework/ios-arm64/PokrovCore.framework/Versions/A/Headers/PokrovCore.h",
+        "size": 378,
+        "sha256": "83ef658174e382d182e3de7140d3350e0a09a8772bafca4fadd221c76d8b2702"
+      },
+      {
+        "path": "PokrovCore.xcframework/ios-arm64/PokrovCore.framework/Versions/A/Headers/Mobile.objc.h",
+        "size": 1712,
+        "sha256": "89056fc65d3e04c6e8a809c2c516399cb431e549e117f7e910ef66f15989f2e7"
+      },
+      {
+        "path": "PokrovCore.xcframework/ios-arm64/PokrovCore.framework/Versions/A/Headers/Libbox.objc.h",
+        "size": 46927,
+        "sha256": "4969f916ba8e3cc7ca7c278605d7bc127dab87609451f6224d2f85be17c42b85"
+      },
+      {
+        "path": "PokrovCore.xcframework/ios-arm64/PokrovCore.framework/Versions/A/Resources/Info.plist",
+        "size": 212,
+        "sha256": "23daf32c4ca1678d1d486f32bc32e069722f4418854a208828753f3efb7e1eb8"
+      },
+      {
+        "path": "PokrovCore.xcframework/ios-arm64/PokrovCore.framework/Versions/A/PokrovCore",
+        "size": 71267728,
+        "sha256": "20b9315cbcd93a7daee0b475e58c07065432025758173253896bb81745df86b3"
+      },
+      {
+        "path": "PokrovCore.xcframework/ios-arm64/PokrovCore.framework/PokrovCore",
+        "size": 27,
+        "sha256": "20b9315cbcd93a7daee0b475e58c07065432025758173253896bb81745df86b3"
+      },
+      {
+        "path": "PokrovCore.xcframework/ios-arm64_x86_64-simulator/PokrovCore.framework/Versions/A/Modules/module.modulemap",
+        "size": 172,
+        "sha256": "c2cae996fb497d1e33030b07dc1742ed127209253af8de8a460024a8e37017ac"
+      },
+      {
+        "path": "PokrovCore.xcframework/ios-arm64_x86_64-simulator/PokrovCore.framework/Versions/A/Headers/Universe.objc.h",
+        "size": 563,
+        "sha256": "61b1a0cd75801d2d8d1d82ef2accda4477966c691795473d696e45de05fcbc7b"
+      },
+      {
+        "path": "PokrovCore.xcframework/ios-arm64_x86_64-simulator/PokrovCore.framework/Versions/A/Headers/ref.h",
+        "size": 1163,
+        "sha256": "d76b969941e61d61551ae1e6b7ddc674ac898d422f28cb5dbf8d640ba2ae8df6"
+      },
+      {
+        "path": "PokrovCore.xcframework/ios-arm64_x86_64-simulator/PokrovCore.framework/Versions/A/Headers/PokrovCore.h",
+        "size": 378,
+        "sha256": "83ef658174e382d182e3de7140d3350e0a09a8772bafca4fadd221c76d8b2702"
+      },
+      {
+        "path": "PokrovCore.xcframework/ios-arm64_x86_64-simulator/PokrovCore.framework/Versions/A/Headers/Mobile.objc.h",
+        "size": 1712,
+        "sha256": "89056fc65d3e04c6e8a809c2c516399cb431e549e117f7e910ef66f15989f2e7"
+      },
+      {
+        "path": "PokrovCore.xcframework/ios-arm64_x86_64-simulator/PokrovCore.framework/Versions/A/Headers/Libbox.objc.h",
+        "size": 46927,
+        "sha256": "4969f916ba8e3cc7ca7c278605d7bc127dab87609451f6224d2f85be17c42b85"
+      },
+      {
+        "path": "PokrovCore.xcframework/ios-arm64_x86_64-simulator/PokrovCore.framework/Versions/A/Resources/Info.plist",
+        "size": 212,
+        "sha256": "23daf32c4ca1678d1d486f32bc32e069722f4418854a208828753f3efb7e1eb8"
+      },
+      {
+        "path": "PokrovCore.xcframework/ios-arm64_x86_64-simulator/PokrovCore.framework/Versions/A/PokrovCore",
+        "size": 139414400,
+        "sha256": "4671765859bb991fe7dc957b797422ba8cd99c84b58085914e8136ed4bcf6e66"
+      },
+      {
+        "path": "PokrovCore.xcframework/ios-arm64_x86_64-simulator/PokrovCore.framework/PokrovCore",
+        "size": 27,
+        "sha256": "4671765859bb991fe7dc957b797422ba8cd99c84b58085914e8136ed4bcf6e66"
+      },
+      {
+        "path": "PokrovCore.xcframework/macos-arm64_x86_64/PokrovCore.framework/Versions/A/Modules/module.modulemap",
+        "size": 172,
+        "sha256": "c2cae996fb497d1e33030b07dc1742ed127209253af8de8a460024a8e37017ac"
+      },
+      {
+        "path": "PokrovCore.xcframework/macos-arm64_x86_64/PokrovCore.framework/Versions/A/Headers/Universe.objc.h",
+        "size": 563,
+        "sha256": "61b1a0cd75801d2d8d1d82ef2accda4477966c691795473d696e45de05fcbc7b"
+      },
+      {
+        "path": "PokrovCore.xcframework/macos-arm64_x86_64/PokrovCore.framework/Versions/A/Headers/ref.h",
+        "size": 1163,
+        "sha256": "d76b969941e61d61551ae1e6b7ddc674ac898d422f28cb5dbf8d640ba2ae8df6"
+      },
+      {
+        "path": "PokrovCore.xcframework/macos-arm64_x86_64/PokrovCore.framework/Versions/A/Headers/PokrovCore.h",
+        "size": 378,
+        "sha256": "83ef658174e382d182e3de7140d3350e0a09a8772bafca4fadd221c76d8b2702"
+      },
+      {
+        "path": "PokrovCore.xcframework/macos-arm64_x86_64/PokrovCore.framework/Versions/A/Headers/Mobile.objc.h",
+        "size": 1712,
+        "sha256": "89056fc65d3e04c6e8a809c2c516399cb431e549e117f7e910ef66f15989f2e7"
+      },
+      {
+        "path": "PokrovCore.xcframework/macos-arm64_x86_64/PokrovCore.framework/Versions/A/Headers/Libbox.objc.h",
+        "size": 46927,
+        "sha256": "4969f916ba8e3cc7ca7c278605d7bc127dab87609451f6224d2f85be17c42b85"
+      },
+      {
+        "path": "PokrovCore.xcframework/macos-arm64_x86_64/PokrovCore.framework/Versions/A/Resources/Info.plist",
+        "size": 212,
+        "sha256": "23daf32c4ca1678d1d486f32bc32e069722f4418854a208828753f3efb7e1eb8"
+      },
+      {
+        "path": "PokrovCore.xcframework/macos-arm64_x86_64/PokrovCore.framework/Versions/A/PokrovCore",
+        "size": 138305728,
+        "sha256": "f84e58722cc9d4c72b52c62e7411cb1271b5941566dbd3de2aa550a316300726"
+      },
+      {
+        "path": "PokrovCore.xcframework/macos-arm64_x86_64/PokrovCore.framework/PokrovCore",
+        "size": 27,
+        "sha256": "f84e58722cc9d4c72b52c62e7411cb1271b5941566dbd3de2aa550a316300726"
+      },
+      {
+        "path": "PokrovCore.xcframework/ios-arm64/PokrovCore.framework/Versions/A/Headers/Universe.objc.h",
+        "size": 563,
+        "sha256": "61b1a0cd75801d2d8d1d82ef2accda4477966c691795473d696e45de05fcbc7b"
+      },
+      {
+        "path": "PokrovCore.xcframework/ios-arm64/PokrovCore.framework/Versions/A/Modules/module.modulemap",
+        "size": 172,
+        "sha256": "c2cae996fb497d1e33030b07dc1742ed127209253af8de8a460024a8e37017ac"
+      }
+    ]
+  },
+  "sbom": [
+    {
+      "name": "pokrov-core.cdx.json",
+      "size": 313047,
+      "sha256": "c36b2731824102cbea1a803c2ea12608473d89394e17bcf6dd01193f41b4c7fe"
+    },
+    {
+      "name": "sing-box.cdx.json",
+      "size": 268326,
+      "sha256": "5cd800466e7cf02e72236e576b6ed297dd976042c5e1f262305f1c9280ea382e"
+    }
+  ],
+  "evidence_ceiling": "LOCAL_OR_HOSTED_PRE_CANDIDATE_CI"
+}
