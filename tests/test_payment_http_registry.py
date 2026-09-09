@@ -87,6 +87,80 @@ def test_payment_http_policy_env_is_bounded_and_provider_specific(monkeypatch) -
     assert policies["lavatop"].max_response_bytes == 1024
 
 
+@pytest.mark.parametrize("outcome", ["success", "cancel", "timeout"])
+def test_registry_measures_connector_queue_including_interrupted_wait(outcome) -> None:
+    import aiohttp
+    from aiohttp import web
+    from aiohttp.test_utils import TestServer
+
+    async def run():
+        occupied = asyncio.Event()
+        release = asyncio.Event()
+        queued = asyncio.Event()
+        telemetry = []
+
+        async def handler(request):
+            if request.path == "/hold":
+                occupied.set()
+                await release.wait()
+            return web.json_response({"ok": True})
+
+        async def queued_start(*_args):
+            queued.set()
+
+        def session_factory(**kwargs):
+            observer = aiohttp.TraceConfig()
+            observer.on_connection_queued_start.append(queued_start)
+            kwargs["trace_configs"] = [*kwargs.get("trace_configs", []), observer]
+            return aiohttp.ClientSession(**kwargs)
+
+        app = web.Application()
+        app.router.add_post("/{path}", handler)
+        async with TestServer(app) as server:
+            policy = OutboundHttpPolicy(2, 0.2, 2, 1, 1024)
+            async with PaymentHttpRegistry(
+                policies={"lavatop": policy}, session_factory=session_factory,
+                telemetry_sink=telemetry.append,
+            ) as registry:
+                first = asyncio.create_task(registry.post_object(
+                    provider="lavatop", operation="holder", url=str(server.make_url("/hold")),
+                ))
+                await asyncio.wait_for(occupied.wait(), 1)
+                second = asyncio.create_task(registry.post_object(
+                    provider="lavatop", operation="queued", url=str(server.make_url("/read")),
+                ))
+                try:
+                    await asyncio.wait_for(queued.wait(), 1)
+                    await asyncio.sleep(0.025)
+                    if outcome == "success":
+                        release.set()
+                        assert (await second).status == 200
+                    elif outcome == "cancel":
+                        second.cancel()
+                        with pytest.raises(asyncio.CancelledError):
+                            await second
+                    else:
+                        with pytest.raises(OutboundHttpError, match="timeout"):
+                            await second
+                finally:
+                    release.set()
+                    if not second.done():
+                        second.cancel()
+                        await asyncio.gather(second, return_exceptions=True)
+                    await first
+                event = next(event for event in telemetry if event["operation"] == "queued")
+                assert event["connector_queue_entries"] == 1
+                assert event["connector_wait_ms"] >= 20
+                assert event["result_code"] == {
+                    "success": "ok", "cancel": "cancelled", "timeout": "timeout",
+                }[outcome]
+                sample = next(row for row in registry.telemetry_snapshot() if row["operation"] == "queued")
+                assert sample["connector_wait_total_ms"] == event["connector_wait_ms"]
+                assert sample["connector_wait_max_ms"] == event["connector_wait_ms"]
+
+    asyncio.run(run())
+
+
 def test_registry_lifecycle_reuses_sessions_and_emits_safe_telemetry() -> None:
     body = json.dumps({"paymentUrl": "https://checkout.example/pay/1"}).encode()
     responses = [
@@ -140,6 +214,8 @@ def test_registry_lifecycle_reuses_sessions_and_emits_safe_telemetry() -> None:
             "status": 201,
             "latency_ms": telemetry[0]["latency_ms"],
             "result_code": "ok",
+            "connector_queue_entries": 0,
+            "connector_wait_ms": 0,
         },
         {
             "provider": "lavatop",
@@ -147,6 +223,8 @@ def test_registry_lifecycle_reuses_sessions_and_emits_safe_telemetry() -> None:
             "status": 201,
             "latency_ms": telemetry[1]["latency_ms"],
             "result_code": "ok",
+            "connector_queue_entries": 0,
+            "connector_wait_ms": 0,
         },
     ]
     serialized = json.dumps(
@@ -194,6 +272,8 @@ def test_registry_rejects_unbounded_or_malformed_response(chunks, code) -> None:
         "status",
         "latency_ms",
         "result_code",
+        "connector_queue_entries",
+        "connector_wait_ms",
     }
 
 
@@ -232,6 +312,7 @@ def test_api_lifespan_starts_and_closes_payment_registry(monkeypatch) -> None:
         response = client.get("/api/health")
         assert response.status_code == 200
         assert response.json()["payment_db"]["active"] >= 0
+        assert response.json()["database_pool"] is None
         assert all(
             type(value) is int for value in response.json()["payment_db"].values()
         )

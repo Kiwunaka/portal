@@ -4,6 +4,7 @@ import asyncio
 import json
 import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -20,6 +21,55 @@ from payment_db_runtime import (  # noqa: E402
     run_payment_db_use_case,
     run_session_transaction,
 )
+
+
+def test_database_pool_measures_queue_wait_and_preserves_timeout() -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    from sqlalchemy import create_engine, exc
+
+    from db_pool_runtime import ObservedQueuePool
+
+    engine = create_engine(
+        "sqlite://", poolclass=ObservedQueuePool, pool_size=1, max_overflow=0,
+        pool_timeout=0.2, pool_pre_ping=True,
+        connect_args={"check_same_thread": False},
+    )
+    try:
+        held = engine.connect()
+        assert engine.pool.wait_snapshot()["attempts"] == 0
+
+        def read():
+            with engine.connect() as connection:
+                return connection.exec_driver_sql("SELECT 1").scalar_one()
+
+        with ThreadPoolExecutor(max_workers=1) as workers:
+            pending = workers.submit(read)
+            deadline = time.monotonic() + 2
+            while engine.pool.wait_snapshot()["waiting"] == 0 and time.monotonic() < deadline:
+                time.sleep(0.001)
+            assert engine.pool.wait_snapshot()["waiting"] == 1
+            time.sleep(0.025)
+            held.close()
+            assert pending.result(timeout=2) == 1
+        first = engine.pool.wait_snapshot()
+        assert first["waiting"] == 0
+        assert first["attempts"] == 1
+        assert first["timeouts"] == 0
+        assert first["wait_total_ms"] >= 20
+        with engine.connect():
+            before_timeout = engine.pool.wait_snapshot()
+            with pytest.raises(exc.TimeoutError):
+                engine.connect()
+            after_timeout = engine.pool.wait_snapshot()
+        assert after_timeout["attempts"] == before_timeout["attempts"] + 1
+        assert after_timeout["timeouts"] == 1
+        assert after_timeout["wait_total_ms"] - before_timeout["wait_total_ms"] >= 150
+        assert after_timeout["waiting"] == 0
+        assert engine.pool.checkedout() == 0
+    finally:
+        held.close()
+        engine.dispose()
 
 
 def test_slow_payment_db_use_case_does_not_block_event_loop() -> None:

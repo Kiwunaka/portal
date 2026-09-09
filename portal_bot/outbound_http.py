@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -44,6 +45,33 @@ class OutboundHttpPolicy:
 class OutboundHttpResult:
     status: int
     body: dict[str, Any]
+
+
+@dataclass
+class _ConnectorQueueTrace:
+    entries: int = 0
+    wait_seconds: float = 0.0
+    started_at: float | None = None
+
+    def elapsed_ms(self) -> int:
+        waiting = 0.0 if self.started_at is None else time.perf_counter() - self.started_at
+        return int((self.wait_seconds + waiting) * 1000)
+
+
+def _connector_queue_trace_config() -> aiohttp.TraceConfig:
+    trace = aiohttp.TraceConfig(trace_config_ctx_factory=lambda *, trace_request_ctx: trace_request_ctx)
+
+    async def queued_start(_session, context, _params):
+        context.entries += 1
+        context.started_at = time.perf_counter()
+
+    async def queued_end(_session, context, _params):
+        context.wait_seconds += time.perf_counter() - context.started_at
+        context.started_at = None
+
+    trace.on_connection_queued_start.append(queued_start)
+    trace.on_connection_queued_end.append(queued_end)
+    return trace
 
 
 def _bounded_env_int(name: str, default: int, *, minimum: int, maximum: int) -> int:
@@ -122,6 +150,7 @@ class PaymentHttpRegistry:
                 created[provider] = self._session_factory(
                     timeout=policy.timeout(),
                     connector=connector,
+                    trace_configs=[_connector_queue_trace_config()],
                 )
         except Exception:
             for session in created.values():
@@ -154,6 +183,9 @@ class PaymentHttpRegistry:
                     "count": values[0],
                     "latency_total_ms": values[1],
                     "latency_max_ms": values[2],
+                    "connector_queue_entries": values[3],
+                    "connector_wait_total_ms": values[4],
+                    "connector_wait_max_ms": values[5],
                 }
             )
         return rows
@@ -166,26 +198,35 @@ class PaymentHttpRegistry:
         status: int,
         result_code: str,
         latency_ms: int,
+        connector_queue_entries: int,
+        connector_wait_ms: int,
     ) -> None:
         key = (provider, operation, max(0, int(status)), result_code)
-        metric = self._metrics.setdefault(key, [0, 0, 0])
+        metric = self._metrics.setdefault(key, [0, 0, 0, 0, 0, 0])
         metric[0] += 1
         metric[1] += max(0, int(latency_ms))
         metric[2] = max(metric[2], max(0, int(latency_ms)))
+        metric[3] += connector_queue_entries
+        metric[4] += connector_wait_ms
+        metric[5] = max(metric[5], connector_wait_ms)
         event: dict[str, int | str] = {
             "provider": provider,
             "operation": operation,
             "status": key[2],
             "latency_ms": max(0, int(latency_ms)),
             "result_code": result_code,
+            "connector_queue_entries": connector_queue_entries,
+            "connector_wait_ms": connector_wait_ms,
         }
         logger.info(
-            "outbound_http provider=%s operation=%s status=%s latency_ms=%s result_code=%s",
+            "outbound_http provider=%s operation=%s status=%s latency_ms=%s result_code=%s connector_queue_entries=%s connector_wait_ms=%s",
             provider,
             operation,
             key[2],
             event["latency_ms"],
             result_code,
+            connector_queue_entries,
+            connector_wait_ms,
         )
         if self._telemetry_sink is not None:
             try:
@@ -217,8 +258,11 @@ class PaymentHttpRegistry:
         started_at = time.perf_counter()
         status = 0
         result_code = "client_error"
+        queue_trace = _ConnectorQueueTrace()
         try:
-            kwargs: dict[str, Any] = {"headers": dict(headers or {})}
+            kwargs: dict[str, Any] = {
+                "headers": dict(headers or {}), "trace_request_ctx": queue_trace,
+            }
             if json_body is not None:
                 kwargs["json"] = json_body
             if form_body is not None:
@@ -234,7 +278,10 @@ class PaymentHttpRegistry:
         except OutboundHttpError as exc:
             result_code = exc.code
             raise
-        except TimeoutError as exc:
+        except asyncio.CancelledError:
+            result_code = "cancelled"
+            raise
+        except (TimeoutError, asyncio.TimeoutError) as exc:
             result_code = "timeout"
             raise OutboundHttpError(result_code) from exc
         except aiohttp.ClientError as exc:
@@ -247,6 +294,8 @@ class PaymentHttpRegistry:
                 status=status,
                 result_code=result_code,
                 latency_ms=int((time.perf_counter() - started_at) * 1000),
+                connector_queue_entries=queue_trace.entries,
+                connector_wait_ms=queue_trace.elapsed_ms(),
             )
 
 

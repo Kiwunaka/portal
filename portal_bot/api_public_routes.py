@@ -110,6 +110,7 @@ async def health() -> dict:
         "ts": _utcnow().isoformat(),
         "commercial": commercial_health_snapshot(),
         "payment_db": payment_db_runtime_snapshot(),
+        "database_pool": database_pool_snapshot(),
         "event_loop_lag": (
             event_loop_lag_monitor.snapshot() if event_loop_lag_monitor is not None else None
         ),
