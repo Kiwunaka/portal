@@ -19,6 +19,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    func,
     text as sql_text,
 )
 from sqlalchemy.dialects.postgresql import JSONB
@@ -927,6 +928,9 @@ class NodeRuntimeMetric(Base):
     capacity_state = Column(String(32), default="unknown", nullable=False)
     reject_reason = Column(String(64), nullable=True)
     meta_json = Column(Text, nullable=True)
+    __table_args__ = (
+        Index("ix_node_runtime_metrics_lower_node_sampled_id", func.lower(node_code), sampled_at, id),
+    )
 
 
 class KeyUsageRollup(Base):
@@ -2370,6 +2374,9 @@ class SupportTicketMessage(Base):
 
 class NodeHealthSample(Base):
     __tablename__ = "node_health_samples"
+    __table_args__ = (
+        Index("ix_node_health_samples_node_sampled_id", "node_code", "sampled_at", "id"),
+    )
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     node_code = Column(String(20), index=True, nullable=False)

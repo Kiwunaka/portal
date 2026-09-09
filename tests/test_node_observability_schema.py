@@ -88,6 +88,35 @@ class NodeObservabilitySchemaTests(unittest.TestCase):
             }.issubset(cols)
         )
 
+    def test_latest_samples_indexes_survive_legacy_migration(self) -> None:
+        cases = (
+            ("node_health_samples", "ix_node_health_samples_node_sampled_id",
+             ["node_code", "sampled_at", "id"], "node_code = 'lab'"),
+            ("node_runtime_metrics", "ix_node_runtime_metrics_lower_node_sampled_id",
+             [None, "sampled_at", "id"], "lower(node_code) = 'lab'"),
+        )
+
+        def check_indexes():
+            with closing(sqlite3.connect(self.db_path)) as conn:
+                for table, index_name, expected_columns, where in cases:
+                    columns = [row[2] for row in conn.execute(f"PRAGMA index_info({index_name});")]
+                    self.assertEqual(columns, expected_columns)
+                    plan = [row[3] for row in conn.execute(
+                        f"EXPLAIN QUERY PLAN SELECT id FROM {table} WHERE {where} "
+                        "ORDER BY sampled_at DESC, id DESC LIMIT 3;"
+                    )]
+                    self.assertTrue(any(index_name in step for step in plan), plan)
+                    self.assertFalse(any("USE TEMP B-TREE" in step for step in plan), plan)
+
+        check_indexes()
+        with closing(sqlite3.connect(self.db_path)) as conn:
+            for _table, index_name, _columns, _where in cases:
+                conn.execute(f"DROP INDEX {index_name};")
+        migrations = importlib.import_module("migrations")
+        migrations.run_migrations(self.db.engine)
+        migrations.run_migrations(self.db.engine)
+        check_indexes()
+
 
 if __name__ == "__main__":
     unittest.main()
