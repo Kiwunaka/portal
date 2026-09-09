@@ -1,0 +1,47 @@
+{
+  "initial_runtime_review": "enabled=true was retained as REVIEW_REQUIRED; effective empty allowlists and actual gate denial checked separately",
+  "initial_verifier_failure": "Incorrectly expected the AWG3.1 status label for AWG2; corrected to the existing distinct prototype_disabled_by_default status in v2",
+  "raw_root": "E:/r12-a01-acceptance-20260908",
+  "files": [
+    {
+      "sha256": "4b71f0c212d5f2bbef4835c34cd61189dcc334b3078257b9047fc449dfc431c7",
+      "path": "acceptance.json"
+    },
+    {
+      "sha256": "068f759e9256f79cea9891119ad84707e77571a0aeb3e868c6f93705b224a36e",
+      "path": "awg31-sync.json"
+    },
+    {
+      "sha256": "5eb41bac1e2e1bf1395ba6f455f7d66fa7546e82ad4bf41e68eada219d05aa99",
+      "path": "awg2-sync.json"
+    },
+    {
+      "sha256": "026d02dd8f63e4733a1f423002344fa5ce5c13086a9e954d1800ac82e444c143",
+      "path": "contracts-tests.log"
+    },
+    {
+      "sha256": "2f46ded64735e9f09d74ef7badb4a21a7a763a00bcaea7a702ed4f3c3acd73ab",
+      "path": "read-scope.py"
+    },
+    {
+      "sha256": "6b865342e39197c6d2b03c4142b6e2b84ffb4f0daeb445967b33ec455a5e4771",
+      "path": "read-scope.json"
+    },
+    {
+      "sha256": "c89061108295eef5a1b871f9ab06f0e6eb7b5a29f4a18b6380cf5a15840f573e",
+      "path": "read-scope-effective.py"
+    },
+    {
+      "sha256": "c572d87e904efaf2096937dac089b82936478f5c6c86eaf35cbb8ff177e39826",
+      "path": "read-scope-effective.json"
+    },
+    {
+      "sha256": "352b12aedfb03be5bbf9f4f4b004e093b3848f9ade9a5413edf44621145c833d",
+      "path": "verify-acceptance.py"
+    },
+    {
+      "sha256": "c86f2e9f11052891db7aa43fb6c2c3a9c6cc4f06b2f10ce4ec7f137beff52091",
+      "path": "verify-acceptance-v2.py"
+    }
+  ]
+}

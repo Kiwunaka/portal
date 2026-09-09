@@ -1,0 +1,112 @@
+{
+  "recorded_at_utc": "2026-09-05T22:29:15.175086+00:00",
+  "origin": "current-origin Windows local source/fixture checks",
+  "client_source": "2080cee0a8005fcb3c664dffebe0c7448c71a086",
+  "commands": [
+    {
+      "command": "flutter test test/app_first_runtime_bootstrap_test.dart --plain-name \"removes direct from VPN selector\"",
+      "log": "E:/r12-n08-selector-before.log",
+      "sha256": "3b47c2294711c6ba233d921381515bbcbd2edfeff79ddea2121d239bc700d3b9",
+      "exit_code": 1,
+      "result": "2 PASS / 6 FAIL before fix"
+    },
+    {
+      "command": "flutter test test/app_first_runtime_bootstrap_test.dart --plain-name \"removes direct from VPN selector\"",
+      "log": "E:/r12-n08-selector-final.log",
+      "sha256": "9883ad63f379c6634d4def702042743986e317b1dff2a8236d0f1dfbfef333a3",
+      "exit_code": 0,
+      "result": "12 PASS; eight platform/mode combinations plus four Windows runtime-ready chain cases"
+    },
+    {
+      "command": "flutter test test/app_first_runtime_bootstrap_test.dart --plain-name \"effectively empty selection\"",
+      "log": "E:/r12-n08-empty-before.log",
+      "sha256": "5bd05dece43d5172ad8328dc4239fa7eb68f6fb7f15bac69cf11d56f42faa4e8",
+      "exit_code": 1,
+      "result": "2 PASS / 1 FAIL before normalized Windows selection guard"
+    },
+    {
+      "command": "flutter test test/app_first_runtime_bootstrap_test.dart test/client_routing_preferences_test.dart",
+      "log": "E:/r12-n08-routing-final.log",
+      "sha256": "5dabc1c7d98dffbad3af234903687c9f8a86f1cd7219e4d8fec4b3c626654521",
+      "exit_code": 0,
+      "result": "116 PASS"
+    },
+    {
+      "command": "flutter test test/runtime_engine_test.dart",
+      "log": "E:/r12-n08-runtime.log",
+      "sha256": "61f823c05660177f61ed1cd839e611de77b21de3fc4eed3d174d412fc063da04",
+      "exit_code": 0,
+      "result": "80 PASS / 1 retained opt-in DLL skip"
+    },
+    {
+      "command": "flutter analyze --no-pub",
+      "log": "E:/r12-n08-analyze-final.log",
+      "sha256": "3401f1b5572484fcc5a5764516bc5d0869eb4bd0787b5bded1e731cb81e575f5",
+      "exit_code": 0,
+      "result": "PASS no issues"
+    },
+    {
+      "command": "gradlew.bat :app:testDirectDebugUnitTest --tests *AndroidTunPackagePlannerTest --tests *AndroidTunRoutePlannerTest --tests *AndroidTunDnsConfigurationContractTest :app:testStoreDebugUnitTest --tests *AndroidTunPackagePlannerTest --tests *AndroidTunRoutePlannerTest --tests *AndroidTunDnsConfigurationContractTest",
+      "log": "E:/r12-n08-jvm.log",
+      "sha256": "f2635ed72a074837ddc210efcd1fbb38e5ba3a7e5541115e33754f8e87b9062c",
+      "exit_code": 0,
+      "result": "PASS focused host plan contracts; not device proof"
+    },
+    {
+      "command": "pwsh -NoProfile -File scripts/validate-seed.ps1 -CoreRoot E:/r12core-implementation -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start",
+      "log": "E:/r12-n08-seed.log",
+      "sha256": "4e7bad69f6be094eead5cdfb930da89b758226c28933571e4b29c046115d7f0e",
+      "exit_code": 0,
+      "result": "PASS"
+    }
+  ],
+  "jvm_reports": [
+    {
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidTunDnsConfigurationContractTest.xml",
+      "sha256": "197056bb015a6c6a8009cc5901f4040f8658bcaad9f268099ea0561fa17f36d1",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidTunPackagePlannerTest.xml",
+      "sha256": "8f6a22d8c391ec0f3f3e8d8f81fafb0188a9f003732f3be2720512e074f1c694",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testDirectDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidTunRoutePlannerTest.xml",
+      "sha256": "25df35aefdf930e7d1aedace928a77defd57fe69ea4953ffa424c9f8f3ad6853",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidTunDnsConfigurationContractTest.xml",
+      "sha256": "de10112b522258043ae6145eb2a61c2a2f2ebf128f9934017f120ef34d43d5cd",
+      "tests": 1,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidTunPackagePlannerTest.xml",
+      "sha256": "8771d0a56b522664c29aca8ce46d1dcd4849029a5e62a5423a92b0cd10acd909",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0
+    },
+    {
+      "path": "E:\\r12client\\apps\\android_shell\\build\\app\\test-results\\testStoreDebugUnitTest\\TEST-space.pokrov.pokrov_android_shell.AndroidTunRoutePlannerTest.xml",
+      "sha256": "9866ddf9da64636579930116cfc301eb4abf88bf218755a1bfcdcd4054c5f28d",
+      "tests": 6,
+      "failures": 0,
+      "errors": 0
+    }
+  ],
+  "physical_android": "MANUAL_OWNER_TEST",
+  "windows_live_network": "MANUAL_OWNER_TEST",
+  "runtime_ready_windows_scope": "Selector chains only; mode rematerialization, existing DNS server semantics and installed effects still require separate verification",
+  "artifact_identity": "Core 6bc3603 AAR/DLL unchanged; new client package not built",
+  "failed_command_attempt": "selector-after invoked flutter from workspace root (no pubspec); after2 and final executed from app_shell package. No failed result is promoted to PASS."
+}

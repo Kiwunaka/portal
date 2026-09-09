@@ -1417,6 +1417,7 @@ def test_admin_v2_governance_roles_jit_audit_lineage_and_privacy(monkeypatch, tm
         "antiabuse_prefix_hmac",
         "security_event_ip",
         "user_last_ip",
+        "client_network_metadata",
     }
     assert privacy_data["diagnostic_bundles"]["expired_unheld_backlog"] == 0
     session_fields = next(row for row in privacy_data["field_inventory"] if row["family"] == "operator_session")
@@ -4525,6 +4526,8 @@ def test_admin_v2_release_cockpit_and_news_use_guarded_v2_contracts(monkeypatch,
     cockpit = client.get(f"/api/admin/v2/releases/candidates/{candidate_id}/cockpit")
     assert cockpit.status_code == 200, cockpit.text
     assert cockpit.json()["data"]["gate_matrix"]["status"] == "PASS"
+    assert cockpit.json()["data"]["gate_matrix"]["gate_f_decision"] == "NOT_EVALUATED"
+    assert cockpit.json()["data"]["gate_matrix"]["policy_version"] == "pokrov.operator-cockpit-gates/v1"
     assert cockpit.json()["data"]["components"][0]["revision"] == "d" * 40
 
     step_up = client.post(

@@ -1,0 +1,26 @@
+{
+  "backup_path": "/root/backups/r12-20260909/portal-20260908T220837Z-fcadd81db23e.dump.enc",
+  "backup_restore_status": "NOT_RUN",
+  "backup_retention": {
+    "retain_count": 30,
+    "runs_after_verified_restore": true,
+    "status": "NOT_RUN"
+  },
+  "mode": "plan",
+  "mutation_performed": false,
+  "operations": [
+    "strict SSH host-key preflight",
+    "encrypted custom-format backup with no plaintext dump",
+    "encrypted archive list verification",
+    "rehearsal target create and restore as the guarded live application role",
+    "redacted target ownership evidence",
+    "redacted exact-count integrity evidence"
+  ],
+  "origin": "brain",
+  "reset_target": false,
+  "source_database": "portal",
+  "status": "PLAN_ONLY",
+  "support_ownership_status": "NOT_EVALUATED",
+  "target_database": "portal_r12_20260909_rehearsal",
+  "target_role_status": "NOT_RUN"
+}

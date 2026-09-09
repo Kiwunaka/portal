@@ -184,12 +184,17 @@ def test_client_lane_docs_point_to_pokrov_app_as_development_truth() -> None:
         "| Continuing source target | `PRE_CANDIDATE_LOCAL` on `POKROV-app/main` |"
         in app_cutover
     )
-    assert "its `candidate_created=false` describes continuing `main`" in app_cutover
-    assert (
-        "| New public cutover | `BLOCKED_NO_PROMOTABLE_CANDIDATE`; "
-        "build-4051 successor not created |"
-        in app_cutover
-    )
+    assert "`candidate_created=false` describes continuing `main`" in app_cutover
+    release = json.loads(_read_pokrov_app("config/release-handoff.seed.json"))
+    cutover = json.loads(_read_pokrov_app("config/cutover-readiness.seed.json"))
+    candidate = cutover["exact_replacement_candidate"]
+    assert release["release_truth"]["development_target"]["candidate_created"] is False
+    assert candidate["id"] in app_cutover
+    assert cutover["public_cutover_allowed"] is False
+    assert candidate["public_release_created"] is False
+    assert candidate["store_object_created"] is False
+    assert candidate["stable_pointer_mutated"] is False
+    assert "no public asset, Store object or stable pointer exists" in app_cutover
     assert (
         "The existing `1.1.6` publication does not approve new `1.2.0` bytes."
         in app_cutover

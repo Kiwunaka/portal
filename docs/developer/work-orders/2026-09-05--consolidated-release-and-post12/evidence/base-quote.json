@@ -1,0 +1,113 @@
+{
+  "recorded_at_utc": "2026-09-05T14:26:05.715924+00:00",
+  "origin": "current-origin Windows localhost",
+  "scope": "B01 ordinary signed checkout calculation",
+  "outcome": "PASS_LOCAL_SOURCE_AND_SYNTHETIC_PROVIDER",
+  "release": "BLOCKED_NO_NEW_CANDIDATE",
+  "owner_decision": "User approved signed server calculation for ordinary no-promo purchase",
+  "head": "6b41f758ca228a0d5ff13ede0f865096cdac2134",
+  "branch": "codex/consolidated-plan-start-20260905",
+  "committed": false,
+  "deployed": false,
+  "checks": [
+    {
+      "command": "python -u -B -m pytest -p no:cacheprovider -o faulthandler_timeout=60 portal_bot/tests/test_email_auth.py tests/test_api_payments_callbacks.py tests/test_lavatop_payment_providers.py tests/test_payment_email_readiness_smoke.py tests/test_commercial_offer_service.py tests/test_commercial_order_service.py tests/test_payment_order_service.py -q",
+      "result": "153 passed; 14 subtests; 19 warnings; followed by focused final-source checks",
+      "exit_code": 0,
+      "retained_local_log": "E:/r12-base-quote-regression.log",
+      "log_sha256": "238b0aceddb935bef46e3343669164874d3d6f40858d970a02842ea4007efcec"
+    },
+    {
+      "command": "python -u -B -m pytest -p no:cacheprovider tests/test_api_payments_callbacks.py -k 'base_quote or anonymous_start99_rejects' -q",
+      "result": "3 passed, 88 deselected in 15.94s",
+      "exit_code": 0,
+      "retained_local_log": "E:/r12-base-quote-focused-final.log",
+      "log_sha256": "df77bf926c4a1c28989f709f9e54a7f5d480c042fd287759fe5e8ce42b86a0e1"
+    },
+    {
+      "command": "npm.cmd --prefix marketing run build",
+      "result": "PASS",
+      "exit_code": 0,
+      "retained_local_log": "E:/r12-base-quote-build-final.log",
+      "log_sha256": "577fe18f4573545c71d46d907a0688e9c8bb59db13f02f8aea9ffd03c0c38c09"
+    },
+    {
+      "command": "npm.cmd --prefix marketing run check:responsive",
+      "result": "PASS nine synthetic checkout cases and responsive suite; followed by final copy-only build",
+      "exit_code": 0,
+      "retained_local_log": "E:/r12-base-quote-responsive.log",
+      "log_sha256": "2c04a466a1ee41ea56d19eb3aaf7164001a0e0f66b32d544e00c448e9121a969"
+    },
+    {
+      "command": "node E:/r12-base-quote-browser.mjs",
+      "result": "PASS real local API + synthetic provider, desktop",
+      "exit_code": 0,
+      "retained_local_log": "E:/r12-base-quote-browser-final.log",
+      "log_sha256": "a5ed29c4b11b89467652809622b4081eb1d5f817bbeb9d5bd21c91f256bc455c"
+    },
+    {
+      "command": "node E:/r12-base-quote-browser.mjs --mobile",
+      "result": "PASS real local API + synthetic provider, mobile",
+      "exit_code": 0,
+      "retained_local_log": "E:/r12-base-quote-browser-mobile.log",
+      "log_sha256": "4e7ef647b5973bb59de67e26c002ae4fdd3b76d48ef4faa10d3bfde0f0f89a3a"
+    },
+    {
+      "command": "npm.cmd --prefix marketing run check:seo",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_frontend_text_integrity.py tests/test_public_copy_guardrails.py tests/test_marketing_governance.py tests/test_winback_pilot.py tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "exit_code": 0,
+      "result": "72 passed in 1.52s"
+    },
+    {
+      "command": "python -B C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\docs\\developer\\work-orders\\2026-09-05--consolidated-release-and-post12\\validate_package.py",
+      "exit_code": 0,
+      "result": "PASS: 13 imported section hashes, 83 R12 IDs, 378 retained legacy IDs and ledger hash, 113 local file links"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0,
+      "result": "PASS"
+    }
+  ],
+  "screenshots_sha256": {
+    "E:/r12-base-quote-browser.png": "814fe0e2c1f7c4de4e431fb99a3c96ac03af3abf3dfe9b6d6a357667a25bd35f",
+    "E:/r12-base-quote-browser-mobile.png": "e161e3bf3f387ff144c5c92c68037b5d91885bbc16f7304d730b7069ef24056e"
+  },
+  "harness_sha256": {
+    "E:/r12-base-quote-http.py": "6c302a46711be9a7f222ff14c5947b3f6041a7f49b7981a9ef94188262d8d725",
+    "E:/r12-base-quote-browser.mjs": "5526403be2281478f216752380f7f82f3f56f1186ad44e4eae8f0844ef12d3fa"
+  },
+  "limitations": [
+    "Not PostgreSQL concurrency proof",
+    "Not live provider or production checkout proof",
+    "Not release completion; no replacement AAR or candidate",
+    "Legacy API callers without quote continue existing server pricing"
+  ],
+  "changed_source_files_sha256": {
+    "docs/README.md": "2d7135ec20ff64ced607da4994c5b7b0fc5464533fa89220d3126cb40bb1232f",
+    "docs/architecture/payment-state-machine.md": "ed8f04e09293e2d3c1c8b70baf349f4c7591d70ff4007e605969d32538e2b04b",
+    "docs/developer/agent-context-map.md": "2e28d42d76f5dea3fcea8d536f6bff2e8648d5f0e5b61e12156c5d3cf6ac5c47",
+    "docs/product/payment-and-access-key-contract.md": "f0d0f23aa2a4c7957202f134265eb7674d5fc6571c30dfec660f346d53d542d5",
+    "marketing/scripts/check-marketing-responsive.mjs": "059882165fbfabcc118976bd52c44abcf31f09a93ff9b811a1295f8fa12a9cc1",
+    "marketing/src/app/checkout/checkout-client.tsx": "b50818859a1332388823072ed1f6a408e57427a7d3e49bbf2aa791be88c32f44",
+    "portal_bot/api.py": "c7817962d910cba903e1e9f88b255e1a4f1049bccdca0f208877b63422630364",
+    "portal_bot/api_client_routes.py": "a7b2397bd8fc73a8cd1c60a15a84e3d320eb211362eff3e5801c7a30ca85e3f5",
+    "portal_bot/api_commercial_offer_routes.py": "cc23556ba977dc23f86b74674169e71a915fc460c3b4cb12a3f553983bc24b06",
+    "portal_bot/api_payment_routes.py": "ac71e53ab11d294ba0e8b693854a479a98f7e378c96da87b8c6304d04854bf84",
+    "portal_bot/api_public_routes.py": "ea61cdcd66d22997775fd9d99bff307e9ffee55febbad1a7a2ce7c6fefc9f303",
+    "portal_bot/payment_order_service.py": "98cc464efde4c528d4a5b90246a9c772da129d7d1222caaf401872b191efe8bf",
+    "tests/test_api_payments_callbacks.py": "7ba68b950eea4309cecf18addd6a10db2198e363ea3977e7a6c56bea1359812a",
+    "portal_bot/checkout_quote_service.py": "ec019ad05a700e205f83c34332bc2afefd6374de73afd65158de21279843fbd5",
+    "marketing/scripts/check-checkout-authority.mjs": "1fd3ac2a01df356880d3db5427d30c8cdb98aef5c9159f317317c9b6d66bf222"
+  },
+  "diff_sha256": "4049c838cd875fc5a2d9d7f18940c4803fbbcc35d8b2abb0ff5b0efd6c687860"
+}

@@ -1,0 +1,93 @@
+{
+  "recorded_at_utc": "2026-09-09T01:14:02.038190+00:00",
+  "origin": "current-origin GitHub REST",
+  "observations": [
+    {
+      "repository": "Kiwunaka/portal",
+      "branch": "master",
+      "visibility": "public",
+      "admin_access": true,
+      "before": {
+        "endpoint": "repos/Kiwunaka/portal/branches/master/protection",
+        "method": "GET",
+        "exit_code": 1,
+        "response": {
+          "message": "Branch not protected",
+          "documentation_url": "https://docs.github.com/rest/branches/branch-protection#get-branch-protection",
+          "status": "404"
+        },
+        "stderr": "gh: Branch not protected (HTTP 404)"
+      },
+      "rulesets": {
+        "endpoint": "repos/Kiwunaka/portal/rulesets",
+        "method": "GET",
+        "exit_code": 0,
+        "response": [],
+        "stderr": ""
+      },
+      "request_file": "portal-request.json",
+      "signature_followup": {
+        "method": "POST",
+        "endpoint": "repos/Kiwunaka/portal/branches/master/protection/required_signatures"
+      }
+    },
+    {
+      "repository": "Kiwunaka/POKROV-app",
+      "branch": "main",
+      "visibility": "public",
+      "admin_access": true,
+      "before": {
+        "endpoint": "repos/Kiwunaka/POKROV-app/branches/main/protection",
+        "method": "GET",
+        "exit_code": 1,
+        "response": {
+          "message": "Branch not protected",
+          "documentation_url": "https://docs.github.com/rest/branches/branch-protection#get-branch-protection",
+          "status": "404"
+        },
+        "stderr": "gh: Branch not protected (HTTP 404)"
+      },
+      "rulesets": {
+        "endpoint": "repos/Kiwunaka/POKROV-app/rulesets",
+        "method": "GET",
+        "exit_code": 0,
+        "response": [],
+        "stderr": ""
+      },
+      "request_file": "POKROV-app-request.json",
+      "signature_followup": {
+        "method": "POST",
+        "endpoint": "repos/Kiwunaka/POKROV-app/branches/main/protection/required_signatures"
+      }
+    },
+    {
+      "repository": "Kiwunaka/pokrov-core",
+      "branch": "main",
+      "visibility": "public",
+      "admin_access": true,
+      "before": {
+        "endpoint": "repos/Kiwunaka/pokrov-core/branches/main/protection",
+        "method": "GET",
+        "exit_code": 1,
+        "response": {
+          "message": "Branch not protected",
+          "documentation_url": "https://docs.github.com/rest/branches/branch-protection#get-branch-protection",
+          "status": "404"
+        },
+        "stderr": "gh: Branch not protected (HTTP 404)"
+      },
+      "rulesets": {
+        "endpoint": "repos/Kiwunaka/pokrov-core/rulesets",
+        "method": "GET",
+        "exit_code": 0,
+        "response": [],
+        "stderr": ""
+      },
+      "request_file": "pokrov-core-request.json",
+      "signature_followup": {
+        "method": "POST",
+        "endpoint": "repos/Kiwunaka/pokrov-core/branches/main/protection/required_signatures"
+      }
+    }
+  ]
+}

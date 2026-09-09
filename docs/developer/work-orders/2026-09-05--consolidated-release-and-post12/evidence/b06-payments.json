@@ -1,0 +1,174 @@
+{
+  "schema": "pokrov.r12.b06-payments/v1",
+  "date": "2026-09-06",
+  "recorded_at": "2026-09-06T02:55:47.559278+00:00",
+  "status": "PARTIALLY_FIXED",
+  "implementation_level": "I3",
+  "origin": "current-origin Windows host, loopback PostgreSQL 16.15 and isolated SQLite/provider fixtures",
+  "platform_source": "58e3684b9071921d289d009f6993385f2fa7b902",
+  "client_source": "ded58b1906bbfb1096ff919085ef37f5be942eb7",
+  "core_source": "94dd31012ac91fb9ecf2c98ad7383afb54102dd4",
+  "candidate_created": false,
+  "promotion_authorized": false,
+  "commands": [
+    {
+      "command": "python -B E:/r12-run-postgres-outbox.py -> python -u -B -m pytest -p no:cacheprovider tests/test_payment_outbox_postgres.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b06-outbox-pg-before.log",
+      "sha256": "03b849a3271356568c8416b817fe59230835f280cb423b9bbf97a07bb3f08e59",
+      "exit_code": 1,
+      "result": "FAIL recovery stole active dispatch claim; 1 failed",
+      "note": "Runner uses existing loopback fixture password file through environment, never printed. The same runner later changes only the output log path."
+    },
+    {
+      "command": "python -B E:/r12-run-postgres-outbox.py -> python -u -B -m pytest -p no:cacheprovider tests/test_payment_outbox_postgres.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b06-outbox-pg-after.log",
+      "sha256": "1a7e73c075bec42cab7d2a92c486a66aaa1007ccc24469100ba6177078f37324",
+      "exit_code": 0,
+      "result": "PASS 1; two PostgreSQL backend PIDs, one job/grant"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_api_payments_callbacks.py -k unbound_reversal_envelopes -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b06-envelope-before.log",
+      "sha256": "e9fdfcc7d85bd3f940d9cff8bd80931844beec427eba8274e2de3eb723f8c140",
+      "exit_code": 1,
+      "result": "FAIL 2 subtests, parent test 1 passed, 91 deselected"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_api_payments_callbacks.py -k 'unbound_reversal_envelopes or lavatop_callback or refund_reverses or late_paid_after_reversal' tests/test_lavatop_payment_providers.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b06-envelope-after.log",
+      "sha256": "b6b626afd93859370ef89b708583eb363d0649d251930e9919785c0675ffdce1",
+      "exit_code": 0,
+      "result": "PASS 9 and 2 subtests; 90 deselected"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_api_payments_callbacks.py -k lavatop_paid_callback_mismatches -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b06-amount-before.log",
+      "sha256": "496a79195cbde05dcaf9f1d7b65ea2cccd7185d5e5b51f7ed0d3d8746c329e0d",
+      "exit_code": 1,
+      "result": "FAIL fractional kopeck and NaN accepted as paid; 2 failed subtests / 4 passed subtests; parent 1 passed"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_api_payments_callbacks.py -k 'lavatop or refund_reverses or late_paid_after_reversal or commercial_offer_order' tests/test_lavatop_payment_providers.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b06-lava-final.log",
+      "sha256": "c67d235da93bfbb8680df61189990c2e55216d21f0877275f9e86f0c57bd34cd",
+      "exit_code": 0,
+      "result": "PASS 22 and 8 subtests; 77 deselected",
+      "note": "Final affected-provider checks after Decimal amount validation and event_id changes. Six mismatch subtests and two envelope subtests; all seven provider adapter tests selected by module name."
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider portal_bot/tests/test_email_auth.py tests/test_api_payments_callbacks.py tests/test_lavatop_payment_providers.py tests/test_payment_email_readiness_smoke.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b06-payment-router.log",
+      "sha256": "9e7e1e86116005710e42e707c57b9451c4b8b86038264eba462a2d2aa9dbb00b",
+      "exit_code": 0,
+      "result": "PASS 125 and 14 subtests; 19 deprecation warnings",
+      "note": "Required router suite launched before the three source fixes and new test methods. Final changed Lava.top behavior checked separately above; no claim this is an exact final-source whole-suite rerun."
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_payment_entitlement_outbox.py tests/test_payment_entitlement_claims.py tests/test_payment_db_runtime.py tests/test_payment_bounded_context.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b06-outbox-regression.log",
+      "sha256": "a2c08ccba6bb5c8abc8e6194b1f6cd7a84e47f75ea313fb662a660e4a369a180",
+      "exit_code": 0,
+      "result": "PASS 46; one Python 3.12 SQLite datetime-adapter deprecation warning"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_admin_payments_api.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b06-reconciliation-api.log",
+      "sha256": "257aca95501aa16bf2507941b640f9b906fb6b248b200645e4b34cdb99bb5bfc",
+      "exit_code": 0,
+      "result": "PASS 3"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_node_provisioning_service.py -k payment_entitlement_sync -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b06-payment-sync.log",
+      "sha256": "7fa5c353d9ad6cbd90cce018bb43b01becb6bd04967be2092d5d3a493ac2d987",
+      "exit_code": 0,
+      "result": "PASS 2; 55 deselected"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b06-docs.log",
+      "sha256": "ec23b3930fde9f6a8f776ce67609009a916b7f347b9a7e5a71e55ec16ac4a69b",
+      "exit_code": 0,
+      "result": "PASS 33"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b06-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-b06-package.log",
+      "sha256": "3b73dcdcb885a9998bb2ae9c5e43c4a34da0b450545ac4086c3b34a1f3c82f5a",
+      "exit_code": 0,
+      "result": "PASS 13 imports / 83 R12 / 378 legacy / 167 links"
+    }
+  ],
+  "changed_source_files": {
+    "docs/architecture/payment-state-machine.md": "5a3d178887de89bc70cc3974e26b641a2afac8f2ed4941ad1b7f871e7b9bbc93",
+    "docs/operations/lavatop-payment-operations.md": "0fb08e34f6cd3cb13d3eba301f2f8a3b788b67737dab2f3226a08382f4e897da",
+    "docs/operations/payment-reconciliation.md": "d62c5d1e6b2af27491168305afff19c7417f8d2837f40c4ae629d38271bad4d0",
+    "portal_bot/api.py": "7f0ee0fd473f9c98a63b72c1c03fb490ceeefec2d3ebdd2177215dee3aee2b73",
+    "portal_bot/payment_entitlement_outbox.py": "45a75353821e76e30418d98006128a3aa7b6c773d916218e4685b2cbe1a3348e",
+    "portal_bot/payment_providers.py": "265b26f07dd59fd3a94fc0629ade733bf926687972070905710d57ae55761a00",
+    "tests/test_api_payments_callbacks.py": "efb585d84c3852a30a7926129cdb673a102d268e798c9f0ceb117f8d77efce50",
+    "tests/test_payment_outbox_postgres.py": "e0358ee7b8b5a4ebb531db288f8e2726995300cf9cf5582c9ce54f46a2dadc10"
+  },
+  "inspected_contract_sources": {
+    "portal_bot/payment_callback_application.py": "5898c16a44faeccd873d9d7a87ff2bd828beedaf57859295f60d4b9e1e77e6f2",
+    "portal_bot/payment_entitlement_service.py": "0dad090d94ca5f5c25a5fa6165c908558d8c17855563805eb8acd3f1b1015635",
+    "portal_bot/economy_service.py": "8be45dbc6041a9139a492fd2134d9dbd7f44f8922f8ecf67f8d14f48b02deeb0",
+    "portal_bot/node_provisioning_service.py": "262c14c3d98755bcf1e29aab16a830c87a444433845ce062adb653c3ca3669f1",
+    "tests/test_public_checkout_postgres.py": "9df050b288ce4304d316ed3e7967c0b0a20fdc144f8528c9f18f346e991565df",
+    "tests/test_payment_entitlement_outbox.py": "ac81e766ce2f618a5ef991ca86787dbe89832eb80cfaf50cea8e99ac993ccddb",
+    "tests/test_admin_payments_api.py": "9c6b2b1e747e349a3663e05d06d79077a8178ae61ecf269b95edbf297ebd8913"
+  },
+  "postgres_environment": {
+    "server_version": "16.15",
+    "database": "r12_checkout_rehearsal",
+    "loopback": true,
+    "fixture_only": true
+  },
+  "retained_local_artifacts": {
+    "E:/r12-run-postgres-outbox.py": "254e2c46e14eb9c19a489e720994cfd266179bf41f19cb63bb993ccfd4517018",
+    "E:/r12-b06-postgres-environment.json": "320643681f18755558b689ae8413e1249fcadb89c74dbb21c6f27b2d7a01c443"
+  },
+  "provider_documentation": {
+    "url": "https://developers.lava.top/en",
+    "retrieved_on": "2026-09-06",
+    "authority": "official public documentation, not merchant/runtime evidence",
+    "observations": [
+      "Refund and chargeback use event_id/event_type/data envelopes; payment/subscription retains the flat format.",
+      "Published reversal examples lack local order ID and original contract ID; automatic matching is not established.",
+      "Provider sandbox support was not verified; the fetched FAQ exposed the question without its answer."
+    ],
+    "external_operations": false
+  },
+  "manual_gates": {
+    "controlled provider sandbox or explicitly authorized live payment/refund/reconciliation": "MANUAL_OWNER_TEST",
+    "new reversal envelope production delivery and order binding": "NEEDS_RUNTIME_PROOF / NEEDS_CONTEXT",
+    "partial refund entitlement/revenue policy and execution": "NEEDS_CONTEXT",
+    "B08 complete restore/migration/deploy/rollback matrix": "OPEN; outbox race is one local DB check only",
+    "new candidate/publication/signing/deploy/production mutation/payment/refund": "NOT_REQUESTED"
+  },
+  "verification_notes": [
+    "Existing disposable loopback PostgreSQL schemas are retained; no production database changes.",
+    "No new dependencies, payment schema or telemetry sources. Test file historical mixed line endings preserved outside changed methods.",
+    "Provider, email and panel calls in tests are fixtures. Receipt manual_review response does not establish a matched order-specific operator case or completed reconciliation."
+  ]
+}

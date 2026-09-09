@@ -1,0 +1,238 @@
+{
+  "schema_version": "pokrov.r12-c05-static-triage/v1",
+  "date": "2026-09-06",
+  "status": "PARTIALLY_FIXED",
+  "scope": "Nine residual IDs from EXECUTION-C05.md; five exact runtime target graphs. No exhaustive discovery or runtime validation.",
+  "source_tuple": {
+    "platform": "f571172344a6e9b2214802aa2707f7867594eb5f",
+    "client": "b0f4374c8ac00840aaa52c170121ba310133bef0",
+    "core": "8dc57a830bd1487389dd1b7c9190f094c31e13bc"
+  },
+  "result_counts": {
+    "not_actionable": 7,
+    "needs_review": 2,
+    "confirmed": 0
+  },
+  "triage_result_sha256": "12cb871ea4f013d43eeeba4cace7c94178eaba09f9643a6d73373430ea940774",
+  "evidence_archive": {
+    "path": "E:\\r12-c05-triage\\triage-static-evidence.zip",
+    "bytes": 723091,
+    "sha256": "cddb5a13114f9afe1919800d8679f595a0dd6cef7983fa99e7e328149420d2c5"
+  },
+  "inputs": [
+    {
+      "path": "E:\\r12-c05-triage\\assemble-triage.py",
+      "bytes": 9086,
+      "sha256": "a17ba323f79f616f30f5553502735fa1824192930c69b3f12b19104db7b51170"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\current-advisory-fetch.json",
+      "bytes": 3029,
+      "sha256": "94511842ddd342f2e950ff5a5add5a1e3c76c644848a73b9a0f0bd7cee25e488"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\edwards-importers.json",
+      "bytes": 815,
+      "sha256": "488f11efcccb3ae35ec1feb1d57b254b7d63dc48dbfc3f899bb45c4f22ae7b53"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\native-symbol-references.json",
+      "bytes": 4,
+      "sha256": "a5338d955b09046ec0b16f3a9625b7955c763aae07dc722e474e6078745f932f"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\normalized-inputs.json",
+      "bytes": 16969,
+      "sha256": "9a22f7d7a1e43ab508eac28a8be7556ff04985468ee7ad7721ff14f300153178"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\package-advisory-matrix.json",
+      "bytes": 4955,
+      "sha256": "5069edbe0e025dd9c57ec537178768d4d4a03b097715516ebcfb4b78b1f13004"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\policy-build-scripts.md",
+      "bytes": 549,
+      "sha256": "c520f0b366b2d233b0fd13a09c3a43f90bb254fb5b6e5d4409ad6d810fbdc2e9"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\policy-clash.json",
+      "bytes": 549,
+      "sha256": "c520f0b366b2d233b0fd13a09c3a43f90bb254fb5b6e5d4409ad6d810fbdc2e9"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\policy-platform.json",
+      "bytes": 549,
+      "sha256": "c520f0b366b2d233b0fd13a09c3a43f90bb254fb5b6e5d4409ad6d810fbdc2e9"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\retain-report.py",
+      "bytes": 11180,
+      "sha256": "94c3f492cc644ba4b78771c53c58fcea651928bbd98a8946fd242341e67827cf"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\selected-source-symbol-matches.json",
+      "bytes": 4067,
+      "sha256": "4b28f4661915061bb268aa2caa04383f20638b1b468383b63698eb8f39c5a698"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\source-file-inventory.json",
+      "bytes": 2817604,
+      "sha256": "fa432bd61a8d660c8e523907e2c1f32c4622cdaee49b1d3572740997a7aa24fa"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\supplied-advisories.json",
+      "bytes": 18797,
+      "sha256": "c904e351d8358a27b1bd380041d8b162985ddf5be63d7eeef1fb4d50bed3cc89"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\triage-result.json",
+      "bytes": 41655,
+      "sha256": "12cb871ea4f013d43eeeba4cace7c94178eaba09f9643a6d73373430ea940774"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\current-advisories\\GO-2026-4316.json",
+      "bytes": 1583,
+      "sha256": "615740fec4e81c0f61e434fc46f86b86f1ec1aa5b24d6f290d222dd775260df5"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\current-advisories\\GO-2026-4503.json",
+      "bytes": 1119,
+      "sha256": "602633ab36c1638dc223ad0b53d7d00defaf1df983a1e08c4ef64b0390041940"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\current-advisories\\GO-2026-5774.json",
+      "bytes": 870,
+      "sha256": "fc3aef78993454d10b3eae0eb543fc0280f7757b10c2606ed6a4e6b172215584"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\current-advisories\\GO-2026-5775.json",
+      "bytes": 959,
+      "sha256": "743c5c10dda720593b543ced656bb9954b03db801dc7a5245882af0ff74634ef"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\current-advisories\\GO-2026-5777.json",
+      "bytes": 987,
+      "sha256": "80958eac9786f1bbfa29d679fe4cdccf0b99350372cc22d3a6df322ccf85563f"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\current-advisories\\GO-2026-5841.json",
+      "bytes": 933,
+      "sha256": "73f13c3cc3bfb456dca05e42a3443a9b39d294ee58a69037c12595fba805e00c"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\current-advisories\\GO-2026-5932.json",
+      "bytes": 1251,
+      "sha256": "f277b0400996200a7d5034c676661cd8cf18adeab1fdc5d0dc369e456ddf1fad"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\current-advisories\\GO-2026-6179.json",
+      "bytes": 1701,
+      "sha256": "0c9188802ec6e0fe75d24c187ec7af3e75e9dee649fcba31caed55d6b14dc6ae"
+    },
+    {
+      "path": "E:\\r12-c05-triage\\current-advisories\\GO-2026-6180.json",
+      "bytes": 1524,
+      "sha256": "440cf96581be963cc51ab4bb32029107d682138dfb2156d935132c981f76fa4d"
+    },
+    {
+      "path": "E:\\r12-c05-utls-review\\libpokrov-core-arm64-v8a.packages.json",
+      "bytes": 825982,
+      "sha256": "398d3b0521cfc2364853cc10d1664e1af3a1f7250083ca1466f23985d9ec0983"
+    },
+    {
+      "path": "E:\\r12-c05-utls-review\\libpokrov-core-armeabi-v7a.packages.json",
+      "bytes": 821888,
+      "sha256": "87ef437e651a830e03e5f77b0ac8716693e095a488c205cf11981df480676683"
+    },
+    {
+      "path": "E:\\r12-c05-utls-review\\libpokrov-core-x86.packages.json",
+      "bytes": 822206,
+      "sha256": "8a9efac4e159e5fd37de1f54980048835dbd768b32d26ce69389feb51f95f2d0"
+    },
+    {
+      "path": "E:\\r12-c05-utls-review\\libpokrov-core-x86_64.packages.json",
+      "bytes": 827740,
+      "sha256": "b31e7952bf47317c644abef61746d1d6ce0a1793111ee436101d6806f63ce3e1"
+    },
+    {
+      "path": "E:\\r12-c05-utls-review\\pokrov-core.packages.json",
+      "bytes": 814376,
+      "sha256": "fae1f6bc49e44b72196f178b1a1e506af2141660f59b28b10f3f8b81b92f25f7"
+    },
+    {
+      "path": "E:\\r12-c05-utls-review\\package-graphs-summary.json",
+      "bytes": 460,
+      "sha256": "0b5c7a0387691cda4202c85ee496afa1323cd281a4905c4c04f1baec0c960795"
+    }
+  ],
+  "prior_artifact_binding_receipt": {
+    "path": "evidence/c05-nested-notices.json",
+    "sha256": "c64513071712a41eba45164b3c0b7c2c196924bf5b43605ae582458db68cb485"
+  },
+  "limitations": [
+    "Original stripped-binary scanner records are retained without suppression or conversion to PASS.",
+    "Two sumdb claims remain unresolved for historical module-cache acquisition.",
+    "Triage is static, with no repository edits/tests/builds/apps/PoCs during assessment. Subsequent docs checks validate the retained report only.",
+    "C05 licenses/corresponding source/installed privacy and final candidate gates remain open."
+  ],
+  "platform_checks": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_agent_docs_contract.py",
+        "tests/test_agent_context_packet_audit.py",
+        "-q"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-triage\\platform-docs.log",
+      "sha256": "ef068527969c3c2381d5e8899023987983fd6222cf5bb70441c586bc051f5fc7",
+      "output": ".................................                                        [100%]\r\n33 passed in 0.84s"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "scripts/agent_context_packet_audit.py",
+        "--platform-context-root",
+        "."
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-triage\\platform-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "output": "PASS platform-context"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\docs\\developer\\work-orders\\2026-09-05--consolidated-release-and-post12\\validate_package.py"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-triage\\platform-package.log",
+      "sha256": "e7021805b0093b2db0bc599a7a81b1ab8a13e73ea381ede2eca57c6bcc13c0f6",
+      "output": "PASS: 13 imported section hashes, 83 R12 IDs, 378 retained legacy IDs and ledger hash, 222 local file links"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-triage\\platform-diff.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "output": ""
+    }
+  ],
+  "push_merge_deploy_candidate": "NOT_PERFORMED"
+}

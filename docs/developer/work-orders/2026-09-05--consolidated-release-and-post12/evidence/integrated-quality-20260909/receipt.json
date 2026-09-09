@@ -1,0 +1,46 @@
+{
+  "status": "PASS_LOCAL_ONLY",
+  "sources": {
+    "client": {
+      "revision": "5760f415a567ddbc35ee12ba0087414bc3bd08ff",
+      "working_tree_state": "clean"
+    },
+    "core": {
+      "revision": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+      "working_tree_state": "clean"
+    },
+    "platform": {
+      "revision": "235e8a49e94261f39b1166b152fe547fe95da740",
+      "working_tree_state": "clean"
+    }
+  },
+  "retained_files": [
+    {
+      "path": "010I-local-quality-gate.json",
+      "bytes": 4608,
+      "sha256": "7efe146fbb49a547371e50f262f3843b8878fcd2243f60d089ffc241cbc1baee"
+    },
+    {
+      "path": "010I-local-web-performance-evidence.json",
+      "bytes": 3123,
+      "sha256": "3cea78f977368be25932e04aa1b7c07d352c8b2c3ca88e4a5491739858f62ab8"
+    },
+    {
+      "path": "010I-local-web-performance-gate.json",
+      "bytes": 6333,
+      "sha256": "a18c2ad14d0f3faf67ccf33b27868a0bb8293e2c429e52eb7f86af6c66b0dabc"
+    },
+    {
+      "path": "preflight.json",
+      "bytes": 35848,
+      "sha256": "14527d1f29fa910df0cb3d34d8852efafc032b123d185e2f277830e670adf265"
+    }
+  ],
+  "external_log": {
+    "path": "E:/r12-integrated-quality-20260909.log",
+    "bytes": 108394,
+    "sha256": "7b8829ae57b010590704032309033b753c152e376c71c358fe43317528bcc7ae"
+  },
+  "candidate_created": false,
+  "production_deploy": false
+}

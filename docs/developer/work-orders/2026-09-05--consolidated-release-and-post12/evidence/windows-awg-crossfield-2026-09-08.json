@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "status": "PASS_BOUNDED",
+  "client_source": "295ceace0b8dfbe9af5cfc9c3fa06eda45ce5747",
+  "core_source": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+  "client_receipt": {
+    "path": "E:\\r12client\\docs\\operations\\evidence\\2026-09-08-r12-awg-crossfield-windows\\receipt.json",
+    "bytes": 22432,
+    "sha256": "0d89c028ca307d57a24a2322f4885b57ba468c0027016306268ae13e377fe431"
+  },
+  "summary": "New exact Core Windows package: upgrade, three managed connects, three route/DNS restorations and 305 installed hashes passed; independent route and full release gates remain open.",
+  "client_evidence_commit": "76614b17a9d387cd791d407a7c50acb5f5e453e5",
+  "committed_client_receipt": {
+    "path": "docs/operations/evidence/2026-09-08-r12-awg-crossfield-windows/receipt.json",
+    "git_blob": "d5f6b88749c342c9f8c7b5a2b028e7aaff7726ee",
+    "bytes": 21765,
+    "sha256": "b2df7c50a900a2f314a33c41e5696b410ace9148c44780bec50c9b1ae84e7161"
+  },
+  "receipt_normalization": "Working file CRLF to committed LF only; JSON content identical. Raw and committed hashes retained separately."
+}

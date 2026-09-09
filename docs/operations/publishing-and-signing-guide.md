@@ -1,6 +1,6 @@
 # Publishing And Signing Guide
 
-Last updated: 2026-09-04
+Last updated: 2026-09-09
 
 ## Document Status
 
@@ -45,6 +45,12 @@ governed contract hashes, version-matched release notes, artifact identity and
 digest, signing, SBOM, provenance, manual gates, and same-byte promotion intent.
 Runtime and manual evidence remains candidate-scoped; metadata does not turn a
 missing or manual gate into `PASS`.
+
+The local candidate preflight follows the client runtime seed's Core SBOM
+binding: `core-source.cdx.json` and `engine-source.cdx.json`, each with a
+SHA-256 digest. Missing entries, obsolete names or malformed digests block the
+preflight. This metadata check does not replace the candidate's SBOM artifact
+and provenance verification.
 
 Validate metadata offline:
 
@@ -95,10 +101,44 @@ Release-bound CI is cross-repository and fail-closed:
   half from the hosted support-mode private key, matches it to the tracked pin
   on client `main`, checks the code-secret minimum, and uploads only a public
   revision/digest receipt; it does not deploy runtime secrets or create a
-  release candidate.
+  release candidate. Its job rejects a manual dispatch from a non-`master` ref
+  before running any step, and checks out the exact triggering `github.sha`
+  on accepted runs. A skipped non-promotion dispatch proves only that boundary;
+  it is not a successful custody verification.
 
 These workflows produce contract evidence only. Until a workflow is observed
 green on the exact committed revisions, its GitHub-hosted result is unclaimed.
+
+### Coordinated R12 source integration — 2026-09-09
+
+The current R12 source changes span all three repositories; checking every PR
+against the previous promotion lines creates a dependency cycle. The designated
+source PRs use the existing immutable-dependency pattern for this integration:
+
+- platform PR #243 checks client `9fad2ff4d0767b25acb50628d75a0a162513da16`
+  and Core `1f9a5a8865b80067784b893ef99d43c63f943777`;
+- client PR #95 checks platform `master` after #243 and that same exact Core;
+- Core PR #9 retains its ordinary checks against client `main` after #95 and
+  platform `master` after #243.
+
+The source merge order is platform → client → Core. Each designated PR must
+pass all required jobs for its actual head before merge. All other PRs and
+pushes continue to use promotion lines; the retained historical PR #20 rule
+does not apply to this integration. Intermediate push failures against the
+old dependency lines remain recorded failures. After all three merges, fresh
+ordinary promotion-line checks must pass before deployment, candidate creation
+or release promotion can consume the converged source set. A failure with the
+intended inputs remains NO_GO; this procedure does not replace it with replay.
+
+Promotion branches contain GitHub-signed commits whose complete Git trees
+match the reviewed feature snapshots; original feature commits and receipts
+remain retained. The [GitHub commit API](https://docs.github.com/en/graphql/reference/commits)
+signs these commits as the authenticated owner. Tree equality and verified
+signatures must be read back before source acceptance. Required PRs, strict
+checks, signatures, admin enforcement and the absence of bypass actors remain
+in force. Independent review was not performed under the existing owner-solo
+exception. This source-integration decision falls under the owner's September 9
+authorization; it does not close any candidate, device, signing or release gate.
 
 The seven audited 1.2.0 STOP-SHIP findings have one machine registry at
 `shared/release-1.2.0-stop-ship-regressions.json`. Validate its permanent test
@@ -176,6 +216,23 @@ release index, retained candidate evidence and same-byte promotion remain
 mandatory compensating controls outside the branch readback itself. The
 exception expires when release 1.2.0 is closed; a later release must authorize
 a new exception or return to team review.
+
+The exception applies to the Android/Windows 1.2.0 direct-distribution lane,
+including its prerelease candidates and same-byte stable promotion. It does
+not extend to store publication, an Apple release, Linux beta or a later
+version. Its expiry is release closure, not an indefinite account-wide waiver.
+
+On 2026-09-09 all three source repositories were observed public with admin
+access. The existing solo-safe branch policy was enabled and read back on
+`portal/master`, `POKROV-app/main` and `pokrov-core/main`: strict named GitHub
+Actions checks, required PRs with zero second-person approvals, admin
+enforcement, signed commits, linear history, resolved conversations, and no
+force pushes or deletions. No PR or force-push bypass actors are configured.
+The paid-private-protection waiver is therefore not needed for these current
+public branches. The second-person-review exception remains explicit; no
+independent review is claimed. [G06 evidence and exact settings](../developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-G06-ENFORCEMENT-2026-09-09.md)
+do not establish successful PR checks or authorize a release with a failed
+executed check. Re-read these settings before final promotion.
 
 The latest exact `WIN-003` default-path pass remains candidate.22 on isolated
 Windows 11: managed TUN, route/DNS change, authenticated DE egress,

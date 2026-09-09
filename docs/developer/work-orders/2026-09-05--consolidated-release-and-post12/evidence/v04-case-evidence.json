@@ -1,0 +1,217 @@
+{
+  "schema": "pokrov.r12.v04-case-evidence/v1",
+  "date": "2026-09-06",
+  "status": "NEEDS_RUNTIME_PROOF",
+  "implementation_level": "I3",
+  "origin": "current-origin local Windows host",
+  "platform_source": "2ba8e8eb06af7eccea0c51601506582ee8c0bfed",
+  "client_source": "453975348d91bfb78bb3bfb90660c000a9ccd692",
+  "core_source": "94dd31012ac91fb9ecf2c98ad7383afb54102dd4",
+  "candidate_created": false,
+  "promotion_authorized": false,
+  "commands": [
+    {
+      "command": "npm.cmd run test:e2e -- e2e/clients.spec.ts --grep 'сводка обращения|обновление сборки'",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\adminapp",
+      "log": "E:/r12-v04-ui-before.log",
+      "sha256": "ea7677cde6416ba367d47096099f18605d4c7994586f7783e2efc67fb00cdfd9",
+      "exit_code": 1,
+      "result": "FAIL missing linked attempt; second case stopped at ambiguous refresh-button locator"
+    },
+    {
+      "command": "npm.cmd run test:e2e -- e2e/clients.spec.ts --grep 'обновление сборки'",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\adminapp",
+      "log": "E:/r12-v04-ui-before2.log",
+      "sha256": "f95c456254eb865ad40362d1ef01dc2cbe0e22008090cdf2af651d641b8da999",
+      "exit_code": 1,
+      "result": "FAIL expected new known-issue build=43 request was absent"
+    },
+    {
+      "command": "npm.cmd run test:e2e -- e2e/clients.spec.ts",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\adminapp",
+      "log": "E:/r12-v04-ui-after.log",
+      "sha256": "02210c3b05c7c5ca7a9afd6834e772e8aaabfb7059c48ded36f5551451557baf",
+      "exit_code": 0,
+      "result": "PASS 10"
+    },
+    {
+      "command": "npm.cmd run test:e2e",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\adminapp",
+      "log": "E:/r12-v04-admin-e2e.log",
+      "sha256": "655e29082f325d2ef88f57fa39ebdbe1fbb387340d55a6bb744101d3de41654c",
+      "exit_code": 0,
+      "result": "PASS 80",
+      "note": "Playwright webServer executes npm run build including SDK and build-contract checks before serving static out on 127.0.0.1:3107."
+    },
+    {
+      "command": "npm.cmd run lint",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\adminapp",
+      "log": "E:/r12-v04-admin-lint.log",
+      "sha256": "6ffa13369ce63ea4802a88045643022692e51d25ff529168647557a8f394a88b",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_operator_observability_service.py tests/test_support_work_service.py tests/test_support_agent_policy.py tests/test_support_agent_safety.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v04-support-contracts.log",
+      "sha256": "274d79f6ea87f1fc615e6beffd095478fd70198496faae36f1aee51ed2a53a06",
+      "exit_code": 0,
+      "result": "PASS 110"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_admin_ops_api.py tests/test_admin_payments_api.py tests/test_operator_observability_api.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v04-admin-api.log",
+      "sha256": "e33c84738b5f14f27a982a285f587a86d96bcb62f2042a32783234c67d514768",
+      "exit_code": 0,
+      "result": "PASS 55"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_support_agent_harness.py -k 'code_owned_provenance_and_candidate_state_are_not_model_owned or model_metadata_is_rejected_and_model_escalation_never_renders_local' tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v04-ai-harness.log",
+      "sha256": "3ad4d4d8464c8f673de1075bad5d48a49483240d2c353b4cdc07320830e07f6a",
+      "exit_code": 0,
+      "result": "PASS 2; 73 deselected",
+      "note": "-k also deselected docs; docs executed separately below."
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v04-docs.log",
+      "sha256": "9ec871569189d5ee76f57ff99750308c9f7e066e585e3a924dc887d4f8544d68",
+      "exit_code": 0,
+      "result": "PASS 33"
+    },
+    {
+      "command": "node.exe --experimental-strip-types E:/r12-v04-ui-review.mjs",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v04-ui-review.log",
+      "sha256": "c92d4436744dae19dd08f73ac4b82a0adf5676a6ba4e0690ef4aabdbe9038e60",
+      "exit_code": 0,
+      "result": "PASS 3 rendered states",
+      "note": "Existing Playwright; Browser plugin not available. Node typeless TS fixture warning; no app console errors. Server 127.0.0.1:3189 terminated in finally."
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v04-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-v04-package.log",
+      "sha256": "c8fdd83c7674cc50075b623385204bbd3f85c3d91d2194e9ebe0799e60be1b52",
+      "exit_code": 0,
+      "result": "PASS 13 imports / 83 R12 IDs / 378 legacy IDs / 157 links"
+    }
+  ],
+  "changed_source_files": {
+    "adminapp/README.md": "826e643cc6f21e220fd67238251ae4d5a5c63158c8c92fb97e6cf59a871799b8",
+    "adminapp/e2e/clients.spec.ts": "b46aa7b4abd3d4f2a1fb004b0be1a66423448d228002eb525838157c8c0447f0",
+    "adminapp/e2e/fixtures/admin-api.ts": "be1097c8b5d8adc6342b00943b2539cf5bb024cbb657b19faa3db7af8391009c",
+    "adminapp/src/features/support/ticket-detail.tsx": "7cf60cdabc7722788df1ed5c78c864f959bc326c29bd7fd6c9d2f45fc4c9c577",
+    "docs/architecture/support-feedback-flow.md": "808d575d223d0ea626f1b6498dd4b63b2cb4ae8cd97bdcb6ff1bb174e2301f02",
+    "tests/test_operator_observability_service.py": "23d4ae32ae08e2894230104b60da7e96ebc9c09233a168d630e578a7d01de11a",
+    "tests/test_support_work_service.py": "eac86676cc8ff863a2bcafcdf72a18c0854b6d4790217b8440a6a32d3c8fd8e8"
+  },
+  "inspected_contract_sources": {
+    "portal_bot/operator_observability_service.py": "b6350baf9f9cb18ee1930e01887ac98b495c3a220f9d9854390d6d80d4965e6b",
+    "portal_bot/support_work_service.py": "a7c730e33c89f65aa7177b71e68a53d66eadb8a6ef0cbb1f89c24b06a1dbe4e5",
+    "portal_bot/admin_v2/router.py": "d5d4ef052d4c53f0ce9e18b978c1ae6b09f849ca273490d28b5692954f0f9412",
+    "portal_bot/api_operator_observability_routes.py": "3d260a349665050eaf2e9f4649fa5880ec747d626e4fc7c87b465abef57dab7f",
+    "portal_bot/support_agent_harness.py": "9594053022cc6a5a732f9242ff80087d79f17eb9126bbdfb2161e03693dae7a9",
+    "portal_bot/support_agent_safety.py": "6bbd393950e9d6fad68fb34d5c5bb660067b0b819dfa8cad0b97b6ac59442dab",
+    "portal_bot/support_agent_policy.py": "dcf0319f30db1025c7b09601bb82fd241aee9249f54fe3a498a156efc66546d5"
+  },
+  "visual_checks": [
+    {
+      "name": "missing-linked-desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "url": "http://127.0.0.1:3189/tickets?selected=501",
+      "title": "Центр управления POKROV",
+      "body_length": 3443,
+      "framework_overlay": 0,
+      "page_errors": [],
+      "console_errors": [],
+      "dimensions": {
+        "client": 1440,
+        "scroll": 1440
+      },
+      "screenshot": "E:/r12-v04-ui-review/missing-linked-desktop.png",
+      "read_only": true
+    },
+    {
+      "name": "changed-build-desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "url": "http://127.0.0.1:3189/tickets?selected=501",
+      "title": "Центр управления POKROV",
+      "body_length": 3535,
+      "framework_overlay": 0,
+      "page_errors": [],
+      "console_errors": [],
+      "dimensions": {
+        "client": 1440,
+        "scroll": 1440
+      },
+      "screenshot": "E:/r12-v04-ui-review/changed-build-desktop.png",
+      "read_only": true
+    },
+    {
+      "name": "missing-linked-mobile",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "url": "http://127.0.0.1:3189/tickets?selected=501",
+      "title": "Центр управления POKROV",
+      "body_length": 2675,
+      "framework_overlay": 0,
+      "page_errors": [],
+      "console_errors": [],
+      "dimensions": {
+        "client": 390,
+        "scroll": 390
+      },
+      "screenshot": "E:/r12-v04-ui-review/missing-linked-mobile.png",
+      "read_only": true
+    }
+  ],
+  "visual_artifacts": {
+    "E:\\r12-v04-ui-review.mjs": "15f8e374a8eefbc9edd4c4f661ce81c78c41923ef7e8ac07af7d33fb39dcf524",
+    "E:\\r12-v04-ui-review\\checks.json": "5ae86720cd36d2b67f8e90c17f4107ff2ab25422784867b0cd01a87bdb7f89d1",
+    "E:\\r12-v04-ui-review\\missing-linked-desktop.png": "262e12635e1b111ce4ef91e3280fddb4bc45268e997936f7458b70981a28b4f1",
+    "E:\\r12-v04-ui-review\\changed-build-desktop.png": "5196256dfca5fde34899d37959cc7f076a647f40f395024adbe6a49f556825ca",
+    "E:\\r12-v04-ui-review\\missing-linked-mobile.png": "2198dd1493dd008c72ec1937776733289a5f9012c784aefdc90be7ce64f1a79c"
+  },
+  "build_contract": {
+    "schema": "pokrov-operator-build-v1",
+    "app": "pokrov-operator-center",
+    "version": "0.1.0",
+    "frontend_commit": "2e6fd425c6ce7d5dfcb3ab11d5e5492d6b37b98b",
+    "built_at": "2026-09-06T01:33:11.068Z",
+    "source_state": "dirty",
+    "route_manifest_hash": "174894555db7c842f2c2b13f5ed8622cd9f8a31b8d93a2b0e5577a70984d3bc3",
+    "cutover_matrix_hash": "e438253b9512763f7fb887cac3a3abb8d6233f055cf123e4505278482083c0fe",
+    "expected_api_schema": "admin-v2.1",
+    "canonical_domain": "admin.pokrov.space"
+  },
+  "build_contract_note": "Build ran before source commit: stamp retains previous HEAD plus dirty=true. Reviewed changed source hashes above match the subsequently committed implementation. This is local source validation, not a clean exact release candidate.",
+  "manual_gates": {
+    "V01/V02 full expected/effective/proven profile linkage": "NEEDS_CONTEXT / NEEDS_RUNTIME_PROOF",
+    "deployed OIDC/step-up/RBAC/operator role readback": "MANUAL_OWNER_TEST",
+    "live user opt-in upload, recipient/signing custody, case-bound encrypted download": "MANUAL_OWNER_TEST",
+    "deployed expiry/retention schedule and real case journey": "MANUAL_OWNER_TEST",
+    "new candidate/publication/deploy": "NOT_REQUESTED"
+  }
+}

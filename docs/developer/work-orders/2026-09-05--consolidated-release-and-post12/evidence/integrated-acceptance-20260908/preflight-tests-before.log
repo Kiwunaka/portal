@@ -1,0 +1,53 @@
+....................F..F...                                              [100%]
+================================== FAILURES ===================================
+_____________ test_bound_core_artifacts_require_exact_local_bytes _____________
+
+tmp_path = WindowsPath('C:/Users/kiwun/AppData/Local/Temp/pytest-of-kiwun/pytest-1763/test_bound_core_artifacts_requ0')
+
+    def test_bound_core_artifacts_require_exact_local_bytes(tmp_path: Path) -> None:
+        core_revision = "f" * 40
+        runtime_seed = _bound_runtime_seed(tmp_path, core_revision)
+    
+        summary, blockers = MODULE._core_artifact_binding(
+            client_root=tmp_path,
+            runtime_seed=runtime_seed,
+            core_revision=core_revision,
+        )
+>       assert blockers == []
+E       AssertionError: assert [{'detail': '...AL_ARTIFACT'}] == []
+E         
+E         Left contains one more item: {'detail': 'invalid exact Core artifact metadata: artifact_evidence.sbom', 'id': 'core_artifact_binding_metadata_invalid', 'status': 'BLOCKED_LOCAL_ARTIFACT'}
+E         Use -v to get more diff
+
+tests\test_release_1_2_candidate_preflight.py:601: AssertionError
+________ test_bound_core_artifacts_reject_invalid_sbom[invalid_sbom2] _________
+
+tmp_path = WindowsPath('C:/Users/kiwun/AppData/Local/Temp/pytest-of-kiwun/pytest-1763/test_bound_core_artifacts_reje2')
+invalid_sbom = [{'name': 'pokrov-core.cdx.json', 'sha256': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'}, {'name': 'sing-box.cdx.json', 'sha256': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'}]
+
+    @pytest.mark.parametrize("invalid_sbom", [
+        [{"name": "core-source.cdx.json", "sha256": "a" * 64}],
+        [
+            {"name": "core-source.cdx.json", "sha256": "a" * 64},
+            {"name": "engine-source.cdx.json", "sha256": "invalid"},
+        ],
+        [
+            {"name": "pokrov-core.cdx.json", "sha256": "a" * 64},
+            {"name": "sing-box.cdx.json", "sha256": "a" * 64},
+        ],
+    ])
+    def test_bound_core_artifacts_reject_invalid_sbom(tmp_path: Path, invalid_sbom) -> None:
+        core_revision = "f" * 40
+        runtime_seed = _bound_runtime_seed(tmp_path, core_revision)
+        runtime_seed["artifact_provenance"]["artifact_evidence"]["sbom"] = invalid_sbom
+        summary, blockers = MODULE._core_artifact_binding(
+            client_root=tmp_path, runtime_seed=runtime_seed, core_revision=core_revision,
+        )
+>       assert summary["verified_exact_local_bytes"] is False
+E       assert True is False
+
+tests\test_release_1_2_candidate_preflight.py:638: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_release_1_2_candidate_preflight.py::test_bound_core_artifacts_require_exact_local_bytes
+FAILED tests/test_release_1_2_candidate_preflight.py::test_bound_core_artifacts_reject_invalid_sbom[invalid_sbom2]
+2 failed, 25 passed in 0.93s

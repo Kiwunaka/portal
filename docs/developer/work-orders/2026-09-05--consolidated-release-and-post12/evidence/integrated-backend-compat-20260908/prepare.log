@@ -1,0 +1,4 @@
+{"status": "PREPARED", "database": "portal_b08_integrated_20260908_rehearsal", "previous_files": 197, "current_files": 200, "network_scope": "loopback only", "synthetic_data_only": true}
+
+exit_code=0
+stderr_bytes=0

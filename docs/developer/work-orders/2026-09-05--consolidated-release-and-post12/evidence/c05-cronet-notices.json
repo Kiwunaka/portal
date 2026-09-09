@@ -1,0 +1,111 @@
+{
+  "schema": "pokrov.r12.c05-cronet-native-notices-reference/v1",
+  "client_commit": "4a184b02b6bbdb06a3f9994f7e84e3f092eb718a",
+  "core_unchanged": "8dc57a830bd1487389dd1b7c9190f094c31e13bc",
+  "candidate_created": false,
+  "client_receipt": {
+    "path": "docs/operations/evidence/2026-09-06-r12-c05-cronet-notices/native-notices.json",
+    "git_blob_sha256": "51e52141bf65317559f2fe84fea46d5fa7b8ce28ea3983e031e3803bc2342058",
+    "hash_scope": "Bytes returned by git show client_commit:path; checkout normalization is not the receipt identity source."
+  },
+  "implementation_git_blobs": {
+    ".gitattributes": "29fa0758a689607d3442dae9c954a4840d5e411a445745a3065798ff782a30a9",
+    "apps/windows_shell/windows/CMakeLists.txt": "f3d095f32e698515f7010b5e193cae86fa639983fdd4915b383d00ce603c8062",
+    "apps/windows_shell/windows/runner/resources/runtime/libcronet.NOTICES.txt": "2c24f29748b438f85ad6ef44548395970a4a1d04b89e653e6a4a56601297e267",
+    "config/runtime-artifacts.seed.json": "57e8d9ed825bfd5cd1dee7dcabf693ae0f25b2c3f9eaea2805b4f70692ca3289",
+    "scripts/validate-seed.ps1": "51e0a12505e54c6e4e29eaa19e9d1a4671ec7b7dc9a194bad93df479adec73e4",
+    "docs/operations/windows-release-readiness.md": "fc07ac519bca975bbef3807c149e3f56d5870d2c4d62ded98d40f674658e891c"
+  },
+  "checks": [
+    {
+      "command": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe",
+        "-S",
+        "E:\\r12client\\apps\\windows_shell\\windows",
+        "-B",
+        "E:\\r12client\\apps\\windows_shell\\build\\windows\\x64",
+        "-DCMAKE_INSTALL_PREFIX=E:\\r12-c05-cronet-graph\\client-bundle"
+      ],
+      "cwd": "E:\\r12client",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-cronet-graph\\client-cmake-isolated-configure.log",
+      "sha256": "b67ad681f2f3867d185c5e372ad34c0370e37ef6c1106ceaaa564dd2b8e6fc7e"
+    },
+    {
+      "command": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe",
+        "--install",
+        "E:\\r12client\\apps\\windows_shell\\build\\windows\\x64",
+        "--config",
+        "Release",
+        "--component",
+        "Runtime"
+      ],
+      "cwd": "E:\\r12client",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-cronet-graph\\client-cmake-isolated-install.log",
+      "sha256": "9cf373cf704d17834307f3696fda582e18acd7602a704ca4d593ea1dedb461fb"
+    },
+    {
+      "command": [
+        "C:\\Program Files (x86)\\Microsoft Visual Studio\\2022\\BuildTools\\Common7\\IDE\\CommonExtensions\\Microsoft\\CMake\\CMake\\bin\\cmake.exe",
+        "-S",
+        "E:\\r12client\\apps\\windows_shell\\windows",
+        "-B",
+        "E:\\r12client\\apps\\windows_shell\\build\\windows\\x64",
+        "-DCMAKE_INSTALL_PREFIX=$<TARGET_FILE_DIR:pokrov_windows>"
+      ],
+      "cwd": "E:\\r12client",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-cronet-graph\\client-cmake-prefix-restored.log",
+      "sha256": "b67ad681f2f3867d185c5e372ad34c0370e37ef6c1106ceaaa564dd2b8e6fc7e"
+    },
+    {
+      "command": "./scripts/validate-seed.ps1 -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start -CoreRoot E:/r12core-implementation",
+      "cwd": "E:/r12client",
+      "exit_code": 1,
+      "log": "E:\\r12-c05-cronet-notices-client-seed.log",
+      "sha256": "362efa9b4b21819c0997e3e25f9b60d27d0315c15147920cd7733a280798e42d",
+      "result": "FAIL docs contract rejected new eol attribute; changed notice to byte-preserving -text without expanding the EOL allowlist"
+    },
+    {
+      "command": "./scripts/validate-seed.ps1 -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start -CoreRoot E:/r12core-implementation",
+      "cwd": "E:/r12client",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-cronet-notices-client-seed-final.log",
+      "sha256": "bdf10c992130fefedbf764faff749c08ba1c770531feeba9a32e6f3482a2175d",
+      "result": "PASS final seed/docs/source/fixture contracts; performance collector is a fixture, not a new physical measurement"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:/r12-c05-cronet-notices-platform-docs.log",
+      "sha256": "c6cf873946abb2b3c4162f1e037384e5dbbac1a46cf534489c159dc81dc4c0d2",
+      "result": "33 PASS"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:/r12-c05-cronet-notices-platform-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:/r12-c05-cronet-notices-package.log",
+      "sha256": "694b980606cbc6b2dd97defc2c8fe5df2d1d0dfd517942ff95d4c2031d0b713e",
+      "result": "PASS 13 imports / 83 R12 / 378 legacy / 197 links"
+    }
+  ],
+  "remaining": [
+    "Source-to-binary reproducibility/attestation of upstream DLL not established. No new Cronet binary was compiled.",
+    "Full Core/Android/Flutter/Microsoft runtime notices, Psiphon utls root license and residual advisory reachability remain open.",
+    "Installed runtime/privacy, installer/SCM/TUN/device/origin acceptance and corresponding source publication were not performed.",
+    "Prior client executable/service/Core/Cronet bytes were reused unchanged for CMake packaging verification; all 300 prior bundle files match the preserved baseline.",
+    "Generated graph runtime_deps includes debugger DLLs; it is not a readback of the already-shipped upstream artifact or a new production package."
+  ]
+}

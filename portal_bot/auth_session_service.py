@@ -10,7 +10,10 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from models import Account, AccountDevice, AuthSession, User
+from models import (
+    Account, AccountDevice, AuthSession, Awg2LabMaterial, Awg31LabMaterial,
+    Hy2LabMaterial, User,
+)
 from web_auth_service import create_web_session_token
 
 
@@ -526,6 +529,30 @@ def revoke_session(
     return row
 
 
+def _revoke_device_lab_materials(
+    session: Session, *, device: AccountDevice, now: datetime,
+) -> None:
+    account_users = session.query(User.tg_id).filter(
+        User.account_id == str(device.account_id),
+    )
+    for model in (Awg2LabMaterial, Awg31LabMaterial, Hy2LabMaterial):
+        rows = (
+            session.query(model)
+            .filter(
+                model.tg_id.in_(account_users),
+                model.install_id == str(device.install_id),
+                model.is_active.is_(True),
+            )
+            .with_for_update()
+            .all()
+        )
+        for material in rows:
+            material.is_active = False
+            material.state = "revoked"
+            material.revoked_at = now
+            material.updated_at = now
+
+
 def revoke_device(
     session: Session,
     *,
@@ -569,6 +596,7 @@ def revoke_device(
         if row.revoked_at is None:
             row.revoked_at = now
             row.revoke_reason = "device_revoked"
+    _revoke_device_lab_materials(session, device=device, now=now)
     session.flush()
     return device
 
@@ -691,6 +719,7 @@ def promote_recovery_session(
                 other.credential_version = int(other.credential_version or 1) + 1
                 other.updated_at = now
                 revoked_devices += 1
+            _revoke_device_lab_materials(session, device=other, now=now)
         account.auth_epoch = int(account.auth_epoch or 0) + 1
         account.updated_at = now
 

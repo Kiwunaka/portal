@@ -1,0 +1,70 @@
+{
+  "recorded_at_utc": "2026-09-05T23:31:38.170792+00:00",
+  "origin": "current-origin Windows local synthetic SQLite and API fixtures",
+  "platform_base": "eba1fc6a24484af6f7056f11e8009f09d5bf988a",
+  "source_files": {
+    "portal_bot/awg2_lab_service.py": "0d22e99d2862813a2f0b18d7f3b211e5728f09ec94b017b8d042470cc06940ff",
+    "portal_bot/awg31_lab_service.py": "6a0c36729fc61f2b5c4175cfe49de136d903f86c4fb926fd4be1e1c960738261",
+    "tests/test_awg2_lab_service.py": "b1e4a81f4de4d9746548d274e5bda73df0548acdbf1d18669be5b68db2fb63c9",
+    "tests/test_awg31_lab_service.py": "5e0af9e23006b7fe655bfbcf47a82dbab57a79efa5bc54fd73f6797938dd9add",
+    "docs/architecture/api-contracts.md": "d20080c6630bc14260cb8705facb3edb950332fbd7ad833a5a289bfbf1f77ec3"
+  },
+  "commands": [
+    {
+      "command": "python -m pytest -q tests/test_awg2_lab_service.py tests/test_awg31_lab_service.py -k issuance_never_labels",
+      "log": "E:/r12-a04-snapshot-before.log",
+      "sha256": "79f5a94ce33e23f205ffe2cb4acedc0662dac4ec7e5e34e9cde53f2749b78610",
+      "exit_code": 1,
+      "result": "2 FAIL before fix: unchecked rotated endpoint returned"
+    },
+    {
+      "command": "python -m pytest -q tests/test_awg2_lab_service.py tests/test_awg31_lab_service.py -k issuance_never_labels",
+      "log": "E:/r12-a04-snapshot-after.log",
+      "sha256": "2cbdc8ddd05eb81cb21b349f279f12e8c872c93294b195642b29ea0abb36e390",
+      "exit_code": 0,
+      "result": "2 PASS after fix"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider -q tests/test_awg2_lab_service.py tests/test_awg31_lab_service.py tests/test_network_rollout_api.py tests/test_verify_awg2_contract_sync.py tests/test_verify_awg31_contract_sync.py",
+      "log": "E:/r12-a04-lab-full.log",
+      "sha256": "fe914ac443d25a214727c70524bd753a271245cb91a207c8349b63ac0c108479",
+      "exit_code": 0,
+      "result": "43 PASS"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "log": "E:/r12-a04-docs.log",
+      "sha256": "ec23b3930fde9f6a8f776ce67609009a916b7f347b9a7e5a71e55ec16ac4a69b",
+      "exit_code": 0,
+      "result": "33 PASS"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "log": "E:/r12-a04-context-audit.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "python docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "log": "E:/r12-a04-package.log",
+      "sha256": "24a6d32598c783ae1794a11959d80266629ea8a4954a4d7bfae6e0e10eddcae7",
+      "exit_code": 0,
+      "result": "PASS: 13 imported sections, 83 R12 IDs, 378 legacy IDs, 142 local links"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider portal_bot/tests/test_app_first_api.py portal_bot/tests/test_app_first_service.py tests/test_api_auth_and_tickets.py tests/test_subscription_preview_api.py -q",
+      "log": "E:/r12-a04-backend-regression.log",
+      "sha256": "f1c23f7014e18e110a99f303f46c9e997faa2c39a488b14722d3c66c91f769a8",
+      "exit_code": 0,
+      "result": "154 PASS, 8 subtests PASS in 685.67s"
+    }
+  ],
+  "limitations": [
+    "Sequential read substitution reproduces issuance mismatch, not multi-process PostgreSQL locking behavior.",
+    "Owned server revoke/expiry, interop and RU-origin traffic are unverified.",
+    "A04 remains partial; dependency A02 remains open."
+  ],
+  "release_artifacts_delta": false,
+  "platform_source": "c98b58f64116761cf6a52ab4f8f40f812f43131a"
+}

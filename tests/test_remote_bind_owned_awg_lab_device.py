@@ -31,6 +31,101 @@ def _scope_guard():
     return namespace["require_isolated_lab_scope"]
 
 
+@pytest.fixture()
+def material_selector(monkeypatch):
+    import base64
+    import importlib
+    from datetime import datetime, timezone
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import Session
+
+    monkeypatch.syspath_prepend(str(ROOT / "portal_bot"))
+    from models import Awg2LabMaterial, Awg31LabMaterial, Base
+    from awg_lab_key_binding import require_awg_device_key_binding
+
+    services = [importlib.import_module(name + "_lab_service") for name in ("awg2", "awg31")]
+    models = [Awg2LabMaterial, Awg31LabMaterial]
+    policy = {}
+    namespace = {"require_awg_device_key_binding": require_awg_device_key_binding,
+                 "load_network_rollout_config": lambda **_: policy}
+    for name, service, model in zip(("awg2", "awg31"), services, models):
+        monkeypatch.setenv(name.upper() + "_LAB_MATERIAL_SECRET", "binder-fixture-encryption-only")
+        policy[name + "_lab"] = getattr(service, "default_" + name + "_lab_config")()
+        policy[name + "_lab"].update(generation="fixture-v1", server_record_id="fixture-server",
+                                     allowlist_node_codes=["de"])
+        namespace[model.__name__] = model
+        namespace["ready_" + name] = service._ready_material
+        namespace["decrypt_" + name] = service._decrypt_endpoint
+    function = next(node for node in ast.parse(_remote_helper()).body
+                    if isinstance(node, ast.FunctionDef) and node.name == "load_target_materials")
+    exec(compile(ast.Module(body=[function], type_ignores=[]), str(SCRIPT), "exec"), namespace)
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    session = Session(engine)
+
+    def seed(install, key_bytes, *, state="ready", age_days=0):
+        from datetime import timedelta
+        rows = []
+        for name, service, model in zip(("awg2", "awg31"), services, models):
+            config = policy[name + "_lab"]
+            row = model(
+                tg_id=1001, install_id=install, contract_id=config["contract_id"],
+                contract_sha256=config["contract_sha256"], generation=config["generation"],
+                endpoint_revision=config["endpoint_revision"], server_record_id=config["server_record_id"],
+                node_code="de", material_hash="a" * 64,
+                endpoint_ciphertext=service._encrypt_endpoint({"private_key": base64.b64encode(key_bytes).decode()}),
+                state=state, is_active=state == "ready",
+                provisioned_at=datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=age_days),
+            )
+            session.add(row)
+            rows.append(row)
+        session.commit()
+        return rows
+
+    try:
+        yield session, namespace["load_target_materials"], seed, models
+    finally:
+        session.close()
+        engine.dispose()
+
+
+def test_binder_does_not_copy_another_devices_material(material_selector) -> None:
+    session, select, seed, models = material_selector
+    seed("foreign", bytes(32))
+    assert select(session, 1001, "target") == (None, None)
+    assert all(session.query(model).count() == 1 for model in models)
+
+
+def test_repeated_bind_reuses_exact_target_without_refreshing_age(material_selector) -> None:
+    session, select, seed, models = material_selector
+    own = seed("target", bytes(32), age_days=1)
+    seed("foreign", bytes(range(32)))
+    before = [(row.id, row.provisioned_at, row.endpoint_ciphertext) for row in own]
+    for _ in range(2):
+        result = select(session, 1001, "target")
+        assert [(row.id, row.provisioned_at, row.endpoint_ciphertext) for row in result] == before
+    assert all(session.query(model).count() == 2 for model in models)
+    assert not session.new and not session.dirty and not session.deleted
+
+
+def test_binder_rejects_key_shared_with_foreign_history(material_selector) -> None:
+    from awg_lab_key_binding import AwgDeviceKeyError
+    session, select, seed, _ = material_selector
+    seed("target", bytes(32))
+    seed("foreign", bytes([1]) + bytes(31), state="rotated")
+    with pytest.raises(AwgDeviceKeyError, match="material_key_already_bound"):
+        select(session, 1001, "target")
+    assert not session.new and not session.dirty and not session.deleted
+
+
+def test_binder_does_not_refresh_expired_material(material_selector) -> None:
+    session, select, seed, _ = material_selector
+    own = seed("target", bytes(32), age_days=8)
+    before = [row.provisioned_at for row in own]
+    assert select(session, 1001, "target") == (None, None)
+    assert [row.provisioned_at for row in own] == before
+
+
 @pytest.mark.parametrize("config", [
     {"awg2_lab": {"allowlist_install_ids": ["other-install"]}},
     {"awg31_lab": {"allowlist_tg_ids": [42]}},
@@ -86,9 +181,10 @@ def test_default_profile_is_supported_without_reprovisioning_material() -> None:
     helper = _remote_helper()
 
     assert 'choices=("default", "awg2_lab", "awg31_lab")' in source
-    assert 'if selected_profile != "default":\n        awg2_endpoint' in helper
     assert 'if selected_profile != "default" and not source_material_available:' in helper
-    assert '"awg2_material_provisioned": selected_profile != "default"' in helper
+    assert '"awg2_material_provisioned": False' in helper
+    assert 'awg2_lab_material.replace' not in helper
+    assert 'awg31_lab_material.replace' not in helper
 
 
 def test_default_profile_removes_only_the_resolved_device_from_lab_scope() -> None:
@@ -128,8 +224,7 @@ def test_root_adb_mode_selects_the_exact_local_install_without_reporting_it() ->
     source = SCRIPT.read_text(encoding="utf-8")
     helper = _remote_helper()
 
-    assert "from remote_activate_owned_awg_labs import (" in source
-    assert "_load_emulator_identity," in source
+    assert "from remote_activate_owned_awg_labs import _load_emulator_identity" in source
     assert 'parser.add_argument("--adb-serial", default="emulator-5554")' in source
     assert '"exact_install_id": exact_install_id' in source
     assert (

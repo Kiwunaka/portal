@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "status": "LOCAL_PACKAGE_PREPARATION",
+  "physical_installation": "BLOCKED_BY_ACCESS",
+  "client_source": "76614b17a9d387cd791d407a7c50acb5f5e453e5",
+  "core_source": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+  "client_evidence_commit": "7be19ab9e7c46e42add303dc1cc115cef7f475ee",
+  "committed_client_receipt": {
+    "path": "docs/operations/evidence/2026-09-08-r12-android-awg-crossfield/receipt.json",
+    "git_blob": "3c818ced761d4d4a04972bc87f9a30f9825347d3",
+    "bytes": 9727,
+    "sha256": "83c2215babd6be0e843a64ae8cbed57770bcda1abd2f1cb6227df5df6cd9eda9"
+  },
+  "summary": "Four new Core APK variants passed signer/package/ABI/native hash checks; ARM64 physical installation and full device gates remain open."
+}

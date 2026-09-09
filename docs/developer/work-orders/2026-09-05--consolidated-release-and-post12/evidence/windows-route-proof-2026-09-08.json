@@ -1,0 +1,162 @@
+{
+  "status": "PASS_BOUNDED",
+  "client_source": "3784352dc58a282910c4ddc77ff7a30493706f2f",
+  "core_source": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+  "installer_sha256": "83c253ce8a1cc5d64aa615e259ae2a0f6d5d978442fd3732965d7778d14d6063",
+  "installed_files_verified": 305,
+  "origin": "current-origin; owned Windows 11 VM; VirtualBox NAT; managed AWG3.1",
+  "samples": {
+    "baseline": {
+      "utc": "2026-09-08T07:23:09.5677988Z",
+      "http_200": 3,
+      "counters": {
+        "Intel(R) PRO/1000 MT Desktop Adapter": {
+          "Inbound": 15,
+          "Outbound": 15
+        }
+      },
+      "source": "e88dff9",
+      "profile_sha256": null
+    },
+    "awg31": {
+      "utc": "2026-09-08T07:27:02.1576921Z",
+      "http_200": 3,
+      "counters": {
+        "Intel(R) PRO/1000 MT Desktop Adapter": {
+          "Inbound": 0,
+          "Outbound": 0
+        },
+        "sing-tun Tunnel": {
+          "Inbound": 15,
+          "Outbound": 15
+        }
+      },
+      "source": "e88dff9",
+      "profile_sha256": null
+    },
+    "full": {
+      "utc": "2026-09-08T07:31:10.9700791Z",
+      "http_200": 3,
+      "counters": {
+        "Intel(R) PRO/1000 MT Desktop Adapter": {
+          "Inbound": 0,
+          "Outbound": 0
+        },
+        "sing-tun Tunnel": {
+          "Inbound": 15,
+          "Outbound": 15
+        }
+      },
+      "source": "e88dff9",
+      "profile_sha256": "b344b27f9520bb082aa1e26961b9e3ab1b807c6ec7fc52658341d00e7904173e"
+    },
+    "fixed-selected-ps": {
+      "utc": "2026-09-08T08:01:13.0671647Z",
+      "http_200": 3,
+      "counters": {
+        "Intel(R) PRO/1000 MT Desktop Adapter": {
+          "Inbound": 0,
+          "Outbound": 0
+        },
+        "sing-tun Tunnel": {
+          "Inbound": 15,
+          "Outbound": 15
+        }
+      },
+      "source": "3784352",
+      "profile_sha256": "37524ef9bf8b41ce230969441867920ca24ad4ccf7ac3088ccd8249fb1eaae04"
+    },
+    "fixed-unselected-curl": {
+      "utc": "2026-09-08T08:02:33.7910866Z",
+      "http_200": 3,
+      "counters": {
+        "Intel(R) PRO/1000 MT Desktop Adapter": {
+          "Inbound": 15,
+          "Outbound": 15
+        },
+        "sing-tun Tunnel": {
+          "Inbound": 15,
+          "Outbound": 15
+        }
+      },
+      "source": "3784352",
+      "profile_sha256": "37524ef9bf8b41ce230969441867920ca24ad4ccf7ac3088ccd8249fb1eaae04"
+    },
+    "fixed-full": {
+      "utc": "2026-09-08T08:05:58.5032430Z",
+      "http_200": 3,
+      "counters": {
+        "Intel(R) PRO/1000 MT Desktop Adapter": {
+          "Inbound": 0,
+          "Outbound": 0
+        },
+        "sing-tun Tunnel": {
+          "Inbound": 15,
+          "Outbound": 15
+        }
+      },
+      "source": "3784352",
+      "profile_sha256": "b344b27f9520bb082aa1e26961b9e3ab1b807c6ec7fc52658341d00e7904173e"
+    },
+    "fixed-all-except-ru": {
+      "utc": "2026-09-08T08:15:43.4018068Z",
+      "http_200": 3,
+      "counters": {
+        "Intel(R) PRO/1000 MT Desktop Adapter": {
+          "Inbound": 0,
+          "Outbound": 0
+        },
+        "sing-tun Tunnel": {
+          "Inbound": 15,
+          "Outbound": 15
+        }
+      },
+      "source": "3784352",
+      "profile_sha256": "20ce76b31fbc16f2ae8f8f49c934a45325dc74fba82b0eaf4948218189fe0dfb"
+    }
+  },
+  "selected_pair_same_profile": true,
+  "defender": {
+    "status": "OPEN",
+    "threat": "Behavior:Win32/SuspClickFix.G2",
+    "events": 7,
+    "new_events_after_initial_attempt": 0,
+    "protection_enabled": true
+  },
+  "cleanup": {
+    "utc": "2026-09-08T08:21:28.0345837Z",
+    "vm_uuid": "e42043a3-dd4d-452b-b151-410ad5d49543",
+    "vm_off": true,
+    "nic_none": true,
+    "source_off": true,
+    "routes_sha256": "401e4b0a47c9c8c73d6b52536cec753f09f559ceb2d512884e57d5f7aff72434",
+    "dns_sha256": "720fe40b4ee8ab42f57c808b3c5f824808703b35113fe9999ef97a7bbccdee59",
+    "backend_restored": true,
+    "fixture_rules": 0,
+    "ui_count": 0,
+    "installed_files_verified": 305,
+    "host_network_unchanged": true
+  },
+  "limitations": [
+    "one owned non-RU IPv4 TCP80 target, three requests per sample",
+    "not Russian services/DNS/IPv6/LAN/banking/effective-location acceptance",
+    "Windows10 and final channel open",
+    "Defender automated-install issue remains open",
+    "full N03/N08 remain open",
+    "raw process_paths_count field counts null as one; excluded from proof",
+    "final-identity routing_mode is null; UI screenshot/state preference comparison establish cleanup"
+  ],
+  "release": {
+    "published": false,
+    "deployed": false,
+    "promoted": false,
+    "final_candidate": false
+  },
+  "schema": "pokrov.r12-platform-windows-route-proof/v1",
+  "source": "EXECUTION-WINDOWS-ROUTE-PROOF-2026-09-08.md",
+  "client_evidence_commit": "5188505323d4fed03806c78756ba4428608ebd3b",
+  "client_evidence_git_blob": "0df7ede2a6c635a454ef960a73348829a767b716",
+  "client_evidence_git_sha256": "b852b2594a3ec9e8b5d8007e76001bd8b37a024deb25efe02bdc58e7d7234315",
+  "client_evidence_path": "E:/r12client/docs/operations/evidence/2026-09-08-r12-windows-route-proof/receipt.json",
+  "raw_artifacts_verified": 62
+}

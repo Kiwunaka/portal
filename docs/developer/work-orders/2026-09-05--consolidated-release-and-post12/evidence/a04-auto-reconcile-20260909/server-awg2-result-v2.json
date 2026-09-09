@@ -1,0 +1,413 @@
+{
+  "utc": "2026-09-08T21:41:40.843069+00:00",
+  "profile": "awg2",
+  "scope": "Source worker loop on current-origin control plane, isolated PostgreSQL, real SSH removal and lab service restart on owned DE; exact Core on RU Pi",
+  "build": {
+    "core_revision": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+    "binary_sha256": "0f1d735609fb00b9dd0480b6090d4b8c1cbdce5661cd9b7d9b629d192482fb08",
+    "binary_bytes": 15952509,
+    "go_sha256": "21761eceb9302062c9623fb699f332c8c7fe000f15f70efe8da01a2cfbbc16b9",
+    "git_sha256": "fec691d80fccc35fcc309fbc9f720536c1d795b8a562ec169f28c9923da9600f",
+    "target": "linux_arm64",
+    "interop_runner_sha256": "ddf6a29a54dfd5f907d01409a4587294a4c1f0709a2ded64f9388421b8fb3902"
+  },
+  "public_key_sha256": {
+    "a": "c3915ef48f61976492c25eec5fbc08d40f64c09fcd1ac0047e72cde494bf47a8",
+    "b": "aea0c139d6aa32d3ab2e2ce000ff86da1c26af7f98bcf7600fc0d4ecbd6dada0",
+    "c": "cfdfe4317e94227cd15d2fe60a086d02522a90c96556af5803e18f3b25b9d680"
+  },
+  "server": [
+    {
+      "utc": "2026-09-08T21:41:04.320522+00:00",
+      "phase": "ready",
+      "interface": "pokrovawg2",
+      "peer_count": 1,
+      "original_peer_present": true,
+      "test_peers": []
+    },
+    {
+      "utc": "2026-09-08T21:41:04.375950+00:00",
+      "phase": "add",
+      "service_restarts": 0,
+      "peer_count": 2,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "c3915ef48f61976492c25eec5fbc08d40f64c09fcd1ac0047e72cde494bf47a8",
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "handshake_unix": 0
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:41:04.428331+00:00",
+      "phase": "add",
+      "service_restarts": 0,
+      "peer_count": 3,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "c3915ef48f61976492c25eec5fbc08d40f64c09fcd1ac0047e72cde494bf47a8",
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "handshake_unix": 0
+        },
+        {
+          "public_key_sha256": "aea0c139d6aa32d3ab2e2ce000ff86da1c26af7f98bcf7600fc0d4ecbd6dada0",
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "handshake_unix": 0
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:41:04.936777+00:00",
+      "phase": "read",
+      "service_restarts": 0,
+      "peer_count": 3,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "aea0c139d6aa32d3ab2e2ce000ff86da1c26af7f98bcf7600fc0d4ecbd6dada0",
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "handshake_unix": 0
+        },
+        {
+          "public_key_sha256": "c3915ef48f61976492c25eec5fbc08d40f64c09fcd1ac0047e72cde494bf47a8",
+          "rx_bytes": 7252,
+          "tx_bytes": 6540,
+          "handshake_unix": 1788903664
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:41:05.441550+00:00",
+      "phase": "read",
+      "service_restarts": 0,
+      "peer_count": 3,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "c3915ef48f61976492c25eec5fbc08d40f64c09fcd1ac0047e72cde494bf47a8",
+          "rx_bytes": 7252,
+          "tx_bytes": 6540,
+          "handshake_unix": 1788903664
+        },
+        {
+          "public_key_sha256": "aea0c139d6aa32d3ab2e2ce000ff86da1c26af7f98bcf7600fc0d4ecbd6dada0",
+          "rx_bytes": 7652,
+          "tx_bytes": 6828,
+          "handshake_unix": 1788903665
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:41:52.011157+00:00",
+      "phase": "read",
+      "service_restarts": 0,
+      "peer_count": 2,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "aea0c139d6aa32d3ab2e2ce000ff86da1c26af7f98bcf7600fc0d4ecbd6dada0",
+          "rx_bytes": 7652,
+          "tx_bytes": 7864,
+          "handshake_unix": 1788903665
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:41:52.553838+00:00",
+      "phase": "read",
+      "service_restarts": 0,
+      "peer_count": 2,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "aea0c139d6aa32d3ab2e2ce000ff86da1c26af7f98bcf7600fc0d4ecbd6dada0",
+          "rx_bytes": 15112,
+          "tx_bytes": 14404,
+          "handshake_unix": 1788903712
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:41:53.075760+00:00",
+      "phase": "restart",
+      "service_restarts": 1,
+      "peer_count": 2,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "aea0c139d6aa32d3ab2e2ce000ff86da1c26af7f98bcf7600fc0d4ecbd6dada0",
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "handshake_unix": 0
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:42:38.339471+00:00",
+      "phase": "read",
+      "service_restarts": 1,
+      "peer_count": 2,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "aea0c139d6aa32d3ab2e2ce000ff86da1c26af7f98bcf7600fc0d4ecbd6dada0",
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "handshake_unix": 0
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:42:38.968414+00:00",
+      "phase": "read",
+      "service_restarts": 1,
+      "peer_count": 2,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "aea0c139d6aa32d3ab2e2ce000ff86da1c26af7f98bcf7600fc0d4ecbd6dada0",
+          "rx_bytes": 7460,
+          "tx_bytes": 6348,
+          "handshake_unix": 1788903758
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:43:25.561052+00:00",
+      "phase": "read",
+      "service_restarts": 1,
+      "peer_count": 1,
+      "original_peer_present": true,
+      "test_peers": []
+    },
+    {
+      "utc": "2026-09-08T21:43:25.626294+00:00",
+      "phase": "add",
+      "service_restarts": 1,
+      "peer_count": 2,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "cfdfe4317e94227cd15d2fe60a086d02522a90c96556af5803e18f3b25b9d680",
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "handshake_unix": 0
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:43:26.181117+00:00",
+      "phase": "read",
+      "service_restarts": 1,
+      "peer_count": 2,
+      "original_peer_present": true,
+      "test_peers": [
+        {
+          "public_key_sha256": "cfdfe4317e94227cd15d2fe60a086d02522a90c96556af5803e18f3b25b9d680",
+          "rx_bytes": 7364,
+          "tx_bytes": 6636,
+          "handshake_unix": 1788903805
+        }
+      ]
+    },
+    {
+      "utc": "2026-09-08T21:43:26.880289+00:00",
+      "phase": "cleanup",
+      "removed_test_peers": true,
+      "saved_configuration_restored": true,
+      "original_live_static_configuration_restored": true,
+      "original_peers_restored": true,
+      "service_restarts": 1,
+      "counters_reset_by_restart": true,
+      "passed": true
+    }
+  ],
+  "worker_runs": [
+    {
+      "targets": 1,
+      "retired": 0,
+      "shared_keys_blocked": 0,
+      "disk_removed": 1,
+      "live_removed": 1,
+      "failed_targets": 0,
+      "errors": {}
+    },
+    {
+      "targets": 1,
+      "retired": 1,
+      "shared_keys_blocked": 0,
+      "disk_removed": 1,
+      "live_removed": 1,
+      "failed_targets": 0,
+      "errors": {}
+    },
+    {
+      "targets": 1,
+      "retired": 0,
+      "shared_keys_blocked": 0,
+      "disk_removed": 1,
+      "live_removed": 1,
+      "failed_targets": 0,
+      "errors": {}
+    }
+  ],
+  "core_tests": [
+    {
+      "label": "a_initial",
+      "key": "a",
+      "expected": "accepted",
+      "returncode": 0,
+      "selected_subtest_observed": true,
+      "classification": "passed",
+      "oracle_passed": true,
+      "payload_sha256": "ac53b9051ed9f4ba933c79d394b2203b07e228c80c7872b692474e8aed365fbf",
+      "output_sha256": "5ae879f7be910088be7e30cdef91902c1499b1f04ef1027bd723cc04bef50e96",
+      "mtu_observations": {
+        "1280": {
+          "tx_packets": 19,
+          "rx_packets": 13,
+          "tx_max": 1296,
+          "rx_max": 1312,
+          "elapsed_ms": 245
+        }
+      }
+    },
+    {
+      "label": "b_initial",
+      "key": "b",
+      "expected": "accepted",
+      "returncode": 0,
+      "selected_subtest_observed": true,
+      "classification": "passed",
+      "oracle_passed": true,
+      "payload_sha256": "36a0869a1170b0130ba4e020dad59e5285a810d2ac1c202efa3ff8d42406d006",
+      "output_sha256": "392ac979509d09ce8b5f8d7b634f73b40a5e1b52ea7af6b41e8ce081b8266d9c",
+      "mtu_observations": {
+        "1280": {
+          "tx_packets": 20,
+          "rx_packets": 14,
+          "tx_max": 1296,
+          "rx_max": 1312,
+          "elapsed_ms": 247
+        }
+      }
+    },
+    {
+      "label": "a_after_automatic_revoke",
+      "key": "a",
+      "expected": "rejected",
+      "returncode": 1,
+      "selected_subtest_observed": true,
+      "classification": "failed_no_outer_response",
+      "oracle_passed": true,
+      "payload_sha256": "ac53b9051ed9f4ba933c79d394b2203b07e228c80c7872b692474e8aed365fbf",
+      "output_sha256": "fd6ef7e52e856787cc3183051c2fcce497c5e5d964c85dedea1cd4878fabd315",
+      "mtu_observations": {}
+    },
+    {
+      "label": "b_survives_a_revoke",
+      "key": "b",
+      "expected": "accepted",
+      "returncode": 0,
+      "selected_subtest_observed": true,
+      "classification": "passed",
+      "oracle_passed": true,
+      "payload_sha256": "36a0869a1170b0130ba4e020dad59e5285a810d2ac1c202efa3ff8d42406d006",
+      "output_sha256": "59f9a05b78793ea6035592ea06fb28340bf4a6d58e8b276e9d2c1a2c24d6207b",
+      "mtu_observations": {
+        "1280": {
+          "tx_packets": 20,
+          "rx_packets": 13,
+          "tx_max": 1296,
+          "rx_max": 1312,
+          "elapsed_ms": 249
+        }
+      }
+    },
+    {
+      "label": "a_denied_after_server_restart",
+      "key": "a",
+      "expected": "rejected",
+      "returncode": 1,
+      "selected_subtest_observed": true,
+      "classification": "failed_no_outer_response",
+      "oracle_passed": true,
+      "payload_sha256": "ac53b9051ed9f4ba933c79d394b2203b07e228c80c7872b692474e8aed365fbf",
+      "output_sha256": "fd6ef7e52e856787cc3183051c2fcce497c5e5d964c85dedea1cd4878fabd315",
+      "mtu_observations": {}
+    },
+    {
+      "label": "b_survives_server_restart",
+      "key": "b",
+      "expected": "accepted",
+      "returncode": 0,
+      "selected_subtest_observed": true,
+      "classification": "passed",
+      "oracle_passed": true,
+      "payload_sha256": "36a0869a1170b0130ba4e020dad59e5285a810d2ac1c202efa3ff8d42406d006",
+      "output_sha256": "fbbc9cf75771601ad2a4e42f271a329317dd9a61a56c096ff9b0b994a1a9fc2c",
+      "mtu_observations": {
+        "1280": {
+          "tx_packets": 20,
+          "rx_packets": 11,
+          "tx_max": 1296,
+          "rx_max": 1312,
+          "elapsed_ms": 310
+        }
+      }
+    },
+    {
+      "label": "b_after_automatic_expiry",
+      "key": "b",
+      "expected": "rejected",
+      "returncode": 1,
+      "selected_subtest_observed": true,
+      "classification": "failed_no_outer_response",
+      "oracle_passed": true,
+      "payload_sha256": "36a0869a1170b0130ba4e020dad59e5285a810d2ac1c202efa3ff8d42406d006",
+      "output_sha256": "fd6ef7e52e856787cc3183051c2fcce497c5e5d964c85dedea1cd4878fabd315",
+      "mtu_observations": {}
+    },
+    {
+      "label": "a_fresh_key_after_reauth",
+      "key": "c",
+      "expected": "accepted",
+      "returncode": 0,
+      "selected_subtest_observed": true,
+      "classification": "passed",
+      "oracle_passed": true,
+      "payload_sha256": "661ae6ac782a99e44fb249ecdf5647183058fddd8db0d37d0f1ceb3110c38c38",
+      "output_sha256": "b9ecf3191f59b94aee1247c21ee45167f13bc9a5c1d2dc140599601f414b667a",
+      "mtu_observations": {
+        "1280": {
+          "tx_packets": 19,
+          "rx_packets": 14,
+          "tx_max": 1296,
+          "rx_max": 1312,
+          "elapsed_ms": 243
+        }
+      }
+    }
+  ],
+  "raw_material_retained": false,
+  "result": "PASS_SOURCE_WORKER_PERSISTENT_REVOKE_EXPIRY_AND_RESTART",
+  "oracle_source_sha256": "b95ab6f215985ec544f3c1061d12277e905902814b81ff2d7730c9af11021687",
+  "idempotent_retry": {
+    "targets": 1,
+    "retired": 0,
+    "shared_keys_blocked": 0,
+    "disk_removed": 0,
+    "live_removed": 0,
+    "failed_targets": 0,
+    "errors": {}
+  },
+  "server_cleanup_verified": true,
+  "server_exit_code": 0,
+  "pi_temporary_state_removed": true
+}

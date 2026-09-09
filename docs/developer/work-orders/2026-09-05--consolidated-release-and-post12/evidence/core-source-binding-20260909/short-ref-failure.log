@@ -1,0 +1,15 @@
+cross-repository-contract	Validate exact replay refs	﻿2026-09-09T02:42:51.0243489Z ##[group]Run for ref in "$CLIENT_REF" "$PLATFORM_REF" "$CORE_REF"; do
+cross-repository-contract	Validate exact replay refs	2026-09-09T02:42:51.0244202Z ^[[36;1mfor ref in "$CLIENT_REF" "$PLATFORM_REF" "$CORE_REF"; do^[[0m
+cross-repository-contract	Validate exact replay refs	2026-09-09T02:42:51.0244678Z ^[[36;1m  if [[ ! "$ref" =~ ^[0-9a-f]{40}$ ]]; then^[[0m
+cross-repository-contract	Validate exact replay refs	2026-09-09T02:42:51.0245250Z ^[[36;1m    echo "Manual exact replay requires three lowercase full commit SHAs."^[[0m
+cross-repository-contract	Validate exact replay refs	2026-09-09T02:42:51.0245721Z ^[[36;1m    exit 1^[[0m
+cross-repository-contract	Validate exact replay refs	2026-09-09T02:42:51.0246104Z ^[[36;1m  fi^[[0m
+cross-repository-contract	Validate exact replay refs	2026-09-09T02:42:51.0246441Z ^[[36;1mdone^[[0m
+cross-repository-contract	Validate exact replay refs	2026-09-09T02:42:51.0268436Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+cross-repository-contract	Validate exact replay refs	2026-09-09T02:42:51.0268987Z env:
+cross-repository-contract	Validate exact replay refs	2026-09-09T02:42:51.0269527Z   CLIENT_REF: 5fdfc8d
+cross-repository-contract	Validate exact replay refs	2026-09-09T02:42:51.0270011Z   PLATFORM_REF: 0f6745dbe33f267d61eb0effb28afcd638e70364
+cross-repository-contract	Validate exact replay refs	2026-09-09T02:42:51.0270495Z   CORE_REF: c7a11f7d2fd974726095ad7aa0619c055273dd15
+cross-repository-contract	Validate exact replay refs	2026-09-09T02:42:51.0271208Z ##[endgroup]
+cross-repository-contract	Validate exact replay refs	2026-09-09T02:42:51.0313780Z Manual exact replay requires three lowercase full commit SHAs.
+cross-repository-contract	Validate exact replay refs	2026-09-09T02:42:51.0323359Z ##[error]Process completed with exit code 1.

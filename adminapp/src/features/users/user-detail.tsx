@@ -350,6 +350,17 @@ export function UserDetail({
             ) : (
             <div className="space-y-4">
               <div>
+                <SectionTitle title="Исходная сеть устройства" description="Автоматическая диагностика Android. IP наблюдается через физическую сеть; при недоступном API остаётся неизвестным. Данные хранятся до 72 часов, доступ к ним записывается в аудит." />
+                <p className="mb-3 text-xs text-[color:var(--atlas-text-muted)]">Регион определяется приблизительно. <a href="https://db-ip.com" target="_blank" rel="noreferrer" className="underline">IP Geolocation by DB-IP</a>.</p>
+                <DetailTable headers={["Когда", "Устройство", "Сеть и оператор", "Исходный IP", "Примерный регион"]} empty="Автоматическая диагностика сети пока не поступала или срок хранения истёк." rows={data.support360.networkContext.map((observation) => [
+                  dateText(observation.observedAt),
+                  <span key="device">{[observation.platform, observation.appVersion].filter(Boolean).join(" · ") || "Не указано"}<br /><code className="text-[10px]">{observation.deviceRef}</code></span>,
+                  [({ cellular: "Мобильная сеть", wifi: "Wi-Fi", ethernet: "Ethernet", other: "Другая сеть", unknown: "Неизвестно" } as Record<string, string>)[observation.networkClass] || "Неизвестно", observation.carrier].filter(Boolean).join(" · "),
+                  observation.publicIp || "Неизвестен",
+                  [observation.countryCode, observation.region].filter(Boolean).join(" · ") || "Неизвестен",
+                ])} />
+              </div>
+              <div>
                 <SectionTitle title="Установки и сессии" description="Сервер группирует события по opaque refs. Исходные device/session/trace identifiers не возвращаются." />
                 <div className="grid gap-2 sm:grid-cols-2">{data.support360.installations.map((installation) => <article key={installation.installationRef} className="rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] p-3 text-xs"><code className="font-mono text-[11px]">{installation.installationRef}</code><p className="mt-2">{installation.sessions} сессий · {installation.attempts} попыток</p><p className="mt-1 text-[color:var(--atlas-text-muted)]">{dateText(installation.lastSeenAt)}</p></article>)}</div>
                 {!data.support360.installations.length ? <EmptyState description="Установки не определены по безопасным клиентским событиям." className="min-h-20" /> : null}

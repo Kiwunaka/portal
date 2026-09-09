@@ -30,7 +30,9 @@ test("release checklist binds exact candidate and keeps origins honest", async (
   await expect(page).toHaveURL(new RegExp(`candidate=${secondCandidate}`));
   await expect(page.getByText(secondCandidate, { exact: true }).first()).toBeVisible();
   await expect(page.getByText("4".repeat(64), { exact: true }).first()).toBeVisible();
-  await expect(page.getByText(/Release gates: Подтверждено · PASS/)).toBeVisible();
+  await expect(page.getByText(/Проверки cockpit: Подтверждено · PASS/)).toBeVisible();
+  await expect(page.getByText(/Политика cockpit: pokrov.operator-cockpit-gates\/v1/)).toBeVisible();
+  await expect(page.getByRole("note").filter({ hasText: "Gate F: решение о выпуске не загружено" })).toBeVisible();
 });
 
 test("broadcast draft survives a 401 prepare error", async ({ page }) => {

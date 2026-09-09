@@ -1,0 +1,467 @@
+{
+  "scope": "A02 existing AWG2/AWG3.1 owned lab interop on Raspberry Pi",
+  "result": "PASS_BOUNDED",
+  "evidence_level": "I4",
+  "core_source": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+  "platform_source": "e5cdb33",
+  "interop": {
+    "awg2": {
+      "binary_sha256": "2756e2fc19b093e6af7e3e67526f57584470d513af35c15f1a684322e390af8f",
+      "core_revision": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+      "direct_default_route_preflight": true,
+      "execution_architecture": "linux_arm64",
+      "execution_host_class": "owned_raspberry_pi_4",
+      "execution_origin": "ru",
+      "execution_tool_sha256": {
+        "git": "fec691d80fccc35fcc309fbc9f720536c1d795b8a562ec169f28c9923da9600f",
+        "go": "21761eceb9302062c9623fb699f332c8c7fe000f15f70efe8da01a2cfbbc16b9",
+        "scp": "63b7118d8e1a8a84398cf4ce1584dc6b146606092fe9c68bbaf110bbdcfb480a",
+        "ssh": "6250fd52163fe99a0dc49403ed1b4bbef9b764bdb7bada017a93d057d9376a42"
+      },
+      "material_sha256": "07ae6a2f8bdbfc3bd78bb6fabf105db5380f1bf9a0989efed7a8330d0f7648a9",
+      "mtu_observations": {
+        "1280": {
+          "elapsed_ms": 253,
+          "rx_max": 1312,
+          "rx_packets": 14,
+          "tx_max": 1296,
+          "tx_packets": 20
+        },
+        "1400": {
+          "elapsed_ms": 192,
+          "rx_max": 1312,
+          "rx_packets": 16,
+          "tx_max": 1408,
+          "tx_packets": 19
+        },
+        "1408": {
+          "elapsed_ms": 188,
+          "rx_max": 1312,
+          "rx_packets": 14,
+          "tx_max": 1296,
+          "tx_packets": 20
+        }
+      },
+      "outcome": "passed",
+      "passed": true,
+      "profile": "awg2_lab",
+      "raw_material_returned": false,
+      "runtime_mutated": false,
+      "schema_version": "pokrov-owned-awg-core-interop-v4",
+      "server_mutated": false,
+      "temporary_remote_state_removed": true
+    },
+    "awg31": {
+      "binary_sha256": "df2cf31ba395c49ec4f08c9103f43fc35a7ca424814b60602976eeeacc646c38",
+      "core_revision": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+      "direct_default_route_preflight": true,
+      "execution_architecture": "linux_arm64",
+      "execution_host_class": "owned_raspberry_pi_4",
+      "execution_origin": "ru",
+      "execution_tool_sha256": {
+        "git": "fec691d80fccc35fcc309fbc9f720536c1d795b8a562ec169f28c9923da9600f",
+        "go": "21761eceb9302062c9623fb699f332c8c7fe000f15f70efe8da01a2cfbbc16b9",
+        "scp": "63b7118d8e1a8a84398cf4ce1584dc6b146606092fe9c68bbaf110bbdcfb480a",
+        "ssh": "6250fd52163fe99a0dc49403ed1b4bbef9b764bdb7bada017a93d057d9376a42"
+      },
+      "material_sha256": "7effbffdbab9013e682f60832c89d488ef0ecfe0829c4e8acb788918bbfaea50",
+      "mtu_observations": {
+        "1280": {
+          "elapsed_ms": 1242,
+          "rx_max": 1328,
+          "rx_packets": 11,
+          "tx_max": 1300,
+          "tx_packets": 22
+        },
+        "1400": {
+          "elapsed_ms": 738,
+          "rx_max": 1328,
+          "rx_packets": 14,
+          "tx_max": 1300,
+          "tx_packets": 23
+        },
+        "1408": {
+          "elapsed_ms": 1960,
+          "rx_max": 1328,
+          "rx_packets": 12,
+          "tx_max": 1300,
+          "tx_packets": 22
+        }
+      },
+      "outcome": "passed",
+      "passed": true,
+      "profile": "awg31_lab",
+      "raw_material_returned": false,
+      "runtime_mutated": false,
+      "schema_version": "pokrov-owned-awg-core-interop-v4",
+      "server_mutated": false,
+      "temporary_remote_state_removed": true
+    }
+  },
+  "alignment": {
+    "awg2": {
+      "checks": {
+        "client_public_matches_live_peer": true,
+        "client_public_matches_server_peer": true,
+        "content_padding_addition_matches": true,
+        "header_protection_key_matches": true,
+        "listen_port_matches": true,
+        "node_address_matches": true,
+        "protocol_fields_match": true,
+        "random_trailers_matches": true,
+        "server_private_matches_live": true,
+        "server_public_matches_endpoint": true,
+        "tunnel_address_matches": true
+      },
+      "ok": true,
+      "profile": "awg2_lab",
+      "raw_material_returned": false,
+      "schema_version": "pokrov-owned-awg-alignment-v2"
+    },
+    "awg31": {
+      "checks": {
+        "client_public_matches_live_peer": true,
+        "client_public_matches_server_peer": true,
+        "content_padding_addition_matches": true,
+        "header_protection_key_matches": true,
+        "listen_port_matches": true,
+        "node_address_matches": true,
+        "protocol_fields_match": true,
+        "random_trailers_matches": true,
+        "server_private_matches_live": true,
+        "server_public_matches_endpoint": true,
+        "tunnel_address_matches": true
+      },
+      "ok": true,
+      "profile": "awg31_lab",
+      "raw_material_returned": false,
+      "schema_version": "pokrov-owned-awg-alignment-v2"
+    }
+  },
+  "server_before": {
+    "container_image_digest": null,
+    "deployment_kind": "host_native_userspace",
+    "files": {
+      "/etc/systemd/system/pokrov-awg-lab@.service": "cbcfb0ada0e596dbf1da8089842e615692a7f76e3191bda5b48ab7a8091443ab",
+      "/usr/local/bin/awg": "69d1349275a1a97853478c75b62019fcd6707022f231c794e7f45b00e3d0f8e9",
+      "/usr/local/bin/awg-quick": "f4bb0f5d63665ade87f0cb9f2185c43515cff09868637eb311f98f65a318722c",
+      "/usr/local/libexec/pokrov/amneziawg-go-v3.1.20260814": "4ede58a7d4bc79bce152850ef7aa0ee5885de592d5d095352ae869b3fe8f172d"
+    },
+    "interfaces": {
+      "pokrovawg2": {
+        "config_sha256": "ebbfb2191c5f57825b6a6e5d0fcdf807811a72811dbfe1249e73dbba53299157",
+        "live_config_sha256": "38a1c76fe6c3706623c25fb09e4acbc66ee74f042fe5d3d64a2d42be01f35b9e",
+        "live_static_config_sha256": "435b8a08ac061146c1de5943366a5bd68771116d97663db4b159d5fda08373e2",
+        "peers": [
+          {
+            "latest_handshake_unix": 1788835694,
+            "public_key_sha256": "a3c903d990d506fff21f6fb4602191b648c2ed8b1f8bef72a4970cc345eac80d",
+            "rx_bytes": 126072,
+            "tx_bytes": 341576
+          }
+        ],
+        "processes": [
+          {
+            "exe_sha256": "4ede58a7d4bc79bce152850ef7aa0ee5885de592d5d095352ae869b3fe8f172d",
+            "pid": 956
+          }
+        ],
+        "unit_active": "active"
+      },
+      "pokrovawg31": {
+        "config_sha256": "60dd8351e0d6ea5128f14dfbbe77116185174ab5f5a5abab8f9b4159a643a32e",
+        "live_config_sha256": "0304c5473978f6eb282961b06b562411ef0b988b747a520ab0b68ea608d1d50f",
+        "live_static_config_sha256": "69b55eaf0b0469c1b27c7defe9f2a8862dcc42ba556ce83cbf0093af6b4d7171",
+        "peers": [
+          {
+            "latest_handshake_unix": 1788855243,
+            "public_key_sha256": "68105095df51ea3599392ce3a9bfa824e82d09e1f46e028ff8d4186b74d3e7ae",
+            "rx_bytes": 5556709,
+            "tx_bytes": 24352564
+          }
+        ],
+        "processes": [
+          {
+            "exe_sha256": "4ede58a7d4bc79bce152850ef7aa0ee5885de592d5d095352ae869b3fe8f172d",
+            "pid": 933
+          }
+        ],
+        "unit_active": "active",
+        "variant_dropin_sha256": "28223be9a676a758ec7795d220b4d813cf642e91bc77531cc306e364798afd41"
+      }
+    },
+    "kernel": "6.8.0-138-generic",
+    "raw_material_returned": false,
+    "utc": "2026-09-08T09:11:01.088904+00:00"
+  },
+  "server_after": {
+    "container_image_digest": null,
+    "deployment_kind": "host_native_userspace",
+    "files": {
+      "/etc/systemd/system/pokrov-awg-lab@.service": "cbcfb0ada0e596dbf1da8089842e615692a7f76e3191bda5b48ab7a8091443ab",
+      "/usr/local/bin/awg": "69d1349275a1a97853478c75b62019fcd6707022f231c794e7f45b00e3d0f8e9",
+      "/usr/local/bin/awg-quick": "f4bb0f5d63665ade87f0cb9f2185c43515cff09868637eb311f98f65a318722c",
+      "/usr/local/libexec/pokrov/amneziawg-go-v3.1.20260814": "4ede58a7d4bc79bce152850ef7aa0ee5885de592d5d095352ae869b3fe8f172d"
+    },
+    "interfaces": {
+      "pokrovawg2": {
+        "config_sha256": "ebbfb2191c5f57825b6a6e5d0fcdf807811a72811dbfe1249e73dbba53299157",
+        "live_config_sha256": "7681dc0ad71149ce37bd04e199fbe16e5693f73842733f1f87cff5f39f46441a",
+        "live_static_config_sha256": "435b8a08ac061146c1de5943366a5bd68771116d97663db4b159d5fda08373e2",
+        "peers": [
+          {
+            "latest_handshake_unix": 1788858911,
+            "public_key_sha256": "a3c903d990d506fff21f6fb4602191b648c2ed8b1f8bef72a4970cc345eac80d",
+            "rx_bytes": 148308,
+            "tx_bytes": 364732
+          }
+        ],
+        "processes": [
+          {
+            "exe_sha256": "4ede58a7d4bc79bce152850ef7aa0ee5885de592d5d095352ae869b3fe8f172d",
+            "pid": 956
+          }
+        ],
+        "unit_active": "active"
+      },
+      "pokrovawg31": {
+        "config_sha256": "60dd8351e0d6ea5128f14dfbbe77116185174ab5f5a5abab8f9b4159a643a32e",
+        "live_config_sha256": "46886e6b31b24655cda97ec3598b8900a0318e45d70380b45481252e13bc7b23",
+        "live_static_config_sha256": "69b55eaf0b0469c1b27c7defe9f2a8862dcc42ba556ce83cbf0093af6b4d7171",
+        "peers": [
+          {
+            "latest_handshake_unix": 1788859203,
+            "public_key_sha256": "68105095df51ea3599392ce3a9bfa824e82d09e1f46e028ff8d4186b74d3e7ae",
+            "rx_bytes": 5587139,
+            "tx_bytes": 24379505
+          }
+        ],
+        "processes": [
+          {
+            "exe_sha256": "4ede58a7d4bc79bce152850ef7aa0ee5885de592d5d095352ae869b3fe8f172d",
+            "pid": 933
+          }
+        ],
+        "unit_active": "active",
+        "variant_dropin_sha256": "28223be9a676a758ec7795d220b4d813cf642e91bc77531cc306e364798afd41"
+      }
+    },
+    "kernel": "6.8.0-138-generic",
+    "raw_material_returned": false,
+    "utc": "2026-09-08T09:20:41.805092+00:00"
+  },
+  "counter_comparison": {
+    "passed": true,
+    "server_static_configuration_unchanged": true,
+    "runtime_binary_and_processes_unchanged": true,
+    "counter_deltas": {
+      "pokrovawg2": {
+        "rx_bytes": 22236,
+        "tx_bytes": 22564,
+        "new_handshake": true
+      },
+      "pokrovawg31": {
+        "rx_bytes": 30430,
+        "tx_bytes": 26941,
+        "new_handshake": true
+      }
+    }
+  },
+  "source_auth": {
+    "sumdb": "sum.golang.org",
+    "fresh_cache": true,
+    "all_compiled_module_sources_equal": true,
+    "modules": [
+      {
+        "module": "github.com/amnezia-vpn/amneziawg-go/v3",
+        "version": "v3.1.20260814",
+        "sum": "h1:l2AhBD+sFycU8Im81n/bZORMxW7fWtlZJEuJ4Hh0+z0=",
+        "go_mod_sum": "h1:YoPc6qcOZqD7TXZ1xpedD8Sx3aSKsxN05ZqEFmXDNHk=",
+        "origin": {
+          "VCS": "git",
+          "URL": "https://github.com/amnezia-vpn/amneziawg-go",
+          "Hash": "1b86b2ae0e493e7ea93f8c1a0f0cb6735b1551f1",
+          "Ref": "refs/tags/v3.1.20260814"
+        },
+        "files_matched": 121,
+        "inventory_sha256": "c893a6ac81767474103e7c497fbfe9e422cee737a0a65ab5c3042e361553c91a"
+      },
+      {
+        "module": "golang.org/x/crypto",
+        "version": "v0.42.0",
+        "sum": "h1:chiH31gIWm57EkTXpwnqf8qeuMUi0yekh6mT2AvFlqI=",
+        "go_mod_sum": "h1:4+rDnOTJhQCx2q7/j6rAN5XDw8kPjeaXEUR2eL94ix8=",
+        "origin": {
+          "VCS": "git",
+          "URL": "https://go.googlesource.com/crypto",
+          "Hash": "5307a0ce6db8057c8d7c4378dc4bd715b4985ba1",
+          "Ref": "refs/tags/v0.42.0"
+        },
+        "files_matched": 393,
+        "inventory_sha256": "dc20b08adc14584586ca4167b66baa455c426201e14fad9287656708d231701b"
+      },
+      {
+        "module": "golang.org/x/net",
+        "version": "v0.44.0",
+        "sum": "h1:evd8IRDyfNBMBTTY5XRF1vaZlD+EmWx6x8PkhR04H/I=",
+        "go_mod_sum": "h1:ECOoLqd5U3Lhyeyo/QDCEVQ4sNgYsqvCZ722XogGieY=",
+        "origin": {
+          "VCS": "git",
+          "URL": "https://go.googlesource.com/net",
+          "Hash": "3b23d576ea72235a3fef8f157eb5ab76e65854a8",
+          "Ref": "refs/tags/v0.44.0"
+        },
+        "files_matched": 817,
+        "inventory_sha256": "2ea1e998848c1d48af87f03f62e4d3c42a220b3d88452deed9a0c21fcbecded8"
+      },
+      {
+        "module": "golang.org/x/sys",
+        "version": "v0.36.0",
+        "sum": "h1:KVRy2GtZBrk1cBYA7MKu5bEZFxQk4NIDV6RLVcC8o0k=",
+        "go_mod_sum": "h1:OgkHotnGiDImocRcuBABYBEXf8A9a87e/uXjp9XT3ks=",
+        "origin": {
+          "VCS": "git",
+          "URL": "https://go.googlesource.com/sys",
+          "Hash": "b06ce0514ea5467cf3ac72ad85e4d1845c51fbad",
+          "Ref": "refs/tags/v0.36.0"
+        },
+        "files_matched": 538,
+        "inventory_sha256": "89d784ae1dd14c87728251df6a833745a3c263e882ac31373ed5e9d834582c05"
+      }
+    ]
+  },
+  "reproduction": {
+    "same_bytes": true,
+    "server_sha256": "4ede58a7d4bc79bce152850ef7aa0ee5885de592d5d095352ae869b3fe8f172d",
+    "rebuilt_sha256": "4ede58a7d4bc79bce152850ef7aa0ee5885de592d5d095352ae869b3fe8f172d",
+    "rebuilt_bytes": 3403924
+  },
+  "ssh_access": {
+    "new_dedicated_key_verified": true,
+    "existing_keys_preserved": true,
+    "same_machine_both_addresses": true,
+    "key_fingerprint": "SHA256:You1dgpfkjSjn0WTlEFQuwrZw0Qu7kHrdj+cDH9Fe4c"
+  },
+  "retained_files": [
+    {
+      "path": "E:\\r12-a02-server-20260908\\server-readback.py",
+      "sha256": "3879a31cd5bee157a50850527a0e44bc9332018621ad73d521c6267d64145dfb",
+      "bytes": 3321
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\server-before-interop.json",
+      "sha256": "d71cc862cca0d2610fc539aa351cdcf8c82602ff0b3439a30c4b6bab552d9e2b",
+      "bytes": 2356
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\server-after-awg2.json",
+      "sha256": "da617ff9b87f8fddc00a5a73dc11e5d5a6fe6539db02ecec31ff41e968ce5aa8",
+      "bytes": 2356
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\server-after-awg31.json",
+      "sha256": "57b54d799eb27d163377ee255be69b195bea0262016128b224d0417ab744590e",
+      "bytes": 2356
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\server-counter-comparison.json",
+      "sha256": "f9cda29e732f878b93a5d632f59c03d21f1ba91087db280f1d62e2fd1351ba20",
+      "bytes": 374
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\amneziawg-go-server",
+      "sha256": "4ede58a7d4bc79bce152850ef7aa0ee5885de592d5d095352ae869b3fe8f172d",
+      "bytes": 3403924
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\amneziawg-go-reproduced",
+      "sha256": "4ede58a7d4bc79bce152850ef7aa0ee5885de592d5d095352ae869b3fe8f172d",
+      "bytes": 3403924
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\server-build-info.txt",
+      "sha256": "cbffcaa43eda235b576f65fb588ea8eb6873a675d55b1c65357af2b52c383a47",
+      "bytes": 534
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\source-auth-comparison.json",
+      "sha256": "533947c3fc7c2d3ec3ea097339907a0d2c0d6fb31dce17ec4bb766243cff5f60",
+      "bytes": 2342
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\source-auth-downloads.jsonl",
+      "sha256": "7a9a2cf110df82936a4afda0b62c5e3e67ea29f6b536a1b5aa2c3a8b53a2f9d0",
+      "bytes": 3124
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\server-reproduction.json",
+      "sha256": "d5bc6a93a8b2bfa580f988b304b36f82be0ee852a86126eac34baf56757826b8",
+      "bytes": 206
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\server-reproduction-stripped.json",
+      "sha256": "2b096a63010db31ea07c993c9303153dd58323b96faaf337053b991f574b5958",
+      "bytes": 235
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\server-reproduction-noid.json",
+      "sha256": "502f6373449e748342bb24de40852aae5d62bd9ca130840b8c5dc76dc031ef26",
+      "bytes": 234
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\awg2-interop.json",
+      "sha256": "51eb0cdca5fe61e4d8832058f5a180b9d02fab320e43f7052212aef8e162cb6e",
+      "bytes": 1266
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\awg31-interop.json",
+      "sha256": "8b01fdafc6bd60b204cd874392abee21e7381351d7bb9730db01cc30a8feb2a8",
+      "bytes": 1269
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\awg2-run.log",
+      "sha256": "fa0e49c4829e4d091d1fe858da05c16d0ad49bd7a5fe67536a8485e4cd0044d1",
+      "bytes": 42
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\awg2-run-corrected.log",
+      "sha256": "51eb0cdca5fe61e4d8832058f5a180b9d02fab320e43f7052212aef8e162cb6e",
+      "bytes": 1266
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\awg31-run.log",
+      "sha256": "8b01fdafc6bd60b204cd874392abee21e7381351d7bb9730db01cc30a8feb2a8",
+      "bytes": 1269
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\protocol-negative.log",
+      "sha256": "9d110bfda3034f4955e39fa2e4070b6d8fda202b973d12929e928191c2c12abb",
+      "bytes": 55
+    },
+    {
+      "path": "E:\\r12-de-access-20260908\\authenticated.json",
+      "sha256": "cc8fe92c8be928d06b98a2aa63f80fc7db69507796834f590ec3da2f79be37a7",
+      "bytes": 213
+    },
+    {
+      "path": "E:\\r12-de-access-20260908\\key-added.json",
+      "sha256": "4eb18e4b111005787fbb44057fcaf67174cc8f8a372d4a7ca0a7b199ec1fd5db",
+      "bytes": 709
+    },
+    {
+      "path": "E:\\r12-de-access-20260908\\address-check.json",
+      "sha256": "7d2b19b1d783900f98bbe0104e4b7f61e3e952ca448730185bbd860f93d9d33f",
+      "bytes": 621
+    },
+    {
+      "path": "E:\\r12-de-access-20260908\\awg2-alignment.json",
+      "sha256": "f9b780d9ad419d08121c464e2268efb45c163cd4f1e2b2475cde7203957fc804",
+      "bytes": 529
+    },
+    {
+      "path": "E:\\r12-de-access-20260908\\awg31-alignment-current.json",
+      "sha256": "372fcc0cbd184f4383a2d71826498330968b88cc2e7aef44d94802b2656f56b3",
+      "bytes": 530
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": 9928470408,
+  "name": "pokrov-pokrov-1.2.0-candidate.33-signed-manifest-63993fba699b68641b7e972071ab7729fa9ec43c",
+  "digest": "sha256:e31d70082cc9417e088868f6d09a139cb0a8fecd95025b6d28b314a30f59e844",
+  "expired": false,
+  "expires_at": "2026-09-18T08:01:25Z",
+  "workflow_run": {
+    "id": 33851401873,
+    "repository_id": 1262255691,
+    "head_repository_id": 1262255691,
+    "head_branch": "main",
+    "head_sha": "63993fba699b68641b7e972071ab7729fa9ec43c"
+  }
+}

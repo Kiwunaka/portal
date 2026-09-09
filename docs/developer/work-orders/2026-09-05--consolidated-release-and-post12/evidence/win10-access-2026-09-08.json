@@ -1,0 +1,82 @@
+{
+  "schema": "pokrov.r12-platform-win10-access/v1",
+  "status": "BLOCKED_BY_ACCESS",
+  "blocker": "WINDOWS10_EVALUATION_NOT_LICENSED",
+  "source": "EXECUTION-WIN10-ACCESS-2026-09-08.md",
+  "client_evidence_commit": "2d93c959ff4ba0f442ca9472648ab32e0185ded7",
+  "client_evidence_git_blob": "b559995219e4562be93cbb3ae15d58acc9f1a91e",
+  "client_evidence_git_sha256": "0a67837b55147e282534d0662e893bdb63c33dc14e8fe121aa7990de382c6648",
+  "client_evidence_path": "E:/r12client/docs/operations/evidence/2026-09-08-r12-win10-access/receipt.json",
+  "client_source": "e88dff94bef85650c5f0b3d31dc3ff9a5e39c38a",
+  "core_source": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+  "planned_installer_sha256": "29a87a13906909e400037a947f1e4f876ca59821e7e34c73060e623f2d9fbeea",
+  "origin": "current-origin; owned Windows 10 evaluation VM",
+  "vm_uuid": "66808ffb-e614-4de0-95a3-b948d216be36",
+  "pokrov_installed": false,
+  "pokrov_runtime_tests_run": false,
+  "activation_attempts": [
+    {
+      "schema": "pokrov.r12-win10-evaluation-activation/v1",
+      "utc": "2026-09-08T05:52:06.6744662Z",
+      "vm_uuid": "66808ffb-e614-4de0-95a3-b948d216be36",
+      "before_status": 5,
+      "before_grace": 0,
+      "admin": true,
+      "product_key_supplied": false,
+      "activation_timer_reset": false,
+      "clock_backdated": false,
+      "activation_invoked": true,
+      "status": "NOT_LICENSED",
+      "cscript_exit": -2015294522,
+      "error_codes": [
+        "0X87E10BC6"
+      ],
+      "after_status": 5,
+      "after_grace": 0,
+      "completed_utc": "2026-09-08T05:52:07.6589204Z"
+    },
+    {
+      "schema": "pokrov.r12-win10-evaluation-activation/v1",
+      "utc": "2026-09-08T05:58:13.4074344Z",
+      "vm_uuid": "66808ffb-e614-4de0-95a3-b948d216be36",
+      "before_status": 5,
+      "before_grace": 0,
+      "admin": true,
+      "product_key_supplied": false,
+      "activation_timer_reset": false,
+      "clock_backdated": false,
+      "activation_invoked": true,
+      "status": "NOT_LICENSED",
+      "cscript_exit": -2015294522,
+      "error_codes": [
+        "0X87E10BC6"
+      ],
+      "after_status": 5,
+      "after_grace": 0,
+      "completed_utc": "2026-09-08T05:58:14.3753202Z"
+    }
+  ],
+  "retained_artifacts": 23,
+  "cleanup": {
+    "utc": "2026-09-08T06:00:00.6008152Z",
+    "vm_uuid": "66808ffb-e614-4de0-95a3-b948d216be36",
+    "vm_off": true,
+    "nic_none": true,
+    "routes_sha256": "401e4b0a47c9c8c73d6b52536cec753f09f559ceb2d512884e57d5f7aff72434",
+    "dns_sha256": "720fe40b4ee8ab42f57c808b3c5f824808703b35113fe9999ef97a7bbccdee59",
+    "host_network_unchanged": true,
+    "os_media_mounted": false
+  },
+  "open_checks": [
+    "Win10 POKROV acceptance NOT_RUN",
+    "License failure does not prove permanent activation-service retirement",
+    "Existing licensed Win10 stand requested; owner answer pending",
+    "Full W01/W02/W05 and final channel remain open"
+  ],
+  "release": {
+    "published": false,
+    "deployed": false,
+    "promoted": false,
+    "final_candidate": false
+  }
+}

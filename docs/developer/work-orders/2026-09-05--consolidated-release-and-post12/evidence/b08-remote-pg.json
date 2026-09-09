@@ -1,0 +1,325 @@
+{
+  "schema": "pokrov.r12.b08-remote-postgres-lab/v1",
+  "observed_on": "2026-09-06",
+  "source_commit": "af80ade9b1f79c13b2c5ce83bd0203a2efeaf052",
+  "actual_origin": "current-origin; isolated local Ubuntu VirtualBox guest",
+  "raw_gate_origin_constant": "brain (hard-coded in script, not runtime origin evidence)",
+  "result": "I3 / NEEDS_RUNTIME_PROOF",
+  "production_mutation": false,
+  "candidate_created": false,
+  "implementation_changed": false,
+  "gate_summary": {
+    "status": "PASS",
+    "backup_restore_status": "PASS",
+    "support_ownership_status": "PASS",
+    "target_role_status": "PASS",
+    "target_role_evidence": {
+      "database_owner_is_app": true,
+      "database_public_access_revoked": true,
+      "public_objects_owned": 1077,
+      "public_objects_total": 1077,
+      "public_schema_create": true,
+      "schema_public_access_revoked": true
+    },
+    "backup": {
+      "bytes": 490320,
+      "mode": "0600",
+      "path": "/root/backups/r12-b08-linux/portal-20260906T075040Z-f39dc0839bc6.dump.enc",
+      "sha256": "787be571bc8325cdb7473b7b2efeed3c6092cbf6e76e2295851ef2e1ce303255"
+    },
+    "backup_retention": {
+      "retain_count": 3,
+      "status": "PASS"
+    },
+    "target_was_reset": false,
+    "target_retained": true,
+    "target_state": "restored_retained",
+    "snapshot_cleanup_outcome": "committed"
+  },
+  "independent_verification": {
+    "target": "portal_b08_linux_01_rehearsal",
+    "tables": 117,
+    "all_table_fingerprints_match": true,
+    "post_snapshot_write_excluded": true,
+    "source_other_tables_unchanged": true
+  },
+  "fixture": {
+    "tables": 117,
+    "rows": 6,
+    "ordinary_app_role": true,
+    "attachment_bytes": 4127,
+    "attachment_sha256": "961f2e82fbe7094806806c452826647f8270510108b8e0f7456c2a7b48fadf1a"
+  },
+  "attachment_restore": {
+    "result": "PASS_SYNTHETIC_IMMUTABLE_FILES",
+    "source_unchanged_during_file_backup": true,
+    "restored_files": {
+      "b08-linux-synthetic.bin": {
+        "bytes": 4127,
+        "sha256": "961f2e82fbe7094806806c452826647f8270510108b8e0f7456c2a7b48fadf1a"
+      },
+      "fixture.txt": {
+        "bytes": 30,
+        "sha256": "2028238343cc42ddbe29208feb84abc033ec539a5c23dc64553f3cba0a273eea"
+      }
+    },
+    "binding": {
+      "restored_db_attachments": 1,
+      "all_file_sizes_match": true
+    },
+    "archive_sha256": "966caaef52690cb578ee65c05e2cd1a0e6fc64b6feecc02b70bdc7b450c02a5c",
+    "database_archive_download_sha256_matches": true,
+    "steps": [
+      {
+        "command": "python3 -c 'from pathlib import Path; import json,hashlib; r=Path('\"'\"'/root/portal_bot/support_attachments'\"'\"'); fs=sorted(r.rglob('\"'\"'*'\"'\"')); assert all(not p.is_symlink() for p in fs); print(json.dumps({str(p.relative_to(r)):{'\"'\"'bytes'\"'\"':p.stat().st_size,'\"'\"'sha256'\"'\"':hashlib.sha256(p.read_bytes()).hexdigest()} for p in fs if p.is_file()}))'",
+        "exit_code": 0,
+        "secret_stream_used": false
+      },
+      {
+        "command": "set -Eeuo pipefail\numask 077\ntest ! -e /root/backups/r12-b08-linux/attachments-20260906.tar.enc\nexec 3<&0 0</dev/null\n# gate_encrypted_pipeline_supervisor\npassphrase_fd=/proc/$$/fd/3\nsetsid --wait timeout --signal=TERM --kill-after=10s 60s sh -c 'set -e\ntar -C /root/portal_bot -cf - support_attachments 3<&- </dev/null | openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -md sha256 -pass file:\"$1\" -out /root/backups/r12-b08-linux/attachments-20260906.tar.enc' pokrov-encrypted-pipeline \"$passphrase_fd\" 3<&-\nexec 3<&-\ntest -s /root/backups/r12-b08-linux/attachments-20260906.tar.enc",
+        "exit_code": 0,
+        "secret_stream_used": true
+      },
+      {
+        "command": "set -Eeuo pipefail\numask 077\ntest ! -e /root/r12-b08-attachments-restore-01\nmkdir -m 0700 /root/r12-b08-attachments-restore-01\nexec 3<&0 0</dev/null\n# gate_encrypted_pipeline_supervisor\npassphrase_fd=/proc/$$/fd/3\nsetsid --wait timeout --signal=TERM --kill-after=10s 60s sh -c 'set -e\nopenssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -md sha256 -pass file:\"$1\" -in /root/backups/r12-b08-linux/attachments-20260906.tar.enc | tar -C /root/r12-b08-attachments-restore-01 -xf - 3<&-' pokrov-encrypted-pipeline \"$passphrase_fd\" 3<&-\nexec 3<&-",
+        "exit_code": 0,
+        "secret_stream_used": true
+      },
+      {
+        "command": "python3 -c 'from pathlib import Path; import json,hashlib; r=Path('\"'\"'/root/portal_bot/support_attachments'\"'\"'); fs=sorted(r.rglob('\"'\"'*'\"'\"')); assert all(not p.is_symlink() for p in fs); print(json.dumps({str(p.relative_to(r)):{'\"'\"'bytes'\"'\"':p.stat().st_size,'\"'\"'sha256'\"'\"':hashlib.sha256(p.read_bytes()).hexdigest()} for p in fs if p.is_file()}))'",
+        "exit_code": 0,
+        "secret_stream_used": false
+      },
+      {
+        "command": "python3 -c 'from pathlib import Path; import json,hashlib; r=Path('\"'\"'/root/r12-b08-attachments-restore-01/support_attachments'\"'\"'); fs=sorted(r.rglob('\"'\"'*'\"'\"')); assert all(not p.is_symlink() for p in fs); print(json.dumps({str(p.relative_to(r)):{'\"'\"'bytes'\"'\"':p.stat().st_size,'\"'\"'sha256'\"'\"':hashlib.sha256(p.read_bytes()).hexdigest()} for p in fs if p.is_file()}))'",
+        "exit_code": 0,
+        "secret_stream_used": false
+      },
+      {
+        "command": "/root/portal_bot/venv/bin/python -c 'import sys,json;sys.path.insert(0,'\"'\"'/opt/r12'\"'\"');import importlib.util; spec=importlib.util.spec_from_file_location('\"'\"'f'\"'\"','\"'\"'/opt/r12/pg-fixture.py'\"'\"'); f=importlib.util.module_from_spec(spec); spec.loader.exec_module(f); from sqlalchemy import text; from pathlib import Path; e=f.engine('\"'\"'portal_b08_linux_01_rehearsal'\"'\"'); c=e.connect(); rows=c.execute(text('\"'\"'SELECT stored_name,size_bytes FROM support_attachments'\"'\"')).all(); assert len(rows)==1; assert all((Path('\"'\"'/root/r12-b08-attachments-restore-01/support_attachments'\"'\"')/n).stat().st_size==size for n,size in rows); print(json.dumps({'\"'\"'restored_db_attachments'\"'\"':len(rows),'\"'\"'all_file_sizes_match'\"'\"':True}))'",
+        "exit_code": 0,
+        "secret_stream_used": false
+      }
+    ],
+    "limits": [
+      "Separate encrypted DB and file archives; files had no writers during snapshot and file backup.",
+      "No cross-store transactional snapshot or production recovery claim.",
+      "Only the two synthetic lab files were copied and restored."
+    ]
+  },
+  "guest_auth_restored": {
+    "exit_code": 0,
+    "root_password_locked": true,
+    "key_only_configuration_restored": true
+  },
+  "vm_final": {
+    "name": "POKROV-r12-b08-linux-20260906",
+    "state": "poweroff",
+    "exit_code": 0
+  },
+  "retained_artifacts": [
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-attachments-receipt.json",
+      "bytes": 4559,
+      "sha256": "f10b0c20cf1d27931d5ea7e856cafd3c5dce627fd51f6f12f3cfcc34b45f994c"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-attachments.log",
+      "bytes": 109,
+      "sha256": "bbc3a68067c1b3036f0b23dad125b7a165d856535c9b19c1318563e4386de78a"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-attachments.py",
+      "bytes": 4166,
+      "sha256": "6adab82d20120c1dc51c231887fb1ac64ecb28f1d70ecf992314cda5c3d1b3bc"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-attachments.tar.enc",
+      "bytes": 10272,
+      "sha256": "966caaef52690cb578ee65c05e2cd1a0e6fc64b6feecc02b70bdc7b450c02a5c"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-before-fingerprints.json",
+      "bytes": 14914,
+      "sha256": "89703968295809c9bb7a250f7d28f14c9c9b0a02203c1eea1c295b5446854d65"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-driver-install.json",
+      "bytes": 6517,
+      "sha256": "a45c99246d422ac3251756fe68e6157378526ed582b13dc5d545592bd945e8e9"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-driver-install.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-driver-readback.log",
+      "bytes": 30,
+      "sha256": "450c8170df3bb03e003e39eef9622f33bb2bd5bd62030d67c3ef330aded14da3"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-final-guest-readback.json",
+      "bytes": 677,
+      "sha256": "0c3300d44313ed62fb8db227b0897e839ed1d753c2e90d7ac264b68cd111a5df"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-fixture-summary.json",
+      "bytes": 181,
+      "sha256": "0a0c97a82a270f6929218a7e307b68e20f1ef9339e7a69cddbb8839c72c22409"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-fixture.py",
+      "bytes": 6229,
+      "sha256": "f480a6841f00c03fd4c366d3ade5d86ec66c97f078aa6ccac5b95f2e15dd1892"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-gate-01-auth-restored.json",
+      "bytes": 101,
+      "sha256": "427d32530609adf2f597c9da594bb8a99281ca1c447c14f7df7c85c4cf347184"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-gate-01-invocation.json",
+      "bytes": 822,
+      "sha256": "57620cdb42bfc6abfcf2cdf62b6ecba8922613719a595eaab32cb29b7cf05743"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-gate-01-snapshot-write.json",
+      "bytes": 122,
+      "sha256": "a6784472decc1b936e46d4962a08e22232cc9a17d42e3bd5a4b636a2ff627118"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-gate-01-steps.json",
+      "bytes": 3204,
+      "sha256": "c36631f715a92e386c84819eb76cb135efea28376b218dc85ad5dbe425135669"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-gate-01.json",
+      "bytes": 19884,
+      "sha256": "358c2559d848f0d517341814de62d76b0853a67a5395572fe929357e34d24092"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-gate-01.log",
+      "bytes": 21276,
+      "sha256": "ce1127761ccc28b7fed9c8d1150f98a646cb42afcc93eef38becf55ac3d3ee01"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-gate-entry.py",
+      "bytes": 3926,
+      "sha256": "de3727f05ced83b890acb7e8ec79d340e65c193da0888407bc4888e8ed0716b5"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-independent-verify.log",
+      "bytes": 175,
+      "sha256": "20e7f9725b4421b77916c41dd18cf27b1411e89d0b07a8657b0135188d7134a8"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-seed-empty.log",
+      "bytes": 39,
+      "sha256": "c22d71b681eab9ffeeea3afa6750bf0fadb616dd571c570daefcd719df55aa4e"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-setup-failure-readback.json",
+      "bytes": 137,
+      "sha256": "ca13ffcbda7e9337ed24f1cffa60e8ac45bdb144fd94c0d3d16151f979112f8a"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-setup-host.py",
+      "bytes": 1463,
+      "sha256": "df24e84cff5a2c8d86445d8e966b5874b44efe4fc75ccc486fd0063f7f7463b1"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-source-after-fingerprints.json",
+      "bytes": 14914,
+      "sha256": "04841035b236010006e704283a6eee293eba1c74b9c19cea4cb1da04e1013404"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-source.dump.enc",
+      "bytes": 490320,
+      "sha256": "787be571bc8325cdb7473b7b2efeed3c6092cbf6e76e2295851ef2e1ce303255"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-target-fingerprints.json",
+      "bytes": 14914,
+      "sha256": "89703968295809c9bb7a250f7d28f14c9c9b0a02203c1eea1c295b5446854d65"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-verify-summary.json",
+      "bytes": 186,
+      "sha256": "71743fa4e2b2e801da7e4ff2382f70dfad569a7f93c53a4e897d709fd4f58939"
+    },
+    {
+      "path": "E:\\r12-b08-linux-lab\\pg-vm-final-state.json",
+      "bytes": 92,
+      "sha256": "552f8860c99f97bccef80fa94380b19ec3d8f38fee3ebb6a6f59d071f5e7fe7d"
+    }
+  ],
+  "checks": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_agent_docs_contract.py",
+        "tests/test_agent_context_packet_audit.py",
+        "-q"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-b08-linux-lab\\pg-docs-tests.log",
+      "sha256": "5ef91212df65cc83f62517a8ba438f30768e6a5756228dc790a0bbc02701d4c6",
+      "result": ".................................                                        [100%]\n33 passed in 0.55s"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "scripts/agent_context_packet_audit.py",
+        "--platform-context-root",
+        "."
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-b08-linux-lab\\pg-context-check.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "result": "PASS platform-context"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-b08-linux-lab\\pg-package-check.log",
+      "sha256": "ee357a8ba8db33612227425d959c6383f16979c0f28073149ba99c5b37d2c3ea",
+      "result": "PASS: 13 imported section hashes, 83 R12 IDs, 378 retained legacy IDs and ledger hash, 203 local file links"
+    }
+  ],
+  "reused_regression": {
+    "result": "64 passed in 2.75s",
+    "previous_source": "e74ee81424a23cebb631cabdc0fc8e790765f9d1",
+    "current_source_script_test_dependency_diff_exit_code": 0,
+    "checked_paths": [
+      "scripts/remote_postgres_backup_restore_gate.py",
+      "scripts/remote_deploy_brain_portal_code.py",
+      "scripts/migrate_sqlite_to_postgres.py",
+      "portal_bot/migrations.py",
+      "tests/test_remote_postgres_backup_restore_gate.py",
+      "tests/test_remote_deploy_brain_portal_code.py",
+      "tests/test_postgres_migration_helpers.py",
+      "requirements-test.in",
+      "requirements-test.txt",
+      "requirements-ops.in",
+      "requirements-ops.txt",
+      "portal_bot/requirements.in",
+      "portal_bot/requirements.txt"
+    ],
+    "log": "E:\\r12-b08-linux-lab\\script-tests.log",
+    "sha256": "4994cc0acbfd6a9ac6b6e1bf763d99c247cae975c585393511277b0876b69015"
+  }
+}

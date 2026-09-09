@@ -1,0 +1,179 @@
+{
+  "status": "PASS_BOUNDED_BRAIN_SNAPSHOT_CANDIDATE_AND_VOLUMES",
+  "sources": {
+    "client": {
+      "revision": "5760f415a567ddbc35ee12ba0087414bc3bd08ff",
+      "working_tree_state": "clean"
+    },
+    "core": {
+      "revision": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+      "working_tree_state": "clean"
+    },
+    "platform": {
+      "revision": "235e8a49e94261f39b1166b152fe547fe95da740",
+      "working_tree_state": "clean"
+    }
+  },
+  "origin": "brain",
+  "database_tables": 121,
+  "database_rows": 2466128,
+  "backup": {
+    "bytes": 137069152,
+    "mode": "0600",
+    "path": "/root/backups/r12-20260909/portal-20260908T221500Z-557dc705e8eb.dump.enc",
+    "sha256": "58caef8cbcb1d061d1672d9c1d8ebe644fa7df755a5344fbcd84838b97d05dad"
+  },
+  "volume_backup": {
+    "path": "/root/backups/r12-20260909/volumes-12e3ef4aa6a5431da36370330117732d.tar.enc",
+    "bytes": 1873952,
+    "sha256": "692ce9bb0d8e076e336210b7be2f395f7f58b85e076f129b66ee99c088cb6a20",
+    "mode": "0600"
+  },
+  "restored_media_files": 3,
+  "support_attachment_rows": 0,
+  "production_services_unchanged": true,
+  "production_code_deployed": false,
+  "source_database_writes_by_gate": false,
+  "target_retained": true,
+  "retained_files": [
+    {
+      "path": "backup-plan.json",
+      "bytes": 871,
+      "sha256": "f9967f0067ca73666b7800e18566afca675835d910457f2a07a72fbb144a687a"
+    },
+    {
+      "path": "backup-restore.json",
+      "bytes": 650,
+      "sha256": "629189f5ae8f077554d83709c0c39bd2d51c63878aa7d7f35c449f053ff8a5c2"
+    },
+    {
+      "path": "backup-restore-v2.json",
+      "bytes": 20685,
+      "sha256": "a462124345bbd1b40a624b584ae7b8ed2c29c3c57a0ae0ca8a0e6d3819a7a8ab"
+    },
+    {
+      "path": "candidate-plan.json",
+      "bytes": 488,
+      "sha256": "7cb3322f1a8179f0174408917c04bbca9192a29d509d352cc63e4856a4b1a222"
+    },
+    {
+      "path": "candidate-apply.json",
+      "bytes": 3770,
+      "sha256": "55e9e36a39f0e8b947090b0b3cb398b33238391c7f997b2e7262d64357f5f607"
+    },
+    {
+      "path": "source-before.json",
+      "bytes": 6439,
+      "sha256": "0d0399ad57658ceb842abb47e1900bec8804db6863504d9dfb5b0f67d562fe19"
+    },
+    {
+      "path": "readiness-before.json",
+      "bytes": 815,
+      "sha256": "0cf1764e737db1abbd99e6c309b60195a128fcaa859c934ab9a558cbf4883e48"
+    },
+    {
+      "path": "readiness-after.json",
+      "bytes": 817,
+      "sha256": "f400027ad01eaaf5629454ded950309f3301e183dc670865e64cf58cba2d75bf"
+    },
+    {
+      "path": "ssh-auth-diagnostic.json",
+      "bytes": 27,
+      "sha256": "0916af8d72f4b5d4ecd14b6e0846932bdf134ccedb2c64d9a06e592dd812b843"
+    },
+    {
+      "path": "volume-plan.json",
+      "bytes": 1328,
+      "sha256": "01873ebda176ac686432f2f0f9aa9c6e73909e332894e31c6ca19d3ab69d7fa5"
+    },
+    {
+      "path": "volume-plan-v2.json",
+      "bytes": 1328,
+      "sha256": "ca18930b53680db1ee734f8ebdc67dae4b01bbdb3103802c143997a8873a0b83"
+    },
+    {
+      "path": "volume-apply-v2.json",
+      "bytes": 2751,
+      "sha256": "cb353ffe7008f56de3d8e3658fbc707ab5dea11404caabfffa7a9a69d84e13bd"
+    },
+    {
+      "path": "run-backup.ps1",
+      "bytes": 1451,
+      "sha256": "8d3cb713fba266c817c33b11a839d63be435f91bf7760cff0dc2665286592d91"
+    },
+    {
+      "path": "retry-backup.ps1",
+      "bytes": 1066,
+      "sha256": "8901bd6454ba94f943e35b05d49a2b52d409209ac07e062983874c059b0ef8f5"
+    },
+    {
+      "path": "run-volume.ps1",
+      "bytes": 1426,
+      "sha256": "2a7621445f58b69893fe3d03850c8093cda63e10c2fd58439eca4bd0460baa54"
+    },
+    {
+      "path": "volume-snapshot.py",
+      "bytes": 6240,
+      "sha256": "667397240a0111ff4a2fd84bc7c634da55fd5ab4873b70a739dd5043afc1532f"
+    },
+    {
+      "path": "volume-snapshot-v1.py",
+      "bytes": 6229,
+      "sha256": "b4874622a95006c43b9e7520d34f5289e69c4515f8e230e98a7fba5a7f2684fd"
+    },
+    {
+      "path": "read-readiness-before.py",
+      "bytes": 2948,
+      "sha256": "bf973f1382c61eab21225eca735d6b835573c0fdbc6d50f54008c026a21c1819"
+    },
+    {
+      "path": "read-readiness.py",
+      "bytes": 2976,
+      "sha256": "103a7bf66a5a8807bb789f81651220728156991de118b7c2ae752f720da6b731"
+    },
+    {
+      "path": "retain-readiness.py",
+      "bytes": 5198,
+      "sha256": "1916dca0b13f73631433fad51173223623e8bb0c0b1257cdbe3d054f156e90a7"
+    }
+  ],
+  "external_files": [
+    {
+      "path": "E:\\r12-brain-rehearsal-20260909\\backend-candidate.tar",
+      "bytes": 6666240,
+      "sha256": "aa1f9e6e944ad4d123357924c29f3c2c63df7bd24ae8c82f2861af2d64f26f5f"
+    },
+    {
+      "path": "E:\\r12-brain-rehearsal-20260909\\backup-restore.log",
+      "bytes": 27,
+      "sha256": "9e7dde613eba1ae3f66a720d761ca10e996d3f0f172d6816dfc49045ab9c7559"
+    },
+    {
+      "path": "E:\\r12-brain-rehearsal-20260909\\backup-restore-v2.log",
+      "bytes": 21713,
+      "sha256": "c2ad54d1dbd5c4a816e4967614dbfbd66a034f2d9055cdcba96da3408db0d436"
+    },
+    {
+      "path": "E:\\r12-brain-rehearsal-20260909\\candidate-apply.log",
+      "bytes": 6,
+      "sha256": "d938fa189912f8776c3deb31a6bec42f403f57b9c8e3ed936bdb076caf6bd61c"
+    },
+    {
+      "path": "E:\\r12-brain-rehearsal-20260909\\volume-apply-v2.log",
+      "bytes": 2360,
+      "sha256": "6e86a38e3503e9c27a617293774fb11dd95360c07da84b187c13bab5b202b688"
+    }
+  ],
+  "protected_passphrase": "Retained in per-user DPAPI store outside Git; no plaintext retained",
+  "historical_failures": [
+    "First backup attempt failed at SSH before snapshot or target creation; retry succeeded with same credentials.",
+    "First volume PLAN used incorrect default accepted-directory spelling; superseded by canonical-path v2 before any volume mutation.",
+    "Initial local DPAPI retry read included a trailing newline and failed before Python; corrected by trimming encrypted text."
+  ],
+  "limits": [
+    "No atomic cross-store snapshot claimed; compared retained config and file manifests.",
+    "Zero production support attachments and no promo config; no filled attachment recovery claim.",
+    "Candidate gate runs current db/cleanup source on a restored DB; not a deployed API/bot/worker process proof.",
+    "Full B08, A04 and release gates remain open."
+  ]
+}

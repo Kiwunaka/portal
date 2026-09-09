@@ -27,6 +27,7 @@ from admin_action_intent_service import (  # noqa: E402
 )
 from operator_release_service import (  # noqa: E402
     RELEASE_GATE_NAMES,
+    release_gate_matrix,
     load_release_rollout_registry,
     public_client_rollout_policy,
     rollout_state,
@@ -386,3 +387,19 @@ def test_version_adoption_is_aggregated_without_account_identity(factory) -> Non
     assert adoption["platform_totals"] == {"android": 3}
     assert [item["observed_installations"] for item in adoption["cohorts"]] == [2, 1]
     assert all("account_id" not in item and "install_id" not in item for item in adoption["cohorts"])
+
+
+def test_operational_green_never_claims_a_gate_f_decision() -> None:
+    readiness = {
+        "ready": True, "status": "PASS",
+        "origins": [{"checks": [
+            {"check_name": name, "status": "PASS"} for name in RELEASE_GATE_NAMES
+        ]}],
+    }
+    matrix = release_gate_matrix(readiness)
+    assert matrix["ready"] is True
+    assert len(matrix["checks"]) == 11
+    assert matrix["policy_version"] == "pokrov.operator-cockpit-gates/v1"
+    assert matrix["gate_f_decision"] == "NOT_EVALUATED"
+    readiness["origins"][0]["checks"].pop()
+    assert release_gate_matrix(readiness)["ready"] is False

@@ -48,7 +48,8 @@ class ReleaseGateCheckTests(unittest.TestCase):
 
         self.assertIn("repository: Kiwunaka/POKROV-app", workflow)
         self.assertIn("repository: Kiwunaka/pokrov-core", workflow)
-        self.assertIn("ref: main", workflow)
+        self.assertIn("github.event.pull_request.number == 243 && '9fad2ff4d0767b25acb50628d75a0a162513da16'", workflow)
+        self.assertIn("ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 243 && '1f9a5a8865b80067784b893ef99d43c63f943777' || 'main' }}", workflow)
         self.assertIn("run_client_release_gate.py contract", workflow)
         self.assertIn("--client-root", workflow)
         self.assertIn("--core-root", workflow)

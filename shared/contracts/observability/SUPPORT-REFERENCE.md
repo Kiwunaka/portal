@@ -3,8 +3,8 @@
 Generated from `error-catalog.json`; do not edit by hand.
 
 - catalog version: `1.2.0`
-- catalog SHA-256: `7d3bf242777d5bf76bbebcf162e5969d3f83d7f68b2787051e1c4fddeadc3dc7`
-- entries: `121`
+- catalog SHA-256: `1cef07aea2f859891794546569431d0e6aab91c6921729389fd63013f3002af1`
+- entries: `127`
 
 Regenerate with:
 
@@ -34,6 +34,7 @@ python scripts/generate_observability_support_reference.py --write
 | `API-008` | error | portal | Сервис вернул несовместимый ответ. | `reject_invalid_response` | no |
 | `API-009` | error | release | Версия протокола не поддерживается. | `update_or_rollback_release` | yes |
 | `API-010` | warn | portal | Ответ сервиса получен не полностью. | `stop_response_parsing` | no |
+| `API-011` | info | portal | Параметры подключения ещё готовятся. | `wait_for_profile_provisioning` | no |
 | `APP-BOOT-001` | fatal | release | Файлы выпуска отсутствуют. Требуется восстановление приложения. | `repair_release` | yes |
 | `APP-BOOT-002` | fatal | release | Проверка целостности выпуска не пройдена. | `block_runtime_and_alert` | yes |
 | `APP-BOOT-003` | error | app | Версия приложения несовместима с текущим контрактом. | `update_client_contract` | no |
@@ -64,6 +65,7 @@ python scripts/generate_observability_support_reference.py --write
 | `CORE-006` | warn | core | Не удалось установить защищённый транспорт. | `classify_transport_failure` | no |
 | `CORE-007` | error | core | Компонент подключения неожиданно остановился. | `apply_recovery_policy` | no |
 | `CORE-008` | error | core | Компонент подключения не подтвердил остановку. | `force_stop_and_rollback` | no |
+| `CORE-009` | error | runtime | Системный модуль не завершил действие. | `inspect_runtime_failure` | no |
 | `CRASH-001` | error | app | Интерфейс приложения аварийно завершил операцию. | `capture_safe_app_signature` | no |
 | `CRASH-002` | error | platform | Системный компонент приложения аварийно завершился. | `capture_safe_host_signature` | no |
 | `CRASH-003` | fatal | platform | Системная служба аварийно завершилась. | `rollback_and_recover_service` | yes |
@@ -99,6 +101,7 @@ python scripts/generate_observability_support_reference.py --write
 | `ROUTE-002` | fatal | platform | Исходные сетевые маршруты восстановлены не полностью. | `run_startup_route_recovery` | yes |
 | `ROUTE-003` | warn | platform | Обнаружен конфликт сетевых маршрутов. | `apply_deterministic_route_policy` | no |
 | `ROUTE-004` | error | runtime | Выбранный режим сети не поддерживается. | `reject_unsupported_route_mode` | no |
+| `ROUTE-005` | warn | platform | Не удалось определить сетевой интерфейс устройства. | `refresh_network_interface` | no |
 | `SEC-001` | fatal | security | Событие отклонено проверкой приватности. | `drop_forbidden_event` | yes |
 | `SEC-002` | fatal | security | Целостность диагностических данных не подтверждена. | `block_untrusted_diagnostics` | yes |
 | `SEC-003` | fatal | security | Обнаружено нарушение целостности приложения. | `block_privileged_operation` | yes |
@@ -113,6 +116,9 @@ python scripts/generate_observability_support_reference.py --write
 | `TRANSPORT-002` | warn | node | Точка подключения отклонила соединение. | `rotate_refused_endpoint` | no |
 | `TRANSPORT-003` | error | node | Точка подключения отклонила проверку доступа. | `inspect_node_credentials` | no |
 | `TRANSPORT-004` | error | core | Согласование протокола подключения не удалось. | `inspect_transport_compatibility` | no |
+| `TRANSPORT-005` | warn | network | Ответ по UDP не получен вовремя. Причина не установлена. | `retry_udp_timeout` | no |
+| `TRANSPORT-006` | warn | network | Согласование TLS не завершилось вовремя. Причина не установлена. | `retry_tls_timeout` | no |
+| `TRANSPORT-007` | warn | network | Ответ после установки соединения не получен вовремя. Причина не установлена. | `retry_response_timeout` | no |
 | `TUN-001` | error | platform | Не удалось создать системный VPN-интерфейс. | `inspect_tun_prerequisites` | no |
 | `TUN-002` | error | platform | VPN-интерфейс не подтверждён после запуска. | `cleanup_false_green_tun` | yes |
 | `TUN-003` | warn | runtime | Сеть отклонила выбранный размер пакета. | `apply_safe_mtu_fallback` | no |

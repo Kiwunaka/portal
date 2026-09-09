@@ -15,6 +15,7 @@ PORTAL_BOT_DIR = Path(__file__).resolve().parents[1] / "portal_bot"
 if str(PORTAL_BOT_DIR) not in sys.path:
     sys.path.insert(0, str(PORTAL_BOT_DIR))
 
+import hy2_lab_service as hy2_lab_service_module  # noqa: E402
 from hy2_lab_service import (  # noqa: E402
     HY2_CONTRACT_ID,
     HY2_CONTRACT_SHA256,
@@ -99,6 +100,10 @@ def _rollout(
 @pytest.fixture()
 def db_session(monkeypatch):
     monkeypatch.setenv("HY2_LAB_MATERIAL_SECRET", "synthetic-hy2-lab-test-secret")
+    monkeypatch.setattr(
+        hy2_lab_service_module, "_utcnow",
+        lambda: datetime(2026, 8, 28, 10, 1, 0),
+    )
     engine = create_engine("sqlite:///:memory:")
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine)()
@@ -306,3 +311,38 @@ def test_admin_material_route_is_l3_intent_guarded() -> None:
         "PUT",
         "/api/admin/client/hy2-lab/material",
     ) in action_policy_route_keys()
+
+
+def test_managed_hy2_issuance_cannot_relabel_rotated_material(db_session, monkeypatch) -> None:
+    now = datetime(2026, 8, 28, 10, 0, 0)
+    options = dict(
+        tg_id=1001, install_id="owner-device", endpoint_revision=HY2_ENDPOINT_REVISION,
+        server_record_id="pokrov-hy2-lab-01", node_code="lab", now=now,
+    )
+    first = replace_hy2_lab_material(
+        db_session, generation="hy2-lab-v1", endpoint=_endpoint(), **options,
+    )
+    checked_snapshot = SimpleNamespace(**{
+        column.name: getattr(first, column.name) for column in first.__table__.columns
+    })
+    rotated_endpoint = _endpoint()
+    rotated_endpoint["server_port"] = 8443
+    rotated = replace_hy2_lab_material(
+        db_session, generation="hy2-lab-v2", endpoint=rotated_endpoint, **options,
+    )
+    reads = iter((checked_snapshot, rotated))
+    monkeypatch.setattr(
+        hy2_lab_service_module, "_active_material", lambda *args, **kwargs: next(reads),
+    )
+    try:
+        config = build_managed_hy2_lab_config(
+            db_session, tg_id=1001, install_id="owner-device",
+            rollout_value=_rollout()[HY2_LAB], title="POKROV", now=now,
+        )
+    except Hy2LabError as error:
+        assert error.code == "material_not_ready"
+    else:
+        # Rejection or the checked snapshot is valid; unchecked v2 material
+        # must never be emitted with the approved v1 generation metadata.
+        assert config["outbounds"][0]["server_port"] == 443
+        assert config["_meta"]["transport_contract"]["generation"] == "hy2-lab-v1"

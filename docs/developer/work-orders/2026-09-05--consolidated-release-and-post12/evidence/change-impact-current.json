@@ -1,0 +1,540 @@
+{
+  "policy": "r12-declared-evidence-inputs-v1",
+  "origin": "current-origin local worktrees",
+  "classifier_sha256": "2ea35d8377219bb057ad639b5dc080bc491501fb533d6c93f891ce4af8b3c035",
+  "sources": [
+    {
+      "lane": "platform",
+      "head": "6b41f758ca228a0d5ff13ede0f865096cdac2134",
+      "base": "6b41f758ca228a0d5ff13ede0f865096cdac2134",
+      "changes": [
+        {
+          "path": "docs/README.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "2d7135ec20ff64ced607da4994c5b7b0fc5464533fa89220d3126cb40bb1232f"
+        },
+        {
+          "path": "docs/architecture/payment-state-machine.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "ed8f04e09293e2d3c1c8b70baf349f4c7591d70ff4007e605969d32538e2b04b"
+        },
+        {
+          "path": "docs/developer/agent-context-map.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "2e28d42d76f5dea3fcea8d536f6bff2e8648d5f0e5b61e12156c5d3cf6ac5c47"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/00_START_HERE.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "7c6fb687b35168e02d617568b232c31dd9ed483574be93587dac41dd108fca62"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/01_SCOPE_AND_CORRECTIONS.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "3392a4cfd5728a9a6cd6f1d0b26a3a59479ee06746274f3b2dc061a805211219"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/02_RELEASE_1_2_0.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "ae81f124088b71d47cd99354625dabb7a549f472eefaa9ef325db6d81be51b63"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/03_RELEASE_BACKLOG_83.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "1a6ebc63b7906657ddc57a1de484566d86486573ef77f531e5e20b6c4df35e4a"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/04_POST12_SHARED_ARCHITECTURE.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "0851fa6545587ba3ce4d080b3131724f27d05e483fc95fa7ea21a29f57b19563"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/05_POST12_TRANSPORT_AWG.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "bbc62d2df4c2e526b776bd31d48bb3e1c5bd75f73e0b2ea6ecce5b6723d88e9e"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/06_POST12_SMART_ROUTING_ACCESS.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "5baa2893ed79fff6756a817ede2955b01899d83a110df203339bda10035b2c3c"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/07_POST12_SHORTLINK_ATTRIBUTION.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "496d4f3037150c2ce78132383039212f4bb419e5e58b379822e1f092b5a156b2"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/08_POST12_HAPP_IOS_SOURCE_GATE.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "5efaa45819a89af514fb7bf851ed10b837ca26d6d261eb3cae3cfdefb50bd484"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/09_EXECUTION_AND_ACCEPTANCE.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "2bb066989bcd6ed08ab57213714fe42030614308b4f5f838482c179c6a2c448c"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/10_CODEX_GOALS.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "326cabfbc3577ede401648a3492e511c9aa0a0faeef698aef3a05c06ece466c1"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/11_SOURCE_CROSSWALK.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "3e884996a177e2c49cf2ac91472d033e8b8d52ef5ee0ab09d591f46490c5e5c8"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/12_PACKAGE_VALIDATION.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "0584833044915dcd7417a4167a9f6982ff5cda2288187d5d691600bfd95578e2"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/BASELINE.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "6d713d9f6ca72e49289689209026365c1a0a9037d3be6628669cb45cc7e8848d"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-CONTINUED.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "510e7412c0ee09c2de2691b0b37fbcc3babab03a36ce529d603807104dcb4986"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-LOCAL.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "adf9ae9b39c74b35c378362e13ef2f23085f7d43a756b1963c36c9f93c8a388a"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/LEGACY-378-REFERENCE.csv",
+          "path_hint": "manual_classification_required",
+          "worktree_sha256": "a97976d982b8cf36f07a24cd11394e9bfee3ca952d1a2850741b9028ddd07e34"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/NEXT_WORK_ORDER.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "964c07de1c3d86793501b6db7255e22dafc11864a366e744048b1c990ebf961a"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/R12-REGISTER.csv",
+          "path_hint": "manual_classification_required",
+          "worktree_sha256": "60153b93b306ab7e56e606106ecc9919a7a169303a1ad22a4b35318be2581643"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/SOURCE_RECONCILIATION.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "b37730c0821ce7c67cf7ceef7bd098a1a1f191727f1c73a6ed4e73c05d6f83cb"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/classify_evidence_inputs.py",
+          "path_hint": "manual_classification_required",
+          "worktree_sha256": "2ea35d8377219bb057ad639b5dc080bc491501fb533d6c93f891ce4af8b3c035"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/test_evidence_inputs.py",
+          "path_hint": "test_harness",
+          "worktree_sha256": "bffcb445553e7b91bb71236553be3c8921ee647d5d9279dfe16f438956bcf9ac"
+        },
+        {
+          "path": "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+          "path_hint": "manual_classification_required",
+          "worktree_sha256": "3cfef10380f7eb39e530de7c612b4eb0f8848d934ca70ebb9713f74b2ea7784e"
+        },
+        {
+          "path": "docs/product/payment-and-access-key-contract.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "f0d0f23aa2a4c7957202f134265eb7674d5fc6571c30dfec660f346d53d542d5"
+        },
+        {
+          "path": "marketing/README.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "17ff8195e748265574aa436e50bb8c03ce7da766b50aad137d04b4ed92c10412"
+        },
+        {
+          "path": "marketing/scripts/check-checkout-authority.mjs",
+          "path_hint": "manual_classification_required",
+          "worktree_sha256": "1fd3ac2a01df356880d3db5427d30c8cdb98aef5c9159f317317c9b6d66bf222"
+        },
+        {
+          "path": "marketing/scripts/check-marketing-responsive.mjs",
+          "path_hint": "manual_classification_required",
+          "worktree_sha256": "87ef7b41e13b271dec7c32416a0dbe2c0a02008fd67643b88b5f78838e885915"
+        },
+        {
+          "path": "marketing/src/app/checkout/checkout-client.tsx",
+          "path_hint": "manual_classification_required",
+          "worktree_sha256": "b50818859a1332388823072ed1f6a408e57427a7d3e49bbf2aa791be88c32f44"
+        },
+        {
+          "path": "marketing/src/components/home/platform-download-action.tsx",
+          "path_hint": "manual_classification_required",
+          "worktree_sha256": "e9ae6e3ccbf237cc25cf8a9321f90cd9f1949e2f11c0602e311bcc32b0d62542"
+        },
+        {
+          "path": "marketing/src/components/install/download-actions.tsx",
+          "path_hint": "manual_classification_required",
+          "worktree_sha256": "0d443274d3f8971c82875d2cc533abe0af41d4698e02c7422dec2637fd591ed7"
+        },
+        {
+          "path": "portal_bot/api.py",
+          "path_hint": "api_schema",
+          "worktree_sha256": "c7817962d910cba903e1e9f88b255e1a4f1049bccdca0f208877b63422630364"
+        },
+        {
+          "path": "portal_bot/api_client_routes.py",
+          "path_hint": "api_schema",
+          "worktree_sha256": "a7b2397bd8fc73a8cd1c60a15a84e3d320eb211362eff3e5801c7a30ca85e3f5"
+        },
+        {
+          "path": "portal_bot/api_commercial_offer_routes.py",
+          "path_hint": "api_schema",
+          "worktree_sha256": "cc23556ba977dc23f86b74674169e71a915fc460c3b4cb12a3f553983bc24b06"
+        },
+        {
+          "path": "portal_bot/api_payment_routes.py",
+          "path_hint": "api_schema",
+          "worktree_sha256": "ac71e53ab11d294ba0e8b693854a479a98f7e378c96da87b8c6304d04854bf84"
+        },
+        {
+          "path": "portal_bot/api_public_routes.py",
+          "path_hint": "api_schema",
+          "worktree_sha256": "ea61cdcd66d22997775fd9d99bff307e9ffee55febbad1a7a2ce7c6fefc9f303"
+        },
+        {
+          "path": "portal_bot/checkout_quote_service.py",
+          "path_hint": "api_schema",
+          "worktree_sha256": "ec019ad05a700e205f83c34332bc2afefd6374de73afd65158de21279843fbd5"
+        },
+        {
+          "path": "portal_bot/payment_order_service.py",
+          "path_hint": "api_schema",
+          "worktree_sha256": "98cc464efde4c528d4a5b90246a9c772da129d7d1222caaf401872b191efe8bf"
+        },
+        {
+          "path": "tests/test_api_payments_callbacks.py",
+          "path_hint": "test_harness",
+          "worktree_sha256": "7ba68b950eea4309cecf18addd6a10db2198e363ea3977e7a6c56bea1359812a"
+        },
+        {
+          "path": "tests/test_public_checkout_postgres.py",
+          "path_hint": "test_harness",
+          "worktree_sha256": "9df050b288ce4304d316ed3e7967c0b0a20fdc144f8528c9f18f346e991565df"
+        }
+      ],
+      "input_state": "worktree including scoped uncommitted changes"
+    },
+    {
+      "lane": "client",
+      "head": "61d1838bebff9cf15f09959d5ddecefed946d514",
+      "base": "da1ad7395615837432615e0f150d7c0bf05322a4",
+      "changes": [
+        {
+          "path": "apps/android_shell/android/app/libs/pokrov-core.aar",
+          "path_hint": "packaged_dependency_toolchain",
+          "worktree_sha256": "c02bc2fcc25f925f9062520f85667c324999b091eb2251a9cf26b8a1f66b0302"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidCoreEgressProbe.kt",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "a6c39e3a7f9cc5890133589a27518132c890c91a657dec9c2bd18b177fa7d5eb"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidCoreOperationalEvents.kt",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "2daabbb03659fd82721536bd7e3cfaf5122d63607e723e844c92000d0dbc72c1"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeProfileIdentity.kt",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "50dca0a2e10247063e2d6233bdefbc755730e3dd3a863bfbb0c8b8ded45f1d6f"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeProfileStore.kt",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "6078bf71151b93b93c1b425785148e76a81c895a6e7e83b82453eda2929fc706"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeSafety.kt",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "551d19793fb770cf1f0bc0552cabf6db698fd37bc6ddf8522ec97bc0c55f85d0"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeState.kt",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "54c798402a5e98ae8690ab2014e62bf419b640de02cdfa5a256b50a79f90ba1d"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/PokrovQuickSettingsTileService.kt",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "9e442e96375eafe42aeda90406cc0a6548b7dc292fc5bad887e878a6ea542a59"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/PokrovRuntimeVpnService.kt",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "8f7c9815720183c49ec3f28836b948625135aa82029548042d3bc7f5ab94636f"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/main/kotlin/space/pokrov/pokrov_android_shell/RuntimeHostBridge.kt",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "b618a0913400c7837fbba2bee87e41f43017baa0e13ce98f853c642049fc3aa1"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/AndroidCoreEgressProbeTest.kt",
+          "path_hint": "test_harness",
+          "worktree_sha256": "bd3540928e0012766b8b6331a53e1ca63493c279a1d01f8c66b65e9a50f79254"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/AndroidCoreOperationalEventsTest.kt",
+          "path_hint": "test_harness",
+          "worktree_sha256": "a843e414491595d2d7100d6fa08c481f7d454a6769da6185cfdf4890ff22d66f"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeProfileIdentityTest.kt",
+          "path_hint": "test_harness",
+          "worktree_sha256": "2f54dcc8418a0d863f4d43618e06cba71f84ca2bc953ebd5e0514944f7e04de4"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/AndroidRuntimeStateTest.kt",
+          "path_hint": "test_harness",
+          "worktree_sha256": "11ec2b1ba65cdd6e01a08398488e986ffffd0f7b8a129dd0cd7b04b2f7d84b27"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/PendingRuntimeConnectGateTest.kt",
+          "path_hint": "test_harness",
+          "worktree_sha256": "0b719b00b3d93c3d60d975158ec2112b5bb117dcfd0294483ad9c9b833db976a"
+        },
+        {
+          "path": "apps/android_shell/android/app/src/test/kotlin/space/pokrov/pokrov_android_shell/PokrovQuickSettingsTileServiceTest.kt",
+          "path_hint": "test_harness",
+          "worktree_sha256": "7c6cac53731f267f5dee1fb594d63e94ac968005b8f12ccc2fe09c2ff9c4db4c"
+        },
+        {
+          "path": "apps/windows_shell/windows/runner/flutter_window.cpp",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "74bac7fc9cb201a1cac373006b746f84b59286062b5cdf9b213d54d41695764b"
+        },
+        {
+          "path": "apps/windows_shell/windows/runner/flutter_window.h",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "aee502f84dbe38f21af08f762c55040f1fc6d3cc01632e396e42a0d36cba0594"
+        },
+        {
+          "path": "apps/windows_shell/windows/runner/resources/runtime/pokrov-core.dll",
+          "path_hint": "packaged_dependency_toolchain",
+          "worktree_sha256": "94acf541893be21341255fe2fce66116fab48d68c80e84f3a820dc2fcfc40366"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/CMakeLists.txt",
+          "path_hint": "packaged_dependency_toolchain",
+          "worktree_sha256": "b526ba528522aeda6b081bb918ef1282a7e7c8886e852636a46fe5496b24af23"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_client.cpp",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "bfcecc56f1db121a60843077dc79adcbe93f09dd07eb14cbee3d22cfc35376d6"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_client.h",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "1a67ca398a04aa28a185fab17d8f7ea9daf02ecb5f372a7aedd2041647fef750"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_client_test.cpp",
+          "path_hint": "test_harness",
+          "worktree_sha256": "a5e6e4766635e2aa3f133981445f78aa8fefe4b402af4f64b23ca200650e7691"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_integration_test.cpp",
+          "path_hint": "test_harness",
+          "worktree_sha256": "328da0476199979e697d2ca33f5bb5d255c2f94d63d49c52bd9f0c10229abc1b"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_profile_identity.cpp",
+          "path_hint": "profile_policy",
+          "worktree_sha256": "aeef8b1aae50219669cea3a91e943259fdb1f8c9b55c1295ea78f7a753f6c097"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_profile_identity.h",
+          "path_hint": "profile_policy",
+          "worktree_sha256": "4830dadd2f17bff454f66e45af09d22ecb75b54114d4fe3034c969c2be4d25ef"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_protocol.cpp",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "4afe7f9d04daca27a616c6a6f60719589cdbaa6b8179e674c74687c638b39ea6"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_protocol.h",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "3934424eb5a4ce4857f971a05bf3819066c2a9cd0710ccaf9a038bfe90b80701"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_protocol_test.cpp",
+          "path_hint": "test_harness",
+          "worktree_sha256": "705dc3e61740bc5637aca0997aa954184392969344f5ea253c6468fa74b88578"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_runtime.cpp",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "7006bdcff5e08e869337066cc5a45ee8a56d974ebd2d327a912904429dd7368b"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_runtime.h",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "4712b076d5c3006b60a7848e9487e7d3ea846be8ae18ebd194f86b23e61c10f6"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_runtime_test.cpp",
+          "path_hint": "test_harness",
+          "worktree_sha256": "429191af60940901fc3e9bb5395787a7ca78d89c9f9235ae42a4ced450dbfdb1"
+        },
+        {
+          "path": "apps/windows_shell/windows/service/service_server.cpp",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "3b5297d671ed231d1899b80637485218079994cac0857f370d017240fd075744"
+        },
+        {
+          "path": "config/runtime-artifacts.seed.json",
+          "path_hint": "profile_policy",
+          "worktree_sha256": "310c0e00aa932e0273d0cac4a436799f1024d6a7b106eea6d785f0c67f54a4bf"
+        },
+        {
+          "path": "docs/architecture/bootstrap-workflow.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "a56dd434b4ad4dbe7880374336043cc048051dd4bd645840489dc6f543625831"
+        },
+        {
+          "path": "docs/architecture/persisted-state-contract.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "2d56d1e5fc1733d95897c8963ba81411f24e69ea49bd9d5a6439b80763318629"
+        },
+        {
+          "path": "docs/architecture/platform-privilege-runtime-contract.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "8a0b8037b61571d4a920bc0537d068b40484c4e41ccba054a9a8600850aaa4cf"
+        },
+        {
+          "path": "docs/decisions/2026-08-23-pokrov-core-1.1.0-pre-candidate-binding.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "05c69e84d8ee162a992c93940ef38b40983dca599e0f706ca9ecd2a6c1617793"
+        },
+        {
+          "path": "docs/operations/android-release-audit.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "a8866d8466d56814ed628ee04b7bbacfb02fdb292f10c0cf2328abd668882ecb"
+        },
+        {
+          "path": "docs/operations/windows-release-readiness.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "83a3dd61f2e7052b33571fc32487be7ff25fe84ce8feaf92bf4bf9a7d0d5a036"
+        },
+        {
+          "path": "packages/app_shell/lib/app_first_runtime_bootstrap.dart",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "63b7a29f36751736cd4660a11ccddde409e35992725b0b98a2a07b505cc5366c"
+        },
+        {
+          "path": "packages/app_shell/lib/app_shell.dart",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "671f449b15133160b1f29ca66e75ecebf242265d1632cd324beaabdcd914e0d4"
+        },
+        {
+          "path": "packages/app_shell/lib/src/shell/managed_profile_lifecycle.dart",
+          "path_hint": "profile_policy",
+          "worktree_sha256": "9d75050e211006df5f1edc3189c652b466268bc8067fe990b25bea0b1a3964e5"
+        },
+        {
+          "path": "packages/app_shell/lib/src/shell/seed_shell.dart",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "4c37042856c06a90a4046d29773d5288fc3eb052a6fe1a2f610504f2acf0612e"
+        },
+        {
+          "path": "packages/app_shell/test/app_first_runtime_bootstrap_test.dart",
+          "path_hint": "test_harness",
+          "worktree_sha256": "e468898ad2ba56424e534974f817376bdafe7097e244445b65fe95ebc3a0f755"
+        },
+        {
+          "path": "packages/app_shell/test/connect_first_hint_test.dart",
+          "path_hint": "test_harness",
+          "worktree_sha256": "f9550a4a6d7e513b779df9bab08f4a9587e8155426acdf6dca9c937e88b430ba"
+        },
+        {
+          "path": "packages/app_shell/test/managed_profile_lifecycle_test.dart",
+          "path_hint": "test_harness",
+          "worktree_sha256": "42e0719d0cdcce8bdc0e2c078ba0e25c8e34186e2b22d3aa279951f3508008e9"
+        },
+        {
+          "path": "packages/app_shell/test/pokrov_seed_app_test.dart",
+          "path_hint": "test_harness",
+          "worktree_sha256": "9c6fe03ab5474f3e2b8a57e22ab565081ee39c998ba900f556bdb3a09095a462"
+        },
+        {
+          "path": "packages/runtime_engine/lib/runtime_engine.dart",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "38cf83841ad5243bca04d8458b57686b33de1869a0def9a40c1e80942aef756c"
+        },
+        {
+          "path": "packages/runtime_engine/test/runtime_engine_test.dart",
+          "path_hint": "test_harness",
+          "worktree_sha256": "c308c7fafe747028b09ce5e4c9f144359acf24007c5cb86f5d64061b57287313"
+        },
+        {
+          "path": "scripts/validate-seed.ps1",
+          "path_hint": "manual_classification_required",
+          "worktree_sha256": "e657ecfa9263239b25f241f13d120cf747cbcd65118bd860e6752cd8cd0e2c2e"
+        },
+        {
+          "path": "test/client-presentation-boundary.ps1",
+          "path_hint": "test_harness",
+          "worktree_sha256": "7384f4e0cebcaffee20ea56a4b02ab438659b81cb3d3bdd42382076d2314fbd1"
+        },
+        {
+          "path": "test/fixtures/release-handoff-v2/synthetic-candidate-input.json",
+          "path_hint": "test_harness",
+          "worktree_sha256": "c505749fc6ce1aa7ea2f324b780c562e36a5ba5f8170ac52156f42e9083e8d52"
+        }
+      ],
+      "input_state": "worktree including scoped uncommitted changes"
+    },
+    {
+      "lane": "core",
+      "head": "3f52efd4635218967cc84d58cb06b2fa593fd563",
+      "base": "c1185faa998c69fd5164af415249c96c68ab61bd",
+      "changes": [
+        {
+          "path": "docs/architecture.md",
+          "path_hint": "documentation_only",
+          "worktree_sha256": "7bdc77f602f615dc08f662a151fff23a15e4abc7b1a2ab2d4c70b9453acc652c"
+        },
+        {
+          "path": "engine/sing-box/daemon/selected_outbound_probe.go",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "e319e9f8dcef69fe466da2db73a7ea019ac043b92f10e153f7e3e3601b9b0e36"
+        },
+        {
+          "path": "engine/sing-box/daemon/selected_outbound_probe_test.go",
+          "path_hint": "test_harness",
+          "worktree_sha256": "7cbb378d7b42873bbe35170f97f82a4a35487955f39d515698a0bf0339001ddb"
+        },
+        {
+          "path": "engine/sing-box/daemon/started_service.go",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "e69dd9bf41f2e7bee895f94c9f5ba3e8bce2475252ad248a3990617f11580ed7"
+        },
+        {
+          "path": "engine/sing-box/daemon/started_service_test.go",
+          "path_hint": "test_harness",
+          "worktree_sha256": "3243337355b51178c1632ed3d80aa21d78b61d820666076be93e52bbb22e4648"
+        },
+        {
+          "path": "engine/sing-box/experimental/libbox/command_server.go",
+          "path_hint": "core_runtime",
+          "worktree_sha256": "b08ad06be19e700f0f21762d70b016a3c58d10534ad703ae11466a17323f55f4"
+        }
+      ],
+      "input_state": "worktree including scoped uncommitted changes"
+    }
+  ],
+  "exclusions": "Existing AGENTS/CLAUDE local instruction files and retained evidence directories are outside changed product input classification. Historical artifacts are not rewritten. Path classes are hints requiring scoped review.",
+  "retained_candidate33_reuse": "NOT_GRANTED: new Core/host profile identities and changed collectors require matching complete inputs/oracle/environment; no current device proof is inferred.",
+  "release_pass": false,
+  "previous_inventory_sha256": "e4d54b395e5a372a56af33018c8d4b242988d9bbe3833aa1bf7743b196ea2a7c"
+}

@@ -10,12 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from node_access import DEFAULT_PASSWORDS, connect_node
-from remote_activate_owned_awg_labs import (
-    AWG31_ENDPOINT_REVISION,
-    AWG31_GENERATION,
-    AWG31_SERVER_RECORD,
-    _load_emulator_identity,
-)
+from remote_activate_owned_awg_labs import _load_emulator_identity
 
 
 _REMOTE_HELPER = r'''
@@ -85,12 +80,28 @@ if not bot_token or not admin_id.isdigit():
 
 os.chdir("/root/portal_bot")
 sys.path.insert(0, "/root/portal_bot")
-from awg2_lab_service import _decrypt_endpoint as decrypt_awg2
-from awg31_lab_service import _decrypt_endpoint as decrypt_awg31
+from awg2_lab_service import _decrypt_endpoint as decrypt_awg2, _ready_material as ready_awg2
+from awg31_lab_service import _decrypt_endpoint as decrypt_awg31, _ready_material as ready_awg31
+from awg_lab_key_binding import AwgDeviceKeyError, require_awg_device_key_binding
 from account_foundation_service import _load_account_component_users
 from db import SessionLocal
 from models import AccountDevice, Awg2LabMaterial, Awg31LabMaterial, Event, User
-from network_rollout import resolved_client_policy
+from network_rollout import load_network_rollout_config, resolved_client_policy
+
+def load_target_materials(session, tg_id, install_id):
+    policy = load_network_rollout_config(session=session)
+    rows = (
+        ready_awg2(session, tg_id=tg_id, install_id=install_id, rollout_value=policy.get("awg2_lab")),
+        ready_awg31(session, tg_id=tg_id, install_id=install_id, rollout_value=policy.get("awg31_lab")),
+    )
+    for row, model, decrypt in zip(rows, (Awg2LabMaterial, Awg31LabMaterial), (decrypt_awg2, decrypt_awg31)):
+        if row is not None:
+            require_awg_device_key_binding(
+                session, model=model, decrypt_endpoint=decrypt,
+                endpoint=decrypt(row.endpoint_ciphertext), tg_id=tg_id,
+                install_id=install_id, for_update=False,
+            )
+    return rows
 
 def blocked(reason, **safe_fields):
     print(
@@ -412,24 +423,16 @@ with SessionLocal() as session:
             positive_user_identity_present=tg_id > 0,
         )
 
-    awg2_row = (
-        session.query(Awg2LabMaterial)
-        .filter(Awg2LabMaterial.is_active.is_(True))
-        .filter(Awg2LabMaterial.state == "ready")
-        .order_by(Awg2LabMaterial.provisioned_at.desc(), Awg2LabMaterial.id.desc())
-        .first()
-    )
-    awg31_row = (
-        session.query(Awg31LabMaterial)
-        .filter(Awg31LabMaterial.is_active.is_(True))
-        .filter(Awg31LabMaterial.state == "ready")
-        .order_by(Awg31LabMaterial.provisioned_at.desc(), Awg31LabMaterial.id.desc())
-        .first()
-    )
+    awg2_row = awg31_row = None
+    if selected_profile != "default":
+        try:
+            awg2_row, awg31_row = load_target_materials(session, tg_id, install_id)
+        except AwgDeviceKeyError as error:
+            blocked(error.code)
     source_material_available = awg2_row is not None and awg31_row is not None
     if selected_profile != "default" and not source_material_available:
         blocked(
-            "owned_awg_source_material_unavailable",
+            "owned_awg_device_material_not_ready",
             candidate_rank=candidate_rank,
             matched_device_count=len(candidates),
             target_install_sha256=hashlib.sha256(install_id.encode()).hexdigest(),
@@ -516,10 +519,6 @@ with SessionLocal() as session:
     if not apply_changes:
         print(json.dumps(safe_target, sort_keys=True))
         raise SystemExit(0)
-
-    if selected_profile != "default":
-        awg2_endpoint = decrypt_awg2(awg2_row.endpoint_ciphertext)
-        awg31_endpoint = decrypt_awg31(awg31_row.endpoint_ciphertext)
 
 params = {
     "auth_date": str(int(time.time())),
@@ -643,40 +642,6 @@ if entitlement_extension_needed:
         {"days": 1, "delta_days": 1, "allow_deactivate": False},
     )
     entitlement_extension_applied = True
-
-if selected_profile != "default":
-    guarded(
-        "awg2_lab_material.replace",
-        "awg2_lab_material",
-        tg_id,
-        "PUT",
-        "/api/admin/client/awg2-lab/material",
-        {
-            "tg_id": tg_id,
-            "install_id": install_id,
-            "generation": "awg2-lab-v1",
-            "endpoint_revision": "awg2-v1",
-            "server_record_id": "de-awg2-20260827-01",
-            "node_code": "de",
-            "endpoint": awg2_endpoint,
-        },
-    )
-    guarded(
-        "awg31_lab_material.replace",
-        "awg31_lab_material",
-        tg_id,
-        "PUT",
-        "/api/admin/client/awg31-lab/material",
-        {
-            "tg_id": tg_id,
-            "install_id": install_id,
-            "generation": "__POKROV_AWG31_GENERATION__",
-            "endpoint_revision": "__POKROV_AWG31_ENDPOINT_REVISION__",
-            "server_record_id": "__POKROV_AWG31_SERVER_RECORD__",
-            "node_code": "de",
-            "endpoint": awg31_endpoint,
-        },
-    )
 
 latest = request("GET", "/api/admin/network-rollout-config")["network_rollout_config"]
 if latest != current:
@@ -810,8 +775,9 @@ print(
         {
             **safe_target,
             "ok": ok,
-            "awg2_material_provisioned": selected_profile != "default",
-            "awg31_material_provisioned": selected_profile != "default",
+            "awg2_material_provisioned": False,
+            "awg31_material_provisioned": False,
+            "existing_device_material_reused": selected_profile != "default",
             "selected_profile": selected_profile,
             "resolved_profile": resolved_profile,
             "carrier_context": carrier_context,
@@ -826,13 +792,6 @@ print(
     )
 )
 '''
-
-_REMOTE_HELPER = (
-    _REMOTE_HELPER.replace("__POKROV_AWG31_GENERATION__", AWG31_GENERATION)
-    .replace("__POKROV_AWG31_ENDPOINT_REVISION__", AWG31_ENDPOINT_REVISION)
-    .replace("__POKROV_AWG31_SERVER_RECORD__", AWG31_SERVER_RECORD)
-)
-
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(

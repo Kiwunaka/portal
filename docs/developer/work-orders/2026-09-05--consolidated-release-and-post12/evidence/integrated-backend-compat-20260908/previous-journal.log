@@ -1,0 +1,40 @@
+[  380.524638] pokrov-r12-b08-linux systemd[1]: Started r12-integrated-previous.service - R12 integrated previous real API compatibility.
+[  383.391921] pokrov-r12-b08-linux python[1475]: INFO:     Started server process [1475]
+[  383.392207] pokrov-r12-b08-linux python[1475]: INFO:     Waiting for application startup.
+[  383.392571] pokrov-r12-b08-linux python[1475]: INFO:     Application startup complete.
+[  383.392784] pokrov-r12-b08-linux python[1475]: INFO:     Uvicorn running on http://127.0.0.1:18083 (Press CTRL+C to quit)
+[  383.717094] pokrov-r12-b08-linux python[1475]: INFO:     127.0.0.1:59000 - "GET /api/health HTTP/1.1" 200 OK
+[  385.426128] pokrov-r12-b08-linux python[1475]: INFO:     127.0.0.1:59012 - "GET /api/health HTTP/1.1" 200 OK
+[  385.431269] pokrov-r12-b08-linux python[1475]: INFO:     127.0.0.1:59012 - "GET /api/public/plans HTTP/1.1" 200 OK
+[  385.433161] pokrov-r12-b08-linux python[1475]: INFO:     127.0.0.1:59012 - "GET /api/tickets HTTP/1.1" 401 Unauthorized
+[  385.441933] pokrov-r12-b08-linux python[1475]: INFO:     127.0.0.1:59012 - "GET /api/tickets HTTP/1.1" 200 OK
+[  385.453740] pokrov-r12-b08-linux python[1475]: INFO:     127.0.0.1:59012 - "POST /api/events HTTP/1.1" 200 OK
+[  411.125840] pokrov-r12-b08-linux python[1475]: INFO:     127.0.0.1:53112 - "GET /api/health HTTP/1.1" 200 OK
+[  411.130095] pokrov-r12-b08-linux python[1475]: INFO:     127.0.0.1:53112 - "GET /api/public/plans HTTP/1.1" 200 OK
+[  411.130915] pokrov-r12-b08-linux python[1475]: INFO:     127.0.0.1:53112 - "GET /api/tickets HTTP/1.1" 401 Unauthorized
+[  411.140741] pokrov-r12-b08-linux python[1475]: INFO:     127.0.0.1:53112 - "GET /api/tickets HTTP/1.1" 200 OK
+[  411.150667] pokrov-r12-b08-linux python[1475]: INFO:     127.0.0.1:53112 - "POST /api/events HTTP/1.1" 200 OK
+[  431.512603] pokrov-r12-b08-linux python[1475]: INFO:     127.0.0.1:53530 - "GET /api/health HTTP/1.1" 200 OK
+[  431.515274] pokrov-r12-b08-linux python[1475]: INFO:     127.0.0.1:53530 - "GET /api/public/plans HTTP/1.1" 200 OK
+[  431.516626] pokrov-r12-b08-linux python[1475]: INFO:     127.0.0.1:53530 - "GET /api/tickets HTTP/1.1" 401 Unauthorized
+[  431.522313] pokrov-r12-b08-linux python[1475]: INFO:     127.0.0.1:53530 - "GET /api/tickets HTTP/1.1" 200 OK
+[  431.527529] pokrov-r12-b08-linux python[1475]: INFO:     127.0.0.1:53530 - "POST /api/events HTTP/1.1" 200 OK
+[  432.312425] pokrov-r12-b08-linux systemd[1]: Stopping r12-integrated-previous.service - R12 integrated previous real API compatibility...
+[  432.370555] pokrov-r12-b08-linux python[1475]: INFO:     Shutting down
+[  432.471511] pokrov-r12-b08-linux python[1475]: INFO:     Waiting for application shutdown.
+[  432.471625] pokrov-r12-b08-linux python[1475]: INFO:     Application shutdown complete.
+[  432.471680] pokrov-r12-b08-linux python[1475]: INFO:     Finished server process [1475]
+[  432.476777] pokrov-r12-b08-linux systemd[1]: r12-integrated-previous.service: Deactivated successfully.
+[  432.476827] pokrov-r12-b08-linux systemd[1]: Stopped r12-integrated-previous.service - R12 integrated previous real API compatibility.
+[  432.476868] pokrov-r12-b08-linux systemd[1]: r12-integrated-previous.service: Consumed 2.521s CPU time, 150.3M memory peak, 0B memory swap peak.
+[  432.489101] pokrov-r12-b08-linux systemd[1]: Started r12-integrated-previous.service - R12 integrated previous real API compatibility.
+[  434.524362] pokrov-r12-b08-linux python[1948]: INFO:     Started server process [1948]
+[  434.524667] pokrov-r12-b08-linux python[1948]: INFO:     Waiting for application startup.
+[  434.524987] pokrov-r12-b08-linux python[1948]: INFO:     Application startup complete.
+[  434.525193] pokrov-r12-b08-linux python[1948]: INFO:     Uvicorn running on http://127.0.0.1:18083 (Press CTRL+C to quit)
+[  435.679075] pokrov-r12-b08-linux python[1948]: INFO:     127.0.0.1:44316 - "GET /api/health HTTP/1.1" 200 OK
+[  436.508323] pokrov-r12-b08-linux python[1948]: INFO:     127.0.0.1:44326 - "GET /api/health HTTP/1.1" 200 OK
+[  436.513063] pokrov-r12-b08-linux python[1948]: INFO:     127.0.0.1:44326 - "GET /api/public/plans HTTP/1.1" 200 OK
+[  436.514837] pokrov-r12-b08-linux python[1948]: INFO:     127.0.0.1:44326 - "GET /api/tickets HTTP/1.1" 401 Unauthorized
+[  436.526315] pokrov-r12-b08-linux python[1948]: INFO:     127.0.0.1:44326 - "GET /api/tickets HTTP/1.1" 200 OK
+[  436.537509] pokrov-r12-b08-linux python[1948]: INFO:     127.0.0.1:44326 - "POST /api/events HTTP/1.1" 200 OK

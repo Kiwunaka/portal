@@ -1,0 +1,83 @@
+{
+  "utc": "2026-09-08T22:21:41.758745+00:00",
+  "mode": "apply",
+  "source_files": {
+    "support": {
+      "present": true,
+      "files": 0,
+      "bytes": 0,
+      "manifest_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "promos": {
+      "present": true,
+      "files": 3,
+      "bytes": 1868520,
+      "manifest_sha256": "2d47c37a3b4cbdf23883b9a88b9d4be7bb1ce59b067d0ba219fd58f0777602de"
+    },
+    "bundle_quarantine": {
+      "present": false,
+      "files": 0,
+      "bytes": 0,
+      "manifest_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "bundle_accepted": {
+      "present": false,
+      "files": 0,
+      "bytes": 0,
+      "manifest_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  },
+  "database_binding": {
+    "source": {
+      "promo_config_present": false,
+      "promo_config_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "support_attachment_rows": 0
+    },
+    "restored": {
+      "promo_config_present": false,
+      "promo_config_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "support_attachment_rows": 0
+    }
+  },
+  "source_mutated": false,
+  "raw_file_names_or_content_returned": false,
+  "status": "PASS_ENCRYPTED_VOLUME_RESTORE",
+  "restored_files": {
+    "support": {
+      "present": true,
+      "files": 0,
+      "bytes": 0,
+      "manifest_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "promos": {
+      "present": true,
+      "files": 3,
+      "bytes": 1868520,
+      "manifest_sha256": "2d47c37a3b4cbdf23883b9a88b9d4be7bb1ce59b067d0ba219fd58f0777602de"
+    },
+    "bundle_quarantine": {
+      "present": false,
+      "files": 0,
+      "bytes": 0,
+      "manifest_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    "bundle_accepted": {
+      "present": false,
+      "files": 0,
+      "bytes": 0,
+      "manifest_sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    }
+  },
+  "source_unchanged_during_capture": true,
+  "database_binding_unchanged": true,
+  "archive": {
+    "path": "/root/backups/r12-20260909/volumes-12e3ef4aa6a5431da36370330117732d.tar.enc",
+    "bytes": 1873952,
+    "sha256": "692ce9bb0d8e076e336210b7be2f395f7f58b85e076f129b66ee99c088cb6a20",
+    "mode": "0600"
+  },
+  "restore_root": "/root/backups/r12-20260909/volumes-12e3ef4aa6a5431da36370330117732d-restored",
+  "restore_root_mode": "0700",
+  "archives_and_restore_retained": true,
+  "consistency_scope": "Separate DB snapshot and file capture; exact config hashes and source file manifests remained equal, no cross-store atomic snapshot claimed"
+}

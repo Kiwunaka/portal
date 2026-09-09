@@ -1,0 +1,7 @@
+{
+  "vm_uuid": "b5151b45-ce00-46da-be3d-0e6c8d346f97",
+  "state": "poweroff",
+  "nic": "nat",
+  "ssh_binding": "127.0.0.1:55228",
+  "both_api_units_stopped": true
+}

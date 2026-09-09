@@ -49,7 +49,10 @@ def _b64(value: bytes) -> str:
 
 
 def _summary_payload(
-    *, network_content: bytes | None = None, path_override: str | None = None
+    *,
+    network_content: bytes | None = None,
+    path_override: str | None = None,
+    events: list[dict] | None = None,
 ):
     build = {
         "app_version": "1.2.0",
@@ -85,6 +88,10 @@ def _summary_payload(
             }
         ),
     }
+    if events is not None:
+        contents["events/recent.jsonl"] = b"".join(
+            _canonical(event) + b"\n" for event in events
+        )
     paths = sorted(contents)
     descriptors = []
     entries = []
@@ -105,7 +112,7 @@ def _summary_payload(
     manifest_core = {
         "build": build,
         "files": descriptors,
-        "profile": "summary",
+        "profile": "standard" if events is not None else "summary",
         "redaction": redaction,
         "schema_version": 1,
     }
@@ -177,6 +184,73 @@ def _queued(session, tmp_path: Path, envelope: bytes, diagnostic_id: str):
     return issued
 
 
+@pytest.mark.parametrize(
+    ("egress_state", "last_outcome", "expected_proof"),
+    [
+        ("failed", "succeeded", "failed"),
+        ("healthy", "failed", "succeeded"),
+        ("unknown", "started", "unknown"),
+    ],
+)
+def test_bundle_summary_keeps_egress_separate_from_unrelated_events(
+    session, tmp_path: Path, egress_state: str, last_outcome: str, expected_proof: str
+) -> None:
+    events = [
+        {
+            "occurred_at": "2026-09-06T01:00:00Z",
+            "subsystem": "runtime",
+            "stage": "core_start",
+            "outcome": "started",
+        },
+        {
+            "occurred_at": "2026-09-06T01:00:01Z",
+            "subsystem": "dns",
+            "stage": "dns_probe",
+            "outcome": "started",
+        },
+        {
+            "occurred_at": "2026-09-06T01:00:02Z",
+            "subsystem": "storage",
+            "stage": "journal_write",
+            "outcome": last_outcome,
+        },
+    ]
+    diagnostic_id, manifest, payload = _summary_payload(
+        network_content=_canonical(
+            {
+                "connection_state": "degraded",
+                "dns_state": "unknown",
+                "egress_state": egress_state,
+                "host_health": "healthy",
+                "route_mode": "all_except_ru",
+                "warp_state": "fallback",
+            }
+        ),
+        events=events,
+    )
+    encrypted = _envelope(diagnostic_id, manifest, payload)
+    issued = _queued(session, tmp_path, encrypted, diagnostic_id)
+    result = ingest.process_queued_support_bundle(
+        session,
+        upload_id=issued.upload_id,
+        quarantine_root=tmp_path / "quarantine",
+        accepted_root=tmp_path / "accepted",
+        decryptor=lambda _envelope_value: payload,
+    )
+    session.commit()
+    assert result.status == "validated", result.failure_code
+    row = session.query(models.SupportBundleUpload).filter_by(upload_id=issued.upload_id).one()
+    assert row.proof_outcome == expected_proof
+    assert row.last_phase == "journal_write"
+    # This reduced event schema has no attempt identifier or attempt counter.
+    assert row.observed_attempts is None
+    summary = importlib.import_module("operator_observability_service").support_bundle_summary(
+        session, upload_id=issued.upload_id
+    )
+    assert summary["proof_outcome"] == expected_proof
+    assert summary["observed_attempts"] is None
+
+
 def test_worker_validates_in_memory_and_persists_only_encrypted_object(
     session,
     tmp_path: Path,
@@ -218,9 +292,9 @@ def test_worker_validates_in_memory_and_persists_only_encrypted_object(
         "app_version": "1.2.0",
         "build_number": "120-test",
         "platform": "windows",
-        "last_phase": "egress",
+        "last_phase": None,
         "proof_outcome": "failed",
-        "observed_attempts": 1,
+        "observed_attempts": None,
     }
 
     repeated = ingest.process_queued_support_bundle(

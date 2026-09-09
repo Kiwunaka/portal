@@ -1,0 +1,22 @@
+cross-repository-contract	Set up job	2026-09-09T02:42:47.9516141Z Ubuntu
+cross-repository-contract	Set up job	2026-09-09T02:42:47.9516697Z 24.04.4
+cross-repository-contract	Set up job	2026-09-09T02:42:47.9519205Z Image: ubuntu-24.04
+cross-repository-contract	Set up job	2026-09-09T02:42:47.9520132Z Version: 20260831.293.1
+cross-repository-contract	Setup Python	2026-09-09T02:44:10.2935305Z Successfully set up CPython (3.12.14)
+cross-repository-contract	Setup Java	2026-09-09T02:44:10.4921760Z Resolved Java 17.0.20+1 from tool-cache
+cross-repository-contract	Setup Go	2026-09-09T02:44:17.8904456Z go version go1.25.13 linux/amd64
+cross-repository-contract	Run client unit and Android flavor tests	2026-09-09T02:45:11.6912002Z Windows signing runtime negatives SKIPPED_BY_PLATFORM; source contract passed.
+cross-repository-contract	Run client unit and Android flavor tests	2026-09-09T02:45:20.7957263Z 🎉 3 tests passed.
+cross-repository-contract	Run client unit and Android flavor tests	2026-09-09T02:45:28.8730473Z 🎉 29 tests passed.
+cross-repository-contract	Run client unit and Android flavor tests	2026-09-09T02:45:36.1194445Z 🎉 6 tests passed.
+cross-repository-contract	Run client unit and Android flavor tests	2026-09-09T02:45:43.8686202Z 🎉 15 tests passed.
+cross-repository-contract	Run client unit and Android flavor tests	2026-09-09T02:46:43.6436422Z 🎉 473 tests passed.
+cross-repository-contract	Run client unit and Android flavor tests	2026-09-09T02:46:51.3223675Z ##[group]❎ real Windows POKROV Core 1.1.0 survives 100 start-stop cycles (skipped)
+cross-repository-contract	Run client unit and Android flavor tests	2026-09-09T02:47:06.7658210Z 🎉 81 tests passed, 1 skipped.
+cross-repository-contract	Run client unit and Android flavor tests	2026-09-09T02:47:17.3914476Z 🎉 8 tests passed.
+cross-repository-contract	Run client unit and Android flavor tests	2026-09-09T02:47:28.0217539Z 🎉 5 tests passed.
+cross-repository-contract	Run client unit and Android flavor tests	2026-09-09T02:47:38.7098837Z 🎉 24 tests passed.
+cross-repository-contract	Run client unit and Android flavor tests	2026-09-09T02:51:45.7634037Z > Task :app:testDirectDebugUnitTest
+cross-repository-contract	Run client unit and Android flavor tests	2026-09-09T02:51:55.3633777Z > Task :app:testStoreDebugUnitTest
+cross-repository-contract	Run client unit and Android flavor tests	2026-09-09T02:51:55.3634903Z BUILD SUCCESSFUL in 4m 16s
+cross-repository-contract	Run client unit and Android flavor tests	2026-09-09T02:51:55.7344397Z Workspace Flutter and Android unit tests passed.

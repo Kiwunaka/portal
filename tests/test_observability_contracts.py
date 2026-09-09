@@ -48,7 +48,7 @@ def test_canonical_contracts_and_valid_event_pass() -> None:
     assert summary.event_contract_version == "1.0.0"
     assert summary.catalog_contract_id == "error-catalog"
     assert summary.catalog_contract_version == "1.2.0"
-    assert summary.catalog_entry_count == 121
+    assert summary.catalog_entry_count == 127
     assert summary.event_schema_sha256 == validator.file_sha256(EVENT_SCHEMA_PATH)
     assert summary.catalog_sha256 == validator.file_sha256(CATALOG_PATH)
 

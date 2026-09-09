@@ -224,6 +224,7 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
             AccountExperienceState,
             AcquisitionHandoff,
             AcquisitionSession,
+            ConnectionEvidence,
             Event,
             ExternalOrder,
             FunnelEvent,
@@ -250,8 +251,8 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
                 last_entry_route="/checkout",
                 bound_tg_id=1001,
                 bound_account_id=user.account_id,
-                created_at=now,
-                first_touch_at=now,
+                created_at=now - timedelta(minutes=5),
+                first_touch_at=now - timedelta(minutes=5),
                 last_touch_at=now,
                 expires_at=now + timedelta(days=180),
             )
@@ -353,11 +354,11 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
         body = summary.json()
         self.assertEqual(
             body["acquisition"]["totals"],
-            {"sessions": 1, "entry_intents": 1, "resolved_entries": 1, "checkouts": 1, "paid": 1, "connected": 1},
+            {"sessions": 1, "entry_intents": 1, "resolved_entries": 1, "checkouts": 1, "paid": 1, "connected": 0},
         )
         self.assertEqual(
             body["product"]["totals"],
-            {"opened": 1, "checkouts": 1, "paid": 1, "connected": 1},
+            {"opened": 1, "checkouts": 1, "paid": 1, "connected": 0},
         )
         observability = body["product"]["observability"]
         self.assertGreaterEqual(int(observability["summary"]["events"]), 4)
@@ -370,6 +371,79 @@ class BackendRouteGapCoverageTests(unittest.TestCase):
         self.assertNotIn("acquisition-funnel-1", serialized)
         self.assertNotIn("account-funnel-1001", serialized)
         self.assertNotIn("order-funnel-1", serialized)
+
+        # Only an observer connection after the server-owned payment is a
+        # paid-to-connected outcome; self-report and an earlier trial are not.
+        for evidence_id, observed_at, kind, expected in (
+            ("earlier", now - timedelta(seconds=1), "observer_connection", 0),
+            ("untrusted", now + timedelta(seconds=1), "client_report", 0),
+            ("verified", now + timedelta(seconds=2), "observer_connection", 1),
+        ):
+            session = SessionLocal()
+            try:
+                session.add(ConnectionEvidence(
+                    id=evidence_id,
+                    account_id="account-funnel-1001",
+                    node_id=1,
+                    evidence_kind=kind,
+                    observed_at=observed_at,
+                    evidence_key=f"funnel-{evidence_id}",
+                    created_at=observed_at,
+                ))
+                session.commit()
+            finally:
+                session.close()
+            response = self.client.get(
+                "/api/admin/funnel/summary",
+                headers=self.admin_headers,
+                params={"from": (now - timedelta(days=1)).isoformat(), "to": (now + timedelta(days=1)).isoformat()},
+            )
+            self.assertEqual(response.status_code, 200, response.text)
+            for funnel_name in ("acquisition", "product"):
+                self.assertEqual(response.json()[funnel_name]["totals"]["connected"], expected)
+
+    def test_admin_funnel_client_paid_event_is_not_payment_authority(self) -> None:
+        for event_name in ("opened_webapp", "clicked_pay", "paid", "connected_ok"):
+            response = self.client.post(
+                "/api/events", headers=self.user_headers, json={"event_name": event_name}
+            )
+            self.assertEqual(response.status_code, 200, response.text)
+        response = self.client.get("/api/admin/funnel/summary", headers=self.admin_headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        body = response.json()
+        self.assertEqual(body["product"]["totals"], {
+            "opened": 1, "checkouts": 1, "paid": 0, "connected": 0,
+        })
+        self.assertEqual(body["acquisition"]["totals"]["sessions"], 0)
+
+        # A later server payment and observer fact belong to the product
+        # cohort without fabricating an anonymous browser handoff.
+        from db import SessionLocal
+        from models import ConnectionEvidence, PayAttempt, User
+
+        now = self.api._utcnow()
+        session = SessionLocal()
+        try:
+            user = session.query(User).filter_by(tg_id=1001).one()
+            user.account_id = "account-product-only-1001"
+            session.add(PayAttempt(
+                tg_id=1001, source="bot", plan_code="start_99", amount_stars=99,
+                status="paid", started_at=now, updated_at=now, paid_at=now,
+            ))
+            session.add(ConnectionEvidence(
+                id="product-only-evidence", account_id=user.account_id, node_id=1,
+                evidence_kind="observer_connection", observed_at=now,
+                evidence_key="product-only-funnel", created_at=now,
+            ))
+            session.commit()
+        finally:
+            session.close()
+        response = self.client.get("/api/admin/funnel/summary", headers=self.admin_headers)
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["product"]["totals"], {
+            "opened": 1, "checkouts": 1, "paid": 1, "connected": 1,
+        })
+        self.assertEqual(response.json()["acquisition"]["totals"]["sessions"], 0)
 
     def test_admin_broadcast_and_referral_gap_routes(self) -> None:
         sent_to: list[int] = []

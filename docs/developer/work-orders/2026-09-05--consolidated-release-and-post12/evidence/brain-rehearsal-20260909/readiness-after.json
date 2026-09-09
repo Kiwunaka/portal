@@ -1,0 +1,27 @@
+{
+  "utc": "2026-09-08T22:25:50.938842+00:00",
+  "database": {
+    "source_bytes": 1954131291,
+    "target_absent": false,
+    "source_connections": 12,
+    "source_lock_waiters": 0
+  },
+  "root_free_bytes": 14706376704,
+  "backup_directory_absent": false,
+  "required_tools": {
+    "pg_dump": true,
+    "pg_restore": true,
+    "openssl": true,
+    "psql": true,
+    "timeout": true,
+    "setsid": true
+  },
+  "services": {
+    "portal-api": "MainPID=2653334\nNRestarts=0\nActiveState=active",
+    "portal-bot": "MainPID=2653340\nNRestarts=0\nActiveState=active",
+    "portal-helpbot": "MainPID=2653347\nNRestarts=0\nActiveState=active",
+    "portal-feedbackbot": "MainPID=2653361\nNRestarts=0\nActiveState=active",
+    "portal-worker": "MainPID=2653364\nNRestarts=0\nActiveState=active"
+  },
+  "mode": "READ_ONLY"
+}

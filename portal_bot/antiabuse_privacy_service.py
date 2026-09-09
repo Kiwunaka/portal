@@ -25,6 +25,7 @@ RETENTION_COUNT_KEYS = (
     "antiabuse_prefix_hmac",
     "security_event_ip",
     "user_last_ip",
+    "client_network_metadata",
 )
 
 
@@ -285,6 +286,16 @@ def _retention_queries(session, *, now: datetime) -> dict[str, tuple[Any, str]]:
     prefix_cutoff = now - timedelta(seconds=max(1, prefix_days * 86400 - RETENTION_SWEEP_MAX_SECONDS))
 
     return {
+        "client_network_metadata": (
+            session.query(AntiAbuseEvent)
+            .filter(
+                AntiAbuseEvent.event_kind == "client_network_context",
+                AntiAbuseEvent.metadata_json.is_not(None),
+                AntiAbuseEvent.occurred_at <= raw_cutoff,
+            )
+            .order_by(AntiAbuseEvent.occurred_at.asc(), AntiAbuseEvent.id.asc()),
+            "metadata_json",
+        ),
         "antiabuse_raw_ip": (
             session.query(AntiAbuseEvent)
             .filter(AntiAbuseEvent.raw_ip.is_not(None))

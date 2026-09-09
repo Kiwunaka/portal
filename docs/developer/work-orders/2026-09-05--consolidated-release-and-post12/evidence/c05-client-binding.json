@@ -1,0 +1,74 @@
+{
+  "schema": "pokrov.r12.c05-client-reference/v1",
+  "status": "CONSUMER_BINDING_BACKTEST_PASS_C05_OPEN",
+  "client_commit": "c2c6f966f0742f58d52043df50ca2d6f3e26edb2",
+  "client_implementation_commit": "510aedbb0d0224b939555bcf00e074336c408cd2",
+  "core_commit": "8dc57a830bd1487389dd1b7c9190f094c31e13bc",
+  "origin": "current-origin local Windows host",
+  "client_evidence": [
+    {
+      "path": "E:\\r12client\\docs\\operations\\evidence\\2026-09-06-r12-c05-core-binding\\client-backtests.json",
+      "sha256": "9de6ea56f6c1f274ac10a4a1da91ab2d39d4221b55bb37e69d9ffbbe8264410a"
+    },
+    {
+      "path": "E:\\r12client\\docs\\operations\\evidence\\2026-09-06-r12-c05-core-binding\\android-evidence.json",
+      "sha256": "3174f48987666393dfea5ffa5f9aad89cc69cbf4639e18e8b633e867c6d4ff7d"
+    },
+    {
+      "path": "E:\\r12client\\docs\\operations\\evidence\\2026-09-06-r12-c05-core-binding\\windows-evidence.json",
+      "sha256": "372dd0ed2642720e71488f6a84fbceb4503df19bbd84197efee19d383d1906e4"
+    },
+    {
+      "path": "E:\\r12client\\docs\\operations\\evidence\\2026-09-06-r12-c05-core-binding\\previous-runtime-binding.json",
+      "sha256": "43df14326a7061d6243e44e491b36ea057fcecce2609f8fa99175ef1394fec46"
+    }
+  ],
+  "git_integrity": {
+    "path": "E:/r12-c05-client-git-integrity.json",
+    "sha256": "75689791b31e0c717fff5288768eebb04092fa1cb029760c8747fae476e8feac"
+  },
+  "report_sha256": "105c221ba4b11c3809b37170fceea34565067c47f6c83cd34bb3c6f3a48f7940",
+  "not_proven": [
+    "final APK/EXE license/privacy/native inventory",
+    "full residual advisory reachability",
+    "physical Android native runtime",
+    "Windows SCM/TUN/installer",
+    "WARP and external-origin runtime",
+    "new candidate/signing/publication"
+  ],
+  "retained_release_artifacts_changed": false,
+  "final_checks": [
+    {
+      "command": "scripts/validate-seed.ps1 -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start -CoreRoot E:/r12core-implementation",
+      "cwd": "E:/r12client",
+      "log": "E:/r12-c05-client-seed-final.log",
+      "sha256": "5082007bd965f5d37654fbe036ebe5165794ce291c22a3be124e3536847703d9",
+      "exit_code": 0,
+      "result": "PASS final client seed/docs/parity after exact-byte Git rule"
+    },
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-c05-binding-platform-docs.log",
+      "sha256": "49cfdb2fd5c0636e6ece2eee4581dfa2fcdedb0ddff5009b79875de38fa4b8df",
+      "exit_code": 0,
+      "result": "33 PASS"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-c05-binding-platform-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "exit_code": 0,
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "log": "E:/r12-c05-binding-package.log",
+      "sha256": "96b1c7997de8d8aa86aa439d6a06b6685a5b0e233da186369e292de47b5fd199",
+      "exit_code": 0,
+      "result": "PASS 13 imports / 83 R12 / 378 legacy / 187 links"
+    }
+  ]
+}

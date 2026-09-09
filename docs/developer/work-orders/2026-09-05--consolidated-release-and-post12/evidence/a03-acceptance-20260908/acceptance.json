@@ -1,0 +1,301 @@
+{
+  "utc": "2026-09-08T14:20:35.667748+00:00",
+  "result": "PASS_DECLARED_A03_CORE_LAB_SCOPE",
+  "core_source": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+  "upstream_pin": "github.com/amnezia-vpn/amneziawg-go/v3 v3.1.20260814",
+  "validator_tests": {
+    "top_level_passed": 8,
+    "subtests_passed": 35,
+    "names": [
+      "TestSyntheticDualStackFixtureAndMTUSweep",
+      "TestSyntheticAWG31FixtureAndIPC",
+      "TestAWG31SubsetFailsClosedBeforeDeviceCreation",
+      "TestAWG2RejectsAWG31Fields",
+      "TestAWG2SubsetFailsClosedBeforeDeviceCreation",
+      "TestAWG31CrossFieldRejectionBeforeDeviceCreation",
+      "TestManagedAWGPacketBoundaryAndDefaultTimings",
+      "TestPinnedAWG31CrossFieldAcceptanceBoundary"
+    ],
+    "exit_code": 0
+  },
+  "prior_negative_regression": "6 failures before the code correction; unchanged retained log hash verified",
+  "server_binary_and_static_configuration_unchanged": true,
+  "live_mtu_cases_reused_for_identical_core_server_material": [
+    {
+      "profile": "awg2",
+      "mtu": 1280,
+      "elapsed_ms": 253,
+      "rx_max": 1312,
+      "rx_packets": 14,
+      "tx_max": 1296,
+      "tx_packets": 20
+    },
+    {
+      "profile": "awg2",
+      "mtu": 1400,
+      "elapsed_ms": 192,
+      "rx_max": 1312,
+      "rx_packets": 16,
+      "tx_max": 1408,
+      "tx_packets": 19
+    },
+    {
+      "profile": "awg2",
+      "mtu": 1408,
+      "elapsed_ms": 188,
+      "rx_max": 1312,
+      "rx_packets": 14,
+      "tx_max": 1296,
+      "tx_packets": 20
+    },
+    {
+      "profile": "awg31",
+      "mtu": 1280,
+      "elapsed_ms": 1242,
+      "rx_max": 1328,
+      "rx_packets": 11,
+      "tx_max": 1300,
+      "tx_packets": 22
+    },
+    {
+      "profile": "awg31",
+      "mtu": 1400,
+      "elapsed_ms": 738,
+      "rx_max": 1328,
+      "rx_packets": 14,
+      "tx_max": 1300,
+      "tx_packets": 23
+    },
+    {
+      "profile": "awg31",
+      "mtu": 1408,
+      "elapsed_ms": 1960,
+      "rx_max": 1328,
+      "rx_packets": 12,
+      "tx_max": 1300,
+      "tx_packets": 22
+    }
+  ],
+  "retained_hashes_checked": 53,
+  "files": [
+    {
+      "path": "E:\\r12-awg-crossfield-20260908\\core-gate.log",
+      "sha256": "d2df7aa8612f3eb7babac3174aa5c591b8f3cc62c492be9ed8264a7acf92f39c"
+    },
+    {
+      "path": "E:\\r12-awg-crossfield-20260908\\before.log",
+      "sha256": "534638044de7062be753b18dbbb7da965ab4f2d1b7b9f4fedfe9f152010ad082"
+    },
+    {
+      "path": "E:\\r12-awg-crossfield-20260908\\after.log",
+      "sha256": "e367913c37db304e90563b315824e5e63a6c000413319911d7b1167cf9c87e65"
+    },
+    {
+      "path": "E:\\r12-awg-crossfield-20260908\\windows-a.log",
+      "sha256": "c4b3d5744707f144730f2400136355682063386453055750714b4f2f7985bfab"
+    },
+    {
+      "path": "E:\\r12-awg-crossfield-20260908\\windows-a-retry.log",
+      "sha256": "a9e5d820c48fc66ff6ae393e568c408f3ea7c055385e11ab98075f245fbca579"
+    },
+    {
+      "path": "E:\\r12-awg-crossfield-20260908\\windows-b.log",
+      "sha256": "97507b107cb293b07c9eeb37fc4e138a7eb06d9326ca655c6cefb61e6282fb7f"
+    },
+    {
+      "path": "E:\\r12-awg-crossfield-20260908\\android-a.log",
+      "sha256": "a682a2274af871314dfa7fda783ec534a0b182a035dfe8816197b4a3d9d3ea9b"
+    },
+    {
+      "path": "E:\\r12-awg-crossfield-20260908\\android-b.log",
+      "sha256": "6530f46956f6891e09bb7cc4754dd4bbaf3d09a982bb90911fbe2daccfad5f65"
+    },
+    {
+      "path": "E:\\r12-awg-crossfield-20260908\\proxy100.log",
+      "sha256": "b754b4dcbc7a6b84d0313027c7e89ebebc08f39568a4713e4db96dd26f738305"
+    },
+    {
+      "path": "E:\\r12-awg-crossfield-20260908\\runtime-tests.log",
+      "sha256": "2b0fb24775e320112775260b7a615133ca7d031fecb892caf3aeb675b8b92065"
+    },
+    {
+      "path": "E:\\r12-awg-crossfield-20260908\\runtime-analyze.log",
+      "sha256": "3a0ad3aaa26d69e74293c5a87b0bb8d7f95ed79ce1b5c573c047892c4bbfbde3"
+    },
+    {
+      "path": "E:\\r12-awg-crossfield-20260908\\android-flutter.log",
+      "sha256": "d4b6683d685d83fefd50509660b663bf68487aa93fd972707b6b5844fa2a3464"
+    },
+    {
+      "path": "E:\\r12-awg-crossfield-20260908\\android-analyze.log",
+      "sha256": "873a56ab65345561a193dd4f5b25ab8acc559335312dc0554e00edea63389422"
+    },
+    {
+      "path": "E:\\r12-awg-crossfield-20260908\\android-jvm.log",
+      "sha256": "40738e7e42dbc2417696814c27473f9a0f615f505a3491c27e17e7c86cccb4b0"
+    },
+    {
+      "path": "E:\\r12-awg-crossfield-20260908\\client-seed.log",
+      "sha256": "015e41c5ef916270845ccd2cff9f94000a04d5ca9672d52a19562ab0d3393366"
+    },
+    {
+      "path": "E:\\r12-awg-crossfield-20260908\\client-seed-explicit.log",
+      "sha256": "a52af781b4a835f39814e8317161f95a575e01f68bd28b88b09b21d96df157e6"
+    },
+    {
+      "path": "E:\\r12-awg-crossfield-20260908\\release-handoff-contract.log",
+      "sha256": "63b6ce302b59f7b16f239c7eff241f728772ebf85b3e8a6d073a486151b4c373"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\server-readback.py",
+      "sha256": "3879a31cd5bee157a50850527a0e44bc9332018621ad73d521c6267d64145dfb"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\server-before-interop.json",
+      "sha256": "d71cc862cca0d2610fc539aa351cdcf8c82602ff0b3439a30c4b6bab552d9e2b"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\server-after-awg2.json",
+      "sha256": "da617ff9b87f8fddc00a5a73dc11e5d5a6fe6539db02ecec31ff41e968ce5aa8"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\server-after-awg31.json",
+      "sha256": "57b54d799eb27d163377ee255be69b195bea0262016128b224d0417ab744590e"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\server-counter-comparison.json",
+      "sha256": "f9cda29e732f878b93a5d632f59c03d21f1ba91087db280f1d62e2fd1351ba20"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\amneziawg-go-server",
+      "sha256": "4ede58a7d4bc79bce152850ef7aa0ee5885de592d5d095352ae869b3fe8f172d"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\amneziawg-go-reproduced",
+      "sha256": "4ede58a7d4bc79bce152850ef7aa0ee5885de592d5d095352ae869b3fe8f172d"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\server-build-info.txt",
+      "sha256": "cbffcaa43eda235b576f65fb588ea8eb6873a675d55b1c65357af2b52c383a47"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\source-auth-comparison.json",
+      "sha256": "533947c3fc7c2d3ec3ea097339907a0d2c0d6fb31dce17ec4bb766243cff5f60"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\source-auth-downloads.jsonl",
+      "sha256": "7a9a2cf110df82936a4afda0b62c5e3e67ea29f6b536a1b5aa2c3a8b53a2f9d0"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\server-reproduction.json",
+      "sha256": "d5bc6a93a8b2bfa580f988b304b36f82be0ee852a86126eac34baf56757826b8"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\server-reproduction-stripped.json",
+      "sha256": "2b096a63010db31ea07c993c9303153dd58323b96faaf337053b991f574b5958"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\server-reproduction-noid.json",
+      "sha256": "502f6373449e748342bb24de40852aae5d62bd9ca130840b8c5dc76dc031ef26"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\awg2-interop.json",
+      "sha256": "51eb0cdca5fe61e4d8832058f5a180b9d02fab320e43f7052212aef8e162cb6e"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\awg31-interop.json",
+      "sha256": "8b01fdafc6bd60b204cd874392abee21e7381351d7bb9730db01cc30a8feb2a8"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\awg2-run.log",
+      "sha256": "fa0e49c4829e4d091d1fe858da05c16d0ad49bd7a5fe67536a8485e4cd0044d1"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\awg2-run-corrected.log",
+      "sha256": "51eb0cdca5fe61e4d8832058f5a180b9d02fab320e43f7052212aef8e162cb6e"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\awg31-run.log",
+      "sha256": "8b01fdafc6bd60b204cd874392abee21e7381351d7bb9730db01cc30a8feb2a8"
+    },
+    {
+      "path": "E:\\r12-a02-server-20260908\\protocol-negative.log",
+      "sha256": "9d110bfda3034f4955e39fa2e4070b6d8fda202b973d12929e928191c2c12abb"
+    },
+    {
+      "path": "E:\\r12-de-access-20260908\\authenticated.json",
+      "sha256": "cc8fe92c8be928d06b98a2aa63f80fc7db69507796834f590ec3da2f79be37a7"
+    },
+    {
+      "path": "E:\\r12-de-access-20260908\\key-added.json",
+      "sha256": "4eb18e4b111005787fbb44057fcaf67174cc8f8a372d4a7ca0a7b199ec1fd5db"
+    },
+    {
+      "path": "E:\\r12-de-access-20260908\\address-check.json",
+      "sha256": "7d2b19b1d783900f98bbe0104e4b7f61e3e952ca448730185bbd860f93d9d33f"
+    },
+    {
+      "path": "E:\\r12-de-access-20260908\\awg2-alignment.json",
+      "sha256": "f9b780d9ad419d08121c464e2268efb45c163cd4f1e2b2475cde7203957fc804"
+    },
+    {
+      "path": "E:\\r12-de-access-20260908\\awg31-alignment-current.json",
+      "sha256": "372fcc0cbd184f4383a2d71826498330968b88cc2e7aef44d94802b2656f56b3"
+    },
+    {
+      "path": "E:\\r12client\\apps\\android_shell\\android\\app\\libs\\pokrov-core.aar",
+      "sha256": "5e2ea69c044ea461b9be352cb7ce73ddd208898b5a364b6a2642024a6215534a"
+    },
+    {
+      "path": "E:\\r12client\\apps\\windows_shell\\windows\\runner\\resources\\runtime\\pokrov-core.dll",
+      "sha256": "0409da4762c56234c38f7b60ac5fe8b49d4131c4a4debedf3ef313aebe8d0371"
+    },
+    {
+      "path": "E:\\r12core-implementation\\engine\\sing-box\\protocol\\awg\\contract.go",
+      "sha256": "b4059c65d8bbf9afaa2dcdcd8f015097be702efe00614860c0f30c632d3e3051"
+    },
+    {
+      "path": "E:\\r12core-implementation\\engine\\sing-box\\protocol\\awg\\contract_test.go",
+      "sha256": "16132db5e2eaea74f9624a7d97d6e319f98c385b6912bbb07acd54a9348c7c54"
+    },
+    {
+      "path": "E:\\r12core-implementation\\engine\\sing-box\\protocol\\awg\\cross_field_test.go",
+      "sha256": "f2ec45d752947fbc0f777f6f903545f285b62221c993a493cf3fdc603093a493"
+    },
+    {
+      "path": "E:\\r12core-implementation\\engine\\sing-box\\protocol\\awg\\owned_lab_interop_test.go",
+      "sha256": "93819a615ded611107b03545a58673f1efeef111185afb28e5f9517d8dd4a17e"
+    },
+    {
+      "path": "E:\\r12core-implementation\\engine\\sing-box\\go.mod",
+      "sha256": "caa380b551ab4bd54913729490caeb24a97d1241065bc6be1760a112cc166ca7"
+    },
+    {
+      "path": "E:\\r12core-implementation\\engine\\sing-box\\go.sum",
+      "sha256": "bc563f56a5cb57b3bb01c98758dbf4314f81ed9fbbca35e28fa383bcda9fb91f"
+    },
+    {
+      "path": "C:\\Users\\kiwun\\go\\pkg\\mod\\github.com\\amnezia-vpn\\amneziawg-go\\v3@v3.1.20260814\\device\\timers.go",
+      "sha256": "4c91e359d7851b24e5b98b2eff00e9b15d49a342aaa3a9027e906e0afc77b2ff"
+    },
+    {
+      "path": "C:\\Users\\kiwun\\go\\pkg\\mod\\github.com\\amnezia-vpn\\amneziawg-go\\v3@v3.1.20260814\\device\\send.go",
+      "sha256": "6e0a8ee228ccaf424f43b1c69df5d4a190f0bbb424110fe02a4704a75cf74396"
+    },
+    {
+      "path": "C:\\Users\\kiwun\\go\\pkg\\mod\\github.com\\amnezia-vpn\\amneziawg-go\\v3@v3.1.20260814\\device\\uapi.go",
+      "sha256": "7a88ac0cc50ea932336042d963183760e38a48fd8e055e0c0d00a4324cf1ef32"
+    },
+    {
+      "path": "C:\\Users\\kiwun\\go\\pkg\\mod\\github.com\\amnezia-vpn\\amneziawg-go\\v3@v3.1.20260814\\device\\queueconstants_windows.go",
+      "sha256": "5d7ce94696d1896eccd666f24ff12c461bb43587826eaf47d5676172e79fd5f7"
+    }
+  ],
+  "candidate_created": false,
+  "release_proven": false,
+  "remaining_separate_scope": [
+    "D02 whole-device/path MTU, UDP53, DNS, IPv6 and carrier matrix",
+    "N03/N08 routing proof",
+    "exact final candidate and release gates"
+  ]
+}

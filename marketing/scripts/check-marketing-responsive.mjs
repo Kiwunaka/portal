@@ -6,6 +6,7 @@ import { spawn, spawnSync } from "node:child_process";
 
 import axe from "axe-core";
 import { chromium } from "playwright";
+import { checkCheckoutAuthority } from "./check-checkout-authority.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(__dirname, "..");
@@ -39,6 +40,58 @@ const VIEWPORTS = [
   { name: "tablet", width: 700, height: 900 },
   { name: "desktop", width: 1180, height: 820 },
 ];
+
+async function localContext(browser, baseUrl, options) {
+  const context = await browser.newContext(options);
+  const origin = new URL(baseUrl).origin;
+  await context.route("**/*", (route) =>
+    new URL(route.request().url()).origin === origin ? route.continue() : route.abort(),
+  );
+  return context;
+}
+
+async function checkDownloadCatalogTimeout(browser, baseUrl, failures) {
+  for (const path of ["/", "/install/"]) {
+    const context = await localContext(browser, baseUrl, {
+      viewport: { width: 1180, height: 820 },
+      userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/138.0.0.0 Safari/537.36",
+    });
+    const page = await context.newPage();
+    // Hold the response until fetch aborts. No real API request leaves localhost.
+    await page.route("**/api/public/client-apps?channel=stable", () => {});
+    try {
+      const aborted = page.waitForEvent("requestfailed", {
+        predicate: (request) => request.url().includes("/api/public/client-apps?channel=stable"),
+        timeout: 12_000,
+      });
+      await Promise.all([
+        page.goto(`${baseUrl}${path}`, { waitUntil: "domcontentloaded", timeout: 20_000 }),
+        aborted,
+      ]);
+      if (path === "/") {
+        const href = await page.locator('[data-pokrov-cta="hero_download"]').getAttribute("href");
+        if (!href || !(href === "/install/" || href.includes("/releases/download/"))) {
+          failures.push("catalog deadline home: download/install fallback missing");
+        }
+      } else {
+        await page.waitForFunction(
+          () => !/Проверяем (Android|Windows)-файл/.test(document.body.innerText),
+          undefined,
+          { timeout: 2_000 },
+        );
+        for (const platform of ["Android", "Windows"]) {
+          const settled = page.getByRole("link", { name: `Скачать POKROV на ${platform}`, exact: true })
+            .or(page.getByRole("button", { name: `${platform}-файл временно недоступен`, exact: true }));
+          if (!(await settled.count())) failures.push(`catalog deadline install: ${platform} did not settle`);
+        }
+      }
+    } catch (error) {
+      failures.push(`catalog deadline ${path}: ${String(error?.message || error)}`);
+    } finally {
+      await context.close();
+    }
+  }
+}
 
 function findFreePort(start = 3210) {
   return new Promise((resolve, reject) => {
@@ -119,7 +172,7 @@ async function seriousCriticalAxeViolations(page) {
 }
 
 async function checkCheckoutRequestConcurrency(browser, baseUrl, failures) {
-  const context = await browser.newContext({ viewport: { width: 1180, height: 820 } });
+  const context = await localContext(browser, baseUrl, { viewport: { width: 1180, height: 820 } });
   const page = await context.newPage();
   const arrivals = new Map();
   const releases = [];
@@ -217,6 +270,8 @@ async function run() {
     await waitForServer(baseUrl);
     browser = await chromium.launch({ headless: true });
     await checkCheckoutRequestConcurrency(browser, baseUrl, failures);
+    await checkCheckoutAuthority(browser, baseUrl, failures);
+    await checkDownloadCatalogTimeout(browser, baseUrl, failures);
 
     const heroSource = await readFile(join(projectRoot, "src", "components", "home", "hero-visual.tsx"), "utf8");
     const revealSource = await readFile(join(projectRoot, "src", "components", "motion", "reveal.tsx"), "utf8");
@@ -251,7 +306,7 @@ async function run() {
     }
 
     for (const viewport of VIEWPORTS) {
-      const context = await browser.newContext({
+      const context = await localContext(browser, baseUrl, {
         viewport: { width: viewport.width, height: viewport.height },
         deviceScaleFactor: 1,
       });
@@ -322,7 +377,7 @@ async function run() {
       await context.close();
     }
 
-    const noJsContext = await browser.newContext({
+    const noJsContext = await localContext(browser, baseUrl, {
       javaScriptEnabled: false,
       viewport: { width: 1180, height: 820 },
     });
@@ -347,7 +402,7 @@ async function run() {
       await noJsContext.close().catch(() => {});
     }
 
-    const reducedContext = await browser.newContext({
+    const reducedContext = await localContext(browser, baseUrl, {
       reducedMotion: "reduce",
       viewport: { width: 1180, height: 820 },
     });
@@ -384,7 +439,7 @@ async function run() {
       await reducedContext.close().catch(() => {});
     }
 
-    const mobileControlContext = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const mobileControlContext = await localContext(browser, baseUrl, { viewport: { width: 390, height: 844 } });
     const mobileControlPage = await mobileControlContext.newPage();
     try {
       await mobileControlPage.goto(`${baseUrl}/`, { waitUntil: "networkidle", timeout: 20_000 });
@@ -403,7 +458,7 @@ async function run() {
       await mobileControlContext.close().catch(() => {});
     }
 
-    const accessibilityContext = await browser.newContext({ viewport: { width: 1180, height: 820 } });
+    const accessibilityContext = await localContext(browser, baseUrl, { viewport: { width: 1180, height: 820 } });
     const accessibilityPage = await accessibilityContext.newPage();
     try {
       for (const route of ["/", "/install/"]) {

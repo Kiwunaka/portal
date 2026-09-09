@@ -17,13 +17,17 @@ if str(PORTAL_BOT_DIR) not in sys.path:
 
 from auth_session_service import (  # noqa: E402
     AuthSessionError,
+    issue_authenticated_device_session,
     issue_device_session,
     revoke_device,
     revoke_session,
     rotate_device_session,
     validate_access_session,
 )
-from models import Account, AccountDevice, AuthSession, Base, User  # noqa: E402
+from models import (  # noqa: E402
+    Account, AccountDevice, AuthSession, Awg2LabMaterial, Awg31LabMaterial,
+    Base, Hy2LabMaterial, User,
+)
 from web_auth_service import inspect_web_session_token  # noqa: E402
 
 
@@ -248,6 +252,73 @@ def test_device_revoke_requires_fresh_auth_and_invalidates_all_device_sessions(m
         validate_access_session(session, payload=payload or {}, now=NOW + timedelta(minutes=3))
     assert access_exc.value.code == "session_revoked"
 
+    session.close()
+    engine.dispose()
+
+
+@pytest.mark.parametrize("material_type", [Awg2LabMaterial, Awg31LabMaterial, Hy2LabMaterial])
+def test_device_revoke_keeps_old_lab_material_revoked_after_fresh_login(
+    monkeypatch, tmp_path: Path, material_type,
+) -> None:
+    monkeypatch.setenv("WEBAPP_SESSION_SECRET", "auth-session-test-secret")
+    engine, session = _session_for(tmp_path)
+    user, account, device = _seed_account(session)
+    issued = issue_device_session(
+        session, user=user, install_id=device.install_id, now=NOW,
+        fresh_auth_at=NOW,
+    )
+    fields = dict(
+        tg_id=user.tg_id, install_id=device.install_id,
+        contract_id="fixture-contract", contract_sha256="a" * 64,
+        generation="fixture-v1", endpoint_revision="fixture-rev1",
+        server_record_id="fixture-server", node_code="fixture-node",
+        endpoint_ciphertext="retained-encrypted-fixture", material_hash="b" * 64,
+        provisioned_at=NOW, updated_at=NOW,
+    )
+    target = material_type(**fields, is_active=True, state="ready")
+    history = material_type(**fields, is_active=False, state="rotated", revoked_at=NOW)
+    other_device = material_type(
+        **{**fields, "install_id": "other-install"}, is_active=True, state="ready",
+    )
+    other_account = material_type(
+        **{**fields, "tg_id": user.tg_id + 999}, is_active=True, state="ready",
+    )
+    session.add_all([target, history, other_device, other_account])
+    session.commit()
+
+    revoke_at = NOW + timedelta(minutes=1)
+    revoke_device(
+        session, account_id=account.id, device_id=device.id,
+        actor_session_id=issued.session_id, now=revoke_at,
+    )
+    session.flush()
+    session.refresh(target)
+    assert not target.is_active and target.state == "revoked"
+    session.rollback()
+    session.refresh(target)
+    session.refresh(device)
+    assert target.is_active and device.state == "active"
+
+    revoke_device(
+        session, account_id=account.id, device_id=device.id,
+        actor_session_id=issued.session_id, now=revoke_at,
+    )
+    session.commit()
+    fresh = issue_authenticated_device_session(
+        session, account_id=account.id, install_id=device.install_id,
+        device_name="Reauthenticated device", platform="android",
+        now=NOW + timedelta(minutes=2),
+    )
+    session.commit()
+    assert fresh.device_id == device.id and device.state == "active"
+    session.refresh(target)
+    assert not target.is_active and target.state == "revoked"
+    assert target.revoked_at == revoke_at
+    assert target.endpoint_ciphertext == fields["endpoint_ciphertext"]
+    assert target.material_hash == fields["material_hash"]
+    assert history.state == "rotated" and history.revoked_at == NOW
+    assert other_device.is_active and other_account.is_active
+    assert session.query(material_type).count() == 4
     session.close()
     engine.dispose()
 

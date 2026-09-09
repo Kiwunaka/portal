@@ -954,6 +954,9 @@ def test_client_can_revoke_current_session_without_revoking_device(monkeypatch, 
 def test_start_trial_rate_limits_fresh_installs_by_origin(monkeypatch, tmp_path):
     monkeypatch.setenv("API_RATE_LIMIT_START_TRIAL_PER_MINUTE", "1")
     api = _load_api(monkeypatch, tmp_path)
+    # Keep these requests in one fixed minute even across a wall-clock boundary.
+    rate_limit_now = time.time()
+    monkeypatch.setattr(api.time, "time", lambda: rate_limit_now)
     client = TestClient(api.app)
     headers = {"X-Real-IP": "198.51.100.44"}
 

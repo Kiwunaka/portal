@@ -400,10 +400,9 @@ def validate_pokrov_app_product_fact_consumers(pokrov_app_root: Path) -> None:
     subscription_source = (
         source_root / "app_first_runtime_bootstrap.dart"
     ).read_text(encoding="utf-8")
-    required_copy_tokens = (
-        "PlatformProductFacts.trialDays",
-        "PlatformProductFacts.telegramRewardDays",
-    )
+    # Trial duration belongs to the seed/onboarding offer, not an account-status
+    # fallback. Its generated consumer remains mandatory in required_seed_tokens.
+    required_copy_tokens = ("PlatformProductFacts.telegramRewardDays",)
     required_profile_tokens = (
         "PlatformProductFacts.offerUrl",
         "PlatformProductFacts.privacyUrl",

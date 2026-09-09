@@ -63,6 +63,22 @@ The backend writes the local `order_id` into `clientUtm.utm_content`; webhook pr
 
 ## Required Evidence
 
+Current provider-format check (2026-09-06): the
+[Lava.top developer portal](https://developers.lava.top/en) documents
+`refund.success` and `chargeback.initiated` in a snake_case envelope with
+`event_id`, `event_type` and `data`. Payment/subscription events retain their
+flat camelCase format. The documented reversal examples do not supply our
+local order ID or the original contract ID. They are not equivalent to the
+historical flat refund replay fixtures below.
+
+The callback receipt uses `event_id` to deduplicate an envelope even when JSON
+serialization changes. On the common result endpoint, an envelope without an
+authoritative order binding stays `manual_review` and grants/reverses no access.
+Do not infer an order from customer email, product or amount, and do not treat
+receipt acknowledgement as completed reconciliation. Exact provider-to-order
+binding and partial-refund handling still need an evidenced reconciliation
+path before those webhook subscriptions can establish production maturity.
+
 - PASS, beta path: provider credential presence and webhook auth readiness, with secrets redacted;
 - PASS, beta path: live invoice creation for `start_99`;
 - PASS, beta path: standard-plan invoice creation with dynamic amount and selected SBP/card method;

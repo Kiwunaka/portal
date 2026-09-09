@@ -267,6 +267,13 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertEqual(bad.status_code, 200, bad.text)
         self.assertIn("text/html", ok.headers.get("content-type", ""))
         self.assertIn("text/html", bad.headers.get("content-type", ""))
+        self.assertIn("Статус платежа", ok.text)
+        self.assertNotIn("Оплата подтверждена", ok.text)
+        self.assertNotIn("Платеж получен", ok.text)
+        spoofed = client.get("/pay/success?status=paid&order_id=synthetic")
+        self.assertEqual(spoofed.text, ok.text)
+        returned = client.post("/pay/success", json={"status": "paid"})
+        self.assertEqual(returned.json(), {"ok": True, "status": "unverified"})
 
     def test_result_callback_is_idempotent_and_persists_single_event(self) -> None:
         client = TestClient(self.api.app)
@@ -1755,7 +1762,7 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         self.assertEqual(first_body["order_id"], retry.json()["order_id"])
         self.assertEqual(int(first_body["base_amount_rub"]), 669)
         self.assertEqual(int(first_body["amount_rub"]), 602)
-        self.assertEqual(len(captured), 2)
+        self.assertEqual(len(captured), 1)
         self.assertEqual(int(captured[0]["amount_rub"]), 602)
         self.assertEqual(captured[0]["custom"]["campaign"], campaign_public_id)
         self.assertEqual(captured[0]["custom"]["promo_code"], "WIN10")
@@ -2810,6 +2817,18 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         finally:
             s.close()
 
+        preview = client.post("/api/public/offers/preview", json={
+            "plan_code": "start_99", "buyer_email": "REPEAT@pokrov.test",
+        })
+        self.assertEqual(preview.status_code, 200, preview.text)
+        self.assertFalse(preview.json()["valid"])
+        self.assertEqual(preview.json()["reason_code"], "start_99_already_used")
+        regular = client.post("/api/public/offers/preview", json={
+            "plan_code": "1_month", "buyer_email": "REPEAT@pokrov.test",
+        })
+        self.assertEqual(regular.status_code, 200, regular.text)
+        self.assertTrue(regular.json()["valid"])
+
         async def _unexpected_create_rub_payment(**kwargs):
             raise AssertionError("repeat anonymous start_99 must be blocked before invoice creation")
 
@@ -2890,6 +2909,134 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
             self.assertEqual(claim.duration_days, 30)
         finally:
             s.close()
+
+    def test_base_quote_public_checkout_and_recovery(self) -> None:
+        from datetime import timedelta
+        from unittest.mock import patch
+        client = TestClient(self.api.app)
+        buyer = "quote@pokrov.test"
+        missing = client.post("/api/public/offers/preview", json={"plan_code": "1_month"})
+        self.assertEqual(missing.status_code, 200, missing.text)
+        self.assertFalse(missing.json()["valid"])
+        self.assertEqual(missing.json()["reason_code"], "subject_missing")
+        preview = client.post("/api/public/offers/preview", json={
+            "plan_code": "1_month", "buyer_email": buyer,
+        })
+        self.assertEqual(preview.status_code, 200, preview.text)
+        quote = preview.json()
+        self.assertTrue(quote["valid"], quote)
+        self.assertTrue(quote["offer_token"].startswith("bq1."))
+        self.assertEqual(quote["final_price_rub"], 239)
+        self.assertIsNone(quote["reservation_id"])
+        self.assertGreater(quote["hold_expires_at"], quote["server_time"])
+        payload = {"provider": "lavatop", "plan_code": "1_month", "buyer_email": buyer,
+                   "offer_token": quote["offer_token"], "currency": "RUB", "payment_method": "card"}
+        calls = []
+        async def fake_provider(**kwargs):
+            calls.append(kwargs)
+            return {"payment_url": "https://checkout.lava.top/pay/synthetic", "remote": {"id": "synthetic"}}
+        with patch.object(self.api, "create_rub_payment", fake_provider):
+            tampered = client.post("/api/payments/orders/create-public", json={**payload, "offer_token": quote["offer_token"] + "x"})
+            self.assertEqual(tampered.status_code, 400, tampered.text)
+            other_buyer = client.post("/api/payments/orders/create-public", json={**payload, "buyer_email": "other@pokrov.test"})
+            self.assertEqual(other_buyer.status_code, 409, other_buyer.text)
+            future = self.api._utcnow() + timedelta(hours=1)
+            with patch.object(self.api, "_utcnow", return_value=future):
+                expired = client.post("/api/payments/orders/create-public", json=payload)
+            self.assertEqual(expired.status_code, 410, expired.text)
+            self.assertEqual(calls, [])
+            first = client.post("/api/payments/orders/create-public", json=payload)
+            self.assertEqual(first.status_code, 200, first.text)
+            self.assertEqual(first.json()["amount_rub"], quote["final_price_rub"])
+            with patch.object(self.api, "_utcnow", return_value=future):
+                retry = client.post("/api/payments/orders/create-public", json=payload)
+            self.assertEqual(retry.status_code, 200, retry.text)
+            self.assertEqual(retry.json()["order_id"], first.json()["order_id"])
+            self.assertEqual(len(calls), 1)
+
+    def test_base_quote_uses_account_discounts_and_rejects_changed_pricing(self) -> None:
+        from db import SessionLocal
+        from models import User
+        from unittest.mock import patch
+        with SessionLocal() as session:
+            session.add(User(tg_id=42001, username="quote_referrer", uuid=str(uuid.uuid4()),
+                             email="quote_referrer", sub_type="FREE", is_active=True, tos_accepted=True))
+            session.add(User(tg_id=42002, username="quote_buyer", uuid=str(uuid.uuid4()),
+                             email="quote_buyer", sub_type="FREE", is_active=True, tos_accepted=True,
+                             referrer_id=42001, pending_discount_pct=10, pending_discount_code="PENDING10"))
+            session.commit()
+        ticket = self.api._create_checkout_ticket(tg_id=42002, plan_code="1_month",
+                    promo_code="PENDING10", campaign_key="", source="site")
+        client = TestClient(self.api.app)
+        preview = client.post("/api/public/offers/preview", json={"plan_code": "1_month", "checkout_ticket": ticket})
+        self.assertEqual(preview.status_code, 200, preview.text)
+        quote = preview.json()
+        self.assertTrue(quote["valid"], quote)
+        self.assertEqual(quote["final_price_rub"], 172)
+        payload = {"provider": "lavatop", "plan_code": "1_month", "checkout_ticket": ticket,
+                   "offer_token": quote["offer_token"], "currency": "RUB"}
+        calls = []
+        async def fake_provider(**kwargs):
+            calls.append(kwargs)
+            return {"payment_url": "https://checkout.lava.top/pay/synthetic", "remote": {"id": "synthetic"}}
+        with SessionLocal() as session:
+            session.query(User).filter_by(tg_id=42002).one().pending_discount_pct = 5
+            session.commit()
+        with patch.object(self.api, "create_rub_payment", fake_provider):
+            changed = client.post("/api/payments/orders/create-public", json=payload)
+            self.assertEqual(changed.status_code, 409, changed.text)
+            self.assertEqual(calls, [])
+            refreshed = client.post("/api/public/offers/preview", json={"plan_code": "1_month", "checkout_ticket": ticket}).json()
+            paid = client.post("/api/payments/orders/create-public", json={**payload, "offer_token": refreshed["offer_token"]})
+            self.assertEqual(paid.status_code, 200, paid.text)
+            self.assertEqual(paid.json()["amount_rub"], refreshed["final_price_rub"])
+            self.assertEqual(len(calls), 1)
+
+    def test_public_intent_retry_recovers_without_second_provider_invoice(self) -> None:
+        from db import SessionLocal
+        from models import ExternalOrder
+
+        client = TestClient(self.api.app)
+        for provider_timeout in (False, True):
+            with self.subTest(provider_timeout=provider_timeout):
+                calls = []
+                payload = {
+                    "provider": "lavatop", "plan_code": "1_month",
+                    "buyer_email": "retry@pokrov.test", "currency": "RUB",
+                    "intent_id": str(uuid.uuid4()), "payment_method": "card",
+                }
+
+                async def fake_provider(**kwargs):
+                    calls.append(kwargs["order_id"])
+                    # The first transaction has committed before provider I/O.
+                    with SessionLocal() as session:
+                        row = session.query(ExternalOrder).filter_by(order_id=kwargs["order_id"]).one()
+                        self.assertEqual(row.status, "created")
+                    if provider_timeout:
+                        raise TimeoutError("synthetic timeout after local commit")
+                    return {"payment_url": "https://checkout.lava.top/pay/synthetic", "remote": {"id": "synthetic"}}
+
+                old_create = self.api.create_rub_payment
+                self.api.create_rub_payment = fake_provider
+                try:
+                    if provider_timeout:
+                        with self.assertRaises(TimeoutError):
+                            client.post("/api/payments/orders/create-public", json=payload)
+                    else:
+                        first = client.post("/api/payments/orders/create-public", json=payload)
+                        self.assertEqual(first.status_code, 200, first.text)
+                    retry = client.post("/api/payments/orders/create-public", json=payload)
+                    self.assertEqual(retry.status_code, 200, retry.text)
+                    self.assertEqual(retry.json()["order_id"], calls[0])
+                    self.assertEqual(retry.json()["status"], "created" if provider_timeout else "pending")
+                    self.assertIsNone(retry.json()["payment_url"])
+                    self.assertTrue(retry.json()["payment_return_token"])
+                    self.assertEqual(len(calls), 1)
+                    conflict = client.post("/api/payments/orders/create-public", json={**payload, "payment_method": "sbp"})
+                    self.assertEqual(conflict.status_code, 409, conflict.text)
+                    self.assertEqual(len(calls), 1)
+                finally:
+                    self.api.create_rub_payment = old_create
 
     def test_lavatop_callback_marks_order_paid_with_api_key_header(self) -> None:
         client = TestClient(self.api.app)
@@ -3633,74 +3780,97 @@ class ApiPaymentCallbacksTests(unittest.TestCase):
         finally:
             s.close()
 
-    def test_lavatop_paid_callback_amount_mismatch_goes_to_manual_review(self) -> None:
+    def test_lavatop_paid_callback_mismatches_go_to_manual_review(self) -> None:
         client = TestClient(self.api.app)
-
         from db import SessionLocal
-        from models import ExternalOrder, GiftCard, User
+        from models import EntitlementGrant, ExternalOrder, GiftCard, User
 
-        s = SessionLocal()
-        try:
-            s.add(
-                User(
-                    tg_id=7777,
-                    username="mismatch_lava",
-                    uuid=str(uuid.uuid4()),
-                    email="user_7777",
-                    sub_type="FREE",
-                    is_active=True,
-                    tos_accepted=True,
-                )
-            )
-            s.add(
-                ExternalOrder(
-                    order_id="lavatop_bot_7777_mismatch",
-                    provider="lavatop",
-                    tg_id=7777,
-                    plan_code="start_99",
-                    source="bot",
-                    amount=99.0,
-                    currency="RUB",
-                    status="pending",
-                    created_at=self.api._utcnow(),
-                )
-            )
-            s.commit()
-        finally:
-            s.close()
-
-        payload = {
-            "eventType": "payment.success",
-            "contractId": "amount-mismatch-contract",
-            "amount": 1,
-            "currency": "RUB",
-            "status": "completed",
-            "clientUtm": {"utm_content": "lavatop_bot_7777_mismatch", "utm_term": "start_99"},
-            "tg_id": "7777",
-            "plan_code": "start_99",
-        }
-        response = client.post(
-            "/api/payments/result/lavatop",
-            json=payload,
-            headers={"X-Api-Key": "lavatop_webhook_key_test"},
+        cases = (
+            ({"amount": 1}, "amount_mismatch"),
+            ({"amount": "99.001"}, "invalid_amount"),
+            ({"amount": "NaN"}, "invalid_amount"),
+            ({"currency": "USD"}, "currency_mismatch"),
+            ({"currency": ""}, "missing_currency"),
+            ({"plan_code": "6_months"}, "plan_mismatch"),
         )
+        for index, (changes, reason) in enumerate(cases):
+            with self.subTest(reason=reason, changes=changes):
+                tg_id = 7777 + index
+                order_id = f"lavatop-mismatch-{index}"
+                with SessionLocal() as session:
+                    session.add(User(
+                        tg_id=tg_id, username="mismatch_lava", uuid=str(uuid.uuid4()),
+                        email=f"user_{tg_id}", sub_type="FREE", is_active=True, tos_accepted=True,
+                    ))
+                    session.add(ExternalOrder(
+                        order_id=order_id, provider="lavatop", tg_id=tg_id,
+                        plan_code="start_99", source="bot", amount=99.0,
+                        currency="RUB", status="pending", created_at=self.api._utcnow(),
+                    ))
+                    session.commit()
+                response = client.post(
+                    "/api/payments/result/lavatop",
+                    json={
+                        "eventType": "payment.success", "contractId": f"mismatch-event-{index}",
+                        "amount": 99, "currency": "RUB", "status": "completed",
+                        "clientUtm": {"utm_content": order_id, "utm_term": "start_99"},
+                        "tg_id": str(tg_id), "plan_code": "start_99", **changes,
+                    },
+                    headers={"X-Api-Key": "lavatop_webhook_key_test"},
+                )
+                self.assertEqual(response.status_code, 200, response.text)
+                body = response.json()
+                self.assertEqual(body.get("status"), "manual_review")
+                self.assertFalse(body.get("activated"))
+                self.assertEqual(body.get("activation_reason"), reason)
+                with SessionLocal() as session:
+                    row = session.query(ExternalOrder).filter_by(order_id=order_id).one()
+                    user = session.query(User).filter_by(tg_id=tg_id).one()
+                    self.assertEqual(row.status, "manual_review")
+                    self.assertEqual(user.sub_type, "FREE")
+                    self.assertEqual(session.query(EntitlementGrant).filter_by(external_order_id=order_id).count(), 0)
+                    self.assertEqual(session.query(GiftCard).count(), 0)
 
-        self.assertEqual(response.status_code, 200, response.text)
-        body = response.json()
-        self.assertEqual(body.get("status"), "manual_review")
-        self.assertFalse(body.get("activated"))
-        self.assertEqual(body.get("activation_reason"), "amount_mismatch")
+    def test_lavatop_unbound_reversal_envelopes_are_deduped_manual_review(self) -> None:
+        client = TestClient(self.api.app)
+        from db import SessionLocal
+        from models import EntitlementGrant, ExternalOrder, ExternalPaymentEvent, GiftCard
 
-        s = SessionLocal()
-        try:
-            row = s.query(ExternalOrder).filter(ExternalOrder.order_id == "lavatop_bot_7777_mismatch").first()
-            user = s.query(User).filter(User.tg_id == 7777).first()
-            cards = s.query(GiftCard).all()
-            self.assertEqual(str(row.status or ""), "manual_review")
-            self.assertEqual(str(user.sub_type or ""), "FREE")
-            self.assertEqual(cards, [])
-        finally:
-            s.close()
+        for event_type in ("refund.success", "chargeback.initiated"):
+            with self.subTest(event_type=event_type):
+                event_id = str(uuid.uuid4())
+                payload = {
+                    "event_id": event_id,
+                    "event_type": event_type,
+                    "created_at": "2026-09-06T00:00:00Z",
+                    "data": {
+                        "amount": 99, "currency": "RUB",
+                        "customer_email": "reversal-private@example.test",
+                        "product": {"product_id": "synthetic-product"},
+                    },
+                }
+                response = client.post(
+                    "/api/payments/result/lavatop", json=payload,
+                    headers={"X-Api-Key": "lavatop_webhook_key_test"},
+                )
+                # Serialization/key order is not the provider event identity.
+                replay = client.post(
+                    "/api/payments/result/lavatop", json=dict(reversed(list(payload.items()))),
+                    headers={"X-Api-Key": "lavatop_webhook_key_test"},
+                )
+                self.assertEqual(response.status_code, 200, response.text)
+                self.assertEqual(response.json()["status"], "manual_review")
+                self.assertFalse(response.json()["activated"])
+                self.assertEqual(replay.status_code, 200, replay.text)
+                self.assertTrue(replay.json()["duplicate"])
+                with SessionLocal() as session:
+                    row = session.query(ExternalPaymentEvent).filter_by(external_id=event_id).one()
+                    self.assertIsNone(row.order_id)
+                    self.assertTrue(row.signature_ok)
+                    self.assertNotIn("reversal-private@example.test", row.payload_json)
+                    self.assertEqual(session.query(ExternalOrder).count(), 0)
+                    self.assertEqual(session.query(EntitlementGrant).count(), 0)
+                    self.assertEqual(session.query(GiftCard).count(), 0)
 
     def test_lavatop_callback_rejects_invalid_webhook_api_key(self) -> None:
         client = TestClient(self.api.app)

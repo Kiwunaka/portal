@@ -1,0 +1,9 @@
+{
+  "endpoint": "repos/Kiwunaka/pokrov/releases?per_page=100",
+  "returned_count": 23,
+  "complete_single_page": true,
+  "target_version": "1.2.0",
+  "matching_target_release_objects": [],
+  "full_listing_local_path": "E:\\r12-g05-live-metadata-20260909\\github-release-list.json",
+  "full_listing_sha256": "4bcfcda38472b4a9e114048e868fe651977ea9568ce922ed99ceece74803e5fa"
+}

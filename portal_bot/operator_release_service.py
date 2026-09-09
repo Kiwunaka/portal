@@ -31,6 +31,7 @@ except ImportError:
 RELEASE_ROLLOUT_SETTING_KEY = "release_rollout_v1"
 RELEASE_ROLLOUT_SCHEMA = 1
 RELEASE_PLATFORMS = frozenset({"android", "windows"})
+RELEASE_GATE_POLICY_VERSION = "pokrov.operator-cockpit-gates/v1"
 RELEASE_GATE_NAMES = (
     "app_tests",
     "core_tests",
@@ -189,6 +190,10 @@ def release_gate_matrix(readiness: Mapping[str, Any]) -> dict[str, Any]:
         "status": "PASS" if all_pass else "MISSING" if not any(item["status"] == "FAIL" for item in gates) else "FAIL",
         "ready": all_pass,
         "origin_readiness_status": str(readiness.get("status") or "MISSING"),
+        "policy_version": RELEASE_GATE_POLICY_VERSION,
+        # These operational checks do not load the separate exact-candidate
+        # Gate F decision or authorize an external artifact switch.
+        "gate_f_decision": "NOT_EVALUATED",
         "checks": gates,
     }
 

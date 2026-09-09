@@ -1,0 +1,591 @@
+{
+  "scope": "N04 local source verification only",
+  "utc": "2026-09-08T08:51:44.579824+00:00",
+  "source": {
+    "platform": "004857df3fa15fa016865cd9aaacf289f2d39557",
+    "client": "5188505323d4fed03806c78756ba4428608ebd3b",
+    "core": "02a091cb0e369192a5ad0909b56ccba8aa1dce17"
+  },
+  "logs": {
+    "core.log": {
+      "sha256": "1e1fe5ff4fbcf3450760d68902cb24187ba67eeef3c720b0b4c2ed6074a538fc",
+      "bytes": 7416,
+      "exit_code": 0
+    },
+    "core-race.log": {
+      "sha256": "0d3a16a80879c7a9e37c5d34adc0d4f26629c02cd9546a71f313c37d55109e98",
+      "bytes": 168,
+      "exit_code": 0
+    },
+    "android.log": {
+      "sha256": "584683a09d144212d183d9aea50b707aa1ac8aefb80fca87cafd8ed04432f9cb",
+      "bytes": 14609,
+      "exit_code": 0
+    }
+  },
+  "android": {
+    "testDirectDebugUnitTest": {
+      "totals": {
+        "tests": 188,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "suites": [
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidApkIdentityPolicyTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "apkArchiveAbiReaderUsesOnlyBoundedNativeLibraryEntries",
+            "platformVerifiedRotationLineageAcceptsAnAuthorizedAncestor",
+            "sanitizedFixtureAcceptsExactPackageVersionSignerSdkAndAbi",
+            "everyIdentityMismatchFailsClosedBeforeInstallerHandoff"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidClientUpdateInstallerTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "verifiesExactApkSizeAndSha256",
+            "acceptsOnlyGitHubOwnedHttpsRedirects",
+            "acceptsOnlyCanonicalGitHubApkMetadata",
+            "verifierStopsBeforeReadingWhenParentScopeIsCancelled",
+            "exposesBoundedDownloadProgressWithoutReleaseMaterial"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidCoreEgressFailClosedPolicyTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "unavailableChannel_stopsActiveRuntime",
+            "staleFailedProbe_cannotStopNewRuntime",
+            "confirmedFailedProbe_stopsActiveRuntime",
+            "healthyProbe_keepsRuntimeRunning",
+            "failedProbe_afterStopRace_cannotStopAgain"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidCoreEgressProbeTest",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "endpointFailureGetsBoundedRetriesWhileGroupFailureRemainsTerminal",
+            "resolvesNestedSelectorToTheUrltestThatOwnsSelectedLeaf",
+            "resolvesWarpFinalAsEndpointProbeTarget",
+            "delayedSuccessCannotConfirmReplacementProbe",
+            "resolvesNonSelectableUrltestFinalToItsSelectedLeaf",
+            "resolvesAwgFinalAsEndpointProbeTarget",
+            "missingOrFailingPerCallApiCannotProveHealth",
+            "resolvesSelectableFinalAsGroupProbeTarget",
+            "rejectsCyclicGroupSelection",
+            "missingFinalGroupHasNoProbeTarget",
+            "acceptsOnlySelectableGroupTypes",
+            "rejectsUnsafeOrUnboundedTags"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidCoreOperationalEventsTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "rejectsLateDuplicateAndPreviousAttemptCallbacks",
+            "acceptsRestartedSequenceForNewRunAtSameServiceGeneration",
+            "acceptsOnlyClosedTransportFailureCodes",
+            "boundsBreadcrumbsAndRejectsStaleGenerationActivation"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidDnsFailureTokenGateTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "oldDnsCallbackDuringReplacementCannotOwnTheNewTun"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidEmergencyEndpointPreflightPolicyTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "offline emergency profile requires reachable root endpoint",
+            "ordinary profiles keep endpoint preflight diagnostic only"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidHostSecurityContractTest",
+          "tests": 28,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "quickSettingsUsesAuthoritativeRuntimeStateForStopBeforeStart",
+            "coreEgressFailCloseSynchronouslyErasesQuickSettingsReuse",
+            "DNSAndDefaultNetworkSourceContractsFailCloseOnlyTransportFailures",
+            "androidRuntimeProtectsCoreUplinkSocketsFromVpnRecapture",
+            "notificationPermission_isForwardedFromActivityAndRequestedByTheBridge",
+            "quickSettingsTilePublishesTheObservedRuntimeState",
+            "directServiceDispatchAndFailedStartupReleaseTheirOwnedResources",
+            "lateEgressProbeUsesLifecycleAndGenerationGuardedDispatch",
+            "quickSettingsRefreshFollowsCommittedRuntimeState",
+            "runtimeFailureCategoriesNeverExposeExceptionMessages",
+            "accountDeviceNameUsesSafeManufacturerAndModelInsteadOfLocalhost",
+            "operationalJournalIsPrivateBoundedAndWiredToClosedAndroidProducers",
+            "completedTileTransitionReleasesTheClickGate",
+            "foregroundNotificationIsPrivateAndTunMtuFailsClosed",
+            "standardTileRefreshesWhenSystemUiListensAndRuntimeCommits",
+            "publicRuntimeFailures_neverContainNativeProfileDetails",
+            "supportExportUsesSystemDocumentPickerAndAcceptsOnlyEncryptedEnvelope",
+            "exportedActivity_hasNoIntentExtraThatCanAutoConnect",
+            "hostSources_doNotLogOrSurfaceArbitraryNativeDetails",
+            "runtimeReplacementReleasesDnsCallbackBeforeOldResourcesClose",
+            "defaultNetworkInterfaceResolutionAndNativePublishRunOffCallbackThread",
+            "nodeLatencyProbeBindsToAValidatedNonVpnNetwork",
+            "managedProfileInvalidation_clearsQuickSettingsReuseWithoutStoppingRuntime",
+            "sessionScopeOwnsCoreTrafficAndAllFormerRawBridgeJobs",
+            "installedAppCatalogKeepsEveryLauncherSearchableAndBoundsIconWork",
+            "androidRuntimeDiscardsArbitraryNativeDebugLinesAndEmitsOnlySafeAwgCodes",
+            "permissionCallbackCannotResurrectConnectionCancelledByTheTile",
+            "updateDiscoveryReportsOnlySupportedSplitApkAbis"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidLifecycleTaskScopeTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "cancellationFencesLateTasksInterruptsWorkAndRunsHooksOnce"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidManifestPermissionsTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "directUpdaterAloneUsesPrivateFileProviderAndInstallerPermission",
+            "quickSettingsTileUsesActiveRefreshWithoutToggleableMetadata",
+            "manifestDeclaresNetworkPermissionsRequiredByPlatformMonitor"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidNetworkDiagnosticsTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "credentialsOnlyGoToFixedOwnedHttpsObservationPath",
+            "carrierIsBoundedAndCannotCarryHeadersOrUrls"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidNodeLatencyProbeTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "parserCapsTheProbeBatch",
+            "parserKeepsOnlyBoundedValidUniqueTargets"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidNotificationPermissionPlannerTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "firstAndroid13Connect_requestsNotificationPermissionOnce",
+            "denialContinuesWithWarningUnlessAndroidRecommendsAnotherRequest",
+            "grantAndPreAndroid13_continueWithoutARequest"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidOperationalJournalTest",
+          "tests": 8,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "rateLimiterSeparatesClosedEventOutcomePairs",
+            "recordContainsOnlyClosedFieldsAndNoFreeFormPayload",
+            "storeKeepsOnlyCurrentAndPreviousBoundedFiles",
+            "recordRejectsAnOutcomeOutsideTheEventContract",
+            "recordRejectsInvalidGeneration",
+            "uplinkProtectionUsesClosedSafeOutcomes",
+            "watchdogRequiresAStallAndCooldown",
+            "coreEgressProbeUsesOnlyClosedDiagnosticOutcomes"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidPlatformRuntimeBridgeTest",
+          "tests": 14,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "networkResolution_publishIsFencedByGenerationAndCurrentNetwork",
+            "runtimeReload_happensOnlyForAResolvedUplinkInterfaceHandover",
+            "collectInterfaceNames_skipsBlankValuesAndDeduplicates",
+            "toLibboxPrefix_keepsIpv4AddressFormat",
+            "awaitValue_returnsNullAfterTimeoutWhenCallbackAndRefreshStayEmpty",
+            "supportFlags_enablePlatformMonitoringOnModernAndroid",
+            "transientUplinkLossDoesNotPublishAfterReplacementArrives",
+            "defaultNetworkRefresh_ignoresNoisyCapabilityCallbacksForResolvedInterface",
+            "resolveInterfaceIndex_retriesUntilLookupSucceeds",
+            "defaultNetworkRefresh_resolvesOnlyOnceWhileLookupIsPending",
+            "toLibboxPrefix_removesIpv6ScopeSuffixAndAddsPrefixLength",
+            "supportFlags_keepInterfaceGetterOffBeforeAndroidR",
+            "awaitValue_returnsFallbackValueWhenRefreshFindsNetwork",
+            "awaitValue_returnsCallbackValueBeforeTimeout"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidResolverPolicyTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "platform resolver permits retries and bounds a missing callback",
+            "resolver diagnostics use fixed non-sensitive outcome codes",
+            "only DNS transport failures fail close an active runtime"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidRuntimeDispatchPolicyTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "heldProbeReleasedAfterDestroyCannotMutateOrSubmitToShutdownRuntime"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidRuntimeLogClassifierTest",
+          "tests": 15,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "perRequestFailuresStayAdvisory",
+            "connectionResetReturnsFixedCategory",
+            "vlessGenericTransportFailuresKeepOnlyFixedCategories",
+            "realityFailuresKeepAUsefulRedactedSubtype",
+            "vlessNestedFailuresKeepOnlyActionableFixedCategories",
+            "dnsTimeoutReturnsFixedCategory",
+            "realityFailureReturnsOnlyFixedCategory",
+            "ordinaryCoreMessageIsDropped",
+            "awgSafeDiagnosticRejectsRawOrUnboundedMaterial",
+            "awgSafeDiagnosticAcceptsOnlyClosedCanonicalPayload",
+            "awgEndpointEgressDiagnosticAcceptsOnlyClosedCoreCategory",
+            "vlessDnsFailureIsSeparatedFromAuthenticationFailure",
+            "runtimeCategoriesHaveIndependentWindowsAndResetPerSession",
+            "repeatedRuntimeCategoriesAreRateLimitedWithASuppressedCount",
+            "unscopedCoreFailuresNeverOverrideGlobalVpnHealth"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidRuntimeNotificationContentTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "everyRuntimeStateUsesOnlyGenericPrivacySafeText",
+            "egressValidationPreventsFalseGreenNotification"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidRuntimeProfileIdentityTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "samePathCannotSubstituteNewContentOrRouteForAnOldIntent"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidRuntimeProfileMigrationTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "legacyFixtureMigratesIdempotentlyToCurrentSchema",
+            "futureAndMalformedSchemasAreRejectedWithoutMigration",
+            "missingLegacySafetyMetadataDefaultsFailClosed"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidRuntimeStateTest",
+          "tests": 20,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "markStopped_preservesSpecificFailureMessage_afterFailedStart",
+            "snapshot_tracksFailureKindAndStopReason_afterRevoke",
+            "coreEgressFailure_isNotPromotedBackToRunningAfterTunClosed",
+            "snapshot_includesStructuredDiagnostics_afterRunning",
+            "coreEgressProbeOwnsEndToEndHealthWithoutUsingRequestLogs",
+            "initializationFailure_clearsPendingConnectionState",
+            "effectiveIdentityBelongsToTheActiveProfileAndClearsAfterStop",
+            "coreEgressFailure_stopsRuntimeAndPreservesSafeFailureSnapshot",
+            "packagedRuntimeLocator_prefersExtractedCore_whenAvailable",
+            "coreEgressFailure_clearsStagedReuseSoQuickSettingsCannotStart",
+            "pendingConnection_remainsObservableUntilRuntimeResolvesIt",
+            "safeAwgDiagnosticIsSnapshotOnlyAndClearsForTheNextAttempt",
+            "reconcileActiveRuntime_promotesStagedSnapshotBackToRunning",
+            "reconcileActiveRuntime_demotesStaleRunningSnapshotWithoutTun",
+            "invalidatedProfile_keepsRunningTunnelStoppable_butLeavesNoRestartProfile",
+            "dnsTransportFailure_marksRunningSnapshotDegradedBeforeFailClose",
+            "tunnelTrafficStats_areSessionScopedAndRejectLateGenerations",
+            "markDnsOperational_clearsResolverFailureAfterHealthyRecovery",
+            "notificationPermissionWarning_persistsAfterRunningUntilPermissionIsGranted",
+            "packagedRuntimeLocator_findsCoreInsideApk_whenNativeLibsAreNotExtracted"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidSystemDnsPlannerTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "private or loopback detection rejects internal addresses",
+            "first usable public dns server prefers first usable public ip",
+            "first usable public dns server returns null when only private resolvers exist",
+            "normalize address extracts numeric host from uri",
+            "normalize address rejects local and hostnames",
+            "first usable public dns server skips local and private entries"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidTunDnsConfigurationContractTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "tunAdvertisesTheRuntimeDnsAddressBeforeItIsEstablished"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidTunMtuPolicyTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "missingAndMalformedValuesUseConservativeDefault",
+            "unusablePlatformCeilingCannotForceBelowIpv6Minimum",
+            "valuesOutsideProfileBoundsUseConservativeDefault",
+            "validValueIsLimitedByUsablePlatformInterfaceMtu"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidTunnelTrafficTrackerTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "coreTotalsWarmThenProduceSessionRates",
+            "counterResetNeverTurnsIntoAThroughputSpike",
+            "absentOrInvalidCoreCapabilityIsUnavailableAndClearsBaseline",
+            "impossibleRateOverflowIsExplicitlyUnavailableForThatSample"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidTunPackagePlannerTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "selected apps uses allow-list without mixing disallowed packages",
+            "selected apps permits a requested allow-list when an app is applied",
+            "full tunnel merges requested exclusions with the host process",
+            "selected apps rejects an empty allow-list instead of falling back to all apps",
+            "full tunnel excludes the VPN host process",
+            "selected apps rejects a requested allow-list when none is applied"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidTunRoutePlannerTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "plan_keepsFamiliesClosedWhenAutoRouteIsOffAndNothingIsConfigured",
+            "plan_addsDefaultRouteWhenSpecificRoutesExistButDefaultRouteIsMissing",
+            "plan_addsDefaultRoutesWhenTunHasAddressesButNoExplicitRoutes",
+            "plan_skipsDefaultRoutesWhenExplicitRoutesExist",
+            "plan_doesNotAddIpv4DefaultRouteWhenOnlyIpv6TunAddressExists",
+            "plan_doesNotAddIpv6DefaultRouteWhenOnlyIpv4TunAddressExists"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidUpdateFlavorContractTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "storeSourceHasNoDirectApkInstallerReachability",
+            "gradleDeclaresDirectAndStoreReleaseAuthority"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidVariantAvailabilityProbeTest",
+          "tests": 6,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "returnsSafeStatusLatencyFreshnessAndActiveVariantOnly",
+            "rejectsIncompleteOrUnsafeMappings",
+            "parsesOnlyExactPrivateMappingsBackedByProbeGroup",
+            "waitsUntilEveryVariantHasAFreshTerminalSample",
+            "reusesOnlyFreshSnapshotForTheExactCatalogAfterRuntimeStops",
+            "filtersAOneVariantRefreshWithoutDroppingSafeActiveIdentity"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.PendingRuntimeConnectGateTest",
+          "tests": 3,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "dispatchedDirectStart_releasesGateSoTheNextConnectIsFresh",
+            "profileReplacementAtSamePath_invalidatesOldConsentRequest",
+            "staleDispatchCompletion_cannotReleaseNewConnect"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.PokrovInAppWebSurfaceTest",
+          "tests": 2,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "acceptsOnlyOwnedHttpsOriginsForInitialNavigation",
+            "keepsOwnedPagesInAppAndHandsNativeOrPaymentDestinationsOut"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.PokrovQuickSettingsTileServiceTest",
+          "tests": 9,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "missingProfileOrPermissionOpensApp",
+            "legacyOrUnconfirmedProfileCannotStartFromQuickSettings",
+            "pendingConnectionClickResolvesToStop",
+            "staleStopCommandCannotDropForegroundOwnedByNewStart",
+            "runningSnapshotClickResolvesToStopNeverStart",
+            "repeatedStartIsBlockedButPendingStartCanBeSupersededByStop",
+            "coreEgressProbeDefaultsClosedAndSkipsOnlyMatchingEmergencyProfile",
+            "runningTunnelAlwaysStops",
+            "confirmedFreshProfileStartsWithoutOpeningFlutter"
+          ]
+        }
+      ]
+    },
+    "testStoreDebugUnitTest": {
+      "totals": {
+        "tests": 22,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "suites": [
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidCoreEgressFailClosedPolicyTest",
+          "tests": 5,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "unavailableChannel_stopsActiveRuntime",
+            "staleFailedProbe_cannotStopNewRuntime",
+            "confirmedFailedProbe_stopsActiveRuntime",
+            "healthyProbe_keepsRuntimeRunning",
+            "failedProbe_afterStopRace_cannotStopAgain"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidCoreEgressProbeTest",
+          "tests": 12,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "endpointFailureGetsBoundedRetriesWhileGroupFailureRemainsTerminal",
+            "resolvesNestedSelectorToTheUrltestThatOwnsSelectedLeaf",
+            "resolvesWarpFinalAsEndpointProbeTarget",
+            "delayedSuccessCannotConfirmReplacementProbe",
+            "resolvesNonSelectableUrltestFinalToItsSelectedLeaf",
+            "resolvesAwgFinalAsEndpointProbeTarget",
+            "missingOrFailingPerCallApiCannotProveHealth",
+            "resolvesSelectableFinalAsGroupProbeTarget",
+            "rejectsCyclicGroupSelection",
+            "missingFinalGroupHasNoProbeTarget",
+            "acceptsOnlySelectableGroupTypes",
+            "rejectsUnsafeOrUnboundedTags"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidCoreOperationalEventsTest",
+          "tests": 4,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "rejectsLateDuplicateAndPreviousAttemptCallbacks",
+            "acceptsRestartedSequenceForNewRunAtSameServiceGeneration",
+            "acceptsOnlyClosedTransportFailureCodes",
+            "boundsBreadcrumbsAndRejectsStaleGenerationActivation"
+          ]
+        },
+        {
+          "class": "space.pokrov.pokrov_android_shell.AndroidRuntimeDispatchPolicyTest",
+          "tests": 1,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0,
+          "cases": [
+            "heldProbeReleasedAfterDestroyCannotMutateOrSubmitToShutdownRuntime"
+          ]
+        }
+      ]
+    }
+  }
+}

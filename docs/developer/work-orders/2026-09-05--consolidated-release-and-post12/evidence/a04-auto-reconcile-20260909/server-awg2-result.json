@@ -1,0 +1,26 @@
+{
+  "utc": "2026-09-08T21:37:41.887351+00:00",
+  "profile": "awg2",
+  "scope": "Source worker loop on current-origin control plane, isolated PostgreSQL, real SSH removal and lab service restart on owned DE; exact Core on RU Pi",
+  "build": {
+    "core_revision": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+    "binary_sha256": "0f1d735609fb00b9dd0480b6090d4b8c1cbdce5661cd9b7d9b629d192482fb08",
+    "binary_bytes": 15952509,
+    "go_sha256": "21761eceb9302062c9623fb699f332c8c7fe000f15f70efe8da01a2cfbbc16b9",
+    "git_sha256": "fec691d80fccc35fcc309fbc9f720536c1d795b8a562ec169f28c9923da9600f",
+    "target": "linux_arm64",
+    "interop_runner_sha256": "ddf6a29a54dfd5f907d01409a4587294a4c1f0709a2ded64f9388421b8fb3902"
+  },
+  "public_key_sha256": {
+    "a": "02d9743f91290b396808674b57230ea0c0dd1fe8db91714338bbb2394e060341",
+    "b": "ec90e18a0a24d03a19b853a88bbf00ffc457e263bb269eff169058b7fa4f03e2",
+    "c": "0a804c26eaea083327f738a3081ff04e17eed822967f3e1ec9beff8367a9714f"
+  },
+  "server": [],
+  "worker_runs": [],
+  "core_tests": [],
+  "raw_material_retained": false,
+  "result": "FAILED_WORKER_OR_INTEROP",
+  "oracle_source_sha256": "b95ab6f215985ec544f3c1061d12277e905902814b81ff2d7730c9af11021687",
+  "error_type": "BadHostKeyException"
+}

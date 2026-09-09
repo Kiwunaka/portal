@@ -1,0 +1,62 @@
+[
+  {
+    "name": "portal",
+    "defaultBranchRef": {
+      "name": "master",
+      "target": {
+        "oid": "6b41f758ca228a0d5ff13ede0f865096cdac2134"
+      },
+      "branchProtectionRule": {
+        "requiresApprovingReviews": true,
+        "requiredApprovingReviewCount": 0,
+        "isAdminEnforced": true,
+        "bypassPullRequestAllowances": {
+          "totalCount": 0
+        },
+        "bypassForcePushAllowances": {
+          "totalCount": 0
+        }
+      }
+    }
+  },
+  {
+    "name": "POKROV-app",
+    "defaultBranchRef": {
+      "name": "main",
+      "target": {
+        "oid": "da1ad7395615837432615e0f150d7c0bf05322a4"
+      },
+      "branchProtectionRule": {
+        "requiresApprovingReviews": true,
+        "requiredApprovingReviewCount": 0,
+        "isAdminEnforced": true,
+        "bypassPullRequestAllowances": {
+          "totalCount": 0
+        },
+        "bypassForcePushAllowances": {
+          "totalCount": 0
+        }
+      }
+    }
+  },
+  {
+    "name": "pokrov-core",
+    "defaultBranchRef": {
+      "name": "main",
+      "target": {
+        "oid": "c1185faa998c69fd5164af415249c96c68ab61bd"
+      },
+      "branchProtectionRule": {
+        "requiresApprovingReviews": true,
+        "requiredApprovingReviewCount": 0,
+        "isAdminEnforced": true,
+        "bypassPullRequestAllowances": {
+          "totalCount": 0
+        },
+        "bypassForcePushAllowances": {
+          "totalCount": 0
+        }
+      }
+    }
+  }
+]

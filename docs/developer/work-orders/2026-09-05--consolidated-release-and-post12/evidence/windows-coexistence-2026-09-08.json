@@ -1,0 +1,128 @@
+{
+  "status": "PASS_BOUNDED",
+  "client_source": "e88dff94bef85650c5f0b3d31dc3ff9a5e39c38a",
+  "core_source": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+  "installer_sha256": "29a87a13906909e400037a947f1e4f876ca59821e7e34c73060e623f2d9fbeea",
+  "installed_files_verified": 305,
+  "origin": "current-origin; owned Windows 11 VM; VirtualBox NAT; managed AWG3.1",
+  "observations": {
+    "before": {
+      "health_before": {
+        "status": 200,
+        "error": null,
+        "elapsed_ms": 522
+      },
+      "health_blocked": {
+        "status": null,
+        "error": "ConnectFailure",
+        "elapsed_ms": 9
+      },
+      "health_restored": {
+        "status": 200,
+        "error": null,
+        "elapsed_ms": 386
+      },
+      "local_responses": [
+        200,
+        200,
+        200
+      ],
+      "running_before": false,
+      "running_after": false,
+      "tun_before": 0,
+      "tun_after": 0,
+      "foreign_policy_unchanged": true
+    },
+    "connected": {
+      "health_before": {
+        "status": 200,
+        "error": null,
+        "elapsed_ms": 420
+      },
+      "health_blocked": {
+        "status": null,
+        "error": "ConnectFailure",
+        "elapsed_ms": 33
+      },
+      "health_restored": {
+        "status": 200,
+        "error": null,
+        "elapsed_ms": 245
+      },
+      "local_responses": [
+        200,
+        200,
+        200
+      ],
+      "running_before": true,
+      "running_after": true,
+      "tun_before": 1,
+      "tun_after": 1,
+      "foreign_policy_unchanged": true
+    },
+    "after": {
+      "health_before": {
+        "status": 200,
+        "error": null,
+        "elapsed_ms": 520
+      },
+      "health_blocked": {
+        "status": null,
+        "error": "ConnectFailure",
+        "elapsed_ms": 4
+      },
+      "health_restored": {
+        "status": 200,
+        "error": null,
+        "elapsed_ms": 371
+      },
+      "local_responses": [
+        200,
+        200,
+        200
+      ],
+      "running_before": false,
+      "running_after": false,
+      "tun_before": 0,
+      "tun_after": 0,
+      "foreign_policy_unchanged": true
+    }
+  },
+  "routes_and_dns_restored": true,
+  "cleanup": {
+    "utc": "2026-09-08T06:28:40.3203434Z",
+    "vm_uuid": "e42043a3-dd4d-452b-b151-410ad5d49543",
+    "vm_off": true,
+    "nic_none": true,
+    "source_off": true,
+    "routes_sha256": "401e4b0a47c9c8c73d6b52536cec753f09f559ceb2d512884e57d5f7aff72434",
+    "dns_sha256": "720fe40b4ee8ab42f57c808b3c5f824808703b35113fe9999ef97a7bbccdee59",
+    "backend_restored": true,
+    "fixture_rules": 0,
+    "listener_stopped": true,
+    "ui_count": 0,
+    "installed_files_verified": 305,
+    "host_network_unchanged": true
+  },
+  "open_checks": [
+    "other VPN coexistence",
+    "third-party native WFP providers and sublayers",
+    "LAN applications and IPv6",
+    "Windows 10",
+    "independent route and effective location proof",
+    "exact final channel and full W06"
+  ],
+  "release": {
+    "published": false,
+    "deployed": false,
+    "promoted": false,
+    "final_candidate": false
+  },
+  "schema": "pokrov.r12-platform-windows-coexistence/v1",
+  "source": "EXECUTION-WINDOWS-COEXISTENCE-2026-09-08.md",
+  "client_evidence_commit": "be97af6b9579ecec9991fa5b05967b9b1260999a",
+  "client_evidence_git_blob": "bdef12f556fa047347c88d4e867b251e8e7db19a",
+  "client_evidence_git_sha256": "35bf94e9a59ff2d91ae9624f1f6bc0f2f10179f6d3988c64891ac55d3349f72c",
+  "client_evidence_path": "E:/r12client/docs/operations/evidence/2026-09-08-r12-firewall-coexistence/receipt.json",
+  "raw_artifacts_verified": 35
+}

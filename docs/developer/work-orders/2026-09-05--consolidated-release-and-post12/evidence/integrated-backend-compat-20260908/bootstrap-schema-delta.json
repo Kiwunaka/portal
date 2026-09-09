@@ -1,0 +1,88 @@
+{
+  "added_columns": [],
+  "removed_columns": [],
+  "changed_columns": [
+    {
+      "before": [
+        "nodes",
+        "access_role",
+        "character varying",
+        "NO",
+        null
+      ],
+      "after": [
+        "nodes",
+        "access_role",
+        "character varying",
+        "NO",
+        "'paid'::character varying"
+      ]
+    },
+    {
+      "before": [
+        "users",
+        "free_profile_state",
+        "character varying",
+        "NO",
+        null
+      ],
+      "after": [
+        "users",
+        "free_profile_state",
+        "character varying",
+        "NO",
+        "'standard'::character varying"
+      ]
+    },
+    {
+      "before": [
+        "users",
+        "free_profile_active_role",
+        "character varying",
+        "NO",
+        null
+      ],
+      "after": [
+        "users",
+        "free_profile_active_role",
+        "character varying",
+        "NO",
+        "'free_standard'::character varying"
+      ]
+    },
+    {
+      "before": [
+        "users",
+        "free_profile_source",
+        "character varying",
+        "NO",
+        null
+      ],
+      "after": [
+        "users",
+        "free_profile_source",
+        "character varying",
+        "NO",
+        "'legacy_backfill'::character varying"
+      ]
+    },
+    {
+      "before": [
+        "users",
+        "free_profile_observed_bytes",
+        "bigint",
+        "NO",
+        null
+      ],
+      "after": [
+        "users",
+        "free_profile_observed_bytes",
+        "bigint",
+        "NO",
+        "0"
+      ]
+    }
+  ],
+  "added_indexes_count": 93,
+  "removed_or_changed_indexes": []
+}

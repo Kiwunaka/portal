@@ -1,0 +1,19 @@
+{
+  "schema": "pokrov-awg31-contract-sync/v1",
+  "status": "PASS",
+  "contract_id": "pokrov.awg31.endpoint.v1",
+  "contract_sha256": "1bb49b61549ba7c4a3c2d56df445e919ebb1ed12d42e04b0cb3c915d23240818",
+  "core_contract": "E:/r12core-implementation/config/awg31-capability.json",
+  "consumers": {
+    "platform": {
+      "contract_id": "pokrov.awg31.endpoint.v1",
+      "contract_sha256": "1bb49b61549ba7c4a3c2d56df445e919ebb1ed12d42e04b0cb3c915d23240818"
+    },
+    "client": {
+      "contract_id": "pokrov.awg31.endpoint.v1",
+      "contract_sha256": "1bb49b61549ba7c4a3c2d56df445e919ebb1ed12d42e04b0cb3c915d23240818"
+    }
+  },
+  "evidence_ceiling": "LOCAL_SOURCE_CONTRACT_ONLY",
+  "candidate_proven": false
+}

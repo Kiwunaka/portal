@@ -1,0 +1,9 @@
+{
+  "exit_code": 1,
+  "failure": "Literal PEM marker detection matched the verifier source assertion itself",
+  "command": "python -B E:/r12-a04-peer-lifecycle-20260908/verify-and-retain-v2.py",
+  "correction": "v3 checks PEM block shape and verifies existing partial file bytes before continuing",
+  "classification": "collector source self-scan false positive",
+  "product_or_runtime_changed": false,
+  "partial_retention": "prepare.py, run.py and server-controller.py copied before assertion; preserved unchanged"
+}

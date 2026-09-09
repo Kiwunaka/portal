@@ -1,0 +1,151 @@
+FFF                                                                      [100%]
+================================== FAILURES ===================================
+_ test_device_revoke_keeps_old_lab_material_revoked_after_fresh_login[Awg2LabMaterial] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001ED5995B110>
+tmp_path = WindowsPath('C:/Users/kiwun/AppData/Local/Temp/pytest-of-kiwun/pytest-1780/test_device_revoke_keeps_old_l0')
+material_type = <class 'models.Awg2LabMaterial'>
+
+    @pytest.mark.parametrize("material_type", [Awg2LabMaterial, Awg31LabMaterial, Hy2LabMaterial])
+    def test_device_revoke_keeps_old_lab_material_revoked_after_fresh_login(
+        monkeypatch, tmp_path: Path, material_type,
+    ) -> None:
+        monkeypatch.setenv("WEBAPP_SESSION_SECRET", "auth-session-test-secret")
+        engine, session = _session_for(tmp_path)
+        user, account, device = _seed_account(session)
+        issued = issue_device_session(
+            session, user=user, install_id=device.install_id, now=NOW,
+            fresh_auth_at=NOW,
+        )
+        fields = dict(
+            tg_id=user.tg_id, install_id=device.install_id,
+            contract_id="fixture-contract", contract_sha256="a" * 64,
+            generation="fixture-v1", endpoint_revision="fixture-rev1",
+            server_record_id="fixture-server", node_code="fixture-node",
+            endpoint_ciphertext="retained-encrypted-fixture", material_hash="b" * 64,
+            provisioned_at=NOW, updated_at=NOW,
+        )
+        target = material_type(**fields, is_active=True, state="ready")
+        history = material_type(**fields, is_active=False, state="rotated", revoked_at=NOW)
+        other_device = material_type(
+            **{**fields, "install_id": "other-install"}, is_active=True, state="ready",
+        )
+        other_account = material_type(
+            **{**fields, "tg_id": user.tg_id + 999}, is_active=True, state="ready",
+        )
+        session.add_all([target, history, other_device, other_account])
+        session.commit()
+    
+        revoke_at = NOW + timedelta(minutes=1)
+        revoke_device(
+            session, account_id=account.id, device_id=device.id,
+            actor_session_id=issued.session_id, now=revoke_at,
+        )
+        session.flush()
+        session.refresh(target)
+>       assert not target.is_active and target.state == "revoked"
+E       assert (not True)
+E        +  where True = <models.Awg2LabMaterial object at 0x000001ED59FDB140>.is_active
+
+tests\test_auth_sessions.py:296: AssertionError
+_ test_device_revoke_keeps_old_lab_material_revoked_after_fresh_login[Awg31LabMaterial] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001ED5A0369F0>
+tmp_path = WindowsPath('C:/Users/kiwun/AppData/Local/Temp/pytest-of-kiwun/pytest-1780/test_device_revoke_keeps_old_l1')
+material_type = <class 'models.Awg31LabMaterial'>
+
+    @pytest.mark.parametrize("material_type", [Awg2LabMaterial, Awg31LabMaterial, Hy2LabMaterial])
+    def test_device_revoke_keeps_old_lab_material_revoked_after_fresh_login(
+        monkeypatch, tmp_path: Path, material_type,
+    ) -> None:
+        monkeypatch.setenv("WEBAPP_SESSION_SECRET", "auth-session-test-secret")
+        engine, session = _session_for(tmp_path)
+        user, account, device = _seed_account(session)
+        issued = issue_device_session(
+            session, user=user, install_id=device.install_id, now=NOW,
+            fresh_auth_at=NOW,
+        )
+        fields = dict(
+            tg_id=user.tg_id, install_id=device.install_id,
+            contract_id="fixture-contract", contract_sha256="a" * 64,
+            generation="fixture-v1", endpoint_revision="fixture-rev1",
+            server_record_id="fixture-server", node_code="fixture-node",
+            endpoint_ciphertext="retained-encrypted-fixture", material_hash="b" * 64,
+            provisioned_at=NOW, updated_at=NOW,
+        )
+        target = material_type(**fields, is_active=True, state="ready")
+        history = material_type(**fields, is_active=False, state="rotated", revoked_at=NOW)
+        other_device = material_type(
+            **{**fields, "install_id": "other-install"}, is_active=True, state="ready",
+        )
+        other_account = material_type(
+            **{**fields, "tg_id": user.tg_id + 999}, is_active=True, state="ready",
+        )
+        session.add_all([target, history, other_device, other_account])
+        session.commit()
+    
+        revoke_at = NOW + timedelta(minutes=1)
+        revoke_device(
+            session, account_id=account.id, device_id=device.id,
+            actor_session_id=issued.session_id, now=revoke_at,
+        )
+        session.flush()
+        session.refresh(target)
+>       assert not target.is_active and target.state == "revoked"
+E       assert (not True)
+E        +  where True = <models.Awg31LabMaterial object at 0x000001ED5A0DE6C0>.is_active
+
+tests\test_auth_sessions.py:296: AssertionError
+_ test_device_revoke_keeps_old_lab_material_revoked_after_fresh_login[Hy2LabMaterial] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x000001ED5995AF60>
+tmp_path = WindowsPath('C:/Users/kiwun/AppData/Local/Temp/pytest-of-kiwun/pytest-1780/test_device_revoke_keeps_old_l2')
+material_type = <class 'models.Hy2LabMaterial'>
+
+    @pytest.mark.parametrize("material_type", [Awg2LabMaterial, Awg31LabMaterial, Hy2LabMaterial])
+    def test_device_revoke_keeps_old_lab_material_revoked_after_fresh_login(
+        monkeypatch, tmp_path: Path, material_type,
+    ) -> None:
+        monkeypatch.setenv("WEBAPP_SESSION_SECRET", "auth-session-test-secret")
+        engine, session = _session_for(tmp_path)
+        user, account, device = _seed_account(session)
+        issued = issue_device_session(
+            session, user=user, install_id=device.install_id, now=NOW,
+            fresh_auth_at=NOW,
+        )
+        fields = dict(
+            tg_id=user.tg_id, install_id=device.install_id,
+            contract_id="fixture-contract", contract_sha256="a" * 64,
+            generation="fixture-v1", endpoint_revision="fixture-rev1",
+            server_record_id="fixture-server", node_code="fixture-node",
+            endpoint_ciphertext="retained-encrypted-fixture", material_hash="b" * 64,
+            provisioned_at=NOW, updated_at=NOW,
+        )
+        target = material_type(**fields, is_active=True, state="ready")
+        history = material_type(**fields, is_active=False, state="rotated", revoked_at=NOW)
+        other_device = material_type(
+            **{**fields, "install_id": "other-install"}, is_active=True, state="ready",
+        )
+        other_account = material_type(
+            **{**fields, "tg_id": user.tg_id + 999}, is_active=True, state="ready",
+        )
+        session.add_all([target, history, other_device, other_account])
+        session.commit()
+    
+        revoke_at = NOW + timedelta(minutes=1)
+        revoke_device(
+            session, account_id=account.id, device_id=device.id,
+            actor_session_id=issued.session_id, now=revoke_at,
+        )
+        session.flush()
+        session.refresh(target)
+>       assert not target.is_active and target.state == "revoked"
+E       assert (not True)
+E        +  where True = <models.Hy2LabMaterial object at 0x000001ED56DE61B0>.is_active
+
+tests\test_auth_sessions.py:296: AssertionError
+=========================== short test summary info ===========================
+FAILED tests/test_auth_sessions.py::test_device_revoke_keeps_old_lab_material_revoked_after_fresh_login[Awg2LabMaterial]
+FAILED tests/test_auth_sessions.py::test_device_revoke_keeps_old_lab_material_revoked_after_fresh_login[Awg31LabMaterial]
+FAILED tests/test_auth_sessions.py::test_device_revoke_keeps_old_lab_material_revoked_after_fresh_login[Hy2LabMaterial]
+3 failed, 8 deselected in 9.22s

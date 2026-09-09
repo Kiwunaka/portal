@@ -1,0 +1,315 @@
+{
+  "status": "PASS_CURRENT_LOCAL_API_COMPATIBILITY",
+  "observed_on": "2026-09-08",
+  "actual_execution_origin": "current-origin isolated Ubuntu VM; production Brain read-only source hashes/source-equivalence readback",
+  "previous_source": {
+    "base": "f5300053026d32826e54c02202303e1f68c65bc1",
+    "control_panel_override": "1207b63f1574a15569594c5fdbb79e4c8dff553f",
+    "files": 197,
+    "all_exported_bytes_equal_deployed": true
+  },
+  "current_source": {
+    "commit": "16407b8909508c9d533e88ba24153f8fef0314ce",
+    "files": 200
+  },
+  "actual_production_database_scheme": "postgresql+psycopg2",
+  "schema_inputs_equal": {
+    "models.py": true,
+    "migrations.py": true,
+    "db.py": true,
+    "requirements.txt": true,
+    "account_foundation_service.py": true,
+    "support_account_service.py": true
+  },
+  "new_expand_contract_change_for_exact_pair": "NOT_APPLICABLE_NO_SCHEMA_INPUT_DELTA",
+  "legacy_bootstrap_delta": "existing migrations added 93 indexes and 5 defaults to ORM-only restored fixture before current started; not a new migration between versions",
+  "result": {
+    "result": "PASS_CURRENT_LOCAL_API_COMPATIBILITY",
+    "source_files_verified": {
+      "previous": 197,
+      "current": 200
+    },
+    "event_writes_verified": 5,
+    "http_assertions": 25,
+    "ticket_and_attachment_rows_retained": true,
+    "schema_identical_after_previous_current_rollback": true,
+    "schema_counts": {
+      "columns": 1690,
+      "indexes": 734,
+      "constraints": 246
+    },
+    "new_expand_or_contract_schema_change_between_inputs": false,
+    "schema_inputs": {
+      "models.py": true,
+      "migrations.py": true,
+      "db.py": true,
+      "requirements.txt": true,
+      "account_foundation_service.py": true,
+      "support_account_service.py": true
+    },
+    "requests_are_real_http": true,
+    "database_is_real_postgresql": true,
+    "python_version": "3.12.3",
+    "pip_check": "PASS",
+    "journals": {
+      "previous": {
+        "bytes": 4496,
+        "sha256": "1156ee8b517e771cb0952faac2b013b3fd7d07adacdcb282739f8ea1686046c5"
+      },
+      "current": {
+        "bytes": 2103,
+        "sha256": "15ebf1c4103143193d9765efcb3e672e844048ab899e60276c9a68c5a89efbe0"
+      }
+    },
+    "provider_io_executed": false,
+    "production_mutation": false
+  },
+  "commands": [
+    {
+      "program": "export-sources.py",
+      "result": "197 deployed files matched public Git modulo line endings before retention; current 200 files exported from exact Git objects"
+    },
+    {
+      "program": "lab-command.py prepare",
+      "guest": "guest-prepare.py",
+      "result": "new isolated DB cloned from retained restored rehearsal; both exact API payloads installed only in lab"
+    },
+    {
+      "program": "service-step.py",
+      "phases": [
+        "previous-start",
+        "current-start",
+        "current-stop",
+        "previous-restart",
+        "stop-all"
+      ],
+      "result": "PASS"
+    },
+    {
+      "program": "http-probe.py",
+      "phases": [
+        "previous-before",
+        "concurrent",
+        "previous-after",
+        "previous-restarted"
+      ],
+      "result": "25 real HTTP assertions; 5 exact writes verified by SQL"
+    },
+    {
+      "program": "schema-snapshot.py",
+      "phases": [
+        "after-previous",
+        "after-current",
+        "after-rollback"
+      ],
+      "result": "identical columns/indexes/constraints"
+    },
+    {
+      "program": "final-audit.py",
+      "result": "397 source hashes, schema/read-write checks and pip check PASS"
+    },
+    {
+      "program": "systemctl poweroff; VBoxManage showvminfo",
+      "result": "both APIs inactive and VM poweroff"
+    }
+  ],
+  "limitations": [
+    "Python3.12.3/shared lab venv; exact production dependency process/container and volume are not reproduced.",
+    "Provider, bot/worker processes, production recovery/load/locks and final release gates remain open; existing independent worker/restore results keep their exact scopes.",
+    "No new destructive contraction is scheduled by the selected source pair. Canonical rollback retains additive schema/evidence.",
+    "Line-ending checks initially compared raw versus normalized hashes inconsistently. Final source export requires both normalized equivalence to public Git and exact equality to observed deployed raw hashes.",
+    "The saved previous base differs in control_panel.py; the actual deployed older module was explicitly bound rather than claiming a uniform deployed Git commit."
+  ],
+  "production_mutation": false,
+  "candidate_created": false,
+  "implementation_changed": false,
+  "retained_files": [
+    {
+      "path": "deployed-source-identity.json",
+      "sha256": "75383cd0812cba36ab7e3b005b5ca102c22b5adb99fe9b7c1f9a5f5b805c2d9a",
+      "size": 1382
+    },
+    {
+      "path": "deployed-source-format.json",
+      "sha256": "fcffb76a9f27ace993b09a81ea5ad06a0acd4b6800ca2b0f637e232712ec82b1",
+      "size": 574
+    },
+    {
+      "path": "normalized-comparison.json",
+      "sha256": "5c4f0b194cda847022331298ed05fa6e6e1e7b0de08594063a854da718875aca",
+      "size": 286
+    },
+    {
+      "path": "control-panel-source-match.json",
+      "sha256": "7adc5ffe8f24f997d0c5cdd2cfdd2b1696211bc7a2d60debef4fe3446c7ee74f",
+      "size": 98
+    },
+    {
+      "path": "deployed-runtime-verified.json",
+      "sha256": "0cfa7080933c431f1b5ae7534f4834814bf3001a35cce84a41be8c5dde9ddd19",
+      "size": 104410
+    },
+    {
+      "path": "source-manifests.json",
+      "sha256": "75ac4fc4063b91ac8d5d8f3f91ca5c14a095dfb191986fa490d6a69b9f783735",
+      "size": 101668
+    },
+    {
+      "path": "bootstrap-schema-delta.json",
+      "sha256": "51ce0d85ac2d6b64172562c7afc70738fb48eddb60a33b09f8e49193b7e28ac8",
+      "size": 1697
+    },
+    {
+      "path": "schema-after-previous.json",
+      "sha256": "8b176ad490642eae8f21eeff5ba1c49587735e4ce52eb839435bf56ed5c62c86",
+      "size": 367122
+    },
+    {
+      "path": "final-audit.json",
+      "sha256": "2671f26751f7480c44610607cdfc19c1345e69509fb44c3b95212e018a4f272e",
+      "size": 1120
+    },
+    {
+      "path": "previous-before-http.json",
+      "sha256": "f726dc75d712ff93dd64a19b1ab8947201413d8b819801e4c69cbc21dbf0139c",
+      "size": 521
+    },
+    {
+      "path": "concurrent-http.json",
+      "sha256": "c2241b646020fd556d2a50c39243cf4a839996fc918a3893d4c30477adfcc9f6",
+      "size": 963
+    },
+    {
+      "path": "previous-after-http.json",
+      "sha256": "1b58de72cc56e1252b8959677647580f0c7e8c38889da9550a5c7b0ed33867bf",
+      "size": 520
+    },
+    {
+      "path": "previous-restarted-http.json",
+      "sha256": "ff66938deedcce90afc114704956ab860e99e636162f4b63a0c784d1473e2b09",
+      "size": 524
+    },
+    {
+      "path": "previous-start-units.json",
+      "sha256": "eee868f43507859f0a7ff23933cfdd62d20ae48b4a96a3ee40fc04bb8475b0c7",
+      "size": 432
+    },
+    {
+      "path": "current-start-units.json",
+      "sha256": "db93786df8d1973311504ef9599be6cbdfec9d92aa7c4f12d8a79ff7fcf46e3f",
+      "size": 432
+    },
+    {
+      "path": "current-stop-units.json",
+      "sha256": "506b1709cabc0c978aac1556da7401dd758ee7c08314251420bd1d1efc2cce31",
+      "size": 430
+    },
+    {
+      "path": "previous-restart-units.json",
+      "sha256": "0c6427afd22c8fb6b624df7521551ca6b6393379c810411af71e134d6c281fde",
+      "size": 434
+    },
+    {
+      "path": "stop-all-units.json",
+      "sha256": "0cee0e815d89a834e9866bfef191d9ffe61bde83f57ea718a4e1d5344c8ff564",
+      "size": 425
+    },
+    {
+      "path": "vm-final-state.json",
+      "sha256": "a5d305409a0ec26ae65fec87344b53fcf78f8afac499f8d3674cc479013f4594",
+      "size": 172
+    },
+    {
+      "path": "previous-journal.log",
+      "sha256": "1156ee8b517e771cb0952faac2b013b3fd7d07adacdcb282739f8ea1686046c5",
+      "size": 4496
+    },
+    {
+      "path": "current-journal.log",
+      "sha256": "15ebf1c4103143193d9765efcb3e672e844048ab899e60276c9a68c5a89efbe0",
+      "size": 2103
+    },
+    {
+      "path": "export-sources.py",
+      "sha256": "07b21be477a8b2f192c641309f74d5c5aaa724f7813aeece7a83eb39246be2dd",
+      "size": 2862
+    },
+    {
+      "path": "guest-prepare.py",
+      "sha256": "b419220e725ac05ee8a95a5ab76416209d7d7b2445f512cd29b5ede043689c96",
+      "size": 3455
+    },
+    {
+      "path": "service-step.py",
+      "sha256": "6dcc968b8531a998d9087d3e4874d2e13c54df5dfff99578c491fa9d94371844",
+      "size": 1634
+    },
+    {
+      "path": "schema-snapshot.py",
+      "sha256": "47b87ff49a783ead1c8a8ed3d2bdcaf3b81daec451a9eec3a2b631ef72a6a311",
+      "size": 1593
+    },
+    {
+      "path": "http-probe.py",
+      "sha256": "16c13e0355d4bf33ce061503269ca9a92e63573cdc35c74ab38d3e3b0772e334",
+      "size": 3127
+    },
+    {
+      "path": "final-audit.py",
+      "sha256": "80be065ae39073b04aa75c152bf2f7ee8be29d5396b527d1a46de4d5899cd7cd",
+      "size": 2629
+    },
+    {
+      "path": "lab-command.py",
+      "sha256": "e514f1501a8218ca14febe261df3a9d2181bb6ebc2b7d226fe7525fa8cfc4036",
+      "size": 1450
+    },
+    {
+      "path": "prepare.log",
+      "sha256": "2d714882a65d7ae80ccff18c27fd6cdb12b6d0ca385d703735441595f6ed00ab",
+      "size": 219
+    },
+    {
+      "path": "previous-schema.log",
+      "sha256": "4d53569fbbfd22c73c55de35a13df5e2e5e7fbed9eb71f20b316624c62c89343",
+      "size": 225
+    },
+    {
+      "path": "current-schema.log",
+      "sha256": "7107fd1c88aa49445d4c7d6acc58ebfe889b9ca1d67acbde64c91af047ce5659",
+      "size": 223
+    },
+    {
+      "path": "rollback-schema.log",
+      "sha256": "8cde3b31fd5a25b366f6e0ba2a3c65426252328435c17a7cad593670cb1a73b0",
+      "size": 224
+    }
+  ],
+  "external_retained_files": [
+    {
+      "path": "E:\\r12-integrated-acceptance-20260908\\backend-compat\\previous.zip",
+      "sha256": "8443502c025d033d507fe016fd878952e70736353cd2d68a20184663f5f9d5c5",
+      "size": 1238520
+    },
+    {
+      "path": "E:\\r12-integrated-acceptance-20260908\\backend-compat\\current.zip",
+      "sha256": "84a37a8b607b69320651ca126dd24848ce9412bf1a48e83366e40cd36cefc543",
+      "size": 1240492
+    },
+    {
+      "path": "E:\\r12-integrated-acceptance-20260908\\backend-compat\\schema-before.json",
+      "sha256": "293d10a11a3cc90aa213015e26e812d2e0f9d2d969d0f0d9337f9d3cc0fe56bc",
+      "size": 316711
+    },
+    {
+      "path": "E:\\r12-integrated-acceptance-20260908\\backend-compat\\schema-after-current.json",
+      "sha256": "8b176ad490642eae8f21eeff5ba1c49587735e4ce52eb839435bf56ed5c62c86",
+      "size": 367122
+    },
+    {
+      "path": "E:\\r12-integrated-acceptance-20260908\\backend-compat\\schema-after-rollback.json",
+      "sha256": "8b176ad490642eae8f21eeff5ba1c49587735e4ce52eb839435bf56ed5c62c86",
+      "size": 367122
+    }
+  ]
+}

@@ -1,0 +1,316 @@
+{
+  "result": "IMPLEMENTATION_VERIFIED_I3",
+  "scope": "database material invalidation and canonical-device intent guard; no server peer enforcement",
+  "source_parent": "ce93653161858f427a71e12e23565c9ad287bcf5",
+  "runtime_files": {
+    "portal_bot/auth_session_service.py": "1ff81cbb0ec0eb38e2125b68cfca82759cd0729a075442f5efbf622ad0050189",
+    "portal_bot/admin_action_intent_service.py": "851ed71694ee237c24d0d96145862eaf3e07beb43faf15a9763a42d993ca5dcc"
+  },
+  "checks": {
+    "focused-after.log": {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_auth_sessions.py tests/test_account_recovery.py tests/test_admin_action_intents.py -q",
+      "exit_code": 0,
+      "passed": 41,
+      "subtests_passed": 0
+    },
+    "backend-router.log": {
+      "command": "python -B -m pytest -p no:cacheprovider portal_bot/tests/test_app_first_api.py portal_bot/tests/test_app_first_service.py tests/test_api_auth_and_tickets.py tests/test_subscription_preview_api.py -q",
+      "exit_code": 0,
+      "passed": 154,
+      "subtests_passed": 8
+    },
+    "auth-lab-router.log": {
+      "command": "python -B -m pytest -p no:cacheprovider portal_bot/tests/test_email_auth.py tests/test_api_payments_callbacks.py tests/test_lavatop_payment_providers.py tests/test_payment_email_readiness_smoke.py tests/test_awg2_lab_service.py tests/test_awg31_lab_service.py tests/test_hy2_lab_service.py -q",
+      "exit_code": 0,
+      "passed": 171,
+      "subtests_passed": 22
+    },
+    "docs-tests.log": {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "exit_code": 0,
+      "passed": 33,
+      "subtests_passed": 0
+    },
+    "negative-material.log": {
+      "exit_code": 1,
+      "expected_regression_failures": 3
+    },
+    "negative-admin.log": {
+      "exit_code": 1,
+      "expected_regression_failures": 1
+    },
+    "negative-lockdown.log": {
+      "exit_code": 1,
+      "expected_regression_failures": 1
+    }
+  },
+  "postgres": {
+    "result": "PASS_SIX_POSTGRES_REVOKE_REPLACE_RACES",
+    "database": "portal_r12_a04_20260908_rehearsal",
+    "source_parent": "ce93653161858f427a71e12e23565c9ad287bcf5",
+    "source_files_checked": 195,
+    "cases": [
+      {
+        "profile": "awg2",
+        "order": "revoke_first",
+        "row_lock_observed": true,
+        "outcome": {
+          "outcome": "rejected",
+          "code": "invalid_target"
+        },
+        "old_ciphertext_preserved": true,
+        "fresh_login_did_not_restore_material": true,
+        "repeat_revoke_preserved_first_timestamp": true
+      },
+      {
+        "profile": "awg2",
+        "order": "replace_first",
+        "row_lock_observed": true,
+        "outcome": {
+          "outcome": "revoked"
+        },
+        "old_ciphertext_preserved": true,
+        "fresh_login_did_not_restore_material": true,
+        "repeat_revoke_preserved_first_timestamp": true
+      },
+      {
+        "profile": "awg31",
+        "order": "revoke_first",
+        "row_lock_observed": true,
+        "outcome": {
+          "outcome": "rejected",
+          "code": "invalid_target"
+        },
+        "old_ciphertext_preserved": true,
+        "fresh_login_did_not_restore_material": true,
+        "repeat_revoke_preserved_first_timestamp": true
+      },
+      {
+        "profile": "awg31",
+        "order": "replace_first",
+        "row_lock_observed": true,
+        "outcome": {
+          "outcome": "revoked"
+        },
+        "old_ciphertext_preserved": true,
+        "fresh_login_did_not_restore_material": true,
+        "repeat_revoke_preserved_first_timestamp": true
+      },
+      {
+        "profile": "hy2",
+        "order": "revoke_first",
+        "row_lock_observed": true,
+        "outcome": {
+          "outcome": "rejected",
+          "code": "invalid_target"
+        },
+        "old_ciphertext_preserved": true,
+        "fresh_login_did_not_restore_material": true,
+        "repeat_revoke_preserved_first_timestamp": true
+      },
+      {
+        "profile": "hy2",
+        "order": "replace_first",
+        "row_lock_observed": true,
+        "outcome": {
+          "outcome": "revoked"
+        },
+        "old_ciphertext_preserved": true,
+        "fresh_login_did_not_restore_material": true,
+        "repeat_revoke_preserved_first_timestamp": true
+      }
+    ],
+    "synthetic_only": true,
+    "server_network_mutation": false,
+    "postgres_version": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+    "isolation_level": "read committed"
+  },
+  "final_lab_audit": {
+    "source_files_unchanged": 195,
+    "material_rows": {
+      "awg2_lab_materials": {
+        "rows": 7,
+        "active": 0,
+        "rotated": 1,
+        "revoked": 6
+      },
+      "awg31_lab_materials": {
+        "rows": 7,
+        "active": 0,
+        "rotated": 1,
+        "revoked": 6
+      },
+      "hy2_lab_materials": {
+        "rows": 7,
+        "active": 0,
+        "rotated": 1,
+        "revoked": 6
+      }
+    },
+    "other_fixture_db_sessions": 0,
+    "services": {
+      "portal-api": "inactive",
+      "portal-bot": "inactive",
+      "portal-worker": "inactive"
+    },
+    "previous_databases_recreated": false,
+    "production_contacted": false
+  },
+  "vm_poweroff": true,
+  "fixture_setup_failure": "Initial archive omitted six admin_v2 package files; first run exited before table creation. Preserved empty database was verified and used by v2.",
+  "retained_files": [
+    {
+      "path": "negative-material.log",
+      "bytes": 7941,
+      "sha256": "8a1b59d058c5972397df061ea32017cf73babb143ff65535cc697e8ad4da0a02"
+    },
+    {
+      "path": "negative-admin.log",
+      "bytes": 5076,
+      "sha256": "d81b22b6978fa222353871103618054a99df856e2d37f3434afeeb4931480915"
+    },
+    {
+      "path": "negative-lockdown.log",
+      "bytes": 3644,
+      "sha256": "c240f71bcd92215c2dc69d614ce89e86d347a80be11c2e3a0f0ee98a099d9755"
+    },
+    {
+      "path": "focused-after.log",
+      "bytes": 113,
+      "sha256": "4184e490b66aa3d59bcc210e3a31ad4b055ee8e84b1626c2dba480f90519d79f"
+    },
+    {
+      "path": "backend-router.log",
+      "bytes": 288,
+      "sha256": "7b1d7fa05e13fdbc537c20506e738a7627109f58154705a98bd87e122b00df18"
+    },
+    {
+      "path": "auth-lab-router.log",
+      "bytes": 3719,
+      "sha256": "c7ca0047896c08a35b72347c7595851675448b7d16f96083119aab5fa3a11570"
+    },
+    {
+      "path": "docs-tests.log",
+      "bytes": 101,
+      "sha256": "ec23b3930fde9f6a8f776ce67609009a916b7f347b9a7e5a71e55ec16ac4a69b"
+    },
+    {
+      "path": "context-audit.log",
+      "bytes": 23,
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d"
+    },
+    {
+      "path": "pg-execution.json",
+      "bytes": 195,
+      "sha256": "29ffbdddf578c9980d7e8d5b78435bde044664f4b8efe347ef38d85957d051d1"
+    },
+    {
+      "path": "pg-execution-v2.json",
+      "bytes": 195,
+      "sha256": "0468fffe627d158c129ce0d89add83e714db193738647081ead88567c855f52f"
+    },
+    {
+      "path": "pg-result-v2.json",
+      "bytes": 2321,
+      "sha256": "884cf478ce01bdcc6f9c1a7a636e4495b661f246b0c70bc8da0c9d39236fc7f3"
+    },
+    {
+      "path": "final-audit.json",
+      "bytes": 612,
+      "sha256": "417c013af0e930f31f29b16f558865efe7901265992db9e6c0796ef5b215c7ab"
+    },
+    {
+      "path": "vm-final-state.txt",
+      "bytes": 170,
+      "sha256": "01491d39fa3e5d9da9bd58726986cf56399b533c8eff1c06a62606771cae8121"
+    },
+    {
+      "path": "source-manifest.json",
+      "bytes": 32501,
+      "sha256": "f2228755cd7a40bed45c3a3a7c1d8286865428ef6c1818c96653f3d9c6030acd"
+    },
+    {
+      "path": "source-manifest-v2.json",
+      "bytes": 33590,
+      "sha256": "2271488bdc2192c4d3bd02a3ce48770f4a3167ae311d95f169cc36d3b8428a32"
+    },
+    {
+      "path": "prepare-pg.py",
+      "bytes": 2583,
+      "sha256": "4545c50a89cbf5d2b6e4d5f1b769efdd8d9178ab9955f2ddcef3552793e8443b"
+    },
+    {
+      "path": "guest-pg-race.py",
+      "bytes": 9434,
+      "sha256": "86ba2380bba7dd75e54988f724ec2146fc1e43669505b5a8bba3e5298e8a6a64"
+    },
+    {
+      "path": "run-pg.py",
+      "bytes": 1344,
+      "sha256": "84d4aeeb3c47c758be40b565b023a242d9ac405a2f8c9219a3f4db7b5a35709b"
+    },
+    {
+      "path": "complete-pg-source.py",
+      "bytes": 2456,
+      "sha256": "0bb42cd0a515fe37823d3d3e9bb4ad557d2b7535d2846457ff160bd8fdd054f4"
+    },
+    {
+      "path": "guest-pg-race-v2.py",
+      "bytes": 9350,
+      "sha256": "2df801a6c25a413fb99446b966ab4009bc817c5d02905070cb8d5441c52a9592"
+    },
+    {
+      "path": "run-pg-v2.py",
+      "bytes": 1356,
+      "sha256": "95408e288f5c9b6d6ea7f190503569154a63b3de374ff2036c4d2297e7c01fb1"
+    },
+    {
+      "path": "audit-and-stop-lab.py",
+      "bytes": 2587,
+      "sha256": "f8f23556a5af906b922ddc6c58b5689d6b09d44361e496d8cc6f47a91f943694"
+    },
+    {
+      "path": "synthetic-endpoints.json",
+      "bytes": 2228,
+      "sha256": "738b2af036d91679dcf590b05b39009261794135e5204ff111ff40786f45edf2"
+    },
+    {
+      "path": "retain.py",
+      "bytes": 4798,
+      "sha256": "ff716536e1ed6b74ac5d1e9bb39a71f608934690a65c7d4cef1a30ef6f333178"
+    }
+  ],
+  "external_archives": [
+    {
+      "path": "E:\\r12-a04-managed-revocation-20260908\\source.tar",
+      "bytes": 6164480,
+      "sha256": "e2e39bf8a5b96e9f68514ba2d9ffcccf8c9efa2d4deb038491eb79ee5add31e5"
+    },
+    {
+      "path": "E:\\r12-a04-managed-revocation-20260908\\source-additional.tar",
+      "bytes": 163840,
+      "sha256": "611b3f7d2c0bad5f9df9e4b517bcbf2058dbf5e78f24f0b2d6fbec24179f82bd"
+    }
+  ],
+  "no_schema_migration": true,
+  "production_deploy": false,
+  "candidate_created": false,
+  "remaining": [
+    "owned server peer removal/expiry integration",
+    "installed client revocation proof",
+    "full A04 and final integrated quality/release gates"
+  ],
+  "git_runtime_source_binding": {
+    "portal_bot/auth_session_service.py": {
+      "executed_raw_sha256": "1ff81cbb0ec0eb38e2125b68cfca82759cd0729a075442f5efbf622ad0050189",
+      "git_blob_sha256": "9330a8799527a40c8db3f3e98f3aeac8818ea3afc3acc85cc7bb6e7cb98fb1b8",
+      "exact_match_after_crlf_to_lf": true
+    },
+    "portal_bot/admin_action_intent_service.py": {
+      "executed_raw_sha256": "851ed71694ee237c24d0d96145862eaf3e07beb43faf15a9763a42d993ca5dcc",
+      "git_blob_sha256": "5aaf3a552e620a751edf170f4063277138be831bf6a6c622c07ec167eb3a9bb1",
+      "exact_match_after_crlf_to_lf": true
+    }
+  },
+  "git_source_normalization": "Executed worktree bytes contain CRLF; Git stores LF. Both runtime files match exactly after CRLF-to-LF normalization; executed raw hashes remain unchanged."
+}

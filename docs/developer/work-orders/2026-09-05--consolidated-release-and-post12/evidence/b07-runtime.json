@@ -1,0 +1,855 @@
+{
+  "schema": "pokrov.r12.b07-runtime-observer/v1",
+  "observed_on": "2026-09-06",
+  "source_base_commit": "7f392069d34ad001ac64c5b8efaa0e81ca76822b",
+  "implementation_commit": "8bba6a024cdfca25c9b1c0ad95f751c6cd02e9da",
+  "source_working_files": {
+    "portal_bot/event_loop_lag.py": {
+      "sha256": "2f9af7f1c106697b03c97dc23ad5630d291218961aac9df831951f8ef880fd01",
+      "lf_sha256": "2f9af7f1c106697b03c97dc23ad5630d291218961aac9df831951f8ef880fd01"
+    },
+    "portal_bot/api.py": {
+      "sha256": "f2a276783fad1c3e044787f33dc1ef26617631b68ad6723bbdff8fc2ef5885a4",
+      "lf_sha256": "f2a276783fad1c3e044787f33dc1ef26617631b68ad6723bbdff8fc2ef5885a4"
+    },
+    "portal_bot/api_public_routes.py": {
+      "sha256": "31436998c5a924d1f4cd80bf359e7d93a134895fd05f7a8f46fd07e8adf94db5",
+      "lf_sha256": "1b18d90af4e4234b2d00af468393ed6f91571e0304f6448fc43fb8892206d29c"
+    },
+    "tests/test_event_loop_lag.py": {
+      "sha256": "77d4e5f91d4c70c557727de62b9b62744bbc14feaa16bbcc4fe9cbea2f026e3d",
+      "lf_sha256": "77d4e5f91d4c70c557727de62b9b62744bbc14feaa16bbcc4fe9cbea2f026e3d"
+    },
+    "tests/test_payment_http_registry.py": {
+      "sha256": "9420151691bc396489a3b8c1ad1d2f9a51f2fc62564cdc2a3c03ef8413cbbeea",
+      "lf_sha256": "0ba9ab7fc0047ccb8f8b6dd3fbd3ccafb71522c0e6405352c51b515dcc8b1e27"
+    },
+    "docs/architecture/api-contracts.md": {
+      "sha256": "11dd48774225c69053b47535a2141a6af55e417de7e05b76cd63925bb65bfc07",
+      "lf_sha256": "11dd48774225c69053b47535a2141a6af55e417de7e05b76cd63925bb65bfc07"
+    },
+    "docs/operations/monitoring-and-visibility.md": {
+      "sha256": "3a1ceab20b7d1f56837ceab8034489e83c527ff40f913cfe0e002c27c5999a22",
+      "lf_sha256": "3a1ceab20b7d1f56837ceab8034489e83c527ff40f913cfe0e002c27c5999a22"
+    }
+  },
+  "result": "I3 / PARTIALLY_FIXED",
+  "production_inspection_mode": "READ_ONLY",
+  "production_mutation": false,
+  "production_collector_deployed": false,
+  "new_candidate": false,
+  "origins": {
+    "health_series": "current-origin -> public owned API",
+    "brain_snapshot": "brain-origin; read-only SSH and verified TLS loopback health",
+    "new_collector_test": "current-origin; isolated local Linux VM",
+    "ru_origin": "NOT_RUN"
+  },
+  "runtime_snapshot": {
+    "observed_at": "2026-09-06T08:47:18.648246+00:00",
+    "source_hashes": {
+      "api.py": "dee50ce1d0a319abe455e58b4e5eb78eaf6c0408eda602f7e6e17ff0258aea88",
+      "api_public_routes.py": "45fa51000ab869b65d2d214d468b8a29a5350663e58321fd84a5f4f28381006e",
+      "db.py": "dfeaf3794524c1110ce829c2f0211ed40b8a38555be8969a5ab5f21aef90d482",
+      "models.py": "6fb565bb7df1c162ce1e58d3b34b84d8807a19b4ba8693c03d23267c2e4e0b58",
+      "payment_db_runtime.py": "2ff23bb0b54a4a51e2312ab5b8a59483d89e89db43b4f44647d997c667ab64b0",
+      "outbound_http.py": "f1cb8b59ebb397481b35f9401b15a96c112c80ca8950ffc408186feb48f4423b",
+      "payment_entitlement_outbox.py": "7925f9e5d492ecb2b34b7ebabf332c694b3c8de4ef091fa97ae4b8841b7aeded",
+      "requirements.txt": "f14fb252fbc18884556863a0cb3ed04eb72e0ac0b48ac1fe384ace575e9a322c"
+    },
+    "units": {
+      "portal-api": {
+        "exit_code": 0,
+        "fields": {
+          "MainPID": "2653334",
+          "NRestarts": "0",
+          "ExecMainStartTimestamp": "Tue 2026-09-01 01:55:11 UTC",
+          "MemoryCurrent": "142569472",
+          "CPUUsageNSec": "1472339713000",
+          "ActiveState": "active"
+        }
+      },
+      "portal-worker": {
+        "exit_code": 0,
+        "fields": {
+          "MainPID": "2653364",
+          "NRestarts": "0",
+          "ExecMainStartTimestamp": "Tue 2026-09-01 01:55:19 UTC",
+          "MemoryCurrent": "129421312",
+          "CPUUsageNSec": "1101172998000",
+          "ActiveState": "active"
+        }
+      }
+    },
+    "outbox": {
+      "query_mode": "READ ONLY; 2s statement / 0.5s lock timeout",
+      "exit_code": 0,
+      "aggregate": {
+        "pending": 0,
+        "processing": 0,
+        "delivered": 2,
+        "dead_letter": 0,
+        "unknown_status": 0,
+        "oldest_open_age_seconds": 0
+      }
+    },
+    "http_journal": {
+      "exit_code": 0,
+      "window_minutes": 15,
+      "max_lines": 500,
+      "matching_records": 0,
+      "aggregates": [],
+      "raw_lines_retained": false,
+      "absence_is_not_zero_provider_traffic": true
+    }
+  },
+  "runtime_versions": {
+    "python": "3.10.12",
+    "packages": {
+      "SQLAlchemy": "2.0.46",
+      "psycopg2-binary": "2.9.11",
+      "aiohttp": "3.13.3",
+      "starlette": "1.6.0",
+      "anyio": "4.14.2",
+      "uvicorn": "0.34.0"
+    }
+  },
+  "production_source_comparison": {
+    "method": "Both remote and Git inputs normalize CRLF to LF for textual comparison; raw comparison remains separate",
+    "files": {
+      "api.py": {
+        "remote_raw_sha256": "dee50ce1d0a319abe455e58b4e5eb78eaf6c0408eda602f7e6e17ff0258aea88",
+        "remote_lf_sha256": "032b8dd3f790b284bc977855cbfe4c2312ce450d8d5a142d3534d8204d1fda50",
+        "remote_mtime_ns": 1788227710563338843,
+        "comparisons": {
+          "current": {
+            "raw_matches": false,
+            "both_lf_normalized_match": false
+          },
+          "candidate33": {
+            "raw_matches": false,
+            "both_lf_normalized_match": true
+          }
+        }
+      },
+      "api_public_routes.py": {
+        "remote_raw_sha256": "45fa51000ab869b65d2d214d468b8a29a5350663e58321fd84a5f4f28381006e",
+        "remote_lf_sha256": "faa4c055f71c4598802c427abefb561976e52c4c7287c638699fb5e684d32cc5",
+        "remote_mtime_ns": 1788227710579338950,
+        "comparisons": {
+          "current": {
+            "raw_matches": false,
+            "both_lf_normalized_match": false
+          },
+          "candidate33": {
+            "raw_matches": false,
+            "both_lf_normalized_match": true
+          }
+        }
+      },
+      "db.py": {
+        "remote_raw_sha256": "dfeaf3794524c1110ce829c2f0211ed40b8a38555be8969a5ab5f21aef90d482",
+        "remote_lf_sha256": "18462b548def2e31835621d751c7441b78cae34709d2a019f3c73c6ca5c1b40f",
+        "remote_mtime_ns": 1788227710635339325,
+        "comparisons": {
+          "current": {
+            "raw_matches": false,
+            "both_lf_normalized_match": true
+          },
+          "candidate33": {
+            "raw_matches": false,
+            "both_lf_normalized_match": true
+          }
+        }
+      },
+      "models.py": {
+        "remote_raw_sha256": "6fb565bb7df1c162ce1e58d3b34b84d8807a19b4ba8693c03d23267c2e4e0b58",
+        "remote_lf_sha256": "1e513582e2ce812c5de5438f5b4ef4cfc41d1c3621e0e6267b402e789f088baa",
+        "remote_mtime_ns": 1788227710699339754,
+        "comparisons": {
+          "current": {
+            "raw_matches": true,
+            "both_lf_normalized_match": true
+          },
+          "candidate33": {
+            "raw_matches": true,
+            "both_lf_normalized_match": true
+          }
+        }
+      },
+      "payment_db_runtime.py": {
+        "remote_raw_sha256": "2ff23bb0b54a4a51e2312ab5b8a59483d89e89db43b4f44647d997c667ab64b0",
+        "remote_lf_sha256": "06d86c0a794e48abe2b4d3ddc7e0cbb242ecac32bf736489cb3b7d53c5768551",
+        "remote_mtime_ns": 1788227710743340049,
+        "comparisons": {
+          "current": {
+            "raw_matches": false,
+            "both_lf_normalized_match": true
+          },
+          "candidate33": {
+            "raw_matches": false,
+            "both_lf_normalized_match": true
+          }
+        }
+      },
+      "outbound_http.py": {
+        "remote_raw_sha256": "f1cb8b59ebb397481b35f9401b15a96c112c80ca8950ffc408186feb48f4423b",
+        "remote_lf_sha256": "dc31653e97eceb7b7789ce70845e833ca4d3d41b78c074ae59d3e9ccdd94cec6",
+        "remote_mtime_ns": 1788227710735339995,
+        "comparisons": {
+          "current": {
+            "raw_matches": false,
+            "both_lf_normalized_match": true
+          },
+          "candidate33": {
+            "raw_matches": false,
+            "both_lf_normalized_match": true
+          }
+        }
+      },
+      "payment_entitlement_outbox.py": {
+        "remote_raw_sha256": "7925f9e5d492ecb2b34b7ebabf332c694b3c8de4ef091fa97ae4b8841b7aeded",
+        "remote_lf_sha256": "1677993a0c4da2203d6b82981b2869f2c7ec87a2f0504599c0081cb16e367ae6",
+        "remote_mtime_ns": 1788227710747340076,
+        "comparisons": {
+          "current": {
+            "raw_matches": false,
+            "both_lf_normalized_match": false
+          },
+          "candidate33": {
+            "raw_matches": false,
+            "both_lf_normalized_match": true
+          }
+        }
+      },
+      "requirements.txt": {
+        "remote_raw_sha256": "f14fb252fbc18884556863a0cb3ed04eb72e0ac0b48ac1fe384ace575e9a322c",
+        "remote_lf_sha256": "bcf26246b4a9c9c45b0a73a11f1145d0f0cd779a3e659acbfab8ee5cc5a2f5f0",
+        "remote_mtime_ns": 1788227710767340210,
+        "comparisons": {
+          "current": {
+            "raw_matches": false,
+            "both_lf_normalized_match": true
+          },
+          "candidate33": {
+            "raw_matches": false,
+            "both_lf_normalized_match": true
+          }
+        }
+      }
+    }
+  },
+  "health_series": {
+    "origin": "current-origin -> public owned API",
+    "endpoint": "https://api.pokrov.space/api/health",
+    "method": "GET; 12 sequential observations, nominal interval 5s; no load generation",
+    "request_bodies_saved": false,
+    "response_projection": "fixed integer payment_db fields, status and timestamp",
+    "samples": [
+      {
+        "observed_at": "2026-09-06T08:46:44.812354+00:00",
+        "http_status": 200,
+        "status": "ok",
+        "server_ts": "2026-09-06T08:46:02.186868",
+        "payment_db": {
+          "active": 0,
+          "max_active": 1,
+          "started": 18,
+          "completed": 18,
+          "failed": 0,
+          "queue_wait_total_ms": 2,
+          "queue_wait_max_ms": 1,
+          "duration_total_ms": 286,
+          "duration_max_ms": 74
+        },
+        "elapsed_ms": 240.4311999998754
+      },
+      {
+        "observed_at": "2026-09-06T08:46:49.812678+00:00",
+        "http_status": 200,
+        "status": "ok",
+        "server_ts": "2026-09-06T08:46:07.154931",
+        "payment_db": {
+          "active": 0,
+          "max_active": 1,
+          "started": 18,
+          "completed": 18,
+          "failed": 0,
+          "queue_wait_total_ms": 2,
+          "queue_wait_max_ms": 1,
+          "duration_total_ms": 286,
+          "duration_max_ms": 74
+        },
+        "elapsed_ms": 216.69990000373218
+      },
+      {
+        "observed_at": "2026-09-06T08:46:54.813005+00:00",
+        "http_status": 200,
+        "status": "ok",
+        "server_ts": "2026-09-06T08:46:12.149709",
+        "payment_db": {
+          "active": 0,
+          "max_active": 1,
+          "started": 18,
+          "completed": 18,
+          "failed": 0,
+          "queue_wait_total_ms": 2,
+          "queue_wait_max_ms": 1,
+          "duration_total_ms": 286,
+          "duration_max_ms": 74
+        },
+        "elapsed_ms": 206.5065000060713
+      },
+      {
+        "observed_at": "2026-09-06T08:46:59.813326+00:00",
+        "http_status": 200,
+        "status": "ok",
+        "server_ts": "2026-09-06T08:46:17.127893",
+        "payment_db": {
+          "active": 0,
+          "max_active": 1,
+          "started": 18,
+          "completed": 18,
+          "failed": 0,
+          "queue_wait_total_ms": 2,
+          "queue_wait_max_ms": 1,
+          "duration_total_ms": 286,
+          "duration_max_ms": 74
+        },
+        "elapsed_ms": 184.8877000011271
+      },
+      {
+        "observed_at": "2026-09-06T08:47:04.813551+00:00",
+        "http_status": 200,
+        "status": "ok",
+        "server_ts": "2026-09-06T08:46:22.136523",
+        "payment_db": {
+          "active": 0,
+          "max_active": 1,
+          "started": 18,
+          "completed": 18,
+          "failed": 0,
+          "queue_wait_total_ms": 2,
+          "queue_wait_max_ms": 1,
+          "duration_total_ms": 286,
+          "duration_max_ms": 74
+        },
+        "elapsed_ms": 189.60209999931976
+      },
+      {
+        "observed_at": "2026-09-06T08:47:09.814032+00:00",
+        "http_status": 200,
+        "status": "ok",
+        "server_ts": "2026-09-06T08:46:27.129703",
+        "payment_db": {
+          "active": 0,
+          "max_active": 1,
+          "started": 18,
+          "completed": 18,
+          "failed": 0,
+          "queue_wait_total_ms": 2,
+          "queue_wait_max_ms": 1,
+          "duration_total_ms": 286,
+          "duration_max_ms": 74
+        },
+        "elapsed_ms": 185.26480000582524
+      },
+      {
+        "observed_at": "2026-09-06T08:47:14.814210+00:00",
+        "http_status": 200,
+        "status": "ok",
+        "server_ts": "2026-09-06T08:46:32.139473",
+        "payment_db": {
+          "active": 0,
+          "max_active": 1,
+          "started": 18,
+          "completed": 18,
+          "failed": 0,
+          "queue_wait_total_ms": 2,
+          "queue_wait_max_ms": 1,
+          "duration_total_ms": 286,
+          "duration_max_ms": 74
+        },
+        "elapsed_ms": 195.2342000004137
+      },
+      {
+        "observed_at": "2026-09-06T08:47:19.814653+00:00",
+        "http_status": 200,
+        "status": "ok",
+        "server_ts": "2026-09-06T08:46:37.116144",
+        "payment_db": {
+          "active": 0,
+          "max_active": 1,
+          "started": 18,
+          "completed": 18,
+          "failed": 0,
+          "queue_wait_total_ms": 2,
+          "queue_wait_max_ms": 1,
+          "duration_total_ms": 286,
+          "duration_max_ms": 74
+        },
+        "elapsed_ms": 167.29640000266954
+      },
+      {
+        "observed_at": "2026-09-06T08:47:24.814940+00:00",
+        "http_status": 200,
+        "status": "ok",
+        "server_ts": "2026-09-06T08:46:42.436290",
+        "payment_db": {
+          "active": 0,
+          "max_active": 1,
+          "started": 18,
+          "completed": 18,
+          "failed": 0,
+          "queue_wait_total_ms": 2,
+          "queue_wait_max_ms": 1,
+          "duration_total_ms": 286,
+          "duration_max_ms": 74
+        },
+        "elapsed_ms": 486.8840999988606
+      },
+      {
+        "observed_at": "2026-09-06T08:47:29.815285+00:00",
+        "http_status": 200,
+        "status": "ok",
+        "server_ts": "2026-09-06T08:46:47.131292",
+        "payment_db": {
+          "active": 0,
+          "max_active": 1,
+          "started": 18,
+          "completed": 18,
+          "failed": 0,
+          "queue_wait_total_ms": 2,
+          "queue_wait_max_ms": 1,
+          "duration_total_ms": 286,
+          "duration_max_ms": 74
+        },
+        "elapsed_ms": 186.3632000022335
+      },
+      {
+        "observed_at": "2026-09-06T08:47:34.815591+00:00",
+        "http_status": 200,
+        "status": "ok",
+        "server_ts": "2026-09-06T08:46:52.136296",
+        "payment_db": {
+          "active": 0,
+          "max_active": 1,
+          "started": 18,
+          "completed": 18,
+          "failed": 0,
+          "queue_wait_total_ms": 2,
+          "queue_wait_max_ms": 1,
+          "duration_total_ms": 286,
+          "duration_max_ms": 74
+        },
+        "elapsed_ms": 191.43289999919944
+      },
+      {
+        "observed_at": "2026-09-06T08:47:39.816107+00:00",
+        "http_status": 200,
+        "status": "ok",
+        "server_ts": "2026-09-06T08:46:57.132051",
+        "payment_db": {
+          "active": 0,
+          "max_active": 1,
+          "started": 18,
+          "completed": 18,
+          "failed": 0,
+          "queue_wait_total_ms": 2,
+          "queue_wait_max_ms": 1,
+          "duration_total_ms": 286,
+          "duration_max_ms": 74
+        },
+        "elapsed_ms": 184.05250000068918
+      }
+    ]
+  },
+  "lab_result": {
+    "result": "PASS_SYNTHETIC_ACTUAL_API",
+    "before": [
+      {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 20,
+        "last_lag_ms": 26,
+        "max_lag_ms": 280,
+        "lag_total_ms": 913
+      }
+    ],
+    "after_block": {
+      "status": "collecting",
+      "interval_ms": 1000,
+      "samples": 22,
+      "last_lag_ms": 207,
+      "max_lag_ms": 280,
+      "lag_total_ms": 1138
+    },
+    "blocking_fixture_ms": 1200,
+    "source_hashes": {
+      "api.py": "f2a276783fad1c3e044787f33dc1ef26617631b68ad6723bbdff8fc2ef5885a4",
+      "api_public_routes.py": "31436998c5a924d1f4cd80bf359e7d93a134895fd05f7a8f46fd07e8adf94db5",
+      "event_loop_lag.py": "2f9af7f1c106697b03c97dc23ad5630d291218961aac9df831951f8ef880fd01"
+    },
+    "unit_final": "Result=success\nNRestarts=0\nExecMainStatus=0\nIPAddressAllow=::1/128 127.0.0.0/8\nIPAddressDeny=::/0 0.0.0.0/0\nActiveState=inactive\n",
+    "application_shutdown_complete": true,
+    "monitor_failure_logged": false,
+    "production_requests": 0,
+    "provider_requests": 0,
+    "raw_journal_retained": false
+  },
+  "lab_reanalysis": {
+    "source_result_sha256": "17a797080b1f03246852a8a41b1c47edeb9a8cae911737d6b7f776d5576951be",
+    "sample_count_delta": 2,
+    "lag_total_ms_delta": 225,
+    "result": "PASS_CONTROLLED_WINDOW_OBSERVATIONS",
+    "initial_max_check_is_insufficient": true,
+    "reason": "Previous maximum already exceeded the initial 150ms assertion; use new sample count and cumulative lag delta across the bounded blocking window, not the lifetime maximum."
+  },
+  "deploy_selector": {
+    "result": "PASS",
+    "mapped_files": 199,
+    "new_module_target": "/root/portal_bot/event_loop_lag.py",
+    "new_module_sha256": "2f9af7f1c106697b03c97dc23ad5630d291218961aac9df831951f8ef880fd01",
+    "mode": "local selector only; no SSH, upload, restart or production deployment"
+  },
+  "checks": [
+    {
+      "command": [
+        "python",
+        "-u",
+        "-B",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_event_loop_lag.py",
+        "tests/test_payment_http_registry.py",
+        "tests/test_payment_db_runtime.py",
+        "tests/test_module_slices.py",
+        "-q"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-b07-runtime\\lag-focused-final-v2.log",
+      "sha256": "197d7d52897f980dbaa1e1ac6daf16d23556a4dd2c8f504b9d0991e25da03614",
+      "result": "....................                                                     [100%]\n20 passed in 4.57s"
+    },
+    {
+      "command": [
+        "python",
+        "-u",
+        "-B",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "portal_bot/tests/test_app_first_api.py",
+        "portal_bot/tests/test_app_first_service.py",
+        "tests/test_api_auth_and_tickets.py",
+        "tests/test_subscription_preview_api.py",
+        "-q"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-b07-runtime\\backend-regression.log",
+      "sha256": "52523d903b694e502f20b723b7924102c0d9f0f166420de1e1788fd8237972a4",
+      "result": "........................................................................ [ 46%]\n................................................................ [ 88%]\n..................                                                       [100%]\n154 passed, 8 subtests passed in 884.03s (0:14:44)"
+    },
+    {
+      "command": [
+        "python",
+        "-u",
+        "-B",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_agent_docs_contract.py",
+        "tests/test_agent_context_packet_audit.py",
+        "-q"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-b07-runtime\\docs-tests.log",
+      "sha256": "407bcbd74a16ad647cd3e67f7c46075cdcf27a957c2137efb81c6865e3fdce13",
+      "result": ".................................                                        [100%]\n33 passed in 0.96s"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "scripts/agent_context_packet_audit.py",
+        "--platform-context-root",
+        "."
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-b07-runtime\\context-check.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "result": "PASS platform-context"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start\\docs\\developer\\work-orders\\2026-09-05--consolidated-release-and-post12\\validate_package.py"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-b07-runtime\\package-check.log",
+      "sha256": "c43f4ade03416ae9ee3b831da731a9fb629bac8ad25bab25ff3fbb86e0230066",
+      "result": "PASS: 13 imported section hashes, 83 R12 IDs, 378 retained legacy IDs and ledger hash, 212 local file links"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0
+    }
+  ],
+  "retained_artifacts": [
+    {
+      "path": "E:\\r12-b07-runtime\\access-failure.json",
+      "bytes": 33,
+      "sha256": "daaee6f641d1f9d8fad20fa73eb382af5f2680cd95729dec1e05703d292c40b4"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\backend-regression.log",
+      "bytes": 287,
+      "sha256": "52523d903b694e502f20b723b7924102c0d9f0f166420de1e1788fd8237972a4"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\brain-snapshot-openssh.json",
+      "bytes": 2007,
+      "sha256": "2f8a0595077c4e1fb73c68407c6f649d60d90078696f527e56a2626a1098ef8e"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\context-check.log",
+      "bytes": 23,
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\deploy-selector.json",
+      "bytes": 288,
+      "sha256": "66c1be2f3bf895af0748686205e65902ec29ecf892d5135b850958907b636c41"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\docs-tests.log",
+      "bytes": 101,
+      "sha256": "407bcbd74a16ad647cd3e67f7c46075cdcf27a957c2137efb81c6865e3fdce13"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\health-series.json",
+      "bytes": 6331,
+      "sha256": "c4c2e7a5b86a3c8708946c4c2530c5d2c37b62df9a6724286964c4d1936a72cd"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\health-series.py",
+      "bytes": 1699,
+      "sha256": "da4fbbd6d0493b632fcd9c050215d00e60f5879e7a9640d397c8d52537a794ff"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\lag-focused-final-v2.log",
+      "bytes": 101,
+      "sha256": "197d7d52897f980dbaa1e1ac6daf16d23556a4dd2c8f504b9d0991e25da03614"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\lag-focused-final.log",
+      "bytes": 101,
+      "sha256": "44c76765295e28bb2c9ed9938db580d7c94b924fd76c4a1098ec9283e1613642"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\lag-focused.log",
+      "bytes": 101,
+      "sha256": "4bf739e4f45f44ebc8e2503d9e598faa8325bece854cf082f5fc61e69ec96c09"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\lag-lab-initial-access.json",
+      "bytes": 144,
+      "sha256": "4aa1f618f3dafb14aea2f0da064c32030226adc75efe8a64d5f89529eb6dcbfb"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\lag-lab-prepare.log",
+      "bytes": 30,
+      "sha256": "7189adbf11088dd26b44c03651ae0eef7f8d0a886b18eb8f7f04b8f85efb2c40"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\lag-lab-prepare.py",
+      "bytes": 1963,
+      "sha256": "10e370be8cb4e586c3a517d17463d183e21677e9b909024c2f0ec2316c1ec364"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\lag-lab-probe.py",
+      "bytes": 1817,
+      "sha256": "45debd765b9869fb0c569ca71a9d4d2110ec619dc444ec2f118f02c381e05e76"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\lag-lab-probe.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\lag-lab-reanalysis.json",
+      "bytes": 443,
+      "sha256": "61a8ffcf41fef26c357a47a69a3cd9a68ba523d4cdd7b53628a0ead173557552"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\lag-lab-result.json",
+      "bytes": 1075,
+      "sha256": "17a797080b1f03246852a8a41b1c47edeb9a8cae911737d6b7f776d5576951be"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\lag-vm-final.json",
+      "bytes": 73,
+      "sha256": "29f8eb7c81fc3b7c81d0e057f0c35f01919f05d51430ef15ac5a508fe0f001b3"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\openssh-command.json",
+      "bytes": 279,
+      "sha256": "461874f24c0fbafe73260b21879cc431dc1dfbcc9d1371c59261fa80b6d0524a"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\package-check.log",
+      "bytes": 109,
+      "sha256": "c43f4ade03416ae9ee3b831da731a9fb629bac8ad25bab25ff3fbb86e0230066"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\production-health-shape.json",
+      "bytes": 212,
+      "sha256": "b1e8b1173f732fe6712473ea1450e16923ce6fd615fe58c8bef79b93ef7cc478"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\readback.py",
+      "bytes": 4116,
+      "sha256": "40fd28c6dca13d75ff7ea045202879ea564b54e3689719dcfb5cee8e06ba4801"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\run-host.py",
+      "bytes": 1394,
+      "sha256": "4a707ba518d414259c17dc198e9f2bb5acac9d095991b7d789cc0b7fa2ee8b3d"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\runtime-versions.json",
+      "bytes": 217,
+      "sha256": "08f5221b2d8ea53541109e6eca0fd2c2f6ed84e2a22fdefa1ce6662f88dcd930"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\source-comparison-final.json",
+      "bytes": 4387,
+      "sha256": "9b1cac4f9dd6414df28a9cb139b3bf4489b225002d9387e30557f999ed35ad31"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\source-comparison.json",
+      "bytes": 878,
+      "sha256": "f3d2535b1807780f6f34325497dba76cb245f69468f163cdc3676b6a97b0338b"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\source-normalized-and-health.json",
+      "bytes": 3014,
+      "sha256": "fed88b8801e72e70734d13721ed56a946347e9799f7beb038985bf48e95e58d9"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\source-normalized-reader.py",
+      "bytes": 1060,
+      "sha256": "7a78876d66c48ce0c5ecdca028be8cf4ed9314cf1ebab7132acdde52bfdaca3c"
+    },
+    {
+      "path": "E:\\r12-b07-runtime\\versions-reader.py",
+      "bytes": 362,
+      "sha256": "efecf6776dcfa3f8a12a320f3aba1807625da7efc5689ece28e0d02ceb62d21d"
+    }
+  ],
+  "limitations": [
+    "Production idle counters are not load, capacity, timeout-rate or percentile evidence.",
+    "Eight source files and selected venv metadata do not prove full deployed tuple or loaded bytecode.",
+    "Production lacks this new observer; backend/client/Core candidate acceptance stays open.",
+    "Connection-pool wait is distinct from the payment threadpool queue metric.",
+    "No raw journal/customer/provider data retained."
+  ],
+  "implementation_git_files": {
+    "portal_bot/event_loop_lag.py": "2f9af7f1c106697b03c97dc23ad5630d291218961aac9df831951f8ef880fd01",
+    "portal_bot/api.py": "f2a276783fad1c3e044787f33dc1ef26617631b68ad6723bbdff8fc2ef5885a4",
+    "portal_bot/api_public_routes.py": "1b18d90af4e4234b2d00af468393ed6f91571e0304f6448fc43fb8892206d29c",
+    "tests/test_event_loop_lag.py": "77d4e5f91d4c70c557727de62b9b62744bbc14feaa16bbcc4fe9cbea2f026e3d",
+    "tests/test_payment_http_registry.py": "0ba9ab7fc0047ccb8f8b6dd3fbd3ccafb71522c0e6405352c51b515dcc8b1e27",
+    "docs/architecture/api-contracts.md": "11dd48774225c69053b47535a2141a6af55e417de7e05b76cd63925bb65bfc07",
+    "docs/operations/monitoring-and-visibility.md": "3a1ceab20b7d1f56837ceab8034489e83c527ff40f913cfe0e002c27c5999a22"
+  },
+  "production_health_shape": {
+    "observed_at": "2026-09-06T09:12:48.571845+00:00",
+    "origin": "current-origin -> public owned API",
+    "http_status": 200,
+    "event_loop_lag_field_present": false,
+    "payment_db_field_present": true
+  },
+  "production_comparison_current_ref": "7f392069d34ad001ac64c5b8efaa0e81ca76822b",
+  "executed_runtime_commands": [
+    {
+      "command": [
+        "python",
+        "-X",
+        "utf8",
+        "-B",
+        "E:\\r12-b07-runtime\\health-series.py"
+      ],
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "StrictHostKeyChecking=yes",
+        "-o",
+        "ConnectTimeout=10",
+        "pokrov-brain",
+        "python3 -"
+      ],
+      "stdin_script": "readback.py",
+      "exit_code": 0,
+      "remote_files_written": false
+    },
+    {
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "StrictHostKeyChecking=yes",
+        "-o",
+        "ConnectTimeout=10",
+        "pokrov-brain",
+        "python3 -"
+      ],
+      "stdin_script": "E:\\r12-b07-runtime\\source-normalized-reader.py",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "StrictHostKeyChecking=yes",
+        "-o",
+        "ConnectTimeout=10",
+        "pokrov-brain",
+        "/root/portal_bot/venv/bin/python -"
+      ],
+      "stdin_script": "E:\\r12-b07-runtime\\versions-reader.py",
+      "exit_code": 0
+    },
+    {
+      "origin": "isolated local Linux VM",
+      "remote_command": "/root/portal_bot/venv/bin/python /opt/r12/lag-lab-prepare.py",
+      "exit_code": 0
+    },
+    {
+      "origin": "isolated local Linux VM",
+      "remote_command": "/root/portal_bot/venv/bin/python /opt/r12/lag-lab-probe.py",
+      "exit_code": 0
+    }
+  ]
+}

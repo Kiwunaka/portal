@@ -1,0 +1,32 @@
+{
+  "source_commit": "02a091cb0e369192a5ad0909b56ccba8aa1dce17",
+  "workflow_url": "https://github.com/Kiwunaka/pokrov-core/actions/runs/34287485091",
+  "status": "BOUNDED_ANDROID_WINDOWS_REPRODUCIBILITY_PASS_OVERALL_WORKFLOW_FAILED",
+  "artifacts": {
+    "core-windows-pre-candidate-evidence": 10080508762,
+    "core-android-pre-candidate-evidence": 10080410699,
+    "core-source-sbom": 10080266976
+  },
+  "files": [
+    {
+      "path": "pokrov-core.cdx.json",
+      "bytes": 313047,
+      "sha256": "c36b2731824102cbea1a803c2ea12608473d89394e17bcf6dd01193f41b4c7fe"
+    },
+    {
+      "path": "sing-box.cdx.json",
+      "bytes": 268326,
+      "sha256": "5cd800466e7cf02e72236e576b6ed297dd976042c5e1f262305f1c9280ea382e"
+    },
+    {
+      "path": "core-windows-evidence.json",
+      "bytes": 2340,
+      "sha256": "38bd8fa12d01e7ba6ecb5c4449756dfc547fbf54edf4507aaeb6f8d9db277aa6"
+    },
+    {
+      "path": "core-android-evidence.json",
+      "bytes": 2126,
+      "sha256": "ad258c432a51b9507ad18445eb968f7d42ba00b987988a28d9c3063cec152486"
+    }
+  ]
+}

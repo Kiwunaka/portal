@@ -1,0 +1,62 @@
+{
+  "client_source": "6fc1e8439371dc5aee0f1df9cbcf1b3cca2841cd",
+  "core_source": "8dc57a830bd1487389dd1b7c9190f094c31e13bc",
+  "client_receipt": "E:\\r12client\\docs\\operations\\evidence\\2026-09-08-r12-managed-switching\\receipt.json",
+  "client_receipt_sha256": "0c7599f19aae62cfb34641e576cb442a74b7e189d33cd8e03dc64eebeca2562f",
+  "results": {
+    "normal_ui_connects": 3,
+    "profile_switching": "PASS_BOUNDED",
+    "profile_file_return_exact": true,
+    "disconnect_route_dns_recovery": "PASS_BOUNDED",
+    "installed_identity_files": 305,
+    "independent_route_proof": "BLOCKED_BY_ACCESS",
+    "release_candidate": "NOT_CREATED"
+  },
+  "cleanup": {
+    "rollout_config_restored": true,
+    "entitlement_changed": false,
+    "material_changed": false,
+    "sampler_process_count": 0,
+    "temporary_task_absent": true,
+    "vm_state": "poweroff",
+    "vm_nic1": "none",
+    "host_routes_dns_match_retained_baseline": true,
+    "guest_routes_dns_match_retained_preconnect_baseline": true
+  },
+  "limitations": [
+    "External egress hash identical across disconnected and connected runs; no independent route claim",
+    "DE SSH host key mismatch; Brain known_hosts has no matching target; no bypass or trusted-key update",
+    "Current-origin keyscan returned no parsed key; cross-origin key equality is not proven",
+    "AWG2 endpoint has no contract_id in current renderer; identification uses server/persisted revision and endpoint shape",
+    "UI continued to show saved Milan location and unresolved access label during fixed DE lab transport; effective-location presentation remains open",
+    "First masked VM click woke the display and also initiated the first connect; it is not a latency measurement",
+    "Sampler launch through scheduled task returned 1; first direct elevation lacked execution-policy argument and yielded no file; corrected direct launch retained three successful snapshots",
+    "No crash/sleep/WFP/Win10/final candidate or full protocol matrix acceptance"
+  ],
+  "candidate_created": false,
+  "production_deployed": false,
+  "test_rollout_only": true,
+  "client_evidence_commit": "809363b6be0923a9ae11c5d135dc4b742e7cf8b9",
+  "verification": [
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "result": "PASS 33 tests"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "result": "PASS platform-context"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "result": "PASS 13 section hashes; 83 R12; 378 legacy; 295 links"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    },
+    {
+      "command": "client validate-seed with explicit platform/Core roots",
+      "result": "PASS; 23 retained client Git blobs SHA-256 verified"
+    }
+  ]
+}

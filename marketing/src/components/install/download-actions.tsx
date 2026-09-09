@@ -46,6 +46,7 @@ export function DownloadActions({
 
   useEffect(() => {
     const controller = new AbortController();
+    const deadline = window.setTimeout(() => controller.abort(), 8_000);
     void fetch(`${CANONICAL_API_BASE_URL}/api/public/client-apps?channel=stable`, {
       credentials: "omit",
       headers: { Accept: "application/json" },
@@ -64,8 +65,12 @@ export function DownloadActions({
           loading: false,
         });
       })
-      .catch(() => setDownloads((current) => ({ ...current, loading: false })));
-    return () => controller.abort();
+      .catch(() => setDownloads((current) => ({ ...current, loading: false })))
+      .finally(() => window.clearTimeout(deadline));
+    return () => {
+      window.clearTimeout(deadline);
+      controller.abort();
+    };
   }, [initial]);
 
   return (

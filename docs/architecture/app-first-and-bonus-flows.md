@@ -264,6 +264,16 @@ Rollout note:
 
 - `AppSetting.network_rollout_config` resolves the transport profile for app-managed session and profile payloads
 - `GET /api/client/profile/managed` is the primary app-managed provisioning endpoint and returns a manifest with `version`, `profile_revision`, `transport_profile`, `transport_kind`, `engine_hint`, `config_format`, `config_payload`, `fallback_order`, `support_context`, and `warp_policy`
+- Its optional `fallback_from_revision` query requests only the already
+  advertised ordinary TCP/REALITY fallback of a currently authorized
+  `awg2_lab`, `awg31_lab` or `hy2_lab` device profile. The exact current lab
+  revision must match, otherwise HTTP 409 is returned before rendering.
+  Device authentication, entitlement/node eligibility and normal control-panel
+  provisioning still apply. The per-request effective policy identifies
+  `legacy_reality_fallback` and revision
+  `<source-revision>:fallback:legacy_reality_fallback`; route/DNS policy fields
+  are retained. This request does not modify cohort selection or rollout state.
+
 - managed-profile `warp_policy` is the only app endpoint allowed to carry
   optional backend-provisioned WireGuard config/account material, and only when
   that optional material lane is `runtime_ready=true`; public `client_policy`
@@ -408,6 +418,18 @@ Repository session rules:
   session/device/epoch binding and are invalidated with that source family
 - `GET /api/client/devices` reads the real registry; `DELETE` requires fresh
   auth, increments device credential version and revokes every bound session
+- device revoke and account lockdown also invalidate active AWG2/AWG3.1/HY2
+  material for the revoked account/install pairs in that transaction. A fresh
+  login cannot restore those retained encrypted rows. Prior rotation history
+  and other devices remain unchanged. For configured owned AWG targets, the
+  existing worker performs separate persistent/live peer removal after committed
+  revocation and retries failed server delivery. It also retires expired material
+  and expired or disabled device/account access. A rotated key without an active
+  copy becomes revoked, retaining ciphertext and the earlier timestamp. Shared
+  legacy keys remain explicitly blocked until per-device migration. Database
+  revocation alone is not proof of server removal; HY2 server enforcement remains
+  separate. See the operational target configuration in
+  [deployment and access](../operations/deployment-and-access.md).
 - raw refresh credentials are never written to the database or logs; only a
   SHA-256 digest of a high-entropy token is retained
 - `POST /api/auth/email/otp/start` returns an enumeration-resistant generic

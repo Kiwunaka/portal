@@ -683,6 +683,7 @@ const unsafeSearchResults: Array<Record<string, unknown>> = [
 type AdminApiMockOptions = {
   operatorPermissions?: string[];
   redactUserFields?: boolean;
+  supportScenario?: "missing_linked_attempt" | "bundle_build_changes";
   requireInitDataForSession?: boolean;
   operatorSessionInitiallyMissing?: boolean;
   apiSchema?: string;
@@ -958,6 +959,8 @@ function releaseCockpit(candidateId: string) {
     }],
     readiness,
     gate_matrix: {
+      policy_version: "pokrov.operator-cockpit-gates/v1",
+      gate_f_decision: "NOT_EVALUATED",
       status: readiness.ready ? "PASS" : "MISSING",
       ready: readiness.ready,
       origin_readiness_status: readiness.status,
@@ -1303,6 +1306,10 @@ function clientSupportUser360(tgId: number, redactFields = false) {
     installations: redactFields ? [] : [{ installation_ref: supportAttempt.installation_ref, attempts: 1, sessions: 1, last_seen_at: supportAttempt.ended_at }],
     sessions: redactFields ? [] : [{ session_ref: supportAttempt.session_ref, installation_ref: supportAttempt.installation_ref, attempts: 1, last_seen_at: supportAttempt.ended_at }],
     attempts: redactFields ? [] : [supportAttempt],
+    network_context: redactFields ? [] : [
+      { device_ref: "network-device_fixture1", observed_at: "2026-09-07T16:00:00Z", origin_status: "observed", public_ip: "203.0.113.77", network_class: "cellular", carrier: "Fixture carrier", country_code: "RU", region: "Fixture region", platform: "android", app_version: "1.2.0" },
+      { device_ref: "network-device_fixture2", observed_at: "2026-09-07T16:01:00Z", origin_status: "unavailable", public_ip: null, network_class: "cellular", carrier: "Offline carrier", country_code: null, region: null, platform: "android", app_version: "1.2.0" },
+    ],
     fingerprints: redactFields ? [] : [{ fingerprint: "fp_11111111111111111111", count: 2, platform: "windows", app_version: "1.2.0", subsystem: "runtime", stage: "core_start", result: "failure", error_code: "CORE-001" }],
     observer: { authority: "trusted_server_observer", state: "watch", observed_ip_count_24h: 2, observed_node_count_24h: 1, last_observed_at: "2026-07-15T09:58:00Z" },
     privacy: { adapter: "event_allowlist_v1", excluded: ["meta_json", "ip", "url", "token"] },
@@ -1524,6 +1531,7 @@ export async function installAdminApiMock(
     releaseHistoryContinuation = () => resolve();
   });
   let overviewRequestCount = 0;
+  let supportTicketRequestCount = 0;
   let ruLatestRequestCount = 0;
   let historyPageOneRequestCount = 0;
   let ticketReplyRequestCount = 0;
@@ -1737,7 +1745,16 @@ export async function installAdminApiMock(
     }
 
     if (method === "GET" && /^\/api\/admin\/v2\/support\/tickets\/[1-9]\d*$/.test(url.pathname)) {
-      await fulfillJson(route, { data: clientTicketDetail, meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 }, sources: [], warnings: [] });
+      supportTicketRequestCount += 1;
+      const data = {
+        ...clientTicketDetail,
+        attempt_ref: options.supportScenario === "missing_linked_attempt" ? "attempt_99999999999999999999" : clientTicketDetail.attempt_ref,
+        support_bundles: clientTicketDetail.support_bundles.map((bundle) => ({
+          ...bundle,
+          build_number: options.supportScenario === "bundle_build_changes" && supportTicketRequestCount > 1 ? "43" : bundle.build_number,
+        })),
+      };
+      await fulfillJson(route, { data, meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 }, sources: [], warnings: [] });
       return;
     }
 
@@ -1753,7 +1770,7 @@ export async function installAdminApiMock(
     }
 
     if (method === "GET" && url.pathname === "/api/admin/v2/support/attempts") {
-      await fulfillJson(route, { data: { tg_id: 1001, ticket_id: Number(url.searchParams.get("ticket_id") || 501), linked_attempt_ref: url.searchParams.get("attempt_ref") || supportAttempt.attempt_ref, selected: supportAttempt, attempts: [supportAttempt], fingerprints: clientSupportUser360(1001).fingerprints, privacy: { adapter: "event_allowlist_v1" } }, meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 }, sources: [], warnings: [] });
+      await fulfillJson(route, { data: { tg_id: 1001, ticket_id: Number(url.searchParams.get("ticket_id") || 501), linked_attempt_ref: url.searchParams.get("attempt_ref") || supportAttempt.attempt_ref, selected: options.supportScenario === "missing_linked_attempt" ? null : supportAttempt, attempts: [supportAttempt], fingerprints: clientSupportUser360(1001).fingerprints, privacy: { adapter: "event_allowlist_v1" } }, meta: { generated_at: generatedAt, trace_id: null, schema_version: "admin-v2.1", query_ms: 0 }, sources: [], warnings: [] });
       return;
     }
 
@@ -1767,6 +1784,10 @@ export async function installAdminApiMock(
     }
 
     if (method === "GET" && url.pathname === "/api/admin/v2/support/known-issues") {
+      if (options.supportScenario === "bundle_build_changes" && url.searchParams.get("build_number") === "43") {
+        await fulfillJson(route, operatorV2Envelope({ issues: [], count: 0 }));
+        return;
+      }
       await fulfillJson(route, operatorV2Envelope({ issues: [{ candidate_label: "pokrov-1.2.0-rc.1", issue_code: "CORE-START-001", app_version: "1.2.0", build_number: "42", platform: "windows", severity: "error", status: "open", title: "Core не запускается после обновления", safe_summary: "Перезапустите службу POKROV и повторите одну попытку. При повторе передайте обращение SRE.", error_code: "CORE-001", incident_ref: "00000000-0000-4000-8000-000000000901", release_ref: "pokrov-1.2.0-rc.1", updated_at: generatedAt }], count: 1 }));
       return;
     }

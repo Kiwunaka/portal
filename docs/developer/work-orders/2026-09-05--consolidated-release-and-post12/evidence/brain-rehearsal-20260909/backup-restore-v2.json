@@ -1,0 +1,1028 @@
+{
+  "backup": {
+    "bytes": 137069152,
+    "mode": "0600",
+    "path": "/root/backups/r12-20260909/portal-20260908T221500Z-557dc705e8eb.dump.enc",
+    "sha256": "58caef8cbcb1d061d1672d9c1d8ebe644fa7df755a5344fbcd84838b97d05dad"
+  },
+  "backup_restore_status": "PASS",
+  "backup_retained": true,
+  "backup_retention": {
+    "retain_count": 30,
+    "status": "PASS"
+  },
+  "mode": "apply",
+  "mutation_performed": true,
+  "origin": "brain",
+  "snapshot_cleanup_outcome": "committed",
+  "source_database": "portal",
+  "source_integrity": {
+    "database_bytes": 1953992027,
+    "public_table_count": 121,
+    "support_attachments": {
+      "bound": 0,
+      "dangling": 0,
+      "schema_status": "available",
+      "total": 0,
+      "unbound": 0
+    },
+    "tables": [
+      {
+        "name": "access_keys",
+        "row_count": 103
+      },
+      {
+        "name": "account_devices",
+        "row_count": 44
+      },
+      {
+        "name": "account_entitlement_grants",
+        "row_count": 183
+      },
+      {
+        "name": "account_experience_state",
+        "row_count": 32
+      },
+      {
+        "name": "account_identities",
+        "row_count": 168
+      },
+      {
+        "name": "account_merge_reviews",
+        "row_count": 7
+      },
+      {
+        "name": "accounts",
+        "row_count": 102
+      },
+      {
+        "name": "achievements",
+        "row_count": 21
+      },
+      {
+        "name": "acquisition_handoffs",
+        "row_count": 2
+      },
+      {
+        "name": "acquisition_sessions",
+        "row_count": 99
+      },
+      {
+        "name": "activation_keys",
+        "row_count": 0
+      },
+      {
+        "name": "admin_action_intents",
+        "row_count": 409
+      },
+      {
+        "name": "admin_audit",
+        "row_count": 507
+      },
+      {
+        "name": "admin_broadcast_delivery_attempts",
+        "row_count": 61
+      },
+      {
+        "name": "admin_broadcast_recipient_plan",
+        "row_count": 180
+      },
+      {
+        "name": "admin_operator_audit",
+        "row_count": 0
+      },
+      {
+        "name": "admin_operator_roles",
+        "row_count": 0
+      },
+      {
+        "name": "admin_operator_sessions",
+        "row_count": 0
+      },
+      {
+        "name": "admin_operators",
+        "row_count": 0
+      },
+      {
+        "name": "antiabuse_actions",
+        "row_count": 0
+      },
+      {
+        "name": "antiabuse_cases",
+        "row_count": 0
+      },
+      {
+        "name": "antiabuse_events",
+        "row_count": 861
+      },
+      {
+        "name": "app_settings",
+        "row_count": 4
+      },
+      {
+        "name": "auth_sessions",
+        "row_count": 996
+      },
+      {
+        "name": "awg2_lab_materials",
+        "row_count": 108
+      },
+      {
+        "name": "awg31_lab_materials",
+        "row_count": 102
+      },
+      {
+        "name": "campaign_sends",
+        "row_count": 464
+      },
+      {
+        "name": "commercial_assignments",
+        "row_count": 0
+      },
+      {
+        "name": "commercial_conversions",
+        "row_count": 0
+      },
+      {
+        "name": "commercial_creatives",
+        "row_count": 0
+      },
+      {
+        "name": "commercial_offers",
+        "row_count": 0
+      },
+      {
+        "name": "commercial_reservations",
+        "row_count": 0
+      },
+      {
+        "name": "connection_evidence",
+        "row_count": 0
+      },
+      {
+        "name": "device_pairing_codes",
+        "row_count": 42
+      },
+      {
+        "name": "emergency_catalog_endpoints",
+        "row_count": 5289
+      },
+      {
+        "name": "emergency_catalog_snapshots",
+        "row_count": 241
+      },
+      {
+        "name": "emergency_eligibility_cache",
+        "row_count": 29
+      },
+      {
+        "name": "entitlement_grants",
+        "row_count": 0
+      },
+      {
+        "name": "events",
+        "row_count": 5608
+      },
+      {
+        "name": "external_orders",
+        "row_count": 76
+      },
+      {
+        "name": "external_payment_events",
+        "row_count": 30
+      },
+      {
+        "name": "family_slots",
+        "row_count": 0
+      },
+      {
+        "name": "feedback_entries",
+        "row_count": 1
+      },
+      {
+        "name": "funnel_events",
+        "row_count": 1012
+      },
+      {
+        "name": "gift_cards",
+        "row_count": 1
+      },
+      {
+        "name": "hy2_lab_materials",
+        "row_count": 0
+      },
+      {
+        "name": "incentive_campaigns",
+        "row_count": 0
+      },
+      {
+        "name": "internal_ingest_nonces",
+        "row_count": 115
+      },
+      {
+        "name": "key_action_history",
+        "row_count": 9
+      },
+      {
+        "name": "key_pressure_state",
+        "row_count": 0
+      },
+      {
+        "name": "key_source_observations",
+        "row_count": 0
+      },
+      {
+        "name": "key_usage_rollups",
+        "row_count": 0
+      },
+      {
+        "name": "live_updates",
+        "row_count": 3
+      },
+      {
+        "name": "news_draft_runs",
+        "row_count": 34
+      },
+      {
+        "name": "news_drafts",
+        "row_count": 43
+      },
+      {
+        "name": "node_capacity_policy",
+        "row_count": 9
+      },
+      {
+        "name": "node_health_samples",
+        "row_count": 1638180
+      },
+      {
+        "name": "node_pool_membership",
+        "row_count": 9
+      },
+      {
+        "name": "node_provisioning_jobs",
+        "row_count": 38
+      },
+      {
+        "name": "node_runtime_metrics",
+        "row_count": 743891
+      },
+      {
+        "name": "nodes",
+        "row_count": 9
+      },
+      {
+        "name": "observer_batches",
+        "row_count": 42649
+      },
+      {
+        "name": "observer_daily_observations",
+        "row_count": 0
+      },
+      {
+        "name": "observer_user_state",
+        "row_count": 0
+      },
+      {
+        "name": "observer_window_observations",
+        "row_count": 0
+      },
+      {
+        "name": "offers",
+        "row_count": 953
+      },
+      {
+        "name": "operator_incident_events",
+        "row_count": 0
+      },
+      {
+        "name": "operator_incident_links",
+        "row_count": 0
+      },
+      {
+        "name": "operator_tasks",
+        "row_count": 0
+      },
+      {
+        "name": "ops_alerts",
+        "row_count": 36
+      },
+      {
+        "name": "panel_sync_jobs",
+        "row_count": 52
+      },
+      {
+        "name": "pay_attempts",
+        "row_count": 11
+      },
+      {
+        "name": "payment_entitlement_claims",
+        "row_count": 1
+      },
+      {
+        "name": "payment_entitlement_outbox",
+        "row_count": 2
+      },
+      {
+        "name": "plan_catalog",
+        "row_count": 6
+      },
+      {
+        "name": "points_ledger",
+        "row_count": 2
+      },
+      {
+        "name": "program_applications",
+        "row_count": 0
+      },
+      {
+        "name": "promo_codes",
+        "row_count": 0
+      },
+      {
+        "name": "promo_usage",
+        "row_count": 0
+      },
+      {
+        "name": "provider_traffic_quota_audit",
+        "row_count": 0
+      },
+      {
+        "name": "provider_traffic_quotas",
+        "row_count": 0
+      },
+      {
+        "name": "recovery_codes",
+        "row_count": 0
+      },
+      {
+        "name": "redeem_events",
+        "row_count": 0
+      },
+      {
+        "name": "referral_bonus_queue",
+        "row_count": 0
+      },
+      {
+        "name": "referral_relationships",
+        "row_count": 1
+      },
+      {
+        "name": "referral_transitions",
+        "row_count": 5
+      },
+      {
+        "name": "release_candidates",
+        "row_count": 0
+      },
+      {
+        "name": "release_health_cohort_buckets",
+        "row_count": 0
+      },
+      {
+        "name": "release_health_events",
+        "row_count": 4670
+      },
+      {
+        "name": "release_health_ingest_counters",
+        "row_count": 3
+      },
+      {
+        "name": "release_known_issues",
+        "row_count": 0
+      },
+      {
+        "name": "release_origin_evidence",
+        "row_count": 0
+      },
+      {
+        "name": "rendered_subscription_snapshots",
+        "row_count": 7597
+      },
+      {
+        "name": "reviews",
+        "row_count": 2
+      },
+      {
+        "name": "reward_account_states",
+        "row_count": 56
+      },
+      {
+        "name": "reward_claims",
+        "row_count": 2
+      },
+      {
+        "name": "ru_probe_runs",
+        "row_count": 44
+      },
+      {
+        "name": "ru_probe_target_results",
+        "row_count": 489
+      },
+      {
+        "name": "ru_probe_uploader_heartbeats",
+        "row_count": 911
+      },
+      {
+        "name": "security_events",
+        "row_count": 1008
+      },
+      {
+        "name": "security_rate_limit_buckets",
+        "row_count": 68
+      },
+      {
+        "name": "service_incidents",
+        "row_count": 0
+      },
+      {
+        "name": "start_links",
+        "row_count": 14
+      },
+      {
+        "name": "subscription_fetch_events",
+        "row_count": 7597
+      },
+      {
+        "name": "support_attachments",
+        "row_count": 0
+      },
+      {
+        "name": "support_bundle_access_audits",
+        "row_count": 0
+      },
+      {
+        "name": "support_bundle_chunks",
+        "row_count": 0
+      },
+      {
+        "name": "support_bundle_uploads",
+        "row_count": 0
+      },
+      {
+        "name": "support_mode_policies",
+        "row_count": 0
+      },
+      {
+        "name": "support_ticket_messages",
+        "row_count": 116
+      },
+      {
+        "name": "support_tickets",
+        "row_count": 42
+      },
+      {
+        "name": "templates",
+        "row_count": 19
+      },
+      {
+        "name": "usage_snapshots",
+        "row_count": 0
+      },
+      {
+        "name": "user_key_policy",
+        "row_count": 0
+      },
+      {
+        "name": "user_nodes",
+        "row_count": 425
+      },
+      {
+        "name": "users",
+        "row_count": 102
+      },
+      {
+        "name": "warp_events",
+        "row_count": 108
+      },
+      {
+        "name": "warp_materials",
+        "row_count": 0
+      },
+      {
+        "name": "web_cabinet_handoff_tokens",
+        "row_count": 7
+      },
+      {
+        "name": "web_email_identities",
+        "row_count": 4
+      },
+      {
+        "name": "web_email_tokens",
+        "row_count": 4
+      }
+    ]
+  },
+  "status": "PASS",
+  "support_ownership_status": "PASS",
+  "target_database": "portal_r12_20260909_rehearsal",
+  "target_integrity": {
+    "database_bytes": 1665658203,
+    "public_table_count": 121,
+    "support_attachments": {
+      "bound": 0,
+      "dangling": 0,
+      "schema_status": "available",
+      "total": 0,
+      "unbound": 0
+    },
+    "tables": [
+      {
+        "name": "access_keys",
+        "row_count": 103
+      },
+      {
+        "name": "account_devices",
+        "row_count": 44
+      },
+      {
+        "name": "account_entitlement_grants",
+        "row_count": 183
+      },
+      {
+        "name": "account_experience_state",
+        "row_count": 32
+      },
+      {
+        "name": "account_identities",
+        "row_count": 168
+      },
+      {
+        "name": "account_merge_reviews",
+        "row_count": 7
+      },
+      {
+        "name": "accounts",
+        "row_count": 102
+      },
+      {
+        "name": "achievements",
+        "row_count": 21
+      },
+      {
+        "name": "acquisition_handoffs",
+        "row_count": 2
+      },
+      {
+        "name": "acquisition_sessions",
+        "row_count": 99
+      },
+      {
+        "name": "activation_keys",
+        "row_count": 0
+      },
+      {
+        "name": "admin_action_intents",
+        "row_count": 409
+      },
+      {
+        "name": "admin_audit",
+        "row_count": 507
+      },
+      {
+        "name": "admin_broadcast_delivery_attempts",
+        "row_count": 61
+      },
+      {
+        "name": "admin_broadcast_recipient_plan",
+        "row_count": 180
+      },
+      {
+        "name": "admin_operator_audit",
+        "row_count": 0
+      },
+      {
+        "name": "admin_operator_roles",
+        "row_count": 0
+      },
+      {
+        "name": "admin_operator_sessions",
+        "row_count": 0
+      },
+      {
+        "name": "admin_operators",
+        "row_count": 0
+      },
+      {
+        "name": "antiabuse_actions",
+        "row_count": 0
+      },
+      {
+        "name": "antiabuse_cases",
+        "row_count": 0
+      },
+      {
+        "name": "antiabuse_events",
+        "row_count": 861
+      },
+      {
+        "name": "app_settings",
+        "row_count": 4
+      },
+      {
+        "name": "auth_sessions",
+        "row_count": 996
+      },
+      {
+        "name": "awg2_lab_materials",
+        "row_count": 108
+      },
+      {
+        "name": "awg31_lab_materials",
+        "row_count": 102
+      },
+      {
+        "name": "campaign_sends",
+        "row_count": 464
+      },
+      {
+        "name": "commercial_assignments",
+        "row_count": 0
+      },
+      {
+        "name": "commercial_conversions",
+        "row_count": 0
+      },
+      {
+        "name": "commercial_creatives",
+        "row_count": 0
+      },
+      {
+        "name": "commercial_offers",
+        "row_count": 0
+      },
+      {
+        "name": "commercial_reservations",
+        "row_count": 0
+      },
+      {
+        "name": "connection_evidence",
+        "row_count": 0
+      },
+      {
+        "name": "device_pairing_codes",
+        "row_count": 42
+      },
+      {
+        "name": "emergency_catalog_endpoints",
+        "row_count": 5289
+      },
+      {
+        "name": "emergency_catalog_snapshots",
+        "row_count": 241
+      },
+      {
+        "name": "emergency_eligibility_cache",
+        "row_count": 29
+      },
+      {
+        "name": "entitlement_grants",
+        "row_count": 0
+      },
+      {
+        "name": "events",
+        "row_count": 5608
+      },
+      {
+        "name": "external_orders",
+        "row_count": 76
+      },
+      {
+        "name": "external_payment_events",
+        "row_count": 30
+      },
+      {
+        "name": "family_slots",
+        "row_count": 0
+      },
+      {
+        "name": "feedback_entries",
+        "row_count": 1
+      },
+      {
+        "name": "funnel_events",
+        "row_count": 1012
+      },
+      {
+        "name": "gift_cards",
+        "row_count": 1
+      },
+      {
+        "name": "hy2_lab_materials",
+        "row_count": 0
+      },
+      {
+        "name": "incentive_campaigns",
+        "row_count": 0
+      },
+      {
+        "name": "internal_ingest_nonces",
+        "row_count": 115
+      },
+      {
+        "name": "key_action_history",
+        "row_count": 9
+      },
+      {
+        "name": "key_pressure_state",
+        "row_count": 0
+      },
+      {
+        "name": "key_source_observations",
+        "row_count": 0
+      },
+      {
+        "name": "key_usage_rollups",
+        "row_count": 0
+      },
+      {
+        "name": "live_updates",
+        "row_count": 3
+      },
+      {
+        "name": "news_draft_runs",
+        "row_count": 34
+      },
+      {
+        "name": "news_drafts",
+        "row_count": 43
+      },
+      {
+        "name": "node_capacity_policy",
+        "row_count": 9
+      },
+      {
+        "name": "node_health_samples",
+        "row_count": 1638180
+      },
+      {
+        "name": "node_pool_membership",
+        "row_count": 9
+      },
+      {
+        "name": "node_provisioning_jobs",
+        "row_count": 38
+      },
+      {
+        "name": "node_runtime_metrics",
+        "row_count": 743891
+      },
+      {
+        "name": "nodes",
+        "row_count": 9
+      },
+      {
+        "name": "observer_batches",
+        "row_count": 42649
+      },
+      {
+        "name": "observer_daily_observations",
+        "row_count": 0
+      },
+      {
+        "name": "observer_user_state",
+        "row_count": 0
+      },
+      {
+        "name": "observer_window_observations",
+        "row_count": 0
+      },
+      {
+        "name": "offers",
+        "row_count": 953
+      },
+      {
+        "name": "operator_incident_events",
+        "row_count": 0
+      },
+      {
+        "name": "operator_incident_links",
+        "row_count": 0
+      },
+      {
+        "name": "operator_tasks",
+        "row_count": 0
+      },
+      {
+        "name": "ops_alerts",
+        "row_count": 36
+      },
+      {
+        "name": "panel_sync_jobs",
+        "row_count": 52
+      },
+      {
+        "name": "pay_attempts",
+        "row_count": 11
+      },
+      {
+        "name": "payment_entitlement_claims",
+        "row_count": 1
+      },
+      {
+        "name": "payment_entitlement_outbox",
+        "row_count": 2
+      },
+      {
+        "name": "plan_catalog",
+        "row_count": 6
+      },
+      {
+        "name": "points_ledger",
+        "row_count": 2
+      },
+      {
+        "name": "program_applications",
+        "row_count": 0
+      },
+      {
+        "name": "promo_codes",
+        "row_count": 0
+      },
+      {
+        "name": "promo_usage",
+        "row_count": 0
+      },
+      {
+        "name": "provider_traffic_quota_audit",
+        "row_count": 0
+      },
+      {
+        "name": "provider_traffic_quotas",
+        "row_count": 0
+      },
+      {
+        "name": "recovery_codes",
+        "row_count": 0
+      },
+      {
+        "name": "redeem_events",
+        "row_count": 0
+      },
+      {
+        "name": "referral_bonus_queue",
+        "row_count": 0
+      },
+      {
+        "name": "referral_relationships",
+        "row_count": 1
+      },
+      {
+        "name": "referral_transitions",
+        "row_count": 5
+      },
+      {
+        "name": "release_candidates",
+        "row_count": 0
+      },
+      {
+        "name": "release_health_cohort_buckets",
+        "row_count": 0
+      },
+      {
+        "name": "release_health_events",
+        "row_count": 4670
+      },
+      {
+        "name": "release_health_ingest_counters",
+        "row_count": 3
+      },
+      {
+        "name": "release_known_issues",
+        "row_count": 0
+      },
+      {
+        "name": "release_origin_evidence",
+        "row_count": 0
+      },
+      {
+        "name": "rendered_subscription_snapshots",
+        "row_count": 7597
+      },
+      {
+        "name": "reviews",
+        "row_count": 2
+      },
+      {
+        "name": "reward_account_states",
+        "row_count": 56
+      },
+      {
+        "name": "reward_claims",
+        "row_count": 2
+      },
+      {
+        "name": "ru_probe_runs",
+        "row_count": 44
+      },
+      {
+        "name": "ru_probe_target_results",
+        "row_count": 489
+      },
+      {
+        "name": "ru_probe_uploader_heartbeats",
+        "row_count": 911
+      },
+      {
+        "name": "security_events",
+        "row_count": 1008
+      },
+      {
+        "name": "security_rate_limit_buckets",
+        "row_count": 68
+      },
+      {
+        "name": "service_incidents",
+        "row_count": 0
+      },
+      {
+        "name": "start_links",
+        "row_count": 14
+      },
+      {
+        "name": "subscription_fetch_events",
+        "row_count": 7597
+      },
+      {
+        "name": "support_attachments",
+        "row_count": 0
+      },
+      {
+        "name": "support_bundle_access_audits",
+        "row_count": 0
+      },
+      {
+        "name": "support_bundle_chunks",
+        "row_count": 0
+      },
+      {
+        "name": "support_bundle_uploads",
+        "row_count": 0
+      },
+      {
+        "name": "support_mode_policies",
+        "row_count": 0
+      },
+      {
+        "name": "support_ticket_messages",
+        "row_count": 116
+      },
+      {
+        "name": "support_tickets",
+        "row_count": 42
+      },
+      {
+        "name": "templates",
+        "row_count": 19
+      },
+      {
+        "name": "usage_snapshots",
+        "row_count": 0
+      },
+      {
+        "name": "user_key_policy",
+        "row_count": 0
+      },
+      {
+        "name": "user_nodes",
+        "row_count": 425
+      },
+      {
+        "name": "users",
+        "row_count": 102
+      },
+      {
+        "name": "warp_events",
+        "row_count": 108
+      },
+      {
+        "name": "warp_materials",
+        "row_count": 0
+      },
+      {
+        "name": "web_cabinet_handoff_tokens",
+        "row_count": 7
+      },
+      {
+        "name": "web_email_identities",
+        "row_count": 4
+      },
+      {
+        "name": "web_email_tokens",
+        "row_count": 4
+      }
+    ]
+  },
+  "target_retained": true,
+  "target_role_evidence": {
+    "database_owner_is_app": true,
+    "database_public_access_revoked": true,
+    "public_objects_owned": 1191,
+    "public_objects_total": 1191,
+    "public_schema_create": true,
+    "schema_public_access_revoked": true
+  },
+  "target_role_status": "PASS",
+  "target_state": "restored_retained",
+  "target_was_reset": false
+}

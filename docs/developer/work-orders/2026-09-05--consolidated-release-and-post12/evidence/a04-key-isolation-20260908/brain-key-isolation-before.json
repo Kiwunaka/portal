@@ -1,0 +1,26 @@
+{
+  "utc": "2026-09-08T15:41:56.578722+00:00",
+  "mode": "READ_ONLY",
+  "origin": "brain-origin",
+  "raw_material_returned": false,
+  "profiles": {
+    "awg2_lab": {
+      "material_rows": 108,
+      "distinct_device_bindings": 7,
+      "distinct_client_public_keys": 4,
+      "keys_shared_across_device_bindings": 1,
+      "active_material_rows": 7,
+      "active_keys_shared_across_device_bindings": 1,
+      "largest_shared_device_group": 7
+    },
+    "awg31_lab": {
+      "material_rows": 102,
+      "distinct_device_bindings": 7,
+      "distinct_client_public_keys": 2,
+      "keys_shared_across_device_bindings": 1,
+      "active_material_rows": 7,
+      "active_keys_shared_across_device_bindings": 1,
+      "largest_shared_device_group": 7
+    }
+  }
+}

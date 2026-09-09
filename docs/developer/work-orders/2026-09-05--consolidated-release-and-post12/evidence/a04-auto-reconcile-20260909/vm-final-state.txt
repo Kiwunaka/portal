@@ -1,0 +1,5 @@
+name="POKROV-r12-b08-linux-20260906"
+VMState="poweroff"
+VMStateChangeTime="2026-09-08T21:49:52.842000000"
+nic1="nat"
+Forwarding(0)="lab-ssh,tcp,127.0.0.1,55228,,22"

@@ -1,0 +1,186 @@
+{
+  "schema": "pokrov.r12-c05-file-header-handoff/v1",
+  "date": "2026-09-06",
+  "status": "I3_PARTIALLY_FIXED_FULL_C05_OPEN",
+  "client_commit": "7bef147c14beea9b8a45a48fedbc22f5205f7f53",
+  "core_source_commit": "8dc57a830bd1487389dd1b7c9190f094c31e13bc",
+  "client_receipt": {
+    "path": "E:\\r12client\\docs\\operations\\evidence\\2026-09-06-r12-c05-file-headers\\package-notices.json",
+    "committed_sha256": "f1ab84e1f34ab8c651b34bdb46cb04066f74bf6d9fa576658df560e41c02cf93"
+  },
+  "client_committed_blobs": {
+    "config/runtime-artifacts.seed.json": "8020dcbe6c54b0a7dc16efdc6f3a81bc3c4f7d4ca4ac2d5f47dbcc8f0e09d985",
+    "docs/architecture/bootstrap-workflow.md": "91371611e93de73ca165c73a8d463d75a17e850c5b3bbd1b27b5156711aa41fc",
+    "docs/operations/android-release-audit.md": "5f980717408dc0c11acd22941fa8873bba217ff7851a838cd62db73ced26daba",
+    "docs/operations/evidence/2026-09-06-r12-c05-file-headers/append-headers.py": "04bae805221fc32d04f19b46419792cd99be1bf6a7c23ac292bd3b5cc24db9f5",
+    "docs/operations/evidence/2026-09-06-r12-c05-file-headers/assembly.json": "2805fbfc302f4e3a6c8b05b4e42f36a38c84c4df9732f87d69307bbc325ad839",
+    "docs/operations/evidence/2026-09-06-r12-c05-file-headers/audit-headers.py": "4677cec10f5473cbaae9c7c3e718dd411f2cc7749bb17866e0f08db33dc63102",
+    "docs/operations/evidence/2026-09-06-r12-c05-file-headers/body-review.json": "189594f667ac016b9d2aeaf50d0a49ba4ccd8fddae2e6695e243916454cbe1df",
+    "docs/operations/evidence/2026-09-06-r12-c05-file-headers/header-candidates.json": "82ac5c5ac2abbbde695eaf5c37c17280af0184c2c35d7aa506f37a26cd2bf2bc",
+    "docs/operations/evidence/2026-09-06-r12-c05-file-headers/package-notices.json": "f1ab84e1f34ab8c651b34bdb46cb04066f74bf6d9fa576658df560e41c02cf93",
+    "docs/operations/evidence/2026-09-06-r12-c05-file-headers/review-bodies.py": "a84331ec4f32ca3dba599d34719609054883503fa863f9b9747138ba10ffa1aa",
+    "docs/operations/evidence/2026-09-06-r12-c05-file-headers/verify-packages.py": "76afb53ce51dfaea3238114e67ea2fe4c8ad12b4034b949c2ad9c888e0c3a39d",
+    "docs/operations/windows-release-readiness.md": "9f3d93e5da25b1c33c0443cf0eabde14988b094ab79a30fc08ae7f20a06238d9",
+    "packages/app_shell/assets/licenses/native-go-NOTICES.txt": "71b707bb4af6d879c6ce13d86644ce1e1dbd5dabb7846085b10e798d63e9b56a"
+  },
+  "notice": {
+    "file": "packages/app_shell/assets/licenses/native-go-NOTICES.txt",
+    "bytes": 659001,
+    "sha256": "71b707bb4af6d879c6ce13d86644ce1e1dbd5dabb7846085b10e798d63e9b56a"
+  },
+  "source_scan": {
+    "files_hash_verified": 6751,
+    "hash_mismatches": [],
+    "inventory_sha256": "fa432bd61a8d660c8e523907e2c1f32c4622cdaee49b1d3572740997a7aa24fa",
+    "unique_full_blocks": 25,
+    "scope": "Candidate license-bearing comment blocks in first 160 lines of selected source files. Text presence is normalized substring matching, not a legal completeness verdict. Excludes native transitive includes and full-file obligations."
+  },
+  "package_summary": {
+    "android_packages": 4,
+    "windows_files": 302,
+    "windows_unchanged": 301,
+    "verbatim_texts": 185,
+    "added_blocks": 12
+  },
+  "client_checks": [
+    {
+      "command": "flutter build apk --release --flavor direct --target-platform android-arm,android-arm64,android-x64 --android-project-arg=pokrov.singleVersionSplitApks=true --dart-define=POKROV_API_BASE_URL=http://127.0.0.1:9 --dart-define=POKROV_APP_VERSION=1.2.0",
+      "cwd": "E:/r12client/apps/android_shell",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-header-review\\android-build.log",
+      "sha256": "41aecf111cfc14af0d0c3c6769da40c9c3a67294903a281013970db234883284"
+    },
+    {
+      "command": "cmake -S E:/r12client/apps/windows_shell/windows -B E:/r12client/apps/windows_shell/build/windows/x64 -DCMAKE_INSTALL_PREFIX=E:/r12-c05-header-review/windows-bundle",
+      "cwd": "E:/r12client",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-header-review\\windows-prefix.log",
+      "sha256": "b7b15e30751d5e792572e5c27f7c588a4407a458083943f584e173a57a400cd7"
+    },
+    {
+      "command": "flutter build windows --release --no-pub --dart-define=POKROV_API_BASE_URL=http://127.0.0.1:9 --dart-define=POKROV_APP_VERSION=1.2.0",
+      "cwd": "E:/r12client/apps/windows_shell",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-header-review\\windows-build.log",
+      "sha256": "9a7a41aa75927df60c919d2c364c65ea0c5699b30814240f9554d0bdd4dbb721"
+    },
+    {
+      "command": "python -B E:/r12-c05-header-review/verify-packages.py",
+      "cwd": "E:/r12client",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-header-review\\package-verification.log",
+      "sha256": "418e11c6f0c1ebdf61a003942a66889b7d5ae50eb664c9a8b24a5dab881cc12c"
+    },
+    {
+      "command": "cmake -S E:/r12client/apps/windows_shell/windows -B E:/r12client/apps/windows_shell/build/windows/x64 -U CMAKE_INSTALL_PREFIX",
+      "cwd": "E:/r12client",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-header-review\\windows-prefix-restored-exact.log",
+      "sha256": "c74029ded3404c790b40f72cd587680c9e08d404cb13ae427a7e0d9e29769ecc"
+    },
+    {
+      "command": "./scripts/validate-seed.ps1 -PlatformRoot C:/Users/kiwun/Documents/ai/VPN-consolidated-plan-start -CoreRoot E:/r12core-implementation",
+      "cwd": "E:\\r12client",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-header-review\\client-seed.log",
+      "sha256": "c75348d37b8d8314128d35d06f9336b9fd2b145c2369373b4b8b5c138b62db3b"
+    },
+    {
+      "command": "./test/docs-contract.ps1",
+      "cwd": "E:\\r12client",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-header-review\\client-docs.log",
+      "sha256": "01ed68a810c26d9bef6f98225f2238a25332fa3585d5effd38d0101f87467874"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "cwd": "E:\\r12client",
+      "exit_code": 0
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--exit-code",
+        "--",
+        "artifacts/releases"
+      ],
+      "cwd": "E:\\r12client",
+      "exit_code": 0
+    }
+  ],
+  "staged_notice_check": {
+    "path": "E:\\r12-c05-header-review\\staged-check.json",
+    "sha256": "83a92cffed5919df3041d1411b399009883a23c4ab1ed25c961dd316b9ed50e5"
+  },
+  "scope_limits": [
+    "Scan covers only explicit full permission/redistribution comment blocks in first 160 lines; SPDX-only references, later headers and transitive native includes are not complete.",
+    "Normalized literal matching and subset grouping are deduplication, not legal compatibility or completeness conclusions.",
+    "Missing Psiphon utls root license, corresponding source, installed privacy and final candidate/device/origin/SCM gates remain open.",
+    "Android uses internal Android Debug signer and loopback API; Windows application/service are NotSigned. No installer, tunnel, candidate, signing approval or production proof.",
+    "Seed performance collector exercises a fixture; it is not a new physical-device performance result."
+  ],
+  "exploratory_attempts": [
+    "Initial broad header scan completed inventory but console output failed on cp1251; retained externally as header-candidates-initial.json and audit-headers-initial.py. Final bounded scan completed successfully.",
+    "First restore via -D converted the generator expression into an absolute path. The -U CMAKE_INSTALL_PREFIX configure restored the exact original cache value; no install/build was run with the intermediate value."
+  ],
+  "push_merge_deploy_candidate": false,
+  "platform_checks": [
+    {
+      "command": [
+        "python",
+        "-B",
+        "-m",
+        "pytest",
+        "-p",
+        "no:cacheprovider",
+        "tests/test_agent_docs_contract.py",
+        "tests/test_agent_context_packet_audit.py",
+        "-q"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-header-review\\platform-docs.log",
+      "sha256": "e77a9261512e166dc353e4978f0d6af9bf4eedc8a5743eb55ca20c56e193d2a9",
+      "output": ".................................                                        [100%]\n33 passed in 0.86s"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "scripts/agent_context_packet_audit.py",
+        "--platform-context-root",
+        "."
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-header-review\\platform-context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "output": "PASS platform-context"
+    },
+    {
+      "command": [
+        "python",
+        "-B",
+        "docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py"
+      ],
+      "cwd": "C:\\Users\\kiwun\\Documents\\ai\\VPN-consolidated-plan-start",
+      "exit_code": 0,
+      "log": "E:\\r12-c05-header-review\\platform-package.log",
+      "sha256": "f02ab8dc7af8400cae47eb34e6902799b912189f6f2b44741c908aac10cf4edb",
+      "output": "PASS: 13 imported section hashes, 83 R12 IDs, 378 retained legacy IDs and ledger hash, 231 local file links"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit_code": 0
+    }
+  ]
+}

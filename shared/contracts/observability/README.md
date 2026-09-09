@@ -22,6 +22,11 @@ Release-handoff v2 requires two descriptors in `compatibility.contracts`:
 Both digests use UTF-8 text with CRLF and lone CR normalized to LF, so the
 contract identity is stable across Windows and Linux checkouts.
 
+When either canonical contract changes, update its pinned digest in
+`scripts/release_handoff_metadata.schema.json` and the current synthetic
+`tests/fixtures/release-handoff/valid-v2.json` together. Retained candidate
+handoffs keep the digests of their original source tuple.
+
 - `SUPPORT-REFERENCE.md` is generated from that exact catalog and gives support
   the safe Russian message, owner, action and release-blocking flag for every
   current code. `generate_observability_support_reference.py --check` rejects
@@ -41,6 +46,26 @@ The active client generator derives both descriptors from these files. It does
 not accept caller-supplied values for them. Client and Core keep hash snapshots
 only for compatibility checks; these platform files remain the source of
 truth.
+
+## Observation and cause boundary
+
+Failure codes describe observed facts. `CONN-003` requires an absent default
+network; `ROUTE-005` means the interface could not be resolved, not a proven route
+conflict. DNS failures remain DNS observations even when the DNS error timed out.
+`TRANSPORT-005` requires a typed UDP timeout; `TRANSPORT-006` and
+`TRANSPORT-007` require the probe's observed TLS or response stage respectively.
+An unqualified deadline remains `TRANSPORT-001`. None establishes DPI, MTU,
+ASN filtering or a whitelist as the cause.
+
+`API-011` describes pending profile provisioning. A failed subscription refresh
+retains its API/auth error; it does not establish missing entitlement (`ENT-001`).
+`CORE-009` preserves an unspecified runtime failure without claiming that profile
+validation rejected the configuration. An explicit failure is not overwritten
+by an incomplete DNS/egress proof in the diagnostics presenter.
+
+These additive development-catalog entries require updated client/Core hash
+snapshots and consumers before packaging. Existing candidate hashes and receipts
+remain historical evidence. Event ABI 1 and desktop ABI 2 frame shapes are unchanged.
 
 ## Privacy boundary
 

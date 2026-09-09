@@ -1,0 +1,20 @@
+{
+  "backup_restore_status": "FAIL",
+  "backup_retained": false,
+  "backup_retention_status": "NOT_RUN",
+  "encrypted_backup": {
+    "path": "/root/backups/r12-20260909/portal-20260908T221231Z-bcf1f7daf95b.dump.enc"
+  },
+  "error_class": "remote_ssh_connect_failed",
+  "mode": "apply",
+  "origin": "brain",
+  "partial_cleanup_outcome": "not_attempted",
+  "phase": "ssh_connect",
+  "snapshot_cleanup_outcome": "not_opened",
+  "source_database": "portal",
+  "status": "FAIL",
+  "support_ownership_status": "NOT_EVALUATED",
+  "target_database": "portal_r12_20260909_rehearsal",
+  "target_role_status": "NOT_EVALUATED",
+  "target_state": "not_checked"
+}

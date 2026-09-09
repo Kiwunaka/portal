@@ -1,0 +1,56 @@
+{
+  "container_image_digest": null,
+  "deployment_kind": "host_native_userspace",
+  "files": {
+    "/etc/systemd/system/pokrov-awg-lab@.service": "cbcfb0ada0e596dbf1da8089842e615692a7f76e3191bda5b48ab7a8091443ab",
+    "/usr/local/bin/awg": "69d1349275a1a97853478c75b62019fcd6707022f231c794e7f45b00e3d0f8e9",
+    "/usr/local/bin/awg-quick": "f4bb0f5d63665ade87f0cb9f2185c43515cff09868637eb311f98f65a318722c",
+    "/usr/local/libexec/pokrov/amneziawg-go-v3.1.20260814": "4ede58a7d4bc79bce152850ef7aa0ee5885de592d5d095352ae869b3fe8f172d"
+  },
+  "interfaces": {
+    "pokrovawg2": {
+      "config_sha256": "ebbfb2191c5f57825b6a6e5d0fcdf807811a72811dbfe1249e73dbba53299157",
+      "live_config_sha256": "546eb40e3d458dc3ef7e43c9dacb5bb53b6683d00df6a11f074ac63a7131e1b6",
+      "live_static_config_sha256": "435b8a08ac061146c1de5943366a5bd68771116d97663db4b159d5fda08373e2",
+      "peers": [
+        {
+          "latest_handshake_unix": 1788864072,
+          "public_key_sha256": "a3c903d990d506fff21f6fb4602191b648c2ed8b1f8bef72a4970cc345eac80d",
+          "rx_bytes": 365824,
+          "tx_bytes": 885264
+        }
+      ],
+      "processes": [
+        {
+          "exe_sha256": "4ede58a7d4bc79bce152850ef7aa0ee5885de592d5d095352ae869b3fe8f172d",
+          "pid": 956
+        }
+      ],
+      "unit_active": "active"
+    },
+    "pokrovawg31": {
+      "config_sha256": "60dd8351e0d6ea5128f14dfbbe77116185174ab5f5a5abab8f9b4159a643a32e",
+      "live_config_sha256": "08c771e9a905317d497029af0913384706d1f5b3ef07b2875e8f5a6908f25338",
+      "live_static_config_sha256": "69b55eaf0b0469c1b27c7defe9f2a8862dcc42ba556ce83cbf0093af6b4d7171",
+      "peers": [
+        {
+          "latest_handshake_unix": 1788873832,
+          "public_key_sha256": "68105095df51ea3599392ce3a9bfa824e82d09e1f46e028ff8d4186b74d3e7ae",
+          "rx_bytes": 9158619,
+          "tx_bytes": 48022025
+        }
+      ],
+      "processes": [
+        {
+          "exe_sha256": "4ede58a7d4bc79bce152850ef7aa0ee5885de592d5d095352ae869b3fe8f172d",
+          "pid": 933
+        }
+      ],
+      "unit_active": "active",
+      "variant_dropin_sha256": "28223be9a676a758ec7795d220b4d813cf642e91bc77531cc306e364798afd41"
+    }
+  },
+  "kernel": "6.8.0-138-generic",
+  "raw_material_returned": false,
+  "utc": "2026-09-08T16:05:48.150821+00:00"
+}
