@@ -1,0 +1,171 @@
+{
+  "status": "DEPLOYED_ONLINE_FIX_SHIFT_STALL_OPEN",
+  "source_revision": "7fe020adcee0b0e187c20d75d3513a8a24227301",
+  "origin": "brain-origin isolated processes and owned panel API reads",
+  "profiles": [
+    {
+      "path": "online-stage-profile.json",
+      "sha256": "8bc36ae25a2b916a35f372586f39f4442f230781812ad47a905ab837afdf7d95",
+      "raw_sha256": "1794f717b0fc1b6df24d79bb1aa2cb72be364285c8b75e7bda74b67a7cf71944"
+    },
+    {
+      "path": "online-stage-profile-candidate.json",
+      "sha256": "7a6c91664fbacc61097e715f7f32b4bd5f7ad5dc0663f628fa45f64bad6bb724",
+      "raw_sha256": "963c0bfa08357a4f4c53018f386ff9aef7bd83a558e6ba3c02d852b8eba96e53"
+    },
+    {
+      "path": "online-method-readback.json",
+      "sha256": "c8b04cc1a5c7c7105980c7e12dcccf3850130e505ea559c5c25120e9ea98437d",
+      "raw_sha256": "f3215802fec7c0c053f072e87294ca8e1ac4fd27ad2fd0ef1aa1ddec05250815"
+    },
+    {
+      "path": "online-method-inventory.json",
+      "sha256": "861bc2a3f28aed8d7ca4d614e7dcda34a43498991dbe1f064073237a25f894e4",
+      "raw_sha256": "25c932d8ff7618325ca15afca8987e491749a3b30e7c2cce88172b69314c88bb"
+    },
+    {
+      "path": "online-stage-profile-final.json",
+      "sha256": "0e54885ebc17d9fee0e953d8c49cb0bef1cdae823801a43e6ed716a06751a5b1",
+      "raw_sha256": "9aa22b186fa7fb4b571129c8da929a18fcc465df125e95cc0afd807166c27097"
+    }
+  ],
+  "online_requests_before": 421,
+  "online_requests_candidate": 6,
+  "usable_online_lists_candidate": 6,
+  "panel_login_failures": 1,
+  "performance_gate": "NOT_PROVEN",
+  "instruments": [
+    {
+      "path": "E:\\r12-b07-observation-20260909\\profile-online-stages.py",
+      "sha256": "a6b3a6cd6bb818643182dba205b9c9c25569d4556d62a0e801dc65cd20391772"
+    },
+    {
+      "path": "E:\\r12-b07-observation-20260909\\profile-online-stages-candidate.py",
+      "sha256": "3c94924763da5d54ebe349c2addad6c3a2fc5d1301fc964154a0a02884dee80d"
+    },
+    {
+      "path": "E:\\r12-b07-observation-20260909\\read-online-method.py",
+      "sha256": "6953b6d056f426b15ae49658b0fd3a590f817cdd5a5b66413055b4006519255d"
+    },
+    {
+      "path": "E:\\r12-b07-observation-20260909\\inventory-online-methods.py",
+      "sha256": "9d514857f24cc104344dbb8c11da14045446355a8bd4dec100b5ef4b4b9feea8"
+    },
+    {
+      "path": "E:\\r12-b07-observation-20260909\\profile-online-stages-final.py",
+      "sha256": "0d908006fdfe5f2fb3d11a1bcb4306101d17b48fcdaec5044027572a0d152343"
+    },
+    {
+      "path": "E:\\r12-b07-observation-20260909\\final-checks.log",
+      "sha256": "d53e4851492ee7be56557cb6f76d803d09f7df20caa066b8acc1359e7b613216"
+    },
+    {
+      "path": "E:\\r12-b07-observation-20260909\\deploy-backend.log",
+      "sha256": "c508be1a547e66489f331276012784119d0fc36045fff52ac271579f818879ec"
+    },
+    {
+      "path": "E:\\r12-b07-observation-20260909\\deploy-backend-retry.log",
+      "sha256": "5d6fb4aa5cc7990ceefdfd09d4dbb75d5506e30b17e203708a0ec551194d510c"
+    },
+    {
+      "path": "E:\\r12-b07-observation-20260909\\observe-runtime-after.py",
+      "sha256": "012ed4373853a09a9310d65ba82f77a4b788bd71b36ee627b190dbce975ad358"
+    },
+    {
+      "path": "E:\\r12-b07-observation-20260909\\profile-online-db.py",
+      "sha256": "2ac690d388e47bad010385ddf2b9fe5d953aaa8cdef225b02db16644cecb2dec"
+    },
+    {
+      "path": "E:\\r12-b07-observation-20260909\\observe-shift-runtime.py",
+      "sha256": "40d72113b17c851b145c3feb10dc5116cfa2c1df10ab529d4656c9885ad9308a"
+    },
+    {
+      "path": "E:\\r12-b07-observation-20260909\\update-build-identity.py",
+      "sha256": "72cdb1ffd2207f51b3aaa43e1632ae41cf4c773d776339b36f873bdf615910a2"
+    },
+    {
+      "path": "E:\\r12-b07-observation-20260909\\prepare-payload.py",
+      "sha256": "de12b206a8bea75c25d910269b1651d6fa41f01923d889c5acf009a334b122d3"
+    },
+    {
+      "path": "E:\\r12-b07-observation-20260909\\verify-ci.py",
+      "sha256": "1e1f577cba6f6426d207071bf439d746b7a1407b94e2b85649372f4714ff695a"
+    }
+  ],
+  "deployed_revision": "2b37f9765ba07fd0f37d0c894486809ac4bc9f75",
+  "pr": 249,
+  "ci_pass_runs": 4,
+  "legacy_isolation_check": "SKIPPED_NOT_PASS",
+  "backup": "/root/portal_bot.deploy-backups/20260909T105639Z-24128",
+  "raw_changed_runtime_files": [
+    "portal_bot/panel_client.py",
+    "portal_bot/admin_v2/security.py"
+  ],
+  "git_changed_runtime_files": [
+    "portal_bot/panel_client.py"
+  ],
+  "absolute_session_run": "FAILED_SOURCE_BYTE_GUARD",
+  "shift_fix": "PR250_DRAFT_TESTS_RUNNING",
+  "captures": [
+    {
+      "path": "ci-verified.json",
+      "sha256": "161b6fa370111ac34dd1ac68a1efdace4f600eb45d600dee2b8d5c0c91a07b58",
+      "source_sha256": "161b6fa370111ac34dd1ac68a1efdace4f600eb45d600dee2b8d5c0c91a07b58"
+    },
+    {
+      "path": "merge-verification.json",
+      "sha256": "e37aedfb05c8c17da50aee09fa7847356bca96e386cfc6efc648d5b8b74dfc5a",
+      "source_sha256": "e37aedfb05c8c17da50aee09fa7847356bca96e386cfc6efc648d5b8b74dfc5a"
+    },
+    {
+      "path": "merged-payload.json",
+      "sha256": "45f671dc0236472cb263e2eb5e72039cc007d13b935872ed5d86c7a235eca5c3",
+      "source_sha256": "45f671dc0236472cb263e2eb5e72039cc007d13b935872ed5d86c7a235eca5c3"
+    },
+    {
+      "path": "baseline-before-deploy.json",
+      "sha256": "43ec24921dc54fcf962ac1af2039e2bdcc371e6f9393ea95ce81af4e1991dc60",
+      "source_sha256": "43ec24921dc54fcf962ac1af2039e2bdcc371e6f9393ea95ce81af4e1991dc60"
+    },
+    {
+      "path": "baseline-at-deploy.json",
+      "sha256": "50b5d09caa27526d163f084912baa17b4761a7308e14428e2548030a7b406a48",
+      "source_sha256": "50b5d09caa27526d163f084912baa17b4761a7308e14428e2548030a7b406a48"
+    },
+    {
+      "path": "build-identity-updated.json",
+      "sha256": "b3445bfcd575a14b5a2c546e18eb3b7e269fec6d313e09dadb7560fff142f5d6",
+      "source_sha256": "b3445bfcd575a14b5a2c546e18eb3b7e269fec6d313e09dadb7560fff142f5d6"
+    },
+    {
+      "path": "runtime-observation-after.json",
+      "sha256": "4228d5ef31a5ba0fc16fb4f6646be98a515d4b5298afb21f9732bedba1ab70d6",
+      "source_sha256": "4228d5ef31a5ba0fc16fb4f6646be98a515d4b5298afb21f9732bedba1ab70d6"
+    },
+    {
+      "path": "online-db-profile.json",
+      "sha256": "06740d653c13161d46ef83824974a2363ef775e286ada862e51c5da1e1e1c499",
+      "source_sha256": "06740d653c13161d46ef83824974a2363ef775e286ada862e51c5da1e1e1c499"
+    },
+    {
+      "path": "online-window-journal.json",
+      "sha256": "f49d9cd9f761baf274d72481d48724b3c6612e2be4b7672ca26216cc20c93d4a",
+      "source_sha256": "f49d9cd9f761baf274d72481d48724b3c6612e2be4b7672ca26216cc20c93d4a"
+    },
+    {
+      "path": "runtime-shift-observation.json",
+      "sha256": "3581df75bb430de9f1bd418ec5cdfcd81fc7d3d4607909ab4a2add20866b0bb5",
+      "source_sha256": "3581df75bb430de9f1bd418ec5cdfcd81fc7d3d4607909ab4a2add20866b0bb5"
+    },
+    {
+      "path": "session-source-byte-change.json",
+      "sha256": "9880fe17161b7ff8a71eeccc3fd9f046f40be67e31400b35856dd996f999a128",
+      "source_sha256": "9880fe17161b7ff8a71eeccc3fd9f046f40be67e31400b35856dd996f999a128"
+    }
+  ],
+  "restarted_services": [
+    "portal-api",
+    "portal-bot",
+    "portal-worker"
+  ]
+}

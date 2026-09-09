@@ -1,0 +1,364 @@
+{
+  "utc": "2026-09-09T10:26:11.782976+00:00",
+  "origin": "brain-origin isolated process using deployed sources and configured panels",
+  "source_revision": "a8e6918ccc166a58ae65ba7d08feea63ce3a9623",
+  "source_hashes": {
+    "portal_bot/control_panel.py": "2bf5319419933ba53b5195608a6766d47545c58546309862ce1fa5130df41a38",
+    "portal_bot/panel_client.py": "fa641cd430e07b2b29a15fc584b13dd4acbd92701da9da5b456e4d06847ab5c2"
+  },
+  "raw_customer_provider_or_credentials_exported": false,
+  "production_source_modified": false,
+  "status": "PASS_BOUNDED_PROFILE",
+  "total_ms": 17726.47,
+  "nodes_observed": 7,
+  "panel_error_count": 1,
+  "error_kinds": [
+    "panel_request_failed"
+  ],
+  "stage_summary": [
+    {
+      "slot": 1,
+      "stage": "_get_inbounds",
+      "calls": 1,
+      "duration_total_ms": 99.9,
+      "duration_max_ms": 99.9,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 1,
+      "stage": "_get_online_emails",
+      "calls": 67,
+      "duration_total_ms": 124.59,
+      "duration_max_ms": 7.01,
+      "results": {
+        "returned": 67
+      }
+    },
+    {
+      "slot": 1,
+      "stage": "_refresh_csrf_token",
+      "calls": 1,
+      "duration_total_ms": 4.58,
+      "duration_max_ms": 4.58,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 1,
+      "stage": "get_node_online_clients",
+      "calls": 1,
+      "duration_total_ms": 225.89,
+      "duration_max_ms": 225.89,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 1,
+      "stage": "login",
+      "calls": 1,
+      "duration_total_ms": 90.19,
+      "duration_max_ms": 90.19,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 2,
+      "stage": "_get_inbounds",
+      "calls": 1,
+      "duration_total_ms": 299.19,
+      "duration_max_ms": 299.19,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 2,
+      "stage": "_get_online_emails",
+      "calls": 65,
+      "duration_total_ms": 2830.77,
+      "duration_max_ms": 51.31,
+      "results": {
+        "returned": 65
+      }
+    },
+    {
+      "slot": 2,
+      "stage": "_refresh_csrf_token",
+      "calls": 1,
+      "duration_total_ms": 86.2,
+      "duration_max_ms": 86.2,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 2,
+      "stage": "get_node_online_clients",
+      "calls": 1,
+      "duration_total_ms": 3132.1,
+      "duration_max_ms": 3132.1,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 2,
+      "stage": "login",
+      "calls": 1,
+      "duration_total_ms": 247.33,
+      "duration_max_ms": 247.33,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 3,
+      "stage": "_get_inbounds",
+      "calls": 1,
+      "duration_total_ms": 96.95,
+      "duration_max_ms": 96.95,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 3,
+      "stage": "_get_online_emails",
+      "calls": 70,
+      "duration_total_ms": 515.88,
+      "duration_max_ms": 11.08,
+      "results": {
+        "returned": 70
+      }
+    },
+    {
+      "slot": 3,
+      "stage": "_refresh_csrf_token",
+      "calls": 1,
+      "duration_total_ms": 14.91,
+      "duration_max_ms": 14.91,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 3,
+      "stage": "get_node_online_clients",
+      "calls": 1,
+      "duration_total_ms": 614.67,
+      "duration_max_ms": 614.67,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 3,
+      "stage": "login",
+      "calls": 1,
+      "duration_total_ms": 84.47,
+      "duration_max_ms": 84.47,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 4,
+      "stage": "_get_inbounds",
+      "calls": 1,
+      "duration_total_ms": 171.67,
+      "duration_max_ms": 171.67,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 4,
+      "stage": "_get_online_emails",
+      "calls": 74,
+      "duration_total_ms": 1987.9,
+      "duration_max_ms": 31.99,
+      "results": {
+        "returned": 74
+      }
+    },
+    {
+      "slot": 4,
+      "stage": "_refresh_csrf_token",
+      "calls": 1,
+      "duration_total_ms": 52.52,
+      "duration_max_ms": 52.52,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 4,
+      "stage": "get_node_online_clients",
+      "calls": 1,
+      "duration_total_ms": 2162.47,
+      "duration_max_ms": 2162.47,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 4,
+      "stage": "login",
+      "calls": 1,
+      "duration_total_ms": 140.87,
+      "duration_max_ms": 140.87,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 5,
+      "stage": "_get_inbounds",
+      "calls": 1,
+      "duration_total_ms": 417.04,
+      "duration_max_ms": 417.04,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 5,
+      "stage": "_get_online_emails",
+      "calls": 71,
+      "duration_total_ms": 6237.19,
+      "duration_max_ms": 92.39,
+      "results": {
+        "returned": 71
+      }
+    },
+    {
+      "slot": 5,
+      "stage": "_refresh_csrf_token",
+      "calls": 1,
+      "duration_total_ms": 175.04,
+      "duration_max_ms": 175.04,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 5,
+      "stage": "get_node_online_clients",
+      "calls": 1,
+      "duration_total_ms": 6657.06,
+      "duration_max_ms": 6657.06,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 5,
+      "stage": "login",
+      "calls": 1,
+      "duration_total_ms": 325.78,
+      "duration_max_ms": 325.78,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 6,
+      "stage": "_get_inbounds",
+      "calls": 1,
+      "duration_total_ms": 168.17,
+      "duration_max_ms": 168.17,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 6,
+      "stage": "_get_online_emails",
+      "calls": 74,
+      "duration_total_ms": 1867.65,
+      "duration_max_ms": 56.07,
+      "results": {
+        "returned": 74
+      }
+    },
+    {
+      "slot": 6,
+      "stage": "_refresh_csrf_token",
+      "calls": 1,
+      "duration_total_ms": 49.2,
+      "duration_max_ms": 49.2,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 6,
+      "stage": "get_node_online_clients",
+      "calls": 1,
+      "duration_total_ms": 2038.9,
+      "duration_max_ms": 2038.9,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 6,
+      "stage": "login",
+      "calls": 1,
+      "duration_total_ms": 138.74,
+      "duration_max_ms": 138.74,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 7,
+      "stage": "_get_inbounds",
+      "calls": 1,
+      "duration_total_ms": 15226.92,
+      "duration_max_ms": 15226.92,
+      "results": {
+        "PanelReadError": 1
+      }
+    },
+    {
+      "slot": 7,
+      "stage": "_refresh_csrf_token",
+      "calls": 1,
+      "duration_total_ms": 10142.98,
+      "duration_max_ms": 10142.98,
+      "results": {
+        "returned_false": 1
+      }
+    },
+    {
+      "slot": 7,
+      "stage": "get_node_online_clients",
+      "calls": 1,
+      "duration_total_ms": 15226.93,
+      "duration_max_ms": 15226.93,
+      "results": {
+        "PanelReadError": 1
+      }
+    },
+    {
+      "slot": 7,
+      "stage": "login",
+      "calls": 1,
+      "duration_total_ms": 15226.25,
+      "duration_max_ms": 15226.25,
+      "results": {
+        "returned_false": 1
+      }
+    }
+  ],
+  "retained_source": {
+    "path": "E:\\r12-b07-observation-20260909\\online-stage-profile.json",
+    "sha256": "1794f717b0fc1b6df24d79bb1aa2cb72be364285c8b75e7bda74b67a7cf71944"
+  }
+}

@@ -98,3 +98,13 @@ HTTP 401 `operator_session_expired`; БД сохранила отзыв `idle_ex
 подтвердило тот же живой PID/start ticks, шесть absolute refreshes, неизменный
 absolute deadline и отсутствие HTTP anomalies. Absolute expiry остаётся
 RUNNING до `2026-09-09T21:44:42.057920Z`; полный O01 пока открыт.
+
+
+## V2 остановлен после смены raw source — 10:59:47 UTC
+
+[Поставка online fix](EXECUTION-B07-ONLINE-2026-09-09.md) сохранила Git-содержимое
+security.py, но изменила пять окончаний строк LF→CRLF. Raw guard остановил
+runner с AssertionError после 14 refreshes. HTTP anomalies отсутствуют;
+cleanup отозвал обе fixture sessions. Idle PASS остаётся, absolute expiry
+не выполнен. Старое ожидаемое время 00:44 мск больше не является активным
+сроком прогона. Новый run будет запущен после текущей API-правки.

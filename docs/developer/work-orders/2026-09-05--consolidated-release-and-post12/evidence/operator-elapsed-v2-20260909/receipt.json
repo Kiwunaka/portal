@@ -1,5 +1,5 @@
 {
-  "status": "PASS_REAL_IDLE_EXPIRY_ABSOLUTE_RUNNING",
+  "status": "PASS_REAL_IDLE_EXPIRY_ABSOLUTE_FAILED_SOURCE_BYTE_GUARD",
   "origin": "brain-origin HTTPS production",
   "source_revision": "a8e6918ccc166a58ae65ba7d08feea63ce3a9623",
   "captures": [
@@ -27,6 +27,11 @@
       "path": "elapsed-expiry-observation-v2-2026-09-09T101502133552+0000.json",
       "sha256": "65beabb8502724d5e18b86c0227f5fa83f7cfff2f1c17fa6124c8d6a3de72b9d",
       "source_sha256": "d15bf0786c89e4a8e560eb29d30643265c7ba15dc7ee0e668335edeb3174adb6"
+    },
+    {
+      "path": "elapsed-expiry-observation-v2-2026-09-09T111327639063+0000.json",
+      "sha256": "d48df039bdb2a406b19e9adc96844119eac97a734938da963cd04146a467b83c",
+      "source_sha256": "d48df039bdb2a406b19e9adc96844119eac97a734938da963cd04146a467b83c"
     }
   ],
   "local_instruments": [
@@ -55,5 +60,11 @@
     "error_code": "operator_session_expired",
     "revoke_reason": "idle_expired",
     "utc": "2026-09-09T10:14:45.152950+00:00"
+  },
+  "absolute_failure": {
+    "utc": "2026-09-09T10:59:47.177994+00:00",
+    "reason": "raw_security_source_changed_by_line_endings_in_deploy",
+    "fixtures_revoked": true,
+    "new_run": "NOT_STARTED"
   }
 }

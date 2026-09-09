@@ -1,0 +1,41 @@
+{
+  "utc": "2026-09-09T11:01:31.857671+00:00",
+  "origin": "brain-origin isolated deployed projection with read-only PostgreSQL",
+  "source_revision": "2b37f9765ba07fd0f37d0c894486809ac4bc9f75",
+  "source_hashes": {
+    "portal_bot/api.py": "f67585865ebb193b2535c61e9d5d152e97320f7fbe7e4e79ae58121963fb7aa4",
+    "portal_bot/api_admin_routes.py": "6d1980814f6c9f5e46e29daf12e5f21daac585d04ee99ac36501ac2877dd47d5",
+    "portal_bot/control_panel.py": "2bf5319419933ba53b5195608a6766d47545c58546309862ce1fa5130df41a38",
+    "portal_bot/panel_client.py": "d4c1b229201fc7517c759f4f4b97726c2ef5790563efcf8a246cd84198a922a4"
+  },
+  "sql_samples": [
+    {
+      "table": "users",
+      "elapsed_ms": 2.86,
+      "statement_sha256": "08b8a3a160859c4ae991afdc7b92c63d55db70d2e41c398b5cfaeb073110f107"
+    },
+    {
+      "table": "users",
+      "elapsed_ms": 1.0,
+      "statement_sha256": "a7e7079bd0ff7647cf5f158f9f99a4d017b62136b4870103cac6f46ba3cb8d83"
+    },
+    {
+      "table": "key_pressure_state",
+      "elapsed_ms": 1.05,
+      "statement_sha256": "032a88b11afd489e826b30cc6a608bff1b302e055c1310446bb455fdf80345e4"
+    },
+    {
+      "table": "observer_user_state",
+      "elapsed_ms": 0.71,
+      "statement_sha256": "2c9201c922e9fb8b6586a85094ae98257c7cc64dc0cac76eb1b706fcdfe59fc5"
+    }
+  ],
+  "raw_customer_provider_or_credentials_exported": false,
+  "production_source_modified": false,
+  "panel_ms": 15659.83,
+  "isolated_connection_acquire_ms": 5.31,
+  "projection_ms": 22.66,
+  "status": "PASS_BOUNDED_PROFILE",
+  "panel_error_count": 1,
+  "projection_returned": true
+}

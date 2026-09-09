@@ -1,0 +1,11 @@
+{
+  "old_raw_sha256": "881305eea730472628ca64367f6e412a53a08ae41ccbb2b973aed5d9e65e4136",
+  "new_raw_sha256": "02cd79f4f60dfe0a2a80ed06c725a4abb9911487fb3a3b006eed44a3b14b9713",
+  "normalized_sha256": "5278696a54434937ebbad36ee66b824f5de57abf62796c7d6e2ab5ff7d462c61",
+  "old_crlf_count": 704,
+  "new_crlf_count": 709,
+  "same_after_crlf_to_lf": true,
+  "guard_invalidated": true,
+  "old_absolute_test": "FAILED_NOT_PASSED",
+  "new_run": "NOT_STARTED"
+}

@@ -1,0 +1,127 @@
+{
+  "utc": "2026-09-09T10:30:27.038946+00:00",
+  "origin": "brain-origin owned panel method readback",
+  "source_hashes": {
+    "portal_bot/control_panel.py": "2bf5319419933ba53b5195608a6766d47545c58546309862ce1fa5130df41a38",
+    "portal_bot/panel_client.py": "fa641cd430e07b2b29a15fc584b13dd4acbd92701da9da5b456e4d06847ab5c2"
+  },
+  "raw_payload_exported": false,
+  "checks": [
+    {
+      "slot": 1,
+      "method": "POST",
+      "path": "/panel/api/inbounds/onlines",
+      "http_status": 404,
+      "json_object": false,
+      "success": false,
+      "obj_is_list": false
+    },
+    {
+      "slot": 1,
+      "method": "POST",
+      "path": "/panel/api/clients/onlines",
+      "http_status": 200,
+      "json_object": true,
+      "success": true,
+      "obj_is_list": true
+    },
+    {
+      "slot": 3,
+      "method": "POST",
+      "path": "/panel/api/inbounds/onlines",
+      "http_status": 404,
+      "json_object": false,
+      "success": false,
+      "obj_is_list": false
+    },
+    {
+      "slot": 3,
+      "method": "POST",
+      "path": "/panel/api/clients/onlines",
+      "http_status": 200,
+      "json_object": true,
+      "success": true,
+      "obj_is_list": true
+    },
+    {
+      "slot": 5,
+      "method": "POST",
+      "path": "/panel/api/inbounds/onlines",
+      "http_status": 404,
+      "json_object": false,
+      "success": false,
+      "obj_is_list": false
+    },
+    {
+      "slot": 6,
+      "method": "POST",
+      "path": "/panel/api/inbounds/onlines",
+      "http_status": 404,
+      "json_object": false,
+      "success": false,
+      "obj_is_list": false
+    },
+    {
+      "slot": 5,
+      "method": "POST",
+      "path": "/panel/api/clients/onlines",
+      "http_status": 200,
+      "json_object": true,
+      "success": true,
+      "obj_is_list": true
+    },
+    {
+      "slot": 6,
+      "method": "POST",
+      "path": "/panel/api/clients/onlines",
+      "http_status": 200,
+      "json_object": true,
+      "success": true,
+      "obj_is_list": true
+    },
+    {
+      "slot": 2,
+      "method": "POST",
+      "path": "/panel/api/inbounds/onlines",
+      "http_status": 404,
+      "json_object": false,
+      "success": false,
+      "obj_is_list": false
+    },
+    {
+      "slot": 2,
+      "method": "POST",
+      "path": "/panel/api/clients/onlines",
+      "http_status": 200,
+      "json_object": true,
+      "success": true,
+      "obj_is_list": true
+    },
+    {
+      "slot": 4,
+      "method": "POST",
+      "path": "/panel/api/inbounds/onlines",
+      "http_status": 404,
+      "json_object": false,
+      "success": false,
+      "obj_is_list": false
+    },
+    {
+      "slot": 4,
+      "method": "POST",
+      "path": "/panel/api/clients/onlines",
+      "http_status": 200,
+      "json_object": true,
+      "success": true,
+      "obj_is_list": true
+    },
+    {
+      "slot": 7,
+      "login": false
+    }
+  ],
+  "retained_source": {
+    "path": "E:\\r12-b07-observation-20260909\\online-method-inventory.json",
+    "sha256": "25c932d8ff7618325ca15afca8987e491749a3b30e7c2cce88172b69314c88bb"
+  }
+}
