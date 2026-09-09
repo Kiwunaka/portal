@@ -363,11 +363,12 @@ Support work boundary v2:
   последнего события этой попытки. Known issues повторно запрашиваются при
   изменении code/app/build/platform пакета, включая смену build с прежним code;
 - `GET /api/admin/v2/support/macros` отдаёт серверный закрытый набор макросов;
-- claim, assign и workflow update идут через
-  `/api/admin/v2/support/action-intents`; reply/status и internal note временно
-  исполняются совместимыми `/api/admin/tickets/*` маршрутами, но используют тот
-  же stored Action Intent, idempotency и version recheck. Internal note никогда
-  не входит в пользовательский ticket API;
+- claim, assign, workflow update и internal note идут через
+  `/api/admin/v2/support/action-intents` с permission `support.write`,
+  environment и actor из серверной сессии. Заметка не требует
+  `legacy.admin.access`; stored Action Intent, idempotency и version recheck
+  сохраняются, тело не попадает в аудит или пользовательский ticket API.
+  Reply/status пока исполняются совместимыми `/api/admin/tickets/*` маршрутами;
 - bundle summary сохраняет TTL/retention/access-audit границу, а observer и
   Event adapters остаются read-only источниками диагностики, не вторым
   ticket/account authority.
