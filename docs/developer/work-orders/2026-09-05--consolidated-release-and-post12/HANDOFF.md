@@ -9,7 +9,7 @@ TUN/DNS/egress ждёт входа владельца в Windows; VM link вык
 правка причины absolute expiry вошла через PR #248 и развёрнута на `a8e6918`;
 204 hashes, API health и 11 live session assertions PASS. Реальные сроки
 30 минут / 12 часов проверяются отдельным живым процессом, ещё не PASS.
-Cross-role denial и legacy cutover остаются открытыми.
+[Role denial](EXECUTION-OPERATOR-RBAC-2026-09-09.md): все десять ролей дали ожидаемый 403 на выбранных запретных маршрутах; fixture отозван. Реальные сроки и legacy migration policy остаются открытыми.
 
 [Исправление ответа подписки](EXECUTION-SUBSCRIPTION-BUDGET-2026-09-09.md):
 backend `d9b2583` установлен, 204 hashes и четыре обязательных CI checks PASS.

@@ -1,0 +1,127 @@
+{
+  "utc": "2026-09-09T09:29:50.131527+00:00",
+  "status": "PASS_ALL_NON_SUPERADMIN_ROLE_DENIALS",
+  "origin": "brain-origin HTTPS production",
+  "source_revision": "a8e6918ccc166a58ae65ba7d08feea63ce3a9623",
+  "authentication_scope": "internally issued isolated fixture cookies; external OIDC not exercised",
+  "raw_identifiers_or_credentials_exported": false,
+  "observations": [
+    {
+      "role": "readonly",
+      "me_http_status": 200,
+      "allowed_meta_http_status": 200,
+      "denied_path": "/support/macros",
+      "required_permission": "support.read",
+      "http_status": 403,
+      "error_code": "operator_permission_denied",
+      "pass": true
+    },
+    {
+      "role": "support_l1",
+      "me_http_status": 200,
+      "allowed_meta_http_status": 200,
+      "denied_path": "/support/attempts?limit=1",
+      "required_permission": "support.sensitive.read",
+      "http_status": 403,
+      "error_code": "operator_permission_denied",
+      "pass": true
+    },
+    {
+      "role": "support_l2",
+      "me_http_status": 200,
+      "allowed_meta_http_status": 200,
+      "denied_path": "/network/providers",
+      "required_permission": "network.read",
+      "http_status": 403,
+      "error_code": "operator_permission_denied",
+      "pass": true
+    },
+    {
+      "role": "sre",
+      "me_http_status": 200,
+      "allowed_meta_http_status": 200,
+      "denied_path": "/money/payments/summary",
+      "required_permission": "money.read",
+      "http_status": 403,
+      "error_code": "operator_permission_denied",
+      "pass": true
+    },
+    {
+      "role": "network_operator",
+      "me_http_status": 200,
+      "allowed_meta_http_status": 200,
+      "denied_path": "/support/macros",
+      "required_permission": "support.read",
+      "http_status": 403,
+      "error_code": "operator_permission_denied",
+      "pass": true
+    },
+    {
+      "role": "payments_operator",
+      "me_http_status": 200,
+      "allowed_meta_http_status": 200,
+      "denied_path": "/network/providers",
+      "required_permission": "network.read",
+      "http_status": 403,
+      "error_code": "operator_permission_denied",
+      "pass": true
+    },
+    {
+      "role": "growth_operator",
+      "me_http_status": 200,
+      "allowed_meta_http_status": 200,
+      "denied_path": "/releases/candidates",
+      "required_permission": "releases.read",
+      "http_status": 403,
+      "error_code": "operator_permission_denied",
+      "pass": true
+    },
+    {
+      "role": "release_manager",
+      "me_http_status": 200,
+      "allowed_meta_http_status": 200,
+      "denied_path": "/money/payments/summary",
+      "required_permission": "money.read",
+      "http_status": 403,
+      "error_code": "operator_permission_denied",
+      "pass": true
+    },
+    {
+      "role": "security_auditor",
+      "me_http_status": 200,
+      "allowed_meta_http_status": 200,
+      "denied_path": "/network/providers",
+      "required_permission": "network.read",
+      "http_status": 403,
+      "error_code": "operator_permission_denied",
+      "pass": true
+    },
+    {
+      "role": "incident_commander",
+      "me_http_status": 200,
+      "allowed_meta_http_status": 200,
+      "denied_path": "/governance/roles",
+      "required_permission": "governance.operators.read",
+      "http_status": 403,
+      "error_code": "operator_permission_denied",
+      "pass": true
+    }
+  ],
+  "cleanup": {
+    "fixture_operators_created": 1,
+    "fixture_operator_suspended": true,
+    "external_identity_absent": true,
+    "active_fixture_roles": 0,
+    "active_fixture_sessions": 0,
+    "sessions_created": 10,
+    "audit_rows_retained": 21,
+    "preexisting_operators_unchanged": true,
+    "preexisting_roles_unchanged": true
+  },
+  "source_hashes": {
+    "/root/portal_bot/admin_v2/roles.py": "726f53d8f16260ce228d5043959a563498e61c882e9448355a983239fdbd1f84",
+    "/root/portal_bot/admin_v2/router.py": "404490720b3ce7aa56d47bbf98a573127340d7b1689f2b75301bc9d14da20b9a",
+    "/root/portal_bot/admin_v2/security.py": "881305eea730472628ca64367f6e412a53a08ae41ccbb2b973aed5d9e65e4136"
+  },
+  "completed_at": "2026-09-09T09:29:51.953249+00:00"
+}
