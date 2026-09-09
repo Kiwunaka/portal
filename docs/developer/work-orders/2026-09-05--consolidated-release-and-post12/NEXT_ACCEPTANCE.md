@@ -1,5 +1,12 @@
 # Текущие условия следующей приёмки
 
+[G03 input review](EXECUTION-G03-INPUT-REVIEW-2026-09-09.md): classifier исправлен,
+5 tests PASS. Для 95 source deltas сохранены hashes; смена oracle инвалидирует
+прежний вывод. Same-input offline replay даёт прежние 9/9 stop checks; перенос
+ограничен расчётом retained samples. G03 verified/I3; общий quality gate,
+device/runtime evidence и final-candidate acceptance не перенесены.
+
+
 9 сентября: [G05 metadata owners](EXECUTION-G05-LIVE-METADATA-2026-09-09.md)
 verified/I3: public production 1.1.6, отдельный private candidate.33 и
 development target 1.2.0+4053 согласованы по 29 фактическим readbacks/checks.

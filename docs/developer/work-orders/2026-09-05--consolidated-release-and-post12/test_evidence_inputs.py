@@ -7,6 +7,18 @@ def receipt():
 
 
 class EvidenceInputsTest(unittest.TestCase):
+    def test_owned_smart_dns_runtime_inputs_are_not_deployment_files(self):
+        expected = {
+            "infra/owned-smart-dns/internal/smartdns/server.go": "core_runtime",
+            "infra/owned-smart-dns/go.mod": "packaged_dependency_toolchain",
+            "infra/owned-smart-dns/config.template.json": "profile_policy",
+            "infra/owned-smart-dns/config.fronted.template.json": "profile_policy",
+            "infra/owned-smart-dns/pokrov-smart-dns-lab.service": "deployment_migration",
+        }
+        for path, category in expected.items():
+            with self.subTest(path=path):
+                self.assertEqual(classify_path(path), category)
+
     def test_collector_change_invalidates_identical_runtime_bytes(self):
         previous, current = receipt(), receipt()
         current["inputs"]["oracle"] = "b" * 64

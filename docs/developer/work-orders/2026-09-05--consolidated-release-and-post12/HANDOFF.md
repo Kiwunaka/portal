@@ -1,5 +1,12 @@
 # R12 — текущий результат и граница исполнения
 
+[G03 input review](EXECUTION-G03-INPUT-REVIEW-2026-09-09.md): classifier исправлен,
+5 tests PASS. Для 95 source deltas сохранены hashes; смена oracle инвалидирует
+прежний вывод. Same-input offline replay даёт прежние 9/9 stop checks; перенос
+ограничен расчётом retained samples. G03 verified/I3; общий quality gate,
+device/runtime evidence и final-candidate acceptance не перенесены.
+
+
 **PARTIAL / RELEASE_BLOCKED. План целиком не завершён; последующие срезы датированы ниже.**
 
 [Решение владельца 9 сентября](OWNER-DECISIONS-2026-09-09.md) разрешает действия

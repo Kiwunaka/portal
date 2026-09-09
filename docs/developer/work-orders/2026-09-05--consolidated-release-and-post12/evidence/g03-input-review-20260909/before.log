@@ -1,0 +1,58 @@
+test_collector_change_invalidates_identical_runtime_bytes (test_evidence_inputs.EvidenceInputsTest.test_collector_change_invalidates_identical_runtime_bytes) ... ok
+test_equal_declared_inputs_are_not_a_release_pass_and_missing_is_unknown (test_evidence_inputs.EvidenceInputsTest.test_equal_declared_inputs_are_not_a_release_pass_and_missing_is_unknown) ... ok
+test_equal_names_do_not_hide_config_or_origin_change (test_evidence_inputs.EvidenceInputsTest.test_equal_names_do_not_hide_config_or_origin_change) ... ok
+test_owned_smart_dns_runtime_inputs_are_not_deployment_files (test_evidence_inputs.EvidenceInputsTest.test_owned_smart_dns_runtime_inputs_are_not_deployment_files) ... 
+  test_owned_smart_dns_runtime_inputs_are_not_deployment_files (test_evidence_inputs.EvidenceInputsTest.test_owned_smart_dns_runtime_inputs_are_not_deployment_files) (path='infra/owned-smart-dns/internal/smartdns/server.go') ... FAIL
+  test_owned_smart_dns_runtime_inputs_are_not_deployment_files (test_evidence_inputs.EvidenceInputsTest.test_owned_smart_dns_runtime_inputs_are_not_deployment_files) (path='infra/owned-smart-dns/go.mod') ... FAIL
+  test_owned_smart_dns_runtime_inputs_are_not_deployment_files (test_evidence_inputs.EvidenceInputsTest.test_owned_smart_dns_runtime_inputs_are_not_deployment_files) (path='infra/owned-smart-dns/config.template.json') ... FAIL
+  test_owned_smart_dns_runtime_inputs_are_not_deployment_files (test_evidence_inputs.EvidenceInputsTest.test_owned_smart_dns_runtime_inputs_are_not_deployment_files) (path='infra/owned-smart-dns/config.fronted.template.json') ... FAIL
+test_scoped_classification_keeps_harness_before_product_and_unknown_explicit (test_evidence_inputs.EvidenceInputsTest.test_scoped_classification_keeps_harness_before_product_and_unknown_explicit) ... ok
+
+======================================================================
+FAIL: test_owned_smart_dns_runtime_inputs_are_not_deployment_files (test_evidence_inputs.EvidenceInputsTest.test_owned_smart_dns_runtime_inputs_are_not_deployment_files) (path='infra/owned-smart-dns/internal/smartdns/server.go')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\kiwun\Documents\ai\VPN-consolidated-plan-start\docs\developer\work-orders\2026-09-05--consolidated-release-and-post12\test_evidence_inputs.py", line 20, in test_owned_smart_dns_runtime_inputs_are_not_deployment_files
+    self.assertEqual(classify_path(path), category)
+AssertionError: 'deployment_migration' != 'core_runtime'
+- deployment_migration
++ core_runtime
+
+
+======================================================================
+FAIL: test_owned_smart_dns_runtime_inputs_are_not_deployment_files (test_evidence_inputs.EvidenceInputsTest.test_owned_smart_dns_runtime_inputs_are_not_deployment_files) (path='infra/owned-smart-dns/go.mod')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\kiwun\Documents\ai\VPN-consolidated-plan-start\docs\developer\work-orders\2026-09-05--consolidated-release-and-post12\test_evidence_inputs.py", line 20, in test_owned_smart_dns_runtime_inputs_are_not_deployment_files
+    self.assertEqual(classify_path(path), category)
+AssertionError: 'deployment_migration' != 'packaged_dependency_toolchain'
+- deployment_migration
++ packaged_dependency_toolchain
+
+
+======================================================================
+FAIL: test_owned_smart_dns_runtime_inputs_are_not_deployment_files (test_evidence_inputs.EvidenceInputsTest.test_owned_smart_dns_runtime_inputs_are_not_deployment_files) (path='infra/owned-smart-dns/config.template.json')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\kiwun\Documents\ai\VPN-consolidated-plan-start\docs\developer\work-orders\2026-09-05--consolidated-release-and-post12\test_evidence_inputs.py", line 20, in test_owned_smart_dns_runtime_inputs_are_not_deployment_files
+    self.assertEqual(classify_path(path), category)
+AssertionError: 'deployment_migration' != 'profile_policy'
+- deployment_migration
++ profile_policy
+
+
+======================================================================
+FAIL: test_owned_smart_dns_runtime_inputs_are_not_deployment_files (test_evidence_inputs.EvidenceInputsTest.test_owned_smart_dns_runtime_inputs_are_not_deployment_files) (path='infra/owned-smart-dns/config.fronted.template.json')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "C:\Users\kiwun\Documents\ai\VPN-consolidated-plan-start\docs\developer\work-orders\2026-09-05--consolidated-release-and-post12\test_evidence_inputs.py", line 20, in test_owned_smart_dns_runtime_inputs_are_not_deployment_files
+    self.assertEqual(classify_path(path), category)
+AssertionError: 'deployment_migration' != 'profile_policy'
+- deployment_migration
++ profile_policy
+
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.002s
+
+FAILED (failures=4)

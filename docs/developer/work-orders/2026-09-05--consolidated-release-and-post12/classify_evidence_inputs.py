@@ -22,13 +22,20 @@ def classify_path(path: str) -> str:
         return "test_harness"
     if p.suffix.lower() == ".md":
         return "documentation_only"
-    if text.startswith(("infra/", ".github/")) or "migration" in p.stem:
+    if text.startswith(".github/") or "migration" in p.stem:
         return "deployment_migration"
     if p.suffix.lower() in {".aar", ".dll", ".exe", ".apk", ".aab", ".lock"} or p.name in {
         "go.mod", "go.sum", "pubspec.yaml", "package.json", "package-lock.json",
         "requirements.txt", "requirements-ops.txt", "requirements-test.txt", "CMakeLists.txt",
     } or "gradle" in text:
         return "packaged_dependency_toolchain"
+    if text.startswith("infra/owned-smart-dns/"):
+        if p.suffix.lower() == ".go":
+            return "core_runtime"
+        if p.name in {"config.template.json", "config.fronted.template.json"}:
+            return "profile_policy"
+    if text.startswith("infra/"):
+        return "deployment_migration"
     if text.startswith(("shared/copy", "copy/")):
         return "product_copy"
     if p.suffix.lower() in {".md", ".txt"}:
