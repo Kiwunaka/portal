@@ -1505,6 +1505,10 @@ async def main() -> None:
         asyncio.create_task(_supervise_job("key_limits_watchdog", key_limits_watchdog_job)),
     ]
     if os.getenv("AWG_LAB_PEER_TARGETS_FILE", "").strip():
+        peer_logger = logging.getLogger("awg_lab_peer_worker")
+        peer_logger.setLevel(logging.INFO)
+        peer_logger.addHandler(logging.StreamHandler())
+        peer_logger.propagate = False
         tasks.append(asyncio.create_task(_supervise_job("awg_lab_peers", awg_lab_peer_worker_job)))
     if emergency_catalog_worker_enabled():
         tasks.append(

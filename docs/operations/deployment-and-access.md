@@ -1290,6 +1290,12 @@ Historical keys shared by multiple device bindings are counted as blocked and
 require explicit per-device migration before selective removal. The worker
 reports only counts and stable error codes, never keys or raw device identity.
 
+When the AWG job is configured, the worker entrypoint attaches an INFO stream
+handler to `awg_lab_peer_worker` only. Systemd retains its aggregate activity
+reports in the worker journal; unrelated logger levels stay unchanged. A
+running process with a target file is not proof of periodic reconciliation:
+retain the actual reports and the corresponding peer readback.
+
 This is the source contract. Activation on a particular runtime requires its
 deployment/readback evidence; an empty or missing target configuration cannot
 be counted as effective revocation enforcement.
