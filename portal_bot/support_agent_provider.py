@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import logging
 import math
@@ -18,6 +19,9 @@ from support_ai_service import (
     provider_timeout_ceiling,
     provider_wire_model,
     read_bounded_provider_json,
+    canonical_support_model,
+    is_exact_openrouter_route,
+    VISION_MODEL,
 )
 
 
@@ -139,6 +143,37 @@ class XCodyChatAdapter:
         self.config = config
         self.session_factory = session_factory or aiohttp.ClientSession
         self.monotonic = monotonic or time.monotonic
+
+    async def complete_attachment(
+        self, *, images: Sequence[tuple[str, bytes]], request_timeout: float,
+    ) -> SynthesisTurn:
+        from support_case_context import ATTACHMENT_PROMPT, ATTACHMENT_SCHEMA, MAX_FILE_BYTES
+
+        if (canonical_support_model(self.config.model) != VISION_MODEL
+                or not is_exact_openrouter_route(self.config.api_base_url)
+                or not self.config.api_key or not 1 <= len(images) <= 3
+                or any(mime not in {"image/png", "image/jpeg", "image/webp"}
+                       or not isinstance(raw, bytes) or not 0 < len(raw) <= MAX_FILE_BYTES
+                       for mime, raw in images)):
+            _raise_provider_error(retryable=False, code="provider_request_invalid", status=0)
+        timeout = _validated_timeout(request_timeout, maximum=provider_timeout_ceiling(self.config.api_base_url))
+        controls = provider_response_controls(self.config)
+        controls["response_format"]["json_schema"] = {
+            "name": "pokrov_support_attachment", "strict": True, "schema": ATTACHMENT_SCHEMA,
+        }
+        payload = {
+            "model": provider_wire_model(self.config),
+            "messages": [
+                {"role": "system", "content": ATTACHMENT_PROMPT},
+                {"role": "user", "content": [
+                    {"type": "image_url", "image_url": {
+                        "url": "data:" + mime + ";base64," + base64.b64encode(raw).decode("ascii")}}
+                    for mime, raw in images]},
+            ],
+            "temperature": 0.0, "n": 1,
+            **controls, **provider_generation_controls(self.config),
+        }
+        return await self._post_synthesis(payload, timeout)
 
     async def complete_synthesis(
         self,

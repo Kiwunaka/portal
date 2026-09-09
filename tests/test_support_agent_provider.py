@@ -121,6 +121,27 @@ def _config():
     )
 
 
+def test_attachment_payload_is_separate_from_customer_reply_and_exact_vision_route():
+    from dataclasses import replace
+    from support_agent_provider import XCodyChatAdapter, ProviderCallError
+    factory = _FakeSessionFactory(payload=SAFE_RESPONSE)
+    adapter = XCodyChatAdapter(config=replace(_config(), model="deepseek-v4-flash-vision-exp"),
+                              session_factory=factory)
+    asyncio.run(adapter.complete_attachment(images=[("image/png", b"fixture")], request_timeout=18))
+    payload = factory.posts[0]["json"]
+    assert payload["model"] == "deepseek/deepseek-v4-flash-vision-exp"
+    assert payload["messages"][1]["content"] == [
+        {"type": "image_url", "image_url": {"url": "data:image/png;base64,Zml4dHVyZQ=="}}]
+    assert "tools" not in payload and len(payload["messages"]) == 2
+    assert set(payload["response_format"]["json_schema"]["schema"]["properties"]) == {
+        "visible_text", "visual_details", "uncertainty"}
+    assert payload["provider"]["data_collection"] == "deny"
+    adapter.config = _config()
+    with pytest.raises(ProviderCallError):
+        asyncio.run(adapter.complete_attachment(images=[("image/png", b"fixture")], request_timeout=18))
+    assert len(factory.posts) == 1
+
+
 def _adapter_with_response(payload: object, *, clock=None):
     from support_agent_provider import XCodyChatAdapter
 
