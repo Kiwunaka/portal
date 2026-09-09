@@ -1,0 +1,12 @@
+{
+  "status": "PASS_PATCHED_ISOLATED_COPY",
+  "utc": "2026-09-09T14:24:30.607501+00:00",
+  "base_revision": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+  "source_files": 205,
+  "changed_path": "portal_bot/admin_v2/router.py",
+  "before_sha256": "404490720b3ce7aa56d47bbf98a573127340d7b1689f2b75301bc9d14da20b9a",
+  "after_sha256": "134562694d2890dc1a818516dca6490176a538cd8c42e987f441178b83a1d2eb",
+  "production_units_unchanged": true,
+  "production_source_modified": false,
+  "original_evidence_source_preserved": true
+}

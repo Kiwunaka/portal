@@ -1,0 +1,47 @@
+{
+  "status": "PASS_PREPARED",
+  "utc": "2026-09-09T14:09:18.211272+00:00",
+  "source_revision": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+  "source_files": 205,
+  "production_units_before": {
+    "portal-api": {
+      "MainPID": "84224",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-bot": {
+      "MainPID": "83896",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-helpbot": {
+      "MainPID": "83909",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-feedbackbot": {
+      "MainPID": "83913",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-worker": {
+      "MainPID": "83916",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    }
+  },
+  "target_database": "portal_r12_o04_20260909_rehearsal",
+  "database_contents": "new empty database; synthetic fixtures only",
+  "port": 18094,
+  "production_env_sha256_before": "bf5304238cbac11838d3f52013dae54e1206ad43feffefba0e25b9b49f06dee9",
+  "fixture_unit": {
+    "MainPID": "90251",
+    "NRestarts": "0",
+    "IPAddressAllow": "127.0.0.0/8 ::1/128",
+    "IPAddressDeny": "0.0.0.0/0 ::/0",
+    "ActiveState": "active"
+  },
+  "production_units_unchanged": true,
+  "production_env_unchanged": true,
+  "completed_at": "2026-09-09T14:09:25.728611+00:00"
+}

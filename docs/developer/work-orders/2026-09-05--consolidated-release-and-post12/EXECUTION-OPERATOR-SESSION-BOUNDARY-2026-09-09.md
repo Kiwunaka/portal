@@ -140,3 +140,11 @@ API restart. HTTP anomalies=0, raw security.py hash и absolute deadline
 continuity ограничена указанным исходником авторизации и процессом.
 [Новый readback](evidence/b07-pool-wait-20260909/session-continuity.json)
 не означает PASS абсолютного истечения; оно RUNNING_NOT_PASSED.
+
+
+V3 readback **14:53:49 UTC** после [поставки O04 note](EXECUTION-O04-NOTE-2026-09-09.md):
+тот же PID/start ticks жив; 39-й refresh прошёл в 14:52:26 UTC после API
+restart. HTTP anomalies=0, raw security.py hash и absolute deadline
+23:37 UTC сохранены. Current backend `9e01ded`, source at start `3478fc4`;
+[readback](evidence/operator-note-20260909/session-continuity.json) подтверждает
+continuity процесса и указанного исходника. Absolute expiry RUNNING_NOT_PASSED.

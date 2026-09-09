@@ -1,5 +1,13 @@
 # R12 — текущий результат и граница исполнения
 
+[O04 note, срез 14:53 UTC](EXECUTION-O04-NOTE-2026-09-09.md): исправлен 403
+внутренней заметки для поддержки; PR #253 слит, backend `9e01ded` и adminapp
+`a31d875` одного tree поставлены. 159 tests + 8 subtests, 80 browser tests,
+четыре CI, 205 backend / 189 static hashes PASS. Восемь isolated PostgreSQL
+workflow checks PASS; production note mutation не выполнялась. O01 V3 жив,
+39 refreshes / anomalies=0, absolute expiry всё ещё RUNNING до 02:37 мск
+10 сентября. Bundle→attempt и полный O04 остаются открытыми.
+
 [B08 current, срез 13:49 UTC](EXECUTION-B08-CURRENT-2026-09-09.md): технические пункты I4 PASS на Brain-копии 121 таблицы; старые 197 и текущие 205 files, 25 HTTP assertions / пять writes, additive indexes и code rollback, два worker / poison PASS. Production `cd4a8b9` и PID сохранены. Parent B08 остаётся active только из-за зависимости B06; общий release открыт.
 
 

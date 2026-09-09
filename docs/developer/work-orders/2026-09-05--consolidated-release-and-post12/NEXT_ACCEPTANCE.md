@@ -1,5 +1,12 @@
 # Текущие условия следующей приёмки
 
+[O04 note, срез 14:53 UTC](EXECUTION-O04-NOTE-2026-09-09.md): заметка поддержки
+исправлена и поставлена, 205 backend / 189 static hashes и текущий HTTPS chunk
+PASS. Восемь isolated workflow checks и время HTTP-последовательностей сохранены.
+Следующий незакрытый критерий O04 — связь support bundle с конкретной попыткой;
+ticket→attempt уже проверен. O01 V3 жив, последний refresh 14:52:26 UTC,
+39 refreshes / 0 anomalies; абсолютный срок остаётся 23:37 UTC.
+
 [B06 provider boundary](EXECUTION-B06-PROVIDER-BOUNDARY-2026-09-09.md): официальный FAQ подтверждает отсутствие sandbox; real payment/refund E2E остаётся недоступным при бюджете $0. Платёжные операции и provider settings не менялись. O01 absolute runner жив в 14:03 UTC, 29 refreshes / 0 anomalies; deadline 23:37 UTC ещё не достигнут.
 
 [B08 current, срез 13:49 UTC](EXECUTION-B08-CURRENT-2026-09-09.md): технические пункты I4 PASS на Brain-копии 121 таблицы; старые 197 и текущие 205 files, 25 HTTP assertions / пять writes, additive indexes и code rollback, два worker / poison PASS. Production `cd4a8b9` и PID сохранены. Parent B08 остаётся active только из-за зависимости B06; общий release открыт.
