@@ -1,0 +1,71 @@
+{
+  "utc": "2026-09-09T06:42:15.761163+00:00",
+  "origin": "brain-origin",
+  "status": "PASS",
+  "source_revision": "876e78da2ee5426a11d5aa74239fcff5efc9fa5d",
+  "all_204_payload_hashes_match": true,
+  "public_build_metadata": {
+    "PORTAL_BUILD_COMMIT": "876e78da2ee5426a11d5aa74239fcff5efc9fa5d",
+    "PORTAL_DEPLOYED_AT": "2026-09-09T06:41:08.124471Z"
+  },
+  "other_dotenv_values_unchanged": true,
+  "before_services": {
+    "portal-api": {
+      "MainPID": "15998",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-bot": {
+      "MainPID": "4187944",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-helpbot": {
+      "MainPID": "15891",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-feedbackbot": {
+      "MainPID": "4187958",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-worker": {
+      "MainPID": "6179",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    }
+  },
+  "after_services": {
+    "portal-api": {
+      "MainPID": "16104",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-bot": {
+      "MainPID": "4187944",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-helpbot": {
+      "MainPID": "15891",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-feedbackbot": {
+      "MainPID": "4187958",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-worker": {
+      "MainPID": "6179",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    }
+  },
+  "restarted_units": [
+    "portal-api"
+  ],
+  "health": "PASS",
+  "credentials_exported": false
+}

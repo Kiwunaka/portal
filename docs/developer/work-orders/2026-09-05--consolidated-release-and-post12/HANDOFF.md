@@ -1,5 +1,11 @@
 # R12 — текущий результат и граница исполнения
 
+[Обработка вложений поддержки](EXECUTION-INTERNAL-VISION-2026-09-09.md):
+backend `876e78d` установлен на Brain, 204 hashes и четыре CI checks PASS.
+PNG/PDF smoke в production-каталоге выполнен с фикстурами; сообщения клиентам
+не отправлялись. Проверки текущего Android/Windows и общий релиз открыты.
+
+
 [Operator live](EXECUTION-OPERATOR-LIVE-2026-09-09.md): реальный Telegram OIDC-вход и step-up одной сессии PASS; 28 страниц открылись с явными границами источников. Полные expiry/revoke/role-denial и legacy cutover ещё не закрыты. Прежняя ошибка callback ниже относится к состоянию до настройки BotFather.
 
 [A04 production migration](EXECUTION-A04-PRODUCTION-MIGRATION-2026-09-09.md): четыре индивидуальных AWG-ключа выданы, прежние shared peers удалены. Backend `d3eba89` опубликован, 204 hashes и три периодических прохода worker без ошибок PASS; на каждом DE-интерфейсе ровно два индивидуальных peer. Installed-client и полный A04 остаются открыты. Ниже сохранены прежние состояния до миграции.
