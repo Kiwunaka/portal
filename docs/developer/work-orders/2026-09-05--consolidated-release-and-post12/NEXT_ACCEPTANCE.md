@@ -1,5 +1,8 @@
 # Текущие условия следующей приёмки
 
+[O02 routes и rollback](EXECUTION-OPERATOR-ROUTES-2026-09-09.md): 28 привязок к workspace/API/permission, 22 primary GET и фактический production static rollback/restore PASS. Inventory исправлен до семи retained read patterns; 60 backend/contract и 80 Playwright PASS. Новый manifest не развёрнут; redirect и зависимость O01 открыты.
+
+
 [Реальные сроки, уточнение 09:44 UTC](EXECUTION-OPERATOR-SESSION-BOUNDARY-2026-09-09.md): первый runner завершился JSONDecodeError; обе fixture sessions отозваны. V2 запущен отдельно, idle ожидается в 13:14 мск, absolute — в 00:44 мск 10 сентября; оба пока NOT_PASSED. Compatibility остаётся выключенным.
 
 

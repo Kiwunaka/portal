@@ -1,0 +1,78 @@
+{
+  "status": "PASS_BOUNDED_PRIMARY_READS_AND_STATIC_ROLLBACK",
+  "frontend_commit": "03920525bfc3993591a39d21e35bbe2e7e1d663d",
+  "backend_commit": "a8e6918ccc166a58ae65ba7d08feea63ce3a9623",
+  "origin": "brain-origin HTTPS production",
+  "captures": [
+    {
+      "path": "static-inventory.json",
+      "sha256": "f28ced7fb189159de8c6ffeecaa0c2aa91ee7d2c32f7fceebfb66f332e964dd1",
+      "capture_sha256": "fc4aaafb38064507b6061ed6815464288594c4724e9adf0e196b5047a8a62275"
+    },
+    {
+      "path": "static-rollback-result.json",
+      "sha256": "9eb986740c3362863a780494fb6bb99b0b1e5fca75bf79a479db2d49663730a7",
+      "capture_sha256": "9114dbdd2466a58f620beff793752d18a784d8fd4e50dbd557eb95058c5d33d2"
+    },
+    {
+      "path": "route-map.json",
+      "sha256": "e4b2b2bcc9048eecaff1b2bfc465d7fb74925770c7ef0f599f0adcd9e519b9da",
+      "capture_sha256": "e4b2b2bcc9048eecaff1b2bfc465d7fb74925770c7ef0f599f0adcd9e519b9da"
+    },
+    {
+      "path": "primary-reads-result.json",
+      "sha256": "36aac571536d8193fd7b97550b1b29073b6b5a7a19a21a907e4f85880459c1b1",
+      "capture_sha256": "48dd5cab13eb2aa679004847075695b0e35490fb267d6ccf2a355a5d0f6ad7cf"
+    }
+  ],
+  "verification": {
+    "backend_and_manifest_tests": 60,
+    "playwright_tests": 80,
+    "build": "PASS via Playwright webServer",
+    "lint": "PASS",
+    "verify_cutover": "PASS",
+    "new_manifest_deployed": false,
+    "full_O02": "OPEN"
+  },
+  "local_logs": [
+    {
+      "path": "E:\\r12-operator-routes-20260909\\backend-manifest-tests.log",
+      "sha256": "3207b2a7cc3cd23fab4e33a2e29d8e46a01663bbe40bb36420e0eb1bc8c8628f"
+    },
+    {
+      "path": "E:\\r12-operator-routes-20260909\\adminapp-npm-ci.log",
+      "sha256": "5cbc93d9e5d96b57dc652d5c83f02745f13f40dc944e63415d71a3f72113ffb6"
+    },
+    {
+      "path": "E:\\r12-operator-routes-20260909\\adminapp-lint.log",
+      "sha256": "6ffa13369ce63ea4802a88045643022692e51d25ff529168647557a8f394a88b"
+    },
+    {
+      "path": "E:\\r12-operator-routes-20260909\\adminapp-e2e.log",
+      "sha256": "68148067565755b52caaf1ae6d8c63d8784c5ccd268608acd56efbc8d6f3695a"
+    },
+    {
+      "path": "E:\\r12-operator-routes-20260909\\cutover-verification.log",
+      "sha256": "f366b739b7e6848caba740cba6b96c8e69f8d860fd3dfa978c09e94810efd7c2"
+    }
+  ],
+  "local_instruments": [
+    {
+      "path": "E:\\r12-operator-routes-20260909\\inspect-static.py",
+      "sha256": "6de595903a13ed5eddb066c314e8c1da6763177b3fd7b18765e88363b9e7e8d5"
+    },
+    {
+      "path": "E:\\r12-operator-routes-20260909\\rollback-static.py",
+      "sha256": "dc27316433c49b97bd6f92ff8a7d3f2c220d03f80be6dfc2ad54f1b0b5a4f278"
+    },
+    {
+      "path": "E:\\r12-operator-routes-20260909\\build-route-map.py",
+      "sha256": "ce618bf738bb43602f2f082a77b53e12cb7bb948143af012833a55aa3b37004f"
+    },
+    {
+      "path": "E:\\r12-operator-routes-20260909\\check-primary-reads.py",
+      "sha256": "babea2d25135cc5207dd12fe588291dd3fd212e601c8c4745088b426a2daead4"
+    }
+  ],
+  "raw_customer_provider_or_credentials_exported": false
+}
