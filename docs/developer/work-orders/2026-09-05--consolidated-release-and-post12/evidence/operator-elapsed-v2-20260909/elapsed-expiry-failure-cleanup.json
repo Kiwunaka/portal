@@ -1,0 +1,21 @@
+{
+  "utc": "2026-09-09T09:42:52.499555+00:00",
+  "status": "PASS_TARGETED_CLEANUP",
+  "failed_runner_terminated": true,
+  "matched_owned_sessions": 2,
+  "sessions_revoked": 2,
+  "prior_state": [
+    {
+      "revoked": false,
+      "reason": null
+    },
+    {
+      "revoked": false,
+      "reason": null
+    }
+  ],
+  "other_sessions_modified": false,
+  "audit_rows_preserved": true,
+  "failure_type": "JSONDecodeError",
+  "raw_identifiers_exported": false
+}

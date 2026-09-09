@@ -1,0 +1,83 @@
+{
+  "status": "PASS_CURRENT_B08_TECHNICAL_SCOPE",
+  "utc": "2026-09-09T13:49:10.894932+00:00",
+  "origin": "brain-origin isolated clone and read-only production verification",
+  "current_source": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+  "previous_source": "197 retained exact deployed files: f530005 plus control_panel from1207b63",
+  "source_files_verified": {
+    "previous": 197,
+    "current": 205,
+    "production": 205
+  },
+  "http_assertions": 25,
+  "distinct_event_writes_verified": 5,
+  "synthetic_ticket_retained": true,
+  "clone_table_count": 121,
+  "clone_size_bytes": 1763577179,
+  "clone_volume_rows": {
+    "node_health_samples": 1638180,
+    "node_runtime_metrics": 743891
+  },
+  "schema_columns_unchanged": true,
+  "schema_constraints_unchanged": true,
+  "only_added_indexes": [
+    "ix_node_health_samples_node_sampled_id",
+    "ix_node_runtime_metrics_lower_node_sampled_id"
+  ],
+  "old_api_runs_after_new_and_after_restart": true,
+  "expanded_schema_preserved_on_rollback": true,
+  "units": {
+    "portal-api": {
+      "MainPID": "84224",
+      "Result": "success",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-bot": {
+      "MainPID": "83896",
+      "Result": "success",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-helpbot": {
+      "MainPID": "83909",
+      "Result": "success",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-feedbackbot": {
+      "MainPID": "83913",
+      "Result": "success",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-worker": {
+      "MainPID": "83916",
+      "Result": "success",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "r12-b08-current-previous": {
+      "MainPID": "0",
+      "Result": "success",
+      "NRestarts": "0",
+      "ActiveState": "inactive"
+    },
+    "r12-b08-current-current": {
+      "MainPID": "0",
+      "Result": "success",
+      "NRestarts": "0",
+      "ActiveState": "inactive"
+    }
+  },
+  "pip_check": "PASS",
+  "python": "3.10.12",
+  "versions": {
+    "SQLAlchemy": "2.0.46",
+    "aiohttp": "3.13.3",
+    "psycopg2-binary": "2.9.11",
+    "uvicorn": "0.34.0"
+  },
+  "no_db_reset_or_production_deploy_this_scope": true,
+  "source_snapshot_clone_and_evidence_retained": true
+}

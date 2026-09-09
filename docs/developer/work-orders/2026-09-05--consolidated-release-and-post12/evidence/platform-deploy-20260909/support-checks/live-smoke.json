@@ -1,0 +1,32 @@
+{
+  "origin": "brain-origin",
+  "checked_at": "2026-09-09T04:42:22.763057+00:00",
+  "source_revision": "7d37005e4260995ab44ec3adb14bbffa3d42738b",
+  "source_tree": "948de00b12c0fdfcca541b6206dbe8de5212c7dc",
+  "deployed_files_byte_equal": 204,
+  "services": {
+    "portal-api": {"pid": 4187936, "state": "active", "restarts": 0},
+    "portal-helpbot": {"pid": 4187952, "state": "active", "restarts": 0}
+  },
+  "actual_process_model": "deepseek/deepseek-v4-flash-vision-exp",
+  "ai_and_agent_enabled": true,
+  "png_ocr_redaction": "PASS",
+  "pdf_ocr_redaction": "PASS",
+  "linked_account_active_expiry_preserved": "PASS",
+  "paid_order_preserved": "PASS",
+  "operator_case_suppressed": "PASS",
+  "synthetic_model": {
+    "status": "escalate",
+    "origin": "case_model",
+    "calls": 1,
+    "latency_ms": 7570,
+    "reply": "Проверили данные: оплата на 99 рублей подтверждена платёжным провайдером, но доступ к аккаунту сейчас не активен. Причина расхождения неясна. Попробуйте войти тем способом, которым вы оплачивали (например, через email или Telegram). Если доступ не появится, нужна проверка оператором: он сверит платёж и состояние аккаунта.",
+    "schema_and_core_facts": "PASS",
+    "quality_limitation": "Despite explicit prompt guidance, the model added an unnecessary login-method suggestion for an already owner-bound paid order. This is not proof of full semantic instruction adherence."
+  },
+  "customer_message_sent": false,
+  "database_mutation": false,
+  "telegram_delivery": "MANUAL_OWNER_TEST",
+  "full_image_vision": "NOT_IMPLEMENTED_OCR_TEXT_ONLY",
+  "release_readiness": "NOT_REQUESTED"
+}

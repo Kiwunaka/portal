@@ -1,0 +1,31 @@
+{
+  "source": "4792234dc91cff3cc589e83a9b7acd2d50361521",
+  "signed_commit": "a31d8756bbab6a18b29ee73ecbff75695705f166",
+  "tree": "d1c59839b2cb377b0de86f6c26b2eceb0de628af",
+  "signature_valid": true,
+  "parent": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+  "pr": "https://github.com/Kiwunaka/portal/pull/253",
+  "branch": "codex/operator-note-signed-20260909",
+  "files": [
+    {
+      "path": "adminapp/README.md",
+      "sha256": "08d616a58393b827220dd9021a6ab0ef416d7ecf9486acc4fa5b66db72a03841"
+    },
+    {
+      "path": "adminapp/e2e/clients.spec.ts",
+      "sha256": "6c0471c2bd04c89ca51584410a5e8d2cec51bfed85da392bc49442f78db6e9e8"
+    },
+    {
+      "path": "adminapp/src/features/support/ticket-detail.tsx",
+      "sha256": "3a11d5f3335e67f70876d907c0ba7b5e90ec18e70112d99714b19a95c1b96d97"
+    },
+    {
+      "path": "portal_bot/admin_v2/router.py",
+      "sha256": "16b168bdf518cdb4978db3537dd7ff69c772ba9a8ee8e0378a830a6553ad4a35"
+    },
+    {
+      "path": "tests/test_admin_ops_api.py",
+      "sha256": "8b47b12770293474a4f0390c7899b6f5311786b90518b1f9e771ef538e076208"
+    }
+  ]
+}

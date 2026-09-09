@@ -1,0 +1,57 @@
+{
+  "origin": "brain-origin read-only restored clone",
+  "plans": [
+    {
+      "label": "health_existing",
+      "execution_ms": 1.132,
+      "plan": {
+        "Node Type": "Limit",
+        "Actual Rows": 3,
+        "Actual Loops": 1,
+        "Actual Total Time": 1.106,
+        "Shared Hit Blocks": 0,
+        "Shared Read Blocks": 5,
+        "Plans": [
+          {
+            "Node Type": "Index Scan",
+            "Relation Name": "node_health_samples",
+            "Index Name": "ix_node_health_samples_node_sampled_id",
+            "Scan Direction": "Backward",
+            "Actual Rows": 3,
+            "Actual Loops": 1,
+            "Actual Total Time": 1.104,
+            "Shared Hit Blocks": 0,
+            "Shared Read Blocks": 5,
+            "Plans": []
+          }
+        ]
+      }
+    },
+    {
+      "label": "runtime_absent",
+      "execution_ms": 0.213,
+      "plan": {
+        "Node Type": "Limit",
+        "Actual Rows": 0,
+        "Actual Loops": 1,
+        "Actual Total Time": 0.2,
+        "Shared Hit Blocks": 0,
+        "Shared Read Blocks": 3,
+        "Plans": [
+          {
+            "Node Type": "Index Scan",
+            "Relation Name": "node_runtime_metrics",
+            "Index Name": "ix_node_runtime_metrics_lower_node_sampled_id",
+            "Scan Direction": "Backward",
+            "Actual Rows": 0,
+            "Actual Loops": 1,
+            "Actual Total Time": 0.199,
+            "Shared Hit Blocks": 0,
+            "Shared Read Blocks": 3,
+            "Plans": []
+          }
+        ]
+      }
+    }
+  ]
+}

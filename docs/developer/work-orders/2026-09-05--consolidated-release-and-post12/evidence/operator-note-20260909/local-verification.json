@@ -1,0 +1,50 @@
+{
+  "status": "PASS_SCOPED_LOCAL_VERIFICATION",
+  "checks": [
+    {
+      "file": "backend-tests.log",
+      "required_result": "159 passed, 8 subtests passed",
+      "sha256": "f8ee53d1739eb533ca426bd7f7395f58eda65e3fe3a5a5e782abbf3c4cad9bf4"
+    },
+    {
+      "file": "browser-tests.log",
+      "required_result": "80 passed",
+      "sha256": "e09f504734fde3c07ad6de4b25720f3902bd28abee260a024421edc3c3fbb52b"
+    },
+    {
+      "file": "docs-tests.log",
+      "required_result": "33 passed",
+      "sha256": "ec23b3930fde9f6a8f776ce67609009a916b7f347b9a7e5a71e55ec16ac4a69b"
+    },
+    {
+      "file": "context-audit.log",
+      "required_result": "PASS platform-context",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d"
+    },
+    {
+      "file": "current-source-focused.log",
+      "required_result": "2 passed",
+      "sha256": "4a3b6b16f86fc30f8afdff5ccf8d9b1fdcf4bb2d37a4a556ea05ed62ed0abf79"
+    },
+    {
+      "file": "feature-convergence-focused.log",
+      "required_result": "2 passed",
+      "sha256": "f873de01ceb67279e00ee61499cd8a7a063700db9294436419f1e0fef782871b"
+    },
+    {
+      "file": "current-source-build.log",
+      "required_result": "(SSG)",
+      "sha256": "c185640645c8c931b08843332b71eda039ff8826e3585e1f8ac638f66191ed3e"
+    },
+    {
+      "file": "lint.log",
+      "result": "PASS_NO_DIAGNOSTICS",
+      "sha256": "6ffa13369ce63ea4802a88045643022692e51d25ff529168647557a8f394a88b"
+    }
+  ],
+  "node22_build": "npx --yes --package=node@22.14.0 -- npm run build",
+  "backend_full_suite_preceded_integration_of_existing_absolute_expiry_fix": true,
+  "current_master_and_final_feature_note_and_expiry_checks": "2 PASS each",
+  "prior_live_403_retained": "probe-result.json",
+  "after_runtime_pass": "probe-result-v2.json"
+}

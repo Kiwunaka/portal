@@ -1,0 +1,18 @@
+{
+  "repository": "Kiwunaka/portal",
+  "branch": "codex/r12-platform-signed-promotion-20260909",
+  "parent": "2c8917d60c509f96c47d53a5154096092ec1db48",
+  "source": "5acc4a17405f11ffbcf3d19f1e5e81a2e87bdc09",
+  "signed_commit": "2310d761fdeca64df28604231bf5b0b987eddedd",
+  "tree": "22aeec8cd14ac40318da0b90cb03d678c5297404",
+  "signature": {
+    "isValid": true,
+    "state": "VALID"
+  },
+  "changed_paths": [
+    ".github/workflows/release-v2-contract.yml",
+    "docs/operations/publishing-and-signing-guide.md",
+    "tests/test_release_gate_check.py"
+  ],
+  "result": "PASS_GITHUB_SIGNED_EXACT_SOURCE_TREE"
+}

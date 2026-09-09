@@ -1,0 +1,13 @@
+{
+  "utc": "2026-09-09T13:25:51.464250+00:00",
+  "status": "PASS_BACKUP_EXACT_SOURCE",
+  "backup_directory": "/root/portal_bot.deploy-backups/20260909T132325Z-11288",
+  "backup_files_verified": 204,
+  "backup_source_revision": "1ef1f50f76c0529b0efa17a694dd2a5885a475a5",
+  "new_module_absent_in_backup": true,
+  "all_root_entries": 17,
+  "release_backup_directories": 14,
+  "new_backup_is_latest_release_directory": true,
+  "prior_collector_correction": "post-deploy-readback.latest_backup incorrectly used lexicographic maximum across files and directories; actual deploy log path verified here",
+  "restore_performed": false
+}

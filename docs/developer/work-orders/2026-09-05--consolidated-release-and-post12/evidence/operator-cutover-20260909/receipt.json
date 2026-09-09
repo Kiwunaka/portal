@@ -1,0 +1,50 @@
+{
+  "status": "PASS_COMPATIBILITY_DISABLED",
+  "source_revision": "a8e6918ccc166a58ae65ba7d08feea63ce3a9623",
+  "origin": "brain-origin HTTPS production",
+  "captures": [
+    {
+      "path": "migration-preflight.json",
+      "sha256": "d89c8c9dbba251114971661446e08f88d48fb3f1063409692df9cc9758443f19",
+      "source_sha256": "944666ed8a499146e13ec6714eae5e35b99089c2f2db4eeb38be1d0bfc178cab"
+    },
+    {
+      "path": "cutover-preflight-cleanup.json",
+      "sha256": "cdb034e463c021d7229fe2eb0976c671ae95335f59d176be301bfe4d4e1e4cc1",
+      "source_sha256": "34b8d49c78d920d79db445830bb97e475bf4a59cd444b9745913baf1f3415819"
+    },
+    {
+      "path": "legacy-cutover-result.json",
+      "sha256": "cbdff183518df2175d0da81ed355000899ca8ad92ec0f79159a4bc7f5ec952a2",
+      "source_sha256": "4c462c950b131fd3fcd8d2139963f05e6ceee4d005929eb4c497b12c7c6f6314"
+    },
+    {
+      "path": "legacy-cutover-result2.json",
+      "sha256": "9fa6c1137dba12bdb71050e5620499069b42327a944c6ec863e02e148bb45062",
+      "source_sha256": "fe60b1382ede52f16965f28f8aee4c20a59a7b7ab6bb73509bcb579ee4c134b8"
+    }
+  ],
+  "local_instruments": [
+    {
+      "path": "E:\\r12-operator-session-20260909\\inspect-migration.py",
+      "sha256": "a8e9f59f200a897d9afb4fead07ace88b04115c8ffce5880978f335dc6e907dd"
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\cleanup-cutover-preflight.py",
+      "sha256": "7510d6e7d5b8947a06bf0a5e5c0510de1b96f9b679332a31632d2984ea2cb705"
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\disable-legacy-bootstrap-attempt1.py",
+      "sha256": "118750081937fbb88875b85014dd22091c6a561e8079d5a0c5606b8a5384e3c2"
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\disable-legacy-bootstrap.py",
+      "sha256": "52f7e92eae1b32b75e6104b31fca6faa84196696a1e451fb268c85c250c89358"
+    }
+  ],
+  "verification": {
+    "existing_oidc_cookie_provisioning_test": "1 passed",
+    "external_oidc_login_repeated": false
+  },
+  "raw_credentials_exported": false
+}

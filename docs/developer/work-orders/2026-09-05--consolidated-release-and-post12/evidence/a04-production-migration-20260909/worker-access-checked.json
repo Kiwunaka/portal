@@ -1,0 +1,26 @@
+{
+  "checked_at": "2026-09-09T05:16:44.068674+00:00",
+  "origin": "brain-origin",
+  "targets": [
+    {
+      "profile": "awg2_lab",
+      "strict_ssh_and_forced_helper": true,
+      "absent_peer_idempotent": true,
+      "requested": 1,
+      "disk_removed": 0,
+      "live_removed": 0
+    },
+    {
+      "profile": "awg31_lab",
+      "strict_ssh_and_forced_helper": true,
+      "absent_peer_idempotent": true,
+      "requested": 1,
+      "disk_removed": 0,
+      "live_removed": 0
+    }
+  ],
+  "arbitrary_ssh_command_denied": true,
+  "worker_process_configuration_unchanged": true,
+  "peer_mutations": 0,
+  "status": "PASS"
+}

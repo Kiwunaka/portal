@@ -1,0 +1,55 @@
+{
+  "started_at": "2026-09-09T05:21:29.205927+00:00",
+  "origin": "brain-origin",
+  "current_target_pass": {
+    "targets": 2,
+    "retired": 8,
+    "shared_keys_blocked": 2,
+    "disk_removed": 0,
+    "live_removed": 0,
+    "failed_targets": 0,
+    "errors": {}
+  },
+  "legacy_rows_retired": 2,
+  "shared_peer_removals": [
+    {
+      "profile": "awg2_lab",
+      "all_shared_rows_revoked": true,
+      "history_preserved": true,
+      "shared_public_key_sha256": "057f641915d6b87c2f462d95f142bfa3a78247cd267bbe689316c5a759623638",
+      "requested": 1,
+      "disk_removed": 1,
+      "live_removed": 1,
+      "idempotent_retry": {
+        "requested": 1,
+        "disk_removed": 0,
+        "live_removed": 0
+      }
+    },
+    {
+      "profile": "awg31_lab",
+      "all_shared_rows_revoked": true,
+      "history_preserved": true,
+      "shared_public_key_sha256": "16f627d7597017ec7a12e130d274906d40d85cd2fa54f011d1a85950a6bcbcda",
+      "requested": 1,
+      "disk_removed": 1,
+      "live_removed": 1,
+      "idempotent_retry": {
+        "requested": 1,
+        "disk_removed": 0,
+        "live_removed": 0
+      }
+    }
+  ],
+  "status": "PASS_SHARED_PEERS_DECOMMISSIONED",
+  "remaining": {
+    "awg2_lab": {
+      "active_ready": 2,
+      "unique_active_keys": 2
+    },
+    "awg31_lab": {
+      "active_ready": 2,
+      "unique_active_keys": 2
+    }
+  }
+}

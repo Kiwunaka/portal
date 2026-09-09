@@ -1,0 +1,7 @@
+{
+  "reason": "Real Python 3.10 timeout classification defect changed candidate source during run",
+  "status": "INTERRUPTED_NOT_PASS",
+  "utc": "2026-09-09T12:49:10.4995916Z",
+  "process_id": 40016,
+  "parent_id": 29880
+}

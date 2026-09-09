@@ -1,0 +1,45 @@
+{
+  "utc": "2026-09-09T13:36:06.699381+00:00",
+  "status": "PASS_PREFLIGHT",
+  "origin": "brain-origin read-only",
+  "production_source_revision": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+  "production_payload_hashes_checked": 205,
+  "source_rehearsal_database": "portal_r12_20260909_rehearsal",
+  "source_size_bytes": 1763577179,
+  "source_connections": 0,
+  "new_target_database": "portal_r12_b08_current_20260909_rehearsal",
+  "target_absent": true,
+  "free_bytes": 14621155328,
+  "ports_available": [
+    18091,
+    18092
+  ],
+  "ordinary_role": true,
+  "production_units": {
+    "portal-api": {
+      "MainPID": "84224",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-bot": {
+      "MainPID": "83896",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-helpbot": {
+      "MainPID": "83909",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-feedbackbot": {
+      "MainPID": "83913",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-worker": {
+      "MainPID": "83916",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    }
+  }
+}

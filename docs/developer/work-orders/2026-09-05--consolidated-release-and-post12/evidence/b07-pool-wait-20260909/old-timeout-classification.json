@@ -1,0 +1,18 @@
+{
+  "utc": "2026-09-09T12:54:48.527723+00:00",
+  "origin": "brain-origin isolated old-source loopback fixture",
+  "source_sha256": "85eebbabb795c14eea405459e63b9388fdbbd624d392249b838616b169c04e3b",
+  "reported_error_code": "client_error",
+  "telemetry": {
+    "provider": "lavatop",
+    "operation": "timeout_probe",
+    "status": 0,
+    "latency_ms": 100,
+    "result_code": "client_error",
+    "connector_queue_entries": 1,
+    "connector_wait_ms": 100
+  },
+  "status": "PASS_REPRODUCED_TIMEOUT_MISCLASSIFICATION",
+  "production_mutated": false,
+  "provider_contacted": false
+}

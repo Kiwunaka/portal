@@ -1,0 +1,142 @@
+{
+  "utc": "2026-09-09T13:06:20.163360+00:00",
+  "source_revision": "78f5977b6627f7e5e1557831785991da449affca",
+  "origin": "current-origin exact committed runtime source AST inventory",
+  "direct_site_count": 16,
+  "sites": [
+    {
+      "path": "portal_bot/api.py",
+      "line": 7478,
+      "scope": "_telegram_get_chat_member",
+      "constructor_timeout_explicit": false,
+      "git_file_sha256": "0b9275e69cea32dad907171416c451944b402525a9e6d2d16774f85614587a73"
+    },
+    {
+      "path": "portal_bot/api.py",
+      "line": 9358,
+      "scope": "_get_panel_usage_legacy",
+      "constructor_timeout_explicit": false,
+      "git_file_sha256": "0b9275e69cea32dad907171416c451944b402525a9e6d2d16774f85614587a73"
+    },
+    {
+      "path": "portal_bot/bot.py",
+      "line": 721,
+      "scope": "_bot_api_call",
+      "constructor_timeout_explicit": false,
+      "git_file_sha256": "2cd0d5c60993c4d92ba228dfe25367412fae233769dbf68c6a8e4abfcda4201f"
+    },
+    {
+      "path": "portal_bot/bot.py",
+      "line": 4134,
+      "scope": "_create_rub_payment_link_for_bot",
+      "constructor_timeout_explicit": true,
+      "git_file_sha256": "2cd0d5c60993c4d92ba228dfe25367412fae233769dbf68c6a8e4abfcda4201f"
+    },
+    {
+      "path": "portal_bot/bot_operator_handlers.py",
+      "line": 698,
+      "scope": "health_check",
+      "constructor_timeout_explicit": false,
+      "git_file_sha256": "b2b539e05b3ad881731ab36a7c198fa285d9065e021bf85b665cd90f03248f04"
+    },
+    {
+      "path": "portal_bot/channel_bonus_service.py",
+      "line": 43,
+      "scope": "_telegram_get_chat_member",
+      "constructor_timeout_explicit": false,
+      "git_file_sha256": "f195ecde5b9c49e3b7ecb0b889a39c54ab4ead8e62fb41186c3b5ee6af9ba09e"
+    },
+    {
+      "path": "portal_bot/email_delivery_service.py",
+      "line": 77,
+      "scope": "deliver_email_message",
+      "constructor_timeout_explicit": true,
+      "git_file_sha256": "9c57bce258836b09d13edd10d0c9a58f1efb1bc80ea1fd775b9fd28f92c17820"
+    },
+    {
+      "path": "portal_bot/emergency_catalog_ingestion.py",
+      "line": 116,
+      "scope": "fetch_approved_mirror",
+      "constructor_timeout_explicit": true,
+      "git_file_sha256": "8ba0572936cdf39d402ba01b4174872052d5714ebf34886ff5d4eefa64aab7b4"
+    },
+    {
+      "path": "portal_bot/news_draft_service.py",
+      "line": 331,
+      "scope": "collect_news_drafts",
+      "constructor_timeout_explicit": false,
+      "git_file_sha256": "f5b00a8597dd2a7f15aeb7fdb790788c9cb0f8e461eb82fef0a2114946c9bbf3"
+    },
+    {
+      "path": "portal_bot/panel_client.py",
+      "line": 352,
+      "scope": "PanelClient.ensure_session",
+      "constructor_timeout_explicit": false,
+      "git_file_sha256": "1552081dd28f260dcc753fe945e116883e9bdb2aab5a84750eb2a4aa6fadcd93"
+    },
+    {
+      "path": "portal_bot/support_case_context.py",
+      "line": 246,
+      "scope": "check_lava_invoice",
+      "constructor_timeout_explicit": true,
+      "git_file_sha256": "736a0de8f3acb8ee233e985fea6e914ed1f0f0376ff11924db9a11506eb3bb0f"
+    },
+    {
+      "path": "portal_bot/telegram_delivery_service.py",
+      "line": 115,
+      "scope": "send_telegram_message",
+      "constructor_timeout_explicit": false,
+      "git_file_sha256": "ea29a8ee9abfcfe9e76485bb1f89c2bad5c552e95b261378eb2f920b477fc318"
+    },
+    {
+      "path": "portal_bot/web_auth_service.py",
+      "line": 311,
+      "scope": "fetch_telegram_oidc_jwks",
+      "constructor_timeout_explicit": true,
+      "git_file_sha256": "751eab5b19a466f7a6cd524d5418dab7e1b3b9f5642b3272025e6313bb2887dc"
+    },
+    {
+      "path": "portal_bot/web_auth_service.py",
+      "line": 445,
+      "scope": "exchange_telegram_oidc_code",
+      "constructor_timeout_explicit": true,
+      "git_file_sha256": "751eab5b19a466f7a6cd524d5418dab7e1b3b9f5642b3272025e6313bb2887dc"
+    },
+    {
+      "path": "portal_bot/worker.py",
+      "line": 411,
+      "scope": "_telegram_send_message",
+      "constructor_timeout_explicit": false,
+      "git_file_sha256": "fd6289fcc29af0525727e347b92ae1abb8209c0711c26846b90abf92bb78047f"
+    },
+    {
+      "path": "portal_bot/worker.py",
+      "line": 428,
+      "scope": "_telegram_get_chat_member",
+      "constructor_timeout_explicit": false,
+      "git_file_sha256": "fd6289fcc29af0525727e347b92ae1abb8209c0711c26846b90abf92bb78047f"
+    }
+  ],
+  "managed_payment_registry": "portal_bot/outbound_http.py; lifespan-owned factory clients counted separately",
+  "constructor_timeout_is_not_request_timeout_proof": true,
+  "sites_since_retained_inventory": [
+    {
+      "path": "portal_bot/support_case_context.py",
+      "line": 246,
+      "scope": "check_lava_invoice",
+      "constructor_timeout_explicit": true,
+      "git_file_sha256": "736a0de8f3acb8ee233e985fea6e914ed1f0f0376ff11924db9a11506eb3bb0f"
+    }
+  ],
+  "new_site_review": {
+    "path": "portal_bot/support_case_context.py",
+    "scope": "check_lava_invoice",
+    "purpose": "owner-bound support invoice status read",
+    "http_method": "GET",
+    "constructor_total_timeout_seconds": 6,
+    "redirects_allowed": false,
+    "bounded_response_reader": true,
+    "payment_or_entitlement_mutation": false,
+    "decision": "Retain operation-owned session; no observed pooling bottleneck in this separate support flow"
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "utc": "2026-09-09T13:42:25.918433+00:00",
+  "phase": "current-start",
+  "status": "PASS",
+  "before": {
+    "previous": {
+      "MainPID": "86532",
+      "Result": "success",
+      "NRestarts": "0",
+      "IPAddressAllow": "127.0.0.0/8 ::1/128",
+      "IPAddressDeny": "0.0.0.0/0 ::/0",
+      "RestrictAddressFamilies": "AF_INET AF_INET6 AF_UNIX",
+      "ActiveState": "active"
+    },
+    "current": {
+      "MainPID": "0",
+      "Result": "success",
+      "NRestarts": "0",
+      "IPAddressAllow": "127.0.0.0/8 ::1/128",
+      "IPAddressDeny": "0.0.0.0/0 ::/0",
+      "RestrictAddressFamilies": "AF_INET AF_INET6 AF_UNIX",
+      "ActiveState": "inactive"
+    }
+  },
+  "readiness": [
+    {
+      "label": "current",
+      "status": "PASS",
+      "utc": "2026-09-09T13:42:38.275970+00:00"
+    }
+  ],
+  "after": {
+    "previous": {
+      "MainPID": "86532",
+      "Result": "success",
+      "NRestarts": "0",
+      "IPAddressAllow": "127.0.0.0/8 ::1/128",
+      "IPAddressDeny": "0.0.0.0/0 ::/0",
+      "RestrictAddressFamilies": "AF_INET AF_INET6 AF_UNIX",
+      "ActiveState": "active"
+    },
+    "current": {
+      "MainPID": "86633",
+      "Result": "success",
+      "NRestarts": "0",
+      "IPAddressAllow": "127.0.0.0/8 ::1/128",
+      "IPAddressDeny": "0.0.0.0/0 ::/0",
+      "RestrictAddressFamilies": "AF_INET AF_INET6 AF_UNIX",
+      "ActiveState": "active"
+    }
+  },
+  "completed_at": "2026-09-09T13:42:38.298104+00:00"
+}

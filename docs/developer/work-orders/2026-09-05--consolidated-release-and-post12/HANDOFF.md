@@ -1,5 +1,80 @@
 # R12 — текущий результат и граница исполнения
 
+[O04 note, срез 14:53 UTC](EXECUTION-O04-NOTE-2026-09-09.md): исправлен 403
+внутренней заметки для поддержки; PR #253 слит, backend `9e01ded` и adminapp
+`a31d875` одного tree поставлены. 159 tests + 8 subtests, 80 browser tests,
+четыре CI, 205 backend / 189 static hashes PASS. Восемь isolated PostgreSQL
+workflow checks PASS; production note mutation не выполнялась. O01 V3 жив,
+39 refreshes / anomalies=0, absolute expiry всё ещё RUNNING до 02:37 мск
+10 сентября. Bundle→attempt и полный O04 остаются открытыми.
+
+[B08 current, срез 13:49 UTC](EXECUTION-B08-CURRENT-2026-09-09.md): технические пункты I4 PASS на Brain-копии 121 таблицы; старые 197 и текущие 205 files, 25 HTTP assertions / пять writes, additive indexes и code rollback, два worker / poison PASS. Production `cd4a8b9` и PID сохранены. Parent B08 остаётся active только из-за зависимости B06; общий release открыт.
+
+
+[B07 pool wait, срез 13:24 UTC](EXECUTION-B07-POOL-WAIT-2026-09-09.md): PR #252 слит и `cd4a8b9` развёрнут; 262 tests + 30 subtests, 15 focused, четыре CI и 205 hashes PASS. В production 32 ожидаемых status 404, worker wait max 23 мс, PostgreSQL wait 0, outbox прежний; HTTP queue/timeout/cancel proof получен на Brain loopback. **B07 verified/I5 по исходному DoD**; реальные provider readiness, final candidate и общий план открыты. Прежние записи ниже относятся к датированным срезам.
+
+
+[B07 indexes, срез 12:29 UTC](EXECUTION-B07-INDEXES-2026-09-09.md): PR #251 слит и backend `1ef1f50` развёрнут; 154 tests + 8 subtests, 41 focused, четыре CI и 204 hashes PASS. Два production indexes valid/ready; shift HTTPS read 6368 → 672 мс. На копии 26,59 с → 404 мс при одинаковом полном hash. Commercial pool/connector wait остаётся открытым. O01 V3 idle PASS, absolute RUNNING до 02:37 мск 10 сентября; источник security.py сохранён. Прежние running/deploy записи ниже относятся к их датированным срезам.
+
+
+[B07 shift, срез 11:37 UTC](EXECUTION-B07-SHIFT-2026-09-09.md): PR #250 слит и backend `3478fc4` развёрнут; 208 tests + 8 subtests, четыре CI и 204 hashes PASS. В повторном окне loop lag 11 мс вместо 4672, health max 131,47 мс вместо 4490,29; сам shift read 6,37 с, latency acceptance открыта. O01 V3 запущен: idle 15:07 мск 9 сентября, absolute 02:37 мск 10 сентября, оба RUNNING_NOT_PASSED. Более ранние running/deadline записи ниже — история прежних прогонов.
+
+[B07 online fix](EXECUTION-B07-ONLINE-2026-09-09.md) развёрнут на `2b37f97`: четыре CI PASS, 204 hashes и online/meta readback PASS. Отдельный stall «Моей смены» воспроизведён; draft PR #250 проходит проверки. O01 v2 остановлен raw source guard из-за LF→CRLF в security.py при этой поставке; обе fixtures отозваны, idle PASS сохранён, absolute run пока не перезапущен.
+
+[O01 idle expiry](EXECUTION-OPERATOR-SESSION-BOUNDARY-2026-09-09.md): реальные 30 минут PASS — HTTP 401 и DB idle_expired; absolute deadline остаётся RUNNING до 00:44 мск 10 сентября. [B07 collector](EXECUTION-B07-DEPLOYED-LAG-2026-09-09.md): 27 production health samples и outbox aggregates сохранены; во время 17,59-секундного online read loop продолжал работать, источник ожидания пока не локализован.
+
+
+[O02 routes и rollback](EXECUTION-OPERATOR-ROUTES-2026-09-09.md): 28 привязок к workspace/API/permission, 22 primary GET и фактический production static rollback/restore PASS. Inventory исправлен до семи retained read patterns; 60 backend/contract и 80 Playwright PASS. Новый manifest не развёрнут; redirect и зависимость O01 открыты.
+
+
+[Реальные сроки, уточнение 09:44 UTC](EXECUTION-OPERATOR-SESSION-BOUNDARY-2026-09-09.md): первый runner завершился JSONDecodeError; обе fixture sessions отозваны. V2 запущен отдельно, idle ожидается в 13:14 мск, absolute — в 00:44 мск 10 сентября; оба пока NOT_PASSED. Compatibility остаётся выключенным.
+
+
+[Operator cutover](EXECUTION-OPERATOR-CUTOVER-2026-09-09.md): compatibility bootstrap и legacy step-up отключены на Brain; пять production assertions PASS, rollback проверен на первом проходе. Реальные сроки сессий продолжают проверяться; O01 открыт.
+
+
+[Windows NAT/bridge](EXECUTION-WINDOWS-NAT-PATH-2026-09-09.md): тот же профиль
+Франкфурта отказывает на NAT и проходит через мост; повтор в одном boot PASS.
+Все 304 файла client `c05b58b` / Core `c7a11f7` совпали. Полный installed-service
+TUN/DNS/egress ждёт входа владельца в Windows; VM link выключен. Общий релиз открыт.
+
+[Operator session boundary](EXECUTION-OPERATOR-SESSION-BOUNDARY-2026-09-09.md):
+правка причины absolute expiry вошла через PR #248 и развёрнута на `a8e6918`;
+204 hashes, API health и 11 live session assertions PASS. Реальные сроки
+30 минут / 12 часов проверяются отдельным живым процессом, ещё не PASS.
+[Role denial](EXECUTION-OPERATOR-RBAC-2026-09-09.md): все десять ролей дали ожидаемый 403 на выбранных запретных маршрутах; fixture отозван. Реальные сроки и legacy migration policy остаются открытыми.
+
+[Исправление ответа подписки](EXECUTION-SUBSCRIPTION-BUDGET-2026-09-09.md):
+backend `d9b2583` установлен, 204 hashes и четыре обязательных CI checks PASS.
+Owned API readback: 3,215 с вместо 16,102 с; доступ и Telegram linked сохранены.
+173 tests + 8 subtests PASS. Повторный Huawei UI readback ждёт устройства.
+
+
+[Обработка вложений поддержки](EXECUTION-INTERNAL-VISION-2026-09-09.md):
+backend `876e78d` установлен на Brain, 204 hashes и четыре CI checks PASS.
+PNG/PDF smoke в production-каталоге выполнен с фикстурами; сообщения клиентам
+не отправлялись. Проверки текущего Android/Windows и общий релиз открыты.
+
+
+[Operator live](EXECUTION-OPERATOR-LIVE-2026-09-09.md): реальный Telegram OIDC-вход и step-up одной сессии PASS; 28 страниц открылись с явными границами источников. Полные expiry/revoke/role-denial и legacy cutover ещё не закрыты. Прежняя ошибка callback ниже относится к состоянию до настройки BotFather.
+
+[A04 production migration](EXECUTION-A04-PRODUCTION-MIGRATION-2026-09-09.md): четыре индивидуальных AWG-ключа выданы, прежние shared peers удалены. Backend `d3eba89` опубликован, 204 hashes и три периодических прохода worker без ошибок PASS; на каждом DE-интерфейсе ровно два индивидуальных peer. Installed-client и полный A04 остаются открыты. Ниже сохранены прежние состояния до миграции.
+
+[Platform deploy 9 сентября](EXECUTION-PLATFORM-DEPLOY-2026-09-09.md): support
+PR #244 объединён; backend `7d37005` опубликован, 204 hashes и пять units PASS.
+Static `0392052` опубликован как `20260909045925`, 887 hashes/public readback
+PASS; предыдущие версии сохранены. Telegram отклоняет admin callback, вход
+и step-up открыты. AWG permanent activation, client candidate и выпуск открыты.
+Датированные pending-deploy записи ниже относятся к прежнему состоянию.
+
+[Source promotion 9 сентября](EXECUTION-SOURCE-PROMOTION-2026-09-09.md): platform
+PR #243, client #95 и Core #9 объединены через подписанные exact trees.
+Promotion tuple `0392052/c05b58b/7444e53` прошёл обычные CI всех трёх repos;
+local quality 15/15 PASS с эквивалентным закреплённым Core `c7a11f7`.
+Preflight READY_LOCAL_FREEZE, candidate не создан. Ключ checkout создан на Brain
+без экспорта и рестарта; full deploy ожидает интеграцию параллельной support-правки.
+Срезы ниже о pending merge и failures относятся к прежнему состоянию.
+
 [Core source binding](EXECUTION-CORE-SOURCE-BINDING-2026-09-09.md): client
 `5fdfc8d` закреплён за `c7a11f7`; две сборки каждой платформы воспроизвели прежние
 AAR/DLL bytes. Seed/contracts и 100 Windows proxy cycles PASS. Hosted tuple

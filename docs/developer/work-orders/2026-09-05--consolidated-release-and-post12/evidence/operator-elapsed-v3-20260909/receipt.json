@@ -1,0 +1,61 @@
+{
+  "status": "IDLE_PASS_ABSOLUTE_RUNNING",
+  "origin": "brain-origin HTTPS production",
+  "source_revision": "3478fc4f292484c01bc2ccec124588f8f0c2423e",
+  "captures": [
+    {
+      "path": "elapsed-expiry-launch-v3.json",
+      "sha256": "e2aa4efdf6b6859b9bc9e024e90c8e4ae52078fce3547f250d54037ccab70187",
+      "original_raw_sha256": "75cd2c6828e267a4627a4190edeb2f7c96134f5ca9980b2ea8ad4dc590191232"
+    },
+    {
+      "path": "elapsed-expiry-observation-v3-2026-09-09T113728148550+0000.json",
+      "sha256": "55554fdbf67554042fb38567cb2478e76d52fd78b4bcf350856ddb925b1729c6",
+      "original_raw_sha256": "fcf1e8e3f8d68b414dac92c7644ecb50294ae841f65e3f81a750b0402ea10316"
+    },
+    {
+      "path": "elapsed-expiry-observation-v3-2026-09-09T120728707315+0000.json",
+      "sha256": "9aced4c5208ba72cd87a670eecf69cc9fd40c88a70cca70d243e7af93d301a9f",
+      "original_raw_sha256": "6b2fcbb7fdc70fd0586d4fe3630b6002c87684529b0ea0fcaed799251486a774"
+    },
+    {
+      "path": "elapsed-expiry-observation-v3-2026-09-09T123223862770+0000.json",
+      "sha256": "8de8d25eecaac51e94b1f4bca47959310fdf97b9d5874f5271bf070027821a3d",
+      "original_raw_sha256": "ef005b03a62f7e3502dd06ca8c9619f5d8208284e3b8650e022c93506e4a9fd8"
+    }
+  ],
+  "instruments": [
+    {
+      "path": "E:\\r12-operator-session-20260909\\elapsed-expiry-runner-v3.py",
+      "sha256": "7dfdbfbc4ab9648c70af56e45cf9bb5a1bfada11e4beef45d4891d878fe8a5da"
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\launch-elapsed-expiry-v3.py",
+      "sha256": "0bb701a47387b891133c3e8e79120ddd51cc56dcca114463ad8a9ee540dba3c5"
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\observe-elapsed-expiry-v3.py",
+      "sha256": "8b7c7bce1c1f25bed4f66b110da986828b241704f244bbb0fdf5a47e7d37b77b"
+    }
+  ],
+  "idle_deadline_utc": "2026-09-09T12:07:16.108975Z",
+  "absolute_deadline_utc": "2026-09-09T23:37:16.118816Z",
+  "deadlines_or_clock_modified": false,
+  "prior_v2_result": "IDLE_PASS_ABSOLUTE_FAILED_SOURCE_BYTE_GUARD",
+  "full_O01": "OPEN",
+  "idle_result": {
+    "http_status": 401,
+    "error_code": "operator_session_expired",
+    "revoke_reason": "idle_expired",
+    "revoked": true
+  },
+  "latest_runtime_continuity": {
+    "observed_at": "2026-09-09T12:32:23.862770+00:00",
+    "current_backend_source": "1ef1f50f76c0529b0efa17a694dd2a5885a475a5",
+    "source_at_start": "3478fc4f292484c01bc2ccec124588f8f0c2423e",
+    "security_source_sha256": "02cd79f4f60dfe0a2a80ed06c725a4abb9911487fb3a3b006eed44a3b14b9713",
+    "absolute_refreshes": 11,
+    "http_anomalies": 0,
+    "absolute_result": "RUNNING_NOT_PASSED"
+  }
+}

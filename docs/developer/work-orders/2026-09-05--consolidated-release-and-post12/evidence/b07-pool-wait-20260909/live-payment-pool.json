@@ -1,0 +1,635 @@
+{
+  "utc": "2026-09-09T13:24:53.098030+00:00",
+  "origin": "brain-origin production HTTPS",
+  "source_revision": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+  "payload_files_verified": 205,
+  "status": "PASS_BOUNDED_DEPLOYED_PAYMENT_DB_READ",
+  "pid": 84291,
+  "start_ticks": "425201305",
+  "request_count": 32,
+  "concurrency": 16,
+  "configured_rate_limit_per_minute": 0,
+  "fixture_order_absent_before": true,
+  "orders_created": 0,
+  "payment_or_provider_operation": false,
+  "raw_tokens_customer_or_provider_data_exported": false,
+  "samples": [
+    {
+      "http_status": 404,
+      "http_ms": 84.5,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 86.17,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 73.35,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 80.45,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 83.82,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 88.64,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 80.49,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 84.18,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 90.67,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 68.85,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 178.48,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 205.02,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 134.47,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 166.25,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 212.28,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 210.95,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 127.35,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 183.55,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 117.0,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 182.72,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 168.91,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 181.38,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 164.92,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 172.98,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 100.02,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 164.04,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 79.76,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 76.08,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 74.29,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 69.87,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 55.34,
+      "expected_missing_fixture": true
+    },
+    {
+      "http_status": 404,
+      "http_ms": 54.01,
+      "expected_missing_fixture": true
+    }
+  ],
+  "health_samples": [
+    {
+      "utc": "2026-09-09T13:24:53.175471+00:00",
+      "http_status": 200,
+      "http_ms": 56.8,
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      },
+      "database_pool": {
+        "attempts": 0,
+        "waiting": 0,
+        "max_waiting": 0,
+        "timeouts": 0,
+        "wait_total_ms": 0,
+        "wait_max_ms": 0
+      },
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 11,
+        "last_lag_ms": 1,
+        "max_lag_ms": 27,
+        "lag_total_ms": 34
+      }
+    },
+    {
+      "utc": "2026-09-09T13:24:53.387445+00:00",
+      "http_status": 200,
+      "http_ms": 11.83,
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      },
+      "database_pool": {
+        "attempts": 0,
+        "waiting": 0,
+        "max_waiting": 0,
+        "timeouts": 0,
+        "wait_total_ms": 0,
+        "wait_max_ms": 0
+      },
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 11,
+        "last_lag_ms": 1,
+        "max_lag_ms": 27,
+        "lag_total_ms": 34
+      }
+    },
+    {
+      "utc": "2026-09-09T13:24:53.598738+00:00",
+      "http_status": 200,
+      "http_ms": 11.15,
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      },
+      "database_pool": {
+        "attempts": 0,
+        "waiting": 0,
+        "max_waiting": 0,
+        "timeouts": 0,
+        "wait_total_ms": 0,
+        "wait_max_ms": 0
+      },
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 11,
+        "last_lag_ms": 1,
+        "max_lag_ms": 27,
+        "lag_total_ms": 34
+      }
+    },
+    {
+      "utc": "2026-09-09T13:24:53.808976+00:00",
+      "http_status": 200,
+      "http_ms": 10.1,
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      },
+      "database_pool": {
+        "attempts": 0,
+        "waiting": 0,
+        "max_waiting": 0,
+        "timeouts": 0,
+        "wait_total_ms": 0,
+        "wait_max_ms": 0
+      },
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 11,
+        "last_lag_ms": 1,
+        "max_lag_ms": 27,
+        "lag_total_ms": 34
+      }
+    },
+    {
+      "utc": "2026-09-09T13:24:54.021980+00:00",
+      "http_status": 200,
+      "http_ms": 12.86,
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      },
+      "database_pool": {
+        "attempts": 0,
+        "waiting": 0,
+        "max_waiting": 0,
+        "timeouts": 0,
+        "wait_total_ms": 0,
+        "wait_max_ms": 0
+      },
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 12,
+        "last_lag_ms": 0,
+        "max_lag_ms": 27,
+        "lag_total_ms": 34
+      }
+    },
+    {
+      "utc": "2026-09-09T13:24:54.335222+00:00",
+      "http_status": 200,
+      "http_ms": 113.13,
+      "payment_db": {
+        "active": 0,
+        "max_active": 4,
+        "started": 30,
+        "completed": 16,
+        "failed": 14,
+        "queue_wait_total_ms": 152,
+        "queue_wait_max_ms": 23,
+        "duration_total_ms": 105,
+        "duration_max_ms": 30
+      },
+      "database_pool": {
+        "attempts": 0,
+        "waiting": 0,
+        "max_waiting": 0,
+        "timeouts": 0,
+        "wait_total_ms": 0,
+        "wait_max_ms": 0
+      },
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 12,
+        "last_lag_ms": 0,
+        "max_lag_ms": 27,
+        "lag_total_ms": 34
+      }
+    },
+    {
+      "utc": "2026-09-09T13:24:54.547076+00:00",
+      "http_status": 200,
+      "http_ms": 11.71,
+      "payment_db": {
+        "active": 0,
+        "max_active": 5,
+        "started": 64,
+        "completed": 32,
+        "failed": 32,
+        "queue_wait_total_ms": 413,
+        "queue_wait_max_ms": 23,
+        "duration_total_ms": 163,
+        "duration_max_ms": 30
+      },
+      "database_pool": {
+        "attempts": 0,
+        "waiting": 0,
+        "max_waiting": 0,
+        "timeouts": 0,
+        "wait_total_ms": 0,
+        "wait_max_ms": 0
+      },
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 12,
+        "last_lag_ms": 0,
+        "max_lag_ms": 27,
+        "lag_total_ms": 34
+      }
+    },
+    {
+      "utc": "2026-09-09T13:24:54.759748+00:00",
+      "http_status": 200,
+      "http_ms": 12.47,
+      "payment_db": {
+        "active": 0,
+        "max_active": 5,
+        "started": 64,
+        "completed": 32,
+        "failed": 32,
+        "queue_wait_total_ms": 413,
+        "queue_wait_max_ms": 23,
+        "duration_total_ms": 163,
+        "duration_max_ms": 30
+      },
+      "database_pool": {
+        "attempts": 0,
+        "waiting": 0,
+        "max_waiting": 0,
+        "timeouts": 0,
+        "wait_total_ms": 0,
+        "wait_max_ms": 0
+      },
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 12,
+        "last_lag_ms": 0,
+        "max_lag_ms": 27,
+        "lag_total_ms": 34
+      }
+    },
+    {
+      "utc": "2026-09-09T13:24:54.972666+00:00",
+      "http_status": 200,
+      "http_ms": 12.76,
+      "payment_db": {
+        "active": 0,
+        "max_active": 5,
+        "started": 64,
+        "completed": 32,
+        "failed": 32,
+        "queue_wait_total_ms": 413,
+        "queue_wait_max_ms": 23,
+        "duration_total_ms": 163,
+        "duration_max_ms": 30
+      },
+      "database_pool": {
+        "attempts": 0,
+        "waiting": 0,
+        "max_waiting": 0,
+        "timeouts": 0,
+        "wait_total_ms": 0,
+        "wait_max_ms": 0
+      },
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 13,
+        "last_lag_ms": 0,
+        "max_lag_ms": 27,
+        "lag_total_ms": 34
+      }
+    },
+    {
+      "utc": "2026-09-09T13:24:55.185587+00:00",
+      "http_status": 200,
+      "http_ms": 12.75,
+      "payment_db": {
+        "active": 0,
+        "max_active": 5,
+        "started": 64,
+        "completed": 32,
+        "failed": 32,
+        "queue_wait_total_ms": 413,
+        "queue_wait_max_ms": 23,
+        "duration_total_ms": 163,
+        "duration_max_ms": 30
+      },
+      "database_pool": {
+        "attempts": 0,
+        "waiting": 0,
+        "max_waiting": 0,
+        "timeouts": 0,
+        "wait_total_ms": 0,
+        "wait_max_ms": 0
+      },
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 13,
+        "last_lag_ms": 0,
+        "max_lag_ms": 27,
+        "lag_total_ms": 34
+      }
+    },
+    {
+      "utc": "2026-09-09T13:24:55.398306+00:00",
+      "http_status": 200,
+      "http_ms": 12.53,
+      "payment_db": {
+        "active": 0,
+        "max_active": 5,
+        "started": 64,
+        "completed": 32,
+        "failed": 32,
+        "queue_wait_total_ms": 413,
+        "queue_wait_max_ms": 23,
+        "duration_total_ms": 163,
+        "duration_max_ms": 30
+      },
+      "database_pool": {
+        "attempts": 0,
+        "waiting": 0,
+        "max_waiting": 0,
+        "timeouts": 0,
+        "wait_total_ms": 0,
+        "wait_max_ms": 0
+      },
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 13,
+        "last_lag_ms": 0,
+        "max_lag_ms": 27,
+        "lag_total_ms": 34
+      }
+    }
+  ],
+  "before": {
+    "utc": "2026-09-09T13:24:53.115187+00:00",
+    "http_status": 200,
+    "http_ms": 16.73,
+    "payment_db": {
+      "active": 0,
+      "max_active": 0,
+      "started": 0,
+      "completed": 0,
+      "failed": 0,
+      "queue_wait_total_ms": 0,
+      "queue_wait_max_ms": 0,
+      "duration_total_ms": 0,
+      "duration_max_ms": 0
+    },
+    "database_pool": {
+      "attempts": 0,
+      "waiting": 0,
+      "max_waiting": 0,
+      "timeouts": 0,
+      "wait_total_ms": 0,
+      "wait_max_ms": 0
+    },
+    "event_loop_lag": {
+      "status": "collecting",
+      "interval_ms": 1000,
+      "samples": 11,
+      "last_lag_ms": 1,
+      "max_lag_ms": 27,
+      "lag_total_ms": 34
+    }
+  },
+  "outbox_before": {
+    "counts": {
+      "pending": 0,
+      "processing": 0,
+      "delivered": 2,
+      "dead_letter": 0
+    },
+    "oldest_open_age_seconds": 0.0
+  },
+  "after": {
+    "utc": "2026-09-09T13:24:55.412275+00:00",
+    "http_status": 200,
+    "http_ms": 13.87,
+    "payment_db": {
+      "active": 0,
+      "max_active": 5,
+      "started": 64,
+      "completed": 32,
+      "failed": 32,
+      "queue_wait_total_ms": 413,
+      "queue_wait_max_ms": 23,
+      "duration_total_ms": 163,
+      "duration_max_ms": 30
+    },
+    "database_pool": {
+      "attempts": 0,
+      "waiting": 0,
+      "max_waiting": 0,
+      "timeouts": 0,
+      "wait_total_ms": 0,
+      "wait_max_ms": 0
+    },
+    "event_loop_lag": {
+      "status": "collecting",
+      "interval_ms": 1000,
+      "samples": 13,
+      "last_lag_ms": 0,
+      "max_lag_ms": 27,
+      "lag_total_ms": 34
+    }
+  },
+  "outbox_after": {
+    "counts": {
+      "pending": 0,
+      "processing": 0,
+      "delivered": 2,
+      "dead_letter": 0
+    },
+    "oldest_open_age_seconds": 0.0
+  },
+  "database_pool_delta": {
+    "attempts": 0,
+    "waiting": 0,
+    "max_waiting": 0,
+    "timeouts": 0,
+    "wait_total_ms": 0,
+    "wait_max_ms": 0
+  },
+  "payment_db_delta": {
+    "active": 0,
+    "max_active": 5,
+    "started": 64,
+    "completed": 32,
+    "failed": 32,
+    "queue_wait_total_ms": 413,
+    "queue_wait_max_ms": 23,
+    "duration_total_ms": 163,
+    "duration_max_ms": 30
+  },
+  "fixture_order_absent_after": true,
+  "completed_at": "2026-09-09T13:24:55.416835+00:00"
+}

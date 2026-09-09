@@ -1,0 +1,22 @@
+{
+  "utc": "2026-09-09T04:42:43.529094+00:00",
+  "origin": "brain-origin",
+  "source_revision": "7d37005e4260995ab44ec3adb14bbffa3d42738b",
+  "external_oidc_login_proven": false,
+  "credential_or_cookie_exported": false,
+  "operator_or_role_deleted": false,
+  "owner_enrolled": true,
+  "role": "superadmin",
+  "environment": "production",
+  "cookie_properties_verified": true,
+  "session_read_http": 200,
+  "meta_http": 200,
+  "meta_schema": null,
+  "anonymous_denied_http": 401,
+  "status": "FAIL",
+  "failure_stage": "meta_read",
+  "error_class": "AssertionError",
+  "test_session_logout_http": 200,
+  "test_session_revoked": true,
+  "owner_role_retained": true
+}

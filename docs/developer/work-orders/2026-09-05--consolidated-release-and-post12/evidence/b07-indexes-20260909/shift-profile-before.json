@@ -1,0 +1,241 @@
+{
+  "utc": "2026-09-09T11:43:20.494744+00:00",
+  "origin": "brain-origin isolated exact-source projection, read-only production PostgreSQL",
+  "source_revision": "3478fc4f292484c01bc2ccec124588f8f0c2423e",
+  "verified_payload_files": 204,
+  "sql_samples": [
+    {
+      "stage": "build_admin_metrics_status_snapshot",
+      "tables": [
+        "nodes"
+      ],
+      "elapsed_ms": 78.84,
+      "row_count": 7,
+      "statement_sha256": "813170f2c614a36545c7f832189732f5e5d3cdbe20df5cff37b1262cd31d351c"
+    },
+    {
+      "stage": "build_admin_metrics_status_snapshot",
+      "tables": [
+        "node_health_samples"
+      ],
+      "elapsed_ms": 1619.27,
+      "row_count": 3,
+      "statement_sha256": "68bd6bc3f5b98d232a5b919ec9d22898695a65c0783eedcca638db7778f1f039"
+    },
+    {
+      "stage": "build_admin_metrics_status_snapshot",
+      "tables": [
+        "node_health_samples"
+      ],
+      "elapsed_ms": 2025.16,
+      "row_count": 3,
+      "statement_sha256": "68bd6bc3f5b98d232a5b919ec9d22898695a65c0783eedcca638db7778f1f039"
+    },
+    {
+      "stage": "build_admin_metrics_status_snapshot",
+      "tables": [
+        "node_health_samples"
+      ],
+      "elapsed_ms": 1165.51,
+      "row_count": 3,
+      "statement_sha256": "68bd6bc3f5b98d232a5b919ec9d22898695a65c0783eedcca638db7778f1f039"
+    },
+    {
+      "stage": "build_admin_metrics_status_snapshot",
+      "tables": [
+        "node_health_samples"
+      ],
+      "elapsed_ms": 547.9,
+      "row_count": 3,
+      "statement_sha256": "68bd6bc3f5b98d232a5b919ec9d22898695a65c0783eedcca638db7778f1f039"
+    },
+    {
+      "stage": "build_admin_metrics_status_snapshot",
+      "tables": [
+        "node_health_samples"
+      ],
+      "elapsed_ms": 491.92,
+      "row_count": 3,
+      "statement_sha256": "68bd6bc3f5b98d232a5b919ec9d22898695a65c0783eedcca638db7778f1f039"
+    },
+    {
+      "stage": "build_admin_metrics_status_snapshot",
+      "tables": [
+        "node_health_samples"
+      ],
+      "elapsed_ms": 533.77,
+      "row_count": 3,
+      "statement_sha256": "68bd6bc3f5b98d232a5b919ec9d22898695a65c0783eedcca638db7778f1f039"
+    },
+    {
+      "stage": "build_admin_metrics_status_snapshot",
+      "tables": [
+        "node_health_samples"
+      ],
+      "elapsed_ms": 548.87,
+      "row_count": 3,
+      "statement_sha256": "68bd6bc3f5b98d232a5b919ec9d22898695a65c0783eedcca638db7778f1f039"
+    },
+    {
+      "stage": "build_admin_metrics_status_snapshot",
+      "tables": [
+        "security_events"
+      ],
+      "elapsed_ms": 4.38,
+      "row_count": 1,
+      "statement_sha256": "f13881004c76a77b56992f1bbd791bbac51d9a04f665bc73a2ed541d85844baf"
+    },
+    {
+      "stage": "compact_summary",
+      "tables": [
+        "users"
+      ],
+      "elapsed_ms": 8.3,
+      "row_count": 1,
+      "statement_sha256": "950010edac506c15c8319c1d0bd022fad9a13b7bd05f480598f39d073f956823"
+    },
+    {
+      "stage": "compact_summary",
+      "tables": [
+        "nodes"
+      ],
+      "elapsed_ms": 117.17,
+      "row_count": 1,
+      "statement_sha256": "62f4023aedbf4afb4d9303c7560d9f50d3c700aa0b7d304c8cd7a8198bd03be7"
+    },
+    {
+      "stage": "compact_summary",
+      "tables": [
+        "support_tickets"
+      ],
+      "elapsed_ms": 1.74,
+      "row_count": 1,
+      "statement_sha256": "0b976c476669e300a4cf036fdc9071b756ce2d53c3e28d2c707fdd7784c8fb0c"
+    },
+    {
+      "stage": "admin_nodes_capacity_payload",
+      "tables": [
+        "nodes"
+      ],
+      "elapsed_ms": 54.06,
+      "row_count": 9,
+      "statement_sha256": "7f36a01560299209774c5e900f3821e29efec5310a2785929b282b7709099d83"
+    },
+    {
+      "stage": "admin_nodes_capacity_payload",
+      "tables": [],
+      "elapsed_ms": 3.14,
+      "row_count": 9,
+      "statement_sha256": "39774f7c8a55760fb5fb37e7bbe845a3195ddc5ee0d450d4eeb51473505ff943"
+    },
+    {
+      "stage": "admin_nodes_capacity_payload",
+      "tables": [],
+      "elapsed_ms": 0.68,
+      "row_count": 0,
+      "statement_sha256": "2875fecd72709d7c4f3e4a86251c2db0abc4cd00c224c8a14502072af129fcce"
+    },
+    {
+      "stage": "admin_nodes_capacity_payload",
+      "tables": [],
+      "elapsed_ms": 0.83,
+      "row_count": 3,
+      "statement_sha256": "e8bf863bc511960c4ad4327782a1dd4c13d138133ce34d572c92b986b47c0fc1"
+    },
+    {
+      "stage": "admin_nodes_capacity_payload",
+      "tables": [],
+      "elapsed_ms": 251.01,
+      "row_count": 0,
+      "statement_sha256": "e8bf863bc511960c4ad4327782a1dd4c13d138133ce34d572c92b986b47c0fc1"
+    },
+    {
+      "stage": "admin_nodes_capacity_payload",
+      "tables": [],
+      "elapsed_ms": 112.8,
+      "row_count": 3,
+      "statement_sha256": "e8bf863bc511960c4ad4327782a1dd4c13d138133ce34d572c92b986b47c0fc1"
+    },
+    {
+      "stage": "provider_quota_status_rows",
+      "tables": [
+        "provider_traffic_quotas"
+      ],
+      "elapsed_ms": 2.28,
+      "row_count": 0,
+      "statement_sha256": "8dae67d8e0dc24c28894481b7b14ee5075f5a1fff8a8ad0993f10dc3853f5b5c"
+    },
+    {
+      "stage": "provider_quota_status_rows",
+      "tables": [
+        "nodes"
+      ],
+      "elapsed_ms": 4.74,
+      "row_count": 9,
+      "statement_sha256": "5b3d5551b573e68e4db663a1f2d04de20bf02030f0cc1be8c623de203f9aa027"
+    },
+    {
+      "stage": "free_tier_summary",
+      "tables": [
+        "users"
+      ],
+      "elapsed_ms": 1.91,
+      "row_count": 1,
+      "statement_sha256": "e20073675e44becc419d3e1e91f6a8bf11306dbf384c6274aa2116260c090093"
+    },
+    {
+      "stage": "free_tier_summary",
+      "tables": [
+        "users"
+      ],
+      "elapsed_ms": 3.68,
+      "row_count": 58,
+      "statement_sha256": "46d83c4420a74f544203ddaca0c84b4af562d2287c8381328c06ce5b2c3ed8f7"
+    },
+    {
+      "stage": "free_tier_summary",
+      "tables": [
+        "key_usage_rollups"
+      ],
+      "elapsed_ms": 2.95,
+      "row_count": 0,
+      "statement_sha256": "939a90abd1cfdb59990b51d3475265f7a92a7516c8daff371afc082459173ace"
+    },
+    {
+      "stage": "overview_other",
+      "tables": [
+        "ops_alerts"
+      ],
+      "elapsed_ms": 2.14,
+      "row_count": 37,
+      "statement_sha256": "c7b81705cf13c741c915ba4249a99385d95032a16a1bf36173115fd45d3dab4a"
+    }
+  ],
+  "stages": [
+    {
+      "stage": "build_admin_metrics_status_snapshot",
+      "elapsed_ms": 7187.19
+    },
+    {
+      "stage": "compact_summary",
+      "elapsed_ms": 153.42
+    },
+    {
+      "stage": "admin_nodes_capacity_payload",
+      "elapsed_ms": 431.89
+    },
+    {
+      "stage": "provider_quota_status_rows",
+      "elapsed_ms": 11.74
+    },
+    {
+      "stage": "free_tier_summary",
+      "elapsed_ms": 58.27
+    }
+  ],
+  "production_source_modified": false,
+  "credentials_or_raw_customer_data_exported": false,
+  "isolated_cold_connection_acquire_ms": 16.83,
+  "projection_ms": 7852.25,
+  "status": "PASS_BOUNDED_PROFILE"
+}

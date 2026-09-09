@@ -1,0 +1,354 @@
+{
+  "status": "PASS_BOUNDED_O04_RUNTIME",
+  "started_at": "2026-09-09T14:25:16.245070+00:00",
+  "origin": "brain-origin isolated API over loopback HTTP and new PostgreSQL database",
+  "source_revision": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+  "source_matches_production": false,
+  "isolated_patch": {
+    "status": "PASS_PATCHED_ISOLATED_COPY",
+    "utc": "2026-09-09T14:24:30.607501+00:00",
+    "base_revision": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+    "source_files": 205,
+    "changed_path": "portal_bot/admin_v2/router.py",
+    "before_sha256": "404490720b3ce7aa56d47bbf98a573127340d7b1689f2b75301bc9d14da20b9a",
+    "after_sha256": "134562694d2890dc1a818516dca6490176a538cd8c42e987f441178b83a1d2eb",
+    "production_units_unchanged": true,
+    "production_source_modified": false,
+    "original_evidence_source_preserved": true
+  },
+  "real_oidc_login": false,
+  "fixtures_only": true,
+  "provider_contacted": false,
+  "checks": {
+    "initial_server_sla": true,
+    "two_operator_claim_collision": true,
+    "assign_waiting_preserve_server_deadline": true,
+    "attempt_binding_and_safe_projection": true,
+    "incident_ticket_link_and_escalation": true,
+    "my_shift_assigned_task_workflow": true,
+    "internal_note_replay_private_and_audited_without_body": true,
+    "server_sla_breached_and_closed": true
+  },
+  "http": [
+    {
+      "method": "GET",
+      "path": "/api/admin/v2/auth/me",
+      "actor_role": "sre",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 62.03
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v2/auth/me",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 27.51
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v2/support/tickets/2",
+      "actor_role": "sre",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 55.05
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents",
+      "actor_role": "sre",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 28.59
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 15.21
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents/1f3eca25-a8bf-4ffa-9965-38611cd0c5ba/execute",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 48.44
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents/96a8ee8a-c805-4d25-ad15-05692814d412/execute",
+      "actor_role": "sre",
+      "status": 409,
+      "error_code": "stale_version",
+      "elapsed_ms": 54.48
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v2/support/tickets/2",
+      "actor_role": "sre",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 15.59
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents",
+      "actor_role": "sre",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 18.16
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents/d67405f7-65c7-4413-a892-27580eb5bd76/execute",
+      "actor_role": "sre",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 20.76
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 23.01
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents/5b8136c1-88be-4692-a966-e938b7437ba8/execute",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 23.99
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v2/support/attempts?ticket_id=2",
+      "actor_role": "sre",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 46.33
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 14.93
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents/f6041ae5-d344-4b10-9ec5-9201f0772d95/execute",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 18.74
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v2/support/attempts?ticket_id=2",
+      "actor_role": "sre",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 16.45
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/incidents/action-intents",
+      "actor_role": "sre",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 18.87
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/incidents/action-intents/831b2052-e287-4f22-84e9-6a522cf29272/execute",
+      "actor_role": "sre",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 29.29
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents",
+      "actor_role": "sre",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 12.94
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents/bd21be6e-f410-4de0-9da5-4641b66a0e4c/execute",
+      "actor_role": "sre",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 20.6
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v2/support/tickets/2",
+      "actor_role": "sre",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 14.3
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v2/incidents/efb266f6-0d2c-4bc1-a823-3fb396c9220b",
+      "actor_role": "sre",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 23.02
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/shift/action-intents",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 14.02
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/shift/action-intents/e82880d5-03f7-420e-a631-b3a08b6d0d9d/execute",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 19.93
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v2/shift",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 46.77
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/shift/action-intents",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 19.57
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/shift/action-intents/f92744b0-3a7d-47e7-bf2e-a769c8dabbab/execute",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 37.64
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 23.31
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents/2ffb5a43-6840-4bb2-9587-87c6a303d45d/execute",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 32.74
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents/2ffb5a43-6840-4bb2-9587-87c6a303d45d/execute",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 14.32
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v2/support/tickets/2",
+      "actor_role": "sre",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 30.25
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/v2/support/tickets/2",
+      "actor_role": "sre",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 16.81
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 14.06
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents/053b5732-0986-4fe3-a45e-416b3612faaf/execute",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 16.32
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 11.6
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/support/action-intents/4bf4308a-5d2d-4f75-a649-36a6cacd0007/execute",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 15.82
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/auth/logout",
+      "actor_role": "sre",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 15.1
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/v2/auth/logout",
+      "actor_role": "support_l2",
+      "status": 200,
+      "error_code": null,
+      "elapsed_ms": 24.04
+    }
+  ],
+  "task_durations_ms": {
+    "two_previews_parallel_claim_and_readback": 115.57,
+    "create_incident_link_ticket_and_readback": 119.28,
+    "create_find_and_start_assigned_task": 138.16,
+    "note_prepare_execute_replay_public_and_db_readback": 134.62
+  },
+  "server_default_sla_hours": 24.0,
+  "audit_counts": {
+    "ticket.claim": 1,
+    "ticket.assign": 1,
+    "ticket.update": 5,
+    "ticket.note": 1
+  },
+  "operator_audit_rows": 25,
+  "fixture_sessions_revoked": true,
+  "completed_at": "2026-09-09T14:25:17.218948+00:00"
+}

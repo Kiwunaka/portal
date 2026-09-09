@@ -1,0 +1,78 @@
+{
+  "checked_at": "2026-09-09T05:01:05.813033+00:00",
+  "release": "20260909045925",
+  "frontend_revision": "03920525bfc3993591a39d21e35bbe2e7e1d663d",
+  "backend_revision": "7d37005e4260995ab44ec3adb14bbffa3d42738b",
+  "remote_file_count": 887,
+  "all_remote_file_hashes_match": true,
+  "pointers": {
+    "marketing": "/var/www/portal/releases/20260909045925/marketing",
+    "webapp": "/var/www/portal/releases/20260909045925/webapp",
+    "adminapp": "/var/www/portal/releases/20260909045925/adminapp"
+  },
+  "admin_rollback": "/var/www/portal/releases/20260819120323/adminapp",
+  "caddy_state": "active",
+  "public_checks": [
+    {
+      "url": "https://pokrov.space/",
+      "origin": "current-origin",
+      "status": 200,
+      "sha256": "5fa697b48cf39f99ed27f2cae3932da1dc97f0d3af8d8c81dbceb605f47cd433",
+      "matches_deployed_file": true,
+      "cache_control": "no-cache, must-revalidate",
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://pokrov.space/checkout/",
+      "origin": "current-origin",
+      "status": 200,
+      "sha256": "99b14ffee3de52ded43fb5249a8bb7d39406979d702a4bb57f6c249e40fac71a",
+      "matches_deployed_file": true,
+      "cache_control": "no-cache, must-revalidate",
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://app.pokrov.space/",
+      "origin": "current-origin",
+      "status": 200,
+      "sha256": "acfa9ccf990ca827b68bd5f0edc4501f0e821d63e5605c87772351616b2a9392",
+      "matches_deployed_file": true,
+      "cache_control": "no-cache, must-revalidate",
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://admin.pokrov.space/",
+      "origin": "current-origin",
+      "status": 200,
+      "sha256": "b587d92727a658fe6c511d47cdb736083c5fb4bd9bb3fffd166e8bf66435459e",
+      "matches_deployed_file": true,
+      "cache_control": "no-cache, must-revalidate",
+      "content_type": "text/html; charset=utf-8"
+    },
+    {
+      "url": "https://admin.pokrov.space/__build.json",
+      "origin": "current-origin",
+      "status": 200,
+      "sha256": "19a8f25f1caa87bd8846b0dbad388205fde3ce2a9f5234d88a7e175c7ec56640",
+      "matches_deployed_file": true,
+      "cache_control": "no-cache, must-revalidate",
+      "content_type": "application/json"
+    },
+    {
+      "url": "https://admin.pokrov.space/__routes.json",
+      "origin": "current-origin",
+      "status": 200,
+      "sha256": "e099422ac52301b68d74c39644daf625645b2b6dfa7e765164fbc5d05d0efae8",
+      "matches_deployed_file": true,
+      "cache_control": "no-cache, must-revalidate",
+      "content_type": "application/json"
+    }
+  ],
+  "api_health": {
+    "origin": "current-origin",
+    "status": 200,
+    "ok": true
+  },
+  "oidc_login": "MANUAL_OWNER_TEST",
+  "status": "PASS"
+}

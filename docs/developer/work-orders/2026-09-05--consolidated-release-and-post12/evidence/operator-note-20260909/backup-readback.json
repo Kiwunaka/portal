@@ -1,0 +1,10 @@
+{
+  "utc": "2026-09-09T14:51:37.968980+00:00",
+  "status": "PASS_BACKUP_EXACT_SOURCE",
+  "backup_directory": "/root/portal_bot.deploy-backups/20260909T145005Z-27856",
+  "backup_files_verified": 205,
+  "backup_source_revision": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+  "release_backup_directories": 15,
+  "new_backup_is_latest_release_directory": true,
+  "restore_performed": false
+}

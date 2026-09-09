@@ -1,0 +1,12 @@
+{
+  "merged_commit": "a8e6918ccc166a58ae65ba7d08feea63ce3a9623",
+  "signed_head": "364e42f2b4f5b9eead472b1940c2bd1b8b9e59f1",
+  "tree": "ad3f4bc80bb91739c7407c6ba442e19bb60a249e",
+  "signature_verified": true,
+  "checks": {
+    "release-base-isolation": "SKIPPED",
+    "repo-guardrails": "SUCCESS",
+    "cross-repository-contract": "SUCCESS"
+  },
+  "pr": "https://github.com/Kiwunaka/portal/pull/248"
+}

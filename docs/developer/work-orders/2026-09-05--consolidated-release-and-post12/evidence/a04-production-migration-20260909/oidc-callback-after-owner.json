@@ -1,0 +1,14 @@
+{
+  "checked_at": "2026-09-09T05:57:22.887148+00:00",
+  "origin": "current-origin",
+  "surface": "operator",
+  "http_status": 200,
+  "redirect_uri": "https://admin.pokrov.space/",
+  "response_bytes": 10829,
+  "redirect_uri_required": false,
+  "login_page_detected": true,
+  "provider_callback_entry": "PASS",
+  "external_oidc_login": false,
+  "step_up": false,
+  "tokens_or_identity_exported": false
+}

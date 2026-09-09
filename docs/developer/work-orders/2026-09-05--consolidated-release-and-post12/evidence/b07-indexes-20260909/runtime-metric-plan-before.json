@@ -1,0 +1,42 @@
+{
+  "utc": "2026-09-09T11:56:36.761277+00:00",
+  "origin": "brain-origin read-only restored clone",
+  "analyze_executed": false,
+  "index_catalog": [
+    {
+      "indexname": "ix_node_runtime_metrics_node_code",
+      "indexdef": "CREATE INDEX ix_node_runtime_metrics_node_code ON public.node_runtime_metrics USING btree (node_code)"
+    },
+    {
+      "indexname": "ix_node_runtime_metrics_sampled_at",
+      "indexdef": "CREATE INDEX ix_node_runtime_metrics_sampled_at ON public.node_runtime_metrics USING btree (sampled_at)"
+    },
+    {
+      "indexname": "node_runtime_metrics_pkey",
+      "indexdef": "CREATE UNIQUE INDEX node_runtime_metrics_pkey ON public.node_runtime_metrics USING btree (id)"
+    }
+  ],
+  "synthetic_absent_node_plan": {
+    "Node Type": "Limit",
+    "Plan Rows": 3,
+    "Total Cost": 59.3,
+    "Plans": [
+      {
+        "Node Type": "Incremental Sort",
+        "Plan Rows": 3719,
+        "Total Cost": 54779.16,
+        "Plans": [
+          {
+            "Node Type": "Index Scan",
+            "Relation Name": "node_runtime_metrics",
+            "Index Name": "ix_node_runtime_metrics_sampled_at",
+            "Scan Direction": "Backward",
+            "Plan Rows": 3719,
+            "Total Cost": 54611.8,
+            "Plans": []
+          }
+        ]
+      }
+    ]
+  }
+}

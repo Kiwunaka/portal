@@ -1,0 +1,66 @@
+{
+  "activated_at": "2026-09-09T05:22:16.395863+00:00",
+  "origin": "brain-origin",
+  "source_revision": "7d37005e4260995ab44ec3adb14bbffa3d42738b",
+  "dropin": "/etc/systemd/system/portal-worker.service.d/91-awg-peer-worker.conf",
+  "dropin_sha256": "4ca51bd5c481c9e0602863e94c0f19390249f91a043a0bb379c771cff3738815",
+  "target_count": 2,
+  "before": {
+    "portal-api": {
+      "MainPID": "4190076",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-bot": {
+      "MainPID": "4187944",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-helpbot": {
+      "MainPID": "4187952",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-feedbackbot": {
+      "MainPID": "4187958",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-worker": {
+      "MainPID": "4187961",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    }
+  },
+  "after": {
+    "portal-api": {
+      "MainPID": "4190076",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-bot": {
+      "MainPID": "4187944",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-helpbot": {
+      "MainPID": "4187952",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-feedbackbot": {
+      "MainPID": "4187958",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-worker": {
+      "MainPID": "916",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    }
+  },
+  "only_worker_restarted": true,
+  "worker_env_loaded": true,
+  "public_awg_enabled": false,
+  "status": "ACTIVATED_AWAITING_PERIODIC_READBACK"
+}

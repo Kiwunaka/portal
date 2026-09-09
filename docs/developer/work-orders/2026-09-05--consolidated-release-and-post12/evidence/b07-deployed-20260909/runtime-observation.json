@@ -1,0 +1,718 @@
+{
+  "utc": "2026-09-09T10:14:43.199516+00:00",
+  "origin": "brain-origin HTTPS production",
+  "source_revision": "a8e6918ccc166a58ae65ba7d08feea63ce3a9623",
+  "status": "PASS_BOUNDED_RUNTIME_OBSERVATION",
+  "source_hashes": {
+    "portal_bot/api.py": "f67585865ebb193b2535c61e9d5d152e97320f7fbe7e4e79ae58121963fb7aa4",
+    "portal_bot/api_public_routes.py": "cf5c3c13b0555791e52b1457bea9ed8821ba2a74df8a5e130efc18bd80f814e7",
+    "portal_bot/event_loop_lag.py": "b09fffe68c86753f2c080fe5d87d3a8d5480a2e8b3d656b40d7ef56af6918a2a",
+    "portal_bot/outbound_http.py": "f1cb8b59ebb397481b35f9401b15a96c112c80ca8950ffc408186feb48f4423b",
+    "portal_bot/payment_db_runtime.py": "2ff23bb0b54a4a51e2312ab5b8a59483d89e89db43b4f44647d997c667ab64b0",
+    "portal_bot/payment_entitlement_outbox.py": "5bcb3f576e8b062995879e193974971b057611c21755f67a2df54a194369467f"
+  },
+  "health_samples": [
+    {
+      "utc": "2026-09-09T10:14:43.281180+00:00",
+      "phase": "baseline",
+      "http_status": 200,
+      "http_ms": 77.37,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1953,
+        "last_lag_ms": 1,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176645
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:14:44.298716+00:00",
+      "phase": "baseline",
+      "http_status": 200,
+      "http_ms": 17.29,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1954,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176645
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:14:45.359852+00:00",
+      "phase": "baseline",
+      "http_status": 200,
+      "http_ms": 60.82,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1955,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176645
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:14:46.379187+00:00",
+      "phase": "baseline",
+      "http_status": 200,
+      "http_ms": 18.45,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1956,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176645
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:14:47.401193+00:00",
+      "phase": "baseline",
+      "http_status": 200,
+      "http_ms": 20.5,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1957,
+        "last_lag_ms": 1,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176646
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:14:48.496391+00:00",
+      "phase": "support_online",
+      "http_status": 200,
+      "http_ms": 94.95,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1958,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176646
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:14:49.510954+00:00",
+      "phase": "support_online",
+      "http_status": 200,
+      "http_ms": 14.21,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1959,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176646
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:14:50.568083+00:00",
+      "phase": "support_online",
+      "http_status": 200,
+      "http_ms": 56.87,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1960,
+        "last_lag_ms": 1,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176647
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:14:51.589810+00:00",
+      "phase": "support_online",
+      "http_status": 200,
+      "http_ms": 21.38,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1961,
+        "last_lag_ms": 1,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176648
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:14:52.611929+00:00",
+      "phase": "support_online",
+      "http_status": 200,
+      "http_ms": 21.76,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1962,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176648
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:14:53.632881+00:00",
+      "phase": "support_online",
+      "http_status": 200,
+      "http_ms": 20.49,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1963,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176648
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:14:54.661594+00:00",
+      "phase": "support_online",
+      "http_status": 200,
+      "http_ms": 28.23,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1964,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176648
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:14:55.678084+00:00",
+      "phase": "support_online",
+      "http_status": 200,
+      "http_ms": 16.13,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1965,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176648
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:14:56.735361+00:00",
+      "phase": "support_online",
+      "http_status": 200,
+      "http_ms": 57.03,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1967,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176649
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:14:57.750519+00:00",
+      "phase": "support_online",
+      "http_status": 200,
+      "http_ms": 14.61,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1968,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176649
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:14:58.763235+00:00",
+      "phase": "support_online",
+      "http_status": 200,
+      "http_ms": 12.39,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1969,
+        "last_lag_ms": 1,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176650
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:14:59.775753+00:00",
+      "phase": "support_online",
+      "http_status": 200,
+      "http_ms": 12.21,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1970,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176650
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:15:00.788610+00:00",
+      "phase": "support_online",
+      "http_status": 200,
+      "http_ms": 12.57,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1971,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176650
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:15:01.811105+00:00",
+      "phase": "support_online",
+      "http_status": 200,
+      "http_ms": 22.24,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1972,
+        "last_lag_ms": 1,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176651
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:15:02.825790+00:00",
+      "phase": "support_online",
+      "http_status": 200,
+      "http_ms": 14.37,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1973,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176651
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:15:03.837655+00:00",
+      "phase": "support_online",
+      "http_status": 200,
+      "http_ms": 11.62,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1974,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176651
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:15:04.851846+00:00",
+      "phase": "support_online",
+      "http_status": 200,
+      "http_ms": 13.92,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1975,
+        "last_lag_ms": 1,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176652
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:15:05.940647+00:00",
+      "phase": "after",
+      "http_status": 200,
+      "http_ms": 88.52,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1976,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176652
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:15:06.956956+00:00",
+      "phase": "after",
+      "http_status": 200,
+      "http_ms": 15.99,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1977,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176652
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:15:07.971780+00:00",
+      "phase": "after",
+      "http_status": 200,
+      "http_ms": 14.56,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1978,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176652
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:15:08.984662+00:00",
+      "phase": "after",
+      "http_status": 200,
+      "http_ms": 12.62,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1979,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176652
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    },
+    {
+      "utc": "2026-09-09T10:15:10.000297+00:00",
+      "phase": "after",
+      "http_status": 200,
+      "http_ms": 15.25,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 1980,
+        "last_lag_ms": 0,
+        "max_lag_ms": 7905,
+        "lag_total_ms": 176652
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 1,
+        "started": 2,
+        "completed": 2,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 15,
+        "duration_max_ms": 15
+      }
+    }
+  ],
+  "raw_customer_provider_or_credentials_exported": false,
+  "payment_operations_executed": false,
+  "production_settings_changed": false,
+  "outbox_before": {
+    "pending": 0,
+    "processing": 0,
+    "delivered": 2,
+    "dead_letter": 0,
+    "unknown_status": 0,
+    "oldest_open_age_seconds": 0.0
+  },
+  "online_read": {
+    "http_status": 200,
+    "http_ms": 17590.05,
+    "returned_json_object": true,
+    "source_error_count": 0
+  },
+  "outbox_after": {
+    "pending": 0,
+    "processing": 0,
+    "delivered": 2,
+    "dead_letter": 0,
+    "unknown_status": 0,
+    "oldest_open_age_seconds": 0.0
+  },
+  "fixture_revoked": true,
+  "completed_at": "2026-09-09T10:15:10.860538+00:00"
+}

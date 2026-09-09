@@ -1,0 +1,33 @@
+{
+  "status": "PASS",
+  "feature_commit": "4434270",
+  "integration_commit": "68d96101b46b809bbdff172996461e96dfb57497",
+  "tests": 208,
+  "subtests": 8,
+  "command": "python -B -m pytest -p no:cacheprovider portal_bot/tests/test_app_first_api.py portal_bot/tests/test_app_first_service.py tests/test_api_auth_and_tickets.py tests/test_subscription_preview_api.py tests/test_admin_ops_api.py tests/test_admin_payments_api.py -q",
+  "focused_feature_and_integration": "3 PASS each: two worker-thread regressions and existing cutover scenario",
+  "regressions_before": "two expected failures",
+  "logs": [
+    {
+      "path": "E:\\r12-b07-observation-20260909\\shift-before.log",
+      "sha256": "296de83610252bf660b77e22130ba1d7b3d21a0dc8c02f824818befce235384d",
+      "bytes": 4405
+    },
+    {
+      "path": "E:\\r12-b07-observation-20260909\\shift-focused.log",
+      "sha256": "dcd961e7e890dd72f9c9ce8d5fe8cc4bd24a9b9435f4459715cece6951dba19f",
+      "bytes": 116
+    },
+    {
+      "path": "E:\\r12-b07-observation-20260909\\shift-integration-focused.log",
+      "sha256": "8f1614b6ad95e784b44c5aa9948650986b5d094204b76230efb3eea3c3390d79",
+      "bytes": 116
+    },
+    {
+      "path": "E:\\r12-b07-observation-20260909\\shift-backend-router.log",
+      "sha256": "c1c80b25360505c86b8f68fbc4a490137fe2b934cf45a9cbf43fdf8ac5759f6d",
+      "bytes": 287
+    }
+  ],
+  "full_15_step_local_quality_gate": "NOT_REEXECUTED"
+}

@@ -1,0 +1,268 @@
+{
+  "status": "DEPLOYED_BOUNDED_INDEX_FIX",
+  "origin": "brain-origin production PostgreSQL and HTTPS",
+  "deployed_source": "1ef1f50f76c0529b0efa17a694dd2a5885a475a5",
+  "pr": "https://github.com/Kiwunaka/portal/pull/251",
+  "feature_source": [
+    "ac8f220",
+    "a01bca5"
+  ],
+  "tree": "8da40f67c653c9fabab6a3293cab3648e4c9b5ac",
+  "captures": [
+    {
+      "path": "shift-profile-before.json",
+      "sha256": "33afe33c7d52ac5ed065e4f93fcd85586ba2f6b6216b921557d416fa85e3b82d",
+      "original_raw_sha256": "5a50873ef9d2e6c374f73fa4c25004106c0c6d22fbc2fcd03415605f2b8313f2"
+    },
+    {
+      "path": "latest-samples-plans-before.json",
+      "sha256": "ddb263415897be7d67bc308f292da94fa2add14e1e31b397a7e61397103eaae5",
+      "original_raw_sha256": "8a91f756caa54d4237acdf06393c6971244f8ded3f441acc366dc81575d095ce"
+    },
+    {
+      "path": "shift-profile-clone-before.json",
+      "sha256": "a11a8d4a1e6609c33c839862f8a94273430619ca378e92137ee5ea6333ecc61c",
+      "original_raw_sha256": "93a77b1846a811121fd92b0b445009ec85ca3613056ae2e6c37970b56d8398ee"
+    },
+    {
+      "path": "shift-profile-clone-baseline.json",
+      "sha256": "96d14c486bd196b2f79c5d9d98e807a91014bea2bf8d423302d9ff120177d901",
+      "original_raw_sha256": "0f79dd6c82e4bf819c8f3364eadb074e2ee9a9664f8d1b9e315af8bdd6ed2bc3"
+    },
+    {
+      "path": "index-clone-failure.json",
+      "sha256": "f0ad0a392718c12590c9740ad27cafd6ab0af5fa18df80ba78a00b14057b98cf",
+      "original_raw_sha256": "4f573f5b8faff305cdabc8a19e69918479d6f73fc0f70e629695f26a58849240"
+    },
+    {
+      "path": "index-clone-after-failure-readback.json",
+      "sha256": "444ededf83b081f4882194b4d488de1aafedab26413d3e97276563ec5cff35f9",
+      "original_raw_sha256": "60a3b339e62178bc413f1b5c3b24288f42ac239953303c4cace504cdeb8f5374"
+    },
+    {
+      "path": "index-clone-resumed.json",
+      "sha256": "3e24c76dc39a94ae244baa1eb71654c9e0fd5d09d1046a6a7f796fe805fa510d",
+      "original_raw_sha256": "0b0d21164da65dd40138d4112fc2dd046d9a4d0f62ab406256d6c159a0f50817"
+    },
+    {
+      "path": "shift-profile-clone-after.json",
+      "sha256": "742eb786646c6c97cdcb9a3125a68439cf2ad9089ef7f9d6081e45eee4034f4b",
+      "original_raw_sha256": "0d8268c4f1d035bfd83ee6aa1412aa53f3b1cb1603cbf95e9b8d969ec6f076f9"
+    },
+    {
+      "path": "runtime-metric-plan-before.json",
+      "sha256": "d346e1b98e78ff2ff9dcd0b536da0e63cc82f7c3b08518f46300280437381cfd",
+      "original_raw_sha256": "d26ab75b1185ea9412405eb9ff7b5245586bf49f0d006b2e47198500c880a9ec"
+    },
+    {
+      "path": "runtime-index-clone-rehearsal.json",
+      "sha256": "9ede86ff25d7d1e4eff87b5a7200a10efdff331e117449d9ac5433d4e91f7dac",
+      "original_raw_sha256": "b91a266b8775e949c9395f7995d09a6eb66b594cb5369ae9968dc49d3c776091"
+    },
+    {
+      "path": "shift-profile-clone-final.json",
+      "sha256": "97ddb3acddca12ca343633e29d1fb2e914f0754618f33db83b49877ae2f9c309",
+      "original_raw_sha256": "fc1e08f115f1e5eea7ba8ca4c3af9eaeb7ca38c46e9d0eec4d57608145cdd355"
+    },
+    {
+      "path": "clone-plans-final.json",
+      "sha256": "f3c0df2f9444fdb7b8624d07bf62dfcd2960ac455c67fc755d2dfc9d4dcc6d3e",
+      "original_raw_sha256": "02c235f31ab5695a59fbc8d55e5795cb0cd0ec9bf7f61a1e5d1854d433dfd0c6"
+    },
+    {
+      "path": "production-index-preflight.json",
+      "sha256": "07104836cac63358aadf2e8a845c3aa4189f8c92e5817e765c39672895564140",
+      "original_raw_sha256": "f63244d6901d7ec1a0add5cf3ade2dd0d0d972ed05f25fc557a9238cc30ae979"
+    },
+    {
+      "path": "index-merged.json",
+      "sha256": "4f7353ab5a1f1c267e7ec7cf9a37fe4c5e537342f14cc42ef93ff70be0449f0f",
+      "original_raw_sha256": "22bd76765cdb9e8833b82d75743062e73f5005cd4d6104b1569e9514aa765cd8"
+    },
+    {
+      "path": "merged-source-verified.json",
+      "sha256": "3300e872753b0e3c873bbcd35588b3cbe27103666b2cff9296c8570db38a8da8",
+      "original_raw_sha256": "3ebcaf50f369a95dd9b56b5cecc4805e76888df2125ba47140c32552a9c24beb"
+    },
+    {
+      "path": "local-verification.json",
+      "sha256": "0644c98e98e293d5bf57e66173e5c512aad42e5ebf9ed14e5fa8331c60ec5857",
+      "original_raw_sha256": "3c88ad2e802d970730d7918f6abba96ba490352569e62431273b301d801eeee5"
+    },
+    {
+      "path": "baseline-at-deploy.json",
+      "sha256": "f63103cf7fb47fa3d975f4e8419cf736cdbcac754a82db497f42ca75dce94d40",
+      "original_raw_sha256": "f240c44c7b6c737103a0a47b9ba1da8a7b3f5510665fc3b5a8f392b1cf101b5e"
+    },
+    {
+      "path": "ci-verified.json",
+      "sha256": "baa32c31c01a83fb2bc603e11936f57a3db462d8852b9f31c82264457c69136e",
+      "original_raw_sha256": "7f02942c21d86f7cc9713e9df2c849c857f1c26d794f4dbb51cff3afc310edac"
+    },
+    {
+      "path": "production-index-apply.json",
+      "sha256": "f90edb013ab8a7c24a9a4ad783a12c9988c5e8433a681fdda1671aad6b032876",
+      "original_raw_sha256": "16489e0ad0f22bad3ba01a6cdcbf1a48c03688a41b2f714c3957831b49d2ce41"
+    },
+    {
+      "path": "build-identity-updated.json",
+      "sha256": "9640f83abeb84f589b65bf6c54b2a1a6b01f1699271b4f52319198158578c567",
+      "original_raw_sha256": "903e3ef343fec256253f12653babfdc0edcb0ca81db09daffe6623d330fdc1e2"
+    },
+    {
+      "path": "runtime-shift-observation.json",
+      "sha256": "bf1fb7ff60bd3c295e6b24b2c942b23a47e8d986a6f856d6b72a2cb7df440733",
+      "original_raw_sha256": "c3bcf24c28256dee27b8c59b20de9d8ec40f52aabed8ffd08cceaaf8d32d839e"
+    },
+    {
+      "path": "runtime-comparison.json",
+      "sha256": "85a102368744f91e94d4389ee5f59d3397d6a0ba2c80855d0f8c5b5828dd876b",
+      "original_raw_sha256": "4e50eba2e392a8560b09af59c55e66af34c0e3cc7c9257c59b84b1bcaa86d383"
+    }
+  ],
+  "external_retained_inputs": [
+    {
+      "path": "E:\\r12-shift-profile-20260909\\apply-production-indexes.py",
+      "sha256": "3a321b93a09d6941b684131ce8723c4ae7426efd68421336ef19fd5915514a3b"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\backend-router-final.log",
+      "sha256": "8af4ea572452e65d72eabe6cf6dc218d04493ba5a84626cf4453e6bbdc3b81fa"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\backend-router.log",
+      "sha256": "8a26337d2d385b959d9d96fadbb57e99d32989ddc9113c523b65d86df4d14837"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\check-baseline-at-deploy.py",
+      "sha256": "fd8de4af1520fd34829a876d7967ee99b5f1b6dcfec755fc4b47317e1b4348cd"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\compare-runtime.py",
+      "sha256": "7ea1f36fb67bf3694776d74c66303202d5910231c5edd1d5a2a1b7664e357206"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\deploy-backend.log",
+      "sha256": "d5bdbb92bd6d038b5af72181dfab912bcbb8e0cf990a97797e06b3b054e56d32"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\explain-latest-samples.py",
+      "sha256": "c3e89241f89e4571f1e61acc9294ac13336f31ddd795c1544bf41eed35480c63"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\integration-schema.log",
+      "sha256": "daaaa0ef7953e4f292c3f11dc0b79c923697f36bf344b8435a39c296b18e86a4"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\master-guardrails.log",
+      "sha256": "217a438f897554aa9717d47f9b539cdc5c6efdb17a5164ab7bfb3c57c18503d9"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\merged-payload.json",
+      "sha256": "eb0643f5300907d9d7171b1c15010dc12f83c1503fa6467bdb5e48032fe3fc4d"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\observe-shift-runtime-after.py",
+      "sha256": "9e6e3af088f0a103b4d7f6d1fae10cf6cb1dcdaedccc3409c975219b3a4d06e0"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\pr-checks.log",
+      "sha256": "b8e0409a7f9ec8a33feb04773d2dba55b4ef7fcebb8533b22f670c24c0363645"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\prepare-payload.py",
+      "sha256": "f56031c104d4420b5606be8d80cab4be4ffa60d377980d09c8889622a37f1abe"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\production-preflight.py",
+      "sha256": "510a15b097859dd58a3fadcb3ad2c05d1a214f7e1675627fca0bd25708a5e739"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\profile-shift-clone-after.py",
+      "sha256": "c8f43ecda3ed66117c9bdac2f71859476acff4e7384dcfafc685d517c221d333"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\profile-shift-clone-baseline.py",
+      "sha256": "88432c42bf4f54875266ba40fe0eb3e438eef811df0ac05685f0345e72364c9b"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\profile-shift-clone-before.py",
+      "sha256": "3f8631797141dfbd4cbce2d97063b93c01ddb5420c7cba7b90d7b9548406c9aa"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\profile-shift-clone-final.py",
+      "sha256": "d3cd0375da8107e58949022cf2f3ce09c71e7498243e0adf778c54c90e7f2f8d"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\profile-shift.py",
+      "sha256": "2b20d16e3fdacb9a6c106d56fd62d54a5035eee2d56d05442ad276900b175891"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\promote-indexes.py",
+      "sha256": "6db28fb937ea16266a2582e67a340ca356f7fe9abd27d66576874e6e7e9cb954"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\rehearse-index.py",
+      "sha256": "17abebe900320d13ead81b79562ff5ce268837ae87938262f2cb94bdc7689c69"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\rehearse-runtime-index.py",
+      "sha256": "b7b42d750c46b912ddd99de153fe681888d87b90938be8474f54bc9e733e842a"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\resume-index-rehearsal.py",
+      "sha256": "1fd2b8eed0b9e8fd35710a15a748920371eb190e897168892fd8b6a558ec5927"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\retain-evidence.py",
+      "sha256": "81538a5eb074c954c354d7c5c7c59fb79f6d0f524af2da48eb9ac1a2cbf9dfa6"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\retain-local-checks.py",
+      "sha256": "12451e3a59901773b58a61f3c8d0c8f807efbbdf67d94dc079cafde8a301d6d1"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\runtime-schema-before.log",
+      "sha256": "3ca481ec16632504d4231769396f1333c8377fe3a65f568f1277402500df9ca3"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\schema-before.log",
+      "sha256": "f77da95ae8fc234189f54d9de3781f790035b9300fe05c5e9e877902be0ef910"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\schema-final-focused.log",
+      "sha256": "814b84cd6c0d9c34dbafec09dd2208e6ef25df1f28eefdfb7dcc6296851048dc"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\schema-focused.log",
+      "sha256": "e25ad258de95b9de08c9a7166a5adc59303136f2409645334aff74bdeb967819"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\update-build-identity.py",
+      "sha256": "ddcc399b5c1840441955a0d9fa90bd9703abf9ae7a0a23bcc0d1abf1cd819e0f"
+    },
+    {
+      "path": "E:\\r12-shift-profile-20260909\\verify-ci.py",
+      "sha256": "cef5ca224f2fca0a002f731291e31ce2c62bf19703c518ab6f08634b3ee2495f"
+    }
+  ],
+  "limits": [
+    "Single measurement windows, not p95/SLO",
+    "No commercial pool or connector wait proof",
+    "No payment operation",
+    "Full R12-B07 and consolidated plan remain active"
+  ],
+  "backup_directory": "/root/portal_bot.deploy-backups/20260909T122824Z-3572",
+  "deploy_exit_code": 0,
+  "restart_units": [
+    "portal-api",
+    "portal-bot",
+    "portal-helpbot",
+    "portal-feedbackbot",
+    "portal-worker"
+  ],
+  "raw_runtime_deltas": [
+    "portal_bot/models.py",
+    "portal_bot/migrations.py"
+  ]
+}

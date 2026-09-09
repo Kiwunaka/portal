@@ -1,0 +1,77 @@
+{
+  "started_at": "2026-09-09T05:24:17.011918+00:00",
+  "origin": "RU-origin",
+  "execution": "owned RU Pi, synthetic test of retained old and active new material; not installed device proof",
+  "build": {
+    "core_revision": "c7a11f7d2fd974726095ad7aa0619c055273dd15",
+    "promotion_revision_same_tree": "7444e531af6d9bf9b37d8f14e022f04182e447cc",
+    "binary_sha256": "1b369a9c1090ea367a3d73a3d4569fe4c5619ed5155a5652a29b013f1e7398b1",
+    "binary_bytes": 15952525,
+    "go_sha256": "21761eceb9302062c9623fb699f332c8c7fe000f15f70efe8da01a2cfbbc16b9",
+    "git_sha256": "fec691d80fccc35fcc309fbc9f720536c1d795b8a562ec169f28c9923da9600f",
+    "target": "linux_arm64",
+    "interop_runner_sha256": "10034eb7d78b66c0f06452ae9a1f132c0faa2c199810d52b34c05362d3c83f0a"
+  },
+  "checks": [
+    {
+      "profile": "awg2_lab",
+      "expected": "rejected",
+      "key_kind": "retired_shared",
+      "returncode": 1,
+      "status": "PASS",
+      "classification": "failed_no_outer_response",
+      "output_sha256": "f6c9186fb0ddb9ca12fbcee296a9d1eb00ced3f0758888b417937e3d004f9610",
+      "mtu_observations": {}
+    },
+    {
+      "profile": "awg2_lab",
+      "expected": "accepted",
+      "key_kind": "new_unique",
+      "returncode": 0,
+      "status": "PASS",
+      "classification": "passed",
+      "output_sha256": "7a217a52f3cd15de8384dbab4548a97aee042bc9b7a05a949fed57c8a0283940",
+      "mtu_observations": {
+        "1280": {
+          "tx_packets": 20,
+          "rx_packets": 12,
+          "tx_max": 1296,
+          "rx_max": 1312,
+          "elapsed_ms": 254
+        }
+      }
+    },
+    {
+      "profile": "awg31_lab",
+      "expected": "rejected",
+      "key_kind": "retired_shared",
+      "returncode": 1,
+      "status": "PASS",
+      "classification": "failed_no_outer_response",
+      "output_sha256": "fd6ef7e52e856787cc3183051c2fcce497c5e5d964c85dedea1cd4878fabd315",
+      "mtu_observations": {}
+    },
+    {
+      "profile": "awg31_lab",
+      "expected": "accepted",
+      "key_kind": "new_unique",
+      "returncode": 0,
+      "status": "PASS",
+      "classification": "passed",
+      "output_sha256": "f851b81c3aef1015191874e58378dc25ba126dbbe8a8c2608fe51a37e2cf658b",
+      "mtu_observations": {
+        "1280": {
+          "tx_packets": 24,
+          "rx_packets": 11,
+          "tx_max": 1300,
+          "rx_max": 1328,
+          "elapsed_ms": 1225
+        }
+      }
+    }
+  ],
+  "raw_material_retained": false,
+  "status": "PASS_OLD_DENIED_NEW_ACCEPTED",
+  "temporary_pi_binary_removed": true,
+  "completed_at": "2026-09-09T05:25:52.096882+00:00"
+}

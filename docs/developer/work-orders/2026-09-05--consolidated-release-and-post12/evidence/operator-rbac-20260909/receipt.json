@@ -1,0 +1,27 @@
+{
+  "status": "PASS_BOUNDED_ROLE_DENIALS",
+  "role_count": 10,
+  "coverage": "one representative forbidden route per non-superadmin role; me and meta positive controls",
+  "source_revision": "a8e6918ccc166a58ae65ba7d08feea63ce3a9623",
+  "files": [
+    {
+      "file": "rbac-live-result.json",
+      "sha256": "480027bb62037f48f29ca0dfcc15cab5f7ec2166cd4761cf746462d0c84d544c",
+      "capture_sha256": "49b45ed833002e5eacfdbdd110da70aa3ca4792f9781e488efb7b9aff13fec36"
+    }
+  ],
+  "local_instruments": [
+    {
+      "path": "E:\\r12-operator-session-20260909\\rbac-live-fixture.py",
+      "sha256": "9e20daf5e4569a6ef5e375c2b77c0ee3adc620bb37d147a96797ff3e4af73958"
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\rbac-live-fixture-bound.py",
+      "sha256": "78b97564af8315e98b1ea73c3e564c47e581d09c77fc8e7329d0c95df7f4f4b6"
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\run-rbac-live.py",
+      "sha256": "7a8fb122bba8f0c41c38b752e8a583cc08b76c727864c752ab61e1d19fa3458a"
+    }
+  ]
+}

@@ -594,7 +594,28 @@ restarts. Support attachments were empty; atomic cross-store consistency and
 deployment of the current API/bot/worker are not claimed. Archives and the
 rehearsal database remain retained outside Git on Brain.
 
+The later [current B08 compatibility and worker check](../developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-B08-CURRENT-2026-09-09.md)
+uses a new descendant of that restored Brain database with actual previous
+197-file and current `cd4a8b9` 205-file APIs. The new startup adds two indexes;
+old/new coexistence and old-code restart retain read/write behavior and the
+expanded schema. Two current outbox workers deliver one synthetic event and
+quarantine one poison event without duplicate grant/job. Production source and
+PIDs remain unchanged. Technical B08 checks are I4; its B06 provider dependency
+and final release acceptance remain open. No production failure was injected.
+
 ### Static sites deploy
+
+Observed 2026-09-09: backend `7d37005` and static inputs `0392052` are deployed
+on Brain; static release `20260909045925` passed all 887 file hashes and
+canonical public HTTP readbacks. Previous releases are preserved in a verified
+server-side archive and the admin rollback pointer. Operator bootstrap/session
+checks passed. After the owner registered the admin callback on 2026-09-09,
+Telegram returned its login page instead of the callback error. The owner then
+completed a real OIDC login and step-up; the server audit confirms both in the
+same active production session. No role change was executed. Full capability
+and release acceptance remain separate; the legacy bootstrap setting is unchanged.
+See the [real operator login evidence](../developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-OPERATOR-LIVE-2026-09-09.md)
+and the [dated deployment execution and retained evidence](../developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-PLATFORM-DEPLOY-2026-09-09.md).
 
 - [remote_deploy_brain_static_sites.py](C:/Users/kiwun/Documents/ai/VPN/scripts/remote_deploy_brain_static_sites.py)
 - static deploy packages `marketing/out`, `webapp/out`, and `adminapp/out` as local `tar.gz` bundles, uploads one archive per surface, extracts them into a versioned release directory, validates required files, then atomically switches `/var/www/portal/{marketing,webapp,adminapp}` symlinks
@@ -637,6 +658,11 @@ rehearsal database remain retained outside Git on Brain.
   OIDC login and step-up have been retained. OIDC does not auto-create an
   operator or role, so provision and review those records before disabling the
   compatibility path.
+  Brain cutover on 2026-09-09 explicitly set this flag to `false` after the
+  provisioned operator's OIDC login/step-up and source comparison. Current
+  bootstrap and compatibility step-up return their expected 403 codes;
+  existing sessions and OIDC start remain available. See the retained
+  [cutover and rollback evidence](../developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-OPERATOR-CUTOVER-2026-09-09.md).
   Idle, absolute, step-up and active-session bounds use the documented
   `ADMIN_OPERATOR_*_SECONDS`/`ADMIN_OPERATOR_MAX_ACTIVE_SESSIONS` variables.
   A missing/short secret or invalid environment fails closed. CORS must keep
@@ -1248,6 +1274,8 @@ Node shaping repo truth:
 - `infra/portal-node-qdisc.service` restores the configured qdisc after reboot
 
 ### Owned AWG peer revocation worker
+
+Observed 2026-09-09: backend `d3eba89` has two owned DE targets configured on Brain. Four unique per-device keys replaced the old shared peers; the persisted and live peer sets contain exactly two keys per interface. Three scheduled worker reports had zero failed targets. The historical shared-key counter does not represent active peers. Current installed-client and full A04 acceptance remain open. See [the production migration evidence](../developer/work-orders/2026-09-05--consolidated-release-and-post12/EXECUTION-A04-PRODUCTION-MIGRATION-2026-09-09.md).
 
 `portal_bot/awg_lab_peer_worker.py` runs inside the existing worker when
 `AWG_LAB_PEER_TARGETS_FILE` names a JSON target file. Empty configuration leaves

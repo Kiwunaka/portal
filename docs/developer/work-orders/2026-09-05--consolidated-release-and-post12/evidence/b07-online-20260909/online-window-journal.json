@@ -1,0 +1,191 @@
+{
+  "origin": "brain-origin API journal fixed route projection",
+  "start": "2026-09-09T10:57:55Z",
+  "end": "2026-09-09T10:58:35Z",
+  "source_line_limit": 300,
+  "source_lines": 31,
+  "unmatched_lines": 1,
+  "raw_logs_exported": false,
+  "requests": [
+    {
+      "utc": "2026-09-09T10:58:00.864732+00:00",
+      "method": "GET",
+      "route": "/api/admin/v2/meta",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:00.932447+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:02.039784+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:03.055450+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:04.128636+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:05.143755+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:06.160344+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:07.174795+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:08.196355+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:09.212776+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:10.273361+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:11.290666+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:12.313459+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:13.328430+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:14.343896+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:15.358786+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:16.378876+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:17.396731+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:18.463634+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:23.381154+00:00",
+      "method": "GET",
+      "route": "/api/admin/v2/shift/overview",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:23.388822+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:23.425096+00:00",
+      "method": "GET",
+      "route": "/api/admin/v2/support/online",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:23.426739+00:00",
+      "method": "GET",
+      "route": "other_route_redacted",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:24.414185+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:25.429630+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:26.442247+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:27.456861+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:28.462855+00:00",
+      "method": "POST",
+      "route": "/api/admin/v2/auth/logout",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:28.792383+00:00",
+      "method": "GET",
+      "route": "/api/health",
+      "status": 200
+    },
+    {
+      "utc": "2026-09-09T10:58:31.620890+00:00",
+      "method": "POST",
+      "route": "other_route_redacted",
+      "status": 200
+    }
+  ]
+}

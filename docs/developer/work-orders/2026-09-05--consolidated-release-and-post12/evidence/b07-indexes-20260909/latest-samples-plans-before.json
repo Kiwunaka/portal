@@ -1,0 +1,458 @@
+{
+  "utc": "2026-09-09T11:45:06.232993+00:00",
+  "origin": "brain-origin read-only PostgreSQL EXPLAIN ANALYZE",
+  "plans": [
+    {
+      "node_ordinal": 0,
+      "statement_sha256": "1fa410f2e2271abbc4acc695fb135f84c9b22d7d02055f63465e56c87bca02b8",
+      "planning_ms": 1.224,
+      "execution_ms": 3019.639,
+      "plan": {
+        "Node Type": "Limit",
+        "Actual Rows": 3,
+        "Actual Loops": 1,
+        "Actual Total Time": 2893.502,
+        "Shared Hit Blocks": 29642,
+        "Shared Read Blocks": 123754,
+        "Temp Read Blocks": 0,
+        "Temp Written Blocks": 0,
+        "Plans": [
+          {
+            "Node Type": "Gather Merge",
+            "Actual Rows": 3,
+            "Actual Loops": 1,
+            "Actual Total Time": 2860.663,
+            "Shared Hit Blocks": 29642,
+            "Shared Read Blocks": 123754,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Plans": [
+              {
+                "Node Type": "Sort",
+                "Actual Rows": 2,
+                "Actual Loops": 3,
+                "Actual Total Time": 2720.324,
+                "Sort Method": "top-N heapsort",
+                "Sort Space Used": 32,
+                "Sort Space Type": "Memory",
+                "Shared Hit Blocks": 29642,
+                "Shared Read Blocks": 123754,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "Plans": [
+                  {
+                    "Node Type": "Seq Scan",
+                    "Relation Name": "node_health_samples",
+                    "Actual Rows": 46891,
+                    "Actual Loops": 3,
+                    "Actual Total Time": 2635.506,
+                    "Rows Removed by Filter": 501036,
+                    "Shared Hit Blocks": 29552,
+                    "Shared Read Blocks": 123754,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "Plans": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "node_ordinal": 1,
+      "statement_sha256": "1fa410f2e2271abbc4acc695fb135f84c9b22d7d02055f63465e56c87bca02b8",
+      "planning_ms": 0.184,
+      "execution_ms": 1074.354,
+      "plan": {
+        "Node Type": "Limit",
+        "Actual Rows": 3,
+        "Actual Loops": 1,
+        "Actual Total Time": 1073.572,
+        "Shared Hit Blocks": 28491,
+        "Shared Read Blocks": 124905,
+        "Temp Read Blocks": 0,
+        "Temp Written Blocks": 0,
+        "Plans": [
+          {
+            "Node Type": "Gather Merge",
+            "Actual Rows": 3,
+            "Actual Loops": 1,
+            "Actual Total Time": 1068.159,
+            "Shared Hit Blocks": 28491,
+            "Shared Read Blocks": 124905,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Plans": [
+              {
+                "Node Type": "Sort",
+                "Actual Rows": 2,
+                "Actual Loops": 3,
+                "Actual Total Time": 975.092,
+                "Sort Method": "top-N heapsort",
+                "Sort Space Used": 32,
+                "Sort Space Type": "Memory",
+                "Shared Hit Blocks": 28491,
+                "Shared Read Blocks": 124905,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "Plans": [
+                  {
+                    "Node Type": "Seq Scan",
+                    "Relation Name": "node_health_samples",
+                    "Actual Rows": 91043,
+                    "Actual Loops": 3,
+                    "Actual Total Time": 901.274,
+                    "Rows Removed by Filter": 456885,
+                    "Shared Hit Blocks": 28401,
+                    "Shared Read Blocks": 124905,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "Plans": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "node_ordinal": 2,
+      "statement_sha256": "1fa410f2e2271abbc4acc695fb135f84c9b22d7d02055f63465e56c87bca02b8",
+      "planning_ms": 0.172,
+      "execution_ms": 920.733,
+      "plan": {
+        "Node Type": "Limit",
+        "Actual Rows": 3,
+        "Actual Loops": 1,
+        "Actual Total Time": 920.065,
+        "Shared Hit Blocks": 12200,
+        "Shared Read Blocks": 141196,
+        "Temp Read Blocks": 0,
+        "Temp Written Blocks": 0,
+        "Plans": [
+          {
+            "Node Type": "Gather Merge",
+            "Actual Rows": 3,
+            "Actual Loops": 1,
+            "Actual Total Time": 913.821,
+            "Shared Hit Blocks": 12200,
+            "Shared Read Blocks": 141196,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Plans": [
+              {
+                "Node Type": "Sort",
+                "Actual Rows": 3,
+                "Actual Loops": 3,
+                "Actual Total Time": 817.422,
+                "Sort Method": "top-N heapsort",
+                "Sort Space Used": 32,
+                "Sort Space Type": "Memory",
+                "Shared Hit Blocks": 12200,
+                "Shared Read Blocks": 141196,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "Plans": [
+                  {
+                    "Node Type": "Seq Scan",
+                    "Relation Name": "node_health_samples",
+                    "Actual Rows": 89275,
+                    "Actual Loops": 3,
+                    "Actual Total Time": 699.72,
+                    "Rows Removed by Filter": 458652,
+                    "Shared Hit Blocks": 12110,
+                    "Shared Read Blocks": 141196,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "Plans": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "node_ordinal": 3,
+      "statement_sha256": "1fa410f2e2271abbc4acc695fb135f84c9b22d7d02055f63465e56c87bca02b8",
+      "planning_ms": 0.173,
+      "execution_ms": 781.966,
+      "plan": {
+        "Node Type": "Limit",
+        "Actual Rows": 3,
+        "Actual Loops": 1,
+        "Actual Total Time": 781.33,
+        "Shared Hit Blocks": 12134,
+        "Shared Read Blocks": 141262,
+        "Temp Read Blocks": 0,
+        "Temp Written Blocks": 0,
+        "Plans": [
+          {
+            "Node Type": "Gather Merge",
+            "Actual Rows": 3,
+            "Actual Loops": 1,
+            "Actual Total Time": 775.071,
+            "Shared Hit Blocks": 12134,
+            "Shared Read Blocks": 141262,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Plans": [
+              {
+                "Node Type": "Sort",
+                "Actual Rows": 2,
+                "Actual Loops": 3,
+                "Actual Total Time": 679.398,
+                "Sort Method": "top-N heapsort",
+                "Sort Space Used": 32,
+                "Sort Space Type": "Memory",
+                "Shared Hit Blocks": 12134,
+                "Shared Read Blocks": 141262,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "Plans": [
+                  {
+                    "Node Type": "Seq Scan",
+                    "Relation Name": "node_health_samples",
+                    "Actual Rows": 91043,
+                    "Actual Loops": 3,
+                    "Actual Total Time": 595.167,
+                    "Rows Removed by Filter": 456885,
+                    "Shared Hit Blocks": 12044,
+                    "Shared Read Blocks": 141262,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "Plans": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "node_ordinal": 4,
+      "statement_sha256": "1fa410f2e2271abbc4acc695fb135f84c9b22d7d02055f63465e56c87bca02b8",
+      "planning_ms": 0.184,
+      "execution_ms": 900.411,
+      "plan": {
+        "Node Type": "Limit",
+        "Actual Rows": 3,
+        "Actual Loops": 1,
+        "Actual Total Time": 899.68,
+        "Shared Hit Blocks": 78,
+        "Shared Read Blocks": 79627,
+        "Temp Read Blocks": 0,
+        "Temp Written Blocks": 0,
+        "Plans": [
+          {
+            "Node Type": "Gather Merge",
+            "Actual Rows": 3,
+            "Actual Loops": 1,
+            "Actual Total Time": 893.387,
+            "Shared Hit Blocks": 78,
+            "Shared Read Blocks": 79627,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Plans": [
+              {
+                "Node Type": "Sort",
+                "Actual Rows": 2,
+                "Actual Loops": 3,
+                "Actual Total Time": 784.469,
+                "Sort Method": "top-N heapsort",
+                "Sort Space Used": 32,
+                "Sort Space Type": "Memory",
+                "Shared Hit Blocks": 78,
+                "Shared Read Blocks": 79627,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "Plans": [
+                  {
+                    "Node Type": "Bitmap Heap Scan",
+                    "Relation Name": "node_health_samples",
+                    "Actual Rows": 29684,
+                    "Actual Loops": 3,
+                    "Actual Total Time": 732.466,
+                    "Rows Removed by Index Recheck": 81550,
+                    "Shared Hit Blocks": 50,
+                    "Shared Read Blocks": 79627,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "Plans": [
+                      {
+                        "Node Type": "Bitmap Index Scan",
+                        "Index Name": "ix_node_health_samples_node_code",
+                        "Actual Rows": 89053,
+                        "Actual Loops": 1,
+                        "Actual Total Time": 75.422,
+                        "Shared Hit Blocks": 1,
+                        "Shared Read Blocks": 71,
+                        "Temp Read Blocks": 0,
+                        "Temp Written Blocks": 0,
+                        "Plans": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "node_ordinal": 5,
+      "statement_sha256": "1fa410f2e2271abbc4acc695fb135f84c9b22d7d02055f63465e56c87bca02b8",
+      "planning_ms": 0.19,
+      "execution_ms": 1553.317,
+      "plan": {
+        "Node Type": "Limit",
+        "Actual Rows": 3,
+        "Actual Loops": 1,
+        "Actual Total Time": 1552.411,
+        "Shared Hit Blocks": 24,
+        "Shared Read Blocks": 80339,
+        "Temp Read Blocks": 0,
+        "Temp Written Blocks": 0,
+        "Plans": [
+          {
+            "Node Type": "Gather Merge",
+            "Actual Rows": 3,
+            "Actual Loops": 1,
+            "Actual Total Time": 1545.592,
+            "Shared Hit Blocks": 24,
+            "Shared Read Blocks": 80339,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Plans": [
+              {
+                "Node Type": "Sort",
+                "Actual Rows": 2,
+                "Actual Loops": 3,
+                "Actual Total Time": 1333.595,
+                "Sort Method": "top-N heapsort",
+                "Sort Space Used": 35,
+                "Sort Space Type": "Memory",
+                "Shared Hit Blocks": 24,
+                "Shared Read Blocks": 80339,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "Plans": [
+                  {
+                    "Node Type": "Bitmap Heap Scan",
+                    "Relation Name": "node_health_samples",
+                    "Actual Rows": 29972,
+                    "Actual Loops": 3,
+                    "Actual Total Time": 1240.302,
+                    "Rows Removed by Index Recheck": 81632,
+                    "Shared Hit Blocks": 0,
+                    "Shared Read Blocks": 80335,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "Plans": [
+                      {
+                        "Node Type": "Bitmap Index Scan",
+                        "Index Name": "ix_node_health_samples_node_code",
+                        "Actual Rows": 89916,
+                        "Actual Loops": 1,
+                        "Actual Total Time": 139.668,
+                        "Shared Hit Blocks": 0,
+                        "Shared Read Blocks": 73,
+                        "Temp Read Blocks": 0,
+                        "Temp Written Blocks": 0,
+                        "Plans": []
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "node_ordinal": 6,
+      "statement_sha256": "1fa410f2e2271abbc4acc695fb135f84c9b22d7d02055f63465e56c87bca02b8",
+      "planning_ms": 0.186,
+      "execution_ms": 1530.868,
+      "plan": {
+        "Node Type": "Limit",
+        "Actual Rows": 3,
+        "Actual Loops": 1,
+        "Actual Total Time": 1530.127,
+        "Shared Hit Blocks": 16598,
+        "Shared Read Blocks": 136798,
+        "Temp Read Blocks": 0,
+        "Temp Written Blocks": 0,
+        "Plans": [
+          {
+            "Node Type": "Gather Merge",
+            "Actual Rows": 3,
+            "Actual Loops": 1,
+            "Actual Total Time": 1524.669,
+            "Shared Hit Blocks": 16598,
+            "Shared Read Blocks": 136798,
+            "Temp Read Blocks": 0,
+            "Temp Written Blocks": 0,
+            "Plans": [
+              {
+                "Node Type": "Sort",
+                "Actual Rows": 2,
+                "Actual Loops": 3,
+                "Actual Total Time": 1349.219,
+                "Sort Method": "top-N heapsort",
+                "Sort Space Used": 32,
+                "Sort Space Type": "Memory",
+                "Shared Hit Blocks": 16598,
+                "Shared Read Blocks": 136798,
+                "Temp Read Blocks": 0,
+                "Temp Written Blocks": 0,
+                "Plans": [
+                  {
+                    "Node Type": "Seq Scan",
+                    "Relation Name": "node_health_samples",
+                    "Actual Rows": 90843,
+                    "Actual Loops": 3,
+                    "Actual Total Time": 1131.39,
+                    "Rows Removed by Filter": 457085,
+                    "Shared Hit Blocks": 16517,
+                    "Shared Read Blocks": 136789,
+                    "Temp Read Blocks": 0,
+                    "Temp Written Blocks": 0,
+                    "Plans": []
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "raw_literals_or_customer_data_exported": false,
+  "indexes": [
+    {
+      "indexname": "ix_node_health_samples_node_code",
+      "indexdef": "CREATE INDEX ix_node_health_samples_node_code ON public.node_health_samples USING btree (node_code)"
+    },
+    {
+      "indexname": "node_health_samples_pkey",
+      "indexdef": "CREATE UNIQUE INDEX node_health_samples_pkey ON public.node_health_samples USING btree (id)"
+    }
+  ],
+  "table_stats": {
+    "n_live_tup": 1644203,
+    "n_dead_tup": 0,
+    "seq_scan": 3194818,
+    "idx_scan": 1113440,
+    "last_analyze": null,
+    "last_autoanalyze": "2026-09-07T18:50:54.166177+00:00"
+  },
+  "status": "PASS_BOUNDED_PLANS"
+}

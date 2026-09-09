@@ -1,0 +1,29 @@
+{
+  "checked_at": "2026-09-09T06:01:51.339166+00:00",
+  "origin": "brain-origin",
+  "status": "PASS_REAL_OIDC_LOGIN_AND_STEP_UP",
+  "identity_source": "telegram_oidc",
+  "operator_status": "active",
+  "session_environment": "production",
+  "session_revoked": false,
+  "login": {
+    "action": "session.oidc",
+    "result": "success",
+    "reason_code": "telegram_oidc_verified",
+    "created_at": "2026-09-09T05:57:32.113295"
+  },
+  "step_up": {
+    "action": "session.step_up",
+    "result": "success",
+    "reason_code": "telegram_oidc_verified",
+    "created_at": "2026-09-09T06:00:42.959340"
+  },
+  "step_up_timestamp_present": true,
+  "same_session_for_login_and_step_up": true,
+  "active_roles": [
+    "superadmin"
+  ],
+  "existing_role_only": true,
+  "private_identity_tokens_and_cookie_exported": false,
+  "browser_session_left_active_for_owner": true
+}

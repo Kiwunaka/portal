@@ -1,0 +1,24 @@
+{
+  "status": "PASS",
+  "base": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+  "files_equal_tested_feature": [
+    {
+      "path": "portal_bot/admin_v2/router.py",
+      "normalized_sha256": "16b168bdf518cdb4978db3537dd7ff69c772ba9a8ee8e0378a830a6553ad4a35"
+    },
+    {
+      "path": "adminapp/src/features/support/ticket-detail.tsx",
+      "normalized_sha256": "3a11d5f3335e67f70876d907c0ba7b5e90ec18e70112d99714b19a95c1b96d97"
+    },
+    {
+      "path": "adminapp/e2e/clients.spec.ts",
+      "normalized_sha256": "6c0471c2bd04c89ca51584410a5e8d2cec51bfed85da392bc49442f78db6e9e8"
+    },
+    {
+      "path": "tests/test_admin_ops_api.py",
+      "normalized_sha256": "8b47b12770293474a4f0390c7899b6f5311786b90518b1f9e771ef538e076208"
+    }
+  ],
+  "all_backend_payload_files_equal_tested_feature": 205,
+  "readme_difference": "Preserve current-master absolute-session documentation and feature-only unpromoted cutover inventory text in their respective branches; only scoped note paragraph changed."
+}

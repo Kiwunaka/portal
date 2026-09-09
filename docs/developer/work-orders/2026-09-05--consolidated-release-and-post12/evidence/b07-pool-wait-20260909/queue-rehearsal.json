@@ -1,0 +1,103 @@
+{
+  "utc": "2026-09-09T12:45:43.407409+00:00",
+  "origin": "brain-origin isolated candidate process; restored PostgreSQL and loopback HTTP fixture",
+  "status": "FAILED",
+  "source_sha256": {
+    "portal_bot/db.py": "137d92ef03f224c7ea168a9d9f55cfd8a045fda1ed617d6c3bb0baa8801d3d4f",
+    "portal_bot/db_pool_runtime.py": "a5f337924f1580f8da1d65eef0fe9064841bf90477280b73a0afe510bd37239d",
+    "portal_bot/outbound_http.py": "85eebbabb795c14eea405459e63b9388fdbbd624d392249b838616b169c04e3b",
+    "portal_bot/payment_db_runtime.py": "2ff23bb0b54a4a51e2312ab5b8a59483d89e89db43b4f44647d997c667ab64b0"
+  },
+  "base_payload_files_verified": 204,
+  "versions": {
+    "SQLAlchemy": "2.0.46",
+    "aiohttp": "3.13.3",
+    "starlette": "1.6.0",
+    "anyio": "4.14.2"
+  },
+  "production_source_changed": false,
+  "production_database_used_for_fixture": false,
+  "provider_contacted": false,
+  "credentials_exported": false,
+  "connection_headroom": {
+    "maximum": 100,
+    "reserved": 3,
+    "in_use": 15
+  },
+  "pool_policy": {
+    "size": 5,
+    "max_overflow": 10,
+    "timeout_seconds": 30.0,
+    "pre_ping": true
+  },
+  "after_connection_creation": {
+    "attempts": 0,
+    "waiting": 0,
+    "max_waiting": 0,
+    "timeouts": 0,
+    "wait_total_ms": 0,
+    "wait_max_ms": 0
+  },
+  "after_saturation": {
+    "attempts": 1,
+    "waiting": 0,
+    "max_waiting": 1,
+    "timeouts": 0,
+    "wait_total_ms": 50,
+    "wait_max_ms": 50
+  },
+  "isolated_timeout": {
+    "attempts": 1,
+    "waiting": 0,
+    "max_waiting": 1,
+    "timeouts": 1,
+    "wait_total_ms": 150,
+    "wait_max_ms": 150
+  },
+  "rollback_after_candidate_failure": {
+    "status": "PASS",
+    "checked_out_after": 0,
+    "payment_db": {
+      "active": 0,
+      "max_active": 1,
+      "started": 1,
+      "completed": 0,
+      "failed": 1,
+      "queue_wait_total_ms": 18,
+      "queue_wait_max_ms": 18,
+      "duration_total_ms": 3,
+      "duration_max_ms": 3
+    }
+  },
+  "http_default_burst": {
+    "requests": 25,
+    "max_server_active": 20,
+    "lifespan_sessions": 5,
+    "telemetry": [
+      {
+        "provider": "lavatop",
+        "operation": "r12_burst",
+        "status": 200,
+        "result_code": "ok",
+        "count": 25,
+        "latency_total_ms": 1210,
+        "latency_max_ms": 69,
+        "connector_queue_entries": 5,
+        "connector_wait_total_ms": 210,
+        "connector_wait_max_ms": 42
+      }
+    ],
+    "all_sessions_closed": true
+  },
+  "http_cancel": {
+    "provider": "lavatop",
+    "operation": "r12_wait",
+    "status": 0,
+    "latency_ms": 27,
+    "result_code": "cancelled",
+    "connector_queue_entries": 1,
+    "connector_wait_ms": 27
+  },
+  "failure_type": "AssertionError",
+  "completed_at": "2026-09-09T12:45:44.159994+00:00"
+}

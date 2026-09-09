@@ -1,0 +1,47 @@
+{
+  "utc": "2026-09-09T13:43:45.321832+00:00",
+  "phase": "stop-all",
+  "status": "PASS",
+  "before": {
+    "previous": {
+      "MainPID": "86911",
+      "Result": "success",
+      "NRestarts": "0",
+      "IPAddressAllow": "127.0.0.0/8 ::1/128",
+      "IPAddressDeny": "0.0.0.0/0 ::/0",
+      "RestrictAddressFamilies": "AF_INET AF_INET6 AF_UNIX",
+      "ActiveState": "active"
+    },
+    "current": {
+      "MainPID": "0",
+      "Result": "success",
+      "NRestarts": "0",
+      "IPAddressAllow": "127.0.0.0/8 ::1/128",
+      "IPAddressDeny": "0.0.0.0/0 ::/0",
+      "RestrictAddressFamilies": "AF_INET AF_INET6 AF_UNIX",
+      "ActiveState": "inactive"
+    }
+  },
+  "readiness": [],
+  "after": {
+    "previous": {
+      "MainPID": "0",
+      "Result": "success",
+      "NRestarts": "0",
+      "IPAddressAllow": "127.0.0.0/8 ::1/128",
+      "IPAddressDeny": "0.0.0.0/0 ::/0",
+      "RestrictAddressFamilies": "AF_INET AF_INET6 AF_UNIX",
+      "ActiveState": "inactive"
+    },
+    "current": {
+      "MainPID": "0",
+      "Result": "success",
+      "NRestarts": "0",
+      "IPAddressAllow": "127.0.0.0/8 ::1/128",
+      "IPAddressDeny": "0.0.0.0/0 ::/0",
+      "RestrictAddressFamilies": "AF_INET AF_INET6 AF_UNIX",
+      "ActiveState": "inactive"
+    }
+  },
+  "completed_at": "2026-09-09T13:43:45.513873+00:00"
+}

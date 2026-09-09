@@ -1,0 +1,314 @@
+{
+  "schema": "pokrov-operator-ui-route-observations-v1",
+  "origin": "current-origin",
+  "method": "CUA browser UI after owner Telegram OIDC; safe result fields transcribed from tool observations; raw page/customer records not retained",
+  "role": "superadmin",
+  "actual_browser_route_count": 28,
+  "manifest_route_count": 28,
+  "frontend_header_revision": "03920525",
+  "frontend_source_state": "clean",
+  "api_schema": "admin-v2.1",
+  "routes": [
+    {
+      "path": "/shift",
+      "workspace": "shift",
+      "capability": "workspace-shift",
+      "checked_at_current_origin": null,
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/support",
+      "workspace": "support",
+      "capability": "workspace-support",
+      "checked_at_current_origin": "2026-09-09T06:04:15.318Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/network",
+      "workspace": "network",
+      "capability": "workspace-network",
+      "checked_at_current_origin": "2026-09-09T06:04:43.964Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/money",
+      "workspace": "money",
+      "capability": "workspace-money",
+      "checked_at_current_origin": "2026-09-09T06:04:45.001Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/growth",
+      "workspace": "growth",
+      "capability": "workspace-growth",
+      "checked_at_current_origin": "2026-09-09T06:04:45.680Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/releases",
+      "workspace": "releases",
+      "capability": "workspace-releases",
+      "checked_at_current_origin": "2026-09-09T06:04:46.211Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/governance",
+      "workspace": "governance",
+      "capability": "workspace-governance",
+      "checked_at_current_origin": "2026-09-09T06:04:47.049Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/",
+      "workspace": "shift",
+      "capability": "overview",
+      "checked_at_current_origin": "2026-09-09T06:05:29.397Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/nodes",
+      "workspace": "network",
+      "capability": "nodes",
+      "checked_at_current_origin": "2026-09-09T06:10:18.450Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/traffic",
+      "workspace": "network",
+      "capability": "traffic",
+      "checked_at_current_origin": "2026-09-09T06:06:35.941Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/alerts",
+      "workspace": "network",
+      "capability": "alerts",
+      "checked_at_current_origin": "2026-09-09T06:06:36.337Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/incidents",
+      "workspace": "network",
+      "capability": "incident-room",
+      "checked_at_current_origin": "2026-09-09T06:06:36.743Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/provider-caps",
+      "workspace": "network",
+      "capability": "provider-caps",
+      "checked_at_current_origin": "2026-09-09T06:06:37.183Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/emergency-network",
+      "workspace": "network",
+      "capability": "emergency-network",
+      "checked_at_current_origin": "2026-09-09T06:06:37.790Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/free-tier",
+      "workspace": "money",
+      "capability": "free-archive",
+      "checked_at_current_origin": "2026-09-09T06:06:47.787Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/access",
+      "workspace": "money",
+      "capability": "access-entitlements",
+      "checked_at_current_origin": "2026-09-09T06:06:48.655Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/users",
+      "workspace": "support",
+      "capability": "users",
+      "checked_at_current_origin": "2026-09-09T06:06:49.593Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/online",
+      "workspace": "support",
+      "capability": "online",
+      "checked_at_current_origin": "2026-09-09T06:09:31.252Z",
+      "status": "ROUTE_AVAILABLE_WITH_PANEL_SOURCE_DEGRADATION",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/tickets",
+      "workspace": "support",
+      "capability": "tickets",
+      "checked_at_current_origin": "2026-09-09T06:07:21.432Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/payments",
+      "workspace": "money",
+      "capability": "payments",
+      "checked_at_current_origin": "2026-09-09T06:07:22.354Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/funnel",
+      "workspace": "growth",
+      "capability": "funnel",
+      "checked_at_current_origin": "2026-09-09T06:07:22.849Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/promos",
+      "workspace": "money",
+      "capability": "promocodes",
+      "checked_at_current_origin": "2026-09-09T06:07:23.523Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/bonuses",
+      "workspace": "growth",
+      "capability": "bonuses",
+      "checked_at_current_origin": "2026-09-09T06:07:23.937Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/programs",
+      "workspace": "growth",
+      "capability": "program-applications",
+      "checked_at_current_origin": "2026-09-09T06:07:24.354Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/referrals",
+      "workspace": "growth",
+      "capability": "referrals",
+      "checked_at_current_origin": "2026-09-09T06:07:24.757Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/release",
+      "workspace": "releases",
+      "capability": "release",
+      "checked_at_current_origin": "2026-09-09T06:07:25.188Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/broadcast",
+      "workspace": "growth",
+      "capability": "broadcasts",
+      "checked_at_current_origin": "2026-09-09T06:10:30.921Z",
+      "status": "FORM_AVAILABLE_OPERATION_STATUS_NOT_YET_AVAILABLE",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    },
+    {
+      "path": "/news",
+      "workspace": "growth",
+      "capability": "news",
+      "checked_at_current_origin": "2026-09-09T06:07:29.019Z",
+      "status": "PASS_AUTHENTICATED_ROUTE_READ",
+      "login_form_present": false,
+      "loading_complete": true,
+      "actual_write_executed": false
+    }
+  ],
+  "initial_automation_waits_expired": [
+    "/network",
+    "/",
+    "/nodes",
+    "/online",
+    "/broadcast"
+  ],
+  "wait_limit_not_service_latency_measurement": true,
+  "ax_diff_missing_fields_not_treated_as_authoritative_failures": true,
+  "nodes_online_broadcast_final_checks_used_full_ax_state": true,
+  "notes": {
+    "online": "Session normal; UI says incomplete snapshot and node failures. online-page.tsx derives degraded API badge from nodesWithPanelErrors. Not an authorization failure.",
+    "broadcast": "Form rendered; source intentionally reports missing operation status before submission. No broadcast was prepared or sent.",
+    "root_nodes_network": "Initial loading or automation wait expiration resolved on later readback; no failed route claim."
+  },
+  "remaining": [
+    "per-role runtime denial and expiry/revoke matrix",
+    "full feature-parity and legacy cutover/rollback",
+    "all write outcomes and provider delivery",
+    "complete O01/O02 acceptance"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "utc": "2026-09-09T04:35:55.532138+00:00",
+  "action": "INITIALIZE_ABSENT_OPERATOR_CONFIGURATION",
+  "key_version": "r12-operator-20260909",
+  "new_variable_names": [
+    "ADMIN_OPERATOR_SESSION_SECRET",
+    "ADMIN_OPERATOR_ENVIRONMENT",
+    "ADMIN_OPERATOR_TRUSTED_ORIGINS",
+    "ADMIN_OPERATOR_OIDC_REDIRECT_URI"
+  ],
+  "previous_dotenv_bytes_preserved": true,
+  "dotenv_mode": "0o600",
+  "environment": "production",
+  "trusted_origins_exact_https_only": true,
+  "shared_oidc_credentials_changed": false,
+  "operator_or_role_created": false,
+  "services_restarted": false,
+  "secret_exported": false,
+  "oidc_callback_registration_verified": false,
+  "legacy_bootstrap_setting_changed": false
+}

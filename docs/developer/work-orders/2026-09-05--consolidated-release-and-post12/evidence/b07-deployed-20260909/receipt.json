@@ -1,0 +1,26 @@
+{
+  "status": "PASS_BOUNDED_RUNTIME_OBSERVATION",
+  "source_revision": "a8e6918ccc166a58ae65ba7d08feea63ce3a9623",
+  "origin": "brain-origin HTTPS production",
+  "capture": {
+    "path": "runtime-observation.json",
+    "sha256": "0b5e0ae2205eb6d78fe486b39399b3364e2d1ab5b20ad18643ceaf4f8f9956c9",
+    "capture_sha256": "7a9f64f5e1cd4b8f7c970c49fe46da06e0f0c1d09dba34866707152f2507ee8a"
+  },
+  "excluded_fields": {
+    "online_read.source_error_count": "invalid: absent errors field defaulted to zero; actual source uses panel_errors"
+  },
+  "verified_summary": {
+    "health_samples": 27,
+    "all_health_200": true,
+    "collector_sample_delta": 27,
+    "lag_total_delta_ms": 7,
+    "payment_db_unchanged": true,
+    "outbox_unchanged": true
+  },
+  "instrument": {
+    "path": "E:\\r12-b07-observation-20260909\\observe-runtime.py",
+    "sha256": "90ecf07b94e35d7e6a078e307abeef9317972cbe790ed4bb7eacc8fe267b10fd"
+  },
+  "performance_gate": "NOT_PROVEN"
+}

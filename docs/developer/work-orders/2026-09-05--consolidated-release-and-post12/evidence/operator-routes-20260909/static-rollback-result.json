@@ -1,0 +1,53 @@
+{
+  "utc": "2026-09-09T09:52:29.177703+00:00",
+  "origin": "brain-origin HTTPS production",
+  "status": "PASS_STATIC_POINTER_ROLLBACK_AND_RESTORE",
+  "current_target": "/var/www/portal/releases/20260909045925/adminapp",
+  "rollback_target": "/var/www/portal/releases/20260819120323/adminapp",
+  "observations": [
+    {
+      "check": "current_before",
+      "http_status": 200,
+      "sha256": "b587d92727a658fe6c511d47cdb736083c5fb4bd9bb3fffd166e8bf66435459e",
+      "expected_sha256": "b587d92727a658fe6c511d47cdb736083c5fb4bd9bb3fffd166e8bf66435459e",
+      "pass": true
+    },
+    {
+      "check": "current_build_before",
+      "http_status": 200,
+      "sha256": "19a8f25f1caa87bd8846b0dbad388205fde3ce2a9f5234d88a7e175c7ec56640",
+      "expected_sha256": "19a8f25f1caa87bd8846b0dbad388205fde3ce2a9f5234d88a7e175c7ec56640",
+      "pass": true
+    },
+    {
+      "check": "retained_legacy_bundle_served",
+      "http_status": 200,
+      "sha256": "5cb8b7787fb787a0d15feeafc9f3c6ca66def82a8ed174b360da813c8db1a037",
+      "expected_sha256": "5cb8b7787fb787a0d15feeafc9f3c6ca66def82a8ed174b360da813c8db1a037",
+      "pass": true
+    },
+    {
+      "check": "current_restored",
+      "http_status": 200,
+      "sha256": "b587d92727a658fe6c511d47cdb736083c5fb4bd9bb3fffd166e8bf66435459e",
+      "expected_sha256": "b587d92727a658fe6c511d47cdb736083c5fb4bd9bb3fffd166e8bf66435459e",
+      "pass": true
+    },
+    {
+      "check": "current_build_restored",
+      "http_status": 200,
+      "sha256": "19a8f25f1caa87bd8846b0dbad388205fde3ce2a9f5234d88a7e175c7ec56640",
+      "expected_sha256": "19a8f25f1caa87bd8846b0dbad388205fde3ce2a9f5234d88a7e175c7ec56640",
+      "pass": true
+    }
+  ],
+  "legacy_build_manifest_present": false,
+  "database_or_api_changed": false,
+  "rollback_started_at": "2026-09-09T09:52:30.310381+00:00",
+  "rollback_readback_pass": true,
+  "current_restored_at": "2026-09-09T09:52:30.368056+00:00",
+  "all_pointers_restored": true,
+  "all_static_files_unchanged": true,
+  "api_health_pass": true,
+  "completed_at": "2026-09-09T09:52:30.938090+00:00"
+}

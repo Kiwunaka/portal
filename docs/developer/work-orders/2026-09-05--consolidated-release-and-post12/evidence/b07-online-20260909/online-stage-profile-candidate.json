@@ -1,0 +1,366 @@
+{
+  "utc": "2026-09-09T10:28:46.347328+00:00",
+  "origin": "brain-origin isolated process using deployed sources and configured panels",
+  "source_revision": "a8e6918ccc166a58ae65ba7d08feea63ce3a9623",
+  "source_hashes": {
+    "portal_bot/control_panel.py": "2bf5319419933ba53b5195608a6766d47545c58546309862ce1fa5130df41a38",
+    "portal_bot/panel_client.py": "fa641cd430e07b2b29a15fc584b13dd4acbd92701da9da5b456e4d06847ab5c2"
+  },
+  "raw_customer_provider_or_credentials_exported": false,
+  "production_source_modified": false,
+  "candidate_source_sha256": "a6e5e39d6ce1dd92ed37fce3d6c70ae324561dc29794c7a642ed79d3c7471717",
+  "candidate_scope": "two online snapshot methods in isolated process only",
+  "status": "PASS_BOUNDED_PROFILE",
+  "total_ms": 15797.52,
+  "nodes_observed": 7,
+  "panel_error_count": 1,
+  "error_kinds": [
+    "panel_request_failed"
+  ],
+  "stage_summary": [
+    {
+      "slot": 1,
+      "stage": "_get_inbounds",
+      "calls": 1,
+      "duration_total_ms": 90.83,
+      "duration_max_ms": 90.83,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 1,
+      "stage": "_get_online_emails",
+      "calls": 1,
+      "duration_total_ms": 4.36,
+      "duration_max_ms": 4.36,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 1,
+      "stage": "_refresh_csrf_token",
+      "calls": 1,
+      "duration_total_ms": 4.62,
+      "duration_max_ms": 4.62,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 1,
+      "stage": "get_node_online_clients",
+      "calls": 1,
+      "duration_total_ms": 95.82,
+      "duration_max_ms": 95.82,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 1,
+      "stage": "login",
+      "calls": 1,
+      "duration_total_ms": 81.29,
+      "duration_max_ms": 81.29,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 2,
+      "stage": "_get_inbounds",
+      "calls": 1,
+      "duration_total_ms": 386.69,
+      "duration_max_ms": 386.69,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 2,
+      "stage": "_get_online_emails",
+      "calls": 1,
+      "duration_total_ms": 43.58,
+      "duration_max_ms": 43.58,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 2,
+      "stage": "_refresh_csrf_token",
+      "calls": 1,
+      "duration_total_ms": 88.66,
+      "duration_max_ms": 88.66,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 2,
+      "stage": "get_node_online_clients",
+      "calls": 1,
+      "duration_total_ms": 430.69,
+      "duration_max_ms": 430.69,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 2,
+      "stage": "login",
+      "calls": 1,
+      "duration_total_ms": 333.19,
+      "duration_max_ms": 333.19,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 3,
+      "stage": "_get_inbounds",
+      "calls": 1,
+      "duration_total_ms": 107.03,
+      "duration_max_ms": 107.03,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 3,
+      "stage": "_get_online_emails",
+      "calls": 1,
+      "duration_total_ms": 7.3,
+      "duration_max_ms": 7.3,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 3,
+      "stage": "_refresh_csrf_token",
+      "calls": 1,
+      "duration_total_ms": 15.41,
+      "duration_max_ms": 15.41,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 3,
+      "stage": "get_node_online_clients",
+      "calls": 1,
+      "duration_total_ms": 114.73,
+      "duration_max_ms": 114.73,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 3,
+      "stage": "login",
+      "calls": 1,
+      "duration_total_ms": 96.0,
+      "duration_max_ms": 96.0,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 4,
+      "stage": "_get_inbounds",
+      "calls": 1,
+      "duration_total_ms": 406.47,
+      "duration_max_ms": 406.47,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 4,
+      "stage": "_get_online_emails",
+      "calls": 1,
+      "duration_total_ms": 83.42,
+      "duration_max_ms": 83.42,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 4,
+      "stage": "_refresh_csrf_token",
+      "calls": 1,
+      "duration_total_ms": 166.34,
+      "duration_max_ms": 166.34,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 4,
+      "stage": "get_node_online_clients",
+      "calls": 1,
+      "duration_total_ms": 490.39,
+      "duration_max_ms": 490.39,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 4,
+      "stage": "login",
+      "calls": 1,
+      "duration_total_ms": 312.26,
+      "duration_max_ms": 312.26,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 5,
+      "stage": "_get_inbounds",
+      "calls": 1,
+      "duration_total_ms": 179.68,
+      "duration_max_ms": 179.68,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 5,
+      "stage": "_get_online_emails",
+      "calls": 1,
+      "duration_total_ms": 27.23,
+      "duration_max_ms": 27.23,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 5,
+      "stage": "_refresh_csrf_token",
+      "calls": 1,
+      "duration_total_ms": 54.77,
+      "duration_max_ms": 54.77,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 5,
+      "stage": "get_node_online_clients",
+      "calls": 1,
+      "duration_total_ms": 207.49,
+      "duration_max_ms": 207.49,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 5,
+      "stage": "login",
+      "calls": 1,
+      "duration_total_ms": 148.11,
+      "duration_max_ms": 148.11,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 6,
+      "stage": "_get_inbounds",
+      "calls": 1,
+      "duration_total_ms": 172.39,
+      "duration_max_ms": 172.39,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 6,
+      "stage": "_get_online_emails",
+      "calls": 1,
+      "duration_total_ms": 33.36,
+      "duration_max_ms": 33.36,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 6,
+      "stage": "_refresh_csrf_token",
+      "calls": 1,
+      "duration_total_ms": 50.41,
+      "duration_max_ms": 50.41,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 6,
+      "stage": "get_node_online_clients",
+      "calls": 1,
+      "duration_total_ms": 206.3,
+      "duration_max_ms": 206.3,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 6,
+      "stage": "login",
+      "calls": 1,
+      "duration_total_ms": 140.65,
+      "duration_max_ms": 140.65,
+      "results": {
+        "returned": 1
+      }
+    },
+    {
+      "slot": 7,
+      "stage": "_get_inbounds",
+      "calls": 1,
+      "duration_total_ms": 15212.09,
+      "duration_max_ms": 15212.09,
+      "results": {
+        "PanelReadError": 1
+      }
+    },
+    {
+      "slot": 7,
+      "stage": "_refresh_csrf_token",
+      "calls": 1,
+      "duration_total_ms": 10140.99,
+      "duration_max_ms": 10140.99,
+      "results": {
+        "returned_false": 1
+      }
+    },
+    {
+      "slot": 7,
+      "stage": "get_node_online_clients",
+      "calls": 1,
+      "duration_total_ms": 15212.1,
+      "duration_max_ms": 15212.1,
+      "results": {
+        "PanelReadError": 1
+      }
+    },
+    {
+      "slot": 7,
+      "stage": "login",
+      "calls": 1,
+      "duration_total_ms": 15211.7,
+      "duration_max_ms": 15211.7,
+      "results": {
+        "returned_false": 1
+      }
+    }
+  ],
+  "retained_source": {
+    "path": "E:\\r12-b07-observation-20260909\\online-stage-profile-candidate.json",
+    "sha256": "963c0bfa08357a4f4c53018f386ff9aef7bd83a558e6ba3c02d852b8eba96e53"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "status": "PASS_DUPLICATE_WORKERS_AND_POISON",
+  "origin": "brain-origin isolated current code and restored PostgreSQL descendant",
+  "utc": "2026-09-09T13:47:37.527274+00:00",
+  "source_revision": "cd4a8b905a4105707ebad11fd920473f2478cc2c",
+  "provider_contacted": false,
+  "production_db_changed": false,
+  "synthetic_paid_order_only": true,
+  "preexisting_missing_outbox": 0,
+  "workers": [
+    {
+      "backfilled": 0,
+      "backfill_rejected": 0,
+      "recovered": 0,
+      "claimed": 1,
+      "delivered": 1,
+      "retryable": 0,
+      "dead_letter": 0,
+      "claim_lost": 0
+    },
+    {
+      "backfilled": 0,
+      "backfill_rejected": 0,
+      "recovered": 0,
+      "claimed": 1,
+      "delivered": 0,
+      "retryable": 0,
+      "dead_letter": 1,
+      "claim_lost": 0
+    }
+  ],
+  "replay": {
+    "backfilled": 0,
+    "backfill_rejected": 0,
+    "recovered": 0,
+    "claimed": 0,
+    "delivered": 0,
+    "retryable": 0,
+    "dead_letter": 0,
+    "claim_lost": 0
+  },
+  "distinct_backend_pids": 2,
+  "elapsed_ms": 81.25,
+  "one_grant": true,
+  "one_provisioning_job": true,
+  "one_dead_letter": true,
+  "all_own_claims_cleared": true,
+  "preexisting_outbox_unchanged": true,
+  "observed_pool_class": "ObservedQueuePool",
+  "completed_at": "2026-09-09T13:47:37.865955+00:00"
+}

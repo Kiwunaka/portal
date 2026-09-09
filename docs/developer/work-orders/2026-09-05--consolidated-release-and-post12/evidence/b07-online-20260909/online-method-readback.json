@@ -1,0 +1,29 @@
+{
+  "utc": "2026-09-09T10:29:58.262362+00:00",
+  "origin": "brain-origin owned panel method readback",
+  "source_hashes": {
+    "portal_bot/control_panel.py": "2bf5319419933ba53b5195608a6766d47545c58546309862ce1fa5130df41a38",
+    "portal_bot/panel_client.py": "fa641cd430e07b2b29a15fc584b13dd4acbd92701da9da5b456e4d06847ab5c2"
+  },
+  "raw_payload_exported": false,
+  "checks": [
+    {
+      "method": "GET",
+      "http_status": 404,
+      "json_object": false,
+      "success": false,
+      "obj_is_list": false
+    },
+    {
+      "method": "POST",
+      "http_status": 404,
+      "json_object": false,
+      "success": false,
+      "obj_is_list": false
+    }
+  ],
+  "retained_source": {
+    "path": "E:\\r12-b07-observation-20260909\\online-method-readback.json",
+    "sha256": "f3215802fec7c0c053f072e87294ca8e1ac4fd27ad2fd0ef1aa1ddec05250815"
+  }
+}

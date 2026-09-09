@@ -1,0 +1,23 @@
+{
+  "phase": "previous-restarted",
+  "result": "PASS",
+  "origin": "brain-origin isolated real APIs and cloned PostgreSQL",
+  "requests": [
+    {
+      "source": "previous",
+      "port": 18091,
+      "checks": {
+        "health": 200,
+        "plans": 200,
+        "unauthenticated_ticket_denial": 401,
+        "authenticated_ticket_read": 200,
+        "authenticated_event_write": 200
+      },
+      "plans_body_sha256": "5cb717246d2cd0d889731534b9c9c04a1318bbfb272dbed944a7b150d8ce5e62",
+      "event_id": "4d7d3eec-54d1-49d1-a1d3-1f047b7d3972",
+      "db_write_verified": true
+    }
+  ],
+  "production_database_or_source_changed": false,
+  "provider_contacted": false
+}

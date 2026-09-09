@@ -1,0 +1,70 @@
+{
+  "status": "PASS_REAL_IDLE_EXPIRY_ABSOLUTE_FAILED_SOURCE_BYTE_GUARD",
+  "origin": "brain-origin HTTPS production",
+  "source_revision": "a8e6918ccc166a58ae65ba7d08feea63ce3a9623",
+  "captures": [
+    {
+      "path": "elapsed-expiry-observation-2026-09-09T094203687272+0000.json",
+      "sha256": "72b3dc011ff76f61aed41aab09a712bf186faac6a507a3ce92776f87cabf1f5a",
+      "source_sha256": "1876077c6cf8dbf753259a7e94124f4a732b60f6c0e4f60f9ee7c717680ac003"
+    },
+    {
+      "path": "elapsed-expiry-failure-cleanup.json",
+      "sha256": "e07e9836a432c6b7b4128e2bff7c7df8503cb334b5bb96757b681ddfc10c9601",
+      "source_sha256": "7337d283c74af71b477362787fa21b8d10b82aedf36474d4f3faa2a3aa88d4e6"
+    },
+    {
+      "path": "elapsed-expiry-launch-v2.json",
+      "sha256": "87ff8ad1bf800b039cec97c5e4d16209c32a074a39aadf07c895a5da75f5a03a",
+      "source_sha256": "ab80e23ef03a07a46cbcc794e39233d86f4a0e011a9acd97e6d143281c056c13"
+    },
+    {
+      "path": "elapsed-expiry-observation-v2-2026-09-09T094442133472+0000.json",
+      "sha256": "9ae35fe43c377d6068c05cbe4a687ae5828747a4f9f7dcba587b1eb22408ebef",
+      "source_sha256": "b129b21030ceaa7bc60104a21c6b0ddd1e42b228ca466cc86234093ad7db546f"
+    },
+    {
+      "path": "elapsed-expiry-observation-v2-2026-09-09T101502133552+0000.json",
+      "sha256": "65beabb8502724d5e18b86c0227f5fa83f7cfff2f1c17fa6124c8d6a3de72b9d",
+      "source_sha256": "d15bf0786c89e4a8e560eb29d30643265c7ba15dc7ee0e668335edeb3174adb6"
+    },
+    {
+      "path": "elapsed-expiry-observation-v2-2026-09-09T111327639063+0000.json",
+      "sha256": "d48df039bdb2a406b19e9adc96844119eac97a734938da963cd04146a467b83c",
+      "source_sha256": "d48df039bdb2a406b19e9adc96844119eac97a734938da963cd04146a467b83c"
+    }
+  ],
+  "local_instruments": [
+    {
+      "path": "E:\\r12-operator-session-20260909\\cleanup-elapsed-expiry.py",
+      "sha256": "52670845acb277f3227d49f53df6cb82e2c7077a1e2af0ba1a3992b577d56381"
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\elapsed-expiry-runner-v2.py",
+      "sha256": "fee3803a40fcb0bdf7671c7bd19eacfebce79aedfb4c8fe4bd28535ae0e59035"
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\launch-elapsed-expiry-v2.py",
+      "sha256": "b99cce783b7dac3f732822c4bcb5f56008a0506573c5b97aff0d450ca2a689c7"
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\observe-elapsed-expiry-v2.py",
+      "sha256": "b5ba3863b48e86f8e3225863a58d3e23d8e97e96503d14dc1f95d6e338e4a5ba"
+    }
+  ],
+  "previous_run": "JSONDecodeError; both owned sessions revoked by targeted cleanup; evidence preserved",
+  "production_ttls_modified": false,
+  "legacy_bootstrap_reenabled": false,
+  "idle_observation": {
+    "http_status": 401,
+    "error_code": "operator_session_expired",
+    "revoke_reason": "idle_expired",
+    "utc": "2026-09-09T10:14:45.152950+00:00"
+  },
+  "absolute_failure": {
+    "utc": "2026-09-09T10:59:47.177994+00:00",
+    "reason": "raw_security_source_changed_by_line_endings_in_deploy",
+    "fixtures_revoked": true,
+    "new_run": "NOT_STARTED"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "utc": "2026-09-09T06:43:32.600092+00:00",
+  "origin": "brain-origin",
+  "scope": "owned admin account GET client subscription",
+  "credentials_exported": false,
+  "http_status": 200,
+  "lane": "paidUnlimited",
+  "access_state": "paid_unlimited",
+  "expiry_present": true,
+  "days_left_positive": true,
+  "usage_source": "panel_runtime",
+  "telegram_linked": true,
+  "elapsed_seconds": 16.102
+}

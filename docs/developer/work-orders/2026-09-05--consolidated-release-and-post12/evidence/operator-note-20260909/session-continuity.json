@@ -1,0 +1,46 @@
+{
+  "observed_at": "2026-09-09T14:53:49.863505+00:00",
+  "process_identity_running": true,
+  "launch": {
+    "utc": "2026-09-09T11:37:15.437430+00:00",
+    "pid": 67491,
+    "start_ticks": "424555598",
+    "script_sha256": "0cdeb6f82b48442ae9114e414e69160cab797d236dbf8e0400d8f14e6ea4a7fb",
+    "security_source_sha256": "02cd79f4f60dfe0a2a80ed06c725a4abb9911487fb3a3b006eed44a3b14b9713",
+    "directory": "/root/portal-r12-evidence/operator-elapsed-expiry-20260909-v3",
+    "state": "LAUNCHED_NOT_PASSED"
+  },
+  "progress": {
+    "status": "RUNNING",
+    "origin": "brain-origin HTTPS production",
+    "started_at": "2026-09-09T11:37:15.949903+00:00",
+    "source_revision_at_start": "3478fc4f292484c01bc2ccec124588f8f0c2423e",
+    "raw_credentials_exported": false,
+    "production_ttls_modified": false,
+    "preexisting_sessions_targeted": false,
+    "roles_modified": false,
+    "observations": [
+      {
+        "check": "real_idle_expiry",
+        "http_status": 401,
+        "error_code": "operator_session_expired",
+        "revoke_reason": "idle_expired",
+        "revoked": true,
+        "utc": "2026-09-09T12:07:19.253301+00:00"
+      }
+    ],
+    "absolute_refreshes": 39,
+    "http_anomalies": [],
+    "security_source_sha256": "02cd79f4f60dfe0a2a80ed06c725a4abb9911487fb3a3b006eed44a3b14b9713",
+    "sessions_created": 2,
+    "idle_deadline": "2026-09-09T12:07:16.108975Z",
+    "absolute_deadline": "2026-09-09T23:37:16.118816Z",
+    "idle_ttl_seconds": 1800,
+    "absolute_ttl_seconds": 43200,
+    "authentication_entrypoint": "internally issued owned fixture cookies; compatibility remains disabled; real OIDC is separate evidence",
+    "updated_at": "2026-09-09T14:52:26.528645+00:00",
+    "last_absolute_idle_deadline": "2026-09-09T15:22:26.500469Z"
+  },
+  "current_backend_source": "9e01ded617b631763cf73fdbe623a401f9e0f751",
+  "status": "PASS_PROCESS_AND_SECURITY_SOURCE_CONTINUITY_ABSOLUTE_EXPIRY_STILL_RUNNING"
+}

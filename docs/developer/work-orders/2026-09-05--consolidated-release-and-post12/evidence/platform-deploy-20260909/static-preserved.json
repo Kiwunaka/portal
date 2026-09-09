@@ -1,0 +1,21 @@
+{
+  "utc": "2026-09-09T04:48:34.494512+00:00",
+  "action": "PRESERVE_PUBLIC_STATIC_RELEASES",
+  "archive_path": "/root/backups/r12-static-20260909/static-releases-before-cutover.tar.gz",
+  "archive_bytes": 80110392,
+  "archive_sha256": "c37e27b6d0cb84a1aa561ae5a9313c0cb67fc1a4c70862a04289d99ef7dcfacd",
+  "archive_mode": "0o600",
+  "manifest_path": "/root/backups/r12-static-20260909/source-manifest.json",
+  "manifest_sha256": "4a5019dccba5097e57bcfc6b6471e12df645b2e243fc1e3c5a320405e458e316",
+  "release_count": 5,
+  "files": 5241,
+  "source_bytes": 165709903,
+  "archive_members_verified": true,
+  "source_unchanged": true,
+  "source_pointers": {
+    "marketing": "/var/www/portal/releases/20260819120323/marketing",
+    "webapp": "/var/www/portal/releases/20260819120323/webapp",
+    "adminapp": "/var/www/portal/releases/20260819120323/adminapp"
+  },
+  "public_symlinks_changed": false
+}

@@ -1,0 +1,15 @@
+{
+  "files": [
+    {
+      "path": "commercial-key-initialized.json",
+      "sha256": "44fc7edd46dd785e6be4cce48b6d8d830fa267568e18ec5a530be27250ae5571",
+      "bytes": 368
+    },
+    {
+      "path": "initialize-commercial-key.py",
+      "sha256": "067d29c5addd8f3fe6fdd75f5c817ffa33aad5dde280568eb45ba3276c98efef",
+      "bytes": 3032
+    }
+  ],
+  "secret_exported": false
+}

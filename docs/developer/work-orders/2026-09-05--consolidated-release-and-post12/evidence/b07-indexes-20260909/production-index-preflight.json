@@ -1,0 +1,25 @@
+{
+  "utc": "2026-09-09T12:05:41.355906+00:00",
+  "origin": "brain-origin production read-only preflight",
+  "source_revision": "3478fc4f292484c01bc2ccec124588f8f0c2423e",
+  "payload_hashes_verified": 204,
+  "server_version_num": 140024,
+  "ordinary_role": true,
+  "tables_owned": true,
+  "new_indexes_absent": true,
+  "table_estimates": [
+    {
+      "relname": "node_health_samples",
+      "n_live_tup": 1644350,
+      "n_dead_tup": 0
+    },
+    {
+      "relname": "node_runtime_metrics",
+      "n_live_tup": 749844,
+      "n_dead_tup": 0
+    }
+  ],
+  "active_index_builds": 0,
+  "postgres_filesystem_available_bytes": 14482141184,
+  "status": "PASS"
+}

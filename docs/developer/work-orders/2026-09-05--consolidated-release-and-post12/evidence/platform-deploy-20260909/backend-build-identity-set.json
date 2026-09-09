@@ -1,0 +1,13 @@
+{
+  "utc": "2026-09-09T04:50:33.041311+00:00",
+  "action": "SET_VERIFIED_BACKEND_IDENTITY",
+  "public_build_metadata": {
+    "PORTAL_BUILD_COMMIT": "7d37005e4260995ab44ec3adb14bbffa3d42738b",
+    "PORTAL_DEPLOYED_AT": "2026-09-09T04:38:19.391060Z"
+  },
+  "deployed_at_basis": "latest_mtime_of_204_exact_hash_verified_installed_files",
+  "previous_dotenv_bytes_preserved": true,
+  "services_restarted": false,
+  "secret_exported": false,
+  "unproven_client_core_db_metadata_left_unset": true
+}

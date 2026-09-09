@@ -1,0 +1,23 @@
+{
+  "source": "01fb74f7312dc78b2b10a38ad45e4082ab44074e",
+  "signed_commit": "364e42f2b4f5b9eead472b1940c2bd1b8b9e59f1",
+  "tree": "ad3f4bc80bb91739c7407c6ba442e19bb60a249e",
+  "signature_valid": true,
+  "parent": "d9b25839e4c9e1b816091af6701b3723d75aa8c7",
+  "pr": "https://github.com/Kiwunaka/portal/pull/248",
+  "branch": "codex/operator-session-expiry-signed-20260909",
+  "files": [
+    {
+      "path": "adminapp/README.md",
+      "sha256": "c63611498be2e1543092ebe9a1d4bd4f5a7e881df049712e080974b682c77e65"
+    },
+    {
+      "path": "portal_bot/admin_v2/security.py",
+      "sha256": "5278696a54434937ebbad36ee66b824f5de57abf62796c7d6e2ab5ff7d462c61"
+    },
+    {
+      "path": "tests/test_admin_ops_api.py",
+      "sha256": "8b13f8ca1d965fbc212064b615d77ff833a3feefea6456f150ce0d0a1c03390c"
+    }
+  ]
+}

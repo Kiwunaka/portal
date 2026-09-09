@@ -1,0 +1,112 @@
+{
+  "status": "DEPLOYED_BOUNDED_STALL_FIX",
+  "origin": "brain-origin HTTPS production",
+  "feature_source": "4434270",
+  "deployed_source": "3478fc4f292484c01bc2ccec124588f8f0c2423e",
+  "tree": "d01fb068744c992656cb91da43ff5c9aa57e5702",
+  "pr": "https://github.com/Kiwunaka/portal/pull/250",
+  "raw_runtime_deltas": [
+    "portal_bot/api.py",
+    "portal_bot/api_admin_routes.py"
+  ],
+  "backup_directory": "/root/portal_bot.deploy-backups/20260909T113538Z-15348",
+  "deploy_exit_code": 0,
+  "restart_units": [
+    "portal-api"
+  ],
+  "captures": [
+    {
+      "path": "baseline-at-deploy.json",
+      "sha256": "b66dc11064a748f5d015ebf3d9e00cffdf7abd30c6a58eca68d1a985effdd336",
+      "original_raw_sha256": "a3af29dc7a97a7048cc8351ad047416ec100f059a393f4dfa4e6b8773ffb9d88"
+    },
+    {
+      "path": "build-identity-updated.json",
+      "sha256": "63ce606a40a4ccc94eb5f490d76805a27be5facbe652fc7b91e724fe8351db82",
+      "original_raw_sha256": "b1980413c80e3692ce2af8892c724668260792258e2c1fedb012644f441a2644"
+    },
+    {
+      "path": "ci-verified.json",
+      "sha256": "1c84d0d97ea283a53856c1243cf0d477ad1ea0c4de39d5d9fb11fc5b20285445",
+      "original_raw_sha256": "e6e54c7bb08a46632428aa9a3e0749e1673ad56fe6e966a71d52e1185d0880fb"
+    },
+    {
+      "path": "merge.json",
+      "sha256": "544691127db84271c458334b9ac669b45969364d0cc0fb0fe61db635ebc5477e",
+      "original_raw_sha256": "a431c64b3ab7ca997debdc810ce9ae24745925b27ce6341d77b189fa820ce07a"
+    },
+    {
+      "path": "local-verification.json",
+      "sha256": "e25c6d5c6a5cc94c22e35793258304b2bead68c1080f8a0b2a4a851b4fe03335",
+      "original_raw_sha256": "171e6eba26fa599f9fd36a28628c28c5572052459f8bfaea62ced2f9e317fa68"
+    },
+    {
+      "path": "runtime-shift-observation.json",
+      "sha256": "85287f5e2969d92ebe2ca383a19b867090925e2a2751ba0d9e6fdfbfffb32ac2",
+      "original_raw_sha256": "ba12873238d9309cb8196b9572fc52ce4b31cff24017556272a54da2b78667c6"
+    },
+    {
+      "path": "runtime-comparison.json",
+      "sha256": "acf684539641078a43576452d8788363dad8e16802679f645a44645d9dd6b76e",
+      "original_raw_sha256": "99589bbf0add0038e76d914579109f88a67d62841f8434fe7ed2c2ce673876c0"
+    }
+  ],
+  "external_retained_inputs": [
+    {
+      "path": "E:\\r12-shift-evidence-20260909\\prepare-payload.py",
+      "sha256": "8fa5fb27300b9dd8006174c1ff7775f122597f4a7c8588d89ebcb855901f3612"
+    },
+    {
+      "path": "E:\\r12-shift-evidence-20260909\\merged-payload.json",
+      "sha256": "0832ddf0ae7f04fcdb67a7226c0a695dad918890be35174735ce100c902245f3"
+    },
+    {
+      "path": "E:\\r12-shift-evidence-20260909\\premerge-payload-byte-guard.json",
+      "sha256": "8894e4c7b0b4e0ed6d401c9f9c4d36e3420039806dfb313578d98d86f0c50b5a"
+    },
+    {
+      "path": "E:\\r12-shift-evidence-20260909\\deployment-plan.json",
+      "sha256": "c0a39b606722bcc4357d39cae2cbb1693bd309767d15dfb178ade94ad500d1d9"
+    },
+    {
+      "path": "E:\\r12-shift-evidence-20260909\\deploy-backend.log",
+      "sha256": "f79453bfc04a0ed5965e808b3232dc9af51a67cf51a96aa423253b92024e20c0"
+    },
+    {
+      "path": "E:\\r12-shift-evidence-20260909\\check-baseline-at-deploy.py",
+      "sha256": "8a6d3a59782d323a5e07fac675f96e02543201aee32d91a9d3f50572a9fe5a8f"
+    },
+    {
+      "path": "E:\\r12-shift-evidence-20260909\\update-build-identity.py",
+      "sha256": "f652f3b0af21329e5ae0198dffa75fd0cffc08f024ec0356ef9004d73103773d"
+    },
+    {
+      "path": "E:\\r12-shift-evidence-20260909\\observe-shift-runtime-after.py",
+      "sha256": "2eb62bbb8628d98c48b486deafe01461ab82c9a76840937aee79f869665a749f"
+    },
+    {
+      "path": "E:\\r12-shift-evidence-20260909\\verify-ci.py",
+      "sha256": "1c6fa3380714414ed73ecfd2a75d809694c2119af4fa25b299339c3d5b31d5a3"
+    },
+    {
+      "path": "E:\\r12-shift-evidence-20260909\\promote.py",
+      "sha256": "258360e12be0cbc914312ca988594ca6d97107e5a3e5f7a88660440560671085"
+    },
+    {
+      "path": "E:\\r12-shift-evidence-20260909\\pr-ci-verified.json",
+      "sha256": "b1b36cafa5988765aa4fcc46d60e5d6621a6b8600e8c0e0b6f37449088799c7d"
+    },
+    {
+      "path": "E:\\r12-shift-evidence-20260909\\shift-pr-body-final.md",
+      "sha256": "5a806b478af1f11de8f4c558e35aa06419c7a06a52410b98083a0a787f70c4d2"
+    }
+  ],
+  "limits": [
+    "Single before/after sample windows, not p95 or SLO proof",
+    "Shift read response time remains 6368.37ms",
+    "No commercial pool or connector wait measurement",
+    "No payment operation",
+    "No new client release candidate",
+    "Full R12-B07 and full consolidated plan remain active"
+  ]
+}

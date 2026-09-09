@@ -1,0 +1,36 @@
+{
+  "utc": "2026-09-09T11:23:44.069645+00:00",
+  "checked_files": 204,
+  "differences": [],
+  "build_commit": "2b37f9765ba07fd0f37d0c894486809ac4bc9f75",
+  "expected_commit": "2b37f9765ba07fd0f37d0c894486809ac4bc9f75",
+  "units": {
+    "portal-api": {
+      "MainPID": "60157",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-bot": {
+      "MainPID": "60035",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-helpbot": {
+      "MainPID": "15891",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-feedbackbot": {
+      "MainPID": "4187958",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    },
+    "portal-worker": {
+      "MainPID": "60038",
+      "NRestarts": "0",
+      "ActiveState": "active"
+    }
+  },
+  "backup_count": 14,
+  "status": "PASS"
+}

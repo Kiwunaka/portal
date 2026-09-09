@@ -1,0 +1,449 @@
+{
+  "utc": "2026-09-09T11:36:38.054709+00:00",
+  "origin": "brain-origin HTTPS production",
+  "source_revision": "3478fc4f292484c01bc2ccec124588f8f0c2423e",
+  "status": "PASS_BOUNDED_RUNTIME_OBSERVATION",
+  "source_hashes": {
+    "portal_bot/api.py": "75bf7d1de8a45784311783feb67456cccdf63263c1295413fbb09dfa97985fca",
+    "portal_bot/api_admin_routes.py": "d5b8c65e2d02e991d733cf0321b7370e21fd83267da1a5e210b47459e1b5d04a",
+    "portal_bot/api_public_routes.py": "cf5c3c13b0555791e52b1457bea9ed8821ba2a74df8a5e130efc18bd80f814e7",
+    "portal_bot/control_panel.py": "2bf5319419933ba53b5195608a6766d47545c58546309862ce1fa5130df41a38",
+    "portal_bot/event_loop_lag.py": "b09fffe68c86753f2c080fe5d87d3a8d5480a2e8b3d656b40d7ef56af6918a2a",
+    "portal_bot/outbound_http.py": "f1cb8b59ebb397481b35f9401b15a96c112c80ca8950ffc408186feb48f4423b",
+    "portal_bot/panel_client.py": "d4c1b229201fc7517c759f4f4b97726c2ef5790563efcf8a246cd84198a922a4",
+    "portal_bot/payment_db_runtime.py": "2ff23bb0b54a4a51e2312ab5b8a59483d89e89db43b4f44647d997c667ab64b0",
+    "portal_bot/payment_entitlement_outbox.py": "5bcb3f576e8b062995879e193974971b057611c21755f67a2df54a194369467f"
+  },
+  "health_samples": [
+    {
+      "utc": "2026-09-09T11:36:39.267189+00:00",
+      "phase": "baseline",
+      "http_status": 200,
+      "http_ms": 12.11,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 18,
+        "last_lag_ms": 1,
+        "max_lag_ms": 1,
+        "lag_total_ms": 6
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      }
+    },
+    {
+      "utc": "2026-09-09T11:36:40.398962+00:00",
+      "phase": "baseline",
+      "http_status": 200,
+      "http_ms": 131.47,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 19,
+        "last_lag_ms": 0,
+        "max_lag_ms": 1,
+        "lag_total_ms": 6
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      }
+    },
+    {
+      "utc": "2026-09-09T11:36:41.464016+00:00",
+      "phase": "baseline",
+      "http_status": 200,
+      "http_ms": 64.67,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 20,
+        "last_lag_ms": 1,
+        "max_lag_ms": 1,
+        "lag_total_ms": 7
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      }
+    },
+    {
+      "utc": "2026-09-09T11:36:42.476355+00:00",
+      "phase": "baseline",
+      "http_status": 200,
+      "http_ms": 12.02,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 21,
+        "last_lag_ms": 0,
+        "max_lag_ms": 1,
+        "lag_total_ms": 7
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      }
+    },
+    {
+      "utc": "2026-09-09T11:36:43.550383+00:00",
+      "phase": "baseline",
+      "http_status": 200,
+      "http_ms": 73.69,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 22,
+        "last_lag_ms": 1,
+        "max_lag_ms": 1,
+        "lag_total_ms": 8
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      }
+    },
+    {
+      "utc": "2026-09-09T11:36:44.587580+00:00",
+      "phase": "shift_overview",
+      "http_status": 200,
+      "http_ms": 36.38,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 23,
+        "last_lag_ms": 0,
+        "max_lag_ms": 1,
+        "lag_total_ms": 8
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      }
+    },
+    {
+      "utc": "2026-09-09T11:36:45.656899+00:00",
+      "phase": "shift_overview",
+      "http_status": 200,
+      "http_ms": 69.01,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 25,
+        "last_lag_ms": 0,
+        "max_lag_ms": 1,
+        "lag_total_ms": 8
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      }
+    },
+    {
+      "utc": "2026-09-09T11:36:46.671381+00:00",
+      "phase": "shift_overview",
+      "http_status": 200,
+      "http_ms": 14.19,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 26,
+        "last_lag_ms": 5,
+        "max_lag_ms": 5,
+        "lag_total_ms": 13
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      }
+    },
+    {
+      "utc": "2026-09-09T11:36:47.685044+00:00",
+      "phase": "shift_overview",
+      "http_status": 200,
+      "http_ms": 13.39,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 27,
+        "last_lag_ms": 0,
+        "max_lag_ms": 5,
+        "lag_total_ms": 13
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      }
+    },
+    {
+      "utc": "2026-09-09T11:36:48.699901+00:00",
+      "phase": "shift_overview",
+      "http_status": 200,
+      "http_ms": 14.51,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 28,
+        "last_lag_ms": 0,
+        "max_lag_ms": 5,
+        "lag_total_ms": 13
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      }
+    },
+    {
+      "utc": "2026-09-09T11:36:49.713197+00:00",
+      "phase": "shift_overview",
+      "http_status": 200,
+      "http_ms": 13.0,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 29,
+        "last_lag_ms": 0,
+        "max_lag_ms": 5,
+        "lag_total_ms": 13
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      }
+    },
+    {
+      "utc": "2026-09-09T11:36:50.724796+00:00",
+      "phase": "after",
+      "http_status": 200,
+      "http_ms": 11.31,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 30,
+        "last_lag_ms": 2,
+        "max_lag_ms": 5,
+        "lag_total_ms": 15
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      }
+    },
+    {
+      "utc": "2026-09-09T11:36:51.739755+00:00",
+      "phase": "after",
+      "http_status": 200,
+      "http_ms": 14.53,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 31,
+        "last_lag_ms": 0,
+        "max_lag_ms": 5,
+        "lag_total_ms": 15
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      }
+    },
+    {
+      "utc": "2026-09-09T11:36:52.752024+00:00",
+      "phase": "after",
+      "http_status": 200,
+      "http_ms": 11.98,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 32,
+        "last_lag_ms": 1,
+        "max_lag_ms": 5,
+        "lag_total_ms": 16
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      }
+    },
+    {
+      "utc": "2026-09-09T11:36:53.764432+00:00",
+      "phase": "after",
+      "http_status": 200,
+      "http_ms": 12.17,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 33,
+        "last_lag_ms": 0,
+        "max_lag_ms": 5,
+        "lag_total_ms": 16
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      }
+    },
+    {
+      "utc": "2026-09-09T11:36:54.828351+00:00",
+      "phase": "after",
+      "http_status": 200,
+      "http_ms": 63.61,
+      "event_loop_lag": {
+        "status": "collecting",
+        "interval_ms": 1000,
+        "samples": 34,
+        "last_lag_ms": 1,
+        "max_lag_ms": 5,
+        "lag_total_ms": 17
+      },
+      "payment_db": {
+        "active": 0,
+        "max_active": 0,
+        "started": 0,
+        "completed": 0,
+        "failed": 0,
+        "queue_wait_total_ms": 0,
+        "queue_wait_max_ms": 0,
+        "duration_total_ms": 0,
+        "duration_max_ms": 0
+      }
+    }
+  ],
+  "raw_customer_provider_or_credentials_exported": false,
+  "payment_operations_executed": false,
+  "production_settings_changed": false,
+  "api_build_identity": {
+    "http_status": 200,
+    "portal_commit": "3478fc4f292484c01bc2ccec124588f8f0c2423e"
+  },
+  "outbox_before": {
+    "pending": 0,
+    "processing": 0,
+    "delivered": 2,
+    "dead_letter": 0,
+    "unknown_status": 0,
+    "oldest_open_age_seconds": 0.0
+  },
+  "shift_read": {
+    "http_status": 200,
+    "http_ms": 6368.37,
+    "returned_json_object": true
+  },
+  "outbox_after": {
+    "pending": 0,
+    "processing": 0,
+    "delivered": 2,
+    "dead_letter": 0,
+    "unknown_status": 0,
+    "oldest_open_age_seconds": 0.0
+  },
+  "fixture_revoked": true,
+  "completed_at": "2026-09-09T11:36:55.702587+00:00"
+}
