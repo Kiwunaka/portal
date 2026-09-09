@@ -1,5 +1,11 @@
 # R12 — текущий результат и граница исполнения
 
+[Windows egress](EXECUTION-WINDOWS-EGRESS-2026-09-09.md): client `c05b58b`
+установлен, 304 hashes и сохранность данных PASS. Милан/Франкфурт не
+подключаются; TUN rollback подтверждён. Вне туннеля WinHTTP probe PASS,
+внутри — timeout/DNS и отказ SOCKS. Для причины ожидается ручной read-only
+журнал Core; автоматическое повышение прав отклонено. Общий релиз открыт.
+
 [Исправление ответа подписки](EXECUTION-SUBSCRIPTION-BUDGET-2026-09-09.md):
 backend `d9b2583` установлен, 204 hashes и четыре обязательных CI checks PASS.
 Owned API readback: 3,215 с вместо 16,102 с; доступ и Telegram linked сохранены.
