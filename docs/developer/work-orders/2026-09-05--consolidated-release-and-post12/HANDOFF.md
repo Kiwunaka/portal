@@ -1,5 +1,11 @@
 # R12 — текущий результат и граница исполнения
 
+[Исправление ответа подписки](EXECUTION-SUBSCRIPTION-BUDGET-2026-09-09.md):
+backend `d9b2583` установлен, 204 hashes и четыре обязательных CI checks PASS.
+Owned API readback: 3,215 с вместо 16,102 с; доступ и Telegram linked сохранены.
+173 tests + 8 subtests PASS. Повторный Huawei UI readback ждёт устройства.
+
+
 [Обработка вложений поддержки](EXECUTION-INTERNAL-VISION-2026-09-09.md):
 backend `876e78d` установлен на Brain, 204 hashes и четыре CI checks PASS.
 PNG/PDF smoke в production-каталоге выполнен с фикстурами; сообщения клиентам

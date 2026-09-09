@@ -1,0 +1,44 @@
+{
+  "utc": "2026-09-09T07:08:20.223244+00:00",
+  "signed_pr_source": "83f8ca58084e5a11a789eab95ff525b0de226b68",
+  "source": "8728426f20eb5ebfec5c86dfc65200bd0ffdac8d",
+  "merged": "d9b25839e4c9e1b816091af6701b3723d75aa8c7",
+  "tree": "d987840a039d91c0db0cfa4f2fe0e1ccf94f059d",
+  "signature_verified": true,
+  "parent": "876e78da2ee5426a11d5aa74239fcff5efc9fa5d",
+  "pr_checks": [
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-09T06:51:37Z",
+      "conclusion": "SKIPPED",
+      "detailsUrl": "https://github.com/Kiwunaka/portal/actions/runs/34320997299/job/102367397880",
+      "name": "release-base-isolation",
+      "startedAt": "2026-09-09T06:51:44Z",
+      "status": "COMPLETED",
+      "workflowName": "Release 1.2.0 PR-00 Freeze"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-09T07:00:41Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/Kiwunaka/portal/actions/runs/34320997265/job/102367372001",
+      "name": "repo-guardrails",
+      "startedAt": "2026-09-09T06:51:39Z",
+      "status": "COMPLETED",
+      "workflowName": "Guardrails"
+    },
+    {
+      "__typename": "CheckRun",
+      "completedAt": "2026-09-09T06:53:58Z",
+      "conclusion": "SUCCESS",
+      "detailsUrl": "https://github.com/Kiwunaka/portal/actions/runs/34320997295/job/102367371970",
+      "name": "cross-repository-contract",
+      "startedAt": "2026-09-09T06:51:40Z",
+      "status": "COMPLETED",
+      "workflowName": "Release v2 Contract"
+    }
+  ],
+  "local_regression": "173 passed, 8 subtests passed",
+  "push_checks": "PENDING",
+  "deployment": "NOT_RUN"
+}

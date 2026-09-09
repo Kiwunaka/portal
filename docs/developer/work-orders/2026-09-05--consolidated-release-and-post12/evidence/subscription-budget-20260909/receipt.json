@@ -1,0 +1,111 @@
+{
+  "source": "d9b25839e4c9e1b816091af6701b3723d75aa8c7",
+  "origin": "brain-origin",
+  "status": "PASS_BOUNDED_SUBSCRIPTION_READ",
+  "files": [
+    {
+      "file": "merge.json",
+      "bytes": 1666,
+      "capture_sha256": "82862e6ddd0d7e7394fba38b44a01b0d839671483b941f40637b6efc57b484f7",
+      "normalized_lf_sha256": "443bd54ce4a4c9d59f61f6e90095f09a770c90e346e4b0d2be3f67e1c28f2886"
+    },
+    {
+      "file": "ci-verified.json",
+      "bytes": 22076,
+      "capture_sha256": "d990a981b7aa6df7f9f09af095580ef2d067161c8f461b953d0aff5c8414d959",
+      "normalized_lf_sha256": "dc1fecb33396217e2d03a8afec6c4c3db84f4c9bbcafe773168231098b2ba6b8"
+    },
+    {
+      "file": "baseline-before-deploy.json",
+      "bytes": 845,
+      "capture_sha256": "50f823217d4570ac56550862304e9b4a33833fb23c9d0fda5bb1044eeb113e81",
+      "normalized_lf_sha256": "e7093d2b3936dc6e1588e71ffdfa42d43e0bfdcf4d9f925ac2dcd56c6496e8c5"
+    },
+    {
+      "file": "merged-payload.json",
+      "bytes": 80644,
+      "capture_sha256": "2cf2ecc9f2d581074da4c193b5dd518534b3a12d7409e03c814348f8899f1e77",
+      "normalized_lf_sha256": "99d3269af5a4fd9a6142f8242e3148d3f3603bf0eb6b344ecf86868cd27f8313"
+    },
+    {
+      "file": "build-identity-updated.json",
+      "bytes": 1731,
+      "capture_sha256": "6b37086774cc070f64cd3ee2910e9452c9d8ba8c6099f6b1f7ee08de2fe50b34",
+      "normalized_lf_sha256": "37f89db2daea3b510c93e4772311b3f44281ca755c0478d866924ddea77816c2"
+    },
+    {
+      "file": "operator-build-meta.json",
+      "bytes": 552,
+      "capture_sha256": "b6e9e599d9cebc741f7c04b72a4d4af5ce0b7e9541136c6105bb4fa6bdc093d3",
+      "normalized_lf_sha256": "2dceab10a8e0be1c5af705347dc420b88953ca090dc43880eff6413ee5c09161"
+    },
+    {
+      "file": "subscription-server-readback.json",
+      "bytes": 410,
+      "capture_sha256": "c81d14b402ad1c014b59651ef45e741042c475c03594e53cebd17c5da0c95807",
+      "normalized_lf_sha256": "10ccfa9636bc69ff07a462d36bef07320f4a1b7bf31913f0f5465c904da8f7a1"
+    },
+    {
+      "file": "deploy-backend.log",
+      "bytes": 98,
+      "capture_sha256": "211070512f9eca7dd56ae09b353bfccbbc021542f9285e7fff6afea2b54427b3",
+      "normalized_lf_sha256": "b043c12fd8d0a5413a5c8902b4e6bbcaf6d17a403139431b7219e6842718b464"
+    },
+    {
+      "file": "read-subscription.py",
+      "bytes": 2194,
+      "capture_sha256": "ec1f3e7b76b9cefe5fe42448102651d9915db7d060fec2515fa6dad03b45786f",
+      "normalized_lf_sha256": "00aebd8e77aa933809d8ffee8214e383eee33db5d136355537bc19169e601156"
+    },
+    {
+      "file": "prepare-payload.py",
+      "bytes": 2940,
+      "capture_sha256": "ff75cbf90e06cf313fda0d4d621de26c79a75c0c8000084ec937e50f2f6dbd50",
+      "normalized_lf_sha256": "156fd93162e351c54644447f8741b80ac3b670dc0878c5fa85c8370c76e49f70"
+    },
+    {
+      "file": "update-build-identity.py",
+      "bytes": 3680,
+      "capture_sha256": "5b4414b645799ab956e240dafa14f2d9a77d9e029ffbaff12e16aa0852f2f43b",
+      "normalized_lf_sha256": "d5bc8c4ef1f6062d614d8732e91d678b94aa3173a055420436d4b1976033f933"
+    },
+    {
+      "file": "check-baseline.py",
+      "bytes": 2340,
+      "capture_sha256": "6be9889eb8bfb7ec3cf556d3cacad17b1148478d69bd056da102be4634de71a5",
+      "normalized_lf_sha256": "5ead9dbca4da02b8272aa2c55b3f7d0d041a06d7f1105feeeeca97a68bbf8b98"
+    },
+    {
+      "file": "subscription-before.json",
+      "bytes": 413,
+      "capture_sha256": "80d03e1948af9033d71dff951821c11eec3d2a2829d84238d4928791187f9a5e",
+      "normalized_lf_sha256": "c2186df8aff06468c16193058a79418d0eae8682a235a789c81303b6346e35ec"
+    },
+    {
+      "file": "subscription-backend-router.log",
+      "bytes": 287,
+      "capture_sha256": "93e920b4d197714af037d68846e4196facec7aaee0d98111fc24d27818249de2",
+      "normalized_lf_sha256": "d2d8e536b3b918221ce9ddaeed22cd052a70e5ac293d0ee8d8767243151b54fc"
+    },
+    {
+      "file": "subscription-focused.log",
+      "bytes": 116,
+      "capture_sha256": "4fe4c1f3e3c59645e3a9af7ce695833734463e1c2e3fade03b99839cebd8137b",
+      "normalized_lf_sha256": "7d71943db150d36fde77b6a8046fc44ad5c0250a5b2d3c02fdb4a064b9e1fae7"
+    },
+    {
+      "file": "subscription-docs.log",
+      "bytes": 101,
+      "capture_sha256": "296e7ba77d6bdc5c27c0ad14786c82474e6d36d2e01fc3fbaff5102ac5bd4294",
+      "normalized_lf_sha256": "3f4f0ae7f4f796b07702e76c406f405fef7a3e7bcade5beb4b7bc801f20aae18"
+    },
+    {
+      "file": "subscription-context.log",
+      "bytes": 23,
+      "capture_sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "normalized_lf_sha256": "163018728356b7e89f40f13654de31358cdb731cd8c2b7c95d815d55eccb3a03"
+    }
+  ],
+  "physical_huawei_postfix_readback": "BLOCKED_BY_ACCESS_ADB_DEVICE_REMOVED",
+  "full_release_pass": false
+}
