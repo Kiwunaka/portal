@@ -63,6 +63,7 @@ function ticketRequest(ticketId: number, action: "reply" | "status" | "note", pa
     target: { type: "ticket", id: String(ticketId) },
     payload,
     endpoint: `/api/admin/tickets/${ticketId}/${action}`,
+    workspace: action === "note" ? "support" : undefined,
   };
 }
 

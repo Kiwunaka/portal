@@ -263,7 +263,7 @@ INCIDENT_ACTIONS = frozenset(
     }
 )
 SUPPORT_ACTIONS = frozenset(
-    {"ticket.claim", "ticket.assign", "ticket.update", "support.mode.issue"}
+    {"ticket.claim", "ticket.assign", "ticket.update", "ticket.note", "support.mode.issue"}
 )
 NETWORK_ACTIONS = frozenset(
     {

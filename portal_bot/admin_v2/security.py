@@ -411,7 +411,11 @@ def authenticate_operator_request(
             raise AdminV2Error(status_code=401, code="operator_session_revoked", message="Operator session was revoked.")
         if session_row.idle_expires_at <= now or session_row.absolute_expires_at <= now:
             session_row.revoked_at = now
-            session_row.revoke_reason = "idle_expired" if session_row.idle_expires_at <= now else "absolute_expired"
+            session_row.revoke_reason = (
+                "absolute_expired"
+                if session_row.absolute_expires_at <= session_row.idle_expires_at
+                else "idle_expired"
+            )
             db.commit()
             raise AdminV2Error(status_code=401, code="operator_session_expired", message="Operator session expired.")
         operator = db.query(AdminOperator).filter(AdminOperator.id == str(session_row.operator_id)).first()
