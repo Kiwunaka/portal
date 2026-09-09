@@ -92,6 +92,8 @@ export type AdminTicket = {
 
 export type AdminSupportBundle = {
   bundleRef: string;
+  attemptRef: string | null;
+  attemptLinkSource: string | null;
   status: string;
   diagnosticProfile: string | null;
   appVersion: string | null;
@@ -359,6 +361,8 @@ function mapSupportBundle(value: unknown): AdminSupportBundle {
   const audit = record(row.access_audit);
   return {
     bundleRef: text(row.bundle_ref),
+    attemptRef: optionalText(row.attempt_ref),
+    attemptLinkSource: optionalText(row.attempt_link_source),
     status: text(row.status) || "unknown",
     diagnosticProfile: optionalText(row.diagnostic_profile),
     appVersion: optionalText(row.app_version),

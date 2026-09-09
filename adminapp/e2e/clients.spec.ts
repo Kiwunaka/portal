@@ -167,6 +167,24 @@ test("Support Inbox claim и внутренняя заметка использ�
   expect(api.calls.some((call) => call.path === "/api/admin/tickets/501/note")).toBe(false);
 });
 
+test("пакет связывается с выбранной попыткой через support intent", async ({ page }) => {
+  const api = await installAdminApiMock(page);
+  await page.goto("/tickets?selected=501");
+  const save = page.getByRole("button", { name: "Сохранить связь", exact: true });
+  await expect(save).toBeDisabled();
+  await page.getByLabel("Попытка для bundle_22222222222222222222").selectOption("attempt_11111111111111111111");
+  await save.click();
+  const dialog = page.getByRole("dialog", { name: "Проверка действия" });
+  await dialog.getByLabel("Подтверждение").fill("ПОДТВЕРДИТЬ");
+  await dialog.getByRole("button", { name: "Выполнить" }).click();
+  await expect(dialog.getByText("Действие выполнено", { exact: true })).toBeVisible();
+  const command = api.calls.find((call) => call.path.endsWith("/execute"));
+  expect(command?.path).toMatch(/^\/api\/admin\/v2\/support\/action-intents\/[0-9a-f-]{36}\/execute$/);
+  expect(command?.body).toMatchObject({ action: "ticket.update", payload: {
+    expected_version: 3, bundle_ref: "bundle_22222222222222222222", attempt_ref: "attempt_11111111111111111111",
+  } });
+});
+
 test("блокировка и ответ проходят через намерение, а неясный ответ сохраняет черновик", async ({ page }) => {
   const api = await installAdminApiMock(page, { ticketReplyOutcomes: ["uncertain"] });
   await page.goto("/users?selected=1001");

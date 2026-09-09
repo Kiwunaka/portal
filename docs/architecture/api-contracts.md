@@ -1429,6 +1429,18 @@ trusted read-only projection. These Event-based reads do not grant entitlement,
 expose raw IP/token/config/URL material, or change support-bundle custody.
 The separate, access-controlled network-context field is specified below.
 
+A support bundle has its own nullable opaque `attempt_ref`, independent of the
+ticket's selected attempt. `ticket.update` through support v2 accepts
+`bundle_ref` plus `attempt_ref` (or null to unlink), with the expected ticket
+version and no other ticket changes in that command. Prepare and execute
+resolve the bundle within that ticket/environment and the attempt within the
+ticket owner's available telemetry. The write bumps the ticket version and
+audits both opaque references. The read model marks the association as
+`attempt_link_source=operator`: this is an operator assertion, not a correlation
+extracted from encrypted content. Relinking the ticket does not move a bundle;
+older bundles remain unlinked until explicitly associated. No raw trace,
+session or device identity is added to the bundle summary or audit.
+
 ### Automatic access-network diagnostics
 
 Owner decision 2026-09-07 adds `POST /api/client/network/context` for an

@@ -2265,6 +2265,7 @@ class SupportBundleUpload(Base):
     last_error_code = Column(String(32), nullable=True)
     proof_outcome = Column(String(24), nullable=True)
     observed_attempts = Column(Integer, nullable=True)
+    attempt_ref = Column(String(64), nullable=True)
     retention_hold = Column(Boolean, default=False, nullable=False, index=True)
     retention_hold_reason = Column(String(64), nullable=True)
     retention_held_at = Column(DateTime, nullable=True)

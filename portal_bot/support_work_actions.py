@@ -8,13 +8,13 @@ from datetime import datetime, timezone
 from typing import Any, Mapping
 
 try:
-    from .models import ServiceIncident, SupportModePolicy, SupportTicket, SupportTicketMessage
+    from .models import ServiceIncident, SupportBundleUpload, SupportModePolicy, SupportTicket, SupportTicketMessage
     from . import support_mode_service
-    from .support_work_service import TICKET_PRIORITIES, TICKET_QUEUES, TICKET_WAITING_ON, ticket_view
+    from .support_work_service import TICKET_PRIORITIES, TICKET_QUEUES, TICKET_WAITING_ON, attempt_explorer, support_bundle_upload_id_for_ref, ticket_view
 except ImportError:
-    from models import ServiceIncident, SupportModePolicy, SupportTicket, SupportTicketMessage
+    from models import ServiceIncident, SupportBundleUpload, SupportModePolicy, SupportTicket, SupportTicketMessage
     import support_mode_service
-    from support_work_service import TICKET_PRIORITIES, TICKET_QUEUES, TICKET_WAITING_ON, ticket_view
+    from support_work_service import TICKET_PRIORITIES, TICKET_QUEUES, TICKET_WAITING_ON, attempt_explorer, support_bundle_upload_id_for_ref, ticket_view
 
 
 _ENV_RE = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
@@ -110,11 +110,19 @@ def _update_payload(error_type, payload: Mapping[str, Any]) -> dict[str, Any]:
     allowed = {
         "_environment", "_operator_id", "_actor_tg_id", "expected_version",
         "priority", "queue", "waiting_on", "sla_due_at", "escalated",
-        "incident_id", "attempt_ref", "status",
+        "incident_id", "attempt_ref", "status", "bundle_ref",
     }
     _reject_extra(error_type, payload, allowed)
     out = _base(error_type, payload)
     changed = False
+    if "bundle_ref" in payload:
+        bundle_ref = str(payload.get("bundle_ref") or "").strip().lower()
+        if re.fullmatch(r"bundle_[0-9a-f]{20}", bundle_ref) is None or "attempt_ref" not in payload:
+            _error(error_type, "invalid_payload", "Bundle link requires a bundle and attempt reference.")
+        _reject_extra(error_type, payload, {
+            "_environment", "_operator_id", "_actor_tg_id", "expected_version", "bundle_ref", "attempt_ref",
+        })
+        out["bundle_ref"] = bundle_ref
     if "priority" in payload:
         value = str(payload.get("priority") or "").strip().lower()
         if value not in TICKET_PRIORITIES:
@@ -258,12 +266,27 @@ def _ticket_state(EntityState, error_type, session, target_id, payload, for_upda
     current_version = max(1, int(row.version or 1))
     if current_version != int(payload["expected_version"]):
         _error(error_type, "stale_version", "Ticket changed; reload it before continuing.", status_code=409)
+    context = {"ticket_id": ticket_id, "actor_tg_id": int(payload.get("_actor_tg_id") or 0)}
+    bundle_snapshot = {}
+    if payload.get("attempt_ref"):
+        explored = attempt_explorer(session, environment=row.environment, ticket_id=ticket_id,
+                                    attempt_ref=payload["attempt_ref"])
+        if not explored or explored["selected"] is None:
+            _error(error_type, "attempt_not_found", "Attempt is not available for this ticket.", status_code=404)
+    if "bundle_ref" in payload:
+        upload_id = support_bundle_upload_id_for_ref(session, environment=row.environment,
+                                                     ticket_id=ticket_id, bundle_ref=payload["bundle_ref"])
+        if upload_id is None:
+            _error(error_type, "support_bundle_not_found", "Bundle is not available for this ticket.", status_code=404)
+        context["bundle_upload_id"] = upload_id
+        bundle = session.query(SupportBundleUpload).filter_by(upload_id=upload_id).one()
+        bundle_snapshot = {"bundle": {"bundle_ref": payload["bundle_ref"], "attempt_ref": bundle.attempt_ref}}
     message_count = session.query(SupportTicketMessage.id).filter(SupportTicketMessage.ticket_id == ticket_id).count()
     return EntityState(
         entity=row,
-        version_snapshot={"ticket_id": ticket_id, "version": current_version, "updated_at": str(row.updated_at), "messages": int(message_count)},
-        public_snapshot={**ticket_view(row), "message_count": int(message_count)},
-        context={"ticket_id": ticket_id, "actor_tg_id": int(payload.get("_actor_tg_id") or 0)},
+        version_snapshot={"ticket_id": ticket_id, "version": current_version, "updated_at": str(row.updated_at), "messages": int(message_count), **bundle_snapshot},
+        public_snapshot={**ticket_view(row), "message_count": int(message_count), **bundle_snapshot},
+        context=context,
     )
 
 
@@ -287,6 +310,10 @@ def _assign_preview(state, payload):
 
 def _update_preview(state, payload):
     after = dict(state.public_snapshot)
+    if "bundle_ref" in payload:
+        after["bundle"] = {"bundle_ref": payload["bundle_ref"], "attempt_ref": payload["attempt_ref"]}
+        return _preview("Связать пакет поддержки с попыткой", state, after,
+                        ["Связь указана оператором; она не подтверждает содержимое зашифрованного пакета."])
     after.update({key: value for key, value in payload.items() if not key.startswith("_") and key != "expected_version"})
     return _preview("Обновить операционный контекст тикета", state, after)
 
@@ -354,6 +381,14 @@ def _execute_assign(session, state, payload):
 
 def _execute_update(session, state, payload):
     row = state.entity
+    if "bundle_ref" in payload:
+        bundle = session.query(SupportBundleUpload).filter_by(upload_id=state.context["bundle_upload_id"]).one()
+        bundle.attempt_ref = payload["attempt_ref"]
+        bundle.updated_at = _now()
+        _bump(row)
+        session.flush()
+        return {"ticket": ticket_view(row), "bundle_ref": payload["bundle_ref"],
+                "attempt_ref": bundle.attempt_ref, "attempt_link_source": "operator" if bundle.attempt_ref else None}
     if payload.get("incident_id"):
         incident = session.query(ServiceIncident).filter(
             ServiceIncident.id == payload["incident_id"],
@@ -440,7 +475,7 @@ def _audit_meta(state, payload):
         "ticket_id": int(state.context["ticket_id"]),
         "expected_version": int(payload["expected_version"]),
     }
-    for key in ("priority", "queue", "waiting_on", "incident_id", "attempt_ref", "status", "assignee_admin_tg_id", "assigned_team", "escalated"):
+    for key in ("priority", "queue", "waiting_on", "incident_id", "attempt_ref", "bundle_ref", "status", "assignee_admin_tg_id", "assigned_team", "escalated"):
         if key in payload:
             result[key] = payload[key]
     if isinstance(payload.get("body"), Mapping):
