@@ -1,0 +1,62 @@
+{
+  "observed_date": "2026-09-09",
+  "recorded_at": "2026-09-09T14:04:48.723743+00:00",
+  "source_commit": "c5806b2cac7f1d1e925a57bf6262934e8fcfaf4f",
+  "origin": "current-origin Chrome browser, public provider documentation",
+  "provider_url": "https://developers.lava.top/en#is-there-a-sandbox-environment",
+  "method": "Opened FAQs / General questions / sandbox entry and visually read expanded answer; screenshot retained. No authenticated provider request.",
+  "result": "NO_PROVIDER_SANDBOX_AVAILABLE",
+  "budget_usd": 0,
+  "payment_e2e": "NOT_RUN",
+  "refund_e2e": "NOT_RUN",
+  "provider_account_or_webhooks_changed": false,
+  "provider_contact_sent": false,
+  "customer_payments_used_as_fixtures": false,
+  "r12_b06": "active / I3 / PARTIALLY_FIXED; real provider acceptance remains open",
+  "observations": [
+    {
+      "path": "lavatop-sandbox-faq.png",
+      "sha256": "e9480d46ab667cfde8f50678985faa17e1687b0fbc16a41832c633322561ccbe",
+      "bytes": 113578,
+      "external_source": "E:\\r12-b06-provider-boundary-20260909\\lavatop-sandbox-faq.png",
+      "external_source_sha256": "e9480d46ab667cfde8f50678985faa17e1687b0fbc16a41832c633322561ccbe",
+      "external_source_bytes": 113578
+    },
+    {
+      "path": "session-continuity.json",
+      "sha256": "4c657fcd94611805dc31e3ff311f66474ba7cd8980a2acfb6760d82d3a458f9a",
+      "bytes": 1775,
+      "external_source": "E:\\r12-operator-session-20260909\\elapsed-expiry-observation-v3-2026-09-09T140309009725+0000.json",
+      "external_source_sha256": "e8b4f040972ec7ecb1626dfedba71e64b8ea427b5d1f0ae8f5a2c69adbbdbec6",
+      "external_source_bytes": 1819
+    }
+  ],
+  "verification": [
+    {
+      "command": "python -B -m pytest -p no:cacheprovider tests/test_agent_docs_contract.py tests/test_agent_context_packet_audit.py -q",
+      "exit_code": 0,
+      "result": "33 passed",
+      "log": "E:\\r12-b06-provider-boundary-20260909\\docs-tests.log",
+      "sha256": "49cfdb2fd5c0636e6ece2eee4581dfa2fcdedb0ddff5009b79875de38fa4b8df"
+    },
+    {
+      "command": "python -B scripts/agent_context_packet_audit.py --platform-context-root .",
+      "exit_code": 0,
+      "result": "PASS platform-context",
+      "log": "E:\\r12-b06-provider-boundary-20260909\\context-audit.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d"
+    },
+    {
+      "command": "python -B docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/validate_package.py",
+      "exit_code": 0,
+      "result": "PASS 83 R12 IDs / 528 links",
+      "log": "E:\\r12-b06-provider-boundary-20260909\\package-check.log",
+      "sha256": "80dc7878a9fe9c6485332294a322841436a44782999242e6a69d7094d88345f9"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "retention_note": "Artifact sha256/bytes bind committed Git blobs; external_source fields bind original files. Git normalizes session-continuity.json CRLF to LF; parsed JSON is unchanged. Initial staged-hash check detected this before push, then receipt was corrected."
+}
