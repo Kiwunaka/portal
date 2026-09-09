@@ -8,6 +8,7 @@ import type { OpsShellStatus } from "@/components/ops/shell-status";
 import { Badge, Button, Card, MetricCell, MetricStrip, SectionTitle, type Tone } from "@/components/ui";
 import { EmptyState } from "@/components/ui/states";
 import { OpsTooltip } from "@/components/ui/tooltip";
+import { WindowedTable } from "@/components/ui/windowed-table";
 import type { AdminApiError } from "@/lib/admin-api/client";
 import { fetchOnlineUsers, type AdminOnlineUser, type OnlineSourceFilter } from "@/lib/admin-api/support";
 import { formatSourceAge } from "@/lib/ops-status/presentation";
@@ -160,10 +161,9 @@ export function OnlinePage({ onShellStatus }: { onShellStatus?: (status: OpsShel
         <div className="mt-3">
           <RouteBoundary loading={online.loading} refreshing={online.refreshing} error={online.error} hasData={online.data !== null} retryLabel="Повторить загрузку оперативного списка" onRetry={online.reload}>
             {rows.length ? (
-              <div className="ops-scrollbar overflow-auto rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)]">
-                <table className="w-full min-w-[900px] border-collapse text-left text-xs">
-                  <thead className="bg-[color:var(--pokrov-table-header-bg)] text-[11px] text-[color:var(--atlas-text-soft)]"><tr>{["Пользователь", "Доступ", "Ноды", "Ключи / соединения", "Адресов", "Риск", "Возраст сигнала"].map((header) => <th key={header} className="border-b border-[color:var(--pokrov-table-divider)] px-3 py-2 font-semibold">{header}</th>)}</tr></thead>
-                  <tbody>{rows.map((row) => (
+              <WindowedTable label="Оперативный список пользователей" columnCount={7} tableClassName="w-full min-w-[900px] border-collapse text-left text-xs"
+                header={<thead className="bg-[color:var(--pokrov-table-header-bg)] text-[11px] text-[color:var(--atlas-text-soft)]"><tr>{["Пользователь", "Доступ", "Ноды", "Ключи / соединения", "Адресов", "Риск", "Возраст сигнала"].map((header) => <th key={header} className="border-b border-[color:var(--pokrov-table-divider)] px-3 py-2 font-semibold">{header}</th>)}</tr></thead>}
+                rows={rows.map((row) => (
                     <tr key={row.rowId} className="border-b border-[color:var(--pokrov-table-divider)] hover:bg-[color:var(--pokrov-table-row-hover-bg)]">
                       <td className="px-3 py-2">{row.tgId !== null ? <a href={`/users?selected=${row.tgId}`} className="font-semibold text-[color:var(--atlas-primary)] hover:underline">Пользователь {row.tgId}<span className="block font-normal text-[color:var(--atlas-text-muted)]">{row.displayName || (row.username ? `@${row.username}` : "Без имени")}</span></a> : <span><strong>Не сопоставлен</strong><span className="block text-[color:var(--atlas-text-muted)]">Только запись панели</span></span>}</td>
                       <td className="px-3 py-2"><Badge tone={statusTone(row.status)}>{statusLabel(row.status)}</Badge></td>
@@ -173,9 +173,8 @@ export function OnlinePage({ onShellStatus }: { onShellStatus?: (status: OpsShel
                       <td className="px-3 py-2"><Badge tone={row.riskFlags.length ? "warning" : "success"}>{riskLabel(row.riskFlags)}</Badge></td>
                       <td className="px-3 py-2">{row.lastOnlineAt ? formatSourceAge(row.lastOnlineAt) : "Нет данных"}<span className="block text-[11px] text-[color:var(--atlas-text-muted)]">{row.source === "user" ? "Сопоставлен с пользователем" : "Только панель"}</span></td>
                     </tr>
-                  ))}</tbody>
-                </table>
-              </div>
+                  ))}
+              />
             ) : online.data ? <EmptyState title="Строки оперативного снимка не найдены" description="Измените фильтры. Пустой снимок не подтверждает, что панель и все ноды доступны." /> : null}
           </RouteBoundary>
         </div>

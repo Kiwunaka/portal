@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-table";
 
 import { cn } from "@/components/utils";
+import { WindowedTable } from "./windowed-table";
 
 export interface DataTableProps<T> {
   data: T[];
@@ -26,8 +27,12 @@ export function DataTable<T>({ data, columns, empty = "Нет данных", cla
   });
 
   return (
-    <div className={cn("ops-data-table ops-scrollbar overflow-auto rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)]", className)}>
-      <table className="w-full min-w-[760px] border-collapse text-left text-xs">
+    <WindowedTable
+      label="Табличные данные"
+      columnCount={Math.max(1, columns.length)}
+      className={cn("ops-data-table", className)}
+      tableClassName="w-full min-w-[760px] border-collapse text-left text-xs"
+      header={
         <thead className="sticky top-0 z-10 bg-[color:var(--pokrov-table-header-bg)] text-[10px] uppercase tracking-[0.055em] text-[color:var(--atlas-text-muted)]">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
@@ -39,27 +44,25 @@ export function DataTable<T>({ data, columns, empty = "Нет данных", cla
             </tr>
           ))}
         </thead>
-        <tbody>
-          {table.getRowModel().rows.length ? (
-            table.getRowModel().rows.map((row) => (
-              <tr key={row.id} className="h-[var(--pokrov-table-row-height)] border-b border-[color:var(--pokrov-table-divider)] transition-colors hover:bg-[color:var(--pokrov-table-row-hover-bg)]">
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-3 py-2 align-middle text-[color:var(--atlas-text)]">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan={Math.max(1, columns.length)} className="px-3 py-8 text-center text-sm text-[color:var(--atlas-text-muted)]">
-                {empty}
+      }
+      rows={table.getRowModel().rows.length ? (
+        table.getRowModel().rows.map((row) => (
+          <tr key={row.id} className="h-[var(--pokrov-table-row-height)] border-b border-[color:var(--pokrov-table-divider)] transition-colors hover:bg-[color:var(--pokrov-table-row-hover-bg)]">
+            {row.getVisibleCells().map((cell) => (
+              <td key={cell.id} className="px-3 py-2 align-middle text-[color:var(--atlas-text)]">
+                {flexRender(cell.column.columnDef.cell, cell.getContext())}
               </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </div>
+            ))}
+          </tr>
+        ))
+      ) : [
+        <tr key="empty">
+          <td colSpan={Math.max(1, columns.length)} className="px-3 py-8 text-center text-sm text-[color:var(--atlas-text-muted)]">
+            {empty}
+          </td>
+        </tr>
+      ]}
+    />
   );
 }
 

@@ -33,6 +33,32 @@ const routes = [
   ["/news", "Новости"]
 ] as const;
 
+for (const [path, label] of [["/users", "Список пользователей"], ["/payments", "Табличные данные"]] as const) {
+  test(`длинная таблица ${path} сохраняет фокус, клавиатуру и полный режим чтения`, async ({ page }) => {
+    await installAdminApiMock(page, { longTables: true, revenueScenario: "populated" });
+    await page.goto(path);
+    const viewport = page.getByRole("region", { name: `${label}: прокрутка`, exact: true });
+    const table = viewport.getByRole("table", { name: label, exact: true });
+    await expect(table).toHaveAttribute("aria-rowcount", "81");
+    await expect.poll(() => table.locator("tbody tr[data-index]").count()).toBeGreaterThan(0);
+    expect(await table.locator("tbody tr[data-index]").count()).toBeLessThan(40);
+    const firstControl = table.getByRole("button").first();
+    await firstControl.focus();
+    await viewport.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+    await expect(firstControl).toBeFocused();
+    await viewport.focus();
+    await page.keyboard.press("End");
+    await expect(table.locator('tr[aria-rowindex="81"]')).toBeInViewport();
+    expect(await table.locator("tbody tr[data-index]").count()).toBeLessThan(40);
+    await page.keyboard.press("Home");
+    await expect(table.locator('tr[aria-rowindex="2"]')).toBeInViewport();
+    await page.getByRole("button", { name: "Режим чтения", exact: true }).click();
+    await expect(table.locator("tbody tr")).toHaveCount(80);
+    await expect(table.getByRole("row")).toHaveCount(81);
+    await expect(page.getByRole("button", { name: "Вернуть компактный вид" })).toHaveAttribute("aria-pressed", "true");
+  });
+}
+
 test("все 28 маршрутов открываются напрямую с русскими заголовками", async ({ page }) => {
   await installAdminApiMock(page);
 
@@ -118,7 +144,7 @@ test("mobile master-detail и desktop layout не создают общий го
   await expect(navigation).toBeHidden();
   await expect(page).toHaveURL(/\/traffic$/);
 
-  for (const width of [1280, 1440]) {
+  for (const width of [768, 1280, 1440]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/nodes");
     const layout = await page.evaluate(() => {
@@ -145,4 +171,25 @@ test("mobile master-detail и desktop layout не создают общий го
     );
     expect(clippedNavigation, `скрытые разделы при ширине ${width}`).toEqual([]);
   }
+});
+
+test("reflow при имитации 200% zoom сохраняет таблицу и клавиатурный диалог", async ({ page }) => {
+  await installAdminApiMock(page, { longTables: true, revenueScenario: "populated" });
+  // 1440x900 physical pixels at 200% browser zoom give a 720x450 CSS viewport.
+  // This checks reflow; it is not manual browser-zoom or screen-reader evidence.
+  await page.setViewportSize({ width: 720, height: 450 });
+  await page.goto("/payments");
+  const viewport = page.getByRole("region", { name: "Табличные данные: прокрутка", exact: true });
+  await expect(viewport).toBeVisible();
+  await viewport.focus();
+  await page.keyboard.press("End");
+  await expect(viewport.locator('tr[aria-rowindex="81"]')).toBeInViewport();
+  await page.keyboard.press("Control+k");
+  const dialog = page.getByRole("dialog", { name: "Палитра команд" });
+  await expect(dialog.getByRole("searchbox", { name: "Глобальный поиск" })).toBeFocused();
+  const geometry = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: innerWidth }));
+  expect(geometry.width).toBeLessThanOrEqual(geometry.viewport + 1);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(viewport).toBeFocused();
 });

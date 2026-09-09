@@ -420,7 +420,7 @@ export function ActionIntentDialog({
       if (apiError?.code === "expired_intent") setPhase("expired");
       else if (apiError?.code === "stale_intent") setPhase("stale");
       else if (apiError?.status === 428 || apiError?.code === "intent_required") setPhase("required");
-      else if (!apiError || apiError.status >= 500) {
+      else if (!apiError || apiError.status >= 500 || apiError.code === "request_timeout") {
         setPhase("uncertain");
         onUncertainOutcome?.();
       }

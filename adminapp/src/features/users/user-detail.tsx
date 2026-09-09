@@ -6,6 +6,7 @@ import { Activity, Radio, RefreshCw, ShieldAlert, UserRound } from "lucide-react
 import { Badge, Button, Card, SectionTitle, type Tone } from "@/components/ui";
 import { EmptyState, ErrorState, LoadingState } from "@/components/ui/states";
 import { OpsTooltip } from "@/components/ui/tooltip";
+import { WindowedTable } from "@/components/ui/windowed-table";
 import type { AdminUserDetail, AdminUserInvestigation } from "@/lib/admin-api/users";
 import { formatSourceAge } from "@/lib/ops-status/presentation";
 
@@ -166,18 +167,16 @@ function Metric({ label, value, explanation, source, sampledAt, threshold = null
 function DetailTable({ headers, rows, empty }: { headers: string[]; rows: ReactNode[][]; empty: string }) {
   if (!rows.length) return <EmptyState description={empty} className="min-h-24" />;
   return (
-    <div className="ops-scrollbar overflow-auto rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)]">
-      <table className="w-full min-w-[720px] border-collapse text-left text-xs">
-        <thead className="bg-[color:var(--pokrov-table-header-bg)] text-[11px] text-[color:var(--atlas-text-soft)]">
+    <WindowedTable label={headers.join(" · ")} columnCount={headers.length} tableClassName="w-full min-w-[720px] border-collapse text-left text-xs"
+      header={<thead className="bg-[color:var(--pokrov-table-header-bg)] text-[11px] text-[color:var(--atlas-text-soft)]">
           <tr>{headers.map((header) => <th key={header} className="border-b border-[color:var(--pokrov-table-divider)] px-3 py-2 font-semibold">{header}</th>)}</tr>
-        </thead>
-        <tbody>{rows.map((cells, rowIndex) => (
+        </thead>}
+      rows={rows.map((cells, rowIndex) => (
           <tr key={rowIndex} className="border-b border-[color:var(--pokrov-table-divider)] hover:bg-[color:var(--pokrov-table-row-hover-bg)]">
             {cells.map((cell, cellIndex) => <td key={cellIndex} className="px-3 py-2 align-middle">{cell}</td>)}
           </tr>
-        ))}</tbody>
-      </table>
-    </div>
+        ))}
+    />
   );
 }
 
