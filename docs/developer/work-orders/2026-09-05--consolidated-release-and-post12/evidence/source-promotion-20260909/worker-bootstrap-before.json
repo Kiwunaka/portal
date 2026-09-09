@@ -1,0 +1,10 @@
+{
+  "utc": "2026-09-09T03:50:00.948551+00:00",
+  "worker_pid": 2653364,
+  "peer_target_variable_in_process": false,
+  "peer_target_variable_in_dotenv": false,
+  "peer_worker_would_be_enabled": false,
+  "dotenv_mode": "0o600",
+  "runtime_mutated": false,
+  "raw_environment_returned": false
+}

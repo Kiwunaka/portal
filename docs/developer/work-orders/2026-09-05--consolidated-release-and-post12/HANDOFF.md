@@ -1,5 +1,13 @@
 # R12 — текущий результат и граница исполнения
 
+[Source promotion 9 сентября](EXECUTION-SOURCE-PROMOTION-2026-09-09.md): platform
+PR #243, client #95 и Core #9 объединены через подписанные exact trees.
+Promotion tuple `0392052/c05b58b/7444e53` прошёл обычные CI всех трёх repos;
+local quality 15/15 PASS с эквивалентным закреплённым Core `c7a11f7`.
+Preflight READY_LOCAL_FREEZE, candidate не создан. Ключ checkout создан на Brain
+без экспорта и рестарта; full deploy ожидает интеграцию параллельной support-правки.
+Срезы ниже о pending merge и failures относятся к прежнему состоянию.
+
 [Core source binding](EXECUTION-CORE-SOURCE-BINDING-2026-09-09.md): client
 `5fdfc8d` закреплён за `c7a11f7`; две сборки каждой платформы воспроизвели прежние
 AAR/DLL bytes. Seed/contracts и 100 Windows proxy cycles PASS. Hosted tuple

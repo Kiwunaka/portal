@@ -1,5 +1,11 @@
 # Текущие условия следующей приёмки
 
+[Source promotion 9 сентября](EXECUTION-SOURCE-PROMOTION-2026-09-09.md) завершён:
+`0392052/c05b58b/7444e53`, обычные CI и local quality PASS. Ключ checkout создан
+на Brain без рестарта. Далее — интеграция support-правки и Brain activation, миграция общих AWG lab keys,
+installed-client и final-candidate acceptance. Backend deploy ещё не выполнен.
+Прежние failures/pending PR ниже сохранены как датированные наблюдения.
+
 [Core source binding](EXECUTION-CORE-SOURCE-BINDING-2026-09-09.md): client
 `5fdfc8d` → Core `c7a11f7`, прежние runtime bytes воспроизведены двумя сборками
 каждой платформы. Local seed/proxy и hosted tuple с platform `0f6745d` PASS.

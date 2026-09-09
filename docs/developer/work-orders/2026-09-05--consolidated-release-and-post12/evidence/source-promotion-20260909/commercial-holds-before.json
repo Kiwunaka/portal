@@ -1,0 +1,12 @@
+{
+  "utc": "2026-09-09T04:08:08.225313+00:00",
+  "mode": "READ_ONLY",
+  "reservation_status_counts": {},
+  "active_unexpired_holds": 0,
+  "process_key_present": false,
+  "dotenv_key_present": false,
+  "dotenv_key_declared": false,
+  "dotenv_mode": "0o600",
+  "api_pid": 4178235,
+  "key_or_token_returned": false
+}

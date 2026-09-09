@@ -1,0 +1,31 @@
+{
+  "awg2_lab": {
+    "rows": 108,
+    "active_ready": 7,
+    "device_bindings": 7,
+    "distinct_keys": 4,
+    "historically_shared_keys": 1,
+    "rows_with_shared_keys": 105,
+    "decryption_failures": 0,
+    "enabled": true,
+    "kill_switch_engaged": false,
+    "allowlist_install_count": 0,
+    "allowlist_user_count": 0
+  },
+  "awg31_lab": {
+    "rows": 102,
+    "active_ready": 7,
+    "device_bindings": 7,
+    "distinct_keys": 2,
+    "historically_shared_keys": 1,
+    "rows_with_shared_keys": 101,
+    "decryption_failures": 0,
+    "enabled": true,
+    "kill_switch_engaged": false,
+    "allowlist_install_count": 0,
+    "allowlist_user_count": 0
+  },
+  "utc": "2026-09-09T03:32:05.769544+00:00",
+  "mode": "READ_ONLY_AGGREGATES",
+  "identities_or_keys_returned": false
+}

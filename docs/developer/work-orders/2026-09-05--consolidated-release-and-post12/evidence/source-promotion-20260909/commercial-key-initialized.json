@@ -1,0 +1,12 @@
+{
+  "utc": "2026-09-09T04:11:14.358400+00:00",
+  "action": "INITIALIZE_ABSENT_DEDICATED_KEY",
+  "key_version": "r12-commercial-20260909",
+  "dotenv_key_present": true,
+  "dotenv_mode": "0o600",
+  "previous_dotenv_bytes_preserved": true,
+  "prior_unexpired_holds": 0,
+  "services_restarted": false,
+  "secret_exported": false,
+  "api_pid_before": 4178235
+}

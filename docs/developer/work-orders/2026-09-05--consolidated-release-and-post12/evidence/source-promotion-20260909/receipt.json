@@ -1,0 +1,103 @@
+{
+  "captured_at_utc": "2026-09-09T04:11:10.395653+00:00",
+  "scope": "SOURCE_PROMOTION_AND_PREDEPLOY",
+  "candidate_created": false,
+  "release_proven": false,
+  "files": [
+    {
+      "path": "ci-converged-promotion-lines.json",
+      "bytes": 165053,
+      "sha256": "56fd44740cf49efc483c9f3889eb237c163845b14d44369106d06fa9fcce0cfb"
+    },
+    {
+      "path": "platform-coordination-receipt.json",
+      "bytes": 630,
+      "sha256": "b34f6fa4abd04ad61c83ce10ece105114e98053c053b65e44b6b77c372386b44"
+    },
+    {
+      "path": "client-coordination-receipt.json",
+      "bytes": 620,
+      "sha256": "8da7f3eaef6ac4e56d2cebe41796f3be23efd1e67d901299d8c9cc01cee13066"
+    },
+    {
+      "path": "core-signed-receipt.json",
+      "bytes": 555,
+      "sha256": "0bb85f2cfae6094a3ef6b31e3bc32f49ea1c39b5582298ea708401de204e4fde"
+    },
+    {
+      "path": "backend-payload-plan.json",
+      "bytes": 80307,
+      "sha256": "c4235094c18ab0d707e965c9ead66e450a54776c3614c11691c7631aacf53799"
+    },
+    {
+      "path": "brain-baseline-predeploy.json",
+      "bytes": 39182,
+      "sha256": "9be71390cfb065c4c8120ffb45ac5397bd83d143ee3bf58eb92763f9b8e5e9ce"
+    },
+    {
+      "path": "commercial-holds-before.json",
+      "bytes": 326,
+      "sha256": "81bef17b5152c22e93ac9e44ddf0e266d0a81d326c7f96208864c0cd466f4848"
+    },
+    {
+      "path": "worker-bootstrap-before.json",
+      "bytes": 302,
+      "sha256": "c074c85fd0bfc7e4e49fa562cfa68fb6d4a17c644b5d5c9697fe685426193719"
+    },
+    {
+      "path": "awg-migration-scope.json",
+      "bytes": 812,
+      "sha256": "655c6e4955862811724a0abf0c2127d6c59d0ee28d5aeabf55561333f5b06cb0"
+    },
+    {
+      "path": "collect-ci.py",
+      "bytes": 2809,
+      "sha256": "9de5a385435cd870a234cf1101a62f90b0b082d346d13ce964e93e2d555345a3"
+    },
+    {
+      "path": "run-local-quality.ps1",
+      "bytes": 874,
+      "sha256": "f9b4f861c8a4eb23e9186f851cd32f2c739a8d97615b7d4aea5a778f0f7365e8"
+    },
+    {
+      "path": "platform-premerge.json",
+      "bytes": 1106,
+      "sha256": "583214e4b95e7e7d6d3f2de8acd8c28a286d7d00e0e0c54105e90b7234269b55"
+    },
+    {
+      "path": "platform-merge-verification.json",
+      "bytes": 206,
+      "sha256": "2d55b40ad25e7f32761dbcae2b10b60882b2ea0c5f7e6a8d237ab36eb9fe9ea9"
+    },
+    {
+      "path": "client-premerge.json",
+      "bytes": 516,
+      "sha256": "43c07e675b0c9d3f89a99168e255e66d167a569a95130496a59a5cf11aee8423"
+    },
+    {
+      "path": "client-merge-verification.json",
+      "bytes": 206,
+      "sha256": "de0d0331f4cfdcf0b1a3903c72656423e75f430c8ff26e771c9d657c19cd5192"
+    },
+    {
+      "path": "core-premerge.json",
+      "bytes": 1653,
+      "sha256": "b14b25eee5965f1d1152e279dbfa5d8367b90adb00d4a286aba90bf25cd2e453"
+    },
+    {
+      "path": "core-merge-verification.json",
+      "bytes": 206,
+      "sha256": "01c0bd78d34067814212780e45faed447691b9ac4382aa7a94a689c6a7492b03"
+    },
+    {
+      "path": "010I-local-quality-gate.json",
+      "bytes": 4606,
+      "sha256": "20b0a9da8d46106df88379fe0b53226cabe8cbbceeb0e57e7c2a7ba09195bf67"
+    },
+    {
+      "path": "preflight.json",
+      "bytes": 35848,
+      "sha256": "5bc3508d1e31b6ddaf2f3b0fb02f31811ac4f50a843af93782ba7a46d568f2c1"
+    }
+  ]
+}

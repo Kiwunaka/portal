@@ -1,0 +1,18 @@
+{
+  "repository": "Kiwunaka/POKROV-app",
+  "branch": "codex/r12-client-signed-promotion-20260909",
+  "parent": "9fad2ff4d0767b25acb50628d75a0a162513da16",
+  "source": "dead520849673a1a2400424305e374d9d91f66d7",
+  "signed_commit": "9f19edf6a9ae591d1c4f3807e36a80022cd45b36",
+  "tree": "d9806b6167a8d0ad348506ec4b5be4813e7aa0ce",
+  "signature": {
+    "isValid": true,
+    "state": "VALID"
+  },
+  "changed_paths": [
+    ".github/workflows/release-v2-contract.yml",
+    "docs/operations/cutover-readiness.md",
+    "test/release-v2-ci-contract.ps1"
+  ],
+  "result": "PASS_GITHUB_SIGNED_EXACT_SOURCE_TREE"
+}
