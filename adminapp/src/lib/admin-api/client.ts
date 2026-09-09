@@ -168,7 +168,14 @@ export async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<
   const method = requestInit.method || "GET";
   assertGeneratedAdminV2Route(path, method);
   const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  const abortFromCaller = () => controller.abort();
+  signal?.addEventListener("abort", abortFromCaller, { once: true });
+  if (signal?.aborted) controller.abort();
+  let timedOut = false;
+  const timer = window.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
   const headers = new Headers(requestInit.headers || {});
   for (const [key, value] of authHeaders(method)) headers.set(key, value);
   try {
@@ -176,7 +183,7 @@ export async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<
       ...requestInit,
       headers,
       credentials: "include",
-      signal: signal || controller.signal
+      signal: controller.signal
     });
     if (!response.ok) {
       const parsedError = await parseApiError(response);
@@ -186,8 +193,14 @@ export async function apiFetch<T>(path: string, init?: ApiRequestInit): Promise<
     const payload: unknown = await response.json();
     assertAdminV2Envelope(path, payload);
     return payload as T;
+  } catch (error) {
+    if (timedOut && !signal?.aborted) {
+      throw new AdminApiError("Время ожидания ответа истекло. Повторите запрос.", 0, "request_timeout", null);
+    }
+    throw error;
   } finally {
     window.clearTimeout(timer);
+    signal?.removeEventListener("abort", abortFromCaller);
   }
 }
 
@@ -196,7 +209,14 @@ export async function apiFetchBlob(path: string, init?: ApiRequestInit): Promise
   const method = requestInit.method || "GET";
   assertGeneratedAdminV2Route(path, method);
   const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  const abortFromCaller = () => controller.abort();
+  signal?.addEventListener("abort", abortFromCaller, { once: true });
+  if (signal?.aborted) controller.abort();
+  let timedOut = false;
+  const timer = window.setTimeout(() => {
+    timedOut = true;
+    controller.abort();
+  }, timeoutMs);
   const headers = new Headers(requestInit.headers || {});
   for (const [key, value] of authHeaders(method)) headers.set(key, value);
   try {
@@ -204,15 +224,21 @@ export async function apiFetchBlob(path: string, init?: ApiRequestInit): Promise
       ...requestInit,
       headers,
       credentials: "include",
-      signal: signal || controller.signal,
+      signal: controller.signal,
     });
     if (!response.ok) {
       const parsedError = await parseApiError(response);
       throw new AdminApiError(parsedError.message, response.status, parsedError.code, parsedError.correlationId);
     }
     return await response.blob();
+  } catch (error) {
+    if (timedOut && !signal?.aborted) {
+      throw new AdminApiError("Время ожидания ответа истекло. Повторите запрос.", 0, "request_timeout", null);
+    }
+    throw error;
   } finally {
     window.clearTimeout(timer);
+    signal?.removeEventListener("abort", abortFromCaller);
   }
 }
 

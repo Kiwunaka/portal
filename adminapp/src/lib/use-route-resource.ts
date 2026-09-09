@@ -38,6 +38,7 @@ export function useRouteResource<T>(
   const pollMs = options.pollMs;
   const loadRef = useRef(load);
   const generationRef = useRef(0);
+  const requestPendingRef = useRef(false);
   const successfulKeyRef = useRef<string | null>(null);
   const [reloadVersion, setReloadVersion] = useState(0);
   const [state, setState] = useState<Omit<RouteResourceState<T>, "reload">>({
@@ -54,10 +55,15 @@ export function useRouteResource<T>(
   }, [load]);
 
   const reload = useCallback(() => {
+    // Command readback must replace a request that may have started before the write.
     setReloadVersion((version) => version + 1);
   }, []);
 
-  useRouteRefreshRegistration(reload, enabled);
+  const refresh = useCallback(() => {
+    if (!requestPendingRef.current) reload();
+  }, [reload]);
+
+  useRouteRefreshRegistration(refresh, enabled);
 
   useEffect(() => {
     const generation = ++generationRef.current;
@@ -84,6 +90,7 @@ export function useRouteResource<T>(
       };
     }
 
+    requestPendingRef.current = true;
     queueMicrotask(() => {
       if (generation !== generationRef.current) return;
       setState((current) => {
@@ -121,11 +128,15 @@ export function useRouteResource<T>(
           refreshing: false,
           freshness: current.data === null ? "missing" : "stale"
         }));
+      })
+      .finally(() => {
+        if (generation === generationRef.current) requestPendingRef.current = false;
       });
 
     return () => {
       controller.abort();
       generationRef.current += 1;
+      requestPendingRef.current = false;
     };
   }, [enabled, key, reloadVersion]);
 
@@ -142,7 +153,7 @@ export function useRouteResource<T>(
       clearTimer();
       if (document.visibilityState !== "visible") return;
       timer = window.setTimeout(() => {
-        reload();
+        refresh();
         schedule();
       }, pollMs);
     };
@@ -151,7 +162,7 @@ export function useRouteResource<T>(
         clearTimer();
         return;
       }
-      reload();
+      refresh();
       schedule();
     };
 
@@ -161,7 +172,7 @@ export function useRouteResource<T>(
       clearTimer();
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [enabled, key, pollMs, reload]);
+  }, [enabled, key, pollMs, refresh]);
 
   return { ...state, reload };
 }

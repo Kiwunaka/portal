@@ -88,6 +88,33 @@ test("L1 видит явную редактированную область в�
   await expect(page.getByText("История действий администраторов скрыта текущей роли.")).toBeVisible();
 });
 
+test("повторный refresh объединяется и сохраняет выбранный тикет и черновик", async ({ page }) => {
+  await installAdminApiMock(page);
+  let detailCalls = 0;
+  let releaseRefresh!: () => void;
+  const refreshGate = new Promise<void>((resolve) => { releaseRefresh = resolve; });
+  await page.route("**/api/admin/v2/support/tickets/501", async (route) => {
+    detailCalls += 1;
+    if (detailCalls > 1) await refreshGate;
+    await route.fallback();
+  });
+  await page.goto("/tickets?status=open&priority=high&selected=501");
+  const draft = page.getByLabel("Текст ответа");
+  await draft.fill("Черновик остаётся после обновления");
+  const refresh = page.getByRole("banner").getByRole("button", { name: "Обновить" });
+  await refresh.click();
+  await expect.poll(() => detailCalls).toBe(2);
+  await refresh.click();
+  await refresh.click();
+  await expect(draft).toHaveValue("Черновик остаётся после обновления");
+  releaseRefresh();
+  await expect(page.getByText("Обновляем", { exact: true })).toHaveCount(0);
+  expect(detailCalls).toBe(2);
+  await expect(page).toHaveURL(/status=open.*priority=high.*selected=501/);
+  await expect(page.getByRole("heading", { name: "Тикет #501" })).toBeVisible();
+  await expect(draft).toHaveValue("Черновик остаётся после обновления");
+});
+
 test("сводка обращения не подменяет отсутствующую связанную попытку", async ({ page }) => {
   await installAdminApiMock(page, { supportScenario: "missing_linked_attempt" });
   await page.goto("/tickets?selected=501");

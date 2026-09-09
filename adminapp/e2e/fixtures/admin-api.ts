@@ -681,6 +681,7 @@ const unsafeSearchResults: Array<Record<string, unknown>> = [
 ];
 
 type AdminApiMockOptions = {
+  longTables?: boolean;
   operatorPermissions?: string[];
   redactUserFields?: boolean;
   supportScenario?: "missing_linked_attempt" | "bundle_build_changes";
@@ -1537,6 +1538,8 @@ export async function installAdminApiMock(
   releaseFirstOverview: () => void;
   releaseHistoryContinuation: () => void;
 }> {
+  const userRows = options.longTables ? Array.from({ length: 80 }, (_, index) => clientUserRows[index] ?? { ...clientUserRows[0], tg_id: 2000 + index, username: `table_user_${index}`, display_name: `Тестовая строка ${index}` }) : clientUserRows;
+  const moneyOrders = options.longTables ? Array.from({ length: 80 }, (_, index) => revenueOrders[index] ?? { ...revenueOrders[1], id: 2000 + index, order_id: `table-order-${index}` }) : revenueOrders;
   const operatorPermissions = options.operatorPermissions || [
     "system.meta.read", "session.self.read", "session.step_up",
     "support.read", "support.write", "support.sensitive.read",
@@ -2416,7 +2419,7 @@ export async function installAdminApiMock(
     if (url.pathname === "/api/admin/users") {
       const query = (url.searchParams.get("q") || "").trim().toLowerCase();
       const status = (url.searchParams.get("status") || "").trim().toLowerCase();
-      const rows = clientUserRows.filter((row) => {
+      const rows = userRows.filter((row) => {
         if (status && status !== "all") {
           if (status === "manual" && row.status !== "manual_test") return false;
           if (status !== "manual" && row.status !== status) return false;
@@ -2795,7 +2798,7 @@ export async function installAdminApiMock(
       }
       const wantedStatus = url.searchParams.get("status") || "";
       const q = (url.searchParams.get("q") || "").toLowerCase();
-      const rows = (options.revenueScenario === "populated" ? revenueOrders : []).filter((row) => (!wantedStatus || row.status === wantedStatus) && (!q || `${row.order_id} ${row.tg_id}`.toLowerCase().includes(q)));
+      const rows = (options.revenueScenario === "populated" ? moneyOrders : []).filter((row) => (!wantedStatus || row.status === wantedStatus) && (!q || `${row.order_id} ${row.tg_id}`.toLowerCase().includes(q)));
       await fulfillJson(route, operatorV2Envelope({ orders: rows, total: rows.length, limit: 80, offset: 0 }, [{ authority: "external_orders" }]));
       return;
     }
@@ -2804,7 +2807,7 @@ export async function installAdminApiMock(
       const parts = url.pathname.split("/");
       const orderId = decodeURIComponent(parts.at(-1) || "");
       const provider = decodeURIComponent(parts.at(-2) || "");
-      const order = revenueOrders.find((row) => row.order_id === orderId && row.provider === provider);
+      const order = moneyOrders.find((row) => row.order_id === orderId && row.provider === provider);
       await fulfillJson(route, order ? operatorV2Envelope({
         ...order,
         quote: order.id === 901 ? { source: "stored_order_intent", plan_code: "start_99", amount: "99.00", currency: "RUB", campaign: "winback-fixture", campaign_revision: "3", commercial_revision: "commercial-fixture", terms_revision: "terms-fixture", base_amount_rub: "149", hold_expires_at: "1784110200" } : null,

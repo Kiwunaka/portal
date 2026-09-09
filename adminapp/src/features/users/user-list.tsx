@@ -6,6 +6,7 @@ import { Search } from "lucide-react";
 import { Badge, Button } from "@/components/ui";
 import { EmptyState } from "@/components/ui/states";
 import { OpsTooltip } from "@/components/ui/tooltip";
+import { WindowedTable } from "@/components/ui/windowed-table";
 import type { AdminOnlineUser } from "@/lib/admin-api/support";
 import type { AdminUserListRow, UserListSort, UserListStatus } from "@/lib/admin-api/users";
 import { formatSourceAge } from "@/lib/ops-status/presentation";
@@ -156,9 +157,8 @@ export function UserList({
       </div>
 
       {rows.length ? (
-        <div ref={scrollRef} className="ops-scrollbar max-h-[calc(100dvh-19rem)] overflow-auto rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)]">
-          <table className="w-full min-w-[940px] border-collapse text-left text-xs">
-            <thead className="sticky top-0 z-10 bg-[color:var(--pokrov-table-header-bg)] text-[11px] text-[color:var(--atlas-text-soft)]">
+        <WindowedTable label="Список пользователей" scrollRef={scrollRef} columnCount={7} className="max-h-[calc(100dvh-19rem)]" tableClassName="w-full min-w-[940px] border-collapse text-left text-xs"
+          header={<thead className="sticky top-0 z-10 bg-[color:var(--pokrov-table-header-bg)] text-[11px] text-[color:var(--atlas-text-soft)]">
               <tr>
                 <th className="border-b border-[color:var(--pokrov-table-divider)] px-3 py-2 font-semibold">Пользователь</th>
                 <th className="border-b border-[color:var(--pokrov-table-divider)] px-3 py-2 font-semibold">Доступ</th>
@@ -170,9 +170,8 @@ export function UserList({
                 <th className="border-b border-[color:var(--pokrov-table-divider)] px-3 py-2 font-semibold">Ноды сейчас</th>
                 <th className="border-b border-[color:var(--pokrov-table-divider)] px-3 py-2 font-semibold">Наблюдатель</th>
               </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => {
+            </thead>}
+          rows={rows.map((row) => {
                 const online = onlineByTgId.get(row.tgId);
                 const isSelected = selected === row.tgId;
                 return (
@@ -200,9 +199,7 @@ export function UserList({
                   </tr>
                 );
               })}
-            </tbody>
-          </table>
-        </div>
+        />
       ) : (
         <EmptyState title="Пользователи не найдены" description="Измените поиск или фильтр статуса. Пустой результат не означает отсутствие пользователей в базе." />
       )}

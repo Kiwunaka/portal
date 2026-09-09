@@ -663,6 +663,33 @@ test("прерванная старая загрузка не перезапис
   await expect(page.getByText("Сессия отклонена", { exact: true })).toHaveCount(0);
 });
 
+test("таймаут загрузки с сигналом экрана показывает повтор вместо вечной загрузки", async ({ page }) => {
+  await page.clock.install();
+  await installAdminApiMock(page, { ruScenario: "fresh-pass" });
+  let releaseFirst!: () => void;
+  const firstResponse = new Promise<void>((resolve) => { releaseFirst = resolve; });
+  let calls = 0;
+  await page.route("**/api/admin/v2/network/fleet", async (route) => {
+    calls += 1;
+    if (calls === 1) await firstResponse;
+    await route.fallback();
+  });
+
+  try {
+    await page.goto("/nodes");
+    await expect.poll(() => calls).toBe(1);
+    await page.clock.runFor(16_000);
+    const retry = page.getByRole("button", { name: "Повторить загрузку нод", exact: true });
+    await expect(retry).toBeVisible();
+    await retry.click();
+    await expect.poll(() => calls).toBe(2);
+    await expect(page.getByRole("table", { name: "Список нод" })).toBeVisible();
+    await expect(retry).toHaveCount(0);
+  } finally {
+    releaseFirst();
+  }
+});
+
 test("поиск начинается с двух символов и ведёт по безопасному canonical href", async ({ page }) => {
   const api = await installAdminApiMock(page);
   await page.goto("/nodes?keep=1");

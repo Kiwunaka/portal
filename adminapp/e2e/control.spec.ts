@@ -108,3 +108,32 @@ test("uncertain broadcast offers status check and never retry-send", async ({ pa
   expect(api.calls.filter((call) => call.method === "POST" && /\/api\/admin\/v2\/growth\/action-intents\/[0-9a-f-]{36}\/execute/.test(call.path))).toHaveLength(1);
   await expect.poll(() => page.evaluate(() => window.sessionStorage.getItem("pokrov_admin_broadcast_draft_v1"))).toContain(draft);
 });
+
+test("execute timeout keeps the result uncertain and offers readback without resending", async ({ page }) => {
+  await page.clock.install();
+  const api = await installAdminApiMock(page, { broadcastStatusOutcome: "prepared" });
+  let releaseResponse!: () => void;
+  const response = new Promise<void>((resolve) => { releaseResponse = resolve; });
+  let executes = 0;
+  await page.route("**/api/admin/v2/growth/action-intents/*/execute", async (route) => {
+    executes += 1;
+    await response;
+    await route.fallback();
+  });
+  try {
+    await openControl(page, "/broadcast");
+    await page.getByLabel("Текст рассылки").fill("Черновик при потере ответа");
+    await page.getByRole("button", { name: "Подготовить защищённый предпросмотр" }).click();
+    await page.getByLabel("Подтверждение").fill("ОТПРАВИТЬ");
+    await page.getByRole("button", { name: "Выполнить", exact: true }).click();
+    await expect.poll(() => executes).toBe(1);
+    await page.clock.runFor(46_000);
+    await expect(page.getByText("Итог действия неясен", { exact: true })).toBeVisible();
+    await expect(page.getByRole("button", { name: /повтор/i })).toHaveCount(0);
+    await page.getByRole("button", { name: "Проверить текущее состояние" }).click();
+    await expect.poll(() => api.calls.filter((call) => call.method === "GET" && /\/growth\/action-intents\//.test(call.path)).length).toBe(1);
+    expect(executes).toBe(1);
+  } finally {
+    releaseResponse();
+  }
+});
