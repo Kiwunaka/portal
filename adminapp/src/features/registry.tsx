@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
+import dynamic from "next/dynamic";
 
 import type { OpsShellStatus } from "@/components/ops/shell-status";
+import { LoadingState } from "@/components/ui/states";
 import { BroadcastPage } from "@/features/control/broadcast-page";
 import { NewsPage } from "@/features/control/news-page";
 import { ReleasePage } from "@/features/control/release-page";
@@ -13,11 +15,9 @@ import { AlertsPage } from "@/features/network/alerts-page";
 import { EmergencyNetworkPage } from "@/features/network/emergency-network-page";
 import { FreeTierPage } from "@/features/network/free-tier-page";
 import { ProviderLimitsPage } from "@/features/network/provider-limits-page";
-import { TrafficPage } from "@/features/network/traffic-page";
 import { NodesPage } from "@/features/nodes/nodes-page";
 import { OverviewPage } from "@/features/overview/overview-page";
 import { ShiftPage } from "@/features/shift/shift-page";
-import { FunnelPage } from "@/features/revenue/funnel-page";
 import { PaymentsPage } from "@/features/revenue/payments-page";
 import { PromosPage } from "@/features/revenue/promos-page";
 import { ReferralsPage } from "@/features/revenue/referrals-page";
@@ -26,6 +26,13 @@ import { TicketsPage } from "@/features/support/tickets-page";
 import { UsersPage } from "@/features/users/users-page";
 import type { OperatorShellIdentity } from "@/lib/admin-api/identity";
 import type { OpsSectionId } from "@/lib/sections";
+
+function ChartsLoading() {
+  return <LoadingState title="Загружаем графики" description="Подготавливаем выбранный раздел." />;
+}
+
+const TrafficPage = dynamic(() => import("@/features/network/traffic-page").then((module) => module.TrafficPage), { loading: ChartsLoading });
+const FunnelPage = dynamic(() => import("@/features/revenue/funnel-page").then((module) => module.FunnelPage), { loading: ChartsLoading });
 
 type RouteProps = {
   identity?: OperatorShellIdentity | null;
