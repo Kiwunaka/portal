@@ -1,0 +1,65 @@
+{
+  "id": 373029908,
+  "tag_name": "v1.1.6",
+  "draft": false,
+  "prerelease": false,
+  "published_at": "2026-08-19T12:26:40Z",
+  "assets": [
+    {
+      "id": 520814534,
+      "name": "pokrov-android-arm64-v8a.apk",
+      "size": 100450426,
+      "digest": "sha256:6ac6ac33d2fae7041b2d408a2c55b93eeddb7d50825c4068f8c9c6087f0d97ca",
+      "browser_download_url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.1.6/pokrov-android-arm64-v8a.apk"
+    },
+    {
+      "id": 520814615,
+      "name": "pokrov-android-armeabi-v7a.apk",
+      "size": 89809492,
+      "digest": "sha256:553ebd70f91870c600e897da68d14823982839abe849a40a002bb7e2bcd49b5a",
+      "browser_download_url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.1.6/pokrov-android-armeabi-v7a.apk"
+    },
+    {
+      "id": 520814754,
+      "name": "pokrov-android-universal.apk",
+      "size": 292531061,
+      "digest": "sha256:ff6eed962c7d6bc9d14e50c2e5cd9477fea7e0318f8244b361a01e0ad21233d8",
+      "browser_download_url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.1.6/pokrov-android-universal.apk"
+    },
+    {
+      "id": 520814675,
+      "name": "pokrov-android-x86_64.apk",
+      "size": 108964281,
+      "digest": "sha256:2c75c5498b3fa0925960c9cc49cc07f4086b8b6bc83ce66303c0b088404071ec",
+      "browser_download_url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.1.6/pokrov-android-x86_64.apk"
+    },
+    {
+      "id": 520815049,
+      "name": "pokrov-windows-1.1.6.manifest.json",
+      "size": 2799,
+      "digest": "sha256:2e4383b901629aeb1998b7774e7e308a333a77c5233335a4200cf5677803886d",
+      "browser_download_url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.1.6/pokrov-windows-1.1.6.manifest.json"
+    },
+    {
+      "id": 520815015,
+      "name": "pokrov-windows-portable-x64.zip",
+      "size": 39329345,
+      "digest": "sha256:9ecf90bcdec496f6820bb6d3a9658a72009c38664c9947c8d7d07b0ef2cbf27a",
+      "browser_download_url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.1.6/pokrov-windows-portable-x64.zip"
+    },
+    {
+      "id": 520814965,
+      "name": "pokrov-windows-setup-x64.exe",
+      "size": 28562832,
+      "digest": "sha256:dbaa664cf9046205f969204df79f9366b8a944f7d2a6b8d8bbd371522a3b8ae8",
+      "browser_download_url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.1.6/pokrov-windows-setup-x64.exe"
+    },
+    {
+      "id": 520815056,
+      "name": "SHA256SUMS.txt",
+      "size": 673,
+      "digest": "sha256:b30c9cd93ea3b4e7c4f030cc7253fe60a8bbd767e4a045130e92e594b13e015b",
+      "browser_download_url": "https://github.com/Kiwunaka/pokrov/releases/download/v1.1.6/SHA256SUMS.txt"
+    }
+  ]
+}

@@ -6,6 +6,12 @@
 текущего плана и необходимые решения без повторных согласований. Технические
 условия выпуска остаются открытыми.
 
+[G05 live metadata](EXECUTION-G05-LIVE-METADATA-2026-09-09.md): 29 checks PASS,
+production и GitHub объявляют public 1.1.6; private candidate.33 и development
+1.2.0+4053 имеют разные source bindings. Candidate Windows EXE — NotSigned,
+отдельная подпись manifest не заявляется Authenticode. G05 verified/I3; новая
+публикация и final-candidate acceptance остаются открытыми.
+
 [G02 retention](EXECUTION-G02-RETENTION-2026-09-09.md): candidate.33 сохранён,
 24 local files проиндексированы, 21 pinned hash совпал. Пять CI archives и
 восемь members сохранены; Core retention истекает 13 сентября, signer — 18-го.

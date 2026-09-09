@@ -1,0 +1,12 @@
+[
+  {
+    "url": "https://app.pokrov.space/api/public/downloads/android-arm64",
+    "status": 307,
+    "location": "https://github.com/Kiwunaka/pokrov/releases/download/v1.1.6/pokrov-android-arm64-v8a.apk"
+  },
+  {
+    "url": "https://app.pokrov.space/api/public/downloads/windows-x64",
+    "status": 307,
+    "location": "https://github.com/Kiwunaka/pokrov/releases/download/v1.1.6/pokrov-windows-setup-x64.exe"
+  }
+]

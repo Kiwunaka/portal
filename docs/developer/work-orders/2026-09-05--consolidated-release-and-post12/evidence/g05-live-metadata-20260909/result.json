@@ -1,0 +1,158 @@
+{
+  "recorded_at_utc": "2026-09-09T01:42:22.085728+00:00",
+  "origin": "current-origin anonymous production HTTP and authenticated GitHub API",
+  "owner_file_hashes": {
+    "release-handoff.seed.json": "d3890d8dbe03d94930e71271655efc6d4fc09765a662ca75cbf9c9bfc406b121",
+    "cutover-readiness.seed.json": "434675114e24ecd4c2d5fe4f088a32c6e9ba860cce69bf8c848513aae9e4362e",
+    "runtime-artifacts.seed.json": "6c83fa831391920aaaf2e14a53387a8ac699e7ad47517cfaa8a8c4f70defba25"
+  },
+  "legacy_pointer_sha256": "563dd47835e017363eac63b33d66bdfeb9b41881168d4a14808f1daf48d3569f",
+  "public_version": "1.1.6",
+  "development_target": {
+    "product_version": "1.2.0",
+    "platform_build": 4053,
+    "package_version": "1.2.0+4053",
+    "state": "PRE_CANDIDATE_LOCAL",
+    "candidate_created": false
+  },
+  "private_candidate": {
+    "id": "pokrov-1.2.0-candidate.33",
+    "sources": {
+      "platform": "f5300053026d32826e54c02202303e1f68c65bc1",
+      "client": "6ab1bcaf39c61a0ae0c9d8328e6c95382885735e",
+      "core": "cd8f0f4169d570d693992a959d81d17c2c44884d",
+      "release_index": "63993fba699b68641b7e972071ab7729fa9ec43c",
+      "release_index_receipt_main": "7a6b2ce859b34b074e877851ba50aae7e80854a3"
+    },
+    "windows_signing": "SKIPPED_BY_OWNER_DIRECT_BETA_ONLY"
+  },
+  "runtime_core": {
+    "version": "1.1.0",
+    "source_commit": "02a091cb0e369192a5ad0909b56ccba8aa1dce17"
+  },
+  "source_heads": {
+    "platform": "1bfb33e1603e788b96270e737410b7adb1a55468",
+    "client": "de5d4784ecd9d1fc90575e48e16da0f90f42da41"
+  },
+  "checks": [
+    {
+      "name": "latest_public_release_matches_owner",
+      "result": "PASS"
+    },
+    {
+      "name": "public_asset:pokrov-android-arm64-v8a.apk",
+      "result": "PASS"
+    },
+    {
+      "name": "public_asset:pokrov-android-armeabi-v7a.apk",
+      "result": "PASS"
+    },
+    {
+      "name": "public_asset:pokrov-android-x86_64.apk",
+      "result": "PASS"
+    },
+    {
+      "name": "public_asset:pokrov-android-universal.apk",
+      "result": "PASS"
+    },
+    {
+      "name": "public_asset:pokrov-windows-setup-x64.exe",
+      "result": "PASS"
+    },
+    {
+      "name": "public_asset:pokrov-windows-portable-x64.zip",
+      "result": "PASS"
+    },
+    {
+      "name": "no_new_target_or_candidate_release_object",
+      "result": "PASS"
+    },
+    {
+      "name": "private_candidate_artifact_matches_owner",
+      "result": "PASS"
+    },
+    {
+      "name": "api_platform_versions_match_public_owner",
+      "result": "PASS"
+    },
+    {
+      "name": "api_android_variant:arm64-v8a",
+      "result": "PASS"
+    },
+    {
+      "name": "api_android_variant:armeabi-v7a",
+      "result": "PASS"
+    },
+    {
+      "name": "api_android_variant:universal",
+      "result": "PASS"
+    },
+    {
+      "name": "api_android_variant:x86_64",
+      "result": "PASS"
+    },
+    {
+      "name": "api_all_direct_android_variants_present",
+      "result": "PASS"
+    },
+    {
+      "name": "api_primary_is_arm64",
+      "result": "PASS"
+    },
+    {
+      "name": "api_windows_matches_owner",
+      "result": "PASS"
+    },
+    {
+      "name": "no_store_or_private_candidate_in_public_catalog",
+      "result": "PASS"
+    },
+    {
+      "name": "legacy_pointer_matches_public_version",
+      "result": "PASS"
+    },
+    {
+      "name": "legacy_public_release_has_no_false_v2_manifest",
+      "result": "PASS"
+    },
+    {
+      "name": "development_version_is_not_forced_back_to_public",
+      "result": "PASS"
+    },
+    {
+      "name": "old_version_gets_actual_public_update",
+      "result": "PASS"
+    },
+    {
+      "name": "current_download_redirect:android-arm64",
+      "result": "PASS"
+    },
+    {
+      "name": "current_download_redirect:windows-x64",
+      "result": "PASS"
+    },
+    {
+      "name": "current_core_is_distinct_from_published_core",
+      "result": "PASS"
+    },
+    {
+      "name": "development_is_not_candidate_or_promotion",
+      "result": "PASS"
+    },
+    {
+      "name": "private_candidate_is_not_public_or_promoted",
+      "result": "PASS"
+    },
+    {
+      "name": "private_candidate_core_differs_from_development",
+      "result": "PASS"
+    },
+    {
+      "name": "manifest_signature_is_not_authenticode",
+      "result": "PASS"
+    }
+  ],
+  "result": "PASS",
+  "mutation_performed": false,
+  "binary_download_performed": false
+}

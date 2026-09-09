@@ -1,5 +1,10 @@
 # Текущие условия следующей приёмки
 
+9 сентября: [G05 metadata owners](EXECUTION-G05-LIVE-METADATA-2026-09-09.md)
+verified/I3: public production 1.1.6, отдельный private candidate.33 и
+development target 1.2.0+4053 согласованы по 29 фактическим readbacks/checks.
+Проверка текущего состояния не создаёт новый candidate и не закрывает G07/Q01.
+
 9 сентября: [G02 preservation](EXECUTION-G02-RETENTION-2026-09-09.md) verified/I3.
 Доказательства candidate.33 сохранены с отдельными фактическими сроками retention;
 новый candidate и его runtime gates остаются самостоятельными требованиями.
