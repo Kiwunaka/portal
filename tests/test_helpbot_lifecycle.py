@@ -221,7 +221,7 @@ class HelpbotLifecycleTests(unittest.TestCase):
         bot = _FakeBot()
         from support_agent_service import SupportReplyResult
 
-        async def fake_generate(*, surface, authenticated_owner_id, message, assistant_session_id=None, ticket_id=None, validated_sender_id=None):
+        async def fake_generate(*, surface, authenticated_owner_id, message, assistant_session_id=None, ticket_id=None, validated_sender_id=None, attachment_bot=None):
             self.assertEqual(surface, "helpbot")
             self.assertEqual(authenticated_owner_id, "1001")
             self.assertEqual(message, "How do I get the trial?")

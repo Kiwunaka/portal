@@ -1704,7 +1704,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         user_hdrs = {"X-Telegram-Init-Data": self._init_data(1001, "alice")}
         from support_agent_service import SupportReplyResult
 
-        async def fake_generate(*, surface, authenticated_owner_id, message, assistant_session_id=None, ticket_id=None, validated_sender_id=None):
+        async def fake_generate(*, surface, authenticated_owner_id, message, assistant_session_id=None, ticket_id=None, validated_sender_id=None, case_context_enabled=True):
             self.assertEqual(surface, "ticket")
             self.assertEqual(authenticated_owner_id, "1001")
             self.assertEqual(message, "How do I start the trial?")
@@ -1750,7 +1750,7 @@ class ApiAuthAndTicketsTests(unittest.TestCase):
         self.assertEqual(create.status_code, 200, create.text)
         ticket_id = create.json()["ticket"]["id"]
 
-        async def fake_generate(*, surface, authenticated_owner_id, message, assistant_session_id=None, ticket_id=None, validated_sender_id=None):
+        async def fake_generate(*, surface, authenticated_owner_id, message, assistant_session_id=None, ticket_id=None, validated_sender_id=None, case_context_enabled=True):
             self.assertEqual(surface, "ticket")
             self.assertEqual(authenticated_owner_id, "1001")
             self.assertEqual(message, "Connection is slow")

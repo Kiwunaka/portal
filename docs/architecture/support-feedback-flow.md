@@ -1,13 +1,13 @@
 # Support And Feedback Flow
 
-Last updated: 2026-08-15
+Last updated: 2026-09-09
 
 ## Primary Paths
 
 - Cabinet support tickets are the primary structured support path.
 - `@pokrov_supportbot` is the official Telegram support fallback.
 - `@pokrov_feedbackbot` handles feedback intake and public review moderation.
-- `@pokrov_supportbot`, `/api/tickets`, and `/api/tickets/{ticket_id}/messages` may add an immediate AI support hint to text-only user messages when `SUPPORT_AI_ENABLED=true`; the ticket remains open and operators still see the full thread.
+- `@pokrov_supportbot`, `/api/tickets`, and `/api/tickets/{ticket_id}/messages` may add an immediate AI support hint to user messages when `SUPPORT_AI_ENABLED=true`; the ticket remains open and operators still see the full thread.
 
 ## Canonical Support Ownership
 
@@ -84,14 +84,14 @@ Last updated: 2026-08-15
 - Runtime home: `portal-api` and `portal-helpbot` on `brain`.
 - Runtime facade and legacy helper: `portal_bot/support_agent_service.py` and `portal_bot/support_ai_service.py`; bounded harness: `portal_bot/support_agent_harness.py`; bounded OpenAI-compatible adapter: `portal_bot/support_agent_provider.py`.
 - Deployable allowlisted assets are `shared/support-agent-policy.json` and `shared/support-ai-knowledge.json`, uploaded under `/root/shared/`.
-- The canonical model identity is `deepseek-v4-flash-0731` with medium reasoning. The transport is the exact OpenRouter base `https://openrouter.ai/api/v1`, where the adapter maps the canonical identity to the provider wire slug `deepseek/deepseek-v4-flash-0731`. The request deliberately omits `max_tokens` so internal reasoning cannot exhaust a short completion cap, while the private reasoning trace is excluded from the response. The route uses a 45-second provider window inside a 50-second harness deadline by default, including when those two environment values are omitted. Any other provider URL, model, or reasoning profile fails closed before either provider path. Credentials remain server-environment only.
+- The canonical model identity is `deepseek-v4-flash-0731` with medium reasoning. The transport is the exact OpenRouter base `https://openrouter.ai/api/v1`, where the adapter maps the canonical identity to the provider wire slug `deepseek/deepseek-v4-flash-0731`. The request deliberately omits `max_tokens` so internal reasoning cannot exhaust a short completion cap, while the private reasoning trace is excluded from the response. The route uses a 45-second provider window inside a 50-second harness deadline by default, including when those two environment values are omitted. The explicitly supported alternative is deepseek-v4-flash-vision-exp, sent as deepseek/deepseek-v4-flash-vision-exp, with Fireworks preferred and provider data collection denied. Other provider URLs, models, and reasoning profiles fail closed before either provider path. Credentials remain server-environment only.
 - The feature is disabled by default. `SUPPORT_AI_ENABLED=false` always selects deterministic local fallback. With it enabled, `SUPPORT_AI_AGENT_ENABLED=false` selects the legacy one-call helper and `SUPPORT_AI_AGENT_ENABLED=true` selects the bounded harness. There is no shadow or double call.
 - Before any provider call, code retrieves at most three topics from the validated public-support KB. `confident` routing requires both an active high-precision intent rule and the expected topic-body fingerprint; all other supported retrieval is only candidate context. Ten narrow `confident` topics have an additional direct-render allowlist: for a new session, their fingerprint-bound user-facing body is returned by code with zero provider requests. WARP, location choice, both route modes, notifications, trial limitations, Telegram bonus, and payment-not-applied questions also have fingerprint-bound confident routing so the provider can give concrete public diagnostics and a provider failure can still return those safe steps before human handoff. For a bounded follow-up with no explicit new intent, the established active session issue is pinned as the first candidate source without upgrading confidence; an explicit new intent replaces it. Model-visible topic copy names official surfaces without embedding literal domains or URLs that the output contract forbids.
 - Candidate answers retain context provenance but no grounding claim and therefore receive only generic public actions. Confident answers may use the single code-owned grounding topic to select existing topic-specific actions; model text never selects actions, source labels, or escalation metadata.
 - When synthesis is needed, DeepSeek receives exactly two messages: one cache-stable system prefix containing policy and bundle fingerprints, and one volatile user JSON envelope containing only the selected topic bodies, bounded session state, and current question. The global KB index is never sent. The model may return only `schema_version`, `status`, and `reply`; retrieval, provenance, state, actions, and escalation remain code-owned.
 - Provider output must be either the bare JSON object or one JSON object inside a single `json`/plain Markdown fence with no surrounding prose or nested fence. Code unwraps only that exact transport artifact, then applies the same duplicate-key, closed-schema, semantic-action, redaction, and output-safety validation; every other wrapper still fails closed.
 - One eligible user message makes at most one OpenAI-compatible Chat Completions request. The harness has no provider retry, model-visible tool, tool continuation, command execution, or second provider request.
-- Model context may contain only the validated operating policy, bounded retrieved public-support topics, redacted process-local session state, the redacted user question, and an allowlisted scalar snapshot for the authenticated account. The endpoint, not the model, reads that snapshot. It has no arbitrary database/API access, attachment, key/config, QR, Telegram init data, payment payload, shell, network-tool, arbitrary-file, command-execution, or cross-account access. Read-only account questions use only those supplied scalars; unresolved anomalies still require an operator.
+- Model context may contain only the validated operating policy, bounded retrieved public-support topics, redacted process-local session state, the redacted user question, and an allowlisted scalar snapshot for the authenticated account. The endpoint, not the model, reads that snapshot. The ticket case path additionally admits the bounded evidence described below. It has no arbitrary database/API access, raw attachment, key/config, QR, Telegram init data, payment payload, shell, network-tool, arbitrary-file, command-execution, or cross-account access. Read-only account questions use only those supplied scalars; unresolved anomalies still require an operator.
 - Client `safeDiagnostics` is admitted through a fixed allowlist. The authenticated endpoint then overrides any colliding account keys with server-owned access, days-left, normalized plan, active-device count, Telegram-link/bonus state, bounded panel-runtime facts, and the currently applicable public promo-code snapshot. The client may supply only its user-visible active-connection flag and location label for the current device. Raw identifiers, usernames, email, node hosts/IPs, URLs, configs, and panel payloads are excluded. These values may enter only the current request and are never retained in process-local agent memory or value-bearing logs.
 - Questions about the current node/location and available public promo codes are rendered by code before retrieval or provider synthesis. The former uses only the current client's active flag and public location label; the latter uses only server-owned campaigns eligible for the authenticated account. Neither path exposes topology, provider records, payment data, or another account, and both make zero provider requests.
 - Harness continuity is owner- and surface-scoped, process-local RAM only: 60-minute TTL, at most six safe messages per session, 256 sessions, and six requests per authenticated owner per rolling minute. Attempted-step codes remain code-owned session state. A newly reported completed step with no outcome and a first clean negative outcome are acknowledged by fixed code-owned copy, persisted, and returned with zero provider requests. A negative outcome after support was already contacted, or the second negative outcome for one established issue, causes sticky human transfer. Other follow-ups may use synthesis, whose policy requires DeepSeek not to repeat attempted steps. The runtime allows at most two concurrent runs.
@@ -159,6 +159,46 @@ Last updated: 2026-08-15
 - The harness serialized-input ceiling is 30,000 characters with a 512-character provider-envelope reserve. Environment values may lower the 30,000-character ceiling but cannot raise it.
 - Knowledge refresh is an operator-side xCody operation and is never invoked inside a user request.
 
+## Read-only ticket case context
+
+With the agent enabled, normal ticket API and helpbot messages use
+`support_case_context.py` inside the existing rate, concurrency and deadline
+limits. The server verifies canonical ticket ownership (exact legacy owner only
+for a null account). It reads access expiry, verified identity kinds, the five
+latest same-account orders, payment-processing flags, eight account event
+codes, five operator action codes, six public messages and two diagnostic
+bundle summaries. Internal notes, raw event/provider payloads, identifiers,
+encrypted bundle contents and arbitrary server logs are excluded.
+
+For at most two recent Lava.top orders, the server may GET the stored invoice
+reference and admit only a closed status. No provider mutation or reconciliation
+runs. A stored paid order, a live provider confirmation and a user receipt are
+separate evidence sources; unavailable live reads do not mean payment failed.
+Unknown purchases through an unlinked login require owner verification by an
+operator, not a cross-account search driven by the model.
+
+The latest two public user attachments are read only after ticket authorization.
+Private web files require an exact bound attachment row and a confined storage
+path; Telegram downloads use the receiving helpbot. Files are limited to 2 MiB.
+TXT is decoded locally; PDF text is extracted from up to three pages; scanned
+PDFs use only the first page. Images use local Tesseract OCR with a 12-megapixel
+input bound and 1800-pixel working size. Production requires `poppler-utils`,
+`tesseract-ocr` and `tesseract-ocr-rus`. Credentials and PII are sanitized before
+the 1200-character per-file projection. The provider receives text, not original
+images, PDFs, QR codes or file URLs. Visual layout and non-text image content are
+not interpreted by this path, including when the vision-capable model is selected.
+Unreadable, oversized and unsupported files are explicitly labelled.
+
+The model may summarize the collected facts without a KB keyword match. It has
+no model-visible tools or write access. Unresolved discrepancies retain a useful
+summary for the operator; provider/output-validation failure returns a local
+summary of collected payment/access facts. Assigned, in-progress and closed
+tickets suppress AI. Before persistence, the latest public user message must
+still match the pre-generation revision; a newer user/operator/assistant message
+discards the stale reply. Recovery sessions retain text-only KB handling and
+never enter the case/file/diagnostic loader. Standalone app assistant behavior
+is unchanged.
+
 ## xCody Knowledge Refresh
 
 Use [pokrov_support_ai_kb_refresh.py](../../scripts/pokrov_support_ai_kb_refresh.py) to project the exact six public-support sources, reject unsafe content before HTTP, call xCody once through OpenAI Chat Completions, validate the closed KB schema, and optionally update `shared/support-ai-knowledge.json` atomically.
@@ -177,4 +217,4 @@ The dry-run requires no key and prints only aggregate audit fields, never source
 - Do not request private subscription links, QR codes, payment card details, or raw Telegram init data in public chats.
 - Attachments are a privacy-hardening area; operators should avoid asking for sensitive screenshots unless required.
 - Escalations should label current-origin, brain-origin, and RU-origin evidence separately.
-- Do not describe the AI helper as a resolved-ticket path; it may read only the bounded same-account facts above. Account mutations, payment disputes, attachment-based cases, and unclear anomalies remain manual support.
+- Do not describe the AI helper as a resolved-ticket path; it may read only the bounded same-account facts above. Account mutations and resolution of payment disputes or unclear anomalies remain manual support; the case path collects evidence first.
