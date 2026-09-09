@@ -210,6 +210,8 @@ def _bundle_views(session, ticket_id: int) -> list[dict[str, Any]]:
     return [
         {
             "bundle_ref": _opaque_ref("bundle", row.upload_id),
+            "attempt_ref": _clean(row.attempt_ref, 64),
+            "attempt_link_source": "operator" if row.attempt_ref else None,
             "status": str(row.status or "unknown")[:24],
             "diagnostic_profile": _clean(row.diagnostic_profile, 16),
             "app_version": _clean(row.app_version, 64),

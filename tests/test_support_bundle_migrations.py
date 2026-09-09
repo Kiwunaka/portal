@@ -67,6 +67,7 @@ def test_sqlite_support_bundle_migration_is_rerunnable_and_bounded(
         "last_error_code",
         "proof_outcome",
         "observed_attempts",
+        "attempt_ref",
         "retention_hold",
         "retention_hold_reason",
         "retention_held_at",

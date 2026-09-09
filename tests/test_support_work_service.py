@@ -415,3 +415,76 @@ def test_support_claim_is_guarded_by_explicit_and_intent_versions(database) -> N
         assert raised.value.code == "stale_version"
     finally:
         stale_session.close()
+
+
+def test_bundle_attempt_link_is_case_scoped_versioned_and_audited(database) -> None:
+    ticket_id, _ = _seed(database)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    with database() as session:
+        session.add(SupportBundleUpload(
+            upload_id=str(uuid.uuid4()), ticket_id=ticket_id, owner_tg_id=1001,
+            owner_binding_hash="a" * 64, idempotency_key="bundle-link-test",
+            bundle_id="diag-" + "a" * 24, expected_size_bytes=32,
+            expected_sha256="b" * 64, content_type="application/octet-stream",
+            status="validated", expires_at=now + timedelta(days=7),
+        ))
+        session.commit()
+        detail = support_ticket_detail(session, environment="test", ticket_id=ticket_id)
+        bundle_ref = detail["support_bundles"][0]["bundle_ref"]
+        attempt_ref = attempt_explorer(session, environment="test", ticket_id=ticket_id)["attempts"][0]["attempt_ref"]
+        other_user = User(tg_id=2002, uuid=str(uuid.uuid4()), app_install_id="other-install")
+        session.add(other_user)
+        other_ticket = create_ticket(session, user_tg_id=2002, subject="Other owner")
+        other_ticket.environment = "test"
+        session.add(Event(tg_id=2002, event_name="runtime_start_failed", source="client",
+                          trace_id="other-trace", device_id="other-device", received_at=now))
+        session.flush()
+        other_attempt = attempt_explorer(session, environment="test", ticket_id=other_ticket.id)["attempts"][0]["attempt_ref"]
+        payload = {
+            "_environment": "test", "_operator_id": "11111111-1111-4111-8111-111111111111",
+            "_actor_tg_id": 9999, "expected_version": detail["version"],
+            "bundle_ref": bundle_ref, "attempt_ref": attempt_ref,
+        }
+        for wrong, code in (({"attempt_ref": other_attempt}, "attempt_not_found"),
+                            ({"bundle_ref": "bundle_" + "0" * 20}, "support_bundle_not_found"),
+                            ({"_environment": "production"}, "target_not_found")):
+            with pytest.raises(ActionIntentError) as raised:
+                prepare_action_intent(session=session, actor_tg_id=9999, action="ticket.update",
+                                      target={"type": "ticket", "id": str(ticket_id)}, payload={**payload, **wrong})
+            assert raised.value.code == code
+        prepared = prepare_action_intent(session=session, actor_tg_id=9999, action="ticket.update",
+                                         target={"type": "ticket", "id": str(ticket_id)}, payload=payload)
+        session.commit()
+    args = dict(session_factory=database, actor_tg_id=9999, intent_id=prepared["intent_id"],
+                idempotency_key=str(uuid.uuid4()),
+                confirmation_sha256_header=hashlib.sha256("ПОДТВЕРДИТЬ".encode()).hexdigest(),
+                action="ticket.update", target={"type": "ticket", "id": str(ticket_id)},
+                payload=payload, audit_writer=add_admin_audit)
+    result = asyncio.run(execute_action_intent(**args))
+    assert result["status"] == "completed"
+    assert result["attempt_ref"] == attempt_ref
+    assert result["ticket"]["attempt_ref"] is None
+    replay = asyncio.run(execute_action_intent(**args))
+    assert replay["attempt_ref"] == attempt_ref
+    with database() as session:
+        from models import AdminAudit
+        detail = support_ticket_detail(session, environment="test", ticket_id=ticket_id)
+        assert detail["version"] == payload["expected_version"] + 1
+        assert detail["support_bundles"][0]["attempt_ref"] == attempt_ref
+        assert detail["support_bundles"][0]["attempt_link_source"] == "operator"
+        audit = session.query(AdminAudit).filter_by(action="ticket.update").one()
+        assert bundle_ref in audit.meta and attempt_ref in audit.meta
+        assert "raw-trace-secret" not in json.dumps(detail)
+        # A later change to the ticket's selected attempt must not move the bundle.
+        ticket = session.get(SupportTicket, ticket_id)
+        ticket.attempt_ref = "attempt_" + "1" * 20
+        session.commit()
+        assert support_ticket_detail(session, environment="test", ticket_id=ticket_id)["support_bundles"][0]["attempt_ref"] == attempt_ref
+        unlink = {**payload, "expected_version": detail["version"], "attempt_ref": None}
+        prepared = prepare_action_intent(session=session, actor_tg_id=9999, action="ticket.update",
+                                         target={"type": "ticket", "id": str(ticket_id)}, payload=unlink)
+        session.commit()
+    result = asyncio.run(execute_action_intent(**{**args, "intent_id": prepared["intent_id"],
+                                                  "idempotency_key": str(uuid.uuid4()), "payload": unlink}))
+    assert result["attempt_ref"] is None
+    assert result["ticket"]["attempt_ref"] == "attempt_" + "1" * 20
