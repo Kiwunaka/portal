@@ -334,7 +334,8 @@ FK_API_REQUEST_TIMEOUT_SECONDS=25
 
 Before deployment, retain an exact-candidate startup/shutdown check and a
 sanitized telemetry sample containing only provider/operation/status/latency/
-result code. Prove timeout, pool and oversized-response behavior in the deployed
+result code and connector queue entries/wait. Retain queued timeout/cancellation
+as well as successful wait. Prove timeout, pool and oversized-response behavior in the deployed
 environment without recording URL queries, headers, credentials or bodies.
 Local registry tests are not live provider or pool evidence.
 
@@ -344,6 +345,12 @@ health requests on the deployed process, retain queue-wait/duration/failure
 counts, and confirm rollback after an injected candidate-only DB failure. Do not
 capture SQL, parameters or customer/order identifiers. Local threadpool tests
 do not prove deployed database-pool capacity or event-loop latency.
+
+The separate `database_pool` health projection observes the PostgreSQL
+connection queue, without SQL/identity data. Verify the configured observer
+with a held connection, queued acquisition and unchanged timeout in an isolated
+candidate process before rollout. Physical connection creation and pre-ping
+must remain outside this timer; null means the current pool is not observed.
 
 Before a production rollout, apply the rerunnable outbox migration, verify the
 new table/indexes, start the worker, and retain queue depth/oldest-age plus one

@@ -77,6 +77,9 @@ Reference-lane note:
 - `portal_bot/payment_db_runtime.py`
   Transitional payment DB boundary: complete synchronous use cases own their
   session/transaction in the bounded AnyIO worker pool and return no ORM row.
+- `portal_bot/db_pool_runtime.py`
+  PostgreSQL connection-queue wait counters, separate from the payment worker
+  queue, physical connection creation, pre-ping and SQL execution.
 - `portal_bot/commercial_contract.py`
   Fail-closed Python owner for the generated commercial manifest. Startup binds
   the manifest digest to `shared/product-facts.json` and
