@@ -3122,6 +3122,43 @@ def test_admin_online_users_aggregate_omits_raw_ips(monkeypatch, tmp_path) -> No
     assert "panel timeout" not in response.text
 
 
+@pytest.mark.parametrize("entrypoint", ["legacy", "bff"])
+def test_shift_overview_session_stays_in_worker_thread(monkeypatch, tmp_path, entrypoint) -> None:
+    import threading
+
+    api = _load_api(monkeypatch, tmp_path, operator_environment="production")
+    events = []
+    loop_thread = threading.get_ident()
+
+    class Session:
+        def __init__(self):
+            events.append(("open", threading.get_ident()))
+
+        def close(self):
+            events.append(("close", threading.get_ident()))
+
+    def read(*, s):
+        assert isinstance(s, Session)
+        events.append(("read", threading.get_ident()))
+        return {"ok": True, "summary": {"fixture": True}}
+
+    monkeypatch.setattr(api, "SessionLocal", Session)
+    monkeypatch.setattr(api, "_admin_ops_overview_payload", read)
+    monkeypatch.setattr(api, "_require_admin", lambda _value: {"id": 9999})
+    if entrypoint == "legacy":
+        result = asyncio.run(api.admin_ops_overview("fixture"))
+    else:
+        result = asyncio.run(api._admin_v2_legacy_read_executor({
+            "kind": "shift.overview", "environment": "production", "params": {},
+        }))
+
+    assert result == {"ok": True, "summary": {"fixture": True}}
+    assert [event for event, _thread in events] == ["open", "read", "close"]
+    threads = {thread for _event, thread in events}
+    assert len(threads) == 1
+    assert loop_thread not in threads
+
+
 def test_admin_v2_cutover_projections_and_referral_action(monkeypatch, tmp_path) -> None:
     api = _load_api(monkeypatch, tmp_path, operator_environment="production")
     now = _utcnow()
