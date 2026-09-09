@@ -23,9 +23,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Kiwunaka/POKROV-app
-          # PR 20 assembles the exact unmerged 1.2.0 tuple. Pushes and every
-          # other PR continue to validate the client promotion line.
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 20 && '879970d9e44f2375f9d00f4f12eebcc9bfc568b7' || 'main' }}
+          # The designated source-integration PRs validate immutable dependency
+          # heads. Pushes and all other PRs use the promotion line.
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 243 && '9fad2ff4d0767b25acb50628d75a0a162513da16' || github.event_name == 'pull_request' && github.event.pull_request.number == 20 && '879970d9e44f2375f9d00f4f12eebcc9bfc568b7' || 'main' }}
           path: POKROV-app
           ssh-key: ${{ secrets.POKROV_RELEASE_CLIENT_DEPLOY_KEY }}
           lfs: true
@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Kiwunaka/pokrov-core
-          ref: main
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 243 && '1f9a5a8865b80067784b893ef99d43c63f943777' || 'main' }}
           path: POKROV-core
           fetch-depth: 0
           persist-credentials: false

@@ -109,6 +109,37 @@ Release-bound CI is cross-repository and fail-closed:
 These workflows produce contract evidence only. Until a workflow is observed
 green on the exact committed revisions, its GitHub-hosted result is unclaimed.
 
+### Coordinated R12 source integration — 2026-09-09
+
+The current R12 source changes span all three repositories; checking every PR
+against the previous promotion lines creates a dependency cycle. The designated
+source PRs use the existing immutable-dependency pattern for this integration:
+
+- platform PR #243 checks client `9fad2ff4d0767b25acb50628d75a0a162513da16`
+  and Core `1f9a5a8865b80067784b893ef99d43c63f943777`;
+- client PR #95 checks platform `master` after #243 and that same exact Core;
+- Core PR #9 retains its ordinary checks against client `main` after #95 and
+  platform `master` after #243.
+
+The source merge order is platform → client → Core. Each designated PR must
+pass all required jobs for its actual head before merge. All other PRs and
+pushes continue to use promotion lines; the retained historical PR #20 rule
+does not apply to this integration. Intermediate push failures against the
+old dependency lines remain recorded failures. After all three merges, fresh
+ordinary promotion-line checks must pass before deployment, candidate creation
+or release promotion can consume the converged source set. A failure with the
+intended inputs remains NO_GO; this procedure does not replace it with replay.
+
+Promotion branches contain GitHub-signed commits whose complete Git trees
+match the reviewed feature snapshots; original feature commits and receipts
+remain retained. The [GitHub commit API](https://docs.github.com/en/graphql/reference/commits)
+signs these commits as the authenticated owner. Tree equality and verified
+signatures must be read back before source acceptance. Required PRs, strict
+checks, signatures, admin enforcement and the absence of bypass actors remain
+in force. Independent review was not performed under the existing owner-solo
+exception. This source-integration decision falls under the owner's September 9
+authorization; it does not close any candidate, device, signing or release gate.
+
 The seven audited 1.2.0 STOP-SHIP findings have one machine registry at
 `shared/release-1.2.0-stop-ship-regressions.json`. Validate its permanent test
 anchors and, when authenticated GitHub read access is available, the live
