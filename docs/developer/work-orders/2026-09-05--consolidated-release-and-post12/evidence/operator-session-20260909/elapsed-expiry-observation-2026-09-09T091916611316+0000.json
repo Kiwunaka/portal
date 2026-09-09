@@ -1,0 +1,34 @@
+{
+  "observed_at": "2026-09-09T09:19:16.611316+00:00",
+  "process_identity_running": true,
+  "launch": {
+    "utc": "2026-09-09T09:12:19.823234+00:00",
+    "pid": 41577,
+    "start_ticks": "423686036",
+    "script_sha256": "931b86c375f885d436a230670b3bfc66d04ebb59e4efb12c9371756c9d73ab78",
+    "security_source_sha256": "881305eea730472628ca64367f6e412a53a08ae41ccbb2b973aed5d9e65e4136",
+    "directory": "/root/portal-r12-evidence/operator-elapsed-expiry-20260909",
+    "state": "LAUNCHED_NOT_PASSED"
+  },
+  "progress": {
+    "status": "RUNNING",
+    "origin": "brain-origin HTTPS production",
+    "started_at": "2026-09-09T09:12:20.404089+00:00",
+    "source_revision_at_start": "a8e6918ccc166a58ae65ba7d08feea63ce3a9623",
+    "raw_credentials_exported": false,
+    "production_ttls_modified": false,
+    "preexisting_sessions_targeted": false,
+    "roles_modified": false,
+    "observations": [],
+    "absolute_refreshes": 1,
+    "security_source_sha256": "881305eea730472628ca64367f6e412a53a08ae41ccbb2b973aed5d9e65e4136",
+    "sessions_created": 2,
+    "idle_deadline": "2026-09-09T09:42:28.787420Z",
+    "absolute_deadline": "2026-09-09T21:12:29.146462Z",
+    "idle_ttl_seconds": 1800,
+    "absolute_ttl_seconds": 43200,
+    "authentication_entrypoint": "owned compatibility bootstrap; real OIDC is separate evidence",
+    "updated_at": "2026-09-09T09:17:29.339714+00:00",
+    "last_absolute_idle_deadline": "2026-09-09T09:47:29.328704Z"
+  }
+}

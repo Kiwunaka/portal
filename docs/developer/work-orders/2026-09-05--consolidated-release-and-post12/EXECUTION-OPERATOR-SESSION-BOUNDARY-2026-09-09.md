@@ -1,0 +1,65 @@
+# O01 — отзыв сессий и причина истечения срока
+
+**PASS_BOUNDED_SESSION_BOUNDARY_AND_DEPLOY**, backend
+`a8e6918ccc166a58ae65ba7d08feea63ce3a9623`, brain-origin HTTPS production.
+[Receipt](evidence/operator-session-20260909/receipt.json) сохраняет девять
+проекций, hashes источников/логов и отдельный handle длительной проверки.
+Это дополняет [реальный OIDC-вход](EXECUTION-OPERATOR-LIVE-2026-09-09.md),
+не заменяя его синтетическим bootstrap.
+
+## Исправление и выкладка
+
+Достижение абсолютного срока ошибочно записывалось как `idle_expired`:
+активность заранее ограничивает idle deadline абсолютным сроком, поэтому
+в момент отказа оба значения равны. Теперь журнал выбирает первый достигнутый
+deadline и `absolute_expired` при равенстве. Сам допуск, сроки и cookie policy
+не менялись. Каноническое описание обновлено в `adminapp/README.md`.
+
+Регрессия воспроизведена до правки и прошла после неё. Обязательные проверки:
+53 API-теста, 80 Playwright-тестов с build, lint, 33 docs checks и context
+audit PASS. Одна проверка нового поведения и существующая idle/revoke проверка
+дали 2 PASS. Exact source tree прошёл signed promotion и
+[PR #248](https://github.com/Kiwunaka/portal/pull/248). Hosted guardrails и
+cross-repository contract PASS; release-base-isolation был SKIPPED и не
+переименован в PASS.
+
+В production совпали все 204 payload hashes. Backup сохранён:
+`/root/portal_bot.deploy-backups/20260909T083858Z-27840`.
+Перезапущен только `portal-api`, health PASS. Публичная build identity равна
+`a8e6918`; остальные значения dotenv и процессы четырёх других units сохранены.
+
+## Реальная session boundary
+
+На `d9b2583`, затем на развёрнутом `a8e6918` выполнены по 11 HTTP assertions:
+свежая сессия; отказ CSRF/Origin и сохранение сессии после отказа; отзыв одной
+owned test session другой; отказ старой cookie; повторный отзыв; logout и
+отказ cookie replay. Cookie Secure/HttpOnly/SameSite=strict, host-only `/`;
+logout возвращает Clear-Site-Data для cookies/storage.
+
+Каждый прогон создавал две временные сессии через существующий compatibility
+bootstrap, с guard против вытеснения прежних сессий. Обе отозваны. Прежние
+сессии, роли и `telegram_oidc` identity остались неизменными. Tokens, session
+IDs, Telegram ID и auth material не экспортировались. Это не новый внешний
+OIDC-вход, не cross-role denial и не отключение legacy entrypoint.
+
+## Настоящие сроки — RUNNING, не PASS
+
+На неизменённых production TTL запущены две отдельные owned-сессии:
+
+- idle: 1800 секунд, deadline `2026-09-09T09:42:28.787420Z`;
+- absolute: 43200 секунд, deadline `2026-09-09T21:12:29.146462Z`.
+
+Вторая получает `/auth/me` каждые пять минут; проверяется неизменность её
+absolute deadline. Первая не используется до истечения idle. После deadline
+проверяются реальный HTTP 401 и соответствующий revoke reason в БД. Время,
+TTL и записи сессий вручную не сдвигаются. Cookies живут только в памяти
+процесса; cleanup выполняется через штатный logout. Исходник security.py
+проверяется по hash на каждом проходе; изменение останавливает тест.
+
+На первом retained observation процесс `41577`, start ticks `423686036`
+подтверждён живым и первый refresh выполнен. Рабочая директория:
+`/root/portal-r12-evidence/operator-elapsed-expiry-20260909`.
+Для следующего наблюдения использовать существующий
+`E:/r12-operator-session-20260909/observe-elapsed-expiry.py`; не запускать
+вторую копию по тайм-ауту наблюдения. Реальное истечение обоих сроков,
+cross-role denial, legacy cutover и полный O01 остаются открытыми.

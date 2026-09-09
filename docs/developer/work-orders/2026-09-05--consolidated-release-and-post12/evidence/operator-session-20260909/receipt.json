@@ -1,0 +1,172 @@
+{
+  "utc": "2026-09-09T09:20:00.928927+00:00",
+  "status": "PASS_BOUNDED_SESSION_BOUNDARY_AND_DEPLOY",
+  "source_revision": "a8e6918ccc166a58ae65ba7d08feea63ce3a9623",
+  "pr": "https://github.com/Kiwunaka/portal/pull/248",
+  "live_boundary_assertions": 11,
+  "real_elapsed_expiry": "RUNNING_NOT_PASSED",
+  "cross_role_denial": "OPEN",
+  "legacy_oidc_cutover": "OPEN",
+  "files": [
+    {
+      "file": "local-verification.json",
+      "capture_sha256": "f4277c4d84cf9491b28a6a64ea9a38f02c456750d530dbdc447133b5adb62af1",
+      "normalized_sha256": "fe40162eed1bc89dc5184f850e0f9399051d3ee95721b9fa4f824e7dc0f26f7a"
+    },
+    {
+      "file": "expiry-source-promoted.json",
+      "capture_sha256": "4dffb3d1e6e207cb7abde3e10128b872168fc65066962e6877df03969c71ca43",
+      "normalized_sha256": "4e512090766bbf780f74eafae82924d13475e2f600f8d308914f4b0356d6555a"
+    },
+    {
+      "file": "merge.json",
+      "capture_sha256": "8ef16644d2ab0682c6fadba69c7e5ca3e7cb5e611d3a096bffaa29489b16a407",
+      "normalized_sha256": "a00d362fc7d0d5bdd5cf7b9959329d8443af22ff24a13b4c95b6ba2d6c6bc352"
+    },
+    {
+      "file": "ci-verified.json",
+      "capture_sha256": "3e059848ed0b3b380d67c8a9b0aa37aedd5c5b0321fe7593f0a53330a9c6ad92",
+      "normalized_sha256": "0fd88d5492171915f0f953d2a7ad8e15c7c5ba1ee38bb8c2357e1adeb082978b"
+    },
+    {
+      "file": "build-identity-updated.json",
+      "capture_sha256": "f113acd26333a05b8f806604bdef3d74d9d759565dbda78769c60bf7f819912e",
+      "normalized_sha256": "a9a7d48282025dee7782999ea8fb6d506ef5cb891a80fb7d602e45b698b67c06"
+    },
+    {
+      "file": "production-session-boundary.json",
+      "capture_sha256": "cc5cce1cfe3a67e9d252b1ba3c15066ed4ab7330055e9f73424bb9e179e2b919",
+      "normalized_sha256": "05156c481eadca585280ded306afdab6f7d48831243ac53132dc298351a2c892"
+    },
+    {
+      "file": "production-session-boundary-after-expiry-fix.json",
+      "capture_sha256": "cddfd37b15b71cb091c029e1b4d4eab1ee09cb3d11ade706d52c343fb595c65f",
+      "normalized_sha256": "b515bb904aa76990c9cc10f2b9584e2ce0c54d22231f7fd37ea957dfe85212b6"
+    },
+    {
+      "file": "elapsed-expiry-launch.json",
+      "capture_sha256": "fb72b75a1ca9e610aade938e53b097f240b3f70ca60ebfcf134e4b26b2f0a32f",
+      "normalized_sha256": "5c43749c5f12b82dd4a2f649e15283f6d3d5a859a1cff6c6513510e709f5eb8d"
+    },
+    {
+      "file": "elapsed-expiry-observation-2026-09-09T091916611316+0000.json",
+      "capture_sha256": "f3e542b5aa013dfa8c425e4806134a778e58cd070777d24b5a6c383596eee86d",
+      "normalized_sha256": "07630c605f3394cf507f080541bc951ed53a80e72f05d4b2dfd592ed51f072e2"
+    }
+  ],
+  "retained_local_sources_and_logs": [
+    {
+      "path": "E:\\r12-operator-session-20260909\\check-boundary.py",
+      "sha256": "6a75b7aef2b96d147f5e37b7ca869f281e8b86e984a446abfb9c812366ed47db",
+      "bytes": 6850
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\check-boundary-after.py",
+      "sha256": "d1aee07d6140deeed3b06cff828e4ecb327b2804f851b6755ab9d7916529121c",
+      "bytes": 6936
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\elapsed-expiry-runner.py",
+      "sha256": "931b86c375f885d436a230670b3bfc66d04ebb59e4efb12c9371756c9d73ab78",
+      "bytes": 7640
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\launch-elapsed-expiry.py",
+      "sha256": "a90cb21d715cfa3e27f1789a77184a810c31ce5ce53783e85b15c13ef24dac6b",
+      "bytes": 2258
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\observe-elapsed-expiry.py",
+      "sha256": "ee534ca85cd8a95b99733602138693db1a84cfe65c6c5ef2f3b37f0e60b439e6",
+      "bytes": 1146
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\prepare-payload.py",
+      "sha256": "494b704f33ec596fc3c2ffc7d980ce2f6d848264b5bc1f598c9636b84f1b2b08",
+      "bytes": 2961
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\check-baseline.py",
+      "sha256": "43cbcef538891b2237c0a52ed20aed13b7cc87e22aa43b075984019afac5d2a1",
+      "bytes": 2360
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\update-build-identity.py",
+      "sha256": "28a42c6aa5c7a605ca049c95d97d5f986084d40e626c2f10250e3c0b5dcde90f",
+      "bytes": 3674
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\promote.py",
+      "sha256": "0238a199a6eb9c780cb015af5607286e90dc9d681e4b675cf244264944efa6f8",
+      "bytes": 2996
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\absolute-before.log",
+      "sha256": "b478f84594318b3a82cd018ec2b2b80cb41ad3d004cf3c27367c497042da9619",
+      "bytes": 2511
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\expiry-focused.log",
+      "sha256": "bb4fda902fcbc0668ca92e3451d4707a8c0865363c193354cff41467fe5c407d",
+      "bytes": 116
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\admin-router.log",
+      "sha256": "f062eec9fdeb524486f4045c717e1a5abb068fdc3da535d32598dc77ee43c83d",
+      "bytes": 113
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\admin-lint.log",
+      "sha256": "6ffa13369ce63ea4802a88045643022692e51d25ff529168647557a8f394a88b",
+      "bytes": 44
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\admin-e2e-build.log",
+      "sha256": "8244ee9fb507912f104b3caf28931f306771a619a2d57883bcde5fbe485a4539",
+      "bytes": 165124
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\docs.log",
+      "sha256": "f6f198f8610200a37d5a46cc1b4980d7a412b9fa405fc1f14e553355adc6e7a6",
+      "bytes": 101
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "bytes": 23
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\merged-guardrails.log",
+      "sha256": "0452273b1a1b740bbf671eb8bd85e5c169baa0bba1a2f5af8c4e8a10278aea95",
+      "bytes": 66
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\deploy-backend.log",
+      "sha256": "41b5c2e1ce92c9ea89c72b5cbec1c5289e8881600cfce7067bf71ec9bd8f607d",
+      "bytes": 98
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\merged-payload.json",
+      "sha256": "504275b81ddb1843fa4e3f407fdf6c56055fa043b387607aff262269de176f35",
+      "bytes": 80644
+    },
+    {
+      "path": "E:\\r12-operator-session-20260909\\baseline-before-deploy.json",
+      "sha256": "2a5da0c5541b22604580383f933098d4eab686394802c4bac45e51051f31ce83",
+      "bytes": 845
+    }
+  ],
+  "elapsed_job_handle": {
+    "utc": "2026-09-09T09:12:19.823234+00:00",
+    "pid": 41577,
+    "start_ticks": "423686036",
+    "script_sha256": "931b86c375f885d436a230670b3bfc66d04ebb59e4efb12c9371756c9d73ab78",
+    "security_source_sha256": "881305eea730472628ca64367f6e412a53a08ae41ccbb2b973aed5d9e65e4136",
+    "directory": "/root/portal-r12-evidence/operator-elapsed-expiry-20260909",
+    "state": "LAUNCHED_NOT_PASSED"
+  },
+  "real_deadlines": {
+    "idle": "2026-09-09T09:42:28.787420Z",
+    "absolute": "2026-09-09T21:12:29.146462Z"
+  }
+}

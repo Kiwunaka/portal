@@ -1,5 +1,10 @@
 # Windows — отказ выхода через установленный Core
 
+Последующее [сравнение NAT и bridge](EXECUTION-WINDOWS-NAT-PATH-2026-09-09.md)
+воспроизводит отказ только на NAT-пути с тем же профилем. Защищённое чтение
+завершено; ниже сохранено прежнее состояние. Полный installed-service
+connect/route/egress остаётся открытым и ждёт входа владельца в Windows.
+
 **FAIL_EGRESS_UNCONFIRMED**, current-origin owned Windows VM; client
 `c05b58b268bbd789aa96fb662cb46c9768558ef0`, Core
 `c7a11f7d2fd974726095ad7aa0619c055273dd15`. Установка совпала по всем 304

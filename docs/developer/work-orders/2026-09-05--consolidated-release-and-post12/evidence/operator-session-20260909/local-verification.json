@@ -1,0 +1,60 @@
+{
+  "utc": "2026-09-09T08:22:01.213852+00:00",
+  "source_revision": "01fb74f7312dc78b2b10a38ad45e4082ab44074e",
+  "source_tree": "ad3f4bc80bb91739c7407c6ba442e19bb60a249e",
+  "status": "PASS_LOCAL_REQUIRED_CHECKS",
+  "checks": [
+    {
+      "check": "admin_api",
+      "file": "admin-router.log",
+      "sha256": "f062eec9fdeb524486f4045c717e1a5abb068fdc3da535d32598dc77ee43c83d",
+      "expected_marker": "53 passed",
+      "marker_present": true
+    },
+    {
+      "check": "admin_lint",
+      "file": "admin-lint.log",
+      "sha256": "6ffa13369ce63ea4802a88045643022692e51d25ff529168647557a8f394a88b",
+      "expected_marker": "> eslint",
+      "marker_present": true
+    },
+    {
+      "check": "admin_build_and_e2e",
+      "file": "admin-e2e-build.log",
+      "sha256": "8244ee9fb507912f104b3caf28931f306771a619a2d57883bcde5fbe485a4539",
+      "expected_marker": "80 passed",
+      "marker_present": true
+    },
+    {
+      "check": "docs",
+      "file": "docs.log",
+      "sha256": "f6f198f8610200a37d5a46cc1b4980d7a412b9fa405fc1f14e553355adc6e7a6",
+      "expected_marker": "33 passed",
+      "marker_present": true
+    },
+    {
+      "check": "context",
+      "file": "context.log",
+      "sha256": "0efa10d94f5eab455b68e3294d1fb8c31f726e439b76607b3f406b0eb30f342d",
+      "expected_marker": "PASS platform-context",
+      "marker_present": true
+    },
+    {
+      "check": "regression_before",
+      "file": "absolute-before.log",
+      "sha256": "b478f84594318b3a82cd018ec2b2b80cb41ad3d004cf3c27367c497042da9619",
+      "expected_marker": "FAILED",
+      "marker_present": true
+    },
+    {
+      "check": "focused_after",
+      "file": "expiry-focused.log",
+      "sha256": "bb4fda902fcbc0668ca92e3451d4707a8c0865363c193354cff41467fe5c407d",
+      "expected_marker": "2 passed",
+      "marker_present": true
+    }
+  ],
+  "diff_check": "PASS",
+  "hosted_ci": "PENDING",
+  "production_deployed": false
+}

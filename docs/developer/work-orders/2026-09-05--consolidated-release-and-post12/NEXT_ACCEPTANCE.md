@@ -1,10 +1,15 @@
 # Текущие условия следующей приёмки
 
-[Windows egress](EXECUTION-WINDOWS-EGRESS-2026-09-09.md): client `c05b58b`
-установлен, 304 hashes и сохранность данных PASS. Милан/Франкфурт не
-подключаются; TUN rollback подтверждён. Вне туннеля WinHTTP probe PASS,
-внутри — timeout/DNS и отказ SOCKS. Для причины ожидается ручной read-only
-журнал Core; автоматическое повышение прав отклонено. Общий релиз открыт.
+[Windows NAT/bridge](EXECUTION-WINDOWS-NAT-PATH-2026-09-09.md): тот же профиль
+Франкфурта отказывает на NAT и проходит через мост; повтор в одном boot PASS.
+Все 304 файла client `c05b58b` / Core `c7a11f7` совпали. Полный installed-service
+TUN/DNS/egress ждёт входа владельца в Windows; VM link выключен. Общий релиз открыт.
+
+[Operator session boundary](EXECUTION-OPERATOR-SESSION-BOUNDARY-2026-09-09.md):
+правка причины absolute expiry вошла через PR #248 и развёрнута на `a8e6918`;
+204 hashes, API health и 11 live session assertions PASS. Реальные сроки
+30 минут / 12 часов проверяются отдельным живым процессом, ещё не PASS.
+Cross-role denial и legacy cutover остаются открытыми.
 
 [Исправление ответа подписки](EXECUTION-SUBSCRIPTION-BUDGET-2026-09-09.md):
 backend `d9b2583` установлен, 204 hashes и четыре обязательных CI checks PASS.

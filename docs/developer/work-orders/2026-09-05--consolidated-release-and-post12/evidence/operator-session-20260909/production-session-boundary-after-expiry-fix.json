@@ -1,0 +1,96 @@
+{
+  "utc": "2026-09-09T09:18:18.249611+00:00",
+  "origin": "brain-origin HTTPS production",
+  "source_revision": "a8e6918ccc166a58ae65ba7d08feea63ce3a9623",
+  "status": "PASS_BOUNDED_SESSION_REVOKE_BOUNDARY",
+  "observations": [
+    {
+      "check": "compatibility_bootstrap",
+      "http_status": 200,
+      "error_code": null,
+      "pass": true
+    },
+    {
+      "check": "fresh_session_me",
+      "http_status": 200,
+      "error_code": null,
+      "pass": true
+    },
+    {
+      "check": "missing_csrf_denied",
+      "http_status": 403,
+      "error_code": "operator_csrf_invalid",
+      "pass": true
+    },
+    {
+      "check": "wrong_origin_denied",
+      "http_status": 403,
+      "error_code": "operator_origin_forbidden",
+      "pass": true
+    },
+    {
+      "check": "session_survives_denied_requests",
+      "http_status": 200,
+      "error_code": null,
+      "pass": true
+    },
+    {
+      "check": "compatibility_bootstrap",
+      "http_status": 200,
+      "error_code": null,
+      "pass": true
+    },
+    {
+      "check": "revoke_other_own_test_session",
+      "http_status": 200,
+      "error_code": null,
+      "pass": true
+    },
+    {
+      "check": "revoked_cookie_denied",
+      "http_status": 401,
+      "error_code": "operator_session_revoked",
+      "pass": true
+    },
+    {
+      "check": "duplicate_revoke_idempotent",
+      "http_status": 200,
+      "error_code": null,
+      "pass": true
+    },
+    {
+      "check": "logout_test_session",
+      "http_status": 200,
+      "error_code": null,
+      "pass": true
+    },
+    {
+      "check": "logged_out_cookie_replay_denied",
+      "http_status": 401,
+      "error_code": "operator_session_revoked",
+      "pass": true
+    }
+  ],
+  "cookie_attributes": {
+    "secure": true,
+    "http_only": true,
+    "same_site": "strict",
+    "host_only": true,
+    "path": "/"
+  },
+  "idle_ttl_seconds": 1800.0,
+  "absolute_ttl_seconds": 43200.0,
+  "configured_origins": [
+    "https://admin.pokrov.space",
+    "https://www.admin.pokrov.space"
+  ],
+  "legacy_bootstrap_enabled": true,
+  "test_sessions_created": 2,
+  "test_sessions_revoked": true,
+  "preexisting_sessions_unchanged": true,
+  "roles_unchanged": true,
+  "credentials_or_raw_identifiers_exported": false,
+  "external_oidc_login_proven_by_this_script": false,
+  "elapsed_expiry_tested": false,
+  "cross_role_denial_tested": false
+}

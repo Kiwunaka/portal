@@ -1,0 +1,9 @@
+{
+  "utc": "2026-09-09T09:12:19.823234+00:00",
+  "pid": 41577,
+  "start_ticks": "423686036",
+  "script_sha256": "931b86c375f885d436a230670b3bfc66d04ebb59e4efb12c9371756c9d73ab78",
+  "security_source_sha256": "881305eea730472628ca64367f6e412a53a08ae41ccbb2b973aed5d9e65e4136",
+  "directory": "/root/portal-r12-evidence/operator-elapsed-expiry-20260909",
+  "state": "LAUNCHED_NOT_PASSED"
+}
