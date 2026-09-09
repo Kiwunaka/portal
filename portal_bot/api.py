@@ -81,7 +81,7 @@ load_dotenv(dotenv_path=Path(__file__).resolve().with_name(".env"))
 load_dotenv()
 
 from config import Settings, env_bool, env_int
-from db import SessionLocal, init_db
+from db import SessionLocal, database_pool_snapshot, init_db
 from models import (
     AccessKey,
     AccountDevice,

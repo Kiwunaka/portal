@@ -884,7 +884,16 @@ remains between the committed order-intent and provider-result transactions.
 `/api/health.payment_db` exposes integer-only active/max-active, started,
 completed, failed, queue-wait and duration counters; it contains no SQL,
 parameters, row identity or exception. This is a scoped payment transition, not
-a claim that the remaining async API ORM inventory has been migrated.
+a claim that the remaining async API ORM inventory has been migrated. Its
+queue-wait counters measure AnyIO worker admission, not database connections.
+
+`/api/health.database_pool` separately exposes integer-only `attempts`,
+`waiting`, `max_waiting`, `timeouts`, `wait_total_ms`, and `wait_max_ms` for the
+active PostgreSQL pool. It times blocking queue gets; a get may return an
+already available connection immediately. Connection creation, pre-ping and
+SQL execution are outside this timer. An uninstrumented pool (including the
+unchanged SQLite defaults) returns null, not zero. Counters belong to the
+current pool and reset when it is recreated. There are no SQL/identity labels.
 
 The separate `/api/health.event_loop_lag` projection reports lifespan-owned
 timer observations, not payment or request latency. Before its first sample,

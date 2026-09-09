@@ -754,7 +754,12 @@ Admin ops app wave `2026-07-06`, command-center redesign updated locally on
   closed-code dead letter for reconciliation
 - payment-provider HTTP telemetry is aggregate and fixed-shape: provider,
   closed operation, HTTP status, integer latency and closed result code, with
-  count/total/max latency rollups. URL/query, headers, credentials, request
+  count/total/max latency rollups. `connector_queue_entries` and
+  `connector_wait_ms` separately count and time aiohttp connection-queue events;
+  snapshots sum entries and retain total/max wait. Time spent still queued when
+  a request times out or is cancelled is included (`timeout` / `cancelled`),
+  while DNS, connection creation and response reads are excluded. URL/query,
+  headers, credentials, request
   fields, response body and exception text are forbidden. A local sample proves
   instrumentation shape only; provider availability, deployed pool saturation,
   timeout rate and latency SLO require exact-runtime evidence
@@ -764,6 +769,15 @@ Admin ops app wave `2026-07-06`, command-center redesign updated locally on
   account/order identity or exception text. Sustained active=max-active,
   increasing queue wait or failure count is an operator signal, but local tests
   do not establish production pool sizing or latency SLOs
+- `/api/health.database_pool` separately reports PostgreSQL connection queue
+  `attempts`, `waiting`, `max_waiting`, `timeouts`, `wait_total_ms`, and
+  `wait_max_ms`. These fixed integer counters time blocking queue gets,
+  including timeout and immediate returns; connection creation, pre-ping and
+  SQL run outside that timer. The observer preserves QueuePool limits and
+  errors. It uses the `_queue_class` hook in pinned SQLAlchemy 2.0.46, covered
+  by an actual saturation/timeout regression; recheck that hook when upgrading
+  SQLAlchemy. Counters belong to the active pool and reset on recreation.
+  SQLite retains its default pool and returns null for this projection.
 - `/api/health.event_loop_lag` observes the API event loop with one lifespan-owned
   monotonic timer at a one-second interval. It retains only `status`,
   `interval_ms`, `samples`, `last_lag_ms`, `max_lag_ms`, and `lag_total_ms`.
