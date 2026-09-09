@@ -253,6 +253,8 @@ test("Кампании: юридические условия и ёмкость 
   await expect(policy).toContainText("legal_launch_blocked");
   await expect(page.getByText("4 / 20", { exact: true })).toBeVisible();
   expect(api.calls.filter((call) => call.method === "POST")).toHaveLength(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
 
 test("Деньги: сбой реестра заказов не скрывает KPI и очередь внимания", async ({ page }) => {
