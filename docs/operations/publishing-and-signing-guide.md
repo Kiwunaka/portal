@@ -101,7 +101,10 @@ Release-bound CI is cross-repository and fail-closed:
   half from the hosted support-mode private key, matches it to the tracked pin
   on client `main`, checks the code-secret minimum, and uploads only a public
   revision/digest receipt; it does not deploy runtime secrets or create a
-  release candidate.
+  release candidate. Its job rejects a manual dispatch from a non-`master` ref
+  before running any step, and checks out the exact triggering `github.sha`
+  on accepted runs. A skipped non-promotion dispatch proves only that boundary;
+  it is not a successful custody verification.
 
 These workflows produce contract evidence only. Until a workflow is observed
 green on the exact committed revisions, its GitHub-hosted result is unclaimed.
