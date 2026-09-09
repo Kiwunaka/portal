@@ -718,8 +718,9 @@ class PanelClient:
                 return False, set()
         await self.ensure_session()
         try:
-            async with self.session.get(
-                f"{self._base()}/panel/api/inbounds/onlines",
+            async with self.session.post(
+                f"{self._base()}/panel/api/clients/onlines",
+                headers=await self._csrf_headers(),
                 cookies=self.cookies,
                 timeout=aiohttp.ClientTimeout(total=20),
             ) as resp:
@@ -916,6 +917,7 @@ class PanelClient:
                 "online_keys_now": 0,
                 "online_connections_now": 0,
             }
+        online_emails_attempted = False
         online_emails_fetched = False
         online_emails: set[str] = set()
         online_keys: set[str] = set()
@@ -958,7 +960,8 @@ class PanelClient:
                                 break
 
                 if online is None and email:
-                    if not online_emails_fetched:
+                    if not online_emails_attempted:
+                        online_emails_attempted = True
                         online_emails_fetched, online_emails = await self._get_online_emails()
                     if online_emails_fetched:
                         online = email in online_emails
@@ -989,6 +992,7 @@ class PanelClient:
         inbounds = self._selected_inbounds(await self._get_inbounds())
         if not inbounds:
             return []
+        online_emails_attempted = False
         online_emails_fetched = False
         online_emails: set[str] = set()
         rows: list[dict] = []
@@ -1037,7 +1041,8 @@ class PanelClient:
                                 break
 
                 if online is None:
-                    if not online_emails_fetched:
+                    if not online_emails_attempted:
+                        online_emails_attempted = True
                         online_emails_fetched, online_emails = await self._get_online_emails()
                     if online_emails_fetched:
                         online = email in online_emails
