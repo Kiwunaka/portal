@@ -1,0 +1,600 @@
+{
+  "status": "PASS",
+  "origin": "brain-origin public GitHub API",
+  "utc": "2026-09-09T11:34:43.138115+00:00",
+  "runs": [
+    {
+      "id": 34344223890,
+      "head_sha": "7097d9722d6f07b8ede5cee39125c7b88d5e0a40",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/Kiwunaka/portal/actions/runs/34344223890",
+      "name": "Release v2 Contract",
+      "event": "pull_request",
+      "jobs": [
+        {
+          "id": 102441883530,
+          "name": "cross-repository-contract",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/Kiwunaka/portal/actions/runs/34344223890/job/102441883530",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-09T11:12:01Z",
+              "completed_at": "2026-09-09T11:12:01Z"
+            },
+            {
+              "name": "Checkout platform candidate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-09T11:12:01Z",
+              "completed_at": "2026-09-09T11:12:05Z"
+            },
+            {
+              "name": "Checkout active client promotion line",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-09T11:12:05Z",
+              "completed_at": "2026-09-09T11:12:48Z"
+            },
+            {
+              "name": "Checkout Core promotion line",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-09T11:12:48Z",
+              "completed_at": "2026-09-09T11:12:50Z"
+            },
+            {
+              "name": "Setup Python",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-09T11:12:50Z",
+              "completed_at": "2026-09-09T11:12:58Z"
+            },
+            {
+              "name": "Validate dependency contract",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-09-09T11:12:58Z",
+              "completed_at": "2026-09-09T11:12:58Z"
+            },
+            {
+              "name": "Materialize bound Core source authority",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-09-09T11:12:58Z",
+              "completed_at": "2026-09-09T11:13:03Z"
+            },
+            {
+              "name": "Validate cross-repository release-handoff v2 contract",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-09-09T11:13:03Z",
+              "completed_at": "2026-09-09T11:13:28Z"
+            },
+            {
+              "name": "Post Setup Python",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-09-09T11:13:28Z",
+              "completed_at": "2026-09-09T11:13:28Z"
+            },
+            {
+              "name": "Post Checkout Core promotion line",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-09-09T11:13:28Z",
+              "completed_at": "2026-09-09T11:13:28Z"
+            },
+            {
+              "name": "Post Checkout active client promotion line",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-09-09T11:13:28Z",
+              "completed_at": "2026-09-09T11:13:28Z"
+            },
+            {
+              "name": "Post Checkout platform candidate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16,
+              "started_at": "2026-09-09T11:13:28Z",
+              "completed_at": "2026-09-09T11:13:28Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17,
+              "started_at": "2026-09-09T11:13:28Z",
+              "completed_at": "2026-09-09T11:13:29Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 34344223813,
+      "head_sha": "7097d9722d6f07b8ede5cee39125c7b88d5e0a40",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/Kiwunaka/portal/actions/runs/34344223813",
+      "name": "Guardrails",
+      "event": "pull_request",
+      "jobs": [
+        {
+          "id": 102441883443,
+          "name": "repo-guardrails",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/Kiwunaka/portal/actions/runs/34344223813/job/102441883443",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-09T11:11:25Z",
+              "completed_at": "2026-09-09T11:11:27Z"
+            },
+            {
+              "name": "Checkout",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-09T11:11:27Z",
+              "completed_at": "2026-09-09T11:11:31Z"
+            },
+            {
+              "name": "Setup Python",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-09T11:11:31Z",
+              "completed_at": "2026-09-09T11:11:39Z"
+            },
+            {
+              "name": "Setup Node",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-09T11:11:39Z",
+              "completed_at": "2026-09-09T11:11:46Z"
+            },
+            {
+              "name": "Validate dependency contract",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-09T11:11:46Z",
+              "completed_at": "2026-09-09T11:11:47Z"
+            },
+            {
+              "name": "Install backend dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-09-09T11:11:47Z",
+              "completed_at": "2026-09-09T11:12:05Z"
+            },
+            {
+              "name": "Install webapp dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-09-09T11:12:05Z",
+              "completed_at": "2026-09-09T11:12:39Z"
+            },
+            {
+              "name": "Install adminapp dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-09-09T11:12:39Z",
+              "completed_at": "2026-09-09T11:12:45Z"
+            },
+            {
+              "name": "Install marketing dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-09-09T11:12:45Z",
+              "completed_at": "2026-09-09T11:12:52Z"
+            },
+            {
+              "name": "Validate canonical adminapp candidate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-09-09T11:12:52Z",
+              "completed_at": "2026-09-09T11:14:38Z"
+            },
+            {
+              "name": "Validate script manifest references",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-09-09T11:14:38Z",
+              "completed_at": "2026-09-09T11:14:38Z"
+            },
+            {
+              "name": "Validate generated artifacts and public wording",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-09-09T11:14:38Z",
+              "completed_at": "2026-09-09T11:14:39Z"
+            },
+            {
+              "name": "Validate shared-facts and release-handoff contracts",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-09-09T11:14:39Z",
+              "completed_at": "2026-09-09T11:14:39Z"
+            },
+            {
+              "name": "Validate support signing custody controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-09-09T11:14:39Z",
+              "completed_at": "2026-09-09T11:14:40Z"
+            },
+            {
+              "name": "Quick release gate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-09-09T11:14:40Z",
+              "completed_at": "2026-09-09T11:18:18Z"
+            },
+            {
+              "name": "Post Setup Node",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 28,
+              "started_at": "2026-09-09T11:18:18Z",
+              "completed_at": "2026-09-09T11:18:18Z"
+            },
+            {
+              "name": "Post Setup Python",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 29,
+              "started_at": "2026-09-09T11:18:18Z",
+              "completed_at": "2026-09-09T11:18:18Z"
+            },
+            {
+              "name": "Post Checkout",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 30,
+              "started_at": "2026-09-09T11:18:18Z",
+              "completed_at": "2026-09-09T11:18:18Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 31,
+              "started_at": "2026-09-09T11:18:18Z",
+              "completed_at": "2026-09-09T11:18:18Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 34345477835,
+      "head_sha": "3478fc4f292484c01bc2ccec124588f8f0c2423e",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/Kiwunaka/portal/actions/runs/34345477835",
+      "name": "Release v2 Contract",
+      "event": "push",
+      "jobs": [
+        {
+          "id": 102445938838,
+          "name": "cross-repository-contract",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/Kiwunaka/portal/actions/runs/34345477835/job/102445938838",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-09T11:25:35Z",
+              "completed_at": "2026-09-09T11:25:35Z"
+            },
+            {
+              "name": "Checkout platform candidate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-09T11:25:35Z",
+              "completed_at": "2026-09-09T11:25:40Z"
+            },
+            {
+              "name": "Checkout active client promotion line",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-09T11:25:40Z",
+              "completed_at": "2026-09-09T11:26:45Z"
+            },
+            {
+              "name": "Checkout Core promotion line",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-09T11:26:45Z",
+              "completed_at": "2026-09-09T11:26:48Z"
+            },
+            {
+              "name": "Setup Python",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-09T11:26:48Z",
+              "completed_at": "2026-09-09T11:26:58Z"
+            },
+            {
+              "name": "Validate dependency contract",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-09-09T11:26:58Z",
+              "completed_at": "2026-09-09T11:26:58Z"
+            },
+            {
+              "name": "Materialize bound Core source authority",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-09-09T11:26:58Z",
+              "completed_at": "2026-09-09T11:27:02Z"
+            },
+            {
+              "name": "Validate cross-repository release-handoff v2 contract",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-09-09T11:27:02Z",
+              "completed_at": "2026-09-09T11:27:24Z"
+            },
+            {
+              "name": "Post Setup Python",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-09-09T11:27:24Z",
+              "completed_at": "2026-09-09T11:27:24Z"
+            },
+            {
+              "name": "Post Checkout Core promotion line",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-09-09T11:27:24Z",
+              "completed_at": "2026-09-09T11:27:24Z"
+            },
+            {
+              "name": "Post Checkout active client promotion line",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-09-09T11:27:24Z",
+              "completed_at": "2026-09-09T11:27:25Z"
+            },
+            {
+              "name": "Post Checkout platform candidate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 16,
+              "started_at": "2026-09-09T11:27:25Z",
+              "completed_at": "2026-09-09T11:27:25Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 17,
+              "started_at": "2026-09-09T11:27:25Z",
+              "completed_at": "2026-09-09T11:27:25Z"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": 34345477856,
+      "head_sha": "3478fc4f292484c01bc2ccec124588f8f0c2423e",
+      "status": "completed",
+      "conclusion": "success",
+      "html_url": "https://github.com/Kiwunaka/portal/actions/runs/34345477856",
+      "name": "Guardrails",
+      "event": "push",
+      "jobs": [
+        {
+          "id": 102445938799,
+          "name": "repo-guardrails",
+          "status": "completed",
+          "conclusion": "success",
+          "html_url": "https://github.com/Kiwunaka/portal/actions/runs/34345477856/job/102445938799",
+          "steps": [
+            {
+              "name": "Set up job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 1,
+              "started_at": "2026-09-09T11:25:35Z",
+              "completed_at": "2026-09-09T11:25:36Z"
+            },
+            {
+              "name": "Checkout",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 2,
+              "started_at": "2026-09-09T11:25:36Z",
+              "completed_at": "2026-09-09T11:25:40Z"
+            },
+            {
+              "name": "Setup Python",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 3,
+              "started_at": "2026-09-09T11:25:40Z",
+              "completed_at": "2026-09-09T11:25:50Z"
+            },
+            {
+              "name": "Setup Node",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 4,
+              "started_at": "2026-09-09T11:25:50Z",
+              "completed_at": "2026-09-09T11:25:59Z"
+            },
+            {
+              "name": "Validate dependency contract",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 5,
+              "started_at": "2026-09-09T11:25:59Z",
+              "completed_at": "2026-09-09T11:25:59Z"
+            },
+            {
+              "name": "Install backend dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 6,
+              "started_at": "2026-09-09T11:25:59Z",
+              "completed_at": "2026-09-09T11:26:18Z"
+            },
+            {
+              "name": "Install webapp dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 7,
+              "started_at": "2026-09-09T11:26:18Z",
+              "completed_at": "2026-09-09T11:26:54Z"
+            },
+            {
+              "name": "Install adminapp dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 8,
+              "started_at": "2026-09-09T11:26:54Z",
+              "completed_at": "2026-09-09T11:27:07Z"
+            },
+            {
+              "name": "Install marketing dependencies",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 9,
+              "started_at": "2026-09-09T11:27:07Z",
+              "completed_at": "2026-09-09T11:27:18Z"
+            },
+            {
+              "name": "Validate canonical adminapp candidate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 10,
+              "started_at": "2026-09-09T11:27:18Z",
+              "completed_at": "2026-09-09T11:29:46Z"
+            },
+            {
+              "name": "Validate script manifest references",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 11,
+              "started_at": "2026-09-09T11:29:46Z",
+              "completed_at": "2026-09-09T11:29:47Z"
+            },
+            {
+              "name": "Validate generated artifacts and public wording",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 12,
+              "started_at": "2026-09-09T11:29:47Z",
+              "completed_at": "2026-09-09T11:29:47Z"
+            },
+            {
+              "name": "Validate shared-facts and release-handoff contracts",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 13,
+              "started_at": "2026-09-09T11:29:47Z",
+              "completed_at": "2026-09-09T11:29:48Z"
+            },
+            {
+              "name": "Validate support signing custody controls",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 14,
+              "started_at": "2026-09-09T11:29:48Z",
+              "completed_at": "2026-09-09T11:29:49Z"
+            },
+            {
+              "name": "Quick release gate",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 15,
+              "started_at": "2026-09-09T11:29:49Z",
+              "completed_at": "2026-09-09T11:34:01Z"
+            },
+            {
+              "name": "Post Setup Node",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 28,
+              "started_at": "2026-09-09T11:34:01Z",
+              "completed_at": "2026-09-09T11:34:01Z"
+            },
+            {
+              "name": "Post Setup Python",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 29,
+              "started_at": "2026-09-09T11:34:01Z",
+              "completed_at": "2026-09-09T11:34:01Z"
+            },
+            {
+              "name": "Post Checkout",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 30,
+              "started_at": "2026-09-09T11:34:01Z",
+              "completed_at": "2026-09-09T11:34:01Z"
+            },
+            {
+              "name": "Complete job",
+              "status": "completed",
+              "conclusion": "success",
+              "number": 31,
+              "started_at": "2026-09-09T11:34:01Z",
+              "completed_at": "2026-09-09T11:34:01Z"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "release_base_isolation": "SKIPPED_NOT_PASS"
+}

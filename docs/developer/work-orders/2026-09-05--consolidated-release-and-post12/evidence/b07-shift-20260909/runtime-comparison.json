@@ -1,0 +1,23 @@
+{
+  "before": {
+    "source_revision": "2b37f9765ba07fd0f37d0c894486809ac4bc9f75",
+    "shift_http_ms": 4795.98,
+    "health_samples": 10,
+    "health_max_http_ms": 4490.29,
+    "health_during_shift": 1,
+    "lag_total_delta_ms": 4672,
+    "outbox_unchanged": true,
+    "fixture_revoked": true
+  },
+  "after": {
+    "source_revision": "3478fc4f292484c01bc2ccec124588f8f0c2423e",
+    "shift_http_ms": 6368.37,
+    "health_samples": 16,
+    "health_max_http_ms": 131.47,
+    "health_during_shift": 6,
+    "lag_total_delta_ms": 11,
+    "outbox_unchanged": true,
+    "fixture_revoked": true
+  },
+  "interpretation": "The sampled shift read no longer caused the multi-second API event-loop stall. Shift response latency itself did not improve; this is not SLO/p95 or pool/connector wait proof."
+}

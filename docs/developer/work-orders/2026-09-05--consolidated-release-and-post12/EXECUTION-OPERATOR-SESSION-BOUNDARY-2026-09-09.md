@@ -108,3 +108,11 @@ runner с AssertionError после 14 refreshes. HTTP anomalies отсутст�
 cleanup отозвал обе fixture sessions. Idle PASS остаётся, absolute expiry
 не выполнен. Старое ожидаемое время 00:44 мск больше не является активным
 сроком прогона. Новый run будет запущен после текущей API-правки.
+
+
+## V3 после API-поставки, 11:37 UTC
+
+[Новый запуск](EXECUTION-B07-SHIFT-2026-09-09.md) привязан к `3478fc4` и
+побайтно проверенному `security.py` (`02cd79f4…`). Процесс жив; idle deadline
+15:07 мск 9 сентября, absolute 02:37 мск 10 сентября. Оба результата V3
+RUNNING_NOT_PASSED. V2 idle PASS и его неуспешный absolute run сохранены.

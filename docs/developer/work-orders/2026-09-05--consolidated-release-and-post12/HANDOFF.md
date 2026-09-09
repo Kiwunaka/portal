@@ -1,5 +1,7 @@
 # R12 — текущий результат и граница исполнения
 
+[B07 shift, срез 11:37 UTC](EXECUTION-B07-SHIFT-2026-09-09.md): PR #250 слит и backend `3478fc4` развёрнут; 208 tests + 8 subtests, четыре CI и 204 hashes PASS. В повторном окне loop lag 11 мс вместо 4672, health max 131,47 мс вместо 4490,29; сам shift read 6,37 с, latency acceptance открыта. O01 V3 запущен: idle 15:07 мск 9 сентября, absolute 02:37 мск 10 сентября, оба RUNNING_NOT_PASSED. Более ранние running/deadline записи ниже — история прежних прогонов.
+
 [B07 online fix](EXECUTION-B07-ONLINE-2026-09-09.md) развёрнут на `2b37f97`: четыре CI PASS, 204 hashes и online/meta readback PASS. Отдельный stall «Моей смены» воспроизведён; draft PR #250 проходит проверки. O01 v2 остановлен raw source guard из-за LF→CRLF в security.py при этой поставке; обе fixtures отозваны, idle PASS сохранён, absolute run пока не перезапущен.
 
 [O01 idle expiry](EXECUTION-OPERATOR-SESSION-BOUNDARY-2026-09-09.md): реальные 30 минут PASS — HTTP 401 и DB idle_expired; absolute deadline остаётся RUNNING до 00:44 мск 10 сентября. [B07 collector](EXECUTION-B07-DEPLOYED-LAG-2026-09-09.md): 27 production health samples и outbox aggregates сохранены; во время 17,59-секундного online read loop продолжал работать, источник ожидания пока не локализован.
