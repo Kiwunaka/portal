@@ -1,0 +1,113 @@
+{
+  "status": "PASS_DECLARED_SIGNING_BOUNDARY",
+  "snapshot_sha256": "fda542a6ba06dd2932681fbb848e881afa9275d41275b18f2327edd471bbe3a8",
+  "checks": [
+    {
+      "name": "support_manual_or_master_push_only",
+      "passed": true
+    },
+    {
+      "name": "support_job_master_guard",
+      "passed": true
+    },
+    {
+      "name": "support_checkout_exact_trigger",
+      "passed": true
+    },
+    {
+      "name": "release_signer_manual_only",
+      "passed": true
+    },
+    {
+      "name": "release_signer_main_guard",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/portal:.github/workflows/guardrails.yml:no_signing_secret_reference",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/portal:.github/workflows/guardrails.yml:no_privileged_pr_chain",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/portal:.github/workflows/release-v2-contract.yml:no_signing_secret_reference",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/portal:.github/workflows/release-v2-contract.yml:no_privileged_pr_chain",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/portal:.github/workflows/support-signing-custody.yml:no_privileged_pr_chain",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/POKROV-app:.github/workflows/release-v2-contract.yml:no_signing_secret_reference",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/POKROV-app:.github/workflows/release-v2-contract.yml:no_privileged_pr_chain",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/pokrov-core:.github/workflows/ci.yml:no_signing_secret_reference",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/pokrov-core:.github/workflows/ci.yml:no_privileged_pr_chain",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/pokrov:.github/workflows/prepare-signed-candidate.yml:no_privileged_pr_chain",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/pokrov:.github/workflows/release-index-contract.yml:no_signing_secret_reference",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/pokrov:.github/workflows/release-index-contract.yml:no_privileged_pr_chain",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/portal:read_only_default_token",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/portal:owner_is_only_collaborator",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/POKROV-app:read_only_default_token",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/POKROV-app:owner_is_only_collaborator",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/pokrov-core:read_only_default_token",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/pokrov-core:owner_is_only_collaborator",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/pokrov:read_only_default_token",
+      "passed": true
+    },
+    {
+      "name": "Kiwunaka/pokrov:owner_is_only_collaborator",
+      "passed": true
+    },
+    {
+      "name": "non_master_custody_actual_job_skipped_without_steps",
+      "passed": true
+    }
+  ],
+  "secret_values_read": false,
+  "signing_executed": false,
+  "limitation": "Declared normal PR paths and current owner-only collaborators; not isolation from an owner able to change workflows/settings."
+}

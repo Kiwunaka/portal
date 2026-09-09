@@ -2,7 +2,7 @@ id,summary,status,evidence_level,inventory,source,reconciliation
 R12-G01,Зафиксировать новый scope и authority,verified,I3,ALREADY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-G01-M01.md
 R12-G02,Сохранить candidate.33 и доказательства,verified,I3,ALREADY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-G02-RETENTION-2026-09-09.md
 R12-G03,Dependency-aware evidence invalidation,verified,I3,ALREADY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-G03-INPUT-REVIEW-2026-09-09.md; classifier regression 5 PASS; real oracle change INVALIDATED; same-input offline sample evaluation bounded reuse; final candidate and live inputs remain open
-R12-G04,Реальный исполняемый CI вместо зелёной декларации,blocked,I1,PARTIALLY_FIXED,03_RELEASE_BACKLOG_83.md,OWNER-DECISIONS-2026-09-07.md
+R12-G04,Реальный исполняемый CI вместо зелёной декларации,verified,I3,ALREADY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-G04-CI-2026-09-09.md; client PR94 and exact tuple CI PASS 644 Flutter tests 1 explicit Windows skip Android direct-store and Linux foundation; platform Guardrails PASS; non-master signing job 0-step skip; promotion-line PR contracts remain FAIL
 R12-G05,"Развести public, candidate и development metadata",verified,I3,ALREADY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-G05-LIVE-METADATA-2026-09-09.md
 R12-G06,Проверить enforcement и действующие исключения,verified,I3,ALREADY_FIXED,03_RELEASE_BACKLOG_83.md,EXECUTION-G06-ENFORCEMENT-2026-09-09.md
 R12-G07,"Отделить release-index, source-only и legacy lanes",active,I3,NEEDS_RUNTIME_PROOF,03_RELEASE_BACKLOG_83.md,EXECUTION-G05-G07.md

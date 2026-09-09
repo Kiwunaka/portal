@@ -1,5 +1,12 @@
 # Текущие условия следующей приёмки
 
+[G04 executable CI](EXECUTION-G04-CI-2026-09-09.md): client PR #94 опубликован;
+Git LFS blocker снят screenshots budget $0/stop и свободного лимита.
+Exact tuple `de5d478/d57ead0/02a091c` и platform Guardrails PASS. Один Windows
+runtime test и signing runtime negatives на Linux имеют явный skip.
+G04 verified/I3. Promotion-line PR contracts продолжают FAIL из-за прежних
+cross-repository bindings; их согласование и final acceptance остаются открытыми.
+
 [G03 input review](EXECUTION-G03-INPUT-REVIEW-2026-09-09.md): classifier исправлен,
 5 tests PASS. Для 95 source deltas сохранены hashes; смена oracle инвалидирует
 прежний вывод. Same-input offline replay даёт прежние 9/9 stop checks; перенос

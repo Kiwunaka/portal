@@ -1,5 +1,13 @@
 # R12 — текущий результат и граница исполнения
 
+[G04 executable CI](EXECUTION-G04-CI-2026-09-09.md): LFS budget $0/stop и
+free allowance подтверждены screenshots; 10 objects загружены, client PR #94
+создан. Exact `de5d478/d57ead0/02a091c` CI PASS: 644 Flutter tests, один
+Windows runtime skip, Android direct/store и Linux daemon checks. Platform
+Guardrails `d57ead0` PASS. Custody workflow закрывает non-master dispatch;
+настоящий negative run имеет 0 steps. G04 verified/I3; обычные PR contracts
+с прежними promotion lines остаются FAIL, release acceptance открыта.
+
 [G03 input review](EXECUTION-G03-INPUT-REVIEW-2026-09-09.md): classifier исправлен,
 5 tests PASS. Для 95 source deltas сохранены hashes; смена oracle инвалидирует
 прежний вывод. Same-input offline replay даёт прежние 9/9 stop checks; перенос

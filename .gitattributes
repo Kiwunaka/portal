@@ -44,3 +44,6 @@ docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/
 docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g05-live-metadata-20260909/** -text whitespace=cr-at-eol
 docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g03-input-review-20260909/** -text whitespace=cr-at-eol
 docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g03-input-review-20260909/before.log -text whitespace=-blank-at-eol,cr-at-eol
+docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g04-ci-20260909/** -text whitespace=cr-at-eol
+docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g04-ci-20260909/before.log -text whitespace=-blank-at-eol,cr-at-eol
+docs/developer/work-orders/2026-09-05--consolidated-release-and-post12/evidence/g04-ci-20260909/client-push.log -text whitespace=-blank-at-eol,cr-at-eol
