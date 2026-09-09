@@ -34,6 +34,14 @@ export type PaymentOrder = {
   paid_at: string | null;
   event_count: number | null;
   last_event: PaymentEventState | null;
+  problem_reasons: string[] | null;
+  lineage: {
+    claim: { claim_ref: string | null; status: string | null; last_error_present: boolean; last_error_at: string | null } | null;
+    grant: { grant_ref: string | null; status: string | null; expires_at: string | null } | null;
+    outbox: { outbox_ref: string | null; status: string | null; attempts: number | null; last_error_code: string | null; terminal_reason: string | null; next_run_at: string | null; delivered_at: string | null } | null;
+  } | null;
+  commands: Array<{ intent_ref: string | null; action: string | null; status: string | null; created_at: string | null; consumed_at: string | null }> | null;
+  quote: { plan_code: string | null; amount: string | null; currency: string | null; campaign: string | null; campaign_revision: string | null; commercial_revision: string | null; terms_revision: string | null; base_amount_rub: string | null; hold_expires_at: string | null } | null;
 };
 
 export type PaymentSummary = {
@@ -179,11 +187,14 @@ export type CommercialCampaignRow = {
   paid_cap: number;
   paid_conversions_count: number;
   state_reason: string;
+  legal_profile_status?: string;
+  terms_revision?: string | null;
   starts_at: string | null;
   ends_at: string | null;
   policy: {
     activation_allowed?: boolean;
     blocking_reasons?: string[];
+    capacity?: { active_units: number | null; limit_units: number; band: string; acquisition_permitted: boolean };
   };
 };
 
@@ -266,6 +277,11 @@ function paymentOrder(value: unknown): PaymentOrder | null {
   if (typeof row.id !== "number" || typeof row.order_id !== "string" || typeof row.provider !== "string") return null;
   const rawUser = row.user && typeof row.user === "object" ? row.user as Record<string, unknown> : null;
   const rawEvent = row.last_event && typeof row.last_event === "object" ? row.last_event as Record<string, unknown> : null;
+  const lineage = row.lineage && typeof row.lineage === "object" ? row.lineage as Record<string, unknown> : null;
+  const claim = lineage?.claim && typeof lineage.claim === "object" ? lineage.claim as Record<string, unknown> : null;
+  const grant = lineage?.grant && typeof lineage.grant === "object" ? lineage.grant as Record<string, unknown> : null;
+  const outbox = lineage?.outbox && typeof lineage.outbox === "object" ? lineage.outbox as Record<string, unknown> : null;
+  const quote = row.quote && typeof row.quote === "object" ? row.quote as Record<string, unknown> : null;
   return {
     id: row.id,
     order_id: row.order_id,
@@ -287,6 +303,18 @@ function paymentOrder(value: unknown): PaymentOrder | null {
     created_at: text(row.created_at),
     paid_at: text(row.paid_at),
     event_count: finite(row.event_count),
+    quote: quote ? { plan_code: text(quote.plan_code), amount: text(quote.amount), currency: text(quote.currency), campaign: text(quote.campaign), campaign_revision: text(quote.campaign_revision), commercial_revision: text(quote.commercial_revision), terms_revision: text(quote.terms_revision), base_amount_rub: text(quote.base_amount_rub), hold_expires_at: text(quote.hold_expires_at) } : null,
+    problem_reasons: Array.isArray(row.problem_reasons) ? row.problem_reasons.filter((reason): reason is string => typeof reason === "string") : null,
+    lineage: lineage ? {
+      claim: claim ? { claim_ref: text(claim.claim_ref), status: stateText(claim.status), last_error_present: claim.last_error_present === true, last_error_at: text(claim.last_error_at) } : null,
+      grant: grant ? { grant_ref: text(grant.grant_ref), status: stateText(grant.status), expires_at: text(grant.expires_at) } : null,
+      outbox: outbox ? { outbox_ref: text(outbox.outbox_ref), status: stateText(outbox.status), attempts: finite(outbox.attempts), last_error_code: text(outbox.last_error_code), terminal_reason: text(outbox.terminal_reason), next_run_at: text(outbox.next_run_at), delivered_at: text(outbox.delivered_at) } : null,
+    } : null,
+    commands: Array.isArray(row.commands) ? row.commands.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const command = item as Record<string, unknown>;
+      return [{ intent_ref: text(command.intent_ref), action: text(command.action), status: stateText(command.status), created_at: text(command.created_at), consumed_at: text(command.consumed_at) }];
+    }) : null,
     last_event: rawEvent && typeof rawEvent.id === "number" ? {
       id: rawEvent.id,
       provider: text(rawEvent.provider) || "",

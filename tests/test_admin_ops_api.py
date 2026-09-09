@@ -1643,7 +1643,19 @@ def test_admin_v2_money_lineage_and_program_review_use_single_intent_boundary(mo
             status="paid",
             created_at=now - timedelta(minutes=12),
             paid_at=now - timedelta(minutes=10),
-            meta_json='{"provider_token":"RAW-ORDER-SECRET"}',
+            meta_json=json.dumps({
+                "provider_token": "RAW-ORDER-SECRET",
+                "order_intent": {
+                    "schema": "pokrov-payment-order-intent-v2", "plan_code": "start_99",
+                    "amount": "99.00", "currency": "RUB", "owner": {"email": "PRIVATE-QUOTE-OWNER"},
+                    "commercial_offer": {
+                        "campaign": "winback-fixture", "campaign_revision": 3,
+                        "commercial_revision": "commercial-fixture", "terms_revision": "terms-fixture",
+                        "base_amount_rub": 149, "hold_expires_at": 1784110200,
+                        "subject": "PRIVATE-QUOTE-SUBJECT", "token": "PRIVATE-QUOTE-TOKEN",
+                    },
+                },
+            }),
         )
         db.add(order)
         db.flush()
@@ -1738,10 +1750,18 @@ def test_admin_v2_money_lineage_and_program_review_use_single_intent_boundary(mo
         "RAW-OUTBOX-SECRET",
         "private@example.test",
         "provider-event-secret-id",
+        "PRIVATE-QUOTE-OWNER",
+        "PRIVATE-QUOTE-SUBJECT",
+        "PRIVATE-QUOTE-TOKEN",
     ):
         assert secret not in detail_text
     assert detail.json()["data"]["lineage"]["claim"]["status"] == "paid_attached"
     assert detail.json()["data"]["lineage"]["grant"]["status"] == "reserved"
+    assert detail.json()["data"]["quote"] == {
+        "source": "stored_order_intent", "plan_code": "start_99", "amount": "99.00", "currency": "RUB",
+        "campaign": "winback-fixture", "campaign_revision": "3", "commercial_revision": "commercial-fixture",
+        "terms_revision": "terms-fixture", "base_amount_rub": "149", "hold_expires_at": "1784110200",
+    }
 
     access = client.get("/api/admin/v2/money/access")
     assert access.status_code == 200, access.text

@@ -307,6 +307,32 @@ def payment_order_view(session, order: ExternalOrder, *, now: datetime | None = 
     }
 
 
+def _order_quote_view(order: ExternalOrder) -> dict[str, Any] | None:
+    intent = _json_object(order.meta_json).get("order_intent")
+    if not isinstance(intent, dict) or intent.get("schema") not in {
+        "pokrov-payment-order-intent-v1", "pokrov-payment-order-intent-v2"
+    }:
+        return None
+    offer = intent.get("commercial_offer")
+    commercial = offer if isinstance(offer, dict) else {}
+    # Only immutable commercial terms; owner, subject, token and provider data stay private.
+    def field(source: dict[str, Any], key: str, limit: int) -> str | None:
+        value = source.get(key)
+        return str(value)[:limit] if isinstance(value, (str, int, float)) and not isinstance(value, bool) else None
+    return {
+        "source": "stored_order_intent",
+        "plan_code": field(intent, "plan_code", 32),
+        "amount": field(intent, "amount", 32),
+        "currency": field(intent, "currency", 16),
+        "campaign": field(commercial, "campaign", 64),
+        "campaign_revision": field(commercial, "campaign_revision", 20),
+        "commercial_revision": field(commercial, "commercial_revision", 64),
+        "terms_revision": field(commercial, "terms_revision", 64),
+        "base_amount_rub": field(commercial, "base_amount_rub", 32),
+        "hold_expires_at": field(commercial, "hold_expires_at", 32),
+    }
+
+
 def payment_summary(session, *, environment: str, period: str, now: datetime | None = None) -> dict[str, Any]:
     _require_production(environment)
     current = now or _now()
@@ -462,6 +488,7 @@ def payment_360(
     if order is None:
         return None
     result = payment_order_view(session, order, now=now)
+    result["quote"] = _order_quote_view(order)
     result["events"] = [_event_view(row) for row in _payment_events(session, order)]
     result["commands"] = [
         {

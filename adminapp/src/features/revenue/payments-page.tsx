@@ -52,6 +52,45 @@ function isAccessDenied(error: AdminApiError | null): boolean {
   return Boolean(error && (error.status === 401 || error.status === 403));
 }
 
+function PaymentDelivery({ order }: { order: PaymentOrder }) {
+  const { claim, grant, outbox } = order.lineage || {};
+  const quote = order.quote;
+  const reasons: Record<string, string> = {
+    pending_too_long: "Оплата ожидается больше 30 минут",
+    manual_review: "Нужна ручная проверка",
+    payment_failed: "Ошибка или отмена оплаты",
+    refund_or_reversal: "Возврат или отмена начисления",
+    signature_failed: "Подпись callback не прошла проверку",
+    callback_failed: "Callback не обработан",
+    paid_without_entitlement: "Оплата есть, начисление доступа не подтверждено",
+    entitlement_manual_review: "Начисление доступа требует ручной проверки",
+  };
+  return (
+    <div className="space-y-3 border-t border-[color:var(--atlas-border)] pt-3 [overflow-wrap:anywhere]">
+      <section aria-label="Сохранённый расчёт заказа">
+        <h3 className="font-semibold">Сохранённый расчёт</h3>
+        {quote ? <div className="mt-1 space-y-1"><p className="text-[color:var(--atlas-text-soft)]">Условия при создании заказа.</p><p>Тариф: {quote.plan_code || "—"} · сумма: {quote.amount || "—"} {quote.currency}</p>{quote.base_amount_rub ? <p>До скидки: {quote.base_amount_rub} RUB</p> : null}{quote.campaign ? <p>Кампания: {quote.campaign} · ревизия {quote.campaign_revision || "—"}</p> : null}{quote.commercial_revision ? <p>Коммерческие условия: {quote.commercial_revision}</p> : null}{quote.terms_revision ? <p>Оферта: {quote.terms_revision}</p> : null}{quote.hold_expires_at ? <p>Резерв до: {dateText(new Date(Number(quote.hold_expires_at) * 1000).toString())}</p> : null}</div> : <p className="mt-1 text-[color:var(--atlas-text-soft)]">Сохранённый расчёт недоступен.</p>}
+      </section>
+      <section aria-label="Причины проверки заказа">
+        <h3 className="font-semibold">Причины проверки</h3>
+        {order.problem_reasons === null ? <MissingData /> : order.problem_reasons.length ? <ul className="mt-1 space-y-1 text-[color:var(--atlas-status-warning-text)]">{order.problem_reasons.map((reason) => <li key={reason}>{reasons[reason] || reason}</li>)}</ul> : <p className="mt-1 text-[color:var(--atlas-text-soft)]">Сервер не указал проблем.</p>}
+      </section>
+      <section aria-label="Начисление и доставка доступа" className="space-y-2">
+        <h3 className="font-semibold">Начисление и доставка доступа</h3>
+        {order.lineage === null ? <MissingData /> : <>
+          <div><p>Начисление: <strong>{claim ? claim.status || "Нет данных" : "Запись отсутствует"}</strong></p>{claim ? <><p className="font-mono text-[color:var(--atlas-text-muted)]">{claim.claim_ref}</p>{claim.last_error_present ? <p className="text-[color:var(--atlas-status-warning-text)]">Зафиксирована ошибка · {dateText(claim.last_error_at)}</p> : null}</> : null}</div>
+          <div><p>Право доступа: <strong>{grant ? grant.status || "Нет данных" : "Запись отсутствует"}</strong></p>{grant ? <><p className="font-mono text-[color:var(--atlas-text-muted)]">{grant.grant_ref}</p><p>Срок доступа: {dateText(grant.expires_at)}</p></> : null}</div>
+          <div><p>Доставка: <strong>{outbox ? outbox.status || "Нет данных" : "Запись отсутствует"}</strong></p>{outbox ? <><p className="font-mono text-[color:var(--atlas-text-muted)]">{outbox.outbox_ref}</p><p>Попыток: {numberText(outbox.attempts)}</p>{outbox.last_error_code ? <p>Код ошибки: <span className="font-mono">{outbox.last_error_code}</span></p> : null}{outbox.terminal_reason ? <p>Причина остановки: <span className="font-mono">{outbox.terminal_reason}</span></p> : null}{outbox.next_run_at ? <p>Следующая попытка: {dateText(outbox.next_run_at)}</p> : null}{outbox.delivered_at ? <p>Доставлено: {dateText(outbox.delivered_at)}</p> : null}</> : null}</div>
+        </>}
+      </section>
+      <section aria-label="История команд заказа">
+        <h3 className="font-semibold">Последние команды</h3>
+        {order.commands === null ? <MissingData /> : order.commands.length ? <ul className="mt-2 space-y-2">{order.commands.map((command, index) => <li key={command.intent_ref || index}><p>{command.action === "payment.reconcile" ? "Сверка платежа" : command.action || "Действие не указано"} · <strong>{command.status || "Нет данных"}</strong></p><p className="font-mono text-[color:var(--atlas-text-muted)]">{command.intent_ref}</p><p>Создана: {dateText(command.created_at)}{command.consumed_at ? ` · Завершена: ${dateText(command.consumed_at)}` : ""}</p></li>)}</ul> : <p className="mt-1 text-[color:var(--atlas-text-soft)]">Команд по заказу нет.</p>}
+      </section>
+    </div>
+  );
+}
+
 export function PaymentsPage({ onShellStatus }: { onShellStatus?: (status: OpsShellStatus) => void }) {
   const [urlState, setUrlState] = useState<PaymentsUrlState>(() => readUrlState(PAYMENT_URL_CODECS));
   const [request, setRequest] = useState<ActionIntentRequest | null>(null);
@@ -157,6 +196,7 @@ export function PaymentsPage({ onShellStatus }: { onShellStatus?: (status: OpsSh
               <RouteBoundary loading={detail.loading} refreshing={detail.refreshing} error={detail.error} hasData={selected !== null} retryLabel="Повторить карточку" onRetry={detail.reload}>
                 {selected ? <div className="space-y-3 text-xs">
                   <dl className="grid grid-cols-2 gap-2"><dt className="text-[color:var(--atlas-text-soft)]">Провайдер</dt><dd className="font-semibold">{selected.provider || "— · Нет данных"}</dd><dt className="text-[color:var(--atlas-text-soft)]">Статус заказа</dt><dd>{selected.status ? <Badge tone={statusTone(selected.status)}>{statusLabel(selected.status)}</Badge> : <MissingData />}</dd><dt className="text-[color:var(--atlas-text-soft)]">Состояние callback</dt><dd>{selected.last_event?.processed_ok === true ? "Обработан" : selected.last_event?.processed_ok === false ? "Требует проверки" : <MissingData />}</dd><dt className="text-[color:var(--atlas-text-soft)]">Событий callback</dt><dd className="tabular-nums">{finite(selected.event_count) === null ? "— · Нет данных" : selected.event_count}</dd></dl>
+                  <PaymentDelivery order={selected} />
                   <div className="border-t border-[color:var(--atlas-border)] pt-3"><label className="block font-semibold">Новый статус<select aria-label="Статус сверки" value={nextStatus} onChange={(event) => setNextStatus(event.target.value)} className="mt-1 min-h-10 w-full rounded-[var(--pokrov-radius-control)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] px-3"><option value="manual_review">Ручная проверка</option><option value="pending_verification">Ожидает проверки</option><option value="paid">Оплачен</option><option value="failed">Ошибка</option><option value="refunded">Возврат</option></select></label><label className="mt-3 block font-semibold">Примечание оператора<textarea aria-label="Примечание сверки" value={note} onChange={(event) => { setNote(event.target.value); setFormError(""); }} className="mt-1 min-h-24 w-full rounded-[var(--pokrov-radius-card)] border border-[color:var(--atlas-border)] bg-[color:var(--atlas-canvas)] p-3" /></label>{formError ? <p role="alert" className="mt-2 text-[color:var(--atlas-status-danger-text)]">{formError}</p> : null}<p className="mt-2 text-[11px] text-[color:var(--atlas-text-muted)]">Не вставляйте provider payload, секреты, callback body, URL подписки или IP.</p><Button tone="primary" className="mt-3" onClick={() => openReconcile(selected)}><ShieldCheck size={15} /> Проверить и сверить</Button></div>
                 </div> : null}
               </RouteBoundary>

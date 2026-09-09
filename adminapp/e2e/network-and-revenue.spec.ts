@@ -207,6 +207,22 @@ test("Деньги: платежи разделяют order status и callback, 
 
   await page.getByRole("button", { name: /order-review-901/ }).first().click();
   await expect.poll(() => api.calls.some((call) => call.path === "/api/admin/v2/money/payments/orders/freekassa/order-review-901")).toBe(true);
+  const orderCard = page.getByRole("complementary", { name: "Карточка платёжного заказа" });
+  const quote = orderCard.getByRole("region", { name: "Сохранённый расчёт заказа" });
+  await expect(quote).toContainText("сумма: 99.00 RUB");
+  await expect(quote).toContainText("До скидки: 149 RUB");
+  await expect(quote).toContainText("Кампания: winback-fixture · ревизия 3");
+  await expect(quote).toContainText("Оферта: terms-fixture");
+  await expect(orderCard.getByText("Callback не обработан", { exact: true })).toBeVisible();
+  await expect(orderCard.getByText("Начисление доступа требует ручной проверки", { exact: true })).toBeVisible();
+  const delivery = orderCard.getByRole("region", { name: "Начисление и доставка доступа" });
+  await expect(delivery).toContainText("Начисление: manual_review");
+  await expect(delivery).toContainText("Право доступа: active");
+  await expect(delivery).toContainText("Доставка: pending");
+  await expect(delivery).toContainText("Попыток: 3");
+  await expect(delivery).toContainText("delivery_deferred");
+  await expect(delivery).toContainText("Следующая попытка:");
+  await expect(orderCard.getByRole("region", { name: "История команд заказа" })).toContainText("intent_review_901");
   await page.getByLabel("Примечание сверки").fill("Проверено в кабинете провайдера, callback не изменяем.");
   await page.getByRole("button", { name: "Проверить и сверить" }).click();
   const dialog = page.getByRole("dialog", { name: "Проверка действия" });
@@ -219,6 +235,24 @@ test("Деньги: платежи разделяют order status и callback, 
   expect(api.calls.some((call) => call.path.startsWith("/api/admin/v2/money/action-intents/") && call.path.endsWith("/execute"))).toBe(true);
   expect(api.calls.some((call) => call.path.endsWith("/reconcile"))).toBe(false);
   await expect(page.getByText(/payload_json|provider_payload|raw callback/i)).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Закрыть", exact: true }).click();
+  await page.getByRole("button", { name: /order-paid-902/ }).click();
+  await expect(orderCard.getByText("Команд по заказу нет.", { exact: true })).toBeVisible();
+  await expect(delivery).toContainText("Доставка: Запись отсутствует");
+  await expect(orderCard.getByText("delivery_deferred", { exact: true })).toHaveCount(0);
+  await expect(quote).toContainText("Сохранённый расчёт недоступен.");
+});
+
+test("Кампании: юридические условия и ёмкость видны до решения о запуске", async ({ page }) => {
+  const api = await installAdminApiMock(page, { revenueScenario: "populated", winbackScenario: "blocked" });
+  await page.goto("/promos");
+  const policy = page.getByRole("region", { name: "Условия запуска кампании" });
+  await expect(policy).toContainText("Юридический профиль: owner_approved · оферта: terms-fixture");
+  await expect(policy).toContainText("Ёмкость: 950 / 1 000 · зона: red");
+  await expect(policy).toContainText("Привлечение по ёмкости: приостановлено");
+  await expect(policy).toContainText("legal_launch_blocked");
+  await expect(page.getByText("4 / 20", { exact: true })).toBeVisible();
+  expect(api.calls.filter((call) => call.method === "POST")).toHaveLength(0);
 });
 
 test("Деньги: сбой реестра заказов не скрывает KPI и очередь внимания", async ({ page }) => {

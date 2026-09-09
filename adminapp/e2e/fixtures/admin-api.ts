@@ -711,6 +711,7 @@ type AdminApiMockOptions = {
   networkScenario?: "populated";
   networkDelayMs?: number;
   revenueScenario?: "populated";
+  winbackScenario?: "blocked";
   paymentOrdersStatus?: number;
   funnelStatus?: number;
   promosStatus?: number;
@@ -1457,6 +1458,8 @@ function isOperatorWorkPath(pathname: string): boolean {
 
 function isFocusedGetPath(pathname: string): boolean {
   return FOCUSED_GET_PATHS.has(pathname)
+    || pathname === "/api/admin/campaigns"
+    || /^\/api\/admin\/campaigns\/[1-9]\d*\/pilot-decision$/.test(pathname)
     || isNodeObservabilityPath(pathname)
     || isUserDetailPath(pathname)
     || isUserInvestigationPath(pathname)
@@ -2672,6 +2675,30 @@ export async function installAdminApiMock(
       return;
     }
 
+    if (url.pathname === "/api/admin/campaigns") {
+      await fulfillJson(route, { commercial_revision: "commercial-fixture", contract_sha256: "c".repeat(64), campaigns: options.winbackScenario ? [{
+        id: 51, public_id: "winback-fixture", name: "Возврат", objective: "winback", lifecycle_status: "paused", revision: 3,
+        commercial_revision: "commercial-fixture", channels: ["cabinet"], paid_cap: 20, paid_conversions_count: 4,
+        state_reason: "capacity_forbidden", starts_at: generatedAt, ends_at: null,
+        legal_profile_status: "owner_approved", terms_revision: "terms-fixture",
+        policy: { activation_allowed: false, blocking_reasons: ["capacity_forbidden", "legal_launch_blocked"], capacity: { active_units: 950, limit_units: 1000, band: "red", acquisition_permitted: false } },
+      }] : [] });
+      return;
+    }
+    if (url.pathname === "/api/admin/campaigns/51/pilot-decision") {
+      await fulfillJson(route, {
+        decision: {
+          generated_at: generatedAt, campaign: { id: "winback-fixture", revision: 3, lifecycle_status: "paused", ends_at: null },
+          pilot: { pilot_id: "pilot-fixture", revision: "pilot-v1", contract_sha256: "c".repeat(64), commercial_revision: "commercial-fixture" },
+          primary_metric: { name: "net_revenue_30d_per_capacity_unit", state: "insufficient_data", value: null, net_revenue_30d_rub: null, paid_capacity_units: null, reason: "window_open" },
+          holdout: { state: "insufficient_data" }, guardrails: { quota: { paid_conversions: 4, paid_cap: 20, remaining: 16 }, payment_errors: { count: 1, order_count: 4 }, incidents: { count: 0 }, support: { p0_p1_count: 0 } },
+          observation_complete: false, automatic_stop_reasons: ["capacity_forbidden"], recommendation: "stop", winner: null, scale_automatic: false, maximum_owner_review_paid_cap: 50, action_intents: [],
+        },
+        postmortem: { decision_pack_sha256: "d".repeat(64), recommendation: "stop", winner_state: "insufficient_data", winner: null, refusal_reasons: ["capacity_forbidden"], scale_requires_owner_approval: true },
+      });
+      return;
+    }
+
     if (url.pathname === "/api/admin/v2/money/payments/summary") {
       const period = url.searchParams.get("period") || "7d";
       const multiplier = period === "today" ? 1 : period === "30d" ? 8 : 3;
@@ -2778,7 +2805,18 @@ export async function installAdminApiMock(
       const orderId = decodeURIComponent(parts.at(-1) || "");
       const provider = decodeURIComponent(parts.at(-2) || "");
       const order = revenueOrders.find((row) => row.order_id === orderId && row.provider === provider);
-      await fulfillJson(route, order ? operatorV2Envelope({ ...order, problem_reasons: order.status === "manual_review" ? ["manual_review", "callback_failed"] : [], lineage: { claim: null, grant: null, outbox: null }, events: order.last_event ? [order.last_event] : [], commands: [] }, [{ authority: "external_orders" }]) : { detail: "Order not found" }, order ? 200 : 404);
+      await fulfillJson(route, order ? operatorV2Envelope({
+        ...order,
+        quote: order.id === 901 ? { source: "stored_order_intent", plan_code: "start_99", amount: "99.00", currency: "RUB", campaign: "winback-fixture", campaign_revision: "3", commercial_revision: "commercial-fixture", terms_revision: "terms-fixture", base_amount_rub: "149", hold_expires_at: "1784110200" } : null,
+        problem_reasons: order.status === "manual_review" ? ["manual_review", "callback_failed", "entitlement_manual_review"] : [],
+        lineage: order.id === 901 ? {
+          claim: { claim_ref: "claim_review_901", status: "manual_review", last_error_present: true, last_error_at: generatedAt },
+          grant: { grant_ref: "grant_review_901", status: "active", expires_at: "2026-08-15T10:00:00Z" },
+          outbox: { outbox_ref: "outbox_review_901", status: "pending", attempts: 3, last_error_code: "delivery_deferred", terminal_reason: null, next_run_at: "2026-07-15T10:05:00Z", delivered_at: null },
+        } : { claim: null, grant: null, outbox: null },
+        events: order.last_event ? [order.last_event] : [],
+        commands: order.id === 901 ? [{ intent_ref: "intent_review_901", action: "payment.reconcile", status: "executed", created_at: generatedAt, consumed_at: generatedAt }] : [],
+      }, [{ authority: "external_orders" }]) : { detail: "Order not found" }, order ? 200 : 404);
       return;
     }
 
